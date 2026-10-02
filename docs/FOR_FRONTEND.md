@@ -15,6 +15,25 @@ messages in their name.
 
 ---
 
+## 2 October, 08:45 — push quiet hours need the device's time zone (one field)
+
+Giorgi's decision (G-002, team task 200; Misho said start): no push between 23:00 and
+09:30 in the recipient's own local time. What falls in that window is held on the server
+and sent at 09:30 that device's time. Messages inside the app are unchanged and arrive at
+any time.
+
+The server holds each DEVICE by its own clock, and today it does not know any device's
+clock, so every device is held by Tbilisi time. One field fixes that: send the browser's
+IANA zone when you subscribe.
+
+    POST /notifications/subscribe  { ...as now, "time_zone": Intl.DateTimeFormat().resolvedOptions().timeZone }
+
+An `X-Time-Zone` header on that request works too, if adding it to authHeaders() is
+easier. The field is optional and never refuses a subscription: an unknown zone is stored
+as null and Tbilisi is used. Re-subscribing keeps the zone already stored if you send
+none. Nothing else changes for you: the payload shape is the same and a held push
+arrives as an ordinary push at 09:30.
+
 ## 2 October, 07:35 — two lines on the updates page, both yours (Ninia's phone, tester 963 / 1013)
 
 1. **B8, still on her cards today.** `src/app/updates/page.tsx:68`, `laterWeek: "შემახსენე კვირაში"`

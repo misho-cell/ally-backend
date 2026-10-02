@@ -24,6 +24,20 @@ jest.mock('web-push', () => ({
   },
 }));
 
+/**
+ * Push quiet hours (G-002) hold every push between 23:00 and 09:30 device time,
+ * so these tests read a clock pinned to Tbilisi noon — deterministic whenever
+ * they run. Only Date is faked; timers and promises stay real.
+ */
+const TBILISI_NOON = new Date('2026-10-02T08:00:00Z');
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: TBILISI_NOON,
+    doNotFake: ['setTimeout', 'setInterval', 'setImmediate', 'nextTick', 'queueMicrotask'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 const MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15';
 const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1';
 const USER_ID = '167250';

@@ -1,5 +1,7 @@
 import webpush, { PushSubscription } from 'web-push';
 import { query } from '../db/postgres/client';
+import { duePushes, holdPush, releaseHeld } from './heldPushes.service';
+import { isQuietHour, nextQuietEnd, pushTimeZone, validTimeZone } from './pushQuietHours';
 import { connectedDevices, deviceKey, hasActiveConnection } from './sse.service';
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? '';
@@ -53,6 +55,12 @@ export interface PushSubscriptionPayload {
    * to delete the row it has just written.
    */
   previous_endpoint?: string;
+  /**
+   * Push quiet hours (G-002): the device's own IANA time zone, so a push that
+   * would ring it between 23:00 and 09:30 ITS time waits for 09:30. Optional —
+   * a device that has not said is held by Tbilisi time.
+   */
+  time_zone?: string;
 }
 
 /** Long enough for any real UA string; a guard against an absurd one. */
@@ -73,8 +81,9 @@ export async function savePushSubscription(
       ? value.trim().slice(0, MAX_USER_AGENT_CHARS)
       : null;
   await query(
-    `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, device_id, last_seen_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `INSERT INTO push_subscriptions
+       (user_id, endpoint, p256dh, auth, user_agent, device_id, time_zone, last_seen_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
      ON CONFLICT (endpoint) DO UPDATE
        SET user_id = EXCLUDED.user_id,
            p256dh  = EXCLUDED.p256dh,
@@ -82,6 +91,7 @@ export async function savePushSubscription(
            -- A re-subscribe without these must not erase what we have.
            user_agent = COALESCE(EXCLUDED.user_agent, push_subscriptions.user_agent),
            device_id  = COALESCE(EXCLUDED.device_id,  push_subscriptions.device_id),
+           time_zone  = COALESCE(EXCLUDED.time_zone,  push_subscriptions.time_zone),
            -- „This browser still exists." The ONLY thing that can say so is the
            -- browser itself: a push service accepts a dead address and answers
            -- „delivered", so a send proves nothing (14 days, failed = 0 on every
@@ -94,6 +104,7 @@ export async function savePushSubscription(
       subscription.keys.auth,
       bounded(subscription.user_agent),
       bounded(subscription.device_id),
+      validTimeZone(subscription.time_zone),
     ],
   );
 
@@ -158,7 +169,7 @@ const MAX_DELIVERY_ERROR_CHARS = 300;
 async function recordDelivery(
   userId: string,
   endpoint: string,
-  status: 'sent' | 'failed' | 'skipped',
+  status: 'sent' | 'failed' | 'skipped' | 'held',
   statusCode: number | null,
   error: string | null,
 ): Promise<void> {
@@ -217,7 +228,10 @@ interface SubscriptionRow {
   auth: string;
   user_agent: string | null;
   device_id: string | null;
+  time_zone: string | null;
 }
+
+const SUBSCRIPTION_COLUMNS = 'endpoint, p256dh, auth, user_agent, device_id, time_zone';
 
 /**
  * Whether the person is already watching ON THIS DEVICE — the only reason not
@@ -330,8 +344,7 @@ export async function sendPushNotification(
   }
 
   const result = await query<SubscriptionRow>(
-    `SELECT endpoint, p256dh, auth, user_agent, device_id
-     FROM push_subscriptions WHERE user_id = $1`,
+    `SELECT ${SUBSCRIPTION_COLUMNS} FROM push_subscriptions WHERE user_id = $1`,
     [userId],
   );
   if (result.rows.length === 0) {
@@ -342,83 +355,166 @@ export async function sendPushNotification(
 
   const live = connectedDevices(userId);
   const anyStreamOpen = hasActiveConnection(userId);
-  const staleEndpoints: string[] = [];
-
-  let deliveredToAnyone = false;
-  await Promise.allSettled(
-    result.rows.map(async (row) => {
-      const subscription: PushSubscription = {
-        endpoint: row.endpoint,
-        keys: { p256dh: row.p256dh, auth: row.auth },
-      };
-      const label = endpointLabel(row.endpoint);
-
-      if (alreadyWatching(row, live, anyStreamOpen)) {
-        // eslint-disable-next-line no-console
-        console.log(`[push] user ${userId}: skipped ${label}, this device is live`);
-        await recordDelivery(userId, row.endpoint, 'skipped', null, 'device is live');
-        return;
-      }
-
-      try {
-        /**
-         * „sent" MEANS THE PUSH SERVICE ACCEPTED IT. IT DOES NOT MEAN ANYBODY
-         * SAW IT, and reading it as though it did cost a day.
-         *
-         * Row 111, 20 September: Lika reported that a question from her
-         * network never reaches her phone while „your answer is ready" does,
-         * on the same phone in the same session. This table answers half of
-         * that and looks like it answers all of it — the ask of 11:11:24 shows
-         *
-         *   11:11:26  sent  web.push.apple.com/QNoN074  iPhone OS 18_7
-         *
-         * so the server built it, addressed the right device, and Apple took
-         * it. What happens after that is the service worker's, and nothing
-         * here can see it. A row saying „sent" next to a phone that never rang
-         * is not a contradiction; it is this column meaning less than its
-         * name.
-         *
-         * The two payloads are identical in shape — {title, body, url}, no
-         * tag, no icon — and both bodies were 56 to 83 characters, so neither
-         * a missing field nor an empty body explains it. Checked rather than
-         * assumed, because „it must be the payload" was the obvious guess.
-         */
-        await webpush.sendNotification(subscription, JSON.stringify(payload));
-        deliveredToAnyone = true;
-        // eslint-disable-next-line no-console
-        console.log(`[push] user ${userId}: sent via ${label}`);
-        await recordDelivery(userId, row.endpoint, 'sent', null, null);
-      } catch (err) {
-        const statusCode = (err as { statusCode?: number }).statusCode;
-        // eslint-disable-next-line no-console
-        console.error(
-          `[push] user ${userId}: FAILED via ${label} status=${statusCode ?? 'none'}: ` +
-            `${(err as Error).message}`,
-        );
-        await recordDelivery(
-          userId,
-          row.endpoint,
-          'failed',
-          statusCode ?? null,
-          (err as Error).message,
-        );
-        if (statusCode === 404 || statusCode === 410) {
-          staleEndpoints.push(row.endpoint);
-        }
-      }
-    }),
+  const outcomes = await Promise.all(
+    result.rows.map((row) => sendOrHold(userId, row, payload, live, anyStreamOpen)),
   );
   // Row 111: remembered only now, and only if it actually reached somebody. A
-  // push nobody received is not a push this person has already had.
-  if (deliveredToAnyone) rememberPush(userId, payload);
+  // push nobody received — skipped, held for the morning, failed — is not a
+  // push this person has already had.
+  if (outcomes.includes(DeviceOutcome.Sent)) rememberPush(userId, payload);
+  await pruneStale(userId, result.rows, outcomes);
+}
 
-  if (staleEndpoints.length > 0) {
+enum DeviceOutcome {
+  Sent = 'sent',
+  Skipped = 'skipped',
+  Held = 'held',
+  Failed = 'failed',
+  Gone = 'gone',
+}
+
+/**
+ * One device: skipped while its owner is looking at it, held while it is quiet
+ * hours on its own clock (G-002), sent otherwise.
+ */
+async function sendOrHold(
+  userId: string,
+  row: SubscriptionRow,
+  payload: NotificationPayload,
+  live: ReadonlySet<string>,
+  anyStreamOpen: boolean,
+): Promise<DeviceOutcome> {
+  const label = endpointLabel(row.endpoint);
+  if (alreadyWatching(row, live, anyStreamOpen)) {
     // eslint-disable-next-line no-console
-    console.log(`[push] user ${userId}: pruned ${staleEndpoints.length} dead subscription(s)`);
-    await Promise.allSettled(
-      staleEndpoints.map((endpoint) => deletePushSubscription(userId, endpoint)),
-    );
+    console.log(`[push] user ${userId}: skipped ${label}, this device is live`);
+    await recordDelivery(userId, row.endpoint, 'skipped', null, 'device is live');
+    return DeviceOutcome.Skipped;
   }
+  const zone = pushTimeZone(row.time_zone);
+  const now = new Date();
+  if (isQuietHour(now, zone)) return holdForMorning(userId, row, payload, zone, now);
+  return deliverToDevice(userId, row, payload);
+}
+
+async function holdForMorning(
+  userId: string,
+  row: SubscriptionRow,
+  payload: NotificationPayload,
+  zone: string,
+  now: Date,
+): Promise<DeviceOutcome> {
+  const releaseAt = nextQuietEnd(now, zone);
+  try {
+    await holdPush(userId, row.endpoint, payload, releaseAt);
+  } catch (err) {
+    // A hold that cannot be written must not lose the push: it goes now.
+    // eslint-disable-next-line no-console
+    console.error(`[push] user ${userId}: could not hold, sending now:`, (err as Error).message);
+    return deliverToDevice(userId, row, payload);
+  }
+  // eslint-disable-next-line no-console
+  console.log(
+    `[push] user ${userId}: held ${endpointLabel(row.endpoint)} until ` +
+      `${releaseAt.toISOString()} (quiet hours, ${zone})`,
+  );
+  await recordDelivery(userId, row.endpoint, 'held', null, `until ${releaseAt.toISOString()}`);
+  return DeviceOutcome.Held;
+}
+
+/**
+ * „sent" MEANS THE PUSH SERVICE ACCEPTED IT. IT DOES NOT MEAN ANYBODY SAW IT,
+ * and reading it as though it did cost a day.
+ *
+ * Row 111, 20 September: Lika reported that a question from her network never
+ * reaches her phone while „your answer is ready" does, on the same phone in the
+ * same session. This table answers half of that and looks like it answers all
+ * of it — the ask of 11:11:24 shows `sent web.push.apple.com/QNoN074 iPhone OS
+ * 18_7`, so the server built it, addressed the right device, and Apple took it.
+ * What happens after that is the service worker's, and nothing here can see
+ * it. The two payloads are identical in shape — {title, body, url}, no tag, no
+ * icon — so neither a missing field nor an empty body explains it.
+ */
+async function deliverToDevice(
+  userId: string,
+  row: SubscriptionRow,
+  payload: NotificationPayload,
+): Promise<DeviceOutcome> {
+  const subscription: PushSubscription = {
+    endpoint: row.endpoint,
+    keys: { p256dh: row.p256dh, auth: row.auth },
+  };
+  const label = endpointLabel(row.endpoint);
+  try {
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    // eslint-disable-next-line no-console
+    console.log(`[push] user ${userId}: sent via ${label}`);
+    await recordDelivery(userId, row.endpoint, 'sent', null, null);
+    return DeviceOutcome.Sent;
+  } catch (err) {
+    const statusCode = (err as { statusCode?: number }).statusCode;
+    // eslint-disable-next-line no-console
+    console.error(
+      `[push] user ${userId}: FAILED via ${label} status=${statusCode ?? 'none'}: ` +
+        `${(err as Error).message}`,
+    );
+    await recordDelivery(
+      userId,
+      row.endpoint,
+      'failed',
+      statusCode ?? null,
+      (err as Error).message,
+    );
+    return statusCode === 404 || statusCode === 410 ? DeviceOutcome.Gone : DeviceOutcome.Failed;
+  }
+}
+
+async function pruneStale(
+  userId: string,
+  rows: readonly SubscriptionRow[],
+  outcomes: readonly DeviceOutcome[],
+): Promise<void> {
+  const stale = rows.filter((_, i) => outcomes[i] === DeviceOutcome.Gone).map((r) => r.endpoint);
+  if (stale.length === 0) return;
+  // eslint-disable-next-line no-console
+  console.log(`[push] user ${userId}: pruned ${stale.length} dead subscription(s)`);
+  await Promise.allSettled(stale.map((endpoint) => deletePushSubscription(userId, endpoint)));
+}
+
+/** How many held pushes one release tick sends. */
+const RELEASE_BATCH = 100;
+
+/**
+ * Sends the held pushes whose morning has come (G-002). A device that is gone
+ * drops its held pushes with it; a device its owner is looking at right now is
+ * skipped, as any push would be — the message is already in the app. Every held
+ * push is forgotten once dealt with, so a failure is recorded, not retried
+ * forever. Returns how many were sent.
+ */
+export async function releaseHeldPushes(): Promise<number> {
+  const due = await duePushes(RELEASE_BATCH);
+  let sent = 0;
+  for (const held of due) {
+    const row = await subscriptionFor(held.userId, held.endpoint);
+    if (row !== null) {
+      const live = connectedDevices(held.userId);
+      const outcome = alreadyWatching(row, live, hasActiveConnection(held.userId))
+        ? DeviceOutcome.Skipped
+        : await deliverToDevice(held.userId, row, held.payload);
+      if (outcome === DeviceOutcome.Sent) sent += 1;
+      await pruneStale(held.userId, [row], [outcome]);
+    }
+    await releaseHeld(held.id);
+  }
+  return sent;
+}
+
+async function subscriptionFor(userId: string, endpoint: string): Promise<SubscriptionRow | null> {
+  const result = await query<SubscriptionRow>(
+    `SELECT ${SUBSCRIPTION_COLUMNS} FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2`,
+    [userId, endpoint],
+  );
+  return result.rows[0] ?? null;
 }
 
 /**

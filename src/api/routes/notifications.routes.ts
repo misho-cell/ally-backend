@@ -112,6 +112,9 @@ notificationsRouter.post(
   // must still end up subscribed, because failing here would leave the person
   // unreachable in order to tidy a duplicate.
   body('previous_endpoint').optional().isString(),
+  // Push quiet hours (G-002): the device's IANA time zone. Optional and never a
+  // reason to refuse — an unknown zone is stored as null and Tbilisi is used.
+  body('time_zone').optional().isString(),
   async (req: Request, res: Response<ApiResponse<null>>) => {
     const errors = validationResult(req);
 
@@ -137,6 +140,7 @@ notificationsRouter.post(
         // Their authHeaders() already carries X-Device-Id on every request, so
         // the subscription can be named even if the body field is ever dropped.
         device_id: subscription.device_id ?? req.get('x-device-id'),
+        time_zone: subscription.time_zone ?? req.get('x-time-zone'),
       });
       res.status(200).json({ success: true, data: null });
     } catch (error) {

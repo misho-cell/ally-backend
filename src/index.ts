@@ -34,6 +34,7 @@ import { startIdentityScanCron } from './services/identityScan.cron';
 import { startEngineWakeCron } from './services/engineWakes.cron';
 import { startRunReaper } from './services/runReaper.service';
 import { startCutOffRunResume } from './services/cutOffRunResume.service';
+import { startHeldPushRelease } from './services/heldPushRelease.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -161,6 +162,8 @@ runMigrations()
     startRunReaper();
     // Tester 1013: a run the last deploy cut off is restarted here, not resent by its owner.
     startCutOffRunResume();
+    // G-002: pushes held over quiet hours (23:00–09:30 device time) go out at 09:30.
+    startHeldPushRelease();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();
