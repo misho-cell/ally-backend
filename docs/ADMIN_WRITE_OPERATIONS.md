@@ -5469,3 +5469,8 @@ UNDO    printf %s "<BEFORE>" | ./scripts/ops/env.sh set ASK_CAP_EXEMPT_USER_IDS,
 ⚠️ The boot line still says „test accounts only. If a real person is on this list, take
 them off." Since §84 five real people are on it on purpose. That wording is fixed with the
 next code change; until then, this entry is the reason they are there.
+
+**§84 RUN, 2 October 11:52:21 UTC** (in the same quiet minute as the 22bf14a push): `env.sh set
+ASK_CAP_EXEMPT_USER_IDS` with AFTER above. Live since 11:53:33 (deploy 4c7da33e); its boot line
+reads „receiving caps are OFF for 15 account(s): 171870 … 171940, 501, 118509, 160584, 165699,
+26954".
