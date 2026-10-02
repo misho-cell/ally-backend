@@ -8,8 +8,8 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { isBlankResponse } from '../chat.service';
 
-const message = (content: unknown[]): Anthropic.Message =>
-  ({ content, stop_reason: 'end_turn' }) as unknown as Anthropic.Message;
+const message = (content: unknown[], stop_reason = 'end_turn'): Anthropic.Message =>
+  ({ content, stop_reason }) as unknown as Anthropic.Message;
 
 describe('isBlankResponse', () => {
   it('is blank with no content at all, or only whitespace', () => {
@@ -23,8 +23,23 @@ describe('isBlankResponse', () => {
 
   it('is not blank when there is a tool to run, even with no text', () => {
     expect(
-      isBlankResponse(message([{ type: 'tool_use', id: 't', name: 'search_by_tag', input: {} }])),
+      isBlankResponse(
+        message([{ type: 'tool_use', id: 't', name: 'search_by_tag', input: {} }], 'tool_use'),
+      ),
     ).toBe(false);
+  });
+
+  /** The tester's 1012 (T166): a tool block the loop would never run is nothing. */
+  it('is blank when a tool block will not run (stop_reason is not tool_use)', () => {
+    expect(
+      isBlankResponse(
+        message([{ type: 'tool_use', id: 't', name: 'search_by_tag', input: {} }], 'max_tokens'),
+      ),
+    ).toBe(true);
+  });
+
+  it('is blank when the only text is invisible characters', () => {
+    expect(isBlankResponse(message([{ type: 'text', text: '\u200b\ufeff' }]))).toBe(true);
   });
 
   it('is what the first call is checked with, before anything is surfaced', () => {

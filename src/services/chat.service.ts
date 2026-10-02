@@ -6941,6 +6941,19 @@ export function maskedNumberShapes(reply: string): string[] {
   return numberShapes(runs.filter((run) => run.replace(/\D/g, '').length >= MIN_SHOWABLE_DIGITS));
 }
 
+/**
+ * The tester's 1012 (A, 0 of 3): every web-found phone in a goal reply came
+ * out „[hidden]", and with it the next line's list number („2." became „.").
+ * The final text was scrubbed HERE, before the run's web numbers were marked
+ * as allowed; the mark came at the very end, on text whose phones were
+ * already gone. So the mark goes first, at every place the final is read,
+ * and the scrub then leaves the page's own numbers alone — and, with them
+ * marked, never runs a number into the list number on the next line.
+ */
+export function scrubFinal(text: string, runId: string | undefined): string {
+  return scrubText(runId ? wrapAllowedNumbers(text, runId) : text);
+}
+
 export function wrapAllowedNumbers(text: string, runId: string): string {
   return wrapNumbers(text, runAllowedNumbers.get(runId));
 }
@@ -9239,8 +9252,14 @@ export function introContextFor(
 
 /** An answer with nothing in it: no text a person could read and no tool to run. */
 export function isBlankResponse(response: Anthropic.Message): boolean {
-  if (response.content.some((block) => block.type === 'tool_use')) return false;
-  return extractText(response.content).trim() === '';
+  if (withoutInvisibleCharacters(extractText(response.content)).trim() !== '') return false;
+  // The tester's 1012 (T166, run ec83ad39): no text, and still no retry — a
+  // tool_use block sat in an answer whose stop_reason was not tool_use, so the
+  // loop never ran it and the run ended with nothing. A tool call only counts
+  // as „something" when it will actually run.
+  const willRunATool =
+    response.stop_reason === 'tool_use' && response.content.some((b) => b.type === 'tool_use');
+  return !willRunATool;
 }
 
 const MIN_BURIED_ANSWER_CHARS = 200;
@@ -9903,7 +9922,9 @@ async function runToolLoop(
   // before anything is surfaced; the owner never does the retrying.
   if (isBlankResponse(response)) {
     // eslint-disable-next-line no-console
-    console.warn(`[chat] run ${runId} first answer was blank — asking once more`);
+    console.warn(
+      `[chat] run ${runId} first answer was blank (stop_reason ${response.stop_reason}) — asking once more`,
+    );
     response = await callClaude(messages, systemPrompt, tools, ctx, {
       onText: stream,
       model: TOOL_TURN_MODEL,
@@ -10170,11 +10191,11 @@ async function runToolLoop(
       // keeps looking at „to=functions" while the real answer arrives in the
       // run_complete event underneath it.
       if (openAiStarted) resetTurnStream();
-      finalText = scrubText(extractText(response.content));
+      finalText = scrubFinal(extractText(response.content), runId);
     } else {
       answeredBy = rewritten.model;
       finalIsRewrite = true;
-      finalText = scrubText(rewritten.text);
+      finalText = scrubFinal(rewritten.text, runId);
       await recordClaudeUsage({
         userId,
         kind: 'chat',
@@ -10191,7 +10212,10 @@ async function runToolLoop(
     // failing the whole run with an empty error screen.
     // eslint-disable-next-line no-console
     console.error('[chat] model call failed mid-run — salvaging:', (err as Error).message);
-    finalText = scrubText(await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending));
+    finalText = scrubFinal(
+      await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending),
+      runId,
+    );
   }
 
   // Rescue an answer the model buried in a 'step'. Two cases:
@@ -10366,7 +10390,7 @@ async function runToolLoop(
         });
       }
 
-      const continuationText = scrubText(extractText(continuation.content));
+      const continuationText = scrubFinal(extractText(continuation.content), runId);
       if (continuationText) finalText = `${finalText}\n\n${continuationText}`;
       // eslint-disable-next-line no-console
       console.log(
