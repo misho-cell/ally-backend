@@ -480,6 +480,8 @@ export async function wakeTask(
         );
       }
       void setThreadStatus(ownerId, thread.id, status, { isTask: true });
+      // Board #386: a quiet run wrote nothing, so there is no news to ring for.
+      if (result.quiet === true) return 'woken';
       // Sent unconditionally: whether the person is away is decided per DEVICE
       // inside sendPushNotification, and this gate — one boolean for a person
       // with four devices — is exactly what silenced Lika's phone (row 6).

@@ -4,6 +4,7 @@ import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
 import { GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { goalsForRun } from './wakeGoalScope';
+import { endsQuietly } from './quietSystemRun';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -9787,6 +9788,11 @@ export interface ChatResult {
    */
   stopped?: boolean;
   /**
+   * Board #386: a run the system started did its work through tools and had
+   * nothing to tell the owner. Nothing was stored; not a failure.
+   */
+  quiet?: boolean;
+  /**
    * The server's own stop line, when the stop was read from the owner's
    * message and answered before the run did anything.
    *
@@ -12207,6 +12213,12 @@ export async function processChat(
   }
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
+  }
+  if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending)) {
+    // eslint-disable-next-line no-console
+    console.log(`[chat] run ${runId} thread ${threadId}: system run did its work silently`);
+    clearRunState(runId);
+    return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
   if (!effectiveFinal.trim()) {
     // eslint-disable-next-line no-console
