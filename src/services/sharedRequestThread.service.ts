@@ -140,6 +140,8 @@ export interface SharedRequestDelivery {
   readonly requesterName: string;
   readonly mediatorName: string;
   readonly targetName: string;
+  /** 995 #5: the mediator's own name for the target; his line uses it. */
+  readonly mediatorTargetName?: string;
   readonly message: string | null;
   readonly direct: boolean;
 }
@@ -184,7 +186,7 @@ async function tellTheMediator(delivery: SharedRequestDelivery): Promise<void> {
     text: incomingRequestFollowUp(
       language,
       delivery.requesterName,
-      delivery.targetName,
+      delivery.mediatorTargetName ?? delivery.targetName,
       delivery.direct,
     ),
   };

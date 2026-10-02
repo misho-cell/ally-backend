@@ -85,7 +85,10 @@ function pickerLine(language: RunLanguage, picked: string | null, others: string
 }
 
 /** The bridge's own name for one phone: registered name, else their fullest label. */
-async function nameInBridgeBook(bridgeUserId: string, phone: string): Promise<string | null> {
+export async function nameInBridgeBook(
+  bridgeUserId: string,
+  phone: string,
+): Promise<string | null> {
   const result = await query<{ name: string | null }>(
     `SELECT COALESCE(CASE WHEN TRIM(u.name) LIKE '%@%' THEN NULL ELSE NULLIF(TRIM(u.name), '') END,
                      TRIM(ua.alias)) AS name

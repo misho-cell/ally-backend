@@ -1,3 +1,4 @@
+import { targetNameForMediator } from '../mediatorTargetName';
 import { query } from '../../db/postgres/client';
 import { foldedLower } from './georgianCase';
 import { buildSearchTerms } from './transliterate';
@@ -190,6 +191,8 @@ interface StoredRequest {
   readonly requesterName: string;
   readonly mediatorDisplayName: string;
   readonly targetName: string;
+  /** 995 #5: the mediator's own name for the target, for his side only. */
+  readonly mediatorTargetName: string;
   readonly message: string | null;
   readonly isDirect: boolean;
   readonly requesterTaskId: number | undefined;
@@ -206,7 +209,7 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
       stored.mediatorUserId,
       stored.requestId,
       stored.requesterName,
-      stored.targetName,
+      stored.mediatorTargetName,
       stored.message,
       stored.isDirect,
     ),
@@ -264,6 +267,7 @@ async function deliverIntoTheConversation(
     requesterName: stored.requesterName,
     mediatorName: stored.mediatorDisplayName,
     targetName: stored.targetName,
+    mediatorTargetName: stored.mediatorTargetName,
     message: stored.message,
     direct: stored.isDirect,
   });
@@ -550,6 +554,9 @@ async function requestIntroductionInner(
     requesterName,
     mediatorDisplayName: phoneResult.displayName ?? mediatorName,
     targetName,
+    mediatorTargetName: isDirect
+      ? targetName
+      : await targetNameForMediator(mediatorUserId, targetName, targetPhone ?? null),
     message: message ?? null,
     isDirect,
     requesterTaskId: context.requesterTaskId,
