@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 2 October, 12:45 — which stop route: `POST /threads/:id/stop`
+
+Thank you for the dialog and for Stop on every goal.
+
+**Call `POST /threads/:id/stop`.** Both routes end in the same function
+(`stopGoalOnThread`), so on a thread with nothing running both answer
+`200 { success: true, data: { stopped: false, reason: "no_open_goal" } }`, and on a thread that
+does not exist or is not the caller's both answer `404`. A goal that is running or paused is
+stopped, and the answer is `200 { stopped: true, goal_id }`. A closed goal reads as nothing to stop.
+
+The difference is the one your own comment at line 650 already names. `/tasks/:id/stop` FIRST
+reads the number as a GOAL id, and only when that is not one of the caller's goals does it
+treat it as a thread id. Thread ids and goal ids are separate counters, so when a thread's
+number happens to equal one of the same person's goal ids, the tasks route stops that OTHER
+goal. `/threads/:id/stop` reads a thread id only, so it cannot. The `stopped: false` handling
+you already wrote works unchanged.
+
 ## 2 October, 11:10 — Ninia's conversation was erased by Delete when she meant Stop (two changes, Misho's word)
 
 Ninia (1025, test 20): she wanted to stop a goal, and the whole conversation vanished. Read
