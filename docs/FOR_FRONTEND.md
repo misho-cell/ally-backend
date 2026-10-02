@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 2 October, 07:35 — two lines on the updates page, both yours (Ninia's phone, tester 963 / 1013)
+
+1. **B8, still on her cards today.** `src/app/updates/page.tsx:68`, `laterWeek: "შემახსენე კვირაში"`
+   reads as "remind me weekly". It should be **„შემახსენე ერთ კვირაში"** (English stays
+   "Remind me in a week").
+2. **A question card with no answer button.** A `goal_question` card's text is the goal's
+   question (often „ამ გეგმას მივყვე და ვიმოქმედო?"), and under it sit only the two
+   remind-me buttons. The card already links to `/chat/${task_id}`, where the question is
+   answered. The ask is to draw that link as a button too ("უპასუხე" / "Answer") on
+   `kind === "goal_question"`, so the card does not ask a question that its buttons
+   cannot answer. Nothing changes on the server: `task_id` is already in the payload.
+
 ## 1 October, 19:25 — M1 and M2 are on the server; M3's two admin pages are yours to draw
 
 Misho's word tonight: M1 then M2 (plate v288). Both are live on the server; the screens are yours.
