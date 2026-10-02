@@ -27,14 +27,16 @@
  * open, and the model cannot hand the owner a working profile.
  *
  * The two lookbehinds, each earning its place:
- *   (?<![\p{L}/])   not glued to a letter, and not a path segment after „/"
+ *   (?<![\p{L}\d/]) not glued to a letter, not a path segment after „/", and
+ *                    never starting in the middle of a digit run (board #661:
+ *                    „/posts/1234…" came out „/posts/1[hidden]")
  *   (?<!\p{L}-)     not after a hyphen that follows a letter — the slug case
  *
  * A real phone is delimited by space, start-of-text or punctuation like „:",
  * never welded to the end of a word. Every phone shape in the tests below
  * still redacts.
  */
-const PHONE_LIKE_PATTERN = '(?<![\\p{L}/])(?<!\\p{L}-)\\+?\\d[\\d\\s\\-().]{5,}\\d';
+const PHONE_LIKE_PATTERN = '(?<![\\p{L}\\d/])(?<!\\p{L}-)\\+?\\d[\\d\\s\\-().]{5,}\\d';
 const PHONE_KEY_RE = /phone|msisdn/i;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // Year ranges ("2015-2017", "2015 - 2017") are education/work dates, not phones.
@@ -73,10 +75,51 @@ export const ALLOW_OPEN = '⟦own⟧';
 export const ALLOW_CLOSE = '⟦/own⟧';
 const ALLOW_SPAN_RE = /⟦own⟧[\s\S]*?⟦\/own⟧/g;
 
+/**
+ * Board #661 (tester, 2 October, conversations 31273 and 31315): a web address
+ * is not a phone, and masking inside one breaks the link.
+ *
+ * A Facebook post link `…/posts/1234567890123456` came out `…/posts/1[hidden]`
+ * (the run after the first digit matched), and a query id came out
+ * `…?lan=geo&id=[hidden]`, which the display tidy-up then stripped to
+ * `…?lan=geo&`. A link that ends in „&" or „=" is a link nobody can open, and
+ * the screen's link detector ran on past it into the next words.
+ *
+ * So the digits inside an http(s) address are left as they are. The exception
+ * is an address whose job IS a phone number (a WhatsApp, Telegram or Viber
+ * link, or a phone= / tel= parameter): that one is masked exactly as before,
+ * so no number reaches anybody through a link.
+ */
+const WEB_ADDRESS_RE = /https?:\/\/[^\s<>"'()[\]]+/giu;
+const PHONE_CARRYING_ADDRESS_RE =
+  /^https?:\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com|t\.me|viber\.click)\b|[?&](?:phone|tel|msisdn)=/i;
+
+/** Inside a phone-carrying address every run long enough to be a phone goes. */
+const DIGIT_RUN_IN_ADDRESS_RE = new RegExp(`\\+?\\d{${MIN_PHONE_DIGITS},}`, 'g');
+
+function redactPhones(text: string): string {
+  return text.replace(new RegExp(PHONE_LIKE_PATTERN, 'gu'), redactCandidate);
+}
+
+function redactOutsideWebAddresses(text: string): string {
+  let out = '';
+  let last = 0;
+  for (const match of text.matchAll(WEB_ADDRESS_RE)) {
+    const start = match.index ?? 0;
+    const address = match[0];
+    out += redactPhones(text.slice(last, start));
+    out += PHONE_CARRYING_ADDRESS_RE.test(address)
+      ? address.replace(DIGIT_RUN_IN_ADDRESS_RE, REDACTED)
+      : address;
+    last = start + address.length;
+  }
+  return out + redactPhones(text.slice(last));
+}
+
 export function scrubText(text: string): string {
   return text
     .split(ALLOW_SPAN_RE)
-    .map((part) => part.replace(new RegExp(PHONE_LIKE_PATTERN, 'gu'), redactCandidate))
+    .map(redactOutsideWebAddresses)
     .reduce((acc, part, i) => {
       const spans = text.match(ALLOW_SPAN_RE) ?? [];
       return acc + (i > 0 ? spans[i - 1] : '') + part;
