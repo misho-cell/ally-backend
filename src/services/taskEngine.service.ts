@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { heldAsksWakeNote, releaseDueHeldAsks } from './heldAsks.service';
+import { doNotRepeatNote, lastAssistantMessage } from './lastReplyNote';
 import { query } from '../db/postgres/client';
 import {
   claimSweep,
@@ -714,15 +715,32 @@ const SCHEDULED_WAKE_TEXT =
  * their recipient's window reopen, so the run sends them instead of guessing.
  */
 async function scheduledWakeText(taskId: number): Promise<string> {
+  const notes = await Promise.all([heldNote(taskId), lastReplyNote(taskId)]);
+  return [SCHEDULED_WAKE_TEXT, ...notes.filter((n): n is string => n !== null)].join('\n\n');
+}
+
+async function heldNote(taskId: number): Promise<string | null> {
   try {
     const held = await releaseDueHeldAsks(taskId);
-    return held.length === 0
-      ? SCHEDULED_WAKE_TEXT
-      : `${SCHEDULED_WAKE_TEXT}\n\n${heldAsksWakeNote(held)}`;
+    return held.length === 0 ? null : heldAsksWakeNote(held);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: held questions not read:`, (err as Error).message);
-    return SCHEDULED_WAKE_TEXT;
+    return null;
+  }
+}
+
+/** The tester's 1004: what the owner last read, so a wake never sends it again. */
+async function lastReplyNote(taskId: number): Promise<string | null> {
+  try {
+    const task = await getTaskById(taskId);
+    if (!task?.thread_id) return null;
+    const last = await lastAssistantMessage(task.thread_id);
+    return last === null ? null : doNotRepeatNote(last);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] task ${taskId}: last reply not read:`, (err as Error).message);
+    return null;
   }
 }
 
