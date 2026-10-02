@@ -3,6 +3,7 @@ import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
 import { GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
+import { goalsForRun } from './wakeGoalScope';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -3800,7 +3801,7 @@ function goalStateLine(t: Task): string {
  * 13041). Each line also carries the goal's standing, so a goals question
  * that names no goal can be answered from the goals' state, not the list.
  */
-function buildTasksSection(tasks: Task[], now: Date = new Date()): string {
+function buildTasksSection(tasks: readonly Task[], now: Date = new Date()): string {
   if (tasks.length === 0) return '';
   const lines = tasks
     .map((t) => {
@@ -4141,6 +4142,8 @@ async function buildAgentSystemPrompt(
   // the strict title matcher — a hard fact, like the thread binding, and it
   // makes the run a task step with that goal's state loaded.
   namedTask?: Task | null,
+  // Board #382: a run the system started (a wake, an event), not the owner.
+  ownerAbsent = false,
 ): Promise<AgentPromptResult> {
   // Ticket 7 Task 1(a)(e), founder's ruling D48, re-affirmed 16 September: an
   // incoming-ask thread runs as the recipient's OWN assistant — same base
@@ -4288,7 +4291,7 @@ async function buildAgentSystemPrompt(
         ? buildTwoItemsSection(incomingAsk.id, threadRequest.id, threadRequest.target_name)
         : '') +
       (inviteAsk ? buildCampaignInviteSection(inviteAsk) : '') +
-      buildTasksSection(tasks) +
+      buildTasksSection(goalsForRun(tasks, boundTask?.id ?? null, ownerAbsent)) +
       buildPendingRequestsSection(pendingRequests, deliverRequestsSeparately) +
       buildRespondedRequestsSection(recentResponses),
   );
@@ -11852,6 +11855,7 @@ export async function processChat(
       thread.id,
       undefined,
       namedTask,
+      ownerAbsent,
     ),
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
