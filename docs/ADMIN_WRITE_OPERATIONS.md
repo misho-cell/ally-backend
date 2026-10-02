@@ -5474,3 +5474,21 @@ next code change; until then, this entry is the reason they are there.
 ASK_CAP_EXEMPT_USER_IDS` with AFTER above. Live since 11:53:33 (deploy 4c7da33e); its boot line
 reads „receiving caps are OFF for 15 account(s): 171870 … 171940, 501, 118509, 160584, 165699,
 26954".
+
+## §85 — A ONE-TIME 5,000-TOKEN TOP-UP FOR GIORGI (account 118509)
+
+**Authorised by Misho, 2 October ~12:05 UTC, directly in the session:** „ამას 5000 ტოკენი
+დაუმატე რა" (the number resolves, read-only, to account 118509, Giorgi Turashvili; not repeated
+here, D149). Giorgi's own ask (G-012 / #431) was 1,000 for testing; Misho's word is 5,000. His
+weekly allowance is not changed.
+
+```
+ROUTE   POST /admin/users/118509/tokens        (§57, requireAdminRole)
+BODY    { "tokens": 5000, "note": "Misho, 2 Oct: one-time 5000 tokens (§85)" }
+UNDO    POST /admin/users/118509/tokens
+        { "tokens": -5000, "note": "undo §85" }
+```
+
+**§85 RUN, 2 October 12:04:07 UTC:** `{"user_id":"118509","was":0,"tokens":5000,"balance":5000}`.
+(Giorgi's note said a balance of 170; the purchased-token ledger read 0 before this, so the 170
+he saw is most likely the weekly allowance, which this does not touch.)
