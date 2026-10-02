@@ -2,6 +2,13 @@ import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import {
+  forgetSearchStage,
+  SearchStage,
+  showSearchStage,
+  showWritingStage,
+  stageOfTools,
+} from './searchStatus.service';
+import {
   WORKING_LINE_TOOLS,
   forgetWorkingLineRun,
   postWorkingLineOnce,
@@ -6933,6 +6940,7 @@ function clearRunState(runId: string): void {
   runAnswerSent.delete(runId);
   runSentLineOnScreen.delete(runId);
   forgetWorkingLineRun(runId);
+  forgetSearchStage(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
 }
@@ -9113,6 +9121,9 @@ async function processToolBlocks(
       runLastCaption.set(runId, progressMsg);
     }
   }
+  // #397: one status line per source, replaced in place.
+  const stage = ownerAbsent ? null : stageOfTools(toolBlocks.map((b) => b.name));
+  if (stage !== null) await showSearchStage(userId, threadId, runId, stage, runLang(runId));
   /**
    * ROW 249 — A CARD THAT COULD NOT MEAN ANYTHING, OFFERED IN THE SAME BREATH
    * AS THE APPROVAL IT CONTRADICTS.
@@ -10182,6 +10193,9 @@ async function runToolLoop(
         model: TOOL_TURN_MODEL,
       });
     }
+
+    // #397: the searching is over; what is left is the reply.
+    if (!ownerAbsent) await showWritingStage(userId, threadId, runId, runLang(runId));
 
     // Guard: the loop stopped while the model still wanted tools — it hit the
     // iteration cap OR spent the soft time budget. Resolve the outstanding tool
@@ -11724,6 +11738,10 @@ export async function processChat(
     autoGoalId === null || needsNoOpeningSearch(userMessage)
       ? null
       : startOpeningSearches(userId, userMessage, runId, threadId);
+  // #397: the opening searches are the run's first search; the line says so.
+  if (lateSearch !== null) {
+    await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
+  }
 
   const [agentPrompt, tools, history] = await Promise.all([
     buildAgentSystemPrompt(

@@ -15,6 +15,25 @@ messages in their name.
 
 ---
 
+## 2 October, 14:45 — #397: the search shows one status line, and it is the thread's own
+
+Founder D581: while Netai searches, one sentence that changes — contacts, then
+the second circle, then the web, then writing the answer — never a list.
+
+The server now writes that sentence into the thread's `status_line`, the same
+field you already render in the chat header and the chat list. Each stage
+replaces it through the usual `thread_updated` event (`status: "working"`), and
+a reload reads it from the thread, so nothing new is needed to show it. The
+lines (Georgian): „ვეძებ შენს კონტაქტებში…", „ვეძებ შენი კონტაქტების
+კონტაქტებში…", „ვეძებ ინტერნეტში…", „ვწერ პასუხს…" (English, Russian and
+Spanish follow the conversation). It only moves forward; when the run ends its
+final status replaces it as before.
+
+Your call, not a request: the `step_summary` lines still arrive as they did. If
+the owner should see ONLY the changing line during a search, those would be
+folded or hidden on your side while `status` is `working`. I have not changed
+what the stream sends.
+
 ## 2 October, 12:45 — which stop route: `POST /threads/:id/stop`
 
 Thank you for the dialog and for Stop on every goal.
