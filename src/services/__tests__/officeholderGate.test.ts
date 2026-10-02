@@ -6,6 +6,7 @@ jest.mock('../../db/postgres/client', () => ({
 
 import { query } from '../../db/postgres/client';
 import {
+  namesAPlace,
   applyOfficeholderGate,
   clearRunEvidence,
   nameCandidates,
@@ -519,5 +520,22 @@ describe('a clinic is not an officeholder', () => {
     expect(nameCandidates('The director of Kids Clinic is Giorgi Kapanadze.')).toContain(
       'Giorgi Kapanadze',
     );
+  });
+});
+
+/**
+ * The tester's 1046, thread 30757: a clinic's name beside its head's name was
+ * taken for a person's and replaced, mid-sentence, by the placeholder.
+ */
+describe('a place named beside an office', () => {
+  const SENTENCE = 'მამუკა სვანიძე, კლინიკა Pet Med-ის ხელმძღვანელი';
+
+  it('is the place’s name and is left alone', () => {
+    expect(namesAPlace(SENTENCE, 'Pet Med')).toBe(true);
+    expect(namesAPlace('the head of clinic „Vet Plus"', 'Vet Plus')).toBe(true);
+  });
+
+  it('does not excuse the person standing beside it', () => {
+    expect(namesAPlace(SENTENCE, 'მამუკა სვანიძე')).toBe(false);
   });
 });

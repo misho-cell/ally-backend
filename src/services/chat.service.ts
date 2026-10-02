@@ -12129,7 +12129,11 @@ export async function processChat(
   // Deterministic opener strip (ticket 6 item 12): a long reply must open
   // with the answer, not "ახლა სრული სურათი მაქვს" — four prompt attempts
   // could not unlearn the habit. Before persistence, so stored text is clean.
-  let cleanedFinal = stripProcessOpener(effectiveFinal, threadId);
+  // #365 (the tester's 1046): checked HERE as well as in scrubFinal, because a
+  // final can reach this point without passing scrubFinal (a promoted step,
+  // a question turned into the final) — 30757 and 30823 did, and stayed as
+  // written. Idempotent: a reply that already leads with its find is left.
+  let cleanedFinal = withNothingFoundLast(stripProcessOpener(effectiveFinal, threadId));
   if (ensureQuoted) {
     cleanedFinal = ensureEveryQuote(cleanedFinal, ensureQuoted);
   }

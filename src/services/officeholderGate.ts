@@ -424,6 +424,50 @@ export function replaceNameWithPlaceholder(
   return text.replace(new RegExp(`${escaped}${GEORGIAN_LETTER}*`, 'gu'), placeholder);
 }
 
+/**
+ * The tester's 1046, thread 30757 (2 October): „მამუკა სვანიძე, კლინიკა Pet
+ * Med-ის ხელმძღვანელი" reached the owner as „კლინიკა (სახელი ვერ დავადასტურე
+ * ოფიციალურ გვერდზე)-ის ხელმძღვანელი". The head of a clinic is an office, so
+ * the sentence was checked — but „Pet Med" is the CLINIC, not the person, and
+ * this gate is about people's names. A name standing right after the word for
+ * the place it names (clinic, company, studio…) is that place's name and is
+ * left alone; the person beside it is still checked.
+ */
+const PLACE_WORDS = [
+  'კლინიკა',
+  'კლინიკის',
+  'კომპანია',
+  'კომპანიის',
+  'ფირმა',
+  'ფირმის',
+  'სტუდია',
+  'სტუდიის',
+  'ცენტრი',
+  'ცენტრის',
+  'სალონი',
+  'სალონის',
+  'მაღაზია',
+  'მაღაზიის',
+  'ბანკი',
+  'ბანკის',
+  'სასტუმრო',
+  'სასტუმროს',
+  'რესტორანი',
+  'რესტორნის',
+  'clinic',
+  'company',
+  'studio',
+  'center',
+  'centre',
+];
+
+export function namesAPlace(sentence: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|\\s)(?:${PLACE_WORDS.join('|')})\\s+[„"«]?${escaped}`, 'iu').test(
+    sentence,
+  );
+}
+
 export async function applyOfficeholderGate(
   reply: string,
   runId: string | undefined,
@@ -470,7 +514,7 @@ export async function applyOfficeholderGate(
     officeStillInView = namesAnOffice;
     if (!inView || FORMER_RE.test(sentence)) continue;
     for (const name of nameCandidates(sentence)) {
-      if (nameInEvidence(name, evidence)) continue;
+      if (namesAPlace(sentence, name) || nameInEvidence(name, evidence)) continue;
       let inPhonebook = known.get(name);
       if (inPhonebook === undefined) {
         if (Date.now() - startedAt > GATE_BUDGET_MS) {

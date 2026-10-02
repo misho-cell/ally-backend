@@ -89,3 +89,22 @@ describe('the final every reply passes through', () => {
     );
   });
 });
+
+/** The tester's 1046: the two openings that stayed as written on the live build. */
+describe('the tester’s 1046', () => {
+  it('moves 30757 (a label, „ვერ ვიპოვე" mid-sentence, a tail clause)', () => {
+    const opening =
+      'ქუთაისში ვეტერინარებზე მოვიძიე: შენს კონტაქტებში და მათ კონტაქტებშიც ვერ ვიპოვე პირდაპირი კავშირი ვერც ერთ ვეტერინართან, ასე რომ ეს გზა ჯერ ცარიელია.';
+    const web = 'ვებზე ორი კონკრეტული სახელი გამოჩნდა:\n\nhttps://vet.ge';
+    const out = withNothingFoundLast(`${opening}\n\n${web}`);
+    expect(out.startsWith('ვებზე ორი')).toBe(true);
+    expect(out).toContain('ასე რომ ეს გზა ჯერ ცარიელია.');
+  });
+
+  it('moves 30823 („არავინ აღმოჩნდა", a bracket inside)', () => {
+    const opening =
+      'შენს კონტაქტებში (სულ 15, მათგან 4 წევრია Netai-ზე) იაპონურ თარგმანთან კავშირში არავინ აღმოჩნდა, არც პირდაპირ და არც კონტაქტების კონტაქტებში.';
+    const web = 'ვებში ორი კონკრეტული სახელი ვიპოვე:\n\nთათია მემარნიშვილი';
+    expect(withNothingFoundLast(`${opening}\n\n${web}`).startsWith('ვებში ორი')).toBe(true);
+  });
+});
