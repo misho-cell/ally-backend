@@ -1344,10 +1344,12 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     'a message that is exactly its text is their own tap, so send it AT ONCE, never ask ' +
     '“shall I tell them?”. Show the meaning first, in ONE line with one button, and send only ' +
     'on their yes, when the answer shares a third person’s ' +
-    'private details (health, family, money — never merely who they are or what they do), ' +
+    'private details (health, family, money — never merely who they are or what they do; a ' +
+    'price someone quotes and the user’s own payment are not private), ' +
     'or touches anything delicate. confirmed=true says the words ' +
     'are the USER’S answer, not one you composed for them; without it nothing is sent. Never ' +
-    'include a name or detail the user did not give you. A standing rule (D120, D527) is NEVER ' +
+    'include a name or detail the user did not give you, and never add a calculation of your ' +
+    'own to their answer — send their words. A standing rule (D120, D527) is NEVER ' +
     'written by this call: after the answer goes, the result tells you to offer ONE optional ' +
     "button, and only the owner's tap on it saves the rule. Never say a rule was saved unless " +
     'the server told you so.',
@@ -10235,7 +10237,12 @@ async function runToolLoop(
   // The tester's 997 (29835): the final was „*(ველოდები პასუხს.)*" — a stage
   // direction in round brackets — and the real reply sat in the step before
   // it. A final that is only a stage direction is no answer: it counts as empty.
-  if (bestNarration.length > 0 && STAGE_DIRECTION_ONLY_RE.test(finalText)) finalText = '';
+  if (
+    bestNarration.length > 0 &&
+    (STAGE_DIRECTION_ONLY_RE.test(finalText) || isOnlyAWaitingLine(finalText))
+  ) {
+    finalText = '';
+  }
   const buriedAnswer =
     bestNarration.length > 0 &&
     (finalText.length === 0 ||
@@ -10850,6 +10857,19 @@ const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id
  * is none of this rule's business; markdown emphasis around the
  * outside is allowed because the model wrapped one of these in asterisks.
  */
+/**
+ * The tester's 1012 (thread 30041): the real line — „…ასე გადავცე?" — went
+ * out as a step, and the final was only „დაველოდები შენს პასუხს.". The person
+ * saw the filler and not the question it was waiting on. A final that is
+ * nothing but „I'll wait for your answer" is no answer; the step is.
+ */
+const WAITING_LINE_ONLY_RE =
+  /^[*_`~(\s]*(?:დაველოდები|ველოდები)\s+(?:შენს\s+)?პასუხს[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
+
+export function isOnlyAWaitingLine(text: string): boolean {
+  return WAITING_LINE_ONLY_RE.test(text.trim());
+}
+
 export const STAGE_DIRECTION_ONLY_RE = /^[*_`~\s]*(?:\[[^[\]]{1,200}\]|\([^()]{1,200}\))[*_`~\s]*$/;
 /**
  * Ticket 20 row 106. The id inside its own bracket goes WITH the bracket.
