@@ -123,8 +123,17 @@ export async function importContacts(
 
   let imported = 0;
   let skipped = 0;
+  // #374: the profile can now send the phonebook again to pick up new
+  // contacts, so whatever this owner already saved under the same name is
+  // left alone — re-scoring and re-enriching hundreds of known contacts on
+  // every re-send would cost for nothing.
+  const known = await alreadySavedPairs(userId, batch);
+  const isKnown = (c: ImportContact): boolean =>
+    c.phones.length > 0 && c.phones.every((p) => known.has(pairKey(p, c.name)));
+  const fresh = batch.filter((c) => !isKnown(c));
+  const unchanged = batch.length - fresh.length;
 
-  for (const contact of batch) {
+  for (const contact of fresh) {
     const counts = await importSingleContact(userId, userPhoneSet, userCompositeKey, contact);
     imported += counts.imported;
     skipped += counts.skipped;
@@ -149,9 +158,30 @@ export async function importContacts(
     console.error(`[label-parser] user ${userId} failed:`, (err as Error).message),
   );
 
-  const result = { imported, skipped };
-  await recordImportAttempt(userId, source, contacts.length, result);
+  const result = { imported, skipped, ...(unchanged > 0 && { unchanged }) };
+  await recordImportAttempt(userId, source, contacts.length, { imported, skipped });
   return result;
+}
+
+const KNOWN_PAIRS_TIMEOUT_MS = 10_000;
+
+function pairKey(rawPhone: string, name: string): string {
+  return `${normalizePhone(rawPhone)}|${name.trim()}`;
+}
+
+/** The (phone, name) pairs of this batch that the owner has already saved. */
+async function alreadySavedPairs(
+  userId: string,
+  batch: readonly ImportContact[],
+): Promise<Set<string>> {
+  const phones = [...new Set(batch.flatMap((c) => c.phones.map(normalizePhone)).filter(Boolean))];
+  if (phones.length === 0) return new Set();
+  const result = await query<{ phone: string; alias: string }>(
+    `SELECT phone, alias FROM "UserAlias" WHERE "contactId" = $1 AND phone = ANY($2::text[])`,
+    [userId, phones],
+    KNOWN_PAIRS_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((r) => `${r.phone}|${r.alias.trim()}`));
 }
 
 async function importSingleContact(

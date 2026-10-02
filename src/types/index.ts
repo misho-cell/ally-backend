@@ -69,6 +69,8 @@ export interface ImportContact {
 export interface ImportResult {
   imported: number;
   skipped: number;
+  /** #374: already saved by this owner under the same name — sent again, nothing to do. */
+  unchanged?: number;
 }
 
 export interface ChatToolParameter {

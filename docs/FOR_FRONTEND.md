@@ -15,6 +15,37 @@ messages in their name.
 
 ---
 
+## 2 October, 16:00 — two requests, Misho's word („497 გააკეთე, 374 გააკეთე")
+
+**#497 — cancel the paid plan from the profile, in two taps (Ninia).** Stripe's
+billing page offered her no way to cancel and called the product „Ally". The
+server now does it without that page:
+
+- `POST /billing/stripe/cancel` → the plan ends at the close of the paid period
+  (never at once); `POST /billing/stripe/resume` → it renews again.
+- Both answer `{ cancel_at_period_end, runs_until }` (ISO date) and write the
+  account at once, so `GET /profile` agrees the moment it is re-read.
+- `404` with „ფასიანი გამოწერა ვერ მოიძებნა" for a plan the team granted (no
+  Stripe subscription, nothing to cancel) — e.g. Ninia's own account today.
+
+Asked of you: a „გამოწერის გაუქმება" button in the profile → a confirm screen
+that says until which date the plan runs (`current_period_ends_at` from
+`/profile`, or `runs_until` after the call) → `POST /billing/stripe/cancel`.
+While `cancel_at_period_end` is true, show „მოქმედებს {date}-მდე" and a
+„განახლება" button for resume. For a granted plan, say it was given by the team
+and until when, with no cancel button. The Stripe page stays for card and
+invoices.
+
+**#374 — contacts added to the phone after the first import (Ninia).** A web
+page cannot see later changes to the phonebook, so the server never received
+the contact. Asked of you: an „ახალი კონტაქტების დამატება" button in the
+profile that opens the same contact picker and sends the result to
+`POST /contacts/import` as onboarding does (500 per request). Re-sending is
+now cheap and safe on the server: whatever the owner already saved under the
+same name is left alone (no second save, no re-enrichment) and counted in a new
+`unchanged` field; only new contacts are imported, and they are searchable
+seconds later.
+
 ## 2 October, 15:20 — #375: each reply now carries its own steps (`steps`), and the vanishing conversation
 
 **Steps of finished conversations (Ninia's test 23).** `GET /threads/:id/messages`

@@ -212,7 +212,7 @@ function periodEnd(subscription: Stripe.Subscription): Date | null {
  * are people whose access was granted manually and who have no Stripe record
  * at all — this must not be the thing that takes it away from them.
  */
-async function applySubscription(subscription: Stripe.Subscription): Promise<void> {
+export async function applySubscription(subscription: Stripe.Subscription): Promise<void> {
   if (!isOurPrice(subscription)) return;
 
   const userId = await userIdForSubscription(subscription);

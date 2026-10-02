@@ -26,6 +26,7 @@ import {
   CheckoutResult,
 } from '../../services/stripe.service';
 import { createTopupCheckout } from '../../services/stripeTopup.service';
+import { CancelOutcome, setPlanEndsAtPeriodEnd } from '../../services/stripeCancel.service';
 
 const SPEND_ERRORS: Record<string, { status: number; message: string }> = {
   insufficient_balance: { status: 402, message: 'რეფერალური ბალანსი საკმარისი არ არის' },
@@ -155,6 +156,41 @@ billingRouter.post(
     }
   },
 );
+
+/**
+ * #497 — cancel the paid plan from the profile, without Stripe's page.
+ *   POST /billing/stripe/cancel  → it ends at the close of the paid period
+ *   POST /billing/stripe/resume  → it renews again
+ * Both answer { cancel_at_period_end, runs_until }. A plan the team granted
+ * has nothing to cancel: 404 with reason `no_paid_plan`.
+ */
+type PlanEndState = Omit<Extract<CancelOutcome, { ok: true }>, 'ok'>;
+
+function planEndRoute(endAtPeriodEnd: boolean, label: string) {
+  return async (req: Request, res: Response<ApiResponse<PlanEndState>>): Promise<void> => {
+    if (!isStripeConfigured()) {
+      res.status(503).json({ success: false, error: 'გადახდა დროებით მიუწვდომელია' });
+      return;
+    }
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const outcome = await setPlanEndsAtPeriodEnd(userId, endAtPeriodEnd);
+      if (!outcome.ok) {
+        res.status(404).json({ success: false, error: 'ფასიანი გამოწერა ვერ მოიძებნა' });
+        return;
+      }
+      const { cancel_at_period_end, runs_until } = outcome;
+      res.status(200).json({ success: true, data: { cancel_at_period_end, runs_until } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[POST /billing/stripe/${label}]`, (err as Error).message);
+      res.status(500).json({ success: false, error: 'გამოწერა ვერ შეიცვალა, სცადე თავიდან' });
+    }
+  };
+}
+
+billingRouter.post('/stripe/cancel', planEndRoute(true, 'cancel'));
+billingRouter.post('/stripe/resume', planEndRoute(false, 'resume'));
 
 billingRouter.get(
   '/topup-packages',

@@ -402,3 +402,29 @@ describe('import_attempts — one row per import (ticket 9 task 24)', () => {
     ).resolves.toEqual({ imported: 1, skipped: 0 });
   });
 });
+
+/**
+ * #374: the profile sends the phonebook again to pick up contacts added since.
+ * What the owner already saved under the same name is left alone — no second
+ * save, no second score or enrichment — and only the new one is imported.
+ */
+describe('sending the phonebook again', () => {
+  it('imports only the new contact and counts the known one as unchanged', async () => {
+    mockPoolQuery.mockResolvedValue({ rows: [{ phone: '+995555000001' }], rowCount: 1 });
+    mockNamedQuery.mockImplementation((sql: string) =>
+      Promise.resolve(
+        String(sql).includes('FROM "UserAlias" WHERE "contactId"')
+          ? { rows: [{ phone: '+995555000002', alias: 'Dato' }], rowCount: 1 }
+          : { rows: [], rowCount: 0 },
+      ),
+    );
+
+    const out = await importContacts('42', [
+      { name: 'Dato', phones: ['+995555000002'] },
+      { name: 'ტესტი ნოტარიუსი', phones: ['+995555000003'] },
+    ]);
+
+    expect(out).toEqual({ imported: 1, skipped: 0, unchanged: 1 });
+    expect(mockWithTransaction).toHaveBeenCalledTimes(1);
+  });
+});
