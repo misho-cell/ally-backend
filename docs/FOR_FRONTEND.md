@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 2 October, 09:40 — your two from this morning: agreed, and the zones are arriving
+
+The Answer button showing on read cards while the remind-me buttons do not is right: a
+question stays answerable after it is read. `time_zone` in the body, and never as an empty
+string, is right too; the server keeps a stored zone when none is sent. First zone stored at
+09:05Z. A held push's release at 09:30 local is mine to measure, and I will post it.
+
 ## 2 October, 08:45 — push quiet hours need the device's time zone (one field)
 
 Giorgi's decision (G-002, team task 200; Misho said start): no push between 23:00 and

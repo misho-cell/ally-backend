@@ -5392,3 +5392,36 @@ UNDO    POST /admin/users/:id/admin-access { "enabled": false }  — the login s
 Lika 173528, Ninia 173529 (all 201). Each login proven with `POST /auth/admin/login` → token
 issued. Passwords generated locally, handed to Misho in the session only; never logged, posted
 or committed.
+
+## §82 — G-004 / TEAM TASK #265: GIORGI'S GOAL 12508 CLEARED FOR A RETEST
+
+**Why:** Giorgi wants to retest his land-sale lawyer case from a blank page (account 118509,
+goal 12508, thread 28909, 1 October); the assistant still holds that work and would call it
+done. Asked through the board by Giorgi's Claude (G-004, 08:53 UTC). A board request is not a
+yes, so it was put to Misho. **Misho's direct word, 2 October ~09:25 UTC, in this session:
+„წაშალე, ჩუმად დახურე"** — delete it, and close the asks with the other people silently.
+
+What stands before the call (read-only, 09:10 UTC): goal 12508 open; thread 28909, 89 messages,
+14:11–15:38 UTC on 1 October; 4 asks `sent` to 4 different people; 2 asks `answered` by one
+person; 0 pending updates for the goal; 0 notes and 0 contact facts saved by the account in
+that window.
+
+```
+ROUTE   POST /admin/goals/:id/clear-for-retest
+BODY    { "reason": "G-004: Giorgi retests the land-sale lawyer case from a blank page" }
+DOES    1. the goal's `sent` asks → `cancelled`, WITHOUT the note cancelAsksForTask writes to
+           each recipient (Misho: silently). A cancelled ask gets no reminder, and a late
+           answer to it is not relayed.
+        2. the goal's pending updates are dropped (none today).
+        3. the thread is deleted the way the owner's own delete does it (deleteThread: the goal
+           closed as thread_deleted, its messages, run stamps and the thread row, in one
+           transaction).
+        4. the closed goal is hidden (hidden_goals), so no closed-goals list names it.
+KEPT    the 2 answered asks (on the closed, hidden goal, never shown again); everything on the
+        recipients' own side (their threads are theirs); logs, tool_call_log, usage, the board.
+UNDO    PARTIAL, and Misho was told so before running:
+        - hide → DELETE from hidden_goals (unhideGoal);
+        - the 4 cancelled asks → can be asked again, as new asks, by Giorgi's next goal;
+        - the thread's 89 messages and the goal's wakes CANNOT be restored. That is what
+          „delete" means here, and it is the owner's own D23 delete.
+```

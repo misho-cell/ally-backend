@@ -12,6 +12,7 @@ import {
   TeamTaskStatus,
   updateTeamTask,
 } from '../../services/teamTasks.service';
+import { clearGoalForRetest, ClearRefusal } from '../../services/goalRetestClear.service';
 import {
   createStaffAccount,
   StaffAccount,
@@ -2544,6 +2545,49 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[goal-close]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §82 — CLEAR ONE NAMED GOAL FOR A RETEST (G-004; Misho: „წაშალე, ჩუმად
+ * დახურე"). Cancels its open asks silently, drops its cards, deletes its
+ * thread the way the owner's own delete does, and hides the closed goal. The
+ * thread's messages cannot be restored; the register says so (§82).
+ */
+adminRouter.post(
+  '/goals/:id/clear-for-retest',
+  param('id').isInt({ min: 1 }),
+  body('reason').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res
+        .status(400)
+        .json({ success: false, error: 'goal id and reason (3-500 chars) are required' });
+      return;
+    }
+    const taskId = Number(req.params.id);
+    try {
+      const result = await clearGoalForRetest(
+        taskId,
+        String((req.body as { reason: string }).reason),
+      );
+      if (!result.ok) {
+        const status = result.refusal === ClearRefusal.NoSuchGoal ? 404 : 400;
+        res.status(status).json({ success: false, error: result.refusal });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[goal-clear] admin ${(req as AuthenticatedRequest).user.userId} cleared goal ${taskId}: ` +
+          `${result.cleared.asksCancelled} ask(s) cancelled silently, thread deleted ` +
+          `${result.cleared.threadDeleted}, ${result.cleared.hidden}`,
+      );
+      res.status(200).json({ success: true, data: result.cleared });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[goal-clear]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
