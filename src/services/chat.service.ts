@@ -2,6 +2,7 @@ import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
+import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
   SearchStage,
@@ -7020,7 +7021,9 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   // #432: a working note the model wrote to itself in another script comes off
   // before anything else reads the final.
   // #365: a bare „nothing found" opening moves after what was found.
-  const withoutNote = withNothingFoundLast(withoutLeadingSelfNote(text, runLang(runId)));
+  const withoutNote = withoutStrayGeorgianCapitals(
+    withNothingFoundLast(withoutLeadingSelfNote(text, runLang(runId))),
+  );
   return scrubText(runId ? wrapAllowedNumbers(withoutNote, runId) : withoutNote);
 }
 
@@ -11027,7 +11030,10 @@ export function isOnlyAWaitingLine(text: string): boolean {
   return WAITING_LINE_ONLY_RE.test(text.trim());
 }
 
-export const STAGE_DIRECTION_ONLY_RE = /^[*_`~\s]*(?:\[[^[\]]{1,200}\]|\([^()]{1,200}\))[*_`~\s]*$/;
+// The tester's 1055 (thread 31058): „(აირჩიე რომელი შეესაბამება შენს სურვილს)." —
+// a full stop after the bracket is still only a stage direction.
+export const STAGE_DIRECTION_ONLY_RE =
+  /^[*_`~\s]*(?:\[[^[\]]{1,200}\]|\([^()]{1,200}\))[*_`~\s.!…]*$/;
 /**
  * Ticket 20 row 106. The id inside its own bracket goes WITH the bracket.
  *
@@ -11079,7 +11085,7 @@ function scrubStep(threadId: number, text: string, runId?: string): string {
   // all three surfaces. Without it the step copy would be the one place a
   // business number still disappeared.
   const wrapped = runId ? wrapAllowedNumbers(text, runId) : text;
-  return scrubInternalToolNames(scrubText(wrapped), threadId);
+  return withoutStrayGeorgianCapitals(scrubInternalToolNames(scrubText(wrapped), threadId));
 }
 
 /**
