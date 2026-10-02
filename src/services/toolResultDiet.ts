@@ -20,6 +20,13 @@ const OWN_MATCHES_CEILING = 20;
 const OTHERS_LABELS_FLAG = 'found_by_others_labels';
 
 /**
+ * Misho, 2 October: a contact found only through other people's labels is
+ * shown — after the owner's own matches, never cut by them. Ten of them at
+ * most, so one crowded word cannot swamp the reply.
+ */
+const OTHERS_ONLY_CEILING = 10;
+
+/**
  * Ticket 16 Task 47 (Ticket 10 [3.1]): an empty field is not information, and
  * the model quotes it — „ilia tsulaia (\"\")" reached a user as a blank where a
  * number should be. A field the scrubber emptied, or that nobody ever filled,
@@ -123,6 +130,18 @@ function shownRows(results: readonly unknown[], limit: number, isOwn: RowTest): 
 }
 
 /**
+ * An own-contact search: the owner's own matches up to the limit, other
+ * unflagged rows filling what is left of it, and then the rows found only
+ * through other people's labels — kept, up to their own ceiling.
+ */
+function shownOwnSearchRows(results: readonly unknown[], limit: number): unknown[] {
+  const own = results.filter(isExactOwnMatch).slice(0, limit);
+  const othersOnly = results.filter(isOthersLabelsOnly).slice(0, OTHERS_ONLY_CEILING);
+  const rest = results.filter((row) => !isExactOwnMatch(row) && !isOthersLabelsOnly(row));
+  return [...own, ...rest.slice(0, Math.max(0, limit - own.length)), ...othersOnly];
+}
+
+/**
  * `ownContactSearch`: the result came from a search over the owner's own
  * contacts (search_by_tag, search_contact_by_name), so an exact match is never
  * trimmed while it fits under the ceiling.
@@ -137,12 +156,15 @@ export function dietToolResult(result: unknown, ownContactSearch = false): unkno
   const split = matchSplit(obj.results);
   const withSplit = split ? { ...obj, ...split } : obj;
   const limit = rowsToShow(obj.results, isOwn);
-  if (obj.results.length <= limit) return withSplit;
+  const shown = ownContactSearch
+    ? shownOwnSearchRows(obj.results, limit)
+    : shownRows(obj.results, limit, isOwn);
+  if (shown.length >= obj.results.length) return withSplit;
 
   return {
     ...withSplit,
-    results: shownRows(obj.results, limit, isOwn),
-    results_shown: limit,
-    note: `showing top ${limit} of ${obj.results.length}; refine the query to narrow down`,
+    results: shown,
+    results_shown: shown.length,
+    note: `showing top ${shown.length} of ${obj.results.length}; refine the query to narrow down`,
   };
 }

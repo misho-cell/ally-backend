@@ -390,6 +390,25 @@ export function othersLabelsMatched(
   return (row.all_tags || []).some((t) => Boolean(t) && isDisplayableTag(t) && !own.has(t));
 }
 
+/**
+ * Misho, 2 October (Giorgi's retest, thread 30328): Niko Vekua, saved by
+ * Giorgi only by his name, is labelled a lawyer by two other people. Since row
+ * 289 the run saw „niko, vekua" and a flag, said nothing about him, and
+ * offered none of the eleven lawyers found that way. „Showing him as Giorgi
+ * saved him, with a note that others have him as a lawyer, is far better than
+ * not showing him at all."
+ *
+ * So a row found ONLY through other people's labels carries the words of THIS
+ * SEARCH as what they have him saved as. Their own label text stays private
+ * (row 289): the search words are the owner's, and they are what matched.
+ */
+export function withOthersSavedAs(
+  row: Record<string, unknown>,
+  tagQuery: string,
+): Record<string, unknown> {
+  return row.found_by_others_labels === true ? { ...row, others_saved_as: tagQuery.trim() } : row;
+}
+
 function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
@@ -584,7 +603,9 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
       ),
     ];
     // Ticket 16 Task 23: a pair the founder marked „one person" is one row.
-    const merged = await collapseMergedPhones(results);
+    const merged = await collapseMergedPhones(
+      results.map((row) => withOthersSavedAs(row, tagQuery)),
+    );
     const payload: Record<string, unknown> = {
       found: true,
       count: merged.rows.length,

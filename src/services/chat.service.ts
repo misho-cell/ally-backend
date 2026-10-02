@@ -2948,12 +2948,22 @@ const FETCH_PAGE_TOOL: AnthropicTool = {
 };
 
 /**
+ * Misho, 2 October (Giorgi's retest, thread 30328): eleven lawyers in Giorgi's
+ * own phonebook, labelled so only by other people, and the reply named none.
+ * „Show him as I saved him, and add that others have him as a lawyer — far
+ * better than not showing him at all."
+ */
+const OTHERS_SAVED_AS_NOTE =
+  ' A row with `found_by_others_labels: true` and `others_saved_as` is still the owner\u2019s OWN contact: other people have them saved as the words of this search. Name every such person too, after the owner\u2019s own matches, by `saved_as` exactly as the owner saved them (not the registered name), and say that other people have them saved as `others_saved_as` — e.g. „Niko Vekua — სხვებს იურისტად ჰყავთ ჩაწერილი". Never drop them, never quote or guess any other label.';
+
+/**
  * The tester's 991: the model said „45 in your contacts are saved as lawyers"
  * when nine were the owner's own labels and 36 other people's. The diet
  * (toolResultDiet) hands it both counts; this says which one is the owner's.
  */
 const SPLIT_COUNT_NOTE =
-  " When the result carries `own_or_public_matches` and `others_labels_only_matches`, the owner's own number is `own_or_public_matches`: say „N in your contacts“ with that number and name every one of them; the others only came up through other people's labels — never add the two together as „your contacts“.";
+  " When the result carries `own_or_public_matches` and `others_labels_only_matches`, the owner's own number is `own_or_public_matches`: say „N in your contacts“ with that number and name every one of them; the others only came up through other people's labels — never add the two together as „your contacts“." +
+  OTHERS_SAVED_AS_NOTE;
 
 const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
@@ -2994,7 +3004,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
       'Search contacts by tag. Tags are keywords people have associated with contacts — job titles, skills, traits, names. Use this when the user is looking for someone by what they do or who they are. Example: "ხელოსანი", "IT", "ექიმი", "misho". Returns a list of matching contacts without phone or email. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; when choosing whom to recommend, prefer a closer tie and phrase accordingly (e.g. a close contact over a formal one), never printing the field name itself.' +
       " RANK BY THE FIELD OF THE NEED (row 297): for a land sale a real-estate lawyer comes before a telecom company's lawyer; anyone from another field comes later, and you say so." +
       ' A row with `name: null` and `saved_as` is a contact saved only as that label (an emoji, a symbol) — say „your contact saved as 💙", never present the label as a name (row 283).' +
-      " `tags` are only the labels the USER saved — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means only other people's labels matched; their words are private and not given to you — say the person came up in their network for this search, never guess or invent what others saved (row 289)." +
+      " `tags` are only the labels the USER saved — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means only other people's labels matched; their own words are private (row 289) — name the person as the owner saved them and say others have them saved as `others_saved_as`, never guess or invent any other label." +
       SPLIT_COUNT_NOTE +
       ' WHEN: for trade, company and nickname words, in both scripts, across several related words and not just one.',
     input_schema: {
