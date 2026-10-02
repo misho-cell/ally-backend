@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 2 October, 17:45 — #506: the delete-account button (Misho's word), and steps on every run
+
+**#506.** The erasure exists on the server and has for weeks: `POST
+/privacy/my-data/delete` with `{"confirm": "DELETE MY ACCOUNT"}` erases the
+account (personal data deleted outright, the Stripe subscription cancelled, the
+number kept only on the do-not-contact list, financial ledgers kept but severed
+from the person). With `"dry_run": true` it changes nothing and returns the
+preview. That preview now carries `deletes` — what goes, in plain words — beside
+`retained` — what stays and why. Asked of you: a „ანგარიშის წაშლა" entry in the
+profile → a screen built from the dry run (`deletes`, `retained`) → the person
+types or taps the confirmation → the real call → signed out. The Georgian
+wording of that screen is Misho's call; the server strings are English source.
+
+**Steps on every run.** The per-tool captions are now kept too (kind `caption`)
+and come back inside `steps` with the model's own step sentences, so a reloaded
+goal shows its steps on every run, not 3 in 30.
+
 ## 2 October, 16:20 — the team board: page 3 (#463) and the order (#266); #430 is yours
 
 - **#463:** `page` 3 is accepted everywhere (`GET /admin/team-tasks?page=3`,

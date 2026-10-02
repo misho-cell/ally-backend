@@ -163,8 +163,24 @@ export interface ErasureReport {
   phoneOptOuts: number;
   graphEdgesRemoved: number;
   retained: string[];
+  /** #506: what goes, in plain words, for the screen before the button. */
+  deletes: string[];
   dryRun: boolean;
 }
+
+/**
+ * #506 (Ninia; Misho, 2 October: „იმ ნაწილებში გააკეთე, სადაც მონაცემები
+ * კრიტიკულია"): the screen before „delete my account" says what goes. These
+ * are the personal data this erasure removes outright; the financial ledgers
+ * stay, severed from the person (RETAINED_NOTES), because they must.
+ */
+const DELETED_NOTES = [
+  'your profile, name, photo and phone number on your account',
+  'the contacts you imported and every label, note and fact you saved about them',
+  'your conversations with Netai, your goals and their plans',
+  'the questions you sent to other people, and your answers to theirs',
+  'your subscription — it is cancelled at Stripe, so you are not charged again',
+];
 
 const RETAINED_NOTES = [
   'financial records (token, usage and referral ledgers) — retained for tax and commission compliance, severed from your identity',
@@ -481,6 +497,7 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
       phoneOptOuts: digits.length,
       graphEdgesRemoved: 0,
       retained: RETAINED_NOTES,
+      deletes: DELETED_NOTES,
       dryRun: true,
     };
   }
@@ -599,6 +616,7 @@ export async function deleteMyAccount(userId: string, dryRun = false): Promise<E
     phoneOptOuts: digits.length,
     graphEdgesRemoved,
     retained: RETAINED_NOTES,
+    deletes: DELETED_NOTES,
     dryRun: false,
   };
 }
