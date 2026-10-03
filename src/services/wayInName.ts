@@ -1,3 +1,4 @@
+import { georgianToLatin } from './tools/transliterate';
 /**
  * The old seat's notes to 1101 (32983): the web lead „არქიტექტურული სტუდია
  * ZROBIM architects თბილისი, საქართველო" was shown with „your contact there:
@@ -15,4 +16,25 @@ export function wayInSearchName(leadName: string): string {
     .map((w) => w.trim())
     .filter((w) => w.length >= 2 && !NOT_THE_NAME_RE.test(w))
     .join(' ');
+}
+
+/** How many leading letters two spellings of a first name must share. */
+const FIRST_NAME_STEM = 3;
+
+function latinForm(word: string): string {
+  return georgianToLatin(word.toLowerCase()).replace(/[^a-z]/g, '');
+}
+
+/**
+ * The tester's 1117 (34779): „ვებში ეს ვიპოვე: • <a web name>, შენი კონტაქტი იქ:
+ * <another person with the same surname>". The phonebook lookup matched the
+ * surname alone. When the lead starts with a first name, the contact found must
+ * carry that first name too (compared in Latin letters, so „Nini" and „ნინი"
+ * agree); a firm, which starts with no first name, is matched as before.
+ */
+export function sameFirstName(leadFirstName: string | null, contactName: string): boolean {
+  if (leadFirstName === null) return true;
+  const wanted = latinForm(leadFirstName).slice(0, FIRST_NAME_STEM);
+  if (wanted.length < FIRST_NAME_STEM) return true;
+  return contactName.split(/[\s,;:()|·–—-]+/u).some((word) => latinForm(word).startsWith(wanted));
 }

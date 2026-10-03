@@ -1,6 +1,6 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { searchByTagExactOnly } from './tools/searchByTag';
-import { wayInSearchName } from './wayInName';
+import { sameFirstName, wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
@@ -913,7 +913,13 @@ export async function findWaysIn(
           return;
         }
         const who = firstPersonNamed(result);
-        out.set(name, who === null ? { kind: 'none' } : { kind: 'first_circle', who });
+        const leadFirst = leadsFirstName(name);
+        out.set(
+          name,
+          who === null || !sameFirstName(leadFirst, who)
+            ? { kind: 'none' }
+            : { kind: 'first_circle', who },
+        );
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error(
@@ -1085,6 +1091,12 @@ const MIN_LEAD_WORDS = 2;
  */
 function isProperName(token: { raw: string; lower: string }, first: boolean): boolean {
   return isCertainNameToken(token.lower, first) || /^[A-Z]/.test(token.raw);
+}
+
+/** The lead's first word when it is a first name the lists hold; null for a firm. */
+export function leadsFirstName(name: string): string | null {
+  const first = labelTokens(name)[0];
+  return first !== undefined && isCertainNameToken(first.lower, true) ? first.raw : null;
 }
 
 export function looksLikeAPersonOrFirm(name: string): boolean {

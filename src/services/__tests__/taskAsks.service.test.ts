@@ -233,6 +233,9 @@ function routeAskQueries(opts: {
   });
 }
 
+/** Room for a full createAsk under a loaded parallel run (see the test that uses it). */
+const SLOW_FIRST_ASK_MS = 20_000;
+
 describe('createAsk', () => {
   it('REFUSES without granted permission — the server-side P0 gate (thread 7723)', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' } });
@@ -459,16 +462,22 @@ describe('createAsk', () => {
 
   // Ticket 10 Task 25 (b), D123: a non-paying member can answer and help on a
   // paying member's task. Until 7 Sep a lapsed friend could not even be asked.
-  it('reaches a lapsed member who has used Netai — paying is not required', async () => {
-    routeAskQueries({
-      member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' },
-      onNetai: true,
-    });
+  it(
+    'reaches a lapsed member who has used Netai — paying is not required',
+    async () => {
+      routeAskQueries({
+        member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' },
+        onNetai: true,
+      });
 
-    const out = await createAsk('42', 3, '+995599111222', 'q');
+      const out = await createAsk('42', 3, '+995599111222', 'q');
 
-    expect(out.sent).toBe(true);
-  });
+      expect(out.sent).toBe(true);
+      // 3 Oct: 0.3 s alone, over jest's 5 s default twice under the full parallel
+      // suite; the first ask of the file pays the module warm-up.
+    },
+    SLOW_FIRST_ASK_MS,
+  );
 
   // D103 / D121: an old-Ally account that never opened Netai is a target, not
   // a recipient — an ask to it lands in an inbox nobody has ever opened.
