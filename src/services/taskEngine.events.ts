@@ -225,7 +225,9 @@ function introOutcomeBody(
     ka: {
       handed_over:
         `${targetName}-თან პირდაპირი არხი გახსნილია — ახლა შეგიძლია მას პირდაპირ მისწერო ` +
-        'Netai-ით, შუამავლის გარეშე. დაწერე რისი თქმა უნდა და მე გადავცემ.',
+        'Netai-ით, შუამავლის გარეშე. დაწერე რისი თქმა უნდა და მე გადავცემ. ' +
+        // Seat 15's 1101 (32931): the run wrote to the target on its own, in its own words.
+        'მას შენით არაფერი მისწერო, სანამ მფლობელი არ გეტყვის, რა მისწერო.',
       kept_by_mediator:
         `კონტაქტი არავის გადმოუციათ — შუამავალმა აირჩია, რომ კავშირი მის გავლით გაგრძელდეს. ` +
         'ნუ ეტყვი, რომ ნომერი აქვს.',
@@ -238,7 +240,8 @@ function introOutcomeBody(
     en: {
       handed_over:
         `The direct channel to ${targetName} is open — you may now write to them directly ` +
-        'through Netai, with the mediator out of the loop. Tell me what to say and I will carry it.',
+        'through Netai, with the mediator out of the loop. Tell me what to say and I will carry it. ' +
+        'Write NOTHING to them on your own until the owner says what to send.',
       kept_by_mediator:
         'NO contact was handed over — the mediator chose to keep the connection going through ' +
         'them. Do NOT tell the owner they have the number.',
@@ -251,7 +254,8 @@ function introOutcomeBody(
     ru: {
       handed_over:
         `Прямой канал к ${targetName} открыт — теперь можно написать напрямую через Netai, ` +
-        'без посредника. Скажи, что передать, и я передам.',
+        'без посредника. Скажи, что передать, и я передам. ' +
+        'Сам ничего ему не пиши, пока владелец не скажет, что отправить.',
       kept_by_mediator:
         'Контакт НИКОМУ не передан — посредник решил, что связь идёт через него. Не говори, ' +
         'что номер у него есть.',
@@ -264,7 +268,8 @@ function introOutcomeBody(
     es: {
       handed_over:
         `El canal directo con ${targetName} está abierto — ya puedes escribirle directamente ` +
-        'por Netai, sin el intermediario. Dime qué decir y yo lo llevo.',
+        'por Netai, sin el intermediario. Dime qué decir y yo lo llevo. ' +
+        'No le escribas nada por tu cuenta hasta que el dueño diga qué enviar.',
       kept_by_mediator:
         'NO se ha entregado ningún contacto — el intermediario ha decidido que todo pase por ' +
         'él. No le digas al propietario que tiene el número.',

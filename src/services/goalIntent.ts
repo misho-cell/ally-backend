@@ -414,6 +414,29 @@ const MAX_INSTRUCTION_CHARS = 160;
  * lookup is a query, and this keeps it off every message that cannot possibly
  * need it.
  */
+/**
+ * The tester's 1101 notes (32982): „მჭირდება სანდო მძღოლი … ჰკითხე ჩემს
+ * ნაცნობებს" was read as naming one person, because the phonebook check took
+ * every word of the line — „მძღოლი" matched a contact saved with that word.
+ * The person an instruction names is in the words AFTER its verb, in the same
+ * sentence; a group („my acquaintances", „my contacts") names nobody.
+ */
+const GROUP_WORDS_RE =
+  /^(ჩემს|ჩემი|ჩემ|ყველა|ყველას|ვინმე|ვინმეს|ნაცნობ|მეგობრ|კონტაქტ|ქსელ|ხალხ|ადამიან|my|all|everyone|anyone|someone|friends?|contacts?|network|people|acquaintances?)/iu;
+
+/** The words after an instruction's verb, groups dropped; null when there is no verb. */
+export function instructionAddressee(message: string): string | null {
+  const match = CONTACT_VERB_RE.exec(message);
+  if (match === null) return null;
+  const after = message.slice(match.index + match[0].length);
+  const sentence = after.split(/[.!?\n]/u)[0] ?? '';
+  return sentence
+    .split(/\s+/u)
+    .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    .filter((w) => w !== '' && !GROUP_WORDS_RE.test(w))
+    .join(' ');
+}
+
 export function looksLikeContactInstruction(message: string): boolean {
   const text = message.trim();
   if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;

@@ -1,3 +1,4 @@
+import { instructionAddressee } from '../goalIntent';
 import { query } from '../../db/postgres/client';
 import { foldedLower } from './georgianCase';
 import { buildRawWordGroups, toWordStartPattern } from './transliterate';
@@ -74,7 +75,10 @@ export async function findContactPhonesByName(
  * one to notice.
  */
 export async function messageNamesOwnContact(userId: string, message: string): Promise<boolean> {
-  const groups = buildRawWordGroups(message);
+  // An instruction names its person after the verb; the rest of the line is the need.
+  const addressee = instructionAddressee(message);
+  if (addressee === '') return false;
+  const groups = buildRawWordGroups(addressee ?? message);
   // One-and-two-character terms match half a phonebook; the measurement used
   // the same floor.
   const terms = groups.flat().filter((term) => term.length >= 3);

@@ -1,5 +1,6 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { searchByTagExactOnly } from './tools/searchByTag';
+import { wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
@@ -890,8 +891,14 @@ export async function findWaysIn(
           out.set(name, { kind: 'unchecked' });
           return;
         }
+        // A city or a word like „studio" is not the organisation (32983).
+        const searchName = wayInSearchName(name);
+        if (searchName === '') {
+          out.set(name, { kind: 'none' });
+          return;
+        }
         const result = await Promise.race([
-          searchByTagExactOnly(userId, name),
+          searchByTagExactOnly(userId, searchName),
           new Promise<null>((resolve) => {
             const t = setTimeout(() => resolve(null), left);
             t.unref?.();

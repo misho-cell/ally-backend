@@ -10507,7 +10507,10 @@ async function runToolLoop(
     // They are read, and stamped, only when GPT will actually write.
     const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);
     const rewritten = await writeFinalAnswer(
-      messages,
+      // The old seat's notes to 1101 (32975): the cliffhanger note reached GPT as a
+      // user line, and the answer told the owner „this note does not look like my
+      // official system channel". Notes written for the model are not shown to it.
+      withoutModelOnlyNudges(messages),
       plainSystemPrompt(systemPrompt) +
         gptBlocks +
         GPT_NAMES_WHO_IT_FOUND +
@@ -10864,6 +10867,16 @@ async function runToolLoop(
  * is still open; leaving it out now is how it would be missed on the way back
  * in.
  */
+/** The run's history without the notes the server wrote for the model alone. */
+export function withoutModelOnlyNudges(
+  messages: readonly Anthropic.MessageParam[],
+): Anthropic.MessageParam[] {
+  return messages.filter(
+    (m) =>
+      !(m.role === 'user' && typeof m.content === 'string' && MODEL_ONLY_NUDGES.has(m.content)),
+  );
+}
+
 export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
