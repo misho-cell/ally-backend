@@ -1,4 +1,4 @@
-import { sharesMostWords } from '../taskAsks.service';
+import { approvedADraft, onlyPadsOwnLine, sharesMostWords } from '../taskAsks.service';
 
 /**
  * #34 — the tester's 1055 (threads 31058 / 31062): the helper typed one word
@@ -16,5 +16,26 @@ describe('the approved text against the helper’s own line', () => {
   it('does not take a confirmation or a different answer for the helper’s answer', () => {
     expect(sharesMostWords('კი, გაუგზავნე', 'ორშაბათს 10-დან 14 საათამდე იღებს')).toBe(false);
     expect(sharesMostWords(own, 'სამშაბათს მოდი, დილით.')).toBe(false);
+  });
+});
+
+/** The tester's 1102 (j, 33151): „არ ვიცი." arrived as „არ ვიცი, სამწუხაროდ ვერ გეტყვი". */
+describe('words added on the way', () => {
+  it('are seen when the sent text keeps the whole of the helper’s line and adds to it', () => {
+    expect(onlyPadsOwnLine('არ ვიცი.', 'არ ვიცი, სამწუხაროდ ვერ გეტყვი')).toBe(true);
+    expect(onlyPadsOwnLine('No.', 'No, I am sorry, I cannot help with that.')).toBe(true);
+  });
+
+  it('are not seen when the sent text drops or changes the helper’s words', () => {
+    expect(onlyPadsOwnLine('არ ვიცი, ნინომ იცის', 'არ ვიცი')).toBe(false);
+    expect(onlyPadsOwnLine('კი, გაუგზავნე', 'ვიცნობ ფოტოგრაფს, გია')).toBe(false);
+    expect(onlyPadsOwnLine('არ ვიცი.', 'არ ვიცი.')).toBe(false);
+  });
+
+  it('leave an approved draft as written', () => {
+    const draft = 'კი, ვიცნობ კარგ ფოტოგრაფს, გიას.';
+    expect(onlyPadsOwnLine('კი', draft)).toBe(true);
+    expect(approvedADraft(`გავუგზავნო ასე: „${draft}"?`, draft)).toBe(true);
+    expect(approvedADraft('რა ვუპასუხო?', draft)).toBe(false);
   });
 });

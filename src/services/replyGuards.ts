@@ -125,8 +125,10 @@ export function describeCliffhangerOutcome(
  */
 // The tester's 1105 (33298): „გადასაცემი პასუხი: ჯემალ ფირცხალავა." — the
 // answer labelled as passed on, with no send, is the same claim.
+// The tester's 1102 (i, 33119): „ქეთევანს ჰკითხე: რატომ სჭირდება…" — the
+// helper's question written as an instruction to ask, and never sent.
 const CLAIMS_PASSED_ON_RE =
-  /(გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
+  /(ჰკითხე\s*[:：]|\bask\s+\p{L}+\s*:|გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
 
 export function claimsToHavePassedItOn(text: string): boolean {
   return CLAIMS_PASSED_ON_RE.test(text);

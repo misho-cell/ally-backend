@@ -56,6 +56,14 @@ describe('4 — a helper’s assistant that claims a send that did not happen', 
     expect(guards.claimsToHavePassedItOn('გადასაცემი პასუხი: ჯემალ ფირცხალავა.')).toBe(true);
     expect(guards.claimsToHavePassedItOn('Answer to pass on: Jemal Pirtskhalava.')).toBe(true);
     expect(guards.claimsToHavePassedItOn('ვის ეძებ, ჯემალს თუ სხვას?')).toBe(false);
+    // The tester's 1102 (i, 33119): the question written as an instruction, never sent.
+    expect(
+      guards.claimsToHavePassedItOn(
+        'ქეთევანს ჰკითხე: რატომ სჭირდება მაკლერი და რაზე მუშაობს ახლა?',
+      ),
+    ).toBe(true);
+    expect(guards.claimsToHavePassedItOn('Ask Ketevan: why does she need a broker?')).toBe(true);
+    expect(guards.claimsToHavePassedItOn('რა გინდა, რომ ვკითხო?')).toBe(false);
   });
 
   it('asks once more with the tool named, and never relays the line itself', () => {

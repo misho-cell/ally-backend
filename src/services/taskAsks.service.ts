@@ -2272,6 +2272,8 @@ const OWN_WORDS_NOISE_RE = /[^\p{L}\p{N}]+/gu;
  */
 const SAME_WORDS_SHARE = 0.6;
 const MIN_OWN_LINE_CHARS = 8;
+/** How many recent lines are read to find the helper's own and the one before it. */
+const OWN_LINE_LOOKBACK = 6;
 const MAX_OWN_LINE_CHARS = 1000;
 
 function wordSet(text: string): Set<string> {
@@ -2286,18 +2288,48 @@ export function sharesMostWords(a: string, b: string): boolean {
   return common / new Set([...left, ...right]).size >= SAME_WORDS_SHARE;
 }
 
+/**
+ * The tester's 1102 (j, 33151): the helper typed „არ ვიცი." and the asker read
+ * „არ ვიცი, სამწუხაროდ ვერ გეტყვი" — every word of the helper's line kept, and
+ * words added on the way. When the sent text holds the whole of the helper's
+ * own line and only adds to it, the helper's line is what goes.
+ */
+export function onlyPadsOwnLine(own: string, approvedText: string): boolean {
+  const ownWords = wordSet(own);
+  const sentWords = wordSet(approvedText);
+  if (ownWords.size === 0 || sentWords.size <= ownWords.size) return false;
+  return [...ownWords].every((w) => sentWords.has(w));
+}
+
+/**
+ * Whether the helper's last line answered a draft the assistant had just put to
+ * them: „send this: …?" then „კი". The draft is what they approved, so it goes
+ * as written, however few words their own line had.
+ */
+export function approvedADraft(assistantBefore: string, approvedText: string): boolean {
+  const draft = comparable(approvedText);
+  return draft !== '' && comparable(assistantBefore).includes(draft);
+}
+
 async function helpersOwnWording(askThreadId: number, approvedText: string): Promise<string> {
   try {
-    const result = await query<{ content: string }>(
-      `SELECT content FROM conversations
-        WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND TRIM(content) <> ''
-        ORDER BY created_at DESC LIMIT 1`,
-      [askThreadId],
+    const result = await query<{ role: string; content: string }>(
+      `SELECT role, content FROM conversations
+        WHERE thread_id = $1 AND kind = 'message' AND TRIM(content) <> ''
+        ORDER BY created_at DESC LIMIT $2`,
+      [askThreadId, OWN_LINE_LOOKBACK],
       ASK_QUERY_TIMEOUT_MS,
     );
-    const own = result.rows[0]?.content.trim() ?? '';
-    const usable = own.length >= MIN_OWN_LINE_CHARS && own.length <= MAX_OWN_LINE_CHARS;
-    if (!usable || comparable(own) === comparable(approvedText)) return approvedText;
+    const at = result.rows.findIndex((r) => r.role === 'user');
+    const own = at === -1 ? '' : result.rows[at].content.trim();
+    if (own === '' || own.length > MAX_OWN_LINE_CHARS) return approvedText;
+    if (comparable(own) === comparable(approvedText)) return approvedText;
+    const before = result.rows.slice(at + 1).find((r) => r.role === 'assistant');
+    const assistantBefore = before?.content ?? '';
+    if (onlyPadsOwnLine(own, approvedText) && !approvedADraft(assistantBefore, approvedText)) {
+      return own;
+    }
+    if (own.length < MIN_OWN_LINE_CHARS) return approvedText;
     return sharesMostWords(own, approvedText) ? own : approvedText;
   } catch (err) {
     // eslint-disable-next-line no-console
