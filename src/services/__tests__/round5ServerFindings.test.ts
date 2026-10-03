@@ -52,6 +52,10 @@ describe('4 — a helper’s assistant that claims a send that did not happen', 
       true,
     );
     expect(guards.claimsToHavePassedItOn('კარგი, რას ეტყვი მას?')).toBe(false);
+    // The tester's 1105 (33298): the answer labelled, never sent.
+    expect(guards.claimsToHavePassedItOn('გადასაცემი პასუხი: ჯემალ ფირცხალავა.')).toBe(true);
+    expect(guards.claimsToHavePassedItOn('Answer to pass on: Jemal Pirtskhalava.')).toBe(true);
+    expect(guards.claimsToHavePassedItOn('ვის ეძებ, ჯემალს თუ სხვას?')).toBe(false);
   });
 
   it('asks once more with the tool named, and never relays the line itself', () => {

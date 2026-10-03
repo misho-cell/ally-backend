@@ -43,7 +43,7 @@ describe('the moderation verdict is read, and everything downstream obeys it', (
   });
 
   it('reads the verdict rather than assuming it', () => {
-    expect(source).toContain('const replySafe = verdict.safe;');
+    expect(source).toContain('let replySafe = verdict.safe;');
   });
 
   it('1 — shows the apology instead of the blocked text', () => {

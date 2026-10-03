@@ -123,8 +123,10 @@ export function describeCliffhangerOutcome(
  * words the helper approved, through the tool), so the server never relays the
  * line itself; it catches the claim and asks the model once more.
  */
+// The tester's 1105 (33298): „გადასაცემი პასუხი: ჯემალ ფირცხალავა." — the
+// answer labelled as passed on, with no send, is the same claim.
 const CLAIMS_PASSED_ON_RE =
-  /(გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
+  /(გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
 
 export function claimsToHavePassedItOn(text: string): boolean {
   return CLAIMS_PASSED_ON_RE.test(text);

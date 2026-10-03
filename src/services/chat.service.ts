@@ -6319,6 +6319,25 @@ function withPlanInReply(
  * plan's own approve and change buttons. A reply with buttons of its own (the
  * tester's 954: web leads) keeps them.
  */
+/**
+ * The tester's 1105 (33379): a system-started plan turn's reply was blocked
+ * (harassment, both votes) and the owner read the apology with no plan and no
+ * buttons, though the plan itself was already saved. When the blocked reply
+ * was asking for a plan's approval, the server's own sentences of that plan
+ * stand in its place, checked once more, and the approve and change buttons
+ * stay. Any other blocked reply keeps the apology.
+ */
+async function planTextAfterBlock(
+  runId: string,
+  offered: readonly string[] | null | undefined,
+  userId: string,
+): Promise<string | null> {
+  const plan = runPlanForReply.get(runId);
+  if (!plan || !replyAsksForApproval(offered)) return null;
+  const text = withClosingQuestion(plan.text, runLang(runId));
+  return (await moderateReply(text, userId)).safe ? text : null;
+}
+
 export function planButtonsWhenMissing(
   runId: string,
   offered: string[] | undefined,
@@ -6982,7 +7001,13 @@ const runModes = new Map<string, RunMode>();
 export const GPT_NAMES_WHO_IT_FOUND =
   '\n\n## Name who you found\nWhen the searches found people, name each of them in the ' +
   'reply, as they are saved, with what makes them fit. Never „I found three people" without ' +
-  'the three names. Never a phone number.';
+  'the three names. Never a phone number. ' +
+  // The tester's 1105 (C4, 33351): a long run's web studios filled the reply,
+  // and the dance teacher the second circle found through a friend was dropped
+  // as „nobody in the second circle". The prompt's v12 rule reached Claude only.
+  'People found in the owner’s network come before anything from the web, and a person ' +
+  'found in the second circle is named with the friend who knows them. Never say a search ' +
+  'found nobody when its result held a person.';
 
 export function gptLanguageLast(language: RunLanguage): string {
   if (language === 'ka') return '';
@@ -12602,7 +12627,7 @@ export async function processChat(
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
   const verdict = await moderateReply(cleanedFinal, userId);
-  const replySafe = verdict.safe;
+  let replySafe = verdict.safe;
   if (!replySafe) {
     /**
      * Row 76 — the line used to say a block had happened and not what it was.
@@ -12624,6 +12649,13 @@ export async function processChat(
       `[moderation] run ${runId} thread ${threadId} reply blocked by content filter ` +
         `(len=${cleanedFinal.length}, category=${verdict.reason ?? 'unnamed'})`,
     );
+    const planText = await planTextAfterBlock(runId, choices, userId);
+    if (planText !== null) {
+      // eslint-disable-next-line no-console
+      console.log(`[moderation] run ${runId}: the server's own plan text stands in its place`);
+      cleanedFinal = planText;
+      replySafe = true;
+    }
   }
   // Tester 907 / D531: a run started from an answers card is the moment an
   // answer arrived, so no connection has happened yet — no finish card.

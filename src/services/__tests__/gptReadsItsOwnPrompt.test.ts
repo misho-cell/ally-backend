@@ -81,5 +81,8 @@ describe('GPT names who the searches found', () => {
   it('asks for every name, and never a number', () => {
     expect(GPT_NAMES_WHO_IT_FOUND).toContain('name each of them');
     expect(GPT_NAMES_WHO_IT_FOUND).toContain('Never a phone number');
+    // The tester's 1105 (C4): the second-circle person, named with the friend, before the web.
+    expect(GPT_NAMES_WHO_IT_FOUND).toContain('come before anything from the web');
+    expect(GPT_NAMES_WHO_IT_FOUND).toContain('named with the friend who knows them');
   });
 });
