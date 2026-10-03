@@ -251,7 +251,12 @@ import {
   WayIn,
   OpeningSearches,
 } from './openingSearch.service';
-import { finalAnswerModel, writeFinalAnswer, unusableReason } from './finalAnswer.service';
+import {
+  finalAnswerModel,
+  writeFinalAnswer,
+  unusableReason,
+  type FinalAnswer,
+} from './finalAnswer.service';
 import { splitOpeningLine } from './goalSplit';
 import {
   describeCliffhangerOutcome,
@@ -6521,6 +6526,33 @@ function forgetEmptySearches(runId: string | undefined): void {
   if (runId !== undefined) runEmptySearches.delete(runId);
 }
 
+/**
+ * The tester's 1119 (F3, 35008): a message that repeated an open goal got „this
+ * is the request I already hold" and then a whole new search — 14 calls, 90 s.
+ * The prompt already said not to start the work over; the server now holds it.
+ * The goal's own runs keep searching; only the turn that repeats it does not.
+ */
+const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_contact_by_name',
+  'search_roster',
+  'search_contacts_by_country',
+  'find_warm_path',
+  'web_search',
+  'fetch_page',
+]);
+
+/** What a search on a repeating turn returns instead of results. */
+export function repeatNoSearch(goalId: number): string {
+  return (
+    `Not searched: this message repeats open goal ${goalId}, whose work and findings you ` +
+    'have above. Tell the owner where that goal stands. If they want something different ' +
+    'from it, say what you think the difference is and ask them — do not search.'
+  );
+}
+
 /** The tools whose whole job is to find people, and whose empties are the waste. */
 const SEARCH_TOOLS = new Set([
   'search_by_tag',
@@ -7108,6 +7140,8 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
 const runLastCaption = new Map<string, string>();
 /** The owner's own line this run answers; absent on a run the system started. */
 const runOwnerLine = new Map<string, string>();
+/** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
+const runRepeatedGoal = new Map<string, number>();
 
 function clearRunState(runId: string): void {
   runAllowedNumbers.delete(runId);
@@ -7115,6 +7149,7 @@ function clearRunState(runId: string): void {
   runModes.delete(runId);
   runLastCaption.delete(runId);
   runOwnerLine.delete(runId);
+  runRepeatedGoal.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
@@ -7330,6 +7365,12 @@ async function executeToolCall(
         'here who could have said yes. A proposed plan stays proposed until the owner ' +
         'presses the button themselves. Do not tell them it was approved.',
     };
+  }
+  const repeated = runId === undefined ? undefined : runRepeatedGoal.get(runId);
+  if (repeated !== undefined && REPEAT_REFUSED_TOOLS.has(name)) {
+    // eslint-disable-next-line no-console
+    console.log(`[repeat] run ${runId}: ${name} refused, the message repeats goal ${repeated}`);
+    return { found: false, error: repeatNoSearch(repeated) };
   }
   // Block/deceased guard: never surface a single excluded contact via a
   // phone-keyed lookup (format-independent match).
@@ -10828,10 +10869,9 @@ async function runToolLoop(
     // failing the whole run with an empty error screen.
     // eslint-disable-next-line no-console
     console.error('[chat] model call failed mid-run — salvaging:', (err as Error).message);
-    finalText = scrubFinal(
-      await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending),
-      runId,
-    );
+    const salvaged = await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending);
+    if (salvaged.writtenBy !== null) answeredBy = salvaged.writtenBy;
+    finalText = scrubFinal(salvaged.text, runId);
   }
 
   // Rescue an answer the model buried in a 'step'. Two cases:
@@ -10939,10 +10979,9 @@ async function runToolLoop(
       `[chat] run ${runId}: the owner's turn called ${toolCallCount} tool(s) and wrote nothing` +
         `${blankAfterRetry ? ' (blank twice)' : ''} — asking for one line`,
     );
-    finalText = scrubFinal(
-      await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending),
-      runId,
-    );
+    const salvaged = await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending);
+    if (salvaged.writtenBy !== null) answeredBy = salvaged.writtenBy;
+    finalText = scrubFinal(salvaged.text, runId);
   }
 
   // If the final is a short "now let me check…" cliffhanger, nudge the model to
@@ -11215,12 +11254,22 @@ const SALVAGE_NUDGE =
 const SALVAGE_FALLBACK_REPLY =
   'ძიება ტექნიკური შეფერხების გამო შეწყდა. მუშაობას განვაგრძობ და პასუხს მალე მოგწერ.';
 
+/** A salvaged answer, and the model that wrote it when it was not Claude. */
+interface Salvaged {
+  readonly text: string;
+  readonly writtenBy: string | null;
+}
+
 /**
  * Best-effort wrap-up after a mid-run model failure: close any outstanding
- * tool_use blocks (both for the API call and for the persisted history — an
- * unresolved tool_use in saved history would 400 every future run), then ask
- * for a text-only answer from what was already gathered. If even that call
- * fails, fall back to a fixed apology so the user never sees a dead run.
+ * tool_use blocks, then ask for a text-only answer from what was already
+ * gathered — Claude first, then GPT — and only when both write nothing, a
+ * fixed apology, so the user never sees a dead run.
+ *
+ * The tester's 1119 (thread 34972, run 0d3df4f1): Claude was overloaded mid-run,
+ * its salvage call thought and wrote no text, and the owner read „the search
+ * stopped" in front of the plan that run had just made. The failure was one
+ * provider's; the other provider writes from the same material.
  */
 async function salvageFinalAnswer(
   messages: Anthropic.MessageParam[],
@@ -11228,47 +11277,105 @@ async function salvageFinalAnswer(
   tools: AnthropicTool[],
   ctx: RunContext,
   pending: PendingMessage[],
+): Promise<Salvaged> {
+  closeOutstandingToolUses(messages, pending);
+  const salvageMessages = withSalvageNudge(messages);
+  const claudeText = await salvageByClaude(salvageMessages, systemPrompt, tools, ctx);
+  if (claudeText !== '') return { text: claudeText, writtenBy: null };
+  const written = await salvageByGpt(salvageMessages, systemPrompt, ctx);
+  if (written !== null) return { text: written.text, writtenBy: written.model };
+  logSalvageFallback(ctx.runId, 'neither model wrote an answer');
+  return { text: SALVAGE_FALLBACK_REPLY, writtenBy: null };
+}
+
+/**
+ * Answers every tool_use the failed turn left open, both for the next call and
+ * for the persisted history — an unresolved tool_use in saved history would
+ * 400 every future run.
+ */
+function closeOutstandingToolUses(
+  messages: Anthropic.MessageParam[],
+  pending: PendingMessage[],
+): void {
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== 'assistant' || !Array.isArray(last.content)) return;
+  const outstanding = last.content.filter(
+    (b): b is Anthropic.ToolUseBlock => (b as { type?: string }).type === 'tool_use',
+  );
+  if (outstanding.length === 0) return;
+  const syntheticResults: Anthropic.ToolResultBlockParam[] = outstanding.map((b) => ({
+    type: 'tool_result',
+    tool_use_id: b.id,
+    content: '{"interrupted":true}',
+  }));
+  messages.push({ role: 'user', content: syntheticResults });
+  pending.push({ role: 'user', content: syntheticResults });
+}
+
+/** The history with the salvage note folded into its trailing user turn (roles must alternate). */
+function withSalvageNudge(messages: readonly Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const salvageMessages = [...messages];
+  const tail = salvageMessages[salvageMessages.length - 1];
+  if (tail && tail.role === 'user') {
+    const blocks: Anthropic.ContentBlockParam[] =
+      typeof tail.content === 'string' ? [{ type: 'text', text: tail.content }] : [...tail.content];
+    blocks.push({ type: 'text', text: SALVAGE_NUDGE });
+    salvageMessages[salvageMessages.length - 1] = { role: 'user', content: blocks };
+  }
+  return salvageMessages;
+}
+
+/** Claude's text-only wrap-up, or '' when the call fails or writes no text. */
+async function salvageByClaude(
+  salvageMessages: Anthropic.MessageParam[],
+  systemPrompt: string,
+  tools: AnthropicTool[],
+  ctx: RunContext,
 ): Promise<string> {
   try {
-    const last = messages[messages.length - 1];
-    if (last && last.role === 'assistant' && Array.isArray(last.content)) {
-      const outstanding = last.content.filter(
-        (b): b is Anthropic.ToolUseBlock => (b as { type?: string }).type === 'tool_use',
-      );
-      if (outstanding.length > 0) {
-        const syntheticResults: Anthropic.ToolResultBlockParam[] = outstanding.map((b) => ({
-          type: 'tool_result',
-          tool_use_id: b.id,
-          content: '{"interrupted":true}',
-        }));
-        messages.push({ role: 'user', content: syntheticResults });
-        pending.push({ role: 'user', content: syntheticResults });
-      }
-    }
-
-    // Fold the nudge into the trailing user message (roles must alternate).
-    const salvageMessages = [...messages];
-    const tail = salvageMessages[salvageMessages.length - 1];
-    if (tail && tail.role === 'user') {
-      const blocks: Anthropic.ContentBlockParam[] =
-        typeof tail.content === 'string'
-          ? [{ type: 'text', text: tail.content }]
-          : [...(tail.content as Anthropic.ContentBlockParam[])];
-      blocks.push({ type: 'text', text: SALVAGE_NUDGE });
-      salvageMessages[salvageMessages.length - 1] = { role: 'user', content: blocks };
-    }
-
     const response = await callClaude(salvageMessages, systemPrompt, tools, ctx, {
       forceText: true,
     });
     const text = extractText(response.content);
-    if (!text)
-      logSalvageFallback(ctx.runId, `no text in the answer (stop ${response.stop_reason})`);
-    return text || SALVAGE_FALLBACK_REPLY;
+    if (!text) logSalvageStep(ctx.runId, `Claude wrote no text (stop ${response.stop_reason})`);
+    return text;
   } catch (err) {
-    logSalvageFallback(ctx.runId, err instanceof Error ? err.message : String(err));
-    return SALVAGE_FALLBACK_REPLY;
+    logSalvageStep(ctx.runId, `Claude failed: ${err instanceof Error ? err.message : String(err)}`);
+    return '';
   }
+}
+
+/** GPT's wrap-up from the same material, or null when it is off or fails. */
+async function salvageByGpt(
+  salvageMessages: readonly Anthropic.MessageParam[],
+  systemPrompt: string,
+  ctx: RunContext,
+): Promise<FinalAnswer | null> {
+  const language = runLang(ctx.runId);
+  const written = await writeFinalAnswer(
+    withoutModelOnlyNudges(salvageMessages),
+    plainSystemPrompt(systemPrompt) + GPT_NAMES_WHO_IT_FOUND + gptLanguageLast(language),
+    undefined,
+    language,
+  );
+  if (written === null) return null;
+  logSalvageStep(ctx.runId, `${written.model} wrote the answer`);
+  await recordClaudeUsage({
+    userId: ctx.userId,
+    kind: 'chat',
+    provider: 'openai',
+    model: written.model,
+    usage: written.usage,
+    runId: ctx.runId,
+    threadId: ctx.threadId,
+  }).catch(() => {});
+  return written;
+}
+
+/** Each salvage step says in the log what happened, so a fixed line is always explained. */
+function logSalvageStep(runId: string, what: string): void {
+  // eslint-disable-next-line no-console
+  console.error(`[chat] run ${runId} salvage: ${what}`);
 }
 
 /**
@@ -12646,6 +12753,7 @@ export async function processChat(
    * a repeat happened at all.
    */
   const repeatedGoal = goalForRequest.repeats;
+  if (repeatedGoal !== null) runRepeatedGoal.set(runId, repeatedGoal.id);
   const sameRequestAgain =
     repeatedGoal === null
       ? ''
