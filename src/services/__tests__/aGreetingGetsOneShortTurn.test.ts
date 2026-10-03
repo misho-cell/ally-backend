@@ -57,13 +57,25 @@ describe('isBareGreeting', () => {
     expect(chat.slice(greet, greet + 600)).toContain('clearInterval(heartbeat);');
   });
 
-  it('greets by name in the reply’s own script, and asks an empty account to import contacts', () => {
-    expect(greetingText(greetingName('თორნიკე აბულაძე', 'ka'), true, 'ka')).toBe(
+  it('greets by first name as saved, answers „how are you", and asks an empty account to import', () => {
+    expect(greetingText(greetingName('თორნიკე აბულაძე'), true, 'ka')).toBe(
       'გამარჯობა, თორნიკე! რით დაგეხმარო?',
     );
-    expect(greetingName('Tornike', 'ka')).toBeNull();
+    // The tester's 1117: the founder's name is saved in Latin letters.
+    expect(greetingText(greetingName('Tornike'), true, 'ka')).toBe(
+      'გამარჯობა, Tornike! რით დაგეხმარო?',
+    );
+    expect(greetingName('+995 555')).toBeNull();
+    expect(greetingText(null, true, 'ka', 'გამარჯობა, როგორ ხარ?')).toBe(
+      'გამარჯობა! კარგად ვარ, მადლობა. რით დაგეხმარო?',
+    );
     expect(greetingText(null, true, 'en')).toBe('Hello! How can I help?');
     expect(greetingText(null, false, 'ka')).toContain('კონტაქტები აპში შემოიტანე');
+  });
+
+  it('skips the reply check on the server’s own sentence', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('answeredBy === SERVER_GREETING_AUTHOR');
   });
 
   /** Task 695 (31886): the re-ask after a blank says the first try was empty. */

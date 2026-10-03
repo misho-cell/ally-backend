@@ -177,6 +177,19 @@ export function statesANeed(text: string): boolean {
 }
 
 /**
+ * The tester's 1117 (34765, 34766): „ვინ იცნობს კარგ ვეტერინარს?" after the
+ * new-goal button stopped opening a goal once the flag needed a stated need —
+ * „who knows a good X" asks for a person without the word „need". Read only on
+ * the flagged path; the unflagged one keeps its own, stricter rule.
+ */
+const SEEKS_A_PERSON_RE =
+  /(ვინ\s+იცნობს|ვინმე\s+(ხომ\s+არ\s+)?იცნობს|ხომ\s+არ\s+იცნობ|ვის\s+შეუძლია|who\s+knows\s+(a|an|any|someone)|does\s+anyone\s+know|anyone\s+know|know\s+(a|any)\s+good|кто\s+знает|кто-нибудь\s+знает|alguien\s+conoce|quién\s+conoce)/iu;
+
+export function seeksAPerson(text: string): boolean {
+  return SEEKS_A_PERSON_RE.test(text);
+}
+
+/**
  * A STATED NEED OVERRULES ALL THREE, and leaving that out cost ten real goals.
  *
  * The comment above says this „names only what can never need them". It did

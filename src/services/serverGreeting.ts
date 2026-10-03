@@ -13,51 +13,63 @@ const NAME_TIMEOUT_MS = 3_000;
 
 interface GreetingWords {
   readonly hello: (name: string | null) => string;
+  readonly fine: string;
   readonly importContacts: string;
 }
 
 const WORDS: Readonly<Record<RunLanguage, GreetingWords>> = {
   ka: {
     hello: (name) => `გამარჯობა${name ? `, ${name}` : ''}! რით დაგეხმარო?`,
+    fine: 'კარგად ვარ, მადლობა.',
     importContacts: 'Netai ადამიანებს შენს კონტაქტებში პოულობს, ამიტომ კონტაქტები აპში შემოიტანე.',
   },
   en: {
     hello: (name) => `Hello${name ? `, ${name}` : ''}! How can I help?`,
+    fine: 'I am well, thank you.',
     importContacts:
       'Netai finds people through your own contacts, so please import your contacts in the app.',
   },
   ru: {
     hello: (name) => `Привет${name ? `, ${name}` : ''}! Чем помочь?`,
+    fine: 'Всё хорошо, спасибо.',
     importContacts:
       'Netai находит людей через твои контакты, поэтому импортируй контакты в приложении.',
   },
   es: {
     hello: (name) => `¡Hola${name ? `, ${name}` : ''}! ¿En qué te ayudo?`,
+    fine: 'Muy bien, gracias.',
     importContacts:
       'Netai encuentra personas a través de tus contactos, así que importa tus contactos en la app.',
   },
 };
 
-const SCRIPT_OF: Readonly<Record<RunLanguage, RegExp>> = {
-  ka: /^[Ⴀ-ჿ]+$/u,
-  en: /^[A-Za-z]+$/u,
-  es: /^[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+$/u,
-  ru: /^[Ѐ-ӿ]+$/u,
-};
+/** Letters only: a name of digits, an e-mail or an emoji is not greeted by. */
+const NAME_RE = /^[\p{L}'-]+$/u;
 
-/** The first name, only when it is written in the reply's own script. */
-export function greetingName(registered: string | null, language: RunLanguage): string | null {
+/**
+ * The first name as saved. The tester's 1117: the founder's name is saved in
+ * Latin letters, and dropping it for a Georgian reply lost „hello, Tornike".
+ */
+export function greetingName(registered: string | null): string | null {
   const first = (registered ?? '').trim().split(/\s+/u)[0] ?? '';
-  return first !== '' && SCRIPT_OF[language].test(first) ? first : null;
+  return first !== '' && NAME_RE.test(first) ? first : null;
 }
+
+const ASKS_HOW_I_AM_RE = /(როგორ\s+ხარ|how\s+are\s+you|как\s+дела|qué\s+tal)/iu;
+const AFTER_EXCLAMATION_RE = /!\s*/u;
 
 export function greetingText(
   name: string | null,
   hasContacts: boolean,
   language: RunLanguage,
+  greeting = '',
 ): string {
   const words = WORDS[language] ?? WORDS.ka;
-  return hasContacts ? words.hello(name) : `${words.hello(name)} ${words.importContacts}`;
+  // The tester's 1117: „გამარჯობა, როგორ ხარ?" got only the hello.
+  const hello = ASKS_HOW_I_AM_RE.test(greeting)
+    ? words.hello(name).replace(AFTER_EXCLAMATION_RE, `! ${words.fine} `)
+    : words.hello(name);
+  return hasContacts ? hello : `${hello} ${words.importContacts}`;
 }
 
 /** The registered name; null when it cannot be read, so the greeting goes without it. */

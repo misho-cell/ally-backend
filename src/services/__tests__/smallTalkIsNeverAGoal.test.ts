@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { isSmallTalk } from '../smallTalk';
+import { seeksAPerson } from '../goalIntent';
 import { smallTalkTurn } from '../chat.service';
 
 /**
@@ -35,9 +36,7 @@ describe('small talk', () => {
   it('opens no goal, whatever button it was typed after', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const gate = chat.indexOf('if (isSmallTalk(userMessage)) {');
-    const flag = chat.indexOf(
-      'const flaggedNeed = intent?.asGoal === true && statesANeed(userMessage);',
-    );
+    const flag = chat.indexOf('const flaggedNeed =');
     expect(gate).toBeGreaterThan(-1);
     expect(flag).toBeGreaterThan(gate);
   });
@@ -88,5 +87,16 @@ describe('what counts as a small-talk turn for the waiting list', () => {
     expect(smallTalkTurn(false, 'კი', noTools)).toBe(false);
     expect(smallTalkTurn(false, 'ბათუმში', noTools)).toBe(false);
     expect(smallTalkTurn(true, 'როგორ ხარ?', noTools)).toBe(false);
+  });
+});
+
+/** The tester's 1117 (34765): the control „who knows a good vet?" after the new-goal button. */
+describe('asking who knows someone', () => {
+  it('is a need on the flagged path', () => {
+    expect(seeksAPerson('ვინ იცნობს კარგ ვეტერინარს?')).toBe(true);
+    expect(seeksAPerson('Does anyone know a good dentist?')).toBe(true);
+    expect(seeksAPerson('რა დღეა დღეს?')).toBe(false);
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('(statesANeed(userMessage) || seeksAPerson(userMessage))');
   });
 });

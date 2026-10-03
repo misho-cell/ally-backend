@@ -292,6 +292,7 @@ import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
 import {
   looksLikeGoalRequest,
+  seeksAPerson,
   statesANeed,
   goalTitleFrom,
   isQuestionNotGoal,
@@ -10482,11 +10483,16 @@ async function runToolLoop(
   if (greetingOnly) {
     clearInterval(heartbeat);
     const language = runLang(runId);
-    const name = greetingName(await registeredName(userId), language);
+    const name = greetingName(await registeredName(userId));
     // eslint-disable-next-line no-console
     console.log(`[greeting] run ${runId}: answered by the server`);
     return {
-      finalText: greetingText(name, await ownerHasContacts(userId), language),
+      finalText: greetingText(
+        name,
+        await ownerHasContacts(userId),
+        language,
+        lastOwnerText(messages) ?? '',
+      ),
       pending,
       requestCreated: false,
       answeredBy: SERVER_GREETING_AUTHOR,
@@ -12109,7 +12115,8 @@ async function ensureGoalForRequest(
    * and the message must still state a need. Anything else is answered as a
    * question, and the model can still open a goal itself when it sees one.
    */
-  const flaggedNeed = intent?.asGoal === true && statesANeed(userMessage);
+  const flaggedNeed =
+    intent?.asGoal === true && (statesANeed(userMessage) || seeksAPerson(userMessage));
   if (!flaggedNeed && !looksLikeGoalRequest(userMessage)) {
     if (intent?.asGoal === true)
       // eslint-disable-next-line no-console
@@ -12903,7 +12910,12 @@ export async function processChat(
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
-  const verdict = await moderateReply(cleanedFinal, userId);
+  // The tester's 1117: the server's own greeting needs no reply check (it is our
+  // fixed sentence), and the check was most of its four seconds.
+  const verdict =
+    answeredBy === SERVER_GREETING_AUTHOR
+      ? { safe: true }
+      : await moderateReply(cleanedFinal, userId);
   let replySafe = verdict.safe;
   if (!replySafe) {
     /**
