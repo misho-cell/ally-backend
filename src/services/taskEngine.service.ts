@@ -791,6 +791,39 @@ async function tick(): Promise<void> {
  * own, the default of a day is set, so the goal is never without a next check.
  */
 const DAY_ONE_DELAY_MS = 3_000;
+
+/**
+ * The tester's L4 round, thread 33740 (goal 15320): the owner typed „კი", that
+ * run approved the plan and asked its one person, Ilia, at once and said so.
+ * Twelve seconds later the day-one wake ran, called no tool, and wrote „I asked
+ * Ilia" again. Day one's job is to START the plan. When the run that approved
+ * it has already written to as many of the plan's people as day one would
+ * (all of them, or its first three), day one stands down.
+ */
+const DAY_ONE_FIRST_PEOPLE = 3;
+/** An ask sent in the approving run can land a moment before the approval stamp. */
+const DAY_ONE_SENT_GRACE_SECONDS = 120;
+const DAY_ONE_DONE_TIMEOUT_MS = 5_000;
+
+export async function dayOneAlreadyDone(taskId: number): Promise<boolean> {
+  const result = await query<{ people: number; sent: number }>(
+    `SELECT jsonb_array_length(COALESCE(t.plan->'people_to_involve', '[]'::jsonb)) AS people,
+            ((SELECT COUNT(*) FROM task_asks a
+               WHERE a.task_id = t.id
+                 AND a.created_at >= t.plan_approved_at - make_interval(secs => $2))
+             + (SELECT COUNT(*) FROM introduction_requests r
+               WHERE r.requester_task_id = t.id
+                 AND r.created_at >= t.plan_approved_at - make_interval(secs => $2)))::int AS sent
+       FROM tasks t
+      WHERE t.id = $1 AND t.plan_approved_at IS NOT NULL
+      LIMIT 1`,
+    [taskId, DAY_ONE_SENT_GRACE_SECONDS],
+    DAY_ONE_DONE_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  if (!row || row.people <= 0) return false;
+  return row.sent >= Math.min(row.people, DAY_ONE_FIRST_PEOPLE);
+}
 // The approval happens INSIDE the user's run, which still owns the thread for
 // a while after approve_task_plan returned — the founder's 10 Sep test (thread
 // 14158): one attempt at +3 s met `status: working`, returned false, and day
@@ -1038,6 +1071,15 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
         console.log(
           `[task-engine] task ${taskId}: day one waits — the owner asked for a change and has not said yes to a new plan`,
         );
+        return false;
+      }
+      if (await dayOneAlreadyDone(taskId).catch(() => false)) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[task-engine] task ${taskId}: day one stands down — the approving run already wrote to the plan's people`,
+        );
+        await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+        await finishWake(taskId, DAY_ONE_WAKE);
         return false;
       }
       return true;
