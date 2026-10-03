@@ -7,6 +7,7 @@ import {
   discussionHolds,
   lineDecidesDiscussion,
 } from '../discussFirst';
+import { ownerLinesNewestFirst } from '../chat.service';
 
 /**
  * Board #67 (a loyal old Ally customer, 1 Oct): „ask me first, I don't need
@@ -92,5 +93,30 @@ describe('what a discussion turn is', () => {
     expect(chat).toContain('discussionHolds(ownerLinesNewestFirst(messages))');
     expect(chat).toContain('...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS })');
     expect(chat).toContain('if (await conversationIsDiscussion(threadId, userMessage)) {');
+  });
+});
+
+/**
+ * The tester's 1094 (32573): an event row and the owner's line are joined into
+ * one turn of text blocks, and reading strings only skipped that line.
+ */
+describe('the owner’s lines read from the run’s history', () => {
+  it('reads a line inside a merged turn of text blocks, and skips our events', () => {
+    const lines = ownerLinesNewestFirst([
+      { role: 'user', content: 'ჯერ მკითხე ჩემს ბიზნესზე, ლიდები ახლა არ მინდა' },
+      { role: 'assistant', content: 'რას აკეთებს შენი ბიზნესი?' },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: '[მოვლენა] something the server said' },
+          { type: 'text', text: 'დაიწყე, მოძებნე დისტრიბუტორები.' },
+        ],
+      },
+    ]);
+    expect(lines).toEqual([
+      'დაიწყე, მოძებნე დისტრიბუტორები.',
+      'ჯერ მკითხე ჩემს ბიზნესზე, ლიდები ახლა არ მინდა',
+    ]);
+    expect(discussionHolds(lines)).toBe(false);
   });
 });

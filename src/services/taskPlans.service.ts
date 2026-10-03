@@ -1076,9 +1076,33 @@ function withoutFinalStop(text: string): string {
   return text.trim().replace(/[.。]+$/u, '');
 }
 
+/**
+ * The tester's 1094 (32574): a route the model named „Owner's own network" was
+ * read to the owner as „I will look through Owner's own network". The plan is
+ * read BY the owner, so a route that names them in the third person is
+ * addressed to them. Only the possessive forms the model writes.
+ */
+const OWNER_IN_THIRD_PERSON: Readonly<Record<RunLanguage, readonly (readonly [RegExp, string])[]>> =
+  {
+    ka: [[/მფლობელის/gu, 'შენი']],
+    en: [[/\b(the\s+)?owner['’]s\b/giu, 'your']],
+    // No agreement-safe swap without grammar; left as written.
+    ru: [],
+    es: [],
+  };
+
+export function routeAddressedToOwner(name: string, language: RunLanguage): string {
+  return OWNER_IN_THIRD_PERSON[language].reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    name,
+  );
+}
+
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
-  const routes = plan.routes.map((r) => withoutFinalStop(r.name)).filter((r) => r !== '');
+  const routes = plan.routes
+    .map((r) => routeAddressedToOwner(withoutFinalStop(r.name), language))
+    .filter((r) => r !== '');
   const people: PlanPersonLine[] = plan.people_to_involve.map((p) => ({
     name: p.name,
     note: p.reach === undefined || p.reach === 'ok' ? '' : REACH_NOTE[language][p.reach],

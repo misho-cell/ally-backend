@@ -9622,16 +9622,27 @@ function lastOwnerText(messages: readonly Anthropic.MessageParam[]): string | nu
   return typeof last.content === 'string' ? last.content : null;
 }
 
-/** #67: the owner's own typed lines in this run's history, newest first; events are ours. */
-function ownerLinesNewestFirst(messages: readonly Anthropic.MessageParam[]): string[] {
-  return messages
-    .filter(
-      (m): m is Anthropic.MessageParam & { content: string } =>
-        m.role === 'user' && typeof m.content === 'string',
-    )
-    .map((m) => m.content)
-    .filter((text) => !text.startsWith(RUN_EVENT_PREFIX))
-    .reverse();
+/**
+ * #67: the owner's own typed lines in this run's history, newest first; events are ours.
+ *
+ * The tester's 1094 (32573): a line is not always a string. mergeAdjacentSameRole
+ * joins an event row and the owner's next line into one turn of text blocks, and
+ * reading strings only skipped exactly that line — „დაიწყე, მოძებნე" was never
+ * seen, the older „ჯერ მკითხე" decided, and the release did not fire.
+ */
+export function ownerLinesNewestFirst(messages: readonly Anthropic.MessageParam[]): string[] {
+  const lines: string[] = [];
+  for (const m of messages) {
+    if (m.role !== 'user') continue;
+    const texts =
+      typeof m.content === 'string'
+        ? [m.content]
+        : m.content.flatMap((block) => (block.type === 'text' ? [block.text] : []));
+    for (const text of texts) {
+      if (text.trim() !== '' && !text.startsWith(RUN_EVENT_PREFIX)) lines.push(text);
+    }
+  }
+  return lines.reverse();
 }
 
 async function callClaude(
