@@ -33,8 +33,11 @@ function keyOf(row: Row): string {
 }
 
 /** The family's other words, capped, so one search can never fan out without bound. */
-export function familyWordsToSearch(related: readonly string[]): readonly string[] {
-  return related.slice(0, MAX_FAMILY_WORDS);
+export function familyWordsToSearch(
+  related: readonly string[],
+  most: number = MAX_FAMILY_WORDS,
+): readonly string[] {
+  return related.slice(0, Math.min(most, MAX_FAMILY_WORDS));
 }
 
 /** The primary result with every exact hit of the family's other words added once. */
@@ -64,8 +67,10 @@ export async function searchProfessionFamily(
   primary: unknown,
   related: readonly string[],
   search: (word: string) => Promise<unknown>,
+  /** The second circle costs seconds a word, so its caller asks for fewer. */
+  mostWords: number = MAX_FAMILY_WORDS,
 ): Promise<object> {
-  const words = familyWordsToSearch(related);
+  const words = familyWordsToSearch(related, mostWords);
   const settled = await Promise.allSettled(words.map((word) => search(word)));
   const hits: FamilyHit[] = [];
   settled.forEach((s, i) => {

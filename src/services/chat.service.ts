@@ -7282,7 +7282,21 @@ async function executeToolCall(
       if (threadId !== undefined && typeof input['tag_query'] === 'string') {
         noteSecondDegreeResult(threadId, input['tag_query'], found);
       }
-      return found;
+      // The tester's 1102 (C10): the second circle was searched under one word, so a
+      // vet saved as „ვეტექიმი" by one friend was never found when another friend's
+      // „ვეტერინარი" was. The profession's other words go too — three at most, since
+      // each costs seconds here.
+      const relatedHere = relatedProfessionWords(
+        typeof input['tag_query'] === 'string' ? input['tag_query'] : '',
+      );
+      if (relatedHere.length === 0) return found;
+      const widened = await searchProfessionFamily(
+        found,
+        relatedHere,
+        (word) => searchSecondDegree(userId, word),
+        MAX_SECOND_CIRCLE_FAMILY_WORDS,
+      );
+      return { ...widened, also_searched_note: ALSO_SEARCHED_NOTE };
     }
     case 'search_contacts_by_country':
       // `resolvePrefix` lowercases the country before anything else; an omitted
@@ -11696,6 +11710,7 @@ async function conversationIsDiscussion(threadId: number, userMessage: string): 
   }
 }
 
+const MAX_SECOND_CIRCLE_FAMILY_WORDS = 3;
 const OWNER_LINES_FOR_FACTS = 40;
 const OWNER_LINES_TIMEOUT_MS = 5_000;
 

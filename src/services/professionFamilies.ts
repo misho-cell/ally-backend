@@ -30,6 +30,9 @@ const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
   ['ბუღალტერი', 'ბუღალტერია', 'accountant', 'accounting'],
   ['დიზაინერი', 'დიზაინი', 'designer', 'design', 'UX', 'UI'],
   ['ექიმი', 'დოქტორი', 'doctor', 'MD'],
+  // The tester's 1102 (C10, six rounds): one friend saved the vet as „ვეტერინარი",
+  // another as „ვეტექიმი", and only one was ever found.
+  ['ვეტერინარი', 'ვეტექიმი', 'veterinarian', 'vet'],
 ];
 
 function normalized(word: string): string {

@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { claimsToHavePassedItOn, PASSED_ON_NUDGE } from '../replyGuards';
+import { relatedProfessionWords } from '../professionFamilies';
+import { whoseAsksWereThey } from '../taskAsks.service';
 
 /**
  * The tester's 1100 (round 5, GPT writing the answers).
@@ -63,5 +65,33 @@ describe('4 — a helper’s assistant that claims a send that did not happen', 
   it('keeps the nudge out of the owner’s history like the others', () => {
     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
     expect(set.slice(0, 200)).toContain('PASSED_ON_NUDGE');
+  });
+});
+
+/** The tester's 1102 (round 1 of the loop). */
+describe('1102 (a) — the second circle searches the profession’s other words', () => {
+  it('knows the vet family', () => {
+    expect(relatedProfessionWords('ვეტერინარი')).toContain('ვეტექიმი');
+  });
+
+  it('widens search_second_degree, at most three words, with the note', () => {
+    const handler = chat.slice(chat.indexOf("case 'search_second_degree': {")).slice(0, 2000);
+    expect(handler).toContain('(word) => searchSecondDegree(userId, word),');
+    expect(handler).toContain('MAX_SECOND_CIRCLE_FAMILY_WORDS,');
+    expect(chat).toContain('const MAX_SECOND_CIRCLE_FAMILY_WORDS = 3;');
+  });
+});
+
+describe('1102 (f) — whose questions filled a helper’s day', () => {
+  it('says they were the owner’s own when they were', () => {
+    expect(whoseAsksWereThey([{ from_user_id: 41 }, { from_user_id: '41' }], '41')).toBe(
+      'ყველა მფლობელის საკუთარი კითხვა იყო',
+    );
+    expect(whoseAsksWereThey([{ from_user_id: 7 }, { from_user_id: 8 }], '41')).toBe(
+      'სხვა ადამიანებისგან',
+    );
+    expect(whoseAsksWereThey([{ from_user_id: 41 }, { from_user_id: 8 }], '41')).toBe(
+      '1 მფლობელის საკუთარი, დანარჩენი სხვებისგან',
+    );
   });
 });

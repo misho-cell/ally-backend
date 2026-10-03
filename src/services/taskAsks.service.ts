@@ -252,6 +252,17 @@ const CONTINUE_BY_OTHER_ROUTES =
   ' მიზანი არ ჩერდება: ამავე გაშვებაში გააგრძელე სხვა გზებით (ქსელის სხვა ადამიანები, ' +
   'მეორე წრე, ვები), ნებართვის გარეშე. ეს ცალკე არ მოუყვე მფლობელს.';
 
+/** Whose the asks in a recipient's window were, said as the owner would read it. */
+export function whoseAsksWereThey(
+  rows: readonly { from_user_id: string | number }[],
+  ownerId: string,
+): string {
+  const own = rows.filter((r) => String(r.from_user_id) === ownerId).length;
+  if (own === 0) return 'სხვა ადამიანებისგან';
+  if (own === rows.length) return 'ყველა მფლობელის საკუთარი კითხვა იყო';
+  return `${own} მფლობელის საკუთარი, დანარჩენი სხვებისგან`;
+}
+
 /** Enough rows to find the reopening; a person never holds many asks in a day. */
 const RECEIVED_WINDOW_READ_LIMIT = 20;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -974,8 +985,8 @@ export async function createAsk(
   // from everyone together — the founder's „two messages to the same person".
   // A follow-up inside a live conversation is not a new question and is
   // capped separately (RELAY_MESSAGES_PER_PERSON_PER_DAY).
-  const receivedToday = await query<{ created_at: string | Date }>(
-    `SELECT created_at FROM task_asks
+  const receivedToday = await query<{ created_at: string | Date; from_user_id: string | number }>(
+    `SELECT created_at, from_user_id FROM task_asks
      WHERE to_user_id = $1 AND is_follow_up = FALSE
        AND created_at > NOW() - INTERVAL '24 hours'
      ORDER BY created_at ASC
@@ -1033,8 +1044,11 @@ export async function createAsk(
       // Tester 941: the run's own set_task_wake must not push the wake past this.
       reopens_at: reopensAt.toISOString(),
       error:
+        // The tester's 1102 (A13, 33013): „two new questions from other people" —
+        // they were this owner's own two. Whose they were is now counted, not assumed.
         `${toName}-ს ბოლო 24 საათში უკვე ${MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY} ახალი კითხვა ` +
-        'მიუვიდა სხვებისგან — ეს ზღვარი მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე ' +
+        `მიუვიდა — ${whoseAsksWereThey(receivedToday.rows, fromUserId)}. ` +
+        'ეს ზღვარი მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე ' +
         'დაწერე: „ბოლო 24 საათში". „დღეს" არ დაწერო — არც მაშინ იქნება სიმართლე, როცა ' +
         'წერ, არც მოგვიანებით. ' +
         /*
