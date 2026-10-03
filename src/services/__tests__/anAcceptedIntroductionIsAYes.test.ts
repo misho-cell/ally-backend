@@ -442,9 +442,10 @@ describe('the permission wall does not block the person who accepted either', ()
  */
 describe('the owner naming somebody outranks the draft, for that person only', () => {
   const service = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  // Lifted to module level on 3 October so the plan wall can ask it too.
   const matcher = service.slice(
-    service.indexOf('const ownerJustNamedThisPerson'),
-    service.indexOf('const draftIsWaiting'),
+    service.indexOf('async function ownerJustNamedPerson'),
+    service.indexOf('async function ownerNamedThemOutsidePlan'),
   );
 
   it('reads the owner’s own latest message, not the model’s and not an event', () => {
@@ -467,7 +468,7 @@ describe('the owner naming somebody outranks the draft, for that person only', (
   /** …but never reaches back past this goal, however many taps there were. */
   it('reads no line from before the goal', () => {
     expect(matcher).toContain("c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval");
-    expect(matcher).toContain('[threadId, task.created_at, TYPED_LINE_GRACE_MINUTES]');
+    expect(matcher).toContain('[person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES]');
     expect(service).toContain('const TYPED_LINE_GRACE_MINUTES = 15;');
   });
 
@@ -499,7 +500,7 @@ describe('the owner naming somebody outranks the draft, for that person only', (
 
   /** And the winner has to be the person we are about to write to. */
   it('opens only for the person the sentence actually named', () => {
-    expect(matcher).toContain('phoneDigits(best.phone) === phoneDigits(contactPhone)');
+    expect(matcher).toContain('phoneDigits(best.phone) === phoneDigits(person.contactPhone)');
   });
 
   /** Short labels are where a wrong recipient comes from: „ana" inside „Anano". */

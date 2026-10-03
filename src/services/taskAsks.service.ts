@@ -503,6 +503,97 @@ async function pickerFor(
   }
 }
 
+/** Who an owner's typed instruction is about — see the row 251 note in createAsk. */
+interface NamedPerson {
+  readonly threadId: number | undefined;
+  readonly taskId: number;
+  readonly taskCreatedAt: string;
+  readonly fromUserId: string;
+  readonly contactPhone: string;
+}
+
+/**
+ * Did the owner's own latest typed line instruct writing to exactly this
+ * person (D316)? Used by the permission wall and, since board #661's night
+ * (tester 1075, conversation 31787), by the plan wall too: „ask Maka" is the
+ * owner's consent to write to Maka whether or not the approved plan lists her.
+ * Before, the plan wall refused her and sent the model to propose a plan, the
+ * plan tool refused that and sent it back, and the owner was told a question
+ * was going out that never left.
+ */
+async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
+  if (person.threadId === undefined) return false;
+  try {
+    const said = await query<{ content: string }>(
+      `SELECT c.content FROM conversations c
+          WHERE c.thread_id = $1 AND c.role = 'user'
+            AND COALESCE(c.kind, '') <> 'event' AND c.content <> ''
+            AND c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+            AND NOT EXISTS (
+              SELECT 1 FROM conversations a
+               WHERE a.thread_id = c.thread_id AND a.role = 'assistant'
+                 AND a.created_at < c.created_at
+                 AND a.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+                 AND jsonb_typeof(a.choices) = 'array' AND a.choices ? c.content)
+          ORDER BY c.created_at DESC LIMIT 1`,
+      [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const line = said.rows[0]?.content ?? '';
+    if (!looksLikeContactInstruction(line)) return false;
+
+    // The owner's own phonebook decides which person that sentence names,
+    // and only an unambiguous answer counts.
+    const labels = await query<{ phone: string; alias: string }>(
+      `SELECT ua.phone, ua.alias
+           FROM "UserAlias" ua
+          WHERE ua."contactId" = $1::int
+            AND LENGTH(TRIM(ua.alias)) >= $3
+            AND POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
+          ORDER BY LENGTH(TRIM(ua.alias)) DESC
+          LIMIT 2`,
+      [person.fromUserId, line, MIN_NAMED_LABEL_CHARS],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const best = labels.rows[0];
+    if (best === undefined) return false;
+    const runnerUp = labels.rows[1];
+    // Two labels of the same length both inside the sentence name nobody.
+    if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
+      return false;
+    }
+    return phoneDigits(best.phone) === phoneDigits(person.contactPhone);
+  } catch (error) {
+    // Fails towards refusing, which is the direction this gate exists for.
+    // eslint-disable-next-line no-console
+    console.error(`[ask] task ${person.taskId}: could not read who the owner named:`, error);
+    return false;
+  }
+}
+
+/** The plan wall's D316 exception: the owner's own instruction names this person. */
+async function ownerNamedThemOutsidePlan(
+  threadId: number | undefined,
+  taskId: number,
+  fromUserId: string,
+  contactPhone: string,
+): Promise<boolean> {
+  const task = await getTaskById(taskId);
+  if (task === null) return false;
+  const named = await ownerJustNamedPerson({
+    threadId,
+    taskId,
+    taskCreatedAt: task.created_at,
+    fromUserId,
+    contactPhone,
+  });
+  if (named) {
+    // eslint-disable-next-line no-console
+    console.log(`[ask] task ${taskId}: outside the plan, but the owner named this person (D316)`);
+  }
+  return named;
+}
+
 export async function createAsk(
   fromUserId: string,
   taskId: number,
@@ -609,55 +700,14 @@ export async function createAsk(
      *
      * Lazy, like the one above: it runs only when a gate is about to refuse.
      */
-    const ownerJustNamedThisPerson = async (): Promise<boolean> => {
-      if (threadId === undefined) return false;
-      try {
-        const said = await query<{ content: string }>(
-          `SELECT c.content FROM conversations c
-            WHERE c.thread_id = $1 AND c.role = 'user'
-              AND COALESCE(c.kind, '') <> 'event' AND c.content <> ''
-              AND c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
-              AND NOT EXISTS (
-                SELECT 1 FROM conversations a
-                 WHERE a.thread_id = c.thread_id AND a.role = 'assistant'
-                   AND a.created_at < c.created_at
-                   AND a.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
-                   AND jsonb_typeof(a.choices) = 'array' AND a.choices ? c.content)
-            ORDER BY c.created_at DESC LIMIT 1`,
-          [threadId, task.created_at, TYPED_LINE_GRACE_MINUTES],
-          ASK_QUERY_TIMEOUT_MS,
-        );
-        const line = said.rows[0]?.content ?? '';
-        if (!looksLikeContactInstruction(line)) return false;
-
-        // The owner's own phonebook decides which person that sentence names,
-        // and only an unambiguous answer counts.
-        const labels = await query<{ phone: string; alias: string }>(
-          `SELECT ua.phone, ua.alias
-             FROM "UserAlias" ua
-            WHERE ua."contactId" = $1::int
-              AND LENGTH(TRIM(ua.alias)) >= $3
-              AND POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
-            ORDER BY LENGTH(TRIM(ua.alias)) DESC
-            LIMIT 2`,
-          [fromUserId, line, MIN_NAMED_LABEL_CHARS],
-          ASK_QUERY_TIMEOUT_MS,
-        );
-        const best = labels.rows[0];
-        if (best === undefined) return false;
-        const runnerUp = labels.rows[1];
-        // Two labels of the same length both inside the sentence name nobody.
-        if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
-          return false;
-        }
-        return phoneDigits(best.phone) === phoneDigits(contactPhone);
-      } catch (error) {
-        // Fails towards refusing, which is the direction this gate exists for.
-        // eslint-disable-next-line no-console
-        console.error(`[ask] task ${taskId}: could not read who the owner named:`, error);
-        return false;
-      }
-    };
+    const ownerJustNamedThisPerson = (): Promise<boolean> =>
+      ownerJustNamedPerson({
+        threadId,
+        taskId,
+        taskCreatedAt: task.created_at,
+        fromUserId,
+        contactPhone,
+      });
 
     if (!task.permission_granted && (await acceptedIntroductionToThisPerson())) {
       // eslint-disable-next-line no-console
@@ -1020,7 +1070,11 @@ export async function createAsk(
         'სხვა გზით. მფლობელს უთხარი, რომ ეს მისი გეგმის წესია და სხვა ადამიანი შესთავაზე.',
     };
   }
-  if (!verdict.allowed && parentAskId === undefined) {
+  if (
+    !verdict.allowed &&
+    parentAskId === undefined &&
+    !(await ownerNamedThemOutsidePlan(threadId, taskId, fromUserId, contactPhone))
+  ) {
     return {
       sent: false,
       reason: 'outside_plan',
