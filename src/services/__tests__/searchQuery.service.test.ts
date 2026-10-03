@@ -1,9 +1,8 @@
 const mockCreate = jest.fn();
 
-jest.mock('../../config/openai', () => ({
+jest.mock('../../config/anthropic', () => ({
   __esModule: true,
-  openaiClient: (): unknown =>
-    process.env.OPENAI_API_KEY ? { chat: { completions: { create: mockCreate } } } : null,
+  default: { messages: { create: (...args: unknown[]) => mockCreate(...args) } },
 }));
 jest.mock('../costLedger.service', () => ({
   __esModule: true,
@@ -26,8 +25,8 @@ const GOAL = 'ნოტარიუსი მჭირდება ბინი�
 
 function answers(text: string): void {
   mockCreate.mockResolvedValue({
-    choices: [{ message: { content: text } }],
-    usage: { prompt_tokens: 120, completion_tokens: 6 },
+    content: [{ type: 'text', text }],
+    usage: { input_tokens: 120, output_tokens: 6 },
   });
 }
 
@@ -36,7 +35,6 @@ let distilSearchQuery: typeof import('../searchQuery.service').distilSearchQuery
 beforeEach(async () => {
   jest.clearAllMocks();
   jest.resetModules();
-  process.env.OPENAI_API_KEY = 'sk-test';
   process.env.CHAT_FINAL_ANSWER_MODEL = 'gpt-5.6-terra';
   delete process.env.SEARCH_QUERY_MODEL;
   ({ distilSearchQuery } = await import('../searchQuery.service'));
@@ -73,9 +71,9 @@ describe('distilSearchQuery', () => {
     await distilSearchQuery(GOAL, CTX);
 
     const sent = mockCreate.mock.calls[0][0];
-    expect(sent.messages[1].content).toBe(`What they need:\n${GOAL}`);
-    expect(sent.messages[0].content).toContain('NEVER add a place');
-    expect(sent.messages[0].content).toContain('ONLY if the person named one');
+    expect(sent.messages[0].content).toBe(`What they need:\n${GOAL}`);
+    expect(sent.system).toContain('NEVER add a place');
+    expect(sent.system).toContain('ONLY if the person named one');
   });
 
   /**
@@ -88,7 +86,7 @@ describe('distilSearchQuery', () => {
     // Asserted on the brief as it is sent, because the behaviour it buys
     // belongs to a model and only the instruction is ours to guarantee.
     await distilSearchQuery(GOAL, CTX);
-    const brief = mockCreate.mock.calls[0][0].messages[0].content as string;
+    const brief = mockCreate.mock.calls[0][0].system as string;
 
     expect(brief).toContain('WHAT KIND of provider');
     expect(brief).toContain('WHY they are wanted');
@@ -102,7 +100,11 @@ describe('distilSearchQuery', () => {
     await distilSearchQuery(GOAL, CTX);
 
     expect(recordClaudeUsage).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'search_query', provider: 'openai', runId: 'run-1' }),
+      expect.objectContaining({
+        kind: 'search_query',
+        model: 'claude-haiku-4-5-20251001',
+        runId: 'run-1',
+      }),
     );
   });
 
@@ -120,26 +122,6 @@ describe('distilSearchQuery', () => {
 
       expect(out).toEqual({ query: GOAL });
       consoleSpy.mockRestore();
-    });
-
-    it('falls back when there is no key at all', async () => {
-      delete process.env.OPENAI_API_KEY;
-      jest.resetModules();
-      ({ distilSearchQuery } = await import('../searchQuery.service'));
-
-      const out = await distilSearchQuery(GOAL, CTX);
-
-      expect(out).toEqual({ query: GOAL });
-      expect(mockCreate).not.toHaveBeenCalled();
-    });
-
-    it('falls back when no model is configured — off is exactly today', async () => {
-      delete process.env.CHAT_FINAL_ANSWER_MODEL;
-      jest.resetModules();
-      ({ distilSearchQuery } = await import('../searchQuery.service'));
-
-      expect(await distilSearchQuery(GOAL, CTX)).toEqual({ query: GOAL });
-      expect(mockCreate).not.toHaveBeenCalled();
     });
 
     it('rejects an answer that is another sentence rather than a query', async () => {
@@ -179,14 +161,24 @@ describe('distilSearchQuery', () => {
     });
   });
 
-  it('SEARCH_QUERY_MODEL overrides the final-answer model when it is set', async () => {
+  /** Misho, 3 October: GPT writes the final answer, nothing else. */
+  it('runs on Claude even when GPT writes the answers, and ignores a GPT name here', async () => {
     process.env.SEARCH_QUERY_MODEL = 'gpt-cheap';
     jest.resetModules();
     ({ distilSearchQuery } = await import('../searchQuery.service'));
-    answers('ნოტარიუსი ბათუმი');
 
     await distilSearchQuery(GOAL, CTX);
 
-    expect(mockCreate.mock.calls[0][0].model).toBe('gpt-cheap');
+    expect(mockCreate.mock.calls[0][0].model).toBe('claude-haiku-4-5-20251001');
+  });
+
+  it('SEARCH_QUERY_MODEL may name another Claude model', async () => {
+    process.env.SEARCH_QUERY_MODEL = 'claude-sonnet-5';
+    jest.resetModules();
+    ({ distilSearchQuery } = await import('../searchQuery.service'));
+
+    await distilSearchQuery(GOAL, CTX);
+
+    expect(mockCreate.mock.calls[0][0].model).toBe('claude-sonnet-5');
   });
 });

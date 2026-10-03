@@ -1,5 +1,5 @@
-import { openaiClient } from '../config/openai';
-import { finalAnswerModel, toLedgerUsage } from './finalAnswer.service';
+import Anthropic from '@anthropic-ai/sdk';
+import anthropic from '../config/anthropic';
 import { recordClaudeUsage } from './costLedger.service';
 
 /**
@@ -30,20 +30,21 @@ import { recordClaudeUsage } from './costLedger.service';
  * reading the sentence, which is what a model is for.
  *
  * IT CAN ONLY IMPROVE THE QUERY OR LEAVE IT ALONE. Every failure path returns
- * the original text: no key, no model, a timeout, an error, an empty or
- * implausible answer. The worst case is exactly what happens today.
+ * the original text: a timeout, an error, an empty or implausible answer. The worst case is exactly what happens today.
  */
 
 /**
- * Its own variable, defaulting to whatever writes the final answer.
- *
- * A separate name means the cheap model can be changed for this without
- * touching the one that talks to the user; the default means it works the day
- * this deploys rather than the day somebody remembers to set a second
- * variable. Both unset = distillation off, and off is precisely today.
+ * Claude, never GPT. Misho, 3 October: GPT writes the final answer (and turns
+ * voice into text), nothing else. This used to fall back to the final-answer
+ * model, so switching GPT on for answers would have moved this step to GPT
+ * too. SEARCH_QUERY_MODEL may still name a Claude model; anything else in it
+ * is ignored.
  */
+const DEFAULT_QUERY_MODEL = 'claude-haiku-4-5-20251001';
+
 function queryModel(): string {
-  return process.env.SEARCH_QUERY_MODEL?.trim() || finalAnswerModel();
+  const chosen = process.env.SEARCH_QUERY_MODEL?.trim() ?? '';
+  return chosen.startsWith('claude') ? chosen : DEFAULT_QUERY_MODEL;
 }
 
 /**
@@ -91,7 +92,8 @@ const MAX_QUERY_CHARS = 120;
  *   17:31:09 [search-query] not distilled (empty answer); searching the goal
  *            text as typed
  *
- * gpt-5.6-terra is a reasoning model, and `max_completion_tokens` bounds the
+ * (History: this ran on gpt-5.6-terra until 3 October.) That is a reasoning
+ * model, and its `max_completion_tokens` bounded the
  * reasoning AND the reply together. A three-word sentence needs little
  * thinking and leaves room to answer in; Ninia's 160-character sentence with
  * its greeting, its cannery and its two requests spends the whole 64 on
@@ -198,18 +200,14 @@ export async function distilSearchQuery(
   ctx: DistilContext,
 ): Promise<DistilledQuery> {
   const model = queryModel();
-  const client = openaiClient();
-  if (model === '' || client === null) return declined(goalText, 'no model configured');
 
   try {
-    const completion = await client.chat.completions.create(
+    const response = await anthropic.messages.create(
       {
         model,
-        max_completion_tokens: MAX_OUTPUT_TOKENS,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt(goalText) },
-        ],
+        max_tokens: MAX_OUTPUT_TOKENS,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userPrompt(goalText) }],
       },
       { timeout: DISTIL_BUDGET_MS },
     );
@@ -221,12 +219,14 @@ export async function distilSearchQuery(
       userId: ctx.userId,
       kind: 'search_query',
       model,
-      provider: 'openai',
-      usage: toLedgerUsage(completion.usage),
+      usage: response.usage,
       runId: ctx.runId,
     }).catch(() => {});
 
-    const answer = completion.choices[0]?.message?.content ?? '';
+    const answer = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
     const distilled = usableQuery(answer);
     if (distilled === null)
       return declined(goalText, answer.trim() === '' ? 'empty answer' : 'unusable answer');
@@ -265,7 +265,7 @@ function declined(goalText: string, reason: string): DistilledQuery {
  * BEING HANDED THE NAME.
  *
  * What shipped on 22 September stops a person's name reaching the WEB SEARCH.
- * It sits after `distilSearchQuery`, which is a model call on OpenAI
+ * It sits after `distilSearchQuery`, which was then a model call on OpenAI
  * (`config/openai.ts`) and not on the model that answers the conversation. So
  * on „I want to be introduced to <a real person>" the name still left the
  * building — to a different company from the one the whole product runs on —
