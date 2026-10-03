@@ -1080,14 +1080,18 @@ const SET_TASK_BRIEF_TOOL: AnthropicTool = {
 const SET_TASK_WAKE_TOOL: AnthropicTool = {
   name: 'set_task_wake',
   description:
-    'Schedule when this task should wake YOU next (hours from now, 1–168) — e.g. 24 to check ' +
-    'unanswered asks tomorrow, or a deadline to summarize whatever arrived. Answers wake the ' +
-    'task immediately on their own; this is the fallback timer.',
+    'Schedule when this task should wake YOU next (hours from now, 0.25–168; 0.25 is 15 ' +
+    'minutes) — e.g. 24 to check unanswered asks tomorrow, a deadline to summarize whatever ' +
+    'arrived, or the owner\'s own „remind me in 15 minutes" (0.25). Answers wake the task ' +
+    'immediately on their own; this is the fallback timer.',
   input_schema: {
     type: 'object',
     properties: {
       task_id: { type: 'number', description: 'The task id from the system context.' },
-      hours: { type: 'number', description: 'Hours from now (1–168).' },
+      hours: {
+        type: 'number',
+        description: 'Hours from now (0.25–168). Minutes the owner asked for: minutes / 60.',
+      },
     },
     required: ['task_id', 'hours'],
   },
@@ -1102,6 +1106,10 @@ const SET_TASK_WAKE_TOOL: AnthropicTool = {
  * finish_task closed them on the model's judgement and the row could not tell
  * the two apart.
  */
+/** #502: the soonest a goal can wake again, a quarter hour; the latest, a week. */
+const MIN_WAKE_HOURS = 0.25;
+const MAX_WAKE_HOURS = 168;
+
 const SOLVED_LABEL = 'გადაწყდა';
 const NOT_YET_LABEL = 'ჯერ არა';
 const STOP_LABEL = 'შევაჩეროთ';
@@ -7703,7 +7711,12 @@ async function executeToolCall(
       return { updated: await setTaskBrief(userId, Number(input['task_id']), brief) };
     }
     case 'set_task_wake': {
-      const hours = Math.min(168, Math.max(1, Number(input['hours']) || 24));
+      // #502 (Ninia): „remind me in 15 minutes" was told the shortest is an
+      // hour. The wake ticker runs every 20 s, so a quarter hour is real.
+      const hours = Math.min(
+        MAX_WAKE_HOURS,
+        Math.max(MIN_WAKE_HOURS, Number(input['hours']) || 24),
+      );
       const wakeTaskId = Number(input['task_id']);
       const scheduled = await setTaskWake(userId, wakeTaskId, hours);
       // Tester 941 (goal 12211): a refused recipient reopens at a known minute,
