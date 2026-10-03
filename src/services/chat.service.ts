@@ -10142,6 +10142,9 @@ async function runToolLoop(
       model: TOOL_TURN_MODEL,
     });
   }
+  // Tester 1081 (32204, 32206): blank on the re-ask too. Said once here and
+  // answered by the text-only salvage below instead of failing the turn.
+  const blankAfterRetry = isBlankResponse(response);
   // When the fast tier is on, the user-facing answer must still come from the
   // strong model — set once a strong final has been generated.
   let finalFromStrong = false;
@@ -10493,6 +10496,33 @@ async function runToolLoop(
     if (bestStepId !== null) await deleteMessage(bestStepId);
     // Row 312: and off the screen too — it went out live as a step.
     emitStepRetracted(userId, threadId, runId, bestNarration);
+  }
+
+  /**
+   * Tester 1080/1081, conversation 32183: the owner's need was already a goal,
+   * the model closed the duplicate itself (update_task), set the brief and
+   * wrote no sentence. The owner's own turn then failed as „the reply did not
+   * come together", although the work was done. A turn the OWNER started that
+   * called tools and offered no buttons gets one text-only call to say what it
+   * did, the same salvage a crashed call already gets. System-started turns
+   * end quietly instead (quietSystemRun).
+   */
+  if (
+    finalText.trim() === '' &&
+    !ownerAbsent &&
+    (toolCallCount > 0 || blankAfterRetry) &&
+    choices === undefined &&
+    options === undefined
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[chat] run ${runId}: the owner's turn called ${toolCallCount} tool(s) and wrote nothing` +
+        `${blankAfterRetry ? ' (blank twice)' : ''} — asking for one line`,
+    );
+    finalText = scrubFinal(
+      await salvageFinalAnswer(messages, systemPrompt, tools, ctx, pending),
+      runId,
+    );
   }
 
   // If the final is a short "now let me check…" cliffhanger, nudge the model to
