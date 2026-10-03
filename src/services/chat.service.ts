@@ -46,6 +46,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
+import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
@@ -10258,6 +10259,38 @@ export const GOAL_CLOSE_NOT_ASKED =
   'If it repeats another open goal, say in one sentence where that goal stands and ask the ' +
   'owner whether to keep this one. Close a goal only on their word.';
 
+/** The tester's 1111: a long draft shortened to one screen, or null to send it whole. */
+async function shortenedDraft(
+  draft: string,
+  userId: string,
+  runId: string,
+  threadId: number,
+): Promise<string | null> {
+  const written = await writeFinalAnswer(
+    [{ role: 'user', content: draft }],
+    SHORTEN_DRAFT_PROMPT,
+    undefined,
+    runLang(runId),
+  );
+  if (written === null) return null;
+  await recordClaudeUsage({
+    userId,
+    kind: 'chat',
+    provider: 'openai',
+    model: written.model,
+    usage: written.usage,
+    runId,
+    threadId,
+  }).catch(() => {});
+  const accepted = acceptShortened(draft, scrubFinal(written.text, runId));
+  // eslint-disable-next-line no-console
+  console.log(
+    `[chat] run ${runId}: long draft ${draft.length} chars → ` +
+      (accepted === null ? 'kept whole' : `${accepted.length} chars`),
+  );
+  return accepted;
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -10814,6 +10847,10 @@ async function runToolLoop(
     answeredBy = MODEL;
     finalIsRewrite = false;
     promoted = true;
+    if (finalText.length > LONG_DRAFT_CHARS) {
+      const shorter = await shortenedDraft(finalText, userId, runId, threadId);
+      if (shorter !== null) finalText = shorter;
+    }
   }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
