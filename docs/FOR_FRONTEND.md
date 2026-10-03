@@ -18,7 +18,7 @@ messages in their name.
 ## 3 October, 10:50 — #71: export a conversation (`GET /threads/:id/export`)
 
 A real Ally customer asked for „export chat": she uses several assistants and will not
-explain her business twice. The server half is live (time below):
+explain her business twice. The server half is live since 10:50:51Z (924b630):
 
 ```
 GET /threads/:id/export
