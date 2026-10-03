@@ -996,6 +996,8 @@ const PLAN_WORDS: Record<RunLanguage, Record<string, string>> = {
 interface PlanPersonLine {
   readonly name: string;
   readonly note: string;
+  /** #380: the „and N more" count, already in its case — never declined as a name. */
+  readonly asIs?: boolean;
 }
 
 const withNote = (name: string, note: string): string => (note === '' ? name : `${name} ${note}`);
@@ -1020,7 +1022,7 @@ const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
     routes: (list) => `ვეძებ ამ გზებით — ${list}.`,
     ask: (people) =>
       `ვკითხავ ${joinWithAnd(
-        people.map((p) => withNote(geoName(p.name, 'dat'), p.note)),
+        people.map((p) => withNote(p.asIs === true ? p.name : geoName(p.name, 'dat'), p.note)),
         'და',
       )}.`,
     askNobody: 'ჯერ არავის ვწერ.',
@@ -1098,15 +1100,58 @@ export function routeAddressedToOwner(name: string, language: RunLanguage): stri
   );
 }
 
+/**
+ * Board #380 (Misho, 3 October: „კი, გააკეთე"): the plan the owner reads was
+ * too long to scan — two test plans ran 475 and 694 characters. Measured on
+ * the 368 plans of the three days before: 2.1 routes and 1.1 people on
+ * average, but route names of about sixty characters each and up to six
+ * people. So the text the server writes names at most two routes, each cut
+ * at a word to a short line, and at most three people; the rest is counted,
+ * not listed. The plan itself keeps every route and person, and nothing about
+ * who is written to changes — only what is read.
+ */
+const MAX_ROUTES_SHOWN = 2;
+const MAX_ROUTE_CHARS = 48;
+const MAX_PEOPLE_SHOWN = 3;
+
+const PLAN_MORE: Readonly<
+  Record<RunLanguage, { routes: (n: number) => string; people: (n: number) => string }>
+> = {
+  ka: {
+    routes: (n) => (n === 1 ? 'კიდევ ერთი' : `კიდევ ${n}`),
+    people: (n) => (n === 1 ? 'კიდევ ერთ ადამიანს' : `კიდევ ${n} ადამიანს`),
+  },
+  en: {
+    routes: (n) => (n === 1 ? 'one more' : `${n} more`),
+    people: (n) => (n === 1 ? 'one more person' : `${n} more people`),
+  },
+  ru: { routes: (n) => `ещё ${n}`, people: (n) => `ещё ${n}` },
+  es: { routes: (n) => `${n} más`, people: (n) => `${n} más` },
+};
+
+/** A route name cut at the last whole word that fits, with an ellipsis. */
+export function shortRouteName(name: string): string {
+  if (name.length <= MAX_ROUTE_CHARS) return name;
+  const cut = name.slice(0, MAX_ROUTE_CHARS);
+  const atWord = cut.lastIndexOf(' ');
+  return `${(atWord > MAX_ROUTE_CHARS / 2 ? cut.slice(0, atWord) : cut).replace(/[\s,;:—-]+$/u, '')}…`;
+}
+
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
-  const routes = plan.routes
+  const more = PLAN_MORE[language];
+  const allRoutes = plan.routes
     .map((r) => routeAddressedToOwner(withoutFinalStop(r.name), language))
     .filter((r) => r !== '');
-  const people: PlanPersonLine[] = plan.people_to_involve.map((p) => ({
+  const routes = allRoutes.slice(0, MAX_ROUTES_SHOWN).map(shortRouteName);
+  if (allRoutes.length > MAX_ROUTES_SHOWN)
+    routes.push(more.routes(allRoutes.length - MAX_ROUTES_SHOWN));
+  const people: PlanPersonLine[] = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN).map((p) => ({
     name: p.name,
     note: p.reach === undefined || p.reach === 'ok' ? '' : REACH_NOTE[language][p.reach],
   }));
+  const hiddenPeople = plan.people_to_involve.length - MAX_PEOPLE_SHOWN;
+  if (hiddenPeople > 0) people.push({ name: more.people(hiddenPeople), note: '', asIs: true });
   // D561 (Tornike, 1 October): the plan the owner reads no longer says when
   // the goal counts as solved. `solved_when` is still kept and tracked; it is
   // only not shown.
