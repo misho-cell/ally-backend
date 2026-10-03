@@ -1,4 +1,10 @@
-import { abandonExhaustedWakes, claimOverdueWakes, DAY_ONE_WAKE } from './engineWakes.service';
+import {
+  abandonExhaustedWakes,
+  claimOverdueWakes,
+  DAY_ONE_WAKE,
+  INTRO_OUTCOME_WAKE,
+  OverdueWake,
+} from './engineWakes.service';
 
 /**
  * Ticket 20 rows 231 and 239 — the net under the timers.
@@ -77,6 +83,10 @@ async function sweepOnce(): Promise<void> {
   // service, and a static import back into the engine would be a cycle.
   const engine = await import('./taskEngine.service');
   for (const wake of due) {
+    if (wake.kind === INTRO_OUTCOME_WAKE) {
+      rerunIntroOutcome(wake, engine);
+      continue;
+    }
     if (wake.kind !== DAY_ONE_WAKE) {
       // NOT „leaving it claimed", which is what this line used to say and is
       // not what happens: the claim expires in five minutes, the row comes back
@@ -100,6 +110,26 @@ async function sweepOnce(): Promise<void> {
     // goal is still open and still wants it before anything is written.
     engine.startDayOne(wake.taskId, 0);
   }
+}
+
+type Engine = typeof import('./taskEngine.service');
+
+/** An introduction's outcome a restart lost, re-run now with the words it carried. */
+function rerunIntroOutcome(wake: OverdueWake, engine: Engine): void {
+  if (!engine.isEventText(wake.eventText)) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[engine-wakes] task ${wake.taskId}: introduction outcome has no words to carry; ` +
+        `it will be retried until its attempts run out and then closed unrun`,
+    );
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.log(
+    `[engine-wakes] task ${wake.taskId}: introduction outcome was lost, running it now ` +
+      `(attempt ${wake.attempts})`,
+  );
+  engine.startIntroOutcome(wake.taskId, wake.eventText, 0);
 }
 
 export function startEngineWakeCron(): void {

@@ -6,6 +6,7 @@ import {
   claimOverdueWakes,
   DAY_ONE_WAKE,
   finishWake,
+  INTRO_OUTCOME_WAKE,
   recordWake,
   wakeDoneSince,
 } from '../engineWakes.service';
@@ -40,7 +41,7 @@ describe('recording a wake', () => {
     expect(sql).toContain('INSERT INTO engine_wakes');
     expect(sql).toContain('ON CONFLICT DO NOTHING');
     // Seconds, because make_interval takes seconds and the caller thinks in ms.
-    expect(mockQuery.mock.calls[0][1]).toEqual([7, DAY_ONE_WAKE, 3]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([7, DAY_ONE_WAKE, 3, null]);
   });
 
   /**
@@ -65,6 +66,20 @@ describe('recording a wake', () => {
     await expect(finishWake(7, DAY_ONE_WAKE)).resolves.toBeUndefined();
 
     quiet.mockRestore();
+  });
+
+  /** The tester's 1100 (goal 14966): an introduction's outcome keeps its words. */
+  it('writes an introduction outcome with the words it carries', async () => {
+    const words = { ka: 'გიორგიმ თანხმობა მისცა', en: 'Giorgi said yes' };
+    await recordWake(14966, INTRO_OUTCOME_WAKE, 6_000, words);
+
+    expect(sqlOf(0)).toContain('$4::jsonb');
+    expect(mockQuery.mock.calls[0][1]).toEqual([
+      14966,
+      INTRO_OUTCOME_WAKE,
+      6,
+      JSON.stringify(words),
+    ]);
   });
 
   it('finishing only closes a wake that is still open', async () => {
@@ -120,7 +135,9 @@ describe('claiming the overdue ones', () => {
 
     const claimed = await claimOverdueWakes(5);
 
-    expect(claimed).toEqual([{ id: '12', taskId: 6865, kind: DAY_ONE_WAKE, attempts: 2 }]);
+    expect(claimed).toEqual([
+      { id: '12', taskId: 6865, kind: DAY_ONE_WAKE, attempts: 2, eventText: null },
+    ]);
   });
 });
 

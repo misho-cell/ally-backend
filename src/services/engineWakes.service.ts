@@ -21,22 +21,26 @@ import { query } from '../db/postgres/client';
  * stays — it is instant and right three times in four — and the net turns a
  * lost wake from a day into about a minute.
  *
- * ONLY DAY ONE FOR NOW, deliberately. It is the one that was measured and the
- * one the seat's done-when is written about. The plan proposal and the
- * introduction outcome die the same way and can be added the same way, once
- * this has been watched working on something real.
+ * Day one first, deliberately: it is the one that was measured and the one
+ * the seat's done-when is written about. The introduction outcome followed on
+ * 3 October, after a restart lost goal 14966's (migration 202). The plan
+ * proposal dies the same way and can be added the same way.
  */
 
 const WAKE_QUERY_TIMEOUT_MS = 5_000;
 
-/** The only kind recorded today. A new kind is a new string and a caller. */
+/** A new kind is a new string, a caller and a handler in the sweeper. */
 export const DAY_ONE_WAKE = 'day_one';
+/** The tester's 1100 (goal 14966): an introduction's answer, lost to a restart. */
+export const INTRO_OUTCOME_WAKE = 'intro_outcome';
 
 export interface OverdueWake {
   readonly id: string;
   readonly taskId: number;
   readonly kind: string;
   readonly attempts: number;
+  /** The words the wake carries; null for a kind whose words are in the code. */
+  readonly eventText: unknown;
 }
 
 /**
@@ -47,13 +51,18 @@ export interface OverdueWake {
  * Never throws. A goal must not fail to be approved because the net could not
  * be written — the timer is still there and so is the day-long floor.
  */
-export async function recordWake(taskId: number, kind: string, dueInMs: number): Promise<void> {
+export async function recordWake(
+  taskId: number,
+  kind: string,
+  dueInMs: number,
+  eventText: unknown = null,
+): Promise<void> {
   try {
     await query(
-      `INSERT INTO engine_wakes (task_id, kind, due_at)
-       VALUES ($1, $2, NOW() + make_interval(secs => $3))
+      `INSERT INTO engine_wakes (task_id, kind, due_at, event_text)
+       VALUES ($1, $2, NOW() + make_interval(secs => $3), $4::jsonb)
        ON CONFLICT DO NOTHING`,
-      [taskId, kind, dueInMs / 1000],
+      [taskId, kind, dueInMs / 1000, eventText === null ? null : JSON.stringify(eventText)],
       WAKE_QUERY_TIMEOUT_MS,
     );
   } catch (err) {
@@ -130,6 +139,7 @@ export async function claimOverdueWakes(limit: number): Promise<OverdueWake[]> {
     task_id: number;
     kind: string;
     attempts: number;
+    event_text: unknown;
   }>(
     `UPDATE engine_wakes SET claimed_at = NOW(), attempts = attempts + 1
       WHERE id IN (
@@ -142,7 +152,7 @@ export async function claimOverdueWakes(limit: number): Promise<OverdueWake[]> {
          LIMIT $1
          FOR UPDATE SKIP LOCKED
       )
-      RETURNING id, task_id, kind, attempts`,
+      RETURNING id, task_id, kind, attempts, event_text`,
     [limit, MAX_ATTEMPTS, OVERDUE_AFTER_SECONDS, CLAIM_HOLDS_FOR_SECONDS],
     WAKE_QUERY_TIMEOUT_MS,
   );
@@ -151,6 +161,7 @@ export async function claimOverdueWakes(limit: number): Promise<OverdueWake[]> {
     taskId: r.task_id,
     kind: r.kind,
     attempts: r.attempts,
+    eventText: r.event_text ?? null,
   }));
 }
 

@@ -9,7 +9,13 @@ import {
   SWEEP_METHOD_CHANGES,
   SWEEP_SILENT_GOALS,
 } from './sweepClaim';
-import { DAY_ONE_WAKE, finishWake, recordWake, wakeDoneSince } from './engineWakes.service';
+import {
+  DAY_ONE_WAKE,
+  finishWake,
+  INTRO_OUTCOME_WAKE,
+  recordWake,
+  wakeDoneSince,
+} from './engineWakes.service';
 import { offersTheFinishCard, processChat } from './chat.service';
 import {
   getTaskById,
@@ -1197,16 +1203,42 @@ async function instructionStillWaiting(taskId: number): Promise<boolean> {
  */
 const INTRO_OUTCOME_DELAY_MS = 6_000;
 
-export function startIntroOutcome(taskId: number, eventText: EventText): void {
+/**
+ * The tester's 1100 (goal 14966): a restart six seconds after the answer lost
+ * this wake. It now leaves a row with its words, like day one, and the sweeper
+ * re-runs it with no delay. `delayMs` is a parameter for the sweeper only.
+ */
+export function startIntroOutcome(
+  taskId: number,
+  eventText: EventText,
+  delayMs: number = INTRO_OUTCOME_DELAY_MS,
+): void {
+  const queuedAt = new Date();
   // eslint-disable-next-line no-console
   console.log(`[task-engine] task ${taskId}: introduction outcome wake scheduled`);
+  void recordWake(taskId, INTRO_OUTCOME_WAKE, delayMs, eventText);
   wakeWhenFree(
     taskId,
     eventText,
-    () => goalOpen(taskId),
-    () => Promise.resolve(),
-    INTRO_OUTCOME_DELAY_MS,
+    async () => {
+      if (await wakeDoneSince(taskId, INTRO_OUTCOME_WAKE, queuedAt)) return false;
+      const open = await goalOpen(taskId);
+      if (!open) await finishWake(taskId, INTRO_OUTCOME_WAKE);
+      return open;
+    },
+    () => finishWake(taskId, INTRO_OUTCOME_WAKE),
+    delayMs,
+    1,
+    () => finishWake(taskId, INTRO_OUTCOME_WAKE),
   );
+}
+
+/** Whether a stored value is an event text: one string, or one per language. */
+export function isEventText(value: unknown): value is EventText {
+  if (typeof value === 'string') return value.trim() !== '';
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const entries = Object.values(value as Record<string, unknown>);
+  return entries.length > 0 && entries.every((v) => typeof v === 'string');
 }
 
 /**
