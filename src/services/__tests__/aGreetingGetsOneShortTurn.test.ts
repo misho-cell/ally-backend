@@ -54,7 +54,7 @@ describe('isBareGreeting', () => {
     expect(GREETING_TURN_NOTE).toMatch(/no tools/);
     expect(GREETING_TURN_NOTE).toMatch(/greet/i);
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('greetingOnly ? GREETING_TURN_NOTE : otherTap ? OTHER_CHOICE_TURN_NOTE');
+    expect(chat).toContain('const shortTurnNote = greetingOnly\n    ? GREETING_TURN_NOTE');
   });
 
   /** Task 695 (31886): the re-ask after a blank says the first try was empty. */

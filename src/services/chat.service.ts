@@ -13,6 +13,12 @@ import { endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
+import {
+  discussionHolds,
+  DISCUSS_MAX_TOKENS,
+  DISCUSS_TURN_NOTE,
+  lineDecidesDiscussion,
+} from './discussFirst';
 import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
@@ -9622,6 +9628,18 @@ function lastOwnerText(messages: readonly Anthropic.MessageParam[]): string | nu
   return typeof last.content === 'string' ? last.content : null;
 }
 
+/** #67: the owner's own typed lines in this run's history, newest first; events are ours. */
+function ownerLinesNewestFirst(messages: readonly Anthropic.MessageParam[]): string[] {
+  return messages
+    .filter(
+      (m): m is Anthropic.MessageParam & { content: string } =>
+        m.role === 'user' && typeof m.content === 'string',
+    )
+    .map((m) => m.content)
+    .filter((text) => !text.startsWith(RUN_EVENT_PREFIX))
+    .reverse();
+}
+
 async function callClaude(
   messages: Anthropic.MessageParam[],
   systemPrompt: string,
@@ -10155,11 +10173,20 @@ async function runToolLoop(
     (await getOpenTaskByThread(threadId).catch(() => null)) === null;
   // Tester 1088: the „other, I'll write it" label sent as text is one short line, no tools.
   const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));
-  const shortTurnNote = greetingOnly ? GREETING_TURN_NOTE : otherTap ? OTHER_CHOICE_TURN_NOTE : '';
+  // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
+  const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
+  const shortTurnNote = greetingOnly
+    ? GREETING_TURN_NOTE
+    : otherTap
+      ? OTHER_CHOICE_TURN_NOTE
+      : discussing
+        ? DISCUSS_TURN_NOTE
+        : '';
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: stream,
     model: TOOL_TURN_MODEL,
     ...((greetingOnly || otherTap) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
   });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
@@ -11563,6 +11590,34 @@ interface GoalForRequest {
   readonly repeats: Task | null;
 }
 
+const DISCUSSION_READ_TIMEOUT_MS = 5_000;
+const DISCUSSION_LINES_READ = 12;
+
+/**
+ * #67: the new line and the owner's earlier lines in this conversation, newest
+ * first, decide whether it is still a discussion. A failed read is not a
+ * discussion: the goal opens as it always has.
+ */
+async function conversationIsDiscussion(threadId: number, userMessage: string): Promise<boolean> {
+  const decided = lineDecidesDiscussion(userMessage);
+  if (decided !== null) return decided;
+  try {
+    const earlier = await query<{ content: string }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
+          AND content <> '' AND content NOT LIKE $2
+        ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
+      [threadId, `${RUN_EVENT_PREFIX}%`],
+      DISCUSSION_READ_TIMEOUT_MS,
+    );
+    return discussionHolds(earlier.rows.map((r) => r.content));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[goal-intent] thread ${threadId}: discussion not read:`, (err as Error).message);
+    return false;
+  }
+}
+
 async function ensureGoalForRequest(
   userId: string,
   threadType: string,
@@ -11572,6 +11627,12 @@ async function ensureGoalForRequest(
 ): Promise<GoalForRequest> {
   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
     return NO_GOAL_FOR_REQUEST;
+  // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
+  if (await conversationIsDiscussion(threadId, userMessage)) {
+    // eslint-disable-next-line no-console
+    console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
+    return NO_GOAL_FOR_REQUEST;
+  }
   // Row 103: the app flag may turn a statement into a goal; it may not turn a
   // question into one. Named in the log rather than dropped silently — a goal
   // that quietly does not appear is the mirror image of the bug being fixed.
