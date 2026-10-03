@@ -10,6 +10,8 @@ import {
   getPendingUpdates,
   listSeenUpdates,
   countHeldUpdates,
+  countUpdatesForBadge,
+  UpdateCounts,
   snoozeUpdate,
   markUpdateSeen,
   toUpdateRef,
@@ -136,6 +138,23 @@ interface UpdatesView {
  * reload is not a blank page. It is only this reply, where they are already
  * being shown as due, that they are not also history.
  */
+// #387, the frontend's ask (3 October): a read-only count for a sidebar badge.
+// GET / releases and marks what it returns, so it cannot be asked „how many";
+// this spends nothing.  GET /updates/count → { due, held }
+updatesRouter.get(
+  '/count',
+  async (req: Request, res: Response<ApiResponse<UpdateCounts>>): Promise<void> => {
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      res.status(200).json({ success: true, data: await countUpdatesForBadge(userId) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /updates/count]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesView>>) => {
   const userId = String((req as AuthenticatedRequest).user.userId);
   try {

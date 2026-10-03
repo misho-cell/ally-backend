@@ -483,6 +483,36 @@ export async function countHeldUpdates(userId: string): Promise<number> {
 }
 
 /**
+ * The frontend's ask for #387 (3 October): a count beside the sidebar link, so
+ * „kept for later" can be found the next day without opening the screen.
+ * getPendingUpdates cannot be asked, because asking it releases and marks what
+ * it counts. This reads only: `due` is what the screen would show now (the
+ * release query's own conditions, the sticky question included), `held` is
+ * what is waiting for a later day.
+ */
+export interface UpdateCounts {
+  readonly due: number;
+  readonly held: number;
+}
+
+export async function countUpdatesForBadge(userId: string): Promise<UpdateCounts> {
+  const result = await query<{ due: string; held: string }>(
+    `SELECT COUNT(*) FILTER (
+              WHERE p.release_at <= NOW()
+                AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
+            ) AS due,
+            COUNT(*) FILTER (WHERE p.release_at > NOW()) AS held
+       ${HELD_AND_STILL_REAL}`,
+    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, STICKY_KINDS],
+    QUERY_TIMEOUT_MS,
+  );
+  return {
+    due: Number(result.rows[0]?.due ?? 0),
+    held: Number(result.rows[0]?.held ?? 0),
+  };
+}
+
+/**
  * The ONE identifier for a waiting update, shared by every surface that names
  * one — the connector and the REST route both import these rather than each
  * spelling `upd_` out for itself.
