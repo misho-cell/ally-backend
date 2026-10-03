@@ -1528,8 +1528,11 @@ const INVITE_CONTACT_TOOL: AnthropicTool = {
     'text asks them to sign in with the same number (D61: waking these is how the network ' +
     'grows, they are targets and not members). Only somebody who has actually USED Netai is ' +
     'refused, and they can be asked directly in the app instead. Never a bare link, never ' +
-    "anyone's number. WHEN: the user asks whom to invite or wants to reach a named contact " +
-    'who is not on Netai. The USER sends the text themselves — Netai never messages them.',
+    "anyone's number. WHEN: the user asks for the text for a person, picks somebody from a " +
+    'list you gave, or wants to reach a named contact who is not on Netai. „Whom should I ' +
+    'invite / offer Netai to?" asks for NAMES, not texts: answer with three to five people, ' +
+    'one clear reason each, and call this only once the user picks one or asks for the text. ' +
+    'The USER sends the text themselves — Netai never messages them.',
   input_schema: {
     type: 'object',
     properties: {

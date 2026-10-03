@@ -94,12 +94,32 @@ const ABOUT_MY_OWN_GOALS_RE =
 const ABOUT_YOUR_ABILITIES_RE =
   /^\s*(რა\s+შეგიძლი|რის\s+გაკეთება\s+შეგიძლი|როგორ\s+მეხმარები|(what can you do|what are you able|what do you do)(?![\p{L}\p{N}]))/iu;
 
+/**
+ * Board #501 (Ninia, 2 Oct, threads 30496 and 30560): „ვის შევთავაზო Netai?",
+ * typed into the goal box, became goals 13665 and 13730. A goal runs its
+ * opening searches, so the reply led with a web line about an unrelated
+ * „NetAi Technology Stack" and ended in a plan to approve. The ask is a
+ * question about whom to offer the product to, and the answer is a short
+ * list of names, not a goal.
+ *
+ * Three halves, all required: the product is named, a „who" is followed by an
+ * offer or invite verb, and no need is stated. The last half keeps „find me
+ * someone who can sell Netai in Batumi" a goal.
+ */
+const WHO_TO_OFFER_RE =
+  /(ვის|who|whom)(?![\p{L}\p{N}])[^.?!]{0,30}?(შევთავაზ|შევსთავაზ|მოვიწვი|მოვიწვევ|ვურჩი|დავპატიჟ|invite|offer|recommend|pitch)/iu;
+
+function asksWhomToOfferNetai(text: string): boolean {
+  return ABOUT_THE_PRODUCT_RE.test(text) && WHO_TO_OFFER_RE.test(text) && !statesANeed(text);
+}
+
 export function isQuestionNotGoal(message: string): boolean {
   const text = message.trim();
   return (
     ASK_ABOUT_RE.test(text) ||
     ABOUT_MY_OWN_GOALS_RE.test(text) ||
-    ABOUT_YOUR_ABILITIES_RE.test(text)
+    ABOUT_YOUR_ABILITIES_RE.test(text) ||
+    asksWhomToOfferNetai(text)
   );
 }
 

@@ -228,8 +228,10 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'A personal invite for ONE contact who is NOT on Netai yet: returns ready-to-send text in ' +
       "the user's language carrying THEIR referral code (never a bare link, never anyone's " +
       'number), and records it so the same person is not offered twice (already_invited comes ' +
-      'back with the date). WHEN: the user asks whom to invite or wants to invite a named ' +
-      'contact. The USER sends the text themselves — Netai never messages non-members.',
+      'back with the date). WHEN: the user picks somebody to invite, asks for the text, or ' +
+      'wants to invite a named contact. „Whom should I invite?" asks for names: three to five ' +
+      'people, one reason each, and no text until the user asks for it. ' +
+      'The USER sends the text themselves — Netai never messages non-members.',
   },
   get_invite_link: {
     title: "Get the user's invite link",
