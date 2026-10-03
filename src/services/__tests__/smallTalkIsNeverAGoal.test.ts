@@ -60,3 +60,21 @@ describe('a small-talk conversation’s title', () => {
     expect(at).toBeLessThan(title.indexOf("await import('../config/anthropic')"));
   });
 });
+
+/** The tester's 1116: small talk bound to an old goal of the same words, and a hello in a goal. */
+describe('small talk and open goals', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('names no goal by title', () => {
+    expect(chat).toContain(
+      '!isSmallTalk(userMessage)\n      ? await findOpenTaskNamedIn(userId, userMessage)',
+    );
+  });
+
+  it('greets from the server inside a goal too, and gets no waiting block after tools', () => {
+    expect(chat).toContain(
+      'const greetingOnly = !ownerAbsent && isBareGreeting(lastOwnerText(messages));',
+    );
+    expect(chat).toContain('if (isSmallTalk(userMessage)) return true;');
+  });
+});

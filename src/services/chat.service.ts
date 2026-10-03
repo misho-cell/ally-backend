@@ -10305,6 +10305,9 @@ export function smallTalkTurn(
   turns: readonly Anthropic.MessageParam[],
 ): boolean {
   if (ownerAbsent || userMessage.trim().length > SMALL_TALK_MAX_CHARS) return false;
+  // The tester's 1116 (S10, S11): small talk answered after the inbox tools still
+  // got the block. A listed small-talk line gets none, whatever tools ran.
+  if (isSmallTalk(userMessage)) return true;
   return !turns.some(
     (t) =>
       t.role === 'assistant' &&
@@ -10470,10 +10473,9 @@ async function runToolLoop(
   // route reports a run error — there is no partial answer to salvage.
   // Tool turns run on TOOL_TURN_MODEL (same as MODEL unless the A/B flag is set).
   // #378: a bare greeting outside a goal is one short turn, no tools.
-  const greetingOnly =
-    !ownerAbsent &&
-    isBareGreeting(lastOwnerText(messages)) &&
-    (await getOpenTaskByThread(threadId).catch(() => null)) === null;
+  // The tester's 1116 (S10, 34606): a hello inside an open goal ran the inbox tools
+  // and the waiting block. The founder's rule (D617) holds in a goal too.
+  const greetingOnly = !ownerAbsent && isBareGreeting(lastOwnerText(messages));
   // The tester's 1114 (D617): a hello gets a hello at once — from the server, no model.
   if (greetingOnly) {
     clearInterval(heartbeat);
@@ -12408,8 +12410,12 @@ export async function processChat(
   // that goal (Ticket 10 Task 18). Only a regular thread qualifies — an ask,
   // an invite or a request thread is already a situation of its own — and an
   // engine event never names anything: it addresses the goal it runs in.
+  // The tester's 1116 (S11, 34670): „როგორ ხარ?" in a new conversation bound to an
+  // old test goal of the same words and ran a full goal turn. Small talk names no goal.
   const namedTask =
-    thread.type === 'regular' && !userMessage.startsWith(RUN_EVENT_PREFIX)
+    thread.type === 'regular' &&
+    !userMessage.startsWith(RUN_EVENT_PREFIX) &&
+    !isSmallTalk(userMessage)
       ? await findOpenTaskNamedIn(userId, userMessage).catch((err: unknown) => {
           // eslint-disable-next-line no-console
           console.warn('[goal-mention] lookup failed:', (err as Error).message);

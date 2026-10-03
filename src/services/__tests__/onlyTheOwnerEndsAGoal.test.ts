@@ -18,6 +18,10 @@ describe('the owner’s word that ends something', () => {
     'We no longer need this',
     'Закрой эту задачу',
     'Ya no lo necesito',
+    // The tester's 1116 (j): the app's own button.
+    'დავხუროთ ეს დავალება',
+    'დავხუროთ ეს მიზანი',
+    'შევაჩეროთ',
   ])('„%s" asks to end something', (line) => {
     expect(asksToEndSomething(line)).toBe(true);
   });
