@@ -10,7 +10,9 @@ import {
 } from './greetingTurn';
 import { goalsForRun } from './wakeGoalScope';
 import { endsQuietly } from './quietSystemRun';
-import { ALSO_SEARCH_NOTE, relatedProfessionWords } from './professionFamilies';
+import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
+import { searchProfessionFamily } from './professionSearch';
+import { pointsAtButtonsBelow } from './buttonsBelow';
 import { withOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
@@ -7206,11 +7208,13 @@ async function executeToolCall(
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
       const found = await runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
-      // #510: the profession's other words, searched in the same turn.
-      const alsoSearch = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
-      return alsoSearch.length === 0
-        ? found
-        : { ...found, also_search: alsoSearch, also_search_note: ALSO_SEARCH_NOTE };
+      // #510: the profession's other words, searched by the server in the same call.
+      const related = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
+      if (related.length === 0) return found;
+      const family = await searchProfessionFamily(found, related, (word) =>
+        searchByTag(userId, word),
+      );
+      return { ...family, also_searched_note: ALSO_SEARCHED_NOTE };
     }
     case 'search_by_insight':
       return runLoggedSearch(
@@ -12512,7 +12516,8 @@ export async function processChat(
   // Ticket 11 Task 1: the mechanical classes (bold, headers, em dashes) go
   // before the reply is stored, in the text and in every button label; a
   // reply that offers alternatives in words with no buttons is counted.
-  const storedReply = scrubMechanicalForStorage(reply);
+  // The tester's 1087: buttons sit under the message, so the text points down.
+  const storedReply = pointsAtButtonsBelow(scrubMechanicalForStorage(reply), safeChoices ?? null);
   /**
    * Ticket 20 row 106, second pass — a button label is text on the screen too.
    *

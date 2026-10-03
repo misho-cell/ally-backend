@@ -44,7 +44,8 @@ export function relatedProfessionWords(searched: string): readonly string[] {
   return family === undefined ? [] : family.filter((w) => normalized(w) !== key);
 }
 
-export const ALSO_SEARCH_NOTE =
-  'People are saved under the words their friends use, not the word asked with. Before you ' +
-  'answer, run search_by_tag for each word in also_search that you have not searched yet in ' +
-  'this turn, then answer from all of them together.';
+/** Board #510, 1086: the server searches the family itself; the run is told not to repeat it. */
+export const ALSO_SEARCHED_NOTE =
+  'People are saved under the words their friends use, not the word asked with. The words in ' +
+  'also_searched were searched together with yours and their people are already in results ' +
+  '(matched_word says which word found each one). Do not search them again; answer from these.';

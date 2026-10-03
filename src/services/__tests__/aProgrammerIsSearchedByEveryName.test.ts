@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ALSO_SEARCH_NOTE, relatedProfessionWords } from '../professionFamilies';
+import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from '../professionFamilies';
+import { mergeFamilyResults, searchProfessionFamily } from '../professionSearch';
 
 /**
  * Board #510 (conversation 30467): the real programmer, saved as a CTO and
@@ -29,15 +30,67 @@ describe('relatedProfessionWords', () => {
     expect(relatedProfessionWords('')).toEqual([]);
   });
 
-  it('asks for the words in the same turn, once each', () => {
-    expect(ALSO_SEARCH_NOTE).toContain('Before you answer');
-    expect(ALSO_SEARCH_NOTE).toContain('that you have not searched yet');
+  it('tells the run the words were already searched', () => {
+    expect(ALSO_SEARCHED_NOTE).toContain('were searched together with yours');
+    expect(ALSO_SEARCHED_NOTE).toContain('Do not search them again');
   });
 
-  it('is attached to the tag search result', () => {
+  it('is searched by the server inside the tag search', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const handler = chat.slice(chat.indexOf("case 'search_by_tag': {"));
-    expect(handler.slice(0, 700)).toContain('relatedProfessionWords(');
-    expect(handler.slice(0, 700)).toContain('also_search: alsoSearch');
+    const handler = chat.slice(chat.indexOf("case 'search_by_tag': {")).slice(0, 900);
+    expect(handler).toContain('relatedProfessionWords(');
+    expect(handler).toContain('await searchProfessionFamily(found, related, (word) =>');
+    expect(handler).toContain('searchByTag(userId, word)');
+  });
+});
+
+/**
+ * The tester's 1086: the model searched five of eleven words, never „CTO", and
+ * answered „no programmer" twice. The server now searches the family itself.
+ */
+describe('searchProfessionFamily', () => {
+  const sandro = { phone: 'phone-id-1', name: 'Sandro CTO', tags: ['CTO'] };
+
+  it('finds the CTO when the owner asked for a programmer', async () => {
+    const search = jest.fn(async (word: string) =>
+      word === 'CTO' ? { found: true, results: [sandro] } : { found: false },
+    );
+    const merged = await searchProfessionFamily(
+      { found: false, query: 'პროგრამისტი' },
+      relatedProfessionWords('პროგრამისტი'),
+      search,
+    );
+    expect(search).toHaveBeenCalledWith('CTO');
+    expect(merged).toMatchObject({
+      found: true,
+      count: 1,
+      results: [{ ...sandro, matched_word: 'CTO' }],
+    });
+    expect((merged as { also_searched: string[] }).also_searched).toContain('CTO');
+  });
+
+  it('lists a person found by two words once', () => {
+    const merged = mergeFamilyResults({ found: true, results: [sandro] }, [
+      { word: 'CTO', result: { results: [{ ...sandro, phone: 'phone-id-1' }] } },
+    ]);
+    expect(merged).toMatchObject({ count: 1 });
+  });
+
+  it('leaves out approximate matches of the other words', () => {
+    const merged = mergeFamilyResults({ found: false }, [
+      { word: 'IT', result: { results: [{ phone: '1', name: 'Mitya', approximate: true }] } },
+    ]);
+    expect(merged).toMatchObject({ found: false, count: 0 });
+  });
+
+  it('skips a word whose search failed and keeps the rest', async () => {
+    const search = jest.fn(async (word: string) => {
+      if (word === 'IT') throw new Error('timeout');
+      return word === 'CTO' ? { results: [sandro] } : { results: [] };
+    });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const merged = await searchProfessionFamily({ found: false }, ['IT', 'CTO'], search);
+    expect(merged).toMatchObject({ found: true, count: 1, also_searched: ['CTO'] });
+    warn.mockRestore();
   });
 });
