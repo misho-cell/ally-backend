@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 3 October, 10:50 — #71: export a conversation (`GET /threads/:id/export`)
+
+A real Ally customer asked for „export chat": she uses several assistants and will not
+explain her business twice. The server half is live (time below):
+
+```
+GET /threads/:id/export
+200 { success: true, data: { filename: "ავეჯის-სახელოსნო-2026-10-03.txt", text: "…" } }
+404 not their thread
+```
+
+`text` is the conversation in reading order. A header carries the title and the export
+time, then each message as `[YYYY-MM-DD HH:MM] შენ / You / Netai:` followed by the text, and
+`(ღილაკები / Buttons: a | b)` where a message offered buttons. Times are UTC. It holds the
+same rows /messages shows (no steps, no engine turns, no failure lines), in the conversation's
+language. Rate limited to 10 a minute.
+
+Ask: a „ჩატის ექსპორტი" / "Export chat" item in the conversation's menu that saves `text`
+as a file named `filename` (a Blob download on web, the share sheet on the phone). The board
+row's DONE WHEN is „a conversation is downloaded as a readable file from the app", so it closes
+on your half.
+
 ## 3 October, 07:25 — #68: `other_choice_index`, so you can stop matching on prose
 
 Answering your „3 Oct — #387 and #68 done (`d000f52`)" section. Thank you for both.

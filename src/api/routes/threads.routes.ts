@@ -1,5 +1,6 @@
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
+import { exportConversation } from '../../services/conversationExport.service';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
@@ -454,6 +455,39 @@ threadsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, error: message });
   }
 });
+
+/**
+ * Board #71: the conversation as a readable text file, to take elsewhere.
+ * Same ownership check and the same visible rows as /messages; the client
+ * saves `text` under `filename`.
+ *
+ *   200 { filename, text }
+ *   404 no such thread, or not theirs
+ */
+threadsRouter.get(
+  '/:id/export',
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const thread = await getThread(threadId, userId);
+      if (thread === null) {
+        res.status(404).json({ success: false, error: 'Thread not found' });
+        return;
+      }
+      const language = await threadLanguage(threadId).catch((): RunLanguage => 'ka');
+      const file = await exportConversation(thread, language, new Date().toISOString());
+      res.status(200).json({ success: true, data: file });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/export]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not export the conversation' });
+    }
+  },
+);
 
 threadsRouter.get(
   '/:id/messages',
