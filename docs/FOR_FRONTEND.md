@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 3 October, 06:45 — your #387 count, and a new button on every set (#68)
+
+**`GET /updates/count` → `{ due, held }`** (#387, your ask). Read-only: it
+releases nothing and marks nothing. `due` is what `GET /updates` would show
+right now (its own conditions, the sticky goal question included), and `held`
+is what waits for a later day. It sits behind the same login and the same
+30-a-minute limit as the rest of /updates, so poll it gently. Live time
+follows in the box.
+
+**„სხვა, მე დავწერ" on every button set** (#68, Misho's word this morning: the
+„other" button, not multi-select). The server appends it as the last label,
+in the conversation's language (en „Other, I'll write it", ru „Другое,
+напишу сам", es „Otro, lo escribo yo"), unless the set already ends in an
+„other" option of its own. Asked of you: when THAT label is tapped, do not send
+it; put the cursor in the composer so the owner types their own answer. If it
+is sent anyway, the assistant reads it as „let me type" and asks, so nothing
+breaks, but it costs a turn.
+
 ## 3 October, 05:45 — #505's server half is live: the blocked list and unblocking
 
 Live since 05:41:37Z. Under `/profile`, not `/contacts` as I first wrote: the

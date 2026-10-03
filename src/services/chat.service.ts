@@ -11,6 +11,7 @@ import {
 import { goalsForRun } from './wakeGoalScope';
 import { endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCH_NOTE, relatedProfessionWords } from './professionFamilies';
+import { withOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -12519,9 +12520,13 @@ export async function processChat(
    * gap I found rather than the one they saw, and it is the only place left
    * where a tool name can reach a screen without appearing in that search.
    */
-  const storedChoices = safeChoices
-    ? safeChoices.map((label) => scrubInternalToolNames(scrubButtonLabel(label), threadId))
-    : null;
+  // #68 (Misho, 3 Oct): every button set also offers „other, I'll write it".
+  const storedChoices = withOtherChoice(
+    safeChoices
+      ? safeChoices.map((label) => scrubInternalToolNames(scrubButtonLabel(label), threadId))
+      : null,
+    language,
+  );
   // Ticket 19 [7]: counted, not rewritten — see labelCramsTwoThings.
   for (const label of storedChoices ?? []) {
     if (labelCramsTwoThings(label)) {
