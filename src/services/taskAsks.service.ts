@@ -1001,11 +1001,18 @@ export async function createAsk(
     const reopensAt = recipientWindowReopensAt(
       receivedToday.rows.map((r) => new Date(r.created_at)),
     );
-    // The tester's 983: the question itself is kept, so the wake at the
-    // reopening knows exactly what to send — it has passed every consent
-    // gate above, so it needs no second yes.
+    // The tester's 983 and board #391: the question itself is kept, and the
+    // server sends it at the reopening — it has passed every consent gate
+    // above, so it needs no second yes.
     try {
-      await holdAsk(taskId, toUserId, toName, trimmed, reopensAt);
+      await holdAsk({
+        taskId,
+        toUserId,
+        contactName: toName,
+        contactPhone,
+        question: trimmed,
+        reopensAt,
+      });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn(`[ask] task ${taskId}: could not hold the question:`, (err as Error).message);

@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
-import { heldAsksWakeNote, releaseDueHeldAsks } from './heldAsks.service';
+import { releaseDueHeldAsks } from './heldAsks.service';
+import { heldAsksSentNote, sendReleasedHeldAsks } from './heldAskSend.service';
 import { doNotRepeatNote, lastAssistantMessage } from './lastReplyNote';
 import { query } from '../db/postgres/client';
 import {
@@ -720,8 +721,9 @@ const SCHEDULED_WAKE_TEXT =
   'დაგეგმილი შემოწმების დროა — გადახედე დავალებას და გადადგი შემდეგი ნაბიჯი.';
 
 /**
- * The tester's 983: a scheduled wake also says which held questions have had
- * their recipient's window reopen, so the run sends them instead of guessing.
+ * The tester's 983 and board #391: at a scheduled wake the server sends the
+ * held questions whose recipient's window has reopened, and the run is told
+ * what went instead of being asked to send it.
  */
 async function scheduledWakeText(taskId: number): Promise<string> {
   const notes = await Promise.all([heldNote(taskId), lastReplyNote(taskId)]);
@@ -731,10 +733,14 @@ async function scheduledWakeText(taskId: number): Promise<string> {
 async function heldNote(taskId: number): Promise<string | null> {
   try {
     const held = await releaseDueHeldAsks(taskId);
-    return held.length === 0 ? null : heldAsksWakeNote(held);
+    if (held.length === 0) return null;
+    const task = await getTaskById(taskId);
+    if (task === null) return null;
+    const owner = { ownerId: task.user_id, taskId, threadId: task.thread_id ?? undefined };
+    return heldAsksSentNote(await sendReleasedHeldAsks(owner, held));
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error(`[task-engine] task ${taskId}: held questions not read:`, (err as Error).message);
+    console.error(`[task-engine] task ${taskId}: held questions not sent:`, (err as Error).message);
     return null;
   }
 }
