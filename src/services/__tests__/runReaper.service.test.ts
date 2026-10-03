@@ -491,3 +491,39 @@ describe('row 332 — the caption a reaped run leaves behind', () => {
     expect(() => assertPlaceholdersMatchParams(sql, params)).not.toThrow();
   });
 });
+
+/**
+ * 3 October, thread 30727: a scheduled check was cut off by a deploy, and the
+ * sweep told an owner whose last word was the day before that their reply had
+ * failed. „Asked" now means the owner's own message is the newest user turn.
+ */
+describe('a dead system run', () => {
+  it('asks whether the newest user turn is the owner’s message, not an engine event', async () => {
+    reaped([]);
+    await sweepOrphanedRuns();
+    const sql = String(mockQuery.mock.calls[0][0]);
+    const asked = sql.slice(0, sql.indexOf('AS was_asked'));
+    const lastSelect = asked.slice(asked.lastIndexOf('COALESCE(('));
+    expect(lastSelect).toContain("SELECT c.kind = 'message'");
+    expect(lastSelect).toContain("c.role = 'user'");
+    expect(lastSelect).toContain('ORDER BY c.created_at DESC');
+    expect(lastSelect).toContain('LIMIT 1');
+  });
+
+  it('clears the status and writes no error when nobody was waiting', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    reaped([
+      {
+        id: 30727,
+        user_id: 173920,
+        status: 'failed',
+        answered: false,
+        was_asked: false,
+        already_told: false,
+      },
+    ]);
+    await sweepOrphanedRuns();
+    expect(saveThreadMessage).not.toHaveBeenCalled();
+    expect(updateThreadStatus).toHaveBeenCalledWith(30727, 'failed', expect.anything());
+  });
+});

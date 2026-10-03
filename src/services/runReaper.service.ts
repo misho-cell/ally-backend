@@ -161,6 +161,13 @@ export async function sweepOrphanedRuns(): Promise<number> {
      * written when it is true.
      */
     was_asked: boolean;
+    /*
+     * 3 October, thread 30727: a scheduled check (an engine event at 14:49:20)
+     * was cut off by a deploy's drain at 14:50:51, and this sweep wrote „your
+     * reply could not be finished, try again" to an owner whose last word was
+     * the day before. `was_asked` now means the owner's own message is the
+     * newest user turn, so a dead system run clears the status and says nothing.
+     */
     /**
      * 22 September — somebody has ALREADY told this owner, and it was not this
      * sweep.
@@ -198,14 +205,18 @@ export async function sweepOrphanedRuns(): Promise<number> {
                   AND c.kind = 'message' AND c.content <> ''
                   AND c.created_at > NOW() - ($1 || ' seconds')::interval * 2
               ) AS answered,
-              -- Row 33: has the owner ever typed in this thread at all? An
-              -- engine wake is stored role='user' too, so this asks for a real
-              -- human turn — kind='message', not 'event'.
-              EXISTS (
-                SELECT 1 FROM conversations c
+              -- Row 33, and the engine run of 3 October: was the dead run
+              -- answering the OWNER? Their message must be the newest user
+              -- turn. An engine wake is stored role='user' too, as an 'event',
+              -- and a wake newer than the owner's last word means the run was
+              -- the system's own, which nobody is waiting on.
+              COALESCE((
+                SELECT c.kind = 'message'
+                FROM conversations c
                 WHERE c.thread_id = t.id AND c.role = 'user'
-                  AND c.kind = 'message' AND c.content <> ''
-              ) AS was_asked,
+                ORDER BY c.created_at DESC
+                LIMIT 1
+              ), false) AS was_asked,
               -- The shutdown drain's own sentence, written the instant it gave
               -- up on the run. The status still needs clearing; the sentence
               -- does not need saying twice.
@@ -255,10 +266,10 @@ export async function sweepOrphanedRuns(): Promise<number> {
             'status cleared, no second error shown',
         );
       } else if (!thread.was_asked) {
-        // Row 33: nobody has asked anything here, so no reply of theirs failed.
+        // Row 33: no question of the owner's is waiting here, so no reply of theirs failed.
         // eslint-disable-next-line no-console
         console.warn(
-          `[run-reaper] thread ${thread.id} was stale on 'working' with no question on it — ` +
+          `[run-reaper] thread ${thread.id} was stale on 'working' with no question of the owner's waiting — ` +
             'status cleared, no error shown',
         );
       } else {
