@@ -26,12 +26,18 @@ describe('a draft step written beside the closing tool', () => {
 
   /** The tester's 1109: GPT's line alone had lost the findings; Claude's answer is the reply. */
   it('becomes the reply in place of GPT’s line, as one copy', () => {
-    const at = chat.indexOf('if (finalIsRewrite && !buriedAnswer && draft !== null) {');
+    const at = chat.indexOf('} else if (finalIsRewrite && !buriedAnswer && draft !== null) {');
     expect(at).toBeGreaterThan(-1);
     const block = chat.slice(at, at + 600);
     expect(block).toContain('await dropDraftSteps(userId, threadId, runId, draftSteps);');
     expect(block).toContain('finalText = draft.text;');
     expect(block).toContain('answeredBy = MODEL;');
+  });
+
+  it('keeps a GPT answer that says more than the draft', () => {
+    expect(chat).toContain(
+      'if (finalIsRewrite && !buriedAnswer && draft !== null && draft.text.length < finalText.length) {',
+    );
   });
 
   it('takes the fullest draft', () => {

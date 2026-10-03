@@ -10740,7 +10740,11 @@ async function runToolLoop(
    * GPT's line goes; one copy, the full one.
    */
   const draft = longestDraft(draftSteps);
-  if (finalIsRewrite && !buriedAnswer && draft !== null) {
+  // Only when the draft says at least as much: a GPT answer fuller than the
+  // draft keeps its place, and the draft step still goes so it is said once.
+  if (finalIsRewrite && !buriedAnswer && draft !== null && draft.text.length < finalText.length) {
+    await dropDraftSteps(userId, threadId, runId, draftSteps);
+  } else if (finalIsRewrite && !buriedAnswer && draft !== null) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
     // eslint-disable-next-line no-console
     console.log(
