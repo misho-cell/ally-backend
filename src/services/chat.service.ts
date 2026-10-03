@@ -13,6 +13,7 @@ import { endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
+import { factChangedIn, factChangedRefusal } from './factKeeping';
 import {
   discussionHolds,
   DISCUSS_MAX_TOKENS,
@@ -1029,7 +1030,10 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
     'want to ASK — for someone found through search_second_degree that is the BRIDGE (a phone ' +
     'from via_contacts), never the second-degree person’s own phone: they are not your contact ' +
     'and are usually not a member. Never put phone numbers ' +
-    'inside the question text. WORDING: the first words of the ask are the question itself, ' +
+    'inside the question text. FACTS: keep every fact exactly as the owner wrote it — who it ' +
+    'is for, when, where, how much. Never add a reason, a beneficiary („for a friend") or a time ' +
+    'of your own, and never change one („last year" stays last year); the server holds back a ' +
+    'question that does. WORDING: the first words of the ask are the question itself, ' +
     "never a greeting — that opening line becomes the title of the thread on the recipient's " +
     'phone, and "hello NAME" as a title makes every question look identical in their list. ' +
     "Every ask carries the sender's name — anonymous asks do not exist in this product; " +
@@ -7712,6 +7716,13 @@ async function executeToolCall(
         };
       }
       const question = String(input['question'] ?? '');
+      // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
+      const changed = factChangedIn(question, await ownerLinesForGoal(task, threadId));
+      if (changed !== null) {
+        // eslint-disable-next-line no-console
+        console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, ${changed.change}`);
+        return { sent: false, reason: 'fact_changed', error: factChangedRefusal(changed) };
+      }
       const askOutcome = await createAsk(
         userId,
         taskId,
@@ -11620,6 +11631,40 @@ async function conversationIsDiscussion(threadId: number, userMessage: string): 
     // eslint-disable-next-line no-console
     console.warn(`[goal-intent] thread ${threadId}: discussion not read:`, (err as Error).message);
     return false;
+  }
+}
+
+const OWNER_LINES_FOR_FACTS = 40;
+const OWNER_LINES_TIMEOUT_MS = 5_000;
+
+/**
+ * #100: what the owner has said about this goal, in their own words — its
+ * title and description and their typed lines in its conversation and in the
+ * one this run is in. A failed read gives the title and description alone,
+ * which only makes the check more willing to let the question through.
+ */
+async function ownerLinesForGoal(
+  task: { title: string; description?: string | null; thread_id: number | null },
+  threadId: number | undefined,
+): Promise<string[]> {
+  const fromTask = [task.title, task.description ?? ''].filter((t) => t.trim() !== '');
+  const threads = [
+    ...new Set([task.thread_id, threadId ?? null].filter((t): t is number => t !== null)),
+  ];
+  try {
+    const typed = await query<{ content: string }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = ANY($1::int[]) AND role = 'user' AND kind = 'message'
+          AND content <> '' AND content NOT LIKE $2
+        ORDER BY created_at DESC LIMIT ${OWNER_LINES_FOR_FACTS}`,
+      [threads, `${RUN_EVENT_PREFIX}%`],
+      OWNER_LINES_TIMEOUT_MS,
+    );
+    return [...fromTask, ...typed.rows.map((r) => r.content)];
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[fact-keeping] owner lines not read:', (err as Error).message);
+    return fromTask;
   }
 }
 

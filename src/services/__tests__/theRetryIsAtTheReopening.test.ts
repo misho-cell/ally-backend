@@ -18,7 +18,7 @@ describe('the retry happens when the recipient can be asked again', () => {
 
   it('ask_contact remembers it for the goal', () => {
     const tool = chat.slice(chat.indexOf("case 'ask_contact': {"));
-    expect(tool.slice(0, 4000)).toContain(
+    expect(tool.slice(0, 6000)).toContain(
       'noteWakeNoLaterThan(runId, taskId, (askOutcome as { reopens_at?: unknown }).reopens_at);',
     );
   });
