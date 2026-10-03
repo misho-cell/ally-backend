@@ -46,7 +46,7 @@ describe('a conversation as a text file', () => {
       NOW,
     );
     expect(text).toBe(
-      'ავეჯის სახელოსნო\nNetai-დან ექსპორტი, 2026-10-03 10:45\n\n' +
+      'ავეჯის სახელოსნო\nNetai-დან ექსპორტი, 2026-10-03 10:45 (დრო UTC-ით)\n\n' +
         '[2026-10-03 09:30] შენ:\nშეკვეთით ვაკეთებ სამზარეულოებს.\n\n' +
         '[2026-10-03 09:31] Netai:\nვისთან მუშაობ უფრო ხშირად?\n' +
         '(ღილაკები: კერძო კლიენტები | დეველოპერები)\n',
@@ -55,7 +55,9 @@ describe('a conversation as a text file', () => {
 
   it('speaks English to an English conversation', () => {
     const text = conversationText(null, [msg({ content: 'hi' })], 'en', NOW);
-    expect(text.startsWith('Conversation\nExported from Netai, 2026-10-03 10:45')).toBe(true);
+    expect(
+      text.startsWith('Conversation\nExported from Netai, 2026-10-03 10:45 (times in UTC)'),
+    ).toBe(true);
     expect(text).toContain('] You:\nhi');
   });
 

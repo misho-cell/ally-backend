@@ -29,14 +29,14 @@ const WORDS: Readonly<Record<'ka' | 'en', ExportWords>> = {
   ka: {
     owner: 'შენ',
     assistant: 'Netai',
-    exported: (date) => `Netai-დან ექსპორტი, ${date}`,
+    exported: (date) => `Netai-დან ექსპორტი, ${date} (დრო UTC-ით)`,
     buttons: 'ღილაკები',
     untitled: 'საუბარი',
   },
   en: {
     owner: 'You',
     assistant: 'Netai',
-    exported: (date) => `Exported from Netai, ${date}`,
+    exported: (date) => `Exported from Netai, ${date} (times in UTC)`,
     buttons: 'Buttons',
     untitled: 'Conversation',
   },
