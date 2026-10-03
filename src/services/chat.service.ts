@@ -332,7 +332,7 @@ import {
   NOTHING_TO_STOP_LINE,
   alreadyStoppedLine,
 } from './goalStop.service';
-import { looksLikeStopRequest } from './stopIntent';
+import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
@@ -7039,12 +7039,15 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
  * heartbeat can repeat it instead of „still working, deep search takes time".
  */
 const runLastCaption = new Map<string, string>();
+/** The owner's own line this run answers; absent on a run the system started. */
+const runOwnerLine = new Map<string, string>();
 
 function clearRunState(runId: string): void {
   runAllowedNumbers.delete(runId);
   runWebPages.delete(runId);
   runModes.delete(runId);
   runLastCaption.delete(runId);
+  runOwnerLine.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
   runCreatedGoals.delete(runId);
@@ -8220,6 +8223,15 @@ async function executeToolCall(
         }
       }
       const closing = status === 'closed';
+      // The tester's 1108 (33540): a run closed its own goal as a duplicate with
+      // nobody asking. Only the owner's own word ends a goal from a run.
+      if (closing && runId !== undefined && !asksToEndSomething(runOwnerLine.get(runId) ?? '')) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[goal-close] run ${runId} thread ${threadId ?? '-'}: refused to close ${taskIdToUpdate} — the owner did not ask`,
+        );
+        return { updated: false, error: GOAL_CLOSE_NOT_ASKED };
+      }
       const toStop = closing ? await getTaskById(taskIdToUpdate) : null;
       if (closing && (toStop === null || String(toStop.user_id) !== userId)) {
         return { updated: false };
@@ -10129,6 +10141,55 @@ function lastUserText(messages: readonly Anthropic.MessageParam[]): string {
   return '';
 }
 
+/**
+ * The tester's 1108 (33538, 33560, 33504, 33536): the plan, or the question,
+ * on the screen twice. Claude wrote its whole answer as text beside the
+ * closing tool (present_choices, propose_task_plan); that text was saved as a
+ * step, and GPT then wrote the final from the same material in other words, so
+ * the repeat check, which compares words, could not see it. A step written in
+ * such a round is Claude's draft of the answer; when GPT's answer stands in its
+ * place, the draft goes.
+ */
+const ANSWER_ROUND_TOOLS: ReadonlySet<string> = new Set(['present_choices', 'propose_task_plan']);
+
+export function isAnswerRound(roundToolNames: readonly string[]): boolean {
+  return roundToolNames.some((name) => ANSWER_ROUND_TOOLS.has(name));
+}
+
+interface SavedStep {
+  readonly id: number;
+  readonly text: string;
+}
+
+async function dropDraftSteps(
+  userId: string,
+  threadId: number,
+  runId: string,
+  steps: readonly SavedStep[],
+): Promise<void> {
+  for (const step of steps) {
+    try {
+      await deleteMessage(step.id);
+      emitStepRetracted(userId, threadId, runId, step.text);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[chat] run ${runId}: could not drop a draft step:`, (err as Error).message);
+    }
+  }
+  if (steps.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[chat] run ${runId} thread ${threadId}: dropped ${steps.length} draft step(s) — GPT's answer stands`,
+    );
+  }
+}
+
+/** What the model reads when it tries to close a goal the owner did not ask to close. */
+export const GOAL_CLOSE_NOT_ASKED =
+  'Not closed: the owner did not ask to stop or close this goal in this conversation. ' +
+  'If it repeats another open goal, say in one sentence where that goal stands and ask the ' +
+  'owner whether to keep this one. Close a goal only on their word.';
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -10408,6 +10469,7 @@ async function runToolLoop(
   // text, so a pending-request line ends the answer rather than replacing it).
   let bestNarration = '';
   let bestStepId: number | null = null;
+  const draftSteps: SavedStep[] = [];
 
   try {
     while (
@@ -10436,6 +10498,7 @@ async function runToolLoop(
       if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
           bestNarration = narration;
           bestStepId = stepId;
@@ -10505,6 +10568,7 @@ async function runToolLoop(
       if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
           bestNarration = narration;
           bestStepId = stepId;
@@ -10660,6 +10724,9 @@ async function runToolLoop(
    * last wrote. Read by the cliffhanger check below — see the note there.
    */
   let promoted = false;
+  if (finalIsRewrite && !buriedAnswer && finalText.trim() !== '') {
+    await dropDraftSteps(userId, threadId, runId, draftSteps);
+  }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
     promoted = true;
@@ -11350,6 +11417,13 @@ const INTERNAL_ID_WRAPPED_RE = new RegExp(
   'g',
 );
 const INTERNAL_ID_RE = new RegExp(`\\s*\\b(?:${INTERNAL_ID_NAMES})\\s*[:=]?\\s*\\d+`, 'g');
+/**
+ * The tester's 1108 (world 9, A13): „(D316)" reached an owner. Our own
+ * model-facing sentences cite founder decisions by number, „… for exactly that
+ * (D316)", and the model copied one. A decision number in brackets, alone or
+ * several, is ours and never the owner's.
+ */
+const DECISION_ID_WRAPPED_RE = /\s*[([]\s*D\d{1,4}(?:\s*[,;/]\s*D\d{1,4})*\s*[)\]]/g;
 
 /**
  * Ticket 19 [6]. What survives when the checker replaces a reply's text.
@@ -11465,6 +11539,7 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
   // and the bare rule alone would leave an empty one behind.
   let out = text.replace(INTERNAL_ID_WRAPPED_RE, removeInternalId);
   out = out.replace(INTERNAL_ID_RE, removeInternalId);
+  out = out.replace(DECISION_ID_WRAPPED_RE, removeInternalId);
   INTERNAL_TOOL_NAME_RE.lastIndex = 0;
   if (INTERNAL_TOOL_NAME_RE.test(out)) {
     const replacement = internalNameReplacement(out);
@@ -12131,6 +12206,7 @@ export async function processChat(
   // then still needs a language for its error line.
   let language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
+  if (!ownerAbsent) runOwnerLine.set(runId, userMessage);
   // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
   // name; tool results join it as they arrive, web-search snippets excepted.
   recordRunEvidence(runId, userMessage);

@@ -114,3 +114,18 @@ export function looksLikeStopRequest(message: string): boolean {
   if (GOAL_NEGATED.test(text)) return false;
   return NAMES_THE_GOAL.test(text);
 }
+
+/**
+ * The tester's 1108 (33540): a run closed its own goal as a duplicate, with
+ * nobody having asked, and the owner read „I stopped it" under a request they
+ * had just made. A goal is closed from a run only when the owner's own line in
+ * that run asks to end something: a stop, a close, a cancel, „no longer need".
+ * Looser than `looksLikeStopRequest` on purpose: that one answers from code
+ * before the model sees the line; this one only lets the model act on it.
+ */
+const END_VERB =
+  /(დახურ|გააუქმ|აღარ\s+მჭირდ|აღარ\s+გვჭირდ|\bclose\b|\bcancel|no\s+longer\s+need|don'?t\s+need\s+(?:it|this)|закр|отмен|не\s+нужн|cerrar|cancela|ya\s+no\s+(?:lo\s+)?necesit)/iu;
+
+export function asksToEndSomething(message: string): boolean {
+  return STOP_VERB.test(message) || END_VERB.test(message);
+}

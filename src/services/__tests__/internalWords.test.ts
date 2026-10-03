@@ -289,3 +289,24 @@ describe('an id inside a web address stays', () => {
     );
   });
 });
+
+/** The tester's 1108 (world 9, A13): a founder decision number reached the owner. */
+describe('decision numbers', () => {
+  beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => undefined));
+  afterEach(() => jest.restoreAllMocks());
+
+  it('are removed with their brackets', () => {
+    expect(scrubInternalToolNames('Netai უფასოა საწყის ეტაპზე (D316).', 1)).toBe(
+      'Netai უფასოა საწყის ეტაპზე.',
+    );
+    expect(scrubInternalToolNames('The plan is the consent [D119, D316] here.', 1)).toBe(
+      'The plan is the consent here.',
+    );
+  });
+
+  it('leave a word or a model name that only looks like one', () => {
+    expect(scrubInternalToolNames('Canon D300 and section D of the form', 1)).toBe(
+      'Canon D300 and section D of the form',
+    );
+  });
+});
