@@ -172,7 +172,7 @@ const PRICE_OR_DEFINITION_RE =
  * A stated need, by the stems alone — without the length floor and the question
  * check that `looksLikeGoalRequest` adds on top for a different question.
  */
-function statesANeed(text: string): boolean {
+export function statesANeed(text: string): boolean {
   return NEED_RE_KA.test(text) || NEED_RE_EN.test(text) || NEED_RE_ES.test(text);
 }
 

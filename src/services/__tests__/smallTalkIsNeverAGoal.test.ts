@@ -34,8 +34,29 @@ describe('small talk', () => {
   it('opens no goal, whatever button it was typed after', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const gate = chat.indexOf('if (isSmallTalk(userMessage)) {');
-    const flag = chat.indexOf('if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage))');
+    const flag = chat.indexOf(
+      'const flaggedNeed = intent?.asGoal === true && statesANeed(userMessage);',
+    );
     expect(gate).toBeGreaterThan(-1);
     expect(flag).toBeGreaterThan(gate);
+  });
+});
+
+/** The tester's 1114: the list missed the next wording; the flag alone no longer opens a goal. */
+describe('the new-goal flag', () => {
+  it('needs a stated need, and a short line answered with no tool gets no waiting list', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('if (!flaggedNeed && !looksLikeGoalRequest(userMessage)) {');
+    expect(chat).toContain('if (smallTalkTurn(ownerAbsent, userMessage, pending)) {');
+  });
+});
+
+/** The tester's 1114 (34585, 34587, 34590): titles that refused or misnamed a greeting. */
+describe('a small-talk conversation’s title', () => {
+  it('is its own words, with no title model', () => {
+    const title = readFileSync(join(__dirname, '..', 'threadTitle.service.ts'), 'utf8');
+    const at = title.indexOf('if (isSmallTalk(firstMessage)) {');
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(title.indexOf("await import('../config/anthropic')"));
   });
 });

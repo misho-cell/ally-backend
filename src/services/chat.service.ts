@@ -2,12 +2,8 @@ import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
-import {
-  BLANK_RETRY_NOTE,
-  GREETING_MAX_TOKENS,
-  greetingTurnNote,
-  isBareGreeting,
-} from './greetingTurn';
+import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
+import { greetingName, greetingText, registeredName } from './serverGreeting';
 import { goalsForRun } from './wakeGoalScope';
 import { endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
@@ -296,6 +292,7 @@ import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
 import {
   looksLikeGoalRequest,
+  statesANeed,
   goalTitleFrom,
   isQuestionNotGoal,
   looksLikeContactInstruction,
@@ -10299,6 +10296,26 @@ async function shortenedDraft(
   return accepted;
 }
 
+/** A line short enough to be small talk, when nothing was looked up to answer it. */
+const SMALL_TALK_MAX_CHARS = 60;
+
+export function smallTalkTurn(
+  ownerAbsent: boolean,
+  userMessage: string,
+  turns: readonly Anthropic.MessageParam[],
+): boolean {
+  if (ownerAbsent || userMessage.trim().length > SMALL_TALK_MAX_CHARS) return false;
+  return !turns.some(
+    (t) =>
+      t.role === 'assistant' &&
+      typeof t.content !== 'string' &&
+      t.content.some((b) => b.type === 'tool_use'),
+  );
+}
+
+/** Stamped on a reply the server wrote itself (answered_by). */
+const SERVER_GREETING_AUTHOR = 'server';
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -10457,21 +10474,29 @@ async function runToolLoop(
     !ownerAbsent &&
     isBareGreeting(lastOwnerText(messages)) &&
     (await getOpenTaskByThread(threadId).catch(() => null)) === null;
+  // The tester's 1114 (D617): a hello gets a hello at once — from the server, no model.
+  if (greetingOnly) {
+    clearInterval(heartbeat);
+    const language = runLang(runId);
+    const name = greetingName(await registeredName(userId), language);
+    // eslint-disable-next-line no-console
+    console.log(`[greeting] run ${runId}: answered by the server`);
+    return {
+      finalText: greetingText(name, await ownerHasContacts(userId), language),
+      pending,
+      requestCreated: false,
+      answeredBy: SERVER_GREETING_AUTHOR,
+    };
+  }
   // Tester 1088: the „other, I'll write it" label sent as text is one short line, no tools.
   const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
-  const shortTurnNote = greetingOnly
-    ? greetingTurnNote(await ownerHasContacts(userId))
-    : otherTap
-      ? OTHER_CHOICE_TURN_NOTE
-      : discussing
-        ? DISCUSS_TURN_NOTE
-        : '';
+  const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: stream,
     model: TOOL_TURN_MODEL,
-    ...((greetingOnly || otherTap) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    ...(otherTap && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
   });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
@@ -12072,7 +12097,21 @@ async function ensureGoalForRequest(
       return NO_GOAL_FOR_REQUEST;
     }
   }
-  if (intent?.asGoal !== true && !looksLikeGoalRequest(userMessage)) return NO_GOAL_FOR_REQUEST;
+  /*
+   * The tester's 1114 (seat 16, the founder's D617): the small-talk list held for
+   * its own lines and missed the next wording — „გამარჯობა, როგორ ხარ?", „დილა
+   * მშვიდობისა", a sum, a joke — each a goal with a full goal turn after the
+   * new-goal button. The flag no longer decides alone: it lifts the length floor,
+   * and the message must still state a need. Anything else is answered as a
+   * question, and the model can still open a goal itself when it sees one.
+   */
+  const flaggedNeed = intent?.asGoal === true && statesANeed(userMessage);
+  if (!flaggedNeed && !looksLikeGoalRequest(userMessage)) {
+    if (intent?.asGoal === true)
+      // eslint-disable-next-line no-console
+      console.log(`[goal-intent] thread ${threadId}: app flag ignored, no need stated`);
+    return NO_GOAL_FOR_REQUEST;
+  }
   try {
     if ((await getOpenTaskByThread(threadId)) !== null) return NO_GOAL_FOR_REQUEST;
     /**
@@ -13146,7 +13185,18 @@ export async function processChat(
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was
   // WAITING — a request, an old introduction, a follow-up — now goes out as
   // its own message, after it, with buttons the server wrote.
-  await deliverPendingMessages(userId, threadId, runId, language, pendingItems);
+  // The tester's 1114 (seat 16, D617): „გამარჯობა, როგორ ხარ?" got „10 of your
+  // goals wait for your answer" under the greeting. A short line answered with no
+  // tool at all is small talk: what waits is said when the owner asks or works,
+  // not under a hello. Nothing is lost; the items are read again next run.
+  if (smallTalkTurn(ownerAbsent, userMessage, pending)) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[pending] run ${runId}: ${pendingItems.length} waiting item(s) held back — small talk`,
+    );
+  } else {
+    await deliverPendingMessages(userId, threadId, runId, language, pendingItems);
+  }
   // The goal this thread carries was worked on now (Ticket 11 Task 7 (a):
   // `last_activity_at` read 4 Sep on a goal whose thread held 6 Sep messages).
   void touchTaskActivityForThread(threadId).catch(() => undefined);

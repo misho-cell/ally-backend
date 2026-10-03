@@ -5,14 +5,8 @@
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import {
-  BLANK_RETRY_NOTE,
-  EMPTY_PHONEBOOK_GREETING_NOTE,
-  GREETING_MAX_TOKENS,
-  GREETING_TURN_NOTE,
-  greetingTurnNote,
-  isBareGreeting,
-} from '../greetingTurn';
+import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from '../greetingTurn';
+import { greetingName, greetingText } from '../serverGreeting';
 
 describe('isBareGreeting', () => {
   it.each([
@@ -24,6 +18,9 @@ describe('isBareGreeting', () => {
     'Good morning.',
     'привет',
     'Здравствуйте!',
+    // The tester's 1114 (34593, 34597).
+    'გამარჯობა, როგორ ხარ?',
+    'დილა მშვიდობისა',
   ])('treats %p as only a greeting', (text: string) => {
     expect(isBareGreeting(text)).toBe(true);
   });
@@ -48,24 +45,25 @@ describe('isBareGreeting', () => {
     expect(GREETING_MAX_TOKENS).toBeLessThanOrEqual(500);
   });
 
-  /**
-   * Tester 1071/1072: on prompt v3 the tool-less greeting turn came back
-   * blank 52 times out of 54 blanks. The turn now says what it is.
-   */
-  it('tells the model the turn has no tools and only needs a greeting back', () => {
-    expect(GREETING_TURN_NOTE).toMatch(/no tools/);
-    expect(GREETING_TURN_NOTE).toMatch(/greet/i);
+  /** The tester's 1114 (D617): a hello gets a hello at once, written by the server. */
+  it('is answered by the server before any model turn', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      'const shortTurnNote = greetingOnly\n    ? greetingTurnNote(await ownerHasContacts(userId))',
+    const greet = chat.indexOf('if (greetingOnly) {');
+    const firstCall = chat.indexOf(
+      'let response = await callClaude(messages, systemPrompt + shortTurnNote',
     );
+    expect(greet).toBeGreaterThan(-1);
+    expect(firstCall).toBeGreaterThan(greet);
+    expect(chat.slice(greet, greet + 600)).toContain('clearInterval(heartbeat);');
   });
 
-  /** The tester's loop, H3: an empty account's greeting says to import contacts. */
-  it('asks an owner with no contacts to import them, and only that owner', () => {
-    expect(greetingTurnNote(true)).toBe(GREETING_TURN_NOTE);
-    expect(greetingTurnNote(false)).toBe(GREETING_TURN_NOTE + EMPTY_PHONEBOOK_GREETING_NOTE);
-    expect(EMPTY_PHONEBOOK_GREETING_NOTE).toMatch(/import their contacts/);
+  it('greets by name in the reply’s own script, and asks an empty account to import contacts', () => {
+    expect(greetingText(greetingName('თორნიკე აბულაძე', 'ka'), true, 'ka')).toBe(
+      'გამარჯობა, თორნიკე! რით დაგეხმარო?',
+    );
+    expect(greetingName('Tornike', 'ka')).toBeNull();
+    expect(greetingText(null, true, 'en')).toBe('Hello! How can I help?');
+    expect(greetingText(null, false, 'ka')).toContain('კონტაქტები აპში შემოიტანე');
   });
 
   /** Task 695 (31886): the re-ask after a blank says the first try was empty. */

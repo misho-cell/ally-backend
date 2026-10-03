@@ -1,3 +1,4 @@
+import { isSmallTalk } from './smallTalk';
 import { recordClaudeUsage } from './costLedger.service';
 import { updateThreadTitle } from './threads.service';
 import { emitThreadUpdated } from './sse.service';
@@ -145,6 +146,18 @@ export async function generateThreadTitle(
   // title saw text the strip was about to remove.
   finalReply?: string,
 ): Promise<void> {
+  // The tester's 1114 (34585, 34587, 34590): a greeting or small talk got titles
+  // like „this dialogue cannot be given a title". Its own words are the title.
+  if (isSmallTalk(firstMessage)) {
+    const plain = sanitizeTitle(firstMessage);
+    if (plain === null) return;
+    await updateThreadTitle(threadId, plain).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[title] could not set thread ${threadId}:`, (err as Error).message),
+    );
+    emitThreadUpdated(userId, { id: threadId, title: plain });
+    return;
+  }
   try {
     const { default: anthropic } = await import('../config/anthropic');
     const exchange = finalReply

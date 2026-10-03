@@ -98,6 +98,6 @@ describe('the label arriving as text', () => {
     expect(chat).toContain(
       'const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));',
     );
-    expect(chat).toContain('...((greetingOnly || otherTap) && { forceText: true');
+    expect(chat).toContain('...(otherTap && { forceText: true');
   });
 });
