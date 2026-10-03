@@ -331,7 +331,7 @@ import {
 } from './goalStop.service';
 import { looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
-import { APPROVE_LABEL } from './choiceNotes';
+import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
@@ -4635,12 +4635,6 @@ async function writeSentOutcome(searchId: number, userId: string, reason: string
  * the new wordings are the display labels themselves plus the obvious way each
  * is typed, nothing looser.
  */
-const CHANGE_LABEL: Record<RunLanguage, string> = {
-  ka: 'შევცვალოთ',
-  en: 'Change it',
-  ru: 'Изменить',
-  es: 'Cambiarlo',
-};
 /**
  * Every stem in here is one the model has actually written on a live plan card.
  * The list grows by evidence, and the 18 September entry cost a dead button.

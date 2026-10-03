@@ -144,6 +144,8 @@ async function flagGoal(
         task_id: taskId,
         goal_title: task.title,
         question: carried,
+        // Board #102: a plan waiting for its yes is approved or changed from the card itself.
+        plan_waiting: task.plan_proposed !== null,
         /**
          * ⚠️ IT USED TO SAY „ASK THEM THE QUESTION VERBATIM", AND THIS ITEM IS
          * ALREADY A CARD THAT ASKS IT — item E, the founder, thread 24487.

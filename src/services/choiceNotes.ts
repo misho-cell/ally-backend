@@ -21,6 +21,14 @@ export const APPROVE_LABEL: Readonly<Record<RunLanguage, string>> = {
   es: 'Lo apruebo',
 };
 
+/** The change button's label per language, beside approve so both cards use one wording. */
+export const CHANGE_LABEL: Readonly<Record<RunLanguage, string>> = {
+  ka: 'შევცვალოთ',
+  en: 'Change it',
+  ru: 'Изменить',
+  es: 'Cambiarlo',
+};
+
 const APPROVE_NOTE: Readonly<Record<RunLanguage, string>> = {
   ka: 'დამტკიცების შემდეგ Netai შენი სახელით მისწერს გეგმაში დასახელებულ ადამიანებს.',
   en: 'Once you approve, Netai writes to the people in the plan in your name.',

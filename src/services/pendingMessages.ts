@@ -1,6 +1,7 @@
 import { geoName } from './georgianCase';
 import { GOAL_FEEDBACK_QUESTIONS, GoalFeedbackKey, feedbackWording } from './goalFeedback.service';
 import { RunLanguage } from './runLanguage';
+import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 
 /**
  * Ticket 16 Task 98: one answer answers one question.
@@ -341,6 +342,20 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
   },
 };
 
+/**
+ * Board #102 (plate F3): a reminder about a plan waiting for its yes asked
+ * „approve or change?" and offered only „answer now" / „later", so the owner
+ * could not approve from it. When the goal's plan is waiting, the card carries
+ * the plan card's own buttons. The approve tap meets the same consent wall as
+ * the plan card's: the card is on screen with the approve label, and the tap
+ * is the owner's own.
+ */
+const PLAN_CARD_TAP_NOTE =
+  'This card is about a plan waiting for approval. The approve button is handled by the ' +
+  'server exactly as the plan card’s own (row 323): it approves and tells you, and you say in ' +
+  'one line that the plan now runs. If they tap change, ask in one line what to change. ' +
+  '„Later" is accepted as it is.';
+
 function textsFor(language: RunLanguage): PendingTexts {
   return language === 'ka' ? TEXTS.ka : TEXTS.en;
 }
@@ -408,11 +423,14 @@ export function renderPendingMessage(
       const goal = str(p, 'goal_title');
       if (goal === null) return null;
       const question = str(p, 'question');
+      const planWaiting = p['plan_waiting'] === true;
       return {
         text: question === null ? t.goalQuestionBare(goal) : t.goalQuestionWith(goal, question),
-        choices: [t.goalAnswerNow, t.later],
+        choices: planWaiting
+          ? [APPROVE_LABEL[language], CHANGE_LABEL[language], t.later]
+          : [t.goalAnswerNow, t.later],
         ref: { kind: item.kind, ...(item.task_id !== null && { task_id: item.task_id }) },
-        instruction,
+        instruction: planWaiting ? `${instruction} ${PLAN_CARD_TAP_NOTE}` : instruction,
       };
     }
     case 'debrief': {
