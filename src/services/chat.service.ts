@@ -45,6 +45,7 @@ import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
+import { heldAsksNote } from './heldAskNote.service';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
@@ -3965,6 +3966,20 @@ const NO_DIRECT_LINE =
   'კონტაქტად არ არის. „პირდაპირ" ღილაკი არასოდეს შესთავაზო — მხოლოდ „ჩემი გავლით" / ' +
   '„არა, ამჯერად".';
 
+/** The tester's 1110: whose asks held a question back; nothing when it cannot be read. */
+async function heldAsksNoteOrNothing(taskId: number, userId: string): Promise<string> {
+  try {
+    return await heldAsksNote(taskId, userId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[held-ask] task ${taskId}: could not read held questions:`,
+      (err as Error).message,
+    );
+    return '';
+  }
+}
+
 /** Whether this run's request has no number to hand over (G6); false when it cannot be read. */
 async function directIsImpossible(userId: string, req: ThreadRequest | null): Promise<boolean> {
   if (req === null || req.direct || req.status !== 'pending') return false;
@@ -4303,6 +4318,7 @@ async function buildAgentSystemPrompt(
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
   const noDirect = await directIsImpossible(userId, threadRequest);
+  const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4317,6 +4333,7 @@ async function buildAgentSystemPrompt(
       buildInsightFieldsSection(fieldsResult.rows) +
       // Per-situation — changes when the work does.
       (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
+      heldNote +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.
