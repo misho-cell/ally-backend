@@ -10477,6 +10477,9 @@ async function runToolLoop(
       plainSystemPrompt(systemPrompt) +
         gptBlocks +
         GPT_NAMES_WHO_IT_FOUND +
+        // The tester's 1096 (32608): a discussion turn's rule reached Claude only, and
+        // GPT, writing the answer, named the owner's winery from the saved profile.
+        shortTurnNote +
         gptLanguageLast(runLang(runId)),
       (delta) => {
         if (!openAiStarted) {

@@ -51,7 +51,7 @@ describe('GPT is told the reply language last', () => {
   });
 
   it('is the last part of what GPT is given', () => {
-    expect(chat).toContain('GPT_NAMES_WHO_IT_FOUND +\n        gptLanguageLast(runLang(runId)),');
+    expect(chat).toContain('shortTurnNote +\n        gptLanguageLast(runLang(runId)),');
   });
 });
 

@@ -122,3 +122,12 @@ describe('the owner’s lines read from the run’s history', () => {
     expect(discussionHolds(lines)).toBe(false);
   });
 });
+
+/** The tester's 1096 (32608): GPT wrote the discussion turn's answer without its rule. */
+describe('the discussion rule reaches GPT too', () => {
+  it('is in the prompt GPT writes the final answer from', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const gptPrompt = chat.slice(chat.indexOf('const rewritten = await writeFinalAnswer('));
+    expect(gptPrompt.slice(0, 600)).toContain('shortTurnNote +');
+  });
+});
