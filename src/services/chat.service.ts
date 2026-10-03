@@ -3149,7 +3149,10 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     name: 'get_profile_question',
     description:
       "A short personalization question that helps Netai understand the user better, to ask ONLY at a moment that genuinely fits — drafting a message, prepping for a meeting, wrapping up a weekly check-in, or right after someone declines an introduction. Phrase it naturally in the conversation, in the user's language; never as a form, never back-to-back with another one. If found is false, say nothing and continue normally — there is nothing to ask right now. When the user answers, call answer_profile_question with the SAME question_id." +
-      ' WHEN: sparingly, at most once per few messages, only when the moment actually fits — never mid-task, never because a slot happens to be free.',
+      ' WHEN: sparingly, at most once per few messages, only when the moment actually fits — never mid-task, never because a slot happens to be free.' +
+      // #509 (Ninia, 2 Oct): „რა გინდა იცოდე ჩემზე?" was answered with the one
+      // saved note and an invitation to share, and no question at all.
+      ' AND ALWAYS when the owner asks what you want to know about them („რა გინდა იცოდე ჩემზე?", „what do you want to know about me?"): call this with moment any and ask that ONE question, short, in their words — not a summary of what you already know.',
     input_schema: {
       type: 'object',
       properties: {
