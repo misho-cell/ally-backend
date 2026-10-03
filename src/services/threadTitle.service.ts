@@ -34,6 +34,10 @@ function buildTitlePrompt(language: string): string {
     `quantity, a date, a time, a district or street, a named person or firm. „Movers for ` +
     `Flat" is a bad title because every removal is that; „3 movers, Vake, 25 Sep" is a good ` +
     `one because only this one is. Drop the filler words, never the identifying ones. ` +
+    // The tester's 1089 (32476): „ვის შევთავაზო Netai?" was titled „ნეტაი-ს შეთავაზება
+    // სანდრო-სთვის" — Sandro was one of five names in the ASSISTANT's list; nobody was picked.
+    `A person or firm goes in the title only when the USER named them; never take a name ` +
+    `from the assistant's suggestions or results — the title is what was asked, not an answer. ` +
     `Write the title in ` +
     `${language} — ONLY ${language}, never mix languages. Never answer the question, never ` +
     'apologize, never refuse: whatever the content, output ONLY a short subject title using ' +

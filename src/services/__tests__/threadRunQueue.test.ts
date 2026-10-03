@@ -110,22 +110,34 @@ describe('when a run never lets go', () => {
    * of it dead and started alongside it. The busier the conversation, the more
    * certain that was to happen, which is precisely backwards.
    */
+  /**
+   * On a fake clock: with real 50 ms sleeps against a 60 ms budget, a busy CI
+   * machine let run-b's hold pass the budget and the test failed for the wrong
+   * reason (3 Oct, once in a full suite). The clock now moves only when told.
+   */
   it('does not take the thread from a run that has only just been handed it', async () => {
-    const budget = 60;
-    await enterThread(17568, 'run-a', budget, POLL_MS);
-    const b = enterThread(17568, 'run-b', budget, POLL_MS);
-    const c = enterThread(17568, 'run-c', budget, POLL_MS);
+    jest.useFakeTimers();
+    try {
+      const budget = 60;
+      await enterThread(17568, 'run-a', budget, POLL_MS);
+      const b = enterThread(17568, 'run-b', budget, POLL_MS);
+      const c = enterThread(17568, 'run-c', budget, POLL_MS);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    leaveThread(17568, 'run-a');
-    expect(await b).toBe('waited');
+      await jest.advanceTimersByTimeAsync(50);
+      leaveThread(17568, 'run-a');
+      await jest.advanceTimersByTimeAsync(POLL_MS);
+      expect(await b).toBe('waited');
 
-    // run-c has now been waiting longer than the budget, and must still be
-    // waiting, because run-b has held the thread for no time at all.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(threadHolder(17568)).toBe('run-b');
+      // run-c has now been waiting longer than the budget, and must still be
+      // waiting, because run-b has held the thread for no time at all.
+      await jest.advanceTimersByTimeAsync(50);
+      expect(threadHolder(17568)).toBe('run-b');
 
-    leaveThread(17568, 'run-b');
-    expect(await c).toBe('waited');
+      leaveThread(17568, 'run-b');
+      await jest.advanceTimersByTimeAsync(POLL_MS);
+      expect(await c).toBe('waited');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 jest.mock('../../db/postgres/client', () => ({
   poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
   query: jest.fn(),
@@ -122,5 +124,16 @@ describe('a time in a title', () => {
   it('still strips the generator’s own label, which is also a colon', () => {
     // Stripped before this runs, so allowing the character cannot bring it back.
     expect(sanitizeTitle('სათაური: იურისტის მოძებნა')).toBe('იურისტის მოძებნა');
+  });
+});
+
+/** The tester's 1089 (32476): a name from the assistant's own list became the title. */
+describe('a title names only who the user named', () => {
+  it('tells the title model never to take a name from the assistant’s suggestions', () => {
+    const src = readFileSync(join(__dirname, '..', 'threadTitle.service.ts'), 'utf8');
+    expect(src).toContain('A person or firm goes in the title only when the USER named them');
+    expect(src).toContain(
+      "never take a name ` +\n    `from the assistant's suggestions or results",
+    );
   });
 });
