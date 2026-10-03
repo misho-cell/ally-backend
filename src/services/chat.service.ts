@@ -10,6 +10,7 @@ import {
 } from './greetingTurn';
 import { goalsForRun } from './wakeGoalScope';
 import { endsQuietly } from './quietSystemRun';
+import { ALSO_SEARCH_NOTE, relatedProfessionWords } from './professionFamilies';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -7195,15 +7196,15 @@ async function executeToolCall(
         runId,
         threadId,
       );
-    case 'search_by_tag':
-      return runLoggedSearch(
-        userId,
-        'tag',
-        input['tag_query'] as string,
-        searchByTag,
-        runId,
-        threadId,
-      );
+    case 'search_by_tag': {
+      const tagQuery = input['tag_query'] as string;
+      const found = await runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
+      // #510: the profession's other words, searched in the same turn.
+      const alsoSearch = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
+      return alsoSearch.length === 0
+        ? found
+        : { ...found, also_search: alsoSearch, also_search_note: ALSO_SEARCH_NOTE };
+    }
     case 'search_by_insight':
       return runLoggedSearch(
         userId,
