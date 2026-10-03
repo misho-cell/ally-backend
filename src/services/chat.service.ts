@@ -6307,6 +6307,27 @@ function withPlanInReply(
   return reply.trim() === '' ? plan.text : `${plan.text}\n\n${reply}`;
 }
 
+/**
+ * The tester's 1100 (32730, 32732, round 5): a typed „კი" after a plan was
+ * refused twice — „the newest buttons on their screen were not a plan's". In
+ * 32730 the model turned the closing question into its own button („ამ გეგმას
+ * მივყვე და ვიმოქმედო"), in 32732 it offered none. A run that proposed a plan
+ * and ends with no buttons, or with the closing question as one, carries the
+ * plan's own approve and change buttons. A reply with buttons of its own (the
+ * tester's 954: web leads) keeps them.
+ */
+export function planButtonsWhenMissing(
+  runId: string,
+  offered: string[] | undefined,
+): string[] | undefined {
+  if (!runPlanForReply.has(runId) || replyAsksForApproval(offered)) return offered;
+  const language = runLang(runId);
+  const closing = PLAN_CLOSING_QUESTION[language].replace(/[?？]\s*$/u, '').trim();
+  const asksTheClosingQuestion = (offered ?? []).some((label) => label.includes(closing));
+  if ((offered ?? []).length > 0 && !asksTheClosingQuestion) return offered;
+  return [APPROVE_LABEL[language], CHANGE_LABEL[language]];
+}
+
 function noteQuestionIsOnScreen(runId: string | undefined, question: QuestionOnScreen): void {
   if (runId) runQuestionOnScreen.set(runId, question);
 }
@@ -8793,8 +8814,14 @@ async function executeToolCall(
       }
       const deliveredSeparately =
         !PENDING_AS_MESSAGES_OFF && (updates.length > 0 || morePending > 0);
+      // The tester's 1100 (32730–32732, round 5): „what is new?" right after the
+      // questions went out returned no items, only more_pending (two old „how did
+      // it go" questions), and the answer said „new answers have arrived". With
+      // nothing new, the result says so in so many words.
+      const nothingNew = updates.length === 0 && curiosity === null;
       return {
         ...(alreadyShown !== null && { already_shown: alreadyShown }),
+        ...(nothingNew && { nothing_new: true, nothing_new_note: NOTHING_NEW_NOTE }),
         ...(deliveredSeparately && {
           delivery_note:
             'Each item below is delivered to the user as its OWN message with its own buttons, ' +
@@ -11676,6 +11703,11 @@ async function ownerLinesForGoal(
   }
 }
 
+const NOTHING_NEW_NOTE =
+  'Nothing new has arrived: no answer and no result since the user last looked. If they asked ' +
+  'what is new, say that in one plain line. more_pending, if any, is older items waiting for ' +
+  'them — never call those new answers.';
+
 async function ensureGoalForRequest(
   userId: string,
   threadType: string,
@@ -12343,17 +12375,26 @@ export async function processChat(
     );
   }
 
-  const { finalText, pending, options, choices, requestCreated, taskResult, answeredBy } =
-    await runToolLoop(
-      userId,
-      threadId,
-      runId,
-      messages,
-      systemPrompt,
-      tools,
-      ownerAbsent,
-      lateSearch,
-    );
+  const {
+    finalText,
+    pending,
+    options,
+    choices: loopChoices,
+    requestCreated,
+    taskResult,
+    answeredBy,
+  } = await runToolLoop(
+    userId,
+    threadId,
+    runId,
+    messages,
+    systemPrompt,
+    tools,
+    ownerAbsent,
+    lateSearch,
+  );
+  // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
+  const choices = planButtonsWhenMissing(runId, loopChoices);
 
   // Tool-interaction turns carry the full content_json for model history but
   // have empty display content (filtered from the thread view); the final reply
