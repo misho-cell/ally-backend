@@ -79,12 +79,18 @@ describe('a title that says one word more than the restatement', () => {
   });
 
   /**
-   * ONE WORD, NOT TWO. The tolerance exists for a restatement, not for a
-   * message that happens to share a subject.
+   * The tester's 1102 (F3) moved this line: two words dropped and none added is
+   * the same need said shorter, by the same owner, about the same startup.
    */
-  it('does not match when two of the title’s words are absent', () => {
+  it('matches when the restatement drops two words and adds none', () => {
+    expect(goalNamedIn('I need a marketing co-founder for my startup in Tbilisi.', [GOAL])).toBe(
+      GOAL,
+    );
+  });
+
+  it('does not match when the shorter message brings a word of its own', () => {
     expect(
-      goalNamedIn('I need a marketing co-founder for my startup in Tbilisi.', [GOAL]),
+      goalNamedIn('I need a marketing co-founder for my fintech startup in Tbilisi.', [GOAL]),
     ).toBeNull();
   });
 
@@ -133,5 +139,31 @@ describe('a word replaced, not dropped', () => {
 
   it('still joins the same need said again in full', () => {
     expect(goalNamedIn('მჭირდება ადვოკატი მიწის დავაზე', [land])?.id).toBe(13300);
+  });
+});
+
+/**
+ * The tester's 1102 (F3, thread 32960): the same need said again, shorter, in
+ * a new conversation opened a second goal while the first was still open.
+ */
+describe('the same need said again, shorter', () => {
+  const PEDIATRICIAN = { id: 15013, title: 'კარგი პედიატრი მჭირდება დიდ დიღომში ჩემი შვილისთვის' };
+
+  it('is the open goal, not a new one', () => {
+    expect(goalNamedIn('პედიატრი მჭირდება დიდ დიღომში.', [PEDIATRICIAN])).toBe(PEDIATRICIAN);
+  });
+
+  it('is a new goal when the place differs', () => {
+    expect(goalNamedIn('პედიატრი მჭირდება საბურთალოზე, ახლოს.', [PEDIATRICIAN])).toBeNull();
+  });
+
+  it('is a new goal when the message is too short to be sure', () => {
+    const KUTAISI = { id: 1, title: 'ქუთაისში ფოტოგრაფი მჭირდება' };
+    expect(goalNamedIn('ფოტოგრაფი მჭირდება', [KUTAISI])).toBeNull();
+  });
+
+  it('names nothing when two open goals fit it', () => {
+    const other = { id: 15099, title: 'პედიატრი მჭირდება დიდ დიღომში შაბათს' };
+    expect(goalNamedIn('პედიატრი მჭირდება დიდ დიღომში.', [PEDIATRICIAN, other])).toBeNull();
   });
 });

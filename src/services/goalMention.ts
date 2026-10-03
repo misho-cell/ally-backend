@@ -92,6 +92,25 @@ function bringsAWordOfItsOwn(messageWords: string[], titleWords: string[]): bool
   return messageWords.some((mw) => !titleWords.some((tw) => sameWord(tw, mw)));
 }
 
+/**
+ * The tester's 1102 (F3, thread 32960): „პედიატრი მჭირდება დიდ დიღომში" opened
+ * a second goal while „კარგი პედიატრი მჭირდება დიდ დიღომში ჩემი შვილისთვის" was
+ * open. The same need said again, SHORTER: three qualifiers dropped, nothing
+ * added. A restatement counts when the message brings no word of its own, has
+ * at least this many meaningful words, and covers at least half of the title.
+ * „ფოტოგრაფი მჭირდება" against „ქუთაისში ფოტოგრაფი მჭირდება" stays a new goal:
+ * two words are too few to be sure. The run is still told it is a repeat and
+ * to ask the owner when what they want now differs (`sameRequestAgain`).
+ */
+const RESTATEMENT_MIN_WORDS = 4;
+
+function isShorterRestatement(messageWords: string[], titleWords: string[]): boolean {
+  if (bringsAWordOfItsOwn(messageWords, titleWords)) return false;
+  if (new Set(messageWords).size < RESTATEMENT_MIN_WORDS) return false;
+  const covered = titleWords.filter((tw) => messageWords.some((mw) => sameWord(tw, mw))).length;
+  return covered * 2 >= titleWords.length;
+}
+
 export interface NamedGoalCandidate {
   id: number;
   title: string;
@@ -114,9 +133,10 @@ export function goalNamedIn<T extends NamedGoalCandidate>(
     if (titleWords.length < MIN_TITLE_WORDS) return false;
     const missing = titleWords.filter((tw) => !messageWords.some((mw) => sameWord(tw, mw)));
     if (missing.length === 0) return true;
-    return missing.length === 1 && titleWords.length >= TOLERANCE_MIN_TITLE_WORDS
-      ? !bringsAWordOfItsOwn(messageWords, titleWords)
-      : false;
+    if (missing.length === 1 && titleWords.length >= TOLERANCE_MIN_TITLE_WORDS) {
+      return !bringsAWordOfItsOwn(messageWords, titleWords);
+    }
+    return isShorterRestatement(messageWords, titleWords);
   });
   return matches.length === 1 ? (matches[0] ?? null) : null;
 }
