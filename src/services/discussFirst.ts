@@ -110,7 +110,8 @@ export function discussionHolds(ownerLinesNewestFirst: readonly string[]): boole
 export const DISCUSS_TURN_NOTE =
   '\n\n## This turn\nThe owner asked to discuss first and be asked questions before any ' +
   'action. This turn has no tools: no search, no plan, no leads, no list of people. Do not ' +
-  'tell them what their business is. Answer what they said in a sentence or two, then ask ' +
+  'tell them what their business is — not even from their saved profile or an earlier ' +
+  'conversation; let them tell you. Answer what they said in a sentence or two, then ask ' +
   'one or two short questions that help you understand their business and what they want. ' +
   'Action waits until they ask for it in their own words.';
 

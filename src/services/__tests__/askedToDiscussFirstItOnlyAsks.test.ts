@@ -85,6 +85,8 @@ describe('what a discussion turn is', () => {
     expect(DISCUSS_TURN_NOTE).toContain('This turn has no tools');
     expect(DISCUSS_TURN_NOTE).toContain('no search, no plan, no leads');
     expect(DISCUSS_TURN_NOTE).toContain('Do not tell them what their business is');
+    // The tester's 1095 (32605, 32607): a filled profile was read back as „tell me about your winery".
+    expect(DISCUSS_TURN_NOTE).toContain('not even from their saved profile');
     expect(DISCUSS_TURN_NOTE).toContain('ask one or two short questions');
   });
 
