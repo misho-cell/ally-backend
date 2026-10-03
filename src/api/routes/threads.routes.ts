@@ -866,6 +866,7 @@ threadsRouter.post(
         runId,
         asGoal: as_goal === true,
         storedOnArrival,
+        lastFreeAnswer: graceNote !== null,
         inReplyToMessageId:
           typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
         needsTitle,
@@ -968,6 +969,8 @@ export interface OwnerRun {
   readonly storedOnArrival: boolean;
   readonly inReplyToMessageId: string | undefined;
   readonly needsTitle: boolean;
+  /** D348's one free answer at zero: the thread ends on „top up", not done. */
+  readonly lastFreeAnswer?: boolean;
 }
 
 /**
@@ -987,6 +990,7 @@ export function runOwnerMessage(run: OwnerRun): void {
     storedOnArrival,
     inReplyToMessageId,
     needsTitle,
+    lastFreeAnswer = false,
   } = run;
   const runStartedAt = new Date();
 
@@ -1138,8 +1142,11 @@ export function runOwnerMessage(run: OwnerRun): void {
       // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
       const lang = result.language ?? 'ka';
       const langLine = finalStatus === 'done' ? null : RUN_STRINGS[lang].statusLines[finalStatus];
-      void setThreadStatus(userId, threadId, finalStatus, {
-        statusLine: langLine,
+      // D348: after the free answer the badge must still say „top up" — the
+      // route set it, and the run's own end used to overwrite it with „done"
+      // (tester 1069/1071, threads 31418 and 31552).
+      void setThreadStatus(userId, threadId, lastFreeAnswer ? 'needs_you' : finalStatus, {
+        statusLine: lastFreeAnswer ? RUN_STRINGS[lang].statusLines.needs_topup : langLine,
         // An OPEN goal on this thread is the same fact (ticket 9 task
         // 20 e) — it covers threads whose goal predates the flag being
         // written at creation time.

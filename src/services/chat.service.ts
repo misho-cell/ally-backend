@@ -11194,19 +11194,29 @@ const SCRUB_TIDY: readonly (readonly [RegExp, string])[] = [
   [/([,;:]){2,}/g, '$1'],
 ];
 
+/**
+ * Board #661, second half (tester 1068, conversation 31417): „id" followed by
+ * a number is also how a web page names itself. The reply's
+ * „…/company.php?lan=geo&id=149169" lost its „id=149169" here, and the link
+ * opened the wrong page. Inside an http(s) address nothing is an internal id.
+ */
+const ADDRESS_START_RE = /https?:\/\/[^\s<>"'()[\]]*$/;
+
+function insideWebAddress(text: string, at: number): boolean {
+  return ADDRESS_START_RE.test(text.slice(0, at + 1));
+}
+
 export function scrubInternalToolNames(text: string, threadId: number): string {
+  const removeInternalId = (match: string, at: number, whole: string): string => {
+    if (insideWebAddress(whole, at + match.length - match.trimStart().length)) return match;
+    // eslint-disable-next-line no-console
+    console.warn(`[p12-scrub] thread ${threadId}: internal id removed from text`);
+    return '';
+  };
   // Wrapped first, then bare: „(ask_id 1750)" must lose its parenthesis too,
   // and the bare rule alone would leave an empty one behind.
-  let out = text.replace(INTERNAL_ID_WRAPPED_RE, () => {
-    // eslint-disable-next-line no-console
-    console.warn(`[p12-scrub] thread ${threadId}: internal id removed from text`);
-    return '';
-  });
-  out = out.replace(INTERNAL_ID_RE, () => {
-    // eslint-disable-next-line no-console
-    console.warn(`[p12-scrub] thread ${threadId}: internal id removed from text`);
-    return '';
-  });
+  let out = text.replace(INTERNAL_ID_WRAPPED_RE, removeInternalId);
+  out = out.replace(INTERNAL_ID_RE, removeInternalId);
   INTERNAL_TOOL_NAME_RE.lastIndex = 0;
   if (INTERNAL_TOOL_NAME_RE.test(out)) {
     const replacement = internalNameReplacement(out);
@@ -12373,6 +12383,10 @@ export async function processChat(
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
   const pendingItems = takePendingItems(runId, reply);
+  // D348's note, read now for the same reason as the share text below:
+  // clearRunState drops it further down, and reading it after that is why the
+  // free answer never said it was free (tester 1069/1071, threads 31418, 31552).
+  const graceNote = takeGraceNote(runId);
   // Read before clearRunState drops it — the share button needs the text the
   // tool wrote, not whatever the model quoted (Task 39).
   //
@@ -12543,12 +12557,16 @@ export async function processChat(
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
   // D348: the free answer says it was free, immediately after it and before
   // anything else the run has to deliver.
-  const graceNote = takeGraceNote(runId);
   if (graceNote !== null) {
     await saveMessage(userId, threadId, 'assistant', graceNote, 'message', runId).catch(
-      // Never fails the answer it follows: a missing note is a worse day than
-      // a lost reply, not the other way round.
-      () => undefined,
+      // Never fails the answer it follows, but never silently either: a note
+      // that vanished without a trace is how this went unseen for two weeks.
+      (err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error(
+          `[wallet] run ${runId}: the free-answer note was not stored:`,
+          (err as Error).message,
+        ),
     );
   }
   // Ticket 16 Task 98: the answer is finished and stored. Anything that was

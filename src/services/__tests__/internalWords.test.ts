@@ -264,3 +264,28 @@ describe('a bare id is an internal id too', () => {
     expect(scrubInternalToolNames(plain, THREAD)).toBe(plain);
   });
 });
+
+/**
+ * Board #661, second half (tester 1068, conversation 31417): „id=149169" in a
+ * web address is the page's own name, not an internal id. Removing it left
+ * „…?lan=geo&" and a link to the wrong page.
+ */
+describe('an id inside a web address stays', () => {
+  const page = 'https://www.yell.ge/company.php?lan=geo&id=149169';
+
+  it('keeps the query id of a link', () => {
+    const reply = `ბმული: ${page}\n\nკონდიციონერის ხელოსანი`;
+    expect(scrubInternalToolNames(reply, 31417)).toBe(reply);
+  });
+
+  it('keeps it when the link is in brackets after a sentence', () => {
+    const reply = `ტელ. 555 27 07 07 (${page}).`;
+    expect(scrubInternalToolNames(reply, 31417)).toBe(reply);
+  });
+
+  it('still removes a bare internal id in the prose beside the link', () => {
+    expect(scrubInternalToolNames(`ნინიას ვუგზავნე (ask_id 1750). ${page}`, 1)).toBe(
+      `ნინიას ვუგზავნე. ${page}`,
+    );
+  });
+});

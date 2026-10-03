@@ -149,19 +149,39 @@ describe('the answer that was free says so', () => {
     expect(routes).toContain('graceNote = thisOneWasOnUs(');
     expect(routes).toContain('if (graceNote !== null) noteGraceAnswer(runId, graceNote);');
 
-    const afterReply = chat.slice(chat.indexOf('const graceNote = takeGraceNote(runId);'));
-    expect(afterReply.slice(0, 600)).toContain("'assistant', graceNote");
-    // It comes before the other cards, and after the answer.
-    expect(chat.indexOf('const graceNote = takeGraceNote(runId);')).toBeGreaterThan(
-      chat.indexOf('await dropStepsTheReplyRepeats('),
-    );
+    const stored = chat.indexOf("'assistant', graceNote");
+    expect(stored).toBeGreaterThan(chat.indexOf('await dropStepsTheReplyRepeats('));
   });
 
-  /** A missing note must never cost somebody the answer it follows. */
-  it('cannot fail the reply it is about', () => {
-    const block = chat.slice(chat.indexOf('const graceNote = takeGraceNote(runId);'));
+  /**
+   * ⚠️ AND READ BEFORE THE RUN'S STATE IS CLEARED. clearRunState forgets the
+   * note, and it runs before the reply is stored — reading it at the store
+   * found nothing, so the free answer never said so (tester 1069/1071,
+   * threads 31418 and 31552). The line is taken early, like the share text.
+   */
+  it('is taken before clearRunState forgets it', () => {
+    const taken = chat.indexOf('const graceNote = takeGraceNote(runId);');
+    const assembly = chat.indexOf('const pendingItems = takePendingItems(runId, reply);');
+    const clearedAfterAssembly = chat.indexOf('  clearRunState(runId);', assembly);
 
-    expect(block.slice(0, 600)).toContain('() => undefined');
+    expect(taken).toBeGreaterThan(assembly);
+    expect(taken).toBeLessThan(clearedAfterAssembly);
+  });
+
+  /** A missing note must never cost somebody the answer it follows, nor vanish unseen. */
+  it('cannot fail the reply it is about, and says so if it is lost', () => {
+    const stored = chat.indexOf("'assistant', graceNote");
+    const block = chat.slice(stored, stored + 600);
+
+    expect(block).toContain('.catch(');
+    expect(block).toContain('the free-answer note was not stored');
+  });
+
+  /** The badge the route set is the badge the person sees after the answer. */
+  it('leaves the thread on „top up" after the free answer', () => {
+    expect(routes).toContain('lastFreeAnswer: graceNote !== null,');
+    expect(routes).toContain("lastFreeAnswer ? 'needs_you' : finalStatus");
+    expect(routes).toContain('lastFreeAnswer ? RUN_STRINGS[lang].statusLines.needs_topup');
   });
 
   it('is forgotten with the rest of the run', () => {
