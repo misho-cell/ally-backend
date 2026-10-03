@@ -32,6 +32,18 @@ function callsATool(turn: TurnLike): boolean {
   );
 }
 
-export function endsQuietly(ownerAbsent: boolean, runTurns: readonly TurnLike[]): boolean {
-  return ownerAbsent && runTurns.some(callsATool);
+/**
+ * 3 October 07:21Z, thread 26302 (a real owner): a scheduled check answered
+ * only with a stage direction, a sentence in brackets about waiting, which
+ * the server drops. With no tool call, that counted as „did nothing" and the
+ * owner found „the reply did not come together, try again" under a message
+ * they never wrote. A system run that answered only in a stage direction had
+ * nothing to say, the same as one that set its wake and wrote nothing.
+ */
+export function endsQuietly(
+  ownerAbsent: boolean,
+  runTurns: readonly TurnLike[],
+  answeredOnlyInStageDirection = false,
+): boolean {
+  return ownerAbsent && (answeredOnlyInStageDirection || runTurns.some(callsATool));
 }

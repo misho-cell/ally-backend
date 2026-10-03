@@ -1,6 +1,8 @@
 /**
  * Board #386: which empty runs end quietly instead of failing.
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { endsQuietly } from '../quietSystemRun';
 
 const RESCHEDULED = [
@@ -25,5 +27,19 @@ describe('endsQuietly', () => {
 
   it('does not count a tool result as a call', () => {
     expect(endsQuietly(true, [{ role: 'user', content: [{ type: 'tool_use' }] }])).toBe(false);
+  });
+
+  it('lets a system run that answered only in a stage direction end quietly (26302)', () => {
+    expect(endsQuietly(true, DID_NOTHING, true)).toBe(true);
+  });
+
+  it('still fails an owner’s run that answered only in a stage direction', () => {
+    expect(endsQuietly(false, DID_NOTHING, true)).toBe(false);
+  });
+
+  it('is told about the dropped stage direction where the final is decided', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('const answeredOnlyInStageDirection = STAGE_DIRECTION_ONLY_RE.test(');
+    expect(chat).toContain('endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)');
   });
 });

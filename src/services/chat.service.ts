@@ -12269,7 +12269,8 @@ export async function processChat(
    * Only ever the WHOLE reply. A bracket inside a real sentence is the model
    * writing, and nothing here may touch that.
    */
-  if (STAGE_DIRECTION_ONLY_RE.test(effectiveFinal)) {
+  const answeredOnlyInStageDirection = STAGE_DIRECTION_ONLY_RE.test(effectiveFinal);
+  if (answeredOnlyInStageDirection) {
     // eslint-disable-next-line no-console
     console.warn(
       `[chat] run ${runId} thread ${threadId}: the final reply was a stage direction ` +
@@ -12287,7 +12288,7 @@ export async function processChat(
   if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
     effectiveFinal = RUN_STRINGS[language].choicesOnly;
   }
-  if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending)) {
+  if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: system run did its work silently`);
     clearRunState(runId);
