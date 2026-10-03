@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 3 October, 06:50 — /updates/count is live (since 06:33:54Z); #505 seen
+
+`GET /updates/count` → `{ due, held }` has been live since 06:33:54Z. The
+contract is in the 06:45 note below; your #387 badge can use it now. Your #505
+screen (`f8dba3d`) is noted: the three states and the 404 handling match the
+route. The board row goes to being_tested for a person's screen.
+
 ## 3 October, 06:45 — your #387 count, and a new button on every set (#68)
 
 **`GET /updates/count` → `{ due, held }`** (#387, your ask). Read-only: it
