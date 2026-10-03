@@ -5684,6 +5684,7 @@ export async function approvePlanOnTap(
   const planCardOnScreen = (screen.newestOfferedChoices ?? []).some(isApproveChoice);
   if (!planCardOnScreen || planApprovalRefusal(true, screen) !== null) return null;
   const outcome = await approveTaskPlan(userId, goal.id, 'chat', runLang(runId));
+  if (outcome.ok) runPlanApprovedInRun.add(runId);
   if (!outcome.ok || outcome.value.alreadyInForce) return null;
   const engine = await import('./taskEngine.service');
   const said = approvalResult(outcome.value, new Date(), engine.DAY_ONE_WINDOW_MS);
@@ -6322,7 +6323,13 @@ export function planButtonsWhenMissing(
   runId: string,
   offered: string[] | undefined,
 ): string[] | undefined {
-  if (!runPlanForReply.has(runId) || replyAsksForApproval(offered)) return offered;
+  if (
+    !runPlanForReply.has(runId) ||
+    runPlanApprovedInRun.has(runId) ||
+    replyAsksForApproval(offered)
+  ) {
+    return offered;
+  }
   const language = runLang(runId);
   const closing = PLAN_CLOSING_QUESTION[language].replace(/[?？]\s*$/u, '').trim();
   const asksTheClosingQuestion = (offered ?? []).some((label) => label.includes(closing));
@@ -6529,6 +6536,13 @@ export function withEmptySearchHistory(
 }
 
 const runApprovedAPlan = new Set<string>();
+/**
+ * The tester's 1103 (33113, 13:12:20Z): a plan proposed and approved in the same
+ * run still got approve buttons from planButtonsWhenMissing, and with them the
+ * server's plan lines in front of the model's — the plan said twice. Every
+ * successful approval in the run is marked here, whatever day one is doing.
+ */
+const runPlanApprovedInRun = new Set<string>();
 
 function noteApprovedAPlan(runId: string | undefined): void {
   if (runId) runApprovedAPlan.add(runId);
@@ -7021,6 +7035,7 @@ function clearRunState(runId: string): void {
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
   runAnswerSent.delete(runId);
+  runPlanApprovedInRun.delete(runId);
   runSentLineOnScreen.delete(runId);
   forgetWorkingLineRun(runId);
   forgetSearchStage(runId);
@@ -8427,6 +8442,7 @@ async function executeToolCall(
         runLang(runId),
       );
       if (!outcome.ok) return { approved: false, error: outcome.error };
+      if (runId) runPlanApprovedInRun.add(runId);
       // Dynamic import — the engine imports this module, so a static one would
       // be a cycle. One import, both things taken from it.
       const engine = await import('./taskEngine.service');

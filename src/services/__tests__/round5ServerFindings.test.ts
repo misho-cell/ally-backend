@@ -33,9 +33,9 @@ describe('2 — a plan reply carries the plan’s own buttons', () => {
   it('adds approve and change only when the reply has none, or has the closing question as one', () => {
     const fn = chat.slice(chat.indexOf('export function planButtonsWhenMissing('));
     const body = fn.slice(0, fn.indexOf('\n}\n'));
-    expect(body).toContain(
-      'if (!runPlanForReply.has(runId) || replyAsksForApproval(offered)) return offered;',
-    );
+    expect(body).toContain('!runPlanForReply.has(runId) ||');
+    // 1103 (33113): a plan the run itself approved gets no buttons and no second copy.
+    expect(body).toContain('runPlanApprovedInRun.has(runId) ||');
     expect(body).toContain(
       'if ((offered ?? []).length > 0 && !asksTheClosingQuestion) return offered;',
     );

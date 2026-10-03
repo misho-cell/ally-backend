@@ -36,9 +36,19 @@ const THANKS_AND_SENT: Readonly<Record<RunLanguage, string>> = {
 };
 
 /** The reply, opening with the line that the answer went when it does not say so. */
+/** A reply that is nothing but the bare line, in any of our languages. */
+function isOnlyTheBareLine(reply: string): boolean {
+  const trimmed = reply.trim();
+  return Object.values(ANSWER_SENT_LINE).some((line) => line === trimmed);
+}
+
 export function withAnswerSentLine(reply: string, language: RunLanguage): string {
+  // The tester's 1103 (33157): the model itself wrote the bare „პასუხი გაიგზავნა.",
+  // so the empty-reply branch never ran and the helper still got no thanks.
+  if (reply.trim() === '' || isOnlyTheBareLine(reply)) {
+    return THANKS_AND_SENT[language] ?? THANKS_AND_SENT.ka;
+  }
   if (SAYS_IT_WENT_RE.test(reply)) return reply;
-  if (reply.trim() === '') return THANKS_AND_SENT[language] ?? THANKS_AND_SENT.ka;
   const line = ANSWER_SENT_LINE[language] ?? ANSWER_SENT_LINE.ka;
   return `${line} ${reply.trimStart()}`;
 }

@@ -35,6 +35,8 @@ describe('the reply after the send says the answer went', () => {
     // The tester's 1102 (E4): the line alone thanks the helper.
     expect(withAnswerSentLine('', 'en')).toBe('Thank you — your answer was sent.');
     expect(withAnswerSentLine('', 'ka')).toBe('მადლობა, პასუხი გაიგზავნა.');
+    // 1103 (33157): the model wrote the bare line itself.
+    expect(withAnswerSentLine('პასუხი გაიგზავნა.', 'ka')).toBe('მადლობა, პასუხი გაიგზავნა.');
   });
 
   it('adds nothing when the reply already says it went', () => {
