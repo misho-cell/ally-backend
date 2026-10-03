@@ -1222,11 +1222,42 @@ export async function goalIsAnInstruction(taskId: number): Promise<boolean> {
   if (task.plan !== null || task.plan_proposed !== null) return false;
   // 279 run 2: `create_task` keeps the owner's own sentence in `description`
   // as often as in the title or brief — read all three.
-  const goalText = [task.title, task.brief, task.description]
+  const opening =
+    task.thread_id === null ? null : await openingOwnerLine(task.thread_id, task.created_at);
+  const goalText = [task.title, task.brief, task.description, opening]
     .filter((part): part is string => typeof part === 'string' && part.trim() !== '')
     .join(' ');
   if (!looksLikeContactInstruction(goalText)) return false;
   return messageNamesOwnContact(String(task.user_id), goalText);
+}
+
+/** The owner's line may land a moment after the goal row it opened. */
+const OPENING_LINE_GRACE_SECONDS = 10;
+
+/**
+ * The tester's 1109 (a, 33795): „ჰკითხე გიორგი აბაშიძეს, სად ყიდულობს ყავას."
+ * was held by Giorgi's 24-hour limit, and the model saved the goal as „a
+ * question for Giorgi — where he buys coffee" with a brief that said „ვკითხო".
+ * The instruction was no longer in any field the check read, so the plan wake
+ * drew „ask Giorgi directly" with approve buttons for the send just refused.
+ * The owner's own line that opened the goal is read with the goal's fields.
+ */
+async function openingOwnerLine(threadId: number, createdAt: string): Promise<string | null> {
+  try {
+    const result = await query<{ content: string }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND TRIM(content) <> ''
+          AND created_at <= $2::timestamptz + make_interval(secs => $3)
+        ORDER BY created_at DESC LIMIT 1`,
+      [threadId, createdAt, OPENING_LINE_GRACE_SECONDS],
+      OWNER_QUIET_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.content ?? null;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] thread ${threadId}: could not read the opening line:`, error);
+    return null;
+  }
 }
 
 /** The same goal, still unacted-on, is what the instruction event is for. */

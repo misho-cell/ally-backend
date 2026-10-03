@@ -45,6 +45,8 @@ jest.mock('../inFlightRuns', () => ({
   endRun: jest.fn(),
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { getTaskById } from '../taskStore.service';
 import { messageNamesOwnContact } from '../tools/nameMatch';
 import { query } from '../../db/postgres/client';
@@ -238,5 +240,28 @@ describe('and it is told what to do instead of being left in silence', () => {
   it('is not the plan event wearing a new name', () => {
     expect(INSTRUCTION_EVENT.en).not.toBe(PLAN_PROPOSAL_EVENT.en);
     expect(INSTRUCTION_EVENT.en).not.toContain('propose_task_plan');
+  });
+});
+
+/**
+ * The tester's 1109 (a, 33795): an instruction held by the recipient's 24-hour
+ * limit still got a plan card. A held ask counts as acting, and the owner's own
+ * opening line is read with the goal's fields.
+ */
+describe('an instruction held by the recipient’s limit', () => {
+  const read = (file: string): string => readFileSync(join(__dirname, '..', file), 'utf8');
+
+  it('counts a held ask as the goal having acted', () => {
+    expect(read('taskStore.service.ts')).toContain(
+      'OR EXISTS (SELECT 1 FROM held_asks WHERE task_id = $1 LIMIT 1)',
+    );
+  });
+
+  it('reads the owner’s opening line with the goal’s own fields', () => {
+    const engine = read('taskEngine.service.ts');
+    expect(engine).toContain(
+      'const goalText = [task.title, task.brief, task.description, opening]',
+    );
+    expect(engine).toContain('async function openingOwnerLine(');
   });
 });

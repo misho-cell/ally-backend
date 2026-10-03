@@ -255,8 +255,11 @@ export async function threadAwaitsOwner(threadId: number): Promise<boolean> {
  */
 export async function goalHasActedOutward(taskId: number): Promise<boolean> {
   const result = await query<{ acted: boolean }>(
+    // The tester's 1109 (a, 33795): an ask held for the recipient's 24-hour
+    // window is queued and goes out by itself (#391), so it is acting too.
     `SELECT EXISTS (SELECT 1 FROM task_asks WHERE task_id = $1 LIMIT 1)
          OR EXISTS (SELECT 1 FROM introduction_requests WHERE requester_task_id = $1 LIMIT 1)
+         OR EXISTS (SELECT 1 FROM held_asks WHERE task_id = $1 LIMIT 1)
        AS acted`,
     [taskId],
     QUERY_TIMEOUT_MS,
