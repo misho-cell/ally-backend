@@ -12,6 +12,21 @@
  */
 export const GREETING_MAX_TOKENS = 350;
 
+/**
+ * Said to the model on the greeting turn itself (tester 1071/1072, 3 October).
+ *
+ * After prompt v3 went live at 23:40Z, 52 of 54 blank first answers were a
+ * bare „გამარჯობა" on this turn: v3 asks for the start-of-conversation reads,
+ * the turn has no tools, and the model ended it with nothing. The server's
+ * one re-ask then ran a full turn with tools, which is the slow path this
+ * turn exists to avoid. The note says what the turn is. It goes at the end of
+ * the system prompt, the part that is not cached anyway, so the cached part
+ * is unchanged.
+ */
+export const GREETING_TURN_NOTE =
+  '\n\n## This turn\nThe owner only greeted you, and this turn has no tools. ' +
+  'Answer the greeting in one or two short sentences in their language, and ask what they need.';
+
 const GREETING_ONLY_RE =
   /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|hola|buenas)[\s!.,?)😊🙂👋]*$/iu;
 

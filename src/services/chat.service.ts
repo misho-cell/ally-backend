@@ -2,7 +2,7 @@ import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
-import { GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
+import { GREETING_MAX_TOKENS, GREETING_TURN_NOTE, isBareGreeting } from './greetingTurn';
 import { goalsForRun } from './wakeGoalScope';
 import { endsQuietly } from './quietSystemRun';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
@@ -10112,11 +10112,17 @@ async function runToolLoop(
     !ownerAbsent &&
     isBareGreeting(lastOwnerText(messages)) &&
     (await getOpenTaskByThread(threadId).catch(() => null)) === null;
-  let response = await callClaude(messages, systemPrompt, tools, ctx, {
-    onText: stream,
-    model: TOOL_TURN_MODEL,
-    ...(greetingOnly && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
-  });
+  let response = await callClaude(
+    messages,
+    greetingOnly ? systemPrompt + GREETING_TURN_NOTE : systemPrompt,
+    tools,
+    ctx,
+    {
+      onText: stream,
+      model: TOOL_TURN_MODEL,
+      ...(greetingOnly && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    },
+  );
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
   // sent again a minute later worked. A blank first answer is asked once more

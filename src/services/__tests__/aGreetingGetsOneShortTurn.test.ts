@@ -3,7 +3,9 @@
  * that is only a greeting now gets one short turn with no tools; this is the
  * test of what counts as only a greeting.
  */
-import { GREETING_MAX_TOKENS, isBareGreeting } from '../greetingTurn';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { GREETING_MAX_TOKENS, GREETING_TURN_NOTE, isBareGreeting } from '../greetingTurn';
 
 describe('isBareGreeting', () => {
   it.each([
@@ -37,5 +39,16 @@ describe('isBareGreeting', () => {
   it('leaves room for a short reply, not a long one', () => {
     expect(GREETING_MAX_TOKENS).toBeGreaterThanOrEqual(200);
     expect(GREETING_MAX_TOKENS).toBeLessThanOrEqual(500);
+  });
+
+  /**
+   * Tester 1071/1072: on prompt v3 the tool-less greeting turn came back
+   * blank 52 times out of 54 blanks. The turn now says what it is.
+   */
+  it('tells the model the turn has no tools and only needs a greeting back', () => {
+    expect(GREETING_TURN_NOTE).toMatch(/no tools/);
+    expect(GREETING_TURN_NOTE).toMatch(/greet/i);
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('greetingOnly ? systemPrompt + GREETING_TURN_NOTE : systemPrompt');
   });
 });
