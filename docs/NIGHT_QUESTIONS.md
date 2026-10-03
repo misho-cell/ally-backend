@@ -1234,7 +1234,10 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
-_Nothing yet._
+**3 Oct, ~02:30 UTC: does „ask X" let X through the permission wall itself? (for Misho)**
+What: when the owner types „ask Lasha …" on a goal without a recorded permission, the server today refuses the first ask and tells the model to call grant_task_permission and retry. In an owner's own turn that costs one extra refused call and 10–30 s (tester 1075 counts 2–3 refused calls per typed „ask", 35–70 s). In a turn the SERVER starts, for example the D316 event right after the goal opens, the model cannot grant at all, because consent tools are off with no owner present. So the ask dies, and the owner is asked „shall I send it?" a second time (conversation 31788, 01:29–01:31Z). The fix would let exactly that one ask through when the owner's own latest typed line names exactly that person by their own phonebook label. That is the same predicate that already opens the unapproved-draft wall since row 251. No goal-wide permission is written, and every other person still needs the yes.
+Why not tonight: it changes who receives a message in the owner's name without a recorded permission, and the night rule keeps that for your word. An earlier test (279 (a)) also chose deliberately to keep the wall and route through the grant.
+What is waiting: nothing breaks. Today's path works in the owner's own turn, just slower. Only the server-started D316 turn asks the owner twice. Built and live tonight instead, both without crossing the wall: the plan wall no longer refuses a person the owner just named (454df3c), and a declined label („ლაშა მძღოლს" → „ლაშა მძღოლი") now counts as naming them (f9d26c0).
 
 Cleared 2 October 07:10 UTC: the night of 1–2 October's two items (test numbers, task_step ceiling) were answered by Misho at ~05:45 UTC ("1. აწიე 2. გააკეთე 3. ჩართე") and done in 93325bb.
 
