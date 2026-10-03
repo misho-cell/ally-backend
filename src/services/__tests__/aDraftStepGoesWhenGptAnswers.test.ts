@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isAnswerRound } from '../chat.service';
+import { isAnswerRound, longestDraft } from '../chat.service';
 
 /**
  * The tester's 1108 (33538, 33560): Claude's answer, written beside the
@@ -24,11 +24,24 @@ describe('a draft step written beside the closing tool', () => {
     expect(remembered.length - 1).toBe(2);
   });
 
-  it('is dropped only when GPT’s non-empty answer stands and nothing was promoted', () => {
-    expect(chat).toContain(
-      "if (finalIsRewrite && !buriedAnswer && finalText.trim() !== '') {\n" +
-        '    await dropDraftSteps(userId, threadId, runId, draftSteps);',
-    );
+  /** The tester's 1109: GPT's line alone had lost the findings; Claude's answer is the reply. */
+  it('becomes the reply in place of GPT’s line, as one copy', () => {
+    const at = chat.indexOf('if (finalIsRewrite && !buriedAnswer && draft !== null) {');
+    expect(at).toBeGreaterThan(-1);
+    const block = chat.slice(at, at + 600);
+    expect(block).toContain('await dropDraftSteps(userId, threadId, runId, draftSteps);');
+    expect(block).toContain('finalText = draft.text;');
+    expect(block).toContain('answeredBy = MODEL;');
+  });
+
+  it('takes the fullest draft', () => {
+    expect(longestDraft([])).toBeNull();
+    expect(
+      longestDraft([
+        { id: 1, text: 'short' },
+        { id: 2, text: 'the longer one' },
+      ])?.id,
+    ).toBe(2);
   });
 
   it('is taken off the open screen too', () => {

@@ -10147,8 +10147,8 @@ function lastUserText(messages: readonly Anthropic.MessageParam[]): string {
  * closing tool (present_choices, propose_task_plan); that text was saved as a
  * step, and GPT then wrote the final from the same material in other words, so
  * the repeat check, which compares words, could not see it. A step written in
- * such a round is Claude's draft of the answer; when GPT's answer stands in its
- * place, the draft goes.
+ * such a round is Claude's answer; it becomes the reply and GPT's line goes
+ * (the tester's 1109: GPT's line alone had lost the findings).
  */
 const ANSWER_ROUND_TOOLS: ReadonlySet<string> = new Set(['present_choices', 'propose_task_plan']);
 
@@ -10159,6 +10159,14 @@ export function isAnswerRound(roundToolNames: readonly string[]): boolean {
 interface SavedStep {
   readonly id: number;
   readonly text: string;
+}
+
+/** The fullest of the run's draft steps, or null when there is none. */
+export function longestDraft(steps: readonly SavedStep[]): SavedStep | null {
+  return steps.reduce<SavedStep | null>(
+    (best, step) => (best === null || step.text.length > best.text.length ? step : best),
+    null,
+  );
 }
 
 async function dropDraftSteps(
@@ -10724,8 +10732,24 @@ async function runToolLoop(
    * last wrote. Read by the cliffhanger check below — see the note there.
    */
   let promoted = false;
-  if (finalIsRewrite && !buriedAnswer && finalText.trim() !== '') {
+  /*
+   * The tester's 1109, on 71b6ca1: dropping the draft step left only GPT's
+   * thin line („ვეძებ ამ გზებით … ჯერ არავის ვწერ") and the findings went with
+   * the step. In a turn that ends with buttons or a plan, Claude's own answer
+   * beside that tool is the one with the news, so IT becomes the reply and
+   * GPT's line goes; one copy, the full one.
+   */
+  const draft = longestDraft(draftSteps);
+  if (finalIsRewrite && !buriedAnswer && draft !== null) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[chat] run ${runId}: Claude's answer beside the closing tool stands (${draft.text.length} chars), GPT's line (${finalText.length}) goes`,
+    );
+    finalText = draft.text;
+    answeredBy = MODEL;
+    finalIsRewrite = false;
+    promoted = true;
   }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
