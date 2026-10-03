@@ -47,7 +47,8 @@ describe('the system prompt is cached up to its per-minute tail', () => {
     expect(chat).toContain('system: systemBlocks(systemPrompt),');
     // GPT gets the markerless prompt; since row 290 its own blocks ride after it,
     // and since row 268 a non-Georgian run's language rule rides after those.
-    expect(chat).toContain('plainSystemPrompt(systemPrompt) + gptBlocks + gptLanguageLast(');
+    expect(chat).toContain('plainSystemPrompt(systemPrompt) +');
+    expect(chat).toContain('GPT_NAMES_WHO_IT_FOUND +\n        gptLanguageLast(');
     expect(chat).toContain('sameRequestAgain + agentPrompt.volatilePrompt,');
     // The clock is no longer part of the stable string.
     expect(chat).toContain('const volatilePrompt = buildTodaySection(new Date());');

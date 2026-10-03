@@ -6927,6 +6927,17 @@ const runModes = new Map<string, RunMode>();
  * language the rule is said again, last, and the Georgian rules are named as
  * Georgian-only. A Georgian run needs nothing more.
  */
+/**
+ * The tester's 1090 (conversation 32479, the first hour after §88): GPT wrote
+ * „I found three people in your contacts saved as accountants" and named none
+ * of them, while the search result it was given held all three names. The
+ * owner asked so they could call somebody. Said last, in every language.
+ */
+export const GPT_NAMES_WHO_IT_FOUND =
+  '\n\n## Name who you found\nWhen the searches found people, name each of them in the ' +
+  'reply, as they are saved, with what makes them fit. Never „I found three people" without ' +
+  'the three names. Never a phone number.';
+
 export function gptLanguageLast(language: RunLanguage): string {
   if (language === 'ka') return '';
   return (
@@ -10420,7 +10431,10 @@ async function runToolLoop(
     const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);
     const rewritten = await writeFinalAnswer(
       messages,
-      plainSystemPrompt(systemPrompt) + gptBlocks + gptLanguageLast(runLang(runId)),
+      plainSystemPrompt(systemPrompt) +
+        gptBlocks +
+        GPT_NAMES_WHO_IT_FOUND +
+        gptLanguageLast(runLang(runId)),
       (delta) => {
         if (!openAiStarted) {
           openAiStarted = true;

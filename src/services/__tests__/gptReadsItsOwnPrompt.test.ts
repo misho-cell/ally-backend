@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { gptLanguageLast } from '../chat.service';
+import { GPT_NAMES_WHO_IT_FOUND, gptLanguageLast } from '../chat.service';
 
 /**
  * Row 290 — GPT writes the final Georgian text and had no prompt of its own.
@@ -14,7 +14,7 @@ describe('GPT reads its own prompt blocks', () => {
     expect(chat).toContain(
       "const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);",
     );
-    expect(chat).toContain('plainSystemPrompt(systemPrompt) + gptBlocks');
+    expect(chat).toContain('plainSystemPrompt(systemPrompt) +\n        gptBlocks +');
   });
 
   it('loads them for the same mode the run resolved to, and forgets it with the run', () => {
@@ -51,9 +51,7 @@ describe('GPT is told the reply language last', () => {
   });
 
   it('is the last part of what GPT is given', () => {
-    expect(chat).toContain(
-      'plainSystemPrompt(systemPrompt) + gptBlocks + gptLanguageLast(runLang(runId)),',
-    );
+    expect(chat).toContain('GPT_NAMES_WHO_IT_FOUND +\n        gptLanguageLast(runLang(runId)),');
   });
 });
 
@@ -75,5 +73,13 @@ describe("GPT's blocks are on the run's stamp", () => {
     expect(loader.slice(0, 900)).toContain(
       'await stampGptBlocks(runId, composed.names, composed.versions).catch(',
     );
+  });
+});
+
+/** The tester's 1090 (32479): three accountants found, none named. */
+describe('GPT names who the searches found', () => {
+  it('asks for every name, and never a number', () => {
+    expect(GPT_NAMES_WHO_IT_FOUND).toContain('name each of them');
+    expect(GPT_NAMES_WHO_IT_FOUND).toContain('Never a phone number');
   });
 });
