@@ -139,3 +139,22 @@ export const PASSED_ON_NUDGE =
   'send_answer_to_asker არ გამოგიძახებია და მას არაფერი მისვლია. თუ მომხმარებლის სიტყვები მისთვისაა, ' +
   'ახლავე გაგზავნე send_answer_to_asker-ით, confirmed=true, ზუსტად მისი სიტყვებით. თუ არა — ' +
   'მოკლედ უთხარი, რომ ჯერ არაფერი გაგზავნილა.)';
+
+/**
+ * The tester's 1110 (33950): the helper typed „რატომ სჭირდება? რაზე მუშაობს?",
+ * the run called no tool, and the reply said „your question could not be sent".
+ * The claim guard reads the model's wording, and the wording keeps changing. A
+ * helper's own line that is a question, in a run that sent nothing, is asked
+ * about directly: if it is for the asker, it goes to them in their words.
+ */
+const QUESTION_LINE_RE = /[?？]\s*$/u;
+
+export function helperAskedAQuestion(helperLine: string): boolean {
+  return QUESTION_LINE_RE.test(helperLine.trim());
+}
+
+export const HELPER_QUESTION_NUDGE =
+  '(სისტემური შენიშვნა: მომხმარებელმა კითხვა დაწერა და ამ გაშვებაში არაფერი გაგზავნილა. თუ ეს ' +
+  'კითხვა კითხვის ავტორს ეკუთვნის — მაგალითად, რისთვის სჭირდება, ან ვინ არის — ახლავე ' +
+  'გაგზავნე send_answer_to_asker-ით, confirmed=true, ზუსტად მისი სიტყვებით, და მოკლედ უთხარი, ' +
+  'რომ გადაეცი. თუ კითხვა შენთვისაა, უპასუხე თავად.)';

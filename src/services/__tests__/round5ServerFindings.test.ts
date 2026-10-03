@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { claimsToHavePassedItOn, PASSED_ON_NUDGE } from '../replyGuards';
+import {
+  claimsToHavePassedItOn,
+  helperAskedAQuestion,
+  HELPER_QUESTION_NUDGE,
+  PASSED_ON_NUDGE,
+} from '../replyGuards';
 import { relatedProfessionWords } from '../professionFamilies';
 import { whoseAsksWereThey } from '../taskAsks.service';
 
@@ -69,8 +74,9 @@ describe('4 — a helper’s assistant that claims a send that did not happen', 
   it('asks once more with the tool named, and never relays the line itself', () => {
     expect(guards.PASSED_ON_NUDGE).toContain('send_answer_to_asker');
     expect(guards.PASSED_ON_NUDGE).toContain('confirmed=true');
-    expect(chat).toContain("runModes.get(runId) === 'incoming_ask' &&");
-    expect(chat).toContain('!runAnswerSent.has(runId) &&');
+    expect(chat).toContain(
+      "const helperRunSentNothing = runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId);",
+    );
     expect(chat).toContain("const nudgeTurn = { role: 'user' as const, content: guardNudge };");
   });
 
@@ -105,5 +111,22 @@ describe('1102 (f) — whose questions filled a helper’s day', () => {
     expect(whoseAsksWereThey([{ from_user_id: 41 }, { from_user_id: 8 }], '41')).toBe(
       '1 მფლობელის საკუთარი, დანარჩენი სხვებისგან',
     );
+  });
+});
+
+/** The tester's 1110 (33950): the helper's question back, lost whatever the model wrote. */
+describe('a helper’s question back in a run that sent nothing', () => {
+  it('is seen from the helper’s own line', () => {
+    expect(helperAskedAQuestion('რატომ სჭირდება? რაზე მუშაობს?')).toBe(true);
+    expect(helperAskedAQuestion('Why does she need it?')).toBe(true);
+    expect(helperAskedAQuestion('არ ვიცი.')).toBe(false);
+  });
+
+  it('gets its own note naming the tool, kept out of the owner’s history', () => {
+    expect(HELPER_QUESTION_NUDGE).toContain('send_answer_to_asker');
+    expect(HELPER_QUESTION_NUDGE).toContain('confirmed=true');
+    const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
+    expect(set.slice(0, 200)).toContain('HELPER_QUESTION_NUDGE');
+    expect(chat).toContain('claimedASendThatDidNotHappen || helperQuestionUnsent ||');
   });
 });

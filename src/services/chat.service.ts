@@ -260,6 +260,8 @@ import {
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
   claimsToHavePassedItOn,
+  helperAskedAQuestion,
+  HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
   claimsNothingFound,
 } from './replyGuards';
@@ -6239,10 +6241,45 @@ function notePlanForReply(runId: string | undefined, plan: PlanForReply): void {
  * above the buttons. Asked of the model; added by the server when it is left
  * out, so „every plan" is true rather than likely.
  */
+/** Words two questions may differ by and still be the same question. */
+const CLOSING_VARIANT_EXTRA_WORDS = 2;
+
+function questionWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w !== '');
+}
+
+/**
+ * The tester's 1110 (34000): the model closed with „ამ გეგმას მივყვე და ასე
+ * ვიმოქმედო?" and the server, not finding the exact words, added the agreed
+ * question under it. A last line that is a question holding every word of the
+ * agreed one, with a word or two more, is the same question in other words.
+ */
+export function isClosingQuestionVariant(line: string, question: string): boolean {
+  const trimmed = line.trim();
+  if (!/[?？]$/u.test(trimmed)) return false;
+  const lineWords = questionWords(trimmed);
+  const asked = questionWords(question);
+  if (lineWords.length > asked.length + CLOSING_VARIANT_EXTRA_WORDS) return false;
+  return asked.every((w) => lineWords.includes(w));
+}
+
+/** The reply with a last-line variant of the agreed question taken off. */
+function withoutClosingVariant(reply: string, question: string): string {
+  const lines = reply.trimEnd().split('\n');
+  const last = lines[lines.length - 1] ?? '';
+  if (last.trim() === question || !isClosingQuestionVariant(last, question)) return reply;
+  return lines.slice(0, -1).join('\n');
+}
+
 export function withClosingQuestion(reply: string, language: RunLanguage): string {
   const question = PLAN_CLOSING_QUESTION[language];
   const at = reply.lastIndexOf(question);
-  if (at === -1) return `${reply.trimEnd()}\n\n${question}`;
+  if (at === -1) {
+    return `${withoutClosingVariant(reply, question).trimEnd()}\n\n${question}`;
+  }
   // The tester's 967/968: text after the question — a stray „Elindu" (29107),
   // „(ზემოთ მოცემულ ღილაკებზე დააჭირე პასუხად.)" with the buttons below it
   // (29140). The question is the plan's last line; the buttons answer it.
@@ -6255,9 +6292,11 @@ export function withClosingQuestion(reply: string, language: RunLanguage): strin
  * both stayed. The question is said once.
  */
 function withoutRepeatedQuestion(reply: string, question: string): string {
-  let head = reply.slice(0, reply.length - question.length).trimEnd();
-  if (!head.endsWith(question)) return reply;
+  const before = reply.slice(0, reply.length - question.length).trimEnd();
+  let head = before;
   while (head.endsWith(question)) head = head.slice(0, head.length - question.length).trimEnd();
+  head = withoutClosingVariant(head, question).trimEnd();
+  if (head === before) return reply;
   return head === '' ? question : `${head}\n\n${question}`;
 }
 
@@ -6307,7 +6346,11 @@ function withPlanInReply(
   if (replyCarriesPlan(reply, plan)) return withClosingQuestion(reply, runLang(runId));
   // eslint-disable-next-line no-console
   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
-  return reply.trim() === '' ? plan.text : `${plan.text}\n\n${reply}`;
+  // The tester's 1110 (33975): the plan line went first and the findings came
+  // after it. The news leads; the plan follows it, and the question ends it.
+  return reply.trim() === ''
+    ? plan.text
+    : withClosingQuestion(`${reply.trimEnd()}\n\n${plan.text}`, runLang(runId));
 }
 
 /**
@@ -10853,15 +10896,20 @@ async function runToolLoop(
   const answeringALaterTap = askTapOf(lastUserText(messages)) === AskTap.Later;
   // The tester's 1100 (32753): a helper's assistant said it passed a question
   // back with no send. Same one-more-turn as the cliffhanger, with its own note.
-  const claimedASendThatDidNotHappen =
-    runModes.get(runId) === 'incoming_ask' &&
-    !runAnswerSent.has(runId) &&
-    claimsToHavePassedItOn(finalText);
-  const guardNudge = claimedASendThatDidNotHappen ? PASSED_ON_NUDGE : CLIFFHANGER_NUDGE;
+  const helperRunSentNothing = runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId);
+  const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(finalText);
+  // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
+  const helperQuestionUnsent =
+    helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
+  const guardNudge = claimedASendThatDidNotHappen
+    ? PASSED_ON_NUDGE
+    : helperQuestionUnsent
+      ? HELPER_QUESTION_NUDGE
+      : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
-    (claimedASendThatDidNotHappen || isCliffhangerReply(finalText))
+    (claimedASendThatDidNotHappen || helperQuestionUnsent || isCliffhangerReply(finalText))
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
     // announcement is kept because the log line compares the two texts, and
@@ -11042,6 +11090,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
   PASSED_ON_NUDGE,
+  HELPER_QUESTION_NUDGE,
 ]);
 
 /**

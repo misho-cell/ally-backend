@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { planInSentences, TaskPlan } from '../taskPlans.service';
 import {
+  isClosingQuestionVariant,
   planInYourReplyNote,
   replyAsksForApproval,
   replyCarriesPlan,
@@ -178,5 +179,40 @@ describe('the plan reads as Georgian sentences', () => {
     expect(text).not.toContain('კითხვას დავუსვამ:');
     // The note stays after the name, and only the name is put in its case.
     expect(text).toMatch(/Netai Test 54-ს \(Netai-ზე არ არის/);
+  });
+});
+
+/** The tester's 1110 (34000): the model's own wording of the question, then the agreed one under it. */
+describe('a closing question in other words', () => {
+  const Q = 'ამ გეგმას მივყვე და ვიმოქმედო?';
+
+  it('is recognised as the agreed question', () => {
+    expect(isClosingQuestionVariant('ამ გეგმას მივყვე და ასე ვიმოქმედო?', Q)).toBe(true);
+    expect(isClosingQuestionVariant('ვამტკიცებ თუ შევცვალოთ?', Q)).toBe(false);
+    expect(isClosingQuestionVariant('ამ გეგმას მივყვე და ასე ვიმოქმედო.', Q)).toBe(false);
+  });
+
+  it('is said once, as the agreed question', () => {
+    const body = 'ვაკეში ორი ვარიანტი ვიპოვე.';
+    expect(withClosingQuestion(`${body}\n\nამ გეგმას მივყვე და ასე ვიმოქმედო?\n\n${Q}`, 'ka')).toBe(
+      `${body}\n\n${Q}`,
+    );
+    expect(withClosingQuestion(`${body}\n\nამ გეგმას მივყვე და ასე ვიმოქმედო?`, 'ka')).toBe(
+      `${body}\n\n${Q}`,
+    );
+  });
+
+  it('leaves a reply with a different last question alone, adding the agreed one', () => {
+    expect(withClosingQuestion('რომელ ქალაქში ხარ?', 'ka')).toBe(`რომელ ქალაქში ხარ?\n\n${Q}`);
+  });
+});
+
+/** The tester's 1110 (33975): the server's plan line went before the findings. */
+describe('the plan the server adds', () => {
+  it('follows the findings and ends with the question', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      'withClosingQuestion(`${reply.trimEnd()}\\n\\n${plan.text}`, runLang(runId));',
+    );
   });
 });
