@@ -4,6 +4,7 @@ import { phoneDigits } from './phone';
 import { recordPayment } from './payments.service';
 import { deliverTopupSession, isTopupSession } from './stripeTopup.service';
 import { applyChargeRefund } from './stripeRefund.service';
+import { distributeReferralEarnings } from './referral.service';
 
 // Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
 // trial with the card collected up front, no charge during the trial, then
@@ -323,6 +324,37 @@ async function recordInvoicePayment(
       (err as Error).message,
     );
   });
+  await payReferralShares(userId, invoice);
+}
+
+/** Stripe amounts are in the currency's minor unit; USD has 100 cents. */
+const USD_MINOR_PER_MAJOR = 100;
+
+/**
+ * Misho, 3 October: Stripe pays the referral reward too. Only Paddle did, so
+ * an inviter whose friend subscribed through Stripe earned nothing. The same
+ * rule as Paddle's: the first real charge of a subscription (a $0 trial
+ * invoice is skipped here; renewals by the once-per-subscriber guard inside
+ * distributeReferralEarnings), the invoice id as the idempotency key, and a
+ * refund takes it back through clawbackReferralEarnings (#233). Shares are
+ * computed in USD; any other currency is logged rather than converted at a
+ * guessed rate. Never fails the webhook.
+ */
+async function payReferralShares(userId: string, invoice: Stripe.Invoice): Promise<void> {
+  if (invoice.amount_paid <= 0) return;
+  if (invoice.currency !== 'usd') {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[stripe] invoice ${invoice.id} paid in ${invoice.currency}: no referral shares (USD only)`,
+    );
+    return;
+  }
+  try {
+    await distributeReferralEarnings(userId, invoice.amount_paid / USD_MINOR_PER_MAJOR, invoice.id);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[stripe] referral distribution failed for ${invoice.id}:`, err);
+  }
 }
 
 /**
