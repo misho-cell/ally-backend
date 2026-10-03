@@ -47,7 +47,7 @@ describe('the new-goal flag', () => {
   it('needs a stated need, and a short line answered with no tool gets no waiting list', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('if (!flaggedNeed && !looksLikeGoalRequest(userMessage)) {');
-    expect(chat).toContain('if (smallTalkTurn(ownerAbsent, userMessage, pending)) {');
+    expect(chat).toContain('const smallTalk = smallTalkTurn(ownerAbsent, userMessage, pending);');
   });
 });
 
@@ -72,9 +72,7 @@ describe('small talk and open goals', () => {
   });
 
   it('greets from the server inside a goal too, and gets no waiting block after tools', () => {
-    expect(chat).toContain(
-      'const greetingOnly = !ownerAbsent && isBareGreeting(lastOwnerText(messages));',
-    );
+    expect(chat).toContain('if (!ownerAbsent && isBareGreeting(userMessage)) {');
     expect(chat).toContain('if (isSmallTalk(userMessage)) return true;');
   });
 });

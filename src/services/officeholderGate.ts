@@ -65,8 +65,11 @@ export function clearRunEvidence(runId: string | undefined): void {
 
 // Office words. Georgian is caseless and declines, so stems are matched at a
 // token start; the English list is whole-word.
+// The tester's 1120 (34699): „დირექტორიებში" is „in directories", not a
+// director. Every form of the word for a directory runs დირექტორი + ა/ი/ე
+// (დირექტორია, დირექტორიის, დირექტორიებში); no form of „director" does.
 const OFFICE_RE_KA =
-  /(^|[^ა-ჰ])(მინისტრ|დირექტორ|ხელმძღვანელ|თავმჯდომარ|უფროს|პრეზიდენტ|გუბერნატორ|დეპუტატ|რექტორ|გამგებელ|კომისარ|ელჩ|მერი|მერია|მერის|მერმა|მერს|პრემიერ)/;
+  /(^|[^ა-ჰ])(მინისტრ|დირექტორ(?!ი[აიე])|ხელმძღვანელ|თავმჯდომარ|უფროს|პრეზიდენტ|გუბერნატორ|დეპუტატ|რექტორ|გამგებელ|კომისარ|ელჩ|მერი|მერია|მერის|მერმა|მერს|პრემიერ)/;
 const OFFICE_RE_EN =
   /\b(minister|director|ceo|cfo|coo|cto|chair|chairman|chairwoman|chairperson|head|president|mayor|governor|deputy|rector|secretary|commissioner|ambassador|premier)\b/i;
 const OFFICE_RE_RU =
@@ -236,6 +239,8 @@ const KA_NOT_A_FIRST_NAME = new Set([
   'უფროსი',
   'გენერალური',
   'აღმასრულებელი',
+  // The tester's 1120 (35306): „most …" opens a phrase, never a name.
+  'ყველაზე',
 ]);
 
 /**
@@ -281,6 +286,12 @@ const KA_NOT_A_SURNAME: ReadonlySet<string> = new Set([
   'დღიანი',
   'ტეგიანი',
   'ერთკაციანი',
+  // The tester's 1120 (35306): an invite list opened with „(name not verified)
+  // იქნება მოიწვიო …" — an adjective in -იანი read as a surname.
+  'ეფექტიანი',
+  'შედეგიანი',
+  'ხარისხიანი',
+  'სასარგებლო',
 ]);
 
 const LATIN_NAME_RE = /\b([A-Z][a-z]{1,}(?:-[A-Z][a-z]+)?)\s+([A-Z][a-z]{2,}(?:-[A-Z][a-z]+)?)\b/g;

@@ -539,3 +539,25 @@ describe('a place named beside an office', () => {
     expect(namesAPlace(SENTENCE, 'მამუკა სვანიძე')).toBe(false);
   });
 });
+
+/** The tester's 1120: two replies opened with the placeholder where no officeholder was named. */
+describe('words that only look like an office or a name', () => {
+  it('reads „directories" as directories, not a director', async () => {
+    const reply =
+      'საჯარო დირექტორიებში ვიპოვე ორი ნოტარიუსი ბათუმში (ნინო ბერიძე და მარიამ კვარაცხელია).';
+    const out = await applyOfficeholderGate(reply, RUN, 'ka');
+    expect(out.reply).toBe(reply);
+    expect(out.refused).toEqual([]);
+  });
+
+  it('still reads the director himself', async () => {
+    const out = await applyOfficeholderGate('სააგენტოს დირექტორი არის ლაშა ხუციშვილი.', RUN, 'ka');
+    expect(out.refused).toEqual(['ლაშა ხუციშვილი']);
+  });
+
+  it('takes no superlative adjective for a name', () => {
+    expect(
+      nameCandidates('ყველაზე ეფექტიანი იქნება მოიწვიო ბექა დირექტორი და სოფო ფოტოგრაფი.'),
+    ).toEqual([]);
+  });
+});

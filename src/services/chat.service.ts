@@ -1,4 +1,10 @@
 import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
+import {
+  buttonSpellingNote,
+  correctedLabels,
+  splitButtons,
+  withoutButtonsLine,
+} from './buttonSpelling';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
@@ -10300,6 +10306,25 @@ async function dropDraftSteps(
   }
 }
 
+/** The buttons as GPT spelt them, where that is safe; the server's own labels stay. */
+function respeltChoices(
+  choices: readonly string[],
+  fromGpt: readonly string[] | null,
+  runId: string,
+): string[] {
+  const corrected = correctedLabels(
+    choices,
+    fromGpt,
+    (label) => isApproveChoice(label) || isChangeChoice(label),
+  );
+  const changed = corrected.filter((label, i) => label !== choices[i]).length;
+  if (changed > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[choices] run ${runId}: ${changed} button label(s) respelt by the final writer`);
+  }
+  return corrected;
+}
+
 /** What the model reads when it tries to close a goal the owner did not ask to close. */
 export const GOAL_CLOSE_NOT_ASKED =
   'Not closed: the owner did not ask to stop or close this goal in this conversation. ' +
@@ -10360,8 +10385,91 @@ export function smallTalkTurn(
   );
 }
 
+/** The tools a run calls when the owner asks what is waiting or how their goals stand. */
+const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
+  'get_my_tasks',
+  'get_pending_updates',
+  'check_my_inbox',
+  'get_intro_status',
+]);
+
+/**
+ * The tester's 1120 (35305), the founder's rule behind D617: other goals come up
+ * only when the owner asks. A long answer about who could buy a program ended in
+ * „კიდევ გელოდება: 2 შეკითხვა, როგორ ჩაიარა". The waiting items go out on a
+ * system run, in a goal's own conversation, or when this run looked at goals or
+ * the inbox; anywhere else they wait for the next of those. Nothing is lost.
+ */
+export async function waitingItemsWanted(
+  ownerAbsent: boolean,
+  threadId: number,
+  turns: readonly Anthropic.MessageParam[],
+): Promise<boolean> {
+  if (ownerAbsent) return true;
+  const lookedAtGoals = turns.some(
+    (t) =>
+      t.role === 'assistant' &&
+      typeof t.content !== 'string' &&
+      t.content.some((b) => b.type === 'tool_use' && WAITING_ASKED_TOOLS.has(b.name)),
+  );
+  if (lookedAtGoals) return true;
+  try {
+    return (await getOpenTaskByThread(threadId)) !== null;
+  } catch (err) {
+    // A failed read delivers: a card shown once too often beats one never shown.
+    // eslint-disable-next-line no-console
+    console.error('[pending] could not read the thread’s goal:', (err as Error).message);
+    return true;
+  }
+}
+
 /** Stamped on a reply the server wrote itself (answered_by). */
 const SERVER_GREETING_AUTHOR = 'server';
+
+/**
+ * The founder's D622 (tester 1120): the server greeting took 3.0–3.5 s, and
+ * none of it was the greeting. Stored 3.1 s after the hello (thread 35535), it
+ * waited for the goal check, the whole system prompt, the tools and the history
+ * — all built for a model that is never called. Now it reads only what the
+ * line needs, all at once: the name, whether the phonebook is empty, and the
+ * conversation's language.
+ */
+async function answerGreeting(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  storedAhead: boolean,
+): Promise<ChatResult> {
+  const [registered, hasContacts, spokenBefore] = await Promise.all([
+    registeredName(userId),
+    ownerHasContacts(userId),
+    ownerMessages(threadId).catch(() => [] as string[]),
+    storedAhead
+      ? Promise.resolve(0)
+      : saveMessage(userId, threadId, 'user', userMessage, 'message', runId),
+  ]);
+  const language = languageOfConversation(
+    userMessage,
+    spokenBefore,
+    detectRunLanguage(userMessage),
+  );
+  const reply = greetingText(greetingName(registered), hasContacts, language, userMessage);
+  await saveMessage(
+    userId,
+    threadId,
+    'assistant',
+    reply,
+    'message',
+    runId,
+    null,
+    null,
+    SERVER_GREETING_AUTHOR,
+  );
+  // eslint-disable-next-line no-console
+  console.log(`[greeting] run ${runId}: answered by the server`);
+  return { reply, language, requestCreated: false };
+}
 
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
@@ -10517,28 +10625,6 @@ async function runToolLoop(
   // route reports a run error — there is no partial answer to salvage.
   // Tool turns run on TOOL_TURN_MODEL (same as MODEL unless the A/B flag is set).
   // #378: a bare greeting outside a goal is one short turn, no tools.
-  // The tester's 1116 (S10, 34606): a hello inside an open goal ran the inbox tools
-  // and the waiting block. The founder's rule (D617) holds in a goal too.
-  const greetingOnly = !ownerAbsent && isBareGreeting(lastOwnerText(messages));
-  // The tester's 1114 (D617): a hello gets a hello at once — from the server, no model.
-  if (greetingOnly) {
-    clearInterval(heartbeat);
-    const language = runLang(runId);
-    const name = greetingName(await registeredName(userId));
-    // eslint-disable-next-line no-console
-    console.log(`[greeting] run ${runId}: answered by the server`);
-    return {
-      finalText: greetingText(
-        name,
-        await ownerHasContacts(userId),
-        language,
-        lastOwnerText(messages) ?? '',
-      ),
-      pending,
-      requestCreated: false,
-      answeredBy: SERVER_GREETING_AUTHOR,
-    };
-  }
   // Tester 1088: the „other, I'll write it" label sent as text is one short line, no tools.
   const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
@@ -10829,17 +10915,18 @@ async function runToolLoop(
       plainSystemPrompt(systemPrompt) +
         gptBlocks +
         GPT_NAMES_WHO_IT_FOUND +
+        (choices !== undefined && choices.length > 0 ? buttonSpellingNote(choices) : '') +
         // The tester's 1096 (32608): a discussion turn's rule reached Claude only, and
         // GPT, writing the answer, named the owner's winery from the saved profile.
         shortTurnNote +
         gptLanguageLast(runLang(runId)),
-      (delta) => {
+      withoutButtonsLine((delta) => {
         if (!openAiStarted) {
           openAiStarted = true;
           resetTurnStream();
         }
         stream(delta);
-      },
+      }),
       runLang(runId),
     );
     if (rewritten === null) {
@@ -10852,7 +10939,9 @@ async function runToolLoop(
     } else {
       answeredBy = rewritten.model;
       finalIsRewrite = true;
-      finalText = scrubFinal(rewritten.text, runId);
+      const split = splitButtons(rewritten.text);
+      if (choices !== undefined) choices = respeltChoices(choices, split.labels, runId);
+      finalText = scrubFinal(split.text, runId);
       await recordClaudeUsage({
         userId,
         kind: 'chat',
@@ -12504,6 +12593,11 @@ export async function processChat(
      */
     return { reply: said, stopped: true, stoppedLine: said, language: stopLang };
   }
+  // The tester's 1114 and 1116 (D617): a hello gets a hello at once, from the
+  // server, in a goal's conversation too. D622 (1120): before the prompt is built.
+  if (!ownerAbsent && isBareGreeting(userMessage)) {
+    return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
+  }
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
@@ -13018,12 +13112,9 @@ export async function processChat(
   // takes two independent UNSAFE votes (see moderation.service) — a false
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
-  // The tester's 1117: the server's own greeting needs no reply check (it is our
-  // fixed sentence), and the check was most of its four seconds.
-  const verdict =
-    answeredBy === SERVER_GREETING_AUTHOR
-      ? { safe: true }
-      : await moderateReply(cleanedFinal, userId);
+  // The server's own greeting never reaches here (answerGreeting): it is our
+  // fixed sentence and needs no reply check.
+  const verdict = await moderateReply(cleanedFinal, userId);
   let replySafe = verdict.safe;
   if (!replySafe) {
     /**
@@ -13317,13 +13408,16 @@ export async function processChat(
   // goals wait for your answer" under the greeting. A short line answered with no
   // tool at all is small talk: what waits is said when the owner asks or works,
   // not under a hello. Nothing is lost; the items are read again next run.
-  if (smallTalkTurn(ownerAbsent, userMessage, pending)) {
-    if (pendingItems.length > 0) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[pending] run ${runId}: ${pendingItems.length} waiting item(s) held back — small talk`,
-      );
-    }
+  const smallTalk = smallTalkTurn(ownerAbsent, userMessage, pending);
+  const holdBack =
+    pendingItems.length > 0 &&
+    (smallTalk || !(await waitingItemsWanted(ownerAbsent, threadId, pending)));
+  if (holdBack) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[pending] run ${runId}: ${pendingItems.length} waiting item(s) held back — ` +
+        (smallTalk ? 'small talk' : 'not asked about goals'),
+    );
   } else {
     await deliverPendingMessages(userId, threadId, runId, language, pendingItems);
   }

@@ -46,15 +46,24 @@ describe('isBareGreeting', () => {
   });
 
   /** The tester's 1114 (D617): a hello gets a hello at once, written by the server. */
-  it('is answered by the server before any model turn', () => {
+  it('is answered by the server before the prompt is built (D622)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const greet = chat.indexOf('if (greetingOnly) {');
-    const firstCall = chat.indexOf(
-      'let response = await callClaude(messages, systemPrompt + shortTurnNote',
-    );
+    const greet = chat.indexOf('if (!ownerAbsent && isBareGreeting(userMessage)) {');
+    const goalCheck = chat.indexOf('const goalForRequest = await ensureGoalForRequest(');
+    const prompt = chat.indexOf('const [agentPrompt, tools, history] = await Promise.all([');
     expect(greet).toBeGreaterThan(-1);
-    expect(firstCall).toBeGreaterThan(greet);
-    expect(chat.slice(greet, greet + 600)).toContain('clearInterval(heartbeat);');
+    expect(goalCheck).toBeGreaterThan(greet);
+    expect(prompt).toBeGreaterThan(greet);
+    expect(chat.slice(greet, greet + 300)).toContain('return answerGreeting(');
+  });
+
+  it('stores the greeting as the server’s and runs no reply check on it', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const fn = chat.slice(chat.indexOf('async function answerGreeting('));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
+    expect(body).toContain('SERVER_GREETING_AUTHOR');
+    expect(body).not.toContain('moderateReply');
+    expect(body).toContain('await Promise.all([');
   });
 
   it('greets by first name as saved, answers „how are you", and asks an empty account to import', () => {
@@ -71,11 +80,6 @@ describe('isBareGreeting', () => {
     );
     expect(greetingText(null, true, 'en')).toBe('Hello! How can I help?');
     expect(greetingText(null, false, 'ka')).toContain('კონტაქტები აპში შემოიტანე');
-  });
-
-  it('skips the reply check on the server’s own sentence', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('answeredBy === SERVER_GREETING_AUTHOR');
   });
 
   /** Task 695 (31886): the re-ask after a blank says the first try was empty. */
