@@ -3,6 +3,15 @@ jest.mock('../../db/postgres/client', () => ({
   query: jest.fn(),
   __esModule: true,
 }));
+// 3 Oct: createAsk translates the question for its reader, and „q" reads as
+// English to a Georgian reader, so every ask here called the real translation
+// model over the network: ~0.2 s each when it failed fast, a 5 s timeout under a
+// loaded suite. The question goes through untouched here; translation has its
+// own tests (theQuestionReachesItsReader).
+jest.mock('../askTranslation.service', () => ({
+  __esModule: true,
+  questionForReader: jest.fn(async (question: string) => ({ text: question })),
+}));
 jest.mock('../threads.service', () => ({
   __esModule: true,
   createThread: jest.fn().mockResolvedValue({
@@ -233,9 +242,6 @@ function routeAskQueries(opts: {
   });
 }
 
-/** Room for a full createAsk under a loaded parallel run (see the test that uses it). */
-const SLOW_FIRST_ASK_MS = 20_000;
-
 describe('createAsk', () => {
   it('REFUSES without granted permission — the server-side P0 gate (thread 7723)', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' } });
@@ -462,22 +468,16 @@ describe('createAsk', () => {
 
   // Ticket 10 Task 25 (b), D123: a non-paying member can answer and help on a
   // paying member's task. Until 7 Sep a lapsed friend could not even be asked.
-  it(
-    'reaches a lapsed member who has used Netai — paying is not required',
-    async () => {
-      routeAskQueries({
-        member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' },
-        onNetai: true,
-      });
+  it('reaches a lapsed member who has used Netai — paying is not required', async () => {
+    routeAskQueries({
+      member: { userId: 7, name: 'გია', subscriptionStatus: 'inactive' },
+      onNetai: true,
+    });
 
-      const out = await createAsk('42', 3, '+995599111222', 'q');
+    const out = await createAsk('42', 3, '+995599111222', 'q');
 
-      expect(out.sent).toBe(true);
-      // 3 Oct: 0.3 s alone, over jest's 5 s default twice under the full parallel
-      // suite; the first ask of the file pays the module warm-up.
-    },
-    SLOW_FIRST_ASK_MS,
-  );
+    expect(out.sent).toBe(true);
+  });
 
   // D103 / D121: an old-Ally account that never opened Netai is a target, not
   // a recipient — an ask to it lands in an inbox nobody has ever opened.

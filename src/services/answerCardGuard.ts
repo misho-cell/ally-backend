@@ -25,11 +25,16 @@ const SHORT_QUESTION_CHARS = 120;
 
 const NOT_YET_WORDS: readonly string[] = ['ჯერ არა', 'not yet', 'пока нет', 'todavía no'];
 
+/*
+ * The tester's 1118 (34709, 34996): „which taxi driver…?" answered „გურამი", and
+ * the line said „when you two have spoken" — nobody was going to speak. The line
+ * now fits a plain answer and a connection alike: it waits for the owner's word.
+ */
 const SPEAK_FIRST: Readonly<Record<RunLanguage, string>> = {
-  ka: 'როცა ისაუბრებთ, მომწერე — მაშინ დავხურავ.',
-  en: 'Once you two have spoken, tell me and I will close this.',
-  ru: 'Когда поговорите, напиши мне — тогда закрою.',
-  es: 'Cuando hayáis hablado, avísame y lo cierro.',
+  ka: 'როცა დარწმუნდები, რომ ეს გიშველის, მომწერე — მაშინ დავხურავ.',
+  en: 'When you are sure this settles it, tell me and I will close it.',
+  ru: 'Когда убедишься, что это решает вопрос, напиши мне — тогда закрою.',
+  es: 'Cuando veas que esto lo resuelve, avísame y lo cierro.',
 };
 
 export interface GuardedReply {

@@ -27,7 +27,7 @@ describe('no „solved?" under an answers card', () => {
       solved,
     );
     expect(guarded).toEqual({
-      text: 'როცა ისაუბრებთ, მომწერე — მაშინ დავხურავ.',
+      text: 'როცა დარწმუნდები, რომ ეს გიშველის, მომწერე — მაშინ დავხურავ.',
       choices: undefined,
     });
   });
