@@ -5543,16 +5543,24 @@ UNDO    env.sh unset CHAT_FINAL_ANSWER_MODEL (unset = Claude writes the answer, 
         restart, because an unset does not redeploy
 ```
 
-## §89 — THREAD 26302: THE „TRY AGAIN" LINE FROM A SCHEDULED CHECK MOVED TO `event`
+## §89 — THREAD 26302: THE „TRY AGAIN" LINE FROM A SCHEDULED CHECK HIDDEN
 
 **Authorised by Misho, 3 October ~07:35 UTC, directly in the session:** „კი დამალე" — to my
 question whether to hide the error line a real owner found at 07:21:46Z under a scheduled check
-they never started (fixed for the future in 5e66259). Moving it to `kind=event` takes it off the
-chat; nothing is deleted and no text changes.
+they never started (fixed for the future in 5e66259). The row is the assistant's, so §86's route
+(owner-role rows only) refused it, and `event` would feed its text into the model's history. A new
+route moves an assistant `error` row to `hidden`, which neither the chat nor the model's history
+reads. Nothing is deleted and no text changes.
 
 ```
-ROUTE   PATCH /admin/threads/26302/messages/6c946194-838f-4b5d-90a0-7834027a9b58/kind
-BODY    { "kind": "event", "reason": "§89: error line from a system run, Misho 3 Oct" }
-UNDO    PATCH /admin/threads/26302/messages/6c946194-838f-4b5d-90a0-7834027a9b58/kind
-        { "kind": "error", "reason": "undo §89" }
+ROUTE   PATCH /admin/threads/26302/error-lines/6c946194-838f-4b5d-90a0-7834027a9b58
+BODY    { "hidden": true, "reason": "§89: error line from a system run, Misho 3 Oct" }
+UNDO    PATCH /admin/threads/26302/error-lines/6c946194-838f-4b5d-90a0-7834027a9b58
+        { "hidden": false, "reason": "undo §89" }
 ```
+
+**§89 first try, 3 October 07:36:12 UTC:** §86's route answered 404 „no owner-role message with
+that id in that thread"; nothing changed. The route above was built for it.
+
+**§88 RUN, 3 October 07:36:13 UTC:** `env.sh: set CHAT_FINAL_ANSWER_MODEL (value not shown) —
+Railway will redeploy`.

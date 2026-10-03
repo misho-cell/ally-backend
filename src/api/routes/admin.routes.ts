@@ -44,6 +44,7 @@ import {
 } from '../../services/tokenWallet.service';
 import { randomUUID } from 'crypto';
 import { MessageKind, setUserMessageKind } from '../../services/messageKind.service';
+import { hideErrorLine, showErrorLine } from '../../services/errorLineVisibility.service';
 import { Router, Request, Response } from 'express';
 import { body, param, query as queryParam, validationResult } from 'express-validator';
 import {
@@ -2588,6 +2589,54 @@ adminRouter.patch(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[message-kind]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §89 — one named assistant error line hidden from the chat (`hidden: true`) or
+ * shown again (`hidden: false`, the undo). Nothing is deleted; no text changes.
+ */
+adminRouter.patch(
+  '/threads/:threadId/error-lines/:messageId',
+  param('threadId').isInt({ min: 1 }),
+  param('messageId').isString().trim().isLength({ min: 1, max: 64 }),
+  body('hidden').isBoolean(),
+  body('reason').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'hidden (true or false) and a reason (3-500 chars) are required',
+      });
+      return;
+    }
+    const threadId = Number(req.params.threadId);
+    const messageId = String(req.params.messageId);
+    const hide = (req.body as { hidden: boolean }).hidden;
+    try {
+      const changed = hide
+        ? await hideErrorLine(threadId, messageId)
+        : await showErrorLine(threadId, messageId);
+      if (changed === null) {
+        res.status(404).json({
+          success: false,
+          error: hide
+            ? 'no assistant error line with that id in that thread'
+            : 'no hidden error line with that id in that thread',
+        });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[error-line] admin ${(req as AuthenticatedRequest).user.userId} thread ${threadId}: ` +
+          `${changed.was} -> ${changed.now}`,
+      );
+      res.status(200).json({ success: true, data: changed });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[error-line]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
