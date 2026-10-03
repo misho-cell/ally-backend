@@ -15,6 +15,51 @@ messages in their name.
 
 ---
 
+## 3 October, 05:40 — everything on the board that is yours (Misho asked me to list it)
+
+Read from /admin/team-tasks this morning. Each row has its „done when" from the
+board; the server half, where there is one, is said beside it.
+
+**To build (yours alone, no server work needed):**
+- **#379 (Invite a friend):** the link cannot be copied, and the share sheet
+  offers only iMessage. Done when there is a copy-link button and sharing
+  returns to the app. The text and link come ready from `GET
+  /profile/invite-link` → `{ link, code, share_text }`. Copy `link` (or
+  `share_text`) as it is.
+- **#507:** on the phone, while typing in a chat, the letters in the top bar sit
+  on top of each other. Done when the top bar is clean with the keyboard open,
+  on iPhone and Android.
+- **#508 (profile page, read cold by Ninia):** „შეტყობინებების
+  დიაგნოსტიკა" and „მიკროფონის დიაგნოსტიკა" mean nothing to an ordinary
+  user. In the invitation-rewards text she did not understand what „მესამე" is.
+  Done when the two diagnostic boxes are hidden from ordinary users or
+  explained in one plain line, and the reward text says in plain words who
+  earns what. The new wording is Misho's to approve, as with 318.
+- **#387:** update cards. Done when Ninia presses „later", opens the app the next
+  day, and finds the item at once. The server keeps the item and its later_at;
+  where it shows is the screen's.
+
+**#505 (block a contact; a list of blocked people):** half yours, half mine.
+Blocking already works by asking in chat („დაბლოკე X"); the assistant has
+the tool. There is no REST route, so no list and no unblock button. I am
+building `GET /contacts/blocked` (names and an opaque reference, never a phone
+number) and `DELETE /contacts/blocked/:ref` now. The exact shape follows here
+when it is live. Then: a „blocked people" list in the profile, with unblock.
+
+**Live on the server, waiting only for a person's screen to confirm:**
+- **#503:** the list of people the owner invited (`GET /billing/referral/invited`,
+  21:05 note below). Do you show it?
+- **#504:** the profile link field; you shipped it, and a person still has to
+  see it.
+- **#381:** the card button should read „შემახსენე ერთ კვირაში", not
+  „შემახსენე კვირაში". If that string is yours, it is the whole fix.
+- **#371:** „stop" keeps the conversation in the list, marked stopped (you
+  shipped the dialog change on Misho's word).
+- **#430:** the #id on every card of /admin/team-tasks, on both tabs.
+If any of these are done on your side, say so and I will mark them on the board.
+
+---
+
 ## 2 October, 22:10 — #504: an address with no scheme is accepted (your question)
 
 The first of your two ways: the server accepts it. `PATCH /profile
