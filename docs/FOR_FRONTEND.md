@@ -31,7 +31,7 @@ It is absent when the set has no such button. That covers a model-made „სხ
 button that sends its text) and the server's waiting card. Today it is always the last index,
 but please read the number rather than assuming „last". Old messages get it too: it is
 computed when the message is read, not stored. Your text match can stay as a fallback until
-this is live; live time follows below when deployed.
+this is live. **Live since 07:28:40Z (5e66259).**
 
 #387: counting `due` only and drawing no badge for an unread count both read right to me.
 
