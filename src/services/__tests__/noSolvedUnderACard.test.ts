@@ -83,7 +83,7 @@ describe('a later tap is not nudged into a second reply', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('askTapOf(lastUserText(messages)) === AskTap.Later');
     expect(chat).toContain(
-      'if (!promoted && !answeringALaterTap && isCliffhangerReply(finalText))',
+      '    !answeringALaterTap &&\n    (claimedASendThatDidNotHappen || isCliffhangerReply(finalText))',
     );
   });
 });

@@ -114,3 +114,24 @@ export function describeCliffhangerOutcome(
     `then=${continuation.trim().length} echo=${echo}`
   );
 }
+
+/**
+ * The tester's 1100 (round 5, conversation 32753): in an incoming-ask thread
+ * the helper typed a question back for the asker, and his assistant answered
+ * „I passed it to her, the answer will come here" with no tool call. Nothing
+ * reached the asker. The only channel back is send_answer_to_asker (D48: only
+ * words the helper approved, through the tool), so the server never relays the
+ * line itself; it catches the claim and asks the model once more.
+ */
+const CLAIMS_PASSED_ON_RE =
+  /(გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
+
+export function claimsToHavePassedItOn(text: string): boolean {
+  return CLAIMS_PASSED_ON_RE.test(text);
+}
+
+export const PASSED_ON_NUDGE =
+  '(სისტემური შენიშვნა: შენ დაწერე, რომ კითხვის ავტორს გადაეცი, მაგრამ ამ გაშვებაში ' +
+  'send_answer_to_asker არ გამოგიძახებია და მას არაფერი მისვლია. თუ მომხმარებლის სიტყვები მისთვისაა, ' +
+  'ახლავე გაგზავნე send_answer_to_asker-ით, confirmed=true, ზუსტად მისი სიტყვებით. თუ არა — ' +
+  'მოკლედ უთხარი, რომ ჯერ არაფერი გაგზავნილა.)';

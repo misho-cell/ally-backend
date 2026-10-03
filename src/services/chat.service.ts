@@ -259,6 +259,8 @@ import {
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
+  claimsToHavePassedItOn,
+  PASSED_ON_NUDGE,
   claimsNothingFound,
 } from './replyGuards';
 import {
@@ -10685,7 +10687,18 @@ async function runToolLoop(
   // — which is exactly what it should say, and exactly what the cliffhanger
   // guard hears as an announcement. Nudged, it wrote a second reply on top.
   const answeringALaterTap = askTapOf(lastUserText(messages)) === AskTap.Later;
-  if (!promoted && !answeringALaterTap && isCliffhangerReply(finalText)) {
+  // The tester's 1100 (32753): a helper's assistant said it passed a question
+  // back with no send. Same one-more-turn as the cliffhanger, with its own note.
+  const claimedASendThatDidNotHappen =
+    runModes.get(runId) === 'incoming_ask' &&
+    !runAnswerSent.has(runId) &&
+    claimsToHavePassedItOn(finalText);
+  const guardNudge = claimedASendThatDidNotHappen ? PASSED_ON_NUDGE : CLIFFHANGER_NUDGE;
+  if (
+    !promoted &&
+    !answeringALaterTap &&
+    (claimedASendThatDidNotHappen || isCliffhangerReply(finalText))
+  ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
     // announcement is kept because the log line compares the two texts, and
     // by the end of this block `finalText` is both of them joined.
@@ -10696,7 +10709,7 @@ async function runToolLoop(
         role: 'assistant' as const,
         content: [{ type: 'text' as const, text: finalText }],
       };
-      const nudgeTurn = { role: 'user' as const, content: CLIFFHANGER_NUDGE };
+      const nudgeTurn = { role: 'user' as const, content: guardNudge };
       messages.push(cliffhangerTurn, nudgeTurn);
       pending.push(cliffhangerTurn, nudgeTurn);
       resetTurnStream();
@@ -10854,6 +10867,7 @@ async function runToolLoop(
 export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
+  PASSED_ON_NUDGE,
 ]);
 
 /**
