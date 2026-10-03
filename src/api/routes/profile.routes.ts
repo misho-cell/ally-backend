@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import {
   authenticateJwt,
   requireUserRole,
@@ -16,6 +16,7 @@ import { ApiResponse } from '../../types';
 import { matchExistingContacts, ExistingContactMatch } from '../../services/contacts.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
+import { blockedListForScreen, unblockByRef } from '../../services/block.service';
 import { MAX_LINK_CHARS, profileLinkRule } from '../validators/profileLinkRule';
 import { asRunLanguage } from '../../services/runLanguage';
 import {
@@ -80,6 +81,9 @@ const EDITABLE_FIELDS = [
   { key: 'city', column: 'city', maxLen: 80 },
   { key: 'link', column: 'profile_link', maxLen: MAX_LINK_CHARS },
 ] as const;
+
+/** #505: unblocking is a person tidying their own list; a burst is a script. */
+const UNBLOCKS_PER_MINUTE = 30;
 
 const profileRouter = Router();
 
@@ -184,6 +188,57 @@ profileRouter.delete(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[DELETE /profile/tone]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+// Board #505: the people this owner blocked, and unblocking one of them.
+// Referred to by the block row's id; no phone number reaches the client.
+//   GET    /profile/blocked       → { blocked: [{ ref, name, blocked_at }] }
+//   DELETE /profile/blocked/:ref  → { unblocked: true } | 404
+// Under /profile rather than /contacts on purpose: the contacts router requires
+// a subscription, and seeing or undoing your own blocks must not.
+profileRouter.get(
+  '/blocked',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      res
+        .status(200)
+        .json({ success: true, data: { blocked: await blockedListForScreen(userId) } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/blocked]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+profileRouter.delete(
+  '/blocked/:ref',
+  authenticateJwt,
+  requireUserRole,
+  rateLimit({ windowMs: 60_000, max: UNBLOCKS_PER_MINUTE }),
+  param('ref').isInt({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'არასწორი ჩანაწერი' });
+      return;
+    }
+    try {
+      const userId = String((req as AuthenticatedRequest).user.userId);
+      const unblocked = await unblockByRef(userId, Number(req.params.ref));
+      if (!unblocked) {
+        res.status(404).json({ success: false, error: 'ასეთი დაბლოკილი ადამიანი ვერ მოიძებნა' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { unblocked: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /profile/blocked/:ref]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

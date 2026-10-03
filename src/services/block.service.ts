@@ -73,6 +73,58 @@ export async function getBlockedByUser(userId: string): Promise<BlockedContact[]
 }
 
 /**
+ * Board #505 (Ninia): there was no list of blocked people in the app and no way
+ * to unblock, only the assistant's tools. This is the list the screen draws.
+ * Each row is referred to by the block row's own id, so no phone number ever
+ * reaches the client; the name is the owner's own label or, failing that, the
+ * registered name, as getBlockedByUser resolves it.
+ */
+export interface BlockedRowForScreen {
+  readonly ref: number;
+  readonly name: string | null;
+  readonly blocked_at: string;
+}
+
+/** A person blocks a handful of people, not thousands. A ceiling, not an expectation. */
+const MAX_BLOCKED_ROWS_SHOWN = 500;
+const BLOCK_QUERY_TIMEOUT_MS = 5_000;
+
+export async function blockedListForScreen(userId: string): Promise<BlockedRowForScreen[]> {
+  // One row per block, newest first; a contact saved under two labels must not
+  // appear twice, so DISTINCT ON keeps one name per block row.
+  const result = await query<{ ref: number; name: string | null; blocked_at: Date | string }>(
+    `SELECT DISTINCT ON (ub.id)
+            ub.id AS ref,
+            COALESCE(ua.alias, u.name) AS name,
+            ub."createdAt" AS blocked_at
+       FROM "UserBlock" ub
+       LEFT JOIN "UserAlias" ua ON ua.phone = ub."blockedPhone" AND ua."contactId" = ub."blockerId"
+       LEFT JOIN "UserPhone" up ON up.phone = ub."blockedPhone"
+       LEFT JOIN "User" u ON u.id = up."userId"
+      WHERE ub."blockerId" = $1::int
+      ORDER BY ub.id DESC
+      LIMIT $2`,
+    [userId, MAX_BLOCKED_ROWS_SHOWN],
+    BLOCK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => ({
+    ref: Number(row.ref),
+    name: row.name ?? null,
+    blocked_at: new Date(row.blocked_at).toISOString(),
+  }));
+}
+
+/** Unblocks one row of THIS owner's list; another owner's row is never touched. */
+export async function unblockByRef(userId: string, ref: number): Promise<boolean> {
+  const result = await query(
+    `DELETE FROM "UserBlock" WHERE id = $1 AND "blockerId" = $2::int`,
+    [ref, userId],
+    BLOCK_QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
  * Returns every phone that must be hidden from this user's search results:
  * phones the user has blocked + all phones of users who have blocked the user.
  */

@@ -101,8 +101,9 @@ contactsRouter.post(
   },
 );
 
-// Blocking/unblocking and the blocked list are handled only through the agent
-// (block_contact / unblock_contact / list_blocked_contacts tools), not REST.
+// Blocking itself goes through the agent (block_contact). The list and
+// unblocking are also REST since #505: GET /profile/blocked and
+// DELETE /profile/blocked/:ref, under /profile so they need no subscription.
 
 const MAX_FRIEND_PHONES_DIAG = 3000;
 
