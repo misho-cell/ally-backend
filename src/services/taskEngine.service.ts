@@ -920,9 +920,18 @@ function wakeWhenFree(
   setTimeout(() => {
     void stillWanted()
       .then(async (wanted) => {
-        if (!wanted) return;
+        // The tester's 1100 (32751, request 2839): an introduction's outcome wake
+        // left no trace at all — no run, no line, no log. Every way out of this
+        // timer now says which one it took.
+        if (!wanted) {
+          // eslint-disable-next-line no-console
+          console.log(`[task-engine] task ${taskId}: wake no longer wanted (attempt ${attempt})`);
+          return;
+        }
         const woken = await wakeTask(taskId, eventText);
         if (woken === 'woken') {
+          // eslint-disable-next-line no-console
+          console.log(`[task-engine] task ${taskId}: woken (attempt ${attempt})`);
           await onWoken();
           return;
         }
@@ -1189,6 +1198,8 @@ async function instructionStillWaiting(taskId: number): Promise<boolean> {
 const INTRO_OUTCOME_DELAY_MS = 6_000;
 
 export function startIntroOutcome(taskId: number, eventText: EventText): void {
+  // eslint-disable-next-line no-console
+  console.log(`[task-engine] task ${taskId}: introduction outcome wake scheduled`);
   wakeWhenFree(
     taskId,
     eventText,
