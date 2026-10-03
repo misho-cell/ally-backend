@@ -5,7 +5,12 @@
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { GREETING_MAX_TOKENS, GREETING_TURN_NOTE, isBareGreeting } from '../greetingTurn';
+import {
+  BLANK_RETRY_NOTE,
+  GREETING_MAX_TOKENS,
+  GREETING_TURN_NOTE,
+  isBareGreeting,
+} from '../greetingTurn';
 
 describe('isBareGreeting', () => {
   it.each([
@@ -50,5 +55,12 @@ describe('isBareGreeting', () => {
     expect(GREETING_TURN_NOTE).toMatch(/greet/i);
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('greetingOnly ? systemPrompt + GREETING_TURN_NOTE : systemPrompt');
+  });
+
+  /** Task 695 (31886): the re-ask after a blank says the first try was empty. */
+  it('re-asks a blank first answer with a note, not the identical request', () => {
+    expect(BLANK_RETRY_NOTE).toMatch(/returned nothing/);
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('systemPrompt + BLANK_RETRY_NOTE');
   });
 });

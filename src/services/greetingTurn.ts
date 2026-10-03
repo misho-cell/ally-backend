@@ -33,3 +33,14 @@ const GREETING_ONLY_RE =
 export function isBareGreeting(text: string | null | undefined): boolean {
   return typeof text === 'string' && GREETING_ONLY_RE.test(text);
 }
+
+/**
+ * Said on the one re-ask after a blank first answer (task 695, tester 1076,
+ * conversation 31886): the re-ask used to send the same input to the same
+ * model, and a second blank followed in 3 seconds. The note goes at the
+ * uncached end of the system prompt, like the greeting note, so nothing
+ * cached changes.
+ */
+export const BLANK_RETRY_NOTE =
+  '\n\n## This turn\nYour previous attempt at this turn returned nothing. ' +
+  "Answer the owner's last message now, in their language; use a tool if the answer needs one.";

@@ -2,7 +2,12 @@ import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
-import { GREETING_MAX_TOKENS, GREETING_TURN_NOTE, isBareGreeting } from './greetingTurn';
+import {
+  BLANK_RETRY_NOTE,
+  GREETING_MAX_TOKENS,
+  GREETING_TURN_NOTE,
+  isBareGreeting,
+} from './greetingTurn';
 import { goalsForRun } from './wakeGoalScope';
 import { endsQuietly } from './quietSystemRun';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
@@ -10132,7 +10137,7 @@ async function runToolLoop(
     console.warn(
       `[chat] run ${runId} first answer was blank (stop_reason ${response.stop_reason}) — asking once more`,
     );
-    response = await callClaude(messages, systemPrompt, tools, ctx, {
+    response = await callClaude(messages, systemPrompt + BLANK_RETRY_NOTE, tools, ctx, {
       onText: stream,
       model: TOOL_TURN_MODEL,
     });
