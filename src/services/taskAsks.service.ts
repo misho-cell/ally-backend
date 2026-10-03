@@ -246,10 +246,11 @@ const PROMISE_NO_ANSWER =
  * it was). Continue in the same run and without asking — asking turns one
  * blocked person into a stopped goal, which is what happened twice.
  */
+// D605 (the founder, 3 Oct): refusals are short and do not ask the model to
+// retell them. „და ეს თქვი" was one of the lines replies recounted.
 const CONTINUE_BY_OTHER_ROUTES =
-  ' მიზანი არ ჩერდება: ახლავე, ამავე გაშვებაში გააგრძელე სხვა გზებით — ქსელის სხვა ' +
-  'შესაფერისი ადამიანები, მეორე წრე, ვები — და ნებართვა ამისთვის არ ჰკითხო. ვისაც ვერ ' +
-  'მიწერე, ის ხვალინდელ გეგმაში ჩაწერე და ეს თქვი.';
+  ' მიზანი არ ჩერდება: ამავე გაშვებაში გააგრძელე სხვა გზებით (ქსელის სხვა ადამიანები, ' +
+  'მეორე წრე, ვები), ნებართვის გარეშე. ეს ცალკე არ მოუყვე მფლობელს.';
 
 /** Enough rows to find the reopening; a person never holds many asks in a day. */
 const RECEIVED_WINDOW_READ_LIMIT = 20;
@@ -878,9 +879,8 @@ export async function createAsk(
       sent: false,
       reason: 'recipient_not_member',
       error:
-        'ეს კონტაქტი Netai-ს წევრი არ არის — მისწერა ვერ ხერხდება. თუ ეს ადამიანი მეორე წრიდანაა ' +
-        '(search_second_degree), მისწერე არა მას, არამედ გამტარს — via_contacts-ის ნომერზე, ' +
-        'რომელიც გეგმაშია; მფლობელს კი უთხარი ვინ არის წევრი და ვინ არა, არასოდეს „არავინ არ არის".',
+        'ეს კონტაქტი Netai-ს წევრი არ არის, მისწერა ვერ ხერხდება. მეორე წრის ადამიანზე ' +
+        'მისწერე გამტარს (via_contacts-ის ნომერზე). არასოდეს თქვა „არავინ არ არის".',
     };
   }
   const toUserId = member.rows[0].userId;

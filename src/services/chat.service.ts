@@ -6476,7 +6476,8 @@ export function withNamelessLabelsSaid(tool: string, raw: unknown): unknown {
 const NOTHING_FOUND_COMES_LAST =
   'When you write to the owner, open with what you DID find — a web lead, a person one step ' +
   'away, a route you will take. That their own contacts had nobody is said after that, in one ' +
-  'short clause, never as the first sentence.';
+  'short clause, never as the first sentence. Never list the words or searches that came up ' +
+  'empty; the owner wants the result, not the search log.';
 
 export function withEmptySearchHistory(
   tool: string,
@@ -6488,14 +6489,18 @@ export function withEmptySearchHistory(
   const term = searchTermOf(input);
   const alreadyTried = noteEmptySearch(runId, tool, term);
   if (alreadyTried.length < 2) return raw;
+  /**
+   * D605 (the founder, 3 Oct, relayed by the tester's 1099): the list of every
+   * word tried was what replies retold („I searched X, Y and Z…"). The run is
+   * given the count, which is all it needs to stop respelling the same idea.
+   */
   return {
     ...(raw as Record<string, unknown>),
-    already_searched_and_empty: alreadyTried,
+    empty_searches_so_far: alreadyTried.length,
     note:
-      `This run has now searched ${alreadyTried.length} times and found nobody. The list above ` +
-      'is every one, in order. If they are spellings of the same idea, the base does not hold it ' +
-      'under any of them and another spelling will cost the owner several more seconds for the ' +
-      'same answer — try a DIFFERENT idea, a different tool, or work from the web instead. ' +
+      `This run has now searched ${alreadyTried.length} times and found nobody. Another spelling ` +
+      'of the same idea will cost the owner several more seconds for the same answer — try a ' +
+      'DIFFERENT idea, a different tool, or work from the web instead. ' +
       NOTHING_FOUND_COMES_LAST,
   };
 }

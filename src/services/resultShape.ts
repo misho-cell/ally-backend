@@ -82,7 +82,7 @@ export function matchShapeOf(result: unknown): string | null {
   if (result === null || typeof result !== 'object') return null;
   const record = result as {
     results?: unknown;
-    already_searched_and_empty?: unknown;
+    empty_searches_so_far?: unknown;
     reason?: unknown;
     found?: unknown;
   };
@@ -101,11 +101,11 @@ export function matchShapeOf(result: unknown): string | null {
   if (typeof record.reason === 'string' && DID_NOT_FINISH_REASONS.has(record.reason)) {
     return `no rows — ${record.reason}`;
   }
-  // The list includes THIS search: it is pushed before it is returned.
-  const emptySoFar = record.already_searched_and_empty;
-  if (Array.isArray(emptySoFar)) {
-    return `found nobody — ${emptySoFar.length} empty ${
-      emptySoFar.length === 1 ? 'search' : 'searches'
+  // The count includes THIS search: it is noted before it is returned.
+  const emptySoFar = record.empty_searches_so_far;
+  if (typeof emptySoFar === 'number') {
+    return `found nobody — ${emptySoFar} empty ${
+      emptySoFar === 1 ? 'search' : 'searches'
     } in this run, this one included`;
   }
   if (typeof record.reason === 'string' && record.reason !== '') {

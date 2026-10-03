@@ -28,20 +28,20 @@ describe('what an empty search tells the run that made it', () => {
     expect(out).toEqual(empty);
   });
 
-  it('hands back the whole list once a second one comes back empty', () => {
+  // D605: the run is handed the count, never the list of words it tried.
+  it('hands back the count once a second one comes back empty', () => {
     withEmptySearchHistory('search_by_tag', { tag_query: 'tiler' }, run('b'), empty);
     const out = withEmptySearchHistory(
       'search_by_tag',
       { tag_query: 'მეპლიტკე' },
       run('b'),
       empty,
-    ) as { already_searched_and_empty: string[]; note: string };
+    ) as { empty_searches_so_far: number; note: string };
 
-    expect(out.already_searched_and_empty).toEqual([
-      'search_by_tag: tiler',
-      'search_by_tag: მეპლიტკე',
-    ]);
-    expect(out.note).toContain('another spelling');
+    expect(out.empty_searches_so_far).toBe(2);
+    expect(out).not.toHaveProperty('already_searched_and_empty');
+    expect(out.note).toContain('Another spelling');
+    expect(out.note).toContain('Never list the words or searches that came up empty');
   });
 
   it('keeps the original answer intact underneath', () => {
@@ -68,10 +68,9 @@ describe('what an empty search tells the run that made it', () => {
       { tag_query: 'კაფელი' },
       run('d'),
       empty,
-    ) as { already_searched_and_empty: string[] };
+    ) as { empty_searches_so_far: number };
 
-    expect(out.already_searched_and_empty).toHaveLength(3);
-    expect(out.already_searched_and_empty[1]).toContain('search_by_insight');
+    expect(out.empty_searches_so_far).toBe(3);
   });
 
   it('says nothing about a search that FOUND somebody', () => {
@@ -87,10 +86,10 @@ describe('what an empty search tells the run that made it', () => {
     withEmptySearchHistory('search_by_tag', { tag_query: 'tiler' }, run('f'), empty);
     withEmptySearchHistory('search_by_tag', { tag_query: 'tiler' }, run('f'), empty);
     const out = withEmptySearchHistory('search_by_tag', { tag_query: 'x' }, run('f'), empty) as {
-      already_searched_and_empty: string[];
+      empty_searches_so_far: number;
     };
 
-    expect(out.already_searched_and_empty).toEqual(['search_by_tag: tiler', 'search_by_tag: x']);
+    expect(out.empty_searches_so_far).toBe(2);
   });
 
   it('leaves a non-search tool alone entirely', () => {

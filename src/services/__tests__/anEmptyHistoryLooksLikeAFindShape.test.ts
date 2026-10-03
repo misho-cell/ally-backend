@@ -45,7 +45,7 @@ describe('a sample says which shape came back, not just how many rows', () => {
     // attached by withEmptySearchHistory after the search ran.
     const emptyWithHistory = {
       found: false,
-      already_searched_and_empty: ['search_by_tag: ადვოკატი', 'search_by_tag: იურისტი'],
+      empty_searches_so_far: 2,
       note: 'This run has now searched 2 times and found nobody.',
     };
 
@@ -57,7 +57,7 @@ describe('a sample says which shape came back, not just how many rows', () => {
   });
 
   it('counts one empty search in the singular', () => {
-    expect(matchShapeOf({ found: false, already_searched_and_empty: ['x'] })).toContain(
+    expect(matchShapeOf({ found: false, empty_searches_so_far: 1 })).toContain(
       '1 empty search in this run',
     );
   });

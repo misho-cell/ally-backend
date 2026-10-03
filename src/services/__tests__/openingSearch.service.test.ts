@@ -491,7 +491,9 @@ describe('row 154 — the way in, beside each web result', () => {
     const section = buildOpeningSearchSection(await runOpeningSearches('501', 'რამე', 'run-1', 1));
 
     expect(section).toContain('პირად კონტაქტებში');
-    expect(section).toContain('მეორე წრე ჯერ არ შემიმოწმებია');
+    expect(section).toContain('მეორე წრე ჯერ არ შემოწმებულა');
+    // D605: a fact for the model, not a first-person line to echo.
+    expect(section).not.toContain('ვერ ვიპოვე');
   });
 
   it('a lookup that fails reads as unchecked, not as empty', async () => {
@@ -501,7 +503,7 @@ describe('row 154 — the way in, beside each web result', () => {
 
     const section = buildOpeningSearchSection(await runOpeningSearches('501', 'რამე', 'run-1', 1));
 
-    expect(section).toContain('ვერ შევამოწმე');
+    expect(section).toContain('კავშირი არ შემოწმებულა');
     expect(section).not.toContain('ვერ ვიპოვე');
     consoleSpy.mockRestore();
   });

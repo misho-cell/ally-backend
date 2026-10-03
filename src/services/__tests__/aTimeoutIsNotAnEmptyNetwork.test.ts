@@ -29,11 +29,11 @@ describe('a search that timed out is never an empty network', () => {
     );
     expect(out).toBe(timedOut);
     expect((out as { note: string }).note).toMatch(/DID NOT FINISH/);
-    expect(out).not.toHaveProperty('already_searched_and_empty');
+    expect(out).not.toHaveProperty('empty_searches_so_far');
   });
 
   it('labels it as not finished in the result sample', () => {
-    expect(matchShapeOf({ ...timedOut, already_searched_and_empty: ['x', 'y'] })).toBe(
+    expect(matchShapeOf({ ...timedOut, empty_searches_so_far: 2 })).toBe(
       'no rows — search_timed_out',
     );
   });
@@ -43,7 +43,7 @@ describe('a search that timed out is never an empty network', () => {
     const out = withEmptySearchHistory('search_by_tag', { tag_query: 'b' }, 'run-empty', {
       found: false,
     });
-    expect(out).toHaveProperty('already_searched_and_empty');
+    expect(out).toHaveProperty('empty_searches_so_far');
   });
 
   it('gives the exact tag search more than the pool default, on both of its queries', () => {

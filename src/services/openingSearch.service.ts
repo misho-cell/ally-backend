@@ -926,15 +926,18 @@ export function buildWayInSection(waysIn: ReadonlyMap<string, WayIn>): string {
   if (waysIn.size === 0) return '';
   const lines: string[] = [];
   for (const [name, wayIn] of waysIn) {
+    // D605 (the founder, 3 Oct): these are facts for the model, written in the
+    // third person. In the first person („ვერ ვიპოვე") they were echoed into
+    // the reply word for word.
     if (wayIn.kind === 'first_circle') {
-      lines.push(`- ${name}: შენს კონტაქტებში — ${wayIn.who}. მასზე გაიარე.`);
+      lines.push(`- ${name}: მფლობელის კონტაქტებშია — ${wayIn.who}. მასზე გაიარე.`);
     } else if (wayIn.kind === 'none') {
       // Ticket 19 G7: „your own contacts hold nobody" is not „nobody".
       lines.push(
-        `- ${name}: შენს პირად კონტაქტებში კავშირი ვერ ვიპოვე (მეორე წრე ჯერ არ შემიმოწმებია).`,
+        `- ${name}: მფლობელის პირად კონტაქტებში კავშირი არ არის (მეორე წრე ჯერ არ შემოწმებულა).`,
       );
     } else {
-      lines.push(`- ${name}: კავშირი ვერ შევამოწმე — ძიებამ ვერ მოასწრო.`);
+      lines.push(`- ${name}: კავშირი არ შემოწმებულა — ძიებამ ვერ მოასწრო.`);
     }
   }
   return (
