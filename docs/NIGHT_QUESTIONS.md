@@ -1234,7 +1234,7 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
-_Nothing yet._
+- **Night of 3–4 October — more fictional test numbers (D623, the founder 02:18 Tbilisi via the tester's 1120).** The tester's loop needs six more rounds and has one fresh world left; +1 202 555 01xx is taken by registered accounts. The founder's words: „ask misho to open new test accounts, if you need him, or do it yourself". Widening the server's accepted fictional ranges (the tester asked for +44 113/114/115/117 496 0000–0999, 1115) opens a login path, so it is access and waits for Misho's own word, not a relayed one. What stops meanwhile: the tester re-uses worlds from round L14.
 
 Cleared 3 October 07:15 UTC: the night of 2–3 October's one item („ask X" and the permission wall) was answered by Misho at ~06:10 UTC („მეორედ აღარ უნდა კითხოს") and built in 4650922 (board #694).
 
