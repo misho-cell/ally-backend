@@ -7,8 +7,10 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
   BLANK_RETRY_NOTE,
+  EMPTY_PHONEBOOK_GREETING_NOTE,
   GREETING_MAX_TOKENS,
   GREETING_TURN_NOTE,
+  greetingTurnNote,
   isBareGreeting,
 } from '../greetingTurn';
 
@@ -54,7 +56,16 @@ describe('isBareGreeting', () => {
     expect(GREETING_TURN_NOTE).toMatch(/no tools/);
     expect(GREETING_TURN_NOTE).toMatch(/greet/i);
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('const shortTurnNote = greetingOnly\n    ? GREETING_TURN_NOTE');
+    expect(chat).toContain(
+      'const shortTurnNote = greetingOnly\n    ? greetingTurnNote(await ownerHasContacts(userId))',
+    );
+  });
+
+  /** The tester's loop, H3: an empty account's greeting says to import contacts. */
+  it('asks an owner with no contacts to import them, and only that owner', () => {
+    expect(greetingTurnNote(true)).toBe(GREETING_TURN_NOTE);
+    expect(greetingTurnNote(false)).toBe(GREETING_TURN_NOTE + EMPTY_PHONEBOOK_GREETING_NOTE);
+    expect(EMPTY_PHONEBOOK_GREETING_NOTE).toMatch(/import their contacts/);
   });
 
   /** Task 695 (31886): the re-ask after a blank says the first try was empty. */

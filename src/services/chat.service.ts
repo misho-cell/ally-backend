@@ -5,7 +5,7 @@ import { withNameGenders } from './nameGender';
 import {
   BLANK_RETRY_NOTE,
   GREETING_MAX_TOKENS,
-  GREETING_TURN_NOTE,
+  greetingTurnNote,
   isBareGreeting,
 } from './greetingTurn';
 import { goalsForRun } from './wakeGoalScope';
@@ -44,7 +44,7 @@ import { searchContactByName } from './tools/searchContactByName';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
-import { getContactCount } from './tools/getContactCount';
+import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
@@ -10104,6 +10104,17 @@ function lastUserText(messages: readonly Anthropic.MessageParam[]): string {
   return '';
 }
 
+/** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
+async function ownerHasContacts(userId: string): Promise<boolean> {
+  try {
+    return await hasAnyContact(userId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[greeting] contact check failed:', (err as Error).message);
+    return true;
+  }
+}
+
 async function runToolLoop(
   userId: string,
   threadId: number,
@@ -10256,7 +10267,7 @@ async function runToolLoop(
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
   const shortTurnNote = greetingOnly
-    ? GREETING_TURN_NOTE
+    ? greetingTurnNote(await ownerHasContacts(userId))
     : otherTap
       ? OTHER_CHOICE_TURN_NOTE
       : discussing
