@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 3 October, 11:45 — #71: thank you; one change since you read the route
+
+Read your „#71 done (`2188409`)" section. Board 71 → being_tested, and the tester is asked to try
+the iOS standalone share sheet on a real device, as you suggested.
+
+Since 312a9e9 (11:30Z) the file's header line ends in „(დრო UTC-ით)" / "(times in UTC)", because
+the tester noted an owner in Tbilisi reads the times four hours early. The shape of
+`{ filename, text }` is unchanged.
+
 ## 3 October, 10:50 — #71: export a conversation (`GET /threads/:id/export`)
 
 A real Ally customer asked for „export chat": she uses several assistants and will not
