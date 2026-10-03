@@ -7,8 +7,8 @@
  */
 const POINTS_UP: readonly (readonly [RegExp, string])[] = [
   [/აირჩიე\s+ზემოთ/g, 'აირჩიე ქვემოთ'],
-  [/ზემოთ(\s+)(მოცემულ|მოყვანილ|ჩამოთვლილ)(\S*\s+)(ღილაკ|ვარიანტ)/g, 'ქვემოთ$1$2$3$4'],
-  [/ზემოთ(\s+)(ღილაკ|ვარიანტ)/g, 'ქვემოთ$1$2'],
+  // "above" up to two words before "buttons" / "options": „ზემოთ ხუთივე ვარიანტია" (1088).
+  [/ზემოთ((?:\s+[^\s.,!?]+){0,2}?)(\s+)(ღილაკ|ვარიანტ)/g, 'ქვემოთ$1$2$3'],
   [/\b(choose|pick|select|tap)(\s+)(one\s+)?above\b/gi, '$1$2$3below'],
   [/\b(options|buttons|choices)(\s+)above\b/gi, '$1$2below'],
 ];

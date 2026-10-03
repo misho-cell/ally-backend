@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
+  isOtherChoiceTap,
+  OTHER_CHOICE_TURN_NOTE,
   otherChoiceField,
   otherChoiceIndex,
   otherChoiceLabel,
@@ -73,5 +75,29 @@ describe('other_choice_index', () => {
     expect(threads).toContain('...otherChoiceField(result.choices),');
     expect(threads).toContain('...otherChoiceField(message.choices)');
     expect(chatRoute).toContain('...otherChoiceField(result.choices),');
+  });
+});
+
+/**
+ * The tester's 1088 (32440): the label sent as the owner's message was read as
+ * an answer („I will write the invitation myself") and a link went out.
+ */
+describe('the label arriving as text', () => {
+  it('is recognised in every language, and only as the whole message', () => {
+    expect(isOtherChoiceTap(' სხვა, მე დავწერ ')).toBe(true);
+    expect(isOtherChoiceTap("Other, I'll write it")).toBe(true);
+    expect(isOtherChoiceTap('სხვა, მე დავწერ მოსაწვევს')).toBe(false);
+    expect(isOtherChoiceTap('სხვა')).toBe(false);
+    expect(isOtherChoiceTap(null)).toBe(false);
+  });
+
+  it('gets one short line with no tools, asking the owner to type', () => {
+    expect(OTHER_CHOICE_TURN_NOTE).toContain('This turn has no tools');
+    expect(OTHER_CHOICE_TURN_NOTE).toContain('Do not treat the label as an answer');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      'const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));',
+    );
+    expect(chat).toContain('...((greetingOnly || otherTap) && { forceText: true');
   });
 });

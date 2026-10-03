@@ -13,7 +13,7 @@ import { endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
-import { withOtherChoice } from './otherChoice';
+import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -10142,17 +10142,14 @@ async function runToolLoop(
     !ownerAbsent &&
     isBareGreeting(lastOwnerText(messages)) &&
     (await getOpenTaskByThread(threadId).catch(() => null)) === null;
-  let response = await callClaude(
-    messages,
-    greetingOnly ? systemPrompt + GREETING_TURN_NOTE : systemPrompt,
-    tools,
-    ctx,
-    {
-      onText: stream,
-      model: TOOL_TURN_MODEL,
-      ...(greetingOnly && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
-    },
-  );
+  // Tester 1088: the „other, I'll write it" label sent as text is one short line, no tools.
+  const otherTap = !ownerAbsent && isOtherChoiceTap(lastOwnerText(messages));
+  const shortTurnNote = greetingOnly ? GREETING_TURN_NOTE : otherTap ? OTHER_CHOICE_TURN_NOTE : '';
+  let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
+    onText: stream,
+    model: TOOL_TURN_MODEL,
+    ...((greetingOnly || otherTap) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+  });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
   // sent again a minute later worked. A blank first answer is asked once more

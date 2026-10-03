@@ -13,6 +13,9 @@ describe('pointsAtButtonsBelow', () => {
     expect(pointsAtButtonsBelow('ზემოთ მოცემულ ღილაკებს დააჭირე.', buttons)).toBe(
       'ქვემოთ მოცემულ ღილაკებს დააჭირე.',
     );
+    expect(pointsAtButtonsBelow('ზემოთ ხუთივე ვარიანტია, აირჩიე.', buttons)).toBe(
+      'ქვემოთ ხუთივე ვარიანტია, აირჩიე.',
+    );
     expect(pointsAtButtonsBelow('Pick one above or type your own.', buttons)).toBe(
       'Pick one below or type your own.',
     );
