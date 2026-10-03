@@ -33,6 +33,18 @@ const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
   // The tester's 1102 (C10, six rounds): one friend saved the vet as „ვეტერინარი",
   // another as „ვეტექიმი", and only one was ever found.
   ['ვეტერინარი', 'ვეტექიმი', 'veterinarian', 'vet'],
+  // The tester's 1111 (34175): „ცეკვა" and „ქორეოგრაფია" found nobody in the second
+  // circle while a friend had saved her as „ცეკვის მასწავლებელი". The words people
+  // save come first: the second circle searches only the first three.
+  [
+    'ცეკვის მასწავლებელი',
+    'ქორეოგრაფი',
+    'ცეკვა',
+    'ქორეოგრაფია',
+    'ცეკვის პედაგოგი',
+    'dance teacher',
+    'choreographer',
+  ],
 ];
 
 function normalized(word: string): string {

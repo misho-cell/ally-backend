@@ -11002,7 +11002,14 @@ async function runToolLoop(
       }
 
       const continuationText = scrubFinal(extractText(continuation.content), runId);
-      if (continuationText) finalText = `${finalText}\n\n${continuationText}`;
+      // The tester's 1111 (34118): after the passed-on note the reply read „I passed
+      // it on" and then „sorry, nothing was passed on". When the note was about a
+      // claim or an unsent question, the first answer was the mistake and the
+      // corrected turn replaces it; a cliffhanger's announcement stays in front.
+      const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE;
+      if (continuationText) {
+        finalText = correctedTurn ? continuationText : `${finalText}\n\n${continuationText}`;
+      }
       // eslint-disable-next-line no-console
       console.log(
         `[cliffhanger] run ${runId}: ` +

@@ -94,3 +94,12 @@ describe('searchProfessionFamily', () => {
     warn.mockRestore();
   });
 });
+
+/** The tester's 1111 (34175): „ცეკვა" missed a friend's „ცეკვის მასწავლებელი". */
+describe('the dance family', () => {
+  it('reaches the saved label from every word asked with, the saved label first', () => {
+    expect(relatedProfessionWords('ცეკვა')[0]).toBe('ცეკვის მასწავლებელი');
+    expect(relatedProfessionWords('ქორეოგრაფია').slice(0, 3)).toContain('ცეკვის მასწავლებელი');
+    expect(relatedProfessionWords('ცეკვის მასწავლებელი')).toContain('ქორეოგრაფი');
+  });
+});
