@@ -484,7 +484,10 @@ describe('the owner naming somebody outranks the draft, for that person only', (
    */
   it('matches the whole label inside the sentence, not its words', () => {
     expect(matcher).toContain('POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0');
-    expect(matcher).not.toMatch(/sameWord|stem|goalNamedIn/);
+    expect(matcher).not.toMatch(/sameWord|goalNamedIn/);
+    // The one widening (tester 1075): a label ending in „-ი" in its declined
+    // form, decided by namedLabel and tested in aDeclinedNameStillNamesThePerson.
+    expect(matcher).toContain('labelNamedIn(line, row.alias)');
   });
 
   /**
@@ -494,7 +497,7 @@ describe('the owner naming somebody outranks the draft, for that person only', (
    */
   it('lets the longest label decide, and refuses a tie', () => {
     expect(matcher).toContain('ORDER BY LENGTH(TRIM(ua.alias)) DESC');
-    expect(matcher).toContain('LIMIT 2');
+    expect(matcher).toContain('LIMIT $4');
     expect(matcher).toContain('runnerUp.alias.trim().length === best.alias.trim().length');
   });
 

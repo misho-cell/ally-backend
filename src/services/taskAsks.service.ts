@@ -1,4 +1,5 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
+import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
 import { recommendedByLine, recommenderFor } from './recommendedBy';
@@ -64,6 +65,8 @@ const ASK_QUERY_TIMEOUT_MS = 8_000;
  * be — and a label shorter than this simply falls back to the plan's yes.
  */
 const MIN_NAMED_LABEL_CHARS = 4;
+/** Enough labels to judge one sentence by; a sentence names one or two people. */
+const MAX_NAMED_LABEL_CANDIDATES = 20;
 /**
  * How far before the goal's creation the owner's typed line may be. The line is
  * saved before the run that opens the goal, and a run with web searches can
@@ -544,20 +547,25 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
 
     // The owner's own phonebook decides which person that sentence names,
     // and only an unambiguous answer counts.
-    const labels = await query<{ phone: string; alias: string }>(
+    // Candidates by plain containment of the label or, for a label ending in
+    // „-ი", of its stem; namedLabel decides which of them the sentence names.
+    const candidates = await query<{ phone: string; alias: string }>(
       `SELECT ua.phone, ua.alias
            FROM "UserAlias" ua
           WHERE ua."contactId" = $1::int
             AND LENGTH(TRIM(ua.alias)) >= $3
-            AND POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
+            AND (POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
+                 OR (TRIM(ua.alias) LIKE '%ი'
+                     AND POSITION(LOWER(LEFT(TRIM(ua.alias), -1)) IN LOWER($2)) > 0))
           ORDER BY LENGTH(TRIM(ua.alias)) DESC
-          LIMIT 2`,
-      [person.fromUserId, line, MIN_NAMED_LABEL_CHARS],
+          LIMIT $4`,
+      [person.fromUserId, line, MIN_NAMED_LABEL_CHARS, MAX_NAMED_LABEL_CANDIDATES],
       ASK_QUERY_TIMEOUT_MS,
     );
-    const best = labels.rows[0];
+    const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
+    const best = labels[0];
     if (best === undefined) return false;
-    const runnerUp = labels.rows[1];
+    const runnerUp = labels[1];
     // Two labels of the same length both inside the sentence name nobody.
     if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
       return false;
