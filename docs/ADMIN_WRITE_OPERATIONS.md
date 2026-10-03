@@ -5528,3 +5528,31 @@ UNDO    env.sh unset SPEECH_MODEL      (the code's default is whisper-1) — the
 **§87 RUN, 2 October 21:16:00 UTC:** `env.sh: set SPEECH_MODEL (value not shown) — Railway will
 redeploy`; the redeploy (48756140, fe9c645) took over at 21:17:38 UTC. The model's name is logged
 on the first transcription that follows; no voice message had arrived when this was written.
+
+## §88 — FINAL ANSWERS WRITTEN BY GPT (`CHAT_FINAL_ANSWER_MODEL`)
+
+**Authorised by Misho, 3 October ~07:35 UTC, directly in the session:** „კი გადართე ჯიპიტი" — to
+my question whether to switch the final user-facing answer to GPT. His rule from this morning
+stands: GPT writes only the final answer (and speech to text, §87); every tool turn, search and
+guard stays on Anthropic, and the search-query step moved to Claude Haiku (3483966). A failed GPT
+call falls back to Claude by contract (finalAnswer.service), so no answer is lost.
+
+```
+ROUTE   env.sh set CHAT_FINAL_ANSWER_MODEL   (value on stdin: gpt-5.6-terra; Railway redeploys)
+UNDO    env.sh unset CHAT_FINAL_ANSWER_MODEL (unset = Claude writes the answer, as before) — then a
+        restart, because an unset does not redeploy
+```
+
+## §89 — THREAD 26302: THE „TRY AGAIN" LINE FROM A SCHEDULED CHECK MOVED TO `event`
+
+**Authorised by Misho, 3 October ~07:35 UTC, directly in the session:** „კი დამალე" — to my
+question whether to hide the error line a real owner found at 07:21:46Z under a scheduled check
+they never started (fixed for the future in 5e66259). Moving it to `kind=event` takes it off the
+chat; nothing is deleted and no text changes.
+
+```
+ROUTE   PATCH /admin/threads/26302/messages/6c946194-838f-4b5d-90a0-7834027a9b58/kind
+BODY    { "kind": "event", "reason": "§89: error line from a system run, Misho 3 Oct" }
+UNDO    PATCH /admin/threads/26302/messages/6c946194-838f-4b5d-90a0-7834027a9b58/kind
+        { "kind": "error", "reason": "undo §89" }
+```
