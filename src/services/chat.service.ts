@@ -10308,6 +10308,8 @@ export function smallTalkTurn(
   // The tester's 1116 (S10, S11): small talk answered after the inbox tools still
   // got the block. A listed small-talk line gets none, whatever tools ran.
   if (isSmallTalk(userMessage)) return true;
+  // A short reply like „კი" answers something; only a short QUESTION is small talk.
+  if (!/[?？]\s*$/u.test(userMessage.trim())) return false;
   return !turns.some(
     (t) =>
       t.role === 'assistant' &&
@@ -13196,10 +13198,12 @@ export async function processChat(
   // tool at all is small talk: what waits is said when the owner asks or works,
   // not under a hello. Nothing is lost; the items are read again next run.
   if (smallTalkTurn(ownerAbsent, userMessage, pending)) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[pending] run ${runId}: ${pendingItems.length} waiting item(s) held back — small talk`,
-    );
+    if (pendingItems.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[pending] run ${runId}: ${pendingItems.length} waiting item(s) held back — small talk`,
+      );
+    }
   } else {
     await deliverPendingMessages(userId, threadId, runId, language, pendingItems);
   }

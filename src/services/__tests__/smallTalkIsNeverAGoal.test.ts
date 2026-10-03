@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { isSmallTalk } from '../smallTalk';
+import { smallTalkTurn } from '../chat.service';
 
 /**
  * The tester's 1113 (the founder's account, 18:43–18:46Z): „გამარჯობა" and „რა
@@ -76,5 +77,16 @@ describe('small talk and open goals', () => {
       'const greetingOnly = !ownerAbsent && isBareGreeting(lastOwnerText(messages));',
     );
     expect(chat).toContain('if (isSmallTalk(userMessage)) return true;');
+  });
+});
+
+describe('what counts as a small-talk turn for the waiting list', () => {
+  const noTools: never[] = [];
+  it('is a listed line or a short question, never a short answer like „კი"', () => {
+    expect(smallTalkTurn(false, 'როგორ ხარ?', noTools)).toBe(true);
+    expect(smallTalkTurn(false, 'ორჯერ ორი რამდენია?', noTools)).toBe(true);
+    expect(smallTalkTurn(false, 'კი', noTools)).toBe(false);
+    expect(smallTalkTurn(false, 'ბათუმში', noTools)).toBe(false);
+    expect(smallTalkTurn(true, 'როგორ ხარ?', noTools)).toBe(false);
   });
 });
