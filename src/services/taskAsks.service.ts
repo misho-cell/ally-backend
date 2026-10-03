@@ -73,18 +73,6 @@ const MAX_NAMED_LABEL_CANDIDATES = 20;
  * take minutes.
  */
 const TYPED_LINE_GRACE_MINUTES = 15;
-/**
- * The tester's 962, 279 (a): „ჰკითხე Netai Test 107-ს, იცნობს თუ არა…" was
- * typed, the run opened a goal, the ask met the permission wall, and the run
- * asked „გავაგზავნო?" — a second yes. Misho, 25 September: „ask X about Y" IS
- * consent to write to X. The wall still holds: the grant is recorded by its
- * own tool. The refusal only says the owner has already said it.
- */
-const OWNER_TYPED_IS_THE_YES =
-  'ნებართვა ჯერ ჩაწერილი არ არის, მაგრამ მფლობელის საკუთარი აკრეფილი ხაზი სწორედ ამ ' +
-  'ადამიანს ასახელებს და ავალებს, რომ ჰკითხო — ეს თვითონ არის თანხმობა. მფლობელს ხელახლა ' +
-  'არ ჰკითხო და ტექსტი არ აჩვენო: ცალკე გამოიძახე grant_task_permission (confirmed: true), ' +
-  'მერე გაიმეორე ask_contact იმავე კითხვით.';
 // The recipient's chat list must distinguish eight questions from the same
 // sender — the title carries the question itself, not a generic "კითხვა".
 const ASK_TITLE_SNIPPET_CHARS = 48;
@@ -722,6 +710,22 @@ export async function createAsk(
       console.log(
         `[ask] task ${taskId}: permission wall bypassed for an accepted introduction (row 251)`,
       );
+    } else if (!task.permission_granted && (await ownerJustNamedThisPerson())) {
+      /**
+       * Misho, 3 October, on the night list's question: „ask X" does not get
+       * asked a second time. The owner's own latest typed line naming exactly
+       * this person, by their own phonebook label with no tie, IS the
+       * permission for this one ask (D316). It used to refuse and send the
+       * model to grant_task_permission and retry, which cost a refused call in
+       * the owner's turn and was impossible in a turn the server started
+       * (conversation 31788: the owner was asked „shall I send it?" again).
+       * No goal-wide permission is written: every other person still needs
+       * the yes.
+       */
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ask] task ${taskId}: permission wall passed for the one person the owner's typed line names (D316)`,
+      );
     } else if (!task.permission_granted) {
       /**
        * The wording matters (ticket 3 §6.8): the old text sent the model back
@@ -779,9 +783,6 @@ export async function createAsk(
        * wasted turn per run and a model that had just been told to say nothing
        * had been sent, one sentence after being told to send it.
        */
-      if (await ownerJustNamedThisPerson()) {
-        return { sent: false, reason: 'consent_pending', error: OWNER_TYPED_IS_THE_YES };
-      }
       return {
         sent: false,
         reason: 'consent_pending',

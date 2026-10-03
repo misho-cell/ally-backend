@@ -523,11 +523,18 @@ describe('the owner naming somebody outranks the draft, for that person only', (
    * owner's instruction still has to become permission through the tool that
    * records it, and every other gate in this function runs as it did.
    */
-  it('does not open the permission wall', () => {
+  /**
+   * Misho, 3 October: „ask X" is not asked a second time. The owner's own typed
+   * line naming exactly this person now opens the permission wall too, for
+   * that one ask; no goal-wide permission is written.
+   */
+  it('opens the permission wall for the one person named, beside an accepted introduction', () => {
     expect(service).toContain(
       'if (!task.permission_granted && (await acceptedIntroductionToThisPerson())) {',
     );
-    expect(service).not.toContain('permission_granted && (await ownerJustNamedThisPerson())');
+    expect(service).toContain(
+      '} else if (!task.permission_granted && (await ownerJustNamedThisPerson())) {',
+    );
   });
 
   /** It says so in the log, or nobody can tell later why an ask went. */
@@ -559,25 +566,23 @@ describe('the owner naming somebody outranks the draft, for that person only', (
  * the goal the run had just opened, and the run asked „გავაგზავნო?" — a second
  * yes. The wall stays; its refusal now says the owner's line is the consent.
  */
-describe('the permission wall says when the owner already said it', () => {
+describe('the permission wall lets the owner-named person through (Misho, 3 October)', () => {
   const service = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-  const wall = service.slice(service.indexOf('} else if (!task.permission_granted) {'));
+  const pass = service.indexOf(
+    '} else if (!task.permission_granted && (await ownerJustNamedThisPerson())) {',
+  );
+  const refusal = service.indexOf('} else if (!task.permission_granted) {');
 
-  it('checks the owner’s typed line before the general refusal', () => {
-    const named = wall.indexOf('if (await ownerJustNamedThisPerson()) {');
-    expect(named).toBeGreaterThan(-1);
-    expect(named).toBeLessThan(wall.indexOf("'ნებართვა არ არის:"));
-    expect(wall.slice(named, named + 200)).toContain('error: OWNER_TYPED_IS_THE_YES');
+  it('asks who the owner named before the general refusal', () => {
+    expect(pass).toBeGreaterThan(-1);
+    expect(pass).toBeLessThan(refusal);
   });
 
-  it('sends the run to the grant, not back to the owner', () => {
-    const text = service.slice(service.indexOf('const OWNER_TYPED_IS_THE_YES'));
-    expect(text.slice(0, 700)).toContain('grant_task_permission (confirmed: true)');
-    expect(text.slice(0, 700)).toContain('მფლობელს ხელახლა');
+  it('says in the log why the wall was passed', () => {
+    expect(service.slice(pass, pass + 1400)).toContain('permission wall passed for the one person');
   });
 
-  it('still never sends past the wall itself', () => {
-    const named = wall.slice(wall.indexOf('if (await ownerJustNamedThisPerson()) {'));
-    expect(named.slice(0, 200)).toContain('sent: false');
+  it('no longer sends the run to grant and retry', () => {
+    expect(service).not.toContain('OWNER_TYPED_IS_THE_YES');
   });
 });
