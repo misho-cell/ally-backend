@@ -22,6 +22,7 @@ jest.mock('../searchQuery.service', () => ({
 }));
 
 import { webResultNames } from '../openingSearch.service';
+import { firmSearchName } from '../wayInName';
 
 /**
  * Ticket 20 row 154, the seat's done-when — the card is built from the raw
@@ -222,5 +223,20 @@ describe('a web address is not somebody to chase', () => {
     expect(webResultNames(resultsWith('Kakha Kaladze (@kakhakaladze)'))).toEqual([
       'Kakha Kaladze (@kakhakaladze)',
     ]);
+  });
+});
+
+/** The tester's 1121 (35521): a plumber the owner saved was offered as the way in to a web firm. */
+describe('a firm is looked for by its own name', () => {
+  it('takes the firm’s name, not the trade in its title', () => {
+    expect(firmSearchName('Ostati.ge სანტექნიკი ონკანის შეკეთება კანალიზაცია')).toBe('Ostati');
+  });
+
+  it('skips the place and the generic words first', () => {
+    expect(firmSearchName('თბილისი Infinity Solutions')).toBe('Infinity');
+  });
+
+  it('is empty when nothing of the name is left', () => {
+    expect(firmSearchName('სტუდია თბილისი')).toBe('');
   });
 });

@@ -68,9 +68,29 @@ export function withoutEarlySolvedCard(
 ): GuardedReply | null {
   if (choices === undefined || !choices.some(isSolvedLabel)) return null;
   const kept = choices.filter((label) => !isSolvedLabel(label) && !isNotYetLabel(label));
-  const onlyTheQuestion = text.trim().length <= SHORT_QUESTION_CHARS && text.trim().endsWith('?');
+  const trimmed = text.trim();
+  const endsOnTheQuestion = trimmed.length <= SHORT_QUESTION_CHARS && trimmed.endsWith('?');
   return {
-    text: onlyTheQuestion ? (SPEAK_FIRST[language] ?? SPEAK_FIRST.ka) : text,
+    text: endsOnTheQuestion ? withSpeakFirst(trimmed, language) : text,
     choices: kept.length > 0 ? kept : undefined,
   };
 }
+
+/**
+ * The tester's 1121 (35436): a short reply that said WHEN and WHERE before its
+ * „solved?" lost both with the question. Only the closing question is
+ * replaced; what the reply said before it stays.
+ */
+function withSpeakFirst(text: string, language: RunLanguage): string {
+  const line = SPEAK_FIRST[language] ?? SPEAK_FIRST.ka;
+  const before = text.slice(0, lastSentenceStart(text)).trim();
+  return before === '' ? line : `${before} ${line}`;
+}
+
+/** Where the last sentence begins: after the last full stop, „!" or line break before the end. */
+function lastSentenceStart(text: string): number {
+  const body = text.slice(0, -1);
+  return Math.max(...SENTENCE_ENDS.map((end) => body.lastIndexOf(end))) + 1;
+}
+
+const SENTENCE_ENDS: readonly string[] = ['.', '!', '?', '\n'];

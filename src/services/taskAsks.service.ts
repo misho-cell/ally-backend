@@ -2056,6 +2056,17 @@ const AGREED_IS_NOT_CONNECTED =
  * So the card's event carries this one: the same stage, the same next step,
  * and nothing that asks for who-said-what again.
  */
+/**
+ * The tester's 1121 (35436): „კი, პარასკევს 12-ზე, იმავე მისამართზე" agreed a
+ * meeting, and the owner read only „tell me when this settles it". The card
+ * shows the words; it does not say where „the same address" is. A meeting is
+ * the outcome, so it is said once, in full — the one exception to „do not repeat".
+ */
+const MEETING_UNDER_CARD =
+  ' თუ პასუხი შეხვედრას ადგენს (დღე, საათი ან ადგილი), ეს გამონაკლისია: ერთი წინადადებით ' +
+  'სრულად უთხარი მფლობელს — ვისთან, როდის, სად და რა პირობით, „იმავე მისამართი" საუბრიდან ' +
+  'ზუსტ მისამართად გახსენი.';
+
 const AGREED_UNDER_CARD =
   'თუ ბარათზე რომელიმე პასუხი დათანხმებაა დაკავშირებაზე — ეს ეტაპია „დათანხმდა", არა ' +
   '„დაკავშირდნენ": არასდროს თქვა „დაგაკავშირეთ", „შედგა" ან „დაკავშირდით", და ნუ ჰკითხავ, ' +
@@ -2122,7 +2133,7 @@ export function buildShownRelayAnswerWakeEvent(
   return (
     `${path} სერვერმა პასუხი ${ALREADY_ON_CARD} — ბარათად, შენი პასუხის ზემოთ, ვინ ` +
     'უპასუხა და ვისი მეშვეობით. პასუხის სიტყვები არ გაიმეორო; თუ უარია, ერთი თბილი ' +
-    `წინადადება და ნუ დაუბრუნდები. ${AGREED_UNDER_CARD} შემდეგ გააგრძელე დავალება.`
+    `წინადადება და ნუ დაუბრუნდები. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD} შემდეგ გააგრძელე დავალება.`
   );
 }
 
@@ -2241,7 +2252,8 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
     'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
     'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება. არასდროს თქვა, რომ ვინმეს ' +
-    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD} შემდეგ გააგრძელე დავალება.` +
+    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD} შემდეგ ` +
+    'გააგრძელე დავალება.' +
     passedOnNote(answers)
   );
 }

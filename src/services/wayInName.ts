@@ -38,3 +38,20 @@ export function sameFirstName(leadFirstName: string | null, contactName: string)
   if (wanted.length < FIRST_NAME_STEM) return true;
   return contactName.split(/[\s,;:()|·–—-]+/u).some((word) => latinForm(word).startsWith(wanted));
 }
+
+/** A web address ending on a firm's name: „Ostati.ge" is the firm Ostati. */
+const DOMAIN_SUFFIX_RE = /\.(ge|com|net|org|io|co|info|biz)$/iu;
+
+/**
+ * The tester's 1121 (35521): the page title „Ostati.ge სანტექნიკი ონკანის
+ * შეკეთება კანალიზაცია" came out with „your contact there: გოჩა სანტექნიკი" —
+ * a plumber the owner saved, matched on the trade word in the title. A firm is
+ * looked for by its own name only: the first word left after places and
+ * generic words, without a web suffix. A firm whose name is a later word is
+ * missed — the safe side, since a missed way in is said as „not found" and a
+ * wrong one is a false claim about the owner's own contact.
+ */
+export function firmSearchName(leadName: string): string {
+  const first = wayInSearchName(leadName).split(' ')[0] ?? '';
+  return first.replace(DOMAIN_SUFFIX_RE, '');
+}

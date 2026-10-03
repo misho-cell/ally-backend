@@ -24,7 +24,9 @@ describe('the words a web lead is looked up by', () => {
 
   it('are what the way-in search is given, and an empty one checks nothing', () => {
     const src = readFileSync(join(__dirname, '..', 'openingSearch.service.ts'), 'utf8');
-    expect(src).toContain('const searchName = wayInSearchName(name);');
+    expect(src).toContain(
+      'const searchName = leadFirst === null ? firmSearchName(name) : wayInSearchName(name);',
+    );
     expect(src).toContain('searchByTagExactOnly(userId, searchName),');
     expect(src).toContain("out.set(name, { kind: 'none' });");
   });

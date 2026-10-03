@@ -106,3 +106,25 @@ describe('introduction answers in the prompt are context, not a footnote', () =>
     expect(section.slice(0, 1500)).toContain('სხვა პასუხს ბოლოში არასდროს მიაწერო');
   });
 });
+
+/** The tester's 1121 (35436): the day and the place went with the question. */
+describe('only the closing question is replaced', () => {
+  const isSolved = (label: string): boolean => label === 'მოგვარებულია';
+
+  it('keeps what the reply said before „solved?"', () => {
+    const guarded = withoutEarlySolvedCard(
+      'პარასკევს 12:00-ზე, ჭავჭავაძის 10-ში. მოგვარდა?',
+      ['მოგვარებულია', 'ჯერ არა'],
+      'ka',
+      isSolved,
+    );
+    expect(guarded?.text).toBe(
+      'პარასკევს 12:00-ზე, ჭავჭავაძის 10-ში. როცა დარწმუნდები, რომ ეს გიშველის, მომწერე — მაშინ დავხურავ.',
+    );
+  });
+
+  it('still replaces a reply that was only the question', () => {
+    const guarded = withoutEarlySolvedCard('მოგვარდა?', ['მოგვარებულია'], 'ka', isSolved);
+    expect(guarded?.text).toBe('როცა დარწმუნდები, რომ ეს გიშველის, მომწერე — მაშინ დავხურავ.');
+  });
+});

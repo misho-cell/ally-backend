@@ -1,6 +1,6 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { searchByTagExactOnly } from './tools/searchByTag';
-import { sameFirstName, wayInSearchName } from './wayInName';
+import { firmSearchName, sameFirstName, wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
 import { logToolCall } from './toolCallLog.service';
@@ -891,8 +891,10 @@ export async function findWaysIn(
           out.set(name, { kind: 'unchecked' });
           return;
         }
-        // A city or a word like „studio" is not the organisation (32983).
-        const searchName = wayInSearchName(name);
+        // A city or a word like „studio" is not the organisation (32983), and a
+        // firm is looked for by its own name, not by the trade in its title (35521).
+        const leadFirst = leadsFirstName(name);
+        const searchName = leadFirst === null ? firmSearchName(name) : wayInSearchName(name);
         if (searchName === '') {
           out.set(name, { kind: 'none' });
           return;
@@ -913,7 +915,6 @@ export async function findWaysIn(
           return;
         }
         const who = firstPersonNamed(result);
-        const leadFirst = leadsFirstName(name);
         out.set(
           name,
           who === null || !sameFirstName(leadFirst, who)

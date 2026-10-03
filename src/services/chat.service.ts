@@ -10394,33 +10394,39 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The tester's 1120 (35305), the founder's rule behind D617: other goals come up
- * only when the owner asks. A long answer about who could buy a program ended in
- * „კიდევ გელოდება: 2 შეკითხვა, როგორ ჩაიარა". The waiting items go out on a
- * system run, in a goal's own conversation, or when this run looked at goals or
- * the inbox; anywhere else they wait for the next of those. Nothing is lost.
+ * The tester's 1120 (35305) and 1121 (35482), the founder's rule behind D617:
+ * other goals come up only when the owner asks. A long answer about who could
+ * buy a program, and an answer inside one goal's own conversation, both ended
+ * in „კიდევ გელოდება: 2 შეკითხვა, როგორ ჩაიარა". So: everything goes out on a
+ * system run or when this run looked at goals or the inbox; in a goal's own
+ * conversation only that goal's items; anywhere else nothing. What is held
+ * waits for the next of those — nothing is lost.
  */
-export async function waitingItemsWanted(
+export async function waitingItemsToDeliver(
+  items: readonly PendingItemInput[],
   ownerAbsent: boolean,
   threadId: number,
   turns: readonly Anthropic.MessageParam[],
-): Promise<boolean> {
-  if (ownerAbsent) return true;
-  const lookedAtGoals = turns.some(
+): Promise<readonly PendingItemInput[]> {
+  if (items.length === 0 || ownerAbsent || lookedAtGoals(turns)) return items;
+  try {
+    const goal = await getOpenTaskByThread(threadId);
+    return goal === null ? [] : items.filter((item) => item.task_id === goal.id);
+  } catch (err) {
+    // A failed read delivers: a card shown once too often beats one never shown.
+    // eslint-disable-next-line no-console
+    console.error('[pending] could not read the thread’s goal:', (err as Error).message);
+    return items;
+  }
+}
+
+function lookedAtGoals(turns: readonly Anthropic.MessageParam[]): boolean {
+  return turns.some(
     (t) =>
       t.role === 'assistant' &&
       typeof t.content !== 'string' &&
       t.content.some((b) => b.type === 'tool_use' && WAITING_ASKED_TOOLS.has(b.name)),
   );
-  if (lookedAtGoals) return true;
-  try {
-    return (await getOpenTaskByThread(threadId)) !== null;
-  } catch (err) {
-    // A failed read delivers: a card shown once too often beats one never shown.
-    // eslint-disable-next-line no-console
-    console.error('[pending] could not read the thread’s goal:', (err as Error).message);
-    return true;
-  }
 }
 
 /** Stamped on a reply the server wrote itself (answered_by). */
@@ -13409,18 +13415,17 @@ export async function processChat(
   // tool at all is small talk: what waits is said when the owner asks or works,
   // not under a hello. Nothing is lost; the items are read again next run.
   const smallTalk = smallTalkTurn(ownerAbsent, userMessage, pending);
-  const holdBack =
-    pendingItems.length > 0 &&
-    (smallTalk || !(await waitingItemsWanted(ownerAbsent, threadId, pending)));
-  if (holdBack) {
+  const toDeliver = smallTalk
+    ? []
+    : await waitingItemsToDeliver(pendingItems, ownerAbsent, threadId, pending);
+  if (toDeliver.length < pendingItems.length) {
     // eslint-disable-next-line no-console
     console.log(
-      `[pending] run ${runId}: ${pendingItems.length} waiting item(s) held back — ` +
-        (smallTalk ? 'small talk' : 'not asked about goals'),
+      `[pending] run ${runId}: ${pendingItems.length - toDeliver.length} waiting item(s) held back — ` +
+        (smallTalk ? 'small talk' : 'not asked about other goals'),
     );
-  } else {
-    await deliverPendingMessages(userId, threadId, runId, language, pendingItems);
   }
+  await deliverPendingMessages(userId, threadId, runId, language, toDeliver);
   // The goal this thread carries was worked on now (Ticket 11 Task 7 (a):
   // `last_activity_at` read 4 Sep on a goal whose thread held 6 Sep messages).
   void touchTaskActivityForThread(threadId).catch(() => undefined);

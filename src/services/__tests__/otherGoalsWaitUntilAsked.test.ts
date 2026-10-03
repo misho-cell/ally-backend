@@ -5,7 +5,8 @@ jest.mock('../taskStore.service', () => ({
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { getOpenTaskByThread } from '../taskStore.service';
-import { waitingItemsWanted } from '../chat.service';
+import { waitingItemsToDeliver } from '../chat.service';
+import type { PendingItemInput } from '../pendingMessages';
 
 const mockGoal = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
 const THREAD = 35305;
@@ -21,32 +22,46 @@ function calledTool(name: string): Anthropic.MessageParam[] {
  * The tester's 1120 (35305): a long answer that was not about goals ended in
  * „კიდევ გელოდება: 2 შეკითხვა". Other goals come up only when the owner asks.
  */
+const OWN: PendingItemInput = { kind: 'debrief', task_id: 7, payload: {} };
+const OTHER: PendingItemInput = { kind: 'debrief', task_id: 8, payload: {} };
+const SUMMARY: PendingItemInput = { kind: 'more_pending', task_id: null, payload: { count: 2 } };
+const ALL = [OWN, OTHER, SUMMARY];
+
 describe('the waiting items', () => {
   beforeEach(() => mockGoal.mockReset());
 
   it('wait under an answer that never looked at goals, outside a goal', async () => {
     mockGoal.mockResolvedValue(null);
-    expect(await waitingItemsWanted(false, THREAD, calledTool('search_by_tag'))).toBe(false);
+    expect(await waitingItemsToDeliver(ALL, false, THREAD, calledTool('search_by_tag'))).toEqual(
+      [],
+    );
   });
 
-  it('go out when the run looked at the goals or the inbox', async () => {
+  it('all go out when the run looked at the goals or the inbox', async () => {
     mockGoal.mockResolvedValue(null);
-    expect(await waitingItemsWanted(false, THREAD, calledTool('get_my_tasks'))).toBe(true);
-    expect(await waitingItemsWanted(false, THREAD, calledTool('check_my_inbox'))).toBe(true);
+    expect(await waitingItemsToDeliver(ALL, false, THREAD, calledTool('get_my_tasks'))).toEqual(
+      ALL,
+    );
+    expect(await waitingItemsToDeliver(ALL, false, THREAD, calledTool('check_my_inbox'))).toEqual(
+      ALL,
+    );
   });
 
-  it('go out in a goal’s own conversation', async () => {
-    mockGoal.mockResolvedValue({ id: 1 } as Awaited<ReturnType<typeof getOpenTaskByThread>>);
-    expect(await waitingItemsWanted(false, THREAD, calledTool('search_by_tag'))).toBe(true);
+  /** The tester's 1121 (35482): the summary of other goals came under this goal's answer. */
+  it('in a goal’s own conversation, only that goal’s items go out', async () => {
+    mockGoal.mockResolvedValue({ id: 7 } as Awaited<ReturnType<typeof getOpenTaskByThread>>);
+    expect(await waitingItemsToDeliver(ALL, false, THREAD, calledTool('search_by_tag'))).toEqual([
+      OWN,
+    ]);
   });
 
-  it('go out on a run the system started', async () => {
-    expect(await waitingItemsWanted(true, THREAD, [])).toBe(true);
+  it('all go out on a run the system started', async () => {
+    expect(await waitingItemsToDeliver(ALL, true, THREAD, [])).toEqual(ALL);
     expect(mockGoal).not.toHaveBeenCalled();
   });
 
-  it('go out when the goal cannot be read, rather than never', async () => {
+  it('all go out when the goal cannot be read, rather than never', async () => {
     mockGoal.mockRejectedValue(new Error('timeout'));
-    expect(await waitingItemsWanted(false, THREAD, [])).toBe(true);
+    expect(await waitingItemsToDeliver(ALL, false, THREAD, [])).toEqual(ALL);
   });
 });
