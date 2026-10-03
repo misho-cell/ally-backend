@@ -22,7 +22,7 @@ describe('a held question in the goal’s section', () => {
     rows([{ from_user_id: '501' }, { from_user_id: '501' }]);
     const note = await heldAsksNote(15420, '501');
     expect(note).toContain('გიორგი აბაშიძე');
-    expect(note).toContain('ყველა მფლობელის საკუთარი კითხვა იყო');
+    expect(note).toContain('ყველა შენი საკუთარი კითხვა იყო');
     expect(note).not.toMatch(/—\s*სხვა ადამიანებისგან/);
   });
 

@@ -103,13 +103,13 @@ describe('1102 (a) — the second circle searches the profession’s other words
 describe('1102 (f) — whose questions filled a helper’s day', () => {
   it('says they were the owner’s own when they were', () => {
     expect(whoseAsksWereThey([{ from_user_id: 41 }, { from_user_id: '41' }], '41')).toBe(
-      'ყველა მფლობელის საკუთარი კითხვა იყო',
+      'ყველა შენი საკუთარი კითხვა იყო',
     );
     expect(whoseAsksWereThey([{ from_user_id: 7 }, { from_user_id: 8 }], '41')).toBe(
       'სხვა ადამიანებისგან',
     );
     expect(whoseAsksWereThey([{ from_user_id: 41 }, { from_user_id: 8 }], '41')).toBe(
-      '1 მფლობელის საკუთარი, დანარჩენი სხვებისგან',
+      '1 შენი საკუთარი, დანარჩენი სხვებისგან',
     );
   });
 });

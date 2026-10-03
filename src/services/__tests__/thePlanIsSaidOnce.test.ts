@@ -190,6 +190,13 @@ describe('a closing question in other words', () => {
     expect(isClosingQuestionVariant('ამ გეგმას მივყვე და ასე ვიმოქმედო?', Q)).toBe(true);
     expect(isClosingQuestionVariant('ვამტკიცებ თუ შევცვალოთ?', Q)).toBe(false);
     expect(isClosingQuestionVariant('ამ გეგმას მივყვე და ასე ვიმოქმედო.', Q)).toBe(false);
+    // The tester's 1112 (34409): the agreed opening, then a clause of its own.
+    expect(
+      isClosingQuestionVariant(
+        'ამ გეგმას მივყვე და ასევე გავაგრძელო ვების დონეზე ძიება, თუ მეტიც დაგჭირდება?',
+        Q,
+      ),
+    ).toBe(true);
   });
 
   it('is said once, as the agreed question', () => {

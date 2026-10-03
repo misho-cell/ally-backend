@@ -6275,11 +6275,18 @@ function questionWords(text: string): string[] {
  * question under it. A last line that is a question holding every word of the
  * agreed one, with a word or two more, is the same question in other words.
  */
+/** How many of the agreed question's opening words a longer variant must start with. */
+const CLOSING_OPENING_WORDS = 3;
+
 export function isClosingQuestionVariant(line: string, question: string): boolean {
   const trimmed = line.trim();
   if (!/[?？]$/u.test(trimmed)) return false;
   const lineWords = questionWords(trimmed);
   const asked = questionWords(question);
+  // The tester's 1112 (34409): „ამ გეგმას მივყვე და ასევე გავაგრძელო ვების დონეზე
+  // ძიება…?" — the agreed question's own opening, then a clause of its own.
+  const opening = asked.slice(0, CLOSING_OPENING_WORDS);
+  if (opening.every((w, i) => lineWords[i] === w)) return true;
   if (lineWords.length > asked.length + CLOSING_VARIANT_EXTRA_WORDS) return false;
   return asked.every((w) => lineWords.includes(w));
 }

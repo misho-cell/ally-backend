@@ -258,9 +258,11 @@ export function whoseAsksWereThey(
   ownerId: string,
 ): string {
   const own = rows.filter((r) => String(r.from_user_id) === ownerId).length;
+  // The tester's 1112 (34416, 34419): „the owner's own" was read out to the owner
+  // in the third person. These words reach them as written, so they say „your".
   if (own === 0) return 'სხვა ადამიანებისგან';
-  if (own === rows.length) return 'ყველა მფლობელის საკუთარი კითხვა იყო';
-  return `${own} მფლობელის საკუთარი, დანარჩენი სხვებისგან`;
+  if (own === rows.length) return 'ყველა შენი საკუთარი კითხვა იყო';
+  return `${own} შენი საკუთარი, დანარჩენი სხვებისგან`;
 }
 
 /** Enough rows to find the reopening; a person never holds many asks in a day. */
