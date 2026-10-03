@@ -579,6 +579,7 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
       answer: ask.answer ?? '',
       fromName: ask.from_name,
       verbatim: await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? ''),
+      passedOn: ask.passed_on === true,
     })),
   );
   // Row 322(a): on the owner's screen first; the model's turn comes after.

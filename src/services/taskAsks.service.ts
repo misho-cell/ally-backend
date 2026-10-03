@@ -2154,6 +2154,26 @@ export interface ArrivedAnswer {
   readonly answer: string;
   readonly fromName: string | null;
   readonly verbatim: boolean;
+  /** The answerer's assistant already passed the question on to someone else. */
+  readonly passedOn?: boolean;
+}
+
+/**
+ * The tester's 1108 (33509 / 33496): the helper answered „I don't know, Nino
+ * does, ask her", their assistant asked Nino at once, and the owner's run then
+ * asked the same helper to ask Nino himself. The helper was troubled twice
+ * because the owner's side never heard the question had already gone on. The
+ * onward person is not named here: who they are is in the helper's own words.
+ */
+export function passedOnNote(answers: readonly ArrivedAnswer[]): string {
+  const who = answers
+    .filter((a) => a.passedOn === true)
+    .map((a) => a.fromName?.trim() || 'ადამიანმა, ვისაც კითხვა გაეგზავნა');
+  if (who.length === 0) return '';
+  return (
+    ` ${who.join(', ')}: კითხვა უკვე გადასცა იმ ადამიანს, ვინც დაასახელა, და მისი პასუხი აქ ` +
+    'მოვა. იგივე აღარ სთხოვო და მფლობელს უთხარი, რომ კითხვა უკვე გადაცემულია.'
+  );
 }
 
 /**
@@ -2173,7 +2193,7 @@ export interface ArrivedAnswer {
 export function buildAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string {
   if (answers.length === 1) {
     const only = answers[0];
-    return buildAnswerWakeEvent(only.answer, only.fromName, only.verbatim);
+    return buildAnswerWakeEvent(only.answer, only.fromName, only.verbatim) + passedOnNote(answers);
   }
   const blocks = answers
     .map((a) => {
@@ -2191,7 +2211,8 @@ export function buildAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string
     'მფლობელს ყველა გადაეცი ერთ პასუხში, თითოეულს დაასახელე ვინ უპასუხა; ციტატად მხოლოდ ის, ' +
     'რაც ზუსტი სიტყვებადაა მონიშნული, დანარჩენი აზრით. თუ სხვა ენაზეა, მფლობელის ენაზე ' +
     'გადმოეცი. არ თქვა, რომ დანარჩენებს ჯერ არ უპასუხიათ — აქ ყველა მოსული პასუხია. ' +
-    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.`
+    `${AGREED_IS_NOT_CONNECTED} შემდეგ გააგრძელე დავალება.` +
+    passedOnNote(answers)
   );
 }
 
@@ -2218,7 +2239,8 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
     'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
     'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება. არასდროს თქვა, რომ ვინმეს ' +
-    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD} შემდეგ გააგრძელე დავალება.`
+    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD} შემდეგ გააგრძელე დავალება.` +
+    passedOnNote(answers)
   );
 }
 
@@ -2405,6 +2427,8 @@ export interface UnwokenAnswer {
   owner_user_id?: string | null;
   /** Row 322(a): the card carrying this answer was already written. */
   shown?: boolean;
+  /** The tester's 1108 (33509): the answerer's assistant already asked someone else onward. */
+  passed_on?: boolean;
 }
 
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
@@ -2434,7 +2458,8 @@ export async function listUnwokenAnswersForTask(
   const result = await query<UnwokenAnswer>(
     `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
             t.thread_id AS task_thread_id, ta.ask_thread_id,
-            t.user_id AS owner_user_id, ta.answer_shown_at IS NOT NULL AS shown
+            t.user_id AS owner_user_id, ta.answer_shown_at IS NOT NULL AS shown,
+            EXISTS (SELECT 1 FROM task_asks r WHERE r.parent_ask_id = ta.id) AS passed_on
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
      LEFT JOIN "User" u ON u.id = ta.to_user_id
