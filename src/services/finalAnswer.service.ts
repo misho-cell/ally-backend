@@ -333,13 +333,19 @@ export async function writeFinalAnswer(
     let lastChunkAt = startedAt;
     let longestGap = 0;
     let chunks = 0;
+    let finishReason: string | null = null;
+    let refusal = '';
     for await (const chunk of stream) {
       chunks += 1;
       longestGap = Math.max(longestGap, Date.now() - lastChunkAt);
       lastChunkAt = Date.now();
       // The usage-only chunk arrives last and carries no choices.
       if (chunk.usage) usage = chunk.usage;
-      const delta = chunk.choices[0]?.delta?.content;
+      const choice = chunk.choices[0];
+      finishReason = choice?.finish_reason ?? finishReason;
+      const refused = choice?.delta?.refusal;
+      if (typeof refused === 'string') refusal += refused;
+      const delta = choice?.delta?.content;
       if (typeof delta === 'string' && delta !== '') {
         text += delta;
         onText?.(delta);
@@ -363,6 +369,17 @@ export async function writeFinalAnswer(
       // eslint-disable-next-line no-console
       console.warn(
         `[final-answer] ${model} answer refused (${unusable}), ${text.length} chars — using Claude`,
+      );
+      // 3 October 07:43Z, the first two runs after §88: both empty in under
+      // four seconds with no error. Why is now in the log, not guessed: how
+      // many chunks came, how the stream ended, what the output tokens were
+      // spent on, and the model's own refusal text if it gave one.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[final-answer] ${model} empty-answer detail: chunks ${chunks}, finish ${finishReason ?? 'none'}, ` +
+          `output tokens ${usage?.completion_tokens ?? '?'} ` +
+          `(reasoning ${usage?.completion_tokens_details?.reasoning_tokens ?? '?'}), ` +
+          `prompt tokens ${usage?.prompt_tokens ?? '?'}, refusal ${refusal === '' ? 'none' : `„${refusal.slice(0, 200)}"`}`,
       );
       return null;
     }
