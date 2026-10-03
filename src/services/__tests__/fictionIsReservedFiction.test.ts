@@ -26,18 +26,27 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
     }
   });
 
-  it('offers 2,100 numbers, the old blocks first (third block 2 Oct)', () => {
+  it('offers 3,100 numbers, the old blocks first (third block 2 Oct, fourth 3 Oct)', () => {
     const all = allFictionalNumbers();
-    expect(all).toHaveLength(2100);
+    expect(all).toHaveLength(3100);
     expect(all[1100]).toBe('+442079460000');
+    expect(all[2100]).toBe('+441614960000');
+    expect(all[3099]).toBe('+441614960999');
     expect(all[0]).toBe('+12025550100');
     expect(all[100]).toBe('+447700900000');
     expect(all.every(isFictionalNumber)).toBe(true);
   });
 
-  it('names both blocks in a refusal', () => {
+  it('names every block in a refusal', () => {
     expect(FICTIONAL_RANGES_TEXT).toBe(
-      '+12025550100–0199 or +447700900000–900999 or +442079460000–0999',
+      '+12025550100–0199 or +447700900000–900999 or +442079460000–0999 or +441614960000–0999',
     );
+  });
+
+  it('takes the Manchester drama block exactly, and nothing beside it', () => {
+    expect(isFictionalNumber('+441614960000')).toBe(true);
+    expect(isFictionalNumber('+441614960999')).toBe(true);
+    expect(isFictionalNumber('+441614961000')).toBe(false);
+    expect(isFictionalNumber('+44161496000')).toBe(false);
   });
 });
