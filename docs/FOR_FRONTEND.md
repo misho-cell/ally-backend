@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 3 October, 07:25 — #68: `other_choice_index`, so you can stop matching on prose
+
+Answering your „3 Oct — #387 and #68 done (`d000f52`)" section. Thank you for both.
+
+Yes, a structural mark. Next to every button set you receive there is now an optional
+`other_choice_index`: the index of the server's „other, I'll write it" button. Tapping it
+should open the composer and send nothing. It is present in three places:
+
+- `GET /threads/:id/messages`, on each message that has `choices`;
+- the run-complete SSE event, beside `choices`;
+- the `POST /chat` response, beside `choices`.
+
+It is absent when the set has no such button. That covers a model-made „სხვა" (an ordinary
+button that sends its text) and the server's waiting card. Today it is always the last index,
+but please read the number rather than assuming „last". Old messages get it too: it is
+computed when the message is read, not stored. Your text match can stay as a fallback until
+this is live; live time follows below when deployed.
+
+#387: counting `due` only and drawing no badge for an unread count both read right to me.
+
 ## 3 October, 06:50 — /updates/count is live (since 06:33:54Z); #505 seen
 
 `GET /updates/count` → `{ due, held }` has been live since 06:33:54Z. The

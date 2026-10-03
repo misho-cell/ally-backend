@@ -1,4 +1,5 @@
 import { choiceNotesFor } from '../../services/choiceNotes';
+import { otherChoiceField } from '../../services/otherChoice';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
@@ -526,9 +527,11 @@ threadsRouter.get(
 /** Row 306: a message's buttons, with a note where a tap does more than the label says. */
 function withChoiceNotes(message: ThreadMessage): ThreadMessage & {
   choice_notes?: Readonly<Record<string, string>>;
+  other_choice_index?: number;
 } {
   const notes = choiceNotesFor(message.choices);
-  return notes === undefined ? message : { ...message, choice_notes: notes };
+  const withOther = { ...message, ...otherChoiceField(message.choices) };
+  return notes === undefined ? withOther : { ...withOther, choice_notes: notes };
 }
 
 threadsRouter.post(
@@ -1110,6 +1113,7 @@ export function runOwnerMessage(run: OwnerRun): void {
         reply: result.reply,
         ...(result.options && { options: result.options }),
         ...(result.choices && { choices: result.choices }),
+        ...otherChoiceField(result.choices),
         ...(result.taskResult && { result: result.taskResult }),
         // Ticket 17 Task 39: the share button reads this, not the prose.
         ...(result.shareText && { share_text: result.shareText }),

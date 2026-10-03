@@ -14,6 +14,7 @@ import {
   getOrCreateDefaultThread,
 } from '../../services/chat.service';
 import { getContactInsight, saveContactInsight } from '../../services/insights.service';
+import { otherChoiceField } from '../../services/otherChoice';
 import { ApiResponse, ContactInsight } from '../../types';
 
 const chatRouter = Router();
@@ -133,6 +134,7 @@ chatRouter.post(
         reply: result.reply,
         ...(result.options && { options: result.options }),
         ...(result.choices && { choices: result.choices }),
+        ...otherChoiceField(result.choices),
       });
     } catch (error) {
       // eslint-disable-next-line no-console

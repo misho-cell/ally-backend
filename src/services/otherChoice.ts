@@ -39,3 +39,23 @@ export function withOtherChoice(
   if (choices.some(isAnOtherOption)) return [...choices];
   return [...choices, otherChoiceLabel(language)];
 }
+
+/**
+ * The frontend's ask (TO_BACKEND, 3 Oct): the client recognised the appended
+ * button by its exact text, a contract with our wording. This is the
+ * structural half: the index of the server's „other, I'll write it" button,
+ * which opens the composer and sends nothing. Undefined when the set has
+ * none; a model-made „other" is a button like any other and is not flagged.
+ */
+export function otherChoiceIndex(choices: unknown): number | undefined {
+  if (!Array.isArray(choices) || choices.length === 0) return undefined;
+  const last = choices[choices.length - 1];
+  const labels: readonly string[] = Object.values(OTHER_LABELS);
+  return typeof last === 'string' && labels.includes(last) ? choices.length - 1 : undefined;
+}
+
+/** The field to spread next to a button set: `other_choice_index`, or nothing. */
+export function otherChoiceField(choices: unknown): { other_choice_index?: number } {
+  const index = otherChoiceIndex(choices);
+  return index === undefined ? {} : { other_choice_index: index };
+}

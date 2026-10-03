@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { otherChoiceLabel, withOtherChoice } from '../otherChoice';
+import {
+  otherChoiceField,
+  otherChoiceIndex,
+  otherChoiceLabel,
+  withOtherChoice,
+} from '../otherChoice';
 
 /**
  * Board #68, Misho 3 October: every set of buttons also offers „other, I'll
@@ -34,5 +39,39 @@ describe('withOtherChoice', () => {
   it('is applied to the buttons that are stored and shown', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('const storedChoices = withOtherChoice(');
+  });
+});
+
+/**
+ * The frontend's ask (TO_BACKEND, 3 Oct): a structural mark for the appended
+ * button, so the client stops matching on our wording.
+ */
+describe('other_choice_index', () => {
+  it('points at the server’s button, in every language', () => {
+    expect(otherChoiceIndex(['კი', 'არა', 'სხვა, მე დავწერ'])).toBe(2);
+    expect(otherChoiceIndex(['Yes', "Other, I'll write it"])).toBe(1);
+    expect(otherChoiceIndex(['Да', 'Другое, напишу сам'])).toBe(1);
+    expect(otherChoiceIndex(['Sí', 'Otro, lo escribo yo'])).toBe(1);
+  });
+
+  it('flags nothing for a model-made „other" or a set without one', () => {
+    expect(otherChoiceIndex(['კი', 'სხვა ვარიანტი'])).toBeUndefined();
+    expect(otherChoiceIndex(['ვნახოთ', 'მოგვიანებით'])).toBeUndefined();
+    expect(otherChoiceIndex(null)).toBeUndefined();
+    expect(otherChoiceIndex([])).toBeUndefined();
+  });
+
+  it('is spread as a field only when there is one', () => {
+    expect(otherChoiceField(['კი', 'სხვა, მე დავწერ'])).toEqual({ other_choice_index: 1 });
+    expect(otherChoiceField(['კი'])).toEqual({});
+  });
+
+  it('travels with every button set the client receives', () => {
+    const routes = join(__dirname, '..', '..', 'api', 'routes');
+    const threads = readFileSync(join(routes, 'threads.routes.ts'), 'utf8');
+    const chatRoute = readFileSync(join(routes, 'chat.routes.ts'), 'utf8');
+    expect(threads).toContain('...otherChoiceField(result.choices),');
+    expect(threads).toContain('...otherChoiceField(message.choices)');
+    expect(chatRoute).toContain('...otherChoiceField(result.choices),');
   });
 });
