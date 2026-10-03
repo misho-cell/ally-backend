@@ -46,6 +46,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
+import { isSmallTalk } from './smallTalk';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
@@ -12035,6 +12036,14 @@ async function ensureGoalForRequest(
   if (await conversationIsDiscussion(threadId, userMessage)) {
     // eslint-disable-next-line no-console
     console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
+    return NO_GOAL_FOR_REQUEST;
+  }
+  // The tester's 1113 (the founder's account): „გამარჯობა" and „რა დღეა დღეს?"
+  // after the new-goal button became goals. Small talk is never a goal.
+  if (isSmallTalk(userMessage)) {
+    if (intent?.asGoal === true)
+      // eslint-disable-next-line no-console
+      console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is small talk`);
     return NO_GOAL_FOR_REQUEST;
   }
   // Row 103: the app flag may turn a statement into a goal; it may not turn a
