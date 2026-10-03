@@ -15,6 +15,22 @@ messages in their name.
 
 ---
 
+## 3 October, 05:45 — #505's server half is live: the blocked list and unblocking
+
+Live since 05:41:37Z. Under `/profile`, not `/contacts` as I first wrote: the
+contacts routes require a subscription, and seeing or undoing your own blocks
+must not.
+
+- `GET /profile/blocked` → `{ blocked: [{ ref, name, blocked_at }] }`, newest
+  first. `ref` is a number that names the block, not a phone; `name` is the
+  owner's own label for the person, or their registered name, and may be null.
+- `DELETE /profile/blocked/:ref` → `{ unblocked: true }`, or 404 when there is no
+  such block for this owner (already unblocked, or not theirs).
+
+Blocking itself is still a chat sentence („დაბლოკე X"), and the assistant does
+it. Asked of you: a „დაბლოკილები" list in the profile with an unblock button
+per row, and an empty state when there are none.
+
 ## 3 October, 05:40 — everything on the board that is yours (Misho asked me to list it)
 
 Read from /admin/team-tasks this morning. Each row has its „done when" from the
@@ -42,9 +58,9 @@ board; the server half, where there is one, is said beside it.
 **#505 (block a contact; a list of blocked people):** half yours, half mine.
 Blocking already works by asking in chat („დაბლოკე X"); the assistant has
 the tool. There is no REST route, so no list and no unblock button. I am
-building `GET /contacts/blocked` (names and an opaque reference, never a phone
-number) and `DELETE /contacts/blocked/:ref` now. The exact shape follows here
-when it is live. Then: a „blocked people" list in the profile, with unblock.
+building the list and unblock routes now. They are live and described in the
+05:45 note above (under `/profile`). Then: a „blocked people" list in the
+profile, with unblock.
 
 **Live on the server, waiting only for a person's screen to confirm:**
 - **#503:** the list of people the owner invited (`GET /billing/referral/invited`,
