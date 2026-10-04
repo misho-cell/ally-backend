@@ -1,4 +1,5 @@
 import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
+import { ownersContactsOnNetai } from './ownersMembers.service';
 import {
   buttonSpellingNote,
   correctedLabels,
@@ -285,6 +286,8 @@ import {
   asksToApproveAPlan,
   offersToSend,
   MEMBERS_SKIPPED_NUDGE,
+  MEMBERS_IN_THE_BOOK_PREFIX,
+  membersInTheBookNudge,
   withoutSendItQuestion,
   withoutOpeningSolvedWhen,
   withoutClosingApprovalAsk,
@@ -4672,19 +4675,54 @@ export function replyOffersAMember(reply: string, names: readonly string[]): boo
   });
 }
 
-/** #960: members on Netai came back, none was asked, and the reply names none. */
-function skippedTheMembersFound(
-  runId: string,
+/** #960: these members on Netai were there to offer, none was asked, and the reply names none. */
+function skippedThese(
+  names: readonly string[],
   finalText: string,
   toolNamesUsed: readonly string[],
 ): boolean {
-  const names = [...(runMembersFound.get(runId)?.values() ?? [])].filter((n) => n !== '');
   if (names.length === 0) return false;
   if (toolNamesUsed.some((t) => t === 'ask_contact' || t === 'request_introduction')) return false;
   // A short question back („which city?") is a fair answer before any offer.
   const trimmed = finalText.trim();
   if (trimmed.length < SHORT_QUESTION_BACK_CHARS && /[?？]$/u.test(trimmed)) return false;
   return !replyOffersAMember(finalText, names);
+}
+
+/** #960: members on Netai came back in this run's searches, and the reply offered none. */
+function skippedTheMembersFound(
+  runId: string,
+  finalText: string,
+  toolNamesUsed: readonly string[],
+): boolean {
+  const names = [...(runMembersFound.get(runId)?.values() ?? [])].filter((n) => n !== '');
+  return skippedThese(names, finalText, toolNamesUsed);
+}
+
+/** How many of the owner's contacts on Netai the members note names. */
+const MEMBERS_IN_THE_BOOK_NAMED = 5;
+
+/**
+ * #960, the tester's 1145: a goal run whose searches never listed the owner's
+ * contacts on Netai. Read from his phonebook; the names when the reply skipped
+ * them, else none. A failed read names nobody — the reply stands as it is.
+ */
+async function membersInTheBookSkipped(
+  userId: string,
+  finalText: string,
+  toolNamesUsed: readonly string[],
+): Promise<string[]> {
+  try {
+    const names = await ownersContactsOnNetai(userId, MEMBERS_IN_THE_BOOK_NAMED);
+    return skippedThese(names, finalText, toolNamesUsed) ? names : [];
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[members] could not read the owner’s contacts on Netai:',
+      (err as Error).message,
+    );
+    return [];
+  }
 }
 
 interface RunSearchResults {
@@ -11620,6 +11658,19 @@ async function runToolLoop(
     lateSearch !== null &&
     toolNamesUsed.length === 0 &&
     !/[?？]\s*$/u.test(finalText.trim());
+  // #960 (the tester's 1145): a goal run that never listed them — read from the phonebook.
+  const bookMembersSkipped =
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runModes.get(runId) === 'task_step' &&
+    !runMembersFound.has(runId) &&
+    !claimedASendThatDidNotHappen &&
+    !helperQuestionUnsent &&
+    !answeredWithoutSearching &&
+    !promisedWithoutActing
+      ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
+      : [];
   const guardNudge = claimedASendThatDidNotHappen
     ? PASSED_ON_NUDGE
     : helperQuestionUnsent
@@ -11630,7 +11681,9 @@ async function runToolLoop(
           ? PROMISED_ACTION_NUDGE
           : membersSkipped
             ? MEMBERS_SKIPPED_NUDGE
-            : CLIFFHANGER_NUDGE;
+            : bookMembersSkipped.length > 0
+              ? membersInTheBookNudge(bookMembersSkipped)
+              : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -11639,6 +11692,7 @@ async function runToolLoop(
       answeredWithoutSearching ||
       promisedWithoutActing ||
       membersSkipped ||
+      bookMembersSkipped.length > 0 ||
       isCliffhangerReply(finalText))
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
@@ -11824,8 +11878,7 @@ export function withoutModelOnlyNudges(
   messages: readonly Anthropic.MessageParam[],
 ): Anthropic.MessageParam[] {
   return messages.filter(
-    (m) =>
-      !(m.role === 'user' && typeof m.content === 'string' && MODEL_ONLY_NUDGES.has(m.content)),
+    (m) => !(m.role === 'user' && typeof m.content === 'string' && isModelOnlyNudge(m.content)),
   );
 }
 
@@ -11838,6 +11891,11 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   SEARCH_FIRST_NUDGE,
   MEMBERS_SKIPPED_NUDGE,
 ]);
+
+/** A model-only note: one of the fixed ones, or the members note that names people. */
+export function isModelOnlyNudge(content: string): boolean {
+  return MODEL_ONLY_NUDGES.has(content) || content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);
+}
 
 /**
  * Ticket 20 row 202 — we never ask the owner to try again.
@@ -13531,7 +13589,7 @@ export async function processChat(
     const isSystemTurn =
       msg.role === 'user' &&
       typeof msg.content === 'string' &&
-      (msg.content.startsWith(RUN_EVENT_PREFIX) || MODEL_ONLY_NUDGES.has(msg.content));
+      (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content));
     await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
   }
 

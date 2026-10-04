@@ -83,7 +83,7 @@ describe('a later tap is not nudged into a second reply', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('askTapOf(lastUserText(messages)) === AskTap.Later');
     expect(chat).toContain(
-      '    !answeringALaterTap &&\n    (claimedASendThatDidNotHappen ||\n      helperQuestionUnsent ||\n      answeredWithoutSearching ||\n      promisedWithoutActing ||\n      membersSkipped ||\n      isCliffhangerReply(finalText))',
+      '    !answeringALaterTap &&\n    (claimedASendThatDidNotHappen ||\n      helperQuestionUnsent ||\n      answeredWithoutSearching ||\n      promisedWithoutActing ||\n      membersSkipped ||\n      bookMembersSkipped.length > 0 ||\n      isCliffhangerReply(finalText))',
     );
   });
 });

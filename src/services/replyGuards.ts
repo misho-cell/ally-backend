@@ -327,6 +327,25 @@ export const MEMBERS_SKIPPED_NUDGE =
   'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
 
 /**
+ * #960, the tester's 1145 (37787, 37895, 37878): the run never searched the
+ * contacts who are on Netai, so the note above had nothing to name. The server
+ * reads them from the owner's phonebook and names them here, by his own labels.
+ * Recognised by its opening, since the names make every copy different.
+ */
+export const MEMBERS_IN_THE_BOOK_PREFIX =
+  '(სისტემური შენიშვნა: მფლობელის ტელეფონის წიგნში Netai-ზე არიან: ';
+
+export function membersInTheBookNudge(names: readonly string[]): string {
+  return (
+    `${MEMBERS_IN_THE_BOOK_PREFIX}${names.join(', ')}. ამ გაშვებაში არცერთი არ შემოგითავაზებია. ` +
+    'ვინც ამ საქმეს შეიძლება იცნობდეს, შესთავაზე — search_contact_by_name-ით იპოვე და გეგმაში ' +
+    'people_to_involve-ად ჩასვი, ვებსა და მოწვევამდე. თუ არცერთი არ გამოდგება, ერთი ხაზით თქვი ' +
+    'რატომ. მოწვევა მხოლოდ მფლობელის თხოვნით. მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ' +
+    'ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)'
+  );
+}
+
+/**
  * The tester's 1142 (37517): the introduction request went out in the run
  * (the owner's „გამაცანი … მეშვეობით" was the consent) and the reply then
  * closed on „ნანას გავუგზავნო ეს თხოვნა?" — asking permission for what was
