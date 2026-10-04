@@ -11375,6 +11375,16 @@ async function runToolLoop(
       const split = splitButtons(rewritten.text);
       if (choices !== undefined) choices = respeltChoices(choices, split.labels, runId);
       finalText = scrubFinal(split.text, runId);
+      // The tester's 1142 (37576): GPT returned only the buttons line, and the
+      // owner read „აირჩიე ერთ-ერთი:" over three buttons with no answer. An
+      // empty rewrite is no answer: Claude's own words stand.
+      if (finalText.trim() === '') {
+        // eslint-disable-next-line no-console
+        console.warn(`[final-answer] run ${runId}: the rewrite was empty — Claude's answer stands`);
+        finalText = scrubFinal(extractText(response.content), runId);
+        answeredBy = MODEL;
+        finalIsRewrite = false;
+      }
       await recordClaudeUsage({
         userId,
         kind: 'chat',
