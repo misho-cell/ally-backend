@@ -91,6 +91,15 @@ interface ThreadRow extends Thread {
   last_message_at: string | null;
   /** Row 207: this thread's goal was stopped by its owner — see GOAL_WAS_STOPPED. */
   goal_stopped?: boolean;
+  /**
+   * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
+   * one, else its latest — so the download asks for the goal's own id and
+   * never reads a thread id as one (the /tasks/:id/stop collision). Null for a
+   * conversation that is not a goal.
+   */
+  goal_id?: number | null;
+  /** #894: the goal has a worked list, so the download button only shows where it works. */
+  has_list?: boolean;
   // Public ref of the linked introduction request (null on regular threads) —
   // what the client posts to /requests/:ref/{accept,decline,snooze}.
   request_ref: string | null;
@@ -293,7 +302,9 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER} AS request_ref,
        LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
        lm.created_at AS last_message_at,
-       ${GOAL_WAS_STOPPED} AS goal_stopped`;
+       ${GOAL_WAS_STOPPED} AS goal_stopped,
+       goal.id AS goal_id,
+       EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list`;
 
 // `shared_ir`: the pending request written into this thread by row 305 (b).
 // At most one — `requestIntroduction` never puts a second pending request into
@@ -313,7 +324,14 @@ const THREAD_LIST_JOINS = `FROM threads t
        WHERE thread_id = t.id AND content != ''
        ORDER BY created_at DESC
        LIMIT 1
-     ) lm ON true`;
+     ) lm ON true
+     LEFT JOIN LATERAL (
+       SELECT k.id
+       FROM tasks k
+       WHERE k.thread_id = t.id AND k.user_id = t.user_id::text
+       ORDER BY (k.status = 'open') DESC, k.id DESC
+       LIMIT 1
+     ) goal ON true`;
 
 // How many open goals page one lifts above the conversations. Not a limit on
 // how many a user may have: anything past this is reachable through ordinary

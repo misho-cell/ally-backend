@@ -56,6 +56,8 @@ describe('starting work on a list', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('JOIN tasks t ON t.thread_id = f.thread_id');
     expect(String(sql)).toContain("t.status = 'open'");
+    // tasks.user_id is TEXT on production: compared as an int, every call threw.
+    expect(String(sql)).toContain('t.user_id = $3::text');
     expect(params).toEqual([7, 10, '501']);
     expect(mockWaysIn).not.toHaveBeenCalled();
   });
@@ -155,7 +157,7 @@ describe('where the list stands', () => {
       rows: { route_found: 12, no_route: 18 },
       asks: { sent: 3 },
     });
-    expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::int');
+    expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::text');
     expect(String(mockQuery.mock.calls[1][0])).toContain('a.parent_ask_id IS NULL');
   });
 
@@ -238,7 +240,7 @@ describe('the worked list as Excel', () => {
     expect(String(row(2)[5])).toContain('კი, დაგაკავშირებ.');
     expect(String(row(2)[5])).not.toContain('599 12 34 56');
     expect(row(3).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
-    expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::int');
+    expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::text');
   });
 
   it('is nothing when the goal has no list of this owner’s', async () => {

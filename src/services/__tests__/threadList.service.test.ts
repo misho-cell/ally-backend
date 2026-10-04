@@ -235,3 +235,20 @@ describe('a thread whose goal is closed is finished', () => {
     );
   });
 });
+
+/** #894 (the frontend's TO_BACKEND, 4 Oct): the download needs the goal's own id. */
+describe('a conversation in the list names its goal and whether it has a list', () => {
+  it('asks for the goal’s id — its open one first — and a list of it, in both queries', async () => {
+    firstPage([8614], [CONVERSATION], [GOAL_THREAD]);
+
+    await getThreadsForUser('501', { limit: 30 });
+
+    for (const call of [mockQuery.mock.calls[1], mockQuery.mock.calls[2]]) {
+      const sql = String(call[0]);
+      expect(sql).toContain('goal.id AS goal_id');
+      expect(sql).toContain('FROM list_items li WHERE li.task_id = goal.id) AS has_list');
+      expect(sql).toContain("ORDER BY (k.status = 'open') DESC, k.id DESC");
+      expect(sql).toContain('k.thread_id = t.id AND k.user_id = t.user_id');
+    }
+  });
+});

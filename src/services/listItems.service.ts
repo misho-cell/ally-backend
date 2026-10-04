@@ -59,7 +59,7 @@ async function fileForGoal(
     `SELECT f.columns, f.rows
        FROM thread_files f
        JOIN tasks t ON t.thread_id = f.thread_id
-      WHERE f.id = $1 AND t.id = $2 AND f.user_id = $3::int AND t.user_id = $3::int
+      WHERE f.id = $1 AND t.id = $2 AND f.user_id = $3::int AND t.user_id = $3::text
         AND t.status = 'open'
       LIMIT 1`,
     [fileId, taskId, userId],
@@ -239,7 +239,7 @@ export async function listStatus(userId: string, taskId: number): Promise<ListSt
       `SELECT ${ROW_STATE_SQL} AS state, COUNT(*)::text AS n
          FROM list_items li JOIN tasks t ON t.id = li.task_id
          ${ROW_ASK_JOIN}
-        WHERE li.task_id = $1 AND t.user_id = $2::int
+        WHERE li.task_id = $1 AND t.user_id = $2::text
         GROUP BY 1`,
       [taskId, userId],
       LIST_QUERY_TIMEOUT_MS,
@@ -247,7 +247,7 @@ export async function listStatus(userId: string, taskId: number): Promise<ListSt
     query<{ state: string; n: string }>(
       `SELECT a.status AS state, COUNT(*)::text AS n
          FROM task_asks a JOIN tasks t ON t.id = a.task_id
-        WHERE a.task_id = $1 AND t.user_id = $2::int AND a.parent_ask_id IS NULL
+        WHERE a.task_id = $1 AND t.user_id = $2::text AND a.parent_ask_id IS NULL
         GROUP BY a.status`,
       [taskId, userId],
       LIST_QUERY_TIMEOUT_MS,
@@ -358,7 +358,7 @@ export async function listWorkbook(
        JOIN tasks t ON t.id = li.task_id
        JOIN thread_files f ON f.id = li.thread_file_id
        ${ROW_ASK_JOIN}
-      WHERE li.task_id = $1 AND t.user_id = $2::int
+      WHERE li.task_id = $1 AND t.user_id = $2::text
       ORDER BY li.thread_file_id, li.row_index
       LIMIT $3::int`,
     [taskId, userId, MAX_ROWS_EXPORTED],
