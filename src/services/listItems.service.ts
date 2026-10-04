@@ -1,4 +1,6 @@
+import ExcelJS from 'exceljs';
 import { query } from '../db/postgres/client';
+import { RunLanguage } from './runLanguage';
 import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
 
 /**
@@ -169,15 +171,149 @@ export function countByState(items: readonly { state: string }[]): Record<string
   }, {});
 }
 
-/** „Where are we on the list?" — the counts for every item of this goal. */
-export async function listStatus(userId: string, taskId: number): Promise<Record<string, number>> {
-  const result = await query<{ state: string; n: string }>(
-    `SELECT li.state, COUNT(*)::text AS n
-       FROM list_items li JOIN tasks t ON t.id = li.task_id
+export interface ListStatus {
+  /** Every row of the goal's list, by state. */
+  readonly rows: Readonly<Record<string, number>>;
+  /** The goal's asks by status — the people the plan wrote to and what came back. */
+  readonly asks: Readonly<Record<string, number>>;
+}
+
+/** „Where are we on the list?" — the rows by state, and the goal's asks by status. */
+export async function listStatus(userId: string, taskId: number): Promise<ListStatus> {
+  const [rows, asks] = await Promise.all([
+    query<{ state: string; n: string }>(
+      `SELECT li.state, COUNT(*)::text AS n
+         FROM list_items li JOIN tasks t ON t.id = li.task_id
+        WHERE li.task_id = $1 AND t.user_id = $2::int
+        GROUP BY li.state`,
+      [taskId, userId],
+      LIST_QUERY_TIMEOUT_MS,
+    ),
+    query<{ state: string; n: string }>(
+      `SELECT a.status AS state, COUNT(*)::text AS n
+         FROM task_asks a JOIN tasks t ON t.id = a.task_id
+        WHERE a.task_id = $1 AND t.user_id = $2::int AND a.parent_ask_id IS NULL
+        GROUP BY a.status`,
+      [taskId, userId],
+      LIST_QUERY_TIMEOUT_MS,
+    ),
+  ]);
+  const byState = (r: { rows: { state: string; n: string }[] }): Record<string, number> =>
+    Object.fromEntries(r.rows.map((x) => [x.state, Number(x.n)]));
+  return { rows: byState(rows), asks: byState(asks) };
+}
+
+/**
+ * Board #894 (the founder, 4 October): „files must also come OUT of Netai." The
+ * worked list goes back as Excel — the owner's own columns, then Netai's: the
+ * way in, through whom, and where the row stands.
+ */
+const STATE_WORDS: Readonly<Record<RunLanguage, Readonly<Record<string, string>>>> = {
+  ka: {
+    route_found: 'გზა ნაპოვნია',
+    no_route: 'გზა არ არის',
+    unchecked: 'არ შემოწმდა',
+    asked: 'ვკითხე',
+    answered: 'უპასუხა',
+    agreed: 'დათანხმდა',
+    refused: 'უარი თქვა',
+  },
+  en: {
+    route_found: 'route found',
+    no_route: 'no route',
+    unchecked: 'not checked',
+    asked: 'asked',
+    answered: 'answered',
+    agreed: 'agreed',
+    refused: 'refused',
+  },
+  ru: {
+    route_found: 'путь найден',
+    no_route: 'пути нет',
+    unchecked: 'не проверено',
+    asked: 'спросил',
+    answered: 'ответил',
+    agreed: 'согласился',
+    refused: 'отказал',
+  },
+  es: {
+    route_found: 'camino encontrado',
+    no_route: 'sin camino',
+    unchecked: 'sin comprobar',
+    asked: 'preguntado',
+    answered: 'respondió',
+    agreed: 'aceptó',
+    refused: 'rechazó',
+  },
+};
+
+/** Every list a goal can carry, many files of up to 500 rows each. */
+const MAX_ROWS_EXPORTED = 5_000;
+
+const WAY_IN_WORDS: Readonly<Record<RunLanguage, Readonly<Record<string, string>>>> = {
+  ka: {
+    first_circle: 'შენი კონტაქტის გავლით',
+    none: 'შენს კონტაქტებში არავინ',
+    unchecked: 'არ შემოწმდა',
+  },
+  en: {
+    first_circle: 'through your contact',
+    none: 'nobody in your contacts',
+    unchecked: 'not checked',
+  },
+  ru: { first_circle: 'через твой контакт', none: 'никого в контактах', unchecked: 'не проверено' },
+  es: {
+    first_circle: 'a través de tu contacto',
+    none: 'nadie en tus contactos',
+    unchecked: 'sin comprobar',
+  },
+};
+
+const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
+  ka: ['Netai: გზა', 'Netai: ვისი გავლით', 'Netai: მდგომარეობა'],
+  en: ['Netai: way in', 'Netai: through whom', 'Netai: where it stands'],
+  ru: ['Netai: путь', 'Netai: через кого', 'Netai: состояние'],
+  es: ['Netai: camino', 'Netai: a través de', 'Netai: estado'],
+};
+
+interface WorkedRow {
+  readonly row_data: string[];
+  readonly way_in: string;
+  readonly through_whom: string | null;
+  readonly state: string;
+  readonly columns: string[];
+}
+
+/** The goal's worked list as an .xlsx file; null when the goal has no list of this owner's. */
+export async function listWorkbook(
+  userId: string,
+  taskId: number,
+  language: RunLanguage,
+): Promise<Buffer | null> {
+  const result = await query<WorkedRow>(
+    `SELECT li.row_data, li.way_in, li.through_whom, li.state, f.columns
+       FROM list_items li
+       JOIN tasks t ON t.id = li.task_id
+       JOIN thread_files f ON f.id = li.thread_file_id
       WHERE li.task_id = $1 AND t.user_id = $2::int
-      GROUP BY li.state`,
-    [taskId, userId],
+      ORDER BY li.thread_file_id, li.row_index
+      LIMIT $3::int`,
+    [taskId, userId, MAX_ROWS_EXPORTED],
     LIST_QUERY_TIMEOUT_MS,
   );
-  return Object.fromEntries(result.rows.map((r) => [r.state, Number(r.n)]));
+  if (result.rows.length === 0) return null;
+  const words = STATE_WORDS[language] ?? STATE_WORDS.ka;
+  const book = new ExcelJS.Workbook();
+  const sheet = book.addWorksheet('Netai');
+  sheet.addRow([...result.rows[0].columns, ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka)]);
+  const ways = WAY_IN_WORDS[language] ?? WAY_IN_WORDS.ka;
+  for (const r of result.rows) {
+    sheet.addRow([
+      ...r.row_data,
+      ways[r.way_in] ?? r.way_in,
+      r.through_whom ?? '',
+      words[r.state] ?? r.state,
+    ]);
+  }
+  return Buffer.from(await book.xlsx.writeBuffer());
 }

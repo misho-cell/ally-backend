@@ -7684,7 +7684,7 @@ async function executeToolCall(
         : { started: false, error: started.error };
     }
     case 'list_status':
-      return { counts: await listStatus(userId, Number(input['task_id'])) };
+      return listStatus(userId, Number(input['task_id']));
     case 'web_search': {
       await recordFixedUsage({
         userId,

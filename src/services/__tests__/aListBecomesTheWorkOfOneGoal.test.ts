@@ -1,6 +1,7 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 jest.mock('../openingSearch.service', () => ({ __esModule: true, findWaysIn: jest.fn() }));
 
+import ExcelJS from 'exceljs';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
@@ -8,6 +9,7 @@ import { findWaysIn } from '../openingSearch.service';
 import {
   ListItemState,
   listStatus,
+  listWorkbook,
   nameColumn,
   startListWork,
   stateOf,
@@ -96,16 +98,22 @@ describe('starting work on a list', () => {
 });
 
 describe('where the list stands', () => {
-  it('counts every item of the owner’s goal by state', async () => {
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        { state: 'route_found', n: '12' },
-        { state: 'no_route', n: '18' },
-      ],
-      rowCount: 2,
-    } as never);
-    await expect(listStatus('501', 10)).resolves.toEqual({ route_found: 12, no_route: 18 });
+  it('counts the owner’s rows by state and the goal’s asks by status', async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          { state: 'route_found', n: '12' },
+          { state: 'no_route', n: '18' },
+        ],
+        rowCount: 2,
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ state: 'sent', n: '3' }], rowCount: 1 } as never);
+    await expect(listStatus('501', 10)).resolves.toEqual({
+      rows: { route_found: 12, no_route: 18 },
+      asks: { sent: 3 },
+    });
     expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::int');
+    expect(String(mockQuery.mock.calls[1][0])).toContain('a.parent_ask_id IS NULL');
   });
 });
 
@@ -123,5 +131,60 @@ describe('the model’s tools', () => {
       "the owner's own contacts is looked up (in parallel) and stored with the row's state. Sends ",
     );
     expect(chat).toContain('with ONE approve card — one approval for the whole list');
+  });
+});
+
+/** Board #894: the worked list back as Excel, the owner's columns then Netai's. */
+describe('the worked list as Excel', () => {
+  it('carries the owner’s columns, then the way in, through whom and the state', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          row_data: ['თბილისი', 'Acme'],
+          way_in: 'first_circle',
+          through_whom: 'ნინო',
+          state: 'route_found',
+          columns: ['ქალაქი', 'კომპანია'],
+        },
+        {
+          row_data: ['ბათუმი', 'Beta'],
+          way_in: 'none',
+          through_whom: null,
+          state: 'no_route',
+          columns: ['ქალაქი', 'კომპანია'],
+        },
+      ],
+      rowCount: 2,
+    } as never);
+    const buffer = await listWorkbook('501', 10, 'ka');
+    if (buffer === null) throw new Error('expected a workbook');
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(buffer as unknown as ArrayBuffer);
+    const sheet = book.worksheets[0];
+    const row = (n: number): unknown[] => (sheet.getRow(n).values as unknown[]).slice(1);
+    expect(row(1)).toEqual([
+      'ქალაქი',
+      'კომპანია',
+      'Netai: გზა',
+      'Netai: ვისი გავლით',
+      'Netai: მდგომარეობა',
+    ]);
+    expect(row(2)).toEqual(['თბილისი', 'Acme', 'შენი კონტაქტის გავლით', 'ნინო', 'გზა ნაპოვნია']);
+    expect(row(3).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის']);
+    expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::int');
+  });
+
+  it('is nothing when the goal has no list of this owner’s', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await expect(listWorkbook('501', 10, 'ka')).resolves.toBeNull();
+  });
+
+  it('is served to the goal’s owner as an .xlsx download', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'threadFiles.routes.ts'),
+      'utf8',
+    );
+    expect(routes).toContain("'/goals/:taskId/list.xlsx',");
+    expect(routes).toContain("res.setHeader('Content-Type', XLSX_TYPE);");
   });
 });

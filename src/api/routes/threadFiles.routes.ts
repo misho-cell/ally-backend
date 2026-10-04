@@ -25,6 +25,8 @@ import {
   threadLanguage,
 } from '../../services/threads.service';
 import { RunLanguage } from '../../services/runLanguage';
+import { listWorkbook } from '../../services/listItems.service';
+import { getTaskById } from '../../services/taskStore.service';
 
 /**
  * Board #892 (the founder, 4 October): the owner gives Netai a file.
@@ -159,6 +161,44 @@ threadFilesRouter.post(
       // eslint-disable-next-line no-console
       console.error('[POST /thread-files/:id]', (error as Error).message);
       res.status(500).json({ success: false, error: 'ფაილის შენახვა ვერ მოხერხდა' });
+    }
+  },
+);
+
+const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const NO_LIST_ON_GOAL = 'ამ მიზანს სია არ აქვს';
+
+/**
+ * Board #894: the worked list back as Excel — the owner's columns, then the
+ * way in, through whom and where each row stands. Only the goal's owner gets it.
+ *
+ *   GET /thread-files/goals/:taskId/list.xlsx
+ */
+threadFilesRouter.get(
+  '/goals/:taskId/list.xlsx',
+  param('taskId').isInt({ min: 1 }),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'არასწორი მიზნის id' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const taskId = Number(req.params.taskId);
+      const task = await getTaskById(taskId);
+      const language = task?.thread_id != null ? await languageOf(task.thread_id) : 'ka';
+      const book = await listWorkbook(userId, taskId, language);
+      if (book === null) {
+        res.status(404).json({ success: false, error: NO_LIST_ON_GOAL });
+        return;
+      }
+      res.setHeader('Content-Type', XLSX_TYPE);
+      res.setHeader('Content-Disposition', `attachment; filename="netai-list-${taskId}.xlsx"`);
+      res.status(200).send(book);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /thread-files/goals/:taskId/list.xlsx]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სიის ჩამოტვირთვა ვერ მოხერხდა' });
     }
   },
 );
