@@ -35,6 +35,10 @@ describe('the guard', () => {
     expect(chat).toContain('trimmed.length < SHORT_QUESTION_BACK_CHARS');
     expect(chat).toContain('? MEMBERS_SKIPPED_NUDGE');
     expect(MEMBERS_SKIPPED_NUDGE).toContain('people_to_involve');
+    // The tester's 1149 (38051): an addition after the first answer, not a rewrite.
+    expect(MEMBERS_SKIPPED_NUDGE).toContain('შენი წინა პასუხი რჩება');
+    expect(MEMBERS_SKIPPED_NUDGE).toContain('დაწერე მხოლოდ ეს დამატება');
+    expect(MEMBERS_SKIPPED_NUDGE).not.toContain('თავიდან დაწერე');
   });
 
   it('is never shown as the owner’s own words', () => {

@@ -11662,11 +11662,12 @@ async function runToolLoop(
     toolNamesUsed.length === 0 &&
     !/[?？]\s*$/u.test(finalText.trim());
   // #960 (the tester's 1145): a goal run that never listed them — read from the phonebook.
+  // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
     !ownerAbsent &&
     !promoted &&
     !answeringALaterTap &&
-    runModes.get(runId) === 'task_step' &&
+    (runModes.get(runId) === 'task_step' || toolNamesUsed.includes('set_task_brief')) &&
     !runMembersFound.has(runId) &&
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
@@ -11776,9 +11777,10 @@ async function runToolLoop(
       // it on" and then „sorry, nothing was passed on". When the note was about a
       // claim or an unsent question, the first answer was the mistake and the
       // corrected turn replaces it; a cliffhanger's announcement stays in front.
-      // The tester's 1149 (38113, 38110): the members note asks for an addition —
+      // The tester's 1149 (38113, 38110, 38051): the members notes ask for an addition —
       // the first answer's finds stay in front, unless the turn wrote them all again.
-      const addedTo = guardNudge.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);
+      const addedTo =
+        guardNudge === MEMBERS_SKIPPED_NUDGE || guardNudge.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);
       const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE && !addedTo;
       const repeated =
         continuationRepeatsAnnouncement(

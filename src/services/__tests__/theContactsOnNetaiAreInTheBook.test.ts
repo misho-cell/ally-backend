@@ -65,7 +65,7 @@ describe('the note that names them', () => {
   it('is asked in a goal run whose searches listed none of them, only when the reply skipped them', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      "runModes.get(runId) === 'task_step' &&\n    !runMembersFound.has(runId) &&",
+      "(runModes.get(runId) === 'task_step' || toolNamesUsed.includes('set_task_brief')) &&\n    !runMembersFound.has(runId) &&",
     );
     expect(chat).toContain('? membersInTheBookNudge(bookMembersSkipped)');
     expect(chat).toContain('bookMembersSkipped.length > 0 ||');
@@ -85,7 +85,9 @@ describe('the turn after the members note', () => {
 
   it('follows the first answer instead of replacing it', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('const addedTo = guardNudge.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);');
+    expect(chat).toContain(
+      'guardNudge === MEMBERS_SKIPPED_NUDGE || guardNudge.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);',
+    );
     expect(chat).toContain('(addedTo && continuationCoversAnswer(announcement, continuationText))');
   });
 });
