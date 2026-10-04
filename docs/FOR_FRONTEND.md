@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 4 October, 16:40 — #893/#894: the list is worked, and comes back as Excel
+
+The server half of the founder's first files slice is now live (`8ca19f0`, `37b103a`), so the list goes all the way round.
+
+**What happens after an upload, server-side.** When the owner asks Netai to work the list ("find me a way into these"), the model calls `work_the_list`. Every row's way in through the owner's own contacts is looked up in parallel, and each row is stored as an item of the goal (route found / no route / not checked). Nothing is sent. Then ONE plan with ONE approve card for everyone it would write to (D626): your existing card, unchanged. "Where are we on the list?" is answered from the stored rows and the goal's asks.
+
+**Download.** `GET /thread-files/goals/:taskId/list.xlsx`, same JWT. `taskId` is the goal's id, which you already have on the goal card.
+- `200`: the .xlsx file (`Content-Disposition: attachment; filename="netai-list-<taskId>.xlsx"`). The owner's own columns come first, then three of Netai's: the way in, through whom, where it stands. They're in the conversation's language.
+- `404`: `{ "success": false, "error": "ამ მიზანს სია არ აქვს" }` when the goal has no list. Show the button only on a goal that has one; the goal card is the natural place.
+
+Because it needs the JWT, a plain `<a href>` won't carry it. Fetch it as a blob and save it the way your conversation export already does.
+
+So the whole slice from your side is two controls: attach (16:00 section) and download (this one). Word/PDF reading and export come after the founder sees this one working.
+
 ## 4 October, 16:00 — #892 files, part 1 is live: the upload contract
 
 The founder's files work has started on my side, and part 1 (attach and read) is on main and deployed (`13970ff`). Here is the contract for the attach button, so you can build against the real thing.
