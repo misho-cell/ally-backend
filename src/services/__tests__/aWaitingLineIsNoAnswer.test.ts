@@ -18,6 +18,9 @@ describe('isOnlyAWaitingLine', () => {
     expect(isOnlyAWaitingLine('ელოდები, რომ აირჩიო.')).toBe(true);
     expect(isOnlyAWaitingLine('ველოდები შენს არჩევანს.')).toBe(true);
     expect(isOnlyAWaitingLine('დაველოდები, რომ დამიდასტურო.')).toBe(true);
+    // 37065, run 53f8f216: the imperative.
+    expect(isOnlyAWaitingLine('დამელოდე შენს არჩევანს.')).toBe(true);
+    expect(isOnlyAWaitingLine('დამელოდე, ლაშას ვკითხავ.')).toBe(false);
     expect(isOnlyAWaitingLine("I'm waiting for you to choose.")).toBe(true);
   });
 

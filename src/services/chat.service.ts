@@ -12291,8 +12291,13 @@ const INTERNAL_ID_NAMES = 'ask_id|task_id|thread_id|run_id|request_id|contact_id
  * length floor. Waiting for a choice or a yes is the same non-answer as waiting
  * for a reply, in either person.
  */
+/**
+ * The tester's 1135 (37065), seen live on 4 Oct (run 53f8f216): „დამელოდე შენს
+ * არჩევანს." — the same non-answer in the imperative — went out as the reply
+ * while the step above it said what to do.
+ */
 const WAITING_LINE_ONLY_RE =
-  /^[*_`~(\s]*(?:და)?ვ?ელოდები[,\s]+(?:რომ\s+)?(?:შენს\s+)?(?:პასუხს|არჩევანს|დასტურს|აირჩიო|აირჩიე|აირჩევ|დაადასტურო|დამიდასტურო)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?m|I am)\s+waiting\s+for\s+(?:you\s+to\s+(?:choose|pick|confirm)|your\s+(?:choice|answer|reply))[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
+  /^[*_`~(\s]*(?:(?:და)?ვ?ელოდები|დამელოდე)[,\s]+(?:რომ\s+)?(?:შენს\s+)?(?:პასუხს|არჩევანს|დასტურს|აირჩიო|აირჩიე|აირჩევ|დაადასტურო|დამიდასტურო)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?m|I am)\s+waiting\s+for\s+(?:you\s+to\s+(?:choose|pick|confirm)|your\s+(?:choice|answer|reply))[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:I'?ll|I will)\s+wait\s+for\s+your\s+(?:answer|reply)[.!…]?[*_`~)\s]*$|^[*_`~(\s]*жду\s+(?:твоего\s+)?ответа[.!…]?[*_`~)\s]*$|^[*_`~(\s]*(?:espero|esperaré)\s+tu\s+respuesta[.!…]?[*_`~)\s]*$/i;
 
 export function isOnlyAWaitingLine(text: string): boolean {
   return WAITING_LINE_ONLY_RE.test(text.trim());
