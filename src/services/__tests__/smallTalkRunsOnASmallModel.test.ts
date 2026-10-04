@@ -36,7 +36,11 @@ async function smallTalkFinalModelWith(
 describe('the small-talk turn', () => {
   it('asks the small Claude model, and only on listed small talk', () => {
     expect(chat).toContain("|| 'claude-haiku-4-5-20251001';");
-    expect(chat).toContain('model: smallTalkOnly ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,');
+    expect(chat).toContain(
+      'model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,',
+    );
+    // D631: a tap the server already acted on goes to the same faster model.
+    expect(chat).toContain('approvedByTap !== null || openAsksSettled !== null,');
   });
 
   it('is rewritten by the small writer when one is set', async () => {

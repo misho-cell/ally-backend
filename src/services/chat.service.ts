@@ -415,9 +415,11 @@ const TOOL_TURN_MODEL = process.env.CHAT_TOOL_TURN_MODEL?.trim() || MODEL;
 const FAST_TOOL_TURNS = TOOL_TURN_MODEL !== MODEL;
 /**
  * D627 (the founder, 4 October, the tester's 1134): small talk runs on a
- * smaller, faster model. The listed small-talk turn is text-only and short
- * (3edf0b9), and the full model spent 11 s before its first word on „როგორ
- * ხარ?" (36639). The final writer still writes the words the owner reads.
+ * smaller, faster model — and since D631, so does the reply to a tap the
+ * server has already acted on (an approval, an open-asks close or keep). The
+ * listed small-talk turn is text-only and short (3edf0b9), and the full model
+ * spent 11 s before its first word on „როგორ ხარ?" (36639). The final writer
+ * still writes the words the owner reads.
  */
 const SMALL_TALK_MODEL = process.env.CHAT_SMALL_TALK_MODEL?.trim() || 'claude-haiku-4-5-20251001';
 const USER_PROFILE_PRIORITY_FIELDS = ['profession', 'city', 'industry'] as const;
@@ -10696,6 +10698,8 @@ async function runToolLoop(
   ownerAbsent = false,
   /** The opening searches, if they were started; delivered when they land. */
   lateSearch: LateOpeningSearch | null = null,
+  /** D631: the server already acted on the owner's tap; the reply only says so. */
+  tapSettledByServer = false,
 ): Promise<{
   finalText: string;
   pending: PendingMessage[];
@@ -10837,7 +10841,7 @@ async function runToolLoop(
   const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: stream,
-    model: smallTalkOnly ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
+    model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
   });
@@ -13258,6 +13262,9 @@ export async function processChat(
     tools,
     ownerAbsent,
     lateSearch,
+    // D631 (the founder, 4 October): a tap on a button with a fixed answer that
+    // the server has already acted on goes to the faster model.
+    approvedByTap !== null || openAsksSettled !== null,
   );
   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
   const planToNobody = takePlanWritesToNobody(runId);
