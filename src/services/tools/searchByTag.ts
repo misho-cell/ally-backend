@@ -566,6 +566,25 @@ export async function searchByTagExactOnly(
   };
 }
 
+/**
+ * D651: the owner's contacts a word finds, with their numbers, for the server's
+ * own reading of who joined Netai since a goal last ran. The same exact search
+ * and the same exclusions as the tool; nothing here reaches the model.
+ */
+export async function exactMatchesWithPhones(
+  userId: string,
+  tagQuery: string,
+): Promise<{ phone: string; name: string }[]> {
+  const rawGroups = wordsAsWritten(tagQuery);
+  if (rawGroups.length === 0) return [];
+  const blockedPhones = await getExcludedPhones(userId, tagQuery);
+  const excludedSet = new Set(blockedPhones.map(normalizePhone));
+  const exact = await runExactSearch(userId, rawGroups, blockedPhones);
+  return exact.rows
+    .filter((r) => !excludedSet.has(normalizePhone(r.phone)))
+    .map((r) => ({ phone: r.phone, name: (r.name ?? r.saved_as ?? '').trim() }));
+}
+
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
     const blockedPhones = await getExcludedPhones(userId, tagQuery);

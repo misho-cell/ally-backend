@@ -1,3 +1,4 @@
+import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
 import {
@@ -758,9 +759,13 @@ interface ScheduledWake {
 }
 
 async function scheduledWake(taskId: number): Promise<ScheduledWake> {
-  const [held, lastReply] = await Promise.all([heldOutcomes(taskId), lastReplyNote(taskId)]);
+  const [held, lastReply, joined] = await Promise.all([
+    heldOutcomes(taskId),
+    lastReplyNote(taskId),
+    joinedSinceNote(taskId),
+  ]);
   const heldText = held.length === 0 ? null : heldAsksSentNote(held);
-  const notes = [heldText, lastReply].filter((n): n is string => n !== null);
+  const notes = [heldText, joined, lastReply].filter((n): n is string => n !== null);
   return {
     text: [SCHEDULED_WAKE_TEXT, ...notes].join('\n\n'),
     onlyStillHeld: held.length > 0 && held.every(isStillHeldByTheLimit),
@@ -779,6 +784,25 @@ async function heldOutcomes(taskId: number): Promise<HeldAskOutcome[]> {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: held questions not sent:`, (err as Error).message);
     return [];
+  }
+}
+
+/** D651: the owner's contacts who joined since the goal last ran, named for the run; else null. */
+async function joinedSinceNote(taskId: number): Promise<string | null> {
+  try {
+    const task = await getTaskById(taskId);
+    if (!task?.thread_id) return null;
+    const names = await membersJoinedSinceLastRun(String(task.user_id), task.thread_id);
+    if (names.length === 0) return null;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[task-engine] task ${taskId}: ${names.length} contact(s) joined since the last run`,
+    );
+    return newMembersNote(names);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] task ${taskId}: new members not read:`, (err as Error).message);
+    return null;
   }
 }
 
