@@ -275,6 +275,7 @@ import {
   HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
   claimsNothingFound,
+  withoutCallOffer,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -13197,6 +13198,7 @@ export async function processChat(
     planToNobody === null
       ? withPlanInReply(runId, effectiveFinal, choices)
       : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
+  effectiveFinal = withoutCallOffer(effectiveFinal, language);
   if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {

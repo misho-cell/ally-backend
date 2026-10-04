@@ -1,3 +1,5 @@
+import { RunLanguage } from './runLanguage';
+
 // A run must end on an answer, not an announcement. These are the tails the
 // battery kept catching as "half-finished narration marked final" (thread 5942
 // + four cases on a second account): the model closes its turn with "now let's
@@ -189,3 +191,37 @@ export const HELPER_QUESTION_NUDGE =
   'კითხვა კითხვის ავტორს ეკუთვნის — მაგალითად, რისთვის სჭირდება, ან ვინ არის — ახლავე ' +
   'გაგზავნე send_answer_to_asker-ით, confirmed=true, ზუსტად მისი სიტყვებით, და მოკლედ უთხარი, ' +
   'რომ გადაეცი. თუ კითხვა შენთვისაა, უპასუხე თავად.)';
+
+/**
+ * The tester's 1133 (V1, 36539): the reply listed three plumbers with their
+ * phones and closed on „გინდა, რომელიმეს დავურეკო დღესვე?" — Netai cannot
+ * place a call. A closing sentence that offers one is replaced with what is
+ * true: the numbers are above, and the owner calls.
+ */
+const CALL_OFFER_RE =
+  /(დავურეკო|დავრეკო|დავურეკავ|დავრეკავ|\b(?:shall|should|can|may)\s+i\s+(?:call|phone|ring)\b|\bi(?:'ll|\s+will)\s+(?:call|phone|ring)\b|позвоню|мне\s+позвонить|позвонить\s+мне|¿\s*(?:llamo|les?\s+llamo)\b|\bllamaré\b)/iu;
+
+const CANNOT_CALL: Readonly<Record<RunLanguage, string>> = {
+  ka: 'დარეკვა ჩემგან არ შეიძლება — ტელეფონები ზემოთაა და შეგიძლია თვითონ დაუკავშირდე.',
+  en: 'I cannot place calls myself — the numbers are above, so you can call them directly.',
+  ru: 'Звонить сам я не могу — номера выше, ты можешь связаться с ними напрямую.',
+  es: 'No puedo hacer llamadas — los números están arriba y puedes llamarlos tú.',
+};
+
+const CLOSING_SENTENCE_ENDS: readonly string[] = ['.', '!', '?', '\n'];
+
+/** Where the reply's last sentence begins. */
+function closingSentenceStart(text: string): number {
+  const body = text.slice(0, -1);
+  return Math.max(...CLOSING_SENTENCE_ENDS.map((end) => body.lastIndexOf(end))) + 1;
+}
+
+/** The reply with a closing offer to place a call replaced; unchanged otherwise. */
+export function withoutCallOffer(text: string, language: RunLanguage): string {
+  const trimmed = text.trimEnd();
+  const start = closingSentenceStart(trimmed);
+  if (!CALL_OFFER_RE.test(trimmed.slice(start))) return text;
+  const before = trimmed.slice(0, start).trimEnd();
+  const line = CANNOT_CALL[language];
+  return before === '' ? line : `${before}\n\n${line}`;
+}

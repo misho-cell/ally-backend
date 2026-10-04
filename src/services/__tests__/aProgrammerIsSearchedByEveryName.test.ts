@@ -26,7 +26,7 @@ describe('relatedProfessionWords', () => {
   });
 
   it('names nothing for a word in no family', () => {
-    expect(relatedProfessionWords('სანტექნიკოსი')).toEqual([]);
+    expect(relatedProfessionWords('მზარეული')).toEqual([]);
     expect(relatedProfessionWords('')).toEqual([]);
   });
 

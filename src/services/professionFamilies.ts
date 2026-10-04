@@ -45,6 +45,10 @@ const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
     'dance teacher',
     'choreographer',
   ],
+  // The tester's 1133 (V1, 36539): a dripping kitchen tap, and the owner's own
+  // „ვანო ხელოსანი" on Netai was never searched. A small plumbing job is a
+  // handyman's job too, so the handyman is in this family; the saved words first.
+  ['სანტექნიკოსი', 'ხელოსანი', 'სანტექნიკა', 'plumber', 'plumbing', 'handyman'],
 ];
 
 function normalized(word: string): string {
