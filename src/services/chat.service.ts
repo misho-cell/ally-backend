@@ -4225,6 +4225,43 @@ export function buildTodaySection(now: Date): string {
   );
 }
 
+/**
+ * #958 (D627, the tester's 1136–1138): a listed small-talk line waited about
+ * two seconds for the full prompt — goals, notes, network, requests, blocks —
+ * to be built for an answer that uses none of it. It gets a short prompt
+ * instead: who the assistant is, how to answer, the owner's first name (the
+ * full prompt's name line made „ლუკა მაისურაძე, კარგად ვარ" of 37359) and
+ * today's date, which „რა დღეა დღეს?" needs.
+ */
+const SMALL_TALK_PROMPT =
+  'შენ ხარ Netai — მფლობელის პირადი ასისტენტი, რომელიც მის ნაცნობებში სწორ ადამიანს უძებნის. ' +
+  'ეს მოკლე, თბილი საუბარია: უპასუხე ერთი-ორი მოკლე წინადადებით, შენობით, მისივე ენაზე. ' +
+  'რჩევა არ მისცე, მიზანი არ გახსნა, ხელსაწყო არ გამოიძახო, საკუთარ შესაძლებლობებზე არ ილაპარაკო.';
+
+function smallTalkNameLine(firstName: string | null): string {
+  return firstName === null
+    ? ''
+    : `\n\nმფლობელის სახელია ${firstName}. თუ მიმართავ, მხოლოდ სახელით, გვარის გარეშე.`;
+}
+
+async function smallTalkAgentPrompt(userId: string): Promise<AgentPromptResult> {
+  const stablePrompt =
+    SMALL_TALK_PROMPT + smallTalkNameLine(greetingName(await registeredName(userId)));
+  const volatilePrompt = buildTodaySection(new Date());
+  return {
+    prompt: stablePrompt + volatilePrompt,
+    stablePrompt,
+    volatilePrompt,
+    runMode: 'quick_answer',
+    blockNames: [SMALL_TALK_BLOCK_NAME],
+    blockVersions: [],
+    basePromptId: null,
+    deliverRequestsSeparately: false,
+  };
+}
+
+const SMALL_TALK_BLOCK_NAME = 'small_talk_prompt';
+
 async function buildAgentSystemPrompt(
   userId: string,
   threadType?: string,
@@ -12954,16 +12991,19 @@ export async function processChat(
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
   }
 
+  const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
   const [agentPrompt, tools, history] = await Promise.all([
-    buildAgentSystemPrompt(
-      userId,
-      thread.type,
-      thread.introduction_request_id,
-      thread.id,
-      undefined,
-      namedTask,
-      ownerAbsent,
-    ),
+    listedSmallTalk
+      ? smallTalkAgentPrompt(userId)
+      : buildAgentSystemPrompt(
+          userId,
+          thread.type,
+          thread.introduction_request_id,
+          thread.id,
+          undefined,
+          namedTask,
+          ownerAbsent,
+        ),
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
   ]);
