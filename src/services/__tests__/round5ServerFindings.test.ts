@@ -66,6 +66,11 @@ describe('4 — a helper’s assistant that claims a send that did not happen', 
     ).toBe(true);
     expect(guards.claimsToHavePassedItOn('Ask Ketevan: why does she need a broker?')).toBe(true);
     expect(guards.claimsToHavePassedItOn('რა გინდა, რომ ვკითხო?')).toBe(false);
+    // The tester's 1145 (37854): the promise in the future tense.
+    expect(guards.claimsToHavePassedItOn('ნოდარს გადავცემ: „ნანა სტომატოლოგი"')).toBe(true);
+    expect(guards.claimsToHavePassedItOn("I'll pass it on to Nodar.")).toBe(true);
+    expect(guards.claimsToHavePassedItOn('ამას არ გადავცემ, სანამ არ მეტყვი.')).toBe(false);
+    expect(guards.claimsToHavePassedItOn('ნოდარს გადავუგზავნო?')).toBe(false);
   });
 
   it('asks once more with the tool named, and never relays the line itself', () => {

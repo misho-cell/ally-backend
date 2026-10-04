@@ -163,8 +163,15 @@ export function continuationRepeatsAnnouncement(
 const CLAIMS_PASSED_ON_RE =
   /(ჰკითხე\s*[:：]|\bask\s+\p{L}+\s*:|გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
 
+/**
+ * The tester's 1145 (37854): „ნოდარს გადავცემ: „ნანა სტომატოლოგი"" — the promise
+ * in the future tense, with nothing sent. A negated one („არ გადავცემ") is not.
+ */
+const PROMISES_TO_PASS_ON_RE =
+  /(?<!(?:არ|ვერ)\s)(?:გადავცემ|გავუგზავნი|გადავუგზავნი)(?!\p{L})|\bi(?:'ll| will)\s+(?:pass|send|forward|relay)\b/iu;
+
 export function claimsToHavePassedItOn(text: string): boolean {
-  return CLAIMS_PASSED_ON_RE.test(text);
+  return CLAIMS_PASSED_ON_RE.test(text) || PROMISES_TO_PASS_ON_RE.test(text);
 }
 
 export const PASSED_ON_NUDGE =
