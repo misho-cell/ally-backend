@@ -198,8 +198,12 @@ export const HELPER_QUESTION_NUDGE =
  * place a call. A closing sentence that offers one is replaced with what is
  * true: the numbers are above, and the owner calls.
  */
-const CALL_OFFER_RE =
-  /(დავურეკო|დავრეკო|დავურეკავ|დავრეკავ|\b(?:shall|should|can|may)\s+i\s+(?:call|phone|ring)\b|\bi(?:'ll|\s+will)\s+(?:call|phone|ring)\b|позвоню|мне\s+позвонить|позвонить\s+мне|¿\s*(?:llamo|les?\s+llamo)\b|\bllamaré\b)/iu;
+/** An offer to call, asked: it is one only as a closing question. */
+const CALL_OFFER_QUESTION_RE =
+  /(დავურეკო|დავრეკო|\b(?:shall|should|can|may)\s+i\s+(?:call|phone|ring)\b|мне\s+позвонить|позвонить\s+мне|¿\s*(?:llamo|les?\s+llamo)\b)/iu;
+/** A promise to call: one wherever it closes the reply. */
+const CALL_PROMISE_RE =
+  /(დავურეკავ|დავრეკავ|\bi(?:'ll|\s+will)\s+(?:call|phone|ring)\b|позвоню|\bllamaré\b)/iu;
 
 const CANNOT_CALL: Readonly<Record<RunLanguage, string>> = {
   ka: 'დარეკვა ჩემგან არ შეიძლება — ტელეფონები ზემოთაა და შეგიძლია თვითონ დაუკავშირდე.',
@@ -220,7 +224,12 @@ function closingSentenceStart(text: string): number {
 export function withoutCallOffer(text: string, language: RunLanguage): string {
   const trimmed = text.trimEnd();
   const start = closingSentenceStart(trimmed);
-  if (!CALL_OFFER_RE.test(trimmed.slice(start))) return text;
+  const closing = trimmed.slice(start);
+  // The tester's 1137 (37101): „remind me to call Gela" — the reply's closing
+  // line echoed the owner's own „…რომ გელას დავურეკო" and was read as an offer.
+  // The asked form is an offer only when the sentence asks.
+  const offers = /[?？]\s*$/u.test(closing) && CALL_OFFER_QUESTION_RE.test(closing);
+  if (!offers && !CALL_PROMISE_RE.test(closing)) return text;
   const before = trimmed.slice(0, start).trimEnd();
   const line = CANNOT_CALL[language];
   return before === '' ? line : `${before}\n\n${line}`;

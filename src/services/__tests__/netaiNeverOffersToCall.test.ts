@@ -31,6 +31,19 @@ describe('a closing offer to place a call', () => {
     expect(withoutCallOffer(earlier, 'en')).toBe(earlier);
   });
 
+  /** The tester's 1137 (37101): the owner's own „რომ გელას დავურეკო" echoed back. */
+  it('leaves a reminder that repeats the owner’s own words alone', () => {
+    const reply =
+      'ხვალ 10:00-ზე შეხსენებას ვერ დაგიგეგმავ. ტელეფონში დააყენე შეხსენება, რომ გელას დავურეკო.';
+    expect(withoutCallOffer(reply, 'ka')).toBe(reply);
+  });
+
+  it('still catches a promise to call that does not ask', () => {
+    expect(withoutCallOffer('სამივე ზემოთაა. დღესვე დავურეკავ ერთ-ერთს.', 'ka')).toContain(
+      'დარეკვა ჩემგან არ შეიძლება',
+    );
+  });
+
   it('runs on every final reply', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('effectiveFinal = withoutCallOffer(effectiveFinal, language);');
