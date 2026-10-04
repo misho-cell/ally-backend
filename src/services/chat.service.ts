@@ -282,6 +282,7 @@ import {
   PROMISED_ACTION_NUDGE,
   SEARCH_FIRST_NUDGE,
   asksToApproveAPlan,
+  MEMBERS_SKIPPED_NUDGE,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -4631,6 +4632,51 @@ async function runLoggedSearch(
 // returned. Recorded once, on the newest search that carried the number, and
 // only where nothing was recorded yet — a rung the user climbed is never
 // overwritten by an inference.
+/**
+ * #960 (the tester's 1138/1142: 37222, 37304, 37490, 37553, 37559, 37576): a
+ * search returned the owner's own contacts who are on Netai — the people Netai
+ * can actually ask — and the reply offered web leads or an invitation and none
+ * of them. The prompt says to prefer them; the model kept choosing otherwise.
+ * The run remembers who came back on Netai, by name, so the end of the run can
+ * check whether any of them was offered.
+ */
+const runMembersFound = new Map<string, Map<string, string>>();
+const SHORT_QUESTION_BACK_CHARS = 200;
+
+function noteMembersFound(runId: string, rows: readonly unknown[]): void {
+  for (const row of rows) {
+    const r = row as { phone?: unknown; name?: unknown; is_member?: unknown };
+    if (r.is_member !== true || typeof r.phone !== 'string' || typeof r.name !== 'string') continue;
+    const found = runMembersFound.get(runId) ?? new Map<string, string>();
+    found.set(normalizePhone(r.phone), r.name.trim());
+    runMembersFound.set(runId, found);
+  }
+}
+
+/** Whether the reply names one of them: their first name, allowing a case ending. */
+export function replyOffersAMember(reply: string, names: readonly string[]): boolean {
+  const lower = reply.toLowerCase();
+  return names.some((name) => {
+    const first = (name.split(/\s+/u)[0] ?? '').toLowerCase();
+    return first.length >= 2 && lower.includes(first.length > 3 ? first.slice(0, -1) : first);
+  });
+}
+
+/** #960: members on Netai came back, none was asked, and the reply names none. */
+function skippedTheMembersFound(
+  runId: string,
+  finalText: string,
+  toolNamesUsed: readonly string[],
+): boolean {
+  const names = [...(runMembersFound.get(runId)?.values() ?? [])].filter((n) => n !== '');
+  if (names.length === 0) return false;
+  if (toolNamesUsed.some((t) => t === 'ask_contact' || t === 'request_introduction')) return false;
+  // A short question back („which city?") is a fair answer before any offer.
+  const trimmed = finalText.trim();
+  if (trimmed.length < SHORT_QUESTION_BACK_CHARS && /[?？]$/u.test(trimmed)) return false;
+  return !replyOffersAMember(finalText, names);
+}
+
 interface RunSearchResults {
   readonly searchId: number;
   readonly phones: ReadonlySet<string>;
@@ -4721,6 +4767,7 @@ export function noteSearchResults(
     const phone = (row as { phone?: unknown }).phone;
     if (typeof phone === 'string' && phone.length > 0) phones.add(normalizePhone(phone));
   }
+  noteMembersFound(runId, rows);
   if (phones.size === 0) return;
   const list = runSearchResults.get(runId) ?? [];
   list.push({ searchId, phones });
@@ -7408,6 +7455,7 @@ function clearRunState(runId: string): void {
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
   runPlanWritesToNobody.delete(runId);
+  runMembersFound.delete(runId);
   runAnswerSent.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
@@ -11534,6 +11582,8 @@ async function runToolLoop(
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
     (await promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed));
+  // #960: the owner's contacts on Netai came back and the reply offered none.
+  const membersSkipped = !ownerAbsent && skippedTheMembersFound(runId, finalText, toolNamesUsed);
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
   // A clarifying question back („which city?") is a correct first answer.
   const answeredWithoutSearching =
@@ -11549,7 +11599,9 @@ async function runToolLoop(
         ? SEARCH_FIRST_NUDGE
         : promisedWithoutActing
           ? PROMISED_ACTION_NUDGE
-          : CLIFFHANGER_NUDGE;
+          : membersSkipped
+            ? MEMBERS_SKIPPED_NUDGE
+            : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -11557,6 +11609,7 @@ async function runToolLoop(
       helperQuestionUnsent ||
       answeredWithoutSearching ||
       promisedWithoutActing ||
+      membersSkipped ||
       isCliffhangerReply(finalText))
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
@@ -11754,6 +11807,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   HELPER_QUESTION_NUDGE,
   PROMISED_ACTION_NUDGE,
   SEARCH_FIRST_NUDGE,
+  MEMBERS_SKIPPED_NUDGE,
 ]);
 
 /**

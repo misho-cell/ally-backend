@@ -298,3 +298,14 @@ const ASKS_TO_APPROVE_A_PLAN_RE =
 export function asksToApproveAPlan(text: string): boolean {
   return ASKS_TO_APPROVE_A_PLAN_RE.test(text);
 }
+
+/**
+ * #960 (the tester's 1138/1142): the run's own search returned the owner's
+ * contacts who are on Netai — the people Netai can ask directly — and the
+ * reply offered web leads or an invitation and none of them. Asked once.
+ */
+export const MEMBERS_SKIPPED_NUDGE =
+  '(სისტემური შენიშვნა: ამ გაშვებაში ძებნამ მფლობელის კონტაქტები იპოვა, რომლებიც Netai-ზე არიან ' +
+  '(is_member: true) — მათ პირდაპირ ვკითხავთ. შენს პასუხში არცერთი არ ახსენე. შესთავაზე ისინი ' +
+  '(გეგმაში people_to_involve) ან ერთი ხაზით თქვი, რატომ არ გამოდგებიან. მფლობელს შენი წინა ' +
+  'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
