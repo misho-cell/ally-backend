@@ -80,10 +80,13 @@ describe('a recommendation or an offer to connect goes at once, as typed', () =>
     expect(NEEDS_CONFIRMATION_NOTE).toMatch(/რეკომენდაცია, დაკავშირების შეთავაზება/);
   });
 
-  it('sends their words as typed and forbids a relay they did not ask for', () => {
-    expect(section).toMatch(/ზუსტად ისე, როგორც დაწერა/);
+  // D648 (box 37654): the content in the assistant's words, never quoted; the facts exact.
+  it('sends the content in its own words with the facts exact, and forbids an unasked relay', () => {
+    expect(section).toMatch(/შენი სიტყვებით, ციტატის გარეშე/);
+    expect(section).toMatch(/ზუსტად ისე, როგორც დაწერა \(D648\)/);
     expect(section).toMatch(/არმოთხოვნილი relay_ask/);
-    expect(tool).toMatch(/exactly as they typed it/);
+    expect(tool).toMatch(/in YOUR words — its content, never/);
+    expect(tool).not.toMatch(/exactly as they typed it/);
     expect(tool).toMatch(/no relay_ask they did not ask for/);
   });
 

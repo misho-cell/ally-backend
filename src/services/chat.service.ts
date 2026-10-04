@@ -287,6 +287,7 @@ import {
   INVITE_NOT_ASKED,
   asksForAnInvite,
   asksAboutOwnPeople,
+  withoutQuotedCopy,
   PROMISED_ACTION_NO_GOAL_NUDGE,
   FINDS_FIRST_NUDGE,
   isOnlyAQuestion,
@@ -1539,8 +1540,9 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     'Inside an incoming-ask thread ONLY: sends the answer to the person who asked. NOTHING ' +
     'reaches them automatically — this call is the only channel. A CLEAR answer (a name, a ' +
     'yes, a time, a place, a recommendation, an offer to connect the asker with someone, a no ' +
-    'in their own words) goes AT ONCE with confirmed=true, exactly as they typed it ' +
-    '— fix an obvious typo, nothing else (D255, D256): no preview, no “გავუგზავნო ეს?”, no ' +
+    'in their own words) goes AT ONCE with confirmed=true, in YOUR words — its content, never ' +
+    'a quotation — with every name, number, price, time, date, address and link exactly as they ' +
+    'wrote it (D648; a send that drops one is refused): no preview, no “გავუგზავნო ეს?”, no ' +
     'buttons, and no relay_ask they did not ask for — ' +
     'the answer is already theirs and you know how they speak. A QUESTION BACK for the asker ' +
     '(why they need it, who they are) also goes AT ONCE with confirmed=true, but in YOUR words — ' +
@@ -1554,7 +1556,7 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
     'or touches anything delicate. confirmed=true says the words ' +
     'are the USER’S answer, not one you composed for them; without it nothing is sent. Never ' +
     'include a name or detail the user did not give you, and never add a calculation of your ' +
-    'own to their answer — send their words. A standing rule (D120, D527) is NEVER ' +
+    'own to their answer. A standing rule (D120, D527) is NEVER ' +
     'written by this call: after the answer goes, the result tells you to offer ONE optional ' +
     "button, and only the owner's tap on it saves the rule. Never say a rule was saved unless " +
     'the server told you so.',
@@ -4084,9 +4086,9 @@ export function buildIncomingAskSection(ask: IncomingAsk): string {
     `\n\n## შემოსული კითხვა [შიდა: ask_id=${ask.id} — მხოლოდ ინსტრუმენტებისთვის, პასუხში არასდროს ახსენო]\n` +
     `${from} გეკითხება: "${ask.question}"\n` +
     `- ეს საუბარი მხოლოდ შენსა და მომხმარებელს შორისაა. **ვერაფერი გადადის კითხვის ავტორთან ავტომატურად** — არც პირველი შეტყობინება, არც სხვა. გადაცემა ხდება მხოლოდ send_answer_to_asker-ით, შენ რომ გამოიძახებ.\n` +
-    `- ნათელი პასუხი — სახელი, „კი", დრო, ადგილი, რეკომენდაცია, დაკავშირების შეთავაზება („ჩემი კონტაქტია, დაგაკავშირებ"), უარი მისივე სიტყვებით („სამწუხაროდ არავის ვიცნობ"), ან შეკითხვა კითხვის ავტორისთვის — გაგზავნე ახლავე send_answer_to_asker-ით confirmed=true, ზუსტად ისე, როგორც დაწერა — მხოლოდ აშკარა შეცდომა გაასწორე (D255, D256): დრაფტის ჩვენების, „გავუგზავნო?"-ს, ღილაკების და მის მიერ არმოთხოვნილი relay_ask-ის გარეშე. მერე ერთი ხაზით უთხარი, რომ გადაეცა.\n` +
+    `- ნათელი პასუხი — სახელი, „კი", დრო, ადგილი, რეკომენდაცია, დაკავშირების შეთავაზება („ჩემი კონტაქტია, დაგაკავშირებ"), უარი მისივე სიტყვებით („სამწუხაროდ არავის ვიცნობ"), ან შეკითხვა კითხვის ავტორისთვის — გაგზავნე ახლავე send_answer_to_asker-ით confirmed=true, შენი სიტყვებით, ციტატის გარეშე — მისი პასუხის შინაარსი, და ყოველი სახელი, რიცხვი, ფასი, დრო, თარიღი, მისამართი და ბმული ზუსტად ისე, როგორც დაწერა (D648): დრაფტის ჩვენების, „გავუგზავნო?"-ს, ღილაკების და მის მიერ არმოთხოვნილი relay_ask-ის გარეშე. მერე ერთი ხაზით უთხარი, რომ გადაეცა — მისი სიტყვების გამეორების გარეშე.\n` +
     `- უარის ღილაკი (${quotedChoices(allDeclineChoices())}) მისი საკუთარი დაჭერაა და თავისთავად საბოლოო პასუხია: გაგზავნე ახლავე ზუსტად ეს ტექსტი confirmed=true-ით, „ვაცნობო?"-ს გარეშე, და ერთი თბილი ხაზით უთხარი, რომ გადაეცა.\n` +
-    `- სახელი ან კვალი პირობით („ბიძაშვილი ბუღალტერია, მაგრამ დაკავებულია", „ვიცნობ, ოღონდ შორსაა", „არ ვიცი დათანხმდება თუ არა") — პასუხია, არა უარი: გაგზავნე ახლავე ზუსტად ისე, როგორც დაწერა. არასდროს შესთავაზო „სხვა მოვძებნო შენს კონტაქტებში" ან „უარი გადავცე" მის ნაცვლად — პირობა კითხვის ავტორმა უნდა გაიგოს და თვითონ გადაწყვიტოს.\n` +
+    `- სახელი ან კვალი პირობით („ბიძაშვილი ბუღალტერია, მაგრამ დაკავებულია", „ვიცნობ, ოღონდ შორსაა", „არ ვიცი დათანხმდება თუ არა") — პასუხია, არა უარი: გაგზავნე ახლავე, შენი სიტყვებით, პირობა და ფაქტები ზუსტად. არასდროს შესთავაზო „სხვა მოვძებნო შენს კონტაქტებში" ან „უარი გადავცე" მის ნაცვლად — პირობა კითხვის ავტორმა უნდა გაიგოს და თვითონ გადაწყვიტოს.\n` +
     `- „კი" ღილაკი (${quotedChoices(allYesChoices())}): კითხვის ავტორს სერვერმა უკვე მისწერა, რომ დაეხმარება. ჯერ არაფერი გაგზავნო — ერთი მოკლე ხაზით ჰკითხე, რა გადავცე (სახელი, დეტალი), და მხოლოდ მისი პასუხის შემდეგ გამოიძახე send_answer_to_asker.\n` +
     `- „მოგვიანებით" ღილაკი (${quotedChoices(allLaterChoices())}): კითხვის ავტორს სერვერმა უკვე მისწერა, რომ მოგვიანებით უპასუხებს, და ერთ შეხსენებას 24 საათში თვითონ გაუგზავნის. არაფერი გაგზავნო, არაფერი ჰკითხო — ერთი მოკლე თბილი ხაზით დაუდასტურე.\n` +
     `- ჯერ ერთი ხაზით აზრი აჩვენე ერთი ღილაკით და მხოლოდ მისი „კი"-ს შემდეგ გაგზავნე მხოლოდ მაშინ, როცა პასუხი მესამე ადამიანის პირად დეტალებს ამხელს (ჯანმრთელობა, ოჯახი, ფული — არა უბრალოდ ვინ არის ან რას საქმიანობს), ან საკითხი ნაზია.\n` +
@@ -13793,7 +13795,9 @@ export async function processChat(
       withoutPlanClosingQuestion(effectiveFinal, language, effectiveFinal),
     );
   }
-  if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
+  if (runAnswerSent.has(runId)) {
+    effectiveFinal = withAnswerSentLine(withoutQuotedCopy(effectiveFinal), language);
+  }
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
     effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language);

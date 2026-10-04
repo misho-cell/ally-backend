@@ -50,7 +50,7 @@ describe('the reply after the send says the answer went', () => {
   it('is applied to the final reply of a run whose answer went', () => {
     expect(chat).toContain('if (sent.sent && runId) runAnswerSent.add(runId);');
     expect(chat).toContain(
-      'if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);',
+      'effectiveFinal = withAnswerSentLine(withoutQuotedCopy(effectiveFinal), language);',
     );
     const clear = chat.slice(chat.indexOf('function clearRunState'));
     expect(clear.slice(0, 1400)).toContain('runAnswerSent.delete(runId)');

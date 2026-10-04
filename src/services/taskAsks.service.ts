@@ -1,5 +1,5 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
-import { helperAskedAQuestion } from './replyGuards';
+import { missingFacts, missingFactsRefusal } from './answerFacts';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
@@ -1694,10 +1694,13 @@ export async function sendApprovedAskAnswer(
     return { sent: false, error: 'ეს კითხვა უკვე დახურულია — პასუხი ვეღარ გაიგზავნება.' };
   }
 
-  // #34 (the tester's 1055): send the helper's own words when the approved
-  // text only rearranges them. #991: a shared number is sent exactly as built.
-  const answerText =
-    remember?.verbatim === true ? approvedText : await helpersOwnWording(askThreadId, approvedText);
+  // D648: the answer goes in the assistant's words, with the helper's facts
+  // exact. #991: a shared number is sent exactly as built.
+  const answerText = approvedText;
+  if (remember?.verbatim !== true) {
+    const missing = await factsLostOnTheWay(askThreadId, answerText);
+    if (missing.length > 0) return { sent: false, error: missingFactsRefusal(missing) };
+  }
   const captured = await recordAskAnswer(askThreadId, answerText);
   if (!captured) {
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
@@ -1827,7 +1830,8 @@ async function deliverCapturedAnswer(
           deliverAnswersWhenFree(captured.taskId);
           return;
         }
-        const verbatim = await answerIsTheirOwnWords(captured.askThreadId, captured.answer);
+        // D648: the helper's meaning in the assistant's words, never a quotation.
+        const verbatim = false;
         // Row 322(a) for a relayed answer: on the owner's screen first, naming
         // the bridge, and the reply that follows does not read it out again.
         const delivered = (await showRelayedAnswer(captured, relay.bridgeName, verbatim))
@@ -2307,82 +2311,38 @@ export interface EnsureQuoted {
 const OWN_WORDS_LOOKBACK = 20;
 const OWN_WORDS_NOISE_RE = /[^\p{L}\p{N}]+/gu;
 
-/**
- * #34 — the tester's 1055, threads 31058 / 31062: the helper typed „…მეორე
- * სართულზე, 7 ნომერ კაბინეტში." and their assistant sent „…მეორე სართულზე,
- * კაბინეტი ნომერი 7." — every fact kept, the words rearranged. The quote
- * guarantee then rightly treated it as meaning, not words, and the asker got no
- * quotation. When the text the assistant sends is the same words as the
- * helper's own last line in a different order (most of the words shared), the
- * helper's own line is what goes: it is the more faithful of the two.
- */
-const SAME_WORDS_SHARE = 0.6;
-const MIN_OWN_LINE_CHARS = 8;
-/** How many recent lines are read to find the helper's own and the one before it. */
+/** How many recent lines are read to find the helper's own. */
 const OWN_LINE_LOOKBACK = 6;
 const MAX_OWN_LINE_CHARS = 1000;
 
-function wordSet(text: string): Set<string> {
-  return new Set(comparable(text).split(/\s+/).filter(Boolean));
-}
-
-export function sharesMostWords(a: string, b: string): boolean {
-  const left = wordSet(a);
-  const right = wordSet(b);
-  if (left.size === 0 || right.size === 0) return false;
-  const common = [...left].filter((w) => right.has(w)).length;
-  return common / new Set([...left, ...right]).size >= SAME_WORDS_SHARE;
+/**
+ * The helper's own last line in the ask thread, or '' when there is none to
+ * hold the answer to. D648: it is no longer sent in place of the assistant's
+ * wording (the #34 restore is gone); it is what the facts are checked against.
+ */
+async function helpersOwnLine(askThreadId: number): Promise<string> {
+  const result = await query<{ role: string; content: string }>(
+    `SELECT role, content FROM conversations
+      WHERE thread_id = $1 AND kind = 'message' AND TRIM(content) <> ''
+      ORDER BY created_at DESC LIMIT $2`,
+    [askThreadId, OWN_LINE_LOOKBACK],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const own = result.rows.find((r) => r.role === 'user')?.content.trim() ?? '';
+  return own.length > MAX_OWN_LINE_CHARS ? '' : own;
 }
 
 /**
- * The tester's 1102 (j, 33151): the helper typed „არ ვიცი." and the asker read
- * „არ ვიცი, სამწუხაროდ ვერ გეტყვი" — every word of the helper's line kept, and
- * words added on the way. When the sent text holds the whole of the helper's
- * own line and only adds to it, the helper's line is what goes.
+ * D648: the facts of the helper's line that the answer about to go lost. A
+ * failed read checks nothing — the answer goes as written, and the log says so.
  */
-export function onlyPadsOwnLine(own: string, approvedText: string): boolean {
-  const ownWords = wordSet(own);
-  const sentWords = wordSet(approvedText);
-  if (ownWords.size === 0 || sentWords.size <= ownWords.size) return false;
-  return [...ownWords].every((w) => sentWords.has(w));
-}
-
-/**
- * Whether the helper's last line answered a draft the assistant had just put to
- * them: „send this: …?" then „კი". The draft is what they approved, so it goes
- * as written, however few words their own line had.
- */
-export function approvedADraft(assistantBefore: string, approvedText: string): boolean {
-  const draft = comparable(approvedText);
-  return draft !== '' && comparable(assistantBefore).includes(draft);
-}
-
-async function helpersOwnWording(askThreadId: number, approvedText: string): Promise<string> {
+async function factsLostOnTheWay(askThreadId: number, answerText: string): Promise<string[]> {
   try {
-    const result = await query<{ role: string; content: string }>(
-      `SELECT role, content FROM conversations
-        WHERE thread_id = $1 AND kind = 'message' AND TRIM(content) <> ''
-        ORDER BY created_at DESC LIMIT $2`,
-      [askThreadId, OWN_LINE_LOOKBACK],
-      ASK_QUERY_TIMEOUT_MS,
-    );
-    const at = result.rows.findIndex((r) => r.role === 'user');
-    const own = at === -1 ? '' : result.rows[at].content.trim();
-    if (own === '' || own.length > MAX_OWN_LINE_CHARS) return approvedText;
-    // D647 (37520): a question back goes in the assistant's words, never quoted.
-    if (helperAskedAQuestion(own)) return approvedText;
-    if (comparable(own) === comparable(approvedText)) return approvedText;
-    const before = result.rows.slice(at + 1).find((r) => r.role === 'assistant');
-    const assistantBefore = before?.content ?? '';
-    if (onlyPadsOwnLine(own, approvedText) && !approvedADraft(assistantBefore, approvedText)) {
-      return own;
-    }
-    if (own.length < MIN_OWN_LINE_CHARS) return approvedText;
-    return sharesMostWords(own, approvedText) ? own : approvedText;
+    return missingFacts(await helpersOwnLine(askThreadId), answerText);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[ask-answer] could not read the helper's own line:", (err as Error).message);
-    return approvedText;
+    return [];
   }
 }
 

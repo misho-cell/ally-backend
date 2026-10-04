@@ -43,7 +43,6 @@ import {
   sendDueAskReminders,
   listUnwokenAnswers,
   markAskWakeDelivered,
-  answerIsTheirOwnWords,
   ArrivedAnswer,
   buildAnswersWakeEvent,
   buildShownAnswersWakeEvent,
@@ -596,7 +595,8 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
     owed.map(async (ask) => ({
       answer: ask.answer ?? '',
       fromName: ask.from_name,
-      verbatim: await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? ''),
+      // D648: an answer is the helper's meaning in the assistant's words, never a quotation.
+      verbatim: false,
       passedOn: ask.passed_on === true,
     })),
   );
@@ -654,7 +654,8 @@ async function showClosedGoalAnswers(taskId: number): Promise<void> {
         askId: ask.id,
         answer: ask.answer ?? '',
         fromName: ask.from_name,
-        verbatim: await answerIsTheirOwnWords(ask.ask_thread_id, ask.answer ?? ''),
+        // D648: an answer is the helper's meaning in the assistant's words, never a quotation.
+        verbatim: false,
       })),
     );
     await showAnswersToOwner({ threadId, ownerId }, cards);

@@ -304,6 +304,23 @@ export const PROMISED_ACTION_NUDGE =
   'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
 
 /**
+ * D648 (box 37623, step 3): after the answer went, the helper's own reply
+ * repeated it — „გადავეცი: „ნანა სტომატოლოგი"" — a quotation of words the
+ * asker received in the assistant's wording. The reply says it went; the
+ * quoted copy goes, with the colon or dash that introduced it.
+ */
+const QUOTED_COPY_RE = /\s*[:：—–-]?\s*[„“"«]([^„“”"«»]{1,400})[”“"»]/gu;
+
+export function withoutQuotedCopy(reply: string): string {
+  const without = reply.replace(QUOTED_COPY_RE, '');
+  if (without === reply) return reply;
+  return without
+    .replace(/\s+([.,!?])/gu, '$1')
+    .replace(/[ \t]{2,}/gu, ' ')
+    .trim();
+}
+
+/**
  * The tester's 1149 (38068): the owner tapped „write to Gia", the quick answer
  * said „გიას ვკითხავ…", nothing went, and there was no goal to hold a plan.
  * Writing to someone goes through a goal's plan and its approve card.
