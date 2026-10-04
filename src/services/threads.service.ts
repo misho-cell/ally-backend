@@ -20,7 +20,7 @@ import {
   stripRedactionArtifactsForDisplay,
 } from './privacyScrub';
 import { relayedForReader } from './askTranslation.service';
-import { RequestThread, SharedRequestSide } from './requestThreadSide';
+import { isRequesterSide, RequestThread, SharedRequestSide } from './requestThreadSide';
 
 export type ThreadStatus = 'working' | 'waiting' | 'needs_you' | 'done' | 'failed';
 
@@ -625,6 +625,27 @@ const MAX_THREADS_PER_REQUEST = 8;
  * most two threads by primary key. A thread is never in both, because the
  * shared threads are never given the request's id.
  */
+/** Where a push about the requester's own introduction lands when no conversation is found. */
+const CHAT_LIST_URL = '/chat';
+
+/**
+ * Board #826 (Giorgi, 4 October): a tap on a notification opened the app and
+ * not the conversation. The answer to an introduction request was pushed with
+ * a bare „/chat" — the list — although it is written into the requester's own
+ * conversation. The push now carries that conversation; the list only when
+ * none can be found.
+ */
+export async function requesterConversationUrl(
+  introRequestId: number,
+  requesterUserId: number,
+): Promise<string> {
+  const threads = await getThreadsByIntroRequestId(introRequestId);
+  const own = threads.find(
+    (thread) => Number(thread.user_id) === Number(requesterUserId) && isRequesterSide(thread),
+  );
+  return own === undefined ? CHAT_LIST_URL : `${CHAT_LIST_URL}/${own.id}`;
+}
+
 export async function getThreadsByIntroRequestId(introRequestId: number): Promise<RequestThread[]> {
   const result = await query<RequestThread>(
     `SELECT t.id, t.user_id, t.type, t.title, t.introduction_request_id, t.is_task, t.status,

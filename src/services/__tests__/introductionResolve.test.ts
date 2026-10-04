@@ -13,6 +13,7 @@ jest.mock('../threadStatus.service', () => ({
 }));
 jest.mock('../threads.service', () => ({
   __esModule: true,
+  requesterConversationUrl: jest.fn().mockResolvedValue('/chat/1'),
   getThreadsByIntroRequestId: jest.fn().mockResolvedValue([]),
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   createThread: jest.fn().mockResolvedValue({ id: 77 }),

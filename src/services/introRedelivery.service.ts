@@ -8,7 +8,12 @@ import {
 import { sendPushNotification } from './notification.service';
 import { introAnsweredPush } from './introOpening';
 import { RunLanguage } from './runLanguage';
-import { getThreadsByIntroRequestId, saveThreadMessage, userLanguage } from './threads.service';
+import {
+  getThreadsByIntroRequestId,
+  requesterConversationUrl,
+  saveThreadMessage,
+  userLanguage,
+} from './threads.service';
 import { isMediatorSide, isRequesterSide } from './requestThreadSide';
 
 /**
@@ -158,7 +163,7 @@ export async function redeliverAcceptedIntroduction(
     const language = await userLanguage(String(row.requester_user_id));
     await sendPushNotification(String(row.requester_user_id), {
       ...introAnsweredPush(language, row.target_name, true),
-      url: '/chat',
+      url: await requesterConversationUrl(row.id, Number(row.requester_user_id)),
     });
   }
   return {

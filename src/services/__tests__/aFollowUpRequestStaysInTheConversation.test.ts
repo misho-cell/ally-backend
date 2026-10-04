@@ -15,6 +15,7 @@ jest.mock('../threadStatus.service', () => ({
 }));
 jest.mock('../threads.service', () => ({
   __esModule: true,
+  requesterConversationUrl: jest.fn().mockResolvedValue('/chat/1'),
   createIncomingRequestThread: jest.fn().mockResolvedValue({
     id: 27194,
     title: 'Netai Test 68 → Nika',

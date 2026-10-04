@@ -463,7 +463,9 @@ async function deliverToDevice(
       PUSH_SEND_OPTIONS,
     );
     // eslint-disable-next-line no-console
-    console.log(`[push] user ${userId}: sent via ${label} status=${result.statusCode}`);
+    console.log(
+      `[push] user ${userId}: sent via ${label} status=${result.statusCode} url=${payload.url ?? '-'}`,
+    );
     await recordDelivery(userId, row.endpoint, 'sent', result.statusCode, null);
     return DeviceOutcome.Sent;
   } catch (err) {

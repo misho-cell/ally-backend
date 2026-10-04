@@ -9,6 +9,7 @@ import { setThreadStatus } from './threadStatus.service';
 import {
   createThread,
   getThreadsByIntroRequestId,
+  requesterConversationUrl,
   saveThreadMessage,
   Thread,
   ThreadStatus,
@@ -1145,9 +1146,10 @@ async function notifyRequester(req: RequestRow, accepted: boolean): Promise<void
   const language = await userLanguage(String(req.requester_user_id)).catch(
     () => 'ka' as RunLanguage,
   );
+  const url = await requesterConversationUrl(req.id, req.requester_user_id).catch(() => '/chat');
   await sendPushNotification(String(req.requester_user_id), {
     ...introAnsweredPush(language, req.target_name, accepted),
-    url: '/chat',
+    url,
   }).catch(() => undefined);
 }
 

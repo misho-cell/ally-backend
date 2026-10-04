@@ -10,6 +10,7 @@ jest.mock('../notification.service', () => ({
 }));
 jest.mock('../threads.service', () => ({
   __esModule: true,
+  requesterConversationUrl: jest.fn().mockResolvedValue('/chat/1'),
   getThreadsByIntroRequestId: jest.fn(),
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
   userLanguage: jest.fn().mockResolvedValue('ka'),
