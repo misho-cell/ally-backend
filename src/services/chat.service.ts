@@ -1504,12 +1504,14 @@ const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
   description:
     'Inside an incoming-ask thread ONLY: sends the answer to the person who asked. NOTHING ' +
     'reaches them automatically — this call is the only channel. A CLEAR answer (a name, a ' +
-    'yes, a time, a place, a recommendation, an offer to connect the asker with someone, a ' +
-    'question back for the asker, a no in their own words) goes AT ONCE with confirmed=true, ' +
-    'exactly as they typed it ' +
+    'yes, a time, a place, a recommendation, an offer to connect the asker with someone, a no ' +
+    'in their own words) goes AT ONCE with confirmed=true, exactly as they typed it ' +
     '— fix an obvious typo, nothing else (D255, D256): no preview, no “გავუგზავნო ეს?”, no ' +
     'buttons, and no relay_ask they did not ask for — ' +
-    'the answer is already theirs and you know how they speak. Our decline button is the same: ' +
+    'the answer is already theirs and you know how they speak. A QUESTION BACK for the asker ' +
+    '(why they need it, who they are) also goes AT ONCE with confirmed=true, but in YOUR words — ' +
+    'its meaning, never a quotation (D647) — and never after “გადავუგზავნო?”: asking it is ' +
+    'their yes. Our decline button is the same: ' +
     'a message that is exactly its text is their own tap, so send it AT ONCE, never ask ' +
     '“shall I tell them?”. Show the meaning first, in ONE line with one button, and send only ' +
     'on their yes, when the answer shares a third person’s ' +

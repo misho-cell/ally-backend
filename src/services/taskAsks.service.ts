@@ -1,4 +1,5 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
+import { helperAskedAQuestion } from './replyGuards';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
@@ -2364,6 +2365,8 @@ async function helpersOwnWording(askThreadId: number, approvedText: string): Pro
     const at = result.rows.findIndex((r) => r.role === 'user');
     const own = at === -1 ? '' : result.rows[at].content.trim();
     if (own === '' || own.length > MAX_OWN_LINE_CHARS) return approvedText;
+    // D647 (37520): a question back goes in the assistant's words, never quoted.
+    if (helperAskedAQuestion(own)) return approvedText;
     if (comparable(own) === comparable(approvedText)) return approvedText;
     const before = result.rows.slice(at + 1).find((r) => r.role === 'assistant');
     const assistantBefore = before?.content ?? '';

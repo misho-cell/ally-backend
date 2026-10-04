@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { approvedADraft, onlyPadsOwnLine, sharesMostWords } from '../taskAsks.service';
 
 /**
@@ -37,5 +39,16 @@ describe('words added on the way', () => {
     expect(onlyPadsOwnLine('კი', draft)).toBe(true);
     expect(approvedADraft(`გავუგზავნო ასე: „${draft}"?`, draft)).toBe(true);
     expect(approvedADraft('რა ვუპასუხო?', draft)).toBe(false);
+  });
+});
+
+/** The founder's D647 (the tester's 1144, 37520): a question back is never quoted. */
+describe('a helper’s question back', () => {
+  it('keeps the assistant’s wording instead of the helper’s own line', () => {
+    const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    const fn = source.slice(source.indexOf('async function helpersOwnWording('));
+    expect(fn.slice(0, fn.indexOf('\n}\n'))).toContain(
+      'if (helperAskedAQuestion(own)) return approvedText;',
+    );
   });
 });

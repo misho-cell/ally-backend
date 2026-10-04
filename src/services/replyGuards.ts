@@ -186,11 +186,20 @@ export function helperAskedAQuestion(helperLine: string): boolean {
   return QUESTION_LINE_RE.test(helperLine.trim());
 }
 
+/**
+ * The tester's 1144 (37520) and the founder's D647: „it is not allowed to send
+ * over exact words or quotation." After this note the run still asked „shall I
+ * forward it?". The helper's question goes in the assistant's own words, at
+ * once — asking it is already the yes — with no apology for a text the user
+ * never saw.
+ */
 export const HELPER_QUESTION_NUDGE =
   '(სისტემური შენიშვნა: მომხმარებელმა კითხვა დაწერა და ამ გაშვებაში არაფერი გაგზავნილა. თუ ეს ' +
   'კითხვა კითხვის ავტორს ეკუთვნის — მაგალითად, რისთვის სჭირდება, ან ვინ არის — ახლავე ' +
-  'გაგზავნე send_answer_to_asker-ით, confirmed=true, ზუსტად მისი სიტყვებით, და მოკლედ უთხარი, ' +
-  'რომ გადაეცი. თუ კითხვა შენთვისაა, უპასუხე თავად.)';
+  'გაგზავნე send_answer_to_asker-ით, confirmed=true, შენი სიტყვებით: მისი კითხვის აზრი, არა ' +
+  'ციტატა. არ ჰკითხო „გადავუგზავნო?" — მისი კითხვა თავად არის თანხმობა. ბოდიში არ მოიხადო და ' +
+  'წინა ტექსტი არ ახსენო — მომხმარებელს ის არ უნახავს. მოკლედ უთხარი, რომ გადაეცი. თუ კითხვა ' +
+  'შენთვისაა, უპასუხე თავად.)';
 
 /**
  * The tester's 1133 (V1, 36539): the reply listed three plumbers with their
