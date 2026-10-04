@@ -60,5 +60,7 @@ describe('the run that proposed it', () => {
     expect(chat).toContain('notePlanWritesToNobody(runId, plainPlan);');
     expect(chat).toContain(': choicesWithoutPlanCard(loopChoices);');
     expect(chat).toContain(': withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);');
+    // #925: the engine's plan turn that saved such a plan writes no second message.
+    expect(chat).toContain(": ownerAbsent\n        ? ''");
   });
 });

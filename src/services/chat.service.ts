@@ -13330,10 +13330,17 @@ export async function processChat(
     effectiveFinal = '';
   }
   if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
+  // #925 (37280, 37282, 37293, 37304, 37305): the engine's plan turn behind the
+  // first reply saved a plan that writes to nobody and then said so in a second
+  // message — „ამ გზაზე არავის მივწერ" — under an answer that had already said
+  // it. Since D626 such a plan has no card, so a system run that only saved it
+  // has nothing to show and ends quietly.
   effectiveFinal =
     planToNobody === null
       ? withPlanInReply(runId, effectiveFinal, choices)
-      : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
+      : ownerAbsent
+        ? ''
+        : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
   if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
   const sentSide = runSentLineOnScreen.get(runId);
