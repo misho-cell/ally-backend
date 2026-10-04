@@ -284,6 +284,7 @@ import {
   asksToApproveAPlan,
   MEMBERS_SKIPPED_NUDGE,
   withoutSendItQuestion,
+  withoutClosingApprovalAsk,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -13572,6 +13573,12 @@ export async function processChat(
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
+  // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
+  if (runNothingToSend.has(runId)) {
+    effectiveFinal = withoutClosingApprovalAsk(
+      withoutPlanClosingQuestion(effectiveFinal, language, effectiveFinal),
+    );
+  }
   if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {

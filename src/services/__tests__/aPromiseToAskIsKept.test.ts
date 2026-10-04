@@ -4,6 +4,7 @@ import {
   asksToApproveAPlan,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  withoutClosingApprovalAsk,
 } from '../replyGuards';
 
 /**
@@ -64,5 +65,23 @@ describe('a reply that asks to approve a plan', () => {
     expect(chat).toContain(
       'if (!promisesToWriteToSomeone(finalText) && !asksToApproveAPlan(finalText)) return false;',
     );
+  });
+});
+
+/** #961 (37604): nothing can be sent today, so the approval question goes with its button. */
+describe('an approval question with no button to answer it', () => {
+  it('is recognised in this word order too', () => {
+    expect(asksToApproveAPlan('დავამტკიცოთ ეს გეგმა?')).toBe(true);
+  });
+
+  it('is taken off, and the answer before it stays', () => {
+    expect(withoutClosingApprovalAsk('ლია Netai-ზე არ არის. დავამტკიცოთ ეს გეგმა?')).toBe(
+      'ლია Netai-ზე არ არის.',
+    );
+    expect(withoutClosingApprovalAsk('ლიას მოვიწვევ?')).toBe('ლიას მოვიწვევ?');
+  });
+
+  it('runs when the run has nothing to send today', () => {
+    expect(chat).toContain('if (runNothingToSend.has(runId)) {');
   });
 });

@@ -293,7 +293,7 @@ export const SEARCH_FIRST_NUDGE =
  * there was no card and a typed „კი" had nothing to approve.
  */
 const ASKS_TO_APPROVE_A_PLAN_RE =
-  /(გეგმ\S*\s+(?:დასამტკიცებლად|დაამტკიცე|დამტკიცება|ამტკიცებ)|დაამტკიცე\s+გეგმა|\bapprove\s+(?:the|this|my)\s+plan\b|утверди(?:ть)?\s+план)/iu;
+  /(გეგმ\S*\s+(?:დასამტკიცებლად|დაამტკიცე|დამტკიცება|ამტკიცებ)|(?:დაამტკიცე|დავამტკიცოთ|ვამტკიცებთ)\s+(?:ეს\s+)?გეგმა|\bapprove\s+(?:the|this|my)\s+plan\b|утверди(?:ть)?\s+план)/iu;
 
 export function asksToApproveAPlan(text: string): boolean {
   return ASKS_TO_APPROVE_A_PLAN_RE.test(text);
@@ -336,4 +336,19 @@ export function withoutSendItQuestion(text: string, language: RunLanguage): stri
   const before = trimmed.slice(0, start).trimEnd();
   const line = REQUEST_WENT[language];
   return before === '' ? line : `${before}\n\n${line}`;
+}
+
+/**
+ * #961 (the tester's 1142, 37604): the plan's only person is not on Netai, so
+ * nothing can be sent today and the approve button is already taken off (row
+ * 203) — and the reply still closed on „დავამტკიცოთ ეს გეგმა?". With no button
+ * to answer it, the closing approval question goes too.
+ */
+export function withoutClosingApprovalAsk(text: string): string {
+  const trimmed = text.trimEnd();
+  if (!/[?？]$/u.test(trimmed)) return text;
+  const start = closingSentenceStart(trimmed);
+  if (!asksToApproveAPlan(trimmed.slice(start))) return text;
+  const before = trimmed.slice(0, start).trimEnd();
+  return before === '' ? text : before;
 }
