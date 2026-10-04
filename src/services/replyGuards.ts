@@ -328,10 +328,34 @@ export function withoutQuotedCopy(reply: string): string {
 export const PROMISED_ACTION_NO_GOAL_NUDGE =
   '(სისტემური შენიშვნა: შენ დაწერე, რომ ვინმეს ჰკითხავ ან მისწერ, მაგრამ ამ გაშვებაში არაფერი ' +
   'გაგზავნილა და ამ საუბარში მიზანი არ არის. თუ მფლობელმა ამ ადამიანისთვის მიწერა ითხოვა — ' +
-  'ახლავე შეინახე მიზანი set_task_brief-ით, მერე გამოიძახე propose_task_plan, ის ' +
+  'ახლავე გახსენი მიზანი create_task-ით, მერე გამოიძახე propose_task_plan, ის ' +
   'people_to_involve-ში ჩაწერე და present_choices-ით შესთავაზე „ვამტკიცებ" და „შევცვალოთ". თუ ' +
   'არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. მფლობელს შენი წინა ტექსტი არ უნახავს: ' +
   'პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
+
+/**
+ * The tester's 37795 (38319): after the members note the turn wrote the whole
+ * answer again in other words — „no direct way found" and the question about
+ * the names twice in one bubble — and the low word overlap let it follow the
+ * first answer. The addition is the part about the members: the paragraphs
+ * that name one, and the question right after them. With none named, the turn
+ * stands as written.
+ */
+export function onlyTheMembersPart(
+  continuation: string,
+  namesAMember: (paragraph: string) => boolean,
+): string {
+  const paragraphs = continuation
+    .split(/\n\s*\n/u)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const kept: string[] = [];
+  paragraphs.forEach((paragraph, i) => {
+    const afterAMember = i > 0 && namesAMember(paragraphs[i - 1]) && /[?？]$/u.test(paragraph);
+    if (namesAMember(paragraph) || afterAMember) kept.push(paragraph);
+  });
+  return kept.length === 0 ? continuation : kept.join('\n\n');
+}
 
 /**
  * The tester's 1149 (38149, 38157): a web search and two pages read, then a

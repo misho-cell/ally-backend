@@ -288,6 +288,7 @@ import {
   asksForAnInvite,
   asksAboutOwnPeople,
   withoutQuotedCopy,
+  onlyTheMembersPart,
   PROMISED_ACTION_NO_GOAL_NUDGE,
   FINDS_FIRST_NUDGE,
   isOnlyAQuestion,
@@ -829,14 +830,24 @@ const WORK_THE_LIST_TOOL: AnthropicTool = {
 /**
  * #1024 (the tester, 22:01Z, 38318): a quick answer with no goal called
  * work_the_list with the goal of the owner's EARLIER list conversation, was
- * rightly refused, and told the owner the file had not arrived. The list
- * belongs to this conversation's open goal, whatever id the model passed;
- * with none open, the tool says how to open one.
+ * rightly refused, and told the owner the file had not arrived. The list, its
+ * status and the brief belong to this conversation's open goal, whatever id
+ * the model passed; with none open, the tool says how to open one.
  */
 const NO_GOAL_FOR_THE_LIST =
-  'Not started: this conversation has no open goal yet. Save it first with set_task_brief ' +
-  '(what the owner wants from this list), then call work_the_list again with the file_id from ' +
-  'the file event here. The file did arrive — never tell the owner it is missing.';
+  'Not started: this conversation has no open goal yet. Open one first with create_task ' +
+  '(what the owner wants from this list, in their words), then call work_the_list again with ' +
+  'the file_id from the file event here. A goal of another conversation is never used or ' +
+  'changed for this list. The file did arrive — never tell the owner it is missing.';
+
+/**
+ * The tester's 37795 (38319): the run rewrote the brief of the owner's EARLIER
+ * list conversation's goal, twice, from this one. A brief is written to this
+ * conversation's open goal only.
+ */
+const BRIEF_NOT_THIS_CONVERSATION =
+  'Not saved: this conversation has no open goal. Open one with create_task first; a goal of ' +
+  'another conversation is never changed from here.';
 
 async function listGoalOfThisConversation(
   threadId: number | undefined,
@@ -8369,7 +8380,9 @@ async function executeToolCall(
     case 'set_task_brief': {
       const brief = String(input['brief'] ?? '').trim();
       if (!brief) return { updated: false, error: 'Pass a non-empty brief.' };
-      return { updated: await setTaskBrief(userId, Number(input['task_id']), brief) };
+      const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
+      if (taskId === null) return { updated: false, error: BRIEF_NOT_THIS_CONVERSATION };
+      return { updated: await setTaskBrief(userId, taskId, brief) };
     }
     case 'set_task_wake': {
       // #502 (Ninia): „remind me in 15 minutes" was told the shortest is an
@@ -11903,9 +11916,15 @@ async function runToolLoop(
           toolCallCount - toolCallsBeforeNudge,
         ) ||
         (addedTo && continuationCoversAnswer(announcement, continuationText));
+      const memberNames =
+        guardNudge === MEMBERS_SKIPPED_NUDGE
+          ? [...(runMembersFound.get(runId)?.values() ?? [])]
+          : bookMembersSkipped;
+      const addition = addedTo
+        ? onlyTheMembersPart(continuationText, (p) => replyOffersAMember(p, memberNames))
+        : continuationText;
       if (continuationText) {
-        finalText =
-          correctedTurn || repeated ? continuationText : `${finalText}\n\n${continuationText}`;
+        finalText = correctedTurn || repeated ? continuationText : `${finalText}\n\n${addition}`;
       }
       // eslint-disable-next-line no-console
       console.log(

@@ -57,7 +57,8 @@ describe('a reply that promises to write to someone', () => {
     expect(chat).toContain("new Set(['quick_answer', 'onboarding'])");
     expect(chat).toContain("OWNERS_QUICK_RUNS.has(runModes.get(runId) ?? '')");
     expect(chat).toContain('? PROMISED_ACTION_NO_GOAL_NUDGE');
-    expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('set_task_brief');
+    expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('create_task');
+    expect(PROMISED_ACTION_NO_GOAL_NUDGE).not.toContain('set_task_brief');
     expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('propose_task_plan');
     expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('არაფერს არ დაჰპირდე');
     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));

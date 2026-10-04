@@ -1,3 +1,4 @@
+import { query } from '../db/postgres/client';
 import { CutOffRun, REPORT_RESERVE_MS } from './inFlightRuns';
 import { RUN_STRINGS } from './runLanguage';
 import { emitRunError } from './sse.service';
@@ -64,8 +65,34 @@ import { saveThreadMessage, threadLanguage } from './threads.service';
  */
 const NOTICE_MARGIN_MS = 500;
 const NOTICE_TIMEOUT_MS = Math.max(0, REPORT_RESERVE_MS - NOTICE_MARGIN_MS);
+/** The answer lookup takes a third of the notice window, leaving the rest for the write. */
+const ANSWER_LOOKUP_SHARE = 3;
+const ANSWER_LOOKUP_TIMEOUT_MS = Math.floor(NOTICE_TIMEOUT_MS / ANSWER_LOOKUP_SHARE);
+
+/**
+ * The tester's 37795 (38319): the full answer arrived at 22:23:49 and this
+ * notice three seconds later — the run was still in flight, doing its work
+ * after the answer, when the deploy cut it. A run whose answer is already in
+ * the thread was not cut off where the owner can see; it gets no notice, and
+ * so no resume of a message already answered.
+ */
+async function answerAlreadySaved(run: CutOffRun): Promise<boolean> {
+  const result = await query<{ found: number }>(
+    `SELECT 1 AS found FROM conversations
+      WHERE thread_id = $1 AND kind = 'message' AND role = 'assistant' AND run_id = $2
+      LIMIT 1`,
+    [run.threadId, run.runId],
+    ANSWER_LOOKUP_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
+}
 
 async function tellOneOwner(run: CutOffRun): Promise<void> {
+  if (await answerAlreadySaved(run).catch(() => false)) {
+    // eslint-disable-next-line no-console
+    console.log(`[drain] run ${run.runId}: its answer was already saved — no cut-off notice`);
+    return;
+  }
   // Same source as the reaper's own message, so the two cannot drift into two
   // different readings of one conversation's language.
   const language = await threadLanguage(run.threadId).catch(() => 'ka' as const);

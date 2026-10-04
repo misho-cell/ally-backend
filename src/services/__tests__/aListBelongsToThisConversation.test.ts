@@ -26,7 +26,23 @@ describe('the list tools', () => {
 
   it('say how to open a goal when there is none, and that the file did arrive', () => {
     const note = chat.slice(chat.indexOf('const NO_GOAL_FOR_THE_LIST ='));
-    expect(note.slice(0, 500)).toContain('Save it first with set_task_brief');
+    expect(note.slice(0, 500)).toContain('Open one first with create_task');
+    expect(note.slice(0, 500)).toContain('A goal of another conversation is never used or');
     expect(note.slice(0, 500)).toContain('The file did arrive');
+  });
+});
+
+/** The tester's 37795 (38319): the brief of the earlier list conversation's goal was rewritten from here. */
+describe('the brief', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('is written to this conversation’s open goal only', () => {
+    const handler = chat.slice(chat.indexOf("case 'set_task_brief': {"));
+    expect(handler.slice(0, 500)).toContain(
+      "const taskId = await listGoalOfThisConversation(threadId, input['task_id']);",
+    );
+    expect(handler.slice(0, 500)).toContain(
+      'if (taskId === null) return { updated: false, error: BRIEF_NOT_THIS_CONVERSATION };',
+    );
   });
 });

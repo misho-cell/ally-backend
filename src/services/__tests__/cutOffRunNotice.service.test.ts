@@ -1,3 +1,7 @@
+jest.mock('../../db/postgres/client', () => ({
+  __esModule: true,
+  query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+}));
 jest.mock('../threads.service', () => ({
   __esModule: true,
   saveThreadMessage: jest.fn().mockResolvedValue(undefined),
@@ -6,6 +10,7 @@ jest.mock('../threads.service', () => ({
 jest.mock('../sse.service', () => ({ __esModule: true, emitRunError: jest.fn() }));
 
 import { readFileSync } from 'fs';
+import { query } from '../../db/postgres/client';
 import { join } from 'path';
 import { CutOffRun, REPORT_RESERVE_MS } from '../inFlightRuns';
 import { RUN_STRINGS } from '../runLanguage';
@@ -23,8 +28,11 @@ const NOTICE_TIMEOUT_MS_FOR_TEST = Math.max(0, REPORT_RESERVE_MS - 500);
 const CHAT: CutOffRun = { runId: 'r1', kind: 'chat', userId: 171871, threadId: 21121 };
 const ENGINE: CutOffRun = { runId: 'r2', kind: 'engine', userId: 160584, threadId: 16737 };
 
+const mockQuery = query as jest.MockedFunction<typeof query>;
+
 beforeEach(() => {
   jest.clearAllMocks();
+  mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
   mockLanguage.mockResolvedValue('ka');
   mockSave.mockResolvedValue(undefined as never);
 });
@@ -164,5 +172,24 @@ describe('the notice spends the reserve it was given, not one of its own', () =>
   it('leaves a margin inside it, so the log lines and the exit still fit', () => {
     expect(NOTICE_TIMEOUT_MS_FOR_TEST).toBeLessThan(REPORT_RESERVE_MS);
     expect(NOTICE_TIMEOUT_MS_FOR_TEST).toBeGreaterThan(0);
+  });
+});
+
+/** The tester's 37795 (38319): the answer at 22:23:49, the notice at 22:23:52. */
+describe('a run whose answer is already in the thread', () => {
+  it('gets no cut-off notice', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ found: 1 }], rowCount: 1 } as never);
+    await tellOwnersTheirRunWasCutOff([CHAT]);
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockEmit).not.toHaveBeenCalled();
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain("kind = 'message' AND role = 'assistant' AND run_id = $2");
+    expect(params).toEqual([21121, 'r1']);
+  });
+
+  it('a failed lookup still tells the owner', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('timeout'));
+    await tellOwnersTheirRunWasCutOff([CHAT]);
+    expect(mockSave).toHaveBeenCalledTimes(1);
   });
 });

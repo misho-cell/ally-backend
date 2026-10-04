@@ -14,6 +14,7 @@ import {
   MEMBERS_IN_THE_BOOK_PREFIX,
   continuationCoversAnswer,
   membersInTheBookNudge,
+  onlyTheMembersPart,
 } from '../replyGuards';
 
 /**
@@ -128,5 +129,24 @@ describe('a promise and skipped members in one reply', () => {
     expect(chain.indexOf('? membersInTheBookNudge(bookMembersSkipped)')).toBeLessThan(
       chain.indexOf(': PROMISED_ACTION_NUDGE'),
     );
+  });
+});
+
+/** The tester's 37795 (38319): the turn after the members note wrote the answer again. */
+describe('the addition after the first answer', () => {
+  const namesVano = (p: string): boolean => p.includes('ვანო');
+
+  it('keeps the paragraphs that name a member, and the question after them', () => {
+    const turn =
+      'ამ ეტაპზე ოთხივე კომპანიაზე პირდაპირი კავშირი ვერ გამოჩნდა.\n\n' +
+      'შენს ნაცნობებში ვანო ხელოსანი შეიძლება იცნობდეს.\n\nამ გეგმას მივყვე?';
+    expect(onlyTheMembersPart(turn, namesVano)).toBe(
+      'შენს ნაცნობებში ვანო ხელოსანი შეიძლება იცნობდეს.\n\nამ გეგმას მივყვე?',
+    );
+  });
+
+  it('stands as written when it names none of them', () => {
+    const turn = 'არცერთი არ გამოდგება — ისინი ამ სფეროში არ მუშაობენ.';
+    expect(onlyTheMembersPart(turn, namesVano)).toBe(turn);
   });
 });
