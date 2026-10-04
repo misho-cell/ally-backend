@@ -283,6 +283,7 @@ import {
   withoutDanglingLeadIn,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  PROMISED_ACTION_NO_GOAL_NUDGE,
   SEARCH_FIRST_NUDGE,
   asksToApproveAPlan,
   offersToSend,
@@ -10682,18 +10683,32 @@ const ACTING_TOOLS: ReadonlySet<string> = new Set([
   'send_answer_to_asker',
 ]);
 
+/** What a promise to write was missing, when nothing was sent. */
+enum PromiseGap {
+  /** Board #830: the goal on this thread has no plan and none proposed. */
+  Plan = 'plan',
+  /** The tester's 1149 (38068): an owner's quick answer, with no goal at all. */
+  Goal = 'goal',
+}
+
+/** The owner's own runs that can promise to write without a goal behind them. */
+const OWNERS_QUICK_RUNS: ReadonlySet<string> = new Set(['quick_answer', 'onboarding']);
+
 /**
  * Board #830: the reply promises to ask or write to someone, the run called
  * none of the tools that would do it, and the goal on this thread has no plan
  * and none proposed. Read only when the words promise something, so an
- * ordinary reply never pays for the lookup.
+ * ordinary reply never pays for the lookup. The tester's 1149 (38068): in the
+ * owner's quick answer there may be no goal at all — „გიას ვკითხავ…" after
+ * „write to Gia", and nothing went.
  */
 async function promisedAnActionItDidNotTake(
   threadId: number,
   finalText: string,
   toolNamesUsed: readonly string[],
   offered: readonly string[] = [],
-): Promise<boolean> {
+  ownersQuickRun = false,
+): Promise<PromiseGap | null> {
   // #961 (37322): asking the owner to approve a plan that was never proposed is
   // the same broken promise — and the same answer, a plan with its card. And
   // (37554) so are buttons that offer to send („კი, გაუგზავნე სამივეს") with
@@ -10702,17 +10717,18 @@ async function promisedAnActionItDidNotTake(
     promisesToWriteToSomeone(finalText) ||
     asksToApproveAPlan(finalText) ||
     offered.some(offersToSend);
-  if (!asked) return false;
-  if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return false;
+  if (!asked) return null;
+  if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return null;
   try {
     const goal = await getGoalOnThread(threadId);
-    return (
-      goal !== null && goal.status === 'open' && goal.plan === null && goal.plan_proposed === null
-    );
+    if (goal === null) return ownersQuickRun ? PromiseGap.Goal : null;
+    return goal.status === 'open' && goal.plan === null && goal.plan_proposed === null
+      ? PromiseGap.Plan
+      : null;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[promise] thread ${threadId}: could not read the goal:`, (err as Error).message);
-    return false;
+    return null;
   }
 }
 
@@ -11647,11 +11663,17 @@ async function runToolLoop(
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
-  const promisedWithoutActing =
-    !ownerAbsent &&
-    !claimedASendThatDidNotHappen &&
-    !helperQuestionUnsent &&
-    (await promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed, choices ?? []));
+  const promiseGap =
+    ownerAbsent || claimedASendThatDidNotHappen || helperQuestionUnsent
+      ? null
+      : await promisedAnActionItDidNotTake(
+          threadId,
+          finalText,
+          toolNamesUsed,
+          choices ?? [],
+          OWNERS_QUICK_RUNS.has(runModes.get(runId) ?? ''),
+        );
+  const promisedWithoutActing = promiseGap !== null;
   // #960: the owner's contacts on Netai came back and the reply offered none.
   const membersSkipped = !ownerAbsent && skippedTheMembersFound(runId, finalText, toolNamesUsed);
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
@@ -11682,7 +11704,9 @@ async function runToolLoop(
       : answeredWithoutSearching
         ? SEARCH_FIRST_NUDGE
         : promisedWithoutActing
-          ? PROMISED_ACTION_NUDGE
+          ? promiseGap === PromiseGap.Goal
+            ? PROMISED_ACTION_NO_GOAL_NUDGE
+            : PROMISED_ACTION_NUDGE
           : membersSkipped
             ? MEMBERS_SKIPPED_NUDGE
             : bookMembersSkipped.length > 0
@@ -11898,6 +11922,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   PASSED_ON_NUDGE,
   HELPER_QUESTION_NUDGE,
   PROMISED_ACTION_NUDGE,
+  PROMISED_ACTION_NO_GOAL_NUDGE,
   SEARCH_FIRST_NUDGE,
   MEMBERS_SKIPPED_NUDGE,
 ]);

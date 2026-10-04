@@ -4,6 +4,7 @@ import {
   asksToApproveAPlan,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  PROMISED_ACTION_NO_GOAL_NUDGE,
   withoutClosingApprovalAsk,
   offersToSend,
 } from '../replyGuards';
@@ -41,11 +42,26 @@ describe('a reply that promises to write to someone', () => {
     const fn = chat.slice(chat.indexOf('async function promisedAnActionItDidNotTake('));
     const body = fn.slice(0, fn.indexOf('\n}\n'));
     expect(body).toContain(
-      'if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return false;',
+      'if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return null;',
     );
     expect(body).toContain('goal.plan === null');
     expect(body).toContain('goal.plan_proposed === null');
-    expect(chat).toContain('? PROMISED_ACTION_NUDGE');
+    expect(chat).toContain(': PROMISED_ACTION_NUDGE');
+  });
+
+  /** The tester's 1149 (38068): „გიას ვკითხავ…" in a quick answer, with no goal at all. */
+  it('fires in the owner’s quick answer with no goal, with its own note', () => {
+    const fn = chat.slice(chat.indexOf('async function promisedAnActionItDidNotTake('));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
+    expect(body).toContain('if (goal === null) return ownersQuickRun ? PromiseGap.Goal : null;');
+    expect(chat).toContain("new Set(['quick_answer', 'onboarding'])");
+    expect(chat).toContain("OWNERS_QUICK_RUNS.has(runModes.get(runId) ?? '')");
+    expect(chat).toContain('? PROMISED_ACTION_NO_GOAL_NUDGE');
+    expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('set_task_brief');
+    expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('propose_task_plan');
+    expect(PROMISED_ACTION_NO_GOAL_NUDGE).toContain('არაფერს არ დაჰპირდე');
+    const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
+    expect(set.slice(0, 300)).toContain('PROMISED_ACTION_NO_GOAL_NUDGE,');
   });
 
   it('is never shown as the owner’s own words', () => {
@@ -97,7 +113,7 @@ describe('a button that offers to send', () => {
   it('takes the same guard turn as a promise', () => {
     expect(chat).toContain('offered.some(offersToSend);');
     expect(chat).toContain(
-      'promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed, choices ?? [])',
+      "toolNamesUsed,\n          choices ?? [],\n          OWNERS_QUICK_RUNS.has(runModes.get(runId) ?? ''),",
     );
   });
 });

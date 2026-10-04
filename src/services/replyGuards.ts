@@ -304,6 +304,19 @@ export const PROMISED_ACTION_NUDGE =
   'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
 
 /**
+ * The tester's 1149 (38068): the owner tapped „write to Gia", the quick answer
+ * said „გიას ვკითხავ…", nothing went, and there was no goal to hold a plan.
+ * Writing to someone goes through a goal's plan and its approve card.
+ */
+export const PROMISED_ACTION_NO_GOAL_NUDGE =
+  '(სისტემური შენიშვნა: შენ დაწერე, რომ ვინმეს ჰკითხავ ან მისწერ, მაგრამ ამ გაშვებაში არაფერი ' +
+  'გაგზავნილა და ამ საუბარში მიზანი არ არის. თუ მფლობელმა ამ ადამიანისთვის მიწერა ითხოვა — ' +
+  'ახლავე შეინახე მიზანი set_task_brief-ით, მერე გამოიძახე propose_task_plan, ის ' +
+  'people_to_involve-ში ჩაწერე და present_choices-ით შესთავაზე „ვამტკიცებ" და „შევცვალოთ". თუ ' +
+  'არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. მფლობელს შენი წინა ტექსტი არ უნახავს: ' +
+  'პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
+
+/**
  * The tester's 1137 (37036): „იურისტი მჭირდება… ვინ მყავს?" opened a goal, the
  * run called no tool, and the reply said „in this chat I cannot see your
  * network" and asked the owner for names. The wake thirty seconds later did
