@@ -377,6 +377,7 @@ import {
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { listStatus, startListWork } from './listItems.service';
+import { shareContactNumberWithAsker, ShareRefusal } from './shareNumber.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -1454,6 +1455,43 @@ const RELAY_ASK_TOOL: AnthropicTool = {
 // asker from an incoming-ask thread. The old auto-relay (the recipient's raw
 // first message captured as the answer before the assistant ran) is removed;
 // this tool carries exactly the text the recipient approved, nothing else.
+/**
+ * Board #991 (the founder, 4 October): the owner may give the person who asked
+ * a number from HIS OWN phonebook — on his own typed word, for that contact.
+ * The server checks the word and resolves the number; the model never types it.
+ */
+const SHARE_CONTACT_NUMBER_TOOL: AnthropicTool = {
+  name: 'share_contact_number_with_asker',
+  description:
+    "Give the person who asked this question one contact's number from the owner's OWN " +
+    "phonebook. Only when the owner's own latest message says to share that contact's number " +
+    '(e.g. „გაუგზავნე დათოს ნომერი"); never on your own. If the name the owner gave matches ' +
+    'more than one contact, first offer the matches with present_choices and call this with the ' +
+    'one they tap. The server checks the owner’s words and sends the name and number itself; ' +
+    'afterwards say in one line whose number went to whom — never type the number yourself.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The contact's phone id from a search result." },
+    },
+    required: ['phone'],
+  },
+};
+
+/** What the model says after a number went (#991): one line, names only. */
+const SHARED_NUMBER_NOTE =
+  'Sent: the asker now has the name and the number. Tell the owner in one line whose number ' +
+  'went to whom. Do not write the number.';
+
+const SHARE_REFUSAL_NOTE: Readonly<Record<ShareRefusal, string>> = {
+  [ShareRefusal.NoLiveQuestion]: 'Not sent: this conversation has no open question to answer.',
+  [ShareRefusal.NotOwnContact]:
+    "Not sent: that number is not in the owner's own phonebook. Numbers from the network are never given.",
+  [ShareRefusal.NotTheOwnersWord]:
+    "Not sent: the owner's own latest message does not say to share this contact's number. Ask " +
+    'them in one line whether to send it, and call this again only after they say so.',
+};
+
 const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {
   name: 'send_answer_to_asker',
   description:
@@ -8229,6 +8267,19 @@ async function executeToolCall(
       if (relayed.sent && runId) runRelaySent.add(runId);
       return relayed;
     }
+    case 'share_contact_number_with_asker': {
+      if (threadId === undefined)
+        return { shared: false, error: 'No thread context for this call.' };
+      const outcome = await shareContactNumberWithAsker(
+        userId,
+        threadId,
+        String(input['phone'] ?? ''),
+      );
+      if (outcome.shared && runId) runAnswerSent.add(runId);
+      return outcome.shared
+        ? { shared: true, name: outcome.name, next: SHARED_NUMBER_NOTE }
+        : { shared: false, reason: outcome.reason, error: SHARE_REFUSAL_NOTE[outcome.reason] };
+    }
     case 'send_answer_to_asker': {
       const answerText = String(input['answer_text'] ?? '').trim();
       if (!answerText) return { sent: false, error: 'Pass the exact approved text.' };
@@ -11889,7 +11940,12 @@ export async function buildToolsForThread(
   ownerAbsent = false,
 ): Promise<AnthropicTool[]> {
   if (threadType === 'incoming_ask') {
-    return [SEND_ANSWER_TO_ASKER_TOOL, ...(await buildEnabledTools(userId, ownerAbsent))];
+    return [
+      SEND_ANSWER_TO_ASKER_TOOL,
+      // #991: only in a turn the owner is in — the tool rests on his own words.
+      ...(ownerAbsent ? [] : [SHARE_CONTACT_NUMBER_TOOL]),
+      ...(await buildEnabledTools(userId, ownerAbsent)),
+    ];
   }
   return buildEnabledTools(userId, ownerAbsent);
 }

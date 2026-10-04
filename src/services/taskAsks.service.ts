@@ -1677,7 +1677,7 @@ export async function sendApprovedAskAnswer(
   // Ticket 10 Task 22 (D120): the second thing the confirm turn asks — "and
   // answer similar questions this way in future". Given only on the user's
   // explicit yes to THAT; the rule is written after the answer has gone.
-  remember?: { kind: string },
+  remember?: { kind?: string; verbatim?: boolean },
 ): Promise<{ sent: boolean; error?: string; rule_saved?: boolean; rule_error?: string }> {
   const ask = await query<{ to_user_id: number; status: string; question: string }>(
     `SELECT to_user_id, status, question FROM task_asks
@@ -1694,8 +1694,9 @@ export async function sendApprovedAskAnswer(
   }
 
   // #34 (the tester's 1055): send the helper's own words when the approved
-  // text only rearranges them.
-  const answerText = await helpersOwnWording(askThreadId, approvedText);
+  // text only rearranges them. #991: a shared number is sent exactly as built.
+  const answerText =
+    remember?.verbatim === true ? approvedText : await helpersOwnWording(askThreadId, approvedText);
   const captured = await recordAskAnswer(askThreadId, answerText);
   if (!captured) {
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
@@ -1703,7 +1704,7 @@ export async function sendApprovedAskAnswer(
 
   await deliverCapturedAnswer(captured, recipientUserId);
 
-  if (remember === undefined) return { sent: true };
+  if (remember?.kind === undefined) return { sent: true };
   const saved = await saveAnswerRule(recipientUserId, remember.kind, row.question, answerText);
   return saved.ok
     ? { sent: true, rule_saved: true }
