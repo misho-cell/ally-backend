@@ -11215,6 +11215,15 @@ async function runToolLoop(
    */
   const draft = longestDraft(draftSteps);
   const gptAnswerWritten = finalIsRewrite;
+  // The tester's 1135 (37065): a plan step stayed beside GPT's answer and the log
+  // could not say why. Counts and flags only, whenever the run wrote a step.
+  if (bestNarration.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[draft] run ${runId}: drafts=${draftSteps.length} housekeeping=${housekeepingSteps.length} ` +
+        `rewrite=${finalIsRewrite} buried=${buriedAnswer} final=${finalText.length}`,
+    );
+  }
   // Only when the draft says at least as much: a GPT answer fuller than the
   // draft keeps its place, and the draft step still goes so it is said once.
   if (finalIsRewrite && !buriedAnswer && draft !== null && draft.text.length < finalText.length) {
