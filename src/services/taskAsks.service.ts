@@ -529,6 +529,14 @@ interface NamedPerson {
 async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
   if (person.threadId === undefined) return false;
   try {
+    // The tester's 1131 (V1, 36317): the owner pressed the offered button
+    // „კი, ვანოს ჰკითხე" — the person and the action, chosen by the owner — and
+    // the tap was skipped as „not a typed line", so both walls refused Vano. A
+    // tapped button that itself names exactly this person is the owner's word
+    // for this one ask; a tap that names nobody („დიახ, გაუგზავნე") still falls
+    // back to the typed line, as 279 run 2 needs.
+    const tapped = await latestOwnerLine(person);
+    if (tapped !== null && (await lineNamesThisPerson(tapped, person))) return true;
     const said = await query<{ content: string }>(
       `SELECT c.content FROM conversations c
           WHERE c.thread_id = $1 AND c.role = 'user'
@@ -544,41 +552,59 @@ async function ownerJustNamedPerson(person: NamedPerson): Promise<boolean> {
       [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES],
       ASK_QUERY_TIMEOUT_MS,
     );
-    const line = said.rows[0]?.content ?? '';
-    if (!looksLikeContactInstruction(line)) return false;
-
-    // The owner's own phonebook decides which person that sentence names,
-    // and only an unambiguous answer counts.
-    // Candidates by plain containment of the label or, for a label ending in
-    // „-ი", of its stem; namedLabel decides which of them the sentence names.
-    const candidates = await query<{ phone: string; alias: string }>(
-      `SELECT ua.phone, ua.alias
-           FROM "UserAlias" ua
-          WHERE ua."contactId" = $1::int
-            AND LENGTH(TRIM(ua.alias)) >= $3
-            AND (POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
-                 OR (TRIM(ua.alias) LIKE '%ი'
-                     AND POSITION(LOWER(LEFT(TRIM(ua.alias), -1)) IN LOWER($2)) > 0))
-          ORDER BY LENGTH(TRIM(ua.alias)) DESC
-          LIMIT $4`,
-      [person.fromUserId, line, MIN_NAMED_LABEL_CHARS, MAX_NAMED_LABEL_CANDIDATES],
-      ASK_QUERY_TIMEOUT_MS,
-    );
-    const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
-    const best = labels[0];
-    if (best === undefined) return false;
-    const runnerUp = labels[1];
-    // Two labels of the same length both inside the sentence name nobody.
-    if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
-      return false;
-    }
-    return phoneDigits(best.phone) === phoneDigits(person.contactPhone);
+    return await lineNamesThisPerson(said.rows[0]?.content ?? '', person);
   } catch (error) {
     // Fails towards refusing, which is the direction this gate exists for.
     // eslint-disable-next-line no-console
     console.error(`[ask] task ${person.taskId}: could not read who the owner named:`, error);
     return false;
   }
+}
+
+/** The owner's newest line on this goal, a tapped button included. */
+async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
+  const result = await query<{ content: string }>(
+    `SELECT c.content FROM conversations c
+        WHERE c.thread_id = $1 AND c.role = 'user'
+          AND COALESCE(c.kind, '') <> 'event' AND c.content <> ''
+          AND c.created_at >= $2::timestamptz - ($3 || ' minutes')::interval
+        ORDER BY c.created_at DESC LIMIT 1`,
+    [person.threadId, person.taskCreatedAt, TYPED_LINE_GRACE_MINUTES],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.content ?? null;
+}
+
+/** Is this line an instruction that names exactly this person, by the owner's own label? */
+async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<boolean> {
+  if (!looksLikeContactInstruction(line)) return false;
+
+  // The owner's own phonebook decides which person that sentence names,
+  // and only an unambiguous answer counts.
+  // Candidates by plain containment of the label or, for a label ending in
+  // „-ი", of its stem; namedLabel decides which of them the sentence names.
+  const candidates = await query<{ phone: string; alias: string }>(
+    `SELECT ua.phone, ua.alias
+         FROM "UserAlias" ua
+        WHERE ua."contactId" = $1::int
+          AND LENGTH(TRIM(ua.alias)) >= $3
+          AND (POSITION(LOWER(TRIM(ua.alias)) IN LOWER($2)) > 0
+               OR (TRIM(ua.alias) LIKE '%ი'
+                   AND POSITION(LOWER(LEFT(TRIM(ua.alias), -1)) IN LOWER($2)) > 0))
+        ORDER BY LENGTH(TRIM(ua.alias)) DESC
+        LIMIT $4`,
+    [person.fromUserId, line, MIN_NAMED_LABEL_CHARS, MAX_NAMED_LABEL_CANDIDATES],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
+  const best = labels[0];
+  if (best === undefined) return false;
+  const runnerUp = labels[1];
+  // Two labels of the same length both inside the sentence name nobody.
+  if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
+    return false;
+  }
+  return phoneDigits(best.phone) === phoneDigits(person.contactPhone);
 }
 
 /** The plan wall's D316 exception: the owner's own instruction names this person. */

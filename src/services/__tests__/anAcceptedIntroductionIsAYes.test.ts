@@ -586,3 +586,28 @@ describe('the permission wall lets the owner-named person through (Misho, 3 Octo
     expect(service).not.toContain('OWNER_TYPED_IS_THE_YES');
   });
 });
+
+/** The tester's 1131 (V1, 36317): „კი, ვანოს ჰკითხე" was pressed and both walls refused Vano. */
+describe('a pressed button that names the person', () => {
+  const service = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+  const matcher = service.slice(
+    service.indexOf('async function ownerJustNamedPerson'),
+    service.indexOf('async function latestOwnerLine'),
+  );
+
+  it('is read first, and counts when it names exactly this person', () => {
+    const tapped = matcher.indexOf('const tapped = await latestOwnerLine(person);');
+    const typed = matcher.indexOf('const said = await query');
+    expect(tapped).toBeGreaterThan(-1);
+    expect(typed).toBeGreaterThan(tapped);
+    expect(matcher).toContain(
+      'if (tapped !== null && (await lineNamesThisPerson(tapped, person))) return true;',
+    );
+  });
+
+  it('a tap that names nobody still falls back to the typed line', () => {
+    expect(matcher).toContain(
+      "return await lineNamesThisPerson(said.rows[0]?.content ?? '', person);",
+    );
+  });
+});
