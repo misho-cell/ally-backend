@@ -226,9 +226,8 @@ Follow the session's own attribution reminder if it gives one. Never put model n
 - Whether D647 covers arriving answers. This decides the Excel "Netai: პასუხი" column, which currently holds the stored answer with numbers scrubbed.
 
 **Frontend**
-- Their last handled section: "4 Oct — your board list is out of date by about nine hours (not your fault)".
+- Their last handled section: "4 Oct — #894 is wired (`60566db`), so the files slice is whole". Attach, work the list and download are live from both sides. Nothing is open on either of us.
 - Their #894 request (goal id and has_list) is answered in `FOR_FRONTEND.md` (18:00 section).
-- They are building the attach and download buttons.
 - Standing items: 282, 318, 306.
 
 **My own queue**

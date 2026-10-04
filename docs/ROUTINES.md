@@ -125,7 +125,7 @@ Tell Misho only about a real failure.
 | Backend: read the frontend's TO_BACKEND.md (:38) | `38 * * * *` |
 
 1. Read `docs/TO_BACKEND.md` on main of `misho-cell/ally-frontend` (public; clone read-only to `/home/user/ally-frontend`).
-2. Act only if the top `###` heading under `## OPEN` is new. The last handled heading is "4 Oct — your board list is out of date by about nine hours (not your fault)".
+2. Act only if the top `###` heading under `## OPEN` is new. The last handled heading is "4 Oct — #894 is wired (`60566db`), so the files slice is whole".
 3. Do the work and answer in `docs/FOR_FRONTEND.md`.
 4. Tell Misho one Georgian line only if something shipped or needs his decision.
 
