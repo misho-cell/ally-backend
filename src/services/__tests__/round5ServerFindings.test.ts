@@ -26,13 +26,10 @@ describe('1 — „what is new?" with nothing new', () => {
 
 describe('2 — a plan reply carries the plan’s own buttons', () => {
   it('is applied to the run’s buttons before the reply is assembled', () => {
-    expect(chat).toContain('const choices = planButtonsWhenMissing(runId, loopChoices);');
-    const assembled = chat.indexOf(
-      'effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);',
-    );
-    expect(
-      chat.indexOf('const choices = planButtonsWhenMissing(runId, loopChoices);'),
-    ).toBeLessThan(assembled);
+    // D626: a plan that names nobody takes the other branch, with no card.
+    expect(chat).toContain('? planButtonsWhenMissing(runId, loopChoices)');
+    const assembled = chat.indexOf('? withPlanInReply(runId, effectiveFinal, choices)');
+    expect(chat.indexOf('? planButtonsWhenMissing(runId, loopChoices)')).toBeLessThan(assembled);
   });
 
   it('adds approve and change only when the reply has none, or has the closing question as one', () => {

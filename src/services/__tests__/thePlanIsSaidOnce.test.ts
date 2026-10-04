@@ -126,7 +126,7 @@ describe('where it is wired', () => {
 
   it('hands the model the plan to show, and adds it when the reply left it out', () => {
     expect(block).toContain('show_plan: planInYourReplyNote(runLang(runId))');
-    expect(chat).toContain('effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);');
+    expect(chat).toContain('? withPlanInReply(runId, effectiveFinal, choices)');
     const clear = chat.slice(chat.indexOf('function clearRunState'));
     expect(clear.slice(0, 1400)).toContain('runPlanForReply.delete(runId)');
   });

@@ -6419,6 +6419,54 @@ async function planTextAfterBlock(
   return (await moderateReply(text, userId)).safe ? text : null;
 }
 
+/**
+ * D626 (the founder, 4 October, the tester's 1133 row 3): an approve card is
+ * shown only when the plan would really send something to a person. A plan
+ * that names nobody („I write to nobody, you contact them yourself") ends on
+ * the answer: no closing question, no approve or change buttons. The plan is
+ * still saved as proposed, so nothing is approved without the owner, and a
+ * person added later comes back through a plan that names them — with a card.
+ */
+const runPlanWritesToNobody = new Map<string, string>();
+
+export const PLAN_WRITES_TO_NOBODY_NOTE =
+  'This plan writes to nobody, so it needs no approval (D626). Do not ask the owner to ' +
+  'approve it, do not end on the plan question, and offer no approve or change buttons. ' +
+  'Give your answer — what you found and what the owner can do with it — and stop.';
+
+/** A run whose newest plan names nobody: remembered with the plan's own sentences. */
+function notePlanWritesToNobody(runId: string | undefined, planText: string): void {
+  if (runId === undefined) return;
+  runPlanWritesToNobody.set(runId, planText);
+  runPlanForReply.delete(runId);
+}
+
+/** Read and forget, like the run's other plan flags. Null when the run's plan names someone. */
+function takePlanWritesToNobody(runId: string): string | null {
+  const planText = runPlanWritesToNobody.get(runId) ?? null;
+  runPlanWritesToNobody.delete(runId);
+  return planText;
+}
+
+/** The buttons without the plan's approve and change pair; none left is no row. */
+export function choicesWithoutPlanCard(
+  choices: readonly string[] | undefined,
+): string[] | undefined {
+  const kept = (choices ?? []).filter((label) => !isApproveChoice(label) && !isChangeChoice(label));
+  return kept.length > 0 ? kept : undefined;
+}
+
+/** The reply without the plan's closing question, or the plan's sentences if nothing else was said. */
+export function withoutPlanClosingQuestion(
+  reply: string,
+  language: RunLanguage,
+  planText: string,
+): string {
+  const question = PLAN_CLOSING_QUESTION[language];
+  const kept = withoutClosingVariant(reply.split(question).join(''), question).trim();
+  return kept === '' ? planText : kept;
+}
+
 export function planButtonsWhenMissing(
   runId: string,
   offered: string[] | undefined,
@@ -7209,6 +7257,7 @@ function clearRunState(runId: string): void {
   runProposedAPlan.delete(runId);
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
+  runPlanWritesToNobody.delete(runId);
   runAnswerSent.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
@@ -8558,6 +8607,16 @@ async function executeToolCall(
           // a version and field labels. It goes in the reply, ONCE, in the
           // model's own words — which it is handed as plain sentences.
           plainPlan = planInSentences(stored, runLang(runId));
+          if (stored.people_to_involve.length === 0) {
+            notePlanWritesToNobody(runId, plainPlan);
+            return {
+              proposed: true,
+              version: outcome.value.version,
+              next: PLAN_WRITES_TO_NOBODY_NOTE,
+            };
+          }
+          // A later plan in the same run that names people brings the card back.
+          if (runId !== undefined) takePlanWritesToNobody(runId);
           // Ticket 20 row 140, the third instance: thread 15812 said the plan
           // was shown in the new thread while that thread was empty. A goal
           // opened in a conversation that already had one is MOVED to its own
@@ -13041,7 +13100,11 @@ export async function processChat(
     lateSearch,
   );
   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
-  const choices = planButtonsWhenMissing(runId, loopChoices);
+  const planToNobody = takePlanWritesToNobody(runId);
+  const choices =
+    planToNobody === null
+      ? planButtonsWhenMissing(runId, loopChoices)
+      : choicesWithoutPlanCard(loopChoices);
 
   // Tool-interaction turns carry the full content_json for model history but
   // have empty display content (filtered from the thread view); the final reply
@@ -13100,7 +13163,10 @@ export async function processChat(
     effectiveFinal = '';
   }
   if (!effectiveFinal.trim()) effectiveFinal = (await questionAsFinal(runId)) ?? '';
-  effectiveFinal = withPlanInReply(runId, effectiveFinal, choices);
+  effectiveFinal =
+    planToNobody === null
+      ? withPlanInReply(runId, effectiveFinal, choices)
+      : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
