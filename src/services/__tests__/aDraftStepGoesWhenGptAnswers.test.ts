@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isAnswerRound, longestDraft } from '../chat.service';
+import { isAnswerRound, isHousekeepingRound, longestDraft } from '../chat.service';
 
 /**
  * The tester's 1108 (33538, 33560): Claude's answer, written beside the
@@ -16,6 +16,19 @@ describe('a draft step written beside the closing tool', () => {
   });
 
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  /** The tester's 1133 (E10, 36536): an answer beside set_task_wake, then GPT's, the question twice. */
+  it('beside a round that only kept the books goes when GPT’s answer stands', () => {
+    expect(isHousekeepingRound(['set_task_wake'])).toBe(true);
+    expect(isHousekeepingRound(['set_task_brief', 'set_task_wake'])).toBe(true);
+    expect(isHousekeepingRound(['set_task_wake', 'search_by_tag'])).toBe(false);
+    expect(isHousekeepingRound([])).toBe(false);
+    expect(chat.split('housekeepingSteps.push({ id: stepId, text: narration });').length - 1).toBe(
+      2,
+    );
+    expect(chat).toContain('if (gptAnswerWritten && !buriedAnswer) {');
+    expect(chat).toContain('await dropDraftSteps(userId, threadId, runId, housekeepingSteps);');
+  });
 
   it('is remembered at both places a step is saved', () => {
     const remembered = chat.split(

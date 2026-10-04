@@ -10378,6 +10378,19 @@ export function isAnswerRound(roundToolNames: readonly string[]): boolean {
   return roundToolNames.some((name) => ANSWER_ROUND_TOOLS.has(name));
 }
 
+/**
+ * The tester's 1133 (E10, 36536): Claude wrote its answer beside set_task_wake
+ * („…აღარაფერი გჭირდება generar?"), GPT wrote the final from the same
+ * material, and the owner read the question twice — once with a stray foreign
+ * word. A round that only kept the goal's books carries no news of its own:
+ * when GPT's answer stands, its narration goes like any other draft.
+ */
+const HOUSEKEEPING_TOOLS: ReadonlySet<string> = new Set(['set_task_wake', 'set_task_brief']);
+
+export function isHousekeepingRound(roundToolNames: readonly string[]): boolean {
+  return roundToolNames.length > 0 && roundToolNames.every((name) => HOUSEKEEPING_TOOLS.has(name));
+}
+
 interface SavedStep {
   readonly id: number;
   readonly text: string;
@@ -10864,6 +10877,7 @@ async function runToolLoop(
   let bestNarration = '';
   let bestStepId: number | null = null;
   const draftSteps: SavedStep[] = [];
+  const housekeepingSteps: SavedStep[] = [];
 
   try {
     while (
@@ -10893,6 +10907,8 @@ async function runToolLoop(
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });
+        if (isHousekeepingRound(roundTools))
+          housekeepingSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
           bestNarration = narration;
           bestStepId = stepId;
@@ -10963,6 +10979,8 @@ async function runToolLoop(
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });
+        if (isHousekeepingRound(roundTools))
+          housekeepingSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
           bestNarration = narration;
           bestStepId = stepId;
@@ -11128,6 +11146,7 @@ async function runToolLoop(
    * GPT's line goes; one copy, the full one.
    */
   const draft = longestDraft(draftSteps);
+  const gptAnswerWritten = finalIsRewrite;
   // Only when the draft says at least as much: a GPT answer fuller than the
   // draft keeps its place, and the draft step still goes so it is said once.
   if (finalIsRewrite && !buriedAnswer && draft !== null && draft.text.length < finalText.length) {
@@ -11146,6 +11165,9 @@ async function runToolLoop(
       const shorter = await shortenedDraft(finalText, userId, runId, threadId);
       if (shorter !== null) finalText = shorter;
     }
+  }
+  if (gptAnswerWritten && !buriedAnswer) {
+    await dropDraftSteps(userId, threadId, runId, housekeepingSteps);
   }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
