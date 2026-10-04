@@ -1110,6 +1110,27 @@ export function leadsFirstName(name: string): string | null {
   return first !== undefined && isCertainNameToken(first.lower, true) ? first.raw : null;
 }
 
+/**
+ * The tester's 37569: asked about „რეზო ყიფშიძე", the web returned „ზურა
+ * ყიფშიძე" — a relative or a namesake — and the card tied him to the owner's
+ * contact „ზურა სანტექნიკი". When the search names a person, a person lead
+ * with ANOTHER first name is not who was asked about and does not reach the
+ * card. Firms, and searches that name nobody, are left as they are; the model
+ * still receives every verdict in the tool result.
+ */
+export function withoutNamesakes(
+  asked: string,
+  waysIn: ReadonlyMap<string, WayIn>,
+): ReadonlyMap<string, WayIn> {
+  const askedFirst = leadsFirstName(asked);
+  if (askedFirst === null) return waysIn;
+  return new Map(
+    [...waysIn].filter(
+      ([name]) => leadsFirstName(name) === null || sameFirstName(askedFirst, name),
+    ),
+  );
+}
+
 export function looksLikeAPersonOrFirm(name: string): boolean {
   const tokens = labelTokens(name);
   if (tokens.length < MIN_LEAD_WORDS) return false;

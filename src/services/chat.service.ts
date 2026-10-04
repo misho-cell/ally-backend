@@ -253,6 +253,7 @@ import {
   findWaysIn,
   webResultNames,
   buildFromTheWebMessage,
+  withoutNamesakes,
   WAY_IN_TOOL_NOTE,
   WayIn,
   OpeningSearches,
@@ -7802,7 +7803,7 @@ async function executeToolCall(
        * each firm rather than in a section it read a minute ago.
        */
       const waysIn = await findWaysIn(userId, webResultNames(found), { threadId, runId });
-      noteWaysIn(runId, waysIn);
+      noteWaysIn(runId, withoutNamesakes(String(input['query'] ?? ''), waysIn));
       if (waysIn.size === 0) return found;
       return {
         ...(found as Record<string, unknown>),
@@ -10519,7 +10520,7 @@ function startOpeningSearches(
       // the web" message, whenever they arrive. If the run finishes first the
       // message simply does not carry them, which is what it already does when
       // the search times out.
-      noteWaysIn(runId, found.waysIn);
+      noteWaysIn(runId, withoutNamesakes(goalText, found.waysIn));
     })
     .catch((err: unknown) => {
       // eslint-disable-next-line no-console
