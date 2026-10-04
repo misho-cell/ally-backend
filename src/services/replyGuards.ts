@@ -437,10 +437,38 @@ export function withoutClosingApprovalAsk(text: string): string {
   const trimmed = text.trimEnd();
   if (!/[?？]$/u.test(trimmed)) return text;
   const start = closingSentenceStart(trimmed);
-  if (!asksToApproveAPlan(trimmed.slice(start))) return text;
+  const closing = trimmed.slice(start);
+  if (!asksToApproveAPlan(closing) && !asksWhichRoute(closing)) return text;
   const before = trimmed.slice(0, start).trimEnd();
   return before === '' ? text : before;
 }
+
+/**
+ * The tester's 1145 (37808): „რომელი გზა წავიღო?" closed a reply whose card had
+ * only „შევცვალოთ" and „სხვა" — the same unanswerable choice as an approval
+ * question with its button taken off.
+ */
+const ASKS_WHICH_ROUTE_RE = /(რომელ\S*\s+გზ\S*|\bwhich\s+(?:route|way)\b|как(?:ой|им)\s+пут)/iu;
+
+export function asksWhichRoute(text: string): boolean {
+  return ASKS_WHICH_ROUTE_RE.test(text);
+}
+
+/**
+ * The tester's 1145 (37808): an invitation was prepared for „ანა დიზაინერი"
+ * when the owner had only said he needs a designer. An invitation is prepared
+ * on the owner's word: one asking for an invitation or its text, or approving.
+ */
+const ASKS_FOR_AN_INVITE_RE =
+  /(მოწვ|მოვიწვ|მოიწვ|მოსაწვ|დაპატიჟ|ტექსტ|\binvit|\btext\b|пригла|текст)/iu;
+
+export function asksForAnInvite(ownerLine: string): boolean {
+  return ASKS_FOR_AN_INVITE_RE.test(ownerLine);
+}
+
+export const INVITE_NOT_ASKED =
+  'Not prepared: the owner did not ask to invite anyone. Say in one line that you can prepare ' +
+  'an invitation for this person, and prepare it only on their word.';
 
 /**
  * #961 (37554): a button that offers to send to people — „კი, გაუგზავნე

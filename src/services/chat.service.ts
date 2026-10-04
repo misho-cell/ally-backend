@@ -284,6 +284,8 @@ import {
   withoutDanglingLeadIn,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  INVITE_NOT_ASKED,
+  asksForAnInvite,
   PROMISED_ACTION_NO_GOAL_NUDGE,
   FINDS_FIRST_NUDGE,
   isOnlyAQuestion,
@@ -8481,6 +8483,16 @@ async function executeToolCall(
       return { deleted: await deleteAnswerRule(userId, ruleId) };
     }
     case 'invite_contact': {
+      // The tester's 1145 (37808): an invitation nobody asked for. A run that
+      // answers the owner's own words prepares one only when they ask or approve.
+      const ownerLine = runId === undefined ? undefined : runOwnerLine.get(runId);
+      if (
+        ownerLine !== undefined &&
+        !asksForAnInvite(ownerLine) &&
+        !isApproveChoice(ownerLine.trim())
+      ) {
+        return { invited: false, error: INVITE_NOT_ASKED };
+      }
       const langRaw = String(input['language'] ?? 'ka');
       const lang = langRaw === 'en' || langRaw === 'ru' || langRaw === 'es' ? langRaw : 'ka';
       const invite = await inviteContact(userId, String(input['phone'] ?? ''), lang);
