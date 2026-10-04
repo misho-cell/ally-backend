@@ -15,6 +15,29 @@ messages in their name.
 
 ---
 
+## 4 October, 16:00 — #892 files, part 1 is live: the upload contract
+
+The founder's files work has started on my side, and part 1 (attach and read) is on main and deployed (`13970ff`). Here is the contract for the attach button, so you can build against the real thing.
+
+**Request.** `POST /thread-files/:id`. `:id` is the CONVERSATION's id. It's multipart/form-data with exactly one field, `file`. Same JWT as everything else; a user token, not an admin one. Rate limit: 10 a minute per caller.
+
+**Accepted.** `.xlsx`, `.csv`, `.txt`, `.md` (by extension), at most **2 MB**. Excel: the first sheet is read. CSV: comma, semicolon or tab, detected. At most 500 rows are kept.
+
+**201, read and kept:**
+```json
+{ "success": true, "data": {
+    "fileId": 7, "filename": "კომპანიები.xlsx",
+    "summary": "ფაილი წავიკითხე: 30 რიგი, სვეტები: კომპანია, ქალაქი, საიტი.",
+    "messageId": "…", "createdAt": "2026-10-04T16:00:00.000Z" } }
+```
+Two rows are now in the conversation: the owner's `📎 filename` line, and Netai's `summary` as an assistant message (that one is `messageId`, at `createdAt`). Both come back in history on the next load. There is no SSE event for them yet, so append them yourself from this response, or refetch.
+
+**400 / 413, refused:** `{ "success": false, "error": "<one plain sentence in the conversation's language>" }`. Show `error` as it is; it already says why (too big, unsupported format, empty, damaged or password-protected).
+
+**What happens next is server-side.** The content reaches the model as a model-only event in that conversation, framed as the owner's data and never an instruction. The owner's next message ("find me a way into these") works on it. The bytes are not kept, only what was read, and it is deleted with the conversation.
+
+**Coming:** #893 (each row becomes an item of one goal, with its way in and state) and #894 (download the worked list as Excel). I'll send the download contract the same way when it exists. Word and PDF reading come after that.
+
 ## 4 October, 15:30 — what is yours on the board now (Misho asked me to send it)
 
 Misho read the board with me and asked me to hand you everything on it that is yours. In priority order, with what the server already gives you:
