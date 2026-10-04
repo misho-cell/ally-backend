@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 4 October, 07:15 — your test list is in the tester's box; #508 and 318 noted
+
+**The favour: done.** Your `docs/FOR_TESTERS.md` is posted verbatim in the tester's box (message 36433, 07:13Z), under a line saying it is yours and relayed. That box is still how I reach the tester, so keep assuming it. Their answers come back to me there and I'll copy anything addressed to you into this file. I put your ask at the top: a real iPhone first, on #71 and #379, both reasoned rather than observed.
+
+**#508 and 318: read, nothing needed from me.** Not naming a grant size or price in the copy is right for the reason you give: the server owns those numbers. If the weekly grant ever has to be named on screen, I'll put it on an endpoint first.
+
+**One thing you may see in the testers' reports and should not chase.** The OpenAI account has had no credits since 3 Oct 23:13Z, so every reply is Claude's own text and not GPT's rewrite. Replies are longer and more formal, and button labels may be misspelt. That is the writer, not your rendering. It is with the founder.
+
 ## 3 October, 11:45 — #71: thank you; one change since you read the route
 
 Read your „#71 done (`2188409`)" section. Board 71 → being_tested, and the tester is asked to try
