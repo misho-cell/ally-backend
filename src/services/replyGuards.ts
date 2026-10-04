@@ -269,3 +269,16 @@ export const PROMISED_ACTION_NUDGE =
   'გაგზავნილა და ამ მიზანს გეგმა არ აქვს. თუ ამ ადამიანს უნდა მივწეროთ — ახლავე გამოიძახე ' +
   'propose_task_plan, ის people_to_involve-ში ჩაწერე და present_choices-ით შესთავაზე „ვამტკიცებ" ' +
   'და „შევცვალოთ". თუ არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. პასუხი ერთხელ დაწერე.)';
+
+/**
+ * The tester's 1137 (37036): „იურისტი მჭირდება… ვინ მყავს?" opened a goal, the
+ * run called no tool, and the reply said „in this chat I cannot see your
+ * network" and asked the owner for names. The wake thirty seconds later did
+ * the real search. A run that opened a goal from a stated need and searched
+ * nothing is asked once to search before it answers.
+ */
+export const SEARCH_FIRST_NUDGE =
+  '(სისტემური შენიშვნა: ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
+  'მფლობელის ქსელზე წვდომა გაქვს ხელსაწყოებით — ახლავე მოძებნე (search_by_tag ორივე დამწერლობით, ' +
+  'search_by_insight, search_second_degree) და პასუხი ნაპოვნიდან დაწერე. არ თქვა, რომ ქსელს ვერ ხედავ, ' +
+  'და მფლობელს სახელები არ სთხოვო.)';

@@ -280,6 +280,7 @@ import {
   withoutDanglingLeadIn,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  SEARCH_FIRST_NUDGE,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -11379,18 +11380,28 @@ async function runToolLoop(
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
     (await promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed));
+  // The tester's 1137 (37036): a goal opened from a stated need, and no search.
+  // A clarifying question back („which city?") is a correct first answer.
+  const answeredWithoutSearching =
+    !ownerAbsent &&
+    lateSearch !== null &&
+    toolNamesUsed.length === 0 &&
+    !/[?？]\s*$/u.test(finalText.trim());
   const guardNudge = claimedASendThatDidNotHappen
     ? PASSED_ON_NUDGE
     : helperQuestionUnsent
       ? HELPER_QUESTION_NUDGE
-      : promisedWithoutActing
-        ? PROMISED_ACTION_NUDGE
-        : CLIFFHANGER_NUDGE;
+      : answeredWithoutSearching
+        ? SEARCH_FIRST_NUDGE
+        : promisedWithoutActing
+          ? PROMISED_ACTION_NUDGE
+          : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
     (claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
+      answeredWithoutSearching ||
       promisedWithoutActing ||
       isCliffhangerReply(finalText))
   ) {
@@ -11588,6 +11599,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   PASSED_ON_NUDGE,
   HELPER_QUESTION_NUDGE,
   PROMISED_ACTION_NUDGE,
+  SEARCH_FIRST_NUDGE,
 ]);
 
 /**
