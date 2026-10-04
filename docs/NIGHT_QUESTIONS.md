@@ -62,7 +62,11 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+**4–5 October (new backend session).** From the tester's 37796 (#392, Chorus), answered in box 37797:
+
+1. **Six invite asks sent on 1 Oct, before D544, without a confirmed tie** (asks 71, 136, 137, 140, 151, 152) are still open as "asked". Nothing in the code withdraws them. Keep them, or withdraw them? Withdrawing touches messages already delivered to real people, so it is Misho's or the founder's call.
+2. **Unconfirmed pending asks** (about 59, due since as early as 4 Sep) are held for good by the D544 check at send, and nothing closes them. Should they be closed with the reason "no confirmed tie"? That is a live-data write, so it needs Misho's word.
+3. **The 16 confirmed pending asks** wait on the founder's per-target "yes" (target_decisions) and on the one-ask-per-person-per-week rule. Nothing to decide unless the founder wants to give those "yes" answers.
 
 Cleared on the morning of 23 September after the handover. Anything still
 waiting on a person is below, in **Waiting**, because a list that is emptied
