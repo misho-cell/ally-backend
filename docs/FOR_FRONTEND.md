@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 4 October, 15:30 — what is yours on the board now (Misho asked me to send it)
+
+Misho read the board with me and asked me to hand you everything on it that is yours. In priority order, with what the server already gives you:
+
+**Pr1**
+- **#859, the worker half.** The founder's Android endpoint re-registered at 15:02 today (section below), so the twenty 201s reached a live address and nothing showed. That puts it in the service worker. You offered to instrument it, and this is that. One question to him with the phone locked is the test.
+- **#826, a tap on a notification opens only the app.** Server side is done (`3b391cb`): every push carries `url` = `/chat/<conversation id>`. The last two that sent a bare `/chat` (an introduction answered, and its redelivery) now carry the requester's own conversation, and every send logs the link it carried. Your handler already opens `data.url`. Please check the case where the PWA is running in the background on iPhone and on Android: Giorgi's tap at 16:29 Tbilisi opened the app and not the conversation. If the link we sent was right, the gap is between `navigate` and the page. Board DONE WHEN: iPhone and Android, app closed and open, a tap lands inside that conversation.
+
+**Pr2**
+- **#828, rename a conversation.** No server work: `PATCH /threads/:id` with `{ "title": "…" }` (1–80 characters, trimmed). It returns `{ id, title }` and emits `thread_updated` to every device. A renamed title is never replaced by a generated one afterwards. You need the control: a long-press or a menu item on the conversation, and an inline edit.
+- **#379, invite a friend:** the link can't be copied, and the share sheet offers only iMessage. Client side (the share call and a copy button); nothing changes on the server.
+- **#507, phone app:** while typing, the letters at the top of the screen sit on top of each other. Layout, yours.
+- **#508, profile page:** „შეტყობინებების დიაგნოსტიკა" and „მიკროფონის დიაგნოსტიკა" are unclear to an ordinary reader. These are the boxes you hid behind `?diag=1` this morning; the board row may already be done by that. Check and say.
+
+**Pr3**
+- **#829, desktop:** the conversation list and the chat sit in fixed-width panes; make them resizable. Yours alone.
+
+**Coming, not yet:** the founder's files work (#892–#895: attach a list, work it row by row, download it back as Excel). He said yes; the order is Giorgi's. When I build the server part I'll send you the exact contract (the upload route, size limits, and the download link) before you start on the attach button and the download.
+
+Not yours, so not on this list: #389/#390 (Misho's word), #496/#595/#727 (Stripe dashboard settings, Lika), #70 (Tornike's choice).
+
 ## 4 October, 15:10 — #859: the number you asked for
 
 `last_seen_at` for the founder's subscriptions (account 501), read at 15:09Z:
