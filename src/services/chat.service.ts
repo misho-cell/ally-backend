@@ -10426,10 +10426,18 @@ function respeltChoices(
     (label) => isApproveChoice(label) || isChangeChoice(label),
   );
   const changed = corrected.filter((label, i) => label !== choices[i]).length;
-  if (changed > 0) {
-    // eslint-disable-next-line no-console
-    console.log(`[choices] run ${runId}: ${changed} button label(s) respelt by the final writer`);
-  }
+  // The tester's 1133 (36530): a garbled label stayed under a GPT-written answer
+  // and the log could not say whether GPT had offered a spelling. Counts only.
+  const refused = corrected.filter(
+    (label, i) => label === choices[i] && fromGpt?.[i] !== undefined && fromGpt[i] !== label,
+  ).length;
+  // eslint-disable-next-line no-console
+  console.log(
+    `[choices] run ${runId}: ${choices.length} label(s), ` +
+      (fromGpt === null
+        ? 'the final writer returned none'
+        : `${fromGpt.length} returned, ${changed} respelt, ${refused} kept as written`),
+  );
   return corrected;
 }
 
@@ -13446,8 +13454,9 @@ export async function processChat(
     language,
   );
   // Ticket 19 [7]: counted, not rewritten — see labelCramsTwoThings.
+  // The server's own „სხვა, მე დავწერ" is one thing, and was counted on every run.
   for (const label of storedChoices ?? []) {
-    if (labelCramsTwoThings(label)) {
+    if (labelCramsTwoThings(label) && !isOtherChoiceTap(label)) {
       // eslint-disable-next-line no-console
       console.log(`[crammed-label] run ${runId} thread ${threadId}: two things in one button`);
     }

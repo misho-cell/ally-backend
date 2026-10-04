@@ -36,6 +36,12 @@ describe('which corrected labels are kept', () => {
     ).toEqual(['შევაჩეროთ', 'პასუხს ველოდები']);
   });
 
+  it('takes a fix for one garbled word in a short label (1133, 36530)', () => {
+    expect(
+      correctedLabels(['მაიას ვაქვანაქრ გაცნობა'], ['მაიას ვთხოვ გაცნობას'], keepNone),
+    ).toEqual(['მაიას ვთხოვ გაცნობას']);
+  });
+
   it('refuses a rewording', () => {
     expect(correctedLabels(['შევაჩყოთ'], ['მოდი ყველაფერი გავაუქმოთ ახლავე'], keepNone)).toEqual([
       'შევაჩყოთ',

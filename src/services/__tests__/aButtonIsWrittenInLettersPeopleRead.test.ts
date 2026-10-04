@@ -14,6 +14,11 @@ describe('a button label', () => {
     });
   });
 
+  it('with a Georgian-block code point that is no letter at all is caught (1133, 36599)', () => {
+    expect(labelWithForeignLetter(['ვამტკი჊ებ'])?.letter).toBe('჊');
+    expect(labelWithForeignLetter(['ვამტ�იცებ'])?.letter).toBe('�');
+  });
+
   it('with an Armenian letter that looks close enough to pass is caught', () => {
     expect(labelWithForeignLetter(['დիახ'])?.letter).toBe('ի');
   });

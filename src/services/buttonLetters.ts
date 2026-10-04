@@ -10,8 +10,13 @@
  * anyone types today, and Armenian, whose letters sit beside them and look
  * close enough to pass at a glance. Mtavruli (modern Georgian capitals) is not
  * here: the storage scrub already writes it as Mkhedruli.
+ *
+ * The tester's 1133 (36599): „ვამტკი჊ებ" — U+10CA, a code point in the
+ * Georgian block that has no letter at all, rendered as a broken glyph. The
+ * whole old-script tail of the block (U+10A0–U+10CF and U+2D00–U+2D2F) is
+ * caught, assigned or not, and so is the replacement character.
  */
-const FOREIGN_LETTER_RE = /[Ⴀ-Ⴥⴀ-ⴥԱ-Ֆա-և]/u;
+const FOREIGN_LETTER_RE = /[Ⴀ-჏ⴀ-⴯�Ա-Ֆա-և]/u;
 
 /** The first label that carries such a letter, with the letter; null when all are clean. */
 export function labelWithForeignLetter(

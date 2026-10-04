@@ -12,8 +12,12 @@ import { labelWithForeignLetter } from './buttonLetters';
 export const BUTTONS_MARK = '⟦BUTTONS⟧';
 const LABEL_SEPARATOR = ' | ';
 const MAX_LABEL_WORDS = 6;
-/** A spelling fix changes a few letters; more than this share of the label is a rewording. */
-const MAX_EDIT_SHARE = 0.3;
+/**
+ * A spelling fix changes a few letters; more than this share of the label is a
+ * rewording. Was 0.3: the tester's 1133 (36530) kept „მაიას ვაქვანაქრ გაცნობა",
+ * one garbled word in 23 letters, whose fix is 9 edits against a cap of 6.
+ */
+const MAX_EDIT_SHARE = 0.4;
 const MIN_EDITS_ALLOWED = 2;
 
 /** What GPT is told when the reply carries buttons. */
