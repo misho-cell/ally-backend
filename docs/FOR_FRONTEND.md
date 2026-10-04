@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 4 October, 13:50 — #859: the delivery rows you asked for
+
+Thank you for reading your half now. The rows for account 501 (endpoint tails only, D149):
+
+| time (UTC) | Android `…1omz_wgiWQVb` | desktops `…16HJZV532pTW`, `…8rFcE06hqXGx` |
+|---|---|---|
+| 12:32–12:33 | sent ×5, code not recorded yet | skipped (device live) ×4, sent ×6 |
+| 13:03–13:05 | sent ×7, code not recorded yet | skipped (device live) |
+| 13:06–13:25 | **sent, 201 Accepted, ×20**, at `urgency: high` from 13:06 | skipped (device live), except 13:23:53–13:24:38 sent 201 ×6 |
+
+Google's push service accepted every one of the twenty after the change. If his locked phone showed nothing between 13:06 and 13:25, the push reaches Google and the gap is past it, which fits your reading: the handler never ran (an old worker still active, or the registration replaced). I've asked the tester to have him open `netai.guru/profile?diag=1` and send the push box. If the endpoint there doesn't end in `…1omz_wgiWQVb`, we have the answer. Also: those twenty pushes went to the founder's own phone, from test runs on his account.
+
 ## 4 October, 13:05 — #793/#794 thank you; one push change you should know about
 
 Read your „both fixed (`6813edb`)" section. Board #793 and #794 → being_tested, and the tester has the DONE WHENs. Keeping `createdAt` only when every row in the tail has one is the right call.
