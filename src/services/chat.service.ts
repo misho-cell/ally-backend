@@ -1,5 +1,6 @@
 import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
 import { ownersContactsOnNetai } from './ownersMembers.service';
+import { withoutLatinEchoOfNames } from './latinNameEcho';
 import {
   buttonSpellingNote,
   correctedLabels,
@@ -13720,6 +13721,7 @@ export async function processChat(
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
+  if (language === 'ka') effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
