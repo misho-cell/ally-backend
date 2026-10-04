@@ -13721,9 +13721,19 @@ export async function processChat(
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
     effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language);
   }
-  if (!effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0)) {
-    effectiveFinal = RUN_STRINGS[language].choicesOnly;
+  const onlyButtons =
+    !effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0);
+  // The tester's 1145 (37893): the plan turn the server started after a goal was
+  // saved wrote no words, only buttons, and the owner read „აირჩიე ერთ-ერთი:" under
+  // the answer that already carried its own. A run started by an event that has
+  // nothing to say ends quietly; „pick one:" is for a reply to the owner's words.
+  if (onlyButtons && userMessage.startsWith(RUN_EVENT_PREFIX)) {
+    // eslint-disable-next-line no-console
+    console.log(`[chat] run ${runId} thread ${threadId}: an event run left only buttons — quiet`);
+    clearRunState(runId);
+    return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
+  if (onlyButtons) effectiveFinal = RUN_STRINGS[language].choicesOnly;
   if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: system run did its work silently`);
