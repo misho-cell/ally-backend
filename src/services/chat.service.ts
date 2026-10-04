@@ -286,6 +286,7 @@ import {
   offersToSend,
   MEMBERS_SKIPPED_NUDGE,
   withoutSendItQuestion,
+  withoutOpeningSolvedWhen,
   withoutClosingApprovalAsk,
 } from './replyGuards';
 import {
@@ -13581,6 +13582,7 @@ export async function processChat(
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
+  if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {

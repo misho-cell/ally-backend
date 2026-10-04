@@ -364,3 +364,21 @@ const OFFERS_TO_SEND_RE =
 export function offersToSend(label: string): boolean {
   return OFFERS_TO_SEND_RE.test(label);
 }
+
+/**
+ * The tester's 37629: a goal's first reply opened on „მოგვარებულად ჩაითვლება,
+ * როცა…" — the plan's own first line, written into a reply that proposed no
+ * plan and was still asking a question. Without a plan in the run, an opening
+ * paragraph that defines „solved" goes; the rest of the reply stays.
+ */
+const OPENING_SOLVED_WHEN_RE =
+  /^\s*(?:(?:მიზანი\s+)?მოგვარებულად\s+ჩაითვლება|(?:this|the goal|it)\s+(?:will\s+)?counts?\s+as\s+(?:solved|done)|(?:задача|цель)\s+(?:будет\s+)?(?:решена|считается\s+решённой))/iu;
+
+export function withoutOpeningSolvedWhen(text: string): string {
+  if (!OPENING_SOLVED_WHEN_RE.test(text)) return text;
+  const trimmed = text.trimStart();
+  const breakAt = trimmed.search(/\n\s*\n/u);
+  if (breakAt === -1) return text;
+  const rest = trimmed.slice(breakAt).trimStart();
+  return rest === '' ? text : rest;
+}
