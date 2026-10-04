@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { SEARCH_FIRST_NUDGE } from '../replyGuards';
+import { SEARCH_FIRST_NUDGE, asksAboutOwnPeople } from '../replyGuards';
 
 /**
  * The tester's 1137 (37036): a goal opened from „იურისტი მჭირდება… ვინ მყავს?",
@@ -17,12 +17,24 @@ describe('a run that opened a goal and searched nothing', () => {
   it('fires only on a goal opened from a stated need, with no tool, and no question back', () => {
     expect(chat).toContain('lateSearch !== null &&');
     expect(chat).toContain('toolNamesUsed.length === 0 &&');
-    expect(chat).toContain('!/[?？]\\s*$/u.test(finalText.trim());');
+    expect(chat).toContain(
+      "(!/[?？]\\s*$/u.test(finalText.trim()) || asksAboutOwnPeople(runOwnerLine.get(runId) ?? ''));",
+    );
     expect(chat).toContain('? SEARCH_FIRST_NUDGE');
   });
 
   it('is never shown as the owner’s own words', () => {
     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
     expect(set.slice(0, 300)).toContain('SEARCH_FIRST_NUDGE,');
+  });
+});
+
+/** The tester's 1145 (37898): „maybe my friends know" answered with only „which city?". */
+describe('a question back to the owner’s ask about their own people', () => {
+  it('does not excuse the search', () => {
+    expect(asksAboutOwnPeople('ინგლისურის კურსები მინდა. იქნებ ნაცნობებმა იციან.')).toBe(true);
+    expect(asksAboutOwnPeople('ელექტრიკოსი მჭირდება. ვინ მყავს კონტაქტებში?')).toBe(true);
+    expect(asksAboutOwnPeople('Maybe my friends know someone')).toBe(true);
+    expect(asksAboutOwnPeople('კარგი თვალის კლინიკა მირჩიე თბილისში.')).toBe(false);
   });
 });

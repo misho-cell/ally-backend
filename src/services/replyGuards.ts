@@ -348,6 +348,17 @@ export const FINDS_FIRST_NUDGE =
  * the real search. A run that opened a goal from a stated need and searched
  * nothing is asked once to search before it answers.
  */
+/**
+ * The tester's 1145 (37898): „იქნებ ნაცნობებმა იციან" — the owner asked about
+ * the people they know, which no city or detail is needed to search.
+ */
+const ASKS_ABOUT_OWN_PEOPLE_RE =
+  /(ნაცნობ|კონტაქტ|მეგობრ|ვინ\s+მყავს|\bfriends?\b|\bcontacts?\b|who\s+do\s+i\s+know|знаком|друз|контакт)/iu;
+
+export function asksAboutOwnPeople(ownerLine: string): boolean {
+  return ASKS_ABOUT_OWN_PEOPLE_RE.test(ownerLine);
+}
+
 export const SEARCH_FIRST_NUDGE =
   '(სისტემური შენიშვნა: ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
   'მფლობელის ქსელზე წვდომა გაქვს ხელსაწყოებით — ახლავე მოძებნე (search_by_tag ორივე დამწერლობით, ' +

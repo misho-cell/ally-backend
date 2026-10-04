@@ -286,6 +286,7 @@ import {
   PROMISED_ACTION_NUDGE,
   INVITE_NOT_ASKED,
   asksForAnInvite,
+  asksAboutOwnPeople,
   PROMISED_ACTION_NO_GOAL_NUDGE,
   FINDS_FIRST_NUDGE,
   isOnlyAQuestion,
@@ -11750,11 +11751,14 @@ async function runToolLoop(
   const membersSkipped = !ownerAbsent && skippedTheMembersFound(runId, finalText, toolNamesUsed);
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
   // A clarifying question back („which city?") is a correct first answer.
+  // The tester's 1145 (37898): „maybe my friends know" and the reply was only
+  // „which city?" — the owner's own contacts need no city, so that question
+  // does not excuse the search.
   const answeredWithoutSearching =
     !ownerAbsent &&
     lateSearch !== null &&
     toolNamesUsed.length === 0 &&
-    !/[?？]\s*$/u.test(finalText.trim());
+    (!/[?？]\s*$/u.test(finalText.trim()) || asksAboutOwnPeople(runOwnerLine.get(runId) ?? ''));
   // #960 (the tester's 1145): a goal run that never listed them — read from the phonebook.
   // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
