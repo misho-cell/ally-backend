@@ -12593,6 +12593,9 @@ export async function processChat(
   ensureQuoted?: QuoteGuarantee,
   intent?: RunIntent,
 ): Promise<ChatResult> {
+  // The tester's 1136 (37071): „როგორ ხარ?" took 10.1 s and the run itself 4.1 s.
+  // Where the time before the model goes is logged, so it is a number.
+  const startedAt = Date.now();
   // Row 113 fourth pass: registered before anything else, so a stop pressed
   // one second from now can tell this run apart from the one the owner starts
   // afterwards. Every path into a run comes through here — the route, an
@@ -12870,6 +12873,7 @@ export async function processChat(
     buildToolsForThread(userId, thread.type, ownerAbsent),
     loadHistory(threadId),
   ]);
+  const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
   runModes.set(runId, agentPrompt.runMode);
@@ -13142,6 +13146,11 @@ export async function processChat(
     );
   }
 
+  // eslint-disable-next-line no-console
+  console.log(
+    `[timing] run ${runId}: prompt and history ready at ${promptReadyMs}ms, ` +
+      `the model called at ${Date.now() - startedAt}ms`,
+  );
   const {
     finalText,
     pending,
