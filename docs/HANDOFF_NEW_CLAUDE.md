@@ -97,7 +97,7 @@ Secrets (passwords, tokens, keys) are **not** in this file or anywhere in git. M
 ### 2. Daily workflow
 
 **Box**
-- Read with `./scripts/ops/box.sh read <last_id>`. The last id handled by the old session is **37489** (tester post 1145). Box 37588 is the old session's last post.
+- Read with `./scripts/ops/box.sh read <last_id>`. The last id handled by the old session is **37489** (tester post 1145). The old session's last posts are 37621 (hourly) and 37623 (the D648/D651 plan). Last tester post read: 37622 (round 21, no restart until 20:10Z).
 - Post: write the body to a scratchpad file, then run
   `python3 -c "import json;print(json.dumps({'author':'claude_backend','body':open('f.txt').read()}))" > f.json`
   and `./scripts/ops/box.sh post f.json`.
@@ -297,16 +297,25 @@ Follow the session's own attribution reminder if it gives one. Never put model n
 - Name case ending "ელიოს" is not fixed.
 - Misho was asked whether to keep the "others have him saved as…" note in replies. Waiting.
 
+**The founder's answers of 4 Oct, 22:43 Tbilisi** (tester post 1146, box 37555). The plan was sent in box 37623.
+
+- **D648: no quotation in either direction, facts exact.** To build after the founder answers TRADE A and TRADE B (box 37623).
+  1. `send_answer_to_asker`: the content goes in the assistant's words, and the #34 own-line restore goes (`helpersOwnWording` in `taskAsks.service.ts`). A server check refuses a send that drops a name, number, price, time or address from the helper's line.
+  2. The answer card (`answerCard.service.ts`, "მოვიდა პასუხი: <name>: „…"") shows "<name> answered" and the content, unquoted.
+  3. The helper's reply line no longer repeats the words ("გადავეცი: „…"" → "I passed it on").
+  4. TRADE A: saved answer rules are reworded once at save (recommended) or at every send.
+  5. TRADE B: stored history stays as it is.
+- **D651:** before each quiet check-in, the server reads members who joined since the goal's last run and match its search words. If any exist, the run offers them; the smaller engine is fine. The tester verifies on fictional seats.
+- **D650:** #959 is not a defect on time. Quality comes before speed; tell the owner at once that the work is on.
+- **D649:** the 30-minute plan-anyway rule stays. Nothing to build.
+
 **Waiting on Misho or the founder**
 - #389 `on_phone`.
 - #390 real-money withdrawal.
 - Giorgi/Lika subscription status.
 - The owner card when a helper relays.
-- #959 thinking time.
-- The plan-anyway-after-30-minutes rule.
-- D631 case 3 (definition sent in box 37258).
 - Dropping the GPT rewrite for small talk.
-- Whether D647 covers arriving answers. This decides the Excel "Netai: პასუხი" column, which currently holds the stored answer with numbers scrubbed.
+- TRADE A and TRADE B for D648 (box 37623).
 
 **Frontend**
 - Their last handled section: "4 Oct — #894 is wired (`60566db`), so the files slice is whole". Attach, work the list and download are live from both sides. Nothing is open on either of us.
