@@ -70,6 +70,7 @@ import {
 import { nextRenewalDay } from './renewalDay';
 import {
   DAY_ONE_EVENT,
+  DAY_ONE_FIRST_PEOPLE,
   INSTRUCTION_EVENT,
   PLAN_FROM_FINDINGS_EVENT,
   PLAN_PROPOSAL_EVENT,
@@ -834,7 +835,6 @@ const DAY_ONE_DELAY_MS = 3_000;
  * it has already written to as many of the plan's people as day one would
  * (all of them, or its first three), day one stands down.
  */
-const DAY_ONE_FIRST_PEOPLE = 3;
 /** An ask sent in the approving run can land a moment before the approval stamp. */
 const DAY_ONE_SENT_GRACE_SECONDS = 120;
 const DAY_ONE_DONE_TIMEOUT_MS = 5_000;

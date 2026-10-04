@@ -3,6 +3,7 @@ import { query } from '../db/postgres/client';
 import { RunLanguage } from './runLanguage';
 import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
 import { scrubText, stripAllowedSpans } from './privacyScrub';
+import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
 
 /**
  * Board #893 (the founder, 4 October): a list the owner gave Netai becomes the
@@ -74,10 +75,28 @@ export interface ListItemLine {
   readonly throughWhom: string | null;
 }
 
+/** Board #893: „the plan says how many today and how many later". */
+export interface ListPortions {
+  /** The contacts with a route day one writes to by itself. */
+  readonly today: number;
+  /** The rest, written to in later waves. */
+  readonly later: number;
+}
+
 export interface ListWorkStarted {
   readonly total: number;
   readonly counts: Readonly<Record<string, number>>;
+  readonly portions: ListPortions;
   readonly items: readonly ListItemLine[];
+}
+
+/** Counted by person: one contact tied to three rows is written to once. */
+export function portionsOf(items: readonly ListItemLine[]): ListPortions {
+  const people = new Set(
+    items.filter((item) => item.throughWhom !== null).map((item) => item.throughWhom),
+  ).size;
+  const today = Math.min(people, DAY_ONE_FIRST_PEOPLE);
+  return { today, later: people - today };
 }
 
 export type ListWorkOutcome =
@@ -128,6 +147,7 @@ export async function startListWork(
     value: {
       total: items.length,
       counts: countByState(items),
+      portions: portionsOf(items),
       items: items.slice(0, MAX_ITEMS_SHOWN),
     },
   };

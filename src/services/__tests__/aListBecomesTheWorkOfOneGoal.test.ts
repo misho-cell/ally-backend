@@ -11,6 +11,7 @@ import {
   listStatus,
   listWorkbook,
   nameColumn,
+  portionsOf,
   startListWork,
   stateOf,
 } from '../listItems.service';
@@ -92,6 +93,7 @@ describe('starting work on a list', () => {
     );
     expect(outcome.value.total).toBe(2);
     expect(outcome.value.counts).toEqual({ route_found: 1, no_route: 1 });
+    expect(outcome.value.portions).toEqual({ today: 1, later: 0 });
     expect(outcome.value.items[0]).toEqual({
       row: 1,
       label: 'Acme',
@@ -104,6 +106,37 @@ describe('starting work on a list', () => {
     const stored = JSON.parse(String((params as unknown[])[2])) as { through_phone: unknown }[];
     expect(stored.map((r) => r.through_phone)).toEqual(['995500000001', null]);
     expect(JSON.stringify(outcome.value)).not.toContain('995500000001');
+  });
+});
+
+/** Board #893: „the plan says how many today and how many later". */
+describe('the portions a list is written to in', () => {
+  const routed = (row: number, who: string | null) => ({
+    row,
+    label: `Row ${row}`,
+    state: who === null ? ListItemState.NoRoute : ListItemState.RouteFound,
+    throughWhom: who,
+  });
+
+  it('are day one’s first three people today and the rest later, counted by person', () => {
+    const items = [
+      routed(1, 'ნინო'),
+      routed(2, 'ნინო'),
+      routed(3, 'გია'),
+      routed(4, 'ლია'),
+      routed(5, 'დათო'),
+      routed(6, null),
+    ];
+    expect(portionsOf(items)).toEqual({ today: 3, later: 1 });
+  });
+
+  it('are nothing today when no row has a route', () => {
+    expect(portionsOf([routed(1, null)])).toEqual({ today: 0, later: 0 });
+  });
+
+  it('are what the tool tells the plan to say', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('from portions — how many people are written to today');
   });
 });
 

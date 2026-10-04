@@ -523,3 +523,10 @@ export const PLAN_FROM_FINDINGS_EVENT: Readonly<Record<RunLanguage, string>> = {
     'para lo que sale. No escribas a nadie hasta que el plan esté aprobado. Si el propietario ' +
     'dijo que no escribamos a nadie, people_to_involve queda vacío.',
 };
+
+/**
+ * How many of the plan's people day one writes to by itself (the tester's L4
+ * round, goal 15320); the rest are written to in later waves. Board #893's
+ * „how many today, how many later" is read from the same number.
+ */
+export const DAY_ONE_FIRST_PEOPLE = 3;
