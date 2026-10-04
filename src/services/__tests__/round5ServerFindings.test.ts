@@ -122,7 +122,7 @@ describe('a helper’s question back in a run that sent nothing', () => {
     expect(HELPER_QUESTION_NUDGE).toContain('confirmed=true');
     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
     expect(set.slice(0, 200)).toContain('HELPER_QUESTION_NUDGE');
-    expect(chat).toContain('claimedASendThatDidNotHappen || helperQuestionUnsent ||');
+    expect(chat).toContain('(claimedASendThatDidNotHappen ||\n      helperQuestionUnsent ||');
   });
 });
 

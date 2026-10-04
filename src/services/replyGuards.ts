@@ -238,3 +238,25 @@ const DANGLING_LEAD_IN_RE = /[:：]\s*$/u;
 export function withoutDanglingLeadIn(narration: string): string {
   return DANGLING_LEAD_IN_RE.test(narration) ? '' : narration;
 }
+
+/**
+ * The tester's 1135 / board #830 (37066, 37070): a goal's reply said „მაკას
+ * ვკითხავ ერთ მოკლე რეკომენდაციას: …" with the question quoted, and the run
+ * had proposed no plan and sent nothing — the owner was told something was
+ * happening and nothing was. A planless goal run that promises to ask or
+ * write to someone is asked once to make the promise real (a plan with that
+ * person, and its card) or to take it back. A question to the owner
+ * („მივწეროთ?") is not a promise.
+ */
+const PROMISES_TO_WRITE_RE =
+  /(ვკითხავ|ვეკითხები|მივწერ(?!ო)|გავუგზავნი|\bi(?:'ll|\s+will)\s+(?:ask|write\s+to|message|reach\s+out\s+to)\b|спрошу|напишу)/iu;
+
+export function promisesToWriteToSomeone(text: string): boolean {
+  return PROMISES_TO_WRITE_RE.test(text);
+}
+
+export const PROMISED_ACTION_NUDGE =
+  '(სისტემური შენიშვნა: შენ დაწერე, რომ ვინმეს ჰკითხავ ან მისწერ, მაგრამ ამ გაშვებაში არაფერი ' +
+  'გაგზავნილა და ამ მიზანს გეგმა არ აქვს. თუ ამ ადამიანს უნდა მივწეროთ — ახლავე გამოიძახე ' +
+  'propose_task_plan, ის people_to_involve-ში ჩაწერე და present_choices-ით შესთავაზე „ვამტკიცებ" ' +
+  'და „შევცვალოთ". თუ არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. პასუხი ერთხელ დაწერე.)';

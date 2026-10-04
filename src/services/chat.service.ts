@@ -278,6 +278,8 @@ import {
   claimsNothingFound,
   withoutCallOffer,
   withoutDanglingLeadIn,
+  promisesToWriteToSomeone,
+  PROMISED_ACTION_NUDGE,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -10397,6 +10399,41 @@ export function isAnswerRound(roundToolNames: readonly string[]): boolean {
  */
 const HOUSEKEEPING_TOOLS: ReadonlySet<string> = new Set(['set_task_wake', 'set_task_brief']);
 
+/** The tools that make a promise to write to someone real, or put it to the owner. */
+const ACTING_TOOLS: ReadonlySet<string> = new Set([
+  'propose_task_plan',
+  'approve_task_plan',
+  'ask_contact',
+  'request_introduction',
+  'relay_ask',
+  'send_answer_to_asker',
+]);
+
+/**
+ * Board #830: the reply promises to ask or write to someone, the run called
+ * none of the tools that would do it, and the goal on this thread has no plan
+ * and none proposed. Read only when the words promise something, so an
+ * ordinary reply never pays for the lookup.
+ */
+async function promisedAnActionItDidNotTake(
+  threadId: number,
+  finalText: string,
+  toolNamesUsed: readonly string[],
+): Promise<boolean> {
+  if (!promisesToWriteToSomeone(finalText)) return false;
+  if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return false;
+  try {
+    const goal = await getGoalOnThread(threadId);
+    return (
+      goal !== null && goal.status === 'open' && goal.plan === null && goal.plan_proposed === null
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[promise] thread ${threadId}: could not read the goal:`, (err as Error).message);
+    return false;
+  }
+}
+
 export function isHousekeepingRound(roundToolNames: readonly string[]): boolean {
   return roundToolNames.length > 0 && roundToolNames.every((name) => HOUSEKEEPING_TOOLS.has(name));
 }
@@ -11307,15 +11344,25 @@ async function runToolLoop(
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
+  const promisedWithoutActing =
+    !ownerAbsent &&
+    !claimedASendThatDidNotHappen &&
+    !helperQuestionUnsent &&
+    (await promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed));
   const guardNudge = claimedASendThatDidNotHappen
     ? PASSED_ON_NUDGE
     : helperQuestionUnsent
       ? HELPER_QUESTION_NUDGE
-      : CLIFFHANGER_NUDGE;
+      : promisedWithoutActing
+        ? PROMISED_ACTION_NUDGE
+        : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
-    (claimedASendThatDidNotHappen || helperQuestionUnsent || isCliffhangerReply(finalText))
+    (claimedASendThatDidNotHappen ||
+      helperQuestionUnsent ||
+      promisedWithoutActing ||
+      isCliffhangerReply(finalText))
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
     // announcement is kept because the log line compares the two texts, and
@@ -11510,6 +11557,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   MISSING_PLAN_NUDGE,
   PASSED_ON_NUDGE,
   HELPER_QUESTION_NUDGE,
+  PROMISED_ACTION_NUDGE,
 ]);
 
 /**
