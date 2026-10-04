@@ -918,6 +918,21 @@ export function thisOneWasOnUs(language: RunLanguage, renewal: string): string {
   }
 }
 
+/**
+ * The tester's 37621: the free answer's own line said the tokens are at zero,
+ * and ten seconds later the engine's wake said „work is paused" about the same
+ * empty balance. Each free-answer line's opening, up to its first dash or
+ * colon — the part the storage scrub never rewrites — so the engine can tell
+ * the owner was told a moment ago.
+ */
+const FREE_ANSWER_OPENINGS: readonly string[] = (Object.keys(RUN_STRINGS) as RunLanguage[]).map(
+  (language) => thisOneWasOnUs(language, '').split(/[—:]/u)[0].trim(),
+);
+
+export function isFreeAnswerLine(content: string): boolean {
+  return FREE_ANSWER_OPENINGS.some((opening) => content.trimStart().startsWith(opening));
+}
+
 export function walledOutOfTokens(language: RunLanguage, renewal: string): string {
   switch (language) {
     case 'en':

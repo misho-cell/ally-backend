@@ -1158,15 +1158,28 @@ export async function getLongestRunStep(threadId: number, runId: string): Promis
  * The same transformation, in the same file, applied by the reader and the
  * writer — so they cannot drift again without both changing.
  */
-export async function lastAssistantMessageIs(threadId: number, text: string): Promise<boolean> {
+const LAST_MESSAGE_QUERY_TIMEOUT_MS = 5_000;
+
+/**
+ * `alsoTold`: another line that already says the same thing (37621 — the free
+ * answer's „tokens are at zero" makes the engine's „work is paused" a repeat).
+ */
+export async function lastAssistantMessageIs(
+  threadId: number,
+  text: string,
+  alsoTold?: (content: string) => boolean,
+): Promise<boolean> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
      WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND content <> ''
      ORDER BY created_at DESC
      LIMIT 1`,
     [threadId],
+    LAST_MESSAGE_QUERY_TIMEOUT_MS,
   );
-  return result.rows[0]?.content === scrubMechanicalForStorage(text);
+  const last = result.rows[0]?.content;
+  if (last === undefined) return false;
+  return last === scrubMechanicalForStorage(text) || (alsoTold?.(last) ?? false);
 }
 
 export async function saveThreadMessage(

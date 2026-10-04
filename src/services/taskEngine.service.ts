@@ -60,7 +60,13 @@ import {
   saveThreadMessage,
   threadLanguage,
 } from './threads.service';
-import { RunLanguage, RUN_STRINGS, answerHeldNoTokens, tokensComeBack } from './runLanguage';
+import {
+  RunLanguage,
+  RUN_STRINGS,
+  answerHeldNoTokens,
+  isFreeAnswerLine,
+  tokensComeBack,
+} from './runLanguage';
 import { nextRenewalDay } from './renewalDay';
 import {
   DAY_ONE_EVENT,
@@ -356,7 +362,11 @@ export async function wakeTask(
        * against the thread's last assistant message answers the question that
        * is actually being asked: has this person already been told THIS.
        */
-      if (!(await lastAssistantMessageIs(thread.id, line))) {
+      // 37621: the plain pause repeats a free answer's token line said a moment ago;
+      // a line that carries someone's news is still said.
+      const alsoTold =
+        pauseLine === RUN_STRINGS[language].goalPausedNoTokens ? isFreeAnswerLine : undefined;
+      if (!(await lastAssistantMessageIs(thread.id, line, alsoTold))) {
         await saveThreadMessage(thread.id, Number(ownerId), 'assistant', line).catch(
           () => undefined,
         );

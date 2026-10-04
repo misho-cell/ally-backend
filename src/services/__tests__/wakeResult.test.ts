@@ -50,7 +50,7 @@ import { getThread, lastAssistantMessageIs, saveThreadMessage, Thread } from '..
 import { checkRunAllowance } from '../tokenWallet.service';
 import { processChat } from '../chat.service';
 import { nextRenewalDay } from '../renewalDay';
-import { tokensComeBack } from '../runLanguage';
+import { thisOneWasOnUs, tokensComeBack } from '../runLanguage';
 import { startDayOne, startPlanProposal, wakeTask } from '../taskEngine.service';
 import { clearThreadQueue, enterThread, leaveThread, threadHolder } from '../threadRunQueue';
 
@@ -125,6 +125,18 @@ describe('wakeTask says WHY it did not wake', () => {
 
     expect(await wakeTask(4258, 'ნაბიჯი')).toBe('stopped');
     expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  /** The tester's 37621: the free answer's token line, then „paused" ten seconds later. */
+  it('lets the plain pause count a free answer’s token line as already said', async () => {
+    mockThread.mockResolvedValue(thread());
+    mockAllowance.mockResolvedValue({ allowed: false } as never);
+
+    await wakeTask(4258, 'ნაბიჯი');
+
+    const alsoTold = mockLastSaid.mock.calls[0][2];
+    expect(alsoTold?.(thisOneWasOnUs('ka', 'ორშაბათს'))).toBe(true);
+    expect(alsoTold?.('სხვა რამე.')).toBe(false);
   });
 
   /**
