@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { promisesToWriteToSomeone, PROMISED_ACTION_NUDGE } from '../replyGuards';
+import {
+  asksToApproveAPlan,
+  promisesToWriteToSomeone,
+  PROMISED_ACTION_NUDGE,
+} from '../replyGuards';
 
 /**
  * Board #830 (the tester's 1135, 37066): „მაკას ვკითხავ ერთ მოკლე
@@ -45,5 +49,20 @@ describe('a reply that promises to write to someone', () => {
   it('is never shown as the owner’s own words', () => {
     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
     expect(set.slice(0, 300)).toContain('PROMISED_ACTION_NUDGE,');
+  });
+});
+
+/** #961 (37322): „გეგმის დასამტკიცებლად მითხარი: კი?" with no plan and no card. */
+describe('a reply that asks to approve a plan', () => {
+  it('is recognised', () => {
+    expect(asksToApproveAPlan('გეგმის დასამტკიცებლად მითხარი: კი?')).toBe(true);
+    expect(asksToApproveAPlan('Tell me yes to approve the plan.')).toBe(true);
+    expect(asksToApproveAPlan('გოჩა შენს კონტაქტებშია.')).toBe(false);
+  });
+
+  it('takes the same guard turn when no plan was proposed', () => {
+    expect(chat).toContain(
+      'if (!promisesToWriteToSomeone(finalText) && !asksToApproveAPlan(finalText)) return false;',
+    );
   });
 });

@@ -281,6 +281,7 @@ import {
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
   SEARCH_FIRST_NUDGE,
+  asksToApproveAPlan,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -10481,7 +10482,9 @@ async function promisedAnActionItDidNotTake(
   finalText: string,
   toolNamesUsed: readonly string[],
 ): Promise<boolean> {
-  if (!promisesToWriteToSomeone(finalText)) return false;
+  // #961 (37322): asking the owner to approve a plan that was never proposed is
+  // the same broken promise — and the same answer, a plan with its card.
+  if (!promisesToWriteToSomeone(finalText) && !asksToApproveAPlan(finalText)) return false;
   if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return false;
   try {
     const goal = await getGoalOnThread(threadId);

@@ -286,3 +286,15 @@ export const SEARCH_FIRST_NUDGE =
   'მფლობელის ქსელზე წვდომა გაქვს ხელსაწყოებით — ახლავე მოძებნე (search_by_tag ორივე დამწერლობით, ' +
   'search_by_insight, search_second_degree) და პასუხი ნაპოვნიდან დაწერე. არ თქვა, რომ ქსელს ვერ ხედავ, ' +
   'და მფლობელს სახელები არ სთხოვო.)';
+
+/**
+ * #961 (the tester's 1137/1138, 37322): „გეგმის დასამტკიცებლად მითხარი: კი?" —
+ * the reply asked the owner to approve a plan the run had never proposed, so
+ * there was no card and a typed „კი" had nothing to approve.
+ */
+const ASKS_TO_APPROVE_A_PLAN_RE =
+  /(გეგმ\S*\s+(?:დასამტკიცებლად|დაამტკიცე|დამტკიცება|ამტკიცებ)|დაამტკიცე\s+გეგმა|\bapprove\s+(?:the|this|my)\s+plan\b|утверди(?:ть)?\s+план)/iu;
+
+export function asksToApproveAPlan(text: string): boolean {
+  return ASKS_TO_APPROVE_A_PLAN_RE.test(text);
+}
