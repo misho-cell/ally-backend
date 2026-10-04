@@ -48,7 +48,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
-import { isSmallTalk } from './smallTalk';
+import { isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
@@ -10637,10 +10637,11 @@ async function runToolLoop(
   // #67: the owner asked to discuss first; until they ask for action, every turn is talk.
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
+  const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: stream,
     model: TOOL_TURN_MODEL,
-    ...(otherTap && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
   });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no

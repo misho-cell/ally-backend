@@ -18,3 +18,16 @@ const SMALL_TALK_RE =
 export function isSmallTalk(message: string): boolean {
   return isBareGreeting(message) || SMALL_TALK_RE.test(message);
 }
+
+/** Small talk that needs something looked up: the weather is live, and is not answered from memory. */
+const NEEDS_A_LOOKUP_RE = /(ამინდ|weather|погод|tiempo)/iu;
+
+/**
+ * The tester's 1131 (rows 1 and 2): small talk took 6–24 s with no tool doing
+ * anything useful, and „მადლობა" inside a goal ran check_my_inbox and answered
+ * with a waiting introduction. A listed small-talk line is answered in one
+ * short turn with no tools — except the weather, which has to be looked up.
+ */
+export function isToolFreeSmallTalk(message: string): boolean {
+  return isSmallTalk(message) && !NEEDS_A_LOOKUP_RE.test(message);
+}

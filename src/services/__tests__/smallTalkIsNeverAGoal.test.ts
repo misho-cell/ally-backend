@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isSmallTalk } from '../smallTalk';
+import { isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
 import { seeksAPerson } from '../goalIntent';
 import { smallTalkTurn } from '../chat.service';
 
@@ -96,5 +96,33 @@ describe('asking who knows someone', () => {
     expect(seeksAPerson('რა დღეა დღეს?')).toBe(false);
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('(statesANeed(userMessage) || seeksAPerson(userMessage))');
+  });
+});
+
+/** The tester's 1131 (rows 1 and 2): small talk was slow and „მადლობა" ran the inbox. */
+describe('small talk answered with no tools', () => {
+  it.each(['მადლობა', 'როგორ ხარ?', 'რა დღეა დღეს?', 'Thank you', 'How are you?'])(
+    '„%s" needs no tool',
+    (line) => {
+      expect(isToolFreeSmallTalk(line)).toBe(true);
+    },
+  );
+
+  it('the weather still gets its look-up', () => {
+    expect(isToolFreeSmallTalk('რა ამინდია?')).toBe(false);
+  });
+
+  it('a need is never small talk', () => {
+    expect(isToolFreeSmallTalk('ვინ იცნობს კარგ ვეტერინარს?')).toBe(false);
+  });
+
+  it('runs the first turn text-only, short', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');",
+    );
+    expect(chat).toContain(
+      '...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),',
+    );
   });
 });
