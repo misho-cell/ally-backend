@@ -822,6 +822,27 @@ const WORK_THE_LIST_TOOL: AnthropicTool = {
   },
 };
 
+/**
+ * #1024 (the tester, 22:01Z, 38318): a quick answer with no goal called
+ * work_the_list with the goal of the owner's EARLIER list conversation, was
+ * rightly refused, and told the owner the file had not arrived. The list
+ * belongs to this conversation's open goal, whatever id the model passed;
+ * with none open, the tool says how to open one.
+ */
+const NO_GOAL_FOR_THE_LIST =
+  'Not started: this conversation has no open goal yet. Save it first with set_task_brief ' +
+  '(what the owner wants from this list), then call work_the_list again with the file_id from ' +
+  'the file event here. The file did arrive — never tell the owner it is missing.';
+
+async function listGoalOfThisConversation(
+  threadId: number | undefined,
+  passed: unknown,
+): Promise<number | null> {
+  if (threadId === undefined) return Number.isInteger(Number(passed)) ? Number(passed) : null;
+  const goal = await getOpenTaskByThread(threadId);
+  return goal === null ? null : Number(goal.id);
+}
+
 const LIST_STATUS_TOOL: AnthropicTool = {
   name: 'list_status',
   description:
@@ -7847,21 +7868,21 @@ async function executeToolCall(
     case 'get_contact_count':
       return getContactCount(userId);
     case 'work_the_list': {
-      const started = await startListWork(
-        userId,
-        Number(input['task_id']),
-        Number(input['file_id']),
-        {
-          threadId: threadId ?? null,
-          runId: runId ?? null,
-        },
-      );
+      const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
+      if (taskId === null) return { started: false, error: NO_GOAL_FOR_THE_LIST };
+      const started = await startListWork(userId, taskId, Number(input['file_id']), {
+        threadId: threadId ?? null,
+        runId: runId ?? null,
+      });
       return started.ok
         ? { started: true, ...started.value }
         : { started: false, error: started.error };
     }
-    case 'list_status':
-      return listStatus(userId, Number(input['task_id']));
+    case 'list_status': {
+      const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
+      if (taskId === null) return { error: NO_GOAL_FOR_THE_LIST };
+      return listStatus(userId, taskId);
+    }
     case 'web_search': {
       await recordFixedUsage({
         userId,
