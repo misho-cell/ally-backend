@@ -202,3 +202,16 @@ describe('the ref the client draws buttons from', () => {
     expect(column).not.toMatch(/UPDATE|DELETE/);
   });
 });
+
+/** The tester's 1131 (row 9, 36305): two debriefs due in three days read as „waiting". */
+describe('the „also waiting" line counts what has come round', () => {
+  const updates = readFileSync(join(__dirname, '..', 'pendingUpdates.service.ts'), 'utf8');
+  const lister = updates.slice(updates.indexOf('export async function heldUpdatesWaiting'));
+
+  it('leaves out a held row whose time has not come, except a sticky goal question', () => {
+    expect(lister.slice(0, 600)).toContain(
+      'AND (p.release_at <= NOW() OR p.kind = ANY($3::text[]))',
+    );
+    expect(lister.slice(0, 800)).toContain('[userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, STICKY_KINDS]');
+  });
+});

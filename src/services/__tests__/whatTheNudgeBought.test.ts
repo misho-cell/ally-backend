@@ -5,6 +5,7 @@ import {
   cliffhangerEcho,
   continuationRepeatsAnnouncement,
   describeCliffhangerOutcome,
+  isCliffhangerReply,
 } from '../replyGuards';
 
 /**
@@ -116,5 +117,21 @@ describe('a continuation that only repeats the announcement', () => {
   it('measures nothing on an empty continuation', () => {
     expect(cliffhangerEcho(said, '')).toBeNull();
     expect(continuationRepeatsAnnouncement(said, '', 0)).toBe(false);
+  });
+});
+
+/** Seat-14 tester, 4 Oct (36433): „I cannot check the weather" read as „I am checking". */
+describe('a refusal is not an announcement', () => {
+  it('does not take a negated verb for a cliffhanger', () => {
+    expect(
+      isCliffhangerReply(
+        'ცოცხალ ამინდს ახლა ვერ ვამოწმებ. გარეთ გასვლამდე ამინდის აპი გადაამოწმე.',
+      ),
+    ).toBe(false);
+    expect(isCliffhangerReply("I can't check the live weather right now.")).toBe(false);
+  });
+
+  it('still catches the real announcement', () => {
+    expect(isCliffhangerReply('ახლა ვამოწმებ ნინოს კონტაქტებს.')).toBe(true);
   });
 });

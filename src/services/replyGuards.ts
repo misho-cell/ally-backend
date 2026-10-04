@@ -2,8 +2,11 @@
 // battery kept catching as "half-finished narration marked final" (thread 5942
 // + four cases on a second account): the model closes its turn with "now let's
 // see…" and no tool call, so the run completes normally with a cliffhanger.
+// The seat-14 tester (4 Oct, 36433): „ცოცხალ ამინდს ახლა ვერ ვამოწმებ" — „I
+// CANNOT check the weather" — read as „I am checking", and the nudge's answer
+// went to the owner. A negated verb is a refusal, not an announcement.
 const CLIFFHANGER_TAIL_RE =
-  /(?:ვნახოთ|ვნახავ|შევამოწმებ|გადავამოწმებ|მოვძებნი|ვამოწმებ|ვეძებ|ერთი წუთით|ერთი წამით|let me (?:check|look|see|search)|i'?ll (?:check|look|search)|checking|one moment)[^?]{0,60}$/i;
+  /(?<!(?:ვერ|არ|can'?t|cannot|won'?t|not)\s+)(?:ვნახოთ|ვნახავ|შევამოწმებ|გადავამოწმებ|მოვძებნი|ვამოწმებ|ვეძებ|ერთი წუთით|ერთი წამით|let me (?:check|look|see|search)|i'?ll (?:check|look|search)|checking|one moment)[^?]{0,60}$/i;
 
 // A long final is a real answer even if it mentions next steps; only short
 // finals can BE the cliffhanger.

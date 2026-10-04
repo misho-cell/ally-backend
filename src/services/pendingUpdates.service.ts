@@ -412,13 +412,21 @@ export interface HeldUpdate {
 export const HELD_ROWS_READ_LIMIT = 200;
 
 /** What is waiting, row by row — so the card can name them instead of counting them. */
+/**
+ * The tester's 1131 (row 9, 36305): „კიდევ გელოდება: 2 შეკითხვა, როგორ ჩაიარა"
+ * on an account whose two debriefs are scheduled for three days later. A row
+ * that has not come round yet is held back, not waiting — the updates screen
+ * still counts it as held — so the „also waiting" line leaves it out. A goal
+ * question is sticky: shown and still unanswered, it waits through its cooldown.
+ */
 export async function heldUpdatesWaiting(userId: string): Promise<HeldUpdate[]> {
   const result = await query<{ kind: string; task_id: number | null; request_id: string | null }>(
     `SELECT p.kind, p.task_id, p.payload->>'request_id' AS request_id
      ${HELD_AND_STILL_REAL}
+       AND (p.release_at <= NOW() OR p.kind = ANY($3::text[]))
      ORDER BY p.id
      LIMIT ${HELD_ROWS_READ_LIMIT + 1}`,
-    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL],
+    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, STICKY_KINDS],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map((row) => ({
