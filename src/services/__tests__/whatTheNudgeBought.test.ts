@@ -1,7 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-import { describeCliffhangerOutcome } from '../replyGuards';
+import {
+  cliffhangerEcho,
+  continuationRepeatsAnnouncement,
+  describeCliffhangerOutcome,
+} from '../replyGuards';
 
 /**
  * ROW 273 — the guard that turns a short „let me check…" into a continuation
@@ -80,5 +84,37 @@ describe('what the nudge bought, recorded as facts rather than a verdict', () =>
     // Taken as a difference, so tool calls from earlier in the run are not
     // counted as the nudge's doing.
     expect(block).toContain('toolCallCount - toolCallsBeforeNudge');
+  });
+});
+
+/** Row 273, the week's measurement: no tool work and mostly the announcement again → replace. */
+describe('a continuation that only repeats the announcement', () => {
+  const said = 'ახლა ვამოწმებ ნინოს კონტაქტებს და მალე მოგწერ რას ვიპოვი.';
+
+  it('replaces the announcement when it did no work and mostly says it again', () => {
+    expect(
+      continuationRepeatsAnnouncement(said, 'ვამოწმებ ნინოს კონტაქტებს, მალე მოგწერ.', 0),
+    ).toBe(true);
+  });
+
+  it('follows the announcement when it did tool work', () => {
+    expect(
+      continuationRepeatsAnnouncement(said, 'ვამოწმებ ნინოს კონტაქტებს, მალე მოგწერ.', 2),
+    ).toBe(false);
+  });
+
+  it('follows the announcement when it wrote something new', () => {
+    expect(
+      continuationRepeatsAnnouncement(
+        said,
+        'ორი ბუღალტერი ვიპოვე: გია და თამარი, ორივე ბათუმში.',
+        0,
+      ),
+    ).toBe(false);
+  });
+
+  it('measures nothing on an empty continuation', () => {
+    expect(cliffhangerEcho(said, '')).toBeNull();
+    expect(continuationRepeatsAnnouncement(said, '', 0)).toBe(false);
   });
 });

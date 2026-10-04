@@ -94,25 +94,53 @@ export function claimsNothingFound(text: string): boolean {
  * NOTHING OF WHAT WAS SAID IS LOGGED — lengths and a ratio, no text. A
  * person's sentence in a log is the same mistake as their phone number in one.
  */
+function significantWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length > 2);
+}
+
+/** The share of the continuation's words the announcement already said; null when it has none. */
+export function cliffhangerEcho(announcement: string, continuation: string): number | null {
+  const before = new Set(significantWords(announcement));
+  const after = significantWords(continuation);
+  if (after.length === 0) return null;
+  return after.filter((w) => before.has(w)).length / after.length;
+}
+
 export function describeCliffhangerOutcome(
   announcement: string,
   continuation: string,
   toolCallsDuring: number,
 ): string {
-  const words = (text: string): string[] =>
-    text
-      .toLowerCase()
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter((w) => w.length > 2);
-  const before = new Set(words(announcement));
-  const after = words(continuation);
-  const echoed = after.filter((w) => before.has(w)).length;
+  const share = cliffhangerEcho(announcement, continuation);
   // No words is not a zero echo, it is nothing to measure.
-  const echo = after.length === 0 ? 'n/a' : `${Math.round((echoed / after.length) * 100)}%`;
+  const echo = share === null ? 'n/a' : `${Math.round(share * 100)}%`;
   return (
     `tools=${toolCallsDuring} said=${announcement.trim().length} ` +
     `then=${continuation.trim().length} echo=${echo}`
   );
+}
+
+/**
+ * Row 273, measured over the week the instrumentation ran (27 Sep – 4 Oct, all
+ * 333 deployments, 172 nudged continuations): 120 did no tool work, but most of
+ * those wrote something new (91 under half echo). The harm is the narrow group
+ * that did no work AND mostly said the announcement again — 18 at 75% echo or
+ * more — where the owner read the same thing twice in one message. There, the
+ * continuation replaces the announcement instead of following it.
+ */
+const REPEAT_ECHO_SHARE = 0.75;
+
+export function continuationRepeatsAnnouncement(
+  announcement: string,
+  continuation: string,
+  toolCallsDuring: number,
+): boolean {
+  if (toolCallsDuring > 0) return false;
+  const share = cliffhangerEcho(announcement, continuation);
+  return share !== null && share >= REPEAT_ECHO_SHARE;
 }
 
 /**

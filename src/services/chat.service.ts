@@ -265,6 +265,7 @@ import {
 } from './finalAnswer.service';
 import { splitOpeningLine } from './goalSplit';
 import {
+  continuationRepeatsAnnouncement,
   describeCliffhangerOutcome,
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
@@ -11221,8 +11222,14 @@ async function runToolLoop(
       // claim or an unsent question, the first answer was the mistake and the
       // corrected turn replaces it; a cliffhanger's announcement stays in front.
       const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE;
+      const repeated = continuationRepeatsAnnouncement(
+        announcement,
+        continuationText,
+        toolCallCount - toolCallsBeforeNudge,
+      );
       if (continuationText) {
-        finalText = correctedTurn ? continuationText : `${finalText}\n\n${continuationText}`;
+        finalText =
+          correctedTurn || repeated ? continuationText : `${finalText}\n\n${continuationText}`;
       }
       // eslint-disable-next-line no-console
       console.log(
