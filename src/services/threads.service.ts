@@ -1219,6 +1219,8 @@ export interface SavedServerLine {
   readonly id: number;
   /** The text as stored, after the same scrub every assistant line gets. */
   readonly content: string;
+  /** #793: the row's own time, so a live copy can sit where history puts it. */
+  readonly createdAt: string;
 }
 
 /**
@@ -1232,14 +1234,15 @@ export async function saveServerLine(
   content: string,
 ): Promise<SavedServerLine> {
   const stored = scrubMechanicalForStorage(content);
-  const result = await query<{ id: number }>(
+  const result = await query<{ id: number; created_at: Date | string }>(
     `INSERT INTO conversations (thread_id, user_id, role, content, content_json, kind, run_id, choices)
      VALUES ($1, $2, 'assistant', $3, NULL, 'message', NULL, NULL)
-     RETURNING id`,
+     RETURNING id, created_at`,
     [threadId, userId, stored],
   );
   await touchThread(threadId);
-  return { id: result.rows[0].id, content: stored };
+  const row = result.rows[0];
+  return { id: row.id, content: stored, createdAt: new Date(row.created_at).toISOString() };
 }
 
 /** A request's opening line, in the language of the person it is written to. */

@@ -552,6 +552,12 @@ export interface AppendedMessagePayload {
   content: string;
   choices: readonly string[];
   ref: Record<string, unknown>;
+  /**
+   * #793: the stored row's time. The live copy and the history row are the
+   * same message (same messageId); with this the client can keep it once, in
+   * its place in time order.
+   */
+  createdAt?: string;
 }
 
 /**
@@ -576,6 +582,7 @@ export function emitMessageAppended(
     content: displayText(payload.content),
     choices: scrubDeep(payload.choices),
     ref: scrubDeep(payload.ref),
+    ...(payload.createdAt !== undefined && { createdAt: payload.createdAt }),
   });
 }
 

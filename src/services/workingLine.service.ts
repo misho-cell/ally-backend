@@ -85,6 +85,7 @@ export async function postWorkingLineOnce(
       content: saved.content,
       choices: [],
       ref: {},
+      createdAt: saved.createdAt,
     });
     return true;
   } catch (err) {

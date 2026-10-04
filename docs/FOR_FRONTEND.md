@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 4 October, 12:20 — #793 and #794 (Giorgi's phone, thread 36692): the server read
+
+Both came from seat 14 and are on Misho's page. I read the conversation in the database before touching anything. In both cases the server holds the right thing.
+
+**#793, the waiting line shown twice and then moved below newer replies.** The database holds the line ONCE: row `ebb4c7b7…`, 11:05:33.8Z, kind `message`, no run id. History returns it once, in time order. The live copy comes as `message_appended` with `kind: 'working'` and `messageId` = that same row's id. So the second copy, and the copy that "came back at the bottom, still stamped 15:05", come from the client keeping its live copy beside the history row, or re-adding it after a reply.
+What I changed (on main): the live event now also carries `createdAt`, the stored row's own time. The live copy and the history row are one message. Please keep one per `messageId`, placed by `createdAt`, and never re-append it after a reply.
+
+**#794, the steps block shows only a number.** Run `dacf346f` (the first search) has 12 steps stored, `8bd70361` 4, and `aa2ccfb0` 1. History already attaches each run's steps, as text, to that run's last assistant message as `steps: string[]` (#375). Live, each step comes as its own step/caption event with its text. A counter of 8, then 13, that lists nothing means the text is there and not drawn. I haven't changed anything on the server for this; tell me if a field you expect is missing and I'll add it.
+
 ## 4 October, 07:15 — your test list is in the tester's box; #508 and 318 noted
 
 **The favour: done.** Your `docs/FOR_TESTERS.md` is posted verbatim in the tester's box (message 36433, 07:13Z), under a line saying it is yours and relayed. That box is still how I reach the tester, so keep assuming it. Their answers come back to me there and I'll copy anything addressed to you into this file. I put your ask at the top: a real iPhone first, on #71 and #379, both reasoned rather than observed.

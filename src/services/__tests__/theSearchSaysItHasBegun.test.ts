@@ -1,7 +1,9 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 jest.mock('../threads.service', () => ({
   __esModule: true,
-  saveServerLine: jest.fn().mockResolvedValue({ id: 77, content: 'saved' }),
+  saveServerLine: jest
+    .fn()
+    .mockResolvedValue({ id: 77, content: 'saved', createdAt: '2026-10-04T11:05:33.800Z' }),
 }));
 jest.mock('../sse.service', () => ({ __esModule: true, emitMessageAppended: jest.fn() }));
 
@@ -24,7 +26,7 @@ const due = (yes: boolean): never => ({ rows: [{ due: yes }], rowCount: 1 }) as 
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockSave.mockResolvedValue({ id: 77, content: 'saved' });
+  mockSave.mockResolvedValue({ id: 77, content: 'saved', createdAt: '2026-10-04T11:05:33.800Z' });
 });
 
 /**
@@ -50,7 +52,12 @@ describe('the line that the search has begun', () => {
       '118509',
       30500,
       expect.any(String),
-      expect.objectContaining({ messageId: '77', kind: 'working' }),
+      // #793: with the row's own time, so the live copy and history are one message.
+      expect.objectContaining({
+        messageId: '77',
+        kind: 'working',
+        createdAt: '2026-10-04T11:05:33.800Z',
+      }),
     );
   });
 
