@@ -188,6 +188,13 @@ describe('the model’s tools', () => {
       "the owner's own contacts is looked up (in parallel) and stored with the row's state. Sends ",
     );
     expect(chat).toContain('with ONE approve card — one approval for the whole list');
+    // The tester's file test (37657): the planted fifth row was left unmentioned.
+    expect(chat).toContain(
+      "'how many later. Account for EVERY row in that same reply: a row that is not an entry (not the ' +",
+    );
+    expect(chat).toContain(
+      "'not used. WHEN: the owner asks to work on, reach or find a way into the ' +",
+    );
   });
 });
 

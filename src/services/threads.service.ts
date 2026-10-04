@@ -1012,9 +1012,10 @@ export async function ownerMessages(threadId: number): Promise<string[]> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
      WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
+       AND content NOT LIKE $3
      ORDER BY created_at DESC
      LIMIT $2`,
-    [threadId, LANGUAGE_SAMPLE_MESSAGES],
+    [threadId, LANGUAGE_SAMPLE_MESSAGES, ATTACHMENT_CHIP_PATTERN],
   );
   return result.rows.map((r) => r.content);
 }
@@ -1085,9 +1086,10 @@ export async function userLanguage(userId: string): Promise<RunLanguage> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
      WHERE user_id = $1 AND role = 'user' AND kind = 'message' AND content <> ''
+       AND content NOT LIKE $3
      ORDER BY created_at DESC
      LIMIT $2`,
-    [userId, LANGUAGE_SAMPLE_MESSAGES],
+    [userId, LANGUAGE_SAMPLE_MESSAGES, ATTACHMENT_CHIP_PATTERN],
   );
   const [latest, ...earlier] = result.rows.map((r) => r.content);
   // „Continue in the language he responds" is the rest of D505, and it is
@@ -1099,6 +1101,17 @@ export async function userLanguage(userId: string): Promise<RunLanguage> {
 
 /** Enough to see past a „ok" or two without reading a whole conversation. */
 const LANGUAGE_SAMPLE_MESSAGES = 8;
+
+/** The mark on the owner's line that stands for an uploaded file (#892). */
+export const ATTACHMENT_MARK = '📎';
+
+/**
+ * The tester's file test (37657): „📎 kompaniebi.csv" is a file name, not the
+ * owner writing, and its Latin letters made a Georgian conversation read as
+ * English — the refusal for the next file came in English. Language is read
+ * from what the owner typed, so these lines are left out.
+ */
+const ATTACHMENT_CHIP_PATTERN = `${ATTACHMENT_MARK} %`;
 
 /**
  * Take the buttons off every message in a thread, permanently.

@@ -19,6 +19,7 @@ import {
 } from '../../services/listFile';
 import { fileEventText, saveThreadFile } from '../../services/threadFiles.service';
 import {
+  ATTACHMENT_MARK,
   getThread,
   saveServerLine,
   saveThreadMessage,
@@ -50,7 +51,6 @@ const upload = multer({
 });
 
 const MAX_FILENAME_CHARS = 120;
-const ATTACHMENT_MARK = '📎';
 
 /**
  * Multer hands the name over as Latin-1, so a Georgian file name arrives as
