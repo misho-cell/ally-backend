@@ -7450,7 +7450,7 @@ async function executeToolCall(
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
-      const found = await runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
+      const found = runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
       // #510: the profession's other words, searched by the server in the same call.
       const related = relatedProfessionWords(typeof tagQuery === 'string' ? tagQuery : '');
       if (related.length === 0) return found;
@@ -7469,7 +7469,7 @@ async function executeToolCall(
         threadId,
       );
     case 'search_second_degree': {
-      const found = await runLoggedSearch(
+      const searched = runLoggedSearch(
         userId,
         'second_degree',
         input['tag_query'] as string,
@@ -7479,9 +7479,12 @@ async function executeToolCall(
       );
       // G4 (the tester's 994): an ask to one of these bridges carries the need
       // even when the model leaves `need` out — see bridgeNeeds.ts.
-      if (threadId !== undefined && typeof input['tag_query'] === 'string') {
-        noteSecondDegreeResult(threadId, input['tag_query'], found);
-      }
+      const remembered = searched.then((found) => {
+        if (threadId !== undefined && typeof input['tag_query'] === 'string') {
+          noteSecondDegreeResult(threadId, input['tag_query'], found);
+        }
+        return found;
+      });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
       // vet saved as „ვეტექიმი" by one friend was never found when another friend's
       // „ვეტერინარი" was. The profession's other words go too — three at most, since
@@ -7489,9 +7492,9 @@ async function executeToolCall(
       const relatedHere = relatedProfessionWords(
         typeof input['tag_query'] === 'string' ? input['tag_query'] : '',
       );
-      if (relatedHere.length === 0) return found;
+      if (relatedHere.length === 0) return remembered;
       const widened = await searchProfessionFamily(
-        found,
+        remembered,
         relatedHere,
         (word) => searchSecondDegree(userId, word),
         MAX_SECOND_CIRCLE_FAMILY_WORDS,

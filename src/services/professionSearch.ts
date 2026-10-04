@@ -71,7 +71,13 @@ export async function searchProfessionFamily(
   mostWords: number = MAX_FAMILY_WORDS,
 ): Promise<object> {
   const words = familyWordsToSearch(related, mostWords);
-  const settled = await Promise.allSettled(words.map((word) => search(word)));
+  // The tester's 1131 (V3, 36320): „დიზაინერი" took 7 s — the asked word first,
+  // then its family. The family does not need the first answer to start, so
+  // both go at once and the call costs the slower of the two, not their sum.
+  const [first, settled] = await Promise.all([
+    primary,
+    Promise.allSettled(words.map((word) => search(word))),
+  ]);
   const hits: FamilyHit[] = [];
   settled.forEach((s, i) => {
     if (s.status === 'fulfilled') hits.push({ word: words[i], result: s.value });
@@ -79,5 +85,5 @@ export async function searchProfessionFamily(
       // eslint-disable-next-line no-console
       console.warn(`[tag-family] „${words[i]}" not searched:`, (s.reason as Error).message);
   });
-  return mergeFamilyResults(primary, hits);
+  return mergeFamilyResults(first, hits);
 }

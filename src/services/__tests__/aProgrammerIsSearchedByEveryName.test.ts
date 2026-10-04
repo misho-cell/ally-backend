@@ -103,3 +103,23 @@ describe('the dance family', () => {
     expect(relatedProfessionWords('ცეკვის მასწავლებელი')).toContain('ქორეოგრაფი');
   });
 });
+
+/** The tester's 1131 (V3, 36320): the asked word and its family go at once. */
+describe('the family search does not wait for the first word', () => {
+  it('starts every family word before the first answer comes back', async () => {
+    const started: string[] = [];
+    let releaseFirst: (v: unknown) => void = () => undefined;
+    const first = new Promise((resolve) => {
+      releaseFirst = resolve;
+    });
+    const search = (word: string): Promise<unknown> => {
+      started.push(word);
+      return Promise.resolve({ found: false });
+    };
+    const merging = searchProfessionFamily(first, ['designer', 'UX'], search);
+    await Promise.resolve();
+    expect(started).toEqual(['designer', 'UX']);
+    releaseFirst({ found: false });
+    await merging;
+  });
+});
