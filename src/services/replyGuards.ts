@@ -257,8 +257,11 @@ export function withoutDanglingLeadIn(narration: string): string {
  * person, and its card) or to take it back. A question to the owner
  * („მივწეროთ?") is not a promise.
  */
+// The tester's 1138 / #925 (37364, 37365, 37367, 37368): „არავის მივწერ" — „I
+// write to NOBODY" — read as a promise, and the owner saw the correction turn.
+// A negated verb promises nothing.
 const PROMISES_TO_WRITE_RE =
-  /(ვკითხავ|ვეკითხები|მივწერ(?!ო)|გავუგზავნი|\bi(?:'ll|\s+will)\s+(?:ask|write\s+to|message|reach\s+out\s+to)\b|спрошу|напишу)/iu;
+  /(?<!(?:არავის|არავისთვის|არ|ვერ|ვერავის|not|never|nobody|no\s+one)\s+)(ვკითხავ|ვეკითხები|მივწერ(?!ო)|გავუგზავნი|\bi(?:'ll|\s+will)\s+(?:ask|write\s+to|message|reach\s+out\s+to)\b|спрошу|напишу)/iu;
 
 export function promisesToWriteToSomeone(text: string): boolean {
   return PROMISES_TO_WRITE_RE.test(text);
@@ -268,7 +271,8 @@ export const PROMISED_ACTION_NUDGE =
   '(სისტემური შენიშვნა: შენ დაწერე, რომ ვინმეს ჰკითხავ ან მისწერ, მაგრამ ამ გაშვებაში არაფერი ' +
   'გაგზავნილა და ამ მიზანს გეგმა არ აქვს. თუ ამ ადამიანს უნდა მივწეროთ — ახლავე გამოიძახე ' +
   'propose_task_plan, ის people_to_involve-ში ჩაწერე და present_choices-ით შესთავაზე „ვამტკიცებ" ' +
-  'და „შევცვალოთ". თუ არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. პასუხი ერთხელ დაწერე.)';
+  'და „შევცვალოთ". თუ არა — პასუხი ისე დაწერე, რომ არაფერს არ დაჰპირდე. მფლობელს შენი წინა ' +
+  'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
 
 /**
  * The tester's 1137 (37036): „იურისტი მჭირდება… ვინ მყავს?" opened a goal, the

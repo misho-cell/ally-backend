@@ -19,6 +19,11 @@ describe('a reply that promises to write to someone', () => {
   it('is not a question to the owner, or a reply that promises nothing', () => {
     expect(promisesToWriteToSomeone('მაკას მივწეროთ?')).toBe(false);
     expect(promisesToWriteToSomeone('შენს წრეში ნოტარიუსი ვერ გამოჩნდა.')).toBe(false);
+    // #925: „I write to nobody" is the opposite of a promise.
+    expect(promisesToWriteToSomeone('გეგმა მზადაა. არავის მივწერ, შენ თვითონ დაუკავშირდები.')).toBe(
+      false,
+    );
+    expect(promisesToWriteToSomeone('ჯერ არ მივწერ არავის.')).toBe(false);
   });
 
   it('asks once for a plan with that person, or for no promise at all', () => {
