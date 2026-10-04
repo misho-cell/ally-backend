@@ -33,7 +33,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
   const handler = chat.slice(chat.indexOf("case 'propose_task_plan': {"));
 
   it('is checked first in propose_task_plan', () => {
-    const check = handler.indexOf('ownerJustInstructedThePlansOnePerson(userId, threadId,');
+    const check = handler.indexOf('ownerJustInstructedThePlansOnePerson(');
     expect(check).toBeGreaterThan(-1);
     expect(check).toBeLessThan(handler.indexOf('planNamesPeople('));
     expect(handler.slice(check, check + 300)).toContain('error: NO_PLAN_FOR_AN_INSTRUCTION');
@@ -42,7 +42,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
   it('only for a plan of exactly one person, an instruction, naming an own contact', () => {
     const fn = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansOnePerson'));
     const body = fn.slice(0, 900);
-    expect(body).toContain('people.length !== 1');
+    expect(body).toContain('peopleAddedToPlan(plan, inForce).length !== 1');
     expect(body).toContain('looksLikeContactInstruction(said)');
     expect(body).toContain('messageNamesOwnContact(userId, said)');
   });

@@ -1998,14 +1998,30 @@ const NO_PLAN_FOR_AN_INSTRUCTION =
   'grant_task_permission (confirmed: true), then ask_contact with their question, then say in ' +
   'one line who it went to.';
 
+/**
+ * The people a plan names that the plan already in force does not. The tester's
+ * 1137 (36989, D625): after approval the owner wrote „ask one more person: Maka"
+ * and the run proposed the approved person plus Maka — two names, so the
+ * one-person rule below never looked. What the owner's line adds is one person.
+ */
+export function peopleAddedToPlan(plan: unknown, inForce: TaskPlan | null): unknown[] {
+  if (plan === null || typeof plan !== 'object') return [];
+  const people = (plan as { people_to_involve?: unknown }).people_to_involve;
+  if (!Array.isArray(people)) return [];
+  const already = new Set((inForce?.people_to_involve ?? []).map((p) => String(p.phone)));
+  return people.filter((p: unknown) => {
+    const phone = (p as { phone?: unknown } | null)?.phone;
+    return typeof phone !== 'string' || !already.has(phone);
+  });
+}
+
 async function ownerJustInstructedThePlansOnePerson(
   userId: string,
   threadId: number,
   plan: unknown,
+  inForce: TaskPlan | null,
 ): Promise<boolean> {
-  if (plan === null || typeof plan !== 'object') return false;
-  const people = (plan as { people_to_involve?: unknown }).people_to_involve;
-  if (!Array.isArray(people) || people.length !== 1) return false;
+  if (peopleAddedToPlan(plan, inForce).length !== 1) return false;
   try {
     const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
     if (!looksLikeContactInstruction(said)) return false;
@@ -8535,7 +8551,12 @@ async function executeToolCall(
       const planTask = await getTaskById(taskId);
       if (
         threadId !== undefined &&
-        (await ownerJustInstructedThePlansOnePerson(userId, threadId, input['plan']))
+        (await ownerJustInstructedThePlansOnePerson(
+          userId,
+          threadId,
+          input['plan'],
+          (planTask?.plan ?? null) as TaskPlan | null,
+        ))
       ) {
         return { proposed: false, reason: 'owner_instruction', error: NO_PLAN_FOR_AN_INSTRUCTION };
       }
