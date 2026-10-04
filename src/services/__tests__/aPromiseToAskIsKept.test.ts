@@ -5,6 +5,7 @@ import {
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
   withoutClosingApprovalAsk,
+  offersToSend,
 } from '../replyGuards';
 
 /**
@@ -62,9 +63,7 @@ describe('a reply that asks to approve a plan', () => {
   });
 
   it('takes the same guard turn when no plan was proposed', () => {
-    expect(chat).toContain(
-      'if (!promisesToWriteToSomeone(finalText) && !asksToApproveAPlan(finalText)) return false;',
-    );
+    expect(chat).toContain('asksToApproveAPlan(finalText) ||');
   });
 });
 
@@ -83,5 +82,22 @@ describe('an approval question with no button to answer it', () => {
 
   it('runs when the run has nothing to send today', () => {
     expect(chat).toContain('if (runNothingToSend.has(runId)) {');
+  });
+});
+
+/** #961 (37554): buttons that offer to send, with no plan behind them. */
+describe('a button that offers to send', () => {
+  it('is recognised, and a negated one is not', () => {
+    expect(offersToSend('კი, გაუგზავნე სამივეს')).toBe(true);
+    expect(offersToSend('Send to all three')).toBe(true);
+    expect(offersToSend('ჯერ არა')).toBe(false);
+    expect(offersToSend('ჯერ არ გაუგზავნო')).toBe(false);
+  });
+
+  it('takes the same guard turn as a promise', () => {
+    expect(chat).toContain('offered.some(offersToSend);');
+    expect(chat).toContain(
+      'promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed, choices ?? [])',
+    );
   });
 });

@@ -352,3 +352,15 @@ export function withoutClosingApprovalAsk(text: string): string {
   const before = trimmed.slice(0, start).trimEnd();
   return before === '' ? text : before;
 }
+
+/**
+ * #961 (37554): a button that offers to send to people — „კი, გაუგზავნე
+ * სამივეს", „Send to all three" — is a request for the plan's yes. A negated
+ * one („ჯერ არ გაუგზავნო") offers nothing.
+ */
+const OFFERS_TO_SEND_RE =
+  /(?<!(?:არ|ნუ|don'?t|do\s+not)\s+)(გაუგზავნ|მისწერ|მიწერე|\bsend\s+(?:it\s+)?to\b|\bwrite\s+to\b)/iu;
+
+export function offersToSend(label: string): boolean {
+  return OFFERS_TO_SEND_RE.test(label);
+}

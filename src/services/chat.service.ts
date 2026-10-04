@@ -282,6 +282,7 @@ import {
   PROMISED_ACTION_NUDGE,
   SEARCH_FIRST_NUDGE,
   asksToApproveAPlan,
+  offersToSend,
   MEMBERS_SKIPPED_NUDGE,
   withoutSendItQuestion,
   withoutClosingApprovalAsk,
@@ -10645,10 +10646,17 @@ async function promisedAnActionItDidNotTake(
   threadId: number,
   finalText: string,
   toolNamesUsed: readonly string[],
+  offered: readonly string[] = [],
 ): Promise<boolean> {
   // #961 (37322): asking the owner to approve a plan that was never proposed is
-  // the same broken promise — and the same answer, a plan with its card.
-  if (!promisesToWriteToSomeone(finalText) && !asksToApproveAPlan(finalText)) return false;
+  // the same broken promise — and the same answer, a plan with its card. And
+  // (37554) so are buttons that offer to send („კი, გაუგზავნე სამივეს") with
+  // no plan behind them: that tap is the plan's yes, asked without the plan.
+  const asked =
+    promisesToWriteToSomeone(finalText) ||
+    asksToApproveAPlan(finalText) ||
+    offered.some(offersToSend);
+  if (!asked) return false;
   if (toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return false;
   try {
     const goal = await getGoalOnThread(threadId);
@@ -11597,7 +11605,7 @@ async function runToolLoop(
     !ownerAbsent &&
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
-    (await promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed));
+    (await promisedAnActionItDidNotTake(threadId, finalText, toolNamesUsed, choices ?? []));
   // #960: the owner's contacts on Netai came back and the reply offered none.
   const membersSkipped = !ownerAbsent && skippedTheMembersFound(runId, finalText, toolNamesUsed);
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
