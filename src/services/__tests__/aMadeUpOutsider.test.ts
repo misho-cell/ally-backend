@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import { query } from '../../db/postgres/client';
+import { FICTIONAL_RANGES_TEXT } from '../fictionalNumbers';
 import {
   addSeatContact,
   addSeatGoal,
@@ -50,8 +51,7 @@ describe('the number has to be nobody’s', () => {
       refusal: 'not_a_fictional_number',
       // The refusal SAYS the range, so a caller is not left guessing which
       // numbers are allowed.
-      detail:
-        '+12025550100–0199 or +447700900000–900999 or +442079460000–0999 or +441614960000–0999',
+      detail: FICTIONAL_RANGES_TEXT,
     });
     expect(mockQuery).not.toHaveBeenCalled();
   });

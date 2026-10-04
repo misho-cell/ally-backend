@@ -28,7 +28,7 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
 
   it('offers 3,100 numbers, the old blocks first (third block 2 Oct, fourth 3 Oct)', () => {
     const all = allFictionalNumbers();
-    expect(all).toHaveLength(3100);
+    expect(all).toHaveLength(7100);
     expect(all[1100]).toBe('+442079460000');
     expect(all[2100]).toBe('+441614960000');
     expect(all[3099]).toBe('+441614960999');
@@ -39,7 +39,8 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
 
   it('names every block in a refusal', () => {
     expect(FICTIONAL_RANGES_TEXT).toBe(
-      '+12025550100–0199 or +447700900000–900999 or +442079460000–0999 or +441614960000–0999',
+      '+12025550100–0199 or +447700900000–900999 or +442079460000–0999 or +441614960000–0999 or ' +
+        '+441134960000–0999 or +441144960000–0999 or +441154960000–0999 or +441174960000–0999',
     );
   });
 
@@ -48,5 +49,16 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
     expect(isFictionalNumber('+441614960999')).toBe(true);
     expect(isFictionalNumber('+441614961000')).toBe(false);
     expect(isFictionalNumber('+44161496000')).toBe(false);
+  });
+
+  /** 4 Oct, D623 / the tester's 1115: Leeds, Sheffield, Nottingham and Bristol. */
+  it('takes the four new Ofcom drama blocks, exactly', () => {
+    for (const area of ['113', '114', '115', '117']) {
+      expect(isFictionalNumber(`+44${area}4960000`)).toBe(true);
+      expect(isFictionalNumber(`+44${area}4960999`)).toBe(true);
+      expect(isFictionalNumber(`+44${area}4961000`)).toBe(false);
+    }
+    expect(isFictionalNumber('+441164960000')).toBe(false);
+    expect(allFictionalNumbers()[7099]).toBe('+441174960999');
   });
 });
