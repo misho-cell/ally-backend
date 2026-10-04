@@ -25,6 +25,9 @@ import * as path from 'path';
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
   present_choices: 'renders tappable UI buttons — meaningless outside the app',
+  work_the_list:
+    'works a file the owner uploaded into an app conversation (#893); a connector has no such file',
+  list_status: 'reads the items of a list uploaded into an app conversation (#893)',
   get_my_token_balance:
     'the in-app token badge, read in words (#377); exposing billing to external connectors is a separate decision',
   list_my_contacts:

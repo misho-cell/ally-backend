@@ -376,6 +376,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import { listStatus, startListWork } from './listItems.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -770,6 +771,48 @@ const LIST_BLOCKED_CONTACTS_TOOL: AnthropicTool = {
     type: 'object',
     properties: {},
     required: [],
+  },
+};
+
+/**
+ * Board #893 (the founder, 4 October): a list the owner uploaded becomes the
+ * items of one goal. The tool reads the owner's own contacts for each row's
+ * way in and stores the items; it sends nothing to anybody.
+ */
+const WORK_THE_LIST_TOOL: AnthropicTool = {
+  name: 'work_the_list',
+  description:
+    'Turn a list the owner uploaded into the items of one goal: for every row, the way in through ' +
+    "the owner's own contacts is looked up (in parallel) and stored with the row's state. Sends " +
+    'nothing to anybody. Then propose ONE plan naming the people to ask (the contacts it found, at ' +
+    'most 40) with ONE approve card — one approval for the whole list — and say how many rows have ' +
+    'a route, how many have none. WHEN: the owner asks to work on, reach or find a way into the ' +
+    'rows of a file they uploaded in this conversation.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      file_id: {
+        type: 'number',
+        description: 'The file_id from the file event in this conversation.',
+      },
+      task_id: {
+        type: 'number',
+        description: 'The open goal of this conversation the list belongs to.',
+      },
+    },
+    required: ['file_id', 'task_id'],
+  },
+};
+
+const LIST_STATUS_TOOL: AnthropicTool = {
+  name: 'list_status',
+  description:
+    "How the goal's list stands: how many rows have a route, none, were asked, answered, agreed or " +
+    'refused. WHEN: the owner asks where things are on the list.',
+  input_schema: {
+    type: 'object',
+    properties: { task_id: { type: 'number', description: 'The goal the list belongs to.' } },
+    required: ['task_id'],
   },
 };
 
@@ -7626,6 +7669,22 @@ async function executeToolCall(
       return searchContactsByCountry(userId, String(input['country'] ?? ''));
     case 'get_contact_count':
       return getContactCount(userId);
+    case 'work_the_list': {
+      const started = await startListWork(
+        userId,
+        Number(input['task_id']),
+        Number(input['file_id']),
+        {
+          threadId: threadId ?? null,
+          runId: runId ?? null,
+        },
+      );
+      return started.ok
+        ? { started: true, ...started.value }
+        : { started: false, error: started.error };
+    }
+    case 'list_status':
+      return { counts: await listStatus(userId, Number(input['task_id'])) };
     case 'web_search': {
       await recordFixedUsage({
         userId,
@@ -11905,6 +11964,8 @@ export function toolsForRun<T extends { name: string }>(
  */
 export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   LIST_MY_CONTACTS_TOOL,
+  WORK_THE_LIST_TOOL,
+  LIST_STATUS_TOOL,
   GET_CONTACT_FULL_PROFILE_TOOL,
   UPDATE_USER_PROFILE_TOOL,
   SAVE_PRIVATE_CONTEXT_TOOL,

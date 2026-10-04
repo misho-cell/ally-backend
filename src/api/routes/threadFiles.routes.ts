@@ -102,7 +102,13 @@ async function keepAndAnswer(
 ): Promise<Record<string, unknown>> {
   const stored = await saveThreadFile(up.threadId, up.owner, up.filename, up.byteSize, file);
   await saveThreadMessage(up.threadId, up.owner, 'user', `${ATTACHMENT_MARK} ${up.filename}`);
-  await saveThreadMessage(up.threadId, up.owner, 'user', fileEventText(up.filename, file), 'event');
+  await saveThreadMessage(
+    up.threadId,
+    up.owner,
+    'user',
+    fileEventText(stored.id, up.filename, file),
+    'event',
+  );
   const summary = listFileSummary(file, up.language);
   const line = await saveServerLine(up.threadId, up.owner, summary);
   return {
