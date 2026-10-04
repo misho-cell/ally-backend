@@ -6745,6 +6745,42 @@ function noteWaysIn(runId: string | undefined, waysIn: ReadonlyMap<string, WayIn
   runWaysIn.set(runId, held);
 }
 
+/**
+ * The tester's 1131 (row 7: B1, B2, C3, C7, C9, C10): web names were looked up
+ * one by one in the contacts — eight calls on B2 — although both prompt blocks
+ * forbid it, and the server had already looked each of them up when the web
+ * result came back (findWaysIn). A name search for a web name this run has a
+ * verdict for returns that verdict instead of searching again.
+ */
+const SHORTEST_WEB_NAME_MATCH = 6;
+
+export const WEB_NAME_CHECKED_NOTE =
+  'Not searched again: this name came from a web result, and the server already looked for ' +
+  'it in the owner’s contacts when that result arrived. Use this verdict; do not look up web ' +
+  'names one by one.';
+
+/** Is the name being searched the web name itself, or one containing the other? */
+export function isTheWebName(asked: string, webName: string): boolean {
+  const a = asked.trim().toLowerCase();
+  const w = webName.trim().toLowerCase();
+  if (a.length < SHORTEST_WEB_NAME_MATCH || w.length < SHORTEST_WEB_NAME_MATCH) return false;
+  return a === w || w.includes(a) || a.includes(w);
+}
+
+function webNameAlreadyChecked(runId: string | undefined, nameQuery: unknown): object | null {
+  if (runId === undefined || typeof nameQuery !== 'string') return null;
+  for (const [name, wayIn] of runWaysIn.get(runId) ?? []) {
+    if (!isTheWebName(nameQuery, name)) continue;
+    if (wayIn.kind === 'unchecked') return null;
+    // eslint-disable-next-line no-console
+    console.log(`[way-in] run ${runId}: a web name was asked again — answered from the verdict`);
+    return wayIn.kind === 'first_circle'
+      ? { found: true, web_name: name, results: [{ name: wayIn.who }], note: WEB_NAME_CHECKED_NOTE }
+      : { found: false, web_name: name, note: WEB_NAME_CHECKED_NOTE };
+  }
+  return null;
+}
+
 function takeWaysIn(runId: string): ReadonlyMap<string, WayIn> {
   const held = runWaysIn.get(runId) ?? new Map<string, WayIn>();
   runWaysIn.delete(runId);
@@ -7397,7 +7433,9 @@ async function executeToolCall(
       return lookupContactByPhone(input['phone_number'] as string);
     case 'get_contact_insight':
       return getContactInsight(userId, String(input['phone'] ?? ''));
-    case 'search_contact_by_name':
+    case 'search_contact_by_name': {
+      const checked = webNameAlreadyChecked(runId, input['name_query']);
+      if (checked !== null) return checked;
       return runLoggedSearch(
         userId,
         'name',
@@ -7406,6 +7444,7 @@ async function executeToolCall(
         runId,
         threadId,
       );
+    }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
       const found = await runLoggedSearch(userId, 'tag', tagQuery, searchByTag, runId, threadId);
