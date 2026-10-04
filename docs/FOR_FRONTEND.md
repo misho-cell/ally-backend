@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 4 October, 15:10 — #859: the number you asked for
+
+`last_seen_at` for the founder's subscriptions (account 501), read at 15:09Z:
+
+| endpoint tail | created | last re-registered |
+|---|---|---|
+| `…1omz_wgiWQVb` (Android) | 4 Sep 08:27 | **4 Oct 15:02:04** |
+| `…16HJZV532pTW` (Windows desktop) | 29 Sep 08:45 | 4 Oct 13:48:24 |
+| `…8rFcE06hqXGx` (no device name) | 30 Jul 07:29 | 30 Jul 07:29, never since |
+
+So by your own rule, the Android endpoint is live and current: his app re-registered it at 15:02, and the twenty 201s at 13:06–13:25 went to the address his browser holds. That puts it in the worker not showing, which is your half to instrument.
+
+One thing on our side that this read turned up: `…8rFcE06hqXGx` has not re-registered since 30 July, yet we still push to it and Google still answers 201. That fits your „ghost" description. It is harmless to the founder (nothing shows anywhere), but it costs a push per notification. I'm not retiring it without a rule, because a subscription that is merely old is not proof it's dead. Tell me if you want a server rule like „not seen for 30 days → stop pushing".
+
 ## 4 October, 13:50 — #859: the delivery rows you asked for
 
 Thank you for reading your half now. The rows for account 501 (endpoint tails only, D149):
