@@ -829,7 +829,18 @@ const DAY_ONE_FIRST_PEOPLE = 3;
 const DAY_ONE_SENT_GRACE_SECONDS = 120;
 const DAY_ONE_DONE_TIMEOUT_MS = 5_000;
 
-export async function dayOneAlreadyDone(taskId: number): Promise<boolean> {
+/**
+ * The tester's 1133 (A3.1, 36526): a plan that named nobody was approved, and
+ * day one ran twice with nobody to write to — each time a long message that
+ * nothing went out. A plan with nobody in it has no day one to start.
+ */
+export enum DayOneVerdict {
+  Start = 'start',
+  AlreadyDone = 'already_done',
+  NobodyToWriteTo = 'nobody_to_write_to',
+}
+
+export async function dayOneVerdict(taskId: number): Promise<DayOneVerdict> {
   const result = await query<{ people: number; sent: number }>(
     `SELECT jsonb_array_length(COALESCE(t.plan->'people_to_involve', '[]'::jsonb)) AS people,
             ((SELECT COUNT(*) FROM task_asks a
@@ -845,8 +856,11 @@ export async function dayOneAlreadyDone(taskId: number): Promise<boolean> {
     DAY_ONE_DONE_TIMEOUT_MS,
   );
   const row = result.rows[0];
-  if (!row || row.people <= 0) return false;
-  return row.sent >= Math.min(row.people, DAY_ONE_FIRST_PEOPLE);
+  if (!row) return DayOneVerdict.Start;
+  if (row.people <= 0) return DayOneVerdict.NobodyToWriteTo;
+  return row.sent >= Math.min(row.people, DAY_ONE_FIRST_PEOPLE)
+    ? DayOneVerdict.AlreadyDone
+    : DayOneVerdict.Start;
 }
 // The approval happens INSIDE the user's run, which still owns the thread for
 // a while after approve_task_plan returned — the founder's 10 Sep test (thread
@@ -1097,10 +1111,14 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
         );
         return false;
       }
-      if (await dayOneAlreadyDone(taskId).catch(() => false)) {
+      const verdict = await dayOneVerdict(taskId).catch(() => DayOneVerdict.Start);
+      if (verdict !== DayOneVerdict.Start) {
         // eslint-disable-next-line no-console
         console.log(
-          `[task-engine] task ${taskId}: day one stands down — the approving run already wrote to the plan's people`,
+          `[task-engine] task ${taskId}: day one stands down — ` +
+            (verdict === DayOneVerdict.AlreadyDone
+              ? "the approving run already wrote to the plan's people"
+              : 'the plan names nobody to write to'),
         );
         await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
         await finishWake(taskId, DAY_ONE_WAKE);
