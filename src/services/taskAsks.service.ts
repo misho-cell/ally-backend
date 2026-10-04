@@ -1,5 +1,6 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { missingFacts, missingFactsRefusal } from './answerFacts';
+import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
@@ -1495,7 +1496,7 @@ export async function createAsk(
       return null;
     });
     if (rule) {
-      await answerAutomatically(ask.rows[0].id, askThreadId, String(toUserId), rule);
+      await answerAutomatically(ask.rows[0].id, askThreadId, String(toUserId), rule, safeQuestion);
       return { sent: true, ask_id: ask.rows[0].id, to_name: toName, answered_automatically: true };
     }
   }
@@ -1529,8 +1530,18 @@ async function answerAutomatically(
   askThreadId: number,
   recipientUserId: string,
   rule: AnswerRule,
+  question: string,
 ): Promise<void> {
-  const captured = await recordAskAnswer(askThreadId, rule.answer);
+  // The recipient's own language, like the wrapper above it in the same thread.
+  const ruleLanguage = await userLanguage(String(recipientUserId)).catch(() => 'ka' as RunLanguage);
+  // D652: worded afresh at every send, with the helper's facts exact.
+  const answerText = await ruleAnswerInOwnWords(
+    rule.answer,
+    question,
+    ruleLanguage,
+    recipientUserId,
+  );
+  const captured = await recordAskAnswer(askThreadId, answerText);
   if (!captured) return;
   await query(
     `UPDATE task_asks SET automatic = TRUE, answer_rule_id = $2 WHERE id = $1`,
@@ -1538,13 +1549,11 @@ async function answerAutomatically(
     ASK_QUERY_TIMEOUT_MS,
   );
   await recordRuleUse(rule.id).catch(() => undefined);
-  // The recipient's own language, like the wrapper above it in the same thread.
-  const ruleLanguage = await userLanguage(String(recipientUserId)).catch(() => 'ka' as RunLanguage);
   await saveThreadMessage(
     askThreadId,
     Number(recipientUserId),
     'assistant',
-    answeredByYourRule(ruleLanguage, rule.kind, rule.answer),
+    answeredByYourRule(ruleLanguage, rule.kind, answerText),
   );
   // Row 233: the close used to live here and ONLY here, which is why a typed
   // answer never got one. It is now in `deliverCapturedAnswer`, which both
