@@ -1234,8 +1234,9 @@ re-registrations, which makes the rule above start working.
 
 ## Tonight's list
 
-- **Night of 3–4 October — the OpenAI account has no credits left, since 23:13 UTC.** Every GPT final since then fails with „You have no credits remaining. Add credits to continue" (160 failures logged 23:13–23:38 on two deploys), and the last GPT-written reply is 23:13:12. Nothing is down: each run falls back to Claude's own answer (outage checks pass, 0 errors). What is lost meanwhile: GPT's Georgian rewrite of every final, the button-spelling fix (6d02a68) and the GPT step of the salvage (6cf5189), which need GPT to run at all. Topping up is spending, so it waits for Misho or Tornike.
-- **Night of 3–4 October — more fictional test numbers (D623, the founder 02:18 Tbilisi via the tester's 1120).** The tester's loop needs six more rounds and has one fresh world left; +1 202 555 01xx is taken by registered accounts. The founder's words: „ask misho to open new test accounts, if you need him, or do it yourself". Widening the server's accepted fictional ranges (the tester asked for +44 113/114/115/117 496 0000–0999, 1115) opens a login path, so it is access and waits for Misho's own word, not a relayed one. What stops meanwhile: the tester re-uses worlds from round L14.
+_Nothing yet._
+
+Cleared 4 October 06:05 UTC: Misho answered all three items at ~05:55 UTC. The OpenAI credit went to the founder through the tester's box (36301); the fictional ranges were added (four Ofcom blocks, e49a93f); the 1119 consent question was put to the founder (36301).
 
 Cleared 3 October 07:15 UTC: the night of 2–3 October's one item („ask X" and the permission wall) was answered by Misho at ~06:10 UTC („მეორედ აღარ უნდა კითხოს") and built in 4650922 (board #694).
 
