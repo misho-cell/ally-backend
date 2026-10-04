@@ -71,9 +71,8 @@ import {
 import { RULE_268_QUIET_DAY_ONE, RULE_268_QUIET_DAY_THREE } from './testerRules';
 import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
-import { markRunFailed } from './runFailure.service';
 import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
-import { emitRunComplete, emitRunError } from './sse.service';
+import { emitRunComplete } from './sse.service';
 import { sendPushNotification } from './notification.service';
 import { checkRunAllowance } from './tokenWallet.service';
 import { beginRun, endRun, isDraining } from './inFlightRuns';
@@ -520,22 +519,20 @@ export async function wakeTask(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`[task-engine] wake failed for task ${taskId}:`, (err as Error).message);
-      emitRunError(ownerId, thread.id, runId, RUN_STRINGS[language].stepFailedWillRetry);
-      void markRunFailed(ownerId, thread.id);
-      await saveThreadMessage(
-        thread.id,
-        Number(ownerId),
-        'assistant',
-        RUN_STRINGS[language].stepFailedWillRetry,
-        'error',
-        // Row 202: the run that died, so the failure can be joined to it.
-        runId,
-      ).catch(() => undefined);
-      // 'stopped', not 'busy', and row 157 is the reason: this branch has just
-      // written „მოგვიანებით თავად ვცდი ხელახლა" to the thread. Retrying it
-      // fifteen times would write that line fifteen times, which is the bug
-      // being fixed one branch up. The promise it makes is kept by the minute
-      // ticker, not by hammering a crash six seconds later.
+      /*
+       * 4 October 10:03Z, thread 14919 (a real owner): the model was overloaded
+       * on a scheduled wake, and „the task step did not finish, I'll try again
+       * later" landed in her conversation — 51 such rows in seven days. A system
+       * run's failure is ours to read in the log (dd38f49): the owner asked
+       * nothing, the minute ticker retries, and the goal keeps its status.
+       * The badge goes back to what it was: a thread left „working" would be
+       * read as a live run and the ticker would never wake it again.
+       */
+      await setThreadStatus(ownerId, thread.id, thread.status, {
+        statusLine: thread.status_line,
+      });
+      // 'stopped', not 'busy' (row 157): the minute ticker retries, not a
+      // crash loop six seconds later.
       return 'stopped';
     }
   } finally {
