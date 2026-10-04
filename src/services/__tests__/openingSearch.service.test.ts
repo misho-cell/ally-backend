@@ -464,8 +464,8 @@ describe('row 154 — the way in, beside each web result', () => {
     await runOpeningSearches('501', 'მარკეტინგული სააგენტო', 'run-1', 16106);
 
     // The tester's 1121: a firm is looked for by its own name.
-    expect(mockTag).toHaveBeenCalledWith('501', 'Infinity');
-    expect(mockTag).toHaveBeenCalledWith('501', 'Performa');
+    expect(mockTag).toHaveBeenCalledWith('501', 'Infinity', expect.any(Function));
+    expect(mockTag).toHaveBeenCalledWith('501', 'Performa', expect.any(Function));
   });
 
   it('names the contact when the owner has one', async () => {

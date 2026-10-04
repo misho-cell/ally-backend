@@ -75,15 +75,21 @@ describe('starting work on a list', () => {
         rowCount: 1,
       } as never)
       .mockResolvedValueOnce({ rows: [], rowCount: 2 } as never);
-    mockWaysIn.mockResolvedValueOnce(
-      new Map([
+    mockWaysIn.mockImplementationOnce(async (_user, _names, _origin, onContactPhone) => {
+      onContactPhone?.('Acme', '995500000001');
+      return new Map([
         ['Acme', { kind: 'first_circle' as const, who: 'ნინო' }],
         ['Beta', { kind: 'none' as const }],
-      ]),
-    );
+      ]);
+    });
     const outcome = await startListWork('501', 10, 7, { threadId: 30, runId: 'r' });
     if (!outcome.ok) throw new Error(outcome.error);
-    expect(mockWaysIn).toHaveBeenCalledWith('501', ['Acme', 'Beta'], { threadId: 30, runId: 'r' });
+    expect(mockWaysIn).toHaveBeenCalledWith(
+      '501',
+      ['Acme', 'Beta'],
+      { threadId: 30, runId: 'r' },
+      expect.any(Function),
+    );
     expect(outcome.value.total).toBe(2);
     expect(outcome.value.counts).toEqual({ route_found: 1, no_route: 1 });
     expect(outcome.value.items[0]).toEqual({
@@ -92,8 +98,12 @@ describe('starting work on a list', () => {
       state: ListItemState.RouteFound,
       throughWhom: 'ნინო',
     });
-    const [insert] = mockQuery.mock.calls[1];
+    const [insert, params] = mockQuery.mock.calls[1];
     expect(String(insert)).toContain('ON CONFLICT (task_id, thread_file_id, row_index) DO NOTHING');
+    // The contact's number is stored with its row, and never handed back.
+    const stored = JSON.parse(String((params as unknown[])[2])) as { through_phone: unknown }[];
+    expect(stored.map((r) => r.through_phone)).toEqual(['995500000001', null]);
+    expect(JSON.stringify(outcome.value)).not.toContain('995500000001');
   });
 });
 
@@ -114,6 +124,18 @@ describe('where the list stands', () => {
     });
     expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::int');
     expect(String(mockQuery.mock.calls[1][0])).toContain('a.parent_ask_id IS NULL');
+  });
+
+  it('reads a row as asked or answered from the goal’s ask to its contact, matched by number', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await listStatus('501', 10);
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('up."userId" = a.to_user_id AND up.phone = li.through_phone');
+    expect(sql).toContain("WHEN 'sent' THEN 'asked'");
+    expect(sql).toContain("CASE ask.status WHEN 'answered' THEN 'answered'");
+    expect(sql).toContain("a.status <> 'cancelled'");
   });
 });
 
@@ -143,7 +165,8 @@ describe('the worked list as Excel', () => {
           row_data: ['თბილისი', 'Acme'],
           way_in: 'first_circle',
           through_whom: 'ნინო',
-          state: 'route_found',
+          state: 'answered',
+          answer: 'კი, დაგაკავშირებ. ნომერი: 599 12 34 56',
           columns: ['ქალაქი', 'კომპანია'],
         },
         {
@@ -151,6 +174,7 @@ describe('the worked list as Excel', () => {
           way_in: 'none',
           through_whom: null,
           state: 'no_route',
+          answer: null,
           columns: ['ქალაქი', 'კომპანია'],
         },
       ],
@@ -168,9 +192,19 @@ describe('the worked list as Excel', () => {
       'Netai: გზა',
       'Netai: ვისი გავლით',
       'Netai: მდგომარეობა',
+      'Netai: პასუხი',
     ]);
-    expect(row(2)).toEqual(['თბილისი', 'Acme', 'შენი კონტაქტის გავლით', 'ნინო', 'გზა ნაპოვნია']);
-    expect(row(3).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის']);
+    expect(row(2).slice(0, 5)).toEqual([
+      'თბილისი',
+      'Acme',
+      'შენი კონტაქტის გავლით',
+      'ნინო',
+      'უპასუხა',
+    ]);
+    // The answer is shown, a number in it is not.
+    expect(String(row(2)[5])).toContain('კი, დაგაკავშირებ.');
+    expect(String(row(2)[5])).not.toContain('599 12 34 56');
+    expect(row(3).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
     expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::int');
   });
 

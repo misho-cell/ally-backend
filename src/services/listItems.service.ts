@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { query } from '../db/postgres/client';
 import { RunLanguage } from './runLanguage';
 import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
+import { scrubText, stripAllowedSpans } from './privacyScrub';
 
 /**
  * Board #893 (the founder, 4 October): a list the owner gave Netai becomes the
@@ -100,7 +101,13 @@ export async function startListWork(
   const lines = file.rows
     .map((row, index) => ({ index, row, label: (row[at] ?? '').trim() }))
     .filter((line) => line.label !== '');
-  const waysIn = await findWaysIn(userId, [...new Set(lines.map((l) => l.label))], origin);
+  const phones = new Map<string, string>();
+  const waysIn = await findWaysIn(
+    userId,
+    [...new Set(lines.map((l) => l.label))],
+    origin,
+    (label, phone) => phones.set(label, phone),
+  );
   const items: ListItemLine[] = lines.map((line) => {
     const wayIn = waysIn.get(line.label);
     return {
@@ -114,7 +121,7 @@ export async function startListWork(
     taskId,
     fileId,
     items,
-    lines.map((l) => l.row),
+    lines.map((l) => ({ data: l.row, throughPhone: phones.get(l.label) ?? null })),
   );
   return {
     ok: true,
@@ -126,19 +133,27 @@ export async function startListWork(
   };
 }
 
+interface StoredRow {
+  readonly data: string[];
+  /** The way-in contact's number: server-side only, never returned or exported. */
+  readonly throughPhone: string | null;
+}
+
 /** One statement for the whole list; a row already worked keeps its state. */
 async function saveItems(
   taskId: number,
   fileId: number,
   items: readonly ListItemLine[],
-  rows: readonly string[][],
+  rows: readonly StoredRow[],
 ): Promise<void> {
   if (items.length === 0) return;
   await query(
-    `INSERT INTO list_items (task_id, thread_file_id, row_index, label, row_data, way_in, through_whom, state)
-     SELECT $1, $2, x.row_index, x.label, x.row_data, x.way_in, x.through_whom, x.state
+    `INSERT INTO list_items
+       (task_id, thread_file_id, row_index, label, row_data, way_in, through_whom, through_phone, state)
+     SELECT $1, $2, x.row_index, x.label, x.row_data, x.way_in, x.through_whom, x.through_phone, x.state
        FROM jsonb_to_recordset($3::jsonb)
-         AS x(row_index int, label text, row_data jsonb, way_in text, through_whom text, state text)
+         AS x(row_index int, label text, row_data jsonb, way_in text, through_whom text,
+              through_phone text, state text)
      ON CONFLICT (task_id, thread_file_id, row_index) DO NOTHING`,
     [
       taskId,
@@ -147,9 +162,10 @@ async function saveItems(
         items.map((item, i) => ({
           row_index: item.row,
           label: item.label,
-          row_data: rows[i] ?? [],
+          row_data: rows[i]?.data ?? [],
           way_in: wayInKind(item.state),
           through_whom: item.throughWhom,
+          through_phone: rows[i]?.throughPhone ?? null,
           state: item.state,
         })),
       ),
@@ -171,6 +187,24 @@ export function countByState(items: readonly { state: string }[]): Record<string
   }, {});
 }
 
+/**
+ * A row's state as the work goes on: the goal's latest ask to the contact the
+ * row's way in goes through, matched by number (never by name). Sent = asked,
+ * answered = answered; whether an answer is a yes or a no is the model's to
+ * read, so „agreed" and „refused" are not guessed here.
+ */
+const ROW_ASK_JOIN = `
+  LEFT JOIN LATERAL (
+    SELECT a.status, a.answer
+      FROM task_asks a
+      JOIN "UserPhone" up ON up."userId" = a.to_user_id AND up.phone = li.through_phone
+     WHERE a.task_id = li.task_id AND a.parent_ask_id IS NULL AND a.status <> 'cancelled'
+     ORDER BY a.id DESC
+     LIMIT 1
+  ) ask ON TRUE`;
+const ROW_STATE_SQL = `CASE ask.status WHEN 'answered' THEN '${ListItemState.Answered}'
+  WHEN 'sent' THEN '${ListItemState.Asked}' ELSE li.state END`;
+
 export interface ListStatus {
   /** Every row of the goal's list, by state. */
   readonly rows: Readonly<Record<string, number>>;
@@ -182,10 +216,11 @@ export interface ListStatus {
 export async function listStatus(userId: string, taskId: number): Promise<ListStatus> {
   const [rows, asks] = await Promise.all([
     query<{ state: string; n: string }>(
-      `SELECT li.state, COUNT(*)::text AS n
+      `SELECT ${ROW_STATE_SQL} AS state, COUNT(*)::text AS n
          FROM list_items li JOIN tasks t ON t.id = li.task_id
+         ${ROW_ASK_JOIN}
         WHERE li.task_id = $1 AND t.user_id = $2::int
-        GROUP BY li.state`,
+        GROUP BY 1`,
       [taskId, userId],
       LIST_QUERY_TIMEOUT_MS,
     ),
@@ -270,10 +305,10 @@ const WAY_IN_WORDS: Readonly<Record<RunLanguage, Readonly<Record<string, string>
 };
 
 const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
-  ka: ['Netai: გზა', 'Netai: ვისი გავლით', 'Netai: მდგომარეობა'],
-  en: ['Netai: way in', 'Netai: through whom', 'Netai: where it stands'],
-  ru: ['Netai: путь', 'Netai: через кого', 'Netai: состояние'],
-  es: ['Netai: camino', 'Netai: a través de', 'Netai: estado'],
+  ka: ['Netai: გზა', 'Netai: ვისი გავლით', 'Netai: მდგომარეობა', 'Netai: პასუხი'],
+  en: ['Netai: way in', 'Netai: through whom', 'Netai: where it stands', 'Netai: answer'],
+  ru: ['Netai: путь', 'Netai: через кого', 'Netai: состояние', 'Netai: ответ'],
+  es: ['Netai: camino', 'Netai: a través de', 'Netai: estado', 'Netai: respuesta'],
 };
 
 interface WorkedRow {
@@ -281,7 +316,13 @@ interface WorkedRow {
   readonly way_in: string;
   readonly through_whom: string | null;
   readonly state: string;
+  readonly answer: string | null;
   readonly columns: string[];
+}
+
+/** An answer as the owner may read it: numbers scrubbed, a number he shared shown. */
+function answerForOwner(answer: string | null): string {
+  return answer === null ? '' : stripAllowedSpans(scrubText(answer));
 }
 
 /** The goal's worked list as an .xlsx file; null when the goal has no list of this owner's. */
@@ -291,10 +332,12 @@ export async function listWorkbook(
   language: RunLanguage,
 ): Promise<Buffer | null> {
   const result = await query<WorkedRow>(
-    `SELECT li.row_data, li.way_in, li.through_whom, li.state, f.columns
+    `SELECT li.row_data, li.way_in, li.through_whom, ${ROW_STATE_SQL} AS state,
+            ask.answer, f.columns
        FROM list_items li
        JOIN tasks t ON t.id = li.task_id
        JOIN thread_files f ON f.id = li.thread_file_id
+       ${ROW_ASK_JOIN}
       WHERE li.task_id = $1 AND t.user_id = $2::int
       ORDER BY li.thread_file_id, li.row_index
       LIMIT $3::int`,
@@ -313,6 +356,7 @@ export async function listWorkbook(
       ways[r.way_in] ?? r.way_in,
       r.through_whom ?? '',
       words[r.state] ?? r.state,
+      answerForOwner(r.answer),
     ]);
   }
   return Buffer.from(await book.xlsx.writeBuffer());

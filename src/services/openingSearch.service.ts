@@ -864,6 +864,7 @@ export async function findWaysIn(
   userId: string,
   names: readonly string[],
   origin: WayInOrigin = {},
+  onContactPhone?: (name: string, phone: string) => void,
 ): Promise<Map<string, WayIn>> {
   const out = new Map<string, WayIn>();
   if (names.length === 0) return out;
@@ -899,8 +900,11 @@ export async function findWaysIn(
           out.set(name, { kind: 'none' });
           return;
         }
+        let firstPhone: string | null = null;
         const result = await Promise.race([
-          searchByTagExactOnly(userId, searchName),
+          searchByTagExactOnly(userId, searchName, (phone) => {
+            firstPhone = phone;
+          }),
           new Promise<null>((resolve) => {
             const t = setTimeout(() => resolve(null), left);
             t.unref?.();
@@ -915,12 +919,9 @@ export async function findWaysIn(
           return;
         }
         const who = firstPersonNamed(result);
-        out.set(
-          name,
-          who === null || !sameFirstName(leadFirst, who)
-            ? { kind: 'none' }
-            : { kind: 'first_circle', who },
-        );
+        const tied = who !== null && sameFirstName(leadFirst, who);
+        out.set(name, tied ? { kind: 'first_circle', who } : { kind: 'none' });
+        if (tied && firstPhone !== null) onContactPhone?.(name, firstPhone);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error(

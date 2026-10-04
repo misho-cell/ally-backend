@@ -536,7 +536,17 @@ function wordsAsWritten(tagQuery: string): string[][] {
   return splitIntoWords(tagQuery).map((word) => [word.toLowerCase()]);
 }
 
-export async function searchByTagExactOnly(userId: string, tagQuery: string): Promise<object> {
+/**
+ * `onFirstPhone`: board #893 — a list row keeps the number of the contact its
+ * way in goes through, server-side, so the goal's asks can be tied to the row.
+ * Handed to the caller apart from the result, which is logged and can reach
+ * the model, so the number never travels in it.
+ */
+export async function searchByTagExactOnly(
+  userId: string,
+  tagQuery: string,
+  onFirstPhone?: (phone: string) => void,
+): Promise<object> {
   const rawGroups = wordsAsWritten(tagQuery);
   if (rawGroups.length === 0) return { found: false, query: tagQuery };
 
@@ -545,6 +555,7 @@ export async function searchByTagExactOnly(userId: string, tagQuery: string): Pr
   const exact = await runExactSearch(userId, rawGroups, blockedPhones);
   const rows = exact.rows.filter((r) => !excludedSet.has(normalizePhone(r.phone)));
   if (rows.length === 0) return { found: false, query: tagQuery };
+  onFirstPhone?.(rows[0].phone);
 
   return {
     found: true,

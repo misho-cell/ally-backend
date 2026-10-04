@@ -27,7 +27,7 @@ describe('the words a web lead is looked up by', () => {
     expect(src).toContain(
       'const searchName = leadFirst === null ? firmSearchName(name) : wayInSearchName(name);',
     );
-    expect(src).toContain('searchByTagExactOnly(userId, searchName),');
+    expect(src).toContain('searchByTagExactOnly(userId, searchName, (phone) => {');
     expect(src).toContain("out.set(name, { kind: 'none' });");
   });
 });
