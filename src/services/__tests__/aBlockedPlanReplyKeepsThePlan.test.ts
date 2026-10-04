@@ -8,7 +8,7 @@ import { join } from 'path';
  */
 describe('a blocked plan reply', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-  const blockAt = chat.indexOf('= await moderateReply(cleanedFinal, userId);');
+  const blockAt = chat.indexOf(': await moderateReply(cleanedFinal, userId);');
   const replyAt = chat.indexOf(
     'replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked',
   );

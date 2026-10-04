@@ -13184,8 +13184,14 @@ export async function processChat(
   // block here replaced delivered work with a refusal that blamed the user's
   // wording (14 Aug P0, threads 8944/8954).
   // The server's own greeting never reaches here (answerGreeting): it is our
-  // fixed sentence and needs no reply check.
-  const verdict = await moderateReply(cleanedFinal, userId);
+  // fixed sentence and needs no reply check. The tester's 1132: a listed
+  // small-talk line („მადლობა", „როგორ ხარ") was still 6–8 s, about a second of it
+  // this check. Its reply was one short text-only turn to a line from a fixed
+  // handful of words, so it skips the check like the greeting.
+  const verdict =
+    !ownerAbsent && isToolFreeSmallTalk(userMessage)
+      ? { safe: true }
+      : await moderateReply(cleanedFinal, userId);
   let replySafe = verdict.safe;
   if (!replySafe) {
     /**
