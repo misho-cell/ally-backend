@@ -259,6 +259,7 @@ import {
 } from './openingSearch.service';
 import {
   finalAnswerModel,
+  smallTalkFinalModel,
   writeFinalAnswer,
   unusableReason,
   type FinalAnswer,
@@ -409,6 +410,13 @@ const MODEL = process.env.CHAT_MODEL?.trim() || 'claude-sonnet-5';
 // behavior change until the env var is flipped on Railway for a live A/B.
 const TOOL_TURN_MODEL = process.env.CHAT_TOOL_TURN_MODEL?.trim() || MODEL;
 const FAST_TOOL_TURNS = TOOL_TURN_MODEL !== MODEL;
+/**
+ * D627 (the founder, 4 October, the tester's 1134): small talk runs on a
+ * smaller, faster model. The listed small-talk turn is text-only and short
+ * (3edf0b9), and the full model spent 11 s before its first word on „როგორ
+ * ხარ?" (36639). The final writer still writes the words the owner reads.
+ */
+const SMALL_TALK_MODEL = process.env.CHAT_SMALL_TALK_MODEL?.trim() || 'claude-haiku-4-5-20251001';
 const USER_PROFILE_PRIORITY_FIELDS = ['profession', 'city', 'industry'] as const;
 
 // The ONLY strategy text that stays in code: the prompt-injection defence.
@@ -10770,7 +10778,7 @@ async function runToolLoop(
   const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: stream,
-    model: TOOL_TURN_MODEL,
+    model: smallTalkOnly ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
   });
@@ -11075,6 +11083,7 @@ async function runToolLoop(
         stream(delta);
       }),
       runLang(runId),
+      smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel(),
     );
     if (rewritten === null) {
       // Row 155: the deltas were already on the screen before the answer could

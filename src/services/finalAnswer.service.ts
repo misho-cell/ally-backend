@@ -38,6 +38,17 @@ export function finalAnswerModel(): string {
   return FINAL_ANSWER_MODEL;
 }
 
+/**
+ * D627: the final writer for a listed small-talk turn — a smaller, faster
+ * model. An OpenAI id like the one above, so it is a variable too; unset, the
+ * small-talk turn keeps the ordinary final writer.
+ */
+const SMALL_TALK_FINAL_MODEL = process.env.CHAT_SMALL_TALK_FINAL_MODEL?.trim() ?? '';
+
+export function smallTalkFinalModel(): string {
+  return FINAL_ANSWER_MODEL === '' ? '' : SMALL_TALK_FINAL_MODEL || FINAL_ANSWER_MODEL;
+}
+
 const MAX_TOKENS = 8192;
 
 /** Row 202 third pass: the same threshold the Anthropic side uses. */
@@ -296,8 +307,9 @@ export async function writeFinalAnswer(
   onText?: (text: string) => void,
   /** Row 155: the conversation's language, for the script checks. */
   language = 'ka',
+  /** D627: a smaller writer for small talk; the ordinary one by default. */
+  model: string = finalAnswerModel(),
 ): Promise<FinalAnswer | null> {
-  const model = finalAnswerModel();
   if (model === '') return null;
   const client = openaiClient();
   if (client === null) {
