@@ -12483,7 +12483,19 @@ function scrubStep(threadId: number, text: string, runId?: string): string {
   // all three surfaces. Without it the step copy would be the one place a
   // business number still disappeared.
   const wrapped = runId ? wrapAllowedNumbers(text, runId) : text;
-  return withoutStrayGeorgianCapitals(scrubInternalToolNames(scrubText(wrapped), threadId));
+  const step = withoutStrayGeorgianCapitals(scrubInternalToolNames(scrubText(wrapped), threadId));
+  // The tester's 1145 (37877): „Owner's own network has nobody under this word…"
+  // reached a Georgian owner as a step. A step is judged by the final answer's
+  // own language test; one that fails it is the model's working note, not his.
+  if (runId !== undefined && step.trim() !== '') {
+    const wrongLanguage = unusableReason(step, runLang(runId));
+    if (wrongLanguage !== null) {
+      // eslint-disable-next-line no-console
+      console.warn(`[step] run ${runId}: a step dropped — ${wrongLanguage}`);
+      return '';
+    }
+  }
+  return step;
 }
 
 /**
