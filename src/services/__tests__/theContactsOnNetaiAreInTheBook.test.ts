@@ -112,3 +112,21 @@ describe('continuationCoversAnswer', () => {
     expect(continuationCoversAnswer('', 'ვკითხავ გიორგის.')).toBe(false);
   });
 });
+
+/** The tester's 1150 (38316): the promise note took the turn and the members were never offered. */
+describe('a promise and skipped members in one reply', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('reads the phonebook even when the reply also promised', () => {
+    expect(chat).toContain(
+      '!answeredWithoutSearching\n      ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)',
+    );
+  });
+
+  it('asks about the members first', () => {
+    const chain = chat.slice(chat.indexOf('const guardNudge = claimedASendThatDidNotHappen'));
+    expect(chain.indexOf('? membersInTheBookNudge(bookMembersSkipped)')).toBeLessThan(
+      chain.indexOf(': PROMISED_ACTION_NUDGE'),
+    );
+  });
+});

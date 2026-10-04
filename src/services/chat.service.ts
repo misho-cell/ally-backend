@@ -4682,12 +4682,37 @@ function noteMembersFound(runId: string, rows: readonly unknown[]): void {
   }
 }
 
+/**
+ * The tester's 1150 (38314): the reply listed the web's notary „თამარ ჩაფიძე"
+ * and the owner's member „თამარ ხუციშვილი" counted as offered by her first
+ * name. A first name followed by a different surname is somebody else.
+ */
+const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი)\p{L}{0,3}$|^\p{Lu}\p{L}+$/u;
+const STEM_TRIM = 1;
+const MIN_STEM_CHARS = 3;
+
+function stemOf(word: string): string {
+  return word.length > MIN_STEM_CHARS ? word.slice(0, -STEM_TRIM) : word;
+}
+
 /** Whether the reply names one of them: their first name, allowing a case ending. */
 export function replyOffersAMember(reply: string, names: readonly string[]): boolean {
-  const lower = reply.toLowerCase();
+  const words = reply.toLowerCase().split(/[^\p{L}]+/u);
+  const original = reply.split(/[^\p{L}]+/u);
   return names.some((name) => {
-    const first = (name.split(/\s+/u)[0] ?? '').toLowerCase();
-    return first.length >= 2 && lower.includes(first.length > 3 ? first.slice(0, -1) : first);
+    const [first = '', surname = ''] = name.toLowerCase().split(/\s+/u);
+    if (first.length < 2) return false;
+    const firstStem = stemOf(first);
+    const surnameStem = surname === '' ? '' : stemOf(surname);
+    return words.some((word, i) => {
+      if (!word.startsWith(firstStem)) return false;
+      const next = words[i + 1] ?? '';
+      const someoneElse =
+        next !== '' &&
+        SURNAME_RE.test(original[i + 1] ?? '') &&
+        (surnameStem === '' || !next.startsWith(surnameStem));
+      return !someoneElse;
+    });
   });
 }
 
@@ -11707,8 +11732,7 @@ async function runToolLoop(
     !runMembersFound.has(runId) &&
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
-    !answeredWithoutSearching &&
-    !promisedWithoutActing
+    !answeredWithoutSearching
       ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
       : [];
   // The tester's 1149 (38149, 38157): the web came back with results and the
@@ -11725,14 +11749,16 @@ async function runToolLoop(
       ? HELPER_QUESTION_NUDGE
       : answeredWithoutSearching
         ? SEARCH_FIRST_NUDGE
-        : promisedWithoutActing
-          ? promiseGap === PromiseGap.Goal
-            ? PROMISED_ACTION_NO_GOAL_NUDGE
-            : PROMISED_ACTION_NUDGE
-          : membersSkipped
-            ? MEMBERS_SKIPPED_NUDGE
-            : bookMembersSkipped.length > 0
-              ? membersInTheBookNudge(bookMembersSkipped)
+        : // The tester's 1150 (38316): a promise and the owner's members together —
+          // the members note leads to the plan with them, which keeps the promise too.
+          membersSkipped
+          ? MEMBERS_SKIPPED_NUDGE
+          : bookMembersSkipped.length > 0
+            ? membersInTheBookNudge(bookMembersSkipped)
+            : promisedWithoutActing
+              ? promiseGap === PromiseGap.Goal
+                ? PROMISED_ACTION_NO_GOAL_NUDGE
+                : PROMISED_ACTION_NUDGE
               : findsHeldBack
                 ? FINDS_FIRST_NUDGE
                 : CLIFFHANGER_NUDGE;

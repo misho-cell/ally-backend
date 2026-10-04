@@ -19,6 +19,13 @@ describe('a reply that offers a member found on Netai', () => {
 
   it('is not one that names only web leads', () => {
     expect(replyOffersAMember('ვებზე ვიპოვე კლინიკა „მედი".', ['ნინო ბერიძე'])).toBe(false);
+    // The tester's 1150 (38314): the web's notary shared the member's first name.
+    expect(replyOffersAMember('ნოტარიუსები: თამარ ჩაფიძე, ქუთაისი.', ['თამარ ხუციშვილი'])).toBe(
+      false,
+    );
+    expect(replyOffersAMember('თამარ ხუციშვილს ვკითხავ.', ['თამარ ხუციშვილი'])).toBe(true);
+    expect(replyOffersAMember('თამარს ვკითხავ, იცნობს თუ არა.', ['თამარ ხუციშვილი'])).toBe(true);
+    expect(replyOffersAMember('ნინოს ურჩევია ერთი ექიმი.', ['ნინო ბერიძე'])).toBe(true);
   });
 });
 
