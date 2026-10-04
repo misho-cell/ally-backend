@@ -42,4 +42,12 @@ describe('endsQuietly', () => {
     expect(chat).toContain('const answeredOnlyInStageDirection = STAGE_DIRECTION_ONLY_RE.test(');
     expect(chat).toContain('endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)');
   });
+
+  /** 4 Oct 02:32Z, thread 31510: a blank night re-check told the owner to try again. */
+  it('never stores the retry line in the owner’s conversation for a system run', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "if (!ownerAbsent) await saveMessage(userId, threadId, 'assistant', failureReply, 'error');",
+    );
+  });
 });

@@ -432,10 +432,15 @@ export async function wakeTask(
         hardTimeout,
       ]);
       if (result.runFailed === true) {
-        emitRunError(ownerId, thread.id, runId, result.reply);
-        void markRunFailed(ownerId, thread.id, result.language ?? 'ka');
-        // The event itself was persisted into the thread before the run died —
+        // 4 October 02:32Z, thread 31510: a night re-check that came back blank
+        // is not the owner's failure — they asked nothing. The goal keeps its
+        // status and the screen shows nothing; the log is where we read it.
+        // The event itself was persisted into the thread before the run ended —
         // it is delivered; the task will see it on its next step.
+        // eslint-disable-next-line no-console
+        console.error(
+          `[engine] run ${runId} thread ${thread.id}: blank system run, owner not told`,
+        );
         return 'woken';
       }
       emitRunComplete(ownerId, thread.id, runId, {

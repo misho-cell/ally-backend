@@ -13059,7 +13059,14 @@ export async function processChat(
     console.error(`[chat] run ${runId} produced an EMPTY final — surfacing as failure`);
     clearRunState(runId);
     const failureReply = RUN_STRINGS[language].emptyFinalFailure;
-    await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
+    /*
+     * 4 October 02:32Z, thread 31510: the night re-check came back blank twice
+     * and „the reply did not come together, try again" landed in a conversation
+     * whose owner had written nothing since the day before. A system run's
+     * failure is ours to read in the log; the owner never sees a retry line for
+     * a question they did not ask.
+     */
+    if (!ownerAbsent) await saveMessage(userId, threadId, 'assistant', failureReply, 'error');
     return { reply: failureReply, runFailed: true, language };
   }
 
