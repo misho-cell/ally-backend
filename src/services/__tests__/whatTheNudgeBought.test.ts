@@ -73,7 +73,7 @@ describe('what the nudge bought, recorded as facts rather than a verdict', () =>
   it('is called where the run still holds the two texts', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const block = chat.slice(
-      chat.indexOf('      bookMembersSkipped.length > 0 ||\n      isCliffhangerReply(finalText))'),
+      chat.indexOf('      findsHeldBack ||\n      isCliffhangerReply(finalText))'),
       chat.indexOf('[chat] cliffhanger continuation failed'),
     );
 

@@ -284,6 +284,8 @@ import {
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
   PROMISED_ACTION_NO_GOAL_NUDGE,
+  FINDS_FIRST_NUDGE,
+  isOnlyAQuestion,
   SEARCH_FIRST_NUDGE,
   asksToApproveAPlan,
   offersToSend,
@@ -4657,6 +4659,15 @@ async function runLoggedSearch(
  */
 /** Runs that sent an introduction request (37517): a closing „send it?" is replaced. */
 const runIntroSent = new Set<string>();
+/** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
+const runWebFound = new Set<string>();
+
+/** A web search that came back with at least one result. */
+export function hasWebResults(found: unknown): boolean {
+  if (found === null || typeof found !== 'object') return false;
+  const rows = (found as { results?: unknown }).results;
+  return Array.isArray(rows) && rows.length > 0;
+}
 const runMembersFound = new Map<string, Map<string, string>>();
 const SHORT_QUESTION_BACK_CHARS = 200;
 
@@ -7509,6 +7520,7 @@ function clearRunState(runId: string): void {
   runPlanWritesToNobody.delete(runId);
   runMembersFound.delete(runId);
   runIntroSent.delete(runId);
+  runWebFound.delete(runId);
   runAnswerSent.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
@@ -7833,6 +7845,7 @@ async function executeToolCall(
         runId,
       }).catch(() => {});
       const found = await webSearch(input['query'] as string);
+      if (runId !== undefined && hasWebResults(found)) runWebFound.add(runId);
       /**
        * Ticket 20 row 154, second half — the way in travels with the MODEL'S
        * OWN web search too, not only the opening one.
@@ -11697,6 +11710,14 @@ async function runToolLoop(
     !promisedWithoutActing
       ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
       : [];
+  // The tester's 1149 (38149, 38157): the web came back with results and the
+  // reply was only a question — what was found is shown before asking.
+  const findsHeldBack =
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runWebFound.has(runId) &&
+    isOnlyAQuestion(finalText);
   const guardNudge = claimedASendThatDidNotHappen
     ? PASSED_ON_NUDGE
     : helperQuestionUnsent
@@ -11711,7 +11732,9 @@ async function runToolLoop(
             ? MEMBERS_SKIPPED_NUDGE
             : bookMembersSkipped.length > 0
               ? membersInTheBookNudge(bookMembersSkipped)
-              : CLIFFHANGER_NUDGE;
+              : findsHeldBack
+                ? FINDS_FIRST_NUDGE
+                : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -11721,6 +11744,7 @@ async function runToolLoop(
       promisedWithoutActing ||
       membersSkipped ||
       bookMembersSkipped.length > 0 ||
+      findsHeldBack ||
       isCliffhangerReply(finalText))
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The
@@ -11925,6 +11949,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   PROMISED_ACTION_NO_GOAL_NUDGE,
   SEARCH_FIRST_NUDGE,
   MEMBERS_SKIPPED_NUDGE,
+  FINDS_FIRST_NUDGE,
 ]);
 
 /** A model-only note: one of the fixed ones, or the members note that names people. */

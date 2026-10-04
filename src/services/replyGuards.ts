@@ -317,6 +317,31 @@ export const PROMISED_ACTION_NO_GOAL_NUDGE =
   'პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
 
 /**
+ * The tester's 1149 (38149, 38157): a web search and two pages read, then a
+ * reply that was only „რა მიზნით გჭირდება…?" — nothing found was shown. A
+ * reply this short, ending on a question and carrying no link, is a question
+ * alone.
+ */
+const ONLY_A_QUESTION_MAX_CHARS = 300;
+const LINK_RE = /https?:\/\//iu;
+
+export function isOnlyAQuestion(text: string): boolean {
+  const reply = text.trim();
+  return (
+    reply.length > 0 &&
+    reply.length <= ONLY_A_QUESTION_MAX_CHARS &&
+    /[?？]$/u.test(reply) &&
+    !LINK_RE.test(reply)
+  );
+}
+
+export const FINDS_FIRST_NUDGE =
+  '(სისტემური შენიშვნა: ამ გაშვებაში ვებ-ძებნამ შედეგები მოიტანა, შენი პასუხი კი მხოლოდ კითხვაა. ' +
+  'ჯერ აჩვენე, რაც იპოვე — ორი-სამი ყველაზე შესაფერისი, თითოს ერთი ხაზი და ბმული — და მერე ' +
+  'დასვი შენი კითხვა, თუ ჯერ კიდევ საჭიროა. თავიდან ნუ მოძებნი. მფლობელს შენი წინა ტექსტი არ ' +
+  'უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
+
+/**
  * The tester's 1137 (37036): „იურისტი მჭირდება… ვინ მყავს?" opened a goal, the
  * run called no tool, and the reply said „in this chat I cannot see your
  * network" and asked the owner for names. The wake thirty seconds later did
