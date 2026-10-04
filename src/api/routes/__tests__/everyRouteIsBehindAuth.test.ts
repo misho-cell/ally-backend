@@ -52,6 +52,7 @@ const GUARDED_AT_THE_ROUTER = [
   'speech.routes.ts',
   'tasks.routes.ts',
   'threads.routes.ts',
+  'threadFiles.routes.ts',
   'updates.routes.ts',
 ];
 
