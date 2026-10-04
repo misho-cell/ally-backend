@@ -6,7 +6,11 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { createAsk } from '../taskAsks.service';
 import { holdAsk, releaseDueHeldAsks, HeldAsk } from '../heldAsks.service';
-import { heldAsksSentNote, sendReleasedHeldAsks } from '../heldAskSend.service';
+import {
+  heldAsksSentNote,
+  isStillHeldByTheLimit,
+  sendReleasedHeldAsks,
+} from '../heldAskSend.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockCreateAsk = createAsk as jest.MockedFunction<typeof createAsk>;
@@ -155,8 +159,32 @@ describe('where it is wired', () => {
   });
 
   it('sends the held questions at the scheduled wake and tells the run', () => {
-    expect(engine).toContain('await wakeTask(task.id, await scheduledWakeText(task.id));');
+    expect(engine).toContain('const wake = await scheduledWake(task.id);');
+    expect(engine).toContain('await wakeTask(task.id, wake.text);');
     expect(engine).toContain('const held = await releaseDueHeldAsks(taskId);');
-    expect(engine).toContain('return heldAsksSentNote(await sendReleasedHeldAsks(owner, held));');
+    expect(engine).toContain('return await sendReleasedHeldAsks(owner, held);');
+    expect(engine).toContain('heldAsksSentNote(held)');
+  });
+
+  /** The tester's 1128 (#391, 32203): two checks, both still over the limit, each woke the owner. */
+  it('runs nothing when every held question is still over the limit', () => {
+    const skip = engine.indexOf('if (wake.onlyStillHeld) {');
+    const run = engine.indexOf('await wakeTask(task.id, wake.text);');
+    expect(skip).toBeGreaterThan(-1);
+    expect(run).toBeGreaterThan(skip);
+  });
+});
+
+describe('which outcomes mean „still held, say nothing"', () => {
+  const held = { contact_name: 'გია', question: 'q' };
+
+  it('is a refusal by the recipient’s limit, and nothing else', () => {
+    expect(
+      isStillHeldByTheLimit({ ...held, sent: false, reason: 'recipient_daily_limit_reached' }),
+    ).toBe(true);
+    expect(isStillHeldByTheLimit({ ...held, sent: true })).toBe(false);
+    expect(isStillHeldByTheLimit({ ...held, sent: false, reason: 'recipient_opted_out' })).toBe(
+      false,
+    );
   });
 });

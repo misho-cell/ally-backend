@@ -1,6 +1,11 @@
 import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
-import { heldAsksSentNote, sendReleasedHeldAsks } from './heldAskSend.service';
+import {
+  HeldAskOutcome,
+  heldAsksSentNote,
+  isStillHeldByTheLimit,
+  sendReleasedHeldAsks,
+} from './heldAskSend.service';
 import { doNotRepeatNote, lastAssistantMessage } from './lastReplyNote';
 import { query } from '../db/postgres/client';
 import {
@@ -737,23 +742,34 @@ const SCHEDULED_WAKE_TEXT =
  * held questions whose recipient's window has reopened, and the run is told
  * what went instead of being asked to send it.
  */
-async function scheduledWakeText(taskId: number): Promise<string> {
-  const notes = await Promise.all([heldNote(taskId), lastReplyNote(taskId)]);
-  return [SCHEDULED_WAKE_TEXT, ...notes.filter((n): n is string => n !== null)].join('\n\n');
+interface ScheduledWake {
+  readonly text: string;
+  /** Every held question was refused by the limit again and re-held: nothing to say. */
+  readonly onlyStillHeld: boolean;
 }
 
-async function heldNote(taskId: number): Promise<string | null> {
+async function scheduledWake(taskId: number): Promise<ScheduledWake> {
+  const [held, lastReply] = await Promise.all([heldOutcomes(taskId), lastReplyNote(taskId)]);
+  const heldText = held.length === 0 ? null : heldAsksSentNote(held);
+  const notes = [heldText, lastReply].filter((n): n is string => n !== null);
+  return {
+    text: [SCHEDULED_WAKE_TEXT, ...notes].join('\n\n'),
+    onlyStillHeld: held.length > 0 && held.every(isStillHeldByTheLimit),
+  };
+}
+
+async function heldOutcomes(taskId: number): Promise<HeldAskOutcome[]> {
   try {
     const held = await releaseDueHeldAsks(taskId);
-    if (held.length === 0) return null;
+    if (held.length === 0) return [];
     const task = await getTaskById(taskId);
-    if (task === null) return null;
+    if (task === null) return [];
     const owner = { ownerId: task.user_id, taskId, threadId: task.thread_id ?? undefined };
-    return heldAsksSentNote(await sendReleasedHeldAsks(owner, held));
+    return await sendReleasedHeldAsks(owner, held);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: held questions not sent:`, (err as Error).message);
-    return null;
+    return [];
   }
 }
 
@@ -777,7 +793,13 @@ async function tick(): Promise<void> {
     // Clear FIRST so a failing run doesn't hot-loop every tick; the model
     // re-schedules with set_task_wake when it still needs a revisit.
     await clearTaskWake(task.id);
-    await wakeTask(task.id, await scheduledWakeText(task.id));
+    const wake = await scheduledWake(task.id);
+    if (wake.onlyStillHeld) {
+      // eslint-disable-next-line no-console
+      console.log(`[task-engine] task ${task.id}: held question still over the limit — no run`);
+    } else {
+      await wakeTask(task.id, wake.text);
+    }
     // Line 9: the engine never parks a goal. If the run set no wake, the
     // default does — and the row can never read `next_wake_at: null` again.
     await ensureNextWake(task.id, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>

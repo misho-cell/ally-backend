@@ -112,3 +112,16 @@ export function heldAsksSentNote(outcomes: readonly HeldAskOutcome[]): string {
   }
   return parts.join('\n\n');
 }
+
+/**
+ * The tester's 1128 (#391, goal conversation 32203): the reopening was checked
+ * twice, ten minutes apart, the limit still held both times, and each check
+ * woke the owner with a long „nothing new" about the limit and a „writing to
+ * him" step. createAsk has already held the question again and moved the
+ * goal's wake to the new reopening, so there is nothing to tell anybody.
+ */
+export function isStillHeldByTheLimit(outcome: HeldAskOutcome): boolean {
+  return !outcome.sent && outcome.reason === STILL_HELD_REASON;
+}
+
+const STILL_HELD_REASON = 'recipient_daily_limit_reached';
