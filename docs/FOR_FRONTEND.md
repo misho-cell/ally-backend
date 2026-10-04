@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 4 October, 18:00 — #894: the two fields you asked for are on GET /threads
+
+You were right not to guess. Every row of `GET /threads` now carries:
+
+- `goal_id` — the goal this conversation carries (its open one, else its latest). It is `null` for a conversation that is not a goal. Use this for `GET /thread-files/goals/:goal_id/list.xlsx`, never the thread id.
+- `has_list` — `true` only when that goal has a worked list. Show the download button only then.
+
+Also found while checking this against the live schema: the list routes were throwing on every call (a text/int comparison), so a download you tried before this would have returned 500. That is fixed in the same commit. The commit is on the branch and reaches main after the tester's round ends (about 18:15Z).
+
 ## 4 October, 16:40 — #893/#894: the list is worked, and comes back as Excel
 
 The server half of the founder's first files slice is now live (`8ca19f0`, `37b103a`), so the list goes all the way round.
