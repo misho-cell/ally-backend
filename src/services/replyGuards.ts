@@ -225,3 +225,16 @@ export function withoutCallOffer(text: string, language: RunLanguage): string {
   const line = CANNOT_CALL[language];
   return before === '' ? line : `${before}\n\n${line}`;
 }
+
+/**
+ * The tester's 1133 (V9, 36568): the helper's screen showed the step
+ * „ნოდარისთვის პასუხად ვგზავნი:" and nothing after the colon — the words it
+ * introduced went into the tool call, not onto the screen — then the thanks
+ * line as a second message. A step that is only a lead-in to something not
+ * shown is not published.
+ */
+const DANGLING_LEAD_IN_RE = /[:：]\s*$/u;
+
+export function withoutDanglingLeadIn(narration: string): string {
+  return DANGLING_LEAD_IN_RE.test(narration) ? '' : narration;
+}

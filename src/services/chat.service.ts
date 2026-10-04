@@ -276,6 +276,7 @@ import {
   PASSED_ON_NUDGE,
   claimsNothingFound,
   withoutCallOffer,
+  withoutDanglingLeadIn,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -10901,7 +10902,9 @@ async function runToolLoop(
       // Persist it (kind='step') so it survives reload.
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = scrubStep(threadId, extractText(response.content), runId);
+      const narration = withoutDanglingLeadIn(
+        scrubStep(threadId, extractText(response.content), runId),
+      );
       // Not emitted, not persisted, and NOT eligible for the buried-answer
       // rescue — all three, or the sentence simply moves to another screen.
       if (narration && narrationIsSafeToPublish(roundTools)) {
@@ -10973,7 +10976,9 @@ async function runToolLoop(
       toolNamesUsed.push(...roundTools);
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = scrubStep(threadId, extractText(response.content), runId);
+      const narration = withoutDanglingLeadIn(
+        scrubStep(threadId, extractText(response.content), runId),
+      );
       // Not emitted, not persisted, and NOT eligible for the buried-answer
       // rescue — all three, or the sentence simply moves to another screen.
       if (narration && narrationIsSafeToPublish(roundTools)) {
