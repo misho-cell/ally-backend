@@ -45,7 +45,7 @@ import {
   goalQuestionFlaggedSince,
 } from '../../services/goalQuestions.service';
 import { introStillAwaitedOnThread } from '../../services/introduction.service';
-import { generateThreadTitle } from '../../services/threadTitle.service';
+import { generateThreadTitle, needsRealTitle } from '../../services/threadTitle.service';
 import { sweepFactsFromExchange } from '../../services/factExtraction.service';
 import {
   ThreadStatus,
@@ -72,7 +72,6 @@ import {
   RUN_STRINGS,
   RunLanguage,
   detectRunLanguage,
-  isPlaceholderThreadTitle,
   messageHeldNoTokens,
 } from '../../services/runLanguage';
 import { claimRun, releaseRun } from '../../services/runDedupe';
@@ -627,9 +626,7 @@ threadsRouter.post(
       // The placeholder has four languages now, and a thread created before it
       // did carries the Georgian one — which is why this asks „is it still the
       // placeholder" rather than comparing against a single string.
-      const needsTitle =
-        thread.type === 'regular' &&
-        (thread.title === null || isPlaceholderThreadTitle(thread.title));
+      const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title, message);
       if (needsTitle) {
         await updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS));
       }

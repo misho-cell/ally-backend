@@ -1,4 +1,5 @@
 import { isSmallTalk } from './smallTalk';
+import { isPlaceholderThreadTitle } from './runLanguage';
 import { recordClaudeUsage } from './costLedger.service';
 import { updateThreadTitle } from './threads.service';
 import { emitThreadUpdated } from './sse.service';
@@ -128,6 +129,17 @@ export function sanitizeTitle(raw: string): string | null {
     '',
   );
   return trimmed.length >= 2 ? trimmed : null;
+}
+
+/**
+ * Board #827 (Giorgi, 4 October): a conversation opened with „გამარჯობა" and
+ * then turned to a real request kept „გამარჯობა" as its name. A greeting is
+ * its own title only until there is something to name: a title that is just
+ * small talk is replaced by the first message that is not.
+ */
+export function needsRealTitle(currentTitle: string | null, message: string): boolean {
+  if (currentTitle === null || isPlaceholderThreadTitle(currentTitle)) return true;
+  return isSmallTalk(currentTitle) && !isSmallTalk(message);
 }
 
 /**
