@@ -443,11 +443,25 @@ export function instructionAddressee(message: string): string | null {
   if (match === null) return null;
   const after = message.slice(match.index + match[0].length);
   const sentence = after.split(/[.!?\n]/u)[0] ?? '';
-  return sentence
-    .split(/\s+/u)
+  const named = [datedNameBefore(message.slice(0, match.index)), ...sentence.split(/\s+/u)]
     .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
-    .filter((w) => w !== '' && !GROUP_WORDS_RE.test(w))
-    .join(' ');
+    .filter((w) => w !== '' && !GROUP_WORDS_RE.test(w));
+  return named.join(' ');
+}
+
+/**
+ * #961 (the tester's 1142, 37509): the tapped button „გიას ვთხოვ ამ კვირაში
+ * შეხვედრის დანიშვნას" names Gia BEFORE its verb — Georgian puts the person
+ * first as often as not („ნინოს ჰკითხე"). Only the one word right before the
+ * verb, and only in the dative (-ს) a person takes there: the 1101 note above
+ * is why the rest of the line before the verb stays out.
+ */
+function datedNameBefore(beforeVerb: string): string {
+  const words = beforeVerb.trim().split(/\s+/u);
+  const last = (words[words.length - 1] ?? '').replace(/[^\p{L}]+$/gu, '');
+  // A verb glued to its prefix („ვთხოვ") leaves the person as the word before.
+  const word = last === 'ვ' || last === '' ? (words[words.length - 2] ?? '') : last;
+  return /^\p{Script=Georgian}{2,}ს$/u.test(word) ? word.slice(0, -1) : '';
 }
 
 export function looksLikeContactInstruction(message: string): boolean {
