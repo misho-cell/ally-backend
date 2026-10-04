@@ -309,3 +309,31 @@ export const MEMBERS_SKIPPED_NUDGE =
   '(is_member: true) — მათ პირდაპირ ვკითხავთ. შენს პასუხში არცერთი არ ახსენე. შესთავაზე ისინი ' +
   '(გეგმაში people_to_involve) ან ერთი ხაზით თქვი, რატომ არ გამოდგებიან. მფლობელს შენი წინა ' +
   'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
+
+/**
+ * The tester's 1142 (37517): the introduction request went out in the run
+ * (the owner's „გამაცანი … მეშვეობით" was the consent) and the reply then
+ * closed on „ნანას გავუგზავნო ეს თხოვნა?" — asking permission for what was
+ * already done. A closing „send it?" in a run that sent the request is
+ * replaced with what is true.
+ */
+const SEND_IT_QUESTION_RE =
+  /(გავუგზავნო|გავაგზავნო|გავგზავნო|გავუგზავნოთ|გავაგზავნოთ|\b(?:shall|should|can)\s+i\s+send\b|отправить)/iu;
+
+const REQUEST_WENT: Readonly<Record<RunLanguage, string>> = {
+  ka: 'თხოვნა უკვე გაიგზავნა — როგორც კი უპასუხებენ, აქ გეტყვი.',
+  en: 'The request has already gone — I will tell you here as soon as they answer.',
+  ru: 'Просьба уже отправлена — как только ответят, скажу здесь.',
+  es: 'La solicitud ya se envió — te aviso aquí en cuanto respondan.',
+};
+
+/** The reply with a closing „shall I send it?" replaced; unchanged otherwise. */
+export function withoutSendItQuestion(text: string, language: RunLanguage): string {
+  const trimmed = text.trimEnd();
+  if (!/[?？]$/u.test(trimmed)) return text;
+  const start = closingSentenceStart(trimmed);
+  if (!SEND_IT_QUESTION_RE.test(trimmed.slice(start))) return text;
+  const before = trimmed.slice(0, start).trimEnd();
+  const line = REQUEST_WENT[language];
+  return before === '' ? line : `${before}\n\n${line}`;
+}

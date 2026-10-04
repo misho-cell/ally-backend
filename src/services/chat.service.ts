@@ -283,6 +283,7 @@ import {
   SEARCH_FIRST_NUDGE,
   asksToApproveAPlan,
   MEMBERS_SKIPPED_NUDGE,
+  withoutSendItQuestion,
 } from './replyGuards';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -4640,6 +4641,8 @@ async function runLoggedSearch(
  * The run remembers who came back on Netai, by name, so the end of the run can
  * check whether any of them was offered.
  */
+/** Runs that sent an introduction request (37517): a closing „send it?" is replaced. */
+const runIntroSent = new Set<string>();
 const runMembersFound = new Map<string, Map<string, string>>();
 const SHORT_QUESTION_BACK_CHARS = 200;
 
@@ -7456,6 +7459,7 @@ function clearRunState(runId: string): void {
   runPlanForReply.delete(runId);
   runPlanWritesToNobody.delete(runId);
   runMembersFound.delete(runId);
+  runIntroSent.delete(runId);
   runAnswerSent.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
@@ -7880,6 +7884,7 @@ async function executeToolCall(
         introContextFor(threadId, goalForIntro?.id),
       );
       if ((introOutcome as { success?: unknown }).success === true) {
+        if (runId) runIntroSent.add(runId);
         await markSearchSent(
           runId,
           userId,
@@ -13566,6 +13571,7 @@ export async function processChat(
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
+  if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   if (runAnswerSent.has(runId)) effectiveFinal = withAnswerSentLine(effectiveFinal, language);
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
