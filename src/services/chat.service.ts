@@ -11062,29 +11062,45 @@ async function runToolLoop(
     // with the final writer switched off, so nobody could see GPT never ran.
     // They are read, and stamped, only when GPT will actually write.
     const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);
-    const rewritten = await writeFinalAnswer(
-      // The old seat's notes to 1101 (32975): the cliffhanger note reached GPT as a
-      // user line, and the answer told the owner „this note does not look like my
-      // official system channel". Notes written for the model are not shown to it.
-      withoutModelOnlyNudges(messages),
-      plainSystemPrompt(systemPrompt) +
-        gptBlocks +
-        GPT_NAMES_WHO_IT_FOUND +
-        (choices !== undefined && choices.length > 0 ? buttonSpellingNote(choices) : '') +
-        // The tester's 1096 (32608): a discussion turn's rule reached Claude only, and
-        // GPT, writing the answer, named the owner's winery from the saved profile.
-        shortTurnNote +
-        gptLanguageLast(runLang(runId)),
-      withoutButtonsLine((delta) => {
-        if (!openAiStarted) {
-          openAiStarted = true;
-          resetTurnStream();
-        }
-        stream(delta);
-      }),
-      runLang(runId),
-      smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel(),
-    );
+    const writeWith = (model: string): ReturnType<typeof writeFinalAnswer> =>
+      writeFinalAnswer(
+        // The old seat's notes to 1101 (32975): the cliffhanger note reached GPT as a
+        // user line, and the answer told the owner „this note does not look like my
+        // official system channel". Notes written for the model are not shown to it.
+        withoutModelOnlyNudges(messages),
+        plainSystemPrompt(systemPrompt) +
+          gptBlocks +
+          GPT_NAMES_WHO_IT_FOUND +
+          (choices !== undefined && choices.length > 0 ? buttonSpellingNote(choices) : '') +
+          // The tester's 1096 (32608): a discussion turn's rule reached Claude only, and
+          // GPT, writing the answer, named the owner's winery from the saved profile.
+          shortTurnNote +
+          gptLanguageLast(runLang(runId)),
+        withoutButtonsLine((delta) => {
+          if (!openAiStarted) {
+            openAiStarted = true;
+            resetTurnStream();
+          }
+          stream(delta);
+        }),
+        runLang(runId),
+        model,
+      );
+    let rewritten = await writeWith(smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel());
+    // D627: a small writer that fails before writing a word hands the turn to the
+    // ordinary one, so trying a small model can cost a moment and never the voice.
+    if (
+      rewritten === null &&
+      smallTalkOnly &&
+      !openAiStarted &&
+      smallTalkFinalModel() !== finalAnswerModel()
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[final-answer] run ${runId}: the small-talk writer failed — the ordinary writer answers`,
+      );
+      rewritten = await writeWith(finalAnswerModel());
+    }
     if (rewritten === null) {
       // Row 155: the deltas were already on the screen before the answer could
       // be judged, so a refusal has to CLEAR them. Without this the person

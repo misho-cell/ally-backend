@@ -127,7 +127,9 @@ describe('the owner’s lines read from the run’s history', () => {
 describe('the discussion rule reaches GPT too', () => {
   it('is in the prompt GPT writes the final answer from', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const gptPrompt = chat.slice(chat.indexOf('const rewritten = await writeFinalAnswer('));
+    const gptPrompt = chat.slice(
+      chat.indexOf('const writeWith = (model: string): ReturnType<typeof writeFinalAnswer> =>'),
+    );
     expect(gptPrompt.slice(0, 1200)).toContain('shortTurnNote +');
   });
 });

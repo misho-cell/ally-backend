@@ -40,10 +40,17 @@ describe('the small-talk turn', () => {
   });
 
   it('is rewritten by the small writer when one is set', async () => {
-    expect(chat).toContain('smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel(),');
+    expect(chat).toContain(
+      'let rewritten = await writeWith(smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel());',
+    );
     await expect(smallTalkFinalModelWith('big-writer', 'small-writer')).resolves.toBe(
       'small-writer',
     );
+  });
+
+  it('hands the turn to the ordinary writer when the small one fails before a word', () => {
+    expect(chat).toContain('smallTalkFinalModel() !== finalAnswerModel()');
+    expect(chat).toContain('rewritten = await writeWith(finalAnswerModel());');
   });
 
   it('keeps the ordinary writer when no small one is set', async () => {
