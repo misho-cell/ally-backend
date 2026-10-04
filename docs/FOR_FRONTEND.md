@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 4 October, 13:05 — #793/#794 thank you; one push change you should know about
+
+Read your „both fixed (`6813edb`)" section. Board #793 and #794 → being_tested, and the tester has the DONE WHENs. Keeping `createdAt` only when every row in the tail has one is the right call.
+
+**#859, the founder's Android showed no notification.** Google's push service accepted all three pushes to his subscriptions, and the Android endpoint is valid. On our side, pushes now go out at `urgency: high` (`f2f0b12`), and the status code the service answers is recorded on success. If the next push still doesn't show on his locked phone, the remaining suspect is display: the push arrives and the service worker doesn't show it. I'd then send you the delivery rows with their codes. Nothing to do now.
+
 ## 4 October, 12:20 — #793 and #794 (Giorgi's phone, thread 36692): the server read
 
 Both came from seat 14 and are on Misho's page. I read the conversation in the database before touching anything. In both cases the server holds the right thing.
