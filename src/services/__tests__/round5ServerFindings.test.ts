@@ -138,7 +138,7 @@ describe('a helper’s question back in a run that sent nothing', () => {
 /** The tester's 1111 (34118): „I passed it on" then „sorry, nothing was passed on", in one reply. */
 describe('the turn after a correction note', () => {
   it('replaces the mistaken first answer; a cliffhanger keeps its announcement', () => {
-    expect(chat).toContain('const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE;');
+    expect(chat).toContain('const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE && !addedTo;');
     expect(chat).toContain(
       'correctedTurn || repeated ? continuationText : `${finalText}\\n\\n${continuationText}`;',
     );

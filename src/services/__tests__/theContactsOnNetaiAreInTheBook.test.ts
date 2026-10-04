@@ -10,7 +10,11 @@ import { query } from '../../db/postgres/client';
 import { getExcludedPhoneSet } from '../block.service';
 import { normalizePhone } from '../phone';
 import { ownersContactsOnNetai } from '../ownersMembers.service';
-import { MEMBERS_IN_THE_BOOK_PREFIX, membersInTheBookNudge } from '../replyGuards';
+import {
+  MEMBERS_IN_THE_BOOK_PREFIX,
+  continuationCoversAnswer,
+  membersInTheBookNudge,
+} from '../replyGuards';
 
 /**
  * #960, the tester's 1145 (37787, 37895, 37878): the run never listed the
@@ -65,5 +69,44 @@ describe('the note that names them', () => {
     );
     expect(chat).toContain('? membersInTheBookNudge(bookMembersSkipped)');
     expect(chat).toContain('bookMembersSkipped.length > 0 ||');
+  });
+});
+
+/** The tester's 1149 (38113, 38110): the corrected turn replaced the first answer and lost its finds. */
+describe('the turn after the members note', () => {
+  it('asks for an addition only, in one round, without profiles or other searches', () => {
+    const note = membersInTheBookNudge(['ნინო ექიმი']);
+    expect(note).toContain('შენი წინა პასუხი რჩება');
+    expect(note).toContain('დაწერე მხოლოდ დამატება');
+    expect(note).toContain('ერთ რაუნდში იპოვე search_contact_by_name-ით');
+    expect(note).toContain('სხვა ძებნა, პროფილი ან კონტაქტების სია აღარ გჭირდება');
+    expect(note).not.toContain('თავიდან დაწერე');
+  });
+
+  it('follows the first answer instead of replacing it', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('const addedTo = guardNudge.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);');
+    expect(chat).toContain('(addedTo && continuationCoversAnswer(announcement, continuationText))');
+  });
+});
+
+describe('continuationCoversAnswer', () => {
+  const answer =
+    'შენს კონტაქტებში ორი სანტექნიკოსია: გელა სანტექნიკი და ზურა სანტექნიკი. ' +
+    'საჯაროდ ნაპოვნია ბექა, ვაკე და საბურთალო.';
+
+  it('is true when the turn wrote the first answer out again', () => {
+    const rewrite = `${answer} ასევე ვკითხავ გიორგი ბერიძეს.`;
+    expect(continuationCoversAnswer(answer, rewrite)).toBe(true);
+  });
+
+  it('is false for an addition that names only the members', () => {
+    expect(continuationCoversAnswer(answer, 'ვკითხავ გიორგი ბერიძეს და მარიამ წიკლაურს.')).toBe(
+      false,
+    );
+  });
+
+  it('is false for an empty first answer', () => {
+    expect(continuationCoversAnswer('', 'ვკითხავ გიორგის.')).toBe(false);
   });
 });

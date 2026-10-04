@@ -269,6 +269,7 @@ import {
 import { splitOpeningLine } from './goalSplit';
 import {
   continuationRepeatsAnnouncement,
+  continuationCoversAnswer,
   describeCliffhangerOutcome,
   isCliffhangerReply,
   CLIFFHANGER_NUDGE,
@@ -11773,12 +11774,17 @@ async function runToolLoop(
       // it on" and then „sorry, nothing was passed on". When the note was about a
       // claim or an unsent question, the first answer was the mistake and the
       // corrected turn replaces it; a cliffhanger's announcement stays in front.
-      const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE;
-      const repeated = continuationRepeatsAnnouncement(
-        announcement,
-        continuationText,
-        toolCallCount - toolCallsBeforeNudge,
-      );
+      // The tester's 1149 (38113, 38110): the members note asks for an addition —
+      // the first answer's finds stay in front, unless the turn wrote them all again.
+      const addedTo = guardNudge.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);
+      const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE && !addedTo;
+      const repeated =
+        continuationRepeatsAnnouncement(
+          announcement,
+          continuationText,
+          toolCallCount - toolCallsBeforeNudge,
+        ) ||
+        (addedTo && continuationCoversAnswer(announcement, continuationText));
       if (continuationText) {
         finalText =
           correctedTurn || repeated ? continuationText : `${finalText}\n\n${continuationText}`;

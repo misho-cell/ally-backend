@@ -149,6 +149,19 @@ export function continuationRepeatsAnnouncement(
 }
 
 /**
+ * The tester's 1149 (38113, 38110): after the members note the turn is an
+ * addition, so the first answer stays in front of it. Only when the turn wrote
+ * the first answer out again — most of its words are back — does the turn
+ * stand alone, or the owner would read the answer twice.
+ */
+const REWRITE_COVERAGE_SHARE = 0.75;
+
+export function continuationCoversAnswer(answer: string, continuation: string): boolean {
+  const share = cliffhangerEcho(continuation, answer);
+  return share !== null && share >= REWRITE_COVERAGE_SHARE;
+}
+
+/**
  * The tester's 1100 (round 5, conversation 32753): in an incoming-ask thread
  * the helper typed a question back for the asker, and his assistant answered
  * „I passed it to her, the answer will come here" with no tool call. Nothing
@@ -338,10 +351,12 @@ export const MEMBERS_IN_THE_BOOK_PREFIX =
 export function membersInTheBookNudge(names: readonly string[]): string {
   return (
     `${MEMBERS_IN_THE_BOOK_PREFIX}${names.join(', ')}. ამ გაშვებაში არცერთი არ შემოგითავაზებია. ` +
-    'ვინც ამ საქმეს შეიძლება იცნობდეს, შესთავაზე — search_contact_by_name-ით იპოვე და გეგმაში ' +
-    'people_to_involve-ად ჩასვი, ვებსა და მოწვევამდე. თუ არცერთი არ გამოდგება, ერთი ხაზით თქვი ' +
-    'რატომ. მოწვევა მხოლოდ მფლობელის თხოვნით. მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ' +
-    'ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)'
+    'შენი წინა პასუხი რჩება და მფლობელი მას ისე ნახავს, როგორც დაწერე — არ გაიმეორო და არ ' +
+    'გადაწერო. დაწერე მხოლოდ დამატება: ვინც ამ საქმეს შეიძლება იცნობდეს, შესთავაზე, ვებსა და ' +
+    'მოწვევამდე — ყველა ერთად, ერთ რაუნდში იპოვე search_contact_by_name-ით და გეგმაში ' +
+    'people_to_involve-ად ჩასვი. სხვა ძებნა, პროფილი ან კონტაქტების სია აღარ გჭირდება. თუ ' +
+    'არცერთი არ გამოდგება, ერთი ხაზით თქვი რატომ. მოწვევა მხოლოდ მფლობელის თხოვნით. ბოდიშის ' +
+    'გარეშე.)'
   );
 }
 
