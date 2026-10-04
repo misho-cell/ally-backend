@@ -39,7 +39,7 @@ describe('a heading is not a way in', () => {
       ['ადვოკატი', { kind: 'first_circle', who: 'ნინო ადვოკატი' }],
     ]) as never;
     const card = buildFromTheWebMessage(real, 'en') ?? '';
-    expect(card).toContain('• Nini Elisashvili — your contact there: Nini E.');
+    expect(card).toContain('• Nini Elisashvili — in your contacts under the same name: Nini E.');
     expect(card).not.toContain('ადვოკატი');
   });
 });

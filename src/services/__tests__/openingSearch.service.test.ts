@@ -709,6 +709,19 @@ describe('buildFromTheWebMessage', () => {
     expect(message).not.toContain('http');
   });
 
+  /** The tester's 1137 (37046): two web names, one contact, listed twice. */
+  it('names one contact once, however many web names lead to them', () => {
+    const twice = new Map([
+      ['ზურა ყიფშიძე', { kind: 'first_circle' as const, who: 'ზურა სანტექნიკი' }],
+      ['ზურა ყიფშიძე 70', { kind: 'first_circle' as const, who: 'ზურა სანტექნიკი' }],
+    ]);
+    const lines = String(buildFromTheWebMessage(twice))
+      .split('\n')
+      .filter((l) => l.startsWith('•'));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('შეამოწმე, იგივე ადამიანია თუ არა');
+  });
+
   it('shows at most four ways in', () => {
     const many = new Map(
       // Row 281: a way in is printed only for a lead shaped like a person or firm.
@@ -718,7 +731,7 @@ describe('buildFromTheWebMessage', () => {
         'Levan Gelashvili',
         'Giorgi Maisuradze',
         'Tamar Lomidze',
-      ].map((n) => [n, { kind: 'first_circle' as const, who: 'ლიკა' }]),
+      ].map((n, i) => [n, { kind: 'first_circle' as const, who: `კონტაქტი ${i}` }]),
     );
 
     expect(

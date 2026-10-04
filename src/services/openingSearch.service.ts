@@ -1017,6 +1017,8 @@ const FROM_THE_WEB_MAX = 4;
 interface WebBlockWords {
   readonly heading: string;
   readonly wayIn: (name: string, who: string) => string;
+  /** A person lead: the contact shares the name, which is not proof it is the same person. */
+  readonly sameName: (name: string, who: string) => string;
   /** How many results were checked and led to nobody — a count, never their titles (row 265). */
   readonly pathless: (checked: number) => string;
 }
@@ -1025,6 +1027,8 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
   ka: {
     heading: 'ვებში ეს ვიპოვე:',
     wayIn: (name, who) => `• ${name} — შენი კონტაქტი იქ: ${who}.`,
+    sameName: (name, who) =>
+      `• ${name} — შენს კონტაქტებში ამავე სახელით: ${who}. შეამოწმე, იგივე ადამიანია თუ არა.`,
     pathless: (n) =>
       n === 1
         ? 'კიდევ ერთი შედეგი შევამოწმე — შენს კონტაქტებში კავშირი ვერ ვიპოვე.'
@@ -1033,6 +1037,8 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
   en: {
     heading: 'Found on the web:',
     wayIn: (name, who) => `• ${name} — your contact there: ${who}.`,
+    sameName: (name, who) =>
+      `• ${name} — in your contacts under the same name: ${who}. Check it is the same person.`,
     pathless: (n) =>
       n === 1
         ? 'I checked one more result and found nobody in your contacts for it.'
@@ -1041,6 +1047,8 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
   ru: {
     heading: 'Нашёл в интернете:',
     wayIn: (name, who) => `• ${name} — твой контакт там: ${who}.`,
+    sameName: (name, who) =>
+      `• ${name} — в твоих контактах с тем же именем: ${who}. Проверь, тот ли это человек.`,
     pathless: (n) =>
       n === 1
         ? 'Проверил ещё один результат — в твоих контактах связи нет.'
@@ -1049,6 +1057,8 @@ const WEB_BLOCK: Record<RunLanguage, WebBlockWords> = {
   es: {
     heading: 'Encontré esto en la web:',
     wayIn: (name, who) => `• ${name} — tu contacto allí: ${who}.`,
+    sameName: (name, who) =>
+      `• ${name} — en tus contactos con el mismo nombre: ${who}. Comprueba que sea la misma persona.`,
     pathless: (n) =>
       n === 1
         ? 'Revisé un resultado más y no encontré a nadie en tus contactos.'
@@ -1116,12 +1126,25 @@ export function buildFromTheWebMessage(
   const entries = [...waysIn.entries()].slice(0, FROM_THE_WEB_MAX);
   if (entries.length === 0) return null;
   const words = WEB_BLOCK[language];
+  // The tester's 1137 (37046): „ზურა ყიფშიძე" and „ზურა ყიფშიძე 70" were both
+  // tied to one contact, a different man of the same name. A contact is named
+  // once, and a person lead says only that the name matches.
+  const named = new Set<string>();
   const lines = entries
     .filter(
       (entry): entry is [string, Extract<WayIn, { kind: 'first_circle' }>] =>
         entry[1].kind === 'first_circle' && looksLikeAPersonOrFirm(entry[0]),
     )
-    .map(([name, wayIn]) => words.wayIn(name, wayIn.who));
+    .filter(([, wayIn]) => {
+      if (named.has(wayIn.who)) return false;
+      named.add(wayIn.who);
+      return true;
+    })
+    .map(([name, wayIn]) =>
+      leadsFirstName(name) === null
+        ? words.wayIn(name, wayIn.who)
+        : words.sameName(name, wayIn.who),
+    );
   /**
    * ⚠️ ROW 265 — THIS LINE PRINTED PAGE TITLES AND CALLED THEM PEOPLE.
    *
