@@ -8,7 +8,8 @@
 #
 #   NETAI_ADMIN_EMAIL     the admin login the AI seats write through (box.sh, board)
 #   NETAI_ADMIN_PASSWORD  its password
-#   NETAI_RO_KEY          the server's RO_SQL_KEY (ro.sh: read-only SELECTs)
+#   NETAI_RO_KEY          the server's RO_SQL_KEY (ro.sh: read-only SELECTs);
+#                         RO_SQL_KEY is read too, the name it carries on Railway
 #   NETAI_RAILWAY_TOKEN   a Railway API token (logs.sh: deployments and logs, read-only use)
 #
 # Prints which files it wrote and which variables were missing — never a value.
@@ -37,7 +38,7 @@ if [ -n "${NETAI_ADMIN_EMAIL:-}" ] && [ -n "${NETAI_ADMIN_PASSWORD:-}" ]; then
 else
   missing+=("NETAI_ADMIN_EMAIL/NETAI_ADMIN_PASSWORD")
 fi
-write .ro_key "${NETAI_RO_KEY:-}" NETAI_RO_KEY
+write .ro_key "${NETAI_RO_KEY:-${RO_SQL_KEY:-}}" NETAI_RO_KEY
 write .railway_token "${NETAI_RAILWAY_TOKEN:-}" NETAI_RAILWAY_TOKEN
 
 if [ "${#missing[@]}" -gt 0 ]; then
