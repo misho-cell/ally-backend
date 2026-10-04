@@ -74,9 +74,7 @@ describe('4 — a helper’s assistant that claims a send that did not happen', 
   it('asks once more with the tool named, and never relays the line itself', () => {
     expect(guards.PASSED_ON_NUDGE).toContain('send_answer_to_asker');
     expect(guards.PASSED_ON_NUDGE).toContain('confirmed=true');
-    expect(chat).toContain(
-      "const helperRunSentNothing = runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId);",
-    );
+    expect(chat).toContain("runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId)");
     expect(chat).toContain("const nudgeTurn = { role: 'user' as const, content: guardNudge };");
   });
 
@@ -138,5 +136,19 @@ describe('the turn after a correction note', () => {
     expect(chat).toContain(
       'correctedTurn || repeated ? continuationText : `${finalText}\\n\\n${continuationText}`;',
     );
+  });
+});
+
+/** The tester's 1131 (row 8, E6 36321): a relay is the helper's hand-on, not a missing send. */
+describe('a relayed question counts as passed on', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('records a sent relay for the run and clears it with the run', () => {
+    expect(chat).toContain('if (relayed.sent && runId) runRelaySent.add(runId);');
+    expect(chat).toContain('runRelaySent.delete(runId);');
+  });
+
+  it('keeps the passed-on note away from a run that relayed', () => {
+    expect(chat).toContain('!runAnswerSent.has(runId) && !runRelaySent.has(runId)');
   });
 });

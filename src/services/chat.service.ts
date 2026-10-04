@@ -6235,6 +6235,8 @@ export function withoutInvisibleCharacters(text: string): string {
 
 /** D527 (the tester's 962): runs whose answer to an asker went — the reply must say so. */
 const runAnswerSent = new Set<string>();
+/** Runs in which the helper's question was relayed on to someone else (relay_ask). */
+const runRelaySent = new Set<string>();
 
 /** G5: runs whose thread already shows the server's „sent" line, and on which side. */
 const runSentLineOnScreen = new Map<string, SentSide>();
@@ -7208,6 +7210,7 @@ function clearRunState(runId: string): void {
   runQuestionOnScreen.delete(runId);
   runPlanForReply.delete(runId);
   runAnswerSent.delete(runId);
+  runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
   runSentLineOnScreen.delete(runId);
   forgetWorkingLineRun(runId);
@@ -8034,15 +8037,18 @@ async function executeToolCall(
           ? (input['known_institutions'] as unknown[]).map(String)
           : [],
       );
-    case 'relay_ask':
+    case 'relay_ask': {
       // `phone` fallback: an in-flight thread may replay history recorded
       // under the old schema.
-      return createRelayAsk(
+      const relayed = await createRelayAsk(
         userId,
         Number(input['ask_id']),
         String(input['contact_name'] ?? input['phone'] ?? ''),
         input['question'] ? String(input['question']) : undefined,
       );
+      if (relayed.sent && runId) runRelaySent.add(runId);
+      return relayed;
+    }
     case 'send_answer_to_asker': {
       const answerText = String(input['answer_text'] ?? '').trim();
       if (!answerText) return { sent: false, error: 'Pass the exact approved text.' };
@@ -11168,7 +11174,12 @@ async function runToolLoop(
   const answeringALaterTap = askTapOf(lastUserText(messages)) === AskTap.Later;
   // The tester's 1100 (32753): a helper's assistant said it passed a question
   // back with no send. Same one-more-turn as the cliffhanger, with its own note.
-  const helperRunSentNothing = runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId);
+  // The tester's 1131 (row 8, E6 36321): the helper said „I don't know, ask Nino",
+  // the run relayed the question to Nino and said so — and the passed-on note
+  // fired as if nothing had gone, turning the reply into „nothing was passed to
+  // Ana". A relay sent in this run is the hand-on, and nothing is missing.
+  const helperRunSentNothing =
+    runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId) && !runRelaySent.has(runId);
   const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(finalText);
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
