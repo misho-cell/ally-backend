@@ -59,21 +59,36 @@ function isNotYetLabel(label: string): boolean {
   );
 }
 
-/** The reply without its finish card, or null when it offered none. */
+/**
+ * The tester's 1123 (35739): the meeting was told in full and the reply closed
+ * on „ჩათვალოთ ეს საკითხი მოგვარებულად?" with no buttons at all — the question
+ * in words, which the button check never saw. A closing sentence that asks
+ * whether it is solved is the finish question however it arrives.
+ */
+const ASKS_IF_SOLVED_RE =
+  /(მოგვარ|მოგვარდა|გადაწყდა|solved|settled|resolved|решен|решён|resuelto)/iu;
+
+/** The reply without its finish card or finish question, or null when it offered neither. */
 export function withoutEarlySolvedCard(
   text: string,
   choices: readonly string[] | undefined,
   language: RunLanguage,
   isSolvedLabel: (label: string) => boolean,
 ): GuardedReply | null {
-  if (choices === undefined || !choices.some(isSolvedLabel)) return null;
-  const kept = choices.filter((label) => !isSolvedLabel(label) && !isNotYetLabel(label));
   const trimmed = text.trim();
-  const endsOnTheQuestion = trimmed.length <= SHORT_QUESTION_CHARS && trimmed.endsWith('?');
+  const finishCard = choices !== undefined && choices.some(isSolvedLabel);
+  const finishQuestion = trimmed.endsWith('?') && ASKS_IF_SOLVED_RE.test(lastSentence(trimmed));
+  if (!finishCard && !finishQuestion) return null;
+  const kept = (choices ?? []).filter((label) => !isSolvedLabel(label) && !isNotYetLabel(label));
+  const shortQuestion = trimmed.length <= SHORT_QUESTION_CHARS && trimmed.endsWith('?');
   return {
-    text: endsOnTheQuestion ? withSpeakFirst(trimmed, language) : text,
+    text: finishQuestion || shortQuestion ? withSpeakFirst(trimmed, language) : text,
     choices: kept.length > 0 ? kept : undefined,
   };
+}
+
+function lastSentence(text: string): string {
+  return text.slice(lastSentenceStart(text));
 }
 
 /**

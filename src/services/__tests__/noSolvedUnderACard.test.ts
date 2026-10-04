@@ -128,3 +128,26 @@ describe('only the closing question is replaced', () => {
     expect(guarded?.text).toBe('როცა დარწმუნდები, რომ ეს გიშველის, მომწერე — მაშინ დავხურავ.');
   });
 });
+
+/** The tester's 1123 (35739): „solved?" asked in words, with no buttons. */
+describe('the finish question in words', () => {
+  const isSolved = (label: string): boolean => label === 'მოგვარებულია';
+
+  it('is replaced even with no buttons and a long reply', () => {
+    const meeting =
+      'ბესოსთან შეხვედრა უკვე დადგენილია: ხუთშაბათს 15:00-ზე, მის სახელოსნოში, გლდანი, ' +
+      'დიაგნოსტიკა 30 ლარი ღირს. ჩათვალოთ ეს საკითხი მოგვარებულად?';
+    const guarded = withoutEarlySolvedCard(meeting, undefined, 'ka', isSolved);
+    expect(guarded?.text).toBe(
+      'ბესოსთან შეხვედრა უკვე დადგენილია: ხუთშაბათს 15:00-ზე, მის სახელოსნოში, გლდანი, ' +
+        'დიაგნოსტიკა 30 ლარი ღირს. როცა დარწმუნდები, რომ ეს გიშველის, მომწერე — მაშინ დავხურავ.',
+    );
+    expect(guarded?.choices).toBeUndefined();
+  });
+
+  it('leaves a different closing question alone', () => {
+    expect(
+      withoutEarlySolvedCard('გიას ვთხოვო გაცნობა?', ['კი', 'არა'], 'ka', isSolved),
+    ).toBeNull();
+  });
+});
