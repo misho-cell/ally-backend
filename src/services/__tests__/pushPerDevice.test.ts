@@ -15,7 +15,7 @@ import { Response } from 'express';
 
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
-const sendNotification = jest.fn().mockResolvedValue(undefined);
+const sendNotification = jest.fn().mockResolvedValue({ statusCode: 201, body: '', headers: {} });
 jest.mock('web-push', () => ({
   __esModule: true,
   default: {

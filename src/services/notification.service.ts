@@ -222,6 +222,17 @@ function perDeviceOff(): boolean {
   return process.env.PUSH_PER_DEVICE === 'off';
 }
 
+/**
+ * Board #859 (the founder, 4 October): a member's question reached account
+ * 501, Google's push service accepted all three pushes, and his Android phone
+ * showed nothing. Pushes went out at the default „normal" urgency, which an
+ * Android phone saving battery may hold back for a long time. Everything we
+ * push is a person waiting on the owner, so it goes out as „high". And the
+ * push service's own status code is now recorded on success too, so „sent"
+ * says what the service answered.
+ */
+const PUSH_SEND_OPTIONS: webpush.RequestOptions = { urgency: 'high' };
+
 interface SubscriptionRow {
   endpoint: string;
   p256dh: string;
@@ -446,10 +457,14 @@ async function deliverToDevice(
   };
   const label = endpointLabel(row.endpoint);
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    const result = await webpush.sendNotification(
+      subscription,
+      JSON.stringify(payload),
+      PUSH_SEND_OPTIONS,
+    );
     // eslint-disable-next-line no-console
-    console.log(`[push] user ${userId}: sent via ${label}`);
-    await recordDelivery(userId, row.endpoint, 'sent', null, null);
+    console.log(`[push] user ${userId}: sent via ${label} status=${result.statusCode}`);
+    await recordDelivery(userId, row.endpoint, 'sent', result.statusCode, null);
     return DeviceOutcome.Sent;
   } catch (err) {
     const statusCode = (err as { statusCode?: number }).statusCode;

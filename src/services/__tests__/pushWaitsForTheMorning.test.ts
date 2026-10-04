@@ -11,7 +11,7 @@ jest.mock('../sse.service', () => ({
   deviceKey: jest.fn(() => 'some-device'),
   hasActiveConnection: jest.fn(() => false),
 }));
-const sendNotification = jest.fn().mockResolvedValue(undefined);
+const sendNotification = jest.fn().mockResolvedValue({ statusCode: 201, body: '', headers: {} });
 jest.mock('web-push', () => ({
   __esModule: true,
   default: {
