@@ -307,6 +307,15 @@ export function looksLikeTypedChoice(text: string): boolean {
   return /\?\s*$/.test(lastLine) && /(\s|,)(or|თუ)\s/i.test(lastLine);
 }
 
+/**
+ * The tester's 37456 (4 Oct, #991): a number the owner shared rode inside the
+ * answer event the asker's run reads, though the card already shows it. For a
+ * text only the model reads, each allowed span becomes a short placeholder.
+ */
+export function allowedSpansForTheModel(text: string, placeholder: string): string {
+  return text.replace(ALLOW_SPAN_RE, placeholder);
+}
+
 /** Reveal allowed spans at a display boundary: drop the markers, keep the content. */
 export function stripAllowedSpans(text: string): string {
   return text.split(ALLOW_OPEN).join('').split(ALLOW_CLOSE).join('');

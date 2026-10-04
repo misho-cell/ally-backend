@@ -27,7 +27,7 @@ import {
 } from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
-import { scrubText } from './privacyScrub';
+import { allowedSpansForTheModel, scrubText } from './privacyScrub';
 import { receivingCapsAreOff } from './askCapExemptions';
 import { geoName } from './georgianCase';
 import {
@@ -2265,11 +2265,15 @@ export function buildAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string
  * job is the seat's (901, Text A): one sentence, and never „has not answered"
  * about somebody whose answer is on the card.
  */
+/** What the model reads where a shared number stood: the card above already shows it. */
+const SHARED_NUMBER_ON_CARD = '[ნომერი ბარათზე ჩანს]';
+
 export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): string {
   const blocks = answers
     .map((a) => {
       const who = a.fromName?.trim() || 'ადამიანი, ვისაც კითხვა გაეგზავნა';
-      return `<answer from="${who}">\n${a.answer}\n</answer>`;
+      const answer = allowedSpansForTheModel(a.answer, SHARED_NUMBER_ON_CARD);
+      return `<answer from="${who}">\n${answer}\n</answer>`;
     })
     .join('\n');
   return (

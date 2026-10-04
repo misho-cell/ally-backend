@@ -109,3 +109,15 @@ describe('the tool', () => {
     expect(chat).toContain('never type the number yourself');
   });
 });
+
+/** The tester's 37456 (1): the asker's run read the number in its answer event. */
+describe('the asker’s answer event', () => {
+  it('carries a placeholder where the shared number stood; the card shows the number', () => {
+    const { buildShownAnswersWakeEvent } = jest.requireActual('../taskAsks.service');
+    const event: string = buildShownAnswersWakeEvent([
+      { answer: 'დათო ხელოსანი: ⟦own⟧995599000111⟦/own⟧', fromName: 'გია', verbatim: true },
+    ]);
+    expect(event).toContain('დათო ხელოსანი: [ნომერი ბარათზე ჩანს]');
+    expect(event).not.toContain('995599000111');
+  });
+});
