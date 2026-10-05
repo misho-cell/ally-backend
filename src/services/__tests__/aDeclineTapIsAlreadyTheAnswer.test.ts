@@ -5,7 +5,12 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { allDeclineChoices } from '../askOpening';
 import { AUTOMATIC_ANSWER_NOTE, asksForAnAutomaticAnswer } from '../automaticAnswerRequest';
-import { buildIncomingAskSection, NEEDS_CONFIRMATION_NOTE, toolDescription } from '../chat.service';
+import {
+  buildIncomingAskSection,
+  isHousekeepingRound,
+  NEEDS_CONFIRMATION_NOTE,
+  toolDescription,
+} from '../chat.service';
 
 /**
  * Row 302, the seat's test round of 29 September. D255/D256 said a clear
@@ -143,8 +148,14 @@ describe('a request to answer for the user automatically', () => {
   it('gets a note in that run only, saying no new one is made and naming what was noted', () => {
     expect(AUTOMATIC_ANSWER_NOTE).toContain('cannot be made any more (D562)');
     expect(AUTOMATIC_ANSWER_NOTE).toContain('never a bare „saved"');
+    expect(AUTOMATIC_ANSWER_NOTE).toContain('„აღარ კეთდება"');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain("(asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '')");
+  });
+
+  it('drops the line written beside a profile save when the answer stands (38677)', () => {
+    expect(isHousekeepingRound(['update_user_profile'])).toBe(true);
+    expect(isHousekeepingRound(['update_user_profile', 'ask_contact'])).toBe(false);
   });
 
   it('leaves the always-on tool description without a line that reads as „cannot send"', () => {

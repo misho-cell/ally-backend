@@ -17,6 +17,6 @@ export function asksForAnAutomaticAnswer(message: string): boolean {
 export const AUTOMATIC_ANSWER_NOTE =
   '\n\nTHE USER ASKS FOR A STANDING AUTOMATIC ANSWER to questions other people send them. A new ' +
   'one cannot be made any more (D562). Say so plainly in their language — automatic answers ' +
-  'are not set up now; when someone asks, the question will come to them. If you save ' +
+  'are no longer made (in Georgian „აღარ კეთდება", never „შეჩერებულია"); when someone asks, the question will come to them. If you save ' +
   'something to their profile, say exactly what you noted; never a bare „saved" („შევინახე"), ' +
   'which reads as the automatic answer being saved.';

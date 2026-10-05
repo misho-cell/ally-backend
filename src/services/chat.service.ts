@@ -10795,7 +10795,13 @@ export function isAnswerRound(roundToolNames: readonly string[]): boolean {
  * word. A round that only kept the goal's books carries no news of its own:
  * when GPT's answer stands, its narration goes like any other draft.
  */
-const HOUSEKEEPING_TOOLS: ReadonlySet<string> = new Set(['set_task_wake', 'set_task_brief']);
+// The tester's 38545 / 38677 (39106): „I'll save it to your profile" beside
+// update_user_profile, then „noted on your profile…" as the answer — said twice.
+const HOUSEKEEPING_TOOLS: ReadonlySet<string> = new Set([
+  'set_task_wake',
+  'set_task_brief',
+  'update_user_profile',
+]);
 
 /** The tools that make a promise to write to someone real, or put it to the owner. */
 const ACTING_TOOLS: ReadonlySet<string> = new Set([
