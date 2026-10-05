@@ -589,9 +589,34 @@ async function deliverPendingAnswers(taskId: number): Promise<number> {
   }
 }
 
+const BUSY_THREAD_QUERY_TIMEOUT_MS = 4_000;
+
+/**
+ * The tester's 1159 (38975): an automatic answer arrives inside the asker's own
+ * run — the rule answers while ask_contact is still being called — and its
+ * card went on screen at 07:03:59, before the run's „I asked Netai Test 55…"
+ * at 07:04:06. The owner read the answer before being told the question went.
+ * So the card waits while the goal's conversation is still answering, and
+ * the retry (every 6 s, then the 5-minute sweep) shows it after.
+ */
+export async function conversationIsBusy(
+  taskId: number,
+  threadId: number | null,
+): Promise<boolean> {
+  if (runningTasks.has(taskId)) return true;
+  if (threadId === null) return false;
+  const result = await query<{ status: string }>(
+    `SELECT status FROM threads WHERE id = $1 LIMIT 1`,
+    [threadId],
+    BUSY_THREAD_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.status === 'working';
+}
+
 async function deliverOwedAnswers(taskId: number): Promise<number> {
   const owed = await listUnwokenAnswersForTask(taskId, MAX_ANSWERS_PER_WAKE);
   if (owed.length === 0) return 0;
+  if (await conversationIsBusy(taskId, owed[0].task_thread_id)) return 0;
   const arrived = await Promise.all(
     owed.map(async (ask) => ({
       answer: ask.answer ?? '',
