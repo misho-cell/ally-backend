@@ -117,3 +117,12 @@ describe('a no typed in their own words goes at once', () => {
     expect(toolDescription('send_answer_to_asker')).not.toMatch(/when the answer is a no/);
   });
 });
+
+/** The tester's 38744: „შენახულია" after a profile note read as an automatic answer saved. */
+describe('a request to answer for the user automatically', () => {
+  it('is told plainly that no new rule is made, and a profile note is named', () => {
+    const description = toolDescription('list_answer_rules');
+    expect(description).toContain('A NEW rule can no longer be made');
+    expect(description).toContain('never a bare „saved"');
+  });
+});
