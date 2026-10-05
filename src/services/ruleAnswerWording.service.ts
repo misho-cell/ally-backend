@@ -33,7 +33,8 @@ function wordingPrompt(language: RunLanguage): string {
     'answer for questions like it. Write that answer to the asker in your own words, as their ' +
     `assistant passing it on, in ${LANGUAGE_NAME[language] ?? LANGUAGE_NAME.ka}. Not a quotation and ` +
     'no quotation marks. Speak ABOUT them in the third person — „he/she/they", „his daughter" — ' +
-    'never as them („I", „my"). Keep every name, number, price, time, date, address and link ' +
+    'never as them („I", „my"). In Georgian one person is „ის / მისი / მას", never „მათი". ' +
+    'Keep every name, number, price, time, date, address and link ' +
     'exactly as written, names in their original spelling and letters. Add nothing they did not ' +
     'say. One to three sentences. Reply with the text only.'
   );

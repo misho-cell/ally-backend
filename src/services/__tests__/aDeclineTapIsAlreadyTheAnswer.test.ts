@@ -124,5 +124,8 @@ describe('a request to answer for the user automatically', () => {
     const description = toolDescription('list_answer_rules');
     expect(description).toContain('A NEW rule can no longer be made');
     expect(description).toContain('never a bare „saved"');
+    // #1090: the line read as „cannot send" to an English „ask X…" — it is scoped now.
+    expect(description).toContain('only about questions OTHER people send TO the user');
+    expect(description).toContain('„ask X…" is ask_contact as always');
   });
 });

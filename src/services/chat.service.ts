@@ -1620,10 +1620,11 @@ const LIST_ANSWER_RULES_TOOL: AnthropicTool = {
     "The user's standing answer rules — the kinds of incoming question that are answered " +
     'automatically with their approved words, how often each was used. Call when they ask ' +
     'what is answered for them, or before deleting one. A NEW rule can no longer be made ' +
-    '(D562): when the user asks you to answer some question for them automatically, say ' +
-    'plainly that this is not set up any more and each such question will reach them. If you ' +
-    'noted something on their profile instead, say what you noted — never a bare „saved", ' +
-    "which reads as the automatic answer being saved (the tester's 38744).",
+    '(D562). This is only about questions OTHER people send TO the user: when the user asks ' +
+    'you to keep a standing reply for those, say a new one is not set up any more and such ' +
+    'questions will reach them; if you noted something on their profile instead, say what — ' +
+    'never a bare „saved" (the tester\'s 38744). It never limits the user asking someone: ' +
+    '„ask X…" is ask_contact as always.',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
