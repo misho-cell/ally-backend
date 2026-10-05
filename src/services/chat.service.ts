@@ -336,6 +336,7 @@ import { getCountryChannels } from './tools/countryChannels';
 import { getNetaiInfo } from './tools/netaiInfo';
 import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
+import { AUTOMATIC_ANSWER_NOTE, asksForAnAutomaticAnswer } from './automaticAnswerRequest';
 import {
   looksLikeGoalRequest,
   seeksAPerson,
@@ -1620,11 +1621,8 @@ const LIST_ANSWER_RULES_TOOL: AnthropicTool = {
     "The user's standing answer rules — the kinds of incoming question that are answered " +
     'automatically with their approved words, how often each was used. Call when they ask ' +
     'what is answered for them, or before deleting one. A NEW rule can no longer be made ' +
-    '(D562). This is only about questions OTHER people send TO the user: when the user asks ' +
-    'you to keep a standing reply for those, say a new one is not set up any more and such ' +
-    'questions will reach them; if you noted something on their profile instead, say what — ' +
-    'never a bare „saved" (the tester\'s 38744). It never limits the user asking someone: ' +
-    '„ask X…" is ask_contact as always.',
+    '(D562) — it concerns only questions other people send TO the user, never the user ' +
+    'asking someone („ask X…" is ask_contact as always).',
   input_schema: { type: 'object', properties: {}, required: [] },
 };
 
@@ -13695,7 +13693,7 @@ export async function processChat(
   const repeatedGoal = goalForRequest.repeats;
   if (repeatedGoal !== null) runRepeatedGoal.set(runId, repeatedGoal.id);
   const sameRequestAgain =
-    repeatedGoal === null
+    (repeatedGoal === null
       ? ''
       : `\n\nTHE OWNER HAS JUST ASKED FOR THIS AGAIN. This message repeats goal ` +
         `${repeatedGoal.id} ("${repeatedGoal.title}"), which is ALREADY OPEN and whose state ` +
@@ -13703,7 +13701,9 @@ export async function processChat(
         `and do not ask them again for what the goal already knows. Tell them where that goal ` +
         `stands in a sentence or two. If what they want now is genuinely DIFFERENT from it, ` +
         `say what you think the difference is and ask them. Say only what its state shows: ` +
-        `never that a plan is ready or waits for their yes unless a plan was proposed.`;
+        `never that a plan is ready or waits for their yes unless a plan was proposed.`) +
+    // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
+    (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '');
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.
   const systemPrompt = joinSystemPrompt(

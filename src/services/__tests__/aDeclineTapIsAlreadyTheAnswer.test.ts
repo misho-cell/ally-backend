@@ -1,7 +1,10 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { allDeclineChoices } from '../askOpening';
+import { AUTOMATIC_ANSWER_NOTE, asksForAnAutomaticAnswer } from '../automaticAnswerRequest';
 import { buildIncomingAskSection, NEEDS_CONFIRMATION_NOTE, toolDescription } from '../chat.service';
 
 /**
@@ -118,14 +121,35 @@ describe('a no typed in their own words goes at once', () => {
   });
 });
 
-/** The tester's 38744: „შენახულია" after a profile note read as an automatic answer saved. */
+/** The tester's 38744 / 38616 (#1123) and #1090. */
 describe('a request to answer for the user automatically', () => {
-  it('is told plainly that no new rule is made, and a profile note is named', () => {
+  it('is recognised by the server, in Georgian, English and others', () => {
+    expect(
+      asksForAnAutomaticAnswer(
+        'შეინახე ავტომატური პასუხი: თუ ვინმე იკითხავს კარგ ელექტრიკოსს ბათუმში, უპასუხე რომ მე ვარ.',
+      ),
+    ).toBe(true);
+    expect(asksForAnAutomaticAnswer('ყოველთვის ასე უპასუხე ჩემს მაგივრად')).toBe(true);
+    expect(asksForAnAutomaticAnswer('Set an automatic answer for dentist questions')).toBe(true);
+  });
+
+  it('is not an ordinary „ask X" request', () => {
+    expect(
+      asksForAnAutomaticAnswer('Ask Netai Test 1 if he could recommend a reliable dentist'),
+    ).toBe(false);
+    expect(asksForAnAutomaticAnswer('ჰკითხე გიორგის, იცნობს თუ არა ნოტარიუსს')).toBe(false);
+  });
+
+  it('gets a note in that run only, saying no new one is made and naming what was noted', () => {
+    expect(AUTOMATIC_ANSWER_NOTE).toContain('cannot be made any more (D562)');
+    expect(AUTOMATIC_ANSWER_NOTE).toContain('never a bare „saved"');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain("(asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '')");
+  });
+
+  it('leaves the always-on tool description without a line that reads as „cannot send"', () => {
     const description = toolDescription('list_answer_rules');
-    expect(description).toContain('A NEW rule can no longer be made');
-    expect(description).toContain('never a bare „saved"');
-    // #1090: the line read as „cannot send" to an English „ask X…" — it is scoped now.
-    expect(description).toContain('only about questions OTHER people send TO the user');
     expect(description).toContain('„ask X…" is ask_contact as always');
+    expect(description).not.toContain('say plainly');
   });
 });
