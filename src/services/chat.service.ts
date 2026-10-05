@@ -10780,6 +10780,12 @@ function lastUserText(messages: readonly Anthropic.MessageParam[]): string {
  */
 const ANSWER_ROUND_TOOLS: ReadonlySet<string> = new Set(['present_choices', 'propose_task_plan']);
 
+/*
+ * The tester's 1160 (39042): in a run that repeats an open goal every search
+ * is refused, so the text Claude writes beside them IS its answer — it was
+ * kept as a step and GPT's final said it again in other words, two stored
+ * messages 16 s apart. Such a run's narration is drafted like an answer round.
+ */
 export function isAnswerRound(roundToolNames: readonly string[]): boolean {
   return roundToolNames.some((name) => ANSWER_ROUND_TOOLS.has(name));
 }
@@ -11407,7 +11413,8 @@ async function runToolLoop(
       if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
-        if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });
+        if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
+          draftSteps.push({ id: stepId, text: narration });
         if (isHousekeepingRound(roundTools))
           housekeepingSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {
@@ -11481,7 +11488,8 @@ async function runToolLoop(
       if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
-        if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });
+        if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
+          draftSteps.push({ id: stepId, text: narration });
         if (isHousekeepingRound(roundTools))
           housekeepingSteps.push({ id: stepId, text: narration });
         if (narration.length > bestNarration.length) {

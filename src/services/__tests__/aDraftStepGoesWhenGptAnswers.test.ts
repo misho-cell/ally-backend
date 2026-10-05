@@ -31,9 +31,7 @@ describe('a draft step written beside the closing tool', () => {
   });
 
   it('is remembered at both places a step is saved', () => {
-    const remembered = chat.split(
-      'if (isAnswerRound(roundTools)) draftSteps.push({ id: stepId, text: narration });',
-    );
+    const remembered = chat.split('if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))');
     expect(remembered.length - 1).toBe(2);
   });
 

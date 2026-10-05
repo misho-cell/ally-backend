@@ -17,3 +17,14 @@ describe('a guard’s corrected turn', () => {
     expect(after).not.toContain('resetTurnStream();');
   });
 });
+
+/** The tester's 1160 (39042): a repeated-goal run's answer beside refused searches. */
+describe('a run that repeats an open goal', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('drafts its narration like an answer round, so the answer is kept once', () => {
+    const sites =
+      chat.split('if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))').length - 1;
+    expect(sites).toBe(2);
+  });
+});
