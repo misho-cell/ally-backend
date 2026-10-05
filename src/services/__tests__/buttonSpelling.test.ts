@@ -4,6 +4,7 @@ import {
   correctedLabels,
   editDistance,
   splitButtons,
+  UNFIXABLE_MARK,
   withoutButtonsLine,
 } from '../buttonSpelling';
 
@@ -90,5 +91,26 @@ describe('the stream', () => {
     filter('ერთი ');
     filter('ორი');
     expect(shown.join('')).toBe('ერთი ორი');
+  });
+});
+
+/** #1486 (39416): a label garbled past respelling is dropped, not shown. */
+describe('a label the writer cannot read', () => {
+  it('goes, and the rest stay in order', () => {
+    expect(
+      correctedLabels(
+        ['ვებ-ში დავეხო გალერეაზე და გამოფენა', 'ჯერ არა'],
+        [UNFIXABLE_MARK, 'ჯერ არა'],
+        keepNone,
+      ),
+    ).toEqual(['ჯერ არა']);
+  });
+
+  it('never drops the server’s own approve label', () => {
+    expect(correctedLabels(['ვადასტურებ'], [UNFIXABLE_MARK], () => true)).toEqual(['ვადასტურებ']);
+  });
+
+  it('is asked of the writer', () => {
+    expect(buttonSpellingNote(['x'])).toContain(UNFIXABLE_MARK);
   });
 });

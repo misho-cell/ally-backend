@@ -10,6 +10,12 @@ import { labelWithForeignLetter } from './buttonLetters';
  * spelt better.
  */
 export const BUTTONS_MARK = '⟦BUTTONS⟧';
+/**
+ * #1486 (39416): „ვებ-ში დავეხო გალერეაზე და გამოფენა შეგვაცნობა განოს რომ" was
+ * garbled past respelling. The writer marks such a label and the button goes:
+ * a button the owner cannot read is worse than one button fewer.
+ */
+export const UNFIXABLE_MARK = '⟦X⟧';
 const LABEL_SEPARATOR = ' | ';
 const MAX_LABEL_WORDS = 6;
 /**
@@ -33,7 +39,8 @@ export function buttonSpellingNote(labels: readonly string[]): string {
     'The other model often misspells Georgian. Read every label word by word as a native ' +
     'speaker: a word that does not exist or has a wrong letter is to be fixed, e.g. ' +
     '„გადაწემა" → „გადაცემა", „მერუ" → „მერე", „ავირხოთ" → „ავირჩიოთ", „ერთ-ორს ადამიანი" → ' +
-    '„ერთ-ორ ადამიანს". Write the line even when nothing needed fixing.'
+    '„ერთ-ორ ადამიანს". If a label is so garbled that you cannot tell what it was meant to ' +
+    `say, write ${UNFIXABLE_MARK} in its place. Write the line even when nothing needed fixing.`
   );
 }
 
@@ -65,13 +72,19 @@ export function correctedLabels(
   keep: (label: string) => boolean,
 ): string[] {
   if (fromGpt === null || fromGpt.length !== original.length) return [...original];
-  return original.map((label, i) => {
+  return original.flatMap((label, i) => {
     const candidate = fromGpt[i];
-    if (keep(label) || keep(candidate)) return label;
-    if (candidate.split(/\s+/).length > MAX_LABEL_WORDS) return label;
-    if (labelWithForeignLetter([candidate]) !== null) return label;
-    return onlyRespelt(label, candidate) ? candidate : label;
+    if (keep(label)) return [label];
+    if (candidate === UNFIXABLE_MARK) return [];
+    return [respeltOrKept(label, candidate, keep)];
   });
+}
+
+function respeltOrKept(label: string, candidate: string, keep: (label: string) => boolean): string {
+  if (keep(candidate)) return label;
+  if (candidate.split(/\s+/).length > MAX_LABEL_WORDS) return label;
+  if (labelWithForeignLetter([candidate]) !== null) return label;
+  return onlyRespelt(label, candidate) ? candidate : label;
 }
 
 function onlyRespelt(before: string, after: string): boolean {

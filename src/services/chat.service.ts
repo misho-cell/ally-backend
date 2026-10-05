@@ -11162,7 +11162,8 @@ function respeltChoices(
     `[choices] run ${runId}: ${choices.length} label(s), ` +
       (fromGpt === null
         ? 'the final writer returned none'
-        : `${fromGpt.length} returned, ${changed} respelt, ${refused} kept as written`),
+        : `${fromGpt.length} returned, ${changed} respelt, ${refused} kept as written, ` +
+          `${choices.length - corrected.length} dropped as unreadable`),
   );
   return corrected;
 }
