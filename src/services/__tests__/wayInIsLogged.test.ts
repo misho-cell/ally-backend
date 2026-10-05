@@ -63,6 +63,27 @@ describe('a way-in lookup is written down', () => {
     expect(mockLog.mock.calls[0][0].runId).toBe('r-1');
   });
 
+  it('looks names up a few per pass, and a slow pass loses only its own names', async () => {
+    mockMany.mockImplementation(async (_user, queries) =>
+      queries.includes('Slow')
+        ? new Promise(() => undefined)
+        : new Map(queries.map((q) => [q, { name: 'Nino', phone: '+995555000111' }])),
+    );
+
+    const out = await findWaysIn('501', ['Some Clinic', 'Other Firm', 'Slow'], { threadId: 77 });
+
+    expect(mockMany).toHaveBeenCalledTimes(2);
+    expect(out.get('Some Clinic')).toEqual({ kind: 'first_circle', who: 'Nino' });
+    expect(out.get('Slow')).toEqual({ kind: 'unchecked' });
+    expect(mockLog).toHaveBeenCalledTimes(1);
+    expect(mockLog.mock.calls[0][0].result).toEqual({
+      found: true,
+      count: 2,
+      passes: 2,
+      timed_out_passes: 1,
+    });
+  }, 10_000);
+
   // Row 291: a count, never a contact — these are the owner's own people.
   it('never samples the people, because these are the owner s own contacts', async () => {
     everyQueryFinds('Nino Beridze');
@@ -73,7 +94,7 @@ describe('a way-in lookup is written down', () => {
     const logged = JSON.stringify(mockLog.mock.calls[0][0]);
     expect(logged).not.toContain('Nino');
     expect(logged).not.toContain('+995');
-    expect(mockLog.mock.calls[0][0].result).toEqual({ found: true, count: 1 });
+    expect(mockLog.mock.calls[0][0].result).toEqual({ found: true, count: 1, passes: 1 });
   });
 
   it('records a lookup the budget cut off, and marks it as cut off', async () => {
@@ -84,7 +105,7 @@ describe('a way-in lookup is written down', () => {
 
     expect(out.get('Slow Name')).toEqual({ kind: 'unchecked' });
     expect(mockLog).toHaveBeenCalledTimes(1);
-    expect(mockLog.mock.calls[0][0].result).toEqual({ found: false, timed_out: true });
+    expect(mockLog.mock.calls[0][0].result).toEqual({ found: false, timed_out: true, passes: 1 });
   }, 10_000);
 
   it('records a lookup that threw, rather than losing it', async () => {
@@ -94,7 +115,7 @@ describe('a way-in lookup is written down', () => {
 
     expect(out.get('Broken Name')).toEqual({ kind: 'unchecked' });
     expect(mockLog).toHaveBeenCalledTimes(1);
-    expect(mockLog.mock.calls[0][0].result).toEqual({ error: 'pool exhausted' });
+    expect(mockLog.mock.calls[0][0].result).toEqual({ error: 'pool exhausted', passes: 1 });
   });
 
   /**

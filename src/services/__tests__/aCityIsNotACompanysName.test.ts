@@ -27,7 +27,7 @@ describe('the words a web lead is looked up by', () => {
     expect(src).toContain(
       'leadsFirstName(name) === null ? firmSearchName(name) : wayInSearchName(name);',
     );
-    expect(src).toContain('exactMatchesForMany(userId, queries)');
+    expect(src).toContain('exactMatchesForMany(userId, pass)');
     expect(src).toContain("out.set(name, { kind: 'none' });");
   });
 });

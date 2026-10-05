@@ -527,6 +527,8 @@ const MAX_WAY_IN_CHECKS = 3;
  * claim about how long something takes has to be measured before it is written.
  */
 const WAY_IN_BUDGET_MS = 3_000;
+/** Web names looked up in one pass over the phonebook (#959). */
+const WAY_IN_NAMES_PER_PASS = 2;
 
 /** A title is „Name — tagline"; the name is what a network is searched for. */
 const TITLE_SEPARATORS = /\s+[—–|:·]\s+|\s+-\s+/;
@@ -869,24 +871,52 @@ export async function findWaysIn(
   }
   const queries = [...new Set(searchNameOf.values())];
   if (queries.length === 0) return out;
-  // Board #959: ONE pass over the phonebook for every name, not one search
-  // per name (63 in one run on 4 October), and one line in the log for it.
-  let failure: string | null = null;
-  const found = await Promise.race([
-    exactMatchesForMany(userId, queries).catch((err: unknown) => {
-      failure = (err as Error).message;
-      // eslint-disable-next-line no-console
-      console.error('[opening-search] way-in lookup failed:', failure);
-      return null;
+  // Board #959: a few names per pass over the phonebook, not one search per
+  // name (63 in one run on 4 October). One pass for all of them was measured
+  // on 5 Oct: 3 of 10 checks ran out the 3 s budget and lost every name, where
+  // single lookups lost 8%. Small passes in parallel keep the count down, and a
+  // slow pass loses only its own names.
+  const passes: string[][] = [];
+  for (let i = 0; i < queries.length; i += WAY_IN_NAMES_PER_PASS) {
+    passes.push(queries.slice(i, i + WAY_IN_NAMES_PER_PASS));
+  }
+  const failures: string[] = [];
+  let unfinished = 0;
+  const found = new Map<string, ExactMatch | null>();
+  const unchecked = new Set<string>();
+  await Promise.all(
+    passes.map(async (pass) => {
+      const result = await Promise.race([
+        exactMatchesForMany(userId, pass).catch((err: unknown) => {
+          const message = (err as Error).message;
+          failures.push(message);
+          // eslint-disable-next-line no-console
+          console.error('[opening-search] way-in lookup failed:', message);
+          return null;
+        }),
+        new Promise<null>((resolve) => {
+          const t = setTimeout(() => resolve(null), WAY_IN_BUDGET_MS);
+          t.unref?.();
+        }),
+      ]);
+      if (result === null) {
+        unfinished += 1;
+        for (const q of pass) unchecked.add(q);
+        return;
+      }
+      for (const [q, match] of result) found.set(q, match);
     }),
-    new Promise<null>((resolve) => {
-      const t = setTimeout(() => resolve(null), WAY_IN_BUDGET_MS);
-      t.unref?.();
-    }),
-  ]);
-  recordWayInCheck(userId, origin, queries, found, failure, Date.now() - startedAt);
+  );
+  recordWayInCheck(userId, origin, {
+    queries,
+    passes: passes.length,
+    unfinished,
+    failure: failures[0] ?? null,
+    tied: [...found.values()].filter((m) => m !== null).length,
+    durationMs: Date.now() - startedAt,
+  });
   for (const [name, searchName] of searchNameOf) {
-    if (found === null) {
+    if (unchecked.has(searchName)) {
       out.set(name, { kind: 'unchecked' });
       continue;
     }
@@ -898,35 +928,43 @@ export async function findWaysIn(
   return out;
 }
 
+/** What one way-in check did, for the log: counts only, never a contact. */
+interface WayInCheck {
+  readonly queries: readonly string[];
+  readonly passes: number;
+  readonly unfinished: number;
+  readonly failure: string | null;
+  readonly tied: number;
+  readonly durationMs: number;
+}
+
 /**
- * The one way-in check, written down once. A caller without a thread cannot be
+ * The way-in check, written down once. A caller without a thread cannot be
  * recorded (`tool_call_log.thread_id` is NOT NULL). No contact names in the log:
  * these are the owner's own contacts.
  */
-function recordWayInCheck(
-  userId: string,
-  origin: WayInOrigin,
-  queries: readonly string[],
-  found: ReadonlyMap<string, ExactMatch | null> | null,
-  failure: string | null,
-  durationMs: number,
-): void {
+function recordWayInCheck(userId: string, origin: WayInOrigin, check: WayInCheck): void {
   if (origin.threadId === undefined || origin.threadId === null) return;
-  const tied = found === null ? 0 : [...found.values()].filter((m) => m !== null).length;
+  const result =
+    check.failure !== null
+      ? { error: check.failure, passes: check.passes }
+      : check.unfinished === check.passes
+        ? { found: false, timed_out: true, passes: check.passes }
+        : {
+            found: check.tied > 0,
+            count: check.tied,
+            passes: check.passes,
+            ...(check.unfinished > 0 ? { timed_out_passes: check.unfinished } : {}),
+          };
   void logToolCall({
     threadId: origin.threadId,
     surface: 'chat',
     runId: origin.runId ?? null,
     userId,
     tool: 'search_by_tag:way_in',
-    input: { tag_queries: queries.join(' | ') },
-    result:
-      failure !== null
-        ? { error: failure }
-        : found === null
-          ? { found: false, timed_out: true }
-          : { found: tied > 0, count: tied },
-    durationMs,
+    input: { tag_queries: check.queries.join(' | ') },
+    result,
+    durationMs: check.durationMs,
   });
 }
 
