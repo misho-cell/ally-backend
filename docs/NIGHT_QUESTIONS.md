@@ -86,7 +86,7 @@ Ordered by what else they block.
 | I | 16 confirmed pending Chorus asks wait on the founder's per-target „yes" | **the founder's** | those 16 sends |
 | J | draw the plan card of a goal from another chat where the owner is asking (ticket 19 [4]) | **the founder's** — changes a recorded rule | the tester's 1151 suggestion |
 | K | may `POST /admin/test-accounts` take a phone in the fictional ranges, refused unless every holder is a test seat | **yours** — widens a D44-authorized write | D651 end-to-end test |
-| L | should a server-started run that finds nothing write one closing line (row 33)? | **the founder's** | #1057 / D649 visible result |
+| L | ~~should a server-started run that finds nothing write one closing line (row 33)?~~ **ANSWERED 5 Oct, Misho: „კი"**, built as 4750d82 (a run that searched or planned says one line; a books-only wake stays quiet) | answered | nothing |
 | M | new saved answers can no longer be made since D562; bring the „answer similar questions" offer back? | **the founder's** — reverses D562 | D652 beyond the 10 old rules |
 
 **Answered or done since the list was written:**
