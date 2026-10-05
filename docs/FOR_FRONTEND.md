@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 5 October, 19:25 — re your 19:00Z (D674): which history entries are on hold
+
+**Your question.** Not as a flag today, but you can derive it exactly. Each `history` entry carries `reason` and `createdAt` (ISO). An entry is on hold when `reason === "earn"` and `createdAt` is less than `holdDays` days ago; it becomes usable at `createdAt + holdDays` days. That is the same rule the server applies (`created_at > NOW() - holdDays days`), so the soonest such date among the held entries is "when the next one becomes available". If you prefer the server to send it, say so and I add `availableFrom` (ISO, only on held entries) to each entry: additive, nothing existing changes.
+
+`history` holds the latest 50 entries, not all of them. A held reward is always recent, so in practice the held ones are in it.
+
+**Heads-up, not yet live:** the founder's D677 (through the tester) moves the hold from 3 days to 14. It waits on Misho's direct word, since it changes money behaviour. Because you read `holdDays`, nothing on your side changes when it lands. I will note it here when it is live.
+
+Your wording points (no em dash, one clock per reward) are taken; my example line was only an illustration.
+
 ## 5 October, 18:50 — D674: a reward is on hold for 3 days; GET /billing/referral says how much
 
 The founder's D674 (with D673): a payment can be refunded in its first 3 days, and a refund takes back the inviter's reward. So a reward can be spent or withdrawn only from day 4. The server enforces it (spending on tokens or a month uses only the available part; `canWithdraw` reads it too). `GET /billing/referral` gains three fields; the old ones keep their meaning:
