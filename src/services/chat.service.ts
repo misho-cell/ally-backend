@@ -6759,6 +6759,16 @@ function withoutClosingVariant(reply: string, question: string): string {
   return lines.slice(0, -1).join('\n');
 }
 
+/** Do the plan step and the final both end on the agreed question (D663)? */
+export function bothAskTheClosingQuestion(
+  step: string,
+  final: string,
+  language: RunLanguage,
+): boolean {
+  const question = PLAN_CLOSING_QUESTION[language];
+  return step.includes(question) && final.includes(question);
+}
+
 export function withClosingQuestion(reply: string, language: RunLanguage): string {
   const question = PLAN_CLOSING_QUESTION[language];
   const at = reply.lastIndexOf(question);
@@ -11880,6 +11890,18 @@ async function runToolLoop(
   }
   if (gptAnswerWritten && !buriedAnswer) {
     await dropDraftSteps(userId, threadId, runId, housekeepingSteps);
+  }
+  // The prompt seat's 39700 (conv 39998, D663): Claude's own final carried the
+  // plan and „დავიწყო?", and the plan-round step beside it carried both too —
+  // the owner read the plan and the question twice. When both end on the agreed
+  // question, the final is the one copy and the step goes.
+  if (
+    !finalIsRewrite &&
+    !buriedAnswer &&
+    draft !== null &&
+    bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))
+  ) {
+    await dropDraftSteps(userId, threadId, runId, draftSteps);
   }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;

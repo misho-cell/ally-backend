@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { bothAskTheClosingQuestion } from '../chat.service';
 
 /**
  * The tester's 39635 (conv 39931): „ask <name> …" sent the ask at once (D316),
@@ -20,5 +21,24 @@ describe('a refused plan’s narration is not the answer', () => {
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(chat.indexOf('const buriedAnswer ='));
     expect(chat.slice(at, at + 300)).toContain("bestNarration = '';");
+  });
+});
+
+/** The prompt seat's 39700 (conv 39998): the plan and „დავიწყო?" twice — in a step and in the final. */
+describe('the plan said once when Claude writes the final', () => {
+  it('knows when the step and the final both ask the agreed question', () => {
+    expect(
+      bothAskTheClosingQuestion(
+        'ნანას ასისტენტს დაველაპარაკები. დავიწყო?',
+        'გეგმა… დავიწყო?',
+        'ka',
+      ),
+    ).toBe(true);
+    expect(bothAskTheClosingQuestion('ვეძებ…', 'გეგმა… დავიწყო?', 'ka')).toBe(false);
+  });
+
+  it('drops the step in that case', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))');
   });
 });
