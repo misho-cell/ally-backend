@@ -1,4 +1,4 @@
-import { lastToolName, lastTurnShape } from '../finalAnswer.service';
+import { lastToolName, lastTurnShape, withoutTrailingHousekeeping } from '../finalAnswer.service';
 
 /** 5 Oct: one GPT reply in five came back empty; the log names the last turn's shape. */
 describe('the empty rewrite names the last turn it was handed', () => {
@@ -36,5 +36,41 @@ describe('the empty rewrite names the last tool the run called', () => {
 
   it('says none when no tool ran', () => {
     expect(lastToolName([{ role: 'user', content: 'hi' }])).toBe('none');
+  });
+});
+
+describe('a trailing round that only kept the books', () => {
+  const search = [
+    { role: 'user', content: 'find a plumber' },
+    {
+      role: 'assistant',
+      content: [{ type: 'tool_use', id: 's', name: 'search_by_tag', input: { tag_query: 'x' } }],
+    },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 's', content: 'Gia, plumber' }] },
+  ] as const;
+  const books = [
+    {
+      role: 'assistant',
+      content: [
+        { type: 'text', text: 'I found Gia.' },
+        { type: 'tool_use', id: 'w', name: 'set_task_wake', input: { hours: 24 } },
+      ],
+    },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'w', content: 'ok' }] },
+  ] as const;
+
+  it('is taken off what GPT reads, so it writes from the findings (15 of 19 empty answers)', () => {
+    const out = withoutTrailingHousekeeping([...search, ...books] as never);
+    expect(out).toHaveLength(3);
+    expect(JSON.stringify(out[2])).toContain('Gia, plumber');
+  });
+
+  it('stays when nothing but the books would be left', () => {
+    const only = [{ role: 'user', content: 'remind me tomorrow' }, ...books] as never;
+    expect(withoutTrailingHousekeeping(only)).toHaveLength(3);
+  });
+
+  it('leaves a run that ended on a real tool alone', () => {
+    expect(withoutTrailingHousekeeping([...search] as never)).toHaveLength(3);
   });
 });

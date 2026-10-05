@@ -1,4 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
+import { HOUSEKEEPING_TOOLS } from './housekeepingTools';
 import type OpenAI from 'openai';
 import { openaiClient } from '../config/openai';
 import type { ClaudeUsage } from './costLedger.service';
@@ -136,6 +137,45 @@ export function toOpenAiMessages(
     );
   }
   return out;
+}
+
+/**
+ * 5 Oct: of 19 empty GPT answers with the tool named in the log, 15 came after
+ * set_task_wake. Claude writes its answer BESIDE that call, so GPT was handed
+ * a history whose last assistant turn had already answered, and added
+ * nothing — Claude's words stood and the GPT voice was lost. A trailing round
+ * that only kept the goal's books is taken off what GPT reads, so it writes
+ * the answer from the material, as on every other run.
+ */
+export function withoutTrailingHousekeeping(
+  messages: readonly Anthropic.MessageParam[],
+): Anthropic.MessageParam[] {
+  const kept = [...messages];
+  for (;;) {
+    const results = kept[kept.length - 1];
+    const call = kept[kept.length - 2];
+    if (results?.role !== 'user' || call?.role !== 'assistant') break;
+    if (!Array.isArray(call.content) || !Array.isArray(results.content)) break;
+    const tools = call.content.filter((b) => b.type === 'tool_use');
+    const onlyResults = results.content.every((b) => b.type === 'tool_result');
+    const onlyBooks =
+      tools.length > 0 &&
+      tools.every((b) => b.type === 'tool_use' && HOUSEKEEPING_TOOLS.has(b.name));
+    if (!onlyBooks || !onlyResults) break;
+    kept.splice(kept.length - 2, 2);
+  }
+  // Only when real material is left to write from: a run that did nothing but
+  // keep the books keeps its history, or GPT would not know what was done.
+  return kept.length < messages.length && endsOnToolResults(kept) ? kept : [...messages];
+}
+
+function endsOnToolResults(messages: readonly Anthropic.MessageParam[]): boolean {
+  const last = messages[messages.length - 1];
+  return (
+    last?.role === 'user' &&
+    Array.isArray(last.content) &&
+    last.content.some((b) => b.type === 'tool_result')
+  );
 }
 
 /** The name of the last tool the run called — its name only, never its input or result. */
@@ -341,7 +381,7 @@ export async function writeFinalAnswer(
   }
 
   try {
-    const sent = toOpenAiMessages(messages, systemPrompt);
+    const sent = toOpenAiMessages(withoutTrailingHousekeeping(messages), systemPrompt);
     const stream = await client.chat.completions.create(
       {
         model,
