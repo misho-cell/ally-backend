@@ -69,15 +69,48 @@ export function ownerLineSharesNumber(line: string, alias: string): boolean {
 
 /**
  * „კი" to Netai's own „shall I send <name>'s number?" — the yes to a question
- * the owner's previous line had already asked for. A bare yes alone never is.
+ * the owner's earlier line had already asked for. A bare yes alone never is.
  */
 const BARE_YES_RE =
   /^\s*(კი|ki|ho|yes|yeah|ok|okay|да|sí|si|გაუგზავნე|გააგზავნე|send it)[\s.!,)]*$/iu;
 
+/** The tap on one of several same-named contacts: „პირველი", „2", „the second". */
+const ORDINAL_PICK_RE =
+  /^\s*(?:the\s+)?(1|2|3|პირველი|მეორე|მესამე|first|second|third|первый|второй|третий|primero|segundo|tercero)[\s.!,)]*$/iu;
+
+/** A word that takes the instruction back or puts it on hold. */
+const HOLD_RE =
+  /(?:^|[\s,.!?])(არა|არ|ნუ|მოიცა|გააუქმე|no|not|don'?t|stop|wait|cancel|нет|не|стоп|подожди|отмена|espera|cancela)(?=$|[\s,.!?])/iu;
+
+/** A pick is a short line; a longer one is a new message, not a tap. */
+const PICK_MAX_CHARS = 80;
+
+/**
+ * Tester 39832 (#1519): two contacts shared the name, Netai offered both, she
+ * tapped one — refused, because her latest line was the pick and not the
+ * instruction; then her „კი" to the re-ask was refused too, and she was told
+ * to retype the whole sentence. Her first typed line was the yes (D316/D625).
+ * So a pick of the contact, or a bare yes, carries the instruction before it.
+ */
+function continuesTheInstruction(line: string, alias: string): boolean {
+  if (BARE_YES_RE.test(line) || ORDINAL_PICK_RE.test(line)) return true;
+  if (line.length > PICK_MAX_CHARS || HOLD_RE.test(line)) return false;
+  const first = alias.trim().split(/\s+/u)[0] ?? '';
+  if (first.length < 2) return false;
+  const lower = line.toLowerCase();
+  return lower.includes(nameStem(first)) || nameKey(lower).includes(latinStem(first));
+}
+
+/**
+ * The owner's lines, newest first: the newest that names the contact and a
+ * number is the instruction, and every line after it must only continue it.
+ */
 export function ownerLinesShareNumber(latestFirst: readonly string[], alias: string): boolean {
-  const [latest = '', previous = ''] = latestFirst;
-  if (ownerLineSharesNumber(latest, alias)) return true;
-  return BARE_YES_RE.test(latest) && ownerLineSharesNumber(previous, alias);
+  for (const line of latestFirst) {
+    if (ownerLineSharesNumber(line, alias)) return true;
+    if (!continuesTheInstruction(line, alias)) return false;
+  }
+  return false;
 }
 
 interface LiveAsk {
@@ -108,9 +141,10 @@ async function ownContactAlias(ownerId: string, phone: string): Promise<string |
   return own.rows[0]?.alias ?? null;
 }
 
-const OWNER_LINES_READ = 2;
+/** The instruction, the pick of a same-named contact, the yes to Netai's re-ask. */
+const OWNER_LINES_READ = 3;
 
-/** The owner's own last two lines in this conversation, newest first. */
+/** The owner's own last three lines in this conversation, newest first. */
 async function ownersLatestLines(askThreadId: number): Promise<string[]> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
