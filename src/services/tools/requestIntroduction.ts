@@ -1,3 +1,4 @@
+import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
 import { query } from '../../db/postgres/client';
 import { foldedLower } from './georgianCase';
@@ -572,8 +573,9 @@ async function requestIntroductionInner(
     await sendPushNotification(String(mediatorUserId), {
       title: 'Netai — გაცნობის მოთხოვნა',
       body: isDirect
-        ? `${requesterName}-ს შენი გაცნობა უნდა. გახსენი Netai.`
-        : `${requesterName} გთხოვს, გააცნო ${targetName}-ს. გახსენი Netai.`,
+        ? `${geoName(requesterName, 'gen')} ასისტენტი გწერს: ${requesterName}-ს შენი გაცნობა უნდა. გახსენი Netai.`
+        : // #1420: the request is the assistant's, so the push says whose assistant asks.
+          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${targetName}-ს. გახსენი Netai.`,
       url: pushUrl,
     });
   }

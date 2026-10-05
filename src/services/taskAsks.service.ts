@@ -1509,7 +1509,7 @@ export async function createAsk(
   }
 
   void sendPushNotification(String(toUserId), {
-    title: `Netai — ${senderName} გეკითხება`,
+    title: askPushTitle(language, senderName),
     body: safeQuestion.slice(0, 120),
     url: `/chat/${askThreadId}`,
   }).catch(() => undefined);
@@ -3255,6 +3255,25 @@ const LATER_REMINDER_AFTER_HOURS = 24;
  * question it was. The line names who is asking; without a name it is the
  * line it always was.
  */
+/**
+ * #1420 (Giorgi, 5 Oct): the app said „your friend's ASSISTANT is asking you"
+ * and the push for the same ask said „<friend> is asking you". The question is
+ * the assistant's wording (D648), so the lock screen says so too, in the
+ * recipient's language.
+ */
+export function askPushTitle(language: RunLanguage, senderName: string): string {
+  switch (language) {
+    case 'en':
+      return `Netai — ${senderName}'s assistant is asking you`;
+    case 'ru':
+      return `Netai — ассистент ${senderName} спрашивает тебя`;
+    case 'es':
+      return `Netai — el asistente de ${senderName} te pregunta`;
+    default:
+      return `Netai — ${geoName(senderName, 'gen')} ასისტენტი გეკითხება`;
+  }
+}
+
 export function askReminderLine(language: RunLanguage, askerName: string | null): string {
   if (!askerName) return RUN_STRINGS[language].askReminder;
   switch (language) {
