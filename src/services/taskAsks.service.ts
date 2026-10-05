@@ -35,7 +35,7 @@ import {
 } from './runLanguage';
 import { emitThreadCreated } from './sse.service';
 import { sendPushNotification } from './notification.service';
-import { allowedSpansForTheModel, scrubText } from './privacyScrub';
+import { ALLOW_OPEN, allowedSpansForTheModel, scrubText } from './privacyScrub';
 import { receivingCapsAreOff } from './askCapExemptions';
 import { geoName } from './georgianCase';
 import {
@@ -1656,7 +1656,8 @@ export async function recordAskAnswer(
   // firstAnswer = this message IS the whole stored answer, i.e. the round had
   // nothing before it. Read off the updated row itself.
   const firstAnswer = row.answer === safe;
-  const carried = row.answer.split('\n').includes(safe);
+  // Contains, not equals a line: a shared number with the owner's note is two lines.
+  const carried = row.answer.includes(safe);
   const check = await query<{ from_name: string | null }>(
     `SELECT u.name AS from_name
      FROM task_asks ta LEFT JOIN "User" u ON u.id = ta.to_user_id
@@ -2257,6 +2258,23 @@ export interface ArrivedAnswer {
  * onward person is not named here: who they are is in the helper's own words.
  */
 export function passedOnNote(answers: readonly ArrivedAnswer[]): string {
+  return passedOnLine(answers) + sharedNumberNote(answers);
+}
+
+/**
+ * Tester 39832 (#1554): the helper sent a contact's number, it arrived — and
+ * the asker's next reply offered an introduction to that same person. He
+ * already has the number; the next step is his own call.
+ */
+export function sharedNumberNote(answers: readonly ArrivedAnswer[]): string {
+  if (!answers.some((a) => a.answer.includes(ALLOW_OPEN))) return '';
+  return (
+    ' პასუხში ნომერია: მფლობელს ის უკვე აქვს და თავად დაუკავშირდება. ამ ადამიანთან გაცნობა ' +
+    'აღარ შესთავაზო და მისი ნომერი აღარ მოითხოვო.'
+  );
+}
+
+function passedOnLine(answers: readonly ArrivedAnswer[]): string {
   const who = answers
     .filter((a) => a.passedOn === true)
     .map((a) => a.fromName?.trim() || 'ადამიანმა, ვისაც კითხვა გაეგზავნა');

@@ -1582,6 +1582,12 @@ const SHARE_CONTACT_NUMBER_TOOL: AnthropicTool = {
     type: 'object',
     properties: {
       phone: { type: 'string', description: "The contact's phone id from a search result." },
+      note: {
+        type: 'string',
+        description:
+          'Optional: what the owner said about this person (why they recommend them), in ' +
+          'one short line in your own words, facts exact. Never a number.',
+      },
     },
     required: ['phone'],
   },
@@ -8651,6 +8657,7 @@ async function executeToolCall(
         userId,
         threadId,
         String(input['phone'] ?? ''),
+        String(input['note'] ?? ''),
       );
       if (outcome.shared && runId) runAnswerSent.add(runId);
       return outcome.shared

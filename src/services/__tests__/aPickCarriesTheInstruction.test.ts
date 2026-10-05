@@ -34,3 +34,15 @@ describe('a pick carries the instruction before it', () => {
     expect(ownerLinesShareNumber(['კი', 'Dato Karada'], ALIAS)).toBe(false);
   });
 });
+
+describe('the owner’s word rides with the number (#1553)', () => {
+  const { withTheOwnersWord } = jest.requireActual('../shareNumber.service');
+
+  it('puts the note on its own line above the name and number', () => {
+    expect(withTheOwnersWord(' კარგი   ხელოსანია ', 'Dato: n')).toBe('კარგი ხელოსანია\nDato: n');
+  });
+
+  it('sends the name and number alone when there is no note', () => {
+    expect(withTheOwnersWord('  ', 'Dato: n')).toBe('Dato: n');
+  });
+});

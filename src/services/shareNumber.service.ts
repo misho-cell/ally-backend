@@ -157,10 +157,25 @@ async function ownersLatestLines(askThreadId: number): Promise<string[]> {
   return result.rows.map((row) => row.content);
 }
 
+/** A note is one line; anything longer is not a recommendation. */
+const NOTE_MAX_CHARS = 300;
+
+/**
+ * Tester 39832 (#1553): the helper also wrote a word of recommendation, and
+ * only the name and number arrived. Her word goes too, on its own line above.
+ * The answer is scrubbed when stored, so a number typed into the note is
+ * hidden; only the marked one shows.
+ */
+export function withTheOwnersWord(noteRaw: string, nameAndNumber: string): string {
+  const note = noteRaw.replace(/\s+/gu, ' ').trim().slice(0, NOTE_MAX_CHARS);
+  return note === '' ? nameAndNumber : `${note}\n${nameAndNumber}`;
+}
+
 export async function shareContactNumberWithAsker(
   ownerId: string,
   askThreadId: number,
   phoneRaw: string,
+  noteRaw = '',
 ): Promise<ShareOutcome> {
   const phone = phoneRaw.trim();
   if ((await liveAskFor(ownerId, askThreadId)) === null) {
@@ -171,7 +186,7 @@ export async function shareContactNumberWithAsker(
   if (!ownerLinesShareNumber(await ownersLatestLines(askThreadId), alias)) {
     return { shared: false, reason: ShareRefusal.NotTheOwnersWord };
   }
-  const text = `${alias}: ${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
+  const text = withTheOwnersWord(noteRaw, `${alias}: ${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`);
   const sent = await sendApprovedAskAnswer(ownerId, askThreadId, text, { verbatim: true });
   if (sent.sent) return { shared: true, name: alias };
   return {
