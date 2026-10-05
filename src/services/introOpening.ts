@@ -61,37 +61,45 @@ export function incomingRequestOpening(
   message: string | null,
   direct: boolean,
 ): string {
-  const quoted = (label: string): string => (message ? `\n\n${label} _"${message}"_` : '');
+  /**
+   * The tester's 39469 (#1453's path, 5 Oct): the request said „<asker> asks
+   * you" and showed „his message: „…"" in quotation marks — words the asker
+   * never typed, written by his assistant. D648 and #1420: the request is the
+   * ASSISTANT's, and what it is about is said plainly, never as a quotation.
+   */
+  const about = (label: string): string => (message ? `\n\n${label} ${message}` : '');
   switch (language) {
     case 'en':
       return direct
-        ? `Hello! **${requesterName}** would like to meet you.` +
-            quoted('Their message:') +
+        ? `Hello! **${requesterName}'s assistant** is writing: ${requesterName} would like to meet you.` +
+            about('What it is about:') +
             `\n\nWill you say yes?`
-        : `Hello! **${requesterName}** is asking you to introduce them to **${targetName}**.` +
-            quoted('Their message:') +
+        : `Hello! **${requesterName}'s assistant** is asking you to introduce ${requesterName} to **${targetName}**.` +
+            about('What it is about:') +
             `\n\nWill you help? 🤝`;
     case 'ru':
       return direct
-        ? `Привет! **${requesterName}** хочет с тобой познакомиться.` +
-            quoted('Его сообщение:') +
+        ? `Привет! **Ассистент ${requesterName}** пишет: ${requesterName} хочет с тобой познакомиться.` +
+            about('О чём речь:') +
             `\n\nСоглашаешься?`
-        : `Привет! **${requesterName}** просит познакомить его с **${targetName}**.` +
-            quoted('Его сообщение:') +
+        : `Привет! **Ассистент ${requesterName}** просит познакомить ${requesterName} с **${targetName}**.` +
+            about('О чём речь:') +
             `\n\nПоможешь? 🤝`;
     case 'es':
       return direct
-        ? `¡Hola! **${requesterName}** quiere conocerte.` + quoted('Su mensaje:') + `\n\n¿Aceptas?`
-        : `¡Hola! **${requesterName}** te pide que le presentes a **${targetName}**.` +
-            quoted('Su mensaje:') +
+        ? `¡Hola! **El asistente de ${requesterName}** escribe: ${requesterName} quiere conocerte.` +
+            about('De qué se trata:') +
+            `\n\n¿Aceptas?`
+        : `¡Hola! **El asistente de ${requesterName}** te pide que presentes a ${requesterName} a **${targetName}**.` +
+            about('De qué se trata:') +
             `\n\n¿Le ayudas? 🤝`;
     default:
       return direct
-        ? `გამარჯობა! **${geoName(requesterName, 'dat')}** შენი გაცნობა უნდა.` +
-            quoted('მისი შეტყობინება:') +
+        ? `გამარჯობა! **${geoName(requesterName, 'gen')} ასისტენტი** გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა.` +
+            about('რაზეა საქმე:') +
             `\n\nდათანხმდები?`
-        : `გამარჯობა! **${requesterName}** გთხოვს, გააცნო **${geoName(targetName, 'dat')}**.` +
-            quoted('მისი შეტყობინება:') +
+        : `გამარჯობა! **${geoName(requesterName, 'gen')} ასისტენტი** გთხოვს, ${requesterName} გააცნო **${geoName(targetName, 'dat')}**.` +
+            about('რაზეა საქმე:') +
             `\n\nდაეხმარები? 🤝`;
   }
 }
