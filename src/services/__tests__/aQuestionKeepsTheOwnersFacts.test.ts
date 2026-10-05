@@ -61,3 +61,35 @@ describe('a question keeps the facts the owner wrote', () => {
     expect(chat).toContain('FACTS: keep every fact exactly as the owner wrote it');
   });
 });
+
+/** Tester 39832 (#1552): cargo became furniture on the way. */
+describe('a detail in brackets the owner never gave', () => {
+  const owner = [
+    'სოფო ტესტაძეს ჰკითხე, კარგ მეურმეს ხომ არ მირჩევს, სოფლიდან ტვირთი მაქვს ჩამოსატანი',
+  ];
+
+  it('is held back', () => {
+    expect(
+      factChangedIn(
+        'კარგ მეურმეს ხომ არ მირჩევ? სოფლიდან ტვირთის (ავეჯის) ჩამოტანა მჭირდება.',
+        owner,
+      ),
+    ).toEqual({ change: FactChange.Detail, word: 'ავეჯის' });
+  });
+
+  it('passes when the owner said it, in any case ending', () => {
+    expect(
+      factChangedIn('ტვირთის (ავეჯის) ჩამოტანა მჭირდება', ['ავეჯი მაქვს ჩამოსატანი სოფლიდან']),
+    ).toBeNull();
+  });
+
+  it('passes a question with no brackets', () => {
+    expect(factChangedIn('კარგ მეურმეს ხომ არ მირჩევ? ტვირთი მაქვს ჩამოსატანი.', owner)).toBeNull();
+  });
+});
+
+describe('a bracketed word in the other script', () => {
+  it('passes when the owner wrote it in Georgian', () => {
+    expect(factChangedIn('კარგი ექიმი მჭირდება (Tbilisi)', ['ექიმი მჭირდება თბილისში'])).toBeNull();
+  });
+});

@@ -1,4 +1,5 @@
 import { sentenceCarriedOver } from './sentenceCarriedOver';
+import { nameKey } from './tools/transliterate';
 /**
  * Board #100 (plate F1): when Netai worded a question for the owner it changed
  * facts. An ask said „for a friend" though the owner asked for himself, and
@@ -39,6 +40,32 @@ const TIME_WORDS: readonly (readonly string[])[] = [
 export enum FactChange {
   Beneficiary = 'beneficiary',
   Time = 'time',
+  Detail = 'detail',
+}
+
+/**
+ * Tester 39832 (#1552): the owner wrote „ტვირთი მაქვს ჩამოსატანი" (cargo) and
+ * the ask read „ტვირთის (ავეჯის) ჩამოტანა" — furniture, a detail he never gave.
+ * A word the model puts in brackets to narrow the owner's own is the plainest
+ * form of it: one whose stem is nowhere in the owner's lines is held back.
+ */
+const BRACKETED_RE = /\(([^()]{1,60})\)/gu;
+const WORD_RE = /\p{L}{4,}/gu;
+/** Enough of a word to survive a case ending: „ავეჯი" / „ავეჯის" share „ავეჯ". */
+const DETAIL_STEM_CHARS = 4;
+
+function bracketedDetailNotSaid(question: string, owner: string): string | null {
+  const low = lowered(owner);
+  const ownerKey = nameKey(owner);
+  const said = (w: string): boolean =>
+    low.includes(lowered(w).slice(0, DETAIL_STEM_CHARS)) ||
+    ownerKey.includes(nameKey(w).slice(0, DETAIL_STEM_CHARS));
+  for (const match of question.matchAll(BRACKETED_RE)) {
+    const words = match[1].match(WORD_RE) ?? [];
+    const unsaid = words.find((w) => !said(w));
+    if (unsaid !== undefined) return unsaid;
+  }
+  return null;
 }
 
 export interface FactChanged {
@@ -75,15 +102,22 @@ export function factChangedIn(question: string, ownerLines: readonly string[]): 
       if (!ownerTimes.has(group)) return { change: FactChange.Time, word };
     }
   }
-  return null;
+  const detail = bracketedDetailNotSaid(question, owner);
+  return detail === null ? null : { change: FactChange.Detail, word: detail };
 }
+
+const CHANGE_EXPLAINED: Readonly<Record<FactChange, (word: string) => string>> = {
+  [FactChange.Beneficiary]: (word) =>
+    `it says „${word}", but the owner never said it is for anybody else — they are asking for themselves`,
+  [FactChange.Time]: (word) =>
+    `it says „${word}", a time the owner did not give — keep the owner's own time words`,
+  [FactChange.Detail]: (word) =>
+    `it adds „${word}", a detail the owner did not give — keep the owner's own word, not a narrower one`,
+};
 
 /** What the model is told when a question is held back for a changed fact. */
 export function factChangedRefusal(changed: FactChanged): string {
-  const what =
-    changed.change === FactChange.Beneficiary
-      ? `it says „${changed.word}", but the owner never said it is for anybody else — they are asking for themselves`
-      : `it says „${changed.word}", a time the owner did not give — keep the owner's own time words`;
+  const what = CHANGE_EXPLAINED[changed.change](changed.word);
   return (
     `Not sent: ${what}. Rewrite the question with every fact exactly as the owner wrote it — ` +
     'who it is for, when, where, how much — and add no reason, beneficiary or time of your own. ' +
