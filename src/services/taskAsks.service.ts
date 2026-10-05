@@ -1,5 +1,6 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { missingFacts, missingFactsRefusal } from './answerFacts';
+import { sentenceCarriedOver } from './sentenceCarriedOver';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
@@ -1707,8 +1708,8 @@ export async function sendApprovedAskAnswer(
   // exact. #991: a shared number is sent exactly as built.
   const answerText = approvedText;
   if (remember?.verbatim !== true) {
-    const missing = await factsLostOnTheWay(askThreadId, answerText);
-    if (missing.length > 0) return { sent: false, error: missingFactsRefusal(missing) };
+    const heldBack = await answerHeldBack(askThreadId, answerText);
+    if (heldBack !== null) return { sent: false, error: heldBack };
   }
   const captured = await recordAskAnswer(askThreadId, answerText);
   if (!captured) {
@@ -2342,18 +2343,29 @@ async function helpersOwnLine(askThreadId: number): Promise<string> {
 }
 
 /**
- * D648: the facts of the helper's line that the answer about to go lost. A
- * failed read checks nothing — the answer goes as written, and the log says so.
+ * D648: why the answer about to go may not go — facts of the helper's line it
+ * lost, or a sentence of the helper's own wording it carries whole (the
+ * tester's 1154, 38745). Null when it may go. A failed read checks nothing:
+ * the answer goes as written, and the log says so.
  */
-async function factsLostOnTheWay(askThreadId: number, answerText: string): Promise<string[]> {
+async function answerHeldBack(askThreadId: number, answerText: string): Promise<string | null> {
   try {
-    return missingFacts(await helpersOwnLine(askThreadId), answerText);
+    const own = await helpersOwnLine(askThreadId);
+    const missing = missingFacts(own, answerText);
+    if (missing.length > 0) return missingFactsRefusal(missing);
+    if (isDeclineChoice(own)) return null;
+    return sentenceCarriedOver(own, answerText) === null ? null : HELPERS_SENTENCE_REFUSAL;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[ask-answer] could not read the helper's own line:", (err as Error).message);
-    return [];
+    return null;
   }
 }
+
+const HELPERS_SENTENCE_REFUSAL =
+  "Not sent: the answer carries one of the helper's own sentences letter for letter. D648: " +
+  'say what they said in your own words, as their assistant (they → „ასწავლის", not ' +
+  '„ვასწავლი"), keep every fact exactly, and send again.';
 
 function comparable(text: string): string {
   return text.toLowerCase().replace(OWN_WORDS_NOISE_RE, ' ').trim();

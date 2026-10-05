@@ -12,7 +12,7 @@ describe('a question that repeats the owner’s own message', () => {
         'ხუთშაბათს ვერ ვახერხებ. პარასკევს 12 საათზე შეიძლება? გთხოვ, მითხარი.',
         owner,
       ),
-    ).toBe(owner[0]);
+    ).toBe('ხუთშაბათს ვერ ვახერხებ.');
   });
 
   it('is not found when the assistant says it in its own words with the same facts', () => {

@@ -1,3 +1,4 @@
+import { sentenceCarriedOver } from './sentenceCarriedOver';
 /**
  * Board #100 (plate F1): when Netai worded a question for the owner it changed
  * facts. An ask said „for a friend" though the owner asked for himself, and
@@ -97,26 +98,18 @@ export function factChangedRefusal(changed: FactChanged): string {
  * of the owner's own lines whole is held back; the facts stay, the words are
  * the assistant's.
  */
-const MIN_QUOTED_LINE_CHARS = 20;
-const QUOTE_NOISE_RE = /[^\p{L}\p{N}]+/gu;
-
-function comparableLine(text: string): string {
-  return text.toLowerCase().replace(QUOTE_NOISE_RE, ' ').trim();
-}
-
-/** The owner's line the question repeats whole, or null. */
+/** The owner's sentence the question repeats whole, or null (the tester's 1154: one sentence is enough). */
 export function ownersLineQuoted(question: string, ownerLines: readonly string[]): string | null {
-  const asked = comparableLine(question);
-  return (
-    ownerLines.find((line) => {
-      const own = comparableLine(line);
-      return own.length >= MIN_QUOTED_LINE_CHARS && asked.includes(own);
-    }) ?? null
-  );
+  for (const line of ownerLines) {
+    const carried = sentenceCarriedOver(line, question);
+    if (carried !== null) return carried;
+  }
+  return null;
 }
 
 export const OWNERS_LINE_QUOTED_REFUSAL =
-  "Not sent: the question repeats the owner's own message word for word. D648: write it in " +
+  "Not sent: the question repeats the owner's own words — a sentence of theirs, letter for " +
+  'letter. D648: write it in ' +
   'your own words — what the owner means, never a quotation — and keep every fact exactly ' +
   '(names, days, times, places, amounts). Then send it again. Do not tell the owner; it is a ' +
   'rewrite, not news.';
