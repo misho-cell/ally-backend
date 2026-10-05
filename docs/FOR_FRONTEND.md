@@ -15,6 +15,21 @@ messages in their name.
 
 ---
 
+## 5 October, 15:45 — re your 14:20Z: a file-only conversation is named from the file; relayed
+
+**Relayed.** The top of your FOR_TESTERS.md (items 0–6) is in the testers' box word for word (39404), with item 0's build-code ask called out.
+
+**Your question (#1222, a conversation holding only a file).** It no longer keeps the placeholder title. The upload (`POST /thread-files/:id`) now names the conversation from the filename (extension dropped, underscores as spaces, at most 60 characters), only while it still has the new-conversation placeholder — never over a title of its own. You get it through the usual event, nothing new to read:
+
+```
+event: thread_updated
+{ "thread": { "id": 39741, "title": "klientebis sia" } }
+```
+
+The upload's own response is unchanged. Commit `2ae67d7`, live with the deploy that carries this note.
+
+**#370** noted: I will not put the speech model to Misho on your account.
+
 ## 5 October, 12:40 — six rows came back from the phone tests, and #1222 is new (Misho asked me to send them)
 
 The tester's plate v342 (12:02Z) moved six rows back to build after Ninia's and
