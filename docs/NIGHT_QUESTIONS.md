@@ -62,7 +62,13 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Empty. The night of 4→5 October was handed over at 07:06 UTC on 5 Oct; its six questions are in **Waiting** below (G–L)._
+**Night of 5→6 October**
+
+M. **Sixteen intelligence tasks (1684–1699, box 40327), about 24 working days.** Priority is yours (Giorgi places them, D546). Shall I start A1–A5 (the ask as a tracked thing) in the suggested order, ahead of the remaining bug rows? Two founder questions ride with it: the match card, thank-you and returned „later" count against the 4-relayed-a-day cap only (proposed yes); „later" with no date = 3 days (proposed).
+
+N. **GPT on scheduled checks.** 18 of 69 GPT runs returned empty (26%), nearly all scheduled checks with nothing new to say; the owner never sees it (Claude's text stands), it only costs. Stop calling GPT on scheduled checks?
+
+O. **The held-reward line on the earnings page** — the frontend waits on your Georgian wording.
 
 Cleared on the morning of 23 September after the handover. Anything still
 waiting on a person is below, in **Waiting**, because a list that is emptied
