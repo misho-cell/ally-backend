@@ -5564,3 +5564,38 @@ that id in that thread"; nothing changed. The route above was built for it.
 
 **§88 RUN, 3 October 07:36:13 UTC:** `env.sh: set CHAT_FINAL_ANSWER_MODEL (value not shown) —
 Railway will redeploy`.
+
+## §90 — PENDING CHORUS ASKS WITHOUT A CONFIRMED TIE CLOSED („no confirmed tie")
+
+**Authorised by Misho, 5 October ~11:20 UTC, directly in the session:** „H და K კი, G დატოვე" —
+to night question H: close the pending Chorus asks D544 holds for good because the inviter has no
+confirmed warm tie to the target. Read-only count the same hour: **68** such pending asks (48 on
+open campaigns, 20 on campaigns already closed); the question's „~59" was an older count. The 17+2
+confirmed ones (night question I) are not touched. Nothing is sent and nothing is deleted: each row
+moves to the new state `withdrawn` (migration 206) with `closed_reason = 'no confirmed tie'`.
+Campaigns are left as they stand; the campaign list now says „ყველა მომწვევი მოხსნილია" for an open
+one with nobody left. Not run before the deploy that carries the route, and not during a tester round.
+
+```
+PREVIEW GET   /admin/chorus/unconfirmed-asks              (counts only)
+ROUTE   PATCH /admin/chorus/unconfirmed-asks
+BODY    { "withdrawn": true, "reason": "§90: H, Misho 5 Oct" }
+UNDO    PATCH /admin/chorus/unconfirmed-asks
+        { "withdrawn": false, "reason": "undo §90" }   (every row closed for that reason → pending,
+                                                       where D544 still holds it)
+```
+
+## §91 — `POST /admin/test-accounts` MAY TAKE A PHONE (K)
+
+**Authorised by Misho, 5 October ~11:20 UTC, directly in the session:** „H და K კი" — to night
+question K. Widens the seat route of D464 by one optional field, `phone`, for the D651 test (a seat
+registering on a number other seats already hold). `chosenFictionalPhone` takes it only when it is
+in the reserved fictional ranges, nobody is registered on it, no seat sits on it, and every
+phonebook holding it (`UserAlias`, `UserTags`) belongs to a test seat; anything else is a 400 by
+name, before any row is written. Without `phone` nothing changes.
+
+```
+ROUTE   POST /admin/test-accounts
+BODY    { "name": "...", "note": "...", "phone": "<a fictional number only seats hold>" }
+UNDO    as for every seat (D464 entry): tokens to zero with the top-up route, said in the note
+```

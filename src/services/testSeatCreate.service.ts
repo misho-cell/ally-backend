@@ -44,7 +44,8 @@ import { grantWhateverFreePeriodIsOwed } from './auth.service';
  *
  * WHAT IT CANNOT DO. It cannot touch an existing account, of any kind: every
  * write here is an INSERT of a row it has just created. It cannot take a
- * number outside the fictional range. It cannot be given a phone. And it
+ * number outside the fictional range. It can be given a phone only under K
+ * (below, `chosenFictionalPhone`): a fictional one held by seats alone. And it
  * writes `test_seats`, which is what every later „is this one of ours" read
  * goes through — so a seat cannot come into being unchecked and then be
  * treated as checked afterwards.
@@ -102,6 +103,50 @@ export async function firstFreeFictionalPhone(): Promise<string> {
     );
   }
   return free;
+}
+
+interface ChosenPhoneHolders {
+  readonly registered: number;
+  readonly real_holders: number;
+}
+
+/**
+ * K (Misho, 5 Oct: „K კი"): the D651 test needs a seat registering on a number
+ * OTHER seats already have saved — the social-proof door is about exactly that
+ * number, and the first free slot is by definition saved by nobody. So a
+ * caller may name one, and it is taken only when it is a reserved fictional
+ * number, nobody is registered on it, no seat sits on it, and every phonebook
+ * holding it belongs to a test seat. One real holder refuses it: that is the
+ * Netai Test 5 case again.
+ */
+export async function chosenFictionalPhone(phone: string): Promise<string> {
+  const wanted = phone.trim();
+  if (!isFictionalNumber(wanted)) {
+    throw new SeatCreationRefused(`the phone must be one of ${FICTIONAL_RANGES_TEXT}`);
+  }
+  const holders = await query<ChosenPhoneHolders>(
+    `SELECT (SELECT COUNT(*)::int FROM "UserPhone" WHERE phone = $1)
+              + (SELECT COUNT(*)::int FROM test_seats WHERE phone = $1) AS registered,
+            (SELECT COUNT(*)::int FROM (
+               SELECT "contactId" FROM "UserAlias" WHERE phone = $1
+               UNION
+               SELECT "contactId" FROM "UserTags" WHERE phone = $1
+             ) h
+             WHERE NOT EXISTS (SELECT 1 FROM test_seats s WHERE s.user_id = h."contactId")
+            ) AS real_holders`,
+    [wanted],
+    SEAT_QUERY_TIMEOUT_MS,
+  );
+  const row = holders.rows[0];
+  if (row === undefined || row.registered > 0) {
+    throw new SeatCreationRefused('that number is already registered or a seat sits on it');
+  }
+  if (row.real_holders > 0) {
+    throw new SeatCreationRefused(
+      'that number is saved in a phonebook that is not a test seat — refused',
+    );
+  }
+  return wanted;
 }
 
 /**
@@ -185,6 +230,8 @@ export interface SeatShape {
    * this route was already able to create accounts, and could not before.
    */
   readonly invitedBy?: string;
+  /** K: a fictional number held by seats alone; absent gives the first free slot. */
+  readonly phone?: string;
 }
 
 /**
@@ -331,7 +378,10 @@ export async function createTestSeat(
     shape.invitedBy === undefined ? null : await inviterSeatPhone(shape.invitedBy);
   const phonebook = await resolvePhonebook(holds);
 
-  const phone = await firstFreeFictionalPhone();
+  const phone =
+    shape.phone === undefined
+      ? await firstFreeFictionalPhone()
+      : await chosenFictionalPhone(shape.phone);
 
   /**
    * The same shape as the eleven that exist — and I wrote that sentence the

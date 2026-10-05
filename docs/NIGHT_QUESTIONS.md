@@ -81,11 +81,11 @@ Ordered by what else they block.
 | D | ~~the outage monitor is blind all night~~ **CLOSED 24 Sep 06:38** — the free half (the crons are the heartbeat, 240-min alarm) and then the paid probe, delegated by Misho („შენით გადაწყვიტე") and costed at last: **0.009 USD a month** | ~~yours~~ — done | nine hours became four, then the probe took the four |
 | E | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase | nothing; the test pins today's behaviour |
 | F | the zero-wallet test seat refills itself | **yours** — the fix is an access change | any row 221 reading that needs an empty wallet |
-| G | six Chorus invite asks of 1 Oct sent before D544 without a confirmed tie (asks 71, 136, 137, 140, 151, 152): keep or withdraw | **yours or the founder's** — withdrawing touches messages real people already have | nothing else; they stay open as „asked" |
-| H | ~59 unconfirmed pending Chorus asks held for good by D544: close them with „no confirmed tie"? | **yours** — a live-data write (D44) | a tidy #392 |
+| G | ~~six Chorus invite asks of 1 Oct sent before D544 without a confirmed tie (asks 71, 136, 137, 140, 151, 152): keep or withdraw~~ **ANSWERED 5 Oct, Misho: „G დატოვე"**, kept | **yours or the founder's** — withdrawing touches messages real people already have | nothing else; they stay open as „asked" |
+| H | ~~~59 unconfirmed pending Chorus asks held for good by D544: close them with „no confirmed tie"?~~ **ANSWERED 5 Oct, Misho: „კი"**, 68 by today's count; register §90, run after the deploy | **yours** — a live-data write (D44) | a tidy #392 |
 | I | 16 confirmed pending Chorus asks wait on the founder's per-target „yes" | **the founder's** | those 16 sends |
 | J | draw the plan card of a goal from another chat where the owner is asking (ticket 19 [4]) | **the founder's** — changes a recorded rule | the tester's 1151 suggestion |
-| K | may `POST /admin/test-accounts` take a phone in the fictional ranges, refused unless every holder is a test seat | **yours** — widens a D44-authorized write | D651 end-to-end test |
+| K | ~~may `POST /admin/test-accounts` take a phone in the fictional ranges, refused unless every holder is a test seat~~ **ANSWERED 5 Oct, Misho: „კი"**, register §91 | **yours** — widens a D44-authorized write | D651 end-to-end test |
 | L | ~~should a server-started run that finds nothing write one closing line (row 33)?~~ **ANSWERED 5 Oct, Misho: „კი"**, built as 4750d82 (a run that searched or planned says one line; a books-only wake stays quiet) | answered | nothing |
 | M | new saved answers can no longer be made since D562; bring the „answer similar questions" offer back? | **the founder's** — reverses D562 | D652 beyond the 10 old rules |
 

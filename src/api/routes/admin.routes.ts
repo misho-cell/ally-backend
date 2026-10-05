@@ -45,6 +45,11 @@ import {
 import { randomUUID } from 'crypto';
 import { MessageKind, setUserMessageKind } from '../../services/messageKind.service';
 import { hideErrorLine, showErrorLine } from '../../services/errorLineVisibility.service';
+import {
+  countUnconfirmedPendingAsks,
+  restoreWithdrawnAsks,
+  withdrawUnconfirmedPendingAsks,
+} from '../../services/unconfirmedChorusAsks.service';
 import { Router, Request, Response } from 'express';
 import { body, param, query as queryParam, validationResult } from 'express-validator';
 import {
@@ -2642,6 +2647,53 @@ adminRouter.patch(
   },
 );
 
+/** §90 — the preview: how many pending Chorus asks hold no confirmed tie (counts only). */
+adminRouter.get('/chorus/unconfirmed-asks', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: await countUnconfirmedPendingAsks() });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[unconfirmed-asks]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * §90 — every pending Chorus ask without a confirmed tie closed as „no
+ * confirmed tie" (`withdrawn: true`), or every such close undone
+ * (`withdrawn: false`). Nothing is sent, nothing is deleted.
+ */
+adminRouter.patch(
+  '/chorus/unconfirmed-asks',
+  body('withdrawn').isBoolean(),
+  body('reason').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'withdrawn (true or false) and a reason (3-500 chars) are required',
+      });
+      return;
+    }
+    const withdraw = (req.body as { withdrawn: boolean }).withdrawn;
+    try {
+      const change = withdraw
+        ? await withdrawUnconfirmedPendingAsks()
+        : await restoreWithdrawnAsks();
+      // eslint-disable-next-line no-console
+      console.log(
+        `[unconfirmed-asks] admin ${(req as AuthenticatedRequest).user.userId} ` +
+          `${withdraw ? 'withdrew' : 'restored'} ${change.changed}`,
+      );
+      res.status(200).json({ success: true, data: change });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[unconfirmed-asks]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 /**
  * §82 — CLEAR ONE NAMED GOAL FOR A RETEST (G-004; Misho: „წაშალე, ჩუმად
  * დახურე"). Cancels its open asks silently, drops its cards, deletes its
@@ -3150,11 +3202,13 @@ adminRouter.get('/goals/hidden', async (req: Request, res: Response) => {
  * is enforced in `testSeatCreate.service`, where it cannot be edited around:
  *
  *   * any existing account. Every write is an INSERT of a row it just made.
- *   * a number of its own choosing. The caller cannot pass a phone; the
- *     service takes the first slot in the range reserved worldwide for fiction
- *     that is registered to nobody AND saved in nobody's phonebook. That
- *     second half is the one that matters: Netai Test 5 sits on a number a
- *     real owner had had since August.
+ *   * a number of its own choosing. Without `phone` the service takes the
+ *     first slot in the range reserved worldwide for fiction that is
+ *     registered to nobody AND saved in nobody's phonebook. That second half
+ *     is the one that matters: Netai Test 5 sits on a number a real owner had
+ *     had since August. With `phone` (K, Misho 5 Oct, §91) the number must be
+ *     fictional, unregistered, and saved by test seats ONLY — one real holder
+ *     refuses it.
  *   * a real person in the new seat's phonebook. `holds` must be seats, and a
  *     phone that is not one is refused by name rather than skipped.
  *
@@ -3171,23 +3225,27 @@ adminRouter.post(
   body('tokens').optional().isInt({ min: 0, max: MAX_ADMIN_TOKEN_ADJUSTMENT }),
   body('holds').optional().isArray({ max: 20 }),
   body('invited_by').optional().isInt({ min: 1 }).withMessage('invited_by must be a seat user id'),
+  // K (Misho, 5 Oct): a fictional number held by seats alone — checked in
+  // `chosenFictionalPhone`, which refuses anything else by name.
+  body('phone').optional().isString().trim().isLength({ min: 8, max: 20 }),
   async (req: Request, res: Response) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
         success: false,
         error:
-          'name (1-60) and note (3-500) are required; tokens, holds, legacy_ally and invited_by are optional.',
+          'name (1-60) and note (3-500) are required; tokens, holds, legacy_ally, invited_by and phone are optional.',
       });
       return;
     }
     const admin = (req as AuthenticatedRequest).user.userId;
-    const { name, note, tokens, holds, legacy_ally, invited_by } = req.body as {
+    const { name, note, tokens, holds, legacy_ally, invited_by, phone } = req.body as {
       name: string;
       note: string;
       tokens?: number;
       holds?: unknown[];
       legacy_ally?: boolean;
       invited_by?: number;
+      phone?: string;
     };
     try {
       const seat = await createTestSeat(
@@ -3206,7 +3264,7 @@ adminRouter.post(
         // way the free days (D485) can be observed at all: this route inserts
         // an account, it does not register one, and the grant lives on the
         // registration path. The inviter must itself be a seat.
-        { legacyAlly: legacy_ally === true, invitedBy: invited_by?.toString() },
+        { legacyAlly: legacy_ally === true, invitedBy: invited_by?.toString(), phone },
       );
       res.status(201).json({ success: true, data: seat });
     } catch (error) {
@@ -5726,9 +5784,12 @@ adminRouter.get('/chorus/campaigns', async (req: Request, res: Response) => {
                 CASE
                   WHEN c.status <> 'open'            THEN COALESCE(c.closed_reason, c.status)
                   WHEN COUNT(p.id) = 0               THEN 'ღიაა, მომწვევის გარეშე — არავინაა სათხოვნელი'
+                  -- §90: an ask closed as „no confirmed tie" waits on nothing.
+                  WHEN COUNT(p.id) FILTER (WHERE p.state <> 'withdrawn') = 0
+                    THEN 'ღიაა, ყველა მომწვევი მოხსნილია — დადასტურებული კავშირი არ აქვთ'
                   WHEN COUNT(p.id) FILTER (WHERE p.asked_at IS NOT NULL) = 0
                     THEN 'ღიაა, პირველი კითხვა ჯერ არ გასულა — გრაფიკს ელოდება'
-                  WHEN COUNT(p.id) FILTER (WHERE p.asked_at IS NULL) > 0
+                  WHEN COUNT(p.id) FILTER (WHERE p.asked_at IS NULL AND p.state <> 'withdrawn') > 0
                     THEN 'ღიაა, კითხვა გასულია — შემდეგი მომწვევი გრაფიკზეა'
                   ELSE 'ღიაა, ყველა მომწვევს უკითხეს — პასუხს ელოდება'
                 END                                         AS state_reason
