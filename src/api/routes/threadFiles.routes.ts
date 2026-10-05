@@ -21,11 +21,13 @@ import { fileEventText, saveThreadFile } from '../../services/threadFiles.servic
 import {
   ATTACHMENT_MARK,
   getThread,
+  nameUntitledThreadFromFile,
   saveServerLine,
   saveThreadMessage,
   threadLanguage,
 } from '../../services/threads.service';
 import { RunLanguage } from '../../services/runLanguage';
+import { emitThreadUpdated } from '../../services/sse.service';
 import { listWorkbook } from '../../services/listItems.service';
 import { getTaskById } from '../../services/taskStore.service';
 
@@ -111,6 +113,8 @@ async function keepAndAnswer(
     fileEventText(stored.id, up.filename, file),
     'event',
   );
+  const title = await nameUntitledThreadFromFile(up.threadId, up.filename).catch(() => null);
+  if (title !== null) emitThreadUpdated(String(up.owner), { id: up.threadId, title });
   const summary = listFileSummary(file, up.language);
   const line = await saveServerLine(up.threadId, up.owner, summary);
   return {

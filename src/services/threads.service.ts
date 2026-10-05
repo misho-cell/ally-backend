@@ -690,6 +690,35 @@ export async function getThreadsByIntroRequestId(introRequestId: number): Promis
   return result.rows;
 }
 
+/**
+ * The frontend's 5 Oct 14:20Z note (#1222): a conversation opened by a file
+ * alone holds no typed line, so it kept the „new conversation" placeholder in
+ * the list. It is named from the file — only while it still has that
+ * placeholder, never over a title of its own.
+ */
+const MAX_FILE_TITLE_CHARS = 60;
+
+export function titleFromFilename(filename: string): string {
+  const base = filename.replace(/\.[A-Za-z0-9]{1,5}$/u, '').replace(/[_]+/gu, ' ');
+  return base.replace(/\s+/gu, ' ').trim().slice(0, MAX_FILE_TITLE_CHARS);
+}
+
+/** The new title, or null when the conversation already had one of its own. */
+export async function nameUntitledThreadFromFile(
+  threadId: number,
+  filename: string,
+): Promise<string | null> {
+  const title = titleFromFilename(filename);
+  if (title === '') return null;
+  const result = await query<{ title: string }>(
+    `UPDATE threads SET title = $1, updated_at = NOW()
+      WHERE id = $2 AND (title IS NULL OR title = ANY($3::text[]))
+      RETURNING title`,
+    [title, threadId, Object.values(NEW_THREAD_TITLE)],
+  );
+  return result.rows[0]?.title ?? null;
+}
+
 export async function updateThreadTitle(threadId: number, title: string): Promise<void> {
   await query(`UPDATE threads SET title = $1, updated_at = NOW() WHERE id = $2`, [title, threadId]);
 }
