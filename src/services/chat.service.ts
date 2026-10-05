@@ -4,6 +4,7 @@ import { withoutLatinEchoOfNames } from './latinNameEcho';
 import {
   buttonSpellingNote,
   correctedLabels,
+  snappedToKnownLabels,
   splitButtons,
   withoutButtonsLine,
 } from './buttonSpelling';
@@ -11131,10 +11132,8 @@ function respeltChoices(
   fromGpt: readonly string[] | null,
   runId: string,
 ): string[] {
-  const corrected = correctedLabels(
-    choices,
-    fromGpt,
-    (label) => isApproveChoice(label) || isChangeChoice(label),
+  const corrected = snappedToKnownLabels(
+    correctedLabels(choices, fromGpt, (label) => isApproveChoice(label) || isChangeChoice(label)),
   );
   const changed = corrected.filter((label, i) => label !== choices[i]).length;
   // The tester's 1133 (36530): a garbled label stayed under a GPT-written answer

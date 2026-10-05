@@ -126,3 +126,27 @@ function partialMarkLength(text: string): number {
   }
   return 0;
 }
+
+/**
+ * #1486 (L23, 39337): „წერ არა" for „ჯერ არა" stood on a card — in runs where
+ * the final writer returned no buttons line, nothing respelt it. The buttons
+ * offered most often are known; a label one letter away from one of them is
+ * that button misspelt, and becomes it, whatever the writer returned.
+ */
+const KNOWN_LABELS: readonly string[] = [
+  'ჯერ არა',
+  'გადაწყდა',
+  'შევაჩეროთ',
+  'მოგვიანებით',
+  'ვადასტურებ',
+];
+/** Shorter labels („კი", „არა") are a letter apart from each other's neighbours. */
+const MIN_SNAP_LENGTH = 4;
+const SNAP_EDITS = 1;
+
+export function snappedToKnownLabels(labels: readonly string[]): string[] {
+  return labels.map((label) => {
+    if ([...label].length < MIN_SNAP_LENGTH || KNOWN_LABELS.includes(label)) return label;
+    return KNOWN_LABELS.find((known) => editDistance(label, known) <= SNAP_EDITS) ?? label;
+  });
+}
