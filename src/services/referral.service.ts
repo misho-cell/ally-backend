@@ -37,7 +37,13 @@ export interface ReferralHistoryEntry {
 }
 
 export interface ReferralSummary {
+  /** Everything booked, held or not (unchanged meaning, for existing screens). */
   balanceUsd: number;
+  /** D674: what can be spent or withdrawn now — rewards older than the hold. */
+  availableUsd: number;
+  /** D674: rewards still inside the refund window, not usable yet. */
+  onHoldUsd: number;
+  holdDays: number;
   totalEarnedUsd: number;
   minWithdrawalUsd: number;
   canWithdraw: boolean;
@@ -53,12 +59,26 @@ interface ChainLink {
   level: number;
 }
 
+/**
+ * D674 (the founder, 5 Oct, through the tester): a payment can be refunded in
+ * its first 3 days, and a refund takes back the reward it paid (D673, #233).
+ * So a reward is usable — spendable or withdrawable — only from day 4: never
+ * while the payment it came from could still be refunded.
+ */
+export const REWARD_HOLD_DAYS = 3;
+const CENTS_PER_USD = 100;
+
+/** An earned reward still inside the refund window. */
+const ON_HOLD_SQL = `reason = '${EARN_REASON}' AND created_at > NOW() - make_interval(days => ${REWARD_HOLD_DAYS})`;
+
+/** What can be spent now: everything booked, minus rewards still on hold. */
 async function balanceFor(client: PoolClient, userId: string): Promise<number> {
-  const result = await client.query<{ balance: string | null }>(
-    'SELECT SUM(amount_usd) AS balance FROM referral_transactions WHERE user_id = $1',
+  const result = await client.query<{ available: string | null }>(
+    `SELECT SUM(amount_usd) - COALESCE(SUM(amount_usd) FILTER (WHERE ${ON_HOLD_SQL}), 0) AS available
+       FROM referral_transactions WHERE user_id = $1`,
     [userId],
   );
-  return Number(result.rows[0]?.balance ?? 0);
+  return Number(result.rows[0]?.available ?? 0);
 }
 
 /**
@@ -139,9 +159,10 @@ export async function distributeReferralEarnings(
 
 export async function getReferralSummary(userId: string): Promise<ReferralSummary> {
   const [totalsResult, historyResult, minWithdrawal] = await Promise.all([
-    query<{ balance: string | null; earned: string | null }>(
+    query<{ balance: string | null; earned: string | null; on_hold: string | null }>(
       `SELECT SUM(amount_usd) AS balance,
-              SUM(amount_usd) FILTER (WHERE amount_usd > 0) AS earned
+              SUM(amount_usd) FILTER (WHERE amount_usd > 0) AS earned,
+              SUM(amount_usd) FILTER (WHERE ${ON_HOLD_SQL}) AS on_hold
        FROM referral_transactions
        WHERE user_id = $1`,
       [userId],
@@ -158,11 +179,16 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
   ]);
 
   const balanceUsd = Number(totalsResult.rows[0]?.balance ?? 0);
+  const onHoldUsd = Number(totalsResult.rows[0]?.on_hold ?? 0);
+  const availableUsd = Math.round((balanceUsd - onHoldUsd) * CENTS_PER_USD) / CENTS_PER_USD;
   return {
     balanceUsd,
+    availableUsd,
+    onHoldUsd,
+    holdDays: REWARD_HOLD_DAYS,
     totalEarnedUsd: Number(totalsResult.rows[0]?.earned ?? 0),
     minWithdrawalUsd: minWithdrawal,
-    canWithdraw: minWithdrawal > 0 && balanceUsd >= minWithdrawal,
+    canWithdraw: minWithdrawal > 0 && availableUsd >= minWithdrawal,
     history: historyResult.rows.map((row) => ({
       amountUsd: Number(row.amount_usd),
       reason: row.reason,

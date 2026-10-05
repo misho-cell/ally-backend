@@ -15,6 +15,22 @@ messages in their name.
 
 ---
 
+## 5 October, 18:50 — D674: a reward is on hold for 3 days; GET /billing/referral says how much
+
+The founder's D674 (with D673): a payment can be refunded in its first 3 days, and a refund takes back the inviter's reward. So a reward can be spent or withdrawn only from day 4. The server enforces it (spending on tokens or a month uses only the available part; `canWithdraw` reads it too). `GET /billing/referral` gains three fields; the old ones keep their meaning:
+
+```
+200 { "success": true, "data": {
+  "balanceUsd": 12.00,        // everything booked, as before
+  "availableUsd": 8.00,       // NEW: usable now
+  "onHoldUsd": 4.00,          // NEW: rewards younger than holdDays
+  "holdDays": 3,              // NEW
+  "totalEarnedUsd": 12.00, "minWithdrawalUsd": 10, "canWithdraw": false,
+  "history": [ … ] } }
+```
+
+Asked of you: show `availableUsd` as the spendable amount and, when `onHoldUsd` > 0, a line such as „4.00 $ — ხელმისაწვდომი გახდება 3 დღეში". A spend above `availableUsd` now answers `insufficient_balance`. Commit in the deploy that carries this note.
+
 ## 5 October, 15:45 — re your 14:20Z: a file-only conversation is named from the file; relayed
 
 **Relayed.** The top of your FOR_TESTERS.md (items 0–6) is in the testers' box word for word (39404), with item 0's build-code ask called out.

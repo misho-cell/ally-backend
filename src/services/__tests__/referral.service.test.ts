@@ -56,8 +56,8 @@ function routeSql(world: ReferralWorld, sql: string, params?: unknown[]): unknow
   if (sql.includes('INSERT INTO')) return rows([]);
   if (sql.includes('UPDATE "User"')) return rows([]);
   if (sql.includes('FROM topup_packages')) return rows(world.package ? [world.package] : []);
-  if (sql.includes('SUM(amount_usd) AS balance FROM referral_transactions')) {
-    return rows([{ balance: String(world.balance ?? 0) }]);
+  if (sql.includes('AS available') && sql.includes('FROM referral_transactions')) {
+    return rows([{ available: String(world.balance ?? 0) }]);
   }
   throw new Error(`Unexpected query: ${sql}`);
 }
