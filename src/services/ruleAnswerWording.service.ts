@@ -1,4 +1,5 @@
 import { missingFacts } from './answerFacts';
+import { sentenceCarriedOver } from './sentenceCarriedOver';
 import { recordClaudeUsage } from './costLedger.service';
 import { RunLanguage } from './runLanguage';
 
@@ -16,6 +17,8 @@ const RULE_WORDING_MODEL = process.env.RULE_WORDING_MODEL?.trim() || 'claude-hai
 const RULE_WORDING_TIMEOUT_MS = 8_000;
 const RULE_WORDING_MAX_TOKENS = 400;
 const MAX_INPUT_CHARS = 1_000;
+/** A first wording and one corrected one. */
+const WORDING_ATTEMPTS = 2;
 
 const LANGUAGE_NAME: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
@@ -29,8 +32,10 @@ function wordingPrompt(language: RunLanguage): string {
     "You are a person's assistant. Somebody asked them a question, and they keep a standing " +
     'answer for questions like it. Write that answer to the asker in your own words, as their ' +
     `assistant passing it on, in ${LANGUAGE_NAME[language] ?? LANGUAGE_NAME.ka}. Not a quotation and ` +
-    'no quotation marks. Keep every name, number, price, time, date, address and link exactly as ' +
-    'written. Add nothing they did not say. One to three sentences. Reply with the text only.'
+    'no quotation marks. Speak ABOUT them in the third person — „he/she/they", „his daughter" — ' +
+    'never as them („I", „my"). Keep every name, number, price, time, date, address and link ' +
+    'exactly as written, names in their original spelling and letters. Add nothing they did not ' +
+    'say. One to three sentences. Reply with the text only.'
   );
 }
 
@@ -41,6 +46,56 @@ function textOf(content: readonly { type: string; text?: string }[]): string {
     .trim();
 }
 
+/** Why a wording may not go: facts it lost, or the saved sentence carried over. */
+function wordingFault(ruleAnswer: string, worded: string): string | null {
+  if (worded === '') return 'empty';
+  const lost = missingFacts(ruleAnswer, worded);
+  if (lost.length > 0) return `Keep exactly, as written: ${lost.join(', ')}.`;
+  if (sentenceCarriedOver(ruleAnswer, worded) !== null) {
+    return 'That repeats their sentence. Say it in your own words, in the third person.';
+  }
+  return null;
+}
+
+async function wordOnce(
+  ruleAnswer: string,
+  question: string,
+  language: RunLanguage,
+  recipientUserId: string,
+  correction: string | null,
+): Promise<string> {
+  const { default: anthropic } = await import('../config/anthropic');
+  const response = await anthropic.messages.create(
+    {
+      model: RULE_WORDING_MODEL,
+      max_tokens: RULE_WORDING_MAX_TOKENS,
+      system: wordingPrompt(language),
+      messages: [
+        {
+          role: 'user',
+          content:
+            `Question: ${question.slice(0, MAX_INPUT_CHARS)}\n` +
+            `Standing answer: ${ruleAnswer.slice(0, MAX_INPUT_CHARS)}` +
+            (correction === null ? '' : `\n\n${correction}`),
+        },
+      ],
+    },
+    { timeout: RULE_WORDING_TIMEOUT_MS },
+  );
+  await recordClaudeUsage({
+    userId: recipientUserId,
+    kind: 'rule_answer_wording',
+    model: RULE_WORDING_MODEL,
+    usage: response.usage,
+  }).catch(() => undefined);
+  return textOf(response.content);
+}
+
+/**
+ * The saved answer worded afresh. One more try when the first wording lost a
+ * fact or kept the saved sentence (the tester's 1159); after that, the saved
+ * sentence goes as it is.
+ */
 export async function ruleAnswerInOwnWords(
   ruleAnswer: string,
   question: string,
@@ -48,38 +103,15 @@ export async function ruleAnswerInOwnWords(
   recipientUserId: string,
 ): Promise<string> {
   try {
-    const { default: anthropic } = await import('../config/anthropic');
-    const response = await anthropic.messages.create(
-      {
-        model: RULE_WORDING_MODEL,
-        max_tokens: RULE_WORDING_MAX_TOKENS,
-        system: wordingPrompt(language),
-        messages: [
-          {
-            role: 'user',
-            content:
-              `Question: ${question.slice(0, MAX_INPUT_CHARS)}\n` +
-              `Standing answer: ${ruleAnswer.slice(0, MAX_INPUT_CHARS)}`,
-          },
-        ],
-      },
-      { timeout: RULE_WORDING_TIMEOUT_MS },
-    );
-    await recordClaudeUsage({
-      userId: recipientUserId,
-      kind: 'rule_answer_wording',
-      model: RULE_WORDING_MODEL,
-      usage: response.usage,
-    }).catch(() => undefined);
-    const worded = textOf(response.content);
-    if (worded === '') return ruleAnswer;
-    const lost = missingFacts(ruleAnswer, worded);
-    if (lost.length > 0) {
-      // eslint-disable-next-line no-console
-      console.warn(`[answer-rule] the wording lost ${lost.length} fact(s) — the saved answer goes`);
-      return ruleAnswer;
+    let correction: string | null = null;
+    for (let attempt = 0; attempt < WORDING_ATTEMPTS; attempt += 1) {
+      const worded = await wordOnce(ruleAnswer, question, language, recipientUserId, correction);
+      correction = wordingFault(ruleAnswer, worded);
+      if (correction === null) return worded;
     }
-    return worded;
+    // eslint-disable-next-line no-console
+    console.warn(`[answer-rule] the wording failed twice (${correction}) — the saved answer goes`);
+    return ruleAnswer;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[answer-rule] could not word the saved answer:', (err as Error).message);

@@ -29,6 +29,14 @@ describe('the facts of a helper’s line', () => {
     );
   });
 
+  it('in a line written in Latin letters, are the capitalised names, not every word (1159)', () => {
+    expect(
+      factsOf('Baxva Gamogonili, my daughter had lessons with him, great tutor.').map(
+        (f) => f.written,
+      ),
+    ).toEqual(['Baxva', 'Gamogonili']);
+  });
+
   it('leave a phone number to the number tool', () => {
     expect(factsOf('მისი ნომერია 599123456').map((f) => f.written)).not.toContain('599123456');
   });

@@ -63,6 +63,33 @@ const PLACE_RES: readonly RegExp[] = [
   /^გუდაურ/u,
   /^ბაკურიან/u,
 ];
+/** Above this share of Latin letters a line is written in Latin, not Georgian with a brand in it. */
+const LATIN_LINE_SHARE = 0.5;
+/** Capitalised only because they open a sentence. */
+const SENTENCE_WORDS: ReadonlySet<string> = new Set([
+  'the',
+  'she',
+  'his',
+  'her',
+  'they',
+  'their',
+  'yes',
+  'sure',
+  'great',
+  'good',
+  'there',
+  'this',
+  'that',
+  'try',
+  'ask',
+  'call',
+  'sorry',
+  'maybe',
+  'not',
+  'one',
+  'both',
+  'all',
+]);
 /** Latin words that are ordinary words, not a brand or a name. */
 const ORDINARY_LATIN: ReadonlySet<string> = new Set([
   'and',
@@ -119,10 +146,25 @@ function linksOf(line: string): AnswerFact[] {
   });
 }
 
+/**
+ * In a Georgian line a Latin word stands out: a brand, a firm, a name. In a
+ * line written in Latin letters every word is Latin, so only a capitalised one
+ * is a name or a brand — the tester's 1159: „Baxva Gamogonili, my daughter had
+ * lessons with him, great tutor." counted „daughter", „lessons" and „great"
+ * as facts, and every rewording „lost" nine of them.
+ */
+function isMostlyLatin(line: string): boolean {
+  const latin = (line.match(/[A-Za-z]/gu) ?? []).length;
+  const letters = (line.match(/\p{L}/gu) ?? []).length;
+  return letters > 0 && latin / letters > LATIN_LINE_SHARE;
+}
+
 function latinWordsOf(line: string): AnswerFact[] {
   const withoutLinks = line.replace(LINK_RE, ' ');
+  const onlyCapitalised = isMostlyLatin(withoutLinks);
   return [...withoutLinks.matchAll(LATIN_WORD_RE)]
     .map((m) => m[0])
+    .filter((w) => !onlyCapitalised || (/^[A-Z]/u.test(w) && !SENTENCE_WORDS.has(w.toLowerCase())))
     .filter((w) => !ORDINARY_LATIN.has(w.toLowerCase()) && !isFirstName(w))
     .map((w) => ({ written: w, mustAppear: w.toLowerCase() }));
 }
