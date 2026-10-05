@@ -5604,3 +5604,19 @@ UNDO    as for every seat (D464 entry): tokens to zero with the top-up route, sa
 preview `GET` answered 68 asks (48 on open campaigns, 53 campaigns); `PATCH {"withdrawn": true}`
 answered `changed: 68`; preview after it: 0. Participant states now: withdrawn 68, declined 39,
 pending 19 (the confirmed ones of night question I), asked 9, agreed 1.
+
+## §92 — A SAVED ANSWER RULE ON A TEST SEAT
+
+**Authorised by Misho, 5 October ~15:50 UTC, directly in the session:** „კი ააშენე" — to my
+question whether to build a narrow route so the tester can put a saved rule on a fictional seat
+(the catch-all rule fix of Ninia's ask 11518 could otherwise only be tested on a real account, and
+no rule can be made since D562). Writes one `answer_rules` row, and ONLY for an account in
+`test_seats`; any other account is refused by name (`not_a_test_seat`) before anything is written.
+The undo switches the rule off; nothing is deleted.
+
+```
+ROUTE   POST  /admin/test-accounts/:seatId/answer-rules
+BODY    { "kind": "...", "sample_question": "...", "answer": "...", "note": "why" }
+UNDO    PATCH /admin/test-accounts/:seatId/answer-rules/:ruleId
+        { "active": false, "reason": "undo §92" }
+```

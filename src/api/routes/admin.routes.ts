@@ -46,6 +46,11 @@ import { randomUUID } from 'crypto';
 import { MessageKind, setUserMessageKind } from '../../services/messageKind.service';
 import { hideErrorLine, showErrorLine } from '../../services/errorLineVisibility.service';
 import {
+  addSeatAnswerRule,
+  SeatRuleOutcome,
+  setSeatAnswerRuleActive,
+} from '../../services/seatAnswerRules.service';
+import {
   countUnconfirmedPendingAsks,
   restoreWithdrawnAsks,
   withdrawUnconfirmedPendingAsks,
@@ -2374,6 +2379,95 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[intro-redeliver]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** §92 — the answer a seat's outcome maps to: 201/200 written, 400 refused by name. */
+function sendSeatRuleOutcome(res: Response, outcome: SeatRuleOutcome, created: boolean): void {
+  if (!outcome.ok) {
+    res.status(400).json({ success: false, error: outcome.refusal });
+    return;
+  }
+  res.status(created ? 201 : 200).json({ success: true, data: outcome });
+}
+
+/**
+ * §92 (Misho, 5 Oct: „კი ააშენე") — a saved answer rule written onto a TEST
+ * SEAT only, so the automatic answer can be tested on fictions. Refused by
+ * name for any account that is not in test_seats. The undo is the PATCH below.
+ */
+adminRouter.post(
+  '/test-accounts/:id/answer-rules',
+  param('id').isInt({ min: 1 }),
+  body('kind').isString(),
+  body('sample_question').isString(),
+  body('answer').isString(),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'kind, sample_question, answer and a note (3-500 chars) are required',
+      });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { kind, sample_question, answer } = req.body as {
+      kind: string;
+      sample_question: string;
+      answer: string;
+    };
+    try {
+      const outcome = await addSeatAnswerRule(seatId, {
+        kind,
+        sampleQuestion: sample_question,
+        answer,
+      });
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-rule] admin ${(req as AuthenticatedRequest).user.userId} seat ${seatId}: ` +
+          (outcome.ok ? `rule ${outcome.rule_id} written` : outcome.refusal),
+      );
+      sendSeatRuleOutcome(res, outcome, true);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-rule]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** §92's undo: one seat rule switched off (or on again). Nothing is deleted. */
+adminRouter.patch(
+  '/test-accounts/:id/answer-rules/:ruleId',
+  param('id').isInt({ min: 1 }),
+  param('ruleId').isInt({ min: 1 }),
+  body('active').isBoolean(),
+  body('reason').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: 'active (true or false) and a reason (3-500 chars) are required',
+      });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const ruleId = Number(req.params.ruleId);
+    const active = (req.body as { active: boolean }).active;
+    try {
+      const outcome = await setSeatAnswerRuleActive(seatId, ruleId, active);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-rule] admin ${(req as AuthenticatedRequest).user.userId} seat ${seatId} rule ${ruleId}: ` +
+          (outcome.ok ? `active=${active}` : outcome.refusal),
+      );
+      sendSeatRuleOutcome(res, outcome, false);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-rule]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
