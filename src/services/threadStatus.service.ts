@@ -107,3 +107,15 @@ export function runStatus(opts: {
   }
   return 'done';
 }
+
+/**
+ * #1255 — whether a wake's reply is worth a push. A tester's friend closed the
+ * app while a goal worked and got „I did this, now I am trying another way"
+ * on his lock screen, step after step, and opened none of them: „let this
+ * thing leave me alone". A push is for a result or a question: the run asks
+ * the owner, the goal is done, or the wake carries someone's answer. A run
+ * that ends still waiting on others is a step — its line stays in the chat.
+ */
+export function wakeIsNews(status: ThreadStatus, carriesAnAnswer: boolean): boolean {
+  return carriesAnAnswer || status !== 'waiting';
+}

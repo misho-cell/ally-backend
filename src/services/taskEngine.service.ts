@@ -76,7 +76,7 @@ import {
   PLAN_PROPOSAL_EVENT,
 } from './taskEngine.events';
 import { RULE_268_QUIET_DAY_ONE, RULE_268_QUIET_DAY_THREE } from './testerRules';
-import { setThreadStatus, endsWithQuestion, runStatus } from './threadStatus.service';
+import { setThreadStatus, endsWithQuestion, runStatus, wakeIsNews } from './threadStatus.service';
 import { describeAskBudget, AskBudgetState } from './askBudget.service';
 import { flagGoalNeedsOwner, goalQuestionFlaggedSince } from './goalQuestions.service';
 import { emitRunComplete } from './sse.service';
@@ -511,7 +511,9 @@ export async function wakeTask(
       void setThreadStatus(ownerId, thread.id, status, { isTask: true });
       // Board #386: a quiet run wrote nothing, so there is no news to ring for.
       if (result.quiet === true) return 'woken';
-      // Sent unconditionally: whether the person is away is decided per DEVICE
+      // #1255: a step of the work is not news; its line stays in the chat.
+      if (!wakeIsNews(status, ensureQuoted !== undefined)) return 'woken';
+      // Not gated on presence: whether the person is away is decided per DEVICE
       // inside sendPushNotification, and this gate — one boolean for a person
       // with four devices — is exactly what silenced Lika's phone (row 6).
       const preview = scrubText(result.reply).replace(/\s+/g, ' ').trim();

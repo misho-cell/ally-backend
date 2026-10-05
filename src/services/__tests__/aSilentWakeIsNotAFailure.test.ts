@@ -34,6 +34,7 @@ jest.mock('../threadStatus.service', () => ({
   setThreadStatus: jest.fn(),
   endsWithQuestion: jest.fn().mockReturnValue(false),
   runStatus: jest.fn().mockReturnValue('waiting'),
+  wakeIsNews: jest.requireActual('../threadStatus.service').wakeIsNews,
 }));
 jest.mock('../goalQuestions.service', () => ({
   __esModule: true,
@@ -56,7 +57,7 @@ import { sendPushNotification } from '../notification.service';
 import { markRunFailed } from '../runFailure.service';
 import { emitRunError } from '../sse.service';
 import { getTaskById, Task } from '../taskStore.service';
-import { setThreadStatus } from '../threadStatus.service';
+import { runStatus, setThreadStatus } from '../threadStatus.service';
 import { getThread, Thread } from '../threads.service';
 import { checkRunAllowance } from '../tokenWallet.service';
 import { wakeTask } from '../taskEngine.service';
@@ -95,7 +96,9 @@ describe('a wake that did its work and said nothing', () => {
     expect(sendPushNotification).not.toHaveBeenCalled();
   });
 
-  it('still rings the phone when the wake had something to say', async () => {
+  it('still rings the phone when the wake had news to say', async () => {
+    // #1255: news is a question, a finished goal or an answer — here, done.
+    (runStatus as jest.Mock).mockReturnValueOnce('done');
     (processChat as jest.Mock).mockResolvedValue({ reply: 'ნინომ უპასუხა', language: 'ka' });
 
     await wakeTask(TASK_ID, 'ნაბიჯი');
