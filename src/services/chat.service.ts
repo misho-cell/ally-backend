@@ -404,7 +404,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
-import { listStatus, startListWork } from './listItems.service';
+import { ListStatus, listStatus, startListWork } from './listItems.service';
 import { shareContactNumberWithAsker, ShareRefusal } from './shareNumber.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
@@ -867,11 +867,34 @@ async function listGoalOfThisConversation(
   return goal === null ? null : Number(goal.id);
 }
 
+/**
+ * #894 / #1323 (Lika, 5 Oct): „give me this list with results as Excel" was
+ * answered „I cannot create or return an Excel file here, download the one you
+ * uploaded" — and in the same turn a contact search and a plan nobody asked
+ * for. The Excel exists (GET /thread-files/goals/:taskId/list.xlsx, the
+ * download button on the goal card); the model was never told.
+ */
+const LIST_DOWNLOAD_READY =
+  'The list with its results is ready as an Excel file: the download button on this goal’s ' +
+  'card. Say so in one line. Never say a file cannot be made, never point the owner to the ' +
+  'file they uploaded, and run no search and propose no plan for this request.';
+const LIST_DOWNLOAD_NOT_YET =
+  'There is no Excel yet: the list has not been worked. Say that, and offer to work it ' +
+  '(work_the_list) — then its results can be downloaded from the goal card as Excel. Run no ' +
+  'search for this request.';
+
+export function listDownloadNote(status: ListStatus): string {
+  const rows = Object.values(status.rows).reduce((sum, n) => sum + n, 0);
+  return rows > 0 ? LIST_DOWNLOAD_READY : LIST_DOWNLOAD_NOT_YET;
+}
+
 const LIST_STATUS_TOOL: AnthropicTool = {
   name: 'list_status',
   description:
     "How the goal's list stands: how many rows have a route, none, were asked, answered, agreed or " +
-    'refused. WHEN: the owner asks where things are on the list.',
+    'refused, and whether it can be downloaded with its results as an Excel file. WHEN: the ' +
+    'owner asks where things are on the list, or asks for the list (with its results) as a ' +
+    'file, a table, Excel or a download.',
   input_schema: {
     type: 'object',
     properties: { task_id: { type: 'number', description: 'The goal the list belongs to.' } },
@@ -7967,7 +7990,8 @@ async function executeToolCall(
     case 'list_status': {
       const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
       if (taskId === null) return { error: NO_GOAL_FOR_THE_LIST };
-      return listStatus(userId, taskId);
+      const status = await listStatus(userId, taskId);
+      return { ...status, download: listDownloadNote(status) };
     }
     case 'web_search': {
       await recordFixedUsage({

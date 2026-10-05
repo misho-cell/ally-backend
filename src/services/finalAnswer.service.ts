@@ -138,6 +138,13 @@ export function toOpenAiMessages(
   return out;
 }
 
+/** „user, 812 chars of 9 turns" — the role and size of the last turn, never its text. */
+export function lastTurnShape(sent: readonly OpenAI.Chat.ChatCompletionMessageParam[]): string {
+  const last = sent[sent.length - 1];
+  const chars = typeof last?.content === 'string' ? last.content.length : 0;
+  return `${last?.role ?? 'none'}, ${chars} chars of ${sent.length} turns`;
+}
+
 /**
  * OpenAI's token counts in the four terms our ledger already speaks.
  *
@@ -321,11 +328,12 @@ export async function writeFinalAnswer(
   }
 
   try {
+    const sent = toOpenAiMessages(messages, systemPrompt);
     const stream = await client.chat.completions.create(
       {
         model,
         max_completion_tokens: MAX_TOKENS,
-        messages: toOpenAiMessages(messages, systemPrompt),
+        messages: sent,
         stream: true,
         stream_options: { include_usage: true },
       },
@@ -391,7 +399,10 @@ export async function writeFinalAnswer(
         `[final-answer] ${model} empty-answer detail: chunks ${chunks}, finish ${finishReason ?? 'none'}, ` +
           `output tokens ${usage?.completion_tokens ?? '?'} ` +
           `(reasoning ${usage?.completion_tokens_details?.reasoning_tokens ?? '?'}), ` +
-          `prompt tokens ${usage?.prompt_tokens ?? '?'}, refusal ${refusal === '' ? 'none' : `„${refusal.slice(0, 200)}"`}`,
+          `prompt tokens ${usage?.prompt_tokens ?? '?'}, refusal ${refusal === '' ? 'none' : `„${refusal.slice(0, 200)}"`}, ` +
+          // 5 Oct: one reply in five came back empty. Whose turn GPT was handed
+          // last is the first thing to know about it; the text itself is not logged.
+          `last turn ${lastTurnShape(sent)}`,
       );
       return null;
     }
