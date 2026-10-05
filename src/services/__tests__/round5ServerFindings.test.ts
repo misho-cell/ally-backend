@@ -140,7 +140,7 @@ describe('the turn after a correction note', () => {
   it('replaces the mistaken first answer; a cliffhanger keeps its announcement', () => {
     expect(chat).toContain('const correctedTurn = guardNudge !== CLIFFHANGER_NUDGE && !addedTo;');
     expect(chat).toContain(
-      'correctedTurn || repeated ? continuationText : `${finalText}\\n\\n${addition}`;',
+      "else if (addition !== '') finalText = `${finalText}\\n\\n${addition}`;",
     );
   });
 });

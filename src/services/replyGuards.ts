@@ -354,8 +354,13 @@ export function onlyTheMembersPart(
     const afterAMember = i > 0 && namesAMember(paragraphs[i - 1]) && /[?？]$/u.test(paragraph);
     if (namesAMember(paragraph) || afterAMember) kept.push(paragraph);
   });
-  return kept.length === 0 ? continuation : kept.join('\n\n');
+  if (kept.length > 0) return kept.join('\n\n');
+  // The tester's 1151 (38446): naming nobody, the turn said the first answer
+  // again. A one-line „why not" is what the note asked for; more is a repeat.
+  return continuation.trim().length <= ONE_LINE_WHY_MAX_CHARS ? continuation : '';
 }
+
+const ONE_LINE_WHY_MAX_CHARS = 200;
 
 /**
  * #893, the tester's 37795 and 37853 (38319, 38413): the first answer to

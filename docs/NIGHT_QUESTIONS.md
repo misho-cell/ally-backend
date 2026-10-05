@@ -68,6 +68,10 @@ and answering the tester are all ordinary night work and need nobody.
 2. **Unconfirmed pending asks** (about 59, due since as early as 4 Sep) are held for good by the D544 check at send, and nothing closes them. Should they be closed with the reason "no confirmed tie"? That is a live-data write, so it needs Misho's word.
 3. **The 16 confirmed pending asks** wait on the founder's per-target "yes" (target_decisions) and on the one-ask-per-person-per-week rule. Nothing to decide unless the founder wants to give those "yes" answers.
 
+From the tester's 1151 (38446, 38447): a repeated ask for a goal that lives in another chat.
+
+4. **Should the plan card be drawn where the owner is?** Today the plan of a goal that lives in another chat is never drawn here (ticket 19 [4]), because buttons under a plan do not say which goal they approve. The run tells the owner to go to the other chat. The tester suggests showing the plan card, with its approve button, in the chat where the owner is asking (or opening it there). That changes a recorded rule, so it is the founder's call. Tonight I only made the reply truthful: it no longer says a plan waits there when none was proposed (on the branch, live after the round).
+
 Cleared on the morning of 23 September after the handover. Anything still
 waiting on a person is below, in **Waiting**, because a list that is emptied
 while its questions are unanswered is a list that loses them.

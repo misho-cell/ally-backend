@@ -2236,7 +2236,9 @@ export function planCardIsForAnotherThread(
       'be drawn here — the owner would be approving a plan without the goal in front of them, ' +
       'and approving sends messages in their name. Do NOT call this again for this task_id in ' +
       'this thread. Tell the owner, in their language, that they already have this goal open ' +
-      'in another chat, name the goal, and list what you found here as leads.' +
+      'in another chat, name the goal, and list what you found here as leads. Say a plan is ready ' +
+      "or waits for their yes there ONLY when that goal's state shows a proposed plan; otherwise say " +
+      "it has no plan yet (the tester's 1151: 38446/38447 sent the owner to a plan that did not exist)." +
       instead,
     goal_lives_on_thread_id: goalThreadId,
     goal_title: goalTitle,
@@ -11777,7 +11779,11 @@ async function runToolLoop(
         );
   const promisedWithoutActing = promiseGap !== null;
   // #960: the owner's contacts on Netai came back and the reply offered none.
-  const membersSkipped = !ownerAbsent && skippedTheMembersFound(runId, finalText, toolNamesUsed);
+  // The tester's 1151 (38446, 38447): a run that only says where an open goal
+  // stands is not the place to offer people; its notes doubled the reply.
+  const repeatsAnOpenGoal = runRepeatedGoal.has(runId);
+  const membersSkipped =
+    !ownerAbsent && !repeatsAnOpenGoal && skippedTheMembersFound(runId, finalText, toolNamesUsed);
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
   // A clarifying question back („which city?") is a correct first answer.
   // The tester's 1145 (37898): „maybe my friends know" and the reply was only
@@ -11794,6 +11800,7 @@ async function runToolLoop(
     !ownerAbsent &&
     !promoted &&
     !answeringALaterTap &&
+    !repeatsAnOpenGoal &&
     (runModes.get(runId) === 'task_step' || toolNamesUsed.includes('set_task_brief')) &&
     !runMembersFound.has(runId) &&
     !claimedASendThatDidNotHappen &&
@@ -11947,7 +11954,8 @@ async function runToolLoop(
         ? onlyTheMembersPart(continuationText, (p) => replyOffersAMember(p, memberNames))
         : continuationText;
       if (continuationText) {
-        finalText = correctedTurn || repeated ? continuationText : `${finalText}\n\n${addition}`;
+        if (correctedTurn || repeated) finalText = continuationText;
+        else if (addition !== '') finalText = `${finalText}\n\n${addition}`;
       }
       // eslint-disable-next-line no-console
       console.log(
@@ -13631,7 +13639,8 @@ export async function processChat(
         `you have above — so no second goal was created for it. Do not start this work over ` +
         `and do not ask them again for what the goal already knows. Tell them where that goal ` +
         `stands in a sentence or two. If what they want now is genuinely DIFFERENT from it, ` +
-        `say what you think the difference is and ask them.`;
+        `say what you think the difference is and ask them. Say only what its state shows: ` +
+        `never that a plan is ready or waits for their yes unless a plan was proposed.`;
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.
   const systemPrompt = joinSystemPrompt(

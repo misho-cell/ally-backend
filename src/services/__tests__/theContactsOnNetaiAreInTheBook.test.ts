@@ -148,3 +148,37 @@ describe('the addition after the first answer', () => {
     expect(onlyTheMembersPart(turn, namesVano)).toBe(turn);
   });
 });
+
+/** The tester's 1151 (38446, 38447): a repeated ask for an open goal, said twice and sent elsewhere. */
+describe('a run that repeats an open goal', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('gets no members note', () => {
+    expect(chat).toContain('const repeatsAnOpenGoal = runRepeatedGoal.has(runId);');
+    expect(chat).toContain(
+      '!ownerAbsent && !repeatsAnOpenGoal && skippedTheMembersFound(runId, finalText, toolNamesUsed);',
+    );
+    expect(chat).toContain('!answeringALaterTap &&\n    !repeatsAnOpenGoal &&');
+  });
+
+  it('never says a plan waits elsewhere unless one was proposed', () => {
+    expect(chat).toContain(
+      'never that a plan is ready or waits for their yes unless a plan was proposed.',
+    );
+    expect(chat).toContain(
+      "or waits for their yes there ONLY when that goal's state shows a proposed plan",
+    );
+  });
+
+  it('adds nothing when the turn after a members note names nobody and says more than one line', () => {
+    const namesNobody = (): boolean => false;
+    const repeat =
+      'ეს ისევ იგივე ღია საქმეა, ქუთაისში ნოტარიუსზე. ჯერ არც ერთი ადამიანისთვის მიმიწერია და ' +
+      'დასამტკიცებელი გეგმაც არ მაქვს მომზადებული.\n\nთუ გინდა, ახლავე შევუდგები და გამოგიტან ' +
+      'დასამტკიცებელ გეგმას. გავაგრძელო?';
+    expect(onlyTheMembersPart(repeat, namesNobody)).toBe('');
+    expect(chat).toContain(
+      "else if (addition !== '') finalText = `${finalText}\\n\\n${addition}`;",
+    );
+  });
+});
