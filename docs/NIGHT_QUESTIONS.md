@@ -62,23 +62,7 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**4–5 October (new backend session).** From the tester's 37796 (#392, Chorus), answered in box 37797:
-
-1. **Six invite asks sent on 1 Oct, before D544, without a confirmed tie** (asks 71, 136, 137, 140, 151, 152) are still open as "asked". Nothing in the code withdraws them. Keep them, or withdraw them? Withdrawing touches messages already delivered to real people, so it is Misho's or the founder's call.
-2. **Unconfirmed pending asks** (about 59, due since as early as 4 Sep) are held for good by the D544 check at send, and nothing closes them. Should they be closed with the reason "no confirmed tie"? That is a live-data write, so it needs Misho's word.
-3. **The 16 confirmed pending asks** wait on the founder's per-target "yes" (target_decisions) and on the one-ask-per-person-per-week rule. Nothing to decide unless the founder wants to give those "yes" answers.
-
-From the tester's 1151 (38446, 38447): a repeated ask for a goal that lives in another chat.
-
-4. **Should the plan card be drawn where the owner is?** Today the plan of a goal that lives in another chat is never drawn here (ticket 19 [4]), because buttons under a plan do not say which goal they approve. The run tells the owner to go to the other chat. The tester suggests showing the plan card, with its approve button, in the chat where the owner is asking (or opening it there). That changes a recorded rule, so it is the founder's call. Tonight I only made the reply truthful: it no longer says a plan waits there when none was proposed (on the branch, live after the round).
-
-From the tester's 1153 (D651 test setup):
-
-5. **May `POST /admin/test-accounts` take a phone?** To test D651 the tester needs a fictional member who joins AFTER a goal answered, on a number the owner already holds. The route's authorized limits (D44 register, approved by the founder and Misho on 23 Sep) say the caller cannot choose a phone, and a seat never sits on a number anyone holds. That is what keeps a seat out of a real owner's second circle. A narrow widening would be: a `phone` in the fictional ranges, refused unless every phonebook holding it belongs to a test seat. It widens an authorized admin write, so it needs Misho's word. Until then D651 stays untested end to end; its queries were checked read-only on production.
-
-From the tester's 1152 (#1057, 38551, 38585):
-
-6. **Should a server-started run that finds nothing write one closing line?** Today such a run (the 30-minute plan-anyway run, a follow-up) writes nothing — row 33: a wake is work nobody asked for, so it says nothing. Since 9f76de7 it at least takes its "searching…" captions back, so the owner sees the last real answer. The tester asks for one plain closing line instead of silence. That changes row 33, so it is the founder's call.
+_Empty. The night of 4→5 October was handed over at 07:06 UTC on 5 Oct; its six questions are in **Waiting** below (G–L)._
 
 Cleared on the morning of 23 September after the handover. Anything still
 waiting on a person is below, in **Waiting**, because a list that is emptied
@@ -97,6 +81,13 @@ Ordered by what else they block.
 | D | ~~the outage monitor is blind all night~~ **CLOSED 24 Sep 06:38** — the free half (the crons are the heartbeat, 240-min alarm) and then the paid probe, delegated by Misho („შენით გადაწყვიტე") and costed at last: **0.009 USD a month** | ~~yours~~ — done | nine hours became four, then the probe took the four |
 | E | an admin token reaches the erasure endpoint | **yours** — one word, but it changes who can erase | nothing; the test pins today's behaviour |
 | F | the zero-wallet test seat refills itself | **yours** — the fix is an access change | any row 221 reading that needs an empty wallet |
+| G | six Chorus invite asks of 1 Oct sent before D544 without a confirmed tie (asks 71, 136, 137, 140, 151, 152): keep or withdraw | **yours or the founder's** — withdrawing touches messages real people already have | nothing else; they stay open as „asked" |
+| H | ~59 unconfirmed pending Chorus asks held for good by D544: close them with „no confirmed tie"? | **yours** — a live-data write (D44) | a tidy #392 |
+| I | 16 confirmed pending Chorus asks wait on the founder's per-target „yes" | **the founder's** | those 16 sends |
+| J | draw the plan card of a goal from another chat where the owner is asking (ticket 19 [4]) | **the founder's** — changes a recorded rule | the tester's 1151 suggestion |
+| K | may `POST /admin/test-accounts` take a phone in the fictional ranges, refused unless every holder is a test seat | **yours** — widens a D44-authorized write | D651 end-to-end test |
+| L | should a server-started run that finds nothing write one closing line (row 33)? | **the founder's** | #1057 / D649 visible result |
+| M | new saved answers can no longer be made since D562; bring the „answer similar questions" offer back? | **the founder's** — reverses D562 | D652 beyond the 10 old rules |
 
 **Answered or done since the list was written:**
 
