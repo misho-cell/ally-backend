@@ -11534,6 +11534,11 @@ async function runToolLoop(
   // text, so a pending-request line ends the answer rather than replacing it).
   let bestNarration = '';
   let bestStepId: number | null = null;
+  // The tester's 39635 (conv 39931): the narration written beside a REFUSED
+  // propose_task_plan — „first I want one plan approved by you…" — was
+  // promoted to the final after the ask had already gone (D316). A plan
+  // round's narration is the answer only when a plan was actually proposed.
+  let bestFromPlanRound = false;
   const draftSteps: SavedStep[] = [];
   const housekeepingSteps: SavedStep[] = [];
 
@@ -11573,6 +11578,7 @@ async function runToolLoop(
         if (narration.length > bestNarration.length) {
           bestNarration = narration;
           bestStepId = stepId;
+          bestFromPlanRound = roundTools.includes('propose_task_plan');
         }
       }
 
@@ -11648,6 +11654,7 @@ async function runToolLoop(
         if (narration.length > bestNarration.length) {
           bestNarration = narration;
           bestStepId = stepId;
+          bestFromPlanRound = roundTools.includes('propose_task_plan');
         }
       }
 
@@ -11812,6 +11819,11 @@ async function runToolLoop(
   // The tester's 997 (29835): the final was „*(ველოდები პასუხს.)*" — a stage
   // direction in round brackets — and the real reply sat in the step before
   // it. A final that is only a stage direction is no answer: it counts as empty.
+  if (bestFromPlanRound && !runPlanForReply.has(runId)) {
+    // eslint-disable-next-line no-console
+    console.log(`[final] run ${runId}: a refused plan's narration is not the answer`);
+    bestNarration = '';
+  }
   if (
     bestNarration.length > 0 &&
     (STAGE_DIRECTION_ONLY_RE.test(finalText) || isOnlyAWaitingLine(finalText))
