@@ -1,6 +1,6 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
-import { languageOfConversation } from '../runLanguage';
+import { detectRunLanguage, languageOfConversation } from '../runLanguage';
 import { buildAnswerWakeEvent, buildRelayAnswerWakeEvent } from '../taskAsks.service';
 
 /**
@@ -91,5 +91,21 @@ describe('Latin contact names inside a Georgian sentence do not make it English'
     const { detectRunLanguage } = await import('../runLanguage');
     expect(detectRunLanguage('Do I know anyone who knows ბახვა გამოგონილი?')).toBe('en');
     expect(detectRunLanguage('Please ask Netai Test 27')).toBe('en');
+  });
+});
+
+/** The tester's 1162 (#1156): Spanish without an accent mark read as English. */
+describe('Spanish without accents', () => {
+  it('is told by its small words', () => {
+    expect(
+      detectRunLanguage('Preguntale a Netai Test 1 si conoce un buen dentista en Tbilisi.'),
+    ).toBe('es');
+  });
+
+  it('leaves English with a Spanish-looking word English', () => {
+    expect(detectRunLanguage('Ask Netai Test 1 if he could recommend a dentist in Tbilisi.')).toBe(
+      'en',
+    );
+    expect(detectRunLanguage('Is there a good dentist in Tbilisi for my kid?')).toBe('en');
   });
 });

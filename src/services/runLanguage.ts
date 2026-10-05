@@ -51,8 +51,82 @@ export function detectRunLanguage(text: string): RunLanguage {
   if (script > 0 && script >= words.latin) {
     return words.georgian >= words.cyrillic ? 'ka' : 'ru';
   }
-  if (/[áéíóúñ¿¡]/i.test(text)) return 'es';
+  if (/[áéíóúñ¿¡]/i.test(text) || readsAsSpanish(text)) return 'es';
   return 'en';
+}
+
+/**
+ * The tester's 1162 (#1156, 39074): „Preguntale a Netai Test 1 si conoce un
+ * buen dentista en Tbilisi." carries no accent, so it read as English and the
+ * reply came in English. Spanish is also told by its small words.
+ */
+const SPANISH_WORDS: ReadonlySet<string> = new Set([
+  'que',
+  'de',
+  'la',
+  'el',
+  'los',
+  'las',
+  'un',
+  'una',
+  'por',
+  'para',
+  'con',
+  'si',
+  'y',
+  'es',
+  'en',
+  'conoce',
+  'conoces',
+  'buen',
+  'buena',
+  'hola',
+  'gracias',
+  'necesito',
+  'quiero',
+  'puedes',
+  'preguntale',
+  'pregunta',
+  'alguien',
+  'donde',
+  'como',
+  'mi',
+  'tu',
+]);
+const ENGLISH_WORDS: ReadonlySet<string> = new Set([
+  'the',
+  'a',
+  'an',
+  'of',
+  'to',
+  'for',
+  'with',
+  'if',
+  'he',
+  'she',
+  'you',
+  'know',
+  'good',
+  'ask',
+  'is',
+  'and',
+  'my',
+  'can',
+  'need',
+  'want',
+  'who',
+  'where',
+  'how',
+  'please',
+  'in',
+]);
+const MIN_SPANISH_WORDS = 3;
+
+function readsAsSpanish(text: string): boolean {
+  const words = text.toLowerCase().match(/[a-zñ]+/gu) ?? [];
+  const spanish = words.filter((w) => SPANISH_WORDS.has(w)).length;
+  const english = words.filter((w) => ENGLISH_WORDS.has(w)).length;
+  return spanish >= MIN_SPANISH_WORDS && spanish > english;
 }
 
 /**
