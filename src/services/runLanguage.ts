@@ -191,6 +191,12 @@ const MIN_LATIN_CHARS_TO_SWITCH = 25;
  * the fallback is now the language the run already had: silence keeps what it
  * found, and only real evidence moves it.
  */
+/** Does this line say which language it is in? A script, or a sentence of Latin. */
+export function carriesLanguage(text: string): boolean {
+  const trimmed = text.trim();
+  return SIGNAL.test(trimmed) || trimmed.length >= MIN_LATIN_CHARS_TO_SWITCH;
+}
+
 export function languageOfConversation(
   latest: string,
   /** The thread's earlier messages, newest first. */

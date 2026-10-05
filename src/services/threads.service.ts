@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import {
+  carriesLanguage,
   languageOfConversation,
   NEW_THREAD_TITLE,
   RunLanguage,
@@ -959,7 +960,13 @@ export async function getThreadMessages(
  */
 export async function threadLanguage(threadId: number): Promise<RunLanguage> {
   const [latest, ...earlier] = await ownerMessages(threadId);
-  if (latest !== undefined) return languageOfConversation(latest, earlier);
+  // The tester's 38809 (Lika): a new conversation whose only line was „." —
+  // sent to make the attach button work — answered the file in English to a
+  // Georgian writer. A thread with no line that says its language is asked of
+  // the owner's other conversations, like an empty one.
+  if (latest !== undefined && [latest, ...earlier].some(carriesLanguage)) {
+    return languageOfConversation(latest, earlier);
+  }
   /**
    * AN EMPTY THREAD IS NOT A GEORGIAN THREAD. The seat measured it on Test 1,
    * 20 September, reading one object at one moment:

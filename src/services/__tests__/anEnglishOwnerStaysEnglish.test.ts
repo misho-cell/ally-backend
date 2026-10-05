@@ -1,6 +1,6 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 
-import { detectRunLanguage, languageOfConversation } from '../runLanguage';
+import { carriesLanguage, detectRunLanguage, languageOfConversation } from '../runLanguage';
 import { buildAnswerWakeEvent, buildRelayAnswerWakeEvent } from '../taskAsks.service';
 
 /**
@@ -107,5 +107,15 @@ describe('Spanish without accents', () => {
       'en',
     );
     expect(detectRunLanguage('Is there a good dentist in Tbilisi for my kid?')).toBe('en');
+  });
+});
+
+/** The tester's 38809 (Lika): „." alone says no language. */
+describe('a line that carries a language', () => {
+  it('is a script or a sentence of Latin, never a lone stop', () => {
+    expect(carriesLanguage('.')).toBe(false);
+    expect(carriesLanguage('ok')).toBe(false);
+    expect(carriesLanguage('ამ სიაზე იმუშავე')).toBe(true);
+    expect(carriesLanguage('Please work this list for me today')).toBe(true);
   });
 });
