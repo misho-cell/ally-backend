@@ -13926,6 +13926,10 @@ export async function processChat(
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
     effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language);
   }
+  // #1189 (Giorgi, 4 and 5 Oct): a wake that only re-set its reminder left a
+  // bubble holding „•". A reply with no letter or digit in it says nothing; it is
+  // empty, and a system run with nothing to say ends quietly below.
+  if (!/[\p{L}\p{N}]/u.test(effectiveFinal)) effectiveFinal = '';
   const onlyButtons =
     !effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0);
   // The tester's 1145 (37893): the plan turn the server started after a goal was

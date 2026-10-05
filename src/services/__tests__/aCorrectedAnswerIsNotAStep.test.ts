@@ -40,3 +40,11 @@ describe('a members note', () => {
     }
   });
 });
+
+/** #1189 (Giorgi): a wake that only re-set its reminder left a bubble holding „•". */
+describe('a reply with no words', () => {
+  it('counts as empty, so a system run ends quietly', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain("if (!/[\\p{L}\\p{N}]/u.test(effectiveFinal)) effectiveFinal = '';");
+  });
+});

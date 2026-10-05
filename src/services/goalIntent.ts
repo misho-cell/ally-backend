@@ -394,6 +394,10 @@ export function goalTitleFrom(message: string): string {
  * is an asymmetry rather than a decision: nothing anywhere argues that a
  * Georgian „tell" should count for less.
  *
+ * Spanish and Russian (#1156, the tester's 1163, 39140): „Preguntale a X si…"
+ * asked the owner to confirm a send they had already asked for, where „Ask X
+ * if…" and „ჰკითხე X-ს" go in the same turn.
+ *
  * `send … to/through` — and it carries its direction ON PURPOSE. A bare „send"
  * would swallow „send me the list" and „send it again", which are instructions
  * to the ASSISTANT about its own output and not about reaching a person. What
@@ -404,7 +408,7 @@ export function goalTitleFrom(message: string): string {
  * verb has to carry the weight on its own.
  */
 const CONTACT_VERB_RE =
-  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)/iu;
+  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
 
 /**
  * „write to nobody", „არავის არ მისწერო" — the verb is present and the

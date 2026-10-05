@@ -34,6 +34,9 @@ function wordingPrompt(language: RunLanguage): string {
     `assistant passing it on, in ${LANGUAGE_NAME[language] ?? LANGUAGE_NAME.ka}. Not a quotation and ` +
     'no quotation marks. Speak ABOUT them in the third person — „he/she/they", „his daughter" — ' +
     'never as them („I", „my"). In Georgian one person is „ის / მისი / მას", never „მათი". ' +
+    'Their name is already shown before your text, so do not open with „ის" or a pronoun: ' +
+    'start with what they say, and in Georgian use the singular third-person verb ' +
+    '(„გირჩევს", „იცნობს"), never the polite plural („გირჩევთ"). ' +
     'Keep every name, number, price, time, date, address and link ' +
     'exactly as written, names in their original spelling and letters. Add nothing they did not ' +
     'say. One to three sentences. Reply with the text only.'

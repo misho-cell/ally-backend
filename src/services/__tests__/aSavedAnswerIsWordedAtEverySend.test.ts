@@ -70,6 +70,9 @@ describe('a saved answer at send', () => {
     const [request] = mockCreate.mock.calls[0] as [{ system: string }];
     expect(request.system).toContain('third person');
     expect(request.system).toContain('original spelling and letters');
+    // The tester's 38746 (Ninia's #298 screen): „ის …ს გირჩევთ".
+    expect(request.system).toContain('do not open with „ის"');
+    expect(request.system).toContain('never the polite plural („გირჩევთ")');
   });
 
   it('does not let the saved sentence through as a wording', async () => {
