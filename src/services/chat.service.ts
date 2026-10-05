@@ -5996,6 +5996,43 @@ export type GrantPermissionRefusal = {
  * reason: the read is best-effort and a database hiccup must not block a
  * permission the owner really gave. Layer 1 still stands in that case.
  */
+/**
+ * #694 (prompt test round 3; still measured on 5 Oct): „ask <name> …" typed by
+ * the owner was refused once by createAsk („no permission recorded"), the run
+ * then called grant_task_permission and asked again — a wasted round on every
+ * such send. D316 says the instruction IS the yes, and grant_task_permission
+ * already grants on exactly that predicate. So the send grants it first.
+ *
+ * Narrow on purpose: only with the owner present, only on the owner's own
+ * typed INSTRUCTION naming whom to contact (never a bare „yes", which may
+ * belong to a draft card — ticket 19 G2), and it grants the plan-free
+ * permission only; a proposed plan's own wall in createAsk still stands.
+ */
+async function grantFromTheOwnersInstruction(
+  userId: string,
+  task: { readonly id: number | string; readonly permission_granted?: boolean | null },
+  threadId: number | undefined,
+  ownerAbsent: boolean,
+  runId: string | undefined,
+): Promise<void> {
+  if (ownerAbsent || threadId === undefined || task.permission_granted === true) return;
+  try {
+    const screen = await planConsentOnScreen(threadId);
+    const instructed = [...screen.ownerSaidSinceCard, screen.lastOwnerMessage ?? ''].some((line) =>
+      looksLikeContactInstruction(line),
+    );
+    if (!instructed) return;
+    await grantTaskPermission(userId, Number(task.id));
+    // eslint-disable-next-line no-console
+    console.log(
+      `[consent] run ${runId}: task ${task.id} granted by the owner's instruction (D316)`,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[consent] could not read the owner’s instruction:', (err as Error).message);
+  }
+}
+
 export function grantPermissionRefusal(
   confirmed: unknown,
   screen: PlanConsentScreen | null,
@@ -8506,6 +8543,7 @@ async function executeToolCall(
         console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, ${changed.change}`);
         return { sent: false, reason: 'fact_changed', error: factChangedRefusal(changed) };
       }
+      await grantFromTheOwnersInstruction(userId, task, threadId, ownerAbsent, runId);
       const askOutcome = await createAsk(
         userId,
         taskId,
