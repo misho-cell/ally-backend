@@ -6929,6 +6929,40 @@ function forgetEmptySearches(runId: string | undefined): void {
  * The prompt already said not to start the work over; the server now holds it.
  * The goal's own runs keep searching; only the turn that repeats it does not.
  */
+/**
+ * Board #959 (the tester's „a first answer in 60 s"): 92 runs on 4–5 October
+ * took over a minute, at about nine model rounds and eleven searches each, up
+ * to 27 tool calls — the model searching one idea per round. Each round is a
+ * model call and a search, so a run's searches are capped: past the budget a
+ * search is refused with „answer now from what you found". Looking up a person
+ * by name stays free — the members check needs it, and it is one row.
+ */
+const MAX_SEARCHES_PER_RUN = 8;
+const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_roster',
+  'search_contacts_by_country',
+  'find_warm_path',
+  'web_search',
+  'fetch_page',
+]);
+const runSearchCalls = new Map<string, number>();
+
+export const SEARCH_BUDGET_SPENT =
+  `Not searched: this answer has used its ${MAX_SEARCHES_PER_RUN} searches. Do not search again ` +
+  'in this run. Write your answer now from what you found — who or what was found, and the ' +
+  'next route — and continue the search in a later step if it is needed.';
+
+/** Counts a budgeted search; true when this one is past the run's budget. */
+export function searchBudgetSpent(runId: string, tool: string): boolean {
+  if (!BUDGETED_SEARCH_TOOLS.has(tool)) return false;
+  const used = (runSearchCalls.get(runId) ?? 0) + 1;
+  runSearchCalls.set(runId, used);
+  return used > MAX_SEARCHES_PER_RUN;
+}
+
 const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',
   'search_by_insight',
@@ -7577,6 +7611,7 @@ const runOwnerLine = new Map<string, string>();
 const runRepeatedGoal = new Map<string, number>();
 
 function clearRunState(runId: string): void {
+  runSearchCalls.delete(runId);
   runAllowedNumbers.delete(runId);
   runWebPages.delete(runId);
   runModes.delete(runId);
@@ -7804,6 +7839,11 @@ async function executeToolCall(
         'here who could have said yes. A proposed plan stays proposed until the owner ' +
         'presses the button themselves. Do not tell them it was approved.',
     };
+  }
+  if (runId !== undefined && searchBudgetSpent(runId, name)) {
+    // eslint-disable-next-line no-console
+    console.log(`[search-budget] run ${runId}: ${name} refused, ${MAX_SEARCHES_PER_RUN} spent`);
+    return { found: false, error: SEARCH_BUDGET_SPENT };
   }
   const repeated = runId === undefined ? undefined : runRepeatedGoal.get(runId);
   if (repeated !== undefined && REPEAT_REFUSED_TOOLS.has(name)) {
