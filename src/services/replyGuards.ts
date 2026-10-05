@@ -462,12 +462,24 @@ export function asksToApproveAPlan(text: string): boolean {
  * contacts who are on Netai — the people Netai can ask directly — and the
  * reply offered web leads or an invitation and none of them. Asked once.
  */
+/**
+ * The tester's 1162 (#1156, 39074): the reply asked the owner to choose, the
+ * members note came next, and the model read the note as the owner's turn —
+ * „I didn't quite catch an answer there", 19 s later, to a user who had not
+ * written anything. And the note is Georgian while the owner wrote Spanish.
+ */
+const NOT_THE_OWNER_SPEAKING =
+  ' მფლობელს ჯერ არაფერი უპასუხია — ეს შენიშვნა მისი სიტყვები არ არის: არასდროს თქვა, რომ ' +
+  'პასუხი ვერ გაიგე. დაწერე მფლობელის ენაზე.';
+
 export const MEMBERS_SKIPPED_NUDGE =
   '(სისტემური შენიშვნა: ამ გაშვებაში ძებნამ მფლობელის კონტაქტები იპოვა, რომლებიც Netai-ზე არიან ' +
   '(is_member: true) — მათ პირდაპირ ვკითხავთ. შენს პასუხში არცერთი არ ახსენე. შესთავაზე ისინი ' +
   '(გეგმაში people_to_involve) ან ერთი ხაზით თქვი, რატომ არ გამოდგებიან. შენი წინა პასუხი ' +
   'რჩება და მფლობელი მას ისე ნახავს, როგორც დაწერე — არ გაიმეორო და არ გადაწერო. დაწერე მხოლოდ ' +
-  'ეს დამატება, ბოდიშის გარეშე.)';
+  'ეს დამატება, ბოდიშის გარეშე.' +
+  NOT_THE_OWNER_SPEAKING +
+  ')';
 
 /**
  * #960, the tester's 1145 (37787, 37895, 37878): the run never searched the
@@ -486,7 +498,9 @@ export function membersInTheBookNudge(names: readonly string[]): string {
     'მოწვევამდე — ყველა ერთად, ერთ რაუნდში იპოვე search_contact_by_name-ით და გეგმაში ' +
     'people_to_involve-ად ჩასვი. სხვა ძებნა, პროფილი ან კონტაქტების სია აღარ გჭირდება. თუ ' +
     'არცერთი არ გამოდგება, ერთი ხაზით თქვი რატომ. მოწვევა მხოლოდ მფლობელის თხოვნით. ბოდიშის ' +
-    'გარეშე.)'
+    'გარეშე.' +
+    NOT_THE_OWNER_SPEAKING +
+    ')'
   );
 }
 
