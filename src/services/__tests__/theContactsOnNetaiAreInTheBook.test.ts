@@ -56,9 +56,7 @@ describe('the note that names them', () => {
 
   it('is kept out of the owner’s history like every other model-only note', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      'return MODEL_ONLY_NUDGES.has(content) || content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);',
-    );
+    expect(chat).toContain('content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX) ||');
     expect(chat).not.toContain('MODEL_ONLY_NUDGES.has(m.content)');
     expect(chat).not.toContain('MODEL_ONLY_NUDGES.has(msg.content)');
   });

@@ -358,6 +358,40 @@ export function onlyTheMembersPart(
 }
 
 /**
+ * #893, the tester's 37795 and 37853 (38319, 38413): the first answer to
+ * „work this list" said „for these four companies, no warm way yet" — no line
+ * per row, and the planted fifth row not mentioned. The tool's instruction to
+ * account for every row was not followed twice, so it is checked here: a row
+ * counts as named when its first word (case ending allowed) is in the reply.
+ */
+const MIN_ROW_WORD_CHARS = 3;
+const ROW_STEM_TRIM = 1;
+
+export function rowsNotNamed(reply: string, labels: readonly string[]): string[] {
+  const lower = reply.toLowerCase();
+  return labels.filter((label) => {
+    const first = (label.trim().split(/\s+/u)[0] ?? '')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]/gu, '');
+    if (first.length < MIN_ROW_WORD_CHARS) return false;
+    const stem =
+      first.length > MIN_ROW_WORD_CHARS + ROW_STEM_TRIM ? first.slice(0, -ROW_STEM_TRIM) : first;
+    return !lower.includes(stem);
+  });
+}
+
+export const LIST_ROWS_PREFIX = '(სისტემური შენიშვნა: სიის ყველა რიგი არ ახსენე — აკლია: ';
+
+export function listRowsNudge(missing: readonly string[]): string {
+  return (
+    `${LIST_ROWS_PREFIX}${missing.join(', ')}. ჩამოწერე სიის ყოველი რიგი ცალკე ხაზით: სახელი — ` +
+    'რა ვიპოვე (ვისი მეშვეობით) ან რომ გზა ჯერ არ არის; რიგი, რომელიც კომპანია ან ადამიანი არ ' +
+    'არის, ერთი სიტყვით „არ გამოვიყენე". დანარჩენი შენი პასუხიდან შეინარჩუნე. თავიდან ნუ ' +
+    'მოძებნი. მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)'
+  );
+}
+
+/**
  * The tester's 1149 (38149, 38157): a web search and two pages read, then a
  * reply that was only „რა მიზნით გჭირდება…?" — nothing found was shown. A
  * reply this short, ending on a question and carrying no link, is a question

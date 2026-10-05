@@ -289,6 +289,9 @@ import {
   asksAboutOwnPeople,
   withoutQuotedCopy,
   onlyTheMembersPart,
+  LIST_ROWS_PREFIX,
+  listRowsNudge,
+  rowsNotNamed,
   PROMISED_ACTION_NO_GOAL_NUDGE,
   FINDS_FIRST_NUDGE,
   isOnlyAQuestion,
@@ -4699,6 +4702,10 @@ async function runLoggedSearch(
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
+/** #893: the labels of the list this run worked, for the check that the reply names every row. */
+const runListLabels = new Map<string, string[]>();
+/** The tool names this many rows to the model; a longer list is not checked row by row. */
+const MAX_LIST_ROWS_CHECKED = 40;
 
 /** A web search that came back with at least one result. */
 export function hasWebResults(found: unknown): boolean {
@@ -7584,6 +7591,7 @@ function clearRunState(runId: string): void {
   runMembersFound.delete(runId);
   runIntroSent.delete(runId);
   runWebFound.delete(runId);
+  runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
@@ -7890,6 +7898,12 @@ async function executeToolCall(
         threadId: threadId ?? null,
         runId: runId ?? null,
       });
+      if (started.ok && runId !== undefined) {
+        runListLabels.set(
+          runId,
+          started.value.items.map((item) => item.label),
+        );
+      }
       return started.ok
         ? { started: true, ...started.value }
         : { started: false, error: started.error };
@@ -11795,6 +11809,12 @@ async function runToolLoop(
     !answeringALaterTap &&
     runWebFound.has(runId) &&
     isOnlyAQuestion(finalText);
+  // #893 (the tester's 37853): the list's first answer must name every row.
+  const listLabels = runListLabels.get(runId) ?? [];
+  const rowsMissing =
+    !ownerAbsent && !promoted && !answeringALaterTap && listLabels.length <= MAX_LIST_ROWS_CHECKED
+      ? rowsNotNamed(finalText, listLabels)
+      : [];
   const guardNudge = claimedASendThatDidNotHappen
     ? PASSED_ON_NUDGE
     : helperQuestionUnsent
@@ -11811,9 +11831,11 @@ async function runToolLoop(
               ? promiseGap === PromiseGap.Goal
                 ? PROMISED_ACTION_NO_GOAL_NUDGE
                 : PROMISED_ACTION_NUDGE
-              : findsHeldBack
-                ? FINDS_FIRST_NUDGE
-                : CLIFFHANGER_NUDGE;
+              : rowsMissing.length > 0
+                ? listRowsNudge(rowsMissing)
+                : findsHeldBack
+                  ? FINDS_FIRST_NUDGE
+                  : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -11823,6 +11845,7 @@ async function runToolLoop(
       promisedWithoutActing ||
       membersSkipped ||
       bookMembersSkipped.length > 0 ||
+      rowsMissing.length > 0 ||
       findsHeldBack ||
       isCliffhangerReply(finalText))
   ) {
@@ -12039,7 +12062,11 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
 
 /** A model-only note: one of the fixed ones, or the members note that names people. */
 export function isModelOnlyNudge(content: string): boolean {
-  return MODEL_ONLY_NUDGES.has(content) || content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX);
+  return (
+    MODEL_ONLY_NUDGES.has(content) ||
+    content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX) ||
+    content.startsWith(LIST_ROWS_PREFIX)
+  );
 }
 
 /**
