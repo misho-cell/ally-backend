@@ -24,3 +24,21 @@ describe('praise the helper did not write', () => {
     expect(endorsementAddedRefusal(['კარგი'])).toContain('„კარგი"');
   });
 });
+
+/** Tester 40162: „and will be able to help" added to a name-only answer. */
+describe('a promise of help the helper did not make', () => {
+  it('is found', () => {
+    expect(
+      endorsementAdded('ნანა სტომატოლოგი', 'ასახელებს ნანას, სტომატოლოგს, და დაგეხმარება.'),
+    ).toEqual(['დაგეხმარება']);
+    expect(
+      endorsementAdded('Nana, a dentist', 'They name Nana, a dentist, who will help.'),
+    ).toEqual(['help']);
+  });
+
+  it('is kept when the helper offered it', () => {
+    expect(
+      endorsementAdded('ნანა სტომატოლოგი, დაგეხმარება', 'ასახელებს ნანას, ის დაგეხმარება.'),
+    ).toEqual([]);
+  });
+});

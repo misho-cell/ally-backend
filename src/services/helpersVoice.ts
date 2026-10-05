@@ -83,6 +83,9 @@ const ENDORSEMENT_STEMS: readonly string[] = [
   'ვურჩევ',
   'გირჩევ',
   'რეკომენდ',
+  // Tester 40162: „…და შეძლებს დაგეხმაროს" — a promise of help she did not make.
+  'დაგეხმარ',
+  'დაეხმარ',
   'კარგ',
   'საუკეთესო',
   'სანდო',
@@ -93,9 +96,11 @@ const ENDORSEMENT_STEMS: readonly string[] = [
   'best',
   'trusted',
   'reliable',
+  'help',
   'рекоменд',
   'хорош',
   'лучш',
+  'помож',
 ];
 
 export function endorsementAdded(helperLine: string, sent: string): string[] {
