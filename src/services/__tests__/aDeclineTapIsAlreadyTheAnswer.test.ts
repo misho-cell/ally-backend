@@ -45,9 +45,9 @@ describe('an answer that is already clear goes at once', () => {
     expect(section).toMatch(/ნაზია/);
   });
 
-  it('moves the remember offer into the line that says it went', () => {
-    expect(section).toMatch(/D120/);
-    expect(section).toMatch(/არასდროს დააყოვნო/);
+  it('offers no rule to remember (D562) and never says one was saved', () => {
+    expect(section).toMatch(/აღარ ინახება \(D562\): არასდროს შესთავაზო/);
+    expect(section).not.toMatch(/რომელი ერთი ღილაკი შესთავაზო/);
   });
 
   it('still forbids a name or detail the person did not give', () => {

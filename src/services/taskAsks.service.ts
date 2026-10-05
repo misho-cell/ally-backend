@@ -1,6 +1,12 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
 import { missingFacts, missingFactsRefusal } from './answerFacts';
 import { sentenceCarriedOver } from './sentenceCarriedOver';
+import {
+  factsAdded,
+  factsAddedRefusal,
+  firstPersonCarried,
+  firstPersonRefusal,
+} from './helpersVoice';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
@@ -1708,7 +1714,7 @@ export async function sendApprovedAskAnswer(
   // exact. #991: a shared number is sent exactly as built.
   const answerText = approvedText;
   if (remember?.verbatim !== true) {
-    const heldBack = await answerHeldBack(askThreadId, answerText);
+    const heldBack = await answerHeldBack(askThreadId, row.question, answerText);
     if (heldBack !== null) return { sent: false, error: heldBack };
   }
   const captured = await recordAskAnswer(askThreadId, answerText);
@@ -2348,13 +2354,20 @@ async function helpersOwnLine(askThreadId: number): Promise<string> {
  * tester's 1154, 38745). Null when it may go. A failed read checks nothing:
  * the answer goes as written, and the log says so.
  */
-async function answerHeldBack(askThreadId: number, answerText: string): Promise<string | null> {
+async function answerHeldBack(
+  askThreadId: number,
+  question: string,
+  answerText: string,
+): Promise<string | null> {
   try {
     const own = await helpersOwnLine(askThreadId);
     const missing = missingFacts(own, answerText);
     if (missing.length > 0) return missingFactsRefusal(missing);
     if (isDeclineChoice(own)) return null;
-    return sentenceCarriedOver(own, answerText) === null ? null : HELPERS_SENTENCE_REFUSAL;
+    if (sentenceCarriedOver(own, answerText) !== null) return HELPERS_SENTENCE_REFUSAL;
+    const added = factsAdded(own, question, answerText);
+    if (added.length > 0) return factsAddedRefusal(added);
+    return firstPersonHeldBack(askThreadId, firstPersonCarried(own, question, answerText));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[ask-answer] could not read the helper's own line:", (err as Error).message);
@@ -2362,8 +2375,25 @@ async function answerHeldBack(askThreadId: number, answerText: string): Promise<
   }
 }
 
+/**
+ * Ask threads whose answer was already held back once for the helper's first
+ * person. The „ვ" test is a heuristic — a noun can start with „ვ" — so it holds
+ * an answer back once, and the next send goes, never leaving one stuck.
+ */
+const heldBackForFirstPerson = new Set<number>();
+
+function firstPersonHeldBack(askThreadId: number, carried: readonly string[]): string | null {
+  if (carried.length === 0 || heldBackForFirstPerson.has(askThreadId)) {
+    heldBackForFirstPerson.delete(askThreadId);
+    return null;
+  }
+  heldBackForFirstPerson.add(askThreadId);
+  return firstPersonRefusal(carried);
+}
+
 const HELPERS_SENTENCE_REFUSAL =
-  "Not sent: the answer carries one of the helper's own sentences letter for letter. D648: " +
+  "Not sent: the answer carries one of the helper's own sentences, whole or with words only " +
+  'left out. D648: ' +
   'say what they said in your own words, as their assistant (they → „ასწავლის", not ' +
   '„ვასწავლი"), keep every fact exactly, and send again.';
 

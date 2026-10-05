@@ -23,6 +23,46 @@ const WORD_RE = /[\p{L}]+/gu;
 const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი|ია)\p{L}{0,3}$/u;
 /** The word before one of these is the street's name. */
 const STREET_RE = /([ა-ჰ]+)\s+(?:ქ\.|ქუჩ\p{L}*|გამზ\.|გამზირ\p{L}*|ჩიხ\p{L}*|შესახვ\p{L}*)/gu;
+/**
+ * Districts and towns, as the start of the word in any case form („ვაკეში",
+ * „ვაკის", „საბურთალოზე"). Not a street, so STREET_RE misses them; the tester's
+ * 1156 caught „ვაკეში" added to an answer that never said it (38777).
+ */
+const PLACE_RES: readonly RegExp[] = [
+  /^ვაკ[ეი]/u,
+  /^საბურთალო/u,
+  /^მთაწმინდ/u,
+  /^ვაზისუბ/u,
+  /^ისან[იშზს]/u,
+  /^სამგორ/u,
+  /^დიდუბ/u,
+  /^ჩუღურეთ/u,
+  /^გლდან/u,
+  /^ნაძალადევ/u,
+  /^დიღომ/u,
+  /^ორთაჭალ/u,
+  /^ავლაბარ/u,
+  /^სოლოლაკ/u,
+  /^ვარკეთილ/u,
+  /^ოქროყან/u,
+  /^წყნეთ/u,
+  /^თბილის/u,
+  /^ბათუმ/u,
+  /^ქუთაის/u,
+  /^რუსთავ/u,
+  /^ზუგდიდ/u,
+  /^თელავ/u,
+  /^მცხეთ/u,
+  /^ბორჯომ/u,
+  /^ახალციხ/u,
+  /^ზესტაფონ/u,
+  /^სამტრედი/u,
+  /^ხაშურ/u,
+  /^მარნეულ/u,
+  /^ქობულეთ/u,
+  /^გუდაურ/u,
+  /^ბაკურიან/u,
+];
 /** Latin words that are ordinary words, not a brand or a name. */
 const ORDINARY_LATIN: ReadonlySet<string> = new Set([
   'and',
@@ -45,7 +85,7 @@ function stemOf(word: string): string {
     : lower;
 }
 
-function isFirstName(word: string): boolean {
+export function isFirstName(word: string): boolean {
   const lower = word.toLowerCase();
   if (AMBIGUOUS_FIRST_NAMES.has(lower)) return false;
   if (GEORGIAN_FIRST_NAMES.has(lower)) return true;
@@ -99,6 +139,26 @@ function namesOf(line: string): AnswerFact[] {
   return facts;
 }
 
+/** The places a text names, each as the word it was first written in. */
+export function placesOf(text: string): Map<number, string> {
+  const places = new Map<number, string>();
+  for (const word of text.toLowerCase().match(WORD_RE) ?? []) {
+    const at = PLACE_RES.findIndex((re) => re.test(word));
+    if (at >= 0 && !places.has(at)) places.set(at, word);
+  }
+  return places;
+}
+
+/** Numbers that are facts — a phone number is not one (it travels by the #991 tool). */
+export function factNumbersOf(text: string): string[] {
+  return numbersOf(text).map((fact) => fact.written);
+}
+
+/** Links, with trailing punctuation cut. */
+export function linksIn(text: string): string[] {
+  return linksOf(text).map((fact) => fact.mustAppear);
+}
+
 function streetsOf(line: string): AnswerFact[] {
   return [...line.matchAll(STREET_RE)].map((m) => ({
     written: m[1],
@@ -126,9 +186,14 @@ export function factsOf(helperLine: string): AnswerFact[] {
 /** The helper's facts the sent answer lost or changed, as the helper wrote them. */
 export function missingFacts(helperLine: string, sentText: string): string[] {
   const sent = sentText.toLowerCase();
-  return factsOf(helperLine)
+  const sentPlaces = placesOf(sentText);
+  const lostPlaces = [...placesOf(helperLine)]
+    .filter(([at]) => !sentPlaces.has(at))
+    .map(([, word]) => word);
+  const lost = factsOf(helperLine)
     .filter((fact) => !sent.includes(fact.mustAppear))
     .map((fact) => fact.written);
+  return [...new Set([...lost, ...lostPlaces])];
 }
 
 export function missingFactsRefusal(missing: readonly string[]): string {

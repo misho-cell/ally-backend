@@ -59,7 +59,9 @@ describe('the send', () => {
 
   it('no longer puts the helper’s own line in place of the assistant’s wording (#34 is gone)', () => {
     expect(asks).not.toContain('helpersOwnWording');
-    expect(asks).toContain('const heldBack = await answerHeldBack(askThreadId, answerText);');
+    expect(asks).toContain(
+      'const heldBack = await answerHeldBack(askThreadId, row.question, answerText);',
+    );
     expect(asks).toContain('if (missing.length > 0) return missingFactsRefusal(missing);');
   });
 
