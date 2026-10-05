@@ -62,12 +62,13 @@ interface ChainLink {
 }
 
 /**
- * D674 (the founder, 5 Oct, through the tester): a payment can be refunded in
- * its first 3 days, and a refund takes back the reward it paid (D673, #233).
- * So a reward is usable — spendable or withdrawable — only from day 4: never
- * while the payment it came from could still be refunded.
+ * D677 (the founder, 5 Oct, through the tester; built on Misho's word, #1520 —
+ * replaces D674's 3 days): a payment can be refunded in its first 14 days, and
+ * a refund takes back the reward it paid (D673, #233). So a reward is usable —
+ * spendable or withdrawable — only from day 15: never while the payment it
+ * came from could still be refunded.
  */
-export const REWARD_HOLD_DAYS = 3;
+export const REWARD_HOLD_DAYS = 14;
 const CENTS_PER_USD = 100;
 
 const MS_PER_DAY = 86_400_000;

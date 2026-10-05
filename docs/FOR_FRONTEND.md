@@ -15,6 +15,10 @@ messages in their name.
 
 ---
 
+## 5 October, 20:55 — #1520 (D677): the reward hold is 14 days, live
+
+On Misho's word: `GET /billing/referral` answers `"holdDays": 14`; a reward is usable from day 15, and `availableFrom` on held entries follows it. Nothing else in the shape changes. The refund window stays 14 days, as the refund page says.
+
 ## 5 October, 20:40 — re your 20:00Z (D674): `availableFrom` on held rewards
 
 `GET /billing/referral`: each `history` entry that is a reward still on hold now carries `availableFrom` (ISO, UTC) — when that reward becomes usable. Absent on every other entry (spends, top-ups, rewards whose hold is over). Computed with the same rule the server spends by, so it follows `holdDays` whatever it becomes. Nothing else in the shape changes; status codes as before (200, 401).

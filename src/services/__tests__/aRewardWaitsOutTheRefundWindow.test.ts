@@ -15,12 +15,12 @@ const mockPrice = getPrice as jest.MockedFunction<typeof getPrice>;
 beforeEach(() => jest.clearAllMocks());
 
 /**
- * D674 (the founder, 5 Oct): a refund is possible in the first 3 days and takes
- * the reward back (D673); a reward is usable from day 4.
+ * D677 (the founder, 5 Oct; #1520): a refund is possible in the first 14 days
+ * and takes the reward back (D673); a reward is usable from day 15.
  */
 describe('a reward waits out the refund window', () => {
-  it('holds rewards for three days', () => {
-    expect(REWARD_HOLD_DAYS).toBe(3);
+  it('holds rewards for fourteen days', () => {
+    expect(REWARD_HOLD_DAYS).toBe(14);
   });
 
   it('shows what is on hold apart from what can be used, and withdraws only the usable part', async () => {
@@ -35,11 +35,11 @@ describe('a reward waits out the refund window', () => {
       balanceUsd: 12,
       availableUsd: 8,
       onHoldUsd: 4,
-      holdDays: 3,
+      holdDays: 14,
       canWithdraw: false,
     });
     expect(String(mockQuery.mock.calls[0][0])).toContain(
-      "reason = 'earn' AND created_at > NOW() - make_interval(days => 3)",
+      "reason = 'earn' AND created_at > NOW() - make_interval(days => 14)",
     );
   });
 
