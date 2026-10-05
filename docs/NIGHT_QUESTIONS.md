@@ -76,6 +76,10 @@ From the tester's 1153 (D651 test setup):
 
 5. **May `POST /admin/test-accounts` take a phone?** To test D651 the tester needs a fictional member who joins AFTER a goal answered, on a number the owner already holds. The route's authorized limits (D44 register, approved by the founder and Misho on 23 Sep) say the caller cannot choose a phone, and a seat never sits on a number anyone holds. That is what keeps a seat out of a real owner's second circle. A narrow widening would be: a `phone` in the fictional ranges, refused unless every phonebook holding it belongs to a test seat. It widens an authorized admin write, so it needs Misho's word. Until then D651 stays untested end to end; its queries were checked read-only on production.
 
+From the tester's 1152 (#1057, 38551, 38585):
+
+6. **Should a server-started run that finds nothing write one closing line?** Today such a run (the 30-minute plan-anyway run, a follow-up) writes nothing — row 33: a wake is work nobody asked for, so it says nothing. Since 9f76de7 it at least takes its "searching…" captions back, so the owner sees the last real answer. The tester asks for one plain closing line instead of silence. That changes row 33, so it is the founder's call.
+
 Cleared on the morning of 23 September after the handover. Anything still
 waiting on a person is below, in **Waiting**, because a list that is emptied
 while its questions are unanswered is a list that loses them.
