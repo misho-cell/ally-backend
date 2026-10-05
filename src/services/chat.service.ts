@@ -11920,7 +11920,10 @@ async function runToolLoop(
       const nudgeTurn = { role: 'user' as const, content: guardNudge };
       messages.push(cliffhangerTurn, nudgeTurn);
       pending.push(cliffhangerTurn, nudgeTurn);
-      resetTurnStream();
+      // The tester's 1153 (38681): the corrected answer is not narration. As a
+      // step its first sentence stood on screen as a second bubble, 13 s before
+      // the reply that replaced it. Cleared, not moved: the reply is what stays.
+      resetTurnStream(false);
       let continuation = await callClaude(messages, systemPrompt, tools, ctx, { onText: stream });
 
       let extraRounds = 0;
