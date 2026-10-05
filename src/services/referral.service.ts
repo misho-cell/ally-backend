@@ -34,6 +34,8 @@ export interface ReferralHistoryEntry {
   reason: string;
   level: number | null;
   createdAt: string;
+  /** D674: on a reward still on hold only — when it becomes usable (ISO). */
+  availableFrom?: string;
 }
 
 export interface ReferralSummary {
@@ -67,6 +69,19 @@ interface ChainLink {
  */
 export const REWARD_HOLD_DAYS = 3;
 const CENTS_PER_USD = 100;
+
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * The frontend's 20:00Z (D674): when a held reward becomes usable — the same
+ * rule as ON_HOLD_SQL, so the screen never keeps a copy of it. Null for any
+ * entry that is not a reward on hold.
+ */
+export function heldUntil(reason: string, createdAt: Date, now: Date): Date | null {
+  if (reason !== EARN_REASON) return null;
+  const until = new Date(createdAt.getTime() + REWARD_HOLD_DAYS * MS_PER_DAY);
+  return until > now ? until : null;
+}
 
 /** An earned reward still inside the refund window. */
 const ON_HOLD_SQL = `reason = '${EARN_REASON}' AND created_at > NOW() - make_interval(days => ${REWARD_HOLD_DAYS})`;
@@ -189,12 +204,17 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
     totalEarnedUsd: Number(totalsResult.rows[0]?.earned ?? 0),
     minWithdrawalUsd: minWithdrawal,
     canWithdraw: minWithdrawal > 0 && availableUsd >= minWithdrawal,
-    history: historyResult.rows.map((row) => ({
-      amountUsd: Number(row.amount_usd),
-      reason: row.reason,
-      level: row.level,
-      createdAt: new Date(row.created_at).toISOString(),
-    })),
+    history: historyResult.rows.map((row) => {
+      const createdAt = new Date(row.created_at);
+      const availableFrom = heldUntil(row.reason, createdAt, new Date());
+      return {
+        amountUsd: Number(row.amount_usd),
+        reason: row.reason,
+        level: row.level,
+        createdAt: createdAt.toISOString(),
+        ...(availableFrom === null ? {} : { availableFrom: availableFrom.toISOString() }),
+      };
+    }),
   };
 }
 

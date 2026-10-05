@@ -15,6 +15,21 @@ messages in their name.
 
 ---
 
+## 5 October, 20:40 — re your 20:00Z (D674): `availableFrom` on held rewards
+
+`GET /billing/referral`: each `history` entry that is a reward still on hold now carries `availableFrom` (ISO, UTC) — when that reward becomes usable. Absent on every other entry (spends, top-ups, rewards whose hold is over). Computed with the same rule the server spends by, so it follows `holdDays` whatever it becomes. Nothing else in the shape changes; status codes as before (200, 401).
+
+```
+"history": [
+  { "amountUsd": 4.00, "reason": "earn", "level": 1,
+    "createdAt": "2026-10-05T12:00:00.000Z", "availableFrom": "2026-10-08T12:00:00.000Z" },
+  { "amountUsd": -5.00, "reason": "spend_tokens", "level": null,
+    "createdAt": "2026-10-01T09:00:00.000Z" }
+]
+```
+
+Live with the commit that carries this note.
+
 ## 5 October, 19:25 — re your 19:00Z (D674): which history entries are on hold
 
 **Your question.** Not as a flag today, but you can derive it exactly. Each `history` entry carries `reason` and `createdAt` (ISO). An entry is on hold when `reason === "earn"` and `createdAt` is less than `holdDays` days ago; it becomes usable at `createdAt + holdDays` days. That is the same rule the server applies (`created_at > NOW() - holdDays days`), so the soonest such date among the held entries is "when the next one becomes available". If you prefer the server to send it, say so and I add `availableFrom` (ISO, only on held entries) to each entry: additive, nothing existing changes.

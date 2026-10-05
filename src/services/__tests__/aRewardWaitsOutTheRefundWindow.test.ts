@@ -56,3 +56,19 @@ describe('a reward waits out the refund window', () => {
     });
   });
 });
+
+/** The frontend's 20:00Z: the server says when each held reward becomes usable. */
+describe('when a held reward becomes usable', () => {
+  const { heldUntil } = jest.requireActual('../referral.service');
+  const created = new Date('2026-10-05T12:00:00Z');
+
+  it('is the end of the hold, for a reward still inside it', () => {
+    const until = new Date(created.getTime() + REWARD_HOLD_DAYS * 86_400_000);
+    expect(heldUntil('earn', created, new Date('2026-10-05T13:00:00Z'))).toEqual(until);
+  });
+
+  it('is absent once the hold is over, and for anything that is not a reward', () => {
+    expect(heldUntil('earn', created, new Date('2027-01-01T00:00:00Z'))).toBeNull();
+    expect(heldUntil('spend', created, new Date('2026-10-05T13:00:00Z'))).toBeNull();
+  });
+});
