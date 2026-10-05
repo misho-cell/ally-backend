@@ -229,6 +229,8 @@ interface RunStrings {
   heartbeat: string;
   choicesOnly: string;
   emptyFinalFailure: string;
+  /** #1057: a system run that searched and found nothing to say. */
+  lookedAgainNothingNew: string;
   /**
    * The line a person reads when their run died — and the one message they are
    * most likely to read carefully, because it is the one saying something went
@@ -367,6 +369,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ ისევ ვმუშაობ — ღრმა ძებნა დროს მოითხოვს...',
     choicesOnly: 'აირჩიე ერთ-ერთი:',
     emptyFinalFailure: 'პასუხი ვერ ჩამოყალიბდა — სცადე თავიდან, ან სხვანაირად დასვი კითხვა.',
+    lookedAgainNothingNew:
+      'ისევ ვეძებე — ახალი ჯერ ვერაფერი ვიპოვე. ვაგრძელებ და როგორც კი რამე გამოჩნდება, მოგწერ.',
     runDied: 'ტექნიკური შეფერხება მოხდა — პასუხი ვერ დასრულდა. გთხოვ, სცადე თავიდან.',
     serviceUnavailable:
       'სერვისი დროებით მიუწვდომელია — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. ხელახლა ცდა ახლა არ დაგეხმარება. როცა აღდგება, გამომიგზავნე ხელახლა და მაშინვე ავიღებ.',
@@ -398,6 +402,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ Still working — deep search takes a moment...',
     choicesOnly: 'Pick one:',
     emptyFinalFailure: 'The reply did not come together — try again, or rephrase the question.',
+    lookedAgainNothingNew:
+      'I looked again and found nothing new yet. I am still on it and will write as soon as something turns up.',
     runDied: 'Something went wrong on our side and the answer did not finish. Please try again.',
     serviceUnavailable:
       'The service is temporarily unavailable — that is on us, not on you. Trying again now will not help. When it is back, send it to me again and I will pick it straight up.',
@@ -429,6 +435,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ Всё ещё работаю — глубокий поиск занимает время...',
     choicesOnly: 'Выбери один вариант:',
     emptyFinalFailure: 'Ответ не сложился — попробуй ещё раз или переформулируй вопрос.',
+    lookedAgainNothingNew:
+      'Я поискал ещё раз — пока ничего нового. Продолжаю и напишу, как только что-то появится.',
     runDied:
       'На нашей стороне произошёл сбой, и ответ не завершился. Пожалуйста, попробуй ещё раз.',
     tookTooLong: 'Ответ готовился слишком долго. Пожалуйста, попробуй ещё раз.',
@@ -461,6 +469,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     heartbeat: '⏳ Sigo trabajando — la búsqueda profunda toma un momento...',
     choicesOnly: 'Elige una opción:',
     emptyFinalFailure: 'La respuesta no salió — inténtalo de nuevo o reformula la pregunta.',
+    lookedAgainNothingNew:
+      'Busqué de nuevo y aún no encontré nada nuevo. Sigo con ello y te escribo en cuanto aparezca algo.',
     runDied:
       'Algo falló de nuestro lado y la respuesta no se completó. Inténtalo de nuevo, por favor.',
     tookTooLong: 'La respuesta tardó demasiado en prepararse. Inténtalo de nuevo, por favor.',

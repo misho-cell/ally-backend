@@ -3,7 +3,8 @@
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { endsQuietly } from '../quietSystemRun';
+import { didWorkWorthALine, endsQuietly } from '../quietSystemRun';
+import { RUN_STRINGS } from '../runLanguage';
 
 const RESCHEDULED = [
   { role: 'assistant' as const, content: [{ type: 'tool_use' }] },
@@ -49,5 +50,34 @@ describe('endsQuietly', () => {
     expect(chat).toContain(
       "if (!ownerAbsent) await saveMessage(userId, threadId, 'assistant', failureReply, 'error');",
     );
+  });
+});
+
+/** #1057, night question L (Misho, 5 Oct): a system run that searched says one line. */
+describe('a system run that searched and wrote nothing', () => {
+  const searched = [
+    { role: 'assistant' as const, content: [{ type: 'tool_use', name: 'web_search' }] },
+  ];
+  const keptBooks = [
+    { role: 'assistant' as const, content: [{ type: 'tool_use', name: 'set_task_wake' }] },
+  ];
+
+  it('is worth a line; one that only kept the books is not', () => {
+    expect(didWorkWorthALine(searched)).toBe(true);
+    expect(didWorkWorthALine(keptBooks)).toBe(false);
+    expect(
+      didWorkWorthALine([
+        { role: 'assistant', content: [{ type: 'tool_use', name: 'propose_task_plan' }] },
+      ]),
+    ).toBe(true);
+  });
+
+  it('says it in the conversation’s language, before the quiet ending is considered', () => {
+    expect(RUN_STRINGS.ka.lookedAgainNothingNew).toContain('ისევ ვეძებე');
+    expect(RUN_STRINGS.en.lookedAgainNothingNew).toContain('looked again');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const line = chat.indexOf('ownerAbsent && didWorkWorthALine(pending)');
+    expect(line).toBeGreaterThan(0);
+    expect(line).toBeLessThan(chat.indexOf('endsQuietly(ownerAbsent, pending'));
   });
 });

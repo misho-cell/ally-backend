@@ -17,6 +17,7 @@
  */
 interface ContentBlockLike {
   readonly type: string;
+  readonly name?: string;
 }
 
 interface TurnLike {
@@ -46,4 +47,36 @@ export function endsQuietly(
   answeredOnlyInStageDirection = false,
 ): boolean {
   return ownerAbsent && (answeredOnlyInStageDirection || runTurns.some(callsATool));
+}
+
+/**
+ * #1057 and night question L (Misho's „კი", 5 October): a system run that
+ * SEARCHED or put a plan together and still wrote nothing — the 30-minute
+ * plan-anyway run of D649 (38551), a follow-up (38585) — left the owner on
+ * nothing at all; row 33's silence was meant for a wake that only re-sets its
+ * reminder. Such a run now ends with one plain line. A run that only kept the
+ * goal's books stays quiet.
+ */
+const WORK_WORTH_A_LINE: ReadonlySet<string> = new Set([
+  'search_by_tag',
+  'search_by_insight',
+  'search_second_degree',
+  'search_contact_by_name',
+  'search_contacts_by_country',
+  'search_roster',
+  'find_warm_path',
+  'web_search',
+  'fetch_page',
+  'propose_task_plan',
+]);
+
+export function didWorkWorthALine(runTurns: readonly TurnLike[]): boolean {
+  return runTurns.some(
+    (turn) =>
+      turn.role === 'assistant' &&
+      typeof turn.content !== 'string' &&
+      turn.content.some(
+        (block) => block.type === 'tool_use' && WORK_WORTH_A_LINE.has(block.name ?? ''),
+      ),
+  );
 }

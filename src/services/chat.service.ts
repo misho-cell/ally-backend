@@ -13,7 +13,7 @@ import { withNameGenders } from './nameGender';
 import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { greetingName, greetingText, registeredName } from './serverGreeting';
 import { goalsForRun } from './wakeGoalScope';
-import { endsQuietly } from './quietSystemRun';
+import { didWorkWorthALine, endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
@@ -13984,6 +13984,15 @@ export async function processChat(
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
   if (onlyButtons) effectiveFinal = RUN_STRINGS[language].choicesOnly;
+  // #1057, night question L (Misho, 5 Oct): a system run that searched or made a
+  // plan says so in one line instead of leaving the owner on nothing.
+  if (!effectiveFinal.trim() && ownerAbsent && didWorkWorthALine(pending)) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[chat] run ${runId} thread ${threadId}: system run searched, wrote nothing — one line`,
+    );
+    effectiveFinal = RUN_STRINGS[language].lookedAgainNothingNew;
+  }
   if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: system run did its work silently`);
