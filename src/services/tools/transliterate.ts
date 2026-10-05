@@ -40,6 +40,31 @@ const GEO_TO_LATIN: readonly [string, string][] = [
 
 const GEO_REGEX = /[ა-ჿ]/;
 
+/**
+ * A name as ONE key across scripts and the usual Latin spelling drift, so
+ * „ვაჟა" / „Vaja" / „Vazha" and „წერეთელი" / „Tsereteli" / „Cereteli" meet.
+ * The tester's 39604 / 39635 (#991) and 39304 (#1453): a contact saved in
+ * Latin letters was never matched by the owner's Georgian words.
+ */
+const NAME_DRIFT: readonly (readonly [RegExp, string])[] = [
+  [/dzh|zh/g, 'j'],
+  [/tch|ch/g, 'c'],
+  [/ts|tz/g, 'c'],
+  [/sh/g, 's'],
+  [/kh/g, 'k'],
+  [/gh/g, 'g'],
+  [/q/g, 'k'],
+  [/y/g, 'i'],
+  [/w/g, 'v'],
+];
+
+export function nameKey(text: string): string {
+  const latin = georgianToLatin(text.toLowerCase()).replace(/[^a-z\s]/g, ' ');
+  return NAME_DRIFT.reduce((t, [from, to]) => t.replace(from, to), latin)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function hasGeorgian(text: string): boolean {
   return GEO_REGEX.test(text);
 }

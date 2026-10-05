@@ -3,7 +3,7 @@ import { declineChoice, laterChoice } from './askOpening';
 import { scrubText } from './privacyScrub';
 import { RunLanguage } from './runLanguage';
 import { OwnMatch, ownMatchesFor } from './tools/searchByTag';
-import { georgianToLatin } from './tools/transliterate';
+import { nameKey } from './tools/transliterate';
 
 /**
  * PLATE v301 G4 — THE MEDIATOR WAS ASKED „WILL YOU HELP?" AND NOTHING ELSE.
@@ -126,23 +126,12 @@ async function pickedName(
  * Names are compared across scripts and the common Latin spelling drift
  * („ts"/„c", „ch", „sh", „q"/„k"…), word for word.
  */
-const SPELLING_DRIFT: readonly (readonly [RegExp, string])[] = [
-  [/ts|tz/g, 'c'],
-  [/ch|tch/g, 'c'],
-  [/sh/g, 's'],
-  [/zh/g, 'z'],
-  [/kh/g, 'k'],
-  [/gh/g, 'g'],
-  [/q/g, 'k'],
-  [/y/g, 'i'],
-  [/w/g, 'v'],
-];
 const MIN_NAME_WORDS = 2;
 
 function nameWords(name: string): string[] {
-  const latin = georgianToLatin(name.toLowerCase()).replace(/[^a-z\s]/g, ' ');
-  const drifted = SPELLING_DRIFT.reduce((text, [from, to]) => text.replace(from, to), latin);
-  return drifted.split(/\s+/).filter((w) => w !== '');
+  return nameKey(name)
+    .split(' ')
+    .filter((w) => w !== '');
 }
 
 /** Does this contact's name carry every word of the asked-for full name? */

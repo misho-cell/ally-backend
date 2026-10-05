@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { georgianToLatin } from './tools/transliterate';
+import { nameKey } from './tools/transliterate';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
 import { ALLOW_CLOSE, ALLOW_OPEN } from './privacyScrub';
@@ -52,9 +52,10 @@ function nameStem(word: string): string {
  */
 const LATIN_NOMINATIVE_END_RE = /[ia]$/u;
 
+/** The name's key without its nominative ending: „Vaja" → „vaj", „ვაჟა" → „vaj". */
 function latinStem(word: string): string {
-  const latin = georgianToLatin(word.toLowerCase());
-  return latin.length > 3 && LATIN_NOMINATIVE_END_RE.test(latin) ? latin.slice(0, -1) : latin;
+  const key = nameKey(word);
+  return key.length > 3 && LATIN_NOMINATIVE_END_RE.test(key) ? key.slice(0, -1) : key;
 }
 
 /** Does the owner's own line name this contact and speak of a number? */
@@ -63,7 +64,7 @@ export function ownerLineSharesNumber(line: string, alias: string): boolean {
   const first = alias.trim().split(/\s+/u)[0] ?? '';
   if (first.length < 2) return false;
   const lower = line.toLowerCase();
-  return lower.includes(nameStem(first)) || georgianToLatin(lower).includes(latinStem(first));
+  return lower.includes(nameStem(first)) || nameKey(lower).includes(latinStem(first));
 }
 
 /**

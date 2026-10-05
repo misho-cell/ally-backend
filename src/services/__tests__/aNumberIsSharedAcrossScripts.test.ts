@@ -36,3 +36,15 @@ describe('a number shared across scripts', () => {
     expect(ownerLinesShareNumber(['კი'], 'Gia Dantisti')).toBe(false);
   });
 });
+
+describe('a name whose letters are spelt two ways in Latin (39635)', () => {
+  it('finds „Vaja" in „ვაჟას" (ჟ is zh or j)', () => {
+    expect(
+      ownerLineSharesNumber(
+        'ვაჟას ვურჩევ, კარგი ხელოსანია. გაუგზავნე ლევანს ვაჟას ნომერი',
+        'Vaja Elektrikosi',
+      ),
+    ).toBe(true);
+    expect(ownerLineSharesNumber('გაუგზავნე ცოტნეს ნომერი', 'Tsotne Beridze')).toBe(true);
+  });
+});
