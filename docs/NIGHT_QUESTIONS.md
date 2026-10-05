@@ -72,6 +72,10 @@ From the tester's 1151 (38446, 38447): a repeated ask for a goal that lives in a
 
 4. **Should the plan card be drawn where the owner is?** Today the plan of a goal that lives in another chat is never drawn here (ticket 19 [4]), because buttons under a plan do not say which goal they approve. The run tells the owner to go to the other chat. The tester suggests showing the plan card, with its approve button, in the chat where the owner is asking (or opening it there). That changes a recorded rule, so it is the founder's call. Tonight I only made the reply truthful: it no longer says a plan waits there when none was proposed (on the branch, live after the round).
 
+From the tester's 1153 (D651 test setup):
+
+5. **May `POST /admin/test-accounts` take a phone?** To test D651 the tester needs a fictional member who joins AFTER a goal answered, on a number the owner already holds. The route's authorized limits (D44 register, approved by the founder and Misho on 23 Sep) say the caller cannot choose a phone, and a seat never sits on a number anyone holds. That is what keeps a seat out of a real owner's second circle. A narrow widening would be: a `phone` in the fictional ranges, refused unless every phonebook holding it belongs to a test seat. It widens an authorized admin write, so it needs Misho's word. Until then D651 stays untested end to end; its queries were checked read-only on production.
+
 Cleared on the morning of 23 September after the handover. Anything still
 waiting on a person is below, in **Waiting**, because a list that is emptied
 while its questions are unanswered is a list that loses them.
