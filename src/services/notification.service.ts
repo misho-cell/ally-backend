@@ -72,6 +72,23 @@ export interface NotificationPayload {
   url?: string;
 }
 
+export interface PushOptions {
+  /**
+   * #1321 (Giorgi, urgent): the device the owner asked from, for a reply to
+   * their own message. While that device still has its stream open, they are
+   * reading the reply there, so no device of theirs is rung for it.
+   */
+  readonly askedFrom?: string | null;
+}
+
+/** The device the owner asked from is still connected: they are reading it there. */
+export function askerIsReading(
+  askedFrom: string | null | undefined,
+  live: ReadonlySet<string>,
+): boolean {
+  return typeof askedFrom === 'string' && live.has(askedFrom);
+}
+
 export async function savePushSubscription(
   userId: string,
   subscription: PushSubscriptionPayload,
@@ -339,6 +356,7 @@ export function clearPushDedupe(): void {
 export async function sendPushNotification(
   userId: string,
   payload: NotificationPayload,
+  options: PushOptions = {},
 ): Promise<void> {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     // eslint-disable-next-line no-console
@@ -366,8 +384,9 @@ export async function sendPushNotification(
 
   const live = connectedDevices(userId);
   const anyStreamOpen = hasActiveConnection(userId);
+  const reading = askerIsReading(options.askedFrom, live);
   const outcomes = await Promise.all(
-    result.rows.map((row) => sendOrHold(userId, row, payload, live, anyStreamOpen)),
+    result.rows.map((row) => sendOrHold(userId, row, payload, live, anyStreamOpen, reading)),
   );
   // Row 111: remembered only now, and only if it actually reached somebody. A
   // push nobody received — skipped, held for the morning, failed — is not a
@@ -375,6 +394,8 @@ export async function sendPushNotification(
   if (outcomes.includes(DeviceOutcome.Sent)) rememberPush(userId, payload);
   await pruneStale(userId, result.rows, outcomes);
 }
+
+const ASKER_READING_NOTE = 'reading on the device that asked';
 
 enum DeviceOutcome {
   Sent = 'sent',
@@ -394,8 +415,15 @@ async function sendOrHold(
   payload: NotificationPayload,
   live: ReadonlySet<string>,
   anyStreamOpen: boolean,
+  askerReading: boolean,
 ): Promise<DeviceOutcome> {
   const label = endpointLabel(row.endpoint);
+  if (askerReading) {
+    // eslint-disable-next-line no-console
+    console.log(`[push] user ${userId}: skipped ${label}, reading on the device that asked`);
+    await recordDelivery(userId, row.endpoint, 'skipped', null, ASKER_READING_NOTE);
+    return DeviceOutcome.Skipped;
+  }
   if (alreadyWatching(row, live, anyStreamOpen)) {
     // eslint-disable-next-line no-console
     console.log(`[push] user ${userId}: skipped ${label}, this device is live`);

@@ -581,6 +581,8 @@ threadsRouter.post(
     try {
       const userId = (req as AuthenticatedRequest).user.userId;
       const threadId = Number(req.params.id);
+      // #1321: named the way the stream names it (GET /threads/stream).
+      const askedFrom = deviceKey(req.get('x-device-id'), req.get('user-agent'));
       const { message, as_goal, in_reply_to_message_id } = req.body as {
         message: string;
         as_goal?: unknown;
@@ -904,6 +906,7 @@ threadsRouter.post(
         inReplyToMessageId:
           typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
         needsTitle,
+        askedFrom,
       });
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -1005,6 +1008,8 @@ export interface OwnerRun {
   readonly needsTitle: boolean;
   /** D348's one free answer at zero: the thread ends on „top up", not done. */
   readonly lastFreeAnswer?: boolean;
+  /** #1321: the device the owner asked from; absent for a resumed run. */
+  readonly askedFrom?: string | null;
 }
 
 /**
@@ -1025,6 +1030,7 @@ export function runOwnerMessage(run: OwnerRun): void {
     inReplyToMessageId,
     needsTitle,
     lastFreeAnswer = false,
+    askedFrom = null,
   } = run;
   const runStartedAt = new Date();
 
@@ -1193,11 +1199,16 @@ export function runOwnerMessage(run: OwnerRun): void {
       // here answered for the person, so one open Mac tab silenced the
       // phone). No-op when VAPID isn't configured. The preview is scrubbed
       // and truncated so no phone number rides in the notification body.
-      void sendPushNotification(userId, {
-        title: 'Netai — პასუხი მზადაა',
-        body: buildPushPreview(result.reply),
-        url: `/chat/${threadId}`,
-      }).catch(() => undefined);
+      // #1321: not while they read it on the device they asked from.
+      void sendPushNotification(
+        userId,
+        {
+          title: 'Netai — პასუხი მზადაა',
+          body: buildPushPreview(result.reply),
+          url: `/chat/${threadId}`,
+        },
+        { askedFrom },
+      ).catch(() => undefined);
     })
     .catch(async (error: unknown) => {
       const timedOut = error instanceof Error && error.message === 'RUN_HARD_TIMEOUT';
