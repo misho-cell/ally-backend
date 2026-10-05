@@ -924,7 +924,10 @@ async function syncRequestThreads(
   action: IntroductionAction,
   response?: string,
   outcome?: AcceptOutcome,
-): Promise<void> {
+): Promise<boolean> {
+  // #1651: whether the outcome line went into a thread the requester's goal
+  // shares, so the goal's wake does not tell the owner the same thing again.
+  let shownInGoalThread = false;
   try {
     const threads = await getThreadsByIntroRequestId(req.id);
     for (const thread of threads) {
@@ -932,12 +935,14 @@ async function syncRequestThreads(
         await settleMediatorThread(req, thread, action, outcome);
       } else if (isRequesterSide(thread) && action !== 'snooze') {
         await settleRequesterThread(req, thread, action, response, outcome);
+        if (isSharedRequestThread(thread)) shownInGoalThread = true;
       }
     }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[intro] thread sync failed for request ${req.id}:`, (err as Error).message);
   }
+  return shownInGoalThread;
 }
 
 /**
@@ -1119,6 +1124,7 @@ async function wakeRequestersGoal(
   req: RequestRow,
   accepted: boolean,
   contactOutcome: IntroContactOutcome,
+  shownInGoalThread: boolean,
 ): Promise<void> {
   if (req.requester_task_id === null) return;
   try {
@@ -1129,7 +1135,7 @@ async function wakeRequestersGoal(
     ]);
     startIntroOutcome(
       req.requester_task_id,
-      introOutcomeEvent(req.target_name, accepted, contactOutcome, mediatorName),
+      introOutcomeEvent(req.target_name, accepted, contactOutcome, mediatorName, shownInGoalThread),
     );
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -1467,14 +1473,19 @@ export async function resolveIntroductionRequest(
       return undefined;
     });
   }
-  await syncRequestThreads(req, action, opts.response, outcome);
+  const shownInGoalThread = await syncRequestThreads(req, action, opts.response, outcome);
   // The wake is told what the other two messages were told — see AcceptOutcome.
   /**
    * A decline, or an accept whose outcome delivery failed, has no contact
    * state of its own. `kept_by_mediator` is the honest default for both: it is
    * the one branch that promises the owner nothing and sends them nowhere.
    */
-  await wakeRequestersGoal(req, action === 'accept', outcome?.contactOutcome ?? 'kept_by_mediator');
+  await wakeRequestersGoal(
+    req,
+    action === 'accept',
+    outcome?.contactOutcome ?? 'kept_by_mediator',
+    shownInGoalThread,
+  );
   // ...and when there is no goal to wake, the chat it was asked in is told.
   await tellTheChatItWasAskedIn(req, action, opts.response, outcome);
   return { ok: true, status: newStatus };

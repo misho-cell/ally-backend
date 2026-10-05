@@ -178,17 +178,52 @@ export function introOutcomeEvent(
   accepted: boolean,
   contact: IntroContactOutcome = 'kept_by_mediator',
   mediatorName: string | null = null,
+  shownInGoalThread = false,
 ): Readonly<Record<RunLanguage, string>> {
-  const event = introOutcomeBody(targetName, accepted, contact);
-  if (mediatorName === null) return event;
-  const who = mediatorAnswered(mediatorName, targetName, accepted);
+  const body = introOutcomeBody(targetName, accepted, contact);
+  const who =
+    mediatorName === null
+      ? NOTHING_BY_LANGUAGE
+      : mediatorAnswered(mediatorName, targetName, accepted);
+  const shown = shownInGoalThread ? ALREADY_SHOWN : NOTHING_BY_LANGUAGE;
   return {
-    ka: who.ka + event.ka,
-    en: who.en + event.en,
-    ru: who.ru + event.ru,
-    es: who.es + event.es,
+    ka: who.ka + body.ka + shown.ka,
+    en: who.en + body.en + shown.en,
+    ru: who.ru + body.ru + shown.ru,
+    es: who.es + body.es + shown.es,
   };
 }
+
+const NOTHING_BY_LANGUAGE: Readonly<Record<RunLanguage, string>> = {
+  ka: '',
+  en: '',
+  ru: '',
+  es: '',
+};
+
+/**
+ * #1651 (seat 16, conv 40196): the server wrote the refusal into the goal's
+ * own conversation („…სხვა გზა მოვძებნოთ?"), then this event told the run to
+ * tell the owner — and the owner read the refusal twice, the second line
+ * answering the first one's question for them.
+ */
+const ALREADY_SHOWN: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    ' მფლობელს ეს პასუხი უკვე ეწერა ამ საუბარში — ხელახლა ნუ ეტყვი და იგივეს ნუ ჰკითხავ. ' +
+    'თქვი მხოლოდ, რას აკეთებ შემდეგ, ერთი წინადადებით; თუ შემდეგს მფლობელი წყვეტს, არაფერი დაწერო.',
+  en:
+    ' The owner has already read this answer in this conversation — do not tell it again or ' +
+    'repeat its question. Say only what you do next, in one sentence; if the next step is the ' +
+    "owner's to choose, write nothing.",
+  ru:
+    ' Владелец уже прочитал этот ответ в этом разговоре — не повторяй его и не задавай тот же ' +
+    'вопрос. Скажи только, что делаешь дальше, одним предложением; если следующий шаг выбирает ' +
+    'владелец, ничего не пиши.',
+  es:
+    ' El propietario ya leyó esta respuesta en esta conversación: no la repitas ni repitas su ' +
+    'pregunta. Di solo qué haces después, en una frase; si el siguiente paso lo decide el ' +
+    'propietario, no escribas nada.',
+};
 
 function introOutcomeBody(
   targetName: string,
