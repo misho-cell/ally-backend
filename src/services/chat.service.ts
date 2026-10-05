@@ -888,6 +888,28 @@ export function listDownloadNote(status: ListStatus): string {
   return rows > 0 ? LIST_DOWNLOAD_READY : LIST_DOWNLOAD_NOT_YET;
 }
 
+/**
+ * #1387 (Tornike, Pr1, 5 Oct): Lika asked about a company director she does not
+ * have saved but Tornike does, and a public record of him exists. Her run made
+ * ONE call — search_contact_by_name — and answered „not found by this exact
+ * name", with two near-matches sharing his first name. Giorgi and Tornike, who
+ * have him saved, got the full answer. A name missing from the owner's own
+ * phonebook is where the work starts, not where it ends.
+ */
+const LOOK_ONE_RING_OUT =
+  'This exact person is NOT in the owner’s own phonebook (rows marked approximate are other ' +
+  'people who share part of the name — never offer them as this person). Before answering, ' +
+  'look one ring out: search_second_degree with the full name, and web_search the full name ' +
+  'for the public record. Then answer with what is public and the way to the person through ' +
+  'whoever has them saved. Never answer „not found" from the phonebook alone.';
+
+export function notInThePhonebook(result: object): boolean {
+  const found = result as { found?: unknown; results?: unknown };
+  if (found.found === false) return true;
+  if (!Array.isArray(found.results)) return false;
+  return found.results.every((row) => (row as { approximate?: unknown }).approximate === true);
+}
+
 const LIST_STATUS_TOOL: AnthropicTool = {
   name: 'list_status',
   description:
@@ -7901,7 +7923,7 @@ async function executeToolCall(
     case 'search_contact_by_name': {
       const checked = webNameAlreadyChecked(runId, input['name_query']);
       if (checked !== null) return checked;
-      return runLoggedSearch(
+      const byName = await runLoggedSearch(
         userId,
         'name',
         input['name_query'] as string,
@@ -7909,6 +7931,7 @@ async function executeToolCall(
         runId,
         threadId,
       );
+      return notInThePhonebook(byName) ? { ...byName, look_further: LOOK_ONE_RING_OUT } : byName;
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;
