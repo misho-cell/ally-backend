@@ -113,6 +113,11 @@ Secrets (passwords, tokens, keys) are **not** in this file or anywhere in git. M
 2. Commit with `git commit -F <file>`. Georgian quotes break shell heredocs.
 3. `git push -u origin claude/ally-app-docs-ctezil`.
 4. `git push origin HEAD:main`. Railway deploys on every push to main. Migrations in `src/db/postgres/migrations` apply in sorted order at deploy.
+   **Standing permission (Misho, 5 October ~13:50 UTC, directly in the session):** „ზოგადად
+   არასდროს არ მკითხო მეინზე ფუშის გაკეთება. როცა ჩათვლი საჭიროდ მაშინ გადაიტანე ხოლმე. სანამ
+   სატესტო სერვერი არ დაგვემატება" — push to main whenever you judge it right, without asking,
+   until a staging server exists. The checks before it stay: verify green, no `threads.status =
+   'working'`, no tester round in progress, box read.
 
 **Commit trailer**
 ```

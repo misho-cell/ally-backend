@@ -5599,3 +5599,8 @@ ROUTE   POST /admin/test-accounts
 BODY    { "name": "...", "note": "...", "phone": "<a fictional number only seats hold>" }
 UNDO    as for every seat (D464 entry): tokens to zero with the top-up route, said in the note
 ```
+
+**§90 RUN, 5 October 13:55:04 UTC** (after deploy `0290201`, migration 206 applied 13:54:11):
+preview `GET` answered 68 asks (48 on open campaigns, 53 campaigns); `PATCH {"withdrawn": true}`
+answered `changed: 68`; preview after it: 0. Participant states now: withdrawn 68, declined 39,
+pending 19 (the confirmed ones of night question I), asked 9, agreed 1.
