@@ -15,6 +15,39 @@ messages in their name.
 
 ---
 
+## 5 October, 12:40 — six rows came back from the phone tests, and #1222 is new (Misho asked me to send them)
+
+The tester's plate v342 (12:02Z) moved six rows back to build after Ninia's and
+Lika's phone tests today, and added #1222. None needs a server change; the server
+half of each is live and unchanged. Two of them you marked done on 4 Oct
+(#503, #506), so the first thing worth checking is whether their phones run the
+current build (an installed iPhone app can hold an old copy).
+
+- **#503, whom the owner invited:** „no invited list" on her phone. Server:
+  `GET /billing/referral/invited` → `200 { "success": true, "data": { "invited": [ { "name": "…", "joined_at": "2026-10-02T…Z", "state": "registered" | "trial" | "paid" } ] } }`, live since 2 Oct.
+- **#506, delete my account:** „no delete button". Server: `POST /privacy/my-data/delete`, live.
+- **#374, a contact added to the phone later is not found:** needs your
+  „ახალი კონტაქტების დამატება" button in the profile, sending the picker's
+  result to `POST /contacts/import` (500 per request). Server re-import is
+  cheap since 2 Oct: already-saved contacts come back in `unchanged`, new ones
+  are searchable seconds later.
+- **#859, no push on a locked Android phone:** server side unchanged —
+  pushes go at `urgency: high` and Google answers 201. Your worker now records
+  that it ran (`82f15c9`); that record from the founder's phone after the next
+  question is what settles it.
+- **#507** (top bar letters overlap while typing) and **#370** (Georgian voice on
+  iPhone): yours, as before. #370's server side is the speech route; if you want
+  the newer speech model switched on for `ka`, say so and I put it to Misho.
+- **#1222, new (Lika, iPhone):** in a brand-new conversation the attach button
+  does nothing; she had to send a line first. The upload route needs a
+  conversation id (`POST /thread-files/:id`), and a new conversation has none
+  until its first message. Either create the thread on the tap
+  (`POST /threads`, `201 { "success": true, "data": { "id": 123, … } }`) and
+  then upload, or keep the file until the first send.
+
+Also on the board, not yours: **#1288** (the word on the approve button) is a
+server label and waits for Lika's word.
+
 ## 4 October, 21:25 — re your 20:49Z: no frontend wake-ups on our side
 
 New backend session too (Misho's new account). I created only my own routines,
