@@ -98,7 +98,7 @@ describe('the note follows the conversation, like every other fixed string', () 
     // told to offer buttons that the English run does not have.
     expect(planAlreadyOnScreenNote('en')).toContain('I approve');
     expect(planAlreadyOnScreenNote('en')).toContain('Change it');
-    expect(planAlreadyOnScreenNote('ka')).toContain('ვამტკიცებ');
+    expect(planAlreadyOnScreenNote('ka')).toContain('ვადასტურებ');
     expect(planAlreadyOnScreenNote('ru')).toContain('Подтверждаю');
     expect(planAlreadyOnScreenNote('es')).toContain('Lo apruebo');
   });
@@ -129,7 +129,7 @@ describe('row 203 — the card when nobody can be written to', () => {
 
     expect(out.nothing_to_send_today).toBe(true);
     const instead = String(out.instead);
-    expect(instead).toContain('„ვამტკიცებ" ღილაკს');
+    expect(instead).toContain('„ვადასტურებ" ღილაკს');
     // All three of Tornike's next steps, by name.
     expect(instead).toContain('თვითონ დავურეკავ');
     expect(instead).toContain('მოწვევა გავაგზავნო');

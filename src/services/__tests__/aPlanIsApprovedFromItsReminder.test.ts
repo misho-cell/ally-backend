@@ -41,7 +41,7 @@ describe('a waiting plan’s reminder card', () => {
     );
 
   it('carries the plan card’s own approve and change buttons', () => {
-    expect(card(true)?.choices).toEqual(['ვამტკიცებ', 'შევცვალოთ', 'მოგვიანებით']);
+    expect(card(true)?.choices).toEqual(['ვადასტურებ', 'შევცვალოთ', 'მოგვიანებით']);
     expect(card(true, 'en')?.choices).toEqual(['I approve', 'Change it', 'Later']);
   });
 

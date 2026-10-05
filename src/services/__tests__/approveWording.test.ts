@@ -35,7 +35,7 @@ describe('the word the model used for approve on thread 17528', () => {
 
   it('is shown in the language of the conversation it was offered in', () => {
     expect(canonicalChoiceLabel('ვეთანხმები', 'en')).toBe('I approve');
-    expect(canonicalChoiceLabel('ვეთანხმები', 'ka')).toBe('ვამტკიცებ');
+    expect(canonicalChoiceLabel('ვეთანხმები', 'ka')).toBe('ვადასტურებ');
     expect(canonicalChoiceLabel('ვეთანხმები', 'ru')).toBe('Подтверждаю');
   });
 

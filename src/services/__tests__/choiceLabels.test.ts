@@ -5,15 +5,16 @@ import { canonicalChoiceLabel, isApproveLabel, isChangeLabel } from '../chat.ser
 
 describe('canonicalChoiceLabel (Ticket 16 Task 96)', () => {
   it('maps a misspelt approve or change button to the two words the prompt names', () => {
-    expect(canonicalChoiceLabel('დამადასტურებრი')).toBe('ვამტკიცებ');
-    // The old wording, still typed by a model and still stored in every
-    // thread written before 17 September, lands on the new one.
-    expect(canonicalChoiceLabel('დამტკიცებულია')).toBe('ვამტკიცებ');
+    expect(canonicalChoiceLabel('დამადასტურებრი')).toBe('ვადასტურებ');
+    // The old wordings, still typed by a model and still stored in threads
+    // written before 17 September and before #1288, land on the new one.
+    expect(canonicalChoiceLabel('დამტკიცებულია')).toBe('ვადასტურებ');
+    expect(canonicalChoiceLabel('ვამტკიცებ')).toBe('ვადასტურებ');
     expect(canonicalChoiceLabel('შევცვალო')).toBe('შევცვალოთ');
     expect(canonicalChoiceLabel('შევცვალოთ გეგმა')).toBe('შევცვალოთ');
     // Read live on 11 September on a real plan, and it slipped through.
     expect(canonicalChoiceLabel('შეცვლა')).toBe('შევცვალოთ');
-    expect(canonicalChoiceLabel('დავამტკიცებ')).toBe('ვამტკიცებ');
+    expect(canonicalChoiceLabel('დავამტკიცებ')).toBe('ვადასტურებ');
   });
 
   it('leaves every other button alone', () => {
@@ -46,7 +47,7 @@ describe('what the button says, and what it means', () => {
   });
 
   it('keeps Georgian for a caller that names no language', () => {
-    expect(canonicalChoiceLabel('დამტკიცებულია')).toBe('ვამტკიცებ');
+    expect(canonicalChoiceLabel('დამტკიცებულია')).toBe('ვადასტურებ');
   });
 
   it('MEANS approve whatever language it was written in', () => {

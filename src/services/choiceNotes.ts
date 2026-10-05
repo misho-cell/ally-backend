@@ -15,7 +15,8 @@ import { RunLanguage } from './runLanguage';
 
 /** The approve button's label per language — the one place it is defined. */
 export const APPROVE_LABEL: Readonly<Record<RunLanguage, string>> = {
-  ka: 'ვამტკიცებ',
+  // #1288 (Lika, 5 Oct): „ვადასტურებ" — the same present act, in her words.
+  ka: 'ვადასტურებ',
   en: 'I approve',
   ru: 'Подтверждаю',
   es: 'Lo apruebo',
@@ -30,7 +31,7 @@ export const CHANGE_LABEL: Readonly<Record<RunLanguage, string>> = {
 };
 
 const APPROVE_NOTE: Readonly<Record<RunLanguage, string>> = {
-  ka: 'დამტკიცების შემდეგ Netai შენი სახელით მისწერს გეგმაში დასახელებულ ადამიანებს.',
+  ka: 'დადასტურების შემდეგ Netai შენი სახელით მისწერს გეგმაში დასახელებულ ადამიანებს.',
   en: 'Once you approve, Netai writes to the people in the plan in your name.',
   ru: 'После подтверждения Netai напишет людям из плана от вашего имени.',
   es: 'Al aprobar, Netai escribe a las personas del plan en tu nombre.',

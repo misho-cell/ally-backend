@@ -2441,7 +2441,7 @@ function noApprovalNeeded(invitees: readonly string[], toWake: readonly string[]
         'შესაძლებელი გახდება.';
   return (
     'დღეს ამ გეგმით ვერავის მივწერ, ამიტომ ახლა დამტკიცება ვერაფერს შეცვლის — ' +
-    '„ვამტკიცებ" ღილაკს ნუ შესთავაზებ. ეს მიზნის დასასრული არ არის: მიზანი ღია რჩება, ' +
+    '„ვადასტურებ" ღილაკს ნუ შესთავაზებ. ეს მიზნის დასასრული არ არის: მიზანი ღია რჩება, ' +
     'ქსელი იზრდება, და როგორც კი გამოჩნდება ადამიანი, ვისაც ამის გადაჭრა შეუძლია, ' +
     'მასთან მივალთ. ახლა შესთავაზე ნამდვილი შემდეგი ნაბიჯი, present_choices-ით: ' +
     '„თვითონ დავურეკავ" / „მოწვევა გავაგზავნო" / „სხვაც მოძებნე".' +
@@ -5443,8 +5443,9 @@ const GO_AHEAD = [
   'გააკეთე',
   'დაამტკიცე',
   'დამტკიცებულია',
-  // Both spellings: the button says „ვამტკიცებ" since 17 September, and every
-  // thread written before that carries the old one.
+  // Every spelling the button has had: „ვადასტურებ" since 5 October (#1288),
+  // „ვამტკიცებ" from 17 September, and older threads carry the first one.
+  'ვადასტურებ',
   'ვამტკიცებ',
   'გააგრძელე',
   'დაასრულე',
@@ -6018,7 +6019,12 @@ async function planConsentOnScreen(threadId: number): Promise<PlanConsentScreen>
  * the same gate as before. Failing to act costs the old path; acting wrongly
  * writes to real people.
  */
-const APPROVE_TAP_TEXTS: readonly string[] = [...Object.values(APPROVE_LABEL), 'დამტკიცებულია'];
+// Earlier labels stay: a card drawn before #1288 (5 Oct) still carries „ვამტკიცებ".
+const EARLIER_APPROVE_LABELS: readonly string[] = ['ვამტკიცებ', 'დამტკიცებულია'];
+const APPROVE_TAP_TEXTS: readonly string[] = [
+  ...Object.values(APPROVE_LABEL),
+  ...EARLIER_APPROVE_LABELS,
+];
 
 export function isApproveTap(message: string): boolean {
   return APPROVE_TAP_TEXTS.includes(message.trim());
@@ -10772,7 +10778,7 @@ export function createTaskFollowUp(movedTo: number | undefined): Record<string, 
     return {
       next:
         'Now, in THIS run, call propose_task_plan for this task_id and then present_choices ' +
-        'with exactly „ვამტკიცებ" and „შევცვალოთ". Do not end your turn with the goal saved ' +
+        'with exactly „ვადასტურებ" and „შევცვალოთ". Do not end your turn with the goal saved ' +
         'and no plan on screen: that costs the user a second answer a few seconds later, ' +
         'saying the same things twice. Row 101: the server puts the plan on the screen itself ' +
         '— your own message must not repeat it, in any form. Write nobody and start nothing ' +
