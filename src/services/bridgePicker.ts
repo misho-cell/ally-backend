@@ -3,6 +3,7 @@ import { declineChoice, laterChoice } from './askOpening';
 import { scrubText } from './privacyScrub';
 import { RunLanguage } from './runLanguage';
 import { OwnMatch, ownMatchesFor } from './tools/searchByTag';
+import { georgianToLatin } from './tools/transliterate';
 
 /**
  * PLATE v301 G4 — THE MEDIATOR WAS ASKED „WILL YOU HELP?" AND NOTHING ELSE.
@@ -115,6 +116,43 @@ async function pickedName(
   return inMatches ? inMatches.name : nameInBridgeBook(bridgeUserId, forPhone);
 }
 
+/**
+ * #1453 (Tornike, Pr1, 5 Oct): Giorgi asked for an introduction to ONE named
+ * person; Lika has her saved in Latin letters. The ask told Lika she was asked
+ * because of a DIFFERENT person with the same surname, listed the wanted one
+ * third, and asked „whom would you recommend". A picker is for a need („a
+ * lawyer"); an ask about one named person is a yes or a no about that person.
+ *
+ * Names are compared across scripts and the common Latin spelling drift
+ * („ts"/„c", „ch", „sh", „q"/„k"…), word for word.
+ */
+const SPELLING_DRIFT: readonly (readonly [RegExp, string])[] = [
+  [/ts|tz/g, 'c'],
+  [/ch|tch/g, 'c'],
+  [/sh/g, 's'],
+  [/zh/g, 'z'],
+  [/kh/g, 'k'],
+  [/gh/g, 'g'],
+  [/q/g, 'k'],
+  [/y/g, 'i'],
+  [/w/g, 'v'],
+];
+const MIN_NAME_WORDS = 2;
+
+function nameWords(name: string): string[] {
+  const latin = georgianToLatin(name.toLowerCase()).replace(/[^a-z\s]/g, ' ');
+  const drifted = SPELLING_DRIFT.reduce((text, [from, to]) => text.replace(from, to), latin);
+  return drifted.split(/\s+/).filter((w) => w !== '');
+}
+
+/** Does this contact's name carry every word of the asked-for full name? */
+export function isTheNamedPerson(need: string, contactName: string): boolean {
+  const wanted = nameWords(need);
+  if (wanted.length < MIN_NAME_WORDS) return false;
+  const have = new Set(nameWords(contactName));
+  return wanted.every((w) => have.has(w));
+}
+
 /** Names as the reader sees them, scrubbed (a label can hold a number), once each. */
 function distinctNames(names: readonly string[]): string[] {
   return [...new Set(names.map((n) => scrubText(n).trim()).filter((n) => n !== ''))];
@@ -134,6 +172,8 @@ export async function bridgePicker(
     bridgeNeed.need,
     MAX_OTHER_FITTING_CONTACTS + 1,
   );
+  // #1453: the ask names one person the reader has saved — no pick-list.
+  if (matches.some((m) => isTheNamedPerson(bridgeNeed.need, m.name))) return null;
   const picked = await pickedName(bridgeUserId, bridgeNeed.forPhone, matches);
   const pickedClean = picked ? (distinctNames([picked])[0] ?? null) : null;
   const others = distinctNames(
