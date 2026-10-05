@@ -18,6 +18,14 @@ describe('the buttons line in the final answer', () => {
     expect(note).toContain(BUTTONS_MARK);
   });
 
+  // The tester's 1152 (38590): a garbled label came back unchanged, then no line at all.
+  it('asks for the line every time and shows what a Georgian misspelling looks like', () => {
+    const note = buttonSpellingNote(['ლიზის კონტაქტის გადაწემა']);
+    expect(note).toContain('ALWAYS write');
+    expect(note).toContain('„გადაწემა" → „გადაცემა"');
+    expect(note).toContain('Write the line even when nothing needed fixing.');
+  });
+
   it('splits the answer from the labels', () => {
     const out = splitButtons(`პასუხი აქ არის.\n${BUTTONS_MARK} შევაჩეროთ | პასუხს ველოდები`);
     expect(out.text).toBe('პასუხი აქ არის.');

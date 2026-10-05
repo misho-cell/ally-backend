@@ -25,9 +25,15 @@ export function buttonSpellingNote(labels: readonly string[]): string {
   return (
     '\n\n## Buttons\nThe reply ends with these buttons, written by another model:\n' +
     labels.map((label, i) => `${i + 1}. ${label}`).join('\n') +
-    `\nAfter your answer, on its own last line, write ${BUTTONS_MARK} and then the same ` +
+    `\nAfter your answer, on its own last line, ALWAYS write ${BUTTONS_MARK} and then the same ` +
     `buttons separated by "${LABEL_SEPARATOR.trim()}", in the same order, with spelling and ` +
-    'grammar corrected only — same meaning, same words where they are right, no new buttons.'
+    'grammar corrected only — same meaning, same words where they are right, no new buttons. ' +
+    // The tester's 1152 (38590): the writer returned „ლიზის კონტაქტის გადაწემა" unchanged,
+    // and in the next run returned no line at all, so the garbled label stood.
+    'The other model often misspells Georgian. Read every label word by word as a native ' +
+    'speaker: a word that does not exist or has a wrong letter is to be fixed, e.g. ' +
+    '„გადაწემა" → „გადაცემა", „მერუ" → „მერე", „ავირხოთ" → „ავირჩიოთ", „ერთ-ორს ადამიანი" → ' +
+    '„ერთ-ორ ადამიანს". Write the line even when nothing needed fixing.'
   );
 }
 
