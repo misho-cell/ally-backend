@@ -1580,6 +1580,11 @@ export interface CapturedAnswer {
   askThreadId: number;
   firstAnswer: boolean;
   answer: string;
+  /**
+   * Is this text in the stored answer? Not when the asker's wake had already
+   * been delivered: the append window was closed and the line was dropped.
+   */
+  carried: boolean;
   /** Who answered — the wake event names them (ticket 4 item 0C.3). */
   fromName: string | null;
 }
@@ -1651,6 +1656,7 @@ export async function recordAskAnswer(
   // firstAnswer = this message IS the whole stored answer, i.e. the round had
   // nothing before it. Read off the updated row itself.
   const firstAnswer = row.answer === safe;
+  const carried = row.answer.split('\n').includes(safe);
   const check = await query<{ from_name: string | null }>(
     `SELECT u.name AS from_name
      FROM task_asks ta LEFT JOIN "User" u ON u.id = ta.to_user_id
@@ -1670,6 +1676,7 @@ export async function recordAskAnswer(
     askThreadId,
     firstAnswer,
     answer: safe,
+    carried,
     fromName: check.rows[0]?.from_name ?? null,
   };
 }
@@ -1687,6 +1694,26 @@ export async function recordAskAnswer(
  * the caller — the thread id comes from server context, but the ownership
  * check stays as belt-and-braces.
  */
+export interface SentAnswer {
+  readonly sent: boolean;
+  readonly error?: string;
+  /** The answer had already reached the asker; this later text did not. */
+  readonly already_delivered?: boolean;
+  readonly rule_saved?: boolean;
+  readonly rule_error?: string;
+}
+
+/**
+ * Tester 39931: a helper answered at 17:49, the asker got it, and at 19:29 she
+ * sent a number on the same question. The append window was closed, the line
+ * was dropped — and the tool still said „sent", so Netai told her the number
+ * had gone. Nothing arrived. Now the tool says what happened.
+ */
+const ALREADY_DELIVERED_ERROR =
+  'Not sent: this question was already answered and that answer has reached the asker; a ' +
+  'later message on it does not travel. Tell the owner so in one line; if they want the asker ' +
+  'to have more, the asker can ask again.';
+
 export async function sendApprovedAskAnswer(
   recipientUserId: string,
   askThreadId: number,
@@ -1695,7 +1722,7 @@ export async function sendApprovedAskAnswer(
   // answer similar questions this way in future". Given only on the user's
   // explicit yes to THAT; the rule is written after the answer has gone.
   remember?: { kind?: string; verbatim?: boolean },
-): Promise<{ sent: boolean; error?: string; rule_saved?: boolean; rule_error?: string }> {
+): Promise<SentAnswer> {
   const ask = await query<{ to_user_id: number; status: string; question: string }>(
     `SELECT to_user_id, status, question FROM task_asks
      WHERE ask_thread_id = $1 ORDER BY id DESC LIMIT 1`,
@@ -1720,6 +1747,9 @@ export async function sendApprovedAskAnswer(
   const captured = await recordAskAnswer(askThreadId, answerText);
   if (!captured) {
     return { sent: false, error: 'პასუხის ჩაწერა ვერ მოხერხდა — სცადე ხელახლა.' };
+  }
+  if (!captured.carried) {
+    return { sent: false, already_delivered: true, error: ALREADY_DELIVERED_ERROR };
   }
 
   await deliverCapturedAnswer(captured, recipientUserId);

@@ -1599,6 +1599,9 @@ const SHARE_REFUSAL_NOTE: Readonly<Record<ShareRefusal, string>> = {
   [ShareRefusal.NotTheOwnersWord]:
     "Not sent: the owner's own latest message does not say to share this contact's number. Ask " +
     'them in one line whether to send it, and call this again only after they say so.',
+  [ShareRefusal.AlreadyAnswered]:
+    'Not sent: this question was already answered and the answer has reached the asker, so a ' +
+    'number sent now would not arrive. Tell the owner so in one line; never say it was sent.',
 };
 
 const SEND_ANSWER_TO_ASKER_TOOL: AnthropicTool = {

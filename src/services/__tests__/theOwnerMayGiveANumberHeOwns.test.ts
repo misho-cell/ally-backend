@@ -94,6 +94,18 @@ describe('sharing a number with the person who asked', () => {
       verbatim: true,
     });
   });
+
+  /** Tester 39931: an answer already delivered — the tool said „sent", nothing arrived. */
+  it('says the question was already answered when the number could not travel', async () => {
+    rows([{ id: 9 }]);
+    rows([{ alias: 'დათო ხელოსანი' }]);
+    rows([{ content: 'კი, გაუგზავნე დათოს ნომერი' }]);
+    mockSend.mockResolvedValueOnce({ sent: false, already_delivered: true, error: 'x' });
+    await expect(shareContactNumberWithAsker('501', 40, '995599000111')).resolves.toEqual({
+      shared: false,
+      reason: ShareRefusal.AlreadyAnswered,
+    });
+  });
 });
 
 describe('the tool', () => {

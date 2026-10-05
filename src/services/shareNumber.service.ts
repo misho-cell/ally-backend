@@ -32,6 +32,7 @@ export enum ShareRefusal {
   NoLiveQuestion = 'no_live_question',
   NotOwnContact = 'not_own_contact',
   NotTheOwnersWord = 'not_the_owners_word',
+  AlreadyAnswered = 'already_answered',
 }
 
 export type ShareOutcome =
@@ -172,7 +173,10 @@ export async function shareContactNumberWithAsker(
   }
   const text = `${alias}: ${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
   const sent = await sendApprovedAskAnswer(ownerId, askThreadId, text, { verbatim: true });
-  return sent.sent
-    ? { shared: true, name: alias }
-    : { shared: false, reason: ShareRefusal.NoLiveQuestion };
+  if (sent.sent) return { shared: true, name: alias };
+  return {
+    shared: false,
+    reason:
+      sent.already_delivered === true ? ShareRefusal.AlreadyAnswered : ShareRefusal.NoLiveQuestion,
+  };
 }

@@ -923,14 +923,24 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
   function routeApprovedAnswerQueries(opts: {
     ask?: { to_user_id: number; status: string } | null;
     captured?: boolean;
+    /** The asker already had the answer: the UPDATE leaves it as it was. */
+    alreadyDelivered?: boolean;
   }): void {
-    mockQuery.mockImplementation((sql: string) => {
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
       if (sql.includes('SELECT to_user_id, status'))
         return Promise.resolve(rows(opts.ask ? [opts.ask] : []) as never);
       if (sql.includes('UPDATE task_asks') && sql.includes('SET answer'))
         return Promise.resolve(
           rows(
-            opts.captured === false ? [] : [{ id: 77, task_id: 3, answer: 'დამტკიცებული ტექსტი' }],
+            opts.captured === false
+              ? []
+              : [
+                  {
+                    id: 77,
+                    task_id: 3,
+                    answer: opts.alreadyDelivered ? 'ადრინდელი პასუხი' : String(params?.[1]),
+                  },
+                ],
           ) as never,
         );
       if (sql.includes('SELECT u.name AS from_name'))
@@ -1023,6 +1033,20 @@ describe('sendApprovedAskAnswer — Task 1(c), the ONLY outbound channel (D48)',
     expect(mockSetThreadStatus).toHaveBeenCalledWith('7', 55, 'done', { isTask: true });
   });
 
+  /** Tester 39931: the asker already had the answer; a later line did not travel. */
+  it('says so, and wakes nobody, when the answer had already reached the asker', async () => {
+    routeApprovedAnswerQueries({
+      ask: { to_user_id: 7, status: 'answered' },
+      alreadyDelivered: true,
+    });
+
+    const out = await sendApprovedAskAnswer('7', 55, 'და კიდევ ერთი რამ');
+    await settle();
+
+    expect(out).toMatchObject({ sent: false, already_delivered: true });
+    expect(mockWakeTask).not.toHaveBeenCalled();
+  });
+
   it('refuses when the thread carries no ask, or the ask is addressed to someone else', async () => {
     routeApprovedAnswerQueries({ ask: { to_user_id: 99, status: 'sent' } });
 
@@ -1083,6 +1107,7 @@ describe('recordAskAnswer', () => {
       askThreadId: 55,
       firstAnswer: true,
       answer: 'ბიძაშვილი აკეთებს BMW-ებს',
+      carried: true,
       fromName: 'გია',
     });
   });
