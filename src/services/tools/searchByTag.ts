@@ -3,6 +3,7 @@ import { buildSearchTerms, buildMeaningWordGroups, splitIntoWords } from './tran
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
+import { boundaryExclusionsFor } from '../askBoundary.service';
 import { normalizePhone } from '../phone';
 import { isDisplayableTag } from './getContactFullProfile';
 import { collapseMergedPhones } from './mergedIdentities';
@@ -33,6 +34,8 @@ const FUZZY_THRESHOLD = 0.45;
  * the plate names. `total` still says when there are more.
  */
 const RESULT_LIMIT = 50;
+/** Matched phones read back for a many-query pass; ranking happens per query in memory. */
+const MANY_RESULT_LIMIT = 500;
 
 /**
  * pg_trgm's own threshold, which the index-backed `%` operator uses.
@@ -536,34 +539,95 @@ function wordsAsWritten(tagQuery: string): string[][] {
   return splitIntoWords(tagQuery).map((word) => [word.toLowerCase()]);
 }
 
+/** The best contact one of several queries found, or null when it found nobody. */
+export interface ExactMatch {
+  readonly name: string;
+  readonly phone: string;
+}
+
+/** What the database returns per matched phone: who, and each query's word hits. */
+interface ManyRow {
+  phone: string;
+  name: string | null;
+  saved_as: string | null;
+  own_hit: boolean;
+  src_priority: number;
+  weight: number | null;
+  [hits: `h${number}`]: number;
+}
+
 /**
- * `onFirstPhone`: board #893 — a list row keeps the number of the contact its
- * way in goes through, server-side, so the goal's asks can be tied to the row.
- * Handed to the caller apart from the result, which is logged and can reach
- * the model, so the number never travels in it.
+ * Board #959 (the tester's „web names are not looked up one by one"): the
+ * owner's contacts for MANY queries in ONE pass over the phonebook. The way-in
+ * check ran one exact search per web name — 63 searches in one run on
+ * 4 October — each scanning the same contacts. Here every query's words go
+ * into one alternation, the book is scanned once, and each query is scored on
+ * the few matched rows by its own words (h0, h1, …). The best contact per
+ * query is ranked as the single search ranks it: words matched, the owner's
+ * own label, a structured field, then weight. The owner's exclusions apply to
+ * all; each query's topic boundaries to that query alone.
  */
-export async function searchByTagExactOnly(
+export async function exactMatchesForMany(
   userId: string,
-  tagQuery: string,
-  onFirstPhone?: (phone: string) => void,
-): Promise<object> {
-  const rawGroups = wordsAsWritten(tagQuery);
-  if (rawGroups.length === 0) return { found: false, query: tagQuery };
+  queries: readonly string[],
+): Promise<Map<string, ExactMatch | null>> {
+  const out = new Map<string, ExactMatch | null>();
+  const groupsPerQuery = queries.map((q) => wordsAsWritten(q));
+  const searchable = queries.filter((_, i) => groupsPerQuery[i].length > 0);
+  for (const q of queries) out.set(q, null);
+  if (searchable.length === 0) return out;
 
-  const blockedPhones = await getExcludedPhones(userId, tagQuery);
-  const excludedSet = new Set(blockedPhones.map(normalizePhone));
-  const exact = await runExactSearch(userId, rawGroups, blockedPhones);
-  const rows = exact.rows.filter((r) => !excludedSet.has(normalizePhone(r.phone)));
-  if (rows.length === 0) return { found: false, query: tagQuery };
-  onFirstPhone?.(rows[0].phone);
-
-  return {
-    found: true,
-    query: tagQuery,
-    count: rows.length,
-    // The shape the caller reads, and no more. A way-in verdict is a name.
-    results: rows.map((r) => ({ name: r.name ?? r.saved_as ?? '' })),
-  };
+  const [ownExcluded, boundaries] = await Promise.all([
+    getExcludedPhones(userId),
+    Promise.all(searchable.map((q) => boundaryExclusionsFor(q).catch(() => [] as string[]))),
+  ]);
+  const allGroups = searchable.flatMap((q) => groupsPerQuery[queries.indexOf(q)]);
+  const m = buildExactMatchSql(userId, allGroups, ownExcluded);
+  // Each query's words are a run of consecutive groups in allGroups; its hits
+  // are the sum over that run, read from the same per-group clauses.
+  const perGroupHits = m.wordHits.split(' + ');
+  let cursor = 0;
+  const hitColumns = searchable.map((q, i) => {
+    const size = groupsPerQuery[queries.indexOf(q)].length;
+    const expr = perGroupHits.slice(cursor, cursor + size).join(' + ');
+    cursor += size;
+    return `(${expr}) AS h${i}`;
+  });
+  const result = await query<ManyRow>(
+    `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
+     hits AS (
+       SELECT phone, ${hitColumns.join(', ')}, MAX(priority) AS src_priority,
+              bool_or(own) AS own_hit
+       FROM matched
+       WHERE phone != ALL($${m.blockIdx})
+       GROUP BY phone
+     )
+     SELECT h.phone, ${DISPLAY_NAME} AS name, MAX(ua.alias) AS saved_as,
+            BOOL_OR(h.own_hit) AS own_hit, MAX(h.src_priority) AS src_priority,
+            MAX(ut."weightCount") AS weight,
+            ${searchable.map((_, i) => `MAX(h.h${i}) AS h${i}`).join(', ')}
+     ${AGG_JOINS}
+     GROUP BY h.phone
+     ORDER BY GREATEST(${searchable.map((_, i) => `MAX(h.h${i})`).join(', ')}) DESC
+     LIMIT ${MANY_RESULT_LIMIT}`,
+    m.params,
+    EXACT_SEARCH_TIMEOUT_MS,
+  );
+  searchable.forEach((q, i) => {
+    const blocked = new Set(boundaries[i].map(normalizePhone));
+    const best = result.rows
+      .filter((r) => Number(r[`h${i}`]) > 0 && !blocked.has(normalizePhone(r.phone)))
+      .sort(
+        (a, b) =>
+          Number(b[`h${i}`]) - Number(a[`h${i}`]) ||
+          Number(b.own_hit) - Number(a.own_hit) ||
+          Number(b.src_priority) - Number(a.src_priority) ||
+          Number(b.weight ?? 0) - Number(a.weight ?? 0),
+      )[0];
+    const name = (best?.name ?? best?.saved_as ?? '').trim();
+    out.set(q, best === undefined || name === '' ? null : { name, phone: best.phone });
+  });
+  return out;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { searchSecondDegree } from './tools/searchSecondDegree';
-import { searchByTagExactOnly } from './tools/searchByTag';
+import { ExactMatch, exactMatchesForMany } from './tools/searchByTag';
 import { firmSearchName, sameFirstName, wayInSearchName } from './wayInName';
 import { webSearch } from './tools/webSearch';
 import { recordFixedUsage } from './costLedger.service';
@@ -806,16 +806,6 @@ export type WayIn =
   /** Not searched — a timeout or a failure. Never rendered as „nobody". */
   | { readonly kind: 'unchecked' };
 
-function firstPersonNamed(result: unknown): string | null {
-  if (result === null || typeof result !== 'object') return null;
-  const rows = (result as { results?: unknown }).results;
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-  const first = rows[0];
-  if (first === null || typeof first !== 'object') return null;
-  const name = (first as { name?: unknown }).name;
-  return typeof name === 'string' && name.trim() !== '' ? name.trim() : null;
-}
-
 /**
  * Where a way-in lookup came from, so the search it runs can be written down.
  * Absent for a caller that has no thread — see `findWaysIn`.
@@ -868,72 +858,76 @@ export async function findWaysIn(
 ): Promise<Map<string, WayIn>> {
   const out = new Map<string, WayIn>();
   if (names.length === 0) return out;
-  const deadline = Date.now() + WAY_IN_BUDGET_MS;
-  const record = (name: string, result: unknown, startedAt: number): void => {
-    if (origin.threadId === undefined || origin.threadId === null) return;
-    void logToolCall({
-      threadId: origin.threadId,
-      surface: 'chat',
-      runId: origin.runId ?? null,
-      userId,
-      tool: 'search_by_tag:way_in',
-      input: { tag_query: name },
-      result,
-      ...shapeSample(result),
-      durationMs: Date.now() - startedAt,
-    });
-  };
-  await Promise.all(
-    names.map(async (name) => {
-      const startedAt = Date.now();
-      try {
-        const left = deadline - Date.now();
-        if (left <= 0) {
-          out.set(name, { kind: 'unchecked' });
-          return;
-        }
-        // A city or a word like „studio" is not the organisation (32983), and a
-        // firm is looked for by its own name, not by the trade in its title (35521).
-        const leadFirst = leadsFirstName(name);
-        const searchName = leadFirst === null ? firmSearchName(name) : wayInSearchName(name);
-        if (searchName === '') {
-          out.set(name, { kind: 'none' });
-          return;
-        }
-        let firstPhone: string | null = null;
-        const result = await Promise.race([
-          searchByTagExactOnly(userId, searchName, (phone) => {
-            firstPhone = phone;
-          }),
-          new Promise<null>((resolve) => {
-            const t = setTimeout(() => resolve(null), left);
-            t.unref?.();
-          }),
-        ]);
-        // The budget running out is recorded too, and as its own outcome: a
-        // lookup that did not finish is the difference between „nobody" and
-        // „we did not look", which is the whole reason `unchecked` exists.
-        record(name, result === null ? { found: false, timed_out: true } : result, startedAt);
-        if (result === null) {
-          out.set(name, { kind: 'unchecked' });
-          return;
-        }
-        const who = firstPersonNamed(result);
-        const tied = who !== null && sameFirstName(leadFirst, who);
-        out.set(name, tied ? { kind: 'first_circle', who } : { kind: 'none' });
-        if (tied && firstPhone !== null) onContactPhone?.(name, firstPhone);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error(
-          `[opening-search] way-in lookup failed for "${name}":`,
-          (err as Error).message,
-        );
-        record(name, { error: (err as Error).message }, startedAt);
-        out.set(name, { kind: 'unchecked' });
-      }
+  const startedAt = Date.now();
+  // A city or a word like „studio" is not the organisation (32983), and a firm
+  // is looked for by its own name, not by the trade in its title (35521).
+  const searchNameOf = new Map<string, string>();
+  for (const name of names) {
+    const searchName = leadsFirstName(name) === null ? firmSearchName(name) : wayInSearchName(name);
+    if (searchName === '') out.set(name, { kind: 'none' });
+    else searchNameOf.set(name, searchName);
+  }
+  const queries = [...new Set(searchNameOf.values())];
+  if (queries.length === 0) return out;
+  // Board #959: ONE pass over the phonebook for every name, not one search
+  // per name (63 in one run on 4 October), and one line in the log for it.
+  let failure: string | null = null;
+  const found = await Promise.race([
+    exactMatchesForMany(userId, queries).catch((err: unknown) => {
+      failure = (err as Error).message;
+      // eslint-disable-next-line no-console
+      console.error('[opening-search] way-in lookup failed:', failure);
+      return null;
     }),
-  );
+    new Promise<null>((resolve) => {
+      const t = setTimeout(() => resolve(null), WAY_IN_BUDGET_MS);
+      t.unref?.();
+    }),
+  ]);
+  recordWayInCheck(userId, origin, queries, found, failure, Date.now() - startedAt);
+  for (const [name, searchName] of searchNameOf) {
+    if (found === null) {
+      out.set(name, { kind: 'unchecked' });
+      continue;
+    }
+    const match = found.get(searchName) ?? null;
+    const tied = match !== null && sameFirstName(leadsFirstName(name), match.name);
+    out.set(name, tied ? { kind: 'first_circle', who: match.name } : { kind: 'none' });
+    if (tied) onContactPhone?.(name, match.phone);
+  }
   return out;
+}
+
+/**
+ * The one way-in check, written down once. A caller without a thread cannot be
+ * recorded (`tool_call_log.thread_id` is NOT NULL). No contact names in the log:
+ * these are the owner's own contacts.
+ */
+function recordWayInCheck(
+  userId: string,
+  origin: WayInOrigin,
+  queries: readonly string[],
+  found: ReadonlyMap<string, ExactMatch | null> | null,
+  failure: string | null,
+  durationMs: number,
+): void {
+  if (origin.threadId === undefined || origin.threadId === null) return;
+  const tied = found === null ? 0 : [...found.values()].filter((m) => m !== null).length;
+  void logToolCall({
+    threadId: origin.threadId,
+    surface: 'chat',
+    runId: origin.runId ?? null,
+    userId,
+    tool: 'search_by_tag:way_in',
+    input: { tag_queries: queries.join(' | ') },
+    result:
+      failure !== null
+        ? { error: failure }
+        : found === null
+          ? { found: false, timed_out: true }
+          : { found: tied > 0, count: tied },
+    durationMs,
+  });
 }
 
 /** The way-in verdicts as prompt lines. Empty when nothing was checked. */

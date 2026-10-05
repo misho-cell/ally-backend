@@ -1,10 +1,10 @@
-jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTagExactOnly: jest.fn() }));
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, exactMatchesForMany: jest.fn() }));
 jest.mock('../toolCallLog.service', () => ({
   __esModule: true,
   logToolCall: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { searchByTagExactOnly } from '../tools/searchByTag';
+import { exactMatchesForMany } from '../tools/searchByTag';
 import { logToolCall } from '../toolCallLog.service';
 import { findWaysIn } from '../openingSearch.service';
 
@@ -13,7 +13,7 @@ import { findWaysIn } from '../openingSearch.service';
  * in goes through, so the lookup hands that contact's number to the caller —
  * and only to the caller: never in the verdict the model reads, never logged.
  */
-const mockTag = searchByTagExactOnly as jest.MockedFunction<typeof searchByTagExactOnly>;
+const mockTag = exactMatchesForMany as jest.MockedFunction<typeof exactMatchesForMany>;
 const mockLog = logToolCall as jest.MockedFunction<typeof logToolCall>;
 const NUMBER = '995500000002';
 
@@ -21,10 +21,10 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('a way in with a contact', () => {
   it('hands the contact’s number to the caller, apart from the verdict and the log', async () => {
-    mockTag.mockImplementation(async (_user, query, onFirstPhone) => {
-      onFirstPhone?.(NUMBER);
-      return { found: true, query, count: 1, results: [{ name: 'Acme Ltd' }] };
-    });
+    mockTag.mockImplementation(
+      async (_user, queries) =>
+        new Map(queries.map((q) => [q, { name: 'Acme Ltd', phone: NUMBER }])),
+    );
     const phones = new Map<string, string>();
     const waysIn = await findWaysIn(
       '501',
@@ -40,10 +40,10 @@ describe('a way in with a contact', () => {
   });
 
   it('hands nothing when the contact is not tied to the row', async () => {
-    mockTag.mockImplementation(async (_user, query, onFirstPhone) => {
-      onFirstPhone?.(NUMBER);
-      return { found: true, query, count: 1, results: [{ name: 'გიორგი სანტექნიკი' }] };
-    });
+    mockTag.mockImplementation(
+      async (_user, queries) =>
+        new Map(queries.map((q) => [q, { name: 'გიორგი სანტექნიკი', phone: NUMBER }])),
+    );
     const phones = new Map<string, string>();
     await findWaysIn('501', ['ნინო ბერიძე'], {}, (name, phone) => phones.set(name, phone));
 

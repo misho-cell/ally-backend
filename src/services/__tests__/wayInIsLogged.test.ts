@@ -1,4 +1,4 @@
-jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTagExactOnly: jest.fn() }));
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, exactMatchesForMany: jest.fn() }));
 jest.mock('../toolCallLog.service', () => ({
   __esModule: true,
   logToolCall: jest.fn().mockResolvedValue(undefined),
@@ -21,11 +21,19 @@ jest.mock('../searchQuery.service', () => ({
   distilIntroductionLocally: jest.requireActual('../searchQuery.service').distilIntroductionLocally,
 }));
 
-import { searchByTagExactOnly } from '../tools/searchByTag';
+import { exactMatchesForMany } from '../tools/searchByTag';
 import { logToolCall } from '../toolCallLog.service';
 import { findWaysIn } from '../openingSearch.service';
 
-const mockTag = searchByTagExactOnly as jest.MockedFunction<typeof searchByTagExactOnly>;
+const mockMany = exactMatchesForMany as jest.MockedFunction<typeof exactMatchesForMany>;
+
+/** Every query finds `name`, or nobody when it is null. */
+function everyQueryFinds(name: string | null): void {
+  mockMany.mockImplementation(
+    async (_user, queries) =>
+      new Map(queries.map((q) => [q, name === null ? null : { name, phone: '+995555000111' }])),
+  );
+}
 const mockLog = logToolCall as jest.MockedFunction<typeof logToolCall>;
 
 /**
@@ -40,41 +48,37 @@ const mockLog = logToolCall as jest.MockedFunction<typeof logToolCall>;
  */
 beforeEach(() => {
   jest.clearAllMocks();
-  mockTag.mockResolvedValue({ found: false } as never);
+  everyQueryFinds(null);
 });
 
 describe('a way-in lookup is written down', () => {
-  it('records one row per name, under a suffix that says it was not the model', async () => {
+  it('records ONE row for all names (#959), under a suffix that says it was not the model', async () => {
     await findWaysIn('501', ['Bookkeeping.ge', 'Axel Group'], { threadId: 77, runId: 'r-1' });
 
-    expect(mockLog).toHaveBeenCalledTimes(2);
-    const tools = mockLog.mock.calls.map((c) => c[0].tool);
-    expect(tools).toEqual(['search_by_tag:way_in', 'search_by_tag:way_in']);
-    const queries = mockLog.mock.calls.map((c) => c[0].input['tag_query']);
-    expect(queries.sort()).toEqual(['Axel Group', 'Bookkeeping.ge']);
+    expect(mockMany).toHaveBeenCalledTimes(1);
+    expect(mockLog).toHaveBeenCalledTimes(1);
+    expect(mockLog.mock.calls[0][0].tool).toBe('search_by_tag:way_in');
+    expect(String(mockLog.mock.calls[0][0].input['tag_queries'])).toContain(' | ');
     expect(mockLog.mock.calls[0][0].threadId).toBe(77);
     expect(mockLog.mock.calls[0][0].runId).toBe('r-1');
   });
 
   // Row 291: a count, never a contact — these are the owner's own people.
   it('never samples the people, because these are the owner s own contacts', async () => {
-    mockTag.mockResolvedValue({
-      found: true,
-      results: [{ name: 'Nino Beridze', phone: '+995...' }],
-    } as never);
+    everyQueryFinds('Nino Beridze');
 
     await findWaysIn('501', ['Some Clinic'], { threadId: 77 });
 
     expect(mockLog).toHaveBeenCalledTimes(1);
-    const sample = String(mockLog.mock.calls[0][0].resultSample);
-    expect(sample).toBe('1 rows, 0 approximate');
-    expect(sample).not.toContain('Nino');
-    expect(sample).not.toContain('+995');
+    const logged = JSON.stringify(mockLog.mock.calls[0][0]);
+    expect(logged).not.toContain('Nino');
+    expect(logged).not.toContain('+995');
+    expect(mockLog.mock.calls[0][0].result).toEqual({ found: true, count: 1 });
   });
 
   it('records a lookup the budget cut off, and marks it as cut off', async () => {
     // Never settles, so the race is decided by the budget.
-    mockTag.mockReturnValue(new Promise<object>(() => undefined));
+    mockMany.mockReturnValue(new Promise(() => undefined));
 
     const out = await findWaysIn('501', ['Slow Name'], { threadId: 77 });
 
@@ -84,7 +88,7 @@ describe('a way-in lookup is written down', () => {
   }, 10_000);
 
   it('records a lookup that threw, rather than losing it', async () => {
-    mockTag.mockRejectedValue(new Error('pool exhausted'));
+    mockMany.mockRejectedValue(new Error('pool exhausted'));
 
     const out = await findWaysIn('501', ['Broken Name'], { threadId: 77 });
 
@@ -106,7 +110,7 @@ describe('a way-in lookup is written down', () => {
   });
 
   it('still searches, and still answers, when it cannot log', async () => {
-    mockTag.mockResolvedValue({ found: true, results: [{ name: 'Nino' }] } as never);
+    everyQueryFinds('Nino');
 
     const out = await findWaysIn('501', ['Some Clinic']);
 

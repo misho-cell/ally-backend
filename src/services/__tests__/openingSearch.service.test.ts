@@ -24,14 +24,14 @@ jest.mock('../searchQuery.service', () => ({
  * a 3,000 ms budget, against a median of 3,705 ms on a real book. 76 of 78
  * lookups on account 501 that morning timed out having learnt nothing.
  */
-jest.mock('../tools/searchByTag', () => ({ __esModule: true, searchByTagExactOnly: jest.fn() }));
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, exactMatchesForMany: jest.fn() }));
 
 import { webSearch } from '../tools/webSearch';
 import { searchSecondDegree } from '../tools/searchSecondDegree';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import { distilSearchQuery } from '../searchQuery.service';
-import { searchByTagExactOnly } from '../tools/searchByTag';
+import { exactMatchesForMany } from '../tools/searchByTag';
 import {
   runOpeningSearches,
   buildOpeningSearchSection,
@@ -43,7 +43,15 @@ import {
 const mockWeb = webSearch as jest.MockedFunction<typeof webSearch>;
 const mockSecond = searchSecondDegree as jest.MockedFunction<typeof searchSecondDegree>;
 const mockDistil = distilSearchQuery as jest.MockedFunction<typeof distilSearchQuery>;
-const mockTag = searchByTagExactOnly as jest.MockedFunction<typeof searchByTagExactOnly>;
+const mockTag = exactMatchesForMany as jest.MockedFunction<typeof exactMatchesForMany>;
+
+/** Every way-in query finds `name`, or nobody when it is null. */
+function everyQueryFinds(name: string | null): void {
+  mockTag.mockImplementation(
+    async (_user, queries) =>
+      new Map(queries.map((q) => [q, name === null ? null : { name, phone: '995500000001' }])),
+  );
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -51,7 +59,7 @@ beforeEach(() => {
   mockSecond.mockResolvedValue({ found: true, count: 2, results: ['Gega'] } as never);
   // The default is the honest one: distilling that changed nothing.
   mockDistil.mockImplementation(async (text) => ({ query: text }));
-  mockTag.mockResolvedValue({ found: false } as never);
+  everyQueryFinds(null);
 });
 
 /**
@@ -464,13 +472,14 @@ describe('row 154 — the way in, beside each web result', () => {
     await runOpeningSearches('501', 'მარკეტინგული სააგენტო', 'run-1', 16106);
 
     // The tester's 1121: a firm is looked for by its own name.
-    expect(mockTag).toHaveBeenCalledWith('501', 'Infinity', expect.any(Function));
-    expect(mockTag).toHaveBeenCalledWith('501', 'Performa', expect.any(Function));
+    // Board #959: all of them in ONE lookup.
+    expect(mockTag).toHaveBeenCalledTimes(1);
+    expect(mockTag).toHaveBeenCalledWith('501', expect.arrayContaining(['Infinity', 'Performa']));
   });
 
   it('names the contact when the owner has one', async () => {
     mockWeb.mockResolvedValue({ results: [{ title: 'Performa' }] } as never);
-    mockTag.mockResolvedValue({ found: true, results: [{ name: 'გეგა ბერიძე' }] } as never);
+    everyQueryFinds('გეგა ბერიძე');
 
     const out = await runOpeningSearches('501', 'რამე', 'run-1', 16106);
     const section = buildOpeningSearchSection(out);
@@ -487,7 +496,7 @@ describe('row 154 — the way in, beside each web result', () => {
    */
   it('says the OWN CONTACTS hold nobody, never that there is no way in', async () => {
     mockWeb.mockResolvedValue({ results: [{ title: 'Performa' }] } as never);
-    mockTag.mockResolvedValue({ found: false } as never);
+    everyQueryFinds(null);
 
     const section = buildOpeningSearchSection(await runOpeningSearches('501', 'რამე', 'run-1', 1));
 
