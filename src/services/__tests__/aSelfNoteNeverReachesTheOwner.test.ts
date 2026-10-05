@@ -9,7 +9,7 @@ const NOTE =
   'every ask carries sender\'s name automatically, no "send without my name" option. Answer accordingly.';
 const ANSWER =
   'კი, ასეა, ყველა შეკითხვას შენი სახელი ახლავს, Netai-ზე ანონიმური შეკითხვა არ არსებობს.';
-const QUESTION = 'ამ გეგმას მივყვე და ვიმოქმედო?';
+const QUESTION = 'დავიწყო?';
 
 describe('a working note the model wrote to itself', () => {
   it('is taken off the top of a Georgian reply', () => {

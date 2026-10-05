@@ -156,6 +156,7 @@ import {
   renderPlan,
   planInSentences,
   PLAN_CLOSING_QUESTION,
+  EARLIER_PLAN_CLOSING_QUESTIONS,
   nobodyCanBeWrittenTo,
   peopleToInvite,
   peopleToWake,
@@ -3348,6 +3349,8 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     name: 'search_second_degree',
     description:
       "Search for contacts of contacts (2nd degree) by tag or keyword. Use this when search_by_tag returns no results, or when the user asks about someone who might be known through their contacts. Returns matches with the name of the mutual contact (via) and `via_contacts` — the bridges themselves, each with name, phone and is_member. To reach a second-degree person you ASK THE BRIDGE: put the bridge in the plan and pass the bridge's phone from via_contacts to ask_contact, with `need` (your search words) and `for_phone` (this person's phone id) so the bridge is told whom they were picked for and asked whom they recommend; the target's own phone is not askable unless the target is a member. Results may carry `via_warmth` (0–1) — how strong the bridge's own tie to that person is; a higher value means the introduction is likelier to work, prefer those paths. `employer`/`jobPosition` may come from a confirmed fact OR from the person's own saved label — when they came from the label the row carries `role_source: label`, and then you must say it as what it is (the network saves him as TBC Capital) and NEVER as a confirmed fact. A row from a FACT carries `role_sources` — how many DIFFERENT members have said it. FEWER THAN TWO MEANS ONE PERSON'S NOTE, NOT A FACT ABOUT THEM: give the NAME and do not state the role (D449, the founder, 23 September). Two or more, say it plainly. No `role_source` and no `role_sources` means it came from the person's OWN profile, which is theirs to state. Both are often empty even for a real match; a result may still carry `signal_strength` (0–1) even with no visible fields, meaning the query matched something real about this person that stays private — treat it as a genuine, usable signal (rank and mention these people normally), never ask what the hidden match was and never guess at it. Example: user asks for a plumber but has none directly — this finds plumbers in their contacts' contact lists." +
+      ' via_warmth and signal_strength are for YOUR ranking only: never tell the owner about a ' +
+      '„signal", its strength or a „weak tie" (D663) — say plainly who knows whom.' +
       ' WHEN: for one ring beyond their contacts.',
     input_schema: {
       type: 'object',
@@ -6708,7 +6711,13 @@ export function isClosingQuestionVariant(line: string, question: string): boolea
 function withoutClosingVariant(reply: string, question: string): string {
   const lines = reply.trimEnd().split('\n');
   const last = lines[lines.length - 1] ?? '';
-  if (last.trim() === question || !isClosingQuestionVariant(last, question)) return reply;
+  if (last.trim() === question) return reply;
+  // D663 changed the agreed question; the earlier one, or a variant of it, is
+  // replaced too, so the owner never reads two questions.
+  const isVariant = [question, ...EARLIER_PLAN_CLOSING_QUESTIONS].some(
+    (asked) => last.trim() === asked || isClosingQuestionVariant(last, asked),
+  );
+  if (!isVariant) return reply;
   return lines.slice(0, -1).join('\n');
 }
 
@@ -6863,7 +6872,11 @@ export function withoutPlanClosingQuestion(
   planText: string,
 ): string {
   const question = PLAN_CLOSING_QUESTION[language];
-  const kept = withoutClosingVariant(reply.split(question).join(''), question).trim();
+  const withoutExact = [question, ...EARLIER_PLAN_CLOSING_QUESTIONS].reduce(
+    (text, asked) => text.split(asked).join(''),
+    reply,
+  );
+  const kept = withoutClosingVariant(withoutExact, question).trim();
   return kept === '' ? planText : kept;
 }
 

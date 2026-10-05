@@ -37,7 +37,7 @@ describe('the reply under a plan that names nobody', () => {
     );
   });
 
-  it('drops a reworded closing question too', () => {
+  it('drops a reworded closing question too, the earlier wording included', () => {
     const reply = 'Two firms are listed below.\nShall I follow this plan and act on it now?';
     expect(withoutPlanClosingQuestion(reply, 'en', PLAN_TEXT)).toBe('Two firms are listed below.');
   });

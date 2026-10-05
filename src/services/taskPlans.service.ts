@@ -1071,11 +1071,24 @@ const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
  * just above the two buttons.
  */
 export const PLAN_CLOSING_QUESTION: Readonly<Record<RunLanguage, string>> = {
-  ka: 'ამ გეგმას მივყვე და ვიმოქმედო?',
-  en: 'Shall I follow this plan and act on it?',
-  ru: 'Следовать этому плану и действовать?',
-  es: '¿Sigo este plan y actúo?',
+  // D663 (the founder, 5 Oct): one approval question, and a human one — he
+  // named „Shall I follow this plan and act" among the robotic lines.
+  ka: 'დავიწყო?',
+  en: 'Shall I start?',
+  ru: 'Начинаю?',
+  es: '¿Empiezo?',
 };
+
+/**
+ * The agreed question before D663. A model may still write it for a while; it
+ * is recognised and replaced, never left standing beside the new one.
+ */
+export const EARLIER_PLAN_CLOSING_QUESTIONS: readonly string[] = [
+  'ამ გეგმას მივყვე და ვიმოქმედო?',
+  'Shall I follow this plan and act on it?',
+  'Следовать этому плану и действовать?',
+  '¿Sigo este plan y actúo?',
+];
 
 /**
  * Board #380 (Misho, 3 October: „კი, გააკეთე"): the plan the owner reads was

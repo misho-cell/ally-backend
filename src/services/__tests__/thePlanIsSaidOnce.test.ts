@@ -74,7 +74,7 @@ describe('does the reply carry the plan', () => {
   it('yes, when it ends the plan on the agreed question, whatever script the names are in', () => {
     const reply =
       'გეგმა ასეთია: მოგვარებულად ჩავთვლი, როცა გეყოლება სანდო იურისტი. ამისთვის ვკითხავ ' +
-      'ნეტაი ტესტ 50-ს და ნეტაი ტესტ 54-ს.\n\nამ გეგმას მივყვე და ვიმოქმედო?';
+      'ნეტაი ტესტ 50-ს და ნეტაი ტესტ 54-ს.\n\nდავიწყო?';
     expect(replyCarriesPlan(reply, plan)).toBe(true);
   });
 
@@ -106,10 +106,10 @@ describe('what the model is told', () => {
 
   /** The tester's 941 (D520): every plan ends on the agreed question. */
   it('to end the plan on the agreed question, which the plan text itself does not carry', () => {
-    expect(planInYourReplyNote('ka')).toContain('„ამ გეგმას მივყვე და ვიმოქმედო?"');
+    expect(planInYourReplyNote('ka')).toContain('„დავიწყო?"');
     // The tester's 957: the plan text itself never carries the question — it is
     // added only under an approve button.
-    expect(planInSentences(PLAN, 'ka')).not.toContain('ამ გეგმას მივყვე და ვიმოქმედო?');
+    expect(planInSentences(PLAN, 'ka')).not.toContain('დავიწყო?');
   });
 });
 
@@ -138,7 +138,7 @@ describe('where it is wired', () => {
 describe('the agreed question under the plan', () => {
   /** The tester's 967/968: „Elindu", and „(press the buttons above)" with the buttons below. */
   it('is the last line — nothing written after it stays', () => {
-    const q = 'ამ გეგმას მივყვე და ვიმოქმედო?';
+    const q = 'დავიწყო?';
     expect(withClosingQuestion(`გეგმა.\n\n${q}\n\nElindu`, 'ka')).toBe(`გეგმა.\n\n${q}`);
     expect(
       withClosingQuestion(`გეგმა.\n\n${q}\n\n(ზემოთ მოცემულ ღილაკებზე დააჭირე პასუხად.)`, 'ka'),
@@ -147,10 +147,14 @@ describe('the agreed question under the plan', () => {
 
   it('is added when the reply leaves it out, and never twice', () => {
     expect(withClosingQuestion('The plan, in words.', 'en')).toBe(
-      'The plan, in words.\n\nShall I follow this plan and act on it?',
+      'The plan, in words.\n\nShall I start?',
     );
-    const once = withClosingQuestion('გეგმა.\n\nამ გეგმას მივყვე და ვიმოქმედო?', 'ka');
-    expect(once.match(/მივყვე/g)).toHaveLength(1);
+    const once = withClosingQuestion('გეგმა.\n\nდავიწყო?', 'ka');
+    expect(once.match(/დავიწყო/g)).toHaveLength(1);
+    // D663: a model still writing the earlier question gets it replaced, not doubled.
+    expect(withClosingQuestion('გეგმა.\n\nამ გეგმას მივყვე და ვიმოქმედო?', 'ka')).toBe(
+      'გეგმა.\n\nდავიწყო?',
+    );
   });
 });
 
@@ -203,18 +207,19 @@ describe('a closing question in other words', () => {
     ).toBe(true);
   });
 
-  it('is said once, as the agreed question', () => {
+  it('is said once, as the agreed question — the earlier wording and its variants replaced (D663)', () => {
     const body = 'ვაკეში ორი ვარიანტი ვიპოვე.';
-    expect(withClosingQuestion(`${body}\n\nამ გეგმას მივყვე და ასე ვიმოქმედო?\n\n${Q}`, 'ka')).toBe(
-      `${body}\n\n${Q}`,
-    );
+    const AGREED = 'დავიწყო?';
+    expect(
+      withClosingQuestion(`${body}\n\nამ გეგმას მივყვე და ასე ვიმოქმედო?\n\n${AGREED}`, 'ka'),
+    ).toBe(`${body}\n\n${AGREED}`);
     expect(withClosingQuestion(`${body}\n\nამ გეგმას მივყვე და ასე ვიმოქმედო?`, 'ka')).toBe(
-      `${body}\n\n${Q}`,
+      `${body}\n\n${AGREED}`,
     );
   });
 
   it('leaves a reply with a different last question alone, adding the agreed one', () => {
-    expect(withClosingQuestion('რომელ ქალაქში ხარ?', 'ka')).toBe(`რომელ ქალაქში ხარ?\n\n${Q}`);
+    expect(withClosingQuestion('რომელ ქალაქში ხარ?', 'ka')).toBe('რომელ ქალაქში ხარ?\n\nდავიწყო?');
   });
 });
 
@@ -225,5 +230,13 @@ describe('the plan the server adds', () => {
     expect(chat).toContain(
       'withClosingQuestion(`${reply.trimEnd()}\\n\\n${plan.text}`, runLang(runId));',
     );
+  });
+});
+
+/** D663: „this tie shows with a weak signal" reached the founder. */
+describe('the second-circle search', () => {
+  it('keeps its signal numbers away from the owner', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('never tell the owner about a ');
   });
 });
