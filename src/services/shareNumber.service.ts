@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { georgianToLatin } from './tools/transliterate';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
 import { ALLOW_CLOSE, ALLOW_OPEN } from './privacyScrub';
@@ -43,12 +44,39 @@ function nameStem(word: string): string {
   return lower.length > 3 && GEORGIAN_NOMINATIVE_END_RE.test(lower) ? lower.slice(0, -1) : lower;
 }
 
+/**
+ * The tester's 39604 (#991): the helper saved „Gia Dantisti" in Latin letters
+ * and typed „გაუგზავნე ლევანს გია დანტისტის ნომერი" in Georgian — refused three
+ * times, because the name was looked for in one script only. Both sides are
+ * also compared in Latin letters.
+ */
+const LATIN_NOMINATIVE_END_RE = /[ia]$/u;
+
+function latinStem(word: string): string {
+  const latin = georgianToLatin(word.toLowerCase());
+  return latin.length > 3 && LATIN_NOMINATIVE_END_RE.test(latin) ? latin.slice(0, -1) : latin;
+}
+
 /** Does the owner's own line name this contact and speak of a number? */
 export function ownerLineSharesNumber(line: string, alias: string): boolean {
   if (!NUMBER_WORD_RE.test(line)) return false;
   const first = alias.trim().split(/\s+/u)[0] ?? '';
   if (first.length < 2) return false;
-  return line.toLowerCase().includes(nameStem(first));
+  const lower = line.toLowerCase();
+  return lower.includes(nameStem(first)) || georgianToLatin(lower).includes(latinStem(first));
+}
+
+/**
+ * „კი" to Netai's own „shall I send <name>'s number?" — the yes to a question
+ * the owner's previous line had already asked for. A bare yes alone never is.
+ */
+const BARE_YES_RE =
+  /^\s*(კი|ki|ho|yes|yeah|ok|okay|да|sí|si|გაუგზავნე|გააგზავნე|send it)[\s.!,)]*$/iu;
+
+export function ownerLinesShareNumber(latestFirst: readonly string[], alias: string): boolean {
+  const [latest = '', previous = ''] = latestFirst;
+  if (ownerLineSharesNumber(latest, alias)) return true;
+  return BARE_YES_RE.test(latest) && ownerLineSharesNumber(previous, alias);
 }
 
 interface LiveAsk {
@@ -79,15 +107,18 @@ async function ownContactAlias(ownerId: string, phone: string): Promise<string |
   return own.rows[0]?.alias ?? null;
 }
 
-async function ownersLatestLine(askThreadId: number): Promise<string> {
+const OWNER_LINES_READ = 2;
+
+/** The owner's own last two lines in this conversation, newest first. */
+async function ownersLatestLines(askThreadId: number): Promise<string[]> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
       WHERE thread_id = $1 AND role = 'user' AND kind = 'message' AND TRIM(content) <> ''
-      ORDER BY created_at DESC LIMIT 1`,
-    [askThreadId],
+      ORDER BY created_at DESC LIMIT $2`,
+    [askThreadId, OWNER_LINES_READ],
     SHARE_QUERY_TIMEOUT_MS,
   );
-  return result.rows[0]?.content ?? '';
+  return result.rows.map((row) => row.content);
 }
 
 export async function shareContactNumberWithAsker(
@@ -101,7 +132,7 @@ export async function shareContactNumberWithAsker(
   }
   const alias = phone === '' ? null : await ownContactAlias(ownerId, phone);
   if (alias === null) return { shared: false, reason: ShareRefusal.NotOwnContact };
-  if (!ownerLineSharesNumber(await ownersLatestLine(askThreadId), alias)) {
+  if (!ownerLinesShareNumber(await ownersLatestLines(askThreadId), alias)) {
     return { shared: false, reason: ShareRefusal.NotTheOwnersWord };
   }
   const text = `${alias}: ${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`;
