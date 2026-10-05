@@ -65,9 +65,16 @@ describe('a trailing round that only kept the books', () => {
     expect(JSON.stringify(out[2])).toContain('Gia, plumber');
   });
 
-  it('stays when nothing but the books would be left', () => {
-    const only = [{ role: 'user', content: 'remind me tomorrow' }, ...books] as never;
-    expect(withoutTrailingHousekeeping(only)).toHaveLength(3);
+  it('is taken off a scheduled check too, so GPT answers the event (54 of 173 after the first fix)', () => {
+    const only = [
+      { role: 'user', content: '[მოვლენა] დაგეგმილი შემოწმების დროა' },
+      ...books,
+    ] as never;
+    expect(withoutTrailingHousekeeping(only)).toHaveLength(1);
+  });
+
+  it('never leaves GPT an empty history', () => {
+    expect(withoutTrailingHousekeeping([...books] as never)).toHaveLength(2);
   });
 
   it('leaves a run that ended on a real tool alone', () => {

@@ -164,18 +164,13 @@ export function withoutTrailingHousekeeping(
     if (!onlyBooks || !onlyResults) break;
     kept.splice(kept.length - 2, 2);
   }
-  // Only when real material is left to write from: a run that did nothing but
-  // keep the books keeps its history, or GPT would not know what was done.
-  return kept.length < messages.length && endsOnToolResults(kept) ? kept : [...messages];
-}
-
-function endsOnToolResults(messages: readonly Anthropic.MessageParam[]): boolean {
-  const last = messages[messages.length - 1];
-  return (
-    last?.role === 'user' &&
-    Array.isArray(last.content) &&
-    last.content.some((b) => b.type === 'tool_result')
-  );
+  // Measured after the first version (17:13–18:10Z): 54 of 173 still empty,
+  // almost all scheduled checks — the event, Claude's line beside
+  // set_task_wake, the result. Requiring a tool result to be left kept exactly
+  // those. GPT reads the whole history, so ending on the owner's (or the
+  // event's) own turn is enough for it to write the reply.
+  const last = kept[kept.length - 1];
+  return kept.length < messages.length && last?.role === 'user' ? kept : [...messages];
 }
 
 /** The name of the last tool the run called — its name only, never its input or result. */
