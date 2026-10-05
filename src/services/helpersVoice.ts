@@ -72,3 +72,44 @@ export function factsAddedRefusal(added: readonly string[]): string {
     'only what the helper said — nothing you know about them from elsewhere. Leave it out and send again.'
   );
 }
+
+/**
+ * #1488 (L23, conversation 39345): the helper typed only „ნანა სტომატოლოგი"
+ * and the owner's card read „კარგი სტომატოლოგია ნანა, მას ვურჩევ" — praise and
+ * a recommendation she never wrote, in her voice. A word of praise or of
+ * recommending in the sent answer whose stem is nowhere in her line was added.
+ */
+const ENDORSEMENT_STEMS: readonly string[] = [
+  'ვურჩევ',
+  'გირჩევ',
+  'რეკომენდ',
+  'კარგ',
+  'საუკეთესო',
+  'სანდო',
+  'შესანიშნავ',
+  'recommend',
+  'good',
+  'great',
+  'best',
+  'trusted',
+  'reliable',
+  'рекоменд',
+  'хорош',
+  'лучш',
+];
+
+export function endorsementAdded(helperLine: string, sent: string): string[] {
+  const own = helperLine.toLowerCase();
+  const added = wordsOf(sent).filter((word) =>
+    ENDORSEMENT_STEMS.some((stem) => word.startsWith(stem) && !own.includes(stem)),
+  );
+  return [...new Set(added)];
+}
+
+export function endorsementAddedRefusal(words: readonly string[]): string {
+  return (
+    `Not sent: „${words.join('", „')}" — praise or a recommendation the helper did not write. ` +
+    'D648: pass on only what they said, in the third person; a name and a profession stay ' +
+    'just that. Leave it out and send again.'
+  );
+}

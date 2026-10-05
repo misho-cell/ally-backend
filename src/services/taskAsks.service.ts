@@ -6,6 +6,8 @@ import {
   factsAddedRefusal,
   firstPersonCarried,
   firstPersonRefusal,
+  endorsementAdded,
+  endorsementAddedRefusal,
 } from './helpersVoice';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
@@ -2415,6 +2417,10 @@ async function answerHeldBack(
     if (sentenceCarriedOver(own, answerText) !== null) return HELPERS_SENTENCE_REFUSAL;
     const added = factsAdded(own, question, answerText);
     if (added.length > 0) return factsAddedRefusal(added);
+    const endorsed = endorsementAdded(own, answerText);
+    if (endorsed.length > 0 && heldBackOnce(heldBackForEndorsement, askThreadId)) {
+      return endorsementAddedRefusal(endorsed);
+    }
     return firstPersonHeldBack(askThreadId, firstPersonCarried(own, question, answerText));
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -2429,6 +2435,19 @@ async function answerHeldBack(
  * an answer back once, and the next send goes, never leaving one stuck.
  */
 const heldBackForFirstPerson = new Set<number>();
+
+/** Ask threads held back once for added praise — a heuristic, so once only. */
+const heldBackForEndorsement = new Set<number>();
+
+/** True the first time for a thread (hold it back), false the next (let it go). */
+function heldBackOnce(heldBack: Set<number>, askThreadId: number): boolean {
+  if (heldBack.has(askThreadId)) {
+    heldBack.delete(askThreadId);
+    return false;
+  }
+  heldBack.add(askThreadId);
+  return true;
+}
 
 function firstPersonHeldBack(askThreadId: number, carried: readonly string[]): string | null {
   if (carried.length === 0 || heldBackForFirstPerson.has(askThreadId)) {
