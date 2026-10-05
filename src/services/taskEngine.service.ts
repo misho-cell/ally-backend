@@ -512,7 +512,13 @@ export async function wakeTask(
       // Board #386: a quiet run wrote nothing, so there is no news to ring for.
       if (result.quiet === true) return 'woken';
       // #1255: a step of the work is not news; its line stays in the chat.
-      if (!wakeIsNews(status, ensureQuoted !== undefined)) return 'woken';
+      if (!wakeIsNews(status, ensureQuoted !== undefined)) {
+        // The tester's 39207: a seat has no push subscription, so a skipped push
+        // left no trace anywhere. This line is the trace.
+        // eslint-disable-next-line no-console
+        console.log(`[push] goal ${taskId}: a step (status ${status}) — no push`);
+        return 'woken';
+      }
       // Not gated on presence: whether the person is away is decided per DEVICE
       // inside sendPushNotification, and this gate — one boolean for a person
       // with four devices — is exactly what silenced Lika's phone (row 6).

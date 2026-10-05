@@ -1,4 +1,5 @@
 import { isBareGreeting } from './greetingTurn';
+import { statesANeed } from './goalIntent';
 
 /**
  * The tester's 1113, the founder's own account, 3 Oct 18:43–18:46Z: after
@@ -16,7 +17,27 @@ const SMALL_TALK_RE =
   /^\s*(?:რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|როგორ\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
 
 export function isSmallTalk(message: string): boolean {
-  return isBareGreeting(message) || SMALL_TALK_RE.test(message);
+  return isBareGreeting(message) || SMALL_TALK_RE.test(message) || isPlainThanks(message);
+}
+
+/**
+ * The tester's 39207 (conversation 39671): „მადლობა, ძალიან დამეხმარე" took
+ * 38 s and was followed by the list of waiting goals, because only a bare
+ * „მადლობა" was small talk. A short line that OPENS with thanks and asks for
+ * nothing — no need stated, no question — is a thank-you, whatever praise
+ * follows it.
+ */
+const OPENS_WITH_THANKS_RE = /^\s*(მადლობ|გმადლობ|thanks|thank\s+you|спасибо|gracias)/iu;
+const MAX_THANKS_CHARS = 80;
+
+function isPlainThanks(message: string): boolean {
+  const text = message.trim();
+  return (
+    text.length <= MAX_THANKS_CHARS &&
+    OPENS_WITH_THANKS_RE.test(text) &&
+    !/[?？]/u.test(text) &&
+    !statesANeed(text)
+  );
 }
 
 /** Small talk that needs something looked up: the weather is live, and is not answered from memory. */
