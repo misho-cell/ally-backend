@@ -27,12 +27,20 @@ export interface MatchableRule {
   readonly sample_question: string;
 }
 
+/**
+ * Ninia's ask 11518 (5 Oct): „a reliable accountant?" was answered by a rule
+ * for „a lawyer or another specialist on a specific matter", and the owner was
+ * told the lawyer's name. A catch-all in a rule's description is not a promise
+ * about every profession; the example question says what the rule is for.
+ */
 const MATCH_PROMPT =
   'Someone keeps standing answers for certain kinds of questions. Decide whether the new ' +
-  'question asks for the same thing as one of the numbered rules: the same kind of person, ' +
-  'service or information, and the same place when either names one. Wording and language ' +
-  'do not matter. When unsure, or when it only resembles a rule, answer none. Reply with the ' +
-  `rule's number only, or ${NONE}.`;
+  'question asks for the same thing as one of the numbered rules: the same profession or ' +
+  "service as the rule's example question, and the same place when either names one. A " +
+  'catch-all in a description ("or another specialist", "any expert", "etc.") does not widen ' +
+  'a rule to other professions: a lawyer rule never answers a question about an accountant. ' +
+  'Wording and language do not matter. When unsure, or when it only resembles a rule, answer ' +
+  `none. Reply with the rule's number only, or ${NONE}.`;
 
 function rulesList(rules: readonly MatchableRule[]): string {
   return rules

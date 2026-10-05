@@ -65,6 +65,9 @@ describe('a rule matched by meaning', () => {
       { system: string; messages: { content: string }[] },
     ];
     expect(request.system).toContain('When unsure');
+    // Ninia's 11518: a catch-all never widens a rule to another profession.
+    expect(request.system).toContain('does not widen');
+    expect(request.system).toContain("same profession or service as the rule's example question");
     expect(request.messages[0].content).toContain(TUTOR.kind);
     expect(request.messages[0].content).toContain(GEORGIAN_ASK);
   });

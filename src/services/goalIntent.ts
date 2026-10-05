@@ -173,7 +173,21 @@ const PRICE_OR_DEFINITION_RE =
  * check that `looksLikeGoalRequest` adds on top for a different question.
  */
 export function statesANeed(text: string): boolean {
-  return NEED_RE_KA.test(text) || NEED_RE_EN.test(text) || NEED_RE_ES.test(text);
+  const asked = isThanks(text) ? text.replace(HELPED_ME_RE, ' ') : text;
+  return NEED_RE_KA.test(asked) || NEED_RE_EN.test(asked) || NEED_RE_ES.test(asked);
+}
+
+/**
+ * The prompt seat's 39073 (thread 39637): „მადლობა, ძალიან დამეხმარე" opened a
+ * goal. „დამეხმარე" is both „help me" and „you helped me" — in a thank-you it
+ * is the second. So in a line that thanks, that one word states no need; any
+ * other need in the same line still does („მადლობა, ახლა ფოტოგრაფი მჭირდება").
+ */
+const THANKS_RE = /(მადლობ|გმადლობ|thank|спасибо|gracias)/iu;
+const HELPED_ME_RE = /დამეხმარე/gu;
+
+function isThanks(text: string): boolean {
+  return THANKS_RE.test(text);
 }
 
 /**
