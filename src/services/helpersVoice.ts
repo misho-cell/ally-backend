@@ -82,6 +82,9 @@ export function factsAddedRefusal(added: readonly string[]): string {
 const ENDORSEMENT_STEMS: readonly string[] = [
   'ვურჩევ',
   'გირჩევ',
+  // Tester 40229: „ნინოს, პედიატრს, მირჩევს" for a name-only answer.
+  'მირჩევ',
+  'ურჩევ',
   'რეკომენდ',
   // Tester 40162: „…და შეძლებს დაგეხმაროს" — a promise of help she did not make.
   'დაგეხმარ',

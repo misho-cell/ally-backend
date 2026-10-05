@@ -54,6 +54,21 @@ const WORD_RE = /\p{L}{4,}/gu;
 /** Enough of a word to survive a case ending: „ავეჯი" / „ავეჯის" share „ავეჯ". */
 const DETAIL_STEM_CHARS = 4;
 
+/**
+ * #1618 (tester 40229): the owner asked for someone to help paint a car; the
+ * question read „a RELIABLE person you could recommend". A quality the owner
+ * never asked for, with or without brackets, is a detail added.
+ */
+const QUALITY_WORD_RE =
+  /(?:^|[\s,.!?„"(])(სანდო\p{L}*|საიმედო\p{L}*|reliable|trusted|trustworthy|надёжн\p{L}*|надежн\p{L}*|проверенн\p{L}*|confiable)/iu;
+
+function qualityNotSaid(question: string, owner: string): string | null {
+  const match = QUALITY_WORD_RE.exec(question);
+  if (match === null) return null;
+  const word = match[1];
+  return lowered(owner).includes(lowered(word).slice(0, DETAIL_STEM_CHARS)) ? null : word;
+}
+
 function bracketedDetailNotSaid(question: string, owner: string): string | null {
   const low = lowered(owner);
   const ownerKey = nameKey(owner);
@@ -102,7 +117,7 @@ export function factChangedIn(question: string, ownerLines: readonly string[]): 
       if (!ownerTimes.has(group)) return { change: FactChange.Time, word };
     }
   }
-  const detail = bracketedDetailNotSaid(question, owner);
+  const detail = bracketedDetailNotSaid(question, owner) ?? qualityNotSaid(question, owner);
   return detail === null ? null : { change: FactChange.Detail, word: detail };
 }
 

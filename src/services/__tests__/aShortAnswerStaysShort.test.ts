@@ -42,3 +42,10 @@ describe('a promise of help the helper did not make', () => {
     ).toEqual([]);
   });
 });
+
+/** Tester 40229: „ნინოს, პედიატრს, მირჩევს" for a name-only answer. */
+describe('a recommending verb in any person', () => {
+  it('is found when the helper wrote only a name', () => {
+    expect(endorsementAdded('ნინო პედიატრი', 'ნინოს, პედიატრს, მირჩევს.')).toEqual(['მირჩევს']);
+  });
+});

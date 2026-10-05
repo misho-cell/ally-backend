@@ -93,3 +93,21 @@ describe('a bracketed word in the other script', () => {
     expect(factChangedIn('კარგი ექიმი მჭირდება (Tbilisi)', ['ექიმი მჭირდება თბილისში'])).toBeNull();
   });
 });
+
+/** #1618 (tester 40229): „reliable" added to the question without brackets. */
+describe('a quality the owner never asked for', () => {
+  it('is held back', () => {
+    expect(
+      factChangedIn('Do you know a reliable person who could help paint a car?', [
+        'I need someone to help paint my car',
+      ])?.word,
+    ).toBe('reliable');
+    expect(factChangedIn('იცნობ სანდო ხელოსანს?', ['ხელოსანი მჭირდება'])?.change).toBe(
+      FactChange.Detail,
+    );
+  });
+
+  it('passes when the owner asked for it', () => {
+    expect(factChangedIn('იცნობ სანდო ხელოსანს?', ['სანდო ხელოსანი მჭირდება'])).toBeNull();
+  });
+});

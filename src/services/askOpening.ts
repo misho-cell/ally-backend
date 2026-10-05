@@ -101,6 +101,24 @@ export function askOpeningParts(
   }
 }
 
+/**
+ * Tester 40229 (#1618): the helper read „<asker>'s assistant is asking: Hi,
+ * <asker> is asking: …" — the model opened the question with the frame's own
+ * words. A greeting, and a lead-in that names who is asking, are the frame's
+ * job; at the start of the question they go.
+ */
+const GREETING_RE = /^\s*(?:hi|hello|hey|გამარჯობა|სალამი|привет|здравствуйте|hola)[\s,!.:]*/iu;
+const ASKING_LEAD_RE =
+  /^[^:\n]{0,60}(?:is asking|asks|გეკითხება|გთხოვს|спрашивает|pregunta)\s*:\s*/iu;
+
+export function withoutFramesOwnWords(question: string): string {
+  const afterGreeting = question.replace(GREETING_RE, '');
+  // Only the doubled frame goes; a plain greeting to the helper stays as written.
+  if (!ASKING_LEAD_RE.test(afterGreeting)) return question;
+  const trimmed = afterGreeting.replace(ASKING_LEAD_RE, '').trim();
+  return trimmed === '' ? question : trimmed;
+}
+
 /** The whole opening message: who is asking, their words, and how to answer. */
 export function buildAskOpening(
   language: RunLanguage,
@@ -113,7 +131,7 @@ export function buildAskOpening(
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3). D648: no quotation marks either — the question is
   // the asker's assistant's wording, not anybody's quoted words.
-  return `${parts[shape]}\n\n${question}\n\n${parts.tail}`;
+  return `${parts[shape]}\n\n${withoutFramesOwnWords(question)}\n\n${parts.tail}`;
 }
 
 /** The name a sender with no stored name is given, in the reader's language. */
