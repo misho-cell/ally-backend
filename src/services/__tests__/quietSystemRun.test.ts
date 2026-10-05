@@ -76,7 +76,7 @@ describe('a system run that searched and wrote nothing', () => {
     expect(RUN_STRINGS.ka.lookedAgainNothingNew).toContain('ისევ ვეძებე');
     expect(RUN_STRINGS.en.lookedAgainNothingNew).toContain('looked again');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const line = chat.indexOf('ownerAbsent && didWorkWorthALine(pending)');
+    const line = chat.indexOf('didWorkWorthALine(pending) &&');
     expect(line).toBeGreaterThan(0);
     expect(line).toBeLessThan(chat.indexOf('endsQuietly(ownerAbsent, pending'));
   });

@@ -13,7 +13,7 @@ import { withNameGenders } from './nameGender';
 import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { greetingName, greetingText, registeredName } from './serverGreeting';
 import { goalsForRun } from './wakeGoalScope';
-import { didWorkWorthALine, endsQuietly } from './quietSystemRun';
+import { aLookedAgainLineTellsSomething, didWorkWorthALine, endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
@@ -1597,6 +1597,28 @@ const SHARE_CONTACT_NUMBER_TOOL: AnthropicTool = {
 const SHARED_NUMBER_NOTE =
   'Sent: the asker now has the name and the number. Tell the owner in one line whose number ' +
   'went to whom. Do not write the number.';
+
+const LAST_ANSWER_TIMEOUT_MS = 5_000;
+
+/** When the owner last read a reply in this conversation; null when never or unknown. */
+async function lastAnswerAt(threadId: number | undefined): Promise<Date | null> {
+  if (threadId === undefined) return null;
+  try {
+    const result = await query<{ created_at: Date }>(
+      `SELECT created_at FROM conversations
+        WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND TRIM(content) <> ''
+        ORDER BY created_at DESC LIMIT 1`,
+      [threadId],
+      LAST_ANSWER_TIMEOUT_MS,
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : new Date(row.created_at);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[chat] last answer time unreadable:', (err as Error).message);
+    return null;
+  }
+}
 
 const SHARE_REFUSAL_NOTE: Readonly<Record<ShareRefusal, string>> = {
   [ShareRefusal.NoLiveQuestion]: 'Not sent: this conversation has no open question to answer.',
@@ -14139,7 +14161,12 @@ export async function processChat(
   if (onlyButtons) effectiveFinal = RUN_STRINGS[language].choicesOnly;
   // #1057, night question L (Misho, 5 Oct): a system run that searched or made a
   // plan says so in one line instead of leaving the owner on nothing.
-  if (!effectiveFinal.trim() && ownerAbsent && didWorkWorthALine(pending)) {
+  if (
+    !effectiveFinal.trim() &&
+    ownerAbsent &&
+    didWorkWorthALine(pending) &&
+    aLookedAgainLineTellsSomething(await lastAnswerAt(threadId), new Date())
+  ) {
     // eslint-disable-next-line no-console
     console.log(
       `[chat] run ${runId} thread ${threadId}: system run searched, wrote nothing — one line`,

@@ -80,3 +80,15 @@ export function didWorkWorthALine(runTurns: readonly TurnLike[]): boolean {
       ),
   );
 }
+
+/**
+ * #1489 (L23, 39331/39429/39439): the follow-up run right after the first
+ * findings wrote „searched again, nothing new yet" a minute or two after the
+ * answer — nothing had been searched again, and it read as noise. The line
+ * tells the owner something only when they have not just been answered.
+ */
+export const FRESH_ANSWER_MS = 10 * 60 * 1000;
+
+export function aLookedAgainLineTellsSomething(lastAnswerAt: Date | null, now: Date): boolean {
+  return lastAnswerAt === null || now.getTime() - lastAnswerAt.getTime() >= FRESH_ANSWER_MS;
+}
