@@ -138,6 +138,19 @@ export function toOpenAiMessages(
   return out;
 }
 
+/** The name of the last tool the run called — its name only, never its input or result. */
+export function lastToolName(messages: readonly Anthropic.MessageParam[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const content = messages[i].content;
+    if (!Array.isArray(content)) continue;
+    for (let j = content.length - 1; j >= 0; j -= 1) {
+      const block = content[j] as { type?: string; name?: string };
+      if (block.type === 'tool_use') return block.name ?? '?';
+    }
+  }
+  return 'none';
+}
+
 /** „user, 812 chars of 9 turns" — the role and size of the last turn, never its text. */
 export function lastTurnShape(sent: readonly OpenAI.Chat.ChatCompletionMessageParam[]): string {
   const last = sent[sent.length - 1];
@@ -402,7 +415,7 @@ export async function writeFinalAnswer(
           `prompt tokens ${usage?.prompt_tokens ?? '?'}, refusal ${refusal === '' ? 'none' : `„${refusal.slice(0, 200)}"`}, ` +
           // 5 Oct: one reply in five came back empty. Whose turn GPT was handed
           // last is the first thing to know about it; the text itself is not logged.
-          `last turn ${lastTurnShape(sent)}`,
+          `last turn ${lastTurnShape(sent)}, last tool ${lastToolName(messages)}`,
       );
       return null;
     }
