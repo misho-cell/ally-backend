@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { ruleCoveringByMeaning } from './ruleMatchByMeaning.service';
 
 /**
  * The answer rule approved once (Ticket 10 Task 22; D120).
@@ -9,11 +10,13 @@ import { query } from '../db/postgres/client';
  * answered from it without a new yes, the ask row is marked automatic, and the
  * weekly summary lists it. The user can see and delete their rules.
  *
- * Matching is deliberately dumb and strict. A model could judge "the same
- * kind of question" better, but a model's judgement cannot be shown to the
- * user as the reason their words went out. Word overlap can: the incoming
- * question must share most of its meaningful words with the question the rule
- * was made from (or the rule's own description), and at least two of them.
+ * Matching is word overlap first: the incoming question must share most of
+ * its meaningful words with the question the rule was made from (or the
+ * rule's own description), and at least two of them. Since D648 every ask is
+ * reworded, often in another language, so word overlap alone almost never
+ * matched (the tester's 1158). Misho's word (5 Oct): when the words do not
+ * match, a small model judges by meaning (ruleMatchByMeaning.service), and
+ * says none when in doubt.
  */
 
 const RULE_QUERY_TIMEOUT_MS = 8_000;
@@ -186,7 +189,11 @@ export async function matchAnswerRule(
   question: string,
 ): Promise<AnswerRule | null> {
   const rules = await listAnswerRules(String(recipientUserId));
-  return pickRule(question, rules);
+  if (rules.length === 0) return null;
+  return (
+    pickRule(question, rules) ??
+    (await ruleCoveringByMeaning(question, rules, String(recipientUserId)))
+  );
 }
 
 export async function recordRuleUse(ruleId: number): Promise<void> {
