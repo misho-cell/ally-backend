@@ -63,6 +63,11 @@ describe('the incoming row carries its run', () => {
     const readers = CHAT.match(/run_id = \$2[^`]*/g) ?? [];
 
     expect(readers.length).toBeGreaterThan(0);
-    for (const reader of readers) expect(reader).toContain("kind = 'step'");
+    // The quiet run's trail (the tester's 1152) reads captions and steps — never a message.
+    for (const reader of readers) {
+      expect(
+        reader.includes("kind = 'step'") || reader.includes("kind IN ('caption', 'step')"),
+      ).toBe(true);
+    }
   });
 });

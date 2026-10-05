@@ -55,9 +55,7 @@ describe('a question keeps the facts the owner wrote', () => {
   it('is checked before the ask goes out, and the tool says so', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const handler = chat.slice(chat.indexOf("case 'ask_contact': {"));
-    const checkAt = handler.indexOf(
-      'factChangedIn(question, await ownerLinesForGoal(task, threadId))',
-    );
+    const checkAt = handler.indexOf('const changed = factChangedIn(question, ownerLines);');
     expect(checkAt).toBeGreaterThan(0);
     expect(checkAt).toBeLessThan(handler.indexOf('await createAsk('));
     expect(chat).toContain('FACTS: keep every fact exactly as the owner wrote it');

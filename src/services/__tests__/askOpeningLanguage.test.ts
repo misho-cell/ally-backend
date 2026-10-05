@@ -62,11 +62,12 @@ describe('the incoming-ask opening follows the RECIPIENT’s language', () => {
     }
   });
 
-  it('builds the whole message with the question quoted and the tail last', () => {
+  // D648 (the tester's 1152, 38572): no quotation in either direction.
+  it('builds the whole message with the question unquoted and the tail last', () => {
     const text = buildAskOpening('en', 'Nino', null, 'Can you recommend a dentist?', 'first');
     expect(text).toBe(
       "Nino's assistant is asking:\n\n" +
-        '"Can you recommend a dentist?"\n\n' +
+        'Can you recommend a dentist?\n\n' +
         'Just reply in this thread and I will pass your answer on.',
     );
   });

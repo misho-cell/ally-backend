@@ -15,11 +15,10 @@ describe('a run that opened a goal and searched nothing', () => {
   });
 
   it('fires only on a goal opened from a stated need, with no tool, and no question back', () => {
-    expect(chat).toContain('lateSearch !== null &&');
     expect(chat).toContain('toolNamesUsed.length === 0 &&');
-    expect(chat).toContain(
-      "(!/[?？]\\s*$/u.test(finalText.trim()) || asksAboutOwnPeople(runOwnerLine.get(runId) ?? ''));",
-    );
+    expect(chat).toContain('((lateSearch !== null && !/[?？]\\s*$/u.test(finalText.trim())) ||');
+    // The tester's 1152 (38606): a quick answer with no opening search, asked about own people.
+    expect(chat).toContain('(askedAboutOwnPeople && (lateSearch !== null || ownersQuickRun)));');
     expect(chat).toContain('? SEARCH_FIRST_NUDGE');
   });
 

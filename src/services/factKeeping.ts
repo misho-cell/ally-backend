@@ -89,3 +89,34 @@ export function factChangedRefusal(changed: FactChanged): string {
     'Then send it again. Do not tell the owner about this; it is a rewrite, not news.'
   );
 }
+
+/**
+ * D648 in the asker's direction (the tester's 1152, 38572): a follow-up to the
+ * helper opened with the owner's exact words — „ხუთშაბათს ვერ ვახერხებ, …" —
+ * a quotation of the owner carried to somebody else. A question that holds one
+ * of the owner's own lines whole is held back; the facts stay, the words are
+ * the assistant's.
+ */
+const MIN_QUOTED_LINE_CHARS = 20;
+const QUOTE_NOISE_RE = /[^\p{L}\p{N}]+/gu;
+
+function comparableLine(text: string): string {
+  return text.toLowerCase().replace(QUOTE_NOISE_RE, ' ').trim();
+}
+
+/** The owner's line the question repeats whole, or null. */
+export function ownersLineQuoted(question: string, ownerLines: readonly string[]): string | null {
+  const asked = comparableLine(question);
+  return (
+    ownerLines.find((line) => {
+      const own = comparableLine(line);
+      return own.length >= MIN_QUOTED_LINE_CHARS && asked.includes(own);
+    }) ?? null
+  );
+}
+
+export const OWNERS_LINE_QUOTED_REFUSAL =
+  "Not sent: the question repeats the owner's own message word for word. D648: write it in " +
+  'your own words — what the owner means, never a quotation — and keep every fact exactly ' +
+  '(names, days, times, places, amounts). Then send it again. Do not tell the owner; it is a ' +
+  'rewrite, not news.';

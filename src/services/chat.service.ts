@@ -17,7 +17,12 @@ import { endsQuietly } from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
-import { factChangedIn, factChangedRefusal } from './factKeeping';
+import {
+  factChangedIn,
+  factChangedRefusal,
+  ownersLineQuoted,
+  OWNERS_LINE_QUOTED_REFUSAL,
+} from './factKeeping';
 import {
   discussionHolds,
   DISCUSS_MAX_TOKENS,
@@ -8371,7 +8376,13 @@ async function executeToolCall(
       }
       const question = String(input['question'] ?? '');
       // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
-      const changed = factChangedIn(question, await ownerLinesForGoal(task, threadId));
+      const ownerLines = await ownerLinesForGoal(task, threadId);
+      const changed = factChangedIn(question, ownerLines);
+      if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
+        // eslint-disable-next-line no-console
+        console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, the owner quoted`);
+        return { sent: false, reason: 'owner_quoted', error: OWNERS_LINE_QUOTED_REFUSAL };
+      }
       if (changed !== null) {
         // eslint-disable-next-line no-console
         console.log(`[fact-keeping] run ${runId} task ${taskId}: held back, ${changed.change}`);
@@ -10876,6 +10887,38 @@ async function dropDraftSteps(
   }
 }
 
+/** At most this many of a quiet run's own lines are taken back. */
+const MAX_TRAIL_ROWS = 50;
+
+/**
+ * The tester's 1152 (38551, 38585): a run the server started worked, showed
+ * „searching the web…" and ended with nothing to say — and that caption stayed
+ * the conversation's last line, under a conversation marked done. A run that
+ * ends quietly takes its own captions and steps back with it, so the owner
+ * reads the last real answer, not the trail of a search that came to nothing.
+ */
+async function dropQuietRunTrail(userId: string, threadId: number, runId: string): Promise<void> {
+  try {
+    const trail = await query<{ id: number; content: string }>(
+      `DELETE FROM conversations
+        WHERE id IN (SELECT id FROM conversations
+                      WHERE thread_id = $1 AND run_id = $2 AND kind IN ('caption', 'step')
+                      LIMIT $3)
+        RETURNING id, content`,
+      [threadId, runId, MAX_TRAIL_ROWS],
+      STEP_TIDY_TIMEOUT_MS,
+    );
+    for (const row of trail.rows) emitStepRetracted(userId, threadId, runId, row.content);
+    if (trail.rows.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[chat] run ${runId}: a quiet run took back ${trail.rows.length} line(s)`);
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[chat] run ${runId}: could not take back its lines:`, (err as Error).message);
+  }
+}
+
 /** The buttons as GPT spelt them, where that is safe; the server's own labels stay. */
 function respeltChoices(
   choices: readonly string[],
@@ -11789,11 +11832,15 @@ async function runToolLoop(
   // The tester's 1145 (37898): „maybe my friends know" and the reply was only
   // „which city?" — the owner's own contacts need no city, so that question
   // does not excuse the search.
+  // The tester's 1152 (38606): the same ask in a quick answer has no opening
+  // search behind it, and still names the owner's own people.
+  const askedAboutOwnPeople = asksAboutOwnPeople(runOwnerLine.get(runId) ?? '');
+  const ownersQuickRun = OWNERS_QUICK_RUNS.has(runModes.get(runId) ?? '');
   const answeredWithoutSearching =
     !ownerAbsent &&
-    lateSearch !== null &&
     toolNamesUsed.length === 0 &&
-    (!/[?？]\s*$/u.test(finalText.trim()) || asksAboutOwnPeople(runOwnerLine.get(runId) ?? ''));
+    ((lateSearch !== null && !/[?？]\s*$/u.test(finalText.trim())) ||
+      (askedAboutOwnPeople && (lateSearch !== null || ownersQuickRun)));
   // #960 (the tester's 1145): a goal run that never listed them — read from the phonebook.
   // The tester's 1149 (38116): a quick answer that saved the goal is a goal run too.
   const bookMembersSkipped =
@@ -13866,6 +13913,7 @@ export async function processChat(
   if (onlyButtons && userMessage.startsWith(RUN_EVENT_PREFIX)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: an event run left only buttons — quiet`);
+    await dropQuietRunTrail(userId, threadId, runId);
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
@@ -13873,6 +13921,7 @@ export async function processChat(
   if (!effectiveFinal.trim() && endsQuietly(ownerAbsent, pending, answeredOnlyInStageDirection)) {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: system run did its work silently`);
+    await dropQuietRunTrail(userId, threadId, runId);
     clearRunState(runId);
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }

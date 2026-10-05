@@ -111,8 +111,9 @@ export function buildAskOpening(
 ): string {
   const parts = askOpeningParts(language, senderName, roster);
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
-  // verbatim (ticket 3 §6.3).
-  return `${parts[shape]}\n\n"${question}"\n\n${parts.tail}`;
+  // verbatim (ticket 3 §6.3). D648: no quotation marks either — the question is
+  // the asker's assistant's wording, not anybody's quoted words.
+  return `${parts[shape]}\n\n${question}\n\n${parts.tail}`;
 }
 
 /** The name a sender with no stored name is given, in the reader's language. */
