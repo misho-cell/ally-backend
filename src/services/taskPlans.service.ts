@@ -1003,8 +1003,6 @@ interface PlanPersonLine {
 const withNote = (name: string, note: string): string => (note === '' ? name : `${name} ${note}`);
 
 interface PlanSentenceWords {
-  readonly solved: (when: string) => string;
-  readonly routes: (list: string) => string;
   /** Each person as the sentence needs them: the name in its case, then any note. */
   readonly ask: (people: readonly PlanPersonLine[]) => string;
   readonly askNobody: string;
@@ -1016,49 +1014,54 @@ function joinWithAnd(items: readonly string[], and: string): string {
   return `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`;
 }
 
+/**
+ * D663 (the founder, 5 Oct 18:43 Tbilisi): the plan the owner reads is ONE
+ * human sentence in the assistant's voice, assistant to assistant, naming the
+ * result — his model: „ლიკას ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო,
+ * რომ ლიკამ რეკომენდაცია გაგიწიოს და დაგაკავშიროს ნინუცასთან". No „paths", no
+ * „I will count it solved when", no message text. So the routes sentence is
+ * gone and the people are the assistants Netai will talk to.
+ */
 const PLAN_SENTENCES: Readonly<Record<RunLanguage, PlanSentenceWords>> = {
   ka: {
-    solved: (when) => `მოგვარებულად ჩავთვლი, როცა ${when}.`,
-    routes: (list) => `ვეძებ ამ გზებით — ${list}.`,
-    ask: (people) =>
-      `ვკითხავ ${joinWithAnd(
-        people.map((p) => withNote(p.asIs === true ? p.name : geoName(p.name, 'dat'), p.note)),
+    ask: (people) => {
+      const names = joinWithAnd(
+        people.map((p) => withNote(p.asIs === true ? p.name : geoName(p.name, 'gen'), p.note)),
         'და',
-      )}.`,
-    askNobody: 'ჯერ არავის ვწერ.',
+      );
+      const assistants = people.length === 1 ? 'ასისტენტს' : 'ასისტენტებს';
+      return `${names} ${assistants} დაველაპარაკები და შევეცდები, ეს მოვაგვარო.`;
+    },
+    askNobody: 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას, და ჯერ არავის ვწერ.',
     and: 'და',
   },
   en: {
-    solved: (when) => `I will count it solved when ${when}.`,
-    routes: (list) => `I will look through ${list}.`,
-    ask: (people) =>
-      `I will ask ${joinWithAnd(
-        people.map((p) => withNote(p.name, p.note)),
+    ask: (people) => {
+      const names = joinWithAnd(
+        people.map((p) => withNote(p.asIs === true ? p.name : `${p.name}'s`, p.note)),
         'and',
-      )}.`,
-    askNobody: 'I am not writing to anyone yet.',
+      );
+      return `I will talk to ${names} ${people.length === 1 ? 'assistant' : 'assistants'} and try to get this sorted for you.`;
+    },
+    askNobody: 'I am still looking for who can help with this, and I am not writing to anyone yet.',
     and: 'and',
   },
   ru: {
-    solved: (when) => `Буду считать решённым, когда ${when}.`,
-    routes: (list) => `Искать буду так — ${list}.`,
     ask: (people) =>
-      `Спрошу ${joinWithAnd(
+      `Поговорю с ${people.length === 1 ? 'ассистентом' : 'ассистентами'} ${joinWithAnd(
         people.map((p) => withNote(p.name, p.note)),
         'и',
-      )}.`,
-    askNobody: 'Пока никому не пишу.',
+      )} и постараюсь это устроить.`,
+    askNobody: 'Пока ищу, кто сможет помочь, и никому ещё не пишу.',
     and: 'и',
   },
   es: {
-    solved: (when) => `Lo daré por resuelto cuando ${when}.`,
-    routes: (list) => `Buscaré así — ${list}.`,
     ask: (people) =>
-      `Preguntaré a ${joinWithAnd(
+      `Hablaré con ${people.length === 1 ? 'el asistente' : 'los asistentes'} de ${joinWithAnd(
         people.map((p) => withNote(p.name, p.note)),
         'y',
-      )}.`,
-    askNobody: 'Todavía no escribo a nadie.',
+      )} e intentaré arreglarlo.`,
+    askNobody: 'Todavía busco quién puede ayudar con esto, y aún no escribo a nadie.',
     and: 'y',
   },
 };
@@ -1074,32 +1077,6 @@ export const PLAN_CLOSING_QUESTION: Readonly<Record<RunLanguage, string>> = {
   es: '¿Sigo este plan y actúo?',
 };
 
-function withoutFinalStop(text: string): string {
-  return text.trim().replace(/[.。]+$/u, '');
-}
-
-/**
- * The tester's 1094 (32574): a route the model named „Owner's own network" was
- * read to the owner as „I will look through Owner's own network". The plan is
- * read BY the owner, so a route that names them in the third person is
- * addressed to them. Only the possessive forms the model writes.
- */
-const OWNER_IN_THIRD_PERSON: Readonly<Record<RunLanguage, readonly (readonly [RegExp, string])[]>> =
-  {
-    ka: [[/მფლობელის/gu, 'შენი']],
-    en: [[/\b(the\s+)?owner['’]s\b/giu, 'your']],
-    // No agreement-safe swap without grammar; left as written.
-    ru: [],
-    es: [],
-  };
-
-export function routeAddressedToOwner(name: string, language: RunLanguage): string {
-  return OWNER_IN_THIRD_PERSON[language].reduce(
-    (text, [pattern, replacement]) => text.replace(pattern, replacement),
-    name,
-  );
-}
-
 /**
  * Board #380 (Misho, 3 October: „კი, გააკეთე"): the plan the owner reads was
  * too long to scan — two test plans ran 475 and 694 characters. Measured on
@@ -1110,54 +1087,30 @@ export function routeAddressedToOwner(name: string, language: RunLanguage): stri
  * not listed. The plan itself keeps every route and person, and nothing about
  * who is written to changes — only what is read.
  */
-const MAX_ROUTES_SHOWN = 2;
-const MAX_ROUTE_CHARS = 48;
 const MAX_PEOPLE_SHOWN = 3;
 
-const PLAN_MORE: Readonly<
-  Record<RunLanguage, { routes: (n: number) => string; people: (n: number) => string }>
-> = {
-  ka: {
-    routes: (n) => (n === 1 ? 'კიდევ ერთი' : `კიდევ ${n}`),
-    people: (n) => (n === 1 ? 'კიდევ ერთ ადამიანს' : `კიდევ ${n} ადამიანს`),
-  },
-  en: {
-    routes: (n) => (n === 1 ? 'one more' : `${n} more`),
-    people: (n) => (n === 1 ? 'one more person' : `${n} more people`),
-  },
-  ru: { routes: (n) => `ещё ${n}`, people: (n) => `ещё ${n}` },
-  es: { routes: (n) => `${n} más`, people: (n) => `${n} más` },
+/** The „and N more" people, already in the case D663's sentence needs (possessive). */
+const PLAN_MORE_PEOPLE: Readonly<Record<RunLanguage, (n: number) => string>> = {
+  ka: (n) => (n === 1 ? 'კიდევ ერთი ადამიანის' : `კიდევ ${n} ადამიანის`),
+  en: (n) => (n === 1 ? "one more person's" : `${n} more people's`),
+  ru: (n) => `ещё ${n}`,
+  es: (n) => `${n} más`,
 };
-
-/** A route name cut at the last whole word that fits, with an ellipsis. */
-export function shortRouteName(name: string): string {
-  if (name.length <= MAX_ROUTE_CHARS) return name;
-  const cut = name.slice(0, MAX_ROUTE_CHARS);
-  const atWord = cut.lastIndexOf(' ');
-  return `${(atWord > MAX_ROUTE_CHARS / 2 ? cut.slice(0, atWord) : cut).replace(/[\s,;:—-]+$/u, '')}…`;
-}
 
 export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): string {
   const words = PLAN_SENTENCES[language];
-  const more = PLAN_MORE[language];
-  const allRoutes = plan.routes
-    .map((r) => routeAddressedToOwner(withoutFinalStop(r.name), language))
-    .filter((r) => r !== '');
-  const routes = allRoutes.slice(0, MAX_ROUTES_SHOWN).map(shortRouteName);
-  if (allRoutes.length > MAX_ROUTES_SHOWN)
-    routes.push(more.routes(allRoutes.length - MAX_ROUTES_SHOWN));
   const people: PlanPersonLine[] = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN).map((p) => ({
     name: p.name,
     note: p.reach === undefined || p.reach === 'ok' ? '' : REACH_NOTE[language][p.reach],
   }));
   const hiddenPeople = plan.people_to_involve.length - MAX_PEOPLE_SHOWN;
-  if (hiddenPeople > 0) people.push({ name: more.people(hiddenPeople), note: '', asIs: true });
+  if (hiddenPeople > 0)
+    people.push({ name: PLAN_MORE_PEOPLE[language](hiddenPeople), note: '', asIs: true });
   // D561 (Tornike, 1 October): the plan the owner reads no longer says when
   // the goal counts as solved. `solved_when` is still kept and tracked; it is
   // only not shown.
-  const lines: string[] = [];
-  if (routes.length > 0) lines.push(words.routes(joinWithAnd(routes, words.and)));
-  lines.push(people.length > 0 ? words.ask(people) : words.askNobody);
+  // D663: no routes sentence — the owner reads whom Netai will talk to, not „paths".
+  const lines: string[] = [people.length > 0 ? words.ask(people) : words.askNobody];
   if (nobodyCanBeWrittenTo(plan)) lines.push(NOBODY_REACHABLE[language]);
   // The tester's 957: the closing question is NOT part of the plan text. A
   // model pasted these lines into a reply whose ask had already gone out, so

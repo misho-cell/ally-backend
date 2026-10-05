@@ -42,12 +42,12 @@ describe('the plan in plain sentences', () => {
   });
 
   /** D561 (Tornike, 1 October): the plan the owner reads no longer says when it counts as solved. */
-  it('says how it will look and whom it will ask — never when it counts as solved', () => {
+  it('says whose assistants it will talk to — never routes or when it counts as solved (D663)', () => {
     const text = planInSentences(PLAN, 'en');
     expect(text).not.toContain('solved');
     expect(text).not.toContain('a reliable architect is found');
-    expect(text).toContain('I will look through Your own contacts and The second circle.');
-    expect(text).toContain('I will ask Netai Test 50 and Netai Test 54 (not on Netai');
+    expect(text).not.toContain('look through');
+    expect(text).toContain("I will talk to Netai Test 50's and Netai Test 54's (not on Netai");
   });
 
   it('says it is writing to nobody when the plan names nobody', () => {
@@ -87,7 +87,10 @@ describe('does the reply carry the plan', () => {
 describe('what the model is told', () => {
   it('to write it once, in its own words, without a form', () => {
     const note = planInYourReplyNote('en');
-    expect(note).toContain('ONCE, in your own words');
+    expect(note).toContain('ONCE, as ONE human sentence');
+    // D663: never the text it will send, never machine words.
+    expect(note).toContain('Never show the text you will send');
+    expect(note).toContain('ONE question only');
     expect(note).toContain('No version number, no headings, no field labels');
     expect(note).toContain('present_choices');
   });
@@ -172,13 +175,14 @@ describe('only a reply that asks for approval is a plan reply', () => {
 });
 
 describe('the plan reads as Georgian sentences', () => {
-  it('puts the people in the dative and joins them with „და"', () => {
+  it('puts the people in the genitive, joins them with „და", and names their assistants (D663)', () => {
     const text = planInSentences(PLAN, 'ka');
-    expect(text).toContain('ვკითხავ Netai Test 50-ს და');
-    expect(text).toContain('ვეძებ ამ გზებით — Your own contacts და The second circle.');
+    expect(text).toContain('Netai Test 50-ის და');
+    expect(text).toContain('ასისტენტებს დაველაპარაკები');
+    expect(text).not.toContain('ვეძებ ამ გზებით');
     expect(text).not.toContain('კითხვას დავუსვამ:');
     // The note stays after the name, and only the name is put in its case.
-    expect(text).toMatch(/Netai Test 54-ს \(Netai-ზე არ არის/);
+    expect(text).toMatch(/Netai Test 54-ის \(Netai-ზე არ არის/);
   });
 });
 

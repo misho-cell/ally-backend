@@ -2381,26 +2381,35 @@ export function planInYourReplyNote(language: RunLanguage): string {
   const buttons = `„${APPROVE_LABEL[language]}" / „${CHANGE_LABEL[language]}"`;
   const text: Record<RunLanguage, string> = {
     ka:
-      'გეგმა შენახულია, მაგრამ ეკრანზე ჯერ არ არის. შენს პასუხში დაწერე ის ერთხელ, შენი ' +
-      'სიტყვებით, ჩვეულებრივი წინადადებებით: როგორ ეძებ და ვის ჰკითხავ, სახელებით. არ დაწერო, ' +
-      'რას ჩავთვლით მოგვარებულად (D561). ვერსია, სათაურები და ველების სახელები არ დაწერო. გეგმა ბოლოს ამ ' +
-      'კითხვით დაასრულე: „{closing}". მერე present_choices — ',
+      'გეგმა შენახულია, მაგრამ ეკრანზე ჯერ არ არის. შენს პასუხში დაწერე ის ერთხელ, ერთი ' +
+      'ადამიანური წინადადებით, ასისტენტის ხმით, ასისტენტი ასისტენტს — ვის ასისტენტს ' +
+      'დაელაპარაკები და რა შედეგს მიაღწევ (D663). ნიმუში: „ლიკას ასისტენტს დაველაპარაკები და ' +
+      'შევეცდები მოვაგვარო, რომ ლიკამ რეკომენდაცია გაგიწიოს და დაგაკავშიროს ნინუცასთან". ' +
+      'არ აჩვენო ტექსტი, რომელსაც გაუგზავნი — ფორმულირება შენი საქმეა. არ დაწერო „სიგნალი", ' +
+      '„გზა", „მოგვარებულად ჩავთვლი" (D561). ვერსია, სათაურები და ველების სახელები არ დაწერო. ' +
+      'მხოლოდ ერთი კითხვა: გეგმა ამ კითხვით დაასრულე: „{closing}". მერე present_choices — ',
     en:
-      'The plan is saved but not on screen yet. Write it in your reply ONCE, in your own words, as ' +
-      'plain sentences: how you will look and whom you will ask, by name — never what counts as ' +
-      'solved (D561). ' +
-      'No version number, no headings, no field labels. End the plan with this question, word for ' +
-      'word: „{closing}". Then present_choices — ',
+      'The plan is saved but not on screen yet. Write it in your reply ONCE, as ONE human ' +
+      'sentence in your own voice, assistant to assistant: whose assistant you will talk to and ' +
+      'the result you will try to get (D663) — e.g. „I will talk to Lika’s assistant and try to ' +
+      'arrange for Lika to recommend you and connect you with Ninutsa". Never show the text you ' +
+      'will send — the wording is your job. Never the words „signal", „path", „I will count it ' +
+      'solved when" (D561). No version number, no headings, no field labels. ONE question only: ' +
+      'end with this one, word for word: „{closing}". Then present_choices — ',
     ru:
-      'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, своими словами, ' +
-      'обычными предложениями: как будешь искать и кого спросишь, по именам — никогда не пиши, ' +
-      'что считать решением (D561). Без номера версии, заголовков и названий полей. Закончи план этим вопросом: ' +
+      'План сохранён, но на экране его ещё нет. Напиши его в ответе ОДИН раз, ОДНИМ человеческим ' +
+      'предложением, своим голосом, ассистент ассистенту: с чьим ассистентом поговоришь и какого ' +
+      'результата постараешься добиться (D663). Не показывай текст, который отправишь, — ' +
+      'формулировка твоя забота. Никаких слов «сигнал», «путь», «буду считать решённым» (D561). ' +
+      'Без номера версии, заголовков и названий полей. Только ОДИН вопрос: закончи этим: ' +
       '„{closing}". Затем present_choices — ',
     es:
-      'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, con ' +
-      'tus palabras, en frases normales: cómo buscarás y a quién preguntarás, por nombre — nunca ' +
-      'qué cuenta como resuelto (D561). Sin número de versión, títulos ni nombres de campos. Termina el ' +
-      'plan con esta pregunta: „{closing}". Luego present_choices — ',
+      'El plan está guardado pero aún no está en pantalla. Escríbelo en tu respuesta UNA vez, en ' +
+      'UNA frase humana, con tu voz, de asistente a asistente: con qué asistente hablarás y qué ' +
+      'resultado intentarás lograr (D663). Nunca muestres el texto que enviarás: la redacción es ' +
+      'cosa tuya. Nunca las palabras «señal», «camino», «lo daré por resuelto» (D561). Sin número ' +
+      'de versión, títulos ni nombres de campos. UNA sola pregunta: termina con esta: „{closing}". ' +
+      'Luego present_choices — ',
   };
   return (
     text[language].replace('{closing}', PLAN_CLOSING_QUESTION[language]) +
@@ -4292,7 +4301,7 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
       : `\nგეგმა ჯერ არ არის. პირველი ნაბიჯი: propose_task_plan-ით შესთავაზე — რა ჩაითვლება მოგვარებულად, რა გზებით მიდიხარ, ვის კითხავ (ტელეფონის id ძიების შედეგიდან), ვის არასდროს. მფლობელი ერთხელ ამტკიცებს და მერე გეგმის ფარგლებში დამოუკიდებლად მუშაობ.\n`;
   const askRule = plan
     ? `- ask_contact — გეგმაში დასახელებულ ადამიანს, გეგმის საქმეზე, ცალკე თანხმობის გარეშე უგზავნის: გააგზავნე და მფლობელს აცნობე რა და ვის გაუგზავნე. რამდენიმე ადამიანს ერთდროულად მისწერე, არა თითო-თითოდ (მცირე საქმეზე სამს, სერიოზულზე ხუთს). გეგმის გარეთ მყოფი ადამიანი, ახალი გზა ან ახალი მიზეზი = გეგმის ცვლილება: propose_task_plan-ით შესთავაზე და დაელოდე „კი"-ს — დანარჩენი გზები ამასობაში გრძელდება. „ვის არასდროს" სიაში მყოფს არაფერს წერ, ვერც ერთი გზით. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n`
-    : `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის. ერთსა და იმავე ადამიანს ამ მიზანზე რამდენჯერმე შეიძლება მისწერო: დაწყებული მიმოწერა გრძელდება, სანამ საქმე არ დასრულდება (დღეში რამდენიმე შეტყობინება ერთ ადამიანზე). სამაგიეროდ ყოველი ცალკე შეტყობინება ცალკე თანხმობას საჭიროებს — აჩვენე ადრესატი და გასაგზავნი ტექსტი სიტყვასიტყვით, დაელოდე „კი"-ს და მხოლოდ მერე გააგზავნე. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n`;
+    : `- ask_contact — წევრ კონტაქტს კითხვას უგზავნის. ერთსა და იმავე ადამიანს ამ მიზანზე რამდენჯერმე შეიძლება მისწერო: დაწყებული მიმოწერა გრძელდება, სანამ საქმე არ დასრულდება (დღეში რამდენიმე შეტყობინება ერთ ადამიანზე). სამაგიეროდ ყოველი ცალკე შეტყობინება ცალკე თანხმობას საჭიროებს — ერთი ადამიანური წინადადებით უთხარი, ვის ასისტენტს დაელაპარაკები და რაზე — გასაგზავნ ტექსტს არ აჩვენებ (D663) — დაელოდე „კი"-ს და მხოლოდ მერე გააგზავნე. არასოდეს დაპირდე გადაცემას, სანამ ნამდვილად არ გააგზავნე.\n`;
   return (
     `\n\n## აქტიური დავალება [შიდა: task_id=${task.id} — ინსტრუმენტებისთვის, პასუხის ტექსტში არასდროს ახსენო]\n` +
     `სათაური: ${task.title}\n` +

@@ -1,8 +1,9 @@
-import { planInSentences, shortRouteName, TaskPlan } from '../taskPlans.service';
+import { planInSentences, TaskPlan } from '../taskPlans.service';
 
 /**
- * Board #380 (Misho, 3 Oct): the plan the owner reads was too long to scan.
- * At most two routes, each cut to a short line, and at most three people.
+ * Board #380 (Misho, 3 Oct): the plan the owner reads was too long to scan —
+ * at most three people, the rest counted. D663 (the founder, 5 Oct): one human
+ * sentence about whose assistant Netai will talk to; no routes, no „paths".
  */
 const plan = (routes: string[], people: string[]): TaskPlan =>
   ({
@@ -16,35 +17,26 @@ describe('the plan text the owner reads', () => {
     [
       'Ask direct contacts who work in accounting firms across Tbilisi and Batumi',
       'Web search for licensed accountants',
-      'Second circle',
     ],
     ['მაკა', 'ნანა', 'დათო', 'გია', 'ლევანი'],
   );
 
-  it('names two routes, three people, and counts the rest (ka)', () => {
+  it('names three people’s assistants and counts the rest (ka), with no route', () => {
     expect(planInSentences(long, 'ka')).toBe(
-      'ვეძებ ამ გზებით — Ask direct contacts who work in accounting…, ' +
-        'Web search for licensed accountants და კიდევ ერთი. ' +
-        'ვკითხავ მაკას, ნანას, დათოს და კიდევ 2 ადამიანს.',
+      'მაკას, ნანას, დათოს და კიდევ 2 ადამიანის ასისტენტებს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.',
     );
   });
 
   it('does the same in English', () => {
-    expect(planInSentences(long, 'en')).toContain('and one more.');
-    expect(planInSentences(long, 'en')).toContain('and 2 more people.');
+    const text = planInSentences(long, 'en');
+    expect(text).toContain("and 2 more people's assistants");
+    expect(text).not.toContain('look through');
   });
 
-  it('leaves a short plan exactly as it was', () => {
-    expect(planInSentences(plan(['Web search'], ['მაკა']), 'ka')).toBe(
-      'ვეძებ ამ გზებით — Web search. ვკითხავ მაკას.',
+  it('speaks of one assistant for one person (D663)', () => {
+    expect(planInSentences(plan(['Web search'], ['ლიკა']), 'ka')).toBe(
+      'ლიკას ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.',
     );
-  });
-
-  it('cuts a long route name at a whole word', () => {
-    expect(shortRouteName('Ask direct contacts who work in accounting firms across Tbilisi')).toBe(
-      'Ask direct contacts who work in accounting…',
-    );
-    expect(shortRouteName('Second circle')).toBe('Second circle');
   });
 
   it('is shorter than the 475-character test plan the row measured', () => {
