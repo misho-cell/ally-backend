@@ -4840,7 +4840,23 @@ function stemOf(word: string): string {
 }
 
 /** Whether the reply names one of them: their first name, allowing a case ending. */
+/**
+ * #1487 (L23, 39331): the reply named a member only to say she is not the
+ * notary the web found — „ის სულ სხვა ადამიანია … ნაწილობრივი დამთხვევაა" —
+ * and that counted as offering her, so the members note never fired. A
+ * sentence that sets the person aside as a namesake offers nobody.
+ */
+const NAMESAKE_RE =
+  /(სხვა ადამიანი|სხვა პიროვნება|ნაწილობრივი დამთხვევა|სეხნია|namesake|different person|someone else|partial match|другой человек|тёзка|тезка)/iu;
+
 export function replyOffersAMember(reply: string, names: readonly string[]): boolean {
+  return reply
+    .split(/(?<=[.!?…])\s+|\n+/u)
+    .filter((sentence) => !NAMESAKE_RE.test(sentence))
+    .some((sentence) => sentenceOffersAMember(sentence, names));
+}
+
+function sentenceOffersAMember(reply: string, names: readonly string[]): boolean {
   const words = reply.toLowerCase().split(/[^\p{L}]+/u);
   const original = reply.split(/[^\p{L}]+/u);
   return names.some((name) => {

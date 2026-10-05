@@ -53,3 +53,18 @@ describe('the guard', () => {
     expect(set.slice(0, 400)).toContain('MEMBERS_SKIPPED_NUDGE,');
   });
 });
+
+/** #1487 (39331): a member named only as a namesake of a web result was not offered. */
+describe('a member set aside as a namesake', () => {
+  it('is not counted as offered', () => {
+    const reply =
+      'ერთადერთი დამთხვევა თამარ ხუციშვილია, შენი კონტაქტი, მაგრამ ეს სახელის მხოლოდ ნაწილობრივი ' +
+      'დამთხვევაა. ის სულ სხვა ადამიანია, არა ნოტარიუსი.';
+    expect(replyOffersAMember(reply, ['თამარ ხუციშვილი'])).toBe(false);
+  });
+
+  it('is counted when another sentence offers her', () => {
+    const reply = 'ის სულ სხვა ადამიანია. თამარ ხუციშვილს შეიძლება ვკითხოთ, ნოტარიუსს თუ იცნობს.';
+    expect(replyOffersAMember(reply, ['თამარ ხუციშვილი'])).toBe(true);
+  });
+});
