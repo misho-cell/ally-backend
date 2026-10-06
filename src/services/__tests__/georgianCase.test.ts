@@ -11,6 +11,13 @@ describe('geoName', () => {
     ['გიორგი ბერიძე', 'gen', 'გიორგი ბერიძის'],
     ['შალვა', 'erg', 'შალვამ'],
     ['მიშო', 'gen', 'მიშოს'],
+    // #1750 (tester 40624): a given name whose -ი is its stem keeps it.
+    ['გიორგი', 'dat', 'გიორგის'],
+    ['გიორგი', 'gen', 'გიორგის'],
+    ['გიორგი', 'erg', 'გიორგიმ'],
+    ['გიორგი', 'on', 'გიორგიზე'],
+    ['ირაკლი', 'dat', 'ირაკლის'],
+    ['ლევანი', 'dat', 'ლევანს'],
   ] as const)('%s + %s → %s', (name, c, expected) => {
     expect(geoName(name, c)).toBe(expected);
   });

@@ -149,6 +149,7 @@ import {
   noteDeclineIfButtonPressed,
 } from './taskAsks.service';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+import { geoName } from './georgianCase';
 import { SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
@@ -4064,7 +4065,7 @@ function buildPendingRequestsSection(
       // introducing them to themself.
       const ask = r.direct
         ? `${who}-ს ამ მომხმარებლის (ე.ი. შენი მფლობელის) გაცნობა უნდა — მფლობელი თავად წყვეტს.`
-        : `${who} ითხოვს, მფლობელმა გააცნოს ${r.target_name}-ს.`;
+        : `${who} ითხოვს, მფლობელმა გააცნოს ${geoName(r.target_name, 'dat')}.`;
       return `- მოთხოვნა: ${ask}${msg} [შიდა: request_id=${r.id} — მხოლოდ respond_to_introduction-ისთვის, პასუხის ტექსტში არასდროს ახსენო]`;
     })
     .join('\n');

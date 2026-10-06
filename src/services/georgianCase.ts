@@ -8,9 +8,39 @@ export type GeoCase = 'gen' | 'erg' | 'dat' | 'on';
 
 const HYPHEN_SUFFIX: Record<GeoCase, string> = { gen: '-ის', erg: '-მ', dat: '-ს', on: '-ზე' };
 
+/**
+ * #1750 (tester 40624, 40921): the go-between read „გააცნო გიორგს" and the
+ * owner „გიორგზე". A surname drops its final -ი (წიკლაური → წიკლაურს), and so
+ * does a given name whose -ი is only the nominative ending (ლევანი → ლევანს);
+ * but in these given names the -ი is the stem itself, and it stays:
+ * გიორგი → გიორგის, გიორგიმ, გიორგიზე.
+ */
+const VOWEL_STEM_I_NAMES: ReadonlySet<string> = new Set([
+  'გიორგი',
+  'ირაკლი',
+  'გოგი',
+  'ანი',
+  'ქეთი',
+  'ნათი',
+  'ნატი',
+  'თაკი',
+  'მაკი',
+  'ლიკი',
+  'სოფი',
+  'ეკი',
+  'ნინი',
+  'მარი',
+  'ბექი',
+]);
+
+function declineVowelStem(word: string, c: GeoCase): string {
+  return c === 'gen' || c === 'dat' ? word + 'ს' : c === 'erg' ? word + 'მ' : word + 'ზე';
+}
+
 function declineLastWord(word: string, c: GeoCase): string | null {
   const last = word.slice(-1);
   const stem = word.slice(0, -1);
+  if (VOWEL_STEM_I_NAMES.has(word)) return declineVowelStem(word, c);
   switch (last) {
     case 'ე': // კახიძე → კახიძის, კახიძემ, კახიძეს, კახიძეზე
       return c === 'gen'
@@ -29,22 +59,9 @@ function declineLastWord(word: string, c: GeoCase): string | null {
             ? stem + 'ს'
             : stem + 'ზე';
     case 'ა': // შალვა → შალვას, შალვამ, შალვას, შალვაზე
-      return c === 'gen'
-        ? word + 'ს'
-        : c === 'erg'
-          ? word + 'მ'
-          : c === 'dat'
-            ? word + 'ს'
-            : word + 'ზე';
     case 'ო':
     case 'უ': // მიშო → მიშოს, მიშომ, მიშოს, მიშოზე
-      return c === 'gen'
-        ? word + 'ს'
-        : c === 'erg'
-          ? word + 'მ'
-          : c === 'dat'
-            ? word + 'ს'
-            : word + 'ზე';
+      return declineVowelStem(word, c);
     default:
       return null;
   }
