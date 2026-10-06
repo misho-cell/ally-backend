@@ -11,7 +11,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { saveThreadMessage, userLanguage } from '../threads.service';
-import { answerAskTapAtOnce } from '../taskAsks.service';
+import { answerAskTapAtOnce, setLaterDays } from '../taskAsks.service';
 import { buildIncomingAskSection } from '../chat.service';
 import {
   allLaterChoices,
@@ -163,6 +163,45 @@ describe('the asker is told at once, once', () => {
 
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+/** #1981 (tester 42210): the reader's own pick corrects the day the asker reads. */
+describe('the day the reader picks reaches the asker', () => {
+  const row = (before: string | null, until: string): unknown => ({
+    from_user_id: ASKER,
+    task_thread_id: GOAL_THREAD,
+    reader_name: 'Nino',
+    before: before === null ? null : new Date(before),
+    later_until: new Date(until),
+  });
+
+  it('writes the new day when it differs from the one she was told', async () => {
+    claims([row('2026-10-09T05:30:00Z', '2026-10-07T05:30:00Z')]);
+
+    await setLaterDays(ASK_THREAD, 1);
+
+    expect(mockSave).toHaveBeenCalledWith(
+      GOAL_THREAD,
+      ASKER,
+      'assistant',
+      'Nino: 7 ოქტომბრამდე (ოთხშაბათი)',
+    );
+  });
+
+  it('writes nothing when the day did not change', async () => {
+    claims([row('2026-10-09T05:30:00Z', '2026-10-09T05:30:00Z')]);
+
+    await setLaterDays(ASK_THREAD, 3);
+
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing when no open ask is on the thread', async () => {
+    claims([]);
+
+    expect(await setLaterDays(ASK_THREAD, 1)).toBeNull();
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });
 

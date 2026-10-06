@@ -3612,16 +3612,48 @@ export async function answerAskTapAtOnce(threadId: number, message: string): Pro
  * null when no open ask is on the thread.
  */
 export async function setLaterDays(threadId: number, days: number): Promise<Date | null> {
-  const result = await query<{ later_until: Date }>(
-    `UPDATE task_asks ta
+  const result = await query<ClaimedTap & { readonly before: Date | null }>(
+    `WITH prev AS (SELECT id, later_until AS before FROM task_asks WHERE id = ${LIVE_ASK_ON_THREAD})
+     UPDATE task_asks ta
         SET later_at = COALESCE(later_at, NOW()), reminded_at = NULL,
             later_until = ${LATER_UNTIL_SQL('$2')}
-      WHERE ta.id = ${LIVE_ASK_ON_THREAD}
-      RETURNING later_until`,
+       FROM prev
+      WHERE ta.id = prev.id
+      RETURNING prev.before, ${CLAIMED_TAP_COLUMNS}`,
     [threadId, days],
     ASK_QUERY_TIMEOUT_MS,
   );
-  return result.rows[0] ? new Date(result.rows[0].later_until) : null;
+  const row = result.rows[0];
+  if (!row?.later_until) return null;
+  const until = new Date(row.later_until);
+  await tellAskerTheNewDay(row, until);
+  return until;
+}
+
+/**
+ * #1981 (tester 42210): the asker's line was written at the tap with the
+ * default day, and the reader's own pick never corrected it — she read Friday
+ * while he had said Tomorrow. When the day changes, she gets the day he chose.
+ */
+async function tellAskerTheNewDay(
+  row: ClaimedTap & { readonly before: Date | null },
+  until: Date,
+): Promise<void> {
+  if (row.task_thread_id === null) return;
+  if (row.before !== null && new Date(row.before).getTime() === until.getTime()) return;
+  try {
+    const language = await userLanguage(String(row.from_user_id));
+    const readerName = row.reader_name?.trim() || unknownSenderName(language);
+    await saveThreadMessage(
+      row.task_thread_id,
+      row.from_user_id,
+      'assistant',
+      ownerAskLine(readerName, { status: 'sent', later_until: until }, AskState.Later, language),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[ask-later] could not tell the asker the new day:', (err as Error).message);
+  }
 }
 
 /** When the open ask on this thread comes back, if it is held by a „later". */
