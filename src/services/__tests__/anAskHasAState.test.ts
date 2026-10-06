@@ -77,7 +77,13 @@ describe('the owner’s line', () => {
     expect(ownerAskLine('Zurab', ask, AskState.Later, 'en')).toBe(
       'Zurab: until Thursday 8 October',
     );
-    expect(ownerAskLine('ზურაბი', ask, AskState.Later, 'ka')).toContain('ხუთშაბათი');
+    // The tester's 41946: the month is declined, not suffixed.
+    expect(ownerAskLine('ზურაბი', ask, AskState.Later, 'ka')).toBe(
+      'ზურაბი: 8 ოქტომბრამდე (ხუთშაბათი)',
+    );
+    expect(
+      ownerAskLine('გელა', { status: 'held', held_until: THURSDAY }, AskState.Held, 'ka'),
+    ).toBe('გელა: 8 ოქტომბერს (ხუთშაბათი) მიიღებს კითხვას');
   });
 
   it('ends the goal reply with one line per OPEN ask, the newest ask per person deciding', () => {

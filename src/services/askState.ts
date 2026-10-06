@@ -71,10 +71,10 @@ type LineMaker = (name: string, date: string) => string;
 
 const OWNER_LINES: Readonly<Record<RunLanguage, Readonly<Record<AskState, LineMaker>>>> = {
   ka: {
-    [AskState.Held]: (n, d) => `${n}: ${d}-ს მიიღებს კითხვას`,
+    [AskState.Held]: (n, d) => `${n}: ${d} მიიღებს კითხვას`,
     [AskState.Sent]: (n) => `${n}: კითხვა მიუვიდა, პასუხს ველოდები`,
     [AskState.Seen]: (n) => `${n}: ნახა, პასუხს ველოდები`,
-    [AskState.Later]: (n, d) => `${n}: ${d}-მდე`,
+    [AskState.Later]: (n, d) => `${n}: ${d}`,
     [AskState.Answered]: (n) => `${n}: უპასუხა`,
     [AskState.Declined]: (n) => `${n}: მის სფეროში არ არის`,
     [AskState.Expired]: (n) => `${n}: ორი კვირა არ უპასუხია`,
@@ -119,9 +119,71 @@ const DATE_LOCALES: Readonly<Record<RunLanguage, string>> = {
   es: 'es-ES',
 };
 
-function dayOf(value: string | Date | null | undefined, language: RunLanguage): string {
+/**
+ * The tester's 41946: „9 ოქტომბერი-მდე" is a suffix glued to a nominative.
+ * Georgian declines the month itself — „9 ოქტომბრამდე" (until), „9 ოქტომბერს"
+ * (on) — so the day is built from the parts, not from the locale's string.
+ */
+const KA_MONTH_UNTIL = [
+  'იანვრამდე',
+  'თებერვლამდე',
+  'მარტამდე',
+  'აპრილამდე',
+  'მაისამდე',
+  'ივნისამდე',
+  'ივლისამდე',
+  'აგვისტომდე',
+  'სექტემბრამდე',
+  'ოქტომბრამდე',
+  'ნოემბრამდე',
+  'დეკემბრამდე',
+] as const;
+const KA_MONTH_ON = [
+  'იანვარს',
+  'თებერვალს',
+  'მარტს',
+  'აპრილს',
+  'მაისს',
+  'ივნისს',
+  'ივლისს',
+  'აგვისტოს',
+  'სექტემბერს',
+  'ოქტომბერს',
+  'ნოემბერს',
+  'დეკემბერს',
+] as const;
+const KA_WEEKDAYS = [
+  'კვირა',
+  'ორშაბათი',
+  'სამშაბათი',
+  'ოთხშაბათი',
+  'ხუთშაბათი',
+  'პარასკევი',
+  'შაბათი',
+];
+
+function tbilisiParts(ms: number): { day: number; month: number; weekday: number } {
+  const local = new Date(
+    new Date(ms).toLocaleString('en-US', { timeZone: DEFAULT_PUSH_TIME_ZONE }),
+  );
+  return { day: local.getDate(), month: local.getMonth(), weekday: local.getDay() };
+}
+
+/** „9 ოქტომბრამდე (პარასკევი)" for until, „8 ოქტომბერს (ხუთშაბათი)" for on. */
+export function georgianDay(ms: number, sense: 'until' | 'on'): string {
+  const { day, month, weekday } = tbilisiParts(ms);
+  const monthWord = sense === 'until' ? KA_MONTH_UNTIL[month] : KA_MONTH_ON[month];
+  return `${day} ${monthWord} (${KA_WEEKDAYS[weekday]})`;
+}
+
+function dayOf(
+  value: string | Date | null | undefined,
+  language: RunLanguage,
+  sense: 'until' | 'on',
+): string {
   const ms = timeOf(value);
   if (ms === null) return '';
+  if (language === 'ka') return georgianDay(ms, sense);
   return new Date(ms).toLocaleDateString(DATE_LOCALES[language], {
     weekday: 'long',
     day: 'numeric',
@@ -139,9 +201,9 @@ export function ownerAskLine(
 ): string {
   const date =
     state === AskState.Held
-      ? dayOf(ask.held_until, language)
+      ? dayOf(ask.held_until, language, 'on')
       : state === AskState.Later
-        ? dayOf(ask.later_until, language)
+        ? dayOf(ask.later_until, language, 'until')
         : '';
   return OWNER_LINES[language][state](name, date);
 }
