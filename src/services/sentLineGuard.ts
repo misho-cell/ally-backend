@@ -67,18 +67,37 @@ const IN_PLACE_OF_A_REPEAT: Readonly<Record<SentSide, Readonly<Record<RunLanguag
   },
 };
 
+/**
+ * #1750 (tester 40789, conv 40496): the go-between typed her refusal, the
+ * server wrote its close, and the reply held only her own sentence, word for
+ * word, as if Netai had said it. A sentence of the reply that is the owner's
+ * own line from this turn says nothing new to them.
+ */
+const MIN_ECHO_LETTERS = 12;
+const NOT_A_LETTER_RE = /[^\p{L}\p{N}]+/gu;
+
+function letters(text: string): string {
+  return text.toLowerCase().replace(NOT_A_LETTER_RE, '');
+}
+
+function echoesTheOwner(sentence: string, ownersLine: string): boolean {
+  const said = letters(sentence);
+  return said.length >= MIN_ECHO_LETTERS && letters(ownersLine).includes(said);
+}
+
 /** The reply without the sentences that repeat a line the server already wrote. */
 export function withoutSentRestatement(
   reply: string,
   side: SentSide,
   language: RunLanguage,
+  ownersLine = '',
 ): string {
   const pieces = reply.trim().split(SENTENCE_END_RE);
   let rest = '';
   let dropped = false;
   for (let i = 0; i < pieces.length; i += 2) {
     const sentence = pieces[i] ?? '';
-    if (restatesTheServerLine(sentence, side)) {
+    if (restatesTheServerLine(sentence, side) || echoesTheOwner(sentence, ownersLine)) {
       dropped = true;
       continue;
     }

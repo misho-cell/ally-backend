@@ -65,3 +65,23 @@ describe('a restatement in other words', () => {
     expect(withoutSentRestatement(reply, SentSide.Asker, 'en')).toBe(reply);
   });
 });
+
+/** #1750 (tester 40789, conv 40496): her own refusal came back as Netai's reply. */
+describe('the owner’s own line, echoed after the close', () => {
+  const herLine = 'ვერა, გიორგი ახლა საზღვარგარეთაა და ერთი თვე არ იქნება';
+
+  it('is not shown back to her as the reply', () => {
+    expect(withoutSentRestatement(herLine, SentSide.Mediator, 'ka', herLine)).toBe(
+      'თუ კიდევ რამე დაგჭირდება, აქ ვარ.',
+    );
+    expect(withoutSentRestatement(`„${herLine}"`, SentSide.Mediator, 'ka', herLine)).toBe(
+      'თუ კიდევ რამე დაგჭირდება, აქ ვარ.',
+    );
+  });
+
+  it('keeps a short word and anything she did not say', () => {
+    expect(withoutSentRestatement('კარგი.', SentSide.Mediator, 'ka', 'კარგი')).toBe('კარგი.');
+    const reply = 'თუ ერთ თვეში დაბრუნდება, შეგიძლია მერე თავად შესთავაზო.';
+    expect(withoutSentRestatement(reply, SentSide.Mediator, 'ka', herLine)).toBe(reply);
+  });
+});

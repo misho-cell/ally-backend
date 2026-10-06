@@ -186,7 +186,11 @@ export function introOutcomeEvent(
     mediatorName === null
       ? NOTHING_BY_LANGUAGE
       : mediatorAnswered(mediatorName, targetName, accepted);
-  const shown = shownInGoalThread ? ALREADY_SHOWN : NOTHING_BY_LANGUAGE;
+  const shown = !shownInGoalThread
+    ? NOTHING_BY_LANGUAGE
+    : said.answer === null
+      ? ALREADY_SHOWN
+      : OUTCOME_SHOWN_NOT_THE_REASON;
   const meaning = said.answer === null ? NOTHING_BY_LANGUAGE : answerInOwnWords(said.answer);
   return {
     ka: who.ka + body.ka + shown.ka + meaning.ka,
@@ -248,6 +252,27 @@ const ALREADY_SHOWN: Readonly<Record<RunLanguage, string>> = {
     ' El propietario ya leyó esta respuesta en esta conversación: no la repitas ni repitas su ' +
     'pregunta. Si encontraste algo nuevo, dalo completo; si no, di en una frase qué haces ' +
     'después.',
+};
+
+/**
+ * #1750 (tester 40789, conv 40493): the line on screen says only yes or no —
+ * it never carries the reason. Told „already read, do not repeat", the run
+ * dropped „abroad for a month" with the rest. So when there is an answer, the
+ * note says which part the owner has seen and which part is theirs to hear.
+ */
+const OUTCOME_SHOWN_NOT_THE_REASON: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    ' მფლობელს ამ საუბარში უკვე ეწერა მხოლოდ ის, რომ თანხმობა ან უარი მოვიდა — ეს ნუ ' +
+    'გაიმეორე. ქვემოთ მოცემული მიზეზი ან პირობა, თუ არის, მას ჯერ არ წაუკითხავს: ის აუცილებლად უთხარი.',
+  en:
+    ' The owner has already read in this conversation only that the answer was yes or no — do ' +
+    'not repeat that. They have NOT read the reason or condition below, if there is one: always tell them it.',
+  ru:
+    ' Владелец уже прочитал в этом разговоре только то, что ответ — да или нет; это не ' +
+    'повторяй. Причину или условие ниже, если есть, он ещё не читал: обязательно скажи их.',
+  es:
+    ' El propietario ya leyó en esta conversación solo que la respuesta fue sí o no; no lo ' +
+    'repitas. NO ha leído el motivo o la condición de abajo, si los hay: díselos siempre.',
 };
 
 function introOutcomeBody(

@@ -14155,7 +14155,7 @@ export async function processChat(
   }
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
-    effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language);
+    effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language, userMessage);
   }
   // #1189 (Giorgi, 4 and 5 Oct): a wake that only re-set its reminder left a
   // bubble holding „•". A reply with no letter or digit in it says nothing; it is
