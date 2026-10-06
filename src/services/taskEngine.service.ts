@@ -99,6 +99,7 @@ import {
   THREAD_QUEUE_BUDGET_MS,
   THREAD_QUEUE_POLL_MS,
 } from '../config/runBudgets';
+import { isCliffhangerReply } from './replyGuards';
 
 const TICK_INTERVAL_MS = 60_000;
 const REMINDER_INTERVAL_MINUTES = 60;
@@ -1608,8 +1609,18 @@ const SEARCH_TOOL_NAMES: readonly string[] = [
   'web_search',
 ];
 
+/**
+ * #2116 (tester 43066, conv 41586): the owner's run opened the goal, its
+ * opening searches ran, and its only words were „ვეძებ შენს კონტაქტებში…" —
+ * an announcement, not findings. That counted as „searched and answered", so
+ * the plan turn was told the owner had read the findings and must not search;
+ * it wrote nothing, and the goal sat silent until the owner asked again. A
+ * reply that only says it is searching shows the owner nothing.
+ */
+const ANSWERS_READ_LIMIT = 10;
+
 export async function goalAlreadySearchedAndAnswered(taskId: number): Promise<boolean> {
-  const result = await query<{ done: boolean }>(
+  const result = await query<{ content: string }>(
     `WITH t AS (SELECT thread_id, created_at FROM tasks WHERE id = $1),
           searched AS (
             SELECT MAX(l.created_at) AS at
@@ -1618,15 +1629,19 @@ export async function goalAlreadySearchedAndAnswered(taskId: number): Promise<bo
                AND l.created_at >= t.created_at - interval '5 minutes'
                AND split_part(l.tool, ':', 1) = ANY($2::text[])
           )
-     SELECT EXISTS (
-       SELECT 1 FROM conversations c, t, searched s
-        WHERE c.thread_id = t.thread_id AND c.role = 'assistant' AND c.kind = 'message'
-          AND c.run_id IS NOT NULL AND TRIM(c.content) <> '' AND c.created_at > s.at
-     ) AS done`,
-    [taskId, SEARCH_TOOL_NAMES],
+     SELECT c.content
+       FROM conversations c, t, searched s
+      WHERE c.thread_id = t.thread_id AND c.role = 'assistant' AND c.kind = 'message'
+        AND c.run_id IS NOT NULL AND TRIM(c.content) <> '' AND c.created_at > s.at
+      ORDER BY c.created_at DESC
+      LIMIT $3`,
+    [taskId, SEARCH_TOOL_NAMES, ANSWERS_READ_LIMIT],
     OWNER_QUIET_QUERY_TIMEOUT_MS,
   );
-  return result.rows[0]?.done === true;
+  return result.rows.some(
+    (r) =>
+      typeof r.content === 'string' && r.content.trim() !== '' && !isCliffhangerReply(r.content),
+  );
 }
 
 /** The plan turn for a goal whose findings are already on the screen. */

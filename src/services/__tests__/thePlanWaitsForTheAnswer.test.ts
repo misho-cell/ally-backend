@@ -186,7 +186,12 @@ describe('the plan turn on a goal whose search is already answered', () => {
     mockQuery.mockImplementation(((sql: string) =>
       Promise.resolve(
         String(sql).includes('tool_call_log')
-          ? { rows: [{ done }], rowCount: 1 }
+          ? // #2116: the replies after the search; findings count, an announcement does not.
+            {
+              rows: done
+                ? [{ content: 'ბათუმში ორი სასტუმროს მენეჯერი იპოვე: ნინო და გიორგი.' }]
+                : [],
+            }
           : { rows: [{ waiting: false }], rowCount: 1 },
       )) as never);
   };
