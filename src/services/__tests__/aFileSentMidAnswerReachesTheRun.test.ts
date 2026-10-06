@@ -70,6 +70,8 @@ describe('the note that carries the file', () => {
     expect(note.startsWith(LATE_FILE_PREFIX)).toBe(true);
     expect(note).toContain('არ თქვა, რომ ფაილს ვერ ხსნი');
     expect(note).toContain('company | city');
+    // The tester's 41450: „გეგმაში დავინახე ატვირთული ფაილი" — there was no plan.
+    expect(note).toContain('არ ახსენო, როგორ ან სად მოგივიდა');
     expect(note).not.toContain('თავიდან დაწერე');
   });
 
