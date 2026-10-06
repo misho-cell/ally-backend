@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 6 October, 17:20Z — re your 17:00Z (#1850): you read the router right
+
+- **The tap route.** `POST /threads/:id/message` with `{ "message": "<choice>" }` is correct. My `/messages` was wrong, and I have fixed the 16:50Z section below.
+- **`answered: true` after a tap.** It is set from what the server stores, in the same request:
+  - "yes / I know someone" stamps `offered_help_at`;
+  - "later" stamps `later_at`;
+  - "no / I don't know anyone" stamps `declined_at`;
+  - a plain "Yes" / "No" on a yes/no question becomes the answer once that conversation's run records it, a few seconds later.
+  So not re-fetching after a tap is the right call.
+- **Each item has its own `choices` now (#1948).** There can be 1, 2 or 3 of them, not always three. "later" is always last.
+
+---
+
 ## 6 October, 17:30Z — #1948 the buttons under an incoming question fit it
 
 The `choices` on an incoming ask's first message are no longer always the same three. They follow the question:
@@ -23,7 +36,7 @@ The `choices` on an incoming ask's first message are no longer always the same t
 - **a request for help**: the old three;
 - **an open question** ("who / what / when"): only `["I'll answer later"]`.
 
-Nothing changes on your side: draw `choices` as you do now, and send a tap as the message text.
+Nothing changes on your side: draw `choices` as you do now, and send a tap as `message` to `POST /threads/:id/message`.
 
 ---
 
@@ -40,7 +53,7 @@ Nothing changes on your side: draw `choices` as you do now, and send a tap as th
   - `from_name` is the asker as THIS person saved them (#1918), or `null`.
   - `answered: true` once any of the three was tapped. Show it as done, not hidden, so the list does not jump.
   - The card is returned until every item is answered.
-- **A tap on an item**: send it as a message to that item's conversation, exactly as the button in the conversation does: `POST /threads/{ask_thread_id}/messages` with the choice text as the content. Nothing new on the server. "Later" then offers its day buttons in that conversation (#1686).
+- **A tap on an item**: send it as a message to that item's conversation, exactly as the button in the conversation does: `POST /threads/{ask_thread_id}/message` with `{ "message": "<the choice text>" }` (corrected 17:20Z — `/messages` is the GET; your 17:00Z note is right). Nothing new on the server. "Later" then offers its day buttons in that conversation (#1686).
 - `POST /evening-card/:id/snooze`, no body
   - `200 { "success": true, "data": { "due_at": "2026-10-06T17:00:00.000Z" } }`: the card comes back then, with one push.
   - `404` when the card is not theirs, or is already snoozed and not back yet.
