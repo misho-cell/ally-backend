@@ -150,7 +150,7 @@ import {
 } from './taskAsks.service';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
-import { SentSide, withoutSentRestatement } from './sentLineGuard';
+import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
   planInForce,
@@ -713,7 +713,9 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
     "is THEIRS, not ours, and it decides whether the other person's contact is handed over. " +
     'Offer three buttons with present_choices — „პირდაპირ დააკავშირე" / „ჩემი გავლით" / ' +
     '„არა, ამჯერად" — and pass their answer as `channel`. An accept with no `channel` is ' +
-    'refused and nothing is recorded.',
+    // #1783 (a): „გაცნობა ჩემი გავლით გავაგრძელოთ?" in Netai's voice read as „through Netai".
+    "refused and nothing is recorded. The labels are the user's own words; in YOUR question " +
+    'say „შენი გავლით" (through you), never „ჩემი გავლით".',
   input_schema: {
     type: 'object',
     properties: {
@@ -14155,11 +14157,14 @@ export async function processChat(
     effectiveFinal = withAnswerSentLine(withoutQuotedCopy(effectiveFinal), language);
   }
   const sentSide = runSentLineOnScreen.get(runId);
+  if (sentSide !== undefined && closeLineIsTheWholeAnswer(sentSide, userMessage)) {
+    effectiveFinal = '';
+  }
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
     const ownLines = [userMessage, ...(await ownersRecentLines(threadId))];
     effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language, ownLines);
   }
-  // #1750 (tester 40921): on the go-between's side the server's close is the whole answer.
+  // #1750 / #1783 (tester 40921, 41021): on the go-between's side the close is the answer.
   if (sentSide === SentSide.Mediator && effectiveFinal.trim() === '') {
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId} thread ${threadId}: the close line said it all — quiet`);

@@ -107,3 +107,15 @@ export function withoutSentRestatement(
   if (side === SentSide.Mediator) return '';
   return IN_PLACE_OF_A_REPEAT[language] ?? IN_PLACE_OF_A_REPEAT.ka;
 }
+
+/**
+ * #1783 (tester 41021): word lists lost twice — „დავთანხმდი" was caught, so the
+ * next run wrote „დავუდასტურე"; the filler went, so „უარი ვაცნობე" came. On the
+ * go-between's side the server's close says everything her answer did. The run
+ * speaks after it only when she asked something in the same turn.
+ */
+const ASKS_SOMETHING_RE = /[?？]/;
+
+export function closeLineIsTheWholeAnswer(side: SentSide, ownersMessage: string): boolean {
+  return side === SentSide.Mediator && !ASKS_SOMETHING_RE.test(ownersMessage);
+}

@@ -2,7 +2,7 @@
  * Plate v301 G5 (the tester's 992): „sent" reached both sides twice — the
  * server's line, then the model's restatement seconds later.
  */
-import { SentSide, withoutSentRestatement } from '../sentLineGuard';
+import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from '../sentLineGuard';
 
 describe('withoutSentRestatement', () => {
   it('drops the restatement and keeps what else the reply says', () => {
@@ -88,5 +88,23 @@ describe('the owner’s own line, echoed after the close', () => {
     expect(withoutSentRestatement('კარგი.', SentSide.Mediator, 'ka', ['კარგი'])).toBe('კარგი.');
     const reply = 'თუ ერთ თვეში დაბრუნდება, შეგიძლია მერე თავად შესთავაზო.';
     expect(withoutSentRestatement(reply, SentSide.Mediator, 'ka', [herLine])).toBe(reply);
+  });
+});
+
+/** #1783 (tester 41021): new words each run — „დავუდასტურე", „უარი ვაცნობე". */
+describe('closeLineIsTheWholeAnswer', () => {
+  it('silences the go-between run after the close, whatever words it chose', () => {
+    expect(closeLineIsTheWholeAnswer(SentSide.Mediator, 'ჩემი გავლით')).toBe(true);
+    expect(closeLineIsTheWholeAnswer(SentSide.Mediator, 'ვერა, გიორგი ახლა საზღვარგარეთაა')).toBe(
+      true,
+    );
+  });
+
+  it('lets the run answer a question she asked in the same turn', () => {
+    expect(closeLineIsTheWholeAnswer(SentSide.Mediator, 'კი. ვინ არის ლევანი?')).toBe(false);
+  });
+
+  it('never applies on the asker side', () => {
+    expect(closeLineIsTheWholeAnswer(SentSide.Asker, 'კარგი')).toBe(false);
   });
 });
