@@ -72,6 +72,46 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
 };
 
 /**
+ * #2014 (tester 42341): day one ran searches, called no send tool, and closed
+ * on „I've already reached out to the one person on the plan" — nothing had
+ * been sent. The server reads the asks table after day one; when the plan
+ * names people and nobody was written to, the run is asked ONCE more, plainly.
+ */
+export const DAY_ONE_NOT_SENT_EVENT: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'სერვერის შემოწმება: პირველი დღის გაშვებამ გეგმის არცერთ ადამიანს არ მისწერა — კითხვა არავისთან ' +
+    'არ გაგზავნილა, და წინა სტრიქონი, თითქოს მისწერე, სიმართლეს არ შეესაბამება. ახლავე გამოიძახე ' +
+    'კითხვის გაგზავნის ხელსაწყო გეგმის „ვის ვკითხავ" სიის პირველი 3 ადამიანისთვის, ვისაც შეიძლება ' +
+    'მიეწეროს. ვისაც ვერ მიეწერება, ერთი ხაზით თქვი რატომ. ბოლოს ერთი სტრიქონი: ვის მისწერე ახლა. ' +
+    'არასოდეს თქვა, რომ ვინმეს მისწერე, თუ ხელსაწყომ ის არ გაგზავნა.',
+  en:
+    'Server check: the day-one run wrote to nobody on the plan — no ask was sent, and the line ' +
+    'saying it was is not true. Call the ask tool now for the first 3 people on the plan’s "who I ' +
+    'will ask" list who can be asked. For anyone who cannot, say why in one line. End with one ' +
+    'line: whom you wrote to now. Never say you wrote to someone the tool did not send to.',
+  ru:
+    'Проверка сервера: в первый день никому из плана не написано — ни один вопрос не отправлен, и ' +
+    'строка о том, что написал, неверна. Сейчас вызови инструмент отправки вопроса для первых 3 ' +
+    'людей из списка «кого спрошу», кому можно написать. О тех, кому нельзя, скажи одной строкой ' +
+    'почему. В конце одна строка: кому написал сейчас. Никогда не говори, что написал тому, кому ' +
+    'инструмент не отправил.',
+  es:
+    'Comprobación del servidor: el día uno no escribió a nadie del plan — no se envió ninguna ' +
+    'pregunta, y la línea que dice lo contrario no es cierta. Llama ahora a la herramienta de ' +
+    'enviar pregunta para las 3 primeras personas de la lista «a quién preguntaré» a las que se ' +
+    'puede escribir. De quien no se pueda, di por qué en una línea. Termina con una línea: a quién ' +
+    'escribiste ahora. Nunca digas que escribiste a alguien a quien la herramienta no envió.',
+};
+
+/** What the owner reads when the second try also sent nothing: the earlier line was wrong. */
+export const DAY_ONE_NOTHING_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'შესწორება: ამ მიზნით ჯერ არავისთვის მიმიწერია — წინა სტრიქონი მცდარი იყო. შემდეგ შემოწმებაზე ისევ ვცდი.',
+  en: 'A correction: I have not written to anyone for this goal yet — the line before was wrong. I will try again at the next check.',
+  ru: 'Поправка: по этой цели я ещё никому не написал — предыдущая строка была неверной. Попробую снова при следующей проверке.',
+  es: 'Una corrección: todavía no he escrito a nadie para este objetivo — la línea anterior era incorrecta. Lo intentaré de nuevo en la próxima revisión.',
+};
+
+/**
  * Ticket 20 row 210 — the answer to an introduction, walked back to the goal
  * it was asked for.
  *

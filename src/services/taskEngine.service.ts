@@ -74,6 +74,8 @@ import { nextRenewalDay } from './renewalDay';
 import {
   DAY_ONE_EVENT,
   DAY_ONE_FIRST_PEOPLE,
+  DAY_ONE_NOT_SENT_EVENT,
+  DAY_ONE_NOTHING_SENT_LINE,
   INSTRUCTION_EVENT,
   PLAN_FROM_FINDINGS_EVENT,
   PLAN_PROPOSAL_EVENT,
@@ -1212,10 +1214,53 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
     async () => {
       await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
       await finishWake(taskId, DAY_ONE_WAKE);
+      await askAgainIfDayOneSentNothing(taskId);
     },
     delayMs,
     1,
     () => finishWake(taskId, DAY_ONE_WAKE),
+  );
+}
+
+/** True when the plan names people and day one wrote to none of them. */
+async function dayOneSentNothing(taskId: number): Promise<boolean> {
+  const verdict = await dayOneVerdict(taskId).catch(() => DayOneVerdict.AlreadyDone);
+  return verdict === DayOneVerdict.Start && (await goalOpen(taskId));
+}
+
+/**
+ * #2014 (tester 42341): a day one that wrote to nobody, and said it had. The
+ * run is asked once more, plainly; if that run sends nothing either, the
+ * owner reads a correction rather than the false line alone.
+ */
+async function askAgainIfDayOneSentNothing(taskId: number): Promise<void> {
+  if (!(await dayOneSentNothing(taskId))) return;
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[task-engine] task ${taskId}: day one wrote to nobody on the plan — asking once more`,
+  );
+  wakeWhenFree(
+    taskId,
+    DAY_ONE_NOT_SENT_EVENT,
+    () => dayOneSentNothing(taskId),
+    async () => {
+      if (await dayOneSentNothing(taskId)) await correctTheDayOneLine(taskId);
+    },
+    WAKE_RETRY_DELAY_MS,
+  );
+}
+
+async function correctTheDayOneLine(taskId: number): Promise<void> {
+  const task = await getTaskById(taskId);
+  if (!task?.thread_id) return;
+  const language = await threadLanguage(task.thread_id).catch(() => 'ka' as RunLanguage);
+  // eslint-disable-next-line no-console
+  console.warn(`[task-engine] task ${taskId}: the second try sent nothing either — owner told`);
+  await saveThreadMessage(
+    task.thread_id,
+    Number(task.user_id),
+    'assistant',
+    DAY_ONE_NOTHING_SENT_LINE[language],
   );
 }
 
