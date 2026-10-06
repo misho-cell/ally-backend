@@ -23,6 +23,7 @@ import {
 } from './requestThreadSide';
 import { askThreadStatusAfterRequest } from './sharedRequestThread.service';
 import { scrubText } from './privacyScrub';
+import { mediatorsLinesSinceAsked } from './introResponse';
 import { recordIntroOutcome } from './partH.service';
 import { armIntroDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
@@ -615,6 +616,9 @@ export interface RequestRow {
   requester_task_id: number | null;
   /** Row 210 reopened: the chat it was asked in, when there was no goal. */
   origin_thread_id: number | null;
+  /** #1750: where the go-between was asked, and when — their own lines since. */
+  mediator_thread_id: number | null;
+  created_at: Date | string | null;
 }
 
 async function loadRequestForMediator(
@@ -634,7 +638,7 @@ async function loadRequestForMediator(
   const result = await query<RequestRow>(
     `SELECT ir.id, ir.request_ref, ir.requester_user_id, ir.mediator_user_id,
             ir.target_name, ir.target_user_id, ir.target_phone, ir.message, ir.status,
-            ir.requester_task_id, ir.origin_thread_id
+            ir.requester_task_id, ir.origin_thread_id, ir.mediator_thread_id, ir.created_at
      FROM introduction_requests ir
      WHERE ${RESPONDER_COND(1)} AND ${byRef ? 'ir.request_ref = $2' : 'ir.id = $2'}
      LIMIT 1`,
@@ -1125,6 +1129,8 @@ async function wakeRequestersGoal(
   if (req.requester_task_id === null) return;
   try {
     const mediatorName = await answeringMediatorName(req);
+    const ownLines = await mediatorsLinesSinceAsked(req.mediator_thread_id, req.created_at);
+    const answer = ownLines ?? response?.trim() ?? '';
     const [{ startIntroOutcome }, { introOutcomeEvent }] = await Promise.all([
       import('./taskEngine.service'),
       import('./taskEngine.events'),
@@ -1138,7 +1144,7 @@ async function wakeRequestersGoal(
         mediatorName,
         shownInGoalThread,
         {
-          answer: response?.trim() ? scrubText(response.trim()) : null,
+          answer: answer === '' ? null : scrubText(answer),
         },
       ),
     );

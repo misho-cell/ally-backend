@@ -481,7 +481,7 @@ describe('every wire that quotes a person translates for the reader', () => {
   it('the outcome: the answer is never quoted, so nothing is translated for it', () => {
     const source = read('introduction.service.ts');
     expect(source).not.toContain("await relayedForReader(said, language, 'answer')");
-    expect(source).toContain('answer: response?.trim()');
+    expect(source).toContain("answer: answer === '' ? null : scrubText(answer)");
   });
 
   /**
