@@ -145,10 +145,11 @@ describe('resolveIntroductionRequest', () => {
       12,
       9,
       'assistant',
-      expect.stringContaining('უარი'),
+      expect.stringContaining('ვერ შეძლო'),
     );
     const requesterMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 12);
-    expect(requesterMsg?.[3]).toContain('ვერ დავეხმარები');
+    // #1717 (D647/D648): the refuser's own words never reach the requester.
+    expect(requesterMsg?.[3]).not.toContain('ვერ დავეხმარები');
     // Ticket 8 task 3: the RESPONDER's own thread gets a closing line too —
     // request 925's accepter got pure silence, just a status flip.
     const responderMsg = mockSaveThreadMessage.mock.calls.find((c) => c[0] === 11);

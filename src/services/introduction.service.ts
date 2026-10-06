@@ -706,6 +706,7 @@ export async function outcomeMessage(
     action === 'accept',
     req.mediator_user_id === null,
     relayed?.text ?? said,
+    action === 'accept' ? null : await answeringMediatorName(req).catch(() => null),
   );
 }
 

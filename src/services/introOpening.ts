@@ -503,9 +503,11 @@ export function introOutcomeLine(
   accepted: boolean,
   direct: boolean,
   response: string | null,
+  mediatorName: string | null = null,
 ): string {
   const quoted = (label: string): string => (response ? `\n\n${label} „${response}"` : '');
-  if (accepted) {
+  if (!accepted) return declineLine(language, targetName, direct, mediatorName);
+  {
     switch (language) {
       case 'en':
         return direct
@@ -525,23 +527,42 @@ export function introOutcomeLine(
           : `${geoName(targetName, 'on')} გაცნობის მოთხოვნა მიღებულია.${quoted('პასუხი:')}`;
     }
   }
+}
+
+/**
+ * #1717 (tester 40426, seat 16 post 1173): the refusal line quoted the
+ * refuser's typed words („პასუხი: „…“"), called her „შუამავალი" though the
+ * owner knows her by name, and ended „სხვა გზა მოვძებნოთ?" — which the goal's
+ * own run then answered. D647/D648: nobody's exact words go to another
+ * person. The line now names who said no and stops; what comes next is the
+ * run's to say.
+ */
+function declineLine(
+  language: RunLanguage,
+  targetName: string,
+  direct: boolean,
+  mediatorName: string | null,
+): string {
+  const who = direct ? null : mediatorName?.trim() || null;
   switch (language) {
     case 'en':
       return direct
-        ? `${targetName} has said no for now.${quoted('Their answer:')} Shall we find another way?`
-        : `The introduction to ${targetName} was declined for now — the mediator could not help.${quoted('The answer:')} Shall we find another way?`;
+        ? `${targetName} has said no to the introduction for now.`
+        : `${who ?? 'The person you asked'} could not make the introduction to ${targetName} this time.`;
     case 'ru':
       return direct
-        ? `${targetName} пока отказался.${quoted('Ответ:')} Поищем другой путь?`
-        : `По знакомству с ${targetName} пока отказ — посредник не смог помочь.${quoted('Ответ:')} Поищем другой путь?`;
+        ? `${targetName} пока отказался от знакомства.`
+        : `${who ?? 'Человек, которого ты попросил,'} в этот раз не смог познакомить тебя с ${targetName}.`;
     case 'es':
       return direct
-        ? `${targetName} ha dicho que no por ahora.${quoted('Su respuesta:')} ¿Buscamos otra vía?`
-        : `La presentación a ${targetName} ha sido rechazada por ahora — el intermediario no pudo ayudar.${quoted('La respuesta:')} ¿Buscamos otra vía?`;
+        ? `${targetName} ha dicho que no a la presentación por ahora.`
+        : `${who ?? 'La persona a la que pediste'} no pudo presentarte a ${targetName} esta vez.`;
     default:
       return direct
-        ? `${geoName(targetName, 'erg')} გაცნობაზე ამჯერად უარი თქვა.${quoted('პასუხი:')} სხვა გზა მოვძებნოთ?`
-        : `${geoName(targetName, 'on')} გაცნობის მოთხოვნაზე ამჯერად უარი მოვიდა — შუამავალმა ვერ დაგეხმარა.${quoted('პასუხი:')} სხვა გზა მოვძებნოთ?`;
+        ? `${geoName(targetName, 'erg')} გაცნობაზე ამჯერად უარი თქვა.`
+        : who === null
+          ? `${geoName(targetName, 'dat')} გაცნობა ამჯერად ვერ მოხერხდა.`
+          : `${geoName(who, 'erg')} ამჯერად ვერ შეძლო ${geoName(targetName, 'dat')} გაცნობა.`;
   }
 }
 

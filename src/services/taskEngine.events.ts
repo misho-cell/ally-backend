@@ -210,19 +210,19 @@ const NOTHING_BY_LANGUAGE: Readonly<Record<RunLanguage, string>> = {
 const ALREADY_SHOWN: Readonly<Record<RunLanguage, string>> = {
   ka:
     ' მფლობელს ეს პასუხი უკვე ეწერა ამ საუბარში — ხელახლა ნუ ეტყვი და იგივეს ნუ ჰკითხავ. ' +
-    'თქვი მხოლოდ, რას აკეთებ შემდეგ, ერთი წინადადებით; თუ შემდეგს მფლობელი წყვეტს, არაფერი დაწერო.',
+    'თუ რამე ახალი იპოვე, სრულად მიეცი; თუ არა — ერთი წინადადებით თქვი, რას აკეთებ შემდეგ.',
   en:
     ' The owner has already read this answer in this conversation — do not tell it again or ' +
-    'repeat its question. Say only what you do next, in one sentence; if the next step is the ' +
-    "owner's to choose, write nothing.",
+    'repeat it. If you found something new, give it in full; if not, say in one sentence what ' +
+    'you do next.',
   ru:
     ' Владелец уже прочитал этот ответ в этом разговоре — не повторяй его и не задавай тот же ' +
-    'вопрос. Скажи только, что делаешь дальше, одним предложением; если следующий шаг выбирает ' +
-    'владелец, ничего не пиши.',
+    'вопрос. Если нашёл что-то новое, дай это полностью; если нет — одним предложением скажи, ' +
+    'что делаешь дальше.',
   es:
     ' El propietario ya leyó esta respuesta en esta conversación: no la repitas ni repitas su ' +
-    'pregunta. Di solo qué haces después, en una frase; si el siguiente paso lo decide el ' +
-    'propietario, no escribas nada.',
+    'pregunta. Si encontraste algo nuevo, dalo completo; si no, di en una frase qué haces ' +
+    'después.',
 };
 
 function introOutcomeBody(

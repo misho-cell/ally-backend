@@ -426,7 +426,9 @@ describe('answering the request in the shared conversation', () => {
 
     const toGoal = mockSave.mock.calls.find((call) => call[0] === GOAL_THREAD);
     expect(toGoal?.[1]).toBe(REQUESTER);
-    expect(toGoal?.[3]).toContain('I do not know Nika well enough');
+    // #1717 (D647/D648): the outcome names who said no; their own words never travel.
+    expect(toGoal?.[3]).toContain('could not make the introduction to Nika');
+    expect(toGoal?.[3]).not.toContain('I do not know Nika well enough');
     expect(mockSetStatus.mock.calls.some((call) => call[1] === GOAL_THREAD)).toBe(false);
   });
 
