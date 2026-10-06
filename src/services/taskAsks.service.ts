@@ -65,7 +65,7 @@ import {
 import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
-import { LATER_DEFAULT_DAYS } from './askState';
+import { AskState, LATER_DEFAULT_DAYS, ownerAskLine } from './askState';
 import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 
@@ -3575,11 +3575,16 @@ export async function answerAskTapAtOnce(threadId: number, message: string): Pro
     if (claimed === null || claimed.task_thread_id === null) return;
     const language = await userLanguage(String(claimed.from_user_id));
     const readerName = claimed.reader_name?.trim() || unknownSenderName(language);
+    // The tester's 42114: the asker learns the day at the tap, not only at the next reply.
+    const dayLine =
+      tap === AskTap.Later && claimed.later_until
+        ? `\n${ownerAskLine(readerName, { status: 'sent', later_until: claimed.later_until }, AskState.Later, language)}`
+        : '';
     await saveThreadMessage(
       claimed.task_thread_id,
       claimed.from_user_id,
       'assistant',
-      askTapLineForAsker(tap, language, readerName),
+      askTapLineForAsker(tap, language, readerName) + dayLine,
     );
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -3621,6 +3626,8 @@ export async function laterUntilOnThread(threadId: number): Promise<Date | null>
 
 interface ClaimedTap {
   readonly from_user_id: number;
+  /** #1686: set by a later tap — the day the ask comes back. */
+  readonly later_until: Date | null;
   readonly task_thread_id: number | null;
   readonly reader_name: string | null;
 }
@@ -3630,7 +3637,7 @@ const LIVE_ASK_ON_THREAD = `(SELECT id FROM task_asks
                               WHERE ask_thread_id = $1 AND status = 'sent'
                               ORDER BY id DESC LIMIT 1)`;
 
-const CLAIMED_TAP_COLUMNS = `ta.from_user_id,
+const CLAIMED_TAP_COLUMNS = `ta.from_user_id, ta.later_until,
   (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
   (SELECT u.name FROM "User" u WHERE u.id = ta.to_user_id) AS reader_name`;
 

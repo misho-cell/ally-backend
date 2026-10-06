@@ -111,6 +111,26 @@ describe('the asker is told at once, once', () => {
     );
   });
 
+  it('names the day the ask comes back, at the tap (tester 42114)', async () => {
+    claims([
+      {
+        from_user_id: ASKER,
+        task_thread_id: GOAL_THREAD,
+        reader_name: 'Nino',
+        later_until: new Date('2026-10-09T05:30:00Z'),
+      },
+    ]);
+
+    await answerAskTapAtOnce(ASK_THREAD, askChoices('en')[2]);
+
+    expect(mockSave).toHaveBeenCalledWith(
+      GOAL_THREAD,
+      ASKER,
+      'assistant',
+      `${askTapLineForAsker(AskTap.Later, 'ka', 'Nino')}\nNino: 9 ოქტომბრამდე (პარასკევი)`,
+    );
+  });
+
   it('writes nothing when the tap was already recorded', async () => {
     claims([]);
 
