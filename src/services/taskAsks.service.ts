@@ -173,6 +173,8 @@ export function notSentThisTime(toName: string): string {
   return (
     `${toName}-სთვის ეს კითხვა ამჯერად არ გაიგზავნა. მფლობელს უთხარი მხოლოდ: „ამჯერად ვერ გავიდა". ` +
     `${toName}-ს ეს კითხვა არ უნახავს და არაფერი უპასუხია. ` +
+    // The tester's 42175: „want me to try again?" loops — a retry cannot go through.
+    `ხელახლა ცდას ნუ შესთავაზებ და ნურც დაჰპირდები — ${toName}-სთან ეს კითხვა ვერ გავა. ` +
     'შემდეგ სხვა ადამიანი შესთავაზე ან განაგრძე ძებნა.'
   );
 }

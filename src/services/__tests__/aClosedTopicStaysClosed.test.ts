@@ -96,6 +96,12 @@ describe('what the asker is told when a boundary stops the send', () => {
     expect(said).toContain('არ უნახავს');
   });
 
+  /** The tester's 42175: „I'll try again shortly" loops, since a retry cannot go through. */
+  it('offers someone else, never a retry', () => {
+    expect(said).toContain('ხელახლა ცდას ნუ შესთავაზებ');
+    expect(said).toContain('სხვა ადამიანი შესთავაზე');
+  });
+
   it('is the only thing a boundary refusal returns', () => {
     const src = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(src).toContain(
