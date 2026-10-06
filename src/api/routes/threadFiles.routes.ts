@@ -30,6 +30,7 @@ import { RunLanguage } from '../../services/runLanguage';
 import { emitThreadUpdated } from '../../services/sse.service';
 import { listWorkbook } from '../../services/listItems.service';
 import { getTaskById } from '../../services/taskStore.service';
+import { noteFileArrived } from '../../services/lateFiles';
 
 /**
  * Board #892 (the founder, 4 October): the owner gives Netai a file.
@@ -106,13 +107,10 @@ async function keepAndAnswer(
 ): Promise<Record<string, unknown>> {
   const stored = await saveThreadFile(up.threadId, up.owner, up.filename, up.byteSize, file);
   await saveThreadMessage(up.threadId, up.owner, 'user', `${ATTACHMENT_MARK} ${up.filename}`);
-  await saveThreadMessage(
-    up.threadId,
-    up.owner,
-    'user',
-    fileEventText(stored.id, up.filename, file),
-    'event',
-  );
+  const eventText = fileEventText(stored.id, up.filename, file);
+  await saveThreadMessage(up.threadId, up.owner, 'user', eventText, 'event');
+  // #1921: a run already answering in this conversation takes the file too.
+  noteFileArrived(up.threadId, stored.id, eventText);
   const title = await nameUntitledThreadFromFile(up.threadId, up.filename).catch(() => null);
   if (title !== null) emitThreadUpdated(String(up.owner), { id: up.threadId, title });
   const summary = listFileSummary(file, up.language);

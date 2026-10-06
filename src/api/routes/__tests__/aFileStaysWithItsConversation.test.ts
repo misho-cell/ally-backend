@@ -38,6 +38,10 @@ describe('the upload route', () => {
   it('only answers for a conversation the caller owns', () => {
     expect(routes).toContain('if ((await getThread(threadId, userId)) === null) {');
   });
+
+  it('hands the file to a run already answering in the conversation (#1921)', () => {
+    expect(routes).toContain('noteFileArrived(up.threadId, stored.id, eventText);');
+  });
 });
 
 describe('the file name', () => {

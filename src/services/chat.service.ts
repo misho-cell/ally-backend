@@ -315,6 +315,8 @@ import {
   asksAboutOwnPeople,
   withoutQuotedCopy,
   onlyTheMembersPart,
+  LATE_FILE_PREFIX,
+  lateFileNudge,
   LIST_ROWS_PREFIX,
   listRowsNudge,
   rowsNotNamed,
@@ -331,6 +333,7 @@ import {
   withoutOpeningSolvedWhen,
   withoutClosingApprovalAsk,
 } from './replyGuards';
+import { lateFilesFor } from './lateFiles';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
   RUN_SOFT_BUDGET_MS,
@@ -11558,6 +11561,8 @@ async function runToolLoop(
 }> {
   const pending: PendingMessage[] = [];
   const startedAt = Date.now();
+  // #1921: a file attached while this run answers reaches it (lateFiles.ts).
+  const lateFiles = lateFilesFor(threadId, messages);
   const ctx: RunContext = { userId, runId, threadId };
   // Stream each turn's text to the UI token-by-token (append-only, phone-safe).
   // The streamer is PER TURN: if a turn ends wanting tools, its text was
@@ -11864,10 +11869,14 @@ async function runToolLoop(
        * things. One turn, two kinds of block, no ambiguity.
        */
       const lateFindings = lateSearch?.takeIfReady() ?? null;
-      const userTurn: Anthropic.ContentBlockParam[] =
-        lateFindings === null
-          ? toolResults
-          : [...toolResults, { type: 'text', text: lateFindings }];
+      const fileEvents = lateFiles.take();
+      const lateBlocks: Anthropic.ContentBlockParam[] = [
+        ...(lateFindings === null ? [] : [{ type: 'text' as const, text: lateFindings }]),
+        ...(fileEvents.length === 0
+          ? []
+          : [{ type: 'text' as const, text: lateFileNudge(framedEvents(fileEvents), false) }]),
+      ];
+      const userTurn: Anthropic.ContentBlockParam[] = [...toolResults, ...lateBlocks];
 
       pending.push({ role: 'assistant', content: response.content });
       pending.push({ role: 'user', content: userTurn });
@@ -12323,31 +12332,37 @@ async function runToolLoop(
     !ownerAbsent && !promoted && !answeringALaterTap && listLabels.length <= MAX_LIST_ROWS_CHECKED
       ? rowsNotNamed(finalText, listLabels)
       : [];
-  const guardNudge = claimedASendThatDidNotHappen
-    ? PASSED_ON_NUDGE
-    : helperQuestionUnsent
-      ? HELPER_QUESTION_NUDGE
-      : answeredWithoutSearching
-        ? SEARCH_FIRST_NUDGE
-        : // The tester's 1150 (38316): a promise and the owner's members together —
-          // the members note leads to the plan with them, which keeps the promise too.
-          membersSkipped
-          ? MEMBERS_SKIPPED_NUDGE
-          : bookMembersSkipped.length > 0
-            ? membersInTheBookNudge(bookMembersSkipped)
-            : promisedWithoutActing
-              ? promiseGap === PromiseGap.Goal
-                ? PROMISED_ACTION_NO_GOAL_NUDGE
-                : PROMISED_ACTION_NUDGE
-              : rowsMissing.length > 0
-                ? listRowsNudge(rowsMissing)
-                : findsHeldBack
-                  ? FINDS_FIRST_NUDGE
-                  : CLIFFHANGER_NUDGE;
+  // #1921: the file came after the run read its history — the answer is given again with it.
+  const lateFileEvents = !promoted && !answeringALaterTap ? lateFiles.take() : [];
+  const guardNudge =
+    lateFileEvents.length > 0
+      ? lateFileNudge(framedEvents(lateFileEvents), true)
+      : claimedASendThatDidNotHappen
+        ? PASSED_ON_NUDGE
+        : helperQuestionUnsent
+          ? HELPER_QUESTION_NUDGE
+          : answeredWithoutSearching
+            ? SEARCH_FIRST_NUDGE
+            : // The tester's 1150 (38316): a promise and the owner's members together —
+              // the members note leads to the plan with them, which keeps the promise too.
+              membersSkipped
+              ? MEMBERS_SKIPPED_NUDGE
+              : bookMembersSkipped.length > 0
+                ? membersInTheBookNudge(bookMembersSkipped)
+                : promisedWithoutActing
+                  ? promiseGap === PromiseGap.Goal
+                    ? PROMISED_ACTION_NO_GOAL_NUDGE
+                    : PROMISED_ACTION_NUDGE
+                  : rowsMissing.length > 0
+                    ? listRowsNudge(rowsMissing)
+                    : findsHeldBack
+                      ? FINDS_FIRST_NUDGE
+                      : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
-    (claimedASendThatDidNotHappen ||
+    (lateFileEvents.length > 0 ||
+      claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
       answeredWithoutSearching ||
       promisedWithoutActing ||
@@ -12577,8 +12592,14 @@ export function isModelOnlyNudge(content: string): boolean {
   return (
     MODEL_ONLY_NUDGES.has(content) ||
     content.startsWith(MEMBERS_IN_THE_BOOK_PREFIX) ||
-    content.startsWith(LIST_ROWS_PREFIX)
+    content.startsWith(LIST_ROWS_PREFIX) ||
+    content.startsWith(LATE_FILE_PREFIX)
   );
+}
+
+/** #1921: file events framed as server turns, as the history loader frames them. */
+function framedEvents(events: readonly string[]): string[] {
+  return events.map((e) => String(frameServerTurn(e)));
 }
 
 /**

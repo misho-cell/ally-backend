@@ -123,7 +123,7 @@ describe('a promise and skipped members in one reply', () => {
   });
 
   it('asks about the members first', () => {
-    const chain = chat.slice(chat.indexOf('const guardNudge = claimedASendThatDidNotHappen'));
+    const chain = chat.slice(chat.indexOf('const guardNudge ='));
     expect(chain.indexOf('? membersInTheBookNudge(bookMembersSkipped)')).toBeLessThan(
       chain.indexOf(': PROMISED_ACTION_NUDGE'),
     );

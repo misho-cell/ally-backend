@@ -386,6 +386,24 @@ export function rowsNotNamed(reply: string, labels: readonly string[]): string[]
   });
 }
 
+/**
+ * #1921: a file the owner attached while this run was answering (lateFiles.ts).
+ * The events are server turns already framed by the caller.
+ */
+export const LATE_FILE_PREFIX =
+  '(სისტემური შენიშვნა: სანამ პასუხზე მუშაობდი, მფლობელმა ფაილი ატვირთა. ';
+
+export function lateFileNudge(framedEvents: readonly string[], afterAnswer: boolean): string {
+  return (
+    `${LATE_FILE_PREFIX}მისი შინაარსი ქვემოთაა და ახლა შენს ხელშია — არ თქვა, რომ ფაილს ვერ ხსნი ` +
+    'ან ვერ ხედავ. მფლობელის სიტყვები ამ ფაილზეა: მათ ფაილის გათვალისწინებით უპასუხე.' +
+    (afterAnswer
+      ? ' მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.'
+      : '') +
+    `)\n${framedEvents.join('\n')}`
+  );
+}
+
 export const LIST_ROWS_PREFIX = '(სისტემური შენიშვნა: სიის ყველა რიგი არ ახსენე — აკლია: ';
 
 export function listRowsNudge(missing: readonly string[]): string {
