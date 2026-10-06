@@ -23,6 +23,9 @@ import { updateTask } from './taskStore.service';
  */
 
 const QUERY_TIMEOUT_MS = 8_000;
+
+/** A "UserPhone" row whose account is a real person, not a fictional test seat. */
+export const NOT_A_TEST_SEAT = `NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = "UserPhone"."userId")`;
 const MAX_NAME = 80;
 const MAX_TAG = 40;
 
@@ -90,9 +93,13 @@ export async function addSeatContact(
    * A made-up outsider is by definition NOBODY. A number with an account
    * behind it is somebody, and putting it in a seat's phonebook would be
    * putting a person there — inside the fiction range or not.
+   *
+   * #1918 (tester 42142): EXCEPT ANOTHER TEST SEAT, which is nobody too. The
+   * ask lines name a REGISTERED person by the asker's own label, and without
+   * one seat holding another under a label that half could not be tested.
    */
   const registered = await query<{ id: number }>(
-    `SELECT id FROM "UserPhone" WHERE phone = $1 LIMIT 1`,
+    `SELECT id FROM "UserPhone" WHERE phone = $1 AND ${NOT_A_TEST_SEAT} LIMIT 1`,
     [phone],
     QUERY_TIMEOUT_MS,
   );

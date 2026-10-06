@@ -16,13 +16,14 @@ const SEAT = 172990;
 function theBase(opts: { seat?: boolean; registered?: boolean } = {}): void {
   mockQuery.mockImplementation((sql: string) => {
     const text = String(sql);
+    // The registration read names test_seats too (#1918), so it is matched first.
+    if (text.includes('FROM "UserPhone"'))
+      return Promise.resolve({ rows: opts.registered ? [{ id: 1 }] : [], rowCount: 0 } as never);
     if (text.includes('FROM test_seats'))
       return Promise.resolve({
         rows: opts.seat === false ? [] : [{ user_id: SEAT }],
         rowCount: 1,
       } as never);
-    if (text.includes('FROM "UserPhone"'))
-      return Promise.resolve({ rows: opts.registered ? [{ id: 1 }] : [], rowCount: 0 } as never);
     return Promise.resolve({ rows: [], rowCount: 0 } as never);
   });
 }

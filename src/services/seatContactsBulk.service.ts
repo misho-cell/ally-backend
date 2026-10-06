@@ -1,6 +1,6 @@
 import { query, withTransaction } from '../db/postgres/client';
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
-import { ContactRefusal, isReadableTag } from './seatContacts.service';
+import { ContactRefusal, isReadableTag, NOT_A_TEST_SEAT } from './seatContacts.service';
 
 /**
  * §60 IN BULK — ROW 321 ON A SEAT, WITHOUT WAITING FOR GIORGI.
@@ -71,7 +71,8 @@ async function isTestSeat(seatUserId: number): Promise<boolean> {
 
 async function anyRegistered(phones: readonly string[]): Promise<boolean> {
   const registered = await query<{ id: number }>(
-    `SELECT id FROM "UserPhone" WHERE phone = ANY($1::varchar[]) LIMIT 1`,
+    // #1918: another test seat is nobody too (see seatContacts.service).
+    `SELECT id FROM "UserPhone" WHERE phone = ANY($1::varchar[]) AND ${NOT_A_TEST_SEAT} LIMIT 1`,
     [phones],
     QUERY_TIMEOUT_MS,
   );

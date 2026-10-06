@@ -73,6 +73,19 @@ describe('the number has to be nobody’s', () => {
     expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 
+  /** #1918 (tester 42142): another test seat is nobody either, so it may be labelled. */
+  it('counts only a real account as somebody, never another test seat', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 172101 }]) as never)
+      .mockResolvedValueOnce(rows([]) as never);
+
+    await addSeatContact(172101, '+12025550150', 'Nino 🌸', 'arci');
+
+    const registeredRead = String(mockQuery.mock.calls[1][0]);
+    expect(registeredRead).toContain('FROM "UserPhone"');
+    expect(registeredRead).toContain('NOT EXISTS (SELECT 1 FROM test_seats ts');
+  });
+
   it('refuses a target that is not a test seat', async () => {
     mockQuery.mockResolvedValueOnce(rows([]) as never);
 
