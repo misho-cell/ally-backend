@@ -167,6 +167,8 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
   if (sql.includes('ask_optout_events')) return rows([{ opt_outs: '0', ignored: '1' }]);
   if (sql.includes('AS old_ally_paid'))
     return rows([{ netai_user: true, netai_subscriber: true, old_ally_paid: false }]);
+  // #1684: the person's asks with their states.
+  if (sql.includes('AS other_user_id')) return rows([]);
   throw new Error(`Unexpected query: ${sql}`);
 }
 

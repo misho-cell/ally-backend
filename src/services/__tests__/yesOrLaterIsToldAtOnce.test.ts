@@ -150,11 +150,14 @@ describe('the reminder and the reader’s own run', () => {
   const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-  it('sends the one reminder 24 hours after a „later" tap, 48 after an untapped ask', () => {
+  it('sends the one reminder when a „later" runs out, 48 hours after an untapped ask', () => {
     const sweep = asks.slice(asks.indexOf('export async function sendDueAskReminders'));
-    expect(sweep.slice(0, 1600)).toContain('later_at IS NULL');
-    expect(sweep.slice(0, 1600)).toContain('LATER_REMINDER_AFTER_HOURS');
-    expect(asks).toContain('const LATER_REMINDER_AFTER_HOURS = 24;');
+    expect(sweep.slice(0, 1800)).toContain('later_at IS NULL');
+    expect(sweep.slice(0, 1800)).toContain(
+      "COALESCE(later_until, later_at + INTERVAL '1 day') <= NOW()",
+    );
+    // #1684: a „later" tap with no date holds for three days.
+    expect(asks).toContain("later_until = NOW() + INTERVAL '${LATER_DEFAULT_DAYS} days'");
   });
 
   it('is hooked where the person’s own message is stored', () => {

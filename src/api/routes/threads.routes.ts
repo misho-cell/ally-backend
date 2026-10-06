@@ -34,6 +34,7 @@ import { markRunFailed } from '../../services/runFailure.service';
 import {
   hasPendingAskForThread,
   cancelAsksForTask,
+  markAsksSeen,
   runPayerFor,
 } from '../../services/taskAsks.service';
 import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
@@ -501,6 +502,13 @@ threadsRouter.get(
       if (thread === null) {
         res.status(404).json({ success: false, error: 'Thread not found' });
         return;
+      }
+      // #1684: the reader opening an ask's conversation is what „seen" means.
+      if (thread.type === 'incoming_ask') {
+        markAsksSeen(threadId, userId).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.warn(`[ask-seen] thread ${threadId}:`, (err as Error).message);
+        });
       }
 
       // Optional paging — omitted, the whole history comes back exactly as

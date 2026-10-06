@@ -11,10 +11,12 @@ import { doNotRepeatNote, lastAssistantMessage } from './lastReplyNote';
 import { query } from '../db/postgres/client';
 import {
   claimSweep,
+  SWEEP_ASK_EXPIRY,
   SWEEP_ASK_REMINDERS,
   SWEEP_METHOD_CHANGES,
   SWEEP_SILENT_GOALS,
 } from './sweepClaim';
+import { claimExpiredAsksToTell, expireSilentAsks, expiredAsksNote } from './askExpiry.service';
 import {
   DAY_ONE_WAKE,
   finishWake,
@@ -792,13 +794,14 @@ interface ScheduledWake {
 }
 
 async function scheduledWake(taskId: number): Promise<ScheduledWake> {
-  const [held, lastReply, joined] = await Promise.all([
+  const [held, lastReply, joined, expired] = await Promise.all([
     heldOutcomes(taskId),
     lastReplyNote(taskId),
     joinedSinceNote(taskId),
+    expiredNote(taskId),
   ]);
   const heldText = held.length === 0 ? null : heldAsksSentNote(held);
-  const notes = [heldText, joined, lastReply].filter((n): n is string => n !== null);
+  const notes = [heldText, expired, joined, lastReply].filter((n): n is string => n !== null);
   return {
     text: [SCHEDULED_WAKE_TEXT, ...notes].join('\n\n'),
     onlyStillHeld: held.length > 0 && held.every(isStillHeldByTheLimit),
@@ -817,6 +820,17 @@ async function heldOutcomes(taskId: number): Promise<HeldAskOutcome[]> {
     // eslint-disable-next-line no-console
     console.error(`[task-engine] task ${taskId}: held questions not sent:`, (err as Error).message);
     return [];
+  }
+}
+
+/** #1684: the asks that ran out of time since the owner was last told; else null. */
+async function expiredNote(taskId: number): Promise<string | null> {
+  try {
+    return expiredAsksNote(await claimExpiredAsksToTell(taskId));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[task-engine] task ${taskId}: expired asks not read:`, (err as Error).message);
+    return null;
   }
 }
 
@@ -1803,6 +1817,18 @@ export function startTaskTicker(): void {
         .catch((err) =>
           // eslint-disable-next-line no-console
           console.error('[task-engine] silent-day sweep failed:', (err as Error).message),
+        );
+    });
+    void claimSweep(SWEEP_ASK_EXPIRY, CLAIM_WINDOW_MINUTES).then((due) => {
+      if (!due) return;
+      void expireSilentAsks()
+        .then((n) => {
+          // eslint-disable-next-line no-console
+          if (n > 0) console.log(`[task-engine] ${n} ask(s) expired after two weeks of silence`);
+        })
+        .catch((err) =>
+          // eslint-disable-next-line no-console
+          console.error('[task-engine] ask expiry sweep failed:', (err as Error).message),
         );
     });
     void claimSweep(SWEEP_METHOD_CHANGES, CLAIM_WINDOW_MINUTES).then((due) => {

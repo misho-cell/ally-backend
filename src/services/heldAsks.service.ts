@@ -84,3 +84,21 @@ export async function releaseHeldAsk(taskId: number, toUserId: number): Promise<
     QUERY_TIMEOUT_MS,
   );
 }
+
+/** #1684: a goal's questions still held, for the per-person state lines. */
+export interface OpenHeldAsk {
+  readonly to_user_id: number;
+  readonly contact_name: string;
+  readonly reopens_at: string;
+}
+
+export async function openHeldAsksForTask(taskId: number): Promise<OpenHeldAsk[]> {
+  const result = await query<OpenHeldAsk>(
+    `SELECT to_user_id, contact_name, reopens_at FROM held_asks
+      WHERE task_id = $1 AND released_at IS NULL
+      ORDER BY created_at LIMIT $2`,
+    [taskId, MAX_HELD_PER_WAKE],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}

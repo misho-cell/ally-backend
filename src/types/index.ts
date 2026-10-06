@@ -333,6 +333,23 @@ export interface UserUsage {
   payments: PaymentHistory;
 }
 
+/** #1684 (A1): one ask on the admin per-user page. */
+export interface AdminAskRow {
+  id: number;
+  task_id: number;
+  /** 'sent' = this person asked; 'received' = this person was asked. */
+  direction: 'sent' | 'received';
+  other_user_id: number;
+  other_name: string | null;
+  /** askState.ts: held is not listed here (a held ask has no row yet). */
+  state: string;
+  sent_at: string;
+  seen_at: string | null;
+  later_until: string | null;
+  first_answer_at: string | null;
+  closed_at: string | null;
+}
+
 export interface UserProfile {
   account: UserAccount;
   /** Absent only when the block itself failed, which the diagnostics then name. */
@@ -357,6 +374,8 @@ export interface UserProfile {
    * that block itself failed, which the diagnostics then name.
    */
   askBudget?: AskBudgetState;
+  /** #1684: the asks this person sent and received, newest first, each with its state. */
+  asks?: AdminAskRow[];
   // Populated only when a non-account block failed; the rest still render.
   diagnostics?: BlockDiagnostic[];
 }

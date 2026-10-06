@@ -65,6 +65,7 @@ import {
 import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
+import { LATER_DEFAULT_DAYS } from './askState';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 /**
@@ -122,6 +123,11 @@ export interface TaskAsk {
   question: string;
   answer: string | null;
   created_at: string;
+  /** #1684: the stamps the ask's state is read from (askState.ts). */
+  declined_at?: string | null;
+  seen_at?: string | null;
+  later_until?: string | null;
+  expired_at?: string | null;
 }
 
 // Machine-readable refusal codes (ticket 6 close, answers 3/4): the assistant
@@ -2645,7 +2651,8 @@ export async function markAskWakeDelivered(askId: number): Promise<void> {
 export async function getAsksForTask(taskId: number): Promise<TaskAsk[]> {
   const result = await query<TaskAsk>(
     `SELECT ta.id, ta.task_id, ta.to_user_id, u.name AS to_name, ta.status,
-            ta.question, ta.answer, ta.created_at
+            ta.question, ta.answer, ta.created_at,
+            ta.declined_at, ta.seen_at, ta.later_until, ta.expired_at
      FROM task_asks ta
      LEFT JOIN "User" u ON u.id = ta.to_user_id
      WHERE ta.task_id = $1
@@ -3029,6 +3036,21 @@ export async function runPayerFor(
 }
 
 /** The live ask behind an incoming_ask thread — injected into the recipient's prompt. */
+/**
+ * #1684 (A1): the reader opened the conversation an ask lives in, so the
+ * asker's goal can say „has seen it" instead of „no answer". Only the reader's
+ * own opening counts, and only the first.
+ */
+export async function markAsksSeen(askThreadId: number, readerUserId: string): Promise<number> {
+  const result = await query(
+    `UPDATE task_asks SET seen_at = NOW()
+      WHERE ask_thread_id = $1 AND to_user_id = $2::int AND status = 'sent' AND seen_at IS NULL`,
+    [askThreadId, readerUserId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
+}
+
 export async function getAskByThread(askThreadId: number): Promise<IncomingAsk | null> {
   const result = await query<IncomingAsk>(
     `SELECT ta.id, ta.task_id, ta.question, ta.status, u.name AS from_name
@@ -3302,8 +3324,6 @@ const DUPLICATE_ASK_WINDOW_SECONDS = 600;
 
 // One polite reminder per unanswered ask, after this long.
 const ASK_REMINDER_AFTER_HOURS = 48;
-// Row 300: after a „later" tap, the one reminder comes this long after the tap.
-const LATER_REMINDER_AFTER_HOURS = 24;
 
 /**
  * WHEN A REMINDER GOES — Giorgi's decision G-002, Misho's word on 2 October.
@@ -3365,12 +3385,16 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
      WHERE id IN (
        SELECT id FROM task_asks
        WHERE status = 'sent' AND reminded_at IS NULL
-         -- ROW 300: a „later" tap moves the one reminder to 24 hours after
-         -- the tap; an ask nobody tapped keeps its 48 hours from the question.
+         -- ROW 300, then #1684 (A1/A3): a „later" tap holds the one reminder
+         -- until the date the later named (three days when it named none);
+         -- an ask nobody tapped keeps its 48 hours from the question.
+         AND expired_at IS NULL
          AND ((later_at IS NULL
                AND created_at < NOW() - INTERVAL '${ASK_REMINDER_AFTER_HOURS} hours')
+           -- a tap from before migration 207 has no later_until: its old
+           -- 24 hours stand.
            OR (later_at IS NOT NULL
-               AND later_at < NOW() - INTERVAL '${LATER_REMINDER_AFTER_HOURS} hours'))
+               AND COALESCE(later_until, later_at + INTERVAL '1 day') <= NOW()))
        ORDER BY created_at
        LIMIT $1
      )
@@ -3549,7 +3573,8 @@ const CLAIM_TAP_SQL: Readonly<Record<AskTap.Yes | AskTap.Later, string>> = {
   [AskTap.Yes]: `UPDATE task_asks ta SET offered_help_at = NOW()
                   WHERE ta.id = ${LIVE_ASK_ON_THREAD} AND ta.offered_help_at IS NULL
                   RETURNING ${CLAIMED_TAP_COLUMNS}`,
-  [AskTap.Later]: `UPDATE task_asks ta SET later_at = NOW(), reminded_at = NULL
+  [AskTap.Later]: `UPDATE task_asks ta SET later_at = NOW(), reminded_at = NULL,
+                           later_until = NOW() + INTERVAL '${LATER_DEFAULT_DAYS} days'
                     WHERE ta.id = ${LIVE_ASK_ON_THREAD} AND ta.later_at IS NULL
                     RETURNING ${CLAIMED_TAP_COLUMNS}`,
 };

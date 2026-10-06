@@ -113,7 +113,11 @@ import {
   touchThread,
   createThread,
   getThreadsByIntroRequestId,
+  threadLanguage,
 } from './threads.service';
+import { askStatusSection, openAskLines } from './askStatusSection';
+import { askStateOf } from './askState';
+import { openHeldAsksForTask } from './heldAsks.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
 import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.service';
 import {
@@ -4282,6 +4286,21 @@ const NO_DIRECT_LINE =
   '„არა, ამჯერად".';
 
 /** The tester's 1110: whose asks held a question back; nothing when it cannot be read. */
+/** #1684: the per-person lines a goal reply ends with; '' when nobody is waited on. */
+async function askStatusSectionOrNothing(task: Task, asks: readonly TaskAsk[]): Promise<string> {
+  try {
+    const [held, language] = await Promise.all([
+      openHeldAsksForTask(task.id),
+      task.thread_id === null ? Promise.resolve('ka' as const) : threadLanguage(task.thread_id),
+    ]);
+    return askStatusSection(openAskLines(asks, held, language, new Date()));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[ask-state] task ${task.id}: could not read ask states:`, (err as Error).message);
+    return '';
+  }
+}
+
 async function heldAsksNoteOrNothing(taskId: number, userId: string): Promise<string> {
   try {
     return await heldAsksNote(taskId, userId);
@@ -4347,7 +4366,8 @@ function buildTaskEngineSection(task: Task, asks: TaskAsk[]): string {
     .map((a) => {
       const who = a.to_name ?? 'კონტაქტი';
       const answer = a.answer ? ` — პასუხი: "${a.answer}"` : '';
-      return `- ${who} [${a.status}]${answer}`;
+      // #1684: the computed state (seen, later, expired…), not the bare status.
+      return `- ${who} [${askStateOf(a, new Date())}]${answer}`;
     })
     .join('\n');
   const autonomyLine =
@@ -4671,6 +4691,7 @@ async function buildAgentSystemPrompt(
   // change: global, then per-account, then per-goal, then the clock.
   const noDirect = await directIsImpossible(userId, threadRequest);
   const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
+  const askStates = boundTask ? await askStatusSectionOrNothing(boundTask, boundAsks) : '';
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4686,6 +4707,7 @@ async function buildAgentSystemPrompt(
       // Per-situation — changes when the work does.
       (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
       heldNote +
+      askStates +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.

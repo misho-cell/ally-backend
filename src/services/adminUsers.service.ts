@@ -27,6 +27,7 @@ import {
   UserUsage,
 } from '../types';
 import { describeAskBudget } from './askBudget.service';
+import { getUserAsks } from './adminUserAsks.service';
 import { cohortForUser } from './inviteCohorts.service';
 import { paymentHistory } from './payments.service';
 import { isStaffUser } from './staff';
@@ -796,6 +797,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     cohort,
     timeline,
     askBudget,
+    asks,
   ] = await Promise.all([
     runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
     runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
@@ -813,6 +815,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     // the founder's account refused an ask on a month in which it had sent
     // none, and no screen could say why.
     runBlock('askBudget', () => describeAskBudget(String(userId)), null, diagnostics),
+    runBlock('asks', () => getUserAsks(userId), null, diagnostics),
   ]);
 
   const states = await runBlock('states', () => getStates(userId), null, diagnostics);
@@ -834,6 +837,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     cohort,
     timeline,
     ...(askBudget !== null && { askBudget }),
+    ...(asks !== null && { asks }),
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
   return profile;
