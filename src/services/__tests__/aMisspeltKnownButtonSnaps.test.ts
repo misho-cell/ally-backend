@@ -34,6 +34,12 @@ describe('the channel button', () => {
 describe('channelQuestionInNetaisVoice', () => {
   const buttons = ['ჩემი გავლით', 'არა, ამჯერად'];
 
+  it('offers „directly" only when that button is there', () => {
+    expect(channelQuestionInNetaisVoice('კარგი.', ['პირდაპირ დააკავშირე', ...buttons])).toBe(
+      'კარგი.\n\nპირდაპირ დაგაკავშირო, თუ შენი გავლით გავაგრძელოთ?',
+    );
+  });
+
   it('says „შენი გავლით" and ends on a question', () => {
     expect(
       channelQuestionInNetaisVoice(
@@ -42,7 +48,7 @@ describe('channelQuestionInNetaisVoice', () => {
       ),
     ).toBe(
       'გიორგი შაბათს დილით არის თავისუფალი. გაცნობა შენი გავლით შევათანხმოთ.\n\n' +
-        'პირდაპირ დაგაკავშირო, თუ შენი გავლით გავაგრძელოთ?',
+        'შენი გავლით გავაგრძელოთ?',
     );
   });
 

@@ -187,15 +187,21 @@ const THROUGH_ME_IN_TEXT_RE = /ჩემი გავლით/g;
 const THROUGH_YOU = 'შენი გავლით';
 const ENDS_ON_A_QUESTION_RE = /[?？]\s*$/;
 const CHANNEL_QUESTION = 'პირდაპირ დაგაკავშირო, თუ შენი გავლით გავაგრძელოთ?';
+/** 41422 (b): when there is no number to hand over, there is no „directly" button. */
+const THROUGH_YOU_QUESTION = 'შენი გავლით გავაგრძელოთ?';
+const DIRECT_LABEL_RE = /^პირდაპირ/;
 
 export function channelQuestionInNetaisVoice(text: string, labels: readonly string[]): string {
   const channelOnScreen = labels.some(
     (label) => label.startsWith(THROUGH_ME) || THROUGH_YOU_RE.test(label),
   );
   if (!channelOnScreen) return text;
+  const question = labels.some((label) => DIRECT_LABEL_RE.test(label))
+    ? CHANNEL_QUESTION
+    : THROUGH_YOU_QUESTION;
   const inNetaisVoice = text.replace(THROUGH_ME_IN_TEXT_RE, THROUGH_YOU).trimEnd();
-  if (inNetaisVoice === '') return CHANNEL_QUESTION;
+  if (inNetaisVoice === '') return question;
   return ENDS_ON_A_QUESTION_RE.test(inNetaisVoice)
     ? inNetaisVoice
-    : `${inNetaisVoice}\n\n${CHANNEL_QUESTION}`;
+    : `${inNetaisVoice}\n\n${question}`;
 }

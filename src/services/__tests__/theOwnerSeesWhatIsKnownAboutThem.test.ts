@@ -49,9 +49,11 @@ describe('whatNetaiKnowsAboutMe', () => {
 describe('the tool', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-  it('is offered, lets his own numbers through the scrub, and never names who saved a fact', () => {
+  it('is offered, wraps his own numbers so the scrub lets them through, and never names who saved a fact', () => {
     expect(chat).toContain('  ABOUT_ME_TOOL,\n');
-    expect(chat).toContain('registerAllowedNumber(runId, own)');
+    expect(chat).toContain(
+      'own_numbers: aboutMe.own_numbers.map((own) => `${ALLOW_OPEN}${own}${ALLOW_CLOSE}`)',
+    );
     expect(chat).toContain('Never say who saved a fact.');
   });
 });

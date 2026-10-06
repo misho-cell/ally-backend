@@ -2852,6 +2852,10 @@ const SAVE_USER_NOTE_TOOL: AnthropicTool = {
   },
 };
 
+const OWN_NUMBER_INSTRUCTION =
+  'When you give their number, copy it EXACTLY as given, including the ⟦own⟧ markers — the ' +
+  'app reveals it to them.';
+
 /** #1354: the owner's own view of what Netai holds and shows about them. */
 const ABOUT_ME_TOOL: AnthropicTool = {
   name: 'get_what_netai_knows_about_me',
@@ -8712,9 +8716,14 @@ async function executeToolCall(
     case 'get_netai_info':
       return getNetaiInfo(String(input['topic'] ?? ''), userId);
     case 'get_what_netai_knows_about_me': {
+      // #1354 (tester 41422): a bare number was scrubbed to „შენი ნომერია:" and
+      // nothing. The owner's own number travels like get_own_contact_number's.
       const aboutMe = await whatNetaiKnowsAboutMe(userId);
-      for (const own of aboutMe.own_numbers) registerAllowedNumber(runId, own);
-      return aboutMe;
+      return {
+        ...aboutMe,
+        own_numbers: aboutMe.own_numbers.map((own) => `${ALLOW_OPEN}${own}${ALLOW_CLOSE}`),
+        instruction: OWN_NUMBER_INSTRUCTION,
+      };
     }
     case 'get_my_token_balance':
       return myTokenBalance(userId);
