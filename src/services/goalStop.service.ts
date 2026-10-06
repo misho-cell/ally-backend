@@ -1,4 +1,5 @@
-import { Task, updateTask, getGoalOnThread } from './taskStore.service';
+import { query } from '../db/postgres/client';
+import { Task, updateTask, getGoalOnThread, wakeTaskNoLaterThan } from './taskStore.service';
 import { cancelAsksForTask } from './taskAsks.service';
 import { cancelIntroductionRequestsForTask } from './introduction.service';
 import { setThreadStatus } from './threadStatus.service';
@@ -6,6 +7,8 @@ import { getThread, saveThreadMessage, clearStoredChoices } from './threads.serv
 import { markThreadStopped } from './stoppedRuns';
 import { emitChoicesCleared } from './sse.service';
 import { RunLanguage, STOPPED_STATUS_LINE } from './runLanguage';
+
+const QUERY_TIMEOUT_MS = 5_000;
 
 /**
  * The owner's kill switch, in one place.
@@ -271,4 +274,80 @@ export function alreadyStoppedLine(title: string, language: RunLanguage): string
     default:
       return `„${title}" უკვე შეჩერებულია — ახალი არაფერი მიდის.`;
   }
+}
+
+/**
+ * #1919 (phone report point 96): a stopped goal stays in the current list,
+ * marked stopped, until its owner either picks it up again or closes it.
+ */
+export type StoppedGoalAction =
+  | { readonly ok: true; readonly goal_id: number }
+  | { readonly ok: false; readonly reason: 'not_found' | 'not_stopped' };
+
+const RESUME_WAKE_DELAY_MS = 60_000;
+
+const RESUMED_LINE: Readonly<Record<RunLanguage, (title: string) => string>> = {
+  ka: (title) => `„${title}" განვაახლე — ვაგრძელებ.`,
+  en: (title) => `"${title}" is back on — I'm carrying on.`,
+  ru: (title) => `«${title}» снова в работе — продолжаю.`,
+  es: (title) => `«${title}» está en marcha de nuevo — sigo con ello.`,
+};
+
+/** The thread's goal, when it is one its owner stopped and has not closed. */
+async function stoppedGoalOn(
+  userId: string,
+  threadId: number,
+): Promise<Task | 'none' | 'not_stopped'> {
+  const thread = await getThread(threadId, userId);
+  if (!thread) return 'none';
+  const task = await getGoalOnThread(threadId);
+  if (!task) return 'none';
+  const stopped = await query<{ id: number }>(
+    `SELECT id FROM tasks WHERE id = $1 AND status = 'closed' AND closed_as = 'stopped'`,
+    [task.id],
+    QUERY_TIMEOUT_MS,
+  );
+  return stopped.rows.length > 0 ? task : 'not_stopped';
+}
+
+/** Picks a stopped goal up again: open, waiting, woken within a minute. */
+export async function resumeStoppedGoal(
+  userId: string,
+  threadId: number,
+  language: RunLanguage,
+): Promise<StoppedGoalAction> {
+  const task = await stoppedGoalOn(userId, threadId);
+  if (task === 'none') return { ok: false, reason: 'not_found' };
+  if (task === 'not_stopped') return { ok: false, reason: 'not_stopped' };
+  await updateTask(userId, task.id, 'open');
+  await query(
+    `UPDATE tasks SET stop_dismissed_at = NULL WHERE id = $1`,
+    [task.id],
+    QUERY_TIMEOUT_MS,
+  );
+  await saveThreadMessage(
+    threadId,
+    Number(userId),
+    'assistant',
+    RESUMED_LINE[language](task.title),
+  );
+  await setThreadStatus(userId, threadId, 'waiting');
+  await wakeTaskNoLaterThan(task.id, new Date(Date.now() + RESUME_WAKE_DELAY_MS));
+  return { ok: true, goal_id: task.id };
+}
+
+/** The owner closes a stopped goal for good: it moves to the finished list. */
+export async function dismissStoppedGoal(
+  userId: string,
+  threadId: number,
+): Promise<StoppedGoalAction> {
+  const task = await stoppedGoalOn(userId, threadId);
+  if (task === 'none') return { ok: false, reason: 'not_found' };
+  if (task === 'not_stopped') return { ok: false, reason: 'not_stopped' };
+  await query(
+    `UPDATE tasks SET stop_dismissed_at = COALESCE(stop_dismissed_at, NOW()) WHERE id = $1`,
+    [task.id],
+    QUERY_TIMEOUT_MS,
+  );
+  return { ok: true, goal_id: task.id };
 }

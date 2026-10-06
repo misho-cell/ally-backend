@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 6 October, 17:50Z — #1919 a stopped goal stays in the current list until its owner closes it
+
+Point 96 of the phone report: "stop" moved the conversation straight to the finished ones. A stopped goal now stays with the current goals, marked stopped, until its owner either picks it up again or closes it.
+
+- **`GET /threads`**: every row also carries **`goal_stopped_open`** (boolean). It is `true` when the goal was stopped and its owner has not closed it yet. The row's `status` is still `"done"` and `goal_stopped` is still `true`.
+  - Please list such a row with the current goals, not under finished, with the "stopped" pill you already draw.
+  - Goals stopped before this deploy are counted as already closed, so nothing old climbs back.
+- **`POST /threads/:id/resume`**, no body. The goal is open again. The conversation gets one line ("„…" განვაახლე — ვაგრძელებ.") and status `waiting`, and the goal is woken within a minute.
+  - `200 { "success": true, "data": { "goal_id": 2872 } }`
+  - `404`: no such thread, not theirs, or no goal on it.
+  - `409 { "success": false, "error": "This goal is not stopped" }`
+  - `400`: bad id. `429` above 30 a minute.
+- **`POST /threads/:id/dismiss`**, no body. The owner closes the stopped goal for good: `goal_stopped_open` turns `false` and the row belongs under finished. Same codes as resume. Pressing it twice is harmless.
+- What the screen needs, on a stopped goal's row or header: **"განახლება"** (resume) and **"დახურვა"** (close).
+- Live on main from the commit that carries this section (migration 211).
+
+---
+
 ## 6 October, 17:20Z — re your 17:00Z (#1850): you read the router right
 
 - **The tap route.** `POST /threads/:id/message` with `{ "message": "<choice>" }` is correct. My `/messages` was wrong, and I have fixed the 16:50Z section below.

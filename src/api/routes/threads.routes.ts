@@ -39,7 +39,12 @@ import {
   runPayerFor,
 } from '../../services/taskAsks.service';
 import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
-import { stopGoalOnThread } from '../../services/goalStop.service';
+import {
+  dismissStoppedGoal,
+  resumeStoppedGoal,
+  StoppedGoalAction,
+  stopGoalOnThread,
+} from '../../services/goalStop.service';
 import { runWasStopped } from '../../services/stoppedRuns';
 import { planInForce } from '../../services/taskPlans.service';
 import {
@@ -332,6 +337,54 @@ threadsRouter.post(
     }
   },
 );
+
+/**
+ * #1919 — a stopped goal stays among the current ones until its owner acts:
+ *
+ *   POST /threads/:id/resume    the goal is open again and carries on
+ *   POST /threads/:id/dismiss   the owner closes it; it moves to finished
+ *
+ *   200 { goal_id }   done
+ *   404               no such thread, or not theirs, or it carries no goal
+ *   409               its goal is not a stopped one
+ */
+const STOPPED_GOAL_ERRORS: Readonly<Record<'not_found' | 'not_stopped', [number, string]>> = {
+  not_found: [404, 'Thread not found'],
+  not_stopped: [409, 'This goal is not stopped'],
+};
+
+function stoppedGoalRoute(
+  path: string,
+  act: (userId: string, threadId: number) => Promise<StoppedGoalAction>,
+): void {
+  threadsRouter.post(
+    path,
+    rateLimit({ windowMs: 60_000, max: 30 }),
+    param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+    handleValidationErrors,
+    async (req: Request, res: Response): Promise<void> => {
+      try {
+        const userId = (req as AuthenticatedRequest).user.userId;
+        const done = await act(userId, Number(req.params.id));
+        if (!done.ok) {
+          const [code, error] = STOPPED_GOAL_ERRORS[done.reason];
+          res.status(code).json({ success: false, error });
+          return;
+        }
+        res.status(200).json({ success: true, data: { goal_id: done.goal_id } });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(`[POST /threads${path}]`, (error as Error).message);
+        res.status(500).json({ success: false, error: 'Could not update the goal' });
+      }
+    },
+  );
+}
+
+stoppedGoalRoute('/:id/resume', async (userId, threadId) =>
+  resumeStoppedGoal(userId, threadId, await threadLanguage(threadId)),
+);
+stoppedGoalRoute('/:id/dismiss', dismissStoppedGoal);
 
 threadsRouter.post(
   '/:id/stop',

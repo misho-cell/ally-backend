@@ -94,6 +94,8 @@ interface ThreadRow extends Thread {
   seen_at: string | null;
   /** Row 207: this thread's goal was stopped by its owner — see GOAL_WAS_STOPPED. */
   goal_stopped?: boolean;
+  /** #1919: stopped and not yet closed by its owner — show it with the current goals. */
+  goal_stopped_open?: boolean;
   /**
    * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
    * one, else its latest — so the download asks for the goal's own id and
@@ -203,6 +205,12 @@ const GOAL_WAS_STOPPED = `EXISTS (
         WHERE k.thread_id = t.id AND k.status = 'closed' AND k.closed_as = 'stopped'
      )`;
 const GOAL_IS_FINISHED = `(${HAS_A_GOAL} AND NOT ${HAS_OPEN_GOAL})`;
+/** #1919: stopped, and the owner has not closed it yet — it stays in the current list. */
+const GOAL_STOPPED_STAYS = `EXISTS (
+       SELECT 1 FROM tasks k
+        WHERE k.thread_id = t.id AND k.status = 'closed' AND k.closed_as = 'stopped'
+          AND k.stop_dismissed_at IS NULL
+     )`;
 
 /**
  * ROW 305 (b) — an ask thread that is also carrying an introduction request
@@ -307,6 +315,7 @@ const THREAD_LIST_COLUMNS = `t.id,
        lm.created_at AS last_message_at,
        t.seen_at,
        ${GOAL_WAS_STOPPED} AS goal_stopped,
+       ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list`;
 
