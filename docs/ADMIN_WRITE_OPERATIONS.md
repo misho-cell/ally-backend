@@ -5620,3 +5620,22 @@ BODY    { "kind": "...", "sample_question": "...", "answer": "...", "note": "why
 UNDO    PATCH /admin/test-accounts/:seatId/answer-rules/:ruleId
         { "active": false, "reason": "undo §92" }
 ```
+
+## §93 — TWO REAL GOALS WOKEN AFTER THE OUTAGE (tasks 5482, 15677)
+
+**Authorised by Misho, 6 October ~20:30 UTC, directly in the session:** „ახლავე გაუღვიძე" — to my
+question whether to wake now the two real users' goals whose scheduled check ran during the
+provider outage (17:44–19:20Z) and produced no answer: task 15677 at 18:47Z, task 5482 at 19:11Z.
+Each had already been set to its next check a day later. Moving `next_wake_at` to now lets the
+engine's ordinary sweep (`getDueTasks`: `status = 'open' AND next_wake_at <= NOW()`) run them —
+the same path as any scheduled check, with every wall it has. Only `open` goals are touched.
+No admin route does this; it is run in DataGrip, as §10 was.
+
+```
+METHOD  UPDATE tasks SET next_wake_at = NOW() WHERE id IN (5482, 15677) AND status = 'open'
+UNDO    (before the sweep picks them up, ~1 min)
+        UPDATE tasks SET next_wake_at = '2026-10-07T19:11:18.063Z' WHERE id = 5482
+        UPDATE tasks SET next_wake_at = '2026-10-07T18:47:05.085Z' WHERE id = 15677
+```
+
+After the sweep a run cannot be undone; the engine sets each goal's next check again itself.
