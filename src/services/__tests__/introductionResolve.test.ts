@@ -513,7 +513,8 @@ describe('an introduction asked in a plain chat answers into that chat', () => {
     expect(intoOrigin).toHaveLength(1);
     expect(intoOrigin[0][1]).toBe(9); // the requester, not the mediator
     expect(intoOrigin[0][2]).toBe('assistant');
-    expect(String(intoOrigin[0][3])).toContain('კი, სიამოვნებით');
+    // #1750 (D648): the answer is not quoted into the chat.
+    expect(String(intoOrigin[0][3])).not.toContain('კი, სიამოვნებით');
   });
 
   /** A goal-backed request is told by its wake — a second copy would be noise. */

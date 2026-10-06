@@ -502,29 +502,29 @@ export function introOutcomeLine(
   targetName: string,
   accepted: boolean,
   direct: boolean,
-  response: string | null,
   mediatorName: string | null = null,
 ): string {
-  const quoted = (label: string): string => (response ? `\n\n${label} „${response}"` : '');
+  // #1750 (D648): the answer is never quoted to the requester, a yes included;
+  // its meaning reaches them through the goal's run, in the assistant's words.
   if (!accepted) return declineLine(language, targetName, direct, mediatorName);
   {
     switch (language) {
       case 'en':
         return direct
-          ? `${targetName} said yes.${quoted('Their answer:')} You can write to them now — they know who you are and why.`
-          : `Your introduction request to ${targetName} has been accepted.${quoted('The answer:')}`;
+          ? `${targetName} said yes. You can write to them now — they know who you are and why.`
+          : `Your introduction request to ${targetName} has been accepted.`;
       case 'ru':
         return direct
-          ? `${targetName} согласился.${quoted('Ответ:')} Теперь можешь написать — он знает, кто ты и зачем.`
-          : `Запрос на знакомство с ${targetName} принят.${quoted('Ответ:')}`;
+          ? `${targetName} согласился. Теперь можешь написать — он знает, кто ты и зачем.`
+          : `Запрос на знакомство с ${targetName} принят.`;
       case 'es':
         return direct
-          ? `${targetName} ha dicho que sí.${quoted('Su respuesta:')} Ya puedes escribirle — sabe quién eres y por qué.`
-          : `Tu solicitud de presentación a ${targetName} ha sido aceptada.${quoted('La respuesta:')}`;
+          ? `${targetName} ha dicho que sí. Ya puedes escribirle — sabe quién eres y por qué.`
+          : `Tu solicitud de presentación a ${targetName} ha sido aceptada.`;
       default:
         return direct
-          ? `${targetName} დათანხმდა გაცნობას.${quoted('პასუხი:')} ახლა თავისუფლად შეგიძლია მისწერო — იცის ვინ ხარ და რატომ.`
-          : `${geoName(targetName, 'on')} გაცნობის მოთხოვნა მიღებულია.${quoted('პასუხი:')}`;
+          ? `${targetName} დათანხმდა გაცნობას. ახლა თავისუფლად შეგიძლია მისწერო — იცის ვინ ხარ და რატომ.`
+          : `${geoName(targetName, 'on')} გაცნობის მოთხოვნა მიღებულია.`;
     }
   }
 }
@@ -561,8 +561,8 @@ function declineLine(
       return direct
         ? `${geoName(targetName, 'erg')} გაცნობაზე ამჯერად უარი თქვა.`
         : who === null
-          ? `${geoName(targetName, 'dat')} გაცნობა ამჯერად ვერ მოხერხდა.`
-          : `${geoName(who, 'erg')} ამჯერად ვერ შეძლო ${geoName(targetName, 'dat')} გაცნობა.`;
+          ? `${geoName(targetName, 'gen')} გაცნობა ამჯერად ვერ მოხერხდა.`
+          : `${geoName(who, 'erg')} ამჯერად ვერ შეძლო ${geoName(targetName, 'gen')} გაცნობა.`;
   }
 }
 

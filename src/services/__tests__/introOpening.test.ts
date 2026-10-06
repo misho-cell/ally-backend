@@ -186,11 +186,9 @@ describe('the accept path, on all three sides', () => {
     }
   });
 
-  it('a quoted answer survives into every language, and absence stays absent', () => {
+  // #1750 (D648): no language quotes the answer any more; its meaning goes to the run.
+  it('no language quotes the answer', () => {
     for (const language of [...OTHERS, 'ka' as const]) {
-      expect(introOutcomeLine(language, 'Dato', true, true, 'any time this week')).toContain(
-        'any time this week',
-      );
       expect(introOutcomeLine(language, 'Dato', true, true, null)).not.toContain('„');
     }
   });

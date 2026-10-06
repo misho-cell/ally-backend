@@ -687,25 +687,19 @@ export async function mediatorCanHandOver(
 export async function outcomeMessage(
   req: RequestRow,
   action: IntroductionAction,
-  response?: string,
+  _response?: string,
 ): Promise<string> {
   const language = await userLanguage(String(req.requester_user_id)).catch(
     () => 'ka' as RunLanguage,
   );
-  /**
-   * Row 254, second cut: the line around it is the requester's language and
-   * the answer quoted inside it is the person who answered, in theirs. The
-   * original is kept and labelled — a yes with a condition in it is exactly
-   * the sentence somebody must be able to check word for word.
-   */
-  const said = response?.trim() ? scrubText(response.trim()) : null;
-  const relayed = said === null ? null : await relayedForReader(said, language, 'answer');
+  // #1750 / D648 (later than row 254, which kept the answer quoted): nobody's
+  // words are quoted to another person, a yes included. The answer's meaning
+  // goes to the goal's run (wakeRequestersGoal), which says it in its own words.
   return introOutcomeLine(
     language,
     req.target_name,
     action === 'accept',
     req.mediator_user_id === null,
-    relayed?.text ?? said,
     action === 'accept' ? null : await answeringMediatorName(req).catch(() => null),
   );
 }
@@ -1126,6 +1120,7 @@ async function wakeRequestersGoal(
   accepted: boolean,
   contactOutcome: IntroContactOutcome,
   shownInGoalThread: boolean,
+  response: string | undefined,
 ): Promise<void> {
   if (req.requester_task_id === null) return;
   try {
@@ -1136,7 +1131,16 @@ async function wakeRequestersGoal(
     ]);
     startIntroOutcome(
       req.requester_task_id,
-      introOutcomeEvent(req.target_name, accepted, contactOutcome, mediatorName, shownInGoalThread),
+      introOutcomeEvent(
+        req.target_name,
+        accepted,
+        contactOutcome,
+        mediatorName,
+        shownInGoalThread,
+        {
+          answer: response?.trim() ? scrubText(response.trim()) : null,
+        },
+      ),
     );
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -1486,6 +1490,7 @@ export async function resolveIntroductionRequest(
     action === 'accept',
     outcome?.contactOutcome ?? 'kept_by_mediator',
     shownInGoalThread,
+    opts.response,
   );
   // ...and when there is no goal to wake, the chat it was asked in is told.
   await tellTheChatItWasAskedIn(req, action, opts.response, outcome);

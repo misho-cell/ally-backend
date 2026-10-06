@@ -473,12 +473,15 @@ describe('every wire that quotes a person translates for the reader', () => {
     expect(source.slice(at, at + 220)).toContain('relayed?.text ?? why');
   });
 
-  it('the outcome: the requester reads the answer they were given', () => {
+  /**
+   * #1750 (D648, later than row 254): the outcome line no longer carries the
+   * answer at all, so there is nothing to translate there. Its meaning goes to
+   * the goal's run, which writes in the requester's language itself.
+   */
+  it('the outcome: the answer is never quoted, so nothing is translated for it', () => {
     const source = read('introduction.service.ts');
-    const at = source.indexOf('return introOutcomeLine(');
-
-    expect(source).toContain("await relayedForReader(said, language, 'answer')");
-    expect(source.slice(at, at + 220)).toContain('relayed?.text ?? said');
+    expect(source).not.toContain("await relayedForReader(said, language, 'answer')");
+    expect(source).toContain('answer: response?.trim()');
   });
 
   /**
@@ -490,7 +493,6 @@ describe('every wire that quotes a person translates for the reader', () => {
     for (const [file, guard] of [
       ['threads.service.ts', 'message === null ? null :'],
       ['introduction.service.ts', 'why === null ? null :'],
-      ['introduction.service.ts', 'said === null ? null :'],
     ] as const) {
       expect(read(file)).toContain(guard);
     }

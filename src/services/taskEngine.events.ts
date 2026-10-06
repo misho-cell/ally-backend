@@ -179,6 +179,7 @@ export function introOutcomeEvent(
   contact: IntroContactOutcome = 'kept_by_mediator',
   mediatorName: string | null = null,
   shownInGoalThread = false,
+  said: { readonly answer: string | null } = { answer: null },
 ): Readonly<Record<RunLanguage, string>> {
   const body = introOutcomeBody(targetName, accepted, contact);
   const who =
@@ -186,11 +187,35 @@ export function introOutcomeEvent(
       ? NOTHING_BY_LANGUAGE
       : mediatorAnswered(mediatorName, targetName, accepted);
   const shown = shownInGoalThread ? ALREADY_SHOWN : NOTHING_BY_LANGUAGE;
+  const meaning = said.answer === null ? NOTHING_BY_LANGUAGE : answerInOwnWords(said.answer);
   return {
-    ka: who.ka + body.ka + shown.ka,
-    en: who.en + body.en + shown.en,
-    ru: who.ru + body.ru + shown.ru,
-    es: who.es + body.es + shown.es,
+    ka: who.ka + body.ka + shown.ka + meaning.ka,
+    en: who.en + body.en + shown.en + meaning.en,
+    ru: who.ru + body.ru + shown.ru + meaning.ru,
+    es: who.es + body.es + shown.es + meaning.es,
+  };
+}
+
+/**
+ * #1750 and tester 40527 (a): the outcome line no longer quotes the answer
+ * (D648), so its meaning — a reason, a condition — would be lost: she wrote
+ * the person is abroad, and the owner read only „could not this time". The
+ * run gets the answer and passes its meaning in its own words, facts exact.
+ */
+function answerInOwnWords(answer: string): Readonly<Record<RunLanguage, string>> {
+  return {
+    ka:
+      ` მათი პასუხი იყო: <answer>${answer}</answer> ეს სიტყვები მფლობელს არ დაუციტირო; თუ მასში ` +
+      'მიზეზი ან პირობაა, მისი აზრი შენი სიტყვებით გადაეცი ერთი წინადადებით, ფაქტები ზუსტად.',
+    en:
+      ` Their answer was: <answer>${answer}</answer> Never quote these words to the owner; if they ` +
+      'carry a reason or a condition, give its meaning in your own words in one sentence, facts exact.',
+    ru:
+      ` Их ответ: <answer>${answer}</answer> Не цитируй эти слова владельцу; если в них есть причина ` +
+      'или условие, передай смысл своими словами одним предложением, факты точно.',
+    es:
+      ` Su respuesta fue: <answer>${answer}</answer> No cites estas palabras al propietario; si llevan ` +
+      'un motivo o una condición, da su sentido con tus palabras en una frase, con los hechos exactos.',
   };
 }
 
