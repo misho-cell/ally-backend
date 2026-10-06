@@ -115,7 +115,13 @@ import {
   getThreadsByIntroRequestId,
   threadLanguage,
 } from './threads.service';
-import { askStatusSection, openAskLines } from './askStatusSection';
+import {
+  askStatusSection,
+  nobodyAnsweredIsUntrue,
+  openAskLines,
+  withAskLines,
+  withoutNobodyAnswered,
+} from './askStatusSection';
 import { askStateOf } from './askState';
 import { advanceWaveIfDone, nextWaveNote, readWave } from './askWaves.service';
 import { openHeldAsksForTask } from './heldAsks.service';
@@ -4305,6 +4311,30 @@ async function askStatusSectionOrNothing(task: Task, asks: readonly TaskAsk[]): 
     // eslint-disable-next-line no-console
     console.warn(`[ask-state] task ${task.id}: could not read ask states:`, (err as Error).message);
     return '';
+  }
+}
+
+/**
+ * #1684, the tester's 41786: a goal reply ends with one line per person still
+ * being waited on, and never says nobody answered while that is not true. The
+ * prompt asked for both and the reply did neither, so it is done here.
+ */
+async function withGoalAskLines(reply: string, threadId: number): Promise<string> {
+  try {
+    const task = await getOpenTaskByThread(threadId);
+    if (task === null) return reply;
+    const [asks, held, language] = await Promise.all([
+      getAsksForTask(task.id),
+      openHeldAsksForTask(task.id),
+      threadLanguage(threadId),
+    ]);
+    const now = new Date();
+    const cleaned = nobodyAnsweredIsUntrue(asks, held, now) ? withoutNobodyAnswered(reply) : reply;
+    return withAskLines(cleaned, openAskLines(asks, held, language, now));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[ask-state] thread ${threadId}: lines not added:`, (err as Error).message);
+    return reply;
   }
 }
 
@@ -14318,6 +14348,9 @@ export async function processChat(
   // bubble holding „•". A reply with no letter or digit in it says nothing; it is
   // empty, and a system run with nothing to say ends quietly below.
   if (!/[\p{L}\p{N}]/u.test(effectiveFinal)) effectiveFinal = '';
+  // #1684 (tester 41786): the per-person lines and the truth about answers, by the server.
+  if (effectiveFinal.trim() !== '')
+    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);
   const onlyButtons =
     !effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0);
   // The tester's 1145 (37893): the plan turn the server started after a goal was

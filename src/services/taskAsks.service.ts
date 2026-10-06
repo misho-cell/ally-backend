@@ -1669,6 +1669,8 @@ export async function recordAskAnswer(
          END,
          status = CASE WHEN status = 'sent' THEN 'answered' ELSE status END,
          answered_at = COALESCE(answered_at, NOW()),
+         -- #1684 (tester 41786): somebody who answered had seen the question.
+         seen_at = COALESCE(seen_at, NOW()),
          -- ROW 274: the button's own sentence, compared exactly ($3 is decided
          -- in TypeScript by string equality, never by judging the words). A
          -- decline stays ANSWERED on purpose — the asker's question IS

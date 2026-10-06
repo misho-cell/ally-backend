@@ -48,7 +48,8 @@ export function toAdminAskRow(row: AskRowDb, now: Date): AdminAskRow {
     sent_at: iso(row.created_at) ?? '',
     seen_at: iso(row.seen_at),
     later_until: iso(row.later_until),
-    first_answer_at: iso(row.answered_at),
+    // A „no" is a close, not an answer (tester 41786).
+    first_answer_at: state === AskState.Answered ? iso(row.answered_at) : null,
     closed_at: closedAt(row, state),
   };
 }

@@ -10,7 +10,13 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { wakeTaskNoLaterThan } from '../taskStore.service';
 import { askStateOf, AskState, isOpenAskState, ownerAskLine } from '../askState';
-import { askStatusSection, openAskLines } from '../askStatusSection';
+import {
+  askStatusSection,
+  nobodyAnsweredIsUntrue,
+  openAskLines,
+  withAskLines,
+  withoutNobodyAnswered,
+} from '../askStatusSection';
 import { claimExpiredAsksToTell, expireSilentAsks, expiredAsksNote } from '../askExpiry.service';
 import { toAdminAskRow } from '../adminUserAsks.service';
 import { markAsksSeen } from '../taskAsks.service';
@@ -94,6 +100,7 @@ describe('the owner’s line', () => {
     const section = askStatusSection(['Nino: has seen it, waiting for the answer']);
     expect(section).toContain('- Nino: has seen it, waiting for the answer');
     expect(section).toContain('არავინ უპასუხა');
+    expect(section).toContain('თვითონ დაუმატებს');
     expect(askStatusSection([])).toBe('');
   });
 });
@@ -173,6 +180,40 @@ describe('the admin page row', () => {
     );
     expect(row.state).toBe(AskState.Declined);
     expect(row.closed_at).toBe('2026-10-02T09:00:00.000Z');
-    expect(row.first_answer_at).toBe('2026-10-02T09:00:00.000Z');
+    // A „no" closes the ask; it is not an answer (tester 41786).
+    expect(row.first_answer_at).toBeNull();
+  });
+});
+
+describe('the reply itself (tester 41786)', () => {
+  it('drops „nobody answered" before any ask went, and keeps every other sentence', () => {
+    const reply =
+      'გეგმა დამტკიცდა. ჯერ არცერთს არ უპასუხია, გაგრძელებას ველოდები. ვწერ სამ ადამიანს.';
+    expect(nobodyAnsweredIsUntrue([], [], NOW)).toBe(true);
+    expect(withoutNobodyAnswered(reply)).toBe('გეგმა დამტკიცდა. ვწერ სამ ადამიანს.');
+    expect(withoutNobodyAnswered('Nobody has answered yet. I will keep going.')).toBe(
+      'I will keep going.',
+    );
+  });
+
+  it('keeps the claim when every ask is closed without an answer', () => {
+    const closed = [{ to_user_id: 1, to_name: 'Levan', status: 'sent', expired_at: THURSDAY }];
+    expect(nobodyAnsweredIsUntrue(closed, [], NOW)).toBe(false);
+    const open = [{ to_user_id: 1, to_name: 'Zurab', status: 'sent', later_until: THURSDAY }];
+    expect(nobodyAnsweredIsUntrue(open, [], NOW)).toBe(true);
+  });
+
+  it('appends the lines the reply lacks, once', () => {
+    const lines = ['Zurab: until Thursday 8 October', 'Nino: has seen it, waiting for the answer'];
+    const once = withAskLines('Still on it.', lines);
+    expect(once).toBe(`Still on it.\n\n${lines.join('\n')}`);
+    expect(withAskLines(once, lines)).toBe(once);
+  });
+
+  it('is done on every goal reply, after the reply is otherwise final', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "if (effectiveFinal.trim() !== '')\n    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);",
+    );
   });
 });

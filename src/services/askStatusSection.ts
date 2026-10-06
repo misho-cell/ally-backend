@@ -60,8 +60,55 @@ export function askStatusSection(lines: readonly string[]): string {
   return (
     '\n\n## ვის ველოდები — სერვერის ხაზები (#1684)\n' +
     lines.map((line) => `- ${line}`).join('\n') +
-    '\nმფლობელისთვის პასუხი ამ ხაზებით დაასრულე, თითო ადამიანზე ერთი, ზუსტად ისე, როგორც აქ წერია ' +
-    '(ტირე სიის ნიშანია, ტექსტის ნაწილი არ არის). სანამ ერთი მაინც აქ არის, არასდროს თქვა, ' +
-    'რომ „არავინ უპასუხა" ან „პასუხი არ არის" — ეს ხალხი ჯერ კიდევ საქმეშია.'
+    '\nსერვერი ამ ხაზებს შენი პასუხის ბოლოს თვითონ დაუმატებს — შენ ისინი არ გაიმეორო, ' +
+    'არც სხვა სიტყვებით. სანამ ერთი მაინც აქ არის, არასდროს თქვა, რომ „არავინ უპასუხა" ან ' +
+    '„პასუხი არ არის" — ეს ხალხი ჯერ კიდევ საქმეშია.'
   );
+}
+
+/**
+ * #1684, the tester's 41786: the prompt asked for these lines and the reply
+ * left them out twice, and once said „ჯერ არცერთს არ უპასუხია" 39 seconds
+ * before any ask had gone. So the server does both: a claim that nobody
+ * answered goes while it is not true, and the lines are appended.
+ */
+const NOBODY_ANSWERED_RES: readonly RegExp[] = [
+  /(არავინ|არავის|არც\s?ერთს?|არცერთს?)[^.!?\n]{0,40}უპასუხ/u,
+  /პასუხი\s+(ჯერ\s+)?(არავის|არავისგან|არ\s+მოსულა)/u,
+  /\b(no ?one|nobody|none of them)\b[^.!?\n]{0,30}\b(answered|replied|responded|got back)/iu,
+  /\bno (answers?|replies|response)( yet| so far)?\b/iu,
+  /(никто|ни один)[^.!?\n]{0,30}(ответил|откликнулся)/iu,
+  /(nadie|ninguno)[^.!?\n]{0,30}(respondi|contest)/iu,
+];
+
+/** Nobody can truthfully be said to have „not answered" while an ask is still open or none went. */
+export function nobodyAnsweredIsUntrue(
+  asks: readonly StatedAsk[],
+  held: readonly HeldAskStamp[],
+  now: Date,
+): boolean {
+  if (asks.length === 0) return true;
+  if (held.length > 0) return true;
+  return asks.some((ask) => isOpenAskState(askStateOf(ask, now)));
+}
+
+/** Drops each sentence that says nobody answered; the rest of the reply is untouched. */
+export function withoutNobodyAnswered(reply: string): string {
+  return reply
+    .split('\n')
+    .map((line) => {
+      const sentences = line.match(/[^.!?…]+[.!?…]*\s*/gu) ?? [line];
+      const kept = sentences.filter((s) => !NOBODY_ANSWERED_RES.some((re) => re.test(s)));
+      return kept.length === sentences.length ? line : kept.join('').trimEnd();
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Appends each per-person line the reply does not already carry. */
+export function withAskLines(reply: string, lines: readonly string[]): string {
+  const missing = lines.filter((line) => !reply.includes(line));
+  if (missing.length === 0) return reply;
+  return `${reply.trimEnd()}\n\n${missing.join('\n')}`;
 }
