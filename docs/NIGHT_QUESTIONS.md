@@ -62,7 +62,11 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+- **P (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
+  failed in the outage (register §93). I have no write path to the live DB, so the statement is
+  Misho's to run in DataGrip after 07:00 UTC:
+  `UPDATE tasks SET next_wake_at = NOW() WHERE id IN (5482, 15677) AND status = 'open';`
+  Remind him in the morning; once it runs, watch both runs and report what they wrote.
 
 Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.
 
