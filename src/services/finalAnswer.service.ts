@@ -50,6 +50,18 @@ export function smallTalkFinalModel(): string {
   return FINAL_ANSWER_MODEL === '' ? '' : SMALL_TALK_FINAL_MODEL || FINAL_ANSWER_MODEL;
 }
 
+/**
+ * Misho's N, 6 October: a run nobody started — a scheduled check, an engine
+ * wake — is not rewritten by GPT at all. 18 of 69 such rewrites came back
+ * empty and Claude's text stood every time; the owner never saw the
+ * difference, the call only cost. '' means no rewrite, the same answer the
+ * flag being off already gives, so every caller knows what to do with it.
+ */
+export function finalWriterForRun(ownerAbsent: boolean, smallTalkOnly: boolean): string {
+  if (ownerAbsent) return '';
+  return smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel();
+}
+
 const MAX_TOKENS = 8192;
 
 /** Row 202 third pass: the same threshold the Anthropic side uses. */

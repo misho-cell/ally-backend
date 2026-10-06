@@ -12,7 +12,7 @@ describe('GPT reads its own prompt blocks', () => {
 
   it('adds the run mode’s GPT blocks to what GPT is given', () => {
     expect(chat).toContain(
-      "const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);",
+      "const gptBlocks = writer === '' ? '' : await gptBlocksFor(runId, userId);",
     );
     expect(chat).toContain('plainSystemPrompt(systemPrompt) +\n          gptBlocks +');
   });

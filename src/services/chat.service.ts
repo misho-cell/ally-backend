@@ -273,6 +273,7 @@ import {
 } from './openingSearch.service';
 import {
   finalAnswerModel,
+  finalWriterForRun,
   smallTalkFinalModel,
   writeFinalAnswer,
   unusableReason,
@@ -11866,7 +11867,9 @@ async function runToolLoop(
     // stamp while answered_by said Claude — the blocks were loaded and stamped
     // with the final writer switched off, so nobody could see GPT never ran.
     // They are read, and stamped, only when GPT will actually write.
-    const gptBlocks = finalAnswerModel() === '' ? '' : await gptBlocksFor(runId, userId);
+    // N: a scheduled check or wake has no writer, so its blocks are not loaded either.
+    const writer = finalWriterForRun(ownerAbsent, smallTalkOnly);
+    const gptBlocks = writer === '' ? '' : await gptBlocksFor(runId, userId);
     const writeWith = (model: string): ReturnType<typeof writeFinalAnswer> =>
       writeFinalAnswer(
         // The old seat's notes to 1101 (32975): the cliffhanger note reached GPT as a
@@ -11891,12 +11894,13 @@ async function runToolLoop(
         runLang(runId),
         model,
       );
-    let rewritten = await writeWith(smallTalkOnly ? smallTalkFinalModel() : finalAnswerModel());
+    let rewritten = await writeWith(writer);
     // D627: a small writer that fails before writing a word hands the turn to the
     // ordinary one, so trying a small model can cost a moment and never the voice.
     if (
       rewritten === null &&
       smallTalkOnly &&
+      writer !== '' &&
       !openAiStarted &&
       smallTalkFinalModel() !== finalAnswerModel()
     ) {
