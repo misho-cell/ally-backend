@@ -31,3 +31,17 @@ describe('a plain greeting to the helper', () => {
     );
   });
 });
+
+describe('the frame repeated at the tail (40395 a)', () => {
+  it('goes', () => {
+    expect(
+      withoutFramesOwnWords('Do you know anyone who could help paint a car? Levan is asking.'),
+    ).toBe('Do you know anyone who could help paint a car?');
+  });
+
+  it('a question that only mentions asking stays', () => {
+    expect(withoutFramesOwnWords('Who asks for the keys at the front desk?')).toBe(
+      'Who asks for the keys at the front desk?',
+    );
+  });
+});

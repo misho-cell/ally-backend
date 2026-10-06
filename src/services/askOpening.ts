@@ -111,10 +111,19 @@ const GREETING_RE = /^\s*(?:hi|hello|hey|გამარჯობა|სალ�
 const ASKING_LEAD_RE =
   /^[^:\n]{0,60}(?:is asking|asks|გეკითხება|გთხოვს|спрашивает|pregunta)\s*:\s*/iu;
 
+/** Tester 40395 (a): the lead-in moved to the tail — „…a car? Levan is asking." */
+const ASKING_TAIL_RE =
+  /[\s.]*(?:^|(?<=[.!?…]))\s*[^.!?…\n]{0,40}(?:is asking|asks|გეკითხება|გთხოვს|спрашивает|pregunta)[.!]?\s*$/iu;
+
+function withoutAskingTail(question: string): string {
+  const trimmed = question.replace(ASKING_TAIL_RE, '').trim();
+  return trimmed === '' ? question : trimmed;
+}
+
 export function withoutFramesOwnWords(question: string): string {
   const afterGreeting = question.replace(GREETING_RE, '');
   // Only the doubled frame goes; a plain greeting to the helper stays as written.
-  if (!ASKING_LEAD_RE.test(afterGreeting)) return question;
+  if (!ASKING_LEAD_RE.test(afterGreeting)) return withoutAskingTail(question);
   const trimmed = afterGreeting.replace(ASKING_LEAD_RE, '').trim();
   return trimmed === '' ? question : trimmed;
 }
