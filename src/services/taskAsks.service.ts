@@ -66,6 +66,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 import { LATER_DEFAULT_DAYS } from './askState';
+import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
@@ -3566,7 +3567,8 @@ export async function noteDeclineIfButtonPressed(threadId: number, message: stri
  * happen only once.
  */
 export async function answerAskTapAtOnce(threadId: number, message: string): Promise<void> {
-  const tap = askTapOf(message);
+  // #1686 (A3): „later" typed in words counts as the button — three days.
+  const tap = askTapOf(message) ?? (isTypedLater(message) ? AskTap.Later : null);
   if (tap !== AskTap.Yes && tap !== AskTap.Later) return;
   try {
     const claimed = await claimAskTap(threadId, tap);
@@ -3586,6 +3588,35 @@ export async function answerAskTapAtOnce(threadId: number, message: string): Pro
       (err as Error).message,
     );
   }
+}
+
+/**
+ * #1686 (A3): the reader picked a day for their „later" — the latest open ask
+ * on this thread comes back at 09:30 that day, once. Returns the new time, or
+ * null when no open ask is on the thread.
+ */
+export async function setLaterDays(threadId: number, days: number): Promise<Date | null> {
+  const result = await query<{ later_until: Date }>(
+    `UPDATE task_asks ta
+        SET later_at = COALESCE(later_at, NOW()), reminded_at = NULL,
+            later_until = ${LATER_UNTIL_SQL('$2')}
+      WHERE ta.id = ${LIVE_ASK_ON_THREAD}
+      RETURNING later_until`,
+    [threadId, days],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ? new Date(result.rows[0].later_until) : null;
+}
+
+/** When the open ask on this thread comes back, if it is held by a „later". */
+export async function laterUntilOnThread(threadId: number): Promise<Date | null> {
+  const result = await query<{ later_until: Date | null }>(
+    `SELECT later_until FROM task_asks WHERE id = ${LIVE_ASK_ON_THREAD}`,
+    [threadId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const until = result.rows[0]?.later_until;
+  return until ? new Date(until) : null;
 }
 
 interface ClaimedTap {
@@ -3609,7 +3640,7 @@ const CLAIM_TAP_SQL: Readonly<Record<AskTap.Yes | AskTap.Later, string>> = {
                   WHERE ta.id = ${LIVE_ASK_ON_THREAD} AND ta.offered_help_at IS NULL
                   RETURNING ${CLAIMED_TAP_COLUMNS}`,
   [AskTap.Later]: `UPDATE task_asks ta SET later_at = NOW(), reminded_at = NULL,
-                           later_until = NOW() + INTERVAL '${LATER_DEFAULT_DAYS} days'
+                           later_until = ${LATER_UNTIL_SQL(String(LATER_DEFAULT_DAYS))}
                     WHERE ta.id = ${LIVE_ASK_ON_THREAD} AND ta.later_at IS NULL
                     RETURNING ${CLAIMED_TAP_COLUMNS}`,
 };

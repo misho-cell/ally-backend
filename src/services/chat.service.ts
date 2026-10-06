@@ -159,8 +159,11 @@ import {
   TaskAsk,
   IncomingAsk,
   answerAskTapAtOnce,
+  laterUntilOnThread,
   noteDeclineIfButtonPressed,
+  setLaterDays,
 } from './taskAsks.service';
+import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
@@ -3816,6 +3819,14 @@ export async function keepUserMessage(
     void noteDeclineIfButtonPressed(threadId, message);
     // ROW 300: a „yes" or „later" tap is told to the asker at once, once.
     void answerAskTapAtOnce(threadId, message);
+    // #1686 (A3): a day picked for that „later" moves its return to that day.
+    const laterDays = laterDaysOf(message);
+    if (laterDays !== null) {
+      void setLaterDays(threadId, laterDays).catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.warn(`[later] thread ${threadId}: day not set:`, (err as Error).message),
+      );
+    }
     return true;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -4311,6 +4322,30 @@ async function askStatusSectionOrNothing(task: Task, asks: readonly TaskAsk[]): 
     // eslint-disable-next-line no-console
     console.warn(`[ask-state] task ${task.id}: could not read ask states:`, (err as Error).message);
     return '';
+  }
+}
+
+/**
+ * #1686 (A3): after a „later" the reply ends with the day the question comes
+ * back; after a picked day, that line is the whole reply.
+ */
+async function withLaterLine(
+  reply: string,
+  threadId: number,
+  language: RunLanguage,
+  userMessage: string,
+): Promise<string> {
+  try {
+    const picked = laterDaysOf(userMessage);
+    const until =
+      picked === null ? await laterUntilOnThread(threadId) : await setLaterDays(threadId, picked);
+    if (until === null) return reply;
+    const line = laterConfirmLine(language, until);
+    return picked === null ? `${reply.trimEnd()}\n\n${line}` : line;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[later] thread ${threadId}: line not added:`, (err as Error).message);
+    return reply;
   }
 }
 
@@ -14239,8 +14274,13 @@ export async function processChat(
   );
   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
   const planToNobody = takePlanWritesToNobody(runId);
-  const choices =
-    planToNobody === null
+  // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
+  const laterTapped =
+    thread.type === 'incoming_ask' &&
+    (askTapOf(userMessage) === AskTap.Later || isTypedLater(userMessage));
+  const choices = laterTapped
+    ? [...laterDayChoices(language)]
+    : planToNobody === null
       ? planButtonsWhenMissing(runId, loopChoices)
       : choicesWithoutPlanCard(loopChoices);
 
@@ -14351,6 +14391,10 @@ export async function processChat(
   // #1684 (tester 41786): the per-person lines and the truth about answers, by the server.
   if (effectiveFinal.trim() !== '')
     effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);
+  // #1686 (A3): the reader is told, by the server, the day the question comes back.
+  if (thread.type === 'incoming_ask' && (laterTapped || laterDaysOf(userMessage) !== null)) {
+    effectiveFinal = await withLaterLine(effectiveFinal, threadId, language, userMessage);
+  }
   const onlyButtons =
     !effectiveFinal.trim() && ((choices?.length ?? 0) > 0 || (options?.length ?? 0) > 0);
   // The tester's 1145 (37893): the plan turn the server started after a goal was

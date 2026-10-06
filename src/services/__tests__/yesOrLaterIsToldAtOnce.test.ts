@@ -157,7 +157,7 @@ describe('the reminder and the reader’s own run', () => {
       "COALESCE(later_until, later_at + INTERVAL '1 day') <= NOW()",
     );
     // #1684: a „later" tap with no date holds for three days.
-    expect(asks).toContain("later_until = NOW() + INTERVAL '${LATER_DEFAULT_DAYS} days'");
+    expect(asks).toContain('later_until = ${LATER_UNTIL_SQL(String(LATER_DEFAULT_DAYS))}');
   });
 
   it('is hooked where the person’s own message is stored', () => {
