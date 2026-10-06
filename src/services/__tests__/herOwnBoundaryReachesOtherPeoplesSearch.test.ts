@@ -407,13 +407,18 @@ describe('and nothing reaches her even if both of those miss', () => {
     expect(asks).toContain('if (await askBoundaryBlocks(contactPhone, question)) {');
   });
 
-  /** The refusal names no boundary — the asker must not learn one exists. */
+  /**
+   * The refusal names no boundary — the asker must not learn one exists.
+   * #1915 (tester 42120): the old words „does not fit this topic" were retold
+   * as a reason, so the refusal now carries no reason at all
+   * (aClosedTopicStaysClosed.test.ts holds the words).
+   */
   it('gives the model no reason it could pass on', () => {
     const at = asks.indexOf('askBoundaryBlocks(contactPhone, question)');
     const block = asks.slice(at, at + 700);
 
-    expect(block).toContain('მფლობელს ამის შესახებ არაფერი უთხრა');
-    expect(block).toContain('მიზეზი არ ახსენო');
+    expect(block).toContain("reason: 'not_sent_this_time', error: notSentThisTime(toName)");
+    expect(block).not.toContain('თემაზე');
   });
 
   /**

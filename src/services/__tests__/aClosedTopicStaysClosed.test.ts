@@ -11,6 +11,9 @@ jest.mock('../costLedger.service', () => ({
 import { query } from '../../db/postgres/client';
 import anthropic from '../../config/anthropic';
 import { askBoundaryBlocks } from '../askBoundary.service';
+import { notSentThisTime } from '../taskAsks.service';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockCreate = (anthropic as unknown as { messages: { create: jest.Mock } }).messages.create;
@@ -70,5 +73,34 @@ describe('a closed topic, asked about in other words', () => {
     mockCreate.mockResolvedValueOnce({ content: [{ type: 'text', text: 'not json' }], usage: {} });
 
     await expect(askBoundaryBlocks(PHONE, 'Who could fix a pipe?')).rejects.toThrow();
+  });
+});
+
+/**
+ * #1915, the tester's 42120: the stop worked, and the asker was still told
+ * „they're not someone to ask on this topic, I already tried and they passed"
+ * — retold from the refusal's own words. The refusal now carries no topic and
+ * no refusal to retell.
+ */
+describe('what the asker is told when a boundary stops the send', () => {
+  const said = notSentThisTime('Nino');
+
+  it('names neither a topic nor a refusal', () => {
+    for (const word of ['თემ', 'უარ', 'არ ჯდება', 'საზღვ', 'topic', 'boundary']) {
+      expect(said).not.toContain(word);
+    }
+  });
+
+  it('gives the owner one line, and says the person never saw it', () => {
+    expect(said).toContain('„ამჯერად ვერ გავიდა"');
+    expect(said).toContain('არ უნახავს');
+  });
+
+  it('is the only thing a boundary refusal returns', () => {
+    const src = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(src).toContain(
+      "return { sent: false, reason: 'not_sent_this_time', error: notSentThisTime(toName) };",
+    );
+    expect(src).not.toContain('recipient_boundary');
   });
 });

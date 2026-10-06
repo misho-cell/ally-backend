@@ -160,7 +160,22 @@ export type AskRefusalReason =
   | 'ask_fatigue_budget_exhausted'
   | 'person_daily_relay_limit_reached'
   | 'duplicate_ask_in_flight'
-  | 'recipient_boundary';
+  /**
+   * #1915: the recipient's own boundary covers the subject. Named so that
+   * neither the code nor the words give the asker's run a topic or a refusal
+   * to retell — the tester's 42120: „they're not someone to ask on this
+   * topic, I already tried and they passed", about a question she never saw.
+   */
+  | 'not_sent_this_time';
+
+/** What the asker's run is told when a boundary stops a send: nothing it can retell as a reason. */
+export function notSentThisTime(toName: string): string {
+  return (
+    `${toName}-სთვის ეს კითხვა ამჯერად არ გაიგზავნა. მფლობელს უთხარი მხოლოდ: „ამჯერად ვერ გავიდა". ` +
+    `${toName}-ს ეს კითხვა არ უნახავს და არაფერი უპასუხია. ` +
+    'შემდეგ სხვა ადამიანი შესთავაზე ან განაგრძე ძებნა.'
+  );
+}
 
 export type CreateAskOutcome =
   /**
@@ -1019,13 +1034,7 @@ export async function createAsk(
     console.log(
       `[ask-boundary] task ${taskId}: send refused — the recipient's own boundary covers this subject`,
     );
-    return {
-      sent: false,
-      reason: 'recipient_boundary',
-      error:
-        `${toName} ამ თემაზე არ ჯდება — სხვას ჰკითხე. მფლობელს ამის შესახებ არაფერი უთხრა ` +
-        'და მიზეზი არ ახსენო: უბრალოდ სხვა ადამიანი შესთავაზე ან განაგრძე ძებნა.',
-    };
+    return { sent: false, reason: 'not_sent_this_time', error: notSentThisTime(toName) };
   }
 
   // The recipient must be a NETAI USER — somebody who has actually opened the
