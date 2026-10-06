@@ -117,6 +117,7 @@ import {
 } from './threads.service';
 import { askStatusSection, openAskLines } from './askStatusSection';
 import { askStateOf } from './askState';
+import { advanceWaveIfDone, nextWaveNote, readWave } from './askWaves.service';
 import { openHeldAsksForTask } from './heldAsks.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
 import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.service';
@@ -2790,6 +2791,12 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
               required: ['name'],
             },
           },
+          real_work: {
+            type: 'boolean',
+            description:
+              'true when this is real work — a job, a hire, hours of somebody’s time — rather ' +
+              'than a small favour: five people are asked per wave instead of three.',
+          },
         },
         required: ['solved_when', 'routes'],
         description:
@@ -4301,6 +4308,22 @@ async function askStatusSectionOrNothing(task: Task, asks: readonly TaskAsk[]): 
   }
 }
 
+/**
+ * #1685 (A2): a wave whose asks are all closed opens the next one here, at
+ * the start of the goal's next run (an answer, a decline and an expiry each
+ * wake the goal), and the run is told whom to write to now.
+ */
+async function waveSectionOrNothing(task: Task): Promise<string> {
+  try {
+    await advanceWaveIfDone(task);
+    return nextWaveNote(await readWave(task));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[ask-wave] task ${task.id}: could not read the wave:`, (err as Error).message);
+    return '';
+  }
+}
+
 async function heldAsksNoteOrNothing(taskId: number, userId: string): Promise<string> {
   try {
     return await heldAsksNote(taskId, userId);
@@ -4692,6 +4715,7 @@ async function buildAgentSystemPrompt(
   const noDirect = await directIsImpossible(userId, threadRequest);
   const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
   const askStates = boundTask ? await askStatusSectionOrNothing(boundTask, boundAsks) : '';
+  const waveNote = boundTask ? await waveSectionOrNothing(boundTask) : '';
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4708,6 +4732,7 @@ async function buildAgentSystemPrompt(
       (boundTask ? buildTaskEngineSection(boundTask, boundAsks) : '') +
       heldNote +
       askStates +
+      waveNote +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.

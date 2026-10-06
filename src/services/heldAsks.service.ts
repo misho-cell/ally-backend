@@ -26,13 +26,16 @@ export interface HoldAskInput {
   readonly contactPhone: string;
   readonly question: string;
   readonly reopensAt: Date;
+  /** #1685: the wave it was written in; it counts as open there until it goes. */
+  readonly waveNo?: number | null;
 }
 
 /** Records one held question, once per goal and person. */
 export async function holdAsk(input: HoldAskInput): Promise<void> {
   await query(
-    `INSERT INTO held_asks (task_id, to_user_id, contact_name, contact_phone, question, reopens_at)
-     SELECT $1, $2, $3, $4, $5, $6
+    `INSERT INTO held_asks (task_id, to_user_id, contact_name, contact_phone, question, reopens_at,
+                            wave_no)
+     SELECT $1, $2, $3, $4, $5, $6, $7
       WHERE NOT EXISTS (SELECT 1 FROM held_asks
                          WHERE task_id = $1 AND to_user_id = $2 AND released_at IS NULL)`,
     [
@@ -42,6 +45,7 @@ export async function holdAsk(input: HoldAskInput): Promise<void> {
       input.contactPhone,
       input.question,
       input.reopensAt,
+      input.waveNo ?? null,
     ],
     QUERY_TIMEOUT_MS,
   );

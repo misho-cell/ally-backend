@@ -78,6 +78,11 @@ export interface TaskPlan {
   routes: PlanRoute[];
   people_to_involve: PlanPerson[];
   never_contact: PlanExclusion[];
+  /**
+   * #1685 (A2): real work (a job, a hire, hours of someone's time) rather than
+   * a small favour — five people per wave instead of three. Absent = small.
+   */
+  real_work?: boolean;
 }
 
 export interface StoredPlan extends TaskPlan {
@@ -353,7 +358,13 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
 
   return {
     ok: true,
-    value: { solved_when: solved.value, routes, people_to_involve: people, never_contact: never },
+    value: {
+      solved_when: solved.value,
+      routes,
+      people_to_involve: people,
+      never_contact: never,
+      ...(input.real_work === true && { real_work: true }),
+    },
   };
 }
 

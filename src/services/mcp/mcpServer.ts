@@ -572,6 +572,10 @@ function registerGoalTools(server: McpServer, userId: string): void {
             never_contact: z
               .array(z.object({ name: z.string(), contact_ref: z.string().optional() }))
               .describe('Whom the user does NOT want contacted.'),
+            real_work: z
+              .boolean()
+              .optional()
+              .describe('Real work rather than a small favour: five people per wave, not three.'),
           })
           .describe('The plan, in the four parts the user approves.'),
       },

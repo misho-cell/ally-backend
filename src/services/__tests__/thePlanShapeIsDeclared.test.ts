@@ -52,7 +52,7 @@ describe('the plan argument declares its shape instead of describing it', () => 
     const props = (plan.properties ?? {}) as Record<string, unknown>;
 
     expect(Object.keys(props).sort()).toEqual(
-      ['never_contact', 'people_to_involve', 'routes', 'solved_when'].sort(),
+      ['never_contact', 'people_to_involve', 'real_work', 'routes', 'solved_when'].sort(),
     );
     expect(plan.required).toEqual(['solved_when', 'routes']);
   });

@@ -59,6 +59,8 @@ describe('a question held by the recipient’s limit', () => {
       PLAN_PHONE,
       'იცნობ კარგ ბუღალტერს?',
       at,
+      // #1685: no wave given, none stored.
+      null,
     ]);
     expect(timeout).toBeGreaterThan(0);
   });

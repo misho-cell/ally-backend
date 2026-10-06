@@ -66,6 +66,7 @@ import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 import { LATER_DEFAULT_DAYS } from './askState';
+import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 /**
@@ -145,6 +146,8 @@ export type AskRefusalReason =
   | 'outside_plan'
   | 'self_send'
   | 'daily_cap_reached'
+  /** #1685: the open wave already has its three (five); the next goes when it closes. */
+  | 'wave_full'
   | 'recipient_daily_limit_reached'
   | 'conversation_ask_limit_reached'
   | 'monthly_ask_budget_reached'
@@ -660,6 +663,9 @@ export async function createAsk(
   if (!trimmed)
     return { sent: false, reason: 'empty_question', error: 'Pass a non-empty question.' };
 
+  // #1685 (A2): the wave this ask goes in; null when the waves do not count it.
+  let waveNo: number | null = null;
+
   // SERVER-SIDE permission gate (ticket-2 P0, thread 7723): a message that
   // reaches a real person's phone must never depend on prompt text alone —
   // the rule lived only in the task_step block, and every mode carries every
@@ -914,6 +920,24 @@ export async function createAsk(
           'გეგმა არ დამტკიცდება, ახალი კითხვა არავის არ მიდის — აჩვენე გეგმა და სთხოვე დასტური.',
       };
     }
+
+    /**
+     * #1685 (A2): an approved plan asks its people in waves — three at once,
+     * five for real work. A plan candidate beyond the open wave waits for it to
+     * close or for the silent-day wake; the person the owner named himself
+     * never waits (D625).
+     */
+    const room = await waveRoomFor(
+      task,
+      contactPhone,
+      async () => introAccepted || (await ownerJustNamedThisPerson()),
+    );
+    if (!room.allowed) {
+      // eslint-disable-next-line no-console
+      console.log(`[ask] task ${taskId}: refused — the open wave is full (#1685)`);
+      return { sent: false, reason: 'wave_full', error: room.error };
+    }
+    waveNo = room.wave;
   }
 
   // The recipient must be a registered member (format-independent lookup).
@@ -1068,6 +1092,7 @@ export async function createAsk(
         contactPhone,
         question: trimmed,
         reopensAt,
+        waveNo,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -1470,8 +1495,9 @@ export async function createAsk(
   const originUserId = await chainOriginFor(fromUserId, parentAskId);
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
-                            parent_ask_id, origin_thread_id, is_follow_up, origin_user_id)
-     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int)
+                            parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
+                            wave_no)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10)
      RETURNING id`,
     [
       taskId,
@@ -1483,9 +1509,16 @@ export async function createAsk(
       threadId ?? null,
       isFollowUp,
       originUserId,
+      isFollowUp ? null : waveNo,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
+  if (waveNo !== null && !isFollowUp) {
+    void noteWaveAsk(taskId).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.warn(`[ask] task ${taskId}: next wave time not noted:`, (err as Error).message),
+    );
+  }
   // Ticket 13 Task 42 (7): the same goal now asks a DIFFERENT person than it
   // asked before — the requester rerouted. Recorded once per goal.
   if (!sameThread) void recordReroutedIfSecondRoute(fromUserId, taskId, toUserId);

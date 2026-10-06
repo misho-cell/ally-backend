@@ -17,6 +17,7 @@ import {
   SWEEP_SILENT_GOALS,
 } from './sweepClaim';
 import { claimExpiredAsksToTell, expireSilentAsks, expiredAsksNote } from './askExpiry.service';
+import { widenWaveOnSilence } from './askWaves.service';
 import {
   DAY_ONE_WAKE,
   finishWake,
@@ -1703,6 +1704,11 @@ export async function sweepSilentGoals(): Promise<number> {
   let woken = 0;
   for (const task of silent) {
     await markSilentDayWoken(task.id);
+    // #1685 (A2): a silent day opens the next wave even while some still wait.
+    await widenWaveOnSilence(task).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[task-engine] task ${task.id}: next wave not opened:`, (err as Error).message),
+    );
     const ok = await wakeTask(
       task.id,
       'ერთი დღეა კითხვა უპასუხოდ არის და ახალი არავის მისწერია. სტანდარტის წესია: ჩუმი დღე = ' +

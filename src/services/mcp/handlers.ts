@@ -1172,6 +1172,7 @@ export interface McpPlanInput {
   routes: { name: string; status?: string }[];
   people_to_involve: McpPlanPerson[];
   never_contact: McpPlanExclusion[];
+  real_work?: boolean;
 }
 
 export async function mcpProposeTaskPlan(
@@ -1197,6 +1198,7 @@ export async function mcpProposeTaskPlan(
     routes: plan.routes,
     people_to_involve: people,
     never_contact: never,
+    ...(plan.real_work === true && { real_work: true }),
   });
   return outcome.ok
     ? { proposed: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
