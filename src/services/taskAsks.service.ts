@@ -45,7 +45,7 @@ import {
   askCancelledNote,
   bridgeThanks,
   buildAskOpening,
-  askChoices,
+  askChoicesFor,
   AskTap,
   askTapLineForAsker,
   askTapOf,
@@ -1449,7 +1449,7 @@ export async function createAsk(
     lines.join('\n\n'),
     'message',
     null,
-    picker ? picker.choices : askChoices(language),
+    picker ? picker.choices : askChoicesFor(safeQuestion, language),
   );
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the

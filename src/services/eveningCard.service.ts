@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { askChoices } from './askOpening';
+import { askChoicesFor } from './askOpening';
 import { EVENING_CARD_SNOOZE_MS, eveningCardPush, nextEveningCard } from './eveningCard';
 import { sendPushNotification } from './notification.service';
 import { pushTimeZone } from './pushQuietHours';
@@ -126,7 +126,7 @@ export async function ringForCard(card: DueCard): Promise<number> {
   return open;
 }
 
-export interface EveningCardItem {
+interface EveningCardItemRow {
   readonly ask_id: number;
   readonly ask_thread_id: number | null;
   readonly from_name: string | null;
@@ -134,12 +134,15 @@ export interface EveningCardItem {
   readonly answered: boolean;
 }
 
+export interface EveningCardItem extends EveningCardItemRow {
+  /** #1948: the taps that fit this question, in the person's language; „later" always last. */
+  readonly choices: readonly string[];
+}
+
 export interface EveningCardView {
   readonly id: number;
   readonly due_at: string;
   readonly snoozes: number;
-  /** The three taps, in the person's language: yes, no, later. Sent as a message to the item's thread. */
-  readonly choices: readonly string[];
   readonly items: readonly EveningCardItem[];
 }
 
@@ -159,7 +162,8 @@ export async function currentEveningCard(userId: number): Promise<EveningCardVie
   );
   const row = card.rows[0];
   if (!row) return null;
-  const items = await query<EveningCardItem>(
+  const language = await userLanguage(String(userId));
+  const items = await query<EveningCardItemRow>(
     `SELECT ta.id AS ask_id, ta.ask_thread_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name,
             ta.question,
             (ta.status <> 'sent' OR ta.offered_help_at IS NOT NULL OR ta.later_at IS NOT NULL
@@ -175,8 +179,7 @@ export async function currentEveningCard(userId: number): Promise<EveningCardVie
     id: Number(row.id),
     due_at: new Date(row.due_at).toISOString(),
     snoozes: row.snoozes,
-    choices: askChoices(await userLanguage(String(userId))),
-    items: items.rows,
+    items: items.rows.map((item) => ({ ...item, choices: askChoicesFor(item.question, language) })),
   };
 }
 

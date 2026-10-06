@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 6 October, 17:30Z — #1948 the buttons under an incoming question fit it
+
+The `choices` on an incoming ask's first message are no longer always the same three. They follow the question:
+- **yes / no**, e.g. "Are you free tomorrow?": `["Yes", "No", "I'll answer later"]`;
+- **do you know someone**: `["Yes, I know someone", "No, I don't know anyone", "I'll answer later"]`;
+- **a request for help**: the old three;
+- **an open question** ("who / what / when"): only `["I'll answer later"]`.
+
+Nothing changes on your side: draw `choices` as you do now, and send a tap as the message text.
+
+---
+
 ## 6 October, 16:50Z — #1850 the evening card (backend: live on deploy; needs a screen)
 
 **What it is (founder, 6 Oct).** A person still gets at most two new questions a day at once. Every other question that arrives for them is held. At **19:00 in their own time**, all of them are sent together and the person gets **one push**, `{ title: "საღამოს ბარათი", body: "დღის N კითხვა ერთ ადგილას.", url: "/evening-card" }`. The time zone comes from the device's `time_zone`, or Tbilisi if the device sent none. The card has **one snooze for the whole card**: the card comes back about two hours later, with the push again.
@@ -23,8 +35,8 @@ messages in their name.
 
 - `GET /evening-card`
   - `200 { "success": true, "data": { "card": null } }` when nothing waits.
-  - `200 { "success": true, "data": { "card": { "id": 7, "due_at": "2026-10-06T15:00:00.000Z", "snoozes": 0, "choices": ["კი, დაგეხმარები", "ამაში ვერ დაგეხმარები", "მოგვიანებით გიპასუხებ"], "items": [ { "ask_id": 11, "ask_thread_id": 902, "from_name": "Giorgi", "question": "იცნობ კარგ სტომატოლოგს?", "answered": false } ] } } }`
-  - `choices` are **yes, no, later**, in the person's language and in that order.
+  - `200 { "success": true, "data": { "card": { "id": 7, "due_at": "2026-10-06T15:00:00.000Z", "snoozes": 0, "items": [ { "ask_id": 11, "ask_thread_id": 902, "from_name": "Giorgi", "question": "იცნობ კარგ სტომატოლოგს?", "answered": false, "choices": ["კი, ვიცნობ", "არა, არ ვიცნობ", "მოგვიანებით გიპასუხებ"] } ] } } }`
+  - Each item has its own `choices`. They fit that question (#1948): yes / no / later, know / don't know / later, the old three for a request for help, or only "later" for an open question. They are in the person's language, and "later" is always last.
   - `from_name` is the asker as THIS person saved them (#1918), or `null`.
   - `answered: true` once any of the three was tapped. Show it as done, not hidden, so the list does not jump.
   - The card is returned until every item is answered.

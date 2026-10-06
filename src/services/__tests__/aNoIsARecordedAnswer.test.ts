@@ -71,7 +71,7 @@ describe('what the ask carries, and what the answer records', () => {
 
   /** Row 300: the decline is one of three buttons, all offered with the question. */
   it('offers the decline with the question itself', () => {
-    expect(asks).toContain('askChoices(language)');
+    expect(asks).toContain('askChoicesFor(safeQuestion, language)');
     expect(asks).toContain('saveThreadMessage(');
   });
 
@@ -96,7 +96,7 @@ describe('what the ask carries, and what the answer records', () => {
     const offer = asks.slice(asks.indexOf('await saveThreadMessage(\n    askThreadId,'));
     // G4's picker replaces the buttons on a need ask; it carries the decline
     // too (aMediatorIsAskedWhomHeRecommends), so the window just got longer.
-    expect(offer.slice(0, 300)).toContain('askChoices(language)');
+    expect(offer.slice(0, 300)).toContain('askChoicesFor(safeQuestion, language)');
   });
 
   /**

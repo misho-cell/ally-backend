@@ -64,7 +64,8 @@ describe('the three buttons', () => {
     for (const choice of [...allYesChoices(), ...allLaterChoices()]) {
       expect(isDeclineChoice(choice)).toBe(false);
     }
-    expect(new Set([...allYesChoices(), ...allLaterChoices()]).size).toBe(LANGUAGES.length * 2);
+    // #1948: two yes buttons per language (help, know someone) and one later.
+    expect(new Set([...allYesChoices(), ...allLaterChoices()]).size).toBe(LANGUAGES.length * 3);
   });
 
   it('reads nothing into words the person typed', () => {

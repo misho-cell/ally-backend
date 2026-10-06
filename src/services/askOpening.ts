@@ -1,3 +1,4 @@
+import { AskKind, askKindOf } from './askKind';
 import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
@@ -280,9 +281,9 @@ export function declineChoice(language: RunLanguage): string {
   return DECLINE_CHOICE[language] ?? DECLINE_CHOICE.ka;
 }
 
-/** Every language's decline button, for the prompt that must recognise a tap of it. */
+/** Every language's decline buttons, for the prompt that must recognise a tap of one. */
 export function allDeclineChoices(): readonly string[] {
-  return Object.values(DECLINE_CHOICE);
+  return [...Object.values(DECLINE_CHOICE), ...Object.values(KNOW_NO_CHOICE)];
 }
 
 /**
@@ -296,7 +297,7 @@ export function allDeclineChoices(): readonly string[] {
  * revised, which is the reader we were least sure about to begin with.
  */
 export function isDeclineChoice(answer: string): boolean {
-  return matchesAnyLanguage(DECLINE_CHOICE, answer);
+  return matchesAnyLanguage(DECLINE_CHOICE, answer) || matchesAnyLanguage(KNOW_NO_CHOICE, answer);
 }
 
 /**
@@ -325,6 +326,39 @@ const LATER_CHOICE: Readonly<Record<RunLanguage, string>> = {
   ka: 'მოგვიანებით გიპასუხებ',
 };
 
+/**
+ * #1948: the buttons for a „do you know someone" question. „Yes, I know
+ * someone" is the same tap as „yes, I can help" (the asker hears it at once);
+ * „No, I don't" is a decline, never a dead end for the asker's goal.
+ */
+const KNOW_YES_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: 'Yes, I know someone',
+  ru: 'Да, знаю',
+  es: 'Sí, conozco a alguien',
+  ka: 'კი, ვიცნობ',
+};
+
+const KNOW_NO_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: "No, I don't know anyone",
+  ru: 'Нет, не знаю',
+  es: 'No, no conozco a nadie',
+  ka: 'არა, არ ვიცნობ',
+};
+
+/** #1948: a plain yes / no — sent as the answer itself, like typed words. */
+const PLAIN_YES: Readonly<Record<RunLanguage, string>> = {
+  en: 'Yes',
+  ru: 'Да',
+  es: 'Sí',
+  ka: 'კი',
+};
+const PLAIN_NO: Readonly<Record<RunLanguage, string>> = {
+  en: 'No',
+  ru: 'Нет',
+  es: 'No',
+  ka: 'არა',
+};
+
 /** What a tap of one of our buttons means; `null` for anything the person typed. */
 export enum AskTap {
   Yes = 'yes',
@@ -337,9 +371,28 @@ export function askChoices(language: RunLanguage): readonly string[] {
   return [YES_CHOICE, DECLINE_CHOICE, LATER_CHOICE].map((labels) => labels[language] ?? labels.ka);
 }
 
-/** Every language's „yes" button, for the prompt that must recognise a tap of it. */
+/**
+ * #1948: the buttons under THIS question, by what kind of question it is.
+ * Every kind keeps „later"; only a request for help keeps „yes, I can help".
+ */
+export function askChoicesFor(question: string, language: RunLanguage): readonly string[] {
+  const pick = (labels: Readonly<Record<RunLanguage, string>>): string =>
+    labels[language] ?? labels.ka;
+  switch (askKindOf(question)) {
+    case AskKind.Know:
+      return [KNOW_YES_CHOICE, KNOW_NO_CHOICE, LATER_CHOICE].map(pick);
+    case AskKind.YesNo:
+      return [PLAIN_YES, PLAIN_NO, LATER_CHOICE].map(pick);
+    case AskKind.Open:
+      return [pick(LATER_CHOICE)];
+    default:
+      return askChoices(language);
+  }
+}
+
+/** Every language's „yes" buttons, for the prompt that must recognise a tap of one. */
 export function allYesChoices(): readonly string[] {
-  return Object.values(YES_CHOICE);
+  return [...Object.values(YES_CHOICE), ...Object.values(KNOW_YES_CHOICE)];
 }
 
 /** The tappable „later" offered under an incoming ask, in the reader's language. */
@@ -354,8 +407,9 @@ export function allLaterChoices(): readonly string[] {
 
 /** Which of our buttons this message is, in ANY language (see `isDeclineChoice`). */
 export function askTapOf(message: string): AskTap | null {
-  if (matchesAnyLanguage(YES_CHOICE, message)) return AskTap.Yes;
-  if (matchesAnyLanguage(DECLINE_CHOICE, message)) return AskTap.Decline;
+  if (matchesAnyLanguage(YES_CHOICE, message) || matchesAnyLanguage(KNOW_YES_CHOICE, message))
+    return AskTap.Yes;
+  if (isDeclineChoice(message)) return AskTap.Decline;
   if (matchesAnyLanguage(LATER_CHOICE, message)) return AskTap.Later;
   return null;
 }

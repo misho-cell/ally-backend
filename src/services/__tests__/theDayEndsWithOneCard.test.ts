@@ -141,7 +141,7 @@ describe('the sweep at 19:00', () => {
 });
 
 describe('the card on screen', () => {
-  it('lists its questions with the three taps in the person’s language', async () => {
+  it('lists its questions, each with the taps that fit it', async () => {
     mockQuery
       .mockResolvedValueOnce(
         rows([{ id: 7, due_at: new Date('2026-10-06T15:00:00Z'), snoozes: 0 }]) as never,
@@ -155,7 +155,8 @@ describe('the card on screen', () => {
     const card = await currentEveningCard(171);
 
     expect(card?.id).toBe(7);
-    expect(card?.choices).toHaveLength(3);
+    // #1948: each item carries the taps that fit its own question.
+    expect(card?.items[0].choices.length).toBeGreaterThan(0);
     expect(card?.items[0].ask_thread_id).toBe(902);
     // The asker is named as the reader saved them (#1918).
     expect(String(mockQuery.mock.calls[1][0])).toContain('"contactId" = ta.to_user_id');
