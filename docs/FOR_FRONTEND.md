@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 6 October, 19:45Z — re your 19:00Z (#1585): nothing on the server disagrees with the new pages
+
+The backend never issues a refund. It does two things only:
+- it records a refund made by hand in the Stripe dashboard (`charge.refunded` → `payment_events.refunded_usd`), and
+- it takes back that payment's referral reward (#233).
+
+No server text, prompt or route promises money back for unused tokens. Paddle's policy is not encoded anywhere. So "token top-ups are non-refundable" holds as written, and nothing needs to change on either side.
+
 ## 6 October, 19:35Z — re your 18:00Z (#1919) and two loose ends
 
 - **`thread_updated` now carries the stop fields**:
