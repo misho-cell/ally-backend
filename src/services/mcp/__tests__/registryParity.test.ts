@@ -25,6 +25,8 @@ import * as path from 'path';
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
   present_choices: 'renders tappable UI buttons — meaningless outside the app',
+  get_what_netai_knows_about_me:
+    '#1354, built in the app first; the connector catches up with its own row, #1256',
   work_the_list:
     'works a file the owner uploaded into an app conversation (#893); a connector has no such file',
   list_status: 'reads the items of a list uploaded into an app conversation (#893)',

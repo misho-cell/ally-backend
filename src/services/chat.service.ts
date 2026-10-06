@@ -151,6 +151,7 @@ import {
 } from './taskAsks.service';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
+import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
@@ -2848,6 +2849,20 @@ const SAVE_USER_NOTE_TOOL: AnthropicTool = {
     },
     required: ['kind', 'text'],
   },
+};
+
+/** #1354: the owner's own view of what Netai holds and shows about them. */
+const ABOUT_ME_TOOL: AnthropicTool = {
+  name: 'get_what_netai_knows_about_me',
+  description:
+    'What Netai holds about the USER THEMSELVES: their name, their own phone number(s), the ' +
+    'profile lines they gave, and what_others_see — the public facts other members are shown ' +
+    'about them. Call it whenever they ask what you know about them, what is public about them, ' +
+    'or what their own number is — never answer that from memory, and never say you have no ' +
+    'access to their data. Give them all of it plainly; their own number is theirs to see. ' +
+    'Never say who saved a fact. If what_others_see is empty, say nothing public is shown ' +
+    'about them yet.',
+  input_schema: { type: 'object', properties: {}, required: [] },
 };
 
 const GET_USER_NOTES_TOOL: AnthropicTool = {
@@ -8695,6 +8710,11 @@ async function executeToolCall(
       return { resumed: true };
     case 'get_netai_info':
       return getNetaiInfo(String(input['topic'] ?? ''), userId);
+    case 'get_what_netai_knows_about_me': {
+      const aboutMe = await whatNetaiKnowsAboutMe(userId);
+      for (const own of aboutMe.own_numbers) registerAllowedNumber(runId, own);
+      return aboutMe;
+    }
     case 'get_my_token_balance':
       return myTokenBalance(userId);
     case 'get_country_channels':
@@ -12722,6 +12742,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   FORGET_FACT_TOOL,
   SAVE_USER_NOTE_TOOL,
   GET_USER_NOTES_TOOL,
+  ABOUT_ME_TOOL,
   FORGET_USER_NOTE_TOOL,
   LIST_ANSWER_RULES_TOOL,
   DELETE_ANSWER_RULE_TOOL,
