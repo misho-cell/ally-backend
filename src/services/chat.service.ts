@@ -148,7 +148,7 @@ import {
   answerAskTapAtOnce,
   noteDeclineIfButtonPressed,
 } from './taskAsks.service';
-import { mediatorsOwnWords } from './introResponse';
+import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
@@ -14155,7 +14155,16 @@ export async function processChat(
   }
   const sentSide = runSentLineOnScreen.get(runId);
   if (sentSide !== undefined && effectiveFinal.trim() !== '') {
-    effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language, userMessage);
+    const ownLines = [userMessage, ...(await ownersRecentLines(threadId))];
+    effectiveFinal = withoutSentRestatement(effectiveFinal, sentSide, language, ownLines);
+  }
+  // #1750 (tester 40921): on the go-between's side the server's close is the whole answer.
+  if (sentSide === SentSide.Mediator && effectiveFinal.trim() === '') {
+    // eslint-disable-next-line no-console
+    console.log(`[chat] run ${runId} thread ${threadId}: the close line said it all — quiet`);
+    await dropQuietRunTrail(userId, threadId, runId);
+    clearRunState(runId);
+    return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
   // #1189 (Giorgi, 4 and 5 Oct): a wake that only re-set its reminder left a
   // bubble holding „•". A reply with no letter or digit in it says nothing; it is

@@ -1200,6 +1200,8 @@ export function runOwnerMessage(run: OwnerRun): void {
       // phone). No-op when VAPID isn't configured. The preview is scrubbed
       // and truncated so no phone number rides in the notification body.
       // #1321: not while they read it on the device they asked from.
+      // #1750: a quiet end (the server's own line said it all) has nothing to push.
+      if (result.reply.trim() === '') return;
       void sendPushNotification(
         userId,
         {

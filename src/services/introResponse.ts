@@ -30,6 +30,27 @@ const OWN_LINES_MAX_CHARS = 600;
 const OWN_LINES_TIMEOUT_MS = 3_000;
 const INJECTED_NOTE_RE = /^\s*\((სისტემური|system note)/i;
 
+/** The owner's own last few lines in a thread, newest first; empty when unreadable. */
+export async function ownersRecentLines(threadId: number): Promise<string[]> {
+  try {
+    const result = await query<{ content: string | null }>(
+      `SELECT content FROM conversations
+        WHERE thread_id = $1 AND role = 'user'
+        ORDER BY created_at DESC
+        LIMIT $2`,
+      [threadId, OWN_LINES_LIMIT],
+      OWN_LINES_TIMEOUT_MS,
+    );
+    return result.rows
+      .map((r) => (r.content ?? '').trim())
+      .filter((line) => line !== '' && !INJECTED_NOTE_RE.test(line));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[intro] could not read the owner's recent lines:", (err as Error).message);
+    return [];
+  }
+}
+
 export async function mediatorsLinesSinceAsked(
   threadId: number | null,
   askedAt: Date | string | null,

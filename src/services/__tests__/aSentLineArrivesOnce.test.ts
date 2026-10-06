@@ -13,13 +13,15 @@ describe('withoutSentRestatement', () => {
     );
   });
 
-  it('puts one line in place of a reply that was only the repeat', () => {
-    expect(withoutSentRestatement('გადაცემულია.', SentSide.Mediator, 'ka')).toBe(
-      'თუ კიდევ რამე დაგჭირდება, აქ ვარ.',
-    );
+  it('puts one line in place of an asker reply that was only the repeat', () => {
     expect(withoutSentRestatement('Your request was sent.', SentSide.Asker, 'en')).toBe(
       'I will tell you the moment the answer comes.',
     );
+  });
+
+  /** #1750 (tester 40921): „if you need anything else, I am here" was one line too many. */
+  it('leaves nothing on the go-between side, where the close line is the answer', () => {
+    expect(withoutSentRestatement('გადაცემულია.', SentSide.Mediator, 'ka')).toBe('');
   });
 
   it('leaves a reply that says nothing went exactly as it was', () => {
@@ -40,14 +42,14 @@ describe('a restatement in other words', () => {
   it('drops „Done, they will be connected" on the mediator side', () => {
     expect(
       withoutSentRestatement("Done, they'll be connected directly.", SentSide.Mediator, 'en'),
-    ).toBe('If you need anything else, I am here.');
+    ).toBe('');
     expect(
       withoutSentRestatement(
         "Done, you're connecting them directly with Sandro.",
         SentSide.Mediator,
         'en',
       ),
-    ).toBe('If you need anything else, I am here.');
+    ).toBe('');
   });
 
   it("drops the mediator's notification setting on the asker side", () => {
@@ -71,17 +73,20 @@ describe('the owner’s own line, echoed after the close', () => {
   const herLine = 'ვერა, გიორგი ახლა საზღვარგარეთაა და ერთი თვე არ იქნება';
 
   it('is not shown back to her as the reply', () => {
-    expect(withoutSentRestatement(herLine, SentSide.Mediator, 'ka', herLine)).toBe(
-      'თუ კიდევ რამე დაგჭირდება, აქ ვარ.',
-    );
-    expect(withoutSentRestatement(`„${herLine}"`, SentSide.Mediator, 'ka', herLine)).toBe(
-      'თუ კიდევ რამე დაგჭირდება, აქ ვარ.',
-    );
+    expect(withoutSentRestatement(herLine, SentSide.Mediator, 'ka', [herLine])).toBe('');
+    expect(withoutSentRestatement(`„${herLine}"`, SentSide.Mediator, 'ka', [herLine])).toBe('');
+  });
+
+  /** 40921: the condition was typed a turn before the channel tap, and came back as Netai's. */
+  it('drops her earlier line and a first-person „I agreed" alike', () => {
+    const reply = 'გაცნობის მოთხოვნას დავთანხმდი. გიორგის მხოლოდ შაბათს დილით სცალია.';
+    const lines = ['ჩემი გავლით', 'კი, გავაცნობ, ოღონდ გიორგის მხოლოდ შაბათს დილით სცალია'];
+    expect(withoutSentRestatement(reply, SentSide.Mediator, 'ka', lines)).toBe('');
   });
 
   it('keeps a short word and anything she did not say', () => {
-    expect(withoutSentRestatement('კარგი.', SentSide.Mediator, 'ka', 'კარგი')).toBe('კარგი.');
+    expect(withoutSentRestatement('კარგი.', SentSide.Mediator, 'ka', ['კარგი'])).toBe('კარგი.');
     const reply = 'თუ ერთ თვეში დაბრუნდება, შეგიძლია მერე თავად შესთავაზო.';
-    expect(withoutSentRestatement(reply, SentSide.Mediator, 'ka', herLine)).toBe(reply);
+    expect(withoutSentRestatement(reply, SentSide.Mediator, 'ka', [herLine])).toBe(reply);
   });
 });

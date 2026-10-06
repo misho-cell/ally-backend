@@ -2,7 +2,7 @@ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(
 jest.mock('../taskAsks.service', () => ({ __esModule: true, answerIsTheirOwnWords: jest.fn() }));
 
 import { query } from '../../db/postgres/client';
-import { mediatorsLinesSinceAsked } from '../introResponse';
+import { mediatorsLinesSinceAsked, ownersRecentLines } from '../introResponse';
 
 /**
  * #1750 (tester 40624): the go-between typed „კი, გავაცნობ, ოღონდ გიორგის
@@ -45,6 +45,24 @@ describe('mediatorsLinesSinceAsked', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockQuery.mockRejectedValueOnce(new Error('timeout'));
     await expect(mediatorsLinesSinceAsked(1, '2026-10-06T01:21:04Z')).resolves.toBeNull();
+    spy.mockRestore();
+  });
+});
+
+/** 40921: the reply on her side is checked against her last few lines, not only this turn's. */
+describe('ownersRecentLines', () => {
+  it('gives her own lines, newest first, without server notes', async () => {
+    rows(['ჩემი გავლით', '(სისტემური შენიშვნა: x)', 'კი, ოღონდ შაბათს დილით']);
+    await expect(ownersRecentLines(40527)).resolves.toEqual([
+      'ჩემი გავლით',
+      'კი, ოღონდ შაბათს დილით',
+    ]);
+  });
+
+  it('is empty when the read fails', async () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockQuery.mockRejectedValueOnce(new Error('timeout'));
+    await expect(ownersRecentLines(40527)).resolves.toEqual([]);
     spy.mockRestore();
   });
 });

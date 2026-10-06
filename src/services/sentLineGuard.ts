@@ -35,8 +35,9 @@ const SAYS_IT_WENT_RE =
  * notification setting, which is not the owner's to hear.
  */
 const SIDE_RESTATEMENT_RE: Readonly<Record<SentSide, RegExp>> = {
+  // #1750 (tester 40921): „გაცნობის მოთხოვნას დავთანხმდი" — her yes, restated as Netai's own.
   [SentSide.Mediator]:
-    /^\s*(?:done|готово|hecho|listo|მზადაა)\b|connected|connecting|დაუკავშირ|დააკავშირ|დაკავშირდებ|соедин|conectad/i,
+    /^\s*(?:done|готово|hecho|listo|მზადაა)\b|connected|connecting|დაუკავშირ|დააკავშირ|დაკავშირდებ|соедин|conectad|დავთანხმდ|დაეთანხმ|თანხმობა|\bagreed\b|\baccepted\b|согласи|aceptad/i,
   [SentSide.Asker]:
     /Netai-ს (?:შემდეგ )?გახსნისას|გახსნისას (?:ნახავს|დაინახავს)|შეტყობინებები (?:აქვს )?გამორთ|notifications (?:are )?(?:off|turned off|disabled)|opens? Netai|откроет Netai|уведомления|abra Netai|notificaciones/i,
 };
@@ -49,29 +50,25 @@ function restatesTheServerLine(sentence: string, side: SentSide): boolean {
 const SENTENCE_END_RE = /((?<=[.!?…])\s+)/;
 
 /**
- * When a reply was nothing but the restatement, one line in its place — never
- * a second „sent", and never the empty reply the run would report as failed.
+ * When an asker's reply was nothing but the restatement, one line in its place
+ * — never a second „sent", and never the empty reply the run would report as
+ * failed. The go-between's side gets nothing: the server's close is the whole
+ * answer there, and the tester's 40921 read „if you need anything else, I am
+ * here" under it as one line too many.
  */
-const IN_PLACE_OF_A_REPEAT: Readonly<Record<SentSide, Readonly<Record<RunLanguage, string>>>> = {
-  [SentSide.Asker]: {
-    ka: 'როგორც კი პასუხი მოვა, მაშინვე გეტყვი.',
-    en: 'I will tell you the moment the answer comes.',
-    ru: 'Как только придёт ответ, сразу скажу.',
-    es: 'Te lo diré en cuanto llegue la respuesta.',
-  },
-  [SentSide.Mediator]: {
-    ka: 'თუ კიდევ რამე დაგჭირდება, აქ ვარ.',
-    en: 'If you need anything else, I am here.',
-    ru: 'Если что-то ещё понадобится, я здесь.',
-    es: 'Si necesitas algo más, aquí estoy.',
-  },
+const IN_PLACE_OF_A_REPEAT: Readonly<Record<RunLanguage, string>> = {
+  ka: 'როგორც კი პასუხი მოვა, მაშინვე გეტყვი.',
+  en: 'I will tell you the moment the answer comes.',
+  ru: 'Как только придёт ответ, сразу скажу.',
+  es: 'Te lo diré en cuanto llegue la respuesta.',
 };
 
 /**
  * #1750 (tester 40789, conv 40496): the go-between typed her refusal, the
  * server wrote its close, and the reply held only her own sentence, word for
- * word, as if Netai had said it. A sentence of the reply that is the owner's
- * own line from this turn says nothing new to them.
+ * word, as if Netai had said it. A sentence of the reply that is one of the
+ * owner's own recent lines says nothing new to them — 40921: the condition she
+ * typed a turn before tapping the channel button came back the same way.
  */
 const MIN_ECHO_LETTERS = 12;
 const NOT_A_LETTER_RE = /[^\p{L}\p{N}]+/gu;
@@ -80,9 +77,11 @@ function letters(text: string): string {
   return text.toLowerCase().replace(NOT_A_LETTER_RE, '');
 }
 
-function echoesTheOwner(sentence: string, ownersLine: string): boolean {
+function echoesTheOwner(sentence: string, ownersLines: readonly string[]): boolean {
   const said = letters(sentence);
-  return said.length >= MIN_ECHO_LETTERS && letters(ownersLine).includes(said);
+  return (
+    said.length >= MIN_ECHO_LETTERS && ownersLines.some((line) => letters(line).includes(said))
+  );
 }
 
 /** The reply without the sentences that repeat a line the server already wrote. */
@@ -90,14 +89,14 @@ export function withoutSentRestatement(
   reply: string,
   side: SentSide,
   language: RunLanguage,
-  ownersLine = '',
+  ownersLines: readonly string[] = [],
 ): string {
   const pieces = reply.trim().split(SENTENCE_END_RE);
   let rest = '';
   let dropped = false;
   for (let i = 0; i < pieces.length; i += 2) {
     const sentence = pieces[i] ?? '';
-    if (restatesTheServerLine(sentence, side) || echoesTheOwner(sentence, ownersLine)) {
+    if (restatesTheServerLine(sentence, side) || echoesTheOwner(sentence, ownersLines)) {
       dropped = true;
       continue;
     }
@@ -105,6 +104,6 @@ export function withoutSentRestatement(
   }
   if (!dropped) return reply;
   if (rest.trim() !== '') return rest.trim();
-  const lines = IN_PLACE_OF_A_REPEAT[side];
-  return lines[language] ?? lines.ka;
+  if (side === SentSide.Mediator) return '';
+  return IN_PLACE_OF_A_REPEAT[language] ?? IN_PLACE_OF_A_REPEAT.ka;
 }

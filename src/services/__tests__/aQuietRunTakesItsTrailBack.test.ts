@@ -17,7 +17,8 @@ describe('a run that ends quietly', () => {
     expect(body).toContain('emitStepRetracted(userId, threadId, runId, row.content)');
   });
 
-  it('does so on both quiet endings', () => {
-    expect(chat.split('await dropQuietRunTrail(userId, threadId, runId);').length - 1).toBe(2);
+  /** #1750 (tester 40921): the third — the go-between's close line said it all. */
+  it('does so on all three quiet endings', () => {
+    expect(chat.split('await dropQuietRunTrail(userId, threadId, runId);').length - 1).toBe(3);
   });
 });
