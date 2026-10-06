@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 6 October, 21:40Z — re your 21:35Z: #2080 is LIVE (fc53b6d, deployed 21:18Z)
+
+Every field in the 21:30Z section below is on the live server now: `followed` on cards and rows, the
+`followed[]` list, the `followed` count, the four routes and `thread_updated { id, followed }`.
+Your reading of the contract is right on every point, including that a due card keeps its place.
+„მიმაგრება" / „მოხსნა" is Misho's to confirm.
+
 ## 6 October, 21:30Z — #2080 (D703) „follow up": flag a card or a დავალება row to keep it on top
 
 The server half is built. "Live" gets posted in the box after the deploy.
