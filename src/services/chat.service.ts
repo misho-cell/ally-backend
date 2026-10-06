@@ -7428,6 +7428,22 @@ function takeWaysIn(runId: string): ReadonlyMap<string, WayIn> {
   return held;
 }
 
+/**
+ * #1356 (Lika, 5 Oct): asked for everything on a contact, she got a raw
+ * server bubble first — „Found on the web: [a page], your contact there —
+ * [an unrelated contact] … check it is the same person" — and then the answer.
+ * The card is for a goal's opening search, which looks for ways in to someone
+ * new. In a chat the model's own web_search hands it every verdict, and the
+ * answer is one message in its own words.
+ */
+const runWebCardFromGoal = new Set<string>();
+
+function webCardFor(runId: string): ReadonlyMap<string, WayIn> {
+  const waysIn = takeWaysIn(runId);
+  const fromGoal = runWebCardFromGoal.delete(runId);
+  return fromGoal ? waysIn : new Map<string, WayIn>();
+}
+
 const runShareText = new Map<string, string>();
 
 function noteShareText(runId: string | undefined, value: unknown): void {
@@ -7829,6 +7845,7 @@ const runRepeatedGoal = new Map<string, number>();
 
 function clearRunState(runId: string): void {
   runSearchCalls.delete(runId);
+  runWebCardFromGoal.delete(runId);
   runAllowedNumbers.delete(runId);
   runWebPages.delete(runId);
   runModes.delete(runId);
@@ -10954,6 +10971,7 @@ function startOpeningSearches(
 ): LateOpeningSearch {
   let landed: OpeningSearches | null = null;
   let delivered = false;
+  runWebCardFromGoal.add(runId);
   void runOpeningSearches(userId, goalText, runId, threadId)
     .then((found) => {
       landed = found;
@@ -14607,7 +14625,7 @@ export async function processChat(
    * run found, and the answer is what the run concluded. The waiting items
    * still come last, and they carry their own buttons by design.
    */
-  const fromTheWeb = buildFromTheWebMessage(takeWaysIn(runId), language);
+  const fromTheWeb = buildFromTheWebMessage(webCardFor(runId), language);
   if (fromTheWeb !== null) {
     const webMessageId = await saveMessage(userId, threadId, 'assistant', fromTheWeb);
     emitMessageAppended(userId, threadId, runId, {
