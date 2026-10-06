@@ -39,7 +39,7 @@ export interface ExportFile {
   readonly rows: number | null;
 }
 
-async function readInputs(): Promise<MemberInputs> {
+export async function readInputs(): Promise<MemberInputs> {
   const roster = await readRoster();
   const ids = roster.map((m) => m.user_id).filter((id): id is number => id !== null);
   const phonebooks = await readPhonebooks(ids);

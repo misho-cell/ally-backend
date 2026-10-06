@@ -299,10 +299,8 @@ import {
 import { FOLLOW_UP_IN_CONVERSATION_FLAG } from '../../services/sharedRequestThread.service';
 import { confirmedWarmTieSql } from '../../services/chorusCap';
 import { rateLimit } from '../middleware/rateLimit.middleware';
-import {
-  buildAxelExportFirstDelivery,
-  zipFiles,
-} from '../../services/axelExport/axelExport.service';
+import { zipFiles } from '../../services/axelExport/axelExport.service';
+import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 
 const adminRouter = Router();
 /** The Axel export is heavy and needed once: a few builds a minute at most. */
@@ -6701,8 +6699,8 @@ adminRouter.post('/identity/unmerge', async (req: Request, res: Response) => {
 /**
  * The Axel members export (Misho's direct word, 6 Oct 2026; the founder's
  * request on the handoff board, 11:22 Tbilisi). Admin login only, never on
- * the board. This is the first delivery: parts A and D, with the data
- * dictionary and a manifest of row counts; every phone number is hashed.
+ * the board. Parts A to F, with the data dictionary and a manifest of row
+ * counts; every phone number is hashed. (Parts A and D went first, ec90c19.)
  *
  *   200 application/zip   axel_members_<date>.zip
  *   401 / 403             not an admin
@@ -6714,7 +6712,7 @@ adminRouter.get(
   async (_req: Request, res: Response) => {
     try {
       const exportedAt = new Date().toISOString();
-      const files = await buildAxelExportFirstDelivery(exportedAt);
+      const files = await buildAxelExportFull(exportedAt);
       const zip = await zipFiles(files);
       // Row counts only, so the board can be told them without anyone opening the file.
       const counts = files.map((f) => `${f.name}=${f.rows ?? '-'}`).join(' ');
