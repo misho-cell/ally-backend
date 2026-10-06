@@ -432,7 +432,12 @@ export function replaceNameWithPlaceholder(
   placeholder: string,
 ): string {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text.replace(new RegExp(`${escaped}${GEORGIAN_LETTER}*`, 'gu'), placeholder);
+  // #2117 (tester 43066, conv 41581): „სატია ნადელა (Satya Nadella)" came out
+  // as „სატია ნადელა ((სახელი ვერ დავადასტურე…))" — the gate filled the echo's
+  // own brackets with its bracketed note. A name repeated in brackets beside
+  // itself adds nothing, so the whole echo goes rather than being annotated.
+  const withoutEcho = text.replace(new RegExp(`\\s*\\(\\s*${escaped}\\s*\\)`, 'gu'), '');
+  return withoutEcho.replace(new RegExp(`${escaped}${GEORGIAN_LETTER}*`, 'gu'), placeholder);
 }
 
 /**

@@ -561,3 +561,19 @@ describe('words that only look like an office or a name', () => {
     ).toEqual([]);
   });
 });
+
+/** #2117 (tester 43066, conv 41581): a bracketed echo of a name is dropped, not double-bracketed. */
+describe('a name echoed in brackets', () => {
+  const replace = replaceNameWithPlaceholder;
+  const NOTE = '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)';
+
+  it('goes whole, so no bracket sits inside a bracket', () => {
+    expect(
+      replace('სატია ნადელა (Satya Nadella) მაიკროსოფტის დირექტორია.', 'Satya Nadella', NOTE),
+    ).toBe('სატია ნადელა მაიკროსოფტის დირექტორია.');
+  });
+
+  it('still annotates the name where it stands on its own', () => {
+    expect(replace('Satya Nadella is the CEO.', 'Satya Nadella', NOTE)).toBe(`${NOTE} is the CEO.`);
+  });
+});
