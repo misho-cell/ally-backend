@@ -175,3 +175,27 @@ export function snappedToKnownLabels(labels: readonly string[]): string[] {
     return KNOWN_LABELS.find((known) => editDistance(label, known) <= SNAP_EDITS) ?? label;
   });
 }
+
+/**
+ * #1783 (tester 41317, 41417): above the channel buttons Netai wrote „გაცნობა
+ * ჩემი გავლით შევათანხმოთ." — in its own voice „through me" reads as through
+ * Netai, and it was no question. Twice the prompt asked and twice it slipped;
+ * when the channel button is on screen, the server now says „შენი გავლით" in
+ * Netai's text and makes sure a question stands above the buttons.
+ */
+const THROUGH_ME_IN_TEXT_RE = /ჩემი გავლით/g;
+const THROUGH_YOU = 'შენი გავლით';
+const ENDS_ON_A_QUESTION_RE = /[?？]\s*$/;
+const CHANNEL_QUESTION = 'პირდაპირ დაგაკავშირო, თუ შენი გავლით გავაგრძელოთ?';
+
+export function channelQuestionInNetaisVoice(text: string, labels: readonly string[]): string {
+  const channelOnScreen = labels.some(
+    (label) => label.startsWith(THROUGH_ME) || THROUGH_YOU_RE.test(label),
+  );
+  if (!channelOnScreen) return text;
+  const inNetaisVoice = text.replace(THROUGH_ME_IN_TEXT_RE, THROUGH_YOU).trimEnd();
+  if (inNetaisVoice === '') return CHANNEL_QUESTION;
+  return ENDS_ON_A_QUESTION_RE.test(inNetaisVoice)
+    ? inNetaisVoice
+    : `${inNetaisVoice}\n\n${CHANNEL_QUESTION}`;
+}

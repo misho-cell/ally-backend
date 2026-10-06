@@ -5,6 +5,7 @@ import {
   buttonSpellingNote,
   correctedLabels,
   snappedToKnownLabels,
+  channelQuestionInNetaisVoice,
   splitButtons,
   withoutButtonsLine,
 } from './buttonSpelling';
@@ -14199,6 +14200,9 @@ export async function processChat(
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
+  if (language === 'ka' && choices !== undefined) {
+    effectiveFinal = channelQuestionInNetaisVoice(effectiveFinal, choices);
+  }
   if (language === 'ka') effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);

@@ -1,4 +1,4 @@
-import { snappedToKnownLabels } from '../buttonSpelling';
+import { channelQuestionInNetaisVoice, snappedToKnownLabels } from '../buttonSpelling';
 
 /** #1486 (39337): „წერ არა" stood for „ჯერ არა". */
 describe('a known button misspelt by one letter', () => {
@@ -27,5 +27,31 @@ describe('the channel button', () => {
 
   it('leaves „შენი" elsewhere in a label alone', () => {
     expect(snappedToKnownLabels(['შენი აზრით რა ჯობია'])).toEqual(['შენი აზრით რა ჯობია']);
+  });
+});
+
+/** #1783 (tester 41417): the line above the channel buttons, in Netai's own voice. */
+describe('channelQuestionInNetaisVoice', () => {
+  const buttons = ['ჩემი გავლით', 'არა, ამჯერად'];
+
+  it('says „შენი გავლით" and ends on a question', () => {
+    expect(
+      channelQuestionInNetaisVoice(
+        'გიორგი შაბათს დილით არის თავისუფალი. გაცნობა ჩემი გავლით შევათანხმოთ.',
+        buttons,
+      ),
+    ).toBe(
+      'გიორგი შაბათს დილით არის თავისუფალი. გაცნობა შენი გავლით შევათანხმოთ.\n\n' +
+        'პირდაპირ დაგაკავშირო, თუ შენი გავლით გავაგრძელოთ?',
+    );
+  });
+
+  it('leaves a question that is already there', () => {
+    const asked = 'მხოლოდ შაბათს დილით სცალია — პირდაპირ დავაკავშირო, თუ შენი გავლით?';
+    expect(channelQuestionInNetaisVoice(asked, buttons)).toBe(asked);
+  });
+
+  it('touches nothing without the channel button', () => {
+    expect(channelQuestionInNetaisVoice('ჩემი გავლით.', ['კი', 'არა'])).toBe('ჩემი გავლით.');
   });
 });
