@@ -205,3 +205,15 @@ describe('the ask a card sends', () => {
     expect(held).toContain('AND evening_card_id IS NULL');
   });
 });
+
+/** The tester's 42440: a card that is tomorrow's was told as „with her other questions today". */
+describe('what the asker’s run is told', () => {
+  it('names no day of its own — the status line names it', () => {
+    const { heldForEveningCardNote } =
+      jest.requireActual<typeof import('../eveningCard')>('../eveningCard');
+    const said = heldForEveningCardNote('Nino');
+    expect(said).not.toMatch(/დღის დანარჩენ|ამ დღის/);
+    expect(said).toContain('უახლოეს საღამოს ბარათში');
+    expect(said).toContain('„დღეს", „ხვალ" და საათი არ ახსენო');
+  });
+});
