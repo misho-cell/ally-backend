@@ -60,6 +60,10 @@ const MIN_TERM_CHARS = 3;
 const MAX_QUERY_WORDS = 24;
 
 const QUERY_TIMEOUT_MS = 5_000;
+/** #1915: the yes/no on whether a question falls under a closed topic. */
+const COVER_MAX_TOKENS = 20;
+/** A person has a handful of boundaries; this is a ceiling, not an expectation. */
+const MAX_BOUNDARY_ROWS_READ = 200;
 
 export interface AskBoundary {
   /** The person's own words for what they do not want to be asked about. */
@@ -346,10 +350,90 @@ export async function withoutAskBoundaries<T extends { readonly phone: string }>
  * an ask that fails costs a retry, and one that goes out cannot be recalled.
  */
 export async function askBoundaryBlocks(phone: string, subject: string): Promise<boolean> {
-  const terms = queryTerms(subject);
-  if (terms.length === 0) return false;
   const digits = phoneDigits(phone);
   if (digits === '') return false;
+  if (await boundaryWordsMatch(digits, subject)) return true;
+  // #1915 (the phone report, point 73): the words are not the topic. A question
+  // on a closed topic in other words shared none of them and went through.
+  const boundaries = await boundariesOfPhone(digits);
+  if (boundaries.length === 0) return false;
+  return questionUnderBoundary(subject, boundaries);
+}
+
+/** The recipient's boundaries, found by their number. */
+async function boundariesOfPhone(digits: string): Promise<AskBoundary[]> {
+  const result = await query<{ topic: string; term: string }>(
+    `SELECT ab.topic, ab.term FROM ask_boundaries ab
+       JOIN "UserPhone" up ON up."userId" = ab.user_id
+      WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1
+      ORDER BY ab.created_at
+      LIMIT $2`,
+    [digits, MAX_BOUNDARY_ROWS_READ],
+    QUERY_TIMEOUT_MS,
+  );
+  const byTopic = new Map<string, string[]>();
+  for (const row of result.rows)
+    byTopic.set(row.topic, [...(byTopic.get(row.topic) ?? []), row.term]);
+  return [...byTopic].map(([topic, terms]) => ({ topic, terms }));
+}
+
+/**
+ * #1915: does this question fall under a topic the person closed, whatever its
+ * words? Asked of a small model only when the person HAS a boundary and the
+ * words did not already match, so it costs nothing for everyone else.
+ *
+ * FAILS CLOSED, like the rest of this check: a model that is down or
+ * unreadable throws, and the send fails and is retried — it never lets a
+ * question through to a person who said no.
+ */
+export async function questionUnderBoundary(
+  question: string,
+  boundaries: readonly AskBoundary[],
+): Promise<boolean> {
+  const topics = boundaries.map((b) => `- ${b.topic}`).join('\n');
+  const response = await anthropic.messages.create(
+    {
+      model: DETECT_MODEL,
+      max_tokens: COVER_MAX_TOKENS,
+      messages: [
+        {
+          role: 'user',
+          content:
+            `A person asked not to be asked about these subjects:\n${topics}\n\n` +
+            `Another person now wants to ask them: "${question.slice(0, MAX_NOTE_CHARS)}"\n\n` +
+            'Is this question about one of those subjects, in any wording or language? ' +
+            'A question about a clearly different subject is not.\n' +
+            'Reply JSON only: {"covered":true} or {"covered":false}',
+        },
+      ],
+    },
+    { timeout: DETECT_BUDGET_MS },
+  );
+  void recordClaudeUsage({
+    userId: null,
+    kind: 'ask_boundary',
+    model: DETECT_MODEL,
+    usage: response.usage,
+  }).catch(() => {});
+  const answer = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map((b) => b.text)
+    .join('');
+  const parsed = parseModelJson<{ covered?: unknown }>(answer);
+  if (parsed === null || typeof parsed.covered !== 'boolean') {
+    throw new Error('the boundary check could not be read');
+  }
+  if (parsed.covered) {
+    // eslint-disable-next-line no-console
+    console.log('[ask-boundary] a reworded question on a closed topic was stopped (#1915)');
+  }
+  return parsed.covered;
+}
+
+/** The original check: the question's words against the stored terms. */
+async function boundaryWordsMatch(digits: string, subject: string): Promise<boolean> {
+  const terms = queryTerms(subject);
+  if (terms.length === 0) return false;
 
   const result = await query<{ phone: string }>(
     `SELECT up.phone
