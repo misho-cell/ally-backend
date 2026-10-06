@@ -1,3 +1,4 @@
+import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
 
@@ -369,19 +370,20 @@ export function askTapLineForAsker(
   language: RunLanguage,
   readerName: string,
 ): string {
+  const name = nameToSay(readerName, language);
   const lines: Readonly<Record<RunLanguage, string>> =
     tap === AskTap.Yes
       ? {
-          en: `${readerName} says they can help — the details are on their way.`,
-          ru: `${readerName} говорит, что может помочь — подробности скоро будут.`,
-          es: `${readerName} dice que puede ayudar — los detalles llegarán pronto.`,
-          ka: `${readerName} ამბობს, რომ დაგეხმარება — დეტალებს მალე მოგწერს.`,
+          en: `${name} says they can help — the details are on their way.`,
+          ru: `${name} говорит, что может помочь — подробности скоро будут.`,
+          es: `${name} dice que puede ayudar — los detalles llegarán pronto.`,
+          ka: `${name} ამბობს, რომ დაგეხმარება — დეტალებს მალე მოგწერს.`,
         }
       : {
-          en: `${readerName} will answer later.`,
-          ru: `${readerName} ответит позже.`,
-          es: `${readerName} responderá más tarde.`,
-          ka: `${readerName} მოგვიანებით გიპასუხებს.`,
+          en: `${name} will answer later.`,
+          ru: `${name} ответит позже.`,
+          es: `${name} responderá más tarde.`,
+          ka: `${name} მოგვიანებით გიპასუხებს.`,
         };
   return lines[language] ?? lines.ka;
 }

@@ -1,3 +1,4 @@
+import { nameToSay } from './spokenName';
 import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import type { RunLanguage } from './runLanguage';
 
@@ -205,5 +206,5 @@ export function ownerAskLine(
       : state === AskState.Later
         ? dayOf(ask.later_until, language, 'until')
         : '';
-  return OWNER_LINES[language][state](name, date);
+  return OWNER_LINES[language][state](nameToSay(name, language), date);
 }
