@@ -3385,6 +3385,7 @@ const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     description:
       'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; use it to disambiguate and phrase naturally, never printing the field name itself.' +
       " `tags` are labels the USER saved themselves — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means only other people's labels matched; their words are private and not given to you (row 289)." +
+      " `registered_name` (a Netai member, only when it differs from `name`) is how the person spelled their own name when registering: asked how the name is spelled or what it is exactly, give THIS spelling, never the user's own typing; you may add that the user saved them as `saved_as`." +
       SPLIT_COUNT_NOTE +
       ' WHEN: try spelling variants, first name alone, surname alone, and the company, brand or nickname as a word.',
     input_schema: {

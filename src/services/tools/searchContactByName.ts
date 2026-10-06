@@ -32,7 +32,7 @@ const FUZZY_THRESHOLD = 0.45;
 const FUZZY_HEAD_CHARS = 2;
 const RESULT_LIMIT = 20;
 
-interface NameRow {
+export interface NameRow {
   phone: string;
   word_hits?: number | string | null;
   /** The tester's 988: did any match come from the owner's own label or a public field? */
@@ -86,6 +86,7 @@ function toRow(
     netai_subscriber: isSubscriberPhone(accountStates, row.phone),
     ownership: OWNERSHIP.DIRECT,
     saved_as: row.saved_as ?? null,
+    ...registeredSpelling(row, isMemberPhone(accountStates, row.phone)),
     // Enrichment-computed edge category (family/close/professional/formal) —
     // lets the agent phrase how well the user knows this person. The numeric
     // strength stays server-side: a raw score printed to a user is a leak
@@ -100,6 +101,26 @@ function toRow(
     ...(excl && excl.length > 0 && { exclusions: excl }),
     ...(approximate === true && { approximate: true }),
   };
+}
+
+/**
+ * #1355 (Tornike, 5 Oct): asked „what is his surname exactly", Netai confirmed
+ * the owner's own misspelling, because a member the owner saved under a
+ * misspelled label reached the model under that label twice (`name` and
+ * `saved_as`) and under his own spelling nowhere. A member's own spelling now
+ * rides beside the label — only when it differs, and never an email standing
+ * in for a name.
+ */
+export function registeredSpelling(
+  row: NameRow,
+  isMember: boolean,
+): { readonly registered_name?: string } {
+  const registered = (row.registered_name ?? '').trim();
+  if (!isMember || registered === '' || registered.includes('@')) return {};
+  const shown = (row.name ?? '').trim();
+  return registered.toLocaleLowerCase() === shown.toLocaleLowerCase()
+    ? {}
+    : { registered_name: registered };
 }
 
 export async function searchContactByName(userId: string, nameQuery: string): Promise<object> {
