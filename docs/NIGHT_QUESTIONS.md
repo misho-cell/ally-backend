@@ -67,6 +67,10 @@ and answering the tester are all ordinary night work and need nobody.
   Misho's to run in DataGrip after 07:00 UTC:
   `UPDATE tasks SET next_wake_at = NOW() WHERE id IN (5482, 15677) AND status = 'open';`
   Remind him in the morning; once it runs, watch both runs and report what they wrote.
+- **Q (#2114, Pr1)** — small-talk replies in broken Georgian (tester 43066: 5 of 8 short replies,
+  seat 177977). The fix is in the small-talk prompt text, and a prompt change goes through
+  `prompt.sh` with Misho's or the founder's word (D44). Morning: show Misho the broken lines next to
+  the proposed wording and ask for the yes.
 
 Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.
 
