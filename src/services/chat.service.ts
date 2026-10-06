@@ -96,6 +96,7 @@ import {
   PendingRequest,
   RespondedRequest,
   mediatorCanHandOver,
+  pendingIntroInMediatorThread,
 } from './introduction.service';
 import {
   buildTwoItemsSection,
@@ -6731,6 +6732,29 @@ const runAnswerSent = new Set<string>();
 /** Runs in which the helper's question was relayed on to someone else (relay_ask). */
 const runRelaySent = new Set<string>();
 
+/**
+ * #1783 (tester 41317): while an introduction request is open in this thread,
+ * the owner's line answers it, not the earlier question.
+ */
+const INTRO_NOT_AN_ANSWER =
+  'Nothing was sent, and nothing should be: this line answers the open introduction request ' +
+  '(request_id above), not the earlier question. If it is a yes, ask in one question whether ' +
+  'to connect them directly or „შენი გავლით", keeping any condition word for word, and offer ' +
+  'present_choices „პირდაპირ დააკავშირე" / „ჩემი გავლით" / „არა, ამჯერად"; then call ' +
+  'respond_to_introduction. Never say anything was sent.';
+
+/** The open request this thread was asked about, or null; a failed read is null, logged. */
+async function openIntroHere(userId: string, threadId: number | undefined): Promise<number | null> {
+  if (threadId === undefined) return null;
+  try {
+    return await pendingIntroInMediatorThread(userId, threadId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[intro] could not read the open request:', (err as Error).message);
+    return null;
+  }
+}
+
 /** G5: runs whose thread already shows the server's „sent" line, and on which side. */
 const runSentLineOnScreen = new Map<string, SentSide>();
 
@@ -8710,6 +8734,15 @@ async function executeToolCall(
     case 'send_answer_to_asker': {
       const answerText = String(input['answer_text'] ?? '').trim();
       if (!answerText) return { sent: false, error: 'Pass the exact approved text.' };
+      const openIntro = await openIntroHere(userId, threadId);
+      if (openIntro !== null) {
+        return {
+          sent: false,
+          introduction_pending: true,
+          request_id: openIntro,
+          note: INTRO_NOT_AN_ANSWER,
+        };
+      }
       // Ticket 19 G3, D255/D256. This note used to say „show the user the text
       // verbatim and only after their explicit consent call again" — the same
       // sentence the founder objected to, written by the SERVER, where no

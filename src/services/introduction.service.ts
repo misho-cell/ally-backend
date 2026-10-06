@@ -1219,6 +1219,27 @@ async function dropIntroCard(mediatorUserId: string, requestId: number): Promise
   }
 }
 
+/**
+ * #1783 (tester 41317, conv 40658): her „yes, but only Saturday morning" was
+ * taken as an answer to the earlier question in the same thread; the send was
+ * refused and the reply still said „პასუხი გაიგზავნა.". The open request this
+ * thread was asked about, when there is one.
+ */
+export async function pendingIntroInMediatorThread(
+  mediatorUserId: string,
+  threadId: number,
+): Promise<number | null> {
+  const result = await query<{ id: number }>(
+    `SELECT id FROM introduction_requests
+      WHERE mediator_thread_id = $1 AND mediator_user_id = $2 AND status = 'pending'
+      ORDER BY id DESC
+      LIMIT 1`,
+    [threadId, mediatorUserId],
+    PENDING_INTRO_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export async function resolveIntroductionRequest(
   mediatorUserId: string,
   target: { requestId?: number; requestRef?: string },

@@ -171,10 +171,11 @@ export function continuationCoversAnswer(answer: string, continuation: string): 
  */
 // The tester's 1105 (33298): „გადასაცემი პასუხი: ჯემალ ფირცხალავა." — the
 // answer labelled as passed on, with no send, is the same claim.
+// The tester's 41317 (#1783): „პასუხი გაიგზავნა." after a refused send.
 // The tester's 1102 (i, 33119): „ქეთევანს ჰკითხე: რატომ სჭირდება…" — the
 // helper's question written as an instruction to ask, and never sent.
 const CLAIMS_PASSED_ON_RE =
-  /(ჰკითხე\s*[:：]|\bask\s+\p{L}+\s*:|გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
+  /(ჰკითხე\s*[:：]|\bask\s+\p{L}+\s*:|გადასაცემი\s+პასუხი|გასაგზავნი\s+პასუხი|answer\s+to\s+(?:pass\s+on|send|relay)\s*:|გადავეცი|(?:პასუხი|შეკითხვა)\s+გაიგზავნა|გავუგზავნე|გავაგზავნე|მივწერე|გადავუგზავნე|ვუთხარი\s+(მას|მის)|i(?:'ve| have)?\s+(?:passed|sent|forwarded|relayed)\b|i\s+told\s+(?:her|him|them)\b|передал|отправил)/iu;
 
 /**
  * The tester's 1145 (37854): „ნოდარს გადავცემ: „ნანა სტომატოლოგი"" — the promise
