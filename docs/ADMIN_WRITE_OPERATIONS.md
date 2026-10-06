@@ -5639,3 +5639,29 @@ UNDO    (before the sweep picks them up, ~1 min)
 ```
 
 After the sweep a run cannot be undone; the engine sets each goal's next check again itself.
+
+## §94 — A TEST SEAT'S FIRST PAYMENT, FOR #1916 (no card, no Stripe)
+
+**Authorised by Misho, 6 October ~21:25 UTC, directly in the session:** „კი, ააშენე #1916-ის ტესტის
+მარშრუტი" — to my proposal of an admin-only way to fire a first payment for a fictional seat, so the
+tester can check #1916 (5% to each level, one month of an annual plan, a second payment adding
+nothing) without anybody typing a card.
+
+The route runs the SAME reward step a first Stripe charge runs (`distributeReferralEarnings` with
+`oneMonthOfUsd` of the charge). It writes `referral_transactions` rows only, with no payment row.
+It is refused, before any write:
+- for an account not in `test_seats` (`not_a_test_seat`);
+- when anybody up its inviter chain, to `referral.levels`, is not a test seat
+  (`chain_leaves_test_seats`), because a fictional payment never credits a real person.
+
+```
+ROUTE   POST  /admin/test-accounts/:seatId/first-payment
+BODY    { "amount_usd": 19.99, "plan": "month" | "year", "note": "why" }
+        200 { external_id: "seat_test_<seat>_<ms>", base_usd, shares }
+UNDO    POST  /admin/test-accounts/:seatId/first-payment/undo
+        { "external_id": "seat_test_<seat>_<ms>" }
+        200 { taken_back }  (#233's clawback: one negative line per share, nothing deleted)
+```
+
+The once-per-subscriber guard holds after an undo: the same seat cannot be paid again, so a re-test
+uses a fresh seat at the bottom of the chain. Night mode (22:00–07:00 UTC): not run.

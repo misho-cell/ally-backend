@@ -51,6 +51,12 @@ import {
   setSeatAnswerRuleActive,
 } from '../../services/seatAnswerRules.service';
 import {
+  MAX_SEAT_PAYMENT_USD,
+  SeatPlan,
+  simulateSeatFirstPayment,
+  undoSeatFirstPayment,
+} from '../../services/seatFirstPayment.service';
+import {
   countUnconfirmedPendingAsks,
   restoreWithdrawnAsks,
   withdrawUnconfirmedPendingAsks,
@@ -2439,6 +2445,84 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[seat-rule]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §94 (Misho, 6 Oct: „კი, ააშენე #1916-ის ტესტის მარშრუტი") — #1916's reward
+ * rule on fictions: a test seat's first payment, with no card and no Stripe.
+ * Refused by name when the seat, or anyone up its inviter chain, is not a test
+ * seat. The undo below takes the shares back; nothing is deleted.
+ *
+ *   POST /admin/test-accounts/:id/first-payment
+ *        { "amount_usd": 19.99, "plan": "month" | "year", "note": "why" }
+ *   200 { external_id, base_usd, shares }   403 { refusal }
+ */
+adminRouter.post(
+  '/test-accounts/:id/first-payment',
+  param('id').isInt({ min: 1 }),
+  body('amount_usd').isFloat({ gt: 0, max: MAX_SEAT_PAYMENT_USD }),
+  body('plan').isIn(Object.values(SeatPlan)),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `amount_usd (0-${MAX_SEAT_PAYMENT_USD}), plan (month|year) and a note (3-500 chars) are required`,
+      });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const { amount_usd, plan } = req.body as { amount_usd: number; plan: SeatPlan };
+    try {
+      const outcome = await simulateSeatFirstPayment(seatId, Number(amount_usd), plan);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seat-payment] admin ${(req as AuthenticatedRequest).user.userId} seat ${seatId}: ` +
+          (outcome.ok ? `${outcome.external_id}, ${outcome.shares} shares` : outcome.refusal),
+      );
+      if (!outcome.ok) {
+        res.status(403).json({ success: false, error: outcome.refusal });
+        return;
+      }
+      const { external_id, base_usd, shares } = outcome;
+      res.status(200).json({ success: true, data: { external_id, base_usd, shares } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-payment]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * §94's undo: the shares of one simulated payment taken back (#233's clawback).
+ *   POST /admin/test-accounts/:id/first-payment/undo { "external_id": "seat_test_…" }
+ *   200 { taken_back }   403 { refusal }
+ */
+adminRouter.post(
+  '/test-accounts/:id/first-payment/undo',
+  param('id').isInt({ min: 1 }),
+  body('external_id').isString().trim().notEmpty(),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'external_id is required' });
+      return;
+    }
+    const seatId = Number(req.params.id);
+    const externalId = String((req.body as { external_id: string }).external_id).trim();
+    try {
+      const outcome = await undoSeatFirstPayment(seatId, externalId);
+      if (!outcome.ok) {
+        res.status(403).json({ success: false, error: outcome.refusal });
+        return;
+      }
+      res.status(200).json({ success: true, data: { taken_back: outcome.taken_back } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[seat-payment undo]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
