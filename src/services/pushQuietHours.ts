@@ -97,3 +97,21 @@ export function nextQuietEnd(at: Date, zone: string): Date {
   const firstGuess = wallClock - zoneOffsetMs(new Date(wallClock), zone);
   return new Date(wallClock - zoneOffsetMs(new Date(firstGuess), zone));
 }
+
+/**
+ * #1850: the next instant the zone's wall clock reads `minuteOfDay` — today
+ * if that minute is still ahead, tomorrow otherwise — with the local date it
+ * falls on (YYYY-MM-DD). Same offset correction as nextQuietEnd.
+ */
+export function nextLocalMinute(
+  at: Date,
+  zone: string,
+  minuteOfDay: number,
+): { readonly at: Date; readonly localDate: string } {
+  const local = localTime(at, zone);
+  const dayAhead = local.minuteOfDay >= minuteOfDay ? 1 : 0;
+  const wallClock = Date.UTC(local.year, local.month - 1, local.day + dayAhead, 0, minuteOfDay);
+  const firstGuess = wallClock - zoneOffsetMs(new Date(wallClock), zone);
+  const instant = new Date(wallClock - zoneOffsetMs(new Date(firstGuess), zone));
+  return { at: instant, localDate: new Date(wallClock).toISOString().slice(0, 10) };
+}

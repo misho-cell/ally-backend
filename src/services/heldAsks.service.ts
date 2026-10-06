@@ -28,14 +28,16 @@ export interface HoldAskInput {
   readonly reopensAt: Date;
   /** #1685: the wave it was written in; it counts as open there until it goes. */
   readonly waveNo?: number | null;
+  /** #1850: the evening card it waits for; the card's sender sends it, not the goal's wake. */
+  readonly eveningCardId?: number | null;
 }
 
 /** Records one held question, once per goal and person. */
 export async function holdAsk(input: HoldAskInput): Promise<void> {
   await query(
     `INSERT INTO held_asks (task_id, to_user_id, contact_name, contact_phone, question, reopens_at,
-                            wave_no)
-     SELECT $1, $2, $3, $4, $5, $6, $7
+                            wave_no, evening_card_id)
+     SELECT $1, $2, $3, $4, $5, $6, $7, $8
       WHERE NOT EXISTS (SELECT 1 FROM held_asks
                          WHERE task_id = $1 AND to_user_id = $2 AND released_at IS NULL)`,
     [
@@ -46,6 +48,7 @@ export async function holdAsk(input: HoldAskInput): Promise<void> {
       input.question,
       input.reopensAt,
       input.waveNo ?? null,
+      input.eveningCardId ?? null,
     ],
     QUERY_TIMEOUT_MS,
   );
@@ -64,6 +67,7 @@ export async function releaseDueHeldAsks(taskId: number): Promise<HeldAsk[]> {
     `UPDATE held_asks SET released_at = NOW()
       WHERE id IN (SELECT id FROM held_asks
                     WHERE task_id = $1 AND released_at IS NULL AND reopens_at <= NOW()
+                      AND evening_card_id IS NULL
                     ORDER BY id LIMIT ${MAX_HELD_PER_WAKE})
       RETURNING id, to_user_id, contact_name, contact_phone, question, reopens_at`,
     [taskId],

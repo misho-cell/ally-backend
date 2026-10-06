@@ -61,6 +61,8 @@ describe('a question held by the recipient’s limit', () => {
       at,
       // #1685: no wave given, none stored.
       null,
+      // #1850: no evening card given, none stored.
+      null,
     ]);
     expect(timeout).toBeGreaterThan(0);
   });

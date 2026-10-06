@@ -11,6 +11,7 @@ import threadsRouter from './api/routes/threads.routes';
 import threadFilesRouter from './api/routes/threadFiles.routes';
 import requestsRouter from './api/routes/requests.routes';
 import updatesRouter from './api/routes/updates.routes';
+import eveningCardRouter from './api/routes/eveningCard.routes';
 import tasksRouter from './api/routes/tasks.routes';
 import privacyRouter from './api/routes/privacy.routes';
 import speechRouter from './api/routes/speech.routes';
@@ -37,6 +38,7 @@ import { startBoardRefillCron } from './services/teamTaskRefill.service';
 import { startRunReaper } from './services/runReaper.service';
 import { startCutOffRunResume } from './services/cutOffRunResume.service';
 import { startHeldPushRelease } from './services/heldPushRelease.cron';
+import { startEveningCards } from './services/eveningCard.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -102,6 +104,7 @@ app.use('/thread-files', threadFilesRouter);
 app.use('/threads', threadsRouter);
 app.use('/requests', requestsRouter);
 app.use('/updates', updatesRouter);
+app.use('/evening-card', eveningCardRouter);
 app.use('/tasks', tasksRouter);
 app.use('/privacy', privacyRouter);
 // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
@@ -167,6 +170,8 @@ runMigrations()
     startCutOffRunResume();
     // G-002: pushes held over quiet hours (23:00–09:30 device time) go out at 09:30.
     startHeldPushRelease();
+    // #1850: the evening card — the day's other questions, once, at 19:00 local.
+    startEveningCards();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();

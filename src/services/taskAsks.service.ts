@@ -68,6 +68,8 @@ import { recordMutualWarmth } from './warmth.service';
 import { AskState, LATER_DEFAULT_DAYS, ownerAskLine } from './askState';
 import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
+import { eveningCardFor } from './eveningCard.service';
+import { heldForEveningCardNote } from './eveningCard';
 import {
   ASKED_AS_THE_ASKER_SAVED_THEM,
   ASKER_AS_THE_READER_SAVED_THEM,
@@ -75,6 +77,8 @@ import {
 } from './savedNameSql';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
+/** #1850: the asker's goal looks again this long after the evening card went. */
+const GOAL_LOOKS_AFTER_CARD_MS = 5 * 60_000;
 /**
  * How long a phonebook label has to be before the owner naming it counts.
  *
@@ -310,36 +314,6 @@ export function whoseAsksWereThey(
 
 /** Enough rows to find the reopening; a person never holds many asks in a day. */
 const RECEIVED_WINDOW_READ_LIMIT = 20;
-const WINDOW_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Tester 929 — when a recipient's rolling 24-hour window has room again: the
- * moment enough of the oldest asks fall out of it to bring the count below the
- * cap. `received` is the window's asks, oldest first.
- */
-export function recipientWindowReopensAt(received: readonly Date[]): Date {
-  const mustFallOut = received.length - MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY;
-  const pivot = received[Math.max(0, mustFallOut)] ?? new Date();
-  return new Date(pivot.getTime() + WINDOW_MS);
-}
-
-/** „Opens again at 06:39 Tbilisi, 2 Oct" — the exact time, so no reply says „as soon as it opens". */
-function reopensLine(toName: string, at: Date): string {
-  const when = new Intl.DateTimeFormat('ka-GE', {
-    timeZone: 'Asia/Tbilisi',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(at);
-  return (
-    ` ${toName}-სთვის ადგილი გაიხსნება ${when}-ზე (თბილისის დროით). მიზნის შემდეგი შემოწმება ` +
-    'სერვერმა ზუსტად ამ დროზე დააყენა. თუ მფლობელს ეტყვი, როდის სცდი ხელახლა, ეს დრო დაასახელე — ' +
-    '„როგორც კი გაიხსნება" დროის გარეშე არ დაწერო.'
-  );
-}
-
 const RELAY_REFUSALS: Readonly<
   Record<GrowthAskRefusalReason, { reason: AskRefusalReason; error: (toName: string) => string }>
 > = {
@@ -681,6 +655,8 @@ export async function createAsk(
   parentAskId?: number,
   threadId?: number,
   bridgeNeed?: BridgeNeed,
+  /** #1850: set only by the evening card's sender — the card IS the reopening. */
+  card?: { readonly eveningCardId: number },
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1094,11 +1070,13 @@ export async function createAsk(
     // askCapExemptions — the cap protects the RECEIVER, so the exemption is
     // keyed on them, and a test account asking a real person is capped as ever.
     !receivingCapsAreOff(toUserId) &&
+    card === undefined &&
     receivedToday.rows.length >= MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY
   ) {
-    const reopensAt = recipientWindowReopensAt(
-      receivedToday.rows.map((r) => new Date(r.created_at)),
-    );
+    // #1850: over the two a day, the question waits for the person's evening
+    // card at 19:00 their time, with the day's other questions.
+    const eveningCard = await eveningCardFor(toUserId);
+    const reopensAt = eveningCard.dueAt;
     // The tester's 983 and board #391: the question itself is kept, and the
     // server sends it at the reopening — it has passed every consent gate
     // above, so it needs no second yes.
@@ -1111,14 +1089,15 @@ export async function createAsk(
         question: trimmed,
         reopensAt,
         waveNo,
+        eveningCardId: eveningCard.id,
       });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn(`[ask] task ${taskId}: could not hold the question:`, (err as Error).message);
     }
-    // Tester 929: the goal tries again at that minute, not a day later.
+    // The goal looks again just after the card went, and reads what it did.
     try {
-      await wakeTaskNoLaterThan(taskId, reopensAt);
+      await wakeTaskNoLaterThan(taskId, new Date(reopensAt.getTime() + GOAL_LOOKS_AFTER_CARD_MS));
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn(
@@ -1138,28 +1117,9 @@ export async function createAsk(
         `მიუვიდა — ${whoseAsksWereThey(receivedToday.rows, fromUserId)}. ` +
         'ეს ზღვარი მოძრავ 24 საათზეა, არა კალენდარულ დღეზე. ასევე ' +
         'დაწერე: „ბოლო 24 საათში". „დღეს" არ დაწერო — არც მაშინ იქნება სიმართლე, როცა ' +
-        'წერ, არც მოგვიანებით. ' +
-        /*
-         * Row 208, the seat's 319 — the same message described this limit two
-         * ways, four hundred characters apart: „in the last 24 hours" and then
-         * „once their daily limit resets".
-         *
-         * The model was not inventing the second one. THIS INSTRUCTION SAID
-         * BOTH. Two sentences after forbidding the word „today" it called the
-         * thing a DAILY limit, which is what „resets" comes from — a daily
-         * limit has a moment it resets at and a rolling window does not. So
-         * the run wrote one of each and both were quoted back at it.
-         *
-         * A rolling window is the harder of the two to describe and the only
-         * true one: it clears gradually, question by question, as each falls
-         * out of the far end. „Per person" is the part that was worth saying;
-         * „daily" was the part that contradicted the sentence above it.
-         */
-        'ეს ზღვარი ერთ ადამიანზეა, რომ არავის გადატვირთოს, და თანდათან იხსნება — ყოველი ' +
-        'კითხვა 24 საათის შემდეგ ცვივა. „განულდება", „ხვალ" ან „როცა ლიმიტი განახლდება" ' +
-        'არ დაწერო: მომენტი, როცა ეს ერთბაშად ხდება, არ არსებობს. ერთი ხაზით უთხარი ' +
-        'მფლობელს, ვისი ზღვარია და რატომ. ეს ამ ადამიანის გადაწყვეტილება არ არის.' +
-        reopensLine(toName, reopensAt) +
+        'წერ, არც მოგვიანებით. „ხვალ" და „განულდება" არც. ' +
+        'ეს ზღვარი ერთ ადამიანზეა, რომ არავის გადატვირთოს; ეს ამ ადამიანის გადაწყვეტილება არ არის. ' +
+        heldForEveningCardNote(toName) +
         NOT_THE_OWNERS_LIMIT +
         CONTINUE_BY_OTHER_ROUTES +
         PROMISE_NO_ANSWER,
@@ -1514,8 +1474,8 @@ export async function createAsk(
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
-                            wave_no)
-     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10)
+                            wave_no, evening_card_id)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11)
      RETURNING id`,
     [
       taskId,
@@ -1528,6 +1488,7 @@ export async function createAsk(
       isFollowUp,
       originUserId,
       isFollowUp ? null : waveNo,
+      card?.eveningCardId ?? null,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -1567,11 +1528,14 @@ export async function createAsk(
     }
   }
 
-  void sendPushNotification(String(toUserId), {
-    title: askPushTitle(language, senderName),
-    body: safeQuestion.slice(0, 120),
-    url: `/chat/${askThreadId}`,
-  }).catch(() => undefined);
+  // #1850: a question that goes with the evening card rings once, as the card.
+  if (card === undefined) {
+    void sendPushNotification(String(toUserId), {
+      title: askPushTitle(language, senderName),
+      body: safeQuestion.slice(0, 120),
+      url: `/chat/${askThreadId}`,
+    }).catch(() => undefined);
+  }
 
   // D49: a relayed ask reaching 'sent' arms the asker's 3-day debrief — if
   // it is still unanswered by then, the asker hears about it honestly. An

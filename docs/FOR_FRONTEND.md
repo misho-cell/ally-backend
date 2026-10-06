@@ -15,6 +15,32 @@ messages in their name.
 
 ---
 
+## 6 October, 16:50Z — #1850 the evening card (backend: live on deploy; needs a screen)
+
+**What it is (founder, 6 Oct).** A person still gets at most two new questions a day at once. Every other question that arrives for them is held. At **19:00 in their own time**, all of them are sent together and the person gets **one push**, `{ title: "საღამოს ბარათი", body: "დღის N კითხვა ერთ ადგილას.", url: "/evening-card" }`. The time zone comes from the device's `time_zone`, or Tbilisi if the device sent none. The card has **one snooze for the whole card**: the card comes back about two hours later, with the push again.
+
+**Each item is an ordinary ask** with its own conversation (`ask_thread_id`) and the usual three buttons. Those conversations appear in `GET /threads` as always; the card only puts the day's items in one place.
+
+- `GET /evening-card`
+  - `200 { "success": true, "data": { "card": null } }` when nothing waits.
+  - `200 { "success": true, "data": { "card": { "id": 7, "due_at": "2026-10-06T15:00:00.000Z", "snoozes": 0, "choices": ["კი, დაგეხმარები", "ამაში ვერ დაგეხმარები", "მოგვიანებით გიპასუხებ"], "items": [ { "ask_id": 11, "ask_thread_id": 902, "from_name": "Giorgi", "question": "იცნობ კარგ სტომატოლოგს?", "answered": false } ] } } }`
+  - `choices` are **yes, no, later**, in the person's language and in that order.
+  - `from_name` is the asker as THIS person saved them (#1918), or `null`.
+  - `answered: true` once any of the three was tapped. Show it as done, not hidden, so the list does not jump.
+  - The card is returned until every item is answered.
+- **A tap on an item**: send it as a message to that item's conversation, exactly as the button in the conversation does: `POST /threads/{ask_thread_id}/messages` with the choice text as the content. Nothing new on the server. "Later" then offers its day buttons in that conversation (#1686).
+- `POST /evening-card/:id/snooze`, no body
+  - `200 { "success": true, "data": { "due_at": "2026-10-06T17:00:00.000Z" } }`: the card comes back then, with one push.
+  - `404` when the card is not theirs, or is already snoozed and not back yet.
+  - `400` when the id is not a positive integer.
+  - `401` when not signed in. `429` above 30 calls a minute.
+- What the screen needs:
+  - open `/evening-card` from the push;
+  - list the items, each with its three buttons;
+  - add one "2 საათში" button for the whole card.
+
+---
+
 ## 6 October, 12:05 — re your 11:30Z: #1817 `seen_at` and #1816 `url` are live
 
 **#1817.** As you asked, names included:

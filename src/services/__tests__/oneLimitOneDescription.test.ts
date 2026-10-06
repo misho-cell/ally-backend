@@ -52,10 +52,13 @@ describe('how the receiving cap is described to the model', () => {
     expect(REFUSAL).toContain('არ დაწერო');
   });
 
-  it('says what a rolling window actually does, so there is something to say instead', () => {
-    // Row 215 again: a refusal that only forbids leaves the model with nothing
-    // to write. It clears gradually — that is the sentence it needs.
-    expect(REFUSAL).toContain('თანდათან იხსნება');
+  /**
+   * Row 215 again: a refusal that only forbids leaves the model with nothing
+   * to write. #1850 gives it the true thing to say: the question waits on the
+   * person's evening card, with the day's other questions.
+   */
+  it('gives the run something true to say instead: the evening card', () => {
+    expect(SOURCE).toContain('heldForEveningCardNote(toName)');
   });
 
   it('keeps the part that was always right: whose limit it is', () => {
@@ -63,6 +66,6 @@ describe('how the receiving cap is described to the model', () => {
     // on her own header. Whose limit it is is the thing this refusal exists
     // for and it must survive the rewording.
     expect(REFUSAL).toContain('ერთ ადამიანზეა');
-    expect(REFUSAL).toContain('ვისი ზღვარია და რატომ');
+    expect(REFUSAL).toContain('ამ ადამიანის გადაწყვეტილება არ არის');
   });
 });

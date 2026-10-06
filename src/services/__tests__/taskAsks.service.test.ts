@@ -112,7 +112,6 @@ import {
   ensureVerbatimQuote,
   getPendingAsksForUser,
   runPayerFor,
-  recipientWindowReopensAt,
 } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -146,6 +145,8 @@ beforeEach(() => {
     permission_granted: true,
   } as never);
 });
+
+const EVENING_CARD_DUE = new Date(Date.UTC(2026, 9, 6, 15, 0));
 
 function routeAskQueries(opts: {
   member?: { userId: number; name: string; subscriptionStatus?: string } | null;
@@ -181,6 +182,8 @@ function routeAskQueries(opts: {
   receivedToday?: number;
 }): void {
   mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('INSERT INTO evening_cards'))
+      return Promise.resolve(rows([{ id: 9, due_at: EVENING_CARD_DUE }]) as never);
     if (sql.includes('FROM "UserPhone"'))
       return Promise.resolve(
         rows(
@@ -1486,17 +1489,12 @@ describe('the receiving-side brake', () => {
     expect(error).toContain('ამავე გაშვებაში გააგრძელე');
     expect(error).toContain('მეორე წრე');
     expect(error).toContain('არასოდეს დაჰპირდე პასუხს');
-    // Tester 929: the reopening is named, and the goal wakes then.
-    expect(error).toContain('ადგილი გაიხსნება');
-    expect(error).toContain('„როგორც კი გაიხსნება" დროის გარეშე არ დაწერო');
-    expect(wakeTaskNoLaterThan).toHaveBeenCalledWith(3, new Date(Date.UTC(2026, 9, 1, 6, 39)));
-  });
-
-  it('reopens when enough of the oldest asks fall out to go below the cap', () => {
-    const at = (h: number): Date => new Date(Date.UTC(2026, 8, 30, h, 0));
-    expect(recipientWindowReopensAt([at(6), at(9)])).toEqual(new Date(Date.UTC(2026, 9, 1, 6, 0)));
-    expect(recipientWindowReopensAt([at(6), at(8), at(9)])).toEqual(
-      new Date(Date.UTC(2026, 9, 1, 8, 0)),
+    // #1850: the question waits on the person's evening card, and the goal
+    // looks again five minutes after the card goes.
+    expect(error).toContain('საღამოს ბარათში');
+    expect(wakeTaskNoLaterThan).toHaveBeenCalledWith(
+      3,
+      new Date(EVENING_CARD_DUE.getTime() + 5 * 60_000),
     );
   });
 
