@@ -157,8 +157,20 @@ const KNOWN_LABELS: readonly string[] = [
 const MIN_SNAP_LENGTH = 4;
 const SNAP_EDITS = 1;
 
+/**
+ * #1783 (tester 41152): told to say „შენი გავლით" in its own question, the
+ * model wrote it on the button too — „შენი გავლით გავაგრძელოთ". A button is
+ * the owner's own voice, and the channel button is „ჩემი გავლით".
+ */
+const THROUGH_YOU_RE = /^შენი გავლით/;
+const THROUGH_ME = 'ჩემი გავლით';
+
+function inTheOwnersVoice(label: string): string {
+  return label.replace(THROUGH_YOU_RE, THROUGH_ME);
+}
+
 export function snappedToKnownLabels(labels: readonly string[]): string[] {
-  return labels.map((label) => {
+  return labels.map(inTheOwnersVoice).map((label) => {
     if ([...label].length < MIN_SNAP_LENGTH || KNOWN_LABELS.includes(label)) return label;
     return KNOWN_LABELS.find((known) => editDistance(label, known) <= SNAP_EDITS) ?? label;
   });

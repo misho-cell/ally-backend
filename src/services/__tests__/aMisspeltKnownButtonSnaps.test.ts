@@ -15,3 +15,17 @@ describe('a known button misspelt by one letter', () => {
     ]);
   });
 });
+
+/** #1783 (tester 41152): the channel button is the owner's voice, never „შენი გავლით". */
+describe('the channel button', () => {
+  it('reads „ჩემი გავლით" even when the model wrote „შენი გავლით"', () => {
+    expect(snappedToKnownLabels(['შენი გავლით გავაგრძელოთ', 'არა, ამჯერად'])).toEqual([
+      'ჩემი გავლით გავაგრძელოთ',
+      'არა, ამჯერად',
+    ]);
+  });
+
+  it('leaves „შენი" elsewhere in a label alone', () => {
+    expect(snappedToKnownLabels(['შენი აზრით რა ჯობია'])).toEqual(['შენი აზრით რა ჯობია']);
+  });
+});

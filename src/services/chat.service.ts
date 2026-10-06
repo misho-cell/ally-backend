@@ -714,8 +714,9 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
     'Offer three buttons with present_choices — „პირდაპირ დააკავშირე" / „ჩემი გავლით" / ' +
     '„არა, ამჯერად" — and pass their answer as `channel`. An accept with no `channel` is ' +
     // #1783 (a): „გაცნობა ჩემი გავლით გავაგრძელოთ?" in Netai's voice read as „through Netai".
-    "refused and nothing is recorded. The labels are the user's own words; in YOUR question " +
-    'say „შენი გავლით" (through you), never „ჩემი გავლით".',
+    "refused and nothing is recorded. The button labels are the user's own words and stay " +
+    'exactly „ჩემი გავლით"; only in YOUR question say „შენი გავლით" (through you). Ask it ' +
+    'as a question, and keep any condition they gave word for word (e.g. „only").',
   input_schema: {
     type: 'object',
     properties: {
