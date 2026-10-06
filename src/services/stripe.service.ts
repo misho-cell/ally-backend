@@ -4,7 +4,7 @@ import { phoneDigits } from './phone';
 import { recordPayment } from './payments.service';
 import { deliverTopupSession, isTopupSession } from './stripeTopup.service';
 import { applyChargeRefund } from './stripeRefund.service';
-import { distributeReferralEarnings } from './referral.service';
+import { distributeReferralEarnings, oneMonthOfUsd } from './referral.service';
 
 // Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
 // trial with the card collected up front, no charge during the trial, then
@@ -329,6 +329,7 @@ async function recordInvoicePayment(
 
 /** Stripe amounts are in the currency's minor unit; USD has 100 cents. */
 const USD_MINOR_PER_MAJOR = 100;
+const MS_PER_SECOND = 1000;
 
 /**
  * Misho, 3 October: Stripe pays the referral reward too. Only Paddle did, so
@@ -350,7 +351,14 @@ async function payReferralShares(userId: string, invoice: Stripe.Invoice): Promi
     return;
   }
   try {
-    await distributeReferralEarnings(userId, invoice.amount_paid / USD_MINOR_PER_MAJOR, invoice.id);
+    const period = invoice.lines?.data?.[0]?.period;
+    const paid = invoice.amount_paid / USD_MINOR_PER_MAJOR;
+    const base = oneMonthOfUsd(
+      paid,
+      period ? new Date(period.start * MS_PER_SECOND) : null,
+      period ? new Date(period.end * MS_PER_SECOND) : null,
+    );
+    await distributeReferralEarnings(userId, base, invoice.id);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[stripe] referral distribution failed for ${invoice.id}:`, err);

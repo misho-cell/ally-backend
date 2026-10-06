@@ -16,6 +16,7 @@ import {
   spendReferralOnSubscription,
   spendReferralOnTokens,
   truncateUsd,
+  oneMonthOfUsd,
 } from '../referral.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -98,7 +99,7 @@ describe('distributeReferralEarnings', () => {
     '70': { inviter_id: 80, deleted: null },
   };
 
-  it('pays 6 equal truncated shares up a full chain ($19.99 → $0.16 each)', async () => {
+  it('pays a full 5% to each of 6 levels ($19.99 → $1.00 each, D692)', async () => {
     const { inserts } = setWorld({ inviters: FULL_CHAIN });
 
     const paid = await distributeReferralEarnings('10', 19.99, 'txn_1');
@@ -108,11 +109,19 @@ describe('distributeReferralEarnings', () => {
     expect(earnRows).toHaveLength(6);
     expect(earnRows.map((i) => i.params[0])).toEqual(['20', '30', '40', '50', '60', '70']);
     for (const [index, row] of earnRows.entries()) {
-      expect(row.params[1]).toBe(0.16); // truncated share
+      expect(row.params[1]).toBe(1); // 5% of 19.99, to the cent
       expect(row.params[3]).toBe(index + 1); // level
       expect(row.params[4]).toBe('10'); // source subscriber
       expect(row.params[5]).toBe('txn_1');
     }
+  });
+
+  /** D693: an annual plan's reward is counted on one month of it. */
+  it('counts an annual charge as one month of it', () => {
+    const start = new Date('2026-10-06T00:00:00Z');
+    expect(oneMonthOfUsd(199.9, start, new Date('2027-10-06T00:00:00Z'))).toBeCloseTo(16.658, 2);
+    expect(oneMonthOfUsd(19.99, start, new Date('2026-11-06T00:00:00Z'))).toBe(19.99);
+    expect(oneMonthOfUsd(19.99, null, null)).toBe(19.99);
   });
 
   it('pays only existing levels on a short chain (2 of 6)', async () => {

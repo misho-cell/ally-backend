@@ -3,10 +3,12 @@ import { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/postgres/client';
 import { getPrice } from './costLedger.service';
 
-// Referral earnings: 5% of a referred user's first real subscription charge,
-// split into `referral.levels` equal shares and paid up the inviter chain.
-// A missing level's share is not redistributed; every share is truncated to
-// 2 decimals. Balances are spendable on token packages or a subscription
+// Referral earnings (#1916, the founder's D692/D693, 6 Oct): EACH level of
+// the inviter chain, up to `referral.levels`, gets `referral.percent` (5%) of
+// the referred user's FIRST real subscription charge — 5% each, not 5% split.
+// On a plan longer than a month (annual) the base is one month of it. Later
+// charges add nothing. A missing level is simply not paid; each share is
+// rounded to the cent. Balances are spendable on token packages or a subscription
 // month; withdrawal (from $10) ships as a separate phase.
 
 const EARN_REASON = 'earn';
@@ -23,6 +25,24 @@ const SPENDABLE_TIERS = new Set(['pro', 'enterprise']);
 const HISTORY_LIMIT = 50;
 const PERCENT = 100;
 const CENTS = 100;
+
+const DAYS_PER_MONTH = 30.44;
+
+/**
+ * D693: on an annual plan the reward is counted on one month of it. The
+ * charge's own period says how many months it pays for, which needs no plan
+ * table and holds for any cadence; an unknown period is taken as one month.
+ */
+export function oneMonthOfUsd(
+  amountUsd: number,
+  periodStart: Date | null,
+  periodEnd: Date | null,
+): number {
+  if (periodStart === null || periodEnd === null) return amountUsd;
+  const days = (periodEnd.getTime() - periodStart.getTime()) / MS_PER_DAY;
+  const months = Math.round(days / DAYS_PER_MONTH);
+  return months > 1 ? amountUsd / months : amountUsd;
+}
 
 /** Truncate (never round) to 2 decimals so shares stay exact cents. */
 export function truncateUsd(value: number): number {
@@ -148,7 +168,9 @@ export async function distributeReferralEarnings(
     getPrice('referral.levels'),
   ]);
   if (percent <= 0 || levels <= 0) return 0;
-  const perLevel = truncateUsd((amountUsd * percent) / PERCENT / levels);
+  // Rounded to the cent, not truncated: 5% of 19.99 is 0.9995, and the
+  // founder's own example of the rule pays 1.00 (D692).
+  const perLevel = Math.round((amountUsd * percent * CENTS) / PERCENT) / CENTS;
   if (perLevel <= 0) return 0;
 
   return withTransaction(async (client) => {

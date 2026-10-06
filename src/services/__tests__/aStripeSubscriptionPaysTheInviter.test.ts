@@ -9,6 +9,7 @@ jest.mock('stripe', () =>
 jest.mock('../referral.service', () => ({
   __esModule: true,
   distributeReferralEarnings: (...args: unknown[]) => mockDistribute(...args),
+  oneMonthOfUsd: jest.requireActual('../referral.service').oneMonthOfUsd,
 }));
 
 /**
@@ -61,6 +62,16 @@ describe('a Stripe subscription payment pays the inviter chain', () => {
     await stripeService.handleStripeEvent(paidInvoice() as never);
 
     expect(mockDistribute).toHaveBeenCalledWith('42', 19.99, 'in_1');
+  });
+
+  /** D693: an annual invoice is counted as one month of it. */
+  it('counts an annual invoice as one month of it', async () => {
+    const year = { start: 1_800_000_000, end: 1_800_000_000 + 365 * 86_400 };
+    await stripeService.handleStripeEvent(
+      paidInvoice({ amount_paid: 19_990, lines: { data: [{ period: year }] } }) as never,
+    );
+
+    expect(mockDistribute).toHaveBeenCalledWith('42', expect.closeTo(16.66, 1), 'in_1');
   });
 
   it('pays nothing for the $0 invoice that opens a trial', async () => {

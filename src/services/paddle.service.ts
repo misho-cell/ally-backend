@@ -7,7 +7,7 @@ import type {
 import paddle from '../config/paddle';
 import { query } from '../db/postgres/client';
 import { PAYMENT_PUSH_URL, sendPushNotification } from './notification.service';
-import { distributeReferralEarnings } from './referral.service';
+import { distributeReferralEarnings, oneMonthOfUsd } from './referral.service';
 import { creditTopup, findTopupPackageByPriceId } from './tokenWallet.service';
 import { recordPayment } from './payments.service';
 
@@ -211,7 +211,13 @@ async function handleTransactionCompleted(txn: TransactionNotification): Promise
   if (totalUsd > 0) {
     await recordTransactionPayment(String(userId), txn, 'subscription');
     try {
-      await distributeReferralEarnings(String(userId), totalUsd, txn.id);
+      const period = txn.billingPeriod;
+      const base = oneMonthOfUsd(
+        totalUsd,
+        period?.startsAt ? new Date(period.startsAt) : null,
+        period?.endsAt ? new Date(period.endsAt) : null,
+      );
+      await distributeReferralEarnings(String(userId), base, txn.id);
     } catch (err) {
       console.error('[paddle] referral distribution failed for txn', txn.id, err);
     }
