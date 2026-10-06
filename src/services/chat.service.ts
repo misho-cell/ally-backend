@@ -302,6 +302,8 @@ import {
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
   claimsToHavePassedItOn,
+  claimsAnAskWasSent,
+  NOTHING_SENT_YET_NUDGE,
   helperAskedAQuestion,
   HELPER_QUESTION_NUDGE,
   PASSED_ON_NUDGE,
@@ -334,6 +336,7 @@ import {
   withoutClosingApprovalAsk,
 } from './replyGuards';
 import { lateFilesFor } from './lateFiles';
+import { goalSentNothing } from './goalSentNothing';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
   RUN_SOFT_BUDGET_MS,
@@ -12271,6 +12274,14 @@ async function runToolLoop(
   const helperRunSentNothing =
     runModes.get(runId) === 'incoming_ask' && !runAnswerSent.has(runId) && !runRelaySent.has(runId);
   const claimedASendThatDidNotHappen = helperRunSentNothing && claimsToHavePassedItOn(finalText);
+  // #2113 (41598): „I have already written to both assistants" on a goal that had sent nothing.
+  const claimedAnAskNobodyGot =
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runModes.get(runId) !== 'incoming_ask' &&
+    claimsAnAskWasSent(finalText) &&
+    (await goalSentNothing(threadId));
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
@@ -12338,31 +12349,34 @@ async function runToolLoop(
   const guardNudge =
     lateFileEvents.length > 0
       ? lateFileNudge(framedEvents(lateFileEvents), true)
-      : claimedASendThatDidNotHappen
-        ? PASSED_ON_NUDGE
-        : helperQuestionUnsent
-          ? HELPER_QUESTION_NUDGE
-          : answeredWithoutSearching
-            ? SEARCH_FIRST_NUDGE
-            : // The tester's 1150 (38316): a promise and the owner's members together —
-              // the members note leads to the plan with them, which keeps the promise too.
-              membersSkipped
-              ? MEMBERS_SKIPPED_NUDGE
-              : bookMembersSkipped.length > 0
-                ? membersInTheBookNudge(bookMembersSkipped)
-                : promisedWithoutActing
-                  ? promiseGap === PromiseGap.Goal
-                    ? PROMISED_ACTION_NO_GOAL_NUDGE
-                    : PROMISED_ACTION_NUDGE
-                  : rowsMissing.length > 0
-                    ? listRowsNudge(rowsMissing)
-                    : findsHeldBack
-                      ? FINDS_FIRST_NUDGE
-                      : CLIFFHANGER_NUDGE;
+      : claimedAnAskNobodyGot
+        ? NOTHING_SENT_YET_NUDGE
+        : claimedASendThatDidNotHappen
+          ? PASSED_ON_NUDGE
+          : helperQuestionUnsent
+            ? HELPER_QUESTION_NUDGE
+            : answeredWithoutSearching
+              ? SEARCH_FIRST_NUDGE
+              : // The tester's 1150 (38316): a promise and the owner's members together —
+                // the members note leads to the plan with them, which keeps the promise too.
+                membersSkipped
+                ? MEMBERS_SKIPPED_NUDGE
+                : bookMembersSkipped.length > 0
+                  ? membersInTheBookNudge(bookMembersSkipped)
+                  : promisedWithoutActing
+                    ? promiseGap === PromiseGap.Goal
+                      ? PROMISED_ACTION_NO_GOAL_NUDGE
+                      : PROMISED_ACTION_NUDGE
+                    : rowsMissing.length > 0
+                      ? listRowsNudge(rowsMissing)
+                      : findsHeldBack
+                        ? FINDS_FIRST_NUDGE
+                        : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
     (lateFileEvents.length > 0 ||
+      claimedAnAskNobodyGot ||
       claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
       answeredWithoutSearching ||
@@ -12580,6 +12594,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   CLIFFHANGER_NUDGE,
   MISSING_PLAN_NUDGE,
   PASSED_ON_NUDGE,
+  NOTHING_SENT_YET_NUDGE,
   HELPER_QUESTION_NUDGE,
   PROMISED_ACTION_NUDGE,
   PROMISED_ACTION_NO_GOAL_NUDGE,

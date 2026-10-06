@@ -188,6 +188,27 @@ export function claimsToHavePassedItOn(text: string): boolean {
   return CLAIMS_PASSED_ON_RE.test(text) || PROMISES_TO_PASS_ON_RE.test(text);
 }
 
+/**
+ * #2113 (tester 43066, conv 41598): the owner tapped approve, and the reply read
+ * „plan approved, I have already written to Nika's and Mari's assistants" — the
+ * goal had sent nothing to anybody. Day one, which does the writing, had not
+ * run yet. A first-person past-tense send on a goal that has sent nothing at
+ * all cannot be true, whatever else the reply says.
+ */
+const CLAIMS_AN_ASK_WAS_SENT_RE =
+  /(?<!(?:არ|ვერ)\s)(?:დავწერე|მივწერე|ვკითხე|გავუგზავნე|გავაგზავნე|გადავეცი)(?!\p{L})|\bi(?:'ve| have)?\s+(?:written|wrote|asked|sent|messaged)\s+(?:to\s+)?\p{L}/iu;
+
+export function claimsAnAskWasSent(text: string): boolean {
+  return CLAIMS_AN_ASK_WAS_SENT_RE.test(text);
+}
+
+export const NOTHING_SENT_YET_NUDGE =
+  '(სისტემური შენიშვნა: შენ დაწერე, რომ ვიღაცას მისწერე ან ჰკითხე, მაგრამ ამ მიზანს ჯერ არავისთვის ' +
+  'არაფერი გაუგზავნია — არც კითხვა, არც ბარათზე, არც გაცნობის თხოვნა. ეს სიმართლეს არ შეესაბამება. ' +
+  'პასუხი თავიდან დაწერე: თუ გეგმა დამტკიცდა, თქვი, რომ წერას ახლა იწყებ და როგორც კი გაიგზავნება, ' +
+  'ეცოდინება; არავის სახელით არ თქვა, რომ უკვე მისწერე. მფლობელს შენი წინა ტექსტი არ უნახავს: ' +
+  'ერთხელ, თავიდან, ბოდიშის გარეშე.)';
+
 export const PASSED_ON_NUDGE =
   '(სისტემური შენიშვნა: შენ დაწერე, რომ კითხვის ავტორს გადაეცი, მაგრამ ამ გაშვებაში ' +
   'send_answer_to_asker არ გამოგიძახებია და მას არაფერი მისვლია. თუ მომხმარებლის სიტყვები მისთვისაა, ' +

@@ -18,8 +18,17 @@ describe('a day one that sent nothing', () => {
 
   it('reads the asks table, not the reply', () => {
     const check = engine.slice(engine.indexOf('async function dayOneSentNothing'));
-    expect(check.slice(0, 400)).toContain('dayOneVerdict(taskId)');
-    expect(check.slice(0, 400)).toContain('DayOneVerdict.Start');
+    const body = check.slice(0, check.indexOf('\n}\n'));
+    expect(body).toContain('FROM task_asks a');
+  });
+
+  /** #2113 (goal 19836): Mari asked and Nika's question on her evening card is not „nothing". */
+  it('counts a question held on an evening card, and fires only at zero', () => {
+    const check = engine.slice(engine.indexOf('async function dayOneSentNothing'));
+    const body = check.slice(0, check.indexOf('\n}\n'));
+    expect(body).toContain('FROM held_asks h');
+    expect(body).toContain('FROM introduction_requests r');
+    expect(body).toContain('row.reached > 0) return false');
   });
 
   it('asks the run once more, and corrects the owner only if that sends nothing too', () => {

@@ -1222,10 +1222,42 @@ export function startDayOne(taskId: number, delayMs: number = DAY_ONE_DELAY_MS):
   );
 }
 
-/** True when the plan names people and day one wrote to none of them. */
+/**
+ * True when the plan names people and day one reached NONE of them.
+ *
+ * #2113 (tester 43066, goal 19836): day one asked Mari and put Nika's question
+ * on Nika's evening card — two people reached — and this said „nothing was
+ * sent", because it reused dayOneVerdict, whose count is „did day one write to
+ * enough people to stand down" and leaves the card out. One reached person is
+ * not nothing: a question held on an evening card counts, and only zero does.
+ */
 async function dayOneSentNothing(taskId: number): Promise<boolean> {
-  const verdict = await dayOneVerdict(taskId).catch(() => DayOneVerdict.AlreadyDone);
-  return verdict === DayOneVerdict.Start && (await goalOpen(taskId));
+  try {
+    const result = await query<{ people: number; reached: number }>(
+      `SELECT jsonb_array_length(COALESCE(t.plan->'people_to_involve', '[]'::jsonb)) AS people,
+              ((SELECT COUNT(*) FROM task_asks a
+                 WHERE a.task_id = t.id
+                   AND a.created_at >= t.plan_approved_at - make_interval(secs => $2))
+               + (SELECT COUNT(*) FROM held_asks h
+                 WHERE h.task_id = t.id
+                   AND h.created_at >= t.plan_approved_at - make_interval(secs => $2))
+               + (SELECT COUNT(*) FROM introduction_requests r
+                 WHERE r.requester_task_id = t.id
+                   AND r.created_at >= t.plan_approved_at - make_interval(secs => $2)))::int AS reached
+         FROM tasks t
+        WHERE t.id = $1 AND t.plan_approved_at IS NOT NULL
+        LIMIT 1`,
+      [taskId, DAY_ONE_SENT_GRACE_SECONDS],
+      DAY_ONE_DONE_TIMEOUT_MS,
+    );
+    const row = result.rows[0];
+    if (!row || row.people <= 0 || row.reached > 0) return false;
+    return await goalOpen(taskId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`[task-engine] task ${taskId}: day-one check failed:`, (err as Error).message);
+    return false;
+  }
 }
 
 /**
