@@ -62,7 +62,17 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**Night of 5→6 October**
+_Nothing yet._
+
+Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.
+
+Cleared on the morning of 23 September after the handover. Anything still
+waiting on a person is below, in **Waiting**, because a list that is emptied
+while its questions are unanswered is a list that loses them.
+
+## Waiting on Misho or the founder
+
+**From the night of 5→6 October, put to Misho at ~07:15 UTC, no answer yet:**
 
 M. **Sixteen intelligence tasks (1684–1699, box 40327), about 24 working days.** Priority is yours (Giorgi places them, D546). Shall I start A1–A5 (the ask as a tracked thing) in the suggested order, ahead of the remaining bug rows? Two founder questions ride with it: the match card, thank-you and returned „later" count against the 4-relayed-a-day cap only (proposed yes); „later" with no date = 3 days (proposed).
 
@@ -70,11 +80,7 @@ N. **GPT on scheduled checks.** 18 of 69 GPT runs returned empty (26%), nearly a
 
 O. **The held-reward line on the earnings page** — the frontend waits on your Georgian wording.
 
-Cleared on the morning of 23 September after the handover. Anything still
-waiting on a person is below, in **Waiting**, because a list that is emptied
-while its questions are unanswered is a list that loses them.
 
-## Waiting on Misho or the founder
 
 Carried out of the night of 22→23 September and put to Misho at 07:0x UTC.
 Ordered by what else they block.
