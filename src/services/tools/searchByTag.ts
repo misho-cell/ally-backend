@@ -87,11 +87,10 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
      SELECT phone FROM "UserAlias" WHERE "contactId" = $1
    )`;
 
-// Aggregate the display fields for a set of matched phones. The REGISTERED
-// name outranks the phonebook label — junk labels ("LIST. … Ally. Force")
-// were handed to the model as the person's name and it reasoned from them
-// (protocol task 42); the raw label always rides in saved_as. Empty strings
-// count as missing (task 43). UserTags is LEFT-joined so a tagless
+// Aggregate the display fields for a set of matched phones. The owner's own
+// label is the name (#1918, below, which replaces protocol task 42's
+// registered-name-first rule); the raw label also rides in saved_as. Empty
+// strings count as missing (task 43). UserTags is LEFT-joined so a tagless
 // (alias-only) contact isn't dropped.
 /**
  * ⚠️ A REGISTERED NAME THAT IS AN EMAIL ADDRESS — the tester, 25 September.
@@ -111,19 +110,24 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
  * has an „@" in their name. The scrubber then hides the address, correctly,
  * and what is left is the bracket.
  *
- * The rule above is right and stays: a registered name outranks a phonebook
- * label, because junk labels were being read as people. AN EMAIL IS NOT A NAME
- * EITHER, so it does not get to outrank anything — it falls through to the
- * label, which is the real name here and is what the app already shows.
+ * AN EMAIL IS NOT A NAME, so when the registered name is the fallback an
+ * email never stands in for one.
  *
  * FIXED IN THE READER, NOT IN THE ROW. Editing a real person's name is a write
  * to their record and somebody else's to authorise; this needs nobody, works
  * for the next one, and leaves `saved_as` exactly as it was.
+ *
+ * #1918 (phone report point 47): THE OWNER'S OWN LABEL FIRST. A contact she
+ * saved as „Nino 🌸" came back under the account's „Nino Beridze", and to her
+ * that read as somebody else's label. Every read that uses this joins
+ * "UserAlias" on the searcher alone, so MAX(ua.alias) is only ever her own
+ * words; the registered name is the fallback for a number she saved without
+ * a label, and still rides apart as `registered_name` where a reader needs it.
  */
 export const DISPLAY_NAME = `COALESCE(
+          MAX(NULLIF(TRIM(ua.alias), '')),
           CASE WHEN TRIM(MAX(u.name)) LIKE '%@%' THEN NULL
-               ELSE NULLIF(TRIM(MAX(u.name)), '') END,
-          MAX(ua.alias))`;
+               ELSE NULLIF(TRIM(MAX(u.name)), '') END)`;
 
 const AGG_SELECT = `h.phone,
         ${DISPLAY_NAME} AS name,

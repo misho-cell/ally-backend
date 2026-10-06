@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { ASK_EXPIRES_AFTER_DAYS } from './askState';
 import { wakeTaskNoLaterThan } from './taskStore.service';
+import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
 
 /**
  * #1684 (A1): two weeks of silence end an ask, as for introduction requests
@@ -43,7 +44,7 @@ export async function claimExpiredAsksToTell(taskId: number): Promise<string[]> 
          WHERE task_id = $1 AND expired_at IS NOT NULL AND expiry_told_at IS NULL
          ORDER BY expired_at
          LIMIT $2)
-      RETURNING (SELECT NULLIF(TRIM(u.name), '') FROM "User" u WHERE u.id = ta.to_user_id) AS name`,
+      RETURNING ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name`,
     [taskId, MAX_TOLD_PER_WAKE],
     QUERY_TIMEOUT_MS,
   );

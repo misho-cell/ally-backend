@@ -3,6 +3,7 @@ import { GOAL_STAGE_SQL, GoalStage } from './goalQuestions.service';
 import { TaskPlan } from './taskPlans.service';
 import { scrubMechanicalForStorage } from './privacyScrub';
 import { answerHeldNoTokens, RUN_STRINGS, RunLanguage } from './runLanguage';
+import { nameAsSavedBySql } from './savedNameSql';
 
 /**
  * One goal, the way the founder wants to read it on the dashboard (Ticket 10
@@ -247,13 +248,13 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
               CASE WHEN a.parent_ask_id IS NOT NULL THEN 'relay_sent'
                    WHEN a.is_follow_up THEN 'follow_up_sent'
                    ELSE 'ask_sent' END,
-              u.name, a.id::text
-         FROM task_asks a LEFT JOIN "User" u ON u.id = a.to_user_id WHERE a.task_id = $1
+              ${nameAsSavedBySql('a.from_user_id', 'a.to_user_id')}, a.id::text
+         FROM task_asks a WHERE a.task_id = $1
        UNION ALL
        SELECT a.answered_at,
               CASE WHEN a.automatic THEN 'answer_automatic' ELSE 'answer_received' END,
-              u.name, a.id::text
-         FROM task_asks a LEFT JOIN "User" u ON u.id = a.to_user_id
+              ${nameAsSavedBySql('a.from_user_id', 'a.to_user_id')}, a.id::text
+         FROM task_asks a
          WHERE a.task_id = $1 AND a.answered_at IS NOT NULL
        UNION ALL
        SELECT c.created_at, 'wake', LEFT(c.content, $3), c.id::text
@@ -295,8 +296,7 @@ async function goalActions(taskId: number): Promise<GoalAction[]> {
 
 async function pendingAsks(taskId: number): Promise<PendingAskRow[]> {
   const result = await query<PendingAskRow>(
-    `SELECT u.name, a.created_at FROM task_asks a
-     LEFT JOIN "User" u ON u.id = a.to_user_id
+    `SELECT ${nameAsSavedBySql('a.from_user_id', 'a.to_user_id')} AS name, a.created_at FROM task_asks a
      WHERE a.task_id = $1 AND a.status = 'sent'
      ORDER BY a.created_at
      LIMIT $2`,

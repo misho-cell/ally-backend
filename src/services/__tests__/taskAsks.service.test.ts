@@ -910,8 +910,10 @@ describe('createRelayAsk', () => {
     const out = await createRelayAsk('42', 11, '+995 599 333 444', RELAYED);
 
     expect(out.sent).toBe(true);
+    // #1918: the member read names the person by the asker's own label
+    // (sv_ua); that is naming, not a lookup of the number by name.
     const aliasLookups = mockQuery.mock.calls.filter(([sql]) =>
-      (sql as string).includes('FROM "UserAlias"'),
+      /FROM "UserAlias" (?!sv_ua)/.test(sql as string),
     );
     expect(aliasLookups).toHaveLength(0);
   });

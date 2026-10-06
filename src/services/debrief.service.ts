@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { queueFollowUp, PendingUpdate } from './pendingUpdates.service';
+import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
 
 const DEBRIEF_QUERY_TIMEOUT_MS = 8_000;
 
@@ -339,8 +340,7 @@ async function rearmContext(
     }
     if (subject === 'relayed_ask') {
       const r = await query<{ task_id: number; name: string | null }>(
-        `SELECT ta.task_id, u.name FROM task_asks ta
-         LEFT JOIN "User" u ON u.id = ta.to_user_id
+        `SELECT ta.task_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name FROM task_asks ta
          WHERE ta.id = $1 LIMIT 1`,
         [refId],
         DEBRIEF_QUERY_TIMEOUT_MS,

@@ -7,6 +7,7 @@ import { query } from '../../../db/postgres/client';
 import { lookupContactByPhone } from '../lookupContactByPhone';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+const OWNER = '501';
 
 const mockRow = {
   name: 'გიორგი',
@@ -26,7 +27,7 @@ describe('lookupContactByPhone', () => {
   it('returns contact details when phone found', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
 
-    const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
+    const result = (await lookupContactByPhone(OWNER, '+995555123456')) as Record<string, unknown>;
 
     expect(result.found).toBe(true);
     expect(result.city).toBe('Tbilisi');
@@ -37,7 +38,7 @@ describe('lookupContactByPhone', () => {
   it('prefers alias over registered name', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
 
-    const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
+    const result = (await lookupContactByPhone(OWNER, '+995555123456')) as Record<string, unknown>;
 
     expect(result.name).toBe('გიო');
   });
@@ -48,15 +49,27 @@ describe('lookupContactByPhone', () => {
       rowCount: 1,
     } as never);
 
-    const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
+    const result = (await lookupContactByPhone(OWNER, '+995555123456')) as Record<string, unknown>;
 
     expect(result.name).toBe('გიორგი');
+  });
+
+  /** #1918: another owner's label for the number is never read — only the searcher's own. */
+  it('reads the searcher’s own label only', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [mockRow], rowCount: 1 } as never);
+
+    await lookupContactByPhone(OWNER, '+995555123456');
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('own."contactId" = $4::int');
+    expect(String(sql)).not.toMatch(/JOIN "UserAlias" ua ON ua\.phone = up\.phone\s/);
+    expect(params?.[3]).toBe(OWNER);
   });
 
   it('returns found: false when phone not found', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
 
-    const result = (await lookupContactByPhone('+999000000000')) as Record<string, unknown>;
+    const result = (await lookupContactByPhone(OWNER, '+999000000000')) as Record<string, unknown>;
 
     expect(result.found).toBe(false);
     expect(result.phone).toBe('+999000000000');
@@ -65,11 +78,12 @@ describe('lookupContactByPhone', () => {
   it('queries with normalized phone variants', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
 
-    await lookupContactByPhone('+995 555 12-34-56');
+    await lookupContactByPhone(OWNER, '+995 555 12-34-56');
 
     expect(mockQuery).toHaveBeenCalledWith(
       expect.any(String),
       expect.arrayContaining(['+995555123456']),
+      expect.any(Number),
     );
   });
 
@@ -84,7 +98,7 @@ describe('lookupContactByPhone', () => {
     mockQuery.mockRejectedValue(new Error('canceling statement due to statement timeout') as never);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
+    const result = (await lookupContactByPhone(OWNER, '+995555123456')) as Record<string, unknown>;
 
     expect(result.found).toBe(false);
     expect(result.reason).toBe('search_timed_out');
@@ -101,7 +115,7 @@ describe('lookupContactByPhone', () => {
     mockQuery.mockRejectedValue(new Error('connection terminated') as never);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const result = (await lookupContactByPhone('+995555123456')) as Record<string, unknown>;
+    const result = (await lookupContactByPhone(OWNER, '+995555123456')) as Record<string, unknown>;
 
     expect(result.reason).toBe('search_failed');
     expect(JSON.stringify(result)).not.toContain('connection terminated');

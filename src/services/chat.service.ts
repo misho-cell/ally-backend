@@ -8218,7 +8218,7 @@ async function executeToolCall(
 
   switch (name) {
     case 'lookup_contact_by_phone':
-      return lookupContactByPhone(input['phone_number'] as string);
+      return lookupContactByPhone(userId, input['phone_number'] as string);
     case 'get_contact_insight':
       return getContactInsight(userId, String(input['phone'] ?? ''));
     case 'search_contact_by_name': {

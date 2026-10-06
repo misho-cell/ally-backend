@@ -17,21 +17,20 @@ import { isDisplayableTag } from '../getContactFullProfile';
  * „ L". Exactly one member in the base has an „@" in their name. The scrubber
  * then hides the address — correctly — and the bracket is what is left.
  *
- * The existing rule stays: a registered name outranks a phonebook label,
- * because junk labels („LIST. … Ally. Force") were being read as people. An
- * email is not a name either, so it does not outrank anything.
+ * #1918 (phone report point 47) put the owner's own label first: the
+ * registered name is now only the fallback, and an email never stands in for
+ * a name even there.
  */
 describe('an email is not a name', () => {
-  it('falls through to the saved label when the registered name carries an @', () => {
+  it('never uses a registered name that carries an @', () => {
     expect(DISPLAY_NAME).toContain("TRIM(MAX(u.name)) LIKE '%@%'");
     expect(DISPLAY_NAME).toContain('THEN NULL');
-    expect(DISPLAY_NAME).toContain('MAX(ua.alias)');
   });
 
-  /** The label is the fallback, never the first choice — that rule is older. */
-  it('still prefers a real registered name over the label', () => {
-    const chosenFirst = DISPLAY_NAME.indexOf("NULLIF(TRIM(MAX(u.name)), '')");
-    const fallback = DISPLAY_NAME.indexOf('MAX(ua.alias)');
+  /** #1918: the owner's own label first, the registered name only after it. */
+  it('prefers the owner’s own label over the registered name', () => {
+    const chosenFirst = DISPLAY_NAME.indexOf("MAX(NULLIF(TRIM(ua.alias), ''))");
+    const fallback = DISPLAY_NAME.indexOf("NULLIF(TRIM(MAX(u.name)), '')");
 
     expect(chosenFirst).toBeGreaterThan(0);
     expect(fallback).toBeGreaterThan(chosenFirst);

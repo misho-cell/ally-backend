@@ -1,7 +1,15 @@
 import { query } from '../../db/postgres/client';
 import { searchDidNotFinish } from './searchDidNotFinish';
 
-export async function lookupContactByPhone(phoneNumber: string): Promise<object> {
+const LOOKUP_TIMEOUT_MS = 5_000;
+
+/**
+ * #1918 (phone report point 47): the alias joined here was ANY owner's label
+ * for the number, so the owner could be told her own contact's name the way
+ * somebody else saved them. Only the searcher's own label is read now; the
+ * registered name stands in when she saved the number without one.
+ */
+export async function lookupContactByPhone(userId: string, phoneNumber: string): Promise<object> {
   try {
     // Normalize: keep + and digits only, try both with and without country code
     const normalized = phoneNumber.replace(/[^\d+]/g, '');
@@ -28,12 +36,21 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
          u.subscription_status AS "subscriptionStatus"
        FROM "UserPhone" up
        LEFT JOIN "User" u   ON u.id = up."userId"
-       LEFT JOIN "UserAlias" ua ON ua.phone = up.phone
+       LEFT JOIN LATERAL (
+         SELECT own.alias
+           FROM "UserAlias" own
+          WHERE own.phone = up.phone
+            AND own."contactId" = $4::int
+            AND NULLIF(TRIM(own.alias), '') IS NOT NULL
+          ORDER BY LENGTH(TRIM(own.alias)) DESC, own.alias
+          LIMIT 1
+       ) ua ON TRUE
        WHERE up.phone = $1
           OR up.phone = $2
           OR up."phoneNumber" = $3
        LIMIT 1`,
-      [normalized, '+' + digitsOnly, digitsOnly],
+      [normalized, '+' + digitsOnly, digitsOnly, userId],
+      LOOKUP_TIMEOUT_MS,
     );
 
     if (result.rows.length === 0) {
@@ -43,7 +60,7 @@ export async function lookupContactByPhone(phoneNumber: string): Promise<object>
     const row = result.rows[0];
     return {
       found: true,
-      name: row.alias ?? row.name ?? null,
+      name: row.alias?.trim() || row.name?.trim() || null,
       city: row.city ?? null,
       jobPosition: row.jobPosition ?? null,
       employer: row.employer ?? null,

@@ -212,7 +212,8 @@ async function labelsForPhones(
 ): Promise<Map<string, string | null>> {
   if (phones.length === 0) return new Map();
   const result = await query<{ phone: string; label: string | null }>(
-    `SELECT ua.phone, COALESCE(NULLIF(TRIM(u.name), ''), ua.alias) AS label
+    // #1918: the owner's own label first; the registered name only for a blank one.
+    `SELECT ua.phone, COALESCE(NULLIF(TRIM(ua.alias), ''), NULLIF(TRIM(u.name), '')) AS label
      FROM "UserAlias" ua
      LEFT JOIN "UserPhone" up ON up.phone = ua.phone
      LEFT JOIN "User" u ON u.id = up."userId"

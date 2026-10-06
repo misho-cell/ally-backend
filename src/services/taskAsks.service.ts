@@ -68,6 +68,11 @@ import { recordMutualWarmth } from './warmth.service';
 import { AskState, LATER_DEFAULT_DAYS, ownerAskLine } from './askState';
 import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
+import {
+  ASKED_AS_THE_ASKER_SAVED_THEM,
+  ASKER_AS_THE_READER_SAVED_THEM,
+  nameAsSavedBySql,
+} from './savedNameSql';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
 /**
@@ -947,12 +952,13 @@ export async function createAsk(
     name: string | null;
     subscriptionStatus: string | null;
   }>(
-    `SELECT up."userId", u.name, u.subscription_status AS "subscriptionStatus"
+    `SELECT up."userId", ${nameAsSavedBySql('$2::int', 'up."userId"')} AS name,
+            u.subscription_status AS "subscriptionStatus"
      FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
        AND u."deletedAt" IS NULL
      LIMIT 1`,
-    [contactPhone],
+    [contactPhone, fromUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
   if (member.rows.length === 0) {
@@ -1703,8 +1709,8 @@ export async function recordAskAnswer(
   // Contains, not equals a line: a shared number with the owner's note is two lines.
   const carried = row.answer.includes(safe);
   const check = await query<{ from_name: string | null }>(
-    `SELECT u.name AS from_name
-     FROM task_asks ta LEFT JOIN "User" u ON u.id = ta.to_user_id
+    `SELECT ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name
+     FROM task_asks ta
      WHERE ta.id = $1 LIMIT 1`,
     [row.id],
     ASK_QUERY_TIMEOUT_MS,
@@ -2634,11 +2640,10 @@ export interface UnwokenAnswer {
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
 export async function listUnwokenAnswers(limit: number): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
-    `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
+    `SELECT ta.id, ta.task_id, ta.answer, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
             t.thread_id AS task_thread_id, ta.ask_thread_id
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
-     LEFT JOIN "User" u ON u.id = ta.to_user_id
      WHERE ta.status = 'answered'
        AND ta.answered_at IS NOT NULL
        AND ta.wake_delivered_at IS NULL
@@ -2656,13 +2661,12 @@ export async function listUnwokenAnswersForTask(
   limit: number,
 ): Promise<UnwokenAnswer[]> {
   const result = await query<UnwokenAnswer>(
-    `SELECT ta.id, ta.task_id, ta.answer, u.name AS from_name, t.status AS task_status,
+    `SELECT ta.id, ta.task_id, ta.answer, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
             t.thread_id AS task_thread_id, ta.ask_thread_id,
             t.user_id AS owner_user_id, ta.answer_shown_at IS NOT NULL AS shown,
             EXISTS (SELECT 1 FROM task_asks r WHERE r.parent_ask_id = ta.id) AS passed_on
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
-     LEFT JOIN "User" u ON u.id = ta.to_user_id
      WHERE ta.task_id = $1
        AND ta.status = 'answered'
        AND ta.answered_at IS NOT NULL
@@ -2686,11 +2690,10 @@ export async function markAskWakeDelivered(askId: number): Promise<void> {
 /** Everything this task has asked and heard back — for the prompt's task section. */
 export async function getAsksForTask(taskId: number): Promise<TaskAsk[]> {
   const result = await query<TaskAsk>(
-    `SELECT ta.id, ta.task_id, ta.to_user_id, u.name AS to_name, ta.status,
+    `SELECT ta.id, ta.task_id, ta.to_user_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS to_name, ta.status,
             ta.question, ta.answer, ta.created_at,
             ta.declined_at, ta.seen_at, ta.later_until, ta.expired_at
      FROM task_asks ta
-     LEFT JOIN "User" u ON u.id = ta.to_user_id
      WHERE ta.task_id = $1
      ORDER BY ta.created_at ASC`,
     [taskId],
@@ -2725,10 +2728,9 @@ export interface PendingAsk {
  */
 export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[]> {
   const result = await query<PendingAsk>(
-    `SELECT ta.id AS ask_id, u.name AS from_name, ta.question, ta.created_at,
+    `SELECT ta.id AS ask_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name, ta.question, ta.created_at,
             ta.ask_thread_id
      FROM task_asks ta
-     LEFT JOIN "User" u ON u.id = ta.from_user_id
      WHERE ta.to_user_id = $1::int AND ta.status = 'sent'
      ORDER BY ta.created_at ASC`,
     [userId],
@@ -2850,7 +2852,7 @@ async function thankThePeopleWhoAnswered(taskId: number): Promise<void> {
     asker_name: string | null;
   }>(
     `SELECT ta.ask_thread_id, ta.to_user_id,
-            (SELECT u.name FROM "User" u WHERE u.id = ta.from_user_id) AS asker_name
+            ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
        FROM task_asks ta
       WHERE ta.task_id = $1 AND ta.status = 'answered'`,
     [taskId],
@@ -2929,7 +2931,7 @@ export async function withdrawAsksToOptedOutPerson(optedOutUserId: string): Prom
       WHERE ta.to_user_id = $1::int AND ta.status = 'sent'
       RETURNING ta.task_id, ta.from_user_id,
                 (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS thread_id,
-                (SELECT u.name FROM "User" u WHERE u.id = ta.to_user_id) AS to_name`,
+                ${ASKED_AS_THE_ASKER_SAVED_THEM} AS to_name`,
     [optedOutUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -3089,9 +3091,8 @@ export async function markAsksSeen(askThreadId: number, readerUserId: string): P
 
 export async function getAskByThread(askThreadId: number): Promise<IncomingAsk | null> {
   const result = await query<IncomingAsk>(
-    `SELECT ta.id, ta.task_id, ta.question, ta.status, u.name AS from_name
+    `SELECT ta.id, ta.task_id, ta.question, ta.status, ${ASKER_AS_THE_READER_SAVED_THEM} AS from_name
      FROM task_asks ta
-     LEFT JOIN "User" u ON u.id = ta.from_user_id
      WHERE ta.ask_thread_id = $1
      ORDER BY ta.id DESC LIMIT 1`,
     [askThreadId],
@@ -3435,8 +3436,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
        LIMIT $1
      )
      RETURNING ask_thread_id, to_user_id,
-               (SELECT NULLIF(TRIM(u.name), '') FROM "User" u WHERE u.id = task_asks.from_user_id)
-                 AS asker_name`,
+               ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
     [limit],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -3639,7 +3639,7 @@ const LIVE_ASK_ON_THREAD = `(SELECT id FROM task_asks
 
 const CLAIMED_TAP_COLUMNS = `ta.from_user_id, ta.later_until,
   (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
-  (SELECT u.name FROM "User" u WHERE u.id = ta.to_user_id) AS reader_name`;
+  ${ASKED_AS_THE_ASKER_SAVED_THEM} AS reader_name`;
 
 /** One fixed statement per tap; the column being NULL is the once-only guard. */
 const CLAIM_TAP_SQL: Readonly<Record<AskTap.Yes | AskTap.Later, string>> = {
