@@ -15,6 +15,34 @@ messages in their name.
 
 ---
 
+## 6 October, 10:55 — the board rows that are yours, all in one place (Misho asked)
+
+Seven rows on /admin/team-tasks are `to_build` and are app-side. Four you already
+have from earlier sections (#370, #507, #829, #1222). Three are new since then and
+were not sent here before:
+
+- **#1817 (Pr1), phone — Ninia:** a conversation moves to the finished ones at the
+  bottom before she has seen the answer, and she thought it was deleted. Done when:
+  a conversation whose answer the owner has not opened yet stays on top among the
+  open ones, marked new, and moves to finished only after she has seen it. Nothing
+  on the server says "seen" today. If you want one, say so and I add
+  `POST /threads/:id/seen` (stores the time, 200 / 401 / 404) plus `seenAt` on the
+  thread list. Otherwise it is yours alone.
+- **#1816, phone — Ninia:** tapping a notification opens the app but not on the
+  thing it was about. Done when: the tap lands on that conversation or card. A push
+  payload is `{ title, body, url? }`; the conversation pushes (goal news, asks,
+  introductions, Chorus, wake-up review) carry `url: "/chat/<threadId>"` — open
+  that path on tap. Payment pushes (top-up, subscription) carry no `url` today and
+  open the app's start; if you want them to land on the earnings or plan page, name
+  the path and I add it.
+- **#1585 (D678), app:** the refund page still says Paddle. Done when: the page says
+  Stripe, no page names Paddle, and the days stay 14 (Argentina 10, D677). No server
+  change.
+
+**Also live from me today, nothing for you to do:** `cbb5b2b` — a scheduled check
+is no longer rewritten by GPT. The reply on such a run is Claude's own text, as it
+already was whenever GPT came back empty.
+
 ## 5 October, 20:55 — #1520 (D677): the reward hold is 14 days, live
 
 On Misho's word: `GET /billing/referral` answers `"holdDays": 14`; a reward is usable from day 15, and `availableFrom` on held entries follows it. Nothing else in the shape changes. The refund window stays 14 days, as the refund page says.
