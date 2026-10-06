@@ -337,6 +337,7 @@ import {
 } from './replyGuards';
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
+import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
   RUN_SOFT_BUDGET_MS,
@@ -6874,6 +6875,8 @@ export function withoutInvisibleCharacters(text: string): string {
 
 /** D527 (the tester's 962): runs whose answer to an asker went — the reply must say so. */
 const runAnswerSent = new Set<string>();
+/** #2115: runs that sent a question to someone (ask_contact said sent). */
+const runAskSent = new Set<string>();
 /** Runs in which the helper's question was relayed on to someone else (relay_ask). */
 const runRelaySent = new Set<string>();
 
@@ -7997,6 +8000,7 @@ function clearRunState(runId: string): void {
   runWebFound.delete(runId);
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
+  runAskSent.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
   runSentLineOnScreen.delete(runId);
@@ -8803,6 +8807,7 @@ async function executeToolCall(
         bridgeNeedFrom(input) ?? rememberedBridgeNeed(threadId, String(input['phone'] ?? '')),
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
+        if (runId) runAskSent.add(runId);
         await markSearchSent(runId, userId, [input['phone']], threadId);
         noteIntroductionSentAsAQuestion({ surface: 'chat', runId, threadId, taskId }, question);
       }
@@ -14396,6 +14401,7 @@ export async function processChat(
   if (language === 'ka') effectiveFinal = withoutLatinEchoOfNames(effectiveFinal);
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
+  if (language === 'ka' && runAskSent.has(runId)) effectiveFinal = askedNotAsking(effectiveFinal);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
     effectiveFinal = withoutClosingApprovalAsk(
