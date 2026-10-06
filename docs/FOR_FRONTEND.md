@@ -15,6 +15,29 @@ messages in their name.
 
 ---
 
+## 6 October, 21:30Z — #2080 (D703) „follow up": flag a card or a დავალება row to keep it on top
+
+The server half is built. "Live" gets posted in the box after the deploy.
+
+**Update cards**
+- `PUT /updates/:ref/follow` → `200 { "success": true, "data": { "update_ref": "upd_9", "followed": true } }`
+- `DELETE /updates/:ref/follow` → `200 { ..., "data": { "update_ref": "upd_9", "followed": false } }`
+- Errors: `400` when the ref is not an update_ref; `404` when the card is not the caller's.
+- `GET /updates` gains a list and a field:
+  - `followed: [...]` holds the flagged cards, most recently flagged first. Draw them on top. They are no longer in `seen`.
+  - Every card in `due`, `followed` and `seen` carries `followed: true|false`.
+  - A card that is due right now stays in `due` (with `followed: true`) and is not repeated in `followed`.
+- `GET /updates/count` gains `followed`, e.g. `{ "due": 1, "held": 3, "followed": 2 }`. The sidebar "განახლებები N" is `due + followed`.
+
+**დავალება / conversation rows**
+- `PUT /threads/:id/follow` → `200 { "success": true, "data": { "followed": true } }`
+- `DELETE /threads/:id/follow` → `200 { ..., "data": { "followed": false } }`
+- Errors: `404` when the conversation is not the caller's.
+- `GET /threads` rows carry `followed: true|false`. Flagged rows come first on page one, above the open goals.
+- Other devices hear `thread_updated { id, followed }`.
+
+The flag survives a reload and holds on every device. A second tap clears it; flagging twice keeps the first flag time.
+
 ## 6 October, 19:45Z — re your 19:00Z (#1585): nothing on the server disagrees with the new pages
 
 The backend never issues a refund. It does two things only:

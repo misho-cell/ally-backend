@@ -29,6 +29,11 @@ import {
   normalisedPayload,
 } from '../../services/updateCard';
 import { userLanguage } from '../../services/threads.service';
+import {
+  countFollowedUpdates,
+  listFollowedUpdates,
+  setUpdateFollowed,
+} from '../../services/followUp.service';
 import { asRunLanguage, type RunLanguage } from '../../services/runLanguage';
 import { ApiResponse } from '../../types';
 
@@ -76,6 +81,8 @@ interface UpdateRow {
   readonly detail: string;
   /** Row 230: a debrief whose question has since been answered. */
   readonly answered: boolean;
+  /** #2080: the person flagged it to come back to; it stays on top until cleared. */
+  readonly followed: boolean;
 }
 
 /**
@@ -89,6 +96,7 @@ function updatePayload(
   titles: ReadonlyMap<number, string>,
   answers: ReadonlyMap<number, string>,
   language: RunLanguage,
+  followedIds: ReadonlySet<number>,
 ): UpdateRow {
   const payload = normalisedPayload(u.kind, u.payload);
   const heading = cardHeading(
@@ -110,11 +118,14 @@ function updatePayload(
     detail:
       answer !== undefined && who !== '' ? answeredDetail(who, answer, language) : heading.detail,
     answered: answer !== undefined,
+    followed: followedIds.has(u.id),
   };
 }
 
 interface UpdatesView {
   readonly due: readonly UpdateRow[];
+  /** #2080: flagged cards, kept out of `seen` and drawn on top. */
+  readonly followed: readonly UpdateRow[];
   readonly seen: readonly UpdateRow[];
   readonly held: number;
 }
@@ -143,10 +154,17 @@ interface UpdatesView {
 // this spends nothing.  GET /updates/count → { due, held }
 updatesRouter.get(
   '/count',
-  async (req: Request, res: Response<ApiResponse<UpdateCounts>>): Promise<void> => {
+  async (
+    req: Request,
+    res: Response<ApiResponse<UpdateCounts & { readonly followed: number }>>,
+  ): Promise<void> => {
     const userId = String((req as AuthenticatedRequest).user.userId);
     try {
-      res.status(200).json({ success: true, data: await countUpdatesForBadge(userId) });
+      const [counts, followed] = await Promise.all([
+        countUpdatesForBadge(userId),
+        countFollowedUpdates(userId),
+      ]);
+      res.status(200).json({ success: true, data: { ...counts, followed } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /updates/count]', error);
@@ -159,9 +177,16 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
   const userId = String((req as AuthenticatedRequest).user.userId);
   try {
     const due = await getPendingUpdates(userId);
-    const [seen, held] = await Promise.all([listSeenUpdates(userId), countHeldUpdates(userId)]);
+    const [seen, held, flagged] = await Promise.all([
+      listSeenUpdates(userId),
+      countHeldUpdates(userId),
+      listFollowedUpdates(userId),
+    ]);
     const dueNow = new Set(due.map((u) => u.id));
-    const shown = seen.filter((u) => !dueNow.has(u.id));
+    const followedIds = new Set(flagged.map((u) => u.id));
+    // #2080: a flagged card is never in the read list; it rides in its own.
+    const shown = seen.filter((u) => !dueNow.has(u.id) && !followedIds.has(u.id));
+    const followedShown = flagged.filter((u) => !dueNow.has(u.id));
     /**
      * The goals' own titles and the reader's own language, both fetched once
      * for the whole screen rather than per card — and both best-effort: a
@@ -184,11 +209,11 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
      * inference we already had — see `asRunLanguage`.
      */
     const chosen = asRunLanguage(req.get('X-Locale'));
-    const askIds = [...due, ...shown]
+    const askIds = [...due, ...followedShown, ...shown]
       .map((u) => debriefAskId(u.kind, normalisedPayload(u.kind, u.payload)))
       .filter((id): id is number => id !== null);
     const [titles, answers, language] = await Promise.all([
-      goalTitlesFor([...due, ...shown].map((u) => u.task_id)).catch(
+      goalTitlesFor([...due, ...followedShown, ...shown].map((u) => u.task_id)).catch(
         () => new Map<number, string>(),
       ),
       answersForAsks(askIds).catch((err: unknown) => {
@@ -203,8 +228,11 @@ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesVie
     res.status(200).json({
       success: true,
       data: {
-        due: due.map((u) => updatePayload(u, titles, answers, language)),
-        seen: shown.map((u) => updatePayload(u, titles, answers, language)),
+        due: due.map((u) => updatePayload(u, titles, answers, language, followedIds)),
+        followed: followedShown.map((u) =>
+          updatePayload(u, titles, answers, language, followedIds),
+        ),
+        seen: shown.map((u) => updatePayload(u, titles, answers, language, followedIds)),
         held,
       },
     });
@@ -305,5 +333,44 @@ updatesRouter.post(
     }
   },
 );
+
+/**
+ * #2080 (D703): flag a card to come back to, or clear the flag.
+ *
+ *   PUT    /updates/:ref/follow   200 { update_ref, followed: true }
+ *   DELETE /updates/:ref/follow   200 { update_ref, followed: false }
+ *   400  not an update_ref        404  no such update of yours
+ */
+function followRoute(followed: boolean) {
+  return async (
+    req: Request,
+    res: Response<ApiResponse<{ update_ref: string; followed: boolean }>>,
+  ): Promise<void> => {
+    const ref = String(req.params.ref);
+    const id = parseUpdateRef(ref);
+    if (id === null) {
+      res.status(400).json({
+        success: false,
+        error: 'Unknown update_ref — take it from GET /updates.',
+      });
+      return;
+    }
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      if (!(await setUpdateFollowed(userId, id, followed))) {
+        res.status(404).json({ success: false, error: 'No such update of yours.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { update_ref: ref, followed } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[updates] follow failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  };
+}
+
+updatesRouter.put('/:ref/follow', param('ref').isString().trim().notEmpty(), followRoute(true));
+updatesRouter.delete('/:ref/follow', param('ref').isString().trim().notEmpty(), followRoute(false));
 
 export default updatesRouter;

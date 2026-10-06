@@ -366,6 +366,8 @@ export interface ThreadUpdatePayload {
   /** #1919: the goal was stopped / is stopped and not yet closed by its owner. */
   goal_stopped?: boolean;
   goal_stopped_open?: boolean;
+  /** #2080: flagged / cleared by its owner on one device. */
+  followed?: boolean;
 }
 
 /**

@@ -105,6 +105,8 @@ interface ThreadRow extends Thread {
   goal_id?: number | null;
   /** #894: the goal has a worked list, so the download button only shows where it works. */
   has_list?: boolean;
+  /** #2080: flagged by its owner to come back to — it rides at the top until cleared. */
+  followed?: boolean;
   // Public ref of the linked introduction request (null on regular threads) —
   // what the client posts to /requests/:ref/{accept,decline,snooze}.
   request_ref: string | null;
@@ -317,7 +319,8 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${GOAL_WAS_STOPPED} AS goal_stopped,
        ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
        goal.id AS goal_id,
-       EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list`;
+       EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
+       t.followed_at IS NOT NULL AS followed`;
 
 // `shared_ir`: the pending request written into this thread by row 305 (b).
 // At most one — `requestIntroduction` never puts a second pending request into
@@ -408,7 +411,7 @@ export async function getThreadsForUser(
        ${THREAD_LIST_COLUMNS}
      ${THREAD_LIST_JOINS}
      WHERE t.id = ANY($1::bigint[])
-     ORDER BY t.updated_at DESC, t.id DESC`,
+     ORDER BY (t.followed_at IS NOT NULL) DESC, t.updated_at DESC, t.id DESC`,
     [promoted],
   );
   return withStoppedCaption(userId, [...goals.rows, ...result.rows].map(cleanPreview));
@@ -469,12 +472,13 @@ function cleanPreview(row: ThreadRow): ThreadRow {
  * returned so the cap cannot also make the goals past it disappear.
  */
 async function promotedGoalThreadIds(userId: string): Promise<number[]> {
+  // #2080: a row its owner flagged rides at the top too, above the open goals.
   const result = await query<{ id: string }>(
     `SELECT t.id
      FROM threads t
      WHERE t.user_id = $1
-       AND ${HAS_OPEN_GOAL}
-     ORDER BY t.updated_at DESC, t.id DESC
+       AND (${HAS_OPEN_GOAL} OR t.followed_at IS NOT NULL)
+     ORDER BY (t.followed_at IS NOT NULL) DESC, t.updated_at DESC, t.id DESC
      LIMIT $2::int`,
     [userId, MAX_GOAL_THREADS],
   );

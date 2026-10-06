@@ -24,6 +24,7 @@ import {
   getLongestRunStep,
   markThreadSeen,
 } from '../../services/threads.service';
+import { setThreadFollowed } from '../../services/followUp.service';
 import {
   processChat,
   ChatResult,
@@ -300,6 +301,48 @@ threadsRouter.use(authenticateJwt, requireUserRole);
  *   200 { stopped: false, reason: 'no_open_goal' }  nothing was running to stop
  *   404                                             no such thread, or not theirs
  */
+/**
+ * #2080 (D703): flag a conversation to come back to, or clear the flag. A
+ * flagged row rides at the top of GET /threads; the other devices hear it as
+ * `thread_updated { id, followed }`.
+ *
+ *   PUT    /threads/:id/follow   200 { followed: true }
+ *   DELETE /threads/:id/follow   200 { followed: false }
+ *   404                          no such thread, or not theirs
+ */
+function followThread(followed: boolean) {
+  return async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const state = await setThreadFollowed(threadId, userId, followed);
+      if (state === null) {
+        res.status(404).json({ success: false, error: 'Thread not found' });
+        return;
+      }
+      emitThreadUpdated(userId, { id: threadId, followed: state });
+      res.status(200).json({ success: true, data: { followed: state } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[/threads/:id/follow]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not change the flag' });
+    }
+  };
+}
+
+for (const [method, followed] of [
+  ['put', true],
+  ['delete', false],
+] as const) {
+  threadsRouter[method](
+    '/:id/follow',
+    rateLimit({ windowMs: 60_000, max: SEEN_PER_MINUTE }),
+    param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+    handleValidationErrors,
+    followThread(followed),
+  );
+}
+
 /**
  * #1817 (Ninia; the frontend's 11:30Z): the owner opened this conversation, or
  * an answer landed while it was on screen. Stored on the server so a read on

@@ -99,7 +99,9 @@ describe('a card is due or it is history, not both in one reply', () => {
 
   it('subtracts what is due from what is seen', () => {
     expect(source).toContain('const dueNow = new Set(due.map((u) => u.id));');
-    expect(source).toContain('seen.filter((u) => !dueNow.has(u.id))');
+    expect(source).toContain('seen.filter((u) => !dueNow.has(u.id) && !followedIds.has(u.id))');
+    // #2080: a flagged card is drawn once, in its own list, never also as due.
+    expect(source).toContain('flagged.filter((u) => !dueNow.has(u.id))');
   });
 
   /** By id — a ref is a rendering of an id and comparing renderings is how they drift. */
@@ -109,6 +111,6 @@ describe('a card is due or it is history, not both in one reply', () => {
 
   /** `held` is still counted after the release, which is a different agreement. */
   it('leaves the held count where it was', () => {
-    expect(source).toMatch(/listSeenUpdates\(userId\), countHeldUpdates\(userId\)/);
+    expect(source).toMatch(/listSeenUpdates\(userId\),\s*countHeldUpdates\(userId\)/);
   });
 });

@@ -56,7 +56,7 @@ describe('the answers are read once for the whole screen', () => {
       'utf8',
     );
     expect(route).toContain('answersForAsks(askIds)');
-    expect(route).toContain('updatePayload(u, titles, answers, language)');
+    expect(route).toContain('updatePayload(u, titles, answers, language, followedIds)');
     expect(route).toContain('answered: answer !== undefined');
   });
 });

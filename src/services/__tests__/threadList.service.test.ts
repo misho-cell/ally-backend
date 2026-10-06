@@ -111,7 +111,10 @@ describe('the sidebar puts open goals first (ticket 9 task 20 c)', () => {
 
     const [idSql, idParams] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(idSql).toContain("k.status = 'open'");
-    expect(idSql).toContain('ORDER BY t.updated_at DESC, t.id DESC');
+    // #2080: a flagged row goes first, then newest first as before.
+    expect(idSql).toContain(
+      'ORDER BY (t.followed_at IS NOT NULL) DESC, t.updated_at DESC, t.id DESC',
+    );
     expect(idParams).toEqual(['501', 50]);
   });
 
