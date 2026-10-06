@@ -90,6 +90,8 @@ export interface ThreadMessage {
 interface ThreadRow extends Thread {
   last_message: string | null;
   last_message_at: string | null;
+  /** #1817: when the owner last opened it; null = never (migration 208). */
+  seen_at: string | null;
   /** Row 207: this thread's goal was stopped by its owner — see GOAL_WAS_STOPPED. */
   goal_stopped?: boolean;
   /**
@@ -303,6 +305,7 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER} AS request_ref,
        LEFT(lm.content, ${LAST_MESSAGE_PREVIEW_CHARS}) AS last_message,
        lm.created_at AS last_message_at,
+       t.seen_at,
        ${GOAL_WAS_STOPPED} AS goal_stopped,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list`;
@@ -739,6 +742,22 @@ export async function updateThreadStatus(
      WHERE id = $4`,
     [status, statusLine, isTask ?? null, threadId],
   );
+}
+
+const SEEN_QUERY_TIMEOUT_MS = 5_000;
+
+/**
+ * #1817: the owner opened this conversation (or an answer landed while it was
+ * on screen). Returns the stamp, or null when the thread is not theirs.
+ */
+export async function markThreadSeen(threadId: number, userId: string): Promise<string | null> {
+  const result = await query<{ seen_at: Date }>(
+    `UPDATE threads SET seen_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING seen_at`,
+    [threadId, userId],
+    SEEN_QUERY_TIMEOUT_MS,
+  );
+  const row = result.rows[0];
+  return row === undefined ? null : new Date(row.seen_at).toISOString();
 }
 
 export async function touchThread(threadId: number): Promise<void> {

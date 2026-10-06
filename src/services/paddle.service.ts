@@ -6,7 +6,7 @@ import type {
 } from '@paddle/paddle-node-sdk';
 import paddle from '../config/paddle';
 import { query } from '../db/postgres/client';
-import { sendPushNotification } from './notification.service';
+import { PAYMENT_PUSH_URL, sendPushNotification } from './notification.service';
 import { distributeReferralEarnings } from './referral.service';
 import { creditTopup, findTopupPackageByPriceId } from './tokenWallet.service';
 import { recordPayment } from './payments.service';
@@ -178,6 +178,7 @@ async function handleTopupTransaction(txn: TransactionNotification): Promise<voi
     if (credited) {
       await recordTransactionPayment(userId, txn, 'topup');
       await sendPushNotification(userId, {
+        url: PAYMENT_PUSH_URL,
         title: 'Netai — ტოკენები დაემატა',
         body: `+${pkg.tokens} ტოკენი დაერიცხა შენს ბალანსს 🪙`,
       }).catch(() => {});

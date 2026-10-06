@@ -22,6 +22,7 @@ import {
   updateThreadTitle,
   saveThreadMessage,
   getLongestRunStep,
+  markThreadSeen,
 } from '../../services/threads.service';
 import {
   processChat,
@@ -94,6 +95,8 @@ import {
 
 // A timed-out run's longest persisted step must be at least this long to be
 // worth flushing as a partial answer (anything shorter is spinner narration).
+/** #1817: opened, and again when an answer lands on screen — generous, never chatty. */
+const SEEN_PER_MINUTE = 60;
 const MIN_PARTIAL_FLUSH_CHARS = 80;
 
 // The provisional (pre-generator) title keeps only the message's first words.
@@ -292,6 +295,44 @@ threadsRouter.use(authenticateJwt, requireUserRole);
  *   200 { stopped: false, reason: 'no_open_goal' }  nothing was running to stop
  *   404                                             no such thread, or not theirs
  */
+/**
+ * #1817 (Ninia; the frontend's 11:30Z): the owner opened this conversation, or
+ * an answer landed while it was on screen. Stored on the server so a read on
+ * one device counts on all of them; the other devices hear it as
+ * `thread_updated { id, seen_at }`.
+ *
+ *   200 { seen_at }   stamped now
+ *   404               no such thread, or not theirs
+ */
+threadsRouter.post(
+  '/:id/seen',
+  rateLimit({ windowMs: 60_000, max: SEEN_PER_MINUTE }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const seenAt = await markThreadSeen(threadId, userId);
+      if (seenAt === null) {
+        res.status(404).json({ success: false, error: 'Thread not found' });
+        return;
+      }
+      emitThreadUpdated(userId, { id: threadId, seen_at: seenAt });
+      // #1684: opening an ask's conversation is also what „seen" means for the asker.
+      markAsksSeen(threadId, userId).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[ask-seen] thread ${threadId}:`, (err as Error).message);
+      });
+      res.status(200).json({ success: true, data: { seen_at: seenAt } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /threads/:id/seen]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not mark the conversation seen' });
+    }
+  },
+);
+
 threadsRouter.post(
   '/:id/stop',
   rateLimit({ windowMs: 60_000, max: 30 }),

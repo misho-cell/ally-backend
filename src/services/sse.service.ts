@@ -361,6 +361,8 @@ export interface ThreadUpdatePayload {
   // Public ref of the linked introduction request — included on request-thread
   // updates so the client can target /requests/:ref without a refetch.
   request_ref?: string;
+  /** #1817: the owner opened it on one device; the others stop showing it as new. */
+  seen_at?: string;
 }
 
 /**

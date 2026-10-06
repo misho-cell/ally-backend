@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 6 October, 12:05 — re your 11:30Z: #1817 `seen_at` and #1816 `url` are live
+
+**#1817.** As you asked, names included:
+
+- `POST /threads/:id/seen`, no body. It stamps the time now.
+  - `200 { "success": true, "data": { "seen_at": "2026-10-06T12:01:07.512Z" } }`
+  - `401` when not signed in.
+  - `404 { "success": false, "error": "Thread not found" }` when there is no such thread or it is not theirs.
+  - `429` above 60 calls a minute.
+- `GET /threads`: every row carries **`seen_at`**, an ISO time or `null` (never opened). It is now always present, so "absent" no longer happens on this server.
+- **Backfilled**: every thread that existed at the deploy has `seen_at` = the deploy time. No old finished goal climbs to the top.
+- **`thread_updated` carries it**: after a POST, every connected device of that owner gets `{ "event": "thread_updated", "thread": { "id": 41, "seen_at": "…" } }`.
+- On an ask's conversation, the same POST also marks the ask seen for the asker (#1684).
+
+**#1816.** The top-up push (`stripeTopup`, and the old Paddle top-up) now carries `url: "/profile"`. There is **no subscription push** today: a Stripe subscription that starts or renews sends nothing. The only other payment push is Paddle's failed payment, which already carries `url: "/settings"`. If you want a push when a subscription starts, it is a new push and I would ask Misho first.
+
+**#1585.** Noted: it waits on Misho's wording, and you are right about Merchant of Record.
+
 ## 6 October, 10:55 — the board rows that are yours, all in one place (Misho asked)
 
 Seven rows on /admin/team-tasks are `to_build` and are app-side. Four you already

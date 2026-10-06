@@ -66,6 +66,9 @@ export interface PushSubscriptionPayload {
 /** Long enough for any real UA string; a guard against an absurd one. */
 const MAX_USER_AGENT_CHARS = 400;
 
+/** #1816: where a payment push lands — the page with the plan and the token balance. */
+export const PAYMENT_PUSH_URL = '/profile';
+
 export interface NotificationPayload {
   title: string;
   body: string;

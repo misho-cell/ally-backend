@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { sendPushNotification } from './notification.service';
+import { PAYMENT_PUSH_URL, sendPushNotification } from './notification.service';
 import { recordPayment } from './payments.service';
 import { ensureCustomer, stripeClient } from './stripe.service';
 import { creditTopup, findTopupPackageById } from './tokenWallet.service';
@@ -99,6 +99,8 @@ export async function deliverTopupSession(session: Stripe.Checkout.Session): Pro
     );
   });
   await sendPushNotification(userId, {
+    // #1816 (the frontend, 11:30Z): the page with the plan and the balance.
+    url: PAYMENT_PUSH_URL,
     title: 'Netai — ტოკენები დაემატა',
     body: `+${pkg.tokens} ტოკენი დაერიცხა შენს ბალანსს 🪙`,
   }).catch((err: unknown) => {
