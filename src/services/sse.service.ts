@@ -363,6 +363,9 @@ export interface ThreadUpdatePayload {
   request_ref?: string;
   /** #1817: the owner opened it on one device; the others stop showing it as new. */
   seen_at?: string;
+  /** #1919: the goal was stopped / is stopped and not yet closed by its owner. */
+  goal_stopped?: boolean;
+  goal_stopped_open?: boolean;
 }
 
 /**

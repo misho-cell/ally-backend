@@ -1,11 +1,12 @@
 import { query } from '../db/postgres/client';
-import { Task, updateTask, getGoalOnThread, wakeTaskNoLaterThan } from './taskStore.service';
+import { Task, updateTask, getGoalOnThread } from './taskStore.service';
+import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
 import { cancelAsksForTask } from './taskAsks.service';
 import { cancelIntroductionRequestsForTask } from './introduction.service';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
-import { emitChoicesCleared } from './sse.service';
+import { emitChoicesCleared, emitThreadUpdated } from './sse.service';
 import { RunLanguage, STOPPED_STATUS_LINE } from './runLanguage';
 
 const QUERY_TIMEOUT_MS = 5_000;
@@ -195,6 +196,8 @@ export async function stopGoal(
     void setThreadStatus(userId, task.thread_id, 'done', {
       statusLine: STOPPED_STATUS_LINE[language],
     });
+    // #1919: every device moves it to „stopped, still current" without a reload.
+    emitThreadUpdated(userId, { id: task.thread_id, goal_stopped: true, goal_stopped_open: true });
   }
   return said === undefined
     ? { stopped: true, goal_id: task.id }
@@ -284,7 +287,37 @@ export type StoppedGoalAction =
   | { readonly ok: true; readonly goal_id: number }
   | { readonly ok: false; readonly reason: 'not_found' | 'not_stopped' };
 
-const RESUME_WAKE_DELAY_MS = 60_000;
+const CANCELLED_ASKS_TOLD = 5;
+
+/** The unanswered questions the goal's stop cancelled, newest first, named as the owner saved them. */
+async function askedBeforeTheStop(taskId: number): Promise<{ name: string; question: string }[]> {
+  const result = await query<{ name: string | null; question: string }>(
+    `SELECT ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name, ta.question
+       FROM task_asks ta
+      WHERE ta.task_id = $1 AND ta.status = 'cancelled' AND ta.answered_at IS NULL
+      ORDER BY ta.id DESC
+      LIMIT ${CANCELLED_ASKS_TOLD}`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => ({ name: r.name ?? 'კონტაქტი', question: r.question }));
+}
+
+/** What the woken run is told: it was picked up again, and what the stop had cancelled. */
+export function resumedEvent(cancelled: readonly { name: string; question: string }[]): string {
+  const asked =
+    cancelled.length > 0
+      ? 'გაჩერებამ ეს კითხვები გააუქმა, პასუხი არ მოსულა:\n' +
+        cancelled.map((c) => `• ${c.name}: „${c.question}"`).join('\n') +
+        '\nვისაც ჯერ კიდევ შეეფერება, ხელახლა მისწერე კითხვის გაგზავნის ხელსაწყოთი. '
+      : 'გაჩერებამდე გაგზავნილი, უპასუხო კითხვა არ ყოფილა. ';
+  return (
+    'მფლობელმა გაჩერებული მიზანი განაახლა — ის ისევ ღიაა და გეგმა ძალაშია. ' +
+    asked +
+    'შემდეგ გეგმის შემდეგი ნაბიჯი გადადგი. ბოლოს ერთი სტრიქონი მფლობელს: რა გააკეთე ახლა. ' +
+    'არასოდეს თქვა, რომ ვინმეს მისწერე, თუ ხელსაწყომ ის არ გაგზავნა.'
+  );
+}
 
 const RESUMED_LINE: Readonly<Record<RunLanguage, (title: string) => string>> = {
   ka: (title) => `„${title}" განვაახლე — ვაგრძელებ.`,
@@ -310,7 +343,7 @@ async function stoppedGoalOn(
   return stopped.rows.length > 0 ? task : 'not_stopped';
 }
 
-/** Picks a stopped goal up again: open, waiting, woken within a minute. */
+/** Picks a stopped goal up again: open, waiting, and woken with an event that says so. */
 export async function resumeStoppedGoal(
   userId: string,
   threadId: number,
@@ -332,7 +365,11 @@ export async function resumeStoppedGoal(
     RESUMED_LINE[language](task.title),
   );
   await setThreadStatus(userId, threadId, 'waiting');
-  await wakeTaskNoLaterThan(task.id, new Date(Date.now() + RESUME_WAKE_DELAY_MS));
+  emitThreadUpdated(userId, { id: threadId, goal_stopped: false, goal_stopped_open: false });
+  const event = resumedEvent(await askedBeforeTheStop(task.id));
+  void import('./taskEngine.service').then(({ wakeAfterResume }) =>
+    wakeAfterResume(task.id, event),
+  );
   return { ok: true, goal_id: task.id };
 }
 
@@ -349,5 +386,6 @@ export async function dismissStoppedGoal(
     [task.id],
     QUERY_TIMEOUT_MS,
   );
+  emitThreadUpdated(userId, { id: threadId, goal_stopped_open: false });
   return { ok: true, goal_id: task.id };
 }

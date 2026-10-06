@@ -2,12 +2,16 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 jest.mock('../taskStore.service', () => ({
   updateTask: jest.fn(),
   getGoalOnThread: jest.fn(),
-  wakeTaskNoLaterThan: jest.fn(),
   __esModule: true,
 }));
+jest.mock('../taskEngine.service', () => ({ wakeAfterResume: jest.fn(), __esModule: true }));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
 jest.mock('../threadStatus.service', () => ({ setThreadStatus: jest.fn(), __esModule: true }));
-jest.mock('../sse.service', () => ({ emitChoicesCleared: jest.fn(), __esModule: true }));
+jest.mock('../sse.service', () => ({
+  emitChoicesCleared: jest.fn(),
+  emitThreadUpdated: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../threads.service', () => ({
   getThread: jest.fn(),
   saveThreadMessage: jest.fn(),
@@ -18,10 +22,12 @@ jest.mock('../threads.service', () => ({
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
-import { getGoalOnThread, Task, updateTask, wakeTaskNoLaterThan } from '../taskStore.service';
+import { getGoalOnThread, Task, updateTask } from '../taskStore.service';
+import { wakeAfterResume } from '../taskEngine.service';
+import { emitThreadUpdated } from '../sse.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { getThread, saveThreadMessage, Thread } from '../threads.service';
-import { dismissStoppedGoal, resumeStoppedGoal } from '../goalStop.service';
+import { dismissStoppedGoal, resumeStoppedGoal, resumedEvent } from '../goalStop.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGetThread = getThread as jest.MockedFunction<typeof getThread>;
@@ -52,7 +58,22 @@ describe('picking a stopped goal up again', () => {
       '„კარგი ვეტერინარი" განვაახლე — ვაგრძელებ.',
     );
     expect(setThreadStatus).toHaveBeenCalledWith('501', THREAD, 'waiting');
-    expect(wakeTaskNoLaterThan).toHaveBeenCalledTimes(1);
+    expect(emitThreadUpdated).toHaveBeenCalledWith('501', {
+      id: THREAD,
+      goal_stopped: false,
+      goal_stopped_open: false,
+    });
+    await new Promise((r) => setImmediate(r));
+    expect(wakeAfterResume).toHaveBeenCalledWith(GOAL.id, expect.stringContaining('განაახლა'));
+  });
+
+  /** The tester's 42604: resumed, the goal did nothing — the run is now told what the stop cancelled. */
+  it('tells the woken run what the stop cancelled, and to send it again', () => {
+    const said = resumedEvent([{ name: 'Nino', question: 'იცნობ კარგ სტომატოლოგს?' }]);
+    expect(said).toContain('• Nino: „იცნობ კარგ სტომატოლოგს?"');
+    expect(said).toContain('ხელახლა მისწერე');
+    expect(said).toContain('არასოდეს თქვა, რომ ვინმეს მისწერე, თუ ხელსაწყომ ის არ გაგზავნა');
+    expect(resumedEvent([])).toContain('უპასუხო კითხვა არ ყოფილა');
   });
 
   it('refuses a goal that was not stopped', async () => {

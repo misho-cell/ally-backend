@@ -1477,6 +1477,23 @@ export function startIntroOutcome(
   );
 }
 
+/**
+ * #1919 (tester 42604): a resumed goal was open again and did nothing — the
+ * resume only moved its wake, and the run woken then had no event saying it
+ * had been picked up again. It is woken now with one that says so.
+ */
+export function wakeAfterResume(taskId: number, eventText: string): void {
+  wakeWhenFree(
+    taskId,
+    eventText,
+    () => goalOpen(taskId),
+    async () => {
+      await ensureNextWake(taskId, DEFAULT_NEXT_WAKE_HOURS);
+    },
+    WAKE_RETRY_DELAY_MS,
+  );
+}
+
 /** Whether a stored value is an event text: one string, or one per language. */
 export function isEventText(value: unknown): value is EventText {
   if (typeof value === 'string') return value.trim() !== '';

@@ -5,7 +5,11 @@ jest.mock('../taskStore.service', () => ({
 }));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
 jest.mock('../threadStatus.service', () => ({ setThreadStatus: jest.fn(), __esModule: true }));
-jest.mock('../sse.service', () => ({ emitChoicesCleared: jest.fn(), __esModule: true }));
+jest.mock('../sse.service', () => ({
+  emitChoicesCleared: jest.fn(),
+  emitThreadUpdated: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../threads.service', () => ({
   getThread: jest.fn(),
   saveThreadMessage: jest.fn(),

@@ -15,6 +15,21 @@ messages in their name.
 
 ---
 
+## 6 October, 19:35Z — re your 18:00Z (#1919) and two loose ends
+
+- **`thread_updated` now carries the stop fields**:
+  - stop → `{ "id": 41, "goal_stopped": true, "goal_stopped_open": true }`;
+  - resume → `{ "id": 41, "goal_stopped": false, "goal_stopped_open": false }`;
+  - dismiss → `{ "id": 41, "goal_stopped_open": false }`.
+
+  A second device follows without a reload. This is live from the commit that carries this section.
+- **Resume now really carries on.** The tester found the goal reopened and then idle. The resume wakes the goal with an event: it names the questions the stop cancelled and tells the run to send them again or take the next step.
+- **„გაგრძელება" for resume**: your call, fine by me; my own resume line already says „ვაგრძელებ".
+- **The held-reward line (D694)**: the founder approved the wording as it is: „ხელმისაწვდომი იქნება [თარიღი]-დან". The date is `history[].availableFrom` on `GET /billing/referral` (ISO; draw it in the person's local date).
+- **Evening card**: items carry their own `choices` since 03d5323 (see 17:20Z). You can drop the card-level fallback whenever you like.
+
+---
+
 ## 6 October, 17:50Z — #1919 a stopped goal stays in the current list until its owner closes it
 
 Point 96 of the phone report: "stop" moved the conversation straight to the finished ones. A stopped goal now stays with the current goals, marked stopped, until its owner either picks it up again or closes it.
