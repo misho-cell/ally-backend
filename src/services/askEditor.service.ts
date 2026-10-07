@@ -97,9 +97,10 @@ function editorBrief(context: AskEditContext): string {
     `1. It speaks TO ${reader} as „you" (in Georgian the informal „შენ") and never names ` +
       `${reader}. What ${asker} needs or wants is told ABOUT ${asker}, by name, in the third ` +
       `person („${asker}-ს სჭირდება…", „${asker} ეძებს…", „${asker}-ს უნდა…"). Any first-person ` +
-      `form about ${asker} FAILS — „I need", „recommend me", „lend me", „help me", „I want"; in ` +
+      `form about ${asker} FAILS — „I need", „recommend me", „lend me", „help me", „I want", ` +
+      '„introduce me", „get me introduced"; in ' +
       'Georgian „მჭირდება", „მირჩიე / მირჩიო", „მასესხო", „დამეხმარე / დამეხმაროს", „მინდა", ' +
-      '„გამაცნო". Rewrite such a sentence so it is about the asker. A third person the owner ' +
+      '„გამაცნო", „გამაცნობ". Rewrite such a sentence so it is about the asker. A third person the owner ' +
       'named (a craftsman, a shop, a firm) stays in the third person, by name — „you" only ' +
       `where ${asker} asks ${reader} about ${reader} themself.`,
     `2. It is correct, natural ${language}, the way a person writes — not formal, no invented words.`,
@@ -113,6 +114,10 @@ function editorBrief(context: AskEditContext): string {
       `in ${reader}'s own voice (at most 40 characters). Never one button alone; never only ` +
       '„later". Each has a meaning: "yes" (agrees, knows, will do it), "no" (declines, does ' +
       'not know), "later" (will answer later), "answer" (any other concrete answer).',
+    `7. Every name — of ${asker}, of a person, a firm, a place — is the one in the owner's words, ` +
+      'in its plain form: a Georgian case ending is not part of a name („ორბიში" means „in ' +
+      'Orbi" → Orbi; „ბერიძეს" → Beridze). A name or surname is never changed. In a question ' +
+      'that is not in Georgian, names are written in Latin letters.',
     '',
     'When every rule holds, do not improve it: call give_verdict with ok true. Otherwise ' +
       'change as little as possible — only what breaks a rule — and call give_verdict with ok ' +
