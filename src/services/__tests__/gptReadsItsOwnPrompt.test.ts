@@ -12,9 +12,11 @@ describe('GPT reads its own prompt blocks', () => {
 
   it('adds the run mode’s GPT blocks to what GPT is given', () => {
     expect(chat).toContain(
-      "const gptBlocks = writer === '' ? '' : await gptBlocksFor(runId, userId);",
+      'const gptBlocks = (): Promise<string> => (gptBlocksRead ??= gptBlocksFor(runId, userId));',
     );
-    expect(chat).toContain('plainSystemPrompt(systemPrompt) +\n          gptBlocks +');
+    expect(chat).toContain(
+      "plainSystemPrompt(systemPrompt) +\n        (model === '' ? '' : await gptBlocks()) +",
+    );
   });
 
   it('loads them for the same mode the run resolved to, and forgets it with the run', () => {
@@ -51,7 +53,7 @@ describe('GPT is told the reply language last', () => {
   });
 
   it('is the last part of what GPT is given', () => {
-    expect(chat).toContain('shortTurnNote +\n          gptLanguageLast(runLang(runId)),');
+    expect(chat).toContain('shortTurnNote +\n        gptLanguageLast(runLang(runId)),');
   });
 });
 

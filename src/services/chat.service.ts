@@ -11719,8 +11719,52 @@ async function runToolLoop(
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
   const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
+  let options: DisambiguationCandidate[] | undefined;
+  let choices: string[] | undefined;
+  let openAiStarted = false;
+  // Row 290: GPT reads Claude's prompt plus its OWN blocks for this mode,
+  // edited in the admin console with the model selector set to GPT.
+  // The tester's 973: replies carried „gpt:gpt_georgian_voice@…" on their
+  // stamp while answered_by said Claude — the blocks were loaded and stamped
+  // with the final writer switched off, so nobody could see GPT never ran.
+  // They are read, and stamped, only when GPT will actually write.
+  // N: a scheduled check or wake has no writer, so its blocks are not loaded either.
+  const writer = finalWriterForRun(ownerAbsent, smallTalkOnly);
+  // Read once, on the first write, so a run whose writer never writes pays no read.
+  let gptBlocksRead: Promise<string> | null = null;
+  const gptBlocks = (): Promise<string> => (gptBlocksRead ??= gptBlocksFor(runId, userId));
+  const writeWith = async (model: string): ReturnType<typeof writeFinalAnswer> =>
+    writeFinalAnswer(
+      // The old seat's notes to 1101 (32975): the cliffhanger note reached GPT as a
+      // user line, and the answer told the owner „this note does not look like my
+      // official system channel". Notes written for the model are not shown to it.
+      withoutModelOnlyNudges(messages),
+      plainSystemPrompt(systemPrompt) +
+        (model === '' ? '' : await gptBlocks()) +
+        GPT_NAMES_WHO_IT_FOUND +
+        (choices !== undefined && choices.length > 0 ? buttonSpellingNote(choices) : '') +
+        // The tester's 1096 (32608): a discussion turn's rule reached Claude only, and
+        // GPT, writing the answer, named the owner's winery from the saved profile.
+        shortTurnNote +
+        gptLanguageLast(runLang(runId)),
+      withoutButtonsLine((delta) => {
+        if (!openAiStarted) {
+          openAiStarted = true;
+          resetTurnStream();
+        }
+        stream(delta);
+      }),
+      runLang(runId),
+      model,
+    );
+  // #958 (the tester's 44122): a small-talk reply is the writer's, and Claude's is only its
+  // fallback — one after the other they took 2 s each. Small talk runs no tool, so the
+  // writer starts now, beside Claude, from the same conversation; Claude does not stream
+  // meanwhile, so the two never mix on the screen.
+  const earlyFinal = smallTalkOnly && writer !== '' ? writeWith(writer) : null;
+  const firstTurnText = earlyFinal === null ? stream : undefined;
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
-    onText: stream,
+    onText: firstTurnText,
     model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
@@ -11735,7 +11779,7 @@ async function runToolLoop(
       `[chat] run ${runId} first answer was blank (stop_reason ${response.stop_reason}) — asking once more`,
     );
     response = await callClaude(messages, systemPrompt + BLANK_RETRY_NOTE, tools, ctx, {
-      onText: stream,
+      onText: firstTurnText,
       model: TOOL_TURN_MODEL,
     });
   }
@@ -11745,8 +11789,6 @@ async function runToolLoop(
   // When the fast tier is on, the user-facing answer must still come from the
   // strong model — set once a strong final has been generated.
   let finalFromStrong = false;
-  let options: DisambiguationCandidate[] | undefined;
-  let choices: string[] | undefined;
   let requestCreated = false;
   let searchFoundSomething = false;
   let taskResult: TaskResultCard | undefined;
@@ -12010,41 +12052,7 @@ async function runToolLoop(
     // of its correctness. resetTurnStream tells the client to CLEAR what it
     // has buffered; doing it before the call would wipe Claude's answer off
     // the screen on every run where this flag is off or the call then fails.
-    let openAiStarted = false;
-    // Row 290: GPT reads Claude's prompt plus its OWN blocks for this mode,
-    // edited in the admin console with the model selector set to GPT.
-    // The tester's 973: replies carried „gpt:gpt_georgian_voice@…" on their
-    // stamp while answered_by said Claude — the blocks were loaded and stamped
-    // with the final writer switched off, so nobody could see GPT never ran.
-    // They are read, and stamped, only when GPT will actually write.
-    // N: a scheduled check or wake has no writer, so its blocks are not loaded either.
-    const writer = finalWriterForRun(ownerAbsent, smallTalkOnly);
-    const gptBlocks = writer === '' ? '' : await gptBlocksFor(runId, userId);
-    const writeWith = (model: string): ReturnType<typeof writeFinalAnswer> =>
-      writeFinalAnswer(
-        // The old seat's notes to 1101 (32975): the cliffhanger note reached GPT as a
-        // user line, and the answer told the owner „this note does not look like my
-        // official system channel". Notes written for the model are not shown to it.
-        withoutModelOnlyNudges(messages),
-        plainSystemPrompt(systemPrompt) +
-          gptBlocks +
-          GPT_NAMES_WHO_IT_FOUND +
-          (choices !== undefined && choices.length > 0 ? buttonSpellingNote(choices) : '') +
-          // The tester's 1096 (32608): a discussion turn's rule reached Claude only, and
-          // GPT, writing the answer, named the owner's winery from the saved profile.
-          shortTurnNote +
-          gptLanguageLast(runLang(runId)),
-        withoutButtonsLine((delta) => {
-          if (!openAiStarted) {
-            openAiStarted = true;
-            resetTurnStream();
-          }
-          stream(delta);
-        }),
-        runLang(runId),
-        model,
-      );
-    let rewritten = await writeWith(writer);
+    let rewritten = await (earlyFinal ?? writeWith(writer));
     // D627: a small writer that fails before writing a word hands the turn to the
     // ordinary one, so trying a small model can cost a moment and never the voice.
     if (

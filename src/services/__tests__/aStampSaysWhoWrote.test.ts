@@ -11,7 +11,7 @@ describe('GPT’s blocks are stamped only when GPT writes', () => {
   it('are not read while the final writer is off', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      "const gptBlocks = writer === '' ? '' : await gptBlocksFor(runId, userId);",
+      "plainSystemPrompt(systemPrompt) +\n        (model === '' ? '' : await gptBlocks()) +",
     );
   });
 });

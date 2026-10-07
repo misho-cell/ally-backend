@@ -128,7 +128,9 @@ describe('the discussion rule reaches GPT too', () => {
   it('is in the prompt GPT writes the final answer from', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const gptPrompt = chat.slice(
-      chat.indexOf('const writeWith = (model: string): ReturnType<typeof writeFinalAnswer> =>'),
+      chat.indexOf(
+        'const writeWith = async (model: string): ReturnType<typeof writeFinalAnswer> =>',
+      ),
     );
     expect(gptPrompt.slice(0, 1200)).toContain('shortTurnNote +');
   });
