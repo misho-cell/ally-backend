@@ -22,7 +22,7 @@ describe('after an answer goes', () => {
     expect(chat).not.toContain('SIMILAR_RULE_LABEL');
     expect(chat).not.toContain('saveSimilarRuleOnTap');
     expect(chat).not.toContain('offer_rule');
-    expect(chat).toContain('[tappedContext, approvedByTap, openAsksSettled]');
+    expect(chat).toContain('[tappedContext, approvedByTap, openAsksSettled, introAccepted]');
   });
 });
 

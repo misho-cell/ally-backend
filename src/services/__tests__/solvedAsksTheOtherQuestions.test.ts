@@ -213,7 +213,7 @@ describe('where it is wired', () => {
 
   it('the tap is acted on before the run, beside the approve tap', () => {
     expect(chat).toContain('await settleOpenAsksOnTap(userId, threadId, userMessage)');
-    expect(chat).toContain('[tappedContext, approvedByTap, openAsksSettled]');
+    expect(chat).toContain('[tappedContext, approvedByTap, openAsksSettled, introAccepted]');
   });
 
   it('a closed goal’s answer is shown as a card, never just marked delivered', () => {

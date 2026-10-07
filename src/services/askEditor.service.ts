@@ -70,7 +70,10 @@ function editorBrief(context: AskEditContext): string {
     '3. It asks ONE question. If it asks two, keep the one the owner’s words ask for.',
     '4. It says nothing the owner did not say: no reason, place, time, quality or person ' +
       'added. Every fact the owner gave is kept exactly.',
-    `5. There are 2–4 buttons in ${language}, each a real, natural answer to THIS question ` +
+    '5. It asks what the owner asked, with the same meaning. If the owner wants to be put in ' +
+      'touch with someone, it asks the reader to connect them — never merely whether the ' +
+      'reader can contact that person.',
+    `6. There are 2–4 buttons in ${language}, each a real, natural answer to THIS question ` +
       '(at most 40 characters). Never one button alone; never only „later". Each has a ' +
       'meaning: "yes" (agrees, knows, will do it), "no" (declines, does not know), "later" ' +
       '(will answer later), "answer" (any other concrete answer).',

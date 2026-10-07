@@ -20,9 +20,17 @@ describe('the name a viewer sees for a member', () => {
     expect(sql).toContain('sv_up."userId" = ta.to_user_id');
   });
 
+  // #2312: two reads of the viewer's labels — a clean one first, any one last.
   it('never reads a label without the viewer in it', () => {
-    expect(sql.match(/"UserAlias"/g)).toHaveLength(1);
-    expect(sql).toMatch(/WHERE sv_ua\."contactId" = /);
+    expect(sql.match(/"UserAlias"/g)).toHaveLength(2);
+    expect(sql.match(/WHERE sv_ua\."contactId" = ta\.from_user_id/g)).toHaveLength(2);
+  });
+
+  it('passes over a dotted or over-long label for a clean one, then the registered name', () => {
+    const clean = sql.indexOf("sv_ua.alias NOT LIKE '%.%'");
+    expect(clean).toBeGreaterThan(-1);
+    expect(clean).toBeLessThan(sql.indexOf('"User" sv_u'));
+    expect(sql.lastIndexOf('"UserAlias"')).toBeGreaterThan(sql.indexOf('"User" sv_u'));
   });
 
   it('picks the same spelling every time', () => {

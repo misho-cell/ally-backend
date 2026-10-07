@@ -40,7 +40,9 @@ describe('the small-talk turn', () => {
       'model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,',
     );
     // D631: a tap the server already acted on goes to the same faster model.
-    expect(chat).toContain('approvedByTap !== null || openAsksSettled !== null,');
+    expect(chat).toContain(
+      'approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,',
+    );
   });
 
   it('is rewritten by the small writer when one is set', async () => {

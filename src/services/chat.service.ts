@@ -59,6 +59,7 @@ import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
 import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
+import { acceptIntroOnYes } from './introYes';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
@@ -14278,8 +14279,16 @@ export async function processChat(
         console.error('[open-asks] tap failed:', (err as Error).message);
         return null;
       });
+  // D709 (the tester's 44194): a plain yes to an open introduction is accepted by the server.
+  const introAccepted = ownerAbsent
+    ? null
+    : await acceptIntroOnYes(userId, threadId, userMessage).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[intro] accept-on-yes failed:', (err as Error).message);
+        return null;
+      });
   const replyContext =
-    [tappedContext, approvedByTap, openAsksSettled]
+    [tappedContext, approvedByTap, openAsksSettled, introAccepted]
       .filter((part): part is string => part !== null)
       .join('\n\n') || null;
   /**
@@ -14368,7 +14377,7 @@ export async function processChat(
     lateSearch,
     // D631 (the founder, 4 October): a tap on a button with a fixed answer that
     // the server has already acted on goes to the faster model.
-    approvedByTap !== null || openAsksSettled !== null,
+    approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,
   );
   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
   const planToNobody = takePlanWritesToNobody(runId);
