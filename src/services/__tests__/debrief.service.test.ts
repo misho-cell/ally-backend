@@ -80,6 +80,8 @@ describe('arming — D49: 3 days, once per introduction', () => {
       String(sql).includes('DELETE FROM pending_updates'),
     ) as [string, unknown[]];
     expect(drop[0]).toContain("payload->>'about' = 'relayed_ask'");
+    // pending_updates.user_id is text; comparing it as an int failed in production.
+    expect(drop[0]).toContain('user_id = $1::text');
     expect(drop[1]).toEqual(['42', 3, 'debrief']);
     // The new round still gets its own chase.
     expect(mockQueueFollowUp).toHaveBeenCalledWith(

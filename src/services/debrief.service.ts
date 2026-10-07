@@ -84,9 +84,11 @@ export async function armAskDebrief(
   // exchange. The newest message is the one worth asking about, so its arm
   // supersedes the round before it.
   if (isFollowUp) {
+    // pending_updates.user_id is text: „$1::int" failed every follow-up with
+    // „text = integer" and the arm below never ran (log, 7 Oct 16:00:02Z).
     await query(
       `DELETE FROM pending_updates
-       WHERE user_id = $1::int AND task_id = $2 AND kind = $3 AND status = 'held'
+       WHERE user_id = $1::text AND task_id = $2 AND kind = $3 AND status = 'held'
          AND payload->>'about' = 'relayed_ask'`,
       [askerUserId, taskId, DEBRIEF_KIND],
       DEBRIEF_QUERY_TIMEOUT_MS,
