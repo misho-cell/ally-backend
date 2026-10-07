@@ -52,6 +52,7 @@ import {
   askTapOf,
   isDeclineChoice,
   unknownSenderName,
+  withoutFramesOwnWords,
 } from './askOpening';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { isOptedOutFromAsks } from './askOptOut.service';
@@ -3391,10 +3392,25 @@ export function askReminderLine(language: RunLanguage, askerName: string | null)
   }
 }
 
+/**
+ * #2146 (the tester, 7 Oct): a question that came back after „later" was only
+ * the reminder line — no question, no buttons — so the reader was asked to
+ * answer something no longer on the screen. The reminder carries the question
+ * again, as the reader first read it.
+ */
+export function askReminderMessage(
+  language: RunLanguage,
+  askerName: string | null,
+  question: string,
+): string {
+  return `${askReminderLine(language, askerName)}\n\n${withoutFramesOwnWords(question)}`;
+}
+
 export async function sendDueAskReminders(limit: number): Promise<number> {
   const due = await query<{
     ask_thread_id: number | null;
     to_user_id: number;
+    question: string;
     asker_name: string | null;
   }>(
     `UPDATE task_asks SET reminded_at = NOW()
@@ -3414,7 +3430,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
        ORDER BY created_at
        LIMIT $1
      )
-     RETURNING ask_thread_id, to_user_id,
+     RETURNING ask_thread_id, to_user_id, question,
                ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
     [limit],
     ASK_QUERY_TIMEOUT_MS,
@@ -3425,12 +3441,19 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
     // this has spoken to them in it since 19 September, and the push below is
     // all they see on a lock screen.
     const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
+    const relayed = await questionForReader(row.question, language);
     await saveThreadMessage(
       row.ask_thread_id,
       row.to_user_id,
       'assistant',
-      askReminderLine(language, row.asker_name),
-    ).catch(() => undefined);
+      askReminderMessage(language, row.asker_name, relayed.text),
+      'message',
+      null,
+      askChoicesFor(row.question, language),
+    ).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[ask-reminder] could not be saved:', (err as Error).message);
+    });
     void sendPushNotification(String(row.to_user_id), {
       ...RUN_STRINGS[language].askReminderPush,
       url: `/chat/${row.ask_thread_id}`,
