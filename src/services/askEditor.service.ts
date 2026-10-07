@@ -91,7 +91,9 @@ function editorBrief(context: AskEditContext): string {
       `person („${asker}-ს სჭირდება…", „${asker} ეძებს…", „${asker}-ს უნდა…"). Any first-person ` +
       `form about ${asker} FAILS — „I need", „recommend me", „lend me", „help me", „I want"; in ` +
       'Georgian „მჭირდება", „მირჩიე / მირჩიო", „მასესხო", „დამეხმარე / დამეხმაროს", „მინდა", ' +
-      '„გამაცნო". Rewrite such a sentence so it is about the asker.',
+      '„გამაცნო". Rewrite such a sentence so it is about the asker. A third person the owner ' +
+      'named (a craftsman, a shop, a firm) stays in the third person, by name — „you" only ' +
+      `where ${asker} asks ${reader} about ${reader} themself.`,
     `2. It is correct, natural ${language}, the way a person writes — not formal, no invented words.`,
     '3. It asks ONE question. If it asks two, keep the one the owner’s words ask for.',
     '4. It says nothing the owner did not say: no reason, place, time, quality or person ' +
