@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { RunLanguage } from './runLanguage';
+import { withCellAddresses } from './xlsxAddresses';
 
 /**
  * Board #892 (the founder, 4 October): „if someone needs to connect with 30
@@ -17,6 +18,8 @@ const MAX_CELL_CHARS = 300;
 const ROWS_TO_READ = MAX_ROWS + 2;
 /** A UTF-8 byte-order mark some spreadsheet exports put before the first cell. */
 const BYTE_ORDER_MARK_RE = new RegExp('^\\uFEFF', 'u');
+/** What ExcelJS throws for a sheet whose rows or cells carry no address. */
+const MISSING_ADDRESS_RE = /Invalid (row|column) number/u;
 
 export enum ListFileKind {
   Csv = 'csv',
@@ -110,10 +113,25 @@ function cellText(value: unknown): string {
     .slice(0, MAX_CELL_CHARS);
 }
 
-/** The first worksheet as text cells; formulas read as their results. */
-async function xlsxCells(buffer: Buffer): Promise<string[][]> {
+async function loadedWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+  return workbook;
+}
+
+/** The workbook; one written without row and cell addresses is addressed first (43066). */
+async function readWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
+  try {
+    return await loadedWorkbook(buffer);
+  } catch (error) {
+    if (!(error instanceof Error) || !MISSING_ADDRESS_RE.test(error.message)) throw error;
+    return loadedWorkbook(await withCellAddresses(buffer));
+  }
+}
+
+/** The first worksheet as text cells; formulas read as their results. */
+async function xlsxCells(buffer: Buffer): Promise<string[][]> {
+  const workbook = await readWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (sheet === undefined) return [];
   const out: string[][] = [];
