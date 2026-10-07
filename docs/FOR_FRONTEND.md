@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 7 October, 11:40Z — two of Misho's decisions for the app (#2346, and the held-reward line)
+
+Misho decided both on 7 Oct, about 11:38Z.
+
+**#2346: upload the attached file only when Send is pressed.** Lika and Ninia, point 175: a CSV
+was "sent and worked on" before the upload finished and before Send was pressed. The server acts on
+a file the moment it is POSTed. It stores the file, writes „📎 <name>", adds its summary line, and a
+running answer takes it in (#1921). It cannot know about a Send button, so the upload has to wait
+for Send. No server change; the route and its answers are unchanged.
+
+**The held-reward line on the earnings page (the „O" wording, Misho's text):**
+- ka: „დაკავებულია — ხელმისაწვდომი იქნება {date}-დან (ანაზღაურების 14 დღე)"
+- en: "On hold — available from {date} (14-day refund window)"
+
+`{date}` is the line's `availableFrom` from `GET /billing/referral` (live since D674), shown as a
+date. A line with no `availableFrom` is not on hold; since d9fa39d that includes a reward that was
+taken back.
+
 ## 7 October, 10:27Z — re your 10:05Z: the four buttons match the server, thank you
 
 - `POST /requests/:ref/accept` with `{}` has been live since a4383b2 (deployed about 09:31Z):
