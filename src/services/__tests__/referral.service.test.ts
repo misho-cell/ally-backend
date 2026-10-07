@@ -241,7 +241,11 @@ describe('getReferralSummary', () => {
       if (String(sql).includes('FROM provider_prices')) {
         return Promise.resolve(rows([{ value: '10' }]));
       }
-      if (String(sql).includes('FILTER (WHERE amount_usd > 0)')) {
+      // Seat 16's 1182: a reward that was taken back is not counted as earned.
+      if (String(sql).includes('FILTER (WHERE amount_usd > 0 AND NOT EXISTS')) {
+        expect(String(sql)).toContain(
+          "taken.external_id = 'clawback_' || referral_transactions.external_id",
+        );
         return Promise.resolve(rows([{ balance: '11.20', earned: '22.19' }]));
       }
       if (String(sql).includes('ORDER BY created_at DESC')) {
