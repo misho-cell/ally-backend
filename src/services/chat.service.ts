@@ -12281,7 +12281,12 @@ async function runToolLoop(
   // The tester's 997 (29835): the final was „*(ველოდები პასუხს.)*" — a stage
   // direction in round brackets — and the real reply sat in the step before
   // it. A final that is only a stage direction is no answer: it counts as empty.
-  if (bestFromPlanRound && !runPlanForReply.has(runId)) {
+  // T2543 (case 5, conv 42848): the narration was dropped here, then came back
+  // below as „Claude's answer beside the closing tool" — „ვთავაზობ გეგმას… თეას
+  // ვთხოვ" after the question had gone. A refused plan's narration is not the
+  // answer by either road.
+  const planNarrationRefused = bestFromPlanRound && !runPlanForReply.has(runId);
+  if (planNarrationRefused) {
     // eslint-disable-next-line no-console
     console.log(`[final] run ${runId}: a refused plan's narration is not the answer`);
     bestNarration = '';
@@ -12325,6 +12330,12 @@ async function runToolLoop(
   // draft keeps its place, and the draft step still goes so it is said once.
   if (finalIsRewrite && !buriedAnswer && draft !== null && draft.text.length < finalText.length) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
+  } else if (finalIsRewrite && !buriedAnswer && draft !== null && planNarrationRefused) {
+    await dropDraftSteps(userId, threadId, runId, draftSteps);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[chat] run ${runId}: the draft is the refused plan's narration — GPT's line stays`,
+    );
   } else if (finalIsRewrite && !buriedAnswer && draft !== null) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
     // eslint-disable-next-line no-console
