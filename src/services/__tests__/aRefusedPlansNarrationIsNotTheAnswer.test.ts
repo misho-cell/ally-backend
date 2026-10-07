@@ -17,7 +17,10 @@ describe('a refused plan’s narration is not the answer', () => {
   });
 
   it('drops it from the rescue when no plan was actually proposed in the run', () => {
-    const at = chat.indexOf('if (bestFromPlanRound && !runPlanForReply.has(runId)) {');
+    // T2543: the same condition, now named so the draft road can read it too.
+    const at = chat.indexOf(
+      'const planNarrationRefused = bestFromPlanRound && !runPlanForReply.has(runId);',
+    );
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(chat.indexOf('const buriedAnswer ='));
     expect(chat.slice(at, at + 300)).toContain("bestNarration = '';");
