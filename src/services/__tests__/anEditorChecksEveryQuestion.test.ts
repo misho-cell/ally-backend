@@ -57,14 +57,14 @@ describe('the editor check', () => {
     expect(out.choices).toHaveLength(3);
   });
 
-  it('reads the owner’s words and the draft, and uses the small fast model', async () => {
+  it('reads the owner’s words and the draft, on the strong model', async () => {
     answers('{"ok": true}');
     await editOutgoingAsk(DRAFT, CONTEXT);
     const [params, options] = mockCreate.mock.calls[0];
-    expect(params.model).toMatch(/haiku/u);
+    expect(params.model).toBe('claude-sonnet-5');
     expect(params.messages[0].content).toContain('ჰკითხე ნოდარს');
     expect(params.messages[0].content).toContain('მეყავს ნაცნობი გია');
-    expect(options.timeout).toBeLessThanOrEqual(6_000);
+    expect(options.timeout).toBeLessThanOrEqual(8_000);
   });
 
   // The tester's REGRESSION 44196: the reader was put in the third person by name.

@@ -36,7 +36,7 @@ export interface AskEditContext {
 }
 
 /** In front of a message somebody is waiting for, beside the other questions of a wave. */
-const EDIT_BUDGET_MS = 6_000;
+const EDIT_BUDGET_MS = 8_000;
 const MAX_OUTPUT_TOKENS = 800;
 /** A rewrite that grows past this has added something; it is not used. */
 const MAX_GROWTH_CHARS = 300;
@@ -50,7 +50,12 @@ function questionMarks(text: string): number {
   return text.match(QUESTION_MARK_RE)?.length ?? 0;
 }
 
-const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-haiku-4-5-20251001';
+/**
+ * The strong model, as the translation path learned (askTranslation.service):
+ * the tester's 44207 — the small model's rewrite of a reason was „დავველაპარაკოს",
+ * not a Georgian word. This text goes in front of a person doing somebody a favour.
+ */
+const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-sonnet-5';
 
 const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
