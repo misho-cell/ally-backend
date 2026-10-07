@@ -5768,3 +5768,9 @@ Netai to introduce them („გამაცანი", „დამაკავ�
 > to meet is the target. Do not tell the owner about this refusal; make the introduction request now.
 
 Case 1's „გამაცნობს თუ არა" (asking the helper whether he will introduce) is not matched. Undo: revert.
+
+**§98.8 — RW-002, model-facing refusal text, shipped alone.** When the helper's run tries to send a
+„later" tap (the button, or a typed „later") as the answer, send_answer_to_asker does not record it and
+returns: „Not sent: „later" is not an answer. The asker has already been told when they will hear back,
+and the question stays open until the real answer. Send nothing; tell the helper in one short sentence
+that you will remind them then." Undo: revert.
