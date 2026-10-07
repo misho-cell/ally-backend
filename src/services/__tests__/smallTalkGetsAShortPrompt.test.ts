@@ -27,4 +27,14 @@ describe('a listed small-talk line', () => {
   it('never runs for a turn the system started', () => {
     expect(chat).toContain('!ownerAbsent && isToolFreeSmallTalk(userMessage)');
   });
+
+  it('is given correct Georgian forms to copy, and never calls the owner Netai (#2114)', () => {
+    const prompt = chat.slice(chat.indexOf('const SMALL_TALK_GEORGIAN ='));
+    const text = prompt.slice(0, prompt.indexOf(';\n'));
+    expect(text).toContain('„კარგად, მადლობა! შენ როგორ ხარ?"');
+    expect(text).toContain('„არაფრის! კიდევ რამეში დაგეხმარო?"');
+    expect(text).toContain('„გამარჯობა! რით დაგეხმარო?"');
+    expect(text).toContain('მფლობელს Netai-ს ნუ უწოდებ');
+    expect(chat).toMatch(/საკუთარ შესაძლებლობებზე არ ილაპარაკო\.' \+\s+SMALL_TALK_GEORGIAN;/u);
+  });
 });

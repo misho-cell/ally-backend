@@ -4622,10 +4622,25 @@ export function buildTodaySection(now: Date): string {
  * full prompt's name line made „ლუკა მაისურაძე, კარგად ვარ" of 37359) and
  * today's date, which „რა დღეა დღეს?" needs.
  */
+/**
+ * #2114 (the tester's 43066, seat 177977; Misho's „კი", 7 Oct): the smaller
+ * model D627 put on small talk wrote broken Georgian in 5 of 8 short replies —
+ * „კარგი ვარი, წყალობით!", „რა დამეხმარება?", „თხოვნით! რა დამიხმარებული?" —
+ * and called the owner „Netai". It is given the right forms to copy.
+ */
+const SMALL_TALK_GEORGIAN =
+  '\n\nქართული: მოკლე, მარტივი და გრამატიკულად სწორი. ფრაზაში თუ არ ხარ დარწმუნებული, ' +
+  'ამ ნიმუშებიდან აიღე ფორმა:\n' +
+  '„როგორ ხარ?" → „კარგად, მადლობა! შენ როგორ ხარ?"\n' +
+  '„მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"\n' +
+  '„გამარჯობა" → „გამარჯობა! რით დაგეხმარო?"\n' +
+  'Netai შენ ხარ — მფლობელს Netai-ს ნუ უწოდებ.';
+
 const SMALL_TALK_PROMPT =
   'შენ ხარ Netai — მფლობელის პირადი ასისტენტი, რომელიც მის ნაცნობებში სწორ ადამიანს უძებნის. ' +
   'ეს მოკლე, თბილი საუბარია: უპასუხე ერთი-ორი მოკლე წინადადებით, შენობით, მისივე ენაზე. ' +
-  'რჩევა არ მისცე, მიზანი არ გახსნა, ხელსაწყო არ გამოიძახო, საკუთარ შესაძლებლობებზე არ ილაპარაკო.';
+  'რჩევა არ მისცე, მიზანი არ გახსნა, ხელსაწყო არ გამოიძახო, საკუთარ შესაძლებლობებზე არ ილაპარაკო.' +
+  SMALL_TALK_GEORGIAN;
 
 function smallTalkNameLine(firstName: string | null): string {
   return firstName === null
