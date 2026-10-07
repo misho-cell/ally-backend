@@ -9,7 +9,7 @@ import {
   splitButtons,
   withoutButtonsLine,
 } from './buttonSpelling';
-import { withoutLeadingSelfNote } from './leadingSelfNote';
+import { withoutLeadingInterjection, withoutLeadingSelfNote } from './leadingSelfNote';
 import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
 import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
@@ -8116,7 +8116,9 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   // before anything else reads the final.
   // #365: a bare „nothing found" opening moves after what was found.
   const withoutNote = withoutStrayGeorgianCapitals(
-    withNothingFoundLast(withoutLeadingSelfNote(text, runLang(runId))),
+    withNothingFoundLast(
+      withoutLeadingInterjection(withoutLeadingSelfNote(text, runLang(runId)), runLang(runId)),
+    ),
   );
   return scrubText(runId ? wrapAllowedNumbers(withoutNote, runId) : withoutNote);
 }

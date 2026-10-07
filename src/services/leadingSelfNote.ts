@@ -47,3 +47,23 @@ export function withoutLeadingSelfNote(text: string, language: RunLanguage): str
   );
   return rest;
 }
+
+/**
+ * The tester's 44223 (the introduction trio, owner conversation 42164): a
+ * Georgian reply opened „Good, დავადასტურე: …" — one English word of the
+ * model's own, glued to the first sentence. A short English interjection at the
+ * very start of a reply written in the conversation's script comes off; a name
+ * or a firm in Latin letters is never in this list and keeps its place.
+ */
+const LEADING_INTERJECTION_RE =
+  /^\s*(?:good|great|ok|okay|done|perfect|sure|alright|got it|noted|understood)\s*[,.!:—-]+\s*/iu;
+
+export function withoutLeadingInterjection(text: string, language: RunLanguage): string {
+  const script = SCRIPT_OF[language];
+  if (script === undefined) return text;
+  const match = LEADING_INTERJECTION_RE.exec(text);
+  if (match === null) return text;
+  const rest = text.slice(match[0].length);
+  if (!script.test(rest.slice(0, 1))) return text;
+  return rest;
+}
