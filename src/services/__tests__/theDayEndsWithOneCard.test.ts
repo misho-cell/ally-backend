@@ -6,6 +6,7 @@ jest.mock('../notification.service', () => ({
 jest.mock('../threads.service', () => ({
   __esModule: true,
   userLanguage: jest.fn().mockResolvedValue('ka'),
+  saveThreadMessage: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../taskAsks.service', () => ({
   __esModule: true,
@@ -17,6 +18,7 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { sendPushNotification } from '../notification.service';
 import { createAsk } from '../taskAsks.service';
+import { saveThreadMessage } from '../threads.service';
 import { nextEveningCard, eveningCardPush, EVENING_CARD_SNOOZE_MS } from '../eveningCard';
 import {
   currentEveningCard,
@@ -112,6 +114,13 @@ describe('the sweep at 19:00', () => {
       {
         eveningCardId: 7,
       },
+    );
+    // The tester's 44551: the asker is told on his goal that the held question went.
+    expect(saveThreadMessage).toHaveBeenCalledWith(
+      900,
+      501,
+      'assistant',
+      'Nino: კითხვა მიუვიდა, პასუხს ველოდები',
     );
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('171', {

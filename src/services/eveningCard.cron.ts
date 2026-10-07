@@ -1,4 +1,6 @@
+import { AskState, ownerAskLine } from './askState';
 import { createAsk } from './taskAsks.service';
+import { saveThreadMessage, userLanguage } from './threads.service';
 import {
   CardHeldAsk,
   claimDueEveningCards,
@@ -36,7 +38,25 @@ async function sendItem(card: DueCard, held: CardHeldAsk): Promise<void> {
     console.warn(
       `[evening-card] card ${card.id}: question ${held.id} of goal ${held.task_id} not sent — ${outcome.reason ?? 'refused'}`,
     );
+    return;
   }
+  await tellAskerItWent(held, outcome.to_name);
+}
+
+/**
+ * The tester's 44551 (1850, asker 177850 conv 41259): the held question went
+ * out at the card's hour and the asker heard nothing — his next message was the
+ * hourly check. He is told on his goal, in the ordinary per-person line.
+ */
+async function tellAskerItWent(held: CardHeldAsk, toName: string): Promise<void> {
+  if (held.thread_id === null) return;
+  const language = await userLanguage(held.owner_id).catch(() => 'ka' as const);
+  await saveThreadMessage(
+    held.thread_id,
+    Number(held.owner_id),
+    'assistant',
+    ownerAskLine(toName, { status: 'sent' }, AskState.Sent, language),
+  );
 }
 
 async function sendCard(card: DueCard): Promise<void> {
