@@ -5758,3 +5758,13 @@ No phone number is in it. The once-a-day limit is the surfacing log (CURIOSITY_S
 the final reply any sentence that talks about a system note, system rules or system instructions
 (ka/en/ru words). It never empties a reply: when nothing else would be left, the reply stays as written.
 Undo: revert that commit.
+
+**§98.3 — the exact model-facing text, shipped alone.** When one of the owner's lines on the goal tells
+Netai to introduce them („გამაცანი", „დამაკავშირე", "introduce me to", "connect me with/to", „познакомь
+меня", "preséntame"), ask_contact does not send and returns:
+
+> Not sent: the owner asked to be INTRODUCED to someone — that is an introduction, not a question. Call
+> request_introduction instead: the person who knows them is the go-between, the person the owner wants
+> to meet is the target. Do not tell the owner about this refusal; make the introduction request now.
+
+Case 1's „გამაცნობს თუ არა" (asking the helper whether he will introduce) is not matched. Undo: revert.

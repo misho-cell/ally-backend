@@ -355,6 +355,7 @@ import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { dailyContactQuestionSection } from './dailyContactQuestion';
 import { withoutNoteTalk } from './noteTalk';
+import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
 import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -8894,6 +8895,14 @@ async function executeToolCall(
       const question = String(input['question'] ?? '');
       // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
       const ownerLines = await ownerLinesForGoal(task, threadId);
+      // T2479 (§98.3): „გამაცანი X" is an introduction, never a plain question.
+      if (ownerAsksForIntroduction(ownerLines)) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[intro-instruction] run ${runId} task ${taskId}: ask_contact turned to an intro`,
+        );
+        return { sent: false, reason: 'use_introduction', error: USE_INTRODUCTION_REFUSAL };
+      }
       const changed = factChangedIn(question, ownerLines);
       if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
         // eslint-disable-next-line no-console
