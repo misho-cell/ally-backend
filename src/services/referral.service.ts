@@ -223,7 +223,7 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
   const [totalsResult, historyResult, minWithdrawal] = await Promise.all([
     query<{ balance: string | null; earned: string | null; on_hold: string | null }>(
       `SELECT SUM(amount_usd) AS balance,
-              SUM(amount_usd) FILTER (WHERE amount_usd > 0) AS earned,
+              SUM(amount_usd) FILTER (WHERE amount_usd > 0 AND NOT ${TAKEN_BACK_SQL}) AS earned,
               SUM(amount_usd) FILTER (WHERE ${ON_HOLD_SQL}) AS on_hold
        FROM referral_transactions
        WHERE user_id = $1`,
