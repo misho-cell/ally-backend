@@ -79,8 +79,11 @@ export async function parseListFile(buffer: Buffer, filename: string): Promise<L
     const file = table === null ? textFile(buffer.toString('utf8')) : tableFile(kind, table);
     if (file.text.trim() === '') return { ok: false, reason: ListFileRefusal.Empty };
     return { ok: true, file };
-  } catch {
+  } catch (err) {
     // A broken or encrypted workbook: said in one plain line by the caller.
+    // T2411: the reason is logged (never the content), so a refusal can be read.
+    // eslint-disable-next-line no-console
+    console.warn(`[list-file] ${kind} not read (${buffer.length} bytes):`, (err as Error).message);
     return { ok: false, reason: ListFileRefusal.Unreadable };
   }
 }

@@ -48,6 +48,17 @@ describe('which files are read', () => {
       reason: ListFileRefusal.Unreadable,
     });
   });
+
+  it('logs why a workbook was not read, without its content (T2411)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await parseListFile(Buffer.from('secret row text'), 'broken.xlsx');
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('[list-file] xlsx not read'),
+      expect.any(String),
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret row text');
+    warn.mockRestore();
+  });
 });
 
 describe('an Excel list', () => {

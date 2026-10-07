@@ -81,6 +81,9 @@ function acceptOneFile(
       return;
     }
     const tooBig = (err as { code?: string }).code === 'LIMIT_FILE_SIZE';
+    // T2411: an upload refused before the file is read says why in the log.
+    // eslint-disable-next-line no-console
+    console.warn('[thread-files] upload refused:', (err as Error).message);
     void languageOf(Number(req.params.id)).then((language) => {
       res.status(tooBig ? 413 : 400).json({
         success: false,
