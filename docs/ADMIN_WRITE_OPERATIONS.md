@@ -5692,3 +5692,16 @@ Both live in code, not in the prompt store, so `prompt.sh` is not involved:
   The en / ru / es versions say the same.
 
 Undo: revert the two commits. No data is written.
+
+## §96 — D713 PHASE 1: THE GOAL'S FIRST ASK, PINNED ON EVERY TURN
+
+**Authorised by Misho, 7 October, item 2 of his twelve answers** („D713 … ჯერ პირველი თხოვნის
+„მიმაგრება“: სერვერი მიზნის პირველ ხაზს ყოველ ნაბიჯზე მოდელს გადასცემს"), and „Main ზე რაც
+გასაშვებია გაუშვი" (~14:40 UTC). Held back under D710 until case 1 passed: the tester's 44551 (3 of
+3) cleared it.
+
+A new prompt section, built in code (`goalFirstAskSection`, src/services/goalFirstAsk.ts, 1390897):
+„## მფლობელის პირველი თხოვნა ამ მიზანზე (D713)", followed by the owner's line the goal was opened
+from, quoted word for word (at most 600 characters), and three sentences that say the run serves it.
+The owner's later word still decides. Only goal runs carry it. Nothing is written to the database.
+Undo: revert 1390897.
