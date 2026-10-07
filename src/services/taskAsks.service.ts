@@ -520,7 +520,14 @@ const NETAI_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set([
   'past_due',
 ]);
 
-const OWNER_WORDS_LIMIT = 4;
+/**
+ * The tester's 44650 (six-turn case, turn 5, goal 20428): with the owner's last
+ * four lines, the editor saw the goal's first ask beside „ask him whether he
+ * works on Saturday too" and rewrote the follow-up back into the first ask —
+ * the owner was told one thing and the helper asked another. The question
+ * comes from the owner's newest line, and only that line is what may be said.
+ */
+const OWNER_WORDS_LIMIT = 1;
 
 /**
  * D711: what the owner actually said on this goal, oldest first — the editor
