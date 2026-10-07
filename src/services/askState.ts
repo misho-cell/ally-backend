@@ -208,3 +208,23 @@ export function ownerAskLine(
         : '';
   return OWNER_LINES[language][state](nameToSay(name, language), date);
 }
+
+/**
+ * D714 / D722 on the later path (the tester's 44551 and 44584, conv 41286 and
+ * 42452): a one-person „later" told the asker in two lines, the sentence and
+ * then a per-person status line under it. One sentence carries the day.
+ */
+const LATER_SENTENCES: Readonly<Record<RunLanguage, (name: string, day: string) => string>> = {
+  ka: (n, d) => `${n} მოგვიანებით გიპასუხებს, ${d}.`,
+  en: (n, d) => `${n} will answer later, by ${d}.`,
+  ru: (n, d) => `${n} ответит позже, до ${d}.`,
+  es: (n, d) => `${n} responderá más tarde, hasta el ${d}.`,
+};
+
+export function laterSentenceForAsker(
+  name: string,
+  until: string | Date,
+  language: RunLanguage,
+): string {
+  return LATER_SENTENCES[language](nameToSay(name, language), dayOf(until, language, 'until'));
+}

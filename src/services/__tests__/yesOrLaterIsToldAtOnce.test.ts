@@ -128,7 +128,8 @@ describe('the asker is told at once, once', () => {
       GOAL_THREAD,
       ASKER,
       'assistant',
-      `${askTapLineForAsker(AskTap.Later, 'ka', 'Nino')}\nNino: 9 ოქტომბრამდე (პარასკევი)`,
+      // The tester's 44584 (D722): one sentence with the day, no status line under it.
+      'Nino მოგვიანებით გიპასუხებს, 9 ოქტომბრამდე (პარასკევი).',
     );
   });
 
@@ -191,7 +192,7 @@ describe('the day the reader picks reaches the asker', () => {
       GOAL_THREAD,
       ASKER,
       'assistant',
-      'Nino: 7 ოქტომბრამდე (ოთხშაბათი)',
+      'Nino მოგვიანებით გიპასუხებს, 7 ოქტომბრამდე (ოთხშაბათი).',
     );
   });
 

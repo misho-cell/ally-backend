@@ -75,7 +75,7 @@ import {
 import { setThreadStatus } from './threadStatus.service';
 import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
-import { AskState, LATER_DEFAULT_DAYS, ownerAskLine } from './askState';
+import { LATER_DEFAULT_DAYS, laterSentenceForAsker } from './askState';
 import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 import { eveningCardFor } from './eveningCard.service';
@@ -3638,16 +3638,12 @@ export async function answerAskTapAtOnce(threadId: number, message: string): Pro
     const language = await userLanguage(String(claimed.from_user_id));
     const readerName = claimed.reader_name?.trim() || unknownSenderName(language);
     // The tester's 42114: the asker learns the day at the tap, not only at the next reply.
-    const dayLine =
+    // The tester's 44584 (D722): in the same sentence, not a status line under it.
+    const line =
       tap === AskTap.Later && claimed.later_until
-        ? `\n${ownerAskLine(readerName, { status: 'sent', later_until: claimed.later_until }, AskState.Later, language)}`
-        : '';
-    await saveThreadMessage(
-      claimed.task_thread_id,
-      claimed.from_user_id,
-      'assistant',
-      askTapLineForAsker(tap, language, readerName) + dayLine,
-    );
+        ? laterSentenceForAsker(readerName, claimed.later_until, language)
+        : askTapLineForAsker(tap, language, readerName);
+    await saveThreadMessage(claimed.task_thread_id, claimed.from_user_id, 'assistant', line);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(
@@ -3699,7 +3695,7 @@ async function tellAskerTheNewDay(
       row.task_thread_id,
       row.from_user_id,
       'assistant',
-      ownerAskLine(readerName, { status: 'sent', later_until: until }, AskState.Later, language),
+      laterSentenceForAsker(readerName, until, language),
     );
   } catch (err) {
     // eslint-disable-next-line no-console
