@@ -382,3 +382,16 @@ describe('a run the Stop button withheld', () => {
     );
   });
 });
+
+/** #2344 (the tester's run 5, 42219): search lines up to 40 s after Stop. */
+describe('a stopped run', () => {
+  it('captions no more tools and does not put the thread back to working', () => {
+    const { readFileSync } = jest.requireActual<typeof import('fs')>('fs');
+    const { join } = jest.requireActual<typeof import('path')>('path');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const fn = chat.slice(chat.indexOf('async function processToolBlocks('));
+    expect(fn).toContain('const shown = !runWasStopped(threadId, runId);');
+    expect(fn).toContain('if (progressMsg && shown) {');
+    expect(fn).toContain('const stage = ownerAbsent || !shown ? null');
+  });
+});

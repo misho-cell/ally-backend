@@ -121,8 +121,10 @@ import {
 } from './threads.service';
 import {
   askStatusSection,
+  linesUnderReply,
   nobodyAnsweredIsUntrue,
   openAskLines,
+  peopleAskedOnGoal,
   withAskLines,
   withoutNobodyAnswered,
 } from './askStatusSection';
@@ -4399,7 +4401,8 @@ async function withGoalAskLines(reply: string, threadId: number): Promise<string
     ]);
     const now = new Date();
     const cleaned = nobodyAnsweredIsUntrue(asks, held, now) ? withoutNobodyAnswered(reply) : reply;
-    return withAskLines(cleaned, openAskLines(asks, held, language, now));
+    const lines = openAskLines(asks, held, language, now);
+    return withAskLines(cleaned, linesUnderReply(lines, peopleAskedOnGoal(asks, held)));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn(`[ask-state] thread ${threadId}: lines not added:`, (err as Error).message);
@@ -10457,6 +10460,11 @@ async function processToolBlocks(
   ownerAbsent = false,
 ): Promise<Anthropic.ToolResultBlockParam[]> {
   const toolBlocks = content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+  // #2344 (the tester's run 5, 42219): four „searching…" lines up to 40 s
+  // after Stop — a round already on its way still captioned its tools (which
+  // are refused anyway) and set the thread back to working. A stopped run
+  // shows nothing more.
+  const shown = !runWasStopped(threadId, runId);
   // Emit progress up front (in order), then run the calls CONCURRENTLY. A single
   // turn's tool_use blocks are independent by construction — the model emitted
   // them together without seeing any result — so parallel execution is safe and
@@ -10471,14 +10479,14 @@ async function processToolBlocks(
       namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
       toolStepCaption(block.name, runLang(runId)) ??
       TOOL_PROGRESS_MESSAGES[block.name];
-    if (progressMsg) {
+    if (progressMsg && shown) {
       emitToolProgress(userId, threadId, runId, progressMsg);
       runLastCaption.set(runId, progressMsg);
       keepCaption(userId, threadId, runId, progressMsg);
     }
   }
   // #397: one status line per source, replaced in place.
-  const stage = ownerAbsent ? null : stageOfTools(toolBlocks.map((b) => b.name));
+  const stage = ownerAbsent || !shown ? null : stageOfTools(toolBlocks.map((b) => b.name));
   if (stage !== null) await showSearchStage(userId, threadId, runId, stage, runLang(runId));
   /**
    * ROW 249 — A CARD THAT COULD NOT MEAN ANYTHING, OFFERED IN THE SAME BREATH
