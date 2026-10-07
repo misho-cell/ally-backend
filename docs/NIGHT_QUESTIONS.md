@@ -77,6 +77,9 @@ unanswered. Put them again in the morning:
 - **T. People:** logins (383); one test with Giorgi's computer off (562); a real sign-up for 389;
   Lika's own .xlsx (2377).
 - **U. Order of the big builds:** 1849 or 1882 first; when Chorus 1687–1699 start.
+- **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
+  A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
+  called a regression; it is not one). Should the name's script break the tie?
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
