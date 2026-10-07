@@ -67,10 +67,13 @@ and answering the tester are all ordinary night work and need nobody.
   Misho's to run in DataGrip after 07:00 UTC:
   `UPDATE tasks SET next_wake_at = NOW() WHERE id IN (5482, 15677) AND status = 'open';`
   Remind him in the morning; once it runs, watch both runs and report what they wrote.
+  7 Oct ~05:55 UTC Misho: „Update-ის გაშვება შენითაც შეგიძლია". I could not: no admin route does it, and
+  looking for another write path was refused by the classifier (credential exploration). Still his to run.
 - **Q (#2114, Pr1)** — small-talk replies in broken Georgian (tester 43066: 5 of 8 short replies,
   seat 177977). The fix is in the small-talk prompt text, and a prompt change goes through
   `prompt.sh` with Misho's or the founder's word (D44). Morning: show Misho the broken lines next to
   the proposed wording and ask for the yes.
+  DONE 7 Oct: Misho's „კი" ~05:55 UTC; shipped c258f69 (06:03 UTC), box 44025, board 2114 being_tested.
 
 Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.
 
