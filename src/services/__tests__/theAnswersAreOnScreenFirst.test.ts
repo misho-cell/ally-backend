@@ -92,10 +92,34 @@ describe('showing it', () => {
       expect.any(String),
       expect.objectContaining({ messageId: '90001', kind: 'answers' }),
     );
-    const [sql, params, timeout] = mockQuery.mock.calls[0];
+    const [sql, params, timeout] = mockQuery.mock.calls[mockQuery.mock.calls.length - 1];
     expect(String(sql)).toContain('answer_shown_at = COALESCE(answer_shown_at, NOW())');
     expect(params).toEqual([[5481, 5482]]);
     expect(timeout).toBeGreaterThan(0);
+  });
+
+  it('leaves off a reworded „yes" already told at the tap, and still marks it shown (AB-004 b)', async () => {
+    mockQuery.mockImplementation((async (sql: string) =>
+      String(sql).includes('offered_help_at')
+        ? { rows: [{ id: REWORDED.askId }], rowCount: 1 }
+        : { rows: [], rowCount: 0 }) as never);
+
+    expect(await showAnswersToOwner(TARGET, [OWN_WORDS, REWORDED])).toBe(true);
+    const card = String(mockSave.mock.calls[0][2]);
+    expect(card).toContain(OWN_WORDS.answer);
+    expect(card).not.toContain(REWORDED.answer);
+    const last = mockQuery.mock.calls[mockQuery.mock.calls.length - 1];
+    expect(last[1]).toEqual([[5481, 5482]]);
+  });
+
+  it('writes no card when the only answer was the tap already told', async () => {
+    mockQuery.mockImplementation((async (sql: string) =>
+      String(sql).includes('offered_help_at')
+        ? { rows: [{ id: REWORDED.askId }], rowCount: 1 }
+        : { rows: [], rowCount: 0 }) as never);
+
+    expect(await showAnswersToOwner(TARGET, [REWORDED])).toBe(true);
+    expect(mockSave).not.toHaveBeenCalled();
   });
 
   it('writes nothing when every owed answer was shown already', async () => {

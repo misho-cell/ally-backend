@@ -117,13 +117,46 @@ async function writeCard(target: AnswerCardTarget, answers: readonly CardAnswer[
  * The cost is that a retry of a busy wake may write the card once more — which
  * is logged, and is the smaller of the two.
  */
+/**
+ * AB-004 b (the tester's 45153, 3 of 3): a „yes" tap is told to the owner at the
+ * tap, in the helper's own button words (T2476). 13–24 s later the same yes
+ * came again as „მოვიდა პასუხი: …", in words the helper did not say („ყავაზე
+ * შეხვედრას დათანხმდა" for a tap of „free"). An answer that is not the
+ * helper's own words, recorded within minutes of a „yes" that was already told,
+ * is that tap again: it is marked shown and left off the card.
+ */
+const TAP_ECHO_MINUTES = 5;
+/** Longer than this, the answer carries something of its own and is shown. */
+const TAP_ECHO_MAX_CHARS = 120;
+
+async function toldAtTheTap(answers: readonly CardAnswer[]): Promise<ReadonlySet<number>> {
+  const candidates = answers
+    .filter((a) => !a.verbatim && a.answer.trim().length <= TAP_ECHO_MAX_CHARS)
+    .map((a) => a.askId);
+  if (candidates.length === 0) return new Set();
+  const result = await query<{ id: number }>(
+    `SELECT id FROM task_asks
+      WHERE id = ANY($1::int[]) AND offered_help_at IS NOT NULL
+        AND answered_at <= offered_help_at + make_interval(mins => $2)`,
+    [candidates, TAP_ECHO_MINUTES],
+    SHOWN_QUERY_TIMEOUT_MS,
+  );
+  return new Set(result.rows.map((r) => r.id));
+}
+
 export async function showAnswersToOwner(
   target: AnswerCardTarget,
   answers: readonly CardAnswer[],
 ): Promise<boolean> {
   if (answers.length === 0) return true;
+  const told = await toldAtTheTap(answers).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[answer-card] could not read the taps:', (err as Error).message);
+    return new Set<number>();
+  });
+  const toShow = answers.filter((a) => !told.has(a.askId));
   try {
-    await writeCard(target, answers);
+    if (toShow.length > 0) await writeCard(target, toShow);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(
