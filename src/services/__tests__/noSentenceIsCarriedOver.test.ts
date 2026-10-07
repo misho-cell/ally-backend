@@ -67,7 +67,9 @@ describe('a sentence carried over whole', () => {
 describe('the helper’s send', () => {
   it('is held back for a sentence of theirs, except the decline button’s own text', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('if (isDeclineChoice(own)) return null;');
+    expect(asks).toContain(
+      'if ((await askTapOnThread(askThreadId, own)) === AskTap.Decline) return null;',
+    );
     expect(asks).toContain(
       'if (sentenceCarriedOver(own, answerText) !== null) return HELPERS_SENTENCE_REFUSAL;',
     );
