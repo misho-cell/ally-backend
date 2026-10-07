@@ -325,6 +325,7 @@ import {
   INVITE_NOT_ASKED,
   asksForAnInvite,
   asksAboutOwnPeople,
+  asksWhoTheyHave,
   withoutQuotedCopy,
   onlyTheMembersPart,
   LATE_FILE_PREFIX,
@@ -12489,6 +12490,8 @@ async function runToolLoop(
     !repeatsAnOpenGoal &&
     (runModes.get(runId) === 'task_step' || toolNamesUsed.includes('set_task_brief')) &&
     !runMembersFound.has(runId) &&
+    // T2443: „who do I have?" is answered by the search, not by a plan.
+    !asksWhoTheyHave(runOwnerLine.get(runId) ?? '') &&
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
     !answeredWithoutSearching
