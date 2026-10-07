@@ -43,7 +43,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
     const fn = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansOnePerson'));
     const body = fn.slice(0, 900);
     expect(body).toContain('peopleAddedToPlan(plan, inForce).length !== 1');
-    expect(body).toContain('looksLikeContactInstruction(said)');
+    expect(body).toContain('looksLikeContactInstruction(instructionSentence(said.trim()))');
     expect(body).toContain('messageNamesOwnContact(userId, said)');
   });
 

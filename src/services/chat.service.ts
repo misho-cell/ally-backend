@@ -375,6 +375,7 @@ import {
   statesANeed,
   goalTitleFrom,
   isQuestionNotGoal,
+  instructionSentence,
   looksLikeContactInstruction,
   needsNoOpeningSearch,
 } from './goalIntent';
@@ -2318,7 +2319,8 @@ async function ownerJustInstructedThePlansOnePerson(
   if (peopleAddedToPlan(plan, inForce).length !== 1) return false;
   try {
     const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
-    if (!looksLikeContactInstruction(said)) return false;
+    // Misho, 7 Oct (D625 as a server rule): a long line's instruction sentence counts.
+    if (!looksLikeContactInstruction(instructionSentence(said.trim()))) return false;
     return await messageNamesOwnContact(userId, said);
   } catch (error) {
     // Fails towards the plan, which asks the owner rather than writing to anyone.

@@ -482,6 +482,22 @@ function datedNameBefore(beforeVerb: string): string {
   return /^\p{Script=Georgian}{2,}ს$/u.test(word) ? word.slice(0, -1) : '';
 }
 
+/**
+ * The tester's 44132 (case 1, owner conversation 42009) and Misho's ruling of
+ * 7 Oct (a server rule, D625): „I have an acquaintance G … I am writing a
+ * business plan … ჰკითხე Nodar Testidze-ს, იცნობს თუ არა გიას" — context first,
+ * the instruction last — was 173 characters, so it was not an instruction and
+ * the run drew an approve card for it. For the approve card only — the other
+ * readers of an instruction keep the short-line rule — a longer line is judged
+ * by the sentence that carries the verb.
+ */
+const SENTENCE_RE = /[^.!?\n]+[.!?]?/gu;
+
+export function instructionSentence(text: string): string {
+  if (text.length <= MAX_INSTRUCTION_CHARS) return text;
+  return (text.match(SENTENCE_RE) ?? []).find((part) => CONTACT_VERB_RE.test(part))?.trim() ?? text;
+}
+
 export function looksLikeContactInstruction(message: string): boolean {
   const text = message.trim();
   if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;
