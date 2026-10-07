@@ -354,6 +354,7 @@ import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instr
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { dailyContactQuestionSection } from './dailyContactQuestion';
+import { withoutNoteTalk } from './noteTalk';
 import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -8183,7 +8184,7 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   const withoutNote = withoutStrayGeorgianCapitals(
     withNothingFoundLast(
       withoutLeadingInterjection(
-        withoutAlreadyShownNote(withoutLeadingSelfNote(text, runLang(runId))),
+        withoutAlreadyShownNote(withoutNoteTalk(withoutLeadingSelfNote(text, runLang(runId)))),
         runLang(runId),
       ),
     ),
