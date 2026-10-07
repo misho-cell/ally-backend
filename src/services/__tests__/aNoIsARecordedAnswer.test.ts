@@ -96,9 +96,7 @@ describe('what the ask carries, and what the answer records', () => {
     const offer = asks.slice(asks.indexOf('await saveThreadMessage(\n    askThreadId,'));
     // G4's picker replaces the buttons on a need ask; it carries the decline
     // too (aMediatorIsAskedWhomHeRecommends), so the window just got longer.
-    // D712: the buttons are the asking model's, or the old set; the editor's either way.
-    expect(offer.slice(0, 300)).toContain('choices.map((choice) => choice.label)');
-    expect(asks).toContain('askChoicesFor(safeQuestion, language)');
+    expect(offer.slice(0, 300)).toContain('askChoicesFor(safeQuestion, language)');
   });
 
   /**
@@ -118,7 +116,7 @@ describe('what the ask carries, and what the answer records', () => {
 
   /** $3 is decided in TypeScript by string equality — the SQL judges nothing. */
   it('decides in code, not in the query', () => {
-    expect(asks).toContain('(await askTapOnThread(askThreadId, safe)) === AskTap.Decline');
+    expect(asks).toContain('isDeclineChoice(safe)');
   });
 
   /**
@@ -193,9 +191,7 @@ describe('the refusal is read from the tap, not from what is sent later', () => 
   /** Every message in every thread passes through: the compare comes first. */
   it('touches the database only when the button was actually pressed', () => {
     const note = asks.slice(asks.indexOf('export async function noteDeclineIfButtonPressed'));
-    const guard = note.indexOf(
-      'if ((await askTapOnThread(threadId, message)) !== AskTap.Decline) return;',
-    );
+    const guard = note.indexOf('if (!isDeclineChoice(message)) return;');
     const firstQuery = note.indexOf('await query(');
     expect(guard).toBeGreaterThan(-1);
     expect(firstQuery).toBeGreaterThan(guard);

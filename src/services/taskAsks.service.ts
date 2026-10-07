@@ -24,15 +24,6 @@ import { phoneDigits } from './phone';
 import { looksLikeContactInstruction } from './goalIntent';
 import { questionForReader } from './askTranslation.service';
 import {
-  AskChoice,
-  choicesFromLabels,
-  MAX_CHOICE_CHARS,
-  parseAskChoices,
-  tapOfChoice,
-  withServerLater,
-} from './askChoices';
-import { editOutgoingAsk } from './askEditor.service';
-import {
   createThread,
   lastAssistantMessageIs,
   saveThreadMessage,
@@ -59,6 +50,7 @@ import {
   AskTap,
   askTapLineForAsker,
   askTapOf,
+  isDeclineChoice,
   unknownSenderName,
   withoutFramesOwnWords,
 } from './askOpening';
@@ -520,32 +512,6 @@ const NETAI_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set([
   'past_due',
 ]);
 
-const OWNER_WORDS_LIMIT = 4;
-
-/**
- * D711: what the owner actually said on this goal, oldest first — the editor
- * keeps the question to it. Empty on any failure: the check then reads the
- * question alone, and the failure is logged.
- */
-async function ownerWordsOn(taskId: number): Promise<string[]> {
-  try {
-    const result = await query<{ content: string }>(
-      `SELECT c.content FROM conversations c
-         JOIN tasks t ON t.thread_id = c.thread_id
-        WHERE t.id = $1 AND c.role = 'user' AND c.kind = 'message' AND TRIM(c.content) <> ''
-        ORDER BY c.created_at DESC
-        LIMIT $2`,
-      [taskId, OWNER_WORDS_LIMIT],
-      ASK_QUERY_TIMEOUT_MS,
-    );
-    return result.rows.map((row) => row.content).reverse();
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(`[ask-editor] task ${taskId}: owner's words not read:`, (err as Error).message);
-    return [];
-  }
-}
-
 /** The bridge picker, or the ordinary buttons when it cannot be built. */
 async function pickerFor(
   readerUserId: string,
@@ -693,8 +659,6 @@ export async function createAsk(
   bridgeNeed?: BridgeNeed,
   /** #1850: set only by the evening card's sender — the card IS the reopening. */
   card?: { readonly eveningCardId: number },
-  /** D712: the buttons the asking model wrote with the question, when it wrote them. */
-  authored?: readonly AskChoice[],
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1432,30 +1396,11 @@ export async function createAsk(
    * on every failure, so the worst case is exactly today's behaviour.
    */
   const relayed = await questionForReader(safeQuestion, language);
-  // Plate v301 G4: on a first ask about a need, the reader's own fitting
-  // contacts become the buttons (see bridgePicker.ts) — only when the asking
-  // model wrote none (D712). #2185: never under „will you introduce me to G".
-  const picker =
-    authored === undefined && bridgeNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
-      ? await pickerFor(String(toUserId), bridgeNeed, language)
-      : null;
-  const draftChoices =
-    authored ?? choicesFromLabels(picker ? picker.choices : askChoicesFor(safeQuestion, language));
-  // D711: the question and its buttons pass the editor before they leave.
-  const edited = await editOutgoingAsk(
-    { question: relayed.text, choices: draftChoices },
-    {
-      ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
-      askerName: senderName,
-      language,
-    },
-  );
-  const choices = withServerLater(edited.choices, language);
   const opening = buildAskOpening(
     language,
     senderName,
     roster,
-    edited.question,
+    relayed.text,
     isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
   );
   if (relayed.original !== undefined) {
@@ -1487,14 +1432,20 @@ export async function createAsk(
    * sentence instead of tapping it lands in the same place — and the string
    * compare on this side catches both. The two paths agree by construction.
    */
+  // Plate v301 G4: on a first ask about a need, the reader's own fitting
+  // contacts become the buttons (see bridgePicker.ts).
+  // #2185: „will you introduce me to G" is a yes or a no about G — no pick-list under it.
+  const picker =
+    bridgeNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
+      ? await pickerFor(String(toUserId), bridgeNeed, language)
+      : null;
   // G5 second half: a person an earlier answer on this goal named is told who
   // recommended them (see recommendedBy.ts).
   const recommender = sameThread ? null : await recommenderFor(taskId, toUserId, toName);
   const lines = [
     opening,
     ...(recommender ? [recommendedByLine(language, recommender)] : []),
-    // The pick-list line names the buttons; an editor's rewrite replaced them.
-    ...(picker && !edited.edited ? [picker.line] : []),
+    ...(picker ? [picker.line] : []),
   ];
   await saveThreadMessage(
     askThreadId,
@@ -1503,7 +1454,7 @@ export async function createAsk(
     lines.join('\n\n'),
     'message',
     null,
-    choices.map((choice) => choice.label),
+    picker ? picker.choices : askChoicesFor(safeQuestion, language),
   );
   // The badge on a continued conversation goes back to waiting-on-them —
   // something has just been asked of them, whether or not they answered the
@@ -1528,8 +1479,8 @@ export async function createAsk(
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
-                            wave_no, evening_card_id, choices, shown_question)
-     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13)
+                            wave_no, evening_card_id)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11)
      RETURNING id`,
     [
       taskId,
@@ -1543,8 +1494,6 @@ export async function createAsk(
       originUserId,
       isFollowUp ? null : waveNo,
       card?.eveningCardId ?? null,
-      JSON.stringify(choices),
-      edited.question,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -1729,7 +1678,7 @@ export async function recordAskAnswer(
        ORDER BY id DESC LIMIT 1
      )
      RETURNING id, task_id, answer`,
-    [askThreadId, safe, (await askTapOnThread(askThreadId, safe)) === AskTap.Decline],
+    [askThreadId, safe, isDeclineChoice(safe)],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];
@@ -2492,7 +2441,7 @@ async function answerHeldBack(
     const own = await helpersOwnLine(askThreadId);
     const missing = missingFacts(own, answerText);
     if (missing.length > 0) return missingFactsRefusal(missing);
-    if ((await askTapOnThread(askThreadId, own)) === AskTap.Decline) return null;
+    if (isDeclineChoice(own)) return null;
     if (sentenceCarriedOver(own, answerText) !== null) return HELPERS_SENTENCE_REFUSAL;
     const added = factsAdded(own, question, answerText);
     if (added.length > 0) return factsAddedRefusal(added);
@@ -3462,8 +3411,6 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
     ask_thread_id: number | null;
     to_user_id: number;
     question: string;
-    shown_question: string | null;
-    choices: unknown;
     asker_name: string | null;
   }>(
     `UPDATE task_asks SET reminded_at = NOW()
@@ -3483,7 +3430,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
        ORDER BY created_at
        LIMIT $1
      )
-     RETURNING ask_thread_id, to_user_id, question, shown_question, choices,
+     RETURNING ask_thread_id, to_user_id, question,
                ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
     [limit],
     ASK_QUERY_TIMEOUT_MS,
@@ -3494,20 +3441,15 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
     // this has spoken to them in it since 19 September, and the push below is
     // all they see on a lock screen.
     const language = await userLanguage(String(row.to_user_id)).catch(() => 'ka' as RunLanguage);
-    // D712: the question as it was shown, with the buttons it was sent with;
-    // an ask from before them is read and given buttons the old way.
-    const shown = row.shown_question ?? (await questionForReader(row.question, language)).text;
-    const stored = parseAskChoices(row.choices);
+    const relayed = await questionForReader(row.question, language);
     await saveThreadMessage(
       row.ask_thread_id,
       row.to_user_id,
       'assistant',
-      askReminderMessage(language, row.asker_name, shown),
+      askReminderMessage(language, row.asker_name, relayed.text),
       'message',
       null,
-      stored === null
-        ? askChoicesFor(row.question, language)
-        : stored.map((choice) => choice.label),
+      askChoicesFor(row.question, language),
     ).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('[ask-reminder] could not be saved:', (err as Error).message);
@@ -3591,7 +3533,7 @@ export async function noteDeclineIfButtonPressed(threadId: number, message: stri
   // A string compare, and it is false for every ordinary message before
   // anything touches the database — this runs on every message in every
   // thread.
-  if ((await askTapOnThread(threadId, message)) !== AskTap.Decline) return;
+  if (!isDeclineChoice(message)) return;
   try {
     await query(
       `UPDATE task_asks
@@ -3628,8 +3570,7 @@ export async function noteDeclineIfButtonPressed(threadId: number, message: stri
  */
 export async function answerAskTapAtOnce(threadId: number, message: string): Promise<void> {
   // #1686 (A3): „later" typed in words counts as the button — three days.
-  const tap =
-    (await askTapOnThread(threadId, message)) ?? (isTypedLater(message) ? AskTap.Later : null);
+  const tap = askTapOf(message) ?? (isTypedLater(message) ? AskTap.Later : null);
   if (tap !== AskTap.Yes && tap !== AskTap.Later) return;
   try {
     const claimed = await claimAskTap(threadId, tap);
@@ -3733,33 +3674,6 @@ const LIVE_ASK_ON_THREAD = `(SELECT id FROM task_asks
 const CLAIMED_TAP_COLUMNS = `ta.from_user_id, ta.later_until,
   (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
   ${ASKED_AS_THE_ASKER_SAVED_THEM} AS reader_name`;
-
-/**
- * D712: what a message in an ask thread means as a tap. Our fixed labels are
- * read without touching the database; any other line is matched against the
- * buttons the latest ask on the thread was sent with. Null for anything typed,
- * and on a failed read, which is logged — a reply is never lost to it.
- */
-export async function askTapOnThread(threadId: number, message: string): Promise<AskTap | null> {
-  const fixed = askTapOf(message);
-  // Longer than any button: typed words, read without touching the database.
-  if (fixed !== null || message.trim().length > MAX_CHOICE_CHARS) return fixed;
-  try {
-    const result = await query<{ choices: unknown }>(
-      `SELECT choices FROM task_asks
-        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered') AND choices IS NOT NULL
-        ORDER BY id DESC LIMIT 1`,
-      [threadId],
-      ASK_QUERY_TIMEOUT_MS,
-    );
-    const stored = parseAskChoices(result.rows[0]?.choices);
-    return stored === null ? null : tapOfChoice(message, stored);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(`[ask-tap] thread ${threadId}: buttons not read:`, (err as Error).message);
-    return null;
-  }
-}
 
 /** One fixed statement per tap; the column being NULL is the once-only guard. */
 const CLAIM_TAP_SQL: Readonly<Record<AskTap.Yes | AskTap.Later, string>> = {

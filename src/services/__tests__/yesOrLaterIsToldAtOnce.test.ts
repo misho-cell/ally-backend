@@ -149,13 +149,8 @@ describe('the asker is told at once, once', () => {
     expect(String(mockSave.mock.calls[0][3])).toContain('A Netai member');
   });
 
-  // D712: a short line may be one of the ask's own written buttons, so only a
-  // line longer than any button skips the database.
-  it('never touches the database for a typed answer or a decline', async () => {
-    await answerAskTapAtOnce(
-      ASK_THREAD,
-      'ვიცნობ ერთ კარგ ადვოკატს, ხვალ მოგწერ მის ნომერს და დეტალებს',
-    );
+  it('never touches the database for an ordinary message or a decline', async () => {
+    await answerAskTapAtOnce(ASK_THREAD, 'ვიცნობ ერთ ადვოკატს');
     await answerAskTapAtOnce(ASK_THREAD, declineChoice('ka'));
 
     expect(mockQuery).not.toHaveBeenCalled();

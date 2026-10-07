@@ -417,13 +417,11 @@ describe('the ask path actually uses it, where the frame is chosen', () => {
     expect(asks).toContain('const relayed = await questionForReader(safeQuestion, language);');
   });
 
-  // D711: the relayed text passes the editor, and the opening carries its result.
   it('puts the relayed text in the opening rather than the raw question', () => {
-    expect(asks).toContain('{ question: relayed.text, choices: draftChoices }');
     const at = asks.indexOf('const opening = buildAskOpening(');
     const call = asks.slice(at, at + 260);
 
-    expect(call).toContain('edited.question');
+    expect(call).toContain('relayed.text');
     expect(call).not.toContain('safeQuestion');
   });
 
