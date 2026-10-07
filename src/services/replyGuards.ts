@@ -495,6 +495,20 @@ export function asksAboutOwnPeople(ownerLine: string): boolean {
   return ASKS_ABOUT_OWN_PEOPLE_RE.test(ownerLine);
 }
 
+/**
+ * T2443 (the MASTER TEST RUN's SE-001, 2 of 2): „სანტექნიკი მჭირდება თბილისში.
+ * ვინ მყავს კონტაქტებში?" — a question about who the owner has. The search
+ * answered it (both plumbers, not on Netai); then the phonebook-members note
+ * asked for a plan with an unrelated member in it, and an approve card came.
+ * A „who do I have" question is answered by the search; it is not a plan.
+ */
+const ASKS_WHO_THEY_HAVE_RE =
+  /(ვინ\s+(?:მყავს|ვიცი|ვიცნობ)|who\s+do\s+i\s+(?:have|know)|кто\s+у\s+меня|кого\s+я\s+знаю)[^?？]*[?？]\s*$/iu;
+
+export function asksWhoTheyHave(ownerLine: string): boolean {
+  return ASKS_WHO_THEY_HAVE_RE.test(ownerLine.trim());
+}
+
 export const SEARCH_FIRST_NUDGE =
   '(სისტემური შენიშვნა: ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
   'მფლობელის ქსელზე წვდომა გაქვს ხელსაწყოებით — ახლავე მოძებნე (search_by_tag ორივე დამწერლობით, ' +
