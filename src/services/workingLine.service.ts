@@ -20,12 +20,18 @@ import { saveServerLine } from './threads.service';
  */
 const QUERY_TIMEOUT_MS = 3_000;
 
-/** The tools that are „the search" — own contacts, contacts' contacts, the web. */
+/**
+ * The tools that are „the search" — own contacts, contacts' contacts, the web.
+ *
+ * Not search_contact_by_name: that looks up ONE person the owner named. The
+ * tester's 44884 (3 of 6): on „ask <helper> whether…" the run looked the helper
+ * up, and the owner read „I will search your contacts, your contacts' contacts
+ * and the internet" about a question to one person.
+ */
 export const WORKING_LINE_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',
   'search_by_insight',
   'search_second_degree',
-  'search_contact_by_name',
   'search_roster',
   'web_search',
 ]);

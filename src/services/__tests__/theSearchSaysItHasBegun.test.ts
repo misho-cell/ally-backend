@@ -102,5 +102,7 @@ describe('the line that the search has begun', () => {
     expect([...WORKING_LINE_TOOLS]).toEqual(
       expect.arrayContaining(['search_by_tag', 'search_second_degree', 'web_search']),
     );
+    // 44884: looking up the one person named is not „the search".
+    expect(WORKING_LINE_TOOLS.has('search_contact_by_name')).toBe(false);
   });
 });
