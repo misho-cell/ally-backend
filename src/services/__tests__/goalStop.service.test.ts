@@ -22,9 +22,11 @@ import { cancelAsksForTask } from '../taskAsks.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices, Thread } from '../threads.service';
 import { emitChoicesCleared } from '../sse.service';
+import { noteRunStart, runWasStopped } from '../stoppedRuns';
 import {
   NOTHING_TO_STOP,
   NOTHING_TO_STOP_LINE,
+  RUN_STOPPED_LINE,
   alreadyStoppedLine,
   stopGoal,
   stopGoalOnThread,
@@ -139,6 +141,20 @@ describe('stopGoalOnThread', () => {
 
     expect(await stopGoalOnThread('501', 16240)).toEqual(NOTHING_TO_STOP);
     expect(mockCancel).not.toHaveBeenCalled();
+  });
+
+  // #2344 (the tester's run 3, 42172): Stop during a search with no goal yet.
+  it('stops the run itself when the thread is working and no goal is open yet', async () => {
+    mockGetThread.mockResolvedValue({ id: 42172, status: 'working' } as Thread);
+    mockOpenTask.mockResolvedValue(null);
+    noteRunStart('run-before-the-stop');
+
+    const out = await stopGoalOnThread('501', 42172, 'ka');
+
+    expect(out).toEqual({ stopped: true, goal_id: null, said: RUN_STOPPED_LINE.ka });
+    expect(runWasStopped(42172, 'run-before-the-stop')).toBe(true);
+    expect(mockSay).toHaveBeenCalledWith(42172, 501, 'assistant', RUN_STOPPED_LINE.ka);
+    expect(mockThread).toHaveBeenCalledWith('501', 42172, 'done', { statusLine: null });
   });
 
   it('stops the goal the thread holds, asks and all', async () => {

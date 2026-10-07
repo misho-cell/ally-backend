@@ -246,8 +246,38 @@ export async function stopGoalOnThread(
    * already stopped once.
    */
   const task = await getGoalOnThread(threadId);
-  if (!task || task.status === 'closed') return NOTHING_TO_STOP;
+  if (!task || task.status === 'closed') {
+    return thread.status === 'working'
+      ? stopTheWorkOnly(userId, threadId, language)
+      : NOTHING_TO_STOP;
+  }
   return stopGoal(userId, task, language);
+}
+
+/**
+ * #2344 (the tester's run 3, conversation 42172): Stop pressed four seconds
+ * into „find me a good architect" — no goal yet, only a search — answered „no
+ * open goal", and the search went on and delivered its answer. The button now
+ * stops the run itself, the way a typed stop already did: the thread is marked
+ * so the run is withheld at its next step, settled, and told so in its language.
+ */
+export const RUN_STOPPED_LINE: Record<RunLanguage, string> = {
+  ka: 'შევაჩერე — ძებნა აღარ გაგრძელდება.',
+  en: 'Stopped — the search will not go on.',
+  ru: 'Остановил — поиск дальше не идёт.',
+  es: 'Detenido — la búsqueda no continúa.',
+};
+
+async function stopTheWorkOnly(
+  userId: string,
+  threadId: number,
+  language: RunLanguage,
+): Promise<GoalStopped> {
+  markThreadStopped(threadId);
+  const said = RUN_STOPPED_LINE[language];
+  await saveThreadMessage(threadId, Number(userId), 'assistant', said);
+  void setThreadStatus(userId, threadId, 'done', { statusLine: null });
+  return { stopped: true, goal_id: null, said };
 }
 
 /**
