@@ -450,7 +450,7 @@ threadsRouter.post(
       // the thread's own words answer for it.
       const stopped = await stopGoalOnThread(userId, threadId, await threadLanguage(threadId));
       if (stopped === null) {
-        res.status(404).json({ success: false, error: 'თრედი ვერ მოიძებნა' });
+        res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
         return;
       }
       res.status(200).json({ success: true, data: stopped });

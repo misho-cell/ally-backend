@@ -27,7 +27,7 @@ describe('the incoming-ask opening follows the RECIPIENT’s language', () => {
   it('carries no Georgian in any non-Georgian opening', () => {
     for (const language of LANGUAGES.filter((l) => l !== 'ka')) {
       const parts = askOpeningParts(language, 'Nino Beridze', 'Bank of Georgia');
-      for (const line of [parts.first, parts.followUp, parts.added, parts.tail]) {
+      for (const line of [parts.first, parts.followUp, parts.added]) {
         expect(line).not.toMatch(/[Ⴀ-ჿ]/);
       }
     }
@@ -63,13 +63,16 @@ describe('the incoming-ask opening follows the RECIPIENT’s language', () => {
   });
 
   // D648 (the tester's 1152, 38572): no quotation in either direction.
-  it('builds the whole message with the question unquoted and the tail last', () => {
+  it('builds the whole message with the question unquoted, and nothing under it', () => {
     const text = buildAskOpening('en', 'Nino', null, 'Can you recommend a dentist?', 'first');
-    expect(text).toBe(
-      "Nino's assistant is asking:\n\n" +
-        'Can you recommend a dentist?\n\n' +
-        'Just reply in this thread and I will pass your answer on.',
-    );
+    expect(text).toBe("Nino's assistant is asking:\n\nCan you recommend a dentist?");
+  });
+
+  // D707 (the founder, 7 Oct): no „reply in this thread" line, in any language.
+  it.each(LANGUAGES)('ends with the question, and never says thread (%s)', (language) => {
+    const text = buildAskOpening(language, 'Nino', null, 'Q?', 'first');
+    expect(text.endsWith('Q?')).toBe(true);
+    expect(text).not.toMatch(/თრედ|thread|ветк|hilo/iu);
   });
 
   it('names an unknown sender in the reader’s language too', () => {

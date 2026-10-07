@@ -325,7 +325,7 @@ export async function openDueCampaigns(
 // on all four — varying two dimensions at once over 27 rows would leave every
 // cell too thin to read.
 const CAMPAIGN_REPLY_PROTOCOL =
-  'უპასუხე ამ თრედში: „კი" (თანახმა ვარ), „არა" (ამჯერად არა), ან, თუ უკვე ' +
+  'უპასუხე: „კი" (თანახმა ვარ), „არა" (ამჯერად არა), ან, თუ უკვე ' +
   'შესთავაზე, „უთხარი" (უთხარი და ველოდები).';
 
 /**

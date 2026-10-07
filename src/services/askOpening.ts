@@ -29,8 +29,6 @@ export interface AskOpeningParts {
   readonly followUp: string;
   /** The asker's side added something before any answer came. */
   readonly added: string;
-  /** The line under the question that says how to answer. */
-  readonly tail: string;
 }
 
 /**
@@ -77,28 +75,24 @@ export function askOpeningParts(
         first: `${who}'s assistant is asking:`,
         followUp: `${senderName}'s assistant has written again:`,
         added: `${senderName}'s assistant added:`,
-        tail: 'Just reply in this thread and I will pass your answer on.',
       };
     case 'ru':
       return {
         first: `Ассистент ${who} спрашивает:`,
         followUp: `Ассистент ${senderName} написал ещё раз:`,
         added: `Ассистент ${senderName} добавил:`,
-        tail: 'Просто ответь в этой ветке — я передам твой ответ.',
       };
     case 'es':
       return {
         first: `El asistente de ${who} pregunta:`,
         followUp: `El asistente de ${senderName} ha escrito otra vez:`,
         added: `El asistente de ${senderName} ha añadido:`,
-        tail: 'Responde en este hilo y le paso tu respuesta.',
       };
     default:
       return {
         first: `${who} გეკითხება:`,
         followUp: `${geoName(senderName, 'gen')} ასისტენტმა კიდევ დაწერა:`,
         added: `${geoName(senderName, 'gen')} ასისტენტმა დაამატა:`,
-        tail: 'უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ.',
       };
   }
 }
@@ -130,7 +124,14 @@ export function withoutFramesOwnWords(question: string): string {
   return trimmed === '' ? question : trimmed;
 }
 
-/** The whole opening message: who is asking, their words, and how to answer. */
+/**
+ * The whole opening message: who is asking, and the question.
+ *
+ * D707 (the founder, 7 Oct, his own account): the line under the question —
+ * „უბრალოდ მიპასუხე ამ თრედში — პასუხს მე გადავცემ." — is gone in every
+ * language. Nobody reading a question needs to be told to answer it, and
+ * „thread" is not a word a person reads.
+ */
 export function buildAskOpening(
   language: RunLanguage,
   senderName: string,
@@ -142,7 +143,7 @@ export function buildAskOpening(
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3). D648: no quotation marks either — the question is
   // the asker's assistant's wording, not anybody's quoted words.
-  return `${parts[shape]}\n\n${withoutFramesOwnWords(question)}\n\n${parts.tail}`;
+  return `${parts[shape]}\n\n${withoutFramesOwnWords(question)}`;
 }
 
 /** The name a sender with no stored name is given, in the reader's language. */
