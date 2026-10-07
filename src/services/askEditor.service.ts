@@ -5,6 +5,7 @@ import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { recordClaudeUsage } from './costLedger.service';
 import { RunLanguage } from './runLanguage';
 import { thirdPersonTurnedToYou } from './personFlip';
+import { rewriteChangedTheQuestion } from './rewriteTopic';
 
 /**
  * D711 (the founder, 7 Oct): every question that goes to another person
@@ -188,6 +189,8 @@ export function rewriteFrom(
   if (questionMarks(question) > MAX_QUESTION_MARKS) return null;
   // #2212: a named third person stays third person (rule 1), checked here too.
   if (!draftIsOwnersWords && thirdPersonTurnedToYou(draft.question, question)) return null;
+  // T2542: the editor fixes how a question is put, never what is asked.
+  if (rewriteChangedTheQuestion(draft.question, question)) return null;
   const choices = parseAskChoices(verdict.choices);
   if (choices === null || choicesProblem(choices) !== null) return null;
   return { question, choices };
