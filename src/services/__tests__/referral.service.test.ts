@@ -47,7 +47,7 @@ function routeSql(world: ReferralWorld, sql: string, params?: unknown[]): unknow
     return rows([{ value: String(PRICES[key] ?? 0) }]);
   }
   if (sql.includes('FOR UPDATE')) return rows([{ id: params?.[0] }]);
-  if (sql.includes('WHERE source_user_id')) {
+  if (sql.includes('WHERE source_user_id') || sql.includes('earned.source_user_id')) {
     return rows(world.alreadyDistributed ? [{ present: 1 }] : []);
   }
   if (sql.includes('JOIN "User" inviter')) {

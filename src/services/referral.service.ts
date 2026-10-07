@@ -190,9 +190,18 @@ export async function distributeReferralEarnings(
 
   return withTransaction(async (client) => {
     await client.query('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', [subscriberId]);
+    // D717 (the founder, 7 Oct; Misho's yes, §97): the chain is paid on the
+    // first payment that is NOT refunded. A share taken back by a refund does
+    // not count as paid — the next first payment pays the chain once; a share
+    // that was kept stops every later one.
     const already = await client.query(
-      'SELECT 1 FROM referral_transactions WHERE source_user_id = $1 AND reason = $2 LIMIT 1',
-      [subscriberId, EARN_REASON],
+      `SELECT 1 FROM referral_transactions earned
+        WHERE earned.source_user_id = $1 AND earned.reason = $2
+          AND NOT EXISTS (SELECT 1 FROM referral_transactions taken
+                           WHERE taken.user_id = earned.user_id
+                             AND taken.external_id = $3 || earned.external_id)
+        LIMIT 1`,
+      [subscriberId, EARN_REASON, CLAWBACK_PREFIX],
     );
     if (already.rowCount && already.rowCount > 0) return 0;
 
