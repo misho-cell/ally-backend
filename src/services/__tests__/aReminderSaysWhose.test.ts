@@ -31,8 +31,11 @@ describe('askReminderMessage', () => {
   it('is saved with the buttons that fit the question', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const sweep = asks.slice(asks.indexOf('export async function sendDueAskReminders('));
-    expect(sweep).toContain('RETURNING ask_thread_id, to_user_id, question,');
-    expect(sweep).toContain('askReminderMessage(language, row.asker_name, relayed.text)');
+    expect(sweep).toContain(
+      'RETURNING ask_thread_id, to_user_id, question, shown_question, choices,',
+    );
+    expect(sweep).toContain('askReminderMessage(language, row.asker_name, shown)');
+    expect(sweep).toContain('stored.map((choice) => choice.label)');
     expect(sweep).toContain('askChoicesFor(row.question, language)');
   });
 });

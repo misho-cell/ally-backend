@@ -58,6 +58,7 @@ import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
 import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
+import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
@@ -1257,6 +1258,25 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
         type: 'string',
         description: 'The question, short and self-contained (max 600 chars).',
       },
+      choices: {
+        type: 'array',
+        description:
+          'D712: the buttons the reader taps under THIS question, written now, together with ' +
+          'it — 2 to 4 short, natural answers to exactly what you ask, in the reader’s ' +
+          'language (at most 40 characters each), the way a person would answer it. Each says ' +
+          'what it means: "yes" (agrees, knows, will do it), "no" (declines, does not know), ' +
+          '"later" (will answer later; the server words it), "answer" (any other concrete ' +
+          'answer, e.g. a name or a day). Never one button alone and never only „later"; the ' +
+          'reader can always type instead.',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string', description: 'The button text the reader sees.' },
+            means: { type: 'string', enum: ['yes', 'no', 'later', 'answer'] },
+          },
+          required: ['label', 'means'],
+        },
+      },
       need: {
         type: 'string',
         description:
@@ -1272,7 +1292,7 @@ const ASK_CONTACT_TOOL: AnthropicTool = {
           '(it is the bridge’s own contact) as the reason they were asked.',
       },
     },
-    required: ['task_id', 'phone', 'question'],
+    required: ['task_id', 'phone', 'question', 'choices'],
   },
 };
 
@@ -6898,6 +6918,19 @@ const INTRO_NOT_AN_ANSWER =
   'connects them (D709: never ask how), keeping any condition word for word. Never say ' +
   'anything was sent.';
 
+/**
+ * D712: the buttons the model wrote with its question. Missing or malformed
+ * ones are not refused — the editor (D711) writes a set — but they are logged,
+ * because the model was asked for them.
+ */
+function authoredChoices(runId: string | undefined, raw: unknown): AskChoice[] | undefined {
+  const parsed = parseAskChoices(raw);
+  if (parsed !== null && choicesProblem(parsed) === null) return parsed;
+  // eslint-disable-next-line no-console
+  console.warn(`[ask-choices] run ${runId}: the question came without usable buttons`);
+  return undefined;
+}
+
 /** The open request this thread was asked about, or null; a failed read is null, logged. */
 async function openIntroHere(userId: string, threadId: number | undefined): Promise<number | null> {
   if (threadId === undefined) return null;
@@ -8801,6 +8834,7 @@ async function executeToolCall(
         return { sent: false, reason: 'fact_changed', error: factChangedRefusal(changed) };
       }
       await grantFromTheOwnersInstruction(userId, task, threadId, ownerAbsent, runId);
+      const authored = authoredChoices(runId, input['choices']);
       const askOutcome = await createAsk(
         userId,
         taskId,
@@ -8809,6 +8843,8 @@ async function executeToolCall(
         undefined,
         threadId,
         bridgeNeedFrom(input) ?? rememberedBridgeNeed(threadId, String(input['phone'] ?? '')),
+        undefined,
+        authored,
       );
       if ((askOutcome as { sent?: unknown }).sent === true) {
         if (runId) runAskSent.add(runId);
