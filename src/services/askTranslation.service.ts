@@ -319,6 +319,28 @@ function untranslated(from: RunLanguage, to: RunLanguage, what: RelayedKind, why
  * which is exactly the behaviour before this file — so the worst this can do
  * is what already happened.
  */
+/**
+ * The tester's 44659 (ask 15159, 16:33Z): the translation came back as the
+ * original Georgian question, a blank line and „Translation: "…"" — and was
+ * accepted, so the reader got both languages and a label. A reply that echoes
+ * the original keeps only the translated part, unlabelled and unquoted; when
+ * nothing is left, it is no translation at all.
+ */
+const TRANSLATION_LABEL_RE = /^\s*(?:translation|перевод|traducción|traduccion|თარგმანი)\s*:\s*/iu;
+const WRAPPING_QUOTES_RE = /^["„“«]+|["”“»]+$/gu;
+
+export function withoutEchoedOriginal(translated: string, original: string): string {
+  const source = original.trim();
+  if (source === '' || !translated.includes(source)) return translated;
+  return translated
+    .replace(source, '')
+    .trim()
+    .replace(TRANSLATION_LABEL_RE, '')
+    .trim()
+    .replace(WRAPPING_QUOTES_RE, '')
+    .trim();
+}
+
 export async function relayedForReader(
   question: string,
   readerLanguage: RunLanguage,
@@ -358,11 +380,14 @@ export async function relayedForReader(
       usage: response.usage,
     }).catch(() => {});
 
-    const translated = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('')
-      .trim();
+    const translated = withoutEchoedOriginal(
+      response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('')
+        .trim(),
+      text,
+    );
     // An empty answer, or one that came back as the original, is not a
     // translation and must not be dressed up as one with a label.
     if (translated === '' || translated === text) {
