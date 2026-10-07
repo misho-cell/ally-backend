@@ -13,9 +13,11 @@ jest.mock('../taskStore.service', () => ({
   createTask: (...a: unknown[]) => mockCreateTask(...a),
   grantTaskPermission: (...a: unknown[]) => mockGrant(...a),
 }));
-jest.mock('../../db/postgres/client', () => ({ query: jest.fn() }));
+const mockQuery = jest.fn();
+jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
 
-import { sendInstructedAsk } from '../instructedAsk';
+import { InstructedAskResult, sendInstructedAsk } from '../instructedAsk';
+import { NOT_ON_NETAI_LINE } from '../instructionUnsent';
 
 /** §97 item 1: case 1's second chance sent nothing; the server asks the one named contact. */
 const CASE_1 =
@@ -36,6 +38,7 @@ describe('the server asks the one contact the owner named', () => {
     mockFindPhones.mockResolvedValue(['995500000001']);
 
     await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+      result: InstructedAskResult.Sent,
       toName: 'გიგა ტესტაძე',
     });
     expect(mockFindPhones.mock.calls[0][1]).toBe('გიგა ტესტაძეს');
@@ -57,12 +60,38 @@ describe('the server asks the one contact the owner named', () => {
 
   it('sends nothing when the name matches two contacts', async () => {
     mockFindPhones.mockResolvedValue(['995500000001', '995500000002']);
-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toBeNull();
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+      result: InstructedAskResult.NotSent,
+    });
     expect(mockCreateAsk).not.toHaveBeenCalled();
   });
 
   it('sends nothing for a line that is no instruction', async () => {
-    await expect(sendInstructedAsk('178582', 42485, 'მჭირდება ბუღალტერი')).resolves.toBeNull();
+    await expect(sendInstructedAsk('178582', 42485, 'მჭირდება ბუღალტერი')).resolves.toEqual({
+      result: InstructedAskResult.NotSent,
+    });
     expect(mockFindPhones).not.toHaveBeenCalled();
+  });
+
+  it('names a person who is not on Netai by the owner’s own label (T2509)', async () => {
+    mockFindPhones.mockResolvedValue(['995500000001']);
+    mockCreateAsk.mockResolvedValue({ sent: false, reason: 'recipient_not_member', error: 'x' });
+    mockQuery.mockResolvedValue({ rows: [{ alias: 'გიგა ხელოსანი' }] });
+
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+      result: InstructedAskResult.NotOnNetai,
+      toName: 'გიგა ხელოსანი',
+    });
+    expect(NOT_ON_NETAI_LINE.ka('გიგა ხელოსანი')).toBe(
+      'გიგა ხელოსანი Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო.',
+    );
+  });
+
+  it('says plainly „not sent" for any other refusal', async () => {
+    mockFindPhones.mockResolvedValue(['995500000001']);
+    mockCreateAsk.mockResolvedValue({ sent: false, reason: 'daily_cap_reached', error: 'x' });
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+      result: InstructedAskResult.NotSent,
+    });
   });
 });

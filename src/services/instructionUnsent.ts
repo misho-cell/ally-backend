@@ -71,3 +71,19 @@ export const NOT_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
   ru: 'Вопрос не отправлен. Пожалуйста, напишите просьбу ещё раз.',
   es: 'La pregunta no se envió. Por favor, escríbeme la petición otra vez.',
 };
+
+/**
+ * T2509 (WIDE GATE, conv 42888): the person named is not on Netai, so nothing
+ * can go to them — „write it again" was the wrong answer. Neutral on purpose:
+ * whether they have an account is not said (taskAsks, recipient_not_on_netai).
+ */
+export const NOT_ON_NETAI_LINE: Readonly<Record<RunLanguage, (name: string) => string>> = {
+  ka: (name) =>
+    `${name} Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო.`,
+  en: (name) =>
+    `${name} is not on Netai yet, so I could not send the question. You can invite them or write to them yourself.`,
+  ru: (name) =>
+    `${name} пока нет в Netai, поэтому я не смог отправить вопрос. Можешь пригласить или написать сам.`,
+  es: (name) =>
+    `${name} todavía no está en Netai, así que no pude enviar la pregunta. Puedes invitarle o escribirle tú.`,
+};

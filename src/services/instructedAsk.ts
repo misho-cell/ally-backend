@@ -1,3 +1,4 @@
+import { query } from '../db/postgres/client';
 import { goalTitleFrom, instructionAddressee, instructionQuestion } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
@@ -17,8 +18,39 @@ import { findContactPhonesByName } from './tools/nameMatch';
 const NAME_WORDS_TRIED = [2, 1] as const;
 const MATCHES_LOOKED_AT = 2;
 
-export interface InstructedAskSent {
-  readonly toName: string;
+const LABEL_QUERY_TIMEOUT_MS = 3_000;
+
+/** What the server's send came to. */
+export enum InstructedAskResult {
+  Sent = 'sent',
+  /** T2509: the person is not on Netai (or never opened it) — the owner is told so. */
+  NotOnNetai = 'not_on_netai',
+  NotSent = 'not_sent',
+}
+
+export type InstructedAskOutcome =
+  | {
+      readonly result: InstructedAskResult.Sent | InstructedAskResult.NotOnNetai;
+      readonly toName: string;
+    }
+  | { readonly result: InstructedAskResult.NotSent };
+
+const NOT_SENT: InstructedAskOutcome = { result: InstructedAskResult.NotSent };
+const NOT_ON_NETAI_REASONS: ReadonlySet<string> = new Set([
+  'recipient_not_member',
+  'recipient_not_on_netai',
+]);
+
+/** The owner's own label for this number; the words they typed when there is none. */
+async function ownersLabel(userId: string, phone: string, typed: string): Promise<string> {
+  const result = await query<{ alias: string }>(
+    `SELECT TRIM(alias) AS alias FROM "UserAlias"
+      WHERE "contactId" = $1::int AND phone = $2 AND NULLIF(TRIM(alias), '') IS NOT NULL
+      ORDER BY LENGTH(TRIM(alias)) DESC LIMIT 1`,
+    [userId, phone],
+    LABEL_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.alias ?? typed;
 }
 
 /** The one phone the instruction's addressee names; null for none or several. */
@@ -56,11 +88,11 @@ export async function sendInstructedAsk(
   userId: string,
   threadId: number,
   ownerLine: string,
-): Promise<InstructedAskSent | null> {
+): Promise<InstructedAskOutcome> {
   const sentence = contactInstructionIn(ownerLine);
-  if (sentence === null) return null;
+  if (sentence === null) return NOT_SENT;
   const phone = await oneContactNamed(userId, sentence);
-  if (phone === null) return null;
+  if (phone === null) return NOT_SENT;
   const taskId = await goalFor(userId, threadId, ownerLine);
   await grantTaskPermission(userId, taskId);
   // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
@@ -77,8 +109,15 @@ export async function sendInstructedAsk(
     undefined,
     true,
   );
-  if (!outcome.sent || !('to_name' in outcome) || outcome.to_name === undefined) return null;
+  if (!outcome.sent) {
+    if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return NOT_SENT;
+    const typed = instructionAddressee(sentence) ?? '';
+    return {
+      result: InstructedAskResult.NotOnNetai,
+      toName: await ownersLabel(userId, phone, typed),
+    };
+  }
   // eslint-disable-next-line no-console
   console.log(`[instruction-unsent] thread ${threadId}: the server asked the one named contact`);
-  return { toName: outcome.to_name };
+  return { result: InstructedAskResult.Sent, toName: outcome.to_name };
 }
