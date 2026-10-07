@@ -12354,6 +12354,19 @@ async function runToolLoop(
   if (gptAnswerWritten && !buriedAnswer) {
     await dropDraftSteps(userId, threadId, runId, housekeepingSteps);
   }
+  // 2580 (WIDE GATE WB-001): web answers of 722 / 983 / 1216 characters — the
+  // one-screen limit was applied only on the Claude-draft road. A web answer
+  // is shortened the same way whoever wrote it; a list answer is never cut
+  // (#893: every row is named).
+  if (
+    !promoted &&
+    runWebFound.has(runId) &&
+    (runListLabels.get(runId) ?? []).length === 0 &&
+    finalText.length > LONG_DRAFT_CHARS
+  ) {
+    const shorter = await shortenedDraft(finalText, userId, runId, threadId);
+    if (shorter !== null) finalText = shorter;
+  }
   // The prompt seat's 39700 (conv 39998, D663): Claude's own final carried the
   // plan and „დავიწყო?", and the plan-round step beside it carried both too —
   // the owner read the plan and the question twice. When both end on the agreed
