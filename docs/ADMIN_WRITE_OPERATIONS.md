@@ -5753,3 +5753,8 @@ a name, the run's prompt gets:
 > არა", ან არ უნდა, დაანებე თავი და დღეს ამ ადამიანზე აღარ ჰკითხო.
 
 No phone number is in it. The once-a-day limit is the surfacing log (CURIOSITY_SURFACE_INTERVAL_DAYS=1).
+
+**§98.2 — done in the server, not in the prompt.** No prompt text changes. `noteTalk.ts` removes from
+the final reply any sentence that talks about a system note, system rules or system instructions
+(ka/en/ru words). It never empties a reply: when nothing else would be left, the reply stays as written.
+Undo: revert that commit.
