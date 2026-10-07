@@ -185,3 +185,64 @@ export async function editOutgoingAsk(
   console.log('[ask-editor] the question was rewritten before it left');
   return { ...rewritten, edited: true };
 }
+
+/**
+ * D711 on the introduction path (the tester's 44194 and 44200): the reason
+ * went to the go-between and the target word for word, in the owner's first
+ * person — „რაზეა საქმე: თანამშრომლობაზე მინდა დაველაპარაკო" reached the
+ * target as „their reason: I want to talk about working together". The reason
+ * is told about the asker, in the third person, before it is stored, so every
+ * reader gets that version. A failed rewrite keeps the owner's words, logged.
+ */
+function reasonBrief(askerName: string): string {
+  return [
+    `Rewrite this reason ${askerName} gave for wanting to be introduced to someone, as one ` +
+      `short sentence about ${askerName} in the third person, in the SAME language it is ` +
+      'written in.',
+    '- Keep the meaning exactly. Add nothing: no reason, place, time or quality of your own.',
+    `- If it already speaks about ${askerName} in the third person, return it unchanged.`,
+    '- Reply with the sentence alone. No quotes, no notes.',
+  ].join('\n');
+}
+
+export async function reasonAboutAsker(reason: string, askerName: string): Promise<string> {
+  const said = reason.trim();
+  if (said === '') return reason;
+  try {
+    const response = await anthropic.messages.create(
+      {
+        model: EDITOR_MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        system: reasonBrief(askerName),
+        messages: [{ role: 'user', content: said }],
+      },
+      { timeout: EDIT_BUDGET_MS },
+    );
+    void recordClaudeUsage({
+      userId: null,
+      kind: 'ask_editor',
+      model: EDITOR_MODEL,
+      usage: response.usage,
+    }).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[ask-editor] usage not recorded:', (err as Error).message);
+    });
+    const told = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('')
+      .trim();
+    if (told === '' || told.length > said.length + MAX_GROWTH_CHARS) {
+      // eslint-disable-next-line no-console
+      console.warn('[ask-editor] the reason was sent as written — the rewrite was not usable');
+      return reason;
+    }
+    return told;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ask-editor] the reason was sent as written — the check failed: ${(err as Error).message}`,
+    );
+    return reason;
+  }
+}

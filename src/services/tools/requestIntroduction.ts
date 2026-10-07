@@ -1,3 +1,4 @@
+import { reasonAboutAsker } from '../askEditor.service';
 import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
 import { query } from '../../db/postgres/client';
@@ -506,7 +507,10 @@ async function requestIntroductionInner(
     mediatorUserId,
   );
 
-  const [insertResult, requesterName] = await Promise.all([
+  // D711: the reason is stored as told about the asker, so every reader gets that version.
+  const requesterName = await getRequesterName(requesterUserId);
+  const reason = message ? await reasonAboutAsker(message, requesterName) : null;
+  const [insertResult] = await Promise.all([
     query<{ id: number; request_ref: string }>(
       // Row 210: `requester_task_id` is the goal this was raised for, so the
       // answer can be walked back to it instead of waiting to be asked about.
@@ -521,7 +525,7 @@ async function requestIntroductionInner(
             requesterUserId,
             null,
             phoneResult.displayName ?? targetName,
-            message ?? null,
+            reason,
             mediatorUserId,
             resolvedPhone,
             'direct',
@@ -534,7 +538,7 @@ async function requestIntroductionInner(
             requesterUserId,
             mediatorUserId,
             targetName,
-            message ?? null,
+            reason,
             safeTargetUserId,
             targetPhone ?? null,
             askType,
@@ -544,7 +548,6 @@ async function requestIntroductionInner(
             conversation?.goalThreadId ?? null,
           ],
     ),
-    getRequesterName(requesterUserId),
   ]);
 
   const stored: StoredRequest = {
@@ -558,7 +561,7 @@ async function requestIntroductionInner(
     mediatorTargetName: isDirect
       ? targetName
       : await targetNameForMediator(mediatorUserId, targetName, targetPhone ?? null),
-    message: message ?? null,
+    message: reason,
     isDirect,
     requesterTaskId: context.requesterTaskId,
   };
