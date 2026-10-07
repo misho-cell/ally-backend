@@ -312,7 +312,9 @@ export async function buildCuriosityQueue(
 // pending_updates list. At most one curiosity item enters the list, and only
 // when nothing curiosity-shaped was surfaced within the interval — the same
 // budget philosophy as the other triggers, env-configurable, never hardcoded.
-const CURIOSITY_SURFACE_INTERVAL_DAYS = Number(process.env.CURIOSITY_SURFACE_INTERVAL_DAYS ?? 7);
+// D708 (the founder, 7 Oct): one question about the owner's contacts a day,
+// not one a week — Lika, a month on Netai, was offered three and asked none.
+const CURIOSITY_SURFACE_INTERVAL_DAYS = Number(process.env.CURIOSITY_SURFACE_INTERVAL_DAYS ?? 1);
 // An account whose queue came back EMPTY is not re-computed on every
 // conversation start — the five tiers are genuinely expensive. In-process
 // negative cache: a restart retries once, which is honest and cheap.
