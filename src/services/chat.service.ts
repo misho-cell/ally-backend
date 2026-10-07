@@ -353,6 +353,7 @@ import { withdrawOwnCutNotice } from './cutOffRunNotice.service';
 import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instructionUnsent';
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
+import { dailyContactQuestionSection } from './dailyContactQuestion';
 import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -4873,6 +4874,13 @@ async function buildAgentSystemPrompt(
   const waveNote = boundTask ? await waveSectionOrNothing(boundTask) : '';
   // D713 (phase 1): the owner's first ask on this goal, on every turn.
   const firstAsk = boundTask ? goalFirstAskSection(await goalFirstAsk(boundTask.id)) : '';
+  // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
+  const contactQuestion = await dailyContactQuestionSection(userId, {
+    ownerPresent: !ownerAbsent,
+    regularThread: threadType === 'regular',
+    goalBound: boundTask !== null,
+    preview: forcedMode !== undefined,
+  });
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4891,6 +4899,7 @@ async function buildAgentSystemPrompt(
       askStates +
       waveNote +
       firstAsk +
+      contactQuestion +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.
