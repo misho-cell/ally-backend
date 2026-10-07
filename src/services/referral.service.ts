@@ -69,6 +69,10 @@ export interface ReferralSummary {
   totalEarnedUsd: number;
   minWithdrawalUsd: number;
   canWithdraw: boolean;
+  /** T2345 (the frontend's 22:40Z): the rule, read from the settings — % to each inviter. */
+  percent: number;
+  /** T2345: how many steps up the chain are paid. */
+  levels: number;
   history: ReferralHistoryEntry[];
 }
 
@@ -220,7 +224,7 @@ export async function distributeReferralEarnings(
 }
 
 export async function getReferralSummary(userId: string): Promise<ReferralSummary> {
-  const [totalsResult, historyResult, minWithdrawal] = await Promise.all([
+  const [totalsResult, historyResult, minWithdrawal, percent, levels] = await Promise.all([
     query<{ balance: string | null; earned: string | null; on_hold: string | null }>(
       `SELECT SUM(amount_usd) AS balance,
               SUM(amount_usd) FILTER (WHERE amount_usd > 0 AND NOT ${TAKEN_BACK_SQL}) AS earned,
@@ -244,6 +248,8 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
       [userId, HISTORY_LIMIT],
     ),
     getPrice('referral.min_withdrawal_usd'),
+    getPrice('referral.percent'),
+    getPrice('referral.levels'),
   ]);
 
   const balanceUsd = Number(totalsResult.rows[0]?.balance ?? 0);
@@ -257,6 +263,8 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
     totalEarnedUsd: Number(totalsResult.rows[0]?.earned ?? 0),
     minWithdrawalUsd: minWithdrawal,
     canWithdraw: minWithdrawal > 0 && availableUsd >= minWithdrawal,
+    percent,
+    levels,
     history: historyResult.rows.map((row) => {
       const createdAt = new Date(row.created_at);
       const availableFrom = heldUntil(row.reason, createdAt, new Date(), row.taken_back === true);

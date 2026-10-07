@@ -268,6 +268,9 @@ describe('getReferralSummary', () => {
     expect(summary.balanceUsd).toBe(11.2);
     expect(summary.totalEarnedUsd).toBe(22.19);
     expect(summary.canWithdraw).toBe(true);
+    // T2345: the rule comes from the settings, so the page never hardcodes it.
+    expect(typeof summary.percent).toBe('number');
+    expect(typeof summary.levels).toBe('number');
     expect(summary.history[0]).toEqual({
       amountUsd: 0.16,
       reason: 'earn',
