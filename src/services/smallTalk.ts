@@ -24,6 +24,11 @@ const SMALL_TALK_RE =
 const FAREWELL_RE =
   /^\s*(?:ნახვამდის|დროებით|კარგად\s+იყავი(?:თ)?|ღამე\s+მშვიდობისა|(?:good)?\s*bye|see\s+you|good\s+night|пока|до\s+свидания|adiós|hasta\s+luego)[\s!.,)😊🙂👋]*$/iu;
 
+/** A line that only says goodbye — answered as a goodbye, never as „how are you". */
+export function isFarewell(message: string): boolean {
+  return FAREWELL_RE.test(message);
+}
+
 export function isSmallTalk(message: string): boolean {
   return (
     isBareGreeting(message) ||

@@ -13,7 +13,7 @@ describe('a listed small-talk line', () => {
     expect(chat).toContain(
       'const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);',
     );
-    expect(chat).toContain('? smallTalkAgentPrompt(userId)');
+    expect(chat).toContain('? smallTalkAgentPrompt(userId, userMessage)');
   });
 
   it('names the owner by first name only, and knows the date', () => {

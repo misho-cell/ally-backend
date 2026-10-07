@@ -57,7 +57,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
-import { isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
+import { isFarewell, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
@@ -4652,10 +4652,23 @@ function smallTalkNameLine(firstName: string | null): string {
     : `\n\nმფლობელის სახელია ${firstName}. თუ მიმართავ, მხოლოდ სახელით, გვარის გარეშე.`;
 }
 
-async function smallTalkAgentPrompt(userId: string): Promise<AgentPromptResult> {
+/**
+ * The tester's 44126 (#2114): „კარგად იყავი" was answered as „how are you" twice,
+ * sample or no sample — it opens like „კარგად ხარ?". The server knows a goodbye,
+ * so the turn is told it is one.
+ */
+const FAREWELL_TURN_NOTE =
+  '\n\nეს შეტყობინება დამშვიდობებაა, არა კითხვა. უპასუხე მხოლოდ დამშვიდობებით ' +
+  '(მაგ. „კარგად იყავი" → „შენც კარგად იყავი!"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
+
+async function smallTalkAgentPrompt(
+  userId: string,
+  userMessage: string,
+): Promise<AgentPromptResult> {
   const stablePrompt =
     SMALL_TALK_PROMPT + smallTalkNameLine(greetingName(await registeredName(userId)));
-  const volatilePrompt = buildTodaySection(new Date());
+  const volatilePrompt =
+    buildTodaySection(new Date()) + (isFarewell(userMessage) ? FAREWELL_TURN_NOTE : '');
   return {
     prompt: stablePrompt + volatilePrompt,
     stablePrompt,
@@ -14035,7 +14048,7 @@ export async function processChat(
     steps.timed(
       'prompt',
       listedSmallTalk
-        ? smallTalkAgentPrompt(userId)
+        ? smallTalkAgentPrompt(userId, userMessage)
         : buildAgentSystemPrompt(
             userId,
             thread.type,
