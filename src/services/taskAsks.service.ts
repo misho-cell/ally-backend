@@ -22,7 +22,8 @@ import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './an
 import { sharedRoster } from './roster.service';
 import { phoneDigits } from './phone';
 import { looksLikeContactInstruction } from './goalIntent';
-import { questionForReader } from './askTranslation.service';
+import { questionForReader, relayedForReader } from './askTranslation.service';
+import { choicesFit, labelFits, messageLanguage } from './oneLanguageAsk';
 import {
   AskChoice,
   choicesFromLabels,
@@ -544,6 +545,37 @@ async function ownerWordsOn(taskId: number): Promise<string[]> {
     console.error(`[ask-editor] task ${taskId}: owner's words not read:`, (err as Error).message);
     return [];
   }
+}
+
+/**
+ * The tester's 44551: Georgian buttons under an English question. A label in
+ * another script is translated as the reader's own answer; when any one cannot
+ * be, the message keeps the ordinary buttons of its language rather than mix.
+ */
+async function choicesInLanguage(
+  choices: readonly AskChoice[],
+  language: RunLanguage,
+  question: string,
+): Promise<AskChoice[]> {
+  if (choicesFit(choices, language)) return [...choices];
+  const translated = await Promise.all(
+    choices.map(async (choice) => {
+      if (labelFits(choice.label, language)) return choice;
+      const relayed = await relayedForReader(choice.label, language, 'answer');
+      const label = relayed.text.trim();
+      return { ...choice, label };
+    }),
+  );
+  const usable = translated.every(
+    (choice) =>
+      choice.label !== '' &&
+      choice.label.length <= MAX_CHOICE_CHARS &&
+      labelFits(choice.label, language),
+  );
+  if (usable) return translated;
+  // eslint-disable-next-line no-console
+  console.warn('[ask-language] buttons not in the message language — the ordinary ones went');
+  return choicesFromLabels(askChoicesFor(question, language));
 }
 
 /** The bridge picker, or the ordinary buttons when it cannot be built. */
@@ -1451,9 +1483,14 @@ export async function createAsk(
       language,
     },
   );
-  const choices = withServerLater(edited.choices, language);
+  // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
+  const said = messageLanguage(edited.question, language);
+  const choices = withServerLater(
+    await choicesInLanguage(edited.choices, said, edited.question),
+    said,
+  );
   const opening = buildAskOpening(
-    language,
+    said,
     senderName,
     roster,
     edited.question,
@@ -1493,9 +1530,9 @@ export async function createAsk(
   const recommender = sameThread ? null : await recommenderFor(taskId, toUserId, toName);
   const lines = [
     opening,
-    ...(recommender ? [recommendedByLine(language, recommender)] : []),
+    ...(recommender ? [recommendedByLine(said, recommender)] : []),
     // The pick-list line names the buttons; an editor's rewrite replaced them.
-    ...(picker && !edited.edited ? [picker.line] : []),
+    ...(picker && !edited.edited && said === language ? [picker.line] : []),
   ];
   await saveThreadMessage(
     askThreadId,

@@ -11,6 +11,7 @@ jest.mock('../../db/postgres/client', () => ({
 jest.mock('../askTranslation.service', () => ({
   __esModule: true,
   questionForReader: jest.fn(async (question: string) => ({ text: question })),
+  relayedForReader: jest.fn(async (text: string) => ({ text })),
 }));
 jest.mock('../threads.service', () => ({
   __esModule: true,
