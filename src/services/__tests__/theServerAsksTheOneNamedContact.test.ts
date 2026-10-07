@@ -82,6 +82,8 @@ describe('the server asks the one contact the owner named', () => {
       result: InstructedAskResult.NotOnNetai,
       toName: 'გიგა ხელოსანი',
     });
+    // 45155: the label is read by the number's digits, as the name search returns them.
+    expect(String(mockQuery.mock.calls[0][0])).toContain("regexp_replace(phone, '\\D', '', 'g')");
     expect(NOT_ON_NETAI_LINE.ka('გიგა ხელოსანი')).toBe(
       'გიგა ხელოსანი Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო.',
     );

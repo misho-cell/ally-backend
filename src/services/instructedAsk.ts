@@ -1,5 +1,10 @@
 import { query } from '../db/postgres/client';
-import { goalTitleFrom, instructionAddressee, instructionQuestion } from './goalIntent';
+import {
+  goalTitleFrom,
+  instructionAddressee,
+  instructionNamed,
+  instructionQuestion,
+} from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
 import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
@@ -45,7 +50,10 @@ const NOT_ON_NETAI_REASONS: ReadonlySet<string> = new Set([
 async function ownersLabel(userId: string, phone: string, typed: string): Promise<string> {
   const result = await query<{ alias: string }>(
     `SELECT TRIM(alias) AS alias FROM "UserAlias"
-      WHERE "contactId" = $1::int AND phone = $2 AND NULLIF(TRIM(alias), '') IS NOT NULL
+      WHERE "contactId" = $1::int
+        -- 45155: the name search returns digits only; the stored number may carry „+".
+        AND regexp_replace(phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+        AND NULLIF(TRIM(alias), '') IS NOT NULL
       ORDER BY LENGTH(TRIM(alias)) DESC LIMIT 1`,
     [userId, phone],
     LABEL_QUERY_TIMEOUT_MS,
@@ -111,7 +119,7 @@ export async function sendInstructedAsk(
   );
   if (!outcome.sent) {
     if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return NOT_SENT;
-    const typed = instructionAddressee(sentence) ?? '';
+    const typed = instructionNamed(sentence) ?? '';
     return {
       result: InstructedAskResult.NotOnNetai,
       toName: await ownersLabel(userId, phone, typed),
