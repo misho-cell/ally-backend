@@ -150,3 +150,23 @@ export async function tellOwnersTheirRunWasCutOff(
   }
   return told;
 }
+
+const WITHDRAW_TIMEOUT_MS = 3_000;
+
+/**
+ * The tester's 45147 (conv 43076, 21:17Z): the deploy cut a run after its
+ * question had gone, the dying process wrote „the server updated, send it
+ * again", and the same run's answer „გავაგზავნე კითხვა…" was saved in the same
+ * second. „Send again" would have asked the helper twice. When a run's own
+ * answer is saved, its own cut-off notice is taken back. Returns how many.
+ */
+export async function withdrawOwnCutNotice(threadId: number, runId: string): Promise<number> {
+  const result = await query(
+    `DELETE FROM conversations
+      WHERE thread_id = $1 AND run_id = $2 AND role = 'assistant' AND kind = 'error'
+        AND content = ANY($3::text[])`,
+    [threadId, runId, Object.values(RUN_STRINGS).map((s) => s.restartedMidRun)],
+    WITHDRAW_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
+}
