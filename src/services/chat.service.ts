@@ -438,6 +438,7 @@ import { shareContactNumberWithAsker, ShareRefusal } from './shareNumber.service
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
+import { stepClock } from './stepClock';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -13738,7 +13739,11 @@ export async function processChat(
   // engine wake, an answer wake — which is why it is registered here and not
   // in the route that happens to be the one we read the bug on.
   noteRunStart(runId);
+  // #958: every run, small talk included, reached the model 1.5–3.8 s after it
+  // started. One total said that, not where; the steps are marked to say it.
+  const steps = stepClock(startedAt);
   const thread = await getThread(threadId, userId);
+  steps.mark('thread');
   if (thread === null) {
     throw new Error(`Thread ${threadId} not found for user ${userId}`);
   }
@@ -13932,6 +13937,7 @@ export async function processChat(
     intent,
   );
   const autoGoalId = goalForRequest.opened;
+  steps.mark('goal');
   // Row 155: provisional, and refined the moment the thread's history is in
   // hand — see the recompute below. Set now because a run that fails before
   // then still needs a language for its error line.
@@ -13997,20 +14003,24 @@ export async function processChat(
   }
 
   const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
+  steps.mark('named');
   const [agentPrompt, tools, history] = await Promise.all([
-    listedSmallTalk
-      ? smallTalkAgentPrompt(userId)
-      : buildAgentSystemPrompt(
-          userId,
-          thread.type,
-          thread.introduction_request_id,
-          thread.id,
-          undefined,
-          namedTask,
-          ownerAbsent,
-        ),
-    buildToolsForThread(userId, thread.type, ownerAbsent),
-    loadHistory(threadId),
+    steps.timed(
+      'prompt',
+      listedSmallTalk
+        ? smallTalkAgentPrompt(userId)
+        : buildAgentSystemPrompt(
+            userId,
+            thread.type,
+            thread.introduction_request_id,
+            thread.id,
+            undefined,
+            namedTask,
+            ownerAbsent,
+          ),
+    ),
+    steps.timed('tools', buildToolsForThread(userId, thread.type, ownerAbsent)),
+    steps.timed('history', loadHistory(threadId)),
   ]);
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
@@ -14291,7 +14301,7 @@ export async function processChat(
   // eslint-disable-next-line no-console
   console.log(
     `[timing] run ${runId}: prompt and history ready at ${promptReadyMs}ms, ` +
-      `the model called at ${Date.now() - startedAt}ms`,
+      `the model called at ${Date.now() - startedAt}ms (${steps.line()})`,
   );
   const {
     finalText,
