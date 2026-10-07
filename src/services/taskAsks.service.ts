@@ -1452,11 +1452,6 @@ export async function createAsk(
 
   // The question crosses accounts — scrub it.
   const safeQuestion = scrubText(trimmed);
-  // A follow-up lands in the conversation it belongs to; only a first ask
-  // opens a thread. Two threads for one exchange would put the answer and the
-  // question that followed it in different rooms (ticket 9 task 12).
-  const askThreadId =
-    liveThreadId ?? (await openAskThread(toUserId, senderName, safeQuestion, language));
   // Two members of one network who never saved each other's number (Ticket
   // 10 Task 23, D121): the recipient's opening line says so (D57) — that is
   // what makes a stranger's question a colleague's rather than spam.
@@ -1493,6 +1488,13 @@ export async function createAsk(
       draftIsOwnersWords: fromOwnersLine === true,
     },
   );
+  // A follow-up lands in the conversation it belongs to; only a first ask
+  // opens a thread. Two threads for one exchange would put the answer and the
+  // question that followed it in different rooms (ticket 9 task 12).
+  // T2477: opened after the editor, so its title is the edited question — the
+  // owner's raw first-person line never reaches the helper's list.
+  const askThreadId =
+    liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));
   // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
   const said = messageLanguage(edited.question, language);
   const choices = withServerLater(
