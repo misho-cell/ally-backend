@@ -4,6 +4,7 @@ import anthropic from '../config/anthropic';
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { recordClaudeUsage } from './costLedger.service';
 import { RunLanguage } from './runLanguage';
+import { thirdPersonTurnedToYou } from './personFlip';
 
 /**
  * D711 (the founder, 7 Oct): every question that goes to another person
@@ -175,6 +176,8 @@ export function rewriteFrom(verdict: Verdict, draft: AskDraft): AskDraft | null 
   if (question === '' || question.length > draft.question.length + MAX_GROWTH_CHARS) return null;
   // One question (rule 3), checked without trusting the model that wrote it.
   if (questionMarks(question) > MAX_QUESTION_MARKS) return null;
+  // #2212: a named third person stays third person (rule 1), checked here too.
+  if (thirdPersonTurnedToYou(draft.question, question)) return null;
   const choices = parseAskChoices(verdict.choices);
   if (choices === null || choicesProblem(choices) !== null) return null;
   return { question, choices };
