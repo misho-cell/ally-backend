@@ -98,14 +98,29 @@ const MS_PER_DAY = 86_400_000;
  * rule as ON_HOLD_SQL, so the screen never keeps a copy of it. Null for any
  * entry that is not a reward on hold.
  */
-export function heldUntil(reason: string, createdAt: Date, now: Date): Date | null {
-  if (reason !== EARN_REASON) return null;
+export function heldUntil(
+  reason: string,
+  createdAt: Date,
+  now: Date,
+  takenBack = false,
+): Date | null {
+  if (reason !== EARN_REASON || takenBack) return null;
   const until = new Date(createdAt.getTime() + REWARD_HOLD_DAYS * MS_PER_DAY);
   return until > now ? until : null;
 }
 
-/** An earned reward still inside the refund window. */
-const ON_HOLD_SQL = `reason = '${EARN_REASON}' AND created_at > NOW() - make_interval(days => ${REWARD_HOLD_DAYS})`;
+/**
+ * The tester's 2180 (box 44123): a reward taken back inside the window still
+ * counted as held, so the inviter read „on hold 0.50, available -0.50". A
+ * reward with its own take-back line is no longer held — nothing is.
+ * Correlated on the unaliased outer `referral_transactions`.
+ */
+const TAKEN_BACK_SQL = `EXISTS (SELECT 1 FROM referral_transactions taken
+   WHERE taken.user_id = referral_transactions.user_id
+     AND taken.external_id = '${CLAWBACK_PREFIX}' || referral_transactions.external_id)`;
+
+/** An earned reward still inside the refund window, and not taken back. */
+const ON_HOLD_SQL = `reason = '${EARN_REASON}' AND created_at > NOW() - make_interval(days => ${REWARD_HOLD_DAYS}) AND NOT ${TAKEN_BACK_SQL}`;
 
 /** What can be spent now: everything booked, minus rewards still on hold. */
 async function balanceFor(client: PoolClient, userId: string): Promise<number> {
@@ -205,8 +220,14 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
        WHERE user_id = $1`,
       [userId],
     ),
-    query<{ amount_usd: string; reason: string; level: number | null; created_at: Date }>(
-      `SELECT amount_usd, reason, level, created_at
+    query<{
+      amount_usd: string;
+      reason: string;
+      level: number | null;
+      created_at: Date;
+      taken_back: boolean;
+    }>(
+      `SELECT amount_usd, reason, level, created_at, ${TAKEN_BACK_SQL} AS taken_back
        FROM referral_transactions
        WHERE user_id = $1
        ORDER BY created_at DESC
@@ -229,7 +250,7 @@ export async function getReferralSummary(userId: string): Promise<ReferralSummar
     canWithdraw: minWithdrawal > 0 && availableUsd >= minWithdrawal,
     history: historyResult.rows.map((row) => {
       const createdAt = new Date(row.created_at);
-      const availableFrom = heldUntil(row.reason, createdAt, new Date());
+      const availableFrom = heldUntil(row.reason, createdAt, new Date(), row.taken_back === true);
       return {
         amountUsd: Number(row.amount_usd),
         reason: row.reason,
