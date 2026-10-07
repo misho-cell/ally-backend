@@ -349,8 +349,8 @@ import {
 } from './replyGuards';
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
-import { instructionLeftUnsent, NOT_SENT_LINE } from './instructionUnsent';
-import { sendInstructedAsk } from './instructedAsk';
+import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instructionUnsent';
+import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { askedNotAsking } from './askedVerb';
 import {
@@ -11403,7 +11403,7 @@ async function serverSendsOrSaysSo(
   runId: string,
 ): Promise<string> {
   const language = runLang(runId);
-  const sent = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+  const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
       console.error(
@@ -11413,7 +11413,13 @@ async function serverSendsOrSaysSo(
       return null;
     },
   );
-  if (sent !== null) return ownerAskLine(sent.toName, { status: 'sent' }, AskState.Sent, language);
+  if (outcome?.result === InstructedAskResult.Sent) {
+    return ownerAskLine(outcome.toName, { status: 'sent' }, AskState.Sent, language);
+  }
+  // T2509: a person not on Netai is said by name, not as „write it again".
+  if (outcome?.result === InstructedAskResult.NotOnNetai) {
+    return (NOT_ON_NETAI_LINE[language] ?? NOT_ON_NETAI_LINE.ka)(outcome.toName);
+  }
   // eslint-disable-next-line no-console
   console.warn(
     `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
