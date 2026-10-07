@@ -67,3 +67,26 @@ export function withoutLeadingInterjection(text: string, language: RunLanguage):
   if (!script.test(rest.slice(0, 1))) return text;
   return rest;
 }
+
+/**
+ * The tester's 44584 b (owner conversation 42451, 15:24:27Z): the answer wake
+ * is told the server has already shown the answer, and the reply opened with
+ * that very note — „ეს უკვე ნაჩვენები პასუხია, ახალი არაფერია." — before its
+ * real question. A leading paragraph that only says the answer was already
+ * shown, or that nothing is new, comes off when something follows it.
+ */
+const ALREADY_SHOWN_RE =
+  /(უკვე\s+(?:ნაჩვენები|გაჩვენე|ნაჩვენებია|ნახე)|ახალი\s+არაფერი(?:ა)?|already\s+(?:been\s+)?shown|nothing\s+new)/iu;
+const MAX_NOTE_CHARS = 120;
+
+export function withoutAlreadyShownNote(text: string): string {
+  const trimmed = text.trimStart();
+  const breakAt = trimmed.search(PARAGRAPH_BREAK_RE);
+  if (breakAt === -1) return text;
+  const first = trimmed.slice(0, breakAt);
+  const rest = trimmed.slice(breakAt).trimStart();
+  if (rest === '' || first.length > MAX_NOTE_CHARS || !ALREADY_SHOWN_RE.test(first)) return text;
+  // eslint-disable-next-line no-console
+  console.warn('[self-note] an „already shown" note was taken off the top of a reply');
+  return rest;
+}
