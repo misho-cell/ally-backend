@@ -3691,7 +3691,7 @@ export async function answerAskTapAtOnce(threadId: number, message: string): Pro
     const line =
       tap === AskTap.Later && claimed.later_until
         ? laterSentenceForAsker(readerName, claimed.later_until, language)
-        : askTapLineForAsker(tap, language, readerName);
+        : askTapLineForAsker(tap, language, readerName, message);
     await saveThreadMessage(claimed.task_thread_id, claimed.from_user_id, 'assistant', line);
   } catch (err) {
     // eslint-disable-next-line no-console

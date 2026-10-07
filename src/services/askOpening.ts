@@ -1,4 +1,5 @@
 import { AskKind, askKindOf } from './askKind';
+import { labelFits } from './oneLanguageAsk';
 import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
@@ -447,17 +448,35 @@ export function askTapOf(message: string): AskTap | null {
   return null;
 }
 
+/** How a tapped label is quoted to the asker, per language. */
+const QUOTED_TAP: Readonly<Record<RunLanguage, (name: string, label: string) => string>> = {
+  ka: (name, label) => `${name}: „${label}"`,
+  en: (name, label) => `${name}: "${label}"`,
+  ru: (name, label) => `${name}: «${label}»`,
+  es: (name, label) => `${name}: «${label}»`,
+};
+
 /**
  * The one line the ASKER gets the moment the reader taps „yes" or „later",
  * in the asker's language. The answer itself still arrives the ordinary way;
  * this only replaces silence with what the reader actually said.
+ *
+ * T2476 (the MASTER TEST RUN's QA-003): „are you free tomorrow evening?" →
+ * „კი, თავისუფალი ვარ" reached the asker as „says he will help, details soon".
+ * A „yes" is told as the label the reader tapped, word for word, when it reads
+ * in the asker's language; the general sentence only when it does not.
  */
 export function askTapLineForAsker(
   tap: AskTap.Yes | AskTap.Later,
   language: RunLanguage,
   readerName: string,
+  tappedLabel?: string,
 ): string {
   const name = nameToSay(readerName, language);
+  const label = tappedLabel?.trim() ?? '';
+  if (tap === AskTap.Yes && label !== '' && labelFits(label, language)) {
+    return (QUOTED_TAP[language] ?? QUOTED_TAP.ka)(name, label);
+  }
   const lines: Readonly<Record<RunLanguage, string>> =
     tap === AskTap.Yes
       ? {
