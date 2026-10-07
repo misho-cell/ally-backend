@@ -78,6 +78,7 @@ import { armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 import { LATER_DEFAULT_DAYS, laterSentenceForAsker } from './askState';
 import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
+import { oneAtATimeFor } from './recipientLock';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 import { eveningCardFor } from './eveningCard.service';
 import { heldForEveningCardNote } from './eveningCard';
@@ -699,6 +700,16 @@ async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<b
   return phoneDigits(best.phone) === phoneDigits(person.contactPhone);
 }
 
+/**
+ * 2582: asks to one number go one at a time (recipientLock.ts), so the
+ * receiving cap counts the ask before this one. Same arguments as always.
+ */
+export async function createAsk(
+  ...args: Parameters<typeof createAskNow>
+): Promise<CreateAskOutcome> {
+  return oneAtATimeFor(args[2], () => createAskNow(...args));
+}
+
 /** The plan wall's D316 exception: the owner's own instruction names this person. */
 async function ownerNamedThemOutsidePlan(
   threadId: number | undefined,
@@ -722,7 +733,7 @@ async function ownerNamedThemOutsidePlan(
   return named;
 }
 
-export async function createAsk(
+async function createAskNow(
   fromUserId: string,
   taskId: number,
   contactPhone: string,
