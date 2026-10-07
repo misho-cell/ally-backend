@@ -132,7 +132,7 @@ import {
   withAskLines,
   withoutNobodyAnswered,
 } from './askStatusSection';
-import { askStateOf } from './askState';
+import { AskState, askStateOf, ownerAskLine } from './askState';
 import { advanceWaveIfDone, nextWaveNote, readWave } from './askWaves.service';
 import { openHeldAsksForTask } from './heldAsks.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
@@ -349,6 +349,7 @@ import {
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
 import { instructionLeftUnsent, NOT_SENT_LINE } from './instructionUnsent';
+import { sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { askedNotAsking } from './askedVerb';
 import {
@@ -11378,6 +11379,36 @@ async function promisedAnActionItDidNotTake(
   }
 }
 
+/**
+ * §97 item 1 (Misho's yes): the second chance sent nothing either. The server
+ * asks the one contact the owner named and says so in the ordinary per-person
+ * line; when it cannot (no single contact, a wall), the owner is told plainly
+ * that nothing went (the tester's 44367).
+ */
+async function serverSendsOrSaysSo(
+  userId: string,
+  threadId: number,
+  runId: string,
+): Promise<string> {
+  const language = runLang(runId);
+  const sent = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[instruction-unsent] thread ${threadId}: server send failed:`,
+        (err as Error).message,
+      );
+      return null;
+    },
+  );
+  if (sent !== null) return ownerAskLine(sent.toName, { status: 'sent' }, AskState.Sent, language);
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
+  );
+  return NOT_SENT_LINE[language];
+}
+
 export function isHousekeepingRound(roundToolNames: readonly string[]): boolean {
   return roundToolNames.length > 0 && roundToolNames.every((name) => HOUSEKEEPING_TOOLS.has(name));
 }
@@ -12637,11 +12668,7 @@ async function runToolLoop(
     !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
-    );
-    finalText = NOT_SENT_LINE[runLang(runId)];
+    finalText = await serverSendsOrSaysSo(userId, threadId, runId);
   }
 
   // Ticket 20 row 126 / 101b stood HERE and is deliberately gone. Reverted the
