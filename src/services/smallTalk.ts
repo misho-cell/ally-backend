@@ -48,7 +48,7 @@ export function isSmallTalk(message: string): boolean {
 const OPENS_WITH_THANKS_RE = /^\s*(მადლობ|გმადლობ|thanks|thank\s+you|спасибо|gracias)/iu;
 const MAX_THANKS_CHARS = 80;
 
-function isPlainThanks(message: string): boolean {
+export function isPlainThanks(message: string): boolean {
   const text = message.trim();
   return (
     text.length <= MAX_THANKS_CHARS &&

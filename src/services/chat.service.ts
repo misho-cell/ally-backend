@@ -57,7 +57,7 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
-import { isFarewell, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
+import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
@@ -4661,14 +4661,29 @@ const FAREWELL_TURN_NOTE =
   '\n\nეს შეტყობინება დამშვიდობებაა, არა კითხვა. უპასუხე მხოლოდ დამშვიდობებით ' +
   '(მაგ. „კარგად იყავი" → „შენც კარგად იყავი!"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
 
+/**
+ * The tester's 44129 (#2114, conversation 42007): „მადლობა" was answered
+ * „კარგად, მადლობა რომ მკითხე!" — a thank-you read as „how are you". Told the
+ * same way as a goodbye.
+ */
+const THANKS_TURN_NOTE =
+  '\n\nეს შეტყობინება მადლობაა, არა კითხვა. უპასუხე მადლობაზე ' +
+  '(მაგ. „მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"); „როგორ ხარ"-ს და „მადლობა რომ მკითხე"-ს ნუ დაწერ.';
+
+/** What kind of line a small-talk turn answers, when the server knows it for sure. */
+function smallTalkTurnNote(userMessage: string): string {
+  if (isFarewell(userMessage)) return FAREWELL_TURN_NOTE;
+  if (isPlainThanks(userMessage)) return THANKS_TURN_NOTE;
+  return '';
+}
+
 async function smallTalkAgentPrompt(
   userId: string,
   userMessage: string,
 ): Promise<AgentPromptResult> {
   const stablePrompt =
     SMALL_TALK_PROMPT + smallTalkNameLine(greetingName(await registeredName(userId)));
-  const volatilePrompt =
-    buildTodaySection(new Date()) + (isFarewell(userMessage) ? FAREWELL_TURN_NOTE : '');
+  const volatilePrompt = buildTodaySection(new Date()) + smallTalkTurnNote(userMessage);
   return {
     prompt: stablePrompt + volatilePrompt,
     stablePrompt,
