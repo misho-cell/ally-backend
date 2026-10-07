@@ -30,6 +30,9 @@ describe('the reason for an introduction', () => {
     const [params] = mockCreate.mock.calls[0];
     expect(params.system).toContain('about ლიკა in the third person');
     expect(params.system).toContain('SAME language');
+    // The tester's 44204: „მინდა გავიცნო, თუ დათო იცნობს" kept its first person and the reader's name.
+    expect(params.system).toContain('„მინდა გავიცნო" → „ლიკა-ს სურს გაიცნოს"');
+    expect(params.system).toContain('never address or name either');
   });
 
   it('keeps the owner’s words when the rewrite is empty, far longer, or the check fails', async () => {

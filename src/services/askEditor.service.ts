@@ -77,8 +77,11 @@ function editorBrief(context: AskEditContext): string {
     '',
     'It passes only if ALL of these hold:',
     `1. It speaks TO ${reader} as „you" (in Georgian the informal „შენ") and never names ` +
-      `${reader}. When it mentions ${asker}, it is „${asker}" in the third person — never ` +
-      '„I", „me" or „my", which would read as the reader’s own words.',
+      `${reader}. What ${asker} needs or wants is told ABOUT ${asker}, by name, in the third ` +
+      `person („${asker}-ს სჭირდება…", „${asker} ეძებს…", „${asker}-ს უნდა…"). Any first-person ` +
+      `form about ${asker} FAILS — „I need", „recommend me", „lend me", „help me", „I want"; in ` +
+      'Georgian „მჭირდება", „მირჩიე / მირჩიო", „მასესხო", „დამეხმარე / დამეხმაროს", „მინდა", ' +
+      '„გამაცნო". Rewrite such a sentence so it is about the asker.',
     `2. It is correct, natural ${language}, the way a person writes — not formal, no invented words.`,
     '3. It asks ONE question. If it asks two, keep the one the owner’s words ask for.',
     '4. It says nothing the owner did not say: no reason, place, time, quality or person ' +
@@ -200,7 +203,11 @@ function reasonBrief(askerName: string): string {
       `short sentence about ${askerName} in the third person, in the SAME language it is ` +
       'written in.',
     '- Keep the meaning exactly. Add nothing: no reason, place, time or quality of your own.',
-    `- If it already speaks about ${askerName} in the third person, return it unchanged.`,
+    `- Every first-person form becomes ${askerName}: „I want to meet" → „${askerName} wants ` +
+      'to meet"; in Georgian „მინდა გავიცნო" → „' +
+      `${askerName}-ს სურს გაიცნოს", „მჭირდება" → „${askerName}-ს სჭირდება".`,
+    '- It is read by the go-between and by the person to be met: never address or name either.',
+    `- Only if it already speaks about ${askerName} in the third person, return it unchanged.`,
     '- Reply with the sentence alone. No quotes, no notes.',
   ].join('\n');
 }
@@ -237,6 +244,10 @@ export async function reasonAboutAsker(reason: string, askerName: string): Promi
       console.warn('[ask-editor] the reason was sent as written — the rewrite was not usable');
       return reason;
     }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ask-editor] the reason was ${told === said ? 'left as written' : 'told about the asker'}`,
+    );
     return told;
   } catch (err) {
     // eslint-disable-next-line no-console

@@ -74,7 +74,16 @@ describe('the editor check', () => {
     const [params] = mockCreate.mock.calls[0];
     expect(params.system).toContain('It speaks TO Nodar as „you"');
     expect(params.system).toContain('never names Nodar');
-    expect(params.system).toContain('When it mentions Lika, it is „Lika" in the third person');
+    expect(params.system).toContain('What Lika needs or wants is told ABOUT Lika, by name');
+    // The tester's run 2 (44203): „მჭირდება / მირჩიო / მასესხო / დამეხმაროს" passed.
+    for (const form of [
+      '„მჭირდება"',
+      '„მირჩიე / მირჩიო"',
+      '„მასესხო"',
+      '„დამეხმარე / დამეხმაროს"',
+    ]) {
+      expect(params.system).toContain(form);
+    }
     expect(params.system).toContain('When every rule holds, do not improve it');
     expect(params.system).toContain('never merely whether the reader can contact that person');
   });
