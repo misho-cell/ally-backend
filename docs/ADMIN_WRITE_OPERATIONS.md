@@ -5677,3 +5677,18 @@ UNDO    POST  /admin/test-accounts/:seatId/first-payment/undo
 
 The once-per-subscriber guard holds after an undo: the same seat cannot be paid again, so a re-test
 uses a fresh seat at the bottom of the chain. Night mode (22:00–07:00 UTC): not run.
+
+## §95 — CASE 1: TWO NEW TEXTS (a model note and an owner line)
+
+**Authorised by Misho, 7 October ~14:40 UTC, directly in the session:** „2. თანახმა ვარ, 3. თანახმა
+ვარ" — to my question with both texts quoted in full, and „Main ზე რაც გასაშვებია გაუშვი".
+
+Both live in code, not in the prompt store, so `prompt.sh` is not involved:
+- `INSTRUCTION_UNSENT_NUDGE` (src/services/replyGuards.ts, 44db854): a model-only note. When the
+  owner's own line tells us to ask one of their contacts and the run sent nothing, the run is given
+  one more turn with this note. It is never shown to anybody.
+- `NOT_SENT_LINE` (src/services/instructionUnsent.ts, 01c46ef): the owner's line when that second
+  turn sent nothing either. In Georgian: „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე."
+  The en / ru / es versions say the same.
+
+Undo: revert the two commits. No data is written.
