@@ -64,7 +64,8 @@ describe('the editor check', () => {
     expect(params.model).toBe('claude-sonnet-5');
     expect(params.messages[0].content).toContain('ჰკითხე ნოდარს');
     expect(params.messages[0].content).toContain('მეყავს ნაცნობი გია');
-    expect(options.timeout).toBeLessThanOrEqual(8_000);
+    expect(options.timeout).toBe(15_000);
+    expect(options.maxRetries).toBe(0);
   });
 
   // The tester's REGRESSION 44196: the reader was put in the third person by name.

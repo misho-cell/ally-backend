@@ -35,8 +35,13 @@ export interface AskEditContext {
   readonly language: RunLanguage;
 }
 
-/** In front of a message somebody is waiting for, beside the other questions of a wave. */
-const EDIT_BUDGET_MS = 8_000;
+/**
+ * In front of a message somebody is waiting for, beside the other questions
+ * of a wave. The tester's run 3 (44223): at 8 s, four of a wave of eight timed
+ * out on the strong model and went as written — first person and all. One
+ * attempt, no retries, so this is the whole of the wait.
+ */
+const EDIT_BUDGET_MS = 15_000;
 const MAX_OUTPUT_TOKENS = 800;
 /** A rewrite that grows past this has added something; it is not used. */
 const MAX_GROWTH_CHARS = 300;
@@ -166,7 +171,7 @@ export async function editOutgoingAsk(
         system: editorBrief(context),
         messages: [{ role: 'user', content: editorInput(draft, context) }],
       },
-      { timeout: EDIT_BUDGET_MS },
+      { timeout: EDIT_BUDGET_MS, maxRetries: 0 },
     );
     void recordClaudeUsage({
       userId: null,
@@ -228,7 +233,7 @@ export async function reasonAboutAsker(reason: string, askerName: string): Promi
         system: reasonBrief(askerName),
         messages: [{ role: 'user', content: said }],
       },
-      { timeout: EDIT_BUDGET_MS },
+      { timeout: EDIT_BUDGET_MS, maxRetries: 0 },
     );
     void recordClaudeUsage({
       userId: null,
