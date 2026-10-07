@@ -12,6 +12,7 @@ import {
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
+import { AskKind, askKindOf } from './askKind';
 import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
 import { recommendedByLine, recommenderFor } from './recommendedBy';
 import { query } from '../db/postgres/client';
@@ -1432,8 +1433,11 @@ export async function createAsk(
    */
   // Plate v301 G4: on a first ask about a need, the reader's own fitting
   // contacts become the buttons (see bridgePicker.ts).
+  // #2185: „will you introduce me to G" is a yes or a no about G — no pick-list under it.
   const picker =
-    bridgeNeed && !sameThread ? await pickerFor(String(toUserId), bridgeNeed, language) : null;
+    bridgeNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
+      ? await pickerFor(String(toUserId), bridgeNeed, language)
+      : null;
   // G5 second half: a person an earlier answer on this goal named is told who
   // recommended them (see recommendedBy.ts).
   const recommender = sameThread ? null : await recommenderFor(taskId, toUserId, toName);

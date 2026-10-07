@@ -47,6 +47,11 @@ const OTHER_PERSON_CHOICE: Readonly<Record<RunLanguage, string>> = {
   ka: 'სხვას ვურჩევდი',
 };
 
+/**
+ * #2185 (the founder's screen, 7 Oct): the line ended „… ვის ურჩევდი?" under a
+ * question that had already asked — two questions in one message. It says only
+ * why the reader was asked and who may fit; the names are the buttons.
+ */
 function pickerLine(language: RunLanguage, picked: string | null, others: string[]): string {
   const rest = others.join(', ');
   switch (language) {
@@ -55,32 +60,28 @@ function pickerLine(language: RunLanguage, picked: string | null, others: string
         (picked ? `You were asked because ${picked} is in your contacts.` : '') +
         (rest
           ? ` ${picked ? 'Others who may fit' : 'In your contacts, these may fit'}: ${rest}.`
-          : '') +
-        ' Whom would you recommend?'
+          : '')
       ).trim();
     case 'ru':
       return (
         (picked ? `Тебя спросили, потому что ${picked} есть в твоих контактах.` : '') +
         (rest
           ? ` ${picked ? 'Ещё могут подойти' : 'В твоих контактах могут подойти'}: ${rest}.`
-          : '') +
-        ' Кого бы ты порекомендовал?'
+          : '')
       ).trim();
     case 'es':
       return (
         (picked ? `Te preguntamos porque ${picked} está en tus contactos.` : '') +
         (rest
           ? ` ${picked ? 'También podrían encajar' : 'En tus contactos podrían encajar'}: ${rest}.`
-          : '') +
-        ' ¿A quién recomendarías?'
+          : '')
       ).trim();
     default:
       return (
         (picked ? `შენ იმიტომ გკითხეს, რომ შენს კონტაქტებშია ${picked}.` : '') +
         (rest
           ? ` ${picked ? 'შეიძლება ესენიც გამოდგნენ' : 'შენს კონტაქტებში შეიძლება გამოდგნენ'}: ${rest}.`
-          : '') +
-        ' ვის ურჩევდი?'
+          : '')
       ).trim();
   }
 }

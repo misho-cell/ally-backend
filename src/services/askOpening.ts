@@ -298,7 +298,11 @@ export function allDeclineChoices(): readonly string[] {
  * revised, which is the reader we were least sure about to begin with.
  */
 export function isDeclineChoice(answer: string): boolean {
-  return matchesAnyLanguage(DECLINE_CHOICE, answer) || matchesAnyLanguage(KNOW_NO_CHOICE, answer);
+  return (
+    matchesAnyLanguage(DECLINE_CHOICE, answer) ||
+    matchesAnyLanguage(KNOW_NO_CHOICE, answer) ||
+    matchesAnyLanguage(INTRO_NO_CHOICE, answer)
+  );
 }
 
 /**
@@ -346,6 +350,24 @@ const KNOW_NO_CHOICE: Readonly<Record<RunLanguage, string>> = {
   ka: 'არა, არ ვიცნობ',
 };
 
+/**
+ * #2185: the buttons for „will you introduce me". The yes is the same tap as
+ * „yes, I can help"; the no is a decline.
+ */
+const INTRO_YES_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: "Yes, I'll introduce you",
+  ru: 'Да, познакомлю',
+  es: 'Sí, te lo presento',
+  ka: 'კი, გაგაცნობ',
+};
+
+const INTRO_NO_CHOICE: Readonly<Record<RunLanguage, string>> = {
+  en: "I can't introduce you",
+  ru: 'Не смогу познакомить',
+  es: 'No puedo presentártelo',
+  ka: 'ვერ გაგაცნობ',
+};
+
 /** #1948: a plain yes / no — sent as the answer itself, like typed words. */
 const PLAIN_YES: Readonly<Record<RunLanguage, string>> = {
   en: 'Yes',
@@ -380,6 +402,8 @@ export function askChoicesFor(question: string, language: RunLanguage): readonly
   const pick = (labels: Readonly<Record<RunLanguage, string>>): string =>
     labels[language] ?? labels.ka;
   switch (askKindOf(question)) {
+    case AskKind.Intro:
+      return [INTRO_YES_CHOICE, INTRO_NO_CHOICE, LATER_CHOICE].map(pick);
     case AskKind.Know:
       return [KNOW_YES_CHOICE, KNOW_NO_CHOICE, LATER_CHOICE].map(pick);
     case AskKind.YesNo:
@@ -393,7 +417,11 @@ export function askChoicesFor(question: string, language: RunLanguage): readonly
 
 /** Every language's „yes" buttons, for the prompt that must recognise a tap of one. */
 export function allYesChoices(): readonly string[] {
-  return [...Object.values(YES_CHOICE), ...Object.values(KNOW_YES_CHOICE)];
+  return [
+    ...Object.values(YES_CHOICE),
+    ...Object.values(KNOW_YES_CHOICE),
+    ...Object.values(INTRO_YES_CHOICE),
+  ];
 }
 
 /** The tappable „later" offered under an incoming ask, in the reader's language. */
@@ -408,7 +436,11 @@ export function allLaterChoices(): readonly string[] {
 
 /** Which of our buttons this message is, in ANY language (see `isDeclineChoice`). */
 export function askTapOf(message: string): AskTap | null {
-  if (matchesAnyLanguage(YES_CHOICE, message) || matchesAnyLanguage(KNOW_YES_CHOICE, message))
+  if (
+    matchesAnyLanguage(YES_CHOICE, message) ||
+    matchesAnyLanguage(KNOW_YES_CHOICE, message) ||
+    matchesAnyLanguage(INTRO_YES_CHOICE, message)
+  )
     return AskTap.Yes;
   if (isDeclineChoice(message)) return AskTap.Decline;
   if (matchesAnyLanguage(LATER_CHOICE, message)) return AskTap.Later;

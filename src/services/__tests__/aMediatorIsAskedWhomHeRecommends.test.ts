@@ -41,7 +41,8 @@ describe('a mediator asked on behalf of a need', () => {
 
     expect(picker?.line).toContain('შენს კონტაქტებშია Ilia Beridze');
     expect(picker?.line).toContain('Nino Kapanadze, Dato Lomidze');
-    expect(picker?.line).toContain('ვის ურჩევდი?');
+    // #2185: one question per message — the line no longer asks a second one.
+    expect(picker?.line).not.toContain('ვის ურჩევდი?');
     expect(picker?.choices).toEqual([
       'Ilia Beridze',
       'Nino Kapanadze',
@@ -59,7 +60,7 @@ describe('a mediator asked on behalf of a need', () => {
     const picker = await bridgePicker(BRIDGE, { need: 'lawyer', forPhone: ILIA.phone }, 'en');
 
     expect(picker?.line).toBe(
-      'You were asked because Ilia Beridze is in your contacts. Others who may fit: Nino Kapanadze. Whom would you recommend?',
+      'You were asked because Ilia Beridze is in your contacts. Others who may fit: Nino Kapanadze.',
     );
     expect(mockQuery.mock.calls[0]?.[1]).toEqual([BRIDGE, ILIA.phone]);
   });
@@ -69,9 +70,7 @@ describe('a mediator asked on behalf of a need', () => {
 
     const picker = await bridgePicker(BRIDGE, { need: 'lawyer' }, 'en');
 
-    expect(picker?.line).toBe(
-      'In your contacts, these may fit: Nino Kapanadze, Dato Lomidze. Whom would you recommend?',
-    );
+    expect(picker?.line).toBe('In your contacts, these may fit: Nino Kapanadze, Dato Lomidze.');
     expect(picker?.choices.slice(0, 3)).toEqual(['Nino Kapanadze', 'Dato Lomidze', 'Someone else']);
   });
 
