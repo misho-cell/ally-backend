@@ -14,10 +14,23 @@ import { statesANeed } from './goalIntent';
  * typed after that button is a goal, and must stay one.
  */
 const SMALL_TALK_RE =
-  /^\s*(?:რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|როგორ\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
+  /^\s*(?:რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|(?:როგორ|კარგად)\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
+
+/**
+ * The tester's 44026 (#2114, conversations 41918 and 41919): „კარგად ხარ?" and
+ * „ნახვამდის" were not on the list, so each took the long path (17 s and 12 s)
+ * and came back with the slips the short prompt's samples fix.
+ */
+const FAREWELL_RE =
+  /^\s*(?:ნახვამდის|დროებით|კარგად\s+იყავი(?:თ)?|ღამე\s+მშვიდობისა|(?:good)?\s*bye|see\s+you|good\s+night|пока|до\s+свидания|adiós|hasta\s+luego)[\s!.,)😊🙂👋]*$/iu;
 
 export function isSmallTalk(message: string): boolean {
-  return isBareGreeting(message) || SMALL_TALK_RE.test(message) || isPlainThanks(message);
+  return (
+    isBareGreeting(message) ||
+    SMALL_TALK_RE.test(message) ||
+    FAREWELL_RE.test(message) ||
+    isPlainThanks(message)
+  );
 }
 
 /**

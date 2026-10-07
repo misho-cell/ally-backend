@@ -19,6 +19,13 @@ describe('small talk', () => {
     'How are you?',
     'Thank you',
     'Как дела?',
+    'კარგად ხარ?',
+    'ნახვამდის',
+    'ნახვამდის!',
+    'კარგად იყავი',
+    'ღამე მშვიდობისა',
+    'Bye',
+    'Goodbye!',
   ])('„%s" is small talk', (line) => {
     expect(isSmallTalk(line)).toBe(true);
   });
@@ -29,6 +36,8 @@ describe('small talk', () => {
     'რა დღეა დღეს? და ვინ იცნობს ნოტარიუსს?',
     'Who knows a good dentist?',
     'ფოტოგრაფი',
+    'კარგად',
+    'ნახვამდის, და ხვალ ნოტარიუსი მომიძებნე',
   ])('„%s" is not', (line) => {
     expect(isSmallTalk(line)).toBe(false);
   });

@@ -34,6 +34,8 @@ describe('a listed small-talk line', () => {
     expect(text).toContain('„კარგად, მადლობა! შენ როგორ ხარ?"');
     expect(text).toContain('„არაფრის! კიდევ რამეში დაგეხმარო?"');
     expect(text).toContain('„გამარჯობა! რით დაგეხმარო?"');
+    expect(text).toContain('„კარგად, მადლობა რომ მკითხე! შენ?"');
+    expect(text).toContain('„ნახვამდის! კარგად იყავი."');
     expect(text).toContain('მფლობელს Netai-ს ნუ უწოდებ');
     expect(chat).toMatch(/საკუთარ შესაძლებლობებზე არ ილაპარაკო\.' \+\s+SMALL_TALK_GEORGIAN;/u);
   });
