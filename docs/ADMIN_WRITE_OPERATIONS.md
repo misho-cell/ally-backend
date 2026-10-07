@@ -5774,3 +5774,11 @@ Case 1's „გამაცნობს თუ არა" (asking the helper whe
 returns: „Not sent: „later" is not an answer. The asker has already been told when they will hear back,
 and the question stays open until the real answer. Send nothing; tell the helper in one short sentence
 that you will remind them then." Undo: revert.
+
+**§98.7 — 2183 editor wording, the exact text, shipped alone (`askEditor.service.ts`).**
+- Rule 1's first-person list gains „introduce me", „get me introduced" and „გამაცნობ".
+- New rule 7: „Every name — of <asker>, of a person, a firm, a place — is the one in the owner's words,
+  in its plain form: a Georgian case ending is not part of a name („ორბიში" means „in Orbi" → Orbi;
+  „ბერიძეს" → Beridze). A name or surname is never changed. In a question that is not in Georgian,
+  names are written in Latin letters."
+Undo: revert.
