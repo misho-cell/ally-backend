@@ -493,6 +493,31 @@ export function instructionQuestion(sentence: string): string | null {
   return clauseOrNull(words.slice(nameEnd === 0 ? 0 : nameEnd + 1).join(''));
 }
 
+/**
+ * The tester's 45155 (T2509): the person an instruction names, as typed, with
+ * the dative „ს" taken off („ჰკითხე გელა გამოგონილს იცნობს…" → „გელა
+ * გამოგონილ"). Only a fallback for when the owner's own label cannot be read;
+ * null when the name cannot be told apart from the question.
+ */
+export function instructionNamed(sentence: string): string | null {
+  const match = CONTACT_VERB_RE.exec(sentence);
+  if (match === null) return null;
+  const before = datedNameBefore(sentence.slice(0, match.index));
+  if (before !== '') return before;
+  const words = sentence
+    .slice(match.index + match[0].length)
+    .split(/\s+/u)
+    .filter((w) => w !== '');
+  const nameEnd = words.findIndex((w) => DATIVE_WORD_RE.test(w));
+  if (nameEnd < 0) return null;
+  const named = words
+    .slice(0, nameEnd + 1)
+    .join(' ')
+    .replace(/[,:]$/u, '')
+    .replace(/-?ს$/u, '');
+  return named.trim() === '' ? null : named.trim();
+}
+
 function clauseOrNull(text: string): string | null {
   const clause = text.replace(LEADING_LINK_RE, '').trim();
   return clause === '' ? null : clause;

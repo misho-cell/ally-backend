@@ -1,4 +1,4 @@
-import { instructionQuestion } from '../goalIntent';
+import { instructionNamed, instructionQuestion } from '../goalIntent';
 
 /** QA-001 run 2 (conv 42765): the server's send carried the owner's whole line. */
 describe('theServerAsksOnlyTheQuestion', () => {
@@ -26,5 +26,18 @@ describe('theServerAsksOnlyTheQuestion', () => {
   it('gives up when the question cannot be told apart', () => {
     expect(instructionQuestion('ჰკითხე გიგა')).toBeNull();
     expect(instructionQuestion('no instruction here')).toBeNull();
+  });
+});
+
+describe('the person named, as typed (45155)', () => {
+  it('is the name before the question, without the dative', () => {
+    expect(instructionNamed('ჰკითხე გელა გამოგონილს იცნობს თუ არა გია ბერიძეს')).toBe(
+      'გელა გამოგონილ',
+    );
+    expect(instructionNamed('ჰკითხე Netai Test Lado N1-ს იცნობს თუ არა გიას')).toBe(
+      'Netai Test Lado N1',
+    );
+    expect(instructionNamed('ნინოს ჰკითხე იცნობს თუ არა გიას')).toBe('ნინო');
+    expect(instructionNamed('ჰკითხე გიგა')).toBeNull();
   });
 });
