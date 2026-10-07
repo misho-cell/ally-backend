@@ -77,4 +77,14 @@ describe('an owner instruction left unsent', () => {
       expect(line.length).toBeGreaterThan(0);
     }
   });
+
+  it('does not take a refused introduction for a sent question (44884)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "[...ACTING_TOOLS].filter((name) => name !== 'ask_contact' && name !== 'request_introduction')",
+    );
+    expect(
+      chat.match(/!toolNamesUsed\.some\(\(name\) => ACTED_BY_NAME\.has\(name\)\)/gu),
+    ).toHaveLength(2);
+  });
 });

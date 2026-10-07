@@ -11330,6 +11330,17 @@ const ACTING_TOOLS: ReadonlySet<string> = new Set([
   'send_answer_to_asker',
 ]);
 
+/**
+ * The tester's 44884 (case 1, 9 of 10): request_introduction was called and
+ * REFUSED („has never opened the app"), and the name alone switched the unsent
+ * guard off — nothing went, and the server did not step in. For the two tools
+ * that ask somebody, whether anything went is read from the thread itself
+ * (instructionLeftUnsent), not from the call; the rest still count by name.
+ */
+const ACTED_BY_NAME: ReadonlySet<string> = new Set(
+  [...ACTING_TOOLS].filter((name) => name !== 'ask_contact' && name !== 'request_introduction'),
+);
+
 /** What a promise to write was missing, when nothing was sent. */
 enum PromiseGap {
   /** Board #830: the goal on this thread has no plan and none proposed. */
@@ -12430,7 +12441,7 @@ async function runToolLoop(
     !answeringALaterTap &&
     runModes.get(runId) !== 'incoming_ask' &&
     !claimedAnAskNobodyGot &&
-    !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
+    !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
   if (instructionUnsent) {
     // eslint-disable-next-line no-console
@@ -12665,7 +12676,7 @@ async function runToolLoop(
   // The tester's 44367: the second chance sent nothing either — no promise stands.
   if (
     instructionUnsent &&
-    !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
+    !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
