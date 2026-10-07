@@ -356,6 +356,21 @@ export const PROMISED_ACTION_NO_GOAL_NUDGE =
   'პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)';
 
 /**
+ * The tester's 44364 (case 1): the owner's typed instruction to ask one of
+ * their own contacts ended in „I'll ask" or in the question written back to the
+ * owner, and nobody was asked. The instruction is the permission (D316): no
+ * plan, no approve card — the ask itself.
+ */
+export const INSTRUCTION_UNSENT_NUDGE =
+  '(სისტემური შენიშვნა: მფლობელის ბოლო ხაზი მითითებაა — ჰკითხო მისი ერთ-ერთი კონტაქტი — მაგრამ ' +
+  'ამ გაშვებაში არავისთვის არაფერი გაგზავნილა. ეს მითითება თავადაა მისი თანხმობა: გეგმა და ' +
+  'დამტკიცების ღილაკები არ დახატო. ახლავე: თუ ამ საუბარში მიზანი არ არის, გახსენი create_task-ით, ' +
+  'გამოიძახე grant_task_permission (confirmed: true), მერე ask_contact მფლობელის კითხვით და ' +
+  'ერთ ხაზში უთხარი, ვის გაეგზავნა. მხოლოდ თუ სახელს რამდენიმე კონტაქტი შეესაბამა, ჰკითხე ' +
+  'მფლობელს, რომელს გულისხმობს. მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან ' +
+  'დაწერე, ბოდიშის გარეშე.)';
+
+/**
  * The tester's 37795 (38319): after the members note the turn wrote the whole
  * answer again in other words — „no direct way found" and the question about
  * the names twice in one bubble — and the low word overlap let it follow the
