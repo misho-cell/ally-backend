@@ -62,6 +62,22 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
+**Night of 7→8 October.** Put to Misho in Georgian at 21:48Z, before the window, and still
+unanswered. Put them again in the morning:
+
+- **R. Prompt changes (D44), each needs his yes:**
+  - 2181: wire the built daily contact question (a17e56f, not connected). The classifier refused the wiring.
+  - 2478: one rule that the model never tells the owner about the server's own notes.
+  - 2479: an introduction instruction must use request_introduction, not ask_contact.
+  - 1454: the plan as one human sentence.
+  - 2182 and 2114: "what do you need to know about me", and short Georgian talk.
+  - 2183: editor wording (model-written first person, „knows a guy", changed surnames).
+- **S. Money:** one real payment of the cheapest plan plus a Stripe refund closes 232, 233 and 1520.
+  390 needs one real withdrawal.
+- **T. People:** logins (383); one test with Giorgi's computer off (562); a real sign-up for 389;
+  Lika's own .xlsx (2377).
+- **U. Order of the big builds:** 1849 or 1882 first; when Chorus 1687–1699 start.
+
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
 Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.
