@@ -68,6 +68,7 @@ import { inviteContact } from './tools/inviteContact';
 import { getInviteLink } from './referralLink.service';
 import { getNextQuestion, recordAnswer } from './partH.service';
 import {
+  carriesLanguage,
   detectRunLanguage,
   languageOfConversation,
   toolStepCaption,
@@ -13890,7 +13891,12 @@ export async function processChat(
      * owner's own sentence, which is the same rule languageOfConversation
      * applies and the only evidence available this early.
      */
-    const stopLang = detectRunLanguage(userMessage);
+    // #2344 (Lika and Ninia, point 29): the Stop button's own short word says no
+    // language, and the reply came in English to a Georgian conversation. A line
+    // that carries none is answered in the conversation's language.
+    const stopLang = carriesLanguage(userMessage)
+      ? detectRunLanguage(userMessage)
+      : await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
     /**
      * The owner's own line is stored HERE, and it has to be.
      *
