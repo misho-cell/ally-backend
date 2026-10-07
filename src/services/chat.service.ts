@@ -124,7 +124,7 @@ import {
   linesUnderReply,
   nobodyAnsweredIsUntrue,
   openAskLines,
-  peopleAskedOnGoal,
+  statusesDiffer,
   withAskLines,
   withoutNobodyAnswered,
 } from './askStatusSection';
@@ -4404,7 +4404,7 @@ async function withGoalAskLines(reply: string, threadId: number): Promise<string
     const now = new Date();
     const cleaned = nobodyAnsweredIsUntrue(asks, held, now) ? withoutNobodyAnswered(reply) : reply;
     const lines = openAskLines(asks, held, language, now);
-    return withAskLines(cleaned, linesUnderReply(lines, peopleAskedOnGoal(asks, held)));
+    return withAskLines(cleaned, linesUnderReply(lines, statusesDiffer(asks, held, now)));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn(`[ask-state] thread ${threadId}: lines not added:`, (err as Error).message);

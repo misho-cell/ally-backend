@@ -114,19 +114,45 @@ export function withAskLines(reply: string, lines: readonly string[]): string {
 }
 
 /**
- * D714 (the founder, 7 Oct, after his own screen showed „<name>: კითხვა მიუვიდა,
- * პასუხს ველოდები" under a sentence that had just said the same): the lines
- * under a reply are for a goal that asked SEVERAL people — one per person tells
- * who answered and who did not. With one person asked, the reply already says
- * it, and the line goes.
+ * D714, then D722 (the founder, 7 Oct, shown both versions): „that must be
+ * work, when there are several (not one) people and there are different
+ * statuses. otherwise it is silly". One person asked, or several who all stand
+ * the same — the reply's own sentence says it, and no line goes under it. Only
+ * when the people asked stand differently does each get a line.
  */
-export function peopleAskedOnGoal(
-  asks: readonly { readonly to_user_id: number }[],
-  held: readonly HeldAskStamp[],
-): number {
-  return new Set([...asks.map((ask) => ask.to_user_id), ...held.map((row) => row.to_user_id)]).size;
+const DAY_CHARS = 10;
+
+function dayKey(value: string | Date | null | undefined): string {
+  if (value instanceof Date) return value.toISOString().slice(0, DAY_CHARS);
+  return (value ?? '').slice(0, DAY_CHARS);
 }
 
-export function linesUnderReply(lines: readonly string[], peopleAsked: number): readonly string[] {
-  return peopleAsked > 1 ? lines : [];
+function statusOf(ask: StatedAsk, now: Date): string {
+  const state = askStateOf(ask, now);
+  const until =
+    state === AskState.Held ? ask.held_until : state === AskState.Later ? ask.later_until : null;
+  return `${state}|${dayKey(until)}`;
+}
+
+export function statusesDiffer(
+  asks: readonly StatedAsk[],
+  held: readonly HeldAskStamp[],
+  now: Date,
+): boolean {
+  const people = new Set<number>();
+  const statuses = new Set<string>();
+  for (const ask of latestPerPerson(asks)) {
+    people.add(ask.to_user_id);
+    statuses.add(statusOf(ask, now));
+  }
+  for (const row of held) {
+    if (people.has(row.to_user_id)) continue;
+    people.add(row.to_user_id);
+    statuses.add(`${AskState.Held}|${dayKey(row.reopens_at)}`);
+  }
+  return people.size > 1 && statuses.size > 1;
+}
+
+export function linesUnderReply(lines: readonly string[], differ: boolean): readonly string[] {
+  return differ ? lines : [];
 }
