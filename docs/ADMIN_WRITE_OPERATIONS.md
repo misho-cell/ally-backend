@@ -5640,6 +5640,18 @@ UNDO    (before the sweep picks them up, ~1 min)
 
 After the sweep a run cannot be undone; the engine sets each goal's next check again itself.
 
+**EXECUTED by Misho in DBeaver, 7 October.**
+- 11:41:42Z: the statement above, 1 row. 15677 had been closed at 07:03Z that morning, so only 5482
+  was open. `next_wake_at` is `timestamp without time zone` and the DBeaver session ran on CEST, so
+  `NOW()` stored 13:41 local time. The server reads that as UTC, so the wake was 2 hours late.
+- 11:52:15Z: `UPDATE tasks SET next_wake_at = (NOW() AT TIME ZONE 'UTC') WHERE id = 5482 AND
+  status = 'open'`, 1 row.
+- READ BACK: the sweep ran 5482 at 11:53:59Z. Its reply: every realistic path is already checked,
+  and it waits on the owner's decision on the wider circle. Next check set by the engine for
+  8 Oct 11:53Z.
+- LESSON for any future write to a timestamp column here: use `NOW() AT TIME ZONE 'UTC'` from a
+  client that is not on UTC.
+
 ## §94 — A TEST SEAT'S FIRST PAYMENT, FOR #1916 (no card, no Stripe)
 
 **Authorised by Misho, 6 October ~21:25 UTC, directly in the session:** „კი, ააშენე #1916-ის ტესტის

@@ -74,7 +74,7 @@ while its questions are unanswered is a list that loses them.
 
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 
-P. **§93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
+P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
   failed in the outage (register §93). I have no write path to the live DB, so the statement is
   Misho's to run in DataGrip after 07:00 UTC:
   `UPDATE tasks SET next_wake_at = NOW() WHERE id IN (5482, 15677) AND status = 'open';`
