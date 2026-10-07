@@ -595,7 +595,6 @@ export async function mcpRespondToRequest(
     request_ref: string;
     accept: boolean;
     response?: string;
-    channel?: 'direct' | 'via_mediator';
   },
 ): Promise<McpToolPayload> {
   const ref = args.request_ref ?? '';
@@ -603,13 +602,8 @@ export async function mcpRespondToRequest(
   if (!ref.startsWith(REQUEST_REF_PREFIX) || !Number.isInteger(requestId) || requestId <= 0) {
     return { success: false, error: 'Unknown request_ref — take it from check_my_inbox.' };
   }
-  const raw = await respondToIntroduction(
-    userId,
-    requestId,
-    args.accept,
-    args.response,
-    args.channel,
-  );
+  // D709: a yes connects them; the server picks how.
+  const raw = await respondToIntroduction(userId, requestId, args.accept, args.response);
   return scrubDeep(raw) as McpToolPayload;
 }
 

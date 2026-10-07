@@ -23,71 +23,34 @@ import { join } from 'path';
  * one, and it is the one that withholds.
  */
 const SERVICE = readFileSync(join(__dirname, '..', 'introduction.service.ts'), 'utf8');
-import { introChannelRequired } from '../introOpening';
 
 const TOOL = readFileSync(join(__dirname, '..', 'tools', 'respondToIntroduction.ts'), 'utf8');
 const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-describe('an accept has to say how', () => {
-  it('is refused outright when the channel is missing', () => {
-    // Defaulting would hand over a phone number because nobody was asked —
-    // silently, which is worse than the arrangement it replaces.
-    expect(TOOL).toContain('accepted && channel === undefined');
-    expect(TOOL).toContain('needs_channel: true');
+/**
+ * D709 (the founder, 7 Oct): „Yes, connect them" connects them. The mediator
+ * is no longer asked HOW; the server picks — directly when there is a number
+ * to hand over, through the mediator when there is none (G6).
+ */
+describe('an accept connects them, and the server picks how', () => {
+  it('is never refused for a missing channel', () => {
+    expect(TOOL).not.toContain('needs_channel');
+    expect(TOOL).not.toContain('channel:');
   });
 
-  it('names both options and the buttons, so one retry fixes it', () => {
-    // Row 215: a refusal names the way forward rather than being a wall.
-    const refusal = introChannelRequired('ka');
-    expect(refusal).toContain('direct');
-    expect(refusal).toContain('via_mediator');
-    expect(refusal).toContain('პირდაპირ დააკავშირე');
-    expect(refusal).toContain('ჩემი გავლით');
-    expect(refusal).toContain('არა, ამჯერად');
-    // And says nothing was lost, because nothing was: the yes is not recorded.
-    expect(refusal).toContain('არაფერი დაკარგულა');
-  });
-
-  /**
-   * AND THE BUTTONS ARE IN THE MEDIATOR'S LANGUAGE, caught on a pre-flight
-   * read minutes before the seat was due to answer the first introduction in
-   * fourteen days — as an ENGLISH-speaking mediator.
-   *
-   * The refusal is model-facing, which is fine on its own. What is not fine is
-   * that it names the exact BUTTON LABELS the model puts on the person's
-   * screen. Three Georgian buttons, asking somebody whether to give away a
-   * third person's phone number.
-   *
-   * This product has been bitten by a Georgian button in an English thread
-   * before and it was not cosmetic then either — an unrecognised approve label
-   * made `approvalBelongsToThePlan` false and an owner's yes had nowhere to
-   * land. Here the stakes are a phone number.
-   */
-  it.each(['en', 'ru', 'es'] as const)('offers %s buttons to an %s mediator', (language) => {
-    const refusal = introChannelRequired(language);
-    expect(refusal).not.toMatch(/[Ⴀ-ჿ]/);
-    // The two channel VALUES are code and stay as they are in every language.
-    expect(refusal).toContain('direct');
-    expect(refusal).toContain('via_mediator');
-    // Three buttons, still, and the third is the decline.
-    expect(refusal).toContain('present_choices');
-  });
-
-  it('the tool asks the mediator which language, not the requester', () => {
-    expect(TOOL).toContain('userLanguage(mediatorUserId)');
-  });
-
-  it('does not ask a decline for a channel — there is nothing to arrange', () => {
-    expect(TOOL).toContain('accepted && channel === undefined');
-    expect(TOOL).not.toContain('!accepted && channel');
-  });
-
-  it('only accepts the two values, from the model’s free-text input', () => {
-    const dispatch = CHAT.slice(
-      CHAT.indexOf("case 'respond_to_introduction'"),
-      CHAT.indexOf("case 'get_intro_status'"),
+  it('is read as direct when unsaid, and a decline stores no channel', () => {
+    expect(SERVICE).toContain(
+      'const channel: IntroChannel = opts.channel ?? INTRO_CHANNEL_WHEN_UNSAID;',
     );
-    expect(dispatch).toContain("said === 'direct' || said === 'via_mediator'");
+    expect(SERVICE).toContain("action === 'accept' ? channel : null,");
+  });
+
+  it('is not told to the model as a choice to offer', () => {
+    const tool = CHAT.slice(CHAT.indexOf('const RESPOND_TO_INTRODUCTION_TOOL'));
+    const definition = tool.slice(0, tool.indexOf('\n};\n'));
+    expect(definition).not.toContain('ჩემი გავლით');
+    expect(definition).not.toContain('via_mediator');
+    expect(CHAT).not.toContain('„პირდაპირ დააკავშირე" / „ჩემი გავლით"');
   });
 });
 
@@ -147,7 +110,7 @@ describe('what each channel does', () => {
     // NULL is not a third option: it means nobody was asked, and what those
     // people actually got was the handover. Reading it as anything else would
     // rewrite what already happened to them.
-    expect(SERVICE).toContain("opts.channel ?? 'direct'");
+    expect(SERVICE).toContain("const INTRO_CHANNEL_WHEN_UNSAID: IntroChannel = 'direct';");
   });
 });
 

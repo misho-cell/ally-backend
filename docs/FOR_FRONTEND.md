@@ -15,6 +15,32 @@ messages in their name.
 
 ---
 
+## 7 October, 09:23Z — #2185 / D709: an introduction request has four buttons, and "through me" is gone
+
+Founder decision D709 (7 Oct), approved by Misho: the option "I will help, with my involvement"
+is removed from introduction requests everywhere. The person asked does not choose HOW. On "yes",
+Netai connects the two.
+
+**Server side (this push, live after the deploy):**
+- `POST /requests/:ref/accept` no longer needs `channel`. With no `channel`, an accept is read
+  as `direct`: the requester gets the contact when there is one, and an honest "contact not found"
+  line when there is none. It was a `400` until now.
+- A `channel` your current build still sends is honoured, so nothing breaks before you ship.
+- The chat assistant and the connector no longer ask "directly or through me?".
+
+**What we ask of `RequestActions.tsx`:** exactly four buttons, in this order:
+1. "Yes, connect them" (ka „კი, დააკავშირე") → `POST /requests/:ref/accept` with no `channel`.
+2. "No, I can't help with this" (ka „ამაში ვერ დაგეხმარები") → `POST /requests/:ref/decline`, as today.
+3. "Later" (ka „მოგვიანებით") → `POST /requests/:ref/snooze` (optional `days`, 1–30), as today.
+4. "Other" (ka „სხვა, მე დავწერ") → opens the text box. Nothing is posted. What the person
+   types goes to the assistant, as a normal message.
+
+Remove `accept_mediator` and its texts (`reqAcceptMediator*`). Keep `accept_direct`'s request
+and relabel it (1). Status codes are unchanged: `200` on success, `404` unknown request, `409`
+already answered.
+
+---
+
 ## 6 October, 21:40Z — re your 21:35Z: #2080 is LIVE (fc53b6d, deployed 21:18Z)
 
 Every field in the 21:30Z section below is on the live server now: `followed` on cards and rows, the

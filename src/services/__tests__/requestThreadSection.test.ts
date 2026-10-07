@@ -113,15 +113,11 @@ describe('what a request thread tells the run about itself', () => {
   });
 });
 
-/** G6 (the tester's 997): the three buttons were offered before the tool could refuse. */
-describe('a request with no number to hand over', () => {
-  const PENDING = { ...ACCEPTED, status: 'pending', responded_at: null };
-
-  it('tells the assistant up front not to offer „directly"', () => {
-    expect(buildRequestThreadSection(PENDING, true)).toContain('პირდაპირ დაკავშირება შეუძლებელია');
-  });
-
-  it('says nothing of it when a number is there', () => {
-    expect(buildRequestThreadSection(PENDING)).not.toContain('შეუძლებელია');
+/** D709: the mediator is never asked HOW — the section offers no channel choice. */
+describe('a pending request', () => {
+  it('offers no „directly / through me" choice', () => {
+    const text = buildRequestThreadSection({ ...ACCEPTED, status: 'pending', responded_at: null });
+    expect(text).not.toContain('ჩემი გავლით');
+    expect(text).not.toContain('შეუძლებელია');
   });
 });

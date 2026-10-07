@@ -307,7 +307,7 @@ describe('the mediator’s own book is where the number comes from', () => {
    */
   it('takes a single match and refuses to choose between two', () => {
     const at = intro.indexOf('let resolvedFromMediator');
-    const block = intro.slice(at, at + 700);
+    const block = intro.slice(at, at + 1200);
 
     expect(block).toContain('matches.length === 1 ? matches[0] : null');
     expect(block).toContain('findContactPhonesByName(String(mediatorUserId), req.target_name, 2)');
@@ -320,12 +320,12 @@ describe('the mediator’s own book is where the number comes from', () => {
    */
   it('does not look unless the case calls for it', () => {
     const at = intro.indexOf('let resolvedFromMediator');
-    const block = intro.slice(at, at + 900);
+    const block = intro.slice(at, at + 1200);
 
     expect(block).toContain("action === 'accept'");
-    expect(block).toContain("(opts.channel ?? INTRO_CHANNEL_WHEN_UNSAID) === 'direct'");
+    expect(block).toContain("const readsAsDirect = channel === 'direct';");
     expect(block).toContain('!req.target_phone');
-    expect(intro).toContain("const INTRO_CHANNEL_WHEN_UNSAID = 'direct';");
+    expect(intro).toContain("const INTRO_CHANNEL_WHEN_UNSAID: IntroChannel = 'direct';");
   });
 
   /**
@@ -344,7 +344,7 @@ describe('the mediator’s own book is where the number comes from', () => {
    */
   it('stores the number as it was written, not as digits', () => {
     const at = intro.indexOf('target_phone = COALESCE(');
-    const block = intro.slice(at, at + 700);
+    const block = intro.slice(at, at + 1200);
 
     expect(block).toContain('SELECT ua.phone FROM "UserAlias" ua');
     // readFileSync gives the SOURCE, where the escape is written twice.

@@ -92,11 +92,9 @@ import {
   getIntroStatusForRequester,
   getIntroStatusForMediator,
   getIntroStatusForTarget,
-  IntroChannel,
   getPassedOnAsks,
   PendingRequest,
   RespondedRequest,
-  mediatorCanHandOver,
   pendingIntroInMediatorThread,
 } from './introduction.service';
 import {
@@ -734,15 +732,9 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
   name: 'respond_to_introduction',
   description:
     'Respond to a pending introduction request (when acting as mediator). Call after the user ' +
-    'decides whether to help. ON A YES YOU MUST ALSO ASK HOW, BEFORE CALLING THIS: the choice ' +
-    'between putting the two in touch directly and keeping the conversation through this user ' +
-    "is THEIRS, not ours, and it decides whether the other person's contact is handed over. " +
-    'Offer three buttons with present_choices — „პირდაპირ დააკავშირე" / „ჩემი გავლით" / ' +
-    '„არა, ამჯერად" — and pass their answer as `channel`. An accept with no `channel` is ' +
-    // #1783 (a): „გაცნობა ჩემი გავლით გავაგრძელოთ?" in Netai's voice read as „through Netai".
-    "refused and nothing is recorded. The button labels are the user's own words and stay " +
-    'exactly „ჩემი გავლით"; only in YOUR question say „შენი გავლით" (through you). Ask it ' +
-    'as a question, and keep any condition they gave word for word (e.g. „only").',
+    'decides whether to help. D709: a yes connects the two — the server decides how, so never ' +
+    'ask the user HOW to connect them and never offer a choice between directly and through ' +
+    'them. Keep any condition they gave word for word (e.g. „only").',
   input_schema: {
     type: 'object',
     properties: {
@@ -753,15 +745,6 @@ const RESPOND_TO_INTRODUCTION_TOOL: AnthropicTool = {
       accepted: {
         type: 'boolean',
         description: 'Whether the mediator agrees to help with the introduction',
-      },
-      channel: {
-        type: 'string',
-        enum: ['direct', 'via_mediator'],
-        description:
-          "REQUIRED when accepted is true, and it is the user's choice rather than yours. " +
-          '„direct": the two are put in touch and the other person\'s contact goes to the ' +
-          'requester. „via_mediator": the contact is NOT handed over and messages keep coming ' +
-          'through this user. Do not guess it and do not infer it from a plain „yes" — ask.',
       },
       response: {
         type: 'string',
@@ -4308,16 +4291,6 @@ export function buildIncomingAskSection(ask: IncomingAsk): string {
  * asking whom, and here is what the owner has already decided — so a decision
  * already made is never asked for a second time.
  */
-/**
- * G6 (the tester's 997): the mediator was shown the three buttons BEFORE the
- * tool could refuse „direct" — his assistant drew them from memory. So the
- * section says it up front when there is no number to hand over.
- */
-const NO_DIRECT_LINE =
-  '\n- პირდაპირ დაკავშირება შეუძლებელია: ეს ადამიანი მფლობელის ტელეფონში ერთ ცალსახა ' +
-  'კონტაქტად არ არის. „პირდაპირ" ღილაკი არასოდეს შესთავაზო — მხოლოდ „ჩემი გავლით" / ' +
-  '„არა, ამჯერად".';
-
 /** The tester's 1110: whose asks held a question back; nothing when it cannot be read. */
 /** #1684: the per-person lines a goal reply ends with; '' when nobody is waited on. */
 async function askStatusSectionOrNothing(task: Task, asks: readonly TaskAsk[]): Promise<string> {
@@ -4411,19 +4384,7 @@ async function heldAsksNoteOrNothing(taskId: number, userId: string): Promise<st
   }
 }
 
-/** Whether this run's request has no number to hand over (G6); false when it cannot be read. */
-async function directIsImpossible(userId: string, req: ThreadRequest | null): Promise<boolean> {
-  if (req === null || req.direct || req.status !== 'pending') return false;
-  try {
-    return (await mediatorCanHandOver(userId, req.id)) === false;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[intro] could not check the request for a number:', (err as Error).message);
-    return false;
-  }
-}
-
-export function buildRequestThreadSection(req: ThreadRequest, noDirect = false): string {
+export function buildRequestThreadSection(req: ThreadRequest): string {
   const asker = req.requester_name?.trim() || 'Netai-ს მომხმარებელი';
   const why = req.message?.trim() ? `\n- მიზეზი, რომელიც მან დაწერა: „${req.message.trim()}"` : '';
   const answered =
@@ -4445,7 +4406,6 @@ export function buildRequestThreadSection(req: ThreadRequest, noDirect = false):
     `${req.direct ? 'თხოვნა პირდაპირ მფლობელს ეხება.' : 'მფლობელი შუამავალია.'}` +
     why +
     response +
-    (noDirect ? NO_DIRECT_LINE : '') +
     `\n${answered}\n` +
     '- ეს საუბარი ამ თხოვნაზეა. როცა მფლობელი ზემოთ დასახელებულ სახელს ახსენებს, ან ' +
     'ამბობს „მას"/„ის" — სწორედ ეს ორი ადამიანი იგულისხმება. ნუ ეძებ მათ თავიდან ' +
@@ -4833,7 +4793,6 @@ async function buildAgentSystemPrompt(
   //
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
-  const noDirect = await directIsImpossible(userId, threadRequest);
   const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
   const askStates = boundTask ? await askStatusSectionOrNothing(boundTask, boundAsks) : '';
   const waveNote = boundTask ? await waveSectionOrNothing(boundTask) : '';
@@ -4857,7 +4816,7 @@ async function buildAgentSystemPrompt(
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.
-      (threadRequest ? buildRequestThreadSection(threadRequest, noDirect) : '') +
+      (threadRequest ? buildRequestThreadSection(threadRequest) : '') +
       // Row 305 (b): an ask and a request in one conversation, named apart so
       // a bare „yes" is asked about rather than sent to the wrong one. Only
       // while BOTH are open: once the question is answered, the request is
@@ -6934,10 +6893,9 @@ const runRelaySent = new Set<string>();
  */
 const INTRO_NOT_AN_ANSWER =
   'Nothing was sent, and nothing should be: this line answers the open introduction request ' +
-  '(request_id above), not the earlier question. If it is a yes, ask in one question whether ' +
-  'to connect them directly or „შენი გავლით", keeping any condition word for word, and offer ' +
-  'present_choices „პირდაპირ დააკავშირე" / „ჩემი გავლით" / „არა, ამჯერად"; then call ' +
-  'respond_to_introduction. Never say anything was sent.';
+  '(request_id above), not the earlier question. Call respond_to_introduction with it — a yes ' +
+  'connects them (D709: never ask how), keeping any condition word for word. Never say ' +
+  'anything was sent.';
 
 /** The open request this thread was asked about, or null; a failed read is null, logged. */
 async function openIntroHere(userId: string, threadId: number | undefined): Promise<number | null> {
@@ -8501,15 +8459,12 @@ async function executeToolCall(
       return introOutcome;
     }
     case 'respond_to_introduction': {
-      const said = input['channel'];
-      const channel =
-        said === 'direct' || said === 'via_mediator' ? (said as IntroChannel) : undefined;
+      // D709: no channel from the model — the server picks how they are connected.
       const responded = await respondToIntroduction(
         userId,
         input['request_id'] as number,
         input['accepted'] as boolean,
         await mediatorsOwnWords(threadId, input['response']),
-        channel,
       );
       await noteMediatorCloseOnScreen(runId, threadId, input['request_id'], responded);
       return responded;

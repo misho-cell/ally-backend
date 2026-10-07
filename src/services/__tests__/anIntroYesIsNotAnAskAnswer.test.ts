@@ -33,12 +33,13 @@ describe('pendingIntroInMediatorThread', () => {
 describe('the answer tool while a request is open', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
-  it('refuses before anything else and points to the channel question', () => {
+  it('refuses before anything else and points to the introduction', () => {
     const at = chat.indexOf("case 'send_answer_to_asker': {");
     const body = chat.slice(at, at + 900);
     expect(body).toContain('const openIntro = await openIntroHere(userId, threadId);');
     expect(body.indexOf('openIntroHere')).toBeLessThan(body.indexOf("input['confirmed']"));
-    expect(chat).toContain('respond_to_introduction. Never say anything was sent.');
+    expect(chat).toContain('Call respond_to_introduction with it — a yes ');
+    expect(chat).toContain('connects them (D709: never ask how)');
   });
 });
 

@@ -1,76 +1,25 @@
-import {
-  IntroChannel,
-  mediatorCanHandOver,
-  resolveIntroductionRequest,
-} from '../introduction.service';
-import { introChannelRequired, introChannelWithoutDirect } from '../introOpening';
-import { RunLanguage } from '../runLanguage';
-import { userLanguage } from '../threads.service';
+import { resolveIntroductionRequest } from '../introduction.service';
 
 /**
  * Chat-tool adapter over the shared resolver: the model answers a request the
  * user decided on in the thread. Same guards, push, thread sync and analytics
  * as the REST accept/decline buttons — only the source label differs.
+ *
+ * D709 (the founder, 7 Oct): „Yes, connect them" connects them. The person
+ * asked no longer chooses HOW — the „with my involvement" option is gone
+ * everywhere, and the resolver picks the channel (see channelWhenUnsaid).
  */
-/**
- * Item 5 — an accept must say HOW, and the refusal is the point.
- *
- * Misho's design, 20 September: when the assistant asks a mediator to connect
- * two people it also asks, up front, whether the two are put in touch directly
- * or whether it keeps going through them. The mediator chooses.
- *
- * SO AN ACCEPT WITHOUT A CHANNEL IS REFUSED rather than defaulted. Defaulting
- * would mean handing over somebody's phone number because nobody was asked —
- * which is exactly the arrangement this exists to end, and it would do it
- * silently, which is worse. The refusal names both options and the buttons to
- * offer, so one retry fixes it: row 215's rule, that a refusal must name the
- * way forward rather than be a wall.
- *
- * A DECLINE needs no channel. There is nothing to arrange.
- */
-/** G6's check, or null (the old path) when it cannot be read — logged, never silent. */
-async function handOverCheck(mediatorUserId: string, requestId: number): Promise<boolean | null> {
-  try {
-    return await mediatorCanHandOver(mediatorUserId, requestId);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[intro] could not check for a number to hand over:', (err as Error).message);
-    return null;
-  }
-}
-
 export async function respondToIntroduction(
   mediatorUserId: string,
   requestId: number,
   accepted: boolean,
   response?: string,
-  channel?: IntroChannel,
 ): Promise<object> {
-  // G6: „directly" only when there is a number to hand over.
-  if (accepted && channel !== 'via_mediator') {
-    const canHandOver = await handOverCheck(mediatorUserId, requestId);
-    if (canHandOver === false) {
-      const language = await userLanguage(mediatorUserId).catch(() => 'ka' as RunLanguage);
-      return {
-        success: false,
-        needs_channel: true,
-        direct_unavailable: true,
-        error: introChannelWithoutDirect(language),
-      };
-    }
-  }
-  if (accepted && channel === undefined) {
-    // The MEDIATOR's language: this refusal names the three button labels the
-    // model must put on their screen, and they are the ones choosing whether
-    // somebody's phone number is handed over. See introChannelRequired.
-    const language = await userLanguage(mediatorUserId).catch(() => 'ka' as RunLanguage);
-    return { success: false, needs_channel: true, error: introChannelRequired(language) };
-  }
   const outcome = await resolveIntroductionRequest(
     mediatorUserId,
     { requestId },
     accepted ? 'accept' : 'decline',
-    { response, source: 'chat', ...(channel !== undefined && { channel }) },
+    { response, source: 'chat' },
   );
   if (!outcome.ok) {
     return { success: false, error: outcome.error ?? 'მოთხოვნა ვერ მოიძებნა' };

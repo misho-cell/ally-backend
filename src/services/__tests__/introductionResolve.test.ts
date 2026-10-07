@@ -194,7 +194,7 @@ describe('resolveIntroductionRequest', () => {
     // The list is asserted whole, deliberately: this file's own history is a
     // parameter list that shifted under a change and took an `integer = text`
     // P0 with it.
-    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', null, null]);
+    expect(update?.[1]).toEqual(['accepted', 'დაუკავშირდი', 5, '7', 'direct', null]);
     expect(mockPush).toHaveBeenCalledWith(
       '9',
       expect.objectContaining({ title: expect.any(String) }),

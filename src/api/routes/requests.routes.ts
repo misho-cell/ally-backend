@@ -16,9 +16,6 @@ import {
 import { scrubText } from '../../services/privacyScrub';
 import { ApiResponse } from '../../types';
 
-const CHANNEL_REQUIRED_ERROR =
-  'An accept must say how to connect: channel is direct or via_mediator. Nothing was changed.';
-
 const requestsRouter = Router();
 
 const ACTIONS: readonly IntroductionAction[] = ['accept', 'decline', 'snooze'];
@@ -186,21 +183,9 @@ requestsRouter.post(
         channel?: IntroChannel;
       };
 
-      /**
-       * THE REFUSAL, NOW TAKEN — 1 October. The note above left it open as a
-       * product call while a refusal could break the button under real people.
-       * That cost is gone: the app has had no bare accept since 20 September,
-       * both of its accepts send a channel (the frontend, cf31663, checked the
-       * one caller), and the only channel-less accept since then (request
-       * 2245) was a direct API call in a test. Defaulting it handed out a
-       * number nobody had agreed to give; refusing makes a broken caller
-       * visible on its first attempt. The chat tool refuses the same way.
-       */
-      if (action === 'accept' && channel === undefined) {
-        res.status(400).json({ success: false, error: CHANNEL_REQUIRED_ERROR });
-        return;
-      }
-
+      // D709 (the founder, 7 Oct): an accept that names no channel connects
+      // them — the resolver decides how. A channel an older app still sends
+      // is honoured.
       const outcome = await resolveIntroductionRequest(userId, { requestRef: ref }, action, {
         response,
         snoozeDays: days,

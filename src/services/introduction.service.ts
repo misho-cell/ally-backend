@@ -45,7 +45,7 @@ import { relayedForReader } from './askTranslation.service';
 import { RunLanguage } from './runLanguage';
 
 /** §16: an accept that names no channel is read as a direct one. */
-const INTRO_CHANNEL_WHEN_UNSAID = 'direct';
+const INTRO_CHANNEL_WHEN_UNSAID: IntroChannel = 'direct';
 
 export interface PendingRequest {
   id: number;
@@ -1349,11 +1349,11 @@ export async function resolveIntroductionRequest(
    * today's behaviour.
    */
   let resolvedFromMediator: string | null = null;
-  // Tester 945 (request 2245): an accept with NO channel is read as `direct`
-  // everywhere after this (§16), but this lookup asked for `direct` literally —
-  // so it was skipped, and the mediator was told their own contact was not in
-  // their phonebook. The same reading here as below.
-  const readsAsDirect = (opts.channel ?? INTRO_CHANNEL_WHEN_UNSAID) === 'direct';
+  // D709 (the founder, 7 Oct): a yes connects them and the mediator is never
+  // asked how, so an accept that names no channel is the ordinary case — read
+  // as `direct`, which degrades honestly when no number can be found.
+  const channel: IntroChannel = opts.channel ?? INTRO_CHANNEL_WHEN_UNSAID;
+  const readsAsDirect = channel === 'direct';
   if (action === 'accept' && readsAsDirect && !req.target_phone) {
     const matches = await findContactPhonesByName(String(mediatorUserId), req.target_name, 2);
     resolvedFromMediator = matches.length === 1 ? matches[0] : null;
@@ -1389,7 +1389,7 @@ export async function resolveIntroductionRequest(
       opts.response ?? null,
       req.id,
       mediatorUserId,
-      opts.channel ?? null,
+      action === 'accept' ? channel : null,
       resolvedFromMediator,
     ],
   );
@@ -1457,32 +1457,6 @@ export async function resolveIntroductionRequest(
       'SELECT name FROM "User" WHERE id = $1 LIMIT 1',
       [req.mediator_user_id],
     );
-    /**
-     * §16's measurement, and it is what turns that decision from stuck into
-     * decidable.
-     *
-     * An accept with no channel is read as `direct` — the number goes. I
-     * priced refusing it as „breaks the accept button for every real
-     * mediator", and on 20 September at 13:43 the frontend removed plain
-     * `accept` from its type union entirely: a channel-less accept can no
-     * longer be COMPILED on their side, let alone sent. So the cost I wrote
-     * into §16 has largely evaporated and the remaining question is empirical
-     * — does anything still send one? An old cached client, a stale session,
-     * a surface nobody remembered.
-     *
-     * So each one is counted, with the source, from now on. If this line is
-     * silent for a week, refusing costs nothing and §16 answers itself. If it
-     * is not silent, the thing that logged it is the thing that has to change
-     * first, and we will know its name instead of guessing.
-     */
-    if (opts.channel === undefined) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[intro-accept-no-channel] request ${req.id} accepted via ${opts.source} with no ` +
-          'channel — read as `direct`, so the number was handed over without the mediator ' +
-          'being asked. See ADMIN_WRITE_OPERATIONS.md §16.',
-      );
-    }
     outcome = await deliverAcceptOutcome(
       // `answered`, not `req` — the row as the UPDATE left it. This is the
       // whole of rows 308, 309 and 316: `req.target_phone` is the value from
@@ -1490,10 +1464,7 @@ export async function resolveIntroductionRequest(
       // contact could not be found.
       answered,
       mediatorName.rows[0]?.name?.trim() || 'შუამავალმა',
-      // A request answered before the question existed carries NULL, and the
-      // behaviour it actually got was `direct`. Reading it as anything else
-      // would rewrite what already happened to those people.
-      opts.channel ?? 'direct',
+      channel,
     ).catch((err: unknown) => {
       // The accept itself must never fail on outcome delivery — log and
       // degrade to the plain acceptance message.
