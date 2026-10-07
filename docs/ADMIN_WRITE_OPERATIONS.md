@@ -5705,3 +5705,12 @@ A new prompt section, built in code (`goalFirstAskSection`, src/services/goalFir
 from, quoted word for word (at most 600 characters), and three sentences that say the run serves it.
 The owner's later word still decides. Only goal runs carry it. Nothing is written to the database.
 Undo: revert 1390897.
+
+## §97 — THREE APPROVALS, 7 OCTOBER ~16:55 UTC
+
+**Authorised by Misho, directly in the session: „1 კი, 2 კი, 3 კი"**. This answered my three questions, each quoted in full in the session:
+1. **Case 1, the server sends.** The owner's instruction names exactly one of their own contacts. The guard gives the model its extra turn, and that turn also sends nothing. The server then asks that contact the owner's own question itself, through the same editor and the same walls as any ask (D316: the instruction is the consent).
+2. **Editor rule 1 (prompt text, `askEditor.service.ts`).** One sentence is added: „A third person the owner named (a craftsman, a shop, a firm) stays in the third person, by name — „you" only where the asker asks the reader about the reader themself."
+3. **D717 (the founder's rule, board 44356).** The referral chain is paid on the first payment that is NOT refunded. When a first payment is refunded and the person pays again, the chain is paid on that later payment, once. When a payment was really kept, nothing more is ever paid.
+
+Each item ships as its own commit. Undo: revert that commit.
