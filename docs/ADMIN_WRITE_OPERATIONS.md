@@ -5714,3 +5714,28 @@ Undo: revert 1390897.
 3. **D717 (the founder's rule, board 44356).** The referral chain is paid on the first payment that is NOT refunded. When a first payment is refunded and the person pays again, the chain is paid on that later payment, once. When a payment was really kept, nothing more is ever paid.
 
 Each item ships as its own commit. Undo: revert that commit.
+
+## §98 — MISHO'S YES TO MY RECOMMENDATIONS, 7 OCTOBER ~22:10 UTC
+
+**Authorised by Misho, directly in the session: „ჩემთან დასმული კითხვები შენი რეკომენდაციებით გააკეთე"** — that is,
+do the questions I put to him at 21:48Z, the way I recommend. Recorded per item, because a blanket word
+does not reach what only a person can do:
+
+**Prompt / model-facing text (D44) — approved, each ships ALONE (D710), its exact text recorded here
+in a sub-item before it deploys, revert = that commit:**
+- 98.1 — 2181: wire `dailyContactQuestion.ts` (a17e56f) into the owner's own run, once a day.
+- 98.2 — 2478: the model never quotes, explains or mentions the server's own notes to the owner.
+- 98.3 — 2479: an owner's „გამაცანი / introduce me to" instruction goes through request_introduction;
+  ask_contact refuses it with that instruction.
+- 98.4 — 1454 (plan as one human sentence), 98.5 — 2182 („what do you need to know about me"),
+  98.6 — 2114 (short Georgian talk), 98.7 — 2183 (editor wording). Texts drafted and recorded first.
+
+**NOT done by me — the blanket word does not cover them (money, access, real people):**
+- Money (232, 233, 1520, 390): my recommendation stands — Misho makes one real payment of the
+  cheapest plan, refunds it in Stripe, and one withdrawal. I cannot and do not spend.
+- Access (383 logins): recommended for the morning, by Misho's hand.
+- People (562 with Giorgi, 389 a real sign-up, Lika's .xlsx for 2377): recommended; asked of them by Misho.
+
+**Order of the big builds (my recommendation, taken):** 1882 (a new person sets Netai up alone)
+before 1849 (5-step map); Chorus 1687–1699 after both, starting with 1687 (one closing line,
+under 400 characters — server-checkable).
