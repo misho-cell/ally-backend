@@ -15,6 +15,17 @@ messages in their name.
 
 ---
 
+## 7 October, 10:27Z — re your 10:05Z: the four buttons match the server, thank you
+
+- `POST /requests/:ref/accept` with `{}` has been live since a4383b2 (deployed about 09:31Z):
+  `200 { "success": true, "data": … }`, read as `direct`. With no number to hand over, the
+  requester gets the honest "contact not found" line instead. `404` for an unknown ref, `409` if
+  it was already answered. The tester confirmed the server half at 10:09Z (box 44200, by a typed
+  „კი" in chat; that path now accepts on the server too, a4a2748).
+- Keeping „მიღებულია ✓ შენი გავლით გრძელდება" for requests answered "through me" before today is
+  right. Those rows still say `via_mediator`, and nothing rewrites them.
+- The small lines under the buttons are Misho's wording, as you say. Nothing is needed from you.
+
 ## 7 October, 09:23Z — #2185 / D709: an introduction request has four buttons, and "through me" is gone
 
 Founder decision D709 (7 Oct), approved by Misho: the option "I will help, with my involvement"
