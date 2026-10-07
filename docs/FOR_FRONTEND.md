@@ -15,6 +15,57 @@ messages in their name.
 
 ---
 
+## 7 October, 21:45Z — the app's part of the tester's "Misho's full picture" (plate v362, box 45014)
+
+Misho asked me to hand you your part of the list. These 18 items are the app's; the server half of
+each is live or not needed, unless a line says otherwise. Numbers are the admin task list's.
+
+**Server half already live, the screen is left (Pr1/Pr2):**
+- **T1850 (Pr1), the evening card screen.** The routes, payload and snooze are in "6 October, 16:50Z"
+  and "6 October, 17:20Z" below. Held questions went out at 19:00, each tap reached its asker, and
+  snooze moved the card by 2 hours. DONE WHEN: the card on a phone shows the held questions with their
+  buttons.
+- **T2185 (Pr1), introduction requests show four buttons** (yes, no, later, other), with no
+  "through me". Contract: "7 October, 09:23Z" and "10:27Z" below. DONE WHEN: an introduction request
+  shows those four on a phone.
+- **T1919 (Pr2), a stopped goal shows its two buttons.** Contract: "6 October, 17:50Z" and
+  "19:35Z" below. DONE WHEN: a stopped goal shows two buttons on a phone and both work.
+
+**Pr1, to build or fix:**
+- **T859:** a question reaches the app, but a locked Android shows nothing (Lika, 5 Oct). The
+  server sends the push. Please check the Android channel/priority and the background handler.
+  DONE WHEN: a question sent to Tornike rings his locked Android within a minute.
+- **T374:** a contact newly saved on the phone is not found without a manual vcf upload (Ninia,
+  6 Oct). The server reads what the app syncs, so please check the background contact sync.
+  DONE WHEN: a new phone contact is found within five minutes.
+- **T1817:** conversations move to "finished" before the owner has seen the answer. `seen_at` is
+  live ("6 October, 12:05" below). DONE WHEN: an unseen answer keeps its conversation on top, marked
+  new, until it is opened.
+
+**Pr2:**
+- **T370:** Georgian voice input on iPhone: Lika's microphone does not start, and Ninia's hears but
+  writes nothing.
+- **T1816:** tapping a notification opens the app but not the item. The push carries `url`
+  ("6 October, 12:05" below).
+- **T1920:** the "download my data" button cannot be found in the profile.
+- **T2345:** the rewards page does not state the rule: 5% to each inviter, up to 6 steps.
+- **T2346:** an attached file is sent before Send is pressed. See "7 October, 11:40Z" below.
+- **T2378:** a Word or PDF file cannot be chosen at all (Lika, 7 Oct). Please let the picker
+  offer them. The server answers an unsupported file with its own Georgian line naming the formats
+  it reads (`400`, `{ success: false, error: "ამ ფორმატს ჯერ ვერ ვკითხულობ — Excel (.xlsx), CSV,
+  TXT ან Markdown გამომიგზავნე." }`), and that line is what she should see. DONE WHEN: Lika picks a
+  Word and a PDF file and both times reads which format is needed.
+
+**Pr3:**
+- **T829:** the conversation list and the chat cannot be resized on a computer.
+- **T1585:** the refund page still names Paddle; payments go through Stripe.
+- **T2278:** on a phone, the + button covers a long title in a question conversation.
+
+Two of Misho's own items need the app too. They are listed only so they are not lost: **T390**
+(withdrawing rewards, one real withdrawal) and **T383** (separate admin logins). Both wait on Misho.
+
+---
+
 ## 7 October, 11:40Z — two of Misho's decisions for the app (#2346, and the held-reward line)
 
 Misho decided both on 7 Oct, about 11:38Z.
