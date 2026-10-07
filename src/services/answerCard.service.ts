@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { relayedForReader } from './askTranslation.service';
+import { speaksInFirstPerson } from './firstPersonAnswer';
 import { RunLanguage } from './runLanguage';
 import { emitMessageAppended } from './sse.service';
 import { saveServerLine, threadLanguage } from './threads.service';
@@ -66,10 +67,10 @@ async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<stri
   const via = answer.viaName?.trim();
   const who = `${answer.fromName?.trim() || SOMEBODY[language]}${via ? ` (${VIA[language]} ${via})` : ''}`;
   const relayed = await relayedForReader(answer.answer, language, 'answer');
+  // 2577: an answer in the helper's own voice is quoted as theirs.
+  const quoted = answer.verbatim || speaksInFirstPerson(answer.answer);
   if (relayed.original === undefined) {
-    return answer.verbatim
-      ? `${who}: „${answer.answer.trim()}"`
-      : `${who}: ${answer.answer.trim()}`;
+    return quoted ? `${who}: „${answer.answer.trim()}"` : `${who}: ${answer.answer.trim()}`;
   }
   const original = answer.verbatim ? `\n(„${relayed.original.trim()}")` : '';
   return `${who}: ${relayed.text.trim()}${original}`;
