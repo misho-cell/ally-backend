@@ -104,11 +104,9 @@ function editorBrief(context: AskEditContext): string {
       '„later". Each has a meaning: "yes" (agrees, knows, will do it), "no" (declines, does ' +
       'not know), "later" (will answer later), "answer" (any other concrete answer).',
     '',
-    'When every rule holds, do not improve it: answer {"ok": true}. Otherwise change as ' +
-      'little as possible — only what breaks a rule.',
-    'Reply with JSON only, no other text:',
-    '{"ok": true}, or',
-    '{"ok": false, "question": "…", "choices": [{"label": "…", "means": "yes|no|later|answer"}]}',
+    'When every rule holds, do not improve it: call give_verdict with ok true. Otherwise ' +
+      'change as little as possible — only what breaks a rule — and call give_verdict with ok ' +
+      'false, the corrected question and its buttons.',
   ].join('\n');
 }
 
@@ -128,16 +126,44 @@ interface Verdict {
   readonly choices?: unknown;
 }
 
-function readVerdict(text: string): Verdict | null {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end <= start) return null;
-  try {
-    const parsed: unknown = JSON.parse(text.slice(start, end + 1));
-    return typeof parsed === 'object' && parsed !== null ? (parsed as Verdict) : null;
-  } catch {
-    return null;
-  }
+/**
+ * The tester's run 4 (44290, case 1 at 11:26:31): the verdict came back as
+ * prose with JSON inside it that would not parse, and a first-person question
+ * went as written. The verdict is now a forced tool call with a schema, so it
+ * arrives as an object or not at all.
+ */
+const VERDICT_TOOL: Anthropic.Tool = {
+  name: 'give_verdict',
+  description: 'The verdict on the question and its buttons.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      ok: { type: 'boolean', description: 'True when every rule holds as written.' },
+      question: { type: 'string', description: 'The corrected question, when ok is false.' },
+      choices: {
+        type: 'array',
+        description: 'The corrected buttons, when ok is false.',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            means: { type: 'string', enum: ['yes', 'no', 'later', 'answer'] },
+          },
+          required: ['label', 'means'],
+        },
+      },
+    },
+    required: ['ok'],
+  },
+};
+
+function readVerdict(content: readonly Anthropic.ContentBlock[]): Verdict | null {
+  const call = content.find(
+    (block): block is Anthropic.ToolUseBlock =>
+      block.type === 'tool_use' && block.name === VERDICT_TOOL.name,
+  );
+  const input: unknown = call?.input;
+  return typeof input === 'object' && input !== null ? (input as Verdict) : null;
 }
 
 /** The editor's version, when it is a usable one; null keeps the draft. */
@@ -162,13 +188,15 @@ export async function editOutgoingAsk(
   draft: AskDraft,
   context: AskEditContext,
 ): Promise<EditedAsk> {
-  let text: string;
+  let content: Anthropic.ContentBlock[];
   try {
     const response = await anthropic.messages.create(
       {
         model: EDITOR_MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
         system: editorBrief(context),
+        tools: [VERDICT_TOOL],
+        tool_choice: { type: 'tool', name: VERDICT_TOOL.name },
         messages: [{ role: 'user', content: editorInput(draft, context) }],
       },
       { timeout: EDIT_BUDGET_MS, maxRetries: 0 },
@@ -182,15 +210,12 @@ export async function editOutgoingAsk(
       // eslint-disable-next-line no-console
       console.error('[ask-editor] usage not recorded:', (err as Error).message);
     });
-    text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('');
+    content = response.content;
   } catch (err) {
     return kept(draft, `the check failed: ${(err as Error).message}`);
   }
-  const verdict = readVerdict(text);
-  if (verdict === null) return kept(draft, 'the verdict was not JSON');
+  const verdict = readVerdict(content);
+  if (verdict === null) return kept(draft, 'no verdict came back');
   if (verdict.ok === true) return { ...draft, edited: false };
   const rewritten = rewriteFrom(verdict, draft);
   if (rewritten === null) return kept(draft, 'the rewrite was not usable');

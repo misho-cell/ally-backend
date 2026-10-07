@@ -27,8 +27,11 @@ const CONTEXT = {
   language: 'ka' as const,
 };
 
-function answers(text: string): void {
-  mockCreate.mockResolvedValue({ content: [{ type: 'text', text }], usage: {} });
+function answers(verdict: object): void {
+  mockCreate.mockResolvedValue({
+    content: [{ type: 'tool_use', name: 'give_verdict', id: 't1', input: verdict }],
+    usage: {},
+  });
 }
 
 const REWRITE = {
@@ -45,12 +48,12 @@ beforeEach(() => mockCreate.mockReset());
 
 describe('the editor check', () => {
   it('sends the draft as it is when the check passes', async () => {
-    answers('{"ok": true}');
+    answers({ ok: true });
     await expect(editOutgoingAsk(DRAFT, CONTEXT)).resolves.toEqual({ ...DRAFT, edited: false });
   });
 
   it('sends the rewritten question and buttons when it does not', async () => {
-    answers(JSON.stringify(REWRITE));
+    answers(REWRITE);
     const out = await editOutgoingAsk(DRAFT, CONTEXT);
     expect(out.edited).toBe(true);
     expect(out.question).toBe(REWRITE.question);
@@ -58,19 +61,20 @@ describe('the editor check', () => {
   });
 
   it('reads the owner’s words and the draft, on the strong model', async () => {
-    answers('{"ok": true}');
+    answers({ ok: true });
     await editOutgoingAsk(DRAFT, CONTEXT);
     const [params, options] = mockCreate.mock.calls[0];
     expect(params.model).toBe('claude-sonnet-5');
     expect(params.messages[0].content).toContain('ჰკითხე ნოდარს');
     expect(params.messages[0].content).toContain('მეყავს ნაცნობი გია');
     expect(options.timeout).toBe(15_000);
+    expect(params.tool_choice).toEqual({ type: 'tool', name: 'give_verdict' });
     expect(options.maxRetries).toBe(0);
   });
 
   // The tester's REGRESSION 44196: the reader was put in the third person by name.
   it('speaks to the reader as „you", about the asker by name, and leaves a passing question alone', async () => {
-    answers('{"ok": true}');
+    answers({ ok: true });
     await editOutgoingAsk(DRAFT, CONTEXT);
     const [params] = mockCreate.mock.calls[0];
     expect(params.system).toContain('It speaks TO Nodar as „you"');
@@ -95,14 +99,18 @@ describe('the editor check', () => {
     ['an empty question', { ...REWRITE, question: '' }],
     ['a rewrite that grew far past the draft', { ...REWRITE, question: 'ა'.repeat(500) }],
   ])('keeps the draft when the rewrite has %s', async (_why, verdict) => {
-    answers(JSON.stringify(verdict));
+    answers(verdict);
     await expect(editOutgoingAsk(DRAFT, CONTEXT)).resolves.toEqual({ ...DRAFT, edited: false });
   });
 
   it('never holds a question back when the check itself breaks', async () => {
     mockCreate.mockRejectedValue(new Error('timeout'));
     await expect(editOutgoingAsk(DRAFT, CONTEXT)).resolves.toEqual({ ...DRAFT, edited: false });
-    answers('I think it is fine.');
+    // The tester's 44290: a verdict that did not come back as the tool call.
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: 'I think it is fine.' }],
+      usage: {},
+    });
     await expect(editOutgoingAsk(DRAFT, CONTEXT)).resolves.toEqual({ ...DRAFT, edited: false });
   });
 });

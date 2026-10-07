@@ -362,3 +362,23 @@ describe('the stop line follows the conversation’s language', () => {
     expect(alreadyStoppedLine('ჩემი მიზანი', 'ka')).toContain('უკვე შეჩერებულია');
   });
 });
+
+/** #2344 (the tester's run 4, 42183): a run the button withheld ended on „working", then „failed". */
+describe('a run the Stop button withheld', () => {
+  it('is settled as an ordinary finish when nothing else settled it', () => {
+    const { readFileSync } = jest.requireActual<typeof import('fs')>('fs');
+    const { join } = jest.requireActual<typeof import('path')>('path');
+    const route = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
+      'utf8',
+    );
+    const dropped = route.slice(
+      route.indexOf('if (result.stopped === true || runWasStopped(threadId, runId)) {'),
+    );
+    const end = dropped.indexOf('        return;\n      }');
+    expect(dropped.slice(0, end)).toContain("if (after?.status === 'working') {");
+    expect(dropped.slice(0, end)).toContain(
+      "setThreadStatus(userId, threadId, 'done', { statusLine: null })",
+    );
+  });
+});

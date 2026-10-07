@@ -1262,6 +1262,13 @@ export function runOwnerMessage(run: OwnerRun): void {
         if (result.stoppedLine !== undefined) {
           emitRunComplete(userId, threadId, runId, { reply: result.stoppedLine });
         }
+        // #2344 (the tester's run 4, 42183): a run the Stop BUTTON withheld
+        // ended on „working" and was later reaped as failed. Still working
+        // here means nothing else settled it: it ends as an ordinary finish.
+        const after = await getThread(threadId, userId).catch(() => null);
+        if (after?.status === 'working') {
+          void setThreadStatus(userId, threadId, 'done', { statusLine: null });
+        }
         return;
       }
       // Waiting covers BOTH kinds of third-party dependency: an unanswered
