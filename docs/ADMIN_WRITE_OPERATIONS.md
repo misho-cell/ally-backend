@@ -5739,3 +5739,17 @@ in a sub-item before it deploys, revert = that commit:**
 **Order of the big builds (my recommendation, taken):** 1882 (a new person sets Netai up alone)
 before 1849 (5-step map); Chorus 1687–1699 after both, starting with 1687 (one closing line,
 under 400 characters — server-checkable).
+
+**§98.1 — the exact text, shipped alone.** Once a day, in the owner's own run (owner present, regular
+thread, no goal; preview excluded), when the curiosity queue has a contact with a missing core fact and
+a name, the run's prompt gets:
+
+> ## დღის ერთი კითხვა მფლობელის კონტაქტზე (D708)
+> ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, ჰკითხე ერთი მოკლე კითხვა: <name> — <რას
+> საქმიანობს | სად მუშაობს | რომელ ქალაქშია | რა სფეროშია>? ერთი წინადადებით უთხარი რატომ: ასე უკეთ
+> მოგიძებნი ხალხს და უკეთ დაგაკავშირებ.
+> მხოლოდ ეს ერთი კითხვა, ფორმა ან რამდენიმე კითხვა ერთად — არა. პასუხს შემდეგ შეტყობინებაში მოგწერს:
+> მაშინ <name> სახელით მოძებნე და შეინახე save_contact_fact-ით (field_type: <fact>). თუ თქვა „ახლა
+> არა", ან არ უნდა, დაანებე თავი და დღეს ამ ადამიანზე აღარ ჰკითხო.
+
+No phone number is in it. The once-a-day limit is the surfacing log (CURIOSITY_SURFACE_INTERVAL_DAYS=1).

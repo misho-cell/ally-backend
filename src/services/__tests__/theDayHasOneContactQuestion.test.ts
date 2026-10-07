@@ -37,3 +37,16 @@ describe('theDayHasOneContactQuestion', () => {
     expect(contactQuestionMayRun({ ...OWN_RUN, preview: true })).toBe(false);
   });
 });
+
+describe('the owner’s own run carries the day’s question (§98.1)', () => {
+  it('is wired into the prompt with the run’s presence', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path') as typeof import('path');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('const contactQuestion = await dailyContactQuestionSection(userId, {');
+    expect(chat).toContain('ownerPresent: !ownerAbsent,');
+    expect(chat).toMatch(/firstAsk \+\s+contactQuestion \+/u);
+  });
+});
