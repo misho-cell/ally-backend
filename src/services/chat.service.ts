@@ -60,6 +60,9 @@ import { heldAsksNote } from './heldAskNote.service';
 import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
+import { hoursUntilClock, parseClock } from './wakeAtClock';
+import { personZone } from './personZone';
+import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
@@ -1328,10 +1331,35 @@ const SET_TASK_WAKE_TOOL: AnthropicTool = {
         type: 'number',
         description: 'Hours from now (0.25–168). Minutes the owner asked for: minutes / 60.',
       },
+      at: {
+        type: 'string',
+        description:
+          '#2179: a clock time the owner named, „HH:MM" on their own clock („tomorrow at 10" ' +
+          '→ "10:00"). Give it instead of hours and the server counts the hours — never say ' +
+          'you cannot remind at a set time.',
+      },
+      day_offset: {
+        type: 'number',
+        description:
+          'With `at`: 0 today, 1 tomorrow, up to 7. Leave it out for „at 10" with no day: the ' +
+          'next 10:00 is meant.',
+      },
     },
-    required: ['task_id', 'hours'],
+    required: ['task_id'],
   },
 };
+
+/** #2179: the hours until the clock time the owner named, or null when none was given. */
+async function hoursFromClock(
+  userId: string,
+  input: Record<string, unknown>,
+): Promise<number | null> {
+  const clock = parseClock(input['at']);
+  if (clock === null) return null;
+  const day = Number(input['day_offset']);
+  const zone = await personZone(Number(userId)).catch(() => DEFAULT_PUSH_TIME_ZONE);
+  return hoursUntilClock(new Date(), zone, clock, Number.isInteger(day) ? day : null);
+}
 
 /**
  * Ticket 20 row 147, second half — the three words that close a goal, and who
@@ -8867,10 +8895,9 @@ async function executeToolCall(
     case 'set_task_wake': {
       // #502 (Ninia): „remind me in 15 minutes" was told the shortest is an
       // hour. The wake ticker runs every 20 s, so a quarter hour is real.
-      const hours = Math.min(
-        MAX_WAKE_HOURS,
-        Math.max(MIN_WAKE_HOURS, Number(input['hours']) || 24),
-      );
+      // #2179: a clock time is counted into hours on the owner's own clock.
+      const asked = (await hoursFromClock(userId, input)) ?? (Number(input['hours']) || 24);
+      const hours = Math.min(MAX_WAKE_HOURS, Math.max(MIN_WAKE_HOURS, asked));
       const wakeTaskId = Number(input['task_id']);
       const scheduled = await setTaskWake(userId, wakeTaskId, hours);
       // Tester 941 (goal 12211): a refused recipient reopens at a known minute,

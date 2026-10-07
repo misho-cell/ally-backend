@@ -2,7 +2,7 @@ import { query } from '../db/postgres/client';
 import { askChoicesFor } from './askOpening';
 import { EVENING_CARD_SNOOZE_MS, eveningCardPush, nextEveningCard } from './eveningCard';
 import { sendPushNotification } from './notification.service';
-import { pushTimeZone } from './pushQuietHours';
+import { personZone } from './personZone';
 import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
 import { userLanguage } from './threads.service';
 
@@ -25,19 +25,6 @@ export const EVENING_CARD_URL = '/evening-card';
 export interface EveningCardSlot {
   readonly id: number;
   readonly dueAt: Date;
-}
-
-/** The person's zone: the device they used last that said one; Tbilisi otherwise. */
-async function personZone(userId: number): Promise<string> {
-  const result = await query<{ time_zone: string | null }>(
-    `SELECT time_zone FROM push_subscriptions
-      WHERE user_id = $1 AND time_zone IS NOT NULL
-      ORDER BY last_seen_at DESC NULLS LAST, id DESC
-      LIMIT 1`,
-    [userId],
-    QUERY_TIMEOUT_MS,
-  );
-  return pushTimeZone(result.rows[0]?.time_zone);
 }
 
 /** The card a question over the cap goes on: the person's next 19:00. */
