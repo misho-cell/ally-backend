@@ -349,6 +349,7 @@ import {
 } from './replyGuards';
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
+import { withdrawOwnCutNotice } from './cutOffRunNotice.service';
 import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instructionUnsent';
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
@@ -3927,6 +3928,16 @@ async function saveMessage(
     ],
   );
   await touchThread(threadId);
+  // The tester's 45147: a run's own answer takes back its own cut-off notice.
+  if (role === 'assistant' && kind === 'message' && runId !== null) {
+    await withdrawOwnCutNotice(threadId, runId).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[drain] thread ${threadId}: cut-off notice not withdrawn:`,
+        (err as Error).message,
+      );
+    });
+  }
   return result.rows[0].id;
 }
 
