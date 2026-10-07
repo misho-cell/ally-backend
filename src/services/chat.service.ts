@@ -329,6 +329,7 @@ import {
   listRowsNudge,
   rowsNotNamed,
   PROMISED_ACTION_NO_GOAL_NUDGE,
+  INSTRUCTION_UNSENT_NUDGE,
   FINDS_FIRST_NUDGE,
   isOnlyAQuestion,
   SEARCH_FIRST_NUDGE,
@@ -343,6 +344,7 @@ import {
 } from './replyGuards';
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
+import { instructionLeftUnsent } from './instructionUnsent';
 import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -12378,8 +12380,24 @@ async function runToolLoop(
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
+  // The tester's 44364 (case 1): the owner's instruction to ask one of their
+  // own people, and the run neither asked nor opened a goal to ask from.
+  const instructionUnsent =
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    runModes.get(runId) !== 'incoming_ask' &&
+    !claimedAnAskNobodyGot &&
+    !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
+    (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
+  if (instructionUnsent) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[instruction-unsent] run ${runId} thread ${threadId}: nobody was asked — one more turn`,
+    );
+  }
   const promiseGap =
-    ownerAbsent || claimedASendThatDidNotHappen || helperQuestionUnsent
+    ownerAbsent || claimedASendThatDidNotHappen || helperQuestionUnsent || instructionUnsent
       ? null
       : await promisedAnActionItDidNotTake(
           threadId,
@@ -12448,23 +12466,25 @@ async function runToolLoop(
           ? PASSED_ON_NUDGE
           : helperQuestionUnsent
             ? HELPER_QUESTION_NUDGE
-            : answeredWithoutSearching
-              ? SEARCH_FIRST_NUDGE
-              : // The tester's 1150 (38316): a promise and the owner's members together —
-                // the members note leads to the plan with them, which keeps the promise too.
-                membersSkipped
-                ? MEMBERS_SKIPPED_NUDGE
-                : bookMembersSkipped.length > 0
-                  ? membersInTheBookNudge(bookMembersSkipped)
-                  : promisedWithoutActing
-                    ? promiseGap === PromiseGap.Goal
-                      ? PROMISED_ACTION_NO_GOAL_NUDGE
-                      : PROMISED_ACTION_NUDGE
-                    : rowsMissing.length > 0
-                      ? listRowsNudge(rowsMissing)
-                      : findsHeldBack
-                        ? FINDS_FIRST_NUDGE
-                        : CLIFFHANGER_NUDGE;
+            : instructionUnsent
+              ? INSTRUCTION_UNSENT_NUDGE
+              : answeredWithoutSearching
+                ? SEARCH_FIRST_NUDGE
+                : // The tester's 1150 (38316): a promise and the owner's members together —
+                  // the members note leads to the plan with them, which keeps the promise too.
+                  membersSkipped
+                  ? MEMBERS_SKIPPED_NUDGE
+                  : bookMembersSkipped.length > 0
+                    ? membersInTheBookNudge(bookMembersSkipped)
+                    : promisedWithoutActing
+                      ? promiseGap === PromiseGap.Goal
+                        ? PROMISED_ACTION_NO_GOAL_NUDGE
+                        : PROMISED_ACTION_NUDGE
+                      : rowsMissing.length > 0
+                        ? listRowsNudge(rowsMissing)
+                        : findsHeldBack
+                          ? FINDS_FIRST_NUDGE
+                          : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -12472,6 +12492,7 @@ async function runToolLoop(
       claimedAnAskNobodyGot ||
       claimedASendThatDidNotHappen ||
       helperQuestionUnsent ||
+      instructionUnsent ||
       answeredWithoutSearching ||
       promisedWithoutActing ||
       membersSkipped ||
@@ -12691,6 +12712,7 @@ export const MODEL_ONLY_NUDGES: ReadonlySet<string> = new Set([
   HELPER_QUESTION_NUDGE,
   PROMISED_ACTION_NUDGE,
   PROMISED_ACTION_NO_GOAL_NUDGE,
+  INSTRUCTION_UNSENT_NUDGE,
   SEARCH_FIRST_NUDGE,
   MEMBERS_SKIPPED_NUDGE,
   FINDS_FIRST_NUDGE,
