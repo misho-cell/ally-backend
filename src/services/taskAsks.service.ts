@@ -1835,6 +1835,11 @@ export interface SentAnswer {
   readonly rule_error?: string;
 }
 
+const LATER_IS_NOT_AN_ANSWER =
+  'Not sent: „later" is not an answer. The asker has already been told when they will hear ' +
+  'back, and the question stays open until the real answer. Send nothing; tell the helper in ' +
+  'one short sentence that you will remind them then.';
+
 /**
  * Tester 39931: a helper answered at 17:49, the asker got it, and at 19:29 she
  * sent a number on the same question. The append window was closed, the line
@@ -1869,6 +1874,12 @@ export async function sendApprovedAskAnswer(
     return { sent: false, error: 'ეს კითხვა უკვე დახურულია — პასუხი ვეღარ გაიგზავნება.' };
   }
 
+  // RW-002 (WIDE GATE, §98.8): a „later" tap is not an answer. The asker was
+  // told the day at the tap; recorded as an answer it closed the ask and went
+  // out as an answer card.
+  if (askTapOf(approvedText.trim()) === AskTap.Later || isTypedLater(approvedText)) {
+    return { sent: false, error: LATER_IS_NOT_AN_ANSWER };
+  }
   // D648: the answer goes in the assistant's words, with the helper's facts
   // exact. #991: a shared number is sent exactly as built.
   const answerText = approvedText;
