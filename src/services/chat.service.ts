@@ -345,6 +345,7 @@ import {
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
 import { instructionLeftUnsent, NOT_SENT_LINE } from './instructionUnsent';
+import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -4853,6 +4854,8 @@ async function buildAgentSystemPrompt(
   const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
   const askStates = boundTask ? await askStatusSectionOrNothing(boundTask, boundAsks) : '';
   const waveNote = boundTask ? await waveSectionOrNothing(boundTask) : '';
+  // D713 (phase 1): the owner's first ask on this goal, on every turn.
+  const firstAsk = boundTask ? goalFirstAskSection(await goalFirstAsk(boundTask.id)) : '';
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4870,6 +4873,7 @@ async function buildAgentSystemPrompt(
       heldNote +
       askStates +
       waveNote +
+      firstAsk +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.
