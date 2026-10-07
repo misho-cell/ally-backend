@@ -344,7 +344,7 @@ import {
 } from './replyGuards';
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
-import { instructionLeftUnsent } from './instructionUnsent';
+import { instructionLeftUnsent, NOT_SENT_LINE } from './instructionUnsent';
 import { askedNotAsking } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
@@ -12618,6 +12618,19 @@ async function runToolLoop(
       // eslint-disable-next-line no-console
       console.error('[chat] cliffhanger continuation failed:', (err as Error).message);
     }
+  }
+
+  // The tester's 44367: the second chance sent nothing either — no promise stands.
+  if (
+    instructionUnsent &&
+    !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
+    (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
+    );
+    finalText = NOT_SENT_LINE[runLang(runId)];
   }
 
   // Ticket 20 row 126 / 101b stood HERE and is deliberately gone. Reverted the

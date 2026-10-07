@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { instructionSentence, looksLikeContactInstruction } from './goalIntent';
+import { RunLanguage } from './runLanguage';
 import { messageNamesOwnContact } from './tools/nameMatch';
 
 /**
@@ -58,3 +59,15 @@ export async function instructionLeftUnsent(
   if (!(await messageNamesOwnContact(userId, sentence))) return false;
   return threadSentNothing(threadId);
 }
+
+/**
+ * The tester's 44367 (wish 3): when the turn that was given one more chance
+ * still sent nothing, it may not say „I will ask". The owner is told plainly
+ * that the question did not go.
+ */
+export const NOT_SENT_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.',
+  en: 'The question was not sent. Please write the request to me once more.',
+  ru: 'Вопрос не отправлен. Пожалуйста, напишите просьбу ещё раз.',
+  es: 'La pregunta no se envió. Por favor, escríbeme la petición otra vez.',
+};

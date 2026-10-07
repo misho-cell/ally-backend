@@ -10,7 +10,7 @@ jest.mock('../tools/nameMatch', () => ({
   messageNamesOwnContact: (...args: unknown[]) => mockNamesOwnContact(...args),
 }));
 
-import { contactInstructionIn, instructionLeftUnsent } from '../instructionUnsent';
+import { contactInstructionIn, instructionLeftUnsent, NOT_SENT_LINE } from '../instructionUnsent';
 
 /**
  * The tester's 44364 (case 1, runs 5 and 6): the owner's instruction to ask
@@ -65,5 +65,14 @@ describe('an owner instruction left unsent', () => {
       "(await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))",
     );
     expect(chat).toMatch(/helperQuestionUnsent \|\|\s+instructionUnsent \|\|/u);
+  });
+
+  it('says plainly that nothing went when the second chance sent nothing either', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('finalText = NOT_SENT_LINE[runLang(runId)];');
+    for (const line of Object.values(NOT_SENT_LINE)) {
+      expect(line).not.toMatch(/[—–]/u);
+      expect(line.length).toBeGreaterThan(0);
+    }
   });
 });
