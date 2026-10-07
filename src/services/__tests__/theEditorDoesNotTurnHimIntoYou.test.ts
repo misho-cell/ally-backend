@@ -31,3 +31,18 @@ describe('theEditorDoesNotTurnHimIntoYou', () => {
     expect(rewriteFrom(rewrite, DRAFT)?.question).toBe('ზაზა შაბათობითაც მუშაობს?');
   });
 });
+
+describe('the owner’s own words sent by the server (QA-001)', () => {
+  it('may be turned to „you" — their third person is the reader', () => {
+    const draft = { question: 'იცნობს თუ არა გია ბერიძეს?', choices: [] };
+    const verdict = {
+      ok: false,
+      question: 'გია ბერიძეს იცნობ?',
+      choices: [
+        { label: 'კი, ვიცნობ', means: 'yes' },
+        { label: 'არა', means: 'no' },
+      ],
+    };
+    expect(rewriteFrom(verdict, draft, true)?.question).toBe('გია ბერიძეს იცნობ?');
+  });
+});

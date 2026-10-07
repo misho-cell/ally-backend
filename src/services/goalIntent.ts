@@ -468,6 +468,37 @@ export function instructionAddressee(message: string): string | null {
 }
 
 /**
+ * The MASTER TEST RUN's QA-001 run 2 (conv 42765): the server's case-1 send
+ * passed the owner's WHOLE line to the helper — „მეყავს ნაცნობი… ჰკითხე გიგა
+ * ტესტაძეს…", „ask Giga" addressed to Giga. The question is what follows the
+ * addressee: in Georgian the addressee ends in the dative „ს" („N1-ს",
+ * „ტესტაძეს"); in English the clause opens with „whether" / „if".
+ */
+const DATIVE_WORD_RE = /^[\p{L}\p{N}-]*ს[,:]?$/u;
+const ENGLISH_CLAUSE_RE = /\b(?:whether|if)\b/iu;
+const LEADING_LINK_RE = /^[\s,:;—–-]*(?:რომ\s+)?/u;
+
+/** What the owner wants asked, without „ask <name>"; null when it cannot be told apart. */
+export function instructionQuestion(sentence: string): string | null {
+  const match = CONTACT_VERB_RE.exec(sentence);
+  if (match === null) return null;
+  const after = sentence.slice(match.index + match[0].length);
+  const english = ENGLISH_CLAUSE_RE.exec(after);
+  if (english !== null) return clauseOrNull(after.slice(english.index));
+  const words = after.split(/(\s+)/u);
+  const nameEnd = datedNameBefore(sentence.slice(0, match.index))
+    ? 0
+    : words.findIndex((w) => DATIVE_WORD_RE.test(w));
+  if (nameEnd < 0) return null;
+  return clauseOrNull(words.slice(nameEnd === 0 ? 0 : nameEnd + 1).join(''));
+}
+
+function clauseOrNull(text: string): string | null {
+  const clause = text.replace(LEADING_LINK_RE, '').trim();
+  return clause === '' ? null : clause;
+}
+
+/**
  * #961 (the tester's 1142, 37509): the tapped button „გიას ვთხოვ ამ კვირაში
  * შეხვედრის დანიშვნას" names Gia BEFORE its verb — Georgian puts the person
  * first as often as not („ნინოს ჰკითხე"). Only the one word right before the

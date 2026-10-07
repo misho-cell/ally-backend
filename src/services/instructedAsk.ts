@@ -1,4 +1,4 @@
-import { goalTitleFrom, instructionAddressee } from './goalIntent';
+import { goalTitleFrom, instructionAddressee, instructionQuestion } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
 import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
@@ -63,7 +63,20 @@ export async function sendInstructedAsk(
   if (phone === null) return null;
   const taskId = await goalFor(userId, threadId, ownerLine);
   await grantTaskPermission(userId, taskId);
-  const outcome = await createAsk(userId, taskId, phone, ownerLine.trim(), undefined, threadId);
+  // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
+  const question = instructionQuestion(sentence) ?? sentence;
+  const outcome = await createAsk(
+    userId,
+    taskId,
+    phone,
+    question,
+    undefined,
+    threadId,
+    undefined,
+    undefined,
+    undefined,
+    true,
+  );
   if (!outcome.sent || !('to_name' in outcome) || outcome.to_name === undefined) return null;
   // eslint-disable-next-line no-console
   console.log(`[instruction-unsent] thread ${threadId}: the server asked the one named contact`);

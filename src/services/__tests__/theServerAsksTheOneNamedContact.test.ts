@@ -44,9 +44,14 @@ describe('the server asks the one contact the owner named', () => {
       '178582',
       77,
       '995500000001',
-      CASE_1,
+      // QA-001 (conv 42765): the question only — not the context, not „ask <name>".
+      'იცნობს თუ არა გია ბერიძეს და გამაცნობს თუ არა',
       undefined,
       42485,
+      undefined,
+      undefined,
+      undefined,
+      true,
     );
   });
 

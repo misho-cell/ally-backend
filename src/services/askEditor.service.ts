@@ -34,6 +34,12 @@ export interface AskEditContext {
   /** The person the question goes to — addressed as „you", never named in it. */
   readonly readerName: string;
   readonly language: RunLanguage;
+  /**
+   * The draft is the owner's own indirect speech, sent by the server (§97 item
+   * 1): „იცნობს თუ არა გიას" — its third person IS the reader, so turning it
+   * into „you" is the editor's job here, not a fault (the tester's QA-001).
+   */
+  readonly draftIsOwnersWords?: boolean;
 }
 
 /**
@@ -170,14 +176,18 @@ function readVerdict(content: readonly Anthropic.ContentBlock[]): Verdict | null
 }
 
 /** The editor's version, when it is a usable one; null keeps the draft. */
-export function rewriteFrom(verdict: Verdict, draft: AskDraft): AskDraft | null {
+export function rewriteFrom(
+  verdict: Verdict,
+  draft: AskDraft,
+  draftIsOwnersWords = false,
+): AskDraft | null {
   if (verdict.ok === true) return null;
   const question = typeof verdict.question === 'string' ? verdict.question.trim() : '';
   if (question === '' || question.length > draft.question.length + MAX_GROWTH_CHARS) return null;
   // One question (rule 3), checked without trusting the model that wrote it.
   if (questionMarks(question) > MAX_QUESTION_MARKS) return null;
   // #2212: a named third person stays third person (rule 1), checked here too.
-  if (thirdPersonTurnedToYou(draft.question, question)) return null;
+  if (!draftIsOwnersWords && thirdPersonTurnedToYou(draft.question, question)) return null;
   const choices = parseAskChoices(verdict.choices);
   if (choices === null || choicesProblem(choices) !== null) return null;
   return { question, choices };
@@ -222,7 +232,7 @@ export async function editOutgoingAsk(
   const verdict = readVerdict(content);
   if (verdict === null) return kept(draft, 'no verdict came back');
   if (verdict.ok === true) return { ...draft, edited: false };
-  const rewritten = rewriteFrom(verdict, draft);
+  const rewritten = rewriteFrom(verdict, draft, context.draftIsOwnersWords === true);
   if (rewritten === null) return kept(draft, 'the rewrite was not usable');
   // eslint-disable-next-line no-console
   console.log('[ask-editor] the question was rewritten before it left');

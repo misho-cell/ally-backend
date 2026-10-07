@@ -734,6 +734,8 @@ export async function createAsk(
   card?: { readonly eveningCardId: number },
   /** D712: the buttons the asking model wrote with the question, when it wrote them. */
   authored?: readonly AskChoice[],
+  /** §97 item 1: the question is the owner's own words, sent by the server. */
+  fromOwnersLine?: boolean,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1488,6 +1490,7 @@ export async function createAsk(
       askerName: senderName,
       readerName: toName,
       language,
+      draftIsOwnersWords: fromOwnersLine === true,
     },
   );
   // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
