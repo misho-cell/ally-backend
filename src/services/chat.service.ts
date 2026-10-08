@@ -357,7 +357,7 @@ import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { dailyContactQuestionSection } from './dailyContactQuestion';
 import { withoutNoteTalk } from './noteTalk';
 import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
-import { askedNotAsking } from './askedVerb';
+import { askedNotAsking, claimsItCannotSend } from './askedVerb';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
   RUN_SOFT_BUDGET_MS,
@@ -6975,6 +6975,13 @@ export function withoutInvisibleCharacters(text: string): string {
 const runAnswerSent = new Set<string>();
 /** #2115: runs that sent a question to someone (ask_contact said sent). */
 const runAskSent = new Set<string>();
+/** Who this run's sent questions went to, as the owner saved them. */
+const runAskSentTo = new Map<string, string[]>();
+
+function noteAskSentTo(runId: string | undefined, toName: unknown): void {
+  if (runId === undefined || typeof toName !== 'string' || toName === '') return;
+  runAskSentTo.set(runId, [...(runAskSentTo.get(runId) ?? []), toName]);
+}
 /** Runs in which the helper's question was relayed on to someone else (relay_ask). */
 const runRelaySent = new Set<string>();
 
@@ -8114,6 +8121,7 @@ function clearRunState(runId: string): void {
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runAskSent.delete(runId);
+  runAskSentTo.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
   runSentLineOnScreen.delete(runId);
@@ -8936,6 +8944,7 @@ async function executeToolCall(
         if (runId) runAskSent.add(runId);
         await markSearchSent(runId, userId, [input['phone']], threadId);
         noteIntroductionSentAsAQuestion({ surface: 'chat', runId, threadId, taskId }, question);
+        noteAskSentTo(runId, (askOutcome as { to_name?: unknown }).to_name);
       }
       noteWakeNoLaterThan(runId, taskId, (askOutcome as { reopens_at?: unknown }).reopens_at);
       return askOutcome;
@@ -14680,6 +14689,11 @@ export async function processChat(
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   if (language === 'ka' && runAskSent.has(runId)) effectiveFinal = askedNotAsking(effectiveFinal);
+  // 45679 (conv 44096): a run whose question went says so, never „I cannot send".
+  const askedOne = runAskSentTo.get(runId) ?? [];
+  if (askedOne.length === 1 && claimsItCannotSend(effectiveFinal)) {
+    effectiveFinal = sentSentenceForOwner(askedOne[0], language);
+  }
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
     effectiveFinal = withoutClosingApprovalAsk(
