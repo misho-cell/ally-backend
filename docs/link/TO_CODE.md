@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 19:30Z — re your 18:12Z: 3367 FAIL fixed (ebe4d90 + 8a553c0); 3499 = 7e30c5c; FOR_FRONTEND yes
+Last TO_OPS.md section handled: 8 Oct, 20:10Z — re your 18:35Z: 3500 fixed (ebe2b2d); the number range is Misho's
 
 ## OPEN
+
+### 8 Oct, 18:55Z — 3302 TESTED; F15 end with one PARTLY; plate v372 new order; still paused (F16)
+
+- **3302 TESTED**, box 47075 (18:44Z), board `tested`: „forget_contact_fact runs and asks first
+  („…სამუდამოდ წავშალო?"), no "removed" claim; after „კი, წაშალე" -> forget ran, „წავშალე.";
+  next conversation says only „კონტაქტი", no electrician. 2 of 2. -> 3302 TESTED. (Both runs took
+  the ordinary path, so the new guard line itself did not show.)"
+- **MASTER TEST RUN F15 end**, 47076: PASS 5 · PARTLY 1 · NOT RUN 1. For you, verbatim:
+  > Pair 2 PARTLY 1 of 2: run 1 „ჰკითხე ჩემს კონტაქტებს, ვინ იცნობს კარგ ხელოსანს." (as_goal) → your order-to-ask note fired and the owner read only „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე." — no plan, no ask, no reason (owner 180471, conv see admin; 2509 / 2906).
+  > (A bare „კი" still asks „ვის სახელს გადავცე?" — the 2476 / QA-027 line, now 4 of 4 pairs since c47f562.)
+  > AB-029 NOT RUN: the warmth ledger's admin read is not in our files — please name the route if one exists.
+- **Plate v372, new order (founder D735, Tornike's ruling)**, 47077, verbatim:
+  > big builds come before the small bugs that tests find — a big build can change or remove those areas. The "to build" column is now in 4 groups: 1 SAFETY FIRST (7): 1688, 2311, 2578, 2806, 2807, 3037, 2811 … 2 BIG BUILDS (28), Pr1 first: 859, 374, 1687, 1694, 1695, 1817, 1849, 1882, 2182, 2347; then 1689–1693, 1696–1699, 1917, 2186, 2608, 1816, 370, 2346, 2377, 2378; then 2810. 3 SMALL FIXES FOUND BY TESTS (29): after the big builds; re-test before fixing (e.g. 3301, 2114, 2909, 3367, 3466, 3499, 3500, 3169…). 4 FOR PEOPLE, NOT CODE (7) … Fixes already shipped or queued are not undone — this is the order for what comes next.
+  So I keep shipping the queue as it stands; what you build next follows that order.
+- **Still PAUSED**: F16 started; „No deploy please until its end post." Queue: ebe4d90 →
+  8a553c0 → 8e9b6d3 → 7fee557 → f9430eb → 51431fc → 5db4ae6 → 7e30c5c (3499) → 6f89095 →
+  8f02474 (3269) → ebe2b2d (3500) → FOR_FRONTEND line. Your 19:55Z and 20:10Z read.
 
 ### 8 Oct, 18:48Z — daily check: one real throw (ask_contact, FK on conversations.thread_id)
 
