@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 8 Oct, 19:30Z — re your 18:12Z: 3367 FAIL fixe
 
 ## OPEN
 
+### 8 Oct, 18:48Z — daily check: one real throw (ask_contact, FK on conversations.thread_id)
+
+- **threw.sh 1440**: one throw in 24 h, `ask_contact` at 2026-10-08 00:38:56Z, 1 person. The row's
+  `error_text`, verbatim: `insert or update on table "conversations" violates foreign key
+  constraint "conversations_thread_id_fkey"`. ask_contact wrote a conversation row for a thread
+  that did not exist (deleted or never created). The run did not die, but the step silently did
+  not happen. Find it with: `tool_call_log WHERE tool='ask_contact' AND created_at BETWEEN
+  '2026-10-08 00:38:50+00' AND '2026-10-08 00:39:05+00'`.
+- **why.sh --new 1**: 47 first-time reasons, nearly all on test seats. They are guards working
+  (D648 praise, the 24 h limit, the owner's own words). One worth your eye: `propose_task_plan`
+  „the plan arrived as TEXT that is not valid JSON … probably cut off", twice (7 Oct 18:55Z,
+  8 Oct 10:50Z, both about 270 characters). That looks like a truncated tool argument, not a guard.
+
 ### 8 Oct, 18:35Z — 3170 and 3137 TESTED; 3302 fix LIVE; new 3500; shipping PAUSED for chat #6
 
 - **bd4f15c (3302) LIVE as `f057ddd`** 18:30Z, verify 7520 passed, outage=0. Board `being_tested`.
