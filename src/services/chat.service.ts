@@ -183,6 +183,7 @@ import {
   getAsksForTask,
   getAskByThread,
   sendApprovedAskAnswer,
+  askTapOnThread,
   runPayerFor,
   ensureEveryQuote,
   QuoteGuarantee,
@@ -495,6 +496,7 @@ import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
 import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
 import type { UpcomingBirthday } from './birthdayLens.service';
+import { preparedAnswerOn } from './preparedAnswer.service';
 import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
@@ -12425,6 +12427,48 @@ async function answerFactConfirm(
   return { reply: text, language, requestCreated: false };
 }
 
+const PREPARED_SENT: Readonly<Record<RunLanguage, (line: string) => string>> = {
+  ka: (line) => `გაიგზავნა: „${line}"`,
+  en: (line) => `Sent: „${line}"`,
+  ru: (line) => `Отправлено: «${line}»`,
+  es: (line) => `Enviado: «${line}»`,
+};
+
+/**
+ * 1695: the reader tapped „yes" on a question that carries his prepared line —
+ * the line goes as his answer (worded at send as every answer is, D652), and he
+ * is told what went. Null when the line is not that tap, there is no prepared
+ * line, or it could not be sent (then the run answers as before).
+ */
+async function sendPreparedOnYes(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  try {
+    if ((await askTapOnThread(threadId, userMessage)) !== AskTap.Yes) return null;
+    const prepared = await preparedAnswerOn(threadId);
+    if (prepared === null) return null;
+    const sent = await sendApprovedAskAnswer(userId, threadId, prepared);
+    if (!sent.sent) return null;
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    const language = detectRunLanguage(prepared);
+    const text = PREPARED_SENT[language](prepared);
+    await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+    // eslint-disable-next-line no-console
+    console.log(`[prepared-answer] run ${runId}: sent on the reader's yes`);
+    return { reply: text, language, requestCreated: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[prepared-answer] not sent on yes:', (err as Error).message);
+    return null;
+  }
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -15002,6 +15046,12 @@ export async function processChat(
       ? await answerFactConfirm(userId, threadId, userMessage, runId, intent)
       : null;
   if (confirmed !== null) return confirmed;
+  // 1695 (A12): „yes" under a prepared line sends that line, by the server, at once.
+  const preparedSent =
+    !ownerAbsent && thread.type === 'incoming_ask'
+      ? await sendPreparedOnYes(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (preparedSent !== null) return preparedSent;
   // 1696 (A13): „not me — ask Eka" gets one card first; its tap is acted on by the server.
   const referral =
     !ownerAbsent && thread.type === 'incoming_ask'

@@ -119,7 +119,9 @@ describe('the waves follow the words', () => {
 
   it('a first ask stores the word for the admin; the wave reads it', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('prematch, prematch_source, prematch_at, a2a_rounds, field)');
+    expect(asks).toContain(
+      'prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer)',
+    );
     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
     expect(waves).toContain('remaining: await inWaveOrder(');
   });
