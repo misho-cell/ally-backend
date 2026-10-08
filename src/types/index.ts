@@ -348,6 +348,10 @@ export interface AdminAskRow {
   later_until: string | null;
   first_answer_at: string | null;
   closed_at: string | null;
+  /** 1694 (A11): likely_yes / possibly / not_his_field / ask_him; null on older asks. */
+  prematch: string | null;
+  /** Which of his own data gave the word (boundary, own_profile, own_note, label, …). */
+  prematch_source: string | null;
 }
 
 export interface UserProfile {

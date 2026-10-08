@@ -23,6 +23,8 @@ interface AskRowDb {
   answered_at: Date | null;
   declined_at: Date | null;
   expired_at: Date | null;
+  prematch?: string | null;
+  prematch_source?: string | null;
 }
 
 function iso(value: Date | null): string | null {
@@ -51,6 +53,9 @@ export function toAdminAskRow(row: AskRowDb, now: Date): AdminAskRow {
     // A „no" is a close, not an answer (tester 41786).
     first_answer_at: state === AskState.Answered ? iso(row.answered_at) : null,
     closed_at: closedAt(row, state),
+    // 1694 (A11): the recipient-side pre-match word, for the admin only.
+    prematch: row.prematch ?? null,
+    prematch_source: row.prematch_source ?? null,
   };
 }
 
@@ -61,7 +66,7 @@ export async function getUserAsks(userId: number): Promise<AdminAskRow[]> {
             CASE WHEN ta.from_user_id = $1 THEN ta.to_user_id ELSE ta.from_user_id END
               AS other_user_id,
             u.name AS other_name, ta.status, ta.created_at, ta.seen_at, ta.later_until,
-            ta.answered_at, ta.declined_at, ta.expired_at
+            ta.answered_at, ta.declined_at, ta.expired_at, ta.prematch, ta.prematch_source
        FROM task_asks ta
        LEFT JOIN "User" u
          ON u.id = CASE WHEN ta.from_user_id = $1 THEN ta.to_user_id ELSE ta.from_user_id END

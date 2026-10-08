@@ -1,3 +1,7 @@
+jest.mock('../prematch.service', () => ({
+  ...jest.requireActual('../prematch.service'),
+  prematchMany: jest.fn(() => Promise.resolve(new Map())),
+}));
 jest.mock('../../db/postgres/client', () => ({
   __esModule: true,
   query: jest.fn(),
