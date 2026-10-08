@@ -31,6 +31,8 @@ export interface RunPresence {
   readonly ownerAsksAboutSelf?: boolean;
   /** 3434: the owner's line tells of a death. */
   readonly ownerSpeaksOfADeath?: boolean;
+  /** 3367: the owner's line asks what is waiting or what is new. */
+  readonly ownerAsksWhatWaits?: boolean;
 }
 
 /**
@@ -58,6 +60,19 @@ export function speaksOfADeath(ownerLine: string): boolean {
   return SPEAKS_OF_A_DEATH_RE.test(ownerLine);
 }
 
+/**
+ * 3367 (the tester's 47065, conv 45693): „რა მელოდება?" on a seat whose only
+ * waiting thing was its own goal — the server card named the goal, and the
+ * model's whole reply was the day's „სხვათა შორის, … სად მუშაობს?". An owner
+ * asking what waits for them is answered with that, and nothing else.
+ */
+const ASKS_WHAT_WAITS_RE =
+  /(რა\s+მელოდება|რა\s+არის\s+ახალი|რა\s+ხდება\s+ახალი|ვინმე\s+მეკითხება|what(?:'s|\s+is)\s+(?:waiting|new)|anything\s+(?:waiting|new)|что\s+нового|что\s+меня\s+ждёт|qué\s+hay\s+de\s+nuevo)/iu;
+
+export function asksWhatWaits(ownerLine: string): boolean {
+  return ASKS_WHAT_WAITS_RE.test(ownerLine);
+}
+
 /** Only the owner's own conversation, with the owner there, outside a goal. */
 export function contactQuestionMayRun(presence: RunPresence): boolean {
   return (
@@ -66,7 +81,8 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
     !presence.goalBound &&
     !presence.preview &&
     presence.ownerAsksAboutSelf !== true &&
-    presence.ownerSpeaksOfADeath !== true
+    presence.ownerSpeaksOfADeath !== true &&
+    presence.ownerAsksWhatWaits !== true
   );
 }
 

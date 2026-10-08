@@ -378,6 +378,7 @@ import {
   asksAboutTheOwner,
   dailyContactQuestionSection,
   speaksOfADeath,
+  asksWhatWaits,
 } from './dailyContactQuestion';
 import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
@@ -5075,6 +5076,7 @@ async function buildAgentSystemPrompt(
     preview: forcedMode !== undefined,
     ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
     ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+    ownerAsksWhatWaits: asksWhatWaits(ownerLine),
   });
   // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
   const noContacts =
