@@ -8,6 +8,12 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:54Z — e39312c (2608): a new fact that meets another contact's need is recalled, as an offer
+
+**e39312c, board 2608.** When a run saves a fact that speaks of what the owner said another contact needs, the reply
+ends with one recall line and two buttons (connect / not now). Nothing is sent. Order: after c1bd717.
+DONE WHEN: ME-027 step 2 names გია and his need unprompted and offers the connection; zero asks, zero introductions.
+
 ### 8 Oct, 23:45Z — c1bd717 (2810): an accepted search is counted as successful
 
 **c1bd717, board 2810.** A short owner line saying the result was what she needed records `accepted` on her newest
