@@ -1286,11 +1286,17 @@ async function createAskNow(
     from_user_id: string;
     seconds_ago: number;
   }>(
-    `SELECT ask_thread_id, status, from_user_id::text AS from_user_id,
-            EXTRACT(EPOCH FROM (NOW() - created_at))::int AS seconds_ago
-     FROM task_asks
-     WHERE task_id = $1 AND to_user_id = $2 AND status IN ('sent', 'answered')
-     ORDER BY id DESC LIMIT 1`,
+    // The daily check (8 Oct, 00:38:56Z, goal 5580): the reader had deleted
+    // that conversation, and the new question was written into a thread that
+    // no longer existed — a foreign-key error, and the ask never went. A
+    // conversation that is gone is not reused; a new one opens.
+    `SELECT CASE WHEN EXISTS (SELECT 1 FROM threads t WHERE t.id = a.ask_thread_id)
+                 THEN a.ask_thread_id END AS ask_thread_id,
+            a.status, a.from_user_id::text AS from_user_id,
+            EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago
+     FROM task_asks a
+     WHERE a.task_id = $1 AND a.to_user_id = $2 AND a.status IN ('sent', 'answered')
+     ORDER BY a.id DESC LIMIT 1`,
     [taskId, toUserId],
     ASK_QUERY_TIMEOUT_MS,
   );
