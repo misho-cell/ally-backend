@@ -554,8 +554,9 @@ export interface AppendedMessagePayload {
    * 'request' — row 305(b): an introduction request written into a
    * conversation that already exists, instead of opening a thread of its own.
    * 'working' — #364: the line that the search has begun (workingLine.service).
+   * 'reminder' — #502: the owner's own reminder, at the time they asked for.
    */
-  kind: 'pending' | 'answers' | 'request' | 'working';
+  kind: 'pending' | 'answers' | 'request' | 'working' | 'reminder';
   content: string;
   choices: readonly string[];
   ref: Record<string, unknown>;

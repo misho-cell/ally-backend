@@ -361,6 +361,8 @@ interface RunStrings {
    * the reply is empty, were Georgian on every lock screen in the world.
    */
   goalNewsPush: { title: string; body: string };
+  /** #502: the push that carries the owner's own reminder; the body is the reminder. */
+  reminderPush: { title: string };
 }
 
 export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
@@ -396,6 +398,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     tooManyMessages: 'შეტყობინება ვერ მივიღე — ძალიან ბევრი ზედიზედ. ერთ წუთში ისევ სცადე.',
     goalPaused: 'პაუზაზეა',
     goalNewsPush: { title: 'Netai — დავალებაზე სიახლეა', body: 'დავალებაზე სიახლეა' },
+    reminderPush: { title: 'Netai — შეხსენება' },
   },
   en: {
     opening: '🔎 Starting — working out what we need...',
@@ -429,6 +432,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     tooManyMessages: 'I could not take that message — too many at once. Try again in a minute.',
     goalPaused: 'Paused',
     goalNewsPush: { title: 'Netai — goal update', body: 'There is news on your goal' },
+    reminderPush: { title: 'Netai — reminder' },
   },
   ru: {
     opening: '🔎 Начинаю — разбираюсь, что нужно...',
@@ -463,6 +467,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     tooManyMessages: 'Не смог принять сообщение — слишком много подряд. Попробуй через минуту.',
     goalPaused: 'На паузе',
     goalNewsPush: { title: 'Netai — новости по задаче', body: 'Есть новости по задаче' },
+    reminderPush: { title: 'Netai — напоминание' },
   },
   es: {
     opening: '🔎 Empiezo — viendo qué necesitamos...',
@@ -497,6 +502,7 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
     tooManyMessages: 'No pude recibir el mensaje — demasiados seguidos. Inténtalo en un minuto.',
     goalPaused: 'En pausa',
     goalNewsPush: { title: 'Netai — novedades', body: 'Hay novedades en tu objetivo' },
+    reminderPush: { title: 'Netai — recordatorio' },
   },
 };
 
@@ -536,6 +542,7 @@ const TOOL_STEPS_EN: Record<string, string> = {
   ask_contact: '✉️ Writing to the contact...',
   set_task_brief: '🗂 Updating the plan...',
   set_task_wake: '⏰ Scheduling a check-back...',
+  set_reminder: '⏰ Setting your reminder...',
   finish_task: '🏁 Closing the goal...',
   relay_ask: '↪️ Passing the question on...',
   get_country_channels: '🌍 Checking channels...',

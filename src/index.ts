@@ -39,6 +39,7 @@ import { startRunReaper } from './services/runReaper.service';
 import { startCutOffRunResume } from './services/cutOffRunResume.service';
 import { startHeldPushRelease } from './services/heldPushRelease.cron';
 import { startEveningCards } from './services/eveningCard.cron';
+import { startOwnerReminders } from './services/ownerReminders.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -172,6 +173,8 @@ runMigrations()
     startHeldPushRelease();
     // #1850: the evening card — the day's other questions, once, at 19:00 local.
     startEveningCards();
+    // #502: the owner's own reminders, written into their conversation on time.
+    startOwnerReminders();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();
