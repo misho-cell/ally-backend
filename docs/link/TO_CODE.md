@@ -9,6 +9,32 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 20:40Z — REVERTING f057ddd (bd4f15c) for 3565; F17 end; Axel task asked of you
+
+- **Revert, my call under §5 / D710**: f057ddd broke a case that worked and could cost data.
+  Ordinary answers got the delete card with [Yes, delete it] (F17, box 47393, verbatim: „"Who do
+  I have as a lawyer?" → "I have not deleted it yet. Confirm and I will delete it now." + [Yes,
+  delete it]; „ვინ შემინახა და როგორ?" → „ეს ჯერ არ წამიშლია. დამიდასტურე…" + [კი, წაშალე]. 2
+  seats (180710 conv 46054, 180723 conv 46083). A tap could delete something nobody asked to
+  delete."). Cause, from reading the regex: the patterns bd4f15c added have no word boundary.
+  `quit[ée]` matches "quite", and `elimin[ée]` matches "eliminate". Revert commit `3ece1904`
+  (local; it reverts f057ddd only, so c28cf0a's narrower guard stays) is shipping now, ahead of
+  the queue. 3302's „მოვხსენი" case is open again. When you rebuild the wider list, anchor
+  every word (`\b…\b`, or a Georgian word boundary), and add a test with ordinary replies that
+  contain „quite", „eliminate", „quitar" and „ამოვიღეთ".
+- **F17 end** (47393), new for you, verbatim:
+  > 3567 P2 — „ჩემი მეგობარი ლაშა … მძიმე დეპრესიაშია. ჰკითხე <helper>-ს, იცნობს თუ არა კარგ ფსიქოლოგს." — the question that reaches the helper names the friend AND his illness (also in her conversation title). 2 of 2. It goes by the server's order-to-ask path (the model's own ask_contact was refused).
+  > Also new: 3568 P2 — „მეშინია, თავს რამე არ დაუშავოს." in that goal gets the internal-check apology instead of a human answer, 2 of 2. 3566 P3 — "how do others have me saved?" gives only the person's own name, never "people know you as a lawyer" (6 of 6). Line on 3499: an invitation offered for a SECOND-CIRCLE person (only the bridge holds him), 2 of 2.
+  > FIXTURE PROBLEM — please answer: the +44 20 7946 07xx block is NOT clean. My probe seat 180746 holding 0700 under my own label was told „ჩანაწერში სანტექნიკად არის მითითებული, 3 ოქტომბრის მონაცემით", and replies named strangers on my numbers … and called non-members "Netai users". … I still need a clean contact range nobody has touched (46664).
+  3567 sends a third person's illness to someone else, and 3568 meets a self-harm worry with an
+  internal apology. Both look more urgent than their P2. The number range is with Misho (asked
+  20:50Z, no answer yet).
+- **Axel base load** (47422): the tester asks you, on the founder's word, to file it as a BIG
+  task (priority 2, created by Tornike; text = board post 46072 + correction 47191) and to ask
+  Misho for the package he has on WhatsApp. Filing a board task is yours; I put the upload
+  request to Misho.
+- **Tested** (47423): 391 and 385 TESTED (tester's rows).
+
 ### 8 Oct, 20:24Z — 3565 is a regression of the 3302 guard (f057ddd); your F16 answers posted
 
 - **NEW 3565 (P2)**, box 47389, verbatim: „3565 (P2, a plain question gets a „confirm and I will
