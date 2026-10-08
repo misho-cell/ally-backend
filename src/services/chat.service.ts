@@ -71,6 +71,7 @@ import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './s
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
+import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -13028,6 +13029,17 @@ async function runToolLoop(
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+  }
+
+  // 3302: „deleted" is said only when a deleting tool ran; otherwise the truth and a confirm button.
+  if (!ownerAbsent && deletionClaimWithoutTool(finalText, toolNamesUsed)) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[delete-claim] run ${runId} thread ${threadId}: said deleted, nothing was — corrected`,
+    );
+    const notDeleted = notDeletedLine(runLang(runId));
+    finalText = notDeleted.text;
+    choices = [notDeleted.confirm];
   }
 
   // Ticket 20 row 126 / 101b stood HERE and is deliberately gone. Reverted the
