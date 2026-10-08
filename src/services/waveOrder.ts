@@ -21,7 +21,7 @@ import { Prematch, prematchMany, PrematchWord } from './prematch.service';
 const QUERY_TIMEOUT_MS = 5_000;
 const ROWS_READ = 2_000;
 
-const CLASS_RANK: Readonly<Record<PrematchWord, number>> = {
+export const CLASS_RANK: Readonly<Record<PrematchWord, number>> = {
   [PrematchWord.LikelyYes]: 0,
   [PrematchWord.Possibly]: 1,
   [PrematchWord.AskHim]: 2,

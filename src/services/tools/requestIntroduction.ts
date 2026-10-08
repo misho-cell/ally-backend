@@ -1,3 +1,4 @@
+import { recordIntroPrematch } from '../bridgeOrder';
 import { reasonAboutAsker } from '../askEditor.service';
 import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
@@ -550,6 +551,8 @@ async function requestIntroductionInner(
     ),
   ]);
 
+  // 1697 (A14): both sides pre-cleared at the same moment, for the admin; nothing is sent by it.
+  void recordIntroPrematch(insertResult.rows[0].id);
   const stored: StoredRequest = {
     requestId: insertResult.rows[0].id,
     requestRef: insertResult.rows[0].request_ref,
