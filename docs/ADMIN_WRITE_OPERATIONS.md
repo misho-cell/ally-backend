@@ -5891,3 +5891,10 @@ When the server cannot send (no single named contact, not on Netai, a wall), the
 A path that writes to real people, by Misho's word.
 
 Undo: revert.
+
+**§99.7 — D505 tie-break, shipped alone. No model-facing text.** A stranger with no messages reads the
+language of their number's country (D505). A foreign number now still reads Georgian when the person's
+own registered name, or any name others saved them under, is written in Georgian letters. The query
+returns booleans only (threads.service.ts, languageOfAStrangersNumber).
+
+Undo: revert.

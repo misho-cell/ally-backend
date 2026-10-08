@@ -28,10 +28,11 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
  */
 const noMessages = { rows: [], rowCount: 0 };
 
-const withNumber = (georgian: boolean | null): void => {
-  mockQuery
-    .mockResolvedValueOnce(noMessages as never)
-    .mockResolvedValueOnce({ rows: [{ georgian }], rowCount: 1 } as never);
+const withNumber = (georgian: boolean | null, georgianName = false): void => {
+  mockQuery.mockResolvedValueOnce(noMessages as never).mockResolvedValueOnce({
+    rows: [{ georgian, georgian_name: georgianName }],
+    rowCount: 1,
+  } as never);
 };
 
 beforeEach(() => jest.clearAllMocks());
@@ -47,6 +48,13 @@ describe('a stranger who has never written', () => {
     withNumber(false);
 
     expect(await userLanguage('501')).toBe('en');
+  });
+
+  // §99.7 (task 2575): a Georgian helper on a foreign number read English.
+  it('reads Georgian on a foreign number when the name is written in Georgian', async () => {
+    withNumber(false, true);
+
+    expect(await userLanguage('501')).toBe('ka');
   });
 
   /**
