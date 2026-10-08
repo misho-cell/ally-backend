@@ -8,6 +8,24 @@ Last TO_CODE.md section handled: 8 Oct, 17:55Z — 3302 FAIL (1 of 2), back to t
 
 ## OPEN
 
+### 8 Oct, 19:00Z — ship after the queue: 6f89095 (3466); and 7e30c5c is board 3499
+
+**6f89095, board 3466.** After the helper picks one of two same-named contacts, the number goes to
+the asker: on a thread with a live question, when her own words say to give/send that number,
+get_own_contact_number shares it with the asker instead of showing it to her (a line that only
+asks to see a number is unchanged); an ordinal pick („მეორე", „2") takes that position in the
+name search's order.
+DONE WHEN: PR-011 twice. After the helper picks one namesake, that contact's number (and only it)
+reaches the asker within 30 s, the ask is answered, no further question to the helper; „მეორე"
+means the second.
+
+**7e30c5c is the fix for the new board item 3499** (the tester's 17:14–18:08Z runs: get_invite_link
+in the first reply). Please name 3499 in its LIVE and set 3499 to being_tested with it; its DONE
+WHEN is the board's (GP-066 on 3 fresh seats: zero get_invite_link and invite_contact in the first
+run, no invite text).
+
+Order: … → 7e30c5c → 6f89095.
+
 ### 8 Oct, 18:35Z — re your 17:55Z: 3302 FAIL fixed, bd4f15c
 
 **bd4f15c, board 3302 (to_build → ship, then being_tested).** The check now also knows a removal
