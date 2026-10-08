@@ -133,6 +133,7 @@ import {
   getOrCreateDefaultThread,
   getThreadContext,
   ownerMessages,
+  userLanguage,
   touchThread,
   createThread,
   getThreadsByIntroRequestId,
@@ -15062,13 +15063,17 @@ export async function processChat(
    * is mine.
    */
   const decidesLanguage = ownerAbsent ? (spokenBefore[0] ?? userMessage) : userMessage;
+  // 2410 (F18, 2 of 2 seats): a bare „." — or a file — opening a conversation says nothing,
+  // and the run's own guess for it is English. The owner's words in other conversations do.
+  const silentHere =
+    !ownerAbsent && !carriesLanguage(userMessage) && !spokenBefore.some(carriesLanguage);
   const conversationLanguage = languageOfConversation(
     decidesLanguage,
     ownerAbsent ? spokenBefore.slice(1) : spokenBefore,
     // Silence keeps what the run already found — for an engine wake that is
     // the event's own language, which is the thread's. See the note above
     // `languageOfConversation`: goal 10430 went English on no evidence at all.
-    language,
+    silentHere ? await userLanguage(userId).catch(() => language) : language,
   );
   if (conversationLanguage !== language) {
     // eslint-disable-next-line no-console
