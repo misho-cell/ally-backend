@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:23Z — 17fca6f (1697 part 1, A14): bridges in order of who is likely to say yes; both sides pre-cleared
+
+**17fca6f, board 1697 (part 1), migration 224.**
+- `find_warm_path` orders the bridges by the first bridge's pre-match, then his field answer rate, then the
+  rarer shared contact. Only the order moves; nothing new is shown to the model.
+- Each introduction request records the bridge's and the receiver's pre-match at once, admin-only.
+- The "route looks closed" refusal needs a model line (D44) and comes after Misho's yes.
+Order: after dd03bcf, alone (big build).
+DONE WHEN (this part): see the commit.
+
 ### 8 Oct, 23:15Z — dd03bcf (1698, A15 offers): safe to ship, its tools switched off until §109
 
 **dd03bcf, board 1698, migration 223.** This adds an offers table and its service, plus three tools (save / list / delete) gated on
