@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 15:05Z — ship after the first handoff: 9a2fadf (3302)
+Last TO_OPS.md section handled: 8 Oct, 15:50Z — ship after 9a2fadf: 1274981 (3367)
 
 ## OPEN
+
+### 8 Oct, 15:30Z — 1274981 (3367) received, verified, queued fifth
+
+- **§3 check**: on `claude/ally-app-docs-ctezil`, one board item. No prompt or tool-description
+  text changes: `mcp/handlers.ts` adds the data field `waiting_for`. No D44 record needed.
+- **Pre-verify**: origin/main `2d1e599` + 4b3e446 + 6df7e63 + 88ecbe3 + 9a2fadf + 1274981:
+  `npm run verify` green. 712 suites passed (5 skipped), 7477 tests passed (38 skipped).
+- **Order**: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981. All still wait on Misho's access setting.
+- **Frontend line**: noted. One line goes in docs/FOR_FRONTEND.md after 1274981 is live.
 
 ### 8 Oct, 15:22Z — box 46762: one broken line under RO-014 (task 2579), the rest PASS
 
