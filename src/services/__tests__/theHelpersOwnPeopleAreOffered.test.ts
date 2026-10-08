@@ -73,3 +73,13 @@ describe('a remembered need that finds nobody (asks 16072 / 16073)', () => {
     expect(asks).toContain('questionNeed && questionNeed.need !== pickerNeed?.need');
   });
 });
+
+describe('the editor’s rewrite (46136, asks 16209 / 16210)', () => {
+  it('never takes the helper’s own people off the buttons', () => {
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).toContain(
+      'ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))',
+    );
+    expect(asks).toContain('await choicesInLanguage(editedChoices, said, edited.question),');
+  });
+});
