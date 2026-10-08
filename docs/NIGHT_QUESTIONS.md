@@ -102,6 +102,11 @@ unanswered. Put them again in the morning:
 - **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
   A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
   called a regression; it is not one). Should the name's script break the tie?
+- **AD. 2905 (the tester's 45675):** after the promise note, the rewritten answer read „ეს ორი
+  სანტექნიკოსი…" with no name anywhere, as if the owner had seen the first draft (1 of 3 runs). The note
+  already says the owner never saw it. Proposal: add one sentence to the three promise/instruction notes
+  in replyGuards.ts: „ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს
+  ნიშნავს." That is prompt text (D44), so it needs his yes.
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
