@@ -84,6 +84,10 @@ unanswered. Put them again in the morning:
   `percent` and `levels`, live.
 - **Y. T374:** new phone contacts can be found without a .vcf only with a native app (the frontend:
   a web app cannot read contacts in the background). Is that a product decision now or later?
+- **Z. 2641:** `/join?ref=<a code that belongs to nobody>` shows the full welcome. The page cannot tell,
+  because no public route says whether a code exists. A route that does is a new public door, and
+  could be used to check codes one by one (codes are credentials, D149). Should it be built,
+  rate-limited and answering only yes/no?
 - **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
   A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
   called a regression; it is not one). Should the name's script break the tie?
