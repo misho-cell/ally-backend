@@ -86,6 +86,22 @@ export function parseMonthDay(value: string): MonthDay | null {
   return null;
 }
 
+/**
+ * 3269 (SE-039, ME-040): a told birthday was saved sometimes as `birthday`,
+ * sometimes as a note „დაბადების დღე: 13 ოქტომბერი" — and a note is never read
+ * as a birthday. A note that is only a birthday is filed as one.
+ */
+const BIRTHDAY_NOTE_RE =
+  /^\s*(?:დაბადების\s+(?:დღე|თარიღი)|birthday|date\s+of\s+birth|день\s+рождения|cumpleaños)\s*[:—–-]?\s*(.+)$/iu;
+const NOTE_FIELDS: ReadonlySet<string> = new Set(['', 'note']);
+
+/** The date, when a note is only a birthday; else null. */
+export function birthdayFromNote(fieldType: string, value: string): string | null {
+  if (!NOTE_FIELDS.has(fieldType.trim().toLowerCase())) return null;
+  const date = value.match(BIRTHDAY_NOTE_RE)?.[1]?.trim();
+  return date !== undefined && parseMonthDay(date) !== null ? date : null;
+}
+
 function validMonthDay(month: number, day: number): MonthDay | null {
   if (!Number.isInteger(month) || !Number.isInteger(day)) return null;
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
@@ -122,7 +138,9 @@ export async function getUpcomingBirthdays(
      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
      WHERE cf.submitted_by_user_id = $2
        AND cf.retracted_at IS NULL
-       AND cf.field_type = ANY($3::text[])
+       AND (cf.field_type = ANY($3::text[])
+            -- 3269: birthdays saved as a note before they were filed as birthdays.
+            OR (cf.field_type = 'note' AND cf.value ~* '^\\s*(დაბადების\\s+(დღე|თარიღი)|birthday)'))
      GROUP BY cf.neo4j_contact_id
      LIMIT $4`,
     [userId, userId, BIRTHDAY_KEYS, RESULT_LIMIT],

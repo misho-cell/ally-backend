@@ -484,6 +484,8 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
+import type { UpcomingBirthday } from './birthdayLens.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
@@ -12123,6 +12125,38 @@ async function answerNotTagged(
   return { reply: text, language, requestCreated: false };
 }
 
+/** 3269: the told birthdays in the coming month, said by the server; null when they cannot be read. */
+async function answerBirthdaysSoon(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  let rows: UpcomingBirthday[];
+  try {
+    rows = await birthdaysSoon(userId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[birthdays] not read:', (err as Error).message);
+    return null;
+  }
+  if (intent?.alreadyStored !== true) {
+    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+  }
+  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
+  const language = languageOfConversation(
+    userMessage,
+    spokenBefore,
+    detectRunLanguage(userMessage),
+  );
+  const text = birthdaysAnswer(rows, language);
+  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+  // eslint-disable-next-line no-console
+  console.log(`[birthdays] run ${runId}: answered by the server (${rows.length})`);
+  return { reply: text, language, requestCreated: false };
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -14650,6 +14684,12 @@ export async function processChat(
       ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
       : null;
   if (notTagged !== null) return notTagged;
+  // 3269: „who has a birthday soon?" is answered from the told birthdays, by the server.
+  const birthdays =
+    !ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)
+      ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (birthdays !== null) return birthdays;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
