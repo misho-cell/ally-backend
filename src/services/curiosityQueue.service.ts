@@ -1,3 +1,4 @@
+import { looksCoded } from './labelParser.service';
 import { query } from '../db/postgres/client';
 import { buildTargetList } from './targetScoring.service';
 import { getTopConnectors } from './graphAnalytics.service';
@@ -281,9 +282,12 @@ export async function buildCuriosityQueue(
   for (const [phone, candidate] of byPhone) {
     const missing = firstMissingCoreFact(presence.get(phone));
     if (missing === null) continue;
+    // 3271: a coded label („ხხ7 ძვ.") is not a name to ask the owner about.
+    const label = labels.get(phone) ?? null;
+    if (label !== null && looksCoded(label)) continue;
     items.push({
       phone,
-      label: labels.get(phone) ?? null,
+      label,
       missing_fact: missing,
       question_type: candidate.questionType,
       priority: candidate.priority,
