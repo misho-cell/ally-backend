@@ -1,7 +1,12 @@
 import { query, withTransaction } from '../db/postgres/client';
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { ContactRefusal, isReadableTag, NOT_A_TEST_SEAT } from './seatContacts.service';
-import { mirrorSeatGraph, removeSeatGraph, saveSeatGraph } from './seatGraph.service';
+import {
+  mirrorSeatGraph,
+  parseSeatLabels,
+  removeSeatGraph,
+  saveSeatGraph,
+} from './seatGraph.service';
 
 /**
  * §60 IN BULK — ROW 321 ON A SEAT, WITHOUT WAITING FOR GIORGI.
@@ -117,6 +122,7 @@ export async function addSeatContactsBulk(
   const graphEdges = await mirrorSeatGraph(String(seatUserId), () =>
     saveSeatGraph(String(seatUserId), new Map(clean.map((c) => [c.phone, c.name]))),
   );
+  parseSeatLabels(String(seatUserId));
   return { ok: true, seat: seatUserId, added: clean.length, graph_edges: graphEdges };
 }
 

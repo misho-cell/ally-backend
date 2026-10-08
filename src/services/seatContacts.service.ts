@@ -1,6 +1,6 @@
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { query } from '../db/postgres/client';
-import { mirrorSeatGraph, saveSeatGraph } from './seatGraph.service';
+import { mirrorSeatGraph, parseSeatLabels, saveSeatGraph } from './seatGraph.service';
 import { updateTask } from './taskStore.service';
 
 /**
@@ -161,6 +161,7 @@ export async function addSeatContact(
   const graphEdges = await mirrorSeatGraph(String(seatUserId), () =>
     saveSeatGraph(String(seatUserId), new Map([[phone, cleanName]])),
   );
+  parseSeatLabels(String(seatUserId));
   return {
     ok: true,
     contact: { seat: seatUserId, phone, name: cleanName, tag: cleanTag },

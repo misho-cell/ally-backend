@@ -1,4 +1,5 @@
 import { getSession } from '../db/neo4j/client';
+import { parsePhonebookLabelsForUser } from './labelParser.service';
 import { getCompositeKeysForPhones, getCompositeKeysForUsers } from './neo4j.keys';
 
 const SEAT_GRAPH_TIMEOUT_MS = 15_000;
@@ -103,4 +104,18 @@ export async function mirrorSeatGraph(
     console.error(`[seat-graph] seat ${userId}: graph not written:`, (err as Error).message);
     return null;
   }
+}
+
+/**
+ * 3271 (MASTER TEST RUN, 2 of 2): get_unresolved_labels returned nothing for a
+ * seat's „ხხ7 ძვ.". It reads the label queue, which a phone import fills by
+ * running the label parser over the phonebook; the routes that add contacts
+ * to a seat never ran it. They now do, the same way the import does: in the
+ * background, a failure logged and never the route's.
+ */
+export function parseSeatLabels(userId: string): void {
+  void parsePhonebookLabelsForUser(userId).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error(`[label-parser] seat ${userId} failed:`, (err as Error).message),
+  );
 }
