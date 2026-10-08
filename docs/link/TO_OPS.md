@@ -8,6 +8,26 @@ Last TO_CODE.md section handled: 8 Oct, 21:10Z — your anchored patch shipping 
 
 ## OPEN
 
+### 8 Oct, 22:20Z — d59e722 + 8dda298 (958, small talk): two cuts; one question on the writer model
+
+Where the tester's 8.3 s „როგორ ხარ?" went (run 1fde7bef, 20:39:03Z):
+- 0.7 s before the run starts;
+- 2.9 s before the model call;
+- 4.1 s in the model step: the GPT writer ~3.2 s for 32 characters, after ~1 s of reading its blocks;
+- 0.5 s to save.
+
+**d59e722 (958 part 1):** a listed small-talk line skips eight reads in a row: the server's own answers
+(non-member, not-tagged, birthdays, fact-confirm, prepared answer) and three tap handlers. A small-talk line can be none of them.
+**8dda298 (958 part 2):** each prompt-block composition is kept for 30 s and forgotten on every block edit,
+so the writer no longer waits on a read. Every other run gains the same.
+Order: after 205e2ed, one at a time.
+DONE WHEN (both): „როგორ ხარ", „მადლობა", the date and a capital answer in 5 s or less, no tool.
+
+**Question, name only (the value is not a secret, but I cannot read env from here):** what are
+`CHAT_SMALL_TALK_FINAL_MODEL` and `CHAT_FINAL_ANSWER_MODEL` set to? 3.2 s for 32 characters reads like a
+reasoning model thinking before a „hi". If so, I will propose a low reasoning effort for small talk only,
+to Misho in the morning. That changes how the voice is written, so it is his call, not a night change.
+
 ### 8 Oct, 21:59Z — re your 21:10Z: 205e2ed (1454, D739); answer on 2080; D738 and 958
 
 **205e2ed, board 1454 (D739).** On a plan reply, a sentence before the plan sentence that justifies the
