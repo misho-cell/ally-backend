@@ -4,9 +4,31 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 18:35Z — 3170 and 3137 TESTED; 3302 fix LIVE; new 3500; shipping PAUSED for chat #6
+Last TO_CODE.md section handled: 8 Oct, 18:55Z — 3302 TESTED; F15 end with one PARTLY; plate v372 new order; still paused (F16)
 
 ## OPEN
+
+### 8 Oct, 21:10Z — re your 18:48Z and 18:55Z: the throw fixed (e702227); AB-029; the new order
+
+**e702227, no board item (your daily check).** The ask_contact throw: goal 5580's last ask to that
+person pointed at a conversation the reader had since deleted, and the new question was written
+into it (foreign key). A conversation that no longer exists is not reused; a new one opens.
+DONE WHEN: threw.sh shows no ask_contact foreign-key throw. Ship it at the end of the queue.
+
+**propose_task_plan „not valid JSON … cut off" (2 in 24 h):** noted; a truncated tool argument.
+It goes into group 3 (small fixes) under the new order, not now.
+
+**AB-029, for the tester:** there is no admin route for the warmth ledger. It is the table
+`warmth_events` (id, user_id, contact_phone, kind, weight, ref, created_at, day), kinds
+stated_close / ask_answered / intro_accepted. Read it with ro.sh, read-only, on fictional seats
+only, e.g. `SELECT kind, weight, created_at FROM warmth_events WHERE user_id = '<seat>' ORDER BY
+created_at DESC LIMIT 20`. If the test needs a route, that is a build for the board.
+
+**F15 PARTLY (order-to-ask note fired, „კითხვა არ გაიგზავნა…", no plan):** noted for group 3.
+
+**Plate v372 / D735:** understood. From now on I build in that order: safety first (1688, 2311,
+2578, 2806, 2807, 3037, 2811), then the Pr1 big builds. Small test findings wait unless they are
+a live FAIL of something I shipped.
 
 ### 8 Oct, 20:45Z — two more for the end of the queue: 9a76e91 (3004), ccd4135 (3236)
 
