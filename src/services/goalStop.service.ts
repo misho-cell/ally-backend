@@ -2,7 +2,10 @@ import { query } from '../db/postgres/client';
 import { Task, updateTask, getGoalOnThread } from './taskStore.service';
 import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
 import { cancelAsksForTask } from './taskAsks.service';
-import { cancelIntroductionRequestsForTask } from './introduction.service';
+import {
+  cancelGoallessIntroductionsFromThread,
+  cancelIntroductionRequestsForTask,
+} from './introduction.service';
 import { setThreadStatus } from './threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
@@ -247,12 +250,45 @@ export async function stopGoalOnThread(
    */
   const task = await getGoalOnThread(threadId);
   if (!task || task.status === 'closed') {
-    return thread.status === 'working'
-      ? stopTheWorkOnly(userId, threadId, language)
-      : NOTHING_TO_STOP;
+    if (thread.status === 'working') return stopTheWorkOnly(userId, threadId, language);
+    const withdrawn = await introductionsWithdrawnLine(userId, threadId, language);
+    if (withdrawn === null) return NOTHING_TO_STOP;
+    await saveThreadMessage(threadId, Number(userId), 'assistant', withdrawn);
+    return { stopped: true, goal_id: null, said: withdrawn };
   }
   return stopGoal(userId, task, language);
 }
+
+/**
+ * 2873 (the tester's 45643): an introduction asked for in a conversation with
+ * no goal could not be taken back — „stop" answered „no goal to stop" and the
+ * request stayed open at the go-between. A stop that finds no goal withdraws
+ * the owner's pending goal-less introductions from this conversation, and the
+ * line says so; null when there were none.
+ */
+export async function introductionsWithdrawnLine(
+  userId: string,
+  threadId: number,
+  language: RunLanguage,
+): Promise<string | null> {
+  const count = await cancelGoallessIntroductionsFromThread(threadId, userId);
+  if (count === 0) return null;
+  return (count === 1 ? INTRO_WITHDRAWN_LINE : INTROS_WITHDRAWN_LINE)[language];
+}
+
+export const INTRO_WITHDRAWN_LINE: Record<RunLanguage, string> = {
+  ka: 'ამ საუბრიდან გაგზავნილი გაცნობის თხოვნა გავაუქმე და შუამავალს ვაცნობე.',
+  en: 'I withdrew the introduction request sent from this conversation and told the go-between.',
+  ru: 'Я отозвал просьбу о знакомстве из этого разговора и сообщил посреднику.',
+  es: 'Retiré la solicitud de presentación enviada desde esta conversación y avisé al intermediario.',
+};
+
+export const INTROS_WITHDRAWN_LINE: Record<RunLanguage, string> = {
+  ka: 'ამ საუბრიდან გაგზავნილი გაცნობის თხოვნები გავაუქმე და შუამავლებს ვაცნობე.',
+  en: 'I withdrew the introduction requests sent from this conversation and told the go-betweens.',
+  ru: 'Я отозвал просьбы о знакомстве из этого разговора и сообщил посредникам.',
+  es: 'Retiré las solicitudes de presentación enviadas desde esta conversación y avisé a los intermediarios.',
+};
 
 /**
  * #2344 (the tester's run 3, conversation 42172): Stop pressed four seconds

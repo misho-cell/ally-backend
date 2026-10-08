@@ -1557,7 +1557,44 @@ async function tellThreadTheRequestIsWithdrawn(
   }).catch(() => undefined);
 }
 
+/**
+ * 2873 (the tester's 45643): an introduction made from a conversation with no
+ * goal behind it could not be taken back — „stop" found no goal, and the
+ * request stayed open at the go-between. The owner's pending requests made
+ * from that conversation without a goal are withdrawn the same way a stopped
+ * goal's are, both sides told.
+ */
+export async function cancelGoallessIntroductionsFromThread(
+  threadId: number,
+  requesterUserId: string,
+): Promise<number> {
+  return withdrawRequests(
+    `UPDATE introduction_requests
+        SET status = 'cancelled'
+      WHERE origin_thread_id = $1 AND requester_user_id = $2::int
+        AND requester_task_id IS NULL AND status = 'pending'
+      RETURNING id, mediator_user_id, target_name`,
+    [threadId, requesterUserId],
+    `conversation ${threadId}`,
+  );
+}
+
 export async function cancelIntroductionRequestsForTask(taskId: number): Promise<number> {
+  return withdrawRequests(
+    `UPDATE introduction_requests
+       SET status = 'cancelled'
+       WHERE requester_task_id = $1 AND status = 'pending'
+       RETURNING id, mediator_user_id, target_name`,
+    [taskId],
+    `stopped goal ${taskId}`,
+  );
+}
+
+async function withdrawRequests(
+  updateSql: string,
+  params: readonly unknown[],
+  what: string,
+): Promise<number> {
   try {
     const cancelled = await query<{
       id: number;
@@ -1571,11 +1608,8 @@ export async function cancelIntroductionRequestsForTask(taskId: number): Promise
        * last few days, and a withdrawal has no business in the list of what
        * came back.
        */
-      `UPDATE introduction_requests
-       SET status = 'cancelled'
-       WHERE requester_task_id = $1 AND status = 'pending'
-       RETURNING id, mediator_user_id, target_name`,
-      [taskId],
+      updateSql,
+      [...params],
     );
     /**
      * B31, 22 September — BOTH SIDES OF THE WITHDRAWAL, not one.
@@ -1604,10 +1638,7 @@ export async function cancelIntroductionRequestsForTask(taskId: number): Promise
     return cancelled.rowCount ?? cancelled.rows.length;
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error(
-      `[intro] could not withdraw requests for stopped goal ${taskId}:`,
-      (err as Error).message,
-    );
+    console.error(`[intro] could not withdraw requests for ${what}:`, (err as Error).message);
     return 0;
   }
 }

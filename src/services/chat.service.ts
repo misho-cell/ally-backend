@@ -429,6 +429,7 @@ import {
   stopGoal,
   stoppedLine,
   NOTHING_TO_STOP_LINE,
+  introductionsWithdrawnLine,
   alreadyStoppedLine,
 } from './goalStop.service';
 import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
@@ -14119,7 +14120,8 @@ export async function processChat(
     } else {
       said =
         running === null
-          ? NOTHING_TO_STOP_LINE[stopLang]
+          ? ((await introductionsWithdrawnLine(userId, threadId, stopLang)) ??
+            NOTHING_TO_STOP_LINE[stopLang])
           : alreadyStoppedLine(running.title, stopLang);
       // eslint-disable-next-line no-console
       console.log(
