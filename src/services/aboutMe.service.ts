@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
+import { foldedLower } from './tools/georgianCase';
 import { getUserProfile } from './userProfile.service';
 
 /**
@@ -17,6 +18,8 @@ const ABOUT_ME_TIMEOUT_MS = 5_000;
 const MAX_OWN_NUMBERS = 5;
 const MAX_PUBLIC_FACTS = 40;
 const MAX_OWN_ANSWERS = 20;
+const MAX_SAVED_AS = 10;
+const MIN_SAVERS_FOR_A_LABEL = 2;
 
 export interface PublicFact {
   readonly field_type: string;
@@ -37,6 +40,7 @@ export interface AboutMe {
   readonly my_profile: Readonly<Record<string, string>>;
   readonly what_others_see: readonly PublicFact[];
   readonly my_answers: readonly OwnAnswer[];
+  readonly names_others_saved_you_as: readonly string[];
 }
 
 async function ownName(userId: string): Promise<string | null> {
@@ -114,6 +118,33 @@ async function ownAnswers(userId: string): Promise<OwnAnswer[]> {
   });
 }
 
+/**
+ * 1354, the saved-names half (the tester's 45310; Misho's yes, §99.6): „რა
+ * სახელებით ვარ სხვებთან შენახული?" Each label is someone's private phonebook
+ * entry, so only a label at least two people saved is said — never who saved
+ * it and never how many.
+ */
+async function labelsOthersSaved(numbers: readonly string[]): Promise<string[]> {
+  if (numbers.length === 0) return [];
+  const result = await query<{ label: string }>(
+    `SELECT MIN(TRIM(ua.alias)) AS label
+       FROM "UserAlias" ua
+      WHERE ua.phone = ANY($1::text[])
+        AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+      GROUP BY ${foldedLower('TRIM(ua.alias)')}
+     HAVING COUNT(DISTINCT ua."contactId") >= $2
+      ORDER BY COUNT(DISTINCT ua."contactId") DESC
+      LIMIT $3`,
+    [
+      [...new Set([...numbers, ...numbers.map((n) => normalizePhone(n))])].filter((n) => n !== ''),
+      MIN_SAVERS_FOR_A_LABEL,
+      MAX_SAVED_AS,
+    ],
+    ABOUT_ME_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => row.label);
+}
+
 export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
   const [name, numbers, profile, answers] = await Promise.all([
     ownName(userId),
@@ -127,5 +158,6 @@ export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
     my_profile: profile,
     what_others_see: await publicFactsAbout(numbers),
     my_answers: answers,
+    names_others_saved_you_as: await labelsOthersSaved(numbers),
   };
 }

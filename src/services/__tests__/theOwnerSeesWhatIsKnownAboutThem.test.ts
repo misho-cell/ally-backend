@@ -42,6 +42,7 @@ describe('whatNetaiKnowsAboutMe', () => {
       my_profile: { profession: 'იურისტი' },
       what_others_see: [{ field_type: 'occupation', value: 'იურისტი' }],
       my_answers: [],
+      names_others_saved_you_as: [],
     });
     const [sql, params] = callFor('FROM contact_facts');
     expect(sql).toContain('is_public = true AND retracted_at IS NULL');
@@ -102,6 +103,29 @@ describe('whatNetaiKnowsAboutMe', () => {
     const [sql, params] = callFor('FROM answer_events');
     expect(sql).toContain('ae.is_current AND NOT ae.skipped AND ae.answered_at IS NOT NULL');
     expect(params).toEqual(['501', 20]);
+  });
+});
+
+/** 1354 (§99.6): labels at least two people saved; never who, never how many. */
+describe('the names others saved him under', () => {
+  it('reads only labels two or more people saved, by his own numbers', async () => {
+    answer({
+      'FROM "User"': [{ name: 'ნიკა' }],
+      'FROM "UserPhone"': [{ phone: '+995599000111' }],
+      'HAVING COUNT(DISTINCT': [{ label: 'ნიკა ტესტაძე' }],
+    });
+    const me = await whatNetaiKnowsAboutMe('501');
+    expect(me.names_others_saved_you_as).toEqual(['ნიკა ტესტაძე']);
+    const [sql, params] = callFor('HAVING COUNT(DISTINCT') as [string, unknown[]];
+    expect(sql).toContain('HAVING COUNT(DISTINCT ua."contactId") >= $2');
+    // Only the label leaves the query: no saver, no count.
+    expect(sql.split('FROM')[0]).toBe('SELECT MIN(TRIM(ua.alias)) AS label\n       ');
+    expect(params[1]).toBe(2);
+  });
+
+  it('reads none without a number', async () => {
+    answer({ 'FROM "User"': [{ name: null }] });
+    expect((await whatNetaiKnowsAboutMe('501')).names_others_saved_you_as).toEqual([]);
   });
 });
 
