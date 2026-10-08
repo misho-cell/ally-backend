@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { askStateOf, isOpenAskState } from './askState';
 import { phoneDigits } from './phone';
+import { prematchMany, rankByPrematch } from './prematch.service';
 import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
 import type { Task } from './taskStore.service';
 
@@ -15,7 +16,8 @@ import type { Task } from './taskStore.service';
  * to now.
  *
  * Who is next is the plan's own order (today's ranking) minus everyone this
- * goal already asked. A8 will reorder it when its numbers exist.
+ * goal already asked, ranked by each candidate's pre-match word (1694). A8
+ * will reorder it further when its numbers exist.
  */
 export const WAVE_SIZE_SMALL = 3;
 export const WAVE_SIZE_REAL_WORK = 5;
@@ -114,7 +116,7 @@ async function heldWaveFor(taskId: number, digits: string): Promise<number | nul
 
 /** Where this goal's waves stand; null when it has no approved plan. */
 export async function readWave(
-  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at'>,
+  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at' | 'title'>,
 ): Promise<WaveSnapshot | null> {
   const plan = planInForce(task);
   if (plan === null || plan.approved_at === null) return null;
@@ -128,9 +130,32 @@ export async function readWave(
     openInWave: asks.filter((a) =>
       a.status === 'held' ? true : isOpenAskState(askStateOf(a, now)),
     ).length,
-    remaining: notYetAsked(plan.people_to_involve, asked),
+    remaining: await inPrematchOrder(notYetAsked(plan.people_to_involve, asked), task.title),
     nextWaveAt: next_wave_at,
   };
+}
+
+/**
+ * 1694 (A11): who is next is ranked by each candidate's own pre-match word —
+ * likely_yes, possibly, ask_him, and a boundary last — the plan's order within
+ * a word. A failed read keeps the plan's order: ranking is a help, not a gate.
+ */
+async function inPrematchOrder(
+  people: readonly PlanPerson[],
+  goalText: string | null,
+): Promise<PlanPerson[]> {
+  if (people.length < 2) return [...people];
+  try {
+    const words = await prematchMany(
+      people.map((p) => p.phone),
+      goalText ?? '',
+    );
+    return rankByPrematch(people, words);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[prematch] wave order kept as planned:', (err as Error).message);
+    return [...people];
+  }
 }
 
 /** Moves the goal from `from` to the next wave, once even if two callers race. */
@@ -155,7 +180,7 @@ export function waveMayWiden(snapshot: WaveSnapshot): boolean {
 }
 
 export async function advanceWaveIfDone(
-  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at'>,
+  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at' | 'title'>,
 ): Promise<boolean> {
   const snapshot = await readWave(task);
   if (snapshot === null || !waveIsDone(snapshot)) return false;
@@ -163,7 +188,7 @@ export async function advanceWaveIfDone(
 }
 
 export async function widenWaveOnSilence(
-  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at'>,
+  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at' | 'title'>,
 ): Promise<boolean> {
   const snapshot = await readWave(task);
   if (snapshot === null || !waveMayWiden(snapshot)) return false;
@@ -180,7 +205,7 @@ export type WaveRoom =
  * plan, already asked on this goal, a question already held for them).
  */
 export async function waveRoomFor(
-  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at'>,
+  task: Pick<Task, 'id' | 'plan' | 'plan_version' | 'plan_approved_at' | 'title'>,
   contactPhone: string,
   /** Lazy, like the other D625 checks: asked only when the wave is full. */
   ownerNamedThem: () => Promise<boolean>,

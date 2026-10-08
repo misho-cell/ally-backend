@@ -40,6 +40,7 @@ import {
 } from './askChoices';
 import { editOutgoingAsk } from './askEditor.service';
 import { isTypedDecline } from './typedDecline';
+import { Prematch, prematchMany } from './prematch.service';
 import {
   createThread,
   lastAssistantMessageIs,
@@ -502,6 +503,17 @@ async function isNetaiUser(userId: number, subscriptionStatus: string | null): P
  */
 export type AskReach = 'ok' | 'not_member' | 'never_opened';
 
+/** The candidate's pre-match word; null when it cannot be read (the ask goes as before). */
+async function prematchOf(phone: string, goalText: string | null): Promise<Prematch | null> {
+  try {
+    return (await prematchMany([phone], goalText ?? '')).get(phoneDigits(phone)) ?? null;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[prematch] not read for an ask:', (err as Error).message);
+    return null;
+  }
+}
+
 export async function canBeAsked(contactPhone: string): Promise<AskReach> {
   const member = await query<{ userId: number; subscriptionStatus: string | null }>(
     `SELECT up."userId", u.subscription_status AS "subscriptionStatus"
@@ -779,6 +791,8 @@ async function createAskNow(
 
   // #1685 (A2): the wave this ask goes in; null when the waves do not count it.
   let waveNo: number | null = null;
+  // 1694 (A11): the goal's words, for the recipient's own pre-match.
+  let goalText: string | null = null;
 
   // SERVER-SIDE permission gate (ticket-2 P0, thread 7723): a message that
   // reaches a real person's phone must never depend on prompt text alone —
@@ -793,6 +807,7 @@ async function createAskNow(
     if (!task || String(task.user_id) !== fromUserId || task.status !== 'open') {
       return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
     }
+    goalText = task.title;
     /**
      * ROW 251, FOURTH GATE — AND IT IS THE FIRST ONE, WHICH IS WHY IT WAS MISSED.
      *
@@ -1662,11 +1677,16 @@ async function createAskNow(
   // (a), D123): a direct ask starts with its sender, a relay inherits its
   // parent's origin. The helper's assistant then runs on the origin's wallet.
   const originUserId = await chainOriginFor(fromUserId, parentAskId);
+  // 1694 (A11): the recipient's own pre-match word, on a first ask; stored for the admin only.
+  const prematch =
+    isFollowUp || parentAskId !== undefined ? null : await prematchOf(contactPhone, goalText);
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
-                            wave_no, evening_card_id, choices, shown_question)
-     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13)
+                            wave_no, evening_card_id, choices, shown_question,
+                            prematch, prematch_source, prematch_at)
+     VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
+             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END)
      RETURNING id`,
     [
       taskId,
@@ -1682,6 +1702,8 @@ async function createAskNow(
       card?.eveningCardId ?? null,
       JSON.stringify(choices),
       edited.question,
+      prematch?.word ?? null,
+      prematch?.source ?? null,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
