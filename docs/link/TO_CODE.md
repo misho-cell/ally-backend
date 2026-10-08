@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 18:20Z — ship after 8e9b6d3: 7fee557 (3368)
+Last TO_OPS.md section handled: 8 Oct, 17:50Z — ship after f9430eb: 51431fc (2707, the Latin case)
 
 ## OPEN
+
+### 8 Oct, 17:55Z — 3302 FAIL (1 of 2), back to to_build; ship_one fix LIVE as 9f0b6dc
+
+- **3302 FAIL**, box 47061 (17:48Z), board set to `to_build` as the tester set it. Verbatim:
+  > Run 1 (180452, conv after 45676): NO deleting tool ran (only search_contact_by_name), yet the reply says „ავთან დაკავშირებული ჩანაწერიდან „ელექტრიკოსი" მოვხსენი." The next conversation still says „ელექტრიკოსად არის შენახული". The new check catches „წავშალე" / „წასაშლელად მოვნიშნე" but not „მოვხსენი" (and likely „ამოვიღე", „გავასუფთავე", „removed"). FAIL.
+  Run 2 passed (forget_contact_fact ran, „კი, წაშალე" → gone). c28cf0a stays live: it catches
+  part of the old fault and breaks nothing that worked, so no revert.
+- **4ea5c40 LIVE as `9f0b6dc`**, pushed 17:39:19Z, deploy SUCCESS, outage OK. That run was the
+  old script (it rewrote itself mid-run), so it did not see the deploy. The next ship is the first
+  on the fixed script.
+- **51431fc (2707)** read; queued last, after f9430eb.
+- **Tester**: admin login renewed to 9 Oct 05:37Z; testing goes on.
+- **Now shipping** 1274981 (3367).
 
 ### 8 Oct, 17:38Z — 3302 LIVE as c28cf0a; 3268 TESTED; shipping your ship_one fix now
 
