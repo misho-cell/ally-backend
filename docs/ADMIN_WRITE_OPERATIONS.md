@@ -5949,3 +5949,10 @@ WHAT    DELETE FROM push_subscriptions WHERE user_id = 160584 AND no user_agent 
 EXPECT  {"user_id":"160584","removed":3}
 UNDO    none: a subscription is re-created by the device itself the next time it subscribes.
 ```
+
+**§101 — 1489, Misho's choice (გ), 8 Oct ~11:15 UTC, shipped alone. No model-facing text.** After a helper's
+„no", the goal carries on quietly and writes to the owner only with a result. When every answer an answer
+delivery carries is a decline (the button, or a typed line that opens with „no", says nobody and has no
+„but"), the run that follows keeps its reply only if it sent a question or an introduction, recorded a
+result, or a search found somebody; otherwise it ends quietly. The answer card itself reaches the owner as
+before. Undo: revert.

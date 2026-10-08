@@ -19,7 +19,13 @@ import { withNameGenders } from './nameGender';
 import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { greetingName, greetingText, registeredName } from './serverGreeting';
 import { goalsForRun } from './wakeGoalScope';
-import { aLookedAgainLineTellsSomething, didWorkWorthALine, endsQuietly } from './quietSystemRun';
+import {
+  aLookedAgainLineTellsSomething,
+  broughtAResult,
+  didWorkWorthALine,
+  endsQuietly,
+  takeQuietAfterDecline,
+} from './quietSystemRun';
 import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies';
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
@@ -14966,6 +14972,14 @@ export async function processChat(
     return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
   }
   if (onlyButtons) effectiveFinal = RUN_STRINGS[language].choicesOnly;
+  // 1489 (Misho, გ): after a helper's „no" the goal goes on quietly and speaks only with a result.
+  if (ownerAbsent && takeQuietAfterDecline(threadId) && !broughtAResult(pending)) {
+    // eslint-disable-next-line no-console
+    console.log(`[chat] run ${runId} thread ${threadId}: after a „no", nothing new — quiet`);
+    await dropQuietRunTrail(userId, threadId, runId);
+    clearRunState(runId);
+    return { reply: '', language, requestCreated: false, runFailed: false, quiet: true };
+  }
   // #1057, night question L (Misho, 5 Oct): a system run that searched or made a
   // plan says so in one line instead of leaving the owner on nothing.
   if (
