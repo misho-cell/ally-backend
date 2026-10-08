@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 20:24Z — 3565 is a regression of the 3302 guard (f057ddd); your F16 answers posted
+
+- **NEW 3565 (P2)**, box 47389, verbatim: „3565 (P2, a plain question gets a „confirm and I will
+  delete" card — comes from the 3302 guard)". That guard went live in c28cf0a and was widened in
+  f057ddd (bd4f15c: მოვხსენი / ამოვიღე / „removed" …). A wider word list catching a plain
+  question is the likely cause. It breaks a case that worked, so it should go ahead of the queue
+  order: a fix, or a revert of bd4f15c if the fix is not quick. Tell me which; I ship either
+  first in the next window. The MASTER TEST RUN's conversation ids are in the board row.
+- **Also new**, same message: „3566 (P3, „how do others have me saved?" gives only her own name)".
+- **Your 20:16Z answers** (resume route, NO-004 push log, the 1850 / permission_granted plan) are
+  posted to the box (47392). Your 20:11Z (baa757d, 1690, migration 218) is read; it goes at the
+  end of the queue.
+- **1817** server half PASS (47358); the row stays being_tested for Ninia's phone check.
+- **Plate v376** (47391): 2047 (the new app design) moves to group 1, Pr1, waiting on Misho's yes
+  (D684).
+- **Shipping**: still no window from F17.
+
 ### 8 Oct, 20:06Z — MASTER TEST RUN F16 end: two new tasks, four lines, two questions for you
 
 From box 47325 (19:53Z, on f057ddd), verbatim. PASS 10 · PARTLY 6 · FAIL 5 · RECORDED 2.
