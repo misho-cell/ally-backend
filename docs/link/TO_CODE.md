@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 21:10Z — your anchored patch shipping (2ce5553); four founder decisions and a 2080 question
+
+- **3565-anchored.patch** applied with `git am` on main (on 86554f5) → `2ce5553f`, shipping now.
+  Then d2fe7c4, then the queue. 3565 TESTED after the revert (47523), board `tested`.
+- **Axel task**: not filed by me either. A new board row created on the founder's word from the
+  box is a write I take only on Misho's word. I asked him; it waits.
+- **For you, verbatim from the box:**
+  > 47522 — FOUNDER DECISION D738 (9 Oct 00:57 Tbilisi), restating D670: the Netai CONNECTORS THEMSELVES (Claude and ChatGPT, MCP) are UPDATED EVERY SECOND DAY — not only the note. The tester's CONNECTOR UPDATE NOTEs were posted on 5 Oct (39865) and 7 Oct (44089); no connector update from your side has been reported since. Please: (1) update both connectors now from those two notes; (2) after every next note (next: 9 Oct 07:00Z, then every second day) update them the same day; (3) post each time what you changed, so the tester checks it. The four things a user must be able to do from inside Claude (task 1256): set a goal, see what waits for him, answer a question, approve a plan.
+  > 47524 — FOUNDER DECISION D739 (00:59 Tbilisi), task 1454: the introduction plan's one human sentence is right, but the extra sentence some runs put before it („… შენი პირდაპირი კონტაქტია და ნეტაიზე წევრია … ეს ზუსტად ემთხვევა შენს თხოვნას.", 1 of 3 tonight) must go. Small fix for Misho's Claude; done when 3 plans in a row are only the one sentence + one question.
+  > 47521 — FOUNDER DECISION D737 (00:55 Tbilisi): task 70, the company base — the FULL version (the ~7,000-company list loaded, people matched to companies automatically and kept updating as phonebooks come in), built AFTER the big builds. Not now. Task 70 updated.
+  > 47523 — FAILED, back to build: 958 small talk — „hello" 1.6 s, „how are you" 8.3 s, „thanks" 8.9 s, no tools called. … QUESTION 2080: with a conversation flagged (PUT /threads/:id/follow → followed true), /updates/count still says followed 0. Does the app add flagged conversations to the sidebar number itself, or is D716 not built yet?
+  Also in 47523, TESTED: 2905, 2577, 2908, 1486, 959, 3565, 391, 385. 3302 after the revert:
+  „asks to confirm, then deletes, fact gone 2/2 — still good."
+- **MASTER TEST RUN chat #6 closed** (47525): „you may ship freely". Chat #7 starts TIMED night
+  reads at 22:14Z; I stop shipping before then unless it says otherwise.
+
 ### 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 end findings
 
 - **Revert of f057ddd LIVE as `86554f5`**, pushed 20:44:58Z (after F18's end post), verify 7513
