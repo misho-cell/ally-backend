@@ -4,6 +4,7 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn() }));
 import { query } from '../../db/postgres/client';
 import { CuriosityUpdate, maybeCuriosityUpdate } from '../curiosityQueue.service';
 import {
+  asksAboutTheOwner,
   contactQuestionMayRun,
   contactQuestionSection,
   dailyContactQuestionSection,
@@ -136,5 +137,27 @@ describe('a question handed out but never asked is handed out again', () => {
     expect(nameStem('  Netai Test Lado N1 ')).toBe('Neta');
     expect(nameStem('გია')).toBe('გია');
     expect(nameStem('')).toBe('');
+  });
+});
+
+/** 2938 (conv 44344): „რისი ცოდნა გინდა ჩემზე?" got the contact question instead. */
+describe('a reply about the owner', () => {
+  it('carries no contact question', () => {
+    expect(asksAboutTheOwner('რისი ცოდნა გინდა ჩემზე?')).toBe(true);
+    expect(asksAboutTheOwner('რა იცი ჩემ შესახებ?')).toBe(true);
+    expect(asksAboutTheOwner('What do you need to know about me?')).toBe(true);
+    expect(asksAboutTheOwner('კარგი იურისტი მჭირდება')).toBe(false);
+    expect(contactQuestionMayRun({ ...OWN_RUN, ownerAsksAboutSelf: true })).toBe(false);
+    expect(contactQuestionMayRun({ ...OWN_RUN, ownerAsksAboutSelf: false })).toBe(true);
+  });
+
+  it('is told the owner line by the run', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path') as typeof import('path');
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),');
+    expect(chat).toContain("ownerAbsent ? '' : userMessage,");
   });
 });
