@@ -17,8 +17,20 @@ export const GREETING_MAX_TOKENS = 350;
 const GREETING_ONLY_RE =
   /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s+მშვიდობისა|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
 
+/**
+ * 3202 (Ninia's phone, 8 Oct 07:58Z, thread 44629): she typed „გამარჯობა with a
+ * Georgian opening quote in front. It was not read as a greeting, so the run held
+ * every tool, called check_my_inbox, and the server listed her ten waiting goals
+ * under the hello. Quote marks around the whole line are not words.
+ */
+const WRAPPING_QUOTES_RE = /^[\s„“”"«»'‘’‚‛]+|[\s„“”"«»'‘’‚‛]+$/gu;
+
+export function unquoted(text: string): string {
+  return text.replace(WRAPPING_QUOTES_RE, '');
+}
+
 export function isBareGreeting(text: string | null | undefined): boolean {
-  return typeof text === 'string' && GREETING_ONLY_RE.test(text);
+  return typeof text === 'string' && GREETING_ONLY_RE.test(unquoted(text));
 }
 
 /**

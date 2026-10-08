@@ -1,3 +1,4 @@
+import { unquoted } from './greetingTurn';
 import { isSmallTalk } from './smallTalk';
 import { isPlaceholderThreadTitle } from './runLanguage';
 import { recordClaudeUsage } from './costLedger.service';
@@ -161,7 +162,8 @@ export async function generateThreadTitle(
   // The tester's 1114 (34585, 34587, 34590): a greeting or small talk got titles
   // like „this dialogue cannot be given a title". Its own words are the title.
   if (isSmallTalk(firstMessage)) {
-    const plain = sanitizeTitle(firstMessage);
+    // 3202: „გამარჯობა with a quote in front is named „გამარჯობა", without the quote.
+    const plain = sanitizeTitle(unquoted(firstMessage));
     if (plain === null) return;
     await updateThreadTitle(threadId, plain).catch((err: unknown) =>
       // eslint-disable-next-line no-console
