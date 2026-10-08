@@ -58,6 +58,8 @@ import { ALLOW_OPEN, allowedSpansForTheModel, scrubText } from './privacyScrub';
 import { receivingCapsAreOff } from './askCapExemptions';
 import { geoName } from './georgianCase';
 import {
+  ASK_BODY_MAX_CHARS,
+  disclosureLine,
   answeredByYourRule,
   askCancelledNote,
   bridgeThanks,
@@ -1610,6 +1612,16 @@ async function createAskNow(
       ? [picker.line]
       : []),
   ];
+  // 1687 (A4): the body is measured, and the identical disclosure line closes every ask.
+  const body = lines.join('\n\n');
+  if (body.length > ASK_BODY_MAX_CHARS) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ask-length] ask thread ${askThreadId}: ${body.length} characters (over ${ASK_BODY_MAX_CHARS}), sent as written`,
+    );
+  }
+  const profileName = fromName.rows[0]?.name?.trim() ?? '';
+  if (profileName !== '') lines.push(disclosureLine(said, profileName));
   await saveThreadMessage(
     askThreadId,
     toUserId,
