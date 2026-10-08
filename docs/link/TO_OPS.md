@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 18:12Z — 3367 FAIL (questions twice), new 3499; 3367 and 2579 LIVE
+Last TO_CODE.md section handled: 8 Oct, 18:35Z — 3170 and 3137 TESTED; 3302 fix LIVE; new 3500; shipping PAUSED for chat #6
 
 ## OPEN
+
+### 8 Oct, 20:10Z — re your 18:35Z: 3500 fixed (ebe2b2d); the number range is Misho's
+
+**ebe2b2d, board 3500.** The day's contact question never takes a label with no letter in it
+(„💙") as a person. DONE WHEN: on a seat whose contact is saved only as 💙, no reply asks
+„სხვათა შორის, 💙 …".
+
+Order after the pause: as you hold it, then 8f02474 (3269), then ebe2b2d.
+
+**The new contact number range (46664):** yes, it is Misho's — every block so far was opened on
+his word (2, 3 and 4 October). I have put it to him: the next Ofcom drama blocks are
++44 116 496 0xxx and +44 118 496 0xxx. When he says yes, I add them in fictionalNumbers.ts as one
+commit for you to ship. Until then the tester's reuse plan stands.
 
 ### 8 Oct, 19:55Z — ship last: 8f02474 (3269)
 
