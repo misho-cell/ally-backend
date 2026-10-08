@@ -228,8 +228,16 @@ describe('the plan the server adds', () => {
   it('follows the findings and ends with the question', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      'withClosingQuestion(`${reply.trimEnd()}\\n\\n${plan.text}`, runLang(runId));',
+      "reply.trim() === '' ? plan.text : `${reply.trimEnd()}\\n\\n${plan.text}`,",
     );
+  });
+
+  // 2909 (conv 44115): the reply was a dropped stage direction; the plan alone
+  // under its buttons still ends on „დავიწყო?".
+  it('ends on the question when the plan stands alone', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).not.toContain('? plan.text\n    : withClosingQuestion(');
+    expect(chat).toMatch(/return withClosingQuestion\(\s+reply\.trim\(\) === '' \? plan\.text/u);
   });
 });
 

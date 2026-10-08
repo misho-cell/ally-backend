@@ -7177,9 +7177,12 @@ function withPlanInReply(
   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
   // The tester's 1110 (33975): the plan line went first and the findings came
   // after it. The news leads; the plan follows it, and the question ends it.
-  return reply.trim() === ''
-    ? plan.text
-    : withClosingQuestion(`${reply.trimEnd()}\n\n${plan.text}`, runLang(runId));
+  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
+  // stood alone under its buttons without „დავიწყო?". It ends on it too.
+  return withClosingQuestion(
+    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
+    runLang(runId),
+  );
 }
 
 /**
