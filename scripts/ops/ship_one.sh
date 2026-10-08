@@ -34,7 +34,7 @@ for _ in $(seq 1 $QUIET_TRIES); do
 done
 [ "$pushed" = yes ] || { echo "NO QUIET MOMENT IN 30 MINUTES — not pushed"; exit 4; }
 
-head=$(git rev-parse --short HEAD)
+head=$(git rev-parse --short=7 HEAD)  # the deploy list shows 7 characters
 for _ in $(seq 1 $DEPLOY_TRIES); do
   line=$(./scripts/ops/logs.sh deployments 1 2>&1 | sed -n 2p)
   if echo "$line" | grep -q "$head"; then
