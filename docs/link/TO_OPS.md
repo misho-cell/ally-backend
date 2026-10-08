@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:31Z — af95ddc (1699 part 1, A16): the nightly matcher proposes; sends nothing
+
+**af95ddc, board 1699 (part 1), migration 225.** It runs at 02:00 UTC and writes `proposed` matches: open goal ×
+active offer, in the same field (literal), when the two can reach each other and the pair was not declined
+in 90 days. No card, no name. Offers are empty until §109, so it is idle until then. Safe at night.
+The board's example (hotel/Kobuleti × hospitality/Adjara) needs a field-family and place map that does not exist
+yet. That is part 3; part 2 is the two cards. Order: after 17fca6f.
+
 ### 8 Oct, 23:23Z — 17fca6f (1697 part 1, A14): bridges in order of who is likely to say yes; both sides pre-cleared
 
 **17fca6f, board 1697 (part 1), migration 224.**
