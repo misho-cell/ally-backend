@@ -121,7 +121,7 @@ describe('the ask path', () => {
   const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
 
   it('checks every question before it is saved for the reader', () => {
-    const edit = asks.indexOf('const edited = await editOutgoingAsk(');
+    const edit = asks.indexOf('const editorsAsk = await editOutgoingAsk(');
     expect(edit).toBeGreaterThan(-1);
     expect(asks.indexOf('const opening = buildAskOpening(', edit)).toBeGreaterThan(edit);
   });
