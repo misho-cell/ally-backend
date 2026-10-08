@@ -225,6 +225,13 @@ const GEORGIAN_AMBIGUITIES_USED = 2;
 /** Below this a Georgian term is an exact token (see EXACT_TOKEN_MAX_CHARS) and
  *  a guessed spelling that short is noise rather than reach. */
 const MIN_GEORGIAN_TERM_CHARS = 5;
+/**
+ * 3598: a NAME that short is not noise. „Nana", „Keti", „Gia" typed in Latin
+ * letters never reached „ნანა საცდელაძე" — the floor above dropped the only
+ * reading that spells her, and a name search needs every word. A short reading
+ * matches as an exact token (toWordStartPattern), which for a name is right.
+ */
+const MIN_GEORGIAN_NAME_CHARS = 2;
 
 /** The primary reading: digraphs first, then letter by letter. */
 export function latinToGeorgian(term: string): string {
@@ -255,10 +262,13 @@ export function latinToGeorgian(term: string): string {
  * shape: „elektrikosi" is ელექტრიკოსი, where one `k` is ქ and the other is კ,
  * and no whole-letter swap can spell one letter two ways in one word.
  */
-export function georgianVariants(term: string): readonly string[] {
+export function georgianVariants(
+  term: string,
+  minChars: number = MIN_GEORGIAN_TERM_CHARS,
+): readonly string[] {
   if (hasGeorgian(term)) return [];
   const primary = latinToGeorgian(term);
-  if (primary.length < MIN_GEORGIAN_TERM_CHARS) return [];
+  if (primary.length < minChars) return [];
   const live = GEORGIAN_AMBIGUITY.filter(([from]) => primary.includes(from)).slice(
     0,
     GEORGIAN_AMBIGUITIES_USED,
@@ -417,7 +427,9 @@ function pictographWord(word: string): string {
 
 export function buildRawWordGroups(rawQuery: string): string[][] {
   const words = splitIntoWords(rawQuery);
-  return words.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
+  return words
+    .map((word) => [...new Set([...wordVariantGroup(word), ...shortNameReadings(word)])])
+    .filter((group) => group.length > 0);
 }
 
 /**
@@ -667,6 +679,13 @@ export function withoutAgentEnding(stem: string): string | null {
     return null;
   }
   return stem.slice(0, -AGENT_ENDING.length);
+}
+
+/** 3598: the Georgian readings of a short Latin name word, which the shared floor drops. */
+function shortNameReadings(word: string): string[] {
+  const lower = word.toLowerCase();
+  if (latinToGeorgian(lower).length >= MIN_GEORGIAN_TERM_CHARS) return [];
+  return georgianVariants(lower, MIN_GEORGIAN_NAME_CHARS).filter((reading) => hasGeorgian(reading));
 }
 
 function wordVariantGroup(word: string): string[] {
