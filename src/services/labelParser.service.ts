@@ -189,6 +189,21 @@ function wordsOf(alias: string): string[] {
     .filter((w) => w.length > 0 && HAS_LETTER_RE.test(w));
 }
 
+/**
+ * 3271 (MASTER TEST RUN, 2 of 2): „ხხ7 ძვ." never reached the queue — two
+ * words, under the three a label needs so that a bare „Nino Beridze" stays
+ * out. A short label is queued too when it is plainly not a name: a word that
+ * mixes letters and digits („ხხ7"), or a short abbreviation ending in a dot
+ * („ძვ.", „დირ.").
+ */
+const LETTERS_AND_DIGIT_RE = /(?=.*\p{L})(?=.*\d)^\S+$/u;
+const SHORT_ABBREVIATION_RE = /(?:^|\s)\p{L}{1,3}\.(?:\s|$)/u;
+
+export function looksCoded(alias: string): boolean {
+  const words = alias.trim().split(/\s+/u);
+  return words.some((w) => LETTERS_AND_DIGIT_RE.test(w)) || SHORT_ABBREVIATION_RE.test(alias);
+}
+
 export function matchOccupation(alias: string): string | null {
   let genericMatch: string | null = null;
   for (const word of wordsOf(alias)) {
@@ -242,7 +257,7 @@ export async function parsePhonebookLabelsForUser(
       parsed++;
       continue;
     }
-    if (wordsOf(row.alias).length >= MIN_QUEUE_WORDS) {
+    if (wordsOf(row.alias).length >= MIN_QUEUE_WORDS || looksCoded(row.alias)) {
       await query(
         `INSERT INTO label_parse_queue (contact_id, phone, alias)
          VALUES ($1, $2, $3)
