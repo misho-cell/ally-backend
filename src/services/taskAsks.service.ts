@@ -38,6 +38,7 @@ import {
   withoutPointingAnswers,
 } from './askChoices';
 import { editOutgoingAsk } from './askEditor.service';
+import { isTypedDecline } from './typedDecline';
 import {
   createThread,
   lastAssistantMessageIs,
@@ -1775,6 +1776,32 @@ export interface CapturedAnswer {
   fromName: string | null;
 }
 
+/**
+ * A decline is the button's own sentence, or (3433) the helper's own last line
+ * in the thread, typed since the question came, saying they cannot help. The
+ * stored answer is the assistant's wording (D648), so the helper's words are
+ * read from the thread, never judged from the paraphrase.
+ */
+async function answerIsADecline(askThreadId: number, answer: string): Promise<boolean> {
+  if ((await askTapOnThread(askThreadId, answer)) === AskTap.Decline) return true;
+  try {
+    const line = await query<{ content: string }>(
+      `SELECT c.content FROM conversations c
+        WHERE c.thread_id = $1 AND c.role = 'user' AND c.kind = 'message' AND c.content <> ''
+          AND c.created_at > (SELECT MAX(a.created_at) FROM task_asks a WHERE a.ask_thread_id = $1)
+        ORDER BY c.created_at DESC LIMIT 1`,
+      [askThreadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const said = line.rows[0]?.content;
+    return said !== undefined && isTypedDecline(said);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ask] thread ${askThreadId}: typed decline not read:`, (err as Error).message);
+    return false;
+  }
+}
+
 export async function recordAskAnswer(
   askThreadId: number,
   answerText: string,
@@ -1836,7 +1863,7 @@ export async function recordAskAnswer(
        ORDER BY id DESC LIMIT 1
      )
      RETURNING id, task_id, answer`,
-    [askThreadId, safe, (await askTapOnThread(askThreadId, safe)) === AskTap.Decline],
+    [askThreadId, safe, await answerIsADecline(askThreadId, safe)],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];
