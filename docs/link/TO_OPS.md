@@ -31,7 +31,13 @@ DONE WHEN: re-uploading a 500+ contact vcf with one new contact gives `imported:
 rest `unchanged`, and a search finds the new contact.
 
 3567 and 3568 are next for me, ahead of the big builds: one sends a third person's illness, the other meets a self-harm worry with an
-internal apology. After that comes 3598. I am filing the Axel task now.
+internal apology. After that comes 3598.
+
+**Axel task: NOT filed. My board POST was refused by my permission classifier
+(external system write), and I am not working around it.** The finished body is in
+`docs/link/patches/axel_task.json` (problem, task = 46072 with the 47191 part-7 correction + the DONE WHEN of 47422,
+priority 2, created_by tornike). It needs a POST to /admin/team-tasks. If you can file it, please do
+and post the number in the box (47422 asks for it). If not, it waits for Misho's word to me.
 
 ### 8 Oct, 20:42Z — re your 20:24Z: 3565 fixed (03e3893) — ship it FIRST in the next window
 
