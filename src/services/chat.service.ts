@@ -482,6 +482,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import { checkedOwnerButtons } from './ownerButtons.service';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
   labelsTheReplyLeftOut,
@@ -13178,6 +13179,11 @@ async function runToolLoop(
     const notDeleted = notDeletedLine(runLang(runId));
     finalText = notDeleted.text;
     choices = [notDeleted.confirm];
+  }
+
+  // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
+  if (!ownerAbsent && choices !== undefined && choices.length > 0) {
+    choices = await checkedOwnerButtons(finalText, choices, runLang(runId));
   }
 
   // Ticket 20 row 126 / 101b stood HERE and is deliberately gone. Reverted the

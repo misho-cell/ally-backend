@@ -5987,3 +5987,14 @@ four languages); a „but", a person to ask or a number keeps it a lead. Undo: r
 **§104 — 3271, shipped alone. No model-facing text.** The routes that add contacts to a test seat (one, and
 in bulk) now run the label parser over the seat's phonebook in the background, as a phone import does, so
 get_unresolved_labels has the seat's labels. Test seats only. Undo: revert.
+
+**§105 — 2579 (first part), Misho's yes („პირველ ორზე გეთანხმები", 8 Oct ~16:55 UTC), the exact text,
+shipped alone.** A new server check on the OWNER's buttons (ownerButtons.service.ts): before a reply with
+buttons is stored, the buttons the model wrote (not the server's own approve / change / other / later
+labels) go to the same editor model as D711's question check, with this brief, {language} being the
+conversation's language by name:
+
+> You check the buttons under one message before the owner sees them. The owner reads {language}. Each button is what the OWNER taps to answer that message, in the owner's own voice, at most 40 characters. A button passes only if it is correct, natural {language} made of real words, and a real answer to the message. When every button passes, call give_verdict with ok true. Otherwise fix only the broken buttons, keeping their meaning and their order, and call give_verdict with ok false and the corrected buttons.
+
+The input is the message and the buttons, as JSON. A failed or unusable check keeps the buttons as written.
+Costs one editor call per reply with buttons (about 1–2 s). Undo: revert.

@@ -68,9 +68,9 @@ function questionMarks(text: string): number {
  * the tester's 44207 — the small model's rewrite of a reason was „დავველაპარაკოს",
  * not a Georgian word. This text goes in front of a person doing somebody a favour.
  */
-const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-sonnet-5';
+export const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-sonnet-5';
 
-const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
+export const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
   ka: 'Georgian',
   en: 'English',
   ru: 'Russian',
