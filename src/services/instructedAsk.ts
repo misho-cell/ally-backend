@@ -53,7 +53,7 @@ const NOT_ON_NETAI_REASONS: ReadonlySet<string> = new Set([
 ]);
 
 /** The owner's own label for this number; the words they typed when there is none. */
-async function ownersLabel(userId: string, phone: string, typed: string): Promise<string> {
+export async function ownersLabel(userId: string, phone: string, typed: string): Promise<string> {
   const result = await query<{ alias: string }>(
     `SELECT TRIM(alias) AS alias FROM "UserAlias"
       WHERE "contactId" = $1::int
@@ -68,7 +68,7 @@ async function ownersLabel(userId: string, phone: string, typed: string): Promis
 }
 
 /** The one phone the instruction's addressee names; null for none or several. */
-async function oneContactNamed(userId: string, sentence: string): Promise<string | null> {
+export async function oneContactNamed(userId: string, sentence: string): Promise<string | null> {
   const words = (instructionAddressee(sentence) ?? '').split(/\s+/u).filter((w) => w !== '');
   for (const count of NAME_WORDS_TRIED) {
     if (words.length < count) continue;

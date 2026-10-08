@@ -2309,7 +2309,8 @@ async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
     `SELECT p.id           AS parent_ask_id,
             p.to_user_id   AS bridge_user_id,
             p.ask_thread_id AS bridge_thread_id,
-            b.name          AS bridge_name
+            -- 1696: „yes, without my name" — the asker reads „through your contact".
+            CASE WHEN p.may_name_referrer IS FALSE THEN NULL ELSE b.name END AS bridge_name
        FROM task_asks c
        JOIN task_asks p ON p.id = c.parent_ask_id
        LEFT JOIN "User" b ON b.id = p.to_user_id
