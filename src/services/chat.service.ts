@@ -177,6 +177,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
   approveTaskPlan,
@@ -12527,8 +12528,21 @@ async function runToolLoop(
   // The tester's 1151 (38446, 38447): a run that only says where an open goal
   // stands is not the place to offer people; its notes doubled the reply.
   const repeatsAnOpenGoal = runRepeatedGoal.has(runId);
+  // 2908: only on the first answer to a need people could help with.
+  let noteOutOfPlace: boolean | undefined;
+  const membersNoteFits = async (): Promise<boolean> => {
+    noteOutOfPlace ??= membersNoteOutOfPlace(
+      runOwnerLine.get(runId) ?? '',
+      finalText,
+      await goalStateOnThread(threadId),
+    );
+    return !noteOutOfPlace;
+  };
   const membersSkipped =
-    !ownerAbsent && !repeatsAnOpenGoal && skippedTheMembersFound(runId, finalText, toolNamesUsed);
+    !ownerAbsent &&
+    !repeatsAnOpenGoal &&
+    skippedTheMembersFound(runId, finalText, toolNamesUsed) &&
+    (await membersNoteFits());
   // The tester's 1137 (37036): a goal opened from a stated need, and no search.
   // A clarifying question back („which city?") is a correct first answer.
   // The tester's 1145 (37898): „maybe my friends know" and the reply was only
@@ -12556,7 +12570,8 @@ async function runToolLoop(
     !asksWhoTheyHave(runOwnerLine.get(runId) ?? '') &&
     !claimedASendThatDidNotHappen &&
     !helperQuestionUnsent &&
-    !answeredWithoutSearching
+    !answeredWithoutSearching &&
+    (await membersNoteFits())
       ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
       : [];
   // The tester's 1149 (38149, 38157): the web came back with results and the
