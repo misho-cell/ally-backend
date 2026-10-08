@@ -113,6 +113,12 @@ unanswered. Put them again in the morning:
   private. Showing them is new disclosure, which is "opening access", so I did not build it. Options:
   (a) never show them, and the reply says so plainly; (b) show the labels with no saver and no count;
   (c) show only labels saved by two or more people. My recommendation: (c).
+- **AF. 1489 (the master test run's RW-015, conv 43247):** 7 s after a helper's "no" reaches the owner as
+  a card, the answer-event run searches the owner's contacts again for the same word (already searched,
+  0) and writes „შენს დანარჩენ კონტაქტებშიც ვერავინ მოიძებნა…". The run itself is right, because the plan
+  should continue; the re-search and its narration are not. Proposal: one sentence in the answer-event
+  note: „რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — უთხარი მხოლოდ შემდეგი
+  ნაბიჯი." Prompt text (D44), so it needs his yes.
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
