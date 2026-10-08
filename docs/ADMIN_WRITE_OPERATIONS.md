@@ -5932,3 +5932,7 @@ line is also kept after an editor rewrite, since her people are back on the butt
 button stores that detail; when she taps the name, her assistant's run reads her message as the name with
 the detail she was shown, so D648 („only what she wrote, exactly") passes the clinic she approved with the
 tap. Undo: revert.
+
+**§99.8b — 502, the tester's 46334 (b, 1 of 2), shipped alone. No model-facing text.** A message that is
+only a reminder request (it starts with „შემახსენე" / „გამახსენე" / „remind me" / „напомни", 160 characters
+at most) runs with set_reminder as its only tool, so inside a goal it cannot start the goal's work. Undo: revert.
