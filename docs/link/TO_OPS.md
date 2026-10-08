@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 8 Oct, 19:22Z — tester moved to chat #10; one
 
 ## OPEN
 
+### 8 Oct, 19:53Z — 28e2557 (1689, A6 answer record) with migration 217
+
+**28e2557, board 1689.** answer_stats per person and field (asked, yes, no, referred, later, silent,
+median first-answer minutes, helped, bridged — separate counters). Recounted from the source tables
+after a first ask, an answer/decline, a „helped" debrief, and hourly. Each first ask now carries its
+`field`. Admin per-user page: new `answerStats` block. Never in a user's app.
+**Migration 217_answer_stats.sql** (new table). New hourly cron `answerStats.cron.ts`.
+DONE WHEN: after one ask answered yes and one declined on fictional seats, the two records show the
+right counters and the median minutes; a debrief „helped" adds 1 to helped; the numbers appear in no
+user's app.
+
+Order: … → 8a26479 (2182) → 28e2557.
+
 ### 8 Oct, 19:42Z — 8a26479 (2182) with migration 216; 1817 needs a phone check, not a build
 
 **8a26479, board 2182.** Five core profile questions (migration 216, a seed, ON CONFLICT DO
