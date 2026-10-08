@@ -62,16 +62,45 @@ Read this whole file before anything else. Then read `docs/ROUTINES.md` and
   you cannot find that record, do not ship it; ask the code session.
 - It does not mix two board items. If it does, ask for it split.
 
-## 4. The handoff between the two sessions
+## 4. The link between the two sessions (works without Misho)
 
-- **Code → you:** a message per commit: the hash, the board number, one line on what changed,
-  the DONE WHEN, and anything the frontend must know. You answer when it is deployed, with the
-  deployed hash and time.
-- **You → code:** every new fault from the box (its id and the tester's words, verbatim), every
-  `FAIL` on a shipped change, every deploy that failed, and every outage. No summaries that
-  drop the tester's numbers.
-- Neither session writes the other's files. You do not edit `src/`. If a fix is needed, it goes
-  to the code session.
+The two sessions talk the way the backend and the frontend do: through files in git, read on
+a schedule. Nobody relays anything by hand.
+
+**Where:** branch **`ops-link`** of this repository (never deployed; pushing there starts
+nothing). Two files:
+
+- `docs/link/TO_OPS.md`: written by the code session, read by you.
+- `docs/link/TO_CODE.md`: written by you, read by the code session.
+
+**How to write:** add a new section at the TOP of your file, under `## OPEN`:
+`### <D Mon>, <HH:MM>Z — <subject>`. Then commit with `git commit -F <file>` and push to
+`origin ops-link`. Never edit the other side's file. If the push is refused because the
+branch moved, `git pull --rebase origin ops-link` and push again. Both sides only ever add a
+section at the top of their own file, so rebases do not conflict.
+
+**How to read:** `git fetch origin ops-link`, then read the newest `###` heading of the other
+side's file. Each file carries a pointer line near the top, kept by its READER in the reader's
+own file: `Last TO_OPS.md section handled: <heading>` lives in TO_CODE.md, and the
+reverse. If the newest heading equals your pointer, do nothing and write nothing. If there
+are newer sections, handle every one of them, oldest first, then move your pointer.
+
+**What goes code → you (TO_OPS.md), one section per commit or batch:**
+the commit hash(es) on `claude/ally-app-docs-ctezil`, the board number, one line on what
+changed, the DONE WHEN for the tester, the order to ship them in, and anything for the
+frontend. Also: „revert <hash>" when the code session asks for a revert.
+
+**What goes you → code (TO_CODE.md):**
+- for every ship: the deployed hash and UTC time, or why it did not ship (verify failure with
+  the failing test names, cherry-pick conflict, no quiet moment, deploy failed);
+- every new fault from the box: its box id, the board number, and the tester's words
+  VERBATIM (no summary that drops the tester's numbers);
+- every FAIL on a shipped change, and every TESTED (so the code session knows what is done);
+- every outage, and every revert you made.
+
+**Silence rule:** both sides write only when there is something to say. Neither asks Misho to
+pass a message on: if the other side's file has not moved for longer than you expected, you
+wait for its next routine; you do not escalate to Misho for that alone.
 
 ## 5. When something goes wrong
 
@@ -114,3 +143,17 @@ Read this whole file before anything else. Then read `docs/ROUTINES.md` and
 | Routines | `docs/ROUTINES.md` |
 | Recorded admin writes and prompt texts | `docs/ADMIN_WRITE_OPERATIONS.md` |
 | Night questions | `docs/NIGHT_QUESTIONS.md` |
+
+## 8. Your routines
+
+Created for you, bound to your session. Each fires your session with its own short prompt;
+all of them point back here.
+
+| When (UTC) | What |
+|---|---|
+| :05, :20, :35, :50 every hour | the link: read TO_OPS.md and ship what it hands you (§2.1–2.2); read the box (§2.4); outage check |
+| :03 every hour | the hourly tester update (`docs/ROUTINES.md`) |
+| :37 every hour | the attribution watchdog |
+
+At night (22:00–07:00 UTC) you still ship code fixes and still read the box; the night only
+forbids the things in §6.
