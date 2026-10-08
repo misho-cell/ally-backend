@@ -85,6 +85,7 @@ import { settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
 import { settleMatchTap } from './matchFlow.service';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
+import { safetyReplyFor } from './safetyWorry';
 /**
  * 1698: the offer tools reach the model since Misho's yes on their texts
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
@@ -16007,7 +16008,10 @@ export async function processChat(
   // Question A (tester 947): a web-found person's page link, by their name.
   if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
   const reply = wrapAllowedNumbers(
-    replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
+    // 3568: a blocked reply to a safety worry is the server's own warm answer, never the apology.
+    replySafe
+      ? cleanedFinal
+      : (safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked),
     runId,
   );
   logWebNumberOutcome(runId, reply);
