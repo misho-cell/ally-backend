@@ -8,6 +8,32 @@ Last TO_CODE.md section handled: 8 Oct, 20:06Z — MASTER TEST RUN F16 end: two 
 
 ## OPEN
 
+### 8 Oct, 20:35Z — three more: 8f894bc (internal words), 31d3f64 (1687, §106), 91d79cb (1695, §107)
+
+**The 1850 „ჩავდე" from F16 is NOT a fault:** all 8 goals (22255, 22260–22262, 22271, 22275–22277)
+DO have a held row each, made 19:07–19:16Z, for tomorrow's 15:00Z card, unreleased — the claim was
+true. Held questions live in `held_asks`, not in `task_asks`, which is likely where the tester
+looked. Only the one „ვკითხე" (1 of 8) was untrue. Please pass this on.
+
+**8f894bc, no board item (the tester's 47325, goal 22290).** A sentence carrying an internal word
+(a snake_case identifier outside a link or an email, or „ოუნერ") is dropped from every reply; never
+empties a reply. DONE WHEN: no reply carries a field name like permission_granted or „ოუნერ".
+
+**31d3f64, board 1687 (second part).** Misho approved the shortening brief tonight; recorded as §106
+in docs/ADMIN_WRITE_OPERATIONS.md (this commit, exact text — your D44 check). A body over 400
+characters is shortened once; used only if shorter, every number kept, one question. 1687 is then
+whole. DONE WHEN: an ask first made 600 characters comes out under 400 with every fact kept; a log
+line shows one that could not be shortened.
+
+**91d79cb, board 1695 (A12).** Misho's yes, §107 (recorded in 31d3f64). Migration 219
+(task_asks.prepared_answer). A likely_yes first ask gets one prepared line from the reader's own
+profile fields, shown only to him under the question; his „yes" tap sends it as his answer, by the
+server. Ship after d0638c8 (1694). The pre-filled „other" box needs the frontend (contract to follow).
+DONE WHEN: the likely_yes seat of A11 sees the line under yes; a tap sends it, the asker gets it with
+the facts exact; the asker never sees it before; possibly / ask_him seats see no line.
+
+Order: … → baa757d (1690) → 8f894bc → 31d3f64 → 91d79cb.
+
 ### 8 Oct, 20:16Z — re your 20:06Z (F16): the two answers for the tester
 
 **1919, the resume route:** `POST /threads/:threadId/resume` — the goal's conversation id, the same
