@@ -315,6 +315,20 @@ const INTRODUCTION_LEAD =
 const GEORGIAN_INTRODUCTION_LEAD = /(?:დამაკავშირ|დაგვაკავშირ)\p{L}*/gu;
 /** „-თან" / „-სთან" on the name's last word: „ნიმუშაძესთან" → „ნიმუშაძე". */
 const WITH_ENDING_RE = /(?:ს)?თან$/u;
+const GEORGIAN_VOWELS_RE = /[აეიოუ]$/u;
+const NOMINATIVE_ENDING = 'ი';
+
+/**
+ * The name's last word without „-თან". A stem that ends in a consonant lost
+ * its nominative „ი" to the ending (3369, the tester's 47027: „ტესტელთან" gave
+ * „ტესტელ", not the saved „ტესტელი"), so it gets it back; „ნიმუშაძესთან" →
+ * „ნიმუშაძე" keeps its vowel and needs nothing.
+ */
+export function withoutWithEnding(word: string): string {
+  if (!WITH_ENDING_RE.test(word)) return word;
+  const stem = word.replace(WITH_ENDING_RE, '');
+  return stem === '' || GEORGIAN_VOWELS_RE.test(stem) ? stem : stem + NOMINATIVE_ENDING;
+}
 
 /** Georgian: the name precedes it. „<X>-თან დაკავშირება", „<X> გამაცანი". */
 const INTRODUCTION_TRAIL = /(?:დაკავშირებ|გამაცნ|გააცნო|შემახვედრ)\p{L}*/gu;
@@ -491,7 +505,7 @@ export function introductionQueryWithoutAModel(goalText: string): string {
   }
   for (const match of goalText.matchAll(GEORGIAN_INTRODUCTION_LEAD)) {
     const name = nameBeside(goalText.slice(match.index + match[0].length), false);
-    if (name.length > 0) name[name.length - 1] = name[name.length - 1].replace(WITH_ENDING_RE, '');
+    if (name.length > 0) name[name.length - 1] = withoutWithEnding(name[name.length - 1]);
     consider(name.filter((word) => word !== ''));
   }
 
