@@ -5802,3 +5802,40 @@ working, that ONE log row (`curiosity_surfacing_log`, by id) is deleted and the 
 §98.1 is handed out again. Rows older than two hours are never touched.
 
 Undo: revert.
+
+## §99 — MISHO'S YES TO MY MORNING RECOMMENDATIONS, 8 OCTOBER ~05:40 UTC
+
+**Authorised by Misho, directly in the session: „ჩემთან დასმული კითხვები შენი რეკომენდაციებით გააკეთე"** —
+the questions I put to him at ~05:35Z (docs/NIGHT_QUESTIONS.md, night of 7→8 Oct), the way I recommended.
+Recorded per item. Each change ships ALONE (D710); model-facing text is recorded in a sub-item before it
+deploys; revert = that commit.
+
+**Approved as recommended:**
+- 99.1 — AD (2905): one sentence in the promise / instruction notes — name the people, never „these two".
+- 99.2 — AF (1489): one sentence in the answer-event note — do not search again what this goal already
+  searched, and do not mention it; say only the next step.
+- 99.3 — AI (2707): an owner with no phonebook row whose run is bound to a goal gets one line — the
+  contacts are not in yet; say so once and ask for them, then help with what there is.
+- 99.4 — AG (2907): the reader's own fitting saved people come back as buttons beside the asking model's
+  (at most 4 in all, „later" kept), on a first ask about a need, never on „will you introduce me".
+  Bends D712's „one author" by Misho's word.
+- 99.5 — AH (694): when propose_task_plan is refused because the owner's own line names one person, the
+  server sends that one question itself (the §97 path) and returns ask_contact's own result. A path that
+  writes to real people — shipped in daylight, alone.
+- 99.6 — AE (1354): „which names am I saved under?" shows only labels that two or more people saved,
+  with no saver and no count.
+- 99.7 — V (D505): a stranger with no messages whose saved name is in Georgian letters reads Georgian,
+  whatever the number's country.
+- 99.8 — AC (502): „remind me in N minutes" in a plain conversation opens a small goal that carries the wake.
+- 99.9 — W (2577): the answer-relay text tells the helper's answer in the third person.
+- 99.10 — R: 1454 (the plan as one human sentence), 2182 („what do you need to know about me"),
+  2114 (short Georgian talk) — texts drafted and recorded first, each alone.
+- 99.11 — Z (2641): a public route that answers only whether an invite code exists (yes / no), rate-limited.
+  Opens access by Misho's word.
+- 99.12 — AA (2806–2808): I draft the new fact-sheet texts; the live edit waits for Misho to read them
+  (live data, D44).
+- 99.13 — AB (2810): a design proposal only, no schema change yet.
+
+**NOT covered — the word cannot reach them:** S (money: one real payment and refund, one withdrawal),
+T (people: logins 383, Giorgi's computer 562, a real sign-up 389, Lika's .xlsx 2377), X (Misho's own
+sentence for the rewards page), Y (native app: I gave no recommendation).
