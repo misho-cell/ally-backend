@@ -39,6 +39,13 @@ import {
   withoutPointingAnswers,
 } from './askChoices';
 import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
+import {
+  A2A_ROUND_CAP,
+  needsTheOwner,
+  ownerMustAnswerNote,
+  RoundInput,
+  roundsAfter,
+} from './a2aRounds';
 import { withoutConditionStated } from './healthDisclosure';
 import { isTypedDecline } from './typedDecline';
 import { Prematch, prematchMany, PrematchWord } from './prematch.service';
@@ -205,6 +212,8 @@ export type AskRefusalReason =
   | 'ask_fatigue_budget_exhausted'
   | 'person_daily_relay_limit_reached'
   | 'duplicate_ask_in_flight'
+  /** 1688 (A5): two assistant-only rounds with this person already — the owner answers now. */
+  | 'owner_must_answer'
   /**
    * #1915: the recipient's own boundary covers the subject. Named so that
    * neither the code nor the words give the asker's run a topic or a refusal
@@ -1318,6 +1327,7 @@ async function createAskNow(
     status: string;
     from_user_id: string;
     seconds_ago: number;
+    a2a_rounds: number;
   }>(
     // The daily check (8 Oct, 00:38:56Z, goal 5580): the reader had deleted
     // that conversation, and the new question was written into a thread that
@@ -1326,7 +1336,8 @@ async function createAskNow(
     `SELECT CASE WHEN EXISTS (SELECT 1 FROM threads t WHERE t.id = a.ask_thread_id)
                  THEN a.ask_thread_id END AS ask_thread_id,
             a.status, a.from_user_id::text AS from_user_id,
-            EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago
+            EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago,
+            a.a2a_rounds
      FROM task_asks a
      WHERE a.task_id = $1 AND a.to_user_id = $2 AND a.status IN ('sent', 'answered')
      ORDER BY a.id DESC LIMIT 1`,
@@ -1471,6 +1482,19 @@ async function createAskNow(
   // exactly what happened, and the badge maths stays honest.
   const isFollowUp = live.rows[0]?.status === 'answered' || ownerAddedSomething;
   const sameThread = liveThreadId !== null;
+  // 1688 (A5): the third reply in a row with no person typing goes to the owner instead.
+  const rounds: RoundInput = {
+    isFollowUp,
+    ownerAddedSomething,
+    fromOwnersLine: fromOwnersLine === true,
+    sentOnSomeonesWord: parentAskId !== undefined || card !== undefined,
+    roundsSoFar: live.rows[0]?.a2a_rounds ?? 0,
+  };
+  if (needsTheOwner(rounds)) {
+    // eslint-disable-next-line no-console
+    console.log(`[a2a] task ${taskId}: ${A2A_ROUND_CAP} assistant-only rounds — the owner answers`);
+    return { sent: false, reason: 'owner_must_answer', error: ownerMustAnswerNote(toName) };
+  }
 
   // Budgets: server-side, same relay exemption as the permission gate above.
   // Outreach spends the monthly growth budget; a follow-up spends the
@@ -1713,9 +1737,10 @@ async function createAskNow(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
                             wave_no, evening_card_id, choices, shown_question,
-                            prematch, prematch_source, prematch_at, field, prepared_answer)
+                            prematch, prematch_source, prematch_at, field, prepared_answer,
+                            a2a_rounds)
      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17)
+             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17, $18)
      RETURNING id`,
     [
       taskId,
@@ -1736,6 +1761,7 @@ async function createAskNow(
       // 1689 (A6): the field the recipient's answer record is kept under.
       isFollowUp || parentAskId !== undefined ? null : askField(goalText) || null,
       prepared,
+      roundsAfter(rounds),
     ],
     ASK_QUERY_TIMEOUT_MS,
   );

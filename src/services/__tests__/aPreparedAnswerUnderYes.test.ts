@@ -80,7 +80,7 @@ describe('the wiring', () => {
   it('only a likely_yes first ask gets a line; it is stored for him; yes sends it', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain('prematch?.word === PrematchWord.LikelyYes');
-    expect(asks).toContain('field, prepared_answer)');
+    expect(asks).toContain('field, prepared_answer,');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain("thread.type === 'incoming_ask'");
     expect(chat).toContain('const sent = await sendApprovedAskAnswer(userId, threadId, prepared);');

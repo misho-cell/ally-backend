@@ -6017,3 +6017,12 @@ likely_yes pre-match (1694), the recipient's prepared answer is composed by the 
 
 The facts given are only the reader's own profile fields (job, employer, user_profile_kv) — never his notes or anything he typed; the line is stored on
 the ask, shown only to him under „yes", and sent only on his tap. Undo: revert.
+
+**§108 — 1688 (A5), PENDING Misho's yes (asked 8 Oct ~21:50 UTC, NIGHT_QUESTIONS AJ); not shipped until then.**
+When two assistant-only rounds with one person on one goal have gone (a2aRounds.ts, `task_asks.a2a_rounds`),
+a third ask without the owner typing is refused, and the asking model reads this tool result, {name}
+being the person's name:
+
+> {name}-ს ამ მიზანზე უკვე ორჯერ მისწერე ისე, რომ მფლობელს არაფერი დაუწერია — მესამედ თავად აღარ მისწერო. მფლობელს ერთი ხაზით უთხარი, რა უნდა {name}-ს, და ჰკითხე, რა უპასუხოს. როცა მფლობელი დაწერს, მისი სიტყვებით გაგზავნე.
+
+The owner's own words (or his line sent by the server) reset the count to 0. Undo: revert.

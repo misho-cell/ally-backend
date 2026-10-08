@@ -62,7 +62,19 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-_Nothing yet._
+**AJ. 1688 (A5), the round cap's model line (D44, §108) — built, held until your yes.** Two assistants may
+now answer each other twice on one goal with nobody typing. The third time, the server does not send, and
+the asking model reads this line (shown before it is sent, never to a person):
+
+> {name}-ს ამ მიზანზე უკვე ორჯერ მისწერე ისე, რომ მფლობელს არაფერი დაუწერია — მესამედ თავად აღარ მისწერო. მფლობელს ერთი ხაზით უთხარი, რა უნდა {name}-ს, და ჰკითხე, რა უპასუხოს. როცა მფლობელი დაწერს, მისი სიტყვებით გაგზავნე.
+
+My recommendation: yes. Without it the code cannot ship, because any refusal has to tell the model something.
+
+**AK. Axel base load: not on the board.** My POST to the board was refused by my permission classifier
+(external system write). The finished body is with ops (`docs/link/patches/axel_task.json`). Either ops files
+it, or I need your word. The build itself needs your yes and the zip from your WhatsApp.
+
+**AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
 კითხვები შენი რეკომენდაციებით გააკეთე"), recorded per item as §99 in ADMIN_WRITE_OPERATIONS.md.
