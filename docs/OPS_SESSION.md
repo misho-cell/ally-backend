@@ -1,10 +1,13 @@
-# The operations session: what it does, what it never does
+# The operations and testing session: what it does, what it never does
 
 Misho's decision, 8 October 2026: the backend work is split in two. The **code session** writes
 the code and its unit tests, finds the cause of what the tester reports, and fixes it. The
-**operations session** (this document) takes each finished change to production, watches
-production, and keeps the tester and the board informed. One session ships; the other never
-does.
+**operations and testing session** (this document) takes each finished change to production,
+TESTS it (in the code and live, on the web, on fictional test seats), watches production, and
+keeps the tester and the board informed. One session ships; the other never does. Misho added
+the testing on 8 October: you have the whole backend repository and may run anything in it.
+The code session may still run tests of its own; the tester (Tornike's seat) keeps testing as
+before, so a fault you find first saves a round, never replaces their result.
 
 Read this whole file before anything else. Then read `docs/ROUTINES.md` and
 `docs/HANDOFF_NEW_CLAUDE.md` §2a/§2b, which this file points into.
@@ -52,6 +55,35 @@ Read this whole file before anything else. Then read `docs/ROUTINES.md` and
 5. **Mark** only box ids you actually read on screen (`./scripts/ops/box.sh mark <id>`); the
    script refuses to skip someone else's unread message, and that refusal is to be obeyed,
    never worked around.
+
+## 2a. Testing — yours now
+
+**In the code, before every ship.** `ship_one.sh` runs the full `npm run verify` on the commit
+as it will land; a red verify is never shipped. You may also run any single test
+(`npx jest <file>`) or write a throwaway check in your scratchpad to understand a change. You
+never commit product code or tests: a missing or wrong test goes to the code session.
+
+**Live, after every deploy.** Run the change's DONE WHEN yourself, the way the tester does,
+before the tester's next check:
+- only on **fictional test seats**. Make one with `./scripts/ops/seat.sh "<name>" "<why>" <tokens>`
+  (it picks a fictional number nobody holds); fill it with `POST /admin/test-accounts/:id/contacts`
+  (or `/contacts/bulk`) and `/goal`; act as the seat with a token from
+  `POST /admin/test-seat/token`, then the app's own routes (`/threads/...`). Contacts you add
+  use the reserved fictional ranges only; the routes refuse anything else, and a refusal is
+  obeyed. Never a real person's account, never a real person's number, never anything that
+  writes to a real person;
+- use fresh seats for each check, and stop every test goal you open when you are done
+  („შეაჩერე ეს მიზანი.");
+- read the result from the tool log, the conversation and the board (`ro.sh`, read-only);
+- write the result to TO_CODE.md: PASS with counts („2 of 2"), or FAIL with the conversation
+  ids, the exact words the owner read, and the tool calls. Then tell the tester in the LIVE
+  post or the next update what you already checked, so they can spend their runs elsewhere.
+
+**Production health.** The outage check after every deploy and on your routines; the daily
+check (`./scripts/ops/why.sh --new 1`, `./scripts/ops/threw.sh 1440`) once a day.
+
+**At night (22:00–07:00 UTC)** no live tests: creating seats and goals writes live data. Code
+tests and shipping continue.
 
 ## 3. Before you ship a commit, check it
 
@@ -117,7 +149,8 @@ wait for its next routine; you do not escalate to Misho for that alone.
 
 ## 6. What you never do
 
-- Write or change product code, tests or prompts.
+- Commit product code, tests or prompts (you may run and read them, never change them).
+- Test on a real person's account or number, or write to a real person in any way.
 - Push to main by any way other than `ship_one.sh`, or push two changes at once.
 - Delete anything, open access, or spend money, unless Misho said so in his own words in the
   chat. At night (22:00–07:00 UTC) not even then: such items go to `docs/NIGHT_QUESTIONS.md`.
@@ -136,6 +169,7 @@ wait for its next routine; you do not escalate to Misho for that alone.
 | Ship one change | `scripts/ops/ship_one.sh <commit>` |
 | The box | `scripts/ops/box.sh read [since] [limit]` · `post <file.json>` · `mark <id>` |
 | One read-only SQL | `echo "SELECT …" \| scripts/ops/ro.sh` |
+| A fictional test seat | `scripts/ops/seat.sh` · `POST /admin/test-accounts/:id/contacts`, `/goal` · `POST /admin/test-seat/token` |
 | Deploys and logs | `scripts/ops/logs.sh deployments N` · `logs <id> N "filter"` |
 | Outage / attribution | `scripts/ops/outage.sh 20` · `scripts/ops/attribution.sh` |
 | The board | `GET/PATCH https://api.netai.guru/admin/team-tasks` |
@@ -154,6 +188,7 @@ all of them point back here.
 | :05, :20, :35, :50 every hour | the link: read TO_OPS.md and ship what it hands you (§2.1–2.2); read the box (§2.4); outage check |
 | :03 every hour | the hourly tester update (`docs/ROUTINES.md`) |
 | :37 every hour | the attribution watchdog |
+| 18:43 daily | the daily check (`why.sh --new 1`, `threw.sh 1440`) |
 
 At night (22:00–07:00 UTC) you still ship code fixes and still read the box; the night only
 forbids the things in §6.
