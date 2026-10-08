@@ -77,6 +77,7 @@ import { withoutMatchJustification } from './planJustification';
 import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
+import { noteSearchVerdict } from './searchAcceptance';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
 /**
@@ -14921,6 +14922,8 @@ export async function processChat(
   // answers below and no tap; each of them costs a read, so it skips them all.
   const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
   const serverMayAnswer = !ownerAbsent && !listedSmallTalk;
+  // 2810: „that is what I needed" right after a search is that search's outcome.
+  if (!ownerAbsent) void noteSearchVerdict(userId, userMessage);
   // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
   const nonMember =
     serverMayAnswer && thread.type === 'regular'
