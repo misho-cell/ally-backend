@@ -482,6 +482,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
   labelsTheReplyLeftOut,
   NamelessLabel,
@@ -7725,6 +7726,19 @@ function sayNamelessLabel(row: unknown): unknown {
   return { ...(row as Record<string, unknown>), name: null, saved_as: r.name.trim() };
 }
 
+const runSavedNames = new Map<string, string[]>();
+
+function noteSavedNames(runId: string, names: readonly string[]): void {
+  if (names.length === 0) return;
+  runSavedNames.set(runId, [...new Set([...(runSavedNames.get(runId) ?? []), ...names])]);
+}
+
+function takeSavedNames(runId: string): string[] {
+  const names = runSavedNames.get(runId) ?? [];
+  runSavedNames.delete(runId);
+  return names;
+}
+
 const runNamelessLabels = new Map<string, NamelessLabel[]>();
 
 function noteNamelessLabels(runId: string, labels: readonly NamelessLabel[]): void {
@@ -8344,6 +8358,7 @@ function clearRunState(runId: string): void {
   runInboxNamed.delete(runId);
   runInboxQuestions.delete(runId);
   runNamelessLabels.delete(runId);
+  runSavedNames.delete(runId);
   runHeldUpdates.delete(runId);
   runShareText.delete(runId);
   // Row 237's flag. Its consumer forgets it too, but a run that exits early
@@ -10586,6 +10601,10 @@ async function runOneToolBlock(
   );
   // 3137: a contact saved only as a symbol is shown as saved, by the server if need be.
   if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
+  // 3169: the names it found, as saved, so the reply cannot respell them.
+  if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
+    noteSavedNames(runId, savedNamesIn(labelled));
+  }
   // #69: a common Georgian first name says whether the person is a man or a woman.
   const raw = SEARCH_TOOLS.has(block.name) ? withNameGenders(labelled) : labelled;
   // Ticket 19 G7: the step caption is written BEFORE the call and says what the
@@ -13127,6 +13146,17 @@ async function runToolLoop(
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+  }
+
+  // 3169: a found name the reply spelled in the other alphabet goes back as saved.
+  const savedNames = takeSavedNames(runId);
+  if (!ownerAbsent && savedNames.length > 0) {
+    const asSaved = withNamesAsSaved(finalText, savedNames);
+    if (asSaved !== finalText) {
+      // eslint-disable-next-line no-console
+      console.log(`[saved-names] run ${runId}: a name was put back as saved`);
+      finalText = asSaved;
+    }
   }
 
   // 3137: a symbol-only label the reply left out is said by the server, as saved.
