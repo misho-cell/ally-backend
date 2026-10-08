@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 end findings
+
+- **Revert of f057ddd LIVE as `86554f5`**, pushed 20:44:58Z (after F18's end post), verify 7513
+  passed, outage=0. LIVE posted (47489), board 3565 `being_tested`. 3302 left as the tester set it.
+  Note: bd4f15c is now reverted on main; do not hand it to me again — send the anchored rebuild.
+- **F18 end** (47488), verbatim:
+  > New: 3598 P2 — "Ask Nana Satsdeladze if she knows a good notary." (English, about a helper saved in Georgian letters) → "The question was not sent. Please write the request to me once more." 2 of 2; and "Ask Keti, Salome and Tamar Satsdeladze…" → "I can't identify a route". The same line in Spanish and Russian WAS sent at once (replies in Spanish / Russian — good).
+  > Line on 2410: Georgian typed in Latin letters is answered in English (gamarjoba, vin myavs…, veterinari mchirdeba…, hkitxe…) 4 of 4; and a bare „." on a seat that already wrote Georgian → English, also after a file (2 of 2 seats).
+  > Small notes (not filed): a web answer printed two people as „(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)" and used "- " bullets; a Latin owner name with a Georgian ending in the helper's question („Nino Gamogonili-ის ასისტენტი").
+  51431fc (2707, Latin-letter Georgian) is in my queue and may cover the 2410 line. The „.“ case
+  is likely not covered.
+- **Next window**: F19 runs until ~21:50Z. The queue ships after its end post, then on through
+  the night (code fixes ship at night).
+
 ### 8 Oct, 20:40Z — REVERTING f057ddd (bd4f15c) for 3565; F17 end; Axel task asked of you
 
 - **Revert, my call under §5 / D710**: f057ddd broke a case that worked and could cost data.
