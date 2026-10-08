@@ -169,6 +169,7 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
     return rows([{ netai_user: true, netai_subscriber: true, old_ally_paid: false }]);
   // #1684: the person's asks with their states.
   if (sql.includes('AS other_user_id')) return rows([]);
+  if (sql.includes('FROM answer_stats')) return rows([]);
   throw new Error(`Unexpected query: ${sql}`);
 }
 

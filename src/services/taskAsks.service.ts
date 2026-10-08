@@ -48,6 +48,7 @@ import {
 } from './a2aRounds';
 import { isTypedDecline } from './typedDecline';
 import { Prematch, prematchMany } from './prematch.service';
+import { askField, recountAnswerStats } from './answerStats.service';
 import {
   createThread,
   lastAssistantMessageIs,
@@ -1717,9 +1718,9 @@ async function createAskNow(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
                             wave_no, evening_card_id, choices, shown_question,
-                            prematch, prematch_source, prematch_at, a2a_rounds)
+                            prematch, prematch_source, prematch_at, a2a_rounds, field)
      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16)
+             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17)
      RETURNING id`,
     [
       taskId,
@@ -1738,6 +1739,8 @@ async function createAskNow(
       prematch?.word ?? null,
       prematch?.source ?? null,
       roundsAfter(rounds),
+      // 1689 (A6): the field the recipient's answer record is kept under.
+      isFollowUp || parentAskId !== undefined ? null : askField(goalText) || null,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
@@ -1751,6 +1754,7 @@ async function createAskNow(
     );
     return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
   }
+  recountAnswerStats(toUserId);
   if (waveNo !== null && !isFollowUp) {
     void noteWaveAsk(taskId).catch((err: unknown) =>
       // eslint-disable-next-line no-console
@@ -1912,7 +1916,7 @@ export async function recordAskAnswer(
   // thread can carry several rounds of the same conversation, and round two's
   // answer belongs to round two's question. Without the ordering, one reply
   // would have overwritten every round at once.
-  const updated = await query<{ id: number; task_id: number; answer: string }>(
+  const updated = await query<{ id: number; task_id: number; answer: string; to_user_id: number }>(
     // Ticket 20 row 115: the same line does not join the answer twice.
     //
     // 16 September, ask 1783: Ninia's „კი" arrived five times in six seconds —
@@ -1957,12 +1961,13 @@ export async function recordAskAnswer(
        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
        ORDER BY id DESC LIMIT 1
      )
-     RETURNING id, task_id, answer`,
+     RETURNING id, task_id, answer, to_user_id`,
     [askThreadId, safe, await answerIsADecline(askThreadId, safe)],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];
   if (!row) return null;
+  recountAnswerStats(row.to_user_id);
   // firstAnswer = this message IS the whole stored answer, i.e. the round had
   // nothing before it. Read off the updated row itself.
   const firstAnswer = row.answer === safe;

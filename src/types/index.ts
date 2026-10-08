@@ -356,6 +356,20 @@ export interface AdminAskRow {
   prematch_source: string | null;
 }
 
+/** 1689 (A6): one person's answer record in one field (admin only). */
+export interface AnswerStatsRow {
+  readonly field: string;
+  readonly asked: number;
+  readonly yes: number;
+  readonly no: number;
+  readonly referred: number;
+  readonly later: number;
+  readonly silent: number;
+  readonly first_answer_minutes_median: number | null;
+  readonly helped: number;
+  readonly bridged: number;
+}
+
 export interface UserProfile {
   account: UserAccount;
   /** Absent only when the block itself failed, which the diagnostics then name. */
@@ -384,6 +398,8 @@ export interface UserProfile {
   asks?: AdminAskRow[];
   // Populated only when a non-account block failed; the rest still render.
   diagnostics?: BlockDiagnostic[];
+  /** 1689 (A6): this person's answer record by field; admin only, read-only. */
+  answerStats?: AnswerStatsRow[];
 }
 
 export interface CostByKind {

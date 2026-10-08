@@ -1,3 +1,4 @@
+import { recountAnswerStats } from './answerStats.service';
 import { query } from '../db/postgres/client';
 import { queueFollowUp, PendingUpdate } from './pendingUpdates.service';
 import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
@@ -360,6 +361,22 @@ async function rearmContext(
   }
 }
 
+/** The asked person's answer record, recounted after a „helped" (1689); never fails the debrief. */
+async function recountHelper(askId: number): Promise<void> {
+  try {
+    const asked = await query<{ to_user_id: number }>(
+      `SELECT to_user_id FROM task_asks WHERE id = $1 LIMIT 1`,
+      [askId],
+      DEBRIEF_QUERY_TIMEOUT_MS,
+    );
+    const helper = asked.rows[0]?.to_user_id;
+    if (helper !== undefined) recountAnswerStats(helper);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[answer-stats] helper not found for a debrief:', (err as Error).message);
+  }
+}
+
 /**
  * The debrief answer's rung for non-search subjects (searches use their own
  * ladder via record_search_outcome). Scoped to the caller's own subject — a
@@ -412,5 +429,7 @@ export async function recordDebriefOutcome(
     [userId, subjectType, String(refId), worked ? 'worked' : 'did_not_work'],
     DEBRIEF_QUERY_TIMEOUT_MS,
   );
+  // 1689 (A6): a „helped" counts on the record of the person who was asked.
+  if (subject === 'relayed_ask' && worked) await recountHelper(refId);
   return { recorded: true };
 }

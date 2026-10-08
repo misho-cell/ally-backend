@@ -40,6 +40,7 @@ import { startCutOffRunResume } from './services/cutOffRunResume.service';
 import { startHeldPushRelease } from './services/heldPushRelease.cron';
 import { startEveningCards } from './services/eveningCard.cron';
 import { startOwnerReminders } from './services/ownerReminders.cron';
+import { startAnswerStats } from './services/answerStats.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -175,6 +176,7 @@ runMigrations()
     startEveningCards();
     // #502: the owner's own reminders, written into their conversation on time.
     startOwnerReminders();
+    startAnswerStats();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();
