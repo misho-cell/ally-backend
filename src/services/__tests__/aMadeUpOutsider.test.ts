@@ -139,6 +139,7 @@ describe('what it writes when it accepts', () => {
     expect(out).toEqual({
       ok: true,
       contact: { seat: 172101, phone: '+12025550150', name: 'Tinatin R', tag: 'arci' },
+      graph_edges: 0,
     });
     const written = mockQuery.mock.calls
       .map(([sql]) => String(sql))

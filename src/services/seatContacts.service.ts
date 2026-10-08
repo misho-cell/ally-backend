@@ -1,5 +1,6 @@
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { query } from '../db/postgres/client';
+import { mirrorSeatGraph, saveSeatGraph } from './seatGraph.service';
 import { updateTask } from './taskStore.service';
 
 /**
@@ -44,7 +45,7 @@ export interface SeatContact {
 }
 
 export type AddContactResult =
-  | { ok: true; contact: SeatContact }
+  | { ok: true; contact: SeatContact; graph_edges: number | null }
   | { ok: false; refusal: ContactRefusal; detail?: string };
 
 /**
@@ -156,7 +157,15 @@ export async function addSeatContact(
     QUERY_TIMEOUT_MS,
   );
 
-  return { ok: true, contact: { seat: seatUserId, phone, name: cleanName, tag: cleanTag } };
+  // 3104: the graph the connector and second-circle tools walk gets the contact too.
+  const graphEdges = await mirrorSeatGraph(String(seatUserId), () =>
+    saveSeatGraph(String(seatUserId), new Map([[phone, cleanName]])),
+  );
+  return {
+    ok: true,
+    contact: { seat: seatUserId, phone, name: cleanName, tag: cleanTag },
+    graph_edges: graphEdges,
+  };
 }
 
 /**
