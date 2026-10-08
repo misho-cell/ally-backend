@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 8 Oct, 19:22Z — tester moved to chat #10; one
 
 ## OPEN
 
+### 8 Oct, 20:00Z — fb41846 (1691, A8 order); ship after 28e2557 (it reads answer_stats)
+
+**fb41846, board 1691.** A wave's remaining people in A8's order: the person the goal's text names
+(D625); then the pre-match class (1694; not_his_field last); then the answer rate in the field,
+(yes + referred + 1) / (asked + 2), then overall (1689's answer_stats); then the plan's order. Two
+signals, two records, nothing merged. A failed read keeps the plan's order. It reads answer_stats,
+so it MUST ship after 28e2557 (migration 217).
+DONE WHEN: four fictional candidates with known records come out in the defined order; changing one
+record changes the order; the owner-named person is always first.
+
+Order: … → 28e2557 → fb41846.
+
 ### 8 Oct, 19:53Z — 28e2557 (1689, A6 answer record) with migration 217
 
 **28e2557, board 1689.** answer_stats per person and field (asked, yes, no, referred, later, silent,
