@@ -10,6 +10,7 @@ import {
   dailyContactQuestionSection,
   nameStem,
   pendingAnswerSection,
+  speaksOfADeath,
 } from '../dailyContactQuestion';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -161,5 +162,27 @@ describe('a reply about the owner', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),');
     expect(chat).toContain("ownerAbsent ? '' : userMessage,");
+  });
+});
+
+describe('3434: never after a line about a death', () => {
+  it.each(['დათო გარდაიცვალა. აღარ შემომთავაზო.', 'Nino passed away last week', 'Он умер'])(
+    '%s',
+    (line) => {
+      expect(speaksOfADeath(line)).toBe(true);
+      expect(
+        contactQuestionMayRun({
+          ownerPresent: true,
+          regularThread: true,
+          goalBound: false,
+          preview: false,
+          ownerSpeaksOfADeath: speaksOfADeath(line),
+        }),
+      ).toBe(false);
+    },
+  );
+
+  it('an ordinary line still may', () => {
+    expect(speaksOfADeath('მჭირდება იურისტი')).toBe(false);
   });
 });
