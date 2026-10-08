@@ -14807,33 +14807,37 @@ export async function processChat(
   if (!ownerAbsent && isBareGreeting(userMessage)) {
     return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
   }
+  // 958: a listed small-talk line („როგორ ხარ?", „მადლობა") is none of the server's own
+  // answers below and no tap; each of them costs a read, so it skips them all.
+  const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
+  const serverMayAnswer = !ownerAbsent && !listedSmallTalk;
   // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
   const nonMember =
-    !ownerAbsent && thread.type === 'regular'
+    serverMayAnswer && thread.type === 'regular'
       ? await answerNonMemberNamed(userId, threadId, userMessage, runId, intent)
       : null;
   if (nonMember !== null) return nonMember;
   // 3170: „who of mine is NOT a <word>" names a few who are not, from the server.
   const notTagged =
-    !ownerAbsent && thread.type === 'regular'
+    serverMayAnswer && thread.type === 'regular'
       ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
       : null;
   if (notTagged !== null) return notTagged;
   // 3269: „who has a birthday soon?" is answered from the told birthdays, by the server.
   const birthdays =
-    !ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)
+    serverMayAnswer && thread.type === 'regular' && asksForBirthdays(userMessage)
       ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
       : null;
   if (birthdays !== null) return birthdays;
   // 1690 (A7): a tap on the fact-confirm card (or the answer to its „where now?") is the server's.
   const confirmed =
-    !ownerAbsent && thread.type === 'regular'
+    serverMayAnswer && thread.type === 'regular'
       ? await answerFactConfirm(userId, threadId, userMessage, runId, intent)
       : null;
   if (confirmed !== null) return confirmed;
   // 1695 (A12): „yes" under a prepared line sends that line, by the server, at once.
   const preparedSent =
-    !ownerAbsent && thread.type === 'incoming_ask'
+    serverMayAnswer && thread.type === 'incoming_ask'
       ? await sendPreparedOnYes(userId, threadId, userMessage, runId, intent)
       : null;
   if (preparedSent !== null) return preparedSent;
@@ -14910,7 +14914,6 @@ export async function processChat(
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
   }
 
-  const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
   steps.mark('named');
   const [agentPrompt, tools, history] = await Promise.all([
     steps.timed(
@@ -15147,7 +15150,7 @@ export async function processChat(
   const tappedContext = await pendingReplyContext(threadId, intent?.inReplyToMessageId);
   // Row 323: best-effort — if the tap cannot be recorded here, the model still
   // has approve_task_plan behind the same gate, exactly as before.
-  const approvedByTap = ownerAbsent
+  const approvedByTap = !serverMayAnswer
     ? null
     : await approvePlanOnTap(userId, threadId, userMessage, runId).catch((err: unknown) => {
         // eslint-disable-next-line no-console
@@ -15155,7 +15158,7 @@ export async function processChat(
         return null;
       });
   // Row 311: the close / keep tap after „solved" is acted on by the server too.
-  const openAsksSettled = ownerAbsent
+  const openAsksSettled = !serverMayAnswer
     ? null
     : await settleOpenAsksOnTap(userId, threadId, userMessage).catch((err: unknown) => {
         // eslint-disable-next-line no-console
@@ -15163,7 +15166,7 @@ export async function processChat(
         return null;
       });
   // D709 (the tester's 44194): a plain yes to an open introduction is accepted by the server.
-  const introAccepted = ownerAbsent
+  const introAccepted = !serverMayAnswer
     ? null
     : await acceptIntroOnYes(userId, threadId, userMessage).catch((err: unknown) => {
         // eslint-disable-next-line no-console

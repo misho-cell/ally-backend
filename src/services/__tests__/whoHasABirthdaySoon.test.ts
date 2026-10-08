@@ -64,7 +64,7 @@ describe('who has a birthday soon', () => {
   it('runs before the model, in the owner’s own conversation', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      "!ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)",
+      "serverMayAnswer && thread.type === 'regular' && asksForBirthdays(userMessage)",
     );
   });
 });

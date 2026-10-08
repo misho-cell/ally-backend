@@ -104,7 +104,7 @@ describe('the answer', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const at = chat.indexOf('if (nonMember !== null) return nonMember;');
     const after = chat.slice(at, at + 600);
-    expect(after).toContain("!ownerAbsent && thread.type === 'regular'");
+    expect(after).toContain("serverMayAnswer && thread.type === 'regular'");
     expect(after).toContain('await answerNotTagged(userId, threadId, userMessage, runId, intent)');
     expect(after.indexOf('answerNotTagged')).toBeLessThan(
       chat.slice(at).indexOf('ensureGoalForRequest('),

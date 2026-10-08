@@ -76,6 +76,6 @@ describe('the answer', () => {
     );
     expect(at).toBeGreaterThan(0);
     expect(chat.indexOf('const goalForRequest = await ensureGoalForRequest(')).toBeGreaterThan(at);
-    expect(chat).toContain("!ownerAbsent && thread.type === 'regular'");
+    expect(chat).toContain("serverMayAnswer && thread.type === 'regular'");
   });
 });
