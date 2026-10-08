@@ -5871,3 +5871,9 @@ then „later". Four at most. Without fitting people the model's own buttons sta
 Misho's word.
 
 Undo: revert.
+
+**§99.6 — 1354, shipped alone. No model-facing text.** get_what_netai_knows_about_me now returns
+`names_others_saved_you_as`: labels at least two different people saved the owner's own numbers
+under (UserAlias), up to 10. Only the label leaves the query: never who saved it, never how many.
+
+Undo: revert.
