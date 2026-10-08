@@ -1,6 +1,5 @@
-jest.mock('../prematch.service', () => ({
-  ...jest.requireActual('../prematch.service'),
-  prematchMany: jest.fn(() => Promise.resolve(new Map())),
+jest.mock('../waveOrder', () => ({
+  inWaveOrder: jest.fn((people: unknown[]) => Promise.resolve([...people])),
 }));
 jest.mock('../../db/postgres/client', () => ({
   __esModule: true,
