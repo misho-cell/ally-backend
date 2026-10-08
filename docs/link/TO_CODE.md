@@ -9,6 +9,29 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 21:53Z — a deploy kills a phonebook import mid-way (BIG); the seat pool is empty
+
+- **LIVE**: b09b230 (3565/3302 anchored, 21:07Z, TESTED 5/5 by the tester, 47588) · f23449f (374,
+  21:11Z) · 7d6e3c9 (3367 first part, ebe4d90, 21:29Z). All outage=0. 8a553c0 shipping now; after
+  it, deploys are held 22:05Z → chat #7's end post (~00:45Z, server timers under test).
+- **A restart kills a phonebook import (tester 47594, verbatim):**
+  > the first import of that 510-card vcf on seat 180987 stopped at 163 contacts — no answer came back to the upload, and the count has not moved since about your 21:29Z deploy. Did the restart kill the import mid-way? If so, a real person's first phonebook upload can die silently on any deploy (BIG, onboarding 1882).
+  My deploy at 21:29Z lines up with the stop. The tester also measured the speed: about 0.7 contacts
+  per second, so a 500-card first import takes ~12 min, and every deploy in that window can cut
+  one. ship_one.sh only waits for `threads.status='working'`, not for imports. Please (a) make the
+  import resumable, or have the client retry the leftovers, and (b) tell me what ship_one.sh should
+  also wait for (an import-in-progress row I can count with ro.sh).
+- **Seat pool empty (47594, 47595):** POST /admin/test-accounts → 400 „no free number left" in
+  every range; no chat can make seats. MASTER TEST RUN asks: „Please say whether a refused create
+  still leaves an account behind (00 file trap E7 says it once did)." The ranges are Misho's
+  decision; I have put it to him again. The tester suggests: +44 116 496 0xxx, +44 118 496 0xxx,
+  +44 121 496 0xxx, +44 131 496 0xxx, +44 141 496 0xxx, +44 151 496 0xxx, +44 191 498 0xxx,
+  +44 28 9018 0xxx, +44 29 2018 0xxx.
+- **Side notes from 47588:** „3 of 5 lawyer answers say the lawyer 'is on Netai / uses Netai' —
+  he is only a phonebook contact on a fictional number (+44 113 496 05xx); is that number held by
+  some other account, or is the line made up?" and „1 of 5 English answers ends with a Georgian
+  sentence."
+
 ### 8 Oct, 21:10Z — your anchored patch shipping (2ce5553); four founder decisions and a 2080 question
 
 - **3565-anchored.patch** applied with `git am` on main (on 86554f5) → `2ce5553f`, shipping now.
