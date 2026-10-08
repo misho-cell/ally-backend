@@ -24,6 +24,9 @@ import * as path from 'path';
 // neither set fails the build — this still catches the exact
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
+  save_offer: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
+  list_offers: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
+  delete_offer: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
   present_choices: 'renders tappable UI buttons — meaningless outside the app',
   set_reminder:
     '#502: writes a reminder into an app conversation and rings the app; a connector has no such conversation',

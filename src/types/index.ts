@@ -400,6 +400,14 @@ export interface UserProfile {
   diagnostics?: BlockDiagnostic[];
   /** 1689 (A6): this person's answer record by field; admin only, read-only. */
   answerStats?: AnswerStatsRow[];
+  /** 1698 (A15): what the person said they are open to, switched-off ones included. */
+  offers?: ReadonlyArray<{
+    readonly id: number;
+    readonly text: string;
+    readonly field: string | null;
+    readonly created_at: string;
+    readonly active: boolean;
+  }>;
 }
 
 export interface CostByKind {
