@@ -10738,6 +10738,26 @@ const STREAM_FIRST_EVENT_TIMEOUT_MS = 120_000;
  */
 const TOOLS_WHOSE_NARRATION_OVERPROMISES: ReadonlySet<string> = new Set(['save_user_note']);
 
+/**
+ * 2909 (the master test run's 45679, conv 44079, 44068, 44115): the text the
+ * model wrote beside propose_task_plan, ending „დავიწყო?", went out as a live
+ * step bubble, and the final reply said the plan and asked it again. The final
+ * always carries the plan and its question (withPlanInReply), so such a step
+ * is not published.
+ */
+export function stepRepeatsThePlanQuestion(
+  narration: string,
+  roundToolNames: readonly string[],
+): boolean {
+  if (!roundToolNames.includes('propose_task_plan')) return false;
+  return Object.values(PLAN_CLOSING_QUESTION).some((question) => narration.includes(question));
+}
+
+/** The step's text, or nothing when it only repeats the plan's question (2909). */
+function withoutPlanQuestionStep(narration: string, roundToolNames: readonly string[]): string {
+  return stepRepeatsThePlanQuestion(narration, roundToolNames) ? '' : narration;
+}
+
 export function narrationIsSafeToPublish(roundToolNames: readonly string[]): boolean {
   if (roundToolNames.length === 0) return true;
   return !roundToolNames.every((name) => TOOLS_WHOSE_NARRATION_OVERPROMISES.has(name));
@@ -12068,8 +12088,9 @@ async function runToolLoop(
       // Persist it (kind='step') so it survives reload.
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = withoutDanglingLeadIn(
-        scrubStep(threadId, extractText(response.content), runId),
+      const narration = withoutPlanQuestionStep(
+        withoutDanglingLeadIn(scrubStep(threadId, extractText(response.content), runId)),
+        roundTools,
       );
       // Not emitted, not persisted, and NOT eligible for the buried-answer
       // rescue — all three, or the sentence simply moves to another screen.
@@ -12148,8 +12169,9 @@ async function runToolLoop(
       toolNamesUsed.push(...roundTools);
       // Scrub before persisting too — the SSE gate scrubs the live stream, but
       // the stored 'step' row is re-read on reload and must be phone-free as well.
-      const narration = withoutDanglingLeadIn(
-        scrubStep(threadId, extractText(response.content), runId),
+      const narration = withoutPlanQuestionStep(
+        withoutDanglingLeadIn(scrubStep(threadId, extractText(response.content), runId)),
+        roundTools,
       );
       // Not emitted, not persisted, and NOT eligible for the buried-answer
       // rescue — all three, or the sentence simply moves to another screen.
@@ -12676,7 +12698,10 @@ async function runToolLoop(
         toolCallCount += continuation.content.filter((b) => b.type === 'tool_use').length;
         for (const b of continuation.content) if (b.type === 'tool_use') toolNamesUsed.push(b.name);
         const narration = scrubStep(threadId, extractText(continuation.content), runId);
-        if (narration) {
+        const continuationTools = continuation.content.flatMap((b) =>
+          b.type === 'tool_use' ? [b.name] : [],
+        );
+        if (narration && !stepRepeatsThePlanQuestion(narration, continuationTools)) {
           emitStepSummary(userId, threadId, runId, narration);
           await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
         }
