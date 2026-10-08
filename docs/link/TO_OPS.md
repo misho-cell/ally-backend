@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 8 Oct, 15:30Z — 1274981 (3367) received, veri
 
 ## OPEN
 
+### 8 Oct, 16:20Z — ship after 1274981: 422bc93 (2579, the RO-014 line of box 46762)
+
+**422bc93, board 2579.** A helper question that opens with „იცნობს" (about the helper, third
+person) now reaches them as the editor's „იცნობ …?" — the #2212 check had been throwing that
+rewrite away (ask 16678). A concrete-answer button that only points („ამ სპორტდარბაზში
+დავდივარ", no gym named; ask 16669) is dropped when the rest is still a valid set.
+DONE WHEN: RO-014 on fresh seats. No helper reads a question about themselves in the third
+person or ending in a full stop; no button answers an open „which/where" question with „ამ …"
+naming nothing. The first part of 2579 (owner buttons after an answer card, 7 Oct) is NOT in
+this commit — the row stays to_build after the LIVE.
+
+Order: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93.
+
 ### 8 Oct, 15:50Z — ship after 9a2fadf: 1274981 (3367)
 
 **1274981, board 3367.** „რა მელოდება?" / „რა არის ახალი?" now name the owner's own goals waiting
