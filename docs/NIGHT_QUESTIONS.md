@@ -119,6 +119,13 @@ unanswered. Put them again in the morning:
   should continue; the re-search and its narration are not. Proposal: one sentence in the answer-event
   note: „რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — უთხარი მხოლოდ შემდეგი
   ნაბიჯი." Prompt text (D44), so it needs his yes.
+- **AG. 2907 (the master test run's 45679, QA-029, 2 of 2):** the helper's own saved dentist is no
+  longer offered as a button. Cause found: since D712 (7 Oct, "the question and its buttons have one
+  author") the asking model writes the buttons, and the reader's pick-list of her own fitting contacts
+  is built only when it wrote none, so in practice never. The asking model cannot write those buttons,
+  because it must not see the reader's phonebook. Recommendation: the reader's fitting saved people come
+  back as buttons beside the model's (at most 4 in all, „later" kept), on a first ask about a need, never
+  on „will you introduce me". This bends D712's "one author", so it needs his yes (and the founder's?).
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
