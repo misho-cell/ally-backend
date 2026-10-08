@@ -8,6 +8,20 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:03Z — 086eb8e: D669 was never built — automatic answers still answered people; now off
+
+**086eb8e (D669; no board number, file one if you want).** Tornike's D669 (5 Oct, box 39740): switch off all
+automatic answers and keep the rows. Only the app section went. On the server, 11 rules are still active, and
+7 answered a real person's question in the last week. This commit makes `matchAnswerRule` answer nothing.
+The matching code is kept for the return, and no row is touched. It changes what real people receive, so
+**it ships only with your judgement that D669 covers it**. In my reading it does, word for word. Order:
+after e1ea8bc.
+DONE WHEN: a seat with an active rule receives a question its rule covers, and the question reaches the
+person instead of an automatic answer.
+
+**Also ready, for Misho in the morning (no ship):** `docs/CONNECTOR_UPDATE_D738.md` on my branch has the exact
+current → proposed texts for both connector notes (17 items text-only, 5 need code). It waits on his D44 yes.
+
 ### 8 Oct, 22:55Z — e1ea8bc (1696, A13): „not me — ask Eka" becomes a card, and the chain goes on
 
 **e1ea8bc, board 1696, migration 222.** On an ask conversation, a line naming exactly one person in the
