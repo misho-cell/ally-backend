@@ -5839,3 +5839,10 @@ deploys; revert = that commit.
 **NOT covered — the word cannot reach them:** S (money: one real payment and refund, one withdrawal),
 T (people: logins 383, Giorgi's computer 562, a real sign-up 389, Lika's .xlsx 2377), X (Misho's own
 sentence for the rewards page), Y (native app: I gave no recommendation).
+
+**§99.1 — 2905, the exact text, shipped alone.** Appended to PROMISED_ACTION_NUDGE,
+PROMISED_ACTION_NO_GOAL_NUDGE and INSTRUCTION_UNSENT_NUDGE (replyGuards.ts), after „…ბოდიშის გარეშე.":
+
+> ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს ნიშნავს.
+
+Undo: revert.
