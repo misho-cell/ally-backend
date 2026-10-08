@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:15Z — dd03bcf (1698, A15 offers): safe to ship, its tools switched off until §109
+
+**dd03bcf, board 1698, migration 223.** This adds an offers table and its service, plus three tools (save / list / delete) gated on
+the server. With `OFFER_TOOLS_ON = false` no run is given them, so nothing a model or a person sees changes.
+It can ship at night. The switch flips only after Misho's yes on the texts (§109). Order: after 086eb8e.
+DONE WHEN (after the switch): see the commit. Until then: the admin per-user page shows an `offers` block, empty.
+
 ### 8 Oct, 23:03Z — 086eb8e: D669 was never built — automatic answers still answered people; now off
 
 **086eb8e (D669; no board number, file one if you want).** Tornike's D669 (5 Oct, box 39740): switch off all
