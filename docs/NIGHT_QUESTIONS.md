@@ -95,6 +95,10 @@ unanswered. Put them again in the morning:
 - **AB. 2810:** a search the owner accepts records no outcome. The search log has no conversation and
   no result phones, so a plan approved by button cannot be tied to its search without a schema
   change. I'll propose the design in the daytime.
+- **AC. 502 (RW-005):** „remind me in 15 minutes" in a plain conversation gets a vague refusal. The server
+  wakes after 15 minutes without trouble (MIN_WAKE_HOURS = 0.25), but a wake needs a goal, and a plain
+  conversation has none. Proposal: a reminder opens a small goal by itself. That is prompt or product
+  text (D44), so it needs his yes.
 - **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
   A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
   called a regression; it is not one). Should the name's script break the tie?
