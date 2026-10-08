@@ -36,7 +36,7 @@ describe('one ask, one language', () => {
   it('is applied where the ask is composed, frame and buttons alike', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain('const said = messageLanguage(edited.question, language);');
-    expect(asks).toContain('await choicesInLanguage(edited.choices, said, edited.question)');
+    expect(asks).toContain('await choicesInLanguage(editedChoices, said, edited.question)');
     expect(asks).toMatch(/buildAskOpening\(\s+said,/u);
   });
 });

@@ -1524,8 +1524,14 @@ async function createAskNow(
     liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));
   // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
   const said = messageLanguage(edited.question, language);
+  // 2907 (the tester's 46136, asks 16209 / 16210): the editor rewrote the question and its
+  // buttons, and its buttons replaced the helper's own people. Her people go back in front.
+  const editedChoices =
+    picker && picker.names.length > 0 && said === language
+      ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
+      : edited.choices;
   const choices = withServerLater(
-    await choicesInLanguage(edited.choices, said, edited.question),
+    await choicesInLanguage(editedChoices, said, edited.question),
     said,
   );
   const opening = buildAskOpening(
