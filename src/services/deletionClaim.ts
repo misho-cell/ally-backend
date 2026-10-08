@@ -1,6 +1,20 @@
 import { RunLanguage } from './runLanguage';
 
 /**
+ * 3565 (F17, 2 sightings): „Who do I have as a lawyer?" and „ვინ შემინახა და
+ * როგორ?" got „I have not deleted it yet. Confirm and I will delete it now."
+ * with a delete button — a plain question, and a tap could have deleted
+ * something nobody asked to delete. The guard reads the owner's own line too:
+ * it fires only when he asked to delete, forget or remove something.
+ */
+const ASKS_TO_DELETE_RE =
+  /(წაშალ|წავშალ|დაივიწყ|ამოიღ|ამოშალ|მოაშორ|მოხსენ|გააქრ|\bdelete\b|\bremove\b|\bforget\b|\berase\b|удали|убери|забудь|сотри|borra|elimina|olvida|quita)/iu;
+
+export function asksToDelete(ownerLine: string): boolean {
+  return ASKS_TO_DELETE_RE.test(ownerLine);
+}
+
+/**
  * 3302 (MASTER TEST RUN ME-016 / PR-036, 2 sightings): in a NEW conversation
  * „დაივიწყე, რომ <name> ელექტრიკოსია" was answered „…ჩანაწერი წავშალე" or
  * „…წასაშლელად მოვნიშნე" with no tool called at all, and the fact was told
@@ -19,15 +33,63 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
   'remove_contact_exclusion',
 ]);
 
-const CLAIMS_A_DELETION_RE =
-  /(წავშალე|წაიშალა|წავიშალე|დავივიწყე|წასაშლელად\s+მოვნიშნე|\bdeleted\b|\bforgotten\b|\bI\s+(?:have\s+)?(?:removed|forgot)\b|удалил|удалено|забыл|borr[ée])/iu;
+// Every word is matched WHOLE (3565): the earlier list matched inside other
+// words — „quit[ée]" inside "quite", „elimin[ée]" inside "eliminate" — and
+// ordinary answers got the delete card. Spanish takes only the accented past
+// („borré"), never the unaccented form that is also „that I delete". `\b` knows only Latin letters, so the
+// edges are written as „no letter before / after" for every alphabet.
+const CLAIM_WORDS: readonly string[] = [
+  'წავშალე',
+  'წავშალეთ',
+  'წაიშალა',
+  'წავიშალე',
+  'დავივიწყე',
+  'წასაშლელად\\s+მოვნიშნე',
+  'მოვხსენი',
+  'მოიხსნა',
+  'ამოვიღე',
+  'ამოვშალე',
+  'მოვაშორე',
+  'გავასუფთავე',
+  'deleted',
+  'forgotten',
+  'erased',
+  '(?:has|have|been|was)\\s+removed',
+  'I\\s+(?:have\\s+)?(?:removed|forgot|cleared|erased)',
+  'удалил[аи]?',
+  'удалено',
+  'удал[её]н',
+  'убрал[аи]?',
+  'ст[её]р',
+  'ст[её]рла',
+  'забыл[аи]?',
+  'borré',
+  'borrad[oa]',
+  'eliminé',
+  'eliminad[oa]',
+  'quité',
+  'quitad[oa]',
+];
+
+const CLAIMS_A_DELETION_RE = new RegExp(
+  `(?<![\\p{L}\\p{M}])(?:${CLAIM_WORDS.join('|')})(?![\\p{L}\\p{M}])`,
+  'iu',
+);
 
 export function claimsADeletion(reply: string): boolean {
   return CLAIMS_A_DELETION_RE.test(reply);
 }
 
-export function deletionClaimWithoutTool(reply: string, toolNamesUsed: readonly string[]): boolean {
-  return claimsADeletion(reply) && !toolNamesUsed.some((name) => DELETING_TOOLS.has(name));
+export function deletionClaimWithoutTool(
+  reply: string,
+  toolNamesUsed: readonly string[],
+  ownerLine: string,
+): boolean {
+  return (
+    asksToDelete(ownerLine) &&
+    claimsADeletion(reply) &&
+    !toolNamesUsed.some((name) => DELETING_TOOLS.has(name))
+  );
 }
 
 export interface NotDeletedLine {
