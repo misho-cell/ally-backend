@@ -115,14 +115,20 @@ export function takeQuietAfterDecline(threadId: number): boolean {
   return quietAfterDecline.delete(threadId);
 }
 
-/** A typed answer that only says no: it opens with „no" and says nobody, with no „but". */
+/**
+ * A typed answer that only says no. The helper's assistant passes it on in its
+ * own words, in the third person (the tester's 46665: „სამწუხაროდ, ნოტარიუსს არ
+ * იცნობს."), so it is read by what it says — nobody known — not by an opening
+ * „no". A „but", a person to ask, or a number is a lead, never only a „no".
+ */
 const SAYS_NOBODY_RE =
-  /^\s*(?:არა|no|нет|no,)[\s,.!-].*(?:არავის|არავინ|ვერავის|ვერ\s+ვიცნობ|არ\s+ვიცნობ|nobody|no\s+one|anyone|никого|nadie)/isu;
-const BUT_RE = /(?:მაგრამ|თუმცა|\bbut\b|\bно\b|\bpero\b)/iu;
+  /(არავის|არავინ|ვერავის|(?:არ|ვერ)\s+(?:იცნობ\p{L}*|ვიცნობ|იცის|ვიცი|გირჩევ\p{L}*)|nobody|no\s+one|(?:doesn['’]?t|don['’]?t|does\s+not|do\s+not)\s+know|никого|не\s+зна\p{L}*|nadie|no\s+conoce)/iu;
+const LEAD_RE =
+  /(მაგრამ|თუმცა|ჰკითხე|ნომერ|\bbut\b|\bask\b|\bnumber\b|\bно\b|спроси|номер|\bpero\b|pregunta)/iu;
 
 export function answerOnlySaysNo(answer: string, declinedByButton: boolean): boolean {
   if (declinedByButton) return true;
-  return SAYS_NOBODY_RE.test(answer) && !BUT_RE.test(answer);
+  return SAYS_NOBODY_RE.test(answer) && !LEAD_RE.test(answer);
 }
 
 const RESULT_TOOLS: ReadonlySet<string> = new Set([
