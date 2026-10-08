@@ -151,3 +151,27 @@ describe('runStatus — a check that could not run is not a "no"', () => {
     );
   });
 });
+
+/** 2348 (thread 39141): a wake that asked nothing on an open list goal filed it as finished. */
+describe('a wake on a goal that is still open', () => {
+  it('leaves the conversation waiting, not finished', () => {
+    expect(
+      runStatus({ asksOwner: false, requestCreated: false, pendingAsk: false, openGoal: true }),
+    ).toBe('waiting');
+    expect(
+      runStatus({ asksOwner: false, requestCreated: false, pendingAsk: false, openGoal: false }),
+    ).toBe('done');
+    expect(
+      runStatus({ asksOwner: true, requestCreated: false, pendingAsk: false, openGoal: true }),
+    ).toBe('needs_you');
+  });
+
+  it('is told by the engine whether the goal is still open', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path') as typeof import('path');
+    const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
+    expect(engine).toContain('openGoal: await goalStillOpen(taskId),');
+  });
+});

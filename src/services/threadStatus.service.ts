@@ -100,12 +100,20 @@ export function runStatus(opts: {
   asksOwner: boolean;
   requestCreated: boolean;
   pendingAsk: AskCheck;
+  /**
+   * 2348 (Lika and Ninia, 7 Oct): the goal is still open after the run. A
+   * scheduled check that asked nothing on a list goal filed the conversation
+   * under „finished" with 5 rows still out (thread 39141). The owner's own run
+   * already keeps an open goal at „waiting" (statusAfterRun); a wake now does
+   * too. Optional so a caller that cannot tell keeps the old answer.
+   */
+  openGoal?: boolean;
 }): ThreadStatus {
   if (opts.asksOwner) return 'needs_you';
   if (opts.requestCreated || opts.pendingAsk === true || opts.pendingAsk === 'unknown') {
     return 'waiting';
   }
-  return 'done';
+  return opts.openGoal === true ? 'waiting' : 'done';
 }
 
 /**
