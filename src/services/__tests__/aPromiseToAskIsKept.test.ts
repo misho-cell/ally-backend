@@ -118,3 +118,14 @@ describe('a button that offers to send', () => {
     );
   });
 });
+
+describe('„ვთხოვ" is a promise to ask (2839, conv 43538)', () => {
+  it('reads „I am asking her" as a promise, a question or a past act as none', () => {
+    expect(promisesToWriteToSomeone('ბახვას ასისტენტს თამთა გამოგონილთან გაცნობას ვთხოვ.')).toBe(
+      true,
+    );
+    expect(promisesToWriteToSomeone('ბახვას ვთხოვო გაცნობა?')).toBe(false);
+    expect(promisesToWriteToSomeone('ბახვას ვთხოვე გაცნობა.')).toBe(false);
+    expect(promisesToWriteToSomeone('ბახვას არ ვთხოვ.')).toBe(false);
+  });
+});

@@ -308,11 +308,14 @@ export function withoutDanglingLeadIn(narration: string): string {
  * person, and its card) or to take it back. A question to the owner
  * („მივწეროთ?") is not a promise.
  */
+// 2839 (conv 43538): „ბახვას ასისტენტს თამთასთან გაცნობას ვთხოვ" after the
+// owner's yes, and nothing was sent for 14 minutes — „ვთხოვ" was not a promise
+// here. („ვთხოვო?" asks the owner, „ვთხოვე" says it was done.)
 // The tester's 1138 / #925 (37364, 37365, 37367, 37368): „არავის მივწერ" — „I
 // write to NOBODY" — read as a promise, and the owner saw the correction turn.
 // A negated verb promises nothing.
 const PROMISES_TO_WRITE_RE =
-  /(?<!(?:არავის|არავისთვის|არ|ვერ|ვერავის|not|never|nobody|no\s+one)\s+)(ვკითხავ|ვეკითხები|მივწერ(?!ო)|გავუგზავნი|\bi(?:'ll|\s+will)\s+(?:ask|write\s+to|message|reach\s+out\s+to)\b|спрошу|напишу)/iu;
+  /(?<!(?:არავის|არავისთვის|არ|ვერ|ვერავის|not|never|nobody|no\s+one)\s+)(ვკითხავ|ვეკითხები|მივწერ(?!ო)|გავუგზავნი|ვთხოვ(?![ოე])|\bi(?:'ll|\s+will)\s+(?:ask|write\s+to|message|reach\s+out\s+to)\b|спрошу|напишу)/iu;
 
 export function promisesToWriteToSomeone(text: string): boolean {
   return PROMISES_TO_WRITE_RE.test(text);
