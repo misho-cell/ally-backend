@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { RunLanguage } from './runLanguage';
 import { withCellAddresses } from './xlsxAddresses';
+import { fallbackXlsxCells } from './xlsxFallback';
 
 /**
  * Board #892 (the founder, 4 October): „if someone needs to connect with 30
@@ -132,8 +133,26 @@ async function readWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
   }
 }
 
-/** The first worksheet as text cells; formulas read as their results. */
+/**
+ * The first worksheet as text cells; formulas read as their results. 2377: a
+ * workbook ExcelJS cannot open is read straight from its zip before it is
+ * called unreadable.
+ */
 async function xlsxCells(buffer: Buffer): Promise<string[][]> {
+  try {
+    return await excelJsCells(buffer);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[list-file] ExcelJS refused the workbook, reading it directly:',
+      (err as Error).message,
+    );
+    const rows = await fallbackXlsxCells(buffer, ROWS_TO_READ);
+    return rows.map((row) => row.map(cellText));
+  }
+}
+
+async function excelJsCells(buffer: Buffer): Promise<string[][]> {
   const workbook = await readWorkbook(buffer);
   const sheet = workbook.worksheets[0];
   if (sheet === undefined) return [];
