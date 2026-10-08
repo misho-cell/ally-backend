@@ -214,16 +214,49 @@ export function isValidBlockName(name: string): boolean {
 const BLOCK_COLUMNS = `name, model, content, modes, sort_order, enabled, enabled_for_user_ids, updated_at`;
 
 /**
+ * 958 (small talk 8 s, run 1fde7bef): the GPT writer could not start until its
+ * blocks were read, about a second on a loaded server, and every run reads its
+ * Claude blocks the same way. Blocks change only when the team edits one, so
+ * a composition is kept for a short while and forgotten on every edit here.
+ * The bound also covers a second server process, which hears no edit.
+ */
+const COMPOSED_TTL_MS = 30_000;
+const COMPOSED_MAX_ENTRIES = 1_000;
+const composedCache = new Map<string, { readonly at: number; readonly value: ComposedBlocks }>();
+
+/** Every kept composition is dropped: after an edit, and for tests. */
+export function forgetComposedBlocks(): void {
+  composedCache.clear();
+}
+
+/**
  * The blocks a run in `mode` actually loads for `userId`: enabled, bound to
  * the mode, and either untargeted or targeting this account — in the team's
  * configured order. Failure degrades to "no blocks" (base prompt still runs);
- * it never fails the run.
+ * it never fails the run, and is never kept.
  */
 export async function composeBlocksForMode(
   mode: RunMode,
   userId: string,
   model: PromptModel = PromptModel.Claude,
 ): Promise<ComposedBlocks> {
+  const key = `${mode}|${userId}|${model}`;
+  const kept = composedCache.get(key);
+  if (kept !== undefined && Date.now() - kept.at < COMPOSED_TTL_MS) return kept.value;
+  const value = await readComposedBlocks(mode, userId, model);
+  if (value !== null) {
+    if (composedCache.size >= COMPOSED_MAX_ENTRIES) composedCache.clear();
+    composedCache.set(key, { at: Date.now(), value });
+  }
+  return value ?? { text: '', names: [], versions: [] };
+}
+
+/** The composition read from the table; null when the read failed. */
+async function readComposedBlocks(
+  mode: RunMode,
+  userId: string,
+  model: PromptModel,
+): Promise<ComposedBlocks | null> {
   try {
     const result = await query<{ name: string; content: string; updated_at: string | Date }>(
       `SELECT name, content, updated_at FROM prompt_blocks
@@ -253,7 +286,7 @@ export async function composeBlocksForMode(
       '[prompt-blocks] compose failed — running on base prompt only:',
       (err as Error).message,
     );
-    return { text: '', names: [], versions: [] };
+    return null;
   }
 }
 
@@ -398,7 +431,7 @@ export async function upsertPromptBlock(
   };
   await assertModeBudgets(merged);
 
-  return withTransaction(async (client) => {
+  const stored = await withTransaction(async (client) => {
     const saved = await client.query<PromptBlock>(
       `INSERT INTO prompt_blocks (name, content, modes, sort_order, enabled, enabled_for_user_ids, model)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -429,6 +462,8 @@ export async function upsertPromptBlock(
     await client.query(HISTORY_TRIM, [name]);
     return saved.rows[0];
   });
+  forgetComposedBlocks();
+  return stored;
 }
 
 /** Delete a block (its pre-delete state is kept as the last history snapshot). */
@@ -449,6 +484,7 @@ export async function deletePromptBlock(name: string): Promise<boolean> {
     await client.query(HISTORY_TRIM, [name]);
     await client.query(`DELETE FROM prompt_blocks WHERE name = $1`, [name]);
   });
+  forgetComposedBlocks();
   return true;
 }
 
