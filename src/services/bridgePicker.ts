@@ -34,6 +34,24 @@ export interface BridgeNeed {
   readonly forPhone?: string;
 }
 
+/**
+ * 2907 (the tester's 46036): „ჰკითხე ნანას, იცნობს თუ არა კარგ სტომატოლოგს" —
+ * an instructed ask carries no search behind it, so no need reached the picker
+ * and the helper's saved dentist was not offered. The need is the trade the
+ * question asks about: the word after „იცნობ… (თუ არა) (კარგ/სანდო…)", or after
+ * "know a (good) …". A Georgian dative „-ს" is dropped.
+ */
+const KNOWS_A_TRADE_RE =
+  /(?:იცნობ\p{L}*\s+(?:თუ\s+არა\s+)?(?:(?:კარგ|სანდო|გამოცდილ|ნორმალურ)\p{L}*\s+)?(\p{L}{4,}))|(?:\bknows?\s+(?:of\s+)?(?:a|an|any)?\s*(?:(?:good|reliable|trusted)\s+)?([a-z]{4,}))/iu;
+const GEORGIAN_DATIVE_RE = /(?<=\p{L}{3})ს$/u;
+
+export function needFromQuestion(question: string): BridgeNeed | undefined {
+  const found = question.match(KNOWS_A_TRADE_RE);
+  const word = found?.[1] ?? found?.[2];
+  if (word === undefined) return undefined;
+  return { need: word.replace(GEORGIAN_DATIVE_RE, '') };
+}
+
 /** The line added under the question, and the buttons that go with it. */
 export interface BridgePicker {
   readonly line: string;

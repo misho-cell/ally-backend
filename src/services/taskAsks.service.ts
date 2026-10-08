@@ -13,7 +13,7 @@ import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { AskKind, askKindOf } from './askKind';
-import { BridgeNeed, BridgePicker, bridgePicker } from './bridgePicker';
+import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
 import { recommendedByLine, recommenderFor } from './recommendedBy';
 import { query } from '../db/postgres/client';
 import { getTaskById, wakeTaskNoLaterThan } from './taskStore.service';
@@ -1486,9 +1486,11 @@ async function createAskNow(
   // contacts become the buttons (see bridgePicker.ts). #2185: never under
   // „will you introduce me to G". 2907 (§99.4): beside the asking model's own
   // buttons too — it writes them since D712, and it cannot see her people.
+  // 2907 (46036): an instructed ask has no search behind it — its own question names the need.
+  const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
   const picker =
-    bridgeNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
-      ? await pickerFor(String(toUserId), bridgeNeed, language)
+    pickerNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
+      ? await pickerFor(String(toUserId), pickerNeed, language)
       : null;
   const draftChoices =
     authored === undefined
