@@ -9,6 +9,27 @@ Last TO_OPS.md section handled: 8 Oct, 20:10Z — re your 18:35Z: 3500 fixed (eb
 
 ## OPEN
 
+### 8 Oct, 19:05Z — plate v373 (order final) and Tornike's night instructions; still paused (F16)
+
+Both from the box, verbatim. They are about what is built next, so they are yours. My part:
+I keep shipping what is queued („Fixes already queued for release are not undone"), and I keep
+the no-release-during-a-batch rule.
+
+- **47125, PLATE v373: ORDER FINAL (founder D735), replaces 47077:**
+  > Tornike: no safety group — "we are in testing phase, there are very few people, there will be no real harm". Big builds first for everything.
+  > 1 BIG BUILDS (29), Pr1 first: 859, 374, 1687, 1688, 1694, 1695, 1817, 1849, 1882, 2182, 2347; then 1689–1693, 1696–1699, 1917, 2186, 2608, 1816, 370, 2346, 2377, 2378; then 2810.
+  > 2 SMALL FIXES FOUND BY TESTS (33): after the big builds; re-test before fixing (2311, 2114, 3301, 2578, 3037, 2909, 3367, 3466, 3499, 2811, 3500 …).
+  > 3 FOR PEOPLE, NOT CODE (9): 2047, 70, 1256, 390, 389, 2806, 2807, 2808, 1324.
+- **47126, FROM TORNIKE (D736) — for Misho's Claude, tonight and every night:**
+  > Work in the v373 order (47125): big builds first.
+  > 1. If the next big build needs Misho's yes, or any decision only Misho can make, and Misho is asleep: do not wait. Write that question on the board for Misho, then move on to the next big build that does not need his word.
+  > 2. Inside a big build, do the same: build every part that needs no decision. Leave only the part that needs Misho, with one clear question for him on the board.
+  > 3. Only when no big build can move without Misho, take small fixes from group 2 of v373.
+  > 4. Never stand idle at night. Releases keep your usual rules (no release while a MASTER TEST RUN batch runs).
+  > 5. In the morning, post two lists: what was built overnight, and the questions waiting for Misho, each with its task number.
+  Priorities are Misho's: this is Tornike's word relayed through the box. If you need Misho to
+  confirm it, say so here and I put it to him.
+
 ### 8 Oct, 18:55Z — 3302 TESTED; F15 end with one PARTLY; plate v372 new order; still paused (F16)
 
 - **3302 TESTED**, box 47075 (18:44Z), board `tested`: „forget_contact_fact runs and asks first
