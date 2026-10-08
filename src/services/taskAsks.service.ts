@@ -47,6 +47,7 @@ import {
   RoundInput,
   roundsAfter,
 } from './a2aRounds';
+import { withoutConditionStated } from './healthDisclosure';
 import { isTypedDecline } from './typedDecline';
 import { Prematch, prematchMany, PrematchWord } from './prematch.service';
 import { composePreparedAnswer, preparedAnswerLine } from './preparedAnswer.service';
@@ -140,6 +141,18 @@ const ASK_TITLE_SNIPPET_CHARS = 48;
 // that merely starts with a similar word is never truncated.
 const TITLE_GREETING_PREFIX =
   /^\s*(გამარჯობათ|გამარჯობა|მოგესალმებით|მოგესალმები|სალამი|დილა მშვიდობისა|საღამო მშვიდობისა|hello|hi|hey|dear)(?:\s+[\p{L}.]+){0,2}\s*[,!.\-—]+\s*/iu;
+
+/** 3567: the question with any stated condition dropped; as written when nothing would be left. */
+function questionWithoutCondition(question: string): string {
+  const cleaned = withoutConditionStated(question);
+  if (cleaned !== question) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ask-condition] a stated condition was ${cleaned === null ? 'kept (nothing else)' : 'dropped'}`,
+    );
+  }
+  return cleaned ?? question;
+}
 
 function titleSnippetFrom(question: string): string {
   const stripped = question.replace(TITLE_GREETING_PREFIX, '').trim();
@@ -1581,7 +1594,7 @@ async function createAskNow(
         ? ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))
         : ownButtons;
   // D711: the question and its buttons pass the editor before they leave.
-  const edited = await editOutgoingAsk(
+  const editorsAsk = await editOutgoingAsk(
     { question: relayed.text, choices: draftChoices },
     {
       ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
@@ -1591,6 +1604,8 @@ async function createAskNow(
       draftIsOwnersWords: fromOwnersLine === true,
     },
   );
+  // 3567: the need goes out, never somebody's condition — in the message and in its title.
+  const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
   // A follow-up lands in the conversation it belongs to; only a first ask
   // opens a thread. Two threads for one exchange would put the answer and the
   // question that followed it in different rooms (ticket 9 task 12).

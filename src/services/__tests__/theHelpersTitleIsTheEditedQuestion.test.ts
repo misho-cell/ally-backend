@@ -5,7 +5,7 @@ import { join } from 'path';
 describe('theHelpersTitleIsTheEditedQuestion', () => {
   it('opens the helper’s thread after the editor, titled with the edited question', () => {
     const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    const edited = source.indexOf('const edited = await editOutgoingAsk(');
+    const edited = source.indexOf('const editorsAsk = await editOutgoingAsk(');
     const opened = source.indexOf(
       'liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));',
     );
