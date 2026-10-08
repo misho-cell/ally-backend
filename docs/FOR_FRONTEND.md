@@ -808,6 +808,14 @@ its first 500. If more than 500 are new, the answer carries
 `remaining: <n>`; send the same file again and the next 500 go in. Absent
 `remaining` means everything new is in.
 
+*8 Oct, 22:40Z addendum (the tester's 47594):* a first import of 510 cards stopped at 163 when the
+server restarted for a deploy, and no answer came back to the upload. The server now saves cards
+four at a time and no longer lets their background scoring crowd the import, so a 500-card file
+should take a few minutes instead of about twelve. **Asked of you:** if the upload request fails, times out or
+gets no answer, send the same file again (once, after a few seconds, and again on the next app
+open). It continues where it stopped: what was saved comes back in `unchanged`, only the rest is
+imported. Status codes are unchanged (200; 400 for an empty or unreadable file).
+
 ## 2 October, 15:20 — #375: each reply now carries its own steps (`steps`), and the vanishing conversation
 
 **Steps of finished conversations (Ninia's test 23).** `GET /threads/:id/messages`

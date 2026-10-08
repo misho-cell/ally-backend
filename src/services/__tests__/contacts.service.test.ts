@@ -359,16 +359,40 @@ describe('import_attempts — one row per import (ticket 9 task 24)', () => {
   const userPhone = '+995555000001';
 
   beforeEach(() => {
-    mockPoolQuery.mockResolvedValue({ rows: [{ phone: userPhone }], rowCount: 1 });
+    mockPoolQuery.mockImplementation((sql: string) =>
+      Promise.resolve(
+        String(sql).includes('INSERT INTO import_attempts')
+          ? { rows: [{ id: '9' }], rowCount: 1 }
+          : { rows: [{ phone: userPhone }], rowCount: 1 },
+      ),
+    );
   });
+
+  const closed = (): unknown[] | undefined =>
+    mockPoolQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE import_attempts'))?.[1];
 
   it('records what was asked for and what actually landed, tagged with the route', async () => {
     await importContacts('42', [{ name: 'Dato', phones: ['+995555000002'] }], 'vcf_import');
 
-    const logged = mockPoolQuery.mock.calls.find(([sql]) =>
+    const opened = mockPoolQuery.mock.calls.find(([sql]) =>
       String(sql).includes('INSERT INTO import_attempts'),
     );
-    expect(logged?.[1]).toEqual(['42', 'vcf_import', 1, 1, 0]);
+    expect(opened?.[1]).toEqual(['42', 'vcf_import', 1]);
+    expect(closed()).toEqual(['9', 1, 0]);
+  });
+
+  it('the row is open while the import runs, and closed at its end (the tester’s 47594)', async () => {
+    await importContacts('42', [{ name: 'Dato', phones: ['+995555000002'] }]);
+
+    const opened = mockPoolQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO import_attempts'),
+    );
+    expect(String(opened?.[0])).toContain('in_progress');
+    expect(String(opened?.[0])).toContain('TRUE');
+    const close = mockPoolQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE import_attempts'),
+    );
+    expect(String(close?.[0])).toContain('in_progress = FALSE');
   });
 
   it('defaults to the app route when none is given', async () => {
@@ -385,10 +409,7 @@ describe('import_attempts — one row per import (ticket 9 task 24)', () => {
     const out = await importContacts('42', [{ name: 'Dato', phones: ['not-a-phone'] }]);
 
     expect(out).toEqual({ imported: 0, skipped: 1 });
-    const logged = mockPoolQuery.mock.calls.find(([sql]) =>
-      String(sql).includes('INSERT INTO import_attempts'),
-    );
-    expect(logged?.[1]).toEqual(['42', 'app_import', 1, 0, 1]);
+    expect(closed()).toEqual(['9', 0, 1]);
   });
 
   it('a failing audit write never costs the caller their import', async () => {
