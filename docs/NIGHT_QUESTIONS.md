@@ -62,82 +62,16 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**Night of 7→8 October.** Put to Misho in Georgian at 21:48Z, before the window, and still
-unanswered. Put them again in the morning:
+_Nothing yet._
 
-- **R. Prompt changes (D44), each needs his yes:**
-  - ✅ 2181, 2478, 2479, 2183: answered by Misho's §98 (7 Oct night) and shipped one at a time
-    (ADMIN_WRITE_OPERATIONS §98.1–98.8).
-  - 1454: the plan as one human sentence. STILL OPEN.
-  - 2182 and 2114: "what do you need to know about me", and short Georgian talk. STILL OPEN.
-- **S. Money:** one real payment of the cheapest plan plus a Stripe refund closes 232, 233 and 1520.
-  390 needs one real withdrawal.
-- **T. People:** logins (383); one test with Giorgi's computer off (562); a real sign-up for 389;
-  Lika's own .xlsx (2377).
-- **U. ✅ Answered (§98):** 1882 before 1849, then Chorus.
-- **W. 2577 (D647/D648):** a helper's answer comes back reworded in the first person („მყავს ნანახი").
-  The card must tell it in the third person. My quoting fix went against D648 and was reverted (f99b957).
-  The real fix is the answer-relay text the model writes (prompt, D44). A draft line goes with the morning list.
-- **X. T2345:** the rewards page needs Misho's sentence for the rule. The numbers come from
-  `percent` and `levels`, live.
-- **Y. T374:** new phone contacts can be found without a .vcf only with a native app (the frontend:
-  a web app cannot read contacts in the background). Is that a product decision now or later?
-- **Z. 2641:** `/join?ref=<a code that belongs to nobody>` shows the full welcome. The page cannot tell,
-  because no public route says whether a code exists. A route that does is a new public door, and
-  could be used to check codes one by one (codes are credentials, D149). Should it be built,
-  rate-limited and answering only yes/no?
-- **AA. 2806 / 2807 / 2808 (MASTER TEST RUN):** Netai's fact sheet (admin „netai-info": pricing of 17 Sep,
-  earnings of 14 Aug, capabilities/limits/intro_flow) is out of date, and Netai repeats it. It has a 5-day
-  trial, Paddle, „5% shared across levels", and no 14-day hold. These are admin text edits to live data
-  (D44); I will draft the new texts for his yes.
-- **AB. 2810:** a search the owner accepts records no outcome. The search log has no conversation and
-  no result phones, so a plan approved by button cannot be tied to its search without a schema
-  change. I'll propose the design in the daytime.
-- **AC. 502 (RW-005):** „remind me in 15 minutes" in a plain conversation gets a vague refusal. The server
-  wakes after 15 minutes without trouble (MIN_WAKE_HOURS = 0.25), but a wake needs a goal, and a plain
-  conversation has none. Proposal: a reminder opens a small goal by itself. That is prompt or product
-  text (D44), so it needs his yes.
-- **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
-  A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
-  called a regression; it is not one). Should the name's script break the tie?
-- **AD. 2905 (the tester's 45675):** after the promise note, the rewritten answer read „ეს ორი
-  სანტექნიკოსი…" with no name anywhere, as if the owner had seen the first draft (1 of 3 runs). The note
-  already says the owner never saw it. Proposal: add one sentence to the three promise/instruction notes
-  in replyGuards.ts: „ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს
-  ნიშნავს." That is prompt text (D44), so it needs his yes.
-- **AE. 1354, the saved-names half (the tester's 45310/45311):** „რა სახელებით ვარ სხვებთან შენახული?"
-  gets „I can't see them". The data is there (each saver's label in UserAlias), but every label is that
-  saver's private phonebook entry, and no ruling lets the subject see them. D523 keeps who saved what
-  private. Showing them is new disclosure, which is "opening access", so I did not build it. Options:
-  (a) never show them, and the reply says so plainly; (b) show the labels with no saver and no count;
-  (c) show only labels saved by two or more people. My recommendation: (c).
-- **AF. 1489 (the master test run's RW-015, conv 43247):** 7 s after a helper's "no" reaches the owner as
-  a card, the answer-event run searches the owner's contacts again for the same word (already searched,
-  0) and writes „შენს დანარჩენ კონტაქტებშიც ვერავინ მოიძებნა…". The run itself is right, because the plan
-  should continue; the re-search and its narration are not. Proposal: one sentence in the answer-event
-  note: „რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — უთხარი მხოლოდ შემდეგი
-  ნაბიჯი." Prompt text (D44), so it needs his yes.
-- **AG. 2907 (the master test run's 45679, QA-029, 2 of 2):** the helper's own saved dentist is no
-  longer offered as a button. Cause found: since D712 (7 Oct, "the question and its buttons have one
-  author") the asking model writes the buttons, and the reader's pick-list of her own fitting contacts
-  is built only when it wrote none, so in practice never. The asking model cannot write those buttons,
-  because it must not see the reader's phonebook. Recommendation: the reader's fitting saved people come
-  back as buttons beside the model's (at most 4 in all, „later" kept), on a first ask about a need, never
-  on „will you introduce me". This bends D712's "one author", so it needs his yes (and the founder's?).
-- **AH. 694 re-opened (the master test run's 45679, 9 runs):** on „ask <name> …" the model still calls
-  propose_task_plan first, which is refused, then grant_task_permission, then ask_contact: 50–60 s per
-  direct ask (the mark is 45). Proposal: when propose_task_plan is refused because the owner's line names
-  one person, the server sends that one question itself at that moment (the §97 path, already approved
-  for the fallback) and returns ask_contact's own result. That is a new path that writes to real people,
-  so it waits for his yes and is shipped in daylight.
-- **AI. 2707 (the master test run's ON-006/ON-007):** on a brand-new seat with no phonebook, a goal
-  sentence („კარგი იურისტი მჭირდება…", "I need a good lawyer") runs as task_step and asks "which city?",
-  while a Latin-letter line runs as onboarding and says the contacts are not in yet. Cause: the server opens
-  the goal before the run (ensureGoalForRequest), and resolveRunMode puts a bound goal first, ahead of the
-  onboarding rule (D617). Two ways: (a) the onboarding rule wins even with a goal bound (the onboarding
-  blocks, no task-engine blocks, on the first need); (b) the task_step run gets one line, "this owner's
-  contacts are not in yet; say so once and ask for them". Either changes what the prompt loads (D44).
-  My recommendation: (b), because the goal and its plan still work.
+Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
+კითხვები შენი რეკომენდაციებით გააკეთე"), recorded per item as §99 in ADMIN_WRITE_OPERATIONS.md.
+Shipped by 07:14Z: AD 2905 (52332b1), AF 1489 (73f2233), AI 2707 (0a6c76f), AG 2907 (a02e76c, 20105cf),
+AE 1354 (cb14e13), AH 694 (7e1abd7). In progress: V D505, AC 502, W 2577, Z 2641, R 1454/2182/2114,
+AA 2806–2808 (drafts for his read), AB 2810 (design). Still with Misho, not covered by the word:
+S (money), T (people), X (his sentence for the rewards page), Y (native app), and a new product
+question on 1489 (what a goal does after a helper's "no"; my recommendation: carry on quietly and
+write only with a result).
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
