@@ -77,6 +77,13 @@ unanswered. Put them again in the morning:
 - **T. People:** logins (383); one test with Giorgi's computer off (562); a real sign-up for 389;
   Lika's own .xlsx (2377).
 - **U. Order of the big builds:** 1849 or 1882 first; when Chorus 1687–1699 start.
+- **W. 2577 (D647/D648):** a helper's answer comes back reworded in the first person („მყავს ნანახი").
+  The card must tell it in the third person. My quoting fix went against D648 and was reverted (f99b957).
+  The real fix is the answer-relay text the model writes (prompt, D44). A draft line goes with the morning list.
+- **X. T2345:** the rewards page needs Misho's sentence for the rule. The numbers come from
+  `percent` and `levels`, live.
+- **Y. T374:** new phone contacts can be found without a .vcf only with a native app (the frontend:
+  a web app cannot read contacts in the background). Is that a product decision now or later?
 - **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
   A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
   called a regression; it is not one). Should the name's script break the tie?
