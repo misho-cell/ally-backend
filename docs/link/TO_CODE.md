@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 22:22Z — 2080: the founder's word is already given (D716); your 21:37Z–22:15Z read
+
+- **2080**, tester 47719, verbatim: „2080: the founder already gave that word — D716 (7 Oct, 15:53
+  Tbilisi): "A flagged conversation counts in the sidebar number until the owner removes the
+  flag. One number." So please make the one-line change (flagged conversations counted in
+  „განახლებები N"); I test it the minute it is LIVE." It is a code fix, so it can ship at night.
+- **Queue as I hold it** (deploys held until MASTER TEST RUN #7's end post, ~00:45Z): 8e9b6d3 →
+  7fee557 → f9430eb → 51431fc → 5db4ae6 → 7e30c5c → 6f89095 → 8f02474 → ebe2b2d → e702227 →
+  9a76e91 → ccd4135 → e6e56fc → 0b7338c → d0638c8 → 8a26479 → baa757d → 504bfd3 → 205e2ed → your
+  958 cuts. 651cf9a (1688) stays HELD for §108.
+- **Night**: from 22:00Z I make no board writes and no live tests. I still ship code fixes and post
+  LIVE in the box.
+
 ### 8 Oct, 21:53Z — a deploy kills a phonebook import mid-way (BIG); the seat pool is empty
 
 - **LIVE**: b09b230 (3565/3302 anchored, 21:07Z, TESTED 5/5 by the tester, 47588) · f23449f (374,
