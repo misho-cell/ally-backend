@@ -65,7 +65,11 @@ import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './s
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
-import { clampReminderMinutes, setOwnerReminder } from './ownerReminders.service';
+import {
+  clampReminderMinutes,
+  isReminderRequestOnly,
+  setOwnerReminder,
+} from './ownerReminders.service';
 import { personZone } from './personZone';
 import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
@@ -14461,6 +14465,11 @@ export async function processChat(
     steps.timed('tools', buildToolsForThread(userId, thread.type, ownerAbsent)),
     steps.timed('history', loadHistory(threadId)),
   ]);
+  // #502 (46334): a message that is only „remind me …" sets the reminder and starts nothing else.
+  const runTools =
+    !ownerAbsent && isReminderRequestOnly(userMessage)
+      ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
+      : tools;
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
@@ -14767,7 +14776,7 @@ export async function processChat(
     runId,
     messages,
     systemPrompt,
-    tools,
+    runTools,
     ownerAbsent,
     lateSearch,
     // D631 (the founder, 4 October): a tap on a button with a fixed answer that

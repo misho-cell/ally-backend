@@ -15,6 +15,7 @@ import {
   claimDueReminders,
   clampReminderMinutes,
   deliverReminder,
+  isReminderRequestOnly,
   MAX_REMINDER_CHARS,
   MAX_REMINDER_MINUTES,
   reminderLine,
@@ -150,5 +151,22 @@ describe('the run holds the tool', () => {
     expect(chat).toContain(
       "case 'set_reminder':\n      return setReminderTool(userId, input, threadId, ownerAbsent);",
     );
+  });
+});
+
+describe('a message that is only a reminder request starts nothing else (46334, b)', () => {
+  it('knows a reminder request in the three languages, and only a short one', () => {
+    expect(isReminderRequestOnly('შემახსენე 2 წუთში, რომ წამალი დავლიო.')).toBe(true);
+    expect(isReminderRequestOnly('Remind me in 15 minutes')).toBe(true);
+    expect(isReminderRequestOnly('Напомни через час')).toBe(true);
+    expect(isReminderRequestOnly('მჭირდება ბუღალტერი, შემახსენე ხვალ')).toBe(false);
+    expect(isReminderRequestOnly(`შემახსენე ${'x'.repeat(200)}`)).toBe(false);
+  });
+
+  it('that run holds set_reminder alone', () => {
+    expect(chat).toContain('!ownerAbsent && isReminderRequestOnly(userMessage)');
+    expect(chat).toContain('? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)');
+    const loop = chat.slice(chat.indexOf('} = await runToolLoop('));
+    expect(loop.slice(0, 200)).toContain('runTools,');
   });
 });

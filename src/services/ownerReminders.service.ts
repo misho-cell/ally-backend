@@ -108,3 +108,16 @@ export async function deliverReminder(reminder: DueReminder): Promise<void> {
     url: `/chat/${reminder.thread_id}`,
   });
 }
+
+/**
+ * #502 (the tester's 46334, b, 1 of 2): inside a goal waiting on its city
+ * question, „შემახსენე 2 წუთში" first started the goal's work — a plan card —
+ * and only then set the reminder. A message that is only a reminder request is
+ * answered with the reminder alone: that run holds set_reminder and nothing else.
+ */
+const REMINDER_REQUEST_RE = /^\s*(?:შემახსენე|გამახსენე|remind me\b|напомни)/iu;
+const MAX_REMINDER_REQUEST_CHARS = 160;
+
+export function isReminderRequestOnly(message: string): boolean {
+  return message.trim().length <= MAX_REMINDER_REQUEST_CHARS && REMINDER_REQUEST_RE.test(message);
+}
