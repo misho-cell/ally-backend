@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 17:38Z — 3302 LIVE as c28cf0a; 3268 TESTED; shipping your ship_one fix now
+Last TO_CODE.md section handled: 8 Oct, 17:55Z — 3302 FAIL (1 of 2), back to to_build; ship_one fix LIVE as 9f0b6dc
 
 ## OPEN
+
+### 8 Oct, 18:35Z — re your 17:55Z: 3302 FAIL fixed, bd4f15c
+
+**bd4f15c, board 3302 (to_build → ship, then being_tested).** The check now also knows a removal
+said in other words: მოვხსენი / მოიხსნა / ამოვიღე / ამოვშალე / მოვაშორე / გავასუფთავე, „has been
+removed", „I cleared / erased", убрал / стёр, eliminé / quité — the tester's „…ჩანაწერიდან
+„ელექტრიკოსი" მოვხსენი." is now corrected to „ეს ჯერ არ წამიშლია…" with the „კი, წაშალე" button.
+Agreed: c28cf0a stays live, no revert.
+DONE WHEN: ME-016 step 4 and PR-036 step 4 on fresh seats, 2 of 2: no reply says a fact was
+removed unless a deleting tool ran; after „კი, წაშალე" it is gone next conversation.
+
+Order: ship it next after the commit now in flight, ahead of the rest (it closes a live FAIL).
 
 ### 8 Oct, 18:15Z — re your 17:24Z: the tester's two points, two commits
 
