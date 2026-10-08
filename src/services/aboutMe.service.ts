@@ -16,10 +16,19 @@ import { getUserProfile } from './userProfile.service';
 const ABOUT_ME_TIMEOUT_MS = 5_000;
 const MAX_OWN_NUMBERS = 5;
 const MAX_PUBLIC_FACTS = 40;
+const MAX_OWN_ANSWERS = 20;
 
 export interface PublicFact {
   readonly field_type: string;
   readonly value: string;
+}
+
+/** One answer the owner gave to Netai's profile questions (2740). */
+export interface OwnAnswer {
+  readonly question_ka: string;
+  readonly question_en: string | null;
+  readonly answer_ka: string;
+  readonly answer_en: string | null;
 }
 
 export interface AboutMe {
@@ -27,6 +36,7 @@ export interface AboutMe {
   readonly own_numbers: readonly string[];
   readonly my_profile: Readonly<Record<string, string>>;
   readonly what_others_see: readonly PublicFact[];
+  readonly my_answers: readonly OwnAnswer[];
 }
 
 async function ownName(userId: string): Promise<string | null> {
@@ -62,16 +72,60 @@ async function publicFactsAbout(numbers: readonly string[]): Promise<PublicFact[
   return result.rows;
 }
 
+/**
+ * 2740: the owner's answers to Netai's profile questions (answer_profile_question)
+ * are part of what Netai knows about them, so „რა იცი ჩემზე?" says them back.
+ * Current, answered (not skipped) ones only; the chosen options in both
+ * languages, or what the owner typed.
+ */
+async function ownAnswers(userId: string): Promise<OwnAnswer[]> {
+  const result = await query<{
+    question_ka: string;
+    question_en: string | null;
+    picked_ka: string | null;
+    picked_en: string | null;
+    free_text: string | null;
+  }>(
+    `SELECT qb.prompt_ka AS question_ka, qb.prompt_en AS question_en,
+            (SELECT string_agg(o->>'ka', ', ') FROM jsonb_array_elements(qb.options) o
+              WHERE o->>'id' = ANY(ae.option_ids)) AS picked_ka,
+            (SELECT string_agg(o->>'en', ', ') FROM jsonb_array_elements(qb.options) o
+              WHERE o->>'id' = ANY(ae.option_ids)) AS picked_en,
+            NULLIF(TRIM(ae.free_text), '') AS free_text
+       FROM answer_events ae JOIN question_bank qb ON qb.question_id = ae.question_id
+      WHERE ae.user_id = $1 AND ae.is_current AND NOT ae.skipped AND ae.answered_at IS NOT NULL
+      ORDER BY ae.answered_at DESC
+      LIMIT $2`,
+    [userId, MAX_OWN_ANSWERS],
+    ABOUT_ME_TIMEOUT_MS,
+  );
+  return result.rows.flatMap((row) => {
+    const answerKa = [row.picked_ka, row.free_text].filter(Boolean).join('; ');
+    if (answerKa === '') return [];
+    const answerEn = [row.picked_en, row.free_text].filter(Boolean).join('; ');
+    return [
+      {
+        question_ka: row.question_ka,
+        question_en: row.question_en,
+        answer_ka: answerKa,
+        answer_en: answerEn === '' ? null : answerEn,
+      },
+    ];
+  });
+}
+
 export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
-  const [name, numbers, profile] = await Promise.all([
+  const [name, numbers, profile, answers] = await Promise.all([
     ownName(userId),
     ownNumbers(userId),
     getUserProfile(userId),
+    ownAnswers(userId),
   ]);
   return {
     name,
     own_numbers: numbers,
     my_profile: profile,
     what_others_see: await publicFactsAbout(numbers),
+    my_answers: answers,
   };
 }
