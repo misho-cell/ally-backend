@@ -481,6 +481,12 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import {
+  labelsTheReplyLeftOut,
+  NamelessLabel,
+  namelessLabelLines,
+  namelessLabelsIn,
+} from './namelessLabels';
 import { contactsNotTagged, negatedTerm, NotTaggedContact, notTaggedAnswer } from './notTagged';
 import { InboxQuestion, questionsTheReplyLeftOut } from './inboxQuestions';
 import { ListStatus, listStatus, startListWork } from './listItems.service';
@@ -7717,6 +7723,19 @@ function sayNamelessLabel(row: unknown): unknown {
   return { ...(row as Record<string, unknown>), name: null, saved_as: r.name.trim() };
 }
 
+const runNamelessLabels = new Map<string, NamelessLabel[]>();
+
+function noteNamelessLabels(runId: string, labels: readonly NamelessLabel[]): void {
+  if (labels.length === 0) return;
+  runNamelessLabels.set(runId, [...(runNamelessLabels.get(runId) ?? []), ...labels]);
+}
+
+function takeNamelessLabels(runId: string): NamelessLabel[] {
+  const labels = runNamelessLabels.get(runId) ?? [];
+  runNamelessLabels.delete(runId);
+  return labels;
+}
+
 export function withNamelessLabelsSaid(tool: string, raw: unknown): unknown {
   if (!SEARCH_TOOLS.has(tool) || raw === null || typeof raw !== 'object') return raw;
   const r = raw as { results?: unknown };
@@ -8322,6 +8341,7 @@ function clearRunState(runId: string): void {
   runGraceNote.delete(runId);
   runInboxNamed.delete(runId);
   runInboxQuestions.delete(runId);
+  runNamelessLabels.delete(runId);
   runHeldUpdates.delete(runId);
   runShareText.delete(runId);
   // Row 237's flag. Its consumer forgets it too, but a run that exits early
@@ -10562,6 +10582,8 @@ async function runOneToolBlock(
     block.name,
     withEmptySearchHistory(block.name, input, runId, rawResult),
   );
+  // 3137: a contact saved only as a symbol is shown as saved, by the server if need be.
+  if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
   // #69: a common Georgian first name says whether the person is a man or a woman.
   const raw = SEARCH_TOOLS.has(block.name) ? withNameGenders(labelled) : labelled;
   // Ticket 19 G7: the step caption is written BEFORE the call and says what the
@@ -13103,6 +13125,12 @@ async function runToolLoop(
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+  }
+
+  // 3137: a symbol-only label the reply left out is said by the server, as saved.
+  const unsaidLabels = labelsTheReplyLeftOut(takeNamelessLabels(runId), finalText);
+  if (!ownerAbsent && finalText.trim() !== '' && unsaidLabels.length > 0) {
+    finalText = `${finalText.trimEnd()}\n\n${namelessLabelLines(unsaidLabels, runLang(runId))}`;
   }
 
   // 3302: „deleted" is said only when a deleting tool ran; otherwise the truth and a confirm button.
