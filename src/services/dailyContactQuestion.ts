@@ -18,7 +18,7 @@ import { CuriosityUpdate, maybeCuriosityUpdate } from './curiosityQueue.service'
 const FACT_QUESTION: Readonly<Record<string, string>> = {
   occupation: 'რას საქმიანობს',
   employer: 'სად მუშაობს',
-  city: 'რომელ ქალაქშია',
+  city: 'რომელ ქალაქში ცხოვრობს',
   industry: 'რა სფეროშია',
 };
 
@@ -64,8 +64,9 @@ export function contactQuestionSection(update: CuriosityUpdate | null): string {
   if (who === '' || asked === undefined) return '';
   return (
     '\n\n## დღის ერთი კითხვა მფლობელის კონტაქტზე (D708)\n' +
-    `ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, ჰკითხე ერთი მოკლე კითხვა: ${who} — ${asked}? ` +
-    'ერთი წინადადებით უთხარი რატომ: ასე უკეთ მოგიძებნი ხალხს და უკეთ დაგაკავშირებ.\n' +
+    // 3202 (c), Misho's yes, 8 Oct (§103): a light side question, not a reason to answer it.
+    `ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, ბოლოს მსუბუქად, სხვათა შორის ჰკითხე: ` +
+    `„სხვათა შორის, ${who} ${asked}? თუ არ იცი, არა უშავს." — ახსნის გარეშე.\n` +
     'მხოლოდ ეს ერთი კითხვა, ფორმა ან რამდენიმე კითხვა ერთად — არა. პასუხს შემდეგ შეტყობინებაში ' +
     `მოგწერს: მაშინ ${who} სახელით მოძებნე და შეინახე save_contact_fact-ით (field_type: ${fact}). ` +
     'თუ თქვა „ახლა არა", ან არ უნდა, დაანებე თავი და დღეს ამ ადამიანზე აღარ ჰკითხო.'

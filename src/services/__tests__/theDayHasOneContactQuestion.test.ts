@@ -30,7 +30,9 @@ const OWN_RUN = { ownerPresent: true, regularThread: true, goalBound: false, pre
 describe('theDayHasOneContactQuestion', () => {
   it('asks by name in the owner’s own run, without the number', () => {
     const section = contactQuestionSection(due('ნინო', 'employer'));
-    expect(section).toContain('ნინო — სად მუშაობს?');
+    expect(section).toContain('„სხვათა შორის, ნინო სად მუშაობს? თუ არ იცი, არა უშავს."');
+    // 3202 (c), §103: no reason sentence about finding people any more.
+    expect(section).not.toContain('უკეთ მოგიძებნი');
     expect(section).toContain('field_type: employer');
     expect(section).not.toContain('p-1');
   });
@@ -68,7 +70,7 @@ describe('the owner’s own run carries the day’s question (§98.1)', () => {
 describe('the answer that comes a line later (2674)', () => {
   it('reminds the run which contact and which fact wait, never the owner’s profile', () => {
     const section = pendingAnswerSection({ id: 1, label: 'ნინო', missing_fact: 'city' });
-    expect(section).toContain('ნინო — რომელ ქალაქშია?');
+    expect(section).toContain('ნინო — რომელ ქალაქში ცხოვრობს?');
     expect(section).toContain('field_type: city');
     expect(section).toContain('update_user_profile არა');
   });
@@ -104,7 +106,7 @@ describe('a question handed out but never asked is handed out again', () => {
 
     const section = await dailyContactQuestionSection('179648', 44255, OWN_RUN);
 
-    expect(section).toContain('ზვიადი — რას საქმიანობს?');
+    expect(section).toContain('სხვათა შორის, ზვიადი რას საქმიანობს?');
     expect(mockQuery.mock.calls[1][1]).toEqual(['179648', 44255, 77, 'ზვიად']);
     expect(mockQuery.mock.calls[2]).toEqual([
       'DELETE FROM curiosity_surfacing_log WHERE id = $1',

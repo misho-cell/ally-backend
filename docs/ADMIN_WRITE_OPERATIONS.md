@@ -5964,3 +5964,17 @@ buildShownRelayAnswerWakeEvent), after the §99.2 sentence:
 > თუ პასუხში ადამიანი თავის კონტაქტს ასახელებს, მას მისი გვარი ან ნომერი ნუ ჰკითხავ — მფლობელს შესთავაზე, რომ მან გააცნოს.
 
 Undo: revert.
+
+**§103 — 3202 (c), Misho's yes („3202 კი", 8 Oct ~11:15 UTC), the exact text, shipped alone.** The day's
+contact question (dailyContactQuestion.ts, contactQuestionSection). Was:
+
+> ჰკითხე ერთი მოკლე კითხვა: <who> — <asked>? ერთი წინადადებით უთხარი რატომ: ასე უკეთ მოგიძებნი ხალხს და უკეთ დაგაკავშირებ.
+
+Now:
+
+> ბოლოს მსუბუქად, სხვათა შორის ჰკითხე: „სხვათა შორის, <who> <asked>? თუ არ იცი, არა უშავს." — ახსნის გარეშე.
+
+And the city question reads „რომელ ქალაქში ცხოვრობს" (was „რომელ ქალაქშია"). Undo: revert.
+
+**§100 RUN, 8 October ~11:40 UTC:** `{"user_id":"160584","removed":3}`. Read back: three subscriptions
+remain (apple 8 Oct, google 7 Oct, apple 5 Oct), each with a device id and a user agent.
