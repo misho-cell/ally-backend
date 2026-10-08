@@ -51,8 +51,56 @@ export function detectRunLanguage(text: string): RunLanguage {
   if (script > 0 && script >= words.latin) {
     return words.georgian >= words.cyrillic ? 'ka' : 'ru';
   }
+  if (readsAsLatinGeorgian(text)) return 'ka';
   if (/[áéíóúñ¿¡]/i.test(text) || readsAsSpanish(text)) return 'es';
   return 'en';
+}
+
+/**
+ * 2707, the Latin case (ON-006 / ON-007, seat 179367): „iuristi mchirdeba" is
+ * Georgian typed in Latin letters, and it was answered in English. Georgian in
+ * Latin letters is told by its own words — only ones no English or Spanish
+ * sentence uses, so a stray one in English changes nothing.
+ */
+const GEORGIAN_IN_LATIN_WORDS: ReadonlySet<string> = new Set([
+  'mchirdeba',
+  'mjirdeba',
+  'mchirdebian',
+  'gamarjoba',
+  'gamarjobat',
+  'madloba',
+  'gmadlob',
+  'icnob',
+  'icnobs',
+  'gicnobt',
+  'vinme',
+  'rogor',
+  'minda',
+  'gtxov',
+  'gtkhov',
+  'kargi',
+  'sheidzleba',
+  'shegidzlia',
+  'dzalian',
+  'gamacani',
+  'gaacani',
+  'xom',
+  'rame',
+  'sadme',
+  'ramdeni',
+  'ratom',
+  'chemi',
+  'sheni',
+  'maqvs',
+  'gaqvs',
+  'aqvs',
+]);
+
+function readsAsLatinGeorgian(text: string): boolean {
+  const words = text.toLowerCase().match(/[a-z]+/gu) ?? [];
+  const georgian = words.filter((w) => GEORGIAN_IN_LATIN_WORDS.has(w)).length;
+  const english = words.filter((w) => ENGLISH_WORDS.has(w)).length;
+  return georgian > 0 && georgian >= english;
 }
 
 /**
