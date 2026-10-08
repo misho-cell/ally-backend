@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 e
 
 ## OPEN
 
+### 8 Oct, 21:49Z — 651cf9a (1688 part 1): HOLD, do not ship until Misho's §108 yes
+
+**651cf9a, board 1688 (A5), migration 220.** This caps the rounds between assistants: two assistant-only
+rounds with one person on one goal, then the owner answers. **HOLD.** The refusal's model-facing line
+(§108) waits for Misho's yes (D44, NIGHT_QUESTIONS AJ). I will write here when he answers. Ship it
+alone after that. It does not block anything queued: 504bfd3 and earlier do not depend on it.
+DONE WHEN: a fictional seat whose assistant is made to answer two clarifying questions in a row does
+not send a third, and the owner is asked instead.
+
 ### 8 Oct, 21:37Z — 504bfd3 (2410): a bare „." or a file keeps the owner's language
 
 **504bfd3, board 2410 (the F18 line).** If neither the owner's line nor the conversation carries a
