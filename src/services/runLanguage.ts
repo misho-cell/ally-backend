@@ -737,6 +737,15 @@ export function namedStepCaption(
   return build(first, second);
 }
 
+/**
+ * 3368 (AP-022): a Georgian run that used only tools with no caption of their
+ * own (check_my_inbox, list_status) kept no step at all. The generic line is
+ * the floor in every language, Georgian too.
+ */
+export function genericStepCaption(lang: RunLanguage): string {
+  return GENERIC_STEP[lang] ?? GENERIC_STEP.ka;
+}
+
 export function toolStepCaption(tool: string, lang: RunLanguage): string | null {
   if (lang === 'ka') return null;
   return TOOL_STEPS_BY_LANG[lang][tool] ?? GENERIC_STEP[lang];
