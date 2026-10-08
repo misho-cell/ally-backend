@@ -488,6 +488,7 @@ import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsk
 import type { UpcomingBirthday } from './birthdayLens.service';
 import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
+import { withoutInternalText } from './internalText';
 import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
@@ -13287,6 +13288,8 @@ async function runToolLoop(
     }
   }
 
+  // The tester's 47325: the model's internal words never reach the owner.
+  finalText = withoutInternalText(finalText);
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
   finalText = withPlainDigits(finalText);
   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
