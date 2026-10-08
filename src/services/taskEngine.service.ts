@@ -144,6 +144,24 @@ const PUSH_PREVIEW_MAX_CHARS = 120;
 // A task advances one step at a time: never two concurrent runs on one task.
 const runningTasks = new Set<number>();
 
+const GOAL_OPEN_READ_TIMEOUT_MS = 3_000;
+
+/** 2348: whether the goal is still open after the run; a failed read keeps the old answer. */
+async function goalStillOpen(taskId: number): Promise<boolean> {
+  try {
+    const result = await query<{ open: boolean }>(
+      `SELECT status = 'open' AS open FROM tasks WHERE id = $1 LIMIT 1`,
+      [taskId],
+      GOAL_OPEN_READ_TIMEOUT_MS,
+    );
+    return result.rows[0]?.open === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[task-engine] could not read whether the goal is open:', (err as Error).message);
+    return false;
+  }
+}
+
 /**
  * What the wake must know about this account's outreach budget (ticket 9 task
  * 17). Silent while there is room — a plan does not need to hear about a
@@ -503,6 +521,7 @@ export async function wakeTask(
         asksOwner,
         requestCreated: result.requestCreated === true,
         pendingAsk,
+        openGoal: await goalStillOpen(taskId),
       });
       if (asksOwner && !flagged) {
         // No text: a wake reply may cover several goals, and its closing
