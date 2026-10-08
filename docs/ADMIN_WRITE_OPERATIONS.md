@@ -5998,3 +5998,22 @@ conversation's language by name:
 
 The input is the message and the buttons, as JSON. A failed or unusable check keeps the buttons as written.
 Costs one editor call per reply with buttons (about 1–2 s). Undo: revert.
+
+**§106 — 1687 (second part), Misho's yes („3. კარგი გააკეთე", 8 Oct ~20:20 UTC), the exact text,
+shipped alone.** When an outgoing ask's body is over 400 characters after the writer and the editor,
+the question is passed once to the editor model (askEditor.service.ts, shortenedQuestion) with this
+brief:
+
+> Rewrite this question shorter, under 400 characters, in the same language. Keep every fact, name and number exactly as written; add nothing and drop no fact.
+
+A rewrite is used only when it is shorter, keeps every number of the original, and asks one
+question; otherwise the question goes as written and the [ask-length] line is logged. Undo: revert.
+
+**§107 — 1695, Misho's yes („4. კარგი", 8 Oct ~20:20 UTC), the exact text, shipped alone.** On a
+likely_yes pre-match (1694), the recipient's prepared answer is composed by the editor model
+(preparedAnswer.service.ts) with this brief, {language} being the reader's language by name:
+
+> From the facts below about the reader himself, write ONE short line in {language} that he could send as his answer to this question: what he can offer, business facts only. Never a phone number, never another person's number or private fact, never words he typed to his own assistant. If nothing in the facts answers the question, return nothing.
+
+The facts given are only the reader's own profile fields (job, employer, user_profile_kv) — never his notes or anything he typed; the line is stored on
+the ask, shown only to him under „yes", and sent only on his tap. Undo: revert.

@@ -37,7 +37,7 @@ import {
   withServerLater,
   withoutPointingAnswers,
 } from './askChoices';
-import { editOutgoingAsk } from './askEditor.service';
+import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
 import { isTypedDecline } from './typedDecline';
 import { Prematch, prematchMany } from './prematch.service';
 import { askField, recountAnswerStats } from './answerStats.service';
@@ -1628,7 +1628,20 @@ async function createAskNow(
       ? [picker.line]
       : []),
   ];
-  // 1687 (A4): the body is measured, and the identical disclosure line closes every ask.
+  // 1687 (A4): the body is measured — over 400 characters the question is shortened once (§106) —
+  // and the identical disclosure line closes every ask.
+  if (lines.join('\n\n').length > ASK_BODY_MAX_CHARS) {
+    const shorter = await shortenedQuestion(edited.question);
+    if (shorter !== null) {
+      lines[0] = buildAskOpening(
+        said,
+        senderName,
+        roster,
+        shorter,
+        isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
+      );
+    }
+  }
   const body = lines.join('\n\n');
   if (body.length > ASK_BODY_MAX_CHARS) {
     // eslint-disable-next-line no-console
