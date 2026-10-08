@@ -65,6 +65,7 @@ import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './s
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
+import { clampReminderMinutes, setOwnerReminder } from './ownerReminders.service';
 import { personZone } from './personZone';
 import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
@@ -1340,9 +1341,9 @@ const SET_TASK_WAKE_TOOL: AnthropicTool = {
   name: 'set_task_wake',
   description:
     'Schedule when this task should wake YOU next (hours from now, 0.25–168; 0.25 is 15 ' +
-    'minutes) — e.g. 24 to check unanswered asks tomorrow, a deadline to summarize whatever ' +
-    'arrived, or the owner\'s own „remind me in 15 minutes" (0.25). Answers wake the task ' +
-    'immediately on their own; this is the fallback timer.',
+    'minutes) — e.g. 24 to check unanswered asks tomorrow, or a deadline to summarize ' +
+    'whatever arrived. Answers wake the task immediately on their own; this is the fallback ' +
+    'timer. A reminder the owner asks for („remind me in 15 minutes") is set_reminder, not this.',
   input_schema: {
     type: 'object',
     properties: {
@@ -1368,6 +1369,88 @@ const SET_TASK_WAKE_TOOL: AnthropicTool = {
     required: ['task_id'],
   },
 };
+
+/**
+ * #502 (§99.8): the owner's own reminder, in any conversation. The text below
+ * is model-facing and recorded word for word in ADMIN_WRITE_OPERATIONS §99.8.
+ */
+const SET_REMINDER_TOOL: AnthropicTool = {
+  name: 'set_reminder',
+  description:
+    'The owner\'s own reminder: „remind me in 15 minutes", „remind me tomorrow at 10 to call ' +
+    'Nino". At that time the server writes `text` into this same conversation and rings the ' +
+    "owner's phone; you are not woken. Works in any conversation, with or without a goal, " +
+    'from 1 minute to 7 days. When the owner asks to be reminded, call this: never say you ' +
+    'cannot remind, and never suggest a phone alarm instead. Then tell the owner in one short ' +
+    'line when the reminder will come.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      text: {
+        type: 'string',
+        description:
+          "The reminder exactly as the owner will read it, in the owner's language, one short " +
+          'line (e.g. „წამლის დალევის დროა.").',
+      },
+      minutes: { type: 'number', description: 'Minutes from now (1–10080).' },
+      at: {
+        type: 'string',
+        description:
+          'A clock time the owner named, „HH:MM" on their own clock. Give it instead of ' +
+          'minutes and the server counts the time.',
+      },
+      day_offset: {
+        type: 'number',
+        description:
+          'With `at`: 0 today, 1 tomorrow, up to 7. Leave it out for the next such time.',
+      },
+    },
+    required: ['text'],
+  },
+};
+
+const REMINDER_OWNER_ONLY =
+  'Not in this run: a reminder is set only when the owner asks for one in their own message.';
+const REMINDER_NEEDS_TEXT = 'Pass `text`: the reminder as the owner will read it.';
+const REMINDER_NEEDS_TIME = 'Pass `minutes`, or `at` for a clock time the owner named.';
+const REMINDER_NO_CONVERSATION =
+  'Not set: this run has no conversation to write the reminder into.';
+const REMINDER_SET_NOTE =
+  'Set. Tell the owner in one short line when it will come. Do not set a goal wake for it.';
+const MINUTES_PER_HOUR = 60;
+
+/** #502: the minutes until the reminder, from a clock time or from minutes; null when neither. */
+async function reminderMinutes(
+  userId: string,
+  input: Record<string, unknown>,
+): Promise<number | null> {
+  const clockHours = await hoursFromClock(userId, input);
+  if (clockHours !== null) return clockHours * MINUTES_PER_HOUR;
+  const minutes = Number(input['minutes']);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+}
+
+/** #502: stores the owner's reminder in this conversation, or says why not. */
+async function setReminderTool(
+  userId: string,
+  input: Record<string, unknown>,
+  threadId: number | undefined,
+  ownerAbsent: boolean,
+): Promise<Record<string, unknown>> {
+  if (ownerAbsent) return { set: false, error: REMINDER_OWNER_ONLY };
+  if (threadId === undefined) return { set: false, error: REMINDER_NO_CONVERSATION };
+  const text = String(input['text'] ?? '').trim();
+  if (!text) return { set: false, error: REMINDER_NEEDS_TEXT };
+  const minutes = await reminderMinutes(userId, input);
+  if (minutes === null) return { set: false, error: REMINDER_NEEDS_TIME };
+  const dueAt = await setOwnerReminder({ userId: Number(userId), threadId, text, minutes });
+  return {
+    set: true,
+    minutes: clampReminderMinutes(minutes),
+    due_at: dueAt.toISOString(),
+    note: REMINDER_SET_NOTE,
+  };
+}
 
 /** #2179: the hours until the clock time the owner named, or null when none was given. */
 async function hoursFromClock(
@@ -9012,6 +9095,8 @@ async function executeToolCall(
       if (taskId === null) return { updated: false, error: BRIEF_NOT_THIS_CONVERSATION };
       return { updated: await setTaskBrief(userId, taskId, brief) };
     }
+    case 'set_reminder':
+      return setReminderTool(userId, input, threadId, ownerAbsent);
     case 'set_task_wake': {
       // #502 (Ninia): „remind me in 15 minutes" was told the shortest is an
       // hour. The wake ticker runs every 20 s, so a quarter hour is real.
@@ -10891,6 +10976,7 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   ask_contact: '✉️ კონტაქტს ვწერ...',
   set_task_brief: '🗂 გეგმას ვაახლებ...',
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
+  set_reminder: '⏰ შეხსენებას ვნიშნავ...',
   finish_task: '🏁 დავალებას ვხურავ...',
   relay_ask: '↪️ კითხვას გადავცემ...',
   send_answer_to_asker: '📨 დამტკიცებულ პასუხს ვაგზავნი...',
@@ -13260,6 +13346,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   ASK_CONTACT_TOOL,
   SET_TASK_BRIEF_TOOL,
   SET_TASK_WAKE_TOOL,
+  SET_REMINDER_TOOL,
   FINISH_TASK_TOOL,
   RELAY_ASK_TOOL,
   RESPOND_TO_INVITE_CAMPAIGN_TOOL,

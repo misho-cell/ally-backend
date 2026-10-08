@@ -5898,3 +5898,29 @@ own registered name, or any name others saved them under, is written in Georgian
 returns booleans only (threads.service.ts, languageOfAStrangersNumber).
 
 Undo: revert.
+
+**§99.8 — 502, the exact text, shipped alone.** A reminder the owner asks for is its own row
+(owner_reminders, migration 214), not a goal. Why it differs from the line above („opens a small goal"):
+about twenty sweeps act on every open goal (the night review, the silent-day wake, the default 24-hour wake
+and others), so a goal opened only to carry a reminder would be worked on by all of them. The row carries
+only the line and the time. At the time, the server writes the line into the same conversation and rings
+the owner once; no model runs. It works in any conversation, with or without a goal, from 1 minute to 7
+days. Refused in a run the owner did not start.
+
+New tool set_reminder (chat.service.ts, SET_REMINDER_TOOL), description:
+
+> The owner's own reminder: „remind me in 15 minutes", „remind me tomorrow at 10 to call Nino". At that time
+> the server writes `text` into this same conversation and rings the owner's phone; you are not woken. Works
+> in any conversation, with or without a goal, from 1 minute to 7 days. When the owner asks to be reminded,
+> call this: never say you cannot remind, and never suggest a phone alarm instead. Then tell the owner in one
+> short line when the reminder will come.
+
+Its fields: text („The reminder exactly as the owner will read it, in the owner's language, one short line
+(e.g. „წამლის დალევის დროა.")."), minutes („Minutes from now (1–10080)."), at, day_offset (as on
+set_task_wake). Tool result on success: „Set. Tell the owner in one short line when it will come. Do not
+set a goal wake for it."
+
+set_task_wake's description: „…, or the owner's own „remind me in 15 minutes" (0.25)" is replaced by „A
+reminder the owner asks for („remind me in 15 minutes") is set_reminder, not this."
+
+Undo: revert.

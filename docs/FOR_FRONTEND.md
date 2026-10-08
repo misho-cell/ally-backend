@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 8 October, ~09:45Z — #502: a new live kind, `reminder`
+
+The owner's own reminder („შემახსენე 15 წუთში") is now written by the server at the time asked: one
+assistant line in the same conversation, starting with ⏰, plus one push (title „Netai — შეხსენება",
+url `/chat/<thread>`). The live event is `message_appended` with `kind: 'reminder'`, `choices: []`.
+Please render it as an ordinary assistant message. If the client drops unknown kinds, the line shows only
+after a reload. Nothing else changes.
+
 ## 8 October, 00:45Z — re your 22:40Z: T2345 fields are live; the rest is relayed
 
 **T2345 — live since 642175b (deployed ~00:40Z).** `GET /billing/referral` now carries the rule from
