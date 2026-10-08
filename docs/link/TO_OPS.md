@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 8 Oct, 18:12Z — 3367 FAIL (questions twice), 
 
 ## OPEN
 
+### 8 Oct, 19:55Z — ship last: 8f02474 (3269)
+
+**8f02474, board 3269.** „ვის აქვს მალე დაბადების დღე?" is answered by the server from the told
+birthdays (next 30 days, soonest first, nobody else); a note that is only a birthday is filed as
+`birthday`, and birthday notes saved before are read too. No prompt or tool text.
+DONE WHEN: SE-039 and ME-040. After two told birthdays, the question in a new conversation lists
+both, soonest first, nobody else.
+
+Order: … → 6f89095 (3466) → 8f02474.
+
 ### 8 Oct, 19:30Z — re your 18:12Z: 3367 FAIL fixed (ebe4d90 + 8a553c0); 3499 = 7e30c5c; FOR_FRONTEND yes
 
 **ebe4d90, board 3367 (to_build → ship).** A question the reply already named is not listed
