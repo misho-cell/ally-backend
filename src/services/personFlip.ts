@@ -15,6 +15,14 @@ const THIRD_PERSON_ENDING = 'ს';
 const GEORGIAN_VOWELS = new Set(['ა', 'ე', 'ი', 'ო', 'უ']);
 /** Shorter words are mostly particles and postpositions, not verbs. */
 const MIN_VERB_CHARS = 4;
+/**
+ * 2579 (ask 16678, 8 Oct): „იცნობს თუ არა კარგ ბუღალტერს." went to the helper
+ * about the helper, in the third person. The editor wrote „იცნობ კარგ
+ * ბუღალტერს?" and this check threw it away. A question that OPENS with
+ * „knows" has nobody before it who could know: it is about the reader, and
+ * „you" is the fix, not the fault.
+ */
+const ABOUT_THE_READER_OPENINGS: ReadonlySet<string> = new Set(['იცნობს']);
 
 function georgianWords(text: string): Set<string> {
   return new Set(text.match(GEORGIAN_WORD_RE) ?? []);
@@ -29,6 +37,14 @@ function youForm(word: string): string | null {
 
 /** True when a verb the draft had in the third person reads as „you" in the rewrite. */
 export function thirdPersonTurnedToYou(draft: string, rewrite: string): boolean {
+  const opening = draft.match(GEORGIAN_WORD_RE)?.[0];
+  if (
+    opening !== undefined &&
+    ABOUT_THE_READER_OPENINGS.has(opening) &&
+    draft.trimStart().startsWith(opening)
+  ) {
+    return false;
+  }
   const before = georgianWords(draft);
   const after = georgianWords(rewrite);
   for (const word of before) {

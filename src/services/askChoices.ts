@@ -69,6 +69,39 @@ export function choicesProblem(choices: readonly AskChoice[]): string | null {
 }
 
 /**
+ * 2579 (ask 16669, 8 Oct): „რომელ სპორტდარბაზში დადიხარ?" carried the button
+ * „ამ სპორტდარბაზში დავდივარ" — „I go to THIS gym", and no gym is named. A
+ * concrete answer that only points („this", „that") answers nothing; it goes.
+ * Only when the buttons left are still a valid set.
+ */
+const POINTING_OPENINGS: ReadonlySet<string> = new Set([
+  'ამ',
+  'იმ',
+  'this',
+  'that',
+  'этот',
+  'эта',
+  'это',
+  'этом',
+  'этой',
+  'este',
+  'esta',
+  'ese',
+  'esa',
+]);
+
+function onlyPoints(choice: AskChoice): boolean {
+  if (choice.means !== ChoiceMeaning.Answer) return false;
+  const first = choice.label.trim().split(/\s+/u)[0]?.toLowerCase() ?? '';
+  return POINTING_OPENINGS.has(first);
+}
+
+export function withoutPointingAnswers(choices: readonly AskChoice[]): AskChoice[] {
+  const kept = choices.filter((choice) => !onlyPoints(choice));
+  return kept.length < choices.length && choicesProblem(kept) === null ? kept : [...choices];
+}
+
+/**
  * „Later" keeps the one label the server knows in every language, because a
  * later tap is answered with days to pick from and must be recognised as one.
  */
