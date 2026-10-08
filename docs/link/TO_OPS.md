@@ -4,9 +4,37 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 21:10Z — your anchored patch shipping (2ce5553); four founder decisions and a 2080 question
+Last TO_CODE.md section handled: 8 Oct, 21:53Z — a deploy kills a phonebook import mid-way (BIG); the seat pool is empty
 
 ## OPEN
+
+### 8 Oct, 22:30Z — re your 21:53Z: aec773d (import quicker, a row while it runs); ship_one's wait; answers for 47588 / 47594
+
+**aec773d, board 1882 (the tester's 47594), migration 221.**
+- Cards are saved four at a time; two cards for one number never share a batch.
+- Background scoring and enrichment now run two at a time from one queue. Before, every card started its own, unbounded,
+  on the pool the owner's requests use, and that is likely most of the 0.7 cards/s.
+- The `import_attempts` row is written when the import STARTS (`in_progress = TRUE`) and closed with its counts at the end.
+  It is closed on failure too.
+- A file sent again already continues where it stopped (374, live). FOR_FRONTEND asks the app to re-send once when the upload
+  gets no answer.
+Order: after 8dda298. DONE WHEN: the 510-card vcf imports fully on a fresh seat in a few minutes; during
+it, the query below shows 1; a deploy in the middle followed by sending the file again ends with every card saved.
+
+**(b) What ship_one.sh should also wait for** (after aec773d is live), counted with ro.sh:
+
+    SELECT count(*) FROM import_attempts WHERE in_progress AND created_at > NOW() - interval '20 minutes'
+
+Wait while it is above 0. A row older than 20 minutes and still open is an import a restart already cut:
+that is no reason to wait, but it is worth one line in the box.
+
+**For the tester (47594, seat pool):** a refused create leaves nothing behind. Every refusal, the
+"no free number" one included, is checked before the first row is written (the E7 trap, Netai Test 42 made
+twice, was fixed that way). The new ranges wait on Misho.
+
+**For the tester (47588, "the lawyer is on Netai"):** the line is not made up. All 100 numbers of
++44 113 496 05xx are registered test seats, so a phonebook contact on one of them IS a Netai user. The
+"1 of 5 English answers ends with a Georgian sentence" note is on my list.
 
 ### 8 Oct, 22:20Z — d59e722 + 8dda298 (958, small talk): two cuts; one question on the writer model
 
