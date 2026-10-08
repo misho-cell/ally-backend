@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from './costLedger.service';
 import { query, backgroundQuery } from '../db/postgres/client';
 import { normalizePhone } from './phone';
+import { birthdayFromNote } from './birthdayLens.service';
 import { parseModelJson } from './modelJson';
 import anthropic from '../config/anthropic';
 
@@ -581,6 +582,11 @@ export async function submitContactFact(
   source: FactSource = 'chat',
   confidence: FactConfidence | null = 'stated',
 ): Promise<{ is_public: boolean; canonical_value: string | null }> {
+  // 3269: a note that is only a birthday is filed as a birthday.
+  const birthday = birthdayFromNote(fieldTypeRaw, value);
+  if (birthday !== null) {
+    return submitContactFact(userId, neo4jContactIdRaw, 'birthday', birthday, source, confidence);
+  }
   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
   // A FACT ABOUT NOBODY IS NOT A FACT. `normalizePhone` answers `''` for
   // anything with no digits in it, and the row is keyed by that value — so
