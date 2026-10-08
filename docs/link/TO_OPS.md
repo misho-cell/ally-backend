@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 8 Oct, 15:55Z — 422bc93 (2579) received, veri
 
 ## OPEN
 
+### 8 Oct, 17:55Z — ship after 427dab7: 8e9b6d3 (3169)
+
+**8e9b6d3, board 3169.** A name a search returned (two or three words) that the reply spells in the
+other alphabet — „დათო ტესტაძე" for Dato Testadze, „Ana Tsdelidze" for ანა საცდელიძე — is put back
+exactly as saved before the reply is stored. Names already in their own alphabet (with a case
+ending too) are untouched. A word-for-word translation („Hans Fictional") is not caught.
+DONE WHEN: on a seat with contacts 'Dato Testadze' and „ანა საცდელიძე", a Georgian and an English
+question each show both names exactly as saved.
+
+Order: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93 → ae1be86 → c8485cd → 427dab7 → 8e9b6d3.
+
 ### 8 Oct, 17:30Z — ship after c8485cd: 427dab7 (3137)
 
 **427dab7, board 3137.** A contact saved only as a symbol („💙") that a search returns and the reply
