@@ -118,7 +118,7 @@ describe('a promise and skipped members in one reply', () => {
 
   it('reads the phonebook even when the reply also promised', () => {
     expect(chat).toContain(
-      '!answeredWithoutSearching\n      ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)',
+      '!answeredWithoutSearching &&\n    (await membersNoteFits())\n      ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)',
     );
   });
 
@@ -156,7 +156,7 @@ describe('a run that repeats an open goal', () => {
   it('gets no members note', () => {
     expect(chat).toContain('const repeatsAnOpenGoal = runRepeatedGoal.has(runId);');
     expect(chat).toContain(
-      '!ownerAbsent && !repeatsAnOpenGoal && skippedTheMembersFound(runId, finalText, toolNamesUsed);',
+      '!ownerAbsent &&\n    !repeatsAnOpenGoal &&\n    skippedTheMembersFound(runId, finalText, toolNamesUsed) &&',
     );
     expect(chat).toContain('!answeringALaterTap &&\n    !repeatsAnOpenGoal &&');
   });
