@@ -81,7 +81,7 @@ describe('it is recounted where the state changes', () => {
     expect(asks).toContain('recountAnswerStats(row.to_user_id);');
     expect(asks).toContain('askField(goalText) || null');
     expect(src('debrief.service.ts')).toContain(
-      "if (subject === 'relayed_ask' && worked) await recountHelper(refId);",
+      "if (subject === 'relayed_ask' && worked) await recountHelper(userId, refId);",
     );
   });
 
