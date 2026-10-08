@@ -96,6 +96,8 @@ jest.mock('../roster.service', () => ({
   sharedRoster: jest.fn().mockResolvedValue(null),
 }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { armAskDebrief } from '../debrief.service';
 import { matchAnswerRule, saveAnswerRule } from '../answerRules.service';
@@ -212,7 +214,7 @@ function routeAskQueries(opts: {
     // whether it is a new round, and `liveWithThisPerson` below exempts a live
     // conversation from the receiving-side brake. They are matched apart
     // because only the first one needs the status.
-    if (sql.includes('SELECT ask_thread_id, status'))
+    if (sql.includes('THEN a.ask_thread_id END AS ask_thread_id'))
       return Promise.resolve(
         rows(
           opts.liveThread
@@ -2004,5 +2006,14 @@ describe('the gate refuses on all three counts, not only the permission', () => 
     const out = await createAsk('42', 3, '+995599111222', 'კითხვა');
 
     expect(out.sent).toBe(true);
+  });
+});
+
+describe('a conversation the reader deleted (daily check, 8 Oct 00:38:56Z)', () => {
+  it('is never reused for the next question — a new one opens', () => {
+    const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(source).toContain(
+      'CASE WHEN EXISTS (SELECT 1 FROM threads t WHERE t.id = a.ask_thread_id)',
+    );
   });
 });
