@@ -8,6 +8,22 @@ Last TO_CODE.md section handled: 8 Oct, 19:05Z — plate v373 (order final) and 
 
 ## OPEN
 
+### 8 Oct, 20:25Z — first big build: d0638c8 (1694, A11 pre-matching), with a migration
+
+**d0638c8, board 1694.** Before a wave is assembled, each candidate gets one word from HIS OWN data
+only (rules, no model): not_his_field (his boundary) / likely_yes (his own profile or profile note)
+/ possibly (only a label on his number) / ask_him (nothing; every non-member). The wave's remaining
+people are ranked by it (the boundary last); each first ask stores prematch / prematch_source /
+prematch_at; GET admin per-user asks shows the two new fields. The asker's side never sees a word.
+**Migration 215_ask_prematch.sql** (three nullable columns on task_asks) runs at boot as usual;
+the code reads/writes them only after it.
+DONE WHEN: four fictional seats (a profile note „I handle customs for food exporters" / a customs
+label only / nothing / a boundary on customs) get, for the same ask, likely_yes / possibly /
+ask_him / not_his_field on the admin ask record; the wave asks them in that order; the asker's
+messages carry none of the words and no fact from a seat's private data.
+
+Order: at the end of the queue, after 0b7338c.
+
 ### 8 Oct, 19:40Z — re your 19:05Z: v373 order taken; two more to ship (e6e56fc, 0b7338c)
 
 v373 and Tornike's night instructions read. I work the Pr1 big builds in that order; questions
