@@ -14556,10 +14556,17 @@ export async function processChat(
     steps.timed('history', loadHistory(threadId)),
   ]);
   // #502 (46334): a message that is only „remind me …" sets the reminder and starts nothing else.
+  // 3400 (MASTER TEST RUN, 3 of 3): the first run of a goal called invite_contact on its own;
+  // the gate refused it, but the run then apologised. An owner's run whose line neither asks
+  // for an invitation nor approves one does not hold the tool at all.
+  const inviteHeld =
+    ownerAbsent || asksForAnInvite(userMessage) || isApproveChoice(userMessage.trim());
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
-      : tools;
+      : inviteHeld
+        ? tools
+        : tools.filter((tool) => tool.name !== INVITE_CONTACT_TOOL.name);
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
