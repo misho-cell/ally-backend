@@ -80,6 +80,6 @@ describe('the editor’s rewrite (46136, asks 16209 / 16210)', () => {
     expect(asks).toContain(
       'ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))',
     );
-    expect(asks).toContain('await choicesInLanguage(editedChoices, said, edited.question),');
+    expect(asks).toContain('await choicesInLanguage(editedChoices, said, edited.question)');
   });
 });

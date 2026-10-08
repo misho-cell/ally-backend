@@ -35,6 +35,7 @@ import {
   tappedPersonText,
   withPeopleDetails,
   withServerLater,
+  withoutPointingAnswers,
 } from './askChoices';
 import { editOutgoingAsk } from './askEditor.service';
 import {
@@ -1548,7 +1549,10 @@ async function createAskNow(
       ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
       : edited.choices;
   const choices = withPeopleDetails(
-    withServerLater(await choicesInLanguage(editedChoices, said, edited.question), said),
+    withServerLater(
+      withoutPointingAnswers(await choicesInLanguage(editedChoices, said, edited.question)),
+      said,
+    ),
     picker && said === language ? picker.details : {},
   );
   const opening = buildAskOpening(
