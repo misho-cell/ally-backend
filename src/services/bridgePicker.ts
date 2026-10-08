@@ -38,6 +38,8 @@ export interface BridgeNeed {
 export interface BridgePicker {
   readonly line: string;
   readonly choices: readonly string[];
+  /** The reader's own fitting people alone, picked first (2907). */
+  readonly names: readonly string[];
 }
 
 const OTHER_PERSON_CHOICE: Readonly<Record<RunLanguage, string>> = {
@@ -175,6 +177,7 @@ export async function bridgePicker(
   const names = pickedClean ? [pickedClean, ...others] : others;
   return {
     line: pickerLine(language, pickedClean, others),
+    names,
     choices: [
       ...names,
       OTHER_PERSON_CHOICE[language] ?? OTHER_PERSON_CHOICE.ka,

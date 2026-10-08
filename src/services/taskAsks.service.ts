@@ -28,6 +28,7 @@ import {
   AskChoice,
   choicesFromLabels,
   MAX_CHOICE_CHARS,
+  ownPeopleBeside,
   parseAskChoices,
   tapOfChoice,
   withServerLater,
@@ -57,6 +58,8 @@ import {
   bridgeThanks,
   buildAskOpening,
   askChoicesFor,
+  declineChoice,
+  laterChoice,
   AskTap,
   askTapLineForAsker,
   askTapOf,
@@ -1480,14 +1483,19 @@ async function createAskNow(
    */
   const relayed = await questionForReader(safeQuestion, language);
   // Plate v301 G4: on a first ask about a need, the reader's own fitting
-  // contacts become the buttons (see bridgePicker.ts) — only when the asking
-  // model wrote none (D712). #2185: never under „will you introduce me to G".
+  // contacts become the buttons (see bridgePicker.ts). #2185: never under
+  // „will you introduce me to G". 2907 (§99.4): beside the asking model's own
+  // buttons too — it writes them since D712, and it cannot see her people.
   const picker =
-    authored === undefined && bridgeNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
+    bridgeNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
       ? await pickerFor(String(toUserId), bridgeNeed, language)
       : null;
   const draftChoices =
-    authored ?? choicesFromLabels(picker ? picker.choices : askChoicesFor(safeQuestion, language));
+    authored === undefined
+      ? choicesFromLabels(picker ? picker.choices : askChoicesFor(safeQuestion, language))
+      : picker
+        ? ownPeopleBeside(picker.names, authored, declineChoice(language), laterChoice(language))
+        : authored;
   // D711: the question and its buttons pass the editor before they leave.
   const edited = await editOutgoingAsk(
     { question: relayed.text, choices: draftChoices },

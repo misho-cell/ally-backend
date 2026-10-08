@@ -99,3 +99,31 @@ export function tapOfChoice(message: string, choices: readonly AskChoice[]): Ask
   const pressed = choices.find((choice) => choice.label.toLowerCase() === said);
   return pressed ? TAP_OF_MEANING[pressed.means] : null;
 }
+
+/** The most of the reader's own people put beside the model's buttons (2907). */
+const MAX_OWN_PEOPLE_BESIDE = MAX_ASK_CHOICES - 2;
+
+/**
+ * 2907 (the master test run's QA-029; Misho's yes, §99.4 — it bends D712's
+ * „one author"): the helper's own saved dentist was no longer offered, because
+ * the reader's fitting people became buttons only when the asking model wrote
+ * none, and since D712 it always writes some. The asking model cannot write
+ * them — it must not see the reader's phonebook — so the server puts them
+ * first: the reader's people, then the model's own „no" (or the plain one),
+ * then „later". Four at most.
+ */
+export function ownPeopleBeside(
+  names: readonly string[],
+  authored: readonly AskChoice[],
+  plainNo: string,
+  later: string,
+): AskChoice[] {
+  const people = names
+    .slice(0, MAX_OWN_PEOPLE_BESIDE)
+    .map((label) => ({ label, means: ChoiceMeaning.Answer }));
+  const no = authored.find((choice) => choice.means === ChoiceMeaning.No) ?? {
+    label: plainNo,
+    means: ChoiceMeaning.No,
+  };
+  return [...people, no, { label: later, means: ChoiceMeaning.Later }];
+}

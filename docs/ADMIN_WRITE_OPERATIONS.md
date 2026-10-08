@@ -5863,3 +5863,11 @@ no phonebook row, on the conversation's first owner line only (noContactsYet.ts)
 > გაქვს. ეს მხოლოდ ერთხელ თქვი.
 
 Undo: revert.
+
+**§99.4 — 2907, shipped alone. No model-facing text.** On a first ask about a need (not „will you
+introduce me"), when the reader has fitting saved people (bridgePicker.ts), the buttons are: up to two
+of her people (taps that answer with that name), then the asking model's own „no" (or the plain one),
+then „later". Four at most. Without fitting people the model's own buttons stand. Bends D712 by
+Misho's word.
+
+Undo: revert.
