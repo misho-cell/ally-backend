@@ -14,7 +14,7 @@ jest.mock('../../db/postgres/client', () => ({
 }));
 
 import { chosenRuleIndex, ruleCoveringByMeaning } from '../ruleMatchByMeaning.service';
-import { matchAnswerRule } from '../answerRules.service';
+import { matchAnswerRule, ruleThatWouldAnswer } from '../answerRules.service';
 
 /**
  * The tester's 1158: an English rule met a reworded English ask and a Georgian
@@ -87,23 +87,29 @@ describe('a rule matched by meaning', () => {
   });
 });
 
-describe('matchAnswerRule', () => {
+describe('ruleThatWouldAnswer', () => {
   it('keeps the word match first and asks no model when it holds', async () => {
     await expect(
-      matchAnswerRule(172729, 'Do you know a good English tutor for a schoolgirl in Tbilisi?'),
+      ruleThatWouldAnswer(172729, 'Do you know a good English tutor for a schoolgirl in Tbilisi?'),
     ).resolves.toEqual(TUTOR);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('falls back to the meaning when the words do not match', async () => {
     replies('1');
-    await expect(matchAnswerRule(172729, GEORGIAN_ASK)).resolves.toEqual(TUTOR);
+    await expect(ruleThatWouldAnswer(172729, GEORGIAN_ASK)).resolves.toEqual(TUTOR);
     expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
   it('asks no model for a recipient without rules', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
-    await expect(matchAnswerRule(5, GEORGIAN_ASK)).resolves.toBeNull();
+    await expect(ruleThatWouldAnswer(5, GEORGIAN_ASK)).resolves.toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('automatic answers are switched off (D669)', () => {
+  it('no question is answered from a rule while the switch is off', async () => {
+    await expect(matchAnswerRule(172729, GEORGIAN_ASK)).resolves.toBeNull();
   });
 });

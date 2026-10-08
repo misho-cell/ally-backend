@@ -184,7 +184,26 @@ export async function deleteAnswerRule(userId: string, ruleId: number): Promise<
 }
 
 /** The active rule of this recipient that covers the question, if any. */
+/**
+ * D669 (Tornike, 5 Oct 22:02 Tbilisi): „remove it and remove all those old
+ * answers, but recognise that as switched off, because at some point we will
+ * bring it back". The rows stay as they are; no question is answered from them
+ * while this is off. On 8 Oct, 11 rules were still active and 7 had answered
+ * someone that week — the switch had never been built.
+ */
+export const AUTOMATIC_ANSWERS_ON = false;
+
+/** The rule that would answer this question; null while D669 keeps the feature off. */
 export async function matchAnswerRule(
+  recipientUserId: number,
+  question: string,
+): Promise<AnswerRule | null> {
+  if (!AUTOMATIC_ANSWERS_ON) return null;
+  return ruleThatWouldAnswer(recipientUserId, question);
+}
+
+/** The matching itself, kept whole for the day automatic answers come back. */
+export async function ruleThatWouldAnswer(
   recipientUserId: number,
   question: string,
 ): Promise<AnswerRule | null> {
