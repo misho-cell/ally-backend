@@ -5846,3 +5846,10 @@ PROMISED_ACTION_NO_GOAL_NUDGE and INSTRUCTION_UNSENT_NUDGE (replyGuards.ts), aft
 > ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს ნიშნავს.
 
 Undo: revert.
+
+**§99.2 — 1489, the exact text, shipped alone.** In both answer-event notes (taskAsks.service.ts:
+buildShownAnswersWakeEvent and buildShownRelayAnswerWakeEvent), just before „შემდეგ გააგრძელე დავალება.":
+
+> რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — თქვი მხოლოდ შემდეგი ნაბიჯი.
+
+Undo: revert.

@@ -2365,9 +2365,19 @@ export function buildShownRelayAnswerWakeEvent(
   return (
     `${path} სერვერმა პასუხი ${ALREADY_ON_CARD} — ბარათად, შენი პასუხის ზემოთ, ვინ ` +
     'უპასუხა და ვისი მეშვეობით. პასუხის სიტყვები არ გაიმეორო; თუ უარია, ერთი თბილი ' +
-    `წინადადება და ნუ დაუბრუნდები. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD} შემდეგ გააგრძელე დავალება.`
+    `წინადადება და ნუ დაუბრუნდები. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD}${NO_SEARCH_AGAIN}` +
+    'შემდეგ გააგრძელე დავალება.'
   );
 }
+
+/**
+ * 1489 (the master test run's RW-015, conv 43247; §99.2): 7 s after a helper's
+ * „no" reached the owner as a card, the answer-event run searched the owner's
+ * contacts again for the word it had already searched and wrote „nobody there
+ * either". The run continues the goal; it does not redo what the goal did.
+ */
+const NO_SEARCH_AGAIN =
+  'რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — თქვი მხოლოდ შემდეგი ნაბიჯი. ';
 
 /**
  * The wake event for an arrived answer. Tag-delimited, NOT quote-wrapped:
@@ -2505,7 +2515,8 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
     'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
     'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება. არასდროს თქვა, რომ ვინმეს ' +
-    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD} შემდეგ ` +
+    `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD}` +
+    `${NO_SEARCH_AGAIN}შემდეგ ` +
     'გააგრძელე დავალება.' +
     passedOnNote(answers)
   );
