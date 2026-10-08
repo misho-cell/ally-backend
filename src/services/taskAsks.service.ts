@@ -27,6 +27,7 @@ import { questionForReader, relayedForReader } from './askTranslation.service';
 import { choicesFit, labelFits, messageLanguage } from './oneLanguageAsk';
 import {
   AskChoice,
+  ChoiceMeaning,
   choicesFromLabels,
   MAX_CHOICE_CHARS,
   ownPeopleBeside,
@@ -39,7 +40,8 @@ import {
 } from './askChoices';
 import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
 import { isTypedDecline } from './typedDecline';
-import { Prematch, prematchMany } from './prematch.service';
+import { Prematch, prematchMany, PrematchWord } from './prematch.service';
+import { composePreparedAnswer, preparedAnswerLine } from './preparedAnswer.service';
 import { askField, recountAnswerStats } from './answerStats.service';
 import {
   createThread,
@@ -1619,6 +1621,14 @@ async function createAskNow(
   // G5 second half: a person an earlier answer on this goal named is told who
   // recommended them (see recommendedBy.ts).
   const recommender = sameThread ? null : await recommenderFor(taskId, toUserId, toName);
+  // 1694 (A11): the recipient's own pre-match word, on a first ask; stored for the admin only.
+  const prematch =
+    isFollowUp || parentAskId !== undefined ? null : await prematchOf(contactPhone, goalText);
+  // 1695 (A12, §107): a likely fit sees one prepared line under „yes"; it goes only on his tap.
+  const prepared =
+    prematch?.word === PrematchWord.LikelyYes
+      ? await composePreparedAnswer(toUserId, edited.question, said)
+      : null;
   const lines = [
     opening,
     ...(recommender ? [recommendedByLine(said, recommender)] : []),
@@ -1628,6 +1638,10 @@ async function createAskNow(
       ? [picker.line]
       : []),
   ];
+  const yesChoice = choices.find((choice) => choice.means === ChoiceMeaning.Yes);
+  if (prepared !== null && yesChoice !== undefined) {
+    lines.push(preparedAnswerLine(said, yesChoice.label, prepared));
+  }
   // 1687 (A4): the body is measured — over 400 characters the question is shortened once (§106) —
   // and the identical disclosure line closes every ask.
   if (lines.join('\n\n').length > ASK_BODY_MAX_CHARS) {
@@ -1680,16 +1694,13 @@ async function createAskNow(
   // (a), D123): a direct ask starts with its sender, a relay inherits its
   // parent's origin. The helper's assistant then runs on the origin's wallet.
   const originUserId = await chainOriginFor(fromUserId, parentAskId);
-  // 1694 (A11): the recipient's own pre-match word, on a first ask; stored for the admin only.
-  const prematch =
-    isFollowUp || parentAskId !== undefined ? null : await prematchOf(contactPhone, goalText);
   const ask = await query<{ id: number }>(
     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
                             wave_no, evening_card_id, choices, shown_question,
-                            prematch, prematch_source, prematch_at, field)
+                            prematch, prematch_source, prematch_at, field, prepared_answer)
      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16)
+             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17)
      RETURNING id`,
     [
       taskId,
@@ -1709,6 +1720,7 @@ async function createAskNow(
       prematch?.source ?? null,
       // 1689 (A6): the field the recipient's answer record is kept under.
       isFollowUp || parentAskId !== undefined ? null : askField(goalText) || null,
+      prepared,
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
