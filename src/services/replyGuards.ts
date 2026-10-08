@@ -660,6 +660,13 @@ export function asksForAnInvite(ownerLine: string): boolean {
   return ASKS_FOR_AN_INVITE_RE.test(ownerLine);
 }
 
+/** 3400 (the tester's 47027): the owner's own invite link, asked for by name. */
+const ASKS_FOR_THE_LINK_RE = /(ლინკ|ბმულ|\blink\b|ссылк|enlace)/iu;
+
+export function asksForTheLink(ownerLine: string): boolean {
+  return ASKS_FOR_THE_LINK_RE.test(ownerLine);
+}
+
 export const INVITE_NOT_ASKED =
   'Not prepared: the owner did not ask to invite anyone. Say in one line that you can prepare ' +
   'an invitation for this person, and prepare it only on their word.';
