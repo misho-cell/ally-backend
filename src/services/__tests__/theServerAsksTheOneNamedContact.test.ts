@@ -7,6 +7,10 @@ jest.mock('../tools/nameMatch', () => ({
   findContactPhonesByName: (...a: unknown[]) => mockFindPhones(...a),
   messageNamesOwnContact: jest.fn(),
 }));
+const mockExcluded = jest.fn().mockResolvedValue(false);
+jest.mock('../block.service', () => ({
+  isDeceasedOrBlockedFor: (...a: unknown[]) => mockExcluded(...a),
+}));
 jest.mock('../taskAsks.service', () => ({ createAsk: (...a: unknown[]) => mockCreateAsk(...a) }));
 jest.mock('../taskStore.service', () => ({
   getOpenTaskByThread: (...a: unknown[]) => mockOpenTask(...a),
@@ -17,7 +21,7 @@ const mockQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
 
 import { InstructedAskResult, sendInstructedAsk } from '../instructedAsk';
-import { NOT_ON_NETAI_LINE } from '../instructionUnsent';
+import { EXCLUDED_LINE, NOT_ON_NETAI_LINE } from '../instructionUnsent';
 
 /** §97 item 1: case 1's second chance sent nothing; the server asks the one named contact. */
 const CASE_1 =
@@ -95,5 +99,25 @@ describe('the server asks the one contact the owner named', () => {
     await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
       result: InstructedAskResult.NotSent,
     });
+  });
+});
+
+describe('3268: a person the owner marked deceased or blocked', () => {
+  it('is not asked, no goal is opened, and the owner is told by the label', async () => {
+    mockFindPhones.mockResolvedValue(['995500000001']);
+    mockExcluded.mockResolvedValue(true);
+    mockQuery.mockResolvedValue({ rows: [{ alias: 'გიგა ტესტაძე' }] });
+
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+      result: InstructedAskResult.Excluded,
+      toName: 'გიგა ტესტაძე',
+    });
+    expect(mockCreateTask).not.toHaveBeenCalled();
+    expect(mockCreateAsk).not.toHaveBeenCalled();
+  });
+
+  it('the line asks nothing to be repeated', () => {
+    expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).toContain('გიგა ტესტაძე-სთვის არაფერს ვწერ');
+    expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).not.toContain('კიდევ ერთხელ');
   });
 });
