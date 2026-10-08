@@ -171,13 +171,91 @@ export function withTheOwnersWord(noteRaw: string, nameAndNumber: string): strin
   return note === '' ? nameAndNumber : `${note}\n${nameAndNumber}`;
 }
 
+/**
+ * 3466 (PR-011, 2 of 2): the helper typed „მეორე" and got the FIRST namesake's
+ * number. The namesakes a name search offered on this thread are kept in the
+ * search's order, so an ordinal pick is read by the server, not the model.
+ */
+const NAMESAKE_THREADS_KEPT = 500;
+/** A line that tells Netai to hand a number on, not to show it to her. */
+const GIVE_WORD_RE =
+  /(მიეც|მიაწოდ|გაუგზავნ|გადაუგზავნ|გააგზავნ|გაუზიარ|\bgive\b|\bsend\b|\bshare\b|отправ|переш|дай|envía|envia|comparte|\bda(?:le)?\b)/iu;
+const offeredNamesakes = new Map<number, readonly string[]>();
+
+export function noteNamesakes(threadId: number, phones: readonly string[]): void {
+  if (phones.length < 2) return;
+  offeredNamesakes.delete(threadId);
+  offeredNamesakes.set(threadId, [...phones]);
+  if (offeredNamesakes.size > NAMESAKE_THREADS_KEPT) {
+    const oldest = offeredNamesakes.keys().next().value;
+    if (oldest !== undefined) offeredNamesakes.delete(oldest);
+  }
+}
+
+const ORDINAL_INDEX: Readonly<Record<string, number>> = {
+  '1': 0,
+  პირველი: 0,
+  first: 0,
+  первый: 0,
+  primero: 0,
+  '2': 1,
+  მეორე: 1,
+  second: 1,
+  второй: 1,
+  segundo: 1,
+  '3': 2,
+  მესამე: 2,
+  third: 2,
+  третий: 2,
+  tercero: 2,
+};
+
+/** The position an ordinal pick names („მეორე" → 1), or null when the line is not one. */
+export function ordinalPicked(line: string): number | null {
+  const match = line.match(ORDINAL_PICK_RE);
+  if (match === null) return null;
+  return ORDINAL_INDEX[match[1].toLowerCase()] ?? null;
+}
+
+/** The namesake the owner's newest line picks by position, else the phone the model chose. */
+async function pickedPhone(askThreadId: number, phone: string): Promise<string> {
+  const offered = offeredNamesakes.get(askThreadId);
+  if (offered === undefined) return phone;
+  const [latest] = await ownersLatestLines(askThreadId);
+  const index = latest === undefined ? null : ordinalPicked(latest);
+  return index !== null && index < offered.length ? offered[index] : phone;
+}
+
+/**
+ * 3466: after the helper's pick the run called get_own_contact_number, and the
+ * number was printed in HER conversation and never reached the asker. On a
+ * thread with a live question, where her own words say to give that number,
+ * it is shared with the asker instead. Null when that is not the case.
+ */
+export async function shareInsteadOfShowing(
+  ownerId: string,
+  askThreadId: number,
+  phoneRaw: string,
+): Promise<ShareOutcome | null> {
+  if ((await liveAskFor(ownerId, askThreadId)) === null) return null;
+  const phone = await pickedPhone(askThreadId, phoneRaw.trim());
+  const alias = phone === '' ? null : await ownContactAlias(ownerId, phone);
+  if (alias === null) return null;
+  const lines = await ownersLatestLines(askThreadId);
+  if (!ownerLinesShareNumber(lines, alias)) return null;
+  // „რა ნომერი აქვს დათოს?" is her asking for herself: only „give / send" goes on.
+  const instruction = lines.find((line) => ownerLineSharesNumber(line, alias));
+  if (instruction === undefined || !GIVE_WORD_RE.test(instruction)) return null;
+  return shareContactNumberWithAsker(ownerId, askThreadId, phone);
+}
+
 export async function shareContactNumberWithAsker(
   ownerId: string,
   askThreadId: number,
   phoneRaw: string,
   noteRaw = '',
 ): Promise<ShareOutcome> {
-  const phone = phoneRaw.trim();
+  const phone = await pickedPhone(askThreadId, phoneRaw.trim());
   if ((await liveAskFor(ownerId, askThreadId)) === null) {
     return { shared: false, reason: ShareRefusal.NoLiveQuestion };
   }

@@ -494,7 +494,12 @@ import {
 import { contactsNotTagged, negatedTerm, NotTaggedContact, notTaggedAnswer } from './notTagged';
 import { InboxQuestion, questionsTheReplyLeftOut } from './inboxQuestions';
 import { ListStatus, listStatus, startListWork } from './listItems.service';
-import { shareContactNumberWithAsker, ShareRefusal } from './shareNumber.service';
+import {
+  noteNamesakes,
+  shareContactNumberWithAsker,
+  shareInsteadOfShowing,
+  ShareRefusal,
+} from './shareNumber.service';
 import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
@@ -8551,6 +8556,15 @@ function restoreSpans(
   });
 }
 
+/** The phones a search result lists, in its order. */
+function phonesIn(raw: unknown): string[] {
+  const results = (raw as { results?: unknown } | null)?.results;
+  if (!Array.isArray(results)) return [];
+  return results
+    .map((row) => (row as { phone?: unknown } | null)?.phone)
+    .filter((phone): phone is string => typeof phone === 'string' && phone !== '');
+}
+
 async function executeToolCall(
   userId: string,
   name: string,
@@ -8624,6 +8638,8 @@ async function executeToolCall(
         runId,
         threadId,
       );
+      // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
+      if (threadId !== undefined) noteNamesakes(threadId, phonesIn(byName));
       return notInThePhonebook(byName) ? { ...byName, look_further: LOOK_ONE_RING_OUT } : byName;
     }
     case 'search_by_tag': {
@@ -8951,6 +8967,14 @@ async function executeToolCall(
       };
     }
     case 'get_own_contact_number': {
+      // 3466: on a question's thread, on the owner's word, the number goes to the asker.
+      if (threadId !== undefined && !ownerAbsent) {
+        const shared = await shareInsteadOfShowing(userId, threadId, String(input['phone'] ?? ''));
+        if (shared?.shared === true) {
+          if (runId) runAnswerSent.add(runId);
+          return { shared: true, name: shared.name, next: SHARED_NUMBER_NOTE };
+        }
+      }
       const ownNumber = await getOwnContactNumber(userId, input['phone'] as string);
       if ('number' in ownNumber) registerAllowedNumber(runId, (input['phone'] as string).trim());
       return ownNumber;
