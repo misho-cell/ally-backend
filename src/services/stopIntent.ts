@@ -1,3 +1,5 @@
+import { editDistance } from './buttonSpelling';
+
 /**
  * Ticket 20 row 113, eighth pass — the MARK was late, not the withholding.
  *
@@ -106,9 +108,29 @@ const NAMED_STOP_MAX_CHARS = 60;
 const GOAL_NEGATED =
   /(\bno\s+(?:goal|task)\b|\bnot\s+a\s+(?:goal|task)\b|(?:არა?|აღარ)\s+(?:არის\s+)?(?:მიზან|დავალებ)|(?:მიზან|დავალებ)\S*\s+(?:არ|აღარ)\s+არის)/iu;
 
+/**
+ * 2412: a one-letter slip in the stop word („შეაჩრე ეს მიზანი", „შააჩერე")
+ * missed the server path and reached the model. The line's first word one
+ * letter away from a stop imperative counts as the verb — only when „ეს/ამ
+ * მიზანი/დავალება" follows it, the shape the tester filed. „გააჩენე" („create")
+ * is one letter from „გააჩერე" too, which is why the shape is required and the
+ * create words are never a stop.
+ */
+const STOP_IMPERATIVES: readonly string[] = ['შეაჩერე', 'გააჩერე', 'შეწყვიტე'];
+const NOT_A_STOP: ReadonlySet<string> = new Set(['გააჩინე', 'გააჩენე', 'შეაჩვიე']);
+const NEAR_STOP_EDITS = 1;
+const NEAR_STOP_SHAPE_RE = /^(\p{L}+)\s+(?:ეს|ამ)\s+(?:მიზან|დავალებ)/u;
+
+function startsWithNearStop(text: string): boolean {
+  const first = text.match(NEAR_STOP_SHAPE_RE)?.[1] ?? '';
+  if (NOT_A_STOP.has(first)) return false;
+  if ([...first].length < [...STOP_IMPERATIVES[0]].length - NEAR_STOP_EDITS) return false;
+  return STOP_IMPERATIVES.some((word) => editDistance(first, word) <= NEAR_STOP_EDITS);
+}
+
 export function looksLikeStopRequest(message: string): boolean {
   const text = message.trim();
-  if (!STOP_VERB.test(text)) return false;
+  if (!STOP_VERB.test(text) && !startsWithNearStop(text)) return false;
   if (text.length <= BARE_STOP_MAX_CHARS) return true;
   if (text.length > NAMED_STOP_MAX_CHARS) return false;
   if (GOAL_NEGATED.test(text)) return false;

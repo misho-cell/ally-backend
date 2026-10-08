@@ -121,3 +121,18 @@ describe('looksLikeStopRequest', () => {
     expect(looksLikeStopRequest('ავტობუსის გაჩერებასთან შევხვდეთ')).toBe(false);
   });
 });
+
+describe('a one-letter slip in the stop word (2412)', () => {
+  it('still stops the goal it names', () => {
+    expect(looksLikeStopRequest('შეაჩრე ეს მიზანი')).toBe(true);
+    expect(looksLikeStopRequest('შააჩერე ეს მიზანი.')).toBe(true);
+    expect(looksLikeStopRequest('გააჩერრე ამ დავალებას')).toBe(true);
+  });
+
+  it('is never read into a word that means something else, or a line without the goal', () => {
+    expect(looksLikeStopRequest('გააჩენე ეს მიზანი')).toBe(false);
+    expect(looksLikeStopRequest('გააჩინე ახალი მიზანი')).toBe(false);
+    expect(looksLikeStopRequest('შეაჩრე')).toBe(false);
+    expect(looksLikeStopRequest('შეამოწმე ეს მიზანი')).toBe(false);
+  });
+});
