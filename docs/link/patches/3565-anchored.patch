@@ -1,0 +1,260 @@
+From 9130d5547ac3e2808850f4a12ffd26f263c16a29 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 20:40:01 +0000
+Subject: [PATCH] fix(chat): delete card only after a delete request, claim
+ words matched whole (3565, 3302)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The anchored rebuild ops asked for after reverting f057ddd (86554f5).
+
+Two causes, both closed here:
+- The guard fired on any reply that sounded like a deletion, so a plain
+  question ("Who do I have as a lawyer?") could get [Yes, delete it]. It now
+  fires only when the owner's own line asked to delete / forget / remove.
+- The wider word list matched inside other words: "quit[ée]" inside "quite",
+  "elimin[ée]" inside "eliminate". Every claim word is now matched whole,
+  with "no letter before / after" edges that work for Georgian and Cyrillic
+  too (\b knows only Latin), and Spanish takes only the accented past
+  ("borré"), never "borre", which is also "that I delete".
+
+Tests: ordinary replies with "quite", "eliminate", "quitar", "borre",
+„ამოვიღეთ" and "удалился" claim nothing; the 3302 claims still do.
+
+DONE WHEN: SE-042 step 1 and PR-019 step 2 run 5 times each on fresh seats
+with no delete card, and ME-016 / PR-036 (incl. „მოვხსენი") still pass.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/deletedOnlyWhenDeleted.test.ts  | 83 +++++++++++++++++--
+ src/services/chat.service.ts                  |  5 +-
+ src/services/deletionClaim.ts                 | 70 +++++++++++++++-
+ 3 files changed, 148 insertions(+), 10 deletions(-)
+
+diff --git a/src/services/__tests__/deletedOnlyWhenDeleted.test.ts b/src/services/__tests__/deletedOnlyWhenDeleted.test.ts
+index 439c486..c5b0511 100644
+--- a/src/services/__tests__/deletedOnlyWhenDeleted.test.ts
++++ b/src/services/__tests__/deletedOnlyWhenDeleted.test.ts
+@@ -1,6 +1,11 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { claimsADeletion, deletionClaimWithoutTool, notDeletedLine } from '../deletionClaim';
++import {
++  asksToDelete,
++  claimsADeletion,
++  deletionClaimWithoutTool,
++  notDeletedLine,
++} from '../deletionClaim';
+ 
+ /**
+  * 3302 (MASTER TEST RUN ME-016 / PR-036): „…ჩანაწერი წავშალე" with no tool
+@@ -15,15 +20,29 @@ describe('a deletion is claimed only when one happened', () => {
+     'Done, I deleted it.',
+   ])('claims: %s', (reply) => {
+     expect(claimsADeletion(reply)).toBe(true);
+-    expect(deletionClaimWithoutTool(reply, ['search_contact_by_name'])).toBe(true);
++    expect(
++      deletionClaimWithoutTool(
++        reply,
++        ['search_contact_by_name'],
++        'დაივიწყე, რომ ავთო ელექტრიკოსია.',
++      ),
++    ).toBe(true);
+   });
+ 
+   it('a deleting tool in the run makes the claim true', () => {
+-    expect(deletionClaimWithoutTool('ჩანაწერი წავშალე.', ['forget_contact_fact'])).toBe(false);
++    expect(
++      deletionClaimWithoutTool(
++        'ჩანაწერი წავშალე.',
++        ['forget_contact_fact'],
++        'დაივიწყე, რომ ავთო ელექტრიკოსია.',
++      ),
++    ).toBe(false);
+   });
+ 
+   it('a reply that deletes nothing and says nothing of it is left alone', () => {
+-    expect(deletionClaimWithoutTool('ავთო ელექტრიკოსია.', [])).toBe(false);
++    expect(
++      deletionClaimWithoutTool('ავთო ელექტრიკოსია.', [], 'დაივიწყე, რომ ავთო ელექტრიკოსია.'),
++    ).toBe(false);
+   });
+ 
+   it('the owner reads the truth and a confirm button', () => {
+@@ -32,8 +51,62 @@ describe('a deletion is claimed only when one happened', () => {
+       confirm: 'კი, წაშალე',
+     });
+     expect(chat).toContain(
+-      'if (!ownerAbsent && deletionClaimWithoutTool(finalText, toolNamesUsed)) {',
++      "deletionClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')",
+     );
+     expect(chat).toContain('choices = [notDeleted.confirm];');
+   });
+ });
++
++describe('a removal said in other words (the tester’s 47061)', () => {
++  it.each([
++    'ავთან დაკავშირებული ჩანაწერიდან „ელექტრიკოსი" მოვხსენი.',
++    'ეს ინფორმაცია ამოვიღე.',
++    'ჩანაწერი გავასუფთავე.',
++    'That note has been removed.',
++    'I cleared it.',
++    'Я убрал эту заметку.',
++  ])('„%s" claims a deletion', (reply) => {
++    expect(claimsADeletion(reply)).toBe(true);
++  });
++
++  it('an ordinary reply does not', () => {
++    expect(claimsADeletion('ელექტრიკოსად გყავს შენახული ავთო.')).toBe(false);
++  });
++});
++
++describe('a plain question never gets the delete card (3565)', () => {
++  it.each(['Who do I have as a lawyer?', 'ვინ შემინახა და როგორ?'])('„%s"', (line) => {
++    expect(asksToDelete(line)).toBe(false);
++    expect(deletionClaimWithoutTool('That old note was removed.', [], line)).toBe(false);
++  });
++
++  it.each(['დაივიწყე, რომ ავთო ელექტრიკოსია.', 'წაშალე ეს ჩანაწერი', 'Please forget that.'])(
++    'a delete request „%s" still does',
++    (line) => {
++      expect(asksToDelete(line)).toBe(true);
++    },
++  );
++});
++
++describe('every claim word is matched whole (3565, ops 20:40Z)', () => {
++  it.each([
++    'That is quite a list of lawyers.',
++    'We can eliminate the ones who moved away.',
++    '¿Quieres quitar a alguien de la lista?',
++    '¿Quieres que lo borre?',
++    'სიიდან სამი კონტაქტი ამოვიღეთ და გადავამოწმეთ.',
++    'Он удалился от дел в прошлом году.',
++  ])('an ordinary reply „%s" claims nothing', (reply) => {
++    expect(claimsADeletion(reply)).toBe(false);
++  });
++
++  it.each([
++    'Listo, lo borré.',
++    'Lo quité de tus notas.',
++    'He eliminado esa nota.',
++    'Я удалила эту заметку.',
++    'ჩანაწერი წავშალეთ.',
++  ])('a real claim „%s" still is one', (reply) => {
++    expect(claimsADeletion(reply)).toBe(true);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 56e0bd0..1933e9f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -13134,7 +13134,10 @@ async function runToolLoop(
+   }
+ 
+   // 3302: „deleted" is said only when a deleting tool ran; otherwise the truth and a confirm button.
+-  if (!ownerAbsent && deletionClaimWithoutTool(finalText, toolNamesUsed)) {
++  if (
++    !ownerAbsent &&
++    deletionClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
++  ) {
+     // eslint-disable-next-line no-console
+     console.warn(
+       `[delete-claim] run ${runId} thread ${threadId}: said deleted, nothing was — corrected`,
+diff --git a/src/services/deletionClaim.ts b/src/services/deletionClaim.ts
+index 75f8eaf..88b98b7 100644
+--- a/src/services/deletionClaim.ts
++++ b/src/services/deletionClaim.ts
+@@ -1,5 +1,19 @@
+ import { RunLanguage } from './runLanguage';
+ 
++/**
++ * 3565 (F17, 2 sightings): „Who do I have as a lawyer?" and „ვინ შემინახა და
++ * როგორ?" got „I have not deleted it yet. Confirm and I will delete it now."
++ * with a delete button — a plain question, and a tap could have deleted
++ * something nobody asked to delete. The guard reads the owner's own line too:
++ * it fires only when he asked to delete, forget or remove something.
++ */
++const ASKS_TO_DELETE_RE =
++  /(წაშალ|წავშალ|დაივიწყ|ამოიღ|ამოშალ|მოაშორ|მოხსენ|გააქრ|\bdelete\b|\bremove\b|\bforget\b|\berase\b|удали|убери|забудь|сотри|borra|elimina|olvida|quita)/iu;
++
++export function asksToDelete(ownerLine: string): boolean {
++  return ASKS_TO_DELETE_RE.test(ownerLine);
++}
++
+ /**
+  * 3302 (MASTER TEST RUN ME-016 / PR-036, 2 sightings): in a NEW conversation
+  * „დაივიწყე, რომ <name> ელექტრიკოსია" was answered „…ჩანაწერი წავშალე" or
+@@ -19,15 +33,63 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
+   'remove_contact_exclusion',
+ ]);
+ 
+-const CLAIMS_A_DELETION_RE =
+-  /(წავშალე|წაიშალა|წავიშალე|დავივიწყე|წასაშლელად\s+მოვნიშნე|\bdeleted\b|\bforgotten\b|\bI\s+(?:have\s+)?(?:removed|forgot)\b|удалил|удалено|забыл|borr[ée])/iu;
++// Every word is matched WHOLE (3565): the earlier list matched inside other
++// words — „quit[ée]" inside "quite", „elimin[ée]" inside "eliminate" — and
++// ordinary answers got the delete card. Spanish takes only the accented past
++// („borré"), never the unaccented form that is also „that I delete". `\b` knows only Latin letters, so the
++// edges are written as „no letter before / after" for every alphabet.
++const CLAIM_WORDS: readonly string[] = [
++  'წავშალე',
++  'წავშალეთ',
++  'წაიშალა',
++  'წავიშალე',
++  'დავივიწყე',
++  'წასაშლელად\\s+მოვნიშნე',
++  'მოვხსენი',
++  'მოიხსნა',
++  'ამოვიღე',
++  'ამოვშალე',
++  'მოვაშორე',
++  'გავასუფთავე',
++  'deleted',
++  'forgotten',
++  'erased',
++  '(?:has|have|been|was)\\s+removed',
++  'I\\s+(?:have\\s+)?(?:removed|forgot|cleared|erased)',
++  'удалил[аи]?',
++  'удалено',
++  'удал[её]н',
++  'убрал[аи]?',
++  'ст[её]р',
++  'ст[её]рла',
++  'забыл[аи]?',
++  'borré',
++  'borrad[oa]',
++  'eliminé',
++  'eliminad[oa]',
++  'quité',
++  'quitad[oa]',
++];
++
++const CLAIMS_A_DELETION_RE = new RegExp(
++  `(?<![\\p{L}\\p{M}])(?:${CLAIM_WORDS.join('|')})(?![\\p{L}\\p{M}])`,
++  'iu',
++);
+ 
+ export function claimsADeletion(reply: string): boolean {
+   return CLAIMS_A_DELETION_RE.test(reply);
+ }
+ 
+-export function deletionClaimWithoutTool(reply: string, toolNamesUsed: readonly string[]): boolean {
+-  return claimsADeletion(reply) && !toolNamesUsed.some((name) => DELETING_TOOLS.has(name));
++export function deletionClaimWithoutTool(
++  reply: string,
++  toolNamesUsed: readonly string[],
++  ownerLine: string,
++): boolean {
++  return (
++    asksToDelete(ownerLine) &&
++    claimsADeletion(reply) &&
++    !toolNamesUsed.some((name) => DELETING_TOOLS.has(name))
++  );
+ }
+ 
+ export interface NotDeletedLine {
+-- 
+2.43.0
+

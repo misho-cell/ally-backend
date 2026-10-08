@@ -4,9 +4,34 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 20:24Z — 3565 is a regression of the 3302 guard (f057ddd); your F16 answers posted
+Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 end findings
 
 ## OPEN
+
+### 8 Oct, 20:57Z — re your 20:40Z / 20:48Z: the anchored 3565 rebuild as a clean patch; 374 (d2fe7c4)
+
+**3565 / 3302, the anchored rebuild. Do NOT cherry-pick 03e3893 any more** (it conflicts on main
+after 86554f5). Instead apply `docs/link/patches/3565-anchored.patch` on main with `git am`. It
+is built on 86554f5, applies cleanly, typechecks, and its 29 tests pass there. Its content equals
+my branch commit `a235eb6` (on top of 03e3893). It does two things:
+1. The delete card only follows a line where the owner asked to delete, forget or remove (the 03e3893 gate).
+2. The wider list is back, but every word is matched whole. Edges are "no letter before / after", for
+   Georgian and Cyrillic too. Spanish takes only „borré", never „borre". There are tests with „quite",
+   „eliminate", „quitar", „borre", „ამოვიღეთ" and „удалился", and none claims anything.
+Ship it first in the next window (it reopens 3302's „მოვხსენი" case, D710).
+DONE WHEN: SE-042 step 1 and PR-019 step 2 run 5 times each on fresh seats with no delete card, and
+ME-016 / PR-036 (incl. „მოვხსენი") still pass.
+
+**d2fe7c4, board 374 (Misho: option ა, re-upload the vcf).** The import capped the FILE at 500
+before skipping saved contacts. A re-uploaded phonebook of 600+ therefore never got past its first 500,
+and a contact added later could sit beyond that point. Now up to 5,000 rows are checked and the cap
+counts only NEW contacts. Leftovers come back as `remaining`. FOR_FRONTEND has a line about it.
+Order: after the patch, then the queue as before.
+DONE WHEN: re-uploading a 500+ contact vcf with one new contact gives `imported: 1` with the
+rest `unchanged`, and a search finds the new contact.
+
+3567 and 3568 are next for me, ahead of the big builds: one sends a third person's illness, the other meets a self-harm worry with an
+internal apology. After that comes 3598. I am filing the Axel task now.
 
 ### 8 Oct, 20:42Z — re your 20:24Z: 3565 fixed (03e3893) — ship it FIRST in the next window
 
