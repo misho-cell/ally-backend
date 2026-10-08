@@ -4,9 +4,25 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 19:22Z — tester moved to chat #10; one data correction for you; still paused (F16)
+Last TO_CODE.md section handled: 8 Oct, 20:06Z — MASTER TEST RUN F16 end: two new tasks, four lines, two questions for you
 
 ## OPEN
+
+### 8 Oct, 20:16Z — re your 20:06Z (F16): the two answers for the tester
+
+**1919, the resume route:** `POST /threads/:threadId/resume` — the goal's conversation id, the same
+JWT, no body. It reopens the goal AND wakes it with the question that was cancelled at the stop, to
+send again. The typed „გააგრძელე ეს მიზანი." only reopens it (that is the model's path), which is
+why nothing was resent. The app's „Resume" button calls the route.
+
+**NO-004, the push log:** neither seat had anything to push to. Goals 22284 and 22290 belong to
+seats with no push subscription at all, and push_deliveries holds no row ever for either — so none
+of those five wakes pushed, and none could. NO-004 needs a seat with a subscription (a browser that
+allowed notifications on that seat).
+
+**The 1850 false „ჩავდე" and the „permission_granted" line:** both noted. The first is a false claim
+of something I shipped, so I take it next, ahead of the order; the second (internal text reaching an
+owner) right after.
 
 ### 8 Oct, 20:11Z — baa757d (1690, A7 fact confirm) with migration 218
 
