@@ -1,5 +1,6 @@
 import { AskKind, askKindOf } from './askKind';
 import { labelFits } from './oneLanguageAsk';
+import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
 import { geoName } from './georgianCase';
@@ -64,11 +65,25 @@ function withRoster(language: RunLanguage, name: string, roster: string | null):
  * say before an answer came, and „added" does not accuse the reader of
  * ignoring anything.
  */
+/**
+ * 2773: in an English (or Russian, Spanish) frame the asker's Georgian name was
+ * printed in Georgian letters — „ანა საცდელაძე's assistant is asking". Outside
+ * Georgian the name is written in Latin letters, each word capitalised.
+ */
+function nameForFrame(language: RunLanguage, senderName: string): string {
+  if (language === 'ka' || !hasGeorgian(senderName)) return senderName;
+  return georgianToLatin(senderName)
+    .split(/(\s+)/u)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+}
+
 export function askOpeningParts(
   language: RunLanguage,
-  senderName: string,
+  givenName: string,
   roster: string | null,
 ): AskOpeningParts {
+  const senderName = nameForFrame(language, givenName);
   const who = withRoster(language, senderName, roster);
   switch (language) {
     case 'en':
