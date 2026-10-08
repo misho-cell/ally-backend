@@ -4,6 +4,11 @@ jest.mock('../taskStore.service', () => ({
   __esModule: true,
 }));
 jest.mock('../taskAsks.service', () => ({ cancelAsksForTask: jest.fn(), __esModule: true }));
+jest.mock('../introduction.service', () => ({
+  cancelIntroductionRequestsForTask: jest.fn(),
+  cancelGoallessIntroductionsFromThread: jest.fn(),
+  __esModule: true,
+}));
 jest.mock('../threadStatus.service', () => ({ setThreadStatus: jest.fn(), __esModule: true }));
 jest.mock('../sse.service', () => ({
   emitChoicesCleared: jest.fn(),
@@ -19,11 +24,17 @@ jest.mock('../threads.service', () => ({
 
 import { updateTask, getGoalOnThread, Task } from '../taskStore.service';
 import { cancelAsksForTask } from '../taskAsks.service';
+import {
+  cancelGoallessIntroductionsFromThread,
+  cancelIntroductionRequestsForTask,
+} from '../introduction.service';
 import { setThreadStatus } from '../threadStatus.service';
 import { getThread, saveThreadMessage, clearStoredChoices, Thread } from '../threads.service';
 import { emitChoicesCleared } from '../sse.service';
 import { noteRunStart, runWasStopped } from '../stoppedRuns';
 import {
+  INTRO_WITHDRAWN_LINE,
+  INTROS_WITHDRAWN_LINE,
   NOTHING_TO_STOP,
   NOTHING_TO_STOP_LINE,
   RUN_STOPPED_LINE,
@@ -41,6 +52,12 @@ const mockOpenTask = getGoalOnThread as jest.MockedFunction<typeof getGoalOnThre
 const mockSay = saveThreadMessage as jest.MockedFunction<typeof saveThreadMessage>;
 const mockClear = emitChoicesCleared as jest.MockedFunction<typeof emitChoicesCleared>;
 const mockClearStored = clearStoredChoices as jest.MockedFunction<typeof clearStoredChoices>;
+const mockWithdrawGoalless = cancelGoallessIntroductionsFromThread as jest.MockedFunction<
+  typeof cancelGoallessIntroductionsFromThread
+>;
+const mockWithdrawForTask = cancelIntroductionRequestsForTask as jest.MockedFunction<
+  typeof cancelIntroductionRequestsForTask
+>;
 
 function task(over: Partial<Task> = {}): Task {
   return {
@@ -57,6 +74,8 @@ beforeEach(() => {
   mockCancel.mockResolvedValue(0);
   mockSay.mockResolvedValue(undefined as never);
   mockClearStored.mockResolvedValue(0);
+  mockWithdrawGoalless.mockResolvedValue(0);
+  mockWithdrawForTask.mockResolvedValue(0);
 });
 
 /**
@@ -141,6 +160,40 @@ describe('stopGoalOnThread', () => {
 
     expect(await stopGoalOnThread('501', 16240)).toEqual(NOTHING_TO_STOP);
     expect(mockCancel).not.toHaveBeenCalled();
+    expect(mockSay).not.toHaveBeenCalled();
+  });
+
+  // 2873 (the tester's 45643): an introduction asked for with no goal behind it.
+  it('withdraws a goal-less introduction from this conversation and says so', async () => {
+    mockGetThread.mockResolvedValue({ id: 44221 } as Thread);
+    mockOpenTask.mockResolvedValue(null);
+    mockWithdrawGoalless.mockResolvedValue(1);
+
+    const out = await stopGoalOnThread('501', 44221, 'ka');
+
+    expect(mockWithdrawGoalless).toHaveBeenCalledWith(44221, '501');
+    expect(out).toEqual({ stopped: true, goal_id: null, said: INTRO_WITHDRAWN_LINE.ka });
+    expect(mockSay).toHaveBeenCalledWith(44221, 501, 'assistant', INTRO_WITHDRAWN_LINE.ka);
+  });
+
+  it('names several withdrawn introductions in the plural, in the owner’s language', async () => {
+    mockGetThread.mockResolvedValue({ id: 44221 } as Thread);
+    mockOpenTask.mockResolvedValue(null);
+    mockWithdrawGoalless.mockResolvedValue(2);
+
+    const out = await stopGoalOnThread('501', 44221, 'en');
+
+    expect(out?.said).toBe(INTROS_WITHDRAWN_LINE.en);
+  });
+
+  it('leaves introductions alone while a goal is there to stop', async () => {
+    mockGetThread.mockResolvedValue({ id: 14719 } as Thread);
+    mockOpenTask.mockResolvedValue(task());
+
+    await stopGoalOnThread('501', 14719);
+
+    expect(mockWithdrawGoalless).not.toHaveBeenCalled();
+    expect(mockWithdrawForTask).toHaveBeenCalledWith(2872);
   });
 
   // #2344 (the tester's run 3, 42172): Stop during a search with no goal yet.
