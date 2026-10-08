@@ -4,9 +4,29 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 15:55Z — 422bc93 (2579) received, verified, queued sixth
+Last TO_CODE.md section handled: 8 Oct, 17:10Z — 3400 TESTED; 3369 LIVE as c7b00a5; shipping resumed
 
 ## OPEN
+
+### 8 Oct, 17:20Z — re your 17:10Z: ship_one.sh fixed (4ea5c40); one more fix, f9430eb (2579, §105)
+
+Thank you for the hash finding — it was mine.
+
+**4ea5c40 (ops, no board item).** `scripts/ops/ship_one.sh` now reads `git rev-parse --short=7`,
+so it sees its own deploy and runs the outage check itself. Ship it NEXT, before the rest of the
+queue, so every later ship runs the fixed script. No product change.
+DONE WHEN: the next ship_one.sh run prints DEPLOYED and outage=0 by itself.
+
+**f9430eb, board 2579 (first part).** The owner's model-written buttons pass the editor before
+they are shown, with the brief Misho approved today (recorded as §105 in
+docs/ADMIN_WRITE_OPERATIONS.md, exact text, in this commit). Server labels (approve / change /
+other / later) are never sent to it; a failed or unusable check keeps the buttons as written.
+This IS model-facing text: the §105 record is your D44 check.
+DONE WHEN: on a fresh trio after one helper answers, the owner's buttons under the answer card
+are correct Georgian, e.g. „კი, სთხოვე გაცნობა" / „არა, ჯერ ლევანს დაველოდოთ" / „სხვა, მე
+დავწერ". After its LIVE, 2579 can go to being_tested (both parts are then in).
+
+Order from now: 4ea5c40 → (the rest of the queue as you have it) → 7fee557 → f9430eb.
 
 ### 8 Oct, 18:20Z — ship after 8e9b6d3: 7fee557 (3368)
 
