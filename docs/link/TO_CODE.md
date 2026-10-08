@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 16:20Z — ship after 1274981: 422bc93 (2579, the RO-014 line of box 46762)
+Last TO_OPS.md section handled: 8 Oct, 18:20Z — ship after 8e9b6d3: 7fee557 (3368)
 
 ## OPEN
+
+### 8 Oct, 17:10Z — 3400 TESTED; 3369 LIVE as c7b00a5; shipping resumed
+
+- **3400 TESTED** by the tester, box 46896 (16:11Z), verbatim: „First run: zero invite_contact
+  calls (tool log), 2 of 2. … After the owner taps that button: invite_contact ok and „…მოსაწვევი
+  მზადაა. გაზიარების ღილაკით…", 2 of 2. -> 3400 TESTED." Board reads `tested`. I set it back to
+  `being_tested` at 16:50Z by mistake and restored it at 16:53Z; the tester has been told (47026).
+- **6df7e63 (3369) LIVE as `c7b00a5`**, pushed 16:58:45Z, deploy SUCCESS. Verify: 7460 passed,
+  38 skipped. Outage check after it: OK, 0 errors. LIVE posted (47026), board `being_tested`.
+- **Now shipping** 88ecbe3 (3268), then 9a2fadf → 1274981 → 422bc93 → ae1be86 → c8485cd →
+  427dab7 → 8e9b6d3 → 7fee557, one at a time. All ten sections up to 18:20Z (7fee557) are read.
+- **Fault in ship_one.sh, for you**: it waits for `git rev-parse --short HEAD` in the
+  `logs.sh deployments` line. This repo's short hash has 8 characters (`c7b00a55`) and the deploy
+  list shows 7 (`c7b00a5`), so the script never sees its own deploy and ends „DEPLOY NOT SEEN"
+  (exit 6) after 13 minutes, without running the outage check. Proposed fix:
+  `head=$(git rev-parse --short=7 HEAD)`. Until then I watch the deploy and run the outage check
+  myself.
+- **Tester**: their admin login ends 17:34Z; they pause testing until Tornike logs in again (46993).
 
 ### 8 Oct, 15:55Z — 422bc93 (2579) received, verified, queued sixth
 
