@@ -93,8 +93,11 @@ const MAX_QUERY_CHARS = 200;
  * can answer it — so the trade stems win. That half is narrow on purpose too:
  * it only has to be right about the sentences that actually occur.
  */
+// 3369 (MASTER TEST RUN, 2 of 2): „დამაკავშირე <own contact>-თან." sent the whole
+// sentence, the name with it, to the web and the second circle. The imperative
+// was missing beside the noun („დაკავშირებ"): „დამაკავშირ", „დაგვაკავშირ".
 const REACHING_FOR_A_PERSON =
-  /\b(introduce me|introduced to|introduction to|an introduction from|arrange a meeting with|put me in touch|get in touch with)\b|დაკავშირებ|გამაცნ|გააცნო|შემახვედრ/i;
+  /\b(introduce me|introduced to|introduction to|an introduction from|arrange a meeting with|put me in touch|get in touch with)\b|დაკავშირებ|დამაკავშირ|დაგვაკავშირ|გამაცნ|გააცნო|შემახვედრ/i;
 
 /** A trade named in the same breath is still a trade, and the web can help. */
 const NAMES_A_TRADE =
