@@ -107,6 +107,12 @@ unanswered. Put them again in the morning:
   already says the owner never saw it. Proposal: add one sentence to the three promise/instruction notes
   in replyGuards.ts: „ვისზეც წერ, სახელით დაასახელე — „ეს ორი" ან „ისინი" მფლობელისთვის არაფერს
   ნიშნავს." That is prompt text (D44), so it needs his yes.
+- **AE. 1354, the saved-names half (the tester's 45310/45311):** „რა სახელებით ვარ სხვებთან შენახული?"
+  gets „I can't see them". The data is there (each saver's label in UserAlias), but every label is that
+  saver's private phonebook entry, and no ruling lets the subject see them. D523 keeps who saved what
+  private. Showing them is new disclosure, which is "opening access", so I did not build it. Options:
+  (a) never show them, and the reply says so plainly; (b) show the labels with no saver and no count;
+  (c) show only labels saved by two or more people. My recommendation: (c).
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
