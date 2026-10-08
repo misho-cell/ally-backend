@@ -86,13 +86,17 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
   );
 }
 
+const HAS_A_LETTER = /\p{L}/u;
+
 /** The prompt section for one due question; '' when it cannot be asked by name. */
 export function contactQuestionSection(update: CuriosityUpdate | null): string {
   if (update === null) return '';
   const who = typeof update.payload['who'] === 'string' ? update.payload['who'].trim() : '';
   const fact = String(update.payload['missing_fact'] ?? '');
   const asked = FACT_QUESTION[fact];
-  if (who === '' || asked === undefined) return '';
+  // 3500 (the tester's 47072): „სხვათა შორის, 💙 სად მუშაობს?" — a label with no
+  // letter is how the owner marks someone, not a name to ask about.
+  if (who === '' || !HAS_A_LETTER.test(who) || asked === undefined) return '';
   return (
     '\n\n## დღის ერთი კითხვა მფლობელის კონტაქტზე (D708)\n' +
     // 3202 (c), Misho's yes, 8 Oct (§103): a light side question, not a reason to answer it.
