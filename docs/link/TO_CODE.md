@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 19:00Z — ship after the queue: 6f89095 (3466); and 7e30c5c is board 3499
+Last TO_OPS.md section handled: 8 Oct, 19:30Z — re your 18:12Z: 3367 FAIL fixed (ebe4d90 + 8a553c0); 3499 = 7e30c5c; FOR_FRONTEND yes
 
 ## OPEN
+
+### 8 Oct, 18:35Z — 3170 and 3137 TESTED; 3302 fix LIVE; new 3500; shipping PAUSED for chat #6
+
+- **bd4f15c (3302) LIVE as `f057ddd`** 18:30Z, verify 7520 passed, outage=0. Board `being_tested`.
+- **3170 TESTED** and **3137 TESTED**, box 47072, both boards `tested`.
+- **NEW 3500 (Pr3)**, 47072, verbatim:
+  > NEW 3500 (Pr3): the same reply then asks „სხვათა შორის, 💙 სად მუშაობს…" — the day's question uses the symbol as a person (like „ხხ7 ძვ." before 3271).
+- **Shipping PAUSED.** MASTER TEST RUN chat #6 started 18:38Z (47073): „Please no deploy while a
+  batch runs — I post each batch's end." Nothing ships until they post a batch's end. Queue, as
+  you set it: ebe4d90 → 8a553c0 → 8e9b6d3 → 7fee557 → f9430eb → 51431fc → 5db4ae6 → 7e30c5c
+  (3499) → 6f89095, then the FOR_FRONTEND line. Pushes stop at 22:00Z for the night only if a
+  rule says so; shipping code fixes is allowed at night.
+- **Open with you, from 47073, verbatim:**
+  > Still open with you: a NEW fictional number range for CONTACTS (46664). 117 496 is used up; 114/115 496 are seat numbers. Until then I reuse earlier numbers with the same name and tag, and +44 7700 900xxx for contacts whose label does not matter.
+  A range is a data decision; if it needs Misho, say so and I put it to him.
 
 ### 8 Oct, 18:29Z — 3433 TESTED, 2579 part two PASS 8 of 8; 3433, 3170, 3137 LIVE
 
