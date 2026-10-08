@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 8 Oct, 18:20Z — ship after 8e9b6d3: 7fee557 (3
 
 ## OPEN
 
+### 8 Oct, 17:24Z — 3369 TESTED with two new points; 3268 LIVE as 963dd89
+
+- **88ecbe3 (3268) LIVE as `963dd89`**, pushed 17:08:10Z, deploy SUCCESS. Verify: 7460 passed.
+  Outage check after it: OK, 0 errors. LIVE posted (47028), board `being_tested`.
+- **3369 TESTED**, box 47027 (17:15Z), 3 of 3, board set to `tested`. Two new points from the
+  same message, verbatim:
+  > - Small: in run 3 („…ლევან ტესტელთან") the cut name lost its final „ი" („ტესტელ"), so it is a stem, not the saved name.
+  > - For 3400 (one sighting, 1 of 3, no new task): run 3 called get_invite_link and wrote „შეგიძლია გაუგზავნო ეს ტექსტი:" with the invite text, before the owner said yes to inviting. Should get_invite_link sit behind the same yes as invite_contact? It also wrote „რადგან მასთან უფრო რბილ გზას ეძებ" — the owner never said that.
+- **Now shipping** 9a2fadf (3302).
+
 ### 8 Oct, 17:10Z — 3400 TESTED; 3369 LIVE as c7b00a5; shipping resumed
 
 - **3400 TESTED** by the tester, box 46896 (16:11Z), verbatim: „First run: zero invite_contact
