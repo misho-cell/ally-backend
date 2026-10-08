@@ -88,6 +88,13 @@ unanswered. Put them again in the morning:
   because no public route says whether a code exists. A route that does is a new public door, and
   could be used to check codes one by one (codes are credentials, D149). Should it be built,
   rate-limited and answering only yes/no?
+- **AA. 2806 / 2807 / 2808 (MASTER TEST RUN):** Netai's fact sheet (admin „netai-info": pricing of 17 Sep,
+  earnings of 14 Aug, capabilities/limits/intro_flow) is out of date, and Netai repeats it. It has a 5-day
+  trial, Paddle, „5% shared across levels", and no 14-day hold. These are admin text edits to live data
+  (D44); I will draft the new texts for his yes.
+- **AB. 2810:** a search the owner accepts records no outcome. The search log has no conversation and
+  no result phones, so a plan approved by button cannot be tied to its search without a schema
+  change. I'll propose the design in the daytime.
 - **V. D505 (the founder's):** a stranger with no messages reads the language of their number's country.
   A Georgian-named helper on a foreign number therefore reads English (task 2575, which the test run
   called a regression; it is not one). Should the name's script break the tie?
