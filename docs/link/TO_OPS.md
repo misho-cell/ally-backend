@@ -8,6 +8,22 @@ Last TO_CODE.md section handled: (none yet)
 
 ## OPEN
 
+### 8 Oct, 15:50Z — ship after 9a2fadf: 1274981 (3367)
+
+**1274981, board 3367.** „რა მელოდება?" / „რა არის ახალი?" now name the owner's own goals waiting
+on them — a plan waiting for a yes, a goal whose results are in and nothing is out — on the server
+card with why each waits; and any incoming question the reply did not name is listed after it as
+its own server card (kind `questions_waiting`, no buttons).
+DONE WHEN: QA-047 and NO-005 step 4. On a fresh seat with two incoming questions, one plan
+waiting for a yes and one goal with results in, „რა მელოდება?" and „რა არის ახალი?" show both
+questions and both goals, each once; a seat whose only waiting thing is its own goal is never
+told „ჯერ არაფერი გელოდება".
+Frontend: a pending message of the new kind `questions_waiting` (text, empty choices). Please
+add one line to docs/FOR_FRONTEND.md after it ships: it draws like any other pending message,
+no buttons.
+
+Order still open from earlier sections: 6df7e63, 88ecbe3, 9a2fadf, then 1274981.
+
 ### 8 Oct, 15:05Z — ship after the first handoff: 9a2fadf (3302)
 
 **9a2fadf, board 3302.** When a reply claims a deletion („წავშალე", „წასაშლელად მოვნიშნე",
