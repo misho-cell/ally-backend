@@ -17,13 +17,20 @@
  * caught, assigned or not, and so is the replacement character.
  */
 const FOREIGN_LETTER_RE = /[Ⴀ-჏ⴀ-⴯�Ա-Ֆա-և]/u;
+/**
+ * #1486, the tester's 45310 (conv 43544): „სხვა გკ96ა მოვახოთ" — digits inside
+ * a Georgian word. A Georgian letter written straight against a digit or a
+ * Latin letter is a slip on a button; a number or a name with its Georgian
+ * ending takes a hyphen („10-ში", „Netai-ზე") and is not caught.
+ */
+const MIXED_INTO_GEORGIAN_RE = /(?<=[ა-ჰ])[0-9A-Za-z]|[0-9A-Za-z](?=[ა-ჰ])/u;
 
 /** The first label that carries such a letter, with the letter; null when all are clean. */
 export function labelWithForeignLetter(
   labels: readonly string[],
 ): { readonly label: string; readonly letter: string } | null {
   for (const label of labels) {
-    const found = label.match(FOREIGN_LETTER_RE);
+    const found = label.match(FOREIGN_LETTER_RE) ?? label.match(MIXED_INTO_GEORGIAN_RE);
     if (found) return { label, letter: found[0] };
   }
   return null;

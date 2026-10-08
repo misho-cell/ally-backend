@@ -49,3 +49,25 @@ describe('a button label', () => {
     expect(chat).toContain('{ presented: false, error: foreignLetterRefusal(foreign) }');
   });
 });
+
+describe('digits or Latin letters glued into a Georgian word (#1486, 45310)', () => {
+  it('catches the garbled label from conv 43544', () => {
+    expect(labelWithForeignLetter(['სხვა გკ96ა მოვახოთ', 'დავხუროთ ეს საქმე'])).toEqual({
+      label: 'სხვა გკ96ა მოვახოთ',
+      letter: '9',
+    });
+    expect(labelWithForeignLetter(['ვამტკიცeბ'])).toEqual({ label: 'ვამტკიცeბ', letter: 'e' });
+  });
+
+  it('lets numbers and names with a hyphenated ending, and plain Latin labels, through', () => {
+    expect(
+      labelWithForeignLetter([
+        '10-ში შევხვდეთ',
+        'Netai-ზე მოვიწვიოთ',
+        'Yes, send it',
+        'CFO გია',
+        '2 ადამიანი',
+      ]),
+    ).toBeNull();
+  });
+});
