@@ -21,11 +21,14 @@ export enum ChoiceMeaning {
 export interface AskChoice {
   readonly label: string;
   readonly means: ChoiceMeaning;
+  /** 2907: on a reader's own person, what she saved about them and was shown beside the name. */
+  readonly detail?: string;
 }
 
 export const MIN_ASK_CHOICES = 2;
 export const MAX_ASK_CHOICES = 4;
 export const MAX_CHOICE_CHARS = 40;
+export const MAX_CHOICE_DETAIL_CHARS = 80;
 
 const MEANINGS: ReadonlySet<string> = new Set(Object.values(ChoiceMeaning));
 
@@ -35,7 +38,12 @@ function parseOne(raw: unknown): AskChoice | null {
   if (typeof label !== 'string' || typeof means !== 'string' || !MEANINGS.has(means)) return null;
   const trimmed = label.trim();
   if (trimmed === '' || trimmed.length > MAX_CHOICE_CHARS) return null;
-  return { label: trimmed, means: means as ChoiceMeaning };
+  const { detail } = raw as { detail?: unknown };
+  const kept =
+    typeof detail === 'string' && detail.trim() !== '' && detail.length <= MAX_CHOICE_DETAIL_CHARS
+      ? detail.trim()
+      : undefined;
+  return { label: trimmed, means: means as ChoiceMeaning, ...(kept && { detail: kept }) };
 }
 
 /** The buttons as given, or null when they are missing or any one is malformed. */
@@ -126,4 +134,29 @@ export function ownPeopleBeside(
     means: ChoiceMeaning.No,
   };
   return [...people, no, { label: later, means: ChoiceMeaning.Later }];
+}
+
+/** 2907: each of the reader's own people carries what the line showed beside the name. */
+export function withPeopleDetails(
+  choices: readonly AskChoice[],
+  details: Readonly<Record<string, string>>,
+): AskChoice[] {
+  return choices.map((choice) =>
+    choice.means === ChoiceMeaning.Answer && details[choice.label]
+      ? { ...choice, detail: details[choice.label] }
+      : choice,
+  );
+}
+
+/**
+ * 2907 (46235): a tap on the reader's own person, read as what she was shown —
+ * „ნინო სტომატოლოგი (კლინიკა ღიმილი, ვაკე)" — so her assistant passes the
+ * clinic she approved with the tap, not the bare name. Null for anything else.
+ */
+export function tappedPersonText(message: string, choices: readonly AskChoice[]): string | null {
+  const said = message.trim().toLowerCase();
+  const pressed = choices.find(
+    (choice) => choice.detail !== undefined && choice.label.toLowerCase() === said,
+  );
+  return pressed ? `${pressed.label} (${pressed.detail})` : null;
 }

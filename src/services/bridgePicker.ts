@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { declineChoice, laterChoice } from './askOpening';
+import { normalizePhone } from './phone';
 import { scrubText } from './privacyScrub';
 import { RunLanguage } from './runLanguage';
 import { OwnMatch, ownMatchesFor } from './tools/searchByTag';
@@ -58,6 +59,8 @@ export interface BridgePicker {
   readonly choices: readonly string[];
   /** The reader's own fitting people alone, picked first (2907). */
   readonly names: readonly string[];
+  /** 2907 (46235): what the reader herself saved about each name (place of work, city). */
+  readonly details: Readonly<Record<string, string>>;
 }
 
 const OTHER_PERSON_CHOICE: Readonly<Record<RunLanguage, string>> = {
@@ -72,8 +75,14 @@ const OTHER_PERSON_CHOICE: Readonly<Record<RunLanguage, string>> = {
  * question that had already asked — two questions in one message. It says only
  * why the reader was asked and who may fit; the names are the buttons.
  */
-function pickerLine(language: RunLanguage, picked: string | null, others: string[]): string {
-  const rest = others.join(', ');
+function pickerLine(
+  language: RunLanguage,
+  pickedOne: string | null,
+  others: string[],
+  details: Readonly<Record<string, string>>,
+): string {
+  const rest = others.map((name) => withDetail(name, details)).join(', ');
+  const picked = pickedOne === null ? null : withDetail(pickedOne, details);
   switch (language) {
     case 'en':
       return (
@@ -104,6 +113,80 @@ function pickerLine(language: RunLanguage, picked: string | null, others: string
           : '')
       ).trim();
   }
+}
+
+/** A name as the line shows it: with what the reader saved about them, when anything. */
+function withDetail(name: string, details: Readonly<Record<string, string>>): string {
+  const detail = details[name];
+  return detail ? `${name} (${detail})` : name;
+}
+
+/**
+ * 2907 (the tester's 46235, 0 of 2): the helper tapped her saved dentist and
+ * the owner read only „ნინო, a dentist" — not the clinic or the district she
+ * had saved. Her assistant may pass only what she said (D648), and a tap on a
+ * name says the name. So what she saved about that person is shown to her in
+ * the line, before the tap; tapping the name approves the name with it.
+ * Only the place of work and the city, only her own saved values, never a note.
+ */
+const DETAIL_FIELDS: readonly string[] = ['employer', 'city'];
+const MAX_DETAIL_CHARS = 80;
+
+async function savedDetails(
+  bridgeUserId: string,
+  people: ReadonlyArray<{ readonly name: string; readonly phone: string }>,
+): Promise<Record<string, string>> {
+  if (people.length === 0) return {};
+  try {
+    return detailsByName(people, await readSavedDetails(bridgeUserId, people));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[bridge-picker] saved details not read:', (err as Error).message);
+    return {};
+  }
+}
+
+interface SavedDetailRow {
+  readonly phone: string;
+  readonly field_type: string;
+  readonly value: string;
+}
+
+async function readSavedDetails(
+  bridgeUserId: string,
+  people: ReadonlyArray<{ readonly name: string; readonly phone: string }>,
+): Promise<readonly SavedDetailRow[]> {
+  const phones = people.map((p) => normalizePhone(p.phone));
+  const result = await query<SavedDetailRow>(
+    `SELECT DISTINCT ON (neo4j_contact_id, field_type)
+            neo4j_contact_id AS phone, field_type, COALESCE(canonical_value, value) AS value
+       FROM contact_facts
+      WHERE submitted_by_user_id = $1 AND neo4j_contact_id = ANY($2::text[])
+        AND field_type = ANY($3::text[]) AND retracted_at IS NULL
+      ORDER BY neo4j_contact_id, field_type, updated_at DESC
+      LIMIT $4`,
+    [bridgeUserId, phones, DETAIL_FIELDS, phones.length * DETAIL_FIELDS.length],
+    PICKED_NAME_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+function detailsByName(
+  people: ReadonlyArray<{ readonly name: string; readonly phone: string }>,
+  rows: readonly SavedDetailRow[],
+): Record<string, string> {
+  const details: Record<string, string> = {};
+  for (const person of people) {
+    const phone = normalizePhone(person.phone);
+    const parts = DETAIL_FIELDS.map(
+      (field) => rows.find((r) => r.phone === phone && r.field_type === field)?.value,
+    )
+      .map((value) => (value === undefined ? '' : scrubText(value).trim()))
+      .filter((value) => value !== '');
+    const detail = parts.join(', ').slice(0, MAX_DETAIL_CHARS).trim();
+    if (detail !== '') details[person.name] = detail;
+  }
+  return details;
 }
 
 /** The bridge's own name for one phone: registered name, else their fullest label. */
@@ -163,6 +246,22 @@ export function isTheNamedPerson(need: string, contactName: string): boolean {
   return wanted.every((w) => have.has(w));
 }
 
+/** Each shown name with the phone it stands for, so what was saved about it can be read. */
+function phonesOf(
+  names: readonly string[],
+  matches: readonly OwnMatch[],
+  forPhone: string | undefined,
+  picked: string | null,
+): Array<{ name: string; phone: string }> {
+  return names.flatMap((name) => {
+    const phone =
+      name === picked && forPhone
+        ? forPhone
+        : matches.find((m) => distinctNames([m.name])[0] === name)?.phone;
+    return phone === undefined ? [] : [{ name, phone }];
+  });
+}
+
 /** Names as the reader sees them, scrubbed (a label can hold a number), once each. */
 function distinctNames(names: readonly string[]): string[] {
   return [...new Set(names.map((n) => scrubText(n).trim()).filter((n) => n !== ''))];
@@ -193,9 +292,14 @@ export async function bridgePicker(
     .slice(0, MAX_OTHER_FITTING_CONTACTS);
   if (pickedClean === null && others.length === 0) return null;
   const names = pickedClean ? [pickedClean, ...others] : others;
+  const details = await savedDetails(
+    bridgeUserId,
+    phonesOf(names, matches, bridgeNeed.forPhone, pickedClean),
+  );
   return {
-    line: pickerLine(language, pickedClean, others),
+    line: pickerLine(language, pickedClean, others, details),
     names,
+    details,
     choices: [
       ...names,
       OTHER_PERSON_CHOICE[language] ?? OTHER_PERSON_CHOICE.ka,
