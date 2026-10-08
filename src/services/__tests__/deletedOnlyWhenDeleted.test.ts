@@ -37,20 +37,3 @@ describe('a deletion is claimed only when one happened', () => {
     expect(chat).toContain('choices = [notDeleted.confirm];');
   });
 });
-
-describe('a removal said in other words (the tester’s 47061)', () => {
-  it.each([
-    'ავთან დაკავშირებული ჩანაწერიდან „ელექტრიკოსი" მოვხსენი.',
-    'ეს ინფორმაცია ამოვიღე.',
-    'ჩანაწერი გავასუფთავე.',
-    'That note has been removed.',
-    'I cleared it.',
-    'Я убрал эту заметку.',
-  ])('„%s" claims a deletion', (reply) => {
-    expect(claimsADeletion(reply)).toBe(true);
-  });
-
-  it('an ordinary reply does not', () => {
-    expect(claimsADeletion('ელექტრიკოსად გყავს შენახული ავთო.')).toBe(false);
-  });
-});

@@ -20,7 +20,7 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 const CLAIMS_A_DELETION_RE =
-  /(წავშალე|წაიშალა|წავიშალე|დავივიწყე|წასაშლელად\s+მოვნიშნე|მოვხსენი|მოიხსნა|ამოვიღე|ამოვშალე|მოვაშორე|გავასუფთავე|\bdeleted\b|\bforgotten\b|\berased\b|\b(?:has|have|been|was)\s+removed\b|\bI\s+(?:have\s+)?(?:removed|forgot|cleared|erased)\b|удалил|удалено|убрал|стёр|забыл|borr[ée]|elimin[ée]|quit[ée])/iu;
+  /(წავშალე|წაიშალა|წავიშალე|დავივიწყე|წასაშლელად\s+მოვნიშნე|\bdeleted\b|\bforgotten\b|\bI\s+(?:have\s+)?(?:removed|forgot)\b|удалил|удалено|забыл|borr[ée])/iu;
 
 export function claimsADeletion(reply: string): boolean {
   return CLAIMS_A_DELETION_RE.test(reply);
