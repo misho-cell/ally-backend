@@ -65,6 +65,7 @@ import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './s
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
+import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
   isReminderRequestOnly,
@@ -11889,6 +11890,38 @@ async function answerGreeting(
   return { reply, language, requestCreated: false };
 }
 
+/**
+ * 3203: the line asks whether one saved contact knows someone, and that contact
+ * is not on Netai. The server says so with the two ways left, and no model runs.
+ * Null when the line is anything else.
+ */
+async function answerNonMemberNamed(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  const asked = namedKnower(userMessage);
+  if (asked === null) return null;
+  const saved = await savedNonMember(userId, asked);
+  if (saved === null) return null;
+  if (intent?.alreadyStored !== true) {
+    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+  }
+  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
+  const language = languageOfConversation(
+    userMessage,
+    spokenBefore,
+    detectRunLanguage(userMessage),
+  );
+  const answer = nonMemberAnswer(saved, language);
+  await saveMessage(userId, threadId, 'assistant', answer.text, 'message', runId, answer.choices);
+  // eslint-disable-next-line no-console
+  console.log(`[non-member] run ${runId}: answered by the server`);
+  return { reply: answer.text, language, choices: [...answer.choices], requestCreated: false };
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -14371,6 +14404,12 @@ export async function processChat(
   if (!ownerAbsent && isBareGreeting(userMessage)) {
     return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
   }
+  // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
+  const nonMember =
+    !ownerAbsent && thread.type === 'regular'
+      ? await answerNonMemberNamed(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (nonMember !== null) return nonMember;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
