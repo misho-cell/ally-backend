@@ -5782,3 +5782,14 @@ that you will remind them then." Undo: revert.
   „ბერიძეს" → Beridze). A name or surname is never changed. In a question that is not in Georgian,
   names are written in Latin letters."
 Undo: revert.
+
+**§98.1b — 2674, the follow-up text (same approval, shipped alone).** For two hours after the day's
+contact question, when no new question is due, the owner's own run carries:
+
+> ## დღეს დასმული კითხვა მფლობელის კონტაქტზე (D708)
+> დღეს ჰკითხე: <name> — <fact question>? თუ მფლობელის ეს ან წინა შეტყობინება ამას პასუხობს, <name>
+> სახელით მოძებნე და შეინახე save_contact_fact-ით (field_type: <fact>) — ამ კონტაქტზე და არასდროს
+> მფლობელის საკუთარ პროფილზე (update_user_profile არა). პასუხში თქვი, რა შეინახე. თუ სხვა რამეს
+> წერს, ეს არ ახსენო.
+
+Undo: revert.

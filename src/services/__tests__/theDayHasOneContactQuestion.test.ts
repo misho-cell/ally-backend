@@ -1,7 +1,11 @@
 jest.mock('../curiosityQueue.service', () => ({ maybeCuriosityUpdate: jest.fn() }));
 
 import { CuriosityUpdate } from '../curiosityQueue.service';
-import { contactQuestionMayRun, contactQuestionSection } from '../dailyContactQuestion';
+import {
+  contactQuestionMayRun,
+  contactQuestionSection,
+  pendingAnswerSection,
+} from '../dailyContactQuestion';
 
 /** #2181 (D708): the day's one contact question, asked in the owner's own run. */
 function due(who: unknown, fact: string): CuriosityUpdate {
@@ -48,5 +52,19 @@ describe('the owner’s own run carries the day’s question (§98.1)', () => {
     expect(chat).toContain('const contactQuestion = await dailyContactQuestionSection(userId, {');
     expect(chat).toContain('ownerPresent: !ownerAbsent,');
     expect(chat).toMatch(/firstAsk \+\s+contactQuestion \+/u);
+  });
+});
+
+describe('the answer that comes a line later (2674)', () => {
+  it('reminds the run which contact and which fact wait, never the owner’s profile', () => {
+    const section = pendingAnswerSection({ label: 'ნინო', missing_fact: 'city' });
+    expect(section).toContain('ნინო — რომელ ქალაქშია?');
+    expect(section).toContain('field_type: city');
+    expect(section).toContain('update_user_profile არა');
+  });
+
+  it('says nothing without a question or a name', () => {
+    expect(pendingAnswerSection(null)).toBe('');
+    expect(pendingAnswerSection({ label: null, missing_fact: 'city' })).toBe('');
   });
 });
