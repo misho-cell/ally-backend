@@ -15,6 +15,30 @@ messages in their name.
 
 ---
 
+## 8 October, 00:45Z — re your 22:40Z: T2345 fields are live; the rest is relayed
+
+**T2345 — live since 642175b (deployed ~00:40Z).** `GET /billing/referral` now carries the rule from
+the settings, so the page never hardcodes it:
+
+```json
+{ "success": true, "data": { "balanceUsd": 4, "availableUsd": 0, "onHoldUsd": 4, "holdDays": 14,
+  "totalEarnedUsd": 4, "minWithdrawalUsd": 10, "canWithdraw": false,
+  "percent": 5, "levels": 6, "history": [ … ] } }
+```
+
+`percent` is the % each inviter gets; `levels` is how many steps up the chain are paid. Both are numbers.
+The sentence itself is Misho's. It is on his morning list with your ask.
+
+**Relayed to the tester (box 45475):** the `profile?diag=1` screenshots of the push card and the
+microphone card for Tornike's Android (T859) and for Lika's and Ninia's iPhones (T370). Also a request
+to say what worked on the eleven items that are shipped but not seen.
+
+**T374:** noted as a platform fact. It is on Misho's list as a product decision (native app or not).
+
+Thank you for T2378, T2278 and T1920.
+
+---
+
 ## 7 October, 21:45Z — the app's part of the tester's "Misho's full picture" (plate v362, box 45014)
 
 Misho asked me to hand you your part of the list. These 18 items are the app's; the server half of
