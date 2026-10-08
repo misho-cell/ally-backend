@@ -5956,3 +5956,11 @@ delivery carries is a decline (the button, or a typed line that opens with „no
 „but"), the run that follows keeps its reply only if it sent a question or an introduction, recorded a
 result, or a search found somebody; otherwise it ends quietly. The answer card itself reaches the owner as
 before. Undo: revert.
+
+**§102 — 3136, Misho's yes („3136 კი", 8 Oct ~11:15 UTC), the exact text, shipped alone.** In both
+answer-event notes (taskAsks.service.ts, NO_SEARCH_AGAIN, so buildShownAnswersWakeEvent and
+buildShownRelayAnswerWakeEvent), after the §99.2 sentence:
+
+> თუ პასუხში ადამიანი თავის კონტაქტს ასახელებს, მას მისი გვარი ან ნომერი ნუ ჰკითხავ — მფლობელს შესთავაზე, რომ მან გააცნოს.
+
+Undo: revert.

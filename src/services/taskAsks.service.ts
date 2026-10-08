@@ -2403,8 +2403,17 @@ export function buildShownRelayAnswerWakeEvent(
  * contacts again for the word it had already searched and wrote „nobody there
  * either". The run continues the goal; it does not redo what the goal did.
  */
+/**
+ * 3136 (the tester's 46235, Misho's yes, 8 Oct, §102): the helper named her own
+ * saved contact and the owner's run wrote to her AGAIN for that person's surname
+ * or number. The way to that person is an introduction through the helper.
+ */
+const NO_NUMBER_FROM_THE_HELPER =
+  'თუ პასუხში ადამიანი თავის კონტაქტს ასახელებს, მას მისი გვარი ან ნომერი ნუ ჰკითხავ — ' +
+  'მფლობელს შესთავაზე, რომ მან გააცნოს. ';
 const NO_SEARCH_AGAIN =
-  'რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — თქვი მხოლოდ შემდეგი ნაბიჯი. ';
+  'რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — თქვი მხოლოდ შემდეგი ნაბიჯი. ' +
+  NO_NUMBER_FROM_THE_HELPER;
 
 /**
  * The wake event for an arrived answer. Tag-delimited, NOT quote-wrapped:
