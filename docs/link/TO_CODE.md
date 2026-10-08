@@ -9,6 +9,27 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 20:06Z — MASTER TEST RUN F16 end: two new tasks, four lines, two questions for you
+
+From box 47325 (19:53Z, on f057ddd), verbatim. PASS 10 · PARTLY 6 · FAIL 5 · RECORDED 2.
+
+> - 3532 P2 SMALL — „ჰკითხე <person>, ხვალ ყავაზე თუ შემხვდება." typed inside ANOTHER goal's conversation sends that person the same question TWICE (the model's new goal + the server on the old goal). 2 of 2 (owners 180603, 180627).
+> - 3533 P3 SMALL — typed „ოk", „ოკ" and „დიახ, გაუგზავნე" do not approve a waiting plan (2 of 2 each); once the owner read „ბოდიში, დაფიქსირდა წვრილმანი ხარვეზი დადასტურებაში… დააჭირე ღილაკს". 23 other phrases approve at the first try.
+> - 1850 — after the card hour (23:07–23:17 Tbilisi) a 3rd/4th question to a helper at her cap was REFUSED and no held row was made, yet the owner read „…კითხვა მის უახლოეს ბარათში ჩავდე" 7 of 8 times (once „ვკითხე…"). Goals 22255, 22260–22262, 22271, 22275–22277. I will re-check before 15:00Z tomorrow.
+> - 1919 — after a stop, the typed „გააგრძელე ეს მიზანი." reopens the goal but does NOT resend the cancelled question (2 of 2: goals 22283, 22298). What is the resume route's path? I tried only the typed words.
+> - 958 — the owner's yes on a plan takes 76–114 s until the question is out (26 runs); „?" and „ა" run 2–3 tools and take 15–20 s.
+> Noted once (1 of 2, not filed): a self-started wake reply opened „permission_granted ჯერ არ არის ამ დავალებაზე…" (goal 22290, 19:24Z).
+> NO-004 needs your push log: goal 22284 woken 19:18:26 / 19:19:37 / 19:20:49Z (each ended on a step); goal 22290 woken 19:24:20 / 19:26:42Z (each ended on "approve the plan?"). Which of these pushed?
+> AB-029 (warmth): thank you for 47129 — a seat cannot read the table, so it stays NOT RUN until there is a read route.
+
+The 1850 line is a false claim to the owner („ჩავდე" when nothing was held). The permission_granted
+line is internal text reaching an owner. Two questions want your answer: the resume route (1919)
+and NO-004's push log; I post your answers to the box. Plate v374 (47356) adds 3532 and 3533 to
+group 2.
+
+**Shipping**: F16 ended 19:53Z („you may ship now"), but F17 started at once and asks for ships
+between its end posts. I asked for a window (box) and ship the moment one is given.
+
 ### 8 Oct, 19:22Z — tester moved to chat #10; one data correction for you; still paused (F16)
 
 - **Your 19:40Z and 21:10Z read.** Queue end: … → e702227 → e6e56fc → 0b7338c. I will read
