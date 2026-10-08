@@ -93,6 +93,7 @@ import {
 } from './planJustification';
 import { introTargetSentence } from './introTargetSentence';
 import { withOwnersNetwork } from './planVoice';
+import { withoutInternalText } from './internalText';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
@@ -13998,6 +13999,8 @@ async function runToolLoop(
       choices = recallChoices(runLang(runId));
     }
   }
+  // The tester's 47325: the model's internal words never reach the owner.
+  finalText = withoutInternalText(finalText);
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
   finalText = withPlainDigits(finalText);
   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
