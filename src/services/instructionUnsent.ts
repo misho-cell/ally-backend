@@ -105,12 +105,22 @@ export const NOT_ON_NETAI_LINE: Readonly<Record<RunLanguage, (name: string) => s
 };
 
 /**
+ * The tester's 46732: „ბესო გამოგონილი-სთვის" — a Georgian name takes „-სთვის"
+ * written together („გამოგონილისთვის"); a name in other letters keeps the hyphen.
+ */
+const ENDS_IN_GEORGIAN_RE = /[ა-ჰ]$/u;
+
+export function forGeorgian(name: string): string {
+  return ENDS_IN_GEORGIAN_RE.test(name.trim()) ? `${name.trim()}სთვის` : `${name.trim()}-სთვის`;
+}
+
+/**
  * 3268 (the tester's 46678, 0 of 2): the owner named a contact they had marked
  * deceased (or blocked), nothing went, and they read „write it again". One
  * kind line instead, with nothing to retry and no reason spelled out.
  */
 export const EXCLUDED_LINE: Readonly<Record<RunLanguage, (name: string) => string>> = {
-  ka: (name) => `${name}-სთვის არაფერს ვწერ — ასე მონიშნე. თუ სხვას ვკითხოთ, მითხარი ვის.`,
+  ka: (name) => `${forGeorgian(name)} არაფერს ვწერ — ასე მონიშნე. თუ სხვას ვკითხოთ, მითხარი ვის.`,
   en: (name) =>
     `I am not writing to ${name}, as you marked them. If we should ask someone else, tell me who.`,
   ru: (name) => `${name} я не пишу — ты так отметил. Если спросить кого-то другого, скажи кого.`,
