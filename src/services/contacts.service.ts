@@ -7,6 +7,8 @@ import { computeAndSaveSingleScore, enrichContact } from './enrichment.service';
 import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 import { parsePhonebookLabelsForUser } from './labelParser.service';
+import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
+import { enqueueEnrichment } from './enrichmentQueue';
 // Aliased: this file already has its own, stricter local normalizePhone()
 // (import-path only, rejects anything not already "+..."). UserPhone is
 // written exclusively through registration's normalizePhone (services/phone,
@@ -56,17 +58,47 @@ export type ImportSource = 'app_import' | 'vcf_import';
  * One row per import attempt (ticket 9 task 24). Never fails the import:
  * losing the audit row is bad, losing the contacts because of it is worse.
  */
-async function recordImportAttempt(
+async function openImportAttempt(
+  userId: string,
+  source: ImportSource,
+  requested: number,
+): Promise<string | null> {
+  try {
+    const opened = await pool.query<{ id: string }>(
+      `INSERT INTO import_attempts (user_id, source, requested, imported, skipped, in_progress)
+       VALUES ($1::int, $2, $3::int, 0, 0, TRUE)
+       RETURNING id::text AS id`,
+      [userId, source, requested],
+    );
+    return opened.rows[0]?.id ?? null;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[import] attempt log failed for user ${userId}:`, (err as Error).message);
+    return null;
+  }
+}
+
+/** The tester's 47594: the row is written when the import starts, and closed with its counts. */
+async function closeImportAttempt(
+  attemptId: string | null,
   userId: string,
   source: ImportSource,
   requested: number,
   result: ImportResult,
 ): Promise<void> {
   try {
+    if (attemptId === null) {
+      await pool.query(
+        `INSERT INTO import_attempts (user_id, source, requested, imported, skipped)
+         VALUES ($1::int, $2, $3::int, $4::int, $5::int)`,
+        [userId, source, requested, result.imported, result.skipped],
+      );
+      return;
+    }
     await pool.query(
-      `INSERT INTO import_attempts (user_id, source, requested, imported, skipped)
-       VALUES ($1::int, $2, $3::int, $4::int, $5::int)`,
-      [userId, source, requested, result.imported, result.skipped],
+      `UPDATE import_attempts SET imported = $2::int, skipped = $3::int, in_progress = FALSE
+       WHERE id = $1::bigint`,
+      [attemptId, result.imported, result.skipped],
     );
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -123,13 +155,24 @@ export async function importContacts(
   const userPhoneSet = new Set(userPhones);
   const userCompositeKey = buildCompositeKey(userPhones);
   const { fresh, unchanged, remaining } = await selectNewContacts(userId, contacts);
+  const attemptId = await openImportAttempt(userId, source, contacts.length);
 
   let imported = 0;
   let skipped = 0;
-  for (const contact of fresh) {
-    const counts = await importSingleContact(userId, userPhoneSet, userCompositeKey, contact);
-    imported += counts.imported;
-    skipped += counts.skipped;
+  try {
+    for (const batch of batchesWithoutSharedPhones(fresh, IMPORT_BATCH_SIZE, phoneKey)) {
+      const counts = await Promise.all(
+        batch.map((contact) =>
+          importSingleContact(userId, userPhoneSet, userCompositeKey, contact),
+        ),
+      );
+      for (const count of counts) {
+        imported += count.imported;
+        skipped += count.skipped;
+      }
+    }
+  } finally {
+    await closeImportAttempt(attemptId, userId, source, contacts.length, { imported, skipped });
   }
 
   // ALARM, not a shrug: an import that saves nothing from non-empty input is
@@ -157,7 +200,6 @@ export async function importContacts(
     ...(unchanged > 0 && { unchanged }),
     ...(remaining > 0 && { remaining }),
   };
-  await recordImportAttempt(userId, source, contacts.length, { imported, skipped });
   return result;
 }
 
@@ -264,13 +306,17 @@ function triggerEnrichmentAsync(
   contactPhone: string,
   alias: string,
 ): void {
-  Promise.all([
-    computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
-    enrichContact(contactPhone),
-  ]).catch((err: unknown) => {
-    // eslint-disable-next-line no-console
-    console.error(`[enrichment] Async trigger failed for ${contactPhone}:`, (err as Error).message);
+  enqueueEnrichment(async () => {
+    await Promise.all([
+      computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
+      enrichContact(contactPhone),
+    ]);
   });
+}
+
+/** The number a card is saved under, so two cards for one number never share a batch. */
+function phoneKey(rawPhone: string): string {
+  return normalizePhone(rawPhone) ?? rawPhone;
 }
 
 async function saveToPostgres(
