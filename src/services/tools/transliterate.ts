@@ -658,6 +658,17 @@ function professionFamilyTerms(group: ReadonlySet<string>): string[] {
   return terms.filter((term) => !group.has(term));
 }
 
+const AGENT_ENDING = 'ოს';
+/** Shorter Georgian stems keep „-ოს": it is as likely a name's case as a trade's ending. */
+const MIN_AGENT_STEM_CHARS = 7;
+
+export function withoutAgentEnding(stem: string): string | null {
+  if (!hasGeorgian(stem) || stem.length < MIN_AGENT_STEM_CHARS || !stem.endsWith(AGENT_ENDING)) {
+    return null;
+  }
+  return stem.slice(0, -AGENT_ENDING.length);
+}
+
 function wordVariantGroup(word: string): string[] {
   const lower = word.toLowerCase();
   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
@@ -666,6 +677,10 @@ function wordVariantGroup(word: string): string[] {
   const stem = hasGeorgian(lower) ? georgianStem(lower) : latinStem(lower);
   const stemTerms = stem === lower ? [] : buildSearchTerms(stem);
   const group = new Set<string>(stemTerms);
+  // 2675: „სანტექნიკოსი" and „სანტექნიკი" are one trade; the agent ending „-ოს"
+  // comes off a long Georgian stem, so the shorter form reaches both spellings.
+  const agentStem = withoutAgentEnding(stem);
+  if (agentStem !== null) for (const term of buildSearchTerms(agentStem)) group.add(term);
   for (const term of buildSearchTerms(word)) {
     if (!supersededBy(term, stemTerms)) group.add(term);
   }
