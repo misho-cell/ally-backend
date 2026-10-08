@@ -285,6 +285,7 @@ import {
   unblockContact,
   getBlockedByUser,
   getExcludedPhoneSet,
+  isDeceasedOrBlockedFor,
 } from './block.service';
 import { normalizePhone } from './phone';
 import { moderateReply } from './moderation.service';
@@ -1462,6 +1463,32 @@ async function setReminderTool(
     due_at: dueAt.toISOString(),
     note: REMINDER_SET_NOTE,
   };
+}
+
+/**
+ * 3268 (MASTER TEST RUN ME-005): a new goal's plan proposed writing to a
+ * contact the owner had marked deceased. The people a plan names are checked
+ * against the owner's deceased and blocked marks before it is saved.
+ */
+async function excludedPeopleInPlan(userId: string, plan: unknown): Promise<string[]> {
+  const people = (plan as { people_to_involve?: unknown } | null)?.people_to_involve;
+  if (!Array.isArray(people)) return [];
+  const checks = await Promise.all(
+    people.map(async (person: unknown) => {
+      const { name, phone } = (person ?? {}) as { name?: unknown; phone?: unknown };
+      if (typeof phone !== 'string' || phone.trim() === '') return null;
+      return (await isDeceasedOrBlockedFor(userId, phone)) ? String(name ?? '').trim() : null;
+    }),
+  );
+  return checks.filter((name): name is string => name !== null);
+}
+
+/** 3268: the refusal that names who must come out of the plan. */
+function planNamesExcluded(names: readonly string[]): string {
+  return (
+    `Not proposed: the owner marked ${names.join(', ')} as deceased, or blocked them. ` +
+    'Propose the plan again without them, and do not mention them to the owner as a lead.'
+  );
 }
 
 /** #2179: the hours until the clock time the owner named, or null when none was given. */
@@ -9691,6 +9718,11 @@ async function executeToolCall(
         },
       );
       if (elsewhere !== null) return elsewhere;
+      // 3268: a person the owner marked deceased or blocked never goes in a plan.
+      const excludedInPlan = await excludedPeopleInPlan(userId, input['plan']);
+      if (excludedInPlan.length > 0) {
+        return { proposed: false, error: planNamesExcluded(excludedInPlan) };
+      }
       const outcome = await proposeTaskPlan(userId, taskId, input['plan'], runLang(runId));
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
