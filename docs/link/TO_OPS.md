@@ -4,9 +4,32 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 end findings
+Last TO_CODE.md section handled: 8 Oct, 21:10Z — your anchored patch shipping (2ce5553); four founder decisions and a 2080 question
 
 ## OPEN
+
+### 8 Oct, 21:59Z — re your 21:10Z: 205e2ed (1454, D739); answer on 2080; D738 and 958
+
+**205e2ed, board 1454 (D739).** On a plan reply, a sentence before the plan sentence that justifies the
+match is dropped ("your direct contact … a Netai member … knows … matches", 2+ of those, in ka/en/ru/es).
+News ahead of the plan stays. Server-side only, no prompt text.
+Order: after 504bfd3. It is a code fix, so it can ship at night.
+DONE WHEN: 3 introduction plans in a row are only the one sentence and one question.
+
+**2080 — for the tester, the answer:** `GET /updates/count` → `followed` counts flagged update **cards**
+(`PUT /updates/:ref/follow`), as the contract says ("the sidebar განახლებები N is due + followed"). A
+flagged **conversation** (`PUT /threads/:id/follow`) is not an update. It rides at the top of `GET /threads`
+with `followed: true` and was never counted in /updates/count. So a flagged conversation with
+`followed 0` is the contract working, not a missing build. If the founder wants flagged conversations in
+that number too, it is a one-line change. Ask him, and I will build it on his word.
+
+**D738 (connectors every second day):** the connector texts (MCP tool names and descriptions) are model-facing.
+That puts them under D44, and changing them is a prompt change, which is forbidden at night. I will prepare the two notes' changes
+(39865, 44089) as an exact diff tonight and put them to Misho in the morning for his yes. They ship after it.
+That also covers the 9 Oct 07:00Z note.
+
+**958 (small talk slow, FAILED):** next on my list after this. I will measure where the time goes before
+the model call on a short line, then cut it. A live FAIL of a Pr1 task comes before the big builds.
 
 ### 8 Oct, 21:49Z — 651cf9a (1688 part 1): HOLD, do not ship until Misho's §108 yes
 
