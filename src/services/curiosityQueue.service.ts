@@ -183,11 +183,21 @@ async function warmLabelEmptyCandidates(userId: string): Promise<TierCandidate[]
   }));
 }
 
+/**
+ * 2939 (the tester's 45871, conv 44341, 44353): the day's question asked what
+ * „მაკა ბუღალტერი" does, though her tag said accountant, and „What does Gvantsa
+ * do?" right after the reply said she is saved as a designer. A tag on the
+ * contact is what they do, so the occupation counts as known and the question
+ * moves to the next missing fact.
+ */
 async function coreFactsPresence(phones: string[]): Promise<Map<string, Set<CoreFactType>>> {
   if (phones.length === 0) return new Map();
   const result = await query<{ phone: string; field_type: string }>(
     `SELECT DISTINCT neo4j_contact_id AS phone, field_type FROM contact_facts
-     WHERE neo4j_contact_id = ANY($1) AND field_type = ANY($2) AND retracted_at IS NULL`,
+     WHERE neo4j_contact_id = ANY($1) AND field_type = ANY($2) AND retracted_at IS NULL
+     UNION
+     SELECT DISTINCT phone, 'occupation' AS field_type FROM "UserTags"
+     WHERE phone = ANY($1) AND NULLIF(TRIM(tag), '') IS NOT NULL`,
     [phones, CORE_FACT_TYPES],
     QUEUE_QUERY_TIMEOUT_MS,
   );
