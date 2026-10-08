@@ -130,6 +130,14 @@ unanswered. Put them again in the morning:
   one person, the server sends that one question itself at that moment (the §97 path, already approved
   for the fallback) and returns ask_contact's own result. That is a new path that writes to real people,
   so it waits for his yes and is shipped in daylight.
+- **AI. 2707 (the master test run's ON-006/ON-007):** on a brand-new seat with no phonebook, a goal
+  sentence („კარგი იურისტი მჭირდება…", "I need a good lawyer") runs as task_step and asks "which city?",
+  while a Latin-letter line runs as onboarding and says the contacts are not in yet. Cause: the server opens
+  the goal before the run (ensureGoalForRequest), and resolveRunMode puts a bound goal first, ahead of the
+  onboarding rule (D617). Two ways: (a) the onboarding rule wins even with a goal bound (the onboarding
+  blocks, no task-engine blocks, on the first need); (b) the task_step run gets one line, "this owner's
+  contacts are not in yet; say so once and ask for them". Either changes what the prompt loads (D44).
+  My recommendation: (b), because the goal and its plan still work.
 
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
