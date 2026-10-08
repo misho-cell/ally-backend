@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:45Z — c1bd717 (2810): an accepted search is counted as successful
+
+**c1bd717, board 2810.** A short owner line saying the result was what she needed records `accepted` on her newest
+search with results from the last 30 minutes; „not what I needed" records `refused`. It never overwrites a rung
+already climbed. Order: after e43f76a.
+DONE WHEN: AD-015, the successful count rises by one after the acceptance line.
+
 ### 8 Oct, 23:39Z — e43f76a (2377): a phone-made .xlsx is read, not called damaged
 
 **e43f76a, board 2377.** When ExcelJS throws, the first sheet is read straight from the zip (prefixed tags,
