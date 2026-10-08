@@ -307,6 +307,15 @@ function declined(goalText: string, reason: string): DistilledQuery {
 const INTRODUCTION_LEAD =
   /\b(?:introduce me to|introduced to|introduction to|an introduction from|arrange a meeting with|put me in touch with|get in touch with)\b/gi;
 
+/**
+ * 3369 (the tester's 46731, 3 of 3): Georgian imperative, the name FOLLOWS it —
+ * „დამაკავშირე <X>-თან". Without it no name was found and the opening second
+ * circle was handed the whole sentence.
+ */
+const GEORGIAN_INTRODUCTION_LEAD = /(?:დამაკავშირ|დაგვაკავშირ)\p{L}*/gu;
+/** „-თან" / „-სთან" on the name's last word: „ნიმუშაძესთან" → „ნიმუშაძე". */
+const WITH_ENDING_RE = /(?:ს)?თან$/u;
+
 /** Georgian: the name precedes it. „<X>-თან დაკავშირება", „<X> გამაცანი". */
 const INTRODUCTION_TRAIL = /(?:დაკავშირებ|გამაცნ|გააცნო|შემახვედრ)\p{L}*/gu;
 
@@ -479,6 +488,11 @@ export function introductionQueryWithoutAModel(goalText: string): string {
   }
   for (const match of goalText.matchAll(INTRODUCTION_TRAIL)) {
     consider(nameBeside(goalText.slice(0, match.index), true));
+  }
+  for (const match of goalText.matchAll(GEORGIAN_INTRODUCTION_LEAD)) {
+    const name = nameBeside(goalText.slice(match.index + match[0].length), false);
+    if (name.length > 0) name[name.length - 1] = name[name.length - 1].replace(WITH_ENDING_RE, '');
+    consider(name.filter((word) => word !== ''));
   }
 
   return best.length >= MIN_LOCAL_QUERY_WORDS ? best.join(' ') : '';
