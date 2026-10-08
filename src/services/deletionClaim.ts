@@ -33,8 +33,48 @@ export const DELETING_TOOLS: ReadonlySet<string> = new Set([
   'remove_contact_exclusion',
 ]);
 
-const CLAIMS_A_DELETION_RE =
-  /(წავშალე|წაიშალა|წავიშალე|დავივიწყე|წასაშლელად\s+მოვნიშნე|მოვხსენი|მოიხსნა|ამოვიღე|ამოვშალე|მოვაშორე|გავასუფთავე|\bdeleted\b|\bforgotten\b|\berased\b|\b(?:has|have|been|was)\s+removed\b|\bI\s+(?:have\s+)?(?:removed|forgot|cleared|erased)\b|удалил|удалено|убрал|стёр|забыл|borr[ée]|elimin[ée]|quit[ée])/iu;
+// Every word is matched WHOLE (3565): the earlier list matched inside other
+// words — „quit[ée]" inside "quite", „elimin[ée]" inside "eliminate" — and
+// ordinary answers got the delete card. Spanish takes only the accented past
+// („borré"), never the unaccented form that is also „that I delete". `\b` knows only Latin letters, so the
+// edges are written as „no letter before / after" for every alphabet.
+const CLAIM_WORDS: readonly string[] = [
+  'წავშალე',
+  'წავშალეთ',
+  'წაიშალა',
+  'წავიშალე',
+  'დავივიწყე',
+  'წასაშლელად\\s+მოვნიშნე',
+  'მოვხსენი',
+  'მოიხსნა',
+  'ამოვიღე',
+  'ამოვშალე',
+  'მოვაშორე',
+  'გავასუფთავე',
+  'deleted',
+  'forgotten',
+  'erased',
+  '(?:has|have|been|was)\\s+removed',
+  'I\\s+(?:have\\s+)?(?:removed|forgot|cleared|erased)',
+  'удалил[аи]?',
+  'удалено',
+  'удал[её]н',
+  'убрал[аи]?',
+  'ст[её]р',
+  'ст[её]рла',
+  'забыл[аи]?',
+  'borré',
+  'borrad[oa]',
+  'eliminé',
+  'eliminad[oa]',
+  'quité',
+  'quitad[oa]',
+];
+
+const CLAIMS_A_DELETION_RE = new RegExp(
+  `(?<![\\p{L}\\p{M}])(?:${CLAIM_WORDS.join('|')})(?![\\p{L}\\p{M}])`,
+  'iu',
+);
 
 export function claimsADeletion(reply: string): boolean {
   return CLAIMS_A_DELETION_RE.test(reply);

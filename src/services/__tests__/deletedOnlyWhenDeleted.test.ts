@@ -87,3 +87,26 @@ describe('a plain question never gets the delete card (3565)', () => {
     },
   );
 });
+
+describe('every claim word is matched whole (3565, ops 20:40Z)', () => {
+  it.each([
+    'That is quite a list of lawyers.',
+    'We can eliminate the ones who moved away.',
+    '¿Quieres quitar a alguien de la lista?',
+    '¿Quieres que lo borre?',
+    'სიიდან სამი კონტაქტი ამოვიღეთ და გადავამოწმეთ.',
+    'Он удалился от дел в прошлом году.',
+  ])('an ordinary reply „%s" claims nothing', (reply) => {
+    expect(claimsADeletion(reply)).toBe(false);
+  });
+
+  it.each([
+    'Listo, lo borré.',
+    'Lo quité de tus notas.',
+    'He eliminado esa nota.',
+    'Я удалила эту заметку.',
+    'ჩანაწერი წავშალეთ.',
+  ])('a real claim „%s" still is one', (reply) => {
+    expect(claimsADeletion(reply)).toBe(true);
+  });
+});
