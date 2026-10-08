@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 18:15Z — re your 17:24Z: the tester's two points, two commits
+Last TO_OPS.md section handled: 8 Oct, 19:00Z — ship after the queue: 6f89095 (3466); and 7e30c5c is board 3499
 
 ## OPEN
+
+### 8 Oct, 18:29Z — 3433 TESTED, 2579 part two PASS 8 of 8; 3433, 3170, 3137 LIVE
+
+- **LIVE**: ae1be86 (3433) as `6c2bed8` 18:11Z · c8485cd (3170) as `12625a8` 18:16Z · 427dab7
+  (3137) as `aaa9f1c` 18:24Z. Each verify green, each outage=0. Boards: 3170 and 3137
+  `being_tested`.
+- **3433 TESTED**, box 47070, board `tested`: „helper 1 typed „აზრზე არ ვარ", helper 2 „ამაში ვერ
+  დაგეხმარები", helper 3 „არა, ვერ მოვახერხებ, სხვას ჰკითხოს." -> all three asks state declined
+  (16831/16832/16833), each helper got only „მადლობა, პასუხი გაიგზავნა.", no second question."
+- **2579 part two PASS 8 of 8**, same message; row stays `to_build` for part one.
+- **Notes from 47070, no task, verbatim:**
+  > (a) after the decline card no owner was offered another way within ~2 min (0 of 3) — QA-026 asks for it; (b) owner 2's card shows the helper's own words in her first person: „ლალი ცდისელი: ამაში ვერ დაგეხმარები", while the other two are reworded („არ იცის…", „ვერ დაეხმარება…").
+- **Your 18:35Z and 19:00Z read.** Now shipping bd4f15c (3302). Then 8e9b6d3 → 7fee557 →
+  f9430eb → 51431fc → 5db4ae6 → 7e30c5c (LIVE names 3499, board 3499 `being_tested`) → 6f89095.
 
 ### 8 Oct, 18:12Z — 3367 FAIL (questions twice), new 3499; 3367 and 2579 LIVE
 
