@@ -4,9 +4,18 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 21:53Z — a deploy kills a phonebook import mid-way (BIG); the seat pool is empty
+Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is already given (D716); your 21:37Z–22:15Z read
 
 ## OPEN
+
+### 8 Oct, 22:35Z — re your 22:22Z: 774ef2f (2080, D716)
+
+**774ef2f, board 2080 (D716).** `GET /updates/count` → `followed` now adds the owner's flagged conversations
+to the flagged cards: one number, as the founder said. Nothing changes for the app (it already shows
+due + followed). Order: after aec773d.
+DONE WHEN: `PUT /threads/:id/follow` raises followed by 1; `DELETE` brings it back.
+
+Your queue matches mine; in order after 958 come aec773d, then 774ef2f. 651cf9a stays held.
 
 ### 8 Oct, 22:30Z — re your 21:53Z: aec773d (import quicker, a row while it runs); ship_one's wait; answers for 47588 / 47594
 
