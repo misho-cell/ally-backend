@@ -2776,6 +2776,8 @@ export interface UnwokenAnswer {
   shown?: boolean;
   /** The tester's 1108 (33509): the answerer's assistant already asked someone else onward. */
   passed_on?: boolean;
+  /** 1489: the reader pressed the decline button. */
+  declined?: boolean;
 }
 
 /** Answered asks whose owning task was never woken — the sweep's worklist. */
@@ -2805,7 +2807,8 @@ export async function listUnwokenAnswersForTask(
     `SELECT ta.id, ta.task_id, ta.answer, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS from_name, t.status AS task_status,
             t.thread_id AS task_thread_id, ta.ask_thread_id,
             t.user_id AS owner_user_id, ta.answer_shown_at IS NOT NULL AS shown,
-            EXISTS (SELECT 1 FROM task_asks r WHERE r.parent_ask_id = ta.id) AS passed_on
+            EXISTS (SELECT 1 FROM task_asks r WHERE r.parent_ask_id = ta.id) AS passed_on,
+            ta.declined_at IS NOT NULL AS declined
      FROM task_asks ta
      LEFT JOIN tasks t ON t.id = ta.task_id
      WHERE ta.task_id = $1

@@ -1,6 +1,7 @@
 import { membersJoinedSinceLastRun, newMembersNote } from './newMembersSince.service';
 import { randomUUID } from 'crypto';
 import { releaseDueHeldAsks } from './heldAsks.service';
+import { answerOnlySaysNo, noteQuietAfterDecline } from './quietSystemRun';
 import {
   HeldAskOutcome,
   heldAsksSentNote,
@@ -660,7 +661,17 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
     })),
   );
   // Row 322(a): on the owner's screen first; the model's turn comes after.
-  const woken = (await answersAreOnScreen(owed, arrived))
+  const onScreen = await answersAreOnScreen(owed, arrived);
+  // 1489 (Misho, გ): after only „no"s the goal carries on quietly; it writes only with a result.
+  const threadId = owed[0].task_thread_id;
+  if (
+    onScreen &&
+    threadId !== null &&
+    owed.every((a) => answerOnlySaysNo(a.answer ?? '', a.declined === true))
+  ) {
+    noteQuietAfterDecline(threadId);
+  }
+  const woken = onScreen
     ? await wakeTask(taskId, buildShownAnswersWakeEvent(arrived))
     : await wakeTask(
         taskId,

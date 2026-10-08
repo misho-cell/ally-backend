@@ -92,3 +92,79 @@ export const FRESH_ANSWER_MS = 10 * 60 * 1000;
 export function aLookedAgainLineTellsSomething(lastAnswerAt: Date | null, now: Date): boolean {
   return lastAnswerAt === null || now.getTime() - lastAnswerAt.getTime() >= FRESH_ANSWER_MS;
 }
+
+/**
+ * 1489, Misho's choice (გ), 8 Oct: after a helper's „no", the goal carries on
+ * quietly and writes to the owner only with a result. The tester's RW-015
+ * (2 of 2): the answer card reached the owner at once, and 30–40 s later the
+ * server-started run searched the owner's contacts again, found nobody, and
+ * wrote „nobody else in your contacts either… shall I look on the web?".
+ *
+ * The answer delivery marks the goal's conversation when every answer it
+ * carries is a decline; the run that follows is read here once. Its reply is
+ * kept only when it brought something: it sent a question or an introduction,
+ * recorded a result, or a search found somebody.
+ */
+const quietAfterDecline = new Set<number>();
+
+export function noteQuietAfterDecline(threadId: number): void {
+  quietAfterDecline.add(threadId);
+}
+
+export function takeQuietAfterDecline(threadId: number): boolean {
+  return quietAfterDecline.delete(threadId);
+}
+
+/** A typed answer that only says no: it opens with „no" and says nobody, with no „but". */
+const SAYS_NOBODY_RE =
+  /^\s*(?:არა|no|нет|no,)[\s,.!-].*(?:არავის|არავინ|ვერავის|ვერ\s+ვიცნობ|არ\s+ვიცნობ|nobody|no\s+one|anyone|никого|nadie)/isu;
+const BUT_RE = /(?:მაგრამ|თუმცა|\bbut\b|\bно\b|\bpero\b)/iu;
+
+export function answerOnlySaysNo(answer: string, declinedByButton: boolean): boolean {
+  if (declinedByButton) return true;
+  return SAYS_NOBODY_RE.test(answer) && !BUT_RE.test(answer);
+}
+
+const RESULT_TOOLS: ReadonlySet<string> = new Set([
+  'ask_contact',
+  'request_introduction',
+  'relay_ask',
+  'set_task_result',
+  'invite_contact',
+]);
+const FOUND_SOMEONE_RE = /"found"\s*:\s*true/u;
+
+interface ResultBlockLike {
+  readonly type: string;
+  readonly name?: string;
+  readonly content?: unknown;
+}
+
+/** A tool result as text: as it came, when it is text, else its JSON. */
+function resultText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part: unknown) =>
+        typeof (part as { text?: unknown }).text === 'string'
+          ? (part as { text: string }).text
+          : JSON.stringify(part),
+      )
+      .join('\n');
+  }
+  return JSON.stringify(content ?? '');
+}
+
+/** The run sent something, recorded a result, or one of its searches found somebody. */
+export function broughtAResult(
+  runTurns: ReadonlyArray<{ readonly role: string; readonly content: unknown }>,
+): boolean {
+  return runTurns.some((turn) => {
+    if (!Array.isArray(turn.content)) return false;
+    return (turn.content as ResultBlockLike[]).some(
+      (block) =>
+        (block.type === 'tool_use' && RESULT_TOOLS.has(block.name ?? '')) ||
+        (block.type === 'tool_result' && FOUND_SOMEONE_RE.test(resultText(block.content))),
+    );
+  });
+}
