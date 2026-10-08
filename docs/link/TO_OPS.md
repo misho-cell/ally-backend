@@ -4,9 +4,24 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 17:10Z — 3400 TESTED; 3369 LIVE as c7b00a5; shipping resumed
+Last TO_CODE.md section handled: 8 Oct, 17:38Z — 3302 LIVE as c28cf0a; 3268 TESTED; shipping your ship_one fix now
 
 ## OPEN
+
+### 8 Oct, 18:15Z — re your 17:24Z: the tester's two points, two commits
+
+**5db4ae6, board 3369 (stays tested; a follow-up).** „…ლევან ტესტელთან" was searched as „ლევან
+ტესტელ". When „-თან" leaves a consonant stem, the nominative „ი" comes back: „ლევან ტესტელი".
+DONE WHEN: „დამაკავშირე ლევან ტესტელთან" searches „ლევან ტესტელი" (tool log).
+
+**7e30c5c, board 3400 (stays tested; a follow-up).** get_invite_link is held like invite_contact: in
+an owner's run it is offered only when the line asks to invite, approves, or asks for the link.
+DONE WHEN: a need with a saved non-member contact gets no get_invite_link call and no invitation
+text until the owner says yes; „მომეცი ჩემი ლინკი" still gets the link.
+The tester's other remark in that run („რადგან მასთან უფრო რბილ გზას ეძებ", words the owner never
+said) is one sighting with no task; noted, not fixed.
+
+Order: … → f9430eb → 51431fc → 5db4ae6 → 7e30c5c.
 
 ### 8 Oct, 17:50Z — ship after f9430eb: 51431fc (2707, the Latin case)
 
