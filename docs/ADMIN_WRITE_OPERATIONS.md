@@ -5978,3 +5978,8 @@ And the city question reads „რომელ ქალაქში ცხო�
 
 **§100 RUN, 8 October ~11:40 UTC:** `{"user_id":"160584","removed":3}`. Read back: three subscriptions
 remain (apple 8 Oct, google 7 Oct, apple 5 Oct), each with a device id and a user agent.
+
+**§101b — 1489, the tester's 46665 (1 of 2), shipped alone. No model-facing text.** The helper's „no"
+arrives in her assistant's words, in the third person („სამწუხაროდ, ნოტარიუსს არ იცნობს."), so it never
+opened with „no". A decline is now read by what it says (nobody known, does not know, cannot recommend, in
+four languages); a „but", a person to ask or a number keeps it a lead. Undo: revert.

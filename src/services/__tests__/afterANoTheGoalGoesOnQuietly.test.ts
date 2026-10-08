@@ -21,6 +21,10 @@ describe('what counts as only a „no"', () => {
     ['No, I don’t know anyone.', false],
     ['Нет, никого не знаю', false],
     ['ამაში ვერ დაგეხმარები', true],
+    // 46665: the helper's assistant passes the „no" on in the third person.
+    ['სამწუხაროდ, ნოტარიუსს არ იცნობს.', false],
+    ['სამწუხაროდ, ნოტარიუსს ვერ გირჩევთ — არავის იცნობს.', false],
+    ['She does not know a notary.', false],
   ])('%s (button: %s)', (answer, button) => {
     expect(answerOnlySaysNo(answer, button)).toBe(true);
   });
@@ -29,7 +33,8 @@ describe('what counts as only a „no"', () => {
     'არა, მაგრამ ნინო იცნობს ერთს',
     'No, but my cousin knows one',
     'კი, ნინო სტომატოლოგი',
-    'არ ვიცი',
+    'არ იცნობს, მაგრამ ნინოს ჰკითხე',
+    'არავის იცნობს, ნომერს გამოგიგზავნის',
   ])('a lead or an answer is not: %s', (answer) => {
     expect(answerOnlySaysNo(answer, false)).toBe(false);
   });
