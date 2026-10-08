@@ -6027,7 +6027,7 @@ being the person's name:
 
 The owner's own words (or his line sent by the server) reset the count to 0. Undo: revert.
 
-**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:30 UTC, NIGHT_QUESTIONS AM).** The code is
+**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:15 UTC, NIGHT_QUESTIONS AM).** The code is
 in and can ship, but no run is given the tools while `OFFER_TOOLS_ON` is false. On his yes the switch flips
 and these three tool descriptions reach the model:
 
