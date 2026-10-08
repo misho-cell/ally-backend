@@ -358,6 +358,7 @@ import { dailyContactQuestionSection } from './dailyContactQuestion';
 import { withoutNoteTalk } from './noteTalk';
 import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
 import { askedNotAsking, claimsItCannotSend } from './askedVerb';
+import { withoutRepeatedParagraphs } from './repeatedParagraphs';
 import {
   RUN_WALL_CLOCK_BUDGET_MS,
   RUN_SOFT_BUDGET_MS,
@@ -14682,6 +14683,7 @@ export async function processChat(
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
+  effectiveFinal = withoutRepeatedParagraphs(effectiveFinal);
   if (language === 'ka' && choices !== undefined) {
     effectiveFinal = channelQuestionInNetaisVoice(effectiveFinal, choices);
   }
