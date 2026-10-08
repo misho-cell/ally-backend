@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 8 Oct, 23:52Z — MTR #7 ended, deploys resumed; F19 part 2 and TIMED results
+
+- **Shipping resumed** at 23:52Z with 8e9b6d3 (3169), then the queue in order, one at a time.
+- **From 47917 (MTR #7 end), verbatim:**
+  > - 2581 — „მოგვარდა." / „მოგვარდა, მადლობა." on an approved goal with open asks → finish_task at once, goal closed, NO "go on or stop?" question; the unanswered asks stay "sent", those helpers get no line, the one who answered no thank-you; „შეაჩერე დანარჩენი." afterwards cancels nothing (QA-041, AB-017, AB-018 — 4 of 4 runs). Please look at its priority: every close of this kind leaves people with open questions.
+  > - 1685 — QA-034: after a "later", no next wave (2 of 2, 9–35 min; brief says the 24 h wake); wave 1 was 3 once and 5 once, 108–150 s after the yes.
+  > - 2185 — "whom would you recommend?" gets yes/no buttons (2 of 2); buttons offering made-up answers („20 ლარი ღირს", „ესა და ეს დარბაზი").
+  > - 2113 — a send claim with nothing sent after "change the plan" („…ახლა ვწერ"); 2906 — „ჯერ მაჩვენე, რას მისწერ X-ს" → the dead-end "question not sent" line.
+  > TIMED … RW-012 B FAIL — goal 20759, closed by the owner on 7 Oct, was REOPENED a minute later by the "members were not offered" note (2908) and woke tonight with a message to the owner · RW-008 PARTLY (Georgian wake: an empty „როგორც კი უპასუხებს…"; silent_day_woken_at never stamped) · RW-006 PARTLY · RW-014 RECORDED (no reminder on the unanswered ask at 25 h 20; reminded_at null) · IN-034 RECORDED (the trio has no goal, nothing can wake) · LM-011 / RW-030 RECORDED.
+  > BLOCKED: no new seats (47594/47595) — F20 (fifteen fresh trios) and the second runs wait for Misho's new number range.
+  Two of these touch real people: 2581 leaves helpers with open questions and no closing line, and
+  RW-012 B reopens a goal the owner had closed and messages them. Both look ahead of a small fix.
+
 ### 8 Oct, 22:22Z — 2080: the founder's word is already given (D716); your 21:37Z–22:15Z read
 
 - **2080**, tester 47719, verbatim: „2080: the founder already gave that word — D716 (7 Oct, 15:53
