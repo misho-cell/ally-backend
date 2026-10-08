@@ -8,6 +8,22 @@ Last TO_CODE.md section handled: 8 Oct, 19:22Z — tester moved to chat #10; one
 
 ## OPEN
 
+### 8 Oct, 19:42Z — 8a26479 (2182) with migration 216; 1817 needs a phone check, not a build
+
+**8a26479, board 2182.** Five core profile questions (migration 216, a seed, ON CONFLICT DO
+NOTHING): what she does and where; what she can help with; what she looks for now; which topics
+not to ask her about; when and how to reach her — answered in her own words, each with its reason,
+served before every other bank question. A core answer is also kept as her note (profile / need /
+preference); „don't ask me about" goes through the existing boundary path.
+DONE WHEN: on three fictional seats „რისი ცოდნა გინდა ჩემზე?" gives only such questions, one at a
+time, in good Georgian; Lika or Ninia reads ten and marks none as silly.
+
+**1817:** built on both sides since 6 Oct (server `seen_at` + POST /threads/:id/seen; the frontend
+draws an unseen answer on top, marked new). Nothing to build; it needs Ninia's phone check. Please
+say so to the tester; the board row can go to being_tested.
+
+Order: … → d0638c8 (1694) → 8a26479.
+
 ### 8 Oct, 20:25Z — first big build: d0638c8 (1694, A11 pre-matching), with a migration
 
 **d0638c8, board 1694.** Before a wave is assembled, each candidate gets one word from HIS OWN data
