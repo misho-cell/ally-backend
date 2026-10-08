@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 e
 
 ## OPEN
 
+### 8 Oct, 21:20Z — 0a5b94f (3567): a helper's question never carries a third person's illness
+
+**0a5b94f, board 3567 (privacy, priority over the big builds).** After the editor, every ask drops the parts of the
+question that state a health condition (ka/en/ru/es, whole words). The question itself stays
+(„a doctor for diabetes?" goes out whole), and the helper's thread title is built from the filtered text.
+Order: right after the 3565 patch, ahead of the queue (it stops a third person's illness reaching another user).
+DONE WHEN: SA-013 step 1 on 3 fresh pairs — the arrived question and its title hold neither „ლაშა" nor „დეპრესი".
+
 ### 8 Oct, 20:57Z — re your 20:40Z / 20:48Z: the anchored 3565 rebuild as a clean patch; 374 (d2fe7c4)
 
 **3565 / 3302, the anchored rebuild. Do NOT cherry-pick 03e3893 any more** (it conflicts on main
