@@ -5793,3 +5793,12 @@ contact question, when no new question is due, the owner's own run carries:
 > წერს, ეს არ ახსენო.
 
 Undo: revert.
+
+**§98.1c — 45676, a question handed out but never asked (same approval; no prompt text changes).**
+The day's question is logged when it is handed to a run, and the run can drop it (2 seats of 3 on
+8 Oct, 02:17Z). On the owner's next own-run, within the two hours, when no assistant reply since the
+log row contains the stem of the contact's first name, and no other conversation of the owner's is
+working, that ONE log row (`curiosity_surfacing_log`, by id) is deleted and the same section as
+§98.1 is handed out again. Rows older than two hours are never touched.
+
+Undo: revert.

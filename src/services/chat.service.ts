@@ -4878,7 +4878,7 @@ async function buildAgentSystemPrompt(
   // D713 (phase 1): the owner's first ask on this goal, on every turn.
   const firstAsk = boundTask ? goalFirstAskSection(await goalFirstAsk(boundTask.id)) : '';
   // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
-  const contactQuestion = await dailyContactQuestionSection(userId, {
+  const contactQuestion = await dailyContactQuestionSection(userId, threadId, {
     ownerPresent: !ownerAbsent,
     regularThread: threadType === 'regular',
     goalBound: boundTask !== null,
