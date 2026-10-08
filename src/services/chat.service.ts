@@ -487,6 +487,7 @@ import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
 import type { UpcomingBirthday } from './birthdayLens.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
+import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
 import {
   labelsTheReplyLeftOut,
@@ -13213,6 +13214,12 @@ async function runToolLoop(
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+  }
+
+  // 3236: digits are 0-9, and an owner asking to be rated gets no score.
+  finalText = withPlainDigits(finalText);
+  if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
+    finalText = withoutScores(finalText);
   }
 
   // 3169: a found name the reply spelled in the other alphabet goes back as saved.
