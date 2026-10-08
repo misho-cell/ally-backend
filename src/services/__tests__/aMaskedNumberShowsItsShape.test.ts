@@ -36,7 +36,9 @@ describe('a plan for the one person the owner just instructed is refused', () =>
     const check = handler.indexOf('ownerJustInstructedThePlansOnePerson(');
     expect(check).toBeGreaterThan(-1);
     expect(check).toBeLessThan(handler.indexOf('planNamesPeople('));
-    expect(handler.slice(check, check + 300)).toContain('error: NO_PLAN_FOR_AN_INSTRUCTION');
+    expect(handler.slice(check, check + 300)).toContain(
+      'return refusedPlanOrSentAsk(userId, threadId, runId);',
+    );
   });
 
   it('only for a plan of exactly one person, an instruction, naming an own contact', () => {

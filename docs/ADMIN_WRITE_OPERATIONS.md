@@ -5877,3 +5877,17 @@ Undo: revert.
 under (UserAlias), up to 10. Only the label leaves the query: never who saved it, never how many.
 
 Undo: revert.
+
+**§99.5 — 694, shipped alone, in daylight (08 Oct ~07:10 UTC).** When propose_task_plan is refused because
+the owner's own line names this one person, the server sends that one question itself (sendInstructedAsk,
+the §97 path: one named own contact, the goal's permission, the question only). The tool result then
+says, model-facing:
+
+> Not proposed — the owner's own line named this one person, and the server has already sent the
+> question to <name>. Do not call grant_task_permission or ask_contact for it. Say in one line who it
+> went to.
+
+When the server cannot send (no single named contact, not on Netai, a wall), the old refusal stands.
+A path that writes to real people, by Misho's word.
+
+Undo: revert.
