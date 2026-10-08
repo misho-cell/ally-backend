@@ -10778,6 +10778,10 @@ async function executeToolCall(
         userId,
         String(input['target_phone'] ?? ''),
         typeof input['max_hops'] === 'number' ? input['max_hops'] : undefined,
+        // 1697 (A14): the open goal's words order the bridges.
+        threadId === undefined
+          ? null
+          : ((await getOpenTaskByThread(threadId).catch(() => null))?.title ?? null),
       );
     default:
       return { error: `Unknown tool: ${name}` };

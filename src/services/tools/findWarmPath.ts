@@ -1,3 +1,4 @@
+import { inBridgeOrder } from '../bridgeOrder';
 import { query } from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
@@ -184,6 +185,8 @@ export async function findWarmPath(
   userId: string,
   targetPhoneRaw: string,
   maxHopsRaw = MAX_HOPS,
+  /** 1697 (A14): the goal's words, so the bridges come in the order most likely to answer. */
+  goalText: string | null = null,
 ): Promise<WarmPathOutcome> {
   const targetPhone = normalizePhone(targetPhoneRaw ?? '');
   if (!targetPhone) {
@@ -256,7 +259,7 @@ export async function findWarmPath(
     is_member: isMemberPhone(states, phone),
     account_state: accountStateFor(states, phone),
   });
-  const paths: WarmPath[] = candidates
+  const reached: WarmPath[] = candidates
     .map((bridges) => bridges.map(bridgeFor))
     .map((bridges) => ({
       hops: bridges.length + 1,
@@ -266,9 +269,9 @@ export async function findWarmPath(
     // Fewest hops first, then the paths the relay can actually carry. Hops
     // stay ahead of relayable on purpose: a one-hop bridge who is not on Netai
     // is still the user's own contact, whom they can simply write to.
-    .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable))
-    // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
-    .slice(0, MAX_PATHS);
+    .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
+  // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
+  const paths = (await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS);
 
   return {
     found: true,
