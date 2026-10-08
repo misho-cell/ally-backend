@@ -1487,11 +1487,17 @@ async function createAskNow(
   // „will you introduce me to G". 2907 (§99.4): beside the asking model's own
   // buttons too — it writes them since D712, and it cannot see her people.
   // 2907 (46036): an instructed ask has no search behind it — its own question names the need.
+  // And (07:11Z, asks 16072/16073) the need a thread remembers can be the name search for
+  // the helper herself, which finds nobody in her book: then the question's trade is tried.
   const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
-  const picker =
-    pickerNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro
-      ? await pickerFor(String(toUserId), pickerNeed, language)
-      : null;
+  const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;
+  const questionNeed = needFromQuestion(safeQuestion);
+  const picker = !pickerAllowed
+    ? null
+    : ((pickerNeed ? await pickerFor(String(toUserId), pickerNeed, language) : null) ??
+      (questionNeed && questionNeed.need !== pickerNeed?.need
+        ? await pickerFor(String(toUserId), questionNeed, language)
+        : null));
   const draftChoices =
     authored === undefined
       ? choicesFromLabels(picker ? picker.choices : askChoicesFor(safeQuestion, language))

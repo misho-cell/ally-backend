@@ -39,7 +39,7 @@ describe('the reader’s own people beside the model’s buttons', () => {
   it('is built whether or not the model wrote buttons, never under an introduction', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain(
-      'pickerNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro',
+      'const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;',
     );
     expect(asks).toContain(
       'ownPeopleBeside(picker.names, authored, declineChoice(language), laterChoice(language))',
@@ -63,5 +63,13 @@ describe('the need an instructed ask carries (46036)', () => {
   it('is used when no search gave one', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain('const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);');
+  });
+});
+
+describe('a remembered need that finds nobody (asks 16072 / 16073)', () => {
+  it('falls back to the trade in the question', () => {
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).toContain('const questionNeed = needFromQuestion(safeQuestion);');
+    expect(asks).toContain('questionNeed && questionNeed.need !== pickerNeed?.need');
   });
 });
