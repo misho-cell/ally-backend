@@ -1,3 +1,4 @@
+import { geoName } from './georgianCase';
 import { nameToSay } from './spokenName';
 import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import type { RunLanguage } from './runLanguage';
@@ -227,4 +228,21 @@ export function laterSentenceForAsker(
   language: RunLanguage,
 ): string {
   return LATER_SENTENCES[language](nameToSay(name, language), dayOf(until, language, 'until'));
+}
+
+/**
+ * 2872 (the tester's 45641, 6 of 6): when the server itself sent the owner's
+ * question (case 1), the owner's whole reply was the bare status line
+ * „<name>: კითხვა მიუვიდა, პასუხს ველოდები". D714 / D722: one person asked is
+ * told in a plain sentence, not a status line.
+ */
+const SENT_SENTENCES: Readonly<Record<RunLanguage, (name: string) => string>> = {
+  ka: (n) => `${geoName(n, 'dat')} კითხვა გავუგზავნე. როგორც კი გიპასუხებს, მაშინვე მოგწერ.`,
+  en: (n) => `I sent your question to ${n}. I will tell you as soon as they answer.`,
+  ru: (n) => `Я отправил вопрос: ${n}. Напишу, как только будет ответ.`,
+  es: (n) => `Envié tu pregunta a ${n}. Te escribo en cuanto responda.`,
+};
+
+export function sentSentenceForOwner(name: string, language: RunLanguage): string {
+  return (SENT_SENTENCES[language] ?? SENT_SENTENCES.ka)(name.trim());
 }
