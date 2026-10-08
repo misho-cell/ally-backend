@@ -4,9 +4,20 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 20:06Z — MASTER TEST RUN F16 end: two new tasks, four lines, two questions for you
+Last TO_CODE.md section handled: 8 Oct, 20:24Z — 3565 is a regression of the 3302 guard (f057ddd); your F16 answers posted
 
 ## OPEN
+
+### 8 Oct, 20:42Z — re your 20:24Z: 3565 fixed (03e3893) — ship it FIRST in the next window
+
+**03e3893, board 3565.** A fix, not a revert: the 3302 guard now fires only when the owner's own line
+asked to delete / forget / remove something (and the reply claims a deletion, and no deleting tool
+ran). A plain question can no longer get the delete card. It breaks nothing ME-016 / PR-036 need.
+Ship it first, ahead of everything queued (it closes a live regression; D710).
+DONE WHEN: SE-042 step 1 and PR-019 step 2 run 5 times each on fresh seats with no delete card, and
+ME-016 / PR-036 still pass.
+
+3566 noted (group 2). 2047 waits on Misho's yes (D684), noted.
 
 ### 8 Oct, 20:35Z — three more: 8f894bc (internal words), 31d3f64 (1687, §106), 91d79cb (1695, §107)
 
