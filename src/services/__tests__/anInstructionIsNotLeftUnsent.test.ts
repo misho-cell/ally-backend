@@ -97,3 +97,30 @@ describe('an introduction from this conversation counts as sent (2708)', () => {
     );
   });
 });
+
+describe('what is not an order to ask a contact (2906)', () => {
+  it('leaves an email or a calendar entry to the run', () => {
+    expect(
+      contactInstructionIn(
+        'გაუგზავნე იმეილი მაკა ბუღალტერს, რომ ხვალ შევხვდებით, და ჩამიწერე ეს შეხვედრა კალენდარში ხვალ 15:00-ზე.',
+      ),
+    ).toBeNull();
+    expect(contactInstructionIn('Send an email to Maka that we meet tomorrow')).toBeNull();
+  });
+
+  it('reads „tell me" as said to Netai, not as an order to ask', () => {
+    expect(
+      contactInstructionIn(
+        'Tell me in one or two sentences each what you know about Nika Kurieri, Gvantsa, Sulkhan and Ia from my contacts.',
+      ),
+    ).toBeNull();
+  });
+
+  it('still reads an order to ask, with or without „tell me" after it', () => {
+    expect(contactInstructionIn(CASE_1)).not.toBeNull();
+    expect(contactInstructionIn('Ask Gia whether he knows a plumber and tell me')).not.toBeNull();
+    expect(
+      contactInstructionIn('ჰკითხე გიას, იცნობს თუ არა სანტექნიკს, და მითხარი'),
+    ).not.toBeNull();
+  });
+});
