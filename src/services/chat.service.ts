@@ -5088,6 +5088,7 @@ async function buildAgentSystemPrompt(
     ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
     ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+    ownerLine,
   });
   // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
   const noContacts =

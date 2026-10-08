@@ -33,6 +33,8 @@ export interface RunPresence {
   readonly ownerSpeaksOfADeath?: boolean;
   /** 3367: the owner's line asks what is waiting or what is new. */
   readonly ownerAsksWhatWaits?: boolean;
+  /** 3004: the owner's own line in this run. */
+  readonly ownerLine?: string;
 }
 
 /**
@@ -215,6 +217,22 @@ async function questionAlreadyHandedOut(userId: string, threadId: number): Promi
   return contactQuestionSection(await maybeCuriosityUpdate(userId));
 }
 
+/**
+ * 3004 (the tester's NEW TESTER CHAT #9, conv 44458): „ჩემი კონტაქტი ნინო
+ * სტომატოლოგი … კლინიკა „ღიმილი" აქვს ვაკეში. დაიმახსოვრე." — saved, and the same
+ * reply ended „ნინო სტომატოლოგი სად მუშაობს?". When the owner's line names the
+ * person the day's question is about, that question waits for another reply.
+ */
+const NAME_STEM_FROM = 4;
+
+export function lineNamesTheContact(line: string, update: CuriosityUpdate): boolean {
+  const who = typeof update.payload['who'] === 'string' ? update.payload['who'].trim() : '';
+  const first = who.split(/\s+/u)[0]?.toLowerCase() ?? '';
+  if (first.length < 2 || line.trim() === '') return false;
+  const stem = first.length >= NAME_STEM_FROM ? first.slice(0, -1) : first;
+  return line.toLowerCase().includes(stem);
+}
+
 /** The day's contact question for this run, or '' — never fails the run. */
 export async function dailyContactQuestionSection(
   userId: string,
@@ -223,7 +241,10 @@ export async function dailyContactQuestionSection(
 ): Promise<string> {
   if (!contactQuestionMayRun(presence)) return '';
   try {
-    const due = contactQuestionSection(await maybeCuriosityUpdate(userId));
+    const update = await maybeCuriosityUpdate(userId);
+    // 3004: the owner just spoke of this very person — no question about them in this reply.
+    if (update !== null && lineNamesTheContact(presence.ownerLine ?? '', update)) return '';
+    const due = contactQuestionSection(update);
     if (due !== '' || threadId === undefined) return due;
     return await questionAlreadyHandedOut(userId, threadId);
   } catch (err) {
