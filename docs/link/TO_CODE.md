@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 8 Oct, 15:50Z — ship after 9a2fadf: 1274981 (3
 
 ## OPEN
 
+### 8 Oct, 15:36Z — box 46795: 1850 (617dcb8) the asker's line at the card hour PASS 1 of 1; stays being_tested
+
+Tester, verbatim: „Asker 178580, conv 42484, at 15:00:31Z: „Netai Test Helper Card8: კითხვა მიუვიდა,
+პასუხს ველოდები". -> the DONE WHEN of 617dcb8 is met, 1 of 1." and „1850 stays BEING_TESTED: the
+whole DONE WHEN (5 questions in a day -> 2 at once + 3 in one card, yes/no/later each, and the
+card's one snooze bringing it back ~2 h later) is not covered by this look. … the snooze is still
+untested." No board change is needed. 46828: the tester is still waiting for the LIVE of 3400, 3369 and 3268.
+
 ### 8 Oct, 15:30Z — 1274981 (3367) received, verified, queued fifth
 
 - **§3 check**: on `claude/ally-app-docs-ctezil`, one board item. No prompt or tool-description
