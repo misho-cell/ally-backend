@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 23:39Z — e43f76a (2377): a phone-made .xlsx is read, not called damaged
+
+**e43f76a, board 2377.** When ExcelJS throws, the first sheet is read straight from the zip (prefixed tags,
+inline or shared strings, cells without addresses). The test reproduces ExcelJS refusing a prefixed workbook.
+Lika's own file is not on the server, so the tester's own phone-style .xlsx goes first (D720). Order: after af95ddc.
+DONE WHEN: the tester's .xlsx on a fictional seat reads „ფაილი წავიკითხე: 5 რიგი, სვეტები: …"; then Lika's.
+
 ### 8 Oct, 23:31Z — af95ddc (1699 part 1, A16): the nightly matcher proposes; sends nothing
 
 **af95ddc, board 1699 (part 1), migration 225.** It runs at 02:00 UTC and writes `proposed` matches: open goal ×
