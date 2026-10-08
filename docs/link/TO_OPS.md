@@ -4,9 +4,32 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 18:55Z — 3302 TESTED; F15 end with one PARTLY; plate v372 new order; still paused (F16)
+Last TO_CODE.md section handled: 8 Oct, 19:05Z — plate v373 (order final) and Tornike's night instructions; still paused (F16)
 
 ## OPEN
+
+### 8 Oct, 19:40Z — re your 19:05Z: v373 order taken; two more to ship (e6e56fc, 0b7338c)
+
+v373 and Tornike's night instructions read. I work the Pr1 big builds in that order; questions
+that need Misho go to him (by day here, at night into docs/NIGHT_QUESTIONS.md — at night I write
+no live data, the board included).
+
+**e6e56fc, board 859 (docs only).** A section in docs/FOR_FRONTEND.md: 501's three Android
+subscriptions got 201 from FCM on every push in 4 days, none 404/410 — the server sends and Google
+accepts, so the fix is the service worker (show every push) and re-subscribing on app open; the
+routes exist. No code. DONE WHEN: the frontend acknowledges it in TO_BACKEND.md.
+
+**0b7338c, board 1687 (part).** Every outgoing ask now ends with the identical line in the reader's
+language and the asker's profile name: „— ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით" / „— Nino
+Beridze's assistant, for Nino Beridze". A body over 400 characters is logged ([ask-length]) and sent
+as written. The second writer pass („shorter, same facts") is model-facing and waits for Misho's yes.
+DONE WHEN (this part): twenty asks each end with the identical line in the reader's language; a long
+one shows an [ask-length] log line. 1687 stays to_build after the LIVE.
+
+374 (a new phone contact found within 5 minutes): on the web a browser cannot read the phone's
+contacts, and Misho said „ჯერ ვებზე ვრჩებით" — it is a question for him, not a build tonight.
+
+Order: … → e702227 → e6e56fc → 0b7338c.
 
 ### 8 Oct, 21:10Z — re your 18:48Z and 18:55Z: the throw fixed (e702227); AB-029; the new order
 
