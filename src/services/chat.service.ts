@@ -73,6 +73,7 @@ import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { safetyReplyFor } from './safetyWorry';
+import { withoutMatchJustification } from './planJustification';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -7421,7 +7422,10 @@ function withPlanInReply(
   // reply was not asking for it to be approved. Only a reply carrying the
   // approve button is a plan reply.
   if (!replyAsksForApproval(offered)) return reply;
-  if (replyCarriesPlan(reply, plan)) return withClosingQuestion(reply, runLang(runId));
+  if (replyCarriesPlan(reply, plan)) {
+    // D739: the plan is its one sentence and one question — no sentence explaining the match.
+    return withClosingQuestion(withoutMatchJustification(reply), runLang(runId));
+  }
   // eslint-disable-next-line no-console
   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
   // The tester's 1110 (33975): the plan line went first and the findings came
