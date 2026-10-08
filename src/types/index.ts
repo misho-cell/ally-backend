@@ -71,6 +71,8 @@ export interface ImportResult {
   skipped: number;
   /** #374: already saved by this owner under the same name — sent again, nothing to do. */
   unchanged?: number;
+  /** #374: new contacts past this request's cap — sending the phonebook again picks them up. */
+  remaining?: number;
 }
 
 export interface ChatToolParameter {

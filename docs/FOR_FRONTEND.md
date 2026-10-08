@@ -802,6 +802,12 @@ same name is left alone (no second save, no re-enrichment) and counted in a new
 `unchanged` field; only new contacts are imported, and they are searchable
 seconds later.
 
+*8 Oct addendum:* the 500 cap now counts only NEW contacts, so a re-uploaded
+`.vcf` (`POST /contacts/import-vcf`, whole file) past 500 no longer stops at
+its first 500. If more than 500 are new, the answer carries
+`remaining: <n>`; send the same file again and the next 500 go in. Absent
+`remaining` means everything new is in.
+
 ## 2 October, 15:20 — #375: each reply now carries its own steps (`steps`), and the vanishing conversation
 
 **Steps of finished conversations (Ninia's test 23).** `GET /threads/:id/messages`

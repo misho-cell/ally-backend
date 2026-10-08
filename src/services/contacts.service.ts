@@ -14,6 +14,9 @@ import { parsePhonebookLabelsForUser } from './labelParser.service';
 import { normalizePhone as normalizeForRegisteredPhoneMatch } from './phone';
 
 const MAX_CONTACTS_PER_IMPORT = 500;
+// #374: how much of one sent phonebook is checked against what the owner
+// already saved; only the new ones count toward MAX_CONTACTS_PER_IMPORT.
+const MAX_CONTACTS_PER_FILE = 5_000;
 // Engine T4: the registration-screen preview runs over the WHOLE phonebook,
 // before the capped, structured import — a phone's worth of contacts easily
 // exceeds MAX_CONTACTS_PER_IMPORT.
@@ -119,20 +122,10 @@ export async function importContacts(
   const userPhones = await getUserPhones(userId);
   const userPhoneSet = new Set(userPhones);
   const userCompositeKey = buildCompositeKey(userPhones);
-  const batch = contacts.slice(0, MAX_CONTACTS_PER_IMPORT);
+  const { fresh, unchanged, remaining } = await selectNewContacts(userId, contacts);
 
   let imported = 0;
   let skipped = 0;
-  // #374: the profile can now send the phonebook again to pick up new
-  // contacts, so whatever this owner already saved under the same name is
-  // left alone — re-scoring and re-enriching hundreds of known contacts on
-  // every re-send would cost for nothing.
-  const known = await alreadySavedPairs(userId, batch);
-  const isKnown = (c: ImportContact): boolean =>
-    c.phones.length > 0 && c.phones.every((p) => known.has(pairKey(p, c.name)));
-  const fresh = batch.filter((c) => !isKnown(c));
-  const unchanged = batch.length - fresh.length;
-
   for (const contact of fresh) {
     const counts = await importSingleContact(userId, userPhoneSet, userCompositeKey, contact);
     imported += counts.imported;
@@ -158,12 +151,49 @@ export async function importContacts(
     console.error(`[label-parser] user ${userId} failed:`, (err as Error).message),
   );
 
-  const result = { imported, skipped, ...(unchanged > 0 && { unchanged }) };
+  const result = {
+    imported,
+    skipped,
+    ...(unchanged > 0 && { unchanged }),
+    ...(remaining > 0 && { remaining }),
+  };
   await recordImportAttempt(userId, source, contacts.length, { imported, skipped });
   return result;
 }
 
 const KNOWN_PAIRS_TIMEOUT_MS = 10_000;
+
+interface NewContactsSelection {
+  readonly fresh: ImportContact[];
+  readonly unchanged: number;
+  readonly remaining: number;
+}
+
+/**
+ * #374: the profile can send the phonebook again to pick up new contacts, so
+ * whatever this owner already saved under the same name is left alone —
+ * re-scoring and re-enriching hundreds of known contacts on every re-send
+ * would cost for nothing. The per-request cap counts only the NEW contacts:
+ * capping the whole file first meant a phonebook past 500 never got past its
+ * first 500, however often it was sent. What the cap leaves over comes back
+ * as `remaining`, and the next send picks it up.
+ */
+async function selectNewContacts(
+  userId: string,
+  contacts: readonly ImportContact[],
+): Promise<NewContactsSelection> {
+  const considered = contacts.slice(0, MAX_CONTACTS_PER_FILE);
+  const known = await alreadySavedPairs(userId, considered);
+  const isKnown = (c: ImportContact): boolean =>
+    c.phones.length > 0 && c.phones.every((p) => known.has(pairKey(p, c.name)));
+  const allFresh = considered.filter((c) => !isKnown(c));
+  const fresh = allFresh.slice(0, MAX_CONTACTS_PER_IMPORT);
+  return {
+    fresh,
+    unchanged: considered.length - allFresh.length,
+    remaining: contacts.length - considered.length + allFresh.length - fresh.length,
+  };
+}
 
 function pairKey(rawPhone: string, name: string): string {
   return `${normalizePhone(rawPhone)}|${name.trim()}`;

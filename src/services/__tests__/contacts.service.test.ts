@@ -187,6 +187,7 @@ describe('importContacts', () => {
     const result = await importContacts('1', contacts);
 
     expect(result.imported).toBe(500);
+    expect(result.remaining).toBe(100);
   });
 
   it('saves optional fields to Neo4j relationship', async () => {
@@ -426,5 +427,25 @@ describe('sending the phonebook again', () => {
 
     expect(out).toEqual({ imported: 1, skipped: 0, unchanged: 1 });
     expect(mockWithTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('a phonebook past 500 reaches its new contacts once the first 500 are saved', async () => {
+    mockPoolQuery.mockResolvedValue({ rows: [{ phone: '+995555000001' }], rowCount: 1 });
+    const contacts = Array.from({ length: 600 }, (_, i) => ({
+      name: `Contact ${i}`,
+      phones: [`+1800${String(i).padStart(7, '0')}`],
+    }));
+    const saved = contacts.slice(0, 500).map((c) => ({ phone: c.phones[0], alias: c.name }));
+    mockNamedQuery.mockImplementation((sql: string) =>
+      Promise.resolve(
+        String(sql).includes('FROM "UserAlias" WHERE "contactId"')
+          ? { rows: saved, rowCount: saved.length }
+          : { rows: [], rowCount: 0 },
+      ),
+    );
+
+    const out = await importContacts('42', contacts);
+
+    expect(out).toEqual({ imported: 100, skipped: 0, unchanged: 500 });
   });
 });
