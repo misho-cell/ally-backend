@@ -481,6 +481,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import { contactsNotTagged, negatedTerm, NotTaggedContact, notTaggedAnswer } from './notTagged';
 import { InboxQuestion, questionsTheReplyLeftOut } from './inboxQuestions';
 import { ListStatus, listStatus, startListWork } from './listItems.service';
 import { shareContactNumberWithAsker, ShareRefusal } from './shareNumber.service';
@@ -12011,6 +12012,42 @@ async function answerNonMemberNamed(
   return { reply: answer.text, language, choices: [...answer.choices], requestCreated: false };
 }
 
+/**
+ * 3170: „who of mine is NOT a <word>" is answered by the server — the owner's
+ * tagged contacts the ordinary search does not find for the word, a few by name
+ * with their tags. Null when the line is not such a question, or nobody fits.
+ */
+async function answerNotTagged(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  const term = negatedTerm(userMessage);
+  if (term === null) return null;
+  const contacts = await contactsNotTagged(userId, term).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[not-tagged] contacts not read:', (err as Error).message);
+    return [] as NotTaggedContact[];
+  });
+  if (contacts.length === 0) return null;
+  if (intent?.alreadyStored !== true) {
+    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+  }
+  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
+  const language = languageOfConversation(
+    userMessage,
+    spokenBefore,
+    detectRunLanguage(userMessage),
+  );
+  const text = notTaggedAnswer(term, contacts, language);
+  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+  // eslint-disable-next-line no-console
+  console.log(`[not-tagged] run ${runId}: answered by the server (${contacts.length})`);
+  return { reply: text, language, requestCreated: false };
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -14510,6 +14547,12 @@ export async function processChat(
       ? await answerNonMemberNamed(userId, threadId, userMessage, runId, intent)
       : null;
   if (nonMember !== null) return nonMember;
+  // 3170: „who of mine is NOT a <word>" names a few who are not, from the server.
+  const notTagged =
+    !ownerAbsent && thread.type === 'regular'
+      ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (notTagged !== null) return notTagged;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
