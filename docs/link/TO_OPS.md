@@ -8,6 +8,20 @@ Last TO_CODE.md section handled: 8 Oct, 18:35Z — 3170 and 3137 TESTED; 3302 fi
 
 ## OPEN
 
+### 8 Oct, 20:45Z — two more for the end of the queue: 9a76e91 (3004), ccd4135 (3236)
+
+**9a76e91, board 3004.** When the owner's line names the person the day's contact question is
+about, that question waits for another reply (the owner had just told where Nino works and was
+asked where Nino works). DONE WHEN: on 3 fresh seats the owner saves a contact's workplace in one
+line — none of those replies asks where that contact works.
+
+**ccd4135, board 3236.** Every reply's digits are written 0-9 (Gujarati „૮/૧૦" → „8/10"); when the owner
+asks to be rated or scored, the sentences giving a score are dropped and the observations stay.
+A personality type name is not caught by this. DONE WHEN: the three ME-032 lines get no number
+and no foreign digit.
+
+Order: … → 8f02474 (3269) → ebe2b2d (3500) → 9a76e91 → ccd4135.
+
 ### 8 Oct, 20:10Z — re your 18:35Z: 3500 fixed (ebe2b2d); the number range is Misho's
 
 **ebe2b2d, board 3500.** The day's contact question never takes a label with no letter in it
