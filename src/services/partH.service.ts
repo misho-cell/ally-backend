@@ -1,4 +1,5 @@
 import { query, withTransaction } from '../db/postgres/client';
+import { saveUserNote, UserNoteKind } from './userNotes.service';
 
 // PART H phase 3 — the selector and the recording path over migrations
 // 061 + 069 (the eight C.9 changes). The bank loads later via
@@ -139,7 +140,10 @@ export async function getNextQuestion(
      -- 'any' row when a specific moment was requested — live-caught: three
      -- different moment values all returned the same 'any' row, because
      -- nothing here previously distinguished surface specificity at all.
-     ORDER BY (qb.surface = $2) DESC, (qb.category = $3) ASC, qb.question_id
+     -- 2182: the five core questions (what she does, what she can help with,
+     -- what she looks for, what not to ask, how to reach her) come first.
+     ORDER BY (qb.category = 'core') DESC, (qb.surface = $2) DESC, (qb.category = $3) ASC,
+              qb.question_id
      LIMIT 5`,
     [userId, surface, avoidCategory, lang],
     PARTH_TIMEOUT_MS,
@@ -311,7 +315,40 @@ export async function recordAnswer(userId: string, input: AnswerInput): Promise<
     }
   });
 
+  if (!input.skipped) await carryCoreAnswer(userId, input.questionId, input.freeText);
   return { recorded: true, dimensions_moved: Object.keys(deltas) };
+}
+
+/**
+ * 2182: a core answer is what her own assistant should know from now on, so it
+ * is also kept as her note — „what I do" and „what I can help with" as profile
+ * notes (the pre-match of 1694 reads those), „what I look for" as a need, and
+ * „do not ask me about" as a preference, which the existing boundary path turns
+ * into a topic nobody's question reaches her on. A failed copy is logged; the
+ * answer itself is already recorded.
+ */
+const CORE_ANSWER_NOTE: Readonly<Record<string, UserNoteKind>> = {
+  core_what_where_001: 'profile',
+  core_can_help_002: 'profile',
+  core_looking_for_003: 'need',
+  core_dont_ask_004: 'preference',
+  core_reach_005: 'preference',
+};
+
+async function carryCoreAnswer(
+  userId: string,
+  questionId: string,
+  freeText: string | undefined,
+): Promise<void> {
+  const kind = CORE_ANSWER_NOTE[questionId];
+  const text = freeText?.trim() ?? '';
+  if (kind === undefined || text === '') return;
+  try {
+    await saveUserNote(userId, kind, text);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[profile-question] core answer not kept as a note:`, (err as Error).message);
+  }
 }
 
 export async function getDimensions(userId: string): Promise<Record<string, number>> {
