@@ -30,6 +30,11 @@ jest.mock('../threads.service', () => ({
   userLanguage: jest.fn().mockResolvedValue('ka'),
   threadLanguage: jest.fn().mockResolvedValue('ka'),
 }));
+// 3268: the deceased/blocked check has its own test; here nobody is excluded.
+jest.mock('../block.service', () => ({
+  ...jest.requireActual('../block.service'),
+  isDeceasedOrBlockedFor: jest.fn().mockResolvedValue(false),
+}));
 jest.mock('../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
 jest.mock('../askOptOut.service', () => ({
   __esModule: true,

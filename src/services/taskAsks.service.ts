@@ -21,6 +21,7 @@ import { acceptedIntroductionPhones, planAllows, planInForce, TaskPlan } from '.
 import { AnswerRule, matchAnswerRule, recordRuleUse, saveAnswerRule } from './answerRules.service';
 import { sharedRoster } from './roster.service';
 import { phoneDigits } from './phone';
+import { isDeceasedOrBlockedFor } from './block.service';
 import { looksLikeContactInstruction } from './goalIntent';
 import { questionForReader, relayedForReader } from './askTranslation.service';
 import { choicesFit, labelFits, messageLanguage } from './oneLanguageAsk';
@@ -170,6 +171,8 @@ export type AskRefusalReason =
   | 'recipient_opted_out'
   | 'recipient_not_on_netai'
   | 'never_contact'
+  /** 3268: the owner marked this person deceased, or blocked them. */
+  | 'recipient_excluded'
   | 'outside_plan'
   | 'self_send'
   | 'daily_cap_reached'
@@ -188,6 +191,11 @@ export type AskRefusalReason =
    * topic, I already tried and they passed", about a question she never saw.
    */
   | 'not_sent_this_time';
+
+/** 3268: what the run is told when the owner marked the person deceased or blocked them. */
+const RECIPIENT_EXCLUDED =
+  'Not sent: the owner marked this person as deceased, or blocked them. Never write to them, never ' +
+  'put them in a plan. Tell the owner in one kind line that nothing went to them, and go on without them.';
 
 /** What the asker's run is told when a boundary stops a send: nothing it can retell as a reason. */
 export function notSentThisTime(toName: string): string {
@@ -756,6 +764,13 @@ async function createAskNow(
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
     return { sent: false, reason: 'empty_question', error: 'Pass a non-empty question.' };
+
+  // 3268: a person the owner marked deceased or blocked is never asked, on any path.
+  if (await isDeceasedOrBlockedFor(fromUserId, contactPhone)) {
+    // eslint-disable-next-line no-console
+    console.log(`[ask] task ${taskId}: refused, the owner marked this person deceased or blocked`);
+    return { sent: false, reason: 'recipient_excluded', error: RECIPIENT_EXCLUDED };
+  }
 
   // #1685 (A2): the wave this ask goes in; null when the waves do not count it.
   let waveNo: number | null = null;

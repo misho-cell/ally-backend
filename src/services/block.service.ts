@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { normalizePhone } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 import { boundaryExclusionsFor } from './askBoundary.service';
 
 /**
@@ -184,6 +184,9 @@ export async function getExcludedPhones(userId: string, aboutQuery?: string): Pr
   return [...new Set([...own, ...boundaries])];
 }
 
+/** 3268: one phone's exclusion read, before a question goes. */
+const EXCLUSION_CHECK_TIMEOUT_MS = 4_000;
+
 async function excludedForUser(userId: string): Promise<string[]> {
   const result = await query<{ phone: string }>(
     `SELECT "blockedPhone" AS phone
@@ -225,4 +228,26 @@ export async function getExcludedPhoneSet(
 ): Promise<Set<string>> {
   const phones = await getExcludedPhones(userId, aboutQuery);
   return new Set(phones.map((p) => normalizePhone(p)));
+}
+
+/**
+ * 3268 (MASTER TEST RUN ME-005, 2 of 2): a contact the owner marked deceased
+ * was still asked on the server's own order-to-ask path. One read for one
+ * phone: has this owner marked it deceased, or blocked it. Compared by digits,
+ * so every saved form of the number matches.
+ */
+export async function isDeceasedOrBlockedFor(userId: string, phone: string): Promise<boolean> {
+  const digits = phoneDigits(phone);
+  if (digits === '') return false;
+  const result = await query<{ hit: number }>(
+    `SELECT 1 AS hit FROM "ContactDeceased"
+      WHERE "userId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2
+     UNION ALL
+     SELECT 1 FROM "UserBlock"
+      WHERE "blockerId" = $1 AND regexp_replace("blockedPhone", '\\D', '', 'g') = $2
+     LIMIT 1`,
+    [userId, digits],
+    EXCLUSION_CHECK_TIMEOUT_MS,
+  );
+  return result.rows.length > 0;
 }
