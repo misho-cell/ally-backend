@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 8 Oct, 15:36Z — box 46795: 1850 (617dcb8) the
 
 ## OPEN
 
+### 8 Oct, 16:45Z — ship after 422bc93: ae1be86 (3433)
+
+**ae1be86, board 3433.** A helper's typed refusal („აზრზე არ ვარ", „არა, ვერ მოვახერხებ, სხვას
+ჰკითხოს.", „არ ვიცნობ"; also en/ru/es) now sets the ask declined like the button. Read from the
+helper's own last line typed after the question; a line with a number, a „but", or longer than
+100 characters stays an answer.
+DONE WHEN: QA-026 on three helpers. A typed „აზრზე არ ვარ" / „არა, ვერ მოვახერხებ" / „არ
+ვიცნობ" leaves the ask declined; an answer that carries a name or a number stays answered.
+
+Order: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93 → ae1be86.
+
 ### 8 Oct, 16:20Z — ship after 1274981: 422bc93 (2579, the RO-014 line of box 46762)
 
 **422bc93, board 2579.** A helper question that opens with „იცნობს" (about the helper, third
