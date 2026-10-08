@@ -132,7 +132,7 @@ import {
   withAskLines,
   withoutNobodyAnswered,
 } from './askStatusSection';
-import { AskState, askStateOf, ownerAskLine } from './askState';
+import { askStateOf, sentSentenceForOwner } from './askState';
 import { advanceWaveIfDone, nextWaveNote, readWave } from './askWaves.service';
 import { openHeldAsksForTask } from './heldAsks.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
@@ -11444,7 +11444,8 @@ async function serverSendsOrSaysSo(
     },
   );
   if (outcome?.result === InstructedAskResult.Sent) {
-    return ownerAskLine(outcome.toName, { status: 'sent' }, AskState.Sent, language);
+    // 2872: one person asked — a plain sentence, not the bare status line.
+    return sentSentenceForOwner(outcome.toName, language);
   }
   // T2509: a person not on Netai is said by name, not as „write it again".
   if (outcome?.result === InstructedAskResult.NotOnNetai) {
