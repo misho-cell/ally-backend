@@ -8,7 +8,7 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
-### 8 Oct, 22:42Z — 625f5a6: an English reply never ends on a Georgian paragraph (47588 side note)
+### 8 Oct, 22:40Z — 625f5a6: an English reply never ends on a Georgian paragraph (47588 side note)
 
 **625f5a6, no board number (the tester's 47588 side note 2; file it if you want one).** In a non-Georgian
 conversation, a paragraph almost entirely in Georgian letters is dropped when the rest of the reply
