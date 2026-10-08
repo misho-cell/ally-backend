@@ -1139,15 +1139,27 @@ const GEORGIAN_DIALLING_CODE = '995';
  * +995 and another country code, and „no number" is neither; guessing English
  * there would be reading a rule past what it says.
  */
+/**
+ * §99.7 (Misho's yes, 8 Oct; task 2575): a Georgian helper on a foreign
+ * number read English. The number decides first; a foreign one still reads
+ * Georgian when the person's own name, or a name others saved them under, is
+ * written in Georgian letters. Booleans only — no name leaves the database.
+ */
+const GEORGIAN_LETTERS_RE = '[ა-ჰ]';
+
 async function languageOfAStrangersNumber(userId: string): Promise<RunLanguage> {
-  const result = await query<{ georgian: boolean | null }>(
-    `SELECT BOOL_OR(regexp_replace(phone, '[^0-9]', '', 'g') LIKE $2 || '%') AS georgian
-     FROM "UserPhone" WHERE "userId" = $1::int`,
-    [userId, GEORGIAN_DIALLING_CODE],
+  const result = await query<{ georgian: boolean | null; georgian_name: boolean }>(
+    `SELECT BOOL_OR(regexp_replace(up.phone, '[^0-9]', '', 'g') LIKE $2 || '%') AS georgian,
+            (COALESCE((SELECT u.name ~ $3 FROM "User" u WHERE u.id = $1::int), false)
+              OR EXISTS (SELECT 1 FROM "UserAlias" ua JOIN "UserPhone" own ON own.phone = ua.phone
+                          WHERE own."userId" = $1::int AND ua.alias ~ $3)) AS georgian_name
+     FROM "UserPhone" up WHERE up."userId" = $1::int`,
+    [userId, GEORGIAN_DIALLING_CODE, GEORGIAN_LETTERS_RE],
   );
-  const georgian = result.rows[0]?.georgian;
+  const row = result.rows[0];
   // NULL is „this person has no number", not „not Georgian".
-  return georgian === false ? 'en' : 'ka';
+  if (row?.georgian !== false) return 'ka';
+  return row.georgian_name ? 'ka' : 'en';
 }
 
 export async function userLanguage(userId: string): Promise<RunLanguage> {
