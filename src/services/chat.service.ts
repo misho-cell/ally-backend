@@ -355,6 +355,7 @@ import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instr
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { asksAboutTheOwner, dailyContactQuestionSection } from './dailyContactQuestion';
+import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
 import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
 import { askedNotAsking, claimsItCannotSend } from './askedVerb';
@@ -4889,6 +4890,11 @@ async function buildAgentSystemPrompt(
     preview: forcedMode !== undefined,
     ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
   });
+  // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
+  const noContacts =
+    !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
+      ? await noContactsYetSection(userId, threadId)
+      : '';
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
@@ -4908,6 +4914,7 @@ async function buildAgentSystemPrompt(
       waveNote +
       firstAsk +
       contactQuestion +
+      noContacts +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this
       // conversation IS, said by the server rather than inferred from the text.

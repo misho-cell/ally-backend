@@ -5853,3 +5853,13 @@ buildShownAnswersWakeEvent and buildShownRelayAnswerWakeEvent), just before „�
 > რაც ამ მიზანზე უკვე მოძებნე, თავიდან ნუ მოძებნი და ნუ ახსენებ — თქვი მხოლოდ შემდეგი ნაბიჯი.
 
 Undo: revert.
+
+**§99.3 — 2707, the exact text, shipped alone.** A goal run (owner present, goal bound) for an owner with
+no phonebook row, on the conversation's first owner line only (noContactsYet.ts), carries:
+
+> ## კონტაქტები ჯერ არ არის (2707)
+> ამ მფლობელს კონტაქტები ჯერ არ აუტვირთავს. პასუხის დასაწყისში ერთი წინადადებით უთხარი, რომ მისი
+> კონტაქტები ჯერ არ ჩანს, და სთხოვე ატვირთოს — ასე მის ნაცნობებშიც მოვძებნი. მერე დაეხმარე იმით, რაც
+> გაქვს. ეს მხოლოდ ერთხელ თქვი.
+
+Undo: revert.
