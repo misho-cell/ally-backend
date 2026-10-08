@@ -10,6 +10,17 @@ import { RunLanguage } from './runLanguage';
 const CLIFFHANGER_TAIL_RE =
   /(?<!(?:ვერ|არ|can'?t|cannot|won'?t|not)\s+)(?:ვნახოთ|ვნახავ|შევამოწმებ|გადავამოწმებ|მოვძებნი|ვამოწმებ|ვეძებ|ერთი წუთით|ერთი წამით|let me (?:check|look|see|search)|i'?ll (?:check|look|search)|checking|one moment)[^?]{0,60}$/i;
 
+/**
+ * The tester's 45676 (conv 44256): „მომწერე ერთი სახელი … და ზუსტად შევამოწმებ"
+ * — the check waits on the owner, so the turn is finished. Read as an
+ * announcement, the nudge made the run write the same answer again under it.
+ * A last sentence that asks the owner for something, or makes the work hang on
+ * them, is not a cliffhanger.
+ */
+const WAITS_ON_THE_OWNER_RE =
+  /(?:მომწერე|მითხარი|გამომიგზავნე|მომეცი|დამიზუსტე|თუ\s+(?:გინდა|გსურს|გახსოვს|მომწერ|მეტყვი)|send me|tell me|give me|let me know|\bif you\b|\bonce you\b)/iu;
+const LAST_SENTENCE_RE = /[^.!?。\n]*[.!?。]?\s*$/u;
+
 // A long final is a real answer even if it mentions next steps; only short
 // finals can BE the cliffhanger.
 const MAX_CLIFFHANGER_FINAL_CHARS = 400;
@@ -18,6 +29,8 @@ export function isCliffhangerReply(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length === 0 || trimmed.length > MAX_CLIFFHANGER_FINAL_CHARS) return false;
   if (/[?？]\s*$/.test(trimmed)) return false; // a question to the user is a valid ending
+  const lastSentence = trimmed.match(LAST_SENTENCE_RE)?.[0] ?? trimmed;
+  if (WAITS_ON_THE_OWNER_RE.test(lastSentence)) return false;
   return CLIFFHANGER_TAIL_RE.test(trimmed.slice(-160));
 }
 
