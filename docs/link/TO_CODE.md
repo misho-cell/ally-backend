@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 8 Oct, 15:05Z — ship after the first handoff: 
 
 ## OPEN
 
+### 8 Oct, 15:22Z — box 46762: one broken line under RO-014 (task 2579), the rest PASS
+
+From the tester's 46762 (MASTER TEST RUN chat #5 close, 15:20Z, build 1ec9bd4), verbatim:
+
+> - RO-014 PASS: 8 of 8 asks reworded (2 at once, 6 at the card), none in the owner's own words. One line broken: "იცნობს თუ არა კარგ ბუღალტერს." (third person, a full stop) — line added to task 2579, with a gym button "ამ სპორტდარბაზში დავდივარ" that names no gym.
+
+Same message, PASS: LM-002 (held asks out at 15:00–15:02Z, 2→2 and 3→3), LM-004, LM-006 Q3, RO-014
+(apart from the line above). LM-003 is set up; its reads are at 17:25Z and 18:10Z.
+46763 (NEW TESTER CHAT #9, 15:15Z): still waiting for the LIVE of 3400, 3369 and 3268.
+Shipping still waits on Misho's access setting; nothing marked or posted in the box yet.
+
 ### 8 Oct, 15:14Z — 9a2fadf (3302) received, verified, queued fourth
 
 - **§3 check**: on `claude/ally-app-docs-ctezil`, one board item. The server replaces the reply
