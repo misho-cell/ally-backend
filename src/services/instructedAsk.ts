@@ -1,3 +1,4 @@
+import { isDeceasedOrBlockedFor } from './block.service';
 import { query } from '../db/postgres/client';
 import {
   goalTitleFrom,
@@ -30,12 +31,17 @@ export enum InstructedAskResult {
   Sent = 'sent',
   /** T2509: the person is not on Netai (or never opened it) — the owner is told so. */
   NotOnNetai = 'not_on_netai',
+  /** 3268: the owner marked the person deceased or blocked them — nothing is sent, no goal opened. */
+  Excluded = 'excluded',
   NotSent = 'not_sent',
 }
 
 export type InstructedAskOutcome =
   | {
-      readonly result: InstructedAskResult.Sent | InstructedAskResult.NotOnNetai;
+      readonly result:
+        | InstructedAskResult.Sent
+        | InstructedAskResult.NotOnNetai
+        | InstructedAskResult.Excluded;
       readonly toName: string;
     }
   | { readonly result: InstructedAskResult.NotSent };
@@ -101,6 +107,13 @@ export async function sendInstructedAsk(
   if (sentence === null) return NOT_SENT;
   const phone = await oneContactNamed(userId, sentence);
   if (phone === null) return NOT_SENT;
+  // 3268: before any goal is opened for it.
+  if (await isDeceasedOrBlockedFor(userId, phone)) {
+    return {
+      result: InstructedAskResult.Excluded,
+      toName: await ownersLabel(userId, phone, instructionNamed(sentence) ?? ''),
+    };
+  }
   const taskId = await goalFor(userId, threadId, ownerLine);
   await grantTaskPermission(userId, taskId);
   // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.

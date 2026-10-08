@@ -103,3 +103,17 @@ export const NOT_ON_NETAI_LINE: Readonly<Record<RunLanguage, (name: string) => s
   es: (name) =>
     `${name} todavía no está en Netai, así que no pude enviar la pregunta. Puedes invitarle o escribirle tú.`,
 };
+
+/**
+ * 3268 (the tester's 46678, 0 of 2): the owner named a contact they had marked
+ * deceased (or blocked), nothing went, and they read „write it again". One
+ * kind line instead, with nothing to retry and no reason spelled out.
+ */
+export const EXCLUDED_LINE: Readonly<Record<RunLanguage, (name: string) => string>> = {
+  ka: (name) => `${name}-სთვის არაფერს ვწერ — ასე მონიშნე. თუ სხვას ვკითხოთ, მითხარი ვის.`,
+  en: (name) =>
+    `I am not writing to ${name}, as you marked them. If we should ask someone else, tell me who.`,
+  ru: (name) => `${name} я не пишу — ты так отметил. Если спросить кого-то другого, скажи кого.`,
+  es: (name) =>
+    `No escribo a ${name}, así lo marcaste. Si preguntamos a otra persona, dime a quién.`,
+};

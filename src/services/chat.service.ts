@@ -365,7 +365,12 @@ import {
 import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
 import { withdrawOwnCutNotice } from './cutOffRunNotice.service';
-import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instructionUnsent';
+import {
+  EXCLUDED_LINE,
+  instructionLeftUnsent,
+  NOT_ON_NETAI_LINE,
+  NOT_SENT_LINE,
+} from './instructionUnsent';
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import { asksAboutTheOwner, dailyContactQuestionSection } from './dailyContactQuestion';
@@ -11670,6 +11675,9 @@ async function serverSendsOrSaysSo(
   // T2509: a person not on Netai is said by name, not as „write it again".
   if (outcome?.result === InstructedAskResult.NotOnNetai) {
     return (NOT_ON_NETAI_LINE[language] ?? NOT_ON_NETAI_LINE.ka)(outcome.toName);
+  }
+  if (outcome?.result === InstructedAskResult.Excluded) {
+    return (EXCLUDED_LINE[language] ?? EXCLUDED_LINE.ka)(outcome.toName);
   }
   // eslint-disable-next-line no-console
   console.warn(
