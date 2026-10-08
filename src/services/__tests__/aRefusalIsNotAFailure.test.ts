@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { isReadOnlySql } from '../../api/routes/roQuery.routes';
+import { outcomeOf } from '../toolCallLog.service';
 
 /**
  * `ok = false` IN `tool_call_log` MEANS TWO DIFFERENT THINGS, and for a day I
@@ -283,4 +284,19 @@ describe('every ops query passes the endpoint’s own guard', () => {
       }
     });
   }
+});
+
+describe('a refused search is not „found nobody" (2809, AD-014)', () => {
+  it('is a refusal, not an empty result', () => {
+    const out = outcomeOf({
+      found: false,
+      error: 'Not searched: this answer has used its 8 searches.',
+    });
+    expect(out.ok).toBe(false);
+    expect(out.empty).toBe(false);
+  });
+
+  it('still records a search that ran and found nothing as empty', () => {
+    expect(outcomeOf({ found: false, reason: 'no_matches' }).empty).toBe(true);
+  });
 });
