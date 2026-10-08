@@ -53,7 +53,7 @@ describe('an introduction request', () => {
   it('carries no pick-list under it', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain(
-      'pickerNeed && !sameThread && askKindOf(safeQuestion) !== AskKind.Intro',
+      'const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;',
     );
   });
 });
