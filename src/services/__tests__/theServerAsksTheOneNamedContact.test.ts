@@ -117,7 +117,8 @@ describe('3268: a person the owner marked deceased or blocked', () => {
   });
 
   it('the line asks nothing to be repeated', () => {
-    expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).toContain('გიგა ტესტაძე-სთვის არაფერს ვწერ');
+    expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).toContain('გიგა ტესტაძესთვის არაფერს ვწერ');
+    expect(EXCLUDED_LINE.ka('Giga Testadze')).toContain('Giga Testadze-სთვის');
     expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).not.toContain('კიდევ ერთხელ');
   });
 });
