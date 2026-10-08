@@ -1,4 +1,4 @@
-import { isBareGreeting } from './greetingTurn';
+import { isBareGreeting, unquoted } from './greetingTurn';
 import { statesANeed } from './goalIntent';
 
 /**
@@ -26,15 +26,16 @@ const FAREWELL_RE =
 
 /** A line that only says goodbye — answered as a goodbye, never as „how are you". */
 export function isFarewell(message: string): boolean {
-  return FAREWELL_RE.test(message);
+  return FAREWELL_RE.test(unquoted(message));
 }
 
 export function isSmallTalk(message: string): boolean {
+  const text = unquoted(message);
   return (
-    isBareGreeting(message) ||
-    SMALL_TALK_RE.test(message) ||
-    FAREWELL_RE.test(message) ||
-    isPlainThanks(message)
+    isBareGreeting(text) ||
+    SMALL_TALK_RE.test(text) ||
+    FAREWELL_RE.test(text) ||
+    isPlainThanks(text)
   );
 }
 
@@ -49,7 +50,7 @@ const OPENS_WITH_THANKS_RE = /^\s*(მადლობ|გმადლობ|than
 const MAX_THANKS_CHARS = 80;
 
 export function isPlainThanks(message: string): boolean {
-  const text = message.trim();
+  const text = unquoted(message).trim();
   return (
     text.length <= MAX_THANKS_CHARS &&
     OPENS_WITH_THANKS_RE.test(text) &&
