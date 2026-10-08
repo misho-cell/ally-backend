@@ -63,12 +63,27 @@ const GEORGIAN_LETTER_RE = /[ა-ჰ]/u;
  * somebody's results. Same trim, different price, so the number is the
  * caller's to choose rather than one compromise serving neither.
  */
+/**
+ * 3105 (MASTER TEST RUN SE-036, 2 of 2): a contact tagged „მშენებლობის
+ * ნებართვები" was missed by „ნებართვა" and „მშენებლობა": the plural and the
+ * genitive drop the noun's final „ა" (ნებართვ-ები, მშენებლობ-ის), so the
+ * nominative was never the start of either. The final „ა" is trimmed too, but
+ * only from a long word — six letters must remain — so a short word is never
+ * widened into strangers.
+ */
+const A_STEM_ENDING = 'ა';
+const MIN_A_STEM_LEN = 6;
+
 export function georgianStem(word: string, minStemLen: number = MIN_STEM_LEN): string {
   if (!GEORGIAN_LETTER_RE.test(word)) return word;
   for (const ending of CASE_ENDINGS) {
     if (!word.endsWith(ending)) continue;
     const stem = word.slice(0, word.length - ending.length);
     if (stem.length >= minStemLen) return stem;
+  }
+  if (word.endsWith(A_STEM_ENDING)) {
+    const stem = word.slice(0, -A_STEM_ENDING.length);
+    if (stem.length >= Math.max(minStemLen, MIN_A_STEM_LEN)) return stem;
   }
   return word;
 }
