@@ -63,13 +63,15 @@ const PENDING_ANSWER_HOURS = 2;
 const PENDING_QUERY_TIMEOUT_MS = 3_000;
 
 interface PendingQuestion {
+  readonly id: number;
   readonly label: string | null;
   readonly missing_fact: string;
 }
 
 async function questionAwaitingAnswer(userId: string): Promise<PendingQuestion | null> {
   const result = await query<PendingQuestion>(
-    `SELECT (SELECT TRIM(ua.alias) FROM "UserAlias" ua
+    `SELECT l.id,
+            (SELECT TRIM(ua.alias) FROM "UserAlias" ua
                WHERE ua."contactId" = l.user_id
                  AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace(l.phone, '\\D', '', 'g')
                  AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
@@ -98,16 +100,77 @@ export function pendingAnswerSection(pending: PendingQuestion | null): string {
   );
 }
 
+/**
+ * The tester's 45676: the day's question is logged the moment it is handed to
+ * a run, and the run can drop it — a search reply that ends on its own
+ * question („which city?") asked nothing about the contact on two seats of
+ * three, and the day's question was spent. Asked means written: when no reply
+ * of the owner's since names the contact, and no other conversation of theirs
+ * is still working on it, the log row is taken back so this run gets the
+ * question again.
+ */
+/** Letters a declined name may change at its end (ზვიადი → ზვიადს). */
+const NAME_ENDING_LETTERS = 1;
+const SHORTEST_STEMMED_NAME = 5;
+
+/** The part of the contact's first name every case form of it keeps. */
+export function nameStem(label: string): string {
+  const first = label.trim().split(/\s+/u)[0] ?? '';
+  const letters = Array.from(first);
+  return letters.length >= SHORTEST_STEMMED_NAME
+    ? letters.slice(0, -NAME_ENDING_LETTERS).join('')
+    : first;
+}
+
+async function questionWentUnasked(
+  userId: string,
+  threadId: number,
+  pending: PendingQuestion,
+): Promise<boolean> {
+  const who = nameStem(pending.label ?? '');
+  if (who === '') return false;
+  const result = await query<{ unasked: boolean }>(
+    `SELECT NOT EXISTS (
+              SELECT 1 FROM conversations c, curiosity_surfacing_log l
+               WHERE l.id = $3 AND c.user_id = $1::int AND c.role = 'assistant'
+                 AND c.created_at > l.surfaced_at AND position($4 IN c.content) > 0)
+        AND NOT EXISTS (
+              SELECT 1 FROM threads t
+               WHERE t.user_id = $1::int AND t.id <> $2 AND t.status = 'working') AS unasked`,
+    [userId, threadId, pending.id, who],
+    PENDING_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.unasked === true;
+}
+
+async function rearmQuestion(questionId: number): Promise<void> {
+  await query(
+    'DELETE FROM curiosity_surfacing_log WHERE id = $1',
+    [questionId],
+    PENDING_QUERY_TIMEOUT_MS,
+  );
+}
+
+/** The question already handed out today: re-armed when it went unasked, else the reminder. */
+async function questionAlreadyHandedOut(userId: string, threadId: number): Promise<string> {
+  const pending = await questionAwaitingAnswer(userId);
+  if (pending === null) return '';
+  if (!(await questionWentUnasked(userId, threadId, pending))) return pendingAnswerSection(pending);
+  await rearmQuestion(pending.id);
+  return contactQuestionSection(await maybeCuriosityUpdate(userId));
+}
+
 /** The day's contact question for this run, or '' — never fails the run. */
 export async function dailyContactQuestionSection(
   userId: string,
+  threadId: number | undefined,
   presence: RunPresence,
 ): Promise<string> {
   if (!contactQuestionMayRun(presence)) return '';
   try {
     const due = contactQuestionSection(await maybeCuriosityUpdate(userId));
-    if (due !== '') return due;
-    return pendingAnswerSection(await questionAwaitingAnswer(userId));
+    if (due !== '' || threadId === undefined) return due;
+    return await questionAlreadyHandedOut(userId, threadId);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[daily-contact-question] not read:', (err as Error).message);
