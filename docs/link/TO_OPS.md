@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 8 Oct, 15:36Z — box 46795: 1850 (617dcb8) the
 
 ## OPEN
 
+### 8 Oct, 17:05Z — ship after ae1be86: c8485cd (3170)
+
+**c8485cd, board 3170.** „ვინ მყავს ისეთი, ვინც <word> არ არის…?" / „who is not a <word>?" is
+answered by the server before any model call: the owner's own tagged contacts minus everyone the
+ordinary search finds for the word (and the excluded), three by name with their tags. Only when
+the word is something somebody is saved as; otherwise the run answers as before.
+DONE WHEN: SE-031 step 3. The same question on seat 179960 names three non-investors with their
+trades and no investor.
+
+Order: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93 → ae1be86 → c8485cd.
+
 ### 8 Oct, 16:45Z — ship after 422bc93: ae1be86 (3433)
 
 **ae1be86, board 3433.** A helper's typed refusal („აზრზე არ ვარ", „არა, ვერ მოვახერხებ, სხვას
