@@ -5983,3 +5983,7 @@ remain (apple 8 Oct, google 7 Oct, apple 5 Oct), each with a device id and a use
 arrives in her assistant's words, in the third person („სამწუხაროდ, ნოტარიუსს არ იცნობს."), so it never
 opened with „no". A decline is now read by what it says (nobody known, does not know, cannot recommend, in
 four languages); a „but", a person to ask or a number keeps it a lead. Undo: revert.
+
+**§104 — 3271, shipped alone. No model-facing text.** The routes that add contacts to a test seat (one, and
+in bulk) now run the label parser over the seat's phonebook in the background, as a phone import does, so
+get_unresolved_labels has the seat's labels. Test seats only. Undo: revert.

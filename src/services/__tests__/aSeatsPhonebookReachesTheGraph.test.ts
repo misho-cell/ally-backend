@@ -44,4 +44,10 @@ describe("a seat's phonebook reaches the graph the second circle walks", () => {
     expect(bulk).toContain('removeSeatGraph(String(seatUserId), clean)');
     expect(graph).toContain('DELETE r');
   });
+
+  it('3271: contacts added to a seat are parsed for labels, as an import is', () => {
+    expect(one).toContain('parseSeatLabels(String(seatUserId));');
+    expect(bulk).toContain('parseSeatLabels(String(seatUserId));');
+    expect(graph).toContain('void parsePhonebookLabelsForUser(userId).catch(');
+  });
 });
