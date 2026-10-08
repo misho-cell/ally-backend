@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 8 Oct, 15:55Z — 422bc93 (2579) received, veri
 
 ## OPEN
 
+### 8 Oct, 17:30Z — ship after c8485cd: 427dab7 (3137)
+
+**427dab7, board 3137.** A contact saved only as a symbol („💙") that a search returns and the reply
+leaves out is added by the server after the reply: „შენახული გყავს როგორც „💙" (სტომატოლოგი)."
+Each label once, at most three; only in runs the owner started.
+DONE WHEN: ME-011. On a seat with a contact named only 💙 tagged სტომატოლოგი, „ვინ მყავს
+სტომატოლოგი?" shows the 💙 and invents no name.
+
+Order: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93 → ae1be86 → c8485cd → 427dab7.
+
 ### 8 Oct, 17:05Z — ship after ae1be86: c8485cd (3170)
 
 **c8485cd, board 3170.** „ვინ მყავს ისეთი, ვინც <word> არ არის…?" / „who is not a <word>?" is
