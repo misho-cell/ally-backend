@@ -108,6 +108,7 @@ import {
 import { EnrichmentJob, JobStatus, JobType } from '../../services/enrichment.job';
 import { getCompositeKeyForUser } from '../../services/neo4j.keys';
 import { getGraphDiagnostic, GraphDiagnostic } from '../../services/graphAnalytics.service';
+import { deleteUnidentifiedPushSubscriptions } from '../../services/notification.service';
 import {
   reclassifyPrivateNotes,
   ReclassifyResult,
@@ -5787,6 +5788,29 @@ adminRouter.post('/chorus/sweep', async (_req: Request, res: Response) => {
 // data: an Apple endpoint does not say WHICH device (web.push.apple.com serves
 // macOS Safari too), and "sent or failed" existed only in the Railway log.
 //   GET /admin/users/:userId/push
+// §100 (Misho, 8 Oct): DELETE a person's push subscriptions that carry no device
+// id and no user agent (saved before those were recorded). The current devices
+// carry both and stay. Returns the count removed.
+adminRouter.delete('/users/:userId/push/unidentified', async (req: Request, res: Response) => {
+  const userId = String(req.params.userId ?? '');
+  if (!/^\d+$/.test(userId)) {
+    res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
+    return;
+  }
+  try {
+    const removed = await deleteUnidentifiedPushSubscriptions(userId);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin] §100 user ${userId}: ${removed} unidentified push subscription(s) removed`,
+    );
+    res.status(200).json({ success: true, data: { user_id: userId, removed } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('push unidentified delete error:', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
 adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
   try {
     const userId = String(req.params.userId ?? '');

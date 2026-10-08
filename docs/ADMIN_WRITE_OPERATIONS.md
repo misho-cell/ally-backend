@@ -5936,3 +5936,16 @@ tap. Undo: revert.
 **§99.8b — 502, the tester's 46334 (b, 1 of 2), shipped alone. No model-facing text.** A message that is
 only a reminder request (it starts with „შემახსენე" / „გამახსენე" / „remind me" / „напомни", 160 characters
 at most) runs with set_reminder as its only tool, so inside a goal it cannot start the goal's work. Undo: revert.
+
+## §100 — LIKA'S THREE UNIDENTIFIED PUSH SUBSCRIPTIONS REMOVED (Misho, 8 October ~11:15 UTC)
+
+Misho's word in the session: „წაშალე ლიკას ფუშები". Account 160584 (Lika) holds six push subscriptions;
+three (30 Jul, 30 Jul, 3 Sep) carry no device id and no user agent, saved before those were recorded, and
+cannot be tied to a device she still has. Her three current devices (5, 7 and 8 Oct) carry both and stay.
+
+```
+ROUTE   DELETE /admin/users/160584/push/unidentified   (requireAdminRole)
+WHAT    DELETE FROM push_subscriptions WHERE user_id = 160584 AND no user_agent AND no device_id
+EXPECT  {"user_id":"160584","removed":3}
+UNDO    none: a subscription is re-created by the device itself the next time it subscribes.
+```

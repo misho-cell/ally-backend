@@ -69,6 +69,9 @@ const MAX_USER_AGENT_CHARS = 400;
 /** #1816: where a payment push lands — the page with the plan and the token balance. */
 export const PAYMENT_PUSH_URL = '/profile';
 
+/** §100: one statement on one person's rows. */
+const PUSH_DELETE_TIMEOUT_MS = 5_000;
+
 export interface NotificationPayload {
   title: string;
   body: string;
@@ -601,4 +604,22 @@ const PRUNE_TIMEOUT_MS = 30_000;
 
 export function getVapidPublicKey(): string {
   return VAPID_PUBLIC_KEY;
+}
+
+/**
+ * §100 (Misho, 8 Oct: „წაშალე ლიკას ფუშები"): a person's push subscriptions
+ * saved before the device id and user agent were recorded. They cannot be told
+ * apart from each other or tied to a device the person still has, and the
+ * person's current devices each carry both, so only these go. Returns how many.
+ */
+export async function deleteUnidentifiedPushSubscriptions(userId: string): Promise<number> {
+  const result = await query(
+    `DELETE FROM push_subscriptions
+      WHERE user_id = $1
+        AND NULLIF(TRIM(COALESCE(user_agent, '')), '') IS NULL
+        AND NULLIF(TRIM(COALESCE(device_id, '')), '') IS NULL`,
+    [userId],
+    PUSH_DELETE_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
 }
