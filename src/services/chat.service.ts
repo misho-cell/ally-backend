@@ -94,6 +94,7 @@ import {
 import { introTargetSentence } from './introTargetSentence';
 import { withOwnersNetwork } from './planVoice';
 import { withoutInternalText } from './internalText';
+import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
@@ -14001,6 +14002,8 @@ async function runToolLoop(
   }
   // The tester's 47325: the model's internal words never reach the owner.
   finalText = withoutInternalText(finalText);
+  // The tester's 47588: an English reply never ends on a Georgian paragraph.
+  finalText = withoutStrayGeorgian(finalText, runLang(runId));
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
   finalText = withPlainDigits(finalText);
   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
