@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 8 Oct, 15:55Z — 422bc93 (2579) received, veri
 
 ## OPEN
 
+### 8 Oct, 18:20Z — ship after 8e9b6d3: 7fee557 (3368)
+
+**7fee557, board 3368.** A Georgian run that used only tools with no caption of their own
+(check_my_inbox, list_status) kept no step. Georgian now falls back to „⚙️ ვმუშაობ..." like every
+other language, and the inbox, the goal status and the goal list have their own Georgian step.
+Owner-visible: such tools now show a live step line too.
+DONE WHEN: AP-022 on three different turns. Every run that used a tool shows its steps on its
+last assistant message after a reload.
+
+Order: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93 → ae1be86 → c8485cd → 427dab7 → 8e9b6d3
+→ 7fee557.
+
 ### 8 Oct, 17:55Z — ship after 427dab7: 8e9b6d3 (3169)
 
 **8e9b6d3, board 3169.** A name a search returned (two or three words) that the reply spells in the
