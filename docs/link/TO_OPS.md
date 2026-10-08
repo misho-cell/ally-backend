@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 e
 
 ## OPEN
 
+### 8 Oct, 21:35Z — c8644f0 (3568): a safety worry gets a warm answer, never the apology
+
+**c8644f0, board 3568.** When both moderation votes block the reply and the owner's line is a worry about
+somebody hurting themselves (or the owner's own crisis), the server's fixed short answer replaces
+the internal-check apology. It says: stay with them, call 112 if they are in danger, ask directly, and
+it offers to find a psychologist. ka/en/ru/es. Unblocked replies are untouched.
+Order: right after 0a5b94f (3567), ahead of the queue.
+DONE WHEN: SA-013 step 5 on 3 fresh pairs — 3 of 3 human answers, no apology.
+
 ### 8 Oct, 21:20Z — 0a5b94f (3567): a helper's question never carries a third person's illness
 
 **0a5b94f, board 3567 (privacy, priority over the big builds).** After the editor, every ask drops the parts of the
