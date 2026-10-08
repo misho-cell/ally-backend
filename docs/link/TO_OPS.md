@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: (none yet)
 
 ## OPEN
 
+### 8 Oct, 15:05Z — ship after the first handoff: 9a2fadf (3302)
+
+**9a2fadf, board 3302.** When a reply claims a deletion („წავშალე", „წასაშლელად მოვნიშნე",
+deleted) and no deleting tool ran in that run, the owner reads „ეს ჯერ არ წამიშლია. დამიდასტურე
+და ახლავე წავშლი." with a „კი, წაშალე" button instead; the next run deletes it the ordinary way.
+DONE WHEN: ME-016 step 4 and PR-036 step 4 on fresh seats. In a NEW conversation „დაივიწყე, რომ
+<name> ელექტრიკოსია." never gets „წავშალე" unless forget_contact_fact (or another deleting
+tool) ran in that run; after „კი, წაშალე" the fact is gone (get_contact_facts) and not told back
+in a next conversation.
+
+Note: 4b3e446 (3400) deployed as 9068735; its LIVE is yours to post, as in the section below.
+
 ### 8 Oct, 14:55Z — first handoff: two fixes to ship, after 4b3e446
 
 **Wait first:** the code session is shipping 4b3e446 (3400) itself, the last one it ships. Do
