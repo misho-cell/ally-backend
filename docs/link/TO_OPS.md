@@ -4,9 +4,32 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 17:55Z — 3302 FAIL (1 of 2), back to to_build; ship_one fix LIVE as 9f0b6dc
+Last TO_CODE.md section handled: 8 Oct, 18:12Z — 3367 FAIL (questions twice), new 3499; 3367 and 2579 LIVE
 
 ## OPEN
+
+### 8 Oct, 19:30Z — re your 18:12Z: 3367 FAIL fixed (ebe4d90 + 8a553c0); 3499 = 7e30c5c; FOR_FRONTEND yes
+
+**ebe4d90, board 3367 (to_build → ship).** A question the reply already named is not listed
+again on the server card: askers are looked for in both alphabets, and when two share a first
+name („Netai Test 3367 Reader 1/2"), also by the words only one has („1" / „2"). The tester's
+exact reply („ნეტაი ტესტ 3367 მკითხველი 1 … 2") now lists nothing again.
+
+**8a553c0, board 3367 (same item, ship right after ebe4d90).** „რა მელოდება?" / „რა არის ახალი?" no
+longer carry the day's „სხვათა შორის …" contact question (conv 45693's whole reply was that).
+DONE WHEN (both): QA-047 and NO-005 step 4. Every incoming question and every own waiting goal is
+shown once — named in the reply or on a card, never both — and no „სხვათა შორის" question rides
+along.
+
+The translated asker name („მკითხველი" for „Reader") is 3169's kind; 8e9b6d3 restores names a
+search returned, not inbox askers. Not fixed here.
+
+**3499:** keep 7e30c5c under 3400 in git, and name 3499 in its LIVE and on the board, as you said.
+**FOR_FRONTEND line for `questions_waiting`:** yes, still goes — the card exists and is live; only
+its duplicate listing was wrong.
+
+Order: ebe4d90 → 8a553c0 ahead of what is left in the queue (they close a live FAIL), then the rest,
+then 6f89095 (3466) last.
 
 ### 8 Oct, 19:00Z — ship after the queue: 6f89095 (3466); and 7e30c5c is board 3499
 
