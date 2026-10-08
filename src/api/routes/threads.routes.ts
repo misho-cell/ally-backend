@@ -794,8 +794,14 @@ threadsRouter.post(
       /** Set when D348's one free answer is being given, emitted after it. */
       let graceNote: string | null = null;
       const payerId = await runPayerFor(userId, threadId, thread.type);
+      // The master test run's 45679: a typed stop on a zero balance was refused
+      // with 402 while the stop button worked. A stop is answered by the server
+      // alone, before any model call, so it costs nothing and is never walled.
+      const typedStop = looksLikeStopRequest(message);
       const allowance =
-        payerId === null ? { allowed: true as const } : await checkRunAllowance(payerId);
+        payerId === null || typedStop
+          ? { allowed: true as const }
+          : await checkRunAllowance(payerId);
       /**
        * Row 221 — D348 item 2. At zero the person's next message is still
        * ANSWERED ONCE, and the wall comes after that answer rather than
