@@ -10,7 +10,7 @@ describe('a blocked plan reply', () => {
   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
   const blockAt = chat.indexOf(': await moderateReply(cleanedFinal, userId);');
   const replyAt = chat.indexOf(
-    'replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked',
+    '(safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked)',
   );
 
   it('tries the server plan text before the apology is chosen', () => {

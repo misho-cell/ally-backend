@@ -72,6 +72,7 @@ import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+import { safetyReplyFor } from './safetyWorry';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -15552,7 +15553,10 @@ export async function processChat(
   // Question A (tester 947): a web-found person's page link, by their name.
   if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
   const reply = wrapAllowedNumbers(
-    replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
+    // 3568: a blocked reply to a safety worry is the server's own warm answer, never the apology.
+    replySafe
+      ? cleanedFinal
+      : (safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked),
     runId,
   );
   logWebNumberOutcome(runId, reply);

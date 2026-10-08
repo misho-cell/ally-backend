@@ -47,7 +47,9 @@ describe('the moderation verdict is read, and everything downstream obeys it', (
   });
 
   it('1 — shows the apology instead of the blocked text', () => {
-    expect(source).toContain('replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked');
+    expect(source).toContain(
+      '(safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked)',
+    );
   });
 
   it('2 — drops the buttons that belonged to the blocked reply', () => {
