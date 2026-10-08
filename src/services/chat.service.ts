@@ -354,7 +354,7 @@ import { withdrawOwnCutNotice } from './cutOffRunNotice.service';
 import { instructionLeftUnsent, NOT_ON_NETAI_LINE, NOT_SENT_LINE } from './instructionUnsent';
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
-import { dailyContactQuestionSection } from './dailyContactQuestion';
+import { asksAboutTheOwner, dailyContactQuestionSection } from './dailyContactQuestion';
 import { withoutNoteTalk } from './noteTalk';
 import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
 import { askedNotAsking, claimsItCannotSend } from './askedVerb';
@@ -4754,6 +4754,8 @@ async function buildAgentSystemPrompt(
   namedTask?: Task | null,
   // Board #382: a run the system started (a wake, an event), not the owner.
   ownerAbsent = false,
+  // 2938: the owner's own line this run answers; '' for a run the system started.
+  ownerLine = '',
 ): Promise<AgentPromptResult> {
   // Ticket 7 Task 1(a)(e), founder's ruling D48, re-affirmed 16 September: an
   // incoming-ask thread runs as the recipient's OWN assistant — same base
@@ -4885,6 +4887,7 @@ async function buildAgentSystemPrompt(
     regularThread: threadType === 'regular',
     goalBound: boundTask !== null,
     preview: forcedMode !== undefined,
+    ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
   });
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
@@ -14312,6 +14315,7 @@ export async function processChat(
             undefined,
             namedTask,
             ownerAbsent,
+            ownerAbsent ? '' : userMessage,
           ),
     ),
     steps.timed('tools', buildToolsForThread(userId, thread.type, ownerAbsent)),

@@ -27,12 +27,31 @@ export interface RunPresence {
   readonly regularThread: boolean;
   readonly goalBound: boolean;
   readonly preview: boolean;
+  /** 2938: the owner's line is about the owner („რისი ცოდნა გინდა ჩემზე?"). */
+  readonly ownerAsksAboutSelf?: boolean;
+}
+
+/**
+ * 2938 (the tester's 45871, conv 44344): „რისი ცოდნა გინდა ჩემზე?" — the run
+ * fetched the profile question, and the owner read the day's CONTACT question
+ * with the profile question's buttons under it. A reply about the owner is not
+ * the place for a question about someone else; it waits for another reply.
+ */
+const ABOUT_THE_OWNER_RE =
+  /(ჩემზე|ჩემ(?:ს)?\s+შესახებ|\babout\s+(?:me|myself)\b|обо\s+мне|sobre\s+m[ií])/iu;
+
+export function asksAboutTheOwner(ownerLine: string): boolean {
+  return ABOUT_THE_OWNER_RE.test(ownerLine);
 }
 
 /** Only the owner's own conversation, with the owner there, outside a goal. */
 export function contactQuestionMayRun(presence: RunPresence): boolean {
   return (
-    presence.ownerPresent && presence.regularThread && !presence.goalBound && !presence.preview
+    presence.ownerPresent &&
+    presence.regularThread &&
+    !presence.goalBound &&
+    !presence.preview &&
+    presence.ownerAsksAboutSelf !== true
   );
 }
 
