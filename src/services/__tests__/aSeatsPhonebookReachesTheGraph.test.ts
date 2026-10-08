@@ -8,11 +8,15 @@ import { join } from 'path';
  * other seat-route guards: the write is an inner function behind two DBs.
  */
 const src = readFileSync(join(__dirname, '..', 'testSeatCreate.service.ts'), 'utf8');
+// 3104: the write moved to its own module, shared with the routes that add contacts later.
+const graph = readFileSync(join(__dirname, '..', 'seatGraph.service.ts'), 'utf8');
+const one = readFileSync(join(__dirname, '..', 'seatContacts.service.ts'), 'utf8');
+const bulk = readFileSync(join(__dirname, '..', 'seatContactsBulk.service.ts'), 'utf8');
 
 describe("a seat's phonebook reaches the graph the second circle walks", () => {
   it('writes the same CONTACT edge a phone sync writes', () => {
-    expect(src).toContain('MERGE (u)-[r:CONTACT]->(c)');
-    expect(src).toContain('MERGE (u:AllyNode {phoneKey: row.userKey})');
+    expect(graph).toContain('MERGE (u)-[r:CONTACT]->(c)');
+    expect(graph).toContain('MERGE (u:AllyNode {phoneKey: row.userKey})');
   });
 
   it('writes it right after the phonebook, for the same resolved contacts', () => {
@@ -28,7 +32,16 @@ describe("a seat's phonebook reaches the graph the second circle walks", () => {
   });
 
   it('closes the graph session and sets a timeout', () => {
-    expect(src).toMatch(/finally \{\s*await session\.close\(\);/);
-    expect(src).toContain('timeout: SEAT_GRAPH_TIMEOUT_MS');
+    expect(graph).toMatch(/finally \{\s*await session\.close\(\);/);
+    expect(graph).toContain('timeout: SEAT_GRAPH_TIMEOUT_MS');
+  });
+
+  it('3104: contacts added to a seat later reach the graph too, and removal takes the edges away', () => {
+    expect(one).toContain('saveSeatGraph(String(seatUserId), new Map([[phone, cleanName]]))');
+    expect(bulk).toContain(
+      'saveSeatGraph(String(seatUserId), new Map(clean.map((c) => [c.phone, c.name])))',
+    );
+    expect(bulk).toContain('removeSeatGraph(String(seatUserId), clean)');
+    expect(graph).toContain('DELETE r');
   });
 });

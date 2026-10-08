@@ -1,8 +1,7 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
-import { getSession } from '../db/neo4j/client';
 import { allFictionalNumbers, FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
-import { getCompositeKeysForPhones, getCompositeKeysForUsers } from './neo4j.keys';
+import { saveSeatGraph } from './seatGraph.service';
 import { adjustTestAccountTokens } from './tokenWallet.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
 import { grantWhateverFreePeriodIsOwed } from './auth.service';
@@ -55,7 +54,6 @@ import { grantWhateverFreePeriodIsOwed } from './auth.service';
 export const DEFAULT_SEAT_TOKENS = 500;
 
 const SEAT_QUERY_TIMEOUT_MS = 8_000;
-const SEAT_GRAPH_TIMEOUT_MS = 15_000;
 const MAX_NAME_CHARS = 60;
 const MAX_NOTE_CHARS = 500;
 
@@ -547,57 +545,6 @@ async function savePhonebook(
     );
   }
   return resolved.size;
-}
-
-/**
- * ⚠️ THE SEAT'S PHONEBOOK NEVER REACHED THE GRAPH THE SECOND CIRCLE WALKS.
- *
- * The seat's question (a), board 859, 30 September: on every fictional seat,
- * search_second_degree answered „no_contacts_in_graph" — Test 46 holds six
- * members and the search found none of them. The first hop of the second
- * circle is read from Neo4j (`AllyNode -[:CONTACT]->`), and a real phone
- * sync writes both places (`saveToNeo4j` in contacts.service). This route
- * wrote only `UserAlias`, so no second-circle result on a seat had ever had
- * anything to search, and rows 278, 285, 286 and 296 could not be tested.
- *
- * So the seat's contacts are written to the graph too, the same MERGE the
- * sync uses. Seats only, by construction: this runs for a phonebook that
- * `resolvePhonebook` has already limited to recorded seats. The count is
- * returned, so a graph that could not be written is visible in the response
- * rather than discovered as another empty search.
- */
-async function saveSeatGraph(
-  userId: string,
-  resolved: ReadonlyMap<string, string>,
-): Promise<number> {
-  if (resolved.size === 0) return 0;
-  const phones = [...resolved.keys()];
-  const [userKeys, contactKeys] = await Promise.all([
-    getCompositeKeysForUsers([Number(userId)]),
-    getCompositeKeysForPhones(phones),
-  ]);
-  const userKey = userKeys.get(Number(userId));
-  if (userKey === undefined) return 0;
-  const rows = phones.map((phone) => ({
-    userKey,
-    contactKey: contactKeys.get(phone) ?? phone,
-    name: resolved.get(phone) ?? '',
-  }));
-  const session = getSession();
-  try {
-    await session.run(
-      `UNWIND $rows AS row
-       MERGE (u:AllyNode {phoneKey: row.userKey})
-       MERGE (c:AllyNode {phoneKey: row.contactKey})
-       MERGE (u)-[r:CONTACT]->(c)
-       SET r.name = row.name, r.updatedAt = datetime()`,
-      { rows },
-      { timeout: SEAT_GRAPH_TIMEOUT_MS },
-    );
-    return rows.length;
-  } finally {
-    await session.close();
-  }
 }
 
 /**

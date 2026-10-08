@@ -40,7 +40,7 @@ describe("a seat the size of Giorgi's phonebook", () => {
   it('writes every contact and tag in one transaction', async () => {
     theBase();
     const result = await addSeatContactsBulk(SEAT, contacts(MAX_BULK_CONTACTS));
-    expect(result).toEqual({ ok: true, seat: SEAT, added: MAX_BULK_CONTACTS });
+    expect(result).toEqual({ ok: true, seat: SEAT, added: MAX_BULK_CONTACTS, graph_edges: 0 });
     expect(clientQuery).toHaveBeenCalledTimes(2);
     expect(String(clientQuery.mock.calls[0][0])).toContain('INSERT INTO "UserAlias"');
     expect(clientQuery.mock.calls[0][1][1]).toHaveLength(MAX_BULK_CONTACTS);

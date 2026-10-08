@@ -1,6 +1,7 @@
 import { query, withTransaction } from '../db/postgres/client';
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { ContactRefusal, isReadableTag, NOT_A_TEST_SEAT } from './seatContacts.service';
+import { mirrorSeatGraph, removeSeatGraph, saveSeatGraph } from './seatGraph.service';
 
 /**
  * §60 IN BULK — ROW 321 ON A SEAT, WITHOUT WAITING FOR GIORGI.
@@ -29,7 +30,7 @@ export interface BulkContactIn {
 export type BulkRefusal = ContactRefusal | 'empty' | 'too_many' | 'duplicate_phone';
 
 export type BulkResult =
-  | { ok: true; seat: number; added: number }
+  | { ok: true; seat: number; added: number; graph_edges: number | null }
   | { ok: false; refusal: BulkRefusal; index?: number; detail?: string };
 
 interface Clean {
@@ -112,7 +113,11 @@ export async function addSeatContactsBulk(
       [seatUserId, phones, tags],
     );
   });
-  return { ok: true, seat: seatUserId, added: clean.length };
+  // 3104: the graph the connector and second-circle tools walk gets the contacts too.
+  const graphEdges = await mirrorSeatGraph(String(seatUserId), () =>
+    saveSeatGraph(String(seatUserId), new Map(clean.map((c) => [c.phone, c.name]))),
+  );
+  return { ok: true, seat: seatUserId, added: clean.length, graph_edges: graphEdges };
 }
 
 /**
@@ -129,7 +134,7 @@ export async function addSeatContactsBulk(
  * exist.
  */
 export type BulkRemoveResult =
-  | { ok: true; seat: number; removed: number }
+  | { ok: true; seat: number; removed: number; graph_edges_removed: number | null }
   | { ok: false; refusal: BulkRefusal; index?: number; detail?: string };
 
 function validatePhones(
@@ -164,5 +169,8 @@ export async function removeSeatContactsBulk(
     );
     return aliases.rowCount ?? 0;
   });
-  return { ok: true, seat: seatUserId, removed };
+  const graphRemoved = await mirrorSeatGraph(String(seatUserId), () =>
+    removeSeatGraph(String(seatUserId), clean),
+  );
+  return { ok: true, seat: seatUserId, removed, graph_edges_removed: graphRemoved };
 }

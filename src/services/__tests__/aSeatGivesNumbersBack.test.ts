@@ -30,7 +30,7 @@ describe('a seat gives numbers back', () => {
     seat(true);
     const phones = allFictionalNumbers().slice(0, 7);
     const result = await removeSeatContactsBulk(SEAT, phones);
-    expect(result).toEqual({ ok: true, seat: SEAT, removed: 7 });
+    expect(result).toEqual({ ok: true, seat: SEAT, removed: 7, graph_edges_removed: 0 });
     expect(String(clientQuery.mock.calls[0][0])).toContain(
       'DELETE FROM "UserTags" WHERE "contactId" = $1',
     );
