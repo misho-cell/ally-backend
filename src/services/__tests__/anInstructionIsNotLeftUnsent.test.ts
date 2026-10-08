@@ -88,3 +88,12 @@ describe('an owner instruction left unsent', () => {
     ).toHaveLength(2);
   });
 });
+
+describe('an introduction from this conversation counts as sent (2708)', () => {
+  it('reads introduction requests by the conversation they came from', () => {
+    const source = readFileSync(join(__dirname, '..', 'instructionUnsent.ts'), 'utf8');
+    expect(source).toContain(
+      'AND NOT EXISTS (SELECT 1 FROM introduction_requests r WHERE r.origin_thread_id = $1)',
+    );
+  });
+});
