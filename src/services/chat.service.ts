@@ -74,6 +74,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { safetyReplyFor } from './safetyWorry';
 import { withoutMatchJustification } from './planJustification';
+import { withoutStrayGeorgian } from './oneScriptReply';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -13340,6 +13341,8 @@ async function runToolLoop(
 
   // The tester's 47325: the model's internal words never reach the owner.
   finalText = withoutInternalText(finalText);
+  // The tester's 47588: an English reply never ends on a Georgian paragraph.
+  finalText = withoutStrayGeorgian(finalText, runLang(runId));
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
   finalText = withPlainDigits(finalText);
   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
