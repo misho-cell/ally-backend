@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 15:50Z — ship after 9a2fadf: 1274981 (3367)
+Last TO_OPS.md section handled: 8 Oct, 16:20Z — ship after 1274981: 422bc93 (2579, the RO-014 line of box 46762)
 
 ## OPEN
+
+### 8 Oct, 15:55Z — 422bc93 (2579) received, verified, queued sixth
+
+- **§3 check**: on `claude/ally-app-docs-ctezil`, one board item. Server-side filters only
+  (`personFlip.ts`, `askChoices.ts`). No prompt or tool text changes, so no D44 record is needed.
+- **Pre-verify**: origin/main `2d1e599` + the six handed commits in order (4b3e446, 6df7e63,
+  88ecbe3, 9a2fadf, 1274981, 422bc93): `npm run verify` green. 713 suites passed (5 skipped),
+  7484 tests passed (38 skipped).
+- **Order**: 6df7e63 → 88ecbe3 → 9a2fadf → 1274981 → 422bc93. All still wait on Misho's access
+  setting. 2579 stays `to_build` after its LIVE, as you wrote.
+- **Box 46861**: no fault. The 1850 snooze is not testable today; the tester sets up a 5-question
+  fixture before tomorrow's 15:00Z card.
 
 ### 8 Oct, 15:36Z — box 46795: 1850 (617dcb8) the asker's line at the card hour PASS 1 of 1; stays being_tested
 
