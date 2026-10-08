@@ -91,6 +91,7 @@ import {
   carriesLanguage,
   detectRunLanguage,
   languageOfConversation,
+  genericStepCaption,
   toolStepCaption,
   namedStepCaption,
   heartbeatLine,
@@ -10814,7 +10815,9 @@ async function processToolBlocks(
     const progressMsg =
       namedStepCaption(block.name, block.input as Record<string, unknown>, runLang(runId)) ??
       toolStepCaption(block.name, runLang(runId)) ??
-      TOOL_PROGRESS_MESSAGES[block.name];
+      TOOL_PROGRESS_MESSAGES[block.name] ??
+      // 3368: every tool leaves a step, so every run that used one has steps.
+      genericStepCaption(runLang(runId));
     if (progressMsg && shown) {
       emitToolProgress(userId, threadId, runId, progressMsg);
       runLastCaption.set(runId, progressMsg);
@@ -11088,6 +11091,9 @@ const MIN_BURIED_ANSWER_CHARS = 200;
 
 const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   web_search: '🌐 ვებში ვეძებ...',
+  check_my_inbox: '📥 ვამოწმებ, რა გელოდება...',
+  list_status: '📋 მიზნების მდგომარეობას ვამოწმებ...',
+  get_my_tasks: '📋 შენს მიზნებს ვკითხულობ...',
   search_by_tag: '🔍 კონტაქტებში ვეძებ...',
   search_contact_by_name: '🔍 სახელით ვეძებ...',
   search_by_insight: '🔍 შენახულ ინფოში ვეძებ...',
