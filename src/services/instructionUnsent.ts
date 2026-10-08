@@ -16,10 +16,23 @@ import { messageNamesOwnContact } from './tools/nameMatch';
  */
 const QUERY_TIMEOUT_MS = 4_000;
 
+/**
+ * 2906 (the master test run's 45679, SK-013 and old G9, both passing on 5 Oct):
+ * „გაუგზავნე იმეილი მაკა ბუღალტერს … ჩამიწერე კალენდარში" and „Tell me … what
+ * you know about Nika, Gvantsa…" read as orders to ask a contact, and the
+ * owner got only „კითხვა არ გაიგზავნა". An email, a calendar entry or an SMS
+ * is not a question through Netai, and „tell me / ask me / send me" speaks to
+ * Netai itself. Neither is this guard's to answer.
+ */
+const NOT_A_NETAI_ASK_RE = /(იმეილ|ი-მეილ|ელფოსტ|კალენდარ|სმს|\bsms\b|e-?mail|calendar)/iu;
+/** Words addressed to Netai itself; an instruction is judged without them. */
+const SAID_TO_NETAI_RE = /\b(?:tell|ask|send|give|show)\s+me\b/giu;
+
 /** The owner's line, or its instruction sentence, when it tells us to ask one of their contacts. */
 export function contactInstructionIn(ownerLine: string): string | null {
   const sentence = instructionSentence(ownerLine.trim());
-  return looksLikeContactInstruction(sentence) ? sentence : null;
+  if (NOT_A_NETAI_ASK_RE.test(sentence)) return null;
+  return looksLikeContactInstruction(sentence.replace(SAID_TO_NETAI_RE, ' ')) ? sentence : null;
 }
 
 /** True when no goal on this conversation has asked, held or introduced anybody. */
