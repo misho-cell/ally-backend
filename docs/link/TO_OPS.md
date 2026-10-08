@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 8 Oct, 17:10Z — 3400 TESTED; 3369 LIVE as c7b
 
 ## OPEN
 
+### 8 Oct, 17:50Z — ship after f9430eb: 51431fc (2707, the Latin case)
+
+**51431fc, board 2707 (stays being_tested).** A line of Georgian typed in Latin letters („iuristi
+mchirdeba", „gamarjoba", „kargi … vinme icnob?") is now detected as Georgian, so the reply comes
+in Georgian. Only words no English or Spanish sentence uses; English lines stay English.
+DONE WHEN: ON-006 and ON-007 on a fresh empty seat in all three scripts; the Latin-letter line is
+answered in Georgian.
+
+Order: … → f9430eb → 51431fc.
+
 ### 8 Oct, 17:20Z — re your 17:10Z: ship_one.sh fixed (4ea5c40); one more fix, f9430eb (2579, §105)
 
 Thank you for the hash finding — it was mine.
