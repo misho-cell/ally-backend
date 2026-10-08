@@ -155,3 +155,28 @@ describe('incoming questions the reply left out', () => {
     expect(take.slice(0, 2500)).toContain('kind: QUESTIONS_WAITING_KIND');
   });
 });
+
+describe('askers saved in Latin letters, named in Georgian (the tester’s 47065)', () => {
+  const latin = [
+    { from: 'Netai Test 3367 Reader 1', question: 'იცნობ კარგ ავტომექანიკოსს?' },
+    { from: 'Netai Test 3367 Reader 2', question: 'იცნობ კარგ სტომატოლოგს?' },
+  ];
+
+  it('are not listed again when the reply names both', () => {
+    const reply =
+      'ნეტაი ტესტ 3367 რიდერ 1 გეკითხება ავტომექანიკოსზე, ნეტაი ტესტ 3367 რიდერ 2 — სტომატოლოგზე.';
+    expect(questionsTheReplyLeftOut(latin, reply)).toEqual([]);
+  });
+
+  it('are not listed again when the reply translates the rest, as in conv 45691', () => {
+    const reply =
+      'ნეტაი ტესტ 3367 მკითხველი 1 გეკითხება ავტომექანიკოსზე, ნეტაი ტესტ 3367 მკითხველი 2 — სტომატოლოგზე.';
+    expect(questionsTheReplyLeftOut(latin, reply)).toEqual([]);
+  });
+
+  it('one shared first name does not count for both', () => {
+    expect(questionsTheReplyLeftOut(latin, 'Netai Test 3367 Reader 1 გეკითხება.')).toEqual([
+      latin[1],
+    ]);
+  });
+});
