@@ -78,6 +78,13 @@ import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
+import {
+  needThisFactMeets,
+  noteSavedFact,
+  recallChoices,
+  recallLine,
+  takeSavedFact,
+} from './needRecall';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
 /**
@@ -8480,6 +8487,7 @@ function clearRunState(runId: string): void {
   runCaptionsKept.delete(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
+  takeSavedFact(runId);
 }
 
 /**
@@ -9003,7 +9011,7 @@ async function executeToolCall(
         // arrives as `undefined` and `fieldTypeRaw.trim()` throws a TypeError
         // that ends the whole run. The connector's door coerces and checks
         // both; this one did neither.
-        return await submitContactFact(
+        const saved = await submitContactFact(
           userId,
           String(input['phone'] ?? ''),
           String(input['field_type'] ?? ''),
@@ -9011,6 +9019,14 @@ async function executeToolCall(
           input['source'] === 'debrief' ? 'debrief' : 'chat',
           input['confidence'] === 'mentioned' ? 'mentioned' : 'stated',
         );
+        // 2608: what was saved is checked, at the run's end, against the owner's saved needs.
+        noteSavedFact(
+          runId,
+          String(input['phone'] ?? ''),
+          String(input['field_type'] ?? ''),
+          String(input['value'] ?? ''),
+        );
+        return saved;
       } catch (err) {
         // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
         if (err instanceof FactRefusedError) return { saved: false, error: err.message };
@@ -13450,6 +13466,17 @@ async function runToolLoop(
   finalText = withoutInternalText(finalText);
   // The tester's 47588: an English reply never ends on a Georgian paragraph.
   finalText = withoutStrayGeorgian(finalText, runLang(runId));
+  // 2608: a fact saved in this run that meets another contact's saved need is recalled, as an offer.
+  const savedFact = takeSavedFact(runId);
+  if (!ownerAbsent && savedFact !== null && (choices === undefined || choices.length === 0)) {
+    const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
+      () => null,
+    );
+    if (recalled !== null && !finalText.includes(recalled.needName)) {
+      finalText = `${finalText.trimEnd()}\n\n${recallLine(runLang(runId), recalled)}`;
+      choices = recallChoices(runLang(runId));
+    }
+  }
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
   finalText = withPlainDigits(finalText);
   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {

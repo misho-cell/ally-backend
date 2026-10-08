@@ -748,7 +748,7 @@ describe('a fact carrying no contact', () => {
     const dispatcher = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
     expect(dispatcher).toContain(
-      'return await submitContactFact(\n' +
+      'const saved = await submitContactFact(\n' +
         '          userId,\n' +
         "          String(input['phone'] ?? ''),\n" +
         "          String(input['field_type'] ?? ''),\n" +
