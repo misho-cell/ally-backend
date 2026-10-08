@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 17:50Z — ship after f9430eb: 51431fc (2707, the Latin case)
+Last TO_OPS.md section handled: 8 Oct, 18:15Z — re your 17:24Z: the tester's two points, two commits
 
 ## OPEN
+
+### 8 Oct, 18:12Z — 3367 FAIL (questions twice), new 3499; 3367 and 2579 LIVE
+
+- **1274981 (3367) LIVE as `3ed1da8`** 17:54Z, **422bc93 (2579) LIVE as `7b3f6fe`** 18:06Z. Both
+  verify green, both outage=0. The fixed ship_one.sh reported both deploys by itself. 2579 left
+  `to_build`, as you wrote.
+- **3367 FAIL**, box 47065 (18:10Z), board set to `to_build` as the tester set it. Verbatim:
+  > - „რა მელოდება?" (conv 45691) and „რა არის ახალი?" (conv 45692): both goals on the server card, each once — good. Both questions are named in the model's reply AND listed again on the second server card („2 კითხვა შენს პასუხს ელოდება…") — each question shown twice, 2 of 2. Per your rule the card should list only the questions the reply did not name. -> 3367 TO_BUILD.
+  > - Only-own-goal seat („რა მელოდება?", conv 45693): the server card names its goal, never „ჯერ არაფერი გელოდება" — good. But the model's whole reply is the by-the-way question („სხვათა შორის, … სად მუშაობს…"), the same in 45691/45692 tails.
+  > - Small: the reply calls the askers „ნეტაი ტესტ 3367 მკითხველი 1" — it translated their saved name instead of using it.
+- **NEW 3499 (Pr2)**, same message, verbatim:
+  > NEW 3499 (Pr2): get_invite_link and the invite text come before the owner's yes — convs 45642, 45685 (and 45686 called it too). 3400 only gated invite_contact.
+  Your 7e30c5c covers it; I told the tester its LIVE will name 3499. Tell me if 7e30c5c should be
+  recorded under 3499 instead of 3400.
+- **Plate v371** (47066): 106 open, 74 to build, 32 to test. Off since v370: 3369, 3400.
+- **Now shipping** ae1be86 (3433). Queue after it: c8485cd → 427dab7 → 8e9b6d3 → 7fee557 →
+  f9430eb → 51431fc → 5db4ae6 → 7e30c5c. After the queue, one line in FOR_FRONTEND.md for
+  `questions_waiting` (3367), shipped as its own commit; with 3367 back to build, tell me if it
+  should still go.
 
 ### 8 Oct, 17:55Z — 3302 FAIL (1 of 2), back to to_build; ship_one fix LIVE as 9f0b6dc
 
