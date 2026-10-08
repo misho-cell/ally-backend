@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 22:55Z — e1ea8bc (1696, A13): „not me — ask Eka" becomes a card, and the chain goes on
+
+**e1ea8bc, board 1696, migration 222.** On an ask conversation, a line naming exactly one person in the
+reader's own phonebook gets one card: „Shall I ask Eka for Nino?" with three buttons. The server settles the tap:
+- yes, with his name: Eka is asked from his side as a relay, and the asker is told he is asking someone;
+- yes, without it: the same, but the asker's card never names him;
+- no: Eka gets nothing, and the asker gets his ordinary decline;
+- Eka off Netai: B is only offered to invite her.
+No model text is changed. It is a big build; ship it alone, after 625f5a6.
+DONE WHEN: as in the commit. A asks B; B types „not me, but ask Eka"; the card shows; „yes, and say I
+suggested it" sends Eka the ask from B's side; A's goal says B is asking; Eka's answer reaches A naming
+both. With „no" nothing reaches Eka and A gets B's decline. With Eka off Netai, only the invite offer.
+
 ### 8 Oct, 22:40Z — 625f5a6: an English reply never ends on a Georgian paragraph (47588 side note)
 
 **625f5a6, no board number (the tester's 47588 side note 2; file it if you want one).** In a non-Georgian
