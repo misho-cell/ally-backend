@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 8 October, 19:25Z — #859: an Android push „sent" that never shows — the server side is clean
+
+Tornike's Android (account 501) gets no notification although the push is logged „sent". The server
+read, last 4 days, counts only: 501 has **three** Android subscriptions (made 30 Jul, 4 Sep, 29 Sep);
+every push to each came back **201 from FCM** (accepted) — 144, 107 and 107 deliveries — and none came
+back 404/410. So the server sends and Google accepts; the notification is lost on the device side.
+
+What #859 asks is on the client:
+1. **The service worker shows every push.** On `push`, `event.waitUntil(self.registration.showNotification(title, { body, data: { url } }))` —
+   always, even when a tab is open (Chrome on Android drops a push with no notification and may then
+   stop delivering to that subscription).
+2. **Re-subscribe on app open.** When notification permission is `granted`, read
+   `registration.pushManager.getSubscription()`; if it is null, or its endpoint is not the one this
+   device last sent, subscribe again and `POST /notifications/subscribe` (the same body as today,
+   with `device_id`). The server keeps one row per endpoint and replaces a device's older one.
+3. Old subscriptions of the same device can go with `DELETE /notifications/subscribe` (body
+   `{ "endpoint": "<old endpoint>" }`).
+
+DONE WHEN (the board's): a question sent to 501 rings his Android phone within a minute, and the push
+page shows a live Android subscription. Nothing changes on the server for this.
+
 ## 8 October, ~09:45Z — #502: a new live kind, `reminder`
 
 The owner's own reminder („შემახსენე 15 წუთში") is now written by the server at the time asked: one
