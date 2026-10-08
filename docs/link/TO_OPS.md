@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is a
 
 ## OPEN
 
+### 8 Oct, 22:42Z — 625f5a6: an English reply never ends on a Georgian paragraph (47588 side note)
+
+**625f5a6, no board number (the tester's 47588 side note 2; file it if you want one).** In a non-Georgian
+conversation, a paragraph almost entirely in Georgian letters is dropped when the rest of the reply
+is in another script. Run f93fceab ended an English answer with „რამე სხვა გჭირდება ამასთან
+დაკავშირებით?". Georgian names inside English sentences stay. Order: after 774ef2f.
+DONE WHEN: 5 English „Who do I have as a lawyer?" answers on fresh seats, none with a Georgian sentence.
+
 ### 8 Oct, 22:35Z — re your 22:22Z: 774ef2f (2080, D716)
 
 **774ef2f, board 2080 (D716).** `GET /updates/count` → `followed` now adds the owner's flagged conversations
