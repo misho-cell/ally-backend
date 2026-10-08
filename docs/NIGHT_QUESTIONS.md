@@ -66,17 +66,15 @@ and answering the tester are all ordinary night work and need nobody.
 unanswered. Put them again in the morning:
 
 - **R. Prompt changes (D44), each needs his yes:**
-  - 2181: wire the built daily contact question (a17e56f, not connected). The classifier refused the wiring.
-  - 2478: one rule that the model never tells the owner about the server's own notes.
-  - 2479: an introduction instruction must use request_introduction, not ask_contact.
-  - 1454: the plan as one human sentence.
-  - 2182 and 2114: "what do you need to know about me", and short Georgian talk.
-  - 2183: editor wording (model-written first person, „knows a guy", changed surnames).
+  - ✅ 2181, 2478, 2479, 2183: answered by Misho's §98 (7 Oct night) and shipped one at a time
+    (ADMIN_WRITE_OPERATIONS §98.1–98.8).
+  - 1454: the plan as one human sentence. STILL OPEN.
+  - 2182 and 2114: "what do you need to know about me", and short Georgian talk. STILL OPEN.
 - **S. Money:** one real payment of the cheapest plan plus a Stripe refund closes 232, 233 and 1520.
   390 needs one real withdrawal.
 - **T. People:** logins (383); one test with Giorgi's computer off (562); a real sign-up for 389;
   Lika's own .xlsx (2377).
-- **U. Order of the big builds:** 1849 or 1882 first; when Chorus 1687–1699 start.
+- **U. ✅ Answered (§98):** 1882 before 1849, then Chorus.
 - **W. 2577 (D647/D648):** a helper's answer comes back reworded in the first person („მყავს ნანახი").
   The card must tell it in the third person. My quoting fix went against D648 and was reverted (f99b957).
   The real fix is the answer-relay text the model writes (prompt, D44). A draft line goes with the morning list.
