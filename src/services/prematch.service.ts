@@ -134,26 +134,6 @@ export function classify(evidence: CandidateEvidence, terms: readonly string[]):
   return { word: PrematchWord.AskHim, source: PrematchSource.NothingKnown };
 }
 
-const RANK: Readonly<Record<PrematchWord, number>> = {
-  [PrematchWord.LikelyYes]: 0,
-  [PrematchWord.Possibly]: 1,
-  [PrematchWord.AskHim]: 2,
-  [PrematchWord.NotHisField]: 3,
-};
-
-/** The candidates in the words' order; the plan's order within one word. */
-export function rankByPrematch<T extends { readonly phone: string }>(
-  people: readonly T[],
-  words: ReadonlyMap<string, Prematch>,
-): T[] {
-  const rankOf = (p: T): number =>
-    RANK[words.get(phoneDigits(p.phone))?.word ?? PrematchWord.AskHim];
-  return people
-    .map((person, index) => ({ person, index }))
-    .sort((a, b) => rankOf(a.person) - rankOf(b.person) || a.index - b.index)
-    .map(({ person }) => person);
-}
-
 interface Members {
   readonly byDigits: ReadonlyMap<string, string>;
 }

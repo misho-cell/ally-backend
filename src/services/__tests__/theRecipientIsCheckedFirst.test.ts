@@ -4,13 +4,13 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { nextWaveNote } from '../askWaves.service';
+import { orderCandidates } from '../waveOrder';
 import {
   classify,
   fieldTerms,
   prematchMany,
   PrematchSource,
   PrematchWord,
-  rankByPrematch,
 } from '../prematch.service';
 
 /**
@@ -100,12 +100,9 @@ describe('the waves follow the words', () => {
         { word: PrematchWord.NotHisField, source: PrematchSource.Boundary },
       ],
     ]);
-    expect(rankByPrematch(people, words).map((p) => p.name)).toEqual([
-      'note',
-      'label',
-      'nothing',
-      'boundary',
-    ]);
+    expect(
+      orderCandidates(people, { words, rates: new Map(), goalText: '' }).map((p) => p.name),
+    ).toEqual(['note', 'label', 'nothing', 'boundary']);
   });
 
   it('the asker’s run is told names only, never a word', () => {
@@ -124,6 +121,6 @@ describe('the waves follow the words', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain('prematch, prematch_source, prematch_at, field)');
     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
-    expect(waves).toContain('remaining: await inPrematchOrder(');
+    expect(waves).toContain('remaining: await inWaveOrder(');
   });
 });
