@@ -64,12 +64,20 @@ export async function listFollowedUpdates(userId: string): Promise<PendingUpdate
   return result.rows;
 }
 
-/** How many flagged cards the sidebar count carries — the same rows the list shows. */
+/**
+ * How many flagged items the sidebar count carries: the flagged cards the list
+ * shows, and — D716 (the founder, 7 Oct: „A flagged conversation counts in the
+ * sidebar number until the owner removes the flag. One number.") — every
+ * conversation the owner flagged.
+ */
 export async function countFollowedUpdates(userId: string): Promise<number> {
   const result = await query<{ n: number }>(
-    `SELECT COUNT(*)::int AS n
-       FROM pending_updates p
-      WHERE p.user_id = $1 AND p.status = 'seen' AND p.followed_at IS NOT NULL`,
+    `SELECT (SELECT COUNT(*)::int
+               FROM pending_updates p
+              WHERE p.user_id = $1 AND p.status = 'seen' AND p.followed_at IS NOT NULL)
+          + (SELECT COUNT(*)::int
+               FROM threads t
+              WHERE t.user_id = $1 AND t.followed_at IS NOT NULL) AS n`,
     [userId],
     QUERY_TIMEOUT_MS,
   );
