@@ -486,6 +486,7 @@ import {
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
 import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
 import type { UpcomingBirthday } from './birthdayLens.service';
+import { answerConfirm, confirmCardFor } from './factConfirm.service';
 import { checkedOwnerButtons } from './ownerButtons.service';
 import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
 import { savedNamesIn, withNamesAsSaved } from './savedNames';
@@ -7738,6 +7739,22 @@ function sayNamelessLabel(row: unknown): unknown {
   return { ...(row as Record<string, unknown>), name: null, saved_as: r.name.trim() };
 }
 
+const FACT_CONFIRM_KIND = 'fact_confirm';
+const runSearchedPhones = new Map<string, Set<string>>();
+
+function noteSearchedPhones(runId: string, phones: readonly string[]): void {
+  if (phones.length === 0) return;
+  const kept = runSearchedPhones.get(runId) ?? new Set<string>();
+  for (const phone of phones) kept.add(phone);
+  runSearchedPhones.set(runId, kept);
+}
+
+function takeSearchedPhones(runId: string): string[] {
+  const phones = [...(runSearchedPhones.get(runId) ?? [])];
+  runSearchedPhones.delete(runId);
+  return phones;
+}
+
 const runSavedNames = new Map<string, string[]>();
 
 function noteSavedNames(runId: string, names: readonly string[]): void {
@@ -8371,6 +8388,7 @@ function clearRunState(runId: string): void {
   runInboxQuestions.delete(runId);
   runNamelessLabels.delete(runId);
   runSavedNames.delete(runId);
+  runSearchedPhones.delete(runId);
   runHeldUpdates.delete(runId);
   runShareText.delete(runId);
   // Row 237's flag. Its consumer forgets it too, but a run that exits early
@@ -10632,6 +10650,8 @@ async function runOneToolBlock(
   );
   // 3137: a contact saved only as a symbol is shown as saved, by the server if need be.
   if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
+  // 1690 (A7): the numbers a search showed, for the one confirm question after the reply.
+  if (SEARCH_TOOLS.has(block.name)) noteSearchedPhones(runId, phonesIn(labelled));
   // 3169: the names it found, as saved, so the reply cannot respell them.
   if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
     noteSavedNames(runId, savedNamesIn(labelled));
@@ -12159,6 +12179,36 @@ async function answerBirthdaysSoon(
   return { reply: text, language, requestCreated: false };
 }
 
+/** 1690: the owner's tap on a fact-confirm card, settled by the server; null when it is not one. */
+async function answerFactConfirm(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  let language: RunLanguage = detectRunLanguage(userMessage);
+  const languageOf = async (): Promise<RunLanguage> => {
+    const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
+    language = languageOfConversation(userMessage, spokenBefore, language);
+    return language;
+  };
+  let text: string | null;
+  try {
+    text = await answerConfirm(userId, threadId, userMessage, languageOf);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[fact-confirm] tap not settled:', (err as Error).message);
+    return null;
+  }
+  if (text === null) return null;
+  if (intent?.alreadyStored !== true) {
+    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+  }
+  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+  return { reply: text, language, requestCreated: false };
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -13214,6 +13264,27 @@ async function runToolLoop(
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+  }
+
+  // 1690 (A7): one old fact the search leaned on is confirmed with the owner, by the server.
+  const searchedPhones = takeSearchedPhones(runId);
+  if (!ownerAbsent && searchedPhones.length > 0) {
+    const card = await confirmCardFor(userId, threadId, searchedPhones, runLang(runId)).catch(
+      (err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn('[fact-confirm] not asked:', (err as Error).message);
+        return null;
+      },
+    );
+    if (card !== null) {
+      notePendingItems(runId, [
+        {
+          kind: FACT_CONFIRM_KIND,
+          task_id: null,
+          payload: { text: card.text, choices: card.choices },
+        },
+      ]);
+    }
   }
 
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
@@ -14698,6 +14769,12 @@ export async function processChat(
       ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
       : null;
   if (birthdays !== null) return birthdays;
+  // 1690 (A7): a tap on the fact-confirm card (or the answer to its „where now?") is the server's.
+  const confirmed =
+    !ownerAbsent && thread.type === 'regular'
+      ? await answerFactConfirm(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (confirmed !== null) return confirmed;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,

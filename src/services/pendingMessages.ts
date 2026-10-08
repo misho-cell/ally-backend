@@ -640,6 +640,15 @@ export function renderPendingMessage(
         instruction,
       };
     }
+    /** 1690 (A7): the fact-confirm card; its text and buttons are the server's own. */
+    case 'fact_confirm': {
+      const text = str(p, 'text');
+      const choices = Array.isArray(p.choices)
+        ? (p.choices as unknown[]).filter((c): c is string => typeof c === 'string')
+        : [];
+      if (text === null || choices.length === 0) return null;
+      return { text, choices, ref: { kind: item.kind }, instruction };
+    }
     case 'search_followup':
       return {
         text: t.searchFollowUp,
