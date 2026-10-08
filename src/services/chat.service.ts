@@ -77,6 +77,13 @@ import { withoutMatchJustification } from './planJustification';
 import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
+import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+
+/**
+ * 1698: the offer tools reach the model only after Misho's yes on their texts
+ * (§109, D44). Until then the server can hold offers but no run is given them.
+ */
+const OFFER_TOOLS_ON = false;
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -1460,6 +1467,53 @@ const SET_REMINDER_TOOL: AnthropicTool = {
       },
     },
     required: ['text'],
+  },
+};
+
+/**
+ * 1698 (A15): what the owner is open to. ⚠️ MODEL-FACING (D44): §109 in
+ * ADMIN_WRITE_OPERATIONS.md, NOT YET APPROVED — the three descriptions below.
+ */
+const SAVE_OFFER_TOOL: AnthropicTool = {
+  name: 'save_offer',
+  description:
+    'The owner said what they are OPEN TO — „if anyone needs hospitality in Adjara, I am ' +
+    'interested", „yes to any Axel member asking about logistics". Write it as ONE line in your ' +
+    'own words (never their typed words), read it back and ask if it is right; call with ' +
+    'confirmed: true only after their yes. An offer never answers anyone and is never shown to ' +
+    'another person: it only helps find who may want to talk. Not for needs (those are goals).',
+  input_schema: {
+    type: 'object',
+    properties: {
+      text: { type: 'string', description: "The one confirmed line, in the owner's language." },
+      field: {
+        type: 'string',
+        description: 'The field in one or two words, e.g. „hospitality", „logistics".',
+      },
+      confirmed: {
+        type: 'boolean',
+        description: 'True only after the owner said yes to the line.',
+      },
+    },
+    required: ['text', 'field', 'confirmed'],
+  },
+};
+
+const LIST_OFFERS_TOOL: AnthropicTool = {
+  name: 'list_offers',
+  description:
+    "The owner's own saved offers (what they said they are open to), when they ask about them.",
+  input_schema: { type: 'object', properties: {}, required: [] },
+};
+
+const DELETE_OFFER_TOOL: AnthropicTool = {
+  name: 'delete_offer',
+  description:
+    'The owner asked to forget something they said they were open to: remove that offer.',
+  input_schema: {
+    type: 'object',
+    properties: { offer_id: { type: 'number', description: 'From list_offers.' } },
+    required: ['offer_id'],
   },
 };
 
@@ -9272,6 +9326,12 @@ async function executeToolCall(
     }
     case 'set_reminder':
       return setReminderTool(userId, input, threadId, ownerAbsent);
+    case 'save_offer':
+      return saveOfferTool(userId, input, ownerAbsent);
+    case 'list_offers':
+      return listOffersTool(userId);
+    case 'delete_offer':
+      return deleteOfferTool(userId, input, ownerAbsent);
     case 'set_task_wake': {
       // #502 (Ninia): „remind me in 15 minutes" was told the shortest is an
       // hour. The wake ticker runs every 20 s, so a quarter hour is real.
@@ -13833,6 +13893,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   SET_TASK_BRIEF_TOOL,
   SET_TASK_WAKE_TOOL,
   SET_REMINDER_TOOL,
+  ...(OFFER_TOOLS_ON ? [SAVE_OFFER_TOOL, LIST_OFFERS_TOOL, DELETE_OFFER_TOOL] : []),
   FINISH_TASK_TOOL,
   RELAY_ASK_TOOL,
   RESPOND_TO_INVITE_CAMPAIGN_TOOL,

@@ -74,6 +74,14 @@ My recommendation: yes. Without it the code cannot ship, because any refusal has
 (external system write). The finished body is with ops (`docs/link/patches/axel_task.json`). Either ops files
 it, or I need your word. The build itself needs your yes and the zip from your WhatsApp.
 
+**AM. 1698 (offers), the three tool texts (D44, §109) — built and safe to ship, switched off until your yes.**
+„What you are open to" („if anyone needs hospitality in Adjara, I'm interested") is saved from the chat, after
+the owner's yes to one line, and is never shown to anyone else. The texts are in §109. My recommendation: yes.
+1699 (the nightly matcher) is built on it.
+
+**AN. D738 connectors:** `docs/CONNECTOR_UPDATE_D738.md` holds every current → proposed text from both
+tester notes (17 text-only, 5 need code). One yes per section, or one yes for all.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული

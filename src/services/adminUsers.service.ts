@@ -28,6 +28,7 @@ import {
 } from '../types';
 import { describeAskBudget } from './askBudget.service';
 import { answerStatsOf } from './answerStats.service';
+import { offersForAdmin } from './offers.service';
 import { getUserAsks } from './adminUserAsks.service';
 import { cohortForUser } from './inviteCohorts.service';
 import { paymentHistory } from './payments.service';
@@ -800,6 +801,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     askBudget,
     asks,
     answerStats,
+    offers,
   ] = await Promise.all([
     runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
     runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
@@ -820,6 +822,8 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     runBlock('asks', () => getUserAsks(userId), null, diagnostics),
     // 1689 (A6): how this person answers, by field — read-only, never shown to a user.
     runBlock('answerStats', () => answerStatsOf(userId), null, diagnostics),
+    // 1698 (A15): what this person said they are open to — admin page only.
+    runBlock('offers', () => offersForAdmin(userId), null, diagnostics),
   ]);
 
   const states = await runBlock('states', () => getStates(userId), null, diagnostics);
@@ -843,6 +847,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile | 
     ...(askBudget !== null && { askBudget }),
     ...(asks !== null && { asks }),
     ...(answerStats !== null && { answerStats }),
+    ...(offers !== null && { offers }),
   };
   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
   return profile;

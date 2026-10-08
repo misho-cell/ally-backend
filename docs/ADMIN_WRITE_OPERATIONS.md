@@ -6026,3 +6026,17 @@ being the person's name:
 > {name}-ს ამ მიზანზე უკვე ორჯერ მისწერე ისე, რომ მფლობელს არაფერი დაუწერია — მესამედ თავად აღარ მისწერო. მფლობელს ერთი ხაზით უთხარი, რა უნდა {name}-ს, და ჰკითხე, რა უპასუხოს. როცა მფლობელი დაწერს, მისი სიტყვებით გაგზავნე.
 
 The owner's own words (or his line sent by the server) reset the count to 0. Undo: revert.
+
+**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:30 UTC, NIGHT_QUESTIONS AM).** The code is
+in and can ship, but no run is given the tools while `OFFER_TOOLS_ON` is false. On his yes the switch flips
+and these three tool descriptions reach the model:
+
+> save_offer — The owner said what they are OPEN TO — „if anyone needs hospitality in Adjara, I am interested", „yes to any Axel member asking about logistics". Write it as ONE line in your own words (never their typed words), read it back and ask if it is right; call with confirmed: true only after their yes. An offer never answers anyone and is never shown to another person: it only helps find who may want to talk. Not for needs (those are goals).
+
+> list_offers — The owner's own saved offers (what they said they are open to), when they ask about them.
+
+> delete_offer — The owner asked to forget something they said they were open to: remove that offer.
+
+Server gates whatever the model does: saved only in the owner's own run and only with confirmed: true;
+at most 20 active per person. Undo: the switch back to false.
+
