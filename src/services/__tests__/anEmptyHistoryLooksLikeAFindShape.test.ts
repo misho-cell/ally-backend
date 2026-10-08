@@ -104,3 +104,15 @@ describe('a sample says which shape came back, not just how many rows', () => {
     expect(matchShapeOf('rows')).toBeNull();
   });
 });
+
+describe('a refused search (2809, conv 44281)', () => {
+  it('reads as refused, not as found nobody, whatever history rides with it', () => {
+    expect(
+      matchShapeOf({
+        found: false,
+        error: 'Not searched: this answer has used its 8 searches.',
+        empty_searches_so_far: 7,
+      }),
+    ).toBe('not searched — refused');
+  });
+});

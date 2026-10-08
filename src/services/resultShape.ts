@@ -85,7 +85,12 @@ export function matchShapeOf(result: unknown): string | null {
     empty_searches_so_far?: unknown;
     reason?: unknown;
     found?: unknown;
+    error?: unknown;
   };
+  // 2809 (the master test run's 45679, conv 44281): a refused search carries
+  // the run's empty-search history too, and read „found nobody … this one
+  // included". It did not run: it is a refusal first.
+  if (typeof record.error === 'string' && record.error !== '') return 'not searched — refused';
   const rows = record.results;
   if (Array.isArray(rows) && rows.length > 0) {
     const approximate = rows.filter(
