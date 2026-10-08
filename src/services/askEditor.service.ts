@@ -270,6 +270,19 @@ function reasonBrief(askerName: string): string {
   ].join('\n');
 }
 
+/**
+ * GP-073 (the MASTER TEST RUN, 23:29Z, request 4951): the rewrite came back as
+ * „ამირან საცდელი-" — the asker's name and a hyphen, the sentence cut off — and
+ * that fragment was stored as the request's whole text. A rewrite that ends on
+ * a hyphen, or keeps less than this share of the reason, is a fragment.
+ */
+const MIN_REWRITE_SHARE = 0.4;
+const ENDS_CUT_RE = /[-–—]\s*$/u;
+
+export function isAFragment(said: string, told: string): boolean {
+  return ENDS_CUT_RE.test(told) || told.length < said.length * MIN_REWRITE_SHARE;
+}
+
 export async function reasonAboutAsker(reason: string, askerName: string): Promise<string> {
   const said = reason.trim();
   if (said === '') return reason;
@@ -297,7 +310,7 @@ export async function reasonAboutAsker(reason: string, askerName: string): Promi
       .map((block) => block.text)
       .join('')
       .trim();
-    if (told === '' || told.length > said.length + MAX_GROWTH_CHARS) {
+    if (told === '' || told.length > said.length + MAX_GROWTH_CHARS || isAFragment(said, told)) {
       // eslint-disable-next-line no-console
       console.warn('[ask-editor] the reason was sent as written — the rewrite was not usable');
       return reason;
