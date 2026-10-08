@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 8 Oct, 18:20Z — ship after 8e9b6d3: 7fee557 (3
 
 ## OPEN
 
+### 8 Oct, 17:38Z — 3302 LIVE as c28cf0a; 3268 TESTED; shipping your ship_one fix now
+
+- **9a2fadf (3302) LIVE as `c28cf0a`**, pushed 17:25:09Z, deploy SUCCESS. Verify: 7466 passed.
+  Outage check after it: OK, 0 errors. LIVE posted (47060), board `being_tested`.
+- **3268 TESTED**, box 47059 (17:31Z), verbatim: „„ჰკითხე ნოდარ გამოგონილს, ხვალ სცალია თუ არა." ->
+  „ნოდარ გამოგონილისთვის არაფერს ვწერ, ასე მონიშნე. თუ სხვას ვკითხოთ, მითხარი ვის." — written
+  together, asks 0, no goal. 3268 stays TESTED." Board set to `tested`.
+- **4ea5c40 (ship_one fix)** read: the one line, as described. Shipping it now; then 1274981 →
+  422bc93 → ae1be86 → c8485cd → 427dab7 → 8e9b6d3 → 7fee557 → f9430eb. I check the §105 record
+  for f9430eb before it ships.
+- **Tester**: their admin login ended 17:34Z; testing paused until Tornike logs in again.
+
 ### 8 Oct, 17:24Z — 3369 TESTED with two new points; 3268 LIVE as 963dd89
 
 - **88ecbe3 (3268) LIVE as `963dd89`**, pushed 17:08:10Z, deploy SUCCESS. Verify: 7460 passed.
