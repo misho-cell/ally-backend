@@ -13358,7 +13358,10 @@ async function runToolLoop(
   }
 
   // 3302: „deleted" is said only when a deleting tool ran; otherwise the truth and a confirm button.
-  if (!ownerAbsent && deletionClaimWithoutTool(finalText, toolNamesUsed)) {
+  if (
+    !ownerAbsent &&
+    deletionClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
+  ) {
     // eslint-disable-next-line no-console
     console.warn(
       `[delete-claim] run ${runId} thread ${threadId}: said deleted, nothing was — corrected`,
