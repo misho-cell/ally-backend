@@ -101,6 +101,13 @@ import { thanksTapOf } from './helperThanksCards';
 import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
 import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
 import { settleMatchTap } from './matchFlow.service';
+import {
+  needThisFactMeets,
+  noteSavedFact,
+  recallChoices,
+  recallLine,
+  takeSavedFact,
+} from './needRecall';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
 import { safetyReplyFor } from './safetyWorry';
@@ -8790,6 +8797,7 @@ function clearRunState(runId: string): void {
   runCaptionsKept.delete(runId);
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
+  takeSavedFact(runId);
 }
 
 /**
@@ -9359,6 +9367,13 @@ async function executeToolCall(
         if (saved.kept_as !== undefined && runId !== undefined) {
           runMentionedNote.set(runId, String(input['value'] ?? ''));
         }
+        // 2608: what was saved is checked, at the run's end, against the owner's saved needs.
+        noteSavedFact(
+          runId,
+          String(input['phone'] ?? ''),
+          String(input['field_type'] ?? ''),
+          String(input['value'] ?? ''),
+        );
         return saved;
       } catch (err) {
         // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
@@ -13972,6 +13987,17 @@ async function runToolLoop(
     }
   }
 
+  // 2608: a fact saved in this run that meets another contact's saved need is recalled, as an offer.
+  const savedFact = takeSavedFact(runId);
+  if (!ownerAbsent && savedFact !== null && (choices === undefined || choices.length === 0)) {
+    const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
+      () => null,
+    );
+    if (recalled !== null && !finalText.includes(recalled.needName)) {
+      finalText = `${finalText.trimEnd()}\n\n${recallLine(runLang(runId), recalled)}`;
+      choices = recallChoices(runLang(runId));
+    }
+  }
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
   finalText = withPlainDigits(finalText);
   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
