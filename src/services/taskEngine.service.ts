@@ -130,6 +130,15 @@ const MAX_REMINDERS_PER_SWEEP = 10;
 // Answer-wake backstop (ticket 4 blocker 1): re-deliver any answered ask whose
 // task never woke — a deploy-window failure is late by minutes, not by a day.
 const UNWOKEN_SWEEP_INTERVAL_MS = 5 * 60_000;
+/**
+ * 3334 (the tester's 46668, 3 of 5): answers that landed while a deploy
+ * switched instances had their cards written by the old process, whose
+ * six-second retries were all refused (it was draining) and then died with it.
+ * The new process found them only at its first five-minute sweep, after the
+ * owners had stopped the goals. So a new process sweeps soon after it starts,
+ * once the old one has drained, and again a minute later.
+ */
+const BOOT_ANSWER_SWEEPS_MS: readonly number[] = [30_000, 90_000];
 const MAX_UNWOKEN_PER_SWEEP = 10;
 // Nightly review (the matcher, v1): quiet open tasks get one model-driven
 // re-check per night — new members/tags/facts since yesterday surface through
@@ -2013,6 +2022,15 @@ export function startTaskTicker(): void {
         console.error('[part-h] no-reply sweep failed:', (err as Error).message),
       );
   }, REMINDER_INTERVAL_MS).unref();
+
+  for (const delay of BOOT_ANSWER_SWEEPS_MS) {
+    setTimeout(() => {
+      void sweepUnwokenAnswers().catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error('[task-engine] boot answer sweep failed:', (err as Error).message),
+      );
+    }, delay).unref();
+  }
 
   setInterval(() => {
     void sweepUnwokenAnswers().catch((err) =>
