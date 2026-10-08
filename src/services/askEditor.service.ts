@@ -328,3 +328,58 @@ export async function reasonAboutAsker(reason: string, askerName: string): Promi
     return reason;
   }
 }
+
+/**
+ * 1687 (A4), second part — §106, Misho's yes on 8 October, word for word. A body
+ * over 400 characters gets about a fifth fewer replies: the question is passed
+ * once more, „shorter, same facts". The rewrite is used only when it is shorter,
+ * keeps every number of the original and asks one question; anything else, or a
+ * failed call, leaves the question as written (never blocked).
+ */
+export const SHORTEN_BRIEF =
+  'Rewrite this question shorter, under 400 characters, in the same language. Keep every fact, ' +
+  'name and number exactly as written; add nothing and drop no fact.';
+
+const SHORTEN_MAX_TOKENS = 600;
+const DIGIT_RUN_RE = /\d+/gu;
+
+/** The shorter question, when it is a usable one; null keeps the original. */
+export function usableShortening(original: string, rewrite: string): string | null {
+  const text = rewrite.trim();
+  if (text === '' || text.length >= original.length) return null;
+  if (questionMarks(text) > MAX_QUESTION_MARKS) return null;
+  const numbers = original.match(DIGIT_RUN_RE) ?? [];
+  return numbers.every((n) => text.includes(n)) ? text : null;
+}
+
+export async function shortenedQuestion(question: string): Promise<string | null> {
+  try {
+    const response = await anthropic.messages.create(
+      {
+        model: EDITOR_MODEL,
+        max_tokens: SHORTEN_MAX_TOKENS,
+        system: SHORTEN_BRIEF,
+        messages: [{ role: 'user', content: question }],
+      },
+      { timeout: EDIT_BUDGET_MS, maxRetries: 0 },
+    );
+    void recordClaudeUsage({
+      userId: null,
+      kind: 'ask_shorten',
+      model: EDITOR_MODEL,
+      usage: response.usage,
+    }).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[ask-editor] usage not recorded:', (err as Error).message);
+    });
+    const text = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
+    return usableShortening(question, text);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[ask-length] not shortened:', (err as Error).message);
+    return null;
+  }
+}
