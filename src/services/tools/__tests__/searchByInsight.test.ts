@@ -479,7 +479,13 @@ describe('a correction beats the fact it corrects (ticket 9 task 14)', () => {
         { phone: '+995599111111', name: 'Nodo Ivanidze', matched: ['occupation: Angel Investor'] },
         { phone: '+995599222222', name: 'სხვა ადამიანი', matched: ['occupation: Angel Investor'] },
       ],
-      corrections: [{ contact_phone: '+995599111111' }],
+      corrections: [
+        {
+          contact_phone: '+995599111111',
+          wrong_value: 'angel investor',
+          wrong_words: ['angel', 'investor'],
+        },
+      ],
     });
 
     const out = (await searchByInsight('501', 'angel investor')) as {
@@ -490,16 +496,24 @@ describe('a correction beats the fact it corrects (ticket 9 task 14)', () => {
     expect(out.results.map((r) => r.name)).toEqual(['სხვა ადამიანი']);
   });
 
-  it('asks the veto with the query’s own words', async () => {
-    setup({});
+  it('reads only this user’s corrections, and only words the query shares drop anyone', async () => {
+    // 3103: the words are compared by stem in code, so the read is this user's, limited.
+    setup({
+      publicFacts: [
+        { phone: '+995599111111', name: 'Nodo Ivanidze', matched: ['occupation: Angel Investor'] },
+      ],
+      corrections: [
+        { contact_phone: '+995599111111', wrong_value: 'doctor', wrong_words: ['doctor'] },
+      ],
+    });
 
-    await searchByInsight('501', 'angel investor');
+    const out = (await searchByInsight('501', 'angel investor')) as { results: { name: string }[] };
 
     const [, params] = mockQuery.mock.calls.find(([sql]) =>
       String(sql).includes('FROM fact_corrections'),
     ) as [string, unknown[]];
     expect(params[0]).toBe('501');
-    expect(params[1]).toEqual(expect.arrayContaining(['angel', 'investor']));
+    expect(out.results.map((r) => r.name)).toEqual(['Nodo Ivanidze']);
   });
 });
 

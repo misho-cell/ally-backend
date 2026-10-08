@@ -100,24 +100,58 @@ export async function correctContactFact(
 }
 
 /**
- * The phones this user has vetoed for THESE query words — the search layer's
- * own read.
- *
- * A veto fires when the query and the corrected claim share a word: someone
- * who said „he is not an angel investor" must not come back for „angel
- * investor", „investor", or „who invests". It is deliberately word-level and
- * deliberately per-user: a claim is denied for the person who denied it, and
- * everyone else's network is untouched.
+ * 3103 (MASTER TEST RUN SE-029, 2 of 2 seats + F9 SE-031): „ზურა left Colliers"
+ * was saved, and „ვის ვიცნობ Colliers-ში?" still listed him; „Levan is no longer
+ * an investor", and „ვინ მყავს ინვესტორად შენახული?" listed him first. The words
+ * are the same word in another case — „ინვესტორი" / „ინვესტორად", „Colliers" /
+ * „Colliers-ში" — so a veto compares word STEMS: one word starts with the
+ * other's stem (the word without its last two letters, never under four).
  */
-export async function vetoedPhonesFor(userId: string, words: string[]): Promise<Set<string>> {
-  if (words.length === 0) return new Set();
-  const result = await query<{ contact_phone: string }>(
-    `SELECT DISTINCT contact_phone FROM fact_corrections
-     WHERE user_id = $1::int AND wrong_words && $2::text[]`,
-    [userId, words.map((w) => w.toLowerCase())],
+const MIN_STEM_LENGTH = 4;
+const STEM_ENDING_LENGTH = 2;
+const CORRECTIONS_READ_LIMIT = 500;
+
+function stemOf(word: string): string {
+  return word.slice(0, Math.max(MIN_STEM_LENGTH, word.length - STEM_ENDING_LENGTH));
+}
+
+export function sameWordStem(a: string, b: string): boolean {
+  if (a.length < MIN_STEM_LENGTH || b.length < MIN_STEM_LENGTH) return a === b;
+  return a.startsWith(stemOf(b)) || b.startsWith(stemOf(a));
+}
+
+export interface MatchingCorrection {
+  readonly phone: string;
+  readonly wrongValue: string;
+}
+
+/**
+ * The corrections this user made that share a word stem with these query words —
+ * the search layer's own read. Deliberately per-user: a claim is denied for the
+ * person who denied it, and everyone else's network is untouched.
+ */
+export async function correctionsMatching(
+  userId: string,
+  words: readonly string[],
+): Promise<MatchingCorrection[]> {
+  const asked = words.map((w) => w.toLowerCase()).filter((w) => w !== '');
+  if (asked.length === 0) return [];
+  const result = await query<{ contact_phone: string; wrong_value: string; wrong_words: string[] }>(
+    `SELECT contact_phone, wrong_value, wrong_words FROM fact_corrections
+     WHERE user_id = $1::int ORDER BY created_at DESC LIMIT $2`,
+    [userId, CORRECTIONS_READ_LIMIT],
     CORRECTION_QUERY_TIMEOUT_MS,
   );
-  return new Set(result.rows.map((r) => normalizePhone(r.contact_phone)));
+  return result.rows
+    .filter((row) =>
+      (row.wrong_words ?? []).some((wrong) => asked.some((word) => sameWordStem(word, wrong))),
+    )
+    .map((row) => ({ phone: normalizePhone(row.contact_phone), wrongValue: row.wrong_value }));
+}
+
+/** The phones this user has vetoed for these query words. */
+export async function vetoedPhonesFor(userId: string, words: string[]): Promise<Set<string>> {
+  return new Set((await correctionsMatching(userId, words)).map((c) => c.phone));
 }
 
 /** Everything this user has corrected, for the record and for an admin read. */

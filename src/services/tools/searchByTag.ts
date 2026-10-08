@@ -5,6 +5,7 @@ import { buildExactMatchSql } from './wordMatch';
 import { getExcludedPhones } from '../block.service';
 import { boundaryExclusionsFor } from '../askBoundary.service';
 import { normalizePhone } from '../phone';
+import { claimWords, correctionsMatching } from '../factCorrections.service';
 import { isDisplayableTag } from './getContactFullProfile';
 import { collapseMergedPhones } from './mergedIdentities';
 import { applyFacts, ContactFactFields, fetchFactsForPhones } from './factEnrichment';
@@ -653,6 +654,40 @@ export async function exactMatchesWithPhones(
     .map((r) => ({ phone: r.phone, name: (r.name ?? r.saved_as ?? '').trim() }));
 }
 
+/** 3103: one the owner corrected away, with what they said is no longer true. */
+interface NoLongerRow {
+  readonly name: string | null;
+  readonly no_longer: string;
+}
+
+/**
+ * The rows the owner's own corrections take out of this search, apart from the
+ * rest. A correction that cannot be read takes nobody out: the list is shown as
+ * found, and the failure is logged.
+ */
+async function splitCorrected<T extends { phone?: unknown; name?: unknown }>(
+  userId: string,
+  tagQuery: string,
+  rows: readonly T[],
+): Promise<{ current: T[]; noLonger: NoLongerRow[] }> {
+  const corrections = await correctionsMatching(userId, claimWords(tagQuery)).catch(
+    (err: unknown) => {
+      console.error('searchByTag corrections not read:', (err as Error).message);
+      return [];
+    },
+  );
+  if (corrections.length === 0) return { current: [...rows], noLonger: [] };
+  const byPhone = new Map(corrections.map((c) => [c.phone, c.wrongValue]));
+  const current: T[] = [];
+  const noLonger: NoLongerRow[] = [];
+  for (const row of rows) {
+    const wrong = byPhone.get(normalizePhone(String(row.phone ?? '')));
+    if (wrong === undefined) current.push(row);
+    else noLonger.push({ name: typeof row.name === 'string' ? row.name : null, no_longer: wrong });
+  }
+  return { current, noLonger };
+}
+
 export async function searchByTag(userId: string, tagQuery: string): Promise<object> {
   try {
     const blockedPhones = await getExcludedPhones(userId, tagQuery);
@@ -704,11 +739,14 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     const merged = await collapseMergedPhones(
       results.map((row) => withOthersSavedAs(row, tagQuery)),
     );
+    // 3103: a person the owner said is no longer this is shown apart, never among the current.
+    const { current, noLonger } = await splitCorrected(userId, tagQuery, merged.rows);
     const payload: Record<string, unknown> = {
-      found: true,
-      count: merged.rows.length,
-      total: exact.total + fuzzyRows.length - merged.collapsed,
-      results: merged.rows,
+      found: current.length > 0 || noLonger.length > 0,
+      count: current.length,
+      total: exact.total + fuzzyRows.length - merged.collapsed - noLonger.length,
+      results: current,
+      ...(noLonger.length > 0 && { owner_said_no_longer: noLonger }),
     };
     // Whole result is approximate only when nothing matched exactly.
     if (exactRows.length === 0) payload.fuzzy = true;
