@@ -8,6 +8,23 @@ Last TO_CODE.md section handled: 8 Oct, 19:22Z — tester moved to chat #10; one
 
 ## OPEN
 
+### 8 Oct, 20:11Z — baa757d (1690, A7 fact confirm) with migration 218
+
+**baa757d, board 1690.** When a search in the owner's run shows a contact with a core fact the owner
+saved over 180 days ago, unconfirmed, the server adds one card after the reply („შენახული მაქვს:
+ზურაბ — „BDO". ისევ ასეა?" / კი, ასეა · აღარ · არ ვიცი), at most one per conversation a day. The
+tap is settled by the server, no model: yes → last_confirmed_at; not sure → not asked for 180 days;
+no longer → „ახლა სად მუშაობს …?" and the next short line is saved as a new fact (old kept). A
+„helped" debrief sets confirmed_by_result_at. New pending kind `fact_confirm` (text + buttons, like
+any pending card) — please add it to the FOR_FRONTEND line you planned.
+**Migration 218_fact_confirm.sql** (three columns on contact_facts, table fact_confirms). Ship after
+28e2557 (it touches debrief.service too).
+DONE WHEN: a fact saved 7 months ago gives exactly one confirm line when used; a tap updates the
+right field; the same fact is not asked again; a fact under 180 days gives nothing; two old facts in
+one conversation give one question.
+
+Order: … → fb41846 (1691) → baa757d.
+
 ### 8 Oct, 20:00Z — fb41846 (1691, A8 order); ship after 28e2557 (it reads answer_stats)
 
 **fb41846, board 1691.** A wave's remaining people in A8's order: the person the goal's text names
