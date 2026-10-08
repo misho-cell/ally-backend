@@ -2313,6 +2313,51 @@ const NO_PLAN_FOR_AN_INSTRUCTION =
   'one line who it went to.';
 
 /**
+ * 694 re-opened (the master test run's 45679, 9 runs; Misho's yes, §99.5): on
+ * „ask <name> …" the model still proposed a plan first, was refused, then
+ * granted permission, then sent — 50–60 s per direct ask. The refusal now
+ * sends the one question itself (the §97 path) and says it went; only when the
+ * server cannot send does the old refusal stand.
+ */
+const SENT_INSTEAD_OF_PLAN = (toName: string): string =>
+  `Not proposed — the owner's own line named this one person, and the server has already sent ` +
+  `the question to ${toName}. Do not call grant_task_permission or ask_contact for it. Say in ` +
+  'one line who it went to.';
+
+async function refusedPlanOrSentAsk(
+  userId: string,
+  threadId: number,
+  runId: string | undefined,
+): Promise<Record<string, unknown>> {
+  const refused = {
+    proposed: false,
+    reason: 'owner_instruction',
+    error: NO_PLAN_FOR_AN_INSTRUCTION,
+  };
+  if (runId === undefined) return refused;
+  const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[plan-refused] thread ${threadId}: server send failed:`,
+        (err as Error).message,
+      );
+      return null;
+    },
+  );
+  if (outcome?.result !== InstructedAskResult.Sent) return refused;
+  runAskSent.add(runId);
+  noteAskSentTo(runId, outcome.toName);
+  return {
+    proposed: false,
+    reason: 'owner_instruction',
+    sent: true,
+    to_name: outcome.toName,
+    note: SENT_INSTEAD_OF_PLAN(outcome.toName),
+  };
+}
+
+/**
  * The people a plan names that the plan already in force does not. The tester's
  * 1137 (36989, D625): after approval the owner wrote „ask one more person: Maka"
  * and the run proposed the approved person plus Maka — two names, so the
@@ -9501,7 +9546,7 @@ async function executeToolCall(
           (planTask?.plan ?? null) as TaskPlan | null,
         ))
       ) {
-        return { proposed: false, reason: 'owner_instruction', error: NO_PLAN_FOR_AN_INSTRUCTION };
+        return refusedPlanOrSentAsk(userId, threadId, runId);
       }
       if (
         planNamesPeople(input['plan']) &&
