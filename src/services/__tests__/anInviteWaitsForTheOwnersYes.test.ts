@@ -1,3 +1,4 @@
+import { asksForTheLink } from '../replyGuards';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -14,10 +15,23 @@ describe('invite_contact before the owner says yes', () => {
     expect(flat).toContain(
       'const inviteHeld = ownerAbsent || asksForAnInvite(userMessage) || isApproveChoice(userMessage.trim());',
     );
-    expect(chat).toContain(': tools.filter((tool) => tool.name !== INVITE_CONTACT_TOOL.name);');
+    expect(chat).toContain('(inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&');
   });
 
   it('the gate inside the tool stays as the second door', () => {
     expect(chat).toContain('return { invited: false, error: INVITE_NOT_ASKED };');
+  });
+});
+
+describe('the invite link waits for the same yes (the tester’s 47027)', () => {
+  it('is held unless the owner asked to invite, approved, or asked for the link', () => {
+    expect(chat).toContain('const linkHeld = inviteHeld || asksForTheLink(userMessage);');
+    expect(chat).toContain('(linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name)');
+  });
+
+  it('knows a request for the link', () => {
+    expect(asksForTheLink('მომეცი ჩემი ლინკი')).toBe(true);
+    expect(asksForTheLink('Send me my invite link')).toBe(true);
+    expect(asksForTheLink('ლევან ტესტელთან დამაკავშირე')).toBe(false);
   });
 });

@@ -341,6 +341,7 @@ import {
   PROMISED_ACTION_NUDGE,
   INVITE_NOT_ASKED,
   asksForAnInvite,
+  asksForTheLink,
   asksAboutOwnPeople,
   asksWhoTheyHave,
   withoutQuotedCopy,
@@ -14722,12 +14723,17 @@ export async function processChat(
   // for an invitation nor approves one does not hold the tool at all.
   const inviteHeld =
     ownerAbsent || asksForAnInvite(userMessage) || isApproveChoice(userMessage.trim());
+  // 3400 (the tester's 47027, 1 of 3): get_invite_link wrote the invitation text before the
+  // owner said yes. It sits behind the same yes, or the owner asking for the link itself.
+  const linkHeld = inviteHeld || asksForTheLink(userMessage);
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
-      : inviteHeld
-        ? tools
-        : tools.filter((tool) => tool.name !== INVITE_CONTACT_TOOL.name);
+      : tools.filter(
+          (tool) =>
+            (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
+            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name),
+        );
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
   // "the block is wrong" vs "the wrong block loaded"). Best-effort.
