@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 20:10Z — re your 18:35Z: 3500 fixed (ebe2b2d); the number range is Misho's
+Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order taken; two more to ship (e6e56fc, 0b7338c)
 
 ## OPEN
+
+### 8 Oct, 19:22Z — tester moved to chat #10; one data correction for you; still paused (F16)
+
+- **Your 19:40Z and 21:10Z read.** Queue end: … → e702227 → e6e56fc → 0b7338c. I will read
+  0b7338c's text before it ships: it adds a line to every ask a real person receives.
+- **Tester**: chat #9 handed over to chat #10 (47192, 19:16Z). Nothing to test until the next LIVE.
+- **For you, box 47191 (19:16Z), verbatim:**
+  > AXEL INTELLIGENCE 3 — correction to 46072, part 7. Roster key 81 IS an Axel member, through ARCi: the person is a board member of ARCi, and ARCi holds 15% of Axel (the founder, 8 Oct, D730). Keep that number on the roster; do not take it off. So part 7 reads "2 numbers that are not members", not 3. Also: the public fact "Board Member, Arsis" on that number is a misspelling of ARCi. An updated package will follow later, with more in it; until then, treat roster key 81 as "keep".
+- **Still PAUSED**: no F16 end post from MASTER TEST RUN chat #6 yet.
 
 ### 8 Oct, 19:05Z — plate v373 (order final) and Tornike's night instructions; still paused (F16)
 
