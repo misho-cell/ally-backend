@@ -208,11 +208,15 @@ export function outcomeOf(result: unknown): ToolOutcome {
   const record = result as Record<string, unknown>;
   const failed = 'error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false);
   const firstList = Object.values(record).find((value) => Array.isArray(value));
+  // 2809 (AD-014): a refused search ({found:false, error:'this answer has used its 8
+  // searches'}) read as „found nobody". A call that did not run found nothing
+  // and nobody: it is a refusal, never an empty result.
   const empty =
-    count === 0 ||
-    record['found'] === false ||
-    (Array.isArray(firstList) && firstList.length === 0) ||
-    Object.keys(record).length === 0;
+    !failed &&
+    (count === 0 ||
+      record['found'] === false ||
+      (Array.isArray(firstList) && firstList.length === 0) ||
+      Object.keys(record).length === 0);
   return {
     ok: !failed,
     empty,
