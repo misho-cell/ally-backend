@@ -373,7 +373,11 @@ import {
 } from './instructionUnsent';
 import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
-import { asksAboutTheOwner, dailyContactQuestionSection } from './dailyContactQuestion';
+import {
+  asksAboutTheOwner,
+  dailyContactQuestionSection,
+  speaksOfADeath,
+} from './dailyContactQuestion';
 import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
 import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
@@ -5061,6 +5065,7 @@ async function buildAgentSystemPrompt(
     goalBound: boundTask !== null,
     preview: forcedMode !== undefined,
     ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
+    ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
   });
   // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
   const noContacts =

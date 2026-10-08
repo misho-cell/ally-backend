@@ -29,6 +29,8 @@ export interface RunPresence {
   readonly preview: boolean;
   /** 2938: the owner's line is about the owner („რისი ცოდნა გინდა ჩემზე?"). */
   readonly ownerAsksAboutSelf?: boolean;
+  /** 3434: the owner's line tells of a death. */
+  readonly ownerSpeaksOfADeath?: boolean;
 }
 
 /**
@@ -44,6 +46,18 @@ export function asksAboutTheOwner(ownerLine: string): boolean {
   return ABOUT_THE_OWNER_RE.test(ownerLine);
 }
 
+/**
+ * 3434 (the tester's 46678, 1 of 2): after „<name> გარდაიცვალა…" the reply's
+ * condolence was followed by „სხვათა შორის, <another contact> სად მუშაობს?".
+ * A line about a death is never the moment for the day's light question.
+ */
+const SPEAKS_OF_A_DEATH_RE =
+  /(გარდაიცვალ|გარდაცვლილ|დაიღუპ|\bdied\b|passed\s+away|\bdeceased\b|умер|скончал|falleci|murió)/iu;
+
+export function speaksOfADeath(ownerLine: string): boolean {
+  return SPEAKS_OF_A_DEATH_RE.test(ownerLine);
+}
+
 /** Only the owner's own conversation, with the owner there, outside a goal. */
 export function contactQuestionMayRun(presence: RunPresence): boolean {
   return (
@@ -51,7 +65,8 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
     presence.regularThread &&
     !presence.goalBound &&
     !presence.preview &&
-    presence.ownerAsksAboutSelf !== true
+    presence.ownerAsksAboutSelf !== true &&
+    presence.ownerSpeaksOfADeath !== true
   );
 }
 
