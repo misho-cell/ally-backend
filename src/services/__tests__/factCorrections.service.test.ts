@@ -13,6 +13,8 @@ import { retractOwnFacts } from '../contactFacts.service';
 import {
   correctContactFact,
   vetoedPhonesFor,
+  correctionsMatching,
+  sameWordStem,
   claimWords,
   listCorrections,
 } from '../factCorrections.service';
@@ -83,14 +85,41 @@ describe('correctContactFact — the correction retracts AND vetoes', () => {
 
 describe('vetoedPhonesFor — the search layer’s own read', () => {
   it('fires when the query and the corrected claim share a word', async () => {
-    mockQuery.mockResolvedValue(rows([{ contact_phone: '+995599111111' }]) as never);
+    mockQuery.mockResolvedValue(
+      rows([
+        { contact_phone: '+995599111111', wrong_value: 'investor', wrong_words: ['investor'] },
+      ]) as never,
+    );
 
     const out = await vetoedPhonesFor('501', ['investor', 'startups']);
 
     expect(out.has('+995599111111')).toBe(true);
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain('wrong_words && $2::text[]');
-    expect(params).toEqual(['501', ['investor', 'startups']]);
+    expect(sql).toContain('WHERE user_id = $1::int');
+    expect(sql).toContain('LIMIT $2');
+    expect(params[0]).toBe('501');
+  });
+
+  it('3103: the same word in another case still fires; another word does not', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { contact_phone: '+995599111111', wrong_value: 'ინვესტორი', wrong_words: ['ინვესტორი'] },
+        { contact_phone: '+995599222222', wrong_value: 'Colliers', wrong_words: ['colliers'] },
+      ]) as never,
+    );
+    const investors = await correctionsMatching('501', ['ინვესტორად']);
+    expect(investors).toEqual([{ phone: '+995599111111', wrongValue: 'ინვესტორი' }]);
+    expect((await correctionsMatching('501', ['colliers'])).map((c) => c.phone)).toEqual([
+      '+995599222222',
+    ]);
+    expect(await correctionsMatching('501', ['ექიმი'])).toEqual([]);
+  });
+
+  it('3103: word stems', () => {
+    expect(sameWordStem('ინვესტორად', 'ინვესტორი')).toBe(true);
+    expect(sameWordStem('colliers', 'colliers')).toBe(true);
+    expect(sameWordStem('ექიმი', 'ექსპერტი')).toBe(false);
+    expect(sameWordStem('tbc', 'tbilisi')).toBe(false);
   });
 
   it('asks nothing for an empty query', async () => {
