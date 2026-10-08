@@ -5924,3 +5924,11 @@ set_task_wake's description: „…, or the owner's own „remind me in 15 minut
 reminder the owner asks for („remind me in 15 minutes") is set_reminder, not this."
 
 Undo: revert.
+
+**§99.4b — 2907 part 2 (the tester's 46235), shipped alone. No model-facing text.** The pick-list line
+under a question now shows, beside each of the reader's own people, what she herself saved about them:
+place of work and city only (never a note), e.g. „ნინო სტომატოლოგი (კლინიკა ღიმილი, ვაკე, თბილისი)". The
+line is also kept after an editor rewrite, since her people are back on the buttons (a36cd68). The
+button stores that detail; when she taps the name, her assistant's run reads her message as the name with
+the detail she was shown, so D648 („only what she wrote, exactly") passes the clinic she approved with the
+tap. Undo: revert.

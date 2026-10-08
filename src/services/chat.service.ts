@@ -173,6 +173,7 @@ import {
   laterUntilOnThread,
   noteDeclineIfButtonPressed,
   setLaterDays,
+  tappedPersonOnThread,
 } from './taskAsks.service';
 import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
@@ -14699,10 +14700,13 @@ export async function processChat(
    * the history by row id.
    */
   const storedAhead = intent?.alreadyStored === true;
+  // 2907 (46235): a tap on the reader's own person is read as the text she was shown with it.
+  const personTapped =
+    thread.type === 'incoming_ask' ? await tappedPersonOnThread(threadId, userMessage) : null;
   const messages: Anthropic.MessageParam[] = [
     ...history,
     ...(replyContext === null ? [] : [{ role: 'user' as const, content: replyContext }]),
-    { role: 'user', content: userMessage },
+    { role: 'user', content: personTapped ?? userMessage },
   ];
   // Question A, the tester's 949: a run that answers from the web results an
   // EARLIER run fetched (they are in this history) must be allowed the same

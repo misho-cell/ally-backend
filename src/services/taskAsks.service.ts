@@ -31,6 +31,8 @@ import {
   ownPeopleBeside,
   parseAskChoices,
   tapOfChoice,
+  tappedPersonText,
+  withPeopleDetails,
   withServerLater,
 } from './askChoices';
 import { editOutgoingAsk } from './askEditor.service';
@@ -1530,9 +1532,9 @@ async function createAskNow(
     picker && picker.names.length > 0 && said === language
       ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
       : edited.choices;
-  const choices = withServerLater(
-    await choicesInLanguage(editedChoices, said, edited.question),
-    said,
+  const choices = withPeopleDetails(
+    withServerLater(await choicesInLanguage(editedChoices, said, edited.question), said),
+    picker && said === language ? picker.details : {},
   );
   const opening = buildAskOpening(
     said,
@@ -1576,8 +1578,11 @@ async function createAskNow(
   const lines = [
     opening,
     ...(recommender ? [recommendedByLine(said, recommender)] : []),
-    // The pick-list line names the buttons; an editor's rewrite replaced them.
-    ...(picker && !edited.edited && said === language ? [picker.line] : []),
+    // The pick-list line names the buttons, and what she saved about each (2907, 46235). Her
+    // people are back on the buttons after an editor's rewrite too (a36cd68), so the line is.
+    ...(picker && (!edited.edited || picker.names.length > 0) && said === language
+      ? [picker.line]
+      : []),
   ];
   await saveThreadMessage(
     askThreadId,
@@ -3858,6 +3863,32 @@ export async function askTapOnThread(threadId: number, message: string): Promise
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[ask-tap] thread ${threadId}: buttons not read:`, (err as Error).message);
+    return null;
+  }
+}
+
+/**
+ * 2907 (46235): the reader's tap on one of her own people, as the text she was
+ * shown with it; null for any other message, and on a failed read, which is logged.
+ */
+export async function tappedPersonOnThread(
+  threadId: number,
+  message: string,
+): Promise<string | null> {
+  if (message.trim().length > MAX_CHOICE_CHARS) return null;
+  try {
+    const result = await query<{ choices: unknown }>(
+      `SELECT choices FROM task_asks
+        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered') AND choices IS NOT NULL
+        ORDER BY id DESC LIMIT 1`,
+      [threadId],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    const stored = parseAskChoices(result.rows[0]?.choices);
+    return stored === null ? null : tappedPersonText(message, stored);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ask-tap] thread ${threadId}: person not read:`, (err as Error).message);
     return null;
   }
 }

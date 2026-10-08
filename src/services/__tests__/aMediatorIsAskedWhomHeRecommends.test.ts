@@ -30,6 +30,8 @@ function bookName(name: string | null): void {
 
 beforeEach(() => {
   mockQuery.mockReset();
+  // 2907: what the mediator saved about the people shown — nothing, unless a test says so.
+  mockQuery.mockResolvedValue({ rows: [] } as never);
   mockMatches.mockReset();
 });
 
