@@ -1,5 +1,6 @@
 import { geoName } from './georgianCase';
 import { GOAL_FEEDBACK_QUESTIONS, GoalFeedbackKey, feedbackWording } from './goalFeedback.service';
+import { GoalWaitReason } from './goalWaitReason';
 import { RunLanguage } from './runLanguage';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
 
@@ -179,8 +180,30 @@ interface PendingTexts {
    */
   myGoalsWaiting: (count: number) => string;
   myGoalsLater: string;
+  /** 3367: why a goal with no written question is on the list. */
+  goalWaitsForPlan: string;
+  goalWaitsForNextStep: string;
+  /** 3367: the incoming questions a reply left out, listed by the server. */
+  questionsWaiting: (count: number) => string;
   /** Nobody is written to without this being pressed. */
   someoneNew: string;
+}
+
+/**
+ * What a waiting goal waits on, for its line on the card: its own question when
+ * one was written down, else why it is on the list at all (3367), else nothing.
+ */
+function goalWaitLine(goal: Record<string, unknown>, t: PendingTexts): string | null {
+  const question = str(goal, 'question');
+  if (question !== null) return question;
+  switch (str(goal, 'waiting_for')) {
+    case GoalWaitReason.PlanApproval:
+      return t.goalWaitsForPlan;
+    case GoalWaitReason.NextStep:
+      return t.goalWaitsForNextStep;
+    default:
+      return null;
+  }
 }
 
 /**
@@ -264,6 +287,12 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
         ? 'ერთი შენი მიზანი შენს პასუხს ელოდება:'
         : `${count} შენი მიზანი შენს პასუხს ელოდება:`,
     myGoalsLater: 'მოგვიანებით',
+    goalWaitsForPlan: 'გეგმა შენს თანხმობას ელოდება',
+    goalWaitsForNextStep: 'შედეგები გაქვს, შემდეგ ნაბიჯს შენ წყვეტ',
+    questionsWaiting: (count) =>
+      count === 1
+        ? 'ერთი კითხვა შენს პასუხს ელოდება, თავის თემაში:'
+        : `${count} კითხვა შენს პასუხს ელოდება, თითო თავის თემაში:`,
     someoneNew: 'ახალი მომხმარებელი',
   },
   en: {
@@ -338,6 +367,12 @@ const TEXTS: Record<'ka' | 'en', PendingTexts> = {
         ? 'One of your goals is waiting on your answer:'
         : `${count} of your goals are waiting on your answer:`,
     myGoalsLater: 'Later',
+    goalWaitsForPlan: 'the plan is waiting for your OK',
+    goalWaitsForNextStep: 'the results are in; the next step is yours',
+    questionsWaiting: (count) =>
+      count === 1
+        ? 'One question is waiting for your answer, in its own thread:'
+        : `${count} questions are waiting for your answer, each in its own thread:`,
     someoneNew: 'Somebody new',
   },
 };
@@ -570,13 +605,37 @@ export function renderPendingMessage(
     case 'my_goals_waiting': {
       const goals = Array.isArray(p.goals) ? (p.goals as Record<string, unknown>[]) : [];
       const lines = goals
-        .map((g) => ({ title: str(g, 'goal'), question: str(g, 'question') }))
-        .filter((g): g is { title: string; question: string | null } => g.title !== null)
-        .map((g) => (g.question === null ? `• ${g.title}` : `• ${g.title} — ${g.question}`));
+        .map((g) => ({ title: str(g, 'goal'), why: goalWaitLine(g, t) }))
+        .filter((g): g is { title: string; why: string | null } => g.title !== null)
+        .map((g) => (g.why === null ? `• ${g.title}` : `• ${g.title} — ${g.why}`));
       if (lines.length === 0) return null;
       return {
         text: `${t.myGoalsWaiting(lines.length)}\n${lines.join('\n')}`,
         choices: [t.myGoalsLater],
+        ref: { kind: item.kind },
+        instruction,
+      };
+    }
+    /**
+     * 3367 (conv 45133): check_my_inbox found two questions from other people
+     * and the reply said „ახალი არაფერია". The ones a reply leaves out are
+     * listed here by the server, each with who asks; they are answered in
+     * their own threads, so the card carries no button.
+     */
+    case 'questions_waiting': {
+      const questions = Array.isArray(p.questions)
+        ? (p.questions as Record<string, unknown>[])
+        : [];
+      const lines = questions
+        .map((q) => ({ from: str(q, 'from'), question: str(q, 'question') }))
+        .filter(
+          (q): q is { from: string; question: string } => q.from !== null && q.question !== null,
+        )
+        .map((q) => `• ${q.from}: ${q.question}`);
+      if (lines.length === 0) return null;
+      return {
+        text: `${t.questionsWaiting(lines.length)}\n${lines.join('\n')}`,
+        choices: [],
         ref: { kind: item.kind },
         instruction,
       };

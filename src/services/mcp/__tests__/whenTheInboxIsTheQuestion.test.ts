@@ -173,8 +173,8 @@ describe('the owner’s own goals, stuck on the owner', () => {
     const store = readFileSync(join(__dirname, '..', '..', 'taskStore.service.ts'), 'utf8');
     const fn = store.slice(store.indexOf('export async function goalsAwaitingTheOwner'));
 
-    expect(fn.slice(0, 900)).toContain('pending_question_at IS NOT NULL');
-    expect(fn.slice(0, 900)).not.toContain('pending_question IS NOT NULL');
+    expect(fn.slice(0, 3000)).toContain('pending_question_at IS NOT NULL');
+    expect(fn.slice(0, 3000)).not.toContain('pending_question IS NOT NULL');
   });
 
   /** „Nothing is waiting" must not be said while six of their goals are. */

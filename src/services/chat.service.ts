@@ -481,6 +481,7 @@ import {
   RULE_284_ONE_REPLY_ONE_GOAL,
 } from './testerRules';
 import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+import { InboxQuestion, questionsTheReplyLeftOut } from './inboxQuestions';
 import { ListStatus, listStatus, startListWork } from './listItems.service';
 import { shareContactNumberWithAsker, ShareRefusal } from './shareNumber.service';
 import { query } from '../db/postgres/client';
@@ -6772,6 +6773,21 @@ export function claimsTheReplyMade(
   return made;
 }
 
+/**
+ * 3367 (conv 45133). „რა არის ახალი?": check_my_inbox found two questions
+ * from other people, and the reply was „ახალი არაფერია." A question the owner
+ * is not told about is never answered. The ones a reply leaves out are listed
+ * after it by the server, as their own card.
+ */
+const QUESTIONS_WAITING_KIND = 'questions_waiting';
+
+const runInboxQuestions = new Map<string, InboxQuestion[]>();
+
+function noteInboxQuestions(runId: string | undefined, questions: readonly InboxQuestion[]): void {
+  if (!runId || questions.length === 0) return;
+  runInboxQuestions.set(runId, [...questions]);
+}
+
 function noteHeldUpdates(runId: string | undefined, rows: readonly HeldUpdate[] | null): void {
   if (!runId || rows === null) return;
   runHeldUpdates.set(runId, rows);
@@ -6899,6 +6915,8 @@ function takePendingItems(runId: string, reply: string): PendingItemInput[] {
   runPendingItems.delete(runId);
   runHeldUpdates.delete(runId);
   runInboxNamed.delete(runId);
+  const leftOut = questionsTheReplyLeftOut(runInboxQuestions.get(runId) ?? [], reply);
+  runInboxQuestions.delete(runId);
   const planWentOnScreen = takePlanWentOnScreen(runId);
 
   const delivered: PendingItemInput[] = [];
@@ -6910,6 +6928,13 @@ function takePendingItems(runId: string, reply: string): PendingItemInput[] {
     if (planWentOnScreen) continue;
     const trimmed = morePendingAfterNaming(item, held, named);
     if (trimmed !== null) delivered.push(trimmed);
+  }
+  if (!PENDING_AS_MESSAGES_OFF && leftOut.length > 0) {
+    delivered.push({
+      kind: QUESTIONS_WAITING_KIND,
+      task_id: null,
+      payload: { questions: leftOut },
+    });
   }
   return delivered;
 }
@@ -8295,6 +8320,7 @@ function clearRunState(runId: string): void {
   runPendingItems.delete(runId);
   runGraceNote.delete(runId);
   runInboxNamed.delete(runId);
+  runInboxQuestions.delete(runId);
   runHeldUpdates.delete(runId);
   runShareText.delete(runId);
   // Row 237's flag. Its consumer forgets it too, but a run that exits early
@@ -10098,6 +10124,7 @@ async function executeToolCall(
                 task_id: g.task_id,
                 goal: g.title,
                 question: g.question === null ? null : scrubText(g.question),
+                waiting_for: g.waiting_for,
               })),
               instruction:
                 'The user is being shown a list of their OWN goals that are waiting on them, ' +
@@ -10108,6 +10135,15 @@ async function executeToolCall(
           },
         ]);
       }
+      noteInboxQuestions(
+        runId,
+        asks
+          .filter((ask: PendingAsk) => ask.from_name !== null)
+          .map((ask: PendingAsk) => ({
+            from: String(ask.from_name),
+            question: scrubText(ask.question),
+          })),
+      );
       noteInboxNamed(runId, [
         ...myGoals.map((g) => ({
           key: String(heldUpdateKey(GOAL_QUESTION_KIND, g.task_id)),
@@ -10149,6 +10185,7 @@ async function executeToolCall(
           // Null when the engine recorded the wait without the text. Reported
           // as waiting anyway — a goal stuck on an unnamed question is stuck.
           question: g.question === null ? null : scrubText(g.question),
+          waiting_for: g.waiting_for,
           waiting_since: g.waiting_since,
         })),
         replies_to_what_i_asked: answered,

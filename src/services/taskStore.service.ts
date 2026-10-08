@@ -7,6 +7,7 @@ import { userLanguage } from './threads.service';
 import { markThreadStopped } from './stoppedRuns';
 import { goalNamedIn } from './goalMention';
 import type { TaskPlan } from './taskPlans.service';
+import { GoalWaitReason } from './goalWaitReason';
 
 const QUERY_TIMEOUT_MS = 8_000;
 const OPEN_TASKS_LIMIT = 50;
@@ -1021,24 +1022,82 @@ export async function clearPlanChangeRequest(taskId: number): Promise<void> {
  * the text, and a goal waiting with an unnamed question is still waiting — it
  * is reported with a null question rather than left out.
  */
+/**
+ * What the goal waits on the owner FOR, so the card can say it.
+ *
+ * 3367 (QA-047, NO-005; seats 180150 and 180153, 8 Oct): „რა მელოდება?"
+ * listed the incoming questions and none of the owner's own goals that waited
+ * for the owner — two plans waiting for a yes, and a plumber goal whose results
+ * were in and which would do nothing more until the owner said what next. Only a goal
+ * with a written-down question counted, and none of these had one.
+ */
 export interface GoalAwaitingOwner {
   readonly task_id: number;
   readonly title: string | null;
   readonly question: string | null;
   readonly waiting_since: string;
+  readonly waiting_for: GoalWaitReason;
 }
+
+/** A goal idle longer than this is not „waiting on you" any more, just old. */
+const NEXT_STEP_WINDOW_DAYS = 7;
+/** The goal's first line is the „I am working on it" note; results come after. */
+const RESULT_LINES_AT_LEAST = 2;
+const GOALS_AWAITING_LIMIT = 10;
 
 export async function goalsAwaitingTheOwner(userId: string): Promise<GoalAwaitingOwner[]> {
   const result = await query<GoalAwaitingOwner>(
-    `SELECT t.id AS task_id, t.title, t.pending_question AS question,
-            t.pending_question_at AS waiting_since
-       FROM tasks t
-      WHERE t.user_id = $1 AND t.status = 'open'
-        AND t.pending_question_at IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM hidden_goals h WHERE h.task_id = t.id)
-      ORDER BY t.pending_question_at ASC
-      LIMIT 10`,
-    [userId],
+    `WITH own AS (
+       SELECT t.* FROM tasks t
+        WHERE t.user_id = $1 AND t.status = 'open'
+          AND NOT EXISTS (SELECT 1 FROM hidden_goals h WHERE h.task_id = t.id)
+     ),
+     last_line AS (
+       SELECT o.id AS task_id,
+              (SELECT c.role FROM conversations c
+                WHERE c.thread_id = o.thread_id AND c.kind = 'message' AND c.content <> ''
+                ORDER BY c.created_at DESC LIMIT 1) AS role,
+              (SELECT MAX(c.created_at) FROM conversations c
+                WHERE c.thread_id = o.thread_id AND c.kind = 'message' AND c.content <> '') AS at,
+              (SELECT COUNT(*) FROM conversations c
+                WHERE c.thread_id = o.thread_id AND c.role = 'assistant'
+                  AND c.kind = 'message' AND c.content <> '') AS said
+         FROM own o
+        WHERE o.pending_question_at IS NULL
+          AND NOT (o.plan IS NULL AND o.plan_proposed IS NOT NULL)
+          AND o.thread_id IS NOT NULL
+     )
+     SELECT task_id, title, question, waiting_since, waiting_for FROM (
+       SELECT o.id AS task_id, o.title, o.pending_question AS question,
+              o.pending_question_at AS waiting_since, $5::text AS waiting_for
+         FROM own o WHERE o.pending_question_at IS NOT NULL
+       UNION ALL
+       SELECT o.id, o.title, NULL, COALESCE(o.last_activity_at, o.updated_at),
+              $6::text
+         FROM own o WHERE o.pending_question_at IS NULL
+          AND o.plan IS NULL AND o.plan_proposed IS NOT NULL
+       UNION ALL
+       SELECT o.id, o.title, NULL, l.at, $7::text
+         FROM own o JOIN last_line l ON l.task_id = o.id
+        WHERE l.role = 'assistant' AND l.said >= $2
+          AND l.at > NOW() - make_interval(days => $3)
+          AND NOT EXISTS (SELECT 1 FROM task_asks a WHERE a.task_id = o.id AND a.status = 'sent')
+          AND NOT EXISTS (SELECT 1 FROM held_asks ha
+                           WHERE ha.task_id = o.id AND ha.released_at IS NULL)
+          AND NOT EXISTS (SELECT 1 FROM introduction_requests ir
+                           WHERE ir.requester_task_id = o.id AND ir.status = 'pending')
+     ) waiting
+     ORDER BY waiting_since ASC
+     LIMIT $4`,
+    [
+      userId,
+      RESULT_LINES_AT_LEAST,
+      NEXT_STEP_WINDOW_DAYS,
+      GOALS_AWAITING_LIMIT,
+      GoalWaitReason.Question,
+      GoalWaitReason.PlanApproval,
+      GoalWaitReason.NextStep,
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
