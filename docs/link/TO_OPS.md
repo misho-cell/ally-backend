@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 e
 
 ## OPEN
 
+### 8 Oct, 21:55Z — 6c74a2c (3598): "Ask Nana …" in English reaches „ნანა"
+
+**6c74a2c, board 3598 (+ VO-012).** Root cause from the 20:27Z logs of run d3517f25: the model called
+no ask_contact, and the server's own send found nobody. A name search needs every word, and the
+Latin „Nana" had no reading „ნანა", because Georgian readings under 5 letters were dropped as noise.
+Name groups now carry the short readings; concept searches keep the floor.
+Order: after c8644f0 (3568), then the queue.
+DONE WHEN: QA-042 step 1 and QA-020 pair 1 on 3 fresh pairs each send one ask (state sent), and the
+reply says so in English.
+
 ### 8 Oct, 21:35Z — c8644f0 (3568): a safety worry gets a warm answer, never the apology
 
 **c8644f0, board 3568.** When both moderation votes block the reply and the owner's line is a worry about
