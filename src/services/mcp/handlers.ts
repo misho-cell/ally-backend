@@ -574,6 +574,7 @@ export async function mcpCheckInbox(userId: string): Promise<McpToolPayload> {
       task_ref: 'task_' + String(g.task_id),
       goal: g.title,
       question: g.question === null ? null : scrubText(g.question),
+      waiting_for: g.waiting_for,
       waiting_since: scrubDeep(g.waiting_since),
     })),
     questions_for_me: pendingAsks.map((ask) => ({
