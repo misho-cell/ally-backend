@@ -74,6 +74,8 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { asksToReopen } from './reopenIntent';
 import { withoutMatchJustification } from './planJustification';
+import { offerReferral, referralTapOf } from './askReferral.service';
+import { settleReferralTap } from './askReferralSettle.service';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -12195,6 +12197,46 @@ async function answerNotTagged(
   return { reply: text, language, requestCreated: false };
 }
 
+/**
+ * 1696 (A13): on an ask conversation, a tap on the referral card is settled by
+ * the server, and a line naming one of the reader's own people to ask instead
+ * gets that card. Null for anything else, and on any failure — the turn then
+ * runs as before.
+ */
+async function answerReferral(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  try {
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    const tap = referralTapOf(userMessage);
+    const settled = tap === null ? null : await settleReferralTap(userId, threadId, tap, language);
+    const card = tap === null ? await offerReferral(userId, threadId, userMessage, language) : null;
+    const text = settled ?? card?.text ?? null;
+    if (text === null) return null;
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    const choices = card === null ? null : [...card.choices];
+    await saveMessage(userId, threadId, 'assistant', text, 'message', runId, choices);
+    // eslint-disable-next-line no-console
+    console.log(`[referral] run ${runId}: ${card === null ? 'tap settled' : 'card shown'}`);
+    return {
+      reply: text,
+      language,
+      requestCreated: false,
+      ...(choices !== null && { choices }),
+    };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[referral] not handled:', (err as Error).message);
+    return null;
+  }
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -14728,6 +14770,12 @@ export async function processChat(
       ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
       : null;
   if (notTagged !== null) return notTagged;
+  // 1696 (A13): „not me — ask Eka" gets one card first; its tap is acted on by the server.
+  const referral =
+    !ownerAbsent && thread.type === 'incoming_ask'
+      ? await answerReferral(userId, threadId, userMessage, runId, intent)
+      : null;
+  if (referral !== null) return referral;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
