@@ -82,6 +82,13 @@ the owner's yes to one line, and is never shown to anyone else. The texts are in
 **AN. D738 connectors:** `docs/CONNECTOR_UPDATE_D738.md` holds every current → proposed text from both
 tester notes (17 text-only, 5 need code). One yes per section, or one yes for all.
 
+**AO. 1697 part 2, the closed-route line (D44, would be §110).** When the bridge AND the receiver are both
+„not of this field" by their own data, no request would be made, and the model would read:
+
+> Not sent: this route looks closed. Say so to the owner in one plain line — never why, and nothing about these people — and propose another way.
+
+„Never why" is on purpose: the reason comes from other people's data (D680). My recommendation: yes.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
