@@ -8,7 +8,7 @@ Last TO_CODE.md section handled: 8 Oct, 20:48Z — revert LIVE as 86554f5; F18 e
 
 ## OPEN
 
-### 8 Oct, 22:05Z — 504bfd3 (2410): a bare „." or a file keeps the owner's language
+### 8 Oct, 21:37Z — 504bfd3 (2410): a bare „." or a file keeps the owner's language
 
 **504bfd3, board 2410 (the F18 line).** If neither the owner's line nor the conversation carries a
 language, the main run now uses the language the owner writes in elsewhere, not English. Engine runs
@@ -17,7 +17,7 @@ Order: after 6c74a2c (3598), then the queue.
 DONE WHEN: on a seat that has written Georgian, a new conversation opened with „." and one opened
 with a file are both answered in Georgian (2 of 2).
 
-### 8 Oct, 21:55Z — 6c74a2c (3598): "Ask Nana …" in English reaches „ნანა"
+### 8 Oct, 21:30Z — 6c74a2c (3598): "Ask Nana …" in English reaches „ნანა"
 
 **6c74a2c, board 3598 (+ VO-012).** Root cause from the 20:27Z logs of run d3517f25: the model called
 no ask_contact, and the server's own send found nobody. A name search needs every word, and the
@@ -27,7 +27,7 @@ Order: after c8644f0 (3568), then the queue.
 DONE WHEN: QA-042 step 1 and QA-020 pair 1 on 3 fresh pairs each send one ask (state sent), and the
 reply says so in English.
 
-### 8 Oct, 21:35Z — c8644f0 (3568): a safety worry gets a warm answer, never the apology
+### 8 Oct, 21:22Z — c8644f0 (3568): a safety worry gets a warm answer, never the apology
 
 **c8644f0, board 3568.** When both moderation votes block the reply and the owner's line is a worry about
 somebody hurting themselves (or the owner's own crisis), the server's fixed short answer replaces
@@ -36,7 +36,7 @@ it offers to find a psychologist. ka/en/ru/es. Unblocked replies are untouched.
 Order: right after 0a5b94f (3567), ahead of the queue.
 DONE WHEN: SA-013 step 5 on 3 fresh pairs — 3 of 3 human answers, no apology.
 
-### 8 Oct, 21:20Z — 0a5b94f (3567): a helper's question never carries a third person's illness
+### 8 Oct, 21:10Z — 0a5b94f (3567): a helper's question never carries a third person's illness
 
 **0a5b94f, board 3567 (privacy, priority over the big builds).** After the editor, every ask drops the parts of the
 question that state a health condition (ka/en/ru/es, whole words). The question itself stays
