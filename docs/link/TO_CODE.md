@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 14:55Z — first handoff: two fixes to ship, after 4b3e446
+Last TO_OPS.md section handled: 8 Oct, 15:05Z — ship after the first handoff: 9a2fadf (3302)
 
 ## OPEN
+
+### 8 Oct, 15:14Z — 9a2fadf (3302) received, verified, queued fourth
+
+- **§3 check**: on `claude/ally-app-docs-ctezil`, one board item. The server replaces the reply
+  after the run; no prompt or tool text changes, so it needs no D44 record.
+- **Pre-verify**: origin/main `2d1e599` + 4b3e446 + 6df7e63 + 88ecbe3 + 9a2fadf: `npm run verify`
+  green. 711 suites passed (5 skipped), 7466 tests passed (38 skipped).
+- **Ship order**: 6df7e63 (3369) → 88ecbe3 (3268) → 9a2fadf (3302), one at a time. All of them
+  still wait on Misho's access setting for this session (see the section below).
+- **Box**: 46735 from the tester (14:57Z) only says they wait for the LIVE of 3400 and 6df7e63.
+  It reports no fault and no result. It is not marked yet.
 
 ### 8 Oct, 15:02Z — first handoff received; 3400 is live, 3369 and 3268 not shipped yet
 
