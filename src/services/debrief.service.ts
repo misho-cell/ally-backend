@@ -19,7 +19,7 @@ const DEBRIEF_QUERY_TIMEOUT_MS = 8_000;
 export const DEBRIEF_KIND = 'debrief';
 const DEBRIEF_DELAY_DAYS = Number(process.env.DEBRIEF_DELAY_DAYS ?? 3);
 
-type DebriefArmKind = 'intro_request' | 'task_ask' | 'search';
+type DebriefArmKind = 'intro_request' | 'task_ask' | 'search' | 'answered_ask';
 
 /** True only for the FIRST arm of this subject — the once-per-introduction guard. */
 async function armOnce(kind: DebriefArmKind, refId: number, userId: string): Promise<boolean> {
@@ -120,6 +120,49 @@ export async function armAskDebrief(
 }
 
 /**
+ * 1692 part 2 (A9): nothing asked the owner how an ANSWER worked out, so the
+ * thank-you could only start when the owner said so unprompted. When a helper
+ * answers, three days later the owner's assistant asks how it went.
+ *
+ * HELD (D44): the instruction is new model text — NIGHT_QUESTIONS AV. Until
+ * Misho's yes nothing is armed.
+ */
+export const ANSWER_DEBRIEF_ON = false;
+
+/** NIGHT_QUESTIONS AV, the exact text proposed. */
+export function answerDebriefInstruction(who: string, askId: number): string {
+  return (
+    `${who} answered your question ${DEBRIEF_DELAY_DAYS} days ago. Ask the owner in one line how it ` +
+    'worked out. If it helped, record record_debrief_outcome (subject="relayed_ask", ' +
+    `ref_id=${askId}, worked=true); if not, worked=false; if it is too early, not_yet=true.`
+  );
+}
+
+export async function armAnswerDebrief(
+  askerUserId: string,
+  askId: number,
+  taskId: number,
+  who: string,
+): Promise<void> {
+  if (!ANSWER_DEBRIEF_ON) return;
+  if (!(await armOnce('answered_ask', askId, askerUserId))) return;
+  await queueFollowUp(
+    askerUserId,
+    taskId,
+    DEBRIEF_KIND,
+    {
+      about: 'answered_ask',
+      ask_id: askId,
+      who,
+      why: `${who} answered ${DEBRIEF_DELAY_DAYS} days ago and nobody has said how it went`,
+      technique_tag: null,
+      instruction: answerDebriefInstruction(who, askId),
+    },
+    DEBRIEF_DELAY_DAYS,
+  );
+}
+
+/**
  * A search outcome reached 'accepted' — the user took a name. Three days
  * later the assistant asks what actually happened, so the ladder (D39) moves
  * on real information, never on a returned name.
@@ -213,6 +256,10 @@ async function debriefStillDue(userId: string, payload: Record<string, unknown>)
       row.outcome !== 'refused' &&
       row.outcome !== 'no_result'
     );
+  }
+  // 1692 part 2: still due until the owner has said whether the answer helped.
+  if (about === 'answered_ask') {
+    return !(await hasDebriefRung(SUBJECT_TO_KIND.relayed_ask, Number(payload['ask_id'])));
   }
   if (about === 'introduction') {
     return !(await hasDebriefRung('intro_request', Number(payload['intro_request_id'])));

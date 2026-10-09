@@ -118,7 +118,7 @@ describe('what the ask carries, and what the answer records', () => {
 
   /** $3 is decided in TypeScript by string equality — the SQL judges nothing. */
   it('decides in code, not in the query', () => {
-    expect(asks).toContain('[askThreadId, safe, await answerIsADecline(askThreadId, safe)]');
+    expect(asks).toContain('const declined = await answerIsADecline(askThreadId, safe);');
     expect(asks).toContain(
       'if ((await askTapOnThread(askThreadId, answer)) === AskTap.Decline) return true;',
     );
