@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 11:20Z — 2348 TESTED; new BIG in the list family (box 48679): unsearched rows reported as „not in your network"
+
+- **The tester's words:** „Fresh fictional seat 181439, conv 47769, 11:00–11:17Z. A 30-row needs CSV (file 1222) […] rows 1–8
+  named the right contact; rows 9–30 „ქსელში არ გამოჩნდა. საჯარო მოძიება". […] the run hit the per-answer search cap — „Not
+  searched: this answer has used its 8 searches…" on 15 of 23 search_by_tag calls. So rows 9–30 were reported „not in your
+  network" WITHOUT being searched, and the owner is not told. For a list, the cap must either spread over several runs (work the
+  list in chunks, keep going) or the reply must say plainly which rows were not checked yet."
+- Filed on the board (P2, 2347/2348 family). 2348 is TESTED (the tester set it).
+
 ### 9 Oct, 11:15Z — D755 completes D750 (box 48677): „any appropriate fact"; buildable, but it ships only on Misho's word
 
 - The founder's words: „any appropriate fact." The tester reads it as: any appropriate WORK fact saved about the person may be
