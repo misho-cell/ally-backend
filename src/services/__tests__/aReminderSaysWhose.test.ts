@@ -12,7 +12,16 @@ describe('askReminderLine', () => {
     expect(askReminderLine('en', 'Nino')).toContain("Nino's question");
     expect(askReminderLine('ru', 'Nino')).toContain('Nino');
     expect(askReminderLine('es', 'Nino')).toContain('Nino');
-    expect(askReminderLine('ka', 'ნინო')).toContain('ნინოს კითხვა');
+  });
+
+  it('says it in Misho’s words, with the name as the header carries it (4094, §117.2)', () => {
+    expect(askReminderLine('ka', 'ლიკა ოსე')).toBe(
+      'შეხსენება: ლიკა ოსე ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან ' +
+        'დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ.',
+    );
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    const sweep = asks.slice(asks.indexOf('export async function sendDueAskReminders('));
+    expect(sweep.slice(0, 3000)).toContain('WHERE u.id = task_asks.from_user_id) AS asker_name');
   });
 
   it('keeps the old line when there is no name', () => {

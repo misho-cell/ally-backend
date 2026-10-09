@@ -6134,3 +6134,19 @@ automatically."
   line in their own chat such as „ნატოს პასუხი დამეხმარა" naming one helper who answered them), the helper and every bridge of the chain get
   the approved thank-you line (§-texts of 1692 unchanged) at once, once per ask. The yes/no card of §113.1 and the „would you ask them
   again?" question are no longer shown. No new text. A card offered before this ships still settles as before when tapped.
+
+**§117 — 9 October ~20:12 UTC, Misho in the code session's chat: „კი, ორივე ტექსტი დაამტკიცე"** (to the two texts put at ~20:07Z).
+
+- **§117.1 (3568, patch afternoon-1250/0032)** — when both moderation votes block the reply and the owner's line is a worry that somebody may
+  hurt themselves (or the owner's own crisis), the server's fixed answer replaces the internal-check apology. Exact ka texts (en/ru/es are
+  their translations, as in safetyWorry.ts):
+  - about someone else: „მესმის, ეს ძალიან საშიშია. თუ ფიქრობ, რომ ის ახლა საფრთხეშია, დარეკე 112-ზე და მარტო ნუ დატოვებ. დაელაპარაკე და
+    პირდაპირ ჰკითხე, როგორ არის — ასეთი კითხვა ზიანს არ აყენებს. თუ გინდა, შენს კონტაქტებში მოვძებნი ფსიქოლოგს ან ფსიქიატრს, ვინც დახმარებას
+    შეძლებს."
+  - about themselves: „კარგია, რომ მომწერე. თუ ახლა საფრთხეში ხარ, დარეკე 112-ზე. ამასთან მარტო არ უნდა იყო — ახლავე უთხარი ვინმე ახლობელს.
+    თუ გინდა, შენს კონტაქტებში მოვძებნი ფსიქოლოგს, ვინც დაგეხმარება."
+  Undo: revert the patch; the apology returns.
+- **§117.2 (4094)** — the helper's reminder names the asker by the name the ask's header and first message carry (the registered name), never
+  by the helper's own phonebook label, so „Ally"-style import labels never appear and the two names never differ. The ka line becomes:
+  „შეხსენება: {სახელი} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ."
+  en/ru/es lines and the nameless line are unchanged. Undo: revert the patch.
