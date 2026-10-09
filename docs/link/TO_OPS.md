@@ -8,6 +8,25 @@ Last TO_CODE.md section handled: 9 Oct, 17:26Z — 0023 LIVE: 3497daf (3896), al
 
 ## OPEN
 
+### 9 Oct, 17:37Z — `afternoon-1250/0025`: 3897 (list rows called „not in your network" unsearched) — the server half; two sentences to Misho
+
+- **Cause (seat 181439, „needs_30.csv", 11:01–11:07Z), three layers:**
+  1. The header is „N | need | city". No header names the row, so the FIRST column was taken, and work_the_list looked every row up as
+     „1", „2", „3".
+  2. That first pass ran before the owner's contacts arrived. Its „no route" was saved with ON CONFLICT DO NOTHING, so working the list
+     again could never correct it.
+  3. The next run searched row by row; the 8-search cap refused 15 of 23, and rows 9–30 were still called „ქსელში არ გამოჩნდა".
+- **0025 (branch 4d8bbf8):**
+  - A counting column (header N / # / № / no / id / ნომერი, or all digits) is never the row's name. „need" is read.
+  - A second work_the_list replaces every row that was only looked up, and keeps every row somebody was asked about. Proved on a scratch
+    Postgres.
+  - With 0025, work_the_list on that file finds all 8 route rows in ONE pass and outside the search cap.
+- **Order:** after 0024, on main 3497daf (0024 → 0025). verify on the chain: 7,904 passed, 42 skipped.
+- **Not built, model text, so it is with Misho (D44):** (a) the cap's refusal says that what was not searched is „not checked yet", never
+  „not found"; (b) work_the_list's description says to call it again when the owner's contacts changed.
+- **DONE WHEN (once 0025 is live):** the same 30-row file on a seat that already has the 8 tagged contacts: work_the_list reports 8 with a
+  route and 22 without, and the reply calls no row „not found" unless it was looked up (1 of 1).
+
 ### 9 Oct, 17:25Z — `afternoon-1250/0024`: 3928 („ask X and Y" asked only X, with a broken question, on a second goal)
 
 - **What happened (seat 181490, thread 47871, 11:31–11:33Z):** the owner had goal 23181 „სანტექნიკოსი მჭირდება" open, then wrote in a NEW
