@@ -1,0 +1,397 @@
+From 2e08baa77ec64ac38433f2cc94f06c68b4718da3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 23:03:30 +0000
+Subject: [PATCH] feat(admin): seat fixtures for 1690 (a fact dated back) and
+ 1691 (an answer record)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49567 (rule B): two plate rows wait on state no chat can make on a
+fresh seat. Both fixtures refuse any account that is not a fictional test
+seat before reading anything else.
+
+- POST /admin/test-accounts/:id/fixtures/stale-fact
+  { phone, field_type (occupation|employer|city|industry), value, days_ago }
+  writes the seat's own fact about one of its OWN contacts, dated back
+  1–3650 days, with every confirm stamp cleared, so 1690's confirm can be
+  checked at the moment of use.
+- POST /admin/test-accounts/:id/fixtures/answer-record
+  { goal_text, asked, yes, no, referred, first_answer_minutes_median }
+  sets the seat's answer record under the field the goal text files under
+  (askField), so 1691's wave order can be checked. The hourly recount
+  rebuilds it once the seat is really asked.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 4900efe53c66e2779c71e01b81a67a3058e11d89)
+---
+ src/api/routes/admin.routes.ts                |  94 ++++++++++++
+ .../aSeatFixtureIsForSeatsOnly.test.ts        | 103 ++++++++++++++
+ src/services/seatFixtures.service.ts          | 134 ++++++++++++++++++
+ 3 files changed, 331 insertions(+)
+ create mode 100644 src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+ create mode 100644 src/services/seatFixtures.service.ts
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index eb6a068..0e81fe1 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -312,6 +312,11 @@ import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+ import { cancelOneAsk } from '../../services/taskAsks.service';
+ import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
+ import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
++import {
++  FixtureOutcome,
++  writeAnswerRecord,
++  writeStaleFact,
++} from '../../services/seatFixtures.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -7013,4 +7018,93 @@ adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) =
+   }
+ });
+ 
++/**
++ * Tester 49567: fixtures for 1690 and 1691, on fictional seats only.
++ *   POST /admin/test-accounts/:id/fixtures/stale-fact
++ *        { phone, field_type: occupation|employer|city|industry, value, days_ago }
++ *   POST /admin/test-accounts/:id/fixtures/answer-record
++ *        { goal_text, asked, yes, no, referred, first_answer_minutes_median | null }
++ */
++const FIXTURE_STATUS: Readonly<Record<FixtureOutcome, number>> = {
++  [FixtureOutcome.Written]: 200,
++  [FixtureOutcome.NotATestSeat]: 403,
++  [FixtureOutcome.NotTheSeatsContact]: 404,
++  [FixtureOutcome.BadInput]: 400,
++};
++
++const FIXTURE_ERROR: Readonly<Record<FixtureOutcome, string>> = {
++  [FixtureOutcome.Written]: '',
++  [FixtureOutcome.NotATestSeat]: 'Only a fictional test seat takes a fixture',
++  [FixtureOutcome.NotTheSeatsContact]: 'That number is not one of this seat’s contacts',
++  [FixtureOutcome.BadInput]: 'The fixture is incomplete or out of range',
++};
++
++function sendFixture(res: Response, outcome: FixtureOutcome): void {
++  if (outcome === FixtureOutcome.Written) {
++    res.status(200).json({ success: true, data: { written: true } });
++    return;
++  }
++  res.status(FIXTURE_STATUS[outcome]).json({ success: false, error: FIXTURE_ERROR[outcome] });
++}
++
++function seatIdOf(req: Request): number | null {
++  const id = Number(req.params.id);
++  return Number.isInteger(id) && id > 0 ? id : null;
++}
++
++adminRouter.post('/test-accounts/:id/fixtures/stale-fact', async (req: Request, res: Response) => {
++  const seatId = seatIdOf(req);
++  const b = (req.body ?? {}) as Record<string, unknown>;
++  if (seatId === null || typeof b.phone !== 'string' || typeof b.field_type !== 'string') {
++    sendFixture(res, FixtureOutcome.BadInput);
++    return;
++  }
++  try {
++    sendFixture(
++      res,
++      await writeStaleFact(seatId, {
++        phone: b.phone,
++        fieldType: b.field_type,
++        value: typeof b.value === 'string' ? b.value : '',
++        daysAgo: Number(b.days_ago),
++      }),
++    );
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[fixtures/stale-fact]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Nothing was written' });
++  }
++});
++
++adminRouter.post(
++  '/test-accounts/:id/fixtures/answer-record',
++  async (req: Request, res: Response) => {
++    const seatId = seatIdOf(req);
++    const b = (req.body ?? {}) as Record<string, unknown>;
++    if (seatId === null || typeof b.goal_text !== 'string') {
++      sendFixture(res, FixtureOutcome.BadInput);
++      return;
++    }
++    const minutes = b.first_answer_minutes_median;
++    try {
++      sendFixture(
++        res,
++        await writeAnswerRecord(seatId, {
++          goalText: b.goal_text,
++          asked: Number(b.asked),
++          yes: Number(b.yes),
++          no: Number(b.no),
++          referred: Number(b.referred ?? 0),
++          firstAnswerMinutesMedian:
++            minutes === null || minutes === undefined ? null : Number(minutes),
++        }),
++      );
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[fixtures/answer-record]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Nothing was written' });
++    }
++  },
++);
++
+ export default adminRouter;
+diff --git a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+new file mode 100644
+index 0000000..ed3cdb0
+--- /dev/null
++++ b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+@@ -0,0 +1,103 @@
++import { query } from '../../db/postgres/client';
++import { FixtureOutcome, writeAnswerRecord, writeStaleFact } from '../seatFixtures.service';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const SEAT = 182200;
++
++/** Tester 49567: 1690's stale fact and 1691's answer record, on fictional seats only. */
++describe('the stale-fact fixture (1690)', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('writes the seat’s own fact, dated back, on its own contact', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(
++      writeStaleFact(SEAT, {
++        phone: '+995 500 000 009',
++        fieldType: 'employer',
++        value: 'Acme',
++        daysAgo: 200,
++      }),
++    ).resolves.toBe(FixtureOutcome.Written);
++    const [sql, params] = mockQuery.mock.calls[2];
++    expect(String(sql)).toContain('NOW() - make_interval(days => $5)');
++    expect(String(sql)).toContain('confirm_asked_at = NULL');
++    expect(params).toEqual(['+995500000009', String(SEAT), 'employer', 'Acme', 200]);
++  });
++
++  it('refuses a real person before reading anything else', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(
++      writeStaleFact(501, {
++        phone: '+995500000009',
++        fieldType: 'employer',
++        value: 'x',
++        daysAgo: 200,
++      }),
++    ).resolves.toBe(FixtureOutcome.NotATestSeat);
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++  });
++
++  it('refuses a number that is not the seat’s contact, and a field that is not a core one', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [{ found: false }] } as never);
++    await expect(
++      writeStaleFact(SEAT, {
++        phone: '+995500000009',
++        fieldType: 'city',
++        value: 'Batumi',
++        daysAgo: 400,
++      }),
++    ).resolves.toBe(FixtureOutcome.NotTheSeatsContact);
++    await expect(
++      writeStaleFact(SEAT, {
++        phone: '+995500000009',
++        fieldType: 'hobby',
++        value: 'x',
++        daysAgo: 400,
++      }),
++    ).resolves.toBe(FixtureOutcome.BadInput);
++  });
++});
++
++describe('the answer-record fixture (1691)', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('sets the record under the field the goal files under', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(
++      writeAnswerRecord(SEAT, {
++        goalText: 'კარგი ნოტარიუსი მჭირდება',
++        asked: 10,
++        yes: 8,
++        no: 1,
++        referred: 0,
++        firstAnswerMinutesMedian: 12,
++      }),
++    ).resolves.toBe(FixtureOutcome.Written);
++    const params = mockQuery.mock.calls[1][1] as unknown[];
++    expect(params[0]).toBe(SEAT);
++    expect(params.slice(2)).toEqual([10, 8, 1, 0, 12]);
++  });
++
++  it('refuses answers that add up to more than were asked', async () => {
++    await expect(
++      writeAnswerRecord(SEAT, {
++        goalText: 'ნოტარიუსი',
++        asked: 2,
++        yes: 2,
++        no: 1,
++        referred: 0,
++        firstAnswerMinutesMedian: null,
++      }),
++    ).resolves.toBe(FixtureOutcome.BadInput);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/seatFixtures.service.ts b/src/services/seatFixtures.service.ts
+new file mode 100644
+index 0000000..304f878
+--- /dev/null
++++ b/src/services/seatFixtures.service.ts
+@@ -0,0 +1,134 @@
++import { query } from '../db/postgres/client';
++import { askField } from './answerStats.service';
++import { FACT_FIELD_TYPES } from './contactFacts.service';
++import { normalizePhone } from './phone';
++
++/**
++ * Tester 49567 (rule B, 9 Oct): two plate rows wait on state no chat can make
++ * on a fresh seat — a fact older than 180 days (1690's confirm at the moment
++ * of use) and a candidate's answer record (1691's wave order). Both are
++ * written on FICTIONAL seats only; any other account is refused before
++ * anything is read about it.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++
++/** 1690 asks after 180 days; the fixture may go back up to ten years. */
++export const MIN_DAYS_AGO = 1;
++export const MAX_DAYS_AGO = 3_650;
++const MAX_FACT_CHARS = 200;
++const MAX_STAT = 10_000;
++
++export enum FixtureOutcome {
++  Written = 'written',
++  NotATestSeat = 'not_a_test_seat',
++  NotTheSeatsContact = 'not_the_seats_contact',
++  BadInput = 'bad_input',
++}
++
++async function isTestSeat(userId: number): Promise<boolean> {
++  const result = await query<{ user_id: number }>(
++    `SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.length > 0;
++}
++
++async function seatSavedThisNumber(seatId: number, phone: string): Promise<boolean> {
++  const result = await query<{ found: boolean }>(
++    `SELECT EXISTS (SELECT 1 FROM "UserAlias" WHERE "contactId" = $1 AND phone = $2) AS found`,
++    [seatId, phone],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.found === true;
++}
++
++export interface StaleFactInput {
++  readonly phone: string;
++  readonly fieldType: string;
++  readonly value: string;
++  readonly daysAgo: number;
++}
++
++/** 1690: one of the seat's own facts about its contact, saved `daysAgo` days back. */
++export async function writeStaleFact(
++  seatId: number,
++  input: StaleFactInput,
++): Promise<FixtureOutcome> {
++  const value = input.value.trim().slice(0, MAX_FACT_CHARS);
++  if (
++    !(FACT_FIELD_TYPES as readonly string[]).includes(input.fieldType) ||
++    value === '' ||
++    !Number.isInteger(input.daysAgo) ||
++    input.daysAgo < MIN_DAYS_AGO ||
++    input.daysAgo > MAX_DAYS_AGO
++  ) {
++    return FixtureOutcome.BadInput;
++  }
++  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
++  const phone = normalizePhone(input.phone);
++  if (!(await seatSavedThisNumber(seatId, phone))) return FixtureOutcome.NotTheSeatsContact;
++  await query(
++    `INSERT INTO contact_facts
++       (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source, confidence,
++        is_matchable, created_at, updated_at)
++     VALUES ($1, $2, $3, $4, false, 'chat', 'stated', true,
++             NOW() - make_interval(days => $5), NOW() - make_interval(days => $5))
++     ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)
++       WHERE field_type IN ('occupation', 'employer', 'city', 'industry')
++     DO UPDATE SET value = $4, created_at = NOW() - make_interval(days => $5),
++                   updated_at = NOW() - make_interval(days => $5), retracted_at = NULL,
++                   last_confirmed_at = NULL, confirmed_by_result_at = NULL, confirm_asked_at = NULL`,
++    [phone, String(seatId), input.fieldType, value, input.daysAgo],
++    QUERY_TIMEOUT_MS,
++  );
++  return FixtureOutcome.Written;
++}
++
++export interface AnswerRecordInput {
++  /** The goal as the tester will type it; filed under the same field an ask would be. */
++  readonly goalText: string;
++  readonly asked: number;
++  readonly yes: number;
++  readonly no: number;
++  readonly referred: number;
++  readonly firstAnswerMinutesMedian: number | null;
++}
++
++function isCount(n: number): boolean {
++  return Number.isInteger(n) && n >= 0 && n <= MAX_STAT;
++}
++
++/**
++ * 1691: the seat's answer record in the field the goal text files under, set
++ * exactly. The hourly recount rebuilds it from real asks once the seat is
++ * asked, so it holds for the first wave, which is what 1691 orders.
++ */
++export async function writeAnswerRecord(
++  seatId: number,
++  input: AnswerRecordInput,
++): Promise<FixtureOutcome> {
++  const field = askField(input.goalText);
++  const counts = [input.asked, input.yes, input.no, input.referred];
++  const minutes = input.firstAnswerMinutesMedian;
++  if (
++    field === '' ||
++    !counts.every(isCount) ||
++    input.yes + input.no + input.referred > input.asked ||
++    (minutes !== null && !(minutes >= 0 && minutes <= MAX_STAT))
++  ) {
++    return FixtureOutcome.BadInput;
++  }
++  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
++  await query(
++    `INSERT INTO answer_stats (user_id, field, asked, yes, no, referred, later, silent,
++                               first_answer_minutes_median, helped, bridged, updated_at)
++     VALUES ($1, $2, $3, $4, $5, $6, 0, 0, $7, 0, 0, NOW())
++     ON CONFLICT (user_id, field) DO UPDATE
++       SET asked = $3, yes = $4, no = $5, referred = $6, first_answer_minutes_median = $7,
++           updated_at = NOW()`,
++    [seatId, field, input.asked, input.yes, input.no, input.referred, minutes],
++    QUERY_TIMEOUT_MS,
++  );
++  return FixtureOutcome.Written;
++}
+-- 
+2.43.0
+

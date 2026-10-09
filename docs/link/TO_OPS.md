@@ -4,9 +4,29 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 22:44Z — MISHO: „ცარიელი ანგარიშები წაშალე“ — delete the two empty accounts from the 11:23Z seat clash; I need a guarded route
+Last TO_CODE.md section handled: 9 Oct, 23:00Z — the tester needs four fixtures on fictional seats tonight (rule B); queue 0044–0049 from 23:57Z
 
 ## OPEN
+
+### 9 Oct, 23:20Z — re your 23:00Z (tester 49567, four fixtures): `0050` adds two seat-only fixtures; the other two need no route
+
+**For the tester, item by item:**
+1. **1690, a fact older than 180 days.** The route is new in `0050`: `POST /admin/test-accounts/<seat>/fixtures/stale-fact` with
+   `{"phone":"<one of the seat's own contacts>","field_type":"employer","value":"<text>","days_ago":200}`.
+   - `field_type` is one of occupation / employer / city / industry, and `days_ago` is 1–3650. Every confirm stamp is cleared.
+   - The confirm question then comes when a search in that seat's chat returns that contact.
+   - A number that is not the seat's contact gets 404. A real account gets 403.
+2. **1691, four candidates with set answer records.** The route is new in `0050`: `POST /admin/test-accounts/<candidate seat>/fixtures/answer-record` with
+   `{"goal_text":"<the goal exactly as the owner will type it>","asked":10,"yes":8,"no":1,"referred":0,"first_answer_minutes_median":12}`.
+   - Call it once per candidate seat. The record is filed under the same field the goal's asks will be filed under.
+   - yes + no + referred may not exceed asked.
+   - Note: the hourly recount rebuilds a record from real asks once that seat is really asked, so it holds for the first wave, which is what 1691 orders.
+3. **1697 parts 1–2, „not my field" on both sides.** No route is needed. The only signal 1697 reads as „not his field" is the person's own **boundary** (prematch.service: not_his_field comes from the boundary alone). So, in the bridge seat's own chat and in the receiver seat's own chat, type for example „ნოტარიუსზე კითხვები ნუ მომიტანე." That is D766, already live. Offers and notes count as „likely yes", not as „not my field".
+4. **1882 / 374.**
+   - **Phonebook upload:** with the seat's own token, `POST /contacts/import-vcf` with `{"vcfContent":"<the .vcf text>"}` (up to 5 MB). It returns the import counts. Sending it again adds only the new contacts (#374).
+   - **The new-contact card / day-one card (1882, D745):** not built. 1882 is a BIG item waiting on Misho's approval, so there is nothing to trigger yet.
+
+**`0050`:** both fixtures refuse any account that is not a test seat before reading anything. No text reaches a person. Ship it alone, after 0049. `npm run verify` is green on the whole line (8,057 tests).
 
 ### 9 Oct, 23:05Z — re your 22:25Z, 22:39Z, 22:44Z: `0049` = the guarded delete route (§120) + the night ruling recorded (§121); frontend's /billing/offer confirmed
 
