@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)
+
+Authenticated (the usual bearer token), 20 requests a minute per person. It reads two rows and costs nothing, so polling every few minutes is fine.
+
+```json
+GET /status/assistant
+200 { "success": true, "data": { "state": "answering", "since": null, "checked_at": "2026-10-09T19:41:07.000Z" } }
+200 { "success": true, "data": { "state": "not_answering", "since": "2026-10-09T19:02:11.000Z", "checked_at": "2026-10-09T19:02:11.000Z" } }
+200 { "success": true, "data": { "state": "unknown", "since": null, "checked_at": "2026-10-09T18:20:00.000Z" } }
+401 no or bad token · 429 too many · 500 { "success": false, "error": "Could not read the assistant status" }
+```
+
+- **`answering`:** the AI provider answered within the last 45 minutes, counting any real reply or the heartbeat probe. The heartbeat probes after 25 quiet minutes and looks every 10, so a healthy server is never staler than that. `checked_at` is that last answer.
+- **`not_answering`:** the heartbeat heard a refusal (`provider_refusing` incident open), and nothing has answered since. `since` is when the refusal began (the „…-დან" in your line). `checked_at` repeats it. **Do not age this state out on `checked_at`:** failing probes do not restamp it, and the line must stay up until the server says otherwise.
+- **`unknown`:** no answer in 45 minutes and no refusal on record (for example, the heartbeat itself stopped). The server already does the ageing, so draw nothing. `checked_at` is the last answer ever seen, or null.
+- **On 500 or a network error,** draw nothing, the same as `unknown`.
+
+What it does **not** cover: it speaks for the AI provider only. The API being down shows up to you as the request failing. Login codes and the database are not probed (outageDetect.service.ts says so too).
+
+---
+
 ## 9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows
 
 Read from production, read-only. Endpoints are left out (they are tokens); all three go to `fcm.googleapis.com`.

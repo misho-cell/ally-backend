@@ -46,6 +46,7 @@ const GUARDED_AT_THE_ROUTER = [
   'contacts.routes.ts',
   // #1850: the evening card is the person's own questions.
   'eveningCard.routes.ts',
+  'status.routes.ts',
   'notifications.routes.ts',
   'privacy.routes.ts',
   'requests.routes.ts',
