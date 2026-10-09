@@ -81,7 +81,7 @@ import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { matchTapOf } from './matchCards';
 import { thanksTapOf } from './helperThanksCards';
-import { settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
 import { settleMatchTap } from './matchFlow.service';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
@@ -7898,6 +7898,23 @@ const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
   'fetch_page',
 ]);
 
+/**
+ * 4060 (a), tester 49243: after „<helper>-ის პასუხი დამეხმარა" the thanks went
+ * at once (D756), and then the run asked „ამით საქმე გადაწყდა?" with buttons.
+ * D756 is „no card, no question": a line that only says a helper helped is
+ * thanked and nothing more. The goal stays open until the owner says it is done.
+ */
+const THANKED_NOT_ASKED =
+  'Not shown. The owner said a helper’s answer helped, and the thank-you has already gone ' +
+  'to that helper. That is not a close and not a question: do not ask whether the goal is ' +
+  'solved and show no buttons. Say in one short line that you thanked them; the goal stays ' +
+  'open until the owner says it is done.';
+
+function thankedThisRun(runId: string | undefined): boolean {
+  if (runId === undefined) return false;
+  return saysAHelperHelped(runOwnerLine.get(runId) ?? '');
+}
+
 /** The owner's line is an order to ask people it names (3928). */
 function ownerLineNamesPeopleToAsk(ownerLine: string): boolean {
   const sentence = contactInstructionIn(ownerLine);
@@ -9274,6 +9291,11 @@ async function executeToolCall(
       const labels = Array.isArray(input['items'])
         ? (input['items'] as unknown[]).filter((i): i is string => typeof i === 'string')
         : [];
+      if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {
+        // eslint-disable-next-line no-console
+        console.log(`[helper-thanks] run ${runId}: „solved?" buttons refused after the thanks`);
+        return { presented: false, error: THANKED_NOT_ASKED };
+      }
       const foreign = labelWithForeignLetter(labels);
       return foreign === null
         ? { presented: true }
@@ -9811,6 +9833,9 @@ async function executeToolCall(
       // when it is already on screen the goal closes now, whatever the model
       // passed — no „who solved it?", no „confirm once more" before the close.
       const ownerSaid = threadId === undefined ? null : await ownerHasSaidSolved(threadId, runId);
+      if (ownerSaid !== true && thankedThisRun(runId)) {
+        return { closed: false, error: THANKED_NOT_ASKED };
+      }
       if (input['confirmed'] !== true && ownerSaid !== true) {
         return {
           closed: false,
