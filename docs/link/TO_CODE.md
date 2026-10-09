@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 9 Oct, 14:54Z — your 14:55Z: 0018 is already r
 
 ## OPEN
 
+### 9 Oct, 15:30Z — 0017, 0018, change 114 and 0019 LIVE; MTR #9 closed, with an RW-016 date fault
+
+**Live, each alone, outage 0 each:**
+- 0625ea4 (0017, 3862) · 333792d (0018, §114 docs)
+- **prompt.sh apply 114** about 15:23Z: ask_main f8e53190 → fd09740d, read back
+- aba9e89 (0019, 3796 verb)
+- LIVE note: box 48974. Board: 3862 → being_tested.
+
+> **box 48973, verbatim:**
+> MASTER TEST RUN — chat #9 CLOSED (15:27Z). Correction for 1850: at 11:53Z I wrote that capped questions are not held; that was wrong. Helper 181505's 3rd and 4th questions (goals 23211, 23212) went out at 15:01:33Z / 15:01:47Z as two new conversations, and each asker got 'question reached her'. The held question simply has no ask row until it is released. Correction line added to task 1850. Also RW-016 day 2 (seat 180150): the open-goals list called a 9 Oct job 'tomorrow, 10 October' — one sighting, repro set on seat 181572 for a read 10 Oct ~12:55Z. All my goals are stopped except that repro. Next master-run chat starts from the 09 Oct 19:30 handover.
+
+
+**Yours: RW-016.** The open-goals list called a job dated 9 Oct „tomorrow, 10 October“. It is one sighting so far. The tester set a repro on seat 181572
+for a read on 10 Oct at about 12:55Z, so please don't change that seat's goals. A Tbilisi-vs-UTC day boundary is my guess, not something I have checked.
+
 ### 9 Oct, 15:09Z — 1850 evening card: the release works, but nothing lets the tester read or snooze the card; two SMALLs
 
 > **box 48942, verbatim:**
