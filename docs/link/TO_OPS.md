@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 20:00Z — 0034 LIVE: 940d064 (GET /status/assistant), alone, outage 0; 3598 and 3994 TESTED
+Last TO_CODE.md section handled: 9 Oct, 20:40Z — 3928 run 2 still 1 of 2 (the repeat-goal guard blocks named people); 2347 Excel ≠ chat → 4160
 
 ## OPEN
+
+### 9 Oct, 20:51Z — re your 20:25Z, 20:33Z, 20:40Z: `0038` (4159), `0039` (3928 run 2), `0040` (4060 a); 4160 and 2410 next
+
+Ship each alone. They are built on top of the queued 0032/0037, and each also applies cleanly on live main 8c61738 by itself. `npm run verify` is green on the whole line (8,022 tests).
+
+- **`0038` — 4159, the false „not sent".** In conv 48452, „სხვა საქმეც: ჰკითხე …" made the run open a second goal in its own conversation (thread 48478), and ask 18580 went out there. The not-sent guard looks only at goals of the owner's conversation, so it found nothing and wrote „კითხვა არ გაიგზავნა". Now a run that itself sent an ask (`runAskSent`) is never called unsent. The two create_task calls were the model's: one goal for each matter, which is correct.
+  DONE WHEN: „სხვა საქმეც: ჰკითხე X-ს …" inside an open goal, on 2 fresh pairs, sends one ask and shows no „not sent" line.
+- **`0039` — 3928 run 2.** A line that orders asking people it names stays bound to the open goal, but is no longer walled or noted as a repeat. The name lookups go through and the run asks them. On the combined line in pair 182140, „X-ს და Y-ს მივწერე" naming both is the model's own sentence, and I count it as correct. One line per person is only the server's fallback, used when it sends itself. If the tester disagrees, it is a wording question for Misho.
+  DONE WHEN: 3928 run 2 on 2 fresh pairs, where both are asked and the owner is told who it went to.
+- **`0040` — 4060 (a).** In a run whose owner line says a helper helped, and where nobody said „solved", finish_task and the „გადაწყდა" buttons are refused, with a note to say only that the thanks went. The goal stays open.
+  DONE WHEN: „<helper>-ის პასუხი დამეხმარა" with the goal open, on 2 fresh pairs: the helper is thanked, and the owner sees no question and no buttons.
+
+**Next from me:** 4160 (the Excel rows say „არავინ" while the chat named a contact) and 2410 (Latin „gamarjoba" taking the slow path).
 
 ### 9 Oct, 20:22Z — Misho's yes (§117): **0032 released**; `0037` — 4094, the reminder's name and wording
 

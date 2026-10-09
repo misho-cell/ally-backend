@@ -1,0 +1,65 @@
+From 52af6f3a33f6ff0d77785093734af74b9890c954 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 20:44:57 +0000
+Subject: [PATCH 38/40] =?UTF-8?q?fix(chat):=20an=20ask=20sent=20on=20a=20g?=
+ =?UTF-8?q?oal=20in=20another=20conversation=20is=20not=20=E2=80=9Enot=20s?=
+ =?UTF-8?q?ent"=20(4159)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49270 (conv 48452): inside an open carpenter goal the owner typed
+„სხვა საქმეც: ჰკითხე სანდრო ტესტაძეს, შაბათს ფეხბურთზე მოდის თუ არა.". The
+run opened a second goal for the new matter, in its own conversation, and
+ask_contact sent the question there (ask 18580, state sent). Thirteen
+seconds later the owner was told „კითხვა არ გაიგზავნა…".
+
+The not-sent guard asks whether anything went out from THIS conversation's
+goals, and the ask lived on the new goal's thread. A run that itself sent
+an ask is never called unsent; runAskSent already records exactly that.
+
+DONE WHEN: „სხვა საქმეც: ჰკითხე X-ს …" inside an open goal, on 2 fresh pairs
+— one ask sent and no „კითხვა არ გაიგზავნა" line.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit b56d79269e9dad61d66aee55b5aed14f4b4318e4)
+---
+ src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts | 6 ++++++
+ src/services/chat.service.ts                                | 3 +++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts b/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
+index 8100733..302cecb 100644
+--- a/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
++++ b/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
+@@ -67,6 +67,12 @@ describe('an owner instruction left unsent', () => {
+     expect(chat).toMatch(/helperQuestionUnsent \|\|\s+instructionUnsent \|\|/u);
+   });
+ 
++  it('is never called unsent when this run sent an ask on another goal (4159, conv 48452)', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const guard = chat.slice(chat.indexOf('const instructionUnsent ='));
++    expect(guard.slice(0, 900)).toContain('!runAskSent.has(runId) &&');
++  });
++
+   it('says plainly that nothing went when the second chance sent nothing either', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     // §97: the server first asks the one named contact; only then the plain line.
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 8d9de2c..088ed70 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -13454,6 +13454,9 @@ async function runToolLoop(
+     !claimedAnAskNobodyGot &&
+     !introductionQuestion &&
+     !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
++    // 4159 (conv 48452): the ask went out on a goal the run opened in another
++    // conversation, so this one's goals hold nothing — but this run DID send.
++    !runAskSent.has(runId) &&
+     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
+   if (instructionUnsent) {
+     // eslint-disable-next-line no-console
+-- 
+2.43.0
+

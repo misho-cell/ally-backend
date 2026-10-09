@@ -1,0 +1,127 @@
+From 368fecc7fff5393516eb6821c7df47bd250081fb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 20:46:29 +0000
+Subject: [PATCH 40/40] =?UTF-8?q?fix(thanks):=20a=20run=20that=20thanked?=
+ =?UTF-8?q?=20a=20helper=20does=20not=20ask=20=E2=80=9Esolved=3F"=20too=20?=
+ =?UTF-8?q?(4060=20a)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49243: with the goal open the owner typed „ლევანის პასუხი
+დამეხმარა"; the thank-you went at once (D756), then the run called
+finish_task, was refused „NOT CLOSED", and asked „ამით საქმე გადაწყდა?"
+with three buttons. D756's DONE WHEN is no card and no question.
+
+In a run whose owner line says a helper helped (saysAHelperHelped), and
+where the owner has not called the goal solved:
+- finish_task is refused with a note to say only that the thanks went;
+- present_choices with the „გადაწყდა" button is refused the same way.
+
+The goal stays open until the owner says it is done. A line that says
+both „solved" and „helped" still closes as before.
+
+DONE WHEN: „<helper>-ის პასუხი დამეხმარა" with the goal open, on 2 fresh
+pairs — the helper is thanked, and the owner sees no question and no
+buttons.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit d0e95ac8c690780168485b95f3e2e1dbd1657c06)
+---
+ .../__tests__/aHelperIsThanked.test.ts        | 19 +++++++++++++
+ src/services/chat.service.ts                  | 27 ++++++++++++++++++-
+ 2 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aHelperIsThanked.test.ts b/src/services/__tests__/aHelperIsThanked.test.ts
+index 53477ae..b3fdc2f 100644
+--- a/src/services/__tests__/aHelperIsThanked.test.ts
++++ b/src/services/__tests__/aHelperIsThanked.test.ts
+@@ -255,6 +255,25 @@ describe('the owner says in chat that a helper helped', () => {
+   });
+ });
+ 
++/** 4060 (a), tester 49243: after the automatic thanks, no „ამით საქმე გადაწყდა?" in the same turn. */
++describe('a run that thanked a helper asks nothing more', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++  it('refuses the solved buttons and the close in that run', () => {
++    const choices = chat.slice(chat.indexOf("case 'present_choices': {"));
++    expect(choices.slice(0, 900)).toContain(
++      'if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {',
++    );
++    const finish = chat.slice(chat.indexOf("case 'finish_task': {"));
++    expect(finish.slice(0, 1600)).toContain('if (ownerSaid !== true && thankedThisRun(runId)) {');
++  });
++
++  it('knows such a run by the owner’s own line', () => {
++    const fn = chat.slice(chat.indexOf('function thankedThisRun('));
++    expect(fn.slice(0, 300)).toContain("saysAHelperHelped(runOwnerLine.get(runId) ?? '')");
++  });
++});
++
+ describe('the day-14 line to the helper (1692 part 2)', () => {
+   it('sends nothing when no armed answer is due (§111.3)', async () => {
+     mockQuery.mockResolvedValueOnce(rows([]));
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 2e853f8..cb9c493 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -81,7 +81,7 @@ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
+ import { matchTapOf } from './matchCards';
+ import { thanksTapOf } from './helperThanksCards';
+-import { settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
++import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+ import { settleMatchTap } from './matchFlow.service';
+ import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+ 
+@@ -7898,6 +7898,23 @@ const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
+   'fetch_page',
+ ]);
+ 
++/**
++ * 4060 (a), tester 49243: after „<helper>-ის პასუხი დამეხმარა" the thanks went
++ * at once (D756), and then the run asked „ამით საქმე გადაწყდა?" with buttons.
++ * D756 is „no card, no question": a line that only says a helper helped is
++ * thanked and nothing more. The goal stays open until the owner says it is done.
++ */
++const THANKED_NOT_ASKED =
++  'Not shown. The owner said a helper’s answer helped, and the thank-you has already gone ' +
++  'to that helper. That is not a close and not a question: do not ask whether the goal is ' +
++  'solved and show no buttons. Say in one short line that you thanked them; the goal stays ' +
++  'open until the owner says it is done.';
++
++function thankedThisRun(runId: string | undefined): boolean {
++  if (runId === undefined) return false;
++  return saysAHelperHelped(runOwnerLine.get(runId) ?? '');
++}
++
+ /** The owner's line is an order to ask people it names (3928). */
+ function ownerLineNamesPeopleToAsk(ownerLine: string): boolean {
+   const sentence = contactInstructionIn(ownerLine);
+@@ -9274,6 +9291,11 @@ async function executeToolCall(
+       const labels = Array.isArray(input['items'])
+         ? (input['items'] as unknown[]).filter((i): i is string => typeof i === 'string')
+         : [];
++      if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {
++        // eslint-disable-next-line no-console
++        console.log(`[helper-thanks] run ${runId}: „solved?" buttons refused after the thanks`);
++        return { presented: false, error: THANKED_NOT_ASKED };
++      }
+       const foreign = labelWithForeignLetter(labels);
+       return foreign === null
+         ? { presented: true }
+@@ -9811,6 +9833,9 @@ async function executeToolCall(
+       // when it is already on screen the goal closes now, whatever the model
+       // passed — no „who solved it?", no „confirm once more" before the close.
+       const ownerSaid = threadId === undefined ? null : await ownerHasSaidSolved(threadId, runId);
++      if (ownerSaid !== true && thankedThisRun(runId)) {
++        return { closed: false, error: THANKED_NOT_ASKED };
++      }
+       if (input['confirmed'] !== true && ownerSaid !== true) {
+         return {
+           closed: false,
+-- 
+2.43.0
+

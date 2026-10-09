@@ -1,0 +1,101 @@
+From 23092c073826e0521be3804538b0c09f202fa8ab Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 20:45:10 +0000
+Subject: [PATCH 39/40] =?UTF-8?q?fix(chat):=20=E2=80=9Eask=20X=20and=20Y"?=
+ =?UTF-8?q?=20on=20an=20open=20goal's=20subject=20is=20an=20order,=20not?=
+ =?UTF-8?q?=20a=20repeat=20(3928=20run=202)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49306, pair 182137 (conv 48521), first goal still working:
+„სანტექნიკოსი … გამდის. ჰკითხე X-ს და Y-ს." was bound to the open goal as
+a repeat. The repeat wall refused search_contact_by_name twice, the repeat
+note told the run to ask what the owner meant, and the owner got
+„ეს სწორად გავიგე?" instead of the two asks.
+
+A line that orders asking people it names stays bound to the open goal
+(no second goal), but it is not walled or noted as a repeat, so the run
+looks the people up and asks them.
+
+DONE WHEN: 3928 run 2 on 2 fresh pairs, where both named people are asked
+and the owner is told who it went to.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 186846a80a7a939d1ebfa717bb8bfad73ca0a6d2)
+---
+ .../aRepeatedRequestDoesNotSearchAgain.test.ts   | 11 +++++++++++
+ src/services/chat.service.ts                     | 16 +++++++++++++++-
+ 2 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts b/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts
+index dda5d11..ec2643a 100644
+--- a/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts
++++ b/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts
+@@ -43,3 +43,14 @@ describe('a turn that repeats an open goal', () => {
+     expect(text).toContain('do not search');
+   });
+ });
++
++/** 3928 run 2 (conv 48521): „…ჰკითხე X-ს და Y-ს." is an instruction, never a repeat. */
++describe('an order to ask named people on the open goal’s subject', () => {
++  it('is bound to the goal but not walled as a repeat', () => {
++    expect(CHAT).toContain(
++      'const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;',
++    );
++    const fn = CHAT.slice(CHAT.indexOf('function ownerLineNamesPeopleToAsk('));
++    expect(fn.slice(0, 300)).toContain('instructionNames(sentence).length > 0');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 088ed70..2e853f8 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -392,6 +392,7 @@ import { lateFilesFor } from './lateFiles';
+ import { goalSentNothing } from './goalSentNothing';
+ import { withdrawOwnCutNotice } from './cutOffRunNotice.service';
+ import {
++  contactInstructionIn,
+   EXCLUDED_LINE,
+   instructionLeftUnsent,
+   NOT_ON_NETAI_LINE,
+@@ -449,6 +450,7 @@ import {
+   statesANeed,
+   goalTitleFrom,
+   isQuestionNotGoal,
++  instructionNames,
+   instructionSentence,
+   looksLikeContactInstruction,
+   needsNoOpeningSearch,
+@@ -7896,6 +7898,12 @@ const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
+   'fetch_page',
+ ]);
+ 
++/** The owner's line is an order to ask people it names (3928). */
++function ownerLineNamesPeopleToAsk(ownerLine: string): boolean {
++  const sentence = contactInstructionIn(ownerLine);
++  return sentence !== null && instructionNames(sentence).length > 0;
++}
++
+ /** What a search on a repeating turn returns instead of results. */
+ export function repeatNoSearch(goalId: number): string {
+   return (
+@@ -15562,7 +15570,13 @@ export async function processChat(
+    * the two readings differ. What it removes is the model having to guess that
+    * a repeat happened at all.
+    */
+-  const repeatedGoal = goalForRequest.repeats;
++  /**
++   * 3928 run 2 (conv 48521): „…ჰკითხე X-ს და Y-ს." on the open goal's subject
++   * is bound to that goal (no second one), but it is no repeat: it is a new
++   * instruction to ask named people. Walled as a repeat, the name lookups were
++   * refused and the run asked „ეს სწორად გავიგე?" instead of asking them.
++   */
++  const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;
+   if (repeatedGoal !== null) runRepeatedGoal.set(runId, repeatedGoal.id);
+   const sameRequestAgain =
+     (repeatedGoal === null
+-- 
+2.43.0
+
