@@ -89,3 +89,26 @@ describe('the clause put beside a title', () => {
     expect(relativeDayNote('შეხვედრა ხვალ', NOW, NOW)).not.toContain('გასული');
   });
 });
+
+/** RW-016 (seat 180150, 9 Oct; §115): „ხვალ" typed on 8 October, read on the 9th, became „ხვალ, 10 ოქტომბერს". */
+describe('the clause says when the word was written and where the date stands today', () => {
+  const typed = new Date('2026-10-08T12:43:55Z');
+  const read = new Date('2026-10-09T12:48:58Z');
+
+  it('says the date meant is today', () => {
+    expect(relativeDayNote('ხვალ 10:00-ზე დამლაგებელი', typed, read)).toBe(
+      ' [„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს]',
+    );
+  });
+
+  it('says tomorrow and the day after when they are', () => {
+    expect(relativeDayNote('ხვალ', read, read)).toContain('= 10 ოქტომბერი, ანუ ხვალ]');
+    expect(relativeDayNote('ზეგ', read, read)).toContain('= 11 ოქტომბერი, ანუ ზეგ]');
+  });
+
+  it('still says a gone date has gone', () => {
+    expect(relativeDayNote('ხვალ', new Date('2026-10-05T10:00:00Z'), read)).toBe(
+      ' [„ხვალ" დაიწერა 5 ოქტომბერს = 6 ოქტომბერი, უკვე გასული]',
+    );
+  });
+});

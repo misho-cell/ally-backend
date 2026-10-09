@@ -67,12 +67,26 @@ function georgianDate(at: Date): string {
   }).format(at);
 }
 
+/** „8 ოქტომბერი" → „8 ოქტომბერს": every Georgian month name ends in „ი". */
+function dative(date: string): string {
+  return date.endsWith('ი') ? `${date.slice(0, -1)}ს` : date;
+}
+
+/** Whole days from one Tbilisi calendar day (YYYY-MM-DD) to another. */
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / MS_PER_DAY);
+}
+
 export interface ResolvedDay {
   /** The word as the owner wrote it. */
   readonly word: string;
   /** What it meant on the day it was written, in Tbilisi. */
   readonly date: string;
   readonly past: boolean;
+  /** The day the word was written on, in Tbilisi („8 ოქტომბერს"). */
+  readonly writtenOn: string;
+  /** Whole Tbilisi days from today to the date meant: -1 yesterday, 0 today, 1 tomorrow. */
+  readonly fromToday: number;
 }
 
 /**
@@ -92,7 +106,13 @@ export function resolveRelativeDays(text: string, writtenAt: Date, now: Date): R
     if (!re.test(text) || seen.has(word)) continue;
     seen.add(word);
     const at = new Date(writtenAt.getTime() + offset * MS_PER_DAY);
-    found.push({ word, date: georgianDate(at), past: dayIn(TBILISI_TZ, at) < today });
+    found.push({
+      word,
+      date: georgianDate(at),
+      past: dayIn(TBILISI_TZ, at) < today,
+      writtenOn: dative(georgianDate(writtenAt)),
+      fromToday: daysBetween(today, dayIn(TBILISI_TZ, at)),
+    });
   }
   return found;
 }
@@ -104,9 +124,28 @@ export function resolveRelativeDays(text: string, writtenAt: Date, now: Date): R
  * own still needs the reader to know today's date and compare, and comparing
  * is the step that went wrong in the first place.
  */
+/**
+ * RW-016 (seat 180150, 9 Oct; Misho's yes, §115): goal 21898 was typed on
+ * 8 October as „ხვალ 10:00-ზე…" and carried „ხვალ" = 9 ოქტომბერი — right, but
+ * nothing said that 9 October WAS today, and the reply re-read the word as of
+ * now: „ხვალ, 10 ოქტომბერს". The note now says when the word was written and
+ * where the date stands from today.
+ */
+const FROM_TODAY: Readonly<Record<number, string>> = {
+  0: 'ანუ დღეს',
+  1: 'ანუ ხვალ',
+  2: 'ანუ ზეგ',
+};
+
+function standing(day: ResolvedDay): string {
+  if (day.past) return ', უკვე გასული';
+  const word = FROM_TODAY[day.fromToday];
+  return word === undefined ? '' : `, ${word}`;
+}
+
 export function relativeDayNote(text: string, writtenAt: Date, now: Date): string {
   const days = resolveRelativeDays(text, writtenAt, now);
   if (days.length === 0) return '';
-  const parts = days.map((d) => `„${d.word}" = ${d.date}${d.past ? ', უკვე გასული' : ''}`);
+  const parts = days.map((d) => `„${d.word}" დაიწერა ${d.writtenOn} = ${d.date}${standing(d)}`);
   return ` [${parts.join('; ')}]`;
 }
