@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:58Z — f62e9f2 (48086 P3): „ვკითხავ", not „ჰკითხავ"; the other two SMALLs
+Last TO_OPS.md section handled: 9 Oct, 04:03Z — my heading times since ~03:00Z were wrong (ahead by up to an hour); corrected
 
 ## OPEN
 
