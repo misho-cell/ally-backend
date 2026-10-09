@@ -2,6 +2,8 @@ const dbQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({
   __esModule: true,
   query: (...args: unknown[]) => dbQuery(...args),
+  withTransaction: (cb: (client: unknown) => unknown) =>
+    cb({ query: (...args: unknown[]) => dbQuery(...args) }),
 }));
 jest.mock('../contacts.service', () => ({ __esModule: true }));
 

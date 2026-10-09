@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
-import { query } from '../db/postgres/client';
+import { PoolClient } from 'pg';
+import { query, withTransaction } from '../db/postgres/client';
 import { allFictionalNumbers, FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
 import { saveSeatGraph } from './seatGraph.service';
 import { adjustTestAccountTokens } from './tokenWallet.service';
@@ -345,6 +346,110 @@ async function arriveByInvitation(
   );
 }
 
+/** Postgres' unique-violation code: the number was taken between the pick and the insert. */
+const UNIQUE_VIOLATION = '23505';
+/** How many free slots an auto-picked seat tries before the clash is reported. */
+const FREE_SLOT_ATTEMPTS = 3;
+
+interface SeatRows {
+  readonly userId: string;
+  readonly phone: string;
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (err as { code?: unknown }).code === UNIQUE_VIOLATION;
+}
+
+/**
+ * Ops' 11:28Z (two 500s at 11:23Z, „UserPhone_phone_key"): the free slot was
+ * taken between the pick and the insert, and the three writes were not one
+ * transaction — each clash left an empty account behind. Now the account, its
+ * number and its seat row are written together or not at all, and an
+ * auto-picked number that clashes moves to the next free slot. A number the
+ * caller chose is never swapped for another.
+ */
+async function insertSeatRows(
+  seatName: string,
+  why: string,
+  createdBy: string,
+  shape: SeatShape,
+): Promise<SeatRows> {
+  for (let attempt = 1; ; attempt += 1) {
+    const phone =
+      shape.phone === undefined
+        ? await firstFreeFictionalPhone()
+        : await chosenFictionalPhone(shape.phone);
+    try {
+      const userId = await withTransaction((client) =>
+        writeSeatRows(client, seatName, why, createdBy, phone, shape.legacyAlly === true),
+      );
+      return { userId, phone };
+    } catch (err) {
+      if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)
+        throw err;
+      // eslint-disable-next-line no-console
+      console.warn(`[test-seat] slot taken during create, trying the next (attempt ${attempt})`);
+    }
+  }
+}
+
+/**
+ * The same shape as the eleven that exist — and I wrote that sentence the
+ * first time round while doing the opposite.
+ *
+ * The first version set `subscription_tier`, `subscription_status` and
+ * `hasAccessToAlly`, because those are the columns the words „is this
+ * account active" bring to mind. All three seats came out with
+ * `current_period_ends_at` NULL, and the seat found it within twenty
+ * minutes: every one of them got 403 `subscription_required` on
+ * `POST /threads`. They could be read, they had tokens, they were Netai
+ * users — and they could not open a chat, so row 251 could not start.
+ *
+ * `hasActiveSubscription` is the gate and it reads the PERIOD END, not the
+ * status: „active" means `current_period_ends_at !== null && > now`. Netai
+ * Test 8 carries its creation date plus one year, and so does every other
+ * seat. I checked the columns I was thinking about and not the one beside
+ * them — the third time in a week, after the `::text` cast and the sweep
+ * exclusion.
+ *
+ * A YEAR, matching the eleven exactly, so a seat and a seat behave the same.
+ * The test beside this does not match this string: it feeds the row this
+ * INSERT produces to `hasActiveSubscription` itself, because what matters is
+ * not which columns are named here but whether the product's own gate opens.
+ */
+async function writeSeatRows(
+  client: PoolClient,
+  seatName: string,
+  why: string,
+  createdBy: string,
+  phone: string,
+  legacyAlly: boolean,
+): Promise<string> {
+  const created = await client.query<{ id: number }>(
+    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
+                         "hasAccessToAlly", current_period_ends_at)
+     VALUES ($1, '', 'ACTIVE',
+             CASE WHEN $2 THEN 'free'     ELSE 'pro'    END,
+             CASE WHEN $2 THEN 'inactive' ELSE 'active' END,
+             NOT $2,
+             CASE WHEN $2 THEN NULL       ELSE NOW() + INTERVAL '1 year' END)
+     RETURNING id`,
+    [seatName, legacyAlly],
+  );
+  const userId = String(created.rows[0].id);
+  await client.query(
+    `INSERT INTO "UserPhone" (phone, "phoneNumber", "phoneCode", "userId", "createdAt", "updatedAt")
+     VALUES ($1, $2, '+1', $3, NOW(), NOW())`,
+    [phone, phone.slice(2), Number(userId)],
+  );
+  await client.query(
+    `INSERT INTO test_seats (user_id, name, phone, created_by, note)
+     VALUES ($1::int, $2, $3, $4, $5)`,
+    [userId, seatName, phone, createdBy, why],
+  );
+  return userId;
+}
+
 export async function createTestSeat(
   name: string,
   holds: readonly string[],
@@ -376,62 +481,7 @@ export async function createTestSeat(
     shape.invitedBy === undefined ? null : await inviterSeatPhone(shape.invitedBy);
   const phonebook = await resolvePhonebook(holds);
 
-  const phone =
-    shape.phone === undefined
-      ? await firstFreeFictionalPhone()
-      : await chosenFictionalPhone(shape.phone);
-
-  /**
-   * The same shape as the eleven that exist — and I wrote that sentence the
-   * first time round while doing the opposite.
-   *
-   * The first version set `subscription_tier`, `subscription_status` and
-   * `hasAccessToAlly`, because those are the columns the words „is this
-   * account active" bring to mind. All three seats came out with
-   * `current_period_ends_at` NULL, and the seat found it within twenty
-   * minutes: every one of them got 403 `subscription_required` on
-   * `POST /threads`. They could be read, they had tokens, they were Netai
-   * users — and they could not open a chat, so row 251 could not start.
-   *
-   * `hasActiveSubscription` is the gate and it reads the PERIOD END, not the
-   * status: „active" means `current_period_ends_at !== null && > now`. Netai
-   * Test 8 carries its creation date plus one year, and so does every other
-   * seat. I checked the columns I was thinking about and not the one beside
-   * them — the third time in a week, after the `::text` cast and the sweep
-   * exclusion.
-   *
-   * A YEAR, matching the eleven exactly, so a seat and a seat behave the same.
-   * The test beside this does not match this string: it feeds the row this
-   * INSERT produces to `hasActiveSubscription` itself, because what matters is
-   * not which columns are named here but whether the product's own gate opens.
-   */
-  const created = await query<{ id: number }>(
-    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
-                         "hasAccessToAlly", current_period_ends_at)
-     VALUES ($1, '', 'ACTIVE',
-             CASE WHEN $2 THEN 'free'     ELSE 'pro'    END,
-             CASE WHEN $2 THEN 'inactive' ELSE 'active' END,
-             NOT $2,
-             CASE WHEN $2 THEN NULL       ELSE NOW() + INTERVAL '1 year' END)
-     RETURNING id`,
-    [seatName, shape.legacyAlly === true],
-    SEAT_QUERY_TIMEOUT_MS,
-  );
-  const userId = String(created.rows[0].id);
-
-  await query(
-    `INSERT INTO "UserPhone" (phone, "phoneNumber", "phoneCode", "userId", "createdAt", "updatedAt")
-     VALUES ($1, $2, '+1', $3, NOW(), NOW())`,
-    [phone, phone.slice(2), Number(userId)],
-    SEAT_QUERY_TIMEOUT_MS,
-  );
-
-  await query(
-    `INSERT INTO test_seats (user_id, name, phone, created_by, note)
-     VALUES ($1::int, $2, $3, $4, $5)`,
-    [userId, seatName, phone, createdBy, why],
-    SEAT_QUERY_TIMEOUT_MS,
-  );
+  const { userId, phone } = await insertSeatRows(seatName, why, createdBy, shape);
 
   if (shape.invitedBy !== undefined && inviterPhone !== null)
     await arriveByInvitation(userId, phone, shape.invitedBy, inviterPhone);
