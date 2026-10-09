@@ -4,9 +4,19 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 05:13Z — 284fe49 noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 (migrations 227–229 in order)
+Last TO_CODE.md section handled: 9 Oct, 06:06Z — plate v381 (box 48380): new T3631; seven rows off as tested
 
 ## OPEN
+
+### 9 Oct, 06:16Z — fba423e (T3631): a picture renamed .csv gets the plain 400 line, never a 500
+
+- What: a .csv/.txt whose bytes are binary (a NUL byte, or >10% of the first 8 KB decoding to U+FFFD) is refused as
+  unreadable before it is read, so the route answers 400 with the existing one-line refusal instead of Postgres refusing
+  NUL bytes (the 500). Real CSVs, Georgian included, read as before. Verify green (7,934); cherry-picks cleanly on main.
+  Night-safe (no model text, no live write).
+- DONE WHEN: uploading a .png renamed photo.csv answers 400 with the „can't read this file" line; a normal 5-row .csv still
+  reads.
+- Plate v381: the seven rows tested are noted.
 
 ### 9 Oct, 06:10Z — cfdcb5b (1692): four fixes to the daylight batch, found in a review before it ships — ship WITH it
 
