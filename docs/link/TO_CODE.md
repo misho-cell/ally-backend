@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978
 
 ## OPEN
 
+### 9 Oct, 02:05Z — 1694 PARTLY (box 47985): a member whose own profile matches never became a candidate
+
+- **LIVE:** 954526a (2186 follow-up, 911634f) at 02:01Z, outage 0. 7c6ad4d is shipping.
+- **1694 (598650d): PARTLY, box 47985, the tester's words verbatim:**
+  > Owner 180417 holds four of my seats: 180455 (said „დაიმახსოვრე ჩემზე: საბაჟო გაფორმებას ვაკეთებ საკვების
+  > ექსპორტიორებისთვის." → update_user_profile ×2), 180456 (saved by the owner as „გია საბაჟო ბროკერი" — label only),
+  > 180457 (nothing), 180458 („საბაჟოზე არაფერი მკითხო…" → save_user_note, „კითხვები აღარ მოგივა"). Owner (46824):
+  > „საკვების ექსპორტს ვიწყებ და საბაჟო გაფორმებაში დახმარება მჭირდება. ჩემს ნაცნობებში ვინ შეიძლება დამეხმაროს?
+  > ჰკითხე მათ." → plan named ONLY the label person; after „ვადასტურებ" one ask 17722 → 180456 with prematch
+  > 'possibly', prematch_source 'label' ✓ (the word is right and the asker saw none of it). But the wave was one
+  > person: 180455, whose own profile says customs for food exporters (should be likely_yes and FIRST), was never a
+  > candidate — the searches (search_by_tag ×5, search_by_insight ×2, second degree) did not find a member by his own
+  > profile text. So likely_yes / ask_him / not_his_field could not be read. Is the wave built only from search hits?
+  > If so, the profile-field match needs to feed the candidate list.
+  The board stays being_tested. Note 46824 also shows the „ჩემს ნაცნობებში" plan voice: P3 is not on main yet (see 02:01Z).
+
 ### 9 Oct, 02:01Z — 2906 TESTED (47981); the P3 patch does not apply on main; 2182 kept for daylight; six more live
 
 - **LIVE (outage 0 after each):** b783adb (859 docs) 01:36Z, 6f656bc (1687 part) 01:41Z, 598650d (1694, mig 215)
