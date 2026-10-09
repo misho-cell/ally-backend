@@ -351,6 +351,19 @@ describe('the seat route is not a registration', () => {
     expect(route.slice(0, 2500)).toContain('That registerUser calls this hook');
   });
 
+  /** 389 (ops 11:55Z): real owners' cards about a real number come only from a real registration. */
+  it('replays only a reserved fictional number, and refuses any other before it runs', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    const route = routes.slice(routes.indexOf("'/new-member-match/replay'"));
+    const refusal = route.indexOf('if (!isFictionalNumber(phone)) {');
+    expect(refusal).toBeGreaterThan(0);
+    expect(refusal).toBeLessThan(route.indexOf('tellOwnersANewMemberFitsAGoal(phone)'));
+    expect(route.slice(refusal, refusal + 200)).toContain('.status(403)');
+  });
+
   /** And the one line the replay cannot show is asserted here instead. */
   it('registerUser does call the hook', () => {
     const auth = readFileSync(join(__dirname, '..', 'auth.service.ts'), 'utf8');
