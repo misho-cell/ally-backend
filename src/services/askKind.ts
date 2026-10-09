@@ -36,7 +36,7 @@ const HELP_RE = /დამეხმარ|დახმარებ|\bhelp\b|по
 // A Georgian word ends where the next Georgian letter does not follow: „ვინ"
 // opens an open question, „ვინმე" („anyone") does not.
 const OPEN_RE =
-  /^(ვინ(?![ა-ჰ])|ვის(?![ა-ჰ])|რა |რას |რამ |როდის|სად|როგორ|რამდენ|რატომ|რომელ(?!იმე)|who\b|what\b|when\b|where\b|how\b|why\b|which\b|кто|что|когда|где|как|почему|какой|сколько|qui[eé]n|qu[eé]\b|cu[aá]ndo|d[oó]nde|c[oó]mo|por qu[eé]|cu[aá]l)/iu;
+  /^(ვინ(?![ა-ჰ])|ვის(?![ა-ჰ])|რა |რას |რამ |როდის|სად|როგორ|რამდენ|რატომ|რომელ(?!იმე)|who\b|whom\b|what\b|when\b|where\b|how\b|why\b|which\b|кто|что|когда|где|как|почему|какой|сколько|qui[eé]n|qu[eé]\b|cu[aá]ndo|d[oó]nde|c[oó]mo|por qu[eé]|cu[aá]l)/iu;
 
 const SENTENCE_END_RE = /(?<=[.!?…])\s+/u;
 
