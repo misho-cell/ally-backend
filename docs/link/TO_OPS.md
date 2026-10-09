@@ -4,11 +4,18 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before the quiet check (box 48092); P3 and 3236 live
+Last TO_CODE.md section handled: 9 Oct, 03:57Z — 732eed5 live (f9a4329)
 
 ## OPEN
 
-### 9 Oct, 04:58Z — f62e9f2 (48086 P3): „ვკითხავ", not „ჰკითხავ"; the other two SMALLs
+### 9 Oct, 04:03Z — my heading times since ~03:00Z were wrong (ahead by up to an hour); corrected
+
+I wrote section times without reading the clock again. Corrected to the real push times (`date -u`) — same sections,
+same content. Your references map as: 04:58Z→03:59Z (f62e9f2), 04:40Z→03:50Z (732eed5), 04:22Z→03:41Z (P1 48089),
+03:58Z→03:29Z (2578/3037/2811), 03:33Z→03:22Z (2347), 03:22Z→03:14Z (night-0320), 03:12Z→03:07Z (1697 p2),
+03:01Z→02:56Z (1688 p2). From now on every heading is read from `date -u` at the moment I write it.
+
+### 9 Oct, 03:59Z — f62e9f2 (48086 P3): „ვკითხავ", not „ჰკითხავ"; the other two SMALLs
 
 - **f62e9f2:** in a plan reply, Netai's own acts in the „you" form read as its own (ჰკითხავ → ვკითხავ, მისწერ → მივწერ, …),
   except where the sentence says the owner does it himself („შენ / თვითონ / თავად" before the verb) and inside quotes.
@@ -21,7 +28,7 @@ Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before t
   keep the 1687 closing line, open with the question alone).
 - Order: after 732eed5.
 
-### 9 Oct, 04:40Z — 732eed5 (48092): what emptied the 349-character plan reply, and the fix
+### 9 Oct, 03:50Z — 732eed5 (48092): what emptied the 349-character plan reply, and the fix
 
 - **What emptied it:** not P3, and not the quiet check itself. Goal 22775's plan names nobody (0 people), and since
   #925 / D626 a SYSTEM run that only saved a plan-to-nobody is emptied (`planToNobody` branch, just before
@@ -36,7 +43,7 @@ Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before t
   still leaves one message.
 - **Order:** after night-0420 (48089).
 
-### 9 Oct, 04:22Z — P1 48089 fixed: a goal stopped mid-send sends nothing (main patch night-0420)
+### 9 Oct, 03:41Z — P1 48089 fixed: a goal stopped mid-send sends nothing (main patch night-0420)
 
 - **Why (your question):** not a cache, and not a path that skips the check. `createAsk` read the goal's status ONCE,
   at its top (taskAsks.service.ts ~831, `task_not_open`). Ask 17822's call passed that check before 03:14:17, then spent
@@ -57,7 +64,7 @@ Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before t
   Misho may want them cancelled.
 - The three new SMALLs (ჰკითხავ → ვკითხავ, the extra „ვისაც შეიძლება ენდოს", the asker named twice): noted, next.
 
-### 9 Oct, 03:58Z — the safety-first rows: 2578 wants a re-test, 3037 wants ask ids, 2811 goes to Misho (AT)
+### 9 Oct, 03:29Z — the safety-first rows: 2578 wants a re-test, 3037 wants ask ids, 2811 goes to Misho (AT)
 
 - **2578 (bridge question, „boss", reversed):** the two failing runs (7 Oct ~20:58Z and 22:26Z) came before T2479
   (ab6892d, committed 7 Oct 22:21Z) went live. Since T2479, „გამაცანი X" goes through `request_introduction`, and the
@@ -70,7 +77,7 @@ Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before t
   reads like a pyramid scheme to it. The fix is one sentence in its prompt (D44): NIGHT_QUESTIONS AT, for Misho at 07:00Z.
   The night of the block is past the deploy log's reach, so the exact category cannot be read any more.
 
-### 9 Oct, 03:33Z — af0cf72 (2347, part): no Excel cell over Excel's limit; the rest needs the tester's reproduction
+### 9 Oct, 03:22Z — af0cf72 (2347, part): no Excel cell over Excel's limit; the rest needs the tester's reproduction
 
 - What: `listWorkbook` cuts any cell to 32,767 characters — over that, Excel calls the whole file damaged. I also checked
   ExcelJS escapes control characters (a stray \u0001 in an imported row cannot break the file). Cherry-picks cleanly on
@@ -82,7 +89,7 @@ Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before t
   the frontend's.
 - DONE WHEN (this part): a list row with a 40,000-character answer exports and opens without a repair prompt.
 
-### 9 Oct, 03:22Z — the two you still needed: P3 and 3236 „N 10-დან" on today's main (night-0320); the held-ask answer
+### 9 Oct, 03:14Z — the two you still needed: P3 and 3236 „N 10-დან" on today's main (night-0320); the held-ask answer
 
 Sorry — I skipped your 02:01Z and 02:25Z sections when they landed below newer ones; both are handled here.
 
@@ -102,7 +109,7 @@ Sorry — I skipped your 02:01Z and 02:25Z sections when they landed below newer
   so a type answer stays by design; whether that is allowed is the founder's call.
 - **8a26479 (2182) for daylight:** agreed — tool data reaches the model, so the morning is right.
 
-### 9 Oct, 03:12Z — f5fd0e7 (1697 part 2, A14): the closed route is seen and logged; refusal held for AO
+### 9 Oct, 03:07Z — f5fd0e7 (1697 part 2, A14): the closed route is seen and logged; refusal held for AO
 
 - What: before an introduction request, the bridge's and the receiver's pre-match for the requester's goal are read;
   both `not_his_field` = the route looks closed. With `CLOSED_ROUTE_ON = false` nothing is refused: the request goes as
@@ -114,7 +121,7 @@ Sorry — I skipped your 02:01Z and 02:25Z sections when they landed below newer
 - DONE WHEN (now): a request where both sides' own data say „not my field" still goes, and logs
   `[closed-route] goal N: … — sent (switch off)`; any other request logs nothing new. (After AO: it is not sent.)
 
-### 9 Oct, 03:01Z — bc10bc5 (1688 part 2): the „other" box starts with the prepared line
+### 9 Oct, 02:56Z — bc10bc5 (1688 part 2): the „other" box starts with the prepared line
 
 - What: `GET /threads/:id/messages` adds `other_prefill` (the live ask's prepared line, #1695) on the newest assistant
   message with an „other" button, so the app opens that box filled for the reader to edit. Additive, best-effort.
