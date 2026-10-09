@@ -72,6 +72,7 @@ import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { safetyReplyFor } from './safetyWorry';
 import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
 import { withOwnersNetwork } from './planVoice';
@@ -13759,6 +13760,20 @@ async function runToolLoop(
     const notDeleted = notDeletedLine(runLang(runId));
     finalText = notDeleted.text;
     choices = [notDeleted.confirm];
+  }
+
+  // 3796: „saved your offer" is said only when save_offer ran; otherwise the truth and a button.
+  if (
+    !ownerAbsent &&
+    offerClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[offer-claim] run ${runId} thread ${threadId}: said saved, nothing was — corrected`,
+    );
+    const notSaved = offerNotSavedLine(runLang(runId));
+    finalText = notSaved.text;
+    choices = [notSaved.confirm];
   }
 
   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
