@@ -7,6 +7,7 @@ import {
   instructionNames,
   instructionNeed,
   instructionQuestion,
+  looksLikeContactInstruction,
 } from '../goalIntent';
 
 describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
@@ -314,5 +315,28 @@ describe('an instruction that names several people', () => {
 
   it('never takes a name before the verb for the need', () => {
     expect(instructionNeed('ნინოს ჰკითხე, იცნობს თუ არა იურისტს')).toBeNull();
+  });
+});
+
+/** 3961 (QA-015 step 3, seat 181480): „set up a meeting with X" is an instruction to X. */
+describe('a meeting the owner asks to set up', () => {
+  const LINE = 'შეხვედრა დამინიშნე ნანული მოგონილთან ხვალ 3 საათზე.';
+
+  it('is an instruction naming the person in „-თან", asking the meeting itself', () => {
+    expect(looksLikeContactInstruction(LINE)).toBe(true);
+    expect(instructionNames(LINE)).toEqual(['ნანული მოგონილ']);
+    expect(instructionQuestion(LINE)).toBe('შეხვედრა ხვალ 3 საათზე.');
+  });
+
+  it('keeps the meeting noun out of the name, and asks for a meeting when nothing else is said', () => {
+    expect(instructionNames('დამინიშნე შეხვედრა ნინოსთან ხვალ')).toEqual(['ნინო']);
+    expect(instructionNames('შემახვედრე გიორგისთან')).toEqual(['გიორგი']);
+    expect(instructionQuestion('შემახვედრე გიორგისთან')).toBe('შეხვედრა');
+  });
+
+  it('reads the English form', () => {
+    const line = 'set up a meeting with Nanuli Mogonili tomorrow at 3';
+    expect(instructionNames(line)).toEqual(['Nanuli Mogonili']);
+    expect(instructionQuestion(line)).toBe('a meeting tomorrow at 3');
   });
 });

@@ -168,3 +168,19 @@ describe('a line that names two people', () => {
     expect(mockCreateAsk).not.toHaveBeenCalled();
   });
 });
+
+/** 3961: a meeting goes to the one person it names, the meeting itself as the question. */
+describe('a meeting the owner asks to set up', () => {
+  it('asks Nanuli about the meeting, never the whole line', async () => {
+    mockFindPhones.mockResolvedValue(['995500000021']);
+    mockCreateAsk.mockResolvedValue({ sent: true, ask_id: 3, to_name: 'ნანული მოგონილი' });
+    const outcome = await sendInstructedAsk(
+      '181480',
+      47860,
+      'შეხვედრა დამინიშნე ნანული მოგონილთან ხვალ 3 საათზე.',
+    );
+    expect(outcome).toMatchObject({ result: InstructedAskResult.Sent, toName: 'ნანული მოგონილი' });
+    expect(mockFindPhones.mock.calls[0][1]).toBe('ნანული მოგონილ');
+    expect(mockCreateAsk.mock.calls[0][3]).toBe('შეხვედრა ხვალ 3 საათზე.');
+  });
+});

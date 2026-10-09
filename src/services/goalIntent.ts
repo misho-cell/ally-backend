@@ -430,7 +430,7 @@ export function goalTitleFrom(message: string): string {
  * verb has to carry the weight on its own.
  */
 const CONTACT_VERB_RE =
-  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
 
 /**
  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
@@ -552,8 +552,75 @@ function georgianNameChain(after: string): NameChain | null {
   return names.length === 0 ? null : { names, endsAt: parts.length };
 }
 
+/**
+ * 3961 (QA-015 step 3, seat 181480): „შეხვედრა დამინიშნე ნანული მოგონილთან
+ * ხვალ 3 საათზე." sent nothing — „set up a meeting" was not an instruction, so
+ * the run drew a plan and asked „დავიწყო?" for what the owner had just said.
+ * A meeting names its person with „-თან" („with"), not the dative, and what
+ * goes to them is the meeting itself — the line without the verb and the name,
+ * worded for them by the editor (D711) like every ask.
+ */
+const MEETING_VERB_RE =
+  /(?:დამინიშნე|დამიგეგმე|შემახვედრე)|\b(?:set up|arrange|schedule|book) a meeting with\b/iu;
+const WITH_CASE_RE = /^([\p{L}-]+?)ს?თან[,.!?]?$/u;
+/** The meeting noun said after the verb is the meeting, not part of the person's name. */
+const MEETING_NOUN_RE = /^შეხვედრ\p{L}*$/u;
+const MAX_MEETING_NAME_WORDS = 3;
+const ENGLISH_NAME_STOP_RE = /^(?:tomorrow|today|tonight|on|at|next|this|in|for|about|to)$/iu;
+
+export function isMeetingInstruction(sentence: string): boolean {
+  return MEETING_VERB_RE.test(sentence);
+}
+
+interface MeetingParts {
+  readonly name: string;
+  readonly rest: string;
+}
+
+function georgianMeeting(before: string, after: string): MeetingParts | null {
+  const all = after.trim().split(/\s+/u);
+  const nouns = all.findIndex((w) => !MEETING_NOUN_RE.test(w));
+  const lead = all.slice(0, Math.max(nouns, 0));
+  const words = all.slice(lead.length);
+  const end = words.findIndex((w) => WITH_CASE_RE.test(w));
+  if (end < 0 || end >= MAX_MEETING_NAME_WORDS) return null;
+  const last = (words[end].match(WITH_CASE_RE) ?? [])[1] ?? '';
+  const name = [...words.slice(0, end), last].join(' ').trim();
+  const said = [before.trim(), ...lead, ...words.slice(end + 1)].join(' ').trim();
+  // „შემახვედრე გიორგისთან" says nothing else: the meeting itself is what is asked.
+  const rest = said.split(/\s+/u).some((w) => MEETING_NOUN_RE.test(w))
+    ? said
+    : `შეხვედრა ${said}`.trim();
+  return name === '' ? null : { name, rest };
+}
+
+function englishMeeting(after: string): MeetingParts | null {
+  const words = after.trim().split(/\s+/u);
+  const end = words.findIndex((w, i) => i > 0 && ENGLISH_NAME_STOP_RE.test(w));
+  const take = Math.min(end < 0 ? words.length : end, MAX_MEETING_NAME_WORDS);
+  const name = words
+    .slice(0, take)
+    .join(' ')
+    .replace(/[,.!?]$/u, '')
+    .trim();
+  const rest = `a meeting ${words.slice(take).join(' ')}`.trim();
+  return name === '' ? null : { name, rest };
+}
+
+function meetingParts(sentence: string): MeetingParts | null {
+  const match = MEETING_VERB_RE.exec(sentence);
+  if (match === null) return null;
+  const before = sentence.slice(0, match.index);
+  const after = sentence.slice(match.index + match[0].length);
+  return /with/iu.test(match[0]) ? englishMeeting(after) : georgianMeeting(before, after);
+}
+
 /** Every person an instruction names, as typed; empty when none can be told apart. */
 export function instructionNames(sentence: string): string[] {
+  if (isMeetingInstruction(sentence)) {
+    const meeting = meetingParts(sentence);
+    return meeting === null ? [] : [meeting.name];
+  }
   const match = CONTACT_VERB_RE.exec(sentence);
   if (match === null) return [];
   const before = datedNameBefore(sentence.slice(0, match.index));
@@ -572,6 +639,7 @@ export function instructionNames(sentence: string): string[] {
 
 /** What the owner wants asked, without „ask <name>"; null when it cannot be told apart. */
 export function instructionQuestion(sentence: string): string | null {
+  if (isMeetingInstruction(sentence)) return clauseOrNull(meetingParts(sentence)?.rest ?? '');
   const match = CONTACT_VERB_RE.exec(sentence);
   if (match === null) return null;
   const after = sentence.slice(match.index + match[0].length);

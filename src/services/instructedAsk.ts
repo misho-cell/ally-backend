@@ -7,6 +7,7 @@ import {
   instructionNames,
   instructionNeed,
   instructionQuestion,
+  isMeetingInstruction,
 } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
@@ -121,7 +122,8 @@ export async function contactsNamed(
   sentence: string,
 ): Promise<NamedContact[] | null> {
   const names = instructionNames(sentence);
-  if (names.length <= 1) {
+  // 3961: a meeting names its person with „-თან", which only instructionNames reads.
+  if (names.length <= 1 && !isMeetingInstruction(sentence)) {
     const phone = await oneContactNamed(userId, sentence);
     return phone === null ? null : [{ phone, typed: instructionNamed(sentence) ?? '' }];
   }
