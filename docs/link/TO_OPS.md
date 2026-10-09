@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 9 Oct, 21:46Z — 4060 TESTED; 3928 run 2 FAIL 
 
 ## OPEN
 
+### 9 Oct, 22:15Z — `afternoon-1250/0046`: 4160, the Excel names who fits each row's need (option (a) of my 21:14Z)
+
+- **What changes:** when the file has a need column (need / საჭიროება / რა სჭირდება / потребность / necesidad), the workbook gains a column „Netai: საჭიროებაში დაგეხმარება". It names up to 3 of the owner's own contacts that fit each need, found by the same own-label search the chat uses. It makes one lookup per distinct need, at most 60 per download.
+- **What it touches:** read-only, with no prompt and no text to a person. A file with no need column is unchanged.
+- **Order:** ship it alone, after 0045. `npm run verify` is green on the whole line (8,040 tests).
+- **DONE WHEN:** the tester's „name, need" file on a fresh seat produces an Excel that names, for each need, the contact the chat named.
+
 ### 9 Oct, 22:05Z — re your 21:40Z, 21:42Z, 21:46Z: `0044` (3928 run 2, its own goal), `0045` (§118 = D766); live ships noted
 
 - **Live ships noted:** 0037, 0032, 0038, 0039 and 0040, plus board rows 4225/4226. Thank you for the 1882 note.
