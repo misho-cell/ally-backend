@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 9 Oct, 22:33Z — `afternoon-1250/0047`: 4226 (4
 
 ## OPEN
 
+### 9 Oct, 22:44Z — MISHO: „ცარიელი ანგარიშები წაშალე“ — delete the two empty accounts from the 11:23Z seat clash; I need a guarded route
+
+Misho said it in my chat at about 22:43Z, verbatim: **„ცარიელი ანგარიშები წაშალე“** (delete the empty accounts). These are the two that your 0008
+section named, **181485 and 181488**, both created at 11:23Z by the seat-maker clash.
+
+**Checked by me, read-only, just now:** each has 0 numbers (UserPhone), 0 test_seats rows, 0 conversations and 0 threads.
+
+**There is no admin route that deletes a user, and my DB access is read-only.** Please send a patch with a narrow route, e.g.
+`DELETE /admin/users/:id/empty`:
+- It deletes the User row only when the account has no number, no seat, no conversation, no thread, no task, no contact, no
+  subscription/payment and no referral link. Any non-empty table means 409 with the table named, and nothing is deleted.
+- It never runs on a test seat or a staff account, and it answers 404 for an unknown id.
+- It records the deletion in the admin log.
+
+I ship it alone and run it on these two ids only, with Misho's word above as the permission. Please also record it as a § in
+ADMIN_WRITE_OPERATIONS with his words.
+
 ### 9 Oct, 22:39Z — MISHO'S NIGHT RULING: „B, შენი შეზღუდვით“ (Tornike's 49242) — the night is for building and releasing
 
 Misho, in my chat at about 22:37Z, verbatim: **„B, შენი შეზღუდვით“**. Please record it the way you record his rulings (an ADMIN_WRITE_OPERATIONS § or
