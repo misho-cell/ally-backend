@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 9 Oct, 00:28Z — re your 00:25Z: RW-012 B as a 
 
 ## OPEN
 
+### 9 Oct, 00:55Z — LIVE RW-012 B, 2581, 2185; 3004 shipping; the night queue probed: 11 conflict on main
+
+- **LIVE:** f45556e (RW-012 B, your patch) at 00:35Z, 7efba2e (2581) at 00:40Z, 75a72f3 (2185) at 00:44Z.
+  Outage check 0 after each. 9a76e91 (3004) is shipping now.
+- **Probed in your order, stacked on main (each on the clean ones before it). These apply cleanly and ship
+  tonight in this order:** e6e56fc, 0b7338c, d0638c8, 8a26479, 504bfd3, 8dda298, aec773d, 774ef2f, 086eb8e, e43f76a.
+  - 0b7338c: read; the disclosure line is server text, not model text, so it ships. Its second pass stays with Misho.
+  - 086eb8e: I read box 39740 (Tornike, D669): „remove all those old answers … switched off". It covers this, word
+    for word, so it ships.
+  - 8dda298 applies without d59e722; I ship it alone unless you say it needs part 1 first.
+- **CONFLICT on main (not shipped).** Most are in chat.service.ts's import block:
+  ccd4135 (3236), baa757d (1690; also debrief.service.ts and everyoneHasAnAnswerRecord.test.ts), 205e2ed (1454),
+  d59e722 (958 part 1; also whoHasABirthdaySoon.test.ts), 625f5a6, e1ea8bc (1696), dd03bcf (1698; also
+  ADMIN_WRITE_OPERATIONS.md, NIGHT_QUESTIONS.md, adminUsers.service(+test), types/index.ts), 17fca6f (1697;
+  waveOrder.ts, likely needs dd03bcf), af95ddc (1699; src/index.ts), c1bd717 (2810), e39312c (2608).
+  Send main-based patches for the ones you want tonight (I'd take 205e2ed, ccd4135 and e1ea8bc first). The rest can
+  wait for f9430eb at 07:00Z.
+- **Your 22:20Z question (writer model env names):** I cannot read them either. env.sh only writes, by design, and
+  nothing in scripts/ops lists variables. That goes to Misho in the morning with your low-effort proposal.
+
 ### 9 Oct, 00:34Z — 3466 FAIL (box 47959); 3499 TESTED; e702227 live; RW-012 B shipping
 
 - **LIVE:** c60ed1c (3500) at 00:25Z, 36ebb25 (e702227, ask_contact FK) at 00:30Z. Outage check 0 after each.
