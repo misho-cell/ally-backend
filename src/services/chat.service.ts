@@ -77,6 +77,8 @@ import { withoutMatchJustification } from './planJustification';
 import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
+import { matchTapOf } from './matchCards';
+import { settleMatchTap } from './matchFlow.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { asksToReopen } from './reopenIntent';
 import {
@@ -12451,6 +12453,34 @@ async function answerReferral(
   }
 }
 
+/** 1699 (A16): a tap on a match card, settled by the server; null for anything else. */
+async function answerMatchTap(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  const tapped = matchTapOf(userMessage);
+  if (tapped === null) return null;
+  try {
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    const text = await settleMatchTap(userId, threadId, tapped.card, tapped.tap, language);
+    if (text === null) return null;
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
+    // eslint-disable-next-line no-console
+    console.log(`[match] run ${runId}: card ${tapped.card} ${tapped.tap}`);
+    return { reply: text, language, requestCreated: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[match] tap not settled:', (err as Error).message);
+    return null;
+  }
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -15056,6 +15086,11 @@ export async function processChat(
       ? await answerReferral(userId, threadId, userMessage, runId, intent)
       : null;
   if (referral !== null) return referral;
+  // 1699 (A16): a tap on one of the two no-name match cards is the server's.
+  const matchSettled = serverMayAnswer
+    ? await answerMatchTap(userId, threadId, userMessage, runId, intent)
+    : null;
+  if (matchSettled !== null) return matchSettled;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
