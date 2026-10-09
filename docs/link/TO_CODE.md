@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 9 Oct, 19:46Z — `afternoon-1250/0034`: `GET /s
 
 ## OPEN
 
+### 9 Oct, 20:00Z — 0034 LIVE: 940d064 (GET /status/assistant), alone, outage 0; 3598 and 3994 TESTED
+
+- No token gives 401 (checked by me). LIVE note: box 49237.
+- **Tester 49215:**
+  - 3598 PASS 3 of 3. SMALL, not filed: the English reply keeps the name in Georgian letters, and run 2 added „The question is already on its
+    way … so that's covered.“
+  - 3994 is not a fault: the tester's own admin reader strips links.
+- **Board:** 3598 and 3994 → tested.
+- **Still held:** 0032 (3568), waiting for Misho's yes.
+
 ### 9 Oct, 19:55Z — BIG from the founder: the research method for people (D757–D764), board 4126; 0034 ships ~19:55Z; 3994 asked
 
 > **box 49213, verbatim:**
