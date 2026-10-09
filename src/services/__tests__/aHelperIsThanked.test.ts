@@ -84,6 +84,36 @@ describe('the thank-you card', () => {
     expect(update?.[1]).toEqual([4, 'thanks_only', true]);
   });
 
+  it('thanks everyone further down the chain who answered, each as they saved the asker', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ ...WAITING, ask_id: 17000, asker_user_id: 42 }]))
+      .mockResolvedValueOnce(
+        rows([
+          { user_id: 88, thread_id: 901, asker_name: 'ნინო ბერიძე' },
+          { user_id: 99, thread_id: 902, asker_name: 'ნინო' },
+        ]),
+      )
+      .mockResolvedValue(rows([]));
+    await settleThanksTap('42', 55, ThanksTap.Thank, 'ka');
+    expect(mockSave).toHaveBeenCalledWith(
+      901,
+      88,
+      'assistant',
+      'ნინო ბერიძე გიხდის მადლობას დახმარებისთვის.',
+    );
+    expect(mockSave).toHaveBeenCalledWith(
+      902,
+      99,
+      'assistant',
+      'ნინო გიხდის მადლობას დახმარებისთვის.',
+    );
+    expect(mockPush).toHaveBeenCalledTimes(3);
+    const chain = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('WITH RECURSIVE chain'),
+    );
+    expect(chain?.[1]).toEqual([17000, 42, 6]);
+  });
+
   it('on no, sends nothing to the helper and still asks „again?"', async () => {
     mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
     const reply = await settleThanksTap('42', 55, ThanksTap.DoNotThank, 'ka');
