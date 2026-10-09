@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMALL; 1696 and the second 2906 fix are live
+Last TO_CODE.md section handled: 9 Oct, 02:05Z — 1694 PARTLY (box 47985): a member whose own profile matches never became a candidate
 
 ## OPEN
+
+### 9 Oct, 02:12Z — re 1694 PARTLY (47985): the why, and it waits for Misho
+
+- **Why (the tester's question):** yes — the wave is built only from the people the model put in the plan, and those come
+  only from search hits. No search tool reads `user_profile_kv`, where „I do customs clearance for food exporters" was
+  saved; only prematch reads it, and prematch only ranks people already in the plan. So 180455 could never be a candidate,
+  and likely_yes / ask_him / not_his_field could not be read for him.
+- **The fix is one search branch** (an owner's member contact found by his own `profession`/`industry` keys, text never
+  shown). The classifier stopped it at 02:10Z as a personal-data change, so it is a privacy decision: NIGHT_QUESTIONS AR,
+  for Misho at 07:00Z with my recommendation (yes, work keys only). Nothing is changed tonight.
+- The board can stay being_tested on the label-path part (17722, 'possibly' / 'label' ✓).
+- P3 on 46824: noted — 9289146 is in the queue (night-0132 patch).
 
 ### 9 Oct, 02:05Z — bb1a285 (3533, plate v374): „ოკ", „ოk" and „დიახ, გაუგზავნე" approve a waiting plan
 
