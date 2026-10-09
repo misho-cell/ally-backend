@@ -83,6 +83,7 @@ import { settleReferralTap } from './askReferralSettle.service';
 import { matchTapOf } from './matchCards';
 import { thanksTapOf } from './helperThanksCards';
 import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
 import { settleMatchTap } from './matchFlow.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { asksToReopen } from './reopenIntent';
@@ -9098,6 +9099,15 @@ async function executeToolCall(
     // runs — so an omitted field was a TypeError or a not-null violation, and
     // either way a thrown tool rather than an answer.
     case 'update_user_profile':
+      // 4192: „<contact> ჩემი სტომატოლოგია" is the contact's role, never the owner's.
+      if (
+        runId !== undefined &&
+        valueIsSomeoneElsesRole(runOwnerLine.get(runId) ?? '', String(input['value'] ?? ''))
+      ) {
+        // eslint-disable-next-line no-console
+        console.log(`[profile] run ${runId}: a contact's role refused for the owner's profile`);
+        return { saved: false, error: SOMEONE_ELSES_ROLE_REFUSAL };
+      }
       return setUserProfileField(
         userId,
         String(input['key'] ?? ''),
