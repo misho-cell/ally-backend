@@ -687,11 +687,20 @@ function clauseOrNull(text: string): string | null {
  * verb, and only in the dative (-ს) a person takes there: the 1101 note above
  * is why the rest of the line before the verb stays out.
  */
+/**
+ * 3928 run 2 (seat 182043, conv 48361): „…აბაზანაში მილი გამდის. ჰკითხე X-ს
+ * და Y-ს." read the verb „გამდის" as the person, so nobody was asked. A word
+ * the previous sentence or clause ends on is not the verb's person.
+ */
+const CLAUSE_END_RE = /[.,!?;:…]$/u;
+
 function datedNameBefore(beforeVerb: string): string {
   const words = beforeVerb.trim().split(/\s+/u);
-  const last = (words[words.length - 1] ?? '').replace(/[^\p{L}]+$/gu, '');
+  const lastRaw = words[words.length - 1] ?? '';
   // A verb glued to its prefix („ვთხოვ") leaves the person as the word before.
-  const word = last === 'ვ' || last === '' ? (words[words.length - 2] ?? '') : last;
+  const raw = lastRaw === 'ვ' || lastRaw === '' ? (words[words.length - 2] ?? '') : lastRaw;
+  if (CLAUSE_END_RE.test(raw)) return '';
+  const word = raw.replace(/[^\p{L}]+$/gu, '');
   return /^\p{Script=Georgian}{2,}ს$/u.test(word) ? word.slice(0, -1) : '';
 }
 

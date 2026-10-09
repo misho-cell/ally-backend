@@ -307,6 +307,17 @@ describe('an instruction that names several people', () => {
     ]);
   });
 
+  it('never takes the last word of the sentence before the verb as the person (3928 run 2)', () => {
+    const line =
+      'სანტექნიკოსი მჭირდება საბურთალოზე, აბაზანაში მილი გამდის. ჰკითხე ირაკლი ტესტაძეს და მამუკა ტესტაძეს.';
+    expect(instructionNames(line)).toEqual(['ირაკლი ტესტაძე', 'მამუკა ტესტაძე']);
+    expect(instructionNeed(line)).toBe('სანტექნიკოსი მჭირდება საბურთალოზე, აბაზანაში მილი გამდის.');
+    expect(instructionNames('პრობლემა მაქვს, ჰკითხე ნიკას იცნობს თუ არა ხელოსანს')).toEqual([
+      'ნიკა',
+    ]);
+    expect(instructionNames('გიას ვთხოვ ამ კვირაში შეხვედრის დანიშვნას')).toEqual(['გია']);
+  });
+
   it('keeps one name and its question when a comma opens the question', () => {
     const line = 'ჰკითხე გიგა ტესტაძეს, იცნობს თუ არა კარგ ნოტარიუსს';
     expect(instructionNames(line)).toEqual(['გიგა ტესტაძე']);
