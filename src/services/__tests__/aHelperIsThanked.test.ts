@@ -12,7 +12,13 @@ import { join } from 'path';
 import { query as _query } from '../../db/postgres/client';
 import { saveThreadMessage as _save } from '../threads.service';
 import { sendPushNotification as _push } from '../notification.service';
-import { offerHelperThanks, settleThanksTap } from '../helperThanks.service';
+import {
+  saysAHelperHelped,
+  sendHelperThanks,
+  settleThanksTap,
+  thankForSolvedGoal,
+  thankHelperNamedIn,
+} from '../helperThanks.service';
 import { againChoices, thankChoices, thanksTapOf, ThanksTap } from '../helperThanksCards';
 
 /** 1692 part 1 (A9): „helped" → thank them? → one line to the helper; then a private „ask again?". */
@@ -27,6 +33,21 @@ const WAITING = {
   helper_name: 'ზურაბი',
   asker_name: 'ნინო',
 };
+
+/** D756's send: the ask, the claim, the claimed row, the chain. */
+function routeSend(claimed: boolean): void {
+  mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('FROM task_asks ta') && sql.includes('WHERE ta.id = $1'))
+      return Promise.resolve(
+        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
+      );
+    if (sql.includes('INSERT INTO helper_thanks'))
+      return Promise.resolve(rows(claimed ? [{ id: 4 }] : []));
+    if (sql.includes('FROM helper_thanks ht JOIN task_asks'))
+      return Promise.resolve(rows([WAITING]));
+    return Promise.resolve(rows([]));
+  });
+}
 
 /** Answers each query by what it asks: the waiting card, the claim, the chain. */
 function route(waiting: unknown, chain: unknown[] = [], claimed = true): void {
@@ -50,30 +71,30 @@ describe('the thank-you card', () => {
     expect(thanksTapOf('კი')).toBeNull();
   });
 
-  it('is offered once per answered ask, in the asker’s goal conversation', async () => {
-    mockQuery
-      .mockResolvedValueOnce(
-        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
-      )
-      .mockResolvedValueOnce(rows([{ id: 4 }]));
-    expect(await offerHelperThanks('42', 17000)).toBe(true);
+  /** D756 (the founder, box 49153): no card — the thanks go out at once, once per ask. */
+  it('thanks the helper at once, with no card to the owner, once per ask', async () => {
+    routeSend(true);
+    expect(await sendHelperThanks('42', 17000)).toBe(true);
     expect(mockSave).toHaveBeenCalledWith(
-      55,
-      42,
+      900,
+      77,
       'assistant',
-      'ზურაბს მადლობა გადავუხადო შენი სახელით?',
-      'message',
-      null,
-      thankChoices('ka'),
+      'ნინო გიხდის მადლობას დახმარებისთვის.',
     );
+    expect(mockSave).not.toHaveBeenCalledWith(
+      55,
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(mockSave).toHaveBeenCalledTimes(1);
 
-    mockQuery
-      .mockResolvedValueOnce(
-        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
-      )
-      .mockResolvedValueOnce(rows([]));
     mockSave.mockClear();
-    expect(await offerHelperThanks('42', 17000)).toBe(false);
+    routeSend(false);
+    expect(await sendHelperThanks('42', 17000)).toBe(false);
     expect(mockSave).not.toHaveBeenCalled();
   });
 
@@ -108,9 +129,11 @@ describe('the thank-you card', () => {
     expect(service).toContain("AND ta.status = 'answered' AND ta.declined_at IS NULL");
   });
 
-  it('a day-14 row gives way to the card when the owner later says it helped', () => {
+  it('a card or day-14 row left behind is claimed too; a thanked one never again', () => {
     const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
-    expect(service).toContain("WHERE helper_thanks.state = 'followed_up'");
+    expect(service).toContain(
+      "WHERE helper_thanks.state IN ('offered', 'followed_up') AND helper_thanks.thanked_at IS NULL",
+    );
   });
 
   it('thanks everyone further down the chain who answered, each as they saved the asker', async () => {
@@ -158,32 +181,26 @@ describe('the thank-you card', () => {
     expect(await settleThanksTap('42', 55, ThanksTap.Thank, 'ka')).toBeNull();
   });
 
-  it('is offered from a „helped" debrief and never fails it', () => {
+  it('is sent from a „helped" debrief and never fails it', () => {
     const debrief = readFileSync(join(__dirname, '..', 'debrief.service.ts'), 'utf8');
-    expect(debrief).toContain('await offerHelperThanks(userId, refId).catch(');
+    expect(debrief).toContain('await sendHelperThanks(userId, refId).catch(');
   });
 });
 
-describe('a goal closed as solved (§113.1)', () => {
-  it('offers the card for the newest real answer on the goal', async () => {
-    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
-    mockQuery
-      .mockResolvedValueOnce(rows([{ id: 17001 }]))
-      .mockResolvedValueOnce(
-        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
-      )
-      .mockResolvedValueOnce(rows([{ id: 5 }]));
-    expect(await offerThanksForSolvedGoal('42', 3)).toBe(true);
+describe('a goal closed as solved (§113.1, D756)', () => {
+  it('thanks for the newest real answer on the goal', async () => {
+    routeSend(true);
+    mockQuery.mockImplementationOnce(() => Promise.resolve(rows([{ id: 17001 }])));
+    expect(await thankForSolvedGoal('42', 3)).toBe(true);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain("status = 'answered' AND declined_at IS NULL");
     expect(params).toEqual([3, '42']);
     expect(mockQuery.mock.calls[1][1]).toEqual([17001, '42']);
   });
 
-  it('offers nothing when nobody answered on the goal', async () => {
-    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
+  it('thanks nobody when nobody answered on the goal', async () => {
     mockQuery.mockResolvedValueOnce(rows([]));
-    expect(await offerThanksForSolvedGoal('42', 3)).toBe(false);
+    expect(await thankForSolvedGoal('42', 3)).toBe(false);
     expect(mockSave).not.toHaveBeenCalled();
   });
 
@@ -192,7 +209,49 @@ describe('a goal closed as solved (§113.1)', () => {
     const hook = store.slice(
       store.indexOf("if (updated && status === 'closed' && closedAs === 'finished') {"),
     );
-    expect(hook.slice(0, 400)).toContain('offerThanksForSolvedGoal(userId, taskId)');
+    expect(hook.slice(0, 400)).toContain('thankForSolvedGoal(userId, taskId)');
+  });
+});
+
+/** D756's third path (the tester's 48874): „ნატოს პასუხი დამეხმარა", the goal still open. */
+describe('the owner says in chat that a helper helped', () => {
+  it('reads „helped" and never „did not help"', () => {
+    expect(saysAHelperHelped('ნატოს პასუხი დამეხმარა — ზაზამ ონკანი შეაკეთა')).toBe(true);
+    expect(saysAHelperHelped('Nato’s answer helped me a lot')).toBe(true);
+    expect(saysAHelperHelped('ნატოს პასუხი არ დამეხმარა')).toBe(false);
+    expect(saysAHelperHelped('ნატომ მიპასუხა')).toBe(false);
+  });
+
+  it('thanks the one answered helper the line names', async () => {
+    routeSend(true);
+    mockQuery.mockImplementationOnce(() =>
+      Promise.resolve(
+        rows([
+          { ask_id: 17000, helper_name: 'ნატო დამხმარიძე' },
+          { ask_id: 17002, helper_name: 'ლევან ხელოსანაძე' },
+        ]),
+      ),
+    );
+    expect(await thankHelperNamedIn('42', 'ნატოს პასუხი დამეხმარა')).toBe(true);
+    expect(mockSave).toHaveBeenCalledWith(
+      900,
+      77,
+      'assistant',
+      'ნინო გიხდის მადლობას დახმარებისთვის.',
+    );
+  });
+
+  it('thanks nobody when the line names no answered helper, or says nothing helped', async () => {
+    mockQuery.mockResolvedValueOnce(rows([{ ask_id: 17002, helper_name: 'ლევან ხელოსანაძე' }]));
+    expect(await thankHelperNamedIn('42', 'ნატოს პასუხი დამეხმარა')).toBe(false);
+    expect(await thankHelperNamedIn('42', 'გამარჯობა')).toBe(false);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('runs on the owner’s own line, never on an event', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain("if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {");
+    expect(chat).toContain('void thankHelperNamedIn(userId, userMessage).catch(');
   });
 });
 

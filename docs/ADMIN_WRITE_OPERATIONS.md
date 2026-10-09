@@ -6124,3 +6124,13 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
 
   with „ანუ ხვალ" / „ანუ ზეგ" for the next two days, „უკვე გასული" for a gone date, and nothing further for a later one. The title stays
   as typed. Code, ships alone.
+
+**§116 — 9 October ~18:44 UTC, the founder (Tornike) through the tester, box 49153 — D756, answer to the code session's 49107, which Misho
+had told the code session to put to Tornike („თორნიკეს კითხე ეგ შეკითხვა", ~16:55Z):** „no, it should send thank you card automatically —
+to thank helper is very important and crucial. but avoid to waste users time. you dont need approval to send thank you. just do it
+automatically."
+
+- **§116.1 (1692 follow-up, board 4060)** — when the owner says a helper's answer helped (a „helped" debrief, a goal closed as solved, or a
+  line in their own chat such as „ნატოს პასუხი დამეხმარა" naming one helper who answered them), the helper and every bridge of the chain get
+  the approved thank-you line (§-texts of 1692 unchanged) at once, once per ask. The yes/no card of §113.1 and the „would you ask them
+  again?" question are no longer shown. No new text. A card offered before this ships still settles as before when tapped.

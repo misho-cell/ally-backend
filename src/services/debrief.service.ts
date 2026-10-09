@@ -1,6 +1,6 @@
 import { recountAnswerStats } from './answerStats.service';
 import { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
-import { offerHelperThanks } from './helperThanks.service';
+import { sendHelperThanks } from './helperThanks.service';
 import { confirmByResult } from './factConfirm.service';
 import { query } from '../db/postgres/client';
 import { queueFollowUp, PendingUpdate } from './pendingUpdates.service';
@@ -485,11 +485,11 @@ export async function recordDebriefOutcome(
   );
   // 1689 (A6): a „helped" counts on the record of the person who was asked.
   if (subject === 'relayed_ask' && worked) await recountHelper(userId, refId);
-  // 1692 (A9): and the asker is offered one card — thank them? Never fails the debrief.
+  // 1692 (A9) / D756: and the helper is thanked, automatically, no card. Never fails the debrief.
   if (subject === 'relayed_ask' && worked) {
-    await offerHelperThanks(userId, refId).catch((err: unknown) =>
+    await sendHelperThanks(userId, refId).catch((err: unknown) =>
       // eslint-disable-next-line no-console
-      console.warn(`[helper-thanks] ask ${refId}: card not offered:`, (err as Error).message),
+      console.warn(`[helper-thanks] ask ${refId}: not thanked:`, (err as Error).message),
     );
   }
   return { recorded: true };

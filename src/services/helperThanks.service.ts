@@ -3,8 +3,6 @@ import {
   againCardText,
   againChoices,
   notedLine,
-  thankCardText,
-  thankChoices,
   thankedLine,
   thanksToHelperLine,
   ThanksTap,
@@ -54,46 +52,51 @@ async function askForThanks(askerUserId: string, askId: number): Promise<AskForT
   return result.rows[0] ?? null;
 }
 
-/** The card, once per answered ask. Best-effort: a debrief never fails on it. */
-export async function offerHelperThanks(askerUserId: string, askId: number): Promise<boolean> {
+/**
+ * D756 (the founder, 9 Oct, box 49153 — answer to 49107): „you dont need
+ * approval to send thank you. just do it automatically." The yes/no card of
+ * 1692 / §113.1 is gone: the moment the owner says a helper's answer helped,
+ * the helper (and every bridge of the chain) gets the approved thank-you line,
+ * once per ask. Nothing is asked of the owner — no card, no „ask them again?".
+ * The row is closed as `asked_again` with no answer, so no tap is waited for.
+ * Best-effort: a debrief or a close never fails on it.
+ */
+export async function sendHelperThanks(askerUserId: string, askId: number): Promise<boolean> {
   const ask = await askForThanks(askerUserId, askId);
-  const helper = ask?.helper_name?.trim() ?? '';
-  if (ask === null || ask.card_thread_id === null || helper === '') return false;
-  const opened = await query<{ id: number }>(
-    // A day-14 following-up row gives way to the card: a late helped still thanks them.
-    `INSERT INTO helper_thanks (ask_id, task_id, asker_user_id, helper_user_id, card_thread_id)
-     VALUES ($1, $2, $3::int, $4, $5)
+  if (ask === null || (ask.helper_name?.trim() ?? '') === '') return false;
+  const claimed = await query<{ id: number }>(
+    // Once per ask: a row a card or day 14 left behind is claimed too; a thanked one never again.
+    `INSERT INTO helper_thanks
+       (ask_id, task_id, asker_user_id, helper_user_id, card_thread_id, state, share_result, decided_at)
+     VALUES ($1, $2, $3::int, $4, $5, 'asked_again', 'thanks_only', NOW())
      ON CONFLICT (ask_id) DO UPDATE
-       SET state = 'offered', card_thread_id = EXCLUDED.card_thread_id
-       WHERE helper_thanks.state = 'followed_up'
+       SET state = 'asked_again', share_result = 'thanks_only', decided_at = NOW()
+       WHERE helper_thanks.state IN ('offered', 'followed_up') AND helper_thanks.thanked_at IS NULL
      RETURNING id`,
     [askId, ask.task_id, askerUserId, ask.helper_user_id, ask.card_thread_id],
     QUERY_TIMEOUT_MS,
   );
-  if (opened.rows.length === 0) return false;
-  const language = await userLanguage(askerUserId);
-  await saveThreadMessage(
-    ask.card_thread_id,
-    Number(askerUserId),
-    'assistant',
-    thankCardText(language, helper),
-    'message',
-    null,
-    thankChoices(language),
-  );
-  return true;
+  const id = claimed.rows[0]?.id;
+  if (id === undefined) return false;
+  const row = await thanksRow(id);
+  const thanked = row !== null && (await thankTheHelper(row));
+  if (thanked) {
+    await query(
+      `UPDATE helper_thanks SET thanked_at = NOW() WHERE id = $1`,
+      [id],
+      QUERY_TIMEOUT_MS,
+    );
+  }
+  return thanked;
 }
 
 /**
  * §113.1 (Misho, 9 Oct; ops 10:24Z): a goal the owner closes as solved, after
- * a helper answered on it, offers the same card a „helped" debrief does. The
- * newest real answer on the goal is the one thanked; the card is still once
- * per ask, so a debrief that offered it already leaves nothing to do here.
+ * a helper answered on it, thanks the helper as a „helped" debrief does —
+ * since D756 without a card. The newest real answer on the goal is the one
+ * thanked, once per ask.
  */
-export async function offerThanksForSolvedGoal(
-  askerUserId: string,
-  taskId: number,
-): Promise<boolean> {
+export async function thankForSolvedGoal(askerUserId: string, taskId: number): Promise<boolean> {
   const answered = await query<{ id: number }>(
     `SELECT id FROM task_asks
       WHERE task_id = $1 AND from_user_id = $2::int AND parent_ask_id IS NULL
@@ -104,7 +107,58 @@ export async function offerThanksForSolvedGoal(
     QUERY_TIMEOUT_MS,
   );
   const askId = answered.rows[0]?.id;
-  return askId === undefined ? false : offerHelperThanks(askerUserId, askId);
+  return askId === undefined ? false : sendHelperThanks(askerUserId, askId);
+}
+
+/**
+ * D756's third path: „ნატოს პასუხი დამეხმარა" typed in the owner's own chat,
+ * the goal still open (the tester's 48874). The line must say „helped", not
+ * deny it, and name exactly one helper who answered the owner and has not
+ * been thanked — by the first word of the name the owner saved them under.
+ */
+const HELPED_RE =
+  /(დამეხმარა|დაგვეხმარა|გამომადგა|გამოგვადგა|helped\s+(?:me|us)|was\s+(?:very\s+)?helpful|помог|me\s+ayudó)/iu;
+const NOT_HELPED_RE =
+  /(არ\s+(?:დამეხმარა|დაგვეხმარა|გამომადგა|გამოგვადგა)|didn['’]?t\s+help|did\s+not\s+help|не\s+помог|no\s+me\s+ayudó)/iu;
+const HELPED_LOOKBACK_DAYS = 30;
+const HELPED_CANDIDATES = 20;
+const MIN_NAME_CHARS = 3;
+
+export function saysAHelperHelped(line: string): boolean {
+  return HELPED_RE.test(line) && !NOT_HELPED_RE.test(line);
+}
+
+interface AnsweredBy {
+  readonly ask_id: number;
+  readonly helper_name: string | null;
+}
+
+/** The first word of the saved name, when it opens a word of the line („ნატოს" holds „ნატო"). */
+function lineNames(line: string, name: string | null): boolean {
+  const first = (name ?? '').trim().split(/\s+/u)[0]?.toLowerCase() ?? '';
+  if (first.length < MIN_NAME_CHARS) return false;
+  return line
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .some((word) => word.startsWith(first));
+}
+
+export async function thankHelperNamedIn(askerUserId: string, line: string): Promise<boolean> {
+  if (!saysAHelperHelped(line)) return false;
+  const answered = await query<AnsweredBy>(
+    `SELECT DISTINCT ON (ta.to_user_id) ta.id AS ask_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name
+       FROM task_asks ta
+      WHERE ta.from_user_id = $1::int AND ta.parent_ask_id IS NULL
+        AND ta.status = 'answered' AND ta.declined_at IS NULL
+        AND ta.answered_at > NOW() - make_interval(days => $2)
+        AND NOT EXISTS (SELECT 1 FROM helper_thanks ht WHERE ht.ask_id = ta.id AND ht.thanked_at IS NOT NULL)
+      ORDER BY ta.to_user_id, ta.answered_at DESC NULLS LAST
+      LIMIT $3`,
+    [askerUserId, HELPED_LOOKBACK_DAYS, HELPED_CANDIDATES],
+    QUERY_TIMEOUT_MS,
+  );
+  const named = answered.rows.filter((row) => lineNames(line, row.helper_name));
+  return named.length === 1 ? sendHelperThanks(askerUserId, named[0].ask_id) : false;
 }
 
 interface OpenThanks {
@@ -130,6 +184,20 @@ async function thanksWaitingHere(
       WHERE ht.card_thread_id = $1 AND ht.asker_user_id = $2::int AND ht.state = $3
       ORDER BY ht.id DESC LIMIT 1`,
     [threadId, userId, state],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+async function thanksRow(id: number): Promise<OpenThanks | null> {
+  const result = await query<OpenThanks>(
+    `SELECT ht.id, ht.ask_id, ht.asker_user_id, ht.helper_user_id, ta.ask_thread_id AS helper_thread_id,
+            ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name,
+            ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
+       FROM helper_thanks ht JOIN task_asks ta ON ta.id = ht.ask_id
+      WHERE ht.id = $1
+      LIMIT 1`,
+    [id],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0] ?? null;
