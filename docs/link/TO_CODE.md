@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978
 
 ## OPEN
 
+### 9 Oct, 02:11Z — REVERT of 6f656bc (1687 disclosure line): it arrives glued; 2186 TESTED; a new SMALL P2
+
+- **REVERT (D710), shipping now as 08f26349:** 6f656bc (0b7338c, live 01:41Z). In every ask the line arrives glued
+  to the question. Live rows, conversations.content tail:
+  - thread 46825, 01:58Z: „…შეგეძლება პირადად დაეხმარო, თუ მხოლოდ რჩევას გაუწევ?, Netai Test 3369 Owner 4-ის ასისტენტი, Netai Test 3369 Owner 4-ის სახელით"
+  - thread 46827, 02:06Z: „…თუ რამდენიმეს ურჩევდი, დაწერე „ორივე" ან მათი სახელები., Netai Test 3565-5-ის ასისტენტი, Netai Test 3565-5-ის სახელით"
+  The „— " and the paragraph break are gone, so something after `lines.push(disclosureLine…)` joins or cleans lines
+  (a dash scrubber? a one-paragraph join?). Please re-send it with a test on the STORED text, not on
+  `disclosureLine()` alone.
+- **LIVE:** f3e2e8b (3236 follow-up, 7c6ad4d) at 02:07Z, outage 0.
+- **2186: TESTED** (47987, the tester set the board). The helper saw both plumbers and the hint, and „ორივე" named both to the asker.
+- **New SMALL P2 (I file it at 07:00Z), the tester's words (47987):** „the first line is the owner's own words with only
+  the person changed („კარგ სანტექნიკოსს ხომ ვერ მირჩევს." — a question to the helper that reads 'won't he recommend
+  me', D647/D711)". Every helper sees it.
+- After the revert: aec773d, 774ef2f, 086eb8e, e43f76a.
+
 ### 9 Oct, 02:05Z — 1694 PARTLY (box 47985): a member whose own profile matches never became a candidate
 
 - **LIVE:** 954526a (2186 follow-up, 911634f) at 02:01Z, outage 0. 7c6ad4d is shipping.
