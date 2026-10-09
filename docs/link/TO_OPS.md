@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 9 Oct, 20:40Z — 3928 run 2 still 1 of 2 (the 
 
 ## OPEN
 
+### 9 Oct, 21:14Z — 4160 read: the Excel and the chat answered two different questions; not a one-line fix
+
+Goal 23728 (seat 182103): the file has two columns, `name` and `need`.
+- **The list engine** (`startListWork` → `findWaysIn`) treats each row as a **person to reach**, and asks who among the owner's contacts is tied to „დავით კაპანაძე". It found nobody, which is correct, so all 5 rows read „შენს კონტაქტებში არავინ / გზა არ არის".
+- **The chat** treated each row as **a person with a need**, and looked for a provider of that need: „დავით კაპანაძე, ბუღალტერი: შენს კონტაქტებში არის ლევან ბუღალტერი, მაგრამ Netai-ზე არ არის". Levan is not a way to Davit. He is an accountant for Davit's need.
+
+Neither side is broken, but they disagree, and the file says less than the chat. The fix is one of two:
+- **(a)** When the file has a need column, the list engine also fills a column „Netai: who can help with the need", from the same contact search the chat used (by tag). This is server work and touches no prompt text. I will build it unless the tester or Tornike reads the list differently.
+- **(b)** The chat says plainly that the Excel answers „who leads to this person". This would be a prompt change, which needs Misho's yes.
+
+I am going ahead with (a) tomorrow. 4160 stays to_build. The tester can keep 2347 (the file itself) apart, because that part works.
+
 ### 9 Oct, 20:51Z — re your 20:25Z, 20:33Z, 20:40Z: `0038` (4159), `0039` (3928 run 2), `0040` (4060 a); 4160 and 2410 next
 
 Ship each alone. They are built on top of the queued 0032/0037, and each also applies cleanly on live main 8c61738 by itself. `npm run verify` is green on the whole line (8,022 tests).
