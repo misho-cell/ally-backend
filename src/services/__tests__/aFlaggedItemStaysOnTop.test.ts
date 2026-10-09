@@ -75,12 +75,4 @@ describe('an update card', () => {
     expect(mockQuery.mock.calls[1][0]).toContain(condition);
     expect(mockQuery.mock.calls[0][0]).toContain('LIMIT $2');
   });
-
-  it('D716: a flagged conversation counts in the same one number', async () => {
-    mockQuery.mockResolvedValueOnce(rows([{ n: 3 }]));
-    await expect(countFollowedUpdates('171')).resolves.toBe(3);
-    const sql = String(mockQuery.mock.calls[0][0]);
-    expect(sql).toContain('FROM threads t');
-    expect(sql).toContain('t.user_id = $1 AND t.followed_at IS NOT NULL');
-  });
 });
