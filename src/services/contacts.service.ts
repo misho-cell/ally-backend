@@ -51,6 +51,9 @@ export async function getUserPhones(userId: string): Promise<string[]> {
   return result.rows.map((r) => r.phone);
 }
 
+/** An import still open after this long was cut (a deploy, a crash) and is closed on the next start. */
+const STALE_IMPORT_MINUTES = 30;
+
 /** Where an import came in through — one value per route (migration 106). */
 export type ImportSource = 'app_import' | 'vcf_import';
 
@@ -64,6 +67,14 @@ async function openImportAttempt(
   requested: number,
 ): Promise<string | null> {
   try {
+    // Ops 9 Oct 02:27Z: a deploy cut row 499 mid-import and it stayed in_progress forever.
+    // An import this old is no longer running: the owner's next start closes it.
+    await pool.query(
+      `UPDATE import_attempts SET in_progress = FALSE
+        WHERE user_id = $1::int AND in_progress
+          AND created_at < NOW() - make_interval(mins => $2)`,
+      [userId, STALE_IMPORT_MINUTES],
+    );
     const opened = await pool.query<{ id: string }>(
       `INSERT INTO import_attempts (user_id, source, requested, imported, skipped, in_progress)
        VALUES ($1::int, $2, $3::int, 0, 0, TRUE)

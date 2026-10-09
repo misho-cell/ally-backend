@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 jest.mock('../../db/postgres/client', () => ({
   query: jest.fn(),
   withTransaction: jest.fn(),
@@ -369,7 +371,18 @@ describe('import_attempts — one row per import (ticket 9 task 24)', () => {
   });
 
   const closed = (): unknown[] | undefined =>
-    mockPoolQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE import_attempts'))?.[1];
+    mockPoolQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('UPDATE import_attempts SET imported'),
+    )?.[1];
+
+  it('closes the owner’s import a deploy cut, 30 minutes on, when the next one starts (ops 02:27Z)', async () => {
+    const source = readFileSync(join(__dirname, '..', 'contacts.service.ts'), 'utf8');
+    const open = source.slice(source.indexOf('async function openImportAttempt('));
+    const stale = open.indexOf('UPDATE import_attempts SET in_progress = FALSE');
+    expect(stale).toBeGreaterThan(-1);
+    expect(stale).toBeLessThan(open.indexOf('INSERT INTO import_attempts'));
+    expect(open.slice(stale, stale + 200)).toContain('user_id = $1::int AND in_progress');
+  });
 
   it('records what was asked for and what actually landed, tagged with the route', async () => {
     await importContacts('42', [{ name: 'Dato', phones: ['+995555000002'] }], 'vcf_import');
