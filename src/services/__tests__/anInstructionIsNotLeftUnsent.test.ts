@@ -124,3 +124,17 @@ describe('what is not an order to ask a contact (2906)', () => {
     ).not.toBeNull();
   });
 });
+
+describe('a preview request is no instruction to send (2906)', () => {
+  it.each([
+    'ჯერ მაჩვენე, რას მისწერ ნინოს',
+    'Show me first what you will write to Nino',
+    'Покажи, что ты напишешь Нино',
+  ])('„%s" is not sent and gets no dead-end line', (line) =>
+    expect(contactInstructionIn(line)).toBeNull(),
+  );
+
+  it('the plain instruction still is one', () => {
+    expect(contactInstructionIn('ჰკითხე ნინოს, იცნობს თუ არა კარგ ნოტარიუსს')).not.toBeNull();
+  });
+});
