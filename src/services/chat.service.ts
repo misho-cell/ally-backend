@@ -78,6 +78,7 @@ import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { noteSearchVerdict } from './searchAcceptance';
+import { asksToReopen } from './reopenIntent';
 import {
   needThisFactMeets,
   noteSavedFact,
@@ -9797,6 +9798,22 @@ async function executeToolCall(
         );
         return { updated: false, error: GOAL_CLOSE_NOT_ASKED };
       }
+      // RW-012 B (goal 20759): a goal the owner closed was reopened a minute later by the
+      // run's own follow-up, and woke a day after to write to him. Only his own word reopens it.
+      if (
+        status === 'open' &&
+        runId !== undefined &&
+        !asksToReopen(runOwnerLine.get(runId) ?? '')
+      ) {
+        const current = await getTaskById(taskIdToUpdate).catch(() => null);
+        if (current?.status === 'closed') {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[goal-reopen] run ${runId} thread ${threadId ?? '-'}: refused to reopen ${taskIdToUpdate} — the owner did not ask`,
+          );
+          return { updated: false, refused: 'goal_closed_by_owner' };
+        }
+      }
       const toStop = closing ? await getTaskById(taskIdToUpdate) : null;
       if (closing && (toStop === null || String(toStop.user_id) !== userId)) {
         return { updated: false };
@@ -13207,6 +13224,8 @@ async function runToolLoop(
   // 2908: only on the first answer to a need people could help with.
   let noteOutOfPlace: boolean | undefined;
   const membersNoteFits = async (): Promise<boolean> => {
+    // RW-012 B: a run that closed the goal is a closing turn, whatever its line said.
+    if (toolNamesUsed.includes('finish_task')) return false;
     noteOutOfPlace ??= membersNoteOutOfPlace(
       runOwnerLine.get(runId) ?? '',
       finalText,

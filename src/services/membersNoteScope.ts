@@ -21,6 +21,14 @@ const FOLLOW_UP_RE =
   /^\s*(?:რატომ|რა\s+არის\s+ახალი|რა\s+ხდება|რა\s+სიახლე|სად\s+ვართ|why\b|what'?s\s+new|any\s+(?:news|update))/iu;
 const NOBODY_FITS_RE =
   /(შესაფერისი[^.!?\n]{0,60}ვერ|ვერავინ[^.!?\n]{0,40}(?:ვიპოვე|გამოვყავი|მოიძებნა)|nobody (?:in your network )?(?:fits|suits|matches)|no one (?:fits|suits|matches))/iu;
+/**
+ * RW-012 B (MTR #7, goal 20759): „ეს მოგვარდა, დახურე." — the goal is still
+ * open while that very run closes it, so the note fired, the model promised to
+ * write to two more people, and the closed goal woke a day later and wrote to
+ * the owner. A line that closes or settles is a closing turn by its words.
+ */
+const CLOSES_RE =
+  /(მოგვარდა|მოგვარებულია|დახურე|ვხურავ|დავხურე|დაიხურა|\b(?:solved|resolved|close\s+it|all\s+set)\b|решено|закрой|resuelto|ciérralo)/iu;
 const GOAL_READ_TIMEOUT_MS = 3_000;
 
 export interface GoalState {
@@ -37,6 +45,7 @@ export function membersNoteOutOfPlace(
   goal: GoalState | null,
 ): boolean {
   if (WRITE_TO_NOBODY_RE.test(ownerLine) || FOLLOW_UP_RE.test(ownerLine)) return true;
+  if (CLOSES_RE.test(ownerLine)) return true;
   if (NOBODY_FITS_RE.test(finalText)) return true;
   if (goal === null) return false;
   return goal.hasPlan || !goal.open || WRITE_TO_NOBODY_RE.test(goal.text);
