@@ -1,0 +1,202 @@
+From 9aa424d2586a1b0bdd6d412a28157be480982a06 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 00:03:38 +0000
+Subject: [PATCH] fix(goals): a goal the owner closed stays closed; no members
+ note on a closing turn (RW-012 B)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MTR #7, goal 20759: the owner wrote „ეს მოგვარდა, დახურე." The goal was still
+open while that run closed it, so the „members on Netai were not offered" note
+(2908) fired. The model promised to write to two more people, the goal was
+open again, and a day later it woke and wrote to the owner.
+
+Two server rules close it:
+- The members note is out of place on any line that closes or settles
+  („მოგვარდა", „დახურე", „ვხურავ დანარჩენ კითხვებს", "solved, close it"…), and
+  on any run that called finish_task, whatever the goal's status in that
+  moment.
+- update_task may set a CLOSED goal back to open only when the owner's own
+  line in that run asks to go on („გააგრძელე", „ხელახლა გახსენი", "reopen",
+  "resume"…). Otherwise it is refused before anything is written, with a
+  reason code; no new model prose.
+
+DONE WHEN: RW-012 B; a goal closed by the owner („მოგვარდა, დახურე") stays
+closed, gets no second message after the closing line, and never wakes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aClosedGoalStaysClosed.test.ts  | 35 +++++++++++++++++++
+ .../theMembersNoteKnowsItsPlace.test.ts       | 22 ++++++++++++
+ src/services/chat.service.ts                  | 19 ++++++++++
+ src/services/membersNoteScope.ts              |  9 +++++
+ src/services/reopenIntent.ts                  | 12 +++++++
+ 5 files changed, 97 insertions(+)
+ create mode 100644 src/services/__tests__/aClosedGoalStaysClosed.test.ts
+ create mode 100644 src/services/reopenIntent.ts
+
+diff --git a/src/services/__tests__/aClosedGoalStaysClosed.test.ts b/src/services/__tests__/aClosedGoalStaysClosed.test.ts
+new file mode 100644
+index 0000000..f3e4b93
+--- /dev/null
++++ b/src/services/__tests__/aClosedGoalStaysClosed.test.ts
+@@ -0,0 +1,35 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { asksToReopen } from '../reopenIntent';
++
++/**
++ * RW-012 B (MTR #7, goal 20759): the owner closed the goal; the run's own
++ * follow-up reopened it a minute later and it woke a day after to write to
++ * him. Only his own word reopens a closed goal.
++ */
++describe('a closed goal stays closed unless the owner reopens it (RW-012 B)', () => {
++  it.each([
++    'გააგრძელე ეს დავალება',
++    'ხელახლა გახსენი',
++    'Please reopen it',
++    'resume the search',
++    'Продолжи',
++  ])('„%s" reopens', (line) => expect(asksToReopen(line)).toBe(true));
++
++  it.each(['ეს მოგვარდა, დახურე.', 'ვხურავ დანარჩენ კითხვებს', 'მადლობა', ''])(
++    '„%s" does not',
++    (line) => expect(asksToReopen(line)).toBe(false),
++  );
++
++  it('update_task refuses to reopen a closed goal without that word, before anything is written', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const guard = chat.indexOf("!asksToReopen(runOwnerLine.get(runId) ?? '')");
++    expect(guard).toBeGreaterThan(-1);
++    expect(
++      chat.indexOf("return { updated: false, refused: 'goal_closed_by_owner' };", guard),
++    ).toBeGreaterThan(guard);
++    expect(
++      chat.indexOf('const toStop = closing ? await getTaskById(taskIdToUpdate) : null;'),
++    ).toBeGreaterThan(guard);
++  });
++});
+diff --git a/src/services/__tests__/theMembersNoteKnowsItsPlace.test.ts b/src/services/__tests__/theMembersNoteKnowsItsPlace.test.ts
+index 0ca6638..a11da3e 100644
+--- a/src/services/__tests__/theMembersNoteKnowsItsPlace.test.ts
++++ b/src/services/__tests__/theMembersNoteKnowsItsPlace.test.ts
+@@ -53,3 +53,25 @@ describe('the members note', () => {
+     expect(chat.match(/\(await membersNoteFits\(\)\)/gu)).toHaveLength(2);
+   });
+ });
++
++describe('a closing turn is a closing turn by its words (RW-012 B, goal 20759)', () => {
++  it.each([
++    'ეს მოგვარდა, დახურე.',
++    'ვხურავ დანარჩენ კითხვებს',
++    'მოგვარდა, მადლობა.',
++    'Solved, close it',
++  ])('„%s" gets no members note, even while the goal is still open', (line) => {
++    expect(
++      membersNoteOutOfPlace(line, 'მოგვარებულია.', {
++        text: 'ბუღალტერი',
++        hasPlan: false,
++        open: true,
++      }),
++    ).toBe(true);
++  });
++
++  it('a run that called finish_task never gets the note', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain("if (toolNamesUsed.includes('finish_task')) return false;");
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index cdef20c..d9a86e5 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -72,6 +72,7 @@ import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
+ import { acceptIntroOnYes } from './introYes';
+ import { hoursUntilClock, parseClock } from './wakeAtClock';
+ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
++import { asksToReopen } from './reopenIntent';
+ import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
+ import {
+   clampReminderMinutes,
+@@ -9685,6 +9686,22 @@ async function executeToolCall(
+         );
+         return { updated: false, error: GOAL_CLOSE_NOT_ASKED };
+       }
++      // RW-012 B (goal 20759): a goal the owner closed was reopened a minute later by the
++      // run's own follow-up, and woke a day after to write to him. Only his own word reopens it.
++      if (
++        status === 'open' &&
++        runId !== undefined &&
++        !asksToReopen(runOwnerLine.get(runId) ?? '')
++      ) {
++        const current = await getTaskById(taskIdToUpdate).catch(() => null);
++        if (current?.status === 'closed') {
++          // eslint-disable-next-line no-console
++          console.warn(
++            `[goal-reopen] run ${runId} thread ${threadId ?? '-'}: refused to reopen ${taskIdToUpdate} — the owner did not ask`,
++          );
++          return { updated: false, refused: 'goal_closed_by_owner' };
++        }
++      }
+       const toStop = closing ? await getTaskById(taskIdToUpdate) : null;
+       if (closing && (toStop === null || String(toStop.user_id) !== userId)) {
+         return { updated: false };
+@@ -12945,6 +12962,8 @@ async function runToolLoop(
+   // 2908: only on the first answer to a need people could help with.
+   let noteOutOfPlace: boolean | undefined;
+   const membersNoteFits = async (): Promise<boolean> => {
++    // RW-012 B: a run that closed the goal is a closing turn, whatever its line said.
++    if (toolNamesUsed.includes('finish_task')) return false;
+     noteOutOfPlace ??= membersNoteOutOfPlace(
+       runOwnerLine.get(runId) ?? '',
+       finalText,
+diff --git a/src/services/membersNoteScope.ts b/src/services/membersNoteScope.ts
+index 816fea4..49908af 100644
+--- a/src/services/membersNoteScope.ts
++++ b/src/services/membersNoteScope.ts
+@@ -21,6 +21,14 @@ const FOLLOW_UP_RE =
+   /^\s*(?:რატომ|რა\s+არის\s+ახალი|რა\s+ხდება|რა\s+სიახლე|სად\s+ვართ|why\b|what'?s\s+new|any\s+(?:news|update))/iu;
+ const NOBODY_FITS_RE =
+   /(შესაფერისი[^.!?\n]{0,60}ვერ|ვერავინ[^.!?\n]{0,40}(?:ვიპოვე|გამოვყავი|მოიძებნა)|nobody (?:in your network )?(?:fits|suits|matches)|no one (?:fits|suits|matches))/iu;
++/**
++ * RW-012 B (MTR #7, goal 20759): „ეს მოგვარდა, დახურე." — the goal is still
++ * open while that very run closes it, so the note fired, the model promised to
++ * write to two more people, and the closed goal woke a day later and wrote to
++ * the owner. A line that closes or settles is a closing turn by its words.
++ */
++const CLOSES_RE =
++  /(მოგვარდა|მოგვარებულია|დახურე|ვხურავ|დავხურე|დაიხურა|\b(?:solved|resolved|close\s+it|all\s+set)\b|решено|закрой|resuelto|ciérralo)/iu;
+ const GOAL_READ_TIMEOUT_MS = 3_000;
+ 
+ export interface GoalState {
+@@ -37,6 +45,7 @@ export function membersNoteOutOfPlace(
+   goal: GoalState | null,
+ ): boolean {
+   if (WRITE_TO_NOBODY_RE.test(ownerLine) || FOLLOW_UP_RE.test(ownerLine)) return true;
++  if (CLOSES_RE.test(ownerLine)) return true;
+   if (NOBODY_FITS_RE.test(finalText)) return true;
+   if (goal === null) return false;
+   return goal.hasPlan || !goal.open || WRITE_TO_NOBODY_RE.test(goal.text);
+diff --git a/src/services/reopenIntent.ts b/src/services/reopenIntent.ts
+new file mode 100644
+index 0000000..42aad25
+--- /dev/null
++++ b/src/services/reopenIntent.ts
+@@ -0,0 +1,12 @@
++/**
++ * RW-012 B (MTR #7, goal 20759): a goal the owner closed is reopened only on
++ * his own word — „გააგრძელე", „ხელახლა გახსენი", "reopen", "resume". A run's
++ * own follow-up never reopens it.
++ */
++const REOPEN_RE =
++  /(გააგრძელე|განაახლე|ხელახლა\s+(?:გახსენი|დაიწყე)|თავიდან\s+დაიწყე|გავაგრძელოთ|\b(?:reopen|resume|continue|carry\s+on|start\s+again)\b|продолжи|возобнови|continúa|reabre|retoma)/iu;
++
++/** Does the owner's own line ask to go on with something that was closed? */
++export function asksToReopen(ownerLine: string): boolean {
++  return REOPEN_RE.test(ownerLine);
++}
+-- 
+2.43.0
+

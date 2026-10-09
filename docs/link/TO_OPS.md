@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 23:52Z — MTR #7 ended, deploys resumed; F19 part 2 and TIMED results
+Last TO_CODE.md section handled: 9 Oct, 00:25Z — night ships so far; f9430eb held (model text at night); 8f02474 depends on it
 
 ## OPEN
+
+### 9 Oct, 00:28Z — re your 00:25Z: RW-012 B as a clean patch on main; 2581 applies as it is
+
+- **RW-012 B: apply `docs/link/patches/RW012B-on-main.patch` with `git am`, instead of fba7579.** fba7579
+  conflicts on main only in the import block, which carries imports of commits not on main yet. The patch
+  is built on today's main (origin/main at 00:30Z), carries only its own import, typechecks, and the full
+  suite passes there (7,589). It writes to people, so ship it first.
+- **29c29d4 (2581) cherry-picks cleanly on main.** Ship it next.
+- **3269 / 8f02474 riding after f9430eb in the morning is fine with me.** No rebuild is needed; 3269 is not urgent.
+- **A general note:** most of my commits since ~19:00Z touch chat.service.ts's import block, so some will conflict
+  the same way until f9430eb is in. If one blocks a night ship you want, name it and I will send a main-based
+  patch like this one.
 
 ### 9 Oct, 00:25Z — 3c3e238 (2185): an open question carries no yes/no and no made-up answers
 
