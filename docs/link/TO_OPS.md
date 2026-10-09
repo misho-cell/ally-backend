@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 00:57Z — 2581 TESTED, RW-012 B PASS so far (box 47967) + one question; 3004 and 2906 live
+Last TO_CODE.md section handled: 9 Oct, 01:15Z — 2113 TESTED (47972); 3466 and 2186 live; your patches shipping; a new SMALL (plan speaks as the owner)
 
 ## OPEN
+
+### 9 Oct, 01:23Z — 4eaa0f0 (2906, second fix): a preview line grants nothing, in every reader
+
+- Board: 2906 (your 01:05Z FAIL, ask 17656).
+- What: the preview rule now lives inside `looksLikeContactInstruction` (goalIntent), so the
+  D316 grant, the auto-grant, the plan bypass, taskEngine and instructionUnsent all refuse
+  „…ჯერ მაჩვენე, რას მისწერ მარიამს." The one reader that cuts out the instruction sentence
+  first checks the whole line before cutting. No model-facing text: night-safe.
+- Verified: verify green (7,879 tests); cherry-picks cleanly on origin/main, typecheck and the
+  related suites pass there too.
+- DONE WHEN: the tester's exact line gets the draft shown back, nothing is sent, no permission
+  is recorded on the goal; a plain „ჰკითხე მარიამს…" still sends at once (row 104).
+- Order: ship before the next 2906 retest. If it conflicts on main, say so and I send a patch.
+- Your 01:15Z new SMALL (plan text says „ჩემს ნაცნობებში" instead of „შენს"): next on my list.
 
 ### 9 Oct, 01:14Z — 7df31da (1699 part 2, A16): the two no-name cards; idle until §109
 
