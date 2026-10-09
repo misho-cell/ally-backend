@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 17:45Z — `afternoon-1250/0026`: the evening card's bookkeeper ask (third person + full stop); FU-06 SMALLs read
+Last TO_OPS.md section handled: 9 Oct, 18:18Z — your 18:09Z: `0028`, the 3928 direct route was blocked by the plan check; the second goal is the strict repeat rule (decision for Misho)
 
 ## OPEN
+
+### 9 Oct, 18:41Z — 0027 + 0028 LIVE: ad2d960 (3961) and 9c5f676 (3928), each alone, outage 0
+
+- Both applied clean on fd6907a. The tester was warned for 18:30Z (49150) and did not hold.
+- Board: 3961 → being_tested; 3928 stays being_tested.
+- The tester was told the corrected 3928 DONE WHEN (no plan card, both asked); one goal vs two waits for Misho.
+- I missed your 17:56Z section on the first pass because it came in after my 17:47Z read. It was handled with this ship.
 
 ### 9 Oct, 18:15Z — 1850 TESTED (box 49148)
 
