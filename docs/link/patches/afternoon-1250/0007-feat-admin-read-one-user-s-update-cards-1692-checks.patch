@@ -1,0 +1,153 @@
+From 7c40651132bf2c9c1ac6e8ae7970cb7884a62efb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 12:57:17 +0000
+Subject: [PATCH 7/8] feat(admin): read one user's update cards (1692 checks)
+
+The tester's 10:24Z / 10:31Z asks: a seat's update cards (the held
+debrief, the thank card) could only be seen from the seat's own session.
+GET /admin/users/:userId/updates returns the newest 50: id, task_id, kind,
+status, release_at, created_at and the payload. Read-only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                | 18 +++++++
+ .../anAdminReadsAUsersUpdateCards.test.ts     | 48 +++++++++++++++++++
+ src/services/pendingUpdates.service.ts        | 33 +++++++++++++
+ 3 files changed, 99 insertions(+)
+ create mode 100644 src/services/__tests__/anAdminReadsAUsersUpdateCards.test.ts
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 007b9b2..bbeb29c 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -309,6 +309,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { zipFiles } from '../../services/axelExport/axelExport.service';
+ import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+ import { cancelOneAsk } from '../../services/taskAsks.service';
++import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ 
+ const adminRouter = Router();
+ /** The Axel export is heavy and needed once: a few builds a minute at most. */
+@@ -5834,6 +5835,23 @@ adminRouter.post('/asks/:askId/cancel', async (req: Request, res: Response) => {
+   }
+ });
+ 
++// 1692 (the tester's 10:24Z / 10:31Z): one user's update cards, read from the admin side.
++adminRouter.get('/users/:userId/updates', async (req: Request, res: Response) => {
++  const userId = String(req.params.userId ?? '');
++  if (!/^\d+$/.test(userId)) {
++    res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
++    return;
++  }
++  try {
++    const updates = await updatesForAdmin(userId);
++    res.status(200).json({ success: true, data: { user_id: Number(userId), updates } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('admin updates read error:', (error as Error).message);
++    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++  }
++});
++
+ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
+   try {
+     const userId = String(req.params.userId ?? '');
+diff --git a/src/services/__tests__/anAdminReadsAUsersUpdateCards.test.ts b/src/services/__tests__/anAdminReadsAUsersUpdateCards.test.ts
+new file mode 100644
+index 0000000..d7f6474
+--- /dev/null
++++ b/src/services/__tests__/anAdminReadsAUsersUpdateCards.test.ts
+@@ -0,0 +1,48 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { ADMIN_UPDATES_READ_LIMIT, updatesForAdmin } from '../pendingUpdates.service';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/** 1692 (the tester's 10:24Z / 10:31Z): one user's update cards, from the admin side. */
++describe('the admin read of a user’s update cards', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('returns kind, status, release time and payload, newest first, limited', async () => {
++    const row = {
++      id: 29239,
++      task_id: null,
++      kind: 'debrief',
++      status: 'held',
++      release_at: '2026-10-12T10:18:13Z',
++      created_at: '2026-10-09T10:18:13Z',
++      payload: { about: 'relayed_ask', ask_id: 18052 },
++    };
++    mockQuery.mockResolvedValueOnce({ rows: [row] } as never);
++    await expect(updatesForAdmin('181309')).resolves.toEqual([row]);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('WHERE user_id = $1');
++    expect(String(sql)).toContain('ORDER BY id DESC');
++    expect(params).toEqual(['181309', ADMIN_UPDATES_READ_LIMIT]);
++  });
++
++  it('fails loudly rather than answering with nothing', async () => {
++    mockQuery.mockRejectedValueOnce(new Error('timeout'));
++    await expect(updatesForAdmin('181309')).rejects.toThrow('timeout');
++  });
++
++  it('is an admin GET that refuses a non-numeric user', () => {
++    const admin = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
++      'utf8',
++    );
++    expect(admin).toContain("adminRouter.get('/users/:userId/updates'");
++    const route = admin.slice(admin.indexOf("adminRouter.get('/users/:userId/updates'"));
++    expect(route.slice(0, 400)).toContain(
++      "res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' })",
++    );
++  });
++});
+diff --git a/src/services/pendingUpdates.service.ts b/src/services/pendingUpdates.service.ts
+index 34f20f1..04cba49 100644
+--- a/src/services/pendingUpdates.service.ts
++++ b/src/services/pendingUpdates.service.ts
+@@ -613,3 +613,36 @@ export async function markUpdateSeen(userId: string, updateId: number): Promise<
+   );
+   return (result.rowCount ?? 0) > 0;
+ }
++
++/** One update card as the admin reads it: what it is, where it stands, what it carries. */
++export interface AdminUpdateRow {
++  readonly id: number;
++  readonly task_id: number | null;
++  readonly kind: string;
++  readonly status: string;
++  readonly release_at: string | null;
++  readonly created_at: string;
++  readonly payload: Record<string, unknown>;
++}
++
++/** The most an admin read returns; newest first. */
++export const ADMIN_UPDATES_READ_LIMIT = 50;
++
++/**
++ * The tester's 10:24Z / 10:31Z asks (1692): a seat's update cards could only
++ * be seen from the seat's own session. The admin side reads them here — kind,
++ * status, release time and the card's payload (its text, buttons and the ask
++ * it is about) — for one user, newest first. Read-only.
++ */
++export async function updatesForAdmin(userId: string): Promise<AdminUpdateRow[]> {
++  const result = await query<AdminUpdateRow>(
++    `SELECT id, task_id, kind, status, release_at, created_at, payload
++       FROM pending_updates
++      WHERE user_id = $1
++      ORDER BY id DESC
++      LIMIT $2`,
++    [userId, ADMIN_UPDATES_READ_LIMIT],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
+-- 
+2.43.0
+

@@ -1,0 +1,51 @@
+From 3fe8b18bb7dd66cb6645a3ecdb6f5b32d3c46bb4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 12:54:11 +0000
+Subject: [PATCH] =?UTF-8?q?ops(prompt):=20=C2=A7111.1=20change=20file=20?=
+ =?UTF-8?q?=E2=80=94=20the=20earnings=20text=20says=20a=20full=205%=20per?=
+ =?UTF-8?q?=20level=20(2811)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../111-earnings-full-five-each-level.after.txt   |  1 +
+ .../111-earnings-full-five-each-level.json        | 15 +++++++++++++++
+ 2 files changed, 16 insertions(+)
+ create mode 100644 ops/prompt-changes/111-earnings-full-five-each-level.after.txt
+ create mode 100644 ops/prompt-changes/111-earnings-full-five-each-level.json
+
+diff --git a/ops/prompt-changes/111-earnings-full-five-each-level.after.txt b/ops/prompt-changes/111-earnings-full-five-each-level.after.txt
+new file mode 100644
+index 0000000..097d8ae
+--- /dev/null
++++ b/ops/prompt-changes/111-earnings-full-five-each-level.after.txt
+@@ -0,0 +1 @@
++The referral program EXISTS and is live. When someone you invited makes their first subscription payment, EACH level of the invite chain above them, up to 6 levels of who-invited-whom, gets a full 5% of that first payment — 5% each, not one 5% split between the levels. On an annual plan the base is one month of it; later payments add nothing. Your balance can be withdrawn from $10, or spent on tokens or on a month of subscription. Invites are framed as your own gain or a gift to a friend — never pressure. If asked for details beyond this (payout timing, currency, tax) — say the team can answer precisely; do not invent.
+\ No newline at end of file
+diff --git a/ops/prompt-changes/111-earnings-full-five-each-level.json b/ops/prompt-changes/111-earnings-full-five-each-level.json
+new file mode 100644
+index 0000000..e3cf67e
+--- /dev/null
++++ b/ops/prompt-changes/111-earnings-full-five-each-level.json
+@@ -0,0 +1,15 @@
++{
++  "target": "info:earnings",
++  "before_sha256": "dee0819e1c2bc132a632ad6113394a3e87bc4c5308e93c0cb32147f09ba78bfa",
++  "requires": [],
++  "what": "2811 wording (box 48446): each level of the invite chain gets a full 5%, not one 5% split (D692; referral.service already pays this).",
++  "edits": [
++    {
++      "before": "When someone you invited subscribes, 5% of their first payment is shared upward through the invite chain, across up to 6 levels of who-invited-whom.",
++      "after": "When someone you invited makes their first subscription payment, EACH level of the invite chain above them, up to 6 levels of who-invited-whom, gets a full 5% of that first payment — 5% each, not one 5% split between the levels. On an annual plan the base is one month of it; later payments add nothing."
++    }
++  ],
++  "approved_by": "Misho, „სამივეზე გეთანხმები\" in the code session's chat, 9 Oct ~09:45Z (§111.1)",
++  "approved_on": "2026-10-09",
++  "undo": "apply the before text (the live text of 14 Aug, sha above)"
++}
+-- 
+2.43.0
+

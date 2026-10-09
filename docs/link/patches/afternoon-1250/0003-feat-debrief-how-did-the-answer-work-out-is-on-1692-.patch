@@ -1,0 +1,88 @@
+From b2d41c4ecca5914c1f1fab0f820b672eaa385803 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 12:39:16 +0000
+Subject: [PATCH 3/5] =?UTF-8?q?feat(debrief):=20=E2=80=9Ehow=20did=20the?=
+ =?UTF-8?q?=20answer=20work=20out=3F"=20is=20on=20(1692=20part=202,=20AV,?=
+ =?UTF-8?q?=20=C2=A7111.3)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's direct word on 9 Oct. A first, real answer arms one debrief three
+days out; an answer the asker never speaks about gives the helper the
+day-14 line. Both were built and held behind ANSWER_DEBRIEF_ON.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/aHelperIsThanked.test.ts |  5 +++--
+ .../__tests__/anAnswerIsAskedAbout.test.ts      | 17 +++++++++++++----
+ src/services/answerDebriefSwitch.ts             |  4 ++--
+ 3 files changed, 18 insertions(+), 8 deletions(-)
+
+diff --git a/src/services/__tests__/aHelperIsThanked.test.ts b/src/services/__tests__/aHelperIsThanked.test.ts
+index f633dd3..3570785 100644
+--- a/src/services/__tests__/aHelperIsThanked.test.ts
++++ b/src/services/__tests__/aHelperIsThanked.test.ts
+@@ -165,10 +165,11 @@ describe('the thank-you card', () => {
+ });
+ 
+ describe('the day-14 line to the helper (1692 part 2)', () => {
+-  it('sends nothing while AV waits', async () => {
++  it('sends nothing when no armed answer is due (§111.3)', async () => {
++    mockQuery.mockResolvedValueOnce(rows([]));
+     const { followUpQuietLeads } = await import('../helperThanks.service');
+     expect(await followUpQuietLeads()).toBe(0);
+-    expect(mockQuery).not.toHaveBeenCalled();
++    expect(mockQuery).toHaveBeenCalledTimes(1);
+     expect(mockSave).not.toHaveBeenCalled();
+   });
+ 
+diff --git a/src/services/__tests__/anAnswerIsAskedAbout.test.ts b/src/services/__tests__/anAnswerIsAskedAbout.test.ts
+index 7357259..af92929 100644
+--- a/src/services/__tests__/anAnswerIsAskedAbout.test.ts
++++ b/src/services/__tests__/anAnswerIsAskedAbout.test.ts
+@@ -7,15 +7,24 @@ import { query as _query } from '../../db/postgres/client';
+ import { queueFollowUp as _queue } from '../pendingUpdates.service';
+ import { ANSWER_DEBRIEF_ON, answerDebriefInstruction, armAnswerDebrief } from '../debrief.service';
+ 
+-/** 1692 part 2: „how did <helper>'s answer work out?" — held until Misho's yes on AV (D44). */
++/** 1692 part 2: „how did <helper>'s answer work out?" — on since Misho's word (§111.3). */
+ const mockQuery = _query as jest.Mock;
+ const mockQueue = _queue as jest.Mock;
+ 
+ describe('the answer debrief', () => {
+-  it('arms nothing while AV waits', async () => {
+-    expect(ANSWER_DEBRIEF_ON).toBe(false);
++  beforeEach(() => jest.clearAllMocks());
++
++  it('is armed once per answer, three days out (§111.3)', async () => {
++    expect(ANSWER_DEBRIEF_ON).toBe(true);
++    mockQuery.mockResolvedValueOnce({ rows: [{ ref_id: 17000 }], rowCount: 1 });
++    await armAnswerDebrief('42', 17000, 3, 'ზურაბი');
++    expect(mockQueue).toHaveBeenCalledTimes(1);
++    expect(mockQueue.mock.calls[0][3]).toMatchObject({ about: 'answered_ask', ask_id: 17000 });
++  });
++
++  it('is not armed a second time for the same answer', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+     await armAnswerDebrief('42', 17000, 3, 'ზურაბი');
+-    expect(mockQuery).not.toHaveBeenCalled();
+     expect(mockQueue).not.toHaveBeenCalled();
+   });
+ 
+diff --git a/src/services/answerDebriefSwitch.ts b/src/services/answerDebriefSwitch.ts
+index b1dcb89..d61feb8 100644
+--- a/src/services/answerDebriefSwitch.ts
++++ b/src/services/answerDebriefSwitch.ts
+@@ -1,5 +1,5 @@
+ /**
+  * 1692 part 2: the „how did the answer work out?" debrief and the day-14 line
+- * to the helper. HELD (D44) until Misho's yes on NIGHT_QUESTIONS AV.
++ * to the helper. On since Misho's direct word (§111.3, the §110.3 text).
+  */
+-export const ANSWER_DEBRIEF_ON = false;
++export const ANSWER_DEBRIEF_ON = true;
+-- 
+2.43.0
+

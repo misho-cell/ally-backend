@@ -4,9 +4,41 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 09:08Z — chain 6 of 21 live; 2080 re-send applied (179a62c3) and queued last
+Last TO_CODE.md section handled: 9 Oct, 11:55Z — MTR #9 END (box 48709): results; a route to fire the new-member hook for 389
 
 ## OPEN
+
+### 9 Oct, 13:10Z — `patches/afternoon-1250/0001–0008` (§111, §112, AV on, 1694 flag, D751 note, earnings + ask_main change files, admin updates read, seat fix); answers to 10:24Z–11:55Z
+
+**Patches, on main b769fe1, in order** (verify there 7,846 green; d747 from 12:5xZ is separate and goes first):
+- 0001 §111 record · 0002 §112 record + `ops/prompt-changes/112-ask-main-follow-ups-d746-d751` (ask_main, before sha da8a3486…
+  = the live text of 2 Oct 23:40Z, 7,036 → 7,275 chars; limit 30,000).
+- 0003 **AV on** (`ANSWER_DEBRIEF_ON = true`, §111.3). 0004 **1694 flag** (`found_by_their_own_work: true` on a row found only by the
+  member's own profession / industry; their words still never leave the search, §111.2).
+- 0005 **D751 server note** (§112.4): `PASSED_ON_NUDGE` now ends „…confirmed=true; მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი,
+  ადგილი და რიცხვი ზუსტად." Ship it right after the ask_main change, as you planned.
+- 0006 `ops/prompt-changes/111-earnings-full-five-each-level` (info:earnings, §111.1; 471 → 626 chars). `prompt.sh check` first.
+- 0007 **`GET /admin/users/:userId/updates`**: newest 50 cards; id, task_id, kind, status, release_at, created_at, payload.
+- 0008 **seat maker (your 11:28Z):** account + number + seat row are now one transaction; an auto-picked number that clashes moves to the next
+  free slot (3 tries); a chosen number is never swapped. Each 11:23Z clash had left an empty account: **181485 and 181488**, no number, no
+  seat row. I touched neither; whether to empty or note them is yours / Misho's.
+
+**Answers:**
+- **D746 (a)** No server counter on follow-ups from a recipient's own assistant in its own thread, and no code-side text carries a
+  follow-up limit (searched). **(b)** Not counted: the 2-in-24h / 4-a-day caps count `task_asks` rows, asks a sender puts on a person.
+  A helper's question to its own person is that run's reply. So **D748 holds already**, nothing to build. **(c)** Separate rule:
+  `a2a_rounds` counts assistant-to-assistant rounds with nobody typing (D749 keeps 2). **(d)** 7,275 of 30,000.
+- **10:31Z debrief path:** (1) the held `debrief` card releases at `release_at` (3 days after the answer, `DEBRIEF_DELAY_DAYS`). It reaches
+  the owner as the assistant's question in the next conversation turn. The owner answers in chat („დამეხმარა"), and the run calls
+  `record_debrief_outcome(worked=true)`. That offers the thank card. No seat call or tap. (2) Yes, it works before AV: 29239 is the 1692 p1
+  kind (relayed_ask). AV adds only the `answered_ask` arm. (3) 0007.
+- **10:24Z Q1** („solved, X helped" in chat → thank card?): today no; only the debrief's „helped" offers it. My recommendation is yes,
+  through the same `offerHelperThanks`. That is a product call, so I am asking Misho.
+- **D752 today:** the language is read from the person's own last 8 messages (script and Latin length). The app setting is not read anywhere.
+  The number / name rule (D505) applies only with no message at all. **No explicit-request rule exists:** „მომწერე ინგლისურად" written in
+  Georgian reads as Georgian, so the request loses. To build: a stored language preference set by such a request and read first.
+- **Still mine, next:** 3796 (offers not saved + the false „saved"), 389's admin route to fire the new-member hook for a seat, then the MTR #9
+  NEW rows (3862, 3863, 3928, 3961, 3895, 3896) and the list-cap BIG (rows reported „not in your network" unsearched).
 
 ### 9 Oct, 12:47Z — URGENT D747: 1695 switched off, `patches/d747/0001` (branch 5b30fc8), ships alone now
 

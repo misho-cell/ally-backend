@@ -1,0 +1,300 @@
+From 13ac76042171f01d60a34929c20d7a5e1f189edf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 13:00:45 +0000
+Subject: [PATCH 8/8] fix(seats): a seat is written whole or not at all, and a
+ taken slot moves on (ops 11:28Z)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Two 500s at 11:23Z: „UserPhone_phone_key" — the free number was taken
+between the pick and the insert. The account, its number and its seat row
+were three separate writes, so each clash left an empty account behind
+(181485, 181488). They are now one transaction, and an auto-picked number
+that clashes moves to the next free slot (up to 3 tries). A number the
+caller chose is never swapped.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aSeatOnANumberNobodyHas.test.ts |  34 +++-
+ .../aSeatShapedLikeAnOldAllyAccount.test.ts   |   2 +
+ .../aSeatThatArrivedByInvitation.test.ts      |   5 +-
+ src/services/testSeatCreate.service.ts        | 164 ++++++++++++------
+ 4 files changed, 146 insertions(+), 59 deletions(-)
+
+diff --git a/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts b/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
+index 57dc979..a83bd48 100644
+--- a/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
++++ b/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
+@@ -1,4 +1,11 @@
+-jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../../db/postgres/client', () => {
++  const query = jest.fn();
++  return {
++    __esModule: true,
++    query,
++    withTransaction: (cb: (client: unknown) => unknown) => cb({ query }),
++  };
++});
+ jest.mock('../tokenWallet.service', () => ({
+   __esModule: true,
+   adjustTestAccountTokens: jest.fn().mockResolvedValue(500),
+@@ -100,6 +107,31 @@ describe('creating one', () => {
+     mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never); // the User insert
+   }
+ 
++  it('moves to the next free slot when its number is taken mid-create (ops 11:28Z)', async () => {
++    const { allFictionalNumbers } = await import('../fictionalNumbers');
++    const [first, second] = allFictionalNumbers();
++    mockQuery.mockResolvedValue(rows([]) as never);
++    mockQuery
++      .mockResolvedValueOnce(rows([]) as never) // the scan: first looks free
++      .mockResolvedValueOnce(rows([{ id: 200001 }]) as never) // the User insert
++      .mockRejectedValueOnce(Object.assign(new Error('UserPhone_phone_key'), { code: '23505' }))
++      .mockResolvedValueOnce(rows([{ phone: first }]) as never) // the rescan: now taken
++      .mockResolvedValueOnce(rows([{ id: 200002 }]) as never); // the User insert, again
++
++    const seat = await createTestSeat('Netai Test 13', [], 0, 'admin:1', 'ops 11:28Z');
++
++    expect(seat.phone).toBe(second);
++    expect(seat.userId).toBe('200002');
++  });
++
++  it('never swaps a number the caller chose for another', () => {
++    const src = readFileSync(join(__dirname, '..', 'testSeatCreate.service.ts'), 'utf8');
++    expect(src).toContain(
++      'if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)',
++    );
++    expect(src).toContain('await withTransaction((client) =>');
++  });
++
+   it('makes the account the same shape as the eleven that exist', async () => {
+     seatCreated();
+ 
+diff --git a/src/services/__tests__/aSeatShapedLikeAnOldAllyAccount.test.ts b/src/services/__tests__/aSeatShapedLikeAnOldAllyAccount.test.ts
+index 7a64389..756a8b1 100644
+--- a/src/services/__tests__/aSeatShapedLikeAnOldAllyAccount.test.ts
++++ b/src/services/__tests__/aSeatShapedLikeAnOldAllyAccount.test.ts
+@@ -2,6 +2,8 @@ const dbQuery = jest.fn();
+ jest.mock('../../db/postgres/client', () => ({
+   __esModule: true,
+   query: (...args: unknown[]) => dbQuery(...args),
++  withTransaction: (cb: (client: unknown) => unknown) =>
++    cb({ query: (...args: unknown[]) => dbQuery(...args) }),
+ }));
+ jest.mock('../contacts.service', () => ({ __esModule: true }));
+ 
+diff --git a/src/services/__tests__/aSeatThatArrivedByInvitation.test.ts b/src/services/__tests__/aSeatThatArrivedByInvitation.test.ts
+index ff36260..b6032a5 100644
+--- a/src/services/__tests__/aSeatThatArrivedByInvitation.test.ts
++++ b/src/services/__tests__/aSeatThatArrivedByInvitation.test.ts
+@@ -2,6 +2,8 @@ const dbQuery = jest.fn();
+ jest.mock('../../db/postgres/client', () => ({
+   __esModule: true,
+   query: (...args: unknown[]) => dbQuery(...args),
++  withTransaction: (cb: (client: unknown) => unknown) =>
++    cb({ query: (...args: unknown[]) => dbQuery(...args) }),
+ }));
+ jest.mock('../contacts.service', () => ({ __esModule: true }));
+ 
+@@ -257,7 +259,8 @@ describe('a fictional number nobody is registered on may be held', () => {
+ 
+     const resolved = body.indexOf('await resolvePhonebook(holds)');
+     const inviter = body.indexOf('await inviterSeatPhone(shape.invitedBy)');
+-    const firstInsert = body.indexOf('INSERT INTO "User"');
++    // The writes live in writeSeatRows, reached only through insertSeatRows (ops 11:28Z).
++    const firstInsert = body.indexOf('await insertSeatRows(');
+ 
+     expect(resolved).toBeGreaterThan(0);
+     expect(inviter).toBeGreaterThan(0);
+diff --git a/src/services/testSeatCreate.service.ts b/src/services/testSeatCreate.service.ts
+index 8fb1e08..6e23679 100644
+--- a/src/services/testSeatCreate.service.ts
++++ b/src/services/testSeatCreate.service.ts
+@@ -1,5 +1,6 @@
+ import { randomUUID } from 'crypto';
+-import { query } from '../db/postgres/client';
++import { PoolClient } from 'pg';
++import { query, withTransaction } from '../db/postgres/client';
+ import { allFictionalNumbers, FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
+ import { saveSeatGraph } from './seatGraph.service';
+ import { adjustTestAccountTokens } from './tokenWallet.service';
+@@ -345,6 +346,110 @@ async function arriveByInvitation(
+   );
+ }
+ 
++/** Postgres' unique-violation code: the number was taken between the pick and the insert. */
++const UNIQUE_VIOLATION = '23505';
++/** How many free slots an auto-picked seat tries before the clash is reported. */
++const FREE_SLOT_ATTEMPTS = 3;
++
++interface SeatRows {
++  readonly userId: string;
++  readonly phone: string;
++}
++
++function isUniqueViolation(err: unknown): boolean {
++  return (err as { code?: unknown }).code === UNIQUE_VIOLATION;
++}
++
++/**
++ * Ops' 11:28Z (two 500s at 11:23Z, „UserPhone_phone_key"): the free slot was
++ * taken between the pick and the insert, and the three writes were not one
++ * transaction — each clash left an empty account behind. Now the account, its
++ * number and its seat row are written together or not at all, and an
++ * auto-picked number that clashes moves to the next free slot. A number the
++ * caller chose is never swapped for another.
++ */
++async function insertSeatRows(
++  seatName: string,
++  why: string,
++  createdBy: string,
++  shape: SeatShape,
++): Promise<SeatRows> {
++  for (let attempt = 1; ; attempt += 1) {
++    const phone =
++      shape.phone === undefined
++        ? await firstFreeFictionalPhone()
++        : await chosenFictionalPhone(shape.phone);
++    try {
++      const userId = await withTransaction((client) =>
++        writeSeatRows(client, seatName, why, createdBy, phone, shape.legacyAlly === true),
++      );
++      return { userId, phone };
++    } catch (err) {
++      if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)
++        throw err;
++      // eslint-disable-next-line no-console
++      console.warn(`[test-seat] slot taken during create, trying the next (attempt ${attempt})`);
++    }
++  }
++}
++
++/**
++ * The same shape as the eleven that exist — and I wrote that sentence the
++ * first time round while doing the opposite.
++ *
++ * The first version set `subscription_tier`, `subscription_status` and
++ * `hasAccessToAlly`, because those are the columns the words „is this
++ * account active" bring to mind. All three seats came out with
++ * `current_period_ends_at` NULL, and the seat found it within twenty
++ * minutes: every one of them got 403 `subscription_required` on
++ * `POST /threads`. They could be read, they had tokens, they were Netai
++ * users — and they could not open a chat, so row 251 could not start.
++ *
++ * `hasActiveSubscription` is the gate and it reads the PERIOD END, not the
++ * status: „active" means `current_period_ends_at !== null && > now`. Netai
++ * Test 8 carries its creation date plus one year, and so does every other
++ * seat. I checked the columns I was thinking about and not the one beside
++ * them — the third time in a week, after the `::text` cast and the sweep
++ * exclusion.
++ *
++ * A YEAR, matching the eleven exactly, so a seat and a seat behave the same.
++ * The test beside this does not match this string: it feeds the row this
++ * INSERT produces to `hasActiveSubscription` itself, because what matters is
++ * not which columns are named here but whether the product's own gate opens.
++ */
++async function writeSeatRows(
++  client: PoolClient,
++  seatName: string,
++  why: string,
++  createdBy: string,
++  phone: string,
++  legacyAlly: boolean,
++): Promise<string> {
++  const created = await client.query<{ id: number }>(
++    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
++                         "hasAccessToAlly", current_period_ends_at)
++     VALUES ($1, '', 'ACTIVE',
++             CASE WHEN $2 THEN 'free'     ELSE 'pro'    END,
++             CASE WHEN $2 THEN 'inactive' ELSE 'active' END,
++             NOT $2,
++             CASE WHEN $2 THEN NULL       ELSE NOW() + INTERVAL '1 year' END)
++     RETURNING id`,
++    [seatName, legacyAlly],
++  );
++  const userId = String(created.rows[0].id);
++  await client.query(
++    `INSERT INTO "UserPhone" (phone, "phoneNumber", "phoneCode", "userId", "createdAt", "updatedAt")
++     VALUES ($1, $2, '+1', $3, NOW(), NOW())`,
++    [phone, phone.slice(2), Number(userId)],
++  );
++  await client.query(
++    `INSERT INTO test_seats (user_id, name, phone, created_by, note)
++     VALUES ($1::int, $2, $3, $4, $5)`,
++    [userId, seatName, phone, createdBy, why],
++  );
++  return userId;
++}
++
+ export async function createTestSeat(
+   name: string,
+   holds: readonly string[],
+@@ -376,62 +481,7 @@ export async function createTestSeat(
+     shape.invitedBy === undefined ? null : await inviterSeatPhone(shape.invitedBy);
+   const phonebook = await resolvePhonebook(holds);
+ 
+-  const phone =
+-    shape.phone === undefined
+-      ? await firstFreeFictionalPhone()
+-      : await chosenFictionalPhone(shape.phone);
+-
+-  /**
+-   * The same shape as the eleven that exist — and I wrote that sentence the
+-   * first time round while doing the opposite.
+-   *
+-   * The first version set `subscription_tier`, `subscription_status` and
+-   * `hasAccessToAlly`, because those are the columns the words „is this
+-   * account active" bring to mind. All three seats came out with
+-   * `current_period_ends_at` NULL, and the seat found it within twenty
+-   * minutes: every one of them got 403 `subscription_required` on
+-   * `POST /threads`. They could be read, they had tokens, they were Netai
+-   * users — and they could not open a chat, so row 251 could not start.
+-   *
+-   * `hasActiveSubscription` is the gate and it reads the PERIOD END, not the
+-   * status: „active" means `current_period_ends_at !== null && > now`. Netai
+-   * Test 8 carries its creation date plus one year, and so does every other
+-   * seat. I checked the columns I was thinking about and not the one beside
+-   * them — the third time in a week, after the `::text` cast and the sweep
+-   * exclusion.
+-   *
+-   * A YEAR, matching the eleven exactly, so a seat and a seat behave the same.
+-   * The test beside this does not match this string: it feeds the row this
+-   * INSERT produces to `hasActiveSubscription` itself, because what matters is
+-   * not which columns are named here but whether the product's own gate opens.
+-   */
+-  const created = await query<{ id: number }>(
+-    `INSERT INTO "User" (name, password, status, subscription_tier, subscription_status,
+-                         "hasAccessToAlly", current_period_ends_at)
+-     VALUES ($1, '', 'ACTIVE',
+-             CASE WHEN $2 THEN 'free'     ELSE 'pro'    END,
+-             CASE WHEN $2 THEN 'inactive' ELSE 'active' END,
+-             NOT $2,
+-             CASE WHEN $2 THEN NULL       ELSE NOW() + INTERVAL '1 year' END)
+-     RETURNING id`,
+-    [seatName, shape.legacyAlly === true],
+-    SEAT_QUERY_TIMEOUT_MS,
+-  );
+-  const userId = String(created.rows[0].id);
+-
+-  await query(
+-    `INSERT INTO "UserPhone" (phone, "phoneNumber", "phoneCode", "userId", "createdAt", "updatedAt")
+-     VALUES ($1, $2, '+1', $3, NOW(), NOW())`,
+-    [phone, phone.slice(2), Number(userId)],
+-    SEAT_QUERY_TIMEOUT_MS,
+-  );
+-
+-  await query(
+-    `INSERT INTO test_seats (user_id, name, phone, created_by, note)
+-     VALUES ($1::int, $2, $3, $4, $5)`,
+-    [userId, seatName, phone, createdBy, why],
+-    SEAT_QUERY_TIMEOUT_MS,
+-  );
++  const { userId, phone } = await insertSeatRows(seatName, why, createdBy, shape);
+ 
+   if (shape.invitedBy !== undefined && inviterPhone !== null)
+     await arriveByInvitation(userId, phone, shape.invitedBy, inviterPhone);
+-- 
+2.43.0
+

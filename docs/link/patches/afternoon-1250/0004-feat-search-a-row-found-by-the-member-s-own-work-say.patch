@@ -1,0 +1,159 @@
+From d1e4be146f88e440f4fb32d5dfe57eb298da35f6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 12:41:18 +0000
+Subject: [PATCH 4/5] =?UTF-8?q?feat(search):=20a=20row=20found=20by=20the?=
+ =?UTF-8?q?=20member's=20own=20work=20says=20so=20(1694,=20=C2=A7111.2)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 48418: search_by_tag found 180455 by their own profession,
+but the row showed only the owner's label, so the plan named the labelled
+broker alone. A row matched ONLY through the member's own profession /
+industry now carries found_by_their_own_work: true. Their words still
+never leave the search CTE.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aMemberIsFoundByHisOwnWork.test.ts        | 13 +++++++++++++
+ src/services/tools/searchByTag.ts             | 10 ++++++++--
+ src/services/tools/wordMatch.ts               | 19 +++++++++++--------
+ 3 files changed, 32 insertions(+), 10 deletions(-)
+
+diff --git a/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts b/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+index 88af91b..2df5f18 100644
+--- a/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
++++ b/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+@@ -14,4 +14,17 @@ describe('the own-profile search branch', () => {
+   it('never reads interests or searched topics', () => {
+     expect(sql).not.toMatch(/kv\.key IN \([^)]*interests/u);
+   });
++  it('marks only that branch as the member’s own work (§111.2)', () => {
++    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(1);
++    expect(sql).toMatch(/TRUE AS own,\s+TRUE AS self_work\s+FROM "UserPhone" up4/u);
++    expect(sql.match(/FALSE AS self_work/gu)).toHaveLength(6);
++  });
++
++  it('flags a row found only that way, and gives the model nothing of their words', () => {
++    const tag = readFileSync(join(__dirname, '..', 'tools', 'searchByTag.ts'), 'utf8');
++    expect(tag).toContain('bool_and(self_work) AS self_work_only');
++    expect(tag).toContain('BOOL_AND(h.self_work_only) AS self_work_only');
++    expect(tag).toContain('...(row.self_work_only === true && { found_by_their_own_work: true }),');
++    expect(tag).not.toMatch(/kv\.value/u);
++  });
+ });
+diff --git a/src/services/tools/searchByTag.ts b/src/services/tools/searchByTag.ts
+index e1b9500..69a312f 100644
+--- a/src/services/tools/searchByTag.ts
++++ b/src/services/tools/searchByTag.ts
+@@ -69,6 +69,8 @@ export interface TagRow {
+   own_tags: string[] | null;
+   /** The tester's 988: did any match come from the owner's own label or a public field? */
+   own_hit?: boolean | null;
++  /** 1694 (§111.2): found only through the member's own profession / industry. */
++  self_work_only?: boolean | null;
+   employer: string | null;
+   jobPosition: string | null;
+   city: string | null;
+@@ -183,12 +185,13 @@ async function runExactSearch(
+       `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
+        hits AS (
+          SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
+-                bool_or(own) AS own_hit
++                bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
+          FROM matched
+          WHERE phone != ALL($${m.blockIdx})
+          GROUP BY phone
+        )
+-       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit
++       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
++              BOOL_AND(h.self_work_only) AS self_work_only
+        ${AGG_JOINS}
+        GROUP BY h.phone
+        ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
+@@ -442,6 +445,9 @@ function shape(
+        */
+       tags: ownDisplayableTags(row),
+       ...(othersLabelsMatched(row) && { found_by_others_labels: true }),
++      // 1694 (Misho, §111.2): matched on what the member said about their own work.
++      // Only the flag; their words stay out of the result.
++      ...(row.self_work_only === true && { found_by_their_own_work: true }),
+       employer: row.employer ?? null,
+       jobPosition: row.jobPosition ?? null,
+       city: row.city ?? null,
+diff --git a/src/services/tools/wordMatch.ts b/src/services/tools/wordMatch.ts
+index 0f2dfaa..7074db0 100644
+--- a/src/services/tools/wordMatch.ts
++++ b/src/services/tools/wordMatch.ts
+@@ -139,7 +139,7 @@ export function buildExactMatchSql(
+   // a public fact)? Only a match on another person's private label or fact is
+   // not own — and only a row with no own match is „found by others' labels".
+   const matchedCte = `matched AS (
+-     SELECT lt.phone, lt.label, 1 AS priority, lt.own
++     SELECT lt.phone, lt.label, 1 AS priority, lt.own, FALSE AS self_work
+      FROM mine m
+      CROSS JOIN LATERAL (
+        SELECT t.phone, ${foldedLower('t.tag')} AS label, (t."contactId" = $1) AS own
+@@ -147,7 +147,7 @@ export function buildExactMatchSql(
+        WHERE t.phone = m.phone AND ${regexOr('t.tag')}
+      ) lt
+      UNION ALL
+-     SELECT la.phone, la.label, 1 AS priority, la.own
++     SELECT la.phone, la.label, 1 AS priority, la.own, FALSE AS self_work
+      FROM mine m
+      CROSS JOIN LATERAL (
+        SELECT a.phone, ${foldedLower('a.alias')} AS label, (a."contactId" = $1) AS own
+@@ -155,7 +155,8 @@ export function buildExactMatchSql(
+        WHERE a.phone = m.phone AND ${regexOr('a.alias')}
+      ) la
+      UNION ALL
+-     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own
++     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own,
++            FALSE AS self_work
+      FROM "UserPhone" up2
+      JOIN "User" u2 ON u2.id = up2."userId"
+      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
+@@ -163,7 +164,7 @@ export function buildExactMatchSql(
+      UNION ALL
+      SELECT up3.phone,
+             ${foldedLower(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)} AS label,
+-            2 AS priority, TRUE AS own
++            2 AS priority, TRUE AS own, FALSE AS self_work
+      FROM "UserPhone" up3
+      JOIN "User" u3 ON u3.id = up3."userId"
+      WHERE up3.phone IN (SELECT phone FROM mine)
+@@ -172,8 +173,10 @@ export function buildExactMatchSql(
+      UNION ALL
+      -- 1694 (box 47985; Misho's yes 9 Oct, §110.6): a member who told his own assistant
+      -- what he does is found by it. Work keys only — „interests" or searched topics would
+-     -- make a member who LOOKED for a lawyer read as one. Ranks the search; never shown.
+-     SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own
++     -- make a member who LOOKED for a lawyer read as one. Their text ranks the search and
++     -- is never shown; §111.2: a row found only this way says so (self_work), no more.
++     SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
++            TRUE AS self_work
+      FROM "UserPhone" up4
+      JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text
+      WHERE up4.phone IN (SELECT phone FROM mine)
+@@ -181,7 +184,7 @@ export function buildExactMatchSql(
+        AND ${regexOr('kv.value')}
+      UNION ALL
+      SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
+-            TRUE AS own
++            TRUE AS own, FALSE AS self_work
+      FROM contact_facts cf
+      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+        AND cf.field_type IN ('occupation', 'employer', 'industry')
+@@ -195,7 +198,7 @@ export function buildExactMatchSql(
+      -- inside this CTE (the outer SELECT aggregates h.phone and joins names),
+      -- so the text can reach the ranking and never the reply.
+      SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
+-            FALSE AS own
++            FALSE AS own, FALSE AS self_work
+      FROM contact_facts cf
+      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+        AND cf.retracted_at IS NULL
+-- 
+2.43.0
+

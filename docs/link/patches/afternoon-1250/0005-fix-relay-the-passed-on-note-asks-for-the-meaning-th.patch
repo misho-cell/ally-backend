@@ -1,0 +1,54 @@
+From d574b8c609e4db05fd9345109b259d27928c7c62 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 12:52:03 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?fix(relay):=20the=20passed-on=20note=20asks?=
+ =?UTF-8?q?=20for=20the=20meaning,=20the=20facts=20exact=20(D751,=20=C2=A7?=
+ =?UTF-8?q?112.4)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Conv 47746: the server's note told the helper's run to send the reply
+„ზუსტად მისი სიტყვებით". D751: not word for word — the meaning in the
+assistant's own words, every name, date, place and number exact.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/round5ServerFindings.test.ts | 5 +++++
+ src/services/replyGuards.ts                         | 3 ++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/round5ServerFindings.test.ts b/src/services/__tests__/round5ServerFindings.test.ts
+index 117ead8..aae59c5 100644
+--- a/src/services/__tests__/round5ServerFindings.test.ts
++++ b/src/services/__tests__/round5ServerFindings.test.ts
+@@ -129,6 +129,11 @@ describe('a helper’s question back in a run that sent nothing', () => {
+     expect(HELPER_QUESTION_NUDGE).toContain('შენი სიტყვებით: მისი კითხვის აზრი, არა ციტატა');
+     expect(HELPER_QUESTION_NUDGE).toContain('არ ჰკითხო „გადავუგზავნო?"');
+     expect(HELPER_QUESTION_NUDGE).not.toContain('ზუსტად მისი სიტყვებით');
++    // D751 (§112.4): the passed-on note too — the meaning in our words, the facts exact.
++    expect(PASSED_ON_NUDGE).not.toContain('ზუსტად მისი სიტყვებით');
++    expect(PASSED_ON_NUDGE).toContain(
++      'მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.',
++    );
+     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
+     expect(set.slice(0, 200)).toContain('HELPER_QUESTION_NUDGE');
+     expect(chat).toContain('      claimedASendThatDidNotHappen ||\n      helperQuestionUnsent ||');
+diff --git a/src/services/replyGuards.ts b/src/services/replyGuards.ts
+index 9b21f7c..58c81a3 100644
+--- a/src/services/replyGuards.ts
++++ b/src/services/replyGuards.ts
+@@ -239,7 +239,8 @@ export const NOTHING_SENT_YET_NUDGE =
+ export const PASSED_ON_NUDGE =
+   '(სისტემური შენიშვნა: შენ დაწერე, რომ კითხვის ავტორს გადაეცი, მაგრამ ამ გაშვებაში ' +
+   'send_answer_to_asker არ გამოგიძახებია და მას არაფერი მისვლია. თუ მომხმარებლის სიტყვები მისთვისაა, ' +
+-  'ახლავე გაგზავნე send_answer_to_asker-ით, confirmed=true, ზუსტად მისი სიტყვებით. თუ არა — ' +
++  'ახლავე გაგზავნე send_answer_to_asker-ით, confirmed=true; მისი აზრი შენი სიტყვებით, ყველა სახელი, ' +
++  'თარიღი, ადგილი და რიცხვი ზუსტად. თუ არა — ' +
+   'მოკლედ უთხარი, რომ ჯერ არაფერი გაგზავნილა.)';
+ 
+ /**
+-- 
+2.43.0
+
