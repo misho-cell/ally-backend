@@ -42,6 +42,7 @@ import { startEveningCards } from './services/eveningCard.cron';
 import { startOwnerReminders } from './services/ownerReminders.cron';
 import { startAnswerStats } from './services/answerStats.cron';
 import { startNeedsOffersMatcher } from './services/needsOffers.cron';
+import { startHelperFollowUps } from './services/helperThanks.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -179,6 +180,7 @@ runMigrations()
     startOwnerReminders();
     startAnswerStats();
     startNeedsOffersMatcher();
+    startHelperFollowUps();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();

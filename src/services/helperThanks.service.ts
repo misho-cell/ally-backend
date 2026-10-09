@@ -8,7 +8,9 @@ import {
   thankedLine,
   thanksToHelperLine,
   ThanksTap,
+  followingUpLine,
 } from './helperThanksCards';
+import { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
 import { sendPushNotification } from './notification.service';
 import { RunLanguage } from './runLanguage';
 import {
@@ -112,12 +114,14 @@ interface Thanked {
   readonly asker_name: string | null;
 }
 
+type LineAbout = (language: RunLanguage, asker: string) => string;
+
 /** One line to one person, in their language, rung once. */
-async function thankOne(person: Thanked): Promise<boolean> {
+async function thankOne(person: Thanked, write: LineAbout = thanksToHelperLine): Promise<boolean> {
   const asker = person.asker_name?.trim() ?? '';
   if (person.thread_id === null || asker === '') return false;
   const language = await userLanguage(String(person.user_id));
-  const text = thanksToHelperLine(language, asker);
+  const text = write(language, asker);
   await saveThreadMessage(person.thread_id, person.user_id, 'assistant', text);
   await sendPushNotification(String(person.user_id), {
     title: 'Netai',
@@ -215,4 +219,52 @@ export async function settleThanksTap(
     QUERY_TIMEOUT_MS,
   );
   return { text: notedLine(language) };
+}
+
+/** Day 14 after the helper's answer, with no word from the asker. */
+const QUIET_LEAD_DAYS = 14;
+/** At most this many a day, so a backlog never floods anyone. */
+const QUIET_LEADS_PER_RUN = 100;
+
+interface QuietLead extends Thanked {
+  readonly ask_id: number;
+  readonly task_id: number | null;
+  readonly asker_user_id: number;
+}
+
+/**
+ * 1692 part 2: an answer whose „how did it go?" (AV) the asker never answered
+ * gets, on day 14, one line to the helper — „Nino is following up your lead",
+ * no fact — and a helper_thanks row, so it is said once. Only answers whose
+ * debrief was armed, so nothing happens while ANSWER_DEBRIEF_ON is off.
+ */
+export async function followUpQuietLeads(): Promise<number> {
+  if (!ANSWER_DEBRIEF_ON) return 0;
+  const due = await query<QuietLead>(
+    `SELECT ta.id AS ask_id, ta.task_id, ta.from_user_id AS asker_user_id,
+            ta.to_user_id AS user_id, ta.ask_thread_id AS thread_id,
+            ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
+       FROM task_asks ta
+       JOIN debrief_arms d ON d.kind = 'answered_ask' AND d.ref_id = ta.id
+      WHERE ta.status = 'answered' AND ta.declined_at IS NULL
+        AND ta.answered_at < NOW() - make_interval(days => $1)
+        AND NOT EXISTS (SELECT 1 FROM helper_thanks h WHERE h.ask_id = ta.id)
+        AND NOT EXISTS (SELECT 1 FROM outcome_events o
+                         WHERE o.subject_type = 'task_ask' AND o.subject_id = ta.id::text)
+      ORDER BY ta.id LIMIT $2`,
+    [QUIET_LEAD_DAYS, QUIET_LEADS_PER_RUN],
+    QUERY_TIMEOUT_MS,
+  );
+  let said = 0;
+  for (const lead of due.rows) {
+    const claimed = await query<{ id: number }>(
+      `INSERT INTO helper_thanks (ask_id, task_id, asker_user_id, helper_user_id, state)
+       VALUES ($1, $2, $3, $4, 'followed_up')
+       ON CONFLICT (ask_id) DO NOTHING RETURNING id`,
+      [lead.ask_id, lead.task_id, lead.asker_user_id, lead.user_id],
+      QUERY_TIMEOUT_MS,
+    );
+    if (claimed.rows.length > 0 && (await thankOne(lead, followingUpLine))) said += 1;
+  }
+  return said;
 }

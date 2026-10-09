@@ -56,6 +56,14 @@ const THANKED: ByLanguage<(helper: string) => string> = {
   es: (h) => `Se lo he dicho a ${h}.`,
 };
 
+/** 1692 part 2: day 14, no word from the asker — the helper hears the lead is being followed, no fact. */
+const FOLLOWING_UP: ByLanguage<(asker: string) => string> = {
+  ka: (a) => `${a} შენს რჩევას ჯერ კიდევ მიჰყვება.`,
+  en: (a) => `${a} is following up your lead.`,
+  ru: (a) => `${a} ещё занимается твоей подсказкой.`,
+  es: (a) => `${a} sigue tu pista.`,
+};
+
 const NOTED: ByLanguage<string> = {
   ka: 'კარგი.',
   en: 'All right.',
@@ -75,6 +83,8 @@ export const thanksToHelperLine = (l: RunLanguage, asker: string): string =>
   pick(THANKS_TO_HELPER, l)(asker);
 export const thankedLine = (l: RunLanguage, helper: string): string => pick(THANKED, l)(helper);
 export const notedLine = (l: RunLanguage): string => pick(NOTED, l);
+export const followingUpLine = (l: RunLanguage, asker: string): string =>
+  pick(FOLLOWING_UP, l)(asker);
 
 /** Which thank-you button this line is; null for anything else. */
 export function thanksTapOf(message: string): ThanksTap | null {
