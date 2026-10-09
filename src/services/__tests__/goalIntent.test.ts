@@ -4,6 +4,9 @@ import {
   isQuestionNotGoal,
   needsNoOpeningSearch,
   statesANeed,
+  instructionNames,
+  instructionNeed,
+  instructionQuestion,
 } from '../goalIntent';
 
 describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
@@ -275,5 +278,41 @@ describe('„იპოვე" states a need', () => {
   it('leaves „I found" and „they found" alone', () => {
     expect(statesANeed('ვიპოვე კარგი ვეტერინარი, მადლობა')).toBe(false);
     expect(statesANeed('მეგობრებმა იპოვეს ვეტერინარი')).toBe(false);
+  });
+});
+
+/** 3928 (GP-052 step 3): a chain of names is read whole. */
+describe('an instruction that names several people', () => {
+  it('reads both names and leaves no question when none follows', () => {
+    const line = 'სანტექნიკოსი მჭირდება, ჰკითხე ნიკა დამხმარე-ას და სოფო დამხმარე-ბს.';
+    expect(instructionNames(line)).toEqual(['ნიკა დამხმარე-ა', 'სოფო დამხმარე-ბ']);
+    expect(instructionQuestion(line)).toBeNull();
+    expect(instructionNeed(line)).toBe('სანტექნიკოსი მჭირდება');
+  });
+
+  it('reads „X-სა და Y-ს", a comma list, and English „and"', () => {
+    expect(instructionNames('ჰკითხე ნიკასა და სოფოს, იცნობენ თუ არა სანტექნიკოსს?')).toEqual([
+      'ნიკა',
+      'სოფო',
+    ]);
+    expect(instructionNames('ჰკითხე ნიკას, სოფოს და ლევანს იციან თუ არა')).toEqual([
+      'ნიკა',
+      'სოფო',
+      'ლევან',
+    ]);
+    expect(instructionNames('ask Nika and Sofo whether they know a plumber')).toEqual([
+      'Nika',
+      'Sofo',
+    ]);
+  });
+
+  it('keeps one name and its question when a comma opens the question', () => {
+    const line = 'ჰკითხე გიგა ტესტაძეს, იცნობს თუ არა კარგ ნოტარიუსს';
+    expect(instructionNames(line)).toEqual(['გიგა ტესტაძე']);
+    expect(instructionQuestion(line)).toBe('იცნობს თუ არა კარგ ნოტარიუსს');
+  });
+
+  it('never takes a name before the verb for the need', () => {
+    expect(instructionNeed('ნინოს ჰკითხე, იცნობს თუ არა იურისტს')).toBeNull();
   });
 });

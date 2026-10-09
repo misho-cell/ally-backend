@@ -396,7 +396,7 @@ import {
   NOT_ON_NETAI_LINE,
   NOT_SENT_LINE,
 } from './instructionUnsent';
-import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
+import { InstructedAskResult, PersonOutcome, sendInstructedAsk } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import {
   asksAboutTheOwner,
@@ -2599,13 +2599,17 @@ async function refusedPlanOrSentAsk(
   );
   if (outcome?.result !== InstructedAskResult.Sent) return refused;
   runAskSent.add(runId);
-  noteAskSentTo(runId, outcome.toName);
+  // 3928: everyone the line named and the server asked, not only the first.
+  const sentTo = outcome.people
+    .filter((p) => p.result === InstructedAskResult.Sent)
+    .map((p) => p.toName);
+  sentTo.forEach((name) => noteAskSentTo(runId, name));
   return {
     proposed: false,
     reason: 'owner_instruction',
     sent: true,
-    to_name: outcome.toName,
-    note: SENT_INSTEAD_OF_PLAN(outcome.toName),
+    to_name: sentTo.join(', '),
+    note: SENT_INSTEAD_OF_PLAN(sentTo.join(', ')),
   };
 }
 
@@ -12040,6 +12044,21 @@ async function promisedAnActionItDidNotTake(
 }
 
 /**
+ * What the owner is told about one person the server's send named: 2872's
+ * plain „sent" sentence, T2509's „not on Netai", 3268's „excluded" — each the
+ * line it already was, now said once per person.
+ */
+function personLineForOwner(person: PersonOutcome, language: RunLanguage): string {
+  if (person.result === InstructedAskResult.Sent) {
+    return sentSentenceForOwner(person.toName, language);
+  }
+  if (person.result === InstructedAskResult.NotOnNetai) {
+    return (NOT_ON_NETAI_LINE[language] ?? NOT_ON_NETAI_LINE.ka)(person.toName);
+  }
+  return (EXCLUDED_LINE[language] ?? EXCLUDED_LINE.ka)(person.toName);
+}
+
+/**
  * §97 item 1 (Misho's yes): the second chance sent nothing either. The server
  * asks the one contact the owner named and says so in the ordinary per-person
  * line; when it cannot (no single contact, a wall), the owner is told plainly
@@ -12061,16 +12080,9 @@ async function serverSendsOrSaysSo(
       return null;
     },
   );
-  if (outcome?.result === InstructedAskResult.Sent) {
-    // 2872: one person asked — a plain sentence, not the bare status line.
-    return sentSentenceForOwner(outcome.toName, language);
-  }
-  // T2509: a person not on Netai is said by name, not as „write it again".
-  if (outcome?.result === InstructedAskResult.NotOnNetai) {
-    return (NOT_ON_NETAI_LINE[language] ?? NOT_ON_NETAI_LINE.ka)(outcome.toName);
-  }
-  if (outcome?.result === InstructedAskResult.Excluded) {
-    return (EXCLUDED_LINE[language] ?? EXCLUDED_LINE.ka)(outcome.toName);
+  if (outcome !== null && outcome.result !== InstructedAskResult.NotSent) {
+    // 3928: one approved sentence per person named, in the owner's order.
+    return outcome.people.map((person) => personLineForOwner(person, language)).join('\n');
   }
   // eslint-disable-next-line no-console
   console.warn(
