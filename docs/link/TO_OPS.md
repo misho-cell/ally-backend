@@ -8,6 +8,11 @@ Last TO_CODE.md section handled: 9 Oct, 20:40Z — 3928 run 2 still 1 of 2 (the 
 
 ## OPEN
 
+### 9 Oct, 21:24Z — `afternoon-1250/0041`: 2410, „gamarjoba" in Latin letters takes the greeting path
+
+The bare-greeting reading knew Georgian, English, Russian and Spanish hellos, but not Georgian typed in Latin letters. So „gamarjoba" ran the full turn (25–31 s), while „გამარჯობა" took 3.3 s. gamarjoba, gagimarjos, salami and dila/saghamo mshvidobisa are now greetings, with or without „rogor khar". No text changes: the greeting turn and its words are the ones that already exist. Ship it alone, after 0040. `npm run verify` is green on the whole line (8,027 tests).
+DONE WHEN: „gamarjoba" on 3 seats is answered in under 5 s with no tools, in Georgian where the seat writes Georgian.
+
 ### 9 Oct, 21:14Z — 4160 read: the Excel and the chat answered two different questions; not a one-line fix
 
 Goal 23728 (seat 182103): the file has two columns, `name` and `need`.

@@ -1,0 +1,87 @@
+From 1976b2b69c2300a6fa92e86730652ff182439679 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 21:12:38 +0000
+Subject: [PATCH] =?UTF-8?q?fix(greeting):=20=E2=80=9Egamarjoba"=20in=20Lat?=
+ =?UTF-8?q?in=20letters=20is=20a=20hello,=20not=20a=20full=20turn=20(2410)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49243: „gamarjoba" took 31.2 s, 24.7 s and 31.0 s on three seats
+(get_user_notes, get_my_tasks, get_pending_updates), where „გამარჯობა" took
+3.3 s with no tools. The bare-greeting reading knew Georgian, English,
+Russian and Spanish hellos, but not Georgian typed in Latin letters.
+
+gamarjoba, gagimarjos, salami and dila/saghamo mshvidobisa now read as a
+bare greeting, with or without „rogor khar". The server greeting answers
+„rogor khar" the way it already answers „როგორ ხარ".
+
+DONE WHEN: „gamarjoba" on 3 seats is answered in under 5 s with no tools,
+in Georgian where the seat writes Georgian.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 6e85b3f92305fe0c7b10831af65624f38183f5e4)
+---
+ src/services/__tests__/aGreetingGetsOneShortTurn.test.ts | 6 ++++++
+ src/services/greetingTurn.ts                             | 4 +++-
+ src/services/serverGreeting.ts                           | 3 ++-
+ 3 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/aGreetingGetsOneShortTurn.test.ts b/src/services/__tests__/aGreetingGetsOneShortTurn.test.ts
+index d940275..df7a135 100644
+--- a/src/services/__tests__/aGreetingGetsOneShortTurn.test.ts
++++ b/src/services/__tests__/aGreetingGetsOneShortTurn.test.ts
+@@ -21,6 +21,11 @@ describe('isBareGreeting', () => {
+     // The tester's 1114 (34593, 34597).
+     'გამარჯობა, როგორ ხარ?',
+     'დილა მშვიდობისა',
++    // 2410 (tester 49243): Georgian typed in Latin letters.
++    'gamarjoba',
++    'Gamarjoba!',
++    'gamarjoba, rogor khar?',
++    'dila mshvidobisa',
+   ])('treats %p as only a greeting', (text: string) => {
+     expect(isBareGreeting(text)).toBe(true);
+   });
+@@ -30,6 +35,7 @@ describe('isBareGreeting', () => {
+     'hello, who knows a dentist?',
+     'hi there can you help',
+     'მინდა გამარჯობა ვუთხრა გიორგის',
++    'gamarjoba, iuristi mchirdeba',
+     '',
+   ])('keeps the full turn for %p', (text: string) => {
+     expect(isBareGreeting(text)).toBe(false);
+diff --git a/src/services/greetingTurn.ts b/src/services/greetingTurn.ts
+index ea71587..751a5ea 100644
+--- a/src/services/greetingTurn.ts
++++ b/src/services/greetingTurn.ts
+@@ -14,8 +14,10 @@ export const GREETING_MAX_TOKENS = 350;
+ 
+ // The tester's 1114 (34593, 34597): „გამარჯობა, როგორ ხარ?" and „დილა მშვიდობისა"
+ // are greetings too, and both ran a full goal turn.
++// 2410 (tester 49243): „gamarjoba" in Latin letters took 25–31 s on the full
++// turn, „გამარჯობა" 3.3 s. Georgian typed in Latin letters is the same hello.
+ const GREETING_ONLY_RE =
+-  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s+მშვიდობისა|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
++  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s+მშვიდობისა|gamarjoba|gagimarjos|salami|(?:dila|saghamo|sagamo)\s+mshvidobisa|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
+ 
+ /**
+  * 3202 (Ninia's phone, 8 Oct 07:58Z, thread 44629): she typed „გამარჯობა with a
+diff --git a/src/services/serverGreeting.ts b/src/services/serverGreeting.ts
+index c300109..97504e5 100644
+--- a/src/services/serverGreeting.ts
++++ b/src/services/serverGreeting.ts
+@@ -55,7 +55,8 @@ export function greetingName(registered: string | null): string | null {
+   return first !== '' && NAME_RE.test(first) ? first : null;
+ }
+ 
+-const ASKS_HOW_I_AM_RE = /(როგორ\s+ხარ|how\s+are\s+you|как\s+дела|qué\s+tal)/iu;
++const ASKS_HOW_I_AM_RE =
++  /(როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal)/iu;
+ const AFTER_EXCLAMATION_RE = /!\s*/u;
+ 
+ export function greetingText(
+-- 
+2.43.0
+
