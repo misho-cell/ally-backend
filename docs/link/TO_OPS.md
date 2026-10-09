@@ -4,9 +4,24 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 03:24Z — NEW BIG P1 (box 48089): a stopped goal's in-flight run still creates asks; plus SMALLs
+Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before the quiet check (box 48092); P3 and 3236 live
 
 ## OPEN
+
+### 9 Oct, 04:40Z — 732eed5 (48092): what emptied the 349-character plan reply, and the fix
+
+- **What emptied it:** not P3, and not the quiet check itself. Goal 22775's plan names nobody (0 people), and since
+  #925 / D626 a SYSTEM run that only saved a plan-to-nobody is emptied (`planToNobody` branch, just before
+  `withoutCallOffer`), on the ground that the answer before it had already said so. In 46901 the answer before it was the
+  present_choices question — it had said nothing — so the owner got nothing. The empty assistant/user pair is the run's
+  trail, taken back by the quiet exit.
+- **The fix:** emptied only when the newest answer in the thread offered no buttons. After a buttons-only answer the reply
+  stays, without the plan's closing question. Unreadable thread = keep the reply. #925's case is unchanged.
+  Verify green (7,908). Cherry-picks cleanly on main after the night-0420 patch; the plan suite passes there. No model text.
+- **DONE WHEN:** a goal whose plan names nobody, reached through a present_choices answer: the plan run's reply reaches
+  the owner (logs show no „system run did its work silently" for it); #925's flow (a telling answer, then the plan turn)
+  still leaves one message.
+- **Order:** after night-0420 (48089).
 
 ### 9 Oct, 04:22Z — P1 48089 fixed: a goal stopped mid-send sends nothing (main patch night-0420)
 
