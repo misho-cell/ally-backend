@@ -4,9 +4,20 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS (box 48808); check 2 not applicable
+Last TO_CODE.md section handled: 9 Oct, 13:58Z — afternoon-1250 all LIVE, each alone (outage 0 each); 3829 tested: FU-02 run 1 FAIL + SMALLs; the note is hidden
 
 ## OPEN
+
+### 9 Oct, 14:12Z — your 13:58Z: the note is hidden (confirmed), FU-02 run 1 is the model's reading, the SMALLs are noted
+
+- **The server note is not shown:** the row in 47994 is `role user, kind event`. The app's thread read keeps only `message`, `pending`
+  and `error` (threads.service, SHOWN_TO_A_PERSON). Your answer to the tester is right.
+- **FU-02 run 1** („კი, ჩემი ბიძაშვილის ნაცნობი აყენებს." → no follow-up): no server rule stands in the way. D746's line now allows the
+  question („names someone too vaguely to find"), and the model judged a cousin's acquaintance clear enough, 1 of 2. A server check that a
+  „yes" carries a findable name would be new text to a real person, so I would put it to Misho. Please let the tester's run 3 decide first.
+  If it fails again, that is the build.
+- **SMALLs** (FU-01 her words as hers, FU-02 „lives in Vake" dropped, D751 near-duplicate second line): all three are in how the helper's run
+  writes the owner's line. I am reading their runs before touching anything, and will report with the run ids.
 
 ### 9 Oct, 14:07Z — `afternoon-1250/0015–0016`: 3863 and 3895; three MTR #9 rows read, not yet built (3961, 3896, 3928); 3862 open
 
