@@ -1,0 +1,71 @@
+From 265c01c71e5d2b08859abaef7d104b7efc2750c7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 19:00:05 +0000
+Subject: [PATCH] fix(log): a tool asking for the owner's yes first is not
+ filed as a refusal
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops' daily check (9 Oct 18:47Z): a save_offer „decline" at 09:38Z carried
+„no reason recorded — the row predates migration 148". It was the designed
+confirm step — {saved:false, needs_confirmation:true, note} — read as failed
+because of saved:false, with no `error` to give as a reason. ask_contact,
+the MCP handlers and others answer the same way, so every confirm step was
+counted as a refusal. A result with needs_confirmation and no error is now
+ok; one that also carries an error stays failed. Log only — nothing the
+model or a person sees changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/toolCallLog.service.test.ts       | 17 +++++++++++++++++
+ src/services/toolCallLog.service.ts             |  7 ++++++-
+ 2 files changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/toolCallLog.service.test.ts b/src/services/__tests__/toolCallLog.service.test.ts
+index 0ccd81a..7e0ce5b 100644
+--- a/src/services/__tests__/toolCallLog.service.test.ts
++++ b/src/services/__tests__/toolCallLog.service.test.ts
+@@ -398,3 +398,20 @@ describe('the result sample is redacted on its way into the table (D149)', () =>
+     expect(await sampleWritten('found 3 vets in Vake')).toBe('found 3 vets in Vake');
+   });
+ });
++
++/** Ops 9 Oct 18:47Z: a confirm step is the tool working, not a refusal with no reason. */
++describe('a tool that asks for the owner’s yes first', () => {
++  it('is not filed as failed', () => {
++    expect(outcomeOf({ saved: false, needs_confirmation: true, note: 'read it back' }).ok).toBe(
++      true,
++    );
++    expect(outcomeOf({ sent: false, needs_confirmation: true }).ok).toBe(true);
++  });
++
++  it('is still failed when it also carries an error', () => {
++    expect(outcomeOf({ saved: false, needs_confirmation: true, error: 'not in this run' }).ok).toBe(
++      false,
++    );
++    expect(outcomeOf({ saved: false }).ok).toBe(false);
++  });
++});
+diff --git a/src/services/toolCallLog.service.ts b/src/services/toolCallLog.service.ts
+index e72466d..0894677 100644
+--- a/src/services/toolCallLog.service.ts
++++ b/src/services/toolCallLog.service.ts
+@@ -206,7 +206,12 @@ export function outcomeOf(result: unknown): ToolOutcome {
+     return { ok: true, empty: text.trim() === '', count, keys: null, error: null };
+   }
+   const record = result as Record<string, unknown>;
+-  const failed = 'error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false);
++  // Ops 9 Oct 18:47Z (save_offer, 3796): „not yet — read it back and ask" is the
++  // tool doing exactly what it was asked, not a refusal. Filed as failed, it
++  // showed up in why.sh as a refusal with „no reason recorded".
++  const askedToConfirm = record['needs_confirmation'] === true && !('error' in record);
++  const failed =
++    !askedToConfirm && ('error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false));
+   const firstList = Object.values(record).find((value) => Array.isArray(value));
+   // 2809 (AD-014): a refused search ({found:false, error:'this answer has used its 8
+   // searches'}) read as „found nobody". A call that did not run found nothing
+-- 
+2.43.0
+

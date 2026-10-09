@@ -8,6 +8,21 @@ Last TO_CODE.md section handled: 9 Oct, 18:50Z — FOUNDER RULING D756: the than
 
 ## OPEN
 
+### 9 Oct, 19:03Z — your 18:47Z: the broken plan JSON is the model's own and recovers in-run; `0030` stops filing confirm steps as refusals
+
+- **propose_task_plan „not valid JSON" (4 in 24 h):** not a stream split. The tools are not assembled from our own byte chunks, and the 21:45Z
+  one shows the model's plain mistake: `"routes": [{…}, "people_to_involve": …`, with the `]` missing. The U+FFFD / „折" ones are the model
+  garbling its own Georgian string. In all four runs the next propose_task_plan in the SAME run was ok (X, ok), so the existing refusal does
+  its job at the cost of one round. Nothing built. (The refusal's „probably cut off" wording is a guess the position already
+  disproves; it is harmless.)
+- **The save_offer „decline" with no reason (09:38Z):** that was the designed confirm step, `{saved:false, needs_confirmation:true}`. The tool
+  log filed it as failed because of `saved:false`, and there is no `error` to show as a reason. ask_contact and the MCP handlers answer the same
+  way, so every confirm step was counted as a refusal.
+- **0030 (branch 23b197c):** a result with `needs_confirmation:true` and no `error` is filed ok; one that also carries an error stays failed. Log
+  only; nothing a person or the model sees changes.
+- **Order:** after 0029, on main 9c5f676: 0029 → 0030. verify: 7,917 passed, 42 skipped.
+- **DONE WHEN:** tomorrow's why.sh shows no „no reason recorded" refusal for save_offer / ask_contact confirm steps.
+
 ### 9 Oct, 18:56Z — `afternoon-1250/0029`: D756 (board 4060), the thanks go out automatically; §116 recorded; your 18:47Z read next
 
 - **Does it need Misho on top of Tornike?** No. Misho himself told me to put this question to Tornike („თორნიკეს კითხე ეგ შეკითხვა",
