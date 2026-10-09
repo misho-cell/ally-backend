@@ -1,0 +1,70 @@
+From d07e90f460b1d6080c4e22aebcb2ec898e9e3503 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 14:03:02 +0000
+Subject: [PATCH 16/16] fix(intros): the helper's card names the target as she
+ saved him (3895)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+IN-023, 2 of 2: the helper's card said „ბახვა გამოგონილს" for the man she
+saved as „Baxva Gamogonili". targetNameForMediator found him in her book
+(findContactPhonesByName returns bare digits) and asked nameInBridgeBook,
+which compared those digits with the stored „+…" form and never matched,
+so the owner's spelling stood. Compared as digits now. Checked read-only on
+the live trio: the old read finds nothing, the new one „Baxva Gamogonili".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aMediatorReadsHisOwnName.test.ts          | 20 +++++++++++++++++++
+ src/services/bridgePicker.ts                  |  5 ++++-
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aMediatorReadsHisOwnName.test.ts b/src/services/__tests__/aMediatorReadsHisOwnName.test.ts
+index d8b5675..db5d82a 100644
+--- a/src/services/__tests__/aMediatorReadsHisOwnName.test.ts
++++ b/src/services/__tests__/aMediatorReadsHisOwnName.test.ts
+@@ -47,3 +47,23 @@ describe('targetNameForMediator', () => {
+     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
+   });
+ });
++
++/**
++ * 3895 (IN-023, 2 of 2): the helper's card said „ბახვა გამოგონილს" for the man she
++ * saved as „Baxva Gamogonili". findContactPhonesByName returns bare digits and
++ * nameInBridgeBook compared them with the stored „+…" form, so it never matched.
++ */
++describe('nameInBridgeBook, read for the number in either form', () => {
++  it('compares the numbers as digits', () => {
++    // eslint-disable-next-line @typescript-eslint/no-require-imports
++    const { readFileSync } = require('fs') as typeof import('fs');
++    // eslint-disable-next-line @typescript-eslint/no-require-imports
++    const { join } = require('path') as typeof import('path');
++    const src = readFileSync(join(__dirname, '..', 'bridgePicker.ts'), 'utf8');
++    const fn = src.slice(src.indexOf('export async function nameInBridgeBook'));
++    expect(fn.slice(0, 1200)).toContain(
++      "AND regexp_replace(ua.phone, '\\\\D', '', 'g') = regexp_replace($2, '\\\\D', '', 'g')",
++    );
++    expect(fn.slice(0, 1200)).not.toContain('AND ua.phone = $2');
++  });
++});
+diff --git a/src/services/bridgePicker.ts b/src/services/bridgePicker.ts
+index 4479ed7..61c0fad 100644
+--- a/src/services/bridgePicker.ts
++++ b/src/services/bridgePicker.ts
+@@ -235,7 +235,10 @@ export async function nameInBridgeBook(
+        FROM "UserAlias" ua
+        LEFT JOIN "UserPhone" up ON up.phone = ua.phone
+        LEFT JOIN "User" u ON u.id = up."userId"
+-      WHERE ua."contactId" = $1::int AND ua.phone = $2
++      WHERE ua."contactId" = $1::int
++        -- 3895: callers pass the stored „+…" form or bare digits (findContactPhonesByName);
++        -- compared as digits, so the bridge's own name is found either way.
++        AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+         AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+       ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
+       LIMIT 1`,
+-- 
+2.43.0
+

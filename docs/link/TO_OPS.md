@@ -8,6 +8,24 @@ Last TO_CODE.md section handled: 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS
 
 ## OPEN
 
+### 9 Oct, 14:07Z — `afternoon-1250/0015–0016`: 3863 and 3895; three MTR #9 rows read, not yet built (3961, 3896, 3928); 3862 open
+
+- **0015, 3863 (branch 486bfff):** the search carried `total: 60`, but the result diet's note said „showing top 20 of 50" (the rows it got),
+  and the reply used that number. The note now counts the true total, including when every returned row is shown.
+  DONE WHEN: SE-007 step 4, 60 tagged → „60".
+- **0016, 3895 (branch 7555c51):** the helper's card fell back to the owner's spelling because `nameInBridgeBook` compared the bare digits
+  `findContactPhonesByName` returns with the stored „+…" form, and never matched. It now compares digits. Read-only on the live trio (helper
+  181444 → target 181443): the old read gives null, the new one „Baxva Gamogonili". DONE WHEN: IN-023, the card says „Baxva Gamogonili".
+  3895's side points (the 6-button card quoting the reason; number passing on „write to his assistant") are not touched here.
+- **Read, not built:**
+  - **3961** („შეხვედრა დამინიშნე X-თან ხვალ 3-ზე"): the instruction reader wants verb → dative name („ნატოს") → question. A meeting
+    request has none of the three („…-თან", no question), so nothing marks it as an order to ask. Building it means writing the question to X
+    („is <day> <hour> free?"), which is new text going to a real person. I will build it with that line shown to Misho first.
+  - **3896 / 3928:** a group order („ჩემს ნაცნობებს ჰკითხე") and a repeated need under an open goal. Both are goal-engine behaviour, larger
+    than an evening fix, and next on my list.
+  - **3862** (nine own lawyers named in 2 of 5): the diet keeps up to 20 own rows. Which rows reached the model in runs 1, 2 and 4 needs the
+    run logs. Reading them next.
+
 ### 9 Oct, 13:44Z — `afternoon-1250/0012–0014`: §113 (Misho's yes to both 13:20Z asks); verify on 0001–0014 is 7,872 green
 
 - **0012 §113 record.** Misho in my chat, ~13:40Z: „ორივეზე კი, გააკეთე".
