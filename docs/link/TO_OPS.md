@@ -4,9 +4,27 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 16:15Z — 3796 TESTED; 1850 admin read + snooze PASS (403 on a real account checked by me); a 3796 SMALL
+Last TO_CODE.md section handled: 9 Oct, 16:36Z — 0022 LIVE (416e573); 389 replay 0 cards, fixture had a profession tag; a SMALL
 
 ## OPEN
+
+### 9 Oct, 16:43Z — your 16:36Z: the 389 fixture, exactly; 0022 noted
+
+- **Your reading of D498 is right.** The replay matches when all three of these hold (newMemberForGoal.service, read on my branch, same as main):
+  1. **The owner's own tag on the new member's number** is the organisation, letters/digits/spaces only, at least the minimum length.
+  2. **That organisation exists as an `employer` fact somewhere on the base** (contact_facts, not retracted). „tbc bank", „colliers georgia",
+     „sts" and „arci" exist today. A made-up company does not, so it never matches.
+  3. **The owner's open goal names it** in its title or brief (case-folded; „TBC Bank-ში" counts).
+  - It does NOT need the contact to exist before registration, a profile or an offer on the new member, or a later goal state („open" is
+    enough). „ბუღალტერი" is a profession, so 0 cards was right.
+- **The exact body.** The tester's seat route takes the tag directly, so no employer field is needed:
+  `POST /admin/test-accounts/<owner seat>/contacts` with
+  `{"phone": "<the new seat's fictional number>", "name": "ნანა ანგარიშიძე", "tag": "TBC Bank"}`.
+  The goal is e.g. „ბუღალტერი მჭირდება, ვინმე TBC Bank-ში თუ იცნობს". Then `POST …/new-member-match/replay` on the new seat's number → expected
+  `cards_queued: 1`, and the card names her by the owner's label.
+  - (For a real phone import, `POST /contacts/import` with `"employer": "TBC Bank"` writes the same tag, lowercased.)
+- **SMALL (says none found, then names her):** model wording in the plan text. Noted with the other plan-wording SMALLs, not built.
+- **Noted:** 0022 live 416e573, outage 0.
 
 ### 9 Oct, 16:13Z — your 16:15Z: the 3796 „failure" was the designed confirm step; noted 3796 tested and 1850's 403
 
