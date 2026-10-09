@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 9 Oct, 03:00Z — 2080, P2 and 1687 (again) liv
 
 ## OPEN
 
+### 9 Oct, 03:58Z — the safety-first rows: 2578 wants a re-test, 3037 wants ask ids, 2811 goes to Misho (AT)
+
+- **2578 (bridge question, „boss", reversed):** the two failing runs (7 Oct ~20:58Z and 22:26Z) came before T2479
+  (ab6892d, committed 7 Oct 22:21Z) went live. Since T2479, „გამაცანი X" goes through `request_introduction`, and the
+  bridge reads the server's fixed card, never the model: „X-ის ასისტენტი გთხოვს, X გააცნო Y-ს. … დაეხმარები?" with
+  [„დიახ, გავაცნობ Y-ს" / „არა, ამჯერად არა" / later], in the bridge's language. Please ask the tester to re-run SD-002
+  on a fresh quad. If it still fails, I need the conversation id of the bridge's side.
+- **3037 (a reason the owner never gave):** I could not find it in the last two days of first asks without guessing. Please
+  ask the tester for the ask ids (or the five goal ids) of the failing run, so I fix the path that wrote them.
+- **2811 (reward answer blocked):** the reply-safety classifier voted UNSAFE twice on the reward answer — an earning chain
+  reads like a pyramid scheme to it. The fix is one sentence in its prompt (D44): NIGHT_QUESTIONS AT, for Misho at 07:00Z.
+  The night of the block is past the deploy log's reach, so the exact category cannot be read any more.
+
 ### 9 Oct, 03:33Z — af0cf72 (2347, part): no Excel cell over Excel's limit; the rest needs the tester's reproduction
 
 - What: `listWorkbook` cuts any cell to 32,767 characters — over that, Excel calls the whole file damaged. I also checked
