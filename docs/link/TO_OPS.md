@@ -4,9 +4,41 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, board 4060), alone, outage 0
+Last TO_CODE.md section handled: 9 Oct, 19:55Z — BIG from the founder: the research method for people (D757–D764), board 4126; 0034 ships ~19:55Z; 3994 asked
 
 ## OPEN
+
+### 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `0035` (3928 run 2), `0036` (4093, a no closes the asking); answers on 4060 (a), C, 4094, 4126, 0032
+
+**Ship, each alone, after 0033/0034.** Both apply cleanly on live main 940d064 without 0032. `npm run verify` is green on the whole line (8,017 tests).
+
+- **`0035` — 3928 run 2 (P2).** Root cause (conv 48361): in „…აბაზანაში მილი **გამდის**. ჰკითხე ირაკლი ტესტაძეს და მამუკა ტესტაძეს.", the person-before-the-verb reading (#961, „ნინოს ჰკითხე") took „გამდის", the last word of the previous sentence, as the person, because it ends in „-ს". No contact by that name exists, so the server's own send found nobody. The repeat-goal wall had already refused the model's searches. Now a word that ends its sentence or clause is never the verb's person. The repeat wall was not the cause: run 1's line simply had no „-ს" verb before „ჰკითხე".
+  DONE WHEN: 3928 run 2 (first goal still working, „…გამდის. ჰკითხე X-ს და Y-ს.") on 2 fresh pairs, where both are asked and the owner gets one line per person.
+- **`0036` — 4093 (P2).** Two causes:
+  - „არ მცალია დამანებე თავი" was not read as a decline.
+  - Nothing ever read `declined_at` before sending again.
+
+  Now:
+  - busy and „leave me alone" lines are typed declines (ka/en/ru/es);
+  - for 48 hours, any new question or follow-up from that asker to that person is refused (`declined_recently`);
+  - the reminder sweep skips that person too.
+
+  Only the owner naming the person again himself passes. The asker is told once, by the existing decline path. The refusal is a server tool message, not prompt text.
+  DONE WHEN: as filed, a helper answers „არ მცალია, დამანებე თავი" and gets 0 follow-ups and 0 reminders in 48h, and the asker is told once (2 of 2).
+
+**For the tester:**
+- **4060 (a):** the thanks went out with no card, which is all D756 rules on. „ამით საქმე გადაწყდა?" is a separate rule: a goal closes only on the owner's word (finish_task refused „NOT CLOSED"). „It helped" is not the same as „it is solved". If Tornike wants „X-ის პასუხი დამეხმარა" to close the goal as well, that is a new ruling for him. Until then, (a)–(c) pass and 4060 can be tested.
+- **C:** no code path adds „უბრალოდ მიპასუხე ამ თრედში, პასუხს მე გადავცემ." On main it appears only in a comment in askOpening.ts that records its removal. A reminder re-sends the question as it was **stored when first sent** (`shown_question`), so only an ask first sent before 7 Oct can still carry it in a reminder. Giorgi's 5 Oct screen was one of those.
+- **3961 SMALL** (the run 1 helper text had no verb): that is the editor's wording on one run. I am noting it, not building for it, unless it repeats.
+
+**For Misho (I am asking him in my chat):**
+- **0032 (3568):** no approval § exists. I handed it to you as a plain fix without asking him; that was my miss. Please keep it held until he says yes to the four texts.
+- **4094:** two causes, both mine to fix once he approves wording:
+  - The „Ally" is not our text. It is Giorgi's own saved label for Lika. Since #1918 the reminder uses the recipient's label, while the thread header uses the registered name, so the two names differ.
+  - The reminder and follow-up sentences are fixed texts (`askReminderLine`, runLanguage.ts `askReminder`), and new wording goes to a real person.
+
+  I will put both to Misho: one name in both places, and new natural wording.
+- **4126 (BIG, research method):** I will draw up the exact scope for Misho (fields, list-people storage, removal page, prompt texts) as a separate note before building anything.
 
 ### 9 Oct, 19:46Z — `afternoon-1250/0034`: `GET /status/assistant`, the frontend's „online" dot (D699, their TO_BACKEND 19:30Z)
 

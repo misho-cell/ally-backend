@@ -1,0 +1,241 @@
+From a1d9de2c2af006c1751e50e639daec8f906a1543 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 20:01:54 +0000
+Subject: [PATCH 36/36] =?UTF-8?q?fix(asks):=20a=20no=20=E2=80=94=20busy,?=
+ =?UTF-8?q?=20=E2=80=9Eleave=20me=20alone"=20=E2=80=94=20closes=20the=20as?=
+ =?UTF-8?q?king=20for=20two=20days=20(4093)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder's find, from Giorgi's real account: he answered
+„არ მცალია დამანებე თავი" on 6 October; the asker's assistant sent him
+another question on the 7th and a reminder on the 9th.
+
+Two causes. That line was not read as a decline, so it was stored as a
+plain answer. And no decline ever stopped the next ask: declined_at was
+recorded and nothing read it before sending again.
+
+- Busy and „leave me alone" lines are typed declines (ka/en/ru/es):
+  არ მცალია, დამანებე თავი, მომეშვი, ნუ მწერ, leave me alone, I'm busy,
+  not interested, отстань, не пиши, déjame en paz, estoy ocupado/a. A line
+  that carries something („…მაგრამ ხვალ დაგირეკავ") stays an answer.
+- createAsk refuses any new question or follow-up from an asker to a person
+  who declined that asker in the last 48 hours (reason declined_recently).
+  The model is told to tell the owner calmly and move on. Only the owner
+  naming the person again himself passes.
+- The reminder sweep skips that person too.
+
+The asker is still told once, by the decline path that already exists.
+
+DONE WHEN: a helper answers „არ მცალია, დამანებე თავი" → 0 follow-ups and
+0 reminders in 48h, and the asker is told once (2 of 2).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 09e7a1d1038b2819035d4d4cdda924a842ade06d)
+---
+ .../__tests__/aNoClosesTheAsking.test.ts      | 57 +++++++++++++++++++
+ .../__tests__/nobodyIsWokenAtFive.test.ts     |  2 +-
+ src/services/taskAsks.service.ts              | 54 +++++++++++++++++-
+ src/services/typedDecline.ts                  | 14 +++++
+ 4 files changed, 125 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/aNoClosesTheAsking.test.ts
+
+diff --git a/src/services/__tests__/aNoClosesTheAsking.test.ts b/src/services/__tests__/aNoClosesTheAsking.test.ts
+new file mode 100644
+index 0000000..faeeb14
+--- /dev/null
++++ b/src/services/__tests__/aNoClosesTheAsking.test.ts
+@@ -0,0 +1,57 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { isTypedDecline } from '../typedDecline';
++import { DECLINE_QUIET_HOURS } from '../taskAsks.service';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++/**
++ * 4093 (the founder's find): „არ მცალია დამანებე თავი" was stored as an
++ * answer, and the same asker's assistant then sent another question and a
++ * reminder. Busy or „leave me alone" is a no, and a no closes the asking.
++ */
++describe('busy or „leave me alone" is a decline', () => {
++  it.each([
++    'არ მცალია დამანებე თავი',
++    'არ მცალია',
++    'თავი დამანებე',
++    'მომეშვი რა',
++    'ნუ მწერ',
++    'Leave me alone',
++    "I'm busy",
++    'Not interested',
++    'Отстань',
++    'Déjame en paz',
++  ])('„%s"', (line) => {
++    expect(isTypedDecline(line)).toBe(true);
++  });
++
++  it('a busy line that still carries something stays an answer', () => {
++    expect(isTypedDecline('არ მცალია, მაგრამ ხვალ 10-ზე დაგირეკავ')).toBe(false);
++  });
++});
++
++describe('nothing more goes to somebody who said no', () => {
++  const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++
++  it('quiets the same asker for two days', () => {
++    expect(DECLINE_QUIET_HOURS).toBe(48);
++  });
++
++  it('refuses a new question or follow-up from the same asker unless the owner named them', () => {
++    const guard = asks.slice(asks.indexOf('// 4093: somebody who just said no'));
++    expect(guard.slice(0, 600)).toContain(
++      'fromOwnersLine !== true && (await declinedThisAskerRecently(fromUserId, toUserId))',
++    );
++    expect(guard.slice(0, 600)).toContain("reason: 'declined_recently'");
++    const read = asks.slice(asks.indexOf('async function declinedThisAskerRecently('));
++    expect(read.slice(0, 700)).toContain('from_user_id = $1::int AND to_user_id = $2');
++    expect(read.slice(0, 700)).toContain('declined_at > NOW() - make_interval(hours => $3)');
++  });
++
++  it('sends no reminder to them either', () => {
++    const due = asks.slice(asks.indexOf('export async function sendDueAskReminders('));
++    expect(due.slice(0, 1800)).toContain('d.declined_at > NOW() - make_interval(hours => $2)');
++    expect(due.slice(0, 3000)).toContain('[limit, DECLINE_QUIET_HOURS]');
++  });
++});
+diff --git a/src/services/__tests__/nobodyIsWokenAtFive.test.ts b/src/services/__tests__/nobodyIsWokenAtFive.test.ts
+index ae5083f..0b1e49b 100644
+--- a/src/services/__tests__/nobodyIsWokenAtFive.test.ts
++++ b/src/services/__tests__/nobodyIsWokenAtFive.test.ts
+@@ -44,7 +44,7 @@ describe('a reminder at night', () => {
+   it('marks reminded_at in the same statement that selects them', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+     const at = asks.indexOf('export async function sendDueAskReminders');
+-    const fn = asks.slice(at, at + 1400);
++    const fn = asks.slice(at, at + 1900);
+ 
+     expect(fn).toContain('UPDATE task_asks SET reminded_at = NOW()');
+     expect(fn).toContain('RETURNING ask_thread_id, to_user_id');
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index d204eb0..f54c07c 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -213,6 +213,8 @@ export type AskRefusalReason =
+   | 'ask_fatigue_budget_exhausted'
+   | 'person_daily_relay_limit_reached'
+   | 'duplicate_ask_in_flight'
++  /** 4093: the recipient said no to this asker within the last two days. */
++  | 'declined_recently'
+   /** 1688 (A5): two assistant-only rounds with this person already — the owner answers now. */
+   | 'owner_must_answer'
+   /**
+@@ -1198,6 +1200,14 @@ async function createAskNow(
+     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
+   }
+ 
++  // 4093: somebody who just said no to this asker gets nothing more from them —
++  // no follow-up, no new question — unless the owner names them again himself.
++  if (fromOwnersLine !== true && (await declinedThisAskerRecently(fromUserId, toUserId))) {
++    // eslint-disable-next-line no-console
++    console.log(`[ask] task ${taskId}: refused — the recipient declined this asker recently`);
++    return { sent: false, reason: 'declined_recently', error: declinedRecently(toName) };
++  }
++
+   // The brake on the RECEIVING side (D134, 8 Sep): however many people want
+   // to ask, one person's phone takes at most this many NEW questions a day
+   // from everyone together — the founder's „two messages to the same person".
+@@ -3744,6 +3754,42 @@ const DUPLICATE_ASK_WINDOW_SECONDS = 600;
+ // One polite reminder per unanswered ask, after this long.
+ const ASK_REMINDER_AFTER_HOURS = 48;
+ 
++/**
++ * 4093 (the founder's find, Giorgi's account): he answered „არ მცალია
++ * დამანებე თავი" on 6 October, and the asker's assistant sent him another
++ * question on the 7th and a reminder on the 9th. A no closes the asking for
++ * that person: nothing more from the same asker for two days, on any goal.
++ */
++export const DECLINE_QUIET_HOURS = 48;
++
++/** False when it cannot be read: a failed read must not silence every ask. */
++async function declinedThisAskerRecently(fromUserId: string, toUserId: number): Promise<boolean> {
++  try {
++    const result = await query<{ declined: boolean }>(
++      `SELECT EXISTS (
++         SELECT 1 FROM task_asks
++          WHERE from_user_id = $1::int AND to_user_id = $2
++            AND declined_at > NOW() - make_interval(hours => $3)
++       ) AS declined`,
++      [fromUserId, toUserId, DECLINE_QUIET_HOURS],
++      ASK_QUERY_TIMEOUT_MS,
++    );
++    return result.rows[0]?.declined === true;
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error('[ask] recent decline not read:', (err as Error).message);
++    return false;
++  }
++}
++
++function declinedRecently(toName: string): string {
++  return (
++    `არ გაიგზავნა: ${toName} ცოტა ხნის წინ ამ მფლობელის კითხვაზე უარით უპასუხა — მას ახლა ` +
++    'აღარაფერი მისწერო, არც შეხსენება, არც ახალი კითხვა. მფლობელს მშვიდად უთხარი, რომ ' +
++    'ახლა ვერ ახერხებს, და გააგრძელე სხვა ადამიანებით.'
++  );
++}
++
+ /**
+  * WHEN A REMINDER GOES — Giorgi's decision G-002, Misho's word on 2 October.
+  *
+@@ -3821,6 +3867,12 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
+      WHERE id IN (
+        SELECT id FROM task_asks
+        WHERE status = 'sent' AND reminded_at IS NULL
++         -- 4093: no reminder to somebody who has just said no to this asker.
++         AND NOT EXISTS (
++           SELECT 1 FROM task_asks d
++            WHERE d.from_user_id = task_asks.from_user_id
++              AND d.to_user_id = task_asks.to_user_id
++              AND d.declined_at > NOW() - make_interval(hours => $2))
+          -- ROW 300, then #1684 (A1/A3): a „later" tap holds the one reminder
+          -- until the date the later named (three days when it named none);
+          -- an ask nobody tapped keeps its 48 hours from the question.
+@@ -3836,7 +3888,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
+      )
+      RETURNING ask_thread_id, to_user_id, question, shown_question, choices,
+                ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
+-    [limit],
++    [limit, DECLINE_QUIET_HOURS],
+     ASK_QUERY_TIMEOUT_MS,
+   );
+   for (const row of due.rows) {
+diff --git a/src/services/typedDecline.ts b/src/services/typedDecline.ts
+index afdd086..307c85f 100644
+--- a/src/services/typedDecline.ts
++++ b/src/services/typedDecline.ts
+@@ -22,6 +22,20 @@ const REFUSAL_RE = new RegExp(
+     'ვერ\\s+გეტყვი',
+     'ვერავის\\s+(?:ვიცნობ|გირჩევ|გეტყვი)',
+     'არავინ\\s+(?:მყავს|ვიცი|მახსენდება)',
++    // 4093: busy, or „leave me alone", closes the asking too.
++    'არ\\s+მცალია',
++    'დამანებე\\s+თავი',
++    'თავი\\s+დამანებე',
++    'მომეშვი',
++    'ნუ\\s+მწერ',
++    'leave\\s+me\\s+alone',
++    "(?:i['’]?m|i\\s+am)\\s+(?:too\\s+)?busy",
++    'not\\s+interested',
++    'отстань',
++    'не\\s+пиши',
++    'мне\\s+некогда',
++    'déjame\\s+en\\s+paz',
++    'estoy\\s+ocupad[oa]',
+     'no\\s+idea',
+     "(?:don['’]?t|do\\s+not)\\s+know",
+     "can['’]?t\\s+help",
+-- 
+2.43.0
+

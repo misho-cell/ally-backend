@@ -1,0 +1,85 @@
+From 962ec61ee10e8b603a60cb27ae5d07f30d20e5f0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 19:57:47 +0000
+Subject: [PATCH 35/36] =?UTF-8?q?fix(asks):=20the=20sentence=20before=20?=
+ =?UTF-8?q?=E2=80=9Eask=20X=20and=20Y"=20never=20lends=20the=20verb=20its?=
+ =?UTF-8?q?=20person=20(3928=20run=202)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester #13 (box 49207, conv 48361): „სანტექნიკოსი მჭირდება საბურთალოზე,
+აბაზანაში მილი გამდის. ჰკითხე ირაკლი ტესტაძეს და მამუკა ტესტაძეს." — nobody
+was asked and the owner read „კითხვა არ გაიგზავნა". The person-before-the-verb
+reading (#961, „ნინოს ჰკითხე") took „გამდის", the last word of the previous
+sentence, as the person: it ends in „-ს". No contact „გამდი" exists, so the
+server's own send found nobody, and the repeat-goal wall had already
+refused the model's searches.
+
+A word that ends its sentence or clause (. , ! ? ; : …) is not the verb's
+person. The two named helpers are read after the verb, and the need before
+it is what they are asked.
+
+DONE WHEN: 3928 run 2 (first goal still working, „…გამდის. ჰკითხე X-ს და
+Y-ს.") on 2 fresh pairs — both asked, one line per person to the owner.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 7dc5dfc19ce385c3ccccb8a5d18122a5fec5f8b4)
+---
+ src/services/__tests__/goalIntent.test.ts | 11 +++++++++++
+ src/services/goalIntent.ts                | 13 +++++++++++--
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/goalIntent.test.ts b/src/services/__tests__/goalIntent.test.ts
+index f00210a..2124b53 100644
+--- a/src/services/__tests__/goalIntent.test.ts
++++ b/src/services/__tests__/goalIntent.test.ts
+@@ -307,6 +307,17 @@ describe('an instruction that names several people', () => {
+     ]);
+   });
+ 
++  it('never takes the last word of the sentence before the verb as the person (3928 run 2)', () => {
++    const line =
++      'სანტექნიკოსი მჭირდება საბურთალოზე, აბაზანაში მილი გამდის. ჰკითხე ირაკლი ტესტაძეს და მამუკა ტესტაძეს.';
++    expect(instructionNames(line)).toEqual(['ირაკლი ტესტაძე', 'მამუკა ტესტაძე']);
++    expect(instructionNeed(line)).toBe('სანტექნიკოსი მჭირდება საბურთალოზე, აბაზანაში მილი გამდის.');
++    expect(instructionNames('პრობლემა მაქვს, ჰკითხე ნიკას იცნობს თუ არა ხელოსანს')).toEqual([
++      'ნიკა',
++    ]);
++    expect(instructionNames('გიას ვთხოვ ამ კვირაში შეხვედრის დანიშვნას')).toEqual(['გია']);
++  });
++
+   it('keeps one name and its question when a comma opens the question', () => {
+     const line = 'ჰკითხე გიგა ტესტაძეს, იცნობს თუ არა კარგ ნოტარიუსს';
+     expect(instructionNames(line)).toEqual(['გიგა ტესტაძე']);
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index b6f3d11..70c00fe 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -687,11 +687,20 @@ function clauseOrNull(text: string): string | null {
+  * verb, and only in the dative (-ს) a person takes there: the 1101 note above
+  * is why the rest of the line before the verb stays out.
+  */
++/**
++ * 3928 run 2 (seat 182043, conv 48361): „…აბაზანაში მილი გამდის. ჰკითხე X-ს
++ * და Y-ს." read the verb „გამდის" as the person, so nobody was asked. A word
++ * the previous sentence or clause ends on is not the verb's person.
++ */
++const CLAUSE_END_RE = /[.,!?;:…]$/u;
++
+ function datedNameBefore(beforeVerb: string): string {
+   const words = beforeVerb.trim().split(/\s+/u);
+-  const last = (words[words.length - 1] ?? '').replace(/[^\p{L}]+$/gu, '');
++  const lastRaw = words[words.length - 1] ?? '';
+   // A verb glued to its prefix („ვთხოვ") leaves the person as the word before.
+-  const word = last === 'ვ' || last === '' ? (words[words.length - 2] ?? '') : last;
++  const raw = lastRaw === 'ვ' || lastRaw === '' ? (words[words.length - 2] ?? '') : lastRaw;
++  if (CLAUSE_END_RE.test(raw)) return '';
++  const word = raw.replace(/[^\p{L}]+$/gu, '');
+   return /^\p{Script=Georgian}{2,}ს$/u.test(word) ? word.slice(0, -1) : '';
+ }
+ 
+-- 
+2.43.0
+
