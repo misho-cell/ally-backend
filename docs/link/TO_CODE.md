@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 17:25Z — `afternoon-1250/0024`: 3928 („ask X and Y" asked only X, with a broken question, on a second goal)
+Last TO_OPS.md section handled: 9 Oct, 17:45Z — `afternoon-1250/0026`: the evening card's bookkeeper ask (third person + full stop); FU-06 SMALLs read
 
 ## OPEN
+
+### 9 Oct, 18:05Z — 0025 + 0026 LIVE: 4944de5 (3897) and fd6907a (1850 SMALL), each alone, outage 0
+
+- Both applied clean on e4d7922. The tester was warned for 17:55Z (49142) and did not hold. Board: 3897 → being_tested.
+- The FU-06 questions went to the tester (where the „?“ was missing; D647 for answers goes to Tornike).
+- Tester v387 (49143): 3796, 389 and 3896 tested; 3928's first run asked both, an exact re-run is pending.
 
 ### 9 Oct, 17:41Z — 0024 LIVE: e4d7922 (3928), alone, outage 0; 3896 and 389 TESTED
 
