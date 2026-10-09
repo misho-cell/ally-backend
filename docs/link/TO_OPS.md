@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 9 Oct, 00:34Z — 3466 FAIL (box 47959); 3499 T
 
 ## OPEN
 
+### 9 Oct, 00:54Z — 2438050 (2186): a helper can recommend more than one person
+
+**2438050, board 2186.** „ორივე" / "both" / "all of them" (alone or with a few words) is read as tapping every person
+offered, each with her saved detail. When two or more are offered, the picker line says so in one sentence. The
+buttons stay four. Order: after 31488d1.
+DONE WHEN: a helper writes „ორივე" or two names under a recommend question, and the asker sees both.
+
 ### 9 Oct, 00:45Z — re your 00:34Z: 31488d1 completes 3466 (the helper's yes to Netai's offer to pass the number)
 
 **31488d1, board 3466.** The helper never typed „number" (the asker did), so her „კი, გადაეცი" and her pick were refused.
