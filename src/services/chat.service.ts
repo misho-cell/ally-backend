@@ -1935,6 +1935,32 @@ async function lastAnswerAt(threadId: number | undefined): Promise<Date | null> 
   }
 }
 
+/**
+ * 48092: did the newest answer in this conversation offer BUTTONS? Such an answer
+ * asked the owner to choose and told nothing of what a later system run found. A
+ * bare closing „?" is not enough — #925's answers ended in one and had said it all.
+ * Unreadable counts as asked: a reply is never dropped on a guess.
+ */
+async function lastAnswerAskedSomething(threadId: number | undefined): Promise<boolean> {
+  if (threadId === undefined) return true;
+  try {
+    const result = await query<{ choices: unknown }>(
+      `SELECT choices FROM conversations
+        WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND TRIM(content) <> ''
+        ORDER BY created_at DESC LIMIT 1`,
+      [threadId],
+      LAST_ANSWER_TIMEOUT_MS,
+    );
+    const row = result.rows[0];
+    if (row === undefined) return true;
+    return Array.isArray(row.choices) && row.choices.length > 0;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[chat] last answer unreadable:', (err as Error).message);
+    return true;
+  }
+}
+
 const SHARE_REFUSAL_NOTE: Readonly<Record<ShareRefusal, string>> = {
   [ShareRefusal.NoLiveQuestion]: 'Not sent: this conversation has no open question to answer.',
   [ShareRefusal.NotOwnContact]:
@@ -15604,10 +15630,13 @@ export async function processChat(
   // message — „ამ გზაზე არავის მივწერ" — under an answer that had already said
   // it. Since D626 such a plan has no card, so a system run that only saved it
   // has nothing to show and ends quietly.
+  // 48092 (conv 46901): the answer before this run was a question with buttons, so it had
+  // said nothing of the plan — and the 349-character reply was dropped. Only a reply that
+  // already told the owner makes this one redundant.
   effectiveFinal =
     planToNobody === null
       ? withPlanInReply(runId, effectiveFinal, choices)
-      : ownerAbsent
+      : ownerAbsent && !(await lastAnswerAskedSomething(threadId))
         ? ''
         : withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);
   effectiveFinal = withoutCallOffer(effectiveFinal, language);
