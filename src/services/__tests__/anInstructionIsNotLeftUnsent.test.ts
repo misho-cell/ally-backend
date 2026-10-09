@@ -67,6 +67,12 @@ describe('an owner instruction left unsent', () => {
     expect(chat).toMatch(/helperQuestionUnsent \|\|\s+instructionUnsent \|\|/u);
   });
 
+  it('is never called unsent when this run sent an ask on another goal (4159, conv 48452)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const guard = chat.slice(chat.indexOf('const instructionUnsent ='));
+    expect(guard.slice(0, 900)).toContain('!runAskSent.has(runId) &&');
+  });
+
   it('says plainly that nothing went when the second chance sent nothing either', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     // §97: the server first asks the one named contact; only then the plain line.

@@ -13454,6 +13454,9 @@ async function runToolLoop(
     !claimedAnAskNobodyGot &&
     !introductionQuestion &&
     !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
+    // 4159 (conv 48452): the ask went out on a goal the run opened in another
+    // conversation, so this one's goals hold nothing — but this run DID send.
+    !runAskSent.has(runId) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
   if (instructionUnsent) {
     // eslint-disable-next-line no-console
