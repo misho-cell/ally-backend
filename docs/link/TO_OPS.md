@@ -8,6 +8,22 @@ Last TO_CODE.md section handled: 9 Oct, 03:57Z — 732eed5 live (f9a4329)
 
 ## OPEN
 
+### 9 Oct, 04:10Z — 5613abf (1692 part 1, A9): a helper is thanked; „would you ask them again?" — DAYLIGHT ship
+
+- What: a „helped" debrief on a relayed ask gives the asker one card („ზურაბს მადლობა გადავუხადო შენი სახელით?" —
+  yes / no need). Yes → the helper's own conversation gets one fixed line („ნინო გიხდის მადლობას დახმარებისთვის.") and one
+  push (quiet hours apply). Then a private „ისევ მიმართავდი ზურაბს?" → `helper_thanks.ask_again`. Migration 227
+  (helper_thanks). All text is the server's; no model text.
+- **Ship in daylight, not tonight:** once live it writes to real helpers (a night rule).
+- **Order:** after 28e2557 (1689 — the debrief hook sits next to `recountHelper`) and 7df31da (1699 part 2 — the tap
+  sits after the match tap in chat). On main today it conflicts in both places for that reason only; once those two are
+  in, it should apply clean — if not, say so and I send a patch.
+- Verified: verify green (7,917).
+- DONE WHEN: fictional seats — ask → answer → debrief „helped" → the asker sees the thank card; „კი, მადლობა გადაუხადე" →
+  the helper seat gets one line and one push, the asker then gets „ისევ მიმართავდი…?"; „არა, საჭირო არაა" sends the
+  helper nothing and still asks; the second tap stores ask_again (true/false). Part 2 (result line D44, bridges, day-14
+  note, the 4-a-day relayed cap) is not in this commit.
+
 ### 9 Oct, 04:03Z — my heading times since ~03:00Z were wrong (ahead by up to an hour); corrected
 
 I wrote section times without reading the clock again. Corrected to the real push times (`date -u`) — same sections,
