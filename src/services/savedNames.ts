@@ -60,18 +60,23 @@ function editDistance(a: string, b: string): number {
   return row[b.length];
 }
 
-function sameWord(written: string, saved: string): boolean {
+/** How far a written word drifts from a saved one, or null when they are not the same word. */
+function wordDrift(written: string, saved: string): number | null {
   const a = nameKey(written);
   const b = nameKey(saved);
-  if (a === '' || b === '') return false;
-  if (a === b) return true;
-  return Math.min(a.length, b.length) >= DRIFT_FROM_CHARS && editDistance(a, b) <= MAX_WORD_DRIFT;
+  if (a === '' || b === '') return null;
+  if (a === b) return 0;
+  if (Math.min(a.length, b.length) < DRIFT_FROM_CHARS) return null;
+  const drift = editDistance(a, b);
+  return drift <= MAX_WORD_DRIFT ? drift : null;
 }
 
 interface Found {
   readonly start: number;
   readonly end: number;
   readonly saved: string;
+  /** The words' summed spelling drift from the saved name: 0 is the same spelling. */
+  readonly drift: number;
 }
 
 function spellingsOf(reply: string, saved: string): Found[] {
@@ -90,16 +95,43 @@ function spellingsOf(reply: string, saved: string): Found[] {
     if (!joined) continue;
     const written = reply.slice(window[0].start, window[window.length - 1].end);
     if (hasGeorgian(written) === hasGeorgian(saved)) continue;
-    if (window.every((w, k) => sameWord(w.text, savedWords[k]))) {
-      found.push({ start: window[0].start, end: window[window.length - 1].end, saved });
+    const drifts = window.map((w, k) => wordDrift(w.text, savedWords[k]));
+    if (drifts.every((d): d is number => d !== null)) {
+      const drift = drifts.reduce((sum, d) => sum + d, 0);
+      found.push({ start: window[0].start, end: window[window.length - 1].end, saved, drift });
     }
   }
   return found;
 }
 
+/**
+ * 3862 (SE-011, seat 181407, runs 1 and 4): „მაკა ადვოკატი" sits two letters
+ * from „Nika advokati" as well as none from „Maka advokati", and the first
+ * name in the list took the span — so Maka was shown as Nika, twice over.
+ * One span, one name: the closest saved spelling wins, and when two are
+ * equally close the reply's own words stay, because guessing names the wrong
+ * person.
+ */
+function closestPerSpan(found: readonly Found[]): Found[] {
+  const bySpan = new Map<string, Found[]>();
+  for (const f of found) {
+    const key = `${f.start}:${f.end}`;
+    bySpan.set(key, [...(bySpan.get(key) ?? []), f]);
+  }
+  const kept: Found[] = [];
+  for (const candidates of bySpan.values()) {
+    const least = Math.min(...candidates.map((c) => c.drift));
+    const closest = candidates.filter((c) => c.drift === least);
+    if (new Set(closest.map((c) => c.saved)).size === 1) kept.push(closest[0]);
+  }
+  return kept;
+}
+
 /** The reply with every other-alphabet spelling of a found name put back as saved. */
 export function withNamesAsSaved(reply: string, names: readonly string[]): string {
-  const found = names.flatMap((name) => spellingsOf(reply, name)).sort((a, b) => b.start - a.start);
+  const found = closestPerSpan(names.flatMap((name) => spellingsOf(reply, name))).sort(
+    (a, b) => b.start - a.start,
+  );
   let out = reply;
   let floor = Number.POSITIVE_INFINITY;
   for (const f of found) {

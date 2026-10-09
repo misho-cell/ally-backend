@@ -45,6 +45,34 @@ describe('a name is shown as saved', () => {
   });
 });
 
+/** 3862 (SE-011, seat 181407): nine own lawyers, two of them a letter pair apart. */
+const LAWYERS = savedNamesIn({
+  results: [
+    { name: 'Nika advokati', saved_as: 'Nika advokati' },
+    { name: 'Maka advokati', saved_as: 'Maka advokati' },
+    { name: 'Sopo advokati', saved_as: 'Sopo advokati' },
+  ],
+});
+
+describe('the closest saved name wins', () => {
+  it('puts Maka back as Maka, even when Nika comes first in the list', () => {
+    expect(withNamesAsSaved('გყავს ნიკა ადვოკატი და მაკა ადვოკატი.', LAWYERS)).toBe(
+      'გყავს Nika advokati და Maka advokati.',
+    );
+  });
+
+  it('keeps the reply’s own words when two saved names are equally close', () => {
+    const reply = 'გყავს ტიკა ადვოკატი.';
+    expect(withNamesAsSaved(reply, ['Nika advokati', 'Mika advokati'])).toBe(reply);
+  });
+
+  it('still puts back a drifted spelling when only one saved name is near', () => {
+    expect(withNamesAsSaved('გყავს მაიკ სემპლი.', ['Mike Sample', 'Nika advokati'])).toBe(
+      'გყავს Mike Sample.',
+    );
+  });
+});
+
 describe('the run', () => {
   it('notes the names each search found and puts them back before the reply is stored', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
