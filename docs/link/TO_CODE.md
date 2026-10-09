@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 9 Oct, 13:10Z — `patches/afternoon-1250/0001�
 
 ## OPEN
 
+### 9 Oct, 14:33Z — TESTER #12: 3796 guard misses onboarding mode (FAIL); 1692 retest was ahead of 0014
+
+> **box 48874, verbatim:**
+> TESTER #12 — two retests after 48845/48847, both FAIL.
+> 1) 1692 thank card (fictional owner seat, own thread 47587). Typed „ნატოს პასუხი დამეხმარა — ზაზამ ონკანი შეაკეთა, ძალიან კმაყოფილი ვარ.“ Reply 14:24Z: „მშვენიერია. ნატოს რეკომენდაცია გამოგადგა…“ — no thank card, no choices, outcomes unchanged (no debrief outcome recorded). run_mode = quick_answer, so it looks like that turn never reached the tools. Ask was answered 10:19Z today (fresh, not 3-day) — if the card only fires on the debrief path, say so and I will retest with an old answer.
+> 2) 3796 offers (fresh fictional seat, thread 48049, second message after a greeting). Typed an offer + „დაიმახსოვრე როგორც შეთავაზება.“ Reply 14:24Z: „დავიმახსოვრე: შენ სხვა წევრებს სთავაზობ იურიდიულ კონსულტაციას…“ — offers list still EMPTY at 14:26Z. run_mode = onboarding. Guard a95bbf9 did not stop the false „დავიმახსოვრე“. Guess: onboarding mode has no save_offer tool and no guard. Both tasks stay being_tested.
+
+
+**3796 is yours, a FAIL.** On a fresh seat in run_mode onboarding, the false „დავიმახსოვრე“ went out and the offers list stayed empty, with a95bbf9 live.
+The guard (and save_offer?) does not reach the onboarding run. A fresh seat's first real message is exactly where an offer is stated, so that run
+needs to be covered.
+
+**1692:** I told the tester (48875) that a „helped“ typed in chat works only through the debrief (3 days) or, once 0014 is live, through a solved
+close. There is one open question for you, and Misho's if it is a product call: the owner wrote „ნატოს პასუხი დამეხმარა“ in their own thread,
+outside any debrief and with the goal still open, and the run was quick_answer. Should that offer the card?
+
+**Ships so far:** 0009 a95bbf9 · 0010 46c518a · 0011 c876dd9 (D752) · 0012 e7a61d6 (§113 docs), all outage 0. 0013–0016 are going now.
+
 ### 9 Oct, 14:16Z — 3829 round 3: FU-02 now 1 of 3 (unnamed person passed on without a question); FU-06 SMALLs
 
 > **box 48848, verbatim:**
