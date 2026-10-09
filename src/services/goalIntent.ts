@@ -554,9 +554,23 @@ export function instructionSentence(text: string): string {
   return (text.match(SENTENCE_RE) ?? []).find((part) => CONTACT_VERB_RE.test(part))?.trim() ?? text;
 }
 
+/**
+ * 2906 (MTR #7): „ჯერ მაჩვენე, რას მისწერ X-ს" asks to SEE the message first;
+ * it got the dead-end „the question was not sent", and the server could have
+ * sent it unasked. A preview request is not an instruction to send.
+ */
+const PREVIEW_RE =
+  /(მაჩვენე|ჯერ\s+მითხარი,?\s+რას|\b(?:show|let)\s+me\s+(?:first\s+)?(?:see\s+)?what\b|\bfirst\s+show\s+me\b|\bpreview\b|покажи|muéstrame)/iu;
+
+/** 2906: does the line ask to SEE the message first? Then nothing is sent on it. */
+export function asksForAPreview(line: string): boolean {
+  return PREVIEW_RE.test(line);
+}
+
 export function looksLikeContactInstruction(message: string): boolean {
   const text = message.trim();
   if (text.length === 0 || text.length > MAX_INSTRUCTION_CHARS) return false;
+  if (asksForAPreview(text)) return false;
   if (!CONTACT_VERB_RE.test(text)) return false;
   return !NEGATED_CONTACT_RE.test(text);
 }

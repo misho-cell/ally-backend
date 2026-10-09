@@ -420,6 +420,7 @@ import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
 import { AUTOMATIC_ANSWER_NOTE, asksForAnAutomaticAnswer } from './automaticAnswerRequest';
 import {
+  asksForAPreview,
   looksLikeGoalRequest,
   seeksAPerson,
   statesANeed,
@@ -2539,6 +2540,8 @@ async function ownerJustInstructedThePlansOnePerson(
   try {
     const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
     // Misho, 7 Oct (D625 as a server rule): a long line's instruction sentence counts.
+    // 2906: the preview may sit in another sentence than the instruction — read the whole line.
+    if (asksForAPreview(said)) return false;
     if (!looksLikeContactInstruction(instructionSentence(said.trim()))) return false;
     return await messageNamesOwnContact(userId, said);
   } catch (error) {
