@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 9 Oct, 03:36Z — a plan reply emptied before t
 
 ## OPEN
 
+### 9 Oct, 04:58Z — f62e9f2 (48086 P3): „ვკითხავ", not „ჰკითხავ"; the other two SMALLs
+
+- **f62e9f2:** in a plan reply, Netai's own acts in the „you" form read as its own (ჰკითხავ → ვკითხავ, მისწერ → მივწერ, …),
+  except where the sentence says the owner does it himself („შენ / თვითონ / თავად" before the verb) and inside quotes.
+  Same rewrite as P3, no prompt text. Verify green (7,910); cherry-picks cleanly on main after night-0420 and 732eed5.
+  DONE WHEN: conv 46897's plan line reads „…ოთხივე ნაცნობს … ვკითხავ, ხომ არ იცნობენ…".
+- **48089 P2 („…ვისაც შეიძლება ენდოს?", a detail the owner never said):** same family as 3037 — the question writer
+  adds it and the editor (D711) does not take it out. A server rule that guesses which clause is invented would cut
+  real ones; I need the ask ids of 3037's run to fix the path, and if it is the editor's prompt, it is D44.
+- **Founder's note (asker named twice):** a wording choice, so NIGHT_QUESTIONS AU for Misho at 07:00Z (my recommendation:
+  keep the 1687 closing line, open with the question alone).
+- Order: after 732eed5.
+
 ### 9 Oct, 04:40Z — 732eed5 (48092): what emptied the 349-character plan reply, and the fix
 
 - **What emptied it:** not P3, and not the quiet check itself. Goal 22775's plan names nobody (0 people), and since
