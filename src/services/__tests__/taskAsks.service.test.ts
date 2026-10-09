@@ -120,6 +120,7 @@ import {
   ensureVerbatimQuote,
   getPendingAsksForUser,
   runPayerFor,
+  cancelOneAsk,
 } from '../taskAsks.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -2041,5 +2042,44 @@ describe('a conversation the reader deleted (daily check, 8 Oct 00:38:56Z)', () 
     expect(source).toContain(
       'CASE WHEN EXISTS (SELECT 1 FROM threads t WHERE t.id = a.ask_thread_id)',
     );
+  });
+});
+
+describe('cancelOneAsk — the admin cancels one sent ask (§110, 9 Oct)', () => {
+  it('lets the reader off: the cancel note, and the conversation done', async () => {
+    mockQuery.mockImplementation(
+      (sql: string) =>
+        Promise.resolve(
+          rows(
+            sql.includes("SET status = 'cancelled'")
+              ? [{ ask_thread_id: 46898, to_user_id: 180457 }]
+              : [],
+          ),
+        ) as never,
+    );
+    expect(await cancelOneAsk(17822)).toBe(true);
+    const update = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes("SET status = 'cancelled'"),
+    );
+    expect(update?.[0]).toContain("WHERE id = $1 AND status = 'sent'");
+    expect(update?.[1]).toEqual([17822]);
+    expect(mockSaveMessage).toHaveBeenCalledWith(46898, 180457, 'assistant', expect.any(String));
+    expect(mockSetThreadStatus).toHaveBeenCalledWith('180457', 46898, 'done', { isTask: true });
+  });
+
+  it('changes nothing and tells nobody when the ask was not sent', async () => {
+    mockQuery.mockImplementation(() => Promise.resolve(rows([])) as never);
+    mockSaveMessage.mockClear();
+    expect(await cancelOneAsk(17822)).toBe(false);
+    expect(mockSaveMessage).not.toHaveBeenCalled();
+  });
+
+  it('is served at POST /admin/asks/:askId/cancel', () => {
+    const admin = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
+      'utf8',
+    );
+    expect(admin).toContain("adminRouter.post('/asks/:askId/cancel'");
+    expect(admin).toContain('const cancelled = await cancelOneAsk(Number(askId));');
   });
 });

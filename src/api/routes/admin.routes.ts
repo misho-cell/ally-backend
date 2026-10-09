@@ -308,6 +308,7 @@ import { confirmedWarmTieSql } from '../../services/chorusCap';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+import { cancelOneAsk } from '../../services/taskAsks.service';
 
 const adminRouter = Router();
 /** The Axel export is heavy and needed once: a few builds a minute at most. */
@@ -5807,6 +5808,28 @@ adminRouter.delete('/users/:userId/push/unidentified', async (req: Request, res:
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('push unidentified delete error:', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// §110 (Misho, 9 Oct): cancel ONE sent ask — the reader gets the usual „no longer needed"
+// note and the conversation is closed for them. 200 with cancelled: false when it was not sent.
+adminRouter.post('/asks/:askId/cancel', async (req: Request, res: Response) => {
+  const askId = String(req.params.askId ?? '');
+  if (!/^\d+$/.test(askId)) {
+    res.status(400).json({ success: false, error: 'askId უნდა იყოს რიცხვი' });
+    return;
+  }
+  try {
+    const cancelled = await cancelOneAsk(Number(askId));
+    // eslint-disable-next-line no-console
+    console.log(
+      `[admin] §110 ask ${askId}: ${cancelled ? 'cancelled' : 'not sent — nothing changed'}`,
+    );
+    res.status(200).json({ success: true, data: { ask_id: Number(askId), cancelled } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('ask cancel error:', (error as Error).message);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

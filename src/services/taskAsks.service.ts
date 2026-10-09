@@ -3035,6 +3035,53 @@ export async function getPendingAsksForUser(userId: string): Promise<PendingAsk[
 }
 
 /** Stop everything in flight when a task closes; tell the recipients honestly. */
+/** The reader of a cancelled ask is let off: one note in their language, and the conversation done. */
+async function letTheReaderOff(askThreadId: number, toUserId: number): Promise<void> {
+  // In the RECIPIENT's language: this is the message that closes a
+  // stranger's loop - they were asked for a favour and are being let off,
+  // and being let off in a script they cannot read is worse than silence.
+  // THEIR LANGUAGE IN THIS THREAD, for the reason set out at
+  // `withdrawAsksToOptedOutPerson`: if they have answered here, that is the
+  // best evidence there is, and `threadLanguage` falls back to exactly the
+  // account-wide reading this line used to do when they have not.
+  const language = await threadLanguage(askThreadId).catch(() => 'ka' as RunLanguage);
+  await saveThreadMessage(askThreadId, toUserId, 'assistant', askCancelledNote(language)).catch(
+    () => undefined,
+  );
+  /**
+   * Row 233 — the note went in and the thread went on saying „Needs your
+   * answer". The seat read two of two from the 12:59 stop, still needs_you
+   * at 14:48: „this question is no longer needed" sitting under a header
+   * asking for an answer, which is a contradiction the reader has to resolve
+   * themselves, and they will resolve it the wrong way.
+   *
+   * `done` rather than `waiting`: nothing is expected of them any more.
+   */
+  await setThreadStatus(String(toUserId), askThreadId, 'done', {
+    isTask: true,
+  }).catch(() => undefined);
+}
+
+/**
+ * Ops 9 Oct 06:46Z (Misho's word, §110): asks 17822 / 17823 went out after
+ * their goal was stopped, and only the owner's own stop could cancel an ask.
+ * One sent ask, cancelled by the admin: the reader is let off the same way a
+ * stopped goal lets them off. False when the ask was not „sent".
+ */
+export async function cancelOneAsk(askId: number): Promise<boolean> {
+  const cancelled = await query<{ ask_thread_id: number | null; to_user_id: number }>(
+    `UPDATE task_asks SET status = 'cancelled'
+     WHERE id = $1 AND status = 'sent'
+     RETURNING ask_thread_id, to_user_id`,
+    [askId],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const row = cancelled.rows[0];
+  if (row === undefined) return false;
+  if (row.ask_thread_id !== null) await letTheReaderOff(row.ask_thread_id, row.to_user_id);
+  return true;
+}
+
 /**
  * Returns HOW MANY people were told, which is not decoration: the owner's stop
  * line (row 113) names it, and „I stopped the goal" reads very differently to
@@ -3077,32 +3124,7 @@ export async function cancelAsksForTask(taskId: number): Promise<number> {
   for (const row of cancelled.rows) {
     if (row.ask_thread_id === null || told.has(row.ask_thread_id)) continue;
     told.add(row.ask_thread_id);
-    // In the RECIPIENT's language: this is the message that closes a
-    // stranger's loop - they were asked for a favour and are being let off,
-    // and being let off in a script they cannot read is worse than silence.
-    // THEIR LANGUAGE IN THIS THREAD, for the reason set out at
-    // `withdrawAsksToOptedOutPerson`: if they have answered here, that is the
-    // best evidence there is, and `threadLanguage` falls back to exactly the
-    // account-wide reading this line used to do when they have not.
-    const language = await threadLanguage(row.ask_thread_id).catch(() => 'ka' as RunLanguage);
-    await saveThreadMessage(
-      row.ask_thread_id,
-      row.to_user_id,
-      'assistant',
-      askCancelledNote(language),
-    ).catch(() => undefined);
-    /**
-     * Row 233 — the note went in and the thread went on saying „Needs your
-     * answer". The seat read two of two from the 12:59 stop, still needs_you
-     * at 14:48: „this question is no longer needed" sitting under a header
-     * asking for an answer, which is a contradiction the reader has to resolve
-     * themselves, and they will resolve it the wrong way.
-     *
-     * `done` rather than `waiting`: nothing is expected of them any more.
-     */
-    await setThreadStatus(String(row.to_user_id), row.ask_thread_id, 'done', {
-      isTask: true,
-    }).catch(() => undefined);
+    await letTheReaderOff(row.ask_thread_id, row.to_user_id);
   }
   await thankThePeopleWhoAnswered(taskId).catch((err: unknown) =>
     // eslint-disable-next-line no-console
