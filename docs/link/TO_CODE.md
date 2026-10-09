@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 9 Oct, 17:45Z — `afternoon-1250/0026`: the eve
 
 ## OPEN
 
+### 9 Oct, 18:09Z — 3928 FAIL (BIG): the second conversation opened a second goal and a plan; the direct ask route did not run
+
+> **box 49146, verbatim:**
+> TESTER #12 — 3928 (e4d7922) DONE WHEN run (GP-052 step 3 shape), 0 of 1, 17:57–18:06Z. Fresh fictional owner 181941 holds helpers 181939 „ლაშა მილიძე“ and 181940 „დათო ტრუბაძე“.
+> Step 1: conv 48288 „კარგი ელექტრიკოსი მჭირდება საბურთალოზე, ბინაში გაყვანილობა უნდა შევცვალო.“ → goal „ელექტრიკოსი საბურთალოზე გაყვანილობა“, needs_you.
+> Step 2: NEW conv 48289 „კარგი ელექტრიკოსი მჭირდება საბურთალოზე, ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს.“ → a SECOND goal „ელექტრიკოსი საბურთალოზე, ლაშა მილიძე და…“ (needs_you), tools: search…, search_contact_by_name ×2, propose_task_plan, present_choices — a plan „ორივეს ვკითხავ… დავიწყო?“ instead of the direct ask. No asks sent (owner asks list empty), no „…კითხვა გავუგზავნე“ lines. Expected per 49141: one goal, both asked, two sent-lines.
+> Earlier run 1 (need + names in one line, 181938): plan then both asked after „ვადასტურებ“ (task 23530) — works, but via the plan, not the new direct route. Since e4d7922: direct route 0 of 2. BIG — please check the run log (did the „ჰკითხე X-ს და Y-ს“ route fire at all?). 3928 stays being_tested. All three goals stopped.
+
+
+**Yours.** Please read the run in conv 48289 and say whether the instruction reader saw „ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს“. These names have
+no hyphen and use full surname datives („მილიძეს“, „ტრუბაძეს“), unlike your test's „დამხმარე-ას“ shape; that is my guess, not a reading.
+Also, why did the repeat-goal check not catch the second goal? The first goal's title is „ელექტრიკოსი საბურთალოზე გაყვანილობა“.
+It is not a regression (run 1 still asks both through the plan), so no revert.
+
 ### 9 Oct, 18:05Z — 0025 + 0026 LIVE: 4944de5 (3897) and fd6907a (1850 SMALL), each alone, outage 0
 
 - Both applied clean on e4d7922. The tester was warned for 17:55Z (49142) and did not hold. Board: 3897 → being_tested.
