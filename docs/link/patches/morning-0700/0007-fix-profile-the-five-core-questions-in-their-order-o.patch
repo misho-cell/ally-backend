@@ -1,0 +1,127 @@
+From 57d429f91f2a90ede1829c3782acf60ca5a7c100 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 07:29:05 +0000
+Subject: [PATCH 7/7] fix(profile): the five core questions in their order, one
+ after another (2182, 48414)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 48414, 3 of 3: the first core question — „what you do and where" — was
+never asked; every seat started on „what can you help others with". The core
+questions were ordered by question_id as TEXT, and „core_can_help_002" sorts
+before „core_what_where_001". They are now ordered by their own number
+(checked read-only on the live bank: 001…005).
+
+And after an answer the next one never came: no run called
+get_profile_question again (2 of 3 stopped). answer_profile_question on a core
+question now returns the next core question with its result, as data, so
+the same turn can ask it; nothing once all five are answered.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theQuestionsThatHelp.test.ts    | 12 ++++++++-
+ src/services/chat.service.ts                  | 27 ++++++++++++++++++-
+ src/services/partH.service.ts                 |  8 ++++--
+ 3 files changed, 43 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/theQuestionsThatHelp.test.ts b/src/services/__tests__/theQuestionsThatHelp.test.ts
+index 238f5c1..0f89065 100644
+--- a/src/services/__tests__/theQuestionsThatHelp.test.ts
++++ b/src/services/__tests__/theQuestionsThatHelp.test.ts
+@@ -42,7 +42,9 @@ describe('the five questions that help', () => {
+     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+     await getNextQuestion('180300', 'any', 'ka');
+     const [sql] = mockQuery.mock.calls[1] as [string];
+-    expect(sql).toContain("ORDER BY (qb.category = 'core') DESC, (qb.surface = $2) DESC");
++    expect(sql).toContain("ORDER BY (qb.category = 'core') DESC,");
++    // 48414: by number, so „what you do and where" (001) is asked first, not „can help" (002).
++    expect(sql).toContain("THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,");
+   });
+ });
+ 
+@@ -88,3 +90,11 @@ describe('a core answer is kept for her own assistant', () => {
+     expect(mockNote).not.toHaveBeenCalled();
+   });
+ });
++
++describe('after a core answer (48414)', () => {
++  it('the next core question rides with the result, so the five go on one at a time', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('return questionId.startsWith(CORE_QUESTION_PREFIX)');
++    expect(chat).toContain("next.found && next.question.category === 'core'");
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c23b32e..0de6d0f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -8699,6 +8699,26 @@ function phonesIn(raw: unknown): string[] {
+     .filter((phone): phone is string => typeof phone === 'string' && phone !== '');
+ }
+ 
++/** 2182's five core questions share this id prefix (migration 216). */
++const CORE_QUESTION_PREFIX = 'core_';
++
++/** The next core question for this owner, or nothing once all five are answered. */
++async function nextCoreQuestion(
++  userId: string,
++  runId: string | undefined,
++): Promise<{ next_core_question?: unknown }> {
++  try {
++    const language = runId === undefined ? 'ka' : runLang(runId);
++    const next = await getNextQuestion(userId, 'any', language);
++    return next.found && next.question.category === 'core'
++      ? { next_core_question: next.question }
++      : {};
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[profile-question] next core question not read:', (err as Error).message);
++    return {};
++  }
++}
+ async function executeToolCall(
+   userId: string,
+   name: string,
+@@ -10573,12 +10593,17 @@ async function executeToolCall(
+       const optionIds = Array.isArray(input['option_ids'])
+         ? (input['option_ids'] as unknown[]).map(String)
+         : [];
+-      return recordAnswer(userId, {
++      const recorded = await recordAnswer(userId, {
+         questionId,
+         optionIds,
+         freeText: typeof input['free_text'] === 'string' ? input['free_text'] : undefined,
+         skipped: input['skipped'] === true,
+       });
++      // 48414: after a core answer no run asked for the next one, so the five stopped at one.
++      // The next core question rides with the result, as data, for the same turn.
++      return questionId.startsWith(CORE_QUESTION_PREFIX)
++        ? { ...recorded, ...(await nextCoreQuestion(userId, runId)) }
++        : recorded;
+     }
+     case 'get_top_connectors':
+       return getTopConnectors(userId, input['limit'] as number | undefined);
+diff --git a/src/services/partH.service.ts b/src/services/partH.service.ts
+index 5501788..f835545 100644
+--- a/src/services/partH.service.ts
++++ b/src/services/partH.service.ts
+@@ -142,8 +142,12 @@ export async function getNextQuestion(
+      -- nothing here previously distinguished surface specificity at all.
+      -- 2182: the five core questions (what she does, what she can help with,
+      -- what she looks for, what not to ask, how to reach her) come first.
+-     ORDER BY (qb.category = 'core') DESC, (qb.surface = $2) DESC, (qb.category = $3) ASC,
+-              qb.question_id
++     -- 48414: by their own number, not as text — „core_can_help_002" sorts before
++     -- „core_what_where_001" alphabetically, and „what you do and where" came last.
++     ORDER BY (qb.category = 'core') DESC,
++              CASE WHEN qb.category = 'core'
++                   THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,
++              (qb.surface = $2) DESC, (qb.category = $3) ASC, qb.question_id
+      LIMIT 5`,
+     [userId, surface, avoidCategory, lang],
+     PARTH_TIMEOUT_MS,
+-- 
+2.43.0
+

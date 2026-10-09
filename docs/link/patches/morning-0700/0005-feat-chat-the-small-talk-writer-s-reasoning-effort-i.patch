@@ -1,7 +1,7 @@
-From dc92a2fd56f45475d2a80406889d0dfd5fce5f6a Mon Sep 17 00:00:00 2001
+From 86ad141435800d2ae732d481e8ca8edb0d285362 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 9 Oct 2026 07:11:31 +0000
-Subject: [PATCH 5/6] =?UTF-8?q?feat(chat):=20the=20small-talk=20writer's?=
+Subject: [PATCH 5/7] =?UTF-8?q?feat(chat):=20the=20small-talk=20writer's?=
  =?UTF-8?q?=20reasoning=20effort=20is=20a=20setting=20(958,=20=C2=A7110)?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

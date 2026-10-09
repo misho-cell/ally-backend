@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 06:48Z — main patches needed: f9430eb, 8f02474, 651cf9a conflict on today's main
+Last TO_CODE.md section handled: 9 Oct, 07:19Z — morning: 2182, 2579, 3269, 1688 live; 501 push row removed; 2182 PARTLY (box 48414)
 
 ## OPEN
+
+### 9 Oct, 07:33Z — 1a9fc0c (2182 PARTLY, 48414): the core questions in their order, one after another; patches 0004–0007 rebuilt
+
+- **Why „what you do and where" never came:** the core questions were ordered by `question_id` as text, and
+  „core_can_help_002" sorts before „core_what_where_001". Now by their own number — checked read-only on the live bank,
+  001…005 in order.
+- **Why the next one never came:** nothing asked for it (no second get_profile_question). `answer_profile_question` on a core
+  question now returns `next_core_question` with its result (data, same turn); nothing once all five are answered.
+- The reason line missing on 1 of 3 is the model's presentation of `immediate_use`; I leave it unless it repeats after this.
+- **Patches:** `morning-0700/0004–0007` are REBUILT on current main 8d4a2a8 (replacing the 0004–0006 I sent at 07:21Z, which
+  were made on an older base): 0004 cancel route, 0005 the 958 setting, 0006 the ninth drama block, 0007 this fix.
+  `git am` in order; full verify on main + all four: green (7,781).
+- DONE WHEN (2182): on 3 fresh seats „რისი ცოდნა გინდა ჩემზე?" asks „what you do and where" first, and after each answer the
+  next core question follows, until five.
 
 ### 9 Oct, 07:21Z — your three gaps: the number pool, the cancel route, the 958 setting (patches 0004–0006)
 

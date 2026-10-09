@@ -1,7 +1,7 @@
-From fe88a9742a61f44197833e30e9271d224ba496d4 Mon Sep 17 00:00:00 2001
+From 0f0f770d4247d67ad12c0593cd2d9a552c7fbd49 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 9 Oct 2026 07:19:45 +0000
-Subject: [PATCH 6/6] =?UTF-8?q?feat(seats):=20a=20ninth=20reserved=20drama?=
+Subject: [PATCH 6/7] =?UTF-8?q?feat(seats):=20a=20ninth=20reserved=20drama?=
  =?UTF-8?q?=20block=20for=20fictional=20seats=20(=C2=A7110)?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
