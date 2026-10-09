@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 05:09Z — 6944e6b live (335296d); your 2347 answer relayed (48313)
+Last TO_CODE.md section handled: 9 Oct, 05:13Z — 284fe49 noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 (migrations 227–229 in order)
 
 ## OPEN
 
