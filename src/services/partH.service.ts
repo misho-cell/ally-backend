@@ -142,8 +142,12 @@ export async function getNextQuestion(
      -- nothing here previously distinguished surface specificity at all.
      -- 2182: the five core questions (what she does, what she can help with,
      -- what she looks for, what not to ask, how to reach her) come first.
-     ORDER BY (qb.category = 'core') DESC, (qb.surface = $2) DESC, (qb.category = $3) ASC,
-              qb.question_id
+     -- 48414: by their own number, not as text — „core_can_help_002" sorts before
+     -- „core_what_where_001" alphabetically, and „what you do and where" came last.
+     ORDER BY (qb.category = 'core') DESC,
+              CASE WHEN qb.category = 'core'
+                   THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,
+              (qb.surface = $2) DESC, (qb.category = $3) ASC, qb.question_id
      LIMIT 5`,
     [userId, surface, avoidCategory, lang],
     PARTH_TIMEOUT_MS,

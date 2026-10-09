@@ -42,7 +42,9 @@ describe('the five questions that help', () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
     await getNextQuestion('180300', 'any', 'ka');
     const [sql] = mockQuery.mock.calls[1] as [string];
-    expect(sql).toContain("ORDER BY (qb.category = 'core') DESC, (qb.surface = $2) DESC");
+    expect(sql).toContain("ORDER BY (qb.category = 'core') DESC,");
+    // 48414: by number, so „what you do and where" (001) is asked first, not „can help" (002).
+    expect(sql).toContain("THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,");
   });
 });
 
@@ -86,5 +88,13 @@ describe('a core answer is kept for her own assistant', () => {
       freeText: 'x',
     });
     expect(mockNote).not.toHaveBeenCalled();
+  });
+});
+
+describe('after a core answer (48414)', () => {
+  it('the next core question rides with the result, so the five go on one at a time', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('return questionId.startsWith(CORE_QUESTION_PREFIX)');
+    expect(chat).toContain("next.found && next.question.category === 'core'");
   });
 });
