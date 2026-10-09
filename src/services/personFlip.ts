@@ -24,6 +24,22 @@ const MIN_VERB_CHARS = 4;
  */
 const ABOUT_THE_READER_OPENINGS: ReadonlySet<string> = new Set(['იცნობს']);
 
+/**
+ * 47987 (ask 17755): „კარგ სანტექნიკოსს ხომ ვერ მირჩევს." went to the helper
+ * as written — the editor's „მირჩევ" was thrown away here. „მი-რჩევს" carries
+ * the „me" object: he recommends ME, the owner. In a question the owner sends
+ * to the helper, the one doing something for „me" is the reader, so „you" is
+ * the fix. The object „me" is „მ" + ა/ი/ე, after an optional preverb:
+ * მირჩევს, გამაცნობს. „მუშაობს" never matches; „მიაქვს" (carries) and
+ * „მიიწევს" (moves on) start the same way and are named as exceptions.
+ */
+const ME_OBJECT_VERB_RE = /^(?:გა|შე|და|მო|წა|ჩა|გადა|გამო)?მ[აიე]\p{L}{3,}ს$/u;
+const NOT_ME_OBJECT: ReadonlySet<string> = new Set(['მიაქვს', 'მიიწევს']);
+
+function doesSomethingForMe(word: string): boolean {
+  return ME_OBJECT_VERB_RE.test(word) && !NOT_ME_OBJECT.has(word);
+}
+
 function georgianWords(text: string): Set<string> {
   return new Set(text.match(GEORGIAN_WORD_RE) ?? []);
 }
@@ -48,6 +64,7 @@ export function thirdPersonTurnedToYou(draft: string, rewrite: string): boolean 
   const before = georgianWords(draft);
   const after = georgianWords(rewrite);
   for (const word of before) {
+    if (doesSomethingForMe(word)) continue;
     const you = youForm(word);
     if (you !== null && after.has(you) && !after.has(word)) return true;
   }
