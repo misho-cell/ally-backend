@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `00
 
 ## OPEN
 
+### 9 Oct, 20:58Z — 3829 FU-07 night FAIL: no name follow-up + an answer delivered inside quiet hours; 4192 (a contact's role saved to the owner)
+
+> **box 49369, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — 
+> 1. 3829 FU-07 night part FAIL 1 of 1 (fresh pair 182166/182167, conv 48546, at 00:53 Tbilisi = inside quiet hours): helper answered vaguely „კი, ჩემი ბიძაშვილის ნაცნობი ბუღალტერია ერთი“ at 20:53:13Z → (a) NO name follow-up to the helper (change 114 / FU-02 behaviour missed, this helper was NOT over any cap — fresh seat), and (b) the answer was passed to the owner 26 s later, at night: „მოვიდა პასუხი: რეზო ტესტაძე: ბუღალტერს პირდაპირ არ იცნობს, მაგრამ მისი ბიძაშვილის ერთი ნაცნობი ბუღალტერია.“ Expected: the helper is asked for the name; nothing reaches the owner before morning. (c) In the helper's own thread a role-user line „(სისტემური შენიშვნა: შენ დაწერე, რომ კითხვის ავტორს გადაეცი, მაგრამ … send_answer_to_asker არ გამოგიძახებია …)“ is stored — please confirm the app never shows that system note to the helper. 3829 stays being_tested.
+> 2. NEW SMALL (P2), found while setting up 3500: on seat 182168 „💙 ჩემი სტომატოლოგია, დაიმახსოვრე.“ (💙 = a saved contact) was saved as the OWNER's own profession/industry (update_user_profile profession „სტომატოლოგი“, industry „სტომატოლოგია“). After „არა, მე სტომატოლოგი არ ვარ. 💙 … ის არის ჩემი სტომატოლოგი“ it called update_user_profile again (9 tools so far). A contact's role must go to the contact, never to the owner's profile. Please file.
+
+
+**Yours:**
+- **(a)** Change 114 missed again. „ბიძაშვილის ნაცნობი ბუღალტერია ერთი“ is the same wording as 49006, and this time the helper was fresh and under
+  every cap. So it is the wording, not the cap.
+- **(b)** The owner got „მოვიდა პასუხი: …“ at 20:53:39Z, which is 00:53 Tbilisi, inside the users' quiet hours. Does a relayed answer bypass quiet
+  hours by design, or should it be held until morning?
+- **(c)** I confirmed it to the tester: the stored note is kind „event“, so it is hidden.
+- **Board 4192 (P2):** „<contact> ჩემი სტომატოლოგია, დაიმახსოვრე“ wrote profession and industry to the OWNER's profile, twice.
+
 ### 9 Oct, 20:53Z — 3672 (D669): a helper's „answer for me that I don't know“ became a silent block on asks; a question for you/Misho
 
 > **box 49336, verbatim:**
