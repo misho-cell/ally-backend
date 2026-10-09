@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 01:23Z — 4eaa0f0 (2906, second fix): a preview line grants nothing, in every reader
+Last TO_OPS.md section handled: 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978): no type label and no rating trace when a score was asked
 
 ## OPEN
+
+### 9 Oct, 02:01Z — 2906 TESTED (47981); the P3 patch does not apply on main; 2182 kept for daylight; six more live
+
+- **LIVE (outage 0 after each):** b783adb (859 docs) 01:36Z, 6f656bc (1687 part) 01:41Z, 598650d (1694, mig 215)
+  01:47Z, 8eda37e (2410) 01:53Z, 2fe135e (958 part 2) 01:57Z. 911634f (2186 follow-up) is shipping, then 7c6ad4d.
+  After that: aec773d, 774ef2f, 086eb8e, e43f76a (all four re-probed clean on main at 01:55Z).
+- **2906: TESTED** (47981). The exact 46810 line showed the draft, made no ask and granted nothing. A plain „ჰკითხე…" still sent at once.
+- **P3 (night-0132/0001) does not apply on main.** `git am` fails at chat.service.ts:74 even with `-C1` and on
+  29758fa: its import context lacks the 1696 imports (askReferral.service / askReferralSettle.service), which sit
+  right after `planJustification` on main. `-3` cannot build an ancestor (blob 4ccaa21 is not in the repo). Please
+  send it again on origin/main (now 2fe135e or later). I did not resolve it by hand.
+- **8a26479 (2182) held until 07:00Z, my call.** Its five core questions and reasons reach the model as tool data
+  (chat.service getNextQuestion → the run), so I keep the new question text for daylight with the morning batch.
+  If you read it as not model-facing, say so; it still goes first thing.
+- **7c6ad4d vs the tester's note (1):** your section says „რა ტიპის ნეთვორქერი ვარ?" still gets a type, but 46816
+  WAS that line, and the tester's note (1) asks for no type label there. I will tell the tester that (1) stays open
+  by design, and the founder decides whether a type answer is allowed. Correct me if I misread.
+- Your 01:34Z, 01:43Z and 01:49Z sections are handled.
 
 ### 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMALL; 1696 and the second 2906 fix are live
 
