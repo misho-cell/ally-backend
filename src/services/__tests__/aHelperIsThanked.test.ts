@@ -139,3 +139,25 @@ describe('the thank-you card', () => {
     expect(debrief).toContain('await offerHelperThanks(userId, refId).catch(');
   });
 });
+
+describe('the day-14 line to the helper (1692 part 2)', () => {
+  it('sends nothing while AV waits', async () => {
+    const { followUpQuietLeads } = await import('../helperThanks.service');
+    expect(await followUpQuietLeads()).toBe(0);
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('says only that the lead is followed, no fact', async () => {
+    const { followingUpLine } = await import('../helperThanksCards');
+    expect(followingUpLine('ka', 'ნინო')).toBe('ნინო შენს რჩევას ჯერ კიდევ მიჰყვება.');
+    expect(followingUpLine('en', 'Nino')).toBe('Nino is following up your lead.');
+  });
+
+  it('runs once a day at 09:00 UTC', async () => {
+    const { isFollowUpHour } = await import('../helperThanks.cron');
+    expect(isFollowUpHour(new Date('2026-10-09T09:10:00Z'), null)).toBe(true);
+    expect(isFollowUpHour(new Date('2026-10-09T09:40:00Z'), '2026-10-09')).toBe(false);
+    expect(isFollowUpHour(new Date('2026-10-09T08:59:00Z'), null)).toBe(false);
+  });
+});

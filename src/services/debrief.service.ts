@@ -1,4 +1,5 @@
 import { recountAnswerStats } from './answerStats.service';
+import { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
 import { offerHelperThanks } from './helperThanks.service';
 import { confirmByResult } from './factConfirm.service';
 import { query } from '../db/postgres/client';
@@ -127,7 +128,7 @@ export async function armAskDebrief(
  * HELD (D44): the instruction is new model text — NIGHT_QUESTIONS AV. Until
  * Misho's yes nothing is armed.
  */
-export const ANSWER_DEBRIEF_ON = false;
+export { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
 
 /** NIGHT_QUESTIONS AV, the exact text proposed. */
 export function answerDebriefInstruction(who: string, askId: number): string {
