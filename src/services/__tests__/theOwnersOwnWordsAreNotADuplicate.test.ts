@@ -40,7 +40,7 @@ describe('the duplicate guard asks whether the owner added something', () => {
 
     expect(block).toContain('await ownerSpokeSince(taskId, secondsSincePrevious)');
     expect(asks).toContain(
-      'secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS &&\n    !ownerAddedSomething',
+      'secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS &&\n      !ownerAddedSomething',
     );
   });
 
@@ -49,6 +49,17 @@ describe('the duplicate guard asks whether the owner added something', () => {
    * four historical duplicates were caught by is still in the same `if`, so
    * this reads as one clause added rather than a rule rewritten.
    */
+  /** 3532: the same question to the same person on ANOTHER goal, inside one run, nothing said since. */
+  it('also refuses the same person asked on another goal moments ago', () => {
+    expect(asks).toContain('(await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId));');
+    const at = asks.indexOf('async function askedOnAnotherGoalJustNow(');
+    const fn = asks.slice(at, at + 1400);
+    expect(fn).toContain('a.task_id <> $3');
+    expect(fn).toContain("c.user_id = $1::int AND c.role = 'user' AND c.kind = 'message'");
+    expect(fn).toContain('AND c.created_at > a.created_at');
+    expect(fn).toContain('return false;');
+  });
+
   it('keeps every condition the four duplicates were caught by', () => {
     const at = asks.indexOf('const ownerAddedSomething =');
     const block = asks.slice(at, at + 1400);
