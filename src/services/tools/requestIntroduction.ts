@@ -1,3 +1,4 @@
+import { findContactPhonesByName } from './nameMatch';
 import { recordIntroPrematch } from '../bridgeOrder';
 import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRoute';
 import { reasonAboutAsker } from '../askEditor.service';
@@ -412,7 +413,15 @@ async function requestIntroductionInner(
   }
 
   // 1697 part 2: both sides not of this field — logged until AO is approved, refused after.
-  if (!isDirect && (await closedRouteFor(context.requesterTaskId, resolvedPhone, targetPhone))) {
+  // Tester 49667 (conv 48680): the owner rarely holds the receiver's number, so
+  // target_phone is absent and the check never ran. The receiver is looked up in
+  // the BRIDGE's phonebook, for this check only; the number goes nowhere else.
+  const receiverForCheck =
+    targetPhone ?? (await receiverInBridgesBook(String(mediatorUserId), targetName));
+  if (
+    !isDirect &&
+    (await closedRouteFor(context.requesterTaskId, resolvedPhone, receiverForCheck))
+  ) {
     // eslint-disable-next-line no-console
     console.log(
       `[closed-route] goal ${context.requesterTaskId}: bridge and receiver both not of this field` +
@@ -608,4 +617,15 @@ async function requestIntroductionInner(
       ? `მოთხოვნა გაიგზავნა ${mediatorName}-სთვის.`
       : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Netai-ს გახსნისას.`,
   };
+}
+
+/** The one contact in the bridge's own phonebook the target's name points to; none on doubt. */
+async function receiverInBridgesBook(
+  mediatorUserId: string,
+  targetName: string,
+): Promise<string | undefined> {
+  const phones = await findContactPhonesByName(mediatorUserId, targetName, 2).catch(
+    (): string[] => [],
+  );
+  return phones.length === 1 ? phones[0] : undefined;
 }

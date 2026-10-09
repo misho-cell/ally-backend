@@ -20,8 +20,18 @@ describe('a closed route', () => {
     expect(tool).toMatch(
       /if \(CLOSED_ROUTE_ON\)\s*return \{ success: false, reason: 'route_closed', error: CLOSED_ROUTE_LINE \};/u,
     );
-    expect(tool).toContain(
-      'if (!isDirect && (await closedRouteFor(context.requesterTaskId, resolvedPhone, targetPhone))) {',
+    expect(tool).toMatch(
+      /!isDirect &&\s+\(await closedRouteFor\(context\.requesterTaskId, resolvedPhone, receiverForCheck\)\)/u,
     );
+  });
+
+  it('finds the receiver in the bridge’s own phonebook when the owner gave no number (49667)', () => {
+    const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
+    expect(tool).toMatch(
+      /const receiverForCheck =\s+targetPhone \?\? \(await receiverInBridgesBook\(String\(mediatorUserId\), targetName\)\);/u,
+    );
+    const fn = tool.slice(tool.indexOf('async function receiverInBridgesBook('));
+    expect(fn.slice(0, 500)).toContain('findContactPhonesByName(mediatorUserId, targetName, 2)');
+    expect(fn.slice(0, 500)).toContain('phones.length === 1 ? phones[0] : undefined');
   });
 });
