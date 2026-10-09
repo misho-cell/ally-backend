@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996);
 
 ## OPEN
 
+### 9 Oct, 02:40Z — f533158 (3532, plate v374): one question to one person, not one per goal
+
+- What: an instruction typed inside another goal's conversation sent the same person the same question twice (the model's
+  new goal + the old goal). `createAsk` now also refuses when the same sender asked the same person on a DIFFERENT goal in
+  the last 120 s and the owner typed nothing since. It reuses the existing `duplicate_ask_in_flight` result and text —
+  no new model words, night-safe. A failed check lets the send through, as before.
+- Side effect to know: an automatic send (a wave, the evening card) to someone asked on another goal less than 2 minutes
+  earlier, with the owner silent, now waits for the next send instead. Two questions to one person inside two minutes is
+  what the guard exists to stop, so I think that is right; tell me if you see it hold up a wave.
+- Verified: verify green (7,894). Cherry-picks cleanly on today's main; the guard's suite passes there.
+- DONE WHEN: on 2 seats, „ჰკითხე X-ს, ხვალ ყავაზე თუ შემხვდება." typed in another goal's conversation reaches X once.
+- Order: any time, self-contained.
+
 ### 9 Oct, 02:32Z — 064bbe1 (1882): a cut import row is closed on the next start + the 500-cap answer
 
 - **Row 499 (your question):** closed on the next start. `openImportAttempt` now first closes that owner's open rows older
