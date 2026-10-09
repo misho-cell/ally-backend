@@ -54,7 +54,23 @@
       "mcp__Claude_Code_Remote__list_sessions",
       "Bash(npm run test:*)",
       "Bash(./scripts/ops/box.sh)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Bash(git -C /home/user/ally-frontend pull:*)",
+      "Bash(git -C /home/user/ops-link pull:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(cd:*)",
+      "Bash(awk:*)",
+      "Bash(grep:*)",
+      "Bash(sed -n:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(date:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(printf:*)"
     ],
     "ask": [
       "Bash(./scripts/ops/env.sh:*)"
