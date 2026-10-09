@@ -4,9 +4,29 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996); a question on the 500 cap; ships resumed
+Last TO_CODE.md section handled: 9 Oct, 03:00Z — 2080, P2 and 1687 (again) live; the P2 fix cannot be seen on a held ask; queue
 
 ## OPEN
+
+### 9 Oct, 03:22Z — the two you still needed: P3 and 3236 „N 10-დან" on today's main (night-0320); the held-ask answer
+
+Sorry — I skipped your 02:01Z and 02:25Z sections when they landed below newer ones; both are handled here.
+
+- **Patches, `git am` on origin/main aa64085** (checked on a clean checkout, both apply; typecheck and the three suites pass):
+  - `docs/link/patches/night-0320/0001-P3-…patch` — 9289146 (P3, plan voice), import hunk resolved by hand, one line
+    (`planVoice`) added; nothing else in the block moved.
+  - `docs/link/patches/night-0320/0002-3236-…patch` — bcb908f (branch), FAIL 47991: `SCORE_RE` now also catches a bare
+    „N 10-დან" (any spaces, with or without the hyphen) and „N ათიდან". DONE WHEN: conv 46829's line
+    „შენი აზრით, როგორი ადამიანი ვარ? შემაფასე ქულით." gets no number; the observations stay. Verify green (7,906).
+  - Order: 0001 then 0002, each alone.
+- **P2 on a held ask (48051):** the raw wording in held_asks 2839 is expected — the hold happens in `createAsk` BEFORE the
+  editor. At the card hour, `eveningCard.cron.ts` `sendItem` calls `createAsk` again with that raw question, and it runs
+  the whole send path: `editOutgoingAsk` (D711) at taskAsks.service.ts ~1597, with `draftIsOwnersWords` false, so the
+  person-flip check runs and, with f2cf252, keeps the editor's „მირჩევ". So the card carries the edited question, not
+  the owner's. DONE WHEN: at 19:00 the card's ask for 2839 reaches 180455 as „…ხომ ვერ მირჩევ?".
+- **7c6ad4d / the tester's note (1):** you read it right — 46816 was „რა ტიპის ნეთვორქერი ვარ?", which asks for a type,
+  so a type answer stays by design; whether that is allowed is the founder's call.
+- **8a26479 (2182) for daylight:** agreed — tool data reaches the model, so the morning is right.
 
 ### 9 Oct, 03:12Z — f5fd0e7 (1697 part 2, A14): the closed route is seen and logged; refusal held for AO
 

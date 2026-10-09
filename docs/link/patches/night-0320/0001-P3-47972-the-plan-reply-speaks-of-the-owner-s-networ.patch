@@ -1,0 +1,201 @@
+From d71f8dc85335fc9a9186c719ed5163e65e64df0c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 01:30:52 +0000
+Subject: [PATCH 1/2] P3 (47972): the plan reply speaks of the owner's network,
+ not its own
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Conv 46812: „ჩემს ნაცნობებში პირდაპირ ფოტოგრაფი არ აღმოჩნდა … (ის ჩემი ქსელის
+წევრია)" — Netai spoke as the owner. Netai has no contacts or network of its
+own, so in the plan reply „my" before contacts / network / circle is turned to
+„your" (ka, en, es, ru). Quoted words are left alone; other first-person
+words are untouched. Runs only on a reply that asks for approval. A server
+rewrite of the reply; no prompt or tool text changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/thePlanIsSaidOnce.test.ts       |  2 +-
+ .../__tests__/thePlanSpeaksToTheOwner.test.ts | 48 ++++++++++++++
+ src/services/chat.service.ts                  |  9 ++-
+ src/services/planVoice.ts                     | 64 +++++++++++++++++++
+ 4 files changed, 119 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/thePlanSpeaksToTheOwner.test.ts
+ create mode 100644 src/services/planVoice.ts
+
+diff --git a/src/services/__tests__/thePlanIsSaidOnce.test.ts b/src/services/__tests__/thePlanIsSaidOnce.test.ts
+index 061cb8f..32aed31 100644
+--- a/src/services/__tests__/thePlanIsSaidOnce.test.ts
++++ b/src/services/__tests__/thePlanIsSaidOnce.test.ts
+@@ -174,7 +174,7 @@ describe('only a reply that asks for approval is a plan reply', () => {
+   it('is checked before anything is added to the reply', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     const fn = chat.slice(chat.indexOf('function withPlanInReply('));
+-    expect(fn.slice(0, 900)).toContain('if (!replyAsksForApproval(offered)) return reply;');
++    expect(fn.slice(0, 900)).toContain('if (!replyAsksForApproval(offered)) return written;');
+   });
+ });
+ 
+diff --git a/src/services/__tests__/thePlanSpeaksToTheOwner.test.ts b/src/services/__tests__/thePlanSpeaksToTheOwner.test.ts
+new file mode 100644
+index 0000000..cff333e
+--- /dev/null
++++ b/src/services/__tests__/thePlanSpeaksToTheOwner.test.ts
+@@ -0,0 +1,48 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { withOwnersNetwork } from '../planVoice';
++
++/** P3 (the tester's 47972, conv 46812): the plan reply spoke as the owner. */
++const TESTER_REPLY =
++  'ჩემს ნაცნობებში პირდაპირ ფოტოგრაფი არ აღმოჩნდა, მაგრამ ვიპოვე ერთი ვარიანტი ერთი ნაბიჯით ' +
++  'მოშორებით: სოფო, ფოტოგრაფი, რომელსაც იცნობს ლევან მოგონილაძე (ის ჩემი ქსელის წევრია).\n\n' +
++  'ლევანის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო.\n\nდავიწყო?';
++
++describe('the plan reply speaks of the owner’s network', () => {
++  it('says „შენს ნაცნობებში" and „შენი ქსელის" in the tester’s reply', () => {
++    const fixed = withOwnersNetwork(TESTER_REPLY);
++    expect(fixed).toContain('შენს ნაცნობებში პირდაპირ ფოტოგრაფი');
++    expect(fixed).toContain('(ის შენი ქსელის წევრია)');
++    expect(fixed).not.toMatch(/ჩემ/u);
++    expect(fixed).toContain('ლევანის ასისტენტს დაველაპარაკები');
++  });
++
++  it('turns „my contacts / my network" to the owner in en, es and ru', () => {
++    expect(withOwnersNetwork('No one in my contacts. My network has Levan.')).toBe(
++      'No one in your contacts. Your network has Levan.',
++    );
++    expect(withOwnersNetwork('Nadie en mis contactos; Levan está en mi red.')).toBe(
++      'Nadie en tus contactos; Levan está en tu red.',
++    );
++    expect(withOwnersNetwork('Среди моих контактов нет, Леван в моей сети.')).toBe(
++      'Среди твоих контактов нет, Леван в твоей сети.',
++    );
++  });
++
++  it('leaves other first-person words and quoted words alone', () => {
++    const line = 'ჩემი აზრით, ეს კარგია. გია წერს: „ჩემს ნაცნობებში არავინაა". ჩემს წრეში კი არის.';
++    expect(withOwnersNetwork(line)).toBe(
++      'ჩემი აზრით, ეს კარგია. გია წერს: „ჩემს ნაცნობებში არავინაა". შენს წრეში კი არის.',
++    );
++    expect(withOwnersNetwork('Did you mean my message?')).toBe('Did you mean my message?');
++  });
++
++  it('runs on the plan reply only, after the approval check', () => {
++    const body = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const at = body.indexOf('function withPlanInReply(');
++    const fn = body.slice(at, body.indexOf('\n}\n', at));
++    expect(fn.indexOf('withOwnersNetwork(written)')).toBeGreaterThan(
++      fn.indexOf('if (!replyAsksForApproval(offered)) return written;'),
++    );
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7f94b6d..625f9ad 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -74,6 +74,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
+ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+ import { asksToReopen } from './reopenIntent';
+ import { withoutMatchJustification } from './planJustification';
++import { withOwnersNetwork } from './planVoice';
+ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
+ import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
+@@ -7452,16 +7453,18 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
+  */
+ function withPlanInReply(
+   runId: string,
+-  reply: string,
++  written: string,
+   offered: readonly string[] | null | undefined,
+ ): string {
+   const plan = runPlanForReply.get(runId);
+-  if (!plan) return reply;
++  if (!plan) return written;
+   // The tester's 954: the question was added under a reply that offered web
+   // leads with buttons of its own — a plan was proposed in the run, but the
+   // reply was not asking for it to be approved. Only a reply carrying the
+   // approve button is a plan reply.
+-  if (!replyAsksForApproval(offered)) return reply;
++  if (!replyAsksForApproval(offered)) return written;
++  // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
++  const reply = withOwnersNetwork(written);
+   if (replyCarriesPlan(reply, plan)) {
+     // D739: the plan is its one sentence and one question — no sentence explaining the match.
+     return withClosingQuestion(withoutMatchJustification(reply), runLang(runId));
+diff --git a/src/services/planVoice.ts b/src/services/planVoice.ts
+new file mode 100644
+index 0000000..4101b84
+--- /dev/null
++++ b/src/services/planVoice.ts
+@@ -0,0 +1,64 @@
++/**
++ * P3 (the tester's 47972, conv 46812): the plan reply said „ჩემს ნაცნობებში
++ * პირდაპირ ფოტოგრაფი არ აღმოჩნდა … ლევან მოგონილაძე (ის ჩემი ქსელის წევრია)"
++ * — Netai speaking as the owner. Netai has no contacts and no network of its
++ * own: every contact, circle and network it reports on is the owner's. In the
++ * plan reply, „my" before one of those nouns is always the owner's and reads
++ * as „your". Text inside quotes is someone's own words and is left alone.
++ */
++
++interface VoiceFix {
++  readonly pattern: RegExp;
++  readonly second: (first: string) => string;
++}
++
++const NETWORK_NOUN_KA = '(?=\\s+(?:ნაცნობ|კონტაქტ|ქსელ|წრე))';
++
++const FIRST_TO_SECOND_KA: Readonly<Record<string, string>> = {
++  ჩემს: 'შენს',
++  ჩემი: 'შენი',
++  ჩემმა: 'შენმა',
++  ჩემ: 'შენ',
++};
++
++const FIRST_TO_SECOND_ES: Readonly<Record<string, string>> = {
++  mis: 'tus',
++  Mis: 'Tus',
++  mi: 'tu',
++  Mi: 'Tu',
++};
++
++const VOICE_FIXES: readonly VoiceFix[] = [
++  {
++    pattern: new RegExp(`(?<![\\p{L}\\p{M}])(ჩემს|ჩემი|ჩემმა|ჩემ)${NETWORK_NOUN_KA}`, 'gu'),
++    second: (first) => FIRST_TO_SECOND_KA[first] ?? first,
++  },
++  {
++    pattern: /\b(my|My)(?=\s+(?:contacts?|network|circle|connections?)\b)/gu,
++    second: (first) => (first === 'My' ? 'Your' : 'your'),
++  },
++  {
++    pattern: /(?<![\p{L}\p{M}])(mis|Mis|mi|Mi)(?=\s+(?:contactos?|red|círculo)\b)/gu,
++    second: (first) => FIRST_TO_SECOND_ES[first] ?? first,
++  },
++  {
++    pattern:
++      /(?<![\p{L}\p{M}])(мои|моих|моей|моём|моем|моя|мой|моим)(?=\s+(?:контакт|сет|круг|знаком))/giu,
++    second: (first) => first.replace(/^м/u, 'тв').replace(/^М/u, 'Тв'),
++  },
++];
++
++/** Quoted spans („…", "…", «…») — someone's own words. */
++const QUOTED_RE = /(„[^"“”]*["“”]|"[^"]*"|«[^»]*»)/u;
++
++function inSecondPerson(text: string): string {
++  return VOICE_FIXES.reduce((out, fix) => out.replace(fix.pattern, fix.second), text);
++}
++
++/** The plan reply with Netai's „my contacts / my network" said as the owner's. */
++export function withOwnersNetwork(reply: string): string {
++  return reply
++    .split(QUOTED_RE)
++    .map((part, i) => (i % 2 === 1 ? part : inSecondPerson(part)))
++    .join('');
++}
+-- 
+2.43.0
+
