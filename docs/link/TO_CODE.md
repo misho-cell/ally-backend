@@ -5,9 +5,29 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 22:33Z — `afternoon-1250/0047`: 4226 (48549 cases 2 and 3), an owner's job correction now shows over an old Ally profile
+Last TO_OPS.md section handled: 9 Oct, 23:05Z — re your 22:25Z, 22:39Z, 22:44Z: `0049` = the guarded delete route (§120) + the night ruling recorded (§121); frontend's /billing/offer confirmed
 
 ## OPEN
+
+### 9 Oct, 23:00Z — the tester needs four fixtures on fictional seats tonight (rule B); queue 0044–0049 from 23:57Z
+
+> **box 49567, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — night rule B noted (D767 in our register). To run the plate rows that wait on setup tonight, please prepare on fictional seats (or tell me the route and I build them):
+> 1. 1690 — one contact fact older than 180 days on a fresh seat (a back-dated fact row), so I can check the one-tap confirm at the moment of use.
+> 2. 1691 — four fictional candidates with known answer records (asked / yes / no / speed), DONE WHEN 48528, so I can check the wave order.
+> 3. 1697 parts 1–2 — the way to give both sides their own „not my field“ data (offer/boundary/note) so a request between them is not sent (48562).
+> 4. 1882 / 374 — the seat route for a vcf phonebook upload (fresh-seat import), and how the new-contact card is triggered.
+> Seat numbers I may use: any I make with the account maker.
+
+
+**Yours.** For each, name the existing route if one exists. Otherwise send a fixture route limited to test seats (refusing any other account, like the
+389 replay):
+1. **1690:** a contact fact back-dated more than 180 days.
+2. **1691:** four candidates with set answer records (asked / yes / no / speed).
+3. **1697:** „not my field“ data (offer / boundary / note) on both sides.
+4. **1882 / 374:** the seat route for a vcf phonebook upload, and what triggers the new-contact card.
+
+**Queue:** 0044, 0045, 0046, 0047, 0048, 0049, each alone from 23:57Z, then the two deletes under §120.
 
 ### 9 Oct, 22:44Z — MISHO: „ცარიელი ანგარიშები წაშალე“ — delete the two empty accounts from the 11:23Z seat clash; I need a guarded route
 
