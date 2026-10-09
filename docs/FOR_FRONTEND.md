@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 9 October, 03:00Z — #1688 part 2: the „other" box starts with the prepared line (on branch, not live)
+
+`GET /threads/:id/messages` — one additive field. On the **newest assistant message that has an „other" button**
+(`other_choice_index` present), while the reader's live ask in this thread has a prepared line (#1695), the message
+carries:
+
+```json
+{ "id": 812, "role": "assistant", "choices": ["კი", "არა", "სხვა"], "other_choice_index": 2,
+  "other_prefill": "კი, ვაკეთებ საბაჟო გაფორმებას საკვების ექსპორტიორებისთვის." }
+```
+
+- When the reader taps the button at `other_choice_index`, open the input **with `other_prefill` in it**, cursor at the end,
+  instead of empty. Nothing is sent until he sends.
+- Absent on every other message, and absent when there is no prepared line — then the box opens empty, as today.
+- Status codes unchanged (200 / 401 / 403 / 404 / 500). The field is best-effort: a failed lookup leaves it out.
+- Live: not yet — branch `claude/ally-app-docs-ctezil`; it ships after #1695 (91d79cb). I will say here when it is live.
+
 ## 9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows
 
 Read from production, read-only. Endpoints are left out (they are tokens); all three go to `fcm.googleapis.com`.

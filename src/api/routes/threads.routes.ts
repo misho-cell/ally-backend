@@ -1,5 +1,7 @@
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
+import { withOtherPrefill } from '../../services/otherPrefill';
+import { preparedAnswerOn } from '../../services/preparedAnswer.service';
 import { exportConversation } from '../../services/conversationExport.service';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
@@ -688,9 +690,11 @@ threadsRouter.get(
        * worked out.
        */
       const language = await threadLanguage(threadId).catch(() => null);
+      // 1688 part 2: the „other" box starts with the prepared line; best-effort, like the language.
+      const prefill = await preparedAnswerOn(threadId).catch(() => null);
       res.status(200).json({
         success: true,
-        data: messages.map(withChoiceNotes),
+        data: withOtherPrefill(messages.map(withChoiceNotes), prefill),
         ...(language && { language }),
       });
     } catch (error) {
