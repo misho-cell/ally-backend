@@ -1,0 +1,334 @@
+From fa180ff9d85df3a56d50ede8e07c1f61632c264f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 21:09:07 +0000
+Subject: [PATCH 31/33] fix(asks): a question to a helper never states
+ somebody's condition (3567)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SA-013, 2 of 2: the owner told Netai about a friend's depression and asked to
+find a psychologist. The editor folded the owner's words into the question,
+and the helper read the friend's name and illness, in the message and in the
+conversation title.
+
+After the editor, every ask now drops the parts of the question that state a
+health condition (Georgian, English, Russian, Spanish; word-anchored, like
+contentGuard). The question itself stays, so "do you know a good doctor for
+diabetes?" still goes out whole. The thread title is built from the filtered
+question.
+
+DONE WHEN: SA-013 step 1 on 3 fresh pairs — the arrived question and its
+title hold neither „ლაშა" nor „დეპრესი".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 0a5b94f1389e7d8bff7a387f28e930a174c533ae)
+---
+ .../anEditorChecksEveryQuestion.test.ts       |   2 +-
+ .../__tests__/healthDisclosure.test.ts        |  59 +++++++
+ ...theHelpersTitleIsTheEditedQuestion.test.ts |   2 +-
+ src/services/healthDisclosure.ts              | 149 ++++++++++++++++++
+ src/services/taskAsks.service.ts              |  17 +-
+ 5 files changed, 226 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/healthDisclosure.test.ts
+ create mode 100644 src/services/healthDisclosure.ts
+
+diff --git a/src/services/__tests__/anEditorChecksEveryQuestion.test.ts b/src/services/__tests__/anEditorChecksEveryQuestion.test.ts
+index 0295303..1af22a6 100644
+--- a/src/services/__tests__/anEditorChecksEveryQuestion.test.ts
++++ b/src/services/__tests__/anEditorChecksEveryQuestion.test.ts
+@@ -121,7 +121,7 @@ describe('the ask path', () => {
+   const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+ 
+   it('checks every question before it is saved for the reader', () => {
+-    const edit = asks.indexOf('const edited = await editOutgoingAsk(');
++    const edit = asks.indexOf('const editorsAsk = await editOutgoingAsk(');
+     expect(edit).toBeGreaterThan(-1);
+     expect(asks.indexOf('const opening = buildAskOpening(', edit)).toBeGreaterThan(edit);
+   });
+diff --git a/src/services/__tests__/healthDisclosure.test.ts b/src/services/__tests__/healthDisclosure.test.ts
+new file mode 100644
+index 0000000..4ff145e
+--- /dev/null
++++ b/src/services/__tests__/healthDisclosure.test.ts
+@@ -0,0 +1,59 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { namesACondition, withoutConditionStated } from '../healthDisclosure';
++
++/**
++ * 3567 (SA-013, 2 of 2): the helper read „…მეგობარი ლაშა გამოგონილი მძიმე
++ * დეპრესიაშია, იცნობ თუ არა კარგ ფსიქოლოგს?" — the need goes out, the condition never.
++ */
++describe('a question carries the need, never somebody’s condition (3567)', () => {
++  it('the tester’s question loses the friend and his illness', () => {
++    const out = withoutConditionStated(
++      'ოუნერ ც19-ს მეგობარი ლაშა გამოგონილი მძიმე დეპრესიაშია, იცნობ თუ არა კარგ ფსიქოლოგს?',
++    );
++    expect(out).toBe('იცნობ თუ არა კარგ ფსიქოლოგს?');
++    expect(out).not.toContain('ლაშა');
++    expect(out).not.toContain('დეპრესი');
++  });
++
++  it.each([
++    [
++      'Do you know a good psychologist? My friend Lasha is badly depressed.',
++      'Do you know a good psychologist?',
++    ],
++    ['У моего друга депрессия, ты знаешь хорошего психолога?', 'Ты знаешь хорошего психолога?'],
++    ['Mi amigo tiene cáncer; ¿conoces a un buen oncólogo?', '¿conoces a un buen oncólogo?'],
++  ])('„%s"', (question, expected) => {
++    expect(withoutConditionStated(question)).toBe(expected);
++  });
++
++  it('a question whose need IS the condition goes out whole', () => {
++    const q = 'Do you know a good doctor for diabetes?';
++    expect(withoutConditionStated(q)).toBe(q);
++  });
++
++  it('a question naming no condition is left exactly as it is', () => {
++    const q = 'იცნობ თუ არა კარგ ნოტარიუსს თბილისში?';
++    expect(withoutConditionStated(q)).toBe(q);
++  });
++
++  it('nothing but a stated condition leaves nothing', () => {
++    expect(withoutConditionStated('ლაშა მძიმე დეპრესიაშია.')).toBeNull();
++  });
++
++  it.each(['ფსიქოლოგი', 'psychologist', 'психолог', 'Ракитин', 'Kibo Café', 'aidsheet'])(
++    'an ordinary word „%s" is no condition',
++    (word) => {
++      expect(namesACondition(word)).toBe(false);
++    },
++  );
++
++  it('every ask passes the filter after the editor, so its title does too', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    const filtered = asks.indexOf('questionWithoutCondition(editorsAsk.question)');
++    expect(filtered).toBeGreaterThan(-1);
++    expect(asks.indexOf('openAskThread(toUserId, senderName, edited.question')).toBeGreaterThan(
++      filtered,
++    );
++  });
++});
+diff --git a/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts b/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts
+index a984236..a45ba6a 100644
+--- a/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts
++++ b/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts
+@@ -5,7 +5,7 @@ import { join } from 'path';
+ describe('theHelpersTitleIsTheEditedQuestion', () => {
+   it('opens the helper’s thread after the editor, titled with the edited question', () => {
+     const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+-    const edited = source.indexOf('const edited = await editOutgoingAsk(');
++    const edited = source.indexOf('const editorsAsk = await editOutgoingAsk(');
+     const opened = source.indexOf(
+       'liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));',
+     );
+diff --git a/src/services/healthDisclosure.ts b/src/services/healthDisclosure.ts
+new file mode 100644
+index 0000000..1ef4387
+--- /dev/null
++++ b/src/services/healthDisclosure.ts
+@@ -0,0 +1,149 @@
++/**
++ * 3567 (MASTER TEST RUN SA-013, 2 of 2): the owner typed „ჩემი მეგობარი ლაშა …
++ * მძიმე დეპრესიაშია. ჰკითხე <helper>-ს, იცნობს თუ არა კარგ ფსიქოლოგს." The
++ * editor folded the owner's words into the question, and the helper read the
++ * friend's name AND his illness, in the message and in the conversation title.
++ *
++ * A question to another person carries the need, never somebody's condition.
++ * Deterministic on purpose, like contentGuard: a part of the question that
++ * STATES a condition is dropped; the question itself stays, so „do you know a
++ * good doctor for diabetes?" still goes out whole.
++ */
++
++/** Georgian and Russian inflect on the suffix: these match at the start of a word. */
++const CONDITION_STEMS: readonly string[] = [
++  'დეპრესი',
++  'შიზოფრენ',
++  'ბიპოლარ',
++  'სიმსივნ',
++  'კიბო',
++  'ინსულტ',
++  'ინფარქტ',
++  'დიაბეტ',
++  'შიდს',
++  'აუტიზმ',
++  'აუტისტ',
++  'დემენცი',
++  'ალცჰაიმერ',
++  'პარკინსონ',
++  'ეპილეფს',
++  'ორსულ',
++  'უნაყოფო',
++  'სუიციდ',
++  'თვითმკვლელ',
++  'დაავადებ',
++  'ავადაა',
++  'ავადმყოფ',
++  'ფსიქიკურ',
++  'შფოთვ',
++  'ალკოჰოლიზ',
++  'ნარკომან',
++  'депресс',
++  'шизофрен',
++  'биполяр',
++  'опухол',
++  'инсульт',
++  'инфаркт',
++  'диабет',
++  'аутизм',
++  'деменц',
++  'альцгеймер',
++  'паркинсон',
++  'эпилепс',
++  'беремен',
++  'бесплод',
++  'суицид',
++  'болеет',
++  'болезн',
++  'depress',
++  'deprimid',
++  'esquizofren',
++  'schizophren',
++  'embarazad',
++  'suicid',
++  'alzheimer',
++  'parkinson',
++  'epilep',
++  'demenci',
++  'dementia',
++  'autism',
++  'autistic',
++  'autismo',
++];
++
++/** Short words that are other words elsewhere: matched whole only. */
++const CONDITION_WORDS: ReadonlySet<string> = new Set([
++  'აივ',
++  'рак',
++  'вич',
++  'спид',
++  'cancer',
++  'cáncer',
++  'tumor',
++  'tumour',
++  'hiv',
++  'aids',
++  'vih',
++  'sida',
++  'bipolar',
++  'diabetes',
++  'diabetic',
++  'pregnant',
++  'infertile',
++  'stroke',
++  'anxiety',
++  'addicted',
++  'addiction',
++]);
++
++const CLAUSE_SPLIT_RE = /\s*[,;]\s*|\s+[—–-]\s+/u;
++const SENTENCE_SPLIT_RE = /(?<=[.!?…])\s+/u;
++const SENTENCE_END_RE = /[.!?…]+$/u;
++
++function wordsOf(text: string): string[] {
++  return text
++    .toLowerCase()
++    .split(/[^\p{L}\p{N}]+/u)
++    .filter((w) => w !== '');
++}
++
++/** Does this text name a health condition? */
++export function namesACondition(text: string): boolean {
++  return wordsOf(text).some(
++    (word) => CONDITION_WORDS.has(word) || CONDITION_STEMS.some((stem) => word.startsWith(stem)),
++  );
++}
++
++// Mkhedruli has no capitals: upper-casing it gives Mtavruli, which is wrong in running text.
++const GEORGIAN_LETTER_RE = /^[\u10D0-\u10FF]/u;
++
++function capitalized(text: string): string {
++  if (GEORGIAN_LETTER_RE.test(text)) return text;
++  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
++}
++
++/** One sentence without its condition-stating parts; null when nothing of it is left. */
++function sentenceWithoutCondition(sentence: string): string | null {
++  if (!namesACondition(sentence)) return sentence;
++  const end = SENTENCE_END_RE.exec(sentence)?.[0] ?? '';
++  const body = sentence.slice(0, sentence.length - end.length);
++  const clauses = body.split(CLAUSE_SPLIT_RE).filter((c) => c.trim() !== '');
++  const kept = clauses.filter((clause) => !namesACondition(clause));
++  if (kept.length > 0) return `${capitalized(kept.join(', ').trim())}${end}`;
++  // The whole sentence is the condition. A question keeps it — that is the need
++  // itself („…a doctor for diabetes?"); a statement goes.
++  return end.includes('?') ? sentence : null;
++}
++
++/**
++ * The question without the parts that state somebody's condition. Returns the
++ * text unchanged when it names none, and null when nothing would be left.
++ */
++export function withoutConditionStated(question: string): string | null {
++  const kept = question
++    .trim()
++    .split(SENTENCE_SPLIT_RE)
++    .map(sentenceWithoutCondition)
++    .filter((s): s is string => s !== null && s.trim() !== '');
++  return kept.length > 0 ? kept.join(' ') : null;
++}
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 64e7d82..d204eb0 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -47,6 +47,7 @@ import {
+   RoundInput,
+   roundsAfter,
+ } from './a2aRounds';
++import { withoutConditionStated } from './healthDisclosure';
+ import { isTypedDecline } from './typedDecline';
+ import { Prematch, prematchMany, PrematchWord } from './prematch.service';
+ import { composePreparedAnswer, preparedAnswerLine } from './preparedAnswer.service';
+@@ -141,6 +142,18 @@ const ASK_TITLE_SNIPPET_CHARS = 48;
+ const TITLE_GREETING_PREFIX =
+   /^\s*(გამარჯობათ|გამარჯობა|მოგესალმებით|მოგესალმები|სალამი|დილა მშვიდობისა|საღამო მშვიდობისა|hello|hi|hey|dear)(?:\s+[\p{L}.]+){0,2}\s*[,!.\-—]+\s*/iu;
+ 
++/** 3567: the question with any stated condition dropped; as written when nothing would be left. */
++function questionWithoutCondition(question: string): string {
++  const cleaned = withoutConditionStated(question);
++  if (cleaned !== question) {
++    // eslint-disable-next-line no-console
++    console.log(
++      `[ask-condition] a stated condition was ${cleaned === null ? 'kept (nothing else)' : 'dropped'}`,
++    );
++  }
++  return cleaned ?? question;
++}
++
+ function titleSnippetFrom(question: string): string {
+   const stripped = question.replace(TITLE_GREETING_PREFIX, '').trim();
+   const body = stripped.length > 0 ? stripped : question.trim();
+@@ -1581,7 +1594,7 @@ async function createAskNow(
+         ? ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))
+         : ownButtons;
+   // D711: the question and its buttons pass the editor before they leave.
+-  const edited = await editOutgoingAsk(
++  const editorsAsk = await editOutgoingAsk(
+     { question: relayed.text, choices: draftChoices },
+     {
+       ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
+@@ -1591,6 +1604,8 @@ async function createAskNow(
+       draftIsOwnersWords: fromOwnersLine === true,
+     },
+   );
++  // 3567: the need goes out, never somebody's condition — in the message and in its title.
++  const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
+   // A follow-up lands in the conversation it belongs to; only a first ask
+   // opens a thread. Two threads for one exchange would put the answer and the
+   // question that followed it in different rooms (ticket 9 task 12).
+-- 
+2.43.0
+

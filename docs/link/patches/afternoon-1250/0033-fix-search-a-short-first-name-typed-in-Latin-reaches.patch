@@ -1,0 +1,126 @@
+From ce742168cc76d8cc8001e0610cf23beb18c2a7e2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 21:29:27 +0000
+Subject: [PATCH 33/33] fix(search): a short first name typed in Latin reaches
+ its Georgian spelling (3598)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+QA-020 / QA-042, 2 of 2: "Ask Nana Satsdeladze if she knows a good notary."
+about a helper saved as „ნანა საცდელაძე" sent nothing: "The question was not
+sent." The model never called ask_contact, and the server's own send found
+nobody, because a name search needs every word and the Latin „Nana" had no
+reading „ნანა": Georgian readings under five letters are dropped as noise.
+That floor is right for concept words and wrong for names. „Nana", „Keti",
+„Eka" and „Gia" lost their plain Georgian form; only nicknames were left.
+
+Name word groups now carry the short Georgian readings too (exact-token
+matches). Concept searches keep the floor. This also covers VO-012
+(Keti / Salome / Tamar Satsdeladze not found by their English spelling).
+
+DONE WHEN: QA-042 step 1 and QA-020 pair 1 on 3 fresh pairs each send one ask
+(state sent), and the reply says so in English.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 6c74a2c2a20150901e99bce04888f02fdea98159)
+---
+ .../tools/__tests__/shortNameReadings.test.ts | 25 +++++++++++++++++++
+ src/services/tools/transliterate.ts           | 25 ++++++++++++++++---
+ 2 files changed, 47 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/tools/__tests__/shortNameReadings.test.ts
+
+diff --git a/src/services/tools/__tests__/shortNameReadings.test.ts b/src/services/tools/__tests__/shortNameReadings.test.ts
+new file mode 100644
+index 0000000..17a997f
+--- /dev/null
++++ b/src/services/tools/__tests__/shortNameReadings.test.ts
+@@ -0,0 +1,25 @@
++import { buildMeaningWordGroups, buildRawWordGroups } from '../transliterate';
++
++/**
++ * 3598 (QA-020 / QA-042, 2 of 2): "Ask Nana Satsdeladze if she knows a good
++ * notary." about „ნანა საცდელაძე" sent nothing — the Latin „Nana" had no
++ * reading „ნანა", and a name search needs every word.
++ */
++describe('a short first name typed in Latin reaches its Georgian spelling (3598)', () => {
++  it.each([
++    ['Nana', 'ნანა'],
++    ['Keti', 'ქეთი'],
++    ['Eka', 'ეკა'],
++    ['Gia', 'გია'],
++  ])('„%s" reaches „%s"', (latin, georgian) => {
++    expect(buildRawWordGroups(latin)[0]).toContain(georgian);
++  });
++
++  it('the surname still reaches its own Georgian spellings', () => {
++    expect(buildRawWordGroups('Nana Satsdeladze')[1]).toContain('საცდელაძე');
++  });
++
++  it('a concept search keeps its floor: a short guessed word stays out', () => {
++    expect(buildMeaningWordGroups('bar').flat()).not.toContain('ბარ');
++  });
++});
+diff --git a/src/services/tools/transliterate.ts b/src/services/tools/transliterate.ts
+index b40e6bc..64c256c 100644
+--- a/src/services/tools/transliterate.ts
++++ b/src/services/tools/transliterate.ts
+@@ -225,6 +225,13 @@ const GEORGIAN_AMBIGUITIES_USED = 2;
+ /** Below this a Georgian term is an exact token (see EXACT_TOKEN_MAX_CHARS) and
+  *  a guessed spelling that short is noise rather than reach. */
+ const MIN_GEORGIAN_TERM_CHARS = 5;
++/**
++ * 3598: a NAME that short is not noise. „Nana", „Keti", „Gia" typed in Latin
++ * letters never reached „ნანა საცდელაძე" — the floor above dropped the only
++ * reading that spells her, and a name search needs every word. A short reading
++ * matches as an exact token (toWordStartPattern), which for a name is right.
++ */
++const MIN_GEORGIAN_NAME_CHARS = 2;
+ 
+ /** The primary reading: digraphs first, then letter by letter. */
+ export function latinToGeorgian(term: string): string {
+@@ -255,10 +262,13 @@ export function latinToGeorgian(term: string): string {
+  * shape: „elektrikosi" is ელექტრიკოსი, where one `k` is ქ and the other is კ,
+  * and no whole-letter swap can spell one letter two ways in one word.
+  */
+-export function georgianVariants(term: string): readonly string[] {
++export function georgianVariants(
++  term: string,
++  minChars: number = MIN_GEORGIAN_TERM_CHARS,
++): readonly string[] {
+   if (hasGeorgian(term)) return [];
+   const primary = latinToGeorgian(term);
+-  if (primary.length < MIN_GEORGIAN_TERM_CHARS) return [];
++  if (primary.length < minChars) return [];
+   const live = GEORGIAN_AMBIGUITY.filter(([from]) => primary.includes(from)).slice(
+     0,
+     GEORGIAN_AMBIGUITIES_USED,
+@@ -417,7 +427,9 @@ function pictographWord(word: string): string {
+ 
+ export function buildRawWordGroups(rawQuery: string): string[][] {
+   const words = splitIntoWords(rawQuery);
+-  return words.map((word) => wordVariantGroup(word)).filter((group) => group.length > 0);
++  return words
++    .map((word) => [...new Set([...wordVariantGroup(word), ...shortNameReadings(word)])])
++    .filter((group) => group.length > 0);
+ }
+ 
+ /**
+@@ -669,6 +681,13 @@ export function withoutAgentEnding(stem: string): string | null {
+   return stem.slice(0, -AGENT_ENDING.length);
+ }
+ 
++/** 3598: the Georgian readings of a short Latin name word, which the shared floor drops. */
++function shortNameReadings(word: string): string[] {
++  const lower = word.toLowerCase();
++  if (latinToGeorgian(lower).length >= MIN_GEORGIAN_TERM_CHARS) return [];
++  return georgianVariants(lower, MIN_GEORGIAN_NAME_CHARS).filter((reading) => hasGeorgian(reading));
++}
++
+ function wordVariantGroup(word: string): string[] {
+   const lower = word.toLowerCase();
+   const latin = hasGeorgian(lower) ? georgianToLatin(lower) : lower;
+-- 
+2.43.0
+

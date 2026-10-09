@@ -1,0 +1,219 @@
+From 9c7c498cdfcbccb222757615b1af448f74f74686 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 21:21:57 +0000
+Subject: [PATCH 32/33] fix(chat): a safety worry gets a warm answer, never the
+ internal-check apology (3568)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SA-013 step 5, 2 of 2: „მეშინია, თავს რამე არ დაუშავოს." ("I am afraid he
+will hurt himself") — both moderation votes blocked the model's reply and the
+owner read „…შიდა შემოწმებამ შეაჩერა… მომწერე „გაიმეორე"" at the one moment a
+human word matters.
+
+When the reply is blocked and the owner's line is a worry about somebody's
+safety, the server's own short answer stands in place of the apology: stay
+with them, call 112 if they are in danger, ask directly, and an offer to find
+a psychologist in their contacts. A line about the owner's own crisis gets its
+own version. ka/en/ru/es. Unblocked replies are untouched; the blocked reply's
+buttons still go, as before.
+
+DONE WHEN: SA-013 step 5 on 3 fresh pairs — 3 of 3 human answers, no apology.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit c8644f030237d6370eac454a851e6681f6f76556)
+---
+ .../aBlockedPlanReplyKeepsThePlan.test.ts     |  2 +-
+ src/services/__tests__/safetyWorry.test.ts    | 49 ++++++++++++++
+ .../theModerationVerdictIsObeyed.test.ts      |  4 +-
+ src/services/chat.service.ts                  |  6 +-
+ src/services/safetyWorry.ts                   | 67 +++++++++++++++++++
+ 5 files changed, 125 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/safetyWorry.test.ts
+ create mode 100644 src/services/safetyWorry.ts
+
+diff --git a/src/services/__tests__/aBlockedPlanReplyKeepsThePlan.test.ts b/src/services/__tests__/aBlockedPlanReplyKeepsThePlan.test.ts
+index 703a1be..135de82 100644
+--- a/src/services/__tests__/aBlockedPlanReplyKeepsThePlan.test.ts
++++ b/src/services/__tests__/aBlockedPlanReplyKeepsThePlan.test.ts
+@@ -10,7 +10,7 @@ describe('a blocked plan reply', () => {
+   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+   const blockAt = chat.indexOf(': await moderateReply(cleanedFinal, userId);');
+   const replyAt = chat.indexOf(
+-    'replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked',
++    '(safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked)',
+   );
+ 
+   it('tries the server plan text before the apology is chosen', () => {
+diff --git a/src/services/__tests__/safetyWorry.test.ts b/src/services/__tests__/safetyWorry.test.ts
+new file mode 100644
+index 0000000..0946a92
+--- /dev/null
++++ b/src/services/__tests__/safetyWorry.test.ts
+@@ -0,0 +1,49 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { SafetyWorry, safetyReplyFor, safetyWorryIn } from '../safetyWorry';
++
++/**
++ * 3568 (SA-013 step 5, 2 of 2): „მეშინია, თავს რამე არ დაუშავოს." got the
++ * internal-check apology. A blocked reply to a safety worry is a warm answer.
++ */
++describe('a safety worry never gets the internal-check apology (3568)', () => {
++  it.each([
++    'მეშინია, თავს რამე არ დაუშავოს.',
++    'I am scared he will hurt himself.',
++    'Боюсь, что он навредит себе.',
++    'Tengo miedo de que se haga daño.',
++  ])('„%s" is a worry about someone else', (line) => {
++    expect(safetyWorryIn(line)).toBe(SafetyWorry.AboutSomeoneElse);
++  });
++
++  it.each(['სიცოცხლე აღარ მინდა', 'I want to die', 'Не хочу жить', 'no quiero vivir'])(
++    '„%s" is the owner’s own crisis',
++    (line) => {
++      expect(safetyWorryIn(line)).toBe(SafetyWorry.AboutThemselves);
++    },
++  );
++
++  it.each(['ვინ მყავს იურისტად?', 'Who do I know at the bank?', 'Find me a good psychologist'])(
++    'an ordinary line „%s" is no worry',
++    (line) => {
++      expect(safetyWorryIn(line)).toBeNull();
++      expect(safetyReplyFor(line, 'ka')).toBeNull();
++    },
++  );
++
++  it('the answer says stay with them, 112, and offers to find help — in the owner’s language', () => {
++    const ka = safetyReplyFor('მეშინია, თავს რამე არ დაუშავოს.', 'ka') ?? '';
++    expect(ka).toContain('112');
++    expect(ka).toContain('მარტო ნუ დატოვებ');
++    expect(ka).toContain('ფსიქოლოგს');
++    expect(ka).not.toContain('შიდა შემოწმება');
++    expect(safetyReplyFor('I am scared he will hurt himself.', 'en')).toContain('112');
++  });
++
++  it('the blocked-reply path asks for it before the apology', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      '(safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked)',
++    );
++  });
++});
+diff --git a/src/services/__tests__/theModerationVerdictIsObeyed.test.ts b/src/services/__tests__/theModerationVerdictIsObeyed.test.ts
+index 864f63c..4add11a 100644
+--- a/src/services/__tests__/theModerationVerdictIsObeyed.test.ts
++++ b/src/services/__tests__/theModerationVerdictIsObeyed.test.ts
+@@ -47,7 +47,9 @@ describe('the moderation verdict is read, and everything downstream obeys it', (
+   });
+ 
+   it('1 — shows the apology instead of the blocked text', () => {
+-    expect(source).toContain('replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked');
++    expect(source).toContain(
++      '(safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked)',
++    );
+   });
+ 
+   it('2 — drops the buttons that belonged to the blocked reply', () => {
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index ffc5c48..8d9de2c 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -85,6 +85,7 @@ import { settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+ import { settleMatchTap } from './matchFlow.service';
+ import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+ 
++import { safetyReplyFor } from './safetyWorry';
+ /**
+  * 1698: the offer tools reach the model since Misho's yes on their texts
+  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
+@@ -16007,7 +16008,10 @@ export async function processChat(
+   // Question A (tester 947): a web-found person's page link, by their name.
+   if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
+   const reply = wrapAllowedNumbers(
+-    replySafe ? cleanedFinal : RUN_STRINGS[language].moderationBlocked,
++    // 3568: a blocked reply to a safety worry is the server's own warm answer, never the apology.
++    replySafe
++      ? cleanedFinal
++      : (safetyReplyFor(userMessage, language) ?? RUN_STRINGS[language].moderationBlocked),
+     runId,
+   );
+   logWebNumberOutcome(runId, reply);
+diff --git a/src/services/safetyWorry.ts b/src/services/safetyWorry.ts
+new file mode 100644
+index 0000000..c28c8d3
+--- /dev/null
++++ b/src/services/safetyWorry.ts
+@@ -0,0 +1,67 @@
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 3568 (MASTER TEST RUN SA-013 step 5, 2 of 2): in a goal about a friend in
++ * deep depression the owner typed „მეშინია, თავს რამე არ დაუშავოს." Both
++ * moderation votes blocked the model's reply, and the owner read the
++ * internal-check apology — „…შიდა შემოწმებამ შეაჩერა… მომწერე „გაიმეორე""
++ * — at the one moment a human word matters. The first reply of the same goal
++ * had said the right thing, so the model can answer; the check stops it.
++ *
++ * When a reply is blocked and the owner's line is a worry about somebody's
++ * safety (or their own), the server's own short, warm answer stands in place
++ * of the apology: stay with them, 112 when in danger, an offer to find help.
++ */
++
++/** Somebody else may hurt themselves. */
++const WORRY_ABOUT_OTHER_RE =
++  /(თავს\s+(?:რამე\s+)?(?:არ\s+)?(?:დაუშავ|დაიზიან|მოიკლ)|თავის\s+მოკვლ|სუიციდ|თვითმკვლელ|(?:hurt|harm|kill)\s+(?:himself|herself|themselves)|end\s+(?:his|her|their)\s+(?:own\s+)?life|suicid|self[-\s]?harm|покончит\w*\s+с\s+собой|навредит\w*\s+себе|убь[её]т\s+себя|суицид|(?:hacerse|se\s+haga)\s+daño|quitarse\s+la\s+vida)/iu;
++
++/** The owner may hurt themselves. */
++const OWN_CRISIS_RE =
++  /(თავს\s+(?:მოვიკლავ|მოვიკლა|დავიზიანებ)|სიცოცხლე\s+აღარ\s+მინდა|მოკვდომა\s+მინდა|\bI\s+(?:want\s+to|will|might|am\s+going\s+to)\s+(?:kill|hurt|harm)\s+myself\b|\bI\s+want\s+to\s+die\b|\bI\s+don'?t\s+want\s+to\s+live\b|покончу\s+с\s+собой|хочу\s+умереть|не\s+хочу\s+жить|quiero\s+morir|me\s+voy\s+a\s+matar|no\s+quiero\s+vivir)/iu;
++
++export enum SafetyWorry {
++  AboutSomeoneElse = 'about_someone_else',
++  AboutThemselves = 'about_themselves',
++}
++
++export function safetyWorryIn(ownerLine: string): SafetyWorry | null {
++  if (OWN_CRISIS_RE.test(ownerLine)) return SafetyWorry.AboutThemselves;
++  if (WORRY_ABOUT_OTHER_RE.test(ownerLine)) return SafetyWorry.AboutSomeoneElse;
++  return null;
++}
++
++const SAFETY_REPLIES: Readonly<Record<RunLanguage, Readonly<Record<SafetyWorry, string>>>> = {
++  ka: {
++    [SafetyWorry.AboutSomeoneElse]:
++      'მესმის, ეს ძალიან საშიშია. თუ ფიქრობ, რომ ის ახლა საფრთხეშია, დარეკე 112-ზე და მარტო ნუ დატოვებ. დაელაპარაკე და პირდაპირ ჰკითხე, როგორ არის — ასეთი კითხვა ზიანს არ აყენებს. თუ გინდა, შენს კონტაქტებში მოვძებნი ფსიქოლოგს ან ფსიქიატრს, ვინც დახმარებას შეძლებს.',
++    [SafetyWorry.AboutThemselves]:
++      'კარგია, რომ მომწერე. თუ ახლა საფრთხეში ხარ, დარეკე 112-ზე. ამასთან მარტო არ უნდა იყო — ახლავე უთხარი ვინმე ახლობელს. თუ გინდა, შენს კონტაქტებში მოვძებნი ფსიქოლოგს, ვინც დაგეხმარება.',
++  },
++  en: {
++    [SafetyWorry.AboutSomeoneElse]:
++      'I understand, this is frightening. If you think they are in danger right now, call 112 and do not leave them alone. Talk to them and ask directly how they are — asking does not make it worse. If you want, I will look in your contacts for a psychologist or psychiatrist who can help.',
++    [SafetyWorry.AboutThemselves]:
++      'I am glad you wrote to me. If you are in danger right now, call 112. You do not have to be alone with this — tell someone close to you now. If you want, I will look in your contacts for a psychologist who can help.',
++  },
++  ru: {
++    [SafetyWorry.AboutSomeoneElse]:
++      'Понимаю, это очень страшно. Если думаешь, что человек сейчас в опасности, позвони 112 и не оставляй его одного. Поговори с ним и прямо спроси, как он, — такой вопрос не вредит. Если хочешь, я найду в твоих контактах психолога или психиатра, который сможет помочь.',
++    [SafetyWorry.AboutThemselves]:
++      'Хорошо, что ты написал мне. Если ты сейчас в опасности, позвони 112. Не оставайся с этим один — скажи кому-то близкому прямо сейчас. Если хочешь, я найду в твоих контактах психолога, который поможет.',
++  },
++  es: {
++    [SafetyWorry.AboutSomeoneElse]:
++      'Te entiendo, da mucho miedo. Si crees que esa persona está en peligro ahora mismo, llama al 112 y no la dejes sola. Habla con ella y pregúntale directamente cómo está; preguntar no empeora nada. Si quieres, busco en tus contactos un psicólogo o psiquiatra que pueda ayudar.',
++    [SafetyWorry.AboutThemselves]:
++      'Me alegra que me hayas escrito. Si estás en peligro ahora mismo, llama al 112. No tienes que pasar por esto solo: díselo ahora a alguien cercano. Si quieres, busco en tus contactos un psicólogo que pueda ayudarte.',
++  },
++};
++
++/** The server's answer to a safety worry; null when the line is no such worry. */
++export function safetyReplyFor(ownerLine: string, language: RunLanguage): string | null {
++  const worry = safetyWorryIn(ownerLine);
++  if (worry === null) return null;
++  return (SAFETY_REPLIES[language] ?? SAFETY_REPLIES.ka)[worry];
++}
+-- 
+2.43.0
+

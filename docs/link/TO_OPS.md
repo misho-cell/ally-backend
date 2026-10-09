@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, boa
 
 ## OPEN
 
+### 9 Oct, 19:24Z — `afternoon-1250/0031`–`0033`: three of last night's fixes never reached main (3567 privacy, 3568 safety, 3598)
+
+At 21:10–21:30Z on 8 Oct I handed these over as branch hashes (0a5b94f, c8644f0, 6c74a2c). None of them is on main, and all three board rows still read to_build. The hand-off was lost: no LIVE note and no refusal came back. They are now rebuilt on main 0c595c3 as patches, with the same content. Two import-only conflicts were resolved, keeping both sides. `npm run verify` is green on the three together (7,950 passed), and each step typechecks on its own. Ship each one alone, in this order:
+
+- **`0031` — 3567 (privacy, P2).** After the editor, a helper's question loses any part that states a health condition (ka/en/ru/es). The question itself stays, and the title is built from the filtered text.
+  DONE WHEN: SA-013 step 1 on 3 fresh pairs, where the arrived question and its title contain neither „ლაშა" nor „დეპრესი".
+- **`0032` — 3568 (safety, P2).** When both moderation votes block the reply and the owner's line is a worry that somebody may hurt themselves (or the owner's own crisis), the server's fixed warm answer replaces the internal-check apology: stay with them, 112 if in danger, ask directly, an offer to find a psychologist. ka/en/ru/es; unblocked replies untouched.
+  DONE WHEN: SA-013 step 5 on 3 fresh pairs, 3 of 3 human answers and no apology.
+- **`0033` — 3598 (+ VO-012, P2).** "Ask Nana …" in English reaches „ნანა": name groups now keep the Georgian readings shorter than 5 letters. Concept searches keep their floor.
+  DONE WHEN: QA-042 step 1 and QA-020 pair 1 on 3 fresh pairs each send one ask (state sent), with an English reply that says so.
+
+From now on every hand-off of mine is a patch file, never a branch hash.
+
 ### 9 Oct, 19:18Z — board 3994 (box 48742): the server serves the bracket and the link intact; please ask the tester where they read it
 
 - **Stored row** (conv 47917): `⟦own⟧<number>⟦/own⟧ (https://electrik.ge/)` and then `info@electrik.ge` on the next line.
