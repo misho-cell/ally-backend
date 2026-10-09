@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import {
   csvCells,
+  isBinary,
   listFileKind,
   ListFileKind,
   ListFileRefusal,
@@ -123,5 +124,29 @@ describe('a text file', () => {
 
   it('gets one plain sentence when it cannot be read', () => {
     expect(listFileRefusal(ListFileRefusal.Unsupported, 'ka')).toContain('Excel (.xlsx), CSV');
+  });
+});
+
+describe('a picture renamed .csv (T3631)', () => {
+  const PNG = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  ]);
+
+  it('is refused as unreadable, never stored', async () => {
+    expect(isBinary(PNG)).toBe(true);
+    expect(await parseListFile(PNG, 'photo.csv')).toEqual({
+      ok: false,
+      reason: ListFileRefusal.Unreadable,
+    });
+    expect(await parseListFile(PNG, 'notes.txt')).toEqual({
+      ok: false,
+      reason: ListFileRefusal.Unreadable,
+    });
+  });
+
+  it('leaves a real Georgian CSV alone', async () => {
+    const csv = Buffer.from('სახელი,კომპანია\nნინო,ბანკი\n', 'utf8');
+    expect(isBinary(csv)).toBe(false);
+    expect((await parseListFile(csv, 'list.csv')).ok).toBe(true);
   });
 });

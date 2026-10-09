@@ -66,10 +66,34 @@ export function listFileKind(filename: string): ListFileKind | null {
   return EXTENSION_KINDS[filename.slice(dot + 1).toLowerCase()] ?? null;
 }
 
+/**
+ * T3631: a picture renamed .csv reached the database as text with NUL bytes
+ * in it, Postgres refused the row and the owner got a 500. A text file has no
+ * NUL byte, and decodes with few replacement characters; anything else is
+ * binary and is refused in one plain line (400), like a broken workbook.
+ */
+const BINARY_SAMPLE_BYTES = 8_192;
+const MAX_REPLACEMENT_SHARE = 0.1;
+const REPLACEMENT_CHAR_RE = /\uFFFD/gu;
+
+export function isBinary(buffer: Buffer): boolean {
+  const sample = buffer.subarray(0, BINARY_SAMPLE_BYTES);
+  if (sample.includes(0)) return true;
+  const text = sample.toString('utf8');
+  if (text.length === 0) return false;
+  const replaced = text.match(REPLACEMENT_CHAR_RE)?.length ?? 0;
+  return replaced / text.length > MAX_REPLACEMENT_SHARE;
+}
+
 export async function parseListFile(buffer: Buffer, filename: string): Promise<ListFileOutcome> {
   if (buffer.length > MAX_FILE_BYTES) return { ok: false, reason: ListFileRefusal.TooLarge };
   const kind = listFileKind(filename);
   if (kind === null) return { ok: false, reason: ListFileRefusal.Unsupported };
+  if (kind !== ListFileKind.Xlsx && isBinary(buffer)) {
+    // eslint-disable-next-line no-console
+    console.warn(`[list-file] ${kind} is binary (${buffer.length} bytes) — not read`);
+    return { ok: false, reason: ListFileRefusal.Unreadable };
+  }
   try {
     const table =
       kind === ListFileKind.Xlsx
