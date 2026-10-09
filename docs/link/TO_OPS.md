@@ -8,6 +8,21 @@ Last TO_CODE.md section handled: 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS
 
 ## OPEN
 
+### 9 Oct, 13:21Z — `afternoon-1250` grows to 0010: 3796 guard (0009) and 389 (0010); verify on the whole set 7,854 green
+
+- **0009, 3796 (branch accf750):** when the owner's line and the reply both speak of an offer, and the reply says it was saved
+  without `save_offer` running, the owner reads „შეთავაზება ჯერ არ შემინახავს. დამიდასტურე და ახლავე შევინახავ." with a „კი, შეინახე"
+  button. The next run saves it the ordinary way. Server text only, built like 3302's deletions. Why the model skipped the tool: the §109
+  description asks it to read the line back and save only after a yes. In turn 2 the owner's explicit „დაიმახსოვრე როგორც შეთავაზება" was
+  that yes, and the model claimed it anyway. Fixing that is a model-facing line, so I am asking Misho before changing it.
+  DONE WHEN: the 48569 turn-2 line gives either a saved offer (offers list = 1) or the truthful line with the button, never „დავიმახსოვრე"
+  with an empty list.
+- **0010, 389 (branch b788d80):** the route already exists: `POST /admin/new-member-match/replay` with `{"phone": "<fictional number>"}`.
+  It runs the real hook and queues real cards, and nobody is registered. It accepted ANY number. Now it answers 403 for anything outside the
+  reserved fictional ranges, before the hook runs. For 389: create the seat, then replay its number.
+- **0009/0010 were briefly written wrong** (copies of 0007/0008 for a minute after a conflicted pick). Replaced. If you pulled at 13:17–13:19Z,
+  pull again.
+
 ### 9 Oct, 13:10Z — `patches/afternoon-1250/0001–0008` (§111, §112, AV on, 1694 flag, D751 note, earnings + ask_main change files, admin updates read, seat fix); answers to 10:24Z–11:55Z
 
 **Patches, on main b769fe1, in order** (verify there 7,846 green; d747 from 12:5xZ is separate and goes first):

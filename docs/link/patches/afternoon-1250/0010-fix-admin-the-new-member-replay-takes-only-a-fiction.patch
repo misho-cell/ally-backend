@@ -1,0 +1,76 @@
+From eddb80c7d570016ed6d12ce2fde8e7e37fc2b135 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 13:15:40 +0000
+Subject: [PATCH 10/10] fix(admin): the new-member replay takes only a
+ fictional number (389)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops 11:55Z: a seat made by the test-accounts route never runs the
+registration hook, so 389 needs the replay route (row 262(b)) — which
+accepted ANY number and would queue real owners' cards about a real
+person. It now refuses (403) anything outside the reserved fictional
+ranges, before the hook runs.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                      |  9 +++++++++
+ .../whenSomebodyFromThatCompanyJoins.test.ts        | 13 +++++++++++++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index bbeb29c..18ccf05 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -237,6 +237,7 @@ import {
+   repairSeat,
+ } from '../../services/seatContacts.service';
+ import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.service';
++import { isFictionalNumber } from '../../services/fictionalNumbers';
+ import {
+   expireUnansweredRequests,
+   introductionsThatWouldExpire,
+@@ -3113,6 +3114,14 @@ adminRouter.post(
+       res.status(400).json({ success: false, error: 'phone is required' });
+       return;
+     }
++    // 389 (ops 11:55Z): real owners' cards about a real number come only from a
++    // real registration. The replay is for the reserved fictional ranges alone.
++    if (!isFictionalNumber(phone)) {
++      res
++        .status(403)
++        .json({ success: false, error: 'only a reserved fictional number may be replayed' });
++      return;
++    }
+     try {
+       const queued = await tellOwnersANewMemberFitsAGoal(phone);
+       // eslint-disable-next-line no-console
+diff --git a/src/services/__tests__/whenSomebodyFromThatCompanyJoins.test.ts b/src/services/__tests__/whenSomebodyFromThatCompanyJoins.test.ts
+index 268d027..afe2a47 100644
+--- a/src/services/__tests__/whenSomebodyFromThatCompanyJoins.test.ts
++++ b/src/services/__tests__/whenSomebodyFromThatCompanyJoins.test.ts
+@@ -351,6 +351,19 @@ describe('the seat route is not a registration', () => {
+     expect(route.slice(0, 2500)).toContain('That registerUser calls this hook');
+   });
+ 
++  /** 389 (ops 11:55Z): real owners' cards about a real number come only from a real registration. */
++  it('replays only a reserved fictional number, and refuses any other before it runs', () => {
++    const routes = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
++      'utf8',
++    );
++    const route = routes.slice(routes.indexOf("'/new-member-match/replay'"));
++    const refusal = route.indexOf('if (!isFictionalNumber(phone)) {');
++    expect(refusal).toBeGreaterThan(0);
++    expect(refusal).toBeLessThan(route.indexOf('tellOwnersANewMemberFitsAGoal(phone)'));
++    expect(route.slice(refusal, refusal + 200)).toContain('.status(403)');
++  });
++
+   /** And the one line the replay cannot show is asserted here instead. */
+   it('registerUser does call the hook', () => {
+     const auth = readFileSync(join(__dirname, '..', 'auth.service.ts'), 'utf8');
+-- 
+2.43.0
+

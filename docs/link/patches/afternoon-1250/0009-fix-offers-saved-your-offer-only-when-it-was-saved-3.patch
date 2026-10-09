@@ -1,0 +1,197 @@
+From 96b8973d32e2453169bb4da9888ab038c8927dbe Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 13:12:46 +0000
+Subject: [PATCH 09/10] =?UTF-8?q?fix(offers):=20=E2=80=9Esaved=20your=20of?=
+ =?UTF-8?q?fer"=20only=20when=20it=20was=20saved=20(3796)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 48569: an explicit „დაიმახსოვრე როგორც შეთავაზება" got „დავიმახსოვრე
+შენი შეთავაზება…" with no tool call, and the offers list stayed empty.
+Like 3302's deletions: when the owner's line and the reply both speak of
+an offer and the reply says it was saved, but save_offer did not run, the
+owner reads the truth and one confirm button; the next run saves it the
+ordinary way. A saved profile line is never touched. Server text only; the
+model's tool text is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anOfferIsSavedOnlyWhenSaved.test.ts       | 52 ++++++++++++++
+ src/services/chat.service.ts                  | 15 ++++
+ src/services/offerClaim.ts                    | 70 +++++++++++++++++++
+ 3 files changed, 137 insertions(+)
+ create mode 100644 src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+ create mode 100644 src/services/offerClaim.ts
+
+diff --git a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+new file mode 100644
+index 0000000..e569920
+--- /dev/null
++++ b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+@@ -0,0 +1,52 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { offerClaimWithoutTool, offerNotSavedLine } from '../offerClaim';
++
++/** 3796 (box 48569): „დავიმახსოვრე შენი შეთავაზება" with no save_offer call. */
++describe('a reply that says an offer was saved', () => {
++  const owner =
++    'ჩემი შეთავაზება სხვა წევრებისთვის: სტუმარმასპინძლობა აჭარაში. დაიმახსოვრე როგორც შეთავაზება.';
++  const claim = 'დავიმახსოვრე შენი შეთავაზება: სტუმარმასპინძლობა აჭარაში.';
++
++  it('is caught when save_offer did not run', () => {
++    expect(offerClaimWithoutTool(claim, ['search_by_tag'], owner)).toBe(true);
++  });
++
++  it('stands when save_offer ran', () => {
++    expect(offerClaimWithoutTool(claim, ['save_offer'], owner)).toBe(false);
++  });
++
++  it('leaves a saved profile line alone — no offer word on either side', () => {
++    expect(
++      offerClaimWithoutTool('დავიმახსოვრე, რომ ბუღალტერი ხარ.', [], 'ბუღალტერი ვარ, დაიმახსოვრე'),
++    ).toBe(false);
++  });
++
++  it('leaves a read-back question alone — it says nothing was saved', () => {
++    expect(
++      offerClaimWithoutTool('ასე ჩავწერო შენი შეთავაზება: „სტუმარმასპინძლობა აჭარაში"?', [], owner),
++    ).toBe(false);
++  });
++
++  it('is caught in English too', () => {
++    expect(
++      offerClaimWithoutTool('I saved your offer.', [], 'Save this as my offer: logistics in Poti'),
++    ).toBe(true);
++  });
++
++  it('gives the owner the truth and one confirm button', () => {
++    expect(offerNotSavedLine('ka')).toEqual({
++      text: 'შეთავაზება ჯერ არ შემინახავს. დამიდასტურე და ახლავე შევინახავ.',
++      confirm: 'კი, შეინახე',
++    });
++    expect(offerNotSavedLine('en').confirm).toBe('Yes, save it');
++  });
++
++  it('runs in the owner’s turn, before the buttons pass the editor', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const guard = chat.indexOf('offerClaimWithoutTool(finalText, toolNamesUsed');
++    const editor = chat.indexOf('choices = await checkedOwnerButtons(finalText, choices');
++    expect(guard).toBeGreaterThan(0);
++    expect(guard).toBeLessThan(editor);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 4b89f3c..9516c65 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -73,6 +73,7 @@ import { acceptIntroOnYes } from './introYes';
+ import { hoursUntilClock, parseClock } from './wakeAtClock';
+ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+ import { asksToReopen } from './reopenIntent';
++import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
+ import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
+ import { withOwnersNetwork } from './planVoice';
+ import { offerReferral, referralTapOf } from './askReferral.service';
+@@ -13726,6 +13727,20 @@ async function runToolLoop(
+     choices = [notDeleted.confirm];
+   }
+ 
++  // 3796: „saved your offer" is said only when save_offer ran; otherwise the truth and a button.
++  if (
++    !ownerAbsent &&
++    offerClaimWithoutTool(finalText, toolNamesUsed, runOwnerLine.get(runId) ?? '')
++  ) {
++    // eslint-disable-next-line no-console
++    console.warn(
++      `[offer-claim] run ${runId} thread ${threadId}: said saved, nothing was — corrected`,
++    );
++    const notSaved = offerNotSavedLine(runLang(runId));
++    finalText = notSaved.text;
++    choices = [notSaved.confirm];
++  }
++
+   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
+   if (!ownerAbsent && choices !== undefined && choices.length > 0) {
+     choices = await checkedOwnerButtons(finalText, choices, runLang(runId));
+diff --git a/src/services/offerClaim.ts b/src/services/offerClaim.ts
+new file mode 100644
+index 0000000..6972b46
+--- /dev/null
++++ b/src/services/offerClaim.ts
+@@ -0,0 +1,70 @@
++import { RunLanguage } from './runLanguage';
++import { NotDeletedLine } from './deletionClaim';
++
++/**
++ * 3796 (box 48569, 1 of 3 since 86e7e26): „ჩემი შეთავაზება … დაიმახსოვრე
++ * როგორც შეთავაზება" was answered „დავიმახსოვრე შენი შეთავაზება…" with no
++ * tool called, and the offers list stayed empty. Like 3302's „deleted": a reply
++ * may say an offer was saved only when save_offer ran in that run. Otherwise
++ * the owner reads the truth, with a button to confirm, and the next run saves
++ * it the ordinary way. Both halves read the offer word, so a saved profile
++ * line („დავიმახსოვრე, რომ ბუღალტერი ხარ") is never touched.
++ */
++const OFFER_WORD_RE = /(შეთავაზ|შევთავაზ|\boffer|предлож|\boferta|\bofrezco)/iu;
++
++const SAVED_WORDS: readonly string[] = [
++  'დავიმახსოვრე',
++  'შევინახე',
++  'შენახულია',
++  'ჩავიწერე',
++  'saved',
++  'noted',
++  'remembered',
++  'сохранил[аи]?',
++  'запомнил[аи]?',
++  'guardé',
++  'guardad[oa]',
++];
++
++const CLAIMS_SAVED_RE = new RegExp(
++  `(?<![\\p{L}\\p{M}])(?:${SAVED_WORDS.join('|')})(?![\\p{L}\\p{M}])`,
++  'iu',
++);
++
++const SAVE_OFFER_TOOL_NAME = 'save_offer';
++
++export function offerClaimWithoutTool(
++  reply: string,
++  toolNamesUsed: readonly string[],
++  ownerLine: string,
++): boolean {
++  return (
++    OFFER_WORD_RE.test(ownerLine) &&
++    OFFER_WORD_RE.test(reply) &&
++    CLAIMS_SAVED_RE.test(reply) &&
++    !toolNamesUsed.includes(SAVE_OFFER_TOOL_NAME)
++  );
++}
++
++const NOT_SAVED: Readonly<Record<RunLanguage, NotDeletedLine>> = {
++  ka: {
++    text: 'შეთავაზება ჯერ არ შემინახავს. დამიდასტურე და ახლავე შევინახავ.',
++    confirm: 'კი, შეინახე',
++  },
++  en: {
++    text: 'I have not saved your offer yet. Confirm and I will save it now.',
++    confirm: 'Yes, save it',
++  },
++  ru: {
++    text: 'Я ещё не сохранил это предложение. Подтверди, и я сохраню сейчас.',
++    confirm: 'Да, сохрани',
++  },
++  es: {
++    text: 'Todavía no he guardado tu oferta. Confírmalo y la guardo ahora.',
++    confirm: 'Sí, guárdala',
++  },
++};
++
++export function offerNotSavedLine(language: RunLanguage): NotDeletedLine {
++  return NOT_SAVED[language] ?? NOT_SAVED.ka;
++}
+-- 
+2.43.0
+
