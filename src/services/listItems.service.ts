@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { query } from '../db/postgres/client';
 import { RunLanguage } from './runLanguage';
 import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
+import { ownMatchesFor } from './tools/searchByTag';
 import { scrubText, stripAllowedSpans } from './privacyScrub';
 import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
 
@@ -357,6 +358,49 @@ const WAY_IN_WORDS: Readonly<Record<RunLanguage, Readonly<Record<string, string>
   },
 };
 
+/**
+ * 4160 (tester 49306, goal 23728): a file of „name, need" rows. The chat named,
+ * for four of five rows, a contact of the owner who fits the row's NEED („an
+ * accountant? you have Levan the accountant"); the file only answered who leads
+ * to the PERSON, and said „nobody" five times. When the file has a need column,
+ * the workbook also says who among the owner's own contacts fits each need.
+ */
+const NEED_COLUMN_RE =
+  /^\s*(need|needs|what\s+they\s+need|საჭიროება|საჭიროებები|რა\s+სჭირდება|потребность|что\s+нужно|necesidad)\s*$/iu;
+
+/** Distinct needs looked up per download, and contacts named per need. */
+const MAX_NEEDS_LOOKED_UP = 60;
+const CONTACTS_PER_NEED = 3;
+
+const NEED_COLUMN: Readonly<Record<RunLanguage, string>> = {
+  ka: 'Netai: საჭიროებაში დაგეხმარება',
+  en: 'Netai: can help with the need',
+  ru: 'Netai: может помочь с потребностью',
+  es: 'Netai: puede ayudar con la necesidad',
+};
+
+export function needColumn(columns: readonly string[]): number {
+  return columns.findIndex((c) => NEED_COLUMN_RE.test(c));
+}
+
+/** For each distinct need, the owner's own contacts that fit it, by name. */
+async function helpersForNeeds(
+  userId: string,
+  needs: readonly string[],
+): Promise<ReadonlyMap<string, string>> {
+  const distinct = [...new Set(needs.map((n) => n.trim()).filter((n) => n !== ''))].slice(
+    0,
+    MAX_NEEDS_LOOKED_UP,
+  );
+  const found = await Promise.all(
+    distinct.map(async (need): Promise<[string, string]> => {
+      const matches = await ownMatchesFor(userId, need, CONTACTS_PER_NEED).catch(() => []);
+      return [need, matches.map((m) => m.name).join(', ')];
+    }),
+  );
+  return new Map(found);
+}
+
 const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
   ka: ['Netai: გზა', 'Netai: ვისი გავლით', 'Netai: მდგომარეობა', 'Netai: პასუხი'],
   en: ['Netai: way in', 'Netai: through whom', 'Netai: where it stands', 'Netai: answer'],
@@ -409,21 +453,38 @@ export async function listWorkbook(
     LIST_QUERY_TIMEOUT_MS,
   );
   if (result.rows.length === 0) return null;
-  const words = STATE_WORDS[language] ?? STATE_WORDS.ka;
+  const needAt = needColumn(result.rows[0].columns);
+  const helpers =
+    needAt === -1
+      ? null
+      : await helpersForNeeds(
+          userId,
+          result.rows.map((r) => r.row_data[needAt] ?? ''),
+        );
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('Netai');
-  sheet.addRow([...result.rows[0].columns, ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka)]);
-  const ways = WAY_IN_WORDS[language] ?? WAY_IN_WORDS.ka;
+  sheet.addRow([
+    ...result.rows[0].columns,
+    ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka),
+    ...(helpers === null ? [] : [NEED_COLUMN[language] ?? NEED_COLUMN.ka]),
+  ]);
   for (const r of result.rows) {
-    sheet.addRow(
-      [
-        ...r.row_data,
-        ways[r.way_in] ?? r.way_in,
-        r.through_whom ?? '',
-        words[r.state] ?? r.state,
-        answerForOwner(r.answer),
-      ].map(fitsACell),
-    );
+    const needHelpers =
+      helpers === null ? [] : [helpers.get((r.row_data[needAt] ?? '').trim()) ?? ''];
+    sheet.addRow([...workedCells(r, language), ...needHelpers].map(fitsACell));
   }
   return Buffer.from(await book.xlsx.writeBuffer());
+}
+
+/** One row's own cells and Netai's four. */
+function workedCells(r: WorkedRow, language: RunLanguage): string[] {
+  const words = STATE_WORDS[language] ?? STATE_WORDS.ka;
+  const ways = WAY_IN_WORDS[language] ?? WAY_IN_WORDS.ka;
+  return [
+    ...r.row_data,
+    ways[r.way_in] ?? r.way_in,
+    r.through_whom ?? '',
+    words[r.state] ?? r.state,
+    answerForOwner(r.answer),
+  ];
 }
