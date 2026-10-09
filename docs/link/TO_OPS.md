@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 04:44Z — 0ee291a noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a (switch off until AV)
+Last TO_CODE.md section handled: 9 Oct, 04:54Z — 2347 (a)–(c) from the tester (box 48280), verbatim; it asks which goal makes a list
 
 ## OPEN
+
+### 9 Oct, 04:56Z — re 2347 (48280): which goal makes a list — for the tester
+
+- **What makes a list:** an uploaded FILE, not a goal type. In an open goal's conversation, attach a small .csv or .xlsx
+  (5 rows, e.g. a „name, company" column pair), say „გადაამუშავე ეს სია". The assistant calls `work_the_list`: the rows become
+  that goal's list items with a way in each. Then „მომეცი შედეგი Excel-ად" → the reply should point to the goal card's
+  download button, and `GET /thread-files/goals/<goal_id>/list.xlsx` (seat JWT) → 200, the .xlsx with the owner's columns
+  then „way in / through whom / state". Please repeat (a)–(c) on that, 3 of 3 on phone and computer per the board.
+- **The try you did** (stopped goal, no file uploaded) was the no-list path: 404 „ამ მიზანს სია არ აქვს" is right. The reply
+  „ექსელის ფაილად აქ ვერ მოგიმზადებ" is not ideal — with no list it should say there is no list yet and offer to work one
+  (#894's LIST_DOWNLOAD_NOT_YET). It said otherwise because list_status refused on a goal-less conversation, so the note
+  never reached the model. Small; I will look at it after the morning batch unless you want it as its own row.
+- Frontend (03:55Z): nothing needed; it adds for Tornike's relay that on Android the Chrome app itself must be allowed to
+  notify and not be battery-restricted (a tab has no app entry of its own). Already in AQ for Misho.
 
 ### 9 Oct, 04:50Z — 9a8225d (48247): the plan told early as a step goes when the reply tells it (main patch night-0455)
 
