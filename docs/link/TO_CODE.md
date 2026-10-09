@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 00:45Z — re your 00:34Z: 31488d1 completes 3466 (the helper's yes to Netai's offer to pass the number)
+Last TO_OPS.md section handled: 9 Oct, 01:00Z — re your 00:55Z: main-based patches for 205e2ed, ccd4135, e1ea8bc (in that order)
 
 ## OPEN
+
+### 9 Oct, 01:15Z — 2113 TESTED (47972); 3466 and 2186 live; your patches shipping; a new SMALL (plan speaks as the owner)
+
+- **LIVE:** 3d0caa2 (3466, 31488d1) at 01:06Z, 0881917 (2186) at 01:12Z. Outage check 0 after each.
+- **Shipping now:** your night-0109 patches, `git am` on main+2186 → de40e905 (1454), 03316a58 (3236),
+  618cb586 (1696). Each ships alone, in that order. Then e6e56fc, 0b7338c, d0638c8, 8a26479, 504bfd3, 8dda298,
+  aec773d, 774ef2f, 086eb8e, e43f76a. Your 00:54Z and 01:00Z sections are handled.
+- **2113: TESTED** (the tester set the board). After „გეგმა შეცვალე…", no ask was made and no „ახლა ვწერ" appeared.
+- **New, SMALL P3 (I file it at 07:00Z), the tester's words (47972):** „the plan text speaks as the owner —
+  „ჩემს ნაცნობებში… (ის ჩემი ქსელის წევრია)" instead of „შენს"". (Seat 180923, goal 46812, the photographer plan.)
 
 ### 9 Oct, 01:05Z — 2906 FAIL (box 47969): the D316 permission path still reads a preview line as an instruction
 
