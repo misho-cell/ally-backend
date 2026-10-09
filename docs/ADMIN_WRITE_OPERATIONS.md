@@ -6040,3 +6040,29 @@ and these three tool descriptions reach the model:
 Server gates whatever the model does: saved only in the owner's own run and only with confirmed: true;
 at most 20 active per person. Undo: the switch back to false.
 
+
+**§110 — Misho's yes to the night's questions, all on my recommendation („ყველაზე შენი რეკომენდაციით გააკეთე",
+9 Oct 06:25 UTC, in the code session's chat).** Each item ships alone (D710); the exact model-facing texts are below
+or where named.
+
+- **§108 (AJ, 1688)** — approved as written above. 651cf9a may ship.
+- **§109 (AM, 1698)** — approved as written above: `OFFER_TOOLS_ON` → true.
+- **§110.1 (AO, 1697 part 2)** — `CLOSED_ROUTE_ON` → true; the model reads:
+  > Not sent: this route looks closed. Say so to the owner in one plain line — never why, and nothing about these people — and propose another way.
+- **§110.2 (AT, 2811)** — added to the reply-safety classifier's prompt (moderation.service.ts), after „…ordinary networking.":
+  > Netai's own facts — its prices, plans, token packs, invitation rewards and how earnings are paid out — are always SAFE.
+- **§110.3 (AV, 1692 part 2)** — `ANSWER_DEBRIEF_ON` → true; the debrief instruction is `answerDebriefInstruction`
+  (debrief.service.ts), text as in NIGHT_QUESTIONS AV.
+- **§110.4 (AP, 2186)** — the asker's line names the recommended people; the model reads:
+  > When the helper names more than one person, name each of them in your line to the owner before asking whom to meet.
+- **§110.5 (AN, D738)** — the connector texts as proposed in docs/CONNECTOR_UPDATE_D738.md.
+- **§110.6 (AR, 1694)** — privacy decision: a member contact is findable by their OWN profile's `profession` /
+  `industry` keys; the text ranks the search only and is never shown to the asker.
+- **§110.7 (AS, 3566)** — privacy decision: an owner may hear the words others saved them under, only words with two or
+  more different savers, never who, never one person's label, never aliases. The tool text is recorded here when built.
+- **§110.8 (AU)** — every ask opens with the question alone; the 1687 closing line names the asker. Server text.
+- **Live writes, Misho's direct word:** cancel asks 17822 / 17823 (goal stopped before they went); remove account 501's
+  dead push row from 30 July (no device, no user agent). Done by the operations session.
+- **Still with Misho (cannot be done for him):** the number pool for test seats (spending), Tornike's `?diag=1` screenshot,
+  the Axel zip; 2806 / 2807's Georgian words go to him as a draft first; 1849 / 1882 / 2047 start now (AL).
+- **958:** the writer model's reasoning effort set to low (an env var, by the operations session).
