@@ -82,7 +82,7 @@ import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { matchTapOf } from './matchCards';
 import { thanksTapOf } from './helperThanksCards';
-import { settleThanksTap } from './helperThanks.service';
+import { settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
 import { settleMatchTap } from './matchFlow.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { asksToReopen } from './reopenIntent';
@@ -15318,6 +15318,13 @@ export async function processChat(
   let language = detectRunLanguage(userMessage);
   runLanguages.set(runId, language);
   if (!ownerAbsent) runOwnerLine.set(runId, userMessage);
+  // D756: „<helper>-ის პასუხი დამეხმარა" thanks that helper at once — no card, no question.
+  if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
+    void thankHelperNamedIn(userId, userMessage).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.warn(`[helper-thanks] run ${runId}: not thanked:`, (err as Error).message),
+    );
+  }
   // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
   // name; tool results join it as they arrive, web-search snippets excepted.
   recordRunEvidence(runId, userMessage);

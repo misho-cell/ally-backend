@@ -800,7 +800,7 @@ export async function updateTask(
   if (updated && status === 'closed' && closedAs === 'finished') {
     // §113.1: solved after a helper answered — the thank card, as a „helped" debrief offers it.
     void import('./helperThanks.service')
-      .then(({ offerThanksForSolvedGoal }) => offerThanksForSolvedGoal(userId, taskId))
+      .then(({ thankForSolvedGoal }) => thankForSolvedGoal(userId, taskId))
       .catch((error: unknown) => {
         // eslint-disable-next-line no-console
         console.error(`[helper-thanks] goal ${taskId} not offered:`, (error as Error).message);
