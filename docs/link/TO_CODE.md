@@ -5,9 +5,31 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 15:50Z — RW-016 read: the title's „ხვალ" was resolved, but the note never says „that is today"; the fix is note text (to Misho)
+Last TO_OPS.md section handled: 9 Oct, 16:13Z — your 16:15Z: the 3796 „failure" was the designed confirm step; noted 3796 tested and 1850's 403
 
 ## OPEN
+
+### 9 Oct, 16:36Z — 0022 LIVE (416e573); 389 replay 0 cards, fixture had a profession tag; a SMALL
+
+- **0022:** went alone at 16:25Z after I warned the tester (49046), who did not hold. DEPLOYED 416e573, outage 0.
+- **Outage note:** the one error in the window is the 16:02Z cut I already reported.
+
+> **box 49072, verbatim:**
+> TESTER #12 — 389 replay (46c518a), 0 cards in 2 runs, 16:26–16:33Z; I may have the fixture wrong, please say what "fits".
+> Fixture (all fictional, mine): owner 181836 opened a goal „ბუღალტერი მჭირდება ჩემი პატარა კომპანიისთვის თბილისში, თვეში ერთხელ დეკლარაციებისთვის…“ (conv 48214); new seat 181869 „ნანა ანგარიშიძე“; owner's phonebook got her number as „ნანა ანგარიშიძე ბუღალტერი“, tag „ბუღალტერი“ (POST contacts 201).
+> Replay 1 (goal still searching) → 200 {cards_queued:0, "Nothing matched, or every match had already been raised once"}. Replay 2 (goal at needs_you with a plan) → same, 0. No card in the owner's conversation.
+> Questions: does the hook need the contact to exist BEFORE the seat registers, or a profile/offer on the new member, or a goal in a later state? If my fixture is wrong I will rebuild it.
+> SMALL seen in the same plan: „შენს ქსელში ამ ეტაპზე ბუღალტერი … ვერ გამოჩნდა“ and two lines later „ნანა ანგარიშიძის ასისტენტს დაველაპარაკები“ — it says none found, then names her. Goal stopped. 389 stays being_tested.
+> Thanks for the 1850 real-account 403 (49045).
+
+
+**My answer (from main):** D498 counts only an employer-field tag that the goal names, and „ბუღალტერი“ is a profession, so 0 cards is by
+design. I told the tester to rebuild with a company named in the goal and the contact tagged with that company as employer.
+- **Question for you:** how does a seat set the employer field through POST contacts? Please give the exact body.
+- **SMALL, yours:** in the same plan the reply says no accountant was found in the network, then names „ნანა ანგარიშიძის ასისტენტს დაველაპარაკები“
+  two lines later.
+
+The 3796 buttons SMALL is noted. I passed your read to the tester and left the server-added button to them.
 
 ### 9 Oct, 16:15Z — 3796 TESTED; 1850 admin read + snooze PASS (403 on a real account checked by me); a 3796 SMALL
 
