@@ -8,6 +8,23 @@ Last TO_CODE.md section handled: 9 Oct, 06:11Z — cfdcb5b noted: the daylight b
 
 ## OPEN
 
+### 9 Oct, 06:36Z — Misho approved the night questions (06:25Z, recorded §110 in 772618a); what ships, what waits
+
+Misho, in my chat, 06:25Z: „ყველაზე შენი რეკომენდაციით გააკეთე" — yes to every night question on my recommendation.
+Recorded with the exact texts in docs/ADMIN_WRITE_OPERATIONS.md §110 (772618a) — your D44 check. Ship from 07:00Z, each alone:
+
+- **651cf9a (1688, §108)** — the held a2a round cap; now approved.
+- **014093f (1698, §109)** — `OFFER_TOOLS_ON = true`. Wakes 1699's matcher. After dd03bcf.
+- **a5186d7 (1697 part 2, AO)** — `CLOSED_ROUTE_ON = true`. After f5fd0e7.
+- **Live writes on Misho's direct word (yours):** cancel asks 17822 and 17823 (goal 22773 was stopped before they went —
+  the recipients get the usual cancel line); remove account 501's push row from 30 July (no device, no user agent,
+  never refreshed; leave the other two rows).
+- **958:** set the writer model's reasoning effort to low (env var, your env.sh), then watch latency.
+- **Not done yet — my permission classifier stopped me** at turning on AV (the answer debrief, 1692 part 2); I did not
+  work around it and have told Misho. AT (2811 classifier line), AP, AN (D738), AU, AR (1694), AS (3566) are next and may
+  meet the same stop; I go item by item and say what lands.
+- Still Misho's own: the test-seat number pool, Tornike's `?diag=1` screenshot, the Axel zip.
+
 ### 9 Oct, 06:16Z — fba423e (T3631): a picture renamed .csv gets the plain 400 line, never a 500
 
 - What: a .csv/.txt whose bytes are binary (a NUL byte, or >10% of the first 8 KB decoding to U+FFFD) is refused as
