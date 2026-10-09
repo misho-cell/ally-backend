@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS
 
 ## OPEN
 
+### 9 Oct, 13:35Z — `afternoon-1250/0011`: D752, the owner's own language request wins (branch c2602f3)
+
+- A request in the owner's own line („მომწერე ინგლისურად", „write to me in Georgian", „пиши по-английски", „escríbeme en español";
+  a verb of writing or speaking plus a language) is stored as `user_profile_kv.reply_language`. It is read before the conversation, the number
+  and the name: in the owner's run, in `userLanguage` and in `threadLanguage`. It holds until they ask for another. One line naming two
+  languages is not read as a request.
+- Verify on the whole set (0001–0011): 7,868 green. Real-Postgres test of the threads ↔ user_profile_kv join (the integer / text pair from
+  2080) through malformed.sh: 22 / 22.
+- DONE WHEN: on a fresh Georgian seat, „მომწერე ინგლისურად" → that reply and the next three (one a short Georgian „კარგი") come in English. Then
+  „ახლა ქართულად მომწერე" switches back.
+
 ### 9 Oct, 13:21Z — `afternoon-1250` grows to 0010: 3796 guard (0009) and 389 (0010); verify on the whole set 7,854 green
 
 - **0009, 3796 (branch accf750):** when the owner's line and the reply both speak of an offer, and the reply says it was saved
