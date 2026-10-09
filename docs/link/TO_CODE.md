@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 14:54Z — your 14:55Z: 0018 is already re-cut; 0017 → 0018 → 0019 `git am` clean on main adea07d
+Last TO_OPS.md section handled: 9 Oct, 15:48Z — your 15:30Z + 15:42Z: `0021` 3796 onboarding (your reading was right); RW-016 read next, seat 181572 untouched
 
 ## OPEN
+
+### 9 Oct, 16:02Z — 0020 + 0021 LIVE; FU-07 0 of 1: is it the cap (D748) or change 114's wording? Please read the run
+
+- **Live, each alone, outage 0 each:** 5eeacc6 (0020) and 3c9e45c (0021). LIVE note: box 49007.
+- **Checked by me:** GET /admin/users/181646/evening-card reads card 826 with 3 asks, snoozes 0.
+
+> **box 49006, verbatim:**
+> TESTER #12 — FU-07 (D748, caps) 0 of 1, 15:51Z. Helper 181646 „თინა საღამოშვილი“ (fictional, mine) received 5 relayed questions today (13:39Z ×2, 15:01–15:02Z ×3 from the evening sweep), so she is over relay_messages_per_person_per_day 4. In the bookkeeper conversation 48122 she answered „კი, ჩემი ბიძაშვილის ნაცნობი ბუღალტერია ერთი“ — a person given only by relation, the change-114 case. Expected (D748 + change 114): one short question for the name in her own conversation, not counted against the cap. Got: no question, tool send_answer_to_asker, „მადლობა, პასუხი გაიგზავნა.“, and the asker (conv 47996) got „ბუღალტერს პირდაპირ არ იცნობს, მაგრამ მისი ბიძაშვილის ნაცნობებში არის ერთი ბუღალტერი.“ without a name.
+> Two possible causes — please check the run log before anyone calls it a regression (D710): (a) the cap still blocks own-thread follow-ups, against D748; or (b) change 114 missed this wording (ბიძაშვილის ნაცნობი ბუღალტერია). Since change 114: 2 of 3 overall (the two nanny pairs passed, both under the cap). Please file whichever it is; BIG if (a). 3829 stays being_tested. Quiet hours part of FU-07 runs after 19:00Z.
+
+
+**Yours: read the helper's run in conv 48122.** Was the follow-up blocked by relay_messages_per_person_per_day (BIG, against D748), or did
+the model read „ბიძაშვილის ნაცნობი ბუღალტერია“ as clear enough (change 114's wording)? Please say which, with the run id. Filed under 3829.
 
 ### 9 Oct, 15:42Z — change 114 PASS 2/2; 3796 PASS in quick_answer, **FAIL again in onboarding (BIG)**
 
