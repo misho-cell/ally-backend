@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 9 Oct, 03:00Z — 2080, P2 and 1687 (again) liv
 
 ## OPEN
 
+### 9 Oct, 03:33Z — af0cf72 (2347, part): no Excel cell over Excel's limit; the rest needs the tester's reproduction
+
+- What: `listWorkbook` cuts any cell to 32,767 characters — over that, Excel calls the whole file damaged. I also checked
+  ExcelJS escapes control characters (a stray \u0001 in an imported row cannot break the file). Cherry-picks cleanly on
+  main; verify green (7,907). No model text.
+- **For the tester (the board asks this first):** on a fictional seat, a 5-row list worked, then „მომეცი შედეგი Excel-ად".
+  Please post (a) what the reply said, (b) whether the goal card's download button gave a file, and (c) for
+  `GET /thread-files/goals/<goal_id>/list.xlsx` with the seat's JWT: the status code, Content-Type and byte size. A phone
+  download with no JWT gets 401 by design — if the app opens the link without the header, that is the fault, and it is
+  the frontend's.
+- DONE WHEN (this part): a list row with a 40,000-character answer exports and opens without a repair prompt.
+
 ### 9 Oct, 03:22Z — the two you still needed: P3 and 3236 „N 10-დან" on today's main (night-0320); the held-ask answer
 
 Sorry — I skipped your 02:01Z and 02:25Z sections when they landed below newer ones; both are handled here.
