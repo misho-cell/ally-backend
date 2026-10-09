@@ -1,0 +1,601 @@
+From 8d9ec8269e8baf358ca0e73d319bf142250e338a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 22:43:44 +0000
+Subject: [PATCH] =?UTF-8?q?feat(axel):=20the=20base=20loader=20writes=20th?=
+ =?UTF-8?q?e=20package's=20research=20facts=20onto=20their=20numbers=20(42?=
+ =?UTF-8?q?25,=20=C2=A7119)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder's 46072 (with 47191), package v4; Misho's yes on 9 Oct (§119).
+
+- Migration 230: contact_facts accepts source 'public_research', and gains
+  source_url, fact_date and research_status (confirmed / possible / rough /
+  unknown).
+- axelBasePlan (pure): person_numbers.csv + facts.csv → facts per number
+  hash, only for roster / roster-likely / strong ties; everything left out
+  is counted by reason.
+- axelBaseLoad.service: the server recomputes the export's keyed hash over
+  the export's own population (roster + members' phonebooks) and finds each
+  number itself; no number travels. Each number's research rows are
+  replaced whole in one transaction (idempotent), as the system saver '0',
+  private and not matchable. A second value for a one-per-saver key keeps
+  the first.
+- POST /admin/axel/base-load { person_numbers_csv, facts_csv, dry_run }.
+- Research is never the second saver: getOtherFacts, the free-form
+  moderation pass and the core reconfirmation all leave public_research
+  rows out.
+- csvCells takes a row limit; chat files keep theirs.
+
+Checked against the real v4 files (plan only): 162 numbers, 2,611 rows,
+84 weak ties left out. The live load is a day step: a dry run, then one
+run (§119.2).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 34086c1e97d24354669ce2c728b2bcb6eae0eb43)
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |  12 ++
+ src/api/routes/admin.routes.ts                |  34 +++++
+ .../migrations/230_public_research_facts.sql  |  17 +++
+ .../__tests__/theAxelBaseLoads.test.ts        | 134 ++++++++++++++++++
+ src/services/axelLoad/axelBaseLoad.service.ts | 120 ++++++++++++++++
+ src/services/axelLoad/axelBasePlan.ts         | 109 ++++++++++++++
+ src/services/contactFacts.service.ts          |   4 +-
+ src/services/factRepublish.service.ts         |   4 +
+ src/services/listFile.ts                      |  10 +-
+ 9 files changed, 440 insertions(+), 4 deletions(-)
+ create mode 100644 src/db/postgres/migrations/230_public_research_facts.sql
+ create mode 100644 src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts
+ create mode 100644 src/services/axelLoad/axelBaseLoad.service.ts
+ create mode 100644 src/services/axelLoad/axelBasePlan.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 07e60a5..f4c6164 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6156,3 +6156,15 @@ automatically."
+ - **§118.1 (3672)** — a person's „don't bring me questions about X" is a boundary. Questions on X do not reach them. The asker sees only
+   „ამჯერად ვერ გავიდა" and never why. The person's own assistant tells them „questions about X won't reach you", never „I'll answer for
+   you". Netai still never answers on anyone's behalf (D669). No new text, and nothing to build: this is #1915 as it already runs.
++
++**§119 — 9 October ~22:40 UTC, Misho in the code session's chat: „კი, Axel-ის ჩატვირთვა დაამტკიცე"** (board 4225, the founder's 46072 with 47191; package v4 of 9 Oct 06:55Z).
++
++- **§119.1 — what it writes.** About 2,600 rows into `contact_facts` (the package's 2,495 loadable facts; the 3 people with two numbers get them on each), on about 160 numbers: roster, roster-likely and strong ties only, never a weak one.
++  - Every row: `submitted_by_user_id = '0'` (the system saver, never a person), `source = 'public_research'`, `confidence = 'mentioned'`, `is_public = false`, `is_matchable = false`, plus `source_url`, `fact_date` and `research_status` (confirmed / possible / rough / unknown) from the file.
++  - Nothing is made public. The crowd-confirmation and moderation passes leave these rows out, so research is never the second independent saver.
++  - The numbers are found on the server from the export's keyed hash. No number is in the files or the request.
++- **§119.2 — route.** `POST /admin/axel/base-load` (admin token). Body: `{ "person_numbers_csv": "<file text>", "facts_csv": "<file text>", "dry_run": true | false }`.
++  - Run order, by day only: `dry_run: true` first, and check `numbers_found` against the package (about 160) and `facts_written` (about 2,600). Then run `dry_run: false` once.
++  - A second run replaces each number's research rows whole, so it doubles nothing.
++- **§119.3 — undo.** `DELETE FROM contact_facts WHERE source = 'public_research' AND submitted_by_user_id = '0';` This is one statement and touches no other row.
++- **§119.4 — not in this step.** How these facts are used (confirmed said with its source, possible only matched, rough only a hint: 46072 part 2), the waiting list, the other networks' rosters and the roster step in search are later steps. Until the read side ships, the loaded rows are invisible to every account.
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 47ad85f..be5384d 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -310,6 +310,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { zipFiles } from '../../services/axelExport/axelExport.service';
+ import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+ import { cancelOneAsk } from '../../services/taskAsks.service';
++import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -6946,4 +6947,37 @@ adminRouter.get(
+   },
+ );
+ 
++/**
++ * 4225 — the Axel base load (§119). Body: the package's person_numbers.csv and
++ * facts.csv as text, and dry_run. A dry run resolves and counts and writes
++ * nothing; run it first. Undo: §119.
++ */
++const MAX_AXEL_CSV_CHARS = 4_000_000;
++
++adminRouter.post('/axel/base-load', async (req: Request, res: Response) => {
++  const body = (req.body ?? {}) as Record<string, unknown>;
++  const numbers = body.person_numbers_csv;
++  const facts = body.facts_csv;
++  if (
++    typeof numbers !== 'string' ||
++    typeof facts !== 'string' ||
++    numbers.length > MAX_AXEL_CSV_CHARS ||
++    facts.length > MAX_AXEL_CSV_CHARS ||
++    typeof body.dry_run !== 'boolean'
++  ) {
++    res.status(400).json({
++      success: false,
++      error: 'person_numbers_csv and facts_csv (text) and dry_run (true or false) are required',
++    });
++    return;
++  }
++  try {
++    res.status(200).json({ success: true, data: await loadAxelBase(numbers, facts, body.dry_run) });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[POST /admin/axel/base-load]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
++  }
++});
++
+ export default adminRouter;
+diff --git a/src/db/postgres/migrations/230_public_research_facts.sql b/src/db/postgres/migrations/230_public_research_facts.sql
+new file mode 100644
+index 0000000..98c95d8
+--- /dev/null
++++ b/src/db/postgres/migrations/230_public_research_facts.sql
+@@ -0,0 +1,17 @@
++-- 4225 (Axel base load, Misho's yes 9 Oct; §119): facts found on public pages
++-- about Axel members and the people around them, written by one system saver.
++-- Each keeps where it was read, when, and how sure the research is:
++--   confirmed — two independent public sources, or the founder's own word
++--   possible  — one source
++--   rough     — a word test only (key `field`)
++--   unknown   — no role found
++ALTER TABLE contact_facts DROP CONSTRAINT IF EXISTS contact_facts_source_check;
++ALTER TABLE contact_facts ADD CONSTRAINT contact_facts_source_check
++  CHECK (source IS NULL OR source IN ('chat', 'sweep', 'label', 'debrief', 'public_research'));
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS source_url TEXT;
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS fact_date DATE;
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS research_status TEXT
++  CHECK (research_status IS NULL OR research_status IN ('confirmed', 'possible', 'rough', 'unknown'));
++CREATE INDEX IF NOT EXISTS contact_facts_public_research_idx
++  ON contact_facts (neo4j_contact_id)
++  WHERE source = 'public_research';
+diff --git a/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts b/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts
+new file mode 100644
+index 0000000..3bc8888
+--- /dev/null
++++ b/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts
+@@ -0,0 +1,134 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { basePlan, csvRecords, ResearchStatus } from '../axelBasePlan';
++import { loadAxelBase, PUBLIC_RESEARCH, SYSTEM_SAVER_ID } from '../axelBaseLoad.service';
++import { readPhonebooks, readRoster } from '../../axelExport/axelData';
++import { withTransaction } from '../../../db/postgres/client';
++
++jest.mock('../../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++  withTransaction: jest.fn(),
++}));
++jest.mock('../../axelExport/axelData', () => ({
++  __esModule: true,
++  readRoster: jest.fn(),
++  readPhonebooks: jest.fn(),
++}));
++// The real hash needs the server secret; here a number's hash is its digits, padded.
++jest.mock('../../axelExport/exportHash', () => ({
++  __esModule: true,
++  exportPhoneHash: (raw: string): string => raw.replace(/\D/gu, '').padStart(24, 'a'),
++}));
++
++const mockRoster = readRoster as jest.MockedFunction<typeof readRoster>;
++const mockPhonebooks = readPhonebooks as jest.MockedFunction<typeof readPhonebooks>;
++const mockTx = withTransaction as jest.MockedFunction<typeof withTransaction>;
++
++const HASH_A = '995500000001'.padStart(24, 'a');
++const HASH_B = '995500000002'.padStart(24, 'a');
++
++const NUMBERS = [
++  '﻿person_key,number_hash,hash_kind,tie,tie_basis,roster_key,saved_by_members,warm_to_members,account_state',
++  `P-1,${HASH_A},member_hash,roster,own phonebook,1,3,2,netai_user`,
++  `P-2,${HASH_B},contact_hash,weak,name only,,1,0,none`,
++].join('\n');
++
++const FACTS = [
++  'person_key,key,value,status,confidence,source,date',
++  'P-1,employer,"Acme, Tbilisi",confirmed,mentioned,https://a.example ; https://b.example,seen 2026-10-04',
++  'P-1,expertise,Logistics,possible,mentioned,https://a.example,2026-10-05',
++  'P-1,employer,Second Co,possible,mentioned,https://c.example,2026-10-05',
++  'P-2,employer,Weak Co,possible,mentioned,https://d.example,2026-10-05',
++  'P-1,bad key!,x,possible,mentioned,https://e.example,2026-10-05',
++].join('\n');
++
++/** 4225: the Axel package's loadable facts, onto the numbers they belong to. */
++describe('the load plan', () => {
++  it('reads a file with a byte-order mark and quoted commas', () => {
++    const rows = csvRecords(FACTS);
++    expect(rows[0].value).toBe('Acme, Tbilisi');
++    expect(Object.keys(csvRecords(NUMBERS)[0])[0]).toBe('person_key');
++  });
++
++  it('takes roster and strong ties, never a weak one, and counts what it leaves out', () => {
++    const plan = basePlan(NUMBERS, FACTS);
++    expect([...plan.byHash.keys()]).toEqual([HASH_A]);
++    const facts = plan.byHash.get(HASH_A) ?? [];
++    expect(facts.map((f) => f.key)).toEqual(['employer', 'expertise', 'employer']);
++    expect(facts[0]).toEqual({
++      key: 'employer',
++      value: 'Acme, Tbilisi',
++      status: ResearchStatus.Confirmed,
++      sourceUrl: 'https://a.example ; https://b.example',
++      factDate: '2026-10-04',
++    });
++    expect(plan.skipped).toEqual({
++      tie_not_loadable: 1,
++      fact_without_loadable_number: 1,
++      bad_fact_row: 1,
++    });
++  });
++});
++
++describe('the load', () => {
++  const client = { query: jest.fn() };
++
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockRoster.mockResolvedValue([{ user_id: 7, phone: '+995 500 000 001' }] as never);
++    mockPhonebooks.mockResolvedValue([] as never);
++    mockTx.mockImplementation(async (cb) => cb(client as never));
++    client.query.mockResolvedValue({ rows: [] });
++  });
++
++  it('writes nothing on a dry run, and says what it would write', async () => {
++    const report = await loadAxelBase(NUMBERS, FACTS, true);
++    expect(mockTx).not.toHaveBeenCalled();
++    expect(report).toMatchObject({
++      dry_run: true,
++      numbers_in_file: 1,
++      numbers_found: 1,
++      facts_written: 2,
++    });
++    expect(report.skipped.second_value_for_one_per_saver_key).toBe(1);
++  });
++
++  it('replaces the number’s research rows whole, as the system saver, private', async () => {
++    const report = await loadAxelBase(NUMBERS, FACTS, false);
++    expect(report.facts_written).toBe(2);
++    const [del, ...inserts] = client.query.mock.calls;
++    expect(String(del[0])).toContain('DELETE FROM contact_facts');
++    expect(del[1]).toEqual(['+995500000001', SYSTEM_SAVER_ID, PUBLIC_RESEARCH]);
++    expect(inserts).toHaveLength(2);
++    expect(String(inserts[0][0])).toContain("false, $5, 'mentioned', false");
++    expect(inserts[0][1]).toEqual([
++      '+995500000001',
++      SYSTEM_SAVER_ID,
++      'employer',
++      'Acme, Tbilisi',
++      PUBLIC_RESEARCH,
++      'https://a.example ; https://b.example',
++      '2026-10-04',
++      'confirmed',
++    ]);
++  });
++
++  it('counts a number the server does not hold, and writes nothing for it', async () => {
++    mockRoster.mockResolvedValue([] as never);
++    const report = await loadAxelBase(NUMBERS, FACTS, false);
++    expect(report).toMatchObject({ numbers_found: 0, numbers_not_found: 1, facts_written: 0 });
++  });
++});
++
++describe('research is never the second saver', () => {
++  const read = (file: string): string => readFileSync(join(__dirname, '..', '..', file), 'utf8');
++
++  it('is left out of every crowd-promotion read', () => {
++    const facts = read('contactFacts.service.ts');
++    const others = facts.slice(facts.indexOf('async function getOtherFacts('));
++    expect(others.slice(0, 600)).toContain("source IS DISTINCT FROM 'public_research'");
++    const republish = read('factRepublish.service.ts');
++    expect(republish.match(/source IS DISTINCT FROM 'public_research'/gu)).toHaveLength(3);
++  });
++});
+diff --git a/src/services/axelLoad/axelBaseLoad.service.ts b/src/services/axelLoad/axelBaseLoad.service.ts
+new file mode 100644
+index 0000000..18f7a6e
+--- /dev/null
++++ b/src/services/axelLoad/axelBaseLoad.service.ts
+@@ -0,0 +1,120 @@
++import { PoolClient } from 'pg';
++import { withTransaction } from '../../db/postgres/client';
++import { readPhonebooks, readRoster } from '../axelExport/axelData';
++import { exportPhoneHash } from '../axelExport/exportHash';
++import { normalizePhone } from '../phone';
++import { basePlan, ResearchFact } from './axelBasePlan';
++
++/**
++ * 4225 — writes the Axel package's loadable facts onto the numbers they belong
++ * to (Misho's yes, 9 Oct; §119 holds the route, the body and the undo).
++ *
++ * THE NUMBERS NEVER TRAVEL. The package names each number by the export's
++ * keyed hash; the server recomputes that hash over the same population the
++ * export hashed (the roster and the members' phonebooks) and finds the number
++ * itself.
++ *
++ * ONE SYSTEM SAVER, NEVER A PERSON. Every row is written by SYSTEM_SAVER_ID,
++ * private (is_public false), with source „public_research". Nothing here makes
++ * a fact public, and the crowd-confirmation passes leave these rows out, so
++ * research can never be the second independent saver (46072 part 2).
++ *
++ * IDEMPOTENT. A number's research rows are replaced whole, inside one
++ * transaction: the same file loaded twice doubles nothing, and a changed row
++ * replaces the old value.
++ */
++export const SYSTEM_SAVER_ID = '0';
++export const PUBLIC_RESEARCH = 'public_research';
++
++/** The four keys with one row per (number, saver) — the unique index's own list. */
++const ONE_PER_SAVER: ReadonlySet<string> = new Set(['occupation', 'employer', 'city', 'industry']);
++
++export interface BaseLoadReport {
++  readonly dry_run: boolean;
++  readonly numbers_in_file: number;
++  readonly numbers_found: number;
++  readonly numbers_not_found: number;
++  readonly facts_written: number;
++  readonly skipped: Readonly<Record<string, number>>;
++}
++
++/** export hash → the number as contact_facts keys it, over the export's own population. */
++async function numbersByHash(): Promise<Map<string, string>> {
++  const roster = await readRoster();
++  const ids = roster.map((m) => m.user_id).filter((id): id is number => id !== null);
++  const phonebooks = await readPhonebooks(ids);
++  const out = new Map<string, string>();
++  for (const raw of [...roster.map((m) => m.phone), ...phonebooks.map((r) => r.contact_digits)]) {
++    const hash = exportPhoneHash(raw);
++    if (hash !== '' && !out.has(hash)) out.set(hash, normalizePhone(raw));
++  }
++  return out;
++}
++
++/** A second value for a one-per-saver key would break the unique index; the first stays. */
++function writable(facts: readonly ResearchFact[], skipped: Record<string, number>): ResearchFact[] {
++  const seen = new Set<string>();
++  return facts.filter((f) => {
++    if (!ONE_PER_SAVER.has(f.key)) return true;
++    if (seen.has(f.key)) {
++      skipped.second_value_for_one_per_saver_key =
++        (skipped.second_value_for_one_per_saver_key ?? 0) + 1;
++      return false;
++    }
++    seen.add(f.key);
++    return true;
++  });
++}
++
++async function replaceNumber(
++  client: PoolClient,
++  phone: string,
++  facts: readonly ResearchFact[],
++): Promise<number> {
++  await client.query(
++    `DELETE FROM contact_facts
++      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3`,
++    [phone, SYSTEM_SAVER_ID, PUBLIC_RESEARCH],
++  );
++  for (const f of facts) {
++    await client.query(
++      `INSERT INTO contact_facts
++         (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source,
++          confidence, is_matchable, source_url, fact_date, research_status)
++       VALUES ($1, $2, $3, $4, false, $5, 'mentioned', false, $6, $7::date, $8)`,
++      [phone, SYSTEM_SAVER_ID, f.key, f.value, PUBLIC_RESEARCH, f.sourceUrl, f.factDate, f.status],
++    );
++  }
++  return facts.length;
++}
++
++export async function loadAxelBase(
++  personNumbersCsv: string,
++  factsCsv: string,
++  dryRun: boolean,
++): Promise<BaseLoadReport> {
++  const plan = basePlan(personNumbersCsv, factsCsv);
++  const skipped: Record<string, number> = { ...plan.skipped };
++  const numbers = await numbersByHash();
++  const targets: { phone: string; facts: ResearchFact[] }[] = [];
++  for (const [hash, facts] of plan.byHash) {
++    const phone = numbers.get(hash);
++    if (phone !== undefined && phone !== '')
++      targets.push({ phone, facts: writable(facts, skipped) });
++  }
++  const written = dryRun
++    ? targets.reduce((n, t) => n + t.facts.length, 0)
++    : await withTransaction(async (client) => {
++        let n = 0;
++        for (const t of targets) n += await replaceNumber(client, t.phone, t.facts);
++        return n;
++      });
++  return {
++    dry_run: dryRun,
++    numbers_in_file: plan.byHash.size,
++    numbers_found: targets.length,
++    numbers_not_found: plan.byHash.size - targets.length,
++    facts_written: written,
++    skipped,
++  };
++}
+diff --git a/src/services/axelLoad/axelBasePlan.ts b/src/services/axelLoad/axelBasePlan.ts
+new file mode 100644
+index 0000000..2217e42
+--- /dev/null
++++ b/src/services/axelLoad/axelBasePlan.ts
+@@ -0,0 +1,109 @@
++import { csvCells } from '../listFile';
++
++/**
++ * 4225 — the Axel base load (the founder's 46072 with 47191; Misho's yes,
++ * 9 Oct, §119). Pure: the package's two files become the rows to write.
++ *
++ * Only the ties the package itself calls loadable go in: `roster`,
++ * `roster — likely` and `strong`. A `weak` tie is a candidate, never a fact
++ * about the number (README: „Not for loading").
++ */
++export const LOADABLE_TIES: ReadonlySet<string> = new Set(['roster', 'roster — likely', 'strong']);
++
++export enum ResearchStatus {
++  Confirmed = 'confirmed',
++  Possible = 'possible',
++  Rough = 'rough',
++  Unknown = 'unknown',
++}
++
++const STATUSES: ReadonlySet<string> = new Set(Object.values(ResearchStatus));
++
++/** contact_facts.value is short text; the package's longest is 500. */
++export const MAX_VALUE_CHARS = 500;
++const MAX_SOURCE_CHARS = 1_000;
++const DATE_RE = /\d{4}-\d{2}-\d{2}/u;
++const KEY_RE = /^[a-z_]{2,40}$/u;
++const HASH_RE = /^[0-9a-f]{24}$/u;
++/** Far above the package's 4,805 facts; a bound, so a wrong file cannot run unbounded. */
++const MAX_CSV_ROWS = 50_000;
++
++export interface ResearchFact {
++  readonly key: string;
++  readonly value: string;
++  readonly status: ResearchStatus;
++  readonly sourceUrl: string;
++  readonly factDate: string | null;
++}
++
++export interface BasePlan {
++  /** number hash → the facts to write on that number. */
++  readonly byHash: ReadonlyMap<string, readonly ResearchFact[]>;
++  readonly skipped: Readonly<Record<string, number>>;
++}
++
++type Row = Readonly<Record<string, string>>;
++
++/** A CSV file as rows keyed by its header; a leading byte-order mark is not a column name. */
++export function csvRecords(raw: string): Row[] {
++  const [header, ...rows] = csvCells(raw.replace(/^\uFEFF/u, ''), MAX_CSV_ROWS);
++  if (header === undefined) return [];
++  const names = header.map((h) => h.trim());
++  return rows
++    .filter((cells) => cells.some((c) => c.trim() !== ''))
++    .map((cells) => Object.fromEntries(names.map((n, i) => [n, (cells[i] ?? '').trim()])));
++}
++
++function factOf(row: Row): ResearchFact | null {
++  const key = row.key ?? '';
++  const value = (row.value ?? '').slice(0, MAX_VALUE_CHARS);
++  const status = row.status ?? '';
++  if (!KEY_RE.test(key) || value === '' || !STATUSES.has(status)) return null;
++  return {
++    key,
++    value,
++    status: status as ResearchStatus,
++    sourceUrl: (row.source ?? '').slice(0, MAX_SOURCE_CHARS),
++    factDate: DATE_RE.exec(row.date ?? '')?.[0] ?? null,
++  };
++}
++
++function bump(counts: Record<string, number>, reason: string): void {
++  counts[reason] = (counts[reason] ?? 0) + 1;
++}
++
++/** person → loadable number hashes. */
++function hashesByPerson(
++  numbers: readonly Row[],
++  skipped: Record<string, number>,
++): Map<string, string[]> {
++  const out = new Map<string, string[]>();
++  for (const row of numbers) {
++    const hash = (row.number_hash ?? '').toLowerCase();
++    if (!LOADABLE_TIES.has(row.tie ?? '')) bump(skipped, 'tie_not_loadable');
++    else if (!HASH_RE.test(hash)) bump(skipped, 'bad_hash');
++    else out.set(row.person_key, [...(out.get(row.person_key) ?? []), hash]);
++  }
++  return out;
++}
++
++/** The rows to write, grouped by number; everything left out is counted by reason. */
++export function basePlan(personNumbersCsv: string, factsCsv: string): BasePlan {
++  const skipped: Record<string, number> = {};
++  const hashes = hashesByPerson(csvRecords(personNumbersCsv), skipped);
++  const byHash = new Map<string, ResearchFact[]>();
++  for (const row of csvRecords(factsCsv)) {
++    const targets = hashes.get(row.person_key ?? '');
++    if (targets === undefined) {
++      bump(skipped, 'fact_without_loadable_number');
++      continue;
++    }
++    const fact = factOf(row);
++    if (fact === null) {
++      bump(skipped, 'bad_fact_row');
++      continue;
++    }
++    for (const hash of targets) byHash.set(hash, [...(byHash.get(hash) ?? []), fact]);
++  }
++  return { byHash, skipped };
++}
+diff --git a/src/services/contactFacts.service.ts b/src/services/contactFacts.service.ts
+index 211c5e5..ae9093f 100644
+--- a/src/services/contactFacts.service.ts
++++ b/src/services/contactFacts.service.ts
+@@ -409,7 +409,9 @@ async function getOtherFacts(
+   const result = await query<FactRow>(
+     `SELECT id, value FROM contact_facts
+      WHERE neo4j_contact_id = $1 AND field_type = $2 AND submitted_by_user_id != $3
+-       AND retracted_at IS NULL`,
++       AND retracted_at IS NULL
++       -- 4225: research is never the second independent saver (46072 part 2).
++       AND source IS DISTINCT FROM 'public_research'`,
+     [neo4jContactId, fieldType, userId],
+   );
+   return result.rows;
+diff --git a/src/services/factRepublish.service.ts b/src/services/factRepublish.service.ts
+index 57fb626..44771f7 100644
+--- a/src/services/factRepublish.service.ts
++++ b/src/services/factRepublish.service.ts
+@@ -93,6 +93,8 @@ async function remoderateFreeFormFacts(limit: number): Promise<{
+     `SELECT id, field_type, value, moderated_at FROM contact_facts
+      WHERE is_public = false AND retracted_at IS NULL
+        AND field_type <> ALL($1)
++       -- 4225: research facts are never published by moderation either.
++       AND source IS DISTINCT FROM 'public_research'
+      ORDER BY moderated_at ASC NULLS FIRST, id
+      LIMIT $2`,
+     [FACT_FIELD_TYPES as readonly string[], limit],
+@@ -146,6 +148,7 @@ async function reconfirmGroup(group: CoreGroup): Promise<number> {
+   const facts = await query<PrivateFactRow>(
+     `SELECT id, field_type, value, moderated_at FROM contact_facts
+      WHERE neo4j_contact_id = $1 AND field_type = $2 AND retracted_at IS NULL
++       AND source IS DISTINCT FROM 'public_research'
+      ORDER BY id`,
+     [group.neo4j_contact_id, group.field_type],
+     REPUBLISH_QUERY_TIMEOUT_MS,
+@@ -178,6 +181,7 @@ async function reconfirmCoreFacts(limit: number): Promise<{ groups: number; publ
+     `SELECT neo4j_contact_id, field_type
+      FROM contact_facts
+      WHERE field_type = ANY($1) AND retracted_at IS NULL
++       AND source IS DISTINCT FROM 'public_research'
+      GROUP BY neo4j_contact_id, field_type
+      HAVING COUNT(DISTINCT submitted_by_user_id) >= 2
+         AND COUNT(*) FILTER (WHERE is_public) = 0
+diff --git a/src/services/listFile.ts b/src/services/listFile.ts
+index b75d424..458e395 100644
+--- a/src/services/listFile.ts
++++ b/src/services/listFile.ts
+@@ -201,15 +201,19 @@ function csvDelimiter(firstLine: string): string {
+   );
+ }
+ 
+-/** RFC 4180 fields: quotes may hold delimiters, line breaks and doubled quotes. */
+-export function csvCells(raw: string): string[][] {
++/**
++ * RFC 4180 fields: quotes may hold delimiters, line breaks and doubled quotes.
++ * A chat file is read up to its own row limit; a caller that loads a whole
++ * admin file (4225) passes its own.
++ */
++export function csvCells(raw: string, rowsToRead: number = ROWS_TO_READ): string[][] {
+   const textBody = raw.replace(BYTE_ORDER_MARK_RE, '');
+   const delimiter = csvDelimiter(textBody.split(/\r?\n/u, 1)[0] ?? '');
+   const rows: string[][] = [];
+   let row: string[] = [];
+   let field = '';
+   let quoted = false;
+-  for (let i = 0; i < textBody.length && rows.length < ROWS_TO_READ; i += 1) {
++  for (let i = 0; i < textBody.length && rows.length < rowsToRead; i += 1) {
+     const ch = textBody[i];
+     if (quoted) {
+       if (ch === '"' && textBody[i + 1] === '"') {
+-- 
+2.43.0
+

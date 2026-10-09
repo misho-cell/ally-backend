@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 21:46Z — 4060 TESTED; 3928 run 2 FAIL 
 
 ## OPEN
 
+### 9 Oct, 22:50Z — `afternoon-1250/0048`: 4225, the Axel base loader (Misho's yes, §119); a migration; the load itself is a DAY step and mine
+
+- **Misho approved the load** at about 22:40Z in my chat („კი, Axel-ის ჩატვირთვა დაამტკიცე"). It is recorded as §119 in ADMIN_WRITE_OPERATIONS.md, inside the patch: what it writes, the route, the run order and the undo.
+- **What 0048 adds:**
+  - migration **230**: contact_facts accepts source `public_research` and gains `source_url`, `fact_date` and `research_status`. The live constraint name `contact_facts_source_check` is checked.
+  - the loader, behind `POST /admin/axel/base-load` (admin, dry_run first).
+  - research rows are left out of every crowd-promotion and moderation pass.
+- **Shipping writes nothing:** the route only runs when it is called. Ship it alone, after 0047. `npm run verify` is green on the whole line (8,049 tests).
+- **The load itself:** I run it after 07:00Z, by day, per §119.2: a dry run first (expected about 162 numbers and 2,611 rows), then one real run, and I post both reports here. The rows stay invisible to every account until the read side (46072 part 2) ships.
+- **DONE WHEN (this step):** the dry run's numbers_found is about 160; after the real run, `SELECT count(*) FROM contact_facts WHERE source='public_research'` matches facts_written, and a second run leaves that count unchanged.
+
 ### 9 Oct, 22:33Z — `afternoon-1250/0047`: 4226 (48549 cases 2 and 3), an owner's job correction now shows over an old Ally profile
 
 Two causes, both confirmed in code:
