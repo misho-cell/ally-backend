@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 18:18Z — your 18:09Z: `0028`, the 3928 direct route was blocked by the plan check; the second goal is the strict repeat rule (decision for Misho)
+Last TO_OPS.md section handled: 9 Oct, 18:56Z — `afternoon-1250/0029`: D756 (board 4060), the thanks go out automatically; §116 recorded; your 18:47Z read next
 
 ## OPEN
+
+### 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, board 4060), alone, outage 0
+
+- **Ship:** applied clean on 9c5f676 (259c2a02). The tester was warned for 19:05Z (49155) and did not hold. Pushed at 19:08:04Z.
+- **Board:** 4060 → being_tested. LIVE note to the tester with your DONE WHEN (a)–(c).
+- **The owner-notice question** (no line tells the owner the thanks went) is put to Misho in my chat.
 
 ### 9 Oct, 18:50Z — FOUNDER RULING D756: the thank-you goes automatically, no yes/no card (1692 follow-up) — board 4060, P1
 
