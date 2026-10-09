@@ -20,8 +20,15 @@ git cherry-pick "$1" >/dev/null 2>&1 || { echo "CHERRY-PICK FAILED $1"; git cher
 npm run verify > "$LOG" 2>&1 || { echo "VERIFY FAILED"; grep -E "^Tests:|✕" "$LOG" | head; exit 3; }
 grep -E "^Tests:" "$LOG"
 
+# A phonebook import that is running counts as work too: a restart cuts it
+# (8 Oct 21:29Z, 163 of 510 cards). An open import_attempts row older than
+# IMPORT_WINDOW was already cut by an earlier restart and is no reason to wait.
+IMPORT_WINDOW="20 minutes"
 working() {
-  echo "SELECT count(*) AS n FROM threads WHERE status='working';" | scripts/ops/ro.sh |
+  echo "SELECT (SELECT count(*) FROM threads WHERE status='working')
+             + (SELECT count(*) FROM import_attempts
+                 WHERE in_progress AND created_at > NOW() - INTERVAL '$IMPORT_WINDOW') AS n;" |
+    scripts/ops/ro.sh |
     python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["rows"][0]["n"])'
 }
 pushed=no
