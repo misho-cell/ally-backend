@@ -77,8 +77,11 @@ export async function countFollowedUpdates(userId: string): Promise<number> {
               WHERE p.user_id = $1 AND p.status = 'seen' AND p.followed_at IS NOT NULL)
           + (SELECT COUNT(*)::int
                FROM threads t
-              WHERE t.user_id = $1 AND t.followed_at IS NOT NULL) AS n`,
-    [userId],
+              WHERE t.user_id = $2::int AND t.followed_at IS NOT NULL) AS n`,
+    // Two parameters, because the two columns differ: pending_updates.user_id
+    // is TEXT and threads.user_id is INTEGER. One $1 compared with both threw
+    // „integer = text" on every call (the revert of 774ef2f, 9 Oct).
+    [userId, userId],
     QUERY_TIMEOUT_MS,
   );
   return result.rows[0]?.n ?? 0;

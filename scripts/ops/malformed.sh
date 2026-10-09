@@ -100,4 +100,4 @@ POSTGRES_PORT="$PORT" \
 POSTGRES_DB="$DB" \
 POSTGRES_NAME=netai \
 POSTGRES_PASS= \
-  npx jest aMissingFieldCannotReachTheDatabase --silent=false
+  npx jest aMissingFieldCannotReachTheDatabase aFlaggedCountReachesTheDatabase --silent=false
