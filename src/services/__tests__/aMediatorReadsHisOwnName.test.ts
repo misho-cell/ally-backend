@@ -47,3 +47,23 @@ describe('targetNameForMediator', () => {
     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
   });
 });
+
+/**
+ * 3895 (IN-023, 2 of 2): the helper's card said „ბახვა გამოგონილს" for the man she
+ * saved as „Baxva Gamogonili". findContactPhonesByName returns bare digits and
+ * nameInBridgeBook compared them with the stored „+…" form, so it never matched.
+ */
+describe('nameInBridgeBook, read for the number in either form', () => {
+  it('compares the numbers as digits', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { join } = require('path') as typeof import('path');
+    const src = readFileSync(join(__dirname, '..', 'bridgePicker.ts'), 'utf8');
+    const fn = src.slice(src.indexOf('export async function nameInBridgeBook'));
+    expect(fn.slice(0, 1200)).toContain(
+      "AND regexp_replace(ua.phone, '\\\\D', '', 'g') = regexp_replace($2, '\\\\D', '', 'g')",
+    );
+    expect(fn.slice(0, 1200)).not.toContain('AND ua.phone = $2');
+  });
+});

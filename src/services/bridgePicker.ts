@@ -235,7 +235,10 @@ export async function nameInBridgeBook(
        FROM "UserAlias" ua
        LEFT JOIN "UserPhone" up ON up.phone = ua.phone
        LEFT JOIN "User" u ON u.id = up."userId"
-      WHERE ua."contactId" = $1::int AND ua.phone = $2
+      WHERE ua."contactId" = $1::int
+        -- 3895: callers pass the stored „+…" form or bare digits (findContactPhonesByName);
+        -- compared as digits, so the bridge's own name is found either way.
+        AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
         AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
       ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
       LIMIT 1`,
