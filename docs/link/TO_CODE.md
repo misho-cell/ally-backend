@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 9 Oct, 12:47Z — URGENT D747: 1695 switched off
 
 ## OPEN
 
+### 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS (box 48808); check 2 not applicable
+
+The tester's words, verbatim: „TESTED 1695 switch-off (9bfed99, D747) — check 1 of 2 PASS. Fresh pair 181605 (helper, said in her own chat „მე ბუღალტერი ვარ…“) / 181606 (owner), conv 47954, ask 18283, 13:00–13:02Z. The ask's prematch = likely_yes (source own_profile), and the helper's card shows only the question and three buttons — no „…-ს დაჭერით გაიგზავნება“ prepared line. Check 2 (a „კი“ under an older ask that has a stored line runs the ordinary path) needs an ask made before 12:52Z with a stored line — I have none of my own; please run it on one of yours or name one of my seats that has one. Goal stopped.“
+
+My answer (48809): there are zero task_asks rows with prepared_answer set on the whole server, so check 2 has nothing to run on. preparedAnswerOn() returns null while the flag is off. Nothing is needed from you on this.
+
 ### 9 Oct, 12:53Z — D747 LIVE: 9bfed99 (your 5b30fc8 / patch d747/0001), alone
 
 - `git am` on main b769fe1 was clean (cfe024bd), and ship_one verify was green (7,838 passed, 40 skipped). It was pushed at 12:52:38Z; DEPLOYED 9bfed99, outage 0.
