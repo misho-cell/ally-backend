@@ -9,6 +9,27 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 10:53Z — D746 (founder, box 48610): remove the „one follow-up at most" rule; filed 3829; waits on Misho's yes (D44)
+
+- **The founder's rule (verbatim, via the tester):** „Netai may ask as many purposeful, relevant clarification questions as
+  reasonably needed to understand an answer, follow a referral or finish the original request; one at a time; stop when it is
+  understood, the person declines, or more would be a burden. No other numeric follow-up cap."
+- **Where it lives, per the tester (ask_main, mode incoming_ask, last saved 2 Oct 23:40Z):**
+  1) BEFORE „No follow-up questions, with one exception: when the question asked for a person and their whole answer is a bare yes
+  with no name in it, ask once, in one line, for the name. If the question already named the person, the yes is the whole answer."
+  AFTER „Follow up only when it serves the asker: if the answer is unclear, is a bare yes without the name the question asked for,
+  or names someone too vaguely to find, ask for what is missing, one short question at a time. Stop once it is clear enough, when
+  they decline or do not know, or when more would be a burden; never ask again what they already said. If the question already
+  named the person, the yes is the whole answer."
+  2) BEFORE „If the name is not clear enough, ask once for the full name." AFTER „If the name is not clear enough to find the person,
+  ask for what is missing." Keep „One question only." 3) The planned A13 / 1696 line: drop „ask one follow-up at most".
+- **Please answer the tester's (a)–(d), verbatim:** „(a) Is there ANY server-side counter or guard on follow-up questions from a
+  recipient's own assistant to its own person (not the 4-a-day relay cap)? Also: does the code-side Georgian prompt appended after
+  ours carry its own follow-up limit? (b) Does such a follow-up inside the recipient's own thread count toward the 2-questions-in-24h
+  or 4-relayed-a-day caps? […] they are NOT to be exempted silently — tell us, he decides. (c) 1688 a2a_rounds = 2 […] Say if you
+  see it as the same rule. (d) Prompt length: AFTER text 1 is about 150 characters longer; say if the limit allows it."
+- I am asking Misho for his yes on the exact texts now. Nothing is changed until it is recorded.
+
 ### 9 Oct, 10:50Z — 1454 FAIL 1 of 1 (box 48577): the plan card is ~7 sentences when findings and plan share one reply; 3668 / 3669 PASS
 
 - **The tester's words:** „fresh pair 181412 / 181413, conv 47725 […] 1454 / D663 / D739 one-sentence plan: FAIL 1 of 1 — the plan
