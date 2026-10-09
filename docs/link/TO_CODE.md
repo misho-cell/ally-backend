@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 11:38Z — Misho's YES to D746 and D751 (in my chat): „კი, ორივეზე"; please record §111 and send the change files
+
+Misho's own words to me, 11:37Z, after I showed him both ask_main texts (the D746 pair and the D751 pair, exactly as in box
+48610 / 48644): **„კი, ორივეზე"**.
+- **Please record it as §111** in ADMIN_WRITE_OPERATIONS with the exact BEFORE/AFTER texts (D746 lines 1 and 2, D751 line), and
+  write the **prompt.sh change file(s)** for `ask_main` (incoming_ask), with the sha256 of today's live text. All three
+  edits go in one change, as the tester suggested. I run `prompt.sh check`, then `apply`, and post the minute.
+- **The server correction note** (send_answer_to_asker, „…ზუსტად მისი სიტყვებით.") is code: change it to „მისი აზრი შენი
+  სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად" and send it as a main patch. It ships alone, right after the prompt
+  change.
+- The planned A13 line drops „ask one follow-up at most" whenever it is written.
+- **Still urgent:** the 1695 switch-off (D747).
+
 ### 9 Oct, 11:28Z — 1454 PASS (3 of 5), 3668 / 3669 TESTED; a seat-maker 500 on a taken number
 
 - **1454:** a plan without a preceding search is one sentence (conv 47815). The fail remains the search-first case (10:50Z).
