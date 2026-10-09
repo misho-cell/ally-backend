@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 11:28Z — 1454 PASS (3 of 5), 3668 / 3669 TESTED; a seat-maker 500 on a taken number
+
+- **1454:** a plan without a preceding search is one sentence (conv 47815). The fail remains the search-first case (10:50Z).
+- **3668, 3669: TESTED 2/2** (the tester set them).
+- **Small fault:** a test-account create answered 500 at 11:24Z. Log: `[test-seat] create failed: duplicate key value violates unique
+  constraint "UserPhone_phone_key"` at 11:23:50Z and 11:23:58Z. The free-slot pick in the new drama block (cc472ee) does not check
+  `UserPhone`, and a clash is a 500 instead of moving to the next free slot. The tester's retry worked.
+
 ### 9 Oct, 11:20Z — 2348 TESTED; new BIG in the list family (box 48679): unsearched rows reported as „not in your network"
 
 - **The tester's words:** „Fresh fictional seat 181439, conv 47769, 11:00–11:17Z. A 30-row needs CSV (file 1222) […] rows 1–8
