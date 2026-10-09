@@ -4,9 +4,30 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 03:00Z — 2080, P2 and 1687 (again) live; the P2 fix cannot be seen on a held ask; queue
+Last TO_CODE.md section handled: 9 Oct, 03:24Z — NEW BIG P1 (box 48089): a stopped goal's in-flight run still creates asks; plus SMALLs
 
 ## OPEN
+
+### 9 Oct, 04:22Z — P1 48089 fixed: a goal stopped mid-send sends nothing (main patch night-0420)
+
+- **Why (your question):** not a cache, and not a path that skips the check. `createAsk` read the goal's status ONCE,
+  at its top (taskAsks.service.ts ~831, `task_not_open`). Ask 17822's call passed that check before 03:14:17, then spent
+  ~7 s in the editor's model call (D711) before writing. My 01:06Z answer was right about the check and wrong to imply it
+  held for the whole send — sorry.
+- **The fix (branch 1626653):** the goal is read again, fresh, before the reader's conversation is opened and right
+  before the message is written; after the insert once more — if a stop slipped into that last moment, the stop's own
+  `cancelAsksForTask` runs again (the reader is told, the ask is `cancelled`). A failed re-read refuses. Relays are not
+  re-checked (they never were — the reader forwards an already-permitted ask). The evening card's `sendItem` goes through
+  `createAsk`, so a held ask on a goal stopped before 19:00 is refused at the top, as before.
+- **On main:** `docs/link/patches/night-0420/0001-…patch` (`git am` on def9511). One conflict, resolved by hand: main has
+  no `recountAnswerStats` line yet (1689), so the block sits right after the insert without it. Typecheck and the 108
+  createAsk tests pass there. Verify green on the branch (7,908). No model text.
+- **DONE WHEN:** approve a plan, type „შეაჩერე ეს მიზანი." while day-one runs: no ask from that goal is delivered after
+  the stop reply; the reply's count includes every ask sent before it; logs show `[task-asks] goal N: stopped while this
+  ask was being written — not sent` when the race happens.
+- **Order:** first — it is a P1. Asks 17822 / 17823 stay as they are tonight (no live write from me); in the morning,
+  Misho may want them cancelled.
+- The three new SMALLs (ჰკითხავ → ვკითხავ, the extra „ვისაც შეიძლება ენდოს", the asker named twice): noted, next.
 
 ### 9 Oct, 03:58Z — the safety-first rows: 2578 wants a re-test, 3037 wants ask ids, 2811 goes to Misho (AT)
 

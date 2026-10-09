@@ -1,0 +1,145 @@
+From 95f83d0d214843a67fd6238a7923c8c69d56fa88 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 03:37:57 +0000
+Subject: [PATCH] fix(asks): a goal stopped mid-send sends nothing (P1, the
+ tester's 48089)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Conv 46897: „შეაჩერე ეს მიზანი." closed goal 22773 at 03:14:17 and the reply
+said nothing more would go — yet the day-one run already inside createAsk
+wrote asks 17822 and 17823 at 03:14:24 and 03:14:26. Not a cache: createAsk
+read the goal's status once, at its top, and the editor's model call and the
+rest take seconds before the message is written.
+
+The goal is now read again, fresh, at the two points that matter: before the
+reader's conversation is opened, and right before the message is written.
+After the insert it is read once more; if a stop slipped into that last
+moment, the stop's own cancelAsksForTask runs again, so the reader is told
+and nothing stays „sent" on a closed goal. A failed re-read refuses: a stop
+holds even when the database is slow.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/taskAsks.service.test.ts        | 26 +++++++++++
+ src/services/taskAsks.service.ts              | 44 +++++++++++++++++++
+ 2 files changed, 70 insertions(+)
+
+diff --git a/src/services/__tests__/taskAsks.service.test.ts b/src/services/__tests__/taskAsks.service.test.ts
+index 6f9d968..cef9ff9 100644
+--- a/src/services/__tests__/taskAsks.service.test.ts
++++ b/src/services/__tests__/taskAsks.service.test.ts
+@@ -411,6 +411,32 @@ describe('createAsk', () => {
+     expect(out.sent).toBe(true);
+   });
+ 
++  /**
++   * 48089 (P1, conv 46897): „შეაჩერე ეს მიზანი." closed the goal while the day-one
++   * run was inside createAsk, and two asks went out 7 and 9 s later. The goal is
++   * read again before anything reaches the reader.
++   */
++  it('sends nothing when the goal is stopped while the ask is being written (48089)', async () => {
++    routeAskQueries({ member: { userId: 7, name: 'გია' } });
++    const open = await getTaskById(3);
++    // Open at the top of createAsk; stopped by the time the editor is done.
++    mockGetTask
++      .mockResolvedValueOnce(open)
++      .mockResolvedValue({ ...open, status: 'closed' } as never);
++
++    const out = await createAsk('42', 3, '+995599111222', 'BMW-ს კარგი ხელოსანი ხომ არ იცი?');
++
++    expect(out).toEqual({
++      sent: false,
++      reason: 'task_not_open',
++      error: 'Task not found or not open.',
++    });
++    expect(mockCreateThread).not.toHaveBeenCalled();
++    expect(
++      mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO task_asks')),
++    ).toBe(false);
++  });
++
+   it('sends: ask row + recipient thread + opening message', async () => {
+     routeAskQueries({ member: { userId: 7, name: 'გია' } });
+ 
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index d65bcf6..340e033 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -1569,6 +1569,10 @@ async function createAskNow(
+   // question that followed it in different rooms (ticket 9 task 12).
+   // T2477: opened after the editor, so its title is the edited question — the
+   // owner's raw first-person line never reaches the helper's list.
++  // 48089: the editor takes seconds; a goal stopped meanwhile sends nothing.
++  if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
++    return goalStoppedMidSend(taskId);
++  }
+   const askThreadId =
+     liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));
+   // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
+@@ -1649,6 +1653,10 @@ async function createAskNow(
+   }
+   const profileName = fromName.rows[0]?.name?.trim() ?? '';
+   if (profileName !== '') lines.push(disclosureLine(said, profileName));
++  // 48089: and once more right before the message reaches the reader — shortening is a model call too.
++  if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
++    return goalStoppedMidSend(taskId);
++  }
+   await saveThreadMessage(
+     askThreadId,
+     toUserId,
+@@ -1708,6 +1716,16 @@ async function createAskNow(
+     ],
+     ASK_QUERY_TIMEOUT_MS,
+   );
++  // 48089: a stop that landed between the last check and this row missed it; the stop's own
++  // cancel runs once more, so the reader is told and nothing stays „sent" on a closed goal.
++  if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
++    const cancelled = await cancelAsksForTask(taskId);
++    // eslint-disable-next-line no-console
++    console.log(
++      `[task-asks] goal ${taskId}: stopped as the ask was written — ${cancelled} cancelled`,
++    );
++    return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
++  }
+   if (waveNo !== null && !isFollowUp) {
+     void noteWaveAsk(taskId).catch((err: unknown) =>
+       // eslint-disable-next-line no-console
+@@ -3794,6 +3812,32 @@ async function askedOnAnotherGoalJustNow(
+   }
+ }
+ 
++/**
++ * 48089 (P1, conv 46897): „შეაჩერე ეს მიზანი." closed the goal at 03:14:17, and
++ * the day-one run already inside createAsk wrote two asks at 03:14:24 and
++ * 03:14:26. The status was read once, at the top, and the editor's model call
++ * takes seconds. Read again, fresh, right before anything reaches the reader.
++ * A failed read refuses: a stop must hold even when the database is slow.
++ */
++async function goalStillOpen(taskId: number): Promise<boolean> {
++  try {
++    return (await getTaskById(taskId))?.status === 'open';
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error(
++      `[task-asks] goal ${taskId}: status not re-read, not sent:`,
++      (err as Error).message,
++    );
++    return false;
++  }
++}
++
++function goalStoppedMidSend(taskId: number): CreateAskOutcome {
++  // eslint-disable-next-line no-console
++  console.log(`[task-asks] goal ${taskId}: stopped while this ask was being written — not sent`);
++  return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
++}
++
+ async function ownerSpokeSince(taskId: number, secondsAgo: number): Promise<boolean> {
+   try {
+     const result = await query<{ spoke: boolean }>(
+-- 
+2.43.0
+
