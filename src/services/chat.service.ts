@@ -73,7 +73,7 @@ import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { safetyReplyFor } from './safetyWorry';
-import { withoutMatchJustification } from './planJustification';
+import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
 import { withOwnersNetwork } from './planVoice';
 import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
@@ -4341,6 +4341,43 @@ async function dropStepsTheReplyRepeats(
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[chat] could not drop repeated steps:', (error as Error).message);
+  }
+}
+
+/** A run writes a handful of steps; this many is more than any run has. */
+const MAX_RUN_STEPS_READ = 30;
+
+/**
+ * 48247 (thread 46960): the plan went out twice, 11 s apart — the model's
+ * in-between text after propose_task_plan, saved as a step („…ასისტენტებს
+ * დაველაპარაკები … დავიწყო?"), and then the final reply, which told the plan
+ * again in other words („კიდევ ერთი ადამიანი" where the step named Davit), so
+ * the word-for-word tidy-up above could not see it. When the reply carries
+ * the plan sentence, a step of the same run that carries it too is the same
+ * plan said early, and it goes. Best-effort, like the tidy-up above.
+ */
+async function dropPlanStepsTheReplyCarries(
+  threadId: number,
+  runId: string | null,
+  reply: string,
+): Promise<void> {
+  if (!runId || !carriesPlanSentence(reply)) return;
+  try {
+    const steps = await query<{ id: number; content: string }>(
+      `SELECT id, content FROM conversations
+        WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
+        ORDER BY id LIMIT $3`,
+      [threadId, runId, MAX_RUN_STEPS_READ],
+      STEP_TIDY_TIMEOUT_MS,
+    );
+    const ids = steps.rows.filter((s) => carriesPlanSentence(s.content)).map((s) => s.id);
+    if (ids.length === 0) return;
+    await query(`DELETE FROM conversations WHERE id = ANY($1::int[])`, [ids], STEP_TIDY_TIMEOUT_MS);
+    // eslint-disable-next-line no-console
+    console.log(`[chat] run ${runId}: dropped ${ids.length} plan step(s) the reply tells again`);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[chat] could not drop plan steps:', (error as Error).message);
   }
 }
 
@@ -16132,6 +16169,7 @@ export async function processChat(
   );
   // The same answer must not be on the screen twice (item H).
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
+  await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);
   // D348: the free answer says it was free, immediately after it and before
   // anything else the run has to deliver.
   if (graceNote !== null) {

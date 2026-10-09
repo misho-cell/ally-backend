@@ -16,6 +16,11 @@ const PLAN_SENTENCE_RE =
   /(ასისტენტს\s+დაველაპარაკები|ასისტენტებს\s+დაველაპარაკები|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
 
 /** What a match justification says: contact, member, knows, matches. */
+/** 48247: does this text carry the plan sentence? */
+export function carriesPlanSentence(text: string): boolean {
+  return PLAN_SENTENCE_RE.test(text);
+}
+
 const JUSTIFICATION_MARKERS: readonly RegExp[] = [
   /პირდაპირი\s+კონტაქტ|შენი\s+კონტაქტ|direct\s+contact|your\s+contact|прямой\s+контакт|tu\s+contacto/iu,
   /ნეტაიზე|წევრია|წევრი\s+არის|on\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
