@@ -154,7 +154,12 @@ export function buildAskOpening(
   roster: string | null,
   question: string,
   shape: 'first' | 'followUp' | 'added',
+  namedBelow = false,
 ): string {
+  // AU (the founder's note, 48086; Misho's yes 9 Oct, §110.8): the 1687 closing line already
+  // says whose assistant wrote, so a first question opens with the question alone — unless the
+  // opening also says the two share a network („Axel-ის წევრი, როგორც შენ"), which is news.
+  if (shape === 'first' && namedBelow && roster === null) return withoutFramesOwnWords(question);
   const parts = askOpeningParts(language, senderName, roster);
   // Plain text, no markdown: the recipient-side renderer shows the asterisks
   // verbatim (ticket 3 §6.3). D648: no quotation marks either — the question is

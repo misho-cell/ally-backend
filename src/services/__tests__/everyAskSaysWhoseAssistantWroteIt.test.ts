@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ASK_BODY_MAX_CHARS, disclosureLine } from '../askOpening';
+import { ASK_BODY_MAX_CHARS, buildAskOpening, disclosureLine } from '../askOpening';
 import { scrubMechanicalForStorage } from '../privacyScrub';
 
 /** 1687 (A4): every outgoing ask ends with the identical line, never the model's words. */
@@ -30,11 +30,27 @@ describe('the disclosure line', () => {
   it('closes every ask, after the body, with the profile name; a long body is logged', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const at = asks.indexOf('1687 (A4): the body is measured');
-    const block = asks.slice(at, at + 900);
+    const block = asks.slice(at, at + 1200);
     expect(block).toContain('if (body.length > ASK_BODY_MAX_CHARS)');
     expect(block).toContain(
       "if (profileName !== '') lines.push(disclosureLine(said, profileName));",
     );
     expect(ASK_BODY_MAX_CHARS).toBe(400);
+  });
+});
+
+describe('AU: the asker is named once (the founder, 48086; §110.8)', () => {
+  it('a first question opens with the question alone when the closing line names the asker', () => {
+    expect(buildAskOpening('ka', 'მიშო', null, 'კარგ ხელოსანს ხომ არ იცნობ?', 'first', true)).toBe(
+      'კარგ ხელოსანს ხომ არ იცნობ?',
+    );
+  });
+
+  it('keeps the opening when nothing names the asker below, or it carries a shared network', () => {
+    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'first', false)).toContain('გეკითხება');
+    expect(buildAskOpening('ka', 'მიშო', 'Axel', 'კითხვა?', 'first', true)).toContain('Axel');
+    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'followUp', true)).toContain(
+      'კიდევ დაწერა',
+    );
   });
 });
