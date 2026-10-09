@@ -5,9 +5,49 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 12:47Z — URGENT D747: 1695 switched off, `patches/d747/0001` (branch 5b30fc8), ships alone now
+Last TO_OPS.md section handled: 9 Oct, 13:10Z — `patches/afternoon-1250/0001–0008` (§111, §112, AV on, 1694 flag, D751 note, earnings + ask_main change files, admin updates read, seat fix); answers to 10:24Z–11:55Z
 
 ## OPEN
+
+### 9 Oct, 13:58Z — afternoon-1250 all LIVE, each alone (outage 0 each); 3829 tested: FU-02 run 1 FAIL + SMALLs; the note is hidden
+
+**Deploys** (`git am` on 9bfed99 was clean; ship_one verify was green each time; the box was read twice before each):
+- 13:12Z ce5a86c §111 docs · 13:18Z 20cf6ce §112 docs + change file
+- 13:20Z **prompt.sh apply 112** (ask_main da8a3486 → f8e53190, 7,036 → 7,275, read back)
+- 13:24Z 0c99e8d D751 server note · 13:29Z 8b0d70c AV on · 13:34Z b986aea 1694 flag
+- 13:41Z 417add8 change file 111 · 13:42Z **prompt.sh apply 111** (info:earnings dee0819e → aab40c05, 471 → 626, read back)
+- 13:45Z ee6976d admin updates read: it works; card 29239 reads debrief, held, release 12 Oct 10:18Z
+- 13:52Z a7f9eee seat maker
+- The LIVE notes are box 48842 (3829) and 48845 (the rest).
+- The empty accounts 181485 / 181488 are untouched; deleting them needs Misho's word.
+
+**The tester's 3829 results, verbatim:**
+
+> **box 48843, verbatim:**
+> TESTED 3829 (D746 + D751, live 13:24Z; ask_main read back by me: 7,275 chars, new texts present, „No follow-up questions“ and „word for word“ gone). Fresh pairs, 13:33–13:45Z:
+> • FU-01 clear answer (181640/181641, conv 47985): „კი, ზაზა გამოგონილი, ვაკეში მუშაობს…“ → no follow-up, „მადლობა, პასუხი გაიგზავნა.“ PASS 1/1 (your b). SMALL: the owner's line reads „ლიამ დაწერა: ზაზა გამოგონილი, მუშაობს ვაკეში, ძალიან კარგია.“ — her words nearly as typed, labelled as hers (D648: content in Netai's words).
+> • FU-02 vague answer — 1 of 2. Run 1 (181638/181639, conv 47983): „კი, ჩემი ბიძაშვილის ნაცნობი აყენებს.“ → NO follow-up; passed on as is, the owner was offered an intro to an unnamed person. FAIL. Run 2 (181644/181645, conv 47992), your phrase „ის ბიჭი, ვაკეში რომ ცხოვრობს.“ → one follow-up „…მომეცი იმ ბიჭის სახელი…“; after „ლაშა ბერიძე ჰქვია…“ → sent, no further question. PASS. SMALL: the owner got only „ლაშა ბერიძეს“ — „lives in Vake“ dropped.
+> • D751 question back (181642/181643, conv 47987): „რომელ საათზე მოიყვან და რამდენ ხანს დარჩება?“ → owner: „ნანა გთხოვს დააზუსტო, რომელ საათზე მოიყვან ძაღლს და რამდენ ხანს დარჩება შენთან.“ PASS 1/1 (your d). SMALL: the owner then gets a second line saying nearly the same thing.
+> • Server note: its new text („მისი აზრი შენი სიტყვებით, ყველა სახელი… ზუსტად“) seen live in conv 47994. QUESTION: that note is stored in the helper's thread as a user-role message — does the helper's app SHOW it? If yes, that is a BIG visible-text fault.
+> Next: FU-03..FU-08 and FU-02 run 3. 3829 stays being tested. Goals stopped.
+
+> **box 48844, verbatim:**
+> TESTED 3829 (D746), round 2 — fresh pairs, 13:49–13:55Z:
+> • FU-03 referral (181652/181653, conv 48010): „მე არა, მაგრამ ჩემი ყოფილი კოლეგა იცნობს.“ → one follow-up „რომელი ყოფილი კოლეგაა? მისი სახელი მომწერე.“; after „გიორგი ჰქვია, ბანკში ვმუშაობდით ერთად.“ → sent, no further question; owner: „…მისი ყოფილი კოლეგა, გიორგი ჰქვია, … ერთად მუშაობდნენ ბანკში“ + offer to ask Zurab for an intro. PASS 1/1 (one-tap hop to the colleague not offered — that is 1696, separate).
+> • FU-04 opt-out (181654/181655, conv 48011): „აღარ მინდა ასეთი კითხვები…“ → stop_contacting_me called, one line, no question. PASS 1/1.
+> • FU-08 „don't know“ after a follow-up (181656/181657, conv 48009): „კი, ვიღაცას ვიცნობდი.“ → one follow-up „ვისი სახელი გადავცე დათას?“; „არ მახსოვს, არ ვიცი.“ → sent, stopped; owner told the truth. PASS 1/1.
+> • FU-05 no repeated question: none re-asked in any of the 7 runs so far. PASS.
+> Totals since 3829: FU-01 1/1, FU-02 1/2, FU-03 1/1, FU-04 1/1, FU-05 7/7, FU-08 1/1, D751 1/1. Still to run: FU-02 run 3, FU-06 (asker writes again), FU-07 (caps / quiet hours). Goals stopped.
+
+
+**Your fix, from the above:**
+- **FAIL:** FU-02 run 1 — „კი, ჩემი ბიძაშვილის ნაცნობი აყენებს.“ got no follow-up, and the owner was offered an intro to an unnamed person.
+- **SMALL:**
+  - FU-01: the answer was labelled as hers, nearly in her words (D648).
+  - FU-02 run 2: „lives in Vake“ was dropped.
+  - D751: the owner got a second line that nearly repeats the first.
+
+**My answer to the tester's question (48845):** the server note is kind 'event' and stays out of the chat view because of the allowlist in threads.service. Tell me if that is wrong.
 
 ### 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS (box 48808); check 2 not applicable
 
