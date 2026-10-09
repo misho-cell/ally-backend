@@ -59,12 +59,34 @@ export function asksForAScore(ownerLine: string): boolean {
 /** „6/10", „8 / 10", „7 out of 10", „8 ქულა 10-დან". */
 const SCORE_RE =
   /\b\d{1,2}(?:[.,]\d)?\s*(?:\/\s*10\b|out\s+of\s+10\b|ქულა\s+10|из\s+10\b|de\s+10\b)/iu;
+
+/**
+ * 47978 (46817): with the score gone, „…to rate you higher with confidence."
+ * stayed — a „higher than what?" with nothing before it. A sentence about
+ * rating the owner is the score's trace and goes with it.
+ */
+const RATING_TRACE_RE =
+  /(\brat(?:e|ing)\s+you\b|\byour\s+(?:score|rating)\b|\bscore\s+you\b|შეგაფას|შეფასება\s+(?:მაღლა|დაბლა)|ქულ(?:ა|ას|ით)\b|оцени(?:ть|л)\s+тебя|тво(?:ю|я)\s+оценк|puntuarte|calificarte)/iu;
+
+/**
+ * 47978 (46816): asked to be rated, the reply named a type instead —
+ * „შენ პრაქტიკული ნეთვორქერი ჩანხარ", „შედეგზე ორიენტირებული ადამიანი ხარ".
+ * A type pinned on the owner stands in for the score; the observations stay.
+ * Asked „რა ტიპის ნეთვორქერი ვარ?" the owner gets a type — this runs only
+ * when a score was asked for.
+ */
+const TYPE_LABEL_RE =
+  /((?:ნეთვორქერ|ადამიან|ტიპ)\p{L}*\s+(?:\p{L}+\s+)?(?:ჩანხარ|ხარ)(?![\p{L}\p{M}])|\byou(?:'re|\s+are|\s+seem(?:\s+to\s+be)?|\s+come\s+across\s+as)\s+(?:a|an)\s+(?:[\w-]+\s+){0,3}(?:networker|person|type|connector)\b|\bты\s+(?:\p{L}+\s+){0,3}(?:нетворкер|человек|тип)\b|\beres\s+(?:un|una)\s+(?:\p{L}+\s+){0,3}(?:persona|networker|tipo)\b)/iu;
+
 const SENTENCE_RE = /[^.!?\n]+[.!?]*\s*/gu;
 
-/** The reply without the sentences that give a score; unchanged when none does. */
+const givesAScore = (sentence: string): boolean =>
+  SCORE_RE.test(sentence) || RATING_TRACE_RE.test(sentence) || TYPE_LABEL_RE.test(sentence);
+
+/** The reply without the sentences that score, rate or type the owner; unchanged when none does. */
 export function withoutScores(reply: string): string {
-  if (!SCORE_RE.test(reply)) return reply;
-  const kept = (reply.match(SENTENCE_RE) ?? []).filter((sentence) => !SCORE_RE.test(sentence));
+  if (!givesAScore(reply)) return reply;
+  const kept = (reply.match(SENTENCE_RE) ?? []).filter((sentence) => !givesAScore(sentence));
   const out = kept.join('').trim();
   return out === '' ? reply : out;
 }
