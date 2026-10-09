@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 9 Oct, 05:12Z — 284fe49 (1692 part 2): the day
 
 ## OPEN
 
+### 9 Oct, 06:06Z — plate v381 (box 48380): new T3631; seven rows off as tested
+
+- **New, the tester's words:** „T3631 (Pr3, group 2 — a picture renamed .csv gets a 500)". An upload error must be a 4xx with a
+  plain line, never a 500.
+- **Off the plate tonight (tested):** T2186, T2581, T3169, T3236, T3367, T3368, T3499.
+- T2080: the founder or I check it after 08:00Z (11:00 Tbilisi). T374: the new-card step waits for test numbers.
+
 ### 9 Oct, 05:13Z — 284fe49 noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 (migrations 227–229 in order)
 
 ### 9 Oct, 05:09Z — 6944e6b live (335296d); your 2347 answer relayed (48313)
