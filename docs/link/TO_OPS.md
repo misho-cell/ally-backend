@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996);
 
 ## OPEN
 
+### 9 Oct, 03:12Z — f5fd0e7 (1697 part 2, A14): the closed route is seen and logged; refusal held for AO
+
+- What: before an introduction request, the bridge's and the receiver's pre-match for the requester's goal are read;
+  both `not_his_field` = the route looks closed. With `CLOSED_ROUTE_ON = false` nothing is refused: the request goes as
+  before and one `[closed-route]` log line says it would have been stopped. The refusal and its model line wait for
+  Misho's yes on AO (D44). Unknown anything (no goal, no receiver phone, a failed read) = open. Direct requests untouched.
+- Cost: one goal-title read and one pre-match per request that has a goal and a receiver phone.
+- Verified: verify green (7,905).
+- Order: AFTER 17fca6f (1697 part 1) — it imports nothing from it, but part 1 is the same board and is not on main yet.
+- DONE WHEN (now): a request where both sides' own data say „not my field" still goes, and logs
+  `[closed-route] goal N: … — sent (switch off)`; any other request logs nothing new. (After AO: it is not sent.)
+
 ### 9 Oct, 03:01Z — bc10bc5 (1688 part 2): the „other" box starts with the prepared line
 
 - What: `GET /threads/:id/messages` adds `other_prefill` (the live ask's prepared line, #1695) on the newest assistant
