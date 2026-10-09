@@ -5894,8 +5894,12 @@ export function answerChunkHandler(opts: {
  * entire message under a plan card. Latin „da" is deliberately NOT here —
  * Cyrillic „да" is unambiguous, the Latin spelling is not.
  */
+/*
+ * 3533 (2 of 2 each): „ოკ" and „ოk" — „ok" typed on a Georgian keyboard, whole or
+ * half — did not approve; the owner was told to press the button instead.
+ */
 const PLAN_YES =
-  /^(კი|ki|ხო|xo|დიახ|diax|კარგი|თანახმა ვარ|მიდი|დაამტკიცე|yes|yep|ok|okay|approve[d]?|sí|si|vale|claro|да|давай)[\s.!,]*$/iu;
+  /^(კი|ki|ხო|xo|დიახ|diax|კარგი|თანახმა ვარ|მიდი|დაამტკიცე|yes|yep|ok|okay|ოკ|ოk|approve[d]?|sí|si|vale|claro|да|давай|ок|окей)[\s.!,]*$/iu;
 
 /**
  * A yes that turns on its own heel: „approved, BUT not Ninia yet", „yes if…".
@@ -6047,6 +6051,8 @@ const GO_AHEAD = [
   'მიდი',
   'გაგზავნე',
   'გააგზავნე',
+  // 3533: „დიახ, გაუგზავნე" — send it TO HIM — did not approve a waiting plan.
+  'გაუგზავნე',
   'დაიწყე',
   'გააკეთე',
   'დაამტკიცე',
