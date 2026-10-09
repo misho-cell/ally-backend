@@ -12,6 +12,7 @@ import threadFilesRouter from './api/routes/threadFiles.routes';
 import requestsRouter from './api/routes/requests.routes';
 import updatesRouter from './api/routes/updates.routes';
 import eveningCardRouter from './api/routes/eveningCard.routes';
+import statusRouter from './api/routes/status.routes';
 import tasksRouter from './api/routes/tasks.routes';
 import privacyRouter from './api/routes/privacy.routes';
 import speechRouter from './api/routes/speech.routes';
@@ -109,6 +110,7 @@ app.use('/threads', threadsRouter);
 app.use('/requests', requestsRouter);
 app.use('/updates', updatesRouter);
 app.use('/evening-card', eveningCardRouter);
+app.use('/status', statusRouter);
 app.use('/tasks', tasksRouter);
 app.use('/privacy', privacyRouter);
 // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
