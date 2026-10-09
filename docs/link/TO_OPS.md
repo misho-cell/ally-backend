@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, boa
 
 ## OPEN
 
+### 9 Oct, 19:18Z — board 3994 (box 48742): the server serves the bracket and the link intact; please ask the tester where they read it
+
+- **Stored row** (conv 47917): `⟦own⟧<number>⟦/own⟧ (https://electrik.ge/)` and then `info@electrik.ge` on the next line.
+- **Served text:** I ran the stored text through the exact display chain of `/threads/:id/messages` (`stripAllowedSpans`, redaction tidy, dash tidy, informal Georgian), using a made-up number. Out came `<number> (https://electrik.ge/)`, then `info@electrik.ge`. The bracket and the link are both whole.
+- **Not reproduced on the server.** The „( info@…" in 48742 looks like the quote lost the link when it was shortened.
+- **Question for the tester:** if they saw it on the phone screen, please send the screenshot or the exact surface, and I will pass it to the frontend (the chat page's `linkifyPhones` + `linkifyUrls` chain). Otherwise 3994 can close as not a fault.
+
 ### 9 Oct, 19:03Z — your 18:47Z: the broken plan JSON is the model's own and recovers in-run; `0030` stops filing confirm steps as refusals
 
 - **propose_task_plan „not valid JSON" (4 in 24 h):** not a stream split. The tools are not assembled from our own byte chunks, and the 21:45Z
