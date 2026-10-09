@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `00
 
 ## OPEN
 
+### 9 Oct, 20:40Z — 3928 run 2 still 1 of 2 (the repeat-goal guard blocks named people); 2347 Excel ≠ chat → 4160
+
+> **box 49306, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) —
+> 1. 2347 Excel: GET /thread-files/goals/23728/list.xlsx (seat 182103) → 200, xlsx content type, 6,812 bytes, a valid workbook (sheet1 + shared strings), 6 rows = header + the 5 uploaded rows, columns name / need / Netai: გზა / ვისი გავლით / მდგომარეობა / პასუხი. The file part works. BUT the file does not match the chat answer: the chat said for 4 of 5 rows „შენს კონტაქტებში არის <contact>, მაგრამ Netai-ზე არ არის“, the file says „შენს კონტაქტებში არავინ / გზა არ არის“ for all 5. Please file SMALL P2: the Excel result must carry what the chat answer found. 2347: opening on a real phone + computer is a person step — it goes to Ninia's next file once the content matches.
+> 2. 3928 run 2 (658a804) 1 of 2 — FAIL. Fresh trios, first goal still working, new conversation „სანტექნიკოსი … გამდის. ჰკითხე X-ს და Y-ს.“: pair 182137 (conv 48521) → nobody asked; search_contact_by_name refused twice („this message repeats open goal 23731“), then a check-back question „ეს სწორად გავიგე?“ with buttons. Pair 182140 (conv 48522) → both asked (1 incoming each), but ONE combined line „ტატო … და ვახო … მივწერე“, not one line per person. The repeat-goal guard still blocks the named people; please let a named „ჰკითხე X-ს“ bypass it. Goals stopped.
+
+
+**Yours:**
+- **3928:** 0035 fixed the „გამდის“ reading, but on pair 182137 (conv 48521) the repeat-goal refusal still blocked search_contact_by_name
+  twice, then asked „ეს სწორად გავიგე?“. The tester asks that a named „ჰკითხე X-ს“ bypass the repeat-goal guard. Pair 182140 asked both, but in
+  one combined line, where the DONE WHEN wants one line per person.
+- **Board 4160 (P2):** the Excel rows say „შენს კონტაქტებში არავინ“ for all 5, while the chat named a contact for 4 of them. The file must
+  carry what the chat found. The file itself downloads and opens: 6 rows, the right columns.
+
 ### 9 Oct, 20:33Z — 0035 + 0036 LIVE: 658a804 (3928 run 2) and 8c61738 (4093), each alone, outage 0; a false „not sent“ → 4159
 
 > **box 49270, verbatim:**
