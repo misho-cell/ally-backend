@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 9 Oct, 04:22Z — 1882064 noted for daylight; t
 
 ## OPEN
 
+### 9 Oct, 04:43Z — 0ee291a (1692 part 2): the answer debrief, built and HELD for AV
+
+- What: a helper's first real answer arms one „how did it go?" debrief for the asker (3 days), under a new debrief kind
+  (migration 228: `answered_ask` in debrief_arms' check). `ANSWER_DEBRIEF_ON = false`: nothing is armed until Misho's
+  yes on AV (its model text). Migration 228 itself is safe to run any time. Verify green (7,923).
+- Order: after eb367c5, same daylight batch. No live effect while held.
+- DONE WHEN (now): nothing changes; after AV: an answer three days old with no outcome shows the owner one „how did it
+  work out?" line, and a „helped" from it opens the thank card.
+
 ### 9 Oct, 04:31Z — eb367c5 (1692): the thank-you reaches everyone down the relay chain
 
 - What: on „yes, thank them", everyone the ask was relayed through who answered is thanked too, each in their own
