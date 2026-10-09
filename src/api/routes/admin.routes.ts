@@ -311,6 +311,7 @@ import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { cancelOneAsk } from '../../services/taskAsks.service';
 import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
+import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -6977,6 +6978,38 @@ adminRouter.post('/axel/base-load', async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.error('[POST /admin/axel/base-load]', (error as Error).message);
     res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
+
+/**
+ * §120 — an account nothing holds is deleted; anything anywhere is a 409 that
+ * names the table, and nothing is deleted. A test seat or a staff account is
+ * held by its own table, so it can never be removed here.
+ */
+adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) => {
+  const userId = Number(req.params.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    res.status(400).json({ success: false, error: 'userId must be a positive integer' });
+    return;
+  }
+  try {
+    const result = await deleteEmptyAccount(userId);
+    if (result.outcome === EmptyDeleteOutcome.NotFound) {
+      res.status(404).json({ success: false, error: 'No such account' });
+      return;
+    }
+    if (result.outcome === EmptyDeleteOutcome.NotEmpty) {
+      res.status(409).json({
+        success: false,
+        error: `Not deleted: the account is not empty (${(result.holding ?? []).join(', ')})`,
+      });
+      return;
+    }
+    res.status(200).json({ success: true, data: { deleted: userId } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[DELETE /admin/users/:userId/empty]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was deleted' });
   }
 });
 
