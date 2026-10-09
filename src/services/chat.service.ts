@@ -392,6 +392,7 @@ import { lateFilesFor } from './lateFiles';
 import { goalSentNothing } from './goalSentNothing';
 import { withdrawOwnCutNotice } from './cutOffRunNotice.service';
 import {
+  contactInstructionIn,
   EXCLUDED_LINE,
   instructionLeftUnsent,
   NOT_ON_NETAI_LINE,
@@ -449,6 +450,7 @@ import {
   statesANeed,
   goalTitleFrom,
   isQuestionNotGoal,
+  instructionNames,
   instructionSentence,
   looksLikeContactInstruction,
   needsNoOpeningSearch,
@@ -7895,6 +7897,12 @@ const REPEAT_REFUSED_TOOLS: ReadonlySet<string> = new Set([
   'web_search',
   'fetch_page',
 ]);
+
+/** The owner's line is an order to ask people it names (3928). */
+function ownerLineNamesPeopleToAsk(ownerLine: string): boolean {
+  const sentence = contactInstructionIn(ownerLine);
+  return sentence !== null && instructionNames(sentence).length > 0;
+}
 
 /** What a search on a repeating turn returns instead of results. */
 export function repeatNoSearch(goalId: number): string {
@@ -15562,7 +15570,13 @@ export async function processChat(
    * the two readings differ. What it removes is the model having to guess that
    * a repeat happened at all.
    */
-  const repeatedGoal = goalForRequest.repeats;
+  /**
+   * 3928 run 2 (conv 48521): „…ჰკითხე X-ს და Y-ს." on the open goal's subject
+   * is bound to that goal (no second one), but it is no repeat: it is a new
+   * instruction to ask named people. Walled as a repeat, the name lookups were
+   * refused and the run asked „ეს სწორად გავიგე?" instead of asking them.
+   */
+  const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;
   if (repeatedGoal !== null) runRepeatedGoal.set(runId, repeatedGoal.id);
   const sameRequestAgain =
     (repeatedGoal === null
