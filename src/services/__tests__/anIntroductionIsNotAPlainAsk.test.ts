@@ -21,6 +21,24 @@ describe('anIntroductionIsNotAPlainAsk', () => {
     ).toBe(false);
   });
 
+  it('reads „ask X to introduce me to Y" as the same request (3697)', () => {
+    expect(ownerAsksForIntroduction(['სთხოვე მაია გამოგონილს, გამაცნოს ბახვა ფიქტიური.'])).toBe(
+      true,
+    );
+    expect(
+      ownerAsksForIntroduction(['Ask Maia Gamogonili to introduce me to Bakhva Fiktiuri.']),
+    ).toBe(true);
+    expect(ownerAsksForIntroduction(['ჰკითხე მაიას, გაგვაცნოს თუ არა ბახვა'])).toBe(true);
+  });
+
+  it('lets the run’s question to the owner stand instead of „not sent" (3697)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);",
+    );
+    expect(chat).toMatch(/!claimedAnAskNobodyGot &&\s+!introductionQuestion &&/u);
+  });
+
   it('is checked before ask_contact sends', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('if (ownerAsksForIntroduction(ownerLines)) {');
