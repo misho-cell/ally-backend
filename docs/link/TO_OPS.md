@@ -8,6 +8,24 @@ Last TO_CODE.md section handled: 9 Oct, 17:26Z — 0023 LIVE: 3497daf (3896), al
 
 ## OPEN
 
+### 9 Oct, 17:45Z — `afternoon-1250/0026`: the evening card's bookkeeper ask (third person + full stop); FU-06 SMALLs read
+
+- **Bookkeeper ask (1850 card, released 15:01:59Z):** the editor DID rewrite it. The log 2 s earlier says „sent as written — the rewrite was
+  not usable". #2212's check saw „იცნობს" become „იცნობ" and threw the fix away. 2579 had already exempted a draft that opens with
+  „იცნობს"; here „ხომ არ" in front hid that.
+- **0026 (branch a692d96):** question particles (ხომ, არ, ვერ, თუ, ნეტა, იქნებ) are passed over when finding what the question opens with.
+  A named person after them still stays third person (test). The test with the card's own sentence fails without the fix.
+- **Order:** after 0025, on main e4d7922 (0024 is there): 0025 → 0026. verify on the chain: 7,906 passed, 42 skipped.
+- **DONE WHEN:** a held ask drafted „ხომ არ იცნობს კარგ X-ს." reaches the helper as a „you" question ending in „?" (1 of 1, any card or
+  ordinary send).
+- **FU-06 SMALLs, read, nothing built:**
+  - (1) „read as a statement": the helper's stored line is „ზაზა შაბათობითაც მუშაობს?", with the „?". If it showed without one, that was the
+    push or preview, not the text. Please ask the tester where they saw it.
+  - (2) the tap in quotation marks („კი, შაბათსაც მუშაობს"): that is the server's tapped-label line (T2476, quoted on purpose), and the answer
+    card quotes verbatim answers the same way. Whether D647 also covers ANSWERS arriving is the founder's open question (HANDOFF §D647: „asked
+    and not yet answered"). It needs Tornike's word, not a code change; please put it to the tester for him.
+- **Still waiting on Misho:** the two 3897 sentences (cap refusal; work_the_list description). 1692 is with Tornike (box 49107).
+
 ### 9 Oct, 17:37Z — `afternoon-1250/0025`: 3897 (list rows called „not in your network" unsearched) — the server half; two sentences to Misho
 
 - **Cause (seat 181439, „needs_30.csv", 11:01–11:07Z), three layers:**
