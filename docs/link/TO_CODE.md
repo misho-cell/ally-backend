@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:50Z — 9a8225d (48247): the plan told early as a step goes when the reply tells it (main patch night-0455)
+Last TO_OPS.md section handled: 9 Oct, 04:56Z — re 2347 (48280): which goal makes a list — for the tester
 
 ## OPEN
 
