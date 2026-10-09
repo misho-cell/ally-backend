@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996);
 
 ## OPEN
 
+### 9 Oct, 03:01Z — bc10bc5 (1688 part 2): the „other" box starts with the prepared line
+
+- What: `GET /threads/:id/messages` adds `other_prefill` (the live ask's prepared line, #1695) on the newest assistant
+  message with an „other" button, so the app opens that box filled for the reader to edit. Additive, best-effort.
+  The FOR_FRONTEND contract is in the same commit (docs/FOR_FRONTEND.md, 9 Oct 03:00Z) — the frontend reads main, so
+  that doc goes with the ship. No model text.
+- Verified: verify green (7,903).
+- Order: AFTER 91d79cb (1695) — it reads `preparedAnswerOn`, which is not on main yet.
+- DONE WHEN: on the likely_yes seat of A11, the messages response for the reader's ask thread has `other_prefill` on the
+  question message, equal to the line shown under yes; on a possibly / ask_him seat it is absent.
+
 ### 9 Oct, 02:50Z — 09331d2 (1699 part 3, A16): a hotel is hospitality, Kobuleti is in Adjara
 
 - What: the nightly matcher reads field and place apart. Field families (hospitality, tourism, logistics, customs,
