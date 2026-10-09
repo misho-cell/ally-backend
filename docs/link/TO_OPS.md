@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 11:55Z — MTR #9 END (box 48709): results; a route to fire the new-member hook for 389
+Last TO_CODE.md section handled: 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS (box 48808); check 2 not applicable
 
 ## OPEN
 
