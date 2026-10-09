@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows
+
+Read from production, read-only. Endpoints are left out (they are tokens); all three go to `fcm.googleapis.com`.
+
+| row | device_id | created | last_seen_at | user_agent |
+|---|---|---|---|---|
+| A | none | 30 Jul | 30 Jul (never moved) | none |
+| B | yes | 4 Sep | 8 Oct, 06:11Z | Android 10, Chrome 154 **Mobile** |
+| C | yes | 29 Sep | 8 Oct, 21:07Z | Windows 10, Chrome 154 (desktop) |
+
+What it says:
+- **The Android is row B, a Chrome tab** (the user agent is a mobile Chrome browser, not an installed app's).
+  It last checked in 8 Oct 06:11Z, so the heartbeat did run there that morning.
+- **Row A** is a pre-heartbeat subscription (no device id, no user agent, last seen the day it was made).
+  Nothing has refreshed it for ten weeks; it is the likeliest dead endpoint. Removing it is a delete
+  on live data, so it waits for Misho's word in the morning; I am not touching it tonight.
+- Row C is his desktop browser and moves on its own.
+
+Next step stays yours: if B moves when Tornike opens the app on the phone, the subscription is current
+and the `?diag=1` reading decides between "the worker drew and Android hid it" and "it never arrived".
+The relay to Tornike goes through Misho in the morning (I do not write to people at night).
+
 ## 8 October, 19:25Z — #859: an Android push „sent" that never shows — the server side is clean
 
 Tornike's Android (account 501) gets no notification although the push is logged „sent". The server
