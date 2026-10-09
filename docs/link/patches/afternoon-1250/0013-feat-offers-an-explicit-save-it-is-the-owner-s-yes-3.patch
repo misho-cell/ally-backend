@@ -1,0 +1,67 @@
+From 625841819dd75f29b8d4aa9f2e582707f249a073 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 13:38:24 +0000
+Subject: [PATCH 13/14] =?UTF-8?q?feat(offers):=20an=20explicit=20=E2=80=9E?=
+ =?UTF-8?q?save=20it"=20is=20the=20owner's=20yes=20(3796,=20=C2=A7113.2)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes on the sentence, 9 Oct. save_offer's description now says
+that an owner who already wrote the line and asked to save it has said
+yes, so the read-back is not asked again and the tool is called.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/anOfferIsSavedOnlyWhenSaved.test.ts         | 8 ++++++++
+ src/services/chat.service.ts                              | 7 ++++---
+ 2 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+index e569920..be3c5a3 100644
+--- a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
++++ b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+@@ -42,6 +42,14 @@ describe('a reply that says an offer was saved', () => {
+     expect(offerNotSavedLine('en').confirm).toBe('Yes, save it');
+   });
+ 
++  it('tells the model that an explicit „save it" is the yes (§113.2)', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const tool = chat.slice(chat.indexOf("name: 'save_offer'"));
++    expect(tool.slice(0, 900).replace(/' \+\s+'/gu, '')).toContain(
++      'When the owner already wrote the line and asked you to save it, that is their yes.',
++    );
++  });
++
+   it('runs in the owner’s turn, before the buttons pass the editor', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     const guard = chat.indexOf('offerClaimWithoutTool(finalText, toolNamesUsed');
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 11864e8..eef4f5f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -1479,8 +1479,8 @@ const SET_REMINDER_TOOL: AnthropicTool = {
+ };
+ 
+ /**
+- * 1698 (A15): what the owner is open to. ⚠️ MODEL-FACING (D44): §109 in
+- * ADMIN_WRITE_OPERATIONS.md, NOT YET APPROVED — the three descriptions below.
++ * 1698 (A15): what the owner is open to. ⚠️ MODEL-FACING (D44): the three descriptions
++ * below are §109 in ADMIN_WRITE_OPERATIONS.md, with §113.2's sentence in save_offer.
+  */
+ const SAVE_OFFER_TOOL: AnthropicTool = {
+   name: 'save_offer',
+@@ -1489,7 +1489,8 @@ const SAVE_OFFER_TOOL: AnthropicTool = {
+     'interested", „yes to any Axel member asking about logistics". Write it as ONE line in your ' +
+     'own words (never their typed words), read it back and ask if it is right; call with ' +
+     'confirmed: true only after their yes. An offer never answers anyone and is never shown to ' +
+-    'another person: it only helps find who may want to talk. Not for needs (those are goals).',
++    'another person: it only helps find who may want to talk. When the owner already wrote the ' +
++    'line and asked you to save it, that is their yes. Not for needs (those are goals).',
+   input_schema: {
+     type: 'object',
+     properties: {
+-- 
+2.43.0
+

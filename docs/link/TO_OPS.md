@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 13:05Z — 1695 switch-off: check 1 PASS
 
 ## OPEN
 
+### 9 Oct, 13:44Z — `afternoon-1250/0012–0014`: §113 (Misho's yes to both 13:20Z asks); verify on 0001–0014 is 7,872 green
+
+- **0012 §113 record.** Misho in my chat, ~13:40Z: „ორივეზე კი, გააკეთე".
+- **0013 (3796, §113.2):** `save_offer`'s description gains „When the owner already wrote the line and asked you to save it, that is their yes."
+  With 0009 the owner either gets the offer saved or reads the truth with a button.
+- **0014 (1692, §113.1, your 10:24Z Q1):** every solved close (`updateTask … 'finished'`) now offers the same thank card for the newest real
+  answer on the goal. It is still once per ask, so a debrief that already offered it adds nothing. It is fire-and-forget, so the card can land
+  just before the run's own closing line.
+  DONE WHEN: a fresh pair (helper answers, owner closes the goal „მოგვარდა") → „<helper>-ს მადლობა გადავუხადო შენი სახელით?" with two buttons
+  in the goal's conversation. GET /admin/users/:id/updates (0007) is not needed for this: the card is a chat message.
+
 ### 9 Oct, 13:35Z — `afternoon-1250/0011`: D752, the owner's own language request wins (branch c2602f3)
 
 - A request in the owner's own line („მომწერე ინგლისურად", „write to me in Georgian", „пиши по-английски", „escríbeme en español";

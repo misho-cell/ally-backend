@@ -1,0 +1,34 @@
+From d95d078fff992414d3751df4aa7c6bba7cdd6b1e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 13:37:47 +0000
+Subject: [PATCH 12/14] =?UTF-8?q?docs(admin):=20=C2=A7113=20=E2=80=94=20th?=
+ =?UTF-8?q?ank=20card=20on=20a=20solved=20goal;=20save=5Foffer=20yes=20sen?=
+ =?UTF-8?q?tence?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 055637e..84df9a7 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6100,3 +6100,10 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
+   > მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.
+ 
+   Ships alone, right after the prompt change.
++
++**§113 — 9 October ~13:40 UTC, Misho in the code session's chat: „ორივეზე კი, გააკეთე"** (to the two questions put at ~13:20Z).
++
++- **§113.1 (1692, ops 10:24Z Q1)** — a goal the owner closes as solved, after a helper answered on it, offers the same thank card
++  (`offerHelperThanks`, its §-approved texts unchanged) as a „helped" debrief does. Server behaviour; no new text.
++- **§113.2 (3796)** — `save_offer`'s description (§109) gains one sentence, at its end before „Not for needs":
++  > When the owner already wrote the line and asked you to save it, that is their yes.
+-- 
+2.43.0
+

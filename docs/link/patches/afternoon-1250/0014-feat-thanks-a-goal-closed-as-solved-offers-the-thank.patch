@@ -1,0 +1,121 @@
+From ea9af1342b4b91fdf91330c930dba5f27e12e125 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 13:40:19 +0000
+Subject: [PATCH 14/14] =?UTF-8?q?feat(thanks):=20a=20goal=20closed=20as=20?=
+ =?UTF-8?q?solved=20offers=20the=20thank=20card=20(1692,=20=C2=A7113.1)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops 10:24Z: the tester closed a goal as solved after a helper answered,
+and no thank-you appeared — only a „helped" debrief offered it. Every
+solved close passes updateTask; there it now offers the same card for the
+newest real answer on the goal. Still once per ask, so a debrief that
+offered it already leaves nothing to do.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aHelperIsThanked.test.ts        | 32 +++++++++++++++++++
+ src/services/helperThanks.service.ts          | 23 +++++++++++++
+ src/services/taskStore.service.ts             |  7 ++++
+ 3 files changed, 62 insertions(+)
+
+diff --git a/src/services/__tests__/aHelperIsThanked.test.ts b/src/services/__tests__/aHelperIsThanked.test.ts
+index 3570785..91952d1 100644
+--- a/src/services/__tests__/aHelperIsThanked.test.ts
++++ b/src/services/__tests__/aHelperIsThanked.test.ts
+@@ -164,6 +164,38 @@ describe('the thank-you card', () => {
+   });
+ });
+ 
++describe('a goal closed as solved (§113.1)', () => {
++  it('offers the card for the newest real answer on the goal', async () => {
++    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
++    mockQuery
++      .mockResolvedValueOnce(rows([{ id: 17001 }]))
++      .mockResolvedValueOnce(
++        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
++      )
++      .mockResolvedValueOnce(rows([{ id: 5 }]));
++    expect(await offerThanksForSolvedGoal('42', 3)).toBe(true);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain("status = 'answered' AND declined_at IS NULL");
++    expect(params).toEqual([3, '42']);
++    expect(mockQuery.mock.calls[1][1]).toEqual([17001, '42']);
++  });
++
++  it('offers nothing when nobody answered on the goal', async () => {
++    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
++    mockQuery.mockResolvedValueOnce(rows([]));
++    expect(await offerThanksForSolvedGoal('42', 3)).toBe(false);
++    expect(mockSave).not.toHaveBeenCalled();
++  });
++
++  it('is fired from the one place every solved close passes', () => {
++    const store = readFileSync(join(__dirname, '..', 'taskStore.service.ts'), 'utf8');
++    const hook = store.slice(
++      store.indexOf("if (updated && status === 'closed' && closedAs === 'finished') {"),
++    );
++    expect(hook.slice(0, 400)).toContain('offerThanksForSolvedGoal(userId, taskId)');
++  });
++});
++
+ describe('the day-14 line to the helper (1692 part 2)', () => {
+   it('sends nothing when no armed answer is due (§111.3)', async () => {
+     mockQuery.mockResolvedValueOnce(rows([]));
+diff --git a/src/services/helperThanks.service.ts b/src/services/helperThanks.service.ts
+index 47b3ab9..f14f426 100644
+--- a/src/services/helperThanks.service.ts
++++ b/src/services/helperThanks.service.ts
+@@ -84,6 +84,29 @@ export async function offerHelperThanks(askerUserId: string, askId: number): Pro
+   return true;
+ }
+ 
++/**
++ * §113.1 (Misho, 9 Oct; ops 10:24Z): a goal the owner closes as solved, after
++ * a helper answered on it, offers the same card a „helped" debrief does. The
++ * newest real answer on the goal is the one thanked; the card is still once
++ * per ask, so a debrief that offered it already leaves nothing to do here.
++ */
++export async function offerThanksForSolvedGoal(
++  askerUserId: string,
++  taskId: number,
++): Promise<boolean> {
++  const answered = await query<{ id: number }>(
++    `SELECT id FROM task_asks
++      WHERE task_id = $1 AND from_user_id = $2::int AND parent_ask_id IS NULL
++        AND status = 'answered' AND declined_at IS NULL
++      ORDER BY answered_at DESC NULLS LAST, id DESC
++      LIMIT 1`,
++    [taskId, askerUserId],
++    QUERY_TIMEOUT_MS,
++  );
++  const askId = answered.rows[0]?.id;
++  return askId === undefined ? false : offerHelperThanks(askerUserId, askId);
++}
++
+ interface OpenThanks {
+   readonly id: number;
+   readonly ask_id: number;
+diff --git a/src/services/taskStore.service.ts b/src/services/taskStore.service.ts
+index 611b340..abe0ecf 100644
+--- a/src/services/taskStore.service.ts
++++ b/src/services/taskStore.service.ts
+@@ -798,6 +798,13 @@ export async function updateTask(
+    * this line is — a goal must close even if the queue is unreachable.
+    */
+   if (updated && status === 'closed' && closedAs === 'finished') {
++    // §113.1: solved after a helper answered — the thank card, as a „helped" debrief offers it.
++    void import('./helperThanks.service')
++      .then(({ offerThanksForSolvedGoal }) => offerThanksForSolvedGoal(userId, taskId))
++      .catch((error: unknown) => {
++        // eslint-disable-next-line no-console
++        console.error(`[helper-thanks] goal ${taskId} not offered:`, (error as Error).message);
++      });
+     void queueGoalFeedback(userId, taskId).catch((error: unknown) => {
+       // eslint-disable-next-line no-console
+       console.error(
+-- 
+2.43.0
+
