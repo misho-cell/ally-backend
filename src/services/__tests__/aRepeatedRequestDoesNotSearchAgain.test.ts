@@ -43,3 +43,14 @@ describe('a turn that repeats an open goal', () => {
     expect(text).toContain('do not search');
   });
 });
+
+/** 3928 run 2 (conv 48521): „…ჰკითხე X-ს და Y-ს." is an instruction, never a repeat. */
+describe('an order to ask named people on the open goal’s subject', () => {
+  it('is bound to the goal but not walled as a repeat', () => {
+    expect(CHAT).toContain(
+      'const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;',
+    );
+    const fn = CHAT.slice(CHAT.indexOf('function ownerLineNamesPeopleToAsk('));
+    expect(fn.slice(0, 300)).toContain('instructionNames(sentence).length > 0');
+  });
+});
