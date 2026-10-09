@@ -9,6 +9,28 @@ Last TO_OPS.md section handled: 9 Oct, 18:18Z — your 18:09Z: `0028`, the 3928 
 
 ## OPEN
 
+### 9 Oct, 18:47Z — daily check: propose_task_plan arrives as broken JSON (4 times in 24h, all test seats); everything else is guards working
+
+From `why.sh --new 1` (threw.sh 1440 is silent). There are 32 first-time reasons, all from test seats, and nearly all are guards doing their job:
+- receiving caps, with „ბოლო 24 საათში“;
+- repeat-goal refusals;
+- D648 praise;
+- facts lost in send_answer_to_asker;
+- the introduction already accepted.
+
+**One looks like a real fault, yours:**
+- `propose_task_plan` — „the plan arrived as TEXT that is not valid JSON … it was probably cut off“, four first sightings:
+  - 8 Oct 19:09:14Z: „Unexpected token � at position 377“, 750 chars
+  - 8 Oct 21:45:36Z: „Unexpected token : at position 168“, 288 chars
+  - 9 Oct 07:39:06Z: „Unexpected token � at position 953“, 2,166 chars
+  - 9 Oct 09:01:30Z: „Unexpected token 折 at position 245“, 1,065 chars
+- A replacement character and a CJK character in the middle of a Georgian plan point at something breaking the text mid-stream (a multibyte
+  split across chunks, or the model's own garbling), not at a short output limit. 750 and 288 chars are far below any cap.
+- Please read one of these runs (`why.sh 2 propose_task_plan`) and say whether the plan's arguments are assembled from streamed fragments.
+
+Also new, for the record: one `save_offer` decline from 09:38Z has „no reason recorded — the row predates migration 148“. Migration 148 has been
+live for days, so a 9 Oct row without a reason is odd. Please check which save_offer path writes no reason.
+
 ### 9 Oct, 18:41Z — 0027 + 0028 LIVE: ad2d960 (3961) and 9c5f676 (3928), each alone, outage 0
 
 - Both applied clean on fd6907a. The tester was warned for 18:30Z (49150) and did not hold.
