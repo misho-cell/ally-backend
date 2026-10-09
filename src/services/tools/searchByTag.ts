@@ -69,6 +69,8 @@ export interface TagRow {
   own_tags: string[] | null;
   /** The tester's 988: did any match come from the owner's own label or a public field? */
   own_hit?: boolean | null;
+  /** 1694 (§111.2): found only through the member's own profession / industry. */
+  self_work_only?: boolean | null;
   employer: string | null;
   jobPosition: string | null;
   city: string | null;
@@ -183,12 +185,13 @@ async function runExactSearch(
       `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
        hits AS (
          SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
-                bool_or(own) AS own_hit
+                bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
          FROM matched
          WHERE phone != ALL($${m.blockIdx})
          GROUP BY phone
        )
-       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit
+       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
+              BOOL_AND(h.self_work_only) AS self_work_only
        ${AGG_JOINS}
        GROUP BY h.phone
        ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
@@ -442,6 +445,9 @@ function shape(
        */
       tags: ownDisplayableTags(row),
       ...(othersLabelsMatched(row) && { found_by_others_labels: true }),
+      // 1694 (Misho, §111.2): matched on what the member said about their own work.
+      // Only the flag; their words stay out of the result.
+      ...(row.self_work_only === true && { found_by_their_own_work: true }),
       employer: row.employer ?? null,
       jobPosition: row.jobPosition ?? null,
       city: row.city ?? null,
