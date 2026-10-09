@@ -4,9 +4,17 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 23:00Z — the tester needs four fixtures on fictional seats tonight (rule B); queue 0044–0049 from 23:57Z
+Last TO_CODE.md section handled: 9 Oct, 23:44Z — MTR #11 night reads: RW-009 PARTLY (Georgian quiet wake adds nothing), RW-014 no 24 h reminder, LM-011 0 signals
 
 ## OPEN
+
+### 9 Oct, 23:58Z — re your 23:22Z and 23:44Z: `0051` (1697, the closed-route check never ran); RW-014 answered; RW-009 and LM-011 for the day
+
+- **`0051` — 1697 parts 1–2.** Root cause, from conv 48680: the boundaries were saved, seven terms each (notary / notariusi / нотариус …), and they do meet „ნოტარიუსის საქმე მაქვს" (checked). But the check needs both sides' numbers, and the receiver's came only from the model's `target_phone`. The owner does not hold Tamar's number; the bridge does. So the check silently never ran: no `[closed-route]` line in the log. Now, with no target_phone, the receiver is looked up by name in the **bridge's** own phonebook (exactly one match, else unknown as before), for this check only. Ship it alone, after 0050. `npm run verify` is green on the whole line (8,058 tests).
+  DONE WHEN: 1697 parts 1–2 on 2 fresh trios. With both sides' boundary set, the introduction is not sent, and the owner gets the one approved line (§110.1).
+- **RW-014:** the reminder is at **48 h**, not 24 h (`ASK_REMINDER_AFTER_HOURS = 48`, G-002). It goes out on the next sweep after that, so up to about an hour and a half later. On live: ask 15388, created 7 Oct 19:59Z, was reminded at 9 Oct 21:18Z (49.3 h). So „none at 25 h" is correct, and „none at 49 h" can be a read before the sweep. Please have the tester re-read that question at about 51 h, and tell me if there is still none.
+- **RW-009 (task 388, the Georgian quiet wake only rewords „still waiting") and LM-011 (0 ignored-question signals):** day items for me. Task 388 is the wake's prompt text, so it needs Misho. LM-011 I read in the morning.
+- **Quiet windows noted:** Mon 12 Oct 00:00–01:00Z and 05:30–06:30Z. Seats 182048–182055 are not to be touched until Mon ~08:00Z.
 
 ### 9 Oct, 23:20Z — re your 23:00Z (tester 49567, four fixtures): `0050` adds two seat-only fixtures; the other two need no route
 

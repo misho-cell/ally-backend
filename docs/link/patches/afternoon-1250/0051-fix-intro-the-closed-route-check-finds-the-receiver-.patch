@@ -1,0 +1,103 @@
+From 9a77aca93a0adafbd15f5b1d84946cc45409012d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 23:45:07 +0000
+Subject: [PATCH] fix(intro): the closed-route check finds the receiver in the
+ bridge's phonebook (1697)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49667 (trio 182266/182267/182268, conv 48680): the receiver and the
+bridge had each typed „ნოტარიუსზე კითხვები ნუ მომიტანე." (boundaries saved),
+and „გამაცანი თამარ გამოგონილი, ბექა გამოგონილი იცნობს." still reached the
+bridge.
+
+The 1697 check needs both sides. The receiver's number came only from the
+model's target_phone, and the owner rarely holds it: the receiver is the
+bridge's contact. So the check never ran: no log, no refusal. The boundary
+terms did match the goal; the receiver was simply unknown.
+
+When no target_phone is given, the receiver is looked up by name in the
+BRIDGE's own phonebook (exactly one match, else unknown as before), for
+this check only. The number goes nowhere else.
+
+DONE WHEN: 1697 parts 1–2 on 2 fresh trios — both sides' boundary, the
+introduction is not sent, and the owner gets the one approved line.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 7e4552941dab3e8af161d0908949716f4e33c4ee)
+---
+ .../__tests__/aClosedRouteIsNotWalked.test.ts | 14 ++++++++++--
+ src/services/tools/requestIntroduction.ts     | 22 ++++++++++++++++++-
+ 2 files changed, 33 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/aClosedRouteIsNotWalked.test.ts b/src/services/__tests__/aClosedRouteIsNotWalked.test.ts
+index 6091a93..7a66c74 100644
+--- a/src/services/__tests__/aClosedRouteIsNotWalked.test.ts
++++ b/src/services/__tests__/aClosedRouteIsNotWalked.test.ts
+@@ -20,8 +20,18 @@ describe('a closed route', () => {
+     expect(tool).toMatch(
+       /if \(CLOSED_ROUTE_ON\)\s*return \{ success: false, reason: 'route_closed', error: CLOSED_ROUTE_LINE \};/u,
+     );
+-    expect(tool).toContain(
+-      'if (!isDirect && (await closedRouteFor(context.requesterTaskId, resolvedPhone, targetPhone))) {',
++    expect(tool).toMatch(
++      /!isDirect &&\s+\(await closedRouteFor\(context\.requesterTaskId, resolvedPhone, receiverForCheck\)\)/u,
++    );
++  });
++
++  it('finds the receiver in the bridge’s own phonebook when the owner gave no number (49667)', () => {
++    const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
++    expect(tool).toMatch(
++      /const receiverForCheck =\s+targetPhone \?\? \(await receiverInBridgesBook\(String\(mediatorUserId\), targetName\)\);/u,
+     );
++    const fn = tool.slice(tool.indexOf('async function receiverInBridgesBook('));
++    expect(fn.slice(0, 500)).toContain('findContactPhonesByName(mediatorUserId, targetName, 2)');
++    expect(fn.slice(0, 500)).toContain('phones.length === 1 ? phones[0] : undefined');
+   });
+ });
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 39a2239..5f0aebf 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -1,3 +1,4 @@
++import { findContactPhonesByName } from './nameMatch';
+ import { recordIntroPrematch } from '../bridgeOrder';
+ import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRoute';
+ import { reasonAboutAsker } from '../askEditor.service';
+@@ -412,7 +413,15 @@ async function requestIntroductionInner(
+   }
+ 
+   // 1697 part 2: both sides not of this field — logged until AO is approved, refused after.
+-  if (!isDirect && (await closedRouteFor(context.requesterTaskId, resolvedPhone, targetPhone))) {
++  // Tester 49667 (conv 48680): the owner rarely holds the receiver's number, so
++  // target_phone is absent and the check never ran. The receiver is looked up in
++  // the BRIDGE's phonebook, for this check only; the number goes nowhere else.
++  const receiverForCheck =
++    targetPhone ?? (await receiverInBridgesBook(String(mediatorUserId), targetName));
++  if (
++    !isDirect &&
++    (await closedRouteFor(context.requesterTaskId, resolvedPhone, receiverForCheck))
++  ) {
+     // eslint-disable-next-line no-console
+     console.log(
+       `[closed-route] goal ${context.requesterTaskId}: bridge and receiver both not of this field` +
+@@ -609,3 +618,14 @@ async function requestIntroductionInner(
+       : `მოთხოვნა შეიქმნა. ${mediatorName}-ს ნოტიფიკაციები არ აქვს ჩართული — დაინახავს Netai-ს გახსნისას.`,
+   };
+ }
++
++/** The one contact in the bridge's own phonebook the target's name points to; none on doubt. */
++async function receiverInBridgesBook(
++  mediatorUserId: string,
++  targetName: string,
++): Promise<string | undefined> {
++  const phones = await findContactPhonesByName(mediatorUserId, targetName, 2).catch(
++    (): string[] => [],
++  );
++  return phones.length === 1 ? phones[0] : undefined;
++}
+-- 
+2.43.0
+
