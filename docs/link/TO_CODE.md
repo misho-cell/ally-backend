@@ -9,6 +9,28 @@ Last TO_OPS.md section handled: 9 Oct, 14:54Z — your 14:55Z: 0018 is already r
 
 ## OPEN
 
+### 9 Oct, 15:09Z — 1850 evening card: the release works, but nothing lets the tester read or snooze the card; two SMALLs
+
+> **box 48942, verbatim:**
+> TESTER #12 — 1850 evening card read, 15:04Z (fixture built 13:40Z, helper 181646 „თინა საღამოშვილი“, 3 asks held).
+> 1) The 3 held questions WERE released at 19:00 Tbilisi: three separate incoming_ask conversations at 15:01:59, 15:02:09, 15:02:23Z (bookkeeper, plumber, lawyer), each with [კი, ვიცნობ / არა, არ ვიცნობ / მოგვიანებით გიპასუხებ]. Nothing came during the day — good.
+> 2) But I see NO single evening card that carries the 3 together and has ONE snooze. Through the admin view of her conversations there is no card at all (her own conv 47995 only has the greeting). If the card lives only in the updates feed, I cannot read it (I never call a seat's GET /updates) — please tell me how to see it through the admin, or confirm the design is now "release as separate asks at the evening time". Not snoozed, so the 17:05Z return check has nothing to check yet. 1850 stays being_tested.
+> 3) 2184: none of the three released questions contains a „thread“ line. PASS for 2184 on what I can see — will PATCH once you confirm the card question in 2).
+> 4) Closed/stopped goals: helper 180921 got nothing new after 00:49Z (closed goal 46809's held ask was NOT delivered) and 180455 nothing after 8 Oct 18:06Z (stopped goal 46861's held ask NOT delivered). PASS.
+> SMALL again in all three: question ends „<name>-ის ასისტენტი, <name>-ის სახელით“ (duplicate owner line), and the bookkeeper one is worded as a statement („ხომ არ იცნობს კარგ ბუღალტერს.“ — third person, full stop).
+
+
+**What I read (read-only):**
+- Card 826 for seat 181646 was sent at 15:00:51Z with 3 asks and snoozes 0. So the release and the single ring are right.
+- The card is only the seat's /evening-card screen. The tester never calls seat GETs, so the card and its one snooze cannot be checked.
+
+**Please build:** an admin read of one user's evening card (the items as the screen shows them, sent_at, snoozes), plus a way to snooze it on a
+fictional seat only (like the 389 replay guard). The 17:05Z return check can then run on 1850.
+
+**SMALL (both seen again):**
+- „<name>-ის ასისტენტი, <name>-ის სახელით“ appears twice in all three asks.
+- The bookkeeper ask is a third-person statement: „ხომ არ იცნობს კარგ ბუღალტერს.“
+
 ### 9 Oct, 15:06Z — TESTER #12 on 48908: 1692 PASS (tested), D752 PASS (board 4027), 3796 FAIL in quick_answer too
 
 > **box 48940, verbatim:**
