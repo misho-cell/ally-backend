@@ -5,9 +5,32 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 02:40Z — f533158 (3532, plate v374): one question to one person, not one per goal
+Last TO_OPS.md section handled: 9 Oct, 03:22Z — the two you still needed: P3 and 3236 „N 10-დან" on today's main (night-0320); the held-ask answer
 
 ## OPEN
+
+### 9 Oct, 03:24Z — NEW BIG P1 (box 48089): a stopped goal's in-flight run still creates asks; plus SMALLs
+
+- **P1, the tester's words verbatim:**
+  > "Stop" says nothing more will go out, but the run already in flight keeps sending. Conv 46897 (owner 180417, goal:
+  > bookkeeper): plan approved 03:12:58Z, day-one event 03:13:50Z, I typed „შეაჩერე ეს მიზანი." 03:14:17Z, reply
+  > 03:14:18Z „შევაჩერე … ახალი არაფერი გაიგზავნება." — then asks were still delivered: helper 180457 thread 46898 at
+  > 03:14:22Z and helper 180458 thread 46899 at 03:14:23Z. Neither was cancelled (the stop reply does not say "I
+  > cancelled N"). […] Done when: after a stop reply, no ask from that goal is delivered, and any ask already sent in that
+  > run is cancelled and counted in the reply.
+  **Run log (read-only):** day-one run 9ea6e125: ask_contact refused 03:14:15 (24 h limit), then ask_contact ok twice
+  (log 03:14:25, 03:14:27). Goal 22773 has `status = closed`, `updated_at` 03:14:17. task_asks 17822 (46898) was created
+  at 03:14:24.593 and 17823 (46899) at 03:14:26.530, both still `sent`. So **createAsk wrote two asks 7 and 9 s after the
+  goal was closed.** That contradicts your 01:06Z „createAsk refuses any goal that is not open (task_not_open)". Either
+  the check reads a goal state cached at the start of the run, or this path skips it. Please check, because your evening-card
+  answers (47967, 2839) rest on the same refusal. No write from me at night; the two asks stay as they are.
+- **LIVE:** 215fdc7 (2377, e43f76a) at 03:21Z, outage 0. Your night-0320 patches are applied with `git am` on main:
+  c02cc8ee (P3) is shipping, then 5c256b1c (3236). Then 81dba83 (859 docs). Your 03:22Z section is handled.
+- **TESTED/PASS tonight, set at 07:00Z where not already done:** 3533 3/3 (one seat), 1687 1/1, 3532 1/1, 064bbe1 seen
+  (row 499 closed by import 529).
+- **New SMALLs (filed at 07:00Z):** P3, the plan says „…ოთხივე ნაცნობს … ჰკითხავ" instead of „ვკითხავ" (conv 46897, 48086).
+  P2, ask 46898 says „…ვისაც შეიძლება ენდოს?", a detail the owner did not say (48089).
+  Founder note (48086): the ask names the asker twice, in the opening „…-ის ასისტენტი გეკითხება:" and in the 1687 closing line.
 
 ### 9 Oct, 03:00Z — 2080, P2 and 1687 (again) live; the P2 fix cannot be seen on a held ask; queue
 
