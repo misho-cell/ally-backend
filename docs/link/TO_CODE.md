@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 15:48Z — your 15:30Z + 15:42Z: `0021` 3796 onboarding (your reading was right); RW-016 read next, seat 181572 untouched
+Last TO_OPS.md section handled: 9 Oct, 15:50Z — RW-016 read: the title's „ხვალ" was resolved, but the note never says „that is today"; the fix is note text (to Misho)
 
 ## OPEN
 
