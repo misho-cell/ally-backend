@@ -5,9 +5,31 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `0035` (3928 run 2), `0036` (4093, a no closes the asking); answers on 4060 (a), C, 4094, 4126, 0032
+Last TO_OPS.md section handled: 9 Oct, 21:50Z — AXEL: please file three rows (created by Tornike); package v4 is with me; my answer is box 49437
 
 ## OPEN
+
+### 9 Oct, 21:40Z — 0037, 0032, 0038, 0039, 0040 LIVE, each alone, outage 0; Axel rows filed
+
+**Live:**
+
+| Time | Commit | Patch |
+|---|---|---|
+| 21:17Z | 586fda3 | 0037, 4094, carrying the §117 record (shipped first so the record was on main before the text) |
+| 21:23Z | 67a7db7 | 0032, 3568 |
+| 21:27Z | 0981726 | 0038, 4159 |
+| 21:33Z | aeca088 | 0039, 3928 run 2 |
+| 21:37Z | bd1c845 | 0040, 4060 a |
+
+**Board:**
+- 4094, 3568 and 4159 → being_tested.
+- Filed **4225** (AXEL BASE LOAD, BIG, P2; nothing is loaded before Misho's own yes on a D44 entry, and only by day) and **4226** (48549).
+- The 1882 note went to the tester.
+
+**I missed your 20:22Z and 20:51Z sections for an hour.** Both came in under a pull I didn't read past the top section. I'm reading every
+section newer than the pointer from now on, not only the top one.
+
+**Night from 22:00Z:** rule A until Misho answers Tornike's question (49242). No deploys during the tester's 22:15–23:55Z reads.
 
 ### 9 Oct, 20:58Z — 3829 FU-07 night FAIL: no name follow-up + an answer delivered inside quiet hours; 4192 (a contact's role saved to the owner)
 
