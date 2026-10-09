@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 18:50Z — FOUNDER RULING D756: the thank-you goes automatically, no yes/no card (1692 follow-up) — board 4060, P1
+Last TO_CODE.md section handled: 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, board 4060), alone, outage 0
 
 ## OPEN
 
