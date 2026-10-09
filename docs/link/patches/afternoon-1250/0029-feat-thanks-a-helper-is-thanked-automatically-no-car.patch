@@ -1,0 +1,497 @@
+From 705d0ed5f6d1af19a3068eb9de2e345ebd4f13b5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 18:52:50 +0000
+Subject: [PATCH] =?UTF-8?q?feat(thanks):=20a=20helper=20is=20thanked=20aut?=
+ =?UTF-8?q?omatically,=20no=20card=20(D756,=20board=204060,=20=C2=A7116)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder, box 49153 (answer to 49107, which Misho told the code session
+to put to Tornike): „you dont need approval to send thank you. just do it
+automatically."
+
+- sendHelperThanks replaces the yes/no card: the moment the owner says a
+  helper's answer helped, the helper and every bridge of the chain get the
+  approved 1692 line, once per ask (a card or day-14 row left behind is
+  claimed; a thanked row never again). Nothing is asked of the owner; the
+  row closes with no „ask again?" waiting.
+- Three paths: the „helped" debrief, a goal closed as solved
+  (thankForSolvedGoal), and — new — the owner's own line „<helper>-ის პასუხი
+  დამეხმარა" naming exactly one answered, unthanked helper by the first word
+  of the name they saved (thankHelperNamedIn; „არ დამეხმარა" never).
+- A card offered before this ships still settles as before when tapped.
+- §116 records the ruling. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |  10 ++
+ .../__tests__/aHelperIsThanked.test.ts        | 135 +++++++++++++-----
+ src/services/chat.service.ts                  |   9 +-
+ src/services/debrief.service.ts               |   8 +-
+ src/services/helperThanks.service.ts          | 132 ++++++++++++-----
+ src/services/taskStore.service.ts             |   2 +-
+ 6 files changed, 220 insertions(+), 76 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index c1f6713..b7b5bc6 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6124,3 +6124,13 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
+ 
+   with „ანუ ხვალ" / „ანუ ზეგ" for the next two days, „უკვე გასული" for a gone date, and nothing further for a later one. The title stays
+   as typed. Code, ships alone.
++
++**§116 — 9 October ~18:44 UTC, the founder (Tornike) through the tester, box 49153 — D756, answer to the code session's 49107, which Misho
++had told the code session to put to Tornike („თორნიკეს კითხე ეგ შეკითხვა", ~16:55Z):** „no, it should send thank you card automatically —
++to thank helper is very important and crucial. but avoid to waste users time. you dont need approval to send thank you. just do it
++automatically."
++
++- **§116.1 (1692 follow-up, board 4060)** — when the owner says a helper's answer helped (a „helped" debrief, a goal closed as solved, or a
++  line in their own chat such as „ნატოს პასუხი დამეხმარა" naming one helper who answered them), the helper and every bridge of the chain get
++  the approved thank-you line (§-texts of 1692 unchanged) at once, once per ask. The yes/no card of §113.1 and the „would you ask them
++  again?" question are no longer shown. No new text. A card offered before this ships still settles as before when tapped.
+diff --git a/src/services/__tests__/aHelperIsThanked.test.ts b/src/services/__tests__/aHelperIsThanked.test.ts
+index 91952d1..53477ae 100644
+--- a/src/services/__tests__/aHelperIsThanked.test.ts
++++ b/src/services/__tests__/aHelperIsThanked.test.ts
+@@ -12,7 +12,13 @@ import { join } from 'path';
+ import { query as _query } from '../../db/postgres/client';
+ import { saveThreadMessage as _save } from '../threads.service';
+ import { sendPushNotification as _push } from '../notification.service';
+-import { offerHelperThanks, settleThanksTap } from '../helperThanks.service';
++import {
++  saysAHelperHelped,
++  sendHelperThanks,
++  settleThanksTap,
++  thankForSolvedGoal,
++  thankHelperNamedIn,
++} from '../helperThanks.service';
+ import { againChoices, thankChoices, thanksTapOf, ThanksTap } from '../helperThanksCards';
+ 
+ /** 1692 part 1 (A9): „helped" → thank them? → one line to the helper; then a private „ask again?". */
+@@ -28,6 +34,21 @@ const WAITING = {
+   asker_name: 'ნინო',
+ };
+ 
++/** D756's send: the ask, the claim, the claimed row, the chain. */
++function routeSend(claimed: boolean): void {
++  mockQuery.mockImplementation((sql: string) => {
++    if (sql.includes('FROM task_asks ta') && sql.includes('WHERE ta.id = $1'))
++      return Promise.resolve(
++        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
++      );
++    if (sql.includes('INSERT INTO helper_thanks'))
++      return Promise.resolve(rows(claimed ? [{ id: 4 }] : []));
++    if (sql.includes('FROM helper_thanks ht JOIN task_asks'))
++      return Promise.resolve(rows([WAITING]));
++    return Promise.resolve(rows([]));
++  });
++}
++
+ /** Answers each query by what it asks: the waiting card, the claim, the chain. */
+ function route(waiting: unknown, chain: unknown[] = [], claimed = true): void {
+   mockQuery.mockImplementation((sql: string) => {
+@@ -50,30 +71,30 @@ describe('the thank-you card', () => {
+     expect(thanksTapOf('კი')).toBeNull();
+   });
+ 
+-  it('is offered once per answered ask, in the asker’s goal conversation', async () => {
+-    mockQuery
+-      .mockResolvedValueOnce(
+-        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
+-      )
+-      .mockResolvedValueOnce(rows([{ id: 4 }]));
+-    expect(await offerHelperThanks('42', 17000)).toBe(true);
++  /** D756 (the founder, box 49153): no card — the thanks go out at once, once per ask. */
++  it('thanks the helper at once, with no card to the owner, once per ask', async () => {
++    routeSend(true);
++    expect(await sendHelperThanks('42', 17000)).toBe(true);
+     expect(mockSave).toHaveBeenCalledWith(
+-      55,
+-      42,
++      900,
++      77,
+       'assistant',
+-      'ზურაბს მადლობა გადავუხადო შენი სახელით?',
+-      'message',
+-      null,
+-      thankChoices('ka'),
++      'ნინო გიხდის მადლობას დახმარებისთვის.',
++    );
++    expect(mockSave).not.toHaveBeenCalledWith(
++      55,
++      expect.anything(),
++      expect.anything(),
++      expect.anything(),
++      expect.anything(),
++      expect.anything(),
++      expect.anything(),
+     );
++    expect(mockSave).toHaveBeenCalledTimes(1);
+ 
+-    mockQuery
+-      .mockResolvedValueOnce(
+-        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
+-      )
+-      .mockResolvedValueOnce(rows([]));
+     mockSave.mockClear();
+-    expect(await offerHelperThanks('42', 17000)).toBe(false);
++    routeSend(false);
++    expect(await sendHelperThanks('42', 17000)).toBe(false);
+     expect(mockSave).not.toHaveBeenCalled();
+   });
+ 
+@@ -108,9 +129,11 @@ describe('the thank-you card', () => {
+     expect(service).toContain("AND ta.status = 'answered' AND ta.declined_at IS NULL");
+   });
+ 
+-  it('a day-14 row gives way to the card when the owner later says it helped', () => {
++  it('a card or day-14 row left behind is claimed too; a thanked one never again', () => {
+     const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
+-    expect(service).toContain("WHERE helper_thanks.state = 'followed_up'");
++    expect(service).toContain(
++      "WHERE helper_thanks.state IN ('offered', 'followed_up') AND helper_thanks.thanked_at IS NULL",
++    );
+   });
+ 
+   it('thanks everyone further down the chain who answered, each as they saved the asker', async () => {
+@@ -158,32 +181,26 @@ describe('the thank-you card', () => {
+     expect(await settleThanksTap('42', 55, ThanksTap.Thank, 'ka')).toBeNull();
+   });
+ 
+-  it('is offered from a „helped" debrief and never fails it', () => {
++  it('is sent from a „helped" debrief and never fails it', () => {
+     const debrief = readFileSync(join(__dirname, '..', 'debrief.service.ts'), 'utf8');
+-    expect(debrief).toContain('await offerHelperThanks(userId, refId).catch(');
++    expect(debrief).toContain('await sendHelperThanks(userId, refId).catch(');
+   });
+ });
+ 
+-describe('a goal closed as solved (§113.1)', () => {
+-  it('offers the card for the newest real answer on the goal', async () => {
+-    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
+-    mockQuery
+-      .mockResolvedValueOnce(rows([{ id: 17001 }]))
+-      .mockResolvedValueOnce(
+-        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
+-      )
+-      .mockResolvedValueOnce(rows([{ id: 5 }]));
+-    expect(await offerThanksForSolvedGoal('42', 3)).toBe(true);
++describe('a goal closed as solved (§113.1, D756)', () => {
++  it('thanks for the newest real answer on the goal', async () => {
++    routeSend(true);
++    mockQuery.mockImplementationOnce(() => Promise.resolve(rows([{ id: 17001 }])));
++    expect(await thankForSolvedGoal('42', 3)).toBe(true);
+     const [sql, params] = mockQuery.mock.calls[0];
+     expect(String(sql)).toContain("status = 'answered' AND declined_at IS NULL");
+     expect(params).toEqual([3, '42']);
+     expect(mockQuery.mock.calls[1][1]).toEqual([17001, '42']);
+   });
+ 
+-  it('offers nothing when nobody answered on the goal', async () => {
+-    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
++  it('thanks nobody when nobody answered on the goal', async () => {
+     mockQuery.mockResolvedValueOnce(rows([]));
+-    expect(await offerThanksForSolvedGoal('42', 3)).toBe(false);
++    expect(await thankForSolvedGoal('42', 3)).toBe(false);
+     expect(mockSave).not.toHaveBeenCalled();
+   });
+ 
+@@ -192,7 +209,49 @@ describe('a goal closed as solved (§113.1)', () => {
+     const hook = store.slice(
+       store.indexOf("if (updated && status === 'closed' && closedAs === 'finished') {"),
+     );
+-    expect(hook.slice(0, 400)).toContain('offerThanksForSolvedGoal(userId, taskId)');
++    expect(hook.slice(0, 400)).toContain('thankForSolvedGoal(userId, taskId)');
++  });
++});
++
++/** D756's third path (the tester's 48874): „ნატოს პასუხი დამეხმარა", the goal still open. */
++describe('the owner says in chat that a helper helped', () => {
++  it('reads „helped" and never „did not help"', () => {
++    expect(saysAHelperHelped('ნატოს პასუხი დამეხმარა — ზაზამ ონკანი შეაკეთა')).toBe(true);
++    expect(saysAHelperHelped('Nato’s answer helped me a lot')).toBe(true);
++    expect(saysAHelperHelped('ნატოს პასუხი არ დამეხმარა')).toBe(false);
++    expect(saysAHelperHelped('ნატომ მიპასუხა')).toBe(false);
++  });
++
++  it('thanks the one answered helper the line names', async () => {
++    routeSend(true);
++    mockQuery.mockImplementationOnce(() =>
++      Promise.resolve(
++        rows([
++          { ask_id: 17000, helper_name: 'ნატო დამხმარიძე' },
++          { ask_id: 17002, helper_name: 'ლევან ხელოსანაძე' },
++        ]),
++      ),
++    );
++    expect(await thankHelperNamedIn('42', 'ნატოს პასუხი დამეხმარა')).toBe(true);
++    expect(mockSave).toHaveBeenCalledWith(
++      900,
++      77,
++      'assistant',
++      'ნინო გიხდის მადლობას დახმარებისთვის.',
++    );
++  });
++
++  it('thanks nobody when the line names no answered helper, or says nothing helped', async () => {
++    mockQuery.mockResolvedValueOnce(rows([{ ask_id: 17002, helper_name: 'ლევან ხელოსანაძე' }]));
++    expect(await thankHelperNamedIn('42', 'ნატოს პასუხი დამეხმარა')).toBe(false);
++    expect(await thankHelperNamedIn('42', 'გამარჯობა')).toBe(false);
++    expect(mockSave).not.toHaveBeenCalled();
++  });
++
++  it('runs on the owner’s own line, never on an event', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain("if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {");
++    expect(chat).toContain('void thankHelperNamedIn(userId, userMessage).catch(');
+   });
+ });
+ 
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7887b16..ffc5c48 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -81,7 +81,7 @@ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
+ import { matchTapOf } from './matchCards';
+ import { thanksTapOf } from './helperThanksCards';
+-import { settleThanksTap } from './helperThanks.service';
++import { settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+ import { settleMatchTap } from './matchFlow.service';
+ import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+ 
+@@ -15277,6 +15277,13 @@ export async function processChat(
+   let language = detectRunLanguage(userMessage);
+   runLanguages.set(runId, language);
+   if (!ownerAbsent) runOwnerLine.set(runId, userMessage);
++  // D756: „<helper>-ის პასუხი დამეხმარა" thanks that helper at once — no card, no question.
++  if (!ownerAbsent && !userMessage.trimStart().startsWith('[')) {
++    void thankHelperNamedIn(userId, userMessage).catch((err: unknown) =>
++      // eslint-disable-next-line no-console
++      console.warn(`[helper-thanks] run ${runId}: not thanked:`, (err as Error).message),
++    );
++  }
+   // Ticket 12 Task 46 (D151): what the user typed is evidence the reply may
+   // name; tool results join it as they arrive, web-search snippets excepted.
+   recordRunEvidence(runId, userMessage);
+diff --git a/src/services/debrief.service.ts b/src/services/debrief.service.ts
+index fd4210e..a89f97c 100644
+--- a/src/services/debrief.service.ts
++++ b/src/services/debrief.service.ts
+@@ -1,6 +1,6 @@
+ import { recountAnswerStats } from './answerStats.service';
+ import { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
+-import { offerHelperThanks } from './helperThanks.service';
++import { sendHelperThanks } from './helperThanks.service';
+ import { confirmByResult } from './factConfirm.service';
+ import { query } from '../db/postgres/client';
+ import { queueFollowUp, PendingUpdate } from './pendingUpdates.service';
+@@ -485,11 +485,11 @@ export async function recordDebriefOutcome(
+   );
+   // 1689 (A6): a „helped" counts on the record of the person who was asked.
+   if (subject === 'relayed_ask' && worked) await recountHelper(userId, refId);
+-  // 1692 (A9): and the asker is offered one card — thank them? Never fails the debrief.
++  // 1692 (A9) / D756: and the helper is thanked, automatically, no card. Never fails the debrief.
+   if (subject === 'relayed_ask' && worked) {
+-    await offerHelperThanks(userId, refId).catch((err: unknown) =>
++    await sendHelperThanks(userId, refId).catch((err: unknown) =>
+       // eslint-disable-next-line no-console
+-      console.warn(`[helper-thanks] ask ${refId}: card not offered:`, (err as Error).message),
++      console.warn(`[helper-thanks] ask ${refId}: not thanked:`, (err as Error).message),
+     );
+   }
+   return { recorded: true };
+diff --git a/src/services/helperThanks.service.ts b/src/services/helperThanks.service.ts
+index f14f426..6b256f5 100644
+--- a/src/services/helperThanks.service.ts
++++ b/src/services/helperThanks.service.ts
+@@ -3,8 +3,6 @@ import {
+   againCardText,
+   againChoices,
+   notedLine,
+-  thankCardText,
+-  thankChoices,
+   thankedLine,
+   thanksToHelperLine,
+   ThanksTap,
+@@ -54,46 +52,51 @@ async function askForThanks(askerUserId: string, askId: number): Promise<AskForT
+   return result.rows[0] ?? null;
+ }
+ 
+-/** The card, once per answered ask. Best-effort: a debrief never fails on it. */
+-export async function offerHelperThanks(askerUserId: string, askId: number): Promise<boolean> {
++/**
++ * D756 (the founder, 9 Oct, box 49153 — answer to 49107): „you dont need
++ * approval to send thank you. just do it automatically." The yes/no card of
++ * 1692 / §113.1 is gone: the moment the owner says a helper's answer helped,
++ * the helper (and every bridge of the chain) gets the approved thank-you line,
++ * once per ask. Nothing is asked of the owner — no card, no „ask them again?".
++ * The row is closed as `asked_again` with no answer, so no tap is waited for.
++ * Best-effort: a debrief or a close never fails on it.
++ */
++export async function sendHelperThanks(askerUserId: string, askId: number): Promise<boolean> {
+   const ask = await askForThanks(askerUserId, askId);
+-  const helper = ask?.helper_name?.trim() ?? '';
+-  if (ask === null || ask.card_thread_id === null || helper === '') return false;
+-  const opened = await query<{ id: number }>(
+-    // A day-14 following-up row gives way to the card: a late helped still thanks them.
+-    `INSERT INTO helper_thanks (ask_id, task_id, asker_user_id, helper_user_id, card_thread_id)
+-     VALUES ($1, $2, $3::int, $4, $5)
++  if (ask === null || (ask.helper_name?.trim() ?? '') === '') return false;
++  const claimed = await query<{ id: number }>(
++    // Once per ask: a row a card or day 14 left behind is claimed too; a thanked one never again.
++    `INSERT INTO helper_thanks
++       (ask_id, task_id, asker_user_id, helper_user_id, card_thread_id, state, share_result, decided_at)
++     VALUES ($1, $2, $3::int, $4, $5, 'asked_again', 'thanks_only', NOW())
+      ON CONFLICT (ask_id) DO UPDATE
+-       SET state = 'offered', card_thread_id = EXCLUDED.card_thread_id
+-       WHERE helper_thanks.state = 'followed_up'
++       SET state = 'asked_again', share_result = 'thanks_only', decided_at = NOW()
++       WHERE helper_thanks.state IN ('offered', 'followed_up') AND helper_thanks.thanked_at IS NULL
+      RETURNING id`,
+     [askId, ask.task_id, askerUserId, ask.helper_user_id, ask.card_thread_id],
+     QUERY_TIMEOUT_MS,
+   );
+-  if (opened.rows.length === 0) return false;
+-  const language = await userLanguage(askerUserId);
+-  await saveThreadMessage(
+-    ask.card_thread_id,
+-    Number(askerUserId),
+-    'assistant',
+-    thankCardText(language, helper),
+-    'message',
+-    null,
+-    thankChoices(language),
+-  );
+-  return true;
++  const id = claimed.rows[0]?.id;
++  if (id === undefined) return false;
++  const row = await thanksRow(id);
++  const thanked = row !== null && (await thankTheHelper(row));
++  if (thanked) {
++    await query(
++      `UPDATE helper_thanks SET thanked_at = NOW() WHERE id = $1`,
++      [id],
++      QUERY_TIMEOUT_MS,
++    );
++  }
++  return thanked;
+ }
+ 
+ /**
+  * §113.1 (Misho, 9 Oct; ops 10:24Z): a goal the owner closes as solved, after
+- * a helper answered on it, offers the same card a „helped" debrief does. The
+- * newest real answer on the goal is the one thanked; the card is still once
+- * per ask, so a debrief that offered it already leaves nothing to do here.
++ * a helper answered on it, thanks the helper as a „helped" debrief does —
++ * since D756 without a card. The newest real answer on the goal is the one
++ * thanked, once per ask.
+  */
+-export async function offerThanksForSolvedGoal(
+-  askerUserId: string,
+-  taskId: number,
+-): Promise<boolean> {
++export async function thankForSolvedGoal(askerUserId: string, taskId: number): Promise<boolean> {
+   const answered = await query<{ id: number }>(
+     `SELECT id FROM task_asks
+       WHERE task_id = $1 AND from_user_id = $2::int AND parent_ask_id IS NULL
+@@ -104,7 +107,58 @@ export async function offerThanksForSolvedGoal(
+     QUERY_TIMEOUT_MS,
+   );
+   const askId = answered.rows[0]?.id;
+-  return askId === undefined ? false : offerHelperThanks(askerUserId, askId);
++  return askId === undefined ? false : sendHelperThanks(askerUserId, askId);
++}
++
++/**
++ * D756's third path: „ნატოს პასუხი დამეხმარა" typed in the owner's own chat,
++ * the goal still open (the tester's 48874). The line must say „helped", not
++ * deny it, and name exactly one helper who answered the owner and has not
++ * been thanked — by the first word of the name the owner saved them under.
++ */
++const HELPED_RE =
++  /(დამეხმარა|დაგვეხმარა|გამომადგა|გამოგვადგა|helped\s+(?:me|us)|was\s+(?:very\s+)?helpful|помог|me\s+ayudó)/iu;
++const NOT_HELPED_RE =
++  /(არ\s+(?:დამეხმარა|დაგვეხმარა|გამომადგა|გამოგვადგა)|didn['’]?t\s+help|did\s+not\s+help|не\s+помог|no\s+me\s+ayudó)/iu;
++const HELPED_LOOKBACK_DAYS = 30;
++const HELPED_CANDIDATES = 20;
++const MIN_NAME_CHARS = 3;
++
++export function saysAHelperHelped(line: string): boolean {
++  return HELPED_RE.test(line) && !NOT_HELPED_RE.test(line);
++}
++
++interface AnsweredBy {
++  readonly ask_id: number;
++  readonly helper_name: string | null;
++}
++
++/** The first word of the saved name, when it opens a word of the line („ნატოს" holds „ნატო"). */
++function lineNames(line: string, name: string | null): boolean {
++  const first = (name ?? '').trim().split(/\s+/u)[0]?.toLowerCase() ?? '';
++  if (first.length < MIN_NAME_CHARS) return false;
++  return line
++    .toLowerCase()
++    .split(/[^\p{L}\p{N}]+/u)
++    .some((word) => word.startsWith(first));
++}
++
++export async function thankHelperNamedIn(askerUserId: string, line: string): Promise<boolean> {
++  if (!saysAHelperHelped(line)) return false;
++  const answered = await query<AnsweredBy>(
++    `SELECT DISTINCT ON (ta.to_user_id) ta.id AS ask_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name
++       FROM task_asks ta
++      WHERE ta.from_user_id = $1::int AND ta.parent_ask_id IS NULL
++        AND ta.status = 'answered' AND ta.declined_at IS NULL
++        AND ta.answered_at > NOW() - make_interval(days => $2)
++        AND NOT EXISTS (SELECT 1 FROM helper_thanks ht WHERE ht.ask_id = ta.id AND ht.thanked_at IS NOT NULL)
++      ORDER BY ta.to_user_id, ta.answered_at DESC NULLS LAST
++      LIMIT $3`,
++    [askerUserId, HELPED_LOOKBACK_DAYS, HELPED_CANDIDATES],
++    QUERY_TIMEOUT_MS,
++  );
++  const named = answered.rows.filter((row) => lineNames(line, row.helper_name));
++  return named.length === 1 ? sendHelperThanks(askerUserId, named[0].ask_id) : false;
+ }
+ 
+ interface OpenThanks {
+@@ -135,6 +189,20 @@ async function thanksWaitingHere(
+   return result.rows[0] ?? null;
+ }
+ 
++async function thanksRow(id: number): Promise<OpenThanks | null> {
++  const result = await query<OpenThanks>(
++    `SELECT ht.id, ht.ask_id, ht.asker_user_id, ht.helper_user_id, ta.ask_thread_id AS helper_thread_id,
++            ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name,
++            ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
++       FROM helper_thanks ht JOIN task_asks ta ON ta.id = ht.ask_id
++      WHERE ht.id = $1
++      LIMIT 1`,
++    [id],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0] ?? null;
++}
++
+ interface Thanked {
+   readonly user_id: number;
+   readonly thread_id: number | null;
+diff --git a/src/services/taskStore.service.ts b/src/services/taskStore.service.ts
+index abe0ecf..0f54767 100644
+--- a/src/services/taskStore.service.ts
++++ b/src/services/taskStore.service.ts
+@@ -800,7 +800,7 @@ export async function updateTask(
+   if (updated && status === 'closed' && closedAs === 'finished') {
+     // §113.1: solved after a helper answered — the thank card, as a „helped" debrief offers it.
+     void import('./helperThanks.service')
+-      .then(({ offerThanksForSolvedGoal }) => offerThanksForSolvedGoal(userId, taskId))
++      .then(({ thankForSolvedGoal }) => thankForSolvedGoal(userId, taskId))
+       .catch((error: unknown) => {
+         // eslint-disable-next-line no-console
+         console.error(`[helper-thanks] goal ${taskId} not offered:`, (error as Error).message);
+-- 
+2.43.0
+

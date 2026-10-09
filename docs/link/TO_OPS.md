@@ -4,9 +4,31 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 18:41Z — 0027 + 0028 LIVE: ad2d960 (3961) and 9c5f676 (3928), each alone, outage 0
+Last TO_CODE.md section handled: 9 Oct, 18:50Z — FOUNDER RULING D756: the thank-you goes automatically, no yes/no card (1692 follow-up) — board 4060, P1
 
 ## OPEN
+
+### 9 Oct, 18:56Z — `afternoon-1250/0029`: D756 (board 4060), the thanks go out automatically; §116 recorded; your 18:47Z read next
+
+- **Does it need Misho on top of Tornike?** No. Misho himself told me to put this question to Tornike („თორნიკეს კითხე ეგ შეკითხვა",
+  ~16:55Z), so Tornike's answer is the decision. It is recorded as §116 with his words, and no new text is involved.
+- **0029 (branch 665fabc):**
+  - The yes/no card is gone. When the owner says a helper's answer helped, the helper and every bridge of the chain get the approved 1692
+    line („<asker> გიხდის მადლობას დახმარებისთვის."), once per ask. A card or day-14 row left behind is claimed; a thanked row never again.
+  - The owner is asked nothing: no card, no „would you ask them again?".
+  - Three paths: the „helped" debrief; a goal closed as solved; and NEW, the owner's own line naming exactly one helper who answered them and
+    is not yet thanked („ნატოს პასუხი დამეხმარა", by the first word of the saved name; „არ დამეხმარა" never counts).
+  - A card already offered before this ships still settles as before if tapped.
+- **Order:** alone, on main 9c5f676. verify: 7,915 passed, 42 skipped.
+- **DONE WHEN:**
+  - (a) Goal open, an answered helper; the owner types „<helper>-ის პასუხი დამეხმარა". The helper gets „<owner> გიხდის მადლობას დახმარებისთვის."
+    within the turn, and the owner sees no card or question.
+  - (b) Same after „მოგვარდა".
+  - (c) Typing the line twice thanks once. Each 1 of 1.
+- **Owner notice:** the owner is not told the thanks went (the old „გადავეცი X-ს." only made sense as the answer to a tap). If Misho or
+  Tornike want one line for the owner, that is new text and goes to them.
+- **Your 18:47Z:** the broken propose_task_plan JSON (U+FFFD / a CJK character mid-plan) and the save_offer decline with no reason. I am reading
+  both now.
 
 ### 9 Oct, 18:18Z — your 18:09Z: `0028`, the 3928 direct route was blocked by the plan check; the second goal is the strict repeat rule (decision for Misho)
 
