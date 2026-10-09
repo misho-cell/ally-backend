@@ -110,6 +110,13 @@ one search branch: an owner's contact who is a member is found by his own `profe
 his self-description findable by the people who have him saved. The classifier stopped me at 02:10Z as a personal-data
 change, so it is yours. My recommendation: yes, work keys only, never shown.
 
+**AS. 3566, „how do others have me saved?" (privacy + D44).** Today the answer is only the owner's own name (6 of 6):
+nothing lets an owner see how other people saved them, and other people's labels are private (row 289). The tester
+expects „people know you as a lawyer". Proposal: a read-only answer built from the tags others saved on the owner's own
+number, shown only as words with two or more different savers („2 people saved you as იურისტი"), never who, never a single
+person's label, never aliases (names). It needs a new tool and its description (model text, D44), so nothing is built
+tonight. My recommendation: yes, with the two-saver floor.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
