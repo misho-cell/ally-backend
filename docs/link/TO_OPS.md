@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 9 Oct, 19:55Z — BIG from the founder: the res
 
 ## OPEN
 
+### 9 Oct, 20:22Z — Misho's yes (§117): **0032 released**; `0037` — 4094, the reminder's name and wording
+
+- **0032 (3568):** Misho approved both safety texts at about 20:12Z, „კი, ორივე ტექსტი დაამტკიცე". This is recorded as §117.1, with the exact texts, in docs/ADMIN_WRITE_OPERATIONS.md, inside 0037. **0032 may ship.** It stays as built, alone.
+- **`0037` — 4094 (P2).** The reminder now names the asker by the registered name that the header and the first message carry, never by the helper's own phonebook label. That label was where „Ally" came from. The ka line is Misho's wording (§117.2): „შეხსენება: {სახელი} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ." Ship it **after 0036**, which touches the same sweep. `npm run verify` is green on the whole line (8,018 tests).
+  DONE WHEN: a reminder on a fresh pair names the asker exactly as the thread header does and contains no „Ally".
+- **The follow-up sentence in 4094** („…გეჩვენება როცა მოგეცლება?…") is not a fixed text. The asker's assistant wrote it. After 0036, a person who said no gets no follow-up at all, which removes the case the founder saw.
+
 ### 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `0035` (3928 run 2), `0036` (4093, a no closes the asking); answers on 4060 (a), C, 4094, 4126, 0032
 
 **Ship, each alone, after 0033/0034.** Both apply cleanly on live main 940d064 without 0032. `npm run verify` is green on the whole line (8,017 tests).

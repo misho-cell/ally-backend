@@ -1,0 +1,111 @@
+From 319d3b77e455091e763e487edc39aea536830794 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 20:13:59 +0000
+Subject: [PATCH] =?UTF-8?q?fix(asks):=20the=20reminder=20names=20the=20ask?=
+ =?UTF-8?q?er=20as=20the=20header=20does,=20in=20Misho's=20words=20(4094,?=
+ =?UTF-8?q?=20=C2=A7117)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder's find: Giorgi's reminder read „შეხსენება: Lika O. Ally-ის
+კითხვა ჯერ უპასუხოა…", while the thread header said „Lika Ose". The
+reminder used the helper's own phonebook label (#1918), where an old-Ally
+import label had survived. The header and the opening use the registered
+name.
+
+- The reminder sweep reads the asker's registered name, the same name the
+  header and the first message carry.
+- The ka line is Misho's wording (§117.2): „შეხსენება: {სახელი} ჯერ კიდევ
+  ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი,
+  ესეც მომწერე და აღარ შეგაწუხებ."
+
+Also records §117.1, Misho's yes on the 3568 safety texts (patch 0032).
+
+DONE WHEN: a reminder on a fresh pair names the asker exactly as the
+thread header does, and contains no „Ally".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit f651fd3bb101b09f17c312e82c7d56ae7ab32c25)
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                   | 16 ++++++++++++++++
+ .../__tests__/aReminderSaysWhose.test.ts         | 11 ++++++++++-
+ src/services/taskAsks.service.ts                 |  8 ++++++--
+ 3 files changed, 32 insertions(+), 3 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index b7b5bc6..742aa67 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6134,3 +6134,19 @@ automatically."
+   line in their own chat such as „ნატოს პასუხი დამეხმარა" naming one helper who answered them), the helper and every bridge of the chain get
+   the approved thank-you line (§-texts of 1692 unchanged) at once, once per ask. The yes/no card of §113.1 and the „would you ask them
+   again?" question are no longer shown. No new text. A card offered before this ships still settles as before when tapped.
++
++**§117 — 9 October ~20:12 UTC, Misho in the code session's chat: „კი, ორივე ტექსტი დაამტკიცე"** (to the two texts put at ~20:07Z).
++
++- **§117.1 (3568, patch afternoon-1250/0032)** — when both moderation votes block the reply and the owner's line is a worry that somebody may
++  hurt themselves (or the owner's own crisis), the server's fixed answer replaces the internal-check apology. Exact ka texts (en/ru/es are
++  their translations, as in safetyWorry.ts):
++  - about someone else: „მესმის, ეს ძალიან საშიშია. თუ ფიქრობ, რომ ის ახლა საფრთხეშია, დარეკე 112-ზე და მარტო ნუ დატოვებ. დაელაპარაკე და
++    პირდაპირ ჰკითხე, როგორ არის — ასეთი კითხვა ზიანს არ აყენებს. თუ გინდა, შენს კონტაქტებში მოვძებნი ფსიქოლოგს ან ფსიქიატრს, ვინც დახმარებას
++    შეძლებს."
++  - about themselves: „კარგია, რომ მომწერე. თუ ახლა საფრთხეში ხარ, დარეკე 112-ზე. ამასთან მარტო არ უნდა იყო — ახლავე უთხარი ვინმე ახლობელს.
++    თუ გინდა, შენს კონტაქტებში მოვძებნი ფსიქოლოგს, ვინც დაგეხმარება."
++  Undo: revert the patch; the apology returns.
++- **§117.2 (4094)** — the helper's reminder names the asker by the name the ask's header and first message carry (the registered name), never
++  by the helper's own phonebook label, so „Ally"-style import labels never appear and the two names never differ. The ka line becomes:
++  „შეხსენება: {სახელი} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ."
++  en/ru/es lines and the nameless line are unchanged. Undo: revert the patch.
+diff --git a/src/services/__tests__/aReminderSaysWhose.test.ts b/src/services/__tests__/aReminderSaysWhose.test.ts
+index 6e2b86f..81df5fe 100644
+--- a/src/services/__tests__/aReminderSaysWhose.test.ts
++++ b/src/services/__tests__/aReminderSaysWhose.test.ts
+@@ -12,7 +12,16 @@ describe('askReminderLine', () => {
+     expect(askReminderLine('en', 'Nino')).toContain("Nino's question");
+     expect(askReminderLine('ru', 'Nino')).toContain('Nino');
+     expect(askReminderLine('es', 'Nino')).toContain('Nino');
+-    expect(askReminderLine('ka', 'ნინო')).toContain('ნინოს კითხვა');
++  });
++
++  it('says it in Misho’s words, with the name as the header carries it (4094, §117.2)', () => {
++    expect(askReminderLine('ka', 'ლიკა ოსე')).toBe(
++      'შეხსენება: ლიკა ოსე ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან ' +
++        'დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ.',
++    );
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    const sweep = asks.slice(asks.indexOf('export async function sendDueAskReminders('));
++    expect(sweep.slice(0, 3000)).toContain('WHERE u.id = task_asks.from_user_id) AS asker_name');
+   });
+ 
+   it('keeps the old line when there is no name', () => {
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index f54c07c..43231fe 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -3836,7 +3836,8 @@ export function askReminderLine(language: RunLanguage, askerName: string | null)
+     case 'es':
+       return `Un recordatorio: la pregunta de ${askerName} sigue sin respuesta — si tienes un minuto, tu respuesta ayudaría mucho. Si no lo sabes, dímelo también y no te molestaré más.`;
+     default:
+-      return `შეხსენება: ${geoName(askerName, 'gen')} კითხვა ჯერ უპასუხოა — თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.`;
++      // 4094: Misho's wording, §117.2.
++      return `შეხსენება: ${askerName} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ.`;
+   }
+ }
+ 
+@@ -3887,7 +3888,10 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
+        LIMIT $1
+      )
+      RETURNING ask_thread_id, to_user_id, question, shown_question, choices,
+-               ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
++               -- 4094: the name the thread's header and first message carry, so the
++               -- reminder never names the asker differently (§117.2).
++               (SELECT NULLIF(TRIM(u.name), '') FROM "User" u
++                 WHERE u.id = task_asks.from_user_id) AS asker_name`,
+     [limit, DECLINE_QUIET_HOURS],
+     ASK_QUERY_TIMEOUT_MS,
+   );
+-- 
+2.43.0
+
