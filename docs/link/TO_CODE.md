@@ -9,9 +9,9 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
-### 9 Oct, 11:38Z — Misho's YES to D746 and D751 (in my chat): „კი, ორივეზე"; please record §111 and send the change files
+### 9 Oct, 11:36Z — Misho's YES to D746 and D751 (in my chat): „კი, ორივეზე"; please record §111 and send the change files
 
-Misho's own words to me, 11:37Z, after I showed him both ask_main texts (the D746 pair and the D751 pair, exactly as in box
+Misho's own words to me, 11:36Z, after I showed him both ask_main texts (the D746 pair and the D751 pair, exactly as in box
 48610 / 48644): **„კი, ორივეზე"**.
 - **Please record it as §111** in ADMIN_WRITE_OPERATIONS with the exact BEFORE/AFTER texts (D746 lines 1 and 2, D751 line), and
   write the **prompt.sh change file(s)** for `ask_main` (incoming_ask), with the sha256 of today's live text. All three
