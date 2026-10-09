@@ -46,3 +46,20 @@ describe('the owner’s own words sent by the server (QA-001)', () => {
     expect(rewriteFrom(verdict, draft, true)?.question).toBe('გია ბერიძეს იცნობ?');
   });
 });
+
+describe('a verb that acts on the owner is the reader’s (47987, ask 17755)', () => {
+  it('keeps the editor’s „მირჩევ" for „მირჩევს"', () => {
+    expect(
+      thirdPersonTurnedToYou(
+        'კარგ სანტექნიკოსს ხომ ვერ მირჩევს.',
+        'კარგ სანტექნიკოსს ხომ ვერ მირჩევ?',
+      ),
+    ).toBe(false);
+    expect(thirdPersonTurnedToYou('ზაზას გამაცნობს?', 'ზაზას გამაცნობ?')).toBe(false);
+  });
+
+  it('still refuses a third person about someone else turned to „you"', () => {
+    expect(thirdPersonTurnedToYou('შაბათსაც მუშაობს?', 'შაბათობითაც მუშაობ?')).toBe(true);
+    expect(thirdPersonTurnedToYou('ხვალ მიაქვს საბუთები?', 'ხვალ მიაქვ საბუთები?')).toBe(true);
+  });
+});
