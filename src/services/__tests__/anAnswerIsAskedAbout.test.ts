@@ -7,15 +7,24 @@ import { query as _query } from '../../db/postgres/client';
 import { queueFollowUp as _queue } from '../pendingUpdates.service';
 import { ANSWER_DEBRIEF_ON, answerDebriefInstruction, armAnswerDebrief } from '../debrief.service';
 
-/** 1692 part 2: „how did <helper>'s answer work out?" — held until Misho's yes on AV (D44). */
+/** 1692 part 2: „how did <helper>'s answer work out?" — on since Misho's word (§111.3). */
 const mockQuery = _query as jest.Mock;
 const mockQueue = _queue as jest.Mock;
 
 describe('the answer debrief', () => {
-  it('arms nothing while AV waits', async () => {
-    expect(ANSWER_DEBRIEF_ON).toBe(false);
+  beforeEach(() => jest.clearAllMocks());
+
+  it('is armed once per answer, three days out (§111.3)', async () => {
+    expect(ANSWER_DEBRIEF_ON).toBe(true);
+    mockQuery.mockResolvedValueOnce({ rows: [{ ref_id: 17000 }], rowCount: 1 });
     await armAnswerDebrief('42', 17000, 3, 'ზურაბი');
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockQueue).toHaveBeenCalledTimes(1);
+    expect(mockQueue.mock.calls[0][3]).toMatchObject({ about: 'answered_ask', ask_id: 17000 });
+  });
+
+  it('is not armed a second time for the same answer', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    await armAnswerDebrief('42', 17000, 3, 'ზურაბი');
     expect(mockQueue).not.toHaveBeenCalled();
   });
 

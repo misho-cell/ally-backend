@@ -165,10 +165,11 @@ describe('the thank-you card', () => {
 });
 
 describe('the day-14 line to the helper (1692 part 2)', () => {
-  it('sends nothing while AV waits', async () => {
+  it('sends nothing when no armed answer is due (§111.3)', async () => {
+    mockQuery.mockResolvedValueOnce(rows([]));
     const { followUpQuietLeads } = await import('../helperThanks.service');
     expect(await followUpQuietLeads()).toBe(0);
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
     expect(mockSave).not.toHaveBeenCalled();
   });
 
