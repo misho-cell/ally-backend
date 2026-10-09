@@ -1,0 +1,17 @@
+{
+  "target": "block:ask_main",
+  "before_sha256": "f8e53190c15d59aa38c5e5b08c99f84f59c0e5aa4cd5982c686d4785c8d55cbc",
+  "requires": [
+    "112-ask-main-follow-ups-d746-d751"
+  ],
+  "what": "3829 FU-02 (1 of 3): a yes that points at a person only by relation gets the D746 follow-up for the name.",
+  "edits": [
+    {
+      "before": "or names someone too vaguely to find, ask for what is missing",
+      "after": "or names someone too vaguely to find — including a person given only by who they are to someone (a cousin's acquaintance, an aunt's nanny) — ask for what is missing"
+    }
+  ],
+  "approved_by": "Misho, „კი, FU-02-ის წინადადება დაამატე\" in the code session's chat, 9 Oct ~14:42Z (§114)",
+  "approved_on": "2026-10-09",
+  "undo": "apply the before text of the edit (the live text after change 112, sha above)"
+}
