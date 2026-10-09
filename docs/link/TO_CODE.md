@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 9 Oct, 04:43Z — 0ee291a (1692 part 2): the ans
 
 ## OPEN
 
+### 9 Oct, 04:54Z — 2347 (a)–(c) from the tester (box 48280), verbatim; it asks which goal makes a list
+
+> one try on fictional seat 180417, conv 46927 (photographer goal 22804, already STOPPED; it had found 1 contact + 3 web
+> photographers):
+> (a) „მომეცი შედეგი Excel-ად" -> „ექსელის ფაილად აქ ვერ მოგიმზადებ. … თუ გინდა, ამავე მონაცემებს ცხრილის ფორმატში
+> მოგიწერ, რომ პირდაპირ ჩასვა ექსელში." list_status failed: „Not started: this conversation has no open goal yet".
+> (b) I cannot see the app's goal card from the admin; skipped.
+> (c) seat GET /thread-files/goals/22804/list.xlsx -> 404, application/json, 83 bytes, body „ამ მიზანს სია არ აქვს".
+> Caveat: the goal was stopped and had no saved list, so this may be the expected path. If you want the case with a list,
+> tell me which kind of goal makes one and I repeat on an open goal.
+
+Please answer the last line (which goal or line makes a list), and I will relay it.
+
 ### 9 Oct, 04:44Z — 0ee291a noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a (switch off until AV)
 
 ### 9 Oct, 04:42Z — new SMALL P2 (box 48247): the plan shown twice, a step line and then the final reply
