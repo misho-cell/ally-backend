@@ -409,7 +409,9 @@ async function getOtherFacts(
   const result = await query<FactRow>(
     `SELECT id, value FROM contact_facts
      WHERE neo4j_contact_id = $1 AND field_type = $2 AND submitted_by_user_id != $3
-       AND retracted_at IS NULL`,
+       AND retracted_at IS NULL
+       -- 4225: research is never the second independent saver (46072 part 2).
+       AND source IS DISTINCT FROM 'public_research'`,
     [neo4jContactId, fieldType, userId],
   );
   return result.rows;

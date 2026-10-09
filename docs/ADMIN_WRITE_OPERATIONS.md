@@ -6156,3 +6156,15 @@ automatically."
 - **§118.1 (3672)** — a person's „don't bring me questions about X" is a boundary. Questions on X do not reach them. The asker sees only
   „ამჯერად ვერ გავიდა" and never why. The person's own assistant tells them „questions about X won't reach you", never „I'll answer for
   you". Netai still never answers on anyone's behalf (D669). No new text, and nothing to build: this is #1915 as it already runs.
+
+**§119 — 9 October ~22:40 UTC, Misho in the code session's chat: „კი, Axel-ის ჩატვირთვა დაამტკიცე"** (board 4225, the founder's 46072 with 47191; package v4 of 9 Oct 06:55Z).
+
+- **§119.1 — what it writes.** About 2,600 rows into `contact_facts` (the package's 2,495 loadable facts; the 3 people with two numbers get them on each), on about 160 numbers: roster, roster-likely and strong ties only, never a weak one.
+  - Every row: `submitted_by_user_id = '0'` (the system saver, never a person), `source = 'public_research'`, `confidence = 'mentioned'`, `is_public = false`, `is_matchable = false`, plus `source_url`, `fact_date` and `research_status` (confirmed / possible / rough / unknown) from the file.
+  - Nothing is made public. The crowd-confirmation and moderation passes leave these rows out, so research is never the second independent saver.
+  - The numbers are found on the server from the export's keyed hash. No number is in the files or the request.
+- **§119.2 — route.** `POST /admin/axel/base-load` (admin token). Body: `{ "person_numbers_csv": "<file text>", "facts_csv": "<file text>", "dry_run": true | false }`.
+  - Run order, by day only: `dry_run: true` first, and check `numbers_found` against the package (about 160) and `facts_written` (about 2,600). Then run `dry_run: false` once.
+  - A second run replaces each number's research rows whole, so it doubles nothing.
+- **§119.3 — undo.** `DELETE FROM contact_facts WHERE source = 'public_research' AND submitted_by_user_id = '0';` This is one statement and touches no other row.
+- **§119.4 — not in this step.** How these facts are used (confirmed said with its source, possible only matched, rough only a hint: 46072 part 2), the waiting list, the other networks' rosters and the roster step in search are later steps. Until the read side ships, the loaded rows are invisible to every account.

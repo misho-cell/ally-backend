@@ -93,6 +93,8 @@ async function remoderateFreeFormFacts(limit: number): Promise<{
     `SELECT id, field_type, value, moderated_at FROM contact_facts
      WHERE is_public = false AND retracted_at IS NULL
        AND field_type <> ALL($1)
+       -- 4225: research facts are never published by moderation either.
+       AND source IS DISTINCT FROM 'public_research'
      ORDER BY moderated_at ASC NULLS FIRST, id
      LIMIT $2`,
     [FACT_FIELD_TYPES as readonly string[], limit],
@@ -146,6 +148,7 @@ async function reconfirmGroup(group: CoreGroup): Promise<number> {
   const facts = await query<PrivateFactRow>(
     `SELECT id, field_type, value, moderated_at FROM contact_facts
      WHERE neo4j_contact_id = $1 AND field_type = $2 AND retracted_at IS NULL
+       AND source IS DISTINCT FROM 'public_research'
      ORDER BY id`,
     [group.neo4j_contact_id, group.field_type],
     REPUBLISH_QUERY_TIMEOUT_MS,
@@ -178,6 +181,7 @@ async function reconfirmCoreFacts(limit: number): Promise<{ groups: number; publ
     `SELECT neo4j_contact_id, field_type
      FROM contact_facts
      WHERE field_type = ANY($1) AND retracted_at IS NULL
+       AND source IS DISTINCT FROM 'public_research'
      GROUP BY neo4j_contact_id, field_type
      HAVING COUNT(DISTINCT submitted_by_user_id) >= 2
         AND COUNT(*) FILTER (WHERE is_public) = 0

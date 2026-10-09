@@ -201,15 +201,19 @@ function csvDelimiter(firstLine: string): string {
   );
 }
 
-/** RFC 4180 fields: quotes may hold delimiters, line breaks and doubled quotes. */
-export function csvCells(raw: string): string[][] {
+/**
+ * RFC 4180 fields: quotes may hold delimiters, line breaks and doubled quotes.
+ * A chat file is read up to its own row limit; a caller that loads a whole
+ * admin file (4225) passes its own.
+ */
+export function csvCells(raw: string, rowsToRead: number = ROWS_TO_READ): string[][] {
   const textBody = raw.replace(BYTE_ORDER_MARK_RE, '');
   const delimiter = csvDelimiter(textBody.split(/\r?\n/u, 1)[0] ?? '');
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
   let quoted = false;
-  for (let i = 0; i < textBody.length && rows.length < ROWS_TO_READ; i += 1) {
+  for (let i = 0; i < textBody.length && rows.length < rowsToRead; i += 1) {
     const ch = textBody[i];
     if (quoted) {
       if (ch === '"' && textBody[i + 1] === '"') {
