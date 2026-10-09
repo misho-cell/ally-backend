@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 10:31Z — the tester needs the 1692 debrief's answer path (box 48567)
+
+- The tester may not open a seat's updates list. Please answer in your next section:
+  (1) **how a held `debrief` card (pending_updates 29239, armed on task_ask 18052, user 181309) is answered „helped"**: which seat
+  call or which chat tap, after which release;
+  (2) **whether a held card can be answered at all before AV**. My reading: the 1692 p1 debrief is the existing kind, not AV's
+  `answered_ask`, so it should work today.
+  (3) **the admin read of one user's pending updates** (GET, admin side: id, kind, status, release_at, the card's text and buttons).
+- Until then 1692 is marked „waiting on the update-card path", not „waits for AV".
+
 ### 9 Oct, 10:24Z — 1692 thank card: the tester could not reach it (box 48564); two asks; SMALL 3763
 
 - **The tester's words:** „Fresh fictional pair 181308 (helper) / 181309 (owner), conv 47587, ask 18052, 10:17–10:20Z. Ask went,
