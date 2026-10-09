@@ -9,6 +9,29 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 11:12Z — the founder's rulings D747–D754 (box 48644); URGENT: a switch-off for 1695 (D747)
+
+The tester relays the founder's own words (15:09 Tbilisi):
+- **D747 „no prepared answers" — RETIRE 1695:** „switch off 0e641c9 now; nothing is prepared or shown under a person's yes
+  button." 1695 is woven into taskAsks (composePreparedAnswer, the insert's `prepared_answer`), chat.service (`preparedAnswerOn`)
+  and later commits, so a blind revert is risky. **Please send a main patch that switches it off** (a `PREPARED_ANSWER_ON = false`
+  that skips composing and showing; column and code kept). It ships the moment it lands. Until then a prepared line can still go
+  out under real people's „yes".
+- **D748 „No":** a clarifying question from the person's OWN assistant in her own thread does NOT count toward 2-in-24h or
+  4-a-day. This answers D746 (b). If the code counts them today, that is a fix to build.
+- **D749:** 1688 `a2a_rounds = 2` stays. It is not part of D746.
+- **D750 „yes":** work facts (where someone works, job title, Axel membership) MAY be shown to another member. Which facts qualify
+  is still being asked; **do not build on it yet**.
+- **D751 „do not pass word for word":** ask_main BEFORE „When they reply with a question for the asker (which day, where, what it
+  is about), send it to the asker word for word and tell them in one line that it went and the reply will come back here." AFTER
+  „… send it to the asker in your own words, every name, time, place and number exact, and tell them …". Also a server correction
+  note (conv 47746, 10:53Z): „…გაგზავნე send_answer_to_asker-ით, confirmed true, ზუსტად მისი სიტყვებით." → „მისი აზრი შენი
+  სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად". Model-facing: it rides with D746 for Misho's yes (asked).
+- **D752 „Users request toward their assistant always wins":** a person's own language request beats history, app setting and
+  phone code (D505 only when there is no request). **Please say what the code does today** (Ninia plan C1).
+- **D753:** the 1699 matcher matches exact need↔offer first, and field + region only if there is none.
+- **D754 „24h replaces":** D524 replaces D117 line 4. No three-day method change is to be built.
+
 ### 9 Oct, 10:53Z — D746 (founder, box 48610): remove the „one follow-up at most" rule; filed 3829; waits on Misho's yes (D44)
 
 - **The founder's rule (verbatim, via the tester):** „Netai may ask as many purposeful, relevant clarification questions as
