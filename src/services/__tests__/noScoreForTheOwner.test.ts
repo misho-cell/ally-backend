@@ -50,6 +50,13 @@ describe('no score for the owner', () => {
     );
   });
 
+  it('drops a bare „N 10-დან" too (47991, conv 46829)', () => {
+    expect(
+      withoutScores('ჩემი პირველი შთაბეჭდილებით, 8,5  10-დან. პირდაპირი ხარ და საქმეზე გადადიხარ.'),
+    ).toBe('პირდაპირი ხარ და საქმეზე გადადიხარ.');
+    expect(withoutScores('7 ათიდან. პირდაპირი ხარ.')).toBe('პირდაპირი ხარ.');
+  });
+
   it('leaves a reply with no score alone', () => {
     const reply = 'პირდაპირი ხარ. 3 დღეში დაგიბრუნდები.';
     expect(withoutScores(reply)).toBe(reply);

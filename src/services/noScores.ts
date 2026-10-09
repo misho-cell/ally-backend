@@ -56,9 +56,10 @@ export function asksForAScore(ownerLine: string): boolean {
   return ASKS_FOR_A_SCORE_RE.test(ownerLine);
 }
 
-/** „6/10", „8 / 10", „7 out of 10", „8 ქულა 10-დან". */
+/** „6/10", „8 / 10", „7 out of 10", „8 ქულა 10-დან", „8,5 10-დან". */
+// 47991 (conv 46829): „8,5  10-დან" — a bare „N 10-დან", two spaces — passed. Any „10-დან"/„ათიდან" after a number is a score.
 const SCORE_RE =
-  /\b\d{1,2}(?:[.,]\d)?\s*(?:\/\s*10\b|out\s+of\s+10\b|ქულა\s+10|из\s+10\b|de\s+10\b)/iu;
+  /\b\d{1,2}(?:[.,]\d)?\s*(?:\/\s*10\b|out\s+of\s+10\b|ქულა\s+10|(?:ქულა\s+)?10\s*-?\s*დან|ათიდან|из\s+10\b|de\s+10\b)/iu;
 
 /**
  * 47978 (46817): with the score gone, „…to rate you higher with confidence."
