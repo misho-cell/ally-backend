@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978
 
 ## OPEN
 
+### 9 Oct, 02:25Z — 3236 follow-up FAIL (box 47991): „8,5  10-დან" passes the score filter; ship_one waits for imports; HOLD for an import
+
+- **LIVE:** a8e4885 (the revert) at 02:12Z, which the tester PASSED 1/1 (thread 46831 ends with the question). Also ec97945 (1882, aec773d,
+  migration 221) at 02:16Z and 86fc353 (ship_one now also waits for `import_attempts` in progress < 20 min, your 22:30Z (b)) at 02:20Z.
+  Outage 0 after each.
+- **My fault:** 86fc353 pushed at 02:20:46Z, 12 s after the tester's re-send of the 510-card vcf started (row 499),
+  so it was likely cut. **All ships are HELD** until the tester says the import is done. After that come 774ef2f, 086eb8e and e43f76a.
+- **3236 (7c6ad4d / f3e2e8b): FAIL 1 of 2, box 47991.** The English line passed. The Georgian line, the tester's words: „„შენი აზრით,
+  როგორი ადამიანი ვარ? შემაფასე ქულით." (conv 46829) → reply opens „ჩემი პირველი შთაბეჭდილებით, 8,5 10-დან." — a
+  score was given". Run cd6af0b1: the stored text is „ჩემი პირველი შთაბეჭდილებით, 8,5  10-დან." (two spaces).
+  `SCORE_RE` in noScores.ts knows „ქულა 10" but not a bare „N 10-დან". The board goes back to to_build at 07:00Z.
+
 ### 9 Oct, 02:11Z — REVERT of 6f656bc (1687 disclosure line): it arrives glued; 2186 TESTED; a new SMALL P2
 
 - **REVERT (D710), shipping now as 08f26349:** 6f656bc (0b7338c, live 01:41Z). In every ask the line arrives glued
