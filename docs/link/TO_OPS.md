@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 06:06Z — plate v381 (box 48380): new T3631; seven rows off as tested
+Last TO_CODE.md section handled: 9 Oct, 06:11Z — cfdcb5b noted: the daylight batch is 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 → cfdcb5b
 
 ## OPEN
 
