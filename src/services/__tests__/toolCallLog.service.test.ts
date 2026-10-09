@@ -398,3 +398,20 @@ describe('the result sample is redacted on its way into the table (D149)', () =>
     expect(await sampleWritten('found 3 vets in Vake')).toBe('found 3 vets in Vake');
   });
 });
+
+/** Ops 9 Oct 18:47Z: a confirm step is the tool working, not a refusal with no reason. */
+describe('a tool that asks for the owner’s yes first', () => {
+  it('is not filed as failed', () => {
+    expect(outcomeOf({ saved: false, needs_confirmation: true, note: 'read it back' }).ok).toBe(
+      true,
+    );
+    expect(outcomeOf({ sent: false, needs_confirmation: true }).ok).toBe(true);
+  });
+
+  it('is still failed when it also carries an error', () => {
+    expect(outcomeOf({ saved: false, needs_confirmation: true, error: 'not in this run' }).ok).toBe(
+      false,
+    );
+    expect(outcomeOf({ saved: false }).ok).toBe(false);
+  });
+});

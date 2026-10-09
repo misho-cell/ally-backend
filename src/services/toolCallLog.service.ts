@@ -206,7 +206,12 @@ export function outcomeOf(result: unknown): ToolOutcome {
     return { ok: true, empty: text.trim() === '', count, keys: null, error: null };
   }
   const record = result as Record<string, unknown>;
-  const failed = 'error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false);
+  // Ops 9 Oct 18:47Z (save_offer, 3796): „not yet — read it back and ask" is the
+  // tool doing exactly what it was asked, not a refusal. Filed as failed, it
+  // showed up in why.sh as a refusal with „no reason recorded".
+  const askedToConfirm = record['needs_confirmation'] === true && !('error' in record);
+  const failed =
+    !askedToConfirm && ('error' in record || FAILURE_FLAGS.some((flag) => record[flag] === false));
   const firstList = Object.values(record).find((value) => Array.isArray(value));
   // 2809 (AD-014): a refused search ({found:false, error:'this answer has used its 8
   // searches'}) read as „found nobody". A call that did not run found nothing
