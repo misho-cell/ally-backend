@@ -170,6 +170,16 @@ export function buildExactMatchSql(
        AND (u3."jobPosition" IS NOT NULL OR u3.employer IS NOT NULL)
        AND ${regexOr(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)}
      UNION ALL
+     -- 1694 (box 47985; Misho's yes 9 Oct, §110.6): a member who told his own assistant
+     -- what he does is found by it. Work keys only — „interests" or searched topics would
+     -- make a member who LOOKED for a lawyer read as one. Ranks the search; never shown.
+     SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own
+     FROM "UserPhone" up4
+     JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text
+     WHERE up4.phone IN (SELECT phone FROM mine)
+       AND kv.key IN ('profession', 'industry')
+       AND ${regexOr('kv.value')}
+     UNION ALL
      SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
             TRUE AS own
      FROM contact_facts cf
