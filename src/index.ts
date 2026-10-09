@@ -18,6 +18,7 @@ import privacyRouter from './api/routes/privacy.routes';
 import speechRouter from './api/routes/speech.routes';
 import webhooksRouter from './api/routes/webhooks.routes';
 import billingRouter from './api/routes/billing.routes';
+import billingOfferRouter from './api/routes/billingOffer.routes';
 import profileRouter from './api/routes/profile.routes';
 import mcpRouter from './api/routes/mcp.routes';
 import roQueryRouter from './api/routes/roQuery.routes';
@@ -115,6 +116,8 @@ app.use('/tasks', tasksRouter);
 app.use('/privacy', privacyRouter);
 // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
 app.use('/speech', speechRouter);
+// Public, and ahead of the signed-in /billing router (the pricing page is read signed out).
+app.use('/billing/offer', billingOfferRouter);
 app.use('/billing', billingRouter);
 app.use('/profile', profileRouter);
 app.use('/mcp', mcpRouter);

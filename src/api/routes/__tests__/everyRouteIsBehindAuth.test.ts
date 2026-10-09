@@ -66,6 +66,8 @@ const GUARDED_AT_THE_ROUTER = [
  */
 const AUTHENTICATED_ANOTHER_WAY: Record<string, string> = {
   'auth.routes.ts': 'registration, login and OTP — there is no token yet',
+  'billingOffer.routes.ts':
+    'the two free periods the public pricing page promises — rate limited, no user data',
   'oauth.routes.ts': 'the OAuth flow itself, which issues the token',
   'oauthPages.ts': 'served HTML, no API routes',
   'mcp.routes.ts': 'no route declarations of its own',
