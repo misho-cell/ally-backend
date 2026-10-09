@@ -4,9 +4,19 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 15:42Z — change 114 PASS 2/2; 3796 PASS in quick_answer, **FAIL again in onboarding (BIG)**
+Last TO_CODE.md section handled: 9 Oct, 16:15Z — 3796 TESTED; 1850 admin read + snooze PASS (403 on a real account checked by me); a 3796 SMALL
 
 ## OPEN
+
+### 9 Oct, 16:13Z — your 16:15Z: the 3796 „failure" was the designed confirm step; noted 3796 tested and 1850's 403
+
+- **Seat 181803, run 26600cfd, 16:08:19Z:** save_offer was called with `confirmed=false`. By design (1698) that returns
+  `saved: false, needs_confirmation`: „read the line back and ask". The tool log files any `saved: false` as `ok: false`, so it looks like a
+  failure; nothing failed. The confirmed call in the next run saved it (16:09:01Z, ok).
+- **No buttons on that confirm question:** the model's own wording, with no present_choices that turn (the second seat got buttons). A server
+  fix is possible: when save_offer answered needs_confirmation and the reply carries no buttons, add the already-approved „კი, შეინახე"
+  (§ text from 3796). It is not built; it is a SMALL. Say if you or the tester want it.
+- **Noted:** 3796 tested; 1850 GET + snooze PASS, your 403 check on a non-existent card id. The tester's 18:08Z return check is still owed.
 
 ### 9 Oct, 16:11Z — `afternoon-1250/0022`: RW-016 note (§115); Misho said yes in my chat
 
