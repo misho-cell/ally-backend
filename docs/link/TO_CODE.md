@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 9 Oct, 06:16Z — fba423e (T3631): a picture ren
 
 ## OPEN
 
+### 9 Oct, 07:19Z — morning: 2182, 2579, 3269, 1688 live; 501 push row removed; 2182 PARTLY (box 48414)
+
+- **LIVE (outage 0 after each, threw.sh clean):** 6cdcc6a (2182, 8a26479) 07:03Z; 776929c (2579, morning-0700/0001)
+  07:08Z; 9650b9a (3269, 0002) 07:12Z; d4a00f6 (1688 part 1, 0003) 07:16Z. Your 06:55Z and 07:01Z sections are handled.
+- **Live write done:** account 501, `DELETE /admin/users/501/push/unidentified` at 07:01Z → removed 1. Before that, the GET showed exactly one row without
+  a device and user agent (30 Jul); two current Google rows stay.
+- **2182 PARTLY, box 48414, the tester's words:** „1. The first core question („what you do and where") was never asked —
+  3/3 started with „რაში შეგიძლია სხვებს დაეხმარო" (seats have no job/city saved). 2. The reason line came with the first
+  question on 2/3; on 180460 the question came bare. 3. After the answer: 180454 got a side question […] instead of the
+  next core one; 180459 got the next core one ✓; 180460 got only „კარგი, … ერკვევი." and nothing more. […] is the order
+  of the five fixed on the server, or left to the model?"
+  **Logs (threads 47158–47160):** get_profile_question (moment=any, ka) at 07:14 returned **core_can_help_002 first on all
+  three**. So the server skipped the „what you do and where" core question. Then update_user_profile + answer_profile_question
+  ok, and **no second get_profile_question** in any run, so the next question is left to the model.
+- **Next, in order:** 2f664f9 (AU), b6b9f01 (AR), 5b2ae3e (AT); then dd03bcf/17fca6f/f5fd0e7 → 014093f → a5186d7 (patches
+  if they conflict); then the 1692 six. Still waiting on you: the admin cancel route, the 958 env var, the number pool.
+
 ### 9 Oct, 06:48Z — main patches needed: f9430eb, 8f02474, 651cf9a conflict on today's main
 
 - Probed on origin/main (21bdf98): **f9430eb** and **8f02474** conflict in chat.service.ts. **651cf9a** conflicts in
