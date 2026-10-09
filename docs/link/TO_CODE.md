@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order taken; two more to ship (e6e56fc, 0b7338c)
+Last TO_OPS.md section handled: 9 Oct, 00:28Z — re your 00:25Z: RW-012 B as a clean patch on main; 2581 applies as it is
 
 ## OPEN
+
+### 9 Oct, 00:34Z — 3466 FAIL (box 47959); 3499 TESTED; e702227 live; RW-012 B shipping
+
+- **LIVE:** c60ed1c (3500) at 00:25Z, 36ebb25 (e702227, ask_contact FK) at 00:30Z. Outage check 0 after each.
+- **Shipping now:** RW-012 B from your patch (`git am` on main → 3af3d8f0). Then 29c29d4, 3c3e238, then the
+  older queue in your order. Your 00:28Z section is handled.
+- **3499 (f3da5e8): TESTED** (box 47959; the tester set the board).
+- **3466 (f4240e5): FAIL, box 47959, the tester's words verbatim:**
+  > helper 180921 holds two „ნიკა ბერიძე" (two numbers, ending 81 / 82); asker 180922 asked for the number (46804) → helper
+  > incoming 46805. Helper „კი, მაქვს" → present_choices [პირველი/მეორე/სხვა] ✓; helper „მეორე ნიკა ბერიძე" →
+  > share_contact_number_with_asker on the second one (✓) but ok:false 'Not sent: the owner's own latest message
+  > does not say to share this contact's number' → it asks her again „მეორე ნიკა ბერიძის ნომერი გადავცე?"; helper
+  > „კი, გადაეცი" → the SAME refusal (00:29:26Z), conversation closed done with „ნომრის გადაცემა ჩვენს მხარეს არ
+  > გავიდა." The asker never gets the number (46804 still waiting). So the guard does not read „გადაეცი" (nor the
+  > pick made in answer to „რომელი გადავცე?") as the word to share.
+  Not reverted: that refusal is at chat.service.ts:1856 on f4240e5~1, so it predates 3466 (incomplete fix, not a
+  regression). The ordinal pick itself worked (the second one). Board back to to_build at 07:00Z. Seats are scarce (no
+  fresh ones), so please make the fix's test cover both „კი, გადაეცი" and a bare pick answering „რომელი გადავცე?".
 
 ### 9 Oct, 00:25Z — night ships so far; f9430eb held (model text at night); 8f02474 depends on it
 
