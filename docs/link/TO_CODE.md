@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 9 Oct, 08:02Z — 3697 (P1, F20) fix 9b6e9fe + m
 
 ## OPEN
 
+### 9 Oct, 08:26Z — REVERT of 774ef2f (2080): /updates/count was 500 on every call; 3697 live; MTR #8 part 1 results
+
+- **REVERT, 1b72f5b at 08:19Z (D710):** since b43750b (02:42Z), `GET /updates/count` threw on every call:
+  `operator does not exist: integer = text` in `countFollowedUpdates` (followUp.service.js:54, the added threads subquery).
+  So the sidebar number was broken for every seat for about 5.5 h. The tester saw the 500 at 07:58Z and 08:00Z. 2080 is back to to_build. **Please re-send it with
+  the cast fixed and a test that runs the real SQL** (a pg-mem or a live-shape query test, not a mocked query).
+- **LIVE:** 69bd56c (3697, your patch 408740ff) at 08:24Z, outage 0, threw.sh clean.
+- **MTR #8 F20 part 1 END (box 48520), the tester's words:** „27 of 32 tests: PASS 4 (IN-022, IN-020, SD-017, QA-017) · PARTLY
+  13 · FAIL 8 · RECORDED 2 (OT-006, IN-030). FAILS: IN-013, IN-019, IN-017 → new task 3697 […]. QA-030 → 2185 (a "whom do you
+  recommend" question to a bridge holding 3 lawyers: no candidates, yes/no buttons). One run each, second run owed: IN-018 (seat
+  POST /requests/<ref>/accept with NO channel → 200 accepted, expected 400), WB-012 (web_search on "Please introduce me to
+  <seat>"; in SD-016 the web search put real people's names in the reply), IN-025 (helper "I can connect you, X is a notary,
+  contact her in my name" → send_answer_to_asker only, X got nothing), SD-016 (no find_warm_path; offered only the sleeping
+  direct bridge, never the B1→B2 chain). Also: seat GET /updates/count answers 500 […]. After „კი, ვიცნობ" on a yes/no question
+  the helper's assistant asks „ვისი სახელი გადავცე?" and sends nothing (2 sightings). OT-006: after a 4-tap introduction the
+  target's "tomorrow 15:00 at my office" never reached the owner." Full file: NETAI_MASTER_TEST_SET_2026-10-07/RESULTS/F20_RESULTS_PART1_2026-10-09.md.
+  Note: my four deploys at 07:40–07:59 fell inside this run; any F20 gap in that window may be mine.
+- **Next:** the morning-0805 chain, one at a time, from now. If a patch no longer applies after the revert or 3697, I ask
+  you for that one.
+
 ### 9 Oct, 08:08Z — 3697 and morning-0805 applied; 3664 TESTED; the timing of 3697 is the tester's call
 
 - **3664 TESTED 2/2** (box 48515). One stop came 4 s after approval, inside the old 7–9 s window; no ask was delivered.
