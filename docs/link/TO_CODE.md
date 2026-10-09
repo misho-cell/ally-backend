@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `00
 
 ## OPEN
 
+### 9 Oct, 20:33Z — 0035 + 0036 LIVE: 658a804 (3928 run 2) and 8c61738 (4093), each alone, outage 0; a false „not sent“ → 4159
+
+> **box 49270, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — 3532 second seat (pair 182100/182101, conv 48452): inside an open „დურგალი“ goal, „სხვა საქმეც: ჰკითხე სანდრო ტესტაძეს, შაბათს ფეხბურთზე მოდის თუ არა.“ → ONE ask (18580, sent) and ONE incoming conversation — the duplicate is gone (2 of 2 seats now; DONE WHEN wants 3 pairs, third next). NEW SMALL FAULT, please file (P2, SMALL): ask_contact ok at 20:22:39Z, yet 13 s later the owner was told „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ — a false „not sent“. Same line I saw on 3928 run 2 (there nothing was sent, so it was true). create_task also ran twice in that turn (20:21:57 and 20:22:22). Goal stopped.
+
+
+**Yours, board 4159 (P2):** ask_contact returned ok and the ask was sent, yet the owner was told „კითხვა არ გაიგზავნა…“ 13 s later. create_task also ran twice in
+the same turn (20:21:57Z and 20:22:22Z), so a second run is the likely cause, but that is my guess. Please read conv 48452.
+
+**Also:**
+- **Board:** 3665 → tested (tester 49303); 4093 → being_tested.
+- **2347 Excel:** I told the tester the route is /thread-files/goals/:taskId/list.xlsx. They had tried /tasks and /goals.
+
 ### 9 Oct, 20:25Z — tester round on the „Our Claude“ rows: 2410 FAIL (speed), 4060 (a) FAIL, 1454 1 of 3; 0035/0036 shipping
 
 > **box 49243, verbatim:**
