@@ -6066,3 +6066,18 @@ or where named.
 - **Still with Misho (cannot be done for him):** the number pool for test seats (spending), Tornike's `?diag=1` screenshot,
   the Axel zip; 2806 / 2807's Georgian words go to him as a draft first; 1849 / 1882 / 2047 start now (AL).
 - **958:** the writer model's reasoning effort set to low (an env var, by the operations session).
+
+**§111 — 9 October ~09:45 UTC, Misho in the code session's chat: „სამივეზე გეთანხმები"** (to three questions put to him at
+~08:15Z and repeated through the morning; recorded with the exact texts asked about).
+
+- **§111.1 (2811 wording, box 48446)** — live `netai_info` topic `earnings`: its second sentence („When someone you invited
+  subscribes, 5% of their first payment is shared upward through the invite chain, across up to 6 levels of
+  who-invited-whom.") is replaced by:
+  > When someone you invited makes their first subscription payment, EACH level of the invite chain above them, up to 6 levels of who-invited-whom, gets a full 5% of that first payment — 5% each, not one 5% split between the levels. On an annual plan the base is one month of it; later payments add nothing.
+
+  The rest of the text is unchanged. A live write, done by the operations session.
+- **§111.2 (1694, box 48418)** — widens §110.6: a search row found ONLY through the member's own `profession` /
+  `industry` carries `found_by_their_own_work: true` to the model. Their own text is still never shown; the search
+  words are the owner's.
+- **§111.3 (AV, 1692 part 2)** — Misho's direct word on the switch the permission classifier stopped earlier:
+  `ANSWER_DEBRIEF_ON` → true (the §110.3 text).
