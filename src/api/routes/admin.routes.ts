@@ -312,6 +312,11 @@ import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { cancelOneAsk } from '../../services/taskAsks.service';
 import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
 import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
+import {
+  FixtureOutcome,
+  writeAnswerRecord,
+  writeStaleFact,
+} from '../../services/seatFixtures.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -7012,5 +7017,94 @@ adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) =
     res.status(500).json({ success: false, error: 'Nothing was deleted' });
   }
 });
+
+/**
+ * Tester 49567: fixtures for 1690 and 1691, on fictional seats only.
+ *   POST /admin/test-accounts/:id/fixtures/stale-fact
+ *        { phone, field_type: occupation|employer|city|industry, value, days_ago }
+ *   POST /admin/test-accounts/:id/fixtures/answer-record
+ *        { goal_text, asked, yes, no, referred, first_answer_minutes_median | null }
+ */
+const FIXTURE_STATUS: Readonly<Record<FixtureOutcome, number>> = {
+  [FixtureOutcome.Written]: 200,
+  [FixtureOutcome.NotATestSeat]: 403,
+  [FixtureOutcome.NotTheSeatsContact]: 404,
+  [FixtureOutcome.BadInput]: 400,
+};
+
+const FIXTURE_ERROR: Readonly<Record<FixtureOutcome, string>> = {
+  [FixtureOutcome.Written]: '',
+  [FixtureOutcome.NotATestSeat]: 'Only a fictional test seat takes a fixture',
+  [FixtureOutcome.NotTheSeatsContact]: 'That number is not one of this seat’s contacts',
+  [FixtureOutcome.BadInput]: 'The fixture is incomplete or out of range',
+};
+
+function sendFixture(res: Response, outcome: FixtureOutcome): void {
+  if (outcome === FixtureOutcome.Written) {
+    res.status(200).json({ success: true, data: { written: true } });
+    return;
+  }
+  res.status(FIXTURE_STATUS[outcome]).json({ success: false, error: FIXTURE_ERROR[outcome] });
+}
+
+function seatIdOf(req: Request): number | null {
+  const id = Number(req.params.id);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+adminRouter.post('/test-accounts/:id/fixtures/stale-fact', async (req: Request, res: Response) => {
+  const seatId = seatIdOf(req);
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  if (seatId === null || typeof b.phone !== 'string' || typeof b.field_type !== 'string') {
+    sendFixture(res, FixtureOutcome.BadInput);
+    return;
+  }
+  try {
+    sendFixture(
+      res,
+      await writeStaleFact(seatId, {
+        phone: b.phone,
+        fieldType: b.field_type,
+        value: typeof b.value === 'string' ? b.value : '',
+        daysAgo: Number(b.days_ago),
+      }),
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[fixtures/stale-fact]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+adminRouter.post(
+  '/test-accounts/:id/fixtures/answer-record',
+  async (req: Request, res: Response) => {
+    const seatId = seatIdOf(req);
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    if (seatId === null || typeof b.goal_text !== 'string') {
+      sendFixture(res, FixtureOutcome.BadInput);
+      return;
+    }
+    const minutes = b.first_answer_minutes_median;
+    try {
+      sendFixture(
+        res,
+        await writeAnswerRecord(seatId, {
+          goalText: b.goal_text,
+          asked: Number(b.asked),
+          yes: Number(b.yes),
+          no: Number(b.no),
+          referred: Number(b.referred ?? 0),
+          firstAnswerMinutesMedian:
+            minutes === null || minutes === undefined ? null : Number(minutes),
+        }),
+      );
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[fixtures/answer-record]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Nothing was written' });
+    }
+  },
+);
 
 export default adminRouter;
