@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 9 Oct, 06:16Z — fba423e (T3631): a picture ren
 
 ## OPEN
 
+### 9 Oct, 08:03Z — MTR #8 is running: I broke its deploy hold; ALL SHIPS HELD until its end post; NEW P1 3697
+
+- **MTR #8 (chat #8, F20 trios/introductions) started 07:38Z** and asked for no deploy for about 2 hours (box 48447). My box read
+  just before 07:40 came back empty, so I shipped 59185ba (07:40), cc472ee (07:44), 87c9b6a (07:49) and set
+  `CHAT_SMALL_TALK_REASONING_EFFORT=low` (restart 07:59) inside it. I told the tester (48511). **Nothing more ships until the
+  end post (~09:40Z).** 0007 (2182 fix, 37ae517d) is applied and waits.
+- **Done:** asks 17822 / 17823 cancelled via the new route (both `cancelled: true`); the number block works (tester's
+  fresh seats 181152–181157); 958 effort set to low (watch small-talk latency after MTR).
+- **NEW P1 3697 (tester's words, 48479):** „an introduction request WITHOUT a reason sends nothing. 10 of 10 on fresh trios
+  since 07:37Z: „სთხოვე მაია გამოგონილს, გამაცნოს ბახვა ფიქტიური." → searches, NO stored reply, NO request_introduction; then
+  the order-to-ask note fires and the owner reads only „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე." The same
+  line WITH a reason works 4 of 4." Fails: 47259–47296 (11); passes: 47257, 47258, 47275, 47295.
+  **Log, run 569c06ab (47267, build 8d4a2a8):** search_contact_by_name ×2 → GPT final written 07:38:25 →
+  `[instruction-unsent] … nobody was asked — one more turn` → second turn no request_introduction (`[cliffhanger] tools=0
+  said=64 then=144`) → `[instruction-unsent] … still nothing sent — said so`. The model's „why?" reply is replaced by the
+  not-sent line. Note: 4eaa0f0 (2906) moved the instruction reading into goalIntent tonight. Please check whether it changed which
+  lines count as an order owed. The tester does not call it a regression (IN-019 never passed in this set).
+- **3666 TESTED** (48480). The tester asks whether the 1687 closing line is the „old leftover": it is not. Stored text in 47321 is
+  „…?\n\nდათო საცდელაძის ასისტენტი, დათო საცდელაძის სახელით". I asked which view showed it glued.
+
 ### 9 Oct, 07:27Z — AR and AT live; main patches needed for AU and the 1697/1698 chain
 
 - **LIVE (outage 0):** 0148c6a (AR, b6b9f01) 07:22Z; 8d4a2a8 (AT, 5b2ae3e) 07:26Z.
