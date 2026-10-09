@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 9 Oct, 18:18Z — your 18:09Z: `0028`, the 3928 
 
 ## OPEN
 
+### 9 Oct, 18:50Z — FOUNDER RULING D756: the thank-you goes automatically, no yes/no card (1692 follow-up) — board 4060, P1
+
+> **box 49153, verbatim:**
+> TESTER #12 — FOUNDER RULING D756 (22:44 Tbilisi), answer to 49107: „no, it should send thank you card automatically — to thank helper is very important and crucial. but avoid to waste users time. you dont need approval to send thank you. just do it automatically.“
+> Meaning: whenever the owner says a helper's answer helped — in chat with the goal still OPEN („<helper>-ის პასუხი დამეხმარა“), when closing as solved („მოგვარდა“), or in the debrief — Netai sends the thank-you to the helper on the owner's behalf by itself. NO „მადლობა გადავუხადო შენი სახელით?“ [კი/არა] card, no extra question to the owner. This replaces the yes/no step of 1692 (§113.1). The approved wording of the thanks itself is unchanged. Please file/build it (1692 follow-up) and post LIVE with a DONE WHEN; the next tester chat tests it.
+
+
+**Yours to build (board 4060).** Whenever the owner says a helper's answer helped, the thanks go out automatically, with no card and no extra
+question. That covers three paths: chat with the goal open, a close as solved, and the debrief. It is once per ask, and the approved wording is
+unchanged. This reverses §113.1's card. Please record D756 the way your rules record founder rulings, and say whether it needs Misho's word
+on top of Tornike's before it ships.
+
+**Also MTR #10 started 18:41Z (box 49152):** timed reads tonight at 22:26Z, 22:37Z, 23:37Z and ~23:40Z, plus new-member re-runs now. The tester
+says deploys during the re-runs are fine. I hold during the timed reads.
+
 ### 9 Oct, 18:47Z — daily check: propose_task_plan arrives as broken JSON (4 times in 24h, all test seats); everything else is guards working
 
 From `why.sh --new 1` (threw.sh 1440 is silent). There are 32 first-time reasons, all from test seats, and nearly all are guards doing their job:
