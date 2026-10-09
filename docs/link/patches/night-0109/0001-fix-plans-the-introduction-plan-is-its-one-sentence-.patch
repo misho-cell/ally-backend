@@ -1,0 +1,178 @@
+From 15d2f2682a6a7a6cea4db1eaf78979795f4896b8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 21:56:51 +0000
+Subject: [PATCH 1/3] fix(plans): the introduction plan is its one sentence and
+ one question (1454, D739)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Founder decision D739: the one-sentence plan is right, but 1 run in 3 put a
+sentence in front of it explaining the match („…შენი პირდაპირი კონტაქტია და
+ნეტაიზე წევრია, და ის იცნობს …, ეს ზუსტად ემთხვევა შენს თხოვნას."). It must
+go.
+
+On a plan reply, a sentence (or paragraph) before the plan sentence that reads
+as a match justification (two or more of: your contact / on Netai / knows /
+matches, in ka, en, ru and es) is dropped. News ahead of the plan stays (the
+tester's 1110), and a plan already in one sentence is untouched. Server-side
+only; no prompt text changes.
+
+DONE WHEN: 3 introduction plans in a row are only the one sentence and one
+question.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/planJustification.test.ts       | 47 +++++++++++++++
+ src/services/chat.service.ts                  |  6 +-
+ src/services/planJustification.ts             | 59 +++++++++++++++++++
+ 3 files changed, 111 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/planJustification.test.ts
+ create mode 100644 src/services/planJustification.ts
+
+diff --git a/src/services/__tests__/planJustification.test.ts b/src/services/__tests__/planJustification.test.ts
+new file mode 100644
+index 0000000..7478e91
+--- /dev/null
++++ b/src/services/__tests__/planJustification.test.ts
+@@ -0,0 +1,47 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { withoutMatchJustification } from '../planJustification';
++
++/**
++ * 1454 / D739: an introduction plan is one sentence and one question; the
++ * sentence explaining the match in front of it goes (run 1 of 3, 9 Oct).
++ */
++const PLAN =
++  'ბახვა გამოგონილის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ბახვამ გაგაცნოთ თამთა გამოგონილი. დავიწყო?';
++
++describe('the plan is its one sentence and one question (D739)', () => {
++  it('the founder’s run 1: the match sentence before the plan goes', () => {
++    const reply =
++      'ბახვა გამოგონილი შენი პირდაპირი კონტაქტია და ნეტაიზე წევრია, და ის იცნობს თამთა გამოგონილს, ეს ზუსტად ემთხვევა შენს თხოვნას. ' +
++      PLAN;
++    expect(withoutMatchJustification(reply)).toBe(PLAN);
++  });
++
++  it('the same sentence as its own paragraph goes too', () => {
++    const reply =
++      'Bakhva is your direct contact and a Netai member, and he knows Tamta.\n\n' +
++      'I will talk to Bakhva’s assistant and try to arrange an introduction to Tamta. Shall I start?';
++    expect(withoutMatchJustification(reply)).toBe(
++      'I will talk to Bakhva’s assistant and try to arrange an introduction to Tamta. Shall I start?',
++    );
++  });
++
++  it('news ahead of the plan stays (the tester’s 1110)', () => {
++    const reply = 'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე.\n\n' + PLAN;
++    expect(withoutMatchJustification(reply)).toBe(reply);
++  });
++
++  it('a plan that is already one sentence is untouched', () => {
++    expect(withoutMatchJustification(PLAN)).toBe(PLAN);
++  });
++
++  it('a reply with no plan sentence is untouched', () => {
++    const reply = 'ბახვა შენი პირდაპირი კონტაქტია და იცნობს თამთას.';
++    expect(withoutMatchJustification(reply)).toBe(reply);
++  });
++
++  it('the plan reply passes through it', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('withClosingQuestion(withoutMatchJustification(reply), runLang(runId))');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index b1432d8..84ce696 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -73,6 +73,7 @@ import { acceptIntroOnYes } from './introYes';
+ import { hoursUntilClock, parseClock } from './wakeAtClock';
+ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+ import { asksToReopen } from './reopenIntent';
++import { withoutMatchJustification } from './planJustification';
+ import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
+ import {
+   clampReminderMinutes,
+@@ -7448,7 +7449,10 @@ function withPlanInReply(
+   // reply was not asking for it to be approved. Only a reply carrying the
+   // approve button is a plan reply.
+   if (!replyAsksForApproval(offered)) return reply;
+-  if (replyCarriesPlan(reply, plan)) return withClosingQuestion(reply, runLang(runId));
++  if (replyCarriesPlan(reply, plan)) {
++    // D739: the plan is its one sentence and one question — no sentence explaining the match.
++    return withClosingQuestion(withoutMatchJustification(reply), runLang(runId));
++  }
+   // eslint-disable-next-line no-console
+   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+   // The tester's 1110 (33975): the plan line went first and the findings came
+diff --git a/src/services/planJustification.ts b/src/services/planJustification.ts
+new file mode 100644
+index 0000000..96b3cc0
+--- /dev/null
++++ b/src/services/planJustification.ts
+@@ -0,0 +1,59 @@
++/**
++ * 1454 / D739 (the founder, 9 Oct 00:59 Tbilisi): the introduction plan is one
++ * human sentence and one question — „ბახვას ასისტენტს დაველაპარაკები და
++ * შევეცდები მოვაგვარო, რომ ბახვამ გაგაცნოთ თამთა. დავიწყო?" — but 1 run of 3
++ * put a sentence in front of it explaining the match: „ბახვა შენი პირდაპირი
++ * კონტაქტია და ნეტაიზე წევრია, და ის იცნობს თამთას, ეს ზუსტად ემთხვევა შენს
++ * თხოვნას." That sentence goes.
++ *
++ * Narrow on purpose: a plan reply may lead with real news (the tester's 1110),
++ * so only a sentence BEFORE the plan sentence that reads as a match
++ * justification — two or more of its markers — is dropped.
++ */
++
++/** The plan sentence: the assistant talking to another assistant. */
++const PLAN_SENTENCE_RE =
++  /(ასისტენტს\s+დაველაპარაკები|ასისტენტებს\s+დაველაპარაკები|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
++
++/** What a match justification says: contact, member, knows, matches. */
++const JUSTIFICATION_MARKERS: readonly RegExp[] = [
++  /პირდაპირი\s+კონტაქტ|შენი\s+კონტაქტ|direct\s+contact|your\s+contact|прямой\s+контакт|tu\s+contacto/iu,
++  /ნეტაიზე|წევრია|წევრი\s+არის|on\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
++  /იცნობს|knows|знает|conoce/iu,
++  /ემთხვევა|matches|соответствует|coincide/iu,
++];
++
++const MIN_MARKERS = 2;
++const SENTENCE_SPLIT_RE = /(?<=[.!?…])\s+/u;
++
++function isAMatchJustification(sentence: string): boolean {
++  return JUSTIFICATION_MARKERS.filter((marker) => marker.test(sentence)).length >= MIN_MARKERS;
++}
++
++/** One paragraph without the justification sentences that come before its plan sentence. */
++function paragraphWithoutJustification(paragraph: string): string {
++  const sentences = paragraph.split(SENTENCE_SPLIT_RE);
++  const planAt = sentences.findIndex((sentence) => PLAN_SENTENCE_RE.test(sentence));
++  if (planAt <= 0) return paragraph;
++  const before = sentences.slice(0, planAt).filter((s) => !isAMatchJustification(s));
++  return [...before, ...sentences.slice(planAt)].join(' ');
++}
++
++/**
++ * The plan reply without a match-justifying sentence ahead of the plan
++ * sentence. Every other sentence, and a reply with no plan sentence, is left
++ * exactly as written.
++ */
++export function withoutMatchJustification(reply: string): string {
++  if (!PLAN_SENTENCE_RE.test(reply)) return reply;
++  const paragraphs = reply.split(/\n\s*\n/u);
++  const planParagraph = paragraphs.findIndex((p) => PLAN_SENTENCE_RE.test(p));
++  const kept = paragraphs
++    .map((paragraph, i) => {
++      if (i > planParagraph) return paragraph;
++      if (i === planParagraph) return paragraphWithoutJustification(paragraph);
++      return isAMatchJustification(paragraph) ? '' : paragraph;
++    })
++    .filter((paragraph) => paragraph.trim() !== '');
++  return kept.join('\n\n');
++}
+-- 
+2.43.0
+

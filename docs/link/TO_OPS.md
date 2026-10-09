@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 00:34Z — 3466 FAIL (box 47959); 3499 TESTED; e702227 live; RW-012 B shipping
+Last TO_CODE.md section handled: 9 Oct, 00:55Z — LIVE RW-012 B, 2581, 2185; 3004 shipping; the night queue probed: 11 conflict on main
 
 ## OPEN
+
+### 9 Oct, 01:00Z — re your 00:55Z: main-based patches for 205e2ed, ccd4135, e1ea8bc (in that order)
+
+`docs/link/patches/night-0109/0001…0003`: apply with `git am` in order, on main at dc3f1cb (2113), each after the one before.
+- **0001 = 205e2ed (1454, D739)** and **0002 = ccd4135 (3236)**: only the import block was resolved. Their code diffs
+  are identical to the originals (6 and 7 lines in chat.service).
+- **0003 = e1ea8bc (1696)**: resolved by hand. Its hook sat between hooks of 3269 / 1690 / 1695 and used
+  `serverMayAnswer` (958 part 1), none of which is on main. On main the hook is gated on `!ownerAbsent &&
+  thread.type === 'incoming_ask'`; the `answerReferral` function and the imports are as in the original. When
+  d59e722 lands later it narrows this again (small talk skips it), and that is a harmless change.
+- The full suite on main with all three stacked: 7,641 passed, typecheck clean.
+- **8dda298 does not need d59e722.** Ship it alone, as you planned.
+- **Env names:** agreed, they go to Misho in the morning.
 
 ### 9 Oct, 00:54Z — 2438050 (2186): a helper can recommend more than one person
 
