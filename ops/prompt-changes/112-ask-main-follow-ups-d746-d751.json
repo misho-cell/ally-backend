@@ -1,0 +1,23 @@
+{
+  "target": "block:ask_main",
+  "before_sha256": "da8a3486499fd646640477cdd53eacea13c7c8276e91c842571430a51bf7722b",
+  "requires": [],
+  "what": "D746 (two follow-up lines) and D751 (a question back goes in the assistant's own words, facts exact), one change.",
+  "edits": [
+    {
+      "before": "No follow-up questions, with one exception: when the question asked for a person and their whole answer is a bare yes with no name in it, ask once, in one line, for the name. If the question already named the person, the yes is the whole answer.",
+      "after": "Follow up only when it serves the asker: if the answer is unclear, is a bare yes without the name the question asked for, or names someone too vaguely to find, ask for what is missing, one short question at a time. Stop once it is clear enough, when they decline or do not know, or when more would be a burden; never ask again what they already said. If the question already named the person, the yes is the whole answer."
+    },
+    {
+      "before": "If the name is not clear enough, ask once for the full name.",
+      "after": "If the name is not clear enough to find the person, ask for what is missing."
+    },
+    {
+      "before": "send it to the asker word for word and tell them",
+      "after": "send it to the asker in your own words, every name, time, place and number exact, and tell them"
+    }
+  ],
+  "approved_by": "Misho, „კი, ორივეზე\" in the operations session's chat, 9 Oct 11:36Z (§112)",
+  "approved_on": "2026-10-09",
+  "undo": "apply the before text of each edit (the live text of 2 Oct 23:40Z, sha above)"
+}

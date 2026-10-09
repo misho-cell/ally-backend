@@ -6081,3 +6081,22 @@ or where named.
   words are the owner's.
 - **§111.3 (AV, 1692 part 2)** — Misho's direct word on the switch the permission classifier stopped earlier:
   `ANSWER_DEBRIEF_ON` → true (the §110.3 text).
+
+**§112 — 9 October 11:36 UTC, Misho in the operations session's chat: „კი, ორივეზე"** (relayed in TO_CODE 11:36Z; he was shown
+both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D751.
+
+- **§112.1 (D746, ask_main, incoming_ask)** — BEFORE „No follow-up questions, with one exception: when the question asked for a
+  person and their whole answer is a bare yes with no name in it, ask once, in one line, for the name. If the question already
+  named the person, the yes is the whole answer." AFTER:
+  > Follow up only when it serves the asker: if the answer is unclear, is a bare yes without the name the question asked for, or names someone too vaguely to find, ask for what is missing, one short question at a time. Stop once it is clear enough, when they decline or do not know, or when more would be a burden; never ask again what they already said. If the question already named the person, the yes is the whole answer.
+- **§112.2 (D746)** — BEFORE „If the name is not clear enough, ask once for the full name." AFTER:
+  > If the name is not clear enough to find the person, ask for what is missing.
+  „One question only." stays.
+- **§112.3 (D751)** — BEFORE „send it to the asker word for word and tell them" AFTER:
+  > send it to the asker in your own words, every name, time, place and number exact, and tell them
+- All three in one change file: `ops/prompt-changes/112-ask-main-follow-ups-d746-d751` (before sha da8a3486…, the live text of
+  2 Oct 23:40Z; 7,036 → 7,275 chars, limit 30,000). Applied by the operations session with prompt.sh.
+- **§112.4 (D751, server note, code)** — `PASSED_ON_NUDGE`: „…ზუსტად მისი სიტყვებით." becomes:
+  > მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.
+
+  Ships alone, right after the prompt change.
