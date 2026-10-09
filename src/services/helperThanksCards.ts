@@ -22,7 +22,8 @@ const THANK_CARD: ByLanguage<(helper: string) => string> = {
 };
 
 const THANK_CHOICES: ByLanguage<readonly [string, string]> = {
-  ka: ['კი, მადლობა გადაუხადე', 'არა, საჭირო არაა'],
+  // Not the match card's no-label (1699): one label, one card, or a tap settles the wrong one.
+  ka: ['კი, მადლობა გადაუხადე', 'არა, მადლობა არ მინდა'],
   en: ['Yes, thank them', 'No need'],
   ru: ['Да, поблагодари', 'Не нужно'],
   es: ['Sí, dale las gracias', 'No hace falta'],

@@ -46,6 +46,7 @@ async function askForThanks(askerUserId: string, askId: number): Promise<AskForT
             ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name
        FROM task_asks ta
       WHERE ta.id = $1 AND ta.from_user_id = $2::int AND ta.parent_ask_id IS NULL
+        AND ta.status = 'answered' AND ta.declined_at IS NULL
       LIMIT 1`,
     [askId, askerUserId],
     QUERY_TIMEOUT_MS,
@@ -59,9 +60,12 @@ export async function offerHelperThanks(askerUserId: string, askId: number): Pro
   const helper = ask?.helper_name?.trim() ?? '';
   if (ask === null || ask.card_thread_id === null || helper === '') return false;
   const opened = await query<{ id: number }>(
+    // A day-14 following-up row gives way to the card: a late helped still thanks them.
     `INSERT INTO helper_thanks (ask_id, task_id, asker_user_id, helper_user_id, card_thread_id)
      VALUES ($1, $2, $3::int, $4, $5)
-     ON CONFLICT (ask_id) DO NOTHING
+     ON CONFLICT (ask_id) DO UPDATE
+       SET state = 'offered', card_thread_id = EXCLUDED.card_thread_id
+       WHERE helper_thanks.state = 'followed_up'
      RETURNING id`,
     [askId, ask.task_id, askerUserId, ask.helper_user_id, ask.card_thread_id],
     QUERY_TIMEOUT_MS,
@@ -183,18 +187,27 @@ async function settleThankCard(
   row: OpenThanks,
   tap: ThanksTap,
   language: RunLanguage,
-): Promise<ThanksReply> {
+): Promise<ThanksReply | null> {
   const helper = row.helper_name?.trim() ?? '';
   const thank = tap === ThanksTap.Thank;
-  const thanked = thank && (await thankTheHelper(row));
-  await query(
+  // Claimed before anything is sent: a yes arriving twice in a second thanks once.
+  const claimed = await query<{ id: number }>(
     `UPDATE helper_thanks
-        SET state = 'decided', share_result = $2, decided_at = NOW(),
-            thanked_at = CASE WHEN $3::boolean THEN NOW() END
-      WHERE id = $1`,
-    [row.id, thank ? 'thanks_only' : 'no', thanked],
+        SET state = 'decided', share_result = $2, decided_at = NOW()
+      WHERE id = $1 AND state = 'offered'
+      RETURNING id`,
+    [row.id, thank ? 'thanks_only' : 'no'],
     QUERY_TIMEOUT_MS,
   );
+  if (claimed.rows.length === 0) return null;
+  const thanked = thank && (await thankTheHelper(row));
+  if (thanked) {
+    await query(
+      `UPDATE helper_thanks SET thanked_at = NOW() WHERE id = $1`,
+      [row.id],
+      QUERY_TIMEOUT_MS,
+    );
+  }
   const again = againCardText(language, helper);
   return {
     text: thanked ? `${thankedLine(language, helper)} ${again}` : again,
@@ -213,12 +226,13 @@ export async function settleThanksTap(
   const row = await thanksWaitingHere(userId, threadId, firstCard ? 'offered' : 'decided');
   if (row === null) return null;
   if (firstCard) return settleThankCard(row, tap, language);
-  await query(
-    `UPDATE helper_thanks SET state = 'asked_again', ask_again = $2 WHERE id = $1`,
+  const stored = await query<{ id: number }>(
+    `UPDATE helper_thanks SET state = 'asked_again', ask_again = $2
+      WHERE id = $1 AND state = 'decided' RETURNING id`,
     [row.id, tap === ThanksTap.AgainYes],
     QUERY_TIMEOUT_MS,
   );
-  return { text: notedLine(language) };
+  return stored.rows.length === 0 ? null : { text: notedLine(language) };
 }
 
 /** Day 14 after the helper's answer, with no word from the asker. */
