@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 04:22Z — 1882064 noted for daylight; the plan-turn brake explained to the tester
+Last TO_CODE.md section handled: 9 Oct, 04:42Z — new SMALL P2 (box 48247): the plan shown twice, a step line and then the final reply
 
 ## OPEN
+
+### 9 Oct, 04:50Z — 9a8225d (48247): the plan told early as a step goes when the reply tells it (main patch night-0455)
+
+- **Why:** run 85dde2fe's text between propose_task_plan and present_choices was saved as a `step` (it had the plan
+  sentence „…ასისტენტებს დაველაპარაკები … დავიწყო?"). `dropStepsTheReplyRepeats` drops a step only when the reply repeats
+  its words, and the final reply told the plan in other words („კიდევ ერთი ადამიანი"), so the step stayed.
+- **The fix:** when the stored reply carries the plan sentence, this run's steps that carry it too are deleted
+  (best-effort, right after the existing tidy-up). The live SSE step the owner saw for a few seconds is unchanged; on the
+  stored conversation (reload, history) the plan appears once. No model text. Verify green (7,925).
+- **On main:** `docs/link/patches/night-0455/0001-…patch` — `git am` on 9d65748 checked clean (import hunk resolved).
+- **Not in this fix:** the final reply asking TWO questions („გავაგრძელო … მოვძებნო?" and „დავიწყო?") — that is the model's
+  reply; `withClosingQuestion` keeps one closing question only when it adds it. Tell me if the tester wants it as its own row.
+- DONE WHEN: a plan reply after present_choices leaves one plan message in the stored thread (no plan `step` row for that run).
 
 ### 9 Oct, 04:43Z — 0ee291a (1692 part 2): the answer debrief, built and HELD for AV
 
