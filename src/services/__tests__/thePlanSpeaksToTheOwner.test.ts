@@ -37,6 +37,19 @@ describe('the plan reply speaks of the owner’s network', () => {
     expect(withOwnersNetwork('Did you mean my message?')).toBe('Did you mean my message?');
   });
 
+  it('says Netai’s own asking as its own (48086, conv 46897)', () => {
+    const reply =
+      'საუკეთესო გზა ასეთია: ყველა შენს ოთხივე ნაცნობს (გია, დავითი) ჰკითხავ, ხომ არ იცნობენ კარგ ბუღალტერს.\n\nდავიწყო?';
+    expect(withOwnersNetwork(reply)).toBe(
+      'საუკეთესო გზა ასეთია: ყველა შენს ოთხივე ნაცნობს (გია, დავითი) ვკითხავ, ხომ არ იცნობენ კარგ ბუღალტერს.\n\nდავიწყო?',
+    );
+  });
+
+  it('leaves „you" when the owner does it himself', () => {
+    const line = 'ამ ორს შენ თვითონ ჰკითხავ, დანარჩენს მე მივწერ.';
+    expect(withOwnersNetwork(line)).toBe(line);
+  });
+
   it('runs on the plan reply only, after the approval check', () => {
     const body = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const at = body.indexOf('function withPlanInReply(');

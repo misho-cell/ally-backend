@@ -51,11 +51,48 @@ const VOICE_FIXES: readonly VoiceFix[] = [
 /** Quoted spans („…", "…", «…») — someone's own words. */
 const QUOTED_RE = /(„[^"“”]*["“”]|"[^"]*"|«[^»]*»)/u;
 
-function inSecondPerson(text: string): string {
-  return VOICE_FIXES.reduce((out, fix) => out.replace(fix.pattern, fix.second), text);
+/**
+ * 48086 (conv 46897): „…ოთხივე ნაცნობს … ჰკითხავ, ხომ არ იცნობენ…" — the plan
+ * told the OWNER he would ask, when the asking is Netai's. In a plan reply,
+ * Netai's own actions in the „you" form are its own: ჰკითხავ → ვკითხავ. Not
+ * when the sentence says the owner does it himself („შენ", „თვითონ" before the
+ * verb) — then „you" is right.
+ */
+const NETAIS_OWN_ACTS_KA: Readonly<Record<string, string>> = {
+  ჰკითხავ: 'ვკითხავ',
+  მისწერ: 'მივწერ',
+  გაუგზავნი: 'გავუგზავნი',
+  დაუკავშირდები: 'დავუკავშირდები',
+  დაელაპარაკები: 'დაველაპარაკები',
+};
+const NETAIS_OWN_ACT_RE = new RegExp(
+  `(?<![\\p{L}\\p{M}])(${Object.keys(NETAIS_OWN_ACTS_KA).join('|')})(?![\\p{L}\\p{M}])`,
+  'gu',
+);
+const OWNER_DOES_IT_RE = /(?<![\p{L}\p{M}])(?:შენ|თვითონ|თავად)(?![\p{L}\p{M}])/u;
+/** Split after every sentence end, keeping every character. */
+const AFTER_SENTENCE_END_RE = /(?<=[.!?\n])/u;
+
+function netaiDoesTheAsking(text: string): string {
+  return text
+    .split(AFTER_SENTENCE_END_RE)
+    .map((sentence) =>
+      sentence.replace(NETAIS_OWN_ACT_RE, (verb, _w: string, offset: number) =>
+        OWNER_DOES_IT_RE.test(sentence.slice(0, offset))
+          ? verb
+          : (NETAIS_OWN_ACTS_KA[verb] ?? verb),
+      ),
+    )
+    .join('');
 }
 
-/** The plan reply with Netai's „my contacts / my network" said as the owner's. */
+function inSecondPerson(text: string): string {
+  return netaiDoesTheAsking(
+    VOICE_FIXES.reduce((out, fix) => out.replace(fix.pattern, fix.second), text),
+  );
+}
+
+/** The plan reply with Netai's „my contacts / my network" said as the owner's, and its own acts as its own. */
 export function withOwnersNetwork(reply: string): string {
   return reply
     .split(QUOTED_RE)
