@@ -1,7 +1,9 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 jest.mock('../openingSearch.service', () => ({ __esModule: true, findWaysIn: jest.fn() }));
+jest.mock('../tools/searchByTag', () => ({ __esModule: true, ownMatchesFor: jest.fn() }));
 
 import ExcelJS from 'exceljs';
+import { ownMatchesFor } from '../tools/searchByTag';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
@@ -270,6 +272,37 @@ describe('the worked list as Excel', () => {
     expect(String(row(2)[5])).not.toContain('599 12 34 56');
     expect(row(3).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
     expect(String(mockQuery.mock.calls[0][0])).toContain('t.user_id = $2::text');
+  });
+
+  it('says who among the owner’s contacts fits each row’s need (4160)', async () => {
+    const mockMatches = ownMatchesFor as jest.MockedFunction<typeof ownMatchesFor>;
+    mockMatches.mockImplementation(async (_user: string, need: string) =>
+      need === 'ბუღალტერი' ? [{ phone: 'p1', name: 'ლევან ბუღალტერი' }] : [],
+    );
+    const row = (name: string, need: string): Record<string, unknown> => ({
+      row_data: [name, need],
+      way_in: 'none',
+      through_whom: null,
+      state: 'no_route',
+      answer: null,
+      columns: ['name', 'need'],
+    });
+    mockQuery.mockResolvedValueOnce({
+      rows: [row('დავით', 'ბუღალტერი'), row('ნატო', 'ექიმი'), row('გიორგი', 'ბუღალტერი')],
+      rowCount: 3,
+    } as never);
+    const buffer = await listWorkbook('501', 10, 'ka');
+    if (buffer === null) throw new Error('expected a workbook');
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(buffer as unknown as ArrayBuffer);
+    const values = (n: number): unknown[] =>
+      (book.worksheets[0].getRow(n).values as unknown[]).slice(1);
+    expect(values(1)[6]).toBe('Netai: საჭიროებაში დაგეხმარება');
+    expect(values(2)[6]).toBe('ლევან ბუღალტერი');
+    expect(values(3)[6] ?? '').toBe('');
+    expect(values(4)[6]).toBe('ლევან ბუღალტერი');
+    // One lookup per distinct need, not per row.
+    expect(mockMatches).toHaveBeenCalledTimes(2);
   });
 
   it('is nothing when the goal has no list of this owner’s', async () => {
