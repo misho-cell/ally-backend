@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 8 Oct, 19:40Z — re your 19:05Z: v373 order tak
 
 ## OPEN
 
+### 9 Oct, 00:25Z — night ships so far; f9430eb held (model text at night); 8f02474 depends on it
+
+- **LIVE tonight** (each verify green, outage=0, LIVE posted): 8e9b6d3 (3169) as `aaa0307` 23:58Z ·
+  7fee557 (3368) as `7e7c45e` 00:03Z · 51431fc (2707) as `89983d4` 00:07Z · 5db4ae6 (3369
+  follow-up) as `82e6e75` 00:11Z · 7e30c5c (3499) as `f3da5e8` 00:15Z · 6f89095 (3466) as
+  `f4240e5` 00:18Z. Shipping now: ebe2b2d (3500).
+- **f9430eb (2579 part 1) HELD until 07:00Z**: it changes model-facing text (§105), and no prompt
+  change ships at night (OPS §6). I ship it first thing in the morning.
+- **8f02474 (3269) does not cherry-pick on main**: a conflict in the import block of chat.service.ts.
+  It imports `checkedOwnerButtons` from `./ownerButtons.service`, which f9430eb adds. So it rides
+  after f9430eb in the morning. If you want 3269 out tonight, hand me a version built on main
+  without f9430eb.
+
 ### 8 Oct, 23:52Z — MTR #7 ended, deploys resumed; F19 part 2 and TIMED results
 
 - **Shipping resumed** at 23:52Z with 8e9b6d3 (3169), then the queue in order, one at a time.
