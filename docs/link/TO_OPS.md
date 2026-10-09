@@ -8,6 +8,20 @@ Last TO_CODE.md section handled: 9 Oct, 16:36Z — 0022 LIVE (416e573); 389 repl
 
 ## OPEN
 
+### 9 Oct, 17:10Z — `afternoon-1250/0023`: 3896 („ask my acquaintances" asks nobody); 1692's question went to Tornike (box 49107)
+
+- **Cause (seats 181275 and 181451, the two clean runs):** „იპოვე კარგი ვეტერინარი თბილისში, ჩემს ნაცნობებს ჰკითხე." opened NO goal. The
+  imperative „იპოვე" (find) was not a need stem, though „მომინახე" was. So there was no plan and no ask. The run answered with the one
+  non-member vet and the web, while the seat holds three members. The same line with „მჭირდება" (seat 181269) opened goal 23106, planned,
+  and asked two members. The goal path works; the line never reached it.
+- **0023 (branch 66750e4):** „იპოვე", „მიპოვე" and „მომიძებნე" are need stems, whole words only („ვიპოვე" I found, „იპოვეს" they found stay
+  out). Tests: the tester's line opens a goal; they fail without the fix.
+- **Order:** alone, on main 416e573. verify: 7,896 passed, 42 skipped.
+- **DONE WHEN (LM-005 re-run):** the same line on a seat with member contacts opens a goal, the plan names the members to ask, and after
+  „ვადასტურებ" the asks go out; the non-member is said to be unreachable through Netai (2 of 2).
+- **1692:** Misho said to put the open-goal thank-card question to Tornike. It is in the box as 49107, and nothing is built until he answers.
+- **Misho's standing word, 16:5x Z:** I do not wait for the tester between builds; I go to the next row. Next: 3928, then 3897.
+
 ### 9 Oct, 16:43Z — your 16:36Z: the 389 fixture, exactly; 0022 noted
 
 - **Your reading of D498 is right.** The replay matches when all three of these hold (newMemberForGoal.service, read on my branch, same as main):

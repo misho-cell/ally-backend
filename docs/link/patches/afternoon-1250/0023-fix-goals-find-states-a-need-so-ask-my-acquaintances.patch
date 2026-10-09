@@ -1,0 +1,88 @@
+From bd4dad6576200ed6027311b5dc058ac9d40b192d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 17:07:15 +0000
+Subject: [PATCH] =?UTF-8?q?fix(goals):=20=E2=80=9E=E1=83=98=E1=83=9E?=
+ =?UTF-8?q?=E1=83=9D=E1=83=95=E1=83=94"=20(find)=20states=20a=20need,=20so?=
+ =?UTF-8?q?=20=E2=80=9Eask=20my=20acquaintances"=20opens=20a=20goal=20and?=
+ =?UTF-8?q?=20asks=20(3896)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+LM-005, 2 of 2 (seats 181275, 181451): „იპოვე კარგი ვეტერინარი თბილისში,
+ჩემს ნაცნობებს ჰკითხე." opened no goal — the imperative „find" was not a
+need stem though „მომინახე" was — so no plan was proposed and the three
+members in the phonebook were never asked; the run answered with one
+non-member contact and the web. The same line with „მჭირდება" opened a goal,
+planned, and asked two members (goal 23106).
+
+„იპოვე", „მიპოვე" and „მომიძებნე" are need stems now, whole words only
+(„ვიპოვე" I found, „იპოვეს" they found stay out).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/goalIntent.test.ts | 20 ++++++++++++++++++++
+ src/services/goalIntent.ts                | 10 +++++++++-
+ 2 files changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/goalIntent.test.ts b/src/services/__tests__/goalIntent.test.ts
+index b3c9451..3c2f2f5 100644
+--- a/src/services/__tests__/goalIntent.test.ts
++++ b/src/services/__tests__/goalIntent.test.ts
+@@ -3,6 +3,7 @@ import {
+   goalTitleFrom,
+   isQuestionNotGoal,
+   needsNoOpeningSearch,
++  statesANeed,
+ } from '../goalIntent';
+ 
+ describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
+@@ -257,3 +258,22 @@ describe('a greeting is not part of the goal', () => {
+     expect(goalTitleFrom('I need someone to say hi to the mayor')).toContain('hi');
+   });
+ });
++
++/** 3896 (LM-005, 2 of 2): „find" in the imperative is a need, so the goal opens and the members are asked. */
++describe('„იპოვე" states a need', () => {
++  it('opens a goal for the tester’s line', () => {
++    expect(looksLikeGoalRequest('იპოვე კარგი ვეტერინარი თბილისში, ჩემს ნაცნობებს ჰკითხე.')).toBe(
++      true,
++    );
++  });
++
++  it('reads „მიპოვე" and „მომიძებნე" the same way', () => {
++    expect(statesANeed('მიპოვე კარგი სანტექნიკოსი')).toBe(true);
++    expect(statesANeed('მომიძებნე ბუღალტერი ვაკეში')).toBe(true);
++  });
++
++  it('leaves „I found" and „they found" alone', () => {
++    expect(statesANeed('ვიპოვე კარგი ვეტერინარი, მადლობა')).toBe(false);
++    expect(statesANeed('მეგობრებმა იპოვეს ვეტერინარი')).toBe(false);
++  });
++});
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index 282728e..5a036d4 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -16,8 +16,16 @@ const MIN_GOAL_MESSAGE_CHARS = 12;
+ const MAX_TITLE_CHARS = 90;
+ 
+ // A stated need, at a word start. Georgian verbs decline, so stems.
++/**
++ * 3896 (LM-005, 2 of 2): „იპოვე კარგი ვეტერინარი თბილისში, ჩემს ნაცნობებს
++ * ჰკითხე." opened no goal — „find" in the imperative was not a need stem
++ * though „მომინახე" (find it for me) was — so no plan, and the three members
++ * in the phonebook were never asked. „იპოვე", „მიპოვე" and „მომიძებნე" state
++ * the same need. Whole words only: the leading class already keeps „ვიპოვე"
++ * (I found) out, and their own trailing lookahead keeps „იპოვეს" (they found).
++ */
+ const NEED_RE_KA =
+-  /(^|[^ა-ჰ])(მჭირდება|მჭირდება|გვჭირდება|დამჭირდა|ვეძებ|ვეძებთ|საჭიროა|მინდა\s+(ვიპოვო|გავიცნო|შევხვდე|ვნახო|დავუკავშირდე|მოვძებნო|ვისწავლო)|მინდა\s+\S+\s+(ვიპოვო|გავიცნო|შევხვდე)|დამეხმარე|მომინახე|მიშოვე|მაშოვნინე|გამაცანი|დამაკავშირე|მიზნად\s+შეინახე|ეს\s+მიზანია)/;
++  /(^|[^ა-ჰ])(მჭირდება|მჭირდება|გვჭირდება|დამჭირდა|ვეძებ|ვეძებთ|საჭიროა|მინდა\s+(ვიპოვო|გავიცნო|შევხვდე|ვნახო|დავუკავშირდე|მოვძებნო|ვისწავლო)|მინდა\s+\S+\s+(ვიპოვო|გავიცნო|შევხვდე)|დამეხმარე|მომინახე|(?:იპოვე|მიპოვე|მომიძებნე)(?![ა-ჰ])|მიშოვე|მაშოვნინე|გამაცანი|დამაკავშირე|მიზნად\s+შეინახე|ეს\s+მიზანია)/;
+ const NEED_RE_EN =
+   /\b(i need|we need|need a|need an|need some|looking for|find me|help me find|want to meet|i want to find|introduce me|connect me|set (this|it) as a goal|make (this|it) a goal)\b/i;
+ const NEED_RE_ES = /\b(necesito|busco|estoy buscando|quiero conocer|ayúdame a encontrar)\b/i;
+-- 
+2.43.0
+
