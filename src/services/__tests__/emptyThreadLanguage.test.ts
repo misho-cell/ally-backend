@@ -1,3 +1,7 @@
+jest.mock('../languagePreference', () => ({
+  languagePreference: jest.fn(() => Promise.resolve(null)),
+  threadLanguagePreference: jest.fn(() => Promise.resolve(null)),
+}));
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 
 import { query } from '../../db/postgres/client';

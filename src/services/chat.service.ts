@@ -74,6 +74,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { asksToReopen } from './reopenIntent';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
+import { askedLanguage, languagePreference } from './languagePreference';
 import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
 import { withOwnersNetwork } from './planVoice';
 import { offerReferral, referralTapOf } from './askReferral.service';
@@ -15466,6 +15467,16 @@ export async function processChat(
         `${language}, the conversation is ${conversationLanguage} — using the conversation's`,
     );
     language = conversationLanguage;
+    runLanguages.set(runId, language);
+  }
+  // D752: the owner's own request for a language wins over everything read above.
+  const asked = ownerAbsent
+    ? await languagePreference(userId).catch(() => null)
+    : await askedLanguage(userId, userMessage);
+  if (asked !== null && asked !== language) {
+    // eslint-disable-next-line no-console
+    console.log(`[run-language] run ${runId}: the owner asked for ${asked} — using it (D752)`);
+    language = asked;
     runLanguages.set(runId, language);
   }
   // Row 154's verdicts now join the run's collection inside

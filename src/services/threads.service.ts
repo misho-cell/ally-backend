@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { languagePreference, threadLanguagePreference } from './languagePreference';
 import {
   carriesLanguage,
   languageOfConversation,
@@ -1020,6 +1021,9 @@ export async function getThreadMessages(
  * the bug rather than of the conversation.
  */
 export async function threadLanguage(threadId: number): Promise<RunLanguage> {
+  // D752: a language the owner asked for is read before the thread's lines.
+  const preferred = await threadLanguagePreference(threadId).catch(() => null);
+  if (preferred !== null) return preferred;
   const [latest, ...earlier] = await ownerMessages(threadId);
   // The tester's 38809 (Lika): a new conversation whose only line was „." —
   // sent to make the attach button work — answered the file in English to a
@@ -1171,6 +1175,9 @@ export async function userLanguage(userId: string): Promise<RunLanguage> {
      LIMIT $2`,
     [userId, LANGUAGE_SAMPLE_MESSAGES, ATTACHMENT_CHIP_PATTERN],
   );
+  // D752: a language the person asked for is read before their messages.
+  const preferred = await languagePreference(userId).catch(() => null);
+  if (preferred !== null) return preferred;
   const [latest, ...earlier] = result.rows.map((r) => r.content);
   // „Continue in the language he responds" is the rest of D505, and it is
   // already what happens: the moment there is one message, it decides, and the
