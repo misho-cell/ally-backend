@@ -37,6 +37,21 @@ describe('the column a row is called by', () => {
   it('is the first one when no header names it', () => {
     expect(nameColumn(['A', 'B'])).toBe(0);
   });
+
+  /** 3897 (box 48679): „N | need | city" was looked up as „1", „2", „3". */
+  it('is never a counting column', () => {
+    expect(nameColumn(['N', 'need', 'city'])).toBe(1);
+    expect(nameColumn(['#', 'საჭიროება'])).toBe(1);
+    expect(
+      nameColumn(
+        ['row', 'need'],
+        [
+          ['1', 'ბუღალტერი'],
+          ['2', 'იურისტი'],
+        ],
+      ),
+    ).toBe(1);
+  });
 });
 
 describe('a row’s state from its way in', () => {
@@ -103,7 +118,14 @@ describe('starting work on a list', () => {
       throughWhom: 'ნინო',
     });
     const [insert, params] = mockQuery.mock.calls[1];
-    expect(String(insert)).toContain('ON CONFLICT (task_id, thread_file_id, row_index) DO NOTHING');
+    // 3897: a row only looked up is looked up again; a row somebody was asked about keeps its state.
+    expect(String(insert)).toContain('ON CONFLICT (task_id, thread_file_id, row_index) DO UPDATE');
+    expect(String(insert)).toContain('WHERE list_items.state = ANY($4::text[])');
+    expect((params as unknown[])[3]).toEqual([
+      ListItemState.RouteFound,
+      ListItemState.NoRoute,
+      ListItemState.Unchecked,
+    ]);
     // The contact's number is stored with its row, and never handed back.
     const stored = JSON.parse(String((params as unknown[])[2])) as { through_phone: unknown }[];
     expect(stored.map((r) => r.through_phone)).toEqual(['995500000001', null]);
