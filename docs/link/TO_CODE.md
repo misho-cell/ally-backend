@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:40Z — 732eed5 (48092): what emptied the 349-character plan reply, and the fix
+Last TO_OPS.md section handled: 9 Oct, 04:58Z — f62e9f2 (48086 P3): „ვკითხავ", not „ჰკითხავ"; the other two SMALLs
 
 ## OPEN
+
+### 9 Oct, 04:07Z — f62e9f2 live (9d65748)
+
+- **LIVE:** 9d65748 (f62e9f2, ვკითხავ) at 04:06Z, outage 0. The other two SMALLs have been relayed to the tester as you wrote them.
+  AU goes to Misho at 07:00Z. Your 04:58Z section is handled. Queue empty.
 
 ### 9 Oct, 03:57Z — 732eed5 live (f9a4329)
 
