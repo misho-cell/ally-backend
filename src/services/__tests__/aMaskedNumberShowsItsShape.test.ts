@@ -33,7 +33,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
   const handler = chat.slice(chat.indexOf("case 'propose_task_plan': {"));
 
   it('is checked first in propose_task_plan', () => {
-    const check = handler.indexOf('ownerJustInstructedThePlansOnePerson(');
+    const check = handler.indexOf('ownerJustInstructedThePlansPeople(');
     expect(check).toBeGreaterThan(-1);
     expect(check).toBeLessThan(handler.indexOf('planNamesPeople('));
     expect(handler.slice(check, check + 300)).toContain(
@@ -41,12 +41,15 @@ describe('a plan for the one person the owner just instructed is refused', () =>
     );
   });
 
-  it('only for a plan of exactly one person, an instruction, naming an own contact', () => {
-    const fn = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansOnePerson'));
-    const body = fn.slice(0, 900);
-    expect(body).toContain('peopleAddedToPlan(plan, inForce).length !== 1');
-    expect(body).toContain('looksLikeContactInstruction(instructionSentence(said.trim()))');
-    expect(body).toContain('messageNamesOwnContact(userId, said)');
+  it('only for a plan adding exactly the people an own-contact instruction names (3928: one or more)', () => {
+    const fn = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansPeople'));
+    const body = fn.slice(0, 1100);
+    expect(body).toContain('if (added.length === 0) return false;');
+    expect(body).toContain('if (!looksLikeContactInstruction(sentence)) return false;');
+    expect(body).toContain(
+      'if (added.length === 1) return await messageNamesOwnContact(userId, said);',
+    );
+    expect(body).toContain('return await planAddsOnlyThePeopleNamed(userId, sentence, added);');
   });
 
   it('sends the run to the grant and the ask', () => {

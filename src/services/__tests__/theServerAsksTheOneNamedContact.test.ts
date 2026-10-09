@@ -22,7 +22,7 @@ jest.mock('../taskStore.service', () => ({
 const mockQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
 
-import { InstructedAskResult, sendInstructedAsk } from '../instructedAsk';
+import { contactsNamed, InstructedAskResult, sendInstructedAsk } from '../instructedAsk';
 import { EXCLUDED_LINE, NOT_ON_NETAI_LINE } from '../instructionUnsent';
 
 /** §97 item 1: case 1's second chance sent nothing; the server asks the one named contact. */
@@ -182,5 +182,23 @@ describe('a meeting the owner asks to set up', () => {
     expect(outcome).toMatchObject({ result: InstructedAskResult.Sent, toName: 'ნანული მოგონილი' });
     expect(mockFindPhones.mock.calls[0][1]).toBe('ნანული მოგონილ');
     expect(mockCreateAsk.mock.calls[0][3]).toBe('შეხვედრა ხვალ 3 საათზე.');
+  });
+});
+
+/** 3928 re-run (box 49146, conv 48289): full surname datives, no hyphen. */
+describe('the tester’s second line', () => {
+  it('names both helpers, each one saved contact', async () => {
+    mockFindPhones.mockImplementation((_u: string, name: string) =>
+      Promise.resolve(name.startsWith('ლაშა') ? ['995500000031'] : ['995500000032']),
+    );
+    await expect(
+      contactsNamed(
+        '181941',
+        'კარგი ელექტრიკოსი მჭირდება საბურთალოზე, ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს.',
+      ),
+    ).resolves.toEqual([
+      { phone: '995500000031', typed: 'ლაშა მილიძე' },
+      { phone: '995500000032', typed: 'დათო ტრუბაძე' },
+    ]);
   });
 });
