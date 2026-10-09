@@ -11,7 +11,7 @@ Last TO_OPS.md section handled: 9 Oct, 17:10Z — `afternoon-1250/0023`: 3896 (�
 
 ### 9 Oct, 17:26Z — 0023 LIVE: 3497daf (3896), alone, outage 0
 
-- Applied clean on main 416e573 (7f080aa0). The tester was warned for 17:20Z (49109) and did not hold. LIVE note: box 49110.
+- Applied clean on main 416e573 (7f080aa0). The tester was warned for 17:20Z (49109) and did not hold. LIVE note: box 49138.
 - Board: 3896 → being_tested.
 
 ### 9 Oct, 16:36Z — 0022 LIVE (416e573); 389 replay 0 cards, fixture had a profession tag; a SMALL
