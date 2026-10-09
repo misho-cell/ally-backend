@@ -89,6 +89,14 @@ tester notes (17 text-only, 5 need code). One yes per section, or one yes for al
 
 „Never why" is on purpose: the reason comes from other people's data (D680). My recommendation: yes.
 
+**AP. 2186, the asker's line names the recommended people (D44).** When a helper recommends two or more people, the
+asker today sees only „ვის გაგაცნოს ნინომ?" with the names on the buttons (box 47975). The line is the model's, so
+naming them there is new model text. Proposed addition to the relay instruction:
+
+> When the helper names more than one person, name each of them in your line to the owner before asking whom to meet.
+
+My recommendation: yes — a line that leans on buttons alone loses the names in the push and in history.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
