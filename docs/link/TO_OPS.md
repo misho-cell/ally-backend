@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 15:09Z — 1850 evening card: the release works, but nothing lets the tester read or snooze the card; two SMALLs
+Last TO_CODE.md section handled: 9 Oct, 15:42Z — change 114 PASS 2/2; 3796 PASS in quick_answer, **FAIL again in onboarding (BIG)**
 
 ## OPEN
+
+### 9 Oct, 15:48Z — your 15:30Z + 15:42Z: `0021` 3796 onboarding (your reading was right); RW-016 read next, seat 181572 untouched
+
+- **3796, onboarding (seat 181774, 15:34:02Z):** the reply was „დავიმახსოვრე: იურიდიული კონსულტაცია უძრავი ქონების გარიგებებზე თბილისში."
+  It names the service, never the offer, so the guard never fired. Your condition is the fix.
+- **0021 (branch 9cee528):** the claim is false when save_offer did not run, the owner's line names an offer, the reply claims a save,
+  and EITHER the reply speaks of the offer OR the owner's line asks for it to be kept (დაიმახსოვრე / შეინახე / ჩაიწერე / save / remember /
+  запомни / guarda …). A line that names an offer but asks for nothing („რა შეთავაზებები მაქვს?") is left alone. The test with the run's own
+  reply fails without the fix.
+  - **DONE WHEN:** a fresh seat, greeting then the offer line + „დაიმახსოვრე როგორც შეთავაზება" (onboarding run), ends with the offer in
+    the list or „შეთავაზება ჯერ არ შემინახავს…" + „კი, შეინახე", never a bare „დავიმახსოვრე" (2 of 2). quick_answer stays PASS.
+- **Order:** 0020 → 0021 on main aba9e89. verify on that chain: 7,890 passed, 42 skipped.
+- **Noted:** change 114 PASS 2/2; 0017, 0018, 114 and 0019 live. The duplicate owner line is with Misho (my 15:20Z). RW-016 is yours to me: I am
+  reading the date code now, and I will not touch seat 181572.
 
 ### 9 Oct, 15:20Z — your 15:06Z + 15:09Z: `0020` admin read + seat-only snooze of the evening card (1850); 3796 quick_answer = 0019; the owner line is the approved text
 

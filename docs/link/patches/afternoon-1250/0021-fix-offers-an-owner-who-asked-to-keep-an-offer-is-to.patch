@@ -1,0 +1,91 @@
+From 16f29472827c3162cddeedcdf0edb8b19cbbe367 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 15:45:13 +0000
+Subject: [PATCH] fix(offers): an owner who asked to keep an offer is told the
+ truth, however the reply words it (3796, box 48975)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fresh seat, onboarding run, 15:34Z: „…დაიმახსოვრე როგორც შეთავაზება." was
+answered „დავიმახსოვრე: იურიდიული კონსულტაცია…" — the service named, never
+the offer, so the guard waiting for the offer word in the reply let it pass.
+
+Now the claim is false when save_offer did not run and either the reply
+speaks of the offer or the owner's own line names an offer AND asks for it
+to be kept (დაიმახსოვრე / შეინახე / save / запомни …). A line that names an
+offer but asks for nothing is left alone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anOfferIsSavedOnlyWhenSaved.test.ts          | 15 ++++++++++++++-
+ src/services/offerClaim.ts                       | 16 +++++++++++++++-
+ 2 files changed, 29 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+index a347c39..30a9c64 100644
+--- a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
++++ b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+@@ -33,8 +33,21 @@ describe('a reply that says an offer was saved', () => {
+     expect(offerClaimWithoutTool(verb, [], owner)).toBe(true);
+   });
+ 
++  it('is caught when the reply names only the service (box 48975, onboarding run)', () => {
++    const bare = 'დავიმახსოვრე: იურიდიული კონსულტაცია უძრავი ქონების გარიგებებზე თბილისში.';
++    expect(offerClaimWithoutTool(bare, [], owner)).toBe(true);
++  });
++
++  it('leaves a reply alone when the owner named an offer but asked for nothing to be kept', () => {
++    expect(
++      offerClaimWithoutTool('დავიმახსოვრე, რომ ბუღალტერი ხარ.', [], 'რა შეთავაზებები მაქვს?'),
++    ).toBe(false);
++  });
++
+   it('leaves „polite" alone — it shares the root, not the meaning', () => {
+-    expect(offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], owner)).toBe(false);
++    expect(
++      offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], 'რა შეთავაზებები მაქვს?'),
++    ).toBe(false);
+   });
+ 
+   it('is caught in English too', () => {
+diff --git a/src/services/offerClaim.ts b/src/services/offerClaim.ts
+index ed5316d..15e0100 100644
+--- a/src/services/offerClaim.ts
++++ b/src/services/offerClaim.ts
+@@ -36,8 +36,22 @@ const CLAIMS_SAVED_RE = new RegExp(
+   'iu',
+ );
+ 
++/**
++ * Box 48975 (fresh seat, onboarding run): „…დაიმახსოვრე როგორც შეთავაზება."
++ * was answered „დავიმახსოვრე: იურიდიული კონსულტაცია…" — the reply named the
++ * service, not an offer, so a guard that waited for the offer word in the
++ * reply never fired. When the owner's own line names an offer AND asks for it
++ * to be kept, any „saved" without save_offer is the false claim.
++ */
++const ASKS_TO_SAVE_RE =
++  /(დაიმახსოვრე|შეინახე|ჩაიწერე|დაამატე|\bsave\b|\bremember\b|\bkeep\b|\badd\b|запомни|сохрани|добавь|guarda|recuerda|añade)/iu;
++
+ const SAVE_OFFER_TOOL_NAME = 'save_offer';
+ 
++function replySpeaksOfTheOffer(reply: string, ownerLine: string): boolean {
++  return OFFER_WORD_RE.test(reply) || ASKS_TO_SAVE_RE.test(ownerLine);
++}
++
+ export function offerClaimWithoutTool(
+   reply: string,
+   toolNamesUsed: readonly string[],
+@@ -45,7 +59,7 @@ export function offerClaimWithoutTool(
+ ): boolean {
+   return (
+     OFFER_WORD_RE.test(ownerLine) &&
+-    OFFER_WORD_RE.test(reply) &&
++    replySpeaksOfTheOffer(reply, ownerLine) &&
+     CLAIMS_SAVED_RE.test(reply) &&
+     !toolNamesUsed.includes(SAVE_OFFER_TOOL_NAME)
+   );
+-- 
+2.43.0
+
