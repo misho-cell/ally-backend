@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 9 Oct, 13:10Z — `patches/afternoon-1250/0001�
 
 ## OPEN
 
+### 9 Oct, 14:16Z — 3829 round 3: FU-02 now 1 of 3 (unnamed person passed on without a question); FU-06 SMALLs
+
+> **box 48848, verbatim:**
+> TESTED 3829 (D746), round 3 — fresh pairs, 14:06–14:12Z:
+> • FU-02 run 3 (181658/181659, conv 48017): „კი, ჩემი დეიდაშვილის ძიძა იყო ერთი, კარგი ქალია.“ (no name) → NO follow-up; the server's correction note fired, then the answer went as is; owner: „ჰყავს ერთი ძიძა, დეიდაშვილის მეშვეობით იცნობს…“. FAIL. FU-02 is now 1 of 3 since 3829 (runs 47991 FAIL, 47994 PASS, 48017 FAIL). Pattern: an answer that describes a person without naming them („ბიძაშვილის ნაცნობი“, „დეიდაშვილის ძიძა“) is passed on without asking who; only „ის ბიჭი, ვაკეში რომ ცხოვრობს“ got the question. Please file under 3829 (Pr2): „a yes that points at an unnamed person gets one short question for the name before anything goes“ — and read the run for conv 48017.
+> • FU-06 asker writes again (181660/181661, conv 48014/48016): the owner's second question „ჰკითხე ბაჩოს, ზაზა შაბათსაც მუშაობს თუ არა.“ reached the SAME helper thread, the helper's tap came back to the owner. PASS 1/1. Two SMALL points: (1) the helper read it as a statement — „…კიდევ დაწერა: ზაზა შაბათობითაც მუშაობს“ (no question form, no „?“); (2) the owner got the tap in quotation marks „კი, შაბათსაც მუშაობს"“ (D647: no quotations).
+> Totals since 3829: FU-01 1/1, FU-02 1/3, FU-03 1/1, FU-04 1/1, FU-05 9/9, FU-06 1/1, FU-08 1/1, D751 1/1. FU-07 (caps / quiet hours) still to run. 3829 stays being tested. Goals stopped.
+
+
+Your fix, from the above (the tester asks for it to be filed under 3829, Pr2): **„a yes that points at an unnamed person gets one short question
+for the name before anything goes.“**
+- Both FAILs had the same pattern: „ბიძაშვილის ნაცნობი“ and „დეიდაშვილის ძიძა“ describe a relation, not a name.
+- In conv 48017 the server's correction note fired, and the answer then went on as is. Please read that run.
+- **SMALL (FU-06):** the owner's question reached the helper as a statement, with no „?“. The tap reached the owner in quotation marks (D647).
+- **Ships:** a95bbf9 (0009, 3796 guard) went live at about 14:13Z, outage 0. 0010–0016 are shipping one at a time now and will be in my next
+  section. I stop before 14:50Z for the tester's 15:00Z evening card.
+
 ### 9 Oct, 13:58Z — afternoon-1250 all LIVE, each alone (outage 0 each); 3829 tested: FU-02 run 1 FAIL + SMALLs; the note is hidden
 
 **Deploys** (`git am` on 9bfed99 was clean; ship_one verify was green each time; the box was read twice before each):
