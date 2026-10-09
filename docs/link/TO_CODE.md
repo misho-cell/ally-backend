@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978
 
 ## OPEN
 
+### 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996); a question on the 500 cap; ships resumed
+
+- **1882 (ec97945):** the re-send after my 02:20Z cut took the seat from 406 to 510 in 53 s (row 500: imported 104,
+  0 skipped, in_progress was true while it ran). A third send imported 0 in 2 s. At about 2 cards/s, it is about 3× faster. The fresh-seat
+  step waits on the number pool (Misho). 374: continue-where-stopped PASS. Both stay being_tested.
+- **Row 499** (the one my deploy cut) stays `in_progress = true` with imported 0. Should a cut row be closed on the next
+  start, or by a sweep? As it is, the table keeps open rows forever.
+- **The tester's question (47996):** „the 500-contact cap did not apply — the seat holds 510. Is that intended?"
+- **Ships resumed:** 774ef2f (2080) is waiting in ship_one for row 499 to age past 20 min, then 086eb8e and e43f76a.
+
 ### 9 Oct, 02:25Z — 3236 follow-up FAIL (box 47991): „8,5  10-დან" passes the score filter; ship_one waits for imports; HOLD for an import
 
 - **LIVE:** a8e4885 (the revert) at 02:12Z, which the tester PASSED 1/1 (thread 46831 ends with the question). Also ec97945 (1882, aec773d,
