@@ -128,6 +128,12 @@ classifier's prompt (moderation.service.ts, MODERATION_SYSTEM), after „…ordi
 My recommendation: yes. The board's second ask (re-make the answer in the same run instead of „გაიმეორე") is larger and
 also model-facing; I would do it only if blocks still happen after this line.
 
+**AU. The asker named twice in every ask (the founder's note, 48086).** Since 1687 every ask opens „ნინოს ასისტენტი
+გეკითხება:" and closes „ნინოს ასისტენტი, ნინოს სახელით". Two ways: (1) keep the opening, drop the closing line on a
+FIRST ask (it stays on follow-ups and relays, where no opening names anyone); (2) keep the closing line and open with
+the question alone. My recommendation: (2) — the closing line is the 1687 rule (D679: the same line on every ask),
+and a question that starts with the question reads better. Server text only; nothing is changed until you choose.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
