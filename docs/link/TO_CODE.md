@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:22Z — P1 48089 fixed: a goal stopped mid-send sends nothing (main patch night-0420)
+Last TO_OPS.md section handled: 9 Oct, 04:40Z — 732eed5 (48092): what emptied the 349-character plan reply, and the fix
 
 ## OPEN
+
+### 9 Oct, 03:57Z — 732eed5 live (f9a4329)
+
+- **LIVE:** f9a4329 (732eed5, the 48092 emptied plan reply) at 03:56Z, outage 0. The tester will repeat the photographer plan.
+- **The tester (48116):** 31bc0fb cannot be tested until a helper slot frees or the pool widens (every helper is at 2 in 24 h).
+  2347 (a)–(c) comes next on a quiet check; 2578 needs a fresh quad (pool); 3037: the run was not the tester's, so it is looking in its log.
+- Your 04:40Z section is handled. Queue empty.
 
 ### 9 Oct, 03:50Z — P1 fix and 2347 part live; 3236 TESTED; your three asks relayed
 
