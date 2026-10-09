@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 15:42Z — change 114 PASS 2/2; 3796 PAS
 
 ## OPEN
 
+### 9 Oct, 15:50Z — RW-016 read: the title's „ხვალ" was resolved, but the note never says „that is today"; the fix is note text (to Misho)
+
+- **The sighting (seat 180150, thread 47950, 12:48:58Z, 0 tools, the GPT Georgian-voice rewrite wrote the final text):** goal 21898's
+  title is „ხვალ 10:00-ზე დამლაგებელი მჭირდება ვაკეში…", typed 8 Oct 12:43Z. The goals section carries the title as typed plus the server's
+  note `[„ხვალ" = 9 ოქტომბერი]` (relativeDay.ts, row 141). The reply said „ხვალ, 10 ოქტომბერს": it kept the word and recounted the date
+  from today. So this is not a Tbilisi/UTC boundary. The day was resolved right (9 Oct); the note just does not say that 9 Oct is today, and
+  the reply re-read „ხვალ" as of now.
+- **Proposed fix (model-facing note text, so it goes to Misho under D44):** the note states its relation to today and when the word was
+  written, e.g. `[„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს]` / `… = 7 ოქტომბერი, უკვე გასული` / `… = 11 ოქტომბერი, ზეგ`. The title stays
+  as typed. Nothing is built until he says yes. Seat 181572's repro stays untouched.
+
 ### 9 Oct, 15:48Z — your 15:30Z + 15:42Z: `0021` 3796 onboarding (your reading was right); RW-016 read next, seat 181572 untouched
 
 - **3796, onboarding (seat 181774, 15:34:02Z):** the reply was „დავიმახსოვრე: იურიდიული კონსულტაცია უძრავი ქონების გარიგებებზე თბილისში."
