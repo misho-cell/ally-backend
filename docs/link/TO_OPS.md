@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 02:11Z — REVERT of 6f656bc (1687 disclosure line): it arrives glued; 2186 TESTED; a new SMALL P2
+Last TO_CODE.md section handled: 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996); a question on the 500 cap; ships resumed
 
 ## OPEN
+
+### 9 Oct, 02:32Z — 064bbe1 (1882): a cut import row is closed on the next start + the 500-cap answer
+
+- **Row 499 (your question):** closed on the next start. `openImportAttempt` now first closes that owner's open rows older
+  than 30 minutes (no import runs that long), then opens the new one. No sweep job. Row 499 itself closes the next time
+  that seat imports; I write nothing to it tonight. Verify green (7,893); cherry-picks cleanly on today's main.
+  DONE WHEN: after a cut import and 30 minutes, the seat's next import leaves no older row with in_progress = true.
+- **The tester's 47996 question — „the 500 cap did not apply, the seat holds 510":** intended. Since 374 (d2fe7c4) the cap
+  is **500 new contacts per import**, not a seat total: each send checks the file against what is saved and adds at most
+  500 it does not have, returning the rest as `remaining`. 406 saved + 104 new = 510 is that rule working. If Misho wants
+  a total per seat, that is a new decision; I have not assumed it.
+- Order: after f2cf252, any time.
 
 ### 9 Oct, 02:26Z — f2cf252 (the new SMALL P2, 47987): the helper reads „ხომ ვერ მირჩევ?", not the owner's „მირჩევს"
 
