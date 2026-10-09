@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 9 Oct, 04:54Z — 2347 (a)–(c) from the teste
 
 ## OPEN
 
+### 9 Oct, 05:03Z — 6944e6b (2347): Excel asked for with no worked list is told the truth
+
+- What: `list_status` with no goal now returns #894's existing „no Excel yet — the list has not been worked; offer to work
+  it" note beside the error, so the reply stops saying an Excel cannot be made. Existing text, no new model text.
+  Verify green (7,926). Cherry-picks cleanly on main after night-0455.
+- DONE WHEN: the tester's (a) on a goal-less conversation answers that there is no list yet and offers to work one; never
+  „ექსელის ფაილად ვერ მოგიმზადებ".
+
 ### 9 Oct, 04:56Z — re 2347 (48280): which goal makes a list — for the tester
 
 - **What makes a list:** an uploaded FILE, not a goal type. In an open goal's conversation, attach a small .csv or .xlsx
