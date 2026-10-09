@@ -56,3 +56,16 @@ needs its own yes, recorded with the exact text.
 - A member-list person is stored without any „knows" link.
 - A single-source fact is shown as possible, with source and date.
 - The person removes one fact, and it is gone everywhere.
+
+## Misho's decisions, 9 October ~20:48 UTC (code session chat)
+
+| Item | Decision |
+|---|---|
+| 1. Registration run | „შეზღუდე": **limited** — a hard stop per person (60 searches, 30 pages proposed), not unlimited |
+| 2. Source, date, confidence on facts | „კი": **yes** |
+| 3. List-people table | „ეს თორნიკეს კითხე": **Tornike decides**, asked in box 49338 (Q1) |
+| 4. Professional only; stop the 30-day re-research of users | „თორნიკეს კითხე": **Tornike decides**, asked in box 49338 (Q2) |
+| 5. See and remove facts about oneself | „კარგი": **yes** |
+| 6. Prompt texts | „კარგი": **yes, to drafting**. Each exact text still needs its own yes before it ships |
+
+Items 1, 2 and 5 can be built now. Items 3 and 4 wait for Tornike. Building item 1 spends money, so it starts only in daytime.
