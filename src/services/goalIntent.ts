@@ -482,9 +482,93 @@ export function instructionAddressee(message: string): string | null {
  * addressee: in Georgian the addressee ends in the dative „ს" („N1-ს",
  * „ტესტაძეს"); in English the clause opens with „whether" / „if".
  */
-const DATIVE_WORD_RE = /^[\p{L}\p{N}-]*ს[,:]?$/u;
 const ENGLISH_CLAUSE_RE = /\b(?:whether|if)\b/iu;
 const LEADING_LINK_RE = /^[\s,:;—–-]*(?:რომ\s+)?/u;
+
+/**
+ * 3928 (GP-052 step 3, seat 181490): „ჰკითხე ნიკა დამხმარე-ას და სოფო
+ * დამხმარე-ბს." names TWO people. The first dative word ended the name, so
+ * „და სოფო დამხმარე-ბს." became the question Nika was sent. A chain of names
+ * („X-ს და Y-ს", „X-სა და Y-ს", „X-ს, Y-ს") is read whole: every name in it,
+ * and the question only after the last one.
+ */
+const NAME_LINK_WORDS: ReadonlySet<string> = new Set(['და', 'and', '&']);
+const LINKED_DATIVE_RE = /^[\p{L}\p{N}-]*სა$/u;
+/** A dative that may close a sentence: „…დამხმარე-ბს." */
+const CHAIN_DATIVE_RE = /^[\p{L}\p{N}-]*ს[,:;.!?]?$/u;
+const MAX_NAMES_IN_A_CHAIN = 5;
+
+interface NameChain {
+  /** Each name as typed, the dative ending taken off. */
+  readonly names: readonly string[];
+  /** Index (in the whitespace-kept split) of the first word after the chain. */
+  readonly endsAt: number;
+}
+
+function withoutDative(words: readonly string[]): string {
+  return words
+    .join(' ')
+    .replace(/[,:;.!?]$/u, '')
+    .replace(/-?სა?$/u, '')
+    .trim();
+}
+
+function endsAName(word: string, next: string | undefined): boolean {
+  if (CHAIN_DATIVE_RE.test(word)) return true;
+  return LINKED_DATIVE_RE.test(word) && next !== undefined && NAME_LINK_WORDS.has(next);
+}
+
+/**
+ * After „X-ს," the comma lists another name only when one comes: a word or two
+ * ending in the dative, then „და" or another comma („ნიკას, სოფოს და ლევანს").
+ * „ტესტაძეს, იცნობს თუ არა" is the question starting, not a second person.
+ */
+function listsAnotherName(rest: readonly string[]): boolean {
+  const words = rest.filter((w) => w.trim() !== '').slice(0, 3);
+  const end = words.findIndex((w) => CHAIN_DATIVE_RE.test(w) || LINKED_DATIVE_RE.test(w));
+  if (end < 0 || end > 1) return false;
+  const closing = words[end];
+  return closing.endsWith(',') || NAME_LINK_WORDS.has((words[end + 1] ?? '').toLowerCase());
+}
+
+/** The datives that open the words after an instruction's verb, as one chain. */
+function georgianNameChain(after: string): NameChain | null {
+  const parts = after.split(/(\s+)/u);
+  const names: string[] = [];
+  let current: string[] = [];
+  for (let i = 0; i < parts.length && names.length < MAX_NAMES_IN_A_CHAIN; i += 1) {
+    const word = parts[i];
+    if (word.trim() === '') continue;
+    current.push(word);
+    const next = parts.slice(i + 1).find((w) => w.trim() !== '');
+    if (!endsAName(word, next)) continue;
+    names.push(withoutDative(current));
+    current = [];
+    const linked = next !== undefined && NAME_LINK_WORDS.has(next.toLowerCase());
+    const listed = word.endsWith(',') && listsAnotherName(parts.slice(i + 1));
+    if (!linked && !listed) return { names, endsAt: i + 1 };
+    if (linked) i = parts.indexOf(next, i + 1);
+  }
+  return names.length === 0 ? null : { names, endsAt: parts.length };
+}
+
+/** Every person an instruction names, as typed; empty when none can be told apart. */
+export function instructionNames(sentence: string): string[] {
+  const match = CONTACT_VERB_RE.exec(sentence);
+  if (match === null) return [];
+  const before = datedNameBefore(sentence.slice(0, match.index));
+  if (before !== '') return [before];
+  const after = sentence.slice(match.index + match[0].length);
+  const english = ENGLISH_CLAUSE_RE.exec(after);
+  if (english !== null) {
+    return after
+      .slice(0, english.index)
+      .split(/\s*(?:,|\band\b|&)\s*/iu)
+      .map((name) => name.trim())
+      .filter((name) => name !== '');
+  }
+  return [...(georgianNameChain(after)?.names ?? [])].filter((name) => name !== '');
+}
 
 /** What the owner wants asked, without „ask <name>"; null when it cannot be told apart. */
 export function instructionQuestion(sentence: string): string | null {
@@ -493,12 +577,24 @@ export function instructionQuestion(sentence: string): string | null {
   const after = sentence.slice(match.index + match[0].length);
   const english = ENGLISH_CLAUSE_RE.exec(after);
   if (english !== null) return clauseOrNull(after.slice(english.index));
-  const words = after.split(/(\s+)/u);
-  const nameEnd = datedNameBefore(sentence.slice(0, match.index))
-    ? 0
-    : words.findIndex((w) => DATIVE_WORD_RE.test(w));
-  if (nameEnd < 0) return null;
-  return clauseOrNull(words.slice(nameEnd === 0 ? 0 : nameEnd + 1).join(''));
+  if (datedNameBefore(sentence.slice(0, match.index))) return clauseOrNull(after);
+  const chain = georgianNameChain(after);
+  if (chain === null) return null;
+  return clauseOrNull(after.split(/(\s+)/u).slice(chain.endsAt).join(''));
+}
+
+/**
+ * 3928: „სანტექნიკოსი მჭირდება, ჰკითხე X-ს და Y-ს." carries no question after
+ * the names — the need is said BEFORE the verb. That need, in the owner's own
+ * words, is what the helpers are asked; never the whole line with „ask X" in it.
+ */
+export function instructionNeed(sentence: string): string | null {
+  const match = CONTACT_VERB_RE.exec(sentence);
+  if (match === null) return null;
+  const beforeVerb = sentence.slice(0, match.index);
+  if (datedNameBefore(beforeVerb) !== '') return null;
+  const need = beforeVerb.replace(/[\s,;:—–-]+$/u, '').trim();
+  return need === '' ? null : need;
 }
 
 /**
@@ -508,22 +604,7 @@ export function instructionQuestion(sentence: string): string | null {
  * null when the name cannot be told apart from the question.
  */
 export function instructionNamed(sentence: string): string | null {
-  const match = CONTACT_VERB_RE.exec(sentence);
-  if (match === null) return null;
-  const before = datedNameBefore(sentence.slice(0, match.index));
-  if (before !== '') return before;
-  const words = sentence
-    .slice(match.index + match[0].length)
-    .split(/\s+/u)
-    .filter((w) => w !== '');
-  const nameEnd = words.findIndex((w) => DATIVE_WORD_RE.test(w));
-  if (nameEnd < 0) return null;
-  const named = words
-    .slice(0, nameEnd + 1)
-    .join(' ')
-    .replace(/[,:]$/u, '')
-    .replace(/-?ს$/u, '');
-  return named.trim() === '' ? null : named.trim();
+  return instructionNames(sentence)[0] ?? null;
 }
 
 function clauseOrNull(text: string): string | null {

@@ -3,6 +3,7 @@ const mockCreateAsk = jest.fn();
 const mockOpenTask = jest.fn();
 const mockCreateTask = jest.fn();
 const mockGrant = jest.fn();
+const mockRepeated = jest.fn();
 jest.mock('../tools/nameMatch', () => ({
   findContactPhonesByName: (...a: unknown[]) => mockFindPhones(...a),
   messageNamesOwnContact: jest.fn(),
@@ -16,6 +17,7 @@ jest.mock('../taskStore.service', () => ({
   getOpenTaskByThread: (...a: unknown[]) => mockOpenTask(...a),
   createTask: (...a: unknown[]) => mockCreateTask(...a),
   grantTaskPermission: (...a: unknown[]) => mockGrant(...a),
+  findOpenTaskNamedIn: (...a: unknown[]) => mockRepeated(...a),
 }));
 const mockQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
@@ -32,6 +34,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
   mockOpenTask.mockResolvedValue(null);
+  mockRepeated.mockResolvedValue(null);
   mockCreateTask.mockResolvedValue({ id: 77 });
   mockGrant.mockResolvedValue(true);
   mockCreateAsk.mockResolvedValue({ sent: true, ask_id: 9, to_name: 'გიგა ტესტაძე' });
@@ -41,7 +44,7 @@ describe('the server asks the one contact the owner named', () => {
   it('opens the goal, grants from the instruction and sends the owner’s question', async () => {
     mockFindPhones.mockResolvedValue(['995500000001']);
 
-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toMatchObject({
       result: InstructedAskResult.Sent,
       toName: 'გიგა ტესტაძე',
     });
@@ -82,7 +85,7 @@ describe('the server asks the one contact the owner named', () => {
     mockCreateAsk.mockResolvedValue({ sent: false, reason: 'recipient_not_member', error: 'x' });
     mockQuery.mockResolvedValue({ rows: [{ alias: 'გიგა ხელოსანი' }] });
 
-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toMatchObject({
       result: InstructedAskResult.NotOnNetai,
       toName: 'გიგა ხელოსანი',
     });
@@ -108,7 +111,7 @@ describe('3268: a person the owner marked deceased or blocked', () => {
     mockExcluded.mockResolvedValue(true);
     mockQuery.mockResolvedValue({ rows: [{ alias: 'გიგა ტესტაძე' }] });
 
-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
+    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toMatchObject({
       result: InstructedAskResult.Excluded,
       toName: 'გიგა ტესტაძე',
     });
@@ -120,5 +123,48 @@ describe('3268: a person the owner marked deceased or blocked', () => {
     expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).toContain('გიგა ტესტაძესთვის არაფერს ვწერ');
     expect(EXCLUDED_LINE.ka('Giga Testadze')).toContain('Giga Testadze-სთვის');
     expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).not.toContain('კიდევ ერთხელ');
+  });
+});
+
+/** 3928 (GP-052 step 3, seat 181490): two people named, a repeated need in a new conversation. */
+describe('a line that names two people', () => {
+  const LINE = 'სანტექნიკოსი მჭირდება, ჰკითხე ნიკა დამხმარე-ას და სოფო დამხმარე-ბს.';
+
+  beforeEach(() => {
+    mockFindPhones.mockImplementation((_u: string, name: string) =>
+      Promise.resolve(name.startsWith('ნიკა') ? ['995500000011'] : ['995500000012']),
+    );
+    mockCreateAsk
+      .mockResolvedValueOnce({ sent: true, ask_id: 1, to_name: 'ნიკა დამხმარე-ა' })
+      .mockResolvedValueOnce({ sent: true, ask_id: 2, to_name: 'სოფო დამხმარე-ბ' });
+  });
+
+  it('asks both, with the need as the question — never the names', async () => {
+    const outcome = await sendInstructedAsk('181490', 47871, LINE);
+    expect(outcome).toMatchObject({ result: InstructedAskResult.Sent, toName: 'ნიკა დამხმარე-ა' });
+    expect(mockCreateAsk).toHaveBeenCalledTimes(2);
+    expect(mockCreateAsk.mock.calls.map((c) => c[2])).toEqual(['995500000011', '995500000012']);
+    expect(mockCreateAsk.mock.calls.map((c) => c[3])).toEqual([
+      'სანტექნიკოსი მჭირდება',
+      'სანტექნიკოსი მჭირდება',
+    ]);
+    expect(outcome.result === InstructedAskResult.NotSent ? [] : outcome.people).toHaveLength(2);
+  });
+
+  it('puts the asks on the open goal the line repeats, never a second goal', async () => {
+    mockRepeated.mockResolvedValue({ id: 23181 });
+    await sendInstructedAsk('181490', 47871, LINE);
+    expect(mockCreateTask).not.toHaveBeenCalled();
+    expect(mockCreateAsk.mock.calls[0][1]).toBe(23181);
+  });
+
+  it('sends nothing when one of the names is not one saved contact', async () => {
+    mockFindPhones.mockImplementation((_u: string, name: string) =>
+      Promise.resolve(name.startsWith('ნიკა') ? ['995500000011'] : []),
+    );
+    await expect(sendInstructedAsk('181490', 47871, LINE)).resolves.toEqual({
+      result: InstructedAskResult.NotSent,
+    });
+    expect(mockCreateAsk).not.toHaveBeenCalled();
   });
 });

@@ -4,11 +4,18 @@ import {
   goalTitleFrom,
   instructionAddressee,
   instructionNamed,
+  instructionNames,
+  instructionNeed,
   instructionQuestion,
 } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
-import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
+import {
+  createTask,
+  findOpenTaskNamedIn,
+  getOpenTaskByThread,
+  grantTaskPermission,
+} from './taskStore.service';
 import { findContactPhonesByName } from './tools/nameMatch';
 
 /**
@@ -18,8 +25,9 @@ import { findContactPhonesByName } from './tools/nameMatch';
  * owner's own question, through createAsk's editor and walls like any ask. The
  * typed instruction naming one person is the consent (D316).
  *
- * Refuses (null) unless the line names exactly one saved contact: two
- * matches, none, or no instruction at all leave it to the owner.
+ * Refuses (null) unless every person the line names is exactly one saved
+ * contact (3928: „X-ს და Y-ს" asks both): two matches for a name, none, or no
+ * instruction at all leave it to the owner.
  */
 const NAME_WORDS_TRIED = [2, 1] as const;
 const MATCHES_LOOKED_AT = 2;
@@ -36,14 +44,20 @@ export enum InstructedAskResult {
   NotSent = 'not_sent',
 }
 
+/** What happened for one person the instruction named. */
+export interface PersonOutcome {
+  readonly result:
+    | InstructedAskResult.Sent
+    | InstructedAskResult.NotOnNetai
+    | InstructedAskResult.Excluded;
+  readonly toName: string;
+}
+
 export type InstructedAskOutcome =
-  | {
-      readonly result:
-        | InstructedAskResult.Sent
-        | InstructedAskResult.NotOnNetai
-        | InstructedAskResult.Excluded;
-      readonly toName: string;
-    }
+  | (PersonOutcome & {
+      /** 3928: every person named, in the owner's order; the first sent one leads. */
+      readonly people: readonly PersonOutcome[];
+    })
   | { readonly result: InstructedAskResult.NotSent };
 
 const NOT_SENT: InstructedAskOutcome = { result: InstructedAskResult.NotSent };
@@ -67,9 +81,8 @@ export async function ownersLabel(userId: string, phone: string, typed: string):
   return result.rows[0]?.alias ?? typed;
 }
 
-/** The one phone the instruction's addressee names; null for none or several. */
-export async function oneContactNamed(userId: string, sentence: string): Promise<string | null> {
-  const words = (instructionAddressee(sentence) ?? '').split(/\s+/u).filter((w) => w !== '');
+/** The one phone these typed words name; null for none or several. */
+async function phoneForWords(userId: string, words: readonly string[]): Promise<string | null> {
   for (const count of NAME_WORDS_TRIED) {
     if (words.length < count) continue;
     const phones = await findContactPhonesByName(
@@ -83,10 +96,53 @@ export async function oneContactNamed(userId: string, sentence: string): Promise
   return null;
 }
 
+function wordsOf(text: string): string[] {
+  return text.split(/\s+/u).filter((w) => w !== '');
+}
+
+/** The one phone the instruction's addressee names; null for none or several. */
+export async function oneContactNamed(userId: string, sentence: string): Promise<string | null> {
+  return phoneForWords(userId, wordsOf(instructionAddressee(sentence) ?? ''));
+}
+
+export interface NamedContact {
+  readonly phone: string;
+  /** The name as the owner typed it. */
+  readonly typed: string;
+}
+
+/**
+ * 3928: everyone the instruction names, each exactly one saved contact — or
+ * null, so a line where any one name is unclear is left to the owner whole
+ * rather than half-sent. One name keeps the original reading.
+ */
+export async function contactsNamed(
+  userId: string,
+  sentence: string,
+): Promise<NamedContact[] | null> {
+  const names = instructionNames(sentence);
+  if (names.length <= 1) {
+    const phone = await oneContactNamed(userId, sentence);
+    return phone === null ? null : [{ phone, typed: instructionNamed(sentence) ?? '' }];
+  }
+  const found: NamedContact[] = [];
+  for (const typed of names) {
+    const phone = await phoneForWords(userId, wordsOf(typed));
+    if (phone === null) return null;
+    if (!found.some((c) => c.phone === phone)) found.push({ phone, typed });
+  }
+  return found;
+}
+
 /** The goal on this conversation, opened from the owner's line when there is none. */
 async function goalFor(userId: string, threadId: number, ownerLine: string): Promise<number> {
   const open = await getOpenTaskByThread(threadId);
   if (open !== null) return open.id;
+  // 3928 (seat 181490): the run had already found that this line repeats goal
+  // 23181 („no second goal"), and this opened goal 23200 anyway, because a new
+  // conversation has no goal of its own. The goal it repeats is the goal.
+  const repeated = await findOpenTaskNamedIn(userId, ownerLine).catch(() => null);
+  if (repeated !== null) return repeated.id;
   const { id } = await createTask(
     userId,
     goalTitleFrom(ownerLine),
@@ -98,30 +154,18 @@ async function goalFor(userId: string, threadId: number, ownerLine: string): Pro
   return id;
 }
 
-export async function sendInstructedAsk(
+/** One named person asked; null when the ask could not go for another reason. */
+async function askOne(
   userId: string,
+  taskId: number,
+  contact: NamedContact,
+  question: string,
   threadId: number,
-  ownerLine: string,
-): Promise<InstructedAskOutcome> {
-  const sentence = contactInstructionIn(ownerLine);
-  if (sentence === null) return NOT_SENT;
-  const phone = await oneContactNamed(userId, sentence);
-  if (phone === null) return NOT_SENT;
-  // 3268: before any goal is opened for it.
-  if (await isDeceasedOrBlockedFor(userId, phone)) {
-    return {
-      result: InstructedAskResult.Excluded,
-      toName: await ownersLabel(userId, phone, instructionNamed(sentence) ?? ''),
-    };
-  }
-  const taskId = await goalFor(userId, threadId, ownerLine);
-  await grantTaskPermission(userId, taskId);
-  // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
-  const question = instructionQuestion(sentence) ?? sentence;
+): Promise<PersonOutcome | null> {
   const outcome = await createAsk(
     userId,
     taskId,
-    phone,
+    contact.phone,
     question,
     undefined,
     threadId,
@@ -130,15 +174,62 @@ export async function sendInstructedAsk(
     undefined,
     true,
   );
-  if (!outcome.sent) {
-    if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return NOT_SENT;
-    const typed = instructionNamed(sentence) ?? '';
-    return {
-      result: InstructedAskResult.NotOnNetai,
-      toName: await ownersLabel(userId, phone, typed),
-    };
+  if (outcome.sent) return { result: InstructedAskResult.Sent, toName: outcome.to_name };
+  if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return null;
+  return {
+    result: InstructedAskResult.NotOnNetai,
+    toName: await ownersLabel(userId, contact.phone, contact.typed),
+  };
+}
+
+function summed(people: readonly PersonOutcome[]): InstructedAskOutcome {
+  if (people.length === 0) return NOT_SENT;
+  const lead = people.find((p) => p.result === InstructedAskResult.Sent) ?? people[0];
+  return { ...lead, people };
+}
+
+/** 3268: the people the owner marked deceased or blocked — nothing goes to them. */
+async function excludedAmong(
+  userId: string,
+  contacts: readonly NamedContact[],
+): Promise<Set<string>> {
+  const excluded = new Set<string>();
+  for (const c of contacts)
+    if (await isDeceasedOrBlockedFor(userId, c.phone)) excluded.add(c.phone);
+  return excluded;
+}
+
+export async function sendInstructedAsk(
+  userId: string,
+  threadId: number,
+  ownerLine: string,
+): Promise<InstructedAskOutcome> {
+  const sentence = contactInstructionIn(ownerLine);
+  if (sentence === null) return NOT_SENT;
+  const contacts = await contactsNamed(userId, sentence);
+  if (contacts === null) return NOT_SENT;
+  const excluded = await excludedAmong(userId, contacts);
+  const people: PersonOutcome[] = [];
+  for (const c of contacts.filter((c) => excluded.has(c.phone))) {
+    const toName = await ownersLabel(userId, c.phone, c.typed);
+    people.push({ result: InstructedAskResult.Excluded, toName });
   }
+  const askable = contacts.filter((c) => !excluded.has(c.phone));
+  // 3268: before any goal is opened for it — nobody left to ask, no goal.
+  if (askable.length === 0) return summed(people);
+  const taskId = await goalFor(userId, threadId, ownerLine);
+  await grantTaskPermission(userId, taskId);
+  // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
+  // 3928: a line with no question after the names asks about the need said before them.
+  const question = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
+  for (const c of askable) {
+    const outcome = await askOne(userId, taskId, c, question, threadId);
+    if (outcome !== null) people.push(outcome);
+  }
+  if (!people.some((p) => p.result !== InstructedAskResult.Excluded)) return NOT_SENT;
   // eslint-disable-next-line no-console
-  console.log(`[instruction-unsent] thread ${threadId}: the server asked the one named contact`);
-  return { result: InstructedAskResult.Sent, toName: outcome.to_name };
+  console.log(
+    `[instruction-unsent] thread ${threadId}: the server asked ${askable.length} named contact(s)`,
+  );
+  return summed(people);
 }

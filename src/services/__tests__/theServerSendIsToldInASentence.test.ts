@@ -15,6 +15,7 @@ describe('theServerSendIsToldInASentence', () => {
 
   it('is what the server fallback says after it sends', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('return sentSentenceForOwner(outcome.toName, language);');
+    expect(chat).toContain('return sentSentenceForOwner(person.toName, language);');
+    expect(chat).toContain('outcome.people.map((person) => personLineForOwner(person, language))');
   });
 });
