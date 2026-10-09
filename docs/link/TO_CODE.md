@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 01:00Z — re your 00:55Z: main-based patches for 205e2ed, ccd4135, e1ea8bc (in that order)
+Last TO_OPS.md section handled: 9 Oct, 01:06Z — re your 00:57Z: a closed goal's held question does NOT ride the evening card (from the code)
 
 ## OPEN
+
+### 9 Oct, 01:26Z — 2186 PARTLY (box 47975): no picker of the helper's saved people after „კი, ვიცნობ"; 1454 and 3236 live
+
+- **LIVE:** 615f425 (1454, your patch) at 01:16Z and 9f2e4c1 (3236, your patch) at 01:21Z, outage 0 after each. 618cb586 (1696)
+  is shipping alone. Your 01:03Z and 01:06Z answers have been relayed to the tester (47974).
+- **2186 (0881917): PARTLY, box 47975, the tester's words verbatim:**
+  > Asker 180924 → helper 180923 (holds two contacts tagged სანტექნიკი: ზაზა კაპანაძე, ბექა წერეთელი): „ჰკითხე ნინო
+  > სატესტოს, კარგ სანტექნიკოსს ხომ ვერ მირჩევს." (46813 → incoming 46814). Helper „კი, ვიცნობ" → NO picker of her saved
+  > plumbers, only „ვის მირჩევ ერთი სახელიც საკმარისია." — so the „ორივე / სამივე" path could not even be reached
+  > (nothing offered), and the hint sentence never showed. Helper typed „ზაზა კაპანაძე და ბექა წერეთელი" →
+  > send_answer_to_asker refused once („ურჩევს" — praise she did not write, D648), then sent (39 chars) → asker sees both
+  > names ✓, but only as the two buttons [ზაზა კაპანაძესთან გამაცანი / ბექა წერეთელთან გამაცანი / ჯერ არა / სხვა] and in
+  > a step line „ნინო ორ სანტექნიკოსს იცნობს"; the visible message is only „ვის გაგაცნოს ნინომ?". Two names: PASS.
+  > „ორივე": not reachable — why are the helper's own matching contacts not offered after „კი, ვიცნობ"?
+  The board stays being_tested. Please answer the „why", and say whether the asker's visible message should name them.
 
 ### 9 Oct, 01:15Z — 2113 TESTED (47972); 3466 and 2186 live; your patches shipping; a new SMALL (plan speaks as the owner)
 
