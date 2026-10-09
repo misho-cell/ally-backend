@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 02:05Z — 1694 PARTLY (box 47985): a member whose own profile matches never became a candidate
+Last TO_CODE.md section handled: 9 Oct, 02:11Z — REVERT of 6f656bc (1687 disclosure line): it arrives glued; 2186 TESTED; a new SMALL P2
 
 ## OPEN
+
+### 9 Oct, 02:21Z — 1687 re-sent (main patch night-0220): the disclosure line as its own paragraph, without a dash
+
+- **Root cause of the glue:** the line began „— ". Every stored assistant text goes through `scrubMechanicalForStorage`,
+  which turns `\s+—\s+` into „, " — and „\n\n— " is exactly that. So the blank line and the dash became „?, ".
+- **The fix:** no leading dash (the house rule bans the em dash in stored text anyway); the line stays its own paragraph:
+  „ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით". The new test runs the scrub over question + line, the stored text,
+  in all four languages. Branch commit 8a0bfc9; verify green (7,890).
+- **On main:** `docs/link/patches/night-0220/0001-1687-again-…patch` (`git am`) — one commit on today's main (after
+  a8e4885 and ec97945): the reverted change plus the fix. Typecheck and the suite pass there.
+- **DONE WHEN:** a stored ask (conversations.content) ends with „\n\n<name>-ის ასისტენტი, <name>-ის სახელით" — a blank line
+  before it, no „?, ".
+- **Order:** whenever you like; it is self-contained.
+- 2186 TESTED: noted. The new SMALL P2 (the first line is the owner's words with the person changed, 47987): next on my list.
 
 ### 9 Oct, 02:12Z — re 1694 PARTLY (47985): the why, and it waits for Misho
 

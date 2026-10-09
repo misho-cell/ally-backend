@@ -1,0 +1,144 @@
+From 99e36dec043204aa69936972a1977c8e0b2309dd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 02:17:35 +0000
+Subject: [PATCH] 1687 again: every ask's disclosure line, as its own paragraph
+ without a dash
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Re-sends 6f656bc (reverted in a8e4885, D710) with the fix: the line had a
+leading „— ", and scrubMechanicalForStorage turns „\s+—\s+" into „, ", so the
+stored ask read „…რჩევას გაუწევ?, X-ის ასისტენტი, X-ის სახელით". The line
+now has no dash and stays its own paragraph; a test runs the scrub over
+question + line, the text as stored.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../everyAskSaysWhoseAssistantWroteIt.test.ts | 40 +++++++++++++++++++
+ src/services/askOpening.ts                    | 30 ++++++++++++++
+ src/services/taskAsks.service.ts              | 12 ++++++
+ 3 files changed, 82 insertions(+)
+ create mode 100644 src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts
+
+diff --git a/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts b/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts
+new file mode 100644
+index 0000000..9d4f638
+--- /dev/null
++++ b/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts
+@@ -0,0 +1,40 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { ASK_BODY_MAX_CHARS, disclosureLine } from '../askOpening';
++import { scrubMechanicalForStorage } from '../privacyScrub';
++
++/** 1687 (A4): every outgoing ask ends with the identical line, never the model's words. */
++describe('the disclosure line', () => {
++  it('is the same line every time, in the reader’s language', () => {
++    expect(disclosureLine('ka', 'ნინო ბერიძე')).toBe(
++      'ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით',
++    );
++    expect(disclosureLine('en', 'Nino Beridze')).toBe("Nino Beridze's assistant, for Nino Beridze");
++    expect(disclosureLine('ru', 'Nino Beridze')).toBe(
++      'Ассистент Nino Beridze, от имени Nino Beridze',
++    );
++    expect(disclosureLine('es', 'Nino Beridze')).toBe(
++      'Asistente de Nino Beridze, en nombre de Nino Beridze',
++    );
++  });
++
++  it('is stored as its own paragraph, not glued to the question (D710 revert, 9 Oct 02:11Z)', () => {
++    const question = 'შეგეძლება პირადად დაეხმარო, თუ მხოლოდ რჩევას გაუწევ?';
++    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
++      const line = disclosureLine(language, 'ნინო ბერიძე');
++      const stored = scrubMechanicalForStorage(`${question}\n\n${line}`);
++      expect(stored).toBe(`${question}\n\n${line}`);
++    }
++  });
++
++  it('closes every ask, after the body, with the profile name; a long body is logged', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    const at = asks.indexOf('1687 (A4): the body is measured');
++    const block = asks.slice(at, at + 900);
++    expect(block).toContain('if (body.length > ASK_BODY_MAX_CHARS)');
++    expect(block).toContain(
++      "if (profileName !== '') lines.push(disclosureLine(said, profileName));",
++    );
++    expect(ASK_BODY_MAX_CHARS).toBe(400);
++  });
++});
+diff --git a/src/services/askOpening.ts b/src/services/askOpening.ts
+index e19e7ae..d8c4275 100644
+--- a/src/services/askOpening.ts
++++ b/src/services/askOpening.ts
+@@ -162,6 +162,36 @@ export function buildAskOpening(
+   return `${parts[shape]}\n\n${withoutFramesOwnWords(question)}`;
+ }
+ 
++/**
++ * 1687 (A4, the intelligence research of 6 October, D679/D680): trust falls
++ * when it is unclear which messages a machine wrote. Every outgoing ask ends
++ * with the identical line, the asker's name as the profile shows it, never the
++ * model's choice of words: „ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით".
++ *
++ * No leading dash: every stored assistant text goes through the mechanical
++ * scrub, which reads „\n\n— " as a dash in prose and turns it into „, " — the
++ * first version arrived glued to the question (D710 revert, 9 Oct 02:11Z).
++ * The line stands as its own paragraph instead.
++ */
++export function disclosureLine(language: RunLanguage, profileName: string): string {
++  const name = profileName.trim();
++  switch (language) {
++    case 'en':
++      return `${name}'s assistant, for ${name}`;
++    case 'ru':
++      return `Ассистент ${name}, от имени ${name}`;
++    case 'es':
++      return `Asistente de ${name}, en nombre de ${name}`;
++    default: {
++      const of = geoName(name, 'gen');
++      return `${of} ასისტენტი, ${of} სახელით`;
++    }
++  }
++}
++
++/** Above this many characters an ask gets about a fifth fewer replies (A4). */
++export const ASK_BODY_MAX_CHARS = 400;
++
+ /** The name a sender with no stored name is given, in the reader's language. */
+ export function unknownSenderName(language: RunLanguage): string {
+   switch (language) {
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 817640a..47b7f5d 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -60,6 +60,8 @@ import { ALLOW_OPEN, allowedSpansForTheModel, scrubText } from './privacyScrub';
+ import { receivingCapsAreOff } from './askCapExemptions';
+ import { geoName } from './georgianCase';
+ import {
++  ASK_BODY_MAX_CHARS,
++  disclosureLine,
+   answeredByYourRule,
+   askCancelledNote,
+   bridgeThanks,
+@@ -1636,6 +1638,16 @@ async function createAskNow(
+       ? [picker.line]
+       : []),
+   ];
++  // 1687 (A4): the body is measured, and the identical disclosure line closes every ask.
++  const body = lines.join('\n\n');
++  if (body.length > ASK_BODY_MAX_CHARS) {
++    // eslint-disable-next-line no-console
++    console.warn(
++      `[ask-length] ask thread ${askThreadId}: ${body.length} characters (over ${ASK_BODY_MAX_CHARS}), sent as written`,
++    );
++  }
++  const profileName = fromName.rows[0]?.name?.trim() ?? '';
++  if (profileName !== '') lines.push(disclosureLine(said, profileName));
+   await saveThreadMessage(
+     askThreadId,
+     toUserId,
+-- 
+2.43.0
+
