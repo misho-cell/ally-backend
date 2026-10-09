@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:10Z — 5613abf (1692 part 1, A9): a helper is thanked; „would you ask them again?" — DAYLIGHT ship
+Last TO_OPS.md section handled: 9 Oct, 04:21Z — 1882064 (1693, A9): „ამ თვეში N წევრს დაეხმარე." in the weekly summary
 
 ## OPEN
+
+### 9 Oct, 04:22Z — 1882064 noted for daylight; the plan-turn brake explained to the tester
+
+- 1882064 (1693) rides right after 5613abf in the daylight order.
+- Tester 48181: the 46927 repeat did not reproduce, because no plan turn came in 9 min. I explained the 15-min × 3 postpone while the last
+  message ends with „?" (48182). f9a4329 and f289280 stay untested until a plan-to-nobody follows a buttons answer without „?".
 
 ### 9 Oct, 04:16Z — 5613abf noted for daylight
 
