@@ -406,7 +406,12 @@ import {
   NOT_ON_NETAI_LINE,
   NOT_SENT_LINE,
 } from './instructionUnsent';
-import { InstructedAskResult, PersonOutcome, sendInstructedAsk } from './instructedAsk';
+import {
+  contactsNamed,
+  InstructedAskResult,
+  PersonOutcome,
+  sendInstructedAsk,
+} from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import {
   asksAboutTheOwner,
@@ -2641,20 +2646,46 @@ export function peopleAddedToPlan(plan: unknown, inForce: TaskPlan | null): unkn
   });
 }
 
-async function ownerJustInstructedThePlansOnePerson(
+/** Digits only: the plan's numbers and the name search's may differ by a „+". */
+function phoneDigits(phone: unknown): string {
+  return typeof phone === 'string' ? phone.replace(/\D/gu, '') : '';
+}
+
+/**
+ * 3928 (box 49146, conv 48289): „ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს" named
+ * TWO people, the plan named the same two, and this check — „exactly one
+ * person added" — let the plan and its „დავიწყო?" through. The owner's line is
+ * the yes for everyone it names: a plan adding exactly those people is refused
+ * like a plan for one, and the server asks them all (0024).
+ */
+async function planAddsOnlyThePeopleNamed(
+  userId: string,
+  sentence: string,
+  added: readonly unknown[],
+): Promise<boolean> {
+  const named = await contactsNamed(userId, sentence);
+  if (named === null || named.length !== added.length) return false;
+  const namedPhones = new Set(named.map((c) => phoneDigits(c.phone)));
+  return added.every((p) => namedPhones.has(phoneDigits((p as { phone?: unknown } | null)?.phone)));
+}
+
+async function ownerJustInstructedThePlansPeople(
   userId: string,
   threadId: number,
   plan: unknown,
   inForce: TaskPlan | null,
 ): Promise<boolean> {
-  if (peopleAddedToPlan(plan, inForce).length !== 1) return false;
+  const added = peopleAddedToPlan(plan, inForce);
+  if (added.length === 0) return false;
   try {
     const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
     // Misho, 7 Oct (D625 as a server rule): a long line's instruction sentence counts.
     // 2906: the preview may sit in another sentence than the instruction — read the whole line.
     if (asksForAPreview(said)) return false;
-    if (!looksLikeContactInstruction(instructionSentence(said.trim()))) return false;
-    return await messageNamesOwnContact(userId, said);
+    const sentence = instructionSentence(said.trim());
+    if (!looksLikeContactInstruction(sentence)) return false;
+    if (added.length === 1) return await messageNamesOwnContact(userId, said);
+    return await planAddsOnlyThePeopleNamed(userId, sentence, added);
   } catch (error) {
     // Fails towards the plan, which asks the owner rather than writing to anyone.
     // eslint-disable-next-line no-console
@@ -10052,7 +10083,7 @@ async function executeToolCall(
       const planTask = await getTaskById(taskId);
       if (
         threadId !== undefined &&
-        (await ownerJustInstructedThePlansOnePerson(
+        (await ownerJustInstructedThePlansPeople(
           userId,
           threadId,
           input['plan'],

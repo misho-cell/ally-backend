@@ -27,9 +27,10 @@ describe('the approve-card guard', () => {
 
   it('is applied where the plan card is refused', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const guard = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansOnePerson('));
-    expect(guard.slice(0, 700)).toContain(
-      'if (!looksLikeContactInstruction(instructionSentence(said.trim()))) return false;',
+    const guard = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansPeople('));
+    expect(guard.slice(0, 900)).toContain('const sentence = instructionSentence(said.trim());');
+    expect(guard.slice(0, 900)).toContain(
+      'if (!looksLikeContactInstruction(sentence)) return false;',
     );
   });
 });

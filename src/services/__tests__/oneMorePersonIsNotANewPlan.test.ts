@@ -42,7 +42,7 @@ describe('the people a revised plan adds', () => {
 
   it('is what the owner-instruction refusal reads, beside the plan in force', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('if (peopleAddedToPlan(plan, inForce).length !== 1) return false;');
+    expect(chat).toContain('const added = peopleAddedToPlan(plan, inForce);');
     expect(chat).toContain('(planTask?.plan ?? null) as TaskPlan | null,');
   });
 });

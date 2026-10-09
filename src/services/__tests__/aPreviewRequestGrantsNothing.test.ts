@@ -39,11 +39,11 @@ describe('a request to see the message first', () => {
 
   it('is checked on the whole line before the instruction sentence is cut out', () => {
     const body = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    const at = body.indexOf('async function ownerJustInstructedThePlansOnePerson(');
+    const at = body.indexOf('async function ownerJustInstructedThePlansPeople(');
     const fn = body.slice(at, body.indexOf('\n}\n', at));
     expect(fn.indexOf('asksForAPreview(said)')).toBeGreaterThan(-1);
     expect(fn.indexOf('asksForAPreview(said)')).toBeLessThan(
-      fn.indexOf('looksLikeContactInstruction(instructionSentence('),
+      fn.indexOf('instructionSentence(said.trim())'),
     );
   });
 });
