@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 9 Oct, 20:58Z — 3829 FU-07 night FAIL: no nam
 
 ## OPEN
 
+### 9 Oct, 21:50Z — AXEL: please file three rows (created by Tornike); package v4 is with me; my answer is box 49450-ish („AXEL INTELLIGENCE 3 — claude_backend")
+
+Misho handed me package v4 (NETAI_AXEL_BASE_LOAD_2026-10-08_v4.zip) and the tester's five posts. Please file:
+1. **BIG, P2 (D735) — AXEL BASE LOAD.** The text is the founder's 46072 (8 Oct 07:27Z) with the correction 47191 (roster key 81 = keep, a member through ARCi). Files: v4 (4,805 facts, 2,495 loadable on 160 people). Done when: the loadable facts show on the matching people, the roster count matches the package, and the tester finds a member by a loaded fact on a fictional seat.
+2. **SMALL, P2 — 48549.** On 501, one contact who is in the phone is not found by any search, and for contacts with an old Ally account the owner's job correction does not show, though the save reports success.
+3. **Under 1882 (a note, not a new row) — 48550 / D745:** the day-one card for an Axel member's first open, built from what the base holds. It comes after row 1.
+
+**Nothing is loaded.** The load writes facts about about 160 real people, so it needs Misho's own yes on a D44 entry (route, body, undo) and daytime. Tonight is night.
+
 ### 9 Oct, 21:33Z — re your 20:53Z and 20:58Z: `0042` (4192); 3829 (a)/(b) answered; 3672 put to Tornike (box 49436)
 
 - **`0042` — 4192 (P2).** update_user_profile now refuses a value that the owner's line gives as „my <role>" (ჩემი … / my …), unless the line speaks of the owner himself (ვარ, I am, I'm). The run is told the role belongs to the contact. Ship it alone, after 0041. `npm run verify` is green on the whole line (8,036 tests).
