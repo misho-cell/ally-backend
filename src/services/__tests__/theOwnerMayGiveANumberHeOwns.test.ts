@@ -133,3 +133,40 @@ describe('the asker’s answer event', () => {
     expect(event).not.toContain('995599000111');
   });
 });
+
+/** 3466 (MTR #7, box 47959): her yes or her pick, given to Netai's own offer to pass it on. */
+describe('her answer to Netai’s own offer is her word (3466)', () => {
+  it('„კი, გადაეცი" to „…ნომერი გადავცე?" shares it', async () => {
+    rows([{ id: 9 }]);
+    rows([{ alias: 'ნიკა ბერიძე' }]);
+    rows([{ content: 'კი, გადაეცი' }, { content: 'მეორე ნიკა ბერიძე' }, { content: 'კი, მაქვს' }]);
+    rows([{ content: 'მეორე ნიკა ბერიძის ნომერი გადავცე?' }]);
+    await expect(shareContactNumberWithAsker('501', 40, '995599000182')).resolves.toEqual({
+      shared: true,
+      name: 'ნიკა ბერიძე',
+    });
+  });
+
+  it('a bare pick answering „რომელი ნიკას ნომერი გადავცე?" shares it', async () => {
+    rows([{ id: 9 }]);
+    rows([{ alias: 'ნიკა ბერიძე' }]);
+    rows([{ content: 'მეორე' }, { content: 'კი, მაქვს' }]);
+    rows([{ content: 'ორი ნიკა ბერიძე გყავს. რომლის ნომერი გადავცე?' }]);
+    await expect(shareContactNumberWithAsker('501', 40, '995599000182')).resolves.toEqual({
+      shared: true,
+      name: 'ნიკა ბერიძე',
+    });
+  });
+
+  it('a yes to anything else is still no word to share', async () => {
+    rows([{ id: 9 }]);
+    rows([{ alias: 'ნიკა ბერიძე' }]);
+    rows([{ content: 'კი' }]);
+    rows([{ content: 'გინდა, რომ ნიკას ვკითხო?' }]);
+    await expect(shareContactNumberWithAsker('501', 40, '995599000182')).resolves.toEqual({
+      shared: false,
+      reason: ShareRefusal.NotTheOwnersWord,
+    });
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+});
