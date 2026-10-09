@@ -1,0 +1,218 @@
+From df810e94539bc58071d587d4185aa75f0644ecf8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 17:53:06 +0000
+Subject: [PATCH] =?UTF-8?q?fix(asks):=20=E2=80=9Eset=20up=20a=20meeting=20?=
+ =?UTF-8?q?with=20X"=20is=20an=20instruction=20to=20X,=20the=20meeting=20i?=
+ =?UTF-8?q?tself=20the=20question=20(3961)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+QA-015 step 3 (seat 181480, 11:25Z): „შეხვედრა დამინიშნე ნანული მოგონილთან
+ხვალ 3 საათზე." sent nothing — „set up a meeting" was not a contact verb,
+so the run opened a goal, drew a plan and asked „დავიწყო?" for what the owner
+had just said, and Nanuli was never asked.
+
+Meeting verbs (დამინიშნე, დამიგეგმე, შემახვედრე; „set up / arrange /
+schedule / book a meeting with") are instructions now, so D316 / §97 /
+§99.5 apply as to any „ask X": no plan card, the server's send. The person
+is read from the „-თან" („with") form, the meeting noun kept out of the
+name; what goes to them is the line without the verb and the name
+(„შეხვედრა ხვალ 3 საათზე." / „a meeting tomorrow at 3"), or just
+„შეხვედრა" when nothing else is said — worded for the reader by the D711
+editor like every ask. No new fixed text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/goalIntent.test.ts     | 24 +++++++
+ .../theServerAsksTheOneNamedContact.test.ts   | 16 +++++
+ src/services/goalIntent.ts                    | 70 ++++++++++++++++++-
+ src/services/instructedAsk.ts                 |  4 +-
+ 4 files changed, 112 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/goalIntent.test.ts b/src/services/__tests__/goalIntent.test.ts
+index dd19998..f00210a 100644
+--- a/src/services/__tests__/goalIntent.test.ts
++++ b/src/services/__tests__/goalIntent.test.ts
+@@ -7,6 +7,7 @@ import {
+   instructionNames,
+   instructionNeed,
+   instructionQuestion,
++  looksLikeContactInstruction,
+ } from '../goalIntent';
+ 
+ describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
+@@ -316,3 +317,26 @@ describe('an instruction that names several people', () => {
+     expect(instructionNeed('ნინოს ჰკითხე, იცნობს თუ არა იურისტს')).toBeNull();
+   });
+ });
++
++/** 3961 (QA-015 step 3, seat 181480): „set up a meeting with X" is an instruction to X. */
++describe('a meeting the owner asks to set up', () => {
++  const LINE = 'შეხვედრა დამინიშნე ნანული მოგონილთან ხვალ 3 საათზე.';
++
++  it('is an instruction naming the person in „-თან", asking the meeting itself', () => {
++    expect(looksLikeContactInstruction(LINE)).toBe(true);
++    expect(instructionNames(LINE)).toEqual(['ნანული მოგონილ']);
++    expect(instructionQuestion(LINE)).toBe('შეხვედრა ხვალ 3 საათზე.');
++  });
++
++  it('keeps the meeting noun out of the name, and asks for a meeting when nothing else is said', () => {
++    expect(instructionNames('დამინიშნე შეხვედრა ნინოსთან ხვალ')).toEqual(['ნინო']);
++    expect(instructionNames('შემახვედრე გიორგისთან')).toEqual(['გიორგი']);
++    expect(instructionQuestion('შემახვედრე გიორგისთან')).toBe('შეხვედრა');
++  });
++
++  it('reads the English form', () => {
++    const line = 'set up a meeting with Nanuli Mogonili tomorrow at 3';
++    expect(instructionNames(line)).toEqual(['Nanuli Mogonili']);
++    expect(instructionQuestion(line)).toBe('a meeting tomorrow at 3');
++  });
++});
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index 62621bd..6a55782 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -168,3 +168,19 @@ describe('a line that names two people', () => {
+     expect(mockCreateAsk).not.toHaveBeenCalled();
+   });
+ });
++
++/** 3961: a meeting goes to the one person it names, the meeting itself as the question. */
++describe('a meeting the owner asks to set up', () => {
++  it('asks Nanuli about the meeting, never the whole line', async () => {
++    mockFindPhones.mockResolvedValue(['995500000021']);
++    mockCreateAsk.mockResolvedValue({ sent: true, ask_id: 3, to_name: 'ნანული მოგონილი' });
++    const outcome = await sendInstructedAsk(
++      '181480',
++      47860,
++      'შეხვედრა დამინიშნე ნანული მოგონილთან ხვალ 3 საათზე.',
++    );
++    expect(outcome).toMatchObject({ result: InstructedAskResult.Sent, toName: 'ნანული მოგონილი' });
++    expect(mockFindPhones.mock.calls[0][1]).toBe('ნანული მოგონილ');
++    expect(mockCreateAsk.mock.calls[0][3]).toBe('შეხვედრა ხვალ 3 საათზე.');
++  });
++});
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index c507b57..b6f3d11 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -430,7 +430,7 @@ export function goalTitleFrom(message: string): string {
+  * verb has to carry the weight on its own.
+  */
+ const CONTACT_VERB_RE =
+-  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ)|(\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
++  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+ 
+ /**
+  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
+@@ -552,8 +552,75 @@ function georgianNameChain(after: string): NameChain | null {
+   return names.length === 0 ? null : { names, endsAt: parts.length };
+ }
+ 
++/**
++ * 3961 (QA-015 step 3, seat 181480): „შეხვედრა დამინიშნე ნანული მოგონილთან
++ * ხვალ 3 საათზე." sent nothing — „set up a meeting" was not an instruction, so
++ * the run drew a plan and asked „დავიწყო?" for what the owner had just said.
++ * A meeting names its person with „-თან" („with"), not the dative, and what
++ * goes to them is the meeting itself — the line without the verb and the name,
++ * worded for them by the editor (D711) like every ask.
++ */
++const MEETING_VERB_RE =
++  /(?:დამინიშნე|დამიგეგმე|შემახვედრე)|\b(?:set up|arrange|schedule|book) a meeting with\b/iu;
++const WITH_CASE_RE = /^([\p{L}-]+?)ს?თან[,.!?]?$/u;
++/** The meeting noun said after the verb is the meeting, not part of the person's name. */
++const MEETING_NOUN_RE = /^შეხვედრ\p{L}*$/u;
++const MAX_MEETING_NAME_WORDS = 3;
++const ENGLISH_NAME_STOP_RE = /^(?:tomorrow|today|tonight|on|at|next|this|in|for|about|to)$/iu;
++
++export function isMeetingInstruction(sentence: string): boolean {
++  return MEETING_VERB_RE.test(sentence);
++}
++
++interface MeetingParts {
++  readonly name: string;
++  readonly rest: string;
++}
++
++function georgianMeeting(before: string, after: string): MeetingParts | null {
++  const all = after.trim().split(/\s+/u);
++  const nouns = all.findIndex((w) => !MEETING_NOUN_RE.test(w));
++  const lead = all.slice(0, Math.max(nouns, 0));
++  const words = all.slice(lead.length);
++  const end = words.findIndex((w) => WITH_CASE_RE.test(w));
++  if (end < 0 || end >= MAX_MEETING_NAME_WORDS) return null;
++  const last = (words[end].match(WITH_CASE_RE) ?? [])[1] ?? '';
++  const name = [...words.slice(0, end), last].join(' ').trim();
++  const said = [before.trim(), ...lead, ...words.slice(end + 1)].join(' ').trim();
++  // „შემახვედრე გიორგისთან" says nothing else: the meeting itself is what is asked.
++  const rest = said.split(/\s+/u).some((w) => MEETING_NOUN_RE.test(w))
++    ? said
++    : `შეხვედრა ${said}`.trim();
++  return name === '' ? null : { name, rest };
++}
++
++function englishMeeting(after: string): MeetingParts | null {
++  const words = after.trim().split(/\s+/u);
++  const end = words.findIndex((w, i) => i > 0 && ENGLISH_NAME_STOP_RE.test(w));
++  const take = Math.min(end < 0 ? words.length : end, MAX_MEETING_NAME_WORDS);
++  const name = words
++    .slice(0, take)
++    .join(' ')
++    .replace(/[,.!?]$/u, '')
++    .trim();
++  const rest = `a meeting ${words.slice(take).join(' ')}`.trim();
++  return name === '' ? null : { name, rest };
++}
++
++function meetingParts(sentence: string): MeetingParts | null {
++  const match = MEETING_VERB_RE.exec(sentence);
++  if (match === null) return null;
++  const before = sentence.slice(0, match.index);
++  const after = sentence.slice(match.index + match[0].length);
++  return /with/iu.test(match[0]) ? englishMeeting(after) : georgianMeeting(before, after);
++}
++
+ /** Every person an instruction names, as typed; empty when none can be told apart. */
+ export function instructionNames(sentence: string): string[] {
++  if (isMeetingInstruction(sentence)) {
++    const meeting = meetingParts(sentence);
++    return meeting === null ? [] : [meeting.name];
++  }
+   const match = CONTACT_VERB_RE.exec(sentence);
+   if (match === null) return [];
+   const before = datedNameBefore(sentence.slice(0, match.index));
+@@ -572,6 +639,7 @@ export function instructionNames(sentence: string): string[] {
+ 
+ /** What the owner wants asked, without „ask <name>"; null when it cannot be told apart. */
+ export function instructionQuestion(sentence: string): string | null {
++  if (isMeetingInstruction(sentence)) return clauseOrNull(meetingParts(sentence)?.rest ?? '');
+   const match = CONTACT_VERB_RE.exec(sentence);
+   if (match === null) return null;
+   const after = sentence.slice(match.index + match[0].length);
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index 617697c..13e9acb 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -7,6 +7,7 @@ import {
+   instructionNames,
+   instructionNeed,
+   instructionQuestion,
++  isMeetingInstruction,
+ } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { createAsk } from './taskAsks.service';
+@@ -121,7 +122,8 @@ export async function contactsNamed(
+   sentence: string,
+ ): Promise<NamedContact[] | null> {
+   const names = instructionNames(sentence);
+-  if (names.length <= 1) {
++  // 3961: a meeting names its person with „-თან", which only instructionNames reads.
++  if (names.length <= 1 && !isMeetingInstruction(sentence)) {
+     const phone = await oneContactNamed(userId, sentence);
+     return phone === null ? null : [{ phone, typed: instructionNamed(sentence) ?? '' }];
+   }
+-- 
+2.43.0
+

@@ -8,6 +8,20 @@ Last TO_CODE.md section handled: 9 Oct, 17:41Z — 0024 LIVE: e4d7922 (3928), al
 
 ## OPEN
 
+### 9 Oct, 17:56Z — `afternoon-1250/0027`: 3961 („set up a meeting with X" sends nothing), with no new fixed text
+
+- **Cause (seat 181480, 11:25Z):** „შეხვედრა დამინიშნე ნანული მოგონილთან ხვალ 3 საათზე." was not an instruction to contact: „დამინიშნე" is not a
+  contact verb. So the run opened a goal, drew a plan and asked „დავიწყო?" for what the owner had just said, and Nanuli was never asked.
+- **0027 (branch 52fcf41):**
+  - Meeting verbs are instructions now: დამინიშნე, დამიგეგმე, შემახვედრე; „set up / arrange / schedule / book a meeting with".
+  - So the existing rules apply as to any „ask X": no plan card (D316), and the server sends (§97 / §99.5).
+  - The person is read from the „-თან" form, with the meeting noun kept out of the name.
+  - The meeting itself is the question: „შეხვედრა ხვალ 3 საათზე.", or just „შეხვედრა" when nothing else is said. The D711 editor words it for
+    the reader like every ask. No new fixed text, so nothing for Misho (my earlier note that it needed his line is withdrawn).
+- **Order:** after 0026, on main e4d7922: 0025 → 0026 → 0027. verify on the chain: 7,910 passed, 42 skipped.
+- **DONE WHEN (QA-015 step 3 re-run):** „შეხვედრა დამინიშნე <contact>-თან ხვალ 3 საათზე." sends that contact one question about a meeting
+  tomorrow at 15:00, with no plan card, and the owner gets the „…კითხვა გავუგზავნე" line (2 of 2).
+
 ### 9 Oct, 17:45Z — `afternoon-1250/0026`: the evening card's bookkeeper ask (third person + full stop); FU-06 SMALLs read
 
 - **Bookkeeper ask (1850 card, released 15:01:59Z):** the editor DID rewrite it. The log 2 s earlier says „sent as written — the rewrite was
