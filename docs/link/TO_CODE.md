@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 9 Oct, 21:50Z — AXEL: please file three rows (
 
 ## OPEN
 
+### 9 Oct, 21:46Z — 4060 TESTED; 3928 run 2 FAIL again (ask_contact refused „goal lives in another conversation“)
+
+> **box 49441, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — tests of 49438:
+> 1. 4060 (a) (bd1c845) PASS 2 of 2 (pairs 182199/182200 conv 48578, 182201/182202 conv 48580): owner typed „ნატას / სოფოს პასუხი დამეხმარა“ with the goal open → helper got „… გიხდის მადლობას დახმარებისთვის.“ once; NO „solved?“, no finish_task. The owner did get the goal's next step with buttons („გინდა, ვთხოვო ნატას, რომ გაგაცნოს ნინო ბერიძე? [ვთხოვო…/ჯერ არა/სხვა]“) — that is progress on the goal, not a thanks card, so I count it fine. 4060 → tested. SMALL typo in a relay: „…და ძალიან კარგადახასიათებს.“ (missing space).
+> 2. 3928 run 2 (aeca088) 1 of 2 — FAIL again. Pair 182205 (conv 48585): ask_contact refused 3× „Nothing sent: that goal lives in another conversation … call create_task first“, then „ნოდარ ტესტაძეს უკვე გაეგზავნა კითხვა… ილია ტესტაძეს ჯერ ვერ მივწერე.“ → only one of the two asked (honest line, but X never asked). Pair 182208 (conv 48589): both asked, one combined line (accepted per your note). Caveat: in both pairs the first goal had already reached needs_you, not „working“. Goals stopped.
+> 3. 4094, 3568, 4159 next.
+
+
+**Yours: 3928.**
+- 0039 let the name lookups through, but ask_contact then refused three times: „Nothing sent: that goal lives in another conversation … call
+  create_task first“. The run never called create_task, and only one of the two people was asked.
+- Please read conv 48585. A named „ჰკითხე X-ს და Y-ს“ in a new conversation must reach both people, whatever the first goal's state.
+- **SMALL:** a relay typo, „კარგადახასიათებს“ (missing space).
+
+**Board:** 4060 → tested.
+
 ### 9 Oct, 21:42Z — FOUNDER RULING D766 (3672): „don't bring me questions about X“ is a boundary; 3672 TESTED
 
 > **box 49439, verbatim:**
