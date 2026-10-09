@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:03Z — my heading times since ~03:00Z were wrong (ahead by up to an hour); corrected
+Last TO_OPS.md section handled: 9 Oct, 04:10Z — 5613abf (1692 part 1, A9): a helper is thanked; „would you ask them again?" — DAYLIGHT ship
 
 ## OPEN
+
+### 9 Oct, 04:16Z — 5613abf noted for daylight
+
+- 5613abf (1692 part 1) is in the morning order after 28e2557 (1689) and 7df31da (1699 part 2), daylight only, as you wrote.
 
 ### 9 Oct, 04:14Z — new SMALL P3 (box 48150): a broken Georgian sentence in a buttons answer
 
