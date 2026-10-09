@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { fieldTerms, textSpeaksOf } from './prematch.service';
+import { fieldFits, placeFits } from './fieldPlaces';
 
 /**
  * 1699 (A16, D679/D680): two members — one with a need, one who said he is
@@ -33,12 +33,15 @@ export interface ActiveOffer {
   readonly field: string | null;
 }
 
-/** D498: the goal names the offer's field. No field on the offer, no sure match. */
+/**
+ * D498: the goal names the offer's field — directly or through its family —
+ * and is where the offer is (part 3). No field on the offer, no sure match.
+ */
 export function isSureMatch(goal: OpenGoal, offer: ActiveOffer): boolean {
   if (goal.user_id === offer.user_id) return false;
   const field = offer.field?.trim() ?? '';
   if (field === '') return false;
-  return textSpeaksOf(goal.title, fieldTerms(field));
+  return fieldFits(goal.title, field) && placeFits(goal.title, field);
 }
 
 /** Every sure (goal, offer) pair, in goal order, at most `limit`. */
