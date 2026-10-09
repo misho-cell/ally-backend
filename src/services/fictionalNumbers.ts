@@ -8,8 +8,8 @@
  *   +44 7700 900000 – 900999 Ofcom: UK mobile numbers reserved for drama.
  *   +44 20 7946 0000 – 0999  Ofcom: London geographic numbers reserved for drama.
  *   +44 161 496 0000 – 0999  Ofcom: Manchester geographic numbers reserved for drama.
- *   +44 113/114/115/117 496 0000 – 0999
- *                            Ofcom: Leeds, Sheffield, Nottingham and Bristol drama numbers.
+ *   +44 113/114/115/116/117 496 0000 – 0999
+ *                            Ofcom: Leeds, Sheffield, Nottingham, Leicester and Bristol drama numbers.
  *
  * Blocks five to eight, 4 October: the tester's 1115 and the founder's D623 —
  * no free number was left in the first four, and the prompt loop needs six more
@@ -47,7 +47,9 @@ const RANGES: readonly FictionalRange[] = [
   { prefix: '+44113496', digits: 4, from: 0, to: 999 },
   { prefix: '+44114496', digits: 4, from: 0, to: 999 },
   { prefix: '+44115496', digits: 4, from: 0, to: 999 },
-  { prefix: '+44117496', digits: 4, from: 0, to: 999 },
+  { prefix: '+44117496', digits: 4, from: 0, to: 999 }, // Block nine, 9 Oct: Ofcom's Leicester drama range — the tester was blocked all night with no free
+  // slot (ops 06:46Z); Misho: „ნომრებით თქვენ გადაწყვიტეთ" (§110).
+  { prefix: '+44116496', digits: 4, from: 0, to: 999 },
 ];
 
 function slotText(range: FictionalRange, slot: number): string {
