@@ -13,6 +13,13 @@ import { RunLanguage } from './runLanguage';
  * only to him, and sent only when he taps yes. Nothing composed is ever sent
  * on its own.
  */
+/**
+ * D747 (the founder, 9 Oct: „no prepared answers"): retired. Nothing is
+ * composed, nothing is shown under a yes, and a line stored before the switch
+ * is never sent. The column and the code stay; this one switch holds them.
+ */
+export const PREPARED_ANSWER_ON = false;
+
 const QUERY_TIMEOUT_MS = 5_000;
 const COMPOSE_BUDGET_MS = 10_000;
 const MAX_OUTPUT_TOKENS = 200;
@@ -75,6 +82,7 @@ export async function composePreparedAnswer(
   question: string,
   language: RunLanguage,
 ): Promise<string | null> {
+  if (!PREPARED_ANSWER_ON) return null;
   try {
     const facts = await profileFacts(readerUserId);
     if (facts.length === 0) return null;
@@ -123,6 +131,7 @@ export function preparedAnswerLine(language: RunLanguage, yesLabel: string, line
 
 /** The line stored on the live ask in this conversation, when he has not answered yet. */
 export async function preparedAnswerOn(askThreadId: number): Promise<string | null> {
+  if (!PREPARED_ANSWER_ON) return null;
   const result = await query<{ prepared_answer: string | null }>(
     `SELECT prepared_answer FROM task_asks
       WHERE ask_thread_id = $1 AND status = 'sent' AND prepared_answer IS NOT NULL
