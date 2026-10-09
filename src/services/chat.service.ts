@@ -8790,6 +8790,26 @@ function phonesIn(raw: unknown): string[] {
     .filter((phone): phone is string => typeof phone === 'string' && phone !== '');
 }
 
+/** 2182's five core questions share this id prefix (migration 216). */
+const CORE_QUESTION_PREFIX = 'core_';
+
+/** The next core question for this owner, or nothing once all five are answered. */
+async function nextCoreQuestion(
+  userId: string,
+  runId: string | undefined,
+): Promise<{ next_core_question?: unknown }> {
+  try {
+    const language = runId === undefined ? 'ka' : runLang(runId);
+    const next = await getNextQuestion(userId, 'any', language);
+    return next.found && next.question.category === 'core'
+      ? { next_core_question: next.question }
+      : {};
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[profile-question] next core question not read:', (err as Error).message);
+    return {};
+  }
+}
 async function executeToolCall(
   userId: string,
   name: string,
@@ -10678,12 +10698,17 @@ async function executeToolCall(
       const optionIds = Array.isArray(input['option_ids'])
         ? (input['option_ids'] as unknown[]).map(String)
         : [];
-      return recordAnswer(userId, {
+      const recorded = await recordAnswer(userId, {
         questionId,
         optionIds,
         freeText: typeof input['free_text'] === 'string' ? input['free_text'] : undefined,
         skipped: input['skipped'] === true,
       });
+      // 48414: after a core answer no run asked for the next one, so the five stopped at one.
+      // The next core question rides with the result, as data, for the same turn.
+      return questionId.startsWith(CORE_QUESTION_PREFIX)
+        ? { ...recorded, ...(await nextCoreQuestion(userId, runId)) }
+        : recorded;
     }
     case 'get_top_connectors':
       return getTopConnectors(userId, input['limit'] as number | undefined);
