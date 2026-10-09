@@ -411,6 +411,32 @@ describe('createAsk', () => {
     expect(out.sent).toBe(true);
   });
 
+  /**
+   * 48089 (P1, conv 46897): „შეაჩერე ეს მიზანი." closed the goal while the day-one
+   * run was inside createAsk, and two asks went out 7 and 9 s later. The goal is
+   * read again before anything reaches the reader.
+   */
+  it('sends nothing when the goal is stopped while the ask is being written (48089)', async () => {
+    routeAskQueries({ member: { userId: 7, name: 'გია' } });
+    const open = await getTaskById(3);
+    // Open at the top of createAsk; stopped by the time the editor is done.
+    mockGetTask
+      .mockResolvedValueOnce(open)
+      .mockResolvedValue({ ...open, status: 'closed' } as never);
+
+    const out = await createAsk('42', 3, '+995599111222', 'BMW-ს კარგი ხელოსანი ხომ არ იცი?');
+
+    expect(out).toEqual({
+      sent: false,
+      reason: 'task_not_open',
+      error: 'Task not found or not open.',
+    });
+    expect(mockCreateThread).not.toHaveBeenCalled();
+    expect(
+      mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO task_asks')),
+    ).toBe(false);
+  });
+
   it('sends: ask row + recipient thread + opening message', async () => {
     routeAskQueries({ member: { userId: 7, name: 'გია' } });
 
