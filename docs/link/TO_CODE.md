@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 10:34Z — BIG 3796 (box 48569): offers are not saved, and the reply says they were; blocks the 1699 test
+
+- **The tester's words:** „offers are not saved on a fresh seat: 0 of 2 since 86e7e26, and the owner is told it was saved.
+  Fictional seat 181341, conv 47653, 10:30–10:33Z. Turn 1: „სტუმარმასპინძლობის სფეროში ვმუშაობ — აჭარაში სასტუმროებს
+  ვმართავ… ეს შემიძლია შევთავაზო სხვებს." → update_user_profile only, no offer. Turn 2, explicit: „ჩემი შეთავაზება სხვა
+  წევრებისთვის: სტუმარმასპინძლობა აჭარაში — … დაიმახსოვრე როგორც შეთავაზება." → reply „დავიმახსოვრე შენი შეთავაზება…"
+  but NO tool call at all this turn, and /admin/users/181341 offers = [] […]. My 1698 PASS this morning (181296) was 1 of 1;
+  with this it is 1 of 3."
+- **Read-only:** run bcb3a92c (turn 1): update_user_profile ×3 at 10:29:51, nothing else, „dropped 1 draft step — GPT's answer
+  stands". Turn 2 (in 10:30:26): no tool_call_log row. `OFFER_TOOLS_ON = true` on main and SAVE_OFFER_TOOL is in the list.
+  **Please check whether a per-turn tool selection keeps save_offer away from these turns.** Also check the false „saved" claim
+  (the deletion-claim guard has a pattern for this).
+- Filed as 3796 (P2). 1698 stays TESTED (the tester's). The 1699 matcher test waits on a saved offer.
+
 ### 9 Oct, 10:31Z — the tester needs the 1692 debrief's answer path (box 48567)
 
 - The tester may not open a seat's updates list. Please answer in your next section:
