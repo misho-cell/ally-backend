@@ -213,6 +213,8 @@ export type AskRefusalReason =
   | 'ask_fatigue_budget_exhausted'
   | 'person_daily_relay_limit_reached'
   | 'duplicate_ask_in_flight'
+  /** 4093: the recipient said no to this asker within the last two days. */
+  | 'declined_recently'
   /** 1688 (A5): two assistant-only rounds with this person already — the owner answers now. */
   | 'owner_must_answer'
   /**
@@ -1196,6 +1198,14 @@ async function createAskNow(
 
   if (String(toUserId) === fromUserId) {
     return { sent: false, reason: 'self_send', error: 'საკუთარ თავს ვერ მისწერ.' };
+  }
+
+  // 4093: somebody who just said no to this asker gets nothing more from them —
+  // no follow-up, no new question — unless the owner names them again himself.
+  if (fromOwnersLine !== true && (await declinedThisAskerRecently(fromUserId, toUserId))) {
+    // eslint-disable-next-line no-console
+    console.log(`[ask] task ${taskId}: refused — the recipient declined this asker recently`);
+    return { sent: false, reason: 'declined_recently', error: declinedRecently(toName) };
   }
 
   // The brake on the RECEIVING side (D134, 8 Sep): however many people want
@@ -3745,6 +3755,42 @@ const DUPLICATE_ASK_WINDOW_SECONDS = 600;
 const ASK_REMINDER_AFTER_HOURS = 48;
 
 /**
+ * 4093 (the founder's find, Giorgi's account): he answered „არ მცალია
+ * დამანებე თავი" on 6 October, and the asker's assistant sent him another
+ * question on the 7th and a reminder on the 9th. A no closes the asking for
+ * that person: nothing more from the same asker for two days, on any goal.
+ */
+export const DECLINE_QUIET_HOURS = 48;
+
+/** False when it cannot be read: a failed read must not silence every ask. */
+async function declinedThisAskerRecently(fromUserId: string, toUserId: number): Promise<boolean> {
+  try {
+    const result = await query<{ declined: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM task_asks
+          WHERE from_user_id = $1::int AND to_user_id = $2
+            AND declined_at > NOW() - make_interval(hours => $3)
+       ) AS declined`,
+      [fromUserId, toUserId, DECLINE_QUIET_HOURS],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.declined === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[ask] recent decline not read:', (err as Error).message);
+    return false;
+  }
+}
+
+function declinedRecently(toName: string): string {
+  return (
+    `არ გაიგზავნა: ${toName} ცოტა ხნის წინ ამ მფლობელის კითხვაზე უარით უპასუხა — მას ახლა ` +
+    'აღარაფერი მისწერო, არც შეხსენება, არც ახალი კითხვა. მფლობელს მშვიდად უთხარი, რომ ' +
+    'ახლა ვერ ახერხებს, და გააგრძელე სხვა ადამიანებით.'
+  );
+}
+
+/**
  * WHEN A REMINDER GOES — Giorgi's decision G-002, Misho's word on 2 October.
  *
  * Until then reminders kept Tbilisi's waking hours (D472, 08:00–22:00), on
@@ -3821,6 +3867,12 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
      WHERE id IN (
        SELECT id FROM task_asks
        WHERE status = 'sent' AND reminded_at IS NULL
+         -- 4093: no reminder to somebody who has just said no to this asker.
+         AND NOT EXISTS (
+           SELECT 1 FROM task_asks d
+            WHERE d.from_user_id = task_asks.from_user_id
+              AND d.to_user_id = task_asks.to_user_id
+              AND d.declined_at > NOW() - make_interval(hours => $2))
          -- ROW 300, then #1684 (A1/A3): a „later" tap holds the one reminder
          -- until the date the later named (three days when it named none);
          -- an ask nobody tapped keeps its 48 hours from the question.
@@ -3836,7 +3888,7 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
      )
      RETURNING ask_thread_id, to_user_id, question, shown_question, choices,
                ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
-    [limit],
+    [limit, DECLINE_QUIET_HOURS],
     ASK_QUERY_TIMEOUT_MS,
   );
   for (const row of due.rows) {
