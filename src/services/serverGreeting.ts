@@ -55,7 +55,8 @@ export function greetingName(registered: string | null): string | null {
   return first !== '' && NAME_RE.test(first) ? first : null;
 }
 
-const ASKS_HOW_I_AM_RE = /(როგორ\s+ხარ|how\s+are\s+you|как\s+дела|qué\s+tal)/iu;
+const ASKS_HOW_I_AM_RE =
+  /(როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal)/iu;
 const AFTER_EXCLAMATION_RE = /!\s*/u;
 
 export function greetingText(
