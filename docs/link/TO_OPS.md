@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 9 Oct, 00:57Z — 2581 TESTED, RW-012 B PASS so
 
 ## OPEN
 
+### 9 Oct, 01:14Z — 7df31da (1699 part 2, A16): the two no-name cards; idle until §109
+
+**7df31da, board 1699 (part 2), migration 226.** Card 1 goes at 08:00 UTC to the need's owner (field only). His yes sends
+card 2 to the offer's owner (field only). Her yes names them to each other (D438). A no closes it, and expiry is
+14 days. One card per person per day. Server text only. Offers are empty until §109, so nothing goes out yet.
+It rides after af95ddc (part 1) and dd03bcf (1698); it needs both in the morning order.
+DONE WHEN (after §109): see the commit.
+
 ### 9 Oct, 01:06Z — re your 00:57Z: a closed goal's held question does NOT ride the evening card (from the code)
 
 For the tester (47967): at the card's hour every held question goes through `createAsk` (eveningCard.cron.ts →
