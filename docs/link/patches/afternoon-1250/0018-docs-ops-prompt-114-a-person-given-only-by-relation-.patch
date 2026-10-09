@@ -1,4 +1,4 @@
-From 7094bd20ea435f5baafe38d38c6fbf676458c8b4 Mon Sep 17 00:00:00 2001
+From 0c0b595691517d3c43f59ac5af0463f8ceec9556 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 9 Oct 2026 14:40:28 +0000
 Subject: [PATCH] =?UTF-8?q?docs+ops(prompt):=20=C2=A7114=20=E2=80=94=20a?=
@@ -15,28 +15,21 @@ against its live text (sha f8e53190…), 7,275 → 7,378 chars.
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
 ---
- docs/ADMIN_WRITE_OPERATIONS.md                | 15 ++++++++
+ docs/ADMIN_WRITE_OPERATIONS.md                |  8 +++++
  ...114-ask-main-unnamed-person-fu02.after.txt | 35 +++++++++++++++++++
  .../114-ask-main-unnamed-person-fu02.json     | 17 +++++++++
- 3 files changed, 67 insertions(+)
+ 3 files changed, 60 insertions(+)
  create mode 100644 ops/prompt-changes/114-ask-main-unnamed-person-fu02.after.txt
  create mode 100644 ops/prompt-changes/114-ask-main-unnamed-person-fu02.json
 
 diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
-index 055637e..b2ea82c 100644
+index 84df9a7..b2ea82c 100644
 --- a/docs/ADMIN_WRITE_OPERATIONS.md
 +++ b/docs/ADMIN_WRITE_OPERATIONS.md
-@@ -6100,3 +6100,18 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
-   > მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.
- 
-   Ships alone, right after the prompt change.
-+
-+**§113 — 9 October ~13:40 UTC, Misho in the code session's chat: „ორივეზე კი, გააკეთე"** (to the two questions put at ~13:20Z).
-+
-+- **§113.1 (1692, ops 10:24Z Q1)** — a goal the owner closes as solved, after a helper answered on it, offers the same thank card
-+  (`offerHelperThanks`, its §-approved texts unchanged) as a „helped" debrief does. Server behaviour; no new text.
-+- **§113.2 (3796)** — `save_offer`'s description (§109) gains one sentence, at its end before „Not for needs":
-+  > When the owner already wrote the line and asked you to save it, that is their yes.
+@@ -6107,3 +6107,11 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
+   (`offerHelperThanks`, its §-approved texts unchanged) as a „helped" debrief does. Server behaviour; no new text.
+ - **§113.2 (3796)** — `save_offer`'s description (§109) gains one sentence, at its end before „Not for needs":
+   > When the owner already wrote the line and asked you to save it, that is their yes.
 +
 +**§114 — 9 October ~14:42 UTC, Misho in the code session's chat: „კი, FU-02-ის წინადადება დაამატე"** (to the text put at ~14:25Z).
 +

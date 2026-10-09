@@ -1,0 +1,65 @@
+From 48b76ceb149c8977e73638c3dc1636c7811fb2a9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 14:47:59 +0000
+Subject: [PATCH] =?UTF-8?q?fix(offers):=20the=20guard=20reads=20the=20offe?=
+ =?UTF-8?q?r=20verb=20too,=20=E2=80=9E=E1=83=A1=E1=83=97=E1=83=90=E1=83=95?=
+ =?UTF-8?q?=E1=83=90=E1=83=96=E1=83=9D=E1=83=91"=20(3796,=20box=2048874)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's onboarding retest (seat 181671, run b1972c58, a95bbf9 live):
+„დავიმახსოვრე: შენ სხვა წევრებს სთავაზობ…" went out with no save_offer
+call and the offers list stayed empty. The run did reach the guard; the
+reply carried the verb, not the noun, so „შეთავაზ" never matched. The
+offer word is now the root „თავაზ" („თავაზიანი", polite, excluded), plus
+„предлаг" and „ofrec".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/anOfferIsSavedOnlyWhenSaved.test.ts        | 9 +++++++++
+ src/services/offerClaim.ts                               | 7 ++++++-
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+index be3c5a3..a347c39 100644
+--- a/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
++++ b/src/services/__tests__/anOfferIsSavedOnlyWhenSaved.test.ts
+@@ -28,6 +28,15 @@ describe('a reply that says an offer was saved', () => {
+     ).toBe(false);
+   });
+ 
++  it('is caught when the reply uses the verb (box 48874, onboarding run)', () => {
++    const verb = 'დავიმახსოვრე: შენ სხვა წევრებს სთავაზობ იურიდიულ კონსულტაციას თბილისში.';
++    expect(offerClaimWithoutTool(verb, [], owner)).toBe(true);
++  });
++
++  it('leaves „polite" alone — it shares the root, not the meaning', () => {
++    expect(offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], owner)).toBe(false);
++  });
++
+   it('is caught in English too', () => {
+     expect(
+       offerClaimWithoutTool('I saved your offer.', [], 'Save this as my offer: logistics in Poti'),
+diff --git a/src/services/offerClaim.ts b/src/services/offerClaim.ts
+index 6972b46..ed5316d 100644
+--- a/src/services/offerClaim.ts
++++ b/src/services/offerClaim.ts
+@@ -10,7 +10,12 @@ import { NotDeletedLine } from './deletionClaim';
+  * it the ordinary way. Both halves read the offer word, so a saved profile
+  * line („დავიმახსოვრე, რომ ბუღალტერი ხარ") is never touched.
+  */
+-const OFFER_WORD_RE = /(შეთავაზ|შევთავაზ|\boffer|предлож|\boferta|\bofrezco)/iu;
++/**
++ * The verb's root, not only the noun's: box 48874's reply was „დავიმახსოვრე:
++ * შენ სხვა წევრებს სთავაზობ…" — „სთავაზობ" carries no „შეთავაზ" and the guard
++ * let it through. „თავაზიანი" (polite) shares the root and is left out.
++ */
++const OFFER_WORD_RE = /(თავაზ(?!იან)|\boffer|предлож|предлага|\boferta|\bofrec)/iu;
+ 
+ const SAVED_WORDS: readonly string[] = [
+   'დავიმახსოვრე',
+-- 
+2.43.0
+

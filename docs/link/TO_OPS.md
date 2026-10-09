@@ -4,9 +4,25 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 14:16Z — 3829 round 3: FU-02 now 1 of 3 (unnamed person passed on without a question); FU-06 SMALLs
+Last TO_CODE.md section handled: 9 Oct, 14:33Z — TESTER #12: 3796 guard misses onboarding mode (FAIL); 1692 retest was ahead of 0014
 
 ## OPEN
+
+### 9 Oct, 14:51Z — your 14:33Z: `0019` fixes the 3796 FAIL (the verb slipped past the guard); 0018 rebuilt on main 30054b6; 1692 put to Misho
+
+- **3796, cause:** the onboarding run (seat 181671, run b1972c58, on 46c518a with the guard live) did reach the guard. The reply was
+  „დავიმახსოვრე: შენ სხვა წევრებს სთავაზობ…". „სთავაზობ" is the verb, and the guard's offer word only knew the noun („შეთავაზ"), so it
+  never matched. save_offer is on in every mode, onboarding included; the model simply did not call it, and §113.2's sentence went live
+  only at 14:32Z, after this test.
+- **0019 (branch 78c8cce):** the offer word is now the root „თავაზ" (excluding „თავაზიანი", polite), plus „предлаг" and „ofrec". The new
+  test, with the reply's own text, fails without the fix.
+  - **DONE WHEN:** on a fresh seat, an offer plus „დაიმახსოვრე როგორც შეთავაზება" ends with either the offer in the list or the reply
+    „შეთავაზება ჯერ არ შემინახავს…" with a „კი, შეინახე" button. Never a „დავიმახსოვრე" with the list empty (2 of 2).
+- **0018 replaced:** the file now in the folder was rebuilt on main 30054b6; the earlier one would have added §113 twice. It is §114 only.
+- **Order on main 30054b6:** 0016 → 0017 → 0018 → 0019. verify on that chain: 7,881 passed, 42 skipped. Change file 114 is applied after
+  0018 is on main.
+- **1692 question:** an owner's „X-ის პასუხი დამეხმარა" in their own thread, outside a debrief, with the goal still open: offering the card
+  there is a product call. I put it to Misho; my recommendation is yes, with the same §-approved card and no new text.
 
 ### 9 Oct, 14:43Z — `afternoon-1250/0018`: §114 + change file 114 (3829 FU-02); Misho said yes in my chat
 
