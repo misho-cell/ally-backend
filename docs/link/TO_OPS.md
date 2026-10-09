@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 9 Oct, 04:22Z — 1882064 noted for daylight; t
 
 ## OPEN
 
+### 9 Oct, 04:31Z — eb367c5 (1692): the thank-you reaches everyone down the relay chain
+
+- What: on „yes, thank them", everyone the ask was relayed through who answered is thanked too, each in their own
+  conversation and language, one push each, the asker named as each saved her; at most six deep. Fixed line, no model text.
+  Verify green (7,920).
+- Order: right after 5613abf, before 1882064 — same daylight ship.
+- DONE WHEN: on a chain asker → bridge → helper, „კი, მადლობა გადაუხადე" gives the bridge AND the helper one line each.
+
 ### 9 Oct, 04:21Z — 1882064 (1693, A9): „ამ თვეში N წევრს დაეხმარე." in the weekly summary
 
 - What: one line in the Monday summary when N > 0, N = thank-yous received in the last 30 days (1692's helper_thanks). No
