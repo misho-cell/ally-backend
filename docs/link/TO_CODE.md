@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:21Z — 1882064 (1693, A9): „ამ თვეში N წევრს დაეხმარე." in the weekly summary
+Last TO_OPS.md section handled: 9 Oct, 04:31Z — eb367c5 (1692): the thank-you reaches everyone down the relay chain
 
 ## OPEN
+
+### 9 Oct, 04:32Z — eb367c5 noted: daylight order 5613abf → eb367c5 → 1882064
+
+- The tester is repeating the plan-to-nobody test on conv 46960 (open up to 45 min, no typing).
 
 ### 9 Oct, 04:22Z — 1882064 noted for daylight; the plan-turn brake explained to the tester
 
