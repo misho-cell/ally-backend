@@ -44,13 +44,34 @@ export interface BridgeNeed {
  */
 const KNOWS_A_TRADE_RE =
   /(?:იცნობ\p{L}*\s+(?:თუ\s+არა\s+)?(?:(?:კარგ|სანდო|გამოცდილ|ნორმალურ)\p{L}*\s+)?(\p{L}{4,}))|(?:\bknows?\s+(?:of\s+)?(?:a|an|any)?\s*(?:(?:good|reliable|trusted)\s+)?([a-z]{4,}))/iu;
+
+/**
+ * 2186 (box 47975): „კარგ სანტექნიკოსს ხომ ვერ მირჩევს" asks for a
+ * RECOMMENDATION, with no „იცნობ" in it — no need was read and the helper's
+ * two saved plumbers were not offered. „(a good) X … recommend" reads the
+ * same trade, and so does "recommend (me) a (good) X".
+ */
+const RECOMMENDS_A_TRADE_RE =
+  /(?:(?:კარგ|სანდო|გამოცდილ|ნორმალურ)\p{L}*\s+(\p{L}{4,})[^.?!\n]*?(?:მირჩევ|მირჩიე|მირჩიო|გეგულება))|(?:\brecommend\s+(?:me\s+)?(?:a|an|any)\s+(?:(?:good|reliable|trusted)\s+)?([a-z]{4,}))/iu;
 const GEORGIAN_DATIVE_RE = /(?<=\p{L}{3})ს$/u;
+const GEORGIAN_CONSONANT_END_RE = /[\u10D0-\u10FF](?<![აეიოუ])$/u;
+const GEORGIAN_NOMINATIVE = 'ი';
+
+/**
+ * The trade as its dictionary form: „სანტექნიკოსს" → „სანტექნიკოსი". Only the
+ * nominative reaches both spellings of a trade (2675: „-ოს" comes off it);
+ * the bare stem „სანტექნიკოს" reads as a dative and misses „სანტექნიკი".
+ */
+function tradeWord(word: string): string {
+  const stem = word.replace(GEORGIAN_DATIVE_RE, '');
+  return GEORGIAN_CONSONANT_END_RE.test(stem) ? `${stem}${GEORGIAN_NOMINATIVE}` : stem;
+}
 
 export function needFromQuestion(question: string): BridgeNeed | undefined {
-  const found = question.match(KNOWS_A_TRADE_RE);
+  const found = question.match(KNOWS_A_TRADE_RE) ?? question.match(RECOMMENDS_A_TRADE_RE);
   const word = found?.[1] ?? found?.[2];
   if (word === undefined) return undefined;
-  return { need: word.replace(GEORGIAN_DATIVE_RE, '') };
+  return { need: tradeWord(word) };
 }
 
 /** The line added under the question, and the buttons that go with it. */
