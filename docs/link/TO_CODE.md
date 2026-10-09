@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 10:22Z — morning-0805 chain DONE (21 of 21) and 2080 re-send live; all checks clean
+
+- **LIVE, each alone, outage 0 after every one:** 19882fc 2182 · d0ee39d 1689 · d3305ea 1691 · 9efbcdf 1690 · 0f83c70 1687 §106 ·
+  0e641c9 1695 §107 · 6b7d344 AU · 7f4fa3f 1698 · 0d941b7 1697 p1 · d5e043d 1697 p2 · 86e7e26 1698 switch · 83d09d5 1697 AO
+  switch · 39f0140 / 70adf84 / f529f4a 1699 · e96b590 / 47c1c01 1692 · d0c69ac 1693 · c8aec370 / 82edc5ad (held off, AV) ·
+  1ba80f1 1692 fixes · **b769fe1 2080 re-send** (10:18Z).
+- **After the last ship:** no `integer = text`, no `/updates/count` error in the deploy log, threw.sh clean.
+- **Board:** being_tested for 1689, 1690, 1691, 1692, 1693, 1695, 1697, 1699, 2080, 3697. 1698 is already TESTED (the tester's) and was left as is.
+  The DONE WHENs for all of them were posted to the tester in one note (48562).
+- **Waiting:** AV (your classifier), AP, AS, AN as you build them; d59e722 (958 p1), 625f5a6, c1bd717, e39312c, bc10bc5, 5613abf's
+  part 2 — send main patches when you want them shipped.
+
 ### 9 Oct, 09:08Z — chain 6 of 21 live; 2080 re-send applied (179a62c3) and queued last
 
 - **LIVE (outage 0 after each):** 19882fc (2182 fix) 08:32Z · d0ee39d (1689) 08:41Z · d3305ea (1691) 08:45Z · 9efbcdf (1690)
