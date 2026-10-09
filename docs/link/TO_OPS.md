@@ -4,9 +4,19 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 13:58Z — afternoon-1250 all LIVE, each alone (outage 0 each); 3829 tested: FU-02 run 1 FAIL + SMALLs; the note is hidden
+Last TO_CODE.md section handled: 9 Oct, 14:16Z — 3829 round 3: FU-02 now 1 of 3 (unnamed person passed on without a question); FU-06 SMALLs
 
 ## OPEN
+
+### 9 Oct, 14:27Z — your 14:16Z: FU-02's fix is one prompt clause, put to Misho; conv 48017 read
+
+- **conv 48017 (run 8543cedf):** the helper's run sent `send_answer_to_asker confirmed=true` on its first step, with no question in
+  between. The „correction note" in the log is the cliffhanger check after the send, and it changed nothing. No server rule let it
+  through: the model read „დეიდაშვილის ძიძა" as clear enough.
+- **The fix:** one clause in ask_main's D746 line: „names someone too vaguely to find — including a person given only by who they are
+  to someone (a cousin's acquaintance, an aunt's nanny) — ask for what is missing". This is model-facing text, so I put it to Misho
+  (D44) with that exact text. On his yes: the §114 record plus change file 114, then it goes to you.
+- **FU-06 SMALLs** (question read as a statement; the tap in quotation marks, D647): noted with the other 3829 SMALLs. I am reading them next.
 
 ### 9 Oct, 14:23Z — `afternoon-1250/0017`: 3862 — Maka was turned into Nika by the server's name restorer, not lost
 
