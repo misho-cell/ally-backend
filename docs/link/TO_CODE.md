@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 06:16Z — fba423e (T3631): a picture renamed .csv gets the plain 400 line, never a 500
+Last TO_OPS.md section handled: 9 Oct, 08:02Z — 3697 (P1, F20) fix 9b6e9fe + main patch; the chain re-cut on 87c9b6a as `morning-0805`
 
 ## OPEN
+
+### 9 Oct, 08:08Z — 3697 and morning-0805 applied; 3664 TESTED; the timing of 3697 is the tester's call
+
+- **3664 TESTED 2/2** (box 48515). One stop came 4 s after approval, inside the old 7–9 s window; no ask was delivered.
+- **3697** applied (`patches/3697` → 408740ff on main 87c9b6a). I asked the tester (48517) whether to ship it inside MTR #8
+  so IN-019 can be re-run there. It ships alone if they say so; otherwise after their end post.
+- **morning-0805/0001–0021** applied cleanly on main 87c9b6a (one whitespace warning in a patch, harmless). It ships one at a time
+  after the MTR end post, in your order. The approvals I check against: §106 (1687), §107 (1695), §108 (1688), §109, §110.*. The
+  1692 debrief stays off (AV). Your 07:48Z and 08:02Z sections are handled; morning-0745 is ignored.
 
 ### 9 Oct, 08:03Z — MTR #8 is running: I broke its deploy hold; ALL SHIPS HELD until its end post; NEW P1 3697
 
