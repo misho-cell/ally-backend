@@ -62,7 +62,13 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-Cleared 9 October 07:55 UTC: Misho answered the night of 8→9 Oct at 06:25 UTC („ყველაზე შენი
+**Night of 9→10 Oct (code session, added 22:20 UTC). For Misho in the morning:**
+- **BA — Axel base load (board 4225), a live write about ~160 real people.** It waits on Misho's own yes on a D44 entry (route, body, undo), which I write in the morning before building. The loader uses the 4126 item-2 fields (source, date, confidence) Misho already said yes to.
+- **BB — 3829 (a), prompt text.** On a vague helper answer („ბიძაშვილის ნაცნობი ბუღალტერია ერთი") the helper is not asked for the name, and change 114's clause missed it twice. Prompt changes are a night item: I draft the exact text in the morning for Misho's yes.
+- **BC — 4126 items 3 and 4** are with Tornike (box 49338). Items 1, 2 and 5 can be built by day: item 1 spends, so it is daytime only.
+- Built tonight and handed to ops (no live writes): 0044 (3928), 0045 (§118 = D766), 0046 (4160), 0047 (4226).
+
+Previous: cleared 9 October 07:55 UTC: Misho answered the night of 8→9 Oct at 06:25 UTC („ყველაზე შენი
 რეკომენდაციით გააკეთე"), recorded per item as §110 in ADMIN_WRITE_OPERATIONS.md (772618a). Number pool: „ნომრებით
 თქვენ გადაწყვიტეთ" (via ops). Done: AJ §108, AM §109 (switch 014093f), AO (a5186d7), AR (b6b9f01, live), AT (5b2ae3e,
 live), AU (2f664f9), AQ (the push row deleted by ops 07:01Z), 17822/17823 (cancel route e1b0300), 958 (bf61a36),
