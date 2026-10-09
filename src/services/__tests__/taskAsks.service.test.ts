@@ -466,7 +466,9 @@ describe('createAsk', () => {
     const opening = mockSaveMessage.mock.calls[0][3] as string;
     expect(opening).not.toContain('**');
     // Item 27: declined properly, never the hyphenated „მიშო-ის".
-    expect(opening).toContain('მიშოს ასისტენტი გეკითხება');
+    // AU (§110.8): the question opens alone; the closing line names whose assistant wrote.
+    expect(opening.startsWith('BMW-ს კარგი ხელოსანი ხომ არ იცი?')).toBe(true);
+    expect(opening).toContain('მიშოს ასისტენტი, მიშოს სახელით');
     // D49: reaching 'sent' arms the ASKER's 3-day debrief for this ask.
     expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია', false);
   });

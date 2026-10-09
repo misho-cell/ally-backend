@@ -1622,12 +1622,15 @@ async function createAskNow(
     ),
     picker && said === language ? picker.details : {},
   );
+  // AU: the closing line names the asker whenever the profile has a name.
+  const namedBelow = (fromName.rows[0]?.name?.trim() ?? '') !== '';
   const opening = buildAskOpening(
     said,
     senderName,
     roster,
     edited.question,
     isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
+    namedBelow,
   );
   if (relayed.original !== undefined) {
     // eslint-disable-next-line no-console
@@ -1693,6 +1696,7 @@ async function createAskNow(
         roster,
         shorter,
         isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
+        namedBelow,
       );
     }
   }
