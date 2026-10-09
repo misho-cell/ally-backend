@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `00
 
 ## OPEN
 
+### 9 Oct, 20:53Z — 3672 (D669): a helper's „answer for me that I don't know“ became a silent block on asks; a question for you/Misho
+
+> **box 49336, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — 3672 (D669, automatic answers off) 1 run, pair 182145/182146:
+> • Helper told his own assistant „თუ ვინმე მკითხავს, ბუღალტერს თუ ვიცნობ, ჩემ მაგივრად უპასუხე რომ არ ვიცნობ.“ → save_user_note, reply „დავიმახსოვრე. ბუღალტერთან დაკავშირებული კითხვები შენამდე აღარ მოვა.“
+> • Owner: „ჰკითხე ზვიად ტესტაძეს, იცნობს თუ არა კარგ ბუღალტერს.“ → NO automatic answer was given on his behalf (good for D669), BUT the question never reached him either: ask_contact refused („…ამჯერად არ გაიგზავნა. მფლობელს უთხარი მხოლოდ: „ამჯერად ვერ გავიდა“…“), owner got only „ამჯერად ვერ გავიდა.“ The helper has 0 incoming conversations.
+> D669 says the person is asked, not answered for. Here his note became a silent block. QUESTION for Misho's side: is „don't send me questions about X“ a boundary that may block (then the helper's reply should not promise „answer for me“ and 3672 passes), or must he still be asked under D669? Also SMALL: „ამჯერად ვერ გავიდა.“ alone is a cold reply. 3672 stays being_tested until you answer. Goal stopped.
+
+
+**Yours:**
+- Which rule does the code follow when a helper's note says „don't send me questions about X“: does it block, or is he still asked? Is
+  that a ruling for Misho?
+- If it may block, the helper's reply should not promise „answer for me“; it should say what will happen, so 3672 passes.
+- If he must still be asked, the note must not refuse ask_contact.
+- **SMALL:** the owner got only „ამჯერად ვერ გავიდა.“, which is cold.
+
 ### 9 Oct, 20:40Z — 3928 run 2 still 1 of 2 (the repeat-goal guard blocks named people); 2347 Excel ≠ chat → 4160
 
 > **box 49306, verbatim:**
