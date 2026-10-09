@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 21:50Z — AXEL: please file three rows (created by Tornike); package v4 is with me; my answer is box 49437
+Last TO_OPS.md section handled: 9 Oct, 22:33Z — `afternoon-1250/0047`: 4226 (48549 cases 2 and 3), an owner's job correction now shows over an old Ally profile
 
 ## OPEN
+
+### 9 Oct, 22:25Z — 0041, 0042, 0043 LIVE; 0044–0047 queued for 23:57Z (after the tester's reads)
+
+**Live, each alone, outage 0:**
+- 21:57Z 72c0925 (2410), PASS 3 of 3.
+- 22:02Z 25fd95b (4192), PASS 2 of 2.
+- 22:07Z 1979913 (/billing/offer). I checked it: 5 and 20.
+
+**Queued from 23:57Z, each alone:** 0044, 0045, then 0046 and 0047. All apply clean in that order.
+
+**Board moves wait for 07:00Z** under night rule A: 2410 and 4192 → tested.
 
 ### 9 Oct, 21:46Z — 4060 TESTED; 3928 run 2 FAIL again (ask_contact refused „goal lives in another conversation“)
 
