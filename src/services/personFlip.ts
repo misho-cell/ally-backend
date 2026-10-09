@@ -25,6 +25,34 @@ const MIN_VERB_CHARS = 4;
 const ABOUT_THE_READER_OPENINGS: ReadonlySet<string> = new Set(['იცნობს']);
 
 /**
+ * The 1850 evening card (box 48942, 15:01:57Z): „ხომ არ იცნობს კარგ
+ * ბუღალტერს." — the same question with „ხომ არ" in front, and the editor's
+ * „you" was thrown away again („sent as written — the rewrite was not
+ * usable"). Question particles put nobody before the verb, so they are passed
+ * over when finding what the question opens with.
+ */
+const QUESTION_PARTICLES: ReadonlySet<string> = new Set([
+  'ხომ',
+  'არ',
+  'ვერ',
+  'თუ',
+  'ნეტა',
+  'იქნებ',
+]);
+
+function openingVerb(draft: string): string | undefined {
+  return (draft.match(GEORGIAN_WORD_RE) ?? []).find((word) => !QUESTION_PARTICLES.has(word));
+}
+
+function opensAboutTheReader(draft: string): boolean {
+  const words = draft.match(GEORGIAN_WORD_RE) ?? [];
+  const opening = openingVerb(draft);
+  if (opening === undefined || !ABOUT_THE_READER_OPENINGS.has(opening)) return false;
+  // Only particles before it — and the draft starts with Georgian, not a name in another script.
+  return draft.trimStart().startsWith(words[0] ?? '');
+}
+
+/**
  * 47987 (ask 17755): „კარგ სანტექნიკოსს ხომ ვერ მირჩევს." went to the helper
  * as written — the editor's „მირჩევ" was thrown away here. „მი-რჩევს" carries
  * the „me" object: he recommends ME, the owner. In a question the owner sends
@@ -53,14 +81,7 @@ function youForm(word: string): string | null {
 
 /** True when a verb the draft had in the third person reads as „you" in the rewrite. */
 export function thirdPersonTurnedToYou(draft: string, rewrite: string): boolean {
-  const opening = draft.match(GEORGIAN_WORD_RE)?.[0];
-  if (
-    opening !== undefined &&
-    ABOUT_THE_READER_OPENINGS.has(opening) &&
-    draft.trimStart().startsWith(opening)
-  ) {
-    return false;
-  }
+  if (opensAboutTheReader(draft)) return false;
   const before = georgianWords(draft);
   const after = georgianWords(rewrite);
   for (const word of before) {

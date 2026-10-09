@@ -81,3 +81,18 @@ describe('an answer button that only points goes', () => {
     expect(asks).toContain('withoutPointingAnswers(await choicesInLanguage(editedChoices');
   });
 });
+
+/** 1850 card (box 48942): „ხომ არ" in front puts nobody before „იცნობს" — „you" is the fix. */
+describe('a question that opens with particles, then „knows"', () => {
+  it('takes the editor’s „you"', () => {
+    expect(
+      thirdPersonTurnedToYou('ხომ არ იცნობს კარგ ბუღალტერს.', 'ხომ არ იცნობ კარგ ბუღალტერს?'),
+    ).toBe(false);
+  });
+
+  it('still keeps a named person third person after the particles', () => {
+    expect(thirdPersonTurnedToYou('ხომ არ მუშაობს ზაზა შაბათსაც?', 'ხომ არ მუშაობ შაბათსაც?')).toBe(
+      true,
+    );
+  });
+});
