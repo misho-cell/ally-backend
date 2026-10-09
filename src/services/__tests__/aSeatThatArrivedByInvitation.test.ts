@@ -2,6 +2,8 @@ const dbQuery = jest.fn();
 jest.mock('../../db/postgres/client', () => ({
   __esModule: true,
   query: (...args: unknown[]) => dbQuery(...args),
+  withTransaction: (cb: (client: unknown) => unknown) =>
+    cb({ query: (...args: unknown[]) => dbQuery(...args) }),
 }));
 jest.mock('../contacts.service', () => ({ __esModule: true }));
 
@@ -257,7 +259,8 @@ describe('a fictional number nobody is registered on may be held', () => {
 
     const resolved = body.indexOf('await resolvePhonebook(holds)');
     const inviter = body.indexOf('await inviterSeatPhone(shape.invitedBy)');
-    const firstInsert = body.indexOf('INSERT INTO "User"');
+    // The writes live in writeSeatRows, reached only through insertSeatRows (ops 11:28Z).
+    const firstInsert = body.indexOf('await insertSeatRows(');
 
     expect(resolved).toBeGreaterThan(0);
     expect(inviter).toBeGreaterThan(0);

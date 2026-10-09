@@ -1,4 +1,11 @@
-jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+jest.mock('../../db/postgres/client', () => {
+  const query = jest.fn();
+  return {
+    __esModule: true,
+    query,
+    withTransaction: (cb: (client: unknown) => unknown) => cb({ query }),
+  };
+});
 jest.mock('../tokenWallet.service', () => ({
   __esModule: true,
   adjustTestAccountTokens: jest.fn().mockResolvedValue(500),
@@ -99,6 +106,31 @@ describe('creating one', () => {
     mockQuery.mockResolvedValueOnce(rows([]) as never); // the free-number scan
     mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never); // the User insert
   }
+
+  it('moves to the next free slot when its number is taken mid-create (ops 11:28Z)', async () => {
+    const { allFictionalNumbers } = await import('../fictionalNumbers');
+    const [first, second] = allFictionalNumbers();
+    mockQuery.mockResolvedValue(rows([]) as never);
+    mockQuery
+      .mockResolvedValueOnce(rows([]) as never) // the scan: first looks free
+      .mockResolvedValueOnce(rows([{ id: 200001 }]) as never) // the User insert
+      .mockRejectedValueOnce(Object.assign(new Error('UserPhone_phone_key'), { code: '23505' }))
+      .mockResolvedValueOnce(rows([{ phone: first }]) as never) // the rescan: now taken
+      .mockResolvedValueOnce(rows([{ id: 200002 }]) as never); // the User insert, again
+
+    const seat = await createTestSeat('Netai Test 13', [], 0, 'admin:1', 'ops 11:28Z');
+
+    expect(seat.phone).toBe(second);
+    expect(seat.userId).toBe('200002');
+  });
+
+  it('never swaps a number the caller chose for another', () => {
+    const src = readFileSync(join(__dirname, '..', 'testSeatCreate.service.ts'), 'utf8');
+    expect(src).toContain(
+      'if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)',
+    );
+    expect(src).toContain('await withTransaction((client) =>');
+  });
 
   it('makes the account the same shape as the eleven that exist', async () => {
     seatCreated();
