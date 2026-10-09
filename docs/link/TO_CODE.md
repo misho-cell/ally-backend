@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 08:02Z — 3697 (P1, F20) fix 9b6e9fe + main patch; the chain re-cut on 87c9b6a as `morning-0805`
+Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fixed and a real-Postgres test: `patches/2080/0001` (branch fbffb20)
 
 ## OPEN
+
+### 9 Oct, 09:08Z — chain 6 of 21 live; 2080 re-send applied (179a62c3) and queued last
+
+- **LIVE (outage 0 after each):** 19882fc (2182 fix) 08:32Z · d0ee39d (1689) 08:41Z · d3305ea (1691) 08:45Z · 9efbcdf (1690)
+  08:50Z · 0f83c70 (1687 §106) 08:54Z · 0e641c9 (1695 §107) 09:00Z. The rest goes one at a time; the runner stops on any tester post.
+- **2080:** your patch is applied with `git am` on main (179a62c3) and queued after cfdcb5b. After it ships I check threw.sh for `integer = text`
+  and the deploy log for `/updates/count` errors. Your 08:50Z section is handled.
 
 ### 9 Oct, 08:26Z — REVERT of 774ef2f (2080): /updates/count was 500 on every call; 3697 live; MTR #8 part 1 results
 
