@@ -14,8 +14,10 @@ export const GREETING_MAX_TOKENS = 350;
 
 // The tester's 1114 (34593, 34597): „გამარჯობა, როგორ ხარ?" and „დილა მშვიდობისა"
 // are greetings too, and both ran a full goal turn.
+// 2410 (tester 49243): „gamarjoba" in Latin letters took 25–31 s on the full
+// turn, „გამარჯობა" 3.3 s. Georgian typed in Latin letters is the same hello.
 const GREETING_ONLY_RE =
-  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s+მშვიდობისა|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
+  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s+მშვიდობისა|gamarjoba|gagimarjos|salami|(?:dila|saghamo|sagamo)\s+mshvidobisa|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
 
 /**
  * 3202 (Ninia's phone, 8 Oct 07:58Z, thread 44629): she typed „გამარჯობა with a

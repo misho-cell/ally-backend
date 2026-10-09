@@ -21,6 +21,11 @@ describe('isBareGreeting', () => {
     // The tester's 1114 (34593, 34597).
     'გამარჯობა, როგორ ხარ?',
     'დილა მშვიდობისა',
+    // 2410 (tester 49243): Georgian typed in Latin letters.
+    'gamarjoba',
+    'Gamarjoba!',
+    'gamarjoba, rogor khar?',
+    'dila mshvidobisa',
   ])('treats %p as only a greeting', (text: string) => {
     expect(isBareGreeting(text)).toBe(true);
   });
@@ -30,6 +35,7 @@ describe('isBareGreeting', () => {
     'hello, who knows a dentist?',
     'hi there can you help',
     'მინდა გამარჯობა ვუთხრა გიორგის',
+    'gamarjoba, iuristi mchirdeba',
     '',
   ])('keeps the full turn for %p', (text: string) => {
     expect(isBareGreeting(text)).toBe(false);
