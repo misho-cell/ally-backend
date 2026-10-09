@@ -6168,3 +6168,19 @@ automatically."
   - A second run replaces each number's research rows whole, so it doubles nothing.
 - **§119.3 — undo.** `DELETE FROM contact_facts WHERE source = 'public_research' AND submitted_by_user_id = '0';` This is one statement and touches no other row.
 - **§119.4 — not in this step.** How these facts are used (confirmed said with its source, possible only matched, rough only a hint: 46072 part 2), the waiting list, the other networks' rosters and the roster step in search are later steps. Until the read side ships, the loaded rows are invisible to every account.
+
+**§120 — 9 October ~22:43 UTC, Misho in the operations session's chat, relayed in TO_CODE 22:44Z: „ცარიელი ანგარიშები წაშალე"** (the two accounts the seat-maker clash of 11:23Z left: 181485 and 181488).
+
+- **Route.** `DELETE /admin/users/:userId/empty` (admin token).
+  - It deletes the `User` row only when no table holds anything for the id. The tables are read from the catalogue: every column named user_id / userId / owner_id / from_user_id / to_user_id / contactId / originUserId / invited_user_id.
+  - Any row anywhere means 409 with the table named, and nothing is deleted. A test seat or a staff account is held by its own table, so it can never be removed here. An unknown id is 404.
+  - Each deletion is written to `erasure_log`.
+- **Run by the operations session, on these two ids only**, on Misho's word in its chat. The code session does not run it.
+- **Checked read-only by the code session at ~22:58Z:** 181485 is held by none of the 89 user columns. 181488 was checked by the operations session.
+- **Undo.** None for a row that held nothing. The account had no number, so nobody can lose a way in.
+
+**§121 — 9 October ~22:37 UTC, Misho in the operations session's chat, relayed in TO_CODE 22:39Z: „B, შენი შეზღუდვით"** (Tornike's 49242, the night).
+
+- **All night:** build → release → the tester tests → report → fix → release, for everything that needs no question for Misho. Each patch ships alone as it lands, and board writes and LIVE notes continue at night.
+- **The limit:** at night nothing ships that shows real people NEW text, deletes data, or widens access, unless Misho's yes is already recorded as a §. Such an item gets one clear question on the board, and work goes on with the next item.
+- **Kept:** quiet windows around the tester's timed reads (no deploy), and no reminders to real people in their quiet hours.
