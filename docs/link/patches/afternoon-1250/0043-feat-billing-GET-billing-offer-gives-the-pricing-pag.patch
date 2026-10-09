@@ -1,0 +1,224 @@
+From f493b940a2a4bde44aa7aa1c8874f7dab1803649 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 21:40:11 +0000
+Subject: [PATCH] feat(billing): GET /billing/offer gives the pricing page both
+ free periods
+
+Frontend TO_BACKEND 21:30Z, Misho's decision tonight: the card trial stays
+5 days, and the pricing page shows both numbers, the card trial and the
+days an invitation carries. Neither reached the app.
+
+A public, rate-limited read (the page is also seen signed out), mounted
+ahead of the signed-in /billing router: { card_trial_days, invite_free_days },
+with invite_free_days null while its switch is off. It reads the same
+values the grant uses. Contract in docs/FOR_FRONTEND.md.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit cdb122467ccf663db7155501f2b515dc76ca0bcc)
+---
+ docs/FOR_FRONTEND.md                          | 17 +++++
+ .../__tests__/billingOffer.routes.test.ts     | 65 +++++++++++++++++++
+ .../__tests__/everyRouteIsBehindAuth.test.ts  |  2 +
+ src/api/routes/billingOffer.routes.ts         | 27 ++++++++
+ src/index.ts                                  |  3 +
+ src/services/billingOffer.service.ts          | 19 ++++++
+ 6 files changed, 133 insertions(+)
+ create mode 100644 src/api/routes/__tests__/billingOffer.routes.test.ts
+ create mode 100644 src/api/routes/billingOffer.routes.ts
+ create mode 100644 src/services/billingOffer.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 2f59ad5..acf4594 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,23 @@ messages in their name.
+ 
+ ---
+ 
++## 9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)
++
++Public: no token needed, because the pricing page is read signed out. 30 requests a minute per address.
++
++```json
++GET /billing/offer
++200 { "success": true, "data": { "card_trial_days": 5, "invite_free_days": 20 } }
++200 { "success": true, "data": { "card_trial_days": 5, "invite_free_days": null } }
++429 too many · 500 { "success": false, "error": "Could not read the offer" }
++```
++
++- `card_trial_days` is the card trial the server gives (env `STRIPE_TRIAL_DAYS`, 5 today).
++- `invite_free_days` is the days an invitation carries. It is `null` while the dashboard switch `invite_free_days_on` is off, or the value is 0. Read on live at 21:48Z: switched on, 20.
++- Both come from the same place the grant does, so a dashboard change shows on the page at once.
++
++---
++
+ ## 9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)
+ 
+ Authenticated (the usual bearer token), 20 requests a minute per person. It reads two rows and costs nothing, so polling every few minutes is fine.
+diff --git a/src/api/routes/__tests__/billingOffer.routes.test.ts b/src/api/routes/__tests__/billingOffer.routes.test.ts
+new file mode 100644
+index 0000000..edd8517
+--- /dev/null
++++ b/src/api/routes/__tests__/billingOffer.routes.test.ts
+@@ -0,0 +1,65 @@
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../services/inviteReward.service', () => ({
++  __esModule: true,
++  inviteFreeDays: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import billingOfferRouter from '../billingOffer.routes';
++import { inviteFreeDays } from '../../../services/inviteReward.service';
++import { DEFAULT_TRIAL_DAYS } from '../../../services/inviteCohorts.service';
++
++const mockInviteDays = inviteFreeDays as jest.MockedFunction<typeof inviteFreeDays>;
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use('/billing/offer', billingOfferRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/billing/offer`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** Misho, 9 Oct: the pricing page shows the card trial and the invitation's free days. */
++describe('GET /billing/offer', () => {
++  it('answers without a token, with both numbers', async () => {
++    mockInviteDays.mockResolvedValueOnce(20);
++    const res = await fetch(base);
++    expect(res.status).toBe(200);
++    await expect(res.json()).resolves.toEqual({
++      success: true,
++      data: { card_trial_days: DEFAULT_TRIAL_DAYS, invite_free_days: 20 },
++    });
++  });
++
++  it('says null for the invitation while its switch is off', async () => {
++    mockInviteDays.mockResolvedValueOnce(null);
++    const res = await fetch(base);
++    await expect(res.json()).resolves.toMatchObject({ data: { invite_free_days: null } });
++  });
++
++  it('says 500 with a plain message when the read fails', async () => {
++    mockInviteDays.mockRejectedValueOnce(new Error('relation app_flags is locked'));
++    const res = await fetch(base);
++    expect(res.status).toBe(500);
++    await expect(res.json()).resolves.toEqual({
++      success: false,
++      error: 'Could not read the offer',
++    });
++  });
++});
+diff --git a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+index 0ec6354..b7e4344 100644
+--- a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
++++ b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+@@ -66,6 +66,8 @@ const GUARDED_AT_THE_ROUTER = [
+  */
+ const AUTHENTICATED_ANOTHER_WAY: Record<string, string> = {
+   'auth.routes.ts': 'registration, login and OTP — there is no token yet',
++  'billingOffer.routes.ts':
++    'the two free periods the public pricing page promises — rate limited, no user data',
+   'oauth.routes.ts': 'the OAuth flow itself, which issues the token',
+   'oauthPages.ts': 'served HTML, no API routes',
+   'mcp.routes.ts': 'no route declarations of its own',
+diff --git a/src/api/routes/billingOffer.routes.ts b/src/api/routes/billingOffer.routes.ts
+new file mode 100644
+index 0000000..a6ea77b
+--- /dev/null
++++ b/src/api/routes/billingOffer.routes.ts
+@@ -0,0 +1,27 @@
++import { Router, Request, Response } from 'express';
++import { rateLimit } from '../middleware/rateLimit.middleware';
++import { billingOffer } from '../../services/billingOffer.service';
++
++/**
++ *   GET /billing/offer   { card_trial_days, invite_free_days | null }
++ *
++ * Public on purpose: the pricing page is also read signed out, and both
++ * numbers are what the page already promises to anybody. Mounted ahead of
++ * the signed-in /billing router.
++ */
++const REQUESTS_PER_MINUTE = 30;
++
++const billingOfferRouter = Router();
++billingOfferRouter.use(rateLimit({ windowMs: 60_000, max: REQUESTS_PER_MINUTE }));
++
++billingOfferRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
++  try {
++    res.status(200).json({ success: true, data: await billingOffer() });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /billing/offer]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the offer' });
++  }
++});
++
++export default billingOfferRouter;
+diff --git a/src/index.ts b/src/index.ts
+index 36e3594..99d4487 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -18,6 +18,7 @@ import privacyRouter from './api/routes/privacy.routes';
+ import speechRouter from './api/routes/speech.routes';
+ import webhooksRouter from './api/routes/webhooks.routes';
+ import billingRouter from './api/routes/billing.routes';
++import billingOfferRouter from './api/routes/billingOffer.routes';
+ import profileRouter from './api/routes/profile.routes';
+ import mcpRouter from './api/routes/mcp.routes';
+ import roQueryRouter from './api/routes/roQuery.routes';
+@@ -115,6 +116,8 @@ app.use('/tasks', tasksRouter);
+ app.use('/privacy', privacyRouter);
+ // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
+ app.use('/speech', speechRouter);
++// Public, and ahead of the signed-in /billing router (the pricing page is read signed out).
++app.use('/billing/offer', billingOfferRouter);
+ app.use('/billing', billingRouter);
+ app.use('/profile', profileRouter);
+ app.use('/mcp', mcpRouter);
+diff --git a/src/services/billingOffer.service.ts b/src/services/billingOffer.service.ts
+new file mode 100644
+index 0000000..3cfffec
+--- /dev/null
++++ b/src/services/billingOffer.service.ts
+@@ -0,0 +1,19 @@
++import { DEFAULT_TRIAL_DAYS } from './inviteCohorts.service';
++import { inviteFreeDays } from './inviteReward.service';
++
++/**
++ * Misho, 9 Oct (frontend TO_BACKEND 21:30Z): the pricing page shows both free
++ * periods — the card trial and the days an invitation carries. Both numbers
++ * live on the server (the env's STRIPE_TRIAL_DAYS, and the invite_free_days
++ * setting behind its switch), so the page reads them instead of writing them
++ * into its own text, where a change on the dashboard would leave it wrong.
++ */
++export interface BillingOffer {
++  readonly card_trial_days: number;
++  /** Null while the invitation's free days are switched off. */
++  readonly invite_free_days: number | null;
++}
++
++export async function billingOffer(): Promise<BillingOffer> {
++  return { card_trial_days: DEFAULT_TRIAL_DAYS, invite_free_days: await inviteFreeDays() };
++}
+-- 
+2.43.0
+

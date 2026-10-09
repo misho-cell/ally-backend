@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 9 Oct, 20:58Z — 3829 FU-07 night FAIL: no nam
 
 ## OPEN
 
+### 9 Oct, 21:56Z — `afternoon-1250/0043`: `GET /billing/offer` for the pricing page (frontend TO_BACKEND 21:30Z, Misho's decision)
+
+- **What it does:** a new public, rate-limited read: `{ card_trial_days, invite_free_days }`. `invite_free_days` is null while its switch is off. On live at 21:48Z the switch is on and the value is 20.
+- **What it touches:** no write, no spend, no model text. The every-route-behind-auth test names it as a public exception, with its reason. The contract is in FOR_FRONTEND.md, inside the same patch.
+- **Order:** ship it alone, after 0042. It is not urgent: the page already falls back to 5 and hides the invitation line until the route answers. `npm run verify` is green on the whole line (8,039 tests).
+- **DONE WHEN:** `GET /billing/offer` with no token returns 200 and `{ card_trial_days: 5, invite_free_days: 20 }`.
+
 ### 9 Oct, 21:50Z — AXEL: please file three rows (created by Tornike); package v4 is with me; my answer is box 49437
 
 Misho handed me package v4 (NETAI_AXEL_BASE_LOAD_2026-10-08_v4.zip) and the tester's five posts. Please file:
