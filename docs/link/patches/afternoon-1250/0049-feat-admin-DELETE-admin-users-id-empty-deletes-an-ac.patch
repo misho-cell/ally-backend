@@ -1,0 +1,289 @@
+From 9616dbf708c4d3cf7f6d7113cf6830d3f7d2df06 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 22:52:31 +0000
+Subject: [PATCH] =?UTF-8?q?feat(admin):=20DELETE=20/admin/users/:id/empty?=
+ =?UTF-8?q?=20deletes=20an=20account=20nothing=20holds=20(=C2=A7120);=20?=
+ =?UTF-8?q?=C2=A7121=20records=20the=20night=20rule?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 9 Oct ~22:43Z, through the operations session: „ცარიელი ანგარიშები
+წაშალე" — the two accounts the 11:23Z seat-maker clash left behind. There
+was no route that deletes a user.
+
+The route deletes the User row only when no table holds anything for the
+id. Every user-pointing column is read from the catalogue, so a table added
+later is checked too, and each column is compared in its own type so its
+index is used (a text cast ran past the timeout on live). Anything anywhere
+is a 409 naming the table; a test seat or staff account is held by its own
+table and can never be removed; an unknown id is 404; each deletion goes to
+erasure_log.
+
+§121 records Misho's night ruling „B, შენი შეზღუდვით" (49242).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit edd21b45221eb20e29dbeaa14fe0b53521bda3d0)
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |  16 +++
+ src/api/routes/admin.routes.ts                |  33 ++++++
+ .../onlyAnEmptyAccountIsDeleted.test.ts       |  61 ++++++++++
+ src/services/emptyAccount.service.ts          | 104 ++++++++++++++++++
+ 4 files changed, 214 insertions(+)
+ create mode 100644 src/services/__tests__/onlyAnEmptyAccountIsDeleted.test.ts
+ create mode 100644 src/services/emptyAccount.service.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index f4c6164..49fe4be 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6168,3 +6168,19 @@ automatically."
+   - A second run replaces each number's research rows whole, so it doubles nothing.
+ - **§119.3 — undo.** `DELETE FROM contact_facts WHERE source = 'public_research' AND submitted_by_user_id = '0';` This is one statement and touches no other row.
+ - **§119.4 — not in this step.** How these facts are used (confirmed said with its source, possible only matched, rough only a hint: 46072 part 2), the waiting list, the other networks' rosters and the roster step in search are later steps. Until the read side ships, the loaded rows are invisible to every account.
++
++**§120 — 9 October ~22:43 UTC, Misho in the operations session's chat, relayed in TO_CODE 22:44Z: „ცარიელი ანგარიშები წაშალე"** (the two accounts the seat-maker clash of 11:23Z left: 181485 and 181488).
++
++- **Route.** `DELETE /admin/users/:userId/empty` (admin token).
++  - It deletes the `User` row only when no table holds anything for the id. The tables are read from the catalogue: every column named user_id / userId / owner_id / from_user_id / to_user_id / contactId / originUserId / invited_user_id.
++  - Any row anywhere means 409 with the table named, and nothing is deleted. A test seat or a staff account is held by its own table, so it can never be removed here. An unknown id is 404.
++  - Each deletion is written to `erasure_log`.
++- **Run by the operations session, on these two ids only**, on Misho's word in its chat. The code session does not run it.
++- **Checked read-only by the code session at ~22:58Z:** 181485 is held by none of the 89 user columns. 181488 was checked by the operations session.
++- **Undo.** None for a row that held nothing. The account had no number, so nobody can lose a way in.
++
++**§121 — 9 October ~22:37 UTC, Misho in the operations session's chat, relayed in TO_CODE 22:39Z: „B, შენი შეზღუდვით"** (Tornike's 49242, the night).
++
++- **All night:** build → release → the tester tests → report → fix → release, for everything that needs no question for Misho. Each patch ships alone as it lands, and board writes and LIVE notes continue at night.
++- **The limit:** at night nothing ships that shows real people NEW text, deletes data, or widens access, unless Misho's yes is already recorded as a §. Such an item gets one clear question on the board, and work goes on with the next item.
++- **Kept:** quiet windows around the tester's timed reads (no deploy), and no reminders to real people in their quiet hours.
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index be5384d..eb6a068 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -311,6 +311,7 @@ import { zipFiles } from '../../services/axelExport/axelExport.service';
+ import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+ import { cancelOneAsk } from '../../services/taskAsks.service';
+ import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
++import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAccount.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -6980,4 +6981,36 @@ adminRouter.post('/axel/base-load', async (req: Request, res: Response) => {
+   }
+ });
+ 
++/**
++ * §120 — an account nothing holds is deleted; anything anywhere is a 409 that
++ * names the table, and nothing is deleted. A test seat or a staff account is
++ * held by its own table, so it can never be removed here.
++ */
++adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) => {
++  const userId = Number(req.params.userId);
++  if (!Number.isInteger(userId) || userId <= 0) {
++    res.status(400).json({ success: false, error: 'userId must be a positive integer' });
++    return;
++  }
++  try {
++    const result = await deleteEmptyAccount(userId);
++    if (result.outcome === EmptyDeleteOutcome.NotFound) {
++      res.status(404).json({ success: false, error: 'No such account' });
++      return;
++    }
++    if (result.outcome === EmptyDeleteOutcome.NotEmpty) {
++      res.status(409).json({
++        success: false,
++        error: `Not deleted: the account is not empty (${(result.holding ?? []).join(', ')})`,
++      });
++      return;
++    }
++    res.status(200).json({ success: true, data: { deleted: userId } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[DELETE /admin/users/:userId/empty]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Nothing was deleted' });
++  }
++});
++
+ export default adminRouter;
+diff --git a/src/services/__tests__/onlyAnEmptyAccountIsDeleted.test.ts b/src/services/__tests__/onlyAnEmptyAccountIsDeleted.test.ts
+new file mode 100644
+index 0000000..343ac27
+--- /dev/null
++++ b/src/services/__tests__/onlyAnEmptyAccountIsDeleted.test.ts
+@@ -0,0 +1,61 @@
++import { query, withTransaction } from '../../db/postgres/client';
++import { deleteEmptyAccount, EmptyDeleteOutcome } from '../emptyAccount.service';
++
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++  withTransaction: jest.fn(),
++}));
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockTx = withTransaction as jest.MockedFunction<typeof withTransaction>;
++const client = { query: jest.fn() };
++
++const COLUMNS = [
++  { table_name: 'UserPhone', column_name: 'userId', data_type: 'integer' },
++  { table_name: 'tasks', column_name: 'user_id', data_type: 'text' },
++  { table_name: 'test_seats', column_name: 'user_id', data_type: 'integer' },
++];
++
++/** §120 (Misho, 9 Oct): the seat clash's two empty accounts, and never anybody else. */
++describe('deleting an empty account', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockTx.mockImplementation(async (cb) => cb(client as never));
++  });
++
++  it('deletes and logs an account that no table holds', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ id: 181485 }] } as never)
++      .mockResolvedValueOnce({ rows: COLUMNS } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(deleteEmptyAccount(181485)).resolves.toEqual({
++      outcome: EmptyDeleteOutcome.Deleted,
++    });
++    const [sql, params] = mockQuery.mock.calls[2];
++    // Each column in its own type, so its index is used.
++    expect(String(sql)).toContain('"UserPhone" WHERE "userId" = $1::int');
++    expect(String(sql)).toContain('"tasks" WHERE "user_id" = $2::text');
++    expect(params).toEqual([181485, '181485']);
++    expect(String(client.query.mock.calls[0][0])).toBe('DELETE FROM "User" WHERE id = $1');
++    expect(String(client.query.mock.calls[1][0])).toContain('INSERT INTO erasure_log');
++  });
++
++  it('refuses, naming the table, when anything holds it — a test seat included', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ id: 181646 }] } as never)
++      .mockResolvedValueOnce({ rows: COLUMNS } as never)
++      .mockResolvedValueOnce({ rows: [{ at: 2 }] } as never);
++    await expect(deleteEmptyAccount(181646)).resolves.toEqual({
++      outcome: EmptyDeleteOutcome.NotEmpty,
++      holding: ['test_seats'],
++    });
++    expect(mockTx).not.toHaveBeenCalled();
++  });
++
++  it('says not found for an unknown id', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(deleteEmptyAccount(9)).resolves.toEqual({ outcome: EmptyDeleteOutcome.NotFound });
++    expect(mockTx).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/emptyAccount.service.ts b/src/services/emptyAccount.service.ts
+new file mode 100644
+index 0000000..f652680
+--- /dev/null
++++ b/src/services/emptyAccount.service.ts
+@@ -0,0 +1,104 @@
++import { query, withTransaction } from '../db/postgres/client';
++
++/**
++ * Misho, 9 Oct ~22:43Z, through the operations session: „ცარიელი ანგარიშები
++ * წაშალე" — the two accounts the seat-maker clash of 11:23Z left behind,
++ * with no number, no seat and nothing in them (§120).
++ *
++ * The rule is written so it cannot delete a person: the User row goes only
++ * when NO table holds anything for that id. The tables are read from the
++ * catalogue, not listed by hand, so a table added next month is checked too.
++ * Any row anywhere is a refusal that names the table. The log of erasures
++ * itself is not a reason to keep an account.
++ */
++const QUERY_TIMEOUT_MS = 8_000;
++
++const USER_COLUMNS: readonly string[] = [
++  'user_id',
++  'userId',
++  'owner_id',
++  'from_user_id',
++  'to_user_id',
++  'contactId',
++  'originUserId',
++  'invited_user_id',
++];
++
++const NOT_A_HOLDER: ReadonlySet<string> = new Set(['erasure_log']);
++
++export enum EmptyDeleteOutcome {
++  Deleted = 'deleted',
++  NotFound = 'not_found',
++  NotEmpty = 'not_empty',
++}
++
++export interface EmptyDeleteResult {
++  readonly outcome: EmptyDeleteOutcome;
++  /** For not_empty: the tables that hold something for this id. */
++  readonly holding?: readonly string[];
++}
++
++interface UserColumn {
++  readonly table_name: string;
++  readonly column_name: string;
++  readonly data_type: string;
++}
++
++const INTEGER_TYPES: ReadonlySet<string> = new Set(['integer', 'bigint', 'smallint']);
++
++async function userColumns(): Promise<UserColumn[]> {
++  const result = await query<UserColumn>(
++    `SELECT table_name, column_name, data_type FROM information_schema.columns
++      WHERE table_schema = 'public' AND column_name = ANY($1) AND table_name <> 'User'`,
++    [USER_COLUMNS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.filter((c) => !NOT_A_HOLDER.has(c.table_name));
++}
++
++/** A catalogue name, quoted as an identifier; never text from a request. */
++function ident(name: string): string {
++  return `"${name.replace(/"/gu, '""')}"`;
++}
++
++/**
++ * The tables holding anything for this id, in one query. Each column is compared
++ * in its own type ($1 integer, $2 text): a cast on the column would lose its
++ * index, and measured on live that ran past the statement timeout.
++ */
++async function tablesHolding(userId: number, columns: readonly UserColumn[]): Promise<string[]> {
++  if (columns.length === 0) return [];
++  const probes = columns.map((c, i) => {
++    const param = INTEGER_TYPES.has(c.data_type) ? '$1::int' : '$2::text';
++    return `SELECT ${i} AS at WHERE EXISTS (SELECT 1 FROM ${ident(c.table_name)} WHERE ${ident(
++      c.column_name,
++    )} = ${param})`;
++  });
++  const result = await query<{ at: number }>(
++    probes.join(' UNION ALL '),
++    [userId, String(userId)],
++    QUERY_TIMEOUT_MS,
++  );
++  return [...new Set(result.rows.map((r) => columns[r.at].table_name))];
++}
++
++export async function deleteEmptyAccount(userId: number): Promise<EmptyDeleteResult> {
++  const exists = await query<{ id: number }>(
++    `SELECT id FROM "User" WHERE id = $1 LIMIT 1`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  if (exists.rows.length === 0) return { outcome: EmptyDeleteOutcome.NotFound };
++  const holding = await tablesHolding(userId, await userColumns());
++  if (holding.length > 0) return { outcome: EmptyDeleteOutcome.NotEmpty, holding };
++  await withTransaction(async (client) => {
++    await client.query(`DELETE FROM "User" WHERE id = $1`, [userId]);
++    await client.query('INSERT INTO erasure_log (user_id, rows_deleted) VALUES ($1, $2)', [
++      userId,
++      1,
++    ]);
++  });
++  // eslint-disable-next-line no-console
++  console.log(`[admin] empty account ${userId} deleted (nothing anywhere held it)`);
++  return { outcome: EmptyDeleteOutcome.Deleted };
++}
+-- 
+2.43.0
+

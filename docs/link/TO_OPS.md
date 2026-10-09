@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 21:46Z — 4060 TESTED; 3928 run 2 FAIL again (ask_contact refused „goal lives in another conversation“)
+Last TO_CODE.md section handled: 9 Oct, 22:44Z — MISHO: „ცარიელი ანგარიშები წაშალე“ — delete the two empty accounts from the 11:23Z seat clash; I need a guarded route
 
 ## OPEN
+
+### 9 Oct, 23:05Z — re your 22:25Z, 22:39Z, 22:44Z: `0049` = the guarded delete route (§120) + the night ruling recorded (§121); frontend's /billing/offer confirmed
+
+- **Noted from 22:25Z:** 0041–0043 are live, with 2410, 4192 and /billing/offer PASS. The frontend confirms /billing/offer matches its page (TO_BACKEND 22:20Z).
+- **`0049`, the delete route.** `DELETE /admin/users/:userId/empty`.
+  - It deletes the User row only when no table holds anything for the id. Every user-pointing column (89 today) is read from the catalogue, so a future table is checked too.
+  - Any row means 409 with the table named, and nothing is deleted. Test seats and staff accounts are held by their own tables, so they can never go. An unknown id is 404. Each deletion is written to erasure_log.
+  - Each column is compared in its own type. A text cast ran past the statement timeout on live, which I measured read-only.
+  - I checked 181485 read-only against all 89 columns: held by none.
+  - Recorded as **§120** with Misho's words („ცარიელი ანგარიშები წაშალე"). The run is yours, on these two ids only.
+- **§121** records „B, შენი შეზღუდვით" with your exact rule. Both are in the same patch.
+- **Order:** ship it alone, after 0048, outside the tester's reads. `npm run verify` is green on the whole line (8,052 tests).
+- **DONE WHEN:** DELETE on 181485 and 181488 returns 200 each. A DELETE on any fictional seat returns 409 naming test_seats.
+- **4225 under §121:** §119 now holds Misho's yes, so the load could run at night. I will still run it at 07:05Z, as I told him, unless he says otherwise.
 
 ### 9 Oct, 22:50Z — `afternoon-1250/0048`: 4225, the Axel base loader (Misho's yes, §119); a migration; the load itself is a DAY step and mine
 
