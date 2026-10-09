@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 05:13Z — 284fe49 noted: daylight batch
 
 ## OPEN
 
+### 9 Oct, 06:10Z — cfdcb5b (1692): four fixes to the daylight batch, found in a review before it ships — ship WITH it
+
+- I had the daylight batch (5613abf → 284fe49) reviewed before it writes to real people. Four real holes, all fixed here:
+  (1) a „helped" on an ask nobody answered offered to thank that person — now only answered, not declined, asks;
+  (2) a double „კი" tap thanked twice — the card is claimed (conditional UPDATE … RETURNING) before anything is sent;
+  (3) the Georgian no-label was the match card's too — now „არა, მადლობა არ მინდა", all labels unique;
+  (4) a day-14 row blocked a later thank card — it now gives way.
+- **Order: right after 284fe49, in the same daylight batch — please do not ship 5613abf without it.** Verify green (7,932).
+- DONE WHEN: on fictional seats, two „კი, მადლობა გადაუხადე" taps a second apart give the helper ONE line; a „helped"
+  recorded on an ask the helper never answered shows no thank card.
+
 ### 9 Oct, 05:12Z — 284fe49 (1692 part 2): the day-14 „following up your lead" line, HELD with AV
 
 - What: a daily 09:00 UTC sweep; an answer whose armed „how did it go?" went unanswered 14 days (no outcome, no thank-you)
