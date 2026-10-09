@@ -457,7 +457,10 @@ describe('row 156 — a yes already given is not erased by the next sentence', (
   });
 
   it('never invents an approval out of lines that hold none', () => {
-    expect(approvalBelongsToThePlan('ოკ', PLAN_CARD, ['რას ნიშნავს ეს?', 'ოკ'])).toBe(false);
+    // „ოკ" approves under a plan card since 3533; „გასაგებია" (understood) holds no yes.
+    expect(approvalBelongsToThePlan('გასაგებია', PLAN_CARD, ['რას ნიშნავს ეს?', 'გასაგებია'])).toBe(
+      false,
+    );
   });
 
   /**
@@ -475,7 +478,7 @@ describe('row 156 — a yes already given is not erased by the next sentence', (
   it('falls back to the last message when there is no card window', () => {
     // The old behaviour, unchanged, for every caller that passes nothing.
     expect(approvalBelongsToThePlan('დამტკიცებულია', PLAN_CARD)).toBe(true);
-    expect(approvalBelongsToThePlan('ოკ', PLAN_CARD)).toBe(false);
+    expect(approvalBelongsToThePlan('გასაგებია', PLAN_CARD)).toBe(false);
   });
 });
 

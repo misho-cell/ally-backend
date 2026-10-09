@@ -24,6 +24,16 @@ describe('a typed yes to „shall I go ahead?"', () => {
     }
   });
 
+  it('approves „ოკ", „ოk" and „დიახ, გაუგზავნე" (3533, 2 of 2 each)', () => {
+    for (const said of ['ოკ', 'ოk', 'ოკ.', 'დიახ, გაუგზავნე']) {
+      expect(scan([said])).toBe(true);
+    }
+  });
+
+  it('does not take „ოკ" for a yes when no plan card is on screen', () => {
+    expect(approvalBelongsToThePlan('ოკ', ['კი, გააგზავნე', 'არა'], ['ოკ'])).toBe(false);
+  });
+
   it('still refuses a yes that takes itself back', () => {
     expect(scan([QUESTION, 'კი, დაუკავშირდი, მაგრამ ნინიას არა'])).toBe(false);
     expect(scan([QUESTION, 'კი, დაუკავშირდი', 'შევცვალოთ'])).toBe(false);
