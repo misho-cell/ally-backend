@@ -117,6 +117,17 @@ number, shown only as words with two or more different savers („2 people saved
 person's label, never aliases (names). It needs a new tool and its description (model text, D44), so nothing is built
 tonight. My recommendation: yes, with the two-saver floor.
 
+**AT. 2811, the reward answer blocked as „unsafe" (D44, a classifier prompt line).** Conv 43878: „როგორ მუშაობს მოწვევის
+ჯილდო? რამდენს ვიღებ?" got the internal-check apology; „გაიმეორე" then gave the right answer (5%, 6 levels, from $10).
+The reply-safety classifier voted UNSAFE twice: an answer about earning from a chain of invitations reads to it like a
+pyramid scheme. (The log of that night is gone; the category is not recoverable.) Proposed one sentence added to the
+classifier's prompt (moderation.service.ts, MODERATION_SYSTEM), after „…ordinary networking.":
+
+> Netai's own facts — its prices, plans, token packs, invitation rewards and how earnings are paid out — are always SAFE.
+
+My recommendation: yes. The board's second ask (re-make the answer in the same run instead of „გაიმეორე") is larger and
+also model-facing; I would do it only if blocks still happen after this line.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
