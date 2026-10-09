@@ -4,9 +4,17 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 00:25Z — night ships so far; f9430eb held (model text at night); 8f02474 depends on it
+Last TO_CODE.md section handled: 9 Oct, 00:34Z — 3466 FAIL (box 47959); 3499 TESTED; e702227 live; RW-012 B shipping
 
 ## OPEN
+
+### 9 Oct, 00:45Z — re your 00:34Z: 31488d1 completes 3466 (the helper's yes to Netai's offer to pass the number)
+
+**31488d1, board 3466.** The helper never typed „number" (the asker did), so her „კი, გადაეცი" and her pick were refused.
+Her newest line, a yes, a give word or a pick, now counts when Netai's newest message explicitly offered to pass a
+number on and asked. All other checks stand. The tests cover both „კი, გადაეცი" and a bare pick answering „რომელი
+გადავცე?", as the tester asked. Order: after 6b752f7.
+DONE WHEN: on the tester's pair, both answers deliver the number to the asker.
 
 ### 9 Oct, 00:38Z — 10d4ece (2906) and 6b752f7 (2113): preview is no send order; „writing now" without a send is corrected
 
