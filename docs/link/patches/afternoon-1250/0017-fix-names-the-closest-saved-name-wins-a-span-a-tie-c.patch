@@ -1,0 +1,148 @@
+From a94251189b416492a20c2fb4d2a297a15ee42270 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 14:20:12 +0000
+Subject: [PATCH] fix(names): the closest saved name wins a span, a tie changes
+ nothing (3862)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SE-011 (seat 181407): nine own lawyers reached the model in every run,
+but runs 1 and 4 showed "Nika advokati" twice and never Maka. The
+Georgian-voice rewrite wrote „მაკა ადვოკატი"; the 3169 restorer let each
+word drift two letters, so "Nika advokati" matched the span as well as
+"Maka advokati", and the first name in the list took it.
+
+Now every saved name that fits a span is scored by its summed drift, the
+closest one is put back, and two equally close names leave the reply's own
+words alone. The drift rule itself is unchanged (Mike Sample still comes
+back from „მაიკ სემპლი").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aNameIsShownAsSaved.test.ts     | 28 +++++++++++
+ src/services/savedNames.ts                    | 46 ++++++++++++++++---
+ 2 files changed, 67 insertions(+), 7 deletions(-)
+
+diff --git a/src/services/__tests__/aNameIsShownAsSaved.test.ts b/src/services/__tests__/aNameIsShownAsSaved.test.ts
+index c8ee198..6b994e0 100644
+--- a/src/services/__tests__/aNameIsShownAsSaved.test.ts
++++ b/src/services/__tests__/aNameIsShownAsSaved.test.ts
+@@ -45,6 +45,34 @@ describe('a name is shown as saved', () => {
+   });
+ });
+ 
++/** 3862 (SE-011, seat 181407): nine own lawyers, two of them a letter pair apart. */
++const LAWYERS = savedNamesIn({
++  results: [
++    { name: 'Nika advokati', saved_as: 'Nika advokati' },
++    { name: 'Maka advokati', saved_as: 'Maka advokati' },
++    { name: 'Sopo advokati', saved_as: 'Sopo advokati' },
++  ],
++});
++
++describe('the closest saved name wins', () => {
++  it('puts Maka back as Maka, even when Nika comes first in the list', () => {
++    expect(withNamesAsSaved('გყავს ნიკა ადვოკატი და მაკა ადვოკატი.', LAWYERS)).toBe(
++      'გყავს Nika advokati და Maka advokati.',
++    );
++  });
++
++  it('keeps the reply’s own words when two saved names are equally close', () => {
++    const reply = 'გყავს ტიკა ადვოკატი.';
++    expect(withNamesAsSaved(reply, ['Nika advokati', 'Mika advokati'])).toBe(reply);
++  });
++
++  it('still puts back a drifted spelling when only one saved name is near', () => {
++    expect(withNamesAsSaved('გყავს მაიკ სემპლი.', ['Mike Sample', 'Nika advokati'])).toBe(
++      'გყავს Mike Sample.',
++    );
++  });
++});
++
+ describe('the run', () => {
+   it('notes the names each search found and puts them back before the reply is stored', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+diff --git a/src/services/savedNames.ts b/src/services/savedNames.ts
+index cf19c46..d1d9e5b 100644
+--- a/src/services/savedNames.ts
++++ b/src/services/savedNames.ts
+@@ -60,18 +60,23 @@ function editDistance(a: string, b: string): number {
+   return row[b.length];
+ }
+ 
+-function sameWord(written: string, saved: string): boolean {
++/** How far a written word drifts from a saved one, or null when they are not the same word. */
++function wordDrift(written: string, saved: string): number | null {
+   const a = nameKey(written);
+   const b = nameKey(saved);
+-  if (a === '' || b === '') return false;
+-  if (a === b) return true;
+-  return Math.min(a.length, b.length) >= DRIFT_FROM_CHARS && editDistance(a, b) <= MAX_WORD_DRIFT;
++  if (a === '' || b === '') return null;
++  if (a === b) return 0;
++  if (Math.min(a.length, b.length) < DRIFT_FROM_CHARS) return null;
++  const drift = editDistance(a, b);
++  return drift <= MAX_WORD_DRIFT ? drift : null;
+ }
+ 
+ interface Found {
+   readonly start: number;
+   readonly end: number;
+   readonly saved: string;
++  /** The words' summed spelling drift from the saved name: 0 is the same spelling. */
++  readonly drift: number;
+ }
+ 
+ function spellingsOf(reply: string, saved: string): Found[] {
+@@ -90,16 +95,43 @@ function spellingsOf(reply: string, saved: string): Found[] {
+     if (!joined) continue;
+     const written = reply.slice(window[0].start, window[window.length - 1].end);
+     if (hasGeorgian(written) === hasGeorgian(saved)) continue;
+-    if (window.every((w, k) => sameWord(w.text, savedWords[k]))) {
+-      found.push({ start: window[0].start, end: window[window.length - 1].end, saved });
++    const drifts = window.map((w, k) => wordDrift(w.text, savedWords[k]));
++    if (drifts.every((d): d is number => d !== null)) {
++      const drift = drifts.reduce((sum, d) => sum + d, 0);
++      found.push({ start: window[0].start, end: window[window.length - 1].end, saved, drift });
+     }
+   }
+   return found;
+ }
+ 
++/**
++ * 3862 (SE-011, seat 181407, runs 1 and 4): „მაკა ადვოკატი" sits two letters
++ * from „Nika advokati" as well as none from „Maka advokati", and the first
++ * name in the list took the span — so Maka was shown as Nika, twice over.
++ * One span, one name: the closest saved spelling wins, and when two are
++ * equally close the reply's own words stay, because guessing names the wrong
++ * person.
++ */
++function closestPerSpan(found: readonly Found[]): Found[] {
++  const bySpan = new Map<string, Found[]>();
++  for (const f of found) {
++    const key = `${f.start}:${f.end}`;
++    bySpan.set(key, [...(bySpan.get(key) ?? []), f]);
++  }
++  const kept: Found[] = [];
++  for (const candidates of bySpan.values()) {
++    const least = Math.min(...candidates.map((c) => c.drift));
++    const closest = candidates.filter((c) => c.drift === least);
++    if (new Set(closest.map((c) => c.saved)).size === 1) kept.push(closest[0]);
++  }
++  return kept;
++}
++
+ /** The reply with every other-alphabet spelling of a found name put back as saved. */
+ export function withNamesAsSaved(reply: string, names: readonly string[]): string {
+-  const found = names.flatMap((name) => spellingsOf(reply, name)).sort((a, b) => b.start - a.start);
++  const found = closestPerSpan(names.flatMap((name) => spellingsOf(reply, name))).sort(
++    (a, b) => b.start - a.start,
++  );
+   let out = reply;
+   let floor = Number.POSITIVE_INFINITY;
+   for (const f of found) {
+-- 
+2.43.0
+

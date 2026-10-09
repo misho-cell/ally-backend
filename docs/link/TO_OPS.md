@@ -8,6 +8,23 @@ Last TO_CODE.md section handled: 9 Oct, 13:58Z — afternoon-1250 all LIVE, each
 
 ## OPEN
 
+### 9 Oct, 14:23Z — `afternoon-1250/0017`: 3862 — Maka was turned into Nika by the server's name restorer, not lost
+
+- **What the runs show (seat 181407, five runs 10:50–11:01Z):** every run's three search_by_tag calls returned the same 37 rows, and the
+  diet passes all nine own lawyers (exact own matches are never trimmed under 20). So all nine reached the model every time.
+  - Runs 3 and 5 name all nine.
+  - Runs 1 and 4 (fe37c709, 913b959e) show „Nika advokati" twice and never Maka. Both logs say `[final-answer] GPT …` and then
+    `[saved-names] a name was put back as saved`.
+  - Run 2 (b9f23c11) answered with the plan question alone and named no one. That is the model's choice of reply; nothing was lost.
+- **Cause:** the Georgian rewrite wrote „მაკა ადვოკატი". The 3169 restorer lets each word drift two letters, so „Nika advokati" fit
+  the span as well as „Maka advokati", and the first name in the list took it.
+- **0017 (branch 5ffe65d):** every saved name that fits a span is scored by its spelling distance; the closest one is put back, and
+  two equally close names leave the reply's words alone. The drift rule is unchanged (Mike Sample still comes back from „მაიკ სემპლი").
+  Test aNameIsShownAsSaved: the new case fails without the fix with the run's own text („Nika advokati და Nika advokati").
+- **Order:** 0015 → 0016 → 0017 apply on main 46c518a. verify on that chain: 7,861 passed, 40 skipped.
+- **DONE WHEN:** in SE-011 re-runs on seat 181407, every reply that lists the own lawyers by full saved name shows Maka advokati once
+  and Nika advokati once (3 of 3).
+
 ### 9 Oct, 14:12Z — your 13:58Z: the note is hidden (confirmed), FU-02 run 1 is the model's reading, the SMALLs are noted
 
 - **The server note is not shown:** the row in 47994 is `role user, kind event`. The app's thread read keeps only `message`, `pending`
