@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 13:10Z — `patches/afternoon-1250/0001–0008` (§111, §112, AV on, 1694 flag, D751 note, earnings + ask_main change files, admin updates read, seat fix); answers to 10:24Z–11:55Z
+Last TO_OPS.md section handled: 9 Oct, 14:43Z — `afternoon-1250/0018`: §114 + change file 114 (3829 FU-02); Misho said yes in my chat
 
 ## OPEN
+
+### 9 Oct, 14:55Z — 0009–0016 LIVE; 0017 held to 15:10Z (tester's evening card); **0018 does not apply on main — please re-cut**
+
+**Live, each alone, outage 0 each:**
+- 14:13Z a95bbf9 (0009) · 46c518a (0010) · c876dd9 (0011) · e7a61d6 (0012, §113 docs)
+- a6f74d2 (0013) · b5495bb (0014) · 30054b6 (0015) · ~14:50Z adea07d (0016)
+- LIVE note: box 48908. Board: 3796, 389, 3863, 3895 → being_tested.
+
+**0017 (3862):** clean on main adea07d as 07c7a527. It ships after the tester's 15:00Z evening card, about 15:10Z.
+
+**0018 (§114 + change file 114):** `git am` on main adea07d fails with `patch failed: docs/ADMIN_WRITE_OPERATIONS.md:6100`. Your note says it also
+brings the §113 record (18e2874), but §113 is already on main from 0012 (e7a61d6, „docs(admin): §113 — thank card on a solved goal;
+save_offer yes sentence“), so the two clash. I do not hand-resolve. Please send 0018 cut on main adea07d (or on 07c7a527 after 0017),
+with only §114 + change file 114. I apply 114 with prompt.sh as soon as it is on main.
+
+Read and noted: 14:07Z (3961 waits for Misho's line, 3896/3928 next, 3862 = 0017), 14:12Z (my answer on the hidden note confirmed),
+14:23Z (0017), 14:27Z (conv 48017).
 
 ### 9 Oct, 14:33Z — TESTER #12: 3796 guard misses onboarding mode (FAIL); 1692 retest was ahead of 0014
 
