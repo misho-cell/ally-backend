@@ -1,0 +1,154 @@
+From 80a518571f28457e695bef75b7a3848fb32f2392 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 16:08:12 +0000
+Subject: [PATCH] =?UTF-8?q?fix(goals):=20a=20title's=20=E2=80=9E=E1=83=AE?=
+ =?UTF-8?q?=E1=83=95=E1=83=90=E1=83=9A"=20says=20when=20it=20was=20written?=
+ =?UTF-8?q?=20and=20that=20its=20day=20is=20today=20(RW-016,=20=C2=A7115)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Seat 180150, 9 Oct 12:48Z: goal 21898 was typed on 8 October as
+„ხვალ 10:00-ზე…"; the note beside it read [„ხვალ" = 9 ოქტომბერი], right but
+silent about 9 October being today, and the reply re-read the word as of
+now: „ხვალ, 10 ოქტომბერს". Misho, ~16:00Z: „კი, RW-016-ის შენიშვნა დაამატე".
+
+The note now reads [„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს],
+with „ანუ ხვალ" / „ანუ ზეგ" for the next two days and „უკვე გასული" for a
+gone date. §115 recorded with the exact text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md             |  9 +++++
+ src/services/__tests__/relativeDay.test.ts | 23 ++++++++++++
+ src/services/relativeDay.ts                | 43 +++++++++++++++++++++-
+ 3 files changed, 73 insertions(+), 2 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index b2ea82c..c1f6713 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6115,3 +6115,12 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
+   > or names someone too vaguely to find — including a person given only by who they are to someone (a cousin's acquaintance, an aunt's nanny) — ask for what is missing
+ - Change file `ops/prompt-changes/114-ask-main-unnamed-person-fu02` (before = the live text after change 112, sha f8e53190…; requires
+   112). Applied by the operations session with prompt.sh.
++
++**§115 — 9 October ~16:00 UTC, Misho in the code session's chat: „კი, RW-016-ის შენიშვნა დაამატე"** (to the text put at ~15:55Z).
++
++- **§115.1 (RW-016)** — the server's note beside a goal title holding a relative day word (relativeDay.ts, row 141) says when the word
++  was written and where the date stands from today. BEFORE `[„ხვალ" = 9 ოქტომბერი]` (and `…, უკვე გასული` for a gone date) AFTER:
++  > [„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს]
++
++  with „ანუ ხვალ" / „ანუ ზეგ" for the next two days, „უკვე გასული" for a gone date, and nothing further for a later one. The title stays
++  as typed. Code, ships alone.
+diff --git a/src/services/__tests__/relativeDay.test.ts b/src/services/__tests__/relativeDay.test.ts
+index 82045d1..2ab5d86 100644
+--- a/src/services/__tests__/relativeDay.test.ts
++++ b/src/services/__tests__/relativeDay.test.ts
+@@ -89,3 +89,26 @@ describe('the clause put beside a title', () => {
+     expect(relativeDayNote('შეხვედრა ხვალ', NOW, NOW)).not.toContain('გასული');
+   });
+ });
++
++/** RW-016 (seat 180150, 9 Oct; §115): „ხვალ" typed on 8 October, read on the 9th, became „ხვალ, 10 ოქტომბერს". */
++describe('the clause says when the word was written and where the date stands today', () => {
++  const typed = new Date('2026-10-08T12:43:55Z');
++  const read = new Date('2026-10-09T12:48:58Z');
++
++  it('says the date meant is today', () => {
++    expect(relativeDayNote('ხვალ 10:00-ზე დამლაგებელი', typed, read)).toBe(
++      ' [„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს]',
++    );
++  });
++
++  it('says tomorrow and the day after when they are', () => {
++    expect(relativeDayNote('ხვალ', read, read)).toContain('= 10 ოქტომბერი, ანუ ხვალ]');
++    expect(relativeDayNote('ზეგ', read, read)).toContain('= 11 ოქტომბერი, ანუ ზეგ]');
++  });
++
++  it('still says a gone date has gone', () => {
++    expect(relativeDayNote('ხვალ', new Date('2026-10-05T10:00:00Z'), read)).toBe(
++      ' [„ხვალ" დაიწერა 5 ოქტომბერს = 6 ოქტომბერი, უკვე გასული]',
++    );
++  });
++});
+diff --git a/src/services/relativeDay.ts b/src/services/relativeDay.ts
+index 19fdd32..70e8396 100644
+--- a/src/services/relativeDay.ts
++++ b/src/services/relativeDay.ts
+@@ -67,12 +67,26 @@ function georgianDate(at: Date): string {
+   }).format(at);
+ }
+ 
++/** „8 ოქტომბერი" → „8 ოქტომბერს": every Georgian month name ends in „ი". */
++function dative(date: string): string {
++  return date.endsWith('ი') ? `${date.slice(0, -1)}ს` : date;
++}
++
++/** Whole days from one Tbilisi calendar day (YYYY-MM-DD) to another. */
++function daysBetween(from: string, to: string): number {
++  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / MS_PER_DAY);
++}
++
+ export interface ResolvedDay {
+   /** The word as the owner wrote it. */
+   readonly word: string;
+   /** What it meant on the day it was written, in Tbilisi. */
+   readonly date: string;
+   readonly past: boolean;
++  /** The day the word was written on, in Tbilisi („8 ოქტომბერს"). */
++  readonly writtenOn: string;
++  /** Whole Tbilisi days from today to the date meant: -1 yesterday, 0 today, 1 tomorrow. */
++  readonly fromToday: number;
+ }
+ 
+ /**
+@@ -92,7 +106,13 @@ export function resolveRelativeDays(text: string, writtenAt: Date, now: Date): R
+     if (!re.test(text) || seen.has(word)) continue;
+     seen.add(word);
+     const at = new Date(writtenAt.getTime() + offset * MS_PER_DAY);
+-    found.push({ word, date: georgianDate(at), past: dayIn(TBILISI_TZ, at) < today });
++    found.push({
++      word,
++      date: georgianDate(at),
++      past: dayIn(TBILISI_TZ, at) < today,
++      writtenOn: dative(georgianDate(writtenAt)),
++      fromToday: daysBetween(today, dayIn(TBILISI_TZ, at)),
++    });
+   }
+   return found;
+ }
+@@ -104,9 +124,28 @@ export function resolveRelativeDays(text: string, writtenAt: Date, now: Date): R
+  * own still needs the reader to know today's date and compare, and comparing
+  * is the step that went wrong in the first place.
+  */
++/**
++ * RW-016 (seat 180150, 9 Oct; Misho's yes, §115): goal 21898 was typed on
++ * 8 October as „ხვალ 10:00-ზე…" and carried „ხვალ" = 9 ოქტომბერი — right, but
++ * nothing said that 9 October WAS today, and the reply re-read the word as of
++ * now: „ხვალ, 10 ოქტომბერს". The note now says when the word was written and
++ * where the date stands from today.
++ */
++const FROM_TODAY: Readonly<Record<number, string>> = {
++  0: 'ანუ დღეს',
++  1: 'ანუ ხვალ',
++  2: 'ანუ ზეგ',
++};
++
++function standing(day: ResolvedDay): string {
++  if (day.past) return ', უკვე გასული';
++  const word = FROM_TODAY[day.fromToday];
++  return word === undefined ? '' : `, ${word}`;
++}
++
+ export function relativeDayNote(text: string, writtenAt: Date, now: Date): string {
+   const days = resolveRelativeDays(text, writtenAt, now);
+   if (days.length === 0) return '';
+-  const parts = days.map((d) => `„${d.word}" = ${d.date}${d.past ? ', უკვე გასული' : ''}`);
++  const parts = days.map((d) => `„${d.word}" დაიწერა ${d.writtenOn} = ${d.date}${standing(d)}`);
+   return ` [${parts.join('; ')}]`;
+ }
+-- 
+2.43.0
+

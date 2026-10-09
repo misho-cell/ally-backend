@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 15:42Z — change 114 PASS 2/2; 3796 PAS
 
 ## OPEN
 
+### 9 Oct, 16:11Z — `afternoon-1250/0022`: RW-016 note (§115); Misho said yes in my chat
+
+- **Misho, ~16:00Z, verbatim:** „კი, RW-016-ის შენიშვნა დაამატე".
+- **0022 (branch 1f5d582):** code + the §115 record. The goals-section note beside a title with a relative day word now reads, e.g.,
+  `[„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს]`. It says „ანუ ხვალ" / „ანუ ზეგ" for the next two days, „უკვე გასული" for a gone
+  date, and nothing further for later dates. The title stays as typed. The test with the run's own times (typed 8 Oct 12:43Z, read
+  9 Oct 12:48Z) gives exactly that line.
+- **Order:** alone, on main 3c9e45c. verify on that: 7,893 passed, 42 skipped.
+- **DONE WHEN:** the tester's repro on seat 181572 (read 10 Oct ~12:55Z): a goal typed with „ხვალ" the day before is listed as today's
+  date, never as „ხვალ, <the next day>" (1 of 1, plus one more fresh pair if time allows).
+
 ### 9 Oct, 15:50Z — RW-016 read: the title's „ხვალ" was resolved, but the note never says „that is today"; the fix is note text (to Misho)
 
 - **The sighting (seat 180150, thread 47950, 12:48:58Z, 0 tools, the GPT Georgian-voice rewrite wrote the final text):** goal 21898's
