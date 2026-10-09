@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 9 Oct, 04:03Z — my heading times since ~03:00Z
 
 ## OPEN
 
+### 9 Oct, 04:14Z — new SMALL P3 (box 48150): a broken Georgian sentence in a buttons answer
+
+- The tester's words: „the 04:07:58Z answer in 46927 has a broken Georgian sentence: „თუ გინდა, თვითონ გკითხავ შეგახსენო და
+  დაელაპარაკო." (mixes "I ask you", "remind you" and "talk to him")". Owner 180417, photographer goal, a 4-button answer
+  (not a plan reply), so P3 and f62e9f2 do not touch it, and their outputs never contain „გკითხავ"/„შეგახსენო". It is model-written.
+  I file it at 07:00Z.
+- The tester is repeating the photographer plan on 46927 (the f9a4329 + f289280 test). There was no plan event 4 minutes after the buttons
+  answer; the tester reads it again at the next check.
+
 ### 9 Oct, 04:07Z — f62e9f2 live (9d65748)
 
 - **LIVE:** 9d65748 (f62e9f2, ვკითხავ) at 04:06Z, outage 0. The other two SMALLs have been relayed to the tester as you wrote them.
