@@ -6115,3 +6115,12 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
   > or names someone too vaguely to find — including a person given only by who they are to someone (a cousin's acquaintance, an aunt's nanny) — ask for what is missing
 - Change file `ops/prompt-changes/114-ask-main-unnamed-person-fu02` (before = the live text after change 112, sha f8e53190…; requires
   112). Applied by the operations session with prompt.sh.
+
+**§115 — 9 October ~16:00 UTC, Misho in the code session's chat: „კი, RW-016-ის შენიშვნა დაამატე"** (to the text put at ~15:55Z).
+
+- **§115.1 (RW-016)** — the server's note beside a goal title holding a relative day word (relativeDay.ts, row 141) says when the word
+  was written and where the date stands from today. BEFORE `[„ხვალ" = 9 ოქტომბერი]` (and `…, უკვე გასული` for a gone date) AFTER:
+  > [„ხვალ" დაიწერა 8 ოქტომბერს = 9 ოქტომბერი, ანუ დღეს]
+
+  with „ანუ ხვალ" / „ანუ ზეგ" for the next two days, „უკვე გასული" for a gone date, and nothing further for a later one. The title stays
+  as typed. Code, ships alone.
