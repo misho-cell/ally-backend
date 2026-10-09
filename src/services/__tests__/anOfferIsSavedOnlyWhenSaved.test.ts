@@ -28,6 +28,15 @@ describe('a reply that says an offer was saved', () => {
     ).toBe(false);
   });
 
+  it('is caught when the reply uses the verb (box 48874, onboarding run)', () => {
+    const verb = 'დავიმახსოვრე: შენ სხვა წევრებს სთავაზობ იურიდიულ კონსულტაციას თბილისში.';
+    expect(offerClaimWithoutTool(verb, [], owner)).toBe(true);
+  });
+
+  it('leaves „polite" alone — it shares the root, not the meaning', () => {
+    expect(offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], owner)).toBe(false);
+  });
+
   it('is caught in English too', () => {
     expect(
       offerClaimWithoutTool('I saved your offer.', [], 'Save this as my offer: logistics in Poti'),

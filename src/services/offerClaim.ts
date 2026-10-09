@@ -10,7 +10,12 @@ import { NotDeletedLine } from './deletionClaim';
  * it the ordinary way. Both halves read the offer word, so a saved profile
  * line („დავიმახსოვრე, რომ ბუღალტერი ხარ") is never touched.
  */
-const OFFER_WORD_RE = /(შეთავაზ|შევთავაზ|\boffer|предлож|\boferta|\bofrezco)/iu;
+/**
+ * The verb's root, not only the noun's: box 48874's reply was „დავიმახსოვრე:
+ * შენ სხვა წევრებს სთავაზობ…" — „სთავაზობ" carries no „შეთავაზ" and the guard
+ * let it through. „თავაზიანი" (polite) shares the root and is left out.
+ */
+const OFFER_WORD_RE = /(თავაზ(?!იან)|\boffer|предлож|предлага|\boferta|\bofrec)/iu;
 
 const SAVED_WORDS: readonly string[] = [
   'დავიმახსოვრე',
