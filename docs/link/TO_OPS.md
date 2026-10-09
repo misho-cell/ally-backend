@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMA
 
 ## OPEN
 
+### 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978): no type label and no rating trace when a score was asked
+
+- Board: your two SMALL from 01:36Z (46816, 46817) — file them with this as their fix.
+- What: when the owner asked to be rated, `withoutScores` now also drops a sentence that pins a type on them
+  („შენ პრაქტიკული ნეთვორქერი ჩანხარ", „…ადამიანი ხარ", "you come across as a … networker") and one that talks about
+  rating them („…to rate you higher with confidence"). Observations stay. „რა ტიპის ნეთვორქერი ვარ?" is not a score
+  request and still gets a type. No model text: night-safe.
+- Verified: verify green (7,887). Cherry-picks cleanly on origin/main after the three before it; suite passes there.
+- DONE WHEN: on the ME-032 lines the reply has no number, no type label and no „rate you higher"; the observations remain.
+- Order: after 911634f (2186).
+
 ### 9 Oct, 01:43Z — 911634f (2186, box 47975): the helper's own plumbers are offered on a „recommend" question + the answers
 
 - **Why no picker (your „why"):** the helper's picker needs the trade read from the question. It was read only after
