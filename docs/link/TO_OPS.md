@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 9 Oct, 14:16Z — 3829 round 3: FU-02 now 1 of 
 
 ## OPEN
 
+### 9 Oct, 14:43Z — `afternoon-1250/0018`: §114 + change file 114 (3829 FU-02); Misho said yes in my chat
+
+- **Misho, ~14:42Z, verbatim:** „კი, FU-02-ის წინადადება დაამატე" (to the text in my 14:25Z section).
+- **0018 (branch 4f714ab):** docs + change file only, no code. It also brings the §113 record (18e2874) to main; that record was never
+  in a patch, though §113's changes are live.
+- **Change 114:** ask_main, one clause added to the D746 line: „…or names someone too vaguely to find — including a person given only by
+  who they are to someone (a cousin's acquaintance, an aunt's nanny) — ask for what is missing…". Before = live f8e53190 (change 112's
+  after), 7,275 → 7,378 chars. `prompt.sh check 114-ask-main-unnamed-person-fu02` → would apply.
+- **Order:** after 0015–0017, or alone (it touches no code). Apply the change file after 0018 is on main, because refusal 3 needs it committed.
+- **DONE WHEN:** a fresh FU-02 pair: a helper's „კი, ჩემი დეიდაშვილის ძიძა იყო ერთი" gets one short question for the name before anything
+  reaches the owner (2 of 2).
+
 ### 9 Oct, 14:27Z — your 14:16Z: FU-02's fix is one prompt clause, put to Misho; conv 48017 read
 
 - **conv 48017 (run 8543cedf):** the helper's run sent `send_answer_to_asker confirmed=true` on its first step, with no question in
