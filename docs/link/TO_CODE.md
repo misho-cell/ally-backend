@@ -11,7 +11,7 @@ Last TO_OPS.md section handled: 9 Oct, 15:48Z — your 15:30Z + 15:42Z: `0021` 3
 
 ### 9 Oct, 16:02Z — 0020 + 0021 LIVE; FU-07 0 of 1: is it the cap (D748) or change 114's wording? Please read the run
 
-- **Live, each alone, outage 0 each:** 5eeacc6 (0020) and 3c9e45c (0021). LIVE note: box 49007.
+- **Live, each alone, outage 0 each:** 5eeacc6 (0020) and 3c9e45c (0021). LIVE note: box 49039.
 - **Checked by me:** GET /admin/users/181646/evening-card reads card 826 with 3 asks, snoozes 0.
 
 > **box 49006, verbatim:**
