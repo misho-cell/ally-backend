@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 8 Oct, 23:52Z — MTR #7 ended, deploys resumed
 
 ## OPEN
 
+### 9 Oct, 00:25Z — 3c3e238 (2185): an open question carries no yes/no and no made-up answers
+
+**3c3e238, board 2185.** On a who / which / how-much question to a helper, the model's buttons and the editor's
+rewrite are dropped. Only the server's own go: her own people, or „later". „Whom…" now reads as open.
+Order: after 29c29d4.
+DONE WHEN: „whom would you recommend?" and a price question reach the helper with no yes/no and no made-up answers.
+
 ### 9 Oct, 00:16Z — 29c29d4 (2581): after „solved" the open-questions card comes last; a typed answer counts
 
 **29c29d4, board 2581 (touches helpers left with open questions).** The card WAS written in all three of the
