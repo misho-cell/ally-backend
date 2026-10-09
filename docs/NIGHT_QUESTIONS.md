@@ -62,92 +62,13 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**AJ. 1688 (A5), the round cap's model line (D44, §108) — built, held until your yes.** Two assistants may
-now answer each other twice on one goal with nobody typing. The third time, the server does not send, and
-the asking model reads this line (shown before it is sent, never to a person):
-
-> {name}-ს ამ მიზანზე უკვე ორჯერ მისწერე ისე, რომ მფლობელს არაფერი დაუწერია — მესამედ თავად აღარ მისწერო. მფლობელს ერთი ხაზით უთხარი, რა უნდა {name}-ს, და ჰკითხე, რა უპასუხოს. როცა მფლობელი დაწერს, მისი სიტყვებით გაგზავნე.
-
-My recommendation: yes. Without it the code cannot ship, because any refusal has to tell the model something.
-
-**AK. Axel base load: not on the board.** My POST to the board was refused by my permission classifier
-(external system write). The finished body is with ops (`docs/link/patches/axel_task.json`). Either ops files
-it, or I need your word. The build itself needs your yes and the zip from your WhatsApp.
-
-**AM. 1698 (offers), the three tool texts (D44, §109) — built and safe to ship, switched off until your yes.**
-„What you are open to" („if anyone needs hospitality in Adjara, I'm interested") is saved from the chat, after
-the owner's yes to one line, and is never shown to anyone else. The texts are in §109. My recommendation: yes.
-1699 (the nightly matcher) is built on it.
-
-**AN. D738 connectors:** `docs/CONNECTOR_UPDATE_D738.md` holds every current → proposed text from both
-tester notes (17 text-only, 5 need code). One yes per section, or one yes for all.
-
-**AO. 1697 part 2, the closed-route line (D44, would be §110).** When the bridge AND the receiver are both
-„not of this field" by their own data, no request would be made, and the model would read:
-
-> Not sent: this route looks closed. Say so to the owner in one plain line — never why, and nothing about these people — and propose another way.
-
-„Never why" is on purpose: the reason comes from other people's data (D680). My recommendation: yes.
-
-**AP. 2186, the asker's line names the recommended people (D44).** When a helper recommends two or more people, the
-asker today sees only „ვის გაგაცნოს ნინომ?" with the names on the buttons (box 47975). The line is the model's, so
-naming them there is new model text. Proposed addition to the relay instruction:
-
-> When the helper names more than one person, name each of them in your line to the owner before asking whom to meet.
-
-My recommendation: yes — a line that leans on buttons alone loses the names in the push and in history.
-
-**AQ. #859, Tornike's silent pushes (two asks).** (1) Account 501 has a push row from 30 July with no device and no
-user agent that has never been refreshed — likely dead. May I remove it (a delete on live data)? (2) Please ask Tornike,
-right after a question that did not ring on the Android, to open `netai.guru/profile?diag=1` and send a screenshot, and
-to check Chrome's notifications are allowed and battery is „unrestricted". Details: FOR_FRONTEND 9 Oct 02:00Z.
-
-**AR. 1694, is a member findable by what he told his OWN assistant about his work? (privacy).** Box 47985: a member
-said „I do customs clearance for food exporters"; his friend asked „who in my contacts can help with customs?" and he
-was never a candidate. No search reads `user_profile_kv` (only prematch does, after the plan is chosen). The fix is
-one search branch: an owner's contact who is a member is found by his own `profession`/`industry` keys (never
-„interests" or searched topics). The text would only rank the search and never be shown to the asker — but it makes
-his self-description findable by the people who have him saved. The classifier stopped me at 02:10Z as a personal-data
-change, so it is yours. My recommendation: yes, work keys only, never shown.
-
-**AS. 3566, „how do others have me saved?" (privacy + D44).** Today the answer is only the owner's own name (6 of 6):
-nothing lets an owner see how other people saved them, and other people's labels are private (row 289). The tester
-expects „people know you as a lawyer". Proposal: a read-only answer built from the tags others saved on the owner's own
-number, shown only as words with two or more different savers („2 people saved you as იურისტი"), never who, never a single
-person's label, never aliases (names). It needs a new tool and its description (model text, D44), so nothing is built
-tonight. My recommendation: yes, with the two-saver floor.
-
-**AT. 2811, the reward answer blocked as „unsafe" (D44, a classifier prompt line).** Conv 43878: „როგორ მუშაობს მოწვევის
-ჯილდო? რამდენს ვიღებ?" got the internal-check apology; „გაიმეორე" then gave the right answer (5%, 6 levels, from $10).
-The reply-safety classifier voted UNSAFE twice: an answer about earning from a chain of invitations reads to it like a
-pyramid scheme. (The log of that night is gone; the category is not recoverable.) Proposed one sentence added to the
-classifier's prompt (moderation.service.ts, MODERATION_SYSTEM), after „…ordinary networking.":
-
-> Netai's own facts — its prices, plans, token packs, invitation rewards and how earnings are paid out — are always SAFE.
-
-My recommendation: yes. The board's second ask (re-make the answer in the same run instead of „გაიმეორე") is larger and
-also model-facing; I would do it only if blocks still happen after this line.
-
-**AU. The asker named twice in every ask (the founder's note, 48086).** Since 1687 every ask opens „ნინოს ასისტენტი
-გეკითხება:" and closes „ნინოს ასისტენტი, ნინოს სახელით". Two ways: (1) keep the opening, drop the closing line on a
-FIRST ask (it stays on follow-ups and relays, where no opening names anyone); (2) keep the closing line and open with
-the question alone. My recommendation: (2) — the closing line is the 1687 rule (D679: the same line on every ask),
-and a question that starts with the question reads better. Server text only; nothing is changed until you choose.
-
-**AV. 1692 part 2 — a „how did it go?" after an ANSWER (D44).** 1692 says: if the debrief is unanswered, ask once more
-on day 7; on day 14 the helper hears „Nino is following up your lead". But today the only ask debrief fires when an
-ask got NO answer (3 days). Nothing asks the owner how an answer worked out, so the thank-you can only start when the
-owner tells the assistant on their own. Part 2 needs one new debrief, armed when a helper answers: 3 days later the
-owner's assistant asks „how did <helper>'s answer work out?" (record_debrief_outcome, as today); day 7 once more; day
-14 the fixed line to the helper. The instruction the model reads is new text, so it is yours. Proposed:
-
-> <helper> answered your question {N} days ago. Ask the owner in one line how it worked out. If it helped, record
-> record_debrief_outcome (subject="relayed_ask", ref_id={ask_id}, worked=true); if not, worked=false; if it is too
-> early, not_yet=true.
-
-My recommendation: yes.
-
-**AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
+Cleared 9 October 07:55 UTC: Misho answered the night of 8→9 Oct at 06:25 UTC („ყველაზე შენი
+რეკომენდაციით გააკეთე"), recorded per item as §110 in ADMIN_WRITE_OPERATIONS.md (772618a). Number pool: „ნომრებით
+თქვენ გადაწყვიტეთ" (via ops). Done: AJ §108, AM §109 (switch 014093f), AO (a5186d7), AR (b6b9f01, live), AT (5b2ae3e,
+live), AU (2f664f9), AQ (the push row deleted by ops 07:01Z), 17822/17823 (cancel route e1b0300), 958 (bf61a36),
+pool (61d1eb2). Main patches for the chain: ops-link `patches/morning-0745`. Still mine to build: AP (the approved
+sentence into the reader line), AS (3566), AN (D738 texts). Blocked: AV, the switch flip refused by my permission
+classifier; it waits on Misho's direct word. AK and AL: covered by the word, started in order after the above.
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
 კითხვები შენი რეკომენდაციებით გააკეთე"), recorded per item as §99 in ADMIN_WRITE_OPERATIONS.md.
