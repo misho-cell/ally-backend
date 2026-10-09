@@ -129,6 +129,11 @@ describe('a helper’s question back in a run that sent nothing', () => {
     expect(HELPER_QUESTION_NUDGE).toContain('შენი სიტყვებით: მისი კითხვის აზრი, არა ციტატა');
     expect(HELPER_QUESTION_NUDGE).toContain('არ ჰკითხო „გადავუგზავნო?"');
     expect(HELPER_QUESTION_NUDGE).not.toContain('ზუსტად მისი სიტყვებით');
+    // D751 (§112.4): the passed-on note too — the meaning in our words, the facts exact.
+    expect(PASSED_ON_NUDGE).not.toContain('ზუსტად მისი სიტყვებით');
+    expect(PASSED_ON_NUDGE).toContain(
+      'მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.',
+    );
     const set = chat.slice(chat.indexOf('export const MODEL_ONLY_NUDGES'));
     expect(set.slice(0, 200)).toContain('HELPER_QUESTION_NUDGE');
     expect(chat).toContain('      claimedASendThatDidNotHappen ||\n      helperQuestionUnsent ||');
