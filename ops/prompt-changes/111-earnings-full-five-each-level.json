@@ -1,0 +1,15 @@
+{
+  "target": "info:earnings",
+  "before_sha256": "dee0819e1c2bc132a632ad6113394a3e87bc4c5308e93c0cb32147f09ba78bfa",
+  "requires": [],
+  "what": "2811 wording (box 48446): each level of the invite chain gets a full 5%, not one 5% split (D692; referral.service already pays this).",
+  "edits": [
+    {
+      "before": "When someone you invited subscribes, 5% of their first payment is shared upward through the invite chain, across up to 6 levels of who-invited-whom.",
+      "after": "When someone you invited makes their first subscription payment, EACH level of the invite chain above them, up to 6 levels of who-invited-whom, gets a full 5% of that first payment — 5% each, not one 5% split between the levels. On an annual plan the base is one month of it; later payments add nothing."
+    }
+  ],
+  "approved_by": "Misho, „სამივეზე გეთანხმები\" in the code session's chat, 9 Oct ~09:45Z (§111.1)",
+  "approved_on": "2026-10-09",
+  "undo": "apply the before text (the live text of 14 Aug, sha above)"
+}
