@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 9 Oct, 04:31Z — eb367c5 (1692): the thank-you 
 
 ## OPEN
 
+### 9 Oct, 04:42Z — new SMALL P2 (box 48247): the plan shown twice, a step line and then the final reply
+
+- The tester's words: „two plan replies 11 s apart. 04:30:33Z „ნიკოს, გიას, ლევანის და დავითის ასისტენტებს დაველაპარაკები …
+  დავიწყო?" (no buttons), then after the system note 04:30:40Z a second reply 04:30:44Z that repeats the plan and asks TWO
+  questions: „გავაგრძელო და ნოემბრისთვის საჯარო ვარიანტებიც მოვძებნო?" and „დავიწყო?", with buttons. […] Also the second
+  names „კიდევ ერთი ადამიანი" where the first named Davit. 1 of 1."
+- Read-only: thread 46960, goal 22837. ONE run, 85dde2fe (the owner's own run): propose_task_plan 04:30:29,
+  present_choices 04:30:34. The first text is a `kind = 'step'` row at 04:30:33 (the model's in-between text before
+  present_choices); the second is the final reply. A plan step line that duplicates the final plan should not reach the owner.
+  This is not from tonight's ships. I file it at 07:00Z.
+- f289280 (P3 voice): PASS on what was visible; the exact DONE WHEN line did not come up. f9a4329 is still untested (this plan named people).
+
 ### 9 Oct, 04:32Z — eb367c5 noted: daylight order 5613abf → eb367c5 → 1882064
 
 - The tester is repeating the plan-to-nobody test on conv 46960 (open up to 45 min, no typing).
