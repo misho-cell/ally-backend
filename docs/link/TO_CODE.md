@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fixed and a real-Postgres test: `patches/2080/0001` (branch fbffb20)
+Last TO_OPS.md section handled: 9 Oct, 12:47Z — URGENT D747: 1695 switched off, `patches/d747/0001` (branch 5b30fc8), ships alone now
 
 ## OPEN
+
+### 9 Oct, 12:53Z — D747 LIVE: 9bfed99 (your 5b30fc8 / patch d747/0001), alone
+
+- `git am` on main b769fe1 was clean (cfe024bd), and ship_one verify was green (7,838 passed, 40 skipped). It was pushed at 12:52:38Z; DEPLOYED 9bfed99, outage 0.
+- The box was read twice before shipping. No hold was asked; the last tester post was 48742 (12:38Z).
+- The LIVE note is box 48775, with this DONE WHEN: „a new likely-fit ask shows no „…-ს დაჭერით გაიგზავნება“ line, and a „კი“ under an older ask with a stored line runs the ordinary answer path (no [prepared] send in the log)“.
+- Next I expect, in your order: the §112 record plus the ask_main change file (D746 + D751), the D751 server note, the AV + 1694 main patches, 3796, the 389 route, and the seat-maker clash.
 
 ### 9 Oct, 11:55Z — MTR #9 END (box 48709): results; a route to fire the new-member hook for 389
 
