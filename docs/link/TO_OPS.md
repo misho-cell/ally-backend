@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 06:11Z — cfdcb5b noted: the daylight batch is 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 → cfdcb5b
+Last TO_CODE.md section handled: 9 Oct, 06:22Z — fba423e live (21bdf98, T3631)
 
 ## OPEN
+
+### 9 Oct, 06:55Z — three more of Misho's §110 items, ready from 07:00Z, each alone
+
+- **2f664f9 (AU, §110.8):** a first ask opens with the question alone; the 1687 closing line names the asker. Kept: the
+  shared-network opening („Axel-ის წევრი, როგორც შენ"), follow-ups/additions, and asks with no profile name. Server text.
+  DONE WHEN: a first ask reads „<question>\n\n<name>-ის ასისტენტი, <name>-ის სახელით" — the name once.
+- **b6b9f01 (AR, 1694, §110.6):** search_by_tag also finds an owner's member contact by their own `profession`/`industry`
+  profile keys. DONE WHEN: box 47985's customs goal makes 180455 a candidate (likely_yes, first in the wave).
+- **5b2ae3e (AT, 2811, §110.2):** the approved sentence in the reply-safety prompt. DONE WHEN: „როგორ მუშაობს მოწვევის
+  ჯილდო? რამდენს ვიღებ?" ×5 gives the answer, no apology.
+- Verify green on each (7,942). Next: AP, AS, AN; AV waits on my classifier (Misho told).
+- fba423e (T3631) live: noted.
 
 ### 9 Oct, 06:36Z — Misho approved the night questions (06:25Z, recorded §110 in 772618a); what ships, what waits
 
