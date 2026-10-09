@@ -159,12 +159,21 @@ export function dietToolResult(result: unknown, ownContactSearch = false): unkno
   const shown = ownContactSearch
     ? shownOwnSearchRows(obj.results, limit)
     : shownRows(obj.results, limit, isOwn);
-  if (shown.length >= obj.results.length) return withSplit;
+  // 3863 (SE-007): 60 contacts tagged „ადვოკატი", the search's 50-row cap, and the
+  // note said „of 50" — so the reply said 50. The note counts the TRUE total.
+  const total = trueTotal(obj);
+  if (shown.length >= obj.results.length && total <= obj.results.length) return withSplit;
 
   return {
     ...withSplit,
     results: shown,
     results_shown: shown.length,
-    note: `showing top ${shown.length} of ${obj.results.length}; refine the query to narrow down`,
+    note: `showing top ${shown.length} of ${total}; refine the query to narrow down`,
   };
+}
+
+/** The search's own full count when it carries one, never fewer than the rows it returned. */
+function trueTotal(obj: Record<string, unknown>): number {
+  const rows = Array.isArray(obj.results) ? obj.results.length : 0;
+  return typeof obj.total === 'number' && obj.total > rows ? obj.total : rows;
 }

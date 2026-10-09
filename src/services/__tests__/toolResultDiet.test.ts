@@ -195,3 +195,34 @@ describe('an own-contact search', () => {
     expect(dieted.results).toHaveLength(8);
   });
 });
+
+/** 3863 (SE-007 step 4): 60 tagged, the 50-row cap, and the reply said 50. */
+describe('a result capped below its true total', () => {
+  const rows = (n: number): Record<string, unknown>[] =>
+    Array.from({ length: n }, (_, i) => ({ name: `ადვოკატი ${i}`, tags: ['ადვოკატი'] }));
+
+  it('names the true total in its note, not the rows it received', () => {
+    const dieted = dietToolResult({ count: 50, total: 60, results: rows(50) }, true) as Record<
+      string,
+      unknown
+    >;
+    expect(dieted.note).toBe('showing top 20 of 60; refine the query to narrow down');
+    expect(dieted.total).toBe(60);
+  });
+
+  it('says so even when every returned row is shown', () => {
+    const dieted = dietToolResult({ count: 5, total: 9, results: rows(5) }, true) as Record<
+      string,
+      unknown
+    >;
+    expect(dieted.note).toBe('showing top 5 of 9; refine the query to narrow down');
+  });
+
+  it('adds nothing when the rows are the whole answer', () => {
+    const dieted = dietToolResult({ count: 5, total: 5, results: rows(5) }, true) as Record<
+      string,
+      unknown
+    >;
+    expect(dieted.note).toBeUndefined();
+  });
+});
