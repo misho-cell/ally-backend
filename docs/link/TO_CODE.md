@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 17:10Z — `afternoon-1250/0023`: 3896 („ask my acquaintances" asks nobody); 1692's question went to Tornike (box 49107)
+Last TO_OPS.md section handled: 9 Oct, 17:25Z — `afternoon-1250/0024`: 3928 („ask X and Y" asked only X, with a broken question, on a second goal)
 
 ## OPEN
+
+### 9 Oct, 17:41Z — 0024 LIVE: e4d7922 (3928), alone, outage 0; 3896 and 389 TESTED
+
+- **0024:** applied clean on 3497daf (be4b915c). The tester was warned for 17:35Z (49139) and did not hold. Board: 3928 → being_tested.
+- **Tester 49140:** 3896 PASS 1 of 1. A fresh seat with „იპოვე … ჩემს ნაცნობებს ჰკითხე“ opened a goal; it had no contacts to ask. 389 PASS: card 29932
+  names „მაკა ანგარიშიძე“. Both → tested. The 1692 question is with Tornike (49107).
 
 ### 9 Oct, 17:26Z — 0023 LIVE: 3497daf (3896), alone, outage 0
 
