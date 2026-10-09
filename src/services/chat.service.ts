@@ -353,6 +353,7 @@ import {
   MISSING_PLAN_NUDGE,
   claimsToHavePassedItOn,
   claimsAnAskWasSent,
+  claimsASendNow,
   NOTHING_SENT_YET_NUDGE,
   helperAskedAQuestion,
   HELPER_QUESTION_NUDGE,
@@ -7947,6 +7948,16 @@ const runApprovedAPlan = new Set<string>();
  */
 const runPlanApprovedInRun = new Set<string>();
 
+/** MTR #7 (2113): „writing now" on a run that approved nothing — after „change the plan". */
+function saysItSendsNowWithoutApproval(runId: string, finalText: string): boolean {
+  return (
+    claimsASendNow(finalText) &&
+    !runApprovedAPlan.has(runId) &&
+    !runPlanApprovedInRun.has(runId) &&
+    !isApproveChoice((runOwnerLine.get(runId) ?? '').trim())
+  );
+}
+
 function noteApprovedAPlan(runId: string | undefined): void {
   if (runId) runApprovedAPlan.add(runId);
 }
@@ -13224,7 +13235,7 @@ async function runToolLoop(
     !promoted &&
     !answeringALaterTap &&
     runModes.get(runId) !== 'incoming_ask' &&
-    claimsAnAskWasSent(finalText) &&
+    (claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&
     (await goalSentNothing(threadId));
   // The tester's 1110 (33950): the helper's question back, lost whatever the wording.
   const helperQuestionUnsent =

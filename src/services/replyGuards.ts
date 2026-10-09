@@ -215,6 +215,20 @@ export function claimsAnAskWasSent(text: string): boolean {
   return CLAIMS_AN_ASK_WAS_SENT_RE.test(text);
 }
 
+/**
+ * MTR #7 (2113 again): after „change the plan" the reply said „…ახლა ვწერ"
+ * („I am writing now") and nothing went. The present tense is kept apart from
+ * the past on purpose: right after an approval, „writing now" is true — the
+ * engine's day one sends a moment later. The caller counts it only on a run
+ * that approved nothing.
+ */
+const CLAIMS_A_SEND_NOW_RE =
+  /(?:ახლა|ახლავე)\s+(?:ვწერ|ვუწერ|ვაგზავნი|ვეკითხები)(?!\p{L})|\bi'?m\s+(?:now\s+)?(?:writing|sending|messaging)\b|\bsending\s+(?:it\s+)?now\b/iu;
+
+export function claimsASendNow(text: string): boolean {
+  return CLAIMS_A_SEND_NOW_RE.test(text);
+}
+
 export const NOTHING_SENT_YET_NUDGE =
   '(სისტემური შენიშვნა: შენ დაწერე, რომ ვიღაცას მისწერე ან ჰკითხე, მაგრამ ამ მიზანს ჯერ არავისთვის ' +
   'არაფერი გაუგზავნია — არც კითხვა, არც ბარათზე, არც გაცნობის თხოვნა. ეს სიმართლეს არ შეესაბამება. ' +

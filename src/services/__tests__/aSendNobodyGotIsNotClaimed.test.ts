@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import { goalSentNothing } from '../goalSentNothing';
-import { claimsAnAskWasSent, NOTHING_SENT_YET_NUDGE } from '../replyGuards';
+import { claimsAnAskWasSent, claimsASendNow, NOTHING_SENT_YET_NUDGE } from '../replyGuards';
 import { isModelOnlyNudge } from '../chat.service';
 
 /**
@@ -43,7 +43,9 @@ describe('a claimed send', () => {
     expect(chain.indexOf('NOTHING_SENT_YET_NUDGE')).toBeLessThan(
       chain.indexOf('MEMBERS_SKIPPED_NUDGE'),
     );
-    expect(chat).toContain('claimsAnAskWasSent(finalText) &&');
+    expect(chat).toContain(
+      '(claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText)) &&',
+    );
   });
 });
 
@@ -64,5 +66,26 @@ describe('a goal that sent nothing', () => {
   it('does not accuse when it cannot look', async () => {
     mockQuery.mockRejectedValueOnce(new Error('timeout'));
     await expect(goalSentNothing(41598)).resolves.toBe(false);
+  });
+});
+
+describe('a send said in the present, on a run that approved nothing (2113, MTR #7)', () => {
+  it.each([
+    'გეგმა შევცვალე და ნინოს ახლა ვწერ.',
+    'ახლავე ვუწერ ორივეს.',
+    "I'm writing to Nino now.",
+    'Sending it now.',
+  ])('„%s" reads as a send now', (reply) => expect(claimsASendNow(reply)).toBe(true));
+
+  it('the past-tense reader still leaves „ახლა ვწერ" alone (true right after an approval)', () => {
+    expect(claimsAnAskWasSent('ახლა ვწერ ნიკას და მარის.')).toBe(false);
+  });
+
+  it('the run counts it only when it approved no plan and the line was no approve tap', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      '(claimsAnAskWasSent(finalText) || saysItSendsNowWithoutApproval(runId, finalText))',
+    );
+    expect(chat).toContain('!runApprovedAPlan.has(runId) &&');
   });
 });
