@@ -485,7 +485,7 @@ import { debitRun } from './tokenWallet.service';
 import { stepLabel } from './stepLabel';
 import { countToolResults, toolResultsInLastTurn } from './requestShape';
 import { markThreadStopped, noteRunStart, runWasStopped } from './stoppedRuns';
-import { setThreadStatus } from './threadStatus.service';
+import { endsWithQuestion, setThreadStatus } from './threadStatus.service';
 import {
   stopGoal,
   stoppedLine,
@@ -13414,12 +13414,18 @@ async function runToolLoop(
     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
   // The tester's 44364 (case 1): the owner's instruction to ask one of their
   // own people, and the run neither asked nor opened a goal to ask from.
+  // 3697 (F20, 10 of 10): „ask Maia to introduce me to Bakhva" with no reason —
+  // the run asked the owner why. That is a real question, and an introduction
+  // is not an ask this guard can send; replacing it with „not sent" lost it.
+  const introductionQuestion =
+    ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);
   const instructionUnsent =
     !ownerAbsent &&
     !promoted &&
     !answeringALaterTap &&
     runModes.get(runId) !== 'incoming_ask' &&
     !claimedAnAskNobodyGot &&
+    !introductionQuestion &&
     !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
   if (instructionUnsent) {

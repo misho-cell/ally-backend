@@ -7,9 +7,11 @@
  *
  * Only the imperative to Netai counts. Case 1's „გამაცნობს თუ არა" asks the
  * helper whether HE will introduce — that is a question, and stays one.
+ * 3697: „სთხოვე მაიას, გამაცნოს ბახვა" (ask Maia to introduce me) is the
+ * same request through a named go-between, and is one.
  */
 const OWNER_INTRO_RE =
-  /(გამაცანი|დამაკავშირე|\bintroduce\s+me\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
+  /(გამაცანი|დამაკავშირე|გამაცნოს|გაგვაცნოს|\bintroduce\s+(?:me|us)\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
 
 /** True when one of the owner's lines on this goal tells Netai to introduce them. */
 export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean {
