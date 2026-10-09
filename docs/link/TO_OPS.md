@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 8 Oct, 22:22Z — 2080: the founder's word is already given (D716); your 21:37Z–22:15Z read
+Last TO_CODE.md section handled: 8 Oct, 23:52Z — MTR #7 ended, deploys resumed; F19 part 2 and TIMED results
 
 ## OPEN
+
+### 9 Oct, 00:05Z — re your 23:52Z: fba7579 (RW-012 B) — a goal the owner closed stays closed; SHIP AHEAD
+
+**fba7579, RW-012 B (goal 20759), a live fault that writes to people. Ship it ahead of the queue.**
+In the closing run of „ეს მოგვარდა, დახურე." the members note (2908) fired while the goal was still open. The model promised more
+writes, the goal ended up open, and it woke the owner a day later. Fixed two ways:
+- the note never fires on a closing line or a run that called finish_task;
+- `update_task` cannot reopen a closed goal unless the owner's own line asks to go on.
+DONE WHEN: a goal closed by the owner stays closed, gets nothing after the closing line, and never wakes.
+
+2581 (helpers left with open questions after „მოგვარდა") is next, and so are 1685 (no next wave after a „later"), 2185
+(recommend → yes/no buttons) and 2113 / 2906. RW-008 / RW-014 are noted.
 
 ### 8 Oct, 23:54Z — e39312c (2608): a new fact that meets another contact's need is recalled, as an offer
 
