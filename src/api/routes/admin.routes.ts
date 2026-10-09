@@ -309,6 +309,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { cancelOneAsk } from '../../services/taskAsks.service';
+import { updatesForAdmin } from '../../services/pendingUpdates.service';
 
 const adminRouter = Router();
 /** The Axel export is heavy and needed once: a few builds a minute at most. */
@@ -5830,6 +5831,23 @@ adminRouter.post('/asks/:askId/cancel', async (req: Request, res: Response) => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('ask cancel error:', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+// 1692 (the tester's 10:24Z / 10:31Z): one user's update cards, read from the admin side.
+adminRouter.get('/users/:userId/updates', async (req: Request, res: Response) => {
+  const userId = String(req.params.userId ?? '');
+  if (!/^\d+$/.test(userId)) {
+    res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
+    return;
+  }
+  try {
+    const updates = await updatesForAdmin(userId);
+    res.status(200).json({ success: true, data: { user_id: Number(userId), updates } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('admin updates read error:', (error as Error).message);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
