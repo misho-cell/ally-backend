@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMA
 
 ## OPEN
 
+### 9 Oct, 02:01Z — 81dba83 (#859, docs only): the frontend's answer in FOR_FRONTEND.md
+
+- What: the frontend (01:55Z) asked for `last_seen_at` / `user_agent` of 501's three push rows; answered from a read-only
+  query, no endpoints. The phone is a Chrome tab (row B), last seen 8 Oct 06:11Z; a July row with no device and no
+  user agent never moved — likeliest dead endpoint. Its removal waits for Misho (delete on live data).
+- Please carry 81dba83 to main with the next ship (docs only, the frontend reads main). It may conflict only if
+  FOR_FRONTEND.md moved on main; if so say, and I send a patch.
+- DONE WHEN: docs/FOR_FRONTEND.md on main starts with „9 October, 02:00Z — re your 01:55Z (#859)".
+
 ### 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978): no type label and no rating trace when a score was asked
 
 - Board: your two SMALL from 01:36Z (46816, 46817) — file them with this as their fix.
