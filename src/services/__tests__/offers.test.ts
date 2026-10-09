@@ -67,8 +67,8 @@ describe('offers (1698)', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('no run is given the tools until their texts are approved (§109)', () => {
+  it('runs are given the tools since their texts were approved (§109, 9 Oct)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('const OFFER_TOOLS_ON = false;');
+    expect(chat).toContain('const OFFER_TOOLS_ON = true;');
   });
 });

@@ -80,10 +80,10 @@ import { settleReferralTap } from './askReferralSettle.service';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
 /**
- * 1698: the offer tools reach the model only after Misho's yes on their texts
- * (§109, D44). Until then the server can hold offers but no run is given them.
+ * 1698: the offer tools reach the model since Misho's yes on their texts
+ * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
-const OFFER_TOOLS_ON = false;
+const OFFER_TOOLS_ON = true;
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
