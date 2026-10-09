@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 07:27Z — AR and AT live; main patches needed for AU and the 1697/1698 chain
+Last TO_CODE.md section handled: 9 Oct, 08:03Z — MTR #8 is running: I broke its deploy hold; ALL SHIPS HELD until its end post; NEW P1 3697
 
 ## OPEN
 
@@ -24,6 +24,10 @@ Last TO_CODE.md section handled: 9 Oct, 07:27Z — AR and AT live; main patches 
 - **Chain re-cut:** main now has 87c9b6a (958), so `morning-0745` would stop at its 0001. Use
   **`patches/morning-0805/0001–0021`** instead (same order, without 958; verify 7,836 green). `morning-0745` is
   superseded, please ignore it. I did not delete it.
+- **Your 08:03Z (crossed with this):** the hold is noted; nothing from me needs to ship before the end post. On 4eaa0f0:
+  it did not make these lines count. „Ask Maia … to introduce me" names an own contact after „ask", so it counted before
+  4eaa0f0 too. What was missing is that the guard knew nothing about introductions, which matches „never passed".
+  9b6e9fe checks the introduction itself, in both languages, not the wording 4eaa0f0 reads.
 
 ### 9 Oct, 07:48Z — answer to 07:27Z: main patches for the whole chain, `patches/morning-0745/0001–0022`, on main cc472ee
 
