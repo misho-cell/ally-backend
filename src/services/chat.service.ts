@@ -488,7 +488,7 @@ import {
 import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
-import { offerOpenAsksChoice, settleOpenAsksOnTap } from './openAsksAfterSolved';
+import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
 import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
@@ -5332,6 +5332,41 @@ async function runLoggedSearch(
  * The run remembers who came back on Netai, by name, so the end of the run can
  * check whether any of them was offered.
  */
+/**
+ * 2581 (MTR #7, convs 46443, 46444, 46592): the close-or-keep card was written
+ * while finish_task ran, and the run's own „glad it is solved" came after it,
+ * so the owner's last message was the reply and the card sat above it. The
+ * card is noted here and written once the reply is stored.
+ */
+const MAX_NOTED_CARDS = 500;
+const runOpenAsksCards = new Map<
+  string,
+  { readonly taskId: number; readonly threadId: number; readonly ownerId: number }
+>();
+
+async function noteOpenAsksCard(
+  runId: string,
+  taskId: number,
+  threadId: number,
+  ownerId: number,
+): Promise<number> {
+  const open = await openAskCount(taskId);
+  // A run that ends before its reply is stored never posts its card; the map stays small.
+  if (runOpenAsksCards.size >= MAX_NOTED_CARDS) runOpenAsksCards.clear();
+  if (open > 0) runOpenAsksCards.set(runId, { taskId, threadId, ownerId });
+  return open;
+}
+
+async function offerNotedOpenAsksCard(runId: string): Promise<void> {
+  const noted = runOpenAsksCards.get(runId);
+  runOpenAsksCards.delete(runId);
+  if (noted === undefined) return;
+  await offerOpenAsksChoice(noted.taskId, noted.threadId, noted.ownerId).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[open-asks] card not offered:', (err as Error).message),
+  );
+}
+
 /** Runs that sent an introduction request (37517): a closing „send it?" is replaced. */
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
@@ -9680,7 +9715,11 @@ async function executeToolCall(
         await cancelAsksForTask(taskId);
         return { closed };
       }
-      const stillOpen = await offerOpenAsksChoice(taskId, threadId, Number(userId));
+      // 2581: the card goes AFTER this run's reply, so it is the last thing the owner reads.
+      const stillOpen =
+        runId === undefined
+          ? await offerOpenAsksChoice(taskId, threadId, Number(userId))
+          : await noteOpenAsksCard(runId, taskId, threadId, Number(userId));
       return stillOpen === 0
         ? { closed }
         : {
@@ -15995,6 +16034,8 @@ export async function processChat(
     );
   }
   await deliverPendingMessages(userId, threadId, runId, language, toDeliver);
+  // 2581: the close-or-keep card of a goal this run finished, under the reply.
+  await offerNotedOpenAsksCard(runId);
   // The goal this thread carries was worked on now (Ticket 11 Task 7 (a):
   // `last_activity_at` read 4 Sep on a goal whose thread held 6 Sep messages).
   void touchTaskActivityForThread(threadId).catch(() => undefined);

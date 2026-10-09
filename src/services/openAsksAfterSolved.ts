@@ -71,6 +71,23 @@ export function openAsksTapOf(message: string): OpenAsksTap | null {
 }
 
 /**
+ * 2581 (MTR #7, conv 46592): the owner TYPED „შეაჩერე დანარჩენი." under the
+ * card instead of tapping it; nothing was cancelled while the reply said it
+ * was. While a card waits, the plain typed forms count as the buttons.
+ */
+const TYPED_CLOSE_RE =
+  /((?:შეაჩერე|დახურე|გააუქმე|გააჩერე)\s+დანარჩენ|დანარჩენი\s+(?:შეაჩერე|დახურე|გააუქმე)|\b(?:stop|close|cancel)\s+the\s+(?:rest|others|other\s+questions)\b|останови\s+остальн|закрой\s+остальн|(?:cierra|cancela)\s+las\s+demás)/iu;
+const TYPED_KEEP_RE =
+  /(ღიად\s+(?:დატოვე|ვტოვებ)|\bkeep\s+them\s+open\b|оставь\s+открыт|déjalas\s+abiertas)/iu;
+
+/** The typed close or keep, read only while a card waits for an answer. */
+export function typedOpenAsksTap(message: string): OpenAsksTap | null {
+  if (TYPED_CLOSE_RE.test(message)) return OpenAsksTap.Close;
+  if (TYPED_KEEP_RE.test(message)) return OpenAsksTap.Keep;
+  return null;
+}
+
+/**
  * The tester's 961: „1 ადამიანს … მათი კითხვები" — the plural for one person.
  * One open question reads as one; more read as many.
  */
@@ -102,7 +119,7 @@ function offerLine(language: RunLanguage, count: number): string {
   return count === 1 ? lines.one : lines.many(count);
 }
 
-async function openAskCount(taskId: number): Promise<number> {
+export async function openAskCount(taskId: number): Promise<number> {
   const result = await query<{ n: string }>(
     `SELECT COUNT(*) AS n FROM task_asks WHERE task_id = $1 AND status = 'sent'`,
     [taskId],
@@ -218,7 +235,7 @@ export async function settleOpenAsksOnTap(
   threadId: number,
   message: string,
 ): Promise<string | null> {
-  const tap = openAsksTapOf(message);
+  const tap = openAsksTapOf(message) ?? typedOpenAsksTap(message);
   if (tap === null) return null;
   const goal = await goalWithTheCard(threadId, userId);
   if (goal === null) return null;
