@@ -310,6 +310,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { cancelOneAsk } from '../../services/taskAsks.service';
+import { loadAxelBase } from '../../services/axelLoad/axelBaseLoad.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -6945,5 +6946,38 @@ adminRouter.get(
     }
   },
 );
+
+/**
+ * 4225 — the Axel base load (§119). Body: the package's person_numbers.csv and
+ * facts.csv as text, and dry_run. A dry run resolves and counts and writes
+ * nothing; run it first. Undo: §119.
+ */
+const MAX_AXEL_CSV_CHARS = 4_000_000;
+
+adminRouter.post('/axel/base-load', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const numbers = body.person_numbers_csv;
+  const facts = body.facts_csv;
+  if (
+    typeof numbers !== 'string' ||
+    typeof facts !== 'string' ||
+    numbers.length > MAX_AXEL_CSV_CHARS ||
+    facts.length > MAX_AXEL_CSV_CHARS ||
+    typeof body.dry_run !== 'boolean'
+  ) {
+    res.status(400).json({
+      success: false,
+      error: 'person_numbers_csv and facts_csv (text) and dry_run (true or false) are required',
+    });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await loadAxelBase(numbers, facts, body.dry_run) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[POST /admin/axel/base-load]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The load did not run; nothing was written' });
+  }
+});
 
 export default adminRouter;
