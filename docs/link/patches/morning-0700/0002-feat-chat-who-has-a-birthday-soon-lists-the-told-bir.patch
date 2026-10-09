@@ -1,0 +1,300 @@
+From 0c5fc9542933f93ee7305e2615037145ba39781a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 18:32:38 +0000
+Subject: [PATCH 2/3] =?UTF-8?q?feat(chat):=20=E2=80=9Ewho=20has=20a=20birt?=
+ =?UTF-8?q?hday=20soon=3F"=20lists=20the=20told=20birthdays=20(3269)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SE-039 / ME-040 (seats 180112, 180122, 180113, 179995): two birthdays were
+told — saved sometimes as `birthday`, sometimes as a note „დაბადების დღე: 13
+ოქტომბერი" — and „ვის აქვს მალე დაბადების დღე?" in a new conversation said
+none were saved, 4 of 4. The app's run has no birthday tool (only the
+connector does).
+
+- submitContactFact files a note that is only a birthday as `birthday`.
+- getUpcomingBirthdays also reads such notes saved before this.
+- The question (ka, en, ru, es) is answered by the server before any model
+  call: the told birthdays in the next 30 days, soonest first, each as
+  saved with its date and how soon; nobody else. No prompt or tool text.
+
+DONE WHEN: SE-039 and ME-040. After two told birthdays, „ვის აქვს მალე
+დაბადების დღე?" in a new conversation lists both, soonest first, nobody else.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/whoHasABirthdaySoon.test.ts     | 70 +++++++++++++++++++
+ src/services/birthdayLens.service.ts          | 20 +++++-
+ src/services/birthdaysAsked.ts                | 52 ++++++++++++++
+ src/services/chat.service.ts                  | 40 +++++++++++
+ src/services/contactFacts.service.ts          |  6 ++
+ 5 files changed, 187 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/whoHasABirthdaySoon.test.ts
+ create mode 100644 src/services/birthdaysAsked.ts
+
+diff --git a/src/services/__tests__/whoHasABirthdaySoon.test.ts b/src/services/__tests__/whoHasABirthdaySoon.test.ts
+new file mode 100644
+index 0000000..3ff35bd
+--- /dev/null
++++ b/src/services/__tests__/whoHasABirthdaySoon.test.ts
+@@ -0,0 +1,70 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { birthdayFromNote } from '../birthdayLens.service';
++import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from '../birthdaysAsked';
++
++/** 3269 (SE-039, ME-040): told birthdays were never told back. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++describe('a birthday told as a note', () => {
++  it('is filed as a birthday', () => {
++    expect(birthdayFromNote('note', 'დაბადების დღე: 13 ოქტომბერი')).toBe('13 ოქტომბერი');
++    expect(birthdayFromNote('', 'Birthday — 20 Oct')).toBe('20 Oct');
++  });
++
++  it('anything else stays a note', () => {
++    expect(birthdayFromNote('note', 'კარგი ელექტრიკოსია')).toBeNull();
++    expect(birthdayFromNote('note', 'დაბადების დღე: არ ვიცი')).toBeNull();
++    expect(birthdayFromNote('employer', 'დაბადების დღე: 13 ოქტომბერი')).toBeNull();
++  });
++
++  it('submitContactFact files it that way', () => {
++    const facts = readFileSync(join(__dirname, '..', 'contactFacts.service.ts'), 'utf8');
++    expect(facts).toContain('const birthday = birthdayFromNote(fieldTypeRaw, value);');
++  });
++});
++
++describe('who has a birthday soon', () => {
++  it('knows the question, not a told birthday', () => {
++    expect(asksForBirthdays('ვის აქვს მალე დაბადების დღე?')).toBe(true);
++    expect(asksForBirthdays('Whose birthday is coming up soon? Any upcoming birthdays?')).toBe(
++      true,
++    );
++    expect(asksForBirthdays('ლევან მოგონილაძის დაბადების დღე 13 ოქტომბერს არის.')).toBe(false);
++  });
++
++  it('lists the told birthdays, soonest first, notes included', async () => {
++    jest.useFakeTimers().setSystemTime(new Date('2026-10-08T12:00:00Z'));
++    mockQuery.mockResolvedValue({
++      rows: [
++        { phone: '+441174960069', name: 'ნინო გამოგონილი', value: 'დაბადების დღე: 20 ოქტომბერი' },
++        { phone: '+441174960068', name: 'ლევან მოგონილაძე', value: '13 ოქტომბერი' },
++        { phone: '+441174960070', name: 'გია ტესტური', value: '1 დეკემბერი' },
++      ],
++      rowCount: 3,
++    } as never);
++    const rows = await birthdaysSoon('180122');
++    expect(birthdaysAnswer(rows, 'ka')).toBe(
++      'მალე დაბადების დღე აქვთ:\n• ლევან მოგონილაძე — 13 ოქტომბერი (5 დღეში)\n• ნინო გამოგონილი — 20 ოქტომბერი (12 დღეში)',
++    );
++    const [sql] = mockQuery.mock.calls[0] as [string];
++    expect(sql).toContain("cf.field_type = 'note'");
++    jest.useRealTimers();
++  });
++
++  it('says so when none falls in the next month', () => {
++    expect(birthdaysAnswer([], 'ka')).toBe(
++      'მომდევნო 30 დღეში შენახული დაბადების დღე არავისი მაქვს.',
++    );
++  });
++
++  it('runs before the model, in the owner’s own conversation', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      "!ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)",
++    );
++  });
++});
+diff --git a/src/services/birthdayLens.service.ts b/src/services/birthdayLens.service.ts
+index a0df5e9..8fd5df9 100644
+--- a/src/services/birthdayLens.service.ts
++++ b/src/services/birthdayLens.service.ts
+@@ -86,6 +86,22 @@ export function parseMonthDay(value: string): MonthDay | null {
+   return null;
+ }
+ 
++/**
++ * 3269 (SE-039, ME-040): a told birthday was saved sometimes as `birthday`,
++ * sometimes as a note „დაბადების დღე: 13 ოქტომბერი" — and a note is never read
++ * as a birthday. A note that is only a birthday is filed as one.
++ */
++const BIRTHDAY_NOTE_RE =
++  /^\s*(?:დაბადების\s+(?:დღე|თარიღი)|birthday|date\s+of\s+birth|день\s+рождения|cumpleaños)\s*[:—–-]?\s*(.+)$/iu;
++const NOTE_FIELDS: ReadonlySet<string> = new Set(['', 'note']);
++
++/** The date, when a note is only a birthday; else null. */
++export function birthdayFromNote(fieldType: string, value: string): string | null {
++  if (!NOTE_FIELDS.has(fieldType.trim().toLowerCase())) return null;
++  const date = value.match(BIRTHDAY_NOTE_RE)?.[1]?.trim();
++  return date !== undefined && parseMonthDay(date) !== null ? date : null;
++}
++
+ function validMonthDay(month: number, day: number): MonthDay | null {
+   if (!Number.isInteger(month) || !Number.isInteger(day)) return null;
+   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+@@ -122,7 +138,9 @@ export async function getUpcomingBirthdays(
+      LEFT JOIN "UserAlias" ua ON ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1
+      WHERE cf.submitted_by_user_id = $2
+        AND cf.retracted_at IS NULL
+-       AND cf.field_type = ANY($3::text[])
++       AND (cf.field_type = ANY($3::text[])
++            -- 3269: birthdays saved as a note before they were filed as birthdays.
++            OR (cf.field_type = 'note' AND cf.value ~* '^\\s*(დაბადების\\s+(დღე|თარიღი)|birthday)'))
+      GROUP BY cf.neo4j_contact_id
+      LIMIT $4`,
+     [userId, userId, BIRTHDAY_KEYS, RESULT_LIMIT],
+diff --git a/src/services/birthdaysAsked.ts b/src/services/birthdaysAsked.ts
+new file mode 100644
+index 0000000..b977885
+--- /dev/null
++++ b/src/services/birthdaysAsked.ts
+@@ -0,0 +1,52 @@
++import { birthdayFromNote, getUpcomingBirthdays, UpcomingBirthday } from './birthdayLens.service';
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 3269 (SE-039, ME-040; seats 180112, 180122, 180113, 179995): the owner told
++ * two birthdays, then asked „ვის აქვს მალე დაბადების დღე?" in a new
++ * conversation; the app's run has no birthday tool, and it said none were
++ * saved, 4 of 4. The server answers it from the told birthdays, soonest first,
++ * nobody else. No model runs.
++ */
++const SOON_DAYS = 30;
++const MAX_SHOWN = 10;
++
++const ASKS_FOR_BIRTHDAYS_RE =
++  /(?:(?:ვის|ვისი)[\s\S]{0,40}დაბადების\s+დღე|დაბადების\s+დღე(?:ები)?[\s\S]{0,30}(?:მალე|ახლო|მოახლოებულ|ამ\s+თვეში)|(?:upcoming|soon|next)[\s\S]{0,30}birthdays?|birthdays?[\s\S]{0,30}(?:soon|coming\s+up|this\s+month)|у\s+кого[\s\S]{0,30}день\s+рождения|cumpleaños[\s\S]{0,30}(?:pronto|próximos))/iu;
++
++export function asksForBirthdays(line: string): boolean {
++  return ASKS_FOR_BIRTHDAYS_RE.test(line);
++}
++
++/** The told birthdays in the coming month, soonest first. */
++export async function birthdaysSoon(userId: string): Promise<UpcomingBirthday[]> {
++  const rows = await getUpcomingBirthdays(userId, SOON_DAYS);
++  return [...rows].sort((a, b) => a.days_until - b.days_until).slice(0, MAX_SHOWN);
++}
++
++const TEXTS: Readonly<
++  Record<'ka' | 'en', { lead: string; none: string; when: (days: number) => string }>
++> = {
++  ka: {
++    lead: 'მალე დაბადების დღე აქვთ:',
++    none: 'მომდევნო 30 დღეში შენახული დაბადების დღე არავისი მაქვს.',
++    when: (days) => (days === 0 ? 'დღეს' : days === 1 ? 'ხვალ' : `${days} დღეში`),
++  },
++  en: {
++    lead: 'Birthdays coming up:',
++    none: 'No saved birthday falls in the next 30 days.',
++    when: (days) => (days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`),
++  },
++};
++
++/** The server's answer: each person as saved, the date as told, and how soon. */
++export function birthdaysAnswer(rows: readonly UpcomingBirthday[], language: RunLanguage): string {
++  const t = language === 'ka' ? TEXTS.ka : TEXTS.en;
++  const named = rows.filter((r) => (r.name ?? '').trim() !== '');
++  if (named.length === 0) return t.none;
++  const lines = named.map(
++    (r) =>
++      `• ${(r.name ?? '').trim()} — ${birthdayFromNote('note', r.saved_as) ?? r.saved_as.trim()} (${t.when(r.days_until)})`,
++  );
++  return [t.lead, ...lines].join('\n');
++}
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 294065f..c23b32e 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -493,6 +493,8 @@ import {
+ } from './testerRules';
+ import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+ import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
++import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
++import type { UpcomingBirthday } from './birthdayLens.service';
+ import { checkedOwnerButtons } from './ownerButtons.service';
+ import { savedNamesIn, withNamesAsSaved } from './savedNames';
+ import {
+@@ -12316,6 +12318,38 @@ async function answerReferral(
+   }
+ }
+ 
++/** 3269: the told birthdays in the coming month, said by the server; null when they cannot be read. */
++async function answerBirthdaysSoon(
++  userId: string,
++  threadId: number,
++  userMessage: string,
++  runId: string,
++  intent: RunIntent | undefined,
++): Promise<ChatResult | null> {
++  let rows: UpcomingBirthday[];
++  try {
++    rows = await birthdaysSoon(userId);
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error('[birthdays] not read:', (err as Error).message);
++    return null;
++  }
++  if (intent?.alreadyStored !== true) {
++    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
++  }
++  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
++  const language = languageOfConversation(
++    userMessage,
++    spokenBefore,
++    detectRunLanguage(userMessage),
++  );
++  const text = birthdaysAnswer(rows, language);
++  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
++  // eslint-disable-next-line no-console
++  console.log(`[birthdays] run ${runId}: answered by the server (${rows.length})`);
++  return { reply: text, language, requestCreated: false };
++}
++
+ /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
+ async function ownerHasContacts(userId: string): Promise<boolean> {
+   try {
+@@ -14854,6 +14888,12 @@ export async function processChat(
+       ? await answerNotTagged(userId, threadId, userMessage, runId, intent)
+       : null;
+   if (notTagged !== null) return notTagged;
++  // 3269: „who has a birthday soon?" is answered from the told birthdays, by the server.
++  const birthdays =
++    !ownerAbsent && thread.type === 'regular' && asksForBirthdays(userMessage)
++      ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
++      : null;
++  if (birthdays !== null) return birthdays;
+   // 1696 (A13): „not me — ask Eka" gets one card first; its tap is acted on by the server.
+   const referral =
+     !ownerAbsent && thread.type === 'incoming_ask'
+diff --git a/src/services/contactFacts.service.ts b/src/services/contactFacts.service.ts
+index 88ffdf7..fa206ce 100644
+--- a/src/services/contactFacts.service.ts
++++ b/src/services/contactFacts.service.ts
+@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
+ import { recordClaudeUsage } from './costLedger.service';
+ import { query, backgroundQuery } from '../db/postgres/client';
+ import { normalizePhone } from './phone';
++import { birthdayFromNote } from './birthdayLens.service';
+ import { parseModelJson } from './modelJson';
+ import anthropic from '../config/anthropic';
+ 
+@@ -581,6 +582,11 @@ export async function submitContactFact(
+   source: FactSource = 'chat',
+   confidence: FactConfidence | null = 'stated',
+ ): Promise<{ is_public: boolean; canonical_value: string | null }> {
++  // 3269: a note that is only a birthday is filed as a birthday.
++  const birthday = birthdayFromNote(fieldTypeRaw, value);
++  if (birthday !== null) {
++    return submitContactFact(userId, neo4jContactIdRaw, 'birthday', birthday, source, confidence);
++  }
+   const neo4jContactId = normalizePhone(neo4jContactIdRaw);
+   // A FACT ABOUT NOBODY IS NOT A FACT. `normalizePhone` answers `''` for
+   // anything with no digits in it, and the row is keyed by that value — so
+-- 
+2.43.0
+

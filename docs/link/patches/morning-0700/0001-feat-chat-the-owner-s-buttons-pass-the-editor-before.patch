@@ -1,0 +1,336 @@
+From ad4b2cb6af48306c8eeb975b9c243aa8a978d45a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 17:13:43 +0000
+Subject: [PATCH 1/3] =?UTF-8?q?feat(chat):=20the=20owner's=20buttons=20pas?=
+ =?UTF-8?q?s=20the=20editor=20before=20they=20are=20shown=20(2579,=20?=
+ =?UTF-8?q?=C2=A7105)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The owner's buttons are the model's own words and nothing checked them:
+„დიახ, სთხოვენ გაცნობა" / „არა, დეველოდოთ ლევანის პასუხს" after an answer
+card (conv 43319, 43327), and today „ვცალობ", „არსად არ ვდადი". The
+helper's question already passes an editor (D711).
+
+Misho's yes, 8 Oct ~16:55 UTC, recorded with the exact brief as §105:
+before a reply with buttons is stored, the model-written buttons (never
+the server's approve / change / other / later labels) go to the same
+editor model with that brief; a usable rewrite (same count, non-empty, at
+most 40 characters, no repeats) replaces them, anything else keeps them
+as written.
+
+DONE WHEN: on a fresh trio after one helper answers, the owner's buttons
+under the answer card are correct Georgian, e.g. „კი, სთხოვე გაცნობა" /
+„არა, ჯერ ლევანს დაველოდოთ" / „სხვა, მე დავწერ".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |  11 ++
+ .../theOwnersButtonsAreChecked.test.ts        |  85 +++++++++++
+ src/services/askEditor.service.ts             |   4 +-
+ src/services/chat.service.ts                  |   6 +
+ src/services/ownerButtons.service.ts          | 139 ++++++++++++++++++
+ 5 files changed, 243 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/theOwnersButtonsAreChecked.test.ts
+ create mode 100644 src/services/ownerButtons.service.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index d8b8535..37e02cf 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -5987,3 +5987,14 @@ four languages); a „but", a person to ask or a number keeps it a lead. Undo: r
+ **§104 — 3271, shipped alone. No model-facing text.** The routes that add contacts to a test seat (one, and
+ in bulk) now run the label parser over the seat's phonebook in the background, as a phone import does, so
+ get_unresolved_labels has the seat's labels. Test seats only. Undo: revert.
++
++**§105 — 2579 (first part), Misho's yes („პირველ ორზე გეთანხმები", 8 Oct ~16:55 UTC), the exact text,
++shipped alone.** A new server check on the OWNER's buttons (ownerButtons.service.ts): before a reply with
++buttons is stored, the buttons the model wrote (not the server's own approve / change / other / later
++labels) go to the same editor model as D711's question check, with this brief, {language} being the
++conversation's language by name:
++
++> You check the buttons under one message before the owner sees them. The owner reads {language}. Each button is what the OWNER taps to answer that message, in the owner's own voice, at most 40 characters. A button passes only if it is correct, natural {language} made of real words, and a real answer to the message. When every button passes, call give_verdict with ok true. Otherwise fix only the broken buttons, keeping their meaning and their order, and call give_verdict with ok false and the corrected buttons.
++
++The input is the message and the buttons, as JSON. A failed or unusable check keeps the buttons as written.
++Costs one editor call per reply with buttons (about 1–2 s). Undo: revert.
+diff --git a/src/services/__tests__/theOwnersButtonsAreChecked.test.ts b/src/services/__tests__/theOwnersButtonsAreChecked.test.ts
+new file mode 100644
+index 0000000..b9153b2
+--- /dev/null
++++ b/src/services/__tests__/theOwnersButtonsAreChecked.test.ts
+@@ -0,0 +1,85 @@
++jest.mock('../../config/anthropic', () => ({
++  __esModule: true,
++  default: { messages: { create: jest.fn() } },
++}));
++jest.mock('../costLedger.service', () => ({ recordClaudeUsage: jest.fn(() => Promise.resolve()) }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import anthropic from '../../config/anthropic';
++import { checkedOwnerButtons, ownerButtonsBrief, usableButtons } from '../ownerButtons.service';
++
++/**
++ * 2579, first part (§105): the owner's buttons after an answer card read
++ * „დიახ, სთხოვენ გაცნობა" / „არა, არაა ახლა ველოდოთ ლევანს" (conv 43319).
++ */
++const mockCreate = anthropic.messages.create as unknown as jest.Mock;
++const verdict = (input: unknown): unknown => ({
++  content: [{ type: 'tool_use', name: 'give_verdict', id: 't1', input }],
++  usage: { input_tokens: 1, output_tokens: 1 },
++});
++const MESSAGE = 'გინდა, ბახვას სთხოვო ნინო გამოგონილთან გაცნობა?';
++const BROKEN = ['დიახ, სთხოვენ გაცნობა', 'არა, არაა ახლა ველოდოთ ლევანს', 'სხვა, მე დავწერ'];
++
++beforeEach(() => jest.clearAllMocks());
++
++describe('the brief', () => {
++  it('is §105 word for word, with the language named', () => {
++    const doc = readFileSync(
++      join(__dirname, '..', '..', '..', 'docs', 'ADMIN_WRITE_OPERATIONS.md'),
++      'utf8',
++    );
++    const approved = doc
++      .slice(doc.indexOf('**§105'))
++      .split('\n')
++      .find((line) => line.startsWith('> You check the buttons'));
++    expect(approved?.slice(2).split('{language}').join('Georgian')).toBe(ownerButtonsBrief('ka'));
++  });
++});
++
++describe('the check', () => {
++  it('fixes the model’s buttons and never sends the server’s own', async () => {
++    mockCreate.mockResolvedValue(
++      verdict({ ok: false, buttons: ['კი, სთხოვე გაცნობა', 'არა, ჯერ ლევანს დაველოდოთ'] }),
++    );
++    expect(await checkedOwnerButtons(MESSAGE, BROKEN, 'ka')).toEqual([
++      'კი, სთხოვე გაცნობა',
++      'არა, ჯერ ლევანს დაველოდოთ',
++      'სხვა, მე დავწერ',
++    ]);
++    const sent = JSON.parse(mockCreate.mock.calls[0][0].messages[0].content as string);
++    expect(sent.buttons).toEqual(BROKEN.slice(0, 2));
++  });
++
++  it('keeps them as written when they pass, or the check fails', async () => {
++    mockCreate.mockResolvedValueOnce(verdict({ ok: true }));
++    expect(await checkedOwnerButtons(MESSAGE, BROKEN, 'ka')).toEqual(BROKEN);
++    mockCreate.mockRejectedValueOnce(new Error('timeout'));
++    const quiet = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++    expect(await checkedOwnerButtons(MESSAGE, BROKEN, 'ka')).toEqual(BROKEN);
++    quiet.mockRestore();
++  });
++
++  it('asks nothing when every button is the server’s own', async () => {
++    expect(await checkedOwnerButtons(MESSAGE, ['სხვა, მე დავწერ'], 'ka')).toEqual([
++      'სხვა, მე დავწერ',
++    ]);
++    expect(mockCreate).not.toHaveBeenCalled();
++  });
++
++  it('refuses a rewrite with another count, an empty or long button, or a repeat', () => {
++    const sent = ['a', 'b'];
++    expect(usableButtons({ ok: false, buttons: ['x'] }, sent)).toBeNull();
++    expect(usableButtons({ ok: false, buttons: ['x', ''] }, sent)).toBeNull();
++    expect(usableButtons({ ok: false, buttons: ['x', 'y'.repeat(41)] }, sent)).toBeNull();
++    expect(usableButtons({ ok: false, buttons: ['x', 'x'] }, sent)).toBeNull();
++    expect(usableButtons({ ok: false, buttons: ['x', 'y'] }, sent)).toEqual(['x', 'y']);
++  });
++
++  it('runs on every owner reply with buttons, after the reply guards', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      'choices = await checkedOwnerButtons(finalText, choices, runLang(runId));',
++    );
++  });
++});
+diff --git a/src/services/askEditor.service.ts b/src/services/askEditor.service.ts
+index b602d2b..df063f2 100644
+--- a/src/services/askEditor.service.ts
++++ b/src/services/askEditor.service.ts
+@@ -68,9 +68,9 @@ function questionMarks(text: string): number {
+  * the tester's 44207 — the small model's rewrite of a reason was „დავველაპარაკოს",
+  * not a Georgian word. This text goes in front of a person doing somebody a favour.
+  */
+-const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-sonnet-5';
++export const EDITOR_MODEL = process.env.ASK_EDITOR_MODEL?.trim() || 'claude-sonnet-5';
+ 
+-const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
++export const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
+   ka: 'Georgian',
+   en: 'English',
+   ru: 'Russian',
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 4d18c74..294065f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -493,6 +493,7 @@ import {
+ } from './testerRules';
+ import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+ import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
++import { checkedOwnerButtons } from './ownerButtons.service';
+ import { savedNamesIn, withNamesAsSaved } from './savedNames';
+ import {
+   labelsTheReplyLeftOut,
+@@ -13411,6 +13412,11 @@ async function runToolLoop(
+     choices = [notDeleted.confirm];
+   }
+ 
++  // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
++  if (!ownerAbsent && choices !== undefined && choices.length > 0) {
++    choices = await checkedOwnerButtons(finalText, choices, runLang(runId));
++  }
++
+   // Ticket 20 row 126 / 101b stood HERE and is deliberately gone. Reverted the
+   // same afternoon it shipped (28b0d03), on the tester's measurements from
+   // goals 3664 and 3665:
+diff --git a/src/services/ownerButtons.service.ts b/src/services/ownerButtons.service.ts
+new file mode 100644
+index 0000000..cf32dfb
+--- /dev/null
++++ b/src/services/ownerButtons.service.ts
+@@ -0,0 +1,139 @@
++import Anthropic from '@anthropic-ai/sdk';
++import anthropic from '../config/anthropic';
++import { EDITOR_MODEL, LANGUAGE_NAMES } from './askEditor.service';
++import { laterChoice } from './askOpening';
++import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
++import { recordClaudeUsage } from './costLedger.service';
++import { otherChoiceLabel } from './otherChoice';
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 2579, first part (§105, Misho's yes on 8 October). The owner's buttons are
++ * written by the model, and nothing checked them: „დიახ, სთხოვენ გაცნობა",
++ * „არა, დეველოდოთ ლევანის პასუხს" (7 Oct), „ვცალობ", „არსად არ ვდადი" (8 Oct).
++ * The helper's question already passes an editor (D711); the owner's buttons now
++ * pass the same model, with the brief Misho approved, word for word. The
++ * server's own labels (approve, change, other, later) are never sent to it.
++ * A failed or unusable check keeps the buttons as written.
++ */
++const CHECK_BUDGET_MS = 10_000;
++const MAX_OUTPUT_TOKENS = 400;
++const MAX_BUTTON_CHARS = 40;
++const MAX_MESSAGE_CHARS = 1_500;
++const RUN_LANGUAGES: readonly RunLanguage[] = ['ka', 'en', 'ru', 'es'];
++
++/** §105, the exact approved text; {language} is the conversation's language by name. */
++export function ownerButtonsBrief(language: RunLanguage): string {
++  const name = LANGUAGE_NAMES[language];
++  return (
++    'You check the buttons under one message before the owner sees them. ' +
++    `The owner reads ${name}. Each button is what the OWNER taps to answer that message, in the ` +
++    "owner's own voice, at most 40 characters. A button passes only if it is correct, natural " +
++    `${name} made of real words, and a real answer to the message. When every button passes, ` +
++    'call give_verdict with ok true. Otherwise fix only the broken buttons, keeping their meaning ' +
++    'and their order, and call give_verdict with ok false and the corrected buttons.'
++  );
++}
++
++const VERDICT_TOOL: Anthropic.Tool = {
++  name: 'give_verdict',
++  description: 'The verdict on the buttons.',
++  input_schema: {
++    type: 'object',
++    properties: {
++      ok: { type: 'boolean', description: 'True when every button passes as written.' },
++      buttons: {
++        type: 'array',
++        description: 'The corrected buttons, in the same order, when ok is false.',
++        items: { type: 'string' },
++      },
++    },
++    required: ['ok'],
++  },
++};
++
++/** Labels the server writes itself, in every language: never the editor's to change. */
++function serverLabels(): ReadonlySet<string> {
++  const labels = RUN_LANGUAGES.flatMap((lang) => [
++    APPROVE_LABEL[lang],
++    CHANGE_LABEL[lang],
++    otherChoiceLabel(lang),
++    laterChoice(lang),
++  ]);
++  return new Set(labels.map((label) => label.trim()));
++}
++
++/** The editor's buttons when they are a usable replacement for the ones sent; else null. */
++export function usableButtons(verdict: unknown, sent: readonly string[]): string[] | null {
++  if (verdict === null || typeof verdict !== 'object') return null;
++  const v = verdict as { ok?: unknown; buttons?: unknown };
++  if (v.ok === true || !Array.isArray(v.buttons) || v.buttons.length !== sent.length) return null;
++  const buttons = v.buttons.map((b) => (typeof b === 'string' ? b.trim() : ''));
++  if (buttons.some((b) => b === '' || b.length > MAX_BUTTON_CHARS)) return null;
++  return new Set(buttons).size === buttons.length ? buttons : null;
++}
++
++async function askTheEditor(
++  message: string,
++  buttons: readonly string[],
++  language: RunLanguage,
++): Promise<unknown> {
++  const response = await anthropic.messages.create(
++    {
++      model: EDITOR_MODEL,
++      max_tokens: MAX_OUTPUT_TOKENS,
++      system: ownerButtonsBrief(language),
++      tools: [VERDICT_TOOL],
++      tool_choice: { type: 'tool', name: VERDICT_TOOL.name },
++      messages: [
++        {
++          role: 'user',
++          content: JSON.stringify({ message: message.slice(0, MAX_MESSAGE_CHARS), buttons }),
++        },
++      ],
++    },
++    { timeout: CHECK_BUDGET_MS, maxRetries: 0 },
++  );
++  void recordClaudeUsage({
++    userId: null,
++    kind: 'owner_buttons',
++    model: EDITOR_MODEL,
++    usage: response.usage,
++  }).catch((err: unknown) => {
++    // eslint-disable-next-line no-console
++    console.error('[owner-buttons] usage not recorded:', (err as Error).message);
++  });
++  const call = response.content.find(
++    (block): block is Anthropic.ToolUseBlock =>
++      block.type === 'tool_use' && block.name === VERDICT_TOOL.name,
++  );
++  return call?.input ?? null;
++}
++
++/** The owner's buttons, with the model-written ones checked; the server's own untouched. */
++export async function checkedOwnerButtons(
++  message: string,
++  choices: readonly string[],
++  language: RunLanguage,
++): Promise<string[]> {
++  const fixed = serverLabels();
++  const free = choices.map((c, i) => ({ c, i })).filter(({ c }) => !fixed.has(c.trim()));
++  if (free.length === 0) return [...choices];
++  try {
++    const sent = free.map(({ c }) => c);
++    const better = usableButtons(await askTheEditor(message, sent, language), sent);
++    if (better === null) return [...choices];
++    const out = [...choices];
++    free.forEach(({ i }, k) => {
++      out[i] = better[k];
++    });
++    if (new Set(out).size !== out.length) return [...choices];
++    // eslint-disable-next-line no-console
++    console.log('[owner-buttons] buttons corrected before they were shown');
++    return out;
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[owner-buttons] shown as written — the check failed:', (err as Error).message);
++    return [...choices];
++  }
++}
+-- 
+2.43.0
+

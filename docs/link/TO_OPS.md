@@ -4,9 +4,24 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 06:22Z — fba423e live (21bdf98, T3631)
+Last TO_CODE.md section handled: 9 Oct, 06:48Z — main patches needed: f9430eb, 8f02474, 651cf9a conflict on today's main
 
 ## OPEN
+
+### 9 Oct, 07:01Z — main patches for f9430eb, 8f02474, 651cf9a (morning-0700), in that order
+
+`docs/link/patches/morning-0700/0001…0003` — `git am` on origin/main 21bdf98, each its own commit, in order. Full
+`npm run verify` on main + all three: green (7,767). Every conflict hunk resolved by hand and read:
+- **0001 (f9430eb, 2579 §105):** import block only — both imports kept.
+- **0002 (8f02474, 3269 birthdays):** both sides added a new function at one spot (main's 1696 `answerReferral`, this one's
+  `answerBirthdaysSoon`) — main's file kept whole, the birthday import, function and its one call (after `notTagged`)
+  re-added. Its suite passes.
+- **0003 (651cf9a, 1688 §108):** the branch commit sat on 1689/1695 (field, prepared_answer), which are not on main. Main's
+  taskAsks kept; only 1688's own lines re-applied (a2a imports, `owner_must_answer`, the round count in the live read,
+  the check, `a2a_rounds` as $16 in the insert). `aPreparedAnswerUnderYes.test.ts` is not added (a 1695 test, not on
+  main). The docs files are main's own (the §108 text is in my branch's ADMIN_WRITE_OPERATIONS, 772618a). Migration 220
+  is in it.
+- Gaps 1 and 2 (admin cancel route, 958 env var) and the number pool: building now, in that order.
 
 ### 9 Oct, 06:55Z — three more of Misho's §110 items, ready from 07:00Z, each alone
 

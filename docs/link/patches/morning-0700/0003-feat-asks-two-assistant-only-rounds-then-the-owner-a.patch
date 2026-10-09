@@ -1,0 +1,280 @@
+From e6e9a6da829eb5464a3d157b3fe3b2c8c57507df Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 21:47:58 +0000
+Subject: [PATCH 3/3] feat(asks): two assistant-only rounds, then the owner
+ answers (1688, part 1)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+A5 (D679/D680): the helper asks „which city?", the asker's assistant answers
+from the goal, the helper asks again, and nobody has typed. Without a cap the
+two assistants can loop.
+
+Migration 220 adds task_asks.a2a_rounds. Each ask is stamped with the count: a
+reply after an answer with no owner words since is one more round; the owner's
+own words, his line sent by the server, a relay or the evening card start
+again at 0. At 2, a third assistant-only ask is refused before anything is
+sent (reason owner_must_answer), and the model is told to bring the question
+to the owner.
+
+HOLD: the refusal's model-facing line is §108, pending Misho's yes (D44,
+NIGHT_QUESTIONS AJ). Part 2 (the pre-filled „other" box) follows with 1696.
+
+DONE WHEN: a fictional seat whose assistant is made to answer two clarifying
+questions in a row does not send a third; the owner is asked instead.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/db/postgres/migrations/220_a2a_rounds.sql |  6 ++
+ src/services/__tests__/a2aRounds.test.ts      | 62 +++++++++++++++++++
+ .../theRecipientIsCheckedFirst.test.ts        |  2 +-
+ src/services/a2aRounds.ts                     | 54 ++++++++++++++++
+ src/services/taskAsks.service.ts              | 31 +++++++++-
+ 5 files changed, 151 insertions(+), 4 deletions(-)
+ create mode 100644 src/db/postgres/migrations/220_a2a_rounds.sql
+ create mode 100644 src/services/__tests__/a2aRounds.test.ts
+ create mode 100644 src/services/a2aRounds.ts
+
+diff --git a/src/db/postgres/migrations/220_a2a_rounds.sql b/src/db/postgres/migrations/220_a2a_rounds.sql
+new file mode 100644
+index 0000000..28b0a73
+--- /dev/null
++++ b/src/db/postgres/migrations/220_a2a_rounds.sql
+@@ -0,0 +1,6 @@
++-- 1688 (A5, D679/D680): how many times in a row the asker's assistant has
++-- written to this person on one goal without the owner typing anything — a
++-- clarifying question answered from the goal, a reply to a reply. At 2 the
++-- assistant stops and the owner answers; the next ask the owner's own words
++-- caused starts again at 0. Stamped on each ask row as it is written.
++ALTER TABLE task_asks ADD COLUMN IF NOT EXISTS a2a_rounds SMALLINT NOT NULL DEFAULT 0;
+diff --git a/src/services/__tests__/a2aRounds.test.ts b/src/services/__tests__/a2aRounds.test.ts
+new file mode 100644
+index 0000000..c111804
+--- /dev/null
++++ b/src/services/__tests__/a2aRounds.test.ts
+@@ -0,0 +1,62 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import {
++  A2A_ROUND_CAP,
++  isAssistantOnlyRound,
++  needsTheOwner,
++  ownerMustAnswerNote,
++  RoundInput,
++  roundsAfter,
++} from '../a2aRounds';
++
++/**
++ * 1688 (A5): two assistants may answer each other twice with nobody typing;
++ * the third time the owner answers. The owner's own words start the count again.
++ */
++const assistantReply = (roundsSoFar: number): RoundInput => ({
++  isFollowUp: true,
++  ownerAddedSomething: false,
++  fromOwnersLine: false,
++  sentOnSomeonesWord: false,
++  roundsSoFar,
++});
++
++describe('a round counter between assistants (1688)', () => {
++  it('a first ask is no round and stamps 0', () => {
++    const first = { ...assistantReply(0), isFollowUp: false };
++    expect(isAssistantOnlyRound(first)).toBe(false);
++    expect(roundsAfter(first)).toBe(0);
++  });
++
++  it('two assistant-only replies go; the third needs the owner', () => {
++    expect(needsTheOwner(assistantReply(0))).toBe(false);
++    expect(roundsAfter(assistantReply(0))).toBe(1);
++    expect(needsTheOwner(assistantReply(1))).toBe(false);
++    expect(roundsAfter(assistantReply(1))).toBe(A2A_ROUND_CAP);
++    expect(needsTheOwner(assistantReply(A2A_ROUND_CAP))).toBe(true);
++  });
++
++  it.each([
++    ['the owner typed since', { ownerAddedSomething: true }],
++    ['the question is the owner’s own line', { fromOwnersLine: true }],
++    ['a relay or the evening card', { sentOnSomeonesWord: true }],
++  ])('%s: no round, and the count starts again', (_, change) => {
++    const input = { ...assistantReply(A2A_ROUND_CAP), ...change };
++    expect(needsTheOwner(input)).toBe(false);
++    expect(roundsAfter(input)).toBe(0);
++  });
++
++  it('the note names the person and hands the answer to the owner', () => {
++    expect(ownerMustAnswerNote('ნინო')).toContain('ნინო-ს');
++    expect(ownerMustAnswerNote('ნინო')).toContain('მფლობელს');
++  });
++
++  it('createAsk refuses before any send, and stamps the count on the row', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    const refused = asks.indexOf('if (needsTheOwner(rounds))');
++    expect(refused).toBeGreaterThan(-1);
++    expect(asks.indexOf('const ask = await query<{ id: number }>(')).toBeGreaterThan(refused);
++    expect(asks).toContain('roundsAfter(rounds),');
++    expect(asks).toContain('a.a2a_rounds');
++  });
++});
+diff --git a/src/services/__tests__/theRecipientIsCheckedFirst.test.ts b/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
+index 3a4b70a..c60b479 100644
+--- a/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
++++ b/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
+@@ -122,7 +122,7 @@ describe('the waves follow the words', () => {
+ 
+   it('a first ask stores the word for the admin; the wave reads it', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+-    expect(asks).toContain('prematch, prematch_source, prematch_at)');
++    expect(asks).toContain('prematch, prematch_source, prematch_at, a2a_rounds)');
+     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
+     expect(waves).toContain('remaining: await inPrematchOrder(');
+   });
+diff --git a/src/services/a2aRounds.ts b/src/services/a2aRounds.ts
+new file mode 100644
+index 0000000..3a0e8b8
+--- /dev/null
++++ b/src/services/a2aRounds.ts
+@@ -0,0 +1,54 @@
++/**
++ * 1688 (A5, D679/D680): two assistants can talk past their owners — the
++ * helper asks „which city?", the asker's assistant answers from the goal, the
++ * helper asks again, and nobody has typed a word. Without a cap that loops
++ * (the Amy/Duplex problem). After two such rounds on one goal with one person,
++ * the assistant stops and the owner answers; the owner's own words reset it.
++ */
++export const A2A_ROUND_CAP = 2;
++
++export interface RoundInput {
++  /** The person answered the last ask, so this one is a reply in a conversation. */
++  readonly isFollowUp: boolean;
++  /** The owner typed something since the last ask to this person. */
++  readonly ownerAddedSomething: boolean;
++  /** The question is the owner's own line, sent by the server. */
++  readonly fromOwnersLine: boolean;
++  /** A relay or the evening card: not the asker's assistant talking. */
++  readonly sentOnSomeonesWord: boolean;
++  /** Rounds stamped on the last ask to this person on this goal. */
++  readonly roundsSoFar: number;
++}
++
++/** Is this ask the asker's assistant writing again with no person in between? */
++export function isAssistantOnlyRound(input: RoundInput): boolean {
++  return (
++    input.isFollowUp &&
++    !input.ownerAddedSomething &&
++    !input.fromOwnersLine &&
++    !input.sentOnSomeonesWord
++  );
++}
++
++/** The rounds to stamp on this ask: one more for an assistant-only round, else 0. */
++export function roundsAfter(input: RoundInput): number {
++  return isAssistantOnlyRound(input) ? input.roundsSoFar + 1 : 0;
++}
++
++/** Has the cap been reached, so this round needs the owner instead? */
++export function needsTheOwner(input: RoundInput): boolean {
++  return isAssistantOnlyRound(input) && input.roundsSoFar >= A2A_ROUND_CAP;
++}
++
++/**
++ * ⚠️ MODEL-FACING (D44): §108 in docs/ADMIN_WRITE_OPERATIONS.md, NOT YET
++ * APPROVED. The tool result the asking model reads when the cap stops a
++ * third assistant-only round.
++ */
++export function ownerMustAnswerNote(toName: string): string {
++  return (
++    `${toName}-ს ამ მიზანზე უკვე ორჯერ მისწერე ისე, რომ მფლობელს არაფერი დაუწერია — ` +
++    'მესამედ თავად აღარ მისწერო. მფლობელს ერთი ხაზით უთხარი, რა უნდა ' +
++    `${toName}-ს, და ჰკითხე, რა უპასუხოს. როცა მფლობელი დაწერს, მისი სიტყვებით გაგზავნე.`
++  );
++}
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 340e033..8264592 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -39,6 +39,13 @@ import {
+   withoutPointingAnswers,
+ } from './askChoices';
+ import { editOutgoingAsk } from './askEditor.service';
++import {
++  A2A_ROUND_CAP,
++  needsTheOwner,
++  ownerMustAnswerNote,
++  RoundInput,
++  roundsAfter,
++} from './a2aRounds';
+ import { isTypedDecline } from './typedDecline';
+ import { Prematch, prematchMany } from './prematch.service';
+ import {
+@@ -190,6 +197,8 @@ export type AskRefusalReason =
+   | 'ask_fatigue_budget_exhausted'
+   | 'person_daily_relay_limit_reached'
+   | 'duplicate_ask_in_flight'
++  /** 1688 (A5): two assistant-only rounds with this person already — the owner answers now. */
++  | 'owner_must_answer'
+   /**
+    * #1915: the recipient's own boundary covers the subject. Named so that
+    * neither the code nor the words give the asker's run a topic or a refusal
+@@ -1303,6 +1312,7 @@ async function createAskNow(
+     status: string;
+     from_user_id: string;
+     seconds_ago: number;
++    a2a_rounds: number;
+   }>(
+     // The daily check (8 Oct, 00:38:56Z, goal 5580): the reader had deleted
+     // that conversation, and the new question was written into a thread that
+@@ -1311,7 +1321,8 @@ async function createAskNow(
+     `SELECT CASE WHEN EXISTS (SELECT 1 FROM threads t WHERE t.id = a.ask_thread_id)
+                  THEN a.ask_thread_id END AS ask_thread_id,
+             a.status, a.from_user_id::text AS from_user_id,
+-            EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago
++            EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago,
++            a.a2a_rounds
+      FROM task_asks a
+      WHERE a.task_id = $1 AND a.to_user_id = $2 AND a.status IN ('sent', 'answered')
+      ORDER BY a.id DESC LIMIT 1`,
+@@ -1457,6 +1468,19 @@ async function createAskNow(
+   // exactly what happened, and the badge maths stays honest.
+   const isFollowUp = live.rows[0]?.status === 'answered' || ownerAddedSomething;
+   const sameThread = liveThreadId !== null;
++  // 1688 (A5): the third reply in a row with no person typing goes to the owner instead.
++  const rounds: RoundInput = {
++    isFollowUp,
++    ownerAddedSomething,
++    fromOwnersLine: fromOwnersLine === true,
++    sentOnSomeonesWord: parentAskId !== undefined || card !== undefined,
++    roundsSoFar: live.rows[0]?.a2a_rounds ?? 0,
++  };
++  if (needsTheOwner(rounds)) {
++    // eslint-disable-next-line no-console
++    console.log(`[a2a] task ${taskId}: ${A2A_ROUND_CAP} assistant-only rounds — the owner answers`);
++    return { sent: false, reason: 'owner_must_answer', error: ownerMustAnswerNote(toName) };
++  }
+ 
+   // Budgets: server-side, same relay exemption as the permission gate above.
+   // Outreach spends the monthly growth budget; a follow-up spends the
+@@ -1693,9 +1717,9 @@ async function createAskNow(
+     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
+                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
+                             wave_no, evening_card_id, choices, shown_question,
+-                            prematch, prematch_source, prematch_at)
++                            prematch, prematch_source, prematch_at, a2a_rounds)
+      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
+-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END)
++             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16)
+      RETURNING id`,
+     [
+       taskId,
+@@ -1713,6 +1737,7 @@ async function createAskNow(
+       edited.question,
+       prematch?.word ?? null,
+       prematch?.source ?? null,
++      roundsAfter(rounds),
+     ],
+     ASK_QUERY_TIMEOUT_MS,
+   );
+-- 
+2.43.0
+
