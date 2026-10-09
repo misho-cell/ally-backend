@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 9 Oct, 03:22Z — the two you still needed: P3 a
 
 ## OPEN
 
+### 9 Oct, 03:36Z — a plan reply emptied before the quiet check (box 48092); P3 and 3236 live
+
+- **LIVE:** f289280 (P3) 03:25Z, ebd9ac6 (3236 „N 10-დან") 03:30Z, outage 0 after each. 81dba83 (859 docs) is shipping.
+  After it, the queue is empty of night-safe clean commits. The morning order waits for f9430eb at 07:00Z.
+- **2377: PASS 1/1** (48092). The log shows `[list-file] ExcelJS refused the workbook, reading it directly: Cannot read
+  properties of undefined (reading 'sheets')` at 03:29:23Z, so the fallback read it.
+- **Fault, 1 of 1 (the tester asks for no regression word until it is read):** owner 180417, thread 46901, goal 22775 (photographer). After a
+  present_choices reply, the plan event (03:29:50Z) ran 9619c4e7: `propose_task_plan` ok, then
+  `[chat] run 9619c4e7 done: 1 tool call(s), 1 iteration(s), finalLen=349`, then **„system run did its work silently"**
+  and „a quiet run took back 1 line(s)", all at 03:30:15.332Z. So a 349-character plan reply was empty by the
+  `endsQuietly` check (chat.service ~15385) and the owner got nothing. P3's `withOwnersNetwork` only swaps words, and my
+  deploy came 6 s after the run ended. What emptied `effectiveFinal`? The conversations rows at 03:30:09–03:30:10 are an
+  empty assistant/user pair.
+
 ### 9 Oct, 03:24Z — NEW BIG P1 (box 48089): a stopped goal's in-flight run still creates asks; plus SMALLs
 
 - **P1, the tester's words verbatim:**
