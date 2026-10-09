@@ -166,20 +166,25 @@ export function buildAskOpening(
  * 1687 (A4, the intelligence research of 6 October, D679/D680): trust falls
  * when it is unclear which messages a machine wrote. Every outgoing ask ends
  * with the identical line, the asker's name as the profile shows it, never the
- * model's choice of words: „— ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით".
+ * model's choice of words: „ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით".
+ *
+ * No leading dash: every stored assistant text goes through the mechanical
+ * scrub, which reads „\n\n— " as a dash in prose and turns it into „, " — the
+ * first version arrived glued to the question (D710 revert, 9 Oct 02:11Z).
+ * The line stands as its own paragraph instead.
  */
 export function disclosureLine(language: RunLanguage, profileName: string): string {
   const name = profileName.trim();
   switch (language) {
     case 'en':
-      return `— ${name}'s assistant, for ${name}`;
+      return `${name}'s assistant, for ${name}`;
     case 'ru':
-      return `— ассистент ${name}, от имени ${name}`;
+      return `Ассистент ${name}, от имени ${name}`;
     case 'es':
-      return `— asistente de ${name}, en nombre de ${name}`;
+      return `Asistente de ${name}, en nombre de ${name}`;
     default: {
       const of = geoName(name, 'gen');
-      return `— ${of} ასისტენტი, ${of} სახელით`;
+      return `${of} ასისტენტი, ${of} სახელით`;
     }
   }
 }
