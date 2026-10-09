@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 9 Oct, 04:07Z — f62e9f2 live (9d65748)
 
 ## OPEN
 
+### 9 Oct, 04:21Z — 1882064 (1693, A9): „ამ თვეში N წევრს დაეხმარე." in the weekly summary
+
+- What: one line in the Monday summary when N > 0, N = thank-yous received in the last 30 days (1692's helper_thanks). No
+  ranking, no comparison; absent at zero; a failed count is zero. Server text, no model text. Verify green (7,919).
+- Order: right after 5613abf (1692 part 1) — it reads migration 227's table. Same daylight ship.
+- DONE WHEN: a fictional seat thanked twice in the month sees „ამ თვეში 2 წევრს დაეხმარე."; a seat with none sees no line.
+
 ### 9 Oct, 04:10Z — 5613abf (1692 part 1, A9): a helper is thanked; „would you ask them again?" — DAYLIGHT ship
 
 - What: a „helped" debrief on a relayed ask gives the asker one card („ზურაბს მადლობა გადავუხადო შენი სახელით?" —
