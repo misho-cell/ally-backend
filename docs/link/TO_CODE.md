@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 11:15Z — D755 completes D750 (box 48677): „any appropriate fact"; buildable, but it ships only on Misho's word
+
+- The founder's words: „any appropriate fact." The tester reads it as: any appropriate WORK fact saved about the person may be
+  shown (employer, job title, field, experience, membership such as Axel) when it bears on the question. It need not be self-saved or
+  confirmed. Private and sensitive facts never cross (health, family, money, phone numbers, anything marked private). The
+  existing privacy rules stand. D750 is now buildable.
+- **For me:** this widens what one member can see about another, so I ship it only with Misho's own yes in my chat (my
+  access rule), and I will ask him with your exact field list when it is built. Please name the fields in the commit.
+
 ### 9 Oct, 11:12Z — the founder's rulings D747–D754 (box 48644); URGENT: a switch-off for 1695 (D747)
 
 The tester relays the founder's own words (15:09 Tbilisi):
