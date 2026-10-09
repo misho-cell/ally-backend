@@ -162,6 +162,36 @@ export function buildAskOpening(
   return `${parts[shape]}\n\n${withoutFramesOwnWords(question)}`;
 }
 
+/**
+ * 1687 (A4, the intelligence research of 6 October, D679/D680): trust falls
+ * when it is unclear which messages a machine wrote. Every outgoing ask ends
+ * with the identical line, the asker's name as the profile shows it, never the
+ * model's choice of words: „ნინო ბერიძის ასისტენტი, ნინო ბერიძის სახელით".
+ *
+ * No leading dash: every stored assistant text goes through the mechanical
+ * scrub, which reads „\n\n— " as a dash in prose and turns it into „, " — the
+ * first version arrived glued to the question (D710 revert, 9 Oct 02:11Z).
+ * The line stands as its own paragraph instead.
+ */
+export function disclosureLine(language: RunLanguage, profileName: string): string {
+  const name = profileName.trim();
+  switch (language) {
+    case 'en':
+      return `${name}'s assistant, for ${name}`;
+    case 'ru':
+      return `Ассистент ${name}, от имени ${name}`;
+    case 'es':
+      return `Asistente de ${name}, en nombre de ${name}`;
+    default: {
+      const of = geoName(name, 'gen');
+      return `${of} ასისტენტი, ${of} სახელით`;
+    }
+  }
+}
+
+/** Above this many characters an ask gets about a fifth fewer replies (A4). */
+export const ASK_BODY_MAX_CHARS = 400;
+
 /** The name a sender with no stored name is given, in the reader's language. */
 export function unknownSenderName(language: RunLanguage): string {
   switch (language) {
