@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { buildMeaningWordGroups } from '../tools/transliterate';
 import { join } from 'path';
 import { AskChoice, ChoiceMeaning, ownPeopleBeside } from '../askChoices';
 import { needFromQuestion } from '../bridgePicker';
@@ -49,8 +50,8 @@ describe('the reader’s own people beside the model’s buttons', () => {
 
 describe('the need an instructed ask carries (46036)', () => {
   it('is the trade its question asks about', () => {
-    expect(needFromQuestion('იცნობს თუ არა კარგ სტომატოლოგს?')).toEqual({ need: 'სტომატოლოგ' });
-    expect(needFromQuestion('იცნობ სანდო ბუღალტერს?')).toEqual({ need: 'ბუღალტერ' });
+    expect(needFromQuestion('იცნობს თუ არა კარგ სტომატოლოგს?')).toEqual({ need: 'სტომატოლოგი' });
+    expect(needFromQuestion('იცნობ სანდო ბუღალტერს?')).toEqual({ need: 'ბუღალტერი' });
     expect(needFromQuestion('Do you know a good dentist?')).toEqual({ need: 'dentist' });
     expect(needFromQuestion('Do you know of any plumber in Vake?')).toEqual({ need: 'plumber' });
   });
@@ -58,6 +59,20 @@ describe('the need an instructed ask carries (46036)', () => {
   it('is nothing when the question asks no trade', () => {
     expect(needFromQuestion('როდის გცალია?')).toBeUndefined();
     expect(needFromQuestion('გამაცნობ გიას?')).toBeUndefined();
+  });
+
+  it('is read from a request for a recommendation too (2186, box 47975)', () => {
+    expect(needFromQuestion('ნინო, კარგ სანტექნიკოსს ხომ ვერ მირჩევ?')).toEqual({
+      need: 'სანტექნიკოსი',
+    });
+    expect(needFromQuestion('Could you recommend a good plumber?')).toEqual({ need: 'plumber' });
+  });
+
+  it('reaches both spellings of the trade (2675)', () => {
+    const groups = buildMeaningWordGroups(
+      needFromQuestion('კარგ სანტექნიკოსს ხომ ვერ მირჩევ?')!.need,
+    );
+    expect(groups.flat()).toContain('სანტექნიკ');
   });
 
   it('is used when no search gave one', () => {
