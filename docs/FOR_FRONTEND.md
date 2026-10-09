@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)
+
+Public: no token needed, because the pricing page is read signed out. 30 requests a minute per address.
+
+```json
+GET /billing/offer
+200 { "success": true, "data": { "card_trial_days": 5, "invite_free_days": 20 } }
+200 { "success": true, "data": { "card_trial_days": 5, "invite_free_days": null } }
+429 too many · 500 { "success": false, "error": "Could not read the offer" }
+```
+
+- `card_trial_days` is the card trial the server gives (env `STRIPE_TRIAL_DAYS`, 5 today).
+- `invite_free_days` is the days an invitation carries. It is `null` while the dashboard switch `invite_free_days_on` is off, or the value is 0. Read on live at 21:48Z: switched on, 20.
+- Both come from the same place the grant does, so a dashboard change shows on the page at once.
+
+---
+
 ## 9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)
 
 Authenticated (the usual bearer token), 20 requests a minute per person. It reads two rows and costs nothing, so polling every few minutes is fine.
