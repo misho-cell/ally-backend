@@ -3,6 +3,7 @@ import {
   goalTitleFrom,
   isQuestionNotGoal,
   needsNoOpeningSearch,
+  statesANeed,
 } from '../goalIntent';
 
 describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
@@ -255,5 +256,24 @@ describe('a greeting is not part of the goal', () => {
 
   it('does not touch the word in the middle of a sentence', () => {
     expect(goalTitleFrom('I need someone to say hi to the mayor')).toContain('hi');
+  });
+});
+
+/** 3896 (LM-005, 2 of 2): „find" in the imperative is a need, so the goal opens and the members are asked. */
+describe('„იპოვე" states a need', () => {
+  it('opens a goal for the tester’s line', () => {
+    expect(looksLikeGoalRequest('იპოვე კარგი ვეტერინარი თბილისში, ჩემს ნაცნობებს ჰკითხე.')).toBe(
+      true,
+    );
+  });
+
+  it('reads „მიპოვე" and „მომიძებნე" the same way', () => {
+    expect(statesANeed('მიპოვე კარგი სანტექნიკოსი')).toBe(true);
+    expect(statesANeed('მომიძებნე ბუღალტერი ვაკეში')).toBe(true);
+  });
+
+  it('leaves „I found" and „they found" alone', () => {
+    expect(statesANeed('ვიპოვე კარგი ვეტერინარი, მადლობა')).toBe(false);
+    expect(statesANeed('მეგობრებმა იპოვეს ვეტერინარი')).toBe(false);
   });
 });

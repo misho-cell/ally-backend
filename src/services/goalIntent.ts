@@ -16,8 +16,16 @@ const MIN_GOAL_MESSAGE_CHARS = 12;
 const MAX_TITLE_CHARS = 90;
 
 // A stated need, at a word start. Georgian verbs decline, so stems.
+/**
+ * 3896 (LM-005, 2 of 2): „იპოვე კარგი ვეტერინარი თბილისში, ჩემს ნაცნობებს
+ * ჰკითხე." opened no goal — „find" in the imperative was not a need stem
+ * though „მომინახე" (find it for me) was — so no plan, and the three members
+ * in the phonebook were never asked. „იპოვე", „მიპოვე" and „მომიძებნე" state
+ * the same need. Whole words only: the leading class already keeps „ვიპოვე"
+ * (I found) out, and their own trailing lookahead keeps „იპოვეს" (they found).
+ */
 const NEED_RE_KA =
-  /(^|[^ა-ჰ])(მჭირდება|მჭირდება|გვჭირდება|დამჭირდა|ვეძებ|ვეძებთ|საჭიროა|მინდა\s+(ვიპოვო|გავიცნო|შევხვდე|ვნახო|დავუკავშირდე|მოვძებნო|ვისწავლო)|მინდა\s+\S+\s+(ვიპოვო|გავიცნო|შევხვდე)|დამეხმარე|მომინახე|მიშოვე|მაშოვნინე|გამაცანი|დამაკავშირე|მიზნად\s+შეინახე|ეს\s+მიზანია)/;
+  /(^|[^ა-ჰ])(მჭირდება|მჭირდება|გვჭირდება|დამჭირდა|ვეძებ|ვეძებთ|საჭიროა|მინდა\s+(ვიპოვო|გავიცნო|შევხვდე|ვნახო|დავუკავშირდე|მოვძებნო|ვისწავლო)|მინდა\s+\S+\s+(ვიპოვო|გავიცნო|შევხვდე)|დამეხმარე|მომინახე|(?:იპოვე|მიპოვე|მომიძებნე)(?![ა-ჰ])|მიშოვე|მაშოვნინე|გამაცანი|დამაკავშირე|მიზნად\s+შეინახე|ეს\s+მიზანია)/;
 const NEED_RE_EN =
   /\b(i need|we need|need a|need an|need some|looking for|find me|help me find|want to meet|i want to find|introduce me|connect me|set (this|it) as a goal|make (this|it) a goal)\b/i;
 const NEED_RE_ES = /\b(necesito|busco|estoy buscando|quiero conocer|ayúdame a encontrar)\b/i;
