@@ -255,6 +255,25 @@ describe('the owner says in chat that a helper helped', () => {
   });
 });
 
+/** 4060 (a), tester 49243: after the automatic thanks, no „ამით საქმე გადაწყდა?" in the same turn. */
+describe('a run that thanked a helper asks nothing more', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+
+  it('refuses the solved buttons and the close in that run', () => {
+    const choices = chat.slice(chat.indexOf("case 'present_choices': {"));
+    expect(choices.slice(0, 900)).toContain(
+      'if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {',
+    );
+    const finish = chat.slice(chat.indexOf("case 'finish_task': {"));
+    expect(finish.slice(0, 1600)).toContain('if (ownerSaid !== true && thankedThisRun(runId)) {');
+  });
+
+  it('knows such a run by the owner’s own line', () => {
+    const fn = chat.slice(chat.indexOf('function thankedThisRun('));
+    expect(fn.slice(0, 300)).toContain("saysAHelperHelped(runOwnerLine.get(runId) ?? '')");
+  });
+});
+
 describe('the day-14 line to the helper (1692 part 2)', () => {
   it('sends nothing when no armed answer is due (§111.3)', async () => {
     mockQuery.mockResolvedValueOnce(rows([]));
