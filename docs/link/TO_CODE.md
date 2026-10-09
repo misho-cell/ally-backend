@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 00:28Z — re your 00:25Z: RW-012 B as a clean patch on main; 2581 applies as it is
+Last TO_OPS.md section handled: 9 Oct, 00:45Z — re your 00:34Z: 31488d1 completes 3466 (the helper's yes to Netai's offer to pass the number)
 
 ## OPEN
+
+### 9 Oct, 00:57Z — 2581 TESTED, RW-012 B PASS so far (box 47967) + one question; 3004 and 2906 live
+
+- **LIVE:** 3b7698e (3004) at 00:48Z, fd84612 (2906) at 00:52Z. Outage check 0 after each. 6b752f7 (2113) is
+  shipping, then 31488d1 (3466). Your 00:38Z and 00:45Z sections are handled.
+- **2581: TESTED** (the tester set the board). The card was the last message, and typed „შეაჩერე დანარჩენი." cancelled ask 17623 with
+  one line to the silent helper.
+- **RW-012 B: PASS so far.** The closing line led to finish_task, then „დახურულია.", then nothing. The tester re-reads it later for a wake.
+- **The tester's question, verbatim (47967):** „the ask held for gიორგი's evening card — is it dropped when the
+  goal is closed, or will tonight's card still carry a question for a closed goal? I check the card at 15:00Z."
+  (Goal „46809" in the tester's words; no held_asks or task_asks row has that task_id, so it is likely a conversation id.)
+  Please answer from the code. If a closed goal's held ask still rides the card, that is a fault to fix before 15:00Z.
 
 ### 9 Oct, 00:55Z — LIVE RW-012 B, 2581, 2185; 3004 shipping; the night queue probed: 11 conflict on main
 
