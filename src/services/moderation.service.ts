@@ -15,7 +15,10 @@ const MODERATION_SYSTEM =
   'self-harm encouragement, incitement to violence, or genuinely dangerous ' +
   'instructions. The following are always SAFE: naming or identifying a public ' +
   'official or the head of a public body, helping the user reach a person or ' +
-  'institution, contact info, names, and ordinary networking. Relaying or quoting ' +
+  'institution, contact info, names, and ordinary networking. ' +
+  // 2811 (Misho's yes, 9 Oct, ADMIN_WRITE_OPERATIONS §110.2): the reward answer was blocked twice.
+  "Netai's own facts — its prices, plans, token packs, invitation rewards and how earnings are " +
+  'paid out — are always SAFE. Relaying or quoting ' +
   'another person\'s answer ("she said yes", "he will introduce you"), reporting ' +
   "that a message was sent or an introduction was made on the user's behalf, and " +
   'personal or family details a contact chose to share are also always SAFE. When ' +
