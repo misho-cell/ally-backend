@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 9 Oct, 04:56Z — 48247 fix live (1a62313)
 
 ## OPEN
 
+### 9 Oct, 05:12Z — 284fe49 (1692 part 2): the day-14 „following up your lead" line, HELD with AV
+
+- What: a daily 09:00 UTC sweep; an answer whose armed „how did it go?" went unanswered 14 days (no outcome, no thank-you)
+  gives the helper one fixed line („ნინო შენს რჩევას ჯერ კიდევ მიჰყვება."), once (helper_thanks state `followed_up`,
+  migration 229). Idle while `ANSWER_DEBRIEF_ON` is off. Verify green (7,929).
+- Order: after 0ee291a in the daylight batch (needs migrations 227, 228, 229 in order).
+- DONE WHEN (now): nothing changes; after AV: an answer 14 days old with no outcome gives its helper exactly one such line.
+
 ### 9 Oct, 05:03Z — 6944e6b (2347): Excel asked for with no worked list is told the truth
 
 - What: `list_status` with no goal now returns #894's existing „no Excel yet — the list has not been worked; offer to work
