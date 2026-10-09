@@ -613,3 +613,36 @@ export async function markUpdateSeen(userId: string, updateId: number): Promise<
   );
   return (result.rowCount ?? 0) > 0;
 }
+
+/** One update card as the admin reads it: what it is, where it stands, what it carries. */
+export interface AdminUpdateRow {
+  readonly id: number;
+  readonly task_id: number | null;
+  readonly kind: string;
+  readonly status: string;
+  readonly release_at: string | null;
+  readonly created_at: string;
+  readonly payload: Record<string, unknown>;
+}
+
+/** The most an admin read returns; newest first. */
+export const ADMIN_UPDATES_READ_LIMIT = 50;
+
+/**
+ * The tester's 10:24Z / 10:31Z asks (1692): a seat's update cards could only
+ * be seen from the seat's own session. The admin side reads them here — kind,
+ * status, release time and the card's payload (its text, buttons and the ask
+ * it is about) — for one user, newest first. Read-only.
+ */
+export async function updatesForAdmin(userId: string): Promise<AdminUpdateRow[]> {
+  const result = await query<AdminUpdateRow>(
+    `SELECT id, task_id, kind, status, release_at, created_at, payload
+       FROM pending_updates
+      WHERE user_id = $1
+      ORDER BY id DESC
+      LIMIT $2`,
+    [userId, ADMIN_UPDATES_READ_LIMIT],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
