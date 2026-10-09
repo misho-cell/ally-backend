@@ -1,0 +1,92 @@
+From fe88a9742a61f44197833e30e9271d224ba496d4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 07:19:45 +0000
+Subject: [PATCH 6/6] =?UTF-8?q?feat(seats):=20a=20ninth=20reserved=20drama?=
+ =?UTF-8?q?=20block=20for=20fictional=20seats=20(=C2=A7110)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester was blocked all night: no free slot was left in the eight blocks
+(ops 06:46Z). Misho, 9 Oct: the numbers are ours to decide. The next block in
+the same series is added — Ofcom's Leicester geographic range reserved for
+drama, 1,000 slots, checked exactly like the others (prefix, digit count,
+bounds). It comes last, so the seats already made keep their numbers and new
+seats take the first free slot as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/fictionIsReservedFiction.test.ts    | 15 ++++++++++++---
+ src/services/fictionalNumbers.ts                  |  8 +++++---
+ 2 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/src/services/__tests__/fictionIsReservedFiction.test.ts b/src/services/__tests__/fictionIsReservedFiction.test.ts
+index e748bbb..31d2d3a 100644
+--- a/src/services/__tests__/fictionIsReservedFiction.test.ts
++++ b/src/services/__tests__/fictionIsReservedFiction.test.ts
+@@ -28,7 +28,7 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
+ 
+   it('offers 3,100 numbers, the old blocks first (third block 2 Oct, fourth 3 Oct)', () => {
+     const all = allFictionalNumbers();
+-    expect(all).toHaveLength(7100);
++    expect(all).toHaveLength(8100);
+     expect(all[1100]).toBe('+442079460000');
+     expect(all[2100]).toBe('+441614960000');
+     expect(all[3099]).toBe('+441614960999');
+@@ -40,7 +40,8 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
+   it('names every block in a refusal', () => {
+     expect(FICTIONAL_RANGES_TEXT).toBe(
+       '+12025550100–0199 or +447700900000–900999 or +442079460000–0999 or +441614960000–0999 or ' +
+-        '+441134960000–0999 or +441144960000–0999 or +441154960000–0999 or +441174960000–0999',
++        '+441134960000–0999 or +441144960000–0999 or +441154960000–0999 or +441174960000–0999 or ' +
++        '+441164960000–0999',
+     );
+   });
+ 
+@@ -58,7 +59,15 @@ describe('fictional numbers come only from ranges reserved for fiction', () => {
+       expect(isFictionalNumber(`+44${area}4960999`)).toBe(true);
+       expect(isFictionalNumber(`+44${area}4961000`)).toBe(false);
+     }
+-    expect(isFictionalNumber('+441164960000')).toBe(false);
+     expect(allFictionalNumbers()[7099]).toBe('+441174960999');
+   });
++
++  /** 9 Oct, ops 06:46Z — the tester blocked all night; Misho: „ნომრებით თქვენ გადაწყვიტეთ" (§110). Leicester. */
++  it('takes the ninth Ofcom drama block, exactly', () => {
++    expect(isFictionalNumber(`+44116${'4960000'}`)).toBe(true);
++    expect(isFictionalNumber(`+44116${'4960999'}`)).toBe(true);
++    expect(isFictionalNumber(`+44116${'4961000'}`)).toBe(false);
++    expect(isFictionalNumber(`+44116${'4970000'}`)).toBe(false);
++    expect(allFictionalNumbers()[8099]).toBe(`+44116${'4960999'}`);
++  });
+ });
+diff --git a/src/services/fictionalNumbers.ts b/src/services/fictionalNumbers.ts
+index 181bce2..d59d9f3 100644
+--- a/src/services/fictionalNumbers.ts
++++ b/src/services/fictionalNumbers.ts
+@@ -8,8 +8,8 @@
+  *   +44 7700 900000 – 900999 Ofcom: UK mobile numbers reserved for drama.
+  *   +44 20 7946 0000 – 0999  Ofcom: London geographic numbers reserved for drama.
+  *   +44 161 496 0000 – 0999  Ofcom: Manchester geographic numbers reserved for drama.
+- *   +44 113/114/115/117 496 0000 – 0999
+- *                            Ofcom: Leeds, Sheffield, Nottingham and Bristol drama numbers.
++ *   +44 113/114/115/116/117 496 0000 – 0999
++ *                            Ofcom: Leeds, Sheffield, Nottingham, Leicester and Bristol drama numbers.
+  *
+  * Blocks five to eight, 4 October: the tester's 1115 and the founder's D623 —
+  * no free number was left in the first four, and the prompt loop needs six more
+@@ -47,7 +47,9 @@ const RANGES: readonly FictionalRange[] = [
+   { prefix: '+44113496', digits: 4, from: 0, to: 999 },
+   { prefix: '+44114496', digits: 4, from: 0, to: 999 },
+   { prefix: '+44115496', digits: 4, from: 0, to: 999 },
+-  { prefix: '+44117496', digits: 4, from: 0, to: 999 },
++  { prefix: '+44117496', digits: 4, from: 0, to: 999 }, // Block nine, 9 Oct: Ofcom's Leicester drama range — the tester was blocked all night with no free
++  // slot (ops 06:46Z); Misho: „ნომრებით თქვენ გადაწყვიტეთ" (§110).
++  { prefix: '+44116496', digits: 4, from: 0, to: 999 },
+ ];
+ 
+ function slotText(range: FictionalRange, slot: number): string {
+-- 
+2.43.0
+

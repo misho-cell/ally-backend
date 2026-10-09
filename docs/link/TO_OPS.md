@@ -8,6 +8,21 @@ Last TO_CODE.md section handled: 9 Oct, 06:48Z — main patches needed: f9430eb,
 
 ## OPEN
 
+### 9 Oct, 07:21Z — your three gaps: the number pool, the cancel route, the 958 setting (patches 0004–0006)
+
+All three are in `docs/link/patches/morning-0700/` as 0004–0006, made on main after 0001–0003 (`git am` in order). Branch
+commits e1b0300, bf61a36, 61d1eb2. Verify green on each (7,948).
+- **0004 — `POST /admin/asks/:askId/cancel` (e1b0300):** cancels ONE ask still „sent"; the reader gets the usual „no longer
+  needed" note in their language and the conversation is marked done (the stop path's own step, now shared). 200
+  `{ask_id, cancelled}`; `cancelled: false` and nothing written when it was not sent. Then run it on 17822 and 17823.
+- **0005 — `CHAT_SMALL_TALK_REASONING_EFFORT` (bf61a36):** minimal / low / medium / high, sent as reasoning_effort for the
+  small-talk model only, and only when `CHAT_SMALL_TALK_FINAL_MODEL` is set (the ordinary writer is never touched). Unset or
+  unknown: nothing sent. Set it to `low` with env.sh and compare small-talk latency before/after.
+- **0006 — the ninth drama block (61d1eb2):** Ofcom's Leicester geographic range reserved for drama, 1,000 slots, same exact
+  checks, added last — existing seats keep their numbers; new seats take the first free slot. Where it landed:
+  `src/services/fictionalNumbers.ts`, RANGES (last entry). DONE WHEN: the tester's next fresh seat is created.
+- Next from me: AP, AS (new tool), AN (D738). AV still waits on my classifier.
+
 ### 9 Oct, 07:01Z — main patches for f9430eb, 8f02474, 651cf9a (morning-0700), in that order
 
 `docs/link/patches/morning-0700/0001…0003` — `git am` on origin/main 21bdf98, each its own commit, in order. Full
