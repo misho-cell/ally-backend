@@ -36,7 +36,21 @@ const CLAIMS_SAVED_RE = new RegExp(
   'iu',
 );
 
+/**
+ * Box 48975 (fresh seat, onboarding run): „…დაიმახსოვრე როგორც შეთავაზება."
+ * was answered „დავიმახსოვრე: იურიდიული კონსულტაცია…" — the reply named the
+ * service, not an offer, so a guard that waited for the offer word in the
+ * reply never fired. When the owner's own line names an offer AND asks for it
+ * to be kept, any „saved" without save_offer is the false claim.
+ */
+const ASKS_TO_SAVE_RE =
+  /(დაიმახსოვრე|შეინახე|ჩაიწერე|დაამატე|\bsave\b|\bremember\b|\bkeep\b|\badd\b|запомни|сохрани|добавь|guarda|recuerda|añade)/iu;
+
 const SAVE_OFFER_TOOL_NAME = 'save_offer';
+
+function replySpeaksOfTheOffer(reply: string, ownerLine: string): boolean {
+  return OFFER_WORD_RE.test(reply) || ASKS_TO_SAVE_RE.test(ownerLine);
+}
 
 export function offerClaimWithoutTool(
   reply: string,
@@ -45,7 +59,7 @@ export function offerClaimWithoutTool(
 ): boolean {
   return (
     OFFER_WORD_RE.test(ownerLine) &&
-    OFFER_WORD_RE.test(reply) &&
+    replySpeaksOfTheOffer(reply, ownerLine) &&
     CLAIMS_SAVED_RE.test(reply) &&
     !toolNamesUsed.includes(SAVE_OFFER_TOOL_NAME)
   );

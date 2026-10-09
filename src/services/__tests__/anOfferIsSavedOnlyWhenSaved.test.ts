@@ -33,8 +33,21 @@ describe('a reply that says an offer was saved', () => {
     expect(offerClaimWithoutTool(verb, [], owner)).toBe(true);
   });
 
+  it('is caught when the reply names only the service (box 48975, onboarding run)', () => {
+    const bare = 'დავიმახსოვრე: იურიდიული კონსულტაცია უძრავი ქონების გარიგებებზე თბილისში.';
+    expect(offerClaimWithoutTool(bare, [], owner)).toBe(true);
+  });
+
+  it('leaves a reply alone when the owner named an offer but asked for nothing to be kept', () => {
+    expect(
+      offerClaimWithoutTool('დავიმახსოვრე, რომ ბუღალტერი ხარ.', [], 'რა შეთავაზებები მაქვს?'),
+    ).toBe(false);
+  });
+
   it('leaves „polite" alone — it shares the root, not the meaning', () => {
-    expect(offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], owner)).toBe(false);
+    expect(
+      offerClaimWithoutTool('დავიმახსოვრე, თავაზიანად ვუპასუხებ.', [], 'რა შეთავაზებები მაქვს?'),
+    ).toBe(false);
   });
 
   it('is caught in English too', () => {
