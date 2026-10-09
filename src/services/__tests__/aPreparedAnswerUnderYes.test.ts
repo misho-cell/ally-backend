@@ -11,7 +11,9 @@ import { query } from '../../db/postgres/client';
 import anthropic from '../../config/anthropic';
 import {
   composePreparedAnswer,
+  PREPARED_ANSWER_ON,
   preparedAnswerBrief,
+  preparedAnswerOn,
   preparedAnswerLine,
   usablePreparedLine,
 } from '../preparedAnswer.service';
@@ -47,20 +49,12 @@ describe('the line', () => {
     expect(usablePreparedLine('x'.repeat(201))).toBeNull();
   });
 
-  it('is composed from his own profile fields only — never his notes', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ job: 'საბაჟოს ბროკერი', employer: 'Test LLC' }] } as never)
-      .mockResolvedValueOnce({ rows: [] } as never);
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'საბაჟოს ბროკერი ვარ, შემიძლია დახმარება.' }],
-      usage: {},
-    });
-    expect(await composePreparedAnswer(9101, 'იცნობ საბაჟოს ბროკერს?', 'ka')).toBe(
-      'საბაჟოს ბროკერი ვარ, შემიძლია დახმარება.',
-    );
-    for (const call of mockQuery.mock.calls) expect(String(call[0])).not.toContain('user_notes');
-    const sent = JSON.parse(mockCreate.mock.calls[0][0].messages[0].content as string);
-    expect(sent.facts).toEqual(['job: საბაჟოს ბროკერი', 'employer: Test LLC']);
+  it('is retired (D747): nothing is composed, nothing stored is offered', async () => {
+    expect(PREPARED_ANSWER_ON).toBe(false);
+    expect(await composePreparedAnswer(9101, 'იცნობ საბაჟოს ბროკერს?', 'ka')).toBeNull();
+    expect(await preparedAnswerOn(4711)).toBeNull();
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('nothing is composed for a reader with no profile', async () => {
