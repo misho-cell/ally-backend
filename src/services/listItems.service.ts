@@ -32,10 +32,26 @@ export enum ListItemState {
 const NAME_COLUMN_RE =
   /(name|company|firm|organi[sz]ation|სახელ|დასახელ|კომპანი|ორგანიზაცი|ფირმ)/iu;
 
-/** The column a row is called by: one whose header names it, else the first. */
-export function nameColumn(columns: readonly string[]): number {
-  const at = columns.findIndex((c) => NAME_COLUMN_RE.test(c));
-  return at === -1 ? 0 : at;
+/**
+ * 3897 (box 48679, seat 181439): „needs_30.csv" opens „N | need | city". No
+ * header names the row, so the FIRST column was taken — and every row was
+ * looked up as „1", „2", „3". A counting column is never what a row is called.
+ */
+const INDEX_HEADER_RE = /^\s*(n|#|№|no\.?|nr\.?|id|ნ|ნომერი|რიგი|რიგითი)\s*$/iu;
+const DIGITS_ONLY_RE = /^\s*\d+\s*$/u;
+
+function isIndexColumn(columns: readonly string[], rows: readonly string[][], at: number): boolean {
+  if (INDEX_HEADER_RE.test(columns[at] ?? '')) return true;
+  const cells = rows.map((row) => row[at] ?? '').filter((cell) => cell.trim() !== '');
+  return cells.length > 0 && cells.every((cell) => DIGITS_ONLY_RE.test(cell));
+}
+
+/** The column a row is called by: one whose header names it, else the first that is not a count. */
+export function nameColumn(columns: readonly string[], rows: readonly string[][] = []): number {
+  const named = columns.findIndex((c) => NAME_COLUMN_RE.test(c));
+  if (named !== -1) return named;
+  const first = columns.findIndex((_, at) => !isIndexColumn(columns, rows, at));
+  return first === -1 ? 0 : first;
 }
 
 export function stateOf(wayIn: WayIn | undefined): ListItemState {
@@ -116,7 +132,7 @@ export async function startListWork(
 ): Promise<ListWorkOutcome> {
   const file = await fileForGoal(userId, taskId, fileId);
   if (file === null) return { ok: false, error: NOT_THIS_GOALS_FILE };
-  const at = nameColumn(file.columns);
+  const at = nameColumn(file.columns, file.rows);
   const lines = file.rows
     .map((row, index) => ({ index, row, label: (row[at] ?? '').trim() }))
     .filter((line) => line.label !== '');
@@ -153,13 +169,25 @@ export async function startListWork(
   };
 }
 
+/** States a lookup set and nobody has acted on: a fresh pass may replace them. */
+const LOOKED_UP_ONLY: readonly string[] = [
+  ListItemState.RouteFound,
+  ListItemState.NoRoute,
+  ListItemState.Unchecked,
+];
+
 interface StoredRow {
   readonly data: string[];
   /** The way-in contact's number: server-side only, never returned or exported. */
   readonly throughPhone: string | null;
 }
 
-/** One statement for the whole list; a row already worked keeps its state. */
+/**
+ * One statement for the whole list. A row somebody was already ASKED about
+ * keeps its state; a row only looked up is looked up again — 3897: the first
+ * pass ran before the owner's contacts arrived, and „no route" stuck to every
+ * row however often the list was worked after.
+ */
 async function saveItems(
   taskId: number,
   fileId: number,
@@ -174,7 +202,11 @@ async function saveItems(
        FROM jsonb_to_recordset($3::jsonb)
          AS x(row_index int, label text, row_data jsonb, way_in text, through_whom text,
               through_phone text, state text)
-     ON CONFLICT (task_id, thread_file_id, row_index) DO NOTHING`,
+     ON CONFLICT (task_id, thread_file_id, row_index) DO UPDATE
+        SET label = EXCLUDED.label, row_data = EXCLUDED.row_data, way_in = EXCLUDED.way_in,
+            through_whom = EXCLUDED.through_whom, through_phone = EXCLUDED.through_phone,
+            state = EXCLUDED.state
+      WHERE list_items.state = ANY($4::text[])`,
     [
       taskId,
       fileId,
@@ -189,6 +221,7 @@ async function saveItems(
           state: item.state,
         })),
       ),
+      LOOKED_UP_ONLY,
     ],
     LIST_QUERY_TIMEOUT_MS,
   );
