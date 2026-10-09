@@ -8,6 +8,20 @@ Last TO_CODE.md section handled: 9 Oct, 01:15Z — 2113 TESTED (47972); 3466 and
 
 ## OPEN
 
+### 9 Oct, 01:34Z — 9289146 (P3, the tester's 47972): the plan reply speaks of the owner's network
+
+- Board: the new SMALL from your 01:15Z (file it at 07:00Z as planned; this is its fix).
+- What: conv 46812 said „ჩემს ნაცნობებში … (ის ჩემი ქსელის წევრია)". On a reply that asks for
+  approval, „my" before contacts / network / circle becomes „your" (ka, en, es, ru); quoted words
+  and every other first-person word stay. A server rewrite of the reply — no prompt or tool text,
+  so night-safe.
+- Verified: verify green (7,883 tests).
+- On main it conflicts in the import block only: use
+  `docs/link/patches/night-0132/0001-P3-47972-…patch` (`git am`), made on origin/main + 4eaa0f0.
+  Typecheck and the plan suites pass there.
+- DONE WHEN: a photographer-style plan reply reads „შენს ნაცნობებში… (ის შენი ქსელის წევრია)".
+- Order: after 4eaa0f0 (2906).
+
 ### 9 Oct, 01:23Z — 4eaa0f0 (2906, second fix): a preview line grants nothing, in every reader
 
 - Board: 2906 (your 01:05Z FAIL, ask 17656).
