@@ -11,12 +11,7 @@ import {
 } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
-import {
-  createTask,
-  findOpenTaskNamedIn,
-  getOpenTaskByThread,
-  grantTaskPermission,
-} from './taskStore.service';
+import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
 import { findContactPhonesByName } from './tools/nameMatch';
 
 /**
@@ -140,11 +135,9 @@ export async function contactsNamed(
 async function goalFor(userId: string, threadId: number, ownerLine: string): Promise<number> {
   const open = await getOpenTaskByThread(threadId);
   if (open !== null) return open.id;
-  // 3928 (seat 181490): the run had already found that this line repeats goal
-  // 23181 („no second goal"), and this opened goal 23200 anyway, because a new
-  // conversation has no goal of its own. The goal it repeats is the goal.
-  const repeated = await findOpenTaskNamedIn(userId, ownerLine).catch(() => null);
-  if (repeated !== null) return repeated.id;
+  // 3928 run 2 (conv 48589): an order to ask named people is this conversation's
+  // own request. Filed under a goal of another conversation, its answers would go
+  // back there and the asks are refused (askedFromAnotherGoalsThread).
   const { id } = await createTask(
     userId,
     goalTitleFrom(ownerLine),

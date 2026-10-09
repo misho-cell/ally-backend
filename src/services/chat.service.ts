@@ -15021,7 +15021,17 @@ async function ensureGoalForRequest(
      * second goal that does, and that sentence is already twenty lines up this
      * function about a different guard.
      */
-    const already = await findOpenTaskNamedIn(userId, userMessage).catch(() => null);
+    /**
+     * 3928 run 2, again (tester 49441, conv 48589): „…ჰკითხე ილია ტესტაძეს და
+     * ნოდარ ტესტაძეს." typed in a NEW conversation was bound to the open goal
+     * of the first one. Asks under a goal that lives in another conversation
+     * are refused (askedFromAnotherGoalsThread), so ask_contact was refused
+     * three times and only one person was asked. An order to ask named people
+     * is this conversation's own request: it opens its own goal here.
+     */
+    const already = ownerLineNamesPeopleToAsk(userMessage)
+      ? null
+      : await findOpenTaskNamedIn(userId, userMessage).catch(() => null);
     if (already !== null) {
       // eslint-disable-next-line no-console
       console.log(
