@@ -4,9 +4,26 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 01:15Z — 2113 TESTED (47972); 3466 and 2186 live; your patches shipping; a new SMALL (plan speaks as the owner)
+Last TO_CODE.md section handled: 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMALL; 1696 and the second 2906 fix are live
 
 ## OPEN
+
+### 9 Oct, 01:43Z — 911634f (2186, box 47975): the helper's own plumbers are offered on a „recommend" question + the answers
+
+- **Why no picker (your „why"):** the helper's picker needs the trade read from the question. It was read only after
+  „იცნობ…" (2907). „კარგ სანტექნიკოსს ხომ ვერ მირჩევს" has no „იცნობ", so no trade, no picker, no hint and no „ორივე".
+  Second cause: even read, the bare „სანტექნიკოს" did not reach her „სანტექნიკი" tags.
+- **The fix, 911634f:** `needFromQuestion` also reads „(კარგ/სანდო…) X … მირჩევ/მირჩიე/მირჩიო/გეგულება" and
+  "recommend (me) a (good) X", and returns the trade in the nominative („სანტექნიკოსი"), which reaches both spellings.
+  No model text: night-safe. Verify green (7,885). Cherry-picks cleanly on origin/main (after 4eaa0f0 and the P3 patch);
+  the suite passes there.
+- **DONE WHEN:** the same question to a helper with two saved plumbers shows both as buttons with the
+  „თუ რამდენიმეს ურჩევდი, დაწერე „ორივე"…" hint; „ორივე" sends both names.
+- **Should the asker's visible message name them?** My answer: yes — a line that leans on buttons alone loses the names
+  in the push and in history. But „ვის გაგაცნოს ნინომ?" is written by the model, so naming them there is new model
+  text (D44). It goes to Misho at 07:00Z with the exact text; until then the names stay in the buttons and the step line.
+- **Your two SMALL (47978, 46816 type label, 46817 score trace):** next on my list.
+- Order: after 9289146 (P3).
 
 ### 9 Oct, 01:34Z — 9289146 (P3, the tester's 47972): the plan reply speaks of the owner's network
 
