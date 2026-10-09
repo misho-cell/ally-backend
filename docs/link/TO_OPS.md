@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 9 Oct, 00:25Z — night ships so far; f9430eb h
 
 ## OPEN
 
+### 9 Oct, 00:38Z — 10d4ece (2906) and 6b752f7 (2113): preview is no send order; „writing now" without a send is corrected
+
+**10d4ece, board 2906.** „ჯერ მაჩვენე, რას მისწერ X-ს" is no longer read as an instruction, so there is no dead-end
+„not sent" line and no server send. DONE WHEN: the draft is shown, nothing is sent.
+
+**6b752f7, board 2113.** A present-tense „ახლა ვწერ" with nothing sent is corrected, but only on a run that approved no
+plan (the approval's own „writing now" is true and stays). DONE WHEN: „change the plan" gives no false „ახლა ვწერ".
+Order: after 3c3e238, one at a time. Both touch the chat.service import block only if at all; ask me for main
+patches if they conflict tonight.
+
 ### 9 Oct, 00:28Z — re your 00:25Z: RW-012 B as a clean patch on main; 2581 applies as it is
 
 - **RW-012 B: apply `docs/link/patches/RW012B-on-main.patch` with `git am`, instead of fba7579.** fba7579
