@@ -73,7 +73,7 @@ export function ownerLineSharesNumber(line: string, alias: string): boolean {
  * the owner's earlier line had already asked for. A bare yes alone never is.
  */
 const BARE_YES_RE =
-  /^\s*(კი|ki|ho|yes|yeah|ok|okay|да|sí|si|გაუგზავნე|გააგზავნე|send it)[\s.!,)]*$/iu;
+  /^\s*(?:(?:კი|ki|ho|yes|yeah|ok|okay|да|sí|si)[\s,]*)?(კი|ki|ho|yes|yeah|ok|okay|да|sí|si|გაუგზავნე|გააგზავნე|გადაეცი|გადაეცით|მიეცი|send it|give it|share it|pass it on|отправь|передай|envíalo|dáselo)[\s.!,)]*$/iu;
 
 /** The tap on one of several same-named contacts: „პირველი", „2", „the second". */
 const ORDINAL_PICK_RE =
@@ -146,6 +146,34 @@ async function ownContactAlias(ownerId: string, phone: string): Promise<string |
 const OWNER_LINES_READ = 3;
 
 /** The owner's own last three lines in this conversation, newest first. */
+/**
+ * 3466 (MTR #7, box 47959): the ASKER asked for the number; the helper only
+ * answered Netai — „მეორე ნიკა ბერიძე" to „რომელი გადავცე?", then „კი,
+ * გადაეცი" to „მეორე ნიკა ბერიძის ნომერი გადავცე?" — and was refused twice,
+ * because no line of hers said „number". Her yes or her pick, given to
+ * Netai's own explicit offer to pass a number on, is her word.
+ */
+const OFFER_TO_PASS_ON_RE =
+  /(გადავცე|გავუგზავნო|მივცე|გავუზიარო|\b(?:shall|should)\s+i\s+(?:send|give|share|pass)|передать|отправить|¿(?:le\s+)?(?:env[ií]o|paso|doy))/iu;
+
+/** Netai's newest message on the thread offered to pass a number on, and asked. */
+async function netaiOfferedTheNumber(askThreadId: number): Promise<boolean> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1 AND role = 'assistant' AND kind = 'message' AND TRIM(content) <> ''
+      ORDER BY created_at DESC LIMIT 1`,
+    [askThreadId],
+    SHARE_QUERY_TIMEOUT_MS,
+  );
+  const said = result.rows[0]?.content ?? '';
+  return NUMBER_WORD_RE.test(said) && OFFER_TO_PASS_ON_RE.test(said) && /[?？]/u.test(said);
+}
+
+/** Her newest line is a yes, a give word or a pick — an answer to Netai's offer. */
+export function answersTheOffer(latestLine: string): boolean {
+  return BARE_YES_RE.test(latestLine) || ORDINAL_PICK_RE.test(latestLine);
+}
+
 async function ownersLatestLines(askThreadId: number): Promise<string[]> {
   const result = await query<{ content: string }>(
     `SELECT content FROM conversations
@@ -261,7 +289,11 @@ export async function shareContactNumberWithAsker(
   }
   const alias = phone === '' ? null : await ownContactAlias(ownerId, phone);
   if (alias === null) return { shared: false, reason: ShareRefusal.NotOwnContact };
-  if (!ownerLinesShareNumber(await ownersLatestLines(askThreadId), alias)) {
+  const lines = await ownersLatestLines(askThreadId);
+  const herWord =
+    ownerLinesShareNumber(lines, alias) ||
+    (answersTheOffer(lines[0] ?? '') && (await netaiOfferedTheNumber(askThreadId)));
+  if (!herWord) {
     return { shared: false, reason: ShareRefusal.NotTheOwnersWord };
   }
   const text = withTheOwnersWord(noteRaw, `${alias}: ${ALLOW_OPEN}${phone}${ALLOW_CLOSE}`);
