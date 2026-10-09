@@ -237,6 +237,7 @@ import {
   repairSeat,
 } from '../../services/seatContacts.service';
 import { tellOwnersANewMemberFitsAGoal } from '../../services/newMemberForGoal.service';
+import { isFictionalNumber } from '../../services/fictionalNumbers';
 import {
   expireUnansweredRequests,
   introductionsThatWouldExpire,
@@ -3111,6 +3112,14 @@ adminRouter.post(
     const phone = String((req.body as { phone?: string }).phone ?? '').trim();
     if (phone === '') {
       res.status(400).json({ success: false, error: 'phone is required' });
+      return;
+    }
+    // 389 (ops 11:55Z): real owners' cards about a real number come only from a
+    // real registration. The replay is for the reserved fictional ranges alone.
+    if (!isFictionalNumber(phone)) {
+      res
+        .status(403)
+        .json({ success: false, error: 'only a reserved fictional number may be replayed' });
       return;
     }
     try {
