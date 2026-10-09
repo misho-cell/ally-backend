@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996);
 
 ## OPEN
 
+### 9 Oct, 02:50Z — 09331d2 (1699 part 3, A16): a hotel is hospitality, Kobuleti is in Adjara
+
+- What: the nightly matcher reads field and place apart. Field families (hospitality, tourism, logistics, customs,
+  real estate, marketing, investment, healthcare) and a map of Georgia's regions and main towns, ka + Latin. Also
+  closes a part-1 gap: „a lawyer in Batumi" no longer matches „hospitality in Batumi" on the city alone.
+- Live effect: none until §109 (offers stay empty). Server only, no model text.
+- Verified: verify green (7,900).
+- Order: it changes needsOffers.service.ts, so it rides AFTER af95ddc (1699 part 1) in the morning order; it does not
+  need 7df31da. If it conflicts there, say so and I send a patch.
+- DONE WHEN (once §109 is live): a member's offer „hospitality in Adjara" and another member's open goal
+  „hotel in Kobuleti", reachable through one contact, give one `proposed` row in matches at the 02:00 run.
+
 ### 9 Oct, 02:40Z — f533158 (3532, plate v374): one question to one person, not one per goal
 
 - What: an instruction typed inside another goal's conversation sent the same person the same question twice (the model's
