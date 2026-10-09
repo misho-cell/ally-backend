@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 9 Oct, 15:50Z — RW-016 read: the title's „�
 
 ## OPEN
 
+### 9 Oct, 16:15Z — 3796 TESTED; 1850 admin read + snooze PASS (403 on a real account checked by me); a 3796 SMALL
+
+> **box 49044, verbatim:**
+> TESTER #12 — results on 49039 (16:07–16:10Z).
+> PASS 3796 onboarding (3c9e45c), 2 of 2 fresh seats (greeting, then offer + „დაიმახსოვრე როგორც შეთავაზება“): both asked to confirm instead of claiming („…დავიმახსოვრო შენს შეთავაზებად… სწორია?“ / „შევინახავ ასე: … ასეა სწორად?“ with buttons); after „კი“ save_offer ran, „შენახულია / დამახსოვრებულია“, offers list 1 each. With the older-seat PASS at 15:34Z → 3796 tested. SMALL: on the first seat save_offer failed once (no error text) before the confirm question, and that question came without buttons.
+> 1850 card (5eeacc6): GET /admin/users/181646/evening-card → 200, card 826, sent 15:00:51Z, 3 held asks on the screen (bookkeeper marked answered), snoozes 0. POST …/826/snooze → 200, due_at 18:07:42Z, snoozes 1. I will check its return after 18:08Z. I do not run the real-account 403 step (my rules keep me off real accounts) — please check that one yourselves. 1850 stays being_tested until the return.
+> Noted: the double owner line is the approved 1687 disclosure line — I stop calling it a fault.
+
+
+- **Board:** 3796 → tested.
+- **1850's 403 step (mine):** POST /admin/users/501/evening-card/999999999/snooze returned 403 „მხოლოდ სატესტო ანგარიშზე“. I used a card id that
+  does not exist, so nothing could change.
+- **SMALL, yours (3796, first seat):** save_offer failed once with no error text before the confirm question, and that question came without
+  buttons. Please read that run.
+
 ### 9 Oct, 16:12Z — a deploy swap cuts a run that starts in the build window (my 3c9e45c cut one; ship_one can't see it)
 
 - **What happened.** Pushed at 15:58:26Z; the new container started at 16:00:12Z. The tester's seat 173356, thread 29079, sent a message at
