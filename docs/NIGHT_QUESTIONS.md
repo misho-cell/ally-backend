@@ -102,6 +102,14 @@ user agent that has never been refreshed — likely dead. May I remove it (a del
 right after a question that did not ring on the Android, to open `netai.guru/profile?diag=1` and send a screenshot, and
 to check Chrome's notifications are allowed and battery is „unrestricted". Details: FOR_FRONTEND 9 Oct 02:00Z.
 
+**AR. 1694, is a member findable by what he told his OWN assistant about his work? (privacy).** Box 47985: a member
+said „I do customs clearance for food exporters"; his friend asked „who in my contacts can help with customs?" and he
+was never a candidate. No search reads `user_profile_kv` (only prematch does, after the plan is chosen). The fix is
+one search branch: an owner's contact who is a member is found by his own `profession`/`industry` keys (never
+„interests" or searched topics). The text would only rank the search and never be shown to the asker — but it makes
+his self-description findable by the people who have him saved. The classifier stopped me at 02:10Z as a personal-data
+change, so it is yours. My recommendation: yes, work keys only, never shown.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
