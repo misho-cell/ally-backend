@@ -1,0 +1,188 @@
+From ec9f42b4b079733b7bf03d6f0e319f6f10bb76c2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 08:47:42 +0000
+Subject: [PATCH] feat(updates): a flagged conversation counts in the sidebar
+ number (2080, D716)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+D716 (the founder, 7 Oct): „A flagged conversation counts in the sidebar
+number until the owner removes the flag. One number." The tester flagged a
+conversation and /updates/count still said followed 0: the count held only
+flagged update cards.
+
+GET /updates/count's `followed` now adds the owner's flagged conversations to
+the flagged cards. The app's „განახლებები N" is due + followed already, so
+nothing changes on its side (FOR_FRONTEND notes it).
+
+DONE WHEN: PUT /threads/:id/follow raises /updates/count's followed by 1, and
+DELETE brings it back.
+
+Re-sent after the revert (1b72f5b): the threads half of the count takes its
+own parameter, cast to int (pending_updates.user_id is TEXT, threads.user_id
+INTEGER; one $1 for both threw „integer = text" on every call). A real-
+Postgres test (scripts/ops/malformed.sh) shows the old SQL throwing and the
+new count returning 1.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  3 +-
+ scripts/ops/malformed.sh                      |  2 +-
+ scripts/ops/malformed_schema.py               |  2 +-
+ ...ountReachesTheDatabase.integration.test.ts | 44 +++++++++++++++++++
+ .../__tests__/aFlaggedItemStaysOnTop.test.ts  |  9 ++++
+ src/services/followUp.service.ts              | 21 ++++++---
+ 6 files changed, 73 insertions(+), 8 deletions(-)
+ create mode 100644 src/services/__tests__/aFlaggedCountReachesTheDatabase.integration.test.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index a0e44b5..87b4d52 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -216,6 +216,7 @@ The server half is built. "Live" gets posted in the box after the deploy.
+   - Every card in `due`, `followed` and `seen` carries `followed: true|false`.
+   - A card that is due right now stays in `due` (with `followed: true`) and is not repeated in `followed`.
+ - `GET /updates/count` gains `followed`, e.g. `{ "due": 1, "held": 3, "followed": 2 }`. The sidebar "განახლებები N" is `due + followed`.
++  *8 Oct addendum (D716):* `followed` now also counts every conversation the owner flagged (`PUT /threads/:id/follow`), so a flag on a conversation shows in the same one number until it is cleared. Nothing changes on your side.
+ 
+ **დავალება / conversation rows**
+ - `PUT /threads/:id/follow` → `200 { "success": true, "data": { "followed": true } }`
+@@ -830,7 +831,7 @@ its first 500. If more than 500 are new, the answer carries
+ `remaining: <n>`; send the same file again and the next 500 go in. Absent
+ `remaining` means everything new is in.
+ 
+-*8 Oct, 22:40Z addendum (the tester's 47594):* a first import of 510 cards stopped at 163 when the
++*8 Oct, 22:26Z addendum (the tester's 47594):* a first import of 510 cards stopped at 163 when the
+ server restarted for a deploy, and no answer came back to the upload. The server now saves cards
+ four at a time and no longer lets their background scoring crowd the import, so a 500-card file
+ should take a few minutes instead of about twelve. **Asked of you:** if the upload request fails, times out or
+diff --git a/scripts/ops/malformed.sh b/scripts/ops/malformed.sh
+index 416408c..6ac6caa 100755
+--- a/scripts/ops/malformed.sh
++++ b/scripts/ops/malformed.sh
+@@ -100,4 +100,4 @@ POSTGRES_PORT="$PORT" \
+ POSTGRES_DB="$DB" \
+ POSTGRES_NAME=netai \
+ POSTGRES_PASS= \
+-  npx jest aMissingFieldCannotReachTheDatabase --silent=false
++  npx jest aMissingFieldCannotReachTheDatabase aFlaggedCountReachesTheDatabase --silent=false
+diff --git a/scripts/ops/malformed_schema.py b/scripts/ops/malformed_schema.py
+index f87b3bf..b8897b9 100644
+--- a/scripts/ops/malformed_schema.py
++++ b/scripts/ops/malformed_schema.py
+@@ -34,7 +34,7 @@ MIGRATIONS = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'db', 'p
+ 
+ # The tables the malformed-input guards actually touch. Anything wider drags in
+ # the legacy schema and stops being reproducible.
+-WANTED = re.compile(r'\b(tasks|task_asks|user_profile_kv|contact_facts|goal_feedback|pending_updates)\b')
++WANTED = re.compile(r'\b(tasks|task_asks|user_profile_kv|contact_facts|goal_feedback|pending_updates|threads|introduction_requests)\b')
+ DDL = re.compile(r'^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX)', re.IGNORECASE)
+ 
+ 
+diff --git a/src/services/__tests__/aFlaggedCountReachesTheDatabase.integration.test.ts b/src/services/__tests__/aFlaggedCountReachesTheDatabase.integration.test.ts
+new file mode 100644
+index 0000000..86fb5bd
+--- /dev/null
++++ b/src/services/__tests__/aFlaggedCountReachesTheDatabase.integration.test.ts
+@@ -0,0 +1,44 @@
++/**
++ * 2080 (D716), the revert of 774ef2f on 9 October: `GET /updates/count` threw
++ * „operator does not exist: integer = text" on every call for five and a half
++ * hours. pending_updates.user_id is TEXT and threads.user_id is INTEGER, and
++ * one parameter was compared with both. The unit test mocked `query`, so it
++ * passed with the bug in place; only Postgres can say this.
++ *
++ * Skipped unless PG_INTEGRATION=1; `scripts/ops/malformed.sh` builds both
++ * tables from the repo's own migrations and runs this file.
++ */
++import pool, { query } from '../../db/postgres/client';
++import { countFollowedUpdates } from '../followUp.service';
++
++const maybeDescribe = process.env.PG_INTEGRATION === '1' ? describe : describe.skip;
++
++const OWNER = '90071';
++const THE_OLD_SQL = `SELECT (SELECT COUNT(*)::int FROM pending_updates p
++                              WHERE p.user_id = $1 AND p.followed_at IS NOT NULL)
++                          + (SELECT COUNT(*)::int FROM threads t
++                              WHERE t.user_id = $1 AND t.followed_at IS NOT NULL) AS n`;
++
++maybeDescribe('the flagged count, on a real Postgres', () => {
++  beforeAll(async () => {
++    await query(`DELETE FROM pending_updates WHERE user_id = $1`, [OWNER]);
++    await query(`DELETE FROM threads WHERE user_id = $1::int`, [OWNER]);
++    await query(
++      `INSERT INTO threads (user_id, type, title, followed_at) VALUES ($1::int, 'regular', 'flagged', NOW())`,
++      [OWNER],
++    );
++  });
++
++  afterAll(async () => {
++    await query(`DELETE FROM threads WHERE user_id = $1::int`, [OWNER]);
++    await pool.end();
++  });
++
++  it('the old shape really threw — the bug was real', async () => {
++    await expect(query(THE_OLD_SQL, [OWNER])).rejects.toThrow(/integer = text/u);
++  });
++
++  it('counts a flagged conversation and does not throw', async () => {
++    await expect(countFollowedUpdates(OWNER)).resolves.toBe(1);
++  });
++});
+diff --git a/src/services/__tests__/aFlaggedItemStaysOnTop.test.ts b/src/services/__tests__/aFlaggedItemStaysOnTop.test.ts
+index f0771e1..300eb7c 100644
+--- a/src/services/__tests__/aFlaggedItemStaysOnTop.test.ts
++++ b/src/services/__tests__/aFlaggedItemStaysOnTop.test.ts
+@@ -75,4 +75,13 @@ describe('an update card', () => {
+     expect(mockQuery.mock.calls[1][0]).toContain(condition);
+     expect(mockQuery.mock.calls[0][0]).toContain('LIMIT $2');
+   });
++
++  it('D716: a flagged conversation counts in the same one number', async () => {
++    mockQuery.mockResolvedValueOnce(rows([{ n: 3 }]));
++    await expect(countFollowedUpdates('171')).resolves.toBe(3);
++    const sql = String(mockQuery.mock.calls[0][0]);
++    expect(sql).toContain('FROM threads t');
++    expect(sql).toContain('t.user_id = $2::int AND t.followed_at IS NOT NULL');
++    expect(mockQuery.mock.calls[0][1]).toEqual(['171', '171']);
++  });
+ });
+diff --git a/src/services/followUp.service.ts b/src/services/followUp.service.ts
+index a7065b7..3cc6e9f 100644
+--- a/src/services/followUp.service.ts
++++ b/src/services/followUp.service.ts
+@@ -64,13 +64,24 @@ export async function listFollowedUpdates(userId: string): Promise<PendingUpdate
+   return result.rows;
+ }
+ 
+-/** How many flagged cards the sidebar count carries — the same rows the list shows. */
++/**
++ * How many flagged items the sidebar count carries: the flagged cards the list
++ * shows, and — D716 (the founder, 7 Oct: „A flagged conversation counts in the
++ * sidebar number until the owner removes the flag. One number.") — every
++ * conversation the owner flagged.
++ */
+ export async function countFollowedUpdates(userId: string): Promise<number> {
+   const result = await query<{ n: number }>(
+-    `SELECT COUNT(*)::int AS n
+-       FROM pending_updates p
+-      WHERE p.user_id = $1 AND p.status = 'seen' AND p.followed_at IS NOT NULL`,
+-    [userId],
++    `SELECT (SELECT COUNT(*)::int
++               FROM pending_updates p
++              WHERE p.user_id = $1 AND p.status = 'seen' AND p.followed_at IS NOT NULL)
++          + (SELECT COUNT(*)::int
++               FROM threads t
++              WHERE t.user_id = $2::int AND t.followed_at IS NOT NULL) AS n`,
++    // Two parameters, because the two columns differ: pending_updates.user_id
++    // is TEXT and threads.user_id is INTEGER. One $1 compared with both threw
++    // „integer = text" on every call (the revert of 774ef2f, 9 Oct).
++    [userId, userId],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows[0]?.n ?? 0;
+-- 
+2.43.0
+

@@ -4,9 +4,25 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 08:08Z — 3697 and morning-0805 applied; 3664 TESTED; the timing of 3697 is the tester's call
+Last TO_CODE.md section handled: 9 Oct, 08:26Z — REVERT of 774ef2f (2080): /updates/count was 500 on every call; 3697 live; MTR #8 part 1 results
 
 ## OPEN
+
+### 9 Oct, 08:50Z — 2080 re-sent with the cast fixed and a real-Postgres test: `patches/2080/0001` (branch fbffb20)
+
+- **Cause:** `countFollowedUpdates` compared one `$1` with `pending_updates.user_id` (TEXT) and `threads.user_id` (INTEGER).
+  Postgres typed `$1` as text from its first use, and `t.user_id = $1` became `integer = text`. Reproduced on a local
+  Postgres 16 with the exact SQL: same error.
+- **Fix:** the threads half takes its own parameter, `t.user_id = $2::int`, params `[userId, userId]`.
+- **The test you asked for:** `aFlaggedCountReachesTheDatabase.integration.test.ts` runs on a real Postgres through
+  `scripts/ops/malformed.sh`. The schema is built from the repo's own migrations; `threads` and `introduction_requests`
+  were added there. It runs the OLD SQL, which must throw `integer = text`, then the shipped function, which must
+  return 1 for one flagged conversation. 20/20 green, the 18 earlier ones included.
+- **The patch** is 774ef2f and the fix squashed into one commit, built on main d3305ea. `npm run verify` there: 7,757
+  green; malformed.sh 20/20. It touches only followUp.service, its tests and the two malformed scripts, so it is
+  independent of the morning-0805 chain.
+- DONE WHEN: `GET /updates/count` answers 200 for every seat; `PUT /threads/:id/follow` raises `followed` by 1 and
+  DELETE brings it back; threw.sh shows no `integer = text`.
 
 ### 9 Oct, 08:02Z — 3697 (P1, F20) fix 9b6e9fe + main patch; the chain re-cut on 87c9b6a as `morning-0805`
 
