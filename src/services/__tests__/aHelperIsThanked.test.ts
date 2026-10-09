@@ -164,6 +164,38 @@ describe('the thank-you card', () => {
   });
 });
 
+describe('a goal closed as solved (§113.1)', () => {
+  it('offers the card for the newest real answer on the goal', async () => {
+    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
+    mockQuery
+      .mockResolvedValueOnce(rows([{ id: 17001 }]))
+      .mockResolvedValueOnce(
+        rows([{ task_id: 3, helper_user_id: 77, card_thread_id: 55, helper_name: 'ზურაბი' }]),
+      )
+      .mockResolvedValueOnce(rows([{ id: 5 }]));
+    expect(await offerThanksForSolvedGoal('42', 3)).toBe(true);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain("status = 'answered' AND declined_at IS NULL");
+    expect(params).toEqual([3, '42']);
+    expect(mockQuery.mock.calls[1][1]).toEqual([17001, '42']);
+  });
+
+  it('offers nothing when nobody answered on the goal', async () => {
+    const { offerThanksForSolvedGoal } = await import('../helperThanks.service');
+    mockQuery.mockResolvedValueOnce(rows([]));
+    expect(await offerThanksForSolvedGoal('42', 3)).toBe(false);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('is fired from the one place every solved close passes', () => {
+    const store = readFileSync(join(__dirname, '..', 'taskStore.service.ts'), 'utf8');
+    const hook = store.slice(
+      store.indexOf("if (updated && status === 'closed' && closedAs === 'finished') {"),
+    );
+    expect(hook.slice(0, 400)).toContain('offerThanksForSolvedGoal(userId, taskId)');
+  });
+});
+
 describe('the day-14 line to the helper (1692 part 2)', () => {
   it('sends nothing when no armed answer is due (§111.3)', async () => {
     mockQuery.mockResolvedValueOnce(rows([]));

@@ -84,6 +84,29 @@ export async function offerHelperThanks(askerUserId: string, askId: number): Pro
   return true;
 }
 
+/**
+ * §113.1 (Misho, 9 Oct; ops 10:24Z): a goal the owner closes as solved, after
+ * a helper answered on it, offers the same card a „helped" debrief does. The
+ * newest real answer on the goal is the one thanked; the card is still once
+ * per ask, so a debrief that offered it already leaves nothing to do here.
+ */
+export async function offerThanksForSolvedGoal(
+  askerUserId: string,
+  taskId: number,
+): Promise<boolean> {
+  const answered = await query<{ id: number }>(
+    `SELECT id FROM task_asks
+      WHERE task_id = $1 AND from_user_id = $2::int AND parent_ask_id IS NULL
+        AND status = 'answered' AND declined_at IS NULL
+      ORDER BY answered_at DESC NULLS LAST, id DESC
+      LIMIT 1`,
+    [taskId, askerUserId],
+    QUERY_TIMEOUT_MS,
+  );
+  const askId = answered.rows[0]?.id;
+  return askId === undefined ? false : offerHelperThanks(askerUserId, askId);
+}
+
 interface OpenThanks {
   readonly id: number;
   readonly ask_id: number;
