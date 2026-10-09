@@ -14,8 +14,8 @@ describe('a closed route', () => {
     expect(routeLooksClosed(undefined, PrematchWord.NotHisField)).toBe(false);
   });
 
-  it('is only logged until Misho approves its line (AO)', () => {
-    expect(CLOSED_ROUTE_ON).toBe(false);
+  it('is refused since Misho approved its line (AO, §110.1)', () => {
+    expect(CLOSED_ROUTE_ON).toBe(true);
     const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
     expect(tool).toMatch(
       /if \(CLOSED_ROUTE_ON\)\s*return \{ success: false, reason: 'route_closed', error: CLOSED_ROUTE_LINE \};/u,

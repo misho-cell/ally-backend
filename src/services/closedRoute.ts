@@ -8,13 +8,12 @@ import { PrematchWord, prematchMany } from './prematch.service';
  * No request is made; the model hears the route looks closed and proposes
  * another way — never why (the reason is other people's data, D680).
  *
- * HELD (D44): the line the model reads is NIGHT_QUESTIONS AO, waiting for
- * Misho's yes. Until then the check only LOGS what it would have refused, so
- * the morning has evidence of how often it bites; nothing is refused.
+ * The line the model reads is NIGHT_QUESTIONS AO, approved by Misho on
+ * 9 Oct 06:25 UTC (ADMIN_WRITE_OPERATIONS §110.1).
  */
-export const CLOSED_ROUTE_ON = false;
+export const CLOSED_ROUTE_ON = true;
 
-/** NIGHT_QUESTIONS AO, the exact text proposed; used only once CLOSED_ROUTE_ON is true. */
+/** NIGHT_QUESTIONS AO, the exact approved text (§110.1). */
 export const CLOSED_ROUTE_LINE =
   'Not sent: this route looks closed. Say so to the owner in one plain line — never why, and nothing about these people — and propose another way.';
 
