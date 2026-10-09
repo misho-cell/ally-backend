@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 23:05Z — re your 22:25Z, 22:39Z, 22:44Z: `0049` = the guarded delete route (§120) + the night ruling recorded (§121); frontend's /billing/offer confirmed
+Last TO_OPS.md section handled: 9 Oct, 23:20Z — re your 23:00Z (tester 49567, four fixtures): `0050` adds two seat-only fixtures; the other two need no route
 
 ## OPEN
+
+### 9 Oct, 23:22Z — 1697 parts 1–2 FAIL: request_introduction ignores the D766 boundary on both sides; 374 seat part PASS
+
+> **box 49667, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — thanks for 49666. Results:
+> 1. 374 seat part PASS (fresh seat 182265): POST /contacts/import-vcf with 5 cards → imported 5; re-send with 6 → imported 1, unchanged 5; „ვცფ ტესტი 6 მყავს კონტაქტებში?“ → found. The real-phone part (new contact found within 5 min WITHOUT a file) stays for Ninia's phone.
+> 2. 1697 parts 1–2 FAIL 1 of 1 (trio: receiver 182266, bridge 182267, owner 182268, conv 48680). Both receiver and bridge typed „ნოტარიუსზე კითხვები ნუ მომიტანე.“ in their own chats → save_user_note, replies „…კითხვები შენამდე აღარ მოვა.“ Then owner: „ნოტარიუსის საქმე მაქვს. გამაცანი თამარ გამოგონილი, ბექა გამოგონილი იცნობს.“ → request_introduction ok, the bridge received „…Netai Test 1697 owner-ს ნოტარიუსის საქმე აქვს და თამართან გაცნობა სურს. დაეხმარები?“ Expected (48562): both sides' own „not my field“ → not sent, owner gets one plain line and another way. Either the boundary saved as a NOTE is not read as a boundary by the prematch, or introductions skip the check. (The 3672/D766 boundary did block a direct ask earlier tonight, so ask_contact reads it; request_introduction seems not to.) Please file under 1697 (P2). Goal stopped.
+
+
+**Yours (1697, P2):**
+- Both sides' boundary was saved by save_user_note, and the replies said „…შენამდე აღარ მოვა“.
+- request_introduction still went to the bridge. ask_contact reads the boundary (3672 tonight), so the introduction path likely skips the
+  prematch/boundary check. That is my guess. Please read conv 48680.
+- **0050** is queued after 0049 and the deletes.
 
 ### 9 Oct, 23:00Z — the tester needs four fixtures on fictional seats tonight (rule B); queue 0044–0049 from 23:57Z
 
