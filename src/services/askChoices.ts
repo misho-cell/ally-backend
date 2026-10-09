@@ -186,6 +186,24 @@ export function withPeopleDetails(
  * „ნინო სტომატოლოგი (კლინიკა ღიმილი, ვაკე)" — so her assistant passes the
  * clinic she approved with the tap, not the bare name. Null for anything else.
  */
+/**
+ * 2186 (the founder's own screen, 7 Oct: „it is not human alike"): asked whom
+ * she would recommend, the helper could name only one — one button per person.
+ * The buttons stay four; „both" / „all of them", typed or said, is every person
+ * offered, each with what she saved beside the name.
+ */
+const ALL_OF_THEM_RE =
+  /^\s*(?:ორივე|სამივე|ყველა|ორივეს|სამივეს|both|all\s+(?:of\s+them|three)|оба|обе|все|ambos|ambas|todos)(?:[\s,]+\S+){0,3}[\s.!,)]*$/iu;
+
+export function allPeopleText(message: string, choices: readonly AskChoice[]): string | null {
+  if (!ALL_OF_THEM_RE.test(message)) return null;
+  const people = choices.filter((choice) => choice.means === ChoiceMeaning.Answer);
+  if (people.length < 2) return null;
+  return people
+    .map((person) => (person.detail ? `${person.label} (${person.detail})` : person.label))
+    .join('; ');
+}
+
 export function tappedPersonText(message: string, choices: readonly AskChoice[]): string | null {
   const said = message.trim().toLowerCase();
   const pressed = choices.find(

@@ -62,7 +62,7 @@ describe('a mediator asked on behalf of a need', () => {
     const picker = await bridgePicker(BRIDGE, { need: 'lawyer', forPhone: ILIA.phone }, 'en');
 
     expect(picker?.line).toBe(
-      'You were asked because Ilia Beridze is in your contacts. Others who may fit: Nino Kapanadze.',
+      'You were asked because Ilia Beridze is in your contacts. Others who may fit: Nino Kapanadze. If more than one fits, write „both" or their names.',
     );
     expect(mockQuery.mock.calls[0]?.[1]).toEqual([BRIDGE, ILIA.phone]);
   });
@@ -72,7 +72,9 @@ describe('a mediator asked on behalf of a need', () => {
 
     const picker = await bridgePicker(BRIDGE, { need: 'lawyer' }, 'en');
 
-    expect(picker?.line).toBe('In your contacts, these may fit: Nino Kapanadze, Dato Lomidze.');
+    expect(picker?.line).toBe(
+      'In your contacts, these may fit: Nino Kapanadze, Dato Lomidze. If more than one fits, write „both" or their names.',
+    );
     expect(picker?.choices.slice(0, 3)).toEqual(['Nino Kapanadze', 'Dato Lomidze', 'Someone else']);
   });
 

@@ -83,6 +83,20 @@ function pickerLine(
 ): string {
   const rest = others.map((name) => withDetail(name, details)).join(', ');
   const picked = pickedOne === null ? null : withDetail(pickedOne, details);
+  const offered = others.length + (pickedOne === null ? 0 : 1);
+  const line = pickerSentences(language, picked, rest);
+  // 2186: more than one may be recommended — said once, under the names.
+  return offered >= 2 ? `${line} ${MORE_THAN_ONE_HINT[language] ?? MORE_THAN_ONE_HINT.ka}` : line;
+}
+
+const MORE_THAN_ONE_HINT: Readonly<Record<RunLanguage, string>> = {
+  ka: 'თუ რამდენიმეს ურჩევდი, დაწერე „ორივე" ან მათი სახელები.',
+  en: 'If more than one fits, write „both" or their names.',
+  ru: 'Если подходят несколько, напиши «оба» или их имена.',
+  es: 'Si encajan varios, escribe «ambos» o sus nombres.',
+};
+
+function pickerSentences(language: RunLanguage, picked: string | null, rest: string): string {
   switch (language) {
     case 'en':
       return (

@@ -33,6 +33,7 @@ import {
   parseAskChoices,
   tapOfChoice,
   tappedPersonText,
+  allPeopleText,
   withPeopleDetails,
   withServerLater,
   withoutPointingAnswers,
@@ -3959,7 +3960,10 @@ export async function tappedPersonOnThread(
       ASK_QUERY_TIMEOUT_MS,
     );
     const stored = parseAskChoices(result.rows[0]?.choices);
-    return stored === null ? null : tappedPersonText(message, stored);
+    // 2186: „both" is every person offered.
+    return stored === null
+      ? null
+      : (tappedPersonText(message, stored) ?? allPeopleText(message, stored));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[ask-tap] thread ${threadId}: person not read:`, (err as Error).message);
