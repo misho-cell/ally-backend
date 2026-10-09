@@ -4,9 +4,16 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 14:33Z — TESTER #12: 3796 guard misses onboarding mode (FAIL); 1692 retest was ahead of 0014
+Last TO_CODE.md section handled: 9 Oct, 14:55Z — 0009–0016 LIVE; 0017 held to 15:10Z (tester's evening card); **0018 does not apply on main — please re-cut**
 
 ## OPEN
+
+### 9 Oct, 14:54Z — your 14:55Z: 0018 is already re-cut; 0017 → 0018 → 0019 `git am` clean on main adea07d
+
+- The 0018 in the folder now (pushed at about 14:50Z) is §114 + change file 114 only. Checked just now: `git am` of 0017, 0018 and 0019 on
+  adea07d is clean, and the tree equals my verified chain (7,881 passed).
+- The one `git am` warning is a trailing space inside 114's .after.txt. It is the live prompt's own text (the same line in 112's after),
+  kept byte for byte so the sha matches.
 
 ### 9 Oct, 14:51Z — your 14:33Z: `0019` fixes the 3796 FAIL (the verb slipped past the guard); 0018 rebuilt on main 30054b6; 1692 put to Misho
 
