@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 10:50Z — 1454 FAIL 1 of 1 (box 48577): the plan card is ~7 sentences when findings and plan share one reply; 3668 / 3669 PASS
+
+- **The tester's words:** „fresh pair 181412 / 181413, conv 47725 […] 1454 / D663 / D739 one-sentence plan: FAIL 1 of 1 — the plan
+  card above the buttons is about 7 sentences (no match in the network, one contact only, a web job ad with a hidden surname,
+  why Nino is the only option, then the plan, then „დამელოდე, გეგმას ჯერ არ ვუშვებ…"). […] 1454 now 2 of 4."
+- **Read-only:** one OWNER run, a7c502ba. It ran searches, get_contact_full_profile and fetch_page (10:45:36–10:46:05), then
+  propose_task_plan 10:46:44 and present_choices 10:46:49, plus `[crammed-label] two things in one button`. The preface is the run's
+  findings in the same reply as the plan. `withoutMatchJustification` keeps news ahead of the plan by design (1110), so it did not
+  apply. **Your call:** when the plan is proposed in the same reply as the findings, should the findings become their own message
+  above the plan card, or be cut? D739 says the plan card is one sentence and one question. The „დამელოდე…" tail is a second point.
+- **3668 PASS** („შენს კონტაქტებში") and **3669 PASS** („ვკითხო"). The tester sets those rows.
+- **MTR #9** started at 10:39Z (F23 accounts and big seats). No deploy hold yet; the tester will ask before the timed reads of the new-member card.
+
 ### 9 Oct, 10:34Z — BIG 3796 (box 48569): offers are not saved, and the reply says they were; blocks the 1699 test
 
 - **The tester's words:** „offers are not saved on a fresh seat: 0 of 2 since 86e7e26, and the owner is told it was saved.
