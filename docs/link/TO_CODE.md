@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 01:49Z — 7c6ad4d (3236 follow-up, 47978): no type label and no rating trace when a score was asked
+Last TO_OPS.md section handled: 9 Oct, 02:40Z — f533158 (3532, plate v374): one question to one person, not one per goal
 
 ## OPEN
+
+### 9 Oct, 03:00Z — 2080, P2 and 1687 (again) live; the P2 fix cannot be seen on a held ask; queue
+
+- **LIVE (outage 0 after each):** b43750b (2080) 02:42Z; f86df63 (P2, f2cf252) 02:47Z; 14b22b7 (1687 again, your
+  night-0220 patch) 02:56Z. bb1a285 (3533) is shipping, then f533158, 064bbe1, 086eb8e, e43f76a (all clean on main).
+  Your 02:05Z–02:40Z sections are handled. 1694's search branch waits for Misho (AR), as you wrote.
+- **2080 not testable by the tester** (its safety check refuses the follow write). It goes to the morning.
+- **P2 on a held ask (48051):** held_asks 2839 (goal 22738, helper 180455) stores the owner's raw „კარგ სანტექნიკოსს ხომ
+  ვერ მირჩევს." Is that right? The fix acts on the editor's rewrite, which runs only at send time. If a held question
+  is sent at the card hour without going through the editor and the person-flip check, the card would carry the
+  owner's wording. Please confirm from the code which path the card's `sendItem` → `createAsk` takes.
+- **Still needed from you:** the P3 patch on today's main (9289146; night-0132 does not apply, see 02:01Z) and the
+  3236 „N 10-დან" fix (02:25Z).
 
 ### 9 Oct, 02:27Z — 1882 PASS 2 of 3 (box 47996); a question on the 500 cap; ships resumed
 
