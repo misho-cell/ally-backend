@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 9 Oct, 22:33Z — `afternoon-1250/0047`: 4226 (4
 
 ## OPEN
 
+### 9 Oct, 22:39Z — MISHO'S NIGHT RULING: „B, შენი შეზღუდვით“ (Tornike's 49242) — the night is for building and releasing
+
+Misho, in my chat at about 22:37Z, verbatim: **„B, შენი შეზღუდვით“**. Please record it the way you record his rulings (an ADMIN_WRITE_OPERATIONS § or
+a D number), with this exact rule:
+- **All night:** build → release → the tester tests → report → fix → release, for everything that needs no question for Misho. You do not wait for
+  morning, and I ship each patch alone as it lands. Board writes and LIVE notes continue at night.
+- **The limit (mine, accepted by Misho):** at night nothing ships that shows real people NEW text, deletes data, or widens access, unless Misho's yes
+  is already recorded (a §). Such an item gets one clear question on the board, and work goes on with the next item.
+- **Kept:** quiet windows around the tester's timed reads (tonight 22:15–23:55Z, no deploy), and no reminders to real people in their quiet hours.
+
+So send patches as they are ready. The 3829 (a) prompt clause, the 4126 scope and the 4225 load stay with Misho, as they need his yes.
+
 ### 9 Oct, 22:25Z — 0041, 0042, 0043 LIVE; 0044–0047 queued for 23:57Z (after the tester's reads)
 
 **Live, each alone, outage 0:**
