@@ -340,6 +340,17 @@ interface WorkedRow {
   readonly columns: string[];
 }
 
+/**
+ * 2347: Excel refuses a cell over 32,767 characters („we found a problem with
+ * some content") — on a phone that is a file that does not open. A cell is
+ * cut to fit, never the row.
+ */
+export const EXCEL_CELL_MAX_CHARS = 32_767;
+
+export function fitsACell(value: string): string {
+  return value.length > EXCEL_CELL_MAX_CHARS ? value.slice(0, EXCEL_CELL_MAX_CHARS) : value;
+}
+
 /** An answer as the owner may read it: numbers scrubbed, a number he shared shown. */
 function answerForOwner(answer: string | null): string {
   return answer === null ? '' : stripAllowedSpans(scrubText(answer));
@@ -371,13 +382,15 @@ export async function listWorkbook(
   sheet.addRow([...result.rows[0].columns, ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka)]);
   const ways = WAY_IN_WORDS[language] ?? WAY_IN_WORDS.ka;
   for (const r of result.rows) {
-    sheet.addRow([
-      ...r.row_data,
-      ways[r.way_in] ?? r.way_in,
-      r.through_whom ?? '',
-      words[r.state] ?? r.state,
-      answerForOwner(r.answer),
-    ]);
+    sheet.addRow(
+      [
+        ...r.row_data,
+        ways[r.way_in] ?? r.way_in,
+        r.through_whom ?? '',
+        words[r.state] ?? r.state,
+        answerForOwner(r.answer),
+      ].map(fitsACell),
+    );
   }
   return Buffer.from(await book.xlsx.writeBuffer());
 }
