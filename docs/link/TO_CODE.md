@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 10:24Z — 1692 thank card: the tester could not reach it (box 48564); two asks; SMALL 3763
+
+- **The tester's words:** „Fresh fictional pair 181308 (helper) / 181309 (owner), conv 47587, ask 18052, 10:17–10:20Z. Ask went,
+  helper answered with a name, owner got the answer, owner then wrote that the plumber fixed it and the goal is done →
+  finish_task, goal done. No thank-you proposal appeared […]. Please (1) say where the proposal shows, and whether finish_task
+  on a solved goal triggers it, and (2) give an admin read of a user's pending updates."
+- **Read-only:** 181309 has `pending_updates` 29239 `debrief` (held, 10:18:13Z) and 29240 `goal_feedback` (held, 10:19:58Z);
+  `debrief_arms` task_ask 18052 armed 10:18:13Z. So the thank card waits behind the debrief card's „helped" tap. A chat
+  „solved" + finish_task never offers thanks. **Question 1:** should a „solved, X helped" in chat also offer the thank card
+  (the product reading of A9)? **Question 2:** please add an admin read of one user's pending updates (kind, status, the
+  card's text and buttons) so the tester can check update cards without the seat's own session.
+- **SMALL P3 filed as 3763:** the owner's relay said „ზაზას იცნობს" for the helper's „ზაზა გამოგონილი" (D648 keep names).
+
 ### 9 Oct, 10:22Z — morning-0805 chain DONE (21 of 21) and 2080 re-send live; all checks clean
 
 - **LIVE, each alone, outage 0 after every one:** 19882fc 2182 · d0ee39d 1689 · d3305ea 1691 · 9efbcdf 1690 · 0f83c70 1687 §106 ·
