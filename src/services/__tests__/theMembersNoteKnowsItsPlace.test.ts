@@ -53,3 +53,25 @@ describe('the members note', () => {
     expect(chat.match(/\(await membersNoteFits\(\)\)/gu)).toHaveLength(2);
   });
 });
+
+describe('a closing turn is a closing turn by its words (RW-012 B, goal 20759)', () => {
+  it.each([
+    'ეს მოგვარდა, დახურე.',
+    'ვხურავ დანარჩენ კითხვებს',
+    'მოგვარდა, მადლობა.',
+    'Solved, close it',
+  ])('„%s" gets no members note, even while the goal is still open', (line) => {
+    expect(
+      membersNoteOutOfPlace(line, 'მოგვარებულია.', {
+        text: 'ბუღალტერი',
+        hasPlan: false,
+        open: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('a run that called finish_task never gets the note', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain("if (toolNamesUsed.includes('finish_task')) return false;");
+  });
+});
