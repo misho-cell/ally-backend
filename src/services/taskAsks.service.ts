@@ -3836,7 +3836,8 @@ export function askReminderLine(language: RunLanguage, askerName: string | null)
     case 'es':
       return `Un recordatorio: la pregunta de ${askerName} sigue sin respuesta — si tienes un minuto, tu respuesta ayudaría mucho. Si no lo sabes, dímelo también y no te molestaré más.`;
     default:
-      return `შეხსენება: ${geoName(askerName, 'gen')} კითხვა ჯერ უპასუხოა — თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.`;
+      // 4094: Misho's wording, §117.2.
+      return `შეხსენება: ${askerName} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ.`;
   }
 }
 
@@ -3887,7 +3888,10 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
        LIMIT $1
      )
      RETURNING ask_thread_id, to_user_id, question, shown_question, choices,
-               ${nameAsSavedBySql('task_asks.to_user_id', 'task_asks.from_user_id')} AS asker_name`,
+               -- 4094: the name the thread's header and first message carry, so the
+               -- reminder never names the asker differently (§117.2).
+               (SELECT NULLIF(TRIM(u.name), '') FROM "User" u
+                 WHERE u.id = task_asks.from_user_id) AS asker_name`,
     [limit, DECLINE_QUIET_HOURS],
     ASK_QUERY_TIMEOUT_MS,
   );
