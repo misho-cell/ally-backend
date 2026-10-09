@@ -28,6 +28,17 @@ const WAITING = {
   asker_name: 'ნინო',
 };
 
+/** Answers each query by what it asks: the waiting card, the claim, the chain. */
+function route(waiting: unknown, chain: unknown[] = [], claimed = true): void {
+  mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('FROM helper_thanks ht JOIN task_asks'))
+      return Promise.resolve(rows([waiting]));
+    if (sql.includes('RETURNING id')) return Promise.resolve(rows(claimed ? [{ id: 4 }] : []));
+    if (sql.includes('WITH RECURSIVE chain')) return Promise.resolve(rows(chain));
+    return Promise.resolve(rows([]));
+  });
+}
+
 beforeEach(() => jest.clearAllMocks());
 
 describe('the thank-you card', () => {
@@ -67,7 +78,7 @@ describe('the thank-you card', () => {
   });
 
   it('on yes, sends the helper one fixed line and rings once, then asks „again?"', async () => {
-    mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
+    route(WAITING);
     const reply = await settleThanksTap('42', 55, ThanksTap.Thank, 'ka');
     expect(mockSave).toHaveBeenCalledWith(
       900,
@@ -81,19 +92,32 @@ describe('the thank-you card', () => {
     const update = mockQuery.mock.calls.find(([sql]) =>
       String(sql).includes("SET state = 'decided'"),
     );
-    expect(update?.[1]).toEqual([4, 'thanks_only', true]);
+    expect(update?.[1]).toEqual([4, 'thanks_only']);
+    expect(update?.[0]).toContain("AND state = 'offered'");
+  });
+
+  it('thanks once when „yes" arrives twice — the second tap finds the card already claimed', async () => {
+    route(WAITING, [], false);
+    expect(await settleThanksTap('42', 55, ThanksTap.Thank, 'ka')).toBeNull();
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('is never offered for an ask nobody answered, or one that was declined', () => {
+    const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
+    expect(service).toContain("AND ta.status = 'answered' AND ta.declined_at IS NULL");
+  });
+
+  it('a day-14 row gives way to the card when the owner later says it helped', () => {
+    const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
+    expect(service).toContain("WHERE helper_thanks.state = 'followed_up'");
   });
 
   it('thanks everyone further down the chain who answered, each as they saved the asker', async () => {
-    mockQuery
-      .mockResolvedValueOnce(rows([{ ...WAITING, ask_id: 17000, asker_user_id: 42 }]))
-      .mockResolvedValueOnce(
-        rows([
-          { user_id: 88, thread_id: 901, asker_name: 'ნინო ბერიძე' },
-          { user_id: 99, thread_id: 902, asker_name: 'ნინო' },
-        ]),
-      )
-      .mockResolvedValue(rows([]));
+    route({ ...WAITING, ask_id: 17000, asker_user_id: 42 }, [
+      { user_id: 88, thread_id: 901, asker_name: 'ნინო ბერიძე' },
+      { user_id: 99, thread_id: 902, asker_name: 'ნინო' },
+    ]);
     await settleThanksTap('42', 55, ThanksTap.Thank, 'ka');
     expect(mockSave).toHaveBeenCalledWith(
       901,
@@ -115,7 +139,7 @@ describe('the thank-you card', () => {
   });
 
   it('on no, sends nothing to the helper and still asks „again?"', async () => {
-    mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
+    route(WAITING);
     const reply = await settleThanksTap('42', 55, ThanksTap.DoNotThank, 'ka');
     expect(mockSave).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
@@ -123,7 +147,7 @@ describe('the thank-you card', () => {
   });
 
   it('stores „would you ask again?" and says nothing more', async () => {
-    mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
+    route(WAITING);
     expect((await settleThanksTap('42', 55, ThanksTap.AgainNo, 'ka'))?.text).toBe('კარგი.');
     const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('ask_again = $2'));
     expect(update?.[1]).toEqual([4, false]);
