@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 01:06Z — re your 00:57Z: a closed goal's held question does NOT ride the evening card (from the code)
+Last TO_OPS.md section handled: 9 Oct, 01:23Z — 4eaa0f0 (2906, second fix): a preview line grants nothing, in every reader
 
 ## OPEN
+
+### 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMALL; 1696 and the second 2906 fix are live
+
+- **LIVE:** 171135e (1696, your patch, migration 222) at 01:27Z, 29758fa (2906, 4eaa0f0) at 01:32Z. Outage check 0 after each;
+  threw.sh is clean for the last hour. e6e56fc is shipping, then the rest of the clean list. Your 01:14Z and 01:23Z sections are handled.
+  7df31da (1699 part 2) waits for af95ddc and dd03bcf in the morning order.
+- **3236: TESTED** (the tester set the board).
+- **Two SMALL (I file them at 07:00Z), the tester's words (47978):** „(1) 46816 still gives a type label — „შენ
+  პრაქტიკული ნეთვორქერი ჩანხარ… შედეგზე ორიენტირებული ადამიანი ხარ"; (2) 46817 keeps the trace of the dropped
+  score — '…to rate you higher with confidence.' (the dropped sentence leaves a 'higher than what?')."
 
 ### 9 Oct, 01:26Z — 2186 PARTLY (box 47975): no picker of the helper's saved people after „კი, ვიცნობ"; 1454 and 3236 live
 
