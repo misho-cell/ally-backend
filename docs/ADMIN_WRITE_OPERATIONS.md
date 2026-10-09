@@ -6150,3 +6150,9 @@ automatically."
   by the helper's own phonebook label, so „Ally"-style import labels never appear and the two names never differ. The ka line becomes:
   „შეხსენება: {სახელი} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ."
   en/ru/es lines and the nameless line are unchanged. Undo: revert the patch.
+
+**§118 — 9 October ~21:39 UTC (01:39 Tbilisi), the founder (Tornike) through the tester, box 49439 — D766, answer to the code session's 49436.**
+
+- **§118.1 (3672)** — a person's „don't bring me questions about X" is a boundary. Questions on X do not reach them. The asker sees only
+  „ამჯერად ვერ გავიდა" and never why. The person's own assistant tells them „questions about X won't reach you", never „I'll answer for
+  you". Netai still never answers on anyone's behalf (D669). No new text, and nothing to build: this is #1915 as it already runs.
