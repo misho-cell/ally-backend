@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 9 Oct, 02:11Z — REVERT of 6f656bc (1687 discl
 
 ## OPEN
 
+### 9 Oct, 02:26Z — f2cf252 (the new SMALL P2, 47987): the helper reads „ხომ ვერ მირჩევ?", not the owner's „მირჩევს"
+
+- **Why it happened:** for ask 17755 the editor DID write „მირჩევ", and the server's person-flip check
+  (`thirdPersonTurnedToYou`, #2212) threw the rewrite away as „he turned into you". „მი-რჩევს" carries the „me"
+  object (he recommends ME, the owner), so in a question to the helper its subject is the reader. Ask 17689 passed only
+  because the editor rewrote the whole sentence.
+- **The fix:** a third-person verb that opens with the „me" object (მ + ა/ი/ე after an optional preverb: მირჩევს,
+  გამაცნობს; მიაქვს/მიიწევს excepted) is not counted as a flip. „შაბათსაც მუშაობს" → „მუშაობ" is still refused.
+  No model text: night-safe. Verify green (7,892). Cherry-picks cleanly on today's main; the suite passes there.
+- **DONE WHEN:** „ჰკითხე X-ს, კარგ სანტექნიკოსს ხომ ვერ მირჩევს" reaches the helper as a question to them
+  („…ხომ ვერ მირჩევ?"), on 2 of 2.
+- **Order:** any time, self-contained.
+
 ### 9 Oct, 02:21Z — 1687 re-sent (main patch night-0220): the disclosure line as its own paragraph, without a dash
 
 - **Root cause of the glue:** the line began „— ". Every stored assistant text goes through `scrubMechanicalForStorage`,
