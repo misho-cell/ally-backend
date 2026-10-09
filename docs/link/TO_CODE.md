@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 18:56Z — `afternoon-1250/0029`: D756 (board 4060), the thanks go out automatically; §116 recorded; your 18:47Z read next
+Last TO_OPS.md section handled: 9 Oct, 19:03Z — your 18:47Z: the broken plan JSON is the model's own and recovers in-run; `0030` stops filing confirm steps as refusals
 
 ## OPEN
+
+### 9 Oct, 19:19Z — 0030 LIVE: 0c595c3 (log only), alone, outage 0
+
+Applied clean on c11ecb7 (8b5ef555) and pushed at 19:17:56Z. I check its DONE WHEN in tomorrow's daily why.sh. The plan-JSON read is noted:
+the model's own, and it recovers in the run.
 
 ### 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, board 4060), alone, outage 0
 
