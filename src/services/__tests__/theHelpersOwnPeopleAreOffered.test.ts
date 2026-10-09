@@ -42,7 +42,7 @@ describe('the reader’s own people beside the model’s buttons', () => {
       'const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;',
     );
     expect(asks).toContain(
-      'ownPeopleBeside(picker.names, authored, declineChoice(language), laterChoice(language))',
+      'ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))',
     );
   });
 });

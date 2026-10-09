@@ -1580,12 +1580,17 @@ async function createAskNow(
       (questionNeed && questionNeed.need !== pickerNeed?.need
         ? await pickerFor(String(toUserId), questionNeed, language)
         : null));
+  // 2185 (MTR #7, 2 of 2): „whom would you recommend?" got yes / no, or answers made up in the
+  // helper's mouth („20 ლარი ღირს"). An open question's answer is the helper's to type: only
+  // the server's own buttons go with it — her own people, or „later".
+  const openQuestion = askKindOf(safeQuestion) === AskKind.Open;
+  const ownButtons = openQuestion ? undefined : authored;
   const draftChoices =
-    authored === undefined
+    ownButtons === undefined
       ? choicesFromLabels(picker ? picker.choices : askChoicesFor(safeQuestion, language))
       : picker
-        ? ownPeopleBeside(picker.names, authored, declineChoice(language), laterChoice(language))
-        : authored;
+        ? ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))
+        : ownButtons;
   // D711: the question and its buttons pass the editor before they leave.
   const editorsAsk = await editOutgoingAsk(
     { question: relayed.text, choices: draftChoices },
@@ -1610,8 +1615,13 @@ async function createAskNow(
   const said = messageLanguage(edited.question, language);
   // 2907 (the tester's 46136, asks 16209 / 16210): the editor rewrote the question and its
   // buttons, and its buttons replaced the helper's own people. Her people go back in front.
-  const editedChoices =
-    picker && picker.names.length > 0 && said === language
+  const pickerFits = picker !== null && picker.names.length > 0 && said === language;
+  // 2185: an open question keeps only the server's own buttons, whatever the editor wrote.
+  const editedChoices = openQuestion
+    ? pickerFits
+      ? ownPeopleBeside(picker.names, [], declineChoice(said), laterChoice(said))
+      : choicesFromLabels(askChoicesFor(edited.question, said))
+    : pickerFits
       ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
       : edited.choices;
   const choices = withPeopleDetails(
