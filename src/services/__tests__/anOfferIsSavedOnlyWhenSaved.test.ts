@@ -42,6 +42,14 @@ describe('a reply that says an offer was saved', () => {
     expect(offerNotSavedLine('en').confirm).toBe('Yes, save it');
   });
 
+  it('tells the model that an explicit „save it" is the yes (§113.2)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const tool = chat.slice(chat.indexOf("name: 'save_offer'"));
+    expect(tool.slice(0, 900).replace(/' \+\s+'/gu, '')).toContain(
+      'When the owner already wrote the line and asked you to save it, that is their yes.',
+    );
+  });
+
   it('runs in the owner’s turn, before the buttons pass the editor', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const guard = chat.indexOf('offerClaimWithoutTool(finalText, toolNamesUsed');

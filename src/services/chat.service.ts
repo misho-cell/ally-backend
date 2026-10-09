@@ -1479,8 +1479,8 @@ const SET_REMINDER_TOOL: AnthropicTool = {
 };
 
 /**
- * 1698 (A15): what the owner is open to. ⚠️ MODEL-FACING (D44): §109 in
- * ADMIN_WRITE_OPERATIONS.md, NOT YET APPROVED — the three descriptions below.
+ * 1698 (A15): what the owner is open to. ⚠️ MODEL-FACING (D44): the three descriptions
+ * below are §109 in ADMIN_WRITE_OPERATIONS.md, with §113.2's sentence in save_offer.
  */
 const SAVE_OFFER_TOOL: AnthropicTool = {
   name: 'save_offer',
@@ -1489,7 +1489,8 @@ const SAVE_OFFER_TOOL: AnthropicTool = {
     'interested", „yes to any Axel member asking about logistics". Write it as ONE line in your ' +
     'own words (never their typed words), read it back and ask if it is right; call with ' +
     'confirmed: true only after their yes. An offer never answers anyone and is never shown to ' +
-    'another person: it only helps find who may want to talk. Not for needs (those are goals).',
+    'another person: it only helps find who may want to talk. When the owner already wrote the ' +
+    'line and asked you to save it, that is their yes. Not for needs (those are goals).',
   input_schema: {
     type: 'object',
     properties: {
