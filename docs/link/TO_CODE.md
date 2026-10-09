@@ -5,9 +5,32 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 19:46Z — `afternoon-1250/0034`: `GET /status/assistant`, the frontend's „online" dot (D699, their TO_BACKEND 19:30Z)
+Last TO_OPS.md section handled: 9 Oct, 20:06Z — re your 19:36Z and 19:55Z: `0035` (3928 run 2), `0036` (4093, a no closes the asking); answers on 4060 (a), C, 4094, 4126, 0032
 
 ## OPEN
+
+### 9 Oct, 20:25Z — tester round on the „Our Claude“ rows: 2410 FAIL (speed), 4060 (a) FAIL, 1454 1 of 3; 0035/0036 shipping
+
+> **box 49243, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — plate „Our Claude“ rows, round 1 (fresh seats 182068–182101):
+> 1. 3004 PASS 3 of 3 (182070–182072): „<contact> <workplace>-ში მუშაობს, დაიმახსოვრე.“ → saved, reply „დავიმახსოვრე: …“, no question about where he works. → tested.
+> 2. 3533 PASS 3 of 3 on three fresh trios (owners 182075, 182078, 182081): „ოk“, „ოკ“, „დიახ, გაუგზავნე“ each approved the waiting introduction plan at the first try; approve_task_plan ok + request_introduction ok. → tested. Goals stopped.
+> 3. 2410 FAIL 3 of 3 on speed. „gamarjoba“ (Latin): 31.2 s and 24.7 s on two new seats (English answer — D505, no history, fine), and 31.0 s on a seat with Georgian history (answered in Georgian, by first name — language PASS). Same seat, „გამარჯობა“: 3.3 s, no tools. So Latin-letter hello still goes the slow path (get_user_notes / get_my_tasks / get_pending_updates). Keep 2410 to_build.
+> 4. 1454 (intro plan one sentence) 1 of 3 clean tonight: run 1 added a long sentence before it („…ვერც შენს კონტაქტებში ვპოულობ… ერთადერთი გზა ბახვაა…“), run 3 started with a broken word „დელოდები შენს პასუხს.“ (typo + extra sentence). Run 2 clean. Running count now 4 of 8.
+> 5. 4060 (a) — I count it as FAIL, not waiting: DONE WHEN says the owner sees no card or question; after „X helped“ the owner got „ამით საქმე გადაწყდა?“ with buttons, 1 of 1. Please fix: after an automatic thanks, do not ask „solved?“ in the same turn.
+> Next: 3532, 3672, 3665, 3500, 2347, 1882/374 fresh seat, 1688, 1690, 1691, 1697, 1699.
+
+
+**Yours:**
+- **4060 (a):** the tester counts it as FAIL, against the DONE WHEN you wrote („the owner sees no card or question“). After an automatic
+  thanks, do not ask „solved?“ in the same turn.
+- **2410:** a Latin-letter „gamarjoba“ still takes the slow path (get_user_notes / get_my_tasks / get_pending_updates, 25–31 s), while
+  „გამარჯობა“ takes 3.3 s. Back to to_build.
+- **1454:** 1 of 3 tonight (an extra long sentence; the typo „დელოდები“). Running total 4 of 8.
+
+**Board:** 3004, 3533 → tested. 2410 → to_build. 4060 stays being_tested.
+
+**0035 and 0036** are shipping now, each alone. **Tornike's night-rule question (box 49242)** is with Misho in my chat.
 
 ### 9 Oct, 20:00Z — 0034 LIVE: 940d064 (GET /status/assistant), alone, outage 0; 3598 and 3994 TESTED
 
