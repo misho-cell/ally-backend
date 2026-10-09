@@ -1,0 +1,681 @@
+From d3bb5c301a824e46d5b6a6045a95c5f5204f2c00 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 17:22:10 +0000
+Subject: [PATCH] =?UTF-8?q?fix(asks):=20=E2=80=9Eask=20X=20and=20Y"=20asks?=
+ =?UTF-8?q?=20both,=20on=20the=20goal=20the=20line=20repeats=20(3928)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+GP-052 step 3 (seat 181490): after „სანტექნიკოსი მჭირდება" (goal 23181), a
+new conversation said „სანტექნიკოსი მჭირდება, ჰკითხე ნიკა დამხმარე-ას და
+სოფო დამხმარე-ბს." The run saw the repeat („no second goal — this is goal
+23181 again"), but the server's case-1 send then opened goal 23200 anyway
+(a new conversation has no goal), took the first dative word as the end of
+the only name, and sent Nika „და სოფო დამხმარე-ბს." as the question. Sofo
+got nothing.
+
+- goalIntent: instructionNames reads a chain of names („X-ს და Y-ს",
+  „X-სა და Y-ს", „X-ს, Y-ს და Z-ს", „X and Y"); the question starts after the
+  last one; a comma that opens the question is not a second name;
+  instructionNeed gives the need said before the verb when no question
+  follows.
+- instructedAsk: every name must be exactly one saved contact or nothing is
+  sent; each is asked; the goal is the thread's, else the open goal the line
+  repeats, else a new one.
+- chat.service: the owner is told one approved line per person.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/goalIntent.test.ts     |  39 ++++
+ .../theServerAsksTheOneNamedContact.test.ts   |  52 +++++-
+ .../theServerSendIsToldInASentence.test.ts    |   3 +-
+ src/services/chat.service.ts                  |  40 ++--
+ src/services/goalIntent.ts                    | 127 ++++++++++---
+ src/services/instructedAsk.ts                 | 173 +++++++++++++-----
+ 6 files changed, 352 insertions(+), 82 deletions(-)
+
+diff --git a/src/services/__tests__/goalIntent.test.ts b/src/services/__tests__/goalIntent.test.ts
+index 3c2f2f5..dd19998 100644
+--- a/src/services/__tests__/goalIntent.test.ts
++++ b/src/services/__tests__/goalIntent.test.ts
+@@ -4,6 +4,9 @@ import {
+   isQuestionNotGoal,
+   needsNoOpeningSearch,
+   statesANeed,
++  instructionNames,
++  instructionNeed,
++  instructionQuestion,
+ } from '../goalIntent';
+ 
+ describe('looksLikeGoalRequest (Ticket 16 Task 90: the rule, in code)', () => {
+@@ -277,3 +280,39 @@ describe('„იპოვე" states a need', () => {
+     expect(statesANeed('მეგობრებმა იპოვეს ვეტერინარი')).toBe(false);
+   });
+ });
++
++/** 3928 (GP-052 step 3): a chain of names is read whole. */
++describe('an instruction that names several people', () => {
++  it('reads both names and leaves no question when none follows', () => {
++    const line = 'სანტექნიკოსი მჭირდება, ჰკითხე ნიკა დამხმარე-ას და სოფო დამხმარე-ბს.';
++    expect(instructionNames(line)).toEqual(['ნიკა დამხმარე-ა', 'სოფო დამხმარე-ბ']);
++    expect(instructionQuestion(line)).toBeNull();
++    expect(instructionNeed(line)).toBe('სანტექნიკოსი მჭირდება');
++  });
++
++  it('reads „X-სა და Y-ს", a comma list, and English „and"', () => {
++    expect(instructionNames('ჰკითხე ნიკასა და სოფოს, იცნობენ თუ არა სანტექნიკოსს?')).toEqual([
++      'ნიკა',
++      'სოფო',
++    ]);
++    expect(instructionNames('ჰკითხე ნიკას, სოფოს და ლევანს იციან თუ არა')).toEqual([
++      'ნიკა',
++      'სოფო',
++      'ლევან',
++    ]);
++    expect(instructionNames('ask Nika and Sofo whether they know a plumber')).toEqual([
++      'Nika',
++      'Sofo',
++    ]);
++  });
++
++  it('keeps one name and its question when a comma opens the question', () => {
++    const line = 'ჰკითხე გიგა ტესტაძეს, იცნობს თუ არა კარგ ნოტარიუსს';
++    expect(instructionNames(line)).toEqual(['გიგა ტესტაძე']);
++    expect(instructionQuestion(line)).toBe('იცნობს თუ არა კარგ ნოტარიუსს');
++  });
++
++  it('never takes a name before the verb for the need', () => {
++    expect(instructionNeed('ნინოს ჰკითხე, იცნობს თუ არა იურისტს')).toBeNull();
++  });
++});
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index 4828b0a..62621bd 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -3,6 +3,7 @@ const mockCreateAsk = jest.fn();
+ const mockOpenTask = jest.fn();
+ const mockCreateTask = jest.fn();
+ const mockGrant = jest.fn();
++const mockRepeated = jest.fn();
+ jest.mock('../tools/nameMatch', () => ({
+   findContactPhonesByName: (...a: unknown[]) => mockFindPhones(...a),
+   messageNamesOwnContact: jest.fn(),
+@@ -16,6 +17,7 @@ jest.mock('../taskStore.service', () => ({
+   getOpenTaskByThread: (...a: unknown[]) => mockOpenTask(...a),
+   createTask: (...a: unknown[]) => mockCreateTask(...a),
+   grantTaskPermission: (...a: unknown[]) => mockGrant(...a),
++  findOpenTaskNamedIn: (...a: unknown[]) => mockRepeated(...a),
+ }));
+ const mockQuery = jest.fn();
+ jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
+@@ -32,6 +34,7 @@ beforeEach(() => {
+   jest.resetAllMocks();
+   jest.spyOn(console, 'log').mockImplementation(() => undefined);
+   mockOpenTask.mockResolvedValue(null);
++  mockRepeated.mockResolvedValue(null);
+   mockCreateTask.mockResolvedValue({ id: 77 });
+   mockGrant.mockResolvedValue(true);
+   mockCreateAsk.mockResolvedValue({ sent: true, ask_id: 9, to_name: 'გიგა ტესტაძე' });
+@@ -41,7 +44,7 @@ describe('the server asks the one contact the owner named', () => {
+   it('opens the goal, grants from the instruction and sends the owner’s question', async () => {
+     mockFindPhones.mockResolvedValue(['995500000001']);
+ 
+-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
++    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toMatchObject({
+       result: InstructedAskResult.Sent,
+       toName: 'გიგა ტესტაძე',
+     });
+@@ -82,7 +85,7 @@ describe('the server asks the one contact the owner named', () => {
+     mockCreateAsk.mockResolvedValue({ sent: false, reason: 'recipient_not_member', error: 'x' });
+     mockQuery.mockResolvedValue({ rows: [{ alias: 'გიგა ხელოსანი' }] });
+ 
+-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
++    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toMatchObject({
+       result: InstructedAskResult.NotOnNetai,
+       toName: 'გიგა ხელოსანი',
+     });
+@@ -108,7 +111,7 @@ describe('3268: a person the owner marked deceased or blocked', () => {
+     mockExcluded.mockResolvedValue(true);
+     mockQuery.mockResolvedValue({ rows: [{ alias: 'გიგა ტესტაძე' }] });
+ 
+-    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toEqual({
++    await expect(sendInstructedAsk('178582', 42485, CASE_1)).resolves.toMatchObject({
+       result: InstructedAskResult.Excluded,
+       toName: 'გიგა ტესტაძე',
+     });
+@@ -122,3 +125,46 @@ describe('3268: a person the owner marked deceased or blocked', () => {
+     expect(EXCLUDED_LINE.ka('გიგა ტესტაძე')).not.toContain('კიდევ ერთხელ');
+   });
+ });
++
++/** 3928 (GP-052 step 3, seat 181490): two people named, a repeated need in a new conversation. */
++describe('a line that names two people', () => {
++  const LINE = 'სანტექნიკოსი მჭირდება, ჰკითხე ნიკა დამხმარე-ას და სოფო დამხმარე-ბს.';
++
++  beforeEach(() => {
++    mockFindPhones.mockImplementation((_u: string, name: string) =>
++      Promise.resolve(name.startsWith('ნიკა') ? ['995500000011'] : ['995500000012']),
++    );
++    mockCreateAsk
++      .mockResolvedValueOnce({ sent: true, ask_id: 1, to_name: 'ნიკა დამხმარე-ა' })
++      .mockResolvedValueOnce({ sent: true, ask_id: 2, to_name: 'სოფო დამხმარე-ბ' });
++  });
++
++  it('asks both, with the need as the question — never the names', async () => {
++    const outcome = await sendInstructedAsk('181490', 47871, LINE);
++    expect(outcome).toMatchObject({ result: InstructedAskResult.Sent, toName: 'ნიკა დამხმარე-ა' });
++    expect(mockCreateAsk).toHaveBeenCalledTimes(2);
++    expect(mockCreateAsk.mock.calls.map((c) => c[2])).toEqual(['995500000011', '995500000012']);
++    expect(mockCreateAsk.mock.calls.map((c) => c[3])).toEqual([
++      'სანტექნიკოსი მჭირდება',
++      'სანტექნიკოსი მჭირდება',
++    ]);
++    expect(outcome.result === InstructedAskResult.NotSent ? [] : outcome.people).toHaveLength(2);
++  });
++
++  it('puts the asks on the open goal the line repeats, never a second goal', async () => {
++    mockRepeated.mockResolvedValue({ id: 23181 });
++    await sendInstructedAsk('181490', 47871, LINE);
++    expect(mockCreateTask).not.toHaveBeenCalled();
++    expect(mockCreateAsk.mock.calls[0][1]).toBe(23181);
++  });
++
++  it('sends nothing when one of the names is not one saved contact', async () => {
++    mockFindPhones.mockImplementation((_u: string, name: string) =>
++      Promise.resolve(name.startsWith('ნიკა') ? ['995500000011'] : []),
++    );
++    await expect(sendInstructedAsk('181490', 47871, LINE)).resolves.toEqual({
++      result: InstructedAskResult.NotSent,
++    });
++    expect(mockCreateAsk).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/__tests__/theServerSendIsToldInASentence.test.ts b/src/services/__tests__/theServerSendIsToldInASentence.test.ts
+index 01e1fa8..36435f7 100644
+--- a/src/services/__tests__/theServerSendIsToldInASentence.test.ts
++++ b/src/services/__tests__/theServerSendIsToldInASentence.test.ts
+@@ -15,6 +15,7 @@ describe('theServerSendIsToldInASentence', () => {
+ 
+   it('is what the server fallback says after it sends', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain('return sentSentenceForOwner(outcome.toName, language);');
++    expect(chat).toContain('return sentSentenceForOwner(person.toName, language);');
++    expect(chat).toContain('outcome.people.map((person) => personLineForOwner(person, language))');
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index eef4f5f..ecc4551 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -396,7 +396,7 @@ import {
+   NOT_ON_NETAI_LINE,
+   NOT_SENT_LINE,
+ } from './instructionUnsent';
+-import { InstructedAskResult, sendInstructedAsk } from './instructedAsk';
++import { InstructedAskResult, PersonOutcome, sendInstructedAsk } from './instructedAsk';
+ import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
+ import {
+   asksAboutTheOwner,
+@@ -2599,13 +2599,17 @@ async function refusedPlanOrSentAsk(
+   );
+   if (outcome?.result !== InstructedAskResult.Sent) return refused;
+   runAskSent.add(runId);
+-  noteAskSentTo(runId, outcome.toName);
++  // 3928: everyone the line named and the server asked, not only the first.
++  const sentTo = outcome.people
++    .filter((p) => p.result === InstructedAskResult.Sent)
++    .map((p) => p.toName);
++  sentTo.forEach((name) => noteAskSentTo(runId, name));
+   return {
+     proposed: false,
+     reason: 'owner_instruction',
+     sent: true,
+-    to_name: outcome.toName,
+-    note: SENT_INSTEAD_OF_PLAN(outcome.toName),
++    to_name: sentTo.join(', '),
++    note: SENT_INSTEAD_OF_PLAN(sentTo.join(', ')),
+   };
+ }
+ 
+@@ -12039,6 +12043,21 @@ async function promisedAnActionItDidNotTake(
+   }
+ }
+ 
++/**
++ * What the owner is told about one person the server's send named: 2872's
++ * plain „sent" sentence, T2509's „not on Netai", 3268's „excluded" — each the
++ * line it already was, now said once per person.
++ */
++function personLineForOwner(person: PersonOutcome, language: RunLanguage): string {
++  if (person.result === InstructedAskResult.Sent) {
++    return sentSentenceForOwner(person.toName, language);
++  }
++  if (person.result === InstructedAskResult.NotOnNetai) {
++    return (NOT_ON_NETAI_LINE[language] ?? NOT_ON_NETAI_LINE.ka)(person.toName);
++  }
++  return (EXCLUDED_LINE[language] ?? EXCLUDED_LINE.ka)(person.toName);
++}
++
+ /**
+  * §97 item 1 (Misho's yes): the second chance sent nothing either. The server
+  * asks the one contact the owner named and says so in the ordinary per-person
+@@ -12061,16 +12080,9 @@ async function serverSendsOrSaysSo(
+       return null;
+     },
+   );
+-  if (outcome?.result === InstructedAskResult.Sent) {
+-    // 2872: one person asked — a plain sentence, not the bare status line.
+-    return sentSentenceForOwner(outcome.toName, language);
+-  }
+-  // T2509: a person not on Netai is said by name, not as „write it again".
+-  if (outcome?.result === InstructedAskResult.NotOnNetai) {
+-    return (NOT_ON_NETAI_LINE[language] ?? NOT_ON_NETAI_LINE.ka)(outcome.toName);
+-  }
+-  if (outcome?.result === InstructedAskResult.Excluded) {
+-    return (EXCLUDED_LINE[language] ?? EXCLUDED_LINE.ka)(outcome.toName);
++  if (outcome !== null && outcome.result !== InstructedAskResult.NotSent) {
++    // 3928: one approved sentence per person named, in the owner's order.
++    return outcome.people.map((person) => personLineForOwner(person, language)).join('\n');
+   }
+   // eslint-disable-next-line no-console
+   console.warn(
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index 5a036d4..c507b57 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -482,10 +482,94 @@ export function instructionAddressee(message: string): string | null {
+  * addressee: in Georgian the addressee ends in the dative „ს" („N1-ს",
+  * „ტესტაძეს"); in English the clause opens with „whether" / „if".
+  */
+-const DATIVE_WORD_RE = /^[\p{L}\p{N}-]*ს[,:]?$/u;
+ const ENGLISH_CLAUSE_RE = /\b(?:whether|if)\b/iu;
+ const LEADING_LINK_RE = /^[\s,:;—–-]*(?:რომ\s+)?/u;
+ 
++/**
++ * 3928 (GP-052 step 3, seat 181490): „ჰკითხე ნიკა დამხმარე-ას და სოფო
++ * დამხმარე-ბს." names TWO people. The first dative word ended the name, so
++ * „და სოფო დამხმარე-ბს." became the question Nika was sent. A chain of names
++ * („X-ს და Y-ს", „X-სა და Y-ს", „X-ს, Y-ს") is read whole: every name in it,
++ * and the question only after the last one.
++ */
++const NAME_LINK_WORDS: ReadonlySet<string> = new Set(['და', 'and', '&']);
++const LINKED_DATIVE_RE = /^[\p{L}\p{N}-]*სა$/u;
++/** A dative that may close a sentence: „…დამხმარე-ბს." */
++const CHAIN_DATIVE_RE = /^[\p{L}\p{N}-]*ს[,:;.!?]?$/u;
++const MAX_NAMES_IN_A_CHAIN = 5;
++
++interface NameChain {
++  /** Each name as typed, the dative ending taken off. */
++  readonly names: readonly string[];
++  /** Index (in the whitespace-kept split) of the first word after the chain. */
++  readonly endsAt: number;
++}
++
++function withoutDative(words: readonly string[]): string {
++  return words
++    .join(' ')
++    .replace(/[,:;.!?]$/u, '')
++    .replace(/-?სა?$/u, '')
++    .trim();
++}
++
++function endsAName(word: string, next: string | undefined): boolean {
++  if (CHAIN_DATIVE_RE.test(word)) return true;
++  return LINKED_DATIVE_RE.test(word) && next !== undefined && NAME_LINK_WORDS.has(next);
++}
++
++/**
++ * After „X-ს," the comma lists another name only when one comes: a word or two
++ * ending in the dative, then „და" or another comma („ნიკას, სოფოს და ლევანს").
++ * „ტესტაძეს, იცნობს თუ არა" is the question starting, not a second person.
++ */
++function listsAnotherName(rest: readonly string[]): boolean {
++  const words = rest.filter((w) => w.trim() !== '').slice(0, 3);
++  const end = words.findIndex((w) => CHAIN_DATIVE_RE.test(w) || LINKED_DATIVE_RE.test(w));
++  if (end < 0 || end > 1) return false;
++  const closing = words[end];
++  return closing.endsWith(',') || NAME_LINK_WORDS.has((words[end + 1] ?? '').toLowerCase());
++}
++
++/** The datives that open the words after an instruction's verb, as one chain. */
++function georgianNameChain(after: string): NameChain | null {
++  const parts = after.split(/(\s+)/u);
++  const names: string[] = [];
++  let current: string[] = [];
++  for (let i = 0; i < parts.length && names.length < MAX_NAMES_IN_A_CHAIN; i += 1) {
++    const word = parts[i];
++    if (word.trim() === '') continue;
++    current.push(word);
++    const next = parts.slice(i + 1).find((w) => w.trim() !== '');
++    if (!endsAName(word, next)) continue;
++    names.push(withoutDative(current));
++    current = [];
++    const linked = next !== undefined && NAME_LINK_WORDS.has(next.toLowerCase());
++    const listed = word.endsWith(',') && listsAnotherName(parts.slice(i + 1));
++    if (!linked && !listed) return { names, endsAt: i + 1 };
++    if (linked) i = parts.indexOf(next, i + 1);
++  }
++  return names.length === 0 ? null : { names, endsAt: parts.length };
++}
++
++/** Every person an instruction names, as typed; empty when none can be told apart. */
++export function instructionNames(sentence: string): string[] {
++  const match = CONTACT_VERB_RE.exec(sentence);
++  if (match === null) return [];
++  const before = datedNameBefore(sentence.slice(0, match.index));
++  if (before !== '') return [before];
++  const after = sentence.slice(match.index + match[0].length);
++  const english = ENGLISH_CLAUSE_RE.exec(after);
++  if (english !== null) {
++    return after
++      .slice(0, english.index)
++      .split(/\s*(?:,|\band\b|&)\s*/iu)
++      .map((name) => name.trim())
++      .filter((name) => name !== '');
++  }
++  return [...(georgianNameChain(after)?.names ?? [])].filter((name) => name !== '');
++}
++
+ /** What the owner wants asked, without „ask <name>"; null when it cannot be told apart. */
+ export function instructionQuestion(sentence: string): string | null {
+   const match = CONTACT_VERB_RE.exec(sentence);
+@@ -493,12 +577,24 @@ export function instructionQuestion(sentence: string): string | null {
+   const after = sentence.slice(match.index + match[0].length);
+   const english = ENGLISH_CLAUSE_RE.exec(after);
+   if (english !== null) return clauseOrNull(after.slice(english.index));
+-  const words = after.split(/(\s+)/u);
+-  const nameEnd = datedNameBefore(sentence.slice(0, match.index))
+-    ? 0
+-    : words.findIndex((w) => DATIVE_WORD_RE.test(w));
+-  if (nameEnd < 0) return null;
+-  return clauseOrNull(words.slice(nameEnd === 0 ? 0 : nameEnd + 1).join(''));
++  if (datedNameBefore(sentence.slice(0, match.index))) return clauseOrNull(after);
++  const chain = georgianNameChain(after);
++  if (chain === null) return null;
++  return clauseOrNull(after.split(/(\s+)/u).slice(chain.endsAt).join(''));
++}
++
++/**
++ * 3928: „სანტექნიკოსი მჭირდება, ჰკითხე X-ს და Y-ს." carries no question after
++ * the names — the need is said BEFORE the verb. That need, in the owner's own
++ * words, is what the helpers are asked; never the whole line with „ask X" in it.
++ */
++export function instructionNeed(sentence: string): string | null {
++  const match = CONTACT_VERB_RE.exec(sentence);
++  if (match === null) return null;
++  const beforeVerb = sentence.slice(0, match.index);
++  if (datedNameBefore(beforeVerb) !== '') return null;
++  const need = beforeVerb.replace(/[\s,;:—–-]+$/u, '').trim();
++  return need === '' ? null : need;
+ }
+ 
+ /**
+@@ -508,22 +604,7 @@ export function instructionQuestion(sentence: string): string | null {
+  * null when the name cannot be told apart from the question.
+  */
+ export function instructionNamed(sentence: string): string | null {
+-  const match = CONTACT_VERB_RE.exec(sentence);
+-  if (match === null) return null;
+-  const before = datedNameBefore(sentence.slice(0, match.index));
+-  if (before !== '') return before;
+-  const words = sentence
+-    .slice(match.index + match[0].length)
+-    .split(/\s+/u)
+-    .filter((w) => w !== '');
+-  const nameEnd = words.findIndex((w) => DATIVE_WORD_RE.test(w));
+-  if (nameEnd < 0) return null;
+-  const named = words
+-    .slice(0, nameEnd + 1)
+-    .join(' ')
+-    .replace(/[,:]$/u, '')
+-    .replace(/-?ს$/u, '');
+-  return named.trim() === '' ? null : named.trim();
++  return instructionNames(sentence)[0] ?? null;
+ }
+ 
+ function clauseOrNull(text: string): string | null {
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index 48ca8b7..617697c 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -4,11 +4,18 @@ import {
+   goalTitleFrom,
+   instructionAddressee,
+   instructionNamed,
++  instructionNames,
++  instructionNeed,
+   instructionQuestion,
+ } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { createAsk } from './taskAsks.service';
+-import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
++import {
++  createTask,
++  findOpenTaskNamedIn,
++  getOpenTaskByThread,
++  grantTaskPermission,
++} from './taskStore.service';
+ import { findContactPhonesByName } from './tools/nameMatch';
+ 
+ /**
+@@ -18,8 +25,9 @@ import { findContactPhonesByName } from './tools/nameMatch';
+  * owner's own question, through createAsk's editor and walls like any ask. The
+  * typed instruction naming one person is the consent (D316).
+  *
+- * Refuses (null) unless the line names exactly one saved contact: two
+- * matches, none, or no instruction at all leave it to the owner.
++ * Refuses (null) unless every person the line names is exactly one saved
++ * contact (3928: „X-ს და Y-ს" asks both): two matches for a name, none, or no
++ * instruction at all leave it to the owner.
+  */
+ const NAME_WORDS_TRIED = [2, 1] as const;
+ const MATCHES_LOOKED_AT = 2;
+@@ -36,14 +44,20 @@ export enum InstructedAskResult {
+   NotSent = 'not_sent',
+ }
+ 
++/** What happened for one person the instruction named. */
++export interface PersonOutcome {
++  readonly result:
++    | InstructedAskResult.Sent
++    | InstructedAskResult.NotOnNetai
++    | InstructedAskResult.Excluded;
++  readonly toName: string;
++}
++
+ export type InstructedAskOutcome =
+-  | {
+-      readonly result:
+-        | InstructedAskResult.Sent
+-        | InstructedAskResult.NotOnNetai
+-        | InstructedAskResult.Excluded;
+-      readonly toName: string;
+-    }
++  | (PersonOutcome & {
++      /** 3928: every person named, in the owner's order; the first sent one leads. */
++      readonly people: readonly PersonOutcome[];
++    })
+   | { readonly result: InstructedAskResult.NotSent };
+ 
+ const NOT_SENT: InstructedAskOutcome = { result: InstructedAskResult.NotSent };
+@@ -67,9 +81,8 @@ export async function ownersLabel(userId: string, phone: string, typed: string):
+   return result.rows[0]?.alias ?? typed;
+ }
+ 
+-/** The one phone the instruction's addressee names; null for none or several. */
+-export async function oneContactNamed(userId: string, sentence: string): Promise<string | null> {
+-  const words = (instructionAddressee(sentence) ?? '').split(/\s+/u).filter((w) => w !== '');
++/** The one phone these typed words name; null for none or several. */
++async function phoneForWords(userId: string, words: readonly string[]): Promise<string | null> {
+   for (const count of NAME_WORDS_TRIED) {
+     if (words.length < count) continue;
+     const phones = await findContactPhonesByName(
+@@ -83,10 +96,53 @@ export async function oneContactNamed(userId: string, sentence: string): Promise
+   return null;
+ }
+ 
++function wordsOf(text: string): string[] {
++  return text.split(/\s+/u).filter((w) => w !== '');
++}
++
++/** The one phone the instruction's addressee names; null for none or several. */
++export async function oneContactNamed(userId: string, sentence: string): Promise<string | null> {
++  return phoneForWords(userId, wordsOf(instructionAddressee(sentence) ?? ''));
++}
++
++export interface NamedContact {
++  readonly phone: string;
++  /** The name as the owner typed it. */
++  readonly typed: string;
++}
++
++/**
++ * 3928: everyone the instruction names, each exactly one saved contact — or
++ * null, so a line where any one name is unclear is left to the owner whole
++ * rather than half-sent. One name keeps the original reading.
++ */
++export async function contactsNamed(
++  userId: string,
++  sentence: string,
++): Promise<NamedContact[] | null> {
++  const names = instructionNames(sentence);
++  if (names.length <= 1) {
++    const phone = await oneContactNamed(userId, sentence);
++    return phone === null ? null : [{ phone, typed: instructionNamed(sentence) ?? '' }];
++  }
++  const found: NamedContact[] = [];
++  for (const typed of names) {
++    const phone = await phoneForWords(userId, wordsOf(typed));
++    if (phone === null) return null;
++    if (!found.some((c) => c.phone === phone)) found.push({ phone, typed });
++  }
++  return found;
++}
++
+ /** The goal on this conversation, opened from the owner's line when there is none. */
+ async function goalFor(userId: string, threadId: number, ownerLine: string): Promise<number> {
+   const open = await getOpenTaskByThread(threadId);
+   if (open !== null) return open.id;
++  // 3928 (seat 181490): the run had already found that this line repeats goal
++  // 23181 („no second goal"), and this opened goal 23200 anyway, because a new
++  // conversation has no goal of its own. The goal it repeats is the goal.
++  const repeated = await findOpenTaskNamedIn(userId, ownerLine).catch(() => null);
++  if (repeated !== null) return repeated.id;
+   const { id } = await createTask(
+     userId,
+     goalTitleFrom(ownerLine),
+@@ -98,30 +154,18 @@ async function goalFor(userId: string, threadId: number, ownerLine: string): Pro
+   return id;
+ }
+ 
+-export async function sendInstructedAsk(
++/** One named person asked; null when the ask could not go for another reason. */
++async function askOne(
+   userId: string,
++  taskId: number,
++  contact: NamedContact,
++  question: string,
+   threadId: number,
+-  ownerLine: string,
+-): Promise<InstructedAskOutcome> {
+-  const sentence = contactInstructionIn(ownerLine);
+-  if (sentence === null) return NOT_SENT;
+-  const phone = await oneContactNamed(userId, sentence);
+-  if (phone === null) return NOT_SENT;
+-  // 3268: before any goal is opened for it.
+-  if (await isDeceasedOrBlockedFor(userId, phone)) {
+-    return {
+-      result: InstructedAskResult.Excluded,
+-      toName: await ownersLabel(userId, phone, instructionNamed(sentence) ?? ''),
+-    };
+-  }
+-  const taskId = await goalFor(userId, threadId, ownerLine);
+-  await grantTaskPermission(userId, taskId);
+-  // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
+-  const question = instructionQuestion(sentence) ?? sentence;
++): Promise<PersonOutcome | null> {
+   const outcome = await createAsk(
+     userId,
+     taskId,
+-    phone,
++    contact.phone,
+     question,
+     undefined,
+     threadId,
+@@ -130,15 +174,62 @@ export async function sendInstructedAsk(
+     undefined,
+     true,
+   );
+-  if (!outcome.sent) {
+-    if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return NOT_SENT;
+-    const typed = instructionNamed(sentence) ?? '';
+-    return {
+-      result: InstructedAskResult.NotOnNetai,
+-      toName: await ownersLabel(userId, phone, typed),
+-    };
++  if (outcome.sent) return { result: InstructedAskResult.Sent, toName: outcome.to_name };
++  if (outcome.reason === undefined || !NOT_ON_NETAI_REASONS.has(outcome.reason)) return null;
++  return {
++    result: InstructedAskResult.NotOnNetai,
++    toName: await ownersLabel(userId, contact.phone, contact.typed),
++  };
++}
++
++function summed(people: readonly PersonOutcome[]): InstructedAskOutcome {
++  if (people.length === 0) return NOT_SENT;
++  const lead = people.find((p) => p.result === InstructedAskResult.Sent) ?? people[0];
++  return { ...lead, people };
++}
++
++/** 3268: the people the owner marked deceased or blocked — nothing goes to them. */
++async function excludedAmong(
++  userId: string,
++  contacts: readonly NamedContact[],
++): Promise<Set<string>> {
++  const excluded = new Set<string>();
++  for (const c of contacts)
++    if (await isDeceasedOrBlockedFor(userId, c.phone)) excluded.add(c.phone);
++  return excluded;
++}
++
++export async function sendInstructedAsk(
++  userId: string,
++  threadId: number,
++  ownerLine: string,
++): Promise<InstructedAskOutcome> {
++  const sentence = contactInstructionIn(ownerLine);
++  if (sentence === null) return NOT_SENT;
++  const contacts = await contactsNamed(userId, sentence);
++  if (contacts === null) return NOT_SENT;
++  const excluded = await excludedAmong(userId, contacts);
++  const people: PersonOutcome[] = [];
++  for (const c of contacts.filter((c) => excluded.has(c.phone))) {
++    const toName = await ownersLabel(userId, c.phone, c.typed);
++    people.push({ result: InstructedAskResult.Excluded, toName });
++  }
++  const askable = contacts.filter((c) => !excluded.has(c.phone));
++  // 3268: before any goal is opened for it — nobody left to ask, no goal.
++  if (askable.length === 0) return summed(people);
++  const taskId = await goalFor(userId, threadId, ownerLine);
++  await grantTaskPermission(userId, taskId);
++  // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
++  // 3928: a line with no question after the names asks about the need said before them.
++  const question = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
++  for (const c of askable) {
++    const outcome = await askOne(userId, taskId, c, question, threadId);
++    if (outcome !== null) people.push(outcome);
+   }
++  if (!people.some((p) => p.result !== InstructedAskResult.Excluded)) return NOT_SENT;
+   // eslint-disable-next-line no-console
+-  console.log(`[instruction-unsent] thread ${threadId}: the server asked the one named contact`);
+-  return { result: InstructedAskResult.Sent, toName: outcome.to_name };
++  console.log(
++    `[instruction-unsent] thread ${threadId}: the server asked ${askable.length} named contact(s)`,
++  );
++  return summed(people);
+ }
+-- 
+2.43.0
+

@@ -8,6 +8,29 @@ Last TO_CODE.md section handled: 9 Oct, 16:36Z — 0022 LIVE (416e573); 389 repl
 
 ## OPEN
 
+### 9 Oct, 17:25Z — `afternoon-1250/0024`: 3928 („ask X and Y" asked only X, with a broken question, on a second goal)
+
+- **What happened (seat 181490, thread 47871, 11:31–11:33Z):** the owner had goal 23181 „სანტექნიკოსი მჭირდება" open, then wrote in a NEW
+  conversation „სანტექნიკოსი მჭირდება, ჰკითხე ნიკა დამხმარე-ას და სოფო დამხმარე-ბს." The run found the repeat („no second goal — this is goal
+  23181 again"). The model asked nobody, so the server's case-1 send stepped in and went wrong three ways:
+  1. It opened goal 23200, because a new conversation has no goal.
+  2. It took the first dative word as the end of the only name.
+  3. It sent Nika „და სოფო დამხმარე-ბს." as the question (ask 18251). Sofo got nothing.
+- **0024 (branch 3a397e5):**
+  - The instruction reader takes a whole chain of names („X-ს და Y-ს", „X-სა და Y-ს", „X-ს, Y-ს და Z-ს", „X and Y"). The question starts
+    after the last name, and a comma that opens the question („ტესტაძეს, იცნობს…") is not a second name.
+  - With no question after the names, the need said before the verb („სანტექნიკოსი მჭირდება") is what the helpers are asked; never the
+    whole line.
+  - Every name must be exactly one saved contact, or nothing is sent (the owner gets the „not sent" line as before). Each one is asked.
+  - The asks go on the thread's goal, else the open goal the line repeats, else a new one.
+  - The owner gets the approved per-person sentence once for each person (sent / not on Netai / excluded).
+  - Tests: both asked, with the need as the question; no second goal when the line repeats one; nothing sent when one name is unclear.
+    The parser cases use the run's own line.
+- **Order:** alone, on main 3497daf (0023 is there). verify: 7,903 passed, 42 skipped.
+- **DONE WHEN (GP-052 step 3 re-run):** after a need goal, the same need with „ჰკითხე X-ს და Y-ს" in a new conversation gives one goal, not
+  two, and both X and Y receive the need as the question. The owner gets two „…კითხვა გავუგზავნე" lines (2 of 2).
+- **Next with me:** 3897 (list rows reported „not in your network" unsearched), then the 3829 SMALLs.
+
 ### 9 Oct, 17:10Z — `afternoon-1250/0023`: 3896 („ask my acquaintances" asks nobody); 1692's question went to Tornike (box 49107)
 
 - **Cause (seats 181275 and 181451, the two clean runs):** „იპოვე კარგი ვეტერინარი თბილისში, ჩემს ნაცნობებს ჰკითხე." opened NO goal. The
