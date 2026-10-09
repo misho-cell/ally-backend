@@ -151,11 +151,12 @@ describe('a line that names two people', () => {
     expect(outcome.result === InstructedAskResult.NotSent ? [] : outcome.people).toHaveLength(2);
   });
 
-  it('puts the asks on the open goal the line repeats, never a second goal', async () => {
+  it('asks under this conversation’s own goal, never one from another conversation (3928 run 2)', async () => {
     mockRepeated.mockResolvedValue({ id: 23181 });
     await sendInstructedAsk('181490', 47871, LINE);
-    expect(mockCreateTask).not.toHaveBeenCalled();
-    expect(mockCreateAsk.mock.calls[0][1]).toBe(23181);
+    expect(mockCreateTask).toHaveBeenCalledTimes(1);
+    expect(mockCreateTask.mock.calls[0][4]).toBe(47871);
+    expect(mockCreateAsk.mock.calls[0][1]).not.toBe(23181);
   });
 
   it('sends nothing when one of the names is not one saved contact', async () => {

@@ -46,9 +46,12 @@ describe('a turn that repeats an open goal', () => {
 
 /** 3928 run 2 (conv 48521): „…ჰკითხე X-ს და Y-ს." is an instruction, never a repeat. */
 describe('an order to ask named people on the open goal’s subject', () => {
-  it('is bound to the goal but not walled as a repeat', () => {
+  it('opens this conversation’s own goal, never walled as a repeat (49441)', () => {
     expect(CHAT).toContain(
       'const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;',
+    );
+    expect(CHAT).toMatch(
+      /const already = ownerLineNamesPeopleToAsk\(userMessage\)\s+\? null\s+: await findOpenTaskNamedIn/u,
     );
     const fn = CHAT.slice(CHAT.indexOf('function ownerLineNamesPeopleToAsk('));
     expect(fn.slice(0, 300)).toContain('instructionNames(sentence).length > 0');
