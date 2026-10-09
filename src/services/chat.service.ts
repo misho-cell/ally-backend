@@ -8946,7 +8946,9 @@ async function executeToolCall(
     }
     case 'list_status': {
       const taskId = await listGoalOfThisConversation(threadId, input['task_id']);
-      if (taskId === null) return { error: NO_GOAL_FOR_THE_LIST };
+      // 2347 (48280): with no goal the model read only the error and answered „I cannot make an
+      // Excel file here". There is no Excel because there is no worked list — #894's own note says so.
+      if (taskId === null) return { error: NO_GOAL_FOR_THE_LIST, download: LIST_DOWNLOAD_NOT_YET };
       const status = await listStatus(userId, taskId);
       return { ...status, download: listDownloadNote(status) };
     }
