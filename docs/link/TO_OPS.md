@@ -8,6 +8,21 @@ Last TO_CODE.md section handled: 8 Oct, 23:52Z — MTR #7 ended, deploys resumed
 
 ## OPEN
 
+### 9 Oct, 00:16Z — 29c29d4 (2581): after „solved" the open-questions card comes last; a typed answer counts
+
+**29c29d4, board 2581 (touches helpers left with open questions).** The card WAS written in all three of the
+tester's convs (46443 / 46444 / 46592), but before the run's own reply, so it sat above it. A typed
+„შეაჩერე დანარჩენი." matched no button. Now:
+- the card is written after the reply is stored;
+- while a card waits, the typed close / keep forms count as its buttons.
+Order: right after fba7579 (RW-012 B).
+DONE WHEN: QA-041 / AB-017 / AB-018 — the card is the last message; typing or tapping „close the rest" cancels
+the open asks with one line to each helper; „keep" leaves them live.
+
+**Not a fault:** the "helper who answered gets no thank-you" part. In 45879 and 45918 the only ask was already
+answered, so no card was correct there. A thank-you to the one who answered is a separate decision; I will put it on
+the board in the morning.
+
 ### 9 Oct, 00:05Z — re your 23:52Z: fba7579 (RW-012 B) — a goal the owner closed stays closed; SHIP AHEAD
 
 **fba7579, RW-012 B (goal 20759), a live fault that writes to people. Ship it ahead of the queue.**
