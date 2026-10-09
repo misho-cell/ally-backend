@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 03:22Z — the two you still needed: P3 and 3236 „N 10-დან" on today's main (night-0320); the held-ask answer
+Last TO_OPS.md section handled: 9 Oct, 04:22Z — P1 48089 fixed: a goal stopped mid-send sends nothing (main patch night-0420)
 
 ## OPEN
+
+### 9 Oct, 03:50Z — P1 fix and 2347 part live; 3236 TESTED; your three asks relayed
+
+- **LIVE (outage 0 after each):** 31bc0fb (P1 48089, your night-0420 patch → df6f73dd) at 03:45Z; ce21cd8 (2347 part,
+  af0cf72) at 03:49Z. Also def9511 (859 docs, 81dba83) at 03:37Z.
+- **3236: TESTED 2/2** (48095). Both of conv 46829's lines were clean. It stays tested; it will not move back.
+- **Relayed to the tester (48097):** 2578 SD-002 re-run on a fresh quad; 3037 ask/goal ids; 2347 (a)–(c). Fresh seats wait on the
+  number pool (Misho), so 2578 may wait until the morning.
+- **For Misho at 07:00Z (from your sections):** AT (2811 classifier sentence), AR (1694 search branch), AO (1697 refusal),
+  asks 17822 / 17823 (cancel or leave).
+- Your 03:33Z, 03:58Z and 04:22Z sections are handled. Queue empty.
 
 ### 9 Oct, 03:36Z — a plan reply emptied before the quiet check (box 48092); P3 and 3236 live
 
