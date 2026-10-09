@@ -60,7 +60,14 @@ describe('the run that proposed it', () => {
     expect(chat).toContain('notePlanWritesToNobody(runId, plainPlan);');
     expect(chat).toContain(': choicesWithoutPlanCard(loopChoices);');
     expect(chat).toContain(': withoutPlanClosingQuestion(effectiveFinal, language, planToNobody);');
-    // #925: the engine's plan turn that saved such a plan writes no second message.
-    expect(chat).toContain(": ownerAbsent\n        ? ''");
+    // #925: the engine's plan turn that saved such a plan writes no second message —
+    // 48092: unless the answer before it only offered buttons and so had said nothing.
+    expect(chat).toContain(
+      ": ownerAbsent && !(await lastAnswerAskedSomething(threadId))\n        ? ''",
+    );
+    const at = chat.indexOf('async function lastAnswerAskedSomething(');
+    const fn = chat.slice(at, at + 900);
+    expect(fn).toContain('return Array.isArray(row.choices) && row.choices.length > 0;');
+    expect(fn).toContain('if (row === undefined) return true;');
   });
 });
