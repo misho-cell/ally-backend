@@ -5,9 +5,54 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 19:03Z — your 18:47Z: the broken plan JSON is the model's own and recovers in-run; `0030` stops filing confirm steps as refusals
+Last TO_OPS.md section handled: 9 Oct, 19:24Z — `afternoon-1250/0031`–`0033`: three of last night's fixes never reached main (3567 privacy, 3568 safety, 3598)
 
 ## OPEN
+
+### 9 Oct, 19:36Z — 0031 LIVE (3567); **0032 HELD for Misho** (new crisis text to a person); tester #13 results; founder's find → 4093, 4094
+
+**Ships:**
+- **0031** went alone as c267d39 (verify 7,931), outage 0.
+- **0033** (3598) is next. It applies cleanly without 0032 (bd71e021).
+- **0032 (3568) is held.** It shows a person a new fixed text (112, „stay with them“, the psychologist offer) at the most sensitive moment, and
+  I find no record of approval. Your own rule sends new text going to a real person to Misho first. I put the exact ka texts to Misho in my
+  chat. If an approval already exists, tell me its §.
+
+> **box 49207, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — tests of 49151 / 49171, fresh fictional seats 182034–182043, all helpers typed one Georgian line first.
+> 
+> 1. 3961 (ad2d960) PASS 2 of 2. „შეხვედრა დამინიშნე <X>-თან ხვალ 3 საათზე.“ → no plan card, X got one question about the meeting tomorrow 15:00, owner told. Owner line reads „<X>-ს ვკითხე…“ (not „…კითხვა გავუგზავნე“) — fine by me. SMALL: run 1 helper text „შეგიძლია ხვალ 3 საათზე შეხვედრა“ is a broken sentence (no verb, no question mark), run 2 was good. 3961 → tested.
+> 
+> 2. 4060 / D756 (c11ecb7): (a) owner typed „ლევანის პასუხი დამეხმარა“ with goal open → helper got „… გიხდის მადლობას დახმარებისთვის.“ PASS, BUT the owner was then asked „ამით საქმე გადაწყდა?“ with buttons [გადაწყდა/ჯერ არა/შევაჩეროთ] (finish_task refused „NOT CLOSED“, then present_choices). DONE WHEN said no card or question — is this „solved?“ question allowed (it is about closing, not thanks)? (b) after „მოგვარდა“ → thanks sent, goal done, no card PASS. (c) line typed twice → thanked once PASS. 4060 stays being_tested until you answer (a).
+> 
+> 3. 3928 (9c5f676) 1 of 2 — FAIL on run 2. Run 1 (first goal had already finished its search): new conversation „ელექტრიკოსი … ჰკითხე X-ს და Y-ს.“ → no plan card, both got the need, owner got one combined line „X-ს და Y-ს უკვე მივწერე…“ (not two lines). Run 2 (first goal still WORKING): new conversation „სანტექნიკოსი … ჰკითხე X-ს და Y-ს.“ → search_contact_by_name refused 4 times „Not searched: this message repeats open goal 23633…“, then „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ Nobody asked. The repeat-goal guard must not block a direct „ask X and Y“ by name. Please file/keep under 3928 (P2, SMALL — area of the a2a big build). Conv 48361 on seat 182043.
+> 
+> All my test goals of this round are being stopped now.
+
+> **box 49208, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — FOUNDER'S FIND, from Giorgi's real account (screens, ask from Lika to Giorgi: introduce her to Tornike). Please file as two tasks, created by Tornike, P2:
+> 
+> A. BIG-area, SMALL fix — „leave me alone“ is not respected. 6 Oct Giorgi answered „არ მცალია დამანებე თავი“ (I'm busy, leave me alone). Netai said „პასუხი გაიგზავნა“, then on 7 Oct sent him another question from the asker's assistant, and on 9 Oct 11:56 a reminder. A busy / leave-me-alone / no answer must close the ask for that person: no follow-up, no reminder; the asker is told kindly that he can't now. DONE WHEN: a helper answers „არ მცალია, დამანებე თავი“ → 0 follow-ups and 0 reminders in 48h, asker told once (2 of 2).
+> 
+> B. SMALL — the reminder and follow-up texts are bad Georgian and not an assistant's voice (D659 warm human tone):
+>  • reminder: „შეხსენება: Lika O. Ally-ის კითხვა ჯერ უპასუხოა, თუ ერთი წუთი გაქვს, პასუხი ძალიან გამოადგება. თუ არ იცი, ისიც მომწერე და აღარ შეგაწუხებ.“ — says the OLD name Ally, broken grammar, and the name differs from the header („Lika Ose“ vs „Lika O.“). Prompt blocks do not contain it, so it is a fixed text in code.
+>  • follow-up: „გიორგი, არაუშავს, გეჩვენება როცა მოგეცლება? მხოლოდ იმის დასადასტურებლად მჭირდება, გინდა თუ არა თორნიკე აბულაძესთან გაცნობის დაწყება.“ — broken Georgian, robotic.
+>  DONE WHEN: no „Ally“ word in any text a user receives; the reminder is written by the assistant in natural Georgian with one consistent name; read by Giorgi or Lika as fine.
+> 
+> C. The line „უბრალოდ მიპასუხე ამ თრედში, პასუხს მე გადავცემ.“ on that screen is from 5 Oct, before D707 (7 Oct) removed it. The 6 questions my tests sent tonight do not carry it, and no prompt block has it. Please confirm no code path still adds it (old asks re-sent as reminders included).
+
+
+(The surname is redacted by me; it is a real person.)
+
+**Yours:**
+- **4060 (a):** after the automatic thanks with the goal open, the run asked „ამით საქმე გადაწყდა?“ [გადაწყდა/ჯერ არა/შევაჩეროთ]. Is that
+  allowed under D756? It asks about closing, not about the thanks. Please answer for the tester.
+- **3928 run 2 FAIL:** with the first goal still working, the repeat-goal refusal blocked search_contact_by_name 4 times, and nobody was asked
+  („კითხვა არ გაიგზავნა…“). A direct „ask X and Y“ by name must pass that guard. Also, run 1 gave one combined line, not two (fine by the tester).
+- **3961 SMALL:** a broken helper sentence in run 1.
+- **Founder's find:** filed as board **4093** (A, leave-me-alone not respected) and **4094** (B, the reminder/follow-up texts and „Ally“).
+  **C** is a question to you: does any code path still add „უბრალოდ მიპასუხე ამ თრედში…“, including old asks re-sent as reminders?
+- **Board:** 3961 → tested.
 
 ### 9 Oct, 19:19Z — 0030 LIVE: 0c595c3 (log only), alone, outage 0
 
