@@ -1,0 +1,133 @@
+From ec24b31acc3d3100923d51dd89f56c54f6608f7a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 21:47:19 +0000
+Subject: [PATCH 44/45] =?UTF-8?q?fix(goals):=20=E2=80=9Eask=20X=20and=20Y"?=
+ =?UTF-8?q?=20in=20a=20new=20conversation=20opens=20that=20conversation's?=
+ =?UTF-8?q?=20own=20goal=20(3928=20run=202)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49441, pair 182205 (conv 48589): „სანტექნიკოსი … ჰკითხე ილია
+ტესტაძეს და ნოდარ ტესტაძეს." typed in a new conversation was bound to the
+open goal of the first conversation (the same need). Asks under a goal that
+lives in another conversation are refused (askedFromAnotherGoalsThread),
+so ask_contact was refused three times, „call create_task first", and only
+one of the two was asked.
+
+An order to ask named people is the request of the conversation it is
+typed in. The repeat check is skipped for such a line, and it opens its
+own goal here. The server's own send (instructedAsk.goalFor) no longer
+files it under another conversation's goal either.
+
+DONE WHEN: 3928 run 2 on 2 fresh pairs, the first goal working or waiting
+— both named people asked, and the owner told who it went to.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 51b0f2dd57cd14bf2b255b7491554081497c0d98)
+---
+ .../aRepeatedRequestDoesNotSearchAgain.test.ts    |  5 ++++-
+ .../theServerAsksTheOneNamedContact.test.ts       |  7 ++++---
+ src/services/chat.service.ts                      | 12 +++++++++++-
+ src/services/instructedAsk.ts                     | 15 ++++-----------
+ 4 files changed, 23 insertions(+), 16 deletions(-)
+
+diff --git a/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts b/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts
+index ec2643a..4b2f11a 100644
+--- a/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts
++++ b/src/services/__tests__/aRepeatedRequestDoesNotSearchAgain.test.ts
+@@ -46,10 +46,13 @@ describe('a turn that repeats an open goal', () => {
+ 
+ /** 3928 run 2 (conv 48521): „…ჰკითხე X-ს და Y-ს." is an instruction, never a repeat. */
+ describe('an order to ask named people on the open goal’s subject', () => {
+-  it('is bound to the goal but not walled as a repeat', () => {
++  it('opens this conversation’s own goal, never walled as a repeat (49441)', () => {
+     expect(CHAT).toContain(
+       'const repeatedGoal = ownerLineNamesPeopleToAsk(userMessage) ? null : goalForRequest.repeats;',
+     );
++    expect(CHAT).toMatch(
++      /const already = ownerLineNamesPeopleToAsk\(userMessage\)\s+\? null\s+: await findOpenTaskNamedIn/u,
++    );
+     const fn = CHAT.slice(CHAT.indexOf('function ownerLineNamesPeopleToAsk('));
+     expect(fn.slice(0, 300)).toContain('instructionNames(sentence).length > 0');
+   });
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index 98ce9c1..cd5dd9b 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -151,11 +151,12 @@ describe('a line that names two people', () => {
+     expect(outcome.result === InstructedAskResult.NotSent ? [] : outcome.people).toHaveLength(2);
+   });
+ 
+-  it('puts the asks on the open goal the line repeats, never a second goal', async () => {
++  it('asks under this conversation’s own goal, never one from another conversation (3928 run 2)', async () => {
+     mockRepeated.mockResolvedValue({ id: 23181 });
+     await sendInstructedAsk('181490', 47871, LINE);
+-    expect(mockCreateTask).not.toHaveBeenCalled();
+-    expect(mockCreateAsk.mock.calls[0][1]).toBe(23181);
++    expect(mockCreateTask).toHaveBeenCalledTimes(1);
++    expect(mockCreateTask.mock.calls[0][4]).toBe(47871);
++    expect(mockCreateAsk.mock.calls[0][1]).not.toBe(23181);
+   });
+ 
+   it('sends nothing when one of the names is not one saved contact', async () => {
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 95590b7..c5e7940 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -15021,7 +15021,17 @@ async function ensureGoalForRequest(
+      * second goal that does, and that sentence is already twenty lines up this
+      * function about a different guard.
+      */
+-    const already = await findOpenTaskNamedIn(userId, userMessage).catch(() => null);
++    /**
++     * 3928 run 2, again (tester 49441, conv 48589): „…ჰკითხე ილია ტესტაძეს და
++     * ნოდარ ტესტაძეს." typed in a NEW conversation was bound to the open goal
++     * of the first one. Asks under a goal that lives in another conversation
++     * are refused (askedFromAnotherGoalsThread), so ask_contact was refused
++     * three times and only one person was asked. An order to ask named people
++     * is this conversation's own request: it opens its own goal here.
++     */
++    const already = ownerLineNamesPeopleToAsk(userMessage)
++      ? null
++      : await findOpenTaskNamedIn(userId, userMessage).catch(() => null);
+     if (already !== null) {
+       // eslint-disable-next-line no-console
+       console.log(
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index 13e9acb..128a917 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -11,12 +11,7 @@ import {
+ } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { createAsk } from './taskAsks.service';
+-import {
+-  createTask,
+-  findOpenTaskNamedIn,
+-  getOpenTaskByThread,
+-  grantTaskPermission,
+-} from './taskStore.service';
++import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
+ import { findContactPhonesByName } from './tools/nameMatch';
+ 
+ /**
+@@ -140,11 +135,9 @@ export async function contactsNamed(
+ async function goalFor(userId: string, threadId: number, ownerLine: string): Promise<number> {
+   const open = await getOpenTaskByThread(threadId);
+   if (open !== null) return open.id;
+-  // 3928 (seat 181490): the run had already found that this line repeats goal
+-  // 23181 („no second goal"), and this opened goal 23200 anyway, because a new
+-  // conversation has no goal of its own. The goal it repeats is the goal.
+-  const repeated = await findOpenTaskNamedIn(userId, ownerLine).catch(() => null);
+-  if (repeated !== null) return repeated.id;
++  // 3928 run 2 (conv 48589): an order to ask named people is this conversation's
++  // own request. Filed under a goal of another conversation, its answers would go
++  // back there and the asks are refused (askedFromAnotherGoalsThread).
+   const { id } = await createTask(
+     userId,
+     goalTitleFrom(ownerLine),
+-- 
+2.43.0
+

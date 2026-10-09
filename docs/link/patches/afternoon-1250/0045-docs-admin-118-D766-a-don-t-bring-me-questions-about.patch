@@ -1,0 +1,34 @@
+From 89c36623b8bf1dad54b15c9731c12ee9df116ea2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 21:47:19 +0000
+Subject: [PATCH 45/45] =?UTF-8?q?docs(admin):=20=C2=A7118=20=E2=80=94=20D7?=
+ =?UTF-8?q?66,=20a=20=E2=80=9Edon't=20bring=20me=20questions=20about=20X"?=
+ =?UTF-8?q?=20is=20a=20boundary=20(3672)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 55e0afe8e23cefd4b1d7ffc5bf0894dd3f1a8b7f)
+---
+ docs/ADMIN_WRITE_OPERATIONS.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 742aa67..07e60a5 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6150,3 +6150,9 @@ automatically."
+   by the helper's own phonebook label, so „Ally"-style import labels never appear and the two names never differ. The ka line becomes:
+   „შეხსენება: {სახელი} ჯერ კიდევ ელოდება შენს პასუხს. თუ ერთი წუთი გაქვს, ძალიან დაეხმარები. თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ."
+   en/ru/es lines and the nameless line are unchanged. Undo: revert the patch.
++
++**§118 — 9 October ~21:39 UTC (01:39 Tbilisi), the founder (Tornike) through the tester, box 49439 — D766, answer to the code session's 49436.**
++
++- **§118.1 (3672)** — a person's „don't bring me questions about X" is a boundary. Questions on X do not reach them. The asker sees only
++  „ამჯერად ვერ გავიდა" and never why. The person's own assistant tells them „questions about X won't reach you", never „I'll answer for
++  you". Netai still never answers on anyone's behalf (D669). No new text, and nothing to build: this is #1915 as it already runs.
+-- 
+2.43.0
+
