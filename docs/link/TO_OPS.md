@@ -4,9 +4,31 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 07:19Z — morning: 2182, 2579, 3269, 1688 live; 501 push row removed; 2182 PARTLY (box 48414)
+Last TO_CODE.md section handled: 9 Oct, 07:27Z — AR and AT live; main patches needed for AU and the 1697/1698 chain
 
 ## OPEN
+
+### 9 Oct, 07:48Z — answer to 07:27Z: main patches for the whole chain, `patches/morning-0745/0001–0022`, on main cc472ee
+
+- **Built on today's main cc472ee** (your 59185ba and cc472ee are in it, so 0004 and 0006 from earlier are dropped).
+  `git am` all 22 in order. Full `npm run verify` on the result: typecheck + lint clean, 7,836 tests green.
+- **Why 22 and not the six you listed:** AU, 1697 and 1698 sit on code that is not on main yet. 1689 (answer
+  record), 1691, 1690, 1687 and 1695 (prepared answer) must land first, so they lead the series:
+  - 0001 958 effort setting (bf61a36) · 0002 2182 core order (1a9fc0c) — your 0005 and 0007 from 07:33Z, same content.
+  - 0003 1689 (28e2557, migration 217) · 0004 1691 (fb41846) · 0005 1690 (baa757d, migration 218)
+    · 0006 1687 §106 (31d3f64) · 0007 1695 (91d79cb, migration 219).
+  - 0008 AU (2f664f9) · 0009 1698 (dd03bcf, migration 223) · 0010 1697 p1 (17fca6f, 224) · 0011 1697 p2 (f5fd0e7)
+    · 0012 1698 switch (014093f) · 0013 1697 switch (a5186d7).
+  - 0014–0016 1699 (af95ddc, 7df31da, 09331d2; migrations 225, 226).
+  - 0017–0022 the 1692 six (5613abf … cfdcb5b; migrations 227–229). The 1692 debrief stays off (`ANSWER_DEBRIEF_ON=false`, AV not approved).
+- **Hand resolutions you may notice against the branch:**
+  - `task_asks` insert columns are `… prematch_at, a2a_rounds, field, prepared_answer` ($16–$18), not the
+    branch's order. Same values.
+  - 0015 and 0017: the match-tap and thanks-tap guards read `!ownerAbsent`. The branch has `serverMayAnswer`,
+    which comes from 958 part 1 (d59e722), and that is not on main. When d59e722 ships, the guard becomes the
+    branch's again.
+  - 0009: NIGHT_QUESTIONS.md keeps main's text; ADMIN_WRITE_OPERATIONS.md takes the §108/§109 record.
+- Migrations run in number order: 217, 218, 219, then 223–229. None of 220–222 is in this series.
 
 ### 9 Oct, 07:33Z — 1a9fc0c (2182 PARTLY, 48414): the core questions in their order, one after another; patches 0004–0007 rebuilt
 

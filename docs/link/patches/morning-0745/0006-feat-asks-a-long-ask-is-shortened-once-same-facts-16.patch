@@ -1,0 +1,217 @@
+From 72e2295a6bdfa3e8118913384bad07b4bdcdfccc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 20:24:17 +0000
+Subject: [PATCH 06/22] =?UTF-8?q?feat(asks):=20a=20long=20ask=20is=20short?=
+ =?UTF-8?q?ened=20once,=20same=20facts=20(1687,=20=C2=A7106)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The second part of A4. When an outgoing ask's body is over 400 characters
+after the writer and the editor, the question goes once more to the editor
+model with the brief Misho approved tonight, word for word (§106):
+„Rewrite this question shorter, under 400 characters, in the same language.
+Keep every fact, name and number exactly as written; add nothing and drop no
+fact." The rewrite is used only when it is shorter, keeps every number of
+the original and asks one question; otherwise the ask goes as written and
+the [ask-length] line is logged. Never blocked.
+
+Also records §107 (1695's prepared-answer brief, Misho's yes) in
+ADMIN_WRITE_OPERATIONS.md; its code is a separate commit.
+
+DONE WHEN: an ask the writer first made 600 characters comes out under 400
+on the second pass with every fact kept; a log line shows one that could
+not be shortened.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                | 19 +++++++
+ .../__tests__/aLongAskIsShortenedOnce.test.ts | 48 ++++++++++++++++
+ src/services/askEditor.service.ts             | 55 +++++++++++++++++++
+ src/services/taskAsks.service.ts              | 17 +++++-
+ 4 files changed, 137 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/aLongAskIsShortenedOnce.test.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 37e02cf..b6b54b7 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -5998,3 +5998,22 @@ conversation's language by name:
+ 
+ The input is the message and the buttons, as JSON. A failed or unusable check keeps the buttons as written.
+ Costs one editor call per reply with buttons (about 1–2 s). Undo: revert.
++
++**§106 — 1687 (second part), Misho's yes („3. კარგი გააკეთე", 8 Oct ~20:20 UTC), the exact text,
++shipped alone.** When an outgoing ask's body is over 400 characters after the writer and the editor,
++the question is passed once to the editor model (askEditor.service.ts, shortenedQuestion) with this
++brief:
++
++> Rewrite this question shorter, under 400 characters, in the same language. Keep every fact, name and number exactly as written; add nothing and drop no fact.
++
++A rewrite is used only when it is shorter, keeps every number of the original, and asks one
++question; otherwise the question goes as written and the [ask-length] line is logged. Undo: revert.
++
++**§107 — 1695, Misho's yes („4. კარგი", 8 Oct ~20:20 UTC), the exact text, shipped alone.** On a
++likely_yes pre-match (1694), the recipient's prepared answer is composed by the editor model
++(preparedAnswer.service.ts) with this brief, {language} being the reader's language by name:
++
++> From the facts below about the reader himself, write ONE short line in {language} that he could send as his answer to this question: what he can offer, business facts only. Never a phone number, never another person's number or private fact, never words he typed to his own assistant. If nothing in the facts answers the question, return nothing.
++
++The facts given are only the reader's own profile fields (job, employer, user_profile_kv) — never his notes or anything he typed; the line is stored on
++the ask, shown only to him under „yes", and sent only on his tap. Undo: revert.
+diff --git a/src/services/__tests__/aLongAskIsShortenedOnce.test.ts b/src/services/__tests__/aLongAskIsShortenedOnce.test.ts
+new file mode 100644
+index 0000000..240c112
+--- /dev/null
++++ b/src/services/__tests__/aLongAskIsShortenedOnce.test.ts
+@@ -0,0 +1,48 @@
++jest.mock('../../config/anthropic', () => ({
++  __esModule: true,
++  default: { messages: { create: jest.fn() } },
++}));
++jest.mock('../costLedger.service', () => ({ recordClaudeUsage: jest.fn(() => Promise.resolve()) }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { SHORTEN_BRIEF, usableShortening } from '../askEditor.service';
++
++/** 1687 (A4) second part, §106: a body over 400 characters is shortened once. */
++describe('the shortening pass', () => {
++  it('is §106 word for word', () => {
++    const doc = readFileSync(
++      join(__dirname, '..', '..', '..', 'docs', 'ADMIN_WRITE_OPERATIONS.md'),
++      'utf8',
++    );
++    const approved = doc
++      .slice(doc.indexOf('**§106'))
++      .split('\n')
++      .find((line) => line.startsWith('> Rewrite this question shorter'));
++    expect(approved?.slice(2)).toBe(SHORTEN_BRIEF);
++  });
++
++  it('is used only when shorter, with every number kept and one question', () => {
++    const original =
++      'ნინოს სჭირდება 2 ოთახიანი ბინა ვაკეში, 800 დოლარამდე, 1 ნოემბრიდან — ხომ არ იცი ვინმე?';
++    expect(
++      usableShortening(
++        original,
++        'ნინოს სჭირდება 2 ოთახიანი ბინა ვაკეში, 800$-მდე, 1 ნოემბრიდან. იცი ვინმე?',
++      ),
++    ).not.toBeNull();
++    expect(usableShortening(original, 'ნინოს სჭირდება ბინა ვაკეში. იცი ვინმე?')).toBeNull();
++    expect(usableShortening(original, original + ' დიდი მადლობა!')).toBeNull();
++    expect(
++      usableShortening(original, 'ნინოს სჭირდება 2 ოთახიანი, 800, 1 ნოემბრიდან? იცი? ვინმე?'),
++    ).toBeNull();
++  });
++
++  it('runs before the disclosure line, only over 400 characters', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    const at = asks.indexOf('1687 (A4): the body is measured');
++    expect(asks.slice(at, at + 700)).toContain(
++      'const shorter = await shortenedQuestion(edited.question);',
++    );
++  });
++});
+diff --git a/src/services/askEditor.service.ts b/src/services/askEditor.service.ts
+index df063f2..37eb4a8 100644
+--- a/src/services/askEditor.service.ts
++++ b/src/services/askEditor.service.ts
+@@ -328,3 +328,58 @@ export async function reasonAboutAsker(reason: string, askerName: string): Promi
+     return reason;
+   }
+ }
++
++/**
++ * 1687 (A4), second part — §106, Misho's yes on 8 October, word for word. A body
++ * over 400 characters gets about a fifth fewer replies: the question is passed
++ * once more, „shorter, same facts". The rewrite is used only when it is shorter,
++ * keeps every number of the original and asks one question; anything else, or a
++ * failed call, leaves the question as written (never blocked).
++ */
++export const SHORTEN_BRIEF =
++  'Rewrite this question shorter, under 400 characters, in the same language. Keep every fact, ' +
++  'name and number exactly as written; add nothing and drop no fact.';
++
++const SHORTEN_MAX_TOKENS = 600;
++const DIGIT_RUN_RE = /\d+/gu;
++
++/** The shorter question, when it is a usable one; null keeps the original. */
++export function usableShortening(original: string, rewrite: string): string | null {
++  const text = rewrite.trim();
++  if (text === '' || text.length >= original.length) return null;
++  if (questionMarks(text) > MAX_QUESTION_MARKS) return null;
++  const numbers = original.match(DIGIT_RUN_RE) ?? [];
++  return numbers.every((n) => text.includes(n)) ? text : null;
++}
++
++export async function shortenedQuestion(question: string): Promise<string | null> {
++  try {
++    const response = await anthropic.messages.create(
++      {
++        model: EDITOR_MODEL,
++        max_tokens: SHORTEN_MAX_TOKENS,
++        system: SHORTEN_BRIEF,
++        messages: [{ role: 'user', content: question }],
++      },
++      { timeout: EDIT_BUDGET_MS, maxRetries: 0 },
++    );
++    void recordClaudeUsage({
++      userId: null,
++      kind: 'ask_shorten',
++      model: EDITOR_MODEL,
++      usage: response.usage,
++    }).catch((err: unknown) => {
++      // eslint-disable-next-line no-console
++      console.error('[ask-editor] usage not recorded:', (err as Error).message);
++    });
++    const text = response.content
++      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
++      .map((block) => block.text)
++      .join('');
++    return usableShortening(question, text);
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[ask-length] not shortened:', (err as Error).message);
++    return null;
++  }
++}
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 1b2783f..52b1a74 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -38,7 +38,7 @@ import {
+   withServerLater,
+   withoutPointingAnswers,
+ } from './askChoices';
+-import { editOutgoingAsk } from './askEditor.service';
++import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
+ import {
+   A2A_ROUND_CAP,
+   needsTheOwner,
+@@ -1668,7 +1668,20 @@ async function createAskNow(
+       ? [picker.line]
+       : []),
+   ];
+-  // 1687 (A4): the body is measured, and the identical disclosure line closes every ask.
++  // 1687 (A4): the body is measured — over 400 characters the question is shortened once (§106) —
++  // and the identical disclosure line closes every ask.
++  if (lines.join('\n\n').length > ASK_BODY_MAX_CHARS) {
++    const shorter = await shortenedQuestion(edited.question);
++    if (shorter !== null) {
++      lines[0] = buildAskOpening(
++        said,
++        senderName,
++        roster,
++        shorter,
++        isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
++      );
++    }
++  }
+   const body = lines.join('\n\n');
+   if (body.length > ASK_BODY_MAX_CHARS) {
+     // eslint-disable-next-line no-console
+-- 
+2.43.0
+

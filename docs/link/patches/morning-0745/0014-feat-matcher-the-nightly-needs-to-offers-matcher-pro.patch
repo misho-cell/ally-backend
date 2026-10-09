@@ -1,0 +1,331 @@
+From 78cdc31b0416a144c28681682911b9a6a42aa3e8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 23:29:46 +0000
+Subject: [PATCH 14/22] feat(matcher): the nightly needs-to-offers matcher
+ proposes sure matches (1699 part 1, A16)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+D679/D680. Two members, one with a need and one who said he is open to
+exactly that (A15), never meet unless one of them asks.
+
+Migration 225 adds the matches table (need goal, offer, both owners, state,
+14-day expiry, one row per goal and offer). Each night at 02:00 UTC the
+matcher reads open goals and active offers, keeps the sure pairs (D498: the
+goal itself names the offer's field; a vague match is dropped), and writes a
+`proposed` match. It only does so when the need's owner can reach the
+offer's owner, through his own phonebook or one member contact between them,
+and never for a pair declined in the last 90 days. At most 200 proposals a
+night.
+
+This part sends nothing and names nobody: the two no-name cards are part 2.
+Offers stay empty until §109, so until then the matcher finds nothing.
+
+Known gap, said plainly: the sure-match rule is literal. The board's example
+(a hotel in Kobuleti against hospitality in Adjara) needs a field family
+(hotel → hospitality) and a place map (Kobuleti → Adjara). Neither exists yet;
+part 3.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/db/postgres/migrations/225_matches.sql |  19 +++
+ src/index.ts                               |   2 +
+ src/services/__tests__/needsOffers.test.ts |  58 +++++++++
+ src/services/needsOffers.cron.ts           |  34 ++++++
+ src/services/needsOffers.service.ts        | 130 +++++++++++++++++++++
+ 5 files changed, 243 insertions(+)
+ create mode 100644 src/db/postgres/migrations/225_matches.sql
+ create mode 100644 src/services/__tests__/needsOffers.test.ts
+ create mode 100644 src/services/needsOffers.cron.ts
+ create mode 100644 src/services/needsOffers.service.ts
+
+diff --git a/src/db/postgres/migrations/225_matches.sql b/src/db/postgres/migrations/225_matches.sql
+new file mode 100644
+index 0000000..1ab5a40
+--- /dev/null
++++ b/src/db/postgres/migrations/225_matches.sql
+@@ -0,0 +1,19 @@
++-- 1699 (A16, D679/D680): a need (an open goal) and an offer (A15) in the same
++-- field, between two members who can reach each other. Proposed by the
++-- nightly matcher; the two no-name cards move it on (need_yes → both_yes /
++-- declined / expired). A pair that was declined is not proposed again for
++-- 90 days; every match expires 14 days after it is made.
++CREATE TABLE IF NOT EXISTS matches (
++  id             BIGSERIAL PRIMARY KEY,
++  need_goal_id   INTEGER     NOT NULL,
++  need_user_id   INTEGER     NOT NULL,
++  offer_id       BIGINT      NOT NULL,
++  offer_user_id  INTEGER     NOT NULL,
++  score          REAL        NOT NULL DEFAULT 1,
++  state          TEXT        NOT NULL DEFAULT 'proposed',
++  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  expires_at     TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '14 days',
++  UNIQUE (need_goal_id, offer_id)
++);
++CREATE INDEX IF NOT EXISTS idx_matches_pair ON matches (need_user_id, offer_user_id, created_at DESC);
++CREATE INDEX IF NOT EXISTS idx_matches_state ON matches (state, created_at);
+diff --git a/src/index.ts b/src/index.ts
+index 7a6d28b..0246942 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -41,6 +41,7 @@ import { startHeldPushRelease } from './services/heldPushRelease.cron';
+ import { startEveningCards } from './services/eveningCard.cron';
+ import { startOwnerReminders } from './services/ownerReminders.cron';
+ import { startAnswerStats } from './services/answerStats.cron';
++import { startNeedsOffersMatcher } from './services/needsOffers.cron';
+ import { startTaskTicker } from './services/taskEngine.service';
+ import { clientErrorReply } from './api/middleware/clientError';
+ import { ApiResponse } from './types';
+@@ -177,6 +178,7 @@ runMigrations()
+     // #502: the owner's own reminders, written into their conversation on time.
+     startOwnerReminders();
+     startAnswerStats();
++    startNeedsOffersMatcher();
+     startTaskTicker();
+     startChorusCampaignCron();
+     startLabReportCron();
+diff --git a/src/services/__tests__/needsOffers.test.ts b/src/services/__tests__/needsOffers.test.ts
+new file mode 100644
+index 0000000..daab36a
+--- /dev/null
++++ b/src/services/__tests__/needsOffers.test.ts
+@@ -0,0 +1,58 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++import { query as _query } from '../../db/postgres/client';
++import { isSureMatch, proposeMatches, surePairs } from '../needsOffers.service';
++import { isMatchHour } from '../needsOffers.cron';
++
++/** 1699 (A16) part 1: the nightly matcher only proposes, and only sure matches. */
++const mockQuery = _query as jest.Mock;
++const goal = { id: 1, user_id: 10, title: 'find an investor for a hotel in Kobuleti' };
++const offer = {
++  id: 5,
++  user_id: 20,
++  text: 'Open to hospitality and hotel projects',
++  field: 'hotel',
++};
++
++beforeEach(() => jest.clearAllMocks());
++
++describe('the needs-to-offers matcher (1699)', () => {
++  it('a goal that names the offer’s field is a sure match', () => {
++    expect(isSureMatch(goal, offer)).toBe(true);
++  });
++
++  it('a vague one, one without a field, and one’s own offer are dropped', () => {
++    expect(isSureMatch(goal, { ...offer, field: 'logistics' })).toBe(false);
++    expect(isSureMatch(goal, { ...offer, field: null })).toBe(false);
++    expect(isSureMatch(goal, { ...offer, user_id: 10 })).toBe(false);
++  });
++
++  it('a night proposes at most its limit', () => {
++    const goals = Array.from({ length: 5 }, (_, i) => ({ ...goal, id: i + 1 }));
++    expect(surePairs(goals, [offer], 3)).toHaveLength(3);
++  });
++
++  it('no offers, no reading of goals at all', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] });
++    await expect(proposeMatches()).resolves.toBe(0);
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++  });
++
++  it('a pair is written only when reachable, never twice, never within 90 days of a decline', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [offer] });
++    mockQuery.mockResolvedValueOnce({ rows: [goal] });
++    mockQuery.mockResolvedValueOnce({ rows: [{ id: 99 }] });
++    await expect(proposeMatches()).resolves.toBe(1);
++    const sql = String(mockQuery.mock.calls[2][0]);
++    expect(sql).toContain('WHERE EXISTS (SELECT 1 FROM reach)');
++    expect(sql).toContain("m.state = 'declined'");
++    expect(sql).toContain('ON CONFLICT (need_goal_id, offer_id) DO NOTHING');
++    expect(mockQuery.mock.calls[2][1]).toEqual([1, 10, 20, 5, 90]);
++  });
++
++  it('runs once a night, in its hour', () => {
++    expect(isMatchHour(new Date('2026-10-09T02:10:00Z'), null)).toBe(true);
++    expect(isMatchHour(new Date('2026-10-09T02:40:00Z'), '2026-10-09')).toBe(false);
++    expect(isMatchHour(new Date('2026-10-09T03:10:00Z'), null)).toBe(false);
++  });
++});
+diff --git a/src/services/needsOffers.cron.ts b/src/services/needsOffers.cron.ts
+new file mode 100644
+index 0000000..9dd3f27
+--- /dev/null
++++ b/src/services/needsOffers.cron.ts
+@@ -0,0 +1,34 @@
++import { proposeMatches } from './needsOffers.service';
++
++/**
++ * 1699 (A16): the matcher runs once a night, at 02:00 UTC (06:00 in Tbilisi),
++ * with the goal wakes. Checked every hour; one run per UTC day per process.
++ */
++const CHECK_EVERY_MS = 60 * 60 * 1000;
++const MATCH_HOUR_UTC = 2;
++
++let lastRunDay: string | null = null;
++
++/** Should the matcher run now? Once, in its hour, per UTC day. */
++export function isMatchHour(now: Date, lastDay: string | null): boolean {
++  const today = now.toISOString().slice(0, 10);
++  return now.getUTCHours() === MATCH_HOUR_UTC && lastDay !== today;
++}
++
++export function startNeedsOffersMatcher(): void {
++  const tick = (): void => {
++    const now = new Date();
++    if (!isMatchHour(now, lastRunDay)) return;
++    lastRunDay = now.toISOString().slice(0, 10);
++    void proposeMatches()
++      .then((n) => {
++        // eslint-disable-next-line no-console
++        console.log(`[matcher] ${n} match(es) proposed`);
++      })
++      .catch((err: unknown) =>
++        // eslint-disable-next-line no-console
++        console.error('[matcher] night run failed:', (err as Error).message),
++      );
++  };
++  setInterval(tick, CHECK_EVERY_MS).unref();
++}
+diff --git a/src/services/needsOffers.service.ts b/src/services/needsOffers.service.ts
+new file mode 100644
+index 0000000..6463133
+--- /dev/null
++++ b/src/services/needsOffers.service.ts
+@@ -0,0 +1,130 @@
++import { query } from '../db/postgres/client';
++import { fieldTerms, textSpeaksOf } from './prematch.service';
++
++/**
++ * 1699 (A16, D679/D680): two members — one with a need, one who said he is
++ * open to exactly that (A15) — never meet unless one of them asks, and senior
++ * people do not ask. Each night the matcher pairs an open goal with an active
++ * offer in the same field, between members who can reach each other (own
++ * phonebook, or one contact between them). This part only PROPOSES: no card
++ * goes out from here, and nobody is named to anybody.
++ *
++ * The sure-match rule is D498's: the goal itself names the offer's field — a
++ * vague match is dropped rather than shown.
++ */
++const QUERY_TIMEOUT_MS = 10_000;
++/** Goals and offers read per night; the matcher catches up over nights, never in one sweep. */
++const GOALS_READ = 2_000;
++const OFFERS_READ = 1_000;
++/** New proposals a night, so a first night with many offers cannot flood the cards. */
++const MAX_PROPOSALS_PER_NIGHT = 200;
++const DECLINED_PAIR_QUIET_DAYS = 90;
++
++export interface OpenGoal {
++  readonly id: number;
++  readonly user_id: number;
++  readonly title: string;
++}
++
++export interface ActiveOffer {
++  readonly id: number;
++  readonly user_id: number;
++  readonly text: string;
++  readonly field: string | null;
++}
++
++/** D498: the goal names the offer's field. No field on the offer, no sure match. */
++export function isSureMatch(goal: OpenGoal, offer: ActiveOffer): boolean {
++  if (goal.user_id === offer.user_id) return false;
++  const field = offer.field?.trim() ?? '';
++  if (field === '') return false;
++  return textSpeaksOf(goal.title, fieldTerms(field));
++}
++
++/** Every sure (goal, offer) pair, in goal order, at most `limit`. */
++export function surePairs(
++  goals: readonly OpenGoal[],
++  offers: readonly ActiveOffer[],
++  limit: number = MAX_PROPOSALS_PER_NIGHT,
++): Array<{ readonly goal: OpenGoal; readonly offer: ActiveOffer }> {
++  const pairs: Array<{ readonly goal: OpenGoal; readonly offer: ActiveOffer }> = [];
++  for (const goal of goals) {
++    for (const offer of offers) {
++      if (pairs.length >= limit) return pairs;
++      if (isSureMatch(goal, offer)) pairs.push({ goal, offer });
++    }
++  }
++  return pairs;
++}
++
++async function openGoals(): Promise<OpenGoal[]> {
++  const result = await query<OpenGoal>(
++    `SELECT id, user_id::int AS user_id, title FROM tasks
++      WHERE status = 'open' AND title IS NOT NULL
++      ORDER BY id DESC LIMIT $1`,
++    [GOALS_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++async function activeOffers(): Promise<ActiveOffer[]> {
++  const result = await query<ActiveOffer>(
++    `SELECT id, user_id, text, field FROM offers WHERE active ORDER BY id DESC LIMIT $1`,
++    [OFFERS_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/**
++ * Can the need's owner reach the offer's owner — in his own phonebook, or
++ * through one of his contacts who is a member and holds him? A pair declined
++ * in the last 90 days, or already matched on this goal, is not proposed.
++ */
++async function proposeIfReachable(goal: OpenGoal, offer: ActiveOffer): Promise<boolean> {
++  const result = await query<{ id: number }>(
++    `WITH offer_phones AS (
++       SELECT phone FROM "UserPhone" WHERE "userId" = $3::int
++     ), reach AS (
++       SELECT 1 FROM "UserAlias" ua
++        WHERE ua."contactId" = $2::int AND ua.phone IN (SELECT phone FROM offer_phones)
++       UNION ALL
++       -- From the offer's side: who holds him (indexed on phone), and is that holder in mine?
++       SELECT 1 FROM "UserAlias" theirs
++         JOIN "UserPhone" member ON member."userId" = theirs."contactId"
++         JOIN "UserAlias" mine ON mine.phone = member.phone AND mine."contactId" = $2::int
++        WHERE theirs.phone IN (SELECT phone FROM offer_phones)
++       LIMIT 1
++     )
++     INSERT INTO matches (need_goal_id, need_user_id, offer_id, offer_user_id)
++     SELECT $1, $2::int, $4, $3::int
++      WHERE EXISTS (SELECT 1 FROM reach)
++        AND NOT EXISTS (
++          SELECT 1 FROM matches m
++           WHERE m.need_user_id = $2::int AND m.offer_user_id = $3::int AND m.state = 'declined'
++             AND m.created_at > NOW() - make_interval(days => $5))
++     ON CONFLICT (need_goal_id, offer_id) DO NOTHING
++     RETURNING id`,
++    [goal.id, goal.user_id, offer.user_id, offer.id, DECLINED_PAIR_QUIET_DAYS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.length > 0;
++}
++
++/** One night's proposals; the number written. A failed pair is logged and the rest go on. */
++export async function proposeMatches(): Promise<number> {
++  const offers = await activeOffers();
++  if (offers.length === 0) return 0;
++  const pairs = surePairs(await openGoals(), offers);
++  let proposed = 0;
++  for (const { goal, offer } of pairs) {
++    try {
++      if (await proposeIfReachable(goal, offer)) proposed += 1;
++    } catch (err) {
++      // eslint-disable-next-line no-console
++      console.warn(`[matcher] goal ${goal.id} × offer ${offer.id}:`, (err as Error).message);
++    }
++  }
++  return proposed;
++}
+-- 
+2.43.0
+

@@ -1,0 +1,76 @@
+From 204c54de4da7cd2accea9be468288e89bdd32696 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 06:31:00 +0000
+Subject: [PATCH 12/22] =?UTF-8?q?feat(offers):=20the=20offer=20tools=20rea?=
+ =?UTF-8?q?ch=20the=20model=20(1698,=20=C2=A7109=20approved)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho approved the three tool texts (9 Oct 06:25 UTC, ADMIN_WRITE_OPERATIONS
+§110). OFFER_TOOLS_ON is now true: save_offer, list_offers and delete_offer
+are offered to the owner's runs, with the server gates as before (own run only,
+confirmed: true, at most 20 active). This also wakes 1699: its nightly matcher
+had no offers to read until now.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/offers.test.ts             | 4 ++--
+ src/services/chat.service.ts                      | 6 +++---
+ src/services/mcp/__tests__/registryParity.test.ts | 6 +++---
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/src/services/__tests__/offers.test.ts b/src/services/__tests__/offers.test.ts
+index 5d281cd..cd7a26c 100644
+--- a/src/services/__tests__/offers.test.ts
++++ b/src/services/__tests__/offers.test.ts
+@@ -67,8 +67,8 @@ describe('offers (1698)', () => {
+     expect(mockQuery).not.toHaveBeenCalled();
+   });
+ 
+-  it('no run is given the tools until their texts are approved (§109)', () => {
++  it('runs are given the tools since their texts were approved (§109, 9 Oct)', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain('const OFFER_TOOLS_ON = false;');
++    expect(chat).toContain('const OFFER_TOOLS_ON = true;');
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index f146360..127c83f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -80,10 +80,10 @@ import { settleReferralTap } from './askReferralSettle.service';
+ import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+ 
+ /**
+- * 1698: the offer tools reach the model only after Misho's yes on their texts
+- * (§109, D44). Until then the server can hold offers but no run is given them.
++ * 1698: the offer tools reach the model since Misho's yes on their texts
++ * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
+  */
+-const OFFER_TOOLS_ON = false;
++const OFFER_TOOLS_ON = true;
+ import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
+ import {
+   clampReminderMinutes,
+diff --git a/src/services/mcp/__tests__/registryParity.test.ts b/src/services/mcp/__tests__/registryParity.test.ts
+index ffe8ed3..6129c4c 100644
+--- a/src/services/mcp/__tests__/registryParity.test.ts
++++ b/src/services/mcp/__tests__/registryParity.test.ts
+@@ -24,9 +24,9 @@ import * as path from 'path';
+ // neither set fails the build — this still catches the exact
+ // invite_contact-class bug, and stays quiet on every legitimate merge.
+ const APP_ONLY: Readonly<Record<string, string>> = {
+-  save_offer: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
+-  list_offers: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
+-  delete_offer: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
++  save_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
++  list_offers: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
++  delete_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
+   present_choices: 'renders tappable UI buttons — meaningless outside the app',
+   set_reminder:
+     '#502: writes a reminder into an app conversation and rings the app; a connector has no such conversation',
+-- 
+2.43.0
+

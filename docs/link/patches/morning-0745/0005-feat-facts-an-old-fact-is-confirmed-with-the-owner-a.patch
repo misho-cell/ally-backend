@@ -1,0 +1,691 @@
+From e6f1324d97601fb228a8fc6b49ec8863a9e39a5b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 20:08:47 +0000
+Subject: [PATCH 05/22] feat(facts): an old fact is confirmed with the owner at
+ the moment of use (1690, A7)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+A label is a lead, not a fact (D365), job facts go stale at about 1% a
+month, and nobody fills a survey to refresh them.
+
+- Migration 218: contact_facts gets confirmed_by_result_at,
+  last_confirmed_at, confirm_asked_at; fact_confirms keeps each question.
+- When a search in the owner's run shows a contact for whom the owner saved a
+  core fact (occupation, employer, city, industry) older than 180 days,
+  never confirmed and not asked within 180 days, the server adds ONE card
+  after the reply: „შენახული მაქვს: ზურაბ — „BDO". ისევ ასეა?" with „კი,
+  ასეა" / „აღარ" / „არ ვიცი" (en alike). At most one per conversation a day.
+- The tap is settled by the server before any model: yes → last_confirmed_at;
+  not sure → nothing more (not asked again for 180 days); no longer → „ახლა
+  სად მუშაობს …?" once, and the owner's next short line is saved as a new
+  fact from him — the old one is kept, never deleted.
+- A „helped" debrief sets confirmed_by_result_at on the asker's core facts
+  about the helper.
+No model text; no settings page.
+
+DONE WHEN: a fact saved 7 months ago gives exactly one confirm line in the
+owner's chat when used; a tap updates the right field; the same fact is not
+asked again; a fact younger than 180 days gives nothing; two old facts in
+one conversation give one question.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../postgres/migrations/218_fact_confirm.sql  |  24 ++
+ .../anOldFactIsConfirmedAtUse.test.ts         | 138 ++++++++++
+ .../everyoneHasAnAnswerRecord.test.ts         |   2 +-
+ src/services/chat.service.ts                  |  77 ++++++
+ src/services/debrief.service.ts               |  11 +-
+ src/services/factConfirm.service.ts           | 258 ++++++++++++++++++
+ src/services/pendingMessages.ts               |   9 +
+ 7 files changed, 515 insertions(+), 4 deletions(-)
+ create mode 100644 src/db/postgres/migrations/218_fact_confirm.sql
+ create mode 100644 src/services/__tests__/anOldFactIsConfirmedAtUse.test.ts
+ create mode 100644 src/services/factConfirm.service.ts
+
+diff --git a/src/db/postgres/migrations/218_fact_confirm.sql b/src/db/postgres/migrations/218_fact_confirm.sql
+new file mode 100644
+index 0000000..323cda7
+--- /dev/null
++++ b/src/db/postgres/migrations/218_fact_confirm.sql
+@@ -0,0 +1,24 @@
++-- 1690 (A7, D679/D680): a label is a lead, not a fact, and job facts go stale
++-- at about 1% a month. A fact can now say it was confirmed by a real result,
++-- when the owner last confirmed it, and when the owner was last asked.
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS confirmed_by_result_at TIMESTAMPTZ;
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS last_confirmed_at TIMESTAMPTZ;
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS confirm_asked_at TIMESTAMPTZ;
++
++-- One row per confirm question shown in a conversation, so a tap is read by the
++-- server and „where now?" can wait for its one answer.
++CREATE TABLE IF NOT EXISTS fact_confirms (
++  id          BIGSERIAL PRIMARY KEY,
++  user_id     INTEGER NOT NULL,
++  thread_id   INTEGER NOT NULL,
++  fact_id     BIGINT  NOT NULL,
++  phone       TEXT    NOT NULL,
++  field_type  TEXT    NOT NULL,
++  name        TEXT    NOT NULL,
++  value       TEXT    NOT NULL,
++  state       TEXT    NOT NULL DEFAULT 'asked'
++              CHECK (state IN ('asked', 'yes', 'not_sure', 'no_waiting', 'no_saved', 'dropped')),
++  asked_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  answered_at TIMESTAMPTZ
++);
++CREATE INDEX IF NOT EXISTS fact_confirms_thread ON fact_confirms (thread_id, asked_at DESC);
+diff --git a/src/services/__tests__/anOldFactIsConfirmedAtUse.test.ts b/src/services/__tests__/anOldFactIsConfirmedAtUse.test.ts
+new file mode 100644
+index 0000000..bb0bfe2
+--- /dev/null
++++ b/src/services/__tests__/anOldFactIsConfirmedAtUse.test.ts
+@@ -0,0 +1,138 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../contactFacts.service', () => ({
++  FACT_FIELD_TYPES: ['occupation', 'employer', 'city', 'industry'],
++  submitContactFact: jest.fn(() => Promise.resolve({ is_public: false, canonical_value: null })),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { submitContactFact } from '../contactFacts.service';
++import { answerConfirm, confirmCardFor, confirmTapOf, ConfirmTap } from '../factConfirm.service';
++import { renderPendingMessage } from '../pendingMessages';
++
++/** 1690 (A7): an old core fact is confirmed with the owner at the moment it is used. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockSubmit = submitContactFact as jest.MockedFunction<typeof submitContactFact>;
++const ka = (): Promise<'ka'> => Promise.resolve('ka');
++const FACT = {
++  id: 41,
++  phone: '+447700900301',
++  field_type: 'employer',
++  value: 'BDO',
++  name: 'ზურაბ ტესტური',
++};
++
++function route(handlers: Record<string, unknown[]>): void {
++  mockQuery.mockImplementation(((sql: string) => {
++    for (const [needle, rows] of Object.entries(handlers)) {
++      if (sql.includes(needle)) return Promise.resolve({ rows, rowCount: rows.length });
++    }
++    return Promise.resolve({ rows: [], rowCount: 1 });
++  }) as never);
++}
++
++beforeEach(() => jest.clearAllMocks());
++
++describe('the card', () => {
++  it('a fact saved seven months ago gives one confirm line, recorded as asked', async () => {
++    route({
++      'SELECT EXISTS (SELECT 1 FROM fact_confirms': [{ asked: false }],
++      'FROM contact_facts cf': [FACT],
++    });
++    const card = await confirmCardFor('180300', 45001, [FACT.phone], 'ka');
++    expect(card).toEqual({
++      text: 'შენახული მაქვს: ზურაბ ტესტური — „BDO". ისევ ასეა?',
++      choices: ['კი, ასეა', 'აღარ', 'არ ვიცი'],
++    });
++    const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
++    expect(sqls.some((s) => s.includes('SET confirm_asked_at = NOW()'))).toBe(true);
++    const staleSql = sqls.find((s) => s.includes('FROM contact_facts cf')) ?? '';
++    expect(staleSql).toContain('cf.created_at < NOW() - make_interval(days => $4)');
++    expect(staleSql).toContain(
++      'cf.last_confirmed_at IS NULL AND cf.confirmed_by_result_at IS NULL',
++    );
++  });
++
++  it('a second old fact in the same conversation gives no second question', async () => {
++    route({ 'SELECT EXISTS (SELECT 1 FROM fact_confirms': [{ asked: true }] });
++    expect(await confirmCardFor('180300', 45001, [FACT.phone], 'ka')).toBeNull();
++  });
++
++  it('a fact younger than 180 days triggers nothing', async () => {
++    route({
++      'SELECT EXISTS (SELECT 1 FROM fact_confirms': [{ asked: false }],
++      'FROM contact_facts cf': [],
++    });
++    expect(await confirmCardFor('180300', 45001, [FACT.phone], 'ka')).toBeNull();
++  });
++
++  it('is drawn by the server with its own buttons', () => {
++    const out = renderPendingMessage(
++      {
++        kind: 'fact_confirm',
++        task_id: null,
++        payload: { text: 'x?', choices: ['კი, ასეა', 'აღარ'] },
++      },
++      'ka',
++    );
++    expect(out?.choices).toEqual(['კი, ასეა', 'აღარ']);
++  });
++});
++
++describe('the taps', () => {
++  const open = (state: string): Record<string, unknown[]> => ({
++    'FROM fact_confirms\n': [
++      { id: 9, fact_id: 41, phone: FACT.phone, field_type: 'employer', name: FACT.name, state },
++    ],
++  });
++
++  it('knows the buttons in either language', () => {
++    expect(confirmTapOf('კი, ასეა')).toBe(ConfirmTap.Yes);
++    expect(confirmTapOf('No longer')).toBe(ConfirmTap.No);
++    expect(confirmTapOf('ბოდიში, სხვა რამე')).toBeNull();
++  });
++
++  it('„yes" sets last_confirmed_at', async () => {
++    route(open('asked'));
++    expect(await answerConfirm('180300', 45001, 'კი, ასეა', ka)).toBe('კარგი, ასე დავტოვებ.');
++    expect(
++      mockQuery.mock.calls.some((c) => String(c[0]).includes('SET last_confirmed_at = NOW()')),
++    ).toBe(true);
++  });
++
++  it('„no longer" asks where now, and the next short line is saved as a new fact', async () => {
++    route(open('asked'));
++    expect(await answerConfirm('180300', 45001, 'აღარ', ka)).toBe(
++      'ახლა სად მუშაობს ზურაბ ტესტური?',
++    );
++    route(open('no_waiting'));
++    expect(await answerConfirm('180300', 45001, 'Deloitte', ka)).toBe(
++      'დავიმახსოვრე: ზურაბ ტესტური — „Deloitte".',
++    );
++    expect(mockSubmit).toHaveBeenCalledWith(
++      '180300',
++      FACT.phone,
++      'employer',
++      'Deloitte',
++      'chat',
++      'stated',
++    );
++  });
++
++  it('a line that is not a tap goes to the run as always', async () => {
++    route(open('asked'));
++    expect(await answerConfirm('180300', 45001, 'მჭირდება სანტექნიკოსი', ka)).toBeNull();
++  });
++
++  it('the run asks once after a search, and the tap is answered before any model', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('noteSearchedPhones(runId, phonesIn(labelled));');
++    expect(chat).toContain(
++      'await confirmCardFor(userId, threadId, searchedPhones, runLang(runId))',
++    );
++    expect(chat).toContain('await answerFactConfirm(userId, threadId, userMessage, runId, intent)');
++    const debrief = readFileSync(join(__dirname, '..', 'debrief.service.ts'), 'utf8');
++    expect(debrief).toContain('await confirmByResult(askerId, helper);');
++  });
++});
+diff --git a/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts b/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts
+index 05a624c..1561145 100644
+--- a/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts
++++ b/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts
+@@ -81,7 +81,7 @@ describe('it is recounted where the state changes', () => {
+     expect(asks).toContain('recountAnswerStats(row.to_user_id);');
+     expect(asks).toContain('askField(goalText) || null');
+     expect(src('debrief.service.ts')).toContain(
+-      "if (subject === 'relayed_ask' && worked) await recountHelper(refId);",
++      "if (subject === 'relayed_ask' && worked) await recountHelper(userId, refId);",
+     );
+   });
+ 
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 0de6d0f..c91de25 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -495,6 +495,7 @@ import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+ import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
+ import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
+ import type { UpcomingBirthday } from './birthdayLens.service';
++import { answerConfirm, confirmCardFor } from './factConfirm.service';
+ import { checkedOwnerButtons } from './ownerButtons.service';
+ import { savedNamesIn, withNamesAsSaved } from './savedNames';
+ import {
+@@ -7857,6 +7858,22 @@ function sayNamelessLabel(row: unknown): unknown {
+   return { ...(row as Record<string, unknown>), name: null, saved_as: r.name.trim() };
+ }
+ 
++const FACT_CONFIRM_KIND = 'fact_confirm';
++const runSearchedPhones = new Map<string, Set<string>>();
++
++function noteSearchedPhones(runId: string, phones: readonly string[]): void {
++  if (phones.length === 0) return;
++  const kept = runSearchedPhones.get(runId) ?? new Set<string>();
++  for (const phone of phones) kept.add(phone);
++  runSearchedPhones.set(runId, kept);
++}
++
++function takeSearchedPhones(runId: string): string[] {
++  const phones = [...(runSearchedPhones.get(runId) ?? [])];
++  runSearchedPhones.delete(runId);
++  return phones;
++}
++
+ const runSavedNames = new Map<string, string[]>();
+ 
+ function noteSavedNames(runId: string, names: readonly string[]): void {
+@@ -8500,6 +8517,7 @@ function clearRunState(runId: string): void {
+   runInboxQuestions.delete(runId);
+   runNamelessLabels.delete(runId);
+   runSavedNames.delete(runId);
++  runSearchedPhones.delete(runId);
+   runHeldUpdates.delete(runId);
+   runShareText.delete(runId);
+   // Row 237's flag. Its consumer forgets it too, but a run that exits early
+@@ -10808,6 +10826,8 @@ async function runOneToolBlock(
+   );
+   // 3137: a contact saved only as a symbol is shown as saved, by the server if need be.
+   if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
++  // 1690 (A7): the numbers a search showed, for the one confirm question after the reply.
++  if (SEARCH_TOOLS.has(block.name)) noteSearchedPhones(runId, phonesIn(labelled));
+   // 3169: the names it found, as saved, so the reply cannot respell them.
+   if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
+     noteSavedNames(runId, savedNamesIn(labelled));
+@@ -12375,6 +12395,36 @@ async function answerBirthdaysSoon(
+   return { reply: text, language, requestCreated: false };
+ }
+ 
++/** 1690: the owner's tap on a fact-confirm card, settled by the server; null when it is not one. */
++async function answerFactConfirm(
++  userId: string,
++  threadId: number,
++  userMessage: string,
++  runId: string,
++  intent: RunIntent | undefined,
++): Promise<ChatResult | null> {
++  let language: RunLanguage = detectRunLanguage(userMessage);
++  const languageOf = async (): Promise<RunLanguage> => {
++    const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
++    language = languageOfConversation(userMessage, spokenBefore, language);
++    return language;
++  };
++  let text: string | null;
++  try {
++    text = await answerConfirm(userId, threadId, userMessage, languageOf);
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error('[fact-confirm] tap not settled:', (err as Error).message);
++    return null;
++  }
++  if (text === null) return null;
++  if (intent?.alreadyStored !== true) {
++    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
++  }
++  await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
++  return { reply: text, language, requestCreated: false };
++}
++
+ /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
+ async function ownerHasContacts(userId: string): Promise<boolean> {
+   try {
+@@ -13434,6 +13484,27 @@ async function runToolLoop(
+     finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+   }
+ 
++  // 1690 (A7): one old fact the search leaned on is confirmed with the owner, by the server.
++  const searchedPhones = takeSearchedPhones(runId);
++  if (!ownerAbsent && searchedPhones.length > 0) {
++    const card = await confirmCardFor(userId, threadId, searchedPhones, runLang(runId)).catch(
++      (err: unknown) => {
++        // eslint-disable-next-line no-console
++        console.warn('[fact-confirm] not asked:', (err as Error).message);
++        return null;
++      },
++    );
++    if (card !== null) {
++      notePendingItems(runId, [
++        {
++          kind: FACT_CONFIRM_KIND,
++          task_id: null,
++          payload: { text: card.text, choices: card.choices },
++        },
++      ]);
++    }
++  }
++
+   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
+   finalText = withPlainDigits(finalText);
+   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
+@@ -14919,6 +14990,12 @@ export async function processChat(
+       ? await answerBirthdaysSoon(userId, threadId, userMessage, runId, intent)
+       : null;
+   if (birthdays !== null) return birthdays;
++  // 1690 (A7): a tap on the fact-confirm card (or the answer to its „where now?") is the server's.
++  const confirmed =
++    !ownerAbsent && thread.type === 'regular'
++      ? await answerFactConfirm(userId, threadId, userMessage, runId, intent)
++      : null;
++  if (confirmed !== null) return confirmed;
+   // 1696 (A13): „not me — ask Eka" gets one card first; its tap is acted on by the server.
+   const referral =
+     !ownerAbsent && thread.type === 'incoming_ask'
+diff --git a/src/services/debrief.service.ts b/src/services/debrief.service.ts
+index 58cc14e..4865aca 100644
+--- a/src/services/debrief.service.ts
++++ b/src/services/debrief.service.ts
+@@ -1,4 +1,5 @@
+ import { recountAnswerStats } from './answerStats.service';
++import { confirmByResult } from './factConfirm.service';
+ import { query } from '../db/postgres/client';
+ import { queueFollowUp, PendingUpdate } from './pendingUpdates.service';
+ import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
+@@ -362,7 +363,7 @@ async function rearmContext(
+ }
+ 
+ /** The asked person's answer record, recounted after a „helped" (1689); never fails the debrief. */
+-async function recountHelper(askId: number): Promise<void> {
++async function recountHelper(askerId: string, askId: number): Promise<void> {
+   try {
+     const asked = await query<{ to_user_id: number }>(
+       `SELECT to_user_id FROM task_asks WHERE id = $1 LIMIT 1`,
+@@ -370,7 +371,11 @@ async function recountHelper(askId: number): Promise<void> {
+       DEBRIEF_QUERY_TIMEOUT_MS,
+     );
+     const helper = asked.rows[0]?.to_user_id;
+-    if (helper !== undefined) recountAnswerStats(helper);
++    if (helper !== undefined) {
++      recountAnswerStats(helper);
++      // 1690 (A7): the result confirms the asker's core facts about the helper.
++      await confirmByResult(askerId, helper);
++    }
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.error('[answer-stats] helper not found for a debrief:', (err as Error).message);
+@@ -430,6 +435,6 @@ export async function recordDebriefOutcome(
+     DEBRIEF_QUERY_TIMEOUT_MS,
+   );
+   // 1689 (A6): a „helped" counts on the record of the person who was asked.
+-  if (subject === 'relayed_ask' && worked) await recountHelper(refId);
++  if (subject === 'relayed_ask' && worked) await recountHelper(userId, refId);
+   return { recorded: true };
+ }
+diff --git a/src/services/factConfirm.service.ts b/src/services/factConfirm.service.ts
+new file mode 100644
+index 0000000..20fd864
+--- /dev/null
++++ b/src/services/factConfirm.service.ts
+@@ -0,0 +1,258 @@
++import { query } from '../db/postgres/client';
++import { FACT_FIELD_TYPES, submitContactFact } from './contactFacts.service';
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 1690 (A7, the intelligence research of 6 October, D679/D680): job facts go
++ * stale at about 1% a month and nobody fills a survey to refresh them. So the
++ * owner is asked at the moment of use — when a search hands the run one of the
++ * four core facts (occupation, employer, city, industry) that HE saved about a
++ * contact, older than 180 days, never confirmed, never asked: one line, three
++ * taps, by the server, at most one per conversation a day.
++ *
++ *   „yes"       → last_confirmed_at;
++ *   „not sure"  → nothing more; not asked again for 180 days;
++ *   „no longer" → „where now?" once; his next short line is saved as a new
++ *                 fact from him (the old one is kept, never deleted).
++ *
++ * Every step is the server's: no model text, no settings page (D32).
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++export const CONFIRM_AFTER_DAYS = 180;
++const ONE_CONFIRM_PER_THREAD_HOURS = 24;
++const TAP_VALID_HOURS = 24;
++const WHERE_NOW_VALID_MINUTES = 60;
++const WHERE_NOW_MAX_CHARS = 80;
++const PHONES_READ = 50;
++
++export enum ConfirmTap {
++  Yes = 'yes',
++  No = 'no',
++  NotSure = 'not_sure',
++}
++
++interface ConfirmTexts {
++  readonly ask: (name: string, value: string) => string;
++  readonly labels: Readonly<Record<ConfirmTap, string>>;
++  readonly kept: string;
++  readonly notSure: string;
++  readonly whereNow: Readonly<Record<string, (name: string) => string>>;
++  readonly saved: (name: string, value: string) => string;
++}
++
++const TEXTS: Readonly<Record<'ka' | 'en', ConfirmTexts>> = {
++  ka: {
++    ask: (name, value) => `შენახული მაქვს: ${name} — „${value}". ისევ ასეა?`,
++    labels: {
++      [ConfirmTap.Yes]: 'კი, ასეა',
++      [ConfirmTap.No]: 'აღარ',
++      [ConfirmTap.NotSure]: 'არ ვიცი',
++    },
++    kept: 'კარგი, ასე დავტოვებ.',
++    notSure: 'კარგი, ჯერ ასე დავტოვებ.',
++    whereNow: {
++      employer: (name) => `ახლა სად მუშაობს ${name}?`,
++      occupation: (name) => `ახლა რას საქმიანობს ${name}?`,
++      city: (name) => `ახლა რომელ ქალაქშია ${name}?`,
++      industry: (name) => `ახლა რომელ სფეროშია ${name}?`,
++    },
++    saved: (name, value) => `დავიმახსოვრე: ${name} — „${value}".`,
++  },
++  en: {
++    ask: (name, value) => `You have „${value}" saved for ${name}. Is that still right?`,
++    labels: {
++      [ConfirmTap.Yes]: 'Yes',
++      [ConfirmTap.No]: 'No longer',
++      [ConfirmTap.NotSure]: 'Not sure',
++    },
++    kept: 'Good, I keep it.',
++    notSure: 'Fine, I keep it for now.',
++    whereNow: {
++      employer: (name) => `Where does ${name} work now?`,
++      occupation: (name) => `What does ${name} do now?`,
++      city: (name) => `Which city is ${name} in now?`,
++      industry: (name) => `Which field is ${name} in now?`,
++    },
++    saved: (name, value) => `Saved: ${name} — „${value}".`,
++  },
++};
++
++function textsFor(language: RunLanguage): ConfirmTexts {
++  return language === 'ka' ? TEXTS.ka : TEXTS.en;
++}
++
++export interface StaleFact {
++  readonly id: number;
++  readonly phone: string;
++  readonly field_type: string;
++  readonly value: string;
++  readonly name: string;
++}
++
++/** One old, unconfirmed, never-asked core fact the owner saved about one of these numbers. */
++export async function staleCoreFact(
++  ownerId: string,
++  phones: readonly string[],
++): Promise<StaleFact | null> {
++  if (phones.length === 0) return null;
++  const result = await query<StaleFact>(
++    `SELECT cf.id, cf.neo4j_contact_id AS phone, cf.field_type, cf.value,
++            (SELECT MAX(NULLIF(TRIM(ua.alias), '')) FROM "UserAlias" ua
++              WHERE ua.phone = cf.neo4j_contact_id AND ua."contactId" = $1::int) AS name
++       FROM contact_facts cf
++      WHERE cf.submitted_by_user_id = $1::text
++        AND cf.neo4j_contact_id = ANY($2::text[])
++        AND cf.field_type = ANY($3::text[])
++        AND cf.retracted_at IS NULL
++        AND cf.created_at < NOW() - make_interval(days => $4)
++        AND cf.last_confirmed_at IS NULL AND cf.confirmed_by_result_at IS NULL
++        AND (cf.confirm_asked_at IS NULL OR cf.confirm_asked_at < NOW() - make_interval(days => $4))
++      ORDER BY cf.created_at ASC
++      LIMIT 1`,
++    [ownerId, phones.slice(0, PHONES_READ), [...FACT_FIELD_TYPES], CONFIRM_AFTER_DAYS],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  return row !== undefined && (row.name ?? '').trim() !== '' ? row : null;
++}
++
++/** Was a confirm question already shown in this conversation today? */
++async function askedHereToday(threadId: number): Promise<boolean> {
++  const result = await query<{ asked: boolean }>(
++    `SELECT EXISTS (SELECT 1 FROM fact_confirms WHERE thread_id = $1
++                     AND asked_at > NOW() - make_interval(hours => $2)) AS asked`,
++    [threadId, ONE_CONFIRM_PER_THREAD_HOURS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.asked === true;
++}
++
++export interface ConfirmCard {
++  readonly text: string;
++  readonly choices: readonly string[];
++}
++
++/** The card for one stale fact, recorded as asked; null when none is due here. */
++export async function confirmCardFor(
++  ownerId: string,
++  threadId: number,
++  phones: readonly string[],
++  language: RunLanguage,
++): Promise<ConfirmCard | null> {
++  if (await askedHereToday(threadId)) return null;
++  const fact = await staleCoreFact(ownerId, phones);
++  if (fact === null) return null;
++  await query(
++    `WITH asked AS (UPDATE contact_facts SET confirm_asked_at = NOW() WHERE id = $3 RETURNING id)
++     INSERT INTO fact_confirms (user_id, thread_id, fact_id, phone, field_type, name, value)
++     VALUES ($1::int, $2, $3, $4, $5, $6, $7)`,
++    [ownerId, threadId, fact.id, fact.phone, fact.field_type, fact.name, fact.value],
++    QUERY_TIMEOUT_MS,
++  );
++  const t = textsFor(language);
++  return {
++    text: t.ask(fact.name, fact.value),
++    choices: [t.labels[ConfirmTap.Yes], t.labels[ConfirmTap.No], t.labels[ConfirmTap.NotSure]],
++  };
++}
++
++/** Which of the three buttons this line is, in any language; null when it is none. */
++export function confirmTapOf(line: string): ConfirmTap | null {
++  const said = line.trim().toLowerCase();
++  for (const t of Object.values(TEXTS)) {
++    for (const tap of Object.values(ConfirmTap)) {
++      if (t.labels[tap].toLowerCase() === said) return tap;
++    }
++  }
++  return null;
++}
++
++interface OpenConfirm {
++  readonly id: number;
++  readonly fact_id: number;
++  readonly phone: string;
++  readonly field_type: string;
++  readonly name: string;
++  readonly state: string;
++}
++
++async function openConfirmIn(threadId: number): Promise<OpenConfirm | null> {
++  const result = await query<OpenConfirm>(
++    `SELECT id, fact_id, phone, field_type, name, state FROM fact_confirms
++      WHERE thread_id = $1
++        AND ((state = 'asked' AND asked_at > NOW() - make_interval(hours => $2))
++          OR (state = 'no_waiting' AND answered_at > NOW() - make_interval(mins => $3)))
++      ORDER BY asked_at DESC LIMIT 1`,
++    [threadId, TAP_VALID_HOURS, WHERE_NOW_VALID_MINUTES],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0] ?? null;
++}
++
++async function settle(id: number, state: string): Promise<void> {
++  await query(
++    `UPDATE fact_confirms SET state = $2, answered_at = NOW() WHERE id = $1`,
++    [id, state],
++    QUERY_TIMEOUT_MS,
++  );
++}
++
++/**
++ * The owner's line, read against an open confirm in this conversation: the
++ * server's reply when it settled it, or null when the line is about something
++ * else (then the run answers it as always, and a waiting „where now?" lapses).
++ */
++export async function answerConfirm(
++  ownerId: string,
++  threadId: number,
++  line: string,
++  languageOf: () => Promise<RunLanguage>,
++): Promise<string | null> {
++  const open = await openConfirmIn(threadId);
++  if (open === null) return null;
++  const t = textsFor(await languageOf());
++  if (open.state === 'no_waiting') {
++    const value = line.trim();
++    if (value === '' || value.length > WHERE_NOW_MAX_CHARS || confirmTapOf(value) !== null) {
++      await settle(open.id, 'dropped');
++      return null;
++    }
++    await submitContactFact(ownerId, open.phone, open.field_type, value, 'chat', 'stated');
++    await settle(open.id, 'no_saved');
++    return t.saved(open.name, value);
++  }
++  const tap = confirmTapOf(line);
++  if (tap === null) return null;
++  if (tap === ConfirmTap.Yes) {
++    await query(
++      `UPDATE contact_facts SET last_confirmed_at = NOW() WHERE id = $1`,
++      [open.fact_id],
++      QUERY_TIMEOUT_MS,
++    );
++    await settle(open.id, 'yes');
++    return t.kept;
++  }
++  if (tap === ConfirmTap.NotSure) {
++    await settle(open.id, 'not_sure');
++    return t.notSure;
++  }
++  await settle(open.id, 'no_waiting');
++  const ask = t.whereNow[open.field_type] ?? t.whereNow.employer;
++  return ask(open.name);
++}
++
++/**
++ * A result confirms the facts that picked the helper: a „helped" debrief marks
++ * the asker's core facts about the asked person as confirmed by result.
++ */
++export async function confirmByResult(askerId: string, helperUserId: number): Promise<void> {
++  await query(
++    `UPDATE contact_facts cf SET confirmed_by_result_at = NOW()
++      WHERE cf.submitted_by_user_id = $1::text
++        AND cf.field_type = ANY($3::text[])
++        AND cf.retracted_at IS NULL
++        AND cf.neo4j_contact_id IN (SELECT phone FROM "UserPhone" WHERE "userId" = $2)`,
++    [askerId, helperUserId, [...FACT_FIELD_TYPES]],
++    QUERY_TIMEOUT_MS,
++  );
++}
+diff --git a/src/services/pendingMessages.ts b/src/services/pendingMessages.ts
+index 7e0a2bc..930ec9b 100644
+--- a/src/services/pendingMessages.ts
++++ b/src/services/pendingMessages.ts
+@@ -640,6 +640,15 @@ export function renderPendingMessage(
+         instruction,
+       };
+     }
++    /** 1690 (A7): the fact-confirm card; its text and buttons are the server's own. */
++    case 'fact_confirm': {
++      const text = str(p, 'text');
++      const choices = Array.isArray(p.choices)
++        ? (p.choices as unknown[]).filter((c): c is string => typeof c === 'string')
++        : [];
++      if (text === null || choices.length === 0) return null;
++      return { text, choices, ref: { kind: item.kind }, instruction };
++    }
+     case 'search_followup':
+       return {
+         text: t.searchFollowUp,
+-- 
+2.43.0
+

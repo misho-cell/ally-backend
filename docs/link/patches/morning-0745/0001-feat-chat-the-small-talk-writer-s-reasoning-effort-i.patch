@@ -1,0 +1,99 @@
+From de5cb81ee63b84036a163740fcdbd87ddaa7052c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 07:11:31 +0000
+Subject: [PATCH 01/22] =?UTF-8?q?feat(chat):=20the=20small-talk=20writer's?=
+ =?UTF-8?q?=20reasoning=20effort=20is=20a=20setting=20(958,=20=C2=A7110)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes (9 Oct): small talk should answer in seconds, and the writer
+spends ~3 s reasoning first. CHAT_SMALL_TALK_REASONING_EFFORT (minimal / low /
+medium / high) is sent as reasoning_effort for the small-talk model only —
+and only when small talk has its own model (CHAT_SMALL_TALK_FINAL_MODEL), so
+the ordinary writer is never touched. Unset or unknown: nothing is sent and
+nothing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/smallTalkThinksLess.test.ts     | 21 +++++++++++++++
+ src/services/finalAnswer.service.ts           | 27 +++++++++++++++++++
+ 2 files changed, 48 insertions(+)
+ create mode 100644 src/services/__tests__/smallTalkThinksLess.test.ts
+
+diff --git a/src/services/__tests__/smallTalkThinksLess.test.ts b/src/services/__tests__/smallTalkThinksLess.test.ts
+new file mode 100644
+index 0000000..f5a65d5
+--- /dev/null
++++ b/src/services/__tests__/smallTalkThinksLess.test.ts
+@@ -0,0 +1,21 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { smallTalkReasoningEffort } from '../finalAnswer.service';
++
++/** 958 (§110): the small-talk writer's reasoning effort comes from an env var; unset changes nothing. */
++describe('the small-talk reasoning effort', () => {
++  it('takes only the four known values', () => {
++    expect(smallTalkReasoningEffort('low')).toBe('low');
++    expect(smallTalkReasoningEffort(' Minimal ')).toBe('minimal');
++    expect(smallTalkReasoningEffort('fast')).toBeNull();
++    expect(smallTalkReasoningEffort(undefined)).toBeNull();
++  });
++
++  it('is sent only for the small-talk model, never the ordinary writer', () => {
++    const src = readFileSync(join(__dirname, '..', 'finalAnswer.service.ts'), 'utf8');
++    expect(src).toContain(
++      "SMALL_TALK_FINAL_MODEL !== '' && model === SMALL_TALK_FINAL_MODEL && effort !== null",
++    );
++    expect(src).toContain('...effortFor(model),');
++  });
++});
+diff --git a/src/services/finalAnswer.service.ts b/src/services/finalAnswer.service.ts
+index 22bced7..e6b6acb 100644
+--- a/src/services/finalAnswer.service.ts
++++ b/src/services/finalAnswer.service.ts
+@@ -50,6 +50,32 @@ export function smallTalkFinalModel(): string {
+   return FINAL_ANSWER_MODEL === '' ? '' : SMALL_TALK_FINAL_MODEL || FINAL_ANSWER_MODEL;
+ }
+ 
++/**
++ * 958 (Misho's yes, 9 Oct, §110): small talk should answer in seconds, and the
++ * writer spends ~3 s reasoning first. CHAT_SMALL_TALK_REASONING_EFFORT sets the
++ * small-talk writer's effort; unset, or not one of these, it is not sent and
++ * nothing changes. Only when small talk has its own model, so the ordinary
++ * writer is never touched.
++ */
++const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'] as const;
++type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
++
++export function smallTalkReasoningEffort(
++  raw: string | undefined = process.env.CHAT_SMALL_TALK_REASONING_EFFORT,
++): ReasoningEffort | null {
++  const value = raw?.trim().toLowerCase() ?? '';
++  return (REASONING_EFFORTS as readonly string[]).includes(value)
++    ? (value as ReasoningEffort)
++    : null;
++}
++
++function effortFor(model: string): { reasoning_effort?: ReasoningEffort } {
++  const effort = smallTalkReasoningEffort();
++  return SMALL_TALK_FINAL_MODEL !== '' && model === SMALL_TALK_FINAL_MODEL && effort !== null
++    ? { reasoning_effort: effort }
++    : {};
++}
++
+ /**
+  * Misho's N, 6 October: a run nobody started — a scheduled check, an engine
+  * wake — is not rewritten by GPT at all. 18 of 69 such rewrites came back
+@@ -393,6 +419,7 @@ export async function writeFinalAnswer(
+       {
+         model,
+         max_completion_tokens: MAX_TOKENS,
++        ...effortFor(model),
+         messages: sent,
+         stream: true,
+         stream_options: { include_usage: true },
+-- 
+2.43.0
+

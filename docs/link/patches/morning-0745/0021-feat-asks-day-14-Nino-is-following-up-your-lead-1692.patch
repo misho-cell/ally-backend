@@ -1,0 +1,285 @@
+From 7346959c9b8d3c5be0969ae65338948c1476a95f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 05:10:31 +0000
+Subject: [PATCH 21/22] =?UTF-8?q?feat(asks):=20day=2014=20=E2=80=94=20?=
+ =?UTF-8?q?=E2=80=9ENino=20is=20following=20up=20your=20lead"=20(1692=20pa?=
+ =?UTF-8?q?rt=202,=20held)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+1692: „if still unanswered 14 days after the helper's answer, the helper gets
+'Nino is following up your lead' with no fact — an effort never vanishes
+without a word." Once a day at 09:00 UTC, an answer whose „how did it go?"
+debrief was armed and never answered, with no outcome and no thank-you, gives
+the helper that one fixed line in their language, rung once, and a
+helper_thanks row in state followed_up (migration 229) so it is said once.
+At most 100 a day.
+
+Only answers whose debrief was armed qualify, and the sweep itself returns at
+once while ANSWER_DEBRIEF_ON is off: nothing happens until Misho's yes on AV.
+The switch moved to answerDebriefSwitch.ts so debrief and helperThanks do not
+import each other.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/229_helper_followed_up.sql     |  6 ++
+ src/index.ts                                  |  2 +
+ .../__tests__/aHelperIsThanked.test.ts        | 22 ++++++++
+ src/services/answerDebriefSwitch.ts           |  5 ++
+ src/services/debrief.service.ts               |  3 +-
+ src/services/helperThanks.cron.ts             | 34 +++++++++++
+ src/services/helperThanks.service.ts          | 56 ++++++++++++++++++-
+ src/services/helperThanksCards.ts             | 10 ++++
+ 8 files changed, 135 insertions(+), 3 deletions(-)
+ create mode 100644 src/db/postgres/migrations/229_helper_followed_up.sql
+ create mode 100644 src/services/answerDebriefSwitch.ts
+ create mode 100644 src/services/helperThanks.cron.ts
+
+diff --git a/src/db/postgres/migrations/229_helper_followed_up.sql b/src/db/postgres/migrations/229_helper_followed_up.sql
+new file mode 100644
+index 0000000..ee7149c
+--- /dev/null
++++ b/src/db/postgres/migrations/229_helper_followed_up.sql
+@@ -0,0 +1,6 @@
++-- 1692 part 2 (A9): an answer whose debrief went unanswered for 14 days gives
++-- the helper one „<asker> is following up your lead" — an effort never
++-- vanishes without a word. One row per ask either way, so it is said once.
++ALTER TABLE helper_thanks DROP CONSTRAINT IF EXISTS helper_thanks_state_check;
++ALTER TABLE helper_thanks ADD CONSTRAINT helper_thanks_state_check
++  CHECK (state IN ('offered', 'decided', 'asked_again', 'followed_up'));
+diff --git a/src/index.ts b/src/index.ts
+index 0246942..4128c33 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -42,6 +42,7 @@ import { startEveningCards } from './services/eveningCard.cron';
+ import { startOwnerReminders } from './services/ownerReminders.cron';
+ import { startAnswerStats } from './services/answerStats.cron';
+ import { startNeedsOffersMatcher } from './services/needsOffers.cron';
++import { startHelperFollowUps } from './services/helperThanks.cron';
+ import { startTaskTicker } from './services/taskEngine.service';
+ import { clientErrorReply } from './api/middleware/clientError';
+ import { ApiResponse } from './types';
+@@ -179,6 +180,7 @@ runMigrations()
+     startOwnerReminders();
+     startAnswerStats();
+     startNeedsOffersMatcher();
++    startHelperFollowUps();
+     startTaskTicker();
+     startChorusCampaignCron();
+     startLabReportCron();
+diff --git a/src/services/__tests__/aHelperIsThanked.test.ts b/src/services/__tests__/aHelperIsThanked.test.ts
+index 2881695..d77c1d6 100644
+--- a/src/services/__tests__/aHelperIsThanked.test.ts
++++ b/src/services/__tests__/aHelperIsThanked.test.ts
+@@ -139,3 +139,25 @@ describe('the thank-you card', () => {
+     expect(debrief).toContain('await offerHelperThanks(userId, refId).catch(');
+   });
+ });
++
++describe('the day-14 line to the helper (1692 part 2)', () => {
++  it('sends nothing while AV waits', async () => {
++    const { followUpQuietLeads } = await import('../helperThanks.service');
++    expect(await followUpQuietLeads()).toBe(0);
++    expect(mockQuery).not.toHaveBeenCalled();
++    expect(mockSave).not.toHaveBeenCalled();
++  });
++
++  it('says only that the lead is followed, no fact', async () => {
++    const { followingUpLine } = await import('../helperThanksCards');
++    expect(followingUpLine('ka', 'ნინო')).toBe('ნინო შენს რჩევას ჯერ კიდევ მიჰყვება.');
++    expect(followingUpLine('en', 'Nino')).toBe('Nino is following up your lead.');
++  });
++
++  it('runs once a day at 09:00 UTC', async () => {
++    const { isFollowUpHour } = await import('../helperThanks.cron');
++    expect(isFollowUpHour(new Date('2026-10-09T09:10:00Z'), null)).toBe(true);
++    expect(isFollowUpHour(new Date('2026-10-09T09:40:00Z'), '2026-10-09')).toBe(false);
++    expect(isFollowUpHour(new Date('2026-10-09T08:59:00Z'), null)).toBe(false);
++  });
++});
+diff --git a/src/services/answerDebriefSwitch.ts b/src/services/answerDebriefSwitch.ts
+new file mode 100644
+index 0000000..b1dcb89
+--- /dev/null
++++ b/src/services/answerDebriefSwitch.ts
+@@ -0,0 +1,5 @@
++/**
++ * 1692 part 2: the „how did the answer work out?" debrief and the day-14 line
++ * to the helper. HELD (D44) until Misho's yes on NIGHT_QUESTIONS AV.
++ */
++export const ANSWER_DEBRIEF_ON = false;
+diff --git a/src/services/debrief.service.ts b/src/services/debrief.service.ts
+index 49b6dcf..fd4210e 100644
+--- a/src/services/debrief.service.ts
++++ b/src/services/debrief.service.ts
+@@ -1,4 +1,5 @@
+ import { recountAnswerStats } from './answerStats.service';
++import { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
+ import { offerHelperThanks } from './helperThanks.service';
+ import { confirmByResult } from './factConfirm.service';
+ import { query } from '../db/postgres/client';
+@@ -127,7 +128,7 @@ export async function armAskDebrief(
+  * HELD (D44): the instruction is new model text — NIGHT_QUESTIONS AV. Until
+  * Misho's yes nothing is armed.
+  */
+-export const ANSWER_DEBRIEF_ON = false;
++export { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
+ 
+ /** NIGHT_QUESTIONS AV, the exact text proposed. */
+ export function answerDebriefInstruction(who: string, askId: number): string {
+diff --git a/src/services/helperThanks.cron.ts b/src/services/helperThanks.cron.ts
+new file mode 100644
+index 0000000..dbc4c00
+--- /dev/null
++++ b/src/services/helperThanks.cron.ts
+@@ -0,0 +1,34 @@
++import { followUpQuietLeads } from './helperThanks.service';
++
++/**
++ * 1692 part 2: the day-14 „following up your lead" lines go once a day, at
++ * 09:00 UTC (13:00 in Tbilisi) — nobody is woken by them. Checked hourly; one
++ * run per UTC day per process. Idle while ANSWER_DEBRIEF_ON is off.
++ */
++const CHECK_EVERY_MS = 60 * 60 * 1000;
++const FOLLOW_UP_HOUR_UTC = 9;
++
++let lastRunDay: string | null = null;
++
++/** Should the lines go now? Once, in their hour, per UTC day. */
++export function isFollowUpHour(now: Date, lastDay: string | null): boolean {
++  return now.getUTCHours() === FOLLOW_UP_HOUR_UTC && lastDay !== now.toISOString().slice(0, 10);
++}
++
++export function startHelperFollowUps(): void {
++  const tick = (): void => {
++    const now = new Date();
++    if (!isFollowUpHour(now, lastRunDay)) return;
++    lastRunDay = now.toISOString().slice(0, 10);
++    void followUpQuietLeads()
++      .then((n) => {
++        // eslint-disable-next-line no-console
++        if (n > 0) console.log(`[helper-thanks] ${n} „following up your lead" line(s) sent`);
++      })
++      .catch((err: unknown) =>
++        // eslint-disable-next-line no-console
++        console.error('[helper-thanks] day-14 run failed:', (err as Error).message),
++      );
++  };
++  setInterval(tick, CHECK_EVERY_MS).unref();
++}
+diff --git a/src/services/helperThanks.service.ts b/src/services/helperThanks.service.ts
+index 365ff1f..ddffa43 100644
+--- a/src/services/helperThanks.service.ts
++++ b/src/services/helperThanks.service.ts
+@@ -8,7 +8,9 @@ import {
+   thankedLine,
+   thanksToHelperLine,
+   ThanksTap,
++  followingUpLine,
+ } from './helperThanksCards';
++import { ANSWER_DEBRIEF_ON } from './answerDebriefSwitch';
+ import { sendPushNotification } from './notification.service';
+ import { RunLanguage } from './runLanguage';
+ import {
+@@ -112,12 +114,14 @@ interface Thanked {
+   readonly asker_name: string | null;
+ }
+ 
++type LineAbout = (language: RunLanguage, asker: string) => string;
++
+ /** One line to one person, in their language, rung once. */
+-async function thankOne(person: Thanked): Promise<boolean> {
++async function thankOne(person: Thanked, write: LineAbout = thanksToHelperLine): Promise<boolean> {
+   const asker = person.asker_name?.trim() ?? '';
+   if (person.thread_id === null || asker === '') return false;
+   const language = await userLanguage(String(person.user_id));
+-  const text = thanksToHelperLine(language, asker);
++  const text = write(language, asker);
+   await saveThreadMessage(person.thread_id, person.user_id, 'assistant', text);
+   await sendPushNotification(String(person.user_id), {
+     title: 'Netai',
+@@ -216,3 +220,51 @@ export async function settleThanksTap(
+   );
+   return { text: notedLine(language) };
+ }
++
++/** Day 14 after the helper's answer, with no word from the asker. */
++const QUIET_LEAD_DAYS = 14;
++/** At most this many a day, so a backlog never floods anyone. */
++const QUIET_LEADS_PER_RUN = 100;
++
++interface QuietLead extends Thanked {
++  readonly ask_id: number;
++  readonly task_id: number | null;
++  readonly asker_user_id: number;
++}
++
++/**
++ * 1692 part 2: an answer whose „how did it go?" (AV) the asker never answered
++ * gets, on day 14, one line to the helper — „Nino is following up your lead",
++ * no fact — and a helper_thanks row, so it is said once. Only answers whose
++ * debrief was armed, so nothing happens while ANSWER_DEBRIEF_ON is off.
++ */
++export async function followUpQuietLeads(): Promise<number> {
++  if (!ANSWER_DEBRIEF_ON) return 0;
++  const due = await query<QuietLead>(
++    `SELECT ta.id AS ask_id, ta.task_id, ta.from_user_id AS asker_user_id,
++            ta.to_user_id AS user_id, ta.ask_thread_id AS thread_id,
++            ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
++       FROM task_asks ta
++       JOIN debrief_arms d ON d.kind = 'answered_ask' AND d.ref_id = ta.id
++      WHERE ta.status = 'answered' AND ta.declined_at IS NULL
++        AND ta.answered_at < NOW() - make_interval(days => $1)
++        AND NOT EXISTS (SELECT 1 FROM helper_thanks h WHERE h.ask_id = ta.id)
++        AND NOT EXISTS (SELECT 1 FROM outcome_events o
++                         WHERE o.subject_type = 'task_ask' AND o.subject_id = ta.id::text)
++      ORDER BY ta.id LIMIT $2`,
++    [QUIET_LEAD_DAYS, QUIET_LEADS_PER_RUN],
++    QUERY_TIMEOUT_MS,
++  );
++  let said = 0;
++  for (const lead of due.rows) {
++    const claimed = await query<{ id: number }>(
++      `INSERT INTO helper_thanks (ask_id, task_id, asker_user_id, helper_user_id, state)
++       VALUES ($1, $2, $3, $4, 'followed_up')
++       ON CONFLICT (ask_id) DO NOTHING RETURNING id`,
++      [lead.ask_id, lead.task_id, lead.asker_user_id, lead.user_id],
++      QUERY_TIMEOUT_MS,
++    );
++    if (claimed.rows.length > 0 && (await thankOne(lead, followingUpLine))) said += 1;
++  }
++  return said;
++}
+diff --git a/src/services/helperThanksCards.ts b/src/services/helperThanksCards.ts
+index 8e45918..a6eccc6 100644
+--- a/src/services/helperThanksCards.ts
++++ b/src/services/helperThanksCards.ts
+@@ -56,6 +56,14 @@ const THANKED: ByLanguage<(helper: string) => string> = {
+   es: (h) => `Se lo he dicho a ${h}.`,
+ };
+ 
++/** 1692 part 2: day 14, no word from the asker — the helper hears the lead is being followed, no fact. */
++const FOLLOWING_UP: ByLanguage<(asker: string) => string> = {
++  ka: (a) => `${a} შენს რჩევას ჯერ კიდევ მიჰყვება.`,
++  en: (a) => `${a} is following up your lead.`,
++  ru: (a) => `${a} ещё занимается твоей подсказкой.`,
++  es: (a) => `${a} sigue tu pista.`,
++};
++
+ const NOTED: ByLanguage<string> = {
+   ka: 'კარგი.',
+   en: 'All right.',
+@@ -75,6 +83,8 @@ export const thanksToHelperLine = (l: RunLanguage, asker: string): string =>
+   pick(THANKS_TO_HELPER, l)(asker);
+ export const thankedLine = (l: RunLanguage, helper: string): string => pick(THANKED, l)(helper);
+ export const notedLine = (l: RunLanguage): string => pick(NOTED, l);
++export const followingUpLine = (l: RunLanguage, asker: string): string =>
++  pick(FOLLOWING_UP, l)(asker);
+ 
+ /** Which thank-you button this line is; null for anything else. */
+ export function thanksTapOf(message: string): ThanksTap | null {
+-- 
+2.43.0
+
