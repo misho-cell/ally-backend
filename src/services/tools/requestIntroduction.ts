@@ -1,4 +1,5 @@
 import { recordIntroPrematch } from '../bridgeOrder';
+import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRoute';
 import { reasonAboutAsker } from '../askEditor.service';
 import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
@@ -408,6 +409,17 @@ async function requestIntroductionInner(
         'გაცნობის მოთხოვნას ვუგზავნით. ეს მისი გადაწყვეტილებაა და პატივს ვცემთ. მომხმარებელს ' +
         'პირდაპირ უთხარი ეს და შესთავაზე სხვა შუამავალი.',
     };
+  }
+
+  // 1697 part 2: both sides not of this field — logged until AO is approved, refused after.
+  if (!isDirect && (await closedRouteFor(context.requesterTaskId, resolvedPhone, targetPhone))) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[closed-route] goal ${context.requesterTaskId}: bridge and receiver both not of this field` +
+        (CLOSED_ROUTE_ON ? ' — not sent' : ' — sent (switch off)'),
+    );
+    if (CLOSED_ROUTE_ON)
+      return { success: false, reason: 'route_closed', error: CLOSED_ROUTE_LINE };
   }
 
   const hasPush =
