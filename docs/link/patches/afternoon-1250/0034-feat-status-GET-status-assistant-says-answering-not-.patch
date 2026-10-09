@@ -1,0 +1,379 @@
+From 43b9fd7a95ae0c6cac3f125c33d5b34abda92b7a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 19:40:31 +0000
+Subject: [PATCH] feat(status): GET /status/assistant says answering, not
+ answering or unknown (D699)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's new design draws the „online" dot green only while the
+assistant really answers, „Netai არ პასუხობს …-დან" while it does not, and
+nothing while nobody knows. The heartbeat already holds the facts; no route
+exposed them.
+
+The state comes from two rows: the newest successful Anthropic call in
+usage_events (a real reply or the heartbeat probe), and an open
+provider_refusing incident. A refusal with nothing answered after it is
+not_answering, since its start. An answer within 45 minutes is answering;
+25 min of silence before a probe, plus a 10 min check, is the stalest a
+healthy server gets. Anything else is unknown, so a stopped heartbeat can
+never keep the dot green.
+
+Contract in docs/FOR_FRONTEND.md.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 05359a646f96c18dc610ddced67368c09626c7b1)
+---
+ docs/FOR_FRONTEND.md                          | 21 +++++
+ .../__tests__/everyRouteIsBehindAuth.test.ts  |  1 +
+ .../routes/__tests__/status.routes.test.ts    | 68 ++++++++++++++++
+ src/api/routes/status.routes.ts               | 29 +++++++
+ src/index.ts                                  |  2 +
+ .../theOnlineDotSaysWhatIsKnown.test.ts       | 73 ++++++++++++++++++
+ src/services/assistantStatus.service.ts       | 77 +++++++++++++++++++
+ 7 files changed, 271 insertions(+)
+ create mode 100644 src/api/routes/__tests__/status.routes.test.ts
+ create mode 100644 src/api/routes/status.routes.ts
+ create mode 100644 src/services/__tests__/theOnlineDotSaysWhatIsKnown.test.ts
+ create mode 100644 src/services/assistantStatus.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 87b4d52..2f59ad5 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,27 @@ messages in their name.
+ 
+ ---
+ 
++## 9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)
++
++Authenticated (the usual bearer token), 20 requests a minute per person. It reads two rows and costs nothing, so polling every few minutes is fine.
++
++```json
++GET /status/assistant
++200 { "success": true, "data": { "state": "answering", "since": null, "checked_at": "2026-10-09T19:41:07.000Z" } }
++200 { "success": true, "data": { "state": "not_answering", "since": "2026-10-09T19:02:11.000Z", "checked_at": "2026-10-09T19:02:11.000Z" } }
++200 { "success": true, "data": { "state": "unknown", "since": null, "checked_at": "2026-10-09T18:20:00.000Z" } }
++401 no or bad token · 429 too many · 500 { "success": false, "error": "Could not read the assistant status" }
++```
++
++- **`answering`:** the AI provider answered within the last 45 minutes, counting any real reply or the heartbeat probe. The heartbeat probes after 25 quiet minutes and looks every 10, so a healthy server is never staler than that. `checked_at` is that last answer.
++- **`not_answering`:** the heartbeat heard a refusal (`provider_refusing` incident open), and nothing has answered since. `since` is when the refusal began (the „…-დან" in your line). `checked_at` repeats it. **Do not age this state out on `checked_at`:** failing probes do not restamp it, and the line must stay up until the server says otherwise.
++- **`unknown`:** no answer in 45 minutes and no refusal on record (for example, the heartbeat itself stopped). The server already does the ageing, so draw nothing. `checked_at` is the last answer ever seen, or null.
++- **On 500 or a network error,** draw nothing, the same as `unknown`.
++
++What it does **not** cover: it speaks for the AI provider only. The API being down shows up to you as the request failing. Login codes and the database are not probed (outageDetect.service.ts says so too).
++
++---
++
+ ## 9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows
+ 
+ Read from production, read-only. Endpoints are left out (they are tokens); all three go to `fcm.googleapis.com`.
+diff --git a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+index 37d6a93..0ec6354 100644
+--- a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
++++ b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+@@ -46,6 +46,7 @@ const GUARDED_AT_THE_ROUTER = [
+   'contacts.routes.ts',
+   // #1850: the evening card is the person's own questions.
+   'eveningCard.routes.ts',
++  'status.routes.ts',
+   'notifications.routes.ts',
+   'privacy.routes.ts',
+   'requests.routes.ts',
+diff --git a/src/api/routes/__tests__/status.routes.test.ts b/src/api/routes/__tests__/status.routes.test.ts
+new file mode 100644
+index 0000000..300655f
+--- /dev/null
++++ b/src/api/routes/__tests__/status.routes.test.ts
+@@ -0,0 +1,68 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../services/assistantStatus.service', () => ({
++  __esModule: true,
++  assistantStatus: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import statusRouter from '../status.routes';
++import { assistantStatus } from '../../../services/assistantStatus.service';
++
++const mockStatus = assistantStatus as jest.MockedFunction<typeof assistantStatus>;
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use('/status', statusRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/status`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** D699: GET /status/assistant. */
++describe('GET /status/assistant', () => {
++  it('returns the state', async () => {
++    const status = {
++      state: 'not_answering',
++      since: '2026-10-09T19:00:00.000Z',
++      checked_at: '2026-10-09T19:00:00.000Z',
++    } as const;
++    mockStatus.mockResolvedValueOnce(status as never);
++    const res = await fetch(`${base}/assistant`);
++    expect(res.status).toBe(200);
++    await expect(res.json()).resolves.toEqual({ success: true, data: status });
++  });
++
++  it('says 500 with a plain message when the read fails', async () => {
++    mockStatus.mockRejectedValueOnce(new Error('connection refused at 10.0.0.1'));
++    const res = await fetch(`${base}/assistant`);
++    expect(res.status).toBe(500);
++    await expect(res.json()).resolves.toEqual({
++      success: false,
++      error: 'Could not read the assistant status',
++    });
++  });
++});
+diff --git a/src/api/routes/status.routes.ts b/src/api/routes/status.routes.ts
+new file mode 100644
+index 0000000..f81380f
+--- /dev/null
++++ b/src/api/routes/status.routes.ts
+@@ -0,0 +1,29 @@
++import { Router, Request, Response } from 'express';
++import { authenticateJwt, requireUserRole } from '../middleware/auth.middleware';
++import { rateLimit } from '../middleware/rateLimit.middleware';
++import { assistantStatus } from '../../services/assistantStatus.service';
++
++/**
++ * D699 — the „online" dot.
++ *
++ *   GET /status/assistant   { state: answering | not_answering | unknown, since, checked_at }
++ *
++ * The app polls it every few minutes; it reads two rows and spends nothing.
++ */
++const REQUESTS_PER_MINUTE = 20;
++
++const statusRouter = Router();
++statusRouter.use(authenticateJwt, requireUserRole);
++statusRouter.use(rateLimit({ windowMs: 60_000, max: REQUESTS_PER_MINUTE }));
++
++statusRouter.get('/assistant', async (_req: Request, res: Response): Promise<void> => {
++  try {
++    res.status(200).json({ success: true, data: await assistantStatus() });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /status/assistant]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the assistant status' });
++  }
++});
++
++export default statusRouter;
+diff --git a/src/index.ts b/src/index.ts
+index 4128c33..36e3594 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -12,6 +12,7 @@ import threadFilesRouter from './api/routes/threadFiles.routes';
+ import requestsRouter from './api/routes/requests.routes';
+ import updatesRouter from './api/routes/updates.routes';
+ import eveningCardRouter from './api/routes/eveningCard.routes';
++import statusRouter from './api/routes/status.routes';
+ import tasksRouter from './api/routes/tasks.routes';
+ import privacyRouter from './api/routes/privacy.routes';
+ import speechRouter from './api/routes/speech.routes';
+@@ -109,6 +110,7 @@ app.use('/threads', threadsRouter);
+ app.use('/requests', requestsRouter);
+ app.use('/updates', updatesRouter);
+ app.use('/evening-card', eveningCardRouter);
++app.use('/status', statusRouter);
+ app.use('/tasks', tasksRouter);
+ app.use('/privacy', privacyRouter);
+ // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
+diff --git a/src/services/__tests__/theOnlineDotSaysWhatIsKnown.test.ts b/src/services/__tests__/theOnlineDotSaysWhatIsKnown.test.ts
+new file mode 100644
+index 0000000..d8aedc9
+--- /dev/null
++++ b/src/services/__tests__/theOnlineDotSaysWhatIsKnown.test.ts
+@@ -0,0 +1,73 @@
++import { query } from '../../db/postgres/client';
++import {
++  AssistantState,
++  assistantStateFrom,
++  assistantStatus,
++  FRESH_EVIDENCE_MS,
++} from '../assistantStatus.service';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++const NOW = new Date('2026-10-09T19:40:00Z');
++const minutesAgo = (m: number): Date => new Date(NOW.getTime() - m * 60_000);
++
++/** D699: green only while the assistant answers, red while it does not, nothing while unknown. */
++describe('the assistant status', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('is answering when the provider answered recently', () => {
++    expect(assistantStateFrom({ lastAnswer: minutesAgo(3), refusingSince: null }, NOW)).toEqual({
++      state: AssistantState.Answering,
++      since: null,
++      checked_at: minutesAgo(3).toISOString(),
++    });
++  });
++
++  it('is not answering while a refusal is open and nothing answered after it', () => {
++    expect(
++      assistantStateFrom({ lastAnswer: minutesAgo(50), refusingSince: minutesAgo(40) }, NOW),
++    ).toEqual({
++      state: AssistantState.NotAnswering,
++      since: minutesAgo(40).toISOString(),
++      checked_at: minutesAgo(40).toISOString(),
++    });
++  });
++
++  it('is answering again once an answer came after the refusal began', () => {
++    expect(
++      assistantStateFrom({ lastAnswer: minutesAgo(1), refusingSince: minutesAgo(40) }, NOW).state,
++    ).toBe(AssistantState.Answering);
++  });
++
++  it('is unknown when the newest answer is too old to prove anything', () => {
++    const old = new Date(NOW.getTime() - FRESH_EVIDENCE_MS - 60_000);
++    expect(assistantStateFrom({ lastAnswer: old, refusingSince: null }, NOW)).toEqual({
++      state: AssistantState.Unknown,
++      since: null,
++      checked_at: old.toISOString(),
++    });
++  });
++
++  it('is unknown with no evidence at all', () => {
++    expect(assistantStateFrom({ lastAnswer: null, refusingSince: null }, NOW)).toEqual({
++      state: AssistantState.Unknown,
++      since: null,
++      checked_at: null,
++    });
++  });
++
++  it('reads both facts in one bounded query', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [{ last_answer: minutesAgo(2), refusing_since: null }],
++    } as never);
++    await expect(assistantStatus(NOW)).resolves.toMatchObject({
++      state: AssistantState.Answering,
++    });
++    const [sql, params, timeout] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain("provider = 'anthropic'");
++    expect(String(sql)).toContain('cleared_at IS NULL');
++    expect(params).toEqual(['provider_refusing']);
++    expect(timeout).toBeGreaterThan(0);
++  });
++});
+diff --git a/src/services/assistantStatus.service.ts b/src/services/assistantStatus.service.ts
+new file mode 100644
+index 0000000..32a9de9
+--- /dev/null
++++ b/src/services/assistantStatus.service.ts
+@@ -0,0 +1,77 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * D699 (frontend 9 Oct, 19:30Z): the real „online" dot — green only while the
++ * assistant actually answers, „Netai არ პასუხობს …-დან" while it does not,
++ * and NOTHING while we do not know. A dot the client guessed would be green
++ * through an outage, so the server says which of the three it is.
++ *
++ * The evidence is the heartbeat's own (heartbeat.cron.ts): `usage_events` is
++ * written on every successful Anthropic call, the probe's included, and an
++ * open `provider_refusing` incident is the probe hearing a refusal. While the
++ * provider answers, a success is never older than the probe's silence
++ * threshold plus one check interval (25 + 10 minutes); past that the heartbeat
++ * itself has stopped looking, and „answering" would be a guess.
++ */
++const QUERY_TIMEOUT_MS = 4_000;
++
++/** 25 min of silence before a probe + a 10 min check interval + slack for the probe itself. */
++export const FRESH_EVIDENCE_MS = 45 * 60_000;
++
++const PROVIDER_REFUSING = 'provider_refusing';
++
++export enum AssistantState {
++  Answering = 'answering',
++  NotAnswering = 'not_answering',
++  Unknown = 'unknown',
++}
++
++export interface AssistantStatus {
++  readonly state: AssistantState;
++  /** When the refusal began; null unless not_answering. */
++  readonly since: string | null;
++  /** The newest evidence behind the state: the last answer, or the refusal's start. */
++  readonly checked_at: string | null;
++}
++
++export interface StatusEvidence {
++  readonly lastAnswer: Date | null;
++  readonly refusingSince: Date | null;
++}
++
++/** The three states from the two facts, at `now`. Pure. */
++export function assistantStateFrom(evidence: StatusEvidence, now: Date): AssistantStatus {
++  const { lastAnswer, refusingSince } = evidence;
++  const answeredSinceRefusal =
++    lastAnswer !== null && (refusingSince === null || lastAnswer > refusingSince);
++  if (refusingSince !== null && !answeredSinceRefusal) {
++    const since = refusingSince.toISOString();
++    return { state: AssistantState.NotAnswering, since, checked_at: since };
++  }
++  const checkedAt = lastAnswer === null ? null : lastAnswer.toISOString();
++  if (lastAnswer !== null && now.getTime() - lastAnswer.getTime() <= FRESH_EVIDENCE_MS) {
++    return { state: AssistantState.Answering, since: null, checked_at: checkedAt };
++  }
++  return { state: AssistantState.Unknown, since: null, checked_at: checkedAt };
++}
++
++async function statusEvidence(): Promise<StatusEvidence> {
++  const result = await query<{ last_answer: Date | null; refusing_since: Date | null }>(
++    `SELECT (SELECT MAX(created_at) FROM usage_events WHERE provider = 'anthropic') AS last_answer,
++            (SELECT started_at FROM outage_incidents
++              WHERE cause = $1 AND cleared_at IS NULL
++              ORDER BY started_at DESC
++              LIMIT 1) AS refusing_since`,
++    [PROVIDER_REFUSING],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  return {
++    lastAnswer: row?.last_answer ? new Date(row.last_answer) : null,
++    refusingSince: row?.refusing_since ? new Date(row.refusing_since) : null,
++  };
++}
++
++export async function assistantStatus(now: Date = new Date()): Promise<AssistantStatus> {
++  return assistantStateFrom(await statusEvidence(), now);
++}
+-- 
+2.43.0
+

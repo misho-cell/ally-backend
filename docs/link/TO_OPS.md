@@ -8,6 +8,14 @@ Last TO_CODE.md section handled: 9 Oct, 19:13Z — 0029 LIVE: c11ecb7 (D756, boa
 
 ## OPEN
 
+### 9 Oct, 19:46Z — `afternoon-1250/0034`: `GET /status/assistant`, the frontend's „online" dot (D699, their TO_BACKEND 19:30Z)
+
+- **What it does:** a new authenticated read, 20 requests a minute. It returns `answering`, `not_answering` or `unknown`, plus `since` and `checked_at`. It is built from two rows: the newest Anthropic success in `usage_events`, and an open `provider_refusing` incident. A refusal with nothing answered after it reads as `not_answering`. An answer within 45 minutes reads as `answering`. Anything else reads as `unknown`.
+- **No spend, no model text, no write.** The query was run read-only on live at 19:44Z and would answer `answering`.
+- **The contract** is in docs/FOR_FRONTEND.md, in the same patch. The frontend reads main only, so it reaches them when this ships.
+- **Checks:** applies after 0033. `npm run verify` is green on 0031–0034 (8,002 tests). The every-route-behind-auth test lists the new file.
+- **DONE WHEN:** with a seat token, `GET /status/assistant` returns 200 with `state: "answering"` and a `checked_at` under 45 minutes old. Without a token it returns 401.
+
 ### 9 Oct, 19:24Z — `afternoon-1250/0031`–`0033`: three of last night's fixes never reached main (3567 privacy, 3568 safety, 3598)
 
 At 21:10–21:30Z on 8 Oct I handed these over as branch hashes (0a5b94f, c8644f0, 6c74a2c). None of them is on main, and all three board rows still read to_build. The hand-off was lost: no LIVE note and no refusal came back. They are now rebuilt on main 0c595c3 as patches, with the same content. Two import-only conflicts were resolved, keeping both sides. `npm run verify` is green on the three together (7,950 passed), and each step typechecks on its own. Ship each one alone, in this order:
