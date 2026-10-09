@@ -73,6 +73,8 @@ export interface WeeklySummary {
   goals: GoalSummary[];
   tokens_spent: number;
   automatic_answers: number;
+  /** 1693: thank-yous this person received in the last 30 days. */
+  helped_this_month: number;
   text: string;
 }
 
@@ -105,6 +107,23 @@ async function automaticAnswers(userId: string): Promise<number> {
      WHERE to_user_id = $1::int AND automatic
        AND answered_at >= NOW() - ($2 || ' days')::interval`,
     [userId, WEEK_DAYS],
+    SUMMARY_QUERY_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.n ?? 0);
+}
+
+/**
+ * 1693 (A9): „you helped N members this month" — the thank-yous this person
+ * received in the last 30 days (1692). One number, no ranking, no comparison.
+ */
+const HELPED_WINDOW_DAYS = 30;
+
+async function helpedThisMonth(userId: string): Promise<number> {
+  const result = await query<{ n: string }>(
+    `SELECT COUNT(*) AS n FROM helper_thanks
+     WHERE helper_user_id = $1::int
+       AND thanked_at >= NOW() - make_interval(days => $2)`,
+    [userId, HELPED_WINDOW_DAYS],
     SUMMARY_QUERY_TIMEOUT_MS,
   );
   return Number(result.rows[0]?.n ?? 0);
@@ -155,6 +174,7 @@ export function renderWeeklySummary(
   tokensSpentThisWeek: number,
   automaticAnswers: number,
   weekStart: string,
+  helped = 0,
 ): string {
   const lines: string[] = [`კვირის შეჯამება (${weekStart}-დან)`, ''];
   if (goals.length === 0) {
@@ -198,15 +218,18 @@ export function renderWeeklySummary(
       ? `შენი წესებით ავტომატურად გაცემული პასუხები: ${automaticAnswers}.`
       : 'შენი წესებით ავტომატურად გაცემული პასუხები: 0.',
   );
+  // 1693: only when there is something to say.
+  if (helped > 0) lines.push(`ამ თვეში ${helped} წევრს დაეხმარე.`);
   return lines.join('\n');
 }
 
 /** The week's summary for one user, composed but not sent. */
 export async function composeWeeklySummary(userId: string): Promise<WeeklySummary> {
-  const [rows, spent, automatic] = await Promise.all([
+  const [rows, spent, automatic, helped] = await Promise.all([
     goalsForUser(userId),
     tokensSpent(userId),
     automaticAnswers(userId),
+    helpedThisMonth(userId).catch(() => 0),
   ]);
   const goals: GoalSummary[] = rows.map((r) => {
     const plan = planInForce(r);
@@ -229,7 +252,8 @@ export async function composeWeeklySummary(userId: string): Promise<WeeklySummar
     goals,
     tokens_spent: spent,
     automatic_answers: automatic,
-    text: renderWeeklySummary(goals, spent, automatic, weekStart),
+    helped_this_month: helped,
+    text: renderWeeklySummary(goals, spent, automatic, weekStart, helped),
   };
 }
 
