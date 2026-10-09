@@ -79,6 +79,8 @@ import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { matchTapOf } from './matchCards';
+import { thanksTapOf } from './helperThanksCards';
+import { settleThanksTap } from './helperThanks.service';
 import { settleMatchTap } from './matchFlow.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { asksToReopen } from './reopenIntent';
@@ -161,6 +163,7 @@ import {
   createThread,
   getThreadsByIntroRequestId,
   threadLanguage,
+  saveThreadMessage,
 } from './threads.service';
 import {
   askStatusSection,
@@ -12519,6 +12522,43 @@ async function answerMatchTap(
   }
 }
 
+/** 1692 (A9): a tap on the thank-you card or on „would you ask them again?" is the server's. */
+async function answerThanksTap(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  const tap = thanksTapOf(userMessage);
+  if (tap === null) return null;
+  try {
+    const language = await threadLanguage(threadId).catch(() => detectRunLanguage(userMessage));
+    const settled = await settleThanksTap(userId, threadId, tap, language);
+    if (settled === null) return null;
+    if (intent?.alreadyStored !== true) {
+      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+    }
+    const choices = settled.choices === undefined ? undefined : [...settled.choices];
+    await saveThreadMessage(
+      threadId,
+      Number(userId),
+      'assistant',
+      settled.text,
+      'message',
+      runId,
+      choices ?? null,
+    );
+    // eslint-disable-next-line no-console
+    console.log(`[helper-thanks] run ${runId}: ${tap}`);
+    return { reply: settled.text, language, requestCreated: false, ...(choices && { choices }) };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[helper-thanks] tap not settled:', (err as Error).message);
+    return null;
+  }
+}
+
 /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
 async function ownerHasContacts(userId: string): Promise<boolean> {
   try {
@@ -15129,6 +15169,10 @@ export async function processChat(
     ? await answerMatchTap(userId, threadId, userMessage, runId, intent)
     : null;
   if (matchSettled !== null) return matchSettled;
+  const thanksSettled = serverMayAnswer
+    ? await answerThanksTap(userId, threadId, userMessage, runId, intent)
+    : null;
+  if (thanksSettled !== null) return thanksSettled;
   const goalForRequest = await ensureGoalForRequest(
     userId,
     thread.type,
