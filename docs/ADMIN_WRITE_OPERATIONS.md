@@ -6100,3 +6100,10 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
   > მისი აზრი შენი სიტყვებით, ყველა სახელი, თარიღი, ადგილი და რიცხვი ზუსტად.
 
   Ships alone, right after the prompt change.
+
+**§113 — 9 October ~13:40 UTC, Misho in the code session's chat: „ორივეზე კი, გააკეთე"** (to the two questions put at ~13:20Z).
+
+- **§113.1 (1692, ops 10:24Z Q1)** — a goal the owner closes as solved, after a helper answered on it, offers the same thank card
+  (`offerHelperThanks`, its §-approved texts unchanged) as a „helped" debrief does. Server behaviour; no new text.
+- **§113.2 (3796)** — `save_offer`'s description (§109) gains one sentence, at its end before „Not for needs":
+  > When the owner already wrote the line and asked you to save it, that is their yes.
