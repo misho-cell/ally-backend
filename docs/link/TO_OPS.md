@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 9 Oct, 01:36Z — 3236 TESTED (47978) + two SMA
 
 ## OPEN
 
+### 9 Oct, 02:05Z — bb1a285 (3533, plate v374): „ოკ", „ოk" and „დიახ, გაუგზავნე" approve a waiting plan
+
+- What: under a plan card these three now approve, like Latin „ok" and the 23 other phrases already did. Still only while a
+  plan card is the thing being answered (a draft's card is untouched, ticket 19 G2). No model text: night-safe.
+- Verified: verify green (7,889). Cherry-picks cleanly on origin/main after the earlier ones; the consent suites pass there.
+- DONE WHEN: on 2 fresh seats each of „ოკ", „ოk", „დიახ, გაუგზავნე" under a waiting plan approves it at the first try,
+  with no „დააჭირე ღილაკს".
+- Order: after 7c6ad4d.
+
 ### 9 Oct, 02:01Z — 81dba83 (#859, docs only): the frontend's answer in FOR_FRONTEND.md
 
 - What: the frontend (01:55Z) asked for `last_seen_at` / `user_agent` of 501's three push rows; answered from a read-only
