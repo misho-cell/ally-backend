@@ -1,0 +1,222 @@
+From d7849904863caa305e960dd84cf364a5f54f97b7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 06:08:34 +0000
+Subject: [PATCH 21/21] fix(asks): four holes in the thank-you, found in review
+ before it ships (1692)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+1. A „helped" on an ask nobody answered (the no-answer debrief records
+   worked=true when it was solved elsewhere) offered to thank that person,
+   and a yes sent „Nino says thank you for your help" to someone who never
+   helped. The card now needs an answered, not declined, ask.
+2. „კი, მადლობა გადაუხადე" arriving twice in a second (the repo's row 115
+   shape) thanked the helper and the chain twice. The card is claimed with
+   a conditional UPDATE … RETURNING before anything is sent; the second tap
+   finds it taken. The „ask again?" step is claimed the same way.
+3. The Georgian no-label „არა, საჭირო არაა" was the match card's (1699) too,
+   and the match tap runs first — a tap could settle the wrong card. Now
+   „არა, მადლობა არ მინდა"; every thanks label is unique in services.
+4. A day-14 „following up" row blocked the card if the owner said it helped
+   later. Such a row now gives way to the card (ON CONFLICT … WHERE state =
+   'followed_up').
+
+Not yet: a „not yet" on the held answer debrief re-arms the old kind; it
+comes with AV.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aHelperIsThanked.test.ts        | 50 ++++++++++++++-----
+ src/services/helperThanks.service.ts          | 36 +++++++++----
+ src/services/helperThanksCards.ts             |  3 +-
+ 3 files changed, 64 insertions(+), 25 deletions(-)
+
+diff --git a/src/services/__tests__/aHelperIsThanked.test.ts b/src/services/__tests__/aHelperIsThanked.test.ts
+index d77c1d6..f633dd3 100644
+--- a/src/services/__tests__/aHelperIsThanked.test.ts
++++ b/src/services/__tests__/aHelperIsThanked.test.ts
+@@ -28,6 +28,17 @@ const WAITING = {
+   asker_name: 'ნინო',
+ };
+ 
++/** Answers each query by what it asks: the waiting card, the claim, the chain. */
++function route(waiting: unknown, chain: unknown[] = [], claimed = true): void {
++  mockQuery.mockImplementation((sql: string) => {
++    if (sql.includes('FROM helper_thanks ht JOIN task_asks'))
++      return Promise.resolve(rows([waiting]));
++    if (sql.includes('RETURNING id')) return Promise.resolve(rows(claimed ? [{ id: 4 }] : []));
++    if (sql.includes('WITH RECURSIVE chain')) return Promise.resolve(rows(chain));
++    return Promise.resolve(rows([]));
++  });
++}
++
+ beforeEach(() => jest.clearAllMocks());
+ 
+ describe('the thank-you card', () => {
+@@ -67,7 +78,7 @@ describe('the thank-you card', () => {
+   });
+ 
+   it('on yes, sends the helper one fixed line and rings once, then asks „again?"', async () => {
+-    mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
++    route(WAITING);
+     const reply = await settleThanksTap('42', 55, ThanksTap.Thank, 'ka');
+     expect(mockSave).toHaveBeenCalledWith(
+       900,
+@@ -81,19 +92,32 @@ describe('the thank-you card', () => {
+     const update = mockQuery.mock.calls.find(([sql]) =>
+       String(sql).includes("SET state = 'decided'"),
+     );
+-    expect(update?.[1]).toEqual([4, 'thanks_only', true]);
++    expect(update?.[1]).toEqual([4, 'thanks_only']);
++    expect(update?.[0]).toContain("AND state = 'offered'");
++  });
++
++  it('thanks once when „yes" arrives twice — the second tap finds the card already claimed', async () => {
++    route(WAITING, [], false);
++    expect(await settleThanksTap('42', 55, ThanksTap.Thank, 'ka')).toBeNull();
++    expect(mockSave).not.toHaveBeenCalled();
++    expect(mockPush).not.toHaveBeenCalled();
++  });
++
++  it('is never offered for an ask nobody answered, or one that was declined', () => {
++    const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
++    expect(service).toContain("AND ta.status = 'answered' AND ta.declined_at IS NULL");
++  });
++
++  it('a day-14 row gives way to the card when the owner later says it helped', () => {
++    const service = readFileSync(join(__dirname, '..', 'helperThanks.service.ts'), 'utf8');
++    expect(service).toContain("WHERE helper_thanks.state = 'followed_up'");
+   });
+ 
+   it('thanks everyone further down the chain who answered, each as they saved the asker', async () => {
+-    mockQuery
+-      .mockResolvedValueOnce(rows([{ ...WAITING, ask_id: 17000, asker_user_id: 42 }]))
+-      .mockResolvedValueOnce(
+-        rows([
+-          { user_id: 88, thread_id: 901, asker_name: 'ნინო ბერიძე' },
+-          { user_id: 99, thread_id: 902, asker_name: 'ნინო' },
+-        ]),
+-      )
+-      .mockResolvedValue(rows([]));
++    route({ ...WAITING, ask_id: 17000, asker_user_id: 42 }, [
++      { user_id: 88, thread_id: 901, asker_name: 'ნინო ბერიძე' },
++      { user_id: 99, thread_id: 902, asker_name: 'ნინო' },
++    ]);
+     await settleThanksTap('42', 55, ThanksTap.Thank, 'ka');
+     expect(mockSave).toHaveBeenCalledWith(
+       901,
+@@ -115,7 +139,7 @@ describe('the thank-you card', () => {
+   });
+ 
+   it('on no, sends nothing to the helper and still asks „again?"', async () => {
+-    mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
++    route(WAITING);
+     const reply = await settleThanksTap('42', 55, ThanksTap.DoNotThank, 'ka');
+     expect(mockSave).not.toHaveBeenCalled();
+     expect(mockPush).not.toHaveBeenCalled();
+@@ -123,7 +147,7 @@ describe('the thank-you card', () => {
+   });
+ 
+   it('stores „would you ask again?" and says nothing more', async () => {
+-    mockQuery.mockResolvedValueOnce(rows([WAITING])).mockResolvedValue(rows([]));
++    route(WAITING);
+     expect((await settleThanksTap('42', 55, ThanksTap.AgainNo, 'ka'))?.text).toBe('კარგი.');
+     const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('ask_again = $2'));
+     expect(update?.[1]).toEqual([4, false]);
+diff --git a/src/services/helperThanks.service.ts b/src/services/helperThanks.service.ts
+index ddffa43..47b3ab9 100644
+--- a/src/services/helperThanks.service.ts
++++ b/src/services/helperThanks.service.ts
+@@ -46,6 +46,7 @@ async function askForThanks(askerUserId: string, askId: number): Promise<AskForT
+             ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name
+        FROM task_asks ta
+       WHERE ta.id = $1 AND ta.from_user_id = $2::int AND ta.parent_ask_id IS NULL
++        AND ta.status = 'answered' AND ta.declined_at IS NULL
+       LIMIT 1`,
+     [askId, askerUserId],
+     QUERY_TIMEOUT_MS,
+@@ -59,9 +60,12 @@ export async function offerHelperThanks(askerUserId: string, askId: number): Pro
+   const helper = ask?.helper_name?.trim() ?? '';
+   if (ask === null || ask.card_thread_id === null || helper === '') return false;
+   const opened = await query<{ id: number }>(
++    // A day-14 following-up row gives way to the card: a late helped still thanks them.
+     `INSERT INTO helper_thanks (ask_id, task_id, asker_user_id, helper_user_id, card_thread_id)
+      VALUES ($1, $2, $3::int, $4, $5)
+-     ON CONFLICT (ask_id) DO NOTHING
++     ON CONFLICT (ask_id) DO UPDATE
++       SET state = 'offered', card_thread_id = EXCLUDED.card_thread_id
++       WHERE helper_thanks.state = 'followed_up'
+      RETURNING id`,
+     [askId, ask.task_id, askerUserId, ask.helper_user_id, ask.card_thread_id],
+     QUERY_TIMEOUT_MS,
+@@ -183,18 +187,27 @@ async function settleThankCard(
+   row: OpenThanks,
+   tap: ThanksTap,
+   language: RunLanguage,
+-): Promise<ThanksReply> {
++): Promise<ThanksReply | null> {
+   const helper = row.helper_name?.trim() ?? '';
+   const thank = tap === ThanksTap.Thank;
+-  const thanked = thank && (await thankTheHelper(row));
+-  await query(
++  // Claimed before anything is sent: a yes arriving twice in a second thanks once.
++  const claimed = await query<{ id: number }>(
+     `UPDATE helper_thanks
+-        SET state = 'decided', share_result = $2, decided_at = NOW(),
+-            thanked_at = CASE WHEN $3::boolean THEN NOW() END
+-      WHERE id = $1`,
+-    [row.id, thank ? 'thanks_only' : 'no', thanked],
++        SET state = 'decided', share_result = $2, decided_at = NOW()
++      WHERE id = $1 AND state = 'offered'
++      RETURNING id`,
++    [row.id, thank ? 'thanks_only' : 'no'],
+     QUERY_TIMEOUT_MS,
+   );
++  if (claimed.rows.length === 0) return null;
++  const thanked = thank && (await thankTheHelper(row));
++  if (thanked) {
++    await query(
++      `UPDATE helper_thanks SET thanked_at = NOW() WHERE id = $1`,
++      [row.id],
++      QUERY_TIMEOUT_MS,
++    );
++  }
+   const again = againCardText(language, helper);
+   return {
+     text: thanked ? `${thankedLine(language, helper)} ${again}` : again,
+@@ -213,12 +226,13 @@ export async function settleThanksTap(
+   const row = await thanksWaitingHere(userId, threadId, firstCard ? 'offered' : 'decided');
+   if (row === null) return null;
+   if (firstCard) return settleThankCard(row, tap, language);
+-  await query(
+-    `UPDATE helper_thanks SET state = 'asked_again', ask_again = $2 WHERE id = $1`,
++  const stored = await query<{ id: number }>(
++    `UPDATE helper_thanks SET state = 'asked_again', ask_again = $2
++      WHERE id = $1 AND state = 'decided' RETURNING id`,
+     [row.id, tap === ThanksTap.AgainYes],
+     QUERY_TIMEOUT_MS,
+   );
+-  return { text: notedLine(language) };
++  return stored.rows.length === 0 ? null : { text: notedLine(language) };
+ }
+ 
+ /** Day 14 after the helper's answer, with no word from the asker. */
+diff --git a/src/services/helperThanksCards.ts b/src/services/helperThanksCards.ts
+index a6eccc6..7ead39f 100644
+--- a/src/services/helperThanksCards.ts
++++ b/src/services/helperThanksCards.ts
+@@ -22,7 +22,8 @@ const THANK_CARD: ByLanguage<(helper: string) => string> = {
+ };
+ 
+ const THANK_CHOICES: ByLanguage<readonly [string, string]> = {
+-  ka: ['კი, მადლობა გადაუხადე', 'არა, საჭირო არაა'],
++  // Not the match card's no-label (1699): one label, one card, or a tap settles the wrong one.
++  ka: ['კი, მადლობა გადაუხადე', 'არა, მადლობა არ მინდა'],
+   en: ['Yes, thank them', 'No need'],
+   ru: ['Да, поблагодари', 'Не нужно'],
+   es: ['Sí, dale las gracias', 'No hace falta'],
+-- 
+2.43.0
+

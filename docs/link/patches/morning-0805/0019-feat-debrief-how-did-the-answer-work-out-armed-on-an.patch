@@ -1,0 +1,248 @@
+From 0e69a62a46a7810d0c7faa3a075e907ef541d4d9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 04:42:05 +0000
+Subject: [PATCH 19/21] =?UTF-8?q?feat(debrief):=20=E2=80=9Ehow=20did=20the?=
+ =?UTF-8?q?=20answer=20work=20out=3F"=20armed=20on=20an=20answer;=20held?=
+ =?UTF-8?q?=20until=20AV=20(1692=20part=202)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Nothing asked the owner how a helper's ANSWER worked out — the only ask
+debrief fires when nobody answers — so 1692's thank-you could start only if
+the owner said so unprompted. A first, real answer (not a decline) now arms
+one debrief on the asker's goal, three days later, under its own kind
+(migration 228 adds 'answered_ask' to debrief_arms). It goes stale once the
+owner has recorded whether it helped.
+
+HELD (D44): the instruction the model reads is NIGHT_QUESTIONS AV.
+ANSWER_DEBRIEF_ON = false — nothing is armed until Misho's yes. The day-14
+line to the helper comes after.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/228_answer_debrief.sql         |  6 +++
+ .../__tests__/aNoIsARecordedAnswer.test.ts    |  2 +-
+ .../__tests__/anAnswerIsAskedAbout.test.ts    | 38 ++++++++++++++
+ .../__tests__/taskAsks.service.test.ts        |  1 +
+ src/services/debrief.service.ts               | 49 ++++++++++++++++++-
+ src/services/taskAsks.service.ts              | 24 +++++++--
+ 6 files changed, 114 insertions(+), 6 deletions(-)
+ create mode 100644 src/db/postgres/migrations/228_answer_debrief.sql
+ create mode 100644 src/services/__tests__/anAnswerIsAskedAbout.test.ts
+
+diff --git a/src/db/postgres/migrations/228_answer_debrief.sql b/src/db/postgres/migrations/228_answer_debrief.sql
+new file mode 100644
+index 0000000..539d20f
+--- /dev/null
++++ b/src/db/postgres/migrations/228_answer_debrief.sql
+@@ -0,0 +1,6 @@
++-- 1692 part 2 (A9): a „how did it go?" armed when a helper ANSWERS, beside the
++-- existing one armed when nobody answers. Its own kind, so the two arms of one
++-- ask never collide on (kind, ref_id).
++ALTER TABLE debrief_arms DROP CONSTRAINT IF EXISTS debrief_arms_kind_check;
++ALTER TABLE debrief_arms ADD CONSTRAINT debrief_arms_kind_check
++  CHECK (kind IN ('intro_request', 'task_ask', 'search', 'answered_ask'));
+diff --git a/src/services/__tests__/aNoIsARecordedAnswer.test.ts b/src/services/__tests__/aNoIsARecordedAnswer.test.ts
+index 13d415a..ef72763 100644
+--- a/src/services/__tests__/aNoIsARecordedAnswer.test.ts
++++ b/src/services/__tests__/aNoIsARecordedAnswer.test.ts
+@@ -118,7 +118,7 @@ describe('what the ask carries, and what the answer records', () => {
+ 
+   /** $3 is decided in TypeScript by string equality — the SQL judges nothing. */
+   it('decides in code, not in the query', () => {
+-    expect(asks).toContain('[askThreadId, safe, await answerIsADecline(askThreadId, safe)]');
++    expect(asks).toContain('const declined = await answerIsADecline(askThreadId, safe);');
+     expect(asks).toContain(
+       'if ((await askTapOnThread(askThreadId, answer)) === AskTap.Decline) return true;',
+     );
+diff --git a/src/services/__tests__/anAnswerIsAskedAbout.test.ts b/src/services/__tests__/anAnswerIsAskedAbout.test.ts
+new file mode 100644
+index 0000000..7357259
+--- /dev/null
++++ b/src/services/__tests__/anAnswerIsAskedAbout.test.ts
+@@ -0,0 +1,38 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../pendingUpdates.service', () => ({ queueFollowUp: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query as _query } from '../../db/postgres/client';
++import { queueFollowUp as _queue } from '../pendingUpdates.service';
++import { ANSWER_DEBRIEF_ON, answerDebriefInstruction, armAnswerDebrief } from '../debrief.service';
++
++/** 1692 part 2: „how did <helper>'s answer work out?" — held until Misho's yes on AV (D44). */
++const mockQuery = _query as jest.Mock;
++const mockQueue = _queue as jest.Mock;
++
++describe('the answer debrief', () => {
++  it('arms nothing while AV waits', async () => {
++    expect(ANSWER_DEBRIEF_ON).toBe(false);
++    await armAnswerDebrief('42', 17000, 3, 'ზურაბი');
++    expect(mockQuery).not.toHaveBeenCalled();
++    expect(mockQueue).not.toHaveBeenCalled();
++  });
++
++  it('carries exactly AV’s text', () => {
++    expect(answerDebriefInstruction('ზურაბი', 17000)).toBe(
++      'ზურაბი answered your question 3 days ago. Ask the owner in one line how it worked out. If it ' +
++        'helped, record record_debrief_outcome (subject="relayed_ask", ref_id=17000, worked=true); if not, ' +
++        'worked=false; if it is too early, not_yet=true.',
++    );
++  });
++
++  it('is armed from a first, real answer and goes stale once the owner said', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    expect(asks).toContain("if (firstAnswer && !declined && who !== '') {");
++    const debrief = readFileSync(join(__dirname, '..', 'debrief.service.ts'), 'utf8');
++    expect(debrief).toContain(
++      "return !(await hasDebriefRung(SUBJECT_TO_KIND.relayed_ask, Number(payload['ask_id'])));",
++    );
++  });
++});
+diff --git a/src/services/__tests__/taskAsks.service.test.ts b/src/services/__tests__/taskAsks.service.test.ts
+index 238b558..76afd76 100644
+--- a/src/services/__tests__/taskAsks.service.test.ts
++++ b/src/services/__tests__/taskAsks.service.test.ts
+@@ -80,6 +80,7 @@ jest.mock('../notification.service', () => ({
+ jest.mock('../debrief.service', () => ({
+   __esModule: true,
+   armAskDebrief: jest.fn().mockResolvedValue(undefined),
++  armAnswerDebrief: jest.fn().mockResolvedValue(undefined),
+ }));
+ jest.mock('../answerRules.service', () => ({
+   __esModule: true,
+diff --git a/src/services/debrief.service.ts b/src/services/debrief.service.ts
+index 154dbc9..49b6dcf 100644
+--- a/src/services/debrief.service.ts
++++ b/src/services/debrief.service.ts
+@@ -19,7 +19,7 @@ const DEBRIEF_QUERY_TIMEOUT_MS = 8_000;
+ export const DEBRIEF_KIND = 'debrief';
+ const DEBRIEF_DELAY_DAYS = Number(process.env.DEBRIEF_DELAY_DAYS ?? 3);
+ 
+-type DebriefArmKind = 'intro_request' | 'task_ask' | 'search';
++type DebriefArmKind = 'intro_request' | 'task_ask' | 'search' | 'answered_ask';
+ 
+ /** True only for the FIRST arm of this subject — the once-per-introduction guard. */
+ async function armOnce(kind: DebriefArmKind, refId: number, userId: string): Promise<boolean> {
+@@ -119,6 +119,49 @@ export async function armAskDebrief(
+   );
+ }
+ 
++/**
++ * 1692 part 2 (A9): nothing asked the owner how an ANSWER worked out, so the
++ * thank-you could only start when the owner said so unprompted. When a helper
++ * answers, three days later the owner's assistant asks how it went.
++ *
++ * HELD (D44): the instruction is new model text — NIGHT_QUESTIONS AV. Until
++ * Misho's yes nothing is armed.
++ */
++export const ANSWER_DEBRIEF_ON = false;
++
++/** NIGHT_QUESTIONS AV, the exact text proposed. */
++export function answerDebriefInstruction(who: string, askId: number): string {
++  return (
++    `${who} answered your question ${DEBRIEF_DELAY_DAYS} days ago. Ask the owner in one line how it ` +
++    'worked out. If it helped, record record_debrief_outcome (subject="relayed_ask", ' +
++    `ref_id=${askId}, worked=true); if not, worked=false; if it is too early, not_yet=true.`
++  );
++}
++
++export async function armAnswerDebrief(
++  askerUserId: string,
++  askId: number,
++  taskId: number,
++  who: string,
++): Promise<void> {
++  if (!ANSWER_DEBRIEF_ON) return;
++  if (!(await armOnce('answered_ask', askId, askerUserId))) return;
++  await queueFollowUp(
++    askerUserId,
++    taskId,
++    DEBRIEF_KIND,
++    {
++      about: 'answered_ask',
++      ask_id: askId,
++      who,
++      why: `${who} answered ${DEBRIEF_DELAY_DAYS} days ago and nobody has said how it went`,
++      technique_tag: null,
++      instruction: answerDebriefInstruction(who, askId),
++    },
++    DEBRIEF_DELAY_DAYS,
++  );
++}
++
+ /**
+  * A search outcome reached 'accepted' — the user took a name. Three days
+  * later the assistant asks what actually happened, so the ladder (D39) moves
+@@ -214,6 +257,10 @@ async function debriefStillDue(userId: string, payload: Record<string, unknown>)
+       row.outcome !== 'no_result'
+     );
+   }
++  // 1692 part 2: still due until the owner has said whether the answer helped.
++  if (about === 'answered_ask') {
++    return !(await hasDebriefRung(SUBJECT_TO_KIND.relayed_ask, Number(payload['ask_id'])));
++  }
+   if (about === 'introduction') {
+     return !(await hasDebriefRung('intro_request', Number(payload['intro_request_id'])));
+   }
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 2d0a5ab..64e7d82 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -96,7 +96,7 @@ import {
+   RELAY_MESSAGES_PER_PERSON_PER_DAY,
+ } from './askBudget.service';
+ import { setThreadStatus } from './threadStatus.service';
+-import { armAskDebrief } from './debrief.service';
++import { armAnswerDebrief, armAskDebrief } from './debrief.service';
+ import { recordMutualWarmth } from './warmth.service';
+ import { LATER_DEFAULT_DAYS, laterSentenceForAsker } from './askState';
+ import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
+@@ -1945,7 +1945,14 @@ export async function recordAskAnswer(
+   // thread can carry several rounds of the same conversation, and round two's
+   // answer belongs to round two's question. Without the ordering, one reply
+   // would have overwritten every round at once.
+-  const updated = await query<{ id: number; task_id: number; answer: string; to_user_id: number }>(
++  const declined = await answerIsADecline(askThreadId, safe);
++  const updated = await query<{
++    id: number;
++    task_id: number;
++    answer: string;
++    to_user_id: number;
++    from_user_id: number;
++  }>(
+     // Ticket 20 row 115: the same line does not join the answer twice.
+     //
+     // 16 September, ask 1783: Ninia's „კი" arrived five times in six seconds —
+@@ -1990,8 +1997,8 @@ export async function recordAskAnswer(
+        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
+        ORDER BY id DESC LIMIT 1
+      )
+-     RETURNING id, task_id, answer, to_user_id`,
+-    [askThreadId, safe, await answerIsADecline(askThreadId, safe)],
++     RETURNING id, task_id, answer, to_user_id, from_user_id`,
++    [askThreadId, safe, declined],
+     ASK_QUERY_TIMEOUT_MS,
+   );
+   const row = updated.rows[0];
+@@ -2009,6 +2016,15 @@ export async function recordAskAnswer(
+     [row.id],
+     ASK_QUERY_TIMEOUT_MS,
+   );
++  // 1692 part 2: a first, real answer arms the owner's „how did it go?" (held until AV).
++  const who = check.rows[0]?.from_name?.trim() ?? '';
++  if (firstAnswer && !declined && who !== '') {
++    void armAnswerDebrief(String(row.from_user_id), row.id, row.task_id, who).catch(
++      (err: unknown) =>
++        // eslint-disable-next-line no-console
++        console.warn(`[debrief] ask ${row.id}: answer debrief not armed:`, (err as Error).message),
++    );
++  }
+   // The scrubbed verbatim text rides back so the wake event can carry it —
+   // ticket 3 §5: the asker-side agent once presented the thread TITLE as the
+   // answer; giving it the exact words in the event kills that failure mode.
+-- 
+2.43.0
+

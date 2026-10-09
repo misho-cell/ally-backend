@@ -1,0 +1,508 @@
+From b25a39be55c83be392c8b5ea5fd926a4dad14f33 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 23:12:12 +0000
+Subject: [PATCH 08/21] feat(offers): what a member is open to, saved from the
+ chat (1698, A15)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+D679/D680. A member's needs are stored (every goal is one), but what he is
+OPEN TO („if anyone needs hospitality in Adjara, I'm interested") had nowhere
+to live once automatic answers were switched off (D669). It is the strongest
+willingness signal there is.
+
+Migration 223 adds the offers table (user, one line, field, active, source).
+offers.service saves (at most 20 active), lists the owner's own, and switches
+one off on „forget that". The row stays for the admin per-user page, the
+only other place it shows. Three tools, save_offer / list_offers /
+delete_offer, are gated on the server: owner's own run only, and save only
+with confirmed: true.
+
+HELD BEHIND A SWITCH: OFFER_TOOLS_ON is false, so no run is given the tools
+until Misho approves their texts (§109, D44, NIGHT_QUESTIONS AM). With the
+switch off, this commit changes nothing a model or a person sees, so it can
+ship.
+
+DONE WHEN (after the switch): a seat says „if anyone needs hospitality in
+Adjara, I'm interested", the assistant confirms one line, and an offers row
+exists with the field; „forget that" switches it off; the row shows only on
+the owner's own request and the admin page.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                | 23 +++++
+ src/db/postgres/migrations/223_offers.sql     | 16 ++++
+ .../__tests__/adminUsers.service.test.ts      |  1 +
+ src/services/__tests__/offers.test.ts         | 74 ++++++++++++++++
+ src/services/adminUsers.service.ts            |  5 ++
+ src/services/chat.service.ts                  | 61 +++++++++++++
+ .../mcp/__tests__/registryParity.test.ts      |  3 +
+ src/services/offerTools.ts                    | 49 +++++++++++
+ src/services/offers.service.ts                | 86 +++++++++++++++++++
+ src/types/index.ts                            |  8 ++
+ 10 files changed, 326 insertions(+)
+ create mode 100644 src/db/postgres/migrations/223_offers.sql
+ create mode 100644 src/services/__tests__/offers.test.ts
+ create mode 100644 src/services/offerTools.ts
+ create mode 100644 src/services/offers.service.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index b6b54b7..02eafe3 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6017,3 +6017,26 @@ likely_yes pre-match (1694), the recipient's prepared answer is composed by the
+ 
+ The facts given are only the reader's own profile fields (job, employer, user_profile_kv) — never his notes or anything he typed; the line is stored on
+ the ask, shown only to him under „yes", and sent only on his tap. Undo: revert.
++
++**§108 — 1688 (A5), PENDING Misho's yes (asked 8 Oct ~21:50 UTC, NIGHT_QUESTIONS AJ); not shipped until then.**
++When two assistant-only rounds with one person on one goal have gone (a2aRounds.ts, `task_asks.a2a_rounds`),
++a third ask without the owner typing is refused, and the asking model reads this tool result, {name}
++being the person's name:
++
++> {name}-ს ამ მიზანზე უკვე ორჯერ მისწერე ისე, რომ მფლობელს არაფერი დაუწერია — მესამედ თავად აღარ მისწერო. მფლობელს ერთი ხაზით უთხარი, რა უნდა {name}-ს, და ჰკითხე, რა უპასუხოს. როცა მფლობელი დაწერს, მისი სიტყვებით გაგზავნე.
++
++The owner's own words (or his line sent by the server) reset the count to 0. Undo: revert.
++
++**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:30 UTC, NIGHT_QUESTIONS AM).** The code is
++in and can ship, but no run is given the tools while `OFFER_TOOLS_ON` is false. On his yes the switch flips
++and these three tool descriptions reach the model:
++
++> save_offer — The owner said what they are OPEN TO — „if anyone needs hospitality in Adjara, I am interested", „yes to any Axel member asking about logistics". Write it as ONE line in your own words (never their typed words), read it back and ask if it is right; call with confirmed: true only after their yes. An offer never answers anyone and is never shown to another person: it only helps find who may want to talk. Not for needs (those are goals).
++
++> list_offers — The owner's own saved offers (what they said they are open to), when they ask about them.
++
++> delete_offer — The owner asked to forget something they said they were open to: remove that offer.
++
++Server gates whatever the model does: saved only in the owner's own run and only with confirmed: true;
++at most 20 active per person. Undo: the switch back to false.
++
+diff --git a/src/db/postgres/migrations/223_offers.sql b/src/db/postgres/migrations/223_offers.sql
+new file mode 100644
+index 0000000..e34148e
+--- /dev/null
++++ b/src/db/postgres/migrations/223_offers.sql
+@@ -0,0 +1,16 @@
++-- 1698 (A15, D679/D680): what a member is OPEN TO, said in the chat and
++-- confirmed in one line („I'll note you're open to hospitality asks from
++-- Axel — right?"). Read only by pre-matching (A11), bridge choice (A14) and
++-- the nightly matcher (A16). Never answers anyone, never shown to another
++-- user. „Forget that" sets active FALSE; the row stays for the admin page.
++CREATE TABLE IF NOT EXISTS offers (
++  id          BIGSERIAL PRIMARY KEY,
++  user_id     INTEGER     NOT NULL,
++  text        TEXT        NOT NULL,
++  field       TEXT,
++  source      TEXT        NOT NULL DEFAULT 'chat',
++  active      BOOLEAN     NOT NULL DEFAULT TRUE,
++  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++CREATE INDEX IF NOT EXISTS idx_offers_user_active ON offers (user_id) WHERE active;
++CREATE INDEX IF NOT EXISTS idx_offers_field_active ON offers (field) WHERE active;
+diff --git a/src/services/__tests__/adminUsers.service.test.ts b/src/services/__tests__/adminUsers.service.test.ts
+index 64d1d08..b47e105 100644
+--- a/src/services/__tests__/adminUsers.service.test.ts
++++ b/src/services/__tests__/adminUsers.service.test.ts
+@@ -170,6 +170,7 @@ function routeDetail(sql: string): { rows: unknown[]; rowCount: number } {
+   // #1684: the person's asks with their states.
+   if (sql.includes('AS other_user_id')) return rows([]);
+   if (sql.includes('FROM answer_stats')) return rows([]);
++  if (sql.includes('FROM offers')) return rows([]);
+   throw new Error(`Unexpected query: ${sql}`);
+ }
+ 
+diff --git a/src/services/__tests__/offers.test.ts b/src/services/__tests__/offers.test.ts
+new file mode 100644
+index 0000000..5d281cd
+--- /dev/null
++++ b/src/services/__tests__/offers.test.ts
+@@ -0,0 +1,74 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query as _query } from '../../db/postgres/client';
++import { deleteOffer, listOffers, MAX_ACTIVE_OFFERS, saveOffer } from '../offers.service';
++import { OFFER_NEEDS_CONFIRMATION, OFFER_OWNER_ONLY, saveOfferTool } from '../offerTools';
++
++/**
++ * 1698 (A15): what the owner is open to, saved from the chat in one confirmed
++ * line; never answers anyone, never shown to another user.
++ */
++const mockQuery = _query as jest.Mock;
++const ROW = {
++  id: 3,
++  text: 'Open to hospitality asks in Adjara',
++  field: 'hospitality',
++  created_at: 'x',
++};
++
++beforeEach(() => {
++  jest.clearAllMocks();
++});
++
++describe('offers (1698)', () => {
++  it('saves one line with its field, lower-cased', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ n: 0 }] });
++    mockQuery.mockResolvedValueOnce({ rows: [ROW] });
++    await expect(
++      saveOffer('7', ' Open to hospitality asks in Adjara ', 'Hospitality'),
++    ).resolves.toEqual(ROW);
++    expect(mockQuery.mock.calls[1][1]).toEqual([
++      '7',
++      'Open to hospitality asks in Adjara',
++      'hospitality',
++    ]);
++  });
++
++  it('refuses an empty line and a full shelf', async () => {
++    await expect(saveOffer('7', '  ', 'x')).rejects.toThrow('Pass `text`');
++    mockQuery.mockResolvedValueOnce({ rows: [{ n: MAX_ACTIVE_OFFERS }] });
++    await expect(saveOffer('7', 'line', 'x')).rejects.toThrow('most offers');
++  });
++
++  it('lists only the owner’s active ones, and „forget that" switches one off', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [ROW] });
++    await expect(listOffers('7')).resolves.toEqual([ROW]);
++    expect(String(mockQuery.mock.calls[0][0])).toContain('user_id = $1::int AND active');
++    mockQuery.mockResolvedValueOnce({ rowCount: 1 });
++    await expect(deleteOffer('7', 3)).resolves.toBe(true);
++    expect(String(mockQuery.mock.calls[1][0])).toContain('SET active = FALSE');
++    await expect(deleteOffer('7', Number.NaN)).resolves.toBe(false);
++  });
++
++  it('the tool saves nothing without the owner, or without their yes to the line', async () => {
++    await expect(
++      saveOfferTool('7', { text: 'x', field: 'y', confirmed: true }, true),
++    ).resolves.toEqual({
++      saved: false,
++      error: OFFER_OWNER_ONLY,
++    });
++    await expect(saveOfferTool('7', { text: 'x', field: 'y' }, false)).resolves.toEqual({
++      saved: false,
++      needs_confirmation: true,
++      note: OFFER_NEEDS_CONFIRMATION,
++    });
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('no run is given the tools until their texts are approved (§109)', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('const OFFER_TOOLS_ON = false;');
++  });
++});
+diff --git a/src/services/adminUsers.service.ts b/src/services/adminUsers.service.ts
+index 2f3d9ca..5b97a18 100644
+--- a/src/services/adminUsers.service.ts
++++ b/src/services/adminUsers.service.ts
+@@ -28,6 +28,7 @@ import {
+ } from '../types';
+ import { describeAskBudget } from './askBudget.service';
+ import { answerStatsOf } from './answerStats.service';
++import { offersForAdmin } from './offers.service';
+ import { getUserAsks } from './adminUserAsks.service';
+ import { cohortForUser } from './inviteCohorts.service';
+ import { paymentHistory } from './payments.service';
+@@ -800,6 +801,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile |
+     askBudget,
+     asks,
+     answerStats,
++    offers,
+   ] = await Promise.all([
+     runBlock('network', () => getNetwork(userId), EMPTY_NETWORK, diagnostics),
+     runBlock('activity', () => getActivity(userId), EMPTY_ACTIVITY, diagnostics),
+@@ -820,6 +822,8 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile |
+     runBlock('asks', () => getUserAsks(userId), null, diagnostics),
+     // 1689 (A6): how this person answers, by field — read-only, never shown to a user.
+     runBlock('answerStats', () => answerStatsOf(userId), null, diagnostics),
++    // 1698 (A15): what this person said they are open to — admin page only.
++    runBlock('offers', () => offersForAdmin(userId), null, diagnostics),
+   ]);
+ 
+   const states = await runBlock('states', () => getStates(userId), null, diagnostics);
+@@ -843,6 +847,7 @@ export async function getAdminUserDetail(userId: number): Promise<UserProfile |
+     ...(askBudget !== null && { askBudget }),
+     ...(asks !== null && { asks }),
+     ...(answerStats !== null && { answerStats }),
++    ...(offers !== null && { offers }),
+   };
+   if (diagnostics.length > 0) profile.diagnostics = diagnostics;
+   return profile;
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c77c149..29d53b9 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -77,6 +77,13 @@ import { carriesPlanSentence, withoutMatchJustification } from './planJustificat
+ import { withOwnersNetwork } from './planVoice';
+ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
++import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
++
++/**
++ * 1698: the offer tools reach the model only after Misho's yes on their texts
++ * (§109, D44). Until then the server can hold offers but no run is given them.
++ */
++const OFFER_TOOLS_ON = false;
+ import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
+ import {
+   clampReminderMinutes,
+@@ -1464,6 +1471,53 @@ const SET_REMINDER_TOOL: AnthropicTool = {
+   },
+ };
+ 
++/**
++ * 1698 (A15): what the owner is open to. ⚠️ MODEL-FACING (D44): §109 in
++ * ADMIN_WRITE_OPERATIONS.md, NOT YET APPROVED — the three descriptions below.
++ */
++const SAVE_OFFER_TOOL: AnthropicTool = {
++  name: 'save_offer',
++  description:
++    'The owner said what they are OPEN TO — „if anyone needs hospitality in Adjara, I am ' +
++    'interested", „yes to any Axel member asking about logistics". Write it as ONE line in your ' +
++    'own words (never their typed words), read it back and ask if it is right; call with ' +
++    'confirmed: true only after their yes. An offer never answers anyone and is never shown to ' +
++    'another person: it only helps find who may want to talk. Not for needs (those are goals).',
++  input_schema: {
++    type: 'object',
++    properties: {
++      text: { type: 'string', description: "The one confirmed line, in the owner's language." },
++      field: {
++        type: 'string',
++        description: 'The field in one or two words, e.g. „hospitality", „logistics".',
++      },
++      confirmed: {
++        type: 'boolean',
++        description: 'True only after the owner said yes to the line.',
++      },
++    },
++    required: ['text', 'field', 'confirmed'],
++  },
++};
++
++const LIST_OFFERS_TOOL: AnthropicTool = {
++  name: 'list_offers',
++  description:
++    "The owner's own saved offers (what they said they are open to), when they ask about them.",
++  input_schema: { type: 'object', properties: {}, required: [] },
++};
++
++const DELETE_OFFER_TOOL: AnthropicTool = {
++  name: 'delete_offer',
++  description:
++    'The owner asked to forget something they said they were open to: remove that offer.',
++  input_schema: {
++    type: 'object',
++    properties: { offer_id: { type: 'number', description: 'From list_offers.' } },
++    required: ['offer_id'],
++  },
++};
++
+ const REMINDER_OWNER_ONLY =
+   'Not in this run: a reminder is set only when the owner asks for one in their own message.';
+ const REMINDER_NEEDS_TEXT = 'Pass `text`: the reminder as the owner will read it.';
+@@ -9413,6 +9467,12 @@ async function executeToolCall(
+     }
+     case 'set_reminder':
+       return setReminderTool(userId, input, threadId, ownerAbsent);
++    case 'save_offer':
++      return saveOfferTool(userId, input, ownerAbsent);
++    case 'list_offers':
++      return listOffersTool(userId);
++    case 'delete_offer':
++      return deleteOfferTool(userId, input, ownerAbsent);
+     case 'set_task_wake': {
+       // #502 (Ninia): „remind me in 15 minutes" was told the shortest is an
+       // hour. The wake ticker runs every 20 s, so a quarter hour is real.
+@@ -13997,6 +14057,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
+   SET_TASK_BRIEF_TOOL,
+   SET_TASK_WAKE_TOOL,
+   SET_REMINDER_TOOL,
++  ...(OFFER_TOOLS_ON ? [SAVE_OFFER_TOOL, LIST_OFFERS_TOOL, DELETE_OFFER_TOOL] : []),
+   FINISH_TASK_TOOL,
+   RELAY_ASK_TOOL,
+   RESPOND_TO_INVITE_CAMPAIGN_TOOL,
+diff --git a/src/services/mcp/__tests__/registryParity.test.ts b/src/services/mcp/__tests__/registryParity.test.ts
+index 069f969..ffe8ed3 100644
+--- a/src/services/mcp/__tests__/registryParity.test.ts
++++ b/src/services/mcp/__tests__/registryParity.test.ts
+@@ -24,6 +24,9 @@ import * as path from 'path';
+ // neither set fails the build — this still catches the exact
+ // invite_contact-class bug, and stays quiet on every legitimate merge.
+ const APP_ONLY: Readonly<Record<string, string>> = {
++  save_offer: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
++  list_offers: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
++  delete_offer: '#1698, held behind OFFER_TOOLS_ON until §109; the connector catches up with D738',
+   present_choices: 'renders tappable UI buttons — meaningless outside the app',
+   set_reminder:
+     '#502: writes a reminder into an app conversation and rings the app; a connector has no such conversation',
+diff --git a/src/services/offerTools.ts b/src/services/offerTools.ts
+new file mode 100644
+index 0000000..f5be6b6
+--- /dev/null
++++ b/src/services/offerTools.ts
+@@ -0,0 +1,49 @@
++import { deleteOffer, listOffers, OfferRefused, saveOffer } from './offers.service';
++
++/**
++ * 1698 (A15): the three offer tools' work. Server gates, not prompt hopes: an
++ * offer is saved only in the owner's own run and only with `confirmed: true`,
++ * the owner having said yes to the one line the assistant read back to him.
++ */
++export const OFFER_OWNER_ONLY =
++  'Not in this run: an offer is saved only when the owner says it in their own message.';
++export const OFFER_NEEDS_CONFIRMATION =
++  'Not saved yet. Read the one line back to the owner and ask if it is right; call again with ' +
++  'confirmed: true only after their yes.';
++
++export interface ToolInput {
++  readonly [key: string]: unknown;
++}
++
++export async function saveOfferTool(
++  userId: string,
++  input: ToolInput,
++  ownerAbsent: boolean,
++): Promise<Record<string, unknown>> {
++  if (ownerAbsent) return { saved: false, error: OFFER_OWNER_ONLY };
++  if (input['confirmed'] !== true)
++    return { saved: false, needs_confirmation: true, note: OFFER_NEEDS_CONFIRMATION };
++  const text = typeof input['text'] === 'string' ? input['text'] : '';
++  const field = typeof input['field'] === 'string' ? input['field'] : null;
++  try {
++    const offer = await saveOffer(userId, text, field);
++    return { saved: true, offer_id: offer.id };
++  } catch (err) {
++    if (err instanceof OfferRefused) return { saved: false, error: err.message };
++    throw err;
++  }
++}
++
++export async function listOffersTool(userId: string): Promise<Record<string, unknown>> {
++  const offers = await listOffers(userId);
++  return { offers: offers.map((o) => ({ offer_id: o.id, text: o.text, field: o.field })) };
++}
++
++export async function deleteOfferTool(
++  userId: string,
++  input: ToolInput,
++  ownerAbsent: boolean,
++): Promise<Record<string, unknown>> {
++  if (ownerAbsent) return { deleted: false, error: OFFER_OWNER_ONLY };
++  return { deleted: await deleteOffer(userId, Number(input['offer_id'])) };
++}
+diff --git a/src/services/offers.service.ts b/src/services/offers.service.ts
+new file mode 100644
+index 0000000..7acba1a
+--- /dev/null
++++ b/src/services/offers.service.ts
+@@ -0,0 +1,86 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * 1698 (A15): what a member is open to — „if anyone needs hospitality in
++ * Adjara, I'm interested". Since automatic answers were switched off (D669) it
++ * had nowhere to live, and a declared openness is the strongest willingness
++ * signal there is. Stored in the assistant's one-line wording, never his
++ * typed words; read by pre-matching and the matcher only.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++export const MAX_OFFER_CHARS = 200;
++export const MAX_FIELD_CHARS = 60;
++/** A person says what he is open to a handful of times, not hundreds. */
++export const MAX_ACTIVE_OFFERS = 20;
++const ADMIN_OFFER_LIMIT = 50;
++
++export interface Offer {
++  readonly id: number;
++  readonly text: string;
++  readonly field: string | null;
++  readonly created_at: string;
++}
++
++export class OfferRefused extends Error {}
++
++/** Saves one offer; refused when the text is empty or the owner already holds the most. */
++export async function saveOffer(
++  userId: string,
++  text: string,
++  field: string | null,
++): Promise<Offer> {
++  const line = text.trim().slice(0, MAX_OFFER_CHARS);
++  if (line === '') throw new OfferRefused('Pass `text`: the one line the owner confirmed.');
++  const held = await query<{ n: number }>(
++    `SELECT COUNT(*)::int AS n FROM offers WHERE user_id = $1::int AND active`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  if ((held.rows[0]?.n ?? 0) >= MAX_ACTIVE_OFFERS) {
++    throw new OfferRefused('The owner already has the most offers saved; one must go first.');
++  }
++  const cleanField = field?.trim().toLowerCase().slice(0, MAX_FIELD_CHARS) || null;
++  const saved = await query<Offer>(
++    `INSERT INTO offers (user_id, text, field) VALUES ($1::int, $2, $3)
++     RETURNING id, text, field, created_at`,
++    [userId, line, cleanField],
++    QUERY_TIMEOUT_MS,
++  );
++  return saved.rows[0];
++}
++
++/** The owner's own active offers, newest first. */
++export async function listOffers(userId: string): Promise<Offer[]> {
++  const result = await query<Offer>(
++    `SELECT id, text, field, created_at FROM offers
++      WHERE user_id = $1::int AND active
++      ORDER BY id DESC LIMIT $2`,
++    [userId, MAX_ACTIVE_OFFERS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** „Forget that": the offer stops counting. False when it is not the owner's or already gone. */
++export async function deleteOffer(userId: string, offerId: number): Promise<boolean> {
++  if (!Number.isInteger(offerId) || offerId <= 0) return false;
++  const result = await query(
++    `UPDATE offers SET active = FALSE WHERE id = $1 AND user_id = $2::int AND active`,
++    [offerId, userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0;
++}
++
++/** Every offer of one member, the switched-off ones too — the admin per-user page only. */
++export async function offersForAdmin(
++  userId: number,
++): Promise<Array<Offer & { readonly active: boolean }>> {
++  const result = await query<Offer & { active: boolean }>(
++    `SELECT id, text, field, created_at, active FROM offers
++      WHERE user_id = $1::int ORDER BY id DESC LIMIT $2`,
++    [userId, ADMIN_OFFER_LIMIT],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
+diff --git a/src/types/index.ts b/src/types/index.ts
+index 57af305..2ebacea 100644
+--- a/src/types/index.ts
++++ b/src/types/index.ts
+@@ -400,6 +400,14 @@ export interface UserProfile {
+   diagnostics?: BlockDiagnostic[];
+   /** 1689 (A6): this person's answer record by field; admin only, read-only. */
+   answerStats?: AnswerStatsRow[];
++  /** 1698 (A15): what the person said they are open to, switched-off ones included. */
++  offers?: ReadonlyArray<{
++    readonly id: number;
++    readonly text: string;
++    readonly field: string | null;
++    readonly created_at: string;
++    readonly active: boolean;
++  }>;
+ }
+ 
+ export interface CostByKind {
+-- 
+2.43.0
+

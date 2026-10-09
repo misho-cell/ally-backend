@@ -1,0 +1,400 @@
+From 6bacd58927b4a540a0fe2cb704939abfbf1620f2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 23:21:34 +0000
+Subject: [PATCH 09/21] feat(intros): the bridge most likely to say yes comes
+ first; both sides pre-cleared (1697, A14 part 1)
+
+D679/D680. The warm path named its bridges in order of reach, so a request
+could start towards a bridge who would never take it, a wait for nothing.
+
+- find_warm_path, given the open goal's words, now orders paths within the
+  same number of hops. The first bridge's pre-match (A11, from his own data)
+  comes first, then his answer rate in the goal's field (A8), then the rarer
+  shared contact (fewer phonebooks hold him) before the famous one. Nothing
+  new is shown: only the order moves (D680: no private fact as a reason).
+  With no goal, or on any failed read, the order is as before.
+- Migration 224: every introduction request records the bridge's and the
+  receiver's pre-match at the same moment, from the goal it was raised for.
+  It is for the admin only, written after the send, and never tells the
+  receiver anything. He still hears only after the bridge's yes (D438).
+
+Not in this part: when every bridge and the receiver are not_his_field, no
+request should be made and the plan should say the route looks closed. That
+needs a new model-facing line (D44), so it waits for Misho's yes.
+
+DONE WHEN (this part): on seats where A reaches C through B1 (fits, answers)
+and B2 (nothing known), find_warm_path lists B1's path first; the request's
+row shows bridge_prematch and receiver_prematch written together; C receives
+nothing until B1 taps yes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/224_intro_prematch.sql         |   7 +
+ src/services/__tests__/bridgeOrder.test.ts    |  92 +++++++++++
+ src/services/bridgeOrder.ts                   | 150 ++++++++++++++++++
+ src/services/chat.service.ts                  |   4 +
+ src/services/tools/findWarmPath.ts            |  11 +-
+ src/services/tools/requestIntroduction.ts     |   3 +
+ src/services/waveOrder.ts                     |   2 +-
+ 7 files changed, 264 insertions(+), 5 deletions(-)
+ create mode 100644 src/db/postgres/migrations/224_intro_prematch.sql
+ create mode 100644 src/services/__tests__/bridgeOrder.test.ts
+ create mode 100644 src/services/bridgeOrder.ts
+
+diff --git a/src/db/postgres/migrations/224_intro_prematch.sql b/src/db/postgres/migrations/224_intro_prematch.sql
+new file mode 100644
+index 0000000..c50297c
+--- /dev/null
++++ b/src/db/postgres/migrations/224_intro_prematch.sql
+@@ -0,0 +1,7 @@
++-- 1697 (A14, D679/D680): both sides of an introduction are pre-cleared at the
++-- same moment — the bridge's word and the receiver's, from each one's own data
++-- and the goal's words. Admin-only; the receiver is told nothing by it and
++-- still hears of the request only after the bridge's yes (D438).
++ALTER TABLE introduction_requests ADD COLUMN IF NOT EXISTS bridge_prematch TEXT;
++ALTER TABLE introduction_requests ADD COLUMN IF NOT EXISTS receiver_prematch TEXT;
++ALTER TABLE introduction_requests ADD COLUMN IF NOT EXISTS prematch_at TIMESTAMPTZ;
+diff --git a/src/services/__tests__/bridgeOrder.test.ts b/src/services/__tests__/bridgeOrder.test.ts
+new file mode 100644
+index 0000000..645616c
+--- /dev/null
++++ b/src/services/__tests__/bridgeOrder.test.ts
+@@ -0,0 +1,92 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../prematch.service', () => {
++  const actual = jest.requireActual('../prematch.service');
++  return { ...actual, prematchMany: jest.fn() };
++});
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query as _query } from '../../db/postgres/client';
++import { PrematchSource, PrematchWord, prematchMany } from '../prematch.service';
++import { orderPaths, recordIntroPrematch } from '../bridgeOrder';
++
++/**
++ * 1697 (A14): the bridge most likely to take the request comes first, the rare
++ * shared contact before the famous one; both sides of a request are scored at once.
++ */
++const mockQuery = _query as jest.Mock;
++const word = (w: PrematchWord) => ({ word: w, source: PrematchSource.OwnProfile });
++const path = (phone: string, hops = 2, relayable = true) => ({
++  hops,
++  relayable,
++  bridges: [{ phone }],
++});
++
++beforeEach(() => jest.clearAllMocks());
++
++describe('the bridges in A14’s order (1697)', () => {
++  it('a bridge whose own data fits the goal comes before one who is not of the field', () => {
++    const b1 = path('+995555000001');
++    const b2 = path('+995555000002');
++    const ordered = orderPaths([b2, b1], {
++      words: new Map([
++        ['995555000001', word(PrematchWord.LikelyYes)],
++        ['995555000002', word(PrematchWord.NotHisField)],
++      ]),
++      rates: new Map(),
++      holders: new Map(),
++    });
++    expect(ordered).toEqual([b1, b2]);
++  });
++
++  it('with the same fit, the one who answers in the field first, then the rarer shared contact', () => {
++    const famous = path('+995555000003');
++    const rare = path('+995555000004');
++    const answers = path('+995555000005');
++    const ordered = orderPaths([famous, rare, answers], {
++      words: new Map(),
++      rates: new Map([['995555000005', { field: 0.8, overall: 0.8 }]]),
++      holders: new Map([
++        ['995555000003', 400],
++        ['995555000004', 3],
++        ['995555000005', 50],
++      ]),
++    });
++    expect(ordered).toEqual([answers, rare, famous]);
++  });
++
++  it('fewer hops still come first, whatever the fit', () => {
++    const near = path('+995555000006', 2);
++    const far = path('+995555000007', 3);
++    const ordered = orderPaths([far, near], {
++      words: new Map([['995555000007', word(PrematchWord.LikelyYes)]]),
++      rates: new Map(),
++      holders: new Map(),
++    });
++    expect(ordered).toEqual([near, far]);
++  });
++
++  it('both sides of a request are written at the same moment, from the goal', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        { bridge_phone: '+995555000001', receiver_phone: '+995555000009', goal_text: 'logistics' },
++      ],
++    });
++    (prematchMany as jest.Mock).mockResolvedValue(
++      new Map([
++        ['995555000001', word(PrematchWord.LikelyYes)],
++        ['995555000009', word(PrematchWord.Possibly)],
++      ]),
++    );
++    mockQuery.mockResolvedValueOnce({ rowCount: 1 });
++    await recordIntroPrematch(12);
++    expect(mockQuery.mock.calls[1][1]).toEqual([12, 'likely_yes', 'possibly']);
++  });
++
++  it('the warm path and the request are wired to it', () => {
++    const walk = readFileSync(join(__dirname, '..', 'tools', 'findWarmPath.ts'), 'utf8');
++    expect(walk).toContain('(await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS)');
++    const intro = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
++    expect(intro).toContain('void recordIntroPrematch(insertResult.rows[0].id);');
++  });
++});
+diff --git a/src/services/bridgeOrder.ts b/src/services/bridgeOrder.ts
+new file mode 100644
+index 0000000..0103c17
+--- /dev/null
++++ b/src/services/bridgeOrder.ts
+@@ -0,0 +1,150 @@
++import { query } from '../db/postgres/client';
++import { askField } from './answerStats.service';
++import { phoneDigits } from './phone';
++import { Prematch, PrematchWord, prematchMany } from './prematch.service';
++import { AnswerRates, answerRatesFor, CLASS_RANK } from './waveOrder';
++
++/**
++ * 1697 (A14, D679/D680): the warm path named its bridges and the order was
++ * reach — so a request could start towards a bridge who would never take it.
++ * Each bridge on the first step is now scored the way a wave is (A11's
++ * pre-match from his own data, A8's answer rate in the goal's field), and a
++ * rare shared contact is preferred over a famous one: fewer phonebooks that
++ * hold him means a closer tie. Nothing of it is shown — only the order moves
++ * (D680: no private fact to the other person, not even as the reason).
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const NO_RECORD: AnswerRates = { field: 0.5, overall: 0.5 };
++
++export interface PathLike {
++  readonly hops: number;
++  readonly relayable: boolean;
++  readonly bridges: ReadonlyArray<{ readonly phone: string }>;
++}
++
++export interface BridgeScores {
++  readonly words: ReadonlyMap<string, Prematch>;
++  readonly rates: ReadonlyMap<string, AnswerRates>;
++  /** How many phonebooks hold each bridge, by digits. */
++  readonly holders: ReadonlyMap<string, number>;
++}
++
++/** The paths in A14's order: fewest hops, then the first bridge's fit, then the original order. */
++export function orderPaths<T extends PathLike>(paths: readonly T[], scores: BridgeScores): T[] {
++  const keyOf = (path: T): readonly number[] => {
++    const first = path.bridges[0];
++    const d = first === undefined ? '' : phoneDigits(first.phone);
++    const word = scores.words.get(d)?.word ?? PrematchWord.AskHim;
++    const rates = scores.rates.get(d) ?? NO_RECORD;
++    return [
++      path.hops,
++      CLASS_RANK[word],
++      -rates.field,
++      scores.holders.get(d) ?? Number.MAX_SAFE_INTEGER,
++      path.relayable ? 0 : 1,
++    ];
++  };
++  return paths
++    .map((path, index) => ({ path, index, key: keyOf(path) }))
++    .sort((a, b) => {
++      for (let i = 0; i < a.key.length; i += 1) {
++        if (a.key[i] !== b.key[i]) return a.key[i] - b.key[i];
++      }
++      return a.index - b.index;
++    })
++    .map(({ path }) => path);
++}
++
++/** How many phonebooks hold each number — the fewer, the rarer the shared contact. */
++async function holderCounts(phones: readonly string[]): Promise<Map<string, number>> {
++  const forms = [...new Set(phones.map(phoneDigits).flatMap((d) => [`+${d}`, d]))];
++  const out = new Map<string, number>();
++  if (forms.length === 0) return out;
++  const result = await query<{ phone: string; holders: number }>(
++    `SELECT phone, COUNT(DISTINCT "contactId")::int AS holders
++       FROM "UserAlias" WHERE phone = ANY($1::text[])
++      GROUP BY phone
++      LIMIT $2`,
++    [forms, forms.length],
++    QUERY_TIMEOUT_MS,
++  );
++  for (const row of result.rows) {
++    const d = phoneDigits(row.phone);
++    out.set(d, (out.get(d) ?? 0) + row.holders);
++  }
++  return out;
++}
++
++/** Every first bridge (and the receiver) scored for this goal, all at once. */
++export async function scoreBridges(
++  phones: readonly string[],
++  goalText: string,
++): Promise<BridgeScores> {
++  const [words, rates, holders] = await Promise.all([
++    prematchMany(phones, goalText),
++    answerRatesFor(phones, askField(goalText)),
++    holderCounts(phones),
++  ]);
++  return { words, rates, holders };
++}
++
++/** The paths in A14's order; as they came when there is no goal or anything cannot be read. */
++export async function inBridgeOrder<T extends PathLike>(
++  paths: readonly T[],
++  goalText: string | null,
++): Promise<T[]> {
++  if (goalText === null || goalText.trim() === '' || paths.length < 2) return [...paths];
++  try {
++    const firsts = paths
++      .map((p) => p.bridges[0]?.phone)
++      .filter((p): p is string => p !== undefined);
++    return orderPaths(paths, await scoreBridges(firsts, goalText));
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[bridge-order] kept by reach:', (err as Error).message);
++    return [...paths];
++  }
++}
++
++interface IntroSides {
++  readonly bridge_phone: string | null;
++  readonly receiver_phone: string | null;
++  readonly goal_text: string | null;
++}
++
++/**
++ * 1697: the bridge's and the receiver's pre-match, written on the request in
++ * one go, from the goal it was raised for. Best-effort and after the send: the
++ * request never waits on it, and a failure is a missing admin column, logged.
++ */
++export async function recordIntroPrematch(requestId: number): Promise<void> {
++  try {
++    const sides = await query<IntroSides>(
++      `SELECT (SELECT up.phone FROM "UserPhone" up WHERE up."userId" = ir.mediator_user_id LIMIT 1)
++                AS bridge_phone,
++              COALESCE(ir.target_phone,
++                (SELECT up.phone FROM "UserPhone" up WHERE up."userId" = ir.target_user_id LIMIT 1))
++                AS receiver_phone,
++              (SELECT t.title FROM tasks t WHERE t.id = ir.requester_task_id) AS goal_text
++         FROM introduction_requests ir WHERE ir.id = $1`,
++      [requestId],
++      QUERY_TIMEOUT_MS,
++    );
++    const row = sides.rows[0];
++    if (row === undefined || row.goal_text === null) return;
++    const phones = [row.bridge_phone, row.receiver_phone].filter((p): p is string => p !== null);
++    const words = await prematchMany(phones, row.goal_text);
++    const wordOf = (phone: string | null): string | null =>
++      phone === null ? null : (words.get(phoneDigits(phone))?.word ?? null);
++    await query(
++      `UPDATE introduction_requests
++          SET bridge_prematch = $2, receiver_prematch = $3, prematch_at = NOW()
++        WHERE id = $1`,
++      [requestId, wordOf(row.bridge_phone), wordOf(row.receiver_phone)],
++      QUERY_TIMEOUT_MS,
++    );
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(`[intro-prematch] request ${requestId}: not written:`, (err as Error).message);
++  }
++}
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 29d53b9..f146360 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -10778,6 +10778,10 @@ async function executeToolCall(
+         userId,
+         String(input['target_phone'] ?? ''),
+         typeof input['max_hops'] === 'number' ? input['max_hops'] : undefined,
++        // 1697 (A14): the open goal's words order the bridges.
++        threadId === undefined
++          ? null
++          : ((await getOpenTaskByThread(threadId).catch(() => null))?.title ?? null),
+       );
+     default:
+       return { error: `Unknown tool: ${name}` };
+diff --git a/src/services/tools/findWarmPath.ts b/src/services/tools/findWarmPath.ts
+index 8ed39b2..0135cf4 100644
+--- a/src/services/tools/findWarmPath.ts
++++ b/src/services/tools/findWarmPath.ts
+@@ -1,3 +1,4 @@
++import { inBridgeOrder } from '../bridgeOrder';
+ import { query } from '../../db/postgres/client';
+ import { getSession } from '../../db/neo4j/client';
+ import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
+@@ -184,6 +185,8 @@ export async function findWarmPath(
+   userId: string,
+   targetPhoneRaw: string,
+   maxHopsRaw = MAX_HOPS,
++  /** 1697 (A14): the goal's words, so the bridges come in the order most likely to answer. */
++  goalText: string | null = null,
+ ): Promise<WarmPathOutcome> {
+   const targetPhone = normalizePhone(targetPhoneRaw ?? '');
+   if (!targetPhone) {
+@@ -256,7 +259,7 @@ export async function findWarmPath(
+     is_member: isMemberPhone(states, phone),
+     account_state: accountStateFor(states, phone),
+   });
+-  const paths: WarmPath[] = candidates
++  const reached: WarmPath[] = candidates
+     .map((bridges) => bridges.map(bridgeFor))
+     .map((bridges) => ({
+       hops: bridges.length + 1,
+@@ -266,9 +269,9 @@ export async function findWarmPath(
+     // Fewest hops first, then the paths the relay can actually carry. Hops
+     // stay ahead of relayable on purpose: a one-hop bridge who is not on Netai
+     // is still the user's own contact, whom they can simply write to.
+-    .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable))
+-    // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
+-    .slice(0, MAX_PATHS);
++    .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
++  // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
++  const paths = (await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS);
+ 
+   return {
+     found: true,
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 4675d67..85d5066 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -1,3 +1,4 @@
++import { recordIntroPrematch } from '../bridgeOrder';
+ import { reasonAboutAsker } from '../askEditor.service';
+ import { geoName } from '../georgianCase';
+ import { targetNameForMediator } from '../mediatorTargetName';
+@@ -550,6 +551,8 @@ async function requestIntroductionInner(
+     ),
+   ]);
+ 
++  // 1697 (A14): both sides pre-cleared at the same moment, for the admin; nothing is sent by it.
++  void recordIntroPrematch(insertResult.rows[0].id);
+   const stored: StoredRequest = {
+     requestId: insertResult.rows[0].id,
+     requestRef: insertResult.rows[0].request_ref,
+diff --git a/src/services/waveOrder.ts b/src/services/waveOrder.ts
+index 45d61fd..54907b3 100644
+--- a/src/services/waveOrder.ts
++++ b/src/services/waveOrder.ts
+@@ -21,7 +21,7 @@ import { Prematch, prematchMany, PrematchWord } from './prematch.service';
+ const QUERY_TIMEOUT_MS = 5_000;
+ const ROWS_READ = 2_000;
+ 
+-const CLASS_RANK: Readonly<Record<PrematchWord, number>> = {
++export const CLASS_RANK: Readonly<Record<PrematchWord, number>> = {
+   [PrematchWord.LikelyYes]: 0,
+   [PrematchWord.Possibly]: 1,
+   [PrematchWord.AskHim]: 2,
+-- 
+2.43.0
+

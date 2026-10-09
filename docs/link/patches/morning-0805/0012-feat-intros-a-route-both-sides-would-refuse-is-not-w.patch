@@ -1,0 +1,61 @@
+From 45dea3f8002fdd16916edd6346e8bed790d99aaf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 06:33:15 +0000
+Subject: [PATCH 12/21] feat(intros): a route both sides would refuse is not
+ walked (1697 part 2, AO approved)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho approved the line (9 Oct 06:25 UTC, ADMIN_WRITE_OPERATIONS §110.1).
+CLOSED_ROUTE_ON is now true: when the bridge and the receiver are both
+not_his_field for the requester's goal, no request is made and the model is told
+the route looks closed, never why. Unknown anything still counts as open.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/aClosedRouteIsNotWalked.test.ts | 4 ++--
+ src/services/closedRoute.ts                            | 9 ++++-----
+ 2 files changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/src/services/__tests__/aClosedRouteIsNotWalked.test.ts b/src/services/__tests__/aClosedRouteIsNotWalked.test.ts
+index a6de446..6091a93 100644
+--- a/src/services/__tests__/aClosedRouteIsNotWalked.test.ts
++++ b/src/services/__tests__/aClosedRouteIsNotWalked.test.ts
+@@ -14,8 +14,8 @@ describe('a closed route', () => {
+     expect(routeLooksClosed(undefined, PrematchWord.NotHisField)).toBe(false);
+   });
+ 
+-  it('is only logged until Misho approves its line (AO)', () => {
+-    expect(CLOSED_ROUTE_ON).toBe(false);
++  it('is refused since Misho approved its line (AO, §110.1)', () => {
++    expect(CLOSED_ROUTE_ON).toBe(true);
+     const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
+     expect(tool).toMatch(
+       /if \(CLOSED_ROUTE_ON\)\s*return \{ success: false, reason: 'route_closed', error: CLOSED_ROUTE_LINE \};/u,
+diff --git a/src/services/closedRoute.ts b/src/services/closedRoute.ts
+index 8fe1f5c..549be0a 100644
+--- a/src/services/closedRoute.ts
++++ b/src/services/closedRoute.ts
+@@ -8,13 +8,12 @@ import { PrematchWord, prematchMany } from './prematch.service';
+  * No request is made; the model hears the route looks closed and proposes
+  * another way — never why (the reason is other people's data, D680).
+  *
+- * HELD (D44): the line the model reads is NIGHT_QUESTIONS AO, waiting for
+- * Misho's yes. Until then the check only LOGS what it would have refused, so
+- * the morning has evidence of how often it bites; nothing is refused.
++ * The line the model reads is NIGHT_QUESTIONS AO, approved by Misho on
++ * 9 Oct 06:25 UTC (ADMIN_WRITE_OPERATIONS §110.1).
+  */
+-export const CLOSED_ROUTE_ON = false;
++export const CLOSED_ROUTE_ON = true;
+ 
+-/** NIGHT_QUESTIONS AO, the exact text proposed; used only once CLOSED_ROUTE_ON is true. */
++/** NIGHT_QUESTIONS AO, the exact approved text (§110.1). */
+ export const CLOSED_ROUTE_LINE =
+   'Not sent: this route looks closed. Say so to the owner in one plain line — never why, and nothing about these people — and propose another way.';
+ 
+-- 
+2.43.0
+

@@ -1,0 +1,122 @@
+From 6b31eabbf16921f70e771bc9633232cdde0691a6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 04:19:32 +0000
+Subject: [PATCH 18/21] =?UTF-8?q?feat(summary):=20=E2=80=9Eyou=20helped=20?=
+ =?UTF-8?q?N=20members=20this=20month"=20(1693,=20A9)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The Monday weekly summary gets one line when N > 0: „ამ თვეში N წევრს
+დაეხმარე." N is the thank-yous this person received in the last 30 days
+(helper_thanks.thanked_at, 1692). Nothing else: no ranking, no comparison, no
+points; at zero the line is absent. A failed count is zero, never a failed
+summary. The bridge role joins with 1692 part 2.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theWeekSaysWhoYouHelped.test.ts | 15 ++++++++++
+ src/services/weeklySummary.service.ts         | 28 +++++++++++++++++--
+ 2 files changed, 41 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/theWeekSaysWhoYouHelped.test.ts
+
+diff --git a/src/services/__tests__/theWeekSaysWhoYouHelped.test.ts b/src/services/__tests__/theWeekSaysWhoYouHelped.test.ts
+new file mode 100644
+index 0000000..c40a29b
+--- /dev/null
++++ b/src/services/__tests__/theWeekSaysWhoYouHelped.test.ts
+@@ -0,0 +1,15 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++import { renderWeeklySummary } from '../weeklySummary.service';
++
++/** 1693 (A9): one line when N > 0 — „you helped N members this month"; nothing else, no ranking. */
++describe('the weekly summary’s helped line', () => {
++  it('says the number when there is one', () => {
++    expect(renderWeeklySummary([], 0, 0, '2026-10-05', 2)).toContain('ამ თვეში 2 წევრს დაეხმარე.');
++  });
++
++  it('says nothing at zero', () => {
++    expect(renderWeeklySummary([], 0, 0, '2026-10-05', 0)).not.toContain('დაეხმარე');
++    expect(renderWeeklySummary([], 0, 0, '2026-10-05')).not.toContain('დაეხმარე');
++  });
++});
+diff --git a/src/services/weeklySummary.service.ts b/src/services/weeklySummary.service.ts
+index efead8a..fdc13ef 100644
+--- a/src/services/weeklySummary.service.ts
++++ b/src/services/weeklySummary.service.ts
+@@ -73,6 +73,8 @@ export interface WeeklySummary {
+   goals: GoalSummary[];
+   tokens_spent: number;
+   automatic_answers: number;
++  /** 1693: thank-yous this person received in the last 30 days. */
++  helped_this_month: number;
+   text: string;
+ }
+ 
+@@ -110,6 +112,23 @@ async function automaticAnswers(userId: string): Promise<number> {
+   return Number(result.rows[0]?.n ?? 0);
+ }
+ 
++/**
++ * 1693 (A9): „you helped N members this month" — the thank-yous this person
++ * received in the last 30 days (1692). One number, no ranking, no comparison.
++ */
++const HELPED_WINDOW_DAYS = 30;
++
++async function helpedThisMonth(userId: string): Promise<number> {
++  const result = await query<{ n: string }>(
++    `SELECT COUNT(*) AS n FROM helper_thanks
++     WHERE helper_user_id = $1::int
++       AND thanked_at >= NOW() - make_interval(days => $2)`,
++    [userId, HELPED_WINDOW_DAYS],
++    SUMMARY_QUERY_TIMEOUT_MS,
++  );
++  return Number(result.rows[0]?.n ?? 0);
++}
++
+ async function tokensSpent(userId: string): Promise<number> {
+   const result = await query<{ spent: string | null }>(
+     `SELECT COALESCE(-SUM(amount), 0) AS spent FROM token_transactions
+@@ -155,6 +174,7 @@ export function renderWeeklySummary(
+   tokensSpentThisWeek: number,
+   automaticAnswers: number,
+   weekStart: string,
++  helped = 0,
+ ): string {
+   const lines: string[] = [`კვირის შეჯამება (${weekStart}-დან)`, ''];
+   if (goals.length === 0) {
+@@ -198,15 +218,18 @@ export function renderWeeklySummary(
+       ? `შენი წესებით ავტომატურად გაცემული პასუხები: ${automaticAnswers}.`
+       : 'შენი წესებით ავტომატურად გაცემული პასუხები: 0.',
+   );
++  // 1693: only when there is something to say.
++  if (helped > 0) lines.push(`ამ თვეში ${helped} წევრს დაეხმარე.`);
+   return lines.join('\n');
+ }
+ 
+ /** The week's summary for one user, composed but not sent. */
+ export async function composeWeeklySummary(userId: string): Promise<WeeklySummary> {
+-  const [rows, spent, automatic] = await Promise.all([
++  const [rows, spent, automatic, helped] = await Promise.all([
+     goalsForUser(userId),
+     tokensSpent(userId),
+     automaticAnswers(userId),
++    helpedThisMonth(userId).catch(() => 0),
+   ]);
+   const goals: GoalSummary[] = rows.map((r) => {
+     const plan = planInForce(r);
+@@ -229,7 +252,8 @@ export async function composeWeeklySummary(userId: string): Promise<WeeklySummar
+     goals,
+     tokens_spent: spent,
+     automatic_answers: automatic,
+-    text: renderWeeklySummary(goals, spent, automatic, weekStart),
++    helped_this_month: helped,
++    text: renderWeeklySummary(goals, spent, automatic, weekStart, helped),
+   };
+ }
+ 
+-- 
+2.43.0
+

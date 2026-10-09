@@ -1,0 +1,437 @@
+From b6fcb918592cf7495dc4ccd8c753dddcd5895f1c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 19:57:50 +0000
+Subject: [PATCH 03/21] feat(asks): the wave asks in A8's order (1691)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Whom to ask first was decided by labels and relationship strength only. A
+wave's remaining people are now ordered:
+  1. the person the goal's own text names (D625);
+  2. the pre-match class of 1694 — likely_yes, possibly, ask_him, and
+     not_his_field only when nobody else is left;
+  3. within a class, the answer rate in this field, (yes + referred + 1) /
+     (asked + 2), then the overall rate, from 1689's answer_stats;
+  4. then the plan's order.
+The two signals stay two numbers on their own records; nothing merged is
+stored. A failed read keeps the plan's order. The bridge choice (A14) is not
+built yet and will use the same order.
+
+DONE WHEN: four fictional candidates with known records come out in the
+defined order; changing one record changes the order as expected; the
+owner-named person is always first.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/asksGoInWaves.test.ts  |   5 +-
+ .../theRecipientIsCheckedFirst.test.ts        |  13 +-
+ .../__tests__/whoIsAskedFirst.test.ts         |  84 ++++++++++
+ src/services/askWaves.service.ts              |  31 +---
+ src/services/prematch.service.ts              |  20 ---
+ src/services/waveOrder.ts                     | 154 ++++++++++++++++++
+ 6 files changed, 249 insertions(+), 58 deletions(-)
+ create mode 100644 src/services/__tests__/whoIsAskedFirst.test.ts
+ create mode 100644 src/services/waveOrder.ts
+
+diff --git a/src/services/__tests__/asksGoInWaves.test.ts b/src/services/__tests__/asksGoInWaves.test.ts
+index 25f5d2a..780f87e 100644
+--- a/src/services/__tests__/asksGoInWaves.test.ts
++++ b/src/services/__tests__/asksGoInWaves.test.ts
+@@ -1,6 +1,5 @@
+-jest.mock('../prematch.service', () => ({
+-  ...jest.requireActual('../prematch.service'),
+-  prematchMany: jest.fn(() => Promise.resolve(new Map())),
++jest.mock('../waveOrder', () => ({
++  inWaveOrder: jest.fn((people: unknown[]) => Promise.resolve([...people])),
+ }));
+ jest.mock('../../db/postgres/client', () => ({
+   __esModule: true,
+diff --git a/src/services/__tests__/theRecipientIsCheckedFirst.test.ts b/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
+index 9c788f9..0b7e7fd 100644
+--- a/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
++++ b/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
+@@ -4,13 +4,13 @@ import { readFileSync } from 'fs';
+ import { join } from 'path';
+ import { query } from '../../db/postgres/client';
+ import { nextWaveNote } from '../askWaves.service';
++import { orderCandidates } from '../waveOrder';
+ import {
+   classify,
+   fieldTerms,
+   prematchMany,
+   PrematchSource,
+   PrematchWord,
+-  rankByPrematch,
+ } from '../prematch.service';
+ 
+ /**
+@@ -100,12 +100,9 @@ describe('the waves follow the words', () => {
+         { word: PrematchWord.NotHisField, source: PrematchSource.Boundary },
+       ],
+     ]);
+-    expect(rankByPrematch(people, words).map((p) => p.name)).toEqual([
+-      'note',
+-      'label',
+-      'nothing',
+-      'boundary',
+-    ]);
++    expect(
++      orderCandidates(people, { words, rates: new Map(), goalText: '' }).map((p) => p.name),
++    ).toEqual(['note', 'label', 'nothing', 'boundary']);
+   });
+ 
+   it('the asker’s run is told names only, never a word', () => {
+@@ -124,6 +121,6 @@ describe('the waves follow the words', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+     expect(asks).toContain('prematch, prematch_source, prematch_at, a2a_rounds, field)');
+     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
+-    expect(waves).toContain('remaining: await inPrematchOrder(');
++    expect(waves).toContain('remaining: await inWaveOrder(');
+   });
+ });
+diff --git a/src/services/__tests__/whoIsAskedFirst.test.ts b/src/services/__tests__/whoIsAskedFirst.test.ts
+new file mode 100644
+index 0000000..061a1e0
+--- /dev/null
++++ b/src/services/__tests__/whoIsAskedFirst.test.ts
+@@ -0,0 +1,84 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++import { query } from '../../db/postgres/client';
++import { PrematchSource, PrematchWord } from '../prematch.service';
++import { answerRate, answerRatesFor, goalNamesPerson, orderCandidates } from '../waveOrder';
++
++/** 1691 (A8): four candidates with known records come out in the defined order. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const P = (name: string, phone: string): { name: string; phone: string } => ({ name, phone });
++const ANA = P('ანა ტესტური', '+447700900201');
++const BESO = P('ბესო ტესტური', '+447700900202');
++const GIA = P('გია ტესტური', '+447700900203');
++const DALI = P('დალი ტესტური', '+447700900204');
++const d = (p: { phone: string }): string => p.phone.replace(/\D/g, '');
++const word = (w: PrematchWord): { word: PrematchWord; source: PrematchSource } => ({
++  word: w,
++  source: PrematchSource.NothingKnown,
++});
++
++const words = new Map([
++  [d(ANA), word(PrematchWord.AskHim)],
++  [d(BESO), word(PrematchWord.LikelyYes)],
++  [d(GIA), word(PrematchWord.LikelyYes)],
++  [d(DALI), word(PrematchWord.NotHisField)],
++]);
++const rates = new Map([
++  [d(BESO), { field: answerRate(1, 0, 4), overall: 0.5 }],
++  [d(GIA), { field: answerRate(3, 0, 4), overall: 0.5 }],
++]);
++
++describe('the order of a wave', () => {
++  it('class first, then the answer rate in the field; not_his_field last', () => {
++    const order = orderCandidates([ANA, BESO, GIA, DALI], {
++      words,
++      rates,
++      goalText: 'საბაჟო ბროკერი',
++    });
++    expect(order.map((p) => p.name)).toEqual([
++      'გია ტესტური',
++      'ბესო ტესტური',
++      'ანა ტესტური',
++      'დალი ტესტური',
++    ]);
++  });
++
++  it('changing one record changes the order as expected', () => {
++    const better = new Map(rates).set(d(BESO), { field: answerRate(4, 0, 4), overall: 0.5 });
++    const order = orderCandidates([ANA, BESO, GIA, DALI], { words, rates: better, goalText: '' });
++    expect(order[0].name).toBe('ბესო ტესტური');
++  });
++
++  it('the person the owner named himself is always first', () => {
++    const order = orderCandidates([ANA, BESO, GIA, DALI], {
++      words,
++      rates,
++      goalText: 'ჰკითხე დალი ტესტურს საბაჟოზე',
++    });
++    expect(order[0].name).toBe('დალი ტესტური');
++    expect(goalNamesPerson('ჰკითხე დალი ტესტურს', 'დალი ტესტური')).toBe(true);
++    expect(goalNamesPerson('ჰკითხე ვინმეს', 'დალი ტესტური')).toBe(false);
++  });
++
++  it('the answer rate is (yes + referred + 1) / (asked + 2)', () => {
++    expect(answerRate(0, 0, 0)).toBe(0.5);
++    expect(answerRate(3, 1, 6)).toBe(5 / 8);
++  });
++});
++
++describe('the rates are read from the record', () => {
++  it('per field and overall, kept as two numbers', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [
++        { phone: BESO.phone, field: 'საბაჟო ბროკერ', asked: 2, yes: 2, referred: 0 },
++        { phone: BESO.phone, field: '', asked: 4, yes: 0, referred: 0 },
++      ],
++      rowCount: 2,
++    } as never);
++    const out = await answerRatesFor([BESO.phone], 'საბაჟო ბროკერ');
++    expect(out.get(d(BESO))).toEqual({ field: 3 / 4, overall: 3 / 8 });
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('JOIN answer_stats s ON s.user_id = up."userId"');
++    expect(params[1]).toBe(2_000);
++  });
++});
+diff --git a/src/services/askWaves.service.ts b/src/services/askWaves.service.ts
+index 219140f..e4b5425 100644
+--- a/src/services/askWaves.service.ts
++++ b/src/services/askWaves.service.ts
+@@ -1,7 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { askStateOf, isOpenAskState } from './askState';
+ import { phoneDigits } from './phone';
+-import { prematchMany, rankByPrematch } from './prematch.service';
++import { inWaveOrder } from './waveOrder';
+ import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
+ import type { Task } from './taskStore.service';
+ 
+@@ -16,8 +16,8 @@ import type { Task } from './taskStore.service';
+  * to now.
+  *
+  * Who is next is the plan's own order (today's ranking) minus everyone this
+- * goal already asked, ranked by each candidate's pre-match word (1694). A8
+- * will reorder it further when its numbers exist.
++ * goal already asked, in A8's order (waveOrder.ts: the owner-named person, the
++ * pre-match word, the answer rate, then the plan's order).
+  */
+ export const WAVE_SIZE_SMALL = 3;
+ export const WAVE_SIZE_REAL_WORK = 5;
+@@ -130,34 +130,11 @@ export async function readWave(
+     openInWave: asks.filter((a) =>
+       a.status === 'held' ? true : isOpenAskState(askStateOf(a, now)),
+     ).length,
+-    remaining: await inPrematchOrder(notYetAsked(plan.people_to_involve, asked), task.title),
++    remaining: await inWaveOrder(notYetAsked(plan.people_to_involve, asked), task.title),
+     nextWaveAt: next_wave_at,
+   };
+ }
+ 
+-/**
+- * 1694 (A11): who is next is ranked by each candidate's own pre-match word —
+- * likely_yes, possibly, ask_him, and a boundary last — the plan's order within
+- * a word. A failed read keeps the plan's order: ranking is a help, not a gate.
+- */
+-async function inPrematchOrder(
+-  people: readonly PlanPerson[],
+-  goalText: string | null,
+-): Promise<PlanPerson[]> {
+-  if (people.length < 2) return [...people];
+-  try {
+-    const words = await prematchMany(
+-      people.map((p) => p.phone),
+-      goalText ?? '',
+-    );
+-    return rankByPrematch(people, words);
+-  } catch (err) {
+-    // eslint-disable-next-line no-console
+-    console.warn('[prematch] wave order kept as planned:', (err as Error).message);
+-    return [...people];
+-  }
+-}
+-
+ /** Moves the goal from `from` to the next wave, once even if two callers race. */
+ async function openWaveAfter(taskId: number, from: number): Promise<boolean> {
+   const result = await query(
+diff --git a/src/services/prematch.service.ts b/src/services/prematch.service.ts
+index 0c256fb..591099c 100644
+--- a/src/services/prematch.service.ts
++++ b/src/services/prematch.service.ts
+@@ -134,26 +134,6 @@ export function classify(evidence: CandidateEvidence, terms: readonly string[]):
+   return { word: PrematchWord.AskHim, source: PrematchSource.NothingKnown };
+ }
+ 
+-const RANK: Readonly<Record<PrematchWord, number>> = {
+-  [PrematchWord.LikelyYes]: 0,
+-  [PrematchWord.Possibly]: 1,
+-  [PrematchWord.AskHim]: 2,
+-  [PrematchWord.NotHisField]: 3,
+-};
+-
+-/** The candidates in the words' order; the plan's order within one word. */
+-export function rankByPrematch<T extends { readonly phone: string }>(
+-  people: readonly T[],
+-  words: ReadonlyMap<string, Prematch>,
+-): T[] {
+-  const rankOf = (p: T): number =>
+-    RANK[words.get(phoneDigits(p.phone))?.word ?? PrematchWord.AskHim];
+-  return people
+-    .map((person, index) => ({ person, index }))
+-    .sort((a, b) => rankOf(a.person) - rankOf(b.person) || a.index - b.index)
+-    .map(({ person }) => person);
+-}
+-
+ interface Members {
+   readonly byDigits: ReadonlyMap<string, string>;
+ }
+diff --git a/src/services/waveOrder.ts b/src/services/waveOrder.ts
+new file mode 100644
+index 0000000..45d61fd
+--- /dev/null
++++ b/src/services/waveOrder.ts
+@@ -0,0 +1,154 @@
++import { query } from '../db/postgres/client';
++import { askField } from './answerStats.service';
++import { phoneDigits } from './phone';
++import { Prematch, prematchMany, PrematchWord } from './prematch.service';
++
++/**
++ * 1691 (A8, D679/D680): whom to ask first was decided by labels and
++ * relationship strength only. The order of a wave is now, in this order:
++ *
++ *   1. the person the owner named himself (D625);
++ *   2. the pre-match class (A11): likely_yes, possibly, ask_him — and
++ *      not_his_field only when nobody else is left;
++ *   3. within a class, the answer rate for this field,
++ *      (yes + referred + 1) / (asked + 2), then the overall answer rate;
++ *   4. then today's order, which is the plan's.
++ *
++ * The two signals stay two numbers on their records (the ask's pre-match word,
++ * the person's answer_stats); nothing merged is stored. A failed read keeps
++ * the plan's order: ranking helps, it never gates.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const ROWS_READ = 2_000;
++
++const CLASS_RANK: Readonly<Record<PrematchWord, number>> = {
++  [PrematchWord.LikelyYes]: 0,
++  [PrematchWord.Possibly]: 1,
++  [PrematchWord.AskHim]: 2,
++  [PrematchWord.NotHisField]: 3,
++};
++
++export interface AnswerRates {
++  /** (yes + referred + 1) / (asked + 2) in this field. */
++  readonly field: number;
++  /** The same over every field. */
++  readonly overall: number;
++}
++
++/** No record at all reads as one in two — the prior, not a guess either way. */
++const NO_RECORD: AnswerRates = { field: 0.5, overall: 0.5 };
++
++export function answerRate(yes: number, referred: number, asked: number): number {
++  return (yes + referred + 1) / (asked + 2);
++}
++
++/** Does the goal's own text name this person (every word of the name)? */
++export function goalNamesPerson(goalText: string, name: string): boolean {
++  const text = goalText.toLowerCase();
++  const words = name
++    .toLowerCase()
++    .split(/\s+/u)
++    .filter((w) => w.length >= 2);
++  return words.length > 0 && words.every((w) => text.includes(w.length >= 4 ? w.slice(0, -1) : w));
++}
++
++export interface WaveOrderInput {
++  readonly words: ReadonlyMap<string, Prematch>;
++  readonly rates: ReadonlyMap<string, AnswerRates>;
++  readonly goalText: string;
++}
++
++/** The candidates in A8's order; the plan's order breaks every tie. */
++export function orderCandidates<T extends { readonly phone: string; readonly name: string }>(
++  people: readonly T[],
++  input: WaveOrderInput,
++): T[] {
++  const keyOf = (p: T): readonly number[] => {
++    const d = phoneDigits(p.phone);
++    const word = input.words.get(d)?.word ?? PrematchWord.AskHim;
++    const rates = input.rates.get(d) ?? NO_RECORD;
++    return [
++      goalNamesPerson(input.goalText, p.name) ? 0 : 1,
++      CLASS_RANK[word],
++      -rates.field,
++      -rates.overall,
++    ];
++  };
++  return people
++    .map((person, index) => ({ person, index, key: keyOf(person) }))
++    .sort((a, b) => {
++      for (let i = 0; i < a.key.length; i += 1) {
++        if (a.key[i] !== b.key[i]) return a.key[i] - b.key[i];
++      }
++      return a.index - b.index;
++    })
++    .map(({ person }) => person);
++}
++
++interface StatsRow {
++  readonly phone: string;
++  readonly field: string;
++  readonly asked: number;
++  readonly yes: number;
++  readonly referred: number;
++}
++
++/** Each candidate's answer rates, from answer_stats (by index on the phone's stored forms). */
++export async function answerRatesFor(
++  phones: readonly string[],
++  field: string,
++): Promise<Map<string, AnswerRates>> {
++  const digits = [...new Set(phones.map(phoneDigits).filter((d) => d !== ''))];
++  const out = new Map<string, AnswerRates>();
++  if (digits.length === 0) return out;
++  const forms = [...new Set(digits.flatMap((d) => [`+${d}`, d]))];
++  const result = await query<StatsRow>(
++    `SELECT up.phone, s.field, s.asked, s.yes, s.referred
++       FROM "UserPhone" up
++       JOIN answer_stats s ON s.user_id = up."userId"
++      WHERE up.phone = ANY($1::text[])
++      LIMIT $2`,
++    [forms, ROWS_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  const totals = new Map<string, { asked: number; yes: number; referred: number }>();
++  const inField = new Map<string, number>();
++  for (const row of result.rows) {
++    const d = phoneDigits(row.phone);
++    const t = totals.get(d) ?? { asked: 0, yes: 0, referred: 0 };
++    totals.set(d, {
++      asked: t.asked + row.asked,
++      yes: t.yes + row.yes,
++      referred: t.referred + row.referred,
++    });
++    if (row.field === field) inField.set(d, answerRate(row.yes, row.referred, row.asked));
++  }
++  for (const [d, t] of totals) {
++    out.set(d, {
++      field: inField.get(d) ?? answerRate(0, 0, 0),
++      overall: answerRate(t.yes, t.referred, t.asked),
++    });
++  }
++  return out;
++}
++
++/** The wave's people in A8's order; the plan's order when anything cannot be read. */
++export async function inWaveOrder<T extends { readonly phone: string; readonly name: string }>(
++  people: readonly T[],
++  goalText: string | null,
++): Promise<T[]> {
++  if (people.length < 2) return [...people];
++  const text = goalText ?? '';
++  try {
++    const phones = people.map((p) => p.phone);
++    const [words, rates] = await Promise.all([
++      prematchMany(phones, text),
++      answerRatesFor(phones, askField(text)),
++    ]);
++    return orderCandidates(people, { words, rates, goalText: text });
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[wave-order] kept as planned:', (err as Error).message);
++    return [...people];
++  }
++}
+-- 
+2.43.0
+

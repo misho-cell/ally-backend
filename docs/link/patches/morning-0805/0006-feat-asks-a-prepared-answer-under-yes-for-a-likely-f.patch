@@ -1,0 +1,465 @@
+From b9e8810a5094d3c51615d513ecf1865002a6127e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 20:32:41 +0000
+Subject: [PATCH 06/21] =?UTF-8?q?feat(asks):=20a=20prepared=20answer=20und?=
+ =?UTF-8?q?er=20=E2=80=9Eyes"=20for=20a=20likely=20fit=20(1695,=20A12,=20?=
+ =?UTF-8?q?=C2=A7107)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Even a clear fit had to type his answer, and typing is where answers die.
+
+- Migration 219: task_asks.prepared_answer.
+- On a first ask whose pre-match (1694) is likely_yes, one line is composed
+  by the editor model with the brief Misho approved tonight, word for word
+  (§107), from the reader's own profile fields only (job, employer,
+  user_profile_kv) — never his notes, never anything he typed. A line with a
+  number, two lines, or over 200 characters is not used.
+- It is stored on the ask and shown only to him, under the question:
+  „„კი, ვიცნობ"-ს დაჭერით გაიგზავნება: „…"".
+- His tap on „yes" sends exactly that line as his answer, by the server
+  (worded at send as every answer, D652); he reads „გაიგზავნა: „…"". no and
+  later behave as today; nothing is sent without the tap.
+
+NOT IN THIS COMMIT: „other" opening the box pre-filled with the line needs
+the frontend; the contract follows in FOR_FRONTEND.md.
+
+DONE WHEN: the likely_yes seat of A11 sees a one-line prepared answer under
+yes; a tap sends it and the asker receives it with the facts exact; the
+asker never sees the line before the tap; a seat on possibly / ask_him sees
+no line.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/219_prepared_answer.sql        |   4 +
+ .../__tests__/aPreparedAnswerUnderYes.test.ts |  88 ++++++++++++
+ .../theRecipientIsCheckedFirst.test.ts        |   4 +-
+ src/services/chat.service.ts                  |  50 +++++++
+ src/services/preparedAnswer.service.ts        | 134 ++++++++++++++++++
+ src/services/taskAsks.service.ts              |  24 +++-
+ 6 files changed, 297 insertions(+), 7 deletions(-)
+ create mode 100644 src/db/postgres/migrations/219_prepared_answer.sql
+ create mode 100644 src/services/__tests__/aPreparedAnswerUnderYes.test.ts
+ create mode 100644 src/services/preparedAnswer.service.ts
+
+diff --git a/src/db/postgres/migrations/219_prepared_answer.sql b/src/db/postgres/migrations/219_prepared_answer.sql
+new file mode 100644
+index 0000000..c604a99
+--- /dev/null
++++ b/src/db/postgres/migrations/219_prepared_answer.sql
+@@ -0,0 +1,4 @@
++-- 1695 (A12, D679/D680): on a likely_yes pre-match, one line the recipient
++-- could send as his answer, composed from his own profile only. Stored on the
++-- ask in his account, shown only to him under „yes", sent only on his tap.
++ALTER TABLE task_asks ADD COLUMN IF NOT EXISTS prepared_answer TEXT;
+diff --git a/src/services/__tests__/aPreparedAnswerUnderYes.test.ts b/src/services/__tests__/aPreparedAnswerUnderYes.test.ts
+new file mode 100644
+index 0000000..2752b6a
+--- /dev/null
++++ b/src/services/__tests__/aPreparedAnswerUnderYes.test.ts
+@@ -0,0 +1,88 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../../config/anthropic', () => ({
++  __esModule: true,
++  default: { messages: { create: jest.fn() } },
++}));
++jest.mock('../costLedger.service', () => ({ recordClaudeUsage: jest.fn(() => Promise.resolve()) }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import anthropic from '../../config/anthropic';
++import {
++  composePreparedAnswer,
++  preparedAnswerBrief,
++  preparedAnswerLine,
++  usablePreparedLine,
++} from '../preparedAnswer.service';
++
++/** 1695 (A12, §107): a likely fit sees one prepared line under „yes". */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockCreate = anthropic.messages.create as unknown as jest.Mock;
++
++beforeEach(() => jest.clearAllMocks());
++
++describe('the brief', () => {
++  it('is §107 word for word', () => {
++    const doc = readFileSync(
++      join(__dirname, '..', '..', '..', 'docs', 'ADMIN_WRITE_OPERATIONS.md'),
++      'utf8',
++    );
++    const approved = doc
++      .slice(doc.indexOf('**§107'))
++      .split('\n')
++      .find((line) => line.startsWith('> From the facts below'));
++    expect(approved?.slice(2).split('{language}').join('Georgian')).toBe(preparedAnswerBrief('ka'));
++  });
++});
++
++describe('the line', () => {
++  it('is one short line with no number in it', () => {
++    expect(usablePreparedLine('საბაჟოს ბროკერი ვარ, ნინოს დავეხმარები.')).toBe(
++      'საბაჟოს ბროკერი ვარ, ნინოს დავეხმარები.',
++    );
++    expect(usablePreparedLine('დამირეკე 599 12 34 56')).toBeNull();
++    expect(usablePreparedLine('nothing')).toBeNull();
++    expect(usablePreparedLine('ერთი\nორი')).toBeNull();
++    expect(usablePreparedLine('x'.repeat(201))).toBeNull();
++  });
++
++  it('is composed from his own profile fields only — never his notes', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ job: 'საბაჟოს ბროკერი', employer: 'Test LLC' }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    mockCreate.mockResolvedValue({
++      content: [{ type: 'text', text: 'საბაჟოს ბროკერი ვარ, შემიძლია დახმარება.' }],
++      usage: {},
++    });
++    expect(await composePreparedAnswer(9101, 'იცნობ საბაჟოს ბროკერს?', 'ka')).toBe(
++      'საბაჟოს ბროკერი ვარ, შემიძლია დახმარება.',
++    );
++    for (const call of mockQuery.mock.calls) expect(String(call[0])).not.toContain('user_notes');
++    const sent = JSON.parse(mockCreate.mock.calls[0][0].messages[0].content as string);
++    expect(sent.facts).toEqual(['job: საბაჟოს ბროკერი', 'employer: Test LLC']);
++  });
++
++  it('nothing is composed for a reader with no profile', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    expect(await composePreparedAnswer(9103, 'იცნობ საბაჟოს ბროკერს?', 'ka')).toBeNull();
++    expect(mockCreate).not.toHaveBeenCalled();
++  });
++
++  it('is shown under the question with what yes sends', () => {
++    expect(preparedAnswerLine('ka', 'კი, ვიცნობ', 'საბაჟოს ბროკერი ვარ.')).toBe(
++      '„კი, ვიცნობ"-ს დაჭერით გაიგზავნება: „საბაჟოს ბროკერი ვარ."',
++    );
++  });
++});
++
++describe('the wiring', () => {
++  it('only a likely_yes first ask gets a line; it is stored for him; yes sends it', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    expect(asks).toContain('prematch?.word === PrematchWord.LikelyYes');
++    expect(asks).toContain('field, prepared_answer)');
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain("thread.type === 'incoming_ask'");
++    expect(chat).toContain('const sent = await sendApprovedAskAnswer(userId, threadId, prepared);');
++  });
++});
+diff --git a/src/services/__tests__/theRecipientIsCheckedFirst.test.ts b/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
+index 0b7e7fd..35c6f0b 100644
+--- a/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
++++ b/src/services/__tests__/theRecipientIsCheckedFirst.test.ts
+@@ -119,7 +119,9 @@ describe('the waves follow the words', () => {
+ 
+   it('a first ask stores the word for the admin; the wave reads it', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+-    expect(asks).toContain('prematch, prematch_source, prematch_at, a2a_rounds, field)');
++    expect(asks).toContain(
++      'prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer)',
++    );
+     const waves = readFileSync(join(__dirname, '..', 'askWaves.service.ts'), 'utf8');
+     expect(waves).toContain('remaining: await inWaveOrder(');
+   });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c91de25..c77c149 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -183,6 +183,7 @@ import {
+   getAsksForTask,
+   getAskByThread,
+   sendApprovedAskAnswer,
++  askTapOnThread,
+   runPayerFor,
+   ensureEveryQuote,
+   QuoteGuarantee,
+@@ -495,6 +496,7 @@ import { getGoalOnThread, goalsAwaitingTheOwner } from './taskStore.service';
+ import { asksForAScore, withoutScores, withPlainDigits } from './noScores';
+ import { asksForBirthdays, birthdaysAnswer, birthdaysSoon } from './birthdaysAsked';
+ import type { UpcomingBirthday } from './birthdayLens.service';
++import { preparedAnswerOn } from './preparedAnswer.service';
+ import { answerConfirm, confirmCardFor } from './factConfirm.service';
+ import { checkedOwnerButtons } from './ownerButtons.service';
+ import { savedNamesIn, withNamesAsSaved } from './savedNames';
+@@ -12425,6 +12427,48 @@ async function answerFactConfirm(
+   return { reply: text, language, requestCreated: false };
+ }
+ 
++const PREPARED_SENT: Readonly<Record<RunLanguage, (line: string) => string>> = {
++  ka: (line) => `გაიგზავნა: „${line}"`,
++  en: (line) => `Sent: „${line}"`,
++  ru: (line) => `Отправлено: «${line}»`,
++  es: (line) => `Enviado: «${line}»`,
++};
++
++/**
++ * 1695: the reader tapped „yes" on a question that carries his prepared line —
++ * the line goes as his answer (worded at send as every answer is, D652), and he
++ * is told what went. Null when the line is not that tap, there is no prepared
++ * line, or it could not be sent (then the run answers as before).
++ */
++async function sendPreparedOnYes(
++  userId: string,
++  threadId: number,
++  userMessage: string,
++  runId: string,
++  intent: RunIntent | undefined,
++): Promise<ChatResult | null> {
++  try {
++    if ((await askTapOnThread(threadId, userMessage)) !== AskTap.Yes) return null;
++    const prepared = await preparedAnswerOn(threadId);
++    if (prepared === null) return null;
++    const sent = await sendApprovedAskAnswer(userId, threadId, prepared);
++    if (!sent.sent) return null;
++    if (intent?.alreadyStored !== true) {
++      await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
++    }
++    const language = detectRunLanguage(prepared);
++    const text = PREPARED_SENT[language](prepared);
++    await saveMessage(userId, threadId, 'assistant', text, 'message', runId);
++    // eslint-disable-next-line no-console
++    console.log(`[prepared-answer] run ${runId}: sent on the reader's yes`);
++    return { reply: text, language, requestCreated: false };
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error('[prepared-answer] not sent on yes:', (err as Error).message);
++    return null;
++  }
++}
++
+ /** H3: whether the greeting may skip the import line; a failed read keeps the plain greeting. */
+ async function ownerHasContacts(userId: string): Promise<boolean> {
+   try {
+@@ -14996,6 +15040,12 @@ export async function processChat(
+       ? await answerFactConfirm(userId, threadId, userMessage, runId, intent)
+       : null;
+   if (confirmed !== null) return confirmed;
++  // 1695 (A12): „yes" under a prepared line sends that line, by the server, at once.
++  const preparedSent =
++    !ownerAbsent && thread.type === 'incoming_ask'
++      ? await sendPreparedOnYes(userId, threadId, userMessage, runId, intent)
++      : null;
++  if (preparedSent !== null) return preparedSent;
+   // 1696 (A13): „not me — ask Eka" gets one card first; its tap is acted on by the server.
+   const referral =
+     !ownerAbsent && thread.type === 'incoming_ask'
+diff --git a/src/services/preparedAnswer.service.ts b/src/services/preparedAnswer.service.ts
+new file mode 100644
+index 0000000..1441b1c
+--- /dev/null
++++ b/src/services/preparedAnswer.service.ts
+@@ -0,0 +1,134 @@
++import { query } from '../db/postgres/client';
++import anthropic from '../config/anthropic';
++import { EDITOR_MODEL, LANGUAGE_NAMES } from './askEditor.service';
++import { recordClaudeUsage } from './costLedger.service';
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 1695 (A12, the intelligence research of 6 October, D679/D680): even a clear
++ * fit still had to type his answer, and typing is where answers die. On a
++ * likely_yes pre-match (1694) one line is composed that he could send, from his
++ * own profile fields only — never his notes, never anything he typed — with the
++ * brief Misho approved, word for word (§107). It is stored on the ask, shown
++ * only to him, and sent only when he taps yes. Nothing composed is ever sent
++ * on its own.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const COMPOSE_BUDGET_MS = 10_000;
++const MAX_OUTPUT_TOKENS = 200;
++export const PREPARED_MAX_CHARS = 200;
++/** A run of this many digits is a number, and a number never goes in the line (D8). */
++const NUMBER_RUN_RE = /\d[\d\s-]{5,}\d/u;
++const NOTHING_RE = /^(?:nothing|none|n\/a|არაფერი|ничего|nada)[.!]?$/iu;
++
++/** §107, the exact approved text. */
++export function preparedAnswerBrief(language: RunLanguage): string {
++  return (
++    'From the facts below about the reader himself, write ONE short line in ' +
++    `${LANGUAGE_NAMES[language]} that he could send as his answer to this question: what he can ` +
++    'offer, business facts only. Never a phone number, never another person' +
++    "'s number or private " +
++    'fact, never words he typed to his own assistant. If nothing in the facts answers the ' +
++    'question, return nothing.'
++  );
++}
++
++/** His own profile fields: job, employer, and the key/value profile. Never notes. */
++async function profileFacts(userId: number): Promise<string[]> {
++  const [user, kv] = await Promise.all([
++    query<{ job: string | null; employer: string | null }>(
++      `SELECT NULLIF(TRIM("jobPosition"), '') AS job, NULLIF(TRIM(employer), '') AS employer
++         FROM "User" WHERE id = $1 LIMIT 1`,
++      [userId],
++      QUERY_TIMEOUT_MS,
++    ),
++    query<{ key: string; value: string }>(
++      `SELECT key, value FROM user_profile_kv WHERE user_id = $1::text LIMIT 20`,
++      [String(userId)],
++      QUERY_TIMEOUT_MS,
++    ),
++  ]);
++  const facts: string[] = [];
++  const row = user.rows[0];
++  if (row?.job) facts.push(`job: ${row.job}`);
++  if (row?.employer) facts.push(`employer: ${row.employer}`);
++  for (const { key, value } of kv.rows) {
++    if (value.trim() !== '') facts.push(`${key}: ${value.trim()}`);
++  }
++  return facts;
++}
++
++/** The line, when it is one he could send; null when it is anything else. */
++export function usablePreparedLine(raw: string): string | null {
++  const line = raw
++    .trim()
++    .replace(/^["„“]|["”“]$/gu, '')
++    .trim();
++  if (line === '' || NOTHING_RE.test(line)) return null;
++  if (line.includes('\n') || line.length > PREPARED_MAX_CHARS) return null;
++  return NUMBER_RUN_RE.test(line) ? null : line;
++}
++
++/** His prepared answer to this question, or null (nothing to offer, or the call failed). */
++export async function composePreparedAnswer(
++  readerUserId: number,
++  question: string,
++  language: RunLanguage,
++): Promise<string | null> {
++  try {
++    const facts = await profileFacts(readerUserId);
++    if (facts.length === 0) return null;
++    const response = await anthropic.messages.create(
++      {
++        model: EDITOR_MODEL,
++        max_tokens: MAX_OUTPUT_TOKENS,
++        system: preparedAnswerBrief(language),
++        messages: [{ role: 'user', content: JSON.stringify({ question, facts }) }],
++      },
++      { timeout: COMPOSE_BUDGET_MS, maxRetries: 0 },
++    );
++    void recordClaudeUsage({
++      userId: null,
++      kind: 'prepared_answer',
++      model: EDITOR_MODEL,
++      usage: response.usage,
++    }).catch((err: unknown) => {
++      // eslint-disable-next-line no-console
++      console.error('[prepared-answer] usage not recorded:', (err as Error).message);
++    });
++    const text = response.content
++      .map((block) => (block.type === 'text' ? block.text : ''))
++      .join('');
++    return usablePreparedLine(text);
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[prepared-answer] not composed:', (err as Error).message);
++    return null;
++  }
++}
++
++/** The frame under the question: what a tap on yes sends. */
++export function preparedAnswerLine(language: RunLanguage, yesLabel: string, line: string): string {
++  switch (language) {
++    case 'en':
++      return `Tapping „${yesLabel}" sends: „${line}"`;
++    case 'ru':
++      return `Нажав «${yesLabel}», вы отправите: «${line}»`;
++    case 'es':
++      return `Al tocar «${yesLabel}» se envía: «${line}»`;
++    default:
++      return `„${yesLabel}"-ს დაჭერით გაიგზავნება: „${line}"`;
++  }
++}
++
++/** The line stored on the live ask in this conversation, when he has not answered yet. */
++export async function preparedAnswerOn(askThreadId: number): Promise<string | null> {
++  const result = await query<{ prepared_answer: string | null }>(
++    `SELECT prepared_answer FROM task_asks
++      WHERE ask_thread_id = $1 AND status = 'sent' AND prepared_answer IS NOT NULL
++      ORDER BY id DESC LIMIT 1`,
++    [askThreadId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.prepared_answer ?? null;
++}
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 52b1a74..bfaaf7d 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -27,6 +27,7 @@ import { questionForReader, relayedForReader } from './askTranslation.service';
+ import { choicesFit, labelFits, messageLanguage } from './oneLanguageAsk';
+ import {
+   AskChoice,
++  ChoiceMeaning,
+   choicesFromLabels,
+   MAX_CHOICE_CHARS,
+   ownPeopleBeside,
+@@ -47,7 +48,8 @@ import {
+   roundsAfter,
+ } from './a2aRounds';
+ import { isTypedDecline } from './typedDecline';
+-import { Prematch, prematchMany } from './prematch.service';
++import { Prematch, prematchMany, PrematchWord } from './prematch.service';
++import { composePreparedAnswer, preparedAnswerLine } from './preparedAnswer.service';
+ import { askField, recountAnswerStats } from './answerStats.service';
+ import {
+   createThread,
+@@ -1659,6 +1661,14 @@ async function createAskNow(
+   // G5 second half: a person an earlier answer on this goal named is told who
+   // recommended them (see recommendedBy.ts).
+   const recommender = sameThread ? null : await recommenderFor(taskId, toUserId, toName);
++  // 1694 (A11): the recipient's own pre-match word, on a first ask; stored for the admin only.
++  const prematch =
++    isFollowUp || parentAskId !== undefined ? null : await prematchOf(contactPhone, goalText);
++  // 1695 (A12, §107): a likely fit sees one prepared line under „yes"; it goes only on his tap.
++  const prepared =
++    prematch?.word === PrematchWord.LikelyYes
++      ? await composePreparedAnswer(toUserId, edited.question, said)
++      : null;
+   const lines = [
+     opening,
+     ...(recommender ? [recommendedByLine(said, recommender)] : []),
+@@ -1668,6 +1678,10 @@ async function createAskNow(
+       ? [picker.line]
+       : []),
+   ];
++  const yesChoice = choices.find((choice) => choice.means === ChoiceMeaning.Yes);
++  if (prepared !== null && yesChoice !== undefined) {
++    lines.push(preparedAnswerLine(said, yesChoice.label, prepared));
++  }
+   // 1687 (A4): the body is measured — over 400 characters the question is shortened once (§106) —
+   // and the identical disclosure line closes every ask.
+   if (lines.join('\n\n').length > ASK_BODY_MAX_CHARS) {
+@@ -1724,16 +1738,13 @@ async function createAskNow(
+   // (a), D123): a direct ask starts with its sender, a relay inherits its
+   // parent's origin. The helper's assistant then runs on the origin's wallet.
+   const originUserId = await chainOriginFor(fromUserId, parentAskId);
+-  // 1694 (A11): the recipient's own pre-match word, on a first ask; stored for the admin only.
+-  const prematch =
+-    isFollowUp || parentAskId !== undefined ? null : await prematchOf(contactPhone, goalText);
+   const ask = await query<{ id: number }>(
+     `INSERT INTO task_asks (task_id, from_user_id, to_user_id, question, ask_thread_id,
+                             parent_ask_id, origin_thread_id, is_follow_up, origin_user_id,
+                             wave_no, evening_card_id, choices, shown_question,
+-                            prematch, prematch_source, prematch_at, a2a_rounds, field)
++                            prematch, prematch_source, prematch_at, a2a_rounds, field, prepared_answer)
+      VALUES ($1, $2::int, $3, $4, $5, $6, $7, $8, $9::int, $10, $11, $12::jsonb, $13,
+-             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17)
++             $14, $15, CASE WHEN $14::text IS NULL THEN NULL ELSE NOW() END, $16, $17, $18)
+      RETURNING id`,
+     [
+       taskId,
+@@ -1754,6 +1765,7 @@ async function createAskNow(
+       roundsAfter(rounds),
+       // 1689 (A6): the field the recipient's answer record is kept under.
+       isFollowUp || parentAskId !== undefined ? null : askField(goalText) || null,
++      prepared,
+     ],
+     ASK_QUERY_TIMEOUT_MS,
+   );
+-- 
+2.43.0
+

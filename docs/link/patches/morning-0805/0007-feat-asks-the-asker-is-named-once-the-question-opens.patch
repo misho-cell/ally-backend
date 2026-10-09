@@ -1,0 +1,131 @@
+From a66dc969bb3ac070be4d7339daecda4d8f1cf63d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 06:42:42 +0000
+Subject: [PATCH 07/21] =?UTF-8?q?feat(asks):=20the=20asker=20is=20named=20?=
+ =?UTF-8?q?once=20=E2=80=94=20the=20question=20opens=20alone=20(AU,=20?=
+ =?UTF-8?q?=C2=A7110.8)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder's note (48086): every ask named the asker twice, in the opening
+„მიშოს ასისტენტი გეკითხება:" and in the 1687 closing line. Misho chose to keep
+the closing line (9 Oct 06:25 UTC). A FIRST question now opens with the
+question alone whenever the closing line will name the asker. Kept as before:
+an opening that says the two share a network („Axel-ის წევრი, როგორც შენ" —
+that is news), follow-ups and additions („wrote again", „added"), and any ask
+whose sender has no profile name (no closing line). Server text only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../everyAskSaysWhoseAssistantWroteIt.test.ts | 20 +++++++++++++++++--
+ .../__tests__/taskAsks.service.test.ts        |  4 +++-
+ src/services/askOpening.ts                    |  5 +++++
+ src/services/taskAsks.service.ts              |  4 ++++
+ 4 files changed, 30 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts b/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts
+index 9d4f638..78e81dc 100644
+--- a/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts
++++ b/src/services/__tests__/everyAskSaysWhoseAssistantWroteIt.test.ts
+@@ -1,6 +1,6 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { ASK_BODY_MAX_CHARS, disclosureLine } from '../askOpening';
++import { ASK_BODY_MAX_CHARS, buildAskOpening, disclosureLine } from '../askOpening';
+ import { scrubMechanicalForStorage } from '../privacyScrub';
+ 
+ /** 1687 (A4): every outgoing ask ends with the identical line, never the model's words. */
+@@ -30,7 +30,7 @@ describe('the disclosure line', () => {
+   it('closes every ask, after the body, with the profile name; a long body is logged', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+     const at = asks.indexOf('1687 (A4): the body is measured');
+-    const block = asks.slice(at, at + 900);
++    const block = asks.slice(at, at + 1200);
+     expect(block).toContain('if (body.length > ASK_BODY_MAX_CHARS)');
+     expect(block).toContain(
+       "if (profileName !== '') lines.push(disclosureLine(said, profileName));",
+@@ -38,3 +38,19 @@ describe('the disclosure line', () => {
+     expect(ASK_BODY_MAX_CHARS).toBe(400);
+   });
+ });
++
++describe('AU: the asker is named once (the founder, 48086; §110.8)', () => {
++  it('a first question opens with the question alone when the closing line names the asker', () => {
++    expect(buildAskOpening('ka', 'მიშო', null, 'კარგ ხელოსანს ხომ არ იცნობ?', 'first', true)).toBe(
++      'კარგ ხელოსანს ხომ არ იცნობ?',
++    );
++  });
++
++  it('keeps the opening when nothing names the asker below, or it carries a shared network', () => {
++    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'first', false)).toContain('გეკითხება');
++    expect(buildAskOpening('ka', 'მიშო', 'Axel', 'კითხვა?', 'first', true)).toContain('Axel');
++    expect(buildAskOpening('ka', 'მიშო', null, 'კითხვა?', 'followUp', true)).toContain(
++      'კიდევ დაწერა',
++    );
++  });
++});
+diff --git a/src/services/__tests__/taskAsks.service.test.ts b/src/services/__tests__/taskAsks.service.test.ts
+index ddf257d..238b558 100644
+--- a/src/services/__tests__/taskAsks.service.test.ts
++++ b/src/services/__tests__/taskAsks.service.test.ts
+@@ -466,7 +466,9 @@ describe('createAsk', () => {
+     const opening = mockSaveMessage.mock.calls[0][3] as string;
+     expect(opening).not.toContain('**');
+     // Item 27: declined properly, never the hyphenated „მიშო-ის".
+-    expect(opening).toContain('მიშოს ასისტენტი გეკითხება');
++    // AU (§110.8): the question opens alone; the closing line names whose assistant wrote.
++    expect(opening.startsWith('BMW-ს კარგი ხელოსანი ხომ არ იცი?')).toBe(true);
++    expect(opening).toContain('მიშოს ასისტენტი, მიშოს სახელით');
+     // D49: reaching 'sent' arms the ASKER's 3-day debrief for this ask.
+     expect(armAskDebrief).toHaveBeenCalledWith('42', 9, 3, 'გია', false);
+   });
+diff --git a/src/services/askOpening.ts b/src/services/askOpening.ts
+index d8c4275..bfe7f44 100644
+--- a/src/services/askOpening.ts
++++ b/src/services/askOpening.ts
+@@ -154,7 +154,12 @@ export function buildAskOpening(
+   roster: string | null,
+   question: string,
+   shape: 'first' | 'followUp' | 'added',
++  namedBelow = false,
+ ): string {
++  // AU (the founder's note, 48086; Misho's yes 9 Oct, §110.8): the 1687 closing line already
++  // says whose assistant wrote, so a first question opens with the question alone — unless the
++  // opening also says the two share a network („Axel-ის წევრი, როგორც შენ"), which is news.
++  if (shape === 'first' && namedBelow && roster === null) return withoutFramesOwnWords(question);
+   const parts = askOpeningParts(language, senderName, roster);
+   // Plain text, no markdown: the recipient-side renderer shows the asterisks
+   // verbatim (ticket 3 §6.3). D648: no quotation marks either — the question is
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index bfaaf7d..2d0a5ab 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -1622,12 +1622,15 @@ async function createAskNow(
+     ),
+     picker && said === language ? picker.details : {},
+   );
++  // AU: the closing line names the asker whenever the profile has a name.
++  const namedBelow = (fromName.rows[0]?.name?.trim() ?? '') !== '';
+   const opening = buildAskOpening(
+     said,
+     senderName,
+     roster,
+     edited.question,
+     isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
++    namedBelow,
+   );
+   if (relayed.original !== undefined) {
+     // eslint-disable-next-line no-console
+@@ -1693,6 +1696,7 @@ async function createAskNow(
+         roster,
+         shorter,
+         isFollowUp ? 'followUp' : sameThread ? 'added' : 'first',
++        namedBelow,
+       );
+     }
+   }
+-- 
+2.43.0
+

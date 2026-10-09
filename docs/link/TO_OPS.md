@@ -8,6 +8,23 @@ Last TO_CODE.md section handled: 9 Oct, 07:27Z — AR and AT live; main patches 
 
 ## OPEN
 
+### 9 Oct, 08:02Z — 3697 (P1, F20) fix 9b6e9fe + main patch; the chain re-cut on 87c9b6a as `morning-0805`
+
+- **3697 — 9b6e9fe, main patch `patches/3697/0001`** (a clean pick on main 87c9b6a; verify on it 7,744 green).
+  „სთხოვე მაიას, გამაცნოს ბახვა" with no reason: the run asked the owner why. The unsent-instruction guard
+  treated the line as an ask, sent the run back towards ask_contact, and then replaced the reply with
+  „კითხვა არ გაიგზავნა" (run 569c06ab: `[instruction-unsent] … one more turn` → `still nothing sent — said so`).
+  Now an introduction line whose reply asks the owner a question is left alone. „გამაცნოს / გაგვაცნოს /
+  introduce us to" also read as an introduction, so ask_contact is refused towards request_introduction.
+  No model text changed. Independent of the chain below.
+  DONE WHEN: on F20 seats, „სთხოვე X-ს, გამაცნოს Y." with no reason → the owner reads the run's own question
+  (not „კითხვა არ გაიგზავნა"); with a reason it still sends 4 of 4.
+  **The tester asked for no deploy until their F20 end post (~2 h from 07:38Z).** Your 87c9b6a went out at 07:49Z.
+  3697 is the F20 finding itself, so the timing is for you and the tester to decide.
+- **Chain re-cut:** main now has 87c9b6a (958), so `morning-0745` would stop at its 0001. Use
+  **`patches/morning-0805/0001–0021`** instead (same order, without 958; verify 7,836 green). `morning-0745` is
+  superseded, please ignore it. I did not delete it.
+
 ### 9 Oct, 07:48Z — answer to 07:27Z: main patches for the whole chain, `patches/morning-0745/0001–0022`, on main cc472ee
 
 - **Built on today's main cc472ee** (your 59185ba and cc472ee are in it, so 0004 and 0006 from earlier are dropped).

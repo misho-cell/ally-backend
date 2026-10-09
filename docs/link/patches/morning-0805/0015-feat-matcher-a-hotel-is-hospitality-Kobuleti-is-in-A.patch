@@ -1,0 +1,372 @@
+From ee6ae4998018e855548fcfea0cfd4dca401545a8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 02:48:09 +0000
+Subject: [PATCH 15/21] feat(matcher): a hotel is hospitality, Kobuleti is in
+ Adjara (1699 part 3, A16)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The board's example — a goal „hotel in Kobuleti" against an offer
+„hospitality in Adjara" — is now one sure match. fieldPlaces.ts holds two
+small maps: field families (hospitality, tourism, logistics, customs, real
+estate, marketing, investment, healthcare; Georgian and Latin) and Georgia's
+regions with their main towns. The matcher reads field and place apart: the
+goal must speak of the offer's field or its family, and be where the offer
+is — the town it names, or any town of the region it names. A goal naming no
+place is not sure for an offer that names one (D498).
+
+This also closes a part-1 gap: the whole field line was read as field words,
+so „a lawyer in Batumi" matched „hospitality in Batumi" on the city alone.
+Server only; offers stay empty until §109, so nothing changes live until then.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aHotelIsHospitality.test.ts     |  57 +++++
+ src/services/fieldPlaces.ts                   | 239 ++++++++++++++++++
+ src/services/needsOffers.service.ts           |   9 +-
+ 3 files changed, 302 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/aHotelIsHospitality.test.ts
+ create mode 100644 src/services/fieldPlaces.ts
+
+diff --git a/src/services/__tests__/aHotelIsHospitality.test.ts b/src/services/__tests__/aHotelIsHospitality.test.ts
+new file mode 100644
+index 0000000..5961772
+--- /dev/null
++++ b/src/services/__tests__/aHotelIsHospitality.test.ts
+@@ -0,0 +1,57 @@
++import { fieldFits, placeFits, placesIn, withoutPlaces } from '../fieldPlaces';
++import { isSureMatch } from '../needsOffers.service';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++
++/** 1699 part 3 (A16): the board's example is one match — a hotel in Kobuleti and hospitality in Adjara. */
++const offerOf = (field: string): { id: number; user_id: number; text: string; field: string } => ({
++  id: 5,
++  user_id: 20,
++  text: 'open to it',
++  field,
++});
++const goalOf = (title: string): { id: number; user_id: number; title: string } => ({
++  id: 1,
++  user_id: 10,
++  title,
++});
++
++describe('a field family and a place map', () => {
++  it('match the board’s example, in both scripts', () => {
++    expect(
++      isSureMatch(
++        goalOf('find an investor for a hotel in Kobuleti'),
++        offerOf('hospitality in Adjara'),
++      ),
++    ).toBe(true);
++    expect(
++      isSureMatch(goalOf('ქობულეთში სასტუმროს ვხსნი'), offerOf('სტუმართმასპინძლობა აჭარაში')),
++    ).toBe(true);
++    expect(isSureMatch(goalOf('სასტუმრო ბათუმში'), offerOf('hospitality in Adjara'))).toBe(true);
++  });
++
++  it('a town in the offer needs that town, in either script', () => {
++    expect(placeFits('hotel in ბათუმში', 'hospitality in Batumi')).toBe(true);
++    expect(placeFits('hotel in Kobuleti', 'hospitality in Batumi')).toBe(false);
++  });
++
++  it('a different region, or no place at all, is not a sure match for a placed offer', () => {
++    expect(isSureMatch(goalOf('a hotel in Telavi'), offerOf('hospitality in Adjara'))).toBe(false);
++    expect(isSureMatch(goalOf('a hotel'), offerOf('hospitality in Adjara'))).toBe(false);
++  });
++
++  it('an offer with no place fits a goal anywhere', () => {
++    expect(isSureMatch(goalOf('a hotel in Telavi'), offerOf('hospitality'))).toBe(true);
++  });
++
++  it('no longer matches on the place alone (part 1 did)', () => {
++    expect(isSureMatch(goalOf('a lawyer in Batumi'), offerOf('hospitality in Batumi'))).toBe(false);
++    expect(fieldFits('a lawyer in Batumi', 'hospitality in Batumi')).toBe(false);
++  });
++
++  it('reads places as words, not inside other words', () => {
++    expect(placesIn('ფოთოლი').regions.size).toBe(0);
++    expect([...placesIn('ფოთში ვცხოვრობ').regions]).toEqual(['samegrelo']);
++    expect(withoutPlaces('hospitality in Adjara')).toBe('hospitality in');
++  });
++});
+diff --git a/src/services/fieldPlaces.ts b/src/services/fieldPlaces.ts
+new file mode 100644
+index 0000000..afdc0de
+--- /dev/null
++++ b/src/services/fieldPlaces.ts
+@@ -0,0 +1,239 @@
++import { fieldTerms, textSpeaksOf } from './prematch.service';
++
++/**
++ * 1699 part 3 (A16): the board's example — a goal „hotel in Kobuleti" against
++ * an offer „hospitality in Adjara" — is one match, and the literal rule of
++ * part 1 could not see it. Two small maps close the gap, and nothing wider:
++ *
++ *  - a FIELD FAMILY says a hotel is hospitality (a word of the family in the
++ *    offer reaches every other word of it in the goal);
++ *  - a PLACE MAP says Kobuleti is in Adjara.
++ *
++ * Field and place are read apart. Part 1 read the offer's whole field line as
++ * field words, so a goal and an offer naming the same city matched on the city
++ * alone („a lawyer in Batumi" against „hospitality in Batumi"). The place now
++ * only narrows: an offer that names a place matches a goal in that place (or a
++ * town inside that region); a goal that names no place is not a sure match
++ * for an offer that does (D498 — a vague match is dropped, not shown).
++ */
++
++/** Words of one trade, the broad name first. Stems are fine: matching is by prefix. */
++const FIELD_FAMILIES: readonly (readonly string[])[] = [
++  [
++    'hospitality',
++    'სტუმართმასპინძლობა',
++    'hotel',
++    'სასტუმრო',
++    'guesthouse',
++    'hostel',
++    'ჰოსტელი',
++    'resort',
++    'კურორტი',
++  ],
++  ['tourism', 'ტურიზმი', 'ტურისტული', 'travel', 'მოგზაურობა', 'ტუროპერატორი'],
++  ['logistics', 'ლოჯისტიკა', 'transport', 'ტრანსპორტი', 'cargo', 'კარგო', 'გადაზიდვა', 'shipping'],
++  ['customs', 'საბაჟო', 'broker', 'ბროკერი'],
++  ['real estate', 'უძრავი ქონება', 'realtor', 'რიელტორი', 'property'],
++  ['marketing', 'მარკეტინგი', 'advertising', 'რეკლამა', 'branding', 'ბრენდინგი'],
++  ['investment', 'ინვესტიცია', 'investor', 'ინვესტორი', 'funding', 'დაფინანსება'],
++  ['healthcare', 'ჯანდაცვა', 'clinic', 'კლინიკა', 'medical', 'სამედიცინო'],
++];
++
++interface Region {
++  readonly key: string;
++  /** The region's own names. */
++  readonly names: readonly string[];
++  /** Towns inside it, each one name group: its Georgian stem first, then Latin spellings. */
++  readonly towns: readonly (readonly string[])[];
++}
++
++/**
++ * Georgia's regions and their main towns. Georgian names are stems, so
++ * „ქობულეთში" and „აჭარაში" are found by the same entry.
++ */
++const REGIONS: readonly Region[] = [
++  {
++    key: 'adjara',
++    names: ['აჭარ', 'adjara', 'achara', 'ajara'],
++    towns: [
++      ['ბათუმ', 'batumi'],
++      ['ქობულეთ', 'kobuleti'],
++      ['ხელვაჩაურ', 'khelvachauri'],
++      ['ქედა', 'keda'],
++      ['ხულო', 'khulo'],
++      ['გონიო', 'gonio'],
++    ],
++  },
++  {
++    key: 'imereti',
++    names: ['იმერეთ', 'imereti'],
++    towns: [
++      ['ქუთაის', 'kutaisi'],
++      ['ზესტაფონ', 'zestaponi'],
++      ['ჭიათურ', 'chiatura'],
++      ['წყალტუბ', 'tskaltubo'],
++      ['სამტრედი', 'samtredia'],
++    ],
++  },
++  {
++    key: 'kakheti',
++    names: ['კახეთ', 'kakheti'],
++    towns: [
++      ['თელავ', 'telavi'],
++      ['სიღნაღ', 'sighnaghi', 'signagi'],
++      ['გურჯაან', 'gurjaani'],
++      ['ყვარელ', 'kvareli'],
++      ['ლაგოდეხ', 'lagodekhi'],
++    ],
++  },
++  {
++    key: 'samegrelo',
++    names: ['სამეგრელ', 'samegrelo', 'სვანეთ', 'svaneti'],
++    towns: [
++      ['ზუგდიდ', 'zugdidi'],
++      ['ფოთ', 'poti'],
++      ['სენაკ', 'senaki'],
++      ['მესტი', 'mestia'],
++    ],
++  },
++  {
++    key: 'guria',
++    names: ['გურია', 'guria'],
++    towns: [
++      ['ოზურგეთ', 'ozurgeti'],
++      ['ლანჩხუთ', 'lanchkhuti'],
++      ['ურეკ', 'ureki'],
++    ],
++  },
++  {
++    key: 'samtskhe-javakheti',
++    names: ['სამცხე', 'samtskhe', 'ჯავახეთ', 'javakheti'],
++    towns: [
++      ['ახალციხ', 'akhaltsikhe'],
++      ['ბორჯომ', 'borjomi'],
++      ['ახალქალაქ', 'akhalkalaki'],
++      ['ბაკურიან', 'bakuriani'],
++    ],
++  },
++  {
++    key: 'shida-kartli',
++    names: ['შიდა ქართლ', 'shida kartli'],
++    towns: [
++      ['გორ', 'gori'],
++      ['ხაშურ', 'khashuri'],
++    ],
++  },
++  {
++    key: 'kvemo-kartli',
++    names: ['ქვემო ქართლ', 'kvemo kartli'],
++    towns: [
++      ['რუსთავ', 'rustavi'],
++      ['მარნეულ', 'marneuli'],
++    ],
++  },
++  {
++    key: 'mtskheta-mtianeti',
++    names: ['მთიანეთ', 'mtianeti'],
++    towns: [
++      ['მცხეთ', 'mtskheta'],
++      ['ყაზბეგ', 'kazbegi', 'სტეფანწმინდ', 'stepantsminda'],
++      ['გუდაურ', 'gudauri'],
++    ],
++  },
++  {
++    key: 'racha',
++    names: ['რაჭ', 'racha'],
++    towns: [
++      ['ამბროლაურ', 'ambrolauri'],
++      ['ონ', 'oni'],
++    ],
++  },
++  { key: 'tbilisi', names: ['თბილის', 'tbilisi'], towns: [] },
++];
++
++/** A place stem this short would swallow ordinary words; it must be the word, or the word with a case ending. */
++const WHOLE_WORD_STEM_CHARS = 3;
++/** Georgian endings a short place stem may carry: ფოთი, ფოთში, ფოთის, ფოთიდან. */
++const SHORT_STEM_ENDINGS: readonly string[] = ['', 'ი', 'ში', 'ის', 'ზე', 'იდან', 'ისკენ'];
++const WORD_RE = /[\p{L}\p{M}]+/gu;
++
++function wordsOf(text: string): string[] {
++  return text.toLowerCase().match(WORD_RE) ?? [];
++}
++
++function stemMeets(word: string, stem: string): boolean {
++  if (stem.length <= WHOLE_WORD_STEM_CHARS) {
++    return SHORT_STEM_ENDINGS.some((ending) => word === `${stem}${ending}`);
++  }
++  return word.startsWith(stem);
++}
++
++/** Does the text name this stem? Two-word stems („shida kartli") are read as a phrase. */
++function names(text: string, stem: string): boolean {
++  if (stem.includes(' ')) return text.toLowerCase().includes(stem);
++  return wordsOf(text).some((word) => stemMeets(word, stem));
++}
++
++interface Places {
++  readonly regions: ReadonlySet<string>;
++  readonly towns: ReadonlySet<string>;
++}
++
++/** The regions and towns a text names; a town also counts as its region. */
++export function placesIn(text: string): Places {
++  const regions = new Set<string>();
++  const towns = new Set<string>();
++  for (const region of REGIONS) {
++    if (region.names.some((stem) => names(text, stem))) regions.add(region.key);
++    for (const town of region.towns) {
++      if (town.some((stem) => names(text, stem))) {
++        towns.add(`${region.key}:${town[0]}`);
++        regions.add(region.key);
++      }
++    }
++  }
++  return { regions, towns };
++}
++
++function isAPlaceWord(word: string): boolean {
++  return REGIONS.some((region) =>
++    [...region.names, ...region.towns.flat()].some(
++      (stem) => !stem.includes(' ') && stemMeets(word, stem),
++    ),
++  );
++}
++
++/** The field line without its place words: „hospitality in Adjara" → „hospitality in". */
++export function withoutPlaces(field: string): string {
++  return wordsOf(field)
++    .filter((word) => !isAPlaceWord(word))
++    .join(' ');
++}
++
++/** Every word of the families the field touches, the field's own words included. */
++function familyWords(field: string): string[] {
++  const touched = FIELD_FAMILIES.filter((family) =>
++    family.some((word) => textSpeaksOf(field, fieldTerms(word))),
++  );
++  return [field, ...touched.flat()];
++}
++
++/** Does the goal speak of the offer's field, directly or through its family? */
++export function fieldFits(goalText: string, offerField: string): boolean {
++  const field = withoutPlaces(offerField);
++  if (field.trim() === '') return false;
++  return familyWords(field).some((word) => textSpeaksOf(goalText, fieldTerms(word)));
++}
++
++/**
++ * Is the goal where the offer is? An offer naming no place fits anywhere. A
++ * town in the offer needs that town in the goal; a region in the offer takes
++ * the region or any town inside it.
++ */
++export function placeFits(goalText: string, offerField: string): boolean {
++  const offer = placesIn(offerField);
++  if (offer.regions.size === 0) return true;
++  const goal = placesIn(goalText);
++  if (offer.towns.size > 0) return [...offer.towns].some((town) => goal.towns.has(town));
++  return [...offer.regions].some((region) => goal.regions.has(region));
++}
+diff --git a/src/services/needsOffers.service.ts b/src/services/needsOffers.service.ts
+index 6463133..0fb2f47 100644
+--- a/src/services/needsOffers.service.ts
++++ b/src/services/needsOffers.service.ts
+@@ -1,5 +1,5 @@
+ import { query } from '../db/postgres/client';
+-import { fieldTerms, textSpeaksOf } from './prematch.service';
++import { fieldFits, placeFits } from './fieldPlaces';
+ 
+ /**
+  * 1699 (A16, D679/D680): two members — one with a need, one who said he is
+@@ -33,12 +33,15 @@ export interface ActiveOffer {
+   readonly field: string | null;
+ }
+ 
+-/** D498: the goal names the offer's field. No field on the offer, no sure match. */
++/**
++ * D498: the goal names the offer's field — directly or through its family —
++ * and is where the offer is (part 3). No field on the offer, no sure match.
++ */
+ export function isSureMatch(goal: OpenGoal, offer: ActiveOffer): boolean {
+   if (goal.user_id === offer.user_id) return false;
+   const field = offer.field?.trim() ?? '';
+   if (field === '') return false;
+-  return textSpeaksOf(goal.title, fieldTerms(field));
++  return fieldFits(goal.title, field) && placeFits(goal.title, field);
+ }
+ 
+ /** Every sure (goal, offer) pair, in goal order, at most `limit`. */
+-- 
+2.43.0
+

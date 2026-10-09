@@ -1,0 +1,107 @@
+From 147db4a82ea732ffea6a254826db01973b135425 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 07:55:23 +0000
+Subject: [PATCH] =?UTF-8?q?fix(intros):=20=E2=80=9Eask=20Maia=20to=20intro?=
+ =?UTF-8?q?duce=20me"=20is=20not=20turned=20into=20=E2=80=9Enot=20sent"=20?=
+ =?UTF-8?q?(3697)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+F20, 10 of 10: an introduction asked through a named go-between, with no
+reason, ended in „კითხვა არ გაიგზავნა". The run had asked the owner why;
+the unsent-instruction guard read the line as an ask to a contact, sent the
+run back towards ask_contact, and then replaced the reply with the not-sent
+line. An introduction line whose reply asks the owner a question is left
+alone now, and „გამაცნოს / გაგვაცნოს / introduce us to" read as an
+introduction, so ask_contact is refused towards request_introduction.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anIntroductionIsNotAPlainAsk.test.ts       | 18 ++++++++++++++++++
+ src/services/chat.service.ts                   |  8 +++++++-
+ src/services/introInstruction.ts               |  4 +++-
+ 3 files changed, 28 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts b/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts
+index 8b2f1fc..69b29ad 100644
+--- a/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts
++++ b/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts
+@@ -21,6 +21,24 @@ describe('anIntroductionIsNotAPlainAsk', () => {
+     ).toBe(false);
+   });
+ 
++  it('reads „ask X to introduce me to Y" as the same request (3697)', () => {
++    expect(ownerAsksForIntroduction(['სთხოვე მაია გამოგონილს, გამაცნოს ბახვა ფიქტიური.'])).toBe(
++      true,
++    );
++    expect(
++      ownerAsksForIntroduction(['Ask Maia Gamogonili to introduce me to Bakhva Fiktiuri.']),
++    ).toBe(true);
++    expect(ownerAsksForIntroduction(['ჰკითხე მაიას, გაგვაცნოს თუ არა ბახვა'])).toBe(true);
++  });
++
++  it('lets the run’s question to the owner stand instead of „not sent" (3697)', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      "ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);",
++    );
++    expect(chat).toMatch(/!claimedAnAskNobodyGot &&\s+!introductionQuestion &&/u);
++  });
++
+   it('is checked before ask_contact sends', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     expect(chat).toContain('if (ownerAsksForIntroduction(ownerLines)) {');
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c23b32e..e951c52 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -462,7 +462,7 @@ import { debitRun } from './tokenWallet.service';
+ import { stepLabel } from './stepLabel';
+ import { countToolResults, toolResultsInLastTurn } from './requestShape';
+ import { markThreadStopped, noteRunStart, runWasStopped } from './stoppedRuns';
+-import { setThreadStatus } from './threadStatus.service';
++import { endsWithQuestion, setThreadStatus } from './threadStatus.service';
+ import {
+   stopGoal,
+   stoppedLine,
+@@ -13141,12 +13141,18 @@ async function runToolLoop(
+     helperRunSentNothing && !ownerAbsent && helperAskedAQuestion(lastOwnerText(messages) ?? '');
+   // The tester's 44364 (case 1): the owner's instruction to ask one of their
+   // own people, and the run neither asked nor opened a goal to ask from.
++  // 3697 (F20, 10 of 10): „ask Maia to introduce me to Bakhva" with no reason —
++  // the run asked the owner why. That is a real question, and an introduction
++  // is not an ask this guard can send; replacing it with „not sent" lost it.
++  const introductionQuestion =
++    ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);
+   const instructionUnsent =
+     !ownerAbsent &&
+     !promoted &&
+     !answeringALaterTap &&
+     runModes.get(runId) !== 'incoming_ask' &&
+     !claimedAnAskNobodyGot &&
++    !introductionQuestion &&
+     !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
+     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
+   if (instructionUnsent) {
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index 4ad4096..89ace07 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -7,9 +7,11 @@
+  *
+  * Only the imperative to Netai counts. Case 1's „გამაცნობს თუ არა" asks the
+  * helper whether HE will introduce — that is a question, and stays one.
++ * 3697: „სთხოვე მაიას, გამაცნოს ბახვა" (ask Maia to introduce me) is the
++ * same request through a named go-between, and is one.
+  */
+ const OWNER_INTRO_RE =
+-  /(გამაცანი|დამაკავშირე|\bintroduce\s+me\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
++  /(გამაცანი|დამაკავშირე|გამაცნოს|გაგვაცნოს|\bintroduce\s+(?:me|us)\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
+ 
+ /** True when one of the owner's lines on this goal tells Netai to introduce them. */
+ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean {
+-- 
+2.43.0
+
