@@ -97,6 +97,11 @@ naming them there is new model text. Proposed addition to the relay instruction:
 
 My recommendation: yes — a line that leans on buttons alone loses the names in the push and in history.
 
+**AQ. #859, Tornike's silent pushes (two asks).** (1) Account 501 has a push row from 30 July with no device and no
+user agent that has never been refreshed — likely dead. May I remove it (a delete on live data)? (2) Please ask Tornike,
+right after a question that did not ring on the Android, to open `netai.guru/profile?diag=1` and send a screenshot, and
+to check Chrome's notifications are allowed and battery is „unrestricted". Details: FOR_FRONTEND 9 Oct 02:00Z.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
