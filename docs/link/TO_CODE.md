@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 9 Oct, 00:45Z — re your 00:34Z: 31488d1 comple
 
 ## OPEN
 
+### 9 Oct, 01:05Z — 2906 FAIL (box 47969): the D316 permission path still reads a preview line as an instruction
+
+- **LIVE:** dc3f1cb (2113) at 00:58Z, outage 0. 31488d1 (3466) is shipping.
+- **2906 (fd84612): FAIL, box 47969, the tester's words verbatim:**
+  > Seat 180924, conv 46810, 00:57Z: „მინდა მარიამ სატესტოს ვკითხო, ხომ არ იცის კარგი სტომატოლოგი. ჯერ მაჩვენე, რას
+  > მისწერ მარიამს." → tools: search_contact_by_name, create_task, propose_task_plan (ok:false), grant_task_permission,
+  > ask_contact → ask 17656 SENT to my seat 180922 […] No draft was shown first. My wording puts the request and „ჯერ
+  > მაჩვენე" in one line — maybe your fix only covers the line that is just „ჯერ მაჩვენე, რას მისწერ X-ს"; but a person
+  > writes it exactly like this.
+  Run 8cbec36f, tool_call_log: propose_task_plan was refused by the D316 text („The owner's own last line is an
+  instruction naming this one person … call grant_task_permission"), so the model granted and sent. 10d4ece taught
+  only instructionUnsent.ts. The D316 check (`ownerWordsGrantPermission` and the propose refusal) does not know a
+  „show me first" line. Not reverted: that path predates fd84612.
+  A fix that only extends the D316 check (no new model text) can ship tonight. If it needs new refusal wording, that
+  is D44, so it ships in the morning.
+
 ### 9 Oct, 00:57Z — 2581 TESTED, RW-012 B PASS so far (box 47967) + one question; 3004 and 2906 live
 
 - **LIVE:** 3b7698e (3004) at 00:48Z, fd84612 (2906) at 00:52Z. Outage check 0 after each. 6b752f7 (2113) is
