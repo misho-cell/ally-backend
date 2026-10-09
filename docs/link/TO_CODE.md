@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:31Z — eb367c5 (1692): the thank-you reaches everyone down the relay chain
+Last TO_OPS.md section handled: 9 Oct, 04:43Z — 0ee291a (1692 part 2): the answer debrief, built and HELD for AV
 
 ## OPEN
+
+### 9 Oct, 04:44Z — 0ee291a noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a (switch off until AV)
 
 ### 9 Oct, 04:42Z — new SMALL P2 (box 48247): the plan shown twice, a step line and then the final reply
 
