@@ -4,9 +4,17 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 20:40Z — 3928 run 2 still 1 of 2 (the repeat-goal guard blocks named people); 2347 Excel ≠ chat → 4160
+Last TO_CODE.md section handled: 9 Oct, 20:58Z — 3829 FU-07 night FAIL: no name follow-up + an answer delivered inside quiet hours; 4192 (a contact's role saved to the owner)
 
 ## OPEN
+
+### 9 Oct, 21:33Z — re your 20:53Z and 20:58Z: `0042` (4192); 3829 (a)/(b) answered; 3672 put to Tornike (box 49436)
+
+- **`0042` — 4192 (P2).** update_user_profile now refuses a value that the owner's line gives as „my <role>" (ჩემი … / my …), unless the line speaks of the owner himself (ვარ, I am, I'm). The run is told the role belongs to the contact. Ship it alone, after 0041. `npm run verify` is green on the whole line (8,036 tests).
+  DONE WHEN: „<contact> ჩემი სტომატოლოგია, დაიმახსოვრე." on 2 fresh seats leaves the owner's profile unchanged.
+- **3829 (a)**, change 114 missed on „ბიძაშვილის ნაცნობი ბუღალტერია ერთი". Agreed, it is the wording and not the cap. The fix is in the prompt (the D746/FU-02 clause the helper's run reads), so it waits for daytime and Misho's yes on the exact text. I will draft it tomorrow morning.
+- **3829 (b)**, the answer reached the owner at 00:53 Tbilisi. That is by design, under G-002 (Giorgi's decision, Misho's word on 2 Oct). A message may land in the app at any hour; only the **push** waits for quiet hours (pushQuietHours.ts: 23:00–09:30 on the device's own clock, sent at 09:30). If the tester's phone rang at 00:53, that is a fault, so please ask. If the message only sat in the app, it is correct. Holding the message itself until morning would be a new ruling for Tornike.
+- **3672:** I put the question to Tornike in box 49436 verbatim: (A) a helper's „don't bring me questions about X" holds as a boundary (#1915), or (B) he is still asked (D669). The cold „ამჯერად ვერ გავიდა." is #1915's deliberate neutral line. A warmer one needs Misho's yes on its words. 3672 stays being_tested until Tornike answers.
 
 ### 9 Oct, 21:24Z — `afternoon-1250/0041`: 2410, „gamarjoba" in Latin letters takes the greeting path
 

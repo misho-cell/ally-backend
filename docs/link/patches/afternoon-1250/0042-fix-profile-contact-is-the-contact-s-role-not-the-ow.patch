@@ -1,0 +1,151 @@
+From d53f18fd44ba8f459851f07d36fa0cb18f4458b7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 21:20:52 +0000
+Subject: [PATCH] =?UTF-8?q?fix(profile):=20=E2=80=9E<contact>=20=E1=83=A9?=
+ =?UTF-8?q?=E1=83=94=E1=83=9B=E1=83=98=20=E1=83=A1=E1=83=A2=E1=83=9D?=
+ =?UTF-8?q?=E1=83=9B=E1=83=90=E1=83=A2=E1=83=9D=E1=83=9A=E1=83=9D=E1=83=92?=
+ =?UTF-8?q?=E1=83=98=E1=83=90"=20is=20the=20contact's=20role,=20not=20the?=
+ =?UTF-8?q?=20owner's=20(4192)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 49369 (seat 182168): „💙 ჩემი სტომატოლოგია, დაიმახსოვრე." — 💙 a
+saved contact — wrote profession „სტომატოლოგი" and industry „სტომატოლოგია"
+to the OWNER's profile, and wrote them again after the owner said „მე
+სტომატოლოგი არ ვარ".
+
+update_user_profile now refuses a value that the owner's line gives as
+„my <role>" (ჩემი … / my …), unless the line speaks of the owner himself
+(ვარ, I am, I'm). The run is told the role belongs to the contact the line
+names.
+
+DONE WHEN: „<contact> ჩემი სტომატოლოგია, დაიმახსოვრე." on 2 fresh seats —
+the owner's profile is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+(cherry picked from commit 60d23fd1fd374c3d34b12c85e89814bc2f1a9c56)
+---
+ .../aContactsRoleIsNotTheOwners.test.ts       | 35 ++++++++++++++++++
+ src/services/chat.service.ts                  | 10 +++++
+ src/services/someoneElsesRole.ts              | 37 +++++++++++++++++++
+ 3 files changed, 82 insertions(+)
+ create mode 100644 src/services/__tests__/aContactsRoleIsNotTheOwners.test.ts
+ create mode 100644 src/services/someoneElsesRole.ts
+
+diff --git a/src/services/__tests__/aContactsRoleIsNotTheOwners.test.ts b/src/services/__tests__/aContactsRoleIsNotTheOwners.test.ts
+new file mode 100644
+index 0000000..20907a1
+--- /dev/null
++++ b/src/services/__tests__/aContactsRoleIsNotTheOwners.test.ts
+@@ -0,0 +1,35 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { valueIsSomeoneElsesRole } from '../someoneElsesRole';
++
++/** 4192 (tester 49369): „💙 ჩემი სტომატოლოგია" went to the owner's profile, twice. */
++describe('a contact’s role is not the owner’s profile', () => {
++  it.each([
++    ['💙 ჩემი სტომატოლოგია, დაიმახსოვრე.', 'სტომატოლოგი'],
++    ['💙 ჩემი სტომატოლოგია, დაიმახსოვრე.', 'სტომატოლოგია'],
++    ['ნინო ჩემი იურისტია', 'იურისტი'],
++    ['Nino is my lawyer, remember that', 'lawyer'],
++  ])('„%s" never makes the owner a „%s"', (line, value) => {
++    expect(valueIsSomeoneElsesRole(line, value)).toBe(true);
++  });
++
++  it.each([
++    ['მე სტომატოლოგი ვარ', 'სტომატოლოგი'],
++    ["I'm a lawyer, my firm is small", 'lawyer'],
++    ['ჩემი სტომატოლოგია, დაიმახსოვრე', 'იურისტი'],
++    ['ვმუშაობ ბანკში', 'ბანკი'],
++  ])('„%s" may still set „%s"', (line, value) => {
++    expect(valueIsSomeoneElsesRole(line, value)).toBe(false);
++  });
++
++  it('is refused at update_user_profile, before anything is written', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const handler = chat.slice(chat.indexOf("case 'update_user_profile':"));
++    expect(handler.slice(0, 700)).toContain(
++      "valueIsSomeoneElsesRole(runOwnerLine.get(runId) ?? '', String(input['value'] ?? ''))",
++    );
++    expect(handler.indexOf('SOMEONE_ELSES_ROLE_REFUSAL')).toBeLessThan(
++      handler.indexOf('return setUserProfileField('),
++    );
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index cb9c493..95590b7 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -82,6 +82,7 @@ import { settleReferralTap } from './askReferralSettle.service';
+ import { matchTapOf } from './matchCards';
+ import { thanksTapOf } from './helperThanksCards';
+ import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
++import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
+ import { settleMatchTap } from './matchFlow.service';
+ import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+ 
+@@ -9087,6 +9088,15 @@ async function executeToolCall(
+     // runs — so an omitted field was a TypeError or a not-null violation, and
+     // either way a thrown tool rather than an answer.
+     case 'update_user_profile':
++      // 4192: „<contact> ჩემი სტომატოლოგია" is the contact's role, never the owner's.
++      if (
++        runId !== undefined &&
++        valueIsSomeoneElsesRole(runOwnerLine.get(runId) ?? '', String(input['value'] ?? ''))
++      ) {
++        // eslint-disable-next-line no-console
++        console.log(`[profile] run ${runId}: a contact's role refused for the owner's profile`);
++        return { saved: false, error: SOMEONE_ELSES_ROLE_REFUSAL };
++      }
+       return setUserProfileField(
+         userId,
+         String(input['key'] ?? ''),
+diff --git a/src/services/someoneElsesRole.ts b/src/services/someoneElsesRole.ts
+new file mode 100644
+index 0000000..d963c0e
+--- /dev/null
++++ b/src/services/someoneElsesRole.ts
+@@ -0,0 +1,37 @@
++/**
++ * 4192 (tester 49369, seat 182168): „💙 ჩემი სტომატოლოგია, დაიმახსოვრე." —
++ * 💙 is a saved contact, and the line says that contact is the owner's
++ * dentist. It was written to the OWNER's profile (profession „სტომატოლოგი",
++ * industry „სტომატოლოგია"), and written again after the owner said „მე
++ * სტომატოლოგი არ ვარ".
++ *
++ * „My <role>" names somebody else's role: my dentist, my lawyer. A profile
++ * value that is that role, on a line that says nothing about the owner
++ * himself being it, is refused, and the run is told where the fact belongs.
++ */
++const MY_ROLE_RE = /(?:^|[^\p{L}])(?:ჩემი|my)\s+(\p{L}+)/giu;
++
++/** The owner speaking about himself: „მე … ვარ", „I am", „I'm". */
++const ABOUT_HIMSELF_RE = /(?:^|[^\p{L}])(?:ვარ|i\s+am|i['’]m)(?:[^\p{L}]|$)/iu;
++
++/** Long enough that „ექიმი"/„ექიმია" match and „ის"/„ისინი" do not. */
++const STEM_CHARS = 5;
++
++function stem(word: string): string {
++  return word.toLocaleLowerCase().slice(0, STEM_CHARS);
++}
++
++/** True when the line names `value` as the role of somebody who is the owner's. */
++export function valueIsSomeoneElsesRole(ownerLine: string, value: string): boolean {
++  const target = stem(value.trim());
++  if (target.length < STEM_CHARS || ABOUT_HIMSELF_RE.test(ownerLine)) return false;
++  for (const match of ownerLine.matchAll(MY_ROLE_RE)) {
++    if (stem(match[1] ?? '') === target) return true;
++  }
++  return false;
++}
++
++export const SOMEONE_ELSES_ROLE_REFUSAL =
++  'Not saved to the owner’s profile. The owner’s line says somebody else is their ' +
++  '„<role>" (my dentist, my lawyer) — that is that contact’s role, not the owner’s. ' +
++  'Save it on the contact the line names, and tell the owner in one line that you did.';
+-- 
+2.43.0
+
