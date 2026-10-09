@@ -1569,6 +1569,10 @@ async function createAskNow(
   // question that followed it in different rooms (ticket 9 task 12).
   // T2477: opened after the editor, so its title is the edited question — the
   // owner's raw first-person line never reaches the helper's list.
+  // 48089: the editor takes seconds; a goal stopped meanwhile sends nothing.
+  if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
+    return goalStoppedMidSend(taskId);
+  }
   const askThreadId =
     liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));
   // The tester's 44551 / 44584: the frame, the question and the buttons in one language.
@@ -1649,6 +1653,10 @@ async function createAskNow(
   }
   const profileName = fromName.rows[0]?.name?.trim() ?? '';
   if (profileName !== '') lines.push(disclosureLine(said, profileName));
+  // 48089: and once more right before the message reaches the reader — shortening is a model call too.
+  if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
+    return goalStoppedMidSend(taskId);
+  }
   await saveThreadMessage(
     askThreadId,
     toUserId,
@@ -1708,6 +1716,16 @@ async function createAskNow(
     ],
     ASK_QUERY_TIMEOUT_MS,
   );
+  // 48089: a stop that landed between the last check and this row missed it; the stop's own
+  // cancel runs once more, so the reader is told and nothing stays „sent" on a closed goal.
+  if (parentAskId === undefined && !(await goalStillOpen(taskId))) {
+    const cancelled = await cancelAsksForTask(taskId);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[task-asks] goal ${taskId}: stopped as the ask was written — ${cancelled} cancelled`,
+    );
+    return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
+  }
   if (waveNo !== null && !isFollowUp) {
     void noteWaveAsk(taskId).catch((err: unknown) =>
       // eslint-disable-next-line no-console
@@ -3792,6 +3810,32 @@ async function askedOnAnotherGoalJustNow(
     console.error('[task-asks] cross-goal duplicate check failed:', (err as Error).message);
     return false;
   }
+}
+
+/**
+ * 48089 (P1, conv 46897): „შეაჩერე ეს მიზანი." closed the goal at 03:14:17, and
+ * the day-one run already inside createAsk wrote two asks at 03:14:24 and
+ * 03:14:26. The status was read once, at the top, and the editor's model call
+ * takes seconds. Read again, fresh, right before anything reaches the reader.
+ * A failed read refuses: a stop must hold even when the database is slow.
+ */
+async function goalStillOpen(taskId: number): Promise<boolean> {
+  try {
+    return (await getTaskById(taskId))?.status === 'open';
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[task-asks] goal ${taskId}: status not re-read, not sent:`,
+      (err as Error).message,
+    );
+    return false;
+  }
+}
+
+function goalStoppedMidSend(taskId: number): CreateAskOutcome {
+  // eslint-disable-next-line no-console
+  console.log(`[task-asks] goal ${taskId}: stopped while this ask was being written — not sent`);
+  return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
 }
 
 async function ownerSpokeSince(taskId: number, secondsAgo: number): Promise<boolean> {
