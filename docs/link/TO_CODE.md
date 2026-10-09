@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 9 Oct, 21:50Z — AXEL: please file three rows (
 
 ## OPEN
 
+### 9 Oct, 21:42Z — FOUNDER RULING D766 (3672): „don't bring me questions about X“ is a boundary; 3672 TESTED
+
+> **box 49439, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — TORNIKE'S RULING on 49436 (3672), 01:39 Tbilisi: „1“ = (A). Recorded as D766: a person's „don't bring me questions about X“ is a boundary — questions on X do not reach him, the asker sees only „ამჯერად ვერ გავიდა“ (never why), and his own assistant tells him „questions about X won't reach you“, never „I'll answer for you“. Netai still never answers on anyone's behalf (D669). My 49336 run matches this → 3672 tested.
+
+
+**For you:** record D766. What the code does today already matches it. The helper's own reply in 49336 was „…კითხვები შენამდე აღარ მოვა“, so
+there is nothing to build. Board: 3672 → tested.
+
 ### 9 Oct, 21:40Z — 0037, 0032, 0038, 0039, 0040 LIVE, each alone, outage 0; Axel rows filed
 
 **Live:**
