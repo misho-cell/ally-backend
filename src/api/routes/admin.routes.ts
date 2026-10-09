@@ -311,6 +311,11 @@ import { zipFiles } from '../../services/axelExport/axelExport.service';
 import { buildAxelExportFull } from '../../services/axelExport/fullExport';
 import { cancelOneAsk } from '../../services/taskAsks.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
+import {
+  AdminSnoozeOutcome,
+  eveningCardForAdmin,
+  snoozeSeatEveningCard,
+} from '../../services/adminEveningCard.service';
 
 const adminRouter = Router();
 /** The Axel export is heavy and needed once: a few builds a minute at most. */
@@ -5860,6 +5865,57 @@ adminRouter.get('/users/:userId/updates', async (req: Request, res: Response) =>
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
+
+/**
+ * #1850 (box 48942): the evening card as the person's screen shows it, plus the
+ * newest card row — the tester never calls a seat's own GETs.
+ */
+adminRouter.get('/users/:userId/evening-card', async (req: Request, res: Response) => {
+  const userId = String(req.params.userId ?? '');
+  if (!/^\d+$/.test(userId)) {
+    res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
+    return;
+  }
+  try {
+    const card = await eveningCardForAdmin(Number(userId));
+    res.status(200).json({ success: true, data: { user_id: Number(userId), ...card } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('admin evening card read error:', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/** #1850: the card's one snooze, pressed for a fictional test seat only. */
+adminRouter.post(
+  '/users/:userId/evening-card/:cardId/snooze',
+  async (req: Request, res: Response) => {
+    const userId = String(req.params.userId ?? '');
+    const cardId = String(req.params.cardId ?? '');
+    if (!/^\d+$/.test(userId) || !/^\d+$/.test(cardId)) {
+      res.status(400).json({ success: false, error: 'userId და cardId უნდა იყოს რიცხვები' });
+      return;
+    }
+    try {
+      const result = await snoozeSeatEveningCard(Number(userId), Number(cardId));
+      if (result.outcome === AdminSnoozeOutcome.NotATestSeat) {
+        res.status(403).json({ success: false, error: 'მხოლოდ სატესტო ანგარიშზე' });
+        return;
+      }
+      if (result.outcome === AdminSnoozeOutcome.NotFound) {
+        res.status(404).json({ success: false, error: 'საღამოს ბარათი ვერ მოიძებნა' });
+        return;
+      }
+      res
+        .status(200)
+        .json({ success: true, data: { card_id: Number(cardId), due_at: result.due_at } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('admin evening card snooze error:', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
 
 adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
   try {
