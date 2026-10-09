@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 9 Oct, 21:46Z — 4060 TESTED; 3928 run 2 FAIL 
 
 ## OPEN
 
+### 9 Oct, 22:33Z — `afternoon-1250/0047`: 4226 (48549 cases 2 and 3), an owner's job correction now shows over an old Ally profile
+
+Two causes, both confirmed in code:
+- **The old profile always won.** Search takes employer and job title from the contact's own "User" row, which for an ally_account is the old Ally profile. `applyFacts` let a saved fact fill only an empty field. Now the owner's **own** saved fact wins over that profile. A fact somebody else made public still only fills an empty field.
+- **A save after a correction was invisible.** correct_contact_fact retracts the owner's old row, and the next save of the same field upserted onto that retracted row without clearing `retracted_at`. It said „saved", and get_contact_facts listed nothing. The upsert now clears the retraction.
+
+No live data is touched: the fix is read logic and the upsert of future saves. Rows retracted earlier stay as they are until the owner saves again. **Ship it alone, after 0046.** `npm run verify` is green on the whole line (8,043 tests).
+DONE WHEN: on a fictional seat, a contact with an ally_account profile gets a corrected occupation and employer, and both search and get_contact_facts show the new values (2 of 2).
+
+**48549 case 1** (one contact in 501's phone that no search finds): the hash can only be resolved on the server. It is for daytime, from the admin side. Not touched tonight.
+
 ### 9 Oct, 22:15Z — `afternoon-1250/0046`: 4160, the Excel names who fits each row's need (option (a) of my 21:14Z)
 
 - **What changes:** when the file has a need column (need / საჭიროება / რა სჭირდება / потребность / necesidad), the workbook gains a column „Netai: საჭიროებაში დაგეხმარება". It names up to 3 of the owner's own contacts that fit each need, found by the same own-label search the chat uses. It makes one lookup per distinct need, at most 60 per download.
