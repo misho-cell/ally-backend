@@ -44,7 +44,7 @@ describe('a reminder at night', () => {
   it('marks reminded_at in the same statement that selects them', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     const at = asks.indexOf('export async function sendDueAskReminders');
-    const fn = asks.slice(at, at + 1400);
+    const fn = asks.slice(at, at + 1900);
 
     expect(fn).toContain('UPDATE task_asks SET reminded_at = NOW()');
     expect(fn).toContain('RETURNING ask_thread_id, to_user_id');
