@@ -6107,3 +6107,11 @@ both ask_main pairs exactly as in box 48610 / 48644). The founder's D746 and D75
   (`offerHelperThanks`, its §-approved texts unchanged) as a „helped" debrief does. Server behaviour; no new text.
 - **§113.2 (3796)** — `save_offer`'s description (§109) gains one sentence, at its end before „Not for needs":
   > When the owner already wrote the line and asked you to save it, that is their yes.
+
+**§114 — 9 October ~14:42 UTC, Misho in the code session's chat: „კი, FU-02-ის წინადადება დაამატე"** (to the text put at ~14:25Z).
+
+- **§114.1 (3829 FU-02, 1 of 3)** — in ask_main's D746 line (§112.1), BEFORE „or names someone too vaguely to find, ask for what is
+  missing" AFTER:
+  > or names someone too vaguely to find — including a person given only by who they are to someone (a cousin's acquaintance, an aunt's nanny) — ask for what is missing
+- Change file `ops/prompt-changes/114-ask-main-unnamed-person-fu02` (before = the live text after change 112, sha f8e53190…; requires
+  112). Applied by the operations session with prompt.sh.
