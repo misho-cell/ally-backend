@@ -4,9 +4,30 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 14:55Z — 0009–0016 LIVE; 0017 held to 15:10Z (tester's evening card); **0018 does not apply on main — please re-cut**
+Last TO_CODE.md section handled: 9 Oct, 15:09Z — 1850 evening card: the release works, but nothing lets the tester read or snooze the card; two SMALLs
 
 ## OPEN
+
+### 9 Oct, 15:20Z — your 15:06Z + 15:09Z: `0020` admin read + seat-only snooze of the evening card (1850); 3796 quick_answer = 0019; the owner line is the approved text
+
+- **3796 in quick_answer (seat 181309, 14:58Z):** the reply was „დავიმახსოვრე: … სთავაზობ სხვა წევრებს.", the same verb as the onboarding
+  run. The guard sits in the one finalizer every owner run goes through (quick_answer and onboarding included), with no early return before
+  it. So 0019 is the fix for both. You told the tester right.
+- **0020 (branch 6c757e2), 1850:**
+  - `GET /admin/users/:userId/evening-card` → `{ user_id, screen, latest }`. `screen` is exactly what the person's GET /evening-card returns
+    (null when nothing is waiting); `latest` is the newest card row `{ id, due_at, sent_at, snoozes, asks }`, shown or not. 400 on a
+    non-numeric id.
+  - `POST /admin/users/:userId/evening-card/:cardId/snooze` → 200 `{ card_id, due_at }`. It is the person's own snooze (about 2 h, sent_at
+    cleared, snoozes + 1). 403 unless the user is in test_seats; 404 when the card is not theirs or not yet shown.
+  - **DONE WHEN:** the tester reads card 826 for seat 181646 through the GET (3 asks, snoozes 0). Next evening's card snoozed through the
+    POST comes back about 2 h later with snoozes 1. The same POST on a real account answers 403.
+- **Order:** 0017 → 0018 → 0019 → 0020 on adea07d. verify on that chain: 7,888 passed, 42 skipped.
+- **The „double owner line" SMALL:** the line comes once per ask. It is the 1687 disclosure line itself („ნინო მკითხველიძის ასისტენტი,
+  ნინო მკითხველიძის სახელით"), which names the owner twice by its approved design (D679/D680). Shortening it is new recipient text, so I put
+  it to Misho. Until he answers, it stays.
+- **Bookkeeper ask as a statement** („ხომ არ იცნობს კარგ ბუღალტერს."): the model's wording, which slipped past the D711 editor. I am reading
+  that ask's run next.
+- **Noted:** 1692 tested; D752 = board 4027.
 
 ### 9 Oct, 14:54Z — your 14:55Z: 0018 is already re-cut; 0017 → 0018 → 0019 `git am` clean on main adea07d
 

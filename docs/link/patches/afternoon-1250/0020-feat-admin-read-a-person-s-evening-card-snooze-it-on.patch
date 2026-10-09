@@ -1,0 +1,314 @@
+From d14d013aeababff5a1542dc3873e11cb5176db23 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 15:17:18 +0000
+Subject: [PATCH] feat(admin): read a person's evening card; snooze it on a
+ test seat only (1850)
+
+Box 48942: card 826 went out right (3 asks, one ring), but it lives only on
+the seat's own /evening-card screen, and the tester never calls a seat's
+GETs, so the card and its one snooze could not be checked.
+
+  GET  /admin/users/:userId/evening-card                  screen + newest row
+  POST /admin/users/:userId/evening-card/:cardId/snooze   test seats only (403)
+
+The snooze is the person's own snoozeEveningCard; a real account is refused
+before it is touched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                |  56 +++++++++
+ .../anAdminReadsTheEveningCard.test.ts        | 113 ++++++++++++++++++
+ src/services/adminEveningCard.service.ts      |  86 +++++++++++++
+ 3 files changed, 255 insertions(+)
+ create mode 100644 src/services/__tests__/anAdminReadsTheEveningCard.test.ts
+ create mode 100644 src/services/adminEveningCard.service.ts
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 18ccf05..47ad85f 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -311,6 +311,11 @@ import { zipFiles } from '../../services/axelExport/axelExport.service';
+ import { buildAxelExportFull } from '../../services/axelExport/fullExport';
+ import { cancelOneAsk } from '../../services/taskAsks.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
++import {
++  AdminSnoozeOutcome,
++  eveningCardForAdmin,
++  snoozeSeatEveningCard,
++} from '../../services/adminEveningCard.service';
+ 
+ const adminRouter = Router();
+ /** The Axel export is heavy and needed once: a few builds a minute at most. */
+@@ -5861,6 +5866,57 @@ adminRouter.get('/users/:userId/updates', async (req: Request, res: Response) =>
+   }
+ });
+ 
++/**
++ * #1850 (box 48942): the evening card as the person's screen shows it, plus the
++ * newest card row — the tester never calls a seat's own GETs.
++ */
++adminRouter.get('/users/:userId/evening-card', async (req: Request, res: Response) => {
++  const userId = String(req.params.userId ?? '');
++  if (!/^\d+$/.test(userId)) {
++    res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' });
++    return;
++  }
++  try {
++    const card = await eveningCardForAdmin(Number(userId));
++    res.status(200).json({ success: true, data: { user_id: Number(userId), ...card } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('admin evening card read error:', (error as Error).message);
++    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++  }
++});
++
++/** #1850: the card's one snooze, pressed for a fictional test seat only. */
++adminRouter.post(
++  '/users/:userId/evening-card/:cardId/snooze',
++  async (req: Request, res: Response) => {
++    const userId = String(req.params.userId ?? '');
++    const cardId = String(req.params.cardId ?? '');
++    if (!/^\d+$/.test(userId) || !/^\d+$/.test(cardId)) {
++      res.status(400).json({ success: false, error: 'userId და cardId უნდა იყოს რიცხვები' });
++      return;
++    }
++    try {
++      const result = await snoozeSeatEveningCard(Number(userId), Number(cardId));
++      if (result.outcome === AdminSnoozeOutcome.NotATestSeat) {
++        res.status(403).json({ success: false, error: 'მხოლოდ სატესტო ანგარიშზე' });
++        return;
++      }
++      if (result.outcome === AdminSnoozeOutcome.NotFound) {
++        res.status(404).json({ success: false, error: 'საღამოს ბარათი ვერ მოიძებნა' });
++        return;
++      }
++      res
++        .status(200)
++        .json({ success: true, data: { card_id: Number(cardId), due_at: result.due_at } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('admin evening card snooze error:', (error as Error).message);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ adminRouter.get('/users/:userId/push', async (req: Request, res: Response) => {
+   try {
+     const userId = String(req.params.userId ?? '');
+diff --git a/src/services/__tests__/anAdminReadsTheEveningCard.test.ts b/src/services/__tests__/anAdminReadsTheEveningCard.test.ts
+new file mode 100644
+index 0000000..26238f3
+--- /dev/null
++++ b/src/services/__tests__/anAdminReadsTheEveningCard.test.ts
+@@ -0,0 +1,113 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { currentEveningCard, snoozeEveningCard } from '../eveningCard.service';
++import {
++  AdminSnoozeOutcome,
++  eveningCardForAdmin,
++  snoozeSeatEveningCard,
++} from '../adminEveningCard.service';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../eveningCard.service', () => ({
++  currentEveningCard: jest.fn(),
++  snoozeEveningCard: jest.fn(),
++}));
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockScreen = currentEveningCard as jest.MockedFunction<typeof currentEveningCard>;
++const mockSnooze = snoozeEveningCard as jest.MockedFunction<typeof snoozeEveningCard>;
++
++const SEAT = 181646;
++const CARD = 826;
++
++/** #1850 (box 48942): the tester reads and snoozes the evening card from the admin side. */
++describe('the admin read of a person’s evening card', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('returns the screen as the person sees it and the newest card row', async () => {
++    const screen = { id: CARD, due_at: '2026-10-09T15:00:00.000Z', snoozes: 0, items: [] };
++    mockScreen.mockResolvedValueOnce(screen);
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        {
++          id: String(CARD),
++          due_at: new Date('2026-10-09T15:00:00Z'),
++          sent_at: new Date('2026-10-09T15:00:51Z'),
++          snoozes: 0,
++          asks: '3',
++        },
++      ],
++    } as never);
++    await expect(eveningCardForAdmin(SEAT)).resolves.toEqual({
++      screen,
++      latest: {
++        id: CARD,
++        due_at: '2026-10-09T15:00:00.000Z',
++        sent_at: '2026-10-09T15:00:51.000Z',
++        snoozes: 0,
++        asks: 3,
++      },
++    });
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('WHERE c.user_id = $1');
++    expect(String(sql)).toContain('LIMIT 1');
++    expect(params).toEqual([SEAT]);
++  });
++
++  it('says null when the person never had a card', async () => {
++    mockScreen.mockResolvedValueOnce(null);
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(eveningCardForAdmin(SEAT)).resolves.toEqual({ screen: null, latest: null });
++  });
++});
++
++describe('the admin snooze of an evening card', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('snoozes a fictional seat’s card', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never);
++    mockSnooze.mockResolvedValueOnce(new Date('2026-10-09T17:05:00Z'));
++    await expect(snoozeSeatEveningCard(SEAT, CARD)).resolves.toEqual({
++      outcome: AdminSnoozeOutcome.Snoozed,
++      due_at: '2026-10-09T17:05:00.000Z',
++    });
++    expect(mockSnooze).toHaveBeenCalledWith(SEAT, CARD);
++  });
++
++  it('refuses a real person, and never touches their card', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(snoozeSeatEveningCard(SEAT, CARD)).resolves.toEqual({
++      outcome: AdminSnoozeOutcome.NotATestSeat,
++    });
++    expect(mockSnooze).not.toHaveBeenCalled();
++  });
++
++  it('says not found when the card is not the seat’s or not shown', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never);
++    mockSnooze.mockResolvedValueOnce(null);
++    await expect(snoozeSeatEveningCard(SEAT, CARD)).resolves.toEqual({
++      outcome: AdminSnoozeOutcome.NotFound,
++    });
++  });
++});
++
++describe('the routes', () => {
++  const admin = readFileSync(
++    join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
++    'utf8',
++  );
++
++  it('reads at GET /admin/users/:userId/evening-card, refusing a non-numeric user', () => {
++    const route = admin.slice(admin.indexOf("adminRouter.get('/users/:userId/evening-card'"));
++    expect(route.slice(0, 400)).toContain(
++      "res.status(400).json({ success: false, error: 'userId უნდა იყოს რიცხვი' })",
++    );
++  });
++
++  it('snoozes at POST …/evening-card/:cardId/snooze, 403 for a real person, 404 for no card', () => {
++    const route = admin.slice(admin.indexOf("'/users/:userId/evening-card/:cardId/snooze'"));
++    expect(route.slice(0, 1200)).toContain('res.status(403)');
++    expect(route.slice(0, 1200)).toContain('res.status(404)');
++  });
++});
+diff --git a/src/services/adminEveningCard.service.ts b/src/services/adminEveningCard.service.ts
+new file mode 100644
+index 0000000..cb6f2f0
+--- /dev/null
++++ b/src/services/adminEveningCard.service.ts
+@@ -0,0 +1,86 @@
++import { query } from '../db/postgres/client';
++import { currentEveningCard, EveningCardView, snoozeEveningCard } from './eveningCard.service';
++
++/**
++ * #1850 (box 48942): the evening card lives only on the seat's own
++ * /evening-card screen, and the tester never calls a seat's GETs — so the card
++ * and its one snooze could not be checked. An admin reads what the screen
++ * shows, plus the latest card's own row (sent or not, snoozed how often), and
++ * may snooze a card on a fictional test seat only; a real person's card is
++ * theirs to snooze.
++ */
++const QUERY_TIMEOUT_MS = 4_000;
++
++export interface EveningCardRow {
++  readonly id: number;
++  readonly due_at: string;
++  readonly sent_at: string | null;
++  readonly snoozes: number;
++  readonly asks: number;
++}
++
++export interface AdminEveningCard {
++  /** Exactly what GET /evening-card returns to the person, or null. */
++  readonly screen: EveningCardView | null;
++  /** The newest card row, whether or not it has been shown yet. */
++  readonly latest: EveningCardRow | null;
++}
++
++export enum AdminSnoozeOutcome {
++  Snoozed = 'snoozed',
++  NotATestSeat = 'not_a_test_seat',
++  NotFound = 'not_found',
++}
++
++async function latestCardRow(userId: number): Promise<EveningCardRow | null> {
++  const result = await query<{
++    id: string | number;
++    due_at: Date;
++    sent_at: Date | null;
++    snoozes: number;
++    asks: string | number;
++  }>(
++    `SELECT c.id, c.due_at, c.sent_at, c.snoozes,
++            (SELECT count(*) FROM task_asks ta WHERE ta.evening_card_id = c.id) AS asks
++       FROM evening_cards c
++      WHERE c.user_id = $1
++      ORDER BY c.id DESC
++      LIMIT 1`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  if (!row) return null;
++  return {
++    id: Number(row.id),
++    due_at: new Date(row.due_at).toISOString(),
++    sent_at: row.sent_at === null ? null : new Date(row.sent_at).toISOString(),
++    snoozes: row.snoozes,
++    asks: Number(row.asks),
++  };
++}
++
++export async function eveningCardForAdmin(userId: number): Promise<AdminEveningCard> {
++  const [screen, latest] = await Promise.all([currentEveningCard(userId), latestCardRow(userId)]);
++  return { screen, latest };
++}
++
++async function isTestSeat(userId: number): Promise<boolean> {
++  const result = await query<{ user_id: number }>(
++    `SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.length > 0;
++}
++
++/** The card's one snooze, pressed for a fictional seat; refused for anyone else. */
++export async function snoozeSeatEveningCard(
++  userId: number,
++  cardId: number,
++): Promise<{ readonly outcome: AdminSnoozeOutcome; readonly due_at?: string }> {
++  if (!(await isTestSeat(userId))) return { outcome: AdminSnoozeOutcome.NotATestSeat };
++  const dueAt = await snoozeEveningCard(userId, cardId);
++  if (dueAt === null) return { outcome: AdminSnoozeOutcome.NotFound };
++  return { outcome: AdminSnoozeOutcome.Snoozed, due_at: dueAt.toISOString() };
++}
+-- 
+2.43.0
+
