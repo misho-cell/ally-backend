@@ -1397,13 +1397,14 @@ async function createAskNow(
     previous !== undefined &&
     secondsSincePrevious !== undefined &&
     (await ownerSpokeSince(taskId, secondsSincePrevious));
-  if (
-    previous?.status === 'sent' &&
-    previous.from_user_id === fromUserId &&
-    secondsSincePrevious !== undefined &&
-    secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS &&
-    !ownerAddedSomething
-  ) {
+  const duplicate =
+    (previous?.status === 'sent' &&
+      previous.from_user_id === fromUserId &&
+      secondsSincePrevious !== undefined &&
+      secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS &&
+      !ownerAddedSomething) ||
+    (await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId));
+  if (duplicate) {
     return {
       sent: false,
       reason: 'duplicate_ask_in_flight',
@@ -3753,6 +3754,46 @@ export async function sendDueAskReminders(limit: number): Promise<number> {
  * and the other direction costs somebody a second copy of a question they have
  * not answered yet.
  */
+/**
+ * 3532 (2 of 2, owners 180603 and 180627): „ჰკითხე X-ს, ხვალ ყავაზე თუ
+ * შემხვდება." typed inside ANOTHER goal's conversation reached X twice — once
+ * on the model's new goal, once on the old goal. The guard above looks at one
+ * goal only. The same sender to the same person on a different goal inside
+ * one run's span, with no word from the owner since, is the same question
+ * arriving twice.
+ */
+const CROSS_GOAL_DUPLICATE_SECONDS = 120;
+
+async function askedOnAnotherGoalJustNow(
+  fromUserId: string,
+  toUserId: number,
+  taskId: number,
+): Promise<boolean> {
+  try {
+    const result = await query<{ duplicate: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM task_asks a
+          WHERE a.from_user_id = $1::int AND a.to_user_id = $2 AND a.task_id <> $3
+            AND a.status IN ('sent', 'answered')
+            -- Both columns are naive UTC (see ownerSpokeSince below).
+            AND a.created_at > (NOW() AT TIME ZONE 'UTC') - make_interval(secs => $4)
+            AND NOT EXISTS (
+              SELECT 1 FROM conversations c
+               WHERE c.user_id = $1::int AND c.role = 'user' AND c.kind = 'message'
+                 AND TRIM(c.content) <> ''
+                 AND c.created_at > a.created_at)
+       ) AS duplicate`,
+      [fromUserId, toUserId, taskId, CROSS_GOAL_DUPLICATE_SECONDS],
+      ASK_QUERY_TIMEOUT_MS,
+    );
+    return result.rows[0]?.duplicate === true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[task-asks] cross-goal duplicate check failed:', (err as Error).message);
+    return false;
+  }
+}
+
 async function ownerSpokeSince(taskId: number, secondsAgo: number): Promise<boolean> {
   try {
     const result = await query<{ spoke: boolean }>(
