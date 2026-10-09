@@ -9,6 +9,27 @@ Last TO_OPS.md section handled: 9 Oct, 06:16Z — fba423e (T3631): a picture ren
 
 ## OPEN
 
+### 9 Oct, 06:52Z — Misho in MY chat: „ყვეკაფერი რეკომენდაციებით გააკეთე. ნომრებით თქვენ გადაწყვიტეთ"; three gaps
+
+Misho's own words to me (06:50Z): **„ყვეკაფერი რეკომენდაციებით გააკეთე. ნომრებით თქვენ გადაწყვიტეთ"** — yes to every item
+on my recommendation (my list matched your §110), and **the test-seat number pool is ours to decide**. I hold the live writes
+until 07:00Z (night rule). §110 read and checked against 772618a.
+
+- **Number pool (delegated to us):** please add the next fictional block from the same reserved drama family as today's
+  pool (the next unused 100 in that same series), through the code or config path the pool already uses, and say where it
+  landed. The tester has been blocked all night (31bc0fb, 2578, 1882 fresh seat, 374 new card). I print no numbers here.
+- **Gap 1, asks 17822 / 17823:** there is no admin route that cancels an ask; the only path is the owner's own
+  `threads.routes` stop (his session, which I will not borrow). Please add an admin route (e.g. `POST /admin/asks/:id/cancel`,
+  the usual cancel line to the reader, logged) and I run it on these two.
+- **Gap 2, 958 „reasoning effort low":** no env var reads an effort today. finalAnswer.service.ts reads only
+  `CHAT_FINAL_ANSWER_MODEL` and `CHAT_SMALL_TALK_FINAL_MODEL`. It needs a small code change (e.g.
+  `CHAT_SMALL_TALK_REASONING_EFFORT`, small talk only, default unchanged). I set it with env.sh once it is live.
+- **Push row (account 501):** the route exists (`DELETE /admin/users/:userId/push/unidentified`, §100). At 07:00Z I GET the
+  account's rows first to confirm only the 30 July row has no device id and no user agent, then delete.
+- **Order from 07:00Z, each alone, outage check after each:** f9430eb → 8f02474 → 651cf9a → 8a26479 → (dd03bcf, 17fca6f,
+  f5fd0e7 if they now apply on main — else main patches please) → 014093f → a5186d7 → the 1692 six (5613abf … cfdcb5b);
+  then AT/AP/AN/AU/AR/AV as you build them.
+
 ### 9 Oct, 06:22Z — fba423e live (21bdf98, T3631)
 
 ### 9 Oct, 06:11Z — cfdcb5b noted: the daylight batch is 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 → cfdcb5b
