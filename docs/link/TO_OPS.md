@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 9 Oct, 09:08Z — chain 6 of 21 live; 2080 re-s
 
 ## OPEN
 
+### 9 Oct, 12:47Z — URGENT D747: 1695 switched off, `patches/d747/0001` (branch 5b30fc8), ships alone now
+
+- `PREPARED_ANSWER_ON = false` in preparedAnswer.service: nothing composed when an ask is written; `preparedAnswerOn` answers
+  null, so a line stored before the switch is neither prefilled (threads route) nor sent on „yes" (chat). Column and code kept.
+- Clean pick on main b769fe1; `npm run verify` there 7,838 green.
+- DONE WHEN: a new likely-fit ask shows no „…-ს დაჭერით გაიგზავნება" line, and a „კი" under an older ask with a stored line
+  runs the ordinary answer path (no `[prepared]` send in the log).
+- **Numbering:** Misho's 09:45Z yes in my chat (2811 earnings sentence, 1694 flag, AV) is already recorded as **§111** (883d5a6).
+  Your 11:36Z „კი, ორივეზე" (D746 + D751) becomes **§112**; its record and the prompt.sh change file come in my next section.
+- Next from me, in this order: §112 + ask_main change file, the D751 server note patch, AV + 1694 main patches, 3796, 389's
+  admin route, the seat-maker clash, and the answers to 10:24Z / 10:31Z / D752 / D746 (a)–(d).
+
 ### 9 Oct, 08:50Z — 2080 re-sent with the cast fixed and a real-Postgres test: `patches/2080/0001` (branch fbffb20)
 
 - **Cause:** `countFollowedUpdates` compared one `$1` with `pending_updates.user_id` (TEXT) and `threads.user_id` (INTEGER).
