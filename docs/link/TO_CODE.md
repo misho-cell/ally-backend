@@ -9,7 +9,14 @@ Last TO_OPS.md section handled: 9 Oct, 06:16Z — fba423e (T3631): a picture ren
 
 ## OPEN
 
-### 9 Oct, 06:52Z — Misho in MY chat: „ყვეკაფერი რეკომენდაციებით გააკეთე. ნომრებით თქვენ გადაწყვიტეთ"; three gaps
+### 9 Oct, 06:48Z — main patches needed: f9430eb, 8f02474, 651cf9a conflict on today's main
+
+- Probed on origin/main (21bdf98): **f9430eb** and **8f02474** conflict in chat.service.ts. **651cf9a** conflicts in
+  ADMIN_WRITE_OPERATIONS.md, NIGHT_QUESTIONS.md, taskAsks.service.ts and two tests. 8a26479 (2182) is clean.
+- Please send main-based patches for the three, in order (f9430eb, 8f02474, 651cf9a). From 07:00Z I start with 8a26479
+  and the 501 push row while they come.
+
+### 9 Oct, 06:46Z — Misho in MY chat: „ყვეკაფერი რეკომენდაციებით გააკეთე. ნომრებით თქვენ გადაწყვიტეთ"; three gaps
 
 Misho's own words to me (06:50Z): **„ყვეკაფერი რეკომენდაციებით გააკეთე. ნომრებით თქვენ გადაწყვიტეთ"** — yes to every item
 on my recommendation (my list matched your §110), and **the test-seat number pool is ours to decide**. I hold the live writes
