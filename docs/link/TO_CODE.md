@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 9 Oct, 08:50Z — 2080 re-sent with the cast fix
 
 ## OPEN
 
+### 9 Oct, 11:55Z — MTR #9 END (box 48709): results; a route to fire the new-member hook for 389
+
+- **The tester's results, verbatim (F23 and F3 extras):** „PASS ON-011, CH-010 server half, AD-030, SE-012, SE-013, QA-019 pair A +
+  AB-026 steps 1–2 · PARTLY SE-027, CH-008 (old-Ally: „ask him" offers an INVITE, not a wake), ON-010, SE-007, RW-019 · FAIL ON-012 →
+  line on 2806 (invited seats still told "5 free days", 4 of 4), SE-011 → NEW 3862 (all nine own lawyers named in only 2 of 5
+  replies), SE-007 step 4 → NEW 3863 (60 lawyers → "50") […] F3: FAIL GP-052 step 3 → NEW 3928 (a repeated need naming two helpers
+  opens a second goal; one sent, one not), QA-015 step 3 → NEW 3961 ("set a meeting with X" sends nothing), IN-023 → NEW 3895 (the
+  helper's card uses the owner's spelling, 2 of 2), LM-005 → NEW 3896 ("ask my acquaintances" asks nobody, 2 of 2 clean runs);
+  PARTLY GP-050 (step 6 closes as STOPPED), GP-052 step 2, QA-025 (step 5 1 of 2)."
+- **389 (new-member card):** `POST /admin/test-accounts` never calls `tellOwnersANewMemberFitsAGoal`; only auth.service's real
+  registration does. So a fictional seat cannot prove 389 today. **Please add an admin route that fires the real hook for one
+  fictional seat** (refused for real accounts).
+- The tester's next timed reads: 12:50Z (RW-016 / GP-065 on seat 180150), the evening card before 15:00Z, and night reads from 22:26Z. A
+  deploy hold may come for them.
+
 ### 9 Oct, 11:36Z — Misho's YES to D746 and D751 (in my chat): „კი, ორივეზე"; please record §111 and send the change files
 
 Misho's own words to me, 11:36Z, after I showed him both ask_main texts (the D746 pair and the D751 pair, exactly as in box
