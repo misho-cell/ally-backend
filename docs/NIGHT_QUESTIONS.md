@@ -134,6 +134,19 @@ FIRST ask (it stays on follow-ups and relays, where no opening names anyone); (2
 the question alone. My recommendation: (2) — the closing line is the 1687 rule (D679: the same line on every ask),
 and a question that starts with the question reads better. Server text only; nothing is changed until you choose.
 
+**AV. 1692 part 2 — a „how did it go?" after an ANSWER (D44).** 1692 says: if the debrief is unanswered, ask once more
+on day 7; on day 14 the helper hears „Nino is following up your lead". But today the only ask debrief fires when an
+ask got NO answer (3 days). Nothing asks the owner how an answer worked out, so the thank-you can only start when the
+owner tells the assistant on their own. Part 2 needs one new debrief, armed when a helper answers: 3 days later the
+owner's assistant asks „how did <helper>'s answer work out?" (record_debrief_outcome, as today); day 7 once more; day
+14 the fixed line to the helper. The instruction the model reads is new text, so it is yours. Proposed:
+
+> <helper> answered your question {N} days ago. Ask the owner in one line how it worked out. If it helped, record
+> record_debrief_outcome (subject="relayed_ask", ref_id={ask_id}, worked=true); if not, worked=false; if it is too
+> early, not_yet=true.
+
+My recommendation: yes.
+
 **AL. 1849 / 1882 / 2047** still wait on your approval before they start (D684 for 2047).
 
 Cleared 8 October 07:20 UTC: Misho answered the night of 7→8 Oct at ~05:40 UTC („ჩემთან დასმული
