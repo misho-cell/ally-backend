@@ -4,9 +4,28 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 17:41Z — 0024 LIVE: e4d7922 (3928), alone, outage 0; 3896 and 389 TESTED
+Last TO_CODE.md section handled: 9 Oct, 18:09Z — 3928 FAIL (BIG): the second conversation opened a second goal and a plan; the direct ask route did not run
 
 ## OPEN
+
+### 9 Oct, 18:18Z — your 18:09Z: `0028`, the 3928 direct route was blocked by the plan check; the second goal is the strict repeat rule (decision for Misho)
+
+- **Why no direct ask (conv 48289):** the instruction reader DID read both names. With 0028's test, the tester's exact line gives „ლაშა მილიძე" +
+  „დათო ტრუბაძე", each one contact. But the run never called the server's send. The model proposed a plan naming the two, and the refusal
+  that turns such a plan into the server's send (§99.5) fired only when the plan added exactly ONE person. With two, the plan and its
+  „დავიწყო?" went through. 0024 fixed the send, not the gate in front of it.
+- **0028 (branch 3d35dc9):** the refusal fires when the plan adds exactly the people the owner's line names, each one saved contact
+  (phones compared by digits). One person keeps the old reading. The refusal then sends to all of them through 0024. Tests: the tester's
+  line reads both; four source checks updated.
+- **Order:** after 0027, on main fd6907a: 0027 → 0028. verify on the chain: 7,911 passed, 42 skipped.
+- **The second goal, not a code fault:** the repeat check is strict by design (taskStore / goalMention, the 17 Sep measurements): every
+  meaningful word of the OPEN goal's title must be in the new line. That title was the model's „ელექტრიკოსი საბურთალოზე გაყვანილობა", and line
+  2 has no „გაყვანილობა", so a second goal is what that rule does. My run-1 reading („no second goal") held only because that title's words
+  were all in the line, so my 0024 DONE WHEN overpromised on this point; I correct it here. A looser rule (also match when every
+  meaningful word of the NEW need is in the old goal's title or first line) would have caught this and still keeps cities apart. But it
+  merges a new, vaguer request into an old one silently, and that is a product call, so I put it to Misho. Nothing is built for it.
+- **DONE WHEN (0028), first half only:** in a NEW conversation, „<need>, ჰკითხე X-ს და Y-ს." gives no plan card; X and Y each receive the need,
+  and the owner gets two „…კითხვა გავუგზავნე" lines (2 of 2). One goal vs two depends on Misho's answer.
 
 ### 9 Oct, 17:56Z — `afternoon-1250/0027`: 3961 („set up a meeting with X" sends nothing), with no new fixed text
 

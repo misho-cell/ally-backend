@@ -1,0 +1,230 @@
+From b7ff60059f9d0a9838fcccca90c44a08a6132fe9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 9 Oct 2026 18:15:26 +0000
+Subject: [PATCH] fix(plans): a plan adding exactly the people the owner's line
+ named is refused and they are asked (3928 re-run)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 49146 (conv 48289, 0 of 1 with e4d7922): „კარგი ელექტრიკოსი მჭირდება
+საბურთალოზე, ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს." got a plan naming the
+same two and „დავიწყო?" — the owner-instruction refusal only fired when a
+plan added exactly ONE person, so 0024's two-person send never ran.
+
+The refusal now fires when the plan adds exactly the people the
+instruction names, each one saved contact (contactsNamed, phones compared
+by digits); one person keeps the original reading. The refusal then sends
+to all of them (0024).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aMaskedNumberShowsItsShape.test.ts        | 17 +++++---
+ .../aPreviewRequestGrantsNothing.test.ts      |  4 +-
+ .../aTypedInstructionNeedsNoPlanCard.test.ts  |  7 +--
+ .../oneMorePersonIsNotANewPlan.test.ts        |  2 +-
+ .../theServerAsksTheOneNamedContact.test.ts   | 20 ++++++++-
+ src/services/chat.service.ts                  | 43 ++++++++++++++++---
+ 6 files changed, 73 insertions(+), 20 deletions(-)
+
+diff --git a/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts b/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts
+index bf66317..b94996c 100644
+--- a/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts
++++ b/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts
+@@ -33,7 +33,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
+   const handler = chat.slice(chat.indexOf("case 'propose_task_plan': {"));
+ 
+   it('is checked first in propose_task_plan', () => {
+-    const check = handler.indexOf('ownerJustInstructedThePlansOnePerson(');
++    const check = handler.indexOf('ownerJustInstructedThePlansPeople(');
+     expect(check).toBeGreaterThan(-1);
+     expect(check).toBeLessThan(handler.indexOf('planNamesPeople('));
+     expect(handler.slice(check, check + 300)).toContain(
+@@ -41,12 +41,15 @@ describe('a plan for the one person the owner just instructed is refused', () =>
+     );
+   });
+ 
+-  it('only for a plan of exactly one person, an instruction, naming an own contact', () => {
+-    const fn = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansOnePerson'));
+-    const body = fn.slice(0, 900);
+-    expect(body).toContain('peopleAddedToPlan(plan, inForce).length !== 1');
+-    expect(body).toContain('looksLikeContactInstruction(instructionSentence(said.trim()))');
+-    expect(body).toContain('messageNamesOwnContact(userId, said)');
++  it('only for a plan adding exactly the people an own-contact instruction names (3928: one or more)', () => {
++    const fn = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansPeople'));
++    const body = fn.slice(0, 1100);
++    expect(body).toContain('if (added.length === 0) return false;');
++    expect(body).toContain('if (!looksLikeContactInstruction(sentence)) return false;');
++    expect(body).toContain(
++      'if (added.length === 1) return await messageNamesOwnContact(userId, said);',
++    );
++    expect(body).toContain('return await planAddsOnlyThePeopleNamed(userId, sentence, added);');
+   });
+ 
+   it('sends the run to the grant and the ask', () => {
+diff --git a/src/services/__tests__/aPreviewRequestGrantsNothing.test.ts b/src/services/__tests__/aPreviewRequestGrantsNothing.test.ts
+index b186740..a349635 100644
+--- a/src/services/__tests__/aPreviewRequestGrantsNothing.test.ts
++++ b/src/services/__tests__/aPreviewRequestGrantsNothing.test.ts
+@@ -39,11 +39,11 @@ describe('a request to see the message first', () => {
+ 
+   it('is checked on the whole line before the instruction sentence is cut out', () => {
+     const body = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    const at = body.indexOf('async function ownerJustInstructedThePlansOnePerson(');
++    const at = body.indexOf('async function ownerJustInstructedThePlansPeople(');
+     const fn = body.slice(at, body.indexOf('\n}\n', at));
+     expect(fn.indexOf('asksForAPreview(said)')).toBeGreaterThan(-1);
+     expect(fn.indexOf('asksForAPreview(said)')).toBeLessThan(
+-      fn.indexOf('looksLikeContactInstruction(instructionSentence('),
++      fn.indexOf('instructionSentence(said.trim())'),
+     );
+   });
+ });
+diff --git a/src/services/__tests__/aTypedInstructionNeedsNoPlanCard.test.ts b/src/services/__tests__/aTypedInstructionNeedsNoPlanCard.test.ts
+index b988496..2296b6e 100644
+--- a/src/services/__tests__/aTypedInstructionNeedsNoPlanCard.test.ts
++++ b/src/services/__tests__/aTypedInstructionNeedsNoPlanCard.test.ts
+@@ -27,9 +27,10 @@ describe('the approve-card guard', () => {
+ 
+   it('is applied where the plan card is refused', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    const guard = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansOnePerson('));
+-    expect(guard.slice(0, 700)).toContain(
+-      'if (!looksLikeContactInstruction(instructionSentence(said.trim()))) return false;',
++    const guard = chat.slice(chat.indexOf('async function ownerJustInstructedThePlansPeople('));
++    expect(guard.slice(0, 900)).toContain('const sentence = instructionSentence(said.trim());');
++    expect(guard.slice(0, 900)).toContain(
++      'if (!looksLikeContactInstruction(sentence)) return false;',
+     );
+   });
+ });
+diff --git a/src/services/__tests__/oneMorePersonIsNotANewPlan.test.ts b/src/services/__tests__/oneMorePersonIsNotANewPlan.test.ts
+index 2a7a71f..7247dfa 100644
+--- a/src/services/__tests__/oneMorePersonIsNotANewPlan.test.ts
++++ b/src/services/__tests__/oneMorePersonIsNotANewPlan.test.ts
+@@ -42,7 +42,7 @@ describe('the people a revised plan adds', () => {
+ 
+   it('is what the owner-instruction refusal reads, beside the plan in force', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain('if (peopleAddedToPlan(plan, inForce).length !== 1) return false;');
++    expect(chat).toContain('const added = peopleAddedToPlan(plan, inForce);');
+     expect(chat).toContain('(planTask?.plan ?? null) as TaskPlan | null,');
+   });
+ });
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index 6a55782..98ce9c1 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -22,7 +22,7 @@ jest.mock('../taskStore.service', () => ({
+ const mockQuery = jest.fn();
+ jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
+ 
+-import { InstructedAskResult, sendInstructedAsk } from '../instructedAsk';
++import { contactsNamed, InstructedAskResult, sendInstructedAsk } from '../instructedAsk';
+ import { EXCLUDED_LINE, NOT_ON_NETAI_LINE } from '../instructionUnsent';
+ 
+ /** §97 item 1: case 1's second chance sent nothing; the server asks the one named contact. */
+@@ -184,3 +184,21 @@ describe('a meeting the owner asks to set up', () => {
+     expect(mockCreateAsk.mock.calls[0][3]).toBe('შეხვედრა ხვალ 3 საათზე.');
+   });
+ });
++
++/** 3928 re-run (box 49146, conv 48289): full surname datives, no hyphen. */
++describe('the tester’s second line', () => {
++  it('names both helpers, each one saved contact', async () => {
++    mockFindPhones.mockImplementation((_u: string, name: string) =>
++      Promise.resolve(name.startsWith('ლაშა') ? ['995500000031'] : ['995500000032']),
++    );
++    await expect(
++      contactsNamed(
++        '181941',
++        'კარგი ელექტრიკოსი მჭირდება საბურთალოზე, ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს.',
++      ),
++    ).resolves.toEqual([
++      { phone: '995500000031', typed: 'ლაშა მილიძე' },
++      { phone: '995500000032', typed: 'დათო ტრუბაძე' },
++    ]);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index ecc4551..7887b16 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -396,7 +396,12 @@ import {
+   NOT_ON_NETAI_LINE,
+   NOT_SENT_LINE,
+ } from './instructionUnsent';
+-import { InstructedAskResult, PersonOutcome, sendInstructedAsk } from './instructedAsk';
++import {
++  contactsNamed,
++  InstructedAskResult,
++  PersonOutcome,
++  sendInstructedAsk,
++} from './instructedAsk';
+ import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
+ import {
+   asksAboutTheOwner,
+@@ -2630,20 +2635,46 @@ export function peopleAddedToPlan(plan: unknown, inForce: TaskPlan | null): unkn
+   });
+ }
+ 
+-async function ownerJustInstructedThePlansOnePerson(
++/** Digits only: the plan's numbers and the name search's may differ by a „+". */
++function phoneDigits(phone: unknown): string {
++  return typeof phone === 'string' ? phone.replace(/\D/gu, '') : '';
++}
++
++/**
++ * 3928 (box 49146, conv 48289): „ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს" named
++ * TWO people, the plan named the same two, and this check — „exactly one
++ * person added" — let the plan and its „დავიწყო?" through. The owner's line is
++ * the yes for everyone it names: a plan adding exactly those people is refused
++ * like a plan for one, and the server asks them all (0024).
++ */
++async function planAddsOnlyThePeopleNamed(
++  userId: string,
++  sentence: string,
++  added: readonly unknown[],
++): Promise<boolean> {
++  const named = await contactsNamed(userId, sentence);
++  if (named === null || named.length !== added.length) return false;
++  const namedPhones = new Set(named.map((c) => phoneDigits(c.phone)));
++  return added.every((p) => namedPhones.has(phoneDigits((p as { phone?: unknown } | null)?.phone)));
++}
++
++async function ownerJustInstructedThePlansPeople(
+   userId: string,
+   threadId: number,
+   plan: unknown,
+   inForce: TaskPlan | null,
+ ): Promise<boolean> {
+-  if (peopleAddedToPlan(plan, inForce).length !== 1) return false;
++  const added = peopleAddedToPlan(plan, inForce);
++  if (added.length === 0) return false;
+   try {
+     const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
+     // Misho, 7 Oct (D625 as a server rule): a long line's instruction sentence counts.
+     // 2906: the preview may sit in another sentence than the instruction — read the whole line.
+     if (asksForAPreview(said)) return false;
+-    if (!looksLikeContactInstruction(instructionSentence(said.trim()))) return false;
+-    return await messageNamesOwnContact(userId, said);
++    const sentence = instructionSentence(said.trim());
++    if (!looksLikeContactInstruction(sentence)) return false;
++    if (added.length === 1) return await messageNamesOwnContact(userId, said);
++    return await planAddsOnlyThePeopleNamed(userId, sentence, added);
+   } catch (error) {
+     // Fails towards the plan, which asks the owner rather than writing to anyone.
+     // eslint-disable-next-line no-console
+@@ -10032,7 +10063,7 @@ async function executeToolCall(
+       const planTask = await getTaskById(taskId);
+       if (
+         threadId !== undefined &&
+-        (await ownerJustInstructedThePlansOnePerson(
++        (await ownerJustInstructedThePlansPeople(
+           userId,
+           threadId,
+           input['plan'],
+-- 
+2.43.0
+
