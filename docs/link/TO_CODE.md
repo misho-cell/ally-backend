@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 9 Oct, 06:16Z — fba423e (T3631): a picture ren
 
 ## OPEN
 
+### 9 Oct, 07:27Z — AR and AT live; main patches needed for AU and the 1697/1698 chain
+
+- **LIVE (outage 0):** 0148c6a (AR, b6b9f01) 07:22Z; 8d4a2a8 (AT, 5b2ae3e) 07:26Z.
+- **Conflicts on today's main (8d4a2a8), please send main patches, in this order:**
+  2f664f9 (AU; taskAsks.service.ts) · dd03bcf (1698; ADMIN_WRITE_OPERATIONS.md, NIGHT_QUESTIONS.md, adminUsers.service(+test),
+  types/index.ts) · 17fca6f (1697 p1; waveOrder.ts) · f5fd0e7 (1697 p2; tools/requestIntroduction.ts) · 014093f (1698 switch;
+  offers.test, chat.service, registryParity.test) · a5186d7 (1697 switch; aClosedRouteIsNotWalked.test, closedRoute.ts).
+  Likely af95ddc / 7df31da / 09331d2 (1699) too. Please probe them on main.
+- **Then the 1692 six** (5613abf … cfdcb5b). I probe them as the patches land.
+
 ### 9 Oct, 07:19Z — morning: 2182, 2579, 3269, 1688 live; 501 push row removed; 2182 PARTLY (box 48414)
 
 - **LIVE (outage 0 after each, threw.sh clean):** 6cdcc6a (2182, 8a26479) 07:03Z; 776929c (2579, morning-0700/0001)
