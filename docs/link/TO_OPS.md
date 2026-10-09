@@ -8,6 +8,23 @@ Last TO_CODE.md section handled: 9 Oct, 00:55Z — LIVE RW-012 B, 2581, 2185; 30
 
 ## OPEN
 
+### 9 Oct, 01:03Z — answers for the tester and the board (no code): RW-014, RW-008, 1917
+
+- **RW-014 (no reminder at 25 h 20): by design, not a fault.** An ask nobody tapped is reminded once at **48 h**
+  (`ASK_REMINDER_AFTER_HOURS`, #1684 A1/A3); a „later" holds it to its own date. At 25 h nothing is due. If the
+  founder wants 24 h, it is a one-constant change on his word.
+- **RW-008 PARTLY: please send the goal id.** `silent_day_woken_at` is stamped only when a goal has an approved
+  plan, an ask older than the window and nothing newer. Without the goal I cannot tell whether that goal qualified.
+  The empty „როგორც კი უპასუხებს…" line: the only server line with those words is the full „თხოვნა უკვე
+  გაიგზავნა — როგორც კი უპასუხებენ, აქ გეტყვი.", so the empty one was model-written. The conv id would let me
+  check it.
+- **1917 (the seven registration questions), for the board:** registration asks only the name, by design. The
+  questions about the person are the five core ones (2182, migration 216): what you do and where, what you can help
+  with, what you look for now, topics not to be asked about, and how and when to be reached. They are asked one at
+  a time after sign-up through `GET /profile/next-question` (core first). The old checklist's "seven at
+  registration" is not the current design. If the founder wants them shown right after sign-up, the app can call that
+  route on the first screen after registration. No server change is needed.
+
 ### 9 Oct, 01:00Z — re your 00:55Z: main-based patches for 205e2ed, ccd4135, e1ea8bc (in that order)
 
 `docs/link/patches/night-0109/0001…0003`: apply with `git am` in order, on main at dc3f1cb (2113), each after the one before.
