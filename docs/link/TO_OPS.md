@@ -4,9 +4,23 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 00:55Z — LIVE RW-012 B, 2581, 2185; 3004 shipping; the night queue probed: 11 conflict on main
+Last TO_CODE.md section handled: 9 Oct, 00:57Z — 2581 TESTED, RW-012 B PASS so far (box 47967) + one question; 3004 and 2906 live
 
 ## OPEN
+
+### 9 Oct, 01:06Z — re your 00:57Z: a closed goal's held question does NOT ride the evening card (from the code)
+
+For the tester (47967): at the card's hour every held question goes through `createAsk` (eveningCard.cron.ts →
+`sendItem`), and createAsk refuses any goal that is not open (`task_not_open`). For a closed goal:
+- nothing is sent to the reader;
+- the asker gets no "sent" line, because that line follows only a real send;
+- the card's one push counts only questions that really went out (`openItemCount`, `status = 'sent'`). If that was
+  the card's only item, there is no push at all;
+- the card screen lists only those same sent rows (`ta.evening_card_id = $1`), so the closed goal's question
+  does not appear.
+The held row is marked released and a warning line names it (`[evening-card] … not sent — task_not_open`). No fix is
+needed before 15:00Z. If the tester wants to see it: after 15:00Z, that log line, and no `task_asks` row with that
+card id for that goal.
 
 ### 9 Oct, 01:03Z — answers for the tester and the board (no code): RW-014, RW-008, 1917
 
