@@ -80,6 +80,7 @@ jest.mock('../notification.service', () => ({
 jest.mock('../debrief.service', () => ({
   __esModule: true,
   armAskDebrief: jest.fn().mockResolvedValue(undefined),
+  armAnswerDebrief: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../answerRules.service', () => ({
   __esModule: true,

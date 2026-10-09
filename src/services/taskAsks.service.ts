@@ -97,7 +97,7 @@ import {
   RELAY_MESSAGES_PER_PERSON_PER_DAY,
 } from './askBudget.service';
 import { setThreadStatus } from './threadStatus.service';
-import { armAskDebrief } from './debrief.service';
+import { armAnswerDebrief, armAskDebrief } from './debrief.service';
 import { recordMutualWarmth } from './warmth.service';
 import { LATER_DEFAULT_DAYS, laterSentenceForAsker } from './askState';
 import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
@@ -1957,7 +1957,14 @@ export async function recordAskAnswer(
   // thread can carry several rounds of the same conversation, and round two's
   // answer belongs to round two's question. Without the ordering, one reply
   // would have overwritten every round at once.
-  const updated = await query<{ id: number; task_id: number; answer: string; to_user_id: number }>(
+  const declined = await answerIsADecline(askThreadId, safe);
+  const updated = await query<{
+    id: number;
+    task_id: number;
+    answer: string;
+    to_user_id: number;
+    from_user_id: number;
+  }>(
     // Ticket 20 row 115: the same line does not join the answer twice.
     //
     // 16 September, ask 1783: Ninia's „კი" arrived five times in six seconds —
@@ -2002,8 +2009,8 @@ export async function recordAskAnswer(
        WHERE ask_thread_id = $1 AND status IN ('sent', 'answered')
        ORDER BY id DESC LIMIT 1
      )
-     RETURNING id, task_id, answer, to_user_id`,
-    [askThreadId, safe, await answerIsADecline(askThreadId, safe)],
+     RETURNING id, task_id, answer, to_user_id, from_user_id`,
+    [askThreadId, safe, declined],
     ASK_QUERY_TIMEOUT_MS,
   );
   const row = updated.rows[0];
@@ -2021,6 +2028,15 @@ export async function recordAskAnswer(
     [row.id],
     ASK_QUERY_TIMEOUT_MS,
   );
+  // 1692 part 2: a first, real answer arms the owner's „how did it go?" (held until AV).
+  const who = check.rows[0]?.from_name?.trim() ?? '';
+  if (firstAnswer && !declined && who !== '') {
+    void armAnswerDebrief(String(row.from_user_id), row.id, row.task_id, who).catch(
+      (err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.warn(`[debrief] ask ${row.id}: answer debrief not armed:`, (err as Error).message),
+    );
+  }
   // The scrubbed verbatim text rides back so the wake event can carry it —
   // ticket 3 §5: the asker-side agent once presented the thread TITLE as the
   // answer; giving it the exact words in the event kills that failure mode.
