@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { instructionSentence, looksLikeContactInstruction } from './goalIntent';
+import { instructionSentence, looksLikeContactInstruction, asksForAPreview } from './goalIntent';
 import { RunLanguage } from './runLanguage';
 import { messageNamesOwnContact } from './tools/nameMatch';
 
@@ -25,19 +25,12 @@ const QUERY_TIMEOUT_MS = 4_000;
  * Netai itself. Neither is this guard's to answer.
  */
 const NOT_A_NETAI_ASK_RE = /(იმეილ|ი-მეილ|ელფოსტ|კალენდარ|სმს|\bsms\b|e-?mail|calendar)/iu;
-/**
- * 2906 (MTR #7): „ჯერ მაჩვენე, რას მისწერ X-ს" asks to SEE the message first;
- * it got the dead-end „the question was not sent", and the server could have
- * sent it unasked. A preview request is not an instruction to send.
- */
-const PREVIEW_RE =
-  /(მაჩვენე|ჯერ\s+მითხარი,?\s+რას|\b(?:show|let)\s+me\s+(?:first\s+)?(?:see\s+)?what\b|\bfirst\s+show\s+me\b|\bpreview\b|покажи|muéstrame)/iu;
 /** Words addressed to Netai itself; an instruction is judged without them. */
 const SAID_TO_NETAI_RE = /\b(?:tell|ask|send|give|show)\s+me\b/giu;
 
 /** The owner's line, or its instruction sentence, when it tells us to ask one of their contacts. */
 export function contactInstructionIn(ownerLine: string): string | null {
-  if (PREVIEW_RE.test(ownerLine)) return null;
+  if (asksForAPreview(ownerLine)) return null;
   const sentence = instructionSentence(ownerLine.trim());
   if (NOT_A_NETAI_ASK_RE.test(sentence)) return null;
   return looksLikeContactInstruction(sentence.replace(SAID_TO_NETAI_RE, ' ')) ? sentence : null;
