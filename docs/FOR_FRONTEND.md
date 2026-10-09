@@ -216,6 +216,7 @@ The server half is built. "Live" gets posted in the box after the deploy.
   - Every card in `due`, `followed` and `seen` carries `followed: true|false`.
   - A card that is due right now stays in `due` (with `followed: true`) and is not repeated in `followed`.
 - `GET /updates/count` gains `followed`, e.g. `{ "due": 1, "held": 3, "followed": 2 }`. The sidebar "განახლებები N" is `due + followed`.
+  *8 Oct addendum (D716):* `followed` now also counts every conversation the owner flagged (`PUT /threads/:id/follow`), so a flag on a conversation shows in the same one number until it is cleared. Nothing changes on your side.
 
 **დავალება / conversation rows**
 - `PUT /threads/:id/follow` → `200 { "success": true, "data": { "followed": true } }`
@@ -830,7 +831,7 @@ its first 500. If more than 500 are new, the answer carries
 `remaining: <n>`; send the same file again and the next 500 go in. Absent
 `remaining` means everything new is in.
 
-*8 Oct, 22:40Z addendum (the tester's 47594):* a first import of 510 cards stopped at 163 when the
+*8 Oct, 22:26Z addendum (the tester's 47594):* a first import of 510 cards stopped at 163 when the
 server restarted for a deploy, and no answer came back to the upload. The server now saves cards
 four at a time and no longer lets their background scoring crowd the import, so a 500-card file
 should take a few minutes instead of about twelve. **Asked of you:** if the upload request fails, times out or
