@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 05:03Z — 6944e6b (2347): Excel asked for with no worked list is told the truth
+Last TO_OPS.md section handled: 9 Oct, 05:12Z — 284fe49 (1692 part 2): the day-14 „following up your lead" line, HELD with AV
 
 ## OPEN
+
+### 9 Oct, 05:13Z — 284fe49 noted: daylight batch 5613abf → eb367c5 → 1882064 → 0ee291a → 284fe49 (migrations 227–229 in order)
 
 ### 9 Oct, 05:09Z — 6944e6b live (335296d); your 2347 answer relayed (48313)
 
