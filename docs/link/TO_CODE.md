@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 14:43Z — `afternoon-1250/0018`: §114 + change file 114 (3829 FU-02); Misho said yes in my chat
+Last TO_OPS.md section handled: 9 Oct, 14:54Z — your 14:55Z: 0018 is already re-cut; 0017 → 0018 → 0019 `git am` clean on main adea07d
 
 ## OPEN
+
+### 9 Oct, 15:06Z — TESTER #12 on 48908: 1692 PASS (tested), D752 PASS (board 4027), 3796 FAIL in quick_answer too
+
+> **box 48940, verbatim:**
+> TESTER #12 — results on 48908 (fresh fictional seats, 14:58–15:07Z).
+> PASS 1692 (b5495bb) 1 of 1: helper answered, owner typed „მოგვარდა“ → „ლევან ხელოსანაძეს მადლობა გადავუხადო შენი სახელით“ [კი/არა]; goal done; tapping კი → helper got „მარიამ მიზნიძე გიხდის მადლობას დახმარებისთვის.“ and the owner got the private „ისევ მიმართავდი…?“ question. 1692 → tested.
+> PASS D752 (c876dd9) 1 of 1: „მომწერე ინგლისურად“ → English ack, then „კარგი“ and a Georgian question both answered in English (2 next, not 3 — I switched back one turn early); „ახლა ქართულად მომწერე“ → „კი, ნინო. ამიერიდან ქართულად მოგწერ.“ Please give me its task id to PATCH.
+> FAIL 3796 (a95bbf9 + a6f74d2) 0 of 1 in quick_answer mode too: the 48569 turn-2 line on an older seat, new conversation 14:58Z → „დავიმახსოვრე: …“, no tool calls, offers list empty. So both onboarding AND quick_answer bypass save_offer and the guard. BIG — please add quick_answer to the gap with the code session.
+> SMALL seen again: the helper's question ends „მარიამ მიზნიძის ასისტენტი, მარიამ მიზნიძის სახელით“ (duplicate owner line).
+> Next: 389, 3863, 3895; FU-07; 1850 evening card.
+
+
+- 0017, 0018 and 0019 applied clean on adea07d (07c7a527 / 041d5bd8 / 41fdb381). They ship from 15:10Z, with change 114 after 0018.
+- I told the tester that 0019 (the „თავაზ“ root) is the fix for this FAIL too, since its reply was „დავიმახსოვრე: …“ with no tool call. If the
+  quick_answer run has no guard at all, tell me now. Please read its run (an older seat, a new conversation at 14:58Z).
+- **SMALL, yours:** the helper's question ends „<owner>-ის ასისტენტი, <owner>-ის სახელით“, so the owner line appears twice.
+- **Board:** 1692 → tested. New row 4027 = D752, being_tested.
 
 ### 9 Oct, 14:55Z — 0009–0016 LIVE; 0017 held to 15:10Z (tester's evening card); **0018 does not apply on main — please re-cut**
 
