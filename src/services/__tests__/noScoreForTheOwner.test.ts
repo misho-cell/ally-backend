@@ -28,6 +28,28 @@ describe('no score for the owner', () => {
     ).toBe('You ask before you act.');
   });
 
+  it('drops a type pinned on the owner in place of the score (47978, 46816)', () => {
+    const reply =
+      'შენ პრაქტიკული ნეთვორქერი ჩანხარ.\n\nკავშირებს ძირითადად მაშინ იყენებ, როცა კონკრეტული საქმე გაქვს მოსაგვარებელი. ' +
+      'შენთვის მნიშვნელოვანია სანდოობა და ხარისხი. მოკლედ, შედეგზე ორიენტირებული ადამიანი ხარ ნეთვორქში.';
+    const kept = withoutScores(reply);
+    expect(kept).not.toMatch(/ჩანხარ|ადამიანი ხარ/u);
+    expect(kept).toContain('კავშირებს ძირითადად მაშინ იყენებ');
+    expect(kept).toContain('შენთვის მნიშვნელოვანია სანდოობა და ხარისხი.');
+    expect(withoutScores('You come across as a practical networker. You ask before you act.')).toBe(
+      'You ask before you act.',
+    );
+  });
+
+  it('drops the trace a dropped score leaves (47978, 46817)', () => {
+    const reply =
+      'You are willing to use your network for practical help, which is the core habit. ' +
+      'I do not yet have enough evidence of how you build relationships to rate you higher with confidence.';
+    expect(withoutScores(reply)).toBe(
+      'You are willing to use your network for practical help, which is the core habit.',
+    );
+  });
+
   it('leaves a reply with no score alone', () => {
     const reply = 'პირდაპირი ხარ. 3 დღეში დაგიბრუნდები.';
     expect(withoutScores(reply)).toBe(reply);
