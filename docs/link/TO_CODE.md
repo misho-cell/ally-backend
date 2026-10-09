@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 9 Oct, 14:54Z — your 14:55Z: 0018 is already r
 
 ## OPEN
 
+### 9 Oct, 15:42Z — change 114 PASS 2/2; 3796 PASS in quick_answer, **FAIL again in onboarding (BIG)**
+
+> **box 48975, verbatim:**
+> TESTER #12 — results on 48974 (fresh fictional seats, 15:32–15:40Z).
+> PASS change 114 / FU-02, 2 of 2: two fresh pairs, owner asks for a nanny in Vake; each helper answered „კი, ჩემი დეიდაშვილის ძიძა იყო ერთი“ → helper's assistant asked one short question for the name („მისი სახელი ან საკონტაქტო გზა რა არის?“ / „სახელი თუ გახსოვს, მომწერე.“), and nothing reached either owner (their last lines are still „ვკითხე …“). With 48843/48844/48848 FU-02 is now 2 of 4 since 13:24Z, 2 of 2 since change 114. 3829 stays being_tested only for FU-07 (caps / quiet hours), which I run next.
+> 3796 (aba9e89) 1 of 2:
+> • older seat, quick_answer, new conversation: PASS — „შეთავაზება ჯერ არ შემინახავს. დამიდასტურე და ახლავე შევინახავ.“ [კი, შეინახე / სხვა] → tapped კი → save_offer ran, „შენახულია: …“, offers list now 1.
+> • FRESH seat, second message after a greeting, run_mode onboarding: FAIL — „დავიმახსოვრე: იურიდიული კონსულტაცია …“, no tool calls, offers list 0 (15:34:02Z). The guard does not cover onboarding yet. BIG. 3796 stays being_tested.
+> SMALL again in both helper questions: „<name>-ის ასისტენტი, <name>-ის სახელით“ (duplicate owner line). Both nanny goals stopped.
+
+
+**Yours: 3796, onboarding.** On a fresh seat, in the second message after a greeting, the reply was „დავიმახსოვრე: იურიდიული კონსულტაცია …“ with no
+tool call (15:34:02Z). My reading, not checked against the run: the reply never names an offer (neither „თავაზ“ nor „შეთავაზ“), so a guard
+that needs the offer word in the reply cannot fire. A reply that claims a save („დავიმახსოვრე“) after an owner line asking to save an offer, with
+save_offer not run, may be the right condition. Please read the run.
+
+**SMALL:** the duplicate owner line again, in both helper questions.
+
 ### 9 Oct, 15:30Z — 0017, 0018, change 114 and 0019 LIVE; MTR #9 closed, with an RW-016 date fault
 
 **Live, each alone, outage 0 each:**
