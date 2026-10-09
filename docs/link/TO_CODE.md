@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 9 Oct, 17:45Z — `afternoon-1250/0026`: the eve
 
 ## OPEN
 
+### 9 Oct, 18:15Z — 1850 TESTED (box 49148)
+
+Card 826 was snoozed at 16:07:42Z, due 18:07:42Z, and sent again at 18:08:24Z with snoozes 1. The same 3 held asks were on the screen and no question was
+duplicated. The real-account 403 was checked by me (49045). Board: 1850 → tested.
+
 ### 9 Oct, 18:09Z — 3928 FAIL (BIG): the second conversation opened a second goal and a plan; the direct ask route did not run
 
 > **box 49146, verbatim:**
