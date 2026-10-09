@@ -11,7 +11,11 @@ import {
 } from './helperThanksCards';
 import { sendPushNotification } from './notification.service';
 import { RunLanguage } from './runLanguage';
-import { ASKED_AS_THE_ASKER_SAVED_THEM, ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
+import {
+  ASKED_AS_THE_ASKER_SAVED_THEM,
+  ASKER_AS_THE_READER_SAVED_THEM,
+  nameAsSavedBySql,
+} from './savedNameSql';
 import { saveThreadMessage, userLanguage } from './threads.service';
 
 /**
@@ -76,6 +80,8 @@ export async function offerHelperThanks(askerUserId: string, askId: number): Pro
 
 interface OpenThanks {
   readonly id: number;
+  readonly ask_id: number;
+  readonly asker_user_id: number;
   readonly helper_user_id: number;
   readonly helper_thread_id: number | null;
   readonly helper_name: string | null;
@@ -88,7 +94,7 @@ async function thanksWaitingHere(
   state: 'offered' | 'decided',
 ): Promise<OpenThanks | null> {
   const result = await query<OpenThanks>(
-    `SELECT ht.id, ht.helper_user_id, ta.ask_thread_id AS helper_thread_id,
+    `SELECT ht.id, ht.ask_id, ht.asker_user_id, ht.helper_user_id, ta.ask_thread_id AS helper_thread_id,
             ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper_name,
             ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
        FROM helper_thanks ht JOIN task_asks ta ON ta.id = ht.ask_id
@@ -100,19 +106,67 @@ async function thanksWaitingHere(
   return result.rows[0] ?? null;
 }
 
-/** The one line to the helper, in the helper's language, rung once. */
-async function thankTheHelper(row: OpenThanks): Promise<boolean> {
-  const asker = row.asker_name?.trim() ?? '';
-  if (row.helper_thread_id === null || asker === '') return false;
-  const language = await userLanguage(String(row.helper_user_id));
+interface Thanked {
+  readonly user_id: number;
+  readonly thread_id: number | null;
+  readonly asker_name: string | null;
+}
+
+/** One line to one person, in their language, rung once. */
+async function thankOne(person: Thanked): Promise<boolean> {
+  const asker = person.asker_name?.trim() ?? '';
+  if (person.thread_id === null || asker === '') return false;
+  const language = await userLanguage(String(person.user_id));
   const text = thanksToHelperLine(language, asker);
-  await saveThreadMessage(row.helper_thread_id, row.helper_user_id, 'assistant', text);
-  await sendPushNotification(String(row.helper_user_id), {
+  await saveThreadMessage(person.thread_id, person.user_id, 'assistant', text);
+  await sendPushNotification(String(person.user_id), {
     title: 'Netai',
     body: text.slice(0, PUSH_BODY_CHARS),
-    url: `/chat/${row.helper_thread_id}`,
+    url: `/chat/${person.thread_id}`,
   }).catch(() => undefined);
   return true;
+}
+
+/** A chain is never longer than this many relays (the relay cap). */
+const MAX_CHAIN_PEOPLE = 6;
+
+/**
+ * 1692: „one message to the helper and to each bridge of the chain". The ask
+ * the asker sent may have been relayed on; everyone it went through who
+ * answered is thanked, each in their own conversation, the asker named as
+ * each of them saved her.
+ */
+async function downstreamOf(row: OpenThanks): Promise<Thanked[]> {
+  const result = await query<Thanked>(
+    `WITH RECURSIVE chain AS (
+       SELECT id, to_user_id, ask_thread_id, status, 1 AS depth FROM task_asks WHERE parent_ask_id = $1
+       UNION ALL
+       SELECT a.id, a.to_user_id, a.ask_thread_id, a.status, c.depth + 1
+         FROM task_asks a JOIN chain c ON a.parent_ask_id = c.id
+        WHERE c.depth < $3
+     )
+     SELECT DISTINCT ON (ch.to_user_id) ch.to_user_id AS user_id, ch.ask_thread_id AS thread_id,
+            ${nameAsSavedBySql('ch.to_user_id', '$2::int')} AS asker_name
+       FROM chain ch
+      WHERE ch.status = 'answered' AND ch.to_user_id <> $2::int
+      ORDER BY ch.to_user_id, ch.id
+      LIMIT $3`,
+    [row.ask_id, row.asker_user_id, MAX_CHAIN_PEOPLE],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** The helper (the person asked) and everyone further down the chain. */
+async function thankTheHelper(row: OpenThanks): Promise<boolean> {
+  const first = await thankOne({
+    user_id: row.helper_user_id,
+    thread_id: row.helper_thread_id,
+    asker_name: row.asker_name,
+  });
+  const further = await downstreamOf(row).catch(() => []);
+  for (const person of further) await thankOne(person);
+  return first;
 }
 
 /** What the asker reads after a tap, and the buttons that come with it. */
