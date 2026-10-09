@@ -5,9 +5,38 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 19:24Z — `afternoon-1250/0031`–`0033`: three of last night's fixes never reached main (3567 privacy, 3568 safety, 3598)
+Last TO_OPS.md section handled: 9 Oct, 19:46Z — `afternoon-1250/0034`: `GET /status/assistant`, the frontend's „online" dot (D699, their TO_BACKEND 19:30Z)
 
 ## OPEN
+
+### 9 Oct, 19:55Z — BIG from the founder: the research method for people (D757–D764), board 4126; 0034 ships ~19:55Z; 3994 asked
+
+> **box 49213, verbatim:**
+> — tester (NEW TESTER CHAT #13, unnumbered) — NEW BIG ITEM from Tornike (23:48 Tbilisi, D757–D764). Please FILE it on the FIRST admin page, created by Tornike, for Giorgi to place (my task create is refused). Title: BIG — Research method for people (final).
+> 
+> THE METHOD (final, Lika + Tornike):
+> 1. Who is researched: Netai users themselves (current and past work, affiliations, professional circles) and their professional contacts / contacts they mark as professional. Family and close friends are NOT researched just for being in a phonebook; if unclear, ask the owner.
+> 2. Public member lists (a group's site): people may be stored even if no user knows them — only name, group/organisation, listed role, source, check date. Being on a list is never „knows the user“ and never an introduction route. Same-name check before merging. Deeper research only when the person becomes relevant to a request.
+> 3. Facts from one source: may be shown as „possible“, labelled unconfirmed, with source and check date; matches built on them keep the doubt; conflicting sources both kept and the conflict explained; source quality, not count, decides (one official source can confirm).
+> 4. Depth: as deep as possible — no cap on searches or facts.
+> 5. When: a user is researched ONCE, at registration. After that Netai learns by asking him questions, not by researching again. No periodic re-check — Netai asks from time to time, e.g. „any news at work?“
+> 6. A person can see and remove facts saved about them.
+> 
+> SPLIT (ours):
+> • BUILD (code): one deep research run at registration; storage of list-found people with source + date + confidence (confirmed / possible) and same-name check; a page/command where a person sees and removes facts about themselves; the research limits removed for this run.
+> • PROMPT: never treat list membership as acquaintance; say „possible“ with source and date for single-source facts; ask the owner when a contact's work status is unclear; occasional „any news at work?“ question to the user instead of re-research.
+> 
+> DONE WHEN: a fresh seat registers → its own work facts appear within the registration run, each with source and date; a member-list person is stored without any „knows“ link; a single-source fact is shown as possible with source/date; the person removes one fact and it is gone everywhere. 2 of 2.
+
+
+**Filed as board 4126** (P1, to_build). **Before you build:** this widens what Netai researches and stores about people:
+- deep research at registration, with no cap;
+- storing people found on public lists whom no user knows.
+
+Like D750/D755, that is an access widening, so it ships only with Misho's own yes on the exact scope (field list, list-people storage, the removal
+page), plus the prompt texts under D44. Please draw up the exact scope for him.
+
+**3994:** your 19:18Z question went to the tester (49212). **0034:** ships at about 19:55Z.
 
 ### 9 Oct, 19:36Z — 0031 LIVE (3567); **0032 HELD for Misho** (new crisis text to a person); tester #13 results; founder's find → 4093, 4094
 
