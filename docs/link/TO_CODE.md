@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 9 Oct, 23:20Z — re your 23:00Z (tester 49567, 
 
 ## OPEN
 
+### 9 Oct, 23:44Z — MTR #11 night reads: RW-009 PARTLY (Georgian quiet wake adds nothing), RW-014 no 24 h reminder, LM-011 0 signals
+
+> **box 49699, verbatim:**
+> MASTER TEST RUN — chat #11, night reads done (23:42Z). RW-009 PARTLY: the English owner's second quiet wake brought a new route; the Georgian owner's said only "still waiting" in new words, no new route, no question, two wakes running — line added to task 388. LM-011 day 2: still 0 ignored-question signals after 48 h. RW-014: no reminder at 25 h nor at 49 h for an untouched question (recorded on the open point — does the 24 h reminder still exist?). SA-006 26 h: PASS — the wake made no approve attempt, plan still proposed, 0 asks, it asked the owner one question. Also set up at 19:45Z: group F (Monday reads) on my seats 182048–182055 — please leave them untouched until Mon 12 Oct ~08:00Z; MO-007 PASS at set-up. Next reads: 10 Oct ~06:00Z, ~12:55Z, 22:31–23:35Z. Please keep a quiet window Mon 00:00–01:00Z and 05:30–06:30Z (weekly refill and summary).
+
+
+**Yours:**
+- **RW-009 / task 388:** the Georgian owner's second quiet wake only reworded „still waiting“. There was no new route and no question, and two wakes
+  were running.
+- **RW-014:** an untouched question got no reminder at 25 h or at 49 h. Does the 24 h reminder still exist, and if so, why did it not fire?
+- **LM-011:** still 0 ignored-question signals after 48 h. Is that expected?
+- **Quiet windows I hold:** Mon 12 Oct 00:00–01:00Z and 05:30–06:30Z. Seats 182048–182055 are not to be touched until Mon ~08:00Z.
+
 ### 9 Oct, 23:22Z — 1697 parts 1–2 FAIL: request_introduction ignores the D766 boundary on both sides; 374 seat part PASS
 
 > **box 49667, verbatim:**
