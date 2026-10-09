@@ -74,6 +74,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { asksToReopen } from './reopenIntent';
 import { withoutMatchJustification } from './planJustification';
+import { withOwnersNetwork } from './planVoice';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
@@ -7452,16 +7453,18 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
  */
 function withPlanInReply(
   runId: string,
-  reply: string,
+  written: string,
   offered: readonly string[] | null | undefined,
 ): string {
   const plan = runPlanForReply.get(runId);
-  if (!plan) return reply;
+  if (!plan) return written;
   // The tester's 954: the question was added under a reply that offered web
   // leads with buttons of its own — a plan was proposed in the run, but the
   // reply was not asking for it to be approved. Only a reply carrying the
   // approve button is a plan reply.
-  if (!replyAsksForApproval(offered)) return reply;
+  if (!replyAsksForApproval(offered)) return written;
+  // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
+  const reply = withOwnersNetwork(written);
   if (replyCarriesPlan(reply, plan)) {
     // D739: the plan is its one sentence and one question — no sentence explaining the match.
     return withClosingQuestion(withoutMatchJustification(reply), runLang(runId));

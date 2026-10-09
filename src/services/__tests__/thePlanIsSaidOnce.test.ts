@@ -174,7 +174,7 @@ describe('only a reply that asks for approval is a plan reply', () => {
   it('is checked before anything is added to the reply', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     const fn = chat.slice(chat.indexOf('function withPlanInReply('));
-    expect(fn.slice(0, 900)).toContain('if (!replyAsksForApproval(offered)) return reply;');
+    expect(fn.slice(0, 900)).toContain('if (!replyAsksForApproval(offered)) return written;');
   });
 });
 
