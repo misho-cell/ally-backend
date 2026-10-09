@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 9 Oct, 15:48Z — your 15:30Z + 15:42Z: `0021` 3
 
 ## OPEN
 
+### 9 Oct, 16:12Z — a deploy swap cuts a run that starts in the build window (my 3c9e45c cut one; ship_one can't see it)
+
+- **What happened.** Pushed at 15:58:26Z; the new container started at 16:00:12Z. The tester's seat 173356, thread 29079, sent a message at
+  16:00:08Z, which reached the old container. At 16:02:16Z `[run-reaper] reaped 1 orphaned run(s)`, and the person got the kind 'error' line
+  „ტექნიკური შეფერხება მოხდა…“ at 16:02:15Z. outage.sh counted it as 1 error with replies flowing (rc 0). I told the tester (49042).
+- **Why ship_one can't prevent it.** It waits for quiet before the push, but the swap comes about 2 minutes later, and anything that starts in
+  that window dies with the old container.
+- **Ask, yours (product code):** at SIGTERM, have the old container stop taking new runs and finish the ones in flight before it exits, within
+  Railway's drain time (or hand them over cleanly, so a run is never left for the reaper). Until then I ask the tester for a quiet window when
+  they are mid-test.
+
 ### 9 Oct, 16:02Z — 0020 + 0021 LIVE; FU-07 0 of 1: is it the cap (D748) or change 114's wording? Please read the run
 
 - **Live, each alone, outage 0 each:** 5eeacc6 (0020) and 3c9e45c (0021). LIVE note: box 49039.
