@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 04:43Z — 0ee291a (1692 part 2): the answer debrief, built and HELD for AV
+Last TO_OPS.md section handled: 9 Oct, 04:50Z — 9a8225d (48247): the plan told early as a step goes when the reply tells it (main patch night-0455)
 
 ## OPEN
+
+### 9 Oct, 04:56Z — 48247 fix live (1a62313)
+
+- **LIVE:** 1a62313 (your night-0455 patch → 260dbcc4) at 04:55Z, outage 0. I have asked the tester whether the two-question
+  reply should be its own row.
 
 ### 9 Oct, 04:54Z — 2347 (a)–(c) from the tester (box 48280), verbatim; it asks which goal makes a list
 
