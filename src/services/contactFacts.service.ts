@@ -208,7 +208,10 @@ async function upsertFact(
      ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)
        WHERE field_type IN ('occupation', 'employer', 'city', 'industry')
      DO UPDATE SET value = $4, is_public = false, canonical_value = null, updated_at = NOW(),
-                   source = $5, confidence = $6, is_matchable = $7`,
+                   source = $5, confidence = $6, is_matchable = $7,
+                   -- 4226: a new value saved over a retracted one is the owner's
+                   -- new word; left retracted it reported „saved" and showed nowhere.
+                   retracted_at = NULL`,
     [
       neo4jContactId,
       userId,
