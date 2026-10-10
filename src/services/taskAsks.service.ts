@@ -11,6 +11,7 @@ import {
 } from './helpersVoice';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
+import { firstNamesIn } from './firstNameNamed';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { AskKind, askKindOf } from './askKind';
 import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
@@ -125,6 +126,7 @@ const GOAL_LOOKS_AFTER_CARD_MS = 5 * 60_000;
 const MIN_NAMED_LABEL_CHARS = 4;
 /** Enough labels to judge one sentence by; a sentence names one or two people. */
 const MAX_NAMED_LABEL_CANDIDATES = 20;
+const FIRST_NAME_MATCHES_READ = 3;
 /**
  * How far before the goal's creation the owner's typed line may be. The line is
  * saved before the run that opens the goal, and a run with web searches can
@@ -725,6 +727,29 @@ async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
   return result.rows[0]?.content ?? null;
 }
 
+/**
+ * 4357 (tester box 51184, conv 49179): „ჰკითხე ნიკას" for the contact saved as
+ * „ნიკა ხელოსანი". The whole label is not in the line, so the owner was asked
+ * to say yes twice more. A first name the line names counts when exactly ONE
+ * of the owner's contacts has a label starting with it, and that is this
+ * person — two Nikas still name nobody.
+ */
+async function onlyContactByFirstName(line: string, person: NamedPerson): Promise<boolean> {
+  const names = firstNamesIn(line);
+  if (names.length === 0) return false;
+  const phones = await query<{ phone: string }>(
+    `SELECT DISTINCT ua.phone
+       FROM "UserAlias" ua
+      WHERE ua."contactId" = $1::int
+        AND SPLIT_PART(LOWER(TRIM(ua.alias)), ' ', 1) = ANY($2::text[])
+      LIMIT $3`,
+    [person.fromUserId, names, FIRST_NAME_MATCHES_READ],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  const distinct = new Set(phones.rows.map((row) => phoneDigits(row.phone)));
+  return distinct.size === 1 && distinct.has(phoneDigits(person.contactPhone));
+}
+
 /** Is this line an instruction that names exactly this person, by the owner's own label? */
 async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<boolean> {
   if (!looksLikeContactInstruction(line)) return false;
@@ -748,7 +773,7 @@ async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<b
   );
   const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
   const best = labels[0];
-  if (best === undefined) return false;
+  if (best === undefined) return onlyContactByFirstName(line, person);
   const runnerUp = labels[1];
   // Two labels of the same length both inside the sentence name nobody.
   if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
