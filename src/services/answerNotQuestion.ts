@@ -11,7 +11,7 @@
  */
 export const ANSWER_NOT_QUESTION_ON = false;
 
-/** ⚠\uFE0F MODEL-FACING (D44), NOT YET APPROVED — NIGHT_QUESTIONS BL. */
+/** ⚠️ MODEL-FACING (D44), NOT YET APPROVED — NIGHT_QUESTIONS BL. */
 export const ANSWER_NOT_QUESTION_NOTE =
   'არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის სახელით პასუხობ — ეს პასუხი უნდა ' +
   'იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ' +
