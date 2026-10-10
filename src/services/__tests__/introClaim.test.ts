@@ -39,8 +39,8 @@ describe('the truth the owner reads instead', () => {
     expect(line.confirm.length).toBeGreaterThan(0);
   });
 
-  it('is off until Misho’s yes on the exact lines', () => {
-    expect(INTRO_CLAIM_GUARD_ON).toBe(false);
+  it('is on, on Misho’s yes to the exact lines (§125)', () => {
+    expect(INTRO_CLAIM_GUARD_ON).toBe(true);
   });
 
   it('reads the run’s own successful request, after the offer guard', () => {

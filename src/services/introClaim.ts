@@ -11,9 +11,9 @@ import { NotDeletedLine } from './deletionClaim';
  * that run. Otherwise the owner reads the truth with a button to confirm, and
  * the next run makes the request the ordinary way.
  *
- * Off until Misho's yes on the exact lines below (a new text real people read).
+ * On, on Misho's yes to the exact lines below (§125).
  */
-export const INTRO_CLAIM_GUARD_ON = false;
+export const INTRO_CLAIM_GUARD_ON = true;
 
 const REQUEST_WORDS = '(?:გაცნობის\\s+(?:მო)?თხოვნ\\p{L}*|introduction\\s+request)';
 const SENT_WORDS =

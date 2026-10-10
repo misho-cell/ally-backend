@@ -6206,3 +6206,13 @@ automatically."
 
 - **What turns on:** `SEE_HELPER_ON = true` (listItems.service.ts). In the list Excel, a row whose need column names a helper, with way-in „nobody" and state „no route", says „იხ. დამხმარე" in those two cells. The other languages say „see the helper" / „см. помощника" / „ver quién ayuda". Every other row is unchanged.
 - **Undo:** `SEE_HELPER_ON = false`, one line, and ship.
+
+**§125 — 10 October ~07:53 UTC, Misho in the code session's chat: „BG კი"** (NIGHT_QUESTIONS BG, 4258).
+
+- **What turns on:** `INTRO_CLAIM_GUARD_ON = true` (introClaim.ts). When a reply says an introduction request went and
+  request_introduction did not succeed in that run, the owner reads this line with one button instead: „გაცნობის თხოვნა ჯერ არ
+  გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი." — „კი, გააგზავნე". In English: „I have not sent the introduction request yet. Confirm
+  and I will send it now." — „Yes, send it". In Russian: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." —
+  „Да, отправь". In Spanish: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala".
+- No model-facing text. Every other reply is unchanged.
+- **Undo:** `INTRO_CLAIM_GUARD_ON = false`, one line, and ship.

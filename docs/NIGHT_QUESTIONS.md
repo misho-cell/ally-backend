@@ -109,7 +109,7 @@ while its questions are unanswered is a list that loses them.
   The server then runs the existing closed-route check (1697, §110) on that pair before the plan is shown. A closed route comes back
   to the model with the already-approved §110.1 line, so it never reaches the plan card. Routes without the field behave as today.
 
-- **BG — 4258, a false „introduction request sent". Built OFF 10 Oct 07:50 UTC (`INTRO_CLAIM_GUARD_ON`), for Misho's yes.** When a
+- **BG — 4258, a false „introduction request sent". Built 10 Oct 07:50 UTC; ON by Misho's „BG კი" ~07:53 UTC, §125.** When a
   reply says an introduction request went and none went in that run, the owner reads this line with one button instead, like 3302's
   „deleted" and 3796's „saved". These are new texts that real people read:
   > ka: „გაცნობის თხოვნა ჯერ არ გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი." — button „კი, გააგზავნე"
