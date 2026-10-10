@@ -318,6 +318,7 @@ import {
   writeOldProfile,
   writeStaleFact,
 } from '../../services/seatFixtures.service';
+import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -7133,6 +7134,49 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
     // eslint-disable-next-line no-console
     console.error('[fixtures/old-profile]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+/**
+ * 1691 (tester 49931): GET /admin/goals/:id/wave-ranking — the server's own
+ * ranking of a fictional seat's plan, with the signals behind each place.
+ */
+const WAVE_RANKING_STATUS: Readonly<Record<WaveRankingOutcome, number>> = {
+  [WaveRankingOutcome.Read]: 200,
+  [WaveRankingOutcome.NotFound]: 404,
+  [WaveRankingOutcome.NotATestSeat]: 403,
+  [WaveRankingOutcome.NoPlan]: 404,
+};
+
+const WAVE_RANKING_ERROR: Readonly<Record<WaveRankingOutcome, string>> = {
+  [WaveRankingOutcome.Read]: '',
+  [WaveRankingOutcome.NotFound]: 'No such goal',
+  [WaveRankingOutcome.NotATestSeat]: 'Only a fictional test seat’s goal is read here',
+  [WaveRankingOutcome.NoPlan]: 'The goal has no plan with people in it',
+};
+
+adminRouter.get('/goals/:id/wave-ranking', async (req: Request, res: Response) => {
+  const taskId = Number(req.params.id);
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    res.status(400).json({ success: false, error: 'A goal id is needed' });
+    return;
+  }
+  try {
+    const result = await goalWaveRanking(taskId);
+    if (result.outcome !== WaveRankingOutcome.Read) {
+      res
+        .status(WAVE_RANKING_STATUS[result.outcome])
+        .json({ success: false, error: WAVE_RANKING_ERROR[result.outcome] });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      data: { task_id: taskId, field: result.field, ranking: result.ranking },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[wave-ranking]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The ranking could not be read' });
   }
 });
 
