@@ -135,3 +135,15 @@ describe('small talk answered with no tools', () => {
     );
   });
 });
+
+/** 958: „no goal" for small talk is known from the line alone, so it reads no history first. */
+describe('the goal decision on small talk', () => {
+  it('says no goal before reading the conversation for „discuss first"', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const body = chat.slice(chat.indexOf('async function ensureGoalForRequest'));
+    expect(body.indexOf('if (isSmallTalk(userMessage))')).toBeGreaterThan(0);
+    expect(body.indexOf('if (isSmallTalk(userMessage))')).toBeLessThan(
+      body.indexOf('await conversationIsDiscussion(threadId, userMessage)'),
+    );
+  });
+});

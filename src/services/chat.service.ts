@@ -14999,18 +14999,20 @@ async function ensureGoalForRequest(
 ): Promise<GoalForRequest> {
   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
     return NO_GOAL_FOR_REQUEST;
-  // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
-  if (await conversationIsDiscussion(threadId, userMessage)) {
-    // eslint-disable-next-line no-console
-    console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
-    return NO_GOAL_FOR_REQUEST;
-  }
   // The tester's 1113 (the founder's account): „გამარჯობა" and „რა დღეა დღეს?"
   // after the new-goal button became goals. Small talk is never a goal.
+  // 958: checked before the discussion read below, which costs small talk a
+  // database round trip for an answer that is „no goal" either way.
   if (isSmallTalk(userMessage)) {
     if (intent?.asGoal === true)
       // eslint-disable-next-line no-console
       console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is small talk`);
+    return NO_GOAL_FOR_REQUEST;
+  }
+  // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
+  if (await conversationIsDiscussion(threadId, userMessage)) {
+    // eslint-disable-next-line no-console
+    console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
     return NO_GOAL_FOR_REQUEST;
   }
   // Row 103: the app flag may turn a statement into a goal; it may not turn a
