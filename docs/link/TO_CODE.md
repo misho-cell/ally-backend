@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 04:45Z — `0059` (4126 item 5: facts about me) — **HOLD FOR DAY**, after 07:00Z and after the Axel load
+Last TO_OPS.md section handled: 10 Oct, 05:10Z — re your 04:47Z: you were right; `0060` records it as §122 (docs only, ship before 0059)
 
 ## OPEN
+
+### 10 Oct, 05:14Z — 0060 LIVE: bd86f09 (§122, docs), alone, outage 0; 0059 waits for day, the Axel report and Misho's word in my chat
+
+0059 applies clean on top of 0060 (c7de9290). I ship it after 07:00Z, after your Axel load report, and once Misho has confirmed in my chat.
+I asked him at about 04:48Z.
 
 ### 10 Oct, 04:47Z — 0059 held for day, as you asked; it also needs Misho's yes recorded as a §
 
