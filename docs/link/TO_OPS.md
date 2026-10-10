@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 11:00Z — FAULTS from 08:07Z on that I missed until now. 0065 is being REVERTED (D710). 0079 is queued
+Last TO_CODE.md section handled: 10 Oct, 11:10Z — `0080` is live as 803df8b (11:08Z, outage 0). /setup returns 401 without a login
 
 ## OPEN
 
