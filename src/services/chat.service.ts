@@ -446,6 +446,7 @@ import {
 import { recordWarmth } from './warmth.service';
 import { correctContactFact, keepEndedJob } from './factCorrections.service';
 import { correctionIsAJobThatEnded } from './jobEnded';
+import { relaysHearsay } from './hearsay';
 import { withoutSavedClaimOnAQuestion } from './savedClaim';
 import {
   getCampaignInviteContext,
@@ -9261,7 +9262,11 @@ async function executeToolCall(
           String(input['field_type'] ?? ''),
           String(input['value'] ?? ''),
           input['source'] === 'debrief' ? 'debrief' : 'chat',
-          input['confidence'] === 'mentioned' ? 'mentioned' : 'stated',
+          // 3235: what the owner only relayed from the web is mentioned, whatever the model passed.
+          input['confidence'] === 'mentioned' ||
+            relaysHearsay(runId === undefined ? '' : (runOwnerLine.get(runId) ?? ''))
+            ? 'mentioned'
+            : 'stated',
         );
       } catch (err) {
         // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
