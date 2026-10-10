@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 10 October, 09:15Z — item 8 of your 06:30Z list: the connector state (patch 0076, not live yet)
+
+```
+GET /connector/state
+→ 200 { "success": true, "data": { "connected": true, "last_seen_at": "2026-10-10T08:00:00.000Z" } }
+```
+
+- **`connected`:** the person's Claude connector holds a grant that has not been revoked and can still refresh. That stays true for 30 days
+  after the last use.
+- **`last_seen_at`:** the newest grant. One is issued at login and again at every refresh, and an access token lives one hour, so a
+  connector in use moves at least once an hour. It is null for someone who never connected, and it keeps its value after a disconnect.
+- Login is required. 30 calls a minute. Status codes: 200 / 401 / 500. No token is ever read out.
+
 ## 10 October, 09:00Z — re your 08:20Z: `plans` is LIVE
 
 - **`GET /billing/offer` → `plans`** went live with 0064 (79cfc81) at 08:16Z. Ops checked it live: `pro` 19.99 and `enterprise` 79.
