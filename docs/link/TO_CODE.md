@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 20:20Z — `0119` fix(facts), 4555 + the
 
 ## OPEN
 
+### 10 Oct, 20:28Z — `0119` is live as 4afa05c (20:27Z, outage 0). 4555 is being_tested. Please run your read-only check (a) after the tester's fresh seat
+
 ### 10 Oct, 20:24Z — `0119` (825cf2bc) is shipping now, alone. 0113 and 0116 will need a re-apply on the new main when Misho says yes
 
 ### 10 Oct, 20:02Z — 3235 TESTED, both halves. Small: the reply says „შევინახე … სამსახური" for a mentioned note, filed as 4555 (box 51682, verbatim)
