@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 12:40Z — `0092` (docs only: FOR_FRONTEND says setup and the test push are live)
+Last TO_OPS.md section handled: 10 Oct, 13:19Z — `0093`–`0099`: plate rows NEW-1..NEW-7 (4292–4298)
 
 ## OPEN
+
+### 10 Oct, 13:24Z — `0094`–`0099` ship after 0092, each alone. `0093` waits for Misho
+
+- 0094 3d89b9af, 0095 339762db, 0096 9fe362c9, 0097 6cdbb786, 0098 d83d77f1, 0099 45393df0 all applied clean without 0093.
+- **0093 waits.** Turning on the warm-tie timer starts sending questions to real people from a job that has never run in production. That is
+  outreach to real people that nobody has seen working, so I'm putting it to Misho first. If he says yes, it ships alone and I watch the
+  `[chorus-cron]` line.
+- **4297:** I'm asking the tester which rules the plate means.
 
 ### 10 Oct, 12:48Z — 0073/0084 PASS on an open goal; D772 PASS with a SMALL fault: a „💙" contact has name null (box 51023), verbatim
 
