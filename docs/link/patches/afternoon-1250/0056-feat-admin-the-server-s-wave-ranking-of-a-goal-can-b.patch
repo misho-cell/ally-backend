@@ -1,0 +1,317 @@
+From 44ba01a4f2d310ffb09cebfcd2be4e426a013b64 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 02:16:26 +0000
+Subject: [PATCH 56/56] feat(admin): the server's wave ranking of a goal can be
+ read (1691)
+
+The tester's 49931: 1691 still cannot be shown. With six candidates the
+model's plan named five (it left out D, 3/10, and kept F, 0/10), and all
+five went in wave 1, so the ranking never had to drop anyone. The order is
+not visible through a plan the model writes.
+
+GET /admin/goals/:id/wave-ranking returns the plan's people in the order
+the waves use (rankingOf, which shares its reads with inWaveOrder), with the
+signals behind each place: rank, name, named_by_goal, the pre-match word,
+the field rate and the overall rate, plus the answer-stats field the rates
+were read in. No phone numbers. A goal on a fictional seat only: 403 for a
+real owner, 404 for no goal or no plan, 500 when a signal cannot be read
+(unlike the waves, which fall back to the plan's order).
+
+DONE WHEN: for a fictional goal with known records, the read lists the
+candidates in the defined order; changing one record moves that one.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                | 44 +++++++++
+ .../__tests__/theWaveRankingCanBeRead.test.ts | 89 +++++++++++++++++++
+ src/services/waveOrder.ts                     | 54 +++++++++--
+ src/services/waveRanking.service.ts           | 51 +++++++++++
+ 4 files changed, 231 insertions(+), 7 deletions(-)
+ create mode 100644 src/services/__tests__/theWaveRankingCanBeRead.test.ts
+ create mode 100644 src/services/waveRanking.service.ts
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index dab8b8c..06c9654 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -318,6 +318,7 @@ import {
+   writeOldProfile,
+   writeStaleFact,
+ } from '../../services/seatFixtures.service';
++import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -7136,4 +7137,47 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
+   }
+ });
+ 
++/**
++ * 1691 (tester 49931): GET /admin/goals/:id/wave-ranking — the server's own
++ * ranking of a fictional seat's plan, with the signals behind each place.
++ */
++const WAVE_RANKING_STATUS: Readonly<Record<WaveRankingOutcome, number>> = {
++  [WaveRankingOutcome.Read]: 200,
++  [WaveRankingOutcome.NotFound]: 404,
++  [WaveRankingOutcome.NotATestSeat]: 403,
++  [WaveRankingOutcome.NoPlan]: 404,
++};
++
++const WAVE_RANKING_ERROR: Readonly<Record<WaveRankingOutcome, string>> = {
++  [WaveRankingOutcome.Read]: '',
++  [WaveRankingOutcome.NotFound]: 'No such goal',
++  [WaveRankingOutcome.NotATestSeat]: 'Only a fictional test seat’s goal is read here',
++  [WaveRankingOutcome.NoPlan]: 'The goal has no plan with people in it',
++};
++
++adminRouter.get('/goals/:id/wave-ranking', async (req: Request, res: Response) => {
++  const taskId = Number(req.params.id);
++  if (!Number.isInteger(taskId) || taskId <= 0) {
++    res.status(400).json({ success: false, error: 'A goal id is needed' });
++    return;
++  }
++  try {
++    const result = await goalWaveRanking(taskId);
++    if (result.outcome !== WaveRankingOutcome.Read) {
++      res
++        .status(WAVE_RANKING_STATUS[result.outcome])
++        .json({ success: false, error: WAVE_RANKING_ERROR[result.outcome] });
++      return;
++    }
++    res.status(200).json({
++      success: true,
++      data: { task_id: taskId, field: result.field, ranking: result.ranking },
++    });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[wave-ranking]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'The ranking could not be read' });
++  }
++});
++
+ export default adminRouter;
+diff --git a/src/services/__tests__/theWaveRankingCanBeRead.test.ts b/src/services/__tests__/theWaveRankingCanBeRead.test.ts
+new file mode 100644
+index 0000000..44c532a
+--- /dev/null
++++ b/src/services/__tests__/theWaveRankingCanBeRead.test.ts
+@@ -0,0 +1,89 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../taskStore.service', () => ({ getTaskById: jest.fn() }));
++jest.mock('../prematch.service', () => ({
++  ...jest.requireActual('../prematch.service'),
++  prematchMany: jest.fn(),
++}));
++
++import { query } from '../../db/postgres/client';
++import { prematchMany, PrematchSource, PrematchWord } from '../prematch.service';
++import { getTaskById } from '../taskStore.service';
++import { goalWaveRanking, WaveRankingOutcome } from '../waveRanking.service';
++
++/** The tester's 49931 (1691): the server's ranking, read without the model's plan choosing. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockTask = getTaskById as jest.MockedFunction<typeof getTaskById>;
++const mockWords = prematchMany as jest.MockedFunction<typeof prematchMany>;
++
++const A = { name: 'ანა ტესტური', phone: '+447700900201', route: 'r' };
++const C = { name: 'ცირა ტესტური', phone: '+447700900203', route: 'r' };
++const F = { name: 'ფიქრია ტესტური', phone: '+447700900206', route: 'r' };
++const TITLE = 'ელექტრიკოსი მჭირდება სახლში გაყვანილობის შესაკეთებლად';
++
++function goal(people: readonly (typeof A)[]): Awaited<ReturnType<typeof getTaskById>> {
++  return {
++    user_id: '182405',
++    title: TITLE,
++    plan: { people_to_involve: people },
++    plan_version: 1,
++    plan_approved_at: null,
++  } as unknown as Awaited<ReturnType<typeof getTaskById>>;
++}
++
++const stat = (
++  phone: string,
++  yes: number,
++  asked: number,
++): { phone: string; field: string; asked: number; yes: number; referred: number } => ({
++  phone,
++  field: 'elektrikosi saklsi gakvanilobis',
++  asked,
++  yes,
++  referred: 0,
++});
++
++describe('the wave ranking read (1691)', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('lists the plan in the server’s order, with the signals behind each place', async () => {
++    mockTask.mockResolvedValue(goal([F, C, A]));
++    mockWords.mockResolvedValue(
++      new Map(
++        [A, C, F].map((p) => [
++          p.phone.replace(/\D/g, ''),
++          { word: PrematchWord.Possibly, source: PrematchSource.NothingKnown },
++        ]),
++      ),
++    );
++    mockQuery.mockResolvedValueOnce({ rows: [{ found: true }] } as never).mockResolvedValueOnce({
++      rows: [stat(A.phone, 9, 10), stat(C.phone, 5, 10), stat(F.phone, 0, 10)],
++    } as never);
++    const result = await goalWaveRanking(23926);
++    expect(result.outcome).toBe(WaveRankingOutcome.Read);
++    expect(result.ranking?.map((r) => [r.rank, r.name])).toEqual([
++      [1, A.name],
++      [2, C.name],
++      [3, F.name],
++    ]);
++    expect(result.ranking?.[0].field_rate).toBeCloseTo(10 / 12);
++    expect(result.ranking?.[0].prematch).toBe(PrematchWord.Possibly);
++    expect(JSON.stringify(result)).not.toContain('447700');
++  });
++
++  it('reads no real owner’s plan', async () => {
++    mockTask.mockResolvedValue(goal([A]));
++    mockQuery.mockResolvedValueOnce({ rows: [{ found: false }] } as never);
++    await expect(goalWaveRanking(23926)).resolves.toEqual({
++      outcome: WaveRankingOutcome.NotATestSeat,
++    });
++    expect(mockWords).not.toHaveBeenCalled();
++  });
++
++  it('says so for a missing goal and for a goal with no people in its plan', async () => {
++    mockTask.mockResolvedValueOnce(null);
++    await expect(goalWaveRanking(1)).resolves.toEqual({ outcome: WaveRankingOutcome.NotFound });
++    mockTask.mockResolvedValueOnce(goal([]));
++    mockQuery.mockResolvedValueOnce({ rows: [{ found: true }] } as never);
++    await expect(goalWaveRanking(2)).resolves.toEqual({ outcome: WaveRankingOutcome.NoPlan });
++  });
++});
+diff --git a/src/services/waveOrder.ts b/src/services/waveOrder.ts
+index 54907b3..14fad37 100644
+--- a/src/services/waveOrder.ts
++++ b/src/services/waveOrder.ts
+@@ -138,17 +138,57 @@ export async function inWaveOrder<T extends { readonly phone: string; readonly n
+   goalText: string | null,
+ ): Promise<T[]> {
+   if (people.length < 2) return [...people];
+-  const text = goalText ?? '';
+   try {
+-    const phones = people.map((p) => p.phone);
+-    const [words, rates] = await Promise.all([
+-      prematchMany(phones, text),
+-      answerRatesFor(phones, askField(text)),
+-    ]);
+-    return orderCandidates(people, { words, rates, goalText: text });
++    return orderCandidates(people, await waveSignals(people, goalText ?? ''));
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.warn('[wave-order] kept as planned:', (err as Error).message);
+     return [...people];
+   }
+ }
++
++/** What the order is made of: each person's pre-match word and answer rates. */
++async function waveSignals(
++  people: readonly { readonly phone: string }[],
++  goalText: string,
++): Promise<WaveOrderInput> {
++  const phones = people.map((p) => p.phone);
++  const [words, rates] = await Promise.all([
++    prematchMany(phones, goalText),
++    answerRatesFor(phones, askField(goalText)),
++  ]);
++  return { words, rates, goalText };
++}
++
++export interface RankedCandidate {
++  readonly rank: number;
++  readonly name: string;
++  readonly named_by_goal: boolean;
++  readonly prematch: PrematchWord;
++  readonly field_rate: number;
++  readonly overall_rate: number;
++}
++
++/**
++ * The tester's 49931 (1691): the same order the waves use, with the signals
++ * that made it, so the ranking can be judged without the model's plan
++ * choosing who is in it. Unlike inWaveOrder, a failed read is an error here.
++ */
++export async function rankingOf<T extends { readonly phone: string; readonly name: string }>(
++  people: readonly T[],
++  goalText: string,
++): Promise<RankedCandidate[]> {
++  const input = await waveSignals(people, goalText);
++  return orderCandidates(people, input).map((p, index) => {
++    const d = phoneDigits(p.phone);
++    const rates = input.rates.get(d) ?? NO_RECORD;
++    return {
++      rank: index + 1,
++      name: p.name,
++      named_by_goal: goalNamesPerson(goalText, p.name),
++      prematch: input.words.get(d)?.word ?? PrematchWord.AskHim,
++      field_rate: rates.field,
++      overall_rate: rates.overall,
++    };
++  });
++}
+diff --git a/src/services/waveRanking.service.ts b/src/services/waveRanking.service.ts
+new file mode 100644
+index 0000000..66decef
+--- /dev/null
++++ b/src/services/waveRanking.service.ts
+@@ -0,0 +1,51 @@
++import { query } from '../db/postgres/client';
++import { askField } from './answerStats.service';
++import { planInForce } from './taskPlans.service';
++import { getTaskById } from './taskStore.service';
++import { RankedCandidate, rankingOf } from './waveOrder';
++
++/**
++ * The tester's 49931 (1691): the server's own ranking of a goal's plan, read
++ * by the admin, so the order can be judged without a sixth person. Only a
++ * goal on a fictional seat is read; a real owner's plan is not listed here.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++
++export enum WaveRankingOutcome {
++  Read = 'read',
++  NotFound = 'not_found',
++  NotATestSeat = 'not_a_test_seat',
++  NoPlan = 'no_plan',
++}
++
++export interface WaveRankingResult {
++  readonly outcome: WaveRankingOutcome;
++  /** The answer-stats field the rates are read in. */
++  readonly field?: string;
++  readonly ranking?: readonly RankedCandidate[];
++}
++
++async function ownerIsTestSeat(userId: string): Promise<boolean> {
++  const result = await query<{ found: boolean }>(
++    `SELECT EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1::int) AS found`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.found === true;
++}
++
++export async function goalWaveRanking(taskId: number): Promise<WaveRankingResult> {
++  const task = await getTaskById(taskId);
++  if (task === null) return { outcome: WaveRankingOutcome.NotFound };
++  if (!(await ownerIsTestSeat(task.user_id))) return { outcome: WaveRankingOutcome.NotATestSeat };
++  const plan = planInForce(task);
++  if (plan === null || plan.people_to_involve.length === 0) {
++    return { outcome: WaveRankingOutcome.NoPlan };
++  }
++  const goalText = task.title;
++  return {
++    outcome: WaveRankingOutcome.Read,
++    field: askField(goalText),
++    ranking: await rankingOf(plan.people_to_involve, goalText),
++  };
++}
+-- 
+2.43.0
+

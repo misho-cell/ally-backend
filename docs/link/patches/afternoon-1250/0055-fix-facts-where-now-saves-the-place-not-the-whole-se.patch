@@ -1,0 +1,154 @@
+From 04a5e439a79709d1a36b106620d811a0001da9b9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 02:14:51 +0000
+Subject: [PATCH 55/56] =?UTF-8?q?fix(facts):=20=E2=80=9Ewhere=20now=3F"=20?=
+ =?UTF-8?q?saves=20the=20place,=20not=20the=20whole=20sentence=20(1690)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 49931: after „აღარ" → „ახლა სად მუშაობს …?", the answer
+„ახლა მზიანი სამართლის ბიუროშია." was saved whole as the employer, with
+„ახლა" and the full stop.
+
+whereNowValue() keeps the place. It takes off:
+- the filler at the front („ახლა", „უკვე", „ამჟამად", now, currently);
+- a trailing verb („მუშაობს", „არის", „ცხოვრობს", „საქმიანობს");
+- the stop and the quotes;
+- the Georgian „-ში(ა)" on the last word, giving a consonant stem its „-ი"
+  back („ბანკში" → „ბანკი");
+- an English „works at / at / in" at the front.
+Anything it cannot read is kept as written. A long value beats a lost one.
+
+DONE WHEN: „ახლა მზიანი სამართლის ბიუროშია." saves „მზიანი სამართლის
+ბიურო"; a plain name saves unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theNewPlaceIsSavedNotTheSentence.test.ts  | 29 +++++++++++
+ src/services/factConfirm.service.ts           |  6 ++-
+ src/services/whereNowValue.ts                 | 48 +++++++++++++++++++
+ 3 files changed, 81 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/theNewPlaceIsSavedNotTheSentence.test.ts
+ create mode 100644 src/services/whereNowValue.ts
+
+diff --git a/src/services/__tests__/theNewPlaceIsSavedNotTheSentence.test.ts b/src/services/__tests__/theNewPlaceIsSavedNotTheSentence.test.ts
+new file mode 100644
+index 0000000..aba02de
+--- /dev/null
++++ b/src/services/__tests__/theNewPlaceIsSavedNotTheSentence.test.ts
+@@ -0,0 +1,29 @@
++import { whereNowValue } from '../whereNowValue';
++
++/** The tester's 49931 (1690 SMALL): the whole „where now?" answer was saved as the employer. */
++describe('the answer to „where now?"', () => {
++  it('keeps the place from the tester’s own sentence', () => {
++    expect(whereNowValue('ახლა მზიანი სამართლის ბიუროშია.')).toBe('მზიანი სამართლის ბიურო');
++  });
++
++  it('gives a consonant stem its nominative back', () => {
++    expect(whereNowValue('თიბისი ბანკში მუშაობს')).toBe('თიბისი ბანკი');
++    expect(whereNowValue('უკვე თბილისშია')).toBe('თბილისი');
++  });
++
++  it('leaves a plain name as written, without the stop', () => {
++    expect(whereNowValue('მწვანე ფინანსები')).toBe('მწვანე ფინანსები');
++    expect(whereNowValue('„ბლუსქაი აუდიტი".')).toBe('ბლუსქაი აუდიტი');
++  });
++
++  it('reads the English answers too', () => {
++    expect(whereNowValue('Now at Acme Ltd.')).toBe('Acme Ltd');
++    expect(whereNowValue('She works at Bank of Georgia')).toBe('Bank of Georgia');
++    expect(whereNowValue('Acme')).toBe('Acme');
++  });
++
++  it('never empties an answer it cannot read', () => {
++    expect(whereNowValue('ახლა')).toBe('ახლა');
++    expect(whereNowValue('...')).toBe('...');
++  });
++});
+diff --git a/src/services/factConfirm.service.ts b/src/services/factConfirm.service.ts
+index 20fd864..746a6a0 100644
+--- a/src/services/factConfirm.service.ts
++++ b/src/services/factConfirm.service.ts
+@@ -1,6 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { FACT_FIELD_TYPES, submitContactFact } from './contactFacts.service';
+ import { RunLanguage } from './runLanguage';
++import { whereNowValue } from './whereNowValue';
+ 
+ /**
+  * 1690 (A7, the intelligence research of 6 October, D679/D680): job facts go
+@@ -212,11 +213,12 @@ export async function answerConfirm(
+   if (open === null) return null;
+   const t = textsFor(await languageOf());
+   if (open.state === 'no_waiting') {
+-    const value = line.trim();
+-    if (value === '' || value.length > WHERE_NOW_MAX_CHARS || confirmTapOf(value) !== null) {
++    const said = line.trim();
++    if (said === '' || said.length > WHERE_NOW_MAX_CHARS || confirmTapOf(said) !== null) {
+       await settle(open.id, 'dropped');
+       return null;
+     }
++    const value = whereNowValue(said);
+     await submitContactFact(ownerId, open.phone, open.field_type, value, 'chat', 'stated');
+     await settle(open.id, 'no_saved');
+     return t.saved(open.name, value);
+diff --git a/src/services/whereNowValue.ts b/src/services/whereNowValue.ts
+new file mode 100644
+index 0000000..662c41a
+--- /dev/null
++++ b/src/services/whereNowValue.ts
+@@ -0,0 +1,48 @@
++/**
++ * The tester's 49931 (1690 SMALL): after „აღარ" → „ახლა სად მუშაობს …?", the
++ * owner wrote „ახლა მზიანი სამართლის ბიუროშია." and the whole sentence was
++ * saved as the employer. The fact is the place, not the sentence: the filler
++ * at the front, the verb and the stop at the end, and the Georgian „-ში(ა)"
++ * („is at") on the last word are taken off. Anything this cannot read is kept
++ * as written — a long value beats a lost one.
++ */
++const LEADING_FILLER: ReadonlySet<string> = new Set([
++  'ახლა',
++  'უკვე',
++  'ამჟამად',
++  'now',
++  'currently',
++  'already',
++]);
++const TRAILING_VERBS: ReadonlySet<string> = new Set(['მუშაობს', 'არის', 'ცხოვრობს', 'საქმიანობს']);
++const ENGLISH_LEAD_RE = /^(?:(?:he|she|they)\s+)?(?:(?:works?|is|lives?)\s+)?(?:at|in|for)\s+/iu;
++const EDGE_PUNCTUATION_RE = /^[\s„"“”'«»]+|[\s.!?…,;:„"“”'«»]+$/gu;
++/** „-შია" (is at) and „-ში" (at), on the last word only. */
++const LOCATIVE_SUFFIXES: readonly string[] = ['შია', 'ში'];
++const GEORGIAN_VOWELS: ReadonlySet<string> = new Set(['ა', 'ე', 'ი', 'ო', 'უ']);
++const GEORGIAN_LETTER_RE = /[ა-ჰ]$/u;
++/** The nominative ending a consonant stem takes back once „-ში" is gone. */
++const NOMINATIVE_ENDING = 'ი';
++const MIN_STEM_CHARS = 2;
++
++function withoutLocative(word: string): string {
++  for (const suffix of LOCATIVE_SUFFIXES) {
++    const stem = word.slice(0, -suffix.length);
++    if (word.endsWith(suffix) && stem.length >= MIN_STEM_CHARS && GEORGIAN_LETTER_RE.test(stem)) {
++      return GEORGIAN_VOWELS.has(stem.slice(-1)) ? stem : `${stem}${NOMINATIVE_ENDING}`;
++    }
++  }
++  return word;
++}
++
++/** The value inside the owner's answer to „where now?". */
++export function whereNowValue(line: string): string {
++  const asWritten = line.trim();
++  const words = asWritten.replace(EDGE_PUNCTUATION_RE, '').split(/\s+/u).filter(Boolean);
++  while (words.length > 1 && LEADING_FILLER.has(words[0].toLowerCase())) words.shift();
++  while (words.length > 1 && TRAILING_VERBS.has(words[words.length - 1])) words.pop();
++  if (words.length === 0) return asWritten;
++  words[words.length - 1] = withoutLocative(words[words.length - 1]);
++  const value = words.join(' ').replace(ENGLISH_LEAD_RE, '').trim();
++  return value === '' ? asWritten : value;
++}
+-- 
+2.43.0
+

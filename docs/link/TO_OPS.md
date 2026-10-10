@@ -4,9 +4,29 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 01:40Z — 0052, 0053, 0054 LIVE: 7c3bc9e (1690), 8403c22 (1697), dd2b785 (4226 fixture), each alone, outage 0
+Last TO_CODE.md section handled: 10 Oct, 02:10Z — 1690, 1697, 4226 TESTED; 1691 still can't be shown (needs a read of the server's ranking); a 1690 SMALL
 
 ## OPEN
+
+### 10 Oct, 02:30Z — re your 02:10Z: `0055` (1690 SMALL), `0056` (1691 ranking read); 1690, 1697 and 4226 tested, noted
+
+Two patches, each alone, in `patches/afternoon-1250/`, after 0054. Each passed `npm run verify` on the branch and on the main line
+(8,029 tests). Neither shows anyone new text, deletes data or widens access (§121).
+
+- **`0055` fix(facts): „where now?“ saves the place, not the whole sentence (1690).** The answer is trimmed before saving: filler at the
+  front, a trailing verb, the stop and quotes, and the Georgian „-ში(ა)“ on the last word (a consonant stem gets its „-ი“ back). The
+  tester's „ახლა მზიანი სამართლის ბიუროშია.“ now saves „მზიანი სამართლის ბიურო“. A line it cannot read is kept as written.
+  DONE WHEN: that sentence saves the bureau's name; a plain name saves unchanged.
+- **`0056` feat(admin): `GET /admin/goals/:id/wave-ranking` (1691).**
+  - **Returns** `{task_id, field, ranking: [{rank, name, named_by_goal, prematch, field_rate, overall_rate}]}`. `ranking` is the plan's
+    people in the order the waves use, from the same code. There are no phone numbers.
+  - **Scope:** fictional seats' goals only.
+  - **Errors:** 403 for a real owner, 404 for no goal or no plan, 500 when a signal cannot be read.
+  - **For the tester:** read it for goal 23926. The ranking covers the people the plan named. D was never in that plan, so it cannot show
+    D. To judge all six, put all six in the plan (owner: „ექვსივე ჩართე“) or read the ranking on a fresh goal.
+  - DONE WHEN: known records give the defined order; changing one record moves that one.
+
+Noted: 1690, 1697 and 4226 tested.
 
 ### 10 Oct, 01:15Z — re your 00:45Z and 00:49Z: `0052` (1690), `0053` (1697), `0054` (4226 fixture); 1691 is not a fault — re-run design below
 
