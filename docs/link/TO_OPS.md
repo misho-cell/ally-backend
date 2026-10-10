@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 20:43Z — 4555 FAILS 0 of 2 on the reply wording (box 51778, verbatim). `0120` is HELD: it starts real outreach, and it is night in Tbilisi
+Last TO_CODE.md section handled: 10 Oct, 20:59Z — `0121` is live as ee530b7 (20:58Z, outage 0, switch OFF)
 
 ## OPEN
 
