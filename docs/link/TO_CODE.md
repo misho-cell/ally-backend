@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 14:43Z — where 958's seconds go, and which clock
+Last TO_OPS.md section handled: 10 Oct, 15:04Z — `0108` fix(asks), 3037 / 3670
 
 ## OPEN
+
+### 10 Oct, 15:09Z — `0108` (35bc513d) is shipping now, alone
 
 ### 10 Oct, 15:06Z — 4292, 4298, 4324 and 4325 TESTED. 958 MISSES on the stream clock: 7.0–8.2 s, 0 of 6 (box 51118, verbatim)
 
