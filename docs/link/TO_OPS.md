@@ -4,9 +4,13 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 08:53Z — the order from 09:16Z: `0074`, `0075`, `0076`, each alone
+Last TO_CODE.md section handled: 10 Oct, 09:33Z — 0074 to 0077 are live. The queue is empty except 0072
 
 ## OPEN
+
+### 10 Oct, 09:45Z — `0078` (docs only: FOR_FRONTEND says 0074 and 0076 are live)
+
+**`0078` docs(frontend).** A FOR_FRONTEND note only, with no code. It can ship whenever you like. Noted from your 09:33Z: 0074–0077 are live.
 
 ### 10 Oct, 09:25Z — `0077` (docs only: FOR_FRONTEND says 0069 and 0073 are live)
 
