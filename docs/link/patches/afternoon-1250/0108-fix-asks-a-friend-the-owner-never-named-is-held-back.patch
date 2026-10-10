@@ -1,0 +1,94 @@
+From ea4b1246b3bc69b678d80dfa14a9e609d7f70442 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 15:01:13 +0000
+Subject: [PATCH] fix(asks): a friend the owner never named is held back in
+ every singular case (3037, 3670)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The fact-keeping check caught „მეგობრისთვის" and „მეგობარს სჭირდება"
+only. Asks 17039, 17722 and 18252 (8–9 October) went out with „მეგობარს
+ესაჭიროება", „ჩემმა მეგობარმა" and „მეგობარს ეზო აქვს" though neither
+the owner nor the goal named a friend. Every singular case now counts;
+the plural („შენს მეგობრებში", among your friends) is how a question is
+asked and still passes. The refusal text is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aQuestionKeepsTheOwnersFacts.test.ts      | 37 +++++++++++++++++++
+ src/services/factKeeping.ts                   |  8 +++-
+ 2 files changed, 44 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts b/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts
+index e7f1bb8..909f2bf 100644
+--- a/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts
++++ b/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts
+@@ -63,6 +63,43 @@ describe('a question keeps the facts the owner wrote', () => {
+ });
+ 
+ /** Tester 39832 (#1552): cargo became furniture on the way. */
++/** 3037/3670 (asks 17039, 17722, 18252): every singular „friend" the owner never said. */
++describe('a friend in any case ending', () => {
++  it.each([
++    [
++      'იცნობ კარგ მებაღეს? მეგობარს ეზო აქვს მოსაწესრიგებელი.',
++      'კარგი მებაღის მოძიება ეზოს მოსაწესრიგებლად',
++    ],
++    [
++      'გამარჯობა გია, ჩემმა მეგობარმა საკვების ექსპორტი დაიწყო და საბაჟო გაფორმებაში დახმარება სჭირდება.',
++      'საკვების ექსპორტს ვიწყებ და საბაჟო გაფორმებაში დახმარება მჭირდება',
++    ],
++    ['მეგობარს ესაჭიროება ელექტრიკოსი თბილისში.', 'ელექტრიკოსი მჭირდება თბილისში'],
++    [
++      'Netai Test 694 Owner E-ს მეგობარი ეძებს ბუღალტერს.',
++      'ვეძებ კარგ ბუღალტერს მცირე ბიზნესისთვის',
++    ],
++  ])('holds back „%s"', (question, owner) => {
++    expect(factChangedIn(question, [owner])?.change).toBe(FactChange.Beneficiary);
++  });
++
++  it.each([
++    'შენს მეგობრებში ხომ არ არის კარგი ელექტრიკოსი?',
++    'შენი მეგობრებიდან ვინმე იცნობს ბუღალტერს?',
++    'მეგობრულად გკითხავ: იცნობ ელექტრიკოსს?',
++  ])('lets „%s" through: among your friends is how a question is asked', (question) => {
++    expect(factChangedIn(question, ['ელექტრიკოსი მჭირდება თბილისში'])).toBeNull();
++  });
++
++  it('lets it through when the owner said it is for a friend', () => {
++    expect(
++      factChangedIn('იცნობ კარგ ფსიქოლოგს? მეგობარს სჭირდება დახმარება.', [
++        'ჩემს მეგობარს ფსიქოლოგი სჭირდება',
++      ]),
++    ).toBeNull();
++  });
++});
++
+ describe('a detail in brackets the owner never gave', () => {
+   const owner = [
+     'სოფო ტესტაძეს ჰკითხე, კარგ მეურმეს ხომ არ მირჩევს, სოფლიდან ტვირთი მაქვს ჩამოსატანი',
+diff --git a/src/services/factKeeping.ts b/src/services/factKeeping.ts
+index 5bca780..81c4275 100644
+--- a/src/services/factKeeping.ts
++++ b/src/services/factKeeping.ts
+@@ -17,8 +17,14 @@ import { nameKey } from './tools/transliterate';
+  * A miss costs a question that goes out as today; a false refusal costs one
+  * rewrite. Both checks therefore fire only on a word that is plainly there.
+  */
++/**
++ * 3037/3670 (tester 44551; asks 17039, 17722, 18252 on 8–9 October): „მეგობარს
++ * ეზო აქვს", „ჩემმა მეგობარმა", „მეგობარს ესაჭიროება" went out though the owner
++ * named nobody. Every SINGULAR case of „friend" counts; the plural („შენს
++ * მეგობრებში" — among your friends) is how a question is asked, and stays.
++ */
+ const BENEFICIARY_IN_QUESTION_RE =
+-  /(მეგობრისთვის|მეგობარს\s+(სჭირდება|უნდა|ეძებს)|ჩემს\s+მეგობარს|ჩემი\s+მეგობარი|ნაცნობისთვის|ჩემს\s+ნაცნობს|for\s+a\s+friend|a\s+friend\s+of\s+mine|my\s+friend|для\s+друга|мой\s+друг|моему\s+другу)/iu;
++  /(მეგობ(?:არ(?:ს|მა|ი|ის|თან)?|რის(?:თვის)?)(?![\p{L}])|ნაცნობისთვის|ჩემს\s+ნაცნობს|for\s+a\s+friend|a\s+friend\s+of\s+mine|my\s+friend|для\s+друга|мой\s+друг|моему\s+другу)/iu;
+ 
+ /** The owner naming somebody else at all: a friend, an acquaintance, family. */
+ const OWNER_NAMES_SOMEONE_ELSE_RE =
+-- 
+2.43.0
+

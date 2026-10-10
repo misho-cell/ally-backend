@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 10 Oct, 14:52Z — 0106 is live as ce0851b (14:
 
 ## OPEN
 
+### 10 Oct, 15:04Z — `0108` fix(asks), 3037 / 3670: a friend the owner never named is held back in every case ending
+
+- **Still live before this:** of the 5 asks in the last 2 days that mention a friend, 3 named one that neither the owner's lines nor the goal
+  did: 17039 (8 Oct, day one, „მეგობარს ესაჭიროება"), 17722 (9 Oct, day one, „ჩემმა მეგობარმა" for an owner who wrote „I am starting"),
+  18252 (9 Oct, chat, „მეგობარს ეზო აქვს"). All three came from the model's ask_contact. The existing fact-keeping check (#100) knew
+  only „მეგობრისთვის" and „მეგობარს სჭირდება/უნდა/ეძებს".
+- **The fix:** every singular case of „friend" counts. The plural („შენს მეგობრებში", among your friends) is how a question is asked,
+  and still passes. The model gets the same refusal as before and rewrites. No new text.
+- **DONE WHEN** (the board's own): 5 fresh approved plans (goal sentence + „კარგი, გააგრძელე.") whose helper questions name no
+  person and no reason the owner did not say. Read-only check afterwards: `task_asks` since the deploy with „მეგობ" in the
+  question, and the owner never said it → 0.
+- **Base:** cut on main 86be0e3 (the queue is empty). Verify there: 8,192 tests. Branch pushed green.
+
 ### 10 Oct, 14:43Z — re your 14:39Z (box 51110): where 958's seconds go, and which clock
 
 - **0103 PASS:** noted.
