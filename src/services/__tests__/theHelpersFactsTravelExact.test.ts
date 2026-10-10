@@ -87,3 +87,27 @@ describe('the helper’s reply after the send', () => {
     expect(withoutQuotedCopy('გადავეცი, მადლობა.')).toBe('გადავეცი, მადლობა.');
   });
 });
+
+/** 3763 (box 48564, ask 18052): the helper's „ზაზა გამოგონილი" reached the owner as „ზაზას". */
+describe('a surname the helper wrote', () => {
+  it('is held to the answer when it ends in -ილი, -ური or -ული', () => {
+    expect(
+      missingFacts(
+        'კი, ზაზა გამოგონილი, ვაკეში მუშაობს, ძალიან კარგია.',
+        'ზაზას იცნობს, ვაკეში მუშაობს სანტექნიკოსად და ძალიან კარგია.',
+      ),
+    ).toEqual(['გამოგონილი']);
+    expect(missingFacts('გიორგი გოგოლაური კარგი ხელოსანია.', 'გიორგის გირჩევს.')).toEqual([
+      'გოგოლაური',
+    ]);
+  });
+
+  it('is kept in any case ending', () => {
+    expect(
+      missingFacts(
+        'კი, ზაზა გამოგონილი, ვაკეში მუშაობს.',
+        'ზაზა გამოგონილს იცნობს, ვაკეში მუშაობს.',
+      ),
+    ).toEqual([]);
+  });
+});
