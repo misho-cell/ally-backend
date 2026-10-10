@@ -1,0 +1,185 @@
+From dbec87e95be240e94c57837db01360284799079c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 18:12:41 +0000
+Subject: [PATCH] =?UTF-8?q?fix(chat):=20the=20owner's=20=E2=80=9Esent"=20l?=
+ =?UTF-8?q?ine=20keeps=20the=20owner's=20words=20=E2=80=94=20no=20?=
+ =?UTF-8?q?=E2=80=9E=E1=83=A1=E1=83=90=E1=83=9C=E1=83=93=E1=83=9D"=20they?=
+ =?UTF-8?q?=20never=20said=20(4456)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 51448, conv 49204: the helper's question was clean (the fact check
+holds a quality word back from it), and the owner's own confirmation line
+still read „სანდო ნოტარიუსს". After a run whose question went, a quality
+word (სანდო, საიმედო, reliable, надёжный …) the owner never wrote in this
+conversation is taken out of the reply, by the test the question already
+passes. The owner's typed lines are read only when such a word is there;
+the read is shared with the discussion check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aQuestionKeepsTheOwnersFacts.test.ts      | 33 ++++++++++++-
+ src/services/chat.service.ts                  | 46 +++++++++++++++----
+ src/services/factKeeping.ts                   | 21 +++++++++
+ 3 files changed, 90 insertions(+), 10 deletions(-)
+
+diff --git a/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts b/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts
+index 909f2bf..a92a3fe 100644
+--- a/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts
++++ b/src/services/__tests__/aQuestionKeepsTheOwnersFacts.test.ts
+@@ -1,6 +1,12 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { FactChange, factChangedIn, factChangedRefusal } from '../factKeeping';
++import {
++  carriesQualityWord,
++  FactChange,
++  factChangedIn,
++  factChangedRefusal,
++  withoutQualityNotSaid,
++} from '../factKeeping';
+ 
+ /**
+  * Board #100 (plate F1): an ask said „for a friend" though the owner asked for
+@@ -148,3 +154,28 @@ describe('a quality the owner never asked for', () => {
+     expect(factChangedIn('იცნობ სანდო ხელოსანს?', ['სანდო ხელოსანი მჭირდება'])).toBeNull();
+   });
+ });
++
++/** 4456 (box 51448, conv 49204): the owner's „sent" line said „სანდო ნოტარიუსს". */
++describe('the owner’s own reply after a question went', () => {
++  const owner = ['ჰკითხე ნიკას, ხომ არ იცნობს ნოტარიუსს.', 'მჭირდება ნოტარიუსი ბინის ყიდვისთვის'];
++
++  it('loses a quality word the owner never wrote', () => {
++    const reply = 'ნიკას ვკითხე, ხომ არ იცნობს სანდო ნოტარიუსს.';
++    expect(carriesQualityWord(reply)).toBe(true);
++    expect(withoutQualityNotSaid(reply, owner)).toBe('ნიკას ვკითხე, ხომ არ იცნობს ნოტარიუსს.');
++  });
++
++  it('keeps it when the owner wrote it, in any case ending', () => {
++    const reply = 'ნიკას ვკითხე სანდო ნოტარიუსზე.';
++    expect(withoutQualityNotSaid(reply, ['მჭირდება სანდო ნოტარიუსი'])).toBe(reply);
++  });
++
++  it('touches nothing else', () => {
++    expect(carriesQualityWord('ნიკას ვკითხე.')).toBe(false);
++  });
++
++  it('runs only when a question went in the run', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('if (runAskSent.has(runId) && carriesQualityWord(effectiveFinal)) {');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 269ee11..a548456 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -30,10 +30,12 @@ import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies
+ import { searchProfessionFamily } from './professionSearch';
+ import { pointsAtButtonsBelow } from './buttonsBelow';
+ import {
++  carriesQualityWord,
+   factChangedIn,
+   factChangedRefusal,
+   ownersLineQuoted,
+   OWNERS_LINE_QUOTED_REFUSAL,
++  withoutQualityNotSaid,
+ } from './factKeeping';
+ import {
+   discussionHolds,
+@@ -14930,19 +14932,42 @@ const DISCUSSION_LINES_READ = 12;
+  * first, decide whether it is still a discussion. A failed read is not a
+  * discussion: the goal opens as it always has.
+  */
++/** 4456: the run's reply, without a quality word the owner never wrote here; as written if they cannot be read. */
++async function withoutQualityTheOwnerNeverSaid(
++  reply: string,
++  userMessage: string,
++  threadId: number,
++): Promise<string> {
++  try {
++    return withoutQualityNotSaid(reply, [userMessage, ...(await ownerTypedLines(threadId))]);
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(
++      `[fact-keeping] thread ${threadId}: owner lines not read:`,
++      (err as Error).message,
++    );
++    return reply;
++  }
++}
++
++/** The owner's own typed lines in this conversation, newest first. */
++async function ownerTypedLines(threadId: number): Promise<string[]> {
++  const earlier = await query<{ content: string }>(
++    `SELECT content FROM conversations
++      WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
++        AND content <> '' AND content NOT LIKE $2
++      ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
++    [threadId, `${RUN_EVENT_PREFIX}%`],
++    DISCUSSION_READ_TIMEOUT_MS,
++  );
++  return earlier.rows.map((r) => r.content);
++}
++
+ async function conversationIsDiscussion(threadId: number, userMessage: string): Promise<boolean> {
+   const decided = lineDecidesDiscussion(userMessage);
+   if (decided !== null) return decided;
+   try {
+-    const earlier = await query<{ content: string }>(
+-      `SELECT content FROM conversations
+-        WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
+-          AND content <> '' AND content NOT LIKE $2
+-        ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
+-      [threadId, `${RUN_EVENT_PREFIX}%`],
+-      DISCUSSION_READ_TIMEOUT_MS,
+-    );
+-    return discussionHolds(earlier.rows.map((r) => r.content));
++    return discussionHolds(await ownerTypedLines(threadId));
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.warn(`[goal-intent] thread ${threadId}: discussion not read:`, (err as Error).message);
+@@ -15947,6 +15972,9 @@ export async function processChat(
+   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
+   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
+   if (language === 'ka' && runAskSent.has(runId)) effectiveFinal = askedNotAsking(effectiveFinal);
++  if (runAskSent.has(runId) && carriesQualityWord(effectiveFinal)) {
++    effectiveFinal = await withoutQualityTheOwnerNeverSaid(effectiveFinal, userMessage, threadId);
++  }
+   // 45679 (conv 44096): a run whose question went says so, never „I cannot send".
+   const askedOne = runAskSentTo.get(runId) ?? [];
+   if (askedOne.length === 1 && claimsItCannotSend(effectiveFinal)) {
+diff --git a/src/services/factKeeping.ts b/src/services/factKeeping.ts
+index 81c4275..8e6c527 100644
+--- a/src/services/factKeeping.ts
++++ b/src/services/factKeeping.ts
+@@ -168,3 +168,24 @@ export const OWNERS_LINE_QUOTED_REFUSAL =
+   'your own words — what the owner means, never a quotation — and keep every fact exactly ' +
+   '(names, days, times, places, amounts). Then send it again. Do not tell the owner; it is a ' +
+   'rewrite, not news.';
++
++const QUALITY_WORDS_GLOBAL_RE = new RegExp(`${QUALITY_WORD_RE.source}\\s*`, 'giu');
++
++/**
++ * 4456 (tester box 51448, conv 49204): the question to the helper was clean,
++ * and the owner's own „sent" line still read „სანდო ნოტარიუსს" — a quality the
++ * owner never asked for. Every quality word the owner did not write goes from
++ * the reply, the same test the question already passes.
++ */
++export function withoutQualityNotSaid(reply: string, ownerLines: readonly string[]): string {
++  const owner = lowered(ownerLines.join('\n'));
++  return reply.replace(QUALITY_WORDS_GLOBAL_RE, (whole: string, word: string) => {
++    if (owner.includes(lowered(word).slice(0, DETAIL_STEM_CHARS))) return whole;
++    return whole.slice(0, whole.indexOf(word));
++  });
++}
++
++/** Does the reply carry a quality word at all — the cheap check before reading the owner's lines. */
++export function carriesQualityWord(reply: string): boolean {
++  return QUALITY_WORD_RE.test(reply);
++}
+-- 
+2.43.0
+

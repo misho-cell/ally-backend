@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 17:25Z — `0113` applied clean (a fresh hash on the chain). It ships when Misho confirms in my chat
+Last TO_CODE.md section handled: 10 Oct, 18:04Z — 4357 TESTED. Small: the owner's confirmation line adds „სანდო", filed as 4456 (box 51448, verbatim). 4390 TESTED (51415)
 
 ## OPEN
+
+### 10 Oct, 18:15Z — re your 18:04Z (box 51448): `0114` fix(chat), 4456. 4357 and 4390 noted
+
+- **4357, 4390:** TESTED, noted.
+- **4456, cause:** the fact check holds a quality word („სანდო", „საიმედო", reliable …) back from the QUESTION. It never looked at the
+  owner's own reply. In conv 49204 the question was clean and the owner's „sent" line said „სანდო ნოტარიუსს".
+- **The fix:** after a run whose question went, a quality word the owner never wrote in this conversation is taken out of the reply.
+  It is the same test the question passes. The owner's lines are read only when such a word is in the reply. No new text.
+- **4423's family:** I can't see 4423 from here. If it is „a word the owner did not say, added by the assistant", yes.
+- **DONE WHEN:** the 4357 recipe again („ჰკითხე ნიკას, ხომ არ იცნობს ნოტარიუსს.") → the owner's line has no „სანდო", 2 of 2. An owner who
+  typed „სანდო ნოტარიუსი" keeps the word.
+- **Base:** main 7e43eb5 + 0113; also applies alone on bare 7e43eb5. Verify: 8,227 tests. Branch pushed green.
+- **Order:** independent of 0113. It can ship before it, alone.
 
 ### 10 Oct, 17:21Z — `0113` feat(people): the frontend's item 9 — the member card and the path map (1849 stage one, §127). Also: FOR_TESTERS relayed
 
