@@ -30,10 +30,12 @@ import { ALSO_SEARCHED_NOTE, relatedProfessionWords } from './professionFamilies
 import { searchProfessionFamily } from './professionSearch';
 import { pointsAtButtonsBelow } from './buttonsBelow';
 import {
+  carriesQualityWord,
   factChangedIn,
   factChangedRefusal,
   ownersLineQuoted,
   OWNERS_LINE_QUOTED_REFUSAL,
+  withoutQualityNotSaid,
 } from './factKeeping';
 import {
   discussionHolds,
@@ -14930,19 +14932,42 @@ const DISCUSSION_LINES_READ = 12;
  * first, decide whether it is still a discussion. A failed read is not a
  * discussion: the goal opens as it always has.
  */
+/** 4456: the run's reply, without a quality word the owner never wrote here; as written if they cannot be read. */
+async function withoutQualityTheOwnerNeverSaid(
+  reply: string,
+  userMessage: string,
+  threadId: number,
+): Promise<string> {
+  try {
+    return withoutQualityNotSaid(reply, [userMessage, ...(await ownerTypedLines(threadId))]);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[fact-keeping] thread ${threadId}: owner lines not read:`,
+      (err as Error).message,
+    );
+    return reply;
+  }
+}
+
+/** The owner's own typed lines in this conversation, newest first. */
+async function ownerTypedLines(threadId: number): Promise<string[]> {
+  const earlier = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
+        AND content <> '' AND content NOT LIKE $2
+      ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
+    [threadId, `${RUN_EVENT_PREFIX}%`],
+    DISCUSSION_READ_TIMEOUT_MS,
+  );
+  return earlier.rows.map((r) => r.content);
+}
+
 async function conversationIsDiscussion(threadId: number, userMessage: string): Promise<boolean> {
   const decided = lineDecidesDiscussion(userMessage);
   if (decided !== null) return decided;
   try {
-    const earlier = await query<{ content: string }>(
-      `SELECT content FROM conversations
-        WHERE thread_id = $1 AND role = 'user' AND kind = 'message'
-          AND content <> '' AND content NOT LIKE $2
-        ORDER BY created_at DESC LIMIT ${DISCUSSION_LINES_READ}`,
-      [threadId, `${RUN_EVENT_PREFIX}%`],
-      DISCUSSION_READ_TIMEOUT_MS,
-    );
-    return discussionHolds(earlier.rows.map((r) => r.content));
+    return discussionHolds(await ownerTypedLines(threadId));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn(`[goal-intent] thread ${threadId}: discussion not read:`, (err as Error).message);
@@ -15947,6 +15972,9 @@ export async function processChat(
   if (!runPlanForReply.has(runId)) effectiveFinal = withoutOpeningSolvedWhen(effectiveFinal);
   if (runIntroSent.has(runId)) effectiveFinal = withoutSendItQuestion(effectiveFinal, language);
   if (language === 'ka' && runAskSent.has(runId)) effectiveFinal = askedNotAsking(effectiveFinal);
+  if (runAskSent.has(runId) && carriesQualityWord(effectiveFinal)) {
+    effectiveFinal = await withoutQualityTheOwnerNeverSaid(effectiveFinal, userMessage, threadId);
+  }
   // 45679 (conv 44096): a run whose question went says so, never „I cannot send".
   const askedOne = runAskSentTo.get(runId) ?? [];
   if (askedOne.length === 1 && claimsItCannotSend(effectiveFinal)) {
