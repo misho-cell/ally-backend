@@ -1,0 +1,288 @@
+From a8bb4915edd38123d42f0ebc7f8bc21d004cf62f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:26:16 +0000
+Subject: [PATCH 90/90] fix(lists): on a list of needs, every fitting contact
+ is named and a helper's answer reaches the rows it speaks of (box 50986, BE,
+ 3897)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Goal 24125, needs12.csv after 0086: the electrician row named one of the
+owner's three electricians, and the helper's answer naming a notary and a
+photographer sat only on the electrician row it was asked from — the notary
+and photographer rows still read „nobody / no route", and no „see the
+helper" anywhere: BE's cells only existed for a file with a need column.
+On a list whose rows are the needs, a found row now names every one of the
+owner's contacts who fits it, and a no-route row named in an answer on
+this goal says „იხ. დამხმარე" with that helper and that answer. A file
+with a need column works as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aListBecomesTheWorkOfOneGoal.test.ts      | 50 +++++++++++
+ src/services/listItems.service.ts             | 89 +++++++++++++------
+ src/services/listRowHelpers.ts                | 57 ++++++++++++
+ 3 files changed, 167 insertions(+), 29 deletions(-)
+ create mode 100644 src/services/listRowHelpers.ts
+
+diff --git a/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts b/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
+index 4bdf162..188cd22 100644
+--- a/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
++++ b/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
+@@ -244,6 +244,7 @@ describe('the model’s tools', () => {
+ /** Board #894: the worked list back as Excel, the owner's columns then Netai's. */
+ describe('the worked list as Excel', () => {
+   it('carries the owner’s columns, then the way in, through whom and the state', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+     mockQuery.mockResolvedValueOnce({
+       rows: [
+         {
+@@ -324,6 +325,55 @@ describe('the worked list as Excel', () => {
+     expect(mockMatches).toHaveBeenCalledTimes(2);
+   });
+ 
++  /** Box 50986 (goal 24125): a list whose rows are the needs, worked by asking a helper. */
++  it('names every fitting contact on a found row, and points a named row at the helper’s answer', async () => {
++    const mockMatches = ownMatchesFor as jest.MockedFunction<typeof ownMatchesFor>;
++    mockMatches.mockImplementation(async (_user: string, need: string) =>
++      need === 'ელექტრიკოსი'
++        ? [
++            { phone: 'p1', name: 'ნოდარ ელექტრიკოსი' },
++            { phone: 'p2', name: 'კახა ელექტრიკოსი' },
++            { phone: 'p3', name: 'შოთა ელექტრიკოსი' },
++          ]
++        : [],
++    );
++    const row = (label: string, wayIn: string, through: string | null, answer: string | null) => ({
++      label,
++      row_data: [label === 'ელექტრიკოსი' ? '1' : '2', label],
++      way_in: wayIn,
++      through_whom: through,
++      state: wayIn === 'none' ? 'no_route' : 'answered',
++      answer,
++      columns: ['სახელი', 'პროფესია'],
++    });
++    const helperSaid = 'ნოტარიუსს და ფოტოგრაფს ვიცნობ, ნომრებს გამოგიგზავნი.';
++    mockQuery
++      .mockResolvedValueOnce({
++        rows: [
++          row('ელექტრიკოსი', 'first_circle', 'ნოდარ ელექტრიკოსი', helperSaid),
++          row('ნოტარიუსი', 'none', null, null),
++          row('მზარეული', 'none', null, null),
++        ],
++      } as never)
++      .mockResolvedValueOnce({
++        rows: [{ helper: 'ნოდარ ელექტრიკოსი', answer: helperSaid }],
++      } as never);
++    const buffer = await listWorkbook('501', 10, 'ka');
++    if (buffer === null) throw new Error('expected a workbook');
++    const book = new ExcelJS.Workbook();
++    await book.xlsx.load(buffer as unknown as ArrayBuffer);
++    const values = (n: number): unknown[] =>
++      (book.worksheets[0].getRow(n).values as unknown[]).slice(1);
++    expect(values(2)[3]).toBe('ნოდარ ელექტრიკოსი, კახა ელექტრიკოსი, შოთა ელექტრიკოსი');
++    expect(values(3).slice(2)).toEqual([
++      'იხ. დამხმარე',
++      'ნოდარ ელექტრიკოსი',
++      'იხ. დამხმარე',
++      helperSaid,
++    ]);
++    expect(values(4).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
++  });
++
+   it('is nothing when the goal has no list of this owner’s', async () => {
+     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+     await expect(listWorkbook('501', 10, 'ka')).resolves.toBeNull();
+diff --git a/src/services/listItems.service.ts b/src/services/listItems.service.ts
+index 1c7eebc..40f9414 100644
+--- a/src/services/listItems.service.ts
++++ b/src/services/listItems.service.ts
+@@ -5,6 +5,7 @@ import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
+ import { ownMatchesFor } from './tools/searchByTag';
+ import { scrubText, stripAllowedSpans } from './privacyScrub';
+ import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
++import { answerForRow, answersOnGoal, GoalAnswer } from './listRowHelpers';
+ 
+ /**
+  * Board #893 (the founder, 4 October): a list the owner gave Netai becomes the
+@@ -418,6 +419,7 @@ const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
+ };
+ 
+ export interface WorkedRow {
++  readonly label?: string;
+   readonly row_data: string[];
+   readonly way_in: string;
+   readonly through_whom: string | null;
+@@ -442,14 +444,9 @@ function answerForOwner(answer: string | null): string {
+   return answer === null ? '' : stripAllowedSpans(scrubText(answer));
+ }
+ 
+-/** The goal's worked list as an .xlsx file; null when the goal has no list of this owner's. */
+-export async function listWorkbook(
+-  userId: string,
+-  taskId: number,
+-  language: RunLanguage,
+-): Promise<Buffer | null> {
++async function workedRows(userId: string, taskId: number): Promise<WorkedRow[]> {
+   const result = await query<WorkedRow>(
+-    `SELECT li.row_data, li.way_in, li.through_whom, ${ROW_STATE_SQL} AS state,
++    `SELECT li.label, li.row_data, li.way_in, li.through_whom, ${ROW_STATE_SQL} AS state,
+             ask.answer, f.columns
+        FROM list_items li
+        JOIN tasks t ON t.id = li.task_id
+@@ -461,31 +458,65 @@ export async function listWorkbook(
+     [taskId, userId, MAX_ROWS_EXPORTED],
+     LIST_QUERY_TIMEOUT_MS,
+   );
+-  if (result.rows.length === 0) return null;
+-  const needAt = needColumn(result.rows[0].columns);
+-  const helpers =
+-    needAt === -1
+-      ? null
+-      : await helpersForNeeds(
+-          userId,
+-          result.rows.map((r) => r.row_data[needAt] ?? ''),
+-        );
++  return result.rows;
++}
++
++/**
++ * Box 50986: on a list whose rows ARE the needs, every one of the owner's
++ * contacts who fits a found row is named (three electricians, not the first),
++ * and a no-route row named in a helper's answer points at that answer.
++ */
++function needRowCells(
++  r: WorkedRow,
++  language: RunLanguage,
++  fitting: ReadonlyMap<string, string>,
++  answers: readonly GoalAnswer[],
++): string[] {
++  const cells = workedCells(r, language);
++  const label = (r.label ?? '').trim();
++  const at = r.row_data.length;
++  const everyone = fitting.get(label) ?? '';
++  if (r.way_in === 'first_circle' && everyone !== '') cells[at + 1] = everyone;
++  if (r.way_in !== 'none' || r.answer !== null) return cells;
++  const answered = answerForRow(answers, label);
++  if (answered === undefined) return cells;
++  const said = withHelperSaid(cells, r, language);
++  said[at + 1] = answered.helper ?? '';
++  said[at + 3] = answerForOwner(answered.answer);
++  return said;
++}
++
++/** The goal's worked list as an .xlsx file; null when the goal has no list of this owner's. */
++export async function listWorkbook(
++  userId: string,
++  taskId: number,
++  language: RunLanguage,
++): Promise<Buffer | null> {
++  const rows = await workedRows(userId, taskId);
++  if (rows.length === 0) return null;
++  const needAt = needColumn(rows[0].columns);
+   const book = new ExcelJS.Workbook();
+   const sheet = book.addWorksheet('Netai');
+-  sheet.addRow([
+-    ...result.rows[0].columns,
+-    ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka),
+-    ...(helpers === null ? [] : [NEED_COLUMN[language] ?? NEED_COLUMN.ka]),
+-  ]);
+-  for (const r of result.rows) {
+-    const helper = helpers === null ? null : (helpers.get((r.row_data[needAt] ?? '').trim()) ?? '');
++  const header = [...rows[0].columns, ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka)];
++  if (needAt === -1) {
++    const found = rows.filter((r) => r.way_in === 'first_circle').map((r) => r.label ?? '');
++    const [fitting, answers] = await Promise.all([
++      helpersForNeeds(userId, found),
++      answersOnGoal(userId, taskId),
++    ]);
++    sheet.addRow(header);
++    for (const r of rows) sheet.addRow(needRowCells(r, language, fitting, answers).map(fitsACell));
++    return Buffer.from(await book.xlsx.writeBuffer());
++  }
++  const helpers = await helpersForNeeds(
++    userId,
++    rows.map((r) => r.row_data[needAt] ?? ''),
++  );
++  sheet.addRow([...header, NEED_COLUMN[language] ?? NEED_COLUMN.ka]);
++  for (const r of rows) {
++    const helper = helpers.get((r.row_data[needAt] ?? '').trim()) ?? '';
+     const cells = workedCells(r, language);
+-    sheet.addRow(
+-      [
+-        ...(helper ? withHelperSaid(cells, r, language) : cells),
+-        ...(helper === null ? [] : [helper]),
+-      ].map(fitsACell),
+-    );
++    sheet.addRow([...(helper ? withHelperSaid(cells, r, language) : cells), helper].map(fitsACell));
+   }
+   return Buffer.from(await book.xlsx.writeBuffer());
+ }
+diff --git a/src/services/listRowHelpers.ts b/src/services/listRowHelpers.ts
+new file mode 100644
+index 0000000..4e5db97
+--- /dev/null
++++ b/src/services/listRowHelpers.ts
+@@ -0,0 +1,57 @@
++import { query } from '../db/postgres/client';
++import { ASKED_AS_THE_ASKER_SAVED_THEM } from './savedNameSql';
++
++/**
++ * Box 50986 (goal 24125, needs12.csv): a list whose rows ARE the needs
++ * („ელექტრიკოსი, ნოტარიუსი, …"), worked by asking a helper. The helper named a
++ * notary and a photographer; the answer sat only on the electrician row it
++ * was asked from, and the notary and photographer rows still read „nobody /
++ * no route". A row named in a helper's answer points at that answer.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const MAX_ANSWERS_READ = 30;
++/** A Georgian word this long or longer is matched by its stem (ნოტარიუსი → ნოტარიუს-ს, -მა …). */
++const STEMMED_WORD_MIN_CHARS = 5;
++const GEORGIAN_FINAL_I = 'ი';
++
++export interface GoalAnswer {
++  readonly helper: string | null;
++  readonly answer: string;
++}
++
++/** The answered asks this owner sent on this goal, newest first. */
++export async function answersOnGoal(userId: string, taskId: number): Promise<GoalAnswer[]> {
++  const result = await query<{ helper: string | null; answer: string }>(
++    `SELECT ${ASKED_AS_THE_ASKER_SAVED_THEM} AS helper, ta.answer
++       FROM task_asks ta
++      WHERE ta.task_id = $1 AND ta.from_user_id = $2 AND ta.status = 'answered'
++        AND ta.answer IS NOT NULL AND ta.parent_ask_id IS NULL
++      ORDER BY ta.answered_at DESC NULLS LAST
++      LIMIT $3`,
++    [taskId, userId, MAX_ANSWERS_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** The part of a row's label every case form of it keeps. */
++function labelStem(label: string): string {
++  const word = label.trim().toLowerCase();
++  return word.length >= STEMMED_WORD_MIN_CHARS && word.endsWith(GEORGIAN_FINAL_I)
++    ? word.slice(0, -GEORGIAN_FINAL_I.length)
++    : word;
++}
++
++/** Does this answer speak of this row („ნოტარიუსი" in „ნოტარიუსს ვიცნობ")? */
++export function answerNamesRow(answer: string, label: string): boolean {
++  const stem = labelStem(label);
++  return stem !== '' && answer.toLowerCase().includes(stem);
++}
++
++/** The first answer that speaks of this row, if any. */
++export function answerForRow(
++  answers: readonly GoalAnswer[],
++  label: string,
++): GoalAnswer | undefined {
++  return answers.find((a) => answerNamesRow(a.answer, label));
++}
+-- 
+2.43.0
+

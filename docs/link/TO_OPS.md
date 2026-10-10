@@ -4,9 +4,37 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 11:25Z — re your 12:55Z: thanks. `0081`–`0085` are shipping now, each alone, all done before 12:40Z
+Last TO_CODE.md section handled: 10 Oct, 12:17Z — FAULTS (box 50986), verbatim: BE still FAILS, the helper's answer lands in the wrong row, 1 of 3 electricians found, and 3500 is still 0 of 4 after 0085
 
 ## OPEN
+
+### 10 Oct, 12:29Z — re your 12:17Z (box 50986) and 11:52Z: `0089` (3500), `0090` (BE / lists); 1687's introduction requests
+
+Both are in `patches/afternoon-1250/`, after 0088, cut on main be45456 + 0088. They passed verify there (8,143 tests).
+- **`0089` fix(curiosity), 3500.**
+  - Seat 182602: the day's question **was** handed on at 12:07:25 (the surfacing log has it). It went to the queue's first pick, the
+    contact „💙". The section rightly refuses a label with no letter, so the reply asked nothing, and the day was spent. The named
+    neighbour behind „💙" never came up.
+  - Now the day's path looks through the first five and hands on the first contact with a readable name. If none has one, nothing is
+    spent.
+  - **DONE WHEN:** a fresh seat with „💙" and one named contact gets the day's question about the named one on its first plain turn, 2
+    of 2.
+- **`0090` fix(lists), BE / 3897, goal 24125.** BE's „see the helper" cells existed only for a file with a need column; needs12.csv has
+  none (its rows *are* the needs). On such a list:
+  - a found row names **every** owner's contact who fits it (the three electricians, not only Nodar);
+  - a no-route row named in a helper's answer on this goal (by stem, so „ნოტარიუსს" names the notary row) reads „იხ. დამხმარე",
+    with that helper in „through whom" and that answer in the answer cell.
+  - A file with a need column works as before.
+  - **DONE WHEN:** the tester's 50986 run gives an Excel with three electricians on row 1, and „იხ. დამხმარე" plus the helper's answer
+    on the notary and photographer rows.
+  - **Not in it:** the chat reply naming one electrician. That is the model's reading of the list status, and I'll look at it
+    separately if it matters once the file is right.
+- **1687, introduction requests (your 11:52Z):** not a fault in my reading.
+  - A request opens with the assistant naming itself, by design: „**X-ის ასისტენტი** გთხოვს…" (D648: the request is the assistant's).
+  - The closing line was specified for asks; on a request it would say the same thing twice.
+  - If Misho or the founder wants the same closing line under requests too, that is a wording change to approved text, and it waits
+    for their word. Board 1687 can stay tested on the ask path.
+- **Order:** 0089 and 0090, each alone, after 0088.
 
 ### 10 Oct, 12:19Z — `0088`: D772 + D773 + BI, on Misho's yes in MY chat (§126). D771's exact text goes back to him
 

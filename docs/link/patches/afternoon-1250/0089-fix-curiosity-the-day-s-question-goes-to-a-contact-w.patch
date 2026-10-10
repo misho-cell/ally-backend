@@ -1,0 +1,105 @@
+From b23562e6d8522672a7cc7f8730d2cef810e5be3b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:22:17 +0000
+Subject: [PATCH 89/90] =?UTF-8?q?fix(curiosity):=20the=20day's=20question?=
+ =?UTF-8?q?=20goes=20to=20a=20contact=20with=20a=20name,=20not=20to=20?=
+ =?UTF-8?q?=E2=80=9E=F0=9F=92=99"=20first=20in=20the=20queue=20(3500)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 50986, seat 182602 (after 0085): the day's question was handed on at
+12:07:25 — to the queue's first pick, the contact saved as „💙". The
+section rightly refuses to ask about a label with no letter, so the reply
+asked nothing, and the day was spent; the named neighbour behind it never
+came up. The day's path now looks through the queue's first five and hands
+on the first contact with a readable name; none, and nothing is spent.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/curiosityQueue.service.test.ts  | 30 +++++++++++++++++++
+ src/services/curiosityQueue.service.ts        | 12 ++++++--
+ 2 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/curiosityQueue.service.test.ts b/src/services/__tests__/curiosityQueue.service.test.ts
+index 30ebc24..001bdb5 100644
+--- a/src/services/__tests__/curiosityQueue.service.test.ts
++++ b/src/services/__tests__/curiosityQueue.service.test.ts
+@@ -344,6 +344,36 @@ describe('the day’s question is logged only when it is handed on', () => {
+   });
+ });
+ 
++/** 3500 (box 50986, seat 182602): „💙" first in the queue spent the day; the named contact behind it never came. */
++describe('the day’s question goes to a contact with a name', () => {
++  it('passes over a label with no letter and hands on the named contact', async () => {
++    routeQueueQueries({
++      close: [{ contact_phone: '+995500000041' }, { contact_phone: '+995500000042' }],
++      presence: [],
++      labels: [
++        { phone: '+995500000041', label: '💙' },
++        { phone: '+995500000042', label: 'ზურაბ კვარაცხელია' },
++      ],
++    });
++    const out = await maybeCuriosityUpdate('105');
++    expect(out?.payload).toEqual(expect.objectContaining({ who: 'ზურაბ კვარაცხელია' }));
++  });
++
++  it('hands on nothing, and spends nothing, when no contact has a name', async () => {
++    routeQueueQueries({
++      close: [{ contact_phone: '+995500000043' }],
++      presence: [],
++      labels: [{ phone: '+995500000043', label: '💙' }],
++    });
++    expect(await maybeCuriosityUpdate('106')).toBeNull();
++    await new Promise((resolve) => setImmediate(resolve));
++    const logged = mockQuery.mock.calls.filter(([sql]) =>
++      (sql as string).includes('INSERT INTO curiosity_surfacing_log'),
++    );
++    expect(logged).toHaveLength(0);
++  });
++});
++
+ describe('the curiosity queue must not cost a conversation its first breath', () => {
+   it('runs the five tiers together, not one after another', async () => {
+     routeQueueQueries({
+diff --git a/src/services/curiosityQueue.service.ts b/src/services/curiosityQueue.service.ts
+index 51491e1..7495fea 100644
+--- a/src/services/curiosityQueue.service.ts
++++ b/src/services/curiosityQueue.service.ts
+@@ -337,6 +337,9 @@ export async function buildCuriosityQueue(
+ // budget philosophy as the other triggers, env-configurable, never hardcoded.
+ // D708 (the founder, 7 Oct): one question about the owner's contacts a day,
+ // not one a week — Lika, a month on Netai, was offered three and asked none.
++/** How many of the queue's first contacts the day's question looks through for one with a name. */
++const DAY_QUESTION_LOOKAHEAD = 5;
++const HAS_A_LETTER = /\p{L}/u;
+ const CURIOSITY_SURFACE_INTERVAL_DAYS = Number(process.env.CURIOSITY_SURFACE_INTERVAL_DAYS ?? 1);
+ // An account whose queue came back EMPTY is not re-computed on every
+ // conversation start — the five tiers are genuinely expensive. In-process
+@@ -407,7 +410,7 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
+   if (recent.rows.length > 0) return null;
+ 
+   const items = await withinBudget(
+-    buildCuriosityQueue(userId, 1, { logSurfacing: false }),
++    buildCuriosityQueue(userId, DAY_QUESTION_LOOKAHEAD, { logSurfacing: false }),
+     CURIOSITY_BUDGET_MS,
+     'queue',
+   );
+@@ -421,7 +424,12 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
+     return null;
+   }
+   emptyQueueCheckedAt.delete(userId);
+-  const item = items[0];
++  // 3500 (box 50986, seat 182602): the first pick was „💙". The section rightly
++  // refused to ask about a label with no letter — but the day was spent on it,
++  // and the named neighbour behind it was never asked. Only a contact the
++  // owner can be asked about by name is handed on.
++  const item = items.find((candidate) => HAS_A_LETTER.test(candidate.label ?? ''));
++  if (item === undefined) return null;
+   // Logged only now, when the item is really handed on (3500).
+   logInBackground(userId, [item]);
+   return {
+-- 
+2.43.0
+
