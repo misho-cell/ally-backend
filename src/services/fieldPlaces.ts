@@ -237,3 +237,36 @@ export function placeFits(goalText: string, offerField: string): boolean {
   if (offer.towns.size > 0) return [...offer.towns].some((town) => goal.towns.has(town));
   return [...offer.regions].some((region) => goal.regions.has(region));
 }
+
+const GEORGIAN_RE = /[ა-ჰ]/u;
+
+/** The family's broad name in the wanted script: the first word of the family written in it. */
+function familyNameIn(family: readonly string[], georgian: boolean): string | null {
+  return family.find((word) => GEORGIAN_RE.test(word) === georgian) ?? null;
+}
+
+/**
+ * 1699 (tester 50656): card 1 said „…ამისთვის არის ღია, hospitality." — the
+ * offer's field as it was saved, in English, inside a Georgian sentence. A
+ * field word that is one of a family's words is said in the reader's script
+ * instead (the family's broad name); any other word stays as the person saved it.
+ */
+export function fieldInScript(field: string, georgian: boolean): string {
+  let said = field;
+  for (const family of FIELD_FAMILIES) {
+    const name = familyNameIn(family, georgian);
+    if (name === null) continue;
+    // Longest words first, so „real estate" is swapped before any word inside it.
+    const foreign = family
+      .filter((word) => GEORGIAN_RE.test(word) !== georgian)
+      .sort((a, b) => b.length - a.length);
+    for (const word of foreign) said = swapWholeWord(said, word, name);
+  }
+  return said;
+}
+
+/** Replaces the word wherever it stands whole (not inside a longer word), ignoring case. */
+function swapWholeWord(text: string, word: string, by: string): string {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(?<![\\p{L}\\p{M}])${escaped}(?![\\p{L}\\p{M}])`, 'giu'), by);
+}

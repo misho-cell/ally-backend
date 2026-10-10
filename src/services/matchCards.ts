@@ -1,3 +1,4 @@
+import { fieldInScript } from './fieldPlaces';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -81,10 +82,14 @@ const NOTED: ByLanguage<string> = {
 
 const pick = <T>(table: ByLanguage<T>, language: RunLanguage): T => table[language] ?? table.ka;
 
+/** The field in the reader's script where the trade list knows the word (1699, box 50656). */
+const fieldFor = (language: RunLanguage, field: string): string =>
+  fieldInScript(field, language === 'ka');
+
 export const card1Text = (language: RunLanguage, field: string): string =>
-  pick(CARD1, language)(field);
+  pick(CARD1, language)(fieldFor(language, field));
 export const card2Text = (language: RunLanguage, field: string): string =>
-  pick(CARD2, language)(field);
+  pick(CARD2, language)(fieldFor(language, field));
 export const card1Choices = (language: RunLanguage): string[] => [...pick(CARD1_CHOICES, language)];
 export const card2Choices = (language: RunLanguage): string[] => [...pick(CARD2_CHOICES, language)];
 export const toTheNeedLine = (language: RunLanguage, name: string): string =>
