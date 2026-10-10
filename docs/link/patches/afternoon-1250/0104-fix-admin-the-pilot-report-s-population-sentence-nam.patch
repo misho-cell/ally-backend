@@ -1,0 +1,55 @@
+From 99a29cfa6bc616b7fafc1e22bb5a80886de07569 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 14:18:51 +0000
+Subject: [PATCH 104/105] fix(admin): the pilot report's population sentence
+ names no column or table (4292, box 51104)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+„(hasAccessToAlly)" and „test_seats-ში" were left inside the Georgian
+sentence. Same facts, in words: registered through Netai, and not in the
+list of test accounts.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/thePilotsNumbersSayWhoTheyCount.test.ts       | 6 ++++--
+ src/services/pilotReport.service.ts                         | 4 ++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts b/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts
+index 8c1d7cb..2bc075e 100644
+--- a/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts
++++ b/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts
+@@ -73,8 +73,10 @@ describe('the population is written into the query, not assumed', () => {
+   it('carries the rule in the payload, so a number cannot travel without it', async () => {
+     const report = await pilotReport(7);
+ 
+-    expect(report.population).toContain('hasAccessToAlly');
+-    expect(report.population).toContain('test_seats');
++    expect(report.population).toContain('დარეგისტრირდა');
++    expect(report.population).toContain('სატესტო ანგარიშების სიაში');
++    // 4292 (tester box 51104): no column or table names inside the sentences.
++    expect(report.population).not.toMatch(/hasAccessToAlly|test_seats/);
+     expect(report.population).toContain('Ally-ის 62,200 ძველი ანგარიში');
+     // And it says USE first, because that is what the flag alone got wrong.
+     // 4292: in Georgian, as the page is.
+diff --git a/src/services/pilotReport.service.ts b/src/services/pilotReport.service.ts
+index 3c6ec61..bc8e2c0 100644
+--- a/src/services/pilotReport.service.ts
++++ b/src/services/pilotReport.service.ts
+@@ -257,8 +257,8 @@ const PAYMENT_RULE =
+   'ხელით მიცემული ანგარიში პროდუქტს იყენებს, მაგრამ შემოსავალი არ არის.';
+ 
+ const POPULATION_RULE =
+-  'ნამდვილი = ვინც Netai უკვე გამოიყენა (აქვს საუბარი აქ) ან მისი გავლით დარეგისტრირდა ' +
+-  '(hasAccessToAlly), და არ არის test_seats-ში. გამოყენება და არა ნიშანი: 45 ნამდვილი ' +
++  'ნამდვილი = ვინც Netai უკვე გამოიყენა (აქვს საუბარი აქ) ან მისი გავლით დარეგისტრირდა, ' +
++  'და არ არის სატესტო ანგარიშების სიაში. გამოყენება და არა ნიშანი: 45 ნამდვილი ' +
+   'მომხმარებლიდან, ვინც პროდუქტი გამოიყენა, 35-ს ნიშანი არ აქვს, მათ შორის მეორე ყველაზე ' +
+   'აქტიურ ანგარიშს. სატესტო = გამოგონილი ანგარიშები, რომლებიც სატესტო მარშრუტმა შექმნა. ' +
+   'Ally-ის 62,200 ძველი ანგარიში არცერთშია: აქ საუბარი არ აქვთ.';
+-- 
+2.43.0
+

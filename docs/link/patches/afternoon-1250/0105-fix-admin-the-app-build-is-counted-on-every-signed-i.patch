@@ -1,0 +1,313 @@
+From 606ac7fb5c79f0a97752e809c9d55b0961f906a1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 14:18:51 +0000
+Subject: [PATCH 105/105] fix(admin): the app build is counted on every
+ signed-in route (4298, box 51104)
+
+The device and build were recorded only by /threads and /contacts, so a
+request with X-App-Build elsewhere never reached device_fingerprints. The
+recording now runs once, app-wide, before the routers: it reads the user
+token itself, needs X-Device-Id as before, and writes each device at most
+once a minute per build (a new build is written at once).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../deviceFingerprint.middleware.test.ts      | 96 +++++++++++++++++++
+ .../deviceFingerprint.middleware.ts           | 68 ++++++++++---
+ .../contactImportState.routes.test.ts         |  4 -
+ .../__tests__/threadRoutes.routes.test.ts     |  4 -
+ src/api/routes/contacts.routes.ts             |  2 -
+ src/api/routes/threads.routes.ts              |  2 -
+ src/index.ts                                  |  3 +
+ 7 files changed, 155 insertions(+), 24 deletions(-)
+ create mode 100644 src/api/middleware/__tests__/deviceFingerprint.middleware.test.ts
+
+diff --git a/src/api/middleware/__tests__/deviceFingerprint.middleware.test.ts b/src/api/middleware/__tests__/deviceFingerprint.middleware.test.ts
+new file mode 100644
+index 0000000..be5a9aa
+--- /dev/null
++++ b/src/api/middleware/__tests__/deviceFingerprint.middleware.test.ts
+@@ -0,0 +1,96 @@
++jest.mock('../../../services/auth.service', () => ({ __esModule: true, verifyToken: jest.fn() }));
++jest.mock('../../../services/deviceFingerprint.service', () => ({
++  __esModule: true,
++  ...jest.requireActual('../../../services/deviceFingerprint.service'),
++  recordDevice: jest.fn(() => Promise.resolve()),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { Request, Response } from 'express';
++import { verifyToken } from '../../../services/auth.service';
++import { recordDevice } from '../../../services/deviceFingerprint.service';
++import { captureDeviceFingerprint, dueForRecording } from '../deviceFingerprint.middleware';
++
++const mockVerify = verifyToken as jest.MockedFunction<typeof verifyToken>;
++const mockRecord = recordDevice as jest.MockedFunction<typeof recordDevice>;
++
++function request(headers: Record<string, string>): Request {
++  return { headers, ip: '10.0.0.1' } as unknown as Request;
++}
++
++/** 4298 (tester box 51104): a build sent on any route was not counted. */
++describe('the device and build of a signed-in request', () => {
++  beforeEach(() => {
++    mockVerify.mockReset();
++    mockRecord.mockClear();
++  });
++
++  it('is recorded with its build, and the request goes on', () => {
++    mockVerify.mockReturnValue({ userId: '501', role: 'user' });
++    const next = jest.fn();
++    captureDeviceFingerprint(
++      request({ authorization: 'Bearer t', 'x-device-id': 'dev-a', 'x-app-build': '1.2.3-test15' }),
++      {} as Response,
++      next,
++    );
++    expect(mockRecord).toHaveBeenCalledWith('501', 'dev-a', null, '10.0.0.1', '1.2.3-test15');
++    expect(next).toHaveBeenCalled();
++  });
++
++  it('is written once a minute for the same build, at once for a new one', () => {
++    mockVerify.mockReturnValue({ userId: '502', role: 'user' });
++    const send = (build: string): void =>
++      captureDeviceFingerprint(
++        request({ authorization: 'Bearer t', 'x-device-id': 'dev-b', 'x-app-build': build }),
++        {} as Response,
++        jest.fn(),
++      );
++    send('1.0.0');
++    send('1.0.0');
++    send('1.0.1');
++    expect(mockRecord.mock.calls.map((call) => call[4])).toEqual(['1.0.0', '1.0.1']);
++  });
++
++  it.each([
++    ['no device id', { authorization: 'Bearer t' }],
++    ['no token', { 'x-device-id': 'dev-c' }],
++  ])('is not recorded with %s, and the request goes on', (_, headers) => {
++    mockVerify.mockReturnValue({ userId: '503', role: 'user' });
++    const next = jest.fn();
++    captureDeviceFingerprint(request(headers), {} as Response, next);
++    expect(mockRecord).not.toHaveBeenCalled();
++    expect(next).toHaveBeenCalled();
++  });
++
++  it('is not recorded for an invalid token or an admin token', () => {
++    mockVerify.mockImplementationOnce(() => {
++      throw new Error('bad token');
++    });
++    mockVerify.mockReturnValueOnce({ userId: '1', role: 'admin' });
++    for (let i = 0; i < 2; i += 1) {
++      captureDeviceFingerprint(
++        request({ authorization: 'Bearer t', 'x-device-id': `dev-d${i}` }),
++        {} as Response,
++        jest.fn(),
++      );
++    }
++    expect(mockRecord).not.toHaveBeenCalled();
++  });
++
++  it('runs on every route, not on two routers', () => {
++    const index = readFileSync(join(__dirname, '..', '..', '..', 'index.ts'), 'utf8');
++    expect(index).toContain('app.use(captureDeviceFingerprint);');
++    expect(index.indexOf('app.use(captureDeviceFingerprint);')).toBeLessThan(
++      index.indexOf("app.use('/chat', chatRouter);"),
++    );
++  });
++});
++
++describe('the once-a-minute memory', () => {
++  it('lets the same key through again after a minute', () => {
++    expect(dueForRecording('k', 0)).toBe(true);
++    expect(dueForRecording('k', 59_999)).toBe(false);
++    expect(dueForRecording('k', 60_000)).toBe(true);
++  });
++});
+diff --git a/src/api/middleware/deviceFingerprint.middleware.ts b/src/api/middleware/deviceFingerprint.middleware.ts
+index 7a3b718..7e72ebb 100644
+--- a/src/api/middleware/deviceFingerprint.middleware.ts
++++ b/src/api/middleware/deviceFingerprint.middleware.ts
+@@ -1,7 +1,21 @@
+ import { NextFunction, Request, Response } from 'express';
+-import { AuthenticatedRequest } from './auth.middleware';
++import { verifyToken } from '../../services/auth.service';
+ import { appBuildOf, recordDevice } from '../../services/deviceFingerprint.service';
+ 
++const BEARER_PREFIX = 'Bearer ';
++const USER_ROLE = 'user';
++
++/**
++ * 4298 (tester box 51104): a device is written at most once a minute per build.
++ * Every signed-in request now passes here, and the app polls; a new build is
++ * written at once because it is a new key. `request_count` therefore counts
++ * these writes, not every request.
++ */
++const RECORD_EVERY_MS = 60_000;
++/** Past this many devices the memory starts afresh; the cost is one extra write each. */
++const MAX_DEVICES_REMEMBERED = 10_000;
++const lastRecorded = new Map<string, number>();
++
+ function clientIp(req: Request): string | null {
+   const forwarded = req.headers['x-forwarded-for'];
+   if (typeof forwarded === 'string' && forwarded.length > 0) {
+@@ -10,23 +24,53 @@ function clientIp(req: Request): string | null {
+   return req.ip ?? null;
+ }
+ 
++/** The signed-in person's id when the request carries a valid user token; null otherwise. */
++function signedInUserId(req: Request): string | null {
++  const header = req.headers.authorization;
++  if (typeof header !== 'string' || !header.startsWith(BEARER_PREFIX)) return null;
++  try {
++    const payload = verifyToken(header.slice(BEARER_PREFIX.length));
++    return payload.role === USER_ROLE ? payload.userId : null;
++  } catch {
++    // An invalid token is the route's own 401 to give; here it only means „not recorded".
++    return null;
++  }
++}
++
++/** True when this device and build were not written within the last minute; marks them written. */
++export function dueForRecording(key: string, nowMs: number): boolean {
++  const last = lastRecorded.get(key);
++  if (last !== undefined && nowMs - last < RECORD_EVERY_MS) return false;
++  if (lastRecorded.size >= MAX_DEVICES_REMEMBERED) lastRecorded.clear();
++  lastRecorded.set(key, nowMs);
++  return true;
++}
++
+ /**
+- * Records the X-Device-Id sent by the app (+ user-agent, IP) for the
+- * authenticated user. Best-effort and non-blocking — place after authenticateJwt.
++ * Records the X-Device-Id (+ X-App-Build, user-agent, IP) of every signed-in
++ * request, on every route. 4298: it used to run on /threads and /contacts
++ * only, so a build seen elsewhere was never counted. Best-effort and
++ * non-blocking: it never answers or fails a request.
+  */
+ export function captureDeviceFingerprint(req: Request, _res: Response, next: NextFunction): void {
+-  const user = (req as AuthenticatedRequest).user;
+   const deviceId = req.headers['x-device-id'];
++  const userId =
++    typeof deviceId === 'string' && deviceId.trim().length > 0 ? signedInUserId(req) : null;
+ 
+-  if (user?.userId && typeof deviceId === 'string' && deviceId.trim().length > 0) {
+-    const userAgent =
+-      typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null;
++  if (userId !== null && typeof deviceId === 'string') {
+     const appBuild = appBuildOf(req.headers['x-app-build']);
+-    void recordDevice(user.userId, deviceId.trim(), userAgent, clientIp(req), appBuild).catch(
+-      () => {
+-        // best-effort: fingerprinting must never break the request
+-      },
+-    );
++    if (dueForRecording(`${userId}|${deviceId.trim()}|${appBuild ?? ''}`, Date.now())) {
++      const userAgent =
++        typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null;
++      void recordDevice(userId, deviceId.trim(), userAgent, clientIp(req), appBuild).catch(
++        (error: unknown) => {
++          // eslint-disable-next-line no-console
++          console.warn(
++            `[device] not recorded: ${error instanceof Error ? error.message : String(error)}`,
++          );
++        },
++      );
++    }
+   }
+ 
+   next();
+diff --git a/src/api/routes/__tests__/contactImportState.routes.test.ts b/src/api/routes/__tests__/contactImportState.routes.test.ts
+index 843ce46..e2f831e 100644
+--- a/src/api/routes/__tests__/contactImportState.routes.test.ts
++++ b/src/api/routes/__tests__/contactImportState.routes.test.ts
+@@ -17,10 +17,6 @@ jest.mock('../../middleware/subscription.middleware', () => ({
+   __esModule: true,
+   requireSubscription: (_req: unknown, _res: unknown, next: () => void): void => next(),
+ }));
+-jest.mock('../../middleware/deviceFingerprint.middleware', () => ({
+-  __esModule: true,
+-  captureDeviceFingerprint: (_req: unknown, _res: unknown, next: () => void): void => next(),
+-}));
+ jest.mock('../../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
+ jest.mock('../../../db/postgres/client', () => ({
+   __esModule: true,
+diff --git a/src/api/routes/__tests__/threadRoutes.routes.test.ts b/src/api/routes/__tests__/threadRoutes.routes.test.ts
+index 12ffefd..b2302ba 100644
+--- a/src/api/routes/__tests__/threadRoutes.routes.test.ts
++++ b/src/api/routes/__tests__/threadRoutes.routes.test.ts
+@@ -18,10 +18,6 @@ jest.mock('../../middleware/subscription.middleware', () => ({
+   requireSubscriptionUnlessAnswering: (_req: unknown, _res: unknown, next: () => void): void =>
+     next(),
+ }));
+-jest.mock('../../middleware/deviceFingerprint.middleware', () => ({
+-  __esModule: true,
+-  captureDeviceFingerprint: (_req: unknown, _res: unknown, next: () => void): void => next(),
+-}));
+ jest.mock('../../../services/routesBoard.service', () => ({
+   ...jest.requireActual('../../../services/routesBoard.service'),
+   routesForThread: jest.fn(),
+diff --git a/src/api/routes/contacts.routes.ts b/src/api/routes/contacts.routes.ts
+index 02d56d5..495c084 100644
+--- a/src/api/routes/contacts.routes.ts
++++ b/src/api/routes/contacts.routes.ts
+@@ -6,7 +6,6 @@ import {
+   AuthenticatedRequest,
+ } from '../middleware/auth.middleware';
+ import { requireSubscription } from '../middleware/subscription.middleware';
+-import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
+ import { importContacts, parseVcf } from '../../services/contacts.service';
+ import {
+   contactImportState,
+@@ -23,7 +22,6 @@ const contactsRouter = Router();
+ 
+ contactsRouter.use(authenticateJwt, requireUserRole);
+ contactsRouter.use(requireSubscription);
+-contactsRouter.use(captureDeviceFingerprint);
+ 
+ /** The import-state routes are read on every visit to the sync page. */
+ const IMPORT_STATE_PER_MINUTE = 30;
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 86db835..38d2143 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -12,7 +12,6 @@ import {
+ } from '../middleware/auth.middleware';
+ import { requireSubscriptionUnlessAnswering } from '../middleware/subscription.middleware';
+ import { rateLimit } from '../middleware/rateLimit.middleware';
+-import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
+ import {
+   getThreadsForUser,
+   createThread,
+@@ -497,7 +496,6 @@ threadsRouter.use(
+     },
+   }),
+ );
+-threadsRouter.use(captureDeviceFingerprint);
+ 
+ function handleValidationErrors(
+   req: Request,
+diff --git a/src/index.ts b/src/index.ts
+index bbe6837..a65d50d 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
+ import express, { NextFunction, Request, Response } from 'express';
+ import cors from 'cors';
+ import { rateLimit } from './api/middleware/rateLimit.middleware';
++import { captureDeviceFingerprint } from './api/middleware/deviceFingerprint.middleware';
+ import authRouter from './api/routes/auth.routes';
+ import chatRouter from './api/routes/chat.routes';
+ import adminRouter from './api/routes/admin.routes';
+@@ -103,6 +104,8 @@ app.get('/health', rateLimit({ windowMs: 60_000, max: 60 }), (req: Request, res:
+ app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
+ 
+ app.use(express.json({ limit: '10mb' }));
++// 4298: every signed-in request's device and app build, on every route.
++app.use(captureDeviceFingerprint);
+ app.use('/auth', authRouter);
+ app.use('/chat', chatRouter);
+ app.use('/admin', adminRouter);
+-- 
+2.43.0
+

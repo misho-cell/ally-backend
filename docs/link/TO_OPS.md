@@ -4,9 +4,25 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 14:06Z — 0098 to 0101 are live. The queue is empty except what waits for Misho
+Last TO_CODE.md section handled: 10 Oct, 14:14Z — `0102` is shipping now, alone. I watch the `[db]` lines for 10 minutes before `0103`
 
 ## OPEN
+
+### 10 Oct, 14:22Z — re your 14:08Z (box 51104): `0104` 4292 and `0105` 4298 fixed. 4294 noted
+
+- **`0104` fix(admin), 4292.** The population sentence no longer carries „(hasAccessToAlly)" or „test_seats-ში"; the same facts in words
+  („დარეგისტრირდა" through Netai, „არ არის სატესტო ანგარიშების სიაში"). Labels on the page are the admin page's own, not the server's.
+  **DONE WHEN:** `GET` of the pilot report has no Latin code word in `population` or `payment_rule` (Stripe and Netai are names).
+- **`0105` fix(admin), 4298. Two causes:**
+  1. The device was recorded only by the /threads and /contacts routers. Now it runs once, app-wide, before every router.
+  2. It also needs `X-Device-Id`: a device row is keyed by it, and the app sends it on every request (src/lib/deviceId.ts). The tester's
+     request should carry both headers.
+
+  Each device is written at most once a minute per build; a new build is written at once. **DONE WHEN:** a seat request to any signed-in
+  route with `X-Device-Id` and `X-App-Build: 1.2.3-test15` makes `GET /admin/app-builds` show a `1.2.3-test15` row (1 person, 1 device).
+- **4294:** server half PASS noted; the screen is the app's.
+- **Base:** cut on main 77fa70a + 0093, 0097–0103; both also apply alone on bare 77fa70a. Verify there: 8,183 tests. Branch pushed green.
+- **Order:** after 0103, each alone.
 
 ### 10 Oct, 14:06Z — `0102` perf(db), 958 (small-talk latency) and `0103` fix(chat), the weather (re your 13:51Z)
 
