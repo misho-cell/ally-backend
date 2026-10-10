@@ -1,6 +1,13 @@
 import { query } from '../db/postgres/client';
 
 const CRON_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours
+/**
+ * 4295 (plate NEW-4): the first run waited the full five hours, and the
+ * server is deployed far more often than that — so a restart always came
+ * first and ended trials were never handled. The first run now comes soon
+ * after start; the update is idempotent, so a run of deploys is harmless.
+ */
+export const FIRST_RUN_AFTER_START_MS = 2 * 60 * 1000;
 
 async function downgradeExpired(): Promise<void> {
   const result = await query(
@@ -31,10 +38,10 @@ export function startSubscriptionCron(): void {
       // eslint-disable-next-line no-console
       console.error('[subscription-cron] error:', err);
     }
-    setTimeout(() => void run(), CRON_INTERVAL_MS);
+    setTimeout(() => void run(), CRON_INTERVAL_MS).unref();
   };
 
   // eslint-disable-next-line no-console
-  console.log('[subscription-cron] Cron started (every 5h)');
-  setTimeout(() => void run(), CRON_INTERVAL_MS);
+  console.log('[subscription-cron] Cron started (2 min after start, then every 5h)');
+  setTimeout(() => void run(), FIRST_RUN_AFTER_START_MS).unref();
 }

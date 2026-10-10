@@ -48,6 +48,20 @@ const WARM_TIE_BATCH_LIMIT = 25;
 const WARM_TARGET_LIST_AFTER_MS = 2 * 60 * 1000;
 /** After the warm-up has had its chance to fill the target-list cache. */
 const OPEN_CAMPAIGNS_AFTER_START_MS = 10 * 60 * 1000;
+/**
+ * 4295 (plate NEW-4): the daily jobs (warm-tie questions, the stale sweep, the
+ * delivery prune) waited a full day for their first run, and a deploy always
+ * came first — the campaign questions never went. Each now also runs once
+ * soon after start. All three are idempotent: the warm-tie cooldown lives in
+ * its query, so a run of deploys asks nobody twice.
+ */
+export const DAILY_JOBS_AFTER_START_MS = 15 * 60 * 1000;
+
+/** Run now-ish, then on the interval: a deploy never pushes a job past its turn. */
+function soonThenEvery(job: () => void, afterStartMs: number, everyMs: number): void {
+  setTimeout(job, afterStartMs).unref();
+  setInterval(job, everyMs).unref();
+}
 
 /** One pass of the campaign opener, logged either way it ends. */
 function openCampaignsOnce(): void {
@@ -150,44 +164,59 @@ export function startChorusCampaignCron(): void {
       );
   }, SEND_ASKS_INTERVAL_MS).unref();
 
-  setInterval(() => {
-    void queueWarmTieQuestions(WARM_TIE_BATCH_LIMIT)
-      .then((queued) => {
-        // eslint-disable-next-line no-console
-        if (queued > 0) console.log(`[chorus-cron] queued ${queued} warm-tie question(s)`);
-      })
-      .catch((err: unknown) =>
-        // eslint-disable-next-line no-console
-        console.error('[chorus-cron] queueWarmTieQuestions failed:', (err as Error).message),
-      );
-  }, SWEEP_INTERVAL_MS).unref();
+  soonThenEvery(
+    () => {
+      void queueWarmTieQuestions(WARM_TIE_BATCH_LIMIT)
+        .then((queued) => {
+          // eslint-disable-next-line no-console
+          if (queued > 0) console.log(`[chorus-cron] queued ${queued} warm-tie question(s)`);
+        })
+        .catch((err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.error('[chorus-cron] queueWarmTieQuestions failed:', (err as Error).message),
+        );
+    },
+    DAILY_JOBS_AFTER_START_MS,
+    SWEEP_INTERVAL_MS,
+  );
 
-  setInterval(() => {
-    void prunePushDeliveries()
-      .then((removed) => {
-        // eslint-disable-next-line no-console
-        if (removed > 0) console.log(`[push] pruned ${removed} old delivery record(s)`);
-      })
-      .catch((err: unknown) =>
-        // eslint-disable-next-line no-console
-        console.error('[push] delivery prune failed:', (err as Error).message),
-      );
-  }, SWEEP_INTERVAL_MS).unref();
+  soonThenEvery(
+    () => {
+      void prunePushDeliveries()
+        .then((removed) => {
+          // eslint-disable-next-line no-console
+          if (removed > 0) console.log(`[push] pruned ${removed} old delivery record(s)`);
+        })
+        .catch((err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.error('[push] delivery prune failed:', (err as Error).message),
+        );
+    },
+    DAILY_JOBS_AFTER_START_MS,
+    SWEEP_INTERVAL_MS,
+  );
 
-  setInterval(() => {
-    void sweepStaleParticipants()
-      .then(({ timedOut, closed }) => {
-        // eslint-disable-next-line no-console
-        if (timedOut > 0) console.log(`[chorus-cron] timed out ${timedOut} silent participant(s)`);
-        // eslint-disable-next-line no-console
-        if (closed > 0) console.log(`[chorus-cron] closed ${closed} empty/expired campaign(s)`);
-      })
-      .catch((err: unknown) =>
-        // eslint-disable-next-line no-console
-        console.error('[chorus-cron] sweepStaleParticipants failed:', (err as Error).message),
-      );
-  }, SWEEP_INTERVAL_MS).unref();
+  soonThenEvery(
+    () => {
+      void sweepStaleParticipants()
+        .then(({ timedOut, closed }) => {
+          // eslint-disable-next-line no-console
+          if (timedOut > 0)
+            console.log(`[chorus-cron] timed out ${timedOut} silent participant(s)`);
+          // eslint-disable-next-line no-console
+          if (closed > 0) console.log(`[chorus-cron] closed ${closed} empty/expired campaign(s)`);
+        })
+        .catch((err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.error('[chorus-cron] sweepStaleParticipants failed:', (err as Error).message),
+        );
+    },
+    DAILY_JOBS_AFTER_START_MS,
+    SWEEP_INTERVAL_MS,
+  );
 
   // eslint-disable-next-line no-console
-  console.log('[chorus-cron] started (open 6h; send 15min; warm-tie + sweep daily)');
+  console.log(
+    '[chorus-cron] started (open 6h; send 15min; warm-tie + sweep daily, first 15 min after start)',
+  );
 }
