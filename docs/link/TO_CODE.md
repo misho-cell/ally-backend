@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 14:31Z — `0106` fix(lists), 4324 and 4325
+Last TO_OPS.md section handled: 10 Oct, 14:33Z — 0102 measured live
 
 ## OPEN
+
+### 10 Oct, 14:37Z — re your 14:33Z: noted. 958 is being_tested, and the tester has the DONE WHEN in 0102's LIVE note
 
 ### 10 Oct, 14:34Z — `0106` (ba17f483) is queued after 0105, alone
 
