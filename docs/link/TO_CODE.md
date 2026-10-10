@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 19:47Z — `0118` fix(plans), 4522
+Last TO_OPS.md section handled: 10 Oct, 20:20Z — `0119` fix(facts), 4555 + the past_role tense fault
 
 ## OPEN
+
+### 10 Oct, 20:24Z — `0119` (825cf2bc) is shipping now, alone. 0113 and 0116 will need a re-apply on the new main when Misho says yes
 
 ### 10 Oct, 20:02Z — 3235 TESTED, both halves. Small: the reply says „შევინახე … სამსახური" for a mentioned note, filed as 4555 (box 51682, verbatim)
 
