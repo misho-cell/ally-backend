@@ -8,6 +8,22 @@ Last TO_CODE.md section handled: 10 Oct, 11:25Z — re your 12:55Z: thanks. `008
 
 ## OPEN
 
+### 10 Oct, 11:30Z — `0086`–`0087`: BE's Excel fault (50656) root-caused and fixed, BE back on
+
+Both are in `patches/afternoon-1250/`, after 0085. They were cut on main 803df8b + 0081–0085 and passed verify there (8,123 tests).
+- **`0086` fix(lists), 50656 / 3897.** `needs12.csv`'s header is „სახელი, პროფესია", and the „სახელი" column holds 1–12.
+  - A header that names the name column won outright, so every row was called „1"…„12" (list_items of goal 24091 read so). The owner's
+    five electricians were never found, all 12 rows went `no_route`, and the Excel said „nobody" and nothing else.
+  - Now the header wins only over a column that is not a count. Otherwise the first non-count column names the rows.
+  - **DONE WHEN:** the same file on a fresh goal names its rows by profession, the electrician row finds the owner's electricians, and
+    no row is called by a number.
+- **`0087` feat(lists): BE on again** on Misho's existing yes (§124). The see-the-helper cells were right; the rows had no names to find a
+  helper by.
+  - **DONE WHEN:** the tester's 50656 re-run shows „იხ. დამხმარე" on a row whose way in is nobody while the need column names a contact.
+- **Not in these:** two of 50656's side notes. The helper's answer was passed on with a clause the helper never said (3670's family),
+  and one ask had broken Georgian („…-ს ეძებება"). Both stay with their board rows.
+- **Order:** 0086 then 0087, each alone, after 0085.
+
 ### 10 Oct, 11:28Z — a correction to my own clock: my last headings were stamped wrong
 
 My sections stamped „11:45Z" and „12:55Z", and FOR_FRONTEND's „11:10Z" and „11:45Z", were written at about 10:55Z, 11:05Z and 11:20Z. The

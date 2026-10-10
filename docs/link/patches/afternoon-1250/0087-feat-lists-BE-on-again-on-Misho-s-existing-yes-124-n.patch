@@ -1,0 +1,60 @@
+From 6157432e8abbf27039c699abdbdf03574d01d139 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:29:13 +0000
+Subject: [PATCH 87/87] =?UTF-8?q?feat(lists):=20BE=20on=20again,=20on=20Mi?=
+ =?UTF-8?q?sho's=20existing=20yes=20(=C2=A7124),=20now=20that=20the=20rows?=
+ =?UTF-8?q?=20have=20their=20names?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The 10:55Z revert answered box 50656, where the list Excel said „nobody"
+on every row and never „see the helper". The cause was the rows' names (a
+numbers column under „სახელი"), fixed in the patch before this one; the
+see-the-helper cells themselves were right.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts | 6 +++---
+ src/services/listItems.service.ts                         | 6 ++++--
+ 2 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts b/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts
+index 25efd9d..bf3e2b4 100644
+--- a/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts
++++ b/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts
+@@ -12,9 +12,9 @@ const row = (wayIn: string, state: string): WorkedRow => ({
+ const cells = ['ნინო', 'ბუღალტერი', 'შენს კონტაქტებში არავინ', '', 'გზა არ არის', ''];
+ 
+ describe('a row whose need names a helper', () => {
+-  it('is unchanged until Misho says yes to the words', () => {
+-    expect(SEE_HELPER_ON).toBe(false);
+-    expect(withHelperSaid(cells, row('none', 'no_route'), 'ka')).toEqual(cells);
++  it('is on, on Misho’s yes (§124), and off leaves the row as it was', () => {
++    expect(SEE_HELPER_ON).toBe(true);
++    expect(withHelperSaid(cells, row('none', 'no_route'), 'ka', false)).toEqual(cells);
+   });
+ 
+   it('points the way-in and state cells at the helper, once on', () => {
+diff --git a/src/services/listItems.service.ts b/src/services/listItems.service.ts
+index 2c9855f..1c7eebc 100644
+--- a/src/services/listItems.service.ts
++++ b/src/services/listItems.service.ts
+@@ -496,9 +496,11 @@ export async function listWorkbook(
+  * (about reaching the listed person), which reads as a contradiction. With
+  * this on, those two cells point at the helper column instead.
+  *
+- * OFF until Misho's yes on the exact words: they are new text in the owner's file.
++ * ON since Misho's yes, 10 Oct ~06:20 UTC: „BE კი" (ADMIN_WRITE_OPERATIONS §124).
++ * Off 10:55Z–(this commit) on box 50656; that Excel's fault was the rows'
++ * names (a numbers column under „სახელი"), fixed in the patch before this.
+  */
+-export const SEE_HELPER_ON = false;
++export const SEE_HELPER_ON = true;
+ 
+ const SEE_HELPER: Readonly<Record<RunLanguage, string>> = {
+   ka: 'იხ. დამხმარე',
+-- 
+2.43.0
+

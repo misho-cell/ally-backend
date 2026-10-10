@@ -1,0 +1,83 @@
+From f67117fee52f6e8116ee1848b705d98c65a48176 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:27:25 +0000
+Subject: [PATCH 86/87] =?UTF-8?q?fix(lists):=20a=20column=20of=20bare=20nu?=
+ =?UTF-8?q?mbers=20is=20never=20a=20row's=20name,=20even=20under=20?=
+ =?UTF-8?q?=E2=80=9E=E1=83=A1=E1=83=90=E1=83=AE=E1=83=94=E1=83=9A=E1=83=98?=
+ =?UTF-8?q?"=20(box=2050656,=203897)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+needs12.csv had the header „სახელი, პროფესია" with 1–12 under „სახელი". A
+header that names the name column won outright, so every row was called
+„1"…„12": the owner's five electricians were never found, all twelve rows
+went „no route", and the list Excel said „nobody" and nothing else — the
+BE fault in 50656. The header now wins only over a column that is not a
+count; otherwise the first non-count column names the rows, as 3897 meant.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aListBecomesTheWorkOfOneGoal.test.ts      | 19 +++++++++++++++++++
+ src/services/listItems.service.ts             | 13 +++++++++++--
+ 2 files changed, 30 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts b/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
+index ca05640..4bdf162 100644
+--- a/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
++++ b/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
+@@ -54,6 +54,25 @@ describe('the column a row is called by', () => {
+       ),
+     ).toBe(1);
+   });
++
++  /** Box 50656 (needs12.csv): „სახელი | პროფესია" with 1–12 under „სახელი". */
++  it('is never a counting column, even under a header that says „name"', () => {
++    const rows = [
++      ['1', 'ელექტრიკოსი'],
++      ['2', 'სანტექნიკოსი'],
++      ['3', 'ნოტარიუსი'],
++    ];
++    expect(nameColumn(['სახელი', 'პროფესია'], rows)).toBe(1);
++    expect(
++      nameColumn(
++        ['სახელი', 'პროფესია'],
++        [
++          ['ნინო', 'ექიმი'],
++          ['გია', 'იურისტი'],
++        ],
++      ),
++    ).toBe(0);
++  });
+ });
+ 
+ describe('a row’s state from its way in', () => {
+diff --git a/src/services/listItems.service.ts b/src/services/listItems.service.ts
+index 16c525c..2c9855f 100644
+--- a/src/services/listItems.service.ts
++++ b/src/services/listItems.service.ts
+@@ -47,9 +47,18 @@ function isIndexColumn(columns: readonly string[], rows: readonly string[][], at
+   return cells.length > 0 && cells.every((cell) => DIGITS_ONLY_RE.test(cell));
+ }
+ 
+-/** The column a row is called by: one whose header names it, else the first that is not a count. */
++/**
++ * The column a row is called by: one whose header names it, else the first
++ * that is not a count. 4291's twin (box 50656, needs12.csv): the header was
++ * „სახელი, პროფესია" and the „სახელი" column held 1–12, so every row was
++ * called „1"…„12", nothing was found for any of them, and the Excel said
++ * „nobody" twelve times. A header that says „name" over a column of bare
++ * numbers is a count all the same.
++ */
+ export function nameColumn(columns: readonly string[], rows: readonly string[][] = []): number {
+-  const named = columns.findIndex((c) => NAME_COLUMN_RE.test(c));
++  const named = columns.findIndex(
++    (c, at) => NAME_COLUMN_RE.test(c) && !isIndexColumn(columns, rows, at),
++  );
+   if (named !== -1) return named;
+   const first = columns.findIndex((_, at) => !isIndexColumn(columns, rows, at));
+   return first === -1 ? 0 : first;
+-- 
+2.43.0
+
