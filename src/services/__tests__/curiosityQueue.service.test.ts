@@ -312,6 +312,38 @@ describe("maybeCuriosityUpdate — the curiosity trigger in T9's one pending_upd
  *
  * Two things follow, and the second is the one a test can hold.
  */
+/** 3500 (the tester's 50760): a build the day's question gave up on must not spend the day. */
+describe('the day’s question is logged only when it is handed on', () => {
+  const surfacingLogs = (): unknown[][] =>
+    mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO curiosity_surfacing_log'),
+    );
+
+  it('a build asked not to log writes nothing, however it ends', async () => {
+    routeQueueQueries({ close: [{ contact_phone: '+995500000031' }], presence: [] });
+    const out = await buildCuriosityQueue('43', 1, { logSurfacing: false });
+    expect(out).toHaveLength(1);
+    expect(surfacingLogs()).toHaveLength(0);
+  });
+
+  it('the day’s path logs exactly the one item it hands on', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000032' }],
+      presence: [],
+      labels: [{ phone: '+995500000032', label: 'ნინო' }],
+    });
+    expect(await maybeCuriosityUpdate('104')).not.toBeNull();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(surfacingLogs()).toHaveLength(1);
+    expect(surfacingLogs()[0][1]).toEqual([
+      [104],
+      ['+995500000032'],
+      ['close_contact'],
+      ['occupation'],
+    ]);
+  });
+});
+
 describe('the curiosity queue must not cost a conversation its first breath', () => {
   it('runs the five tiers together, not one after another', async () => {
     routeQueueQueries({
