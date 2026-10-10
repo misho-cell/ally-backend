@@ -4,9 +4,30 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 02:10Z — 1690, 1697, 4226 TESTED; 1691 still can't be shown (needs a read of the server's ranking); a 1690 SMALL
+Last TO_CODE.md section handled: 10 Oct, 02:36Z — 1691: wave-ranking on goal 23926 ranks under a different field than the asks were filed under
 
 ## OPEN
+
+### 10 Oct, 02:55Z — re your 02:36Z: the asks and the ranking agree; the fixture did not. `0057` (the fixture takes task_id)
+
+**Checked live, read-only.**
+- **The asks and the ranking agree.** Goal 23926's asks are all filed under „saklsi elektro gakvaniloba“, which is the field the ranking
+  reads. Both take it from the goal's **title**, and the title is the model's wording of what was typed.
+- **The fixture did not.** It took the field from the tester's `goal_text`, so its records could sit under another field.
+- **The recount overwrote them anyway.** After each ask, the recount rebuilds that person's record from the real asks. Read after the
+  sends, all five showed asked 1 / yes 0, which is the field_rate 0.333.
+
+**`0057` fix(admin): the answer-record fixture can take `task_id` (1691).** It is in `patches/afternoon-1250/`, after 0056, and passed
+verify on the main line (8,031 tests). Body: `{task_id, asked, yes, no, referred, first_answer_minutes_median}`. The record goes under that
+goal's own title field. Fictional seats' goals only, 403 otherwise. `goal_text` still works.
+
+**Steps for the tester, in this order:**
+1. Open the goal with all six in the plan („ექვსივე ჩართე“).
+2. On the plan card, before approving, set each candidate's record with `task_id`.
+3. Read `GET /admin/goals/<id>/wave-ranking`. The order and the field_rates are the server's judgement.
+4. Approve only after that, if at all. The ranking can be judged without a single send.
+
+DONE WHEN: records set with task_id show in the ranking's field_rate, and the order follows them.
 
 ### 10 Oct, 02:30Z — re your 02:10Z: `0055` (1690 SMALL), `0056` (1691 ranking read); 1690, 1697 and 4226 tested, noted
 

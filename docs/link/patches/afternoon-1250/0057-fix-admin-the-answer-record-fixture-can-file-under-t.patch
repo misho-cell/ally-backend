@@ -1,0 +1,212 @@
+From e8a0fded8e4aa84a0ae303f7b746ac6a05342627 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 02:44:32 +0000
+Subject: [PATCH] fix(admin): the answer-record fixture can file under the
+ goal's own field (1691)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops 02:36Z, after the first wave-ranking read on goal 23926: the ranking read
+its rates under „saklsi elektro gakvaniloba", and the tester's earlier
+records sat under „elektrikosi saklsi gakvanilobis".
+
+The asks and the ranking agree: both take the field from the goal's title.
+Live, every ask of 23926 is filed under the ranking's field. The fixture
+took it from the text the tester typed, and the title is the model's
+wording of that text, so the two can differ. On top of that, the recount
+after each ask rebuilds a record from the real asks, so a read after the
+sends sees only those (asked 1 / yes 0, the 0.333 on all five).
+
+The fixture now also takes task_id. The record goes under that goal's own
+title field, for a goal on a fictional seat only (403 otherwise). goal_text
+still works as before.
+
+The order of steps for the tester: open the goal; on the plan card, set
+each candidate's record with task_id; read GET
+/admin/goals/:id/wave-ranking; only then approve.
+
+DONE WHEN: records set with task_id show in the ranking's field_rate, and
+the ranking orders the candidates by them.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                |  9 ++--
+ .../aSeatFixtureIsForSeatsOnly.test.ts        | 42 +++++++++++++++++++
+ src/services/seatFixtures.service.ts          | 40 +++++++++++++++---
+ 3 files changed, 83 insertions(+), 8 deletions(-)
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 06c9654..faf7e55 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -7025,7 +7025,8 @@ adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) =
+  *   POST /admin/test-accounts/:id/fixtures/stale-fact
+  *        { phone, field_type: occupation|employer|city|industry, value, days_ago }
+  *   POST /admin/test-accounts/:id/fixtures/answer-record
+- *        { goal_text, asked, yes, no, referred, first_answer_minutes_median | null }
++ *        { goal_text | task_id, asked, yes, no, referred, first_answer_minutes_median | null }
++ *        task_id files the record under that goal's own field (ops 02:36Z).
+  */
+ const FIXTURE_STATUS: Readonly<Record<FixtureOutcome, number>> = {
+   [FixtureOutcome.Written]: 200,
+@@ -7083,7 +7084,8 @@ adminRouter.post(
+   async (req: Request, res: Response) => {
+     const seatId = seatIdOf(req);
+     const b = (req.body ?? {}) as Record<string, unknown>;
+-    if (seatId === null || typeof b.goal_text !== 'string') {
++    const taskId = b.task_id === undefined || b.task_id === null ? null : Number(b.task_id);
++    if (seatId === null || (typeof b.goal_text !== 'string' && taskId === null)) {
+       sendFixture(res, FixtureOutcome.BadInput);
+       return;
+     }
+@@ -7092,7 +7094,8 @@ adminRouter.post(
+       sendFixture(
+         res,
+         await writeAnswerRecord(seatId, {
+-          goalText: b.goal_text,
++          goalText: typeof b.goal_text === 'string' ? b.goal_text : null,
++          taskId,
+           asked: Number(b.asked),
+           yes: Number(b.yes),
+           no: Number(b.no),
+diff --git a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+index de5989b..63a23f7 100644
+--- a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
++++ b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+@@ -1,4 +1,5 @@
+ import { query } from '../../db/postgres/client';
++import { askField } from '../answerStats.service';
+ import {
+   FixtureOutcome,
+   writeAnswerRecord,
+@@ -73,6 +74,45 @@ describe('the stale-fact fixture (1690)', () => {
+ describe('the answer-record fixture (1691)', () => {
+   beforeEach(() => jest.clearAllMocks());
+ 
++  /** Ops 02:36Z: the goal's asks file under its title, which the typed text may not match. */
++  it('files under the goal’s own title when given the goal', async () => {
++    const title = 'სახლში ელექტრო გაყვანილობა მთლიანად უნდა გამოვცვალო';
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ title }] } as never)
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    const record = {
++      goalText: 'something else typed',
++      taskId: 23926,
++      asked: 10,
++      yes: 9,
++      no: 1,
++      referred: 0,
++      firstAnswerMinutesMedian: null,
++    };
++    await expect(writeAnswerRecord(SEAT, record)).resolves.toBe(FixtureOutcome.Written);
++    expect(String(mockQuery.mock.calls[0][0])).toContain('JOIN test_seats');
++    expect((mockQuery.mock.calls[2][1] as unknown[])[1]).toBe(askField(title));
++  });
++
++  it('refuses a goal that is not a fictional seat’s, and a goal id that is not one', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    const record = {
++      goalText: null,
++      taskId: 501,
++      asked: 1,
++      yes: 1,
++      no: 0,
++      referred: 0,
++      firstAnswerMinutesMedian: null,
++    };
++    await expect(writeAnswerRecord(SEAT, record)).resolves.toBe(FixtureOutcome.NotATestSeat);
++    await expect(writeAnswerRecord(SEAT, { ...record, taskId: Number.NaN })).resolves.toBe(
++      FixtureOutcome.BadInput,
++    );
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++  });
++
+   it('sets the record under the field the goal files under', async () => {
+     mockQuery
+       .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+@@ -80,6 +120,7 @@ describe('the answer-record fixture (1691)', () => {
+     await expect(
+       writeAnswerRecord(SEAT, {
+         goalText: 'კარგი ნოტარიუსი მჭირდება',
++        taskId: null,
+         asked: 10,
+         yes: 8,
+         no: 1,
+@@ -96,6 +137,7 @@ describe('the answer-record fixture (1691)', () => {
+     await expect(
+       writeAnswerRecord(SEAT, {
+         goalText: 'ნოტარიუსი',
++        taskId: null,
+         asked: 2,
+         yes: 2,
+         no: 1,
+diff --git a/src/services/seatFixtures.service.ts b/src/services/seatFixtures.service.ts
+index 8f7a5cb..f8aa68b 100644
+--- a/src/services/seatFixtures.service.ts
++++ b/src/services/seatFixtures.service.ts
+@@ -88,7 +88,13 @@ export async function writeStaleFact(
+ 
+ export interface AnswerRecordInput {
+   /** The goal as the tester will type it; filed under the same field an ask would be. */
+-  readonly goalText: string;
++  readonly goalText: string | null;
++  /**
++   * The tester's 49931 / ops 02:36Z: or the goal itself, once it exists. Its
++   * asks file under its title, which the model wrote and the tester's typed
++   * text may not match; so the record goes under the title's own field.
++   */
++  readonly taskId: number | null;
+   readonly asked: number;
+   readonly yes: number;
+   readonly no: number;
+@@ -100,16 +106,40 @@ function isCount(n: number): boolean {
+   return Number.isInteger(n) && n >= 0 && n <= MAX_STAT;
+ }
+ 
++/** The title of a goal on a fictional seat; null for any other goal. */
++async function testSeatGoalTitle(taskId: number): Promise<string | null> {
++  const result = await query<{ title: string }>(
++    `SELECT t.title FROM tasks t JOIN test_seats ts ON ts.user_id::text = t.user_id
++      WHERE t.id = $1 LIMIT 1`,
++    [taskId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.title ?? null;
++}
++
++/** The text the record's field is taken from; null when the goal is not a fictional seat's. */
++async function recordGoalText(input: AnswerRecordInput): Promise<string | null> {
++  if (input.taskId !== null) return testSeatGoalTitle(input.taskId);
++  return input.goalText;
++}
++
+ /**
+- * 1691: the seat's answer record in the field the goal text files under, set
+- * exactly. The hourly recount rebuilds it from real asks once the seat is
+- * asked, so it holds for the first wave, which is what 1691 orders.
++ * 1691: the seat's answer record in the field the goal files under, set
++ * exactly. The recount rebuilds it from real asks once the seat is asked, so
++ * the ranking is read before the plan is approved (GET wave-ranking).
+  */
+ export async function writeAnswerRecord(
+   seatId: number,
+   input: AnswerRecordInput,
+ ): Promise<FixtureOutcome> {
+-  const field = askField(input.goalText);
++  if (input.taskId !== null && !(Number.isInteger(input.taskId) && input.taskId > 0)) {
++    return FixtureOutcome.BadInput;
++  }
++  const goalText = await recordGoalText(input);
++  if (goalText === null) {
++    return input.taskId === null ? FixtureOutcome.BadInput : FixtureOutcome.NotATestSeat;
++  }
++  const field = askField(goalText);
+   const counts = [input.asked, input.yes, input.no, input.referred];
+   const minutes = input.firstAnswerMinutesMedian;
+   if (
+-- 
+2.43.0
+
