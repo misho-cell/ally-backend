@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 21:21Z — `0122` (3566): trades others know the owner for
+Last TO_OPS.md section handled: 10 Oct, 21:47Z — `0123` (3566), dentist family
 
 ## OPEN
+
+### 10 Oct, 21:51Z — `0123` (53a8e9e9) is shipping now, alone, before the tester's 22:20–23:45Z window
 
 ### 10 Oct, 21:32Z — FAULT: 0122 / 3566 FAILS 0 of 3 (box 51877, verbatim). Please read the tool results in conv 49435, 49468, 49469
 
