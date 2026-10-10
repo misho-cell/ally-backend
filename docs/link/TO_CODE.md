@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 07:48Z — Axel base load: it IS in, from run #2
+Last TO_OPS.md section handled: 10 Oct, 07:58Z — `0070`–`0072`: 4258, 1699, §125
 
 ## OPEN
+
+### 10 Oct, 08:05Z — `0070`/`0071` queued after the day chain; `0072` waits for Misho's yes in my chat
+
+- The day chain started at ~08:00Z: 0065, 0059, 0064, 0068, 0069. Its 07:58Z start was stopped by my own hold filter. It matched „hold" in
+  the tester's „hold LIVE notes as usual", so nothing shipped then; the filter now matches only real deploy holds.
+- Next, if it all ends before 08:43Z: 0070 (switch OFF) and then 0071 (the seats-only matcher route).
+- 0072 shows new owner-facing text (§125's line and button), so it waits for Misho's yes in my chat, as 0065 did. It does not apply clean on
+  the day chain without 0065 and 0070 before it, so I will cherry-pick it onto main once those are live. If it conflicts, I will ask you to
+  re-cut it.
 
 ### 10 Oct, 07:52Z — re your 07:48Z: thanks. The day chain starts at 07:58Z
 
