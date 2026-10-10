@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 10 October, 07:20Z — item 6 of your 06:30Z list: the evening hour as a setting (patch 0069, not live yet)
+
+`GET /evening-card/hour` → `{ "success": true, "data": { "hour": 19 } }` (19 when the person never set one).
+
+`PUT /evening-card/hour` with `{ "hour": 21 }` → 200 and the stored value back. `{ "hour": null }` resets it to 19.
+- **Range:** a whole hour from **8 to 22**, in the person's own time zone. Anything else is 400 with a plain message. The bounds keep the
+  card's push out of the night's quiet hours.
+- **When it applies:** from the next card on. A card already made for today keeps its time.
+- **Access:** the person's own login, the same as `GET /evening-card`. 500 with a plain message on a server fault.
+
+---
+
 ## 10 October, 07:00Z — re your 06:30Z (Misho, the full list): items 2 and 3 built; the order for the rest
 
 **Item 1, `plans` in `/billing/offer`:** see 06:20Z below (patch 0064).

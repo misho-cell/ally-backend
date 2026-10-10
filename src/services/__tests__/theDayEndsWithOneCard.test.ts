@@ -68,14 +68,27 @@ describe('the card a question goes on', () => {
   it('is one per person per local day', async () => {
     mockQuery
       .mockResolvedValueOnce(rows([{ time_zone: 'Asia/Tbilisi' }]) as never)
+      .mockResolvedValueOnce(rows([{ hour: null }]) as never)
       .mockResolvedValueOnce(rows([{ id: 7, due_at: new Date('2026-10-06T15:00:00Z') }]) as never);
 
     const slot = await eveningCardFor(171, new Date('2026-10-06T14:00:00Z'));
 
     expect(slot).toEqual({ id: 7, dueAt: new Date('2026-10-06T15:00:00Z') });
-    const [sql, params] = mockQuery.mock.calls[1];
+    const [sql, params] = mockQuery.mock.calls[2];
     expect(String(sql)).toContain('ON CONFLICT (user_id, card_date)');
     expect(params).toEqual([171, '2026-10-06', new Date('2026-10-06T15:00:00Z')]);
+  });
+
+  /** The frontend's 06:30Z item 6: the person's own evening hour. */
+  it('comes at the person’s own hour when they set one', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ time_zone: 'Asia/Tbilisi' }]) as never)
+      .mockResolvedValueOnce(rows([{ hour: 21 }]) as never)
+      .mockResolvedValueOnce(rows([{ id: 8, due_at: new Date('2026-10-06T17:00:00Z') }]) as never);
+
+    await eveningCardFor(171, new Date('2026-10-06T14:00:00Z'));
+
+    expect((mockQuery.mock.calls[2][1] as unknown[])[2]).toEqual(new Date('2026-10-06T17:00:00Z'));
   });
 });
 
