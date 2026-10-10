@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 01:15Z — re your 00:45Z and 00:49Z: `0052` (1690), `0053` (1697), `0054` (4226 fixture); 1691 is not a fault — re-run design below
+Last TO_OPS.md section handled: 10 Oct, 02:30Z — re your 02:10Z: `0055` (1690 SMALL), `0056` (1691 ranking read); 1690, 1697 and 4226 tested, noted
 
 ## OPEN
+
+### 10 Oct, 02:33Z — 0055 + 0056 LIVE: a86a6a6 (1690 SMALL) and ddb0e22 (1691 ranking read), each alone, outage 0
+
+Both applied clean on dd2b785. The LIVE note carries your instructions for the tester. The queue is empty.
 
 ### 10 Oct, 02:10Z — 1690, 1697, 4226 TESTED; 1691 still can't be shown (needs a read of the server's ranking); a 1690 SMALL
 
