@@ -30,6 +30,9 @@ const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
   ['ბუღალტერი', 'ბუღალტერია', 'accountant', 'accounting'],
   ['დიზაინერი', 'დიზაინი', 'designer', 'design', 'UX', 'UI'],
   ['ექიმი', 'დოქტორი', 'doctor', 'MD'],
+  // 3566 (box 51877, 0 of 3): one saver wrote „სტომატოლოგი", the other „კბილის
+  // ექიმი", and the second was read as a plain doctor — two trades of one saver each.
+  ['სტომატოლოგი', 'კბილის ექიმი', 'dentist', 'stomatologist'],
   // The tester's 1102 (C10, six rounds): one friend saved the vet as „ვეტერინარი",
   // another as „ვეტექიმი", and only one was ever found.
   ['ვეტერინარი', 'ვეტექიმი', 'veterinarian', 'vet'],
@@ -69,6 +72,38 @@ export function professionFamilyKey(word: string): string | null {
   if (key === '') return null;
   const family = PROFESSION_FAMILIES.find((words) => words.some((w) => normalized(w) === key));
   return family === undefined ? null : family[0];
+}
+
+const LETTER_RE = /[\p{L}\p{M}]/u;
+
+/** Whether the phrase stands in the text as whole words, not inside a longer word. */
+function standsIn(text: string, phrase: string): boolean {
+  let from = text.indexOf(phrase);
+  while (from !== -1) {
+    const before = text[from - 1] ?? ' ';
+    const after = text[from + phrase.length] ?? ' ';
+    if (!LETTER_RE.test(before) && !LETTER_RE.test(after)) return true;
+    from = text.indexOf(phrase, from + 1);
+  }
+  return false;
+}
+
+/**
+ * 3566: the family key of the longest family word or phrase standing in a
+ * label („ნანა კბილის ექიმი" → the dentists, not the doctors); null if none.
+ */
+export function professionFamilyIn(text: string): string | null {
+  const lower = normalized(text);
+  let best: { readonly key: string; readonly length: number } | null = null;
+  for (const family of PROFESSION_FAMILIES) {
+    for (const word of family) {
+      const phrase = normalized(word);
+      if (phrase.length > (best?.length ?? 0) && standsIn(lower, phrase)) {
+        best = { key: family[0], length: phrase.length };
+      }
+    }
+  }
+  return best?.key ?? null;
 }
 
 /** Board #510, 1086: the server searches the family itself; the run is told not to repeat it. */

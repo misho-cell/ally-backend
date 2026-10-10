@@ -1,5 +1,5 @@
 import { matchOccupation } from './labelParser.service';
-import { professionFamilyKey } from './professionFamilies';
+import { professionFamilyIn, professionFamilyKey } from './professionFamilies';
 
 /**
  * 3566 (MASTER TEST RUN chat #6, PR-010, 6 of 6): two people saved the owner
@@ -29,6 +29,8 @@ function tradeOf(word: string): { readonly key: string; readonly said: string } 
   const trimmed = word.trim();
   const familyKey = professionFamilyKey(trimmed);
   if (familyKey !== null) return { key: familyKey, said: trimmed.toLowerCase() };
+  const familyInLabel = professionFamilyIn(trimmed);
+  if (familyInLabel !== null) return { key: familyInLabel, said: familyInLabel };
   const occupation = matchOccupation(trimmed);
   if (occupation === null) return null;
   return { key: professionFamilyKey(occupation) ?? occupation, said: occupation };

@@ -1,5 +1,5 @@
 import { tradesKnownFor } from '../knownFor';
-import { professionFamilyKey } from '../professionFamilies';
+import { professionFamilyIn, professionFamilyKey } from '../professionFamilies';
 
 /** 3566 (PR-010): „იურისტი" from one saver and „ადვოკატი" from another are one trade. */
 describe('tradesKnownFor', () => {
@@ -60,6 +60,32 @@ describe('tradesKnownFor', () => {
         { saverId: 3, word: 'ადვოკატი' },
       ]),
     ).toEqual(['იურისტი', 'ექიმი']);
+  });
+
+  // 3566 (box 51877): the live trio, by tag and by label.
+  it('joins „სტომატოლოგი" and „კბილის ექიმი" as one trade, not a doctor', () => {
+    expect(
+      tradesKnownFor([
+        { saverId: 1, word: 'სტომატოლოგი' },
+        { saverId: 2, word: 'კბილის ექიმი' },
+      ]),
+    ).toEqual(['სტომატოლოგი']);
+    expect(
+      tradesKnownFor([
+        { saverId: 1, word: 'ნანა სტომატოლოგი' },
+        { saverId: 2, word: 'ნანა კბილის ექიმი' },
+      ]),
+    ).toEqual(['სტომატოლოგი']);
+  });
+});
+
+describe('professionFamilyIn', () => {
+  it('finds the longest family phrase standing as whole words in a label', () => {
+    expect(professionFamilyIn('ნანა კბილის ექიმი')).toBe('სტომატოლოგი');
+    expect(professionFamilyIn('გია ექიმი')).toBe('ექიმი');
+    expect(professionFamilyIn('Nino Lawyer')).toBe('იურისტი');
+    expect(professionFamilyIn('Kitty')).toBeNull();
+    expect(professionFamilyIn('მარიამ სამიზნე')).toBeNull();
   });
 });
 
