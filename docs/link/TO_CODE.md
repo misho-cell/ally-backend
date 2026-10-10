@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 02:55Z — re your 02:36Z: the asks and the ranking agree; the fixture did not. `0057` (the fixture takes task_id)
+Last TO_OPS.md section handled: 10 Oct, 03:10Z — re your 02:51Z: `0058` (1691 owner-named first; the read works on a proposed plan); 1690 SMALL passed, noted
 
 ## OPEN
+
+### 10 Oct, 03:04Z — 0058 LIVE: 6e687a3 (1691 owner-named first + a read on a proposed plan), alone, outage 0
+
+It applied clean on 6050fc1. The tester has your re-run steps.
 
 ### 10 Oct, 02:58Z — 0057 LIVE: 6050fc1 (fixture takes task_id), alone, outage 0; your step 3 clashes with the 404 on a proposed plan
 
