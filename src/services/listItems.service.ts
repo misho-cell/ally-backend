@@ -5,7 +5,7 @@ import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
 import { ownMatchesFor } from './tools/searchByTag';
 import { scrubText, stripAllowedSpans } from './privacyScrub';
 import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
-import { answerForRow, answersOnGoal, GoalAnswer } from './listRowHelpers';
+import { answerForRow, answerNamesRow, answersOnGoal, GoalAnswer } from './listRowHelpers';
 
 /**
  * Board #893 (the founder, 4 October): a list the owner gave Netai becomes the
@@ -100,6 +100,12 @@ export interface ListItemLine {
   readonly label: string;
   readonly state: ListItemState;
   readonly throughWhom: string | null;
+  /**
+   * 4325 (tester box 51106): every one of the owner's contacts who fits a
+   * found row („ვახო, ტარიელ, ბესო"), when there is more than the one way in.
+   * Shown to the run, never stored.
+   */
+  readonly everyoneWhoFits?: string;
 }
 
 /** Board #893: „the plan says how many today and how many later". */
@@ -169,15 +175,33 @@ export async function startListWork(
     items,
     lines.map((l) => ({ data: l.row, throughPhone: phones.get(l.label) ?? null })),
   );
+  const shown = items.slice(0, MAX_ITEMS_SHOWN);
   return {
     ok: true,
     value: {
       total: items.length,
       counts: countByState(items),
       portions: portionsOf(items),
-      items: items.slice(0, MAX_ITEMS_SHOWN),
+      items: withEveryoneWhoFits(shown, await helpersForNeeds(userId, foundLabels(shown))),
     },
   };
+}
+
+function foundLabels(items: readonly ListItemLine[]): string[] {
+  return items.filter((item) => item.throughWhom !== null).map((item) => item.label);
+}
+
+/** A found row also names the owner's other contacts who fit it, when there are any. */
+export function withEveryoneWhoFits(
+  items: readonly ListItemLine[],
+  fitting: ReadonlyMap<string, string>,
+): ListItemLine[] {
+  return items.map((item) => {
+    const everyone = item.throughWhom === null ? '' : (fitting.get(item.label) ?? '');
+    return everyone === '' || everyone === item.throughWhom
+      ? item
+      : { ...item, everyoneWhoFits: everyone };
+  });
 }
 
 /** States a lookup set and nobody has acted on: a fresh pass may replace them. */
@@ -462,6 +486,30 @@ async function workedRows(userId: string, taskId: number): Promise<WorkedRow[]> 
 }
 
 /**
+ * 4324 (tester box 51106, goal 24190): the helper asked for a notary and a
+ * photographer was one of the owner's electricians, so his answer matched the
+ * electrician row by his number and that row read „უპასუხა" with an answer
+ * about other rows. A found row whose answer speaks of OTHER rows of the list,
+ * and not of itself, keeps „route found" and leaves the answer to those rows.
+ */
+function withoutOtherRowsAnswer(
+  cells: string[],
+  r: WorkedRow,
+  language: RunLanguage,
+  labels: readonly string[],
+): string[] {
+  const answer = r.answer;
+  const label = r.label ?? '';
+  if (answer === null || answerNamesRow(answer, label)) return cells;
+  if (!labels.some((other) => other !== label && answerNamesRow(answer, other))) return cells;
+  const words = STATE_WORDS[language] ?? STATE_WORDS.ka;
+  const at = r.row_data.length;
+  return cells.map((c, i) =>
+    i === at + 2 ? (words[ListItemState.RouteFound] ?? c) : i === at + 3 ? '' : c,
+  );
+}
+
+/**
  * Box 50986: on a list whose rows ARE the needs, every one of the owner's
  * contacts who fits a found row is named (three electricians, not the first),
  * and a no-route row named in a helper's answer points at that answer.
@@ -471,12 +519,14 @@ function needRowCells(
   language: RunLanguage,
   fitting: ReadonlyMap<string, string>,
   answers: readonly GoalAnswer[],
+  labels: readonly string[],
 ): string[] {
   const cells = workedCells(r, language);
   const label = (r.label ?? '').trim();
   const at = r.row_data.length;
   const everyone = fitting.get(label) ?? '';
   if (r.way_in === 'first_circle' && everyone !== '') cells[at + 1] = everyone;
+  if (r.way_in === 'first_circle') return withoutOtherRowsAnswer(cells, r, language, labels);
   if (r.way_in !== 'none' || r.answer !== null) return cells;
   const answered = answerForRow(answers, label);
   if (answered === undefined) return cells;
@@ -504,8 +554,11 @@ export async function listWorkbook(
       helpersForNeeds(userId, found),
       answersOnGoal(userId, taskId),
     ]);
+    const labels = rows.map((r) => (r.label ?? '').trim());
     sheet.addRow(header);
-    for (const r of rows) sheet.addRow(needRowCells(r, language, fitting, answers).map(fitsACell));
+    for (const r of rows) {
+      sheet.addRow(needRowCells(r, language, fitting, answers, labels).map(fitsACell));
+    }
     return Buffer.from(await book.xlsx.writeBuffer());
   }
   const helpers = await helpersForNeeds(
