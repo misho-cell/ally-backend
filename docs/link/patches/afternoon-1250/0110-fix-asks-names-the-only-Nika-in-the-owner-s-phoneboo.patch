@@ -1,0 +1,178 @@
+From a47871c97a97db91ed52dc1f18b91cb0ae2b6f2a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 15:49:16 +0000
+Subject: [PATCH] =?UTF-8?q?fix(asks):=20=E2=80=9E=E1=83=B0=E1=83=99?=
+ =?UTF-8?q?=E1=83=98=E1=83=97=E1=83=AE=E1=83=94=20=E1=83=9C=E1=83=98?=
+ =?UTF-8?q?=E1=83=99=E1=83=90=E1=83=A1"=20names=20the=20only=20Nika=20in?=
+ =?UTF-8?q?=20the=20owner's=20phonebook=20(4357)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 51184, conv 49179: the goal's plan wrote to nobody (D626: saved as a
+draft, no card). The owner then typed „ჰკითხე ნიკას" for the contact saved
+as „ნიკა ხელოსანი". The waiting draft refuses every ask except the person
+the owner's own line names, and that match needs the whole label in the
+line, so the ask was refused and the owner said yes twice more before it
+went.
+
+When no whole label is in the line, a first name it names (in any case
+ending) now counts if exactly one of the owner's contacts has a label
+starting with it and that is this person. Two contacts with the name still
+name nobody, as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aFirstNameNamesTheOnlyOne.test.ts         | 39 +++++++++++++++++++
+ src/services/firstNameNamed.ts                | 32 +++++++++++++++
+ src/services/taskAsks.service.ts              | 27 ++++++++++++-
+ 3 files changed, 97 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aFirstNameNamesTheOnlyOne.test.ts
+ create mode 100644 src/services/firstNameNamed.ts
+
+diff --git a/src/services/__tests__/aFirstNameNamesTheOnlyOne.test.ts b/src/services/__tests__/aFirstNameNamesTheOnlyOne.test.ts
+new file mode 100644
+index 0000000..b0344ab
+--- /dev/null
++++ b/src/services/__tests__/aFirstNameNamesTheOnlyOne.test.ts
+@@ -0,0 +1,39 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { firstNamesIn } from '../firstNameNamed';
++
++/**
++ * 4357 (tester box 51184, conv 49179): „ჰკითხე ნიკას" for the contact saved as
++ * „ნიკა ხელოსანი" was not read as the owner naming him, and the owner said yes
++ * three times before the question went.
++ */
++describe('the first names a line names', () => {
++  it.each([
++    ['კარგი, გააგრძელე. ჰკითხე ნიკას, ხომ არ იცნობს ნოტარიუსს.', ['ნიკა']],
++    ['ჰკითხე გიორგის და ნინოს', ['გიორგი', 'ნინო']],
++    ['Ask Nika about a notary', ['nika']],
++  ])('„%s" → %j', (line, names) => {
++    expect(firstNamesIn(line)).toEqual(names);
++  });
++
++  it('is nothing for a line with no first name', () => {
++    expect(firstNamesIn('კარგი, გააგრძელე.')).toEqual([]);
++  });
++});
++
++describe('the owner-named gate', () => {
++  const service = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++
++  it('falls back to the first name only when no whole label is in the line', () => {
++    expect(service).toContain(
++      'if (best === undefined) return onlyContactByFirstName(line, person);',
++    );
++  });
++
++  it('counts the first name only when exactly one contact carries it, and it is this one', () => {
++    expect(service).toContain(
++      'return distinct.size === 1 && distinct.has(phoneDigits(person.contactPhone));',
++    );
++    expect(service).toContain("SPLIT_PART(LOWER(TRIM(ua.alias)), ' ', 1) = ANY($2::text[])");
++  });
++});
+diff --git a/src/services/firstNameNamed.ts b/src/services/firstNameNamed.ts
+new file mode 100644
+index 0000000..d3878ec
+--- /dev/null
++++ b/src/services/firstNameNamed.ts
+@@ -0,0 +1,32 @@
++import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
++
++/** How many letters a Georgian case ending may add to a name („ნიკას", „გიორგიმ", „ნინოსთან"). */
++const CASE_ENDING_MAX_CHARS = 4;
++const MIN_NAME_CHARS = 3;
++const WORD_RE = /\p{L}+/gu;
++
++/** The first name a word is, in its plain form, or null („ნიკას" → „ნიკა"). */
++function firstNameOf(word: string): string | null {
++  const lower = word.toLowerCase();
++  if (AMBIGUOUS_FIRST_NAMES.has(lower)) return null;
++  if (GEORGIAN_FIRST_NAMES.has(lower)) return lower;
++  for (let cut = 1; cut <= CASE_ENDING_MAX_CHARS; cut += 1) {
++    const base = lower.slice(0, -cut);
++    if (base.length < MIN_NAME_CHARS) return null;
++    if (AMBIGUOUS_FIRST_NAMES.has(base)) return null;
++    if (GEORGIAN_FIRST_NAMES.has(base)) return base;
++  }
++  return null;
++}
++
++/**
++ * 4357 (tester box 51184, conv 49179): the first names a line names, in their
++ * plain form. „ჰკითხე ნიკას" names „ნიკა" — the person whose label is „ნიკა
++ * ხელოსანი" — which the whole-label match cannot see.
++ */
++export function firstNamesIn(line: string): string[] {
++  const names = (line.match(WORD_RE) ?? [])
++    .map(firstNameOf)
++    .filter((name): name is string => name !== null);
++  return [...new Set(names)];
++}
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 43231fe..03b79ec 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -11,6 +11,7 @@ import {
+ } from './helpersVoice';
+ import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
+ import { labelNamedIn } from './namedLabel';
++import { firstNamesIn } from './firstNameNamed';
+ import { holdAsk, releaseHeldAsk } from './heldAsks.service';
+ import { AskKind, askKindOf } from './askKind';
+ import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
+@@ -125,6 +126,7 @@ const GOAL_LOOKS_AFTER_CARD_MS = 5 * 60_000;
+ const MIN_NAMED_LABEL_CHARS = 4;
+ /** Enough labels to judge one sentence by; a sentence names one or two people. */
+ const MAX_NAMED_LABEL_CANDIDATES = 20;
++const FIRST_NAME_MATCHES_READ = 3;
+ /**
+  * How far before the goal's creation the owner's typed line may be. The line is
+  * saved before the run that opens the goal, and a run with web searches can
+@@ -725,6 +727,29 @@ async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
+   return result.rows[0]?.content ?? null;
+ }
+ 
++/**
++ * 4357 (tester box 51184, conv 49179): „ჰკითხე ნიკას" for the contact saved as
++ * „ნიკა ხელოსანი". The whole label is not in the line, so the owner was asked
++ * to say yes twice more. A first name the line names counts when exactly ONE
++ * of the owner's contacts has a label starting with it, and that is this
++ * person — two Nikas still name nobody.
++ */
++async function onlyContactByFirstName(line: string, person: NamedPerson): Promise<boolean> {
++  const names = firstNamesIn(line);
++  if (names.length === 0) return false;
++  const phones = await query<{ phone: string }>(
++    `SELECT DISTINCT ua.phone
++       FROM "UserAlias" ua
++      WHERE ua."contactId" = $1::int
++        AND SPLIT_PART(LOWER(TRIM(ua.alias)), ' ', 1) = ANY($2::text[])
++      LIMIT $3`,
++    [person.fromUserId, names, FIRST_NAME_MATCHES_READ],
++    ASK_QUERY_TIMEOUT_MS,
++  );
++  const distinct = new Set(phones.rows.map((row) => phoneDigits(row.phone)));
++  return distinct.size === 1 && distinct.has(phoneDigits(person.contactPhone));
++}
++
+ /** Is this line an instruction that names exactly this person, by the owner's own label? */
+ async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<boolean> {
+   if (!looksLikeContactInstruction(line)) return false;
+@@ -748,7 +773,7 @@ async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<b
+   );
+   const labels = candidates.rows.filter((row) => labelNamedIn(line, row.alias));
+   const best = labels[0];
+-  if (best === undefined) return false;
++  if (best === undefined) return onlyContactByFirstName(line, person);
+   const runnerUp = labels[1];
+   // Two labels of the same length both inside the sentence name nobody.
+   if (runnerUp !== undefined && runnerUp.alias.trim().length === best.alias.trim().length) {
+-- 
+2.43.0
+

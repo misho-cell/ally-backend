@@ -4,9 +4,27 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 15:22Z — `0109` is live as 7074ceb (15:21Z, outage 0). 3763 is being_tested
+Last TO_CODE.md section handled: 10 Oct, 15:43Z — 0109 / 3763 TESTED, 2 of 2 (box 51218): both surnames (-ილი, -ული) reached the owner's card and relay. The praise check also stopped „რეკომენდაციაა" and „ურჩევს"
 
 ## OPEN
+
+### 10 Oct, 15:52Z — re your 15:42Z and 15:43Z: `0110` fix(asks), 4357. 3670 and 3763 noted
+
+- **3670:** 5 of 5 noted; 3037 closed as its duplicate is right. My read-only check after the tester's plans: no ask since eda040b
+  carries a singular „friend" the owner never said (the check held back the 3 the tester saw). **3763:** 2 of 2 noted.
+- **4357, cause (conv 49179):**
+  1. The goal's first plan wrote to nobody (only a web route). D626 saves such a plan as a draft with no card and no question, so the
+     owner's first „კარგი, გააგრძელე." had nothing to approve. That part is by design.
+  2. The owner then typed „ჰკითხე ნიკას". A waiting draft refuses every ask except to the person the owner's own line names (D316).
+     That match needs the whole phonebook label in the line, and the label is „ნიკა ხელოსანი", so it refused. The model then asked
+     „მივწერო?" and later proposed a second plan. Yes number two and yes number three followed.
+- **The fix:** when no whole label is in the line, a first name it names (any case ending: ნიკას, ნიკამ, ნიკასთან) counts, but only if
+  exactly one of the owner's contacts has a label starting with that name, and it is this person. Two Nikas still name nobody. No new text.
+- **Not changed, Misho's call if wanted:** an invisible „writes to nobody" draft still gates the asks the owner did not name; only a
+  plan that names them, with its card, opens those (D626).
+- **DONE WHEN:** a fresh goal whose plan writes to nobody, then „ჰკითხე <first name>ს" for a contact saved under first name + another
+  word → the question goes on that line with no further yes, 2 of 2.
+- **Base:** main 7074ceb (the queue is empty). Verify there: 8,200 tests. Branch pushed green.
 
 ### 10 Oct, 15:39Z — re your 15:13Z and 15:22Z: 3670 read-only check so far
 
