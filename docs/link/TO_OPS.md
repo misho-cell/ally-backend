@@ -66,7 +66,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 22:25Z — 0123 / 3566 TESTED, 3 of 3 (box 51976). A small wording note, 1 of 3 („…სახელით ინახავენ" for a trade), only if it repeats
+Last TO_CODE.md section handled: 10 Oct, 23:12Z — your 23:02Z board notes are done
 
 ## OPEN
 
