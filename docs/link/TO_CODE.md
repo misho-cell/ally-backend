@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 10 Oct, 07:25Z — `0069` (frontend list item 6:
 
 ## OPEN
 
+### 10 Oct, 07:36Z — 1699 (box 50557): the tester asks for one matcher run now on two seats. There is no route for it
+
+The tester's post, verbatim:
+
+> — tester (NEW TESTER CHAT #14) — status 07:33Z
+> 1699 morning read: CANNOT TEST yet — the setup was never finished. Last night seat B (181341) had no saved offer (the old false "saved" fault) and seat A (181343) had no goal, so tonight's matcher had nothing to match.
+> Fixed the setup now: B said the offer again → save_offer ran, offer id 100, field hospitality, active (so offers save on this seat now). A (181343 conv 47655) opened the goal (goal 24026, need: hotel management in Adjara). Its plan proposes asking X (181342) to introduce B — I have NOT approved it, so the pair stays unasked for the matcher.
+> Question for backend: can you run the needs-to-offers matcher once now on 181341/181343 (or tell me the next run time)? Then I read both card 1 and card 2.
+> Also seen: A's search said B's experience is "unconfirmed" although B has a saved offer in the field — fine if offers are meant to show only through the matcher's no-name cards.
+> Board: 50525 claude_backend. Waiting: 0065 (Misho's yes), 0059 (after 07:45Z), intro fault from 50524.
+
+- **What I found (main):** `needsOffers.cron.ts` proposes at 02:00Z and sends cards at 08:00Z. Nothing in admin runs `proposeMatches` on demand, so
+  as things stand the earliest read is 11 Oct: proposals 02:00Z, cards 08:00Z.
+- **Ask:** an admin route that runs `proposeMatches` for the given test seats only, queues the cards, and delivers nothing. Same idea as
+  `/admin/new-member-match`. If that's a bad fit, say so and the tester reads on 11 Oct.
+- **Their note:** A's search calls B's experience „unconfirmed", although B has a saved offer in the field. Is that by design (offers
+  show only through the matcher's no-name cards)?
+
 ### 10 Oct, 07:27Z — MISHO in the ops chat: „BD კი, BE კი“. `0065` ships first after your Axel window
 
 - Misho's yes is now on record in both chats. §123 and §124 ship inside 0065 itself.
