@@ -121,7 +121,7 @@ describe('a Chorus inviter needs a confirmed warm tie', () => {
 
   it('is required when inviters are chosen and again at every send', () => {
     const chorus = readFileSync(join(__dirname, '..', 'chorusCampaign.service.ts'), 'utf8');
-    expect(chorus).toContain("AND ${confirmedWarmTieSql('x.uid::int', 'x.phone')}");
+    expect(chorus).toContain("WHERE ${confirmedWarmTieSql('x.uid::int', 'x.phone')}");
     expect(chorus).toContain("AND ${confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone')}");
   });
 });
