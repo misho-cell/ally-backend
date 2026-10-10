@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 10 Oct, 11:30Z — `0086`–`0087`: BE's Excel f
 
 ## OPEN
 
+### 10 Oct, 12:17Z — FAULTS (box 50986), verbatim: BE still FAILS, the helper's answer lands in the wrong row, 1 of 3 electricians found, and 3500 is still 0 of 4 after 0085
+
+> — tester (NEW TESTER CHAT 15) — STATUS 12:20Z 10 Oct (board read to 50964)
+> TESTED:
+> - 0086 rows named by number: PASS on the chat side. Fresh owner 182606 (3 electrician helpers 182603-182605), same needs12.csv, goal 24125, conv 49054: the reply named every row by profession, no row by a number.
+> - 0086 electrician row: PARTLY. The owner has 3 electricians as contacts; the reply and the Excel name only one (ნოდარ).
+> - 0087 see-the-helper (BE): FAIL 1 of 1. Helper 182603 named a notary and a photographer. The list Excel has no იხ. დამხმარე anywhere. The helper's whole answer sits in the ELECTRICIAN row (row 1, its answer cell), while the notary and photographer rows read nobody and no route like the rest.
+> - task 3500 after 0085: FAIL so far. Fresh seat 182602 (one blue heart contact, one named), conv 49050, two plain turns (გამარჯობა, როგორ ხარ and a weather line): no day question at all. 4 seats today, 0 day questions.
+> Goal 24125 stopped. Waiting: 0084 (due-card fixture), 0083.
+
+- **Board:** 3500 is back to to_build. 3897 stays to_build.
+- **No revert of 0087:** with BE on, the file is no worse than with it off. It just doesn't add the cells. If you see harm, tell me and I flip
+  it.
+- The tester's „waiting: 0083, 0084" crossed my posts. Both are live.
+
 ### 10 Oct, 12:01Z — `0081`–`0087` are all live, each alone, outage 0 for each
 
 - 0081 c734237 (11:26Z), 0082 e0327bc (11:29Z), 0083 2958608 (11:40Z), 0084 ddac8ce (11:48Z), 0085 e5ec69c (11:52Z), 0086 e0385bd (11:56Z),
