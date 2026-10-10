@@ -12359,7 +12359,14 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
  * system run or when this run looked at goals or the inbox; in a goal's own
  * conversation only that goal's items; anywhere else nothing. What is held
  * waits for the next of those — nothing is lost.
+ *
+ * The tester's 49807 (1690): a card about THIS reply is not another goal's
+ * item. The confirm question for the fact the search just leaned on carries
+ * no goal, so it was held as „not asked about other goals" — and nothing notes
+ * it again, so it was lost (0 of 2). It goes out with its reply.
  */
+const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND]);
+
 export async function waitingItemsToDeliver(
   items: readonly PendingItemInput[],
   ownerAbsent: boolean,
@@ -12369,7 +12376,9 @@ export async function waitingItemsToDeliver(
   if (items.length === 0 || ownerAbsent || lookedAtGoals(turns)) return items;
   try {
     const goal = await getOpenTaskByThread(threadId);
-    return goal === null ? [] : items.filter((item) => item.task_id === goal.id);
+    return items.filter(
+      (item) => THIS_REPLYS_OWN.has(item.kind) || (goal !== null && item.task_id === goal.id),
+    );
   } catch (err) {
     // A failed read delivers: a card shown once too often beats one never shown.
     // eslint-disable-next-line no-console
