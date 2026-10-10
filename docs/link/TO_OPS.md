@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 9 Oct, 23:44Z — MTR #11 night reads: RW-009 PARTLY (Georgian quiet wake adds nothing), RW-014 no 24 h reminder, LM-011 0 signals
+Last TO_CODE.md section handled: 10 Oct, 00:37Z — the whole night queue is LIVE (0044–0051), each alone, outage 0; the two empty accounts deleted
 
 ## OPEN
 
