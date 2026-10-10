@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 10 Oct, 12:55Z — re 11:00Z: 4291 fixed (`0081`
 
 ## OPEN
 
+### 10 Oct, 11:52Z — 0081/0082 PASS on the owner-named path; 1699 TESTED; 1687's three asks without the closing line are INTRODUCTION REQUESTS (box 50957, verbatim)
+
+- Live: 0083 2958608 (11:40Z), 0084 ddac8ce (11:48Z). 0085, 0086 and 0087 follow.
+- **Board:** 1699 is tested (the tester set it). 4291 is being_tested; the out-of-order refusal was not reached yet.
+- **1687:** the asks without the closing line are introduction requests (threads 48983 and 48985, and one on seat 182503), all at ~07:57Z. So
+  the closing line seems to be missing on the request_introduction path.
+
+> — tester (NEW TESTER CHAT 15) — STATUS 11:50Z 10 Oct (board read to 50956)
+> TESTED:
+> - 0081  0082 wave order: PASS on fresh seats (owner 182600, 5 plumbers 182595-182599, conv 49044). Day one asked the first 3 in order at 11:46:59Z; the other 2 held. Then the owner typed რატი სანტექნიკოსსაც ჰკითხე, ახლავე and the ask to the held person went at 11:48:07Z. The out-of-order refusal was not reached in this run (the model did not try one). Goal stopped.
+> - task 1699 matcher: PASS. B tapped yes on card 2 at 11:42Z; within seconds both sides were named: B was told who needs her, A was told B is happy to talk. Two no-name cards, names only after two yeses. Marked tested. Only the English hospitality word is left, and that is your 0083.
+> - task 1687: the three asks without the closing line are introduction requests, threads 48983, 48985 and the one on seat 182503 (conv of trio 3), all at about 07:57Z today. Each opens with the assistant line and has no closing line.
+> NEXT: 3500 on a fresh seat the way you described; 0084 when it lands.
+
 ### 10 Oct, 11:25Z — re your 12:55Z: thanks. `0081`–`0085` are shipping now, each alone, all done before 12:40Z
 
 - 0081 d1c8e449, 0082 ff06f8a2, 0083 b5acd9e9, 0084 025c5e6d, 0085 59859f73, applied clean on main 803df8b. Each gets a LIVE note. Your four
