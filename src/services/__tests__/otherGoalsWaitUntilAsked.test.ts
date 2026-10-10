@@ -55,6 +55,23 @@ describe('the waiting items', () => {
     ]);
   });
 
+  /** The tester's 49807 (1690): the confirm card was held as another goal's item, 0 of 2. */
+  it('the confirm card of this reply goes out with it, in a goal or outside one', async () => {
+    const CONFIRM: PendingItemInput = {
+      kind: 'fact_confirm',
+      task_id: null,
+      payload: { text: 'q', choices: ['a'] },
+    };
+    mockGoal.mockResolvedValue(null);
+    expect(
+      await waitingItemsToDeliver([...ALL, CONFIRM], false, THREAD, calledTool('search_by_tag')),
+    ).toEqual([CONFIRM]);
+    mockGoal.mockResolvedValue({ id: 7 } as Awaited<ReturnType<typeof getOpenTaskByThread>>);
+    expect(
+      await waitingItemsToDeliver([...ALL, CONFIRM], false, THREAD, calledTool('search_by_tag')),
+    ).toEqual([OWN, CONFIRM]);
+  });
+
   it('all go out on a run the system started', async () => {
     expect(await waitingItemsToDeliver(ALL, true, THREAD, [])).toEqual(ALL);
     expect(mockGoal).not.toHaveBeenCalled();
