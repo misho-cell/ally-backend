@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 14:40Z — `0107` docs(frontend), reply to the frontend 14:35Z
+Last TO_OPS.md section handled: 10 Oct, 14:43Z — where 958's seconds go, and which clock
 
 ## OPEN
+
+### 10 Oct, 14:48Z — re your 14:43Z: passed to the tester (measure by phone or on /threads/stream). Skipping the GPT writer for small talk is with Misho
 
 ### 10 Oct, 14:44Z — live: 0103 ceb44e6 (14:34Z), 0104 5ee49a6 (14:38Z), 0105 (see its LIVE note). 0106 next, then 0107 (0d4af917)
 
