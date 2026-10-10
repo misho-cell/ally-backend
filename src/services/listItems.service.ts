@@ -5,6 +5,7 @@ import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
 import { ownMatchesFor } from './tools/searchByTag';
 import { scrubText, stripAllowedSpans } from './privacyScrub';
 import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
+import { answerForRow, answersOnGoal, GoalAnswer } from './listRowHelpers';
 
 /**
  * Board #893 (the founder, 4 October): a list the owner gave Netai becomes the
@@ -418,6 +419,7 @@ const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
 };
 
 export interface WorkedRow {
+  readonly label?: string;
   readonly row_data: string[];
   readonly way_in: string;
   readonly through_whom: string | null;
@@ -442,14 +444,9 @@ function answerForOwner(answer: string | null): string {
   return answer === null ? '' : stripAllowedSpans(scrubText(answer));
 }
 
-/** The goal's worked list as an .xlsx file; null when the goal has no list of this owner's. */
-export async function listWorkbook(
-  userId: string,
-  taskId: number,
-  language: RunLanguage,
-): Promise<Buffer | null> {
+async function workedRows(userId: string, taskId: number): Promise<WorkedRow[]> {
   const result = await query<WorkedRow>(
-    `SELECT li.row_data, li.way_in, li.through_whom, ${ROW_STATE_SQL} AS state,
+    `SELECT li.label, li.row_data, li.way_in, li.through_whom, ${ROW_STATE_SQL} AS state,
             ask.answer, f.columns
        FROM list_items li
        JOIN tasks t ON t.id = li.task_id
@@ -461,31 +458,65 @@ export async function listWorkbook(
     [taskId, userId, MAX_ROWS_EXPORTED],
     LIST_QUERY_TIMEOUT_MS,
   );
-  if (result.rows.length === 0) return null;
-  const needAt = needColumn(result.rows[0].columns);
-  const helpers =
-    needAt === -1
-      ? null
-      : await helpersForNeeds(
-          userId,
-          result.rows.map((r) => r.row_data[needAt] ?? ''),
-        );
+  return result.rows;
+}
+
+/**
+ * Box 50986: on a list whose rows ARE the needs, every one of the owner's
+ * contacts who fits a found row is named (three electricians, not the first),
+ * and a no-route row named in a helper's answer points at that answer.
+ */
+function needRowCells(
+  r: WorkedRow,
+  language: RunLanguage,
+  fitting: ReadonlyMap<string, string>,
+  answers: readonly GoalAnswer[],
+): string[] {
+  const cells = workedCells(r, language);
+  const label = (r.label ?? '').trim();
+  const at = r.row_data.length;
+  const everyone = fitting.get(label) ?? '';
+  if (r.way_in === 'first_circle' && everyone !== '') cells[at + 1] = everyone;
+  if (r.way_in !== 'none' || r.answer !== null) return cells;
+  const answered = answerForRow(answers, label);
+  if (answered === undefined) return cells;
+  const said = withHelperSaid(cells, r, language);
+  said[at + 1] = answered.helper ?? '';
+  said[at + 3] = answerForOwner(answered.answer);
+  return said;
+}
+
+/** The goal's worked list as an .xlsx file; null when the goal has no list of this owner's. */
+export async function listWorkbook(
+  userId: string,
+  taskId: number,
+  language: RunLanguage,
+): Promise<Buffer | null> {
+  const rows = await workedRows(userId, taskId);
+  if (rows.length === 0) return null;
+  const needAt = needColumn(rows[0].columns);
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('Netai');
-  sheet.addRow([
-    ...result.rows[0].columns,
-    ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka),
-    ...(helpers === null ? [] : [NEED_COLUMN[language] ?? NEED_COLUMN.ka]),
-  ]);
-  for (const r of result.rows) {
-    const helper = helpers === null ? null : (helpers.get((r.row_data[needAt] ?? '').trim()) ?? '');
+  const header = [...rows[0].columns, ...(NETAI_COLUMNS[language] ?? NETAI_COLUMNS.ka)];
+  if (needAt === -1) {
+    const found = rows.filter((r) => r.way_in === 'first_circle').map((r) => r.label ?? '');
+    const [fitting, answers] = await Promise.all([
+      helpersForNeeds(userId, found),
+      answersOnGoal(userId, taskId),
+    ]);
+    sheet.addRow(header);
+    for (const r of rows) sheet.addRow(needRowCells(r, language, fitting, answers).map(fitsACell));
+    return Buffer.from(await book.xlsx.writeBuffer());
+  }
+  const helpers = await helpersForNeeds(
+    userId,
+    rows.map((r) => r.row_data[needAt] ?? ''),
+  );
+  sheet.addRow([...header, NEED_COLUMN[language] ?? NEED_COLUMN.ka]);
+  for (const r of rows) {
+    const helper = helpers.get((r.row_data[needAt] ?? '').trim()) ?? '';
     const cells = workedCells(r, language);
-    sheet.addRow(
-      [
-        ...(helper ? withHelperSaid(cells, r, language) : cells),
-        ...(helper === null ? [] : [helper]),
-      ].map(fitsACell),
-    );
+    sheet.addRow([...(helper ? withHelperSaid(cells, r, language) : cells), helper].map(fitsACell));
   }
   return Buffer.from(await book.xlsx.writeBuffer());
 }
