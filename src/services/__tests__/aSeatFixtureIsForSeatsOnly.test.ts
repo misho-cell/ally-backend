@@ -1,4 +1,5 @@
 import { query } from '../../db/postgres/client';
+import { askField } from '../answerStats.service';
 import {
   FixtureOutcome,
   writeAnswerRecord,
@@ -73,6 +74,45 @@ describe('the stale-fact fixture (1690)', () => {
 describe('the answer-record fixture (1691)', () => {
   beforeEach(() => jest.clearAllMocks());
 
+  /** Ops 02:36Z: the goal's asks file under its title, which the typed text may not match. */
+  it('files under the goal’s own title when given the goal', async () => {
+    const title = 'სახლში ელექტრო გაყვანილობა მთლიანად უნდა გამოვცვალო';
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ title }] } as never)
+      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+    const record = {
+      goalText: 'something else typed',
+      taskId: 23926,
+      asked: 10,
+      yes: 9,
+      no: 1,
+      referred: 0,
+      firstAnswerMinutesMedian: null,
+    };
+    await expect(writeAnswerRecord(SEAT, record)).resolves.toBe(FixtureOutcome.Written);
+    expect(String(mockQuery.mock.calls[0][0])).toContain('JOIN test_seats');
+    expect((mockQuery.mock.calls[2][1] as unknown[])[1]).toBe(askField(title));
+  });
+
+  it('refuses a goal that is not a fictional seat’s, and a goal id that is not one', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    const record = {
+      goalText: null,
+      taskId: 501,
+      asked: 1,
+      yes: 1,
+      no: 0,
+      referred: 0,
+      firstAnswerMinutesMedian: null,
+    };
+    await expect(writeAnswerRecord(SEAT, record)).resolves.toBe(FixtureOutcome.NotATestSeat);
+    await expect(writeAnswerRecord(SEAT, { ...record, taskId: Number.NaN })).resolves.toBe(
+      FixtureOutcome.BadInput,
+    );
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
   it('sets the record under the field the goal files under', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
@@ -80,6 +120,7 @@ describe('the answer-record fixture (1691)', () => {
     await expect(
       writeAnswerRecord(SEAT, {
         goalText: 'კარგი ნოტარიუსი მჭირდება',
+        taskId: null,
         asked: 10,
         yes: 8,
         no: 1,
@@ -96,6 +137,7 @@ describe('the answer-record fixture (1691)', () => {
     await expect(
       writeAnswerRecord(SEAT, {
         goalText: 'ნოტარიუსი',
+        taskId: null,
         asked: 2,
         yes: 2,
         no: 1,

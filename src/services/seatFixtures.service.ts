@@ -88,7 +88,13 @@ export async function writeStaleFact(
 
 export interface AnswerRecordInput {
   /** The goal as the tester will type it; filed under the same field an ask would be. */
-  readonly goalText: string;
+  readonly goalText: string | null;
+  /**
+   * The tester's 49931 / ops 02:36Z: or the goal itself, once it exists. Its
+   * asks file under its title, which the model wrote and the tester's typed
+   * text may not match; so the record goes under the title's own field.
+   */
+  readonly taskId: number | null;
   readonly asked: number;
   readonly yes: number;
   readonly no: number;
@@ -100,16 +106,40 @@ function isCount(n: number): boolean {
   return Number.isInteger(n) && n >= 0 && n <= MAX_STAT;
 }
 
+/** The title of a goal on a fictional seat; null for any other goal. */
+async function testSeatGoalTitle(taskId: number): Promise<string | null> {
+  const result = await query<{ title: string }>(
+    `SELECT t.title FROM tasks t JOIN test_seats ts ON ts.user_id::text = t.user_id
+      WHERE t.id = $1 LIMIT 1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.title ?? null;
+}
+
+/** The text the record's field is taken from; null when the goal is not a fictional seat's. */
+async function recordGoalText(input: AnswerRecordInput): Promise<string | null> {
+  if (input.taskId !== null) return testSeatGoalTitle(input.taskId);
+  return input.goalText;
+}
+
 /**
- * 1691: the seat's answer record in the field the goal text files under, set
- * exactly. The hourly recount rebuilds it from real asks once the seat is
- * asked, so it holds for the first wave, which is what 1691 orders.
+ * 1691: the seat's answer record in the field the goal files under, set
+ * exactly. The recount rebuilds it from real asks once the seat is asked, so
+ * the ranking is read before the plan is approved (GET wave-ranking).
  */
 export async function writeAnswerRecord(
   seatId: number,
   input: AnswerRecordInput,
 ): Promise<FixtureOutcome> {
-  const field = askField(input.goalText);
+  if (input.taskId !== null && !(Number.isInteger(input.taskId) && input.taskId > 0)) {
+    return FixtureOutcome.BadInput;
+  }
+  const goalText = await recordGoalText(input);
+  if (goalText === null) {
+    return input.taskId === null ? FixtureOutcome.BadInput : FixtureOutcome.NotATestSeat;
+  }
+  const field = askField(goalText);
   const counts = [input.asked, input.yes, input.no, input.referred];
   const minutes = input.firstAnswerMinutesMedian;
   if (

@@ -7025,7 +7025,8 @@ adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) =
  *   POST /admin/test-accounts/:id/fixtures/stale-fact
  *        { phone, field_type: occupation|employer|city|industry, value, days_ago }
  *   POST /admin/test-accounts/:id/fixtures/answer-record
- *        { goal_text, asked, yes, no, referred, first_answer_minutes_median | null }
+ *        { goal_text | task_id, asked, yes, no, referred, first_answer_minutes_median | null }
+ *        task_id files the record under that goal's own field (ops 02:36Z).
  */
 const FIXTURE_STATUS: Readonly<Record<FixtureOutcome, number>> = {
   [FixtureOutcome.Written]: 200,
@@ -7083,7 +7084,8 @@ adminRouter.post(
   async (req: Request, res: Response) => {
     const seatId = seatIdOf(req);
     const b = (req.body ?? {}) as Record<string, unknown>;
-    if (seatId === null || typeof b.goal_text !== 'string') {
+    const taskId = b.task_id === undefined || b.task_id === null ? null : Number(b.task_id);
+    if (seatId === null || (typeof b.goal_text !== 'string' && taskId === null)) {
       sendFixture(res, FixtureOutcome.BadInput);
       return;
     }
@@ -7092,7 +7094,8 @@ adminRouter.post(
       sendFixture(
         res,
         await writeAnswerRecord(seatId, {
-          goalText: b.goal_text,
+          goalText: typeof b.goal_text === 'string' ? b.goal_text : null,
+          taskId,
           asked: Number(b.asked),
           yes: Number(b.yes),
           no: Number(b.no),
