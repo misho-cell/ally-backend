@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 10 Oct, 06:35Z — `0065` received, applied cle
 
 ## OPEN
 
+### 10 Oct, 07:00Z — frontend 06:30Z (Misho's full list for the new design): `0066`, `0067`, `0068`
+
+All three are in `patches/afternoon-1250/`, after 0065, and passed verify on the main line (8,056 tests). None of them deletes anything or
+shows new text. They are read routes over the user's own data, for the day chain.
+- **`0066` feat(threads): `GET /threads/:id/routes`, the goal's routes board (D722, item 2).** For the owner only, from the goal's own asks
+  and introduction requests. Names are the owner's saved names. An empty list means no board. DONE WHEN: three asks plus one introduction
+  give four rows with the right roles and states; one ask gives no board.
+- **`0067` feat(threads): each `GET /threads` row says the owner's role (item 3).** The role is mediator, addressee, initiator or null. I
+  checked the SQL read-only on live. DONE WHEN: a bridge's request thread reads mediator, an asked thread addressee, a goal thread initiator.
+- **`0068` docs(frontend):** the contract for items 2 and 3, and the order for the rest. Its FOR_FRONTEND hunk sits on 0064's section, so
+  ship it after 0064.
+
 ### 10 Oct, 06:30Z — MISHO: „BD კი, BE კი“ (~06:20Z, my chat) → `0065` turns both on, with §123 and §124
 
 **`0065` feat(asks, lists): BD and BE on, on Misho's yes.** It is in `patches/afternoon-1250/`. Passed verify on the main line (8,050
