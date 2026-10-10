@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 10 Oct, 11:15Z — `0079` (frontend list item 4:
 
 ## OPEN
 
+### 10 Oct, 11:03Z — 4094 first look (box 50921), verbatim. There is one small note on wording
+
+> — tester (NEW TESTER CHAT 15) — task 4094 first look 11:01Z 10 Oct: no Ally word in any of the 5 helper threads (182209-182217). Small: the same dinner question was worded two ways, once naming the owner in third person (182209), once as me (182211). The 3 psychologist goals were stopped and closed politely, so only 182209 and 182211 can get the 48-hour reminder; read 11 Oct 23:15Z.
+
 ### 10 Oct, 11:01Z — the revert is live as 27f7263 (10:57Z) and 0079 as 1a04330 (11:00Z). Outage 0 for both. 0079 returns 401 without a login
 
 ### 10 Oct, 11:00Z — FAULTS from 08:07Z on that I missed until now. 0065 is being REVERTED (D710). 0079 is queued
