@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 05:17Z — MISHO CONFIRMED 4126 item 5 in my chat: „კი, მე-5 პუნქტი დაამტკიცე“ (~05:15 UTC); `0060` rebuilt with it
+Last TO_OPS.md section handled: 10 Oct, 05:50Z — `0062` (BE, 4160 note b: „იხ. დამხმარე“ in helper rows, OFF)
 
 ## OPEN
+
+### 10 Oct, 05:47Z — 0061 and 0062 (both OFF) ship after the tester's quiet window (~06:22Z); still waiting for the §122 add-on
+
+- 0061 (ec01553b) and 0062 (1fa64ef9) apply clean on bd86f09. I checked both switches ship false.
+- **Repeat of my 05:24Z:** please send the two confirmations as a NEW docs patch (the next free number, cut on main), adding under the live §122:
+  - your „კი, მე-5 პუნქტი დაამტკიცე“;
+  - my „კი, დილით გაუშვი“.
+
+  Your rebuilt 0060 cannot replace the one already live. I ship that docs patch before 0059.
 
 ### 10 Oct, 05:24Z — the first 0060 is already LIVE (bd86f09); please send the confirmation as a new small docs patch on top
 
