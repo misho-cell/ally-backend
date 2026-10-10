@@ -1,0 +1,682 @@
+From a9b63ffff4d39bb76e90e80c27a6f7cf404694e9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 10:47:12 +0000
+Subject: [PATCH] feat(contacts): GET /contacts and GET /contacts/:id, the
+ person's own phonebook (frontend 06:30Z item 4)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The list in the narrowest shape put to Tornike (box 50854, option ა): the
+saved name and the Netai mark, searchable, a page at a time, with the
+connector's sealed per-user reference as the id and no number anywhere.
+The page: the person's own labels, closeness (confirmed tie warm, red
+distant, else neutral), own facts, role from them, and exclusions. Never
+the contact's topic boundary (D421).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  40 +++++
+ .../contactImportState.routes.test.ts         |  62 ++++++++
+ src/api/routes/contacts.routes.ts             |  56 +++++++
+ src/services/__tests__/contactBook.test.ts    |  74 +++++++++
+ src/services/__tests__/contactPage.test.ts    |  82 ++++++++++
+ src/services/contactBook.service.ts           | 108 +++++++++++++
+ src/services/contactPage.service.ts           | 146 ++++++++++++++++++
+ 7 files changed, 568 insertions(+)
+ create mode 100644 src/services/__tests__/contactBook.test.ts
+ create mode 100644 src/services/__tests__/contactPage.test.ts
+ create mode 100644 src/services/contactBook.service.ts
+ create mode 100644 src/services/contactPage.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 9f17b81..2641109 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,46 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 11:10Z — item 4 of your 06:30Z list: „ჩემი კონტაქტები" and a contact's page (patch 0079, not live yet)
++
++Your FOR_TORNIKE.md went into the tester box word for word at 10:40Z (box 50854). Misho's word to me was to finish everything you need,
++so item 4 is built now in the **narrowest shape** you offered Tornike: list option ა (name and the Netai mark, no number), page option
++დ (only the person's own labels, closeness and facts). If he picks ბ or გ, that is one field added to the list rows, and I'll write it here.
++
++```
++GET /contacts?q=ნინო&limit=50&cursor=<next_cursor>
++→ 200 { "success": true, "data": {
++    "contacts": [ { "id": "c_Zq3…", "name": "ნინო ბერიძე", "on_netai": true },
++                  { "id": "c_8Lk…", "name": null, "on_netai": false } ],
++    "next_cursor": "NTA" } }
++→ 400 limit outside 1–100, or a cursor this list did not give
++
++GET /contacts/c_Zq3…
++→ 200 { "success": true, "data": {
++    "id": "c_Zq3…", "name": "ნინო ბერიძე", "role": "ბუღალტერი · TBC", "on_netai": true,
++    "labels": ["ბუღალტერი"], "warmth": "warm",
++    "facts": [ { "field": "occupation", "value": "ბუღალტერი", "saved_at": "2026-09-01" } ],
++    "exclusions": [ { "excluded_for": "office in Rustavi", "reason": null } ] } }
++→ 404 an id that is not one of this person's contacts
++```
++
++- **`id`:** an opaque reference, the same one the Claude connector uses. It is tied to this person, so it is useless to anyone else. No
++  phone number is in any response.
++- **`name`:** the name the person saved. It is `null` when the saved label has no letters (a number or a symbol). Draw „…" or the Netai
++  mark. The list is sorted by name and skips contacts marked deceased. `q` matches anywhere in the name, as typed.
++- **`next_cursor`:** pass it back as `cursor`. It is `null` on the last page.
++- **`warmth`:**
++  - `warm`: a tie the person confirmed (old Ally green/blue, allies/loyal, or told Netai „close").
++  - `distant`: they marked it red.
++  - `neutral`: everything else. A computed score never decides.
++- **`role`:** from the person's own occupation/employer facts, otherwise `null`.
++- **`facts`:** only what this person saved, newest first within each field.
++- **`exclusions`:** the goals this contact was kept out of, in the words the person used.
++- **The topic boundary is not here, on purpose.** A boundary is the contact's own private setting, and the person asking is never told
++  one exists (D421). The design's „topic boundary as a saved field" cannot show another person's boundary. Tell me if the design meant
++  something else, such as the person's own note about a contact.
++- Login and subscription as the rest of `/contacts`. 60 calls a minute. Status codes: 200 / 400 / 401 / 404 / 500.
++
+ ## 10 October, 09:45Z — items 7 and 8 are LIVE; your 09:30Z read matches
+ 
+ - **Item 7:** `GET` / `PUT /contacts/import-state` went live with 0074 (6b227e0) at 09:20Z. The monthly reminder switch saves, but no
+diff --git a/src/api/routes/__tests__/contactImportState.routes.test.ts b/src/api/routes/__tests__/contactImportState.routes.test.ts
+index 51e4139..fb535f7 100644
+--- a/src/api/routes/__tests__/contactImportState.routes.test.ts
++++ b/src/api/routes/__tests__/contactImportState.routes.test.ts
+@@ -32,6 +32,16 @@ jest.mock('../../../services/contacts.service', () => ({
+   importContacts: jest.fn(),
+   parseVcf: jest.fn(),
+ }));
++jest.mock('../../../services/contactBook.service', () => ({
++  __esModule: true,
++  DEFAULT_PAGE_SIZE: 50,
++  MAX_PAGE_SIZE: 100,
++  contactPage: jest.fn(),
++}));
++jest.mock('../../../services/contactPage.service', () => ({
++  __esModule: true,
++  contactPageFor: jest.fn(),
++}));
+ jest.mock('../../../services/contactImportState.service', () => ({
+   __esModule: true,
+   contactImportState: jest.fn(),
+@@ -42,12 +52,16 @@ import express from 'express';
+ import type { AddressInfo } from 'net';
+ import type { Server } from 'http';
+ import contactsRouter from '../contacts.routes';
++import { contactPage } from '../../../services/contactBook.service';
++import { contactPageFor } from '../../../services/contactPage.service';
+ import {
+   contactImportState,
+   setContactImportReminder,
+ } from '../../../services/contactImportState.service';
+ 
+ const mockState = contactImportState as jest.MockedFunction<typeof contactImportState>;
++const mockList = contactPage as jest.MockedFunction<typeof contactPage>;
++const mockPage = contactPageFor as jest.MockedFunction<typeof contactPageFor>;
+ const mockSet = setContactImportReminder as jest.MockedFunction<typeof setContactImportReminder>;
+ 
+ const STATE = {
+@@ -116,3 +130,51 @@ describe('PUT /contacts/import-state', () => {
+     },
+   );
+ });
++
++/** The frontend's 06:30Z item 4: „ჩემი კონტაქტები" and a contact's page. */
++describe('GET /contacts and /contacts/:id', () => {
++  const root = (): string => base.replace('/import-state', '');
++
++  it('lists a page with the search, size and cursor passed through', async () => {
++    mockList.mockResolvedValue({
++      contacts: [{ id: 'c_x', name: 'ნინო', on_netai: true }],
++      next_cursor: null,
++    });
++    const res = await fetch(`${root()}?q=${encodeURIComponent('ნინო')}&limit=20&cursor=MjA`);
++    expect(res.status).toBe(200);
++    expect(mockList).toHaveBeenCalledWith(171, { q: 'ნინო', limit: 20, cursor: 'MjA' });
++  });
++
++  it('refuses a bad size or a foreign cursor with 400', async () => {
++    expect((await fetch(`${root()}?limit=500`)).status).toBe(400);
++    mockList.mockResolvedValue(null);
++    expect((await fetch(`${root()}?cursor=zz`)).status).toBe(400);
++  });
++
++  it('answers the page, 404 for someone else’s id, and 500 without the database error', async () => {
++    mockPage.mockResolvedValueOnce({
++      id: 'c_x',
++      name: 'ნინო',
++      role: null,
++      on_netai: true,
++      labels: [],
++      warmth: 'neutral' as never,
++      facts: [],
++      exclusions: [],
++    });
++    expect((await fetch(`${root()}/c_x`)).status).toBe(200);
++    expect(mockPage).toHaveBeenCalledWith(171, 'c_x');
++    mockPage.mockResolvedValueOnce(null);
++    expect((await fetch(`${root()}/c_other`)).status).toBe(404);
++    mockPage.mockRejectedValueOnce(new Error('relation "UserTags" is locked'));
++    const res = await fetch(`${root()}/c_x`);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('relation');
++  });
++
++  it('still routes /import-state to the import state, not to a contact', async () => {
++    mockState.mockResolvedValue(STATE);
++    expect((await fetch(base)).status).toBe(200);
++    expect(mockPage).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/api/routes/contacts.routes.ts b/src/api/routes/contacts.routes.ts
+index 4972a75..02d56d5 100644
+--- a/src/api/routes/contacts.routes.ts
++++ b/src/api/routes/contacts.routes.ts
+@@ -13,6 +13,8 @@ import {
+   setContactImportReminder,
+ } from '../../services/contactImportState.service';
+ import { rateLimit } from '../middleware/rateLimit.middleware';
++import { contactPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../services/contactBook.service';
++import { contactPageFor } from '../../services/contactPage.service';
+ import { ApiResponse, ImportResult } from '../../types';
+ import { getSession } from '../../db/neo4j/client';
+ import pool from '../../db/postgres/client';
+@@ -260,4 +262,58 @@ contactsRouter.get('/diag/second-degree', async (req: Request, res: Response) =>
+   });
+ });
+ 
++/** The phonebook screens are read as the person scrolls and types. */
++const PHONEBOOK_PER_MINUTE = 60;
++const phonebookLimit = rateLimit({ windowMs: 60_000, max: PHONEBOOK_PER_MINUTE });
++
++function pageSizeOf(raw: unknown): number | null {
++  if (raw === undefined || raw === '') return DEFAULT_PAGE_SIZE;
++  const n = Number(raw);
++  return Number.isInteger(n) && n >= 1 && n <= MAX_PAGE_SIZE ? n : null;
++}
++
++/**
++ * The frontend's 06:30Z item 4 (design 4.8):
++ *   GET /contacts?q=&limit=&cursor=  { contacts: [{ id, name, on_netai }], next_cursor }
++ *   GET /contacts/:id                the person's own page about one contact
++ */
++contactsRouter.get('/', phonebookLimit, async (req: Request, res: Response) => {
++  const limit = pageSizeOf(req.query.limit);
++  const q = typeof req.query.q === 'string' ? req.query.q : null;
++  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : null;
++  if (limit === null) {
++    res.status(400).json({ success: false, error: `limit must be 1 to ${MAX_PAGE_SIZE}` });
++    return;
++  }
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    const page = await contactPage(userId, { q, limit, cursor });
++    if (page === null) {
++      res.status(400).json({ success: false, error: 'cursor is not one this list gave' });
++      return;
++    }
++    res.status(200).json({ success: true, data: page });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /contacts]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the contacts' });
++  }
++});
++
++contactsRouter.get('/:id', phonebookLimit, async (req: Request, res: Response) => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    const page = await contactPageFor(userId, String(req.params.id));
++    if (page === null) {
++      res.status(404).json({ success: false, error: 'No such contact' });
++      return;
++    }
++    res.status(200).json({ success: true, data: page });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /contacts/:id]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the contact' });
++  }
++});
++
+ export default contactsRouter;
+diff --git a/src/services/__tests__/contactBook.test.ts b/src/services/__tests__/contactBook.test.ts
+new file mode 100644
+index 0000000..1588ba2
+--- /dev/null
++++ b/src/services/__tests__/contactBook.test.ts
+@@ -0,0 +1,74 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../tools/membership', () => ({
++  __esModule: true,
++  fetchAccountStates: jest.fn(),
++  isMemberPhone: jest.fn(),
++}));
++jest.mock('../mcp/contactRef', () => ({
++  __esModule: true,
++  encodeContactRef: jest.fn((_user: string, phone: string) => `c_${phone.length}`),
++}));
++
++import { query } from '../../db/postgres/client';
++import { fetchAccountStates, isMemberPhone } from '../tools/membership';
++import { contactPage, decodeCursor, encodeCursor, likePattern } from '../contactBook.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockStates = fetchAccountStates as jest.MockedFunction<typeof fetchAccountStates>;
++const mockMember = isMemberPhone as jest.MockedFunction<typeof isMemberPhone>;
++
++beforeEach(() => {
++  mockQuery.mockReset();
++  mockStates.mockResolvedValue(new Map());
++  mockMember.mockImplementation((_m, phone) => phone.endsWith('1'));
++});
++
++/** The frontend's 06:30Z item 4: „ჩემი კონტაქტები", option ა (box 50854). */
++describe('the cursor and the search text', () => {
++  it('round-trips a position and refuses anything else', () => {
++    expect(decodeCursor(encodeCursor(150))).toBe(150);
++    expect(decodeCursor(null)).toBe(0);
++    expect(decodeCursor(Buffer.from('-3').toString('base64url'))).toBeNull();
++    expect(decodeCursor('not-a-cursor')).toBeNull();
++  });
++
++  it('searches the typed characters literally, never as a pattern', () => {
++    expect(likePattern(' ნინო ')).toBe('%ნინო%');
++    expect(likePattern('50%_off')).toBe('%50\\%\\_off%');
++    expect(likePattern('   ')).toBeNull();
++  });
++});
++
++describe('contactPage', () => {
++  it('shows the saved name and the Netai mark, never a number, and says when more follow', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [
++        { phone: '+995599000001', alias: 'ნინო' },
++        { phone: '+995599000002', alias: '123' },
++        { phone: '+995599000003', alias: 'გია' },
++      ],
++    } as never);
++
++    const page = await contactPage(171, { q: 'ი', limit: 2, cursor: null });
++
++    expect(page).toEqual({
++      contacts: [
++        { id: 'c_13', name: 'ნინო', on_netai: true },
++        { id: 'c_13', name: null, on_netai: false },
++      ],
++      next_cursor: encodeCursor(2),
++    });
++    expect(JSON.stringify(page)).not.toContain('995599');
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('"ContactDeceased"');
++    expect(params).toEqual([171, '%ი%', 0, 3]);
++  });
++
++  it('answers the last page without a next cursor, and null for a foreign cursor', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ phone: '+995599000001', alias: 'ნინო' }] } as never);
++    await expect(
++      contactPage(171, { q: null, limit: 50, cursor: encodeCursor(50) }),
++    ).resolves.toMatchObject({ next_cursor: null });
++    await expect(contactPage(171, { q: null, limit: 50, cursor: '!!' })).resolves.toBeNull();
++  });
++});
+diff --git a/src/services/__tests__/contactPage.test.ts b/src/services/__tests__/contactPage.test.ts
+new file mode 100644
+index 0000000..1999d51
+--- /dev/null
++++ b/src/services/__tests__/contactPage.test.ts
+@@ -0,0 +1,82 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../tools/membership', () => ({
++  __esModule: true,
++  fetchAccountStates: jest.fn(() => Promise.resolve(new Map())),
++  isMemberPhone: jest.fn(() => true),
++}));
++jest.mock('../mcp/contactRef', () => ({
++  __esModule: true,
++  decodeContactRef: jest.fn((_user: string, ref: string) =>
++    ref === 'c_mine' ? '+995599000001' : null,
++  ),
++}));
++
++import { query } from '../../db/postgres/client';
++import { contactPageFor, roleFrom, Warmth } from '../contactPage.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** Answers the page's reads in the order they are made. */
++function pageReads(warm: boolean, distant: boolean): void {
++  mockQuery.mockImplementation((sql: string) => {
++    if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias: 'ნინო' }] });
++    if (sql.includes('FROM "UserTags"'))
++      return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
++    if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
++    if (sql.includes('FROM contact_facts'))
++      return Promise.resolve({
++        rows: [
++          { field: 'employer', value: 'TBC', saved_at: '2026-09-01' },
++          { field: 'occupation', value: 'ბუღალტერი', saved_at: '2026-09-01' },
++        ],
++      });
++    if (sql.includes('FROM contact_exclusions'))
++      return Promise.resolve({ rows: [{ excluded_for: 'office in Rustavi', reason: null }] });
++    return Promise.resolve({ rows: [] });
++  }) as never;
++}
++
++/** The frontend's 06:30Z item 4: the person's own page about one contact. */
++describe('contactPageFor', () => {
++  it('gathers only the person’s own labels, facts, closeness and exclusions', async () => {
++    pageReads(true, false);
++    const page = await contactPageFor(171, 'c_mine');
++    expect(page).toEqual({
++      id: 'c_mine',
++      name: 'ნინო',
++      role: 'ბუღალტერი · TBC',
++      on_netai: true,
++      labels: ['ბუღალტერი'],
++      warmth: Warmth.Warm,
++      facts: expect.any(Array),
++      exclusions: [{ excluded_for: 'office in Rustavi', reason: null }],
++    });
++    const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
++    expect(sqls.some((sql) => sql.includes('ask_boundaries'))).toBe(false);
++    expect(sqls.find((sql) => sql.includes('FROM contact_facts'))).toContain(
++      'submitted_by_user_id = $2',
++    );
++  });
++
++  it('reads red as distant and no confirmed tie as neutral', async () => {
++    pageReads(false, true);
++    await expect(contactPageFor(171, 'c_mine')).resolves.toMatchObject({ warmth: Warmth.Distant });
++    pageReads(false, false);
++    await expect(contactPageFor(171, 'c_mine')).resolves.toMatchObject({ warmth: Warmth.Neutral });
++  });
++
++  it('is null for a foreign id, or a number not in this phonebook', async () => {
++    await expect(contactPageFor(171, 'c_someone_elses')).resolves.toBeNull();
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await expect(contactPageFor(171, 'c_mine')).resolves.toBeNull();
++  });
++});
++
++describe('roleFrom', () => {
++  it('joins occupation and employer, and is null without either', () => {
++    expect(roleFrom([{ field: 'occupation', value: 'ექიმი', saved_at: '' }])).toBe('ექიმი');
++    expect(roleFrom([{ field: 'city', value: 'თბილისი', saved_at: '' }])).toBeNull();
++  });
++});
+diff --git a/src/services/contactBook.service.ts b/src/services/contactBook.service.ts
+new file mode 100644
+index 0000000..1ad792f
+--- /dev/null
++++ b/src/services/contactBook.service.ts
+@@ -0,0 +1,108 @@
++import { query } from '../db/postgres/client';
++import { encodeContactRef } from './mcp/contactRef';
++import { fetchAccountStates, isMemberPhone } from './tools/membership';
++
++/**
++ * The frontend's 06:30Z item 4 (design 4.8, „ჩემი კონტაქტები"): the person's
++ * own phonebook, searchable by name, a page at a time.
++ *
++ * What a row shows is the narrowest of the shapes put to Tornike (box 50854,
++ * option ა): the name the person saved and whether that contact is on Netai.
++ * No number leaves the server (D149) — a row's id is the same sealed,
++ * per-user reference the connector uses. A wider shape, if Tornike picks one,
++ * is a field added here.
++ */
++const QUERY_TIMEOUT_MS = 8_000;
++export const DEFAULT_PAGE_SIZE = 50;
++export const MAX_PAGE_SIZE = 100;
++/** The longest search text read; a longer one is cut, never refused. */
++const MAX_QUERY_CHARS = 60;
++const HAS_A_LETTER = /\p{L}/u;
++
++export interface ContactRow {
++  readonly id: string;
++  readonly name: string | null;
++  readonly on_netai: boolean;
++}
++
++export interface ContactPage {
++  readonly contacts: readonly ContactRow[];
++  readonly next_cursor: string | null;
++}
++
++export interface ContactPageRequest {
++  readonly q: string | null;
++  readonly limit: number;
++  readonly cursor: string | null;
++}
++
++/** A cursor is the next row's position, sealed only by being opaque base64. */
++export function encodeCursor(offset: number): string {
++  return Buffer.from(String(offset), 'utf8').toString('base64url');
++}
++
++export function decodeCursor(cursor: string | null): number | null {
++  if (cursor === null || cursor === '') return 0;
++  const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
++  return /^\d{1,9}$/.test(decoded) ? Number(decoded) : null;
++}
++
++/** „50%_off" is searched as those characters, not as a pattern. */
++export function likePattern(q: string | null): string | null {
++  const trimmed = (q ?? '').trim().slice(0, MAX_QUERY_CHARS);
++  if (trimmed === '') return null;
++  return `%${trimmed.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
++}
++
++async function phonebookRows(
++  userId: number,
++  pattern: string | null,
++  offset: number,
++  limit: number,
++): Promise<Array<{ phone: string; alias: string | null }>> {
++  const result = await query<{ phone: string; alias: string | null }>(
++    `WITH mine AS (
++       SELECT DISTINCT ON (regexp_replace(ua.phone, '\\D', '', 'g')) ua.phone, ua.alias
++         FROM "UserAlias" ua
++        WHERE ua."contactId" = $1 AND ua.phone IS NOT NULL
++          AND NOT EXISTS (SELECT 1 FROM "ContactDeceased" d
++                           WHERE d."userId" = $1
++                             AND regexp_replace(d.phone, '\\D', '', 'g')
++                               = regexp_replace(ua.phone, '\\D', '', 'g'))
++        ORDER BY regexp_replace(ua.phone, '\\D', '', 'g'), LENGTH(COALESCE(ua.alias, '')) DESC
++     )
++     SELECT phone, alias FROM mine
++      WHERE $2::text IS NULL OR alias ILIKE $2
++      ORDER BY LOWER(COALESCE(alias, '')), phone
++      OFFSET $3 LIMIT $4`,
++    [userId, pattern, offset, limit],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++function shownName(alias: string | null): string | null {
++  const trimmed = (alias ?? '').trim();
++  return HAS_A_LETTER.test(trimmed) ? trimmed : null;
++}
++
++/** One page of the person's contacts; null when the cursor is not one this route made. */
++export async function contactPage(
++  userId: number,
++  request: ContactPageRequest,
++): Promise<ContactPage | null> {
++  const offset = decodeCursor(request.cursor);
++  if (offset === null) return null;
++  // One row more than asked says whether there is a next page.
++  const rows = await phonebookRows(userId, likePattern(request.q), offset, request.limit + 1);
++  const page = rows.slice(0, request.limit);
++  const accounts = await fetchAccountStates(page.map((r) => r.phone));
++  return {
++    contacts: page.map((r) => ({
++      id: encodeContactRef(String(userId), r.phone),
++      name: shownName(r.alias),
++      on_netai: isMemberPhone(accounts, r.phone),
++    })),
++    next_cursor: rows.length > request.limit ? encodeCursor(offset + request.limit) : null,
++  };
++}
+diff --git a/src/services/contactPage.service.ts b/src/services/contactPage.service.ts
+new file mode 100644
+index 0000000..19cb79b
+--- /dev/null
++++ b/src/services/contactPage.service.ts
+@@ -0,0 +1,146 @@
++import { query } from '../db/postgres/client';
++import { confirmedWarmTieSql } from './chorusCap';
++import { decodeContactRef } from './mcp/contactRef';
++import { normalizePhone, phoneDigits } from './phone';
++import { isDisplayableTag } from './tools/getContactFullProfile';
++import { fetchAccountStates, isMemberPhone } from './tools/membership';
++
++/**
++ * The frontend's 06:30Z item 4, the contact's own page: what THIS person keeps
++ * about one of their contacts — their own labels, how close they said they
++ * are, their own facts, and the goals they kept this contact out of. Nothing
++ * another member saved, and never the contact's own topic boundary (D421: the
++ * asker is never told a boundary exists).
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const MAX_LABELS = 50;
++const MAX_FACTS = 100;
++const MAX_EXCLUSIONS = 50;
++const ROLE_FIELDS: readonly string[] = ['occupation', 'employer'];
++
++export enum Warmth {
++  Warm = 'warm',
++  Neutral = 'neutral',
++  Distant = 'distant',
++}
++
++export interface ContactFact {
++  readonly field: string;
++  readonly value: string;
++  readonly saved_at: string;
++}
++
++export interface ContactExclusionView {
++  readonly excluded_for: string;
++  readonly reason: string | null;
++}
++
++export interface ContactPageView {
++  readonly id: string;
++  readonly name: string | null;
++  readonly role: string | null;
++  readonly on_netai: boolean;
++  readonly labels: readonly string[];
++  readonly warmth: Warmth;
++  readonly facts: readonly ContactFact[];
++  readonly exclusions: readonly ContactExclusionView[];
++}
++
++async function savedName(userId: number, phone: string): Promise<string | null | undefined> {
++  const result = await query<{ alias: string | null }>(
++    `SELECT alias FROM "UserAlias"
++      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2
++      ORDER BY LENGTH(COALESCE(alias, '')) DESC LIMIT 1`,
++    [userId, phoneDigits(phone)],
++    QUERY_TIMEOUT_MS,
++  );
++  // undefined: not in this person's phonebook at all.
++  return result.rows.length === 0 ? undefined : (result.rows[0].alias?.trim() ?? null);
++}
++
++async function ownLabels(userId: number, phone: string): Promise<string[]> {
++  const result = await query<{ tag: string }>(
++    `SELECT tag FROM "UserTags"
++      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2
++      GROUP BY tag ORDER BY SUM("weightCount") DESC, tag LIMIT $3`,
++    [userId, phoneDigits(phone), MAX_LABELS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((r) => r.tag).filter(isDisplayableTag);
++}
++
++/**
++ * Warm: a tie the person confirmed (green/blue tier, allies/loyal, „close").
++ * Distant: they marked the tie red. Everything else is neutral — a computed
++ * score is a guess and never decides (chorusCap's rule).
++ */
++async function warmthOf(userId: number, phone: string): Promise<Warmth> {
++  const result = await query<{ warm: boolean; distant: boolean }>(
++    `SELECT ${confirmedWarmTieSql('$1::int', '$2')} AS warm,
++            EXISTS (SELECT 1 FROM human_relationship_tiers h
++                     WHERE h.user_id = $1::int AND h.tier = 'red'
++                       AND regexp_replace(h.contact_phone, '\\D', '', 'g') = $3) AS distant`,
++    [userId, phone, phoneDigits(phone)],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  if (row?.warm === true) return Warmth.Warm;
++  return row?.distant === true ? Warmth.Distant : Warmth.Neutral;
++}
++
++async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
++  const result = await query<ContactFact>(
++    `SELECT field_type AS field, COALESCE(canonical_value, value) AS value,
++            TO_CHAR(created_at, 'YYYY-MM-DD') AS saved_at
++       FROM contact_facts
++      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
++      ORDER BY field_type, updated_at DESC LIMIT $3`,
++    [normalizePhone(phone), String(userId), MAX_FACTS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
++  const result = await query<ContactExclusionView>(
++    `SELECT excluded_for, reason FROM contact_exclusions
++      WHERE user_id = $1::int AND contact_phone = $2
++      ORDER BY created_at DESC LIMIT $3`,
++    [userId, phoneDigits(phone), MAX_EXCLUSIONS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** „accountant · Bank of Georgia" from the person's own role facts, or null. */
++export function roleFrom(facts: readonly ContactFact[]): string | null {
++  const parts = ROLE_FIELDS.map((field) => facts.find((f) => f.field === field)?.value).filter(
++    (v): v is string => typeof v === 'string' && v.trim() !== '',
++  );
++  return parts.length === 0 ? null : parts.join(' · ');
++}
++
++/** The page; null when the id is not one of this person's contacts. */
++export async function contactPageFor(userId: number, id: string): Promise<ContactPageView | null> {
++  const phone = decodeContactRef(String(userId), id);
++  if (phone === null) return null;
++  const name = await savedName(userId, phone);
++  if (name === undefined) return null;
++  const [labels, warmth, facts, exclusions, accounts] = await Promise.all([
++    ownLabels(userId, phone),
++    warmthOf(userId, phone),
++    ownFacts(userId, phone),
++    exclusionsOf(userId, phone),
++    fetchAccountStates([phone]),
++  ]);
++  return {
++    id,
++    name: name !== null && /\p{L}/u.test(name) ? name : null,
++    role: roleFrom(facts),
++    on_netai: isMemberPhone(accounts, phone),
++    labels,
++    warmth,
++    facts,
++    exclusions,
++  };
++}
+-- 
+2.43.0
+

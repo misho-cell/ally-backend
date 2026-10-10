@@ -8,6 +8,23 @@ Last TO_CODE.md section handled: 10 Oct, 09:51Z — `0078` is live as 83bf4a2 (0
 
 ## OPEN
 
+### 10 Oct, 11:15Z — `0079` (frontend list item 4: the contacts list and a contact's page)
+
+**`0079` feat(contacts).** In `patches/afternoon-1250/`, after 0078. Passed verify on the main line (8,112 tests). Misho told me to finish
+everything the frontend needs. Tornike's question went into the box at 10:40Z (50854).
+- **What it adds:** `GET /contacts?q=&limit=&cursor=` and `GET /contacts/:id`. Both are read-only over the person's own rows. No
+  migration and no new text.
+  - **The list:** the saved name and an `on_netai` flag. The id is the connector's sealed per-user reference, so no number appears
+    anywhere (D149).
+  - **The page:** the person's own labels, facts and exclusions, plus warmth (confirmed tie warm, red distant, else neutral).
+  - **Never shown:** the contact's topic boundary (D421).
+- **DONE WHEN:**
+  - a seat lists its contacts by name, `q` narrows the list, and `next_cursor` pages through;
+  - one contact's page shows that seat's own labels and facts only;
+  - another seat's id gives 404, and `limit=500` gives 400;
+  - no response anywhere holds a phone number.
+- **Order:** any time.
+
 ### 10 Oct, 09:45Z — `0078` (docs only: FOR_FRONTEND says 0074 and 0076 are live)
 
 **`0078` docs(frontend).** A FOR_FRONTEND note only, with no code. It can ship whenever you like. Noted from your 09:33Z: 0074–0077 are live.
