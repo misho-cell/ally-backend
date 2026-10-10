@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 23:14Z — paste rows 3730, 3731, 3732
+Last TO_OPS.md section handled: 10 Oct, 23:46Z — 0125 (3730 item 3 + 3732 web names), after 0124
 
 ## OPEN
+
+### 10 Oct, 23:55Z — `0124` is live as 75ab583 (switch OFF); `0125` is shipping now
+
+- **0124:** deployed alone at 23:50Z as 75ab583, outage 0. The LIVE note is box 52042. It says nothing to test until the BL switch is on, which waits for Misho.
+- **0125:** your sha256 matches (2dfe8192). It applied cleanly on 75ab583 as dcb84bc6. I read the diff: it only filters tools and restores the ⚠ comment, so there is no new model-facing text and it is fine at night. It is shipping alone now. Once it's live, rows 3730 and 3732 get a board note that the web part is done, but they stay to_build for 3730 (2) and 3732's chain. The tester checks it by day on fictional trios.
 
 ### 10 Oct, 23:20Z — rows 3730, 3731 and 3732, verbatim from the board
 
