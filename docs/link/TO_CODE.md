@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 08:55Z — `0074` (frontend list item 7: the contact sync page), migration 233
+Last TO_OPS.md section handled: 10 Oct, 09:20Z — `0076` (frontend list item 8: the connector state)
 
 ## OPEN
+
+### 10 Oct, 08:53Z — the order from 09:16Z: `0074`, `0075`, `0076`, each alone
+
+- All three applied clean on the chain (a9fb79b7, 34e21511, 02fa17e7). 0075 goes as a normal ship, because our pipeline deploys on docs too.
+- 0076 reads only the person's own row, behind authenticateJwt, and returns only a boolean and a timestamp. I checked that.
+- 0072 still waits for Misho's yes in my chat.
 
 ### 10 Oct, 08:38Z — 0069, 0070, 0071 and 0073 are live. `0074` ships at 09:16Z
 
