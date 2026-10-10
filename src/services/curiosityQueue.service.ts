@@ -337,6 +337,9 @@ export async function buildCuriosityQueue(
 // budget philosophy as the other triggers, env-configurable, never hardcoded.
 // D708 (the founder, 7 Oct): one question about the owner's contacts a day,
 // not one a week — Lika, a month on Netai, was offered three and asked none.
+/** How many of the queue's first contacts the day's question looks through for one with a name. */
+const DAY_QUESTION_LOOKAHEAD = 5;
+const HAS_A_LETTER = /\p{L}/u;
 const CURIOSITY_SURFACE_INTERVAL_DAYS = Number(process.env.CURIOSITY_SURFACE_INTERVAL_DAYS ?? 1);
 // An account whose queue came back EMPTY is not re-computed on every
 // conversation start — the five tiers are genuinely expensive. In-process
@@ -407,7 +410,7 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
   if (recent.rows.length > 0) return null;
 
   const items = await withinBudget(
-    buildCuriosityQueue(userId, 1, { logSurfacing: false }),
+    buildCuriosityQueue(userId, DAY_QUESTION_LOOKAHEAD, { logSurfacing: false }),
     CURIOSITY_BUDGET_MS,
     'queue',
   );
@@ -421,7 +424,12 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
     return null;
   }
   emptyQueueCheckedAt.delete(userId);
-  const item = items[0];
+  // 3500 (box 50986, seat 182602): the first pick was „💙". The section rightly
+  // refused to ask about a label with no letter — but the day was spent on it,
+  // and the named neighbour behind it was never asked. Only a contact the
+  // owner can be asked about by name is handed on.
+  const item = items.find((candidate) => HAS_A_LETTER.test(candidate.label ?? ''));
+  if (item === undefined) return null;
   // Logged only now, when the item is really handed on (3500).
   logInBackground(userId, [item]);
   return {
