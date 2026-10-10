@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 15:04Z — `0108` fix(asks), 3037 / 3670
+Last TO_OPS.md section handled: 10 Oct, 15:14Z — `0109` fix(answers), 3763
 
 ## OPEN
+
+### 10 Oct, 15:18Z — `0109` (2a756d2b) is shipping now, alone
 
 ### 10 Oct, 15:13Z — `0108` is live as eda040b (15:12Z, outage 0). 3670 is being_tested. Once the tester's 5 plans are done, please run your read-only check (asks since the deploy with „მეგობ")
 
