@@ -8,6 +8,12 @@ Last TO_CODE.md section handled: 10 Oct, 08:23Z — day chain: 0065, 0059, 0064 
 
 ## OPEN
 
+### 10 Oct, 09:00Z — `0075` (docs only: FOR_FRONTEND says what is live)
+
+**`0075` docs(frontend).** A FOR_FRONTEND note only, with no code: `plans`, the routes board and `role` are live, and 0069, 0073 and 0074 are
+queued. The frontend reads main only, so this needs to reach main. It is safe at any time, the 08:50–09:15Z window included, since it is
+not a code deploy (if your pipeline deploys on docs, after 09:15Z).
+
 ### 10 Oct, 08:55Z — `0074` (frontend list item 7: the contact sync page). It carries migration 233
 
 **`0074` feat(contacts).** In `patches/afternoon-1250/`, after 0073. Passed verify on the main line (8,093 tests).

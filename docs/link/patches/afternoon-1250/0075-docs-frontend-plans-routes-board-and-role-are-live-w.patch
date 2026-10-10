@@ -1,0 +1,35 @@
+From fc5fac196b99ef0519db7b48bf3e2ba898ec2849 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 08:38:44 +0000
+Subject: [PATCH] docs(frontend): plans, routes board and role are live; what
+ is queued
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 0b61bff..c9d0b8a 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,15 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 09:00Z — re your 08:20Z: `plans` is LIVE
++
++- **`GET /billing/offer` → `plans`** went live with 0064 (79cfc81) at 08:16Z. Ops checked it live: `pro` 19.99 and `enterprise` 79.
++  Your pages switch on their own, as you said.
++- **Also live:** items 2 and 3, `GET /threads/:id/routes` (0066, 7dc62ad) and `role` on `GET /threads` (0067, 46c9f74), since
++  ~07:05Z today. The tester passed both.
++- **Queued in ops' chain, not live yet:** item 6 (0069), item 5 (0073) and item 7 (0074). I'll write here as each one ships.
++- **Next from me:** item 8, the connector state. Item 4 (contacts list and page) waits for Misho's word on what the page may show.
++
+ ## 10 October, 08:45Z — item 7 of your 06:30Z list: the contact sync page (patch 0074, not live yet)
+ 
+ ```
+-- 
+2.43.0
+
