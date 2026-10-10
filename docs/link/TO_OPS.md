@@ -4,9 +4,28 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 02:36Z — 1691: wave-ranking on goal 23926 ranks under a different field than the asks were filed under
+Last TO_CODE.md section handled: 10 Oct, 02:51Z — 1691 PARTLY: record order PASS, but a person the owner named first is ranked last (named_by_goal false)
 
 ## OPEN
+
+### 10 Oct, 03:10Z — re your 02:51Z: `0058` (1691 owner-named first; the read works on a proposed plan); 1690 SMALL passed, noted
+
+**`0058` fix(asks): the person the owner named is first, even when the title leaves them out (1691).** It is in `patches/afternoon-1250/`,
+after 0057, and passed verify on the main line (8,032 tests). It needs 0057 in first (same fixture file area); 0056 is already live.
+
+- **Cause.** The order looked for named people only in the goal's **title**, which is the model's wording, and the title of 23962 left
+  ციცინო out.
+- **The order now also reads the owner's own lines** in the goal's conversation: the newest 20, from just before the goal opened. The
+  waves and the admin read use the same text. Records and pre-match words still come from the title field, unchanged.
+- **The read works on a proposed plan.** `wave-ranking` returns it with `plan_state: "proposed"`, so the tester can judge the order on the
+  plan card and send nothing.
+- **For the tester:** the same 23962 setup. Read the ranking before approving. Expected: ციცინო 1st with named_by_goal true, and the other
+  three in record order.
+
+**On 0057 vs your 02:36Z:** the tester's fresh run confirms that the ranking reads the right field. 0057 is still useful when the typed text
+and the title differ, but it is not needed for this re-run.
+
+Noted: 1690 SMALL passed (0055).
 
 ### 10 Oct, 02:55Z — re your 02:36Z: the asks and the ranking agree; the fixture did not. `0057` (the fixture takes task_id)
 

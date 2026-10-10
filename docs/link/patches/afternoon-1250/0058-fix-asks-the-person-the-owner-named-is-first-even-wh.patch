@@ -1,0 +1,310 @@
+From f8291e2e8ad614da2b2648fd16f596fe15547d0a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 02:54:01 +0000
+Subject: [PATCH] fix(asks): the person the owner named is first even when the
+ title leaves them out (1691)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 49996, 0 of 1: the owner wrote „…პირველ რიგში ციცინო
+ფილტრაძეს ჰკითხე, მერე სხვებსაც.". The plan text put her first. The ranking
+had her named_by_goal false, and she ranked last. The wave order looked
+for named people only in the goal's title. The title is the model's wording
+of the goal, and it left her out.
+
+The order now looks for them in the title AND in the owner's own lines in
+the goal's conversation: from just before the goal opened, newest 20, each
+cut at 500 characters. The waves (readWave) and the admin read use the same
+text. A failed read ranks by the title alone, as before. The pre-match
+words and the answer-stats field still come from the title, so the records
+are read where the asks file them.
+
+Also from 49996: GET /admin/goals/:id/wave-ranking reads a proposed plan
+(the proposal waiting on the owner wins when both exist), and says which,
+in plan_state. The order can now be judged before anything is sent.
+
+DONE WHEN: „პირველ რიგში X-ს ჰკითხე" puts X first in the ranking
+(named_by_goal true), and the rest keep their record order; the read works
+on the plan card, before approval.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                |  7 +++-
+ src/services/__tests__/asksGoInWaves.test.ts  |  1 +
+ .../__tests__/theWaveRankingCanBeRead.test.ts | 34 ++++++++++++++--
+ src/services/askWaves.service.ts              | 15 +++++--
+ src/services/waveOrder.ts                     | 39 +++++++++++++++++--
+ src/services/waveRanking.service.ts           | 13 +++++--
+ 6 files changed, 93 insertions(+), 16 deletions(-)
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index faf7e55..06b28b6 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -7174,7 +7174,12 @@ adminRouter.get('/goals/:id/wave-ranking', async (req: Request, res: Response) =
+     }
+     res.status(200).json({
+       success: true,
+-      data: { task_id: taskId, field: result.field, ranking: result.ranking },
++      data: {
++        task_id: taskId,
++        field: result.field,
++        plan_state: result.plan_state,
++        ranking: result.ranking,
++      },
+     });
+   } catch (error) {
+     // eslint-disable-next-line no-console
+diff --git a/src/services/__tests__/asksGoInWaves.test.ts b/src/services/__tests__/asksGoInWaves.test.ts
+index 780f87e..5fe539d 100644
+--- a/src/services/__tests__/asksGoInWaves.test.ts
++++ b/src/services/__tests__/asksGoInWaves.test.ts
+@@ -1,5 +1,6 @@
+ jest.mock('../waveOrder', () => ({
+   inWaveOrder: jest.fn((people: unknown[]) => Promise.resolve([...people])),
++  ownerGoalWords: jest.fn(() => Promise.resolve('')),
+ }));
+ jest.mock('../../db/postgres/client', () => ({
+   __esModule: true,
+diff --git a/src/services/__tests__/theWaveRankingCanBeRead.test.ts b/src/services/__tests__/theWaveRankingCanBeRead.test.ts
+index 44c532a..5fbc4d4 100644
+--- a/src/services/__tests__/theWaveRankingCanBeRead.test.ts
++++ b/src/services/__tests__/theWaveRankingCanBeRead.test.ts
+@@ -20,11 +20,15 @@ const C = { name: 'ცირა ტესტური', phone: '+447700900203',
+ const F = { name: 'ფიქრია ტესტური', phone: '+447700900206', route: 'r' };
+ const TITLE = 'ელექტრიკოსი მჭირდება სახლში გაყვანილობის შესაკეთებლად';
+ 
+-function goal(people: readonly (typeof A)[]): Awaited<ReturnType<typeof getTaskById>> {
++function goal(
++  people: readonly (typeof A)[],
++  proposed: readonly (typeof A)[] | null = null,
++): Awaited<ReturnType<typeof getTaskById>> {
+   return {
+     user_id: '182405',
+     title: TITLE,
+     plan: { people_to_involve: people },
++    plan_proposed: proposed === null ? null : { people_to_involve: proposed },
+     plan_version: 1,
+     plan_approved_at: null,
+   } as unknown as Awaited<ReturnType<typeof getTaskById>>;
+@@ -55,9 +59,12 @@ describe('the wave ranking read (1691)', () => {
+         ]),
+       ),
+     );
+-    mockQuery.mockResolvedValueOnce({ rows: [{ found: true }] } as never).mockResolvedValueOnce({
+-      rows: [stat(A.phone, 9, 10), stat(C.phone, 5, 10), stat(F.phone, 0, 10)],
+-    } as never);
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never)
++      .mockResolvedValueOnce({
++        rows: [stat(A.phone, 9, 10), stat(C.phone, 5, 10), stat(F.phone, 0, 10)],
++      } as never);
+     const result = await goalWaveRanking(23926);
+     expect(result.outcome).toBe(WaveRankingOutcome.Read);
+     expect(result.ranking?.map((r) => [r.rank, r.name])).toEqual([
+@@ -70,6 +77,25 @@ describe('the wave ranking read (1691)', () => {
+     expect(JSON.stringify(result)).not.toContain('447700');
+   });
+ 
++  /** The tester's 49996: the owner named her in his own line; the title left her out. */
++  it('puts the person the owner named first, from his own line, on a proposed plan', async () => {
++    mockTask.mockResolvedValue(goal([], [A, C, F]));
++    mockWords.mockResolvedValue(new Map());
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
++      .mockResolvedValueOnce({
++        rows: [{ content: 'პირველ რიგში ფიქრია ტესტურს ჰკითხე, მერე სხვებსაც.' }],
++      } as never)
++      .mockResolvedValueOnce({ rows: [stat(A.phone, 9, 10), stat(F.phone, 0, 10)] } as never);
++    const result = await goalWaveRanking(23962);
++    expect(result.plan_state).toBe('proposed');
++    expect(result.ranking?.map((r) => [r.name, r.named_by_goal])).toEqual([
++      [F.name, true],
++      [A.name, false],
++      [C.name, false],
++    ]);
++  });
++
+   it('reads no real owner’s plan', async () => {
+     mockTask.mockResolvedValue(goal([A]));
+     mockQuery.mockResolvedValueOnce({ rows: [{ found: false }] } as never);
+diff --git a/src/services/askWaves.service.ts b/src/services/askWaves.service.ts
+index e4b5425..9a0de62 100644
+--- a/src/services/askWaves.service.ts
++++ b/src/services/askWaves.service.ts
+@@ -1,7 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { askStateOf, isOpenAskState } from './askState';
+ import { phoneDigits } from './phone';
+-import { inWaveOrder } from './waveOrder';
++import { inWaveOrder, ownerGoalWords } from './waveOrder';
+ import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
+ import type { Task } from './taskStore.service';
+ 
+@@ -121,7 +121,12 @@ export async function readWave(
+   const plan = planInForce(task);
+   if (plan === null || plan.approved_at === null) return null;
+   const { wave, next_wave_at } = await readWaveNumber(task.id);
+-  const [asks, asked] = await Promise.all([readWaveAsks(task.id, wave), readAskedDigits(task.id)]);
++  const [asks, asked, ownerWords] = await Promise.all([
++    readWaveAsks(task.id, wave),
++    readAskedDigits(task.id),
++    // A failed read ranks by the title alone, as before 49996.
++    ownerGoalWords(task.id).catch(() => ''),
++  ]);
+   const now = new Date();
+   return {
+     wave,
+@@ -130,7 +135,11 @@ export async function readWave(
+     openInWave: asks.filter((a) =>
+       a.status === 'held' ? true : isOpenAskState(askStateOf(a, now)),
+     ).length,
+-    remaining: await inWaveOrder(notYetAsked(plan.people_to_involve, asked), task.title),
++    remaining: await inWaveOrder(
++      notYetAsked(plan.people_to_involve, asked),
++      task.title,
++      ownerWords,
++    ),
+     nextWaveAt: next_wave_at,
+   };
+ }
+diff --git a/src/services/waveOrder.ts b/src/services/waveOrder.ts
+index 14fad37..67213f5 100644
+--- a/src/services/waveOrder.ts
++++ b/src/services/waveOrder.ts
+@@ -55,9 +55,37 @@ export function goalNamesPerson(goalText: string, name: string): boolean {
+ export interface WaveOrderInput {
+   readonly words: ReadonlyMap<string, Prematch>;
+   readonly rates: ReadonlyMap<string, AnswerRates>;
++  /** Where a person the owner named is looked for: the title and the owner's own lines. */
+   readonly goalText: string;
+ }
+ 
++/**
++ * The tester's 49996 (1691, 0 of 1): „…პირველ რიგში ციცინო ფილტრაძეს ჰკითხე,
++ * მერე სხვებსაც." — and she ranked last. The title is the model's wording of
++ * the goal and left her out; the owner's own lines in the goal's conversation
++ * are where he names people. Bounded, newest first, from just before the
++ * goal was opened.
++ */
++const OWNER_LINES_READ = 20;
++const OWNER_LINE_CHARS = 500;
++const OWNER_LINES_FROM_MINUTES = 10;
++
++export async function ownerGoalWords(taskId: number): Promise<string> {
++  const result = await query<{ content: string }>(
++    `SELECT LEFT(c.content, $2) AS content
++       FROM tasks t
++       JOIN conversations c ON c.thread_id = t.thread_id
++      WHERE t.id = $1 AND c.role = 'user' AND COALESCE(c.kind, '') <> 'event'
++        AND c.content <> ''
++        AND c.created_at >= t.created_at - make_interval(mins => $3)
++      ORDER BY c.created_at DESC
++      LIMIT $4`,
++    [taskId, OWNER_LINE_CHARS, OWNER_LINES_FROM_MINUTES, OWNER_LINES_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((r) => r.content).join('\n');
++}
++
+ /** The candidates in A8's order; the plan's order breaks every tie. */
+ export function orderCandidates<T extends { readonly phone: string; readonly name: string }>(
+   people: readonly T[],
+@@ -136,10 +164,11 @@ export async function answerRatesFor(
+ export async function inWaveOrder<T extends { readonly phone: string; readonly name: string }>(
+   people: readonly T[],
+   goalText: string | null,
++  ownerWords = '',
+ ): Promise<T[]> {
+   if (people.length < 2) return [...people];
+   try {
+-    return orderCandidates(people, await waveSignals(people, goalText ?? ''));
++    return orderCandidates(people, await waveSignals(people, goalText ?? '', ownerWords));
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.warn('[wave-order] kept as planned:', (err as Error).message);
+@@ -151,13 +180,14 @@ export async function inWaveOrder<T extends { readonly phone: string; readonly n
+ async function waveSignals(
+   people: readonly { readonly phone: string }[],
+   goalText: string,
++  ownerWords: string,
+ ): Promise<WaveOrderInput> {
+   const phones = people.map((p) => p.phone);
+   const [words, rates] = await Promise.all([
+     prematchMany(phones, goalText),
+     answerRatesFor(phones, askField(goalText)),
+   ]);
+-  return { words, rates, goalText };
++  return { words, rates, goalText: ownerWords === '' ? goalText : `${goalText}\n${ownerWords}` };
+ }
+ 
+ export interface RankedCandidate {
+@@ -177,15 +207,16 @@ export interface RankedCandidate {
+ export async function rankingOf<T extends { readonly phone: string; readonly name: string }>(
+   people: readonly T[],
+   goalText: string,
++  ownerWords = '',
+ ): Promise<RankedCandidate[]> {
+-  const input = await waveSignals(people, goalText);
++  const input = await waveSignals(people, goalText, ownerWords);
+   return orderCandidates(people, input).map((p, index) => {
+     const d = phoneDigits(p.phone);
+     const rates = input.rates.get(d) ?? NO_RECORD;
+     return {
+       rank: index + 1,
+       name: p.name,
+-      named_by_goal: goalNamesPerson(goalText, p.name),
++      named_by_goal: goalNamesPerson(input.goalText, p.name),
+       prematch: input.words.get(d)?.word ?? PrematchWord.AskHim,
+       field_rate: rates.field,
+       overall_rate: rates.overall,
+diff --git a/src/services/waveRanking.service.ts b/src/services/waveRanking.service.ts
+index 66decef..8035523 100644
+--- a/src/services/waveRanking.service.ts
++++ b/src/services/waveRanking.service.ts
+@@ -1,8 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { askField } from './answerStats.service';
+-import { planInForce } from './taskPlans.service';
+ import { getTaskById } from './taskStore.service';
+-import { RankedCandidate, rankingOf } from './waveOrder';
++import { ownerGoalWords, RankedCandidate, rankingOf } from './waveOrder';
+ 
+ /**
+  * The tester's 49931 (1691): the server's own ranking of a goal's plan, read
+@@ -22,6 +21,8 @@ export interface WaveRankingResult {
+   readonly outcome: WaveRankingOutcome;
+   /** The answer-stats field the rates are read in. */
+   readonly field?: string;
++  /** Which plan was ranked: one waiting on the owner, or the one in force. */
++  readonly plan_state?: 'proposed' | 'approved_or_in_force';
+   readonly ranking?: readonly RankedCandidate[];
+ }
+ 
+@@ -38,7 +39,10 @@ export async function goalWaveRanking(taskId: number): Promise<WaveRankingResult
+   const task = await getTaskById(taskId);
+   if (task === null) return { outcome: WaveRankingOutcome.NotFound };
+   if (!(await ownerIsTestSeat(task.user_id))) return { outcome: WaveRankingOutcome.NotATestSeat };
+-  const plan = planInForce(task);
++  // The tester's 49996: a proposed plan is read too, so the ranking can be
++  // judged before anything is sent. A proposal waiting on the owner is the
++  // newer plan when both exist.
++  const plan = task.plan_proposed ?? task.plan;
+   if (plan === null || plan.people_to_involve.length === 0) {
+     return { outcome: WaveRankingOutcome.NoPlan };
+   }
+@@ -46,6 +50,7 @@ export async function goalWaveRanking(taskId: number): Promise<WaveRankingResult
+   return {
+     outcome: WaveRankingOutcome.Read,
+     field: askField(goalText),
+-    ranking: await rankingOf(plan.people_to_involve, goalText),
++    plan_state: task.plan_proposed === null ? 'approved_or_in_force' : 'proposed',
++    ranking: await rankingOf(plan.people_to_involve, goalText, await ownerGoalWords(taskId)),
+   };
+ }
+-- 
+2.43.0
+
