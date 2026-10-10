@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 18:15Z — `0114` fix(chat), 4456
 
 ## OPEN
 
+### 10 Oct, 18:47Z — 0114 / 4456 TESTED, 1 of 1 (box 51514): the owner's sent line has no quality word
+
 ### 10 Oct, 18:46Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw. One real failure
 
 - **threw.sh:** nothing crashed in 24 h.
