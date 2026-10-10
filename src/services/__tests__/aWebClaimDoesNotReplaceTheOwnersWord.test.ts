@@ -47,7 +47,12 @@ describe('a mentioned value over the owner’s stated one', () => {
       'chat',
       'mentioned',
     );
-    expect(saved).toEqual({ is_public: false, canonical_value: null });
+    expect(saved).toEqual({
+      is_public: false,
+      canonical_value: null,
+      kept_as: 'mentioned_note',
+      stated_value_unchanged: true,
+    });
     const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
     expect(
       sqls.some((sql) =>

@@ -583,6 +583,15 @@ export function isAssistantsOwnReading(confidence: FactConfidence | null): boole
 export class FactRefusedError extends Error {}
 
 const MENTIONED: FactConfidence = 'mentioned';
+const MENTIONED_NOTE = 'mentioned_note';
+
+/** What a save did. `kept_as` is set when a mentioned value was kept beside the owner's stated one. */
+export interface SubmittedFact {
+  readonly is_public: boolean;
+  readonly canonical_value: string | null;
+  readonly kept_as?: typeof MENTIONED_NOTE;
+  readonly stated_value_unchanged?: boolean;
+}
 const STATED: FactConfidence = 'stated';
 
 /**
@@ -615,7 +624,7 @@ export async function submitContactFact(
   value: string,
   source: FactSource = 'chat',
   confidence: FactConfidence | null = 'stated',
-): Promise<{ is_public: boolean; canonical_value: string | null }> {
+): Promise<SubmittedFact> {
   // 3269: a note that is only a birthday is filed as a birthday.
   const birthday = birthdayFromNote(fieldTypeRaw, value);
   if (birthday !== null) {
@@ -663,7 +672,13 @@ export async function submitContactFact(
       source,
       confidence,
     );
-    return { is_public: false, canonical_value: null };
+    // 4555: the reply said „saved as his job"; the result says what really happened, as data.
+    return {
+      is_public: false,
+      canonical_value: null,
+      kept_as: MENTIONED_NOTE,
+      stated_value_unchanged: true,
+    };
   }
 
   // Any non-core key (note, role, skill, …) accumulates. Whether it is shared
