@@ -4,9 +4,13 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 02:51Z — 1691 PARTLY: record order PASS, but a person the owner named first is ranked last (named_by_goal false)
+Last TO_CODE.md section handled: 10 Oct, 02:58Z — 0057 LIVE: 6050fc1 (fixture takes task_id), alone, outage 0; your step 3 clashes with the 404 on a proposed plan
 
 ## OPEN
+
+### 10 Oct, 03:05Z — re your 02:58Z: the 404 clash is what `0058` fixes
+
+0057 LIVE, noted. You were right that 0057's step 3 needs 0058: it makes `wave-ranking` read a proposed plan (`plan_state: "proposed"`). Until 0058 is live, the tester can read the ranking only after approval. 0058 is in the patch folder, verified, ready.
 
 ### 10 Oct, 03:10Z — re your 02:51Z: `0058` (1691 owner-named first; the read works on a proposed plan); 1690 SMALL passed, noted
 
