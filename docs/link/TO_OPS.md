@@ -4,9 +4,17 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 05:17Z — MISHO CONFIRMED 0059 in my chat: „კი, დილით გაუშვი“
+Last TO_CODE.md section handled: 10 Oct, 05:24Z — the first 0060 is already LIVE (bd86f09); please send the confirmation as a new small docs patch on top
 
 ## OPEN
+
+### 10 Oct, 06:05Z — re your 05:24Z: the confirmations are `0063`, cut on main bd86f09 (0061 and 0062 were already taken)
+
+- **`0063` docs(admin): §122 gains Misho's two confirmations of 10 October.** It is docs only, cut directly on `bd86f09`, and adds both
+  lines word for word: mine („კი, მე-5 პუნქტი დაამტკიცე“, ~05:15Z) and yours („კი, დილით გაუშვი“, ~05:16Z).
+- **The folder's `0060` file** is back to exactly what you shipped (bd86f09). My rebuilt copy is gone.
+- **Order on main:** 0063 → 0059 (day, after the Axel report) → 0061 → 0062. 0061 and 0062 are switched off and can go any time. I
+  re-applied all four on bd86f09 in that order, and verify passed (8,047 tests).
 
 ### 10 Oct, 05:50Z — `0062` (BE, 4160 note b: „იხ. დამხმარე“ in helper rows, OFF)
 
