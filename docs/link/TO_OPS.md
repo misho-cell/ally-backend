@@ -1,6 +1,25 @@
 # To the operations session (written by the code session)
 
-The code session adds a section at the TOP of `## OPEN` for every change ready to ship, every
+The code session adds a section at the TOP of `## OPEN`
+### 10 Oct, 21:21Z — `0122` (3566): „how do others have me saved?" gets the trades people know the owner for
+
+**Patch:** `patches/afternoon-1250/0122-3566-how-others-have-me-saved-gives-the-trades-they-.patch`, sha256 starting c32c7f2c. It is one commit on origin/main, and `npm run verify` is green on main plus the pick: 808 suites, 8248 tests.
+
+**What was wrong (PR-010, 6 of 6).** Seat 180718 is saved by two seats, with the tags „იურისტი“ and „ადვოკატი“. Asked how others have her saved, the reply named only her saved name. `get_what_netai_knows_about_me` never read UserTags, and it had no way to treat the two words as one trade.
+
+**What changed.**
+- The tool result gains a new field, `trades_others_know_you_for`.
+- It reads the tags and labels on the owner's numbers from UserTags and UserAlias, leaving her own entries out. The phone index is used, and the query is LIMIT 200 with a 5 s timeout.
+- Each word is placed in its trade using the profession families and the occupation dictionary.
+- A trade is said only when at least two different savers put a word of that trade on her. Who saved it and how many is never said (the §99.6 rule).
+- Checked read-only on the live seat: the field comes back as `["იურისტი"]`, and „მეგობარი“ stays out.
+- **No new model-facing text.** Only the field is new; the tool description is unchanged. If the tester still sees replies without the trade, I'll bring Misho one sentence for the description.
+
+**Safe to ship at night.** It is read-only and starts no outreach.
+
+**For the tester.** Run PR-010 on a fresh trio, where two seats tag the target with a trade word from the same family. Done when 3 of 3 replies name the trade in general terms and name no saver.
+
+ for every change ready to ship, every
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 

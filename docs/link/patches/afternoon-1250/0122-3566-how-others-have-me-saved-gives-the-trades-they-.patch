@@ -1,0 +1,343 @@
+From 917f675abaea05701d150e0bd5457a0bacfef552 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 21:18:30 +0000
+Subject: [PATCH] 3566: how others have me saved gives the trades they know me
+ for
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+„How do others have me saved?" answered with the owner's own name only:
+the tags two people put on her („იურისტი", „ადვოკატი") were never read,
+and the two words were never seen as one trade.
+
+get_what_netai_knows_about_me now returns trades_others_know_you_for:
+the tags and labels on the owner's numbers (UserTags + UserAlias, the
+owner's own left out), each word placed in its trade by the profession
+families and the occupation dictionary, and a trade said only when at
+least two different savers put a word of it on her. Never who, never how
+many, never a saver's label beside it. No new model-facing text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/knownFor.test.ts       | 72 +++++++++++++++++++
+ .../theOwnerSeesWhatIsKnownAboutThem.test.ts  | 29 ++++++++
+ src/services/aboutMe.service.ts               | 45 ++++++++++--
+ src/services/knownFor.ts                      | 67 +++++++++++++++++
+ src/services/professionFamilies.ts            |  8 +++
+ 5 files changed, 214 insertions(+), 7 deletions(-)
+ create mode 100644 src/services/__tests__/knownFor.test.ts
+ create mode 100644 src/services/knownFor.ts
+
+diff --git a/src/services/__tests__/knownFor.test.ts b/src/services/__tests__/knownFor.test.ts
+new file mode 100644
+index 0000000..9373c7f
+--- /dev/null
++++ b/src/services/__tests__/knownFor.test.ts
+@@ -0,0 +1,72 @@
++import { tradesKnownFor } from '../knownFor';
++import { professionFamilyKey } from '../professionFamilies';
++
++/** 3566 (PR-010): „იურისტი" from one saver and „ადვოკატი" from another are one trade. */
++describe('tradesKnownFor', () => {
++  it('joins two words of one trade from two savers and says the trade once', () => {
++    expect(
++      tradesKnownFor([
++        { saverId: 1, word: 'იურისტი' },
++        { saverId: 2, word: 'ადვოკატი' },
++      ]),
++    ).toEqual(['იურისტი']);
++  });
++
++  it('says the word most savers used', () => {
++    expect(
++      tradesKnownFor([
++        { saverId: 1, word: 'ადვოკატი' },
++        { saverId: 2, word: 'ადვოკატი' },
++        { saverId: 3, word: 'იურისტი' },
++      ]),
++    ).toEqual(['ადვოკატი']);
++  });
++
++  it('reads a trade inside a saved label', () => {
++    expect(
++      tradesKnownFor([
++        { saverId: 1, word: 'ზურა სანტექნიკოსი' },
++        { saverId: 2, word: 'ზურა სანტექნიკოსი' },
++      ]),
++    ).toEqual(['სანტექნიკოსი']);
++  });
++
++  it('says nothing one saver alone put on the owner', () => {
++    expect(
++      tradesKnownFor([
++        { saverId: 1, word: 'იურისტი' },
++        { saverId: 1, word: 'ადვოკატი' },
++      ]),
++    ).toEqual([]);
++  });
++
++  it('leaves out words that name no trade, however many savers used them', () => {
++    expect(
++      tradesKnownFor([
++        { saverId: 1, word: 'მეგობარი' },
++        { saverId: 2, word: 'მეგობარი' },
++        { saverId: 3, word: 'მარიამ სამიზნე' },
++      ]),
++    ).toEqual([]);
++  });
++
++  it('puts the trade more savers named first', () => {
++    expect(
++      tradesKnownFor([
++        { saverId: 1, word: 'ექიმი' },
++        { saverId: 2, word: 'ექიმი' },
++        { saverId: 1, word: 'lawyer' },
++        { saverId: 2, word: 'იურისტი' },
++        { saverId: 3, word: 'ადვოკატი' },
++      ]),
++    ).toEqual(['იურისტი', 'ექიმი']);
++  });
++});
++
++describe('professionFamilyKey', () => {
++  it('names the family by its first word, and nothing for a word in no family', () => {
++    expect(professionFamilyKey(' Lawyer ')).toBe('იურისტი');
++    expect(professionFamilyKey('მეგობარი')).toBeNull();
++    expect(professionFamilyKey('')).toBeNull();
++  });
++});
+diff --git a/src/services/__tests__/theOwnerSeesWhatIsKnownAboutThem.test.ts b/src/services/__tests__/theOwnerSeesWhatIsKnownAboutThem.test.ts
+index 456bdd5..f2598bf 100644
+--- a/src/services/__tests__/theOwnerSeesWhatIsKnownAboutThem.test.ts
++++ b/src/services/__tests__/theOwnerSeesWhatIsKnownAboutThem.test.ts
+@@ -43,6 +43,7 @@ describe('whatNetaiKnowsAboutMe', () => {
+       what_others_see: [{ field_type: 'occupation', value: 'იურისტი' }],
+       my_answers: [],
+       names_others_saved_you_as: [],
++      trades_others_know_you_for: [],
+     });
+     const [sql, params] = callFor('FROM contact_facts');
+     expect(sql).toContain('is_public = true AND retracted_at IS NULL');
+@@ -129,6 +130,34 @@ describe('the names others saved him under', () => {
+   });
+ });
+ 
++/** 3566: the trades two or more people know him for, from their tags and labels. */
++describe('the trades others know him for', () => {
++  it('reads tags and labels on his numbers, leaving his own out, and says only the trade', async () => {
++    answer({
++      'FROM "User"': [{ name: 'მარიამ' }],
++      'FROM "UserPhone"': [{ phone: '+995599000111' }],
++      UNION: [
++        { saver_id: 7, word: 'იურისტი' },
++        { saver_id: 8, word: 'ადვოკატი' },
++        { saver_id: 7, word: 'მეგობარი' },
++        { saver_id: 8, word: 'მეგობარი' },
++      ],
++    });
++    const me = await whatNetaiKnowsAboutMe('501');
++    expect(me.trades_others_know_you_for).toEqual(['იურისტი']);
++    const [sql, params] = callFor('UNION') as [string, unknown[]];
++    expect(sql).toContain('FROM "UserTags" t WHERE t.phone = ANY($1::text[])');
++    expect(sql).toContain('saver_id::text <> $2');
++    expect(params).toEqual([['+995599000111'], '501', 200]);
++  });
++
++  it('reads none without a number', async () => {
++    answer({ 'FROM "User"': [{ name: null }] });
++    expect((await whatNetaiKnowsAboutMe('501')).trades_others_know_you_for).toEqual([]);
++    expect(callFor('UNION')).toEqual([]);
++  });
++});
++
+ describe('the tool', () => {
+   const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+ 
+diff --git a/src/services/aboutMe.service.ts b/src/services/aboutMe.service.ts
+index f196d0a..c6b64db 100644
+--- a/src/services/aboutMe.service.ts
++++ b/src/services/aboutMe.service.ts
+@@ -1,4 +1,5 @@
+ import { query } from '../db/postgres/client';
++import { SaverWord, tradesKnownFor } from './knownFor';
+ import { normalizePhone } from './phone';
+ import { foldedLower } from './tools/georgianCase';
+ import { getUserProfile } from './userProfile.service';
+@@ -20,6 +21,7 @@ const MAX_PUBLIC_FACTS = 40;
+ const MAX_OWN_ANSWERS = 20;
+ const MAX_SAVED_AS = 10;
+ const MIN_SAVERS_FOR_A_LABEL = 2;
++const MAX_SAVER_WORDS = 200;
+ 
+ export interface PublicFact {
+   readonly field_type: string;
+@@ -41,6 +43,7 @@ export interface AboutMe {
+   readonly what_others_see: readonly PublicFact[];
+   readonly my_answers: readonly OwnAnswer[];
+   readonly names_others_saved_you_as: readonly string[];
++  readonly trades_others_know_you_for: readonly string[];
+ }
+ 
+ async function ownName(userId: string): Promise<string | null> {
+@@ -135,16 +138,38 @@ async function labelsOthersSaved(numbers: readonly string[]): Promise<string[]>
+      HAVING COUNT(DISTINCT ua."contactId") >= $2
+       ORDER BY COUNT(DISTINCT ua."contactId") DESC
+       LIMIT $3`,
+-    [
+-      [...new Set([...numbers, ...numbers.map((n) => normalizePhone(n))])].filter((n) => n !== ''),
+-      MIN_SAVERS_FOR_A_LABEL,
+-      MAX_SAVED_AS,
+-    ],
++    [savedForms(numbers), MIN_SAVERS_FOR_A_LABEL, MAX_SAVED_AS],
+     ABOUT_ME_TIMEOUT_MS,
+   );
+   return result.rows.map((row) => row.label);
+ }
+ 
++/** Every phone form the owner may be saved under. */
++function savedForms(numbers: readonly string[]): string[] {
++  return [...new Set([...numbers, ...numbers.map((n) => normalizePhone(n))])].filter(
++    (n) => n !== '',
++  );
++}
++
++/** 3566: the tags and labels others put on the owner's numbers, each with who put it (never said). */
++async function wordsOthersPut(numbers: readonly string[], userId: string): Promise<SaverWord[]> {
++  if (numbers.length === 0) return [];
++  const result = await query<{ saver_id: number; word: string }>(
++    `SELECT saver_id, word FROM (
++       SELECT t."contactId" AS saver_id, TRIM(t.tag) AS word
++         FROM "UserTags" t WHERE t.phone = ANY($1::text[])
++       UNION
++       SELECT ua."contactId" AS saver_id, TRIM(ua.alias) AS word
++         FROM "UserAlias" ua WHERE ua.phone = ANY($1::text[])
++     ) w
++     WHERE saver_id IS NOT NULL AND saver_id::text <> $2 AND NULLIF(word, '') IS NOT NULL
++     LIMIT $3`,
++    [savedForms(numbers), userId, MAX_SAVER_WORDS],
++    ABOUT_ME_TIMEOUT_MS,
++  );
++  return result.rows.map((row) => ({ saverId: Number(row.saver_id), word: row.word }));
++}
++
+ export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
+   const [name, numbers, profile, answers] = await Promise.all([
+     ownName(userId),
+@@ -152,12 +177,18 @@ export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
+     getUserProfile(userId),
+     ownAnswers(userId),
+   ]);
++  const [othersSee, savedAs, othersWords] = await Promise.all([
++    publicFactsAbout(numbers),
++    labelsOthersSaved(numbers),
++    wordsOthersPut(numbers, userId),
++  ]);
+   return {
+     name,
+     own_numbers: numbers,
+     my_profile: profile,
+-    what_others_see: await publicFactsAbout(numbers),
++    what_others_see: othersSee,
+     my_answers: answers,
+-    names_others_saved_you_as: await labelsOthersSaved(numbers),
++    names_others_saved_you_as: savedAs,
++    trades_others_know_you_for: tradesKnownFor(othersWords),
+   };
+ }
+diff --git a/src/services/knownFor.ts b/src/services/knownFor.ts
+new file mode 100644
+index 0000000..18166cb
+--- /dev/null
++++ b/src/services/knownFor.ts
+@@ -0,0 +1,67 @@
++import { matchOccupation } from './labelParser.service';
++import { professionFamilyKey } from './professionFamilies';
++
++/**
++ * 3566 (MASTER TEST RUN chat #6, PR-010, 6 of 6): two people saved the owner
++ * with the tags „იურისტი" and „ადვოკატი", and „how do others have me saved?"
++ * was answered with her own name only. The tags were never read, and the two
++ * words were never seen as one trade. This is the general picture: the trades
++ * people know the owner for, each said only when at least two different people
++ * put a word of that trade on her — never who, never how many, never a
++ * saver's label beside it (the rule of §99.6 for saved names).
++ */
++export const MIN_SAVERS_FOR_A_TRADE = 2;
++
++/** One word one saver put on the owner: a tag, or a word of the label they saved. */
++export interface SaverWord {
++  readonly saverId: number;
++  readonly word: string;
++}
++
++interface TradeGroup {
++  readonly key: string;
++  readonly savers: Set<number>;
++  readonly wordUses: Map<string, number>;
++}
++
++/** The trade a word names, as the word to say and the key its family shares; null if no trade. */
++function tradeOf(word: string): { readonly key: string; readonly said: string } | null {
++  const trimmed = word.trim();
++  const familyKey = professionFamilyKey(trimmed);
++  if (familyKey !== null) return { key: familyKey, said: trimmed.toLowerCase() };
++  const occupation = matchOccupation(trimmed);
++  if (occupation === null) return null;
++  return { key: professionFamilyKey(occupation) ?? occupation, said: occupation };
++}
++
++/** The word most savers used for the trade; on a tie, the family's own word, then alphabetical. */
++function mostUsedWord(group: TradeGroup): string {
++  const rank = (word: string): number => (word === group.key ? 0 : 1);
++  return [...group.wordUses.entries()].sort(
++    ([a, aUses], [b, bUses]) => bUses - aUses || rank(a) - rank(b) || a.localeCompare(b),
++  )[0][0];
++}
++
++/** The trades at least two savers know the owner for, most savers first. */
++export function tradesKnownFor(
++  words: readonly SaverWord[],
++  minSavers: number = MIN_SAVERS_FOR_A_TRADE,
++): string[] {
++  const groups = new Map<string, TradeGroup>();
++  for (const { saverId, word } of words) {
++    const trade = tradeOf(word);
++    if (trade === null) continue;
++    const group = groups.get(trade.key) ?? {
++      key: trade.key,
++      savers: new Set<number>(),
++      wordUses: new Map(),
++    };
++    group.savers.add(saverId);
++    group.wordUses.set(trade.said, (group.wordUses.get(trade.said) ?? 0) + 1);
++    groups.set(trade.key, group);
++  }
++  return [...groups.values()]
++    .filter((group) => group.savers.size >= minSavers)
++    .sort((a, b) => b.savers.size - a.savers.size)
++    .map(mostUsedWord);
++}
+diff --git a/src/services/professionFamilies.ts b/src/services/professionFamilies.ts
+index 47c7248..a58c878 100644
+--- a/src/services/professionFamilies.ts
++++ b/src/services/professionFamilies.ts
+@@ -63,6 +63,14 @@ export function relatedProfessionWords(searched: string): readonly string[] {
+   return family === undefined ? [] : family.filter((w) => normalized(w) !== key);
+ }
+ 
++/** The first word of the family the word belongs to (its shared key); null if none. */
++export function professionFamilyKey(word: string): string | null {
++  const key = normalized(word);
++  if (key === '') return null;
++  const family = PROFESSION_FAMILIES.find((words) => words.some((w) => normalized(w) === key));
++  return family === undefined ? null : family[0];
++}
++
+ /** Board #510, 1086: the server searches the family itself; the run is told not to repeat it. */
+ export const ALSO_SEARCHED_NOTE =
+   'People are saved under the words their friends use, not the word asked with. The words in ' +
+-- 
+2.43.0
+
