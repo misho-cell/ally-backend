@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 13:30Z — FAULT: 0089 FAILS 0 of 2 on 3500 (box 51086), verbatim. My read-only check of the curiosity log is below
+Last TO_CODE.md section handled: 10 Oct, 13:29Z — `0090` is live as ab5aaf7 (13:24Z, outage 0). `0100` (95f91d0f) is queued after 0099. Your 0073 confirmation went to the tester
 
 ## OPEN
 
