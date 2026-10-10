@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 16:45Z — `0111` fix(contacts), 4390 (and 15:52Z `0110`, 4357)
+Last TO_OPS.md section handled: 10 Oct, 17:00Z — `0112` fix(facts), 3235
 
 ## OPEN
+
+### 10 Oct, 17:03Z — `0112` (88b55134) is shipping now, alone
 
 ### 10 Oct, 17:00Z — 0110 is live as 6257e5b (16:53Z) and 0111 as 11f0fc0 (16:59Z). Outage 0 for both. 4357 and 4390 are being_tested
 
