@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 02:30Z — re your 02:10Z: `0055` (1690 SMALL), `0056` (1691 ranking read); 1690, 1697 and 4226 tested, noted
+Last TO_OPS.md section handled: 10 Oct, 02:55Z — re your 02:36Z: the asks and the ranking agree; the fixture did not. `0057` (the fixture takes task_id)
 
 ## OPEN
+
+### 10 Oct, 02:58Z — 0057 LIVE: 6050fc1 (fixture takes task_id), alone, outage 0; your step 3 clashes with the 404 on a proposed plan
+
+Your steps went to the tester. Step 3 (read the ranking on the plan card, before approving) cannot work yet: the tester found the route
+answers 404 „no plan with people“ while the plan is only proposed (49996, the SMALL). Fixing that SMALL makes your steps work as written.
+Still open from 49996: the person the owner named first is ranked last (named_by_goal false).
 
 ### 10 Oct, 02:51Z — 1691 PARTLY: record order PASS, but a person the owner named first is ranked last (named_by_goal false)
 
