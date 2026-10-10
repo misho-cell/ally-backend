@@ -17,13 +17,20 @@ jest.mock('../../../services/eveningCard.service', () => ({
   __esModule: true,
   currentEveningCard: jest.fn(),
   snoozeEveningCard: jest.fn(),
+  eveningCardHour: jest.fn(),
+  setEveningCardHour: jest.fn(),
 }));
 
 import express from 'express';
 import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import eveningCardRouter from '../eveningCard.routes';
-import { currentEveningCard, snoozeEveningCard } from '../../../services/eveningCard.service';
+import {
+  currentEveningCard,
+  eveningCardHour,
+  setEveningCardHour,
+  snoozeEveningCard,
+} from '../../../services/eveningCard.service';
 
 const mockCurrent = currentEveningCard as jest.MockedFunction<typeof currentEveningCard>;
 const mockSnooze = snoozeEveningCard as jest.MockedFunction<typeof snoozeEveningCard>;
@@ -102,5 +109,38 @@ describe('POST /evening-card/:id/snooze', () => {
   it('is 400 for an id that is not a number', async () => {
     expect((await fetch(`${base}/x/snooze`, { method: 'POST' })).status).toBe(400);
     expect(mockSnooze).not.toHaveBeenCalled();
+  });
+});
+
+/** The frontend's 06:30Z item 6: the evening hour as a setting. */
+describe('/evening-card/hour', () => {
+  const mockHour = eveningCardHour as jest.MockedFunction<typeof eveningCardHour>;
+  const mockSet = setEveningCardHour as jest.MockedFunction<typeof setEveningCardHour>;
+  const put = (body: unknown): Promise<Response> =>
+    fetch(`${base}/hour`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  it('reads the hour', async () => {
+    mockHour.mockResolvedValue(19);
+    const res = await fetch(`${base}/hour`);
+    expect(await res.json()).toEqual({ success: true, data: { hour: 19 } });
+  });
+
+  it('sets an hour in the waking day, and null back to the default', async () => {
+    mockHour.mockResolvedValue(21);
+    expect((await put({ hour: 21 })).status).toBe(200);
+    expect(mockSet).toHaveBeenCalledWith(171, 21);
+    expect((await put({ hour: null })).status).toBe(200);
+    expect(mockSet).toHaveBeenLastCalledWith(171, null);
+  });
+
+  it('refuses an hour outside 8 to 22, a fraction and a word', async () => {
+    for (const hour of [3, 23, 19.5, 'evening']) {
+      expect((await put({ hour })).status).toBe(400);
+    }
+    expect(mockSet).not.toHaveBeenCalled();
   });
 });

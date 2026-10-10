@@ -1,6 +1,11 @@
 import { query } from '../db/postgres/client';
 import { askChoicesFor } from './askOpening';
-import { EVENING_CARD_SNOOZE_MS, eveningCardPush, nextEveningCard } from './eveningCard';
+import {
+  EVENING_CARD_HOUR,
+  EVENING_CARD_SNOOZE_MS,
+  eveningCardPush,
+  nextEveningCard,
+} from './eveningCard';
 import { sendPushNotification } from './notification.service';
 import { personZone } from './personZone';
 import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
@@ -27,12 +32,35 @@ export interface EveningCardSlot {
   readonly dueAt: Date;
 }
 
-/** The card a question over the cap goes on: the person's next 19:00. */
+/** The person's own evening hour (the frontend's 06:30Z item 6); 19 when they set none. */
+export async function eveningCardHour(userId: number): Promise<number> {
+  const result = await query<{ hour: number | null }>(
+    `SELECT evening_card_hour AS hour FROM "User" WHERE id = $1 LIMIT 1`,
+    [userId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.hour ?? EVENING_CARD_HOUR;
+}
+
+/**
+ * Sets the hour; null goes back to the default. A card already made for
+ * today keeps its time — the new hour applies from the next card on.
+ */
+export async function setEveningCardHour(userId: number, hour: number | null): Promise<void> {
+  await query(
+    `UPDATE "User" SET evening_card_hour = $2 WHERE id = $1`,
+    [userId, hour],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
+/** The card a question over the cap goes on: the person's next evening hour (19:00 by default). */
 export async function eveningCardFor(
   userId: number,
   now: Date = new Date(),
 ): Promise<EveningCardSlot> {
-  const { dueAt, cardDate } = nextEveningCard(now, await personZone(userId));
+  const [zone, hour] = await Promise.all([personZone(userId), eveningCardHour(userId)]);
+  const { dueAt, cardDate } = nextEveningCard(now, zone, hour);
   const result = await query<{ id: number; due_at: Date }>(
     `INSERT INTO evening_cards (user_id, card_date, due_at)
      VALUES ($1, $2::date, $3)

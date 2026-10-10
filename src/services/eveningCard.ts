@@ -14,14 +14,31 @@ import type { RunLanguage } from './runLanguage';
 const MINUTES_PER_HOUR = 60;
 export const EVENING_CARD_HOUR = 19;
 export const EVENING_CARD_MINUTE = EVENING_CARD_HOUR * MINUTES_PER_HOUR;
+/**
+ * The frontend's 06:30Z item 6: the hour is the person's own setting, inside
+ * the waking day so the card's one push never lands in the quiet hours
+ * (migration 232 holds the same bounds).
+ */
+export const EVENING_CARD_HOUR_MIN = 8;
+export const EVENING_CARD_HOUR_MAX = 22;
+
+export function isEveningCardHour(hour: unknown): hour is number {
+  return (
+    typeof hour === 'number' &&
+    Number.isInteger(hour) &&
+    hour >= EVENING_CARD_HOUR_MIN &&
+    hour <= EVENING_CARD_HOUR_MAX
+  );
+}
 export const EVENING_CARD_SNOOZE_MS = 2 * MINUTES_PER_HOUR * 60_000;
 
 /** When the person's next card is due, and the local day it belongs to. */
 export function nextEveningCard(
   now: Date,
   zone: string,
+  hour: number = EVENING_CARD_HOUR,
 ): { readonly dueAt: Date; readonly cardDate: string } {
-  const next = nextLocalMinute(now, zone, EVENING_CARD_MINUTE);
+  const next = nextLocalMinute(now, zone, hour * MINUTES_PER_HOUR);
   return { dueAt: next.at, cardDate: next.localDate };
 }
 
