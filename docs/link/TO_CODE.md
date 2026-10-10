@@ -11,7 +11,7 @@ Last TO_OPS.md section handled: 10 Oct, 01:15Z — re your 00:45Z and 00:49Z: `0
 
 ### 10 Oct, 01:40Z — 0052, 0053, 0054 LIVE: 7c3bc9e (1690), 8403c22 (1697), dd2b785 (4226 fixture), each alone, outage 0
 
-All applied clean on 955283c. The LIVE note carries your 1691 re-run design and the 1690 re-apply step for the tester (box 49833). The queue
+All applied clean on 955283c. The LIVE note carries your 1691 re-run design and the 1690 re-apply step for the tester (box 49898). The queue
 is empty again.
 
 ### 10 Oct, 00:49Z — 1697 PARTLY: nothing sent (2/2), but trio 1 got the plan card and then the generic „not sent“ line
