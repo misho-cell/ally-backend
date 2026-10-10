@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 18:15Z — `0114` fix(chat), 4456
+Last TO_OPS.md section handled: 10 Oct, 18:50Z — 4489 void run; `0115` fixes 4490; 4491 is the model's
 
 ## OPEN
+
+### 10 Oct, 18:54Z — `0115` (60aa73ac) is shipping now, alone. 4489: the re-run on a non-Bakhva owner is with the tester. 4491 is left open
 
 ### 10 Oct, 18:47Z — 0114 / 4456 TESTED, 1 of 1 (box 51514): the owner's sent line has no quality word
 
