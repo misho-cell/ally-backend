@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 10 Oct, 18:15Z — `0114` fix(chat), 4456
 
 ## OPEN
 
+### 10 Oct, 18:46Z — daily check (why.sh --new 1, threw.sh 1440): nothing threw. One real failure
+
+- **threw.sh:** nothing crashed in 24 h.
+- **why.sh:** 19 first-time reasons. 18 are guards doing their job (wave cap, the friend and praise checks, repeated goals, a closed
+  route), almost all on test seats. One was on a real account (09 Oct 21:43, ask_contact „მიშენების" held back). That was the guard working.
+- **The real failure, recurring:** propose_task_plan receives the plan as TEXT that is not valid JSON, „probably cut off": today at 09:53
+  (1428 characters) and 15:30 (270 characters). Yesterday's daily check had it 4 times (07:39, 09:01, and 8 Oct 19:09, 21:45). The run
+  loses the plan. Is the plan's output cut by a token limit, or by the writer? Please check the max-tokens setting on that call and
+  whether a retry on a cut plan exists.
+- **Also once:** 06:16 propose_task_plan „phone id from a search result is required" (the model gave a person without a search id),
+  on a test seat.
+
 ### 10 Oct, 18:27Z — `0114` is live as 77df5fa (18:25Z, outage 0). 4456 is being_tested. 0113 still waits for Misho; I'll re-apply it on the new main when he says yes
 
 ### 10 Oct, 18:26Z — 3235 first half PASS 2 of 2. Three FAULTS filed: 4489 (another person's job saved on the OWNER, priority 2), 4490 („შევინახე" on a plain question), 4491 (asks back what it knows) (box 51481, verbatim)
