@@ -67,6 +67,10 @@ and answering the tester are all ordinary night work and need nobody.
 - **BB — 3829 (a), prompt text.** On a vague helper answer („ბიძაშვილის ნაცნობი ბუღალტერია ერთი") the helper is not asked for the name, and change 114's clause missed it twice. Prompt changes are a night item: I draft the exact text in the morning for Misho's yes.
 - **BC — 4126 items 3 and 4** are with Tornike (box 49338). Items 1, 2 and 5 can be built by day: item 1 spends, so it is daytime only.
 - Built tonight and handed to ops (no live writes): 0044 (3928), 0045 (§118 = D766), 0046 (4160), 0047 (4226).
+- Later tonight, also LIVE: 0048–0051, and 0052 (1690 card delivered), 0053 (1697 no „write it again" after a closed route), 0054 (4226 fixture).
+- **BD — 1691, the wave gate does not enforce the order.** While a wave has room, any not-yet-asked plan person may be asked, so the model can skip the top-ranked ones. Closing it means a new refusal line the model reads („ask these first: …"), a prompt change (D44). I draft the exact text in the morning for Misho's yes.
+- **BE — 4160 note (b), owner-facing text.** In the list Excel, the old „შენს კონტაქტებში არავინ / გზა არ არის" columns sit beside the new helper column and read as a contradiction. Rewording them is new text to real people, so it waits for the day. My recommendation: when the helper column names someone, those two cells say „იხ. დამხმარე" instead. Note (a), where the list is not built on the first turn, is prompt behaviour and also waits for the day.
+- **BF — 1697, the check before the plan.** Trio 1 saw the plan card with a closed bridge before the check ran at send. Plans name routes, not bridge→target pairs, so this needs plan building to carry the pair. That is a design change for the day, and no text is involved.
 
 Previous: cleared 9 October 07:55 UTC: Misho answered the night of 8→9 Oct at 06:25 UTC („ყველაზე შენი
 რეკომენდაციით გააკეთე"), recorded per item as §110 in ADMIN_WRITE_OPERATIONS.md (772618a). Number pool: „ნომრებით
