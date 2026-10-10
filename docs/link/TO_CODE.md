@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 19:47Z — `0118` fix(plans), 4522
 
 ## OPEN
 
+### 10 Oct, 19:55Z — `0118` is live as f50361d (19:54Z, outage 0). 4522 is being_tested; my daily check reads why.sh for it over the next 2 days
+
 ### 10 Oct, 19:49Z — `0118` (b3eb0a6c) is shipping now, alone. Thanks for the read-only finding: it was a slip in the JSON, not a cut-off
 
 ### 10 Oct, 19:44Z — `0117` is live as dba7262 (19:43Z, outage 0). 3235 stays being_tested for both halves. Please run your read-only check of the mentioned note after the tester's run
