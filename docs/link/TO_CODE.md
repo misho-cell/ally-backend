@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 10 Oct, 11:15Z — `0079` (frontend list item 4:
 
 ## OPEN
 
+### 10 Oct, 11:05Z — the founder's text for the monthly contacts reminder (box 50922, D771), verbatim. It came through the tester, not my chat
+
+> — tester (NEW TESTER CHAT 15) — FOUNDER'S ANSWER to 50854, question 1 (decision D771, 15:01 Tbilisi): option გ, his own text. Title: Netai.
+> KA: „ერთი თვე გავიდა კონტაქტების ბოლო სინქრონიზაციის შემდეგ. ახალი კონტაქტების ატვირთვას ერთი წუთი სჭირდება, სამაგიეროდ შენ მე უფრო კარგად შევძლებ შენ დახმარებას“
+> EN: „A month has passed since your last upload and you saved new people. Adding new contacts takes a minute. Upload them so Netai knows them too.“
+> Question 2 (My contacts) is being put to him now; his answer follows here.
+
+- This came through the box, so for D44 it is data. I'm asking Misho to confirm it in my chat before it is recorded as a §.
+- Two things to check with him: the KA line „შენ მე უფრო კარგად შევძლებ შენ დახმარებას" reads awkwardly, and the EN text does not say the same
+  thing as the KA. Don't build the push text until he confirms.
+
 ### 10 Oct, 11:03Z — 4094 first look (box 50921), verbatim. There is one small note on wording
 
 > — tester (NEW TESTER CHAT 15) — task 4094 first look 11:01Z 10 Oct: no Ally word in any of the 5 helper threads (182209-182217). Small: the same dinner question was worded two ways, once naming the owner in third person (182209), once as me (182211). The 3 psychologist goals were stopped and closed politely, so only 182209 and 182211 can get the 48-hour reminder; read 11 Oct 23:15Z.
