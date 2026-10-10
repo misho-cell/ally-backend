@@ -1,0 +1,166 @@
+From 4c89f527678c4301d878caa0abf6cebed0a00154 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 20:17:11 +0000
+Subject: [PATCH] fix(facts): the new job stays present when the line also says
+ the old one ended; a mentioned save says it was kept as a note (4555)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester seats 182796/182797, read-only: besides the stated employer
+„საცდელი ლოჯისტიკა", both carried a past_role „საცდელ ლოჯისტიკა" — the
+CURRENT job. The background fact extraction reads the tense from the
+whole line, and „…ბანკიდან წამოვიდა, ახლა …ლოჯისტიკაში მუშაობს" holds
+„წამოვიდა". The tense is now read from the clause that names the value
+(split at . ; ! ? and commas); a value found in no clause is read alone.
+
+4555: after a web claim, the reply said „შევინახე: ბახვა, სამსახური:
+„სანიმუშო ბანკი"" though the bank was kept only as a mentioned note.
+That save's result now says so, as data: kept_as: "mentioned_note",
+stated_value_unchanged: true. No model-facing prose is added.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...ebClaimDoesNotReplaceTheOwnersWord.test.ts |  7 ++++-
+ .../__tests__/theNewJobIsNotAPastRole.test.ts | 24 ++++++++++++++++
+ src/services/contactFacts.service.ts          | 19 +++++++++++--
+ src/services/factExtraction.service.ts        | 28 +++++++++++++++++--
+ 4 files changed, 72 insertions(+), 6 deletions(-)
+ create mode 100644 src/services/__tests__/theNewJobIsNotAPastRole.test.ts
+
+diff --git a/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts b/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts
+index b3705ed..85dedc0 100644
+--- a/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts
++++ b/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts
+@@ -47,7 +47,12 @@ describe('a mentioned value over the owner’s stated one', () => {
+       'chat',
+       'mentioned',
+     );
+-    expect(saved).toEqual({ is_public: false, canonical_value: null });
++    expect(saved).toEqual({
++      is_public: false,
++      canonical_value: null,
++      kept_as: 'mentioned_note',
++      stated_value_unchanged: true,
++    });
+     const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
+     expect(
+       sqls.some((sql) =>
+diff --git a/src/services/__tests__/theNewJobIsNotAPastRole.test.ts b/src/services/__tests__/theNewJobIsNotAPastRole.test.ts
+new file mode 100644
+index 0000000..5a09245
+--- /dev/null
++++ b/src/services/__tests__/theNewJobIsNotAPastRole.test.ts
+@@ -0,0 +1,24 @@
++import { clauseOf, correctTense } from '../factExtraction.service';
++
++/** Seats 182796/182797: „…ბანკიდან წამოვიდა, ახლა …ლოჯისტიკაში მუშაობს" stored the new job as past_role. */
++describe('the tense of a job, read from its own clause', () => {
++  const line = 'ბახვა „სანიმუშო ბანკიდან“ წამოვიდა, ახლა „საცდელ ლოჯისტიკაში“ მუშაობს.';
++
++  it('keeps the new job present', () => {
++    expect(clauseOf('საცდელი ლოჯისტიკა', line)).toContain('ლოჯისტიკაში');
++    expect(correctTense('employer', 'საცდელი ლოჯისტიკა', line)).toBe('employer');
++  });
++
++  it('makes the job that ended a past role', () => {
++    expect(correctTense('employer', 'სანიმუშო ბანკი', line)).toBe('past_role');
++  });
++
++  it('reads a value it cannot place by the value alone, not by the whole line', () => {
++    expect(correctTense('employer', 'TBC', line)).toBe('employer');
++    expect(correctTense('employer', 'ყოფილი TBC', line)).toBe('past_role');
++  });
++
++  it('leaves fields that are not a job alone', () => {
++    expect(correctTense('city', 'ბათუმი', 'ბათუმიდან წამოვიდა')).toBe('city');
++  });
++});
+diff --git a/src/services/contactFacts.service.ts b/src/services/contactFacts.service.ts
+index 154f2ee..5b1cc0b 100644
+--- a/src/services/contactFacts.service.ts
++++ b/src/services/contactFacts.service.ts
+@@ -583,6 +583,15 @@ export function isAssistantsOwnReading(confidence: FactConfidence | null): boole
+ export class FactRefusedError extends Error {}
+ 
+ const MENTIONED: FactConfidence = 'mentioned';
++const MENTIONED_NOTE = 'mentioned_note';
++
++/** What a save did. `kept_as` is set when a mentioned value was kept beside the owner's stated one. */
++export interface SubmittedFact {
++  readonly is_public: boolean;
++  readonly canonical_value: string | null;
++  readonly kept_as?: typeof MENTIONED_NOTE;
++  readonly stated_value_unchanged?: boolean;
++}
+ const STATED: FactConfidence = 'stated';
+ 
+ /**
+@@ -615,7 +624,7 @@ export async function submitContactFact(
+   value: string,
+   source: FactSource = 'chat',
+   confidence: FactConfidence | null = 'stated',
+-): Promise<{ is_public: boolean; canonical_value: string | null }> {
++): Promise<SubmittedFact> {
+   // 3269: a note that is only a birthday is filed as a birthday.
+   const birthday = birthdayFromNote(fieldTypeRaw, value);
+   if (birthday !== null) {
+@@ -663,7 +672,13 @@ export async function submitContactFact(
+       source,
+       confidence,
+     );
+-    return { is_public: false, canonical_value: null };
++    // 4555: the reply said „saved as his job"; the result says what really happened, as data.
++    return {
++      is_public: false,
++      canonical_value: null,
++      kept_as: MENTIONED_NOTE,
++      stated_value_unchanged: true,
++    };
+   }
+ 
+   // Any non-core key (note, role, skill, …) accumulates. Whether it is shared
+diff --git a/src/services/factExtraction.service.ts b/src/services/factExtraction.service.ts
+index a9be4de..740e86b 100644
+--- a/src/services/factExtraction.service.ts
++++ b/src/services/factExtraction.service.ts
+@@ -212,10 +212,32 @@ function isGroundedInUser(value: string, userMessage: string): boolean {
+   return grounded / words.length > MIN_GROUNDED_SHARE;
+ }
+ 
+-/** A present-tense role field whose value or context says otherwise becomes past_role. */
+-function correctTense(fieldType: string, value: string, sourceText: string): string {
++/** A clause ends at a sentence mark, a semicolon or a comma. */
++const CLAUSE_SPLIT_RE = /[.;!?\n,]+/u;
++/** Enough of a word to find it again in another case form („საცდელი" in „საცდელ ლოჯისტიკაში"). */
++const CLAUSE_STEM_CHARS = 5;
++const CLAUSE_WORD_RE = /\p{L}{3,}/gu;
++
++/**
++ * 4555's neighbour (tester seats 182796/182797): „ბახვა „სანიმუშო ბანკიდან"
++ * წამოვიდა, ახლა „საცდელ ლოჯისტიკაში" მუშაობს." made the NEW job a past_role
++ * too — „წამოვიდა" was read anywhere in the line. The tense is read from the
++ * clause that names the value; a value found in no clause is read alone.
++ */
++export function clauseOf(value: string, sourceText: string): string {
++  const stems = (normalizeForCompare(value).match(CLAUSE_WORD_RE) ?? []).map((w) =>
++    w.slice(0, CLAUSE_STEM_CHARS),
++  );
++  const clause = sourceText
++    .split(CLAUSE_SPLIT_RE)
++    .find((part) => stems.some((stem) => normalizeForCompare(part).includes(stem)));
++  return clause ?? '';
++}
++
++/** A present-tense role field whose value or own clause says otherwise becomes past_role. */
++export function correctTense(fieldType: string, value: string, sourceText: string): string {
+   if (!PRESENT_ROLE_FIELDS.has(fieldType)) return fieldType;
+-  const haystack = normalizeForCompare(`${value} ${sourceText}`);
++  const haystack = normalizeForCompare(`${value} ${clauseOf(value, sourceText)}`);
+   const past = PAST_MARKERS.some((m) => haystack.includes(m)) || mentionsPastYear(haystack);
+   return past ? 'past_role' : fieldType;
+ }
+-- 
+2.43.0
+

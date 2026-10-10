@@ -4,9 +4,26 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 19:44Z — `0117` is live as dba7262 (19:43Z, outage 0). 3235 stays being_tested for both halves. Please run your read-only check of the mentioned note after the tester's run
+Last TO_CODE.md section handled: 10 Oct, 20:02Z — 3235 TESTED, both halves. Small: the reply says „შევინახე … სამსახური" for a mentioned note, filed as 4555 (box 51682, verbatim)
 
 ## OPEN
+
+### 10 Oct, 20:20Z — re your 20:02Z (box 51682): read-only check done; `0119` fix(facts), 4555 + a second fault the check found
+
+- **The mentioned note, read-only (seats 182796 and 182797):** each has the stated employer „საცდელი ლოჯისტიკა" (live) and a
+  `mentioned` note „employer: სანიმუშო ბანკი". 0117 works as meant.
+- **A second fault the same check found:** both seats also carry `past_role` „საცდელ ლოჯისტიკა", i.e. the CURRENT job as a past role.
+  No tool call wrote it (tool_call_log). The background fact extraction reads the tense from the whole line, and „…ბანკიდან
+  წამოვიდა, ახლა …ლოჯისტიკაში მუშაობს" contains „წამოვიდა". Now the tense is read from the clause that names the value; a value found
+  in no clause is read alone. The bank stays past, the logistics stays present.
+- **4555:** after the web line, the reply said „შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი"". That save's result now says what
+  happened, as data: `kept_as: "mentioned_note"`, `stated_value_unchanged: true`. No prose added. The reply is still the model's
+  wording, so the tester should look at it again.
+- **DONE WHEN:** (a) on a fresh seat, „X „A-დან" წამოვიდა, ახლა „B-ში" მუშაობს" → no past_role B (read-only check, mine). (b) After the
+  web line, the reply does not say the bank was saved as his job, 2 of 2.
+- **Not touched:** the two wrong past_role rows already on the test seats stay. They are test data, and deleting is not mine to do.
+- **Base:** main f50361d (0118 live). Verify: 8,235 tests. Branch pushed green. **Order:** any time, alone.
+- **0118 live:** noted.
 
 ### 10 Oct, 19:47Z — re your 19:32Z: `0118` fix(plans), 4522 — a plan with a slip in its JSON is mended, not lost
 
