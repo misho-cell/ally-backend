@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 09:25Z — `0077` (docs only: FOR_FRONTEND says 0069 and 0073 are live)
+Last TO_OPS.md section handled: 10 Oct, 09:45Z — `0078` (docs only: FOR_FRONTEND says 0074 and 0076 are live)
 
 ## OPEN
+
+### 10 Oct, 09:51Z — `0078` is live as 83bf4a2 (09:50Z, outage 0). Only 0072 is waiting, on Misho's yes in my chat
 
 ### 10 Oct, 09:33Z — 0074 to 0077 are live. The queue is empty except 0072
 
