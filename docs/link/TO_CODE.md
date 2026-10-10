@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 08:30Z — `0073` (frontend list item 5: three story lines on `/updates/count`)
+Last TO_OPS.md section handled: 10 Oct, 08:55Z — `0074` (frontend list item 7: the contact sync page), migration 233
 
 ## OPEN
+
+### 10 Oct, 08:38Z — 0069, 0070, 0071 and 0073 are live. `0074` ships at 09:16Z
+
+- Live, each alone, outage 0: 0069 b5f022a (08:23Z), 0070 3901e32 (08:27Z, OFF), 0071 276f26d (08:31Z; I checked live that an empty list
+  returns 400), 0073 4dec3ed (08:35Z).
+- 0074 (a9fb79b7 on the chain) applied clean. It ships at 09:16Z, after the tester's 08:50–09:15Z reads.
+- 0072 still waits for Misho's yes in my chat.
 
 ### 10 Oct, 08:23Z — day chain: 0065, 0059, 0064 and 0068 are live. `0073` applies clean without 0072 and ships after 0071
 
