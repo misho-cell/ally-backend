@@ -244,6 +244,7 @@ describe('the model’s tools', () => {
 /** Board #894: the worked list back as Excel, the owner's columns then Netai's. */
 describe('the worked list as Excel', () => {
   it('carries the owner’s columns, then the way in, through whom and the state', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -322,6 +323,55 @@ describe('the worked list as Excel', () => {
     expect(values(4)[6]).toBe('ლევან ბუღალტერი');
     // One lookup per distinct need, not per row.
     expect(mockMatches).toHaveBeenCalledTimes(2);
+  });
+
+  /** Box 50986 (goal 24125): a list whose rows are the needs, worked by asking a helper. */
+  it('names every fitting contact on a found row, and points a named row at the helper’s answer', async () => {
+    const mockMatches = ownMatchesFor as jest.MockedFunction<typeof ownMatchesFor>;
+    mockMatches.mockImplementation(async (_user: string, need: string) =>
+      need === 'ელექტრიკოსი'
+        ? [
+            { phone: 'p1', name: 'ნოდარ ელექტრიკოსი' },
+            { phone: 'p2', name: 'კახა ელექტრიკოსი' },
+            { phone: 'p3', name: 'შოთა ელექტრიკოსი' },
+          ]
+        : [],
+    );
+    const row = (label: string, wayIn: string, through: string | null, answer: string | null) => ({
+      label,
+      row_data: [label === 'ელექტრიკოსი' ? '1' : '2', label],
+      way_in: wayIn,
+      through_whom: through,
+      state: wayIn === 'none' ? 'no_route' : 'answered',
+      answer,
+      columns: ['სახელი', 'პროფესია'],
+    });
+    const helperSaid = 'ნოტარიუსს და ფოტოგრაფს ვიცნობ, ნომრებს გამოგიგზავნი.';
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          row('ელექტრიკოსი', 'first_circle', 'ნოდარ ელექტრიკოსი', helperSaid),
+          row('ნოტარიუსი', 'none', null, null),
+          row('მზარეული', 'none', null, null),
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [{ helper: 'ნოდარ ელექტრიკოსი', answer: helperSaid }],
+      } as never);
+    const buffer = await listWorkbook('501', 10, 'ka');
+    if (buffer === null) throw new Error('expected a workbook');
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(buffer as unknown as ArrayBuffer);
+    const values = (n: number): unknown[] =>
+      (book.worksheets[0].getRow(n).values as unknown[]).slice(1);
+    expect(values(2)[3]).toBe('ნოდარ ელექტრიკოსი, კახა ელექტრიკოსი, შოთა ელექტრიკოსი');
+    expect(values(3).slice(2)).toEqual([
+      'იხ. დამხმარე',
+      'ნოდარ ელექტრიკოსი',
+      'იხ. დამხმარე',
+      helperSaid,
+    ]);
+    expect(values(4).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
   });
 
   it('is nothing when the goal has no list of this owner’s', async () => {
