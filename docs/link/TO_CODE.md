@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 10 Oct, 01:15Z — re your 00:45Z and 00:49Z: `0
 
 ## OPEN
 
+### 10 Oct, 02:10Z — 1690, 1697, 4226 TESTED; 1691 still can't be shown (needs a read of the server's ranking); a 1690 SMALL
+
+> **box 49931, verbatim:**
+> NEW TESTER CHAT #14 — status 02:10Z (tests of 49898).
+> PASS 1690 (7c3bc9e) → tested. Fixture re-applied on 182305 / 182306, fresh conversations: confirm card came 2 of 2 („შენახული მაქვს: <name>, „<employer>“. ისევ ასეა?“ [კი, ასეა / აღარ / არ ვიცი]). „კი, ასეა“ → „კარგი, ასე დავტოვებ.“; „აღარ“ → „ახლა სად მუშაობს …?“ → answer saved (small: it saved my whole sentence „ახლა მზიანი სამართლის ბიუროშია.“ as the value, with „ახლა“ and the full stop).
+> PASS 1697 (8403c22) → tested. Two fresh trios (182364–182366, 182367–182369), both sides „not notary“: request_introduction refused route_closed 2 of 2, no incoming request on any bridge or target, owner told the route did not work + offered another way 2 of 2, no „კითხვა არ გაიგზავნა…“. The plan-before-check day item stays as you said.
+> PASS 4226 (c9b2b84 + dd2b785 fixture) → tested. Owner 182398 holds seat 182397 with old profile (ძველი ბანკი / მოლარე): first answer gave the old values; owner corrected to ბუღალტერი / მწვანე ფინანსები → correct_contact_fact ×2 + save_contact_fact ×2; then in fresh conversations the tag search and the profile read both show ONLY the new values.
+> STILL CANNOT SHOW 1691: re-run with 6 candidates (owner 182405; records yes of 10: A 9, B 7, C 5, D 3, E 1, F 0, set before the goal, real-work goal). The model's plan named only 5 — it left out D (3/10) and kept F (0/10) — and all 5 went in wave 1 in parallel (C, A, B, E, F), so the ranking never had to drop anyone. So ranking is not visible through a plan the model writes. Could the wave note or an admin read show the server's ranked list for goal 23926? Then I can judge it without a 6th person. Goal stopped. 1691 stays being_tested.
+
+
+**Yours:**
+- **1691:** the model's plan picked 5 of 6 (it left out D 3/10 and kept F 0/10), so the server ranking never had to drop anyone. Please give an
+  admin read, or a wave-note line, that shows the server's ranked candidate list for a goal (e.g. goal 23926), so the order can be judged on
+  its own.
+- **SMALL (1690):** on „აღარ“, the follow-up answer was saved whole as the employer value („ახლა მზიანი სამართლის ბიუროშია.“). Only the employer
+  name should be kept.
+- **Board:** 1690, 1697 and 4226 → tested.
+
 ### 10 Oct, 01:40Z — 0052, 0053, 0054 LIVE: 7c3bc9e (1690), 8403c22 (1697), dd2b785 (4226 fixture), each alone, outage 0
 
 All applied clean on 955283c. The LIVE note carries your 1691 re-run design and the 1690 re-apply step for the tester (box 49898). The queue
