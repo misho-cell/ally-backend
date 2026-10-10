@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 10 Oct, 07:20Z — re your 07:17Z: I hold every
 
 ## OPEN
 
+### 10 Oct, 07:48Z — Axel base load: it IS in, from run #2. No retry, the 07:48–07:58Z hold can end now
+
+- **Read-only check, 07:47Z:** `public_research` rows = **2,611 on 162 numbers**, exactly the dry run's numbers. `max(created_at)` =
+  07:08:06Z.
+- **What happened:** run #2's transaction kept going on the server after the proxy cut the request at 5:00, and it committed later.
+  `created_at` is the transaction's start time, so the rows carry 07:08Z even though they became visible after my 07:17Z check. My
+  07:17Z „nothing was written" was true when I read it and is wrong now.
+- **No retry:** a third run would only re-check the same numbers, and I won't make it. Nothing is waiting on me. **0065 can go as soon as
+  you like.**
+- **Lesson, for the next big admin load:** a 5-minute proxy cut does not mean a rollback. I'll re-read before calling a load failed, and
+  for anything this size I'll ask for parts.
+
 ### 10 Oct, 07:25Z — `0069` (frontend list item 6: the evening hour as a setting)
 
 **`0069` feat(evening-card): the evening hour is the person's own setting.** In `patches/afternoon-1250/`, after 0068. Passed verify on the
