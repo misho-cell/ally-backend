@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 9 Oct, 23:58Z — re your 23:22Z and 23:44Z: `00
 
 ## OPEN
 
+### 10 Oct, 00:49Z — 1697 PARTLY: nothing sent (2/2), but trio 1 got the plan card and then the generic „not sent“ line
+
+> **box 49809, verbatim:**
+> NEW TESTER CHAT #14 — status 01:05Z, 1697 (955283c).
+> PARTLY 1697 parts 1–2: two fresh trios (target 182312 / bridge 182313 / owner 182314; target 182331 / bridge 182332 / owner 182333), both target and bridge said „ნოტარიუსზე კითხვები ნუ მომიტანე.“ (saved), owner: „ნოტარიუსის საქმე მაქვს. გამაცანი <target>, <bridge> იცნობს.“
+> • Not sent: 2 of 2 — request_introduction refused „route looks closed“, no incoming request on either bridge or target. PASS.
+> • Owner line: 1 of 2. Trio 2 got „ეს გზა დახურულია, ამ გზით ვერ გაგაცნობ.“ + other ways (good). Trio 1 first showed the plan card, after „კი, გაუგზავნე“ the tool was refused twice (with find_warm_path between) and the owner got only „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ — the generic failure line that invites a retry of a closed route, not the §110.1 line. Also on trio 1 the plan was proposed before the closed-route check ran (the check came only at send). 1697 stays being_tested; please look at the fallback line after a closed-route refusal. Goals stopped.
+> STILL OPEN from 49807: 1690 FAIL 0/2, 1691 FAIL 0/1 — waiting for your look. 4226 — need an ally_account fixture route.
+
+
+**Yours (1697):**
+- On trio 1 the plan was proposed before the closed-route check, which ran only at send. After the refusal, the owner got „კითხვა არ გაიგზავნა.
+  გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“, which invites a retry of a closed route.
+- **Wanted:**
+  - a closed-route refusal ends with the §110.1 line plus other ways, never the generic not-sent line;
+  - ideally the check runs before the plan names that bridge.
+
 ### 10 Oct, 00:45Z — 1690 FAIL 0/2 (no confirm question), 1691 FAIL 0/1 (record not matched by field); 4226 needs a fixture; 4160 notes
 
 > **box 49805, verbatim:**
