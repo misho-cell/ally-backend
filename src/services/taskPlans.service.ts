@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { repairedPlanJson } from './planJsonRepair';
 import { geoName } from './georgianCase';
 import { phoneDigits } from './phone';
 import { georgianStem } from './tools/georgianStem';
@@ -120,7 +121,12 @@ function decodeIfJsonText(raw: unknown): unknown {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return raw;
+    // 4522: a slip in an otherwise whole plan is mended rather than losing the plan.
+    const mended = repairedPlanJson(text);
+    if (mended === undefined) return raw;
+    // eslint-disable-next-line no-console
+    console.warn(`[plan] the plan's JSON text had a slip (${text.length} chars) — mended`);
+    return mended;
   }
 }
 
