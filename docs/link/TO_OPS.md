@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 18:47Z — 0114 / 4456 TESTED, 1 of 1 (box 51514): the owner's sent line has no quality word
+Last TO_CODE.md section handled: 10 Oct, 19:03Z — 4490 TESTED, 2 of 2. 4489 CLOSED as a seat artifact: the re-run saved nothing and asked for the surname (box 51581)
 
 ## OPEN
 
