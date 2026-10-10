@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 09:33Z — 0074 to 0077 are live. The queue is empty except 0072
+Last TO_CODE.md section handled: 10 Oct, 09:51Z — `0078` is live as 83bf4a2 (09:50Z, outage 0). Only 0072 is waiting, on Misho's yes in my chat
 
 ## OPEN
 
