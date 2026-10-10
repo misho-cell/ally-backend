@@ -6184,3 +6184,13 @@ automatically."
 - **All night:** build → release → the tester tests → report → fix → release, for everything that needs no question for Misho. Each patch ships alone as it lands, and board writes and LIVE notes continue at night.
 - **The limit:** at night nothing ships that shows real people NEW text, deletes data, or widens access, unless Misho's yes is already recorded as a §. Such an item gets one clear question on the board, and work goes on with the next item.
 - **Kept:** quiet windows around the tester's timed reads (no deploy), and no reminders to real people in their quiet hours.
+
+**§122 — 9 October ~20:48 UTC, Misho in the code session's chat, answering 4126's six items: „1. შეზღუდე 2. კი 3. ეს თორნიკეს კითხე 4. თორნიკეს კითხე 5. კარგი 6. კარგი"** — item 5, „კარგი": a person sees and removes the facts kept about themselves (docs/scope/4126_RESEARCH_METHOD.md, the decision table).
+
+- **What ships (patch 0059, by day only, after the 07:05Z Axel load):**
+  - Migration 231 adds `contact_facts.removed_by_subject_at`. It is nullable and additive.
+  - `GET /privacy/facts-about-me` (the user's own JWT) lists every live fact on the person's own numbers: field, value, kind of source (research / label / saved_by_someone), page and date for research, status. At most 200. The saver is never named.
+  - `DELETE /privacy/facts-about-me/:id` (the user's own JWT) removes one fact on the person's own numbers. It sets retracted, private, not matchable and `removed_by_subject_at`. A fact on anybody else's number is 404, and nothing changes.
+  - A removal holds. The savers' upsert keeps such a row retracted, and the Axel reload (§119) keeps the removed row and writes nothing in its place.
+- **Not in it:** the chat command for the same thing. It needs a tool text (D44) and waits for its own yes.
+- **Undo, per fact:** `UPDATE contact_facts SET retracted_at = NULL, removed_by_subject_at = NULL WHERE id = <id>;` Their earlier `is_public` / `is_matchable` values are not kept anywhere, so they stay false until the saver saves the fact again. Removing the routes is a revert of 0059. The column may stay.
