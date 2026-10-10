@@ -1,6 +1,6 @@
 import { query } from '../db/postgres/client';
 import { normalizePhone } from './phone';
-import { retractOwnFacts } from './contactFacts.service';
+import { retractOwnFacts, submitContactFact } from './contactFacts.service';
 
 const CORRECTION_QUERY_TIMEOUT_MS = 8_000;
 
@@ -47,6 +47,31 @@ export interface CorrectionOutcome {
   corrected: boolean;
   retracted: number;
   error?: string;
+  /** 3235: the ended job, kept as the person's past role instead of denied. */
+  past_role?: string;
+}
+
+/**
+ * 3235: the owner said the job ENDED. The present-tense row goes, the same
+ * value is kept as past_role in the owner's own word, and no veto is written —
+ * a veto would hide him from „who used to work there?" too.
+ */
+export async function keepEndedJob(
+  userId: string,
+  contactPhoneRaw: string,
+  endedValue: string,
+  fieldType?: string,
+): Promise<CorrectionOutcome> {
+  const contactPhone = normalizePhone(contactPhoneRaw);
+  const value = endedValue.trim();
+  if (!contactPhone) return { corrected: false, retracted: 0, error: 'Pass the contact phone.' };
+  if (!value) return { corrected: false, retracted: 0, error: 'Pass the job that ended.' };
+  const { retracted } = await retractOwnFacts(userId, contactPhone, {
+    ...(fieldType ? { fieldType } : {}),
+    valueFragment: value,
+  });
+  await submitContactFact(userId, contactPhone, 'past_role', value, 'chat', 'stated');
+  return { corrected: true, retracted, past_role: value };
 }
 
 /**
