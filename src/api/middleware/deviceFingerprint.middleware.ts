@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthenticatedRequest } from './auth.middleware';
-import { recordDevice } from '../../services/deviceFingerprint.service';
+import { appBuildOf, recordDevice } from '../../services/deviceFingerprint.service';
 
 function clientIp(req: Request): string | null {
   const forwarded = req.headers['x-forwarded-for'];
@@ -21,9 +21,12 @@ export function captureDeviceFingerprint(req: Request, _res: Response, next: Nex
   if (user?.userId && typeof deviceId === 'string' && deviceId.trim().length > 0) {
     const userAgent =
       typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null;
-    void recordDevice(user.userId, deviceId.trim(), userAgent, clientIp(req)).catch(() => {
-      // best-effort: fingerprinting must never break the request
-    });
+    const appBuild = appBuildOf(req.headers['x-app-build']);
+    void recordDevice(user.userId, deviceId.trim(), userAgent, clientIp(req), appBuild).catch(
+      () => {
+        // best-effort: fingerprinting must never break the request
+      },
+    );
   }
 
   next();

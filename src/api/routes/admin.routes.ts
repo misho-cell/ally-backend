@@ -322,6 +322,7 @@ import {
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
 import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
 import { setupFunnel } from '../../services/setupState.service';
+import { appBuildsInUse } from '../../services/deviceFingerprint.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -7163,6 +7164,17 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
     // eslint-disable-next-line no-console
     console.error('[fixtures/old-profile]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+/** 4298: GET /admin/app-builds — per app build, people and devices seen in the last 7 days. */
+adminRouter.get('/app-builds', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: { days: 7, builds: await appBuildsInUse() } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[app-builds]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the app builds' });
   }
 });
 
