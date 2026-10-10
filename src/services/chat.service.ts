@@ -451,7 +451,8 @@ import {
   RunMode,
 } from './promptBlocks.service';
 import { recordWarmth } from './warmth.service';
-import { correctContactFact } from './factCorrections.service';
+import { correctContactFact, keepEndedJob } from './factCorrections.service';
+import { correctionIsAJobThatEnded } from './jobEnded';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
@@ -10827,6 +10828,22 @@ async function executeToolCall(
     case 'respond_to_thanks_loop_offer':
       return respondToThanksLoopOffer(userId, input['consented'] === true);
     case 'correct_contact_fact': {
+      const fieldType =
+        typeof input['field_type'] === 'string' ? (input['field_type'] as string) : undefined;
+      // 3235: a job the owner says ended is history, kept as past_role — not a mistake to veto.
+      if (
+        correctionIsAJobThatEnded(
+          runId === undefined ? '' : (runOwnerLine.get(runId) ?? ''),
+          fieldType,
+        )
+      ) {
+        return keepEndedJob(
+          userId,
+          String(input['phone'] ?? ''),
+          String(input['wrong_value'] ?? ''),
+          fieldType,
+        );
+      }
       // A correction is not a note (ticket 9 task 14): it retracts the wrong
       // row AND leaves a standing veto the search layer reads, so the claim
       // cannot be offered back to this user tomorrow.
@@ -10834,7 +10851,7 @@ async function executeToolCall(
         userId,
         String(input['phone'] ?? ''),
         String(input['wrong_value'] ?? ''),
-        typeof input['field_type'] === 'string' ? (input['field_type'] as string) : undefined,
+        fieldType,
       );
       return outcome.corrected
         ? {
