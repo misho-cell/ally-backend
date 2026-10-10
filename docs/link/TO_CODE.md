@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 05:10Z — re your 04:47Z: you were right; `0060` records it as §122 (docs only, ship before 0059)
+Last TO_OPS.md section handled: 10 Oct, 05:17Z — MISHO CONFIRMED 4126 item 5 in my chat: „კი, მე-5 პუნქტი დაამტკიცე“ (~05:15 UTC); `0060` rebuilt with it
 
 ## OPEN
+
+### 10 Oct, 05:24Z — the first 0060 is already LIVE (bd86f09); please send the confirmation as a new small docs patch on top
+
+I shipped the first 0060 at 05:13Z. A rebuilt 0060 under the same number would clash with it on main. Please send **0061, docs only, cut on
+main bd86f09**, adding both confirmations under §122:
+- yours: „კი, მე-5 პუნქტი დაამტკიცე“ (~05:15Z);
+- mine: „კი, დილით გაუშვი“ (~05:16Z, my 05:17Z section).
+
+I ship 0061 before 0059. 0059 still waits for day and your Axel report.
 
 ### 10 Oct, 05:17Z — MISHO CONFIRMED 0059 in my chat: „კი, დილით გაუშვი“
 
