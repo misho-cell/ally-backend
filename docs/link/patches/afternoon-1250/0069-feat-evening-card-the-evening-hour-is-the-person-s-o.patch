@@ -1,0 +1,328 @@
+From 6751888b1ecc845fa3d698aa50a78a831adb1126 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 06:56:40 +0000
+Subject: [PATCH] feat(evening-card): the evening hour is the person's own
+ setting (frontend 06:30Z item 6)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 06:30Z list (Misho, the new design), item 6: the
+notifications block sets the evening card's hour. Until now it was fixed at
+19:00 (#1850).
+
+- Migration 232: "User".evening_card_hour, nullable, 8 to 22. NULL keeps
+  19:00.
+- GET /evening-card/hour → { hour }; PUT /evening-card/hour { hour: 8..22 |
+  null } → { hour }. 400 for anything else.
+- The card a question goes on is made for the person's own hour. A card
+  already made for today keeps its time, so the new hour applies from the
+  next card on.
+- The bounds keep the card's one push out of the quiet hours.
+
+DONE WHEN: a person who sets 21 gets the next card at 21:00 their time;
+null brings back 19:00; 3 or 19.5 are refused.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 12 ++++++
+ .../__tests__/eveningCard.routes.test.ts      | 42 ++++++++++++++++++-
+ src/api/routes/eveningCard.routes.ts          | 41 +++++++++++++++++-
+ .../migrations/232_evening_card_hour.sql      |  4 ++
+ .../__tests__/theDayEndsWithOneCard.test.ts   | 15 ++++++-
+ src/services/eveningCard.service.ts           | 34 +++++++++++++--
+ src/services/eveningCard.ts                   | 19 ++++++++-
+ 7 files changed, 160 insertions(+), 7 deletions(-)
+ create mode 100644 src/db/postgres/migrations/232_evening_card_hour.sql
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 7389329..9db212c 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,18 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 07:20Z — item 6 of your 06:30Z list: the evening hour as a setting (patch 0069, not live yet)
++
++`GET /evening-card/hour` → `{ "success": true, "data": { "hour": 19 } }` (19 when the person never set one).
++
++`PUT /evening-card/hour` with `{ "hour": 21 }` → 200 and the stored value back. `{ "hour": null }` resets it to 19.
++- **Range:** a whole hour from **8 to 22**, in the person's own time zone. Anything else is 400 with a plain message. The bounds keep the
++  card's push out of the night's quiet hours.
++- **When it applies:** from the next card on. A card already made for today keeps its time.
++- **Access:** the person's own login, the same as `GET /evening-card`. 500 with a plain message on a server fault.
++
++---
++
+ ## 10 October, 07:00Z — re your 06:30Z (Misho, the full list): items 2 and 3 built; the order for the rest
+ 
+ **Item 1, `plans` in `/billing/offer`:** see 06:20Z below (patch 0064).
+diff --git a/src/api/routes/__tests__/eveningCard.routes.test.ts b/src/api/routes/__tests__/eveningCard.routes.test.ts
+index f563fb7..83d999d 100644
+--- a/src/api/routes/__tests__/eveningCard.routes.test.ts
++++ b/src/api/routes/__tests__/eveningCard.routes.test.ts
+@@ -17,13 +17,20 @@ jest.mock('../../../services/eveningCard.service', () => ({
+   __esModule: true,
+   currentEveningCard: jest.fn(),
+   snoozeEveningCard: jest.fn(),
++  eveningCardHour: jest.fn(),
++  setEveningCardHour: jest.fn(),
+ }));
+ 
+ import express from 'express';
+ import type { AddressInfo } from 'net';
+ import type { Server } from 'http';
+ import eveningCardRouter from '../eveningCard.routes';
+-import { currentEveningCard, snoozeEveningCard } from '../../../services/eveningCard.service';
++import {
++  currentEveningCard,
++  eveningCardHour,
++  setEveningCardHour,
++  snoozeEveningCard,
++} from '../../../services/eveningCard.service';
+ 
+ const mockCurrent = currentEveningCard as jest.MockedFunction<typeof currentEveningCard>;
+ const mockSnooze = snoozeEveningCard as jest.MockedFunction<typeof snoozeEveningCard>;
+@@ -104,3 +111,36 @@ describe('POST /evening-card/:id/snooze', () => {
+     expect(mockSnooze).not.toHaveBeenCalled();
+   });
+ });
++
++/** The frontend's 06:30Z item 6: the evening hour as a setting. */
++describe('/evening-card/hour', () => {
++  const mockHour = eveningCardHour as jest.MockedFunction<typeof eveningCardHour>;
++  const mockSet = setEveningCardHour as jest.MockedFunction<typeof setEveningCardHour>;
++  const put = (body: unknown): Promise<Response> =>
++    fetch(`${base}/hour`, {
++      method: 'PUT',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(body),
++    });
++
++  it('reads the hour', async () => {
++    mockHour.mockResolvedValue(19);
++    const res = await fetch(`${base}/hour`);
++    expect(await res.json()).toEqual({ success: true, data: { hour: 19 } });
++  });
++
++  it('sets an hour in the waking day, and null back to the default', async () => {
++    mockHour.mockResolvedValue(21);
++    expect((await put({ hour: 21 })).status).toBe(200);
++    expect(mockSet).toHaveBeenCalledWith(171, 21);
++    expect((await put({ hour: null })).status).toBe(200);
++    expect(mockSet).toHaveBeenLastCalledWith(171, null);
++  });
++
++  it('refuses an hour outside 8 to 22, a fraction and a word', async () => {
++    for (const hour of [3, 23, 19.5, 'evening']) {
++      expect((await put({ hour })).status).toBe(400);
++    }
++    expect(mockSet).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/api/routes/eveningCard.routes.ts b/src/api/routes/eveningCard.routes.ts
+index c576e16..10730d3 100644
+--- a/src/api/routes/eveningCard.routes.ts
++++ b/src/api/routes/eveningCard.routes.ts
+@@ -6,13 +6,21 @@ import {
+   AuthenticatedRequest,
+ } from '../middleware/auth.middleware';
+ import { rateLimit } from '../middleware/rateLimit.middleware';
+-import { currentEveningCard, snoozeEveningCard } from '../../services/eveningCard.service';
++import {
++  currentEveningCard,
++  eveningCardHour,
++  setEveningCardHour,
++  snoozeEveningCard,
++} from '../../services/eveningCard.service';
++import { isEveningCardHour } from '../../services/eveningCard';
+ 
+ /**
+  * #1850 — the evening card.
+  *
+  *   GET  /evening-card              the person's card with questions still waiting, or null
+  *   POST /evening-card/:id/snooze   the whole card comes back about two hours from now
++ *   GET  /evening-card/hour         { hour } — the person's evening hour, 19 by default
++ *   PUT  /evening-card/hour         { hour: 8..22 | null } — null goes back to 19
+  *
+  * Each item is an ordinary ask with its own conversation. A tap on an item is
+  * sent as a message to `ask_thread_id` (POST /threads/:id/messages) with one
+@@ -36,6 +44,37 @@ eveningCardRouter.get('/', async (req: Request, res: Response): Promise<void> =>
+   }
+ });
+ 
++eveningCardRouter.get('/hour', async (req: Request, res: Response): Promise<void> => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    res.status(200).json({ success: true, data: { hour: await eveningCardHour(userId) } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /evening-card/hour]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the evening hour' });
++  }
++});
++
++/** The frontend's 06:30Z item 6: the evening hour as the person's own setting. */
++eveningCardRouter.put('/hour', async (req: Request, res: Response): Promise<void> => {
++  const hour = (req.body as { hour?: unknown } | undefined)?.hour;
++  if (hour !== null && !isEveningCardHour(hour)) {
++    res
++      .status(400)
++      .json({ success: false, error: 'hour must be a whole hour from 8 to 22, or null' });
++    return;
++  }
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    await setEveningCardHour(userId, hour);
++    res.status(200).json({ success: true, data: { hour: await eveningCardHour(userId) } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[PUT /evening-card/hour]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not save the evening hour' });
++  }
++});
++
+ eveningCardRouter.post(
+   '/:id/snooze',
+   param('id').isInt({ min: 1 }),
+diff --git a/src/db/postgres/migrations/232_evening_card_hour.sql b/src/db/postgres/migrations/232_evening_card_hour.sql
+new file mode 100644
+index 0000000..6d26170
+--- /dev/null
++++ b/src/db/postgres/migrations/232_evening_card_hour.sql
+@@ -0,0 +1,4 @@
++-- The frontend's 06:30Z item 6 (Misho, the new design): the evening card's hour
++-- is the person's own setting. NULL keeps the default (19:00, #1850).
++ALTER TABLE "User" ADD COLUMN IF NOT EXISTS evening_card_hour SMALLINT
++  CHECK (evening_card_hour IS NULL OR evening_card_hour BETWEEN 8 AND 22);
+diff --git a/src/services/__tests__/theDayEndsWithOneCard.test.ts b/src/services/__tests__/theDayEndsWithOneCard.test.ts
+index 78fc4a4..dbe874e 100644
+--- a/src/services/__tests__/theDayEndsWithOneCard.test.ts
++++ b/src/services/__tests__/theDayEndsWithOneCard.test.ts
+@@ -68,15 +68,28 @@ describe('the card a question goes on', () => {
+   it('is one per person per local day', async () => {
+     mockQuery
+       .mockResolvedValueOnce(rows([{ time_zone: 'Asia/Tbilisi' }]) as never)
++      .mockResolvedValueOnce(rows([{ hour: null }]) as never)
+       .mockResolvedValueOnce(rows([{ id: 7, due_at: new Date('2026-10-06T15:00:00Z') }]) as never);
+ 
+     const slot = await eveningCardFor(171, new Date('2026-10-06T14:00:00Z'));
+ 
+     expect(slot).toEqual({ id: 7, dueAt: new Date('2026-10-06T15:00:00Z') });
+-    const [sql, params] = mockQuery.mock.calls[1];
++    const [sql, params] = mockQuery.mock.calls[2];
+     expect(String(sql)).toContain('ON CONFLICT (user_id, card_date)');
+     expect(params).toEqual([171, '2026-10-06', new Date('2026-10-06T15:00:00Z')]);
+   });
++
++  /** The frontend's 06:30Z item 6: the person's own evening hour. */
++  it('comes at the person’s own hour when they set one', async () => {
++    mockQuery
++      .mockResolvedValueOnce(rows([{ time_zone: 'Asia/Tbilisi' }]) as never)
++      .mockResolvedValueOnce(rows([{ hour: 21 }]) as never)
++      .mockResolvedValueOnce(rows([{ id: 8, due_at: new Date('2026-10-06T17:00:00Z') }]) as never);
++
++    await eveningCardFor(171, new Date('2026-10-06T14:00:00Z'));
++
++    expect((mockQuery.mock.calls[2][1] as unknown[])[2]).toEqual(new Date('2026-10-06T17:00:00Z'));
++  });
+ });
+ 
+ describe('the sweep at 19:00', () => {
+diff --git a/src/services/eveningCard.service.ts b/src/services/eveningCard.service.ts
+index b42122f..f0cfce6 100644
+--- a/src/services/eveningCard.service.ts
++++ b/src/services/eveningCard.service.ts
+@@ -1,6 +1,11 @@
+ import { query } from '../db/postgres/client';
+ import { askChoicesFor } from './askOpening';
+-import { EVENING_CARD_SNOOZE_MS, eveningCardPush, nextEveningCard } from './eveningCard';
++import {
++  EVENING_CARD_HOUR,
++  EVENING_CARD_SNOOZE_MS,
++  eveningCardPush,
++  nextEveningCard,
++} from './eveningCard';
+ import { sendPushNotification } from './notification.service';
+ import { personZone } from './personZone';
+ import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
+@@ -27,12 +32,35 @@ export interface EveningCardSlot {
+   readonly dueAt: Date;
+ }
+ 
+-/** The card a question over the cap goes on: the person's next 19:00. */
++/** The person's own evening hour (the frontend's 06:30Z item 6); 19 when they set none. */
++export async function eveningCardHour(userId: number): Promise<number> {
++  const result = await query<{ hour: number | null }>(
++    `SELECT evening_card_hour AS hour FROM "User" WHERE id = $1 LIMIT 1`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.hour ?? EVENING_CARD_HOUR;
++}
++
++/**
++ * Sets the hour; null goes back to the default. A card already made for
++ * today keeps its time — the new hour applies from the next card on.
++ */
++export async function setEveningCardHour(userId: number, hour: number | null): Promise<void> {
++  await query(
++    `UPDATE "User" SET evening_card_hour = $2 WHERE id = $1`,
++    [userId, hour],
++    QUERY_TIMEOUT_MS,
++  );
++}
++
++/** The card a question over the cap goes on: the person's next evening hour (19:00 by default). */
+ export async function eveningCardFor(
+   userId: number,
+   now: Date = new Date(),
+ ): Promise<EveningCardSlot> {
+-  const { dueAt, cardDate } = nextEveningCard(now, await personZone(userId));
++  const [zone, hour] = await Promise.all([personZone(userId), eveningCardHour(userId)]);
++  const { dueAt, cardDate } = nextEveningCard(now, zone, hour);
+   const result = await query<{ id: number; due_at: Date }>(
+     `INSERT INTO evening_cards (user_id, card_date, due_at)
+      VALUES ($1, $2::date, $3)
+diff --git a/src/services/eveningCard.ts b/src/services/eveningCard.ts
+index a2d8a6c..9301bcd 100644
+--- a/src/services/eveningCard.ts
++++ b/src/services/eveningCard.ts
+@@ -14,14 +14,31 @@ import type { RunLanguage } from './runLanguage';
+ const MINUTES_PER_HOUR = 60;
+ export const EVENING_CARD_HOUR = 19;
+ export const EVENING_CARD_MINUTE = EVENING_CARD_HOUR * MINUTES_PER_HOUR;
++/**
++ * The frontend's 06:30Z item 6: the hour is the person's own setting, inside
++ * the waking day so the card's one push never lands in the quiet hours
++ * (migration 232 holds the same bounds).
++ */
++export const EVENING_CARD_HOUR_MIN = 8;
++export const EVENING_CARD_HOUR_MAX = 22;
++
++export function isEveningCardHour(hour: unknown): hour is number {
++  return (
++    typeof hour === 'number' &&
++    Number.isInteger(hour) &&
++    hour >= EVENING_CARD_HOUR_MIN &&
++    hour <= EVENING_CARD_HOUR_MAX
++  );
++}
+ export const EVENING_CARD_SNOOZE_MS = 2 * MINUTES_PER_HOUR * 60_000;
+ 
+ /** When the person's next card is due, and the local day it belongs to. */
+ export function nextEveningCard(
+   now: Date,
+   zone: string,
++  hour: number = EVENING_CARD_HOUR,
+ ): { readonly dueAt: Date; readonly cardDate: string } {
+-  const next = nextLocalMinute(now, zone, EVENING_CARD_MINUTE);
++  const next = nextLocalMinute(now, zone, hour * MINUTES_PER_HOUR);
+   return { dueAt: next.at, cardDate: next.localDate };
+ }
+ 
+-- 
+2.43.0
+
