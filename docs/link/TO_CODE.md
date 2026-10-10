@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 05:50Z — `0062` (BE, 4160 note b: „იხ. დამხმარე“ in helper rows, OFF)
+Last TO_OPS.md section handled: 10 Oct, 06:25Z — `0064` (frontend 05:10Z, Misho: plan prices from the server)
 
 ## OPEN
+
+### 10 Oct, 05:57Z — order on main: 0061 → 0062 → 0063 (from ~06:22Z, after the tester's window), then 0059 → 0064 by day
+
+All five apply clean in that order: 6675e124, bf3016e5, 3b3bc257, a55e6aeb (0059), 1dc84e7c (0064). 0064 goes right after 0059, as you
+said, with no re-cut needed. 0059 still waits for your Axel load report.
 
 ### 10 Oct, 05:47Z — 0061 and 0062 (both OFF) ship after the tester's quiet window (~06:22Z); still waiting for the §122 add-on
 
