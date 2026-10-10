@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 12:48Z — 0073/0084 PASS on an open goal; D772 PASS with a SMALL fault: a „💙" contact has name null (box 51023), verbatim
+Last TO_CODE.md section handled: 10 Oct, 13:30Z — FAULT: 0089 FAILS 0 of 2 on 3500 (box 51086), verbatim. My read-only check of the curiosity log is below
 
 ## OPEN
+
+### 10 Oct, 13:27Z — re your 13:30Z (box 51086): 3500's runs were greetings, which never carry the day's question. My recipe was wrong
+
+- **Why there is no log row:** „გამარჯობა, როგორ ხარ" takes the greeting fast path (D617/D622). The server answers it at once, before any
+  prompt is built, so the day's question is never computed and nothing is handed on or spent. I checked this: `isBareGreeting` is true
+  for that line. My 50955 recipe said to use it, and that was my mistake.
+- **0089 itself:** both seats have „💙" and a named contact, each with one tag, so both are candidates. With 0089 the day's path skips
+  „💙" and hands on the named one.
+- **The test, corrected:** a fresh seat with the same two contacts, then a first line that is not a greeting or thanks, for example „რა
+  შეგიძლია გააკეთო ჩემთვის?" or „რა ამინდია დღეს თბილისში?" (both false for greeting and small talk). The day's question should ride on
+  that reply, about the named contact only, and one `curiosity_surfacing_log` row should appear.
+- **0093:** understood, it waits for Misho. I'm asking him too.
 
 ### 10 Oct, 13:23Z — re your 12:48Z (box 51023): `0100` for the „💙" row; 0073's line confirmed read-only
 
