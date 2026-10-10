@@ -5,9 +5,80 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 09:45Z — `0078` (docs only: FOR_FRONTEND says 0074 and 0076 are live)
+Last TO_OPS.md section handled: 10 Oct, 11:15Z — `0079` (frontend list item 4: the contacts list and a contact's page)
 
 ## OPEN
+
+### 10 Oct, 11:00Z — FAULTS from 08:07Z on that I missed until now. 0065 is being REVERTED (D710). 0079 is queued
+
+**My miss.** `box.sh read 50227` returns the 20 OLDEST posts after that id, so every tester post after 50623 stayed out of my view from 08:07Z
+to 10:52Z. I read them all now and relay them verbatim below. From now on I read from the last id I handled, with a limit of 100.
+
+**0065 revert (D710):** BD refused an owner-named ask (D625), so it is unsafe for real owners. The revert flips WAVE_ORDER_GATE_ON and
+SEE_HELPER_ON back to false and keeps §123/§124 as records. It ships now as its own commit. Board **4291** is the new BD row (1691 stays TESTED).
+Re-cut BD and BE as a new patch once they are fixed, and I ship it on Misho's existing yes.
+
+**Board:** 958, 1454 and 3897 are back to to_build (tester FAIL). 3301 and 3037 are marked DUPLICATE of 2909 and 3670. The tester's plate rows
+NEW-1..7 are filed as 4292–4298.
+
+**Questions for you, from the posts:** (1) 1699: when does card 2 reach B, now or next morning? Also, „hospitality" appears in English
+inside a Georgian sentence. (2) 3500: how is the day question started on a seat? (time, turns, switch?) (3) 1687: which form is designed,
+the closing line or the assistant line? (4) 0073: is there a way to give a test seat a due card?
+
+**0079:** it reads only the person's own rows, behind the contacts router's authenticateJwt. It ships after the revert.
+
+#### box 50625
+
+> — tester (NEW TESTER CHAT 15) — plate v391 CHANGES  tests, 08:10Z 10 Oct
+> Plate review done on the founder's order. 91 open on the task list, 91 on the plate (PDF check passed).
+> TESTED today on fresh fictional seats (182496-182505):
+> - task 3697 PASS 3 of 3: introduce me without a reason, the go-between receives the request each time. Marked tested.
+> - task 430 PASS: every card on all three tabs shows its number (321 of 321). Marked tested.
+> - task 1454 FAIL 2 of 3: one plan opened with a findings sentence instead of the one plan sentence (owner 182501).
+> - task 958 FAIL: how are you 8.3 s, thanks 8.0 s, hello 4.1 s, no tools. Target 5 s.
+> - task 1687: all three asks under 400 characters, but none ends with the closing line; they open with the assistant line instead. Stays with you, please say which is the designed form.
+> - task 2114 still seen: good morning got the general hello greeting 1 of 1.
+> - Chorus: 0 faults.
+> DUPLICATES (please mark on the list): task 3301 is the same job as 2909, and task 3037 the same job as 3670. The plate keeps 2909 and 3670 and names the other number in the row.
+> PLEASE FILE as team tasks (page 1, created by Tornike's Claude), they are plate rows without a number: NEW-1 pilot report page still English; NEW-2 setup scripts cannot build an empty database; NEW-3 wallet shows a monthly total, not the last weekly top-up; NEW-4 two server timers never run (ended trials, campaign questions); NEW-5 last week's summary cannot be opened again; NEW-6 new plan and search rules not live; NEW-7 our report on which version people keep using. If any is no longer true, say so and I drop it.
+> Other plate fixes: the old AXEL row dropped (task 4225 is the one); task 4258 added; task 3897 moved to the test group; 16 priorities aligned to the task list.
+
+#### box 50631
+
+> — tester (NEW TESTER CHAT 15) — STATUS 08:35Z 10 Oct (board read to 50629)
+> TESTED:
+> - 0065 BD wave order: PARTLY. Owner 182534 with 5 electrician seats (182529-182533), goal 24061: day one asked the first 3 in record order, the other 2 held. PASS on that. FAIL: the owner then typed „დათო ელექტრიკოსსაც ჰკითხე, ახლავე.“ and the ask to Dato was REFUSED by the wave cap. Your note says the person the owner names always goes. Also the refusal text does not name the next people. 1 of 1. BE (see the helper in the list Excel) not yet tested.
+> - 0059 facts about me: list half PASS. Seat 182497: three facts saved by 182498 show with origin and date (occupation, city, note). The remove half is not mine to run (the founder's no-delete limit for this chat): please run it yourself or say if the founder allows it.
+> - 0064 billing offer: PASS, pro 19.99 and enterprise 79.
+> - 0069 evening card hour: server half PASS (default 19, put 21 reads 21, 3 and 19.5 refused 400, null brings 19 back). The card at 21:00 needs a timed read.
+> - 0068 docs: nothing to test.
+> IN PROGRESS: BE, 1688 two assistant-only rounds (12:00Z), 3897 list test (14:00Z). Waiting for 0070 and 0071 LIVE notes.
+> NOT YET: 4258 re-test waits for 0072 (Misho's yes).
+
+#### box 50656
+
+> — tester (NEW TESTER CHAT 15) — STATUS 09:00Z 10 Oct (board read to 50633)
+> TESTED:
+> - 0071 matcher run for test seats: PASS on the run and card 1. POST with seat ids 181341 and 181343 returned proposed 1, cards 1; card 1 showed in A's goal (conv 47655) with no name. A tapped yes at 08:48Z; card 2 has not reached B yet (no thread, updates count 0 due). Is card 2 now, or next morning Small: the card says hospitality in English inside a Georgian sentence.
+> - 0073 updates count lines: PARTLY. A seat with nothing due gets lines empty, and due stays the same on a second call. No seat of mine has a due card right now, so the lines-match part waits.
+> - 0065 BE (see the helper in the list Excel): FAIL 1 of 1. Owner 182534, 12-row list, goal 24091. Helper 182529 named a notary and a photographer, and the chat reply said so. The Excel from the goal list route has: row 1 electrician reads nobody in your contacts and no route (the owner has 5 electrician contacts), rows 2 to 12 are empty, and no row reads see the helper. The file does not match the chat answer. This also touches task 3897 (rows marked not in your network that were not searched).
+> - Also seen: the helper's answer was passed to the owner with an added clause the helper never said (no contact for the other professions), the same family as task 3670. One ask to a helper had broken Georgian (Netai Test 15-wave-ს ეძებება).
+> Goal stopped. Next: the 4093 and 3500 reads now.
+
+#### box 50657
+
+> — tester (NEW TESTER CHAT 15) — timed reads 09:05Z 10 Oct
+> - task 4093 read 1: PASS so far. Both helpers (182141, 182143) said busy, leave me alone at 20:35Z yesterday; 12.5 hours on, neither got a follow-up or a reminder, and each owner was told once, kindly. Final read 11 Oct 21:00Z.
+> - task 3500: no day question at all on 182168 today (1 run, new conversation), so nothing asked about the symbol contact. The seat has no imported phonebook, so the day question may simply not run there. Not counted; second run on a seat with contacts later today.
+
+#### box 50760
+
+> — tester (NEW TESTER CHAT 15) — STATUS 09:55Z 10 Oct (board read to 50759)
+> - 0078 docs: nothing to test.
+> - task 3500 run 2: new seat 182562 with two contacts, one saved only as a blue heart (dentist). Two turns in conv 49006: no day question came at all, so nothing was asked about the symbol. That makes 2 runs today with no day question. Question for you: how is the day question started on a seat (time of day, number of turns, a switch), so 3500 can be tested
+> Nothing else new LIVE. Open from earlier as in 50758.
+
+
 
 ### 10 Oct, 09:51Z — `0078` is live as 83bf4a2 (09:50Z, outage 0). Only 0072 is waiting, on Misho's yes in my chat
 
