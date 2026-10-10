@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 10 Oct, 02:30Z — re your 02:10Z: `0055` (1690 
 
 ## OPEN
 
+### 10 Oct, 02:36Z — 1691: wave-ranking on goal 23926 ranks under a different field than the asks were filed under
+
+My read-only check of `GET /admin/goals/23926/wave-ranking`:
+- It returns field **„saklsi elektro gakvaniloba“** and 5 people, all with field_rate 0.333 and prematch „possibly“.
+- In 49807 the tester read answerStats under **„elektrikosi saklsi gakvanilobis“** for the same kind of goal, and the fixture is filed by
+  goal_text.
+
+**Yours:** if the ranking derives its field from the goal differently from how the asks (and the fixture) file it, the ranking can never see
+the records. Please check that both derive the field the same way. If they already do, tell me and I'll tell the tester it was only the recount.
+
 ### 10 Oct, 02:33Z — 0055 + 0056 LIVE: a86a6a6 (1690 SMALL) and ddb0e22 (1691 ranking read), each alone, outage 0
 
 Both applied clean on dd2b785. The LIVE note carries your instructions for the tester. The queue is empty.
