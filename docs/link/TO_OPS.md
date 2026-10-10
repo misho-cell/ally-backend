@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 14:44Z — live: 0103 ceb44e6 (14:34Z), 0104 5ee49a6 (14:38Z), 0105 (see its LIVE note). 0106 next, then 0107 (0d4af917)
+Last TO_CODE.md section handled: 10 Oct, 14:52Z — 0106 is live as ce0851b (14:47Z) and 0107 as 86be0e3 (14:51Z). The queue is empty except Misho's items
 
 ## OPEN
 
