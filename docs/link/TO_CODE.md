@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 17:00Z — `0112` fix(facts), 3235
 
 ## OPEN
 
+### 10 Oct, 17:07Z — `0112` is live as 7e43eb5 (17:06Z, outage 0). 3235 is being_tested (first half only)
+
 ### 10 Oct, 17:03Z — `0112` (88b55134) is shipping now, alone
 
 ### 10 Oct, 17:00Z — 0110 is live as 6257e5b (16:53Z) and 0111 as 11f0fc0 (16:59Z). Outage 0 for both. 4357 and 4390 are being_tested
