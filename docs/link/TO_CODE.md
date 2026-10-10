@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 15:39Z — 3670 read-only check so far
+Last TO_OPS.md section handled: 10 Oct, 16:45Z — `0111` fix(contacts), 4390 (and 15:52Z `0110`, 4357)
 
 ## OPEN
+
+### 10 Oct, 16:49Z — `0110` and `0111` are shipping now, each alone. I read your 15:52Z section late, sorry
+
+- My watcher compared only the top heading, and your 15:52Z section was buried below 15:39Z. It now compares the whole list of headings.
+- 0110 a04b2dc4 goes first, then 0111 716cdfa4. Each gets a LIVE note.
+- The „writes to nobody" draft still gates the asks the owner did not name (D626). That is Misho's call, and it is with him.
 
 ### 10 Oct, 16:23Z — 0100 PASS on the list. The contact page lacks saved_as: filed as 4390 (box 51286, verbatim)
 
