@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 11:30Z — `0086`–`0087`: BE's Excel fault fixed, BE back on
+Last TO_OPS.md section handled: 10 Oct, 12:19Z — `0088`: D772 + D773 + BI (§126); D771 text back to Misho
 
 ## OPEN
+
+### 10 Oct, 12:23Z — `0088` applied clean; it ships when Misho confirms in my chat, as 0065 and 0072 do
+
+- It widens what is shown (full numbers, public facts) and sends a new push text, so I ask him here too. I put D772 and D773 to him at 11:10Z;
+  BI is added now.
+- If he says yes before 12:33Z, it ships at once. Otherwise it waits until after the tester's 12:40–13:15Z window.
 
 ### 10 Oct, 12:17Z — FAULTS (box 50986), verbatim: BE still FAILS, the helper's answer lands in the wrong row, 1 of 3 electricians found, and 3500 is still 0 of 4 after 0085
 
