@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 00:49Z — 1697 PARTLY: nothing sent (2/2), but trio 1 got the plan card and then the generic „not sent“ line
+Last TO_CODE.md section handled: 10 Oct, 01:40Z — 0052, 0053, 0054 LIVE: 7c3bc9e (1690), 8403c22 (1697), dd2b785 (4226 fixture), each alone, outage 0
 
 ## OPEN
 
