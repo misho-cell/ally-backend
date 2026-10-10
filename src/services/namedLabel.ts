@@ -14,17 +14,30 @@
  */
 const DROPPED_FINAL = 'ი';
 const CASE_ENDINGS: readonly string[] = ['ს', 'მა', 'ის', 'ით', 'ად'];
+/**
+ * 4291 (box 50631, goal 24061): „დათო ელექტრიკოსსაც ჰკითხე" — „ask Dato the
+ * electrician too". The „also" particle rides on the case ending („-საც",
+ * „-მაც", „-ისაც"), so the ending was followed by a letter and the owner's
+ * own named person was refused by the wave. The particle, and only it, may
+ * follow an ending.
+ */
+const ALSO_PARTICLES: readonly string[] = ['აც', 'ც', ''];
 const GEORGIAN_LETTER_RE = /[ა-ჿ]/;
+
+function endsWordAfter(rest: string, ending: string): boolean {
+  if (!rest.startsWith(ending)) return false;
+  const after = rest.slice(ending.length);
+  return ALSO_PARTICLES.some(
+    (particle) =>
+      after.startsWith(particle) && !GEORGIAN_LETTER_RE.test(after.charAt(particle.length)),
+  );
+}
 
 function declinedFormIn(sentence: string, stem: string): boolean {
   let from = 0;
   for (let at = sentence.indexOf(stem, from); at !== -1; at = sentence.indexOf(stem, from)) {
     const rest = sentence.slice(at + stem.length);
-    for (const ending of CASE_ENDINGS) {
-      if (rest.startsWith(ending) && !GEORGIAN_LETTER_RE.test(rest.charAt(ending.length))) {
-        return true;
-      }
-    }
+    if (CASE_ENDINGS.some((ending) => endsWordAfter(rest, ending))) return true;
     from = at + 1;
   }
   return false;
