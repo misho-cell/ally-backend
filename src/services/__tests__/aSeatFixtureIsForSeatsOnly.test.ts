@@ -3,6 +3,7 @@ import { askField } from '../answerStats.service';
 import {
   FixtureOutcome,
   writeAnswerRecord,
+  writeDueUpdate,
   writeOldProfile,
   writeStaleFact,
 } from '../seatFixtures.service';
@@ -187,5 +188,40 @@ describe('the old-profile fixture (4226)', () => {
       writeOldProfile(SEAT, { phone: INPUT.phone, employer: ' ', jobPosition: '' }),
     ).resolves.toBe(FixtureOutcome.BadInput);
     expect(mockQuery).toHaveBeenCalledTimes(3);
+  });
+});
+
+/** 0073 (the tester's question 4): one due update on the seat's own goal. */
+describe('the due-update fixture', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('queues one „found" update, due now, on the seat’s own goal only', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
+    await expect(
+      writeDueUpdate(SEAT, { goalId: 24091, summary: ' a notary was found ' }),
+    ).resolves.toBe(FixtureOutcome.Written);
+    const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(sql).toContain("'found'");
+    expect(sql).toContain('t.user_id = $1::text');
+    expect(sql).toContain('NOW()');
+    expect(params).toEqual([SEAT, 24091, 'a notary was found']);
+  });
+
+  it('writes nothing for someone else’s goal, a real account, or an empty summary', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await expect(writeDueUpdate(SEAT, { goalId: 1, summary: 'x' })).resolves.toBe(
+      FixtureOutcome.BadInput,
+    );
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(writeDueUpdate(501, { goalId: 1, summary: 'x' })).resolves.toBe(
+      FixtureOutcome.NotATestSeat,
+    );
+    await expect(writeDueUpdate(SEAT, { goalId: 1, summary: '  ' })).resolves.toBe(
+      FixtureOutcome.BadInput,
+    );
   });
 });
