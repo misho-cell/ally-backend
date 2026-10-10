@@ -1,0 +1,606 @@
+From 3cc55c3f3b7bb0a0af5b632aee4ba635f7c116f0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 04:39:37 +0000
+Subject: [PATCH] feat(privacy): a person sees and removes the facts kept about
+ them (4126 item 5)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 9 Oct ~20:48 UTC: „კარგი" to 4126 item 5.
+
+- GET /privacy/facts-about-me lists every live fact kept about the
+  person's own numbers: field, value, the kind of source (research,
+  label, saved_by_someone), the page and date for research, and its
+  status. At most 200, newest first. Who saved a fact is never in it.
+- DELETE /privacy/facts-about-me/:id removes one of them: retracted,
+  private, not matchable, and marked removed_by_subject_at (migration
+  231). 404 for a fact that is not about this person.
+- A removal holds. The savers' upsert no longer clears a retraction the
+  subject made (4226's un-retract now skips such a row). The Axel reload
+  keeps the removed row and writes nothing in its place. Its dry run
+  still counts without reading removals.
+- FOR_FRONTEND has the contract for the one screen.
+
+Not in this change: the chat command for the same thing. It needs a tool
+text, which is a D44 prompt change and waits for Misho.
+
+Ships by day (§121): it removes data and newly shows people what is kept
+about them.
+
+DONE WHEN: on a fictional seat, the facts about its number are listed
+with source and date; one is removed and is gone from search and the
+list; a re-save by the saver and a research reload do not bring it back.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  28 +++++
+ .../__tests__/factsAboutMe.routes.test.ts     |  93 ++++++++++++++
+ src/api/routes/privacy.routes.ts              |  51 +++++++-
+ .../231_fact_removed_by_subject.sql           |   5 +
+ ...aPersonRemovesFactsAboutThemselves.test.ts |  81 ++++++++++++
+ .../theOwnersWordOutranksAnOldProfile.test.ts |   6 +-
+ .../__tests__/theAxelBaseLoads.test.ts        |  14 ++-
+ src/services/axelLoad/axelBaseLoad.service.ts |  28 ++++-
+ src/services/contactFacts.service.ts          |   4 +-
+ src/services/factsAboutMe.service.ts          | 117 ++++++++++++++++++
+ 10 files changed, 420 insertions(+), 7 deletions(-)
+ create mode 100644 src/api/routes/__tests__/factsAboutMe.routes.test.ts
+ create mode 100644 src/db/postgres/migrations/231_fact_removed_by_subject.sql
+ create mode 100644 src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts
+ create mode 100644 src/services/factsAboutMe.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index acf4594..04f0995 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,34 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 04:40Z — 4126 item 5: „facts about me", one screen (on branch, ships by day)
++
++Misho's yes, 9 Oct: a person sees every fact kept about their own numbers, and removes any of them. Both routes need the user's JWT and
++live under `/privacy`, next to „my data".
++
++**`GET /privacy/facts-about-me`** → 200
++```json
++{ "success": true, "data": { "facts": [
++  { "id": 9, "field": "employer", "value": "Acme", "origin": "research",
++    "source_url": "https://a.example", "date": "2026-10-04", "status": "possible" },
++  { "id": 12, "field": "occupation", "value": "ბუღალტერი", "origin": "saved_by_someone",
++    "source_url": null, "date": "2026-09-01", "status": null }
++] } }
++```
++- `origin`: `research` (found on a public page), `label` (read from how someone saved the number), `saved_by_someone` (a contact told Netai).
++  **Who saved a fact is never sent**, and the screen should not suggest it.
++- `status` is set only on research facts: `confirmed` / `possible` / `rough` / `unknown`. Show `possible` as possible, with `source_url` and `date`.
++- At most 200 facts, newest first. An empty list is `"facts": []`.
++
++**`DELETE /privacy/facts-about-me/:id`** → 200 `{ "success": true, "data": { "removed": true } }`
++- 404 when the fact is not about this person, or is already gone. 400 for an id that is not a number. 500 on a server fault.
++- The removal is for good: the fact disappears from search and from every list, and neither the saver nor a research reload brings it back.
++
++Status: on branch `claude/ally-app-docs-ctezil`. It ships by day, because it removes data and newly shows people what is kept about them.
++I will post the LIVE commit here.
++
++---
++
+ ## 9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)
+ 
+ Public: no token needed, because the pricing page is read signed out. 30 requests a minute per address.
+diff --git a/src/api/routes/__tests__/factsAboutMe.routes.test.ts b/src/api/routes/__tests__/factsAboutMe.routes.test.ts
+new file mode 100644
+index 0000000..9a53004
+--- /dev/null
++++ b/src/api/routes/__tests__/factsAboutMe.routes.test.ts
+@@ -0,0 +1,93 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../services/factsAboutMe.service', () => ({
++  ...jest.requireActual('../../../services/factsAboutMe.service'),
++  factsAboutMe: jest.fn(),
++  removeFactAboutMe: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import privacyRouter from '../privacy.routes';
++import {
++  FactOrigin,
++  factsAboutMe,
++  removeFactAboutMe,
++  RemoveOutcome,
++} from '../../../services/factsAboutMe.service';
++
++const mockList = factsAboutMe as jest.MockedFunction<typeof factsAboutMe>;
++const mockRemove = removeFactAboutMe as jest.MockedFunction<typeof removeFactAboutMe>;
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use(express.json());
++  app.use('/privacy', privacyRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/privacy/facts-about-me`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** 4126 item 5 (Misho's yes, 9 Oct): a person sees and removes the facts about themselves. */
++describe('/privacy/facts-about-me', () => {
++  it('lists the facts about the signed-in person, without who saved them', async () => {
++    const fact = {
++      id: 9,
++      field: 'employer',
++      value: 'Acme',
++      origin: FactOrigin.Research,
++      source_url: 'https://a.example',
++      date: '2026-10-04',
++      status: 'possible',
++    };
++    mockList.mockResolvedValue([fact]);
++    const res = await fetch(base);
++    expect(res.status).toBe(200);
++    expect(await res.json()).toEqual({ success: true, data: { facts: [fact] } });
++    expect(mockList).toHaveBeenCalledWith(171);
++  });
++
++  it('removes one fact of the signed-in person', async () => {
++    mockRemove.mockResolvedValue(RemoveOutcome.Removed);
++    const res = await fetch(`${base}/9`, { method: 'DELETE' });
++    expect(res.status).toBe(200);
++    expect(await res.json()).toEqual({ success: true, data: { removed: true } });
++    expect(mockRemove).toHaveBeenCalledWith(171, 9);
++  });
++
++  it('answers 404 for a fact that is not about them, and 400 for a bad id', async () => {
++    mockRemove.mockResolvedValue(RemoveOutcome.NotFound);
++    expect((await fetch(`${base}/10`, { method: 'DELETE' })).status).toBe(404);
++    expect((await fetch(`${base}/abc`, { method: 'DELETE' })).status).toBe(400);
++    expect(mockRemove).toHaveBeenCalledTimes(1);
++  });
++
++  it('answers 500 without the database error when the read fails', async () => {
++    mockList.mockRejectedValue(new Error('relation does not exist'));
++    const res = await fetch(base);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('relation');
++  });
++});
+diff --git a/src/api/routes/privacy.routes.ts b/src/api/routes/privacy.routes.ts
+index 1b4cff1..4179d17 100644
+--- a/src/api/routes/privacy.routes.ts
++++ b/src/api/routes/privacy.routes.ts
+@@ -1,5 +1,5 @@
+ import { Router, Request, Response } from 'express';
+-import { body, validationResult } from 'express-validator';
++import { body, param, validationResult } from 'express-validator';
+ import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
+ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { ApiResponse } from '../../types';
+@@ -10,6 +10,12 @@ import {
+   ErasureReport,
+   OWNED_TABLE_LABELS_KA,
+ } from '../../services/privacyRights.service';
++import {
++  FactAboutMe,
++  factsAboutMe,
++  removeFactAboutMe,
++  RemoveOutcome,
++} from '../../services/factsAboutMe.service';
+ 
+ // The rights portal the Privacy Policy already promises (ticket 4, item 0).
+ // Deliberately NOT behind requireSubscription: the right to erasure cannot
+@@ -103,4 +109,47 @@ privacyRouter.post(
+   },
+ );
+ 
++/**
++ * 4126 item 5 (Misho's yes, 9 Oct): every fact kept about the person's own
++ * numbers, with its kind of source and date — never who saved it.
++ */
++privacyRouter.get(
++  '/facts-about-me',
++  async (req: Request, res: Response<ApiResponse<{ facts: FactAboutMe[] }>>): Promise<void> => {
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      res.status(200).json({ success: true, data: { facts: await factsAboutMe(userId) } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /privacy/facts-about-me]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
++/** 4126 item 5: removes one fact about the person, everywhere, for good. */
++privacyRouter.delete(
++  '/facts-about-me/:id',
++  param('id').isInt({ min: 1 }),
++  async (req: Request, res: Response<ApiResponse<{ removed: true }>>): Promise<void> => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({ success: false, error: 'ფაქტის id საჭიროა' });
++      return;
++    }
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      const outcome = await removeFactAboutMe(userId, Number(req.params.id));
++      if (outcome === RemoveOutcome.NotFound) {
++        res.status(404).json({ success: false, error: 'ასეთი ფაქტი შენზე არ მოიძებნა' });
++        return;
++      }
++      res.status(200).json({ success: true, data: { removed: true } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[DELETE /privacy/facts-about-me]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ export default privacyRouter;
+diff --git a/src/db/postgres/migrations/231_fact_removed_by_subject.sql b/src/db/postgres/migrations/231_fact_removed_by_subject.sql
+new file mode 100644
+index 0000000..b9b3d27
+--- /dev/null
++++ b/src/db/postgres/migrations/231_fact_removed_by_subject.sql
+@@ -0,0 +1,5 @@
++-- 4126 item 5 (Misho's yes, 9 Oct ~20:48 UTC): a person sees the facts kept
++-- about their own numbers and removes any of them. A removal by the person the
++-- fact is about is stronger than a retraction: no later save of the same row
++-- (the saver's upsert, the research reload) may bring it back.
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS removed_by_subject_at TIMESTAMP;
+diff --git a/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts b/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts
+new file mode 100644
+index 0000000..2d671f2
+--- /dev/null
++++ b/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts
+@@ -0,0 +1,81 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import {
++  FactOrigin,
++  factsAboutMe,
++  originOf,
++  removeFactAboutMe,
++  RemoveOutcome,
++} from '../factsAboutMe.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const ME = 171;
++
++/** 4126 item 5 (Misho's yes, 9 Oct): a person sees and removes the facts about themselves. */
++describe('facts about me', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('reads only the person’s own numbers, and never says who saved a fact', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ phone: '+995 500 000 001' }] } as never)
++      .mockResolvedValueOnce({
++        rows: [
++          {
++            id: 9,
++            field_type: 'employer',
++            value: 'Acme',
++            source: 'chat',
++            source_url: null,
++            fact_date: null,
++            saved_on: '2026-09-01',
++            research_status: null,
++          },
++        ],
++      } as never);
++    const facts = await factsAboutMe(ME);
++    expect(facts).toEqual([
++      {
++        id: 9,
++        field: 'employer',
++        value: 'Acme',
++        origin: FactOrigin.SavedBySomeone,
++        source_url: null,
++        date: '2026-09-01',
++        status: null,
++      },
++    ]);
++    const [sql, params] = mockQuery.mock.calls[1];
++    expect(String(sql)).not.toContain('submitted_by_user_id');
++    expect(String(sql)).toContain('retracted_at IS NULL');
++    expect(params).toEqual([['+995500000001'], 200]);
++  });
++
++  it('names the kind of source', () => {
++    expect(originOf('public_research')).toBe(FactOrigin.Research);
++    expect(originOf('label')).toBe(FactOrigin.Label);
++    expect(originOf(null)).toBe(FactOrigin.SavedBySomeone);
++  });
++
++  it('removes a fact about the person for good, and only theirs', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
++    await expect(removeFactAboutMe(ME, 9)).resolves.toBe(RemoveOutcome.Removed);
++    const [sql, params] = mockQuery.mock.calls[1];
++    expect(String(sql)).toContain('removed_by_subject_at = NOW()');
++    expect(String(sql)).toContain('is_matchable = false');
++    expect(String(sql)).toContain('neo4j_contact_id = ANY($2::text[])');
++    expect(params).toEqual([9, ['+995500000001']]);
++  });
++
++  it('says not found for someone else’s fact, and for a person with no number', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(removeFactAboutMe(ME, 10)).resolves.toBe(RemoveOutcome.NotFound);
++    await expect(removeFactAboutMe(ME, 10)).resolves.toBe(RemoveOutcome.NotFound);
++    expect(mockQuery).toHaveBeenCalledTimes(3);
++  });
++});
+diff --git a/src/services/__tests__/theOwnersWordOutranksAnOldProfile.test.ts b/src/services/__tests__/theOwnersWordOutranksAnOldProfile.test.ts
+index d12de22..5e99a0c 100644
+--- a/src/services/__tests__/theOwnersWordOutranksAnOldProfile.test.ts
++++ b/src/services/__tests__/theOwnersWordOutranksAnOldProfile.test.ts
+@@ -50,6 +50,10 @@ describe('the owner’s own word about his contact', () => {
+     const upsert = service.slice(
+       service.indexOf('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)'),
+     );
+-    expect(upsert.slice(0, 600)).toContain('retracted_at = NULL');
++    // 4126 item 5: cleared unless the person the fact is about removed it.
++    expect(upsert.slice(0, 900)).toContain(
++      'retracted_at = CASE WHEN contact_facts.removed_by_subject_at IS NULL',
++    );
++    expect(upsert.slice(0, 900)).toContain('THEN NULL ELSE contact_facts.retracted_at END');
+   });
+ });
+diff --git a/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts b/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts
+index 3bc8888..15bc255 100644
+--- a/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts
++++ b/src/services/axelLoad/__tests__/theAxelBaseLoads.test.ts
+@@ -97,8 +97,10 @@ describe('the load', () => {
+   it('replaces the number’s research rows whole, as the system saver, private', async () => {
+     const report = await loadAxelBase(NUMBERS, FACTS, false);
+     expect(report.facts_written).toBe(2);
+-    const [del, ...inserts] = client.query.mock.calls;
++    const [removed, del, ...inserts] = client.query.mock.calls;
++    expect(String(removed[0])).toContain('removed_by_subject_at IS NOT NULL');
+     expect(String(del[0])).toContain('DELETE FROM contact_facts');
++    expect(String(del[0])).toContain('removed_by_subject_at IS NULL');
+     expect(del[1]).toEqual(['+995500000001', SYSTEM_SAVER_ID, PUBLIC_RESEARCH]);
+     expect(inserts).toHaveLength(2);
+     expect(String(inserts[0][0])).toContain("false, $5, 'mentioned', false");
+@@ -114,6 +116,16 @@ describe('the load', () => {
+     ]);
+   });
+ 
++  /** 4126 item 5: what the person removed about themselves is not written back. */
++  it('keeps a fact the person removed about themselves removed on reload', async () => {
++    client.query.mockResolvedValueOnce({ rows: [{ field_type: 'employer', value: 'old' }] });
++    const report = await loadAxelBase(NUMBERS, FACTS, false);
++    expect(report.facts_written).toBe(1);
++    const inserts = client.query.mock.calls.slice(2);
++    expect(inserts).toHaveLength(1);
++    expect((inserts[0][1] as unknown[])[2]).not.toBe('employer');
++  });
++
+   it('counts a number the server does not hold, and writes nothing for it', async () => {
+     mockRoster.mockResolvedValue([] as never);
+     const report = await loadAxelBase(NUMBERS, FACTS, false);
+diff --git a/src/services/axelLoad/axelBaseLoad.service.ts b/src/services/axelLoad/axelBaseLoad.service.ts
+index 18f7a6e..12d16fa 100644
+--- a/src/services/axelLoad/axelBaseLoad.service.ts
++++ b/src/services/axelLoad/axelBaseLoad.service.ts
+@@ -66,17 +66,39 @@ function writable(facts: readonly ResearchFact[], skipped: Record<string, number
+   });
+ }
+ 
++/**
++ * 4126 item 5: a research fact the person removed about themselves stays
++ * removed. Its row is kept, and the reload writes nothing in its place: a
++ * one-per-saver key is matched by key, any other key by key and value.
++ */
++function removedKey(key: string, value: string): string {
++  return ONE_PER_SAVER.has(key) ? key : `${key}\u0000${value}`;
++}
++
++async function removedBySubject(client: PoolClient, phone: string): Promise<Set<string>> {
++  const result = await client.query<{ field_type: string; value: string }>(
++    `SELECT field_type, value FROM contact_facts
++      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3
++        AND removed_by_subject_at IS NOT NULL`,
++    [phone, SYSTEM_SAVER_ID, PUBLIC_RESEARCH],
++  );
++  return new Set(result.rows.map((r) => removedKey(r.field_type, r.value)));
++}
++
+ async function replaceNumber(
+   client: PoolClient,
+   phone: string,
+   facts: readonly ResearchFact[],
+ ): Promise<number> {
++  const removed = await removedBySubject(client, phone);
+   await client.query(
+     `DELETE FROM contact_facts
+-      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3`,
++      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3
++        AND removed_by_subject_at IS NULL`,
+     [phone, SYSTEM_SAVER_ID, PUBLIC_RESEARCH],
+   );
+-  for (const f of facts) {
++  const kept = facts.filter((f) => !removed.has(removedKey(f.key, f.value)));
++  for (const f of kept) {
+     await client.query(
+       `INSERT INTO contact_facts
+          (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source,
+@@ -85,7 +107,7 @@ async function replaceNumber(
+       [phone, SYSTEM_SAVER_ID, f.key, f.value, PUBLIC_RESEARCH, f.sourceUrl, f.factDate, f.status],
+     );
+   }
+-  return facts.length;
++  return kept.length;
+ }
+ 
+ export async function loadAxelBase(
+diff --git a/src/services/contactFacts.service.ts b/src/services/contactFacts.service.ts
+index ae9093f..a456236 100644
+--- a/src/services/contactFacts.service.ts
++++ b/src/services/contactFacts.service.ts
+@@ -211,7 +211,9 @@ async function upsertFact(
+                    source = $5, confidence = $6, is_matchable = $7,
+                    -- 4226: a new value saved over a retracted one is the owner's
+                    -- new word; left retracted it reported „saved" and showed nowhere.
+-                   retracted_at = NULL`,
++                   -- 4126 item 5: unless the person it is about removed it.
++                   retracted_at = CASE WHEN contact_facts.removed_by_subject_at IS NULL
++                                       THEN NULL ELSE contact_facts.retracted_at END`,
+     [
+       neo4jContactId,
+       userId,
+diff --git a/src/services/factsAboutMe.service.ts b/src/services/factsAboutMe.service.ts
+new file mode 100644
+index 0000000..e3c83fc
+--- /dev/null
++++ b/src/services/factsAboutMe.service.ts
+@@ -0,0 +1,117 @@
++import { query } from '../db/postgres/client';
++import { normalizePhone } from './phone';
++
++/**
++ * 4126 item 5 (Misho's yes, 9 Oct ~20:48 UTC): a person sees every fact kept
++ * about their own numbers — researched, read from labels, or saved by someone
++ * — with its source and date, and removes any of them.
++ *
++ * WHO SAVED A FACT IS NEVER SAID. The list carries what kind of source it is,
++ * never the saver: telling a person which contact wrote what about them would
++ * disclose the saver's phonebook and words.
++ *
++ * A removal holds: the row is retracted, made private and unmatchable, and
++ * marked removed_by_subject_at, which the savers' upsert and the research
++ * reload both respect.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const OWN_NUMBERS_READ = 20;
++export const FACTS_ABOUT_ME_MAX = 200;
++const RESEARCH_SOURCE = 'public_research';
++const LABEL_SOURCE = 'label';
++
++export enum FactOrigin {
++  Research = 'research',
++  Label = 'label',
++  SavedBySomeone = 'saved_by_someone',
++}
++
++export interface FactAboutMe {
++  readonly id: number;
++  readonly field: string;
++  readonly value: string;
++  readonly origin: FactOrigin;
++  /** The page it was read on, for a researched fact. */
++  readonly source_url: string | null;
++  /** When the source dated it, or when it was saved. */
++  readonly date: string;
++  /** confirmed / possible / rough / unknown, for a researched fact. */
++  readonly status: string | null;
++}
++
++interface FactRow {
++  readonly id: number;
++  readonly field_type: string;
++  readonly value: string;
++  readonly source: string | null;
++  readonly source_url: string | null;
++  readonly fact_date: string | null;
++  readonly saved_on: string;
++  readonly research_status: string | null;
++}
++
++/** The person's own numbers, in the form contact_facts keys them. */
++async function ownNumbers(userId: number): Promise<string[]> {
++  const result = await query<{ phone: string }>(
++    `SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT $2`,
++    [userId, OWN_NUMBERS_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  return [...new Set(result.rows.map((r) => normalizePhone(r.phone)).filter((p) => p !== ''))];
++}
++
++export function originOf(source: string | null): FactOrigin {
++  if (source === RESEARCH_SOURCE) return FactOrigin.Research;
++  if (source === LABEL_SOURCE) return FactOrigin.Label;
++  return FactOrigin.SavedBySomeone;
++}
++
++function toFactAboutMe(row: FactRow): FactAboutMe {
++  return {
++    id: row.id,
++    field: row.field_type,
++    value: row.value,
++    origin: originOf(row.source),
++    source_url: row.source_url,
++    date: row.fact_date ?? row.saved_on,
++    status: row.research_status,
++  };
++}
++
++export async function factsAboutMe(userId: number): Promise<FactAboutMe[]> {
++  const numbers = await ownNumbers(userId);
++  if (numbers.length === 0) return [];
++  const result = await query<FactRow>(
++    `SELECT id, field_type, value, source, source_url,
++            TO_CHAR(fact_date, 'YYYY-MM-DD') AS fact_date,
++            TO_CHAR(COALESCE(updated_at, created_at), 'YYYY-MM-DD') AS saved_on,
++            research_status
++       FROM contact_facts
++      WHERE neo4j_contact_id = ANY($1::text[]) AND retracted_at IS NULL
++      ORDER BY COALESCE(updated_at, created_at) DESC
++      LIMIT $2`,
++    [numbers, FACTS_ABOUT_ME_MAX],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map(toFactAboutMe);
++}
++
++export enum RemoveOutcome {
++  Removed = 'removed',
++  /** No such fact about this person's numbers — including another person's fact. */
++  NotFound = 'not_found',
++}
++
++export async function removeFactAboutMe(userId: number, factId: number): Promise<RemoveOutcome> {
++  const numbers = await ownNumbers(userId);
++  if (numbers.length === 0) return RemoveOutcome.NotFound;
++  const result = await query(
++    `UPDATE contact_facts
++        SET retracted_at = NOW(), removed_by_subject_at = NOW(), is_public = false,
++            is_matchable = false, updated_at = NOW()
++      WHERE id = $1 AND neo4j_contact_id = ANY($2::text[]) AND retracted_at IS NULL`,
++    [factId, numbers],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0 ? RemoveOutcome.Removed : RemoveOutcome.NotFound;
++}
+-- 
+2.43.0
+

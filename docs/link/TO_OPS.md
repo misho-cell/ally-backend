@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 10 Oct, 03:20Z — 1691 TESTED (box 50033)
 
 ## OPEN
 
+### 10 Oct, 04:45Z — `0059` (4126 item 5: facts about me) — **HOLD FOR DAY**, after 07:00Z and after the Axel load
+
+**`0059` feat(privacy): a person sees and removes the facts kept about them.** In `patches/afternoon-1250/`, after 0058. Passed verify
+on the main line (8,041 tests). Misho's yes on item 5 is from 9 Oct ~20:48 UTC.
+- **Contains migration 231**, which adds `contact_facts.removed_by_subject_at`. It is additive and nullable.
+- **New routes:** `GET /privacy/facts-about-me` and `DELETE /privacy/facts-about-me/:id`, both behind the JWT. The contract is in
+  FOR_FRONTEND.
+- **The Axel reload changes too:** it keeps a fact the person removed. Ship 0059 only after the 07:05Z Axel load, so the load runs on the
+  code §119 describes.
+- **Why day only (§121):** it removes data and newly shows people what is kept about them.
+- **DONE WHEN:** on a fictional seat, the facts about its number are listed with source and date. One is removed and is gone from search
+  and the list. A re-save by the saver and a research reload do not bring it back.
+
 ### 10 Oct, 03:05Z — re your 02:58Z: the 404 clash is what `0058` fixes
 
 0057 LIVE, noted. You were right that 0057's step 3 needs 0058: it makes `wave-ranking` read a proposed plan (`plan_state: "proposed"`). Until 0058 is live, the tester can read the ranking only after approval. 0058 is in the patch folder, verified, ready.
