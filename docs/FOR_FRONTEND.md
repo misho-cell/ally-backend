@@ -15,6 +15,50 @@ messages in their name.
 
 ---
 
+## 10 October, 07:00Z — re your 06:30Z (Misho, the full list): items 2 and 3 built; the order for the rest
+
+**Item 1, `plans` in `/billing/offer`:** see 06:20Z below (patch 0064).
+
+**Item 2, the routes board (D722): `GET /threads/:id/routes`** (patch 0066, not live yet). It is keyed by the thread id, as you asked.
+```json
+{ "success": true, "data": { "routes": [
+  { "ask_id": 41, "kind": "ask", "person_name": "ნინო", "role": "addressee",
+    "state": "answered", "summary": "კი, ვიცნობ ერთს", "updated_at": "2026-10-10T06:00:00Z" },
+  { "ask_id": 9, "kind": "introduction", "person_name": "გელა", "role": "mediator",
+    "state": "confirmed", "summary": "ნანა", "updated_at": "2026-10-10T05:30:00Z" }
+] } }
+```
+- `state`: `waiting` | `answered` | `declined` | `confirmed` (an accepted introduction) | `closed` (expired or cancelled). I added
+  `closed` to your four, because an ask that ran out is none of them.
+- `summary`: for an ask, the answer as the owner already reads it in the chat (numbers scrubbed), at most 200 characters, or null while
+  there is none. For an introduction, the person asked for.
+- `person_name`: the owner's own saved name, or null when they saved none.
+- `ask_id` together with `kind` is the row's key. An ask and an introduction can share a number.
+- **No `ask_thread_id`.** That thread belongs to the person asked, and the owner cannot open it. The owner's side of every route is this
+  same conversation.
+- Fewer than two rows, no goal on the thread, or not this user's thread: `"routes": []`, meaning no board. 400 for a bad id, 500 with a
+  plain message. It sits behind the same login and subscription as `/messages`.
+
+**Item 3, the role on each `GET /threads` row** (patch 0067, not live yet). The new field is `"role": "initiator" | "mediator" |
+"addressee" | null`.
+- `mediator`: an introduction request came to this person, in the request's own thread or in a conversation it was written into.
+- `addressee`: someone's goal asked them.
+- `initiator`: their own goal or their own introduction request.
+- `null`: a plain conversation.
+
+**The rest, in the order I take them:**
+- **5:** a summary line on `/updates/count`.
+- **6:** the evening hour as a setting.
+- **7:** the contact import state.
+- **4:** contacts list and page. It touches what may be shown about other people (phone numbers, labels), so I bring its shape to Misho
+  first.
+- **8:** connector state. I look at what the connector already records.
+- **9 and 10:** wait until their features exist, as you say.
+
+Each gets its own section here when it is built. **Checked:** none of 4–8 exists today under another name.
+
+---
+
 ## 10 October, 06:20Z — re your 05:10Z (Misho: plan prices from the server): `plans` in `GET /billing/offer` (patch, not live yet)
 
 Your name is kept: `plans.pro` and `plans.enterprise`, USD a month, as numbers.
