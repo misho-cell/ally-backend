@@ -1,0 +1,276 @@
+From 59f007063a6ad85b9f96b7cd42f476e99d1ca3ad Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 08:44:51 +0000
+Subject: [PATCH] feat(connector): GET /connector/state, the person's own
+ Claude connector (frontend 06:30Z item 8)
+
+Connected while an OAuth grant is unrevoked and still refreshable; last
+seen at the newest grant (login and every refresh, hourly while in use).
+Read from oauth_tokens; no token is read out.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 13 ++++
+ .../__tests__/connectorState.routes.test.ts   | 64 +++++++++++++++++++
+ .../__tests__/everyRouteIsBehindAuth.test.ts  |  2 +
+ src/api/routes/connector.routes.ts            | 31 +++++++++
+ src/index.ts                                  |  2 +
+ src/services/__tests__/connectorState.test.ts | 40 ++++++++++++
+ src/services/connectorState.service.ts        | 31 +++++++++
+ 7 files changed, 183 insertions(+)
+ create mode 100644 src/api/routes/__tests__/connectorState.routes.test.ts
+ create mode 100644 src/api/routes/connector.routes.ts
+ create mode 100644 src/services/__tests__/connectorState.test.ts
+ create mode 100644 src/services/connectorState.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index c9d0b8a..24a12ea 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,19 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 09:15Z — item 8 of your 06:30Z list: the connector state (patch 0076, not live yet)
++
++```
++GET /connector/state
++→ 200 { "success": true, "data": { "connected": true, "last_seen_at": "2026-10-10T08:00:00.000Z" } }
++```
++
++- **`connected`:** the person's Claude connector holds a grant that has not been revoked and can still refresh. That stays true for 30 days
++  after the last use.
++- **`last_seen_at`:** the newest grant. One is issued at login and again at every refresh, and an access token lives one hour, so a
++  connector in use moves at least once an hour. It is null for someone who never connected, and it keeps its value after a disconnect.
++- Login is required. 30 calls a minute. Status codes: 200 / 401 / 500. No token is ever read out.
++
+ ## 10 October, 09:00Z — re your 08:20Z: `plans` is LIVE
+ 
+ - **`GET /billing/offer` → `plans`** went live with 0064 (79cfc81) at 08:16Z. Ops checked it live: `pro` 19.99 and `enterprise` 79.
+diff --git a/src/api/routes/__tests__/connectorState.routes.test.ts b/src/api/routes/__tests__/connectorState.routes.test.ts
+new file mode 100644
+index 0000000..ca3224c
+--- /dev/null
++++ b/src/api/routes/__tests__/connectorState.routes.test.ts
+@@ -0,0 +1,64 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../services/connectorState.service', () => ({
++  __esModule: true,
++  connectorState: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import connectorRouter from '../connector.routes';
++import { connectorState } from '../../../services/connectorState.service';
++
++const mockState = connectorState as jest.MockedFunction<typeof connectorState>;
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use('/connector', connectorRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/connector/state`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** The frontend's 06:30Z item 8. */
++describe('GET /connector/state', () => {
++  it('answers the signed-in person’s own connector', async () => {
++    mockState.mockResolvedValue({ connected: true, last_seen_at: '2026-10-10T08:00:00Z' });
++    const res = await fetch(base);
++    expect(res.status).toBe(200);
++    expect(((await res.json()) as { data: unknown }).data).toEqual({
++      connected: true,
++      last_seen_at: '2026-10-10T08:00:00Z',
++    });
++    expect(mockState).toHaveBeenCalledWith(171);
++  });
++
++  it('says 500 without the database error', async () => {
++    mockState.mockRejectedValue(new Error('relation oauth_tokens is locked'));
++    const res = await fetch(base);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('relation');
++  });
++});
+diff --git a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+index b7e4344..2254881 100644
+--- a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
++++ b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+@@ -44,6 +44,8 @@ const GUARDED_AT_THE_ROUTER = [
+   'billing.routes.ts',
+   'chat.routes.ts',
+   'contacts.routes.ts',
++  // The frontend's 06:30Z item 8: the person's own connector state.
++  'connector.routes.ts',
+   // #1850: the evening card is the person's own questions.
+   'eveningCard.routes.ts',
+   'status.routes.ts',
+diff --git a/src/api/routes/connector.routes.ts b/src/api/routes/connector.routes.ts
+new file mode 100644
+index 0000000..2944427
+--- /dev/null
++++ b/src/api/routes/connector.routes.ts
+@@ -0,0 +1,31 @@
++import { Router, Request, Response } from 'express';
++import {
++  authenticateJwt,
++  requireUserRole,
++  AuthenticatedRequest,
++} from '../middleware/auth.middleware';
++import { rateLimit } from '../middleware/rateLimit.middleware';
++import { connectorState } from '../../services/connectorState.service';
++
++/**
++ * The frontend's 06:30Z item 8 (onboarding B8):
++ *   GET /connector/state   { connected, last_seen_at } — the person's own Claude connector
++ */
++const REQUESTS_PER_MINUTE = 30;
++
++const connectorRouter = Router();
++connectorRouter.use(authenticateJwt, requireUserRole);
++connectorRouter.use(rateLimit({ windowMs: 60_000, max: REQUESTS_PER_MINUTE }));
++
++connectorRouter.get('/state', async (req: Request, res: Response): Promise<void> => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    res.status(200).json({ success: true, data: await connectorState(userId) });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /connector/state]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the connector state' });
++  }
++});
++
++export default connectorRouter;
+diff --git a/src/index.ts b/src/index.ts
+index 99d4487..fa573e8 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -12,6 +12,7 @@ import threadFilesRouter from './api/routes/threadFiles.routes';
+ import requestsRouter from './api/routes/requests.routes';
+ import updatesRouter from './api/routes/updates.routes';
+ import eveningCardRouter from './api/routes/eveningCard.routes';
++import connectorRouter from './api/routes/connector.routes';
+ import statusRouter from './api/routes/status.routes';
+ import tasksRouter from './api/routes/tasks.routes';
+ import privacyRouter from './api/routes/privacy.routes';
+@@ -111,6 +112,7 @@ app.use('/threads', threadsRouter);
+ app.use('/requests', requestsRouter);
+ app.use('/updates', updatesRouter);
+ app.use('/evening-card', eveningCardRouter);
++app.use('/connector', connectorRouter);
+ app.use('/status', statusRouter);
+ app.use('/tasks', tasksRouter);
+ app.use('/privacy', privacyRouter);
+diff --git a/src/services/__tests__/connectorState.test.ts b/src/services/__tests__/connectorState.test.ts
+new file mode 100644
+index 0000000..64c9576
+--- /dev/null
++++ b/src/services/__tests__/connectorState.test.ts
+@@ -0,0 +1,40 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { connectorState } from '../connectorState.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** The frontend's 06:30Z item 8: has the person's Claude connector logged in. */
++describe('connectorState', () => {
++  it('is connected while a grant can still be refreshed, and seen at the newest grant', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ connected: true, last_seen_at: '2026-10-10T08:00:00Z' }],
++    } as never);
++    await expect(connectorState(171)).resolves.toEqual({
++      connected: true,
++      last_seen_at: '2026-10-10T08:00:00Z',
++    });
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('revoked_at IS NULL AND refresh_expires_at > NOW()');
++    expect(sql).not.toContain('token_hash');
++    expect(params).toEqual(['171']);
++  });
++
++  it('is not connected for a person who never logged in', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ connected: null, last_seen_at: null }] } as never);
++    await expect(connectorState(171)).resolves.toEqual({ connected: false, last_seen_at: null });
++  });
++
++  it('keeps last_seen_at when every grant was revoked or ran out', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ connected: false, last_seen_at: '2026-09-01T10:00:00Z' }],
++    } as never);
++    await expect(connectorState(171)).resolves.toEqual({
++      connected: false,
++      last_seen_at: '2026-09-01T10:00:00Z',
++    });
++  });
++});
+diff --git a/src/services/connectorState.service.ts b/src/services/connectorState.service.ts
+new file mode 100644
+index 0000000..b47f6c3
+--- /dev/null
++++ b/src/services/connectorState.service.ts
+@@ -0,0 +1,31 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * The frontend's 06:30Z item 8 (onboarding B8): has this person's Claude
++ * connector logged in, and when was it last seen?
++ *
++ * Read from the OAuth grants the connector holds (oauth_tokens). Connected
++ * means a grant that can still be refreshed and was not revoked. „Last seen"
++ * is the newest grant: one is issued at login and again at every refresh, and
++ * an access token lives one hour — so a connector in use is seen at least
++ * hourly, and one left alone stops moving. No token is read or returned.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++
++export interface ConnectorState {
++  readonly connected: boolean;
++  readonly last_seen_at: string | null;
++}
++
++export async function connectorState(userId: number): Promise<ConnectorState> {
++  const result = await query<{ connected: boolean | null; last_seen_at: string | null }>(
++    `SELECT BOOL_OR(revoked_at IS NULL AND refresh_expires_at > NOW()) AS connected,
++            MAX(created_at) AS last_seen_at
++       FROM oauth_tokens
++      WHERE user_id = $1`,
++    [String(userId)],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  return { connected: row?.connected === true, last_seen_at: row?.last_seen_at ?? null };
++}
+-- 
+2.43.0
+

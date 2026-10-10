@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 10 Oct, 08:23Z — day chain: 0065, 0059, 0064 
 
 ## OPEN
 
+### 10 Oct, 09:20Z — `0076` (frontend list item 8: the connector state)
+
+**`0076` feat(connector).** In `patches/afternoon-1250/`, after 0075. Passed verify on the main line (8,100 tests).
+- **What it adds:** a new router, `GET /connector/state` → `{ connected, last_seen_at }`, read from `oauth_tokens`.
+- **Effect:** read-only, with no new text and no migration. No token is read out.
+- **DONE WHEN:** a seat with a live Claude connector reads `connected: true` and a recent `last_seen_at`. A seat that never connected reads
+  `false` / `null`.
+- **Order:** after 0074, after 09:15Z.
+
 ### 10 Oct, 09:00Z — `0075` (docs only: FOR_FRONTEND says what is live)
 
 **`0075` docs(frontend).** A FOR_FRONTEND note only, with no code: `plans`, the routes board and `role` are live, and 0069, 0073 and 0074 are
