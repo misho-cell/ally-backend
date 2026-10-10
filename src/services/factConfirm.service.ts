@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { FACT_FIELD_TYPES, submitContactFact } from './contactFacts.service';
 import { RunLanguage } from './runLanguage';
+import { whereNowValue } from './whereNowValue';
 
 /**
  * 1690 (A7, the intelligence research of 6 October, D679/D680): job facts go
@@ -212,11 +213,12 @@ export async function answerConfirm(
   if (open === null) return null;
   const t = textsFor(await languageOf());
   if (open.state === 'no_waiting') {
-    const value = line.trim();
-    if (value === '' || value.length > WHERE_NOW_MAX_CHARS || confirmTapOf(value) !== null) {
+    const said = line.trim();
+    if (said === '' || said.length > WHERE_NOW_MAX_CHARS || confirmTapOf(said) !== null) {
       await settle(open.id, 'dropped');
       return null;
     }
+    const value = whereNowValue(said);
     await submitContactFact(ownerId, open.phone, open.field_type, value, 'chat', 'stated');
     await settle(open.id, 'no_saved');
     return t.saved(open.name, value);
