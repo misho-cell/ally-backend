@@ -46,6 +46,8 @@ const GUARDED_AT_THE_ROUTER = [
   'contacts.routes.ts',
   // The frontend's 06:30Z item 8: the person's own connector state.
   'connector.routes.ts',
+  // 1882 / item 10: the person's own setup list.
+  'setup.routes.ts',
   // #1850: the evening card is the person's own questions.
   'eveningCard.routes.ts',
   'status.routes.ts',
