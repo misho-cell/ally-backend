@@ -242,9 +242,21 @@ async function labelsForPhones(
  * re-running this after an answer is saved naturally re-ranks the queue,
  * since the answered fact no longer counts as missing.
  */
+/**
+ * 3500 (the tester's 50760, seat 182562): the day's question path gave up on
+ * a slow build after its 6 s budget and the run went without the question —
+ * but the build carried on and logged its item as surfaced 61 s later, which
+ * spent the day's one question on a question nobody was shown. A caller that
+ * may abandon the build logs for itself, only what it actually handed on.
+ */
+export interface QueueOptions {
+  readonly logSurfacing: boolean;
+}
+
 export async function buildCuriosityQueue(
   userId: string,
   limit: number = QUEUE_LIMIT_DEFAULT,
+  options: QueueOptions = { logSurfacing: true },
 ): Promise<CuriosityItem[]> {
   const tierBuilders = [
     () => lookalikeCandidates(userId),
@@ -314,10 +326,7 @@ export async function buildCuriosityQueue(
   // Fire-and-forget: T16's "curiosity_answer_rate" needs a record of what
   // was ever shown, but logging that must never slow down or break handing
   // the queue back to the model.
-  void logSurfacedItems(userId, finalItems).catch((err: unknown) =>
-    // eslint-disable-next-line no-console
-    console.error('[curiosity-queue] surfacing log failed:', (err as Error).message),
-  );
+  if (options.logSurfacing) logInBackground(userId, finalItems);
 
   return finalItems;
 }
@@ -397,7 +406,11 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
   );
   if (recent.rows.length > 0) return null;
 
-  const items = await withinBudget(buildCuriosityQueue(userId, 1), CURIOSITY_BUDGET_MS, 'queue');
+  const items = await withinBudget(
+    buildCuriosityQueue(userId, 1, { logSurfacing: false }),
+    CURIOSITY_BUDGET_MS,
+    'queue',
+  );
   // Giving up is NOT the same as finding nothing, and the difference lasts a
   // day: the negative cache below suppresses this account's curiosity for 24
   // hours, so recording a timeout as „empty" would quietly switch the feature
@@ -409,6 +422,8 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
   }
   emptyQueueCheckedAt.delete(userId);
   const item = items[0];
+  // Logged only now, when the item is really handed on (3500).
+  logInBackground(userId, [item]);
   return {
     kind: 'curiosity',
     task_id: null,
@@ -425,6 +440,14 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
         'Save the answer with save_contact_fact. Skipping it entirely is fine.',
     },
   };
+}
+
+/** Fire-and-forget: the surfacing record must never slow down or break the answer. */
+function logInBackground(userId: string, items: CuriosityItem[]): void {
+  void logSurfacedItems(userId, items).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[curiosity-queue] surfacing log failed:', (err as Error).message),
+  );
 }
 
 async function logSurfacedItems(userId: string, items: CuriosityItem[]): Promise<void> {
