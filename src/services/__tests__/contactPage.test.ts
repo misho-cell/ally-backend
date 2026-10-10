@@ -19,9 +19,9 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 beforeEach(() => mockQuery.mockReset());
 
 /** Answers the page's reads in the order they are made. */
-function pageReads(warm: boolean, distant: boolean): void {
+function pageReads(warm: boolean, distant: boolean, alias = 'ნინო'): void {
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias: 'ნინო' }] });
+    if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias }] });
     if (sql.includes('FROM "UserTags"'))
       return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
     if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
@@ -57,6 +57,7 @@ describe('contactPageFor', () => {
     expect(page).toEqual({
       id: 'c_mine',
       name: 'ნინო',
+      saved_as: null,
       role: 'ბუღალტერი · TBC',
       on_netai: true,
       labels: ['ბუღალტერი'],
@@ -81,6 +82,15 @@ describe('contactPageFor', () => {
     const publicSql = sqls.find((sql) => sql.includes('source = $2')) ?? '';
     expect(publicSql).toContain('retracted_at IS NULL');
     expect(publicSql).not.toContain('submitted_by_user_id');
+  });
+
+  /** 4390 (box 51286): the list showed „💙" as saved_as and the page showed nothing. */
+  it('carries a label with no letter as saved_as, as the list row does', async () => {
+    pageReads(true, false, '💙');
+    await expect(contactPageFor(171, 'c_mine')).resolves.toMatchObject({
+      name: null,
+      saved_as: '💙',
+    });
   });
 
   it('reads red as distant and no confirmed tie as neutral', async () => {

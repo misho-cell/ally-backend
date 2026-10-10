@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { confirmedWarmTieSql } from './chorusCap';
 import { decodeContactRef } from './mcp/contactRef';
+import { savedAs, shownName } from './contactBook.service';
 import { normalizePhone, phoneDigits } from './phone';
 import { isDisplayableTag } from './tools/getContactFullProfile';
 import { fetchAccountStates, isMemberPhone } from './tools/membership';
@@ -48,6 +49,8 @@ export interface ContactExclusionView {
 export interface ContactPageView {
   readonly id: string;
   readonly name: string | null;
+  /** 4390 (box 51286): the label as saved when it has no letter („💙"); null otherwise, as on the list row. */
+  readonly saved_as: string | null;
   readonly role: string | null;
   readonly on_netai: boolean;
   readonly labels: readonly string[];
@@ -165,7 +168,8 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
   ]);
   return {
     id,
-    name: name !== null && /\p{L}/u.test(name) ? name : null,
+    name: shownName(name),
+    saved_as: savedAs(name),
     role: roleFrom(facts),
     on_netai: isMemberPhone(accounts, phone),
     labels,

@@ -153,6 +153,7 @@ describe('GET /contacts and /contacts/:id', () => {
     mockPage.mockResolvedValueOnce({
       id: 'c_x',
       name: 'ნინო',
+      saved_as: null,
       role: null,
       on_netai: true,
       labels: [],

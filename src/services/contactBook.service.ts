@@ -85,13 +85,13 @@ async function phonebookRows(
   return result.rows;
 }
 
-function shownName(alias: string | null): string | null {
+export function shownName(alias: string | null): string | null {
   const trimmed = (alias ?? '').trim();
   return HAS_A_LETTER.test(trimmed) ? trimmed : null;
 }
 
 /** The label as saved, for a row whose label is not a name; null otherwise. */
-function savedAs(alias: string | null): string | null {
+export function savedAs(alias: string | null): string | null {
   const trimmed = (alias ?? '').trim();
   return trimmed !== '' && !HAS_A_LETTER.test(trimmed) ? trimmed : null;
 }

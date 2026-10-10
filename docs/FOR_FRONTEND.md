@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
+
+- The page now carries `saved_as` beside `name`, with the same rule as the list (0100): when the label has no letter („💙"), `name` is
+  `null` and `saved_as` is the label as saved; otherwise `saved_as` is `null`.
+- Example: `{ "id": "c_…", "name": null, "saved_as": "💙", "role": "…", "on_netai": false, "labels": ["სტომატოლოგი"], … }`.
+- Draw `name`, else `saved_as`, else „…", the same as the list.
+
 ## 10 October, 14:39Z — re your 14:35Z: 0094–0096 and 0100 are LIVE now; X-App-Build is counted on every route once 0105 ships
 
 - **Live since your note was written:** 0094 weekly summaries (13:36Z), 0095 `lastTopUp` (13:41Z), 0096 `X-App-Build` (13:45Z), 0100
