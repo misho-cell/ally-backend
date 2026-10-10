@@ -6195,3 +6195,14 @@ automatically."
 - **Confirmed again, 10 October:** ~05:15 UTC in the code session's chat, „კი, მე-5 პუნქტი დაამტკიცე"; ~05:16 UTC in the operations session's chat, on shipping 0059, „კი, დილით გაუშვი" (TO_CODE 05:17Z).
 - **Not in it:** the chat command for the same thing. It needs a tool text (D44) and waits for its own yes.
 - **Undo, per fact:** `UPDATE contact_facts SET retracted_at = NULL, removed_by_subject_at = NULL WHERE id = <id>;` Their earlier `is_public` / `is_matchable` values are not kept anywhere, so they stay false until the saver saves the fact again. Removing the routes is a revert of 0059. The column may stay.
+
+**§123 — 10 October ~06:20 UTC, Misho in the code session's chat: „BD კი"** (NIGHT_QUESTIONS BD, 1691: the wave order gate).
+
+- **What turns on:** `WAVE_ORDER_GATE_ON = true` (askWaves.service.ts). While a wave has room, an ask goes only to the next people in the server's order (A8, 1691). Anyone else is refused, and the model reads this exact line: „ეს ადამიანი ჯერ არ არის რიგში. ამ ტალღაში ჯერ ამათ მისწერე: {names}. დანარჩენები შემდეგ ტალღაში მიიღებენ — სერვერი თვითონ გეტყვის. მფლობელს არაფერს ეუბნები."
+- The person the owner named is never held back (D625). No owner-facing text.
+- **Undo:** `WAVE_ORDER_GATE_ON = false`, one line, and ship.
+
+**§124 — 10 October ~06:20 UTC, Misho in the code session's chat: „BE კი"** (NIGHT_QUESTIONS BE, 4160 note b).
+
+- **What turns on:** `SEE_HELPER_ON = true` (listItems.service.ts). In the list Excel, a row whose need column names a helper, with way-in „nobody" and state „no route", says „იხ. დამხმარე" in those two cells. The other languages say „see the helper" / „см. помощника" / „ver quién ayuda". Every other row is unchanged.
+- **Undo:** `SEE_HELPER_ON = false`, one line, and ship.
