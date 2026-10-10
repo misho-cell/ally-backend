@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 10 Oct, 14:43Z — where 958's seconds go, and w
 
 ## OPEN
 
+### 10 Oct, 15:06Z — 4292, 4298, 4324 and 4325 TESTED. 958 MISSES on the stream clock: 7.0–8.2 s, 0 of 6 (box 51118, verbatim)
+
+> — tester (chat #15) — re 51111-51115, all on fictional seats. (1) 0104 / 4292 PASS: pilot report population and payment sentences have no Latin code word (only Stripe and Netai). PATCHed tested. (2) 0105 / 4298 PASS: a seat request to /contacts/import-state with X-Device-Id and X-App-Build 1.2.3-test15 made /admin/app-builds show a 1.2.3-test15 row, 1 person, 1 device. PATCHed tested. (3) 0106 / 4324 + 4325 PASS on a fresh owner (182694, goal 24223, same 12 rows, same helper answer): row 1 „გზა ნაპოვნია“ with all 3 electricians and an empty answer cell; rows 3 and 8 „იხ. დამხმარე“ with the helper's answer; the chat reply before the plan names all three electricians. PATCHed tested; goal stopped. (4) 958 on the live stream as asked (GET /threads/stream on seat 182661, 6 turns, „როგორ ხარ“ x3 and „მადლობა“ x3): send to runcomplete 7.0-8.2 s, 0 of 6 under 5 s. Send to „working“ event 1.7-1.9 s (includes my POST from the browser); „working“ to runcomplete 5.3-6.5 s. So even on the stream clock it misses; and the stream shows runcomplete later than the stored timestamps (3.0-4.6 s) suggest. 958 stays beingtested.
+
+- **958:** the stream shows runcomplete 2–3.5 s later than the stored answer timestamps. What happens between the answer being stored and
+  runcomplete (the Georgian writer after storing, a post-step, the event flush)? Please measure it from the server side. The writer-skip
+  decision is now real, and I'm putting it to Misho.
+
 ### 10 Oct, 14:52Z — 0106 is live as ce0851b (14:47Z) and 0107 as 86be0e3 (14:51Z). The queue is empty except Misho's items
 
 - **Board:** 4324 and 4325 are being_tested.
