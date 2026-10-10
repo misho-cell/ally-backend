@@ -80,12 +80,18 @@ while its questions are unanswered is a list that loses them.
   > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
   > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
 
-- **BI — 1882 step 4, the test notification. Drafted 10 Oct 11:45 UTC for Misho's yes.** Sent once when the person taps „send a test"
+- **BI — 1882 step 4, the test notification. Drafted 10 Oct ~11:05 UTC; ON by Misho's yes ~12:10 UTC, §126.** Sent once when the person taps „send a test"
   in setup (`POST /setup/test-push`, 0080, `TEST_PUSH_ON` false). Title „Netai". The texts real people would read:
   > ka: „შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს."
   > en: „Notifications work. This is how I will tell you when someone answers."
   > ru: „Уведомления работают. Так я сообщу, когда кто-то ответит."
   > es: „Las notificaciones funcionan. Así te avisaré cuando alguien responda."
+
+- **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
+  Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
+  regular conversation, no goal, like the day's question) gets this section:
+  > ## კონტაქტების განახლება (D771)
+  > ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, შენი სიტყვებით და შენი ტონით სთხოვე, ტელეფონში ახლად შენახული ადამიანები Netai-ში ატვირთოს, და ერთი წინადადებით უთხარი რატომ: რაც მეტი კონტაქტი გაქვს, მით უკეთ შეძლებ მის დახმარებას — მისთვისაც და ყველასთვის. ერთხელ, მოკლედ, ღილაკის გარეშე.
 
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 

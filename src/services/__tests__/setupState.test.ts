@@ -120,10 +120,15 @@ describe('the setup list', () => {
 });
 
 describe('the test notification', () => {
-  it('is off until Misho’s yes on its text (BI), and sends nothing', async () => {
-    expect(TEST_PUSH_ON).toBe(false);
-    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.Off);
-    expect(mockQuery).not.toHaveBeenCalled();
+  it('is on, on Misho’s yes to its text (BI, §126); no subscription sends nothing', async () => {
+    expect(TEST_PUSH_ON).toBe(true);
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.NoSubscription);
+  });
+
+  it('sends once to a person with a subscription', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ one: 1 }] } as never);
+    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.Sent);
   });
 
   it('has its line in every language', () => {

@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 10 October, 12:15Z — the founder's answers (D772, D773) and the test push, on Misho's yes (patch 0088, not live yet)
+
+- **`GET /contacts` rows gain `phone`** (D772, the founder's option გ): the full number as `+digits`, e.g.
+  `{ "id": "c_Zq3…", "name": "ნინო ბერიძე", "phone": "+995599000001", "on_netai": true }`. Use the `id` for the page URL as before. The number
+  never needs to be in a URL.
+- **`GET /contacts/:id` gains `public_facts`** (D773): what is public or published about the person, each with its source:
+  `"public_facts": [ { "field": "employer", "value": "TBC Bank", "source_url": "https://…", "fact_date": "2026-05-01" } ]`.
+  `source_url` and `fact_date` can be null. It is empty for most contacts, and never holds what other members saved.
+- **`POST /setup/test-push` is ON** (BI): 200 `{ "sent": true }`, or 404 with no subscription yet. The „did it arrive?" step can be built.
+- **The monthly reminder (D771)** will be the assistant's own words in the chat, not a push text. Its instruction waits for Misho's yes
+  on the exact wording. The profile switch stays as it is until I write here.
+
 ## 10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)
 
 ```

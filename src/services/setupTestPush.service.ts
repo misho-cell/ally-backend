@@ -5,10 +5,10 @@ import { userLanguage } from './threads.service';
 
 /**
  * 1882 step 4: after the person allows notifications, one test push — then
- * „did it arrive?" on the screen. Off until Misho's yes on the exact lines
- * below (NIGHT_QUESTIONS BI): a new text real people read.
+ * „did it arrive?" on the screen. On, on Misho's yes to the exact lines
+ * below (BI, §126).
  */
-export const TEST_PUSH_ON = false;
+export const TEST_PUSH_ON = true;
 const QUERY_TIMEOUT_MS = 5_000;
 const SETUP_URL = '/setup';
 

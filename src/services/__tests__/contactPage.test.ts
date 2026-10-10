@@ -25,6 +25,17 @@ function pageReads(warm: boolean, distant: boolean): void {
     if (sql.includes('FROM "UserTags"'))
       return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
     if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
+    if (sql.includes('FROM contact_facts') && sql.includes('source = $2'))
+      return Promise.resolve({
+        rows: [
+          {
+            field: 'employer',
+            value: 'TBC Bank',
+            source_url: 'https://example.ge/team',
+            fact_date: '2026-05-01',
+          },
+        ],
+      });
     if (sql.includes('FROM contact_facts'))
       return Promise.resolve({
         rows: [
@@ -51,13 +62,25 @@ describe('contactPageFor', () => {
       labels: ['ბუღალტერი'],
       warmth: Warmth.Warm,
       facts: expect.any(Array),
+      public_facts: [
+        {
+          field: 'employer',
+          value: 'TBC Bank',
+          source_url: 'https://example.ge/team',
+          fact_date: '2026-05-01',
+        },
+      ],
       exclusions: [{ excluded_for: 'office in Rustavi', reason: null }],
     });
     const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
     expect(sqls.some((sql) => sql.includes('ask_boundaries'))).toBe(false);
-    expect(sqls.find((sql) => sql.includes('FROM contact_facts'))).toContain(
+    expect(sqls.find((sql) => sql.includes('submitted_by_user_id'))).toContain(
       'submitted_by_user_id = $2',
     );
+    // D773: the public part is the research load only, never another member's saved facts.
+    const publicSql = sqls.find((sql) => sql.includes('source = $2')) ?? '';
+    expect(publicSql).toContain('retracted_at IS NULL');
+    expect(publicSql).not.toContain('submitted_by_user_id');
   });
 
   it('reads red as distant and no confirmed tie as neutral', async () => {
