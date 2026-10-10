@@ -188,9 +188,11 @@ export async function widenWaveOnSilence(
  * to the next people in the server's order (A8), and anyone else is refused
  * with the line below. The person the owner named is never held back (D625).
  *
- * OFF until Misho's yes on the exact line (D44): the line is model-facing.
+ * ON since Misho's yes on the exact line, 10 Oct ~06:20 UTC: „BD კი" (ADMIN_WRITE_OPERATIONS §123).
+ * Off 10:55Z–(this commit) on box 50631; the refusal there was the wave cap's,
+ * and its cause — the owner's named person not recognised — is fixed (4291).
  */
-export const WAVE_ORDER_GATE_ON = false;
+export const WAVE_ORDER_GATE_ON = true;
 
 /** The wave's free places, filled in the server's order. */
 export function nextInOrder(snapshot: WaveSnapshot): readonly PlanPerson[] {
