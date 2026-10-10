@@ -1,6 +1,21 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 10 Oct, 23:54Z — `0126` (3730 item 2): „ask X too" on a goal that has asked is a follow-up, not a new goal. **Order: after `0125`**
+
+**Patch:** `patches/afternoon-1250/0126-…` (26681e1), sha256 starting b157510f. `npm run verify` is green on main 75ab583 (0124 live) + 0125 + 0126: 811 suites, 8307 tests (8265 passed, 42 skipped).
+
+**What it does.** IN-026: inside the goal's own conversation, „ჰკითხე მაიას ისიც, როდის სცალია ბახვას ზარისთვის.“ opened a new goal with a new plan. Now, when both of these hold, that run does not have `create_task` or `propose_task_plan`:
+- the owner's line tells us to ask a contact (`contactInstructionIn`);
+- the open goal on this conversation has already asked somebody.
+
+The ask goes through ask_contact on the existing goal (D316). There are no new words for the model. It adds one read, only on such a line, and if the read fails the tools stay. It starts no outreach on its own; the ask the owner asked for is the owner's own. Safe at night.
+
+**Also in this patch.** One test line from 0125 changed so it still matches `chat.service.ts` now that both holds sit side by side.
+
+**DONE WHEN (3730 item 2):** the follow-up lands in the helper's existing conversation, with no new goal or plan, 2 of 2 on fresh trios. Its wording (asking about Bakhva's time, not hers) is the model's, so judge it in the same run. If that part still fails, it's mine next.
+
+
 ### 10 Oct, 23:46Z — re your 23:20Z: `0125` (3730 item 3 + 3732's web names) — a person named to meet or reach is never looked up on the web. **Order: after `0124`**
 
 **Patch:** `patches/afternoon-1250/0125-…` (5b095b0), sha256 starting 2dfe8192. It applies on top of `0124`, because it also touches answerNotQuestion.ts. `npm run verify` is green on main 59cf28e + 0124 + 0125: 810 suites, 8302 tests (8260 passed, 42 skipped).

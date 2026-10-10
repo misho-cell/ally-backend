@@ -1,0 +1,188 @@
+From 8a5cfbb9e634991ba5820bda50bacc3e5a3966ff Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 23:49:45 +0000
+Subject: [PATCH] =?UTF-8?q?3730=20(2):=20=E2=80=9Eask=20X=20too"=20on=20a?=
+ =?UTF-8?q?=20goal=20that=20has=20asked=20is=20a=20follow-up,=20not=20a=20?=
+ =?UTF-8?q?new=20goal?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MASTER TEST RUN chat #8, IN-026 (2 of 2): after the helper agreed, the
+owner wrote in the same goal conversation „ჰკითხე მაიას ისიც, როდის
+სცალია ბახვას ზარისთვის." and the run opened a new goal with its own
+plan; the helper got a new conversation asking her when she was free.
+
+An owner's line that tells us to ask a contact (contactInstructionIn),
+on a conversation whose open goal has already asked somebody, is a
+follow-up on that goal (D316: a person the owner names needs no plan).
+That run does not hold create_task or propose_task_plan — no new words
+to the model, the tools are not offered, as inviteHeld does. One read,
+only when the line is such an instruction; it fails towards offering
+the tools.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/followUpInGoal.test.ts | 50 +++++++++++++++++++
+ src/services/__tests__/personByName.test.ts   |  2 +-
+ src/services/chat.service.ts                  |  6 ++-
+ src/services/followUpInGoal.ts                | 46 +++++++++++++++++
+ 4 files changed, 102 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/followUpInGoal.test.ts
+ create mode 100644 src/services/followUpInGoal.ts
+
+diff --git a/src/services/__tests__/followUpInGoal.test.ts b/src/services/__tests__/followUpInGoal.test.ts
+new file mode 100644
+index 0000000..1bd4f59
+--- /dev/null
++++ b/src/services/__tests__/followUpInGoal.test.ts
+@@ -0,0 +1,50 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from '../followUpInGoal';
++
++/** 3730 (2), IN-026: „ask Maia too" in the goal's own conversation opened a new goal. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const FOLLOW_UP = 'ჰკითხე მაიას ისიც, როდის სცალია ბახვას ზარისთვის.';
++
++function asked(value: boolean): void {
++  mockQuery.mockResolvedValue({ rows: [{ asked: value }], rowCount: 1 } as never);
++}
++
++beforeEach(() => mockQuery.mockReset());
++
++describe('isFollowUpInGoal', () => {
++  it('is a follow-up when the open goal here has already asked somebody', async () => {
++    asked(true);
++    await expect(isFollowUpInGoal(47450, FOLLOW_UP)).resolves.toBe(true);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(sql).toContain("k.thread_id = $1 AND k.status = 'open' AND a.status <> 'cancelled'");
++    expect(params).toEqual([47450]);
++  });
++
++  it('is not one when the goal has asked nobody yet', async () => {
++    asked(false);
++    await expect(isFollowUpInGoal(47450, FOLLOW_UP)).resolves.toBe(false);
++  });
++
++  it('reads nothing for a line that asks no contact', async () => {
++    await expect(isFollowUpInGoal(47450, 'რა ხდება?')).resolves.toBe(false);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('fails towards false when the read fails', async () => {
++    mockQuery.mockRejectedValue(new Error('timeout'));
++    await expect(isFollowUpInGoal(47450, FOLLOW_UP)).resolves.toBe(false);
++  });
++
++  it('holds the tools that open and plan a goal, in the owner run tools', () => {
++    expect([...NEW_GOAL_TOOL_NAMES].sort()).toEqual(['create_task', 'propose_task_plan']);
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      'const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));',
++    );
++    expect(chat).toContain('(newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)),');
++  });
++});
+diff --git a/src/services/__tests__/personByName.test.ts b/src/services/__tests__/personByName.test.ts
+index 2515345..cd07e05 100644
+--- a/src/services/__tests__/personByName.test.ts
++++ b/src/services/__tests__/personByName.test.ts
+@@ -29,6 +29,6 @@ describe('asksForAPersonByName', () => {
+   it('is applied to the owner run tools, beside the invite holds', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     expect(chat).toContain('const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);');
+-    expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name)),');
++    expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name))');
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7e58305..b9acc74 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -229,6 +229,7 @@ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+ import { geoName } from './georgianCase';
+ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+ import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
++import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+ import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
+ import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
+ import {
+@@ -15568,6 +15569,8 @@ export async function processChat(
+   const linkHeld = inviteHeld || asksForTheLink(userMessage);
+   // 3730 (3), 3732: a person named to meet or reach is found in the network, never on the web.
+   const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
++  // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
++  const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
+   const runTools =
+     !ownerAbsent && isReminderRequestOnly(userMessage)
+       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
+@@ -15575,7 +15578,8 @@ export async function processChat(
+           (tool) =>
+             (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
+             (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
+-            (webHeld || !WEB_TOOL_NAMES.has(tool.name)),
++            (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
++            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)),
+         );
+   const promptReadyMs = Date.now() - startedAt;
+   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
+diff --git a/src/services/followUpInGoal.ts b/src/services/followUpInGoal.ts
+new file mode 100644
+index 0000000..6b53ba9
+--- /dev/null
++++ b/src/services/followUpInGoal.ts
+@@ -0,0 +1,46 @@
++import { query } from '../db/postgres/client';
++import { contactInstructionIn } from './instructionUnsent';
++
++/**
++ * 3730 (2) (MASTER TEST RUN chat #8, IN-026, 2 of 2): after the helper agreed,
++ * the owner wrote in the SAME goal conversation „ჰკითხე მაიას ისიც, როდის
++ * სცალია ბახვას ზარისთვის." — and the run opened a NEW goal (create_task +
++ * propose_task_plan), so the helper got a new conversation asking HER when SHE
++ * is free. An instruction to ask a contact, on a conversation whose open goal
++ * has already asked somebody, is a follow-up on that goal (D316 needs no plan
++ * for a person the owner names). So that run does not hold the two tools that
++ * open a goal and plan it — no new words to the model, the tools are simply
++ * not offered (as inviteHeld does for invite_contact).
++ */
++const FOLLOW_UP_QUERY_TIMEOUT_MS = 4_000;
++
++/** The tools that open a new goal or plan one. */
++export const NEW_GOAL_TOOL_NAMES: ReadonlySet<string> = new Set([
++  'create_task',
++  'propose_task_plan',
++]);
++
++/** Has the open goal on this conversation already asked somebody? Fails towards false. */
++async function openGoalHasAsked(threadId: number): Promise<boolean> {
++  try {
++    const result = await query<{ asked: boolean }>(
++      `SELECT EXISTS (
++                SELECT 1 FROM tasks k JOIN task_asks a ON a.task_id = k.id
++                 WHERE k.thread_id = $1 AND k.status = 'open' AND a.status <> 'cancelled'
++              ) AS asked`,
++      [threadId],
++      FOLLOW_UP_QUERY_TIMEOUT_MS,
++    );
++    return result.rows[0]?.asked === true;
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(`[follow-up-in-goal] thread ${threadId}:`, (err as Error).message);
++    return false;
++  }
++}
++
++/** Is the owner's line a follow-up to ask a contact on a goal that has already asked? */
++export async function isFollowUpInGoal(threadId: number, ownerLine: string): Promise<boolean> {
++  if (contactInstructionIn(ownerLine) === null) return false;
++  return openGoalHasAsked(threadId);
++}
+-- 
+2.43.0
+
