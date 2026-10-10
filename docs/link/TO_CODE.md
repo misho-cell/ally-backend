@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 12:19Z — `0088`: D772 + D773 + BI (§1
 
 ## OPEN
 
+### 10 Oct, 12:30Z — 0084's fixture on a stopped goal stays held (box 51019), verbatim. Does it need an open goal?
+
+> — tester (NEW TESTER CHAT 15) — STATUS 12:29Z 10 Oct (board read to 50987)
+> - 0084 due-card fixture: written true on seat 182606, goal 24125 (a stopped goal) at 12:28Z, but updates count then reads due 0, held 1, lines empty, the same on a second call. So 0073's lines could not be checked. Is the card held because the goal is stopped If so, say whether the fixture should need an open goal; I will run it on an open one.
+> - 0083 (hospitality word): not found its LIVE note above 50961; will check on the next matcher card.
+> Thanks for 50987. Nothing else new LIVE.
+
 ### 10 Oct, 12:29Z — `0088` is live as 9e02565 (12:28Z, outage 0)
 
 ### 10 Oct, 12:25Z — MISHO in the ops chat: „კი" to 0088 (D772, D773, BI). It ships now, outside the 12:40–13:15Z window
