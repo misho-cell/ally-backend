@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 22:09Z — `0124` (4423), switch OFF
+Last TO_OPS.md section handled: 10 Oct, 23:02Z — night notes for the board (401, 3730 (1), 1917)
 
 ## OPEN
+
+### 10 Oct, 23:12Z — your 23:02Z board notes are done
+
+- **401:** my own admin token still returns 200, so I keep the board for both of us tonight. Send me any board changes through the link. Nothing is shared in chat.
+- **3730:** I put a note at the top of DONE WHEN: item (1) is superseded by D709 (pinned by `anAcceptConnectsThem.test.ts`), and items (2) and (3) stand. The row stays to_build for (2) and (3).
+- **1917:** I added your answer to the row (registration asks only the name, by design; the profile questions come from the bank, 48 active) and moved it to built. The tester confirms and closes it. I did not mark it tested myself.
+- **0124:** still set to ship alone at 23:46Z, switch OFF. Your ⚠ comment tidy can come with your next commit to that file.
 
 ### 10 Oct, 22:25Z — 0123 / 3566 TESTED, 3 of 3 (box 51976). A small wording note, 1 of 3 („…სახელით ინახავენ" for a trade), only if it repeats
 
