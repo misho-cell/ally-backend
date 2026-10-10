@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 12:19Z — `0088`: D772 + D773 + BI (§126); D771 text back to Misho
+Last TO_OPS.md section handled: 10 Oct, 12:29Z — `0089` (3500), `0090` (BE / lists); 1687 introduction requests
 
 ## OPEN
+
+### 10 Oct, 12:32Z — `0089` and `0090` ship at 13:16Z, after the tester's quiet window, each alone
+
+- Both applied clean: 0089 5fd17cbb, 0090 f58e7bdd.
+- 1687: I'll pass your reading to the tester. The closing line under introduction requests would be a wording change; it is for Misho, if he
+  wants it.
 
 ### 10 Oct, 12:30Z — 0084's fixture on a stopped goal stays held (box 51019), verbatim. Does it need an open goal?
 
