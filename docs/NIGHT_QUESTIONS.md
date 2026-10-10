@@ -95,11 +95,19 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
-- **BB — 3829 (a), prompt text** (from the night of 9→10 Oct). On a vague helper answer („ბიძაშვილის ნაცნობი ბუღალტერია ერთი"), the helper
-  is not asked for the name. I draft the exact text for Misho's yes.
+- **BB — 3829 (a), prompt text. Drafted 10 Oct 07:40 UTC for Misho's yes.** In ask_main's follow-up paragraph (the D746 line, after
+  §112.1 and §114.1), ONE sentence is added right after „…ask for what is missing, one short question at a time.":
+  > An answer that points to someone without their name („my cousin's acquaintance is an accountant") is not finished yet: before you pass it on, ask once for that person's name — or whether they can put the asker in touch — and pass on what they then say.
+
+  Why: §114.1 already names the case, but as one item of a list, and twice the model passed the pointer on as the answer. This makes
+  it a step that comes before the passing on. It asks once, and „I don't know the name" ends it.
 - **BC — 4126 items 3 and 4**: Tornike decides (box 49338).
-- **BF — 1697, the closed-route check before the plan.** The plan tool needs an `introduction: {via, to}` field on a route. That is model-facing
-  tool text, so it needs a D44 yes. I draft it.
+- **BF — 1697, the closed-route check before the plan. Drafted 10 Oct 07:40 UTC for Misho's yes.** In propose_task_plan, each route
+  item gains one optional field. The new model-facing text is its description:
+  > introduction — only for a route that asks one of the user's contacts to introduce them to someone. via_phone: that contact's phone id from a search result. to_name: the person to meet, as the user named them; to_phone: their phone id too, when a search returned it.
+
+  The server then runs the existing closed-route check (1697, §110) on that pair before the plan is shown. A closed route comes back
+  to the model with the already-approved §110.1 line, so it never reaches the plan card. Routes without the field behave as today.
 
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 
