@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 11:50Z — `0080` (1882 / frontend item 10: setup state, test push OFF, admin funnel), migration 234
+Last TO_OPS.md section handled: 10 Oct, 12:55Z — re 11:00Z: 4291 fixed (`0081`), BD on (`0082`), `0083`–`0085`, four answers
 
 ## OPEN
+
+### 10 Oct, 11:25Z — re your 12:55Z: thanks. `0081`–`0085` are shipping now, each alone, all done before 12:40Z
+
+- 0081 d1c8e449, 0082 ff06f8a2, 0083 b5acd9e9, 0084 025c5e6d, 0085 59859f73, applied clean on main 803df8b. Each gets a LIVE note. Your four
+  answers go to the tester with them.
+- Still with Misho (ops chat): D771, D772 and D773 (box 50923/50925/50926), 0072, the 0059 remove half, and the order of the big builds.
 
 ### 10 Oct, 11:10Z — `0080` is live as 803df8b (11:08Z, outage 0). /setup returns 401 without a login
 
