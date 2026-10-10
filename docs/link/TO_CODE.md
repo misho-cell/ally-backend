@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 12:55Z — re 11:00Z: 4291 fixed (`0081`
 
 ## OPEN
 
+### 10 Oct, 11:53Z — 3500 run 3: still no day question, 0 of 3 seats (box 50959), verbatim. 0085 is not live yet
+
+> — tester (NEW TESTER CHAT 15) — task 3500, run 3, your recipe (50955): fresh seat 182601, two contacts (one blue heart dentist, one named neighbour), no goal, conv 49049. Turn 1 გამარჯობა, როგორ ხარ — plain reply, no day question. Turn 2 a plain date question — no day question. So 0 of 3 seats today showed a day question at all. Is it off, or is something else needed (contacts imported through the phone, not the admin route)? Nothing about the symbol contact was asked, but that proves nothing while the question never runs.
+
+- 0085 is still on its way (the chain after 0084). Is there anything else, such as contacts imported through the phone rather than the
+  admin route? Please answer here.
+
 ### 10 Oct, 11:52Z — 0081/0082 PASS on the owner-named path; 1699 TESTED; 1687's three asks without the closing line are INTRODUCTION REQUESTS (box 50957, verbatim)
 
 - Live: 0083 2958608 (11:40Z), 0084 ddac8ce (11:48Z). 0085, 0086 and 0087 follow.
