@@ -212,10 +212,32 @@ function isGroundedInUser(value: string, userMessage: string): boolean {
   return grounded / words.length > MIN_GROUNDED_SHARE;
 }
 
-/** A present-tense role field whose value or context says otherwise becomes past_role. */
-function correctTense(fieldType: string, value: string, sourceText: string): string {
+/** A clause ends at a sentence mark, a semicolon or a comma. */
+const CLAUSE_SPLIT_RE = /[.;!?\n,]+/u;
+/** Enough of a word to find it again in another case form („საცდელი" in „საცდელ ლოჯისტიკაში"). */
+const CLAUSE_STEM_CHARS = 5;
+const CLAUSE_WORD_RE = /\p{L}{3,}/gu;
+
+/**
+ * 4555's neighbour (tester seats 182796/182797): „ბახვა „სანიმუშო ბანკიდან"
+ * წამოვიდა, ახლა „საცდელ ლოჯისტიკაში" მუშაობს." made the NEW job a past_role
+ * too — „წამოვიდა" was read anywhere in the line. The tense is read from the
+ * clause that names the value; a value found in no clause is read alone.
+ */
+export function clauseOf(value: string, sourceText: string): string {
+  const stems = (normalizeForCompare(value).match(CLAUSE_WORD_RE) ?? []).map((w) =>
+    w.slice(0, CLAUSE_STEM_CHARS),
+  );
+  const clause = sourceText
+    .split(CLAUSE_SPLIT_RE)
+    .find((part) => stems.some((stem) => normalizeForCompare(part).includes(stem)));
+  return clause ?? '';
+}
+
+/** A present-tense role field whose value or own clause says otherwise becomes past_role. */
+export function correctTense(fieldType: string, value: string, sourceText: string): string {
   if (!PRESENT_ROLE_FIELDS.has(fieldType)) return fieldType;
-  const haystack = normalizeForCompare(`${value} ${sourceText}`);
+  const haystack = normalizeForCompare(`${value} ${clauseOf(value, sourceText)}`);
   const past = PAST_MARKERS.some((m) => haystack.includes(m)) || mentionsPastYear(haystack);
   return past ? 'past_role' : fieldType;
 }
