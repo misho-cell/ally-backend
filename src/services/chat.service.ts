@@ -446,6 +446,7 @@ import {
 import { recordWarmth } from './warmth.service';
 import { correctContactFact, keepEndedJob } from './factCorrections.service';
 import { correctionIsAJobThatEnded } from './jobEnded';
+import { withoutSavedClaimOnAQuestion } from './savedClaim';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
@@ -13887,6 +13888,15 @@ async function runToolLoop(
     const notDeleted = notDeletedLine(runLang(runId));
     finalText = notDeleted.text;
     choices = [notDeleted.confirm];
+  }
+
+  // 4490: a plain question saves nothing — an „I saved" sentence under its answer is taken out.
+  if (!ownerAbsent) {
+    finalText = withoutSavedClaimOnAQuestion(
+      finalText,
+      runOwnerLine.get(runId) ?? '',
+      toolNamesUsed,
+    );
   }
 
   // 3796: „saved your offer" is said only when save_offer ran; otherwise the truth and a button.
