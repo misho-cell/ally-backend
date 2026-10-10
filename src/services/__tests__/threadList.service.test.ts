@@ -255,3 +255,19 @@ describe('a conversation in the list names its goal and whether it has a list', 
     }
   });
 });
+
+/** The frontend's 06:30Z item 3: who the owner is in each conversation's work. */
+describe('the role on each row', () => {
+  it('is read in the same query, mediator before addressee before initiator', async () => {
+    firstPage([], [{ ...CONVERSATION, role: 'mediator' }], []);
+    const out = await getThreadsForUser('501', { limit: 30 });
+    expect(out[0].role).toBe('mediator');
+    const sql = String(mockQuery.mock.calls[1][0]);
+    const at = (word: string): number => sql.indexOf(`THEN '${word}'`);
+    expect(sql).toContain('AS role');
+    expect(sql).toContain('mr.mediator_thread_id = t.id');
+    expect(at('mediator')).toBeGreaterThan(-1);
+    expect(at('mediator')).toBeLessThan(at('addressee'));
+    expect(at('addressee')).toBeLessThan(at('initiator'));
+  });
+});
