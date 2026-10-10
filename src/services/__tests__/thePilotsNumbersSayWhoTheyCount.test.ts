@@ -73,8 +73,10 @@ describe('the population is written into the query, not assumed', () => {
   it('carries the rule in the payload, so a number cannot travel without it', async () => {
     const report = await pilotReport(7);
 
-    expect(report.population).toContain('hasAccessToAlly');
-    expect(report.population).toContain('test_seats');
+    expect(report.population).toContain('დარეგისტრირდა');
+    expect(report.population).toContain('სატესტო ანგარიშების სიაში');
+    // 4292 (tester box 51104): no column or table names inside the sentences.
+    expect(report.population).not.toMatch(/hasAccessToAlly|test_seats/);
     expect(report.population).toContain('Ally-ის 62,200 ძველი ანგარიში');
     // And it says USE first, because that is what the flag alone got wrong.
     // 4292: in Georgian, as the page is.
