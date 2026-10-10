@@ -43,11 +43,13 @@ import {
 import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
 import {
   A2A_ROUND_CAP,
+  isAssistantOnlyRound,
   needsTheOwner,
   ownerMustAnswerNote,
   RoundInput,
   roundsAfter,
 } from './a2aRounds';
+import { ANSWER_NOT_QUESTION_NOTE, answersAQuestionWithAQuestion } from './answerNotQuestion';
 import { withoutConditionStated } from './healthDisclosure';
 import { isTypedDecline } from './typedDecline';
 import { Prematch, prematchMany, PrematchWord } from './prematch.service';
@@ -219,6 +221,8 @@ export type AskRefusalReason =
   | 'declined_recently'
   /** 1688 (A5): two assistant-only rounds with this person already — the owner answers now. */
   | 'owner_must_answer'
+  /** 4423: an assistant-only answer to a helper's question was a question itself. */
+  | 'answer_is_a_question'
   /**
    * #1915: the recipient's own boundary covers the subject. Named so that
    * neither the code nor the words give the asker's run a topic or a refusal
@@ -1364,6 +1368,7 @@ async function createAskNow(
     from_user_id: string;
     seconds_ago: number;
     a2a_rounds: number;
+    answer: string | null;
   }>(
     // The daily check (8 Oct, 00:38:56Z, goal 5580): the reader had deleted
     // that conversation, and the new question was written into a thread that
@@ -1373,7 +1378,7 @@ async function createAskNow(
                  THEN a.ask_thread_id END AS ask_thread_id,
             a.status, a.from_user_id::text AS from_user_id,
             EXTRACT(EPOCH FROM (NOW() - a.created_at))::int AS seconds_ago,
-            a.a2a_rounds
+            a.a2a_rounds, a.answer
      FROM task_asks a
      WHERE a.task_id = $1 AND a.to_user_id = $2 AND a.status IN ('sent', 'answered')
      ORDER BY a.id DESC LIMIT 1`,
@@ -1531,6 +1536,17 @@ async function createAskNow(
     // eslint-disable-next-line no-console
     console.log(`[a2a] task ${taskId}: ${A2A_ROUND_CAP} assistant-only rounds — the owner answers`);
     return { sent: false, reason: 'owner_must_answer', error: ownerMustAnswerNote(toName) };
+  }
+  if (
+    answersAQuestionWithAQuestion({
+      assistantOnly: isAssistantOnlyRound(rounds),
+      helperAnswer: live.rows[0]?.status === 'answered' ? (live.rows[0]?.answer ?? null) : null,
+      reply: trimmed,
+    })
+  ) {
+    // eslint-disable-next-line no-console
+    console.log(`[a2a] task ${taskId}: refused, a helper's question answered with a question`);
+    return { sent: false, reason: 'answer_is_a_question', error: ANSWER_NOT_QUESTION_NOTE };
   }
 
   // Budgets: server-side, same relay exemption as the permission gate above.

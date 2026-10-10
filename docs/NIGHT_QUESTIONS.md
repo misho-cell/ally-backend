@@ -97,6 +97,13 @@ while its questions are unanswered is a list that loses them.
   > es: „Lo anoté como algo mencionado: «{value}». Lo que tú me dijiste sigue igual."
   `{value}` is what was mentioned (e.g. „სანიმუშო ბანკი"). Undo: the switch back to false.
 
+- **BL — 4423, an assistant-only answer to a helper's question must not be a question. Built 10 Oct ~22:30 UTC with its switch OFF, for
+  Misho's yes on the exact text.** When a helper asks the owner a clarifying question and the owner's assistant answers on its own
+  (1688 part 1), the answer went out as a question back („მუდმივი მოვლა გჭირდება, არა ერთჯერადი სამუშაო?“, box 51382). With the switch ON
+  (`ANSWER_NOT_QUESTION_ON` in answerNotQuestion.ts), such a reply is not sent: the helper's last answer ended with „?“, nobody typed in
+  between, and the reply ends with „?“ too. The run then reads, word for word: „არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის
+  სახელით პასუხობ — ეს პასუხი უნდა იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ჯერ მფლობელს ჰკითხე
+  და მისი სიტყვებით უპასუხე.“ My recommendation: yes. „BL კი“ turns it ON.
 - **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
   Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
   regular conversation, no goal, like the day's question) gets this section:
