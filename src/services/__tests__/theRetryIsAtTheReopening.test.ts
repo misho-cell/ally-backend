@@ -34,6 +34,7 @@ describe('the retry happens when the recipient can be asked again', () => {
     const note = chat.slice(chat.indexOf('function noteWakeNoLaterThan'));
     expect(note.slice(0, 600)).toContain('when < earlier');
     const clear = chat.slice(chat.indexOf('function clearRunState'));
-    expect(clear.slice(0, 1500)).toContain('runWakeCaps.delete(runId)');
+    // The whole function, so a line added above it never pushes this one out.
+    expect(clear.slice(0, clear.indexOf('\n}\n'))).toContain('runWakeCaps.delete(runId)');
   });
 });

@@ -7431,6 +7431,18 @@ const runAnswerSent = new Set<string>();
 const runAskSent = new Set<string>();
 /** Who this run's sent questions went to, as the owner saved them. */
 const runAskSentTo = new Map<string, string[]>();
+/**
+ * The tester's 49809 (1697): runs whose introduction was refused because the
+ * route looks closed. The reply says so and proposes another way (§110.1);
+ * the generic „not sent — write it again" would invite a retry of that route.
+ */
+const runRouteClosed = new Set<string>();
+const ROUTE_CLOSED_REASON = 'route_closed';
+
+function noteRouteClosed(runId: string, toolName: string, result: unknown): void {
+  if (toolName !== 'request_introduction' || result === null || typeof result !== 'object') return;
+  if ((result as { reason?: unknown }).reason === ROUTE_CLOSED_REASON) runRouteClosed.add(runId);
+}
 
 function noteAskSentTo(runId: string | undefined, toName: unknown): void {
   if (runId === undefined || typeof toName !== 'string' || toName === '') return;
@@ -8660,6 +8672,7 @@ function clearRunState(runId: string): void {
   runAnswerSent.delete(runId);
   runAskSent.delete(runId);
   runAskSentTo.delete(runId);
+  runRouteClosed.delete(runId);
   runRelaySent.delete(runId);
   runPlanApprovedInRun.delete(runId);
   runSentLineOnScreen.delete(runId);
@@ -10981,6 +10994,7 @@ async function runOneToolBlock(
   if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
   // 1690 (A7): the numbers a search showed, for the one confirm question after the reply.
   if (SEARCH_TOOLS.has(block.name)) noteSearchedPhones(runId, phonesIn(labelled));
+  noteRouteClosed(runId, block.name, rawResult);
   // 3169: the names it found, as saved, so the reply cannot respell them.
   if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
     noteSavedNames(runId, savedNamesIn(labelled));
@@ -13509,6 +13523,8 @@ async function runToolLoop(
     // 4159 (conv 48452): the ask went out on a goal the run opened in another
     // conversation, so this one's goals hold nothing — but this run DID send.
     !runAskSent.has(runId) &&
+    // 1697: a closed route was refused on purpose; the reply proposes another way.
+    !runRouteClosed.has(runId) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
   if (instructionUnsent) {
     // eslint-disable-next-line no-console
