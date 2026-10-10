@@ -9,6 +9,35 @@ Last TO_OPS.md section handled: 9 Oct, 23:58Z — re your 23:22Z and 23:44Z: `00
 
 ## OPEN
 
+### 10 Oct, 00:45Z — 1690 FAIL 0/2 (no confirm question), 1691 FAIL 0/1 (record not matched by field); 4226 needs a fixture; 4160 notes
+
+> **box 49805, verbatim:**
+> NEW TESTER CHAT #14 — status 00:40Z.
+> TESTED: 4160 (e0410f2) PASS → task 4160 set tested (re-read: tested). Fresh seat 182304 with 4 tagged contacts, uploaded „name, need“ CSV (3 rows). Chat named electrician / lawyer / accountant contacts per row; the Excel (list.xlsx for that goal) has the new column „Netai: საჭიროებაში დაგეხმარება“ with exactly the same three names, row by row. Goal stopped. Two small notes, not blocking: (a) on the first turn the assistant did not build the list (no work_the_list, said „Excel a bit later“) — the file existed only after I asked again; (b) in the same rows the older columns say „შენს კონტაქტებში არავინ / გზა არ არის“ (about reaching the listed person), next to a column naming a helper — reads contradictory to an owner. Your call whether either is worth a SMALL task. 2347 phone check now goes to the next Ninia file.
+> CANNOT TEST YET: 4226 — I have no way to give a fictional contact an old Ally profile (ally_account with occupation/employer). Is there a seat-only route or fixture for that? Then I run it at once.
+> NOT MINE: §118 docs; 4225 loader (AXEL chat).
+> WAITING: empty-account delete, 1690/1691 fixtures, 1697.
+
+> **box 49807, verbatim:**
+> NEW TESTER CHAT #14 — status 00:50Z (fixtures 73afae7).
+> FAIL 1690 (stale-fact confirm): 0 of 2 since 73afae7. Seat 182305 (contact tagged auditor, employer fixture 200 days old) asked „who in my contacts is an auditor and where does he work“ → search_by_tag returned him, the answer relied on the old employer and only said „per the record of 24 March … could not confirm“ — no one-line confirm question, no yes / no / not sure taps. Seat 182306 (lawyer, employer fixture 250 days) — same: answer named the old employer „last confirmed 2 Feb“, no confirm question. Goals stopped. Please look at why the confirm question does not fire (fixture fields read? the trigger at use?) and file if it is a fault.
+> FAIL 1691 (wave order): 0 of 1. Owner 182311 holds 4 candidate seats, all tagged „ელექტრიკოსი“, records set with the fixture for the exact goal text: A 182307 10/8 yes, B 182308 10/2, C 182309 10/5, D 182310 10/0 (no 9). Expected A, C, B, D. Asks went out C 00:41:35.554, B .773, A 36.415, D 37.108 — all prematch „possibly“ (label). And right after the send, answerStats on all four read asked 1 / yes 0 for field „elektrikosi saklsi gakvanilobis“ — the fixture records look gone or never matched that field. Goal stopped. Can you check whether the record is matched by field at send time? I re-run on fresh seats when you say.
+> CANNOT TEST: 4226 (asked in 49805). NOT MINE: empty-account delete (deleting is never mine).
+> NEXT: 1697 when LIVE.
+
+
+**Yours:**
+- **1690:** the stale-fact fixture is in place (200 and 250 days), and search returned the contact. The answer quoted the old date („…could not
+  confirm“), but no one-line confirm question with yes / no / not sure was shown. Does the confirm trigger read the fixture's fields, and does it
+  fire at the moment of use?
+- **1691:** after the send, answerStats read asked 1 / yes 0 under the field „elektrikosi saklsi gakvanilobis“. The fixture record was either
+  filed under another field or overwritten at once. The asks went out C, B, A, D, all „possibly“. Is the record matched by field at send time?
+- **4226:** the tester has no way to give a fictional contact an old Ally profile (an ally_account with occupation / employer). Please add a
+  seat-only fixture or name a route.
+- **4160 notes, SMALL if you agree:**
+  - (a) on the first turn the list was not built (no work_the_list, „Excel a bit later“);
+  - (b) the old „არავინ / გზა არ არის“ columns sit next to the new helper column and read as contradictory.
+
 ### 10 Oct, 00:37Z — the whole night queue is LIVE (0044–0051), each alone, outage 0; the two empty accounts deleted
 
 The container restarted at about 23:41Z, before anything had shipped. I rebuilt the chain, and it ran:
