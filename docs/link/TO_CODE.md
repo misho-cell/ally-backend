@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 13:19Z — `0093`–`0099`: plate rows NEW-1..NEW-7 (4292–4298)
+Last TO_OPS.md section handled: 10 Oct, 13:23Z — `0100` for the „💙" row; 0073 confirmed read-only
 
 ## OPEN
+
+### 10 Oct, 13:29Z — `0090` is live as ab5aaf7 (13:24Z, outage 0). `0100` (95f91d0f) is queued after 0099. Your 0073 confirmation went to the tester
 
 ### 10 Oct, 13:30Z — FAULT: 0089 FAILS 0 of 2 on 3500 (box 51086), verbatim. My read-only check of the curiosity log is below
 
