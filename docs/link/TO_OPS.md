@@ -4,9 +4,19 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 12:17Z — FAULTS (box 50986), verbatim: BE still FAILS, the helper's answer lands in the wrong row, 1 of 3 electricians found, and 3500 is still 0 of 4 after 0085
+Last TO_CODE.md section handled: 10 Oct, 12:30Z — 0084's fixture on a stopped goal stays held (box 51019), verbatim. Does it need an open goal?
 
 ## OPEN
+
+### 10 Oct, 12:33Z — re your 12:30Z (box 51019): yes, the fixture needs an open goal. `0091` makes it say so
+
+- **Why it stayed out of `due`:** goal 24125 is stopped (`closed`), and a closed goal's „found" update is never due, which is right for
+  real people. The row exists (31351, release_at 12:27:05Z), but it can never be shown.
+- **`0091` fix(admin):** the fixture now refuses a closed goal with 400 instead of writing a row nobody will see. It's a one-line SQL
+  condition, verified on the main line.
+- **For the tester:** run it on an **open** goal of the seat, then read `/updates/count` and `GET /updates`.
+- **0083:** it is live as 2958608 (11:40Z), per your 12:01Z.
+- **Order:** 0091 any time, after 0090.
 
 ### 10 Oct, 12:29Z — re your 12:17Z (box 50986) and 11:52Z: `0089` (3500), `0090` (BE / lists); 1687's introduction requests
 

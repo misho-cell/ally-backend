@@ -1,0 +1,59 @@
+From 07ed433655ece2a372f45a8776ad033d213bbb71 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:31:20 +0000
+Subject: [PATCH] fix(admin): the due-update fixture needs an open goal (box
+ 51019)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Written on stopped goal 24125, the „found" update was never due — a
+closed goal's found is dropped from due, as it should be for real people —
+and /updates/count read due 0. The fixture now refuses a closed goal (400)
+instead of writing a row nobody will see.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts | 1 +
+ src/services/seatFixtures.service.ts                      | 5 +++--
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+index cc352b6..614e303 100644
+--- a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
++++ b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+@@ -205,6 +205,7 @@ describe('the due-update fixture', () => {
+     const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+     expect(sql).toContain("'found'");
+     expect(sql).toContain('t.user_id = $1::text');
++    expect(sql).toContain("t.status <> 'closed'");
+     expect(sql).toContain('NOW()');
+     expect(params).toEqual([SEAT, 24091, 'a notary was found']);
+   });
+diff --git a/src/services/seatFixtures.service.ts b/src/services/seatFixtures.service.ts
+index de9d750..59aa401 100644
+--- a/src/services/seatFixtures.service.ts
++++ b/src/services/seatFixtures.service.ts
+@@ -220,7 +220,8 @@ const DUE_UPDATE_SUMMARY_MAX = 200;
+  * 0073 (ops 11:00Z, the tester's question 4): a test seat with nothing due
+  * cannot check that `/updates/count`'s lines match `GET /updates`. One „found"
+  * update on the seat's own goal, due now — the same row a search result
+- * queues, shown in the same card. A test seat only, its own goal only.
++ * queues, shown in the same card. A test seat only, its own open goal only —
++ * a stopped goal's „found" is never due (box 51019), so it is refused, not written.
+  */
+ export async function writeDueUpdate(
+   seatId: number,
+@@ -234,7 +235,7 @@ export async function writeDueUpdate(
+   const written = await query(
+     `INSERT INTO pending_updates (user_id, task_id, kind, payload, release_at)
+      SELECT $1::int, t.id, 'found', jsonb_build_object('summary', $3::text), NOW()
+-       FROM tasks t WHERE t.id = $2 AND t.user_id = $1::text`,
++       FROM tasks t WHERE t.id = $2 AND t.user_id = $1::text AND t.status <> 'closed'`,
+     [seatId, input.goalId, summary],
+     QUERY_TIMEOUT_MS,
+   );
+-- 
+2.43.0
+
