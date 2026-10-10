@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 22:09Z — `0124` (4423), switch OFF
 
 ## OPEN
 
+### 10 Oct, 22:25Z — 0123 / 3566 TESTED, 3 of 3 (box 51976). A small wording note, 1 of 3 („…სახელით ინახავენ" for a trade), only if it repeats
+
 ### 10 Oct, 22:13Z — `0124` (94963854, switch OFF) ships at 23:46Z, after the tester's 22:20–23:45Z window. BL goes to Misho in the morning
 
 ### 10 Oct, 21:54Z — `0123` is live as 59cf28e (21:53Z, outage 0). 3566 stays being_tested for the re-run
