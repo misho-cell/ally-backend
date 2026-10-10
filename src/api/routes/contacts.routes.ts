@@ -13,6 +13,8 @@ import {
   setContactImportReminder,
 } from '../../services/contactImportState.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
+import { contactPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../services/contactBook.service';
+import { contactPageFor } from '../../services/contactPage.service';
 import { ApiResponse, ImportResult } from '../../types';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
@@ -258,6 +260,60 @@ contactsRouter.get('/diag/second-degree', async (req: Request, res: Response) =>
     pg_results: pgRows,
     pg_error: pgError,
   });
+});
+
+/** The phonebook screens are read as the person scrolls and types. */
+const PHONEBOOK_PER_MINUTE = 60;
+const phonebookLimit = rateLimit({ windowMs: 60_000, max: PHONEBOOK_PER_MINUTE });
+
+function pageSizeOf(raw: unknown): number | null {
+  if (raw === undefined || raw === '') return DEFAULT_PAGE_SIZE;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= MAX_PAGE_SIZE ? n : null;
+}
+
+/**
+ * The frontend's 06:30Z item 4 (design 4.8):
+ *   GET /contacts?q=&limit=&cursor=  { contacts: [{ id, name, on_netai }], next_cursor }
+ *   GET /contacts/:id                the person's own page about one contact
+ */
+contactsRouter.get('/', phonebookLimit, async (req: Request, res: Response) => {
+  const limit = pageSizeOf(req.query.limit);
+  const q = typeof req.query.q === 'string' ? req.query.q : null;
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : null;
+  if (limit === null) {
+    res.status(400).json({ success: false, error: `limit must be 1 to ${MAX_PAGE_SIZE}` });
+    return;
+  }
+  try {
+    const userId = Number((req as AuthenticatedRequest).user.userId);
+    const page = await contactPage(userId, { q, limit, cursor });
+    if (page === null) {
+      res.status(400).json({ success: false, error: 'cursor is not one this list gave' });
+      return;
+    }
+    res.status(200).json({ success: true, data: page });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /contacts]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the contacts' });
+  }
+});
+
+contactsRouter.get('/:id', phonebookLimit, async (req: Request, res: Response) => {
+  try {
+    const userId = Number((req as AuthenticatedRequest).user.userId);
+    const page = await contactPageFor(userId, String(req.params.id));
+    if (page === null) {
+      res.status(404).json({ success: false, error: 'No such contact' });
+      return;
+    }
+    res.status(200).json({ success: true, data: page });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /contacts/:id]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the contact' });
+  }
 });
 
 export default contactsRouter;

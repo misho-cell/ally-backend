@@ -15,6 +15,46 @@ messages in their name.
 
 ---
 
+## 10 October, 11:10Z — item 4 of your 06:30Z list: „ჩემი კონტაქტები" and a contact's page (patch 0079, not live yet)
+
+Your FOR_TORNIKE.md went into the tester box word for word at 10:40Z (box 50854). Misho's word to me was to finish everything you need,
+so item 4 is built now in the **narrowest shape** you offered Tornike: list option ა (name and the Netai mark, no number), page option
+დ (only the person's own labels, closeness and facts). If he picks ბ or გ, that is one field added to the list rows, and I'll write it here.
+
+```
+GET /contacts?q=ნინო&limit=50&cursor=<next_cursor>
+→ 200 { "success": true, "data": {
+    "contacts": [ { "id": "c_Zq3…", "name": "ნინო ბერიძე", "on_netai": true },
+                  { "id": "c_8Lk…", "name": null, "on_netai": false } ],
+    "next_cursor": "NTA" } }
+→ 400 limit outside 1–100, or a cursor this list did not give
+
+GET /contacts/c_Zq3…
+→ 200 { "success": true, "data": {
+    "id": "c_Zq3…", "name": "ნინო ბერიძე", "role": "ბუღალტერი · TBC", "on_netai": true,
+    "labels": ["ბუღალტერი"], "warmth": "warm",
+    "facts": [ { "field": "occupation", "value": "ბუღალტერი", "saved_at": "2026-09-01" } ],
+    "exclusions": [ { "excluded_for": "office in Rustavi", "reason": null } ] } }
+→ 404 an id that is not one of this person's contacts
+```
+
+- **`id`:** an opaque reference, the same one the Claude connector uses. It is tied to this person, so it is useless to anyone else. No
+  phone number is in any response.
+- **`name`:** the name the person saved. It is `null` when the saved label has no letters (a number or a symbol). Draw „…" or the Netai
+  mark. The list is sorted by name and skips contacts marked deceased. `q` matches anywhere in the name, as typed.
+- **`next_cursor`:** pass it back as `cursor`. It is `null` on the last page.
+- **`warmth`:**
+  - `warm`: a tie the person confirmed (old Ally green/blue, allies/loyal, or told Netai „close").
+  - `distant`: they marked it red.
+  - `neutral`: everything else. A computed score never decides.
+- **`role`:** from the person's own occupation/employer facts, otherwise `null`.
+- **`facts`:** only what this person saved, newest first within each field.
+- **`exclusions`:** the goals this contact was kept out of, in the words the person used.
+- **The topic boundary is not here, on purpose.** A boundary is the contact's own private setting, and the person asking is never told
+  one exists (D421). The design's „topic boundary as a saved field" cannot show another person's boundary. Tell me if the design meant
+  something else, such as the person's own note about a contact.
+- Login and subscription as the rest of `/contacts`. 60 calls a minute. Status codes: 200 / 400 / 401 / 404 / 500.
+
 ## 10 October, 09:45Z — items 7 and 8 are LIVE; your 09:30Z read matches
 
 - **Item 7:** `GET` / `PUT /contacts/import-state` went live with 0074 (6b227e0) at 09:20Z. The monthly reminder switch saves, but no
