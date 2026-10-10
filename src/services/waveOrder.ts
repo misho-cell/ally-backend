@@ -138,17 +138,57 @@ export async function inWaveOrder<T extends { readonly phone: string; readonly n
   goalText: string | null,
 ): Promise<T[]> {
   if (people.length < 2) return [...people];
-  const text = goalText ?? '';
   try {
-    const phones = people.map((p) => p.phone);
-    const [words, rates] = await Promise.all([
-      prematchMany(phones, text),
-      answerRatesFor(phones, askField(text)),
-    ]);
-    return orderCandidates(people, { words, rates, goalText: text });
+    return orderCandidates(people, await waveSignals(people, goalText ?? ''));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[wave-order] kept as planned:', (err as Error).message);
     return [...people];
   }
+}
+
+/** What the order is made of: each person's pre-match word and answer rates. */
+async function waveSignals(
+  people: readonly { readonly phone: string }[],
+  goalText: string,
+): Promise<WaveOrderInput> {
+  const phones = people.map((p) => p.phone);
+  const [words, rates] = await Promise.all([
+    prematchMany(phones, goalText),
+    answerRatesFor(phones, askField(goalText)),
+  ]);
+  return { words, rates, goalText };
+}
+
+export interface RankedCandidate {
+  readonly rank: number;
+  readonly name: string;
+  readonly named_by_goal: boolean;
+  readonly prematch: PrematchWord;
+  readonly field_rate: number;
+  readonly overall_rate: number;
+}
+
+/**
+ * The tester's 49931 (1691): the same order the waves use, with the signals
+ * that made it, so the ranking can be judged without the model's plan
+ * choosing who is in it. Unlike inWaveOrder, a failed read is an error here.
+ */
+export async function rankingOf<T extends { readonly phone: string; readonly name: string }>(
+  people: readonly T[],
+  goalText: string,
+): Promise<RankedCandidate[]> {
+  const input = await waveSignals(people, goalText);
+  return orderCandidates(people, input).map((p, index) => {
+    const d = phoneDigits(p.phone);
+    const rates = input.rates.get(d) ?? NO_RECORD;
+    return {
+      rank: index + 1,
+      name: p.name,
+      named_by_goal: goalNamesPerson(goalText, p.name),
+      prematch: input.words.get(d)?.word ?? PrematchWord.AskHim,
+      field_rate: rates.field,
+      overall_rate: rates.overall,
+    };
+  });
 }
