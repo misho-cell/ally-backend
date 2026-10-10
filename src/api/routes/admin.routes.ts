@@ -7174,7 +7174,12 @@ adminRouter.get('/goals/:id/wave-ranking', async (req: Request, res: Response) =
     }
     res.status(200).json({
       success: true,
-      data: { task_id: taskId, field: result.field, ranking: result.ranking },
+      data: {
+        task_id: taskId,
+        field: result.field,
+        plan_state: result.plan_state,
+        ranking: result.ranking,
+      },
     });
   } catch (error) {
     // eslint-disable-next-line no-console

@@ -55,7 +55,35 @@ export function goalNamesPerson(goalText: string, name: string): boolean {
 export interface WaveOrderInput {
   readonly words: ReadonlyMap<string, Prematch>;
   readonly rates: ReadonlyMap<string, AnswerRates>;
+  /** Where a person the owner named is looked for: the title and the owner's own lines. */
   readonly goalText: string;
+}
+
+/**
+ * The tester's 49996 (1691, 0 of 1): „…პირველ რიგში ციცინო ფილტრაძეს ჰკითხე,
+ * მერე სხვებსაც." — and she ranked last. The title is the model's wording of
+ * the goal and left her out; the owner's own lines in the goal's conversation
+ * are where he names people. Bounded, newest first, from just before the
+ * goal was opened.
+ */
+const OWNER_LINES_READ = 20;
+const OWNER_LINE_CHARS = 500;
+const OWNER_LINES_FROM_MINUTES = 10;
+
+export async function ownerGoalWords(taskId: number): Promise<string> {
+  const result = await query<{ content: string }>(
+    `SELECT LEFT(c.content, $2) AS content
+       FROM tasks t
+       JOIN conversations c ON c.thread_id = t.thread_id
+      WHERE t.id = $1 AND c.role = 'user' AND COALESCE(c.kind, '') <> 'event'
+        AND c.content <> ''
+        AND c.created_at >= t.created_at - make_interval(mins => $3)
+      ORDER BY c.created_at DESC
+      LIMIT $4`,
+    [taskId, OWNER_LINE_CHARS, OWNER_LINES_FROM_MINUTES, OWNER_LINES_READ],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((r) => r.content).join('\n');
 }
 
 /** The candidates in A8's order; the plan's order breaks every tie. */
@@ -136,10 +164,11 @@ export async function answerRatesFor(
 export async function inWaveOrder<T extends { readonly phone: string; readonly name: string }>(
   people: readonly T[],
   goalText: string | null,
+  ownerWords = '',
 ): Promise<T[]> {
   if (people.length < 2) return [...people];
   try {
-    return orderCandidates(people, await waveSignals(people, goalText ?? ''));
+    return orderCandidates(people, await waveSignals(people, goalText ?? '', ownerWords));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[wave-order] kept as planned:', (err as Error).message);
@@ -151,13 +180,14 @@ export async function inWaveOrder<T extends { readonly phone: string; readonly n
 async function waveSignals(
   people: readonly { readonly phone: string }[],
   goalText: string,
+  ownerWords: string,
 ): Promise<WaveOrderInput> {
   const phones = people.map((p) => p.phone);
   const [words, rates] = await Promise.all([
     prematchMany(phones, goalText),
     answerRatesFor(phones, askField(goalText)),
   ]);
-  return { words, rates, goalText };
+  return { words, rates, goalText: ownerWords === '' ? goalText : `${goalText}\n${ownerWords}` };
 }
 
 export interface RankedCandidate {
@@ -177,15 +207,16 @@ export interface RankedCandidate {
 export async function rankingOf<T extends { readonly phone: string; readonly name: string }>(
   people: readonly T[],
   goalText: string,
+  ownerWords = '',
 ): Promise<RankedCandidate[]> {
-  const input = await waveSignals(people, goalText);
+  const input = await waveSignals(people, goalText, ownerWords);
   return orderCandidates(people, input).map((p, index) => {
     const d = phoneDigits(p.phone);
     const rates = input.rates.get(d) ?? NO_RECORD;
     return {
       rank: index + 1,
       name: p.name,
-      named_by_goal: goalNamesPerson(goalText, p.name),
+      named_by_goal: goalNamesPerson(input.goalText, p.name),
       prematch: input.words.get(d)?.word ?? PrematchWord.AskHim,
       field_rate: rates.field,
       overall_rate: rates.overall,

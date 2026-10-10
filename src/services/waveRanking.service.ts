@@ -1,8 +1,7 @@
 import { query } from '../db/postgres/client';
 import { askField } from './answerStats.service';
-import { planInForce } from './taskPlans.service';
 import { getTaskById } from './taskStore.service';
-import { RankedCandidate, rankingOf } from './waveOrder';
+import { ownerGoalWords, RankedCandidate, rankingOf } from './waveOrder';
 
 /**
  * The tester's 49931 (1691): the server's own ranking of a goal's plan, read
@@ -22,6 +21,8 @@ export interface WaveRankingResult {
   readonly outcome: WaveRankingOutcome;
   /** The answer-stats field the rates are read in. */
   readonly field?: string;
+  /** Which plan was ranked: one waiting on the owner, or the one in force. */
+  readonly plan_state?: 'proposed' | 'approved_or_in_force';
   readonly ranking?: readonly RankedCandidate[];
 }
 
@@ -38,7 +39,10 @@ export async function goalWaveRanking(taskId: number): Promise<WaveRankingResult
   const task = await getTaskById(taskId);
   if (task === null) return { outcome: WaveRankingOutcome.NotFound };
   if (!(await ownerIsTestSeat(task.user_id))) return { outcome: WaveRankingOutcome.NotATestSeat };
-  const plan = planInForce(task);
+  // The tester's 49996: a proposed plan is read too, so the ranking can be
+  // judged before anything is sent. A proposal waiting on the owner is the
+  // newer plan when both exist.
+  const plan = task.plan_proposed ?? task.plan;
   if (plan === null || plan.people_to_involve.length === 0) {
     return { outcome: WaveRankingOutcome.NoPlan };
   }
@@ -46,6 +50,7 @@ export async function goalWaveRanking(taskId: number): Promise<WaveRankingResult
   return {
     outcome: WaveRankingOutcome.Read,
     field: askField(goalText),
-    ranking: await rankingOf(plan.people_to_involve, goalText),
+    plan_state: task.plan_proposed === null ? 'approved_or_in_force' : 'proposed',
+    ranking: await rankingOf(plan.people_to_involve, goalText, await ownerGoalWords(taskId)),
   };
 }
