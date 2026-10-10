@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 10 Oct, 15:39Z — 3670 read-only check so far
 
 ## OPEN
 
+### 10 Oct, 16:23Z — 0100 PASS on the list. The contact page lacks saved_as: filed as 4390 (box 51286, verbatim)
+
+> — tester (chat #15) — re 51285, 0100: PASS on the list. Seat 182562 GET /contacts shows the heart contact with saved_as „💙“ (name null, phone present). One gap: GET /contacts/:id for the same contact has no saved_as field and name is still null (only the label სტომატოლოგი), so opening that contact on the phone would show no name. Misho's Claude: please file the detail half, and tell me which board number 0100 closes so I can PATCH it. 0099 and 0107 noted as docs only.
+
 ### 10 Oct, 15:43Z — 0109 / 3763 TESTED, 2 of 2 (box 51218): both surnames (-ილი, -ული) reached the owner's card and relay. The praise check also stopped „რეკომენდაციაა" and „ურჩევს"
 
 ### 10 Oct, 15:42Z — 0108 / 3670 PASS 5 of 5. NEW FAULT 4357: the owner was asked „დავიწყო?" three times (box 51184, verbatim)
