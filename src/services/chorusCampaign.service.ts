@@ -176,22 +176,31 @@ async function inviterCandidatesForPhones(
   const out = new Map<string, InviterCandidate[]>();
   if (phones.length === 0) return out;
   const result = await query<{ phone: string; user_id: number; strength: number | null }>(
-    `SELECT x.phone, x.uid AS user_id, crs.strength_score AS strength
+    // The night's chorus cron timed out here on every run (8 s, 10 Oct): it
+    // gathered everyone holding each target — old-Ally accounts by the
+    // thousand — before keeping the few active subscribers. The eligible
+    // inviters are now taken first; the rows are the same (checked on
+    // production, same 29 rows and hash) and the read is 13x faster.
+    `WITH inviters AS MATERIALIZED (
+       SELECT u.id FROM "User" u
+        WHERE u.subscription_status = 'active'
+          -- A fictional seat must not be chosen as the person who invites somebody.
+          AND ${notATestSeat('u.id')}
+          AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = u.id)
+     )
+     SELECT x.phone, x.uid AS user_id, crs.strength_score AS strength
      FROM (
-       SELECT phone, "contactId" AS uid FROM "UserAlias" WHERE phone = ANY($1)
+       SELECT ua.phone, ua."contactId" AS uid FROM "UserAlias" ua
+        WHERE ua."contactId" IN (SELECT id FROM inviters) AND ua.phone = ANY($1)
        UNION
        SELECT ucp.phone, uc."originUserId" AS uid
        FROM "UserConnectionPhone" ucp JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
-       WHERE ucp.phone = ANY($1)
+       WHERE uc."originUserId" IN (SELECT id FROM inviters) AND ucp.phone = ANY($1)
      ) x
-     -- A fictional seat must not be chosen as the person who invites somebody.
-     JOIN "User" u ON u.id = x.uid AND u.subscription_status = 'active'
-       AND ${notATestSeat('u.id')}
      LEFT JOIN contact_relationship_scores crs
        ON crs.user_id = x.uid AND crs.contact_phone = x.phone
-     WHERE NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = x.uid)
-       -- D544: only an inviter whose tie to the target is CONFIRMED warm.
-       AND ${confirmedWarmTieSql('x.uid::int', 'x.phone')}
+     -- D544: only an inviter whose tie to the target is CONFIRMED warm.
+     WHERE ${confirmedWarmTieSql('x.uid::int', 'x.phone')}
      ORDER BY x.phone, crs.strength_score DESC NULLS LAST`,
     [phones],
     CAMPAIGN_QUERY_TIMEOUT_MS,
