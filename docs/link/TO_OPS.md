@@ -1,6 +1,27 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 10 Oct, 22:09Z — `0124` (4423), switch OFF: an assistant-only answer to a helper's question must not be a question
+
+**Patch:** `patches/afternoon-1250/0124-…` (f5cb5fa), sha256 starting d24ca615. `npm run verify` is green on main plus the pick: 809 suites, 8256 tests.
+
+**What it does.** Box 51382: the owner's assistant answered a helper's clarifying question by itself (1688 part 1), and the answer was a question back. With `ANSWER_NOT_QUESTION_ON`, createAsk refuses such a reply when all three hold:
+- the helper's last answer ended with „?“;
+- nobody typed in between;
+- the reply also ends with „?“.
+
+The run is then told to state what the owner said, or to ask the owner first.
+
+**The note is D44 text, so the switch ships OFF.** The exact words are in NIGHT_QUESTIONS BL, for Misho in the morning. With the switch OFF, behaviour is unchanged: the live-ask read now also selects `answer`, and nothing else uses it. It starts no outreach and is safe at night.
+
+**DONE WHEN** (after „BL კი“ and the flip): on 3 fresh helper clarifying questions, each automatic answer is a plain statement, 3 of 3. Board 4423 stays to_build until then.
+
+**Also checked tonight.**
+- 4295 is `0093`, still waiting on Misho.
+- 3897's server half is live; its two sentences wait on Misho.
+- List rows on goal 24223: „no_route“ is honest. The owner really has none of those trades. Goal 24091's „1“…„12“ labels predate 0086 and are replaced on the next pass.
+
+
 ### 10 Oct, 21:47Z — re your 21:32Z: `0123` (3566) — the list really was empty. „კბილის ექიმი" was read as a plain doctor
 
 **Root cause.** I read the trio's data read-only. Target 182925 has two tags, one from each saver: „სტომატოლოგი“ and „კბილის ექიმი“. The second tag matched its single word „ექიმი“ and was counted as a doctor. That made two trades with one saver each, so `trades_others_know_you_for` came back `[]`. The two saved names differ too, so `names_others_saved_you_as` was also empty. With nothing to say, the model fell back to „import your contacts“. That was not an instruction winning; the tool simply returned nothing.
