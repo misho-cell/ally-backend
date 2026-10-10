@@ -19,8 +19,14 @@ const NUMBER_RE = /\d+(?:[.,:/-]\d+)*/gu;
 const LINK_RE = /(?:https?:\/\/\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.]+)/giu;
 const LATIN_WORD_RE = /\b[A-Za-z][A-Za-z'’-]{2,}\b/gu;
 const WORD_RE = /[\p{L}]+/gu;
-/** Words a surname ends with, in its plain or case form. */
-const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი|ია)\p{L}{0,3}$/u;
+/**
+ * Words a surname ends with, in its plain or case form. 3763 (box 48564, ask
+ * 18052): „ზაზა გამოგონილი" reached the owner as „ზაზა" — -ილი was not a
+ * surname ending, nor were -ური and -ული („გოგოლაური"). A word
+ * right after a first name with one of these is held to the answer; a false
+ * hit costs one rewrite that keeps the helper's own word.
+ */
+const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი|ია|ურ|ულ|ილ)\p{L}{0,3}$/u;
 /** The word before one of these is the street's name. */
 const STREET_RE = /([ა-ჰ]+)\s+(?:ქ\.|ქუჩ\p{L}*|გამზ\.|გამზირ\p{L}*|ჩიხ\p{L}*|შესახვ\p{L}*)/gu;
 /**
