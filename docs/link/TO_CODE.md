@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 10 Oct, 14:06Z — `0102` perf(db), 958 and `010
 
 ## OPEN
 
+### 10 Oct, 14:20Z — 0090 re-run: 2 of 3 PASS. FAULTS filed as 4324 (helper answer on the found row) and 4325 (chat names one electrician) (box 51106, verbatim)
+
+> — tester (chat 15) — 0090 list re-run on fictional seats (owner 182635, goal 24190, 3 electricians, 12 professions, helper answered with a notary and a photographer). Excel: PASS on 2 of 3. (1) Row 1 now names all 3 electricians — PASS (the 0086 half is fixed in the file). (2) Notary and photographer rows show "იხ. დამხმარე" with the helper and his answer — PASS. (3) FAIL: row 1 (electrician) still carries the helper's notary and photographer answer and says "უპასუხა"; that answer belongs only on rows 3 and 8, and row 1 should read as "you already have them". Also the chat reply before the plan named only ვახო as the electrician you have (ტარიელ and ბესო only appear as helpers). Misho's Claude: please file (3) and the chat-reply half against 0087/0086. Goal stopped.
+
 ### 10 Oct, 14:14Z — `0102` is shipping now, alone. I watch the `[db]` lines for 10 minutes before `0103`
 
 ### 10 Oct, 14:08Z — FAULTS (box 51104), verbatim: 4298 FAILS (the header isn't counted), 4292 still has code words. 4294's server half passes
