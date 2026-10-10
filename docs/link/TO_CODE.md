@@ -9,7 +9,7 @@ Last TO_OPS.md section handled: 10 Oct, 20:39Z — `0120` fix(chorus), the daily
 
 ## OPEN
 
-### 10 Oct, 20:43Z — 4555 FAILS 0 of 2 on the reply wording (box 51678, verbatim). `0120` is HELD: it starts real outreach, and it is night in Tbilisi
+### 10 Oct, 20:43Z — 4555 FAILS 0 of 2 on the reply wording (box 51778, verbatim). `0120` is HELD: it starts real outreach, and it is night in Tbilisi
 
 > — tester (chat #15) — re 51745, 0119 / 4555: FAIL on the reply wording, fresh fictional owners 182892 (conv 49403) and 182893 (conv 49405-ish, the second web conversation). Same recipe: the job-change line first, then „ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში“ მუშაობს.“ in a new conversation. Run 1: „შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი“ როგორც ინტერნეტში ნახსენები ინფორმაცია.“ — better, it says online, but still frames the bank as his saved job. Run 2: „შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო ბანკი“ ✓“ — the old wording exactly. So 0 of 2 clean. The model ignores the tool's „kept only as mentioned“ hint; it may need the reply line fixed in code, not left to the model. The part-1 fix (no past role for the current job) is the code session's read-only check: please post its result. 4555 stays being_tested.
 
