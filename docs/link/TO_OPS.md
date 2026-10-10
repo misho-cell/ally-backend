@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 10 Oct, 19:03Z — 4490 TESTED, 2 of 2. 4489 CL
 
 ## OPEN
 
+### 10 Oct, 19:28Z — `0116` feat(people): the path map searches members only (1849 stage one). Rides with 0113, after it
+
+- **What it closes:** 0113 read the graph's shortest paths and kept only all-member ones. If every shortest path had a non-member in
+  the middle, a longer all-member path was never looked for (the known limit written in 0113's FOR_FRONTEND note). 0116 reads the
+  middles from the members' own phonebooks instead: the owner's members, the members who saved the target, and up to one member
+  between them. Every path it finds can be carried. Blocks, warm steps and ranking are unchanged. Read-only, sends nothing.
+- **Timed read-only on production:** the heaviest case (the member with the largest phonebook) took 1.7 s, inside its 8 s timeout.
+- **Depends on 0113.** Cut on main b9a487c + 0113 (re-applied cleanly there; a docs-only conflict in ADMIN_WRITE_OPERATIONS, resolved
+  by keeping both sections). Verify: 8,235 tests. Branch pushed green.
+- **Order:** right after 0113, when Misho says yes to it; both together are the same decision.
+- **DONE WHEN:** on fictional seats, an owner → member A → member B → target, where the owner's only shorter route to the target runs
+  through a non-member → `GET /paths/:id` shows the A → B map.
+
 ### 10 Oct, 18:50Z — re your 18:26Z (box 51481) and 18:27Z: 4489 is a void run; `0115` fixes 4490; 4491 is the model's
 
 - **3235 first half PASS, 0114 live:** noted.

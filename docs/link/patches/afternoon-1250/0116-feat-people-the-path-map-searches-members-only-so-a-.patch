@@ -1,0 +1,411 @@
+From 026ab5b7c8d26531d77db07d43582bb3c6a41afe Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 19:24:30 +0000
+Subject: [PATCH] =?UTF-8?q?feat(people):=20the=20path=20map=20searches=20m?=
+ =?UTF-8?q?embers=20only,=20so=20a=20longer=20all-member=20path=20is=20fou?=
+ =?UTF-8?q?nd=20(1849=20stage=20one,=20=C2=A7127)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0113 read the graph's shortest paths and kept those whose every middle
+person is a member; when each shortest path ran through somebody not on
+Netai, a longer all-member path was never looked for. The middles are now
+read from the members' own phonebooks — the owner's members, the members
+who have the target saved, and up to one member between them — so every
+path found can be carried, up to three in the middle. Each person is
+named by the phone the person before them saved. Blocks, warm steps and
+the ranking are as in 0113.
+
+The three-step read was timed read-only on production with the largest
+member phonebook: 1.7 s, inside its 8 s timeout. NETAI_ACTIVE_SUBSCRIPTION_STATUSES
+is exported so the SQL membership test uses the same list.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |   4 +-
+ .../aPathRunsThroughMembersOnly.test.ts       |  58 +++++++
+ .../__tests__/chainMap.service.test.ts        |  20 +--
+ src/services/chainMap.service.ts              |  39 +----
+ src/services/memberPaths.service.ts           | 154 ++++++++++++++++++
+ src/services/tools/membership.ts              |   2 +-
+ 6 files changed, 221 insertions(+), 56 deletions(-)
+ create mode 100644 src/services/__tests__/aPathRunsThroughMembersOnly.test.ts
+ create mode 100644 src/services/memberPaths.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 5a4bb9a..2b8287c 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -53,8 +53,8 @@ routes are keyed by the **sealed id the contacts list already gives you** (`GET
+ - `state` in this stage is only `next` (the first member) and `not_contacted`. `asked` / `agreed` / `waiting` / `blocked` come with
+   stage two, when the request really travels. That stage waits for Misho's word.
+ - `"paths": []` means no path a member can carry. **404** for an id that is not yours. **500** with a plain message.
+-- **Known limit of stage one:** it reads the shortest paths only. If every shortest path has a non-member in the middle, a longer
+-  all-member path is not looked for yet.
++- **Members only, found directly (patch 0116):** the path is searched through members' own phonebooks, so a longer all-member path
++  is found even when every shortest path has a non-member in the middle.
+ 
+ ## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
+ 
+diff --git a/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts b/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts
+new file mode 100644
+index 0000000..73487fd
+--- /dev/null
++++ b/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts
+@@ -0,0 +1,58 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../tools/membership', () => ({
++  __esModule: true,
++  NETAI_ACTIVE_SUBSCRIPTION_STATUSES: ['active'],
++  fetchAccountStates: jest.fn(() => Promise.resolve(new Map())),
++  // Phones ending in 9 are not on Netai.
++  accountDetailsFor: jest.fn((_s: unknown, phone: string) =>
++    phone.endsWith('9') ? { state: 'none' } : { state: 'netai_user' },
++  ),
++}));
++
++import { query } from '../../db/postgres/client';
++import { memberMiddles } from '../memberPaths.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/** Task 1849 (§127): every person in the middle is a member, up to three of them. */
++describe('the all-member middles of a path', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('finds one, two and three in the middle, and drops anyone not on Netai', async () => {
++    mockQuery.mockImplementation(((sql: string) => {
++      if (sql.includes('ua."contactId" = $1::int'))
++        return Promise.resolve({
++          rows: [
++            { phone: '+1', user_id: 11 },
++            { phone: '+2', user_id: 12 },
++            { phone: '+9', user_id: 19 },
++          ],
++        });
++      if (sql.includes('WHERE ua.phone = $1'))
++        return Promise.resolve({
++          rows: [
++            { phone: '+1', user_id: 11 },
++            { phone: '+3', user_id: 13 },
++          ],
++        });
++      if (sql.includes('JOIN "UserAlias" ub'))
++        return Promise.resolve({
++          rows: [
++            { from_id: 12, mid_id: 14, mid_phone: '+4', last_phone: '+3' },
++            { from_id: 12, mid_id: 18, mid_phone: '+8', last_phone: '+3' },
++            { from_id: 12, mid_id: 17, mid_phone: '+79', last_phone: '+3' },
++          ],
++        });
++      return Promise.resolve({ rows: [{ from_id: 12, phone: '+3' }] });
++    }) as never);
++
++    const middles = await memberMiddles(171, '+995599000000');
++
++    expect(middles).toEqual([['+1'], ['+2', '+3'], ['+2', '+4', '+3'], ['+2', '+8', '+3']]);
++  });
++
++  it('is empty when nobody of the owner’s is a member', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await expect(memberMiddles(171, '+995599000000')).resolves.toEqual([]);
++  });
++});
+diff --git a/src/services/__tests__/chainMap.service.test.ts b/src/services/__tests__/chainMap.service.test.ts
+index 7778e43..983ffbb 100644
+--- a/src/services/__tests__/chainMap.service.test.ts
++++ b/src/services/__tests__/chainMap.service.test.ts
+@@ -1,10 +1,5 @@
+ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+-jest.mock('../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
+-jest.mock('../neo4j.keys', () => ({
+-  __esModule: true,
+-  getCompositeKeyForUser: jest.fn(() => Promise.resolve('995500000000')),
+-  getCompositeKeyForPhone: jest.fn(() => Promise.resolve('995500000009')),
+-}));
++jest.mock('../memberPaths.service', () => ({ __esModule: true, memberMiddles: jest.fn() }));
+ jest.mock('../block.service', () => ({
+   __esModule: true,
+   getExcludedPhones: jest.fn(() => Promise.resolve([])),
+@@ -29,20 +24,13 @@ jest.mock('../tools/membership', () => ({
+ }));
+ 
+ import { query } from '../../db/postgres/client';
+-import { getSession } from '../../db/neo4j/client';
++import { memberMiddles } from '../memberPaths.service';
+ import { chainMapsFor } from '../chainMap.service';
+ 
+ const mockQuery = query as jest.MockedFunction<typeof query>;
+ 
+ function graph(paths: string[][]): void {
+-  (getSession as jest.Mock).mockReturnValue({
+-    run: jest.fn(() =>
+-      Promise.resolve({
+-        records: paths.map((keys) => ({ get: () => ['995500000000', ...keys, '995500000009'] })),
+-      }),
+-    ),
+-    close: jest.fn(() => Promise.resolve()),
+-  });
++  (memberMiddles as jest.Mock).mockResolvedValue(paths);
+ }
+ 
+ /** Task 1849, stage one (§127). */
+@@ -50,7 +38,7 @@ describe('the maps to a named person', () => {
+   beforeEach(() => mockQuery.mockReset());
+ 
+   it('drops a path through a non-member, and one with a blocked step', async () => {
+-    graph([['995500000001', '995500000002'], ['995500000003'], ['995500000004']]);
++    graph([['+995500000001', '+995500000002'], ['+995500000003'], ['+995500000004']]);
+     // Steps of [1,2] are 1..3, of [4] are 4..5; the step into 4 is blocked.
+     mockQuery.mockResolvedValue({
+       rows: [
+diff --git a/src/services/chainMap.service.ts b/src/services/chainMap.service.ts
+index 3ce5d36..766279f 100644
+--- a/src/services/chainMap.service.ts
++++ b/src/services/chainMap.service.ts
+@@ -1,57 +1,22 @@
+ import { query } from '../db/postgres/client';
+-import { getSession } from '../db/neo4j/client';
+ import { getExcludedPhones } from './block.service';
+ import {
+   CandidatePath,
+   ChainMap,
+   chainMapOf,
+   LinkPerson,
+-  MAX_CHAIN_HOPS,
+   offerable,
+   rankedPaths,
+ } from './chainMap';
+ import { confirmedWarmTieSql } from './chorusCap';
+ import { decodeContactRef, encodeContactRef } from './mcp/contactRef';
+-import { getCompositeKeyForPhone, getCompositeKeyForUser } from './neo4j.keys';
++import { memberMiddles } from './memberPaths.service';
+ import { normalizePhone, phoneDigits } from './phone';
+ import { namesFor } from './tools/findWarmPath';
+ import { AccountDetails, accountDetailsFor, fetchAccountStates } from './tools/membership';
+ 
+-const PATHS_TO_CONSIDER = 25;
+-const NEO4J_TIMEOUT_MS = 8_000;
+ const STEP_QUERY_TIMEOUT_MS = 5_000;
+ 
+-/** Composite keys hold several phones joined by '-'; the first is the person's identifier. */
+-function primaryPhone(compositeKey: string): string {
+-  return normalizePhone(compositeKey.split('-')[0] ?? compositeKey);
+-}
+-
+-/** The middles of the shortest paths, up to four steps; empty when either end is not in the graph. */
+-async function graphMiddles(ownerId: number, targetPhone: string): Promise<string[][]> {
+-  let ownerKey: string;
+-  let targetKey: string;
+-  try {
+-    ownerKey = await getCompositeKeyForUser(ownerId);
+-    targetKey = await getCompositeKeyForPhone(targetPhone);
+-  } catch {
+-    return [];
+-  }
+-  const session = getSession();
+-  try {
+-    const result = await session.run(
+-      `MATCH (me:AllyNode {phoneKey: $ownerKey}), (t:AllyNode {phoneKey: $targetKey})
+-       MATCH p = allShortestPaths((me)-[:CONTACT*1..${MAX_CHAIN_HOPS}]->(t))
+-       RETURN [n IN nodes(p) | n.phoneKey] AS keys
+-       LIMIT ${PATHS_TO_CONSIDER}`,
+-      { ownerKey, targetKey },
+-      { timeout: NEO4J_TIMEOUT_MS },
+-    );
+-    return result.records.map((r) => (r.get('keys') as string[]).slice(1, -1).map(primaryPhone));
+-  } finally {
+-    await session.close();
+-  }
+-}
+-
+ interface StepVerdict {
+   readonly warm: boolean;
+   readonly blocked: boolean;
+@@ -132,7 +97,7 @@ export async function chainMapsFor(ownerId: number, ref: string): Promise<ChainM
+   const decoded = decodeContactRef(String(ownerId), ref);
+   if (decoded === null) return null;
+   const targetPhone = normalizePhone(decoded);
+-  const middles = await graphMiddles(ownerId, targetPhone);
++  const middles = await memberMiddles(ownerId, targetPhone);
+   if (middles.length === 0) return [];
+   const phones = [...new Set([targetPhone, ...middles.flat()])];
+   const states = await fetchAccountStates(phones);
+diff --git a/src/services/memberPaths.service.ts b/src/services/memberPaths.service.ts
+new file mode 100644
+index 0000000..19acdbb
+--- /dev/null
++++ b/src/services/memberPaths.service.ts
+@@ -0,0 +1,154 @@
++import { query } from '../db/postgres/client';
++import {
++  accountDetailsFor,
++  fetchAccountStates,
++  NETAI_ACTIVE_SUBSCRIPTION_STATUSES,
++} from './tools/membership';
++
++/**
++ * Task 1849 (§127): the people in the middle of a path to a named target, read
++ * from the members' own phonebooks — every one of them a Netai member, because
++ * the request travels assistant to assistant. The graph's shortest paths were
++ * read first; when every one of them ran through somebody not on Netai, a
++ * longer all-member path was never looked for. Searching members only finds it.
++ *
++ * Each person in the middle is named by the phone the person before them saved:
++ * the owner's label for the first, and so on.
++ */
++const PEOPLE_READ = 300;
++const PATHS_READ = 100;
++const PATH_QUERY_TIMEOUT_MS = 8_000;
++
++/**
++ * The membership test of tools/membership.ts, in SQL, so a middle person who is
++ * not on Netai is dropped BEFORE their phonebook is joined — without it the
++ * three-step read walks every account's phonebook. membersOnly checks again.
++ */
++const IS_MEMBER_SQL = (userId: string, statusesParam: string): string => `(
++  EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${userId})
++  OR EXISTS (SELECT 1 FROM search_activity sa WHERE sa.user_id = ${userId}::text)
++  OR EXISTS (SELECT 1 FROM "User" u WHERE u.id = ${userId}
++              AND u.subscription_status = ANY(${statusesParam}::text[])))`;
++
++interface SavedMember {
++  readonly userId: number;
++  readonly phone: string;
++}
++
++/** Of these accounts, the ones that are Netai members, by the phone they were saved under. */
++async function membersOnly(people: readonly SavedMember[]): Promise<SavedMember[]> {
++  if (people.length === 0) return [];
++  const states = await fetchAccountStates(people.map((p) => p.phone));
++  return people.filter((p) => accountDetailsFor(states, p.phone).state === 'netai_user');
++}
++
++/** The members in the owner's own phonebook. */
++async function ownersMembers(ownerId: number): Promise<SavedMember[]> {
++  const result = await query<{ phone: string; user_id: number }>(
++    `SELECT DISTINCT ON (up."userId") ua.phone, up."userId" AS user_id
++       FROM "UserAlias" ua JOIN "UserPhone" up ON up.phone = ua.phone
++      WHERE ua."contactId" = $1::int AND up."userId" <> $1::int
++      LIMIT $2`,
++    [ownerId, PEOPLE_READ],
++    PATH_QUERY_TIMEOUT_MS,
++  );
++  return membersOnly(result.rows.map((r) => ({ userId: Number(r.user_id), phone: r.phone })));
++}
++
++/** The members who have the target in their own phonebook, as user ids. */
++async function membersHolding(targetPhone: string, ownerId: number): Promise<Set<number>> {
++  const result = await query<{ phone: string; user_id: number }>(
++    `SELECT DISTINCT ON (up."userId") up.phone, up."userId" AS user_id
++       FROM "UserAlias" ua JOIN "UserPhone" up ON up."userId" = ua."contactId"
++      WHERE ua.phone = $1 AND ua."contactId" <> $2::int
++      LIMIT $3`,
++    [targetPhone, ownerId, PEOPLE_READ],
++    PATH_QUERY_TIMEOUT_MS,
++  );
++  const members = await membersOnly(
++    result.rows.map((r) => ({ userId: Number(r.user_id), phone: r.phone })),
++  );
++  return new Set(members.map((m) => m.userId));
++}
++
++/** Two in the middle: a member of the owner's, who saved a member holding the target. */
++async function twoStepMiddles(
++  first: readonly SavedMember[],
++  last: Set<number>,
++): Promise<string[][]> {
++  if (first.length === 0 || last.size === 0) return [];
++  const result = await query<{ from_id: number; phone: string }>(
++    `SELECT DISTINCT ua."contactId" AS from_id, ua.phone
++       FROM "UserAlias" ua JOIN "UserPhone" up ON up.phone = ua.phone
++      WHERE ua."contactId" = ANY($1::int[]) AND up."userId" = ANY($2::int[])
++        AND up."userId" <> ua."contactId"
++      LIMIT $3`,
++    [first.map((m) => m.userId), [...last], PATHS_READ],
++    PATH_QUERY_TIMEOUT_MS,
++  );
++  const phoneOf = new Map(first.map((m) => [m.userId, m.phone]));
++  return result.rows.flatMap((r) => {
++    const firstPhone = phoneOf.get(Number(r.from_id));
++    return firstPhone === undefined ? [] : [[firstPhone, r.phone]];
++  });
++}
++
++interface ThreeStepRow {
++  readonly from_id: number;
++  readonly mid_id: number;
++  readonly mid_phone: string;
++  readonly last_phone: string;
++}
++
++/** Three in the middle: owner's member → a member they saved → a member holding the target. */
++async function threeStepMiddles(
++  first: readonly SavedMember[],
++  last: Set<number>,
++  ownerId: number,
++): Promise<string[][]> {
++  if (first.length === 0 || last.size === 0) return [];
++  const result = await query<ThreeStepRow>(
++    `SELECT DISTINCT ua."contactId" AS from_id, up."userId" AS mid_id,
++            ua.phone AS mid_phone, ub.phone AS last_phone
++       FROM "UserAlias" ua
++       JOIN "UserPhone" up ON up.phone = ua.phone
++       JOIN "UserAlias" ub ON ub."contactId" = up."userId"
++       JOIN "UserPhone" upb ON upb.phone = ub.phone
++      WHERE ua."contactId" = ANY($1::int[]) AND upb."userId" = ANY($2::int[])
++        AND up."userId" <> $3::int AND up."userId" <> ua."contactId" AND upb."userId" <> up."userId"
++        AND ${IS_MEMBER_SQL('up."userId"', '$5')}
++      LIMIT $4`,
++    [
++      first.map((m) => m.userId),
++      [...last],
++      ownerId,
++      PATHS_READ,
++      NETAI_ACTIVE_SUBSCRIPTION_STATUSES,
++    ],
++    PATH_QUERY_TIMEOUT_MS,
++  );
++  const middles = await membersOnly(
++    result.rows.map((r) => ({ userId: Number(r.mid_id), phone: r.mid_phone })),
++  );
++  const memberMid = new Set(middles.map((m) => m.userId));
++  const phoneOf = new Map(first.map((m) => [m.userId, m.phone]));
++  return result.rows.flatMap((r) => {
++    const firstPhone = phoneOf.get(Number(r.from_id));
++    if (firstPhone === undefined || !memberMid.has(Number(r.mid_id))) return [];
++    return [[firstPhone, r.mid_phone, r.last_phone]];
++  });
++}
++
++/** Every all-member middle of up to three people, shortest first. */
++export async function memberMiddles(ownerId: number, targetPhone: string): Promise<string[][]> {
++  const [first, last] = await Promise.all([
++    ownersMembers(ownerId),
++    membersHolding(targetPhone, ownerId),
++  ]);
++  const oneStep = first.filter((m) => last.has(m.userId)).map((m) => [m.phone]);
++  const [twoStep, threeStep] = await Promise.all([
++    twoStepMiddles(first, last),
++    threeStepMiddles(first, last, ownerId),
++  ]);
++  return [...oneStep, ...twoStep, ...threeStep];
++}
+diff --git a/src/services/tools/membership.ts b/src/services/tools/membership.ts
+index 42a065d..0d203d2 100644
+--- a/src/services/tools/membership.ts
++++ b/src/services/tools/membership.ts
+@@ -59,7 +59,7 @@ export interface AccountDetails {
+  * surviving, and counting them as users is the safe direction: mislabelling a
+  * real user as a target would put them on an invitation list.
+  */
+-const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
++export const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
+ 
+ const NONE: AccountDetails = {
+   state: 'none',
+-- 
+2.43.0
+
