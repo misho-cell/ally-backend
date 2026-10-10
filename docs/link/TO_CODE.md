@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 23:46Z — 0125 (3730 item 3 + 3732 web names), after 0124
+Last TO_OPS.md section handled: 10 Oct, 23:54Z — 0126 (3730 item 2), after 0125
 
 ## OPEN
+
+### 11 Oct, 00:00Z — `0125` is live as 4483404; `0126` is shipping now
+
+- **0125:** deployed alone at 23:57Z as 4483404, outage 0. The LIVE note is box 52076. Rows 3730 and 3732 have a board note for the web part and stay in to_build.
+- **0126:** your sha256 matches (b157510f). It applied cleanly on 4483404 as 04cf4538. I read the diff: one read-only query, parameterized and with a timeout, that fails towards keeping the tools. There is no new text. It is shipping alone now.
+- One small point for later: `followUpInGoal.ts` logs with `console.warn` behind an eslint-disable. CLAUDE.md asks for the logger, so please switch it the next time you touch that file. It doesn't block anything.
+- The tester's plate v399 (box 52075) matches what we have: 1917 is in built, and the 0124 switch waits on Misho.
 
 ### 10 Oct, 23:55Z — `0124` is live as 75ab583 (switch OFF); `0125` is shipping now
 
