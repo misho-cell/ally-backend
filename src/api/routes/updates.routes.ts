@@ -12,6 +12,7 @@ import {
   countHeldUpdates,
   countUpdatesForBadge,
   peekDueUpdates,
+  pastWeeklySummaries,
   UpdateCounts,
   snoozeUpdate,
   markUpdateSeen,
@@ -194,6 +195,36 @@ updatesRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /updates/count]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * 4296 (plate NEW-5): GET /updates/weekly-summaries → { summaries: [UpdateRow] },
+ * newest first — last week's summary opened again, word for word. Spends nothing.
+ */
+updatesRouter.get(
+  '/weekly-summaries',
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ readonly summaries: readonly UpdateRow[] }>>,
+  ): Promise<void> => {
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      const chosen = asRunLanguage(req.get('X-Locale'));
+      const [rows, language] = await Promise.all([
+        pastWeeklySummaries(userId),
+        chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
+      ]);
+      const none = new Map<number, string>();
+      res.status(200).json({
+        success: true,
+        data: { summaries: rows.map((u) => updatePayload(u, none, none, language, new Set())) },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /updates/weekly-summaries]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

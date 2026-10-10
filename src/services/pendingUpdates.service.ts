@@ -344,6 +344,28 @@ export async function listSeenUpdates(
   return result.rows;
 }
 
+/** How many past weekly summaries can be opened again (about two months). */
+export const PAST_SUMMARIES_LIMIT = 8;
+
+/**
+ * 4296 (plate NEW-5): last week's summary could not be opened again — the
+ * `seen` list is the newest fifty updates of any kind, and a week of search
+ * results pushes the summary off its end. The person's own summaries, newest
+ * first, whether read or not. Read-only: nothing is released or marked.
+ */
+export async function pastWeeklySummaries(userId: string): Promise<PendingUpdate[]> {
+  const result = await query<PendingUpdate>(
+    `SELECT p.id, p.task_id, p.kind, p.payload
+       FROM pending_updates p
+      WHERE p.user_id = $1 AND p.kind = $2 AND p.release_at <= NOW()
+      ORDER BY p.release_at DESC, p.id DESC
+      LIMIT $3`,
+    [userId, UNSPENT_KINDS[0], PAST_SUMMARIES_LIMIT],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /**
  * How many updates are still held for the user (due later) — the "more coming"
  * hint. Excludes updates for a closed goal (they never release), and must be
