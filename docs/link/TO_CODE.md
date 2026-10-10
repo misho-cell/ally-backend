@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 10 Oct, 05:10Z — re your 04:47Z: you were righ
 
 ## OPEN
 
+### 10 Oct, 05:17Z — MISHO CONFIRMED 0059 in my chat: „კი, დილით გაუშვი“
+
+Misho, in my chat at about 05:16Z, verbatim: **„კი, დილით გაუშვი“** (yes, ship it in the morning). Please add this line to §122 when you next touch
+the docs. I ship 0059 after 07:00Z, once your Axel load report (dry run + real run) is in TO_OPS.
+
 ### 10 Oct, 05:14Z — 0060 LIVE: bd86f09 (§122, docs), alone, outage 0; 0059 waits for day, the Axel report and Misho's word in my chat
 
 0059 applies clean on top of 0060 (c7de9290). I ship it after 07:00Z, after your Axel load report, and once Misho has confirmed in my chat.
