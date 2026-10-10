@@ -1,0 +1,205 @@
+From 4b346a43a23cce2c74248570c14585e875e71b57 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 05:50:33 +0000
+Subject: [PATCH] feat(billing): /billing/offer carries the plan prices
+ (frontend 05:10Z, Misho)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 05:10Z: Misho decided the app reads the plan prices from
+the server instead of carrying them. The pricing page and the earnings
+page („spend on a month") hold $19.99 / $79.00 as constants today.
+
+GET /billing/offer gains plans: { pro, enterprise }, USD a month. The
+prices come from provider_prices subscription.price.* (migration 035), the
+same rows a month bought with the referral balance is charged from, so the
+page and that charge cannot disagree. A tier with no row, or a price of
+0, is null, and the page keeps its own value. Live today the rows hold
+19.99 and 79.00, so nothing a person sees changes.
+
+FOR_FRONTEND has the contract. A card subscription is charged at the
+payment provider's own price; that is noted there and for ops.
+
+DONE WHEN: the route answers plans { pro: 19.99, enterprise: 79 } on live,
+and both pages show the server's numbers.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 21 ++++++++++++
+ .../__tests__/billingOffer.routes.test.ts     | 33 +++++++++++++++++--
+ src/api/routes/billingOffer.routes.ts         |  2 +-
+ src/services/billingOffer.service.ts          | 26 ++++++++++++++-
+ 4 files changed, 78 insertions(+), 4 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 04f0995..954e66a 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,27 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 06:20Z — re your 05:10Z (Misho: plan prices from the server): `plans` in `GET /billing/offer` (patch, not live yet)
++
++Your name is kept: `plans.pro` and `plans.enterprise`, USD a month, as numbers.
++```json
++{ "success": true, "data": {
++  "card_trial_days": 5,
++  "invite_free_days": 20,
++  "plans": { "pro": 19.99, "enterprise": 79 }
++} }
++```
++- Read from `provider_prices` rows `subscription.price.pro` and `.enterprise`. A month bought with the referral balance is charged from the
++  same rows. Live today they hold 19.99 and 79.00.
++- A tier with no row (or 0) comes back as `null`. Keep your own value then, as you already do.
++- Everything else on the route is unchanged: public, 30 a minute, a 500 with a plain message on a failed read.
++- **One thing to know:** a card subscription is charged at the price set in the payment provider, not from these rows. If someone changes
++  one and not the other, the page follows these rows. I am flagging it to ops so both are changed together.
++
++Status: on branch `claude/ally-app-docs-ctezil`, handed to ops as a patch. I will post the LIVE commit here.
++
++---
++
+ ## 10 October, 04:40Z — 4126 item 5: „facts about me", one screen (on branch, ships by day)
+ 
+ Misho's yes, 9 Oct: a person sees every fact kept about their own numbers, and removes any of them. Both routes need the user's JWT and
+diff --git a/src/api/routes/__tests__/billingOffer.routes.test.ts b/src/api/routes/__tests__/billingOffer.routes.test.ts
+index edd8517..a96c5d3 100644
+--- a/src/api/routes/__tests__/billingOffer.routes.test.ts
++++ b/src/api/routes/__tests__/billingOffer.routes.test.ts
+@@ -5,6 +5,10 @@ jest.mock('../../middleware/rateLimit.middleware', () => ({
+     (_req: unknown, _res: unknown, next: () => void): void =>
+       next(),
+ }));
++jest.mock('../../../services/costLedger.service', () => ({
++  __esModule: true,
++  getPrice: jest.fn(),
++}));
+ jest.mock('../../../services/inviteReward.service', () => ({
+   __esModule: true,
+   inviteFreeDays: jest.fn(),
+@@ -15,9 +19,15 @@ import type { AddressInfo } from 'net';
+ import type { Server } from 'http';
+ import billingOfferRouter from '../billingOffer.routes';
+ import { inviteFreeDays } from '../../../services/inviteReward.service';
++import { getPrice } from '../../../services/costLedger.service';
+ import { DEFAULT_TRIAL_DAYS } from '../../../services/inviteCohorts.service';
+ 
+ const mockInviteDays = inviteFreeDays as jest.MockedFunction<typeof inviteFreeDays>;
++const mockPrice = getPrice as jest.MockedFunction<typeof getPrice>;
++const PRICES: Readonly<Record<string, number>> = {
++  'subscription.price.pro': 19.99,
++  'subscription.price.enterprise': 79,
++};
+ 
+ let server: Server;
+ let base: string;
+@@ -33,7 +43,10 @@ beforeAll((done) => {
+ afterAll((done) => {
+   server.close(() => done());
+ });
+-beforeEach(() => jest.clearAllMocks());
++beforeEach(() => {
++  jest.clearAllMocks();
++  mockPrice.mockImplementation((key: string) => Promise.resolve(PRICES[key] ?? 0));
++});
+ 
+ /** Misho, 9 Oct: the pricing page shows the card trial and the invitation's free days. */
+ describe('GET /billing/offer', () => {
+@@ -43,7 +56,11 @@ describe('GET /billing/offer', () => {
+     expect(res.status).toBe(200);
+     await expect(res.json()).resolves.toEqual({
+       success: true,
+-      data: { card_trial_days: DEFAULT_TRIAL_DAYS, invite_free_days: 20 },
++      data: {
++        card_trial_days: DEFAULT_TRIAL_DAYS,
++        invite_free_days: 20,
++        plans: { pro: 19.99, enterprise: 79 },
++      },
+     });
+   });
+ 
+@@ -53,6 +70,18 @@ describe('GET /billing/offer', () => {
+     await expect(res.json()).resolves.toMatchObject({ data: { invite_free_days: null } });
+   });
+ 
++  /** Misho, 10 Oct (frontend 05:10Z): the plan prices from the rows the charge reads. */
++  it('says null for a plan with no price row, so the page keeps its own', async () => {
++    mockInviteDays.mockResolvedValueOnce(null);
++    mockPrice.mockImplementation((key: string) =>
++      Promise.resolve(key === 'subscription.price.pro' ? 19.99 : 0),
++    );
++    const res = await fetch(base);
++    await expect(res.json()).resolves.toMatchObject({
++      data: { plans: { pro: 19.99, enterprise: null } },
++    });
++  });
++
+   it('says 500 with a plain message when the read fails', async () => {
+     mockInviteDays.mockRejectedValueOnce(new Error('relation app_flags is locked'));
+     const res = await fetch(base);
+diff --git a/src/api/routes/billingOffer.routes.ts b/src/api/routes/billingOffer.routes.ts
+index a6ea77b..737594e 100644
+--- a/src/api/routes/billingOffer.routes.ts
++++ b/src/api/routes/billingOffer.routes.ts
+@@ -3,7 +3,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { billingOffer } from '../../services/billingOffer.service';
+ 
+ /**
+- *   GET /billing/offer   { card_trial_days, invite_free_days | null }
++ *   GET /billing/offer   { card_trial_days, invite_free_days | null, plans: { pro, enterprise } }
+  *
+  * Public on purpose: the pricing page is also read signed out, and both
+  * numbers are what the page already promises to anybody. Mounted ahead of
+diff --git a/src/services/billingOffer.service.ts b/src/services/billingOffer.service.ts
+index 3cfffec..6e60080 100644
+--- a/src/services/billingOffer.service.ts
++++ b/src/services/billingOffer.service.ts
+@@ -1,3 +1,4 @@
++import { getPrice } from './costLedger.service';
+ import { DEFAULT_TRIAL_DAYS } from './inviteCohorts.service';
+ import { inviteFreeDays } from './inviteReward.service';
+ 
+@@ -7,13 +8,36 @@ import { inviteFreeDays } from './inviteReward.service';
+  * live on the server (the env's STRIPE_TRIAL_DAYS, and the invite_free_days
+  * setting behind its switch), so the page reads them instead of writing them
+  * into its own text, where a change on the dashboard would leave it wrong.
++ *
++ * Misho, 10 Oct (frontend TO_BACKEND 05:10Z): the plan prices too, from the
++ * same rows a month bought with the referral balance is charged from
++ * (subscription.price.*, migration 035), so the page and the charge cannot
++ * disagree.
+  */
++type PlanTier = 'pro' | 'enterprise';
++
+ export interface BillingOffer {
+   readonly card_trial_days: number;
+   /** Null while the invitation's free days are switched off. */
+   readonly invite_free_days: number | null;
++  /** USD a month; null for a tier with no price row, so the page keeps its own. */
++  readonly plans: Readonly<Record<PlanTier, number | null>>;
++}
++
++async function planPrice(tier: PlanTier): Promise<number | null> {
++  const price = await getPrice(`subscription.price.${tier}`);
++  return Number.isFinite(price) && price > 0 ? price : null;
+ }
+ 
+ export async function billingOffer(): Promise<BillingOffer> {
+-  return { card_trial_days: DEFAULT_TRIAL_DAYS, invite_free_days: await inviteFreeDays() };
++  const [inviteDays, pro, enterprise] = await Promise.all([
++    inviteFreeDays(),
++    planPrice('pro'),
++    planPrice('enterprise'),
++  ]);
++  return {
++    card_trial_days: DEFAULT_TRIAL_DAYS,
++    invite_free_days: inviteDays,
++    plans: { pro, enterprise },
++  };
+ }
+-- 
+2.43.0
+
