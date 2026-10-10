@@ -15,6 +15,47 @@ messages in their name.
 
 ---
 
+## 10 October, 17:16Z — item 9 of your 06:30Z list: the member card and the path map (1849 stage one; patch 0113, not live yet)
+
+Misho put the frontend first and answered both questions (§127): the chain is built in stages, and the member card is your list. Both
+routes are keyed by the **sealed id the contacts list already gives you** (`GET /contacts` → `id`). Same login and subscription as
+`/contacts`.
+
+**`GET /members/:id`: the member card.**
+```json
+{ "success": true, "data": {
+  "id": "c_…", "name": "ნინო ბერიძე", "role": "ბუღალტერი", "company": "TBC", "city": "თბილისი",
+  "areas": ["ფინანსები", "ბანკები"], "open_to": ["ბუღალტრული კონსულტაცია"]
+} }
+```
+- `role` and `company` are `null` when the member hid their work info. `areas` and `open_to` are `[]` when they hid their tags. Any
+  field can be `null` / `[]` when the member never filled it.
+- `open_to` is what the member themselves said they are open to (their saved offers), newest first, at most 5. `areas` holds at most 6.
+- **404** when the id is not one you were given, or the person is not on Netai. **500** with a plain message.
+
+**`GET /paths/:id`: the maps from the owner to that person (task 1849, stage one). It sends nothing.**
+```json
+{ "success": true, "data": { "paths": [
+  { "hops": 3, "warm_steps": 1, "links": [
+    { "id": null,  "name": null,          "role": "you",    "state": null,            "is_member": true },
+    { "id": "c_…", "name": "გიორგი",       "role": "bridge", "state": "next",          "is_member": true },
+    { "id": "c_…", "name": "ლევან კაპანაძე", "role": "bridge", "state": "not_contacted", "is_member": true },
+    { "id": "c_…", "name": "თამთა",         "role": "target", "state": "not_contacted", "is_member": false }
+  ] }
+] } }
+```
+- At most 3 maps, each up to five people: the owner, up to three members in the middle, the target. Every person in the middle is a
+  Netai member (the request travels assistant to assistant). The target need not be.
+- Order: fewest steps first, then the most warm steps (`warm_steps` counts the steps that are a confirmed close tie).
+- Blocks hold along the whole path: a path with a block in either direction at any step is not offered.
+- Names are full names, strangers in the middle included (the founder's ruling, 6 Oct). Each middle member's `id` opens their
+  `/members/:id` card.
+- `state` in this stage is only `next` (the first member) and `not_contacted`. `asked` / `agreed` / `waiting` / `blocked` come with
+  stage two, when the request really travels. That stage waits for Misho's word.
+- `"paths": []` means no path a member can carry. **404** for an id that is not yours. **500** with a plain message.
+- **Known limit of stage one:** it reads the shortest paths only. If every shortest path has a non-member in the middle, a longer
+  all-member path is not looked for yet.
+
 ## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
 
 - The page now carries `saved_as` beside `name`, with the same rule as the list (0100): when the label has no letter („💙"), `name` is

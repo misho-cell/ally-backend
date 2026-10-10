@@ -161,7 +161,10 @@ async function shortestPaths(
  * account name for a Netai user, any phonebook's label for a stranger — the
  * same three sources second-degree search names its "via" people from.
  */
-async function namesFor(userId: string, phones: string[]): Promise<Map<string, string | null>> {
+export async function namesFor(
+  userId: string,
+  phones: string[],
+): Promise<Map<string, string | null>> {
   if (phones.length === 0) return new Map();
   const result = await query<{ phone: string; name: string | null }>(
     `SELECT ua.phone,

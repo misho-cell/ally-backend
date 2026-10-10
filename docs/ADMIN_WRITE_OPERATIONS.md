@@ -6230,3 +6230,14 @@ D772 + D773, and D771 + BI; the founder's answers came through the tester's box,
   (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
 - **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
 
+
+**§127 — 10 October ~17:10 UTC, Misho in the code session's chat: „ფრონტის დავალებები დააპრიორიტეტე", then, asked two
+questions, „კი, ეტაპებად" and „ფრონტის სია"** (the frontend's item 9: task 1849, the chain to a named person, and the member card).
+
+- **1849, in stages.** First the read-only part: the path from the owner to a named target, up to five people (the owner, up to three
+  members in the middle, the target), every person in the middle a Netai member, blocks held along the whole path, warm ties first.
+  Served to the frontend as a map. Nothing is sent by it. The relay along the chain comes after, behind its own switch, which turns on
+  only on Misho's word recorded here.
+- **The member card: the frontend's list.** Name, role · company, city, areas, and „open to" (the member's own saved offers). Every
+  field the member hid in their own settings (`hideUserWorkInfo` and the rest) stays hidden.
+- **Undo:** the routes are read-only; removing them is one commit each.
