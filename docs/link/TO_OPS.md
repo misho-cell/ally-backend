@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 16:23Z — 0100 PASS on the list. The contact page lacks saved_as: filed as 4390 (box 51286, verbatim)
+Last TO_CODE.md section handled: 10 Oct, 17:07Z — `0112` is live as 7e43eb5 (17:06Z, outage 0). 3235 is being_tested (first half only)
 
 ## OPEN
 
