@@ -1,0 +1,443 @@
+From c0568c308a79a07fb80c94bc93e9f3bea9bca1e4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 06:43:18 +0000
+Subject: [PATCH 66/67] feat(threads): GET /threads/:id/routes, the goal's
+ routes board (D722, frontend 06:30Z item 2)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 06:30Z list for the new design (Misho), item 2: on a goal
+where Netai talks to more than one person in parallel, the goal's
+conversation shows a board, one row per person.
+
+GET /threads/:id/routes → { routes: [{ ask_id, kind, person_name, role,
+state, summary, updated_at }] }
+- Read for the conversation's owner only. The goal is the latest on that
+  thread, and both the thread and the goal must be this user's.
+- Rows come from what this goal itself sent. Its own asks are rows with
+  role addressee, from task_asks with from_user_id = the owner and no
+  parent; a relayed question further down a chain is another person's and
+  is not listed. Its introduction requests are rows with role mediator.
+- Names are the owner's own saved names.
+- state: waiting (held / sent / seen / later), answered, declined,
+  confirmed (an accepted introduction), closed (expired or cancelled).
+- summary: an answer as the owner already reads it (numbers scrubbed, a
+  shared number kept), cut at 200 characters. For an introduction it is the
+  person asked for.
+- Fewer than two rows, no goal, or someone else's thread: an empty list,
+  which means no board.
+
+DONE WHEN: a goal with three asks and an introduction shows four rows with
+the right roles and states; a goal with one ask shows no board.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/threadRoutes.routes.test.ts     |  82 +++++++++
+ src/api/routes/threads.routes.ts              |  27 +++
+ .../__tests__/aGoalShowsItsRoutes.test.ts     |  84 +++++++++
+ src/services/routesBoard.service.ts           | 166 ++++++++++++++++++
+ 4 files changed, 359 insertions(+)
+ create mode 100644 src/api/routes/__tests__/threadRoutes.routes.test.ts
+ create mode 100644 src/services/__tests__/aGoalShowsItsRoutes.test.ts
+ create mode 100644 src/services/routesBoard.service.ts
+
+diff --git a/src/api/routes/__tests__/threadRoutes.routes.test.ts b/src/api/routes/__tests__/threadRoutes.routes.test.ts
+new file mode 100644
+index 0000000..12ffefd
+--- /dev/null
++++ b/src/api/routes/__tests__/threadRoutes.routes.test.ts
+@@ -0,0 +1,82 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../middleware/subscription.middleware', () => ({
++  __esModule: true,
++  requireSubscriptionUnlessAnswering: (_req: unknown, _res: unknown, next: () => void): void =>
++    next(),
++}));
++jest.mock('../../middleware/deviceFingerprint.middleware', () => ({
++  __esModule: true,
++  captureDeviceFingerprint: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../../services/routesBoard.service', () => ({
++  ...jest.requireActual('../../../services/routesBoard.service'),
++  routesForThread: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import threadsRouter from '../threads.routes';
++import { routesForThread, RouteRole, RouteState } from '../../../services/routesBoard.service';
++
++const mockRoutes = routesForThread as jest.MockedFunction<typeof routesForThread>;
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use(express.json());
++  app.use('/threads', threadsRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/threads`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** D722, the frontend's 06:30Z item 2. */
++describe('GET /threads/:id/routes', () => {
++  it('answers the board for the signed-in owner', async () => {
++    const route = {
++      ask_id: 1,
++      kind: 'ask' as const,
++      person_name: 'ნინო',
++      role: RouteRole.Addressee,
++      state: RouteState.Waiting,
++      summary: null,
++      updated_at: '2026-10-10T06:00:00Z',
++    };
++    mockRoutes.mockResolvedValue([route, { ...route, ask_id: 2 }]);
++    const res = await fetch(`${base}/48722/routes`);
++    expect(res.status).toBe(200);
++    const body = (await res.json()) as { data: { routes: unknown[] } };
++    expect(body.data.routes).toHaveLength(2);
++    expect(mockRoutes).toHaveBeenCalledWith(171, 48722);
++  });
++
++  it('says 400 for an id that is not one, and 500 without the database error', async () => {
++    expect((await fetch(`${base}/abc/routes`)).status).toBe(400);
++    mockRoutes.mockRejectedValue(new Error('relation tasks is locked'));
++    const res = await fetch(`${base}/48722/routes`);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('relation');
++  });
++});
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 6a82cb6..86db835 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -1,6 +1,7 @@
+ import { choiceNotesFor } from '../../services/choiceNotes';
+ import { otherChoiceField } from '../../services/otherChoice';
+ import { exportConversation } from '../../services/conversationExport.service';
++import { routesForThread } from '../../services/routesBoard.service';
+ import { Router, Request, Response, NextFunction } from 'express';
+ import { randomUUID } from 'crypto';
+ import { param, body, validationResult } from 'express-validator';
+@@ -626,6 +627,32 @@ threadsRouter.get(
+   },
+ );
+ 
++/**
++ * D722, the frontend's 06:30Z item 2: the goal's routes board — one row per
++ * person this goal is talking to, while it talks to two or more.
++ *
++ *   200 { routes: [{ ask_id, kind, person_name, role, state, summary, updated_at }] }
++ *       an empty list when there is no board (one person or none, no goal,
++ *       or not this user's conversation)
++ */
++threadsRouter.get(
++  '/:id/routes',
++  rateLimit({ windowMs: 60_000, max: 30 }),
++  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
++  handleValidationErrors,
++  async (req: Request, res: Response): Promise<void> => {
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      const routes = await routesForThread(userId, Number(req.params.id));
++      res.status(200).json({ success: true, data: { routes } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /threads/:id/routes]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not read the routes' });
++    }
++  },
++);
++
+ threadsRouter.get(
+   '/:id/messages',
+   param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+diff --git a/src/services/__tests__/aGoalShowsItsRoutes.test.ts b/src/services/__tests__/aGoalShowsItsRoutes.test.ts
+new file mode 100644
+index 0000000..cf58e9a
+--- /dev/null
++++ b/src/services/__tests__/aGoalShowsItsRoutes.test.ts
+@@ -0,0 +1,84 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import {
++  routesForThread,
++  RouteRole,
++  RouteState,
++  SUMMARY_MAX_CHARS,
++  summaryOf,
++} from '../routesBoard.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const OWNER = 171;
++const THREAD = 48722;
++
++const ask = (id: number, extra: Record<string, unknown>): Record<string, unknown> => ({
++  id,
++  name: `Person ${id}`,
++  status: 'sent',
++  answer: null,
++  declined_at: null,
++  seen_at: null,
++  later_until: null,
++  expired_at: null,
++  updated_at: '2026-10-10T06:00:00Z',
++  ...extra,
++});
++
++/** D722, the frontend's 06:30Z item 2: the routes board of a goal's conversation. */
++describe('the routes board', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('lists every person the goal talks to, with role and state', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ id: 23834 }] } as never)
++      .mockResolvedValueOnce({
++        rows: [
++          ask(1, {}),
++          ask(2, { status: 'answered', answer: 'კი, ვიცნობ ერთს' }),
++          ask(3, { status: 'answered', declined_at: '2026-10-10T05:00:00Z' }),
++        ],
++      } as never)
++      .mockResolvedValueOnce({
++        rows: [
++          {
++            id: 9,
++            name: 'გელა',
++            status: 'accepted',
++            target_name: 'ნანა',
++            updated_at: '2026-10-10T05:30:00Z',
++          },
++        ],
++      } as never);
++    const routes = await routesForThread(OWNER, THREAD);
++    expect(routes.map((r) => [r.person_name, r.role, r.state])).toEqual([
++      ['Person 1', RouteRole.Addressee, RouteState.Waiting],
++      ['Person 2', RouteRole.Addressee, RouteState.Answered],
++      ['Person 3', RouteRole.Addressee, RouteState.Declined],
++      ['გელა', RouteRole.Mediator, RouteState.Confirmed],
++    ]);
++    expect(routes[1].summary).toBe('კი, ვიცნობ ერთს');
++    const [goalSql, goalParams] = mockQuery.mock.calls[0];
++    expect(String(goalSql)).toContain('th.user_id = $2');
++    expect(goalParams).toEqual([THREAD, OWNER]);
++    expect(String(mockQuery.mock.calls[1][0])).toContain('ta.parent_ask_id IS NULL');
++  });
++
++  it('draws no board for one person, and none for a conversation that is not theirs', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ id: 1 }] } as never)
++      .mockResolvedValueOnce({ rows: [ask(1, {})] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(routesForThread(OWNER, THREAD)).resolves.toEqual([]);
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(routesForThread(OWNER, 1)).resolves.toEqual([]);
++    expect(mockQuery).toHaveBeenCalledTimes(4);
++  });
++
++  it('shows an answer the way the owner reads it, cut short', () => {
++    expect(summaryOf(null)).toBeNull();
++    expect(summaryOf('   ')).toBeNull();
++    expect(summaryOf('x'.repeat(500))).toHaveLength(SUMMARY_MAX_CHARS);
++  });
++});
+diff --git a/src/services/routesBoard.service.ts b/src/services/routesBoard.service.ts
+new file mode 100644
+index 0000000..3d84740
+--- /dev/null
++++ b/src/services/routesBoard.service.ts
+@@ -0,0 +1,166 @@
++import { query } from '../db/postgres/client';
++import { AskState, askStateOf } from './askState';
++import { scrubText, stripAllowedSpans } from './privacyScrub';
++import { ASKED_AS_THE_ASKER_SAVED_THEM, nameAsSavedBySql } from './savedNameSql';
++
++/**
++ * D722, the frontend's 06:30Z item 2 (Misho: the new design's full list): on
++ * a goal where Netai talks to more than one person in parallel, the goal's
++ * conversation shows a board — one row per person, who they are to this goal
++ * and where their part stands.
++ *
++ * Read for the conversation's owner only, from what this goal itself sent: its
++ * own asks (the person is asked) and its introduction requests (the person is
++ * the bridge). Names are the owner's own saved names. An answer is shown the
++ * way the owner already reads it in the chat (numbers scrubbed, a shared
++ * number kept). A relayed question further down a chain is another person's
++ * and is not listed.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++/** A board only makes sense with two people or more (the design's rule). */
++export const MIN_ROUTES_FOR_A_BOARD = 2;
++const MAX_ROUTES = 50;
++export const SUMMARY_MAX_CHARS = 200;
++
++export enum RouteRole {
++  Addressee = 'addressee',
++  Mediator = 'mediator',
++}
++
++export enum RouteState {
++  Waiting = 'waiting',
++  Confirmed = 'confirmed',
++  Answered = 'answered',
++  Declined = 'declined',
++  Closed = 'closed',
++}
++
++export interface RouteRow {
++  readonly ask_id: number;
++  readonly kind: 'ask' | 'introduction';
++  readonly person_name: string | null;
++  readonly role: RouteRole;
++  readonly state: RouteState;
++  readonly summary: string | null;
++  readonly updated_at: string;
++}
++
++interface AskRow {
++  readonly id: number;
++  readonly name: string | null;
++  readonly status: string;
++  readonly answer: string | null;
++  readonly declined_at: string | null;
++  readonly seen_at: string | null;
++  readonly later_until: string | null;
++  readonly expired_at: string | null;
++  readonly updated_at: string;
++}
++
++interface IntroRow {
++  readonly id: number;
++  readonly name: string | null;
++  readonly status: string;
++  readonly target_name: string;
++  readonly updated_at: string;
++}
++
++const STATE_OF_ASK: Readonly<Record<AskState, RouteState>> = {
++  [AskState.Held]: RouteState.Waiting,
++  [AskState.Sent]: RouteState.Waiting,
++  [AskState.Seen]: RouteState.Waiting,
++  [AskState.Later]: RouteState.Waiting,
++  [AskState.Answered]: RouteState.Answered,
++  [AskState.Declined]: RouteState.Declined,
++  [AskState.Expired]: RouteState.Closed,
++  [AskState.Cancelled]: RouteState.Closed,
++};
++
++const STATE_OF_INTRO: Readonly<Record<string, RouteState>> = {
++  pending: RouteState.Waiting,
++  accepted: RouteState.Confirmed,
++  declined: RouteState.Declined,
++};
++
++/** The open-or-latest goal on this conversation, when the conversation is this user's. */
++async function goalOfOwnThread(userId: number, threadId: number): Promise<number | null> {
++  const result = await query<{ id: number }>(
++    `SELECT t.id FROM tasks t
++       JOIN threads th ON th.id = t.thread_id
++      WHERE t.thread_id = $1 AND th.user_id = $2 AND t.user_id = $2::text
++      ORDER BY t.id DESC LIMIT 1`,
++    [threadId, userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.id ?? null;
++}
++
++export function summaryOf(answer: string | null): string | null {
++  if (answer === null || answer.trim() === '') return null;
++  const shown = stripAllowedSpans(scrubText(answer)).trim();
++  return shown === '' ? null : shown.slice(0, SUMMARY_MAX_CHARS);
++}
++
++export function askRoute(row: AskRow, now: Date): RouteRow {
++  return {
++    ask_id: row.id,
++    kind: 'ask',
++    person_name: row.name,
++    role: RouteRole.Addressee,
++    state: STATE_OF_ASK[askStateOf(row, now)],
++    summary: summaryOf(row.answer),
++    updated_at: row.updated_at,
++  };
++}
++
++export function introRoute(row: IntroRow): RouteRow {
++  return {
++    ask_id: row.id,
++    kind: 'introduction',
++    person_name: row.name,
++    role: RouteRole.Mediator,
++    state: STATE_OF_INTRO[row.status] ?? RouteState.Closed,
++    summary: row.target_name,
++    updated_at: row.updated_at,
++  };
++}
++
++async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
++  const result = await query<AskRow>(
++    `SELECT ta.id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name, ta.status, ta.answer,
++            ta.declined_at, ta.seen_at, ta.later_until, ta.expired_at,
++            GREATEST(ta.created_at, ta.answered_at, ta.declined_at, ta.seen_at, ta.expired_at)
++              AS updated_at
++       FROM task_asks ta
++      WHERE ta.task_id = $1 AND ta.from_user_id = $2 AND ta.parent_ask_id IS NULL
++      ORDER BY ta.created_at ASC
++      LIMIT $3`,
++    [taskId, userId, MAX_ROUTES],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
++  const result = await query<IntroRow>(
++    `SELECT ir.id, ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
++            ir.status, ir.target_name, COALESCE(ir.responded_at, ir.created_at) AS updated_at
++       FROM introduction_requests ir
++      WHERE ir.requester_task_id = $1 AND ir.requester_user_id = $2
++      ORDER BY ir.created_at ASC
++      LIMIT $3`,
++    [taskId, userId, MAX_ROUTES],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** The board for this conversation; an empty list when there is no board to draw. */
++export async function routesForThread(userId: number, threadId: number): Promise<RouteRow[]> {
++  const taskId = await goalOfOwnThread(userId, threadId);
++  if (taskId === null) return [];
++  const [asks, intros] = await Promise.all([asksOf(userId, taskId), introsOf(userId, taskId)]);
++  const now = new Date();
++  const routes = [...asks.map((a) => askRoute(a, now)), ...intros.map(introRoute)];
++  return routes.length >= MIN_ROUTES_FOR_A_BOARD ? routes : [];
++}
+-- 
+2.43.0
+

@@ -1,0 +1,109 @@
+From f390528447135f5be6d62a29411d1116311e55a0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 06:47:29 +0000
+Subject: [PATCH 67/67] feat(threads): each GET /threads row says the owner's
+ role (frontend 06:30Z item 3)
+
+The frontend's 06:30Z list (Misho, the new design), item 3: the list's role
+filter and the header pill need the owner's role in each conversation.
+Nothing marked a mediator, so the app drew no role there rather than guess.
+
+Each row now carries role:
+- mediator: an introduction request came to them, in the request's own
+  thread or in a conversation it was written into;
+- addressee: someone's goal asked them;
+- initiator: their own goal or their own introduction request;
+- null: a plain conversation with no work in it.
+It is read in the same list query. Checked read-only on live.
+
+DONE WHEN: a bridge's request thread reads mediator, an asked person's
+thread addressee, a goal thread initiator, a plain chat null.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/threadList.service.test.ts      | 16 ++++++++++
+ src/services/threads.service.ts               | 29 ++++++++++++++++++-
+ 2 files changed, 44 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/threadList.service.test.ts b/src/services/__tests__/threadList.service.test.ts
+index fd38c34..69741a0 100644
+--- a/src/services/__tests__/threadList.service.test.ts
++++ b/src/services/__tests__/threadList.service.test.ts
+@@ -255,3 +255,19 @@ describe('a conversation in the list names its goal and whether it has a list',
+     }
+   });
+ });
++
++/** The frontend's 06:30Z item 3: who the owner is in each conversation's work. */
++describe('the role on each row', () => {
++  it('is read in the same query, mediator before addressee before initiator', async () => {
++    firstPage([], [{ ...CONVERSATION, role: 'mediator' }], []);
++    const out = await getThreadsForUser('501', { limit: 30 });
++    expect(out[0].role).toBe('mediator');
++    const sql = String(mockQuery.mock.calls[1][0]);
++    const at = (word: string): number => sql.indexOf(`THEN '${word}'`);
++    expect(sql).toContain('AS role');
++    expect(sql).toContain('mr.mediator_thread_id = t.id');
++    expect(at('mediator')).toBeGreaterThan(-1);
++    expect(at('mediator')).toBeLessThan(at('addressee'));
++    expect(at('addressee')).toBeLessThan(at('initiator'));
++  });
++});
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index 290ad03..86fa300 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -108,6 +108,8 @@ interface ThreadRow extends Thread {
+   has_list?: boolean;
+   /** #2080: flagged by its owner to come back to — it rides at the top until cleared. */
+   followed?: boolean;
++  /** The frontend's 06:30Z item 3: who the owner is in this conversation's work (THREAD_ROLE_SQL). */
++  role?: ThreadRole | null;
+   // Public ref of the linked introduction request (null on regular threads) —
+   // what the client posts to /requests/:ref/{accept,decline,snooze}.
+   request_ref: string | null;
+@@ -303,6 +305,30 @@ const REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER = `CASE
+ 
+ // The list's columns, shared by the page query and the open-goals query so the
+ // two can never drift into returning differently-shaped rows.
++/**
++ * The frontend's 06:30Z item 3 (Misho, the new design): the owner's role in a
++ * conversation, for the list filter and the header pill.
++ *   mediator  — a request to introduce someone came to them (the request's own
++ *               thread, or a conversation it was written into);
++ *   addressee — someone's goal asked them a question;
++ *   initiator — their own goal, or their own request for an introduction;
++ *   null      — a plain conversation with no work in it.
++ */
++export enum ThreadRole {
++  Initiator = 'initiator',
++  Mediator = 'mediator',
++  Addressee = 'addressee',
++}
++
++const THREAD_ROLE_SQL = `CASE
++         WHEN t.type = 'incoming_request'
++           OR EXISTS (SELECT 1 FROM introduction_requests mr WHERE mr.mediator_thread_id = t.id)
++           THEN '${ThreadRole.Mediator}'
++         WHEN t.type = 'incoming_ask' THEN '${ThreadRole.Addressee}'
++         WHEN t.type = 'outgoing_request' OR goal.id IS NOT NULL THEN '${ThreadRole.Initiator}'
++         ELSE NULL
++       END`;
++
+ const THREAD_LIST_COLUMNS = `t.id,
+        t.user_id,
+        t.type,
+@@ -321,7 +347,8 @@ const THREAD_LIST_COLUMNS = `t.id,
+        ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
+        goal.id AS goal_id,
+        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
+-       t.followed_at IS NOT NULL AS followed`;
++       t.followed_at IS NOT NULL AS followed,
++       ${THREAD_ROLE_SQL} AS role`;
+ 
+ // `shared_ir`: the pending request written into this thread by row 305 (b).
+ // At most one — `requestIntroduction` never puts a second pending request into
+-- 
+2.43.0
+
