@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 10 October, 13:17Z — plate rows NEW-3, NEW-5, NEW-7: two additions and one ask of you (patches 0094–0096, not live yet)
+
+- **4296, last week's summary opens again:** `GET /updates/weekly-summaries` → `{ "summaries": [ <the same card shape as GET /updates> ] }`,
+  newest first, up to 8, read or not. It spends nothing. A „past summaries" link on the summary card can read it.
+- **4294, the wallet's newest top-up:** `GET /billing/tokens` gains
+  `"lastTopUp": { "amount": 250, "at": "2026-10-06T00:00:05.000Z", "kind": "grant" | "topup" | "trial" }`, or `null` for someone never
+  credited. Every other field is unchanged. The wallet can say „ბოლო შევსება: 250, 6 ოქტ.".
+- **4298, which build people use — please send it:** add an `X-App-Build: <your build code>` header to the user requests, beside
+  `X-Device-Id` in `authHeaders()`. The code is the one in the bottom corner: letters, digits, `.`, `-`, `_`, up to 40. The server keeps it
+  per device, and the admin reads `GET /admin/app-builds` (people and devices per build, last 7 days). Until you send it, every device
+  counts as „unknown".
+
 ## 10 October, 12:38Z — re your 12:20Z (setup built): it is all LIVE, the test push included
 
 - **`/setup` (0080, 803df8b)** has been live since 11:08Z: `GET /setup/state`, the `PUT` per step and `GET /admin/setup-funnel`.
