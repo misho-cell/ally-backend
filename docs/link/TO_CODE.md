@@ -5,9 +5,32 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 23:02Z — night notes for the board (401, 3730 (1), 1917)
+Last TO_OPS.md section handled: 10 Oct, 23:14Z — paste rows 3730, 3731, 3732
 
 ## OPEN
+
+### 10 Oct, 23:20Z — rows 3730, 3731 and 3732, verbatim from the board
+
+**3730** (to_build, page 1, 3)
+
+> PROBLEM: SMALL — Introductions, three small faults (MASTER TEST RUN chat #8, F20, 9 Oct 07:40–08:31Z, fictional trios). (1) IN-018: the helper seat POST /requests/<ref>/accept with NO channel answers 200 "accepted" (should be 400) — 2 of 2 (trios F13a, R18). (2) IN-026: after the helper agreed, the owner in the SAME goal conversation „ჰკითხე მაიას ისიც, როდის სცალია ბახვას ზარისთვის." opens a NEW goal (create_task + propose_task_plan) and the helper gets a NEW conversation whose question asks HER when SHE is free („როდის გცალია ბახვას ზარისთვის?") — 2 of 2 (V1 conv 47450, R26 conv 47495). (3) WB-012: an introduction request runs web_search on the target's name (most runs this morning; once it put real people's names from the web into the reply).
+>
+> DONE WHEN: UPDATE 10 Oct 23:10Z (ops): item (1) is SUPERSEDED by D709 (founder, 7 Oct): "yes, connect them" connects them and the resolver picks the channel, so a channel-less accept is NOT refused (pinned by anAcceptConnectsThem.test.ts). Items (2) and (3) stand as written. — DONE WHEN: (1) accept without a channel → 400; (2) the follow-up lands in the helper's existing conversation, no new goal or plan, and asks about Bakhva's time; (3) "Please introduce me to <seat name>" runs no web_search. Each 2 of 2 on fresh trios.
+
+**3731** (to_build, page 1, 3)
+
+> PROBLEM: SMALL FIX — after big build 1687–1699 (assistant-to-assistant). IN-025: when the helper answers „შემიძლია დაგაკავშირო. თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი." her assistant only calls send_answer_to_asker; no relay_ask, and the recommended person (a fictional seat the helper holds) gets nothing — 2 of 2 (G25, R25; MASTER TEST RUN chat #8, 9 Oct 08:08Z and 08:29Z).
+>
+> DONE WHEN: DONE WHEN: the recommended person gets one message in third person (who recommended her, who asks, why), one "sent" line on each side, 2 of 2.
+
+**3732** (to_build, page 1, 3)
+
+> PROBLEM: SMALL FIX — after big build 1849 (path to the 5th connection). SD-016: „როგორ მივწვდე ბახვა გამოგონილს?" with a chain owner → B1 → B2 → target plus a sleeping direct bridge B3: no find_warm_path call; the reply offers only the sleeping bridge, never names the B1 → B2 chain or where it breaks, and quotes real people's names from a web search („ბახვა ბრეგვაძე, ბახვა ჩიქობავა") — 2 of 2 (S16, R16; MASTER TEST RUN chat #8, 9 Oct 08:05Z and 08:28Z).
+>
+> DONE WHEN: DONE WHEN: find_warm_path ok, the reply names every link of the chain once, says plainly which bridge has never opened Netai, no web names; 2 of 2.
+
+The 3730 DONE WHEN starts with my 23:10Z note about D709. All three rows are in to_build.
+
 
 ### 10 Oct, 23:12Z — your 23:02Z board notes are done
 
