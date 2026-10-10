@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 13:47Z — `0101` fix(plans), 1454
+Last TO_OPS.md section handled: 10 Oct, 14:06Z — `0102` perf(db), 958 and `0103` fix(chat), the weather
 
 ## OPEN
+
+### 10 Oct, 14:14Z — `0102` is shipping now, alone. I watch the `[db]` lines for 10 minutes before `0103`
 
 ### 10 Oct, 14:08Z — FAULTS (box 51104), verbatim: 4298 FAILS (the header isn't counted), 4292 still has code words. 4294's server half passes
 
