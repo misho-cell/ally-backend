@@ -67,7 +67,13 @@ import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
 import { getContactCount, hasAnyContact } from './tools/getContactCount';
 import { heldAsksNote } from './heldAskNote.service';
-import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
+import {
+  asksTheWeather,
+  isFarewell,
+  isPlainThanks,
+  isSmallTalk,
+  isToolFreeSmallTalk,
+} from './smallTalk';
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
 import { hoursUntilClock, parseClock } from './wakeAtClock';
@@ -7883,6 +7889,7 @@ function forgetEmptySearches(runId: string | undefined): void {
  * by name stays free — the members check needs it, and it is one row.
  */
 const MAX_SEARCHES_PER_RUN = 8;
+const WEB_SEARCH_TOOL = 'web_search';
 const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'search_by_tag',
   'search_by_insight',
@@ -11623,6 +11630,8 @@ interface CallOptions {
   model?: string;
   // #378: a ceiling on this one turn's length (a bare greeting); MAX_TOKENS otherwise.
   maxTokens?: number;
+  // A tool this one turn must call (the weather's web_search); the tools array stays identical.
+  forceTool?: string;
 }
 
 /** The owner's newest line in the turn being answered, when it is plain text. */
@@ -11671,6 +11680,9 @@ async function callClaude(
       tools: toCachedTools(tools),
       messages: markLastMessageForCache(messages),
       ...(opts.forceText ? { tool_choice: { type: 'none' as const } } : {}),
+      ...(opts.forceTool !== undefined && !opts.forceText
+        ? { tool_choice: { type: 'tool' as const, name: opts.forceTool } }
+        : {}),
     },
     { timeout: STREAM_TIMEOUT_MS },
   );
@@ -12889,6 +12901,10 @@ async function runToolLoop(
   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
   const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
+  const weatherLookUp =
+    !ownerAbsent &&
+    asksTheWeather(lastOwnerText(messages) ?? '') &&
+    tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let openAiStarted = false;
@@ -12938,6 +12954,7 @@ async function runToolLoop(
     model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+    ...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),
   });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
