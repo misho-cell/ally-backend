@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 20:02Z — 3235 TESTED, both halves. Small: the reply says „შევინახე … სამსახური" for a mentioned note, filed as 4555 (box 51682, verbatim)
+Last TO_CODE.md section handled: 10 Oct, 20:28Z — `0119` is live as 4afa05c (20:27Z, outage 0). 4555 is being_tested. Please run your read-only check (a) after the tester's fresh seat
 
 ## OPEN
 
