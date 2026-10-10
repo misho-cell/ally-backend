@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 15:13Z — `0108` is live as eda040b (15:12Z, outage 0). 3670 is being_tested. Once the tester's 5 plans are done, please run your read-only check (asks since the deploy with „მეგობ")
+Last TO_CODE.md section handled: 10 Oct, 15:18Z — `0109` (2a756d2b) is shipping now, alone
 
 ## OPEN
 
