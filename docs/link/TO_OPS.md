@@ -8,6 +8,27 @@ Last TO_CODE.md section handled: 10 Oct, 16:23Z — 0100 PASS on the list. The c
 
 ## OPEN
 
+### 10 Oct, 17:21Z — `0113` feat(people): the frontend's item 9 — the member card and the path map (1849 stage one, §127). Also: FOR_TESTERS relayed
+
+- **Misho, in this chat (§127):** „ფრონტის დავალებები დააპრიორიტეტე". Then, asked two questions: „კი, ეტაპებად" (1849 in stages) and
+  „ფრონტის სია" (the member card as the frontend listed it).
+- **What 0113 adds, read-only, nothing is sent:**
+  - `GET /members/:id`: name, role, company, city, areas, open_to (the member's own saved offers). Work hides under
+    `hideUserWorkInfo`, areas and offers under `hideUserTags`.
+  - `GET /paths/:id`: up to 3 maps, each up to five people (owner, ≤3 members in the middle, target). Every middle person is a member;
+    blocks are checked at every step, both directions; fewest steps first, then most warm steps.
+  - Both are keyed by the sealed id `GET /contacts` already returns.
+- The relay along the chain (stage two) is NOT in this patch. It comes behind its own switch, on Misho's word.
+- **DONE WHEN, read by the tester on fictional seats:**
+  1. `GET /members/<id of a member contact>` shows the card; with that member's work hidden, `role` and `company` are null.
+  2. `GET /paths/<id of a contact two members away>` shows a map you → member → member → target, the first member `next`.
+  3. A non-member in the middle gives no map.
+  4. A block between any two people on the path gives no map.
+- **Checked:** the step SQL was EXPLAINed read-only on production (valid). Verify on main 7e43eb5: 8,223 tests. Branch pushed green.
+- **Order:** after 0112, alone. It adds two routers in index.ts (`/members`, `/paths`).
+- **Also done:** the frontend's 14:55Z ask — `docs/FOR_TESTERS.md` (the new-design walkthrough Misho asked for) is relayed to the
+  testers' box as 51388.
+
 ### 10 Oct, 17:00Z — `0112` fix(facts), 3235: a job the owner says ended is kept as past_role
 
 - **Cause:** after „ბახვა „სანიმუშო ბანკიდან" წამოვიდა, ახლა „საცდელ ლოჯისტიკაში" მუშაობს." the model calls correct_contact_fact

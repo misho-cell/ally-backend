@@ -1,0 +1,969 @@
+From 20058a2dc35ae99392a892dc59e551c312586ce1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 17:18:00 +0000
+Subject: [PATCH] =?UTF-8?q?feat(people):=20the=20member=20card=20and=20the?=
+ =?UTF-8?q?=20path=20map=20to=20a=20named=20person=20=E2=80=94=20item=209,?=
+ =?UTF-8?q?=201849=20stage=20one=20(=C2=A7127)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho put the frontend first and answered both questions: the chain in
+stages, the member card as the frontend listed it. Both routes are keyed
+by the sealed id the contacts list already carries.
+
+- GET /members/:id: name, role, company, city, areas, open_to (the
+  member's own saved offers). Work hides under hideUserWorkInfo, areas and
+  offers under hideUserTags. 404 for a foreign id or a non-member.
+- GET /paths/:id: up to 3 maps, each the owner, up to three members in
+  the middle, the target (4 steps). Only paths whose every middle person is
+  a member; blocks checked at every step in both directions; fewest steps,
+  then most warm steps. Links carry name, role, state (next /
+  not_contacted) and the member card id. Nothing is sent.
+
+findWarmPath's name lookup is exported and shared. §127 recorded in
+ADMIN_WRITE_OPERATIONS; the contract is in FOR_FRONTEND.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |  12 ++
+ docs/FOR_FRONTEND.md                          |  41 +++++
+ .../__tests__/everyRouteIsBehindAuth.test.ts  |   2 +
+ .../routes/__tests__/people.routes.test.ts    |  94 +++++++++++
+ src/api/routes/people.routes.ts               |  59 +++++++
+ src/index.ts                                  |   3 +
+ .../__tests__/aChainMapIsOnlyMembers.test.ts  |  59 +++++++
+ .../aMemberCardKeepsWhatTheyHid.test.ts       |  92 +++++++++++
+ .../__tests__/chainMap.service.test.ts        |  75 +++++++++
+ src/services/chainMap.service.ts              | 148 ++++++++++++++++++
+ src/services/chainMap.ts                      | 103 ++++++++++++
+ src/services/memberCard.service.ts            | 114 ++++++++++++++
+ src/services/tools/findWarmPath.ts            |   5 +-
+ 13 files changed, 806 insertions(+), 1 deletion(-)
+ create mode 100644 src/api/routes/__tests__/people.routes.test.ts
+ create mode 100644 src/api/routes/people.routes.ts
+ create mode 100644 src/services/__tests__/aChainMapIsOnlyMembers.test.ts
+ create mode 100644 src/services/__tests__/aMemberCardKeepsWhatTheyHid.test.ts
+ create mode 100644 src/services/__tests__/chainMap.service.test.ts
+ create mode 100644 src/services/chainMap.service.ts
+ create mode 100644 src/services/chainMap.ts
+ create mode 100644 src/services/memberCard.service.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index ac75c7c..db60d8a 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6219,3 +6219,15 @@ D772 + D773, and D771 + BI; the founder's answers came through the tester's box,
+ - **D771 — the monthly contacts reminder in the assistant's own words.** Taken as a yes on the idea. The instruction is model-facing
+   (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
+ - **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
++
++
++**§127 — 10 October ~17:10 UTC, Misho in the code session's chat: „ფრონტის დავალებები დააპრიორიტეტე", then, asked two
++questions, „კი, ეტაპებად" and „ფრონტის სია"** (the frontend's item 9: task 1849, the chain to a named person, and the member card).
++
++- **1849, in stages.** First the read-only part: the path from the owner to a named target, up to five people (the owner, up to three
++  members in the middle, the target), every person in the middle a Netai member, blocks held along the whole path, warm ties first.
++  Served to the frontend as a map. Nothing is sent by it. The relay along the chain comes after, behind its own switch, which turns on
++  only on Misho's word recorded here.
++- **The member card: the frontend's list.** Name, role · company, city, areas, and „open to" (the member's own saved offers). Every
++  field the member hid in their own settings (`hideUserWorkInfo` and the rest) stays hidden.
++- **Undo:** the routes are read-only; removing them is one commit each.
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 3924ad8..5a4bb9a 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,47 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 17:16Z — item 9 of your 06:30Z list: the member card and the path map (1849 stage one; patch 0113, not live yet)
++
++Misho put the frontend first and answered both questions (§127): the chain is built in stages, and the member card is your list. Both
++routes are keyed by the **sealed id the contacts list already gives you** (`GET /contacts` → `id`). Same login and subscription as
++`/contacts`.
++
++**`GET /members/:id`: the member card.**
++```json
++{ "success": true, "data": {
++  "id": "c_…", "name": "ნინო ბერიძე", "role": "ბუღალტერი", "company": "TBC", "city": "თბილისი",
++  "areas": ["ფინანსები", "ბანკები"], "open_to": ["ბუღალტრული კონსულტაცია"]
++} }
++```
++- `role` and `company` are `null` when the member hid their work info. `areas` and `open_to` are `[]` when they hid their tags. Any
++  field can be `null` / `[]` when the member never filled it.
++- `open_to` is what the member themselves said they are open to (their saved offers), newest first, at most 5. `areas` holds at most 6.
++- **404** when the id is not one you were given, or the person is not on Netai. **500** with a plain message.
++
++**`GET /paths/:id`: the maps from the owner to that person (task 1849, stage one). It sends nothing.**
++```json
++{ "success": true, "data": { "paths": [
++  { "hops": 3, "warm_steps": 1, "links": [
++    { "id": null,  "name": null,          "role": "you",    "state": null,            "is_member": true },
++    { "id": "c_…", "name": "გიორგი",       "role": "bridge", "state": "next",          "is_member": true },
++    { "id": "c_…", "name": "ლევან კაპანაძე", "role": "bridge", "state": "not_contacted", "is_member": true },
++    { "id": "c_…", "name": "თამთა",         "role": "target", "state": "not_contacted", "is_member": false }
++  ] }
++] } }
++```
++- At most 3 maps, each up to five people: the owner, up to three members in the middle, the target. Every person in the middle is a
++  Netai member (the request travels assistant to assistant). The target need not be.
++- Order: fewest steps first, then the most warm steps (`warm_steps` counts the steps that are a confirmed close tie).
++- Blocks hold along the whole path: a path with a block in either direction at any step is not offered.
++- Names are full names, strangers in the middle included (the founder's ruling, 6 Oct). Each middle member's `id` opens their
++  `/members/:id` card.
++- `state` in this stage is only `next` (the first member) and `not_contacted`. `asked` / `agreed` / `waiting` / `blocked` come with
++  stage two, when the request really travels. That stage waits for Misho's word.
++- `"paths": []` means no path a member can carry. **404** for an id that is not yours. **500** with a plain message.
++- **Known limit of stage one:** it reads the shortest paths only. If every shortest path has a non-member in the middle, a longer
++  all-member path is not looked for yet.
++
+ ## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
+ 
+ - The page now carries `saved_as` beside `name`, with the same rule as the list (0100): when the label has no letter („💙"), `name` is
+diff --git a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+index 03aeee3..c970271 100644
+--- a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
++++ b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+@@ -46,6 +46,8 @@ const GUARDED_AT_THE_ROUTER = [
+   'contacts.routes.ts',
+   // The frontend's 06:30Z item 8: the person's own connector state.
+   'connector.routes.ts',
++  // The frontend's item 9 (§127): the member card and the path map.
++  'people.routes.ts',
+   // 1882 / item 10: the person's own setup list.
+   'setup.routes.ts',
+   // #1850: the evening card is the person's own questions.
+diff --git a/src/api/routes/__tests__/people.routes.test.ts b/src/api/routes/__tests__/people.routes.test.ts
+new file mode 100644
+index 0000000..0c63af5
+--- /dev/null
++++ b/src/api/routes/__tests__/people.routes.test.ts
+@@ -0,0 +1,94 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../middleware/subscription.middleware', () => ({
++  __esModule: true,
++  requireSubscription: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../../services/memberCard.service', () => ({
++  __esModule: true,
++  memberCardFor: jest.fn(),
++}));
++jest.mock('../../../services/chainMap.service', () => ({
++  __esModule: true,
++  chainMapsFor: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import { membersRouter, pathsRouter } from '../people.routes';
++import { memberCardFor } from '../../../services/memberCard.service';
++import { chainMapsFor } from '../../../services/chainMap.service';
++
++const mockCard = memberCardFor as jest.MockedFunction<typeof memberCardFor>;
++const mockMaps = chainMapsFor as jest.MockedFunction<typeof chainMapsFor>;
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use('/members', membersRouter);
++  app.use('/paths', pathsRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** The frontend's item 9 (§127). */
++describe('GET /members/:id', () => {
++  it('answers the card, keyed by the sealed id', async () => {
++    const card = {
++      id: 'c_x',
++      name: 'ნინო ბერიძე',
++      role: 'ბუღალტერი',
++      company: 'TBC',
++      city: 'თბილისი',
++      areas: ['ფინანსები'],
++      open_to: ['ბუღალტრული კონსულტაცია'],
++    };
++    mockCard.mockResolvedValue(card);
++    const res = await fetch(`${base}/members/c_x`);
++    expect(res.status).toBe(200);
++    expect(((await res.json()) as { data: unknown }).data).toEqual(card);
++    expect(mockCard).toHaveBeenCalledWith(171, 'c_x');
++  });
++
++  it('says 404 for an id that is not a member of this owner’s, and 500 without the error', async () => {
++    mockCard.mockResolvedValueOnce(null);
++    expect((await fetch(`${base}/members/c_other`)).status).toBe(404);
++    mockCard.mockRejectedValueOnce(new Error('relation "User" is locked'));
++    const res = await fetch(`${base}/members/c_x`);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('locked');
++  });
++});
++
++describe('GET /paths/:id', () => {
++  it('answers the maps, an empty list when no member can carry it, 404 for a foreign id', async () => {
++    mockMaps.mockResolvedValueOnce([]);
++    const res = await fetch(`${base}/paths/c_x`);
++    expect(res.status).toBe(200);
++    expect(((await res.json()) as { data: unknown }).data).toEqual({ paths: [] });
++    mockMaps.mockResolvedValueOnce(null);
++    expect((await fetch(`${base}/paths/c_other`)).status).toBe(404);
++  });
++});
+diff --git a/src/api/routes/people.routes.ts b/src/api/routes/people.routes.ts
+new file mode 100644
+index 0000000..3929b93
+--- /dev/null
++++ b/src/api/routes/people.routes.ts
+@@ -0,0 +1,59 @@
++import { Router, Request, Response } from 'express';
++import {
++  authenticateJwt,
++  requireUserRole,
++  AuthenticatedRequest,
++} from '../middleware/auth.middleware';
++import { rateLimit } from '../middleware/rateLimit.middleware';
++import { requireSubscription } from '../middleware/subscription.middleware';
++import { memberCardFor } from '../../services/memberCard.service';
++import { chainMapsFor } from '../../services/chainMap.service';
++
++/**
++ * The frontend's 06:30Z item 9 (§127), keyed by the sealed id the contacts list
++ * already carries:
++ *   GET /members/:id   the member card — name, role · company, city, areas, open_to
++ *   GET /paths/:id     the maps from the owner to that person (task 1849, stage one; sends nothing)
++ */
++const CARDS_PER_MINUTE = 60;
++const PATHS_PER_MINUTE = 10;
++
++export const membersRouter = Router();
++membersRouter.use(authenticateJwt, requireUserRole, requireSubscription);
++membersRouter.use(rateLimit({ windowMs: 60_000, max: CARDS_PER_MINUTE }));
++
++membersRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    const card = await memberCardFor(userId, String(req.params.id));
++    if (card === null) {
++      res.status(404).json({ success: false, error: 'No such member' });
++      return;
++    }
++    res.status(200).json({ success: true, data: card });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /members/:id]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the member' });
++  }
++});
++
++export const pathsRouter = Router();
++pathsRouter.use(authenticateJwt, requireUserRole, requireSubscription);
++pathsRouter.use(rateLimit({ windowMs: 60_000, max: PATHS_PER_MINUTE }));
++
++pathsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    const maps = await chainMapsFor(userId, String(req.params.id));
++    if (maps === null) {
++      res.status(404).json({ success: false, error: 'No such person' });
++      return;
++    }
++    res.status(200).json({ success: true, data: { paths: maps } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /paths/:id]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the paths' });
++  }
++});
+diff --git a/src/index.ts b/src/index.ts
+index a65d50d..9bfbeea 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -14,6 +14,7 @@ import requestsRouter from './api/routes/requests.routes';
+ import updatesRouter from './api/routes/updates.routes';
+ import eveningCardRouter from './api/routes/eveningCard.routes';
+ import connectorRouter from './api/routes/connector.routes';
++import { membersRouter, pathsRouter } from './api/routes/people.routes';
+ import setupRouter from './api/routes/setup.routes';
+ import statusRouter from './api/routes/status.routes';
+ import tasksRouter from './api/routes/tasks.routes';
+@@ -117,6 +118,8 @@ app.use('/requests', requestsRouter);
+ app.use('/updates', updatesRouter);
+ app.use('/evening-card', eveningCardRouter);
+ app.use('/connector', connectorRouter);
++app.use('/members', membersRouter);
++app.use('/paths', pathsRouter);
+ app.use('/setup', setupRouter);
+ app.use('/status', statusRouter);
+ app.use('/tasks', tasksRouter);
+diff --git a/src/services/__tests__/aChainMapIsOnlyMembers.test.ts b/src/services/__tests__/aChainMapIsOnlyMembers.test.ts
+new file mode 100644
+index 0000000..191bb58
+--- /dev/null
++++ b/src/services/__tests__/aChainMapIsOnlyMembers.test.ts
+@@ -0,0 +1,59 @@
++import {
++  CandidatePath,
++  chainMapOf,
++  ChainLinkRole,
++  ChainLinkState,
++  MAX_CHAIN_HOPS,
++  MAX_CHAIN_MAPS,
++  offerable,
++  rankedPaths,
++} from '../chainMap';
++
++/** Task 1849, stage one (§127): the map of a path to a named person. */
++describe('which paths may be offered', () => {
++  const members = new Set(['a', 'b', 'c']);
++  const isMember = (p: string): boolean => members.has(p);
++
++  it('only paths whose every person in the middle is a member and not blocked', () => {
++    expect(offerable(['a', 'b', 'c'], isMember, () => false)).toBe(true);
++    expect(offerable(['a', 'x'], isMember, () => false)).toBe(false);
++    expect(offerable(['a', 'b'], isMember, (p) => p === 'b')).toBe(false);
++    expect(offerable([], isMember, () => false)).toBe(false);
++  });
++
++  it('reaches five people at most: the owner, three members, the target', () => {
++    expect(MAX_CHAIN_HOPS).toBe(4);
++  });
++});
++
++describe('the order the maps come in', () => {
++  it('fewest steps first, then the warmest, and no more than the maps shown', () => {
++    const paths: CandidatePath[] = [
++      { middle: ['a', 'b'], warmSteps: 3 },
++      { middle: ['c'], warmSteps: 0 },
++      { middle: ['d'], warmSteps: 2 },
++      { middle: ['e', 'f', 'g'], warmSteps: 4 },
++      { middle: ['h', 'i'], warmSteps: 1 },
++    ];
++    const ranked = rankedPaths(paths);
++    expect(ranked.map((p) => p.middle[0])).toEqual(['d', 'c', 'a']);
++    expect(ranked).toHaveLength(MAX_CHAIN_MAPS);
++  });
++});
++
++describe('one map, link by link', () => {
++  it('is the owner, the members in order with the first one next, and the target', () => {
++    const map = chainMapOf(
++      { middle: ['a', 'b'], warmSteps: 1 },
++      (p) => ({ id: `c_${p}`, name: p.toUpperCase(), isMember: true }),
++      { id: 'c_t', name: 'T', isMember: false },
++    );
++    expect(map.hops).toBe(3);
++    expect(map.links.map((l) => [l.role, l.state, l.name])).toEqual([
++      [ChainLinkRole.You, null, null],
++      [ChainLinkRole.Bridge, ChainLinkState.Next, 'A'],
++      [ChainLinkRole.Bridge, ChainLinkState.NotContacted, 'B'],
++      [ChainLinkRole.Target, ChainLinkState.NotContacted, 'T'],
++    ]);
++  });
++});
+diff --git a/src/services/__tests__/aMemberCardKeepsWhatTheyHid.test.ts b/src/services/__tests__/aMemberCardKeepsWhatTheyHid.test.ts
+new file mode 100644
+index 0000000..6fc0b1a
+--- /dev/null
++++ b/src/services/__tests__/aMemberCardKeepsWhatTheyHid.test.ts
+@@ -0,0 +1,92 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../mcp/contactRef', () => ({
++  __esModule: true,
++  decodeContactRef: jest.fn((_owner: string, ref: string) =>
++    ref === 'c_m' ? '+995599000001' : null,
++  ),
++}));
++jest.mock('../tools/membership', () => ({
++  __esModule: true,
++  fetchAccountStates: jest.fn(() => Promise.resolve(new Map())),
++  accountDetailsFor: jest.fn(() => ({ state: 'netai_user', user_id: 77 })),
++}));
++
++import { query } from '../../db/postgres/client';
++import { accountDetailsFor } from '../tools/membership';
++import { areasOf, memberCardFor } from '../memberCard.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++function reads(hideWork: boolean, hideTags: boolean): void {
++  mockQuery.mockImplementation(((sql: string) => {
++    if (sql.includes('FROM "User"'))
++      return Promise.resolve({
++        rows: [
++          {
++            name: 'ნინო ბერიძე',
++            job: 'ბუღალტერი',
++            employer: 'TBC',
++            city: null,
++            hide_work: hideWork,
++            hide_tags: hideTags,
++          },
++        ],
++      });
++    if (sql.includes('user_profile_kv'))
++      return Promise.resolve({
++        rows: [
++          { key: 'city', value: 'თბილისი' },
++          { key: 'industry', value: 'ფინანსები, ბანკები' },
++          { key: 'interests', value: 'ჭადრაკი' },
++        ],
++      });
++    return Promise.resolve({ rows: [{ text: 'ბუღალტრული კონსულტაცია' }] });
++  }) as never);
++}
++
++/** The frontend's item 9, the member card (§127: „ფრონტის სია"). */
++describe('the member card', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('carries name, role · company, city, areas and what they are open to', async () => {
++    reads(false, false);
++    await expect(memberCardFor(171, 'c_m')).resolves.toEqual({
++      id: 'c_m',
++      name: 'ნინო ბერიძე',
++      role: 'ბუღალტერი',
++      company: 'TBC',
++      city: 'თბილისი',
++      areas: ['ფინანსები', 'ბანკები', 'ჭადრაკი'],
++      open_to: ['ბუღალტრული კონსულტაცია'],
++    });
++  });
++
++  it('keeps hidden what the member hid: work, and areas with offers', async () => {
++    reads(true, true);
++    await expect(memberCardFor(171, 'c_m')).resolves.toMatchObject({
++      role: null,
++      company: null,
++      areas: [],
++      open_to: [],
++      city: 'თბილისი',
++    });
++  });
++
++  it('is null for a foreign id or a person who is not a member', async () => {
++    await expect(memberCardFor(171, 'c_other')).resolves.toBeNull();
++    (accountDetailsFor as jest.Mock).mockReturnValueOnce({ state: 'none', user_id: null });
++    await expect(memberCardFor(171, 'c_m')).resolves.toBeNull();
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('reads the areas once each, in the order written', () => {
++    expect(
++      areasOf(
++        new Map([
++          ['industry', 'IT; IT'],
++          ['interests', 'ფეხბურთი'],
++        ]),
++      ),
++    ).toEqual(['IT', 'ფეხბურთი']);
++  });
++});
+diff --git a/src/services/__tests__/chainMap.service.test.ts b/src/services/__tests__/chainMap.service.test.ts
+new file mode 100644
+index 0000000..7778e43
+--- /dev/null
++++ b/src/services/__tests__/chainMap.service.test.ts
+@@ -0,0 +1,75 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
++jest.mock('../neo4j.keys', () => ({
++  __esModule: true,
++  getCompositeKeyForUser: jest.fn(() => Promise.resolve('995500000000')),
++  getCompositeKeyForPhone: jest.fn(() => Promise.resolve('995500000009')),
++}));
++jest.mock('../block.service', () => ({
++  __esModule: true,
++  getExcludedPhones: jest.fn(() => Promise.resolve([])),
++}));
++jest.mock('../mcp/contactRef', () => ({
++  __esModule: true,
++  decodeContactRef: jest.fn((_o: string, ref: string) => (ref === 'c_t' ? '995500000009' : null)),
++  encodeContactRef: jest.fn((_o: string, phone: string) => `c_${phone.slice(-1)}`),
++}));
++jest.mock('../tools/findWarmPath', () => ({
++  __esModule: true,
++  namesFor: jest.fn(() => Promise.resolve(new Map())),
++}));
++jest.mock('../tools/membership', () => ({
++  __esModule: true,
++  fetchAccountStates: jest.fn(() => Promise.resolve(new Map())),
++  accountDetailsFor: jest.fn((_s: unknown, phone: string) =>
++    phone.endsWith('3')
++      ? { state: 'none', user_id: null }
++      : { state: 'netai_user', user_id: Number(phone.slice(-1)) },
++  ),
++}));
++
++import { query } from '../../db/postgres/client';
++import { getSession } from '../../db/neo4j/client';
++import { chainMapsFor } from '../chainMap.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++function graph(paths: string[][]): void {
++  (getSession as jest.Mock).mockReturnValue({
++    run: jest.fn(() =>
++      Promise.resolve({
++        records: paths.map((keys) => ({ get: () => ['995500000000', ...keys, '995500000009'] })),
++      }),
++    ),
++    close: jest.fn(() => Promise.resolve()),
++  });
++}
++
++/** Task 1849, stage one (§127). */
++describe('the maps to a named person', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('drops a path through a non-member, and one with a blocked step', async () => {
++    graph([['995500000001', '995500000002'], ['995500000003'], ['995500000004']]);
++    // Steps of [1,2] are 1..3, of [4] are 4..5; the step into 4 is blocked.
++    mockQuery.mockResolvedValue({
++      rows: [
++        { i: 1, warm: true, blocked: false },
++        { i: 2, warm: false, blocked: false },
++        { i: 3, warm: false, blocked: false },
++        { i: 4, warm: false, blocked: true },
++        { i: 5, warm: false, blocked: false },
++      ],
++    } as never);
++    const maps = await chainMapsFor(171, 'c_t');
++    expect(maps).toHaveLength(1);
++    expect(maps?.[0].links.map((l) => l.id)).toEqual([null, 'c_1', 'c_2', 'c_9']);
++    expect(maps?.[0].warm_steps).toBe(1);
++  });
++
++  it('is null for a foreign id, and empty when the graph has no path', async () => {
++    await expect(chainMapsFor(171, 'c_other')).resolves.toBeNull();
++    graph([]);
++    await expect(chainMapsFor(171, 'c_t')).resolves.toEqual([]);
++  });
++});
+diff --git a/src/services/chainMap.service.ts b/src/services/chainMap.service.ts
+new file mode 100644
+index 0000000..3ce5d36
+--- /dev/null
++++ b/src/services/chainMap.service.ts
+@@ -0,0 +1,148 @@
++import { query } from '../db/postgres/client';
++import { getSession } from '../db/neo4j/client';
++import { getExcludedPhones } from './block.service';
++import {
++  CandidatePath,
++  ChainMap,
++  chainMapOf,
++  LinkPerson,
++  MAX_CHAIN_HOPS,
++  offerable,
++  rankedPaths,
++} from './chainMap';
++import { confirmedWarmTieSql } from './chorusCap';
++import { decodeContactRef, encodeContactRef } from './mcp/contactRef';
++import { getCompositeKeyForPhone, getCompositeKeyForUser } from './neo4j.keys';
++import { normalizePhone, phoneDigits } from './phone';
++import { namesFor } from './tools/findWarmPath';
++import { AccountDetails, accountDetailsFor, fetchAccountStates } from './tools/membership';
++
++const PATHS_TO_CONSIDER = 25;
++const NEO4J_TIMEOUT_MS = 8_000;
++const STEP_QUERY_TIMEOUT_MS = 5_000;
++
++/** Composite keys hold several phones joined by '-'; the first is the person's identifier. */
++function primaryPhone(compositeKey: string): string {
++  return normalizePhone(compositeKey.split('-')[0] ?? compositeKey);
++}
++
++/** The middles of the shortest paths, up to four steps; empty when either end is not in the graph. */
++async function graphMiddles(ownerId: number, targetPhone: string): Promise<string[][]> {
++  let ownerKey: string;
++  let targetKey: string;
++  try {
++    ownerKey = await getCompositeKeyForUser(ownerId);
++    targetKey = await getCompositeKeyForPhone(targetPhone);
++  } catch {
++    return [];
++  }
++  const session = getSession();
++  try {
++    const result = await session.run(
++      `MATCH (me:AllyNode {phoneKey: $ownerKey}), (t:AllyNode {phoneKey: $targetKey})
++       MATCH p = allShortestPaths((me)-[:CONTACT*1..${MAX_CHAIN_HOPS}]->(t))
++       RETURN [n IN nodes(p) | n.phoneKey] AS keys
++       LIMIT ${PATHS_TO_CONSIDER}`,
++      { ownerKey, targetKey },
++      { timeout: NEO4J_TIMEOUT_MS },
++    );
++    return result.records.map((r) => (r.get('keys') as string[]).slice(1, -1).map(primaryPhone));
++  } finally {
++    await session.close();
++  }
++}
++
++interface StepVerdict {
++  readonly warm: boolean;
++  readonly blocked: boolean;
++}
++
++/**
++ * Each step of each path — who passes it on, to whom — read at once: a confirmed
++ * warm tie, and a block between the two in either direction (§127: blocks hold
++ * along the whole chain).
++ */
++async function stepVerdicts(
++  steps: readonly { readonly fromUser: number; readonly toPhone: string }[],
++): Promise<StepVerdict[]> {
++  if (steps.length === 0) return [];
++  const result = await query<{ i: number; warm: boolean; blocked: boolean }>(
++    `SELECT s.i, ${confirmedWarmTieSql('s.from_user', 's.to_phone')} AS warm,
++            EXISTS (
++              SELECT 1 FROM "UserBlock" ub
++               WHERE (ub."blockerId" = s.from_user
++                      AND regexp_replace(ub."blockedPhone", '\\D', '', 'g') = regexp_replace(s.to_phone, '\\D', '', 'g'))
++                  OR (ub."blockerId" IN (SELECT up."userId" FROM "UserPhone" up
++                                           WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(s.to_phone, '\\D', '', 'g'))
++                      AND ub."blockedPhone" IN (SELECT up2.phone FROM "UserPhone" up2 WHERE up2."userId" = s.from_user))
++            ) AS blocked
++       FROM unnest($1::int[], $2::text[]) WITH ORDINALITY AS s(from_user, to_phone, i)`,
++    [steps.map((s) => s.fromUser), steps.map((s) => s.toPhone)],
++    STEP_QUERY_TIMEOUT_MS,
++  );
++  const byIndex = new Map(result.rows.map((r) => [Number(r.i), r]));
++  return steps.map((_, index) => {
++    const row = byIndex.get(index + 1);
++    return { warm: row?.warm === true, blocked: row?.blocked === true };
++  });
++}
++
++/** The steps of one path: the owner to the first member, each member to the next, the last to the target. */
++function stepsOf(
++  ownerId: number,
++  middle: readonly string[],
++  targetPhone: string,
++  states: Map<string, AccountDetails>,
++): { fromUser: number; toPhone: string }[] {
++  const takers = [ownerId, ...middle.map((phone) => accountDetailsFor(states, phone).user_id ?? 0)];
++  const receivers = [...middle, targetPhone];
++  return receivers.map((toPhone, index) => ({ fromUser: takers[index], toPhone }));
++}
++
++/** The paths every member of which may carry the request, each with its warm steps counted. */
++async function candidatePaths(
++  ownerId: number,
++  targetPhone: string,
++  middles: readonly string[][],
++  states: Map<string, AccountDetails>,
++): Promise<CandidatePath[]> {
++  const excluded = new Set((await getExcludedPhones(String(ownerId))).map(phoneDigits));
++  const isMember = (phone: string): boolean =>
++    accountDetailsFor(states, phone).state === 'netai_user';
++  const kept = middles.filter((middle) =>
++    offerable(middle, isMember, (phone) => excluded.has(phoneDigits(phone))),
++  );
++  if (excluded.has(phoneDigits(targetPhone))) return [];
++  const allSteps = kept.map((middle) => stepsOf(ownerId, middle, targetPhone, states));
++  const verdicts = await stepVerdicts(allSteps.flat());
++  let at = 0;
++  return kept.flatMap((middle, index) => {
++    const own = verdicts.slice(at, at + allSteps[index].length);
++    at += allSteps[index].length;
++    if (own.some((v) => v.blocked)) return [];
++    return [{ middle, warmSteps: own.filter((v) => v.warm).length }];
++  });
++}
++
++/**
++ * The maps from this owner to the person behind a sealed id; null when the id
++ * was not minted for this owner. An empty list is „no path a member can carry".
++ */
++export async function chainMapsFor(ownerId: number, ref: string): Promise<ChainMap[] | null> {
++  const decoded = decodeContactRef(String(ownerId), ref);
++  if (decoded === null) return null;
++  const targetPhone = normalizePhone(decoded);
++  const middles = await graphMiddles(ownerId, targetPhone);
++  if (middles.length === 0) return [];
++  const phones = [...new Set([targetPhone, ...middles.flat()])];
++  const states = await fetchAccountStates(phones);
++  const ranked = rankedPaths(await candidatePaths(ownerId, targetPhone, middles, states));
++  if (ranked.length === 0) return [];
++  const names = await namesFor(String(ownerId), phones);
++  const person = (phone: string): LinkPerson => ({
++    id: encodeContactRef(String(ownerId), phone),
++    name: names.get(phone) ?? null,
++    isMember: accountDetailsFor(states, phone).state === 'netai_user',
++  });
++  return ranked.map((path) => chainMapOf(path, person, person(targetPhone)));
++}
+diff --git a/src/services/chainMap.ts b/src/services/chainMap.ts
+new file mode 100644
+index 0000000..74ab783
+--- /dev/null
++++ b/src/services/chainMap.ts
+@@ -0,0 +1,103 @@
++/**
++ * Task 1849, stage one (§127): the map of a path from the owner to a named
++ * target — the owner, up to three Netai members in the middle, the target.
++ * The pure part: which paths may be offered, in which order, and how each one
++ * reads link by link. Nothing here sends anything.
++ */
++
++/** Owner + three members + target: four steps (the founder, 6 Oct). */
++export const MAX_CHAIN_HOPS = 4;
++/** How many maps the owner is shown. */
++export const MAX_CHAIN_MAPS = 3;
++
++export enum ChainLinkRole {
++  You = 'you',
++  Bridge = 'bridge',
++  Target = 'target',
++}
++
++/** Before anything is sent the first person in the middle is next; the rest are not contacted. */
++export enum ChainLinkState {
++  Next = 'next',
++  NotContacted = 'not_contacted',
++}
++
++export interface ChainLink {
++  /** The sealed id the member card and the contacts list use; null for the owner. */
++  readonly id: string | null;
++  readonly name: string | null;
++  readonly role: ChainLinkRole;
++  readonly state: ChainLinkState | null;
++  readonly is_member: boolean;
++}
++
++export interface ChainMap {
++  readonly hops: number;
++  /** How many steps of the path are a confirmed warm tie of the person taking them. */
++  readonly warm_steps: number;
++  readonly links: readonly ChainLink[];
++}
++
++/** A raw path: the phones in the middle, in order. */
++export interface CandidatePath {
++  readonly middle: readonly string[];
++  readonly warmSteps: number;
++}
++
++/**
++ * Offered only when every person in the middle is a member (the request travels
++ * assistant to assistant) and nobody on it is blocked in either direction.
++ */
++export function offerable(
++  middle: readonly string[],
++  isMember: (phone: string) => boolean,
++  blocked: (phone: string) => boolean,
++): boolean {
++  return middle.length > 0 && middle.every((phone) => isMember(phone) && !blocked(phone));
++}
++
++/** Fewest steps first, then the warmest; the cut is the last thing that happens. */
++export function rankedPaths(paths: readonly CandidatePath[]): CandidatePath[] {
++  return [...paths]
++    .sort((a, b) => a.middle.length - b.middle.length || b.warmSteps - a.warmSteps)
++    .slice(0, MAX_CHAIN_MAPS);
++}
++
++export interface LinkPerson {
++  readonly id: string;
++  readonly name: string | null;
++  readonly isMember: boolean;
++}
++
++/** One path as the owner reads it, link by link. */
++export function chainMapOf(
++  path: CandidatePath,
++  person: (phone: string) => LinkPerson,
++  target: LinkPerson,
++): ChainMap {
++  const bridges: ChainLink[] = path.middle.map((phone, index) => {
++    const who = person(phone);
++    return {
++      id: who.id,
++      name: who.name,
++      role: ChainLinkRole.Bridge,
++      state: index === 0 ? ChainLinkState.Next : ChainLinkState.NotContacted,
++      is_member: who.isMember,
++    };
++  });
++  return {
++    hops: path.middle.length + 1,
++    warm_steps: path.warmSteps,
++    links: [
++      { id: null, name: null, role: ChainLinkRole.You, state: null, is_member: true },
++      ...bridges,
++      {
++        id: target.id,
++        name: target.name,
++        role: ChainLinkRole.Target,
++        state: ChainLinkState.NotContacted,
++        is_member: target.isMember,
++      },
++    ],
++  };
++}
+diff --git a/src/services/memberCard.service.ts b/src/services/memberCard.service.ts
+new file mode 100644
+index 0000000..f323648
+--- /dev/null
++++ b/src/services/memberCard.service.ts
+@@ -0,0 +1,114 @@
++import { query } from '../db/postgres/client';
++import { decodeContactRef } from './mcp/contactRef';
++import { accountDetailsFor, fetchAccountStates } from './tools/membership';
++
++/**
++ * The frontend's item 9, the member card (task 389; §127, Misho: „ფრონტის
++ * სია"): name, role · company, city, areas and what the member is open to.
++ * Every field the member hid in their own settings stays hidden: work under
++ * `hideUserWorkInfo`, areas and offers under `hideUserTags`.
++ *
++ * Keyed by the same sealed id the owner's contacts list carries, so a card is
++ * only ever opened for a person the server itself referred this owner to.
++ */
++const CARD_QUERY_TIMEOUT_MS = 5_000;
++const MAX_AREAS = 6;
++const MAX_OFFERS = 5;
++const AREA_KEYS: readonly string[] = ['industry', 'interests'];
++/** Profession is work: it fills the role, under the same hide flag. */
++const PROFILE_KEYS: readonly string[] = ['city', 'profession', ...AREA_KEYS];
++const LIST_SEPARATOR_RE = /[,;\n]/u;
++
++export interface MemberCard {
++  readonly id: string;
++  readonly name: string | null;
++  readonly role: string | null;
++  readonly company: string | null;
++  readonly city: string | null;
++  readonly areas: readonly string[];
++  readonly open_to: readonly string[];
++}
++
++interface MemberRow {
++  readonly name: string | null;
++  readonly job: string | null;
++  readonly employer: string | null;
++  readonly city: string | null;
++  readonly hide_work: boolean | null;
++  readonly hide_tags: boolean | null;
++}
++
++/** The member behind a sealed id; null when the id is foreign or the person is not on Netai. */
++async function memberIdFor(ownerId: number, ref: string): Promise<number | null> {
++  const phone = decodeContactRef(String(ownerId), ref);
++  if (phone === null) return null;
++  const details = accountDetailsFor(await fetchAccountStates([phone]), phone);
++  return details.state === 'netai_user' ? details.user_id : null;
++}
++
++async function memberRow(memberId: number): Promise<MemberRow | null> {
++  const result = await query<MemberRow>(
++    `SELECT u.name, u."jobPosition" AS job, u.employer, u.city,
++            u."hideUserWorkInfo" AS hide_work, u."hideUserTags" AS hide_tags
++       FROM "User" u
++      WHERE u.id = $1::int AND u."deletedAt" IS NULL AND u."disabledAt" IS NULL
++      LIMIT 1`,
++    [memberId],
++    CARD_QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0] ?? null;
++}
++
++async function profileValues(memberId: number): Promise<ReadonlyMap<string, string>> {
++  const result = await query<{ key: string; value: string }>(
++    `SELECT key, value FROM user_profile_kv
++      WHERE user_id = $1::int AND key = ANY($2::text[]) AND value IS NOT NULL
++      LIMIT $3`,
++    [memberId, PROFILE_KEYS, PROFILE_KEYS.length],
++    CARD_QUERY_TIMEOUT_MS,
++  );
++  return new Map(result.rows.map((row) => [row.key, row.value]));
++}
++
++async function openOffers(memberId: number): Promise<string[]> {
++  const result = await query<{ text: string }>(
++    `SELECT text FROM offers WHERE user_id = $1::int AND active
++      ORDER BY created_at DESC LIMIT $2`,
++    [memberId, MAX_OFFERS],
++    CARD_QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((row) => row.text.trim()).filter((text) => text !== '');
++}
++
++/** The member's areas from their own profile, each once, in the order they wrote them. */
++export function areasOf(profile: ReadonlyMap<string, string>): string[] {
++  const words = AREA_KEYS.flatMap((key) => (profile.get(key) ?? '').split(LIST_SEPARATOR_RE))
++    .map((word) => word.trim())
++    .filter((word) => word !== '');
++  return [...new Set(words)].slice(0, MAX_AREAS);
++}
++
++function filled(value: string | null | undefined): string | null {
++  const trimmed = (value ?? '').trim();
++  return trimmed === '' ? null : trimmed;
++}
++
++/** The card; null when the id is not one this owner was given, or the person is not a member. */
++export async function memberCardFor(ownerId: number, ref: string): Promise<MemberCard | null> {
++  const memberId = await memberIdFor(ownerId, ref);
++  if (memberId === null) return null;
++  const row = await memberRow(memberId);
++  if (row === null) return null;
++  const [profile, offers] = await Promise.all([profileValues(memberId), openOffers(memberId)]);
++  const showWork = row.hide_work !== true;
++  const showTags = row.hide_tags !== true;
++  return {
++    id: ref,
++    name: filled(row.name),
++    role: showWork ? (filled(row.job) ?? filled(profile.get('profession'))) : null,
++    company: showWork ? filled(row.employer) : null,
++    city: filled(row.city) ?? filled(profile.get('city')),
++    areas: showTags ? areasOf(profile) : [],
++    open_to: showTags ? offers : [],
++  };
++}
+diff --git a/src/services/tools/findWarmPath.ts b/src/services/tools/findWarmPath.ts
+index 0135cf4..e7166e8 100644
+--- a/src/services/tools/findWarmPath.ts
++++ b/src/services/tools/findWarmPath.ts
+@@ -161,7 +161,10 @@ async function shortestPaths(
+  * account name for a Netai user, any phonebook's label for a stranger — the
+  * same three sources second-degree search names its "via" people from.
+  */
+-async function namesFor(userId: string, phones: string[]): Promise<Map<string, string | null>> {
++export async function namesFor(
++  userId: string,
++  phones: string[],
++): Promise<Map<string, string | null>> {
+   if (phones.length === 0) return new Map();
+   const result = await query<{ phone: string; name: string | null }>(
+     `SELECT ua.phone,
+-- 
+2.43.0
+
