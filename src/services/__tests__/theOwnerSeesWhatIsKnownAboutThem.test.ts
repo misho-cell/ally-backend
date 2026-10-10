@@ -43,6 +43,7 @@ describe('whatNetaiKnowsAboutMe', () => {
       what_others_see: [{ field_type: 'occupation', value: 'იურისტი' }],
       my_answers: [],
       names_others_saved_you_as: [],
+      trades_others_know_you_for: [],
     });
     const [sql, params] = callFor('FROM contact_facts');
     expect(sql).toContain('is_public = true AND retracted_at IS NULL');
@@ -126,6 +127,34 @@ describe('the names others saved him under', () => {
   it('reads none without a number', async () => {
     answer({ 'FROM "User"': [{ name: null }] });
     expect((await whatNetaiKnowsAboutMe('501')).names_others_saved_you_as).toEqual([]);
+  });
+});
+
+/** 3566: the trades two or more people know him for, from their tags and labels. */
+describe('the trades others know him for', () => {
+  it('reads tags and labels on his numbers, leaving his own out, and says only the trade', async () => {
+    answer({
+      'FROM "User"': [{ name: 'მარიამ' }],
+      'FROM "UserPhone"': [{ phone: '+995599000111' }],
+      UNION: [
+        { saver_id: 7, word: 'იურისტი' },
+        { saver_id: 8, word: 'ადვოკატი' },
+        { saver_id: 7, word: 'მეგობარი' },
+        { saver_id: 8, word: 'მეგობარი' },
+      ],
+    });
+    const me = await whatNetaiKnowsAboutMe('501');
+    expect(me.trades_others_know_you_for).toEqual(['იურისტი']);
+    const [sql, params] = callFor('UNION') as [string, unknown[]];
+    expect(sql).toContain('FROM "UserTags" t WHERE t.phone = ANY($1::text[])');
+    expect(sql).toContain('saver_id::text <> $2');
+    expect(params).toEqual([['+995599000111'], '501', 200]);
+  });
+
+  it('reads none without a number', async () => {
+    answer({ 'FROM "User"': [{ name: null }] });
+    expect((await whatNetaiKnowsAboutMe('501')).trades_others_know_you_for).toEqual([]);
+    expect(callFor('UNION')).toEqual([]);
   });
 });
 
