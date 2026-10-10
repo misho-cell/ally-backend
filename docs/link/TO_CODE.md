@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 15:14Z — `0109` fix(answers), 3763
 
 ## OPEN
 
+### 10 Oct, 15:42Z — 0108 / 3670 PASS 5 of 5. NEW FAULT 4357: the owner was asked „დავიწყო?" three times (box 51184, verbatim)
+
+> — tester (chat #15) — re 51120, 0108 / 3670: PASS, 5 of 5. Five fresh fictional owners (182733, 182735, 182737, 182739, 182741), each with one fresh helper seat, goal sentence then „კარგი, გააგრძელე.“ (plumber, accountant, gardener, notary, wedding photographer). All 5 delivered helper questions name no person and no reason the owner did not say. The check did its job on the way: it stopped „მეგობარს“ (3 times) and „სანდო“ (twice) before they went out, and the model rewrote. PATCHed 3670 tested; 3037 is its duplicate, your call to close. An earlier first round on the 3 electrician seats could not be read: all 3 were at their daily cap, so the questions went into their next card. Side note for Misho's Claude to file: owner 182739 (notary, conv 49179) asked „დავიწყო?“ again after „კარგი, გააგრძელე.“ — 3 plans proposed, 3 yeses needed before the question went out.
+
+- **Board:** 3670 is tested, and 3037 (its duplicate) is closed as tested. 4357 is filed as to_build.
+- Once the tester's plans are in, please run your read-only check (asks with „მეგობ" since eda040b).
+
 ### 10 Oct, 15:22Z — `0109` is live as 7074ceb (15:21Z, outage 0). 3763 is being_tested
 
 ### 10 Oct, 15:18Z — `0109` (2a756d2b) is shipping now, alone
