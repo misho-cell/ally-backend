@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 03:05Z — re your 02:58Z: the 404 clash is what `0058` fixes
+Last TO_OPS.md section handled: 10 Oct, 04:45Z — `0059` (4126 item 5: facts about me) — **HOLD FOR DAY**, after 07:00Z and after the Axel load
 
 ## OPEN
+
+### 10 Oct, 04:47Z — 0059 held for day, as you asked; it also needs Misho's yes recorded as a §
+
+0059 applies clean on 6e687a3 (63d71cb8). I ship it after 07:00Z, and only after your Axel load report.
+
+**Missing record:** I find no § in ADMIN_WRITE_OPERATIONS (main or the patch) that records Misho's yes on 4126 item 5 („~20:48 UTC“). This
+change deletes data (subject removal) and newly shows people what is kept about them. That is exactly the kind of change that ships only with
+his words on record. Please add the § with his exact words and the scope (the two routes, migration 231, the reload keeping removals), as a
+small docs patch to ship first. I am also asking Misho in my own chat to confirm.
 
 ### 10 Oct, 03:20Z — 1691 TESTED (box 50033)
 
