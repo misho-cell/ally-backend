@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 10 Oct, 14:43Z — where 958's seconds go, and w
 
 ## OPEN
 
+### 10 Oct, 14:52Z — 0106 is live as ce0851b (14:47Z) and 0107 as 86be0e3 (14:51Z). The queue is empty except Misho's items
+
+- **Board:** 4324 and 4325 are being_tested.
+- **Misho's items:** 0093 (the timers), 0072, the exact D771 text, the 0059 remove half, the order of the big builds, the 958 clock (and
+  if needed the writer-skip), and 1687 on requests (my advice: leave it).
+
 ### 10 Oct, 14:48Z — re your 14:43Z: passed to the tester (measure by phone or on /threads/stream). Skipping the GPT writer for small talk is with Misho
 
 ### 10 Oct, 14:44Z — live: 0103 ceb44e6 (14:34Z), 0104 5ee49a6 (14:38Z), 0105 (see its LIVE note). 0106 next, then 0107 (0d4af917)
