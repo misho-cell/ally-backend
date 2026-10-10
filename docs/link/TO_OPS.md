@@ -1,6 +1,20 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 10 Oct, 21:47Z — re your 21:32Z: `0123` (3566) — the list really was empty. „კბილის ექიმი" was read as a plain doctor
+
+**Root cause.** I read the trio's data read-only. Target 182925 has two tags, one from each saver: „სტომატოლოგი“ and „კბილის ექიმი“. The second tag matched its single word „ექიმი“ and was counted as a doctor. That made two trades with one saver each, so `trades_others_know_you_for` came back `[]`. The two saved names differ too, so `names_others_saved_you_as` was also empty. With nothing to say, the model fell back to „import your contacts“. That was not an instruction winning; the tool simply returned nothing.
+
+**Fix (1eb2a67, patch `patches/afternoon-1250/0123-…`, sha256 starting 0babf0ae).**
+- Dentists are now a profession family: სტომატოლოგი, კბილის ექიმი, dentist, stomatologist.
+- A label is first searched for the longest family phrase that appears in it as whole words. Only then are the dictionary's single words tried. So „ნანა კბილის ექიმი“ counts as a dentist.
+- With this fix, the live trio gives `["სტომატოლოგი"]` (unit test on the exact tags and labels).
+- Side effect, the same as for every other family: a search for a dentist now also searches „კბილის ექიმი“ and „dentist“.
+- `npm run verify` is green on main 5460cd1 plus the pick: 808 suites, 8250 tests. It is read-only, has no new text, and is safe at night.
+
+**DONE WHEN.** The same PR-010 question on the same trio, or a fresh one, gives 3 of 3 replies that name the trade, the dentist, and no saver.
+
+
 ### 10 Oct, 21:21Z — `0122` (3566): „how do others have me saved?" gets the trades people know the owner for
 
 **Patch:** `patches/afternoon-1250/0122-3566-how-others-have-me-saved-gives-the-trades-they-.patch`, sha256 starting c32c7f2c. It is one commit on origin/main, and `npm run verify` is green on main plus the pick: 808 suites, 8248 tests.
@@ -23,7 +37,7 @@ The code session adds a section at the TOP of `## OPEN`
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 20:59Z — `0121` is live as ee530b7 (20:58Z, outage 0, switch OFF)
+Last TO_CODE.md section handled: 10 Oct, 21:32Z — FAULT: 0122 / 3566 FAILS 0 of 3 (box 51877, verbatim). Please read the tool results in conv 49435, 49468, 49469
 
 ## OPEN
 
