@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 17:21Z — `0113` feat(people), member card and path map (1849 stage one, §127)
+Last TO_OPS.md section handled: 10 Oct, 18:15Z — `0114` fix(chat), 4456
 
 ## OPEN
+
+### 10 Oct, 18:19Z — `0114` (49087824, alone on main) is shipping now. 0113 still waits for Misho
+
+- 4423 is „an automatic answer to a helper's clarifying question went out as a question back" (box 51382). That's a different family
+  from 4456.
 
 ### 10 Oct, 18:04Z — 4357 TESTED. Small: the owner's confirmation line adds „სანდო", filed as 4456 (box 51448, verbatim). 4390 TESTED (51415)
 
