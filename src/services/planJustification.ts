@@ -23,7 +23,9 @@ export function carriesPlanSentence(text: string): boolean {
 
 const JUSTIFICATION_MARKERS: readonly RegExp[] = [
   /პირდაპირი\s+კონტაქტ|შენი\s+კონტაქტ|direct\s+contact|your\s+contact|прямой\s+контакт|tu\s+contacto/iu,
-  /ნეტაიზე|წევრია|წევრი\s+არის|on\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
+  /ნეტაიზე|ნეტაის|ნეტაი-ს|netai-ს|წევრია|წევრი\s+არის|on\s+netai|uses\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
+  // 1454 (owner 182501): „…ერთადერთი ხიდი სწორედ ბახვაა…", „მეორე წრის კონტაქტია".
+  /ხიდ|მეორე\s+წრ|bridge|second\s+circle|мост|puente/iu,
   /იცნობს|knows|знает|conoce/iu,
   /ემთხვევა|matches|соответствует|coincide/iu,
 ];
@@ -61,4 +63,26 @@ export function withoutMatchJustification(reply: string): string {
     })
     .filter((paragraph) => paragraph.trim() !== '');
   return kept.join('\n\n');
+}
+
+/**
+ * 1454 (the tester's 50625, owner 182501, 08:02Z): the reply had no plan
+ * sentence at all — only the match justification („ვიპოვე გზა: … ბახვა …
+ * შენი პირდაპირი კონტაქტია და თავად იყენებს ნეტაის.") and „დავიწყო?". It ended
+ * on the plan question, so it counted as carrying the plan, and the filter
+ * above keys on a plan sentence it did not have. When the server's own plan
+ * sentence exists and the reply lacks one, the justification goes and the
+ * server's sentence stands in its place; any other news stays first, and the
+ * closing question is put back by the caller.
+ */
+export function withPlanSentence(reply: string, planText: string): string {
+  if (carriesPlanSentence(reply) || !carriesPlanSentence(planText)) return reply;
+  const sentences = reply
+    .split(/\n\s*\n/u)
+    .flatMap((paragraph) => paragraph.split(SENTENCE_SPLIT_RE))
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence !== '' && !isAMatchJustification(sentence));
+  const last = sentences[sentences.length - 1];
+  const news = last !== undefined && last.endsWith('?') ? sentences.slice(0, -1) : sentences;
+  return news.length === 0 ? planText : `${news.join(' ')}\n\n${planText}`;
 }

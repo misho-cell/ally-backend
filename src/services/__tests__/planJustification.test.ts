@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { withoutMatchJustification } from '../planJustification';
+import { withoutMatchJustification, withPlanSentence } from '../planJustification';
 
 /**
  * 1454 / D739: an introduction plan is one sentence and one question; the
@@ -42,6 +42,30 @@ describe('the plan is its one sentence and one question (D739)', () => {
 
   it('the plan reply passes through it', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('withClosingQuestion(withoutMatchJustification(reply), runLang(runId))');
+    expect(chat).toContain('withPlanSentence(withoutMatchJustification(reply), plan.text)');
+  });
+});
+
+/** 1454 (the tester's 50625, owner 182501): a reply with only the justification and the question. */
+describe('a plan reply without the plan sentence', () => {
+  const plan = 'ბახვა გამოგონილის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
+  const said =
+    'ვიპოვე გზა: თამთა გამოგონილი თქვენი მეორე წრის კონტაქტია და მასთან ერთადერთი ხიდი სწორედ ბახვა ' +
+    'გამოგონილია, რომელიც თქვენი პირდაპირი კონტაქტია და თავად იყენებს ნეტაის. დავიწყო?';
+
+  it('gets the server’s plan sentence in place of the justification', () => {
+    expect(withPlanSentence(said, plan)).toBe(plan);
+  });
+
+  it('keeps real news first, and leaves a reply that has its plan sentence alone', () => {
+    expect(withPlanSentence(`ლევანმა უპასუხა, ბინა აქვს. ${said}`, plan)).toBe(
+      `ლევანმა უპასუხა, ბინა აქვს.\n\n${plan}`,
+    );
+    const good = `${plan} დავიწყო?`;
+    expect(withPlanSentence(good, plan)).toBe(good);
+  });
+
+  it('changes nothing when the server has no plan sentence of its own', () => {
+    expect(withPlanSentence(said, 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას.')).toBe(said);
   });
 });

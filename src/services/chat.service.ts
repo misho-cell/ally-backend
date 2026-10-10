@@ -76,7 +76,11 @@ import { asksToReopen } from './reopenIntent';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
 import { askedLanguage, languagePreference } from './languagePreference';
-import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
+import {
+  carriesPlanSentence,
+  withoutMatchJustification,
+  withPlanSentence,
+} from './planJustification';
 import { withOwnersNetwork } from './planVoice';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
@@ -7650,7 +7654,11 @@ function withPlanInReply(
   const reply = withOwnersNetwork(written);
   if (replyCarriesPlan(reply, plan)) {
     // D739: the plan is its one sentence and one question — no sentence explaining the match.
-    return withClosingQuestion(withoutMatchJustification(reply), runLang(runId));
+    // 1454: a reply that said only why the match fits gets the server's plan sentence instead.
+    return withClosingQuestion(
+      withPlanSentence(withoutMatchJustification(reply), plan.text),
+      runLang(runId),
+    );
   }
   // eslint-disable-next-line no-console
   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
