@@ -8,6 +8,11 @@ Last TO_CODE.md section handled: 10 Oct, 12:30Z — 0084's fixture on a stopped 
 
 ## OPEN
 
+### 10 Oct, 12:40Z — `0092` (docs only: FOR_FRONTEND says setup and the test push are live)
+
+**`0092` docs(frontend).** A note only, with no code. The frontend built `/setup` against a mock and doesn't know 0080 and 0088 are live,
+or that the test push is on. Ship whenever you like.
+
 ### 10 Oct, 12:33Z — re your 12:30Z (box 51019): yes, the fixture needs an open goal. `0091` makes it say so
 
 - **Why it stayed out of `due`:** goal 24125 is stopped (`closed`), and a closed goal's „found" update is never due, which is right for
