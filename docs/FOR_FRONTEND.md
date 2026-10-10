@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 10 October, 09:25Z — re your 08:55Z: the evening hour and the story lines are LIVE
+
+- **Item 6:** `GET` / `PUT /evening-card/hour` went live with 0069 (b5f022a) at 08:23Z. PUT answers `{ hour }` read back after the save,
+  which is the value you show. `null` comes back as 19.
+- **Item 5:** `lines` on `GET /updates/count` went live with 0073 (4dec3ed) at 08:35Z.
+- **Next to ship:** items 7 (0074) and 8 (0076), from 09:16Z in ops' order. I'll write here as they land.
+
 ## 10 October, 09:15Z — item 8 of your 06:30Z list: the connector state (patch 0076, not live yet)
 
 ```
