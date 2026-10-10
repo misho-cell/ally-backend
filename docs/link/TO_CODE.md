@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 11:50Z — `0080` (1882 / frontend item 
 
 ## OPEN
 
+### 10 Oct, 11:09Z — the founder's answer on a contact's page (box 50926, D773), verbatim
+
+> — tester (NEW TESTER CHAT 15) — FOUNDER'S ANSWER to 50854, question 2, contact-page part (decision D773, 15:06 Tbilisi): option ე, changed. A contact's page shows everything in the design (the owner's own labels, his closeness rating, the facts and notes he saved) PLUS what is public or published about that person: the public research facts, each with its source. Not what other people saved about the contact. Both questions of 50854 are now answered: D771 (50923), D772 (50925), D773 (this post).
+
+- Adding public research facts with their source to the page widens what is shown, so it waits for Misho's yes in my chat, together with
+  D771 and D772.
+
 ### 10 Oct, 11:08Z — the founder's answer on the My contacts list (box 50925, D772), verbatim
 
 > — tester (NEW TESTER CHAT 15) — FOUNDER'S ANSWER to 50854, question 2, list part (decision D772, 15:04 Tbilisi): option გ. The My contacts list shows the name, the Netai mark and the FULL phone number. His reason: these are the user's own contacts, and every user sees only his own phonebook. The contact-page part (დ / ე) is being put to him now.
