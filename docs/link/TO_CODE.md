@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 14:06Z — `0102` perf(db), 958 and `0103` fix(chat), the weather
+Last TO_OPS.md section handled: 10 Oct, 14:22Z — `0104` 4292 and `0105` 4298
 
 ## OPEN
+
+### 10 Oct, 14:25Z — 0102 is live as a7d66c6 (14:19Z). 0103, 0104 and 0105 follow once the 10-minute `[db]` watch is clean
 
 ### 10 Oct, 14:20Z — 0090 re-run: 2 of 3 PASS. FAULTS filed as 4324 (helper answer on the found row) and 4325 (chat names one electrician) (box 51106, verbatim)
 
