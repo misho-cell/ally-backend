@@ -71,3 +71,22 @@ const NEEDS_A_LOOKUP_RE = /(ამინდ|weather|погод|tiempo)/iu;
 export function isToolFreeSmallTalk(message: string): boolean {
   return isSmallTalk(message) && !NEEDS_A_LOOKUP_RE.test(message);
 }
+
+/** Longer than this, a line naming the weather is about something else (a need, a story). */
+const WEATHER_QUESTION_MAX_CHARS = 60;
+const ASKS_RE = /[?？]|^\s*(?:რა|როგორი|what|how|какая|как|qué|cómo)\s/iu;
+
+/**
+ * The tester's 15th chat (conv 49108): „რა ამინდია დღეს თბილისში?" was answered
+ * „I could not check it, look at a weather app", with no tool called. A short
+ * question about the weather is looked up, not left to the model's choice.
+ */
+export function asksTheWeather(message: string): boolean {
+  const text = message.trim();
+  return (
+    text.length <= WEATHER_QUESTION_MAX_CHARS &&
+    NEEDS_A_LOOKUP_RE.test(text) &&
+    ASKS_RE.test(text) &&
+    !statesANeed(text)
+  );
+}

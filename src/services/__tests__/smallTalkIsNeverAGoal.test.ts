@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
+import { asksTheWeather, isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
 import { seeksAPerson } from '../goalIntent';
 import { smallTalkTurn } from '../chat.service';
 
@@ -145,5 +145,31 @@ describe('the goal decision on small talk', () => {
     expect(body.indexOf('if (isSmallTalk(userMessage))')).toBeLessThan(
       body.indexOf('await conversationIsDiscussion(threadId, userMessage)'),
     );
+  });
+});
+
+/** The tester's 15th chat (conv 49108): the weather was „look at an app" with no tool called. */
+describe('a question about the weather', () => {
+  it.each([
+    'რა ამინდია დღეს თბილისში?',
+    'რა ამინდია?',
+    'How is the weather in Tbilisi?',
+    'Какая погода в Батуми?',
+  ])('„%s" is looked up', (line) => {
+    expect(asksTheWeather(line)).toBe(true);
+  });
+
+  it.each([
+    'მჭირდება ამინდის აპლიკაციის დეველოპერი',
+    'ამინდი კარგია, გავისეირნე',
+    'ვინ იცნობს ვინმეს, ვინც ამინდის პროგნოზზე მუშაობს და შეუძლია ჩემს სტარტაპს დაეხმაროს?',
+  ])('„%s" is not', (line) => {
+    expect(asksTheWeather(line)).toBe(false);
+  });
+
+  it('makes the first model call search the web when the run has web_search', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain('...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),');
+    expect(chat).toContain("tool_choice: { type: 'tool' as const, name: opts.forceTool }");
   });
 });
