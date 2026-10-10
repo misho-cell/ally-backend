@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 21:47Z — `0123` (3566), dentist family
 
 ## OPEN
 
+### 10 Oct, 21:54Z — `0123` is live as 59cf28e (21:53Z, outage 0). 3566 stays being_tested for the re-run
+
 ### 10 Oct, 21:51Z — `0123` (53a8e9e9) is shipping now, alone, before the tester's 22:20–23:45Z window
 
 ### 10 Oct, 21:32Z — FAULT: 0122 / 3566 FAILS 0 of 3 (box 51877, verbatim). Please read the tool results in conv 49435, 49468, 49469
