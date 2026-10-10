@@ -23,7 +23,9 @@ import {
   ensurePeriodGrant,
   expireStaleGrants,
   getWalletSummary,
+  lastTopUp,
   listTopupPackages,
+  TopUpKind,
 } from '../tokenWallet.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -470,7 +472,35 @@ describe('getWalletSummary', () => {
       spentThisPeriod: 260,
       window: 'calendar_month',
       resetsAt: '',
+      lastTopUp: null,
     });
+  });
+});
+
+/** 4294 (plate NEW-3): the wallet says the newest credit, not only the period's totals. */
+describe('lastTopUp', () => {
+  it('is the newest grant, pack or trial credit, with its amount, date and kind', async () => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValueOnce(
+      rows([
+        { amount: '250', created_at: new Date('2026-10-06T00:00:05Z'), reason: 'monthly_grant' },
+      ]) as never,
+    );
+    await expect(lastTopUp('7')).resolves.toEqual({
+      amount: 250,
+      at: '2026-10-06T00:00:05.000Z',
+      kind: TopUpKind.Grant,
+    });
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('amount > 0');
+    expect(sql).toContain('ORDER BY created_at DESC');
+    expect(params?.[1]).toEqual(['monthly_grant', 'topup', 'trial_grant']);
+  });
+
+  it('is null for someone never credited', async () => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValueOnce(rows([]) as never);
+    await expect(lastTopUp('7')).resolves.toBeNull();
   });
 });
 

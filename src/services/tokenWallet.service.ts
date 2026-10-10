@@ -26,6 +26,45 @@ export interface WalletSummary {
   window: 'calendar_month' | 'calendar_week';
   /** When the allowance resets — the screen's „renews" date for tokens (Ticket 12 Task 34). */
   resetsAt: string;
+  /** 4294 (plate NEW-3): the newest credit — the period's grant, a bought pack or the trial's. */
+  lastTopUp: LastTopUp | null;
+}
+
+export enum TopUpKind {
+  Grant = 'grant',
+  Topup = 'topup',
+  Trial = 'trial',
+}
+
+export interface LastTopUp {
+  readonly amount: number;
+  readonly at: string;
+  readonly kind: TopUpKind;
+}
+
+const KIND_OF_REASON: Readonly<Record<string, TopUpKind>> = {
+  [MONTHLY_GRANT_REASON]: TopUpKind.Grant,
+  [TOPUP_REASON]: TopUpKind.Topup,
+  [TRIAL_GRANT_REASON]: TopUpKind.Trial,
+};
+
+/**
+ * 4294 (plate NEW-3): the wallet showed the period's totals only, so after a
+ * weekly top-up the screen could not say how much came in, or when. The
+ * newest credit of the three kinds, read as it was written.
+ */
+export async function lastTopUp(userId: string): Promise<LastTopUp | null> {
+  const result = await query<{ amount: string; created_at: Date | string; reason: string }>(
+    `SELECT amount, created_at, reason FROM token_transactions
+      WHERE user_id = $1 AND amount > 0 AND reason = ANY($2::text[])
+      ORDER BY created_at DESC, id DESC LIMIT 1`,
+    [userId, Object.keys(KIND_OF_REASON)],
+  );
+  const row = result.rows[0];
+  const kind = row === undefined ? undefined : KIND_OF_REASON[row.reason];
+  if (row === undefined || kind === undefined) return null;
+  const at = row.created_at instanceof Date ? row.created_at : new Date(row.created_at);
+  return { amount: Number(row.amount), at: at.toISOString(), kind };
 }
 
 export async function isWalletEnabled(): Promise<boolean> {
@@ -491,6 +530,7 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
 
   const row = result.rows[0];
   const resets = row?.resets_at instanceof Date ? row.resets_at : new Date(row?.resets_at ?? NaN);
+  const newest = await lastTopUp(userId);
   return {
     enabled,
     balance: Number(row?.balance ?? 0),
@@ -498,5 +538,6 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
     spentThisPeriod: Number(row?.spent ?? 0),
     window: window.label,
     resetsAt: Number.isNaN(resets.getTime()) ? '' : resets.toISOString(),
+    lastTopUp: newest,
   };
 }
