@@ -1,4 +1,4 @@
-From 0264ca7c9cd8c5c4a3e4414f798a6065a1f1b630 Mon Sep 17 00:00:00 2001
+From bd86f09db0fbe9c8b610520b5a63efbebac71975 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Sat, 10 Oct 2026 05:01:54 +0000
 Subject: [PATCH] =?UTF-8?q?docs(admin):=20=C2=A7122=20records=20Misho's=20?=
@@ -10,14 +10,14 @@ Content-Transfer-Encoding: 8bit
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
 ---
- docs/ADMIN_WRITE_OPERATIONS.md | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ docs/ADMIN_WRITE_OPERATIONS.md | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
-index 49fe4be..0b12b34 100644
+index 49fe4be..789afc2 100644
 --- a/docs/ADMIN_WRITE_OPERATIONS.md
 +++ b/docs/ADMIN_WRITE_OPERATIONS.md
-@@ -6184,3 +6184,14 @@ automatically."
+@@ -6184,3 +6184,13 @@ automatically."
  - **All night:** build → release → the tester tests → report → fix → release, for everything that needs no question for Misho. Each patch ships alone as it lands, and board writes and LIVE notes continue at night.
  - **The limit:** at night nothing ships that shows real people NEW text, deletes data, or widens access, unless Misho's yes is already recorded as a §. Such an item gets one clear question on the board, and work goes on with the next item.
  - **Kept:** quiet windows around the tester's timed reads (no deploy), and no reminders to real people in their quiet hours.
@@ -29,7 +29,6 @@ index 49fe4be..0b12b34 100644
 +  - `GET /privacy/facts-about-me` (the user's own JWT) lists every live fact on the person's own numbers: field, value, kind of source (research / label / saved_by_someone), page and date for research, status. At most 200. The saver is never named.
 +  - `DELETE /privacy/facts-about-me/:id` (the user's own JWT) removes one fact on the person's own numbers. It sets retracted, private, not matchable and `removed_by_subject_at`. A fact on anybody else's number is 404, and nothing changes.
 +  - A removal holds. The savers' upsert keeps such a row retracted, and the Axel reload (§119) keeps the removed row and writes nothing in its place.
-+- **Confirmed again, 10 October ~05:15 UTC, Misho in the code session's chat: „კი, მე-5 პუნქტი დაამტკიცე".**
 +- **Not in it:** the chat command for the same thing. It needs a tool text (D44) and waits for its own yes.
 +- **Undo, per fact:** `UPDATE contact_facts SET retracted_at = NULL, removed_by_subject_at = NULL WHERE id = <id>;` Their earlier `is_public` / `is_matchable` values are not kept anywhere, so they stay false until the saver saves the fact again. Removing the routes is a revert of 0059. The column may stay.
 -- 
