@@ -1,0 +1,129 @@
+From 5b5307bed872f713f05f5bacb30a90293bb4ea16 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:16:22 +0000
+Subject: [PATCH 83/85] fix(match): the offer's field is said in the reader's
+ script on both cards (1699)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 50656: card 1 read „…ამისთვის არის ღია, hospitality." — the field as
+saved, in English, inside a Georgian sentence. A field word that is one of
+the trade list's words is said as the family's broad name in the reader's
+script; any other word stays as the person saved it. The cards' own words
+are unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aFieldIsSaidInTheReadersScript.test.ts    | 29 ++++++++++++++++
+ src/services/fieldPlaces.ts                   | 33 +++++++++++++++++++
+ src/services/matchCards.ts                    |  9 +++--
+ 3 files changed, 69 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/aFieldIsSaidInTheReadersScript.test.ts
+
+diff --git a/src/services/__tests__/aFieldIsSaidInTheReadersScript.test.ts b/src/services/__tests__/aFieldIsSaidInTheReadersScript.test.ts
+new file mode 100644
+index 0000000..b497a58
+--- /dev/null
++++ b/src/services/__tests__/aFieldIsSaidInTheReadersScript.test.ts
+@@ -0,0 +1,29 @@
++import { fieldInScript } from '../fieldPlaces';
++import { card1Text, card2Text } from '../matchCards';
++
++/** 1699 (tester 50656): „…ამისთვის არის ღია, hospitality." — an English field in a Georgian card. */
++describe('the offer’s field on the match cards', () => {
++  it('is said in Georgian to a Georgian reader when the trade list knows the word', () => {
++    expect(fieldInScript('hospitality', true)).toBe('სტუმართმასპინძლობა');
++    expect(fieldInScript('Logistics', true)).toBe('ლოჯისტიკა');
++    expect(fieldInScript('real estate', true)).toBe('უძრავი ქონება');
++  });
++
++  it('is said in Latin letters to everyone else', () => {
++    expect(fieldInScript('სასტუმრო', false)).toBe('hospitality');
++    expect(fieldInScript('hospitality', false)).toBe('hospitality');
++  });
++
++  it('keeps a word the list does not know, and never a word inside a longer one', () => {
++    expect(fieldInScript('pottery', true)).toBe('pottery');
++    expect(fieldInScript('hotelier', true)).toBe('hotelier');
++    expect(fieldInScript('hospitality in Adjara', true)).toBe('სტუმართმასპინძლობა in Adjara');
++  });
++
++  it('reaches both cards', () => {
++    expect(card1Text('ka', 'hospitality')).toContain('სტუმართმასპინძლობა');
++    expect(card1Text('ka', 'hospitality')).not.toContain('hospitality');
++    expect(card2Text('ka', 'hospitality')).toContain('სტუმართმასპინძლობა');
++    expect(card2Text('en', 'hospitality')).toContain('hospitality');
++  });
++});
+diff --git a/src/services/fieldPlaces.ts b/src/services/fieldPlaces.ts
+index afdc0de..777526c 100644
+--- a/src/services/fieldPlaces.ts
++++ b/src/services/fieldPlaces.ts
+@@ -237,3 +237,36 @@ export function placeFits(goalText: string, offerField: string): boolean {
+   if (offer.towns.size > 0) return [...offer.towns].some((town) => goal.towns.has(town));
+   return [...offer.regions].some((region) => goal.regions.has(region));
+ }
++
++const GEORGIAN_RE = /[ა-ჰ]/u;
++
++/** The family's broad name in the wanted script: the first word of the family written in it. */
++function familyNameIn(family: readonly string[], georgian: boolean): string | null {
++  return family.find((word) => GEORGIAN_RE.test(word) === georgian) ?? null;
++}
++
++/**
++ * 1699 (tester 50656): card 1 said „…ამისთვის არის ღია, hospitality." — the
++ * offer's field as it was saved, in English, inside a Georgian sentence. A
++ * field word that is one of a family's words is said in the reader's script
++ * instead (the family's broad name); any other word stays as the person saved it.
++ */
++export function fieldInScript(field: string, georgian: boolean): string {
++  let said = field;
++  for (const family of FIELD_FAMILIES) {
++    const name = familyNameIn(family, georgian);
++    if (name === null) continue;
++    // Longest words first, so „real estate" is swapped before any word inside it.
++    const foreign = family
++      .filter((word) => GEORGIAN_RE.test(word) !== georgian)
++      .sort((a, b) => b.length - a.length);
++    for (const word of foreign) said = swapWholeWord(said, word, name);
++  }
++  return said;
++}
++
++/** Replaces the word wherever it stands whole (not inside a longer word), ignoring case. */
++function swapWholeWord(text: string, word: string, by: string): string {
++  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
++  return text.replace(new RegExp(`(?<![\\p{L}\\p{M}])${escaped}(?![\\p{L}\\p{M}])`, 'giu'), by);
++}
+diff --git a/src/services/matchCards.ts b/src/services/matchCards.ts
+index 90ad5bd..273ab0d 100644
+--- a/src/services/matchCards.ts
++++ b/src/services/matchCards.ts
+@@ -1,3 +1,4 @@
++import { fieldInScript } from './fieldPlaces';
+ import { RunLanguage } from './runLanguage';
+ 
+ /**
+@@ -81,10 +82,14 @@ const NOTED: ByLanguage<string> = {
+ 
+ const pick = <T>(table: ByLanguage<T>, language: RunLanguage): T => table[language] ?? table.ka;
+ 
++/** The field in the reader's script where the trade list knows the word (1699, box 50656). */
++const fieldFor = (language: RunLanguage, field: string): string =>
++  fieldInScript(field, language === 'ka');
++
+ export const card1Text = (language: RunLanguage, field: string): string =>
+-  pick(CARD1, language)(field);
++  pick(CARD1, language)(fieldFor(language, field));
+ export const card2Text = (language: RunLanguage, field: string): string =>
+-  pick(CARD2, language)(field);
++  pick(CARD2, language)(fieldFor(language, field));
+ export const card1Choices = (language: RunLanguage): string[] => [...pick(CARD1_CHOICES, language)];
+ export const card2Choices = (language: RunLanguage): string[] => [...pick(CARD2_CHOICES, language)];
+ export const toTheNeedLine = (language: RunLanguage, name: string): string =>
+-- 
+2.43.0
+

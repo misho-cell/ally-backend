@@ -1,0 +1,153 @@
+From c1dc93ffebc011d412cd77b5697318e095deae6c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:16:22 +0000
+Subject: [PATCH 84/85] feat(admin): a due-update fixture for test seats, so
+ /updates/count's lines can be checked (0073)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops 11:00Z, the tester's question 4: no seat had a due card. POST
+/admin/test-accounts/:id/fixtures/due-update { goal_id, summary } queues one
+„found" update, due now, on the seat's own goal — a test seat only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                | 24 +++++++++++++
+ .../aSeatFixtureIsForSeatsOnly.test.ts        | 36 +++++++++++++++++++
+ src/services/seatFixtures.service.ts          | 28 +++++++++++++++
+ 3 files changed, 88 insertions(+)
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index cce73a3..7d65861 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -316,6 +316,7 @@ import {
+   FixtureOutcome,
+   writeAnswerRecord,
+   writeOldProfile,
++  writeDueUpdate,
+   writeStaleFact,
+ } from '../../services/seatFixtures.service';
+ import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
+@@ -7113,6 +7114,29 @@ adminRouter.post(
+   },
+ );
+ 
++/**
++ * 0073 (the tester's question 4): POST /admin/test-accounts/:id/fixtures/due-update
++ *   { goal_id, summary } — one due „found" update on the seat's own goal.
++ */
++adminRouter.post('/test-accounts/:id/fixtures/due-update', async (req: Request, res: Response) => {
++  const seatId = seatIdOf(req);
++  const b = (req.body ?? {}) as Record<string, unknown>;
++  if (seatId === null || typeof b.summary !== 'string') {
++    sendFixture(res, FixtureOutcome.BadInput);
++    return;
++  }
++  try {
++    sendFixture(
++      res,
++      await writeDueUpdate(seatId, { goalId: Number(b.goal_id), summary: b.summary }),
++    );
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[fixtures/due-update]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Nothing was written' });
++  }
++});
++
+ /**
+  * 4226 (tester 49805): POST /admin/test-accounts/:id/fixtures/old-profile
+  *   { phone, employer, job_position } — an old Ally profile on the seat's
+diff --git a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+index 63a23f7..cc352b6 100644
+--- a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
++++ b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+@@ -3,6 +3,7 @@ import { askField } from '../answerStats.service';
+ import {
+   FixtureOutcome,
+   writeAnswerRecord,
++  writeDueUpdate,
+   writeOldProfile,
+   writeStaleFact,
+ } from '../seatFixtures.service';
+@@ -189,3 +190,38 @@ describe('the old-profile fixture (4226)', () => {
+     expect(mockQuery).toHaveBeenCalledTimes(3);
+   });
+ });
++
++/** 0073 (the tester's question 4): one due update on the seat's own goal. */
++describe('the due-update fixture', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('queues one „found" update, due now, on the seat’s own goal only', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
++    await expect(
++      writeDueUpdate(SEAT, { goalId: 24091, summary: ' a notary was found ' }),
++    ).resolves.toBe(FixtureOutcome.Written);
++    const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
++    expect(sql).toContain("'found'");
++    expect(sql).toContain('t.user_id = $1::text');
++    expect(sql).toContain('NOW()');
++    expect(params).toEqual([SEAT, 24091, 'a notary was found']);
++  });
++
++  it('writes nothing for someone else’s goal, a real account, or an empty summary', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
++    await expect(writeDueUpdate(SEAT, { goalId: 1, summary: 'x' })).resolves.toBe(
++      FixtureOutcome.BadInput,
++    );
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(writeDueUpdate(501, { goalId: 1, summary: 'x' })).resolves.toBe(
++      FixtureOutcome.NotATestSeat,
++    );
++    await expect(writeDueUpdate(SEAT, { goalId: 1, summary: '  ' })).resolves.toBe(
++      FixtureOutcome.BadInput,
++    );
++  });
++});
+diff --git a/src/services/seatFixtures.service.ts b/src/services/seatFixtures.service.ts
+index f8aa68b..de9d750 100644
+--- a/src/services/seatFixtures.service.ts
++++ b/src/services/seatFixtures.service.ts
+@@ -212,3 +212,31 @@ export async function writeOldProfile(
+   );
+   return FixtureOutcome.Written;
+ }
++
++/** The longest summary a due-update fixture carries, as the card's detail line. */
++const DUE_UPDATE_SUMMARY_MAX = 200;
++
++/**
++ * 0073 (ops 11:00Z, the tester's question 4): a test seat with nothing due
++ * cannot check that `/updates/count`'s lines match `GET /updates`. One „found"
++ * update on the seat's own goal, due now — the same row a search result
++ * queues, shown in the same card. A test seat only, its own goal only.
++ */
++export async function writeDueUpdate(
++  seatId: number,
++  input: { readonly goalId: number; readonly summary: string },
++): Promise<FixtureOutcome> {
++  const summary = input.summary.trim().slice(0, DUE_UPDATE_SUMMARY_MAX);
++  if (!Number.isInteger(input.goalId) || input.goalId <= 0 || summary === '') {
++    return FixtureOutcome.BadInput;
++  }
++  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
++  const written = await query(
++    `INSERT INTO pending_updates (user_id, task_id, kind, payload, release_at)
++     SELECT $1::int, t.id, 'found', jsonb_build_object('summary', $3::text), NOW()
++       FROM tasks t WHERE t.id = $2 AND t.user_id = $1::text`,
++    [seatId, input.goalId, summary],
++    QUERY_TIMEOUT_MS,
++  );
++  return (written.rowCount ?? 0) > 0 ? FixtureOutcome.Written : FixtureOutcome.BadInput;
++}
+-- 
+2.43.0
+

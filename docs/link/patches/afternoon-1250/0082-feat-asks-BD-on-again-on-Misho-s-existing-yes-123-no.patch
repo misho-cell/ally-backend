@@ -1,0 +1,74 @@
+From 05a3e4052133b90e9d3062a7b12d1544644c041a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:06:39 +0000
+Subject: [PATCH 82/82] =?UTF-8?q?feat(asks):=20BD=20on=20again,=20on=20Mis?=
+ =?UTF-8?q?ho's=20existing=20yes=20(=C2=A7123),=20now=20that=204291=20is?=
+ =?UTF-8?q?=20fixed?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The 10:55Z revert answered box 50631, where the owner's named person was
+refused. That refusal came from the full-wave cap, not from the order gate,
+and its cause — the „also" particle hiding the name — is fixed in the patch
+before this one. The order gate itself was right; its tests come back.
+SEE_HELPER_ON (BE) stays off until its own Excel fault (50656) is fixed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/asksGoInWaves.test.ts | 19 +++++++++++++++++--
+ src/services/askWaves.service.ts             |  6 ++++--
+ 2 files changed, 21 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/asksGoInWaves.test.ts b/src/services/__tests__/asksGoInWaves.test.ts
+index 738d99b..deb1fa7 100644
+--- a/src/services/__tests__/asksGoInWaves.test.ts
++++ b/src/services/__tests__/asksGoInWaves.test.ts
+@@ -252,8 +252,23 @@ describe('the order gate (BD)', () => {
+     nextWaveAt: null,
+   });
+ 
+-  it('is off until Misho says yes to the exact line (D44)', () => {
+-    expect(WAVE_ORDER_GATE_ON).toBe(false);
++  it('is on, on Misho’s yes to the exact line (§123)', () => {
++    expect(WAVE_ORDER_GATE_ON).toBe(true);
++  });
++
++  it('refuses a person out of order while the wave has room, naming who goes first', async () => {
++    waveReads(1, [], []);
++    const room = await waveRoomFor(TASK, EIGHT[4].phone, async () => false);
++    expect(room.allowed).toBe(false);
++    expect(room.allowed ? '' : room.error).toContain('Person 1, Person 2, Person 3');
++  });
++
++  it('lets the person the owner named go out of order (D625)', async () => {
++    waveReads(1, [], []);
++    await expect(waveRoomFor(TASK, EIGHT[4].phone, async () => true)).resolves.toEqual({
++      allowed: true,
++      wave: 1,
++    });
+   });
+ 
+   it('offers the free places to the next people in order', () => {
+diff --git a/src/services/askWaves.service.ts b/src/services/askWaves.service.ts
+index f283c71..07a0fe3 100644
+--- a/src/services/askWaves.service.ts
++++ b/src/services/askWaves.service.ts
+@@ -188,9 +188,11 @@ export async function widenWaveOnSilence(
+  * to the next people in the server's order (A8), and anyone else is refused
+  * with the line below. The person the owner named is never held back (D625).
+  *
+- * OFF until Misho's yes on the exact line (D44): the line is model-facing.
++ * ON since Misho's yes on the exact line, 10 Oct ~06:20 UTC: „BD კი" (ADMIN_WRITE_OPERATIONS §123).
++ * Off 10:55Z–(this commit) on box 50631; the refusal there was the wave cap's,
++ * and its cause — the owner's named person not recognised — is fixed (4291).
+  */
+-export const WAVE_ORDER_GATE_ON = false;
++export const WAVE_ORDER_GATE_ON = true;
+ 
+ /** The wave's free places, filled in the server's order. */
+ export function nextInOrder(snapshot: WaveSnapshot): readonly PlanPerson[] {
+-- 
+2.43.0
+

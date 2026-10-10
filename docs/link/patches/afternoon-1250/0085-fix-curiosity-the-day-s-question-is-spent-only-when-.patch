@@ -1,0 +1,144 @@
+From 9a6cc79b0996e18ed2c2479256b6d5e62506a92c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:16:22 +0000
+Subject: [PATCH 85/85] fix(curiosity): the day's question is spent only when
+ it is handed on (3500)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 50760, seat 182562: the first run's queue build passed its 6 s budget,
+the run went without the day's question, and the abandoned build logged
+its item as surfaced 61 s later — which spent the day's one question on a
+question nobody was shown, so neither run asked it. The day's path now
+builds without logging and logs the one item it actually hands on; the
+tool and connector paths log as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/curiosityQueue.service.test.ts  | 32 ++++++++++++++++++
+ src/services/curiosityQueue.service.ts        | 33 ++++++++++++++++---
+ 2 files changed, 60 insertions(+), 5 deletions(-)
+
+diff --git a/src/services/__tests__/curiosityQueue.service.test.ts b/src/services/__tests__/curiosityQueue.service.test.ts
+index 2adf93d..30ebc24 100644
+--- a/src/services/__tests__/curiosityQueue.service.test.ts
++++ b/src/services/__tests__/curiosityQueue.service.test.ts
+@@ -312,6 +312,38 @@ describe("maybeCuriosityUpdate — the curiosity trigger in T9's one pending_upd
+  *
+  * Two things follow, and the second is the one a test can hold.
+  */
++/** 3500 (the tester's 50760): a build the day's question gave up on must not spend the day. */
++describe('the day’s question is logged only when it is handed on', () => {
++  const surfacingLogs = (): unknown[][] =>
++    mockQuery.mock.calls.filter(([sql]) =>
++      (sql as string).includes('INSERT INTO curiosity_surfacing_log'),
++    );
++
++  it('a build asked not to log writes nothing, however it ends', async () => {
++    routeQueueQueries({ close: [{ contact_phone: '+995500000031' }], presence: [] });
++    const out = await buildCuriosityQueue('43', 1, { logSurfacing: false });
++    expect(out).toHaveLength(1);
++    expect(surfacingLogs()).toHaveLength(0);
++  });
++
++  it('the day’s path logs exactly the one item it hands on', async () => {
++    routeQueueQueries({
++      close: [{ contact_phone: '+995500000032' }],
++      presence: [],
++      labels: [{ phone: '+995500000032', label: 'ნინო' }],
++    });
++    expect(await maybeCuriosityUpdate('104')).not.toBeNull();
++    await new Promise((resolve) => setImmediate(resolve));
++    expect(surfacingLogs()).toHaveLength(1);
++    expect(surfacingLogs()[0][1]).toEqual([
++      [104],
++      ['+995500000032'],
++      ['close_contact'],
++      ['occupation'],
++    ]);
++  });
++});
++
+ describe('the curiosity queue must not cost a conversation its first breath', () => {
+   it('runs the five tiers together, not one after another', async () => {
+     routeQueueQueries({
+diff --git a/src/services/curiosityQueue.service.ts b/src/services/curiosityQueue.service.ts
+index b5327e0..51491e1 100644
+--- a/src/services/curiosityQueue.service.ts
++++ b/src/services/curiosityQueue.service.ts
+@@ -242,9 +242,21 @@ async function labelsForPhones(
+  * re-running this after an answer is saved naturally re-ranks the queue,
+  * since the answered fact no longer counts as missing.
+  */
++/**
++ * 3500 (the tester's 50760, seat 182562): the day's question path gave up on
++ * a slow build after its 6 s budget and the run went without the question —
++ * but the build carried on and logged its item as surfaced 61 s later, which
++ * spent the day's one question on a question nobody was shown. A caller that
++ * may abandon the build logs for itself, only what it actually handed on.
++ */
++export interface QueueOptions {
++  readonly logSurfacing: boolean;
++}
++
+ export async function buildCuriosityQueue(
+   userId: string,
+   limit: number = QUEUE_LIMIT_DEFAULT,
++  options: QueueOptions = { logSurfacing: true },
+ ): Promise<CuriosityItem[]> {
+   const tierBuilders = [
+     () => lookalikeCandidates(userId),
+@@ -314,10 +326,7 @@ export async function buildCuriosityQueue(
+   // Fire-and-forget: T16's "curiosity_answer_rate" needs a record of what
+   // was ever shown, but logging that must never slow down or break handing
+   // the queue back to the model.
+-  void logSurfacedItems(userId, finalItems).catch((err: unknown) =>
+-    // eslint-disable-next-line no-console
+-    console.error('[curiosity-queue] surfacing log failed:', (err as Error).message),
+-  );
++  if (options.logSurfacing) logInBackground(userId, finalItems);
+ 
+   return finalItems;
+ }
+@@ -397,7 +406,11 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
+   );
+   if (recent.rows.length > 0) return null;
+ 
+-  const items = await withinBudget(buildCuriosityQueue(userId, 1), CURIOSITY_BUDGET_MS, 'queue');
++  const items = await withinBudget(
++    buildCuriosityQueue(userId, 1, { logSurfacing: false }),
++    CURIOSITY_BUDGET_MS,
++    'queue',
++  );
+   // Giving up is NOT the same as finding nothing, and the difference lasts a
+   // day: the negative cache below suppresses this account's curiosity for 24
+   // hours, so recording a timeout as „empty" would quietly switch the feature
+@@ -409,6 +422,8 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
+   }
+   emptyQueueCheckedAt.delete(userId);
+   const item = items[0];
++  // Logged only now, when the item is really handed on (3500).
++  logInBackground(userId, [item]);
+   return {
+     kind: 'curiosity',
+     task_id: null,
+@@ -427,6 +442,14 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
+   };
+ }
+ 
++/** Fire-and-forget: the surfacing record must never slow down or break the answer. */
++function logInBackground(userId: string, items: CuriosityItem[]): void {
++  void logSurfacedItems(userId, items).catch((err: unknown) =>
++    // eslint-disable-next-line no-console
++    console.error('[curiosity-queue] surfacing log failed:', (err as Error).message),
++  );
++}
++
+ async function logSurfacedItems(userId: string, items: CuriosityItem[]): Promise<void> {
+   if (items.length === 0) return;
+   await query(
+-- 
+2.43.0
+

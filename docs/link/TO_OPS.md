@@ -4,9 +4,55 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 09:51Z — `0078` is live as 83bf4a2 (09:50Z, outage 0). Only 0072 is waiting, on Misho's yes in my chat
+Last TO_CODE.md section handled: 10 Oct, 11:00Z — FAULTS from 08:07Z on that I missed until now. 0065 is being REVERTED (D710). 0079 is queued
 
 ## OPEN
+
+### 10 Oct, 12:55Z — re your 11:00Z: 4291 root-caused and fixed (`0081`), BD back on (`0082`), `0083`–`0085`, and your four questions
+
+All five are in `patches/afternoon-1250/`. They were cut on **current main** (after your revert 27f7263 and 0079), so they apply in order
+after 0080. They passed verify there (8,122 tests). The branch was pushed green.
+
+- **`0081` fix(asks), board 4291.**
+  - **The 08:31:09 refusal (goal 24061) was the full-wave cap (A2, #1685), not BD.** The log says „refused — the open wave is full".
+  - The owner's named person should pass that cap (D625), but the server did not recognise Dato in „დათო ელექტრიკოს**საც** ჰკითხე". The
+    declined-name match knew the case endings (-ს, -მა, -ის) but not the „also" particle that rides on them (-საც, -მაც, -ისაც).
+  - Now the particle, and only it, may follow an ending. An old test held „მძღოლსაც" as nobody; that was this bug, and it is corrected.
+  - **DONE WHEN:** the tester's same line in a full wave sends to Dato.
+- **`0082` feat(asks): BD on again**, on Misho's existing yes (§123), with its tests restored. The revert didn't touch the cause, since
+  the order gate never refused Dato. **BE stays off.** 50656's Excel fault (rows 2–12 empty, row 1 „nobody" with 5 electricians) is its
+  own fault, and it overlaps 3897. I'm on it next.
+- **`0083` fix(match), 1699's „hospitality".** A field word the trade list knows is said in the reader's script („სტუმართმასპინძლობა").
+  Any other word stays as saved. The cards' own wording is unchanged. **DONE WHEN:** card 1 and card 2 to a Georgian reader hold no
+  English field word.
+- **`0084` feat(admin), question 4.** `POST /admin/test-accounts/:id/fixtures/due-update { "goal_id": <the seat's own goal>, "summary":
+  "…" }` queues one „found" update, due now. It works for a test seat's own goal only; anything else gives 400 or 403. **DONE WHEN:** after
+  it, `/updates/count` shows `lines[0]` equal to the first card of `GET /updates`.
+- **`0085` fix(curiosity), 3500, and why the tester saw no day question.** Seat 182562, first run at 09:51:28: the queue build took longer
+  than its 6 s budget („gave up after 6000ms"), so the run went without the question. The abandoned build kept going and wrote the
+  „surfaced" mark at 09:52:39. That spent the day's one question on nothing, and the second run had none to ask. Now the day's path logs
+  only the item it actually hands on. **DONE WHEN:** on a fresh seat, a run that misses the budget leaves no `curiosity_surfacing_log`
+  row, and a later run that day asks the question.
+  - Separately, a 61 s queue build on a seat with two contacts is slow. I'll look at which tier, but it is not this fix.
+
+**Your four questions:**
+1. **1699, card 2:** it went at **08:48:22**, three seconds after A's yes. It is in B's (181341) **existing conversation 47653**, „აჭარის
+   სასტუმროებში კონსულტაცია", as its last message, with the two buttons. It does not open a new conversation, and it is not on
+   `/updates`, so B's updates count 0 is right. Match 1 is `need_yes`. B can tap now.
+2. **3500, how the day question starts:**
+   - It needs the owner's own run in a regular conversation with **no goal**. Preview runs don't count. The owner's line must not be
+     about themselves, a death, or „what's waiting".
+   - It comes once a day per person.
+   - It needs a contact with a readable name and a missing core fact.
+   - It sits inside a 6 s budget. With 0085, a miss no longer burns the day.
+   - To test: a fresh seat, two contacts („💙" and one named), a plain chat such as „გამარჯობა, როგორ ხარ?". The question rides on the
+     reply, about the named contact only.
+3. **1687, which form is designed:** the question first, and the identical line **closing** the ask, as its own last paragraph
+   (§110.8). The opening assistant line appears only when the ask carries roster news. This morning's asks 19076/19077 (08:55Z) do end
+   with „Netai Test 15-wave-ის ასისტენტი, Netai Test 15-wave-ის სახელით". If the tester saw asks without it, please give me the ask ids.
+4. **0073, a due card:** 0084 above.
+
+**Order:** 0081, 0082 (together or 0081 first), 0083, 0084, 0085, each alone. 0080 can go anywhere before them.
 
 ### 10 Oct, 11:50Z — `0080` (1882 / frontend item 10: setup state per gadget, test push OFF, admin funnel). It carries migration 234
 

@@ -1,0 +1,104 @@
+From efa0dc5ff7ac49b3f7718ffb06471f696e06f441 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 11:06:18 +0000
+Subject: [PATCH 81/82] =?UTF-8?q?fix(asks):=20=E2=80=9Eask=20Dato=20the=20?=
+ =?UTF-8?q?electrician=20too"=20names=20Dato=20=E2=80=94=20the=20=E2=80=9E?=
+ =?UTF-8?q?also"=20particle=20on=20a=20case=20ending=20(4291)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 50631, goal 24061: the owner typed „დათო ელექტრიკოსსაც ჰკითხე, ახლავე."
+and the ask was refused at 08:31:09 by the full-wave cap (A2, #1685), not
+by the order gate. The D625 exception never fired: the declined-name match
+knew the case endings („-ს", „-მა", „-ის") but not the „also" particle that
+rides on them („-საც", „-მაც", „-ისაც"), so it read the owner's own named
+person as nobody. The particle, and only it, may now follow an ending. The
+old test that held „მძღოლსაც" as nobody was that bug; it now names the
+person, and the narrowness stays tested with words that are not particles.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aDeclinedNameStillNamesThePerson.test.ts  | 17 +++++++++++++-
+ src/services/namedLabel.ts                    | 23 +++++++++++++++----
+ 2 files changed, 34 insertions(+), 6 deletions(-)
+
+diff --git a/src/services/__tests__/aDeclinedNameStillNamesThePerson.test.ts b/src/services/__tests__/aDeclinedNameStillNamesThePerson.test.ts
+index bf61fd9..1cff9f9 100644
+--- a/src/services/__tests__/aDeclinedNameStillNamesThePerson.test.ts
++++ b/src/services/__tests__/aDeclinedNameStillNamesThePerson.test.ts
+@@ -4,6 +4,7 @@
+  * nobody. The match decides who receives a message, so the tests that keep
+  * it narrow matter as much as the one that widens it.
+  */
++import { looksLikeContactInstruction } from '../goalIntent';
+ import { labelNamedIn } from '../namedLabel';
+ 
+ describe('labelNamedIn', () => {
+@@ -20,7 +21,21 @@ describe('labelNamedIn', () => {
+ 
+   it('does not match a different word that only starts like the label', () => {
+     expect(labelNamedIn('ჰკითხე გიორგაძეს', 'გიორგი')).toBe(false);
+-    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსაც კი', 'ლაშა მძღოლი')).toBe(false);
++    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსახლს', 'ლაშა მძღოლი')).toBe(false);
++    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსაცი', 'ლაშა მძღოლი')).toBe(false);
++  });
++
++  /** 4291 (box 50631, goal 24061): the „also" particle on the case ending is still the person. */
++  it('matches the declined form with „also" on it', () => {
++    expect(labelNamedIn('დათო ელექტრიკოსსაც ჰკითხე, ახლავე.', 'დათო ელექტრიკოსი')).toBe(true);
++    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსაც კი', 'ლაშა მძღოლი')).toBe(true);
++    expect(labelNamedIn('ლაშა მძღოლმაც უნდა იცოდეს', 'ლაშა მძღოლი')).toBe(true);
++    expect(labelNamedIn('ნიკა ექიმისაც ვკითხოთ', 'ნიკა ექიმი')).toBe(true);
++    expect(labelNamedIn('დათო ელექტრიკოსსაც ჰკითხე', 'გია ელექტრიკოსი')).toBe(false);
++  });
++
++  it('reads „ask Dato the electrician too, now" as an instruction', () => {
++    expect(looksLikeContactInstruction('დათო ელექტრიკოსსაც ჰკითხე, ახლავე.')).toBe(true);
+   });
+ 
+   it('does not decline a label that does not end in -ი', () => {
+diff --git a/src/services/namedLabel.ts b/src/services/namedLabel.ts
+index 7d38a14..af7e68e 100644
+--- a/src/services/namedLabel.ts
++++ b/src/services/namedLabel.ts
+@@ -14,17 +14,30 @@
+  */
+ const DROPPED_FINAL = 'ი';
+ const CASE_ENDINGS: readonly string[] = ['ს', 'მა', 'ის', 'ით', 'ად'];
++/**
++ * 4291 (box 50631, goal 24061): „დათო ელექტრიკოსსაც ჰკითხე" — „ask Dato the
++ * electrician too". The „also" particle rides on the case ending („-საც",
++ * „-მაც", „-ისაც"), so the ending was followed by a letter and the owner's
++ * own named person was refused by the wave. The particle, and only it, may
++ * follow an ending.
++ */
++const ALSO_PARTICLES: readonly string[] = ['აც', 'ც', ''];
+ const GEORGIAN_LETTER_RE = /[ა-ჿ]/;
+ 
++function endsWordAfter(rest: string, ending: string): boolean {
++  if (!rest.startsWith(ending)) return false;
++  const after = rest.slice(ending.length);
++  return ALSO_PARTICLES.some(
++    (particle) =>
++      after.startsWith(particle) && !GEORGIAN_LETTER_RE.test(after.charAt(particle.length)),
++  );
++}
++
+ function declinedFormIn(sentence: string, stem: string): boolean {
+   let from = 0;
+   for (let at = sentence.indexOf(stem, from); at !== -1; at = sentence.indexOf(stem, from)) {
+     const rest = sentence.slice(at + stem.length);
+-    for (const ending of CASE_ENDINGS) {
+-      if (rest.startsWith(ending) && !GEORGIAN_LETTER_RE.test(rest.charAt(ending.length))) {
+-        return true;
+-      }
+-    }
++    if (CASE_ENDINGS.some((ending) => endsWordAfter(rest, ending))) return true;
+     from = at + 1;
+   }
+   return false;
+-- 
+2.43.0
+
