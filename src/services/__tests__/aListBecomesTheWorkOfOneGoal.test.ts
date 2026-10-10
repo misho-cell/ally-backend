@@ -16,6 +16,7 @@ import {
   portionsOf,
   startListWork,
   stateOf,
+  withEveryoneWhoFits,
 } from '../listItems.service';
 
 /**
@@ -28,6 +29,7 @@ const mockWaysIn = findWaysIn as jest.MockedFunction<typeof findWaysIn>;
 beforeEach(() => {
   mockQuery.mockReset();
   mockWaysIn.mockReset();
+  (ownMatchesFor as jest.MockedFunction<typeof ownMatchesFor>).mockReset().mockResolvedValue([]);
 });
 
 describe('the column a row is called by', () => {
@@ -155,6 +157,32 @@ describe('starting work on a list', () => {
 });
 
 /** Board #893: „the plan says how many today and how many later". */
+/** 4325 (tester box 51106): the chat named one electrician of the owner's three. */
+describe('a found row as the run reads it', () => {
+  const found = {
+    row: 1,
+    label: 'ელექტრიკოსი',
+    state: ListItemState.RouteFound,
+    throughWhom: 'ვახო ელექტრიკოსი',
+  };
+
+  it('names every contact who fits it', () => {
+    const fitting = new Map([
+      ['ელექტრიკოსი', 'ვახო ელექტრიკოსი, ტარიელ ელექტრიკოსი, ბესო ელექტრიკოსი'],
+    ]);
+    expect(withEveryoneWhoFits([found], fitting)[0].everyoneWhoFits).toBe(
+      'ვახო ელექტრიკოსი, ტარიელ ელექტრიკოსი, ბესო ელექტრიკოსი',
+    );
+  });
+
+  it('adds nothing when only its way in fits, or the row has no way in', () => {
+    const fitting = new Map([['ელექტრიკოსი', 'ვახო ელექტრიკოსი']]);
+    expect(withEveryoneWhoFits([found], fitting)[0]).toEqual(found);
+    const none = { ...found, state: ListItemState.NoRoute, throughWhom: null };
+    expect(withEveryoneWhoFits([none], new Map([['ელექტრიკოსი', 'ვახო']]))[0]).toEqual(none);
+  });
+});
+
 describe('the portions a list is written to in', () => {
   const routed = (row: number, who: string | null) => ({
     row,
@@ -365,6 +393,9 @@ describe('the worked list as Excel', () => {
     const values = (n: number): unknown[] =>
       (book.worksheets[0].getRow(n).values as unknown[]).slice(1);
     expect(values(2)[3]).toBe('ნოდარ ელექტრიკოსი, კახა ელექტრიკოსი, შოთა ელექტრიკოსი');
+    // 4324 (box 51106): the helper is one of the electricians, and his answer is about other rows.
+    expect(values(2)[4]).toBe('გზა ნაპოვნია');
+    expect(values(2)[5] ?? '').toBe('');
     expect(values(3).slice(2)).toEqual([
       'იხ. დამხმარე',
       'ნოდარ ელექტრიკოსი',
@@ -372,6 +403,31 @@ describe('the worked list as Excel', () => {
       helperSaid,
     ]);
     expect(values(4).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
+  });
+
+  it('keeps an answer on a found row when it speaks of that row', async () => {
+    const said = 'ელექტრიკოსს ხვალ გამოგიგზავნი.';
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            label: 'ელექტრიკოსი',
+            row_data: ['1', 'ელექტრიკოსი'],
+            way_in: 'first_circle',
+            through_whom: 'ნოდარ ელექტრიკოსი',
+            state: 'answered',
+            answer: said,
+            columns: ['სახელი', 'პროფესია'],
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+    const buffer = await listWorkbook('501', 10, 'ka');
+    if (buffer === null) throw new Error('expected a workbook');
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(buffer as unknown as ArrayBuffer);
+    const values = (book.worksheets[0].getRow(2).values as unknown[]).slice(1);
+    expect(values.slice(4)).toEqual(['უპასუხა', said]);
   });
 
   it('is nothing when the goal has no list of this owner’s', async () => {
