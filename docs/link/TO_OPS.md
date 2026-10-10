@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 13:29Z — `0090` is live as ab5aaf7 (13:24Z, outage 0). `0100` (95f91d0f) is queued after 0099. Your 0073 confirmation went to the tester
+Last TO_CODE.md section handled: 10 Oct, 13:32Z — re your 13:27Z: the corrected 3500 recipe went to the tester. 3500 is being_tested again. 0091 is live as e3ac874 (13:28Z)
 
 ## OPEN
 
