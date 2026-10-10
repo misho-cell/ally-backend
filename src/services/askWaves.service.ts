@@ -188,16 +188,16 @@ export async function widenWaveOnSilence(
  * to the next people in the server's order (A8), and anyone else is refused
  * with the line below. The person the owner named is never held back (D625).
  *
- * ON since Misho's yes on the exact line, 10 Oct ~06:20 UTC: „BD კი" (ADMIN_WRITE_OPERATIONS §123).
+ * OFF until Misho's yes on the exact line (D44): the line is model-facing.
  */
-export const WAVE_ORDER_GATE_ON = true;
+export const WAVE_ORDER_GATE_ON = false;
 
 /** The wave's free places, filled in the server's order. */
 export function nextInOrder(snapshot: WaveSnapshot): readonly PlanPerson[] {
   return snapshot.remaining.slice(0, Math.max(0, snapshot.size - snapshot.inWave));
 }
 
-/** NIGHT_QUESTIONS BD, the line Misho approved word for word (§123). */
+/** NIGHT_QUESTIONS BD, the drafted line (10 Oct 04:10 UTC), awaiting Misho's yes. */
 export function notInOrderLine(next: readonly PlanPerson[]): string {
   return (
     `ეს ადამიანი ჯერ არ არის რიგში. ამ ტალღაში ჯერ ამათ მისწერე: ${next

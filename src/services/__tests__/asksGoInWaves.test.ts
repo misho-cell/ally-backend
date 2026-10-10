@@ -252,23 +252,8 @@ describe('the order gate (BD)', () => {
     nextWaveAt: null,
   });
 
-  it('is on, on Misho’s yes to the exact line (§123)', () => {
-    expect(WAVE_ORDER_GATE_ON).toBe(true);
-  });
-
-  it('refuses a person out of order while the wave has room, naming who goes first', async () => {
-    waveReads(1, [], []);
-    const room = await waveRoomFor(TASK, EIGHT[4].phone, async () => false);
-    expect(room.allowed).toBe(false);
-    expect(room.allowed ? '' : room.error).toContain('Person 1, Person 2, Person 3');
-  });
-
-  it('lets the person the owner named go out of order (D625)', async () => {
-    waveReads(1, [], []);
-    await expect(waveRoomFor(TASK, EIGHT[4].phone, async () => true)).resolves.toEqual({
-      allowed: true,
-      wave: 1,
-    });
+  it('is off until Misho says yes to the exact line (D44)', () => {
+    expect(WAVE_ORDER_GATE_ON).toBe(false);
   });
 
   it('offers the free places to the next people in order', () => {

@@ -487,9 +487,9 @@ export async function listWorkbook(
  * (about reaching the listed person), which reads as a contradiction. With
  * this on, those two cells point at the helper column instead.
  *
- * ON since Misho's yes, 10 Oct ~06:20 UTC: „BE კი" (ADMIN_WRITE_OPERATIONS §124).
+ * OFF until Misho's yes on the exact words: they are new text in the owner's file.
  */
-export const SEE_HELPER_ON = true;
+export const SEE_HELPER_ON = false;
 
 const SEE_HELPER: Readonly<Record<RunLanguage, string>> = {
   ka: 'იხ. დამხმარე',
