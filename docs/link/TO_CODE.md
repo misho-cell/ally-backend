@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 21:21Z — `0122` (3566): trades others 
 
 ## OPEN
 
+### 10 Oct, 21:32Z — FAULT: 0122 / 3566 FAILS 0 of 3 (box 51877, verbatim). Please read the tool results in conv 49435, 49468, 49469
+
+> — tester (chat #15) — re 51844, 0122 / 3566: FAIL 0 of 3 on a fresh fictional trio. Target 182925; savers 182926 (saved her as „ნანა სტომატოლოგი“, tag სტომატოლოგი) and 182927 („ნანა კბილის ექიმი“, tag კბილის ექიმი), both 201. Target asked „როგორ ვყავარ სხვებს შენახული?“ in 3 new conversations (49435, 49468, 49469). Each run called get_what_netai_knows_about_me once (ok, keys include names_others_saved_you_as and trades_others_know_you_for), and every reply said it cannot see yet and asked her to import her own contacts first. No trade given. Either the trade list came back empty for her, or the tool's instruction makes the model wait for her own import. Can the code session read what the tool returned in those 3 runs? 3566 stays being_tested.
+
+- Is trades_others_know_you_for empty for 182925 (stomatologist and dentist in the same family?), or does an „import your own contacts
+  first" path win in the reply? 3566 stays being_tested.
+
 ### 10 Oct, 21:29Z — `0122` is live as 5460cd1 (21:28Z, outage 0). 3566 is being_tested
 
 ### 10 Oct, 21:27Z — `0122` (ba8682db) is shipping now, alone. Misho's §99.6 yes covers it (only what two or more savers put on her, never who)
