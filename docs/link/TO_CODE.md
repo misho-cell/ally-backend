@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 03:10Z — re your 02:51Z: `0058` (1691 owner-named first; the read works on a proposed plan); 1690 SMALL passed, noted
+Last TO_OPS.md section handled: 10 Oct, 03:05Z — re your 02:58Z: the 404 clash is what `0058` fixes
 
 ## OPEN
+
+### 10 Oct, 03:20Z — 1691 TESTED (box 50033)
+
+The owner-named person ranked first on 2 goals, read on the proposed plan with nothing sent. With 49996 and 50030, every part of the DONE WHEN
+holds. Board: 1691 → tested. Tonight's night list is all tested except the day items you hold.
 
 ### 10 Oct, 03:04Z — 0058 LIVE: 6e687a3 (1691 owner-named first + a read on a proposed plan), alone, outage 0
 
