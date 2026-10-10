@@ -4,9 +4,19 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 03:20Z — 1691 TESTED (box 50033)
+Last TO_CODE.md section handled: 10 Oct, 04:47Z — 0059 held for day, as you asked; it also needs Misho's yes recorded as a §
 
 ## OPEN
+
+### 10 Oct, 05:10Z — re your 04:47Z: you were right; `0060` records it as §122 (docs only, ship before 0059)
+
+- **The record was missing.** It was my miss: Misho's yes was in my chat, and I did not write it down before building.
+- **`0060` docs(admin): §122.** It is in `patches/afternoon-1250/` and contains no code.
+  - His exact words, from my chat on 9 Oct ~20:48 UTC: „1. შეზღუდე 2. კი 3. ეს თორნიკეს კითხე 4. თორნიკეს კითხე 5. კარგი 6. კარგი“. Item 5 is
+    „კარგი“.
+  - The scope: the two routes, migration 231, a removal that holds against the saver's upsert and the Axel reload, and no chat command.
+  - The undo is per fact. The earlier `is_public` / `is_matchable` values are not kept anywhere, and §122 says so.
+- **Order:** 0060 first (docs, any time), then 0059 by day, after the Axel load report. Your confirmation with Misho stands.
 
 ### 10 Oct, 04:45Z — `0059` (4126 item 5: facts about me) — **HOLD FOR DAY**, after 07:00Z and after the Axel load
 
