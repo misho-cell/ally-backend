@@ -1,0 +1,273 @@
+From 929ea7a4e6b15e50541cf429091b821d1282745e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 13:55:58 +0000
+Subject: [PATCH] perf(db): warm connections and one round trip less per
+ custom-timeout query (958)
+
+Every step of a chat turn is a multiple of ~145 ms, one round trip to the
+database. Three things cost small-talk turns round trips they did not need:
+
+- pg closes an idle connection after 10 s by default, so a turn after a
+  short pause opened connections afresh (TCP, TLS, auth: ~6 round trips).
+  The database counted 10-25 new sessions a minute. Idle connections are
+  now kept 5 minutes with TCP keepalive; max_connections is 2091.
+- A query with its own timeout waited for the SET that restores the
+  default after its rows had arrived. The restore now runs before the
+  connection goes back to the pool, but the caller no longer waits.
+- Small talk read the conversation for "discuss first" before learning it
+  is small talk; the answer is "no goal" either way, so it is checked first.
+
+The pools also get an error listener: a dropped idle connection used to be
+an unhandled 'error' event, which ends the process.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../postgres/__tests__/queryRouting.test.ts   | 65 ++++++++++++++++++-
+ src/db/postgres/client.ts                     | 57 +++++++++++++---
+ .../__tests__/smallTalkIsNeverAGoal.test.ts   | 12 ++++
+ src/services/chat.service.ts                  | 14 ++--
+ 4 files changed, 133 insertions(+), 15 deletions(-)
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index c9b079f..36fec00 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -31,6 +31,8 @@ interface FakePool {
+   readonly label: string;
+   query: jest.Mock;
+   connect: jest.Mock;
++  on: jest.Mock;
++  readonly config: Readonly<Record<string, unknown>>;
+   totalCount: number;
+   idleCount: number;
+   waitingCount: number;
+@@ -40,7 +42,7 @@ const pools: FakePool[] = [];
+ 
+ jest.mock('pg', () => ({
+   __esModule: true,
+-  Pool: jest.fn().mockImplementation((config: { max?: number }) => {
++  Pool: jest.fn().mockImplementation((config: { max?: number } & Record<string, unknown>) => {
+     const client = {
+       query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+       release: jest.fn(),
+@@ -49,6 +51,8 @@ jest.mock('pg', () => ({
+       label: `max=${config.max ?? '?'}#${pools.length}`,
+       query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+       connect: jest.fn().mockResolvedValue(client),
++      on: jest.fn(),
++      config,
+       totalCount: 0,
+       idleCount: 0,
+       waitingCount: 0,
+@@ -152,6 +156,65 @@ describe('which pool answers a query', () => {
+   });
+ });
+ 
++/** 958: the caller has its rows one round trip sooner; the pool still gets the connection back clean. */
++describe('a custom-timeout query hands back its connection', () => {
++  function borrowedClient(): { query: jest.Mock; release: jest.Mock } {
++    const client = { query: jest.fn(), release: jest.fn() };
++    shortPool.connect.mockResolvedValueOnce(client);
++    return client;
++  }
++
++  it('answers before the default timeout is restored, and releases only after it', async () => {
++    const client = borrowedClient();
++    let restored: (() => void) | undefined;
++    client.query
++      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
++      .mockResolvedValueOnce({ rows: [{ n: 1 }], rowCount: 1 })
++      .mockImplementationOnce(
++        () => new Promise((resolve) => (restored = () => resolve({ rows: [], rowCount: 0 }))),
++      );
++
++    const result = await query('SELECT 1 AS n FROM contact_exclusions', [1], 5_000);
++
++    expect(result.rows).toEqual([{ n: 1 }]);
++    expect(client.query).toHaveBeenLastCalledWith('SET statement_timeout = 8000');
++    expect(client.release).not.toHaveBeenCalled();
++    restored?.();
++    await new Promise(setImmediate);
++    expect(client.release).toHaveBeenCalledWith();
++  });
++
++  it('destroys the connection when the restore fails', async () => {
++    const client = borrowedClient();
++    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++    client.query
++      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
++      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
++      .mockRejectedValueOnce(new Error('connection lost'));
++
++    await query('SELECT 1 FROM contact_exclusions', [1], 5_000);
++    await new Promise(setImmediate);
++
++    expect(client.release).toHaveBeenCalledWith(true);
++    warn.mockRestore();
++  });
++});
++
++/** 958: connections stay warm between turns, and a dropped one does not end the process. */
++describe('how the pools keep their connections', () => {
++  it.each(pools.map((p) => [p.label, p]))(
++    '%s keeps idle connections for minutes, not seconds',
++    (_, p) => {
++      expect(p.config.idleTimeoutMillis).toBeGreaterThanOrEqual(60_000);
++      expect(p.config.keepAlive).toBe(true);
++    },
++  );
++
++  it.each(pools.map((p) => [p.label, p]))('%s listens for a dropped idle connection', (_, p) => {
++    expect(p.on).toHaveBeenCalledWith('error', expect.any(Function));
++  });
++});
++
+ describe('what poolPressure reports', () => {
+   it('reports the LONG pool — the one a search queues on', () => {
+     longPool.totalCount = 10;
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index 8355bf7..953b8c7 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -14,6 +14,16 @@ const DEFAULT_QUERY_TIMEOUT_MS = 8000;
+ // Background scans are allowed to be slow — they compete with nobody.
+ const BACKGROUND_QUERY_TIMEOUT_MS = 30_000;
+ 
++/**
++ * 958: how long an idle connection is kept. pg's own default is ten seconds,
++ * so a chat turn after a short pause opened its connections afresh — TCP, TLS
++ * and auth, about six round trips at ~145 ms each — before its first query.
++ * The database counted 10–25 new sessions a minute on 10 October. Five
++ * minutes keeps an ordinary conversation on warm connections; the pools' `max`
++ * still bounds how many there are.
++ */
++const IDLE_CONNECTION_KEEP_MS = 5 * 60_000;
++
+ const BASE_POOL_CONFIG = {
+   host: process.env.POSTGRES_HOST,
+   port: Number(process.env.POSTGRES_PORT ?? 5432),
+@@ -21,6 +31,9 @@ const BASE_POOL_CONFIG = {
+   user: process.env.POSTGRES_NAME,
+   password: process.env.POSTGRES_PASS,
+   ssl: SSL_CONFIG,
++  idleTimeoutMillis: IDLE_CONNECTION_KEEP_MS,
++  // A kept connection must notice a dropped network instead of sitting dead.
++  keepAlive: true,
+ };
+ 
+ const pool = new Pool({
+@@ -96,6 +109,18 @@ const backgroundPool = new Pool({
+   options: `-c statement_timeout=${BACKGROUND_QUERY_TIMEOUT_MS}`,
+ });
+ 
++/**
++ * 958: an idle connection the database or the network drops is emitted as an
++ * `error` on its pool, and an `error` event with no listener ends the process.
++ * The pool has already discarded that connection; the next query opens another.
++ */
++for (const eachPool of [pool, longQueryPool, backgroundPool]) {
++  eachPool.on('error', (error: Error) => {
++    // eslint-disable-next-line no-console
++    console.warn(`[db] idle connection dropped: ${error.message}`);
++  });
++}
++
+ /**
+  * A query slower than this is named in the log with how long it took. A
+  * timeout is always named, whatever the threshold.
+@@ -240,14 +265,30 @@ async function runOnPoolUntimed<T extends QueryResultRow>(
+     // flight corrupts the pool.
+     return await client.query<T>({ text: queryText, values: params });
+   } finally {
+-    try {
+-      await client.query(`SET statement_timeout = ${defaultTimeoutMs}`);
+-      client.release();
+-    } catch {
+-      // The connection is in an unknown state — destroy it rather than
+-      // returning it to the pool with a foreign timeout.
+-      client.release(true);
+-    }
++    void restoreThenRelease(client, defaultTimeoutMs);
++  }
++}
++
++/**
++ * 958: the restore is the connection's business, not the caller's. With the
++ * database ~145 ms away the caller used to wait one more round trip for it
++ * after its rows had arrived. The connection still goes back to the pool only
++ * once the default is restored, so no borrower ever gets a foreign timeout.
++ */
++async function restoreThenRelease(client: PoolClient, defaultTimeoutMs: number): Promise<void> {
++  try {
++    await client.query(`SET statement_timeout = ${defaultTimeoutMs}`);
++    client.release();
++  } catch (error) {
++    // The connection is in an unknown state — destroy it rather than
++    // returning it to the pool with a foreign timeout.
++    // eslint-disable-next-line no-console
++    console.warn(
++      `[db] default timeout not restored, connection dropped: ${
++        error instanceof Error ? error.message : String(error)
++      }`,
++    );
++    client.release(true);
+   }
+ }
+ 
+diff --git a/src/services/__tests__/smallTalkIsNeverAGoal.test.ts b/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
+index a96b9b4..d2c806d 100644
+--- a/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
++++ b/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
+@@ -135,3 +135,15 @@ describe('small talk answered with no tools', () => {
+     );
+   });
+ });
++
++/** 958: „no goal" for small talk is known from the line alone, so it reads no history first. */
++describe('the goal decision on small talk', () => {
++  it('says no goal before reading the conversation for „discuss first"', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const body = chat.slice(chat.indexOf('async function ensureGoalForRequest'));
++    expect(body.indexOf('if (isSmallTalk(userMessage))')).toBeGreaterThan(0);
++    expect(body.indexOf('if (isSmallTalk(userMessage))')).toBeLessThan(
++      body.indexOf('await conversationIsDiscussion(threadId, userMessage)'),
++    );
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index fe48f29..b42cc77 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -14965,20 +14965,22 @@ async function ensureGoalForRequest(
+ ): Promise<GoalForRequest> {
+   if (threadType !== 'regular' || userMessage.startsWith(RUN_EVENT_PREFIX))
+     return NO_GOAL_FOR_REQUEST;
+-  // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
+-  if (await conversationIsDiscussion(threadId, userMessage)) {
+-    // eslint-disable-next-line no-console
+-    console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
+-    return NO_GOAL_FOR_REQUEST;
+-  }
+   // The tester's 1113 (the founder's account): „გამარჯობა" and „რა დღეა დღეს?"
+   // after the new-goal button became goals. Small talk is never a goal.
++  // 958: checked before the discussion read below, which costs small talk a
++  // database round trip for an answer that is „no goal" either way.
+   if (isSmallTalk(userMessage)) {
+     if (intent?.asGoal === true)
+       // eslint-disable-next-line no-console
+       console.log(`[goal-intent] thread ${threadId}: app flag ignored, the message is small talk`);
+     return NO_GOAL_FOR_REQUEST;
+   }
++  // #67: an owner who asked to discuss first gets no goal, so no opening search and no plan.
++  if (await conversationIsDiscussion(threadId, userMessage)) {
++    // eslint-disable-next-line no-console
++    console.log(`[goal-intent] thread ${threadId}: no goal, the owner asked to discuss first`);
++    return NO_GOAL_FOR_REQUEST;
++  }
+   // Row 103: the app flag may turn a statement into a goal; it may not turn a
+   // question into one. Named in the log rather than dropped silently — a goal
+   // that quietly does not appear is the mirror image of the bug being fixed.
+-- 
+2.43.0
+

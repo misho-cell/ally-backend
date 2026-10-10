@@ -1,0 +1,160 @@
+From 9990bba66464a311c44660449afceb276be34ed0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 14:03:02 +0000
+Subject: [PATCH] fix(chat): a short question about the weather is looked up,
+ not left to the model (tester chat 15)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+„რა ამინდია დღეს თბილისში?" (conv 49108) was answered „I could not check
+it, look at a weather app" with no tool called; the weather was meant to be
+looked up (smallTalk.ts). asksTheWeather reads a short weather question that
+states no need, and the run's first model call is then made with
+tool_choice web_search, when the run has that tool. No prompt text changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/smallTalkIsNeverAGoal.test.ts   | 28 ++++++++++++++++++-
+ src/services/chat.service.ts                  | 19 ++++++++++++-
+ src/services/smallTalk.ts                     | 19 +++++++++++++
+ 3 files changed, 64 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/smallTalkIsNeverAGoal.test.ts b/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
+index d2c806d..f684ecb 100644
+--- a/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
++++ b/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
+@@ -1,6 +1,6 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
++import { asksTheWeather, isSmallTalk, isToolFreeSmallTalk } from '../smallTalk';
+ import { seeksAPerson } from '../goalIntent';
+ import { smallTalkTurn } from '../chat.service';
+ 
+@@ -147,3 +147,29 @@ describe('the goal decision on small talk', () => {
+     );
+   });
+ });
++
++/** The tester's 15th chat (conv 49108): the weather was „look at an app" with no tool called. */
++describe('a question about the weather', () => {
++  it.each([
++    'რა ამინდია დღეს თბილისში?',
++    'რა ამინდია?',
++    'How is the weather in Tbilisi?',
++    'Какая погода в Батуми?',
++  ])('„%s" is looked up', (line) => {
++    expect(asksTheWeather(line)).toBe(true);
++  });
++
++  it.each([
++    'მჭირდება ამინდის აპლიკაციის დეველოპერი',
++    'ამინდი კარგია, გავისეირნე',
++    'ვინ იცნობს ვინმეს, ვინც ამინდის პროგნოზზე მუშაობს და შეუძლია ჩემს სტარტაპს დაეხმაროს?',
++  ])('„%s" is not', (line) => {
++    expect(asksTheWeather(line)).toBe(false);
++  });
++
++  it('makes the first model call search the web when the run has web_search', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),');
++    expect(chat).toContain("tool_choice: { type: 'tool' as const, name: opts.forceTool }");
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index b42cc77..33fca1a 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -67,7 +67,13 @@ import { searchByInsight } from './tools/searchByInsight';
+ import { searchSecondDegree } from './tools/searchSecondDegree';
+ import { getContactCount, hasAnyContact } from './tools/getContactCount';
+ import { heldAsksNote } from './heldAskNote.service';
+-import { isFarewell, isPlainThanks, isSmallTalk, isToolFreeSmallTalk } from './smallTalk';
++import {
++  asksTheWeather,
++  isFarewell,
++  isPlainThanks,
++  isSmallTalk,
++  isToolFreeSmallTalk,
++} from './smallTalk';
+ import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
+ import { acceptIntroOnYes } from './introYes';
+ import { hoursUntilClock, parseClock } from './wakeAtClock';
+@@ -7883,6 +7889,7 @@ function forgetEmptySearches(runId: string | undefined): void {
+  * by name stays free — the members check needs it, and it is one row.
+  */
+ const MAX_SEARCHES_PER_RUN = 8;
++const WEB_SEARCH_TOOL = 'web_search';
+ const BUDGETED_SEARCH_TOOLS: ReadonlySet<string> = new Set([
+   'search_by_tag',
+   'search_by_insight',
+@@ -11623,6 +11630,8 @@ interface CallOptions {
+   model?: string;
+   // #378: a ceiling on this one turn's length (a bare greeting); MAX_TOKENS otherwise.
+   maxTokens?: number;
++  // A tool this one turn must call (the weather's web_search); the tools array stays identical.
++  forceTool?: string;
+ }
+ 
+ /** The owner's newest line in the turn being answered, when it is plain text. */
+@@ -11671,6 +11680,9 @@ async function callClaude(
+       tools: toCachedTools(tools),
+       messages: markLastMessageForCache(messages),
+       ...(opts.forceText ? { tool_choice: { type: 'none' as const } } : {}),
++      ...(opts.forceTool !== undefined && !opts.forceText
++        ? { tool_choice: { type: 'tool' as const, name: opts.forceTool } }
++        : {}),
+     },
+     { timeout: STREAM_TIMEOUT_MS },
+   );
+@@ -12889,6 +12901,10 @@ async function runToolLoop(
+   const discussing = !ownerAbsent && !otherTap && discussionHolds(ownerLinesNewestFirst(messages));
+   const shortTurnNote = otherTap ? OTHER_CHOICE_TURN_NOTE : discussing ? DISCUSS_TURN_NOTE : '';
+   const smallTalkOnly = !ownerAbsent && isToolFreeSmallTalk(lastOwnerText(messages) ?? '');
++  const weatherLookUp =
++    !ownerAbsent &&
++    asksTheWeather(lastOwnerText(messages) ?? '') &&
++    tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
+   let options: DisambiguationCandidate[] | undefined;
+   let choices: string[] | undefined;
+   let openAiStarted = false;
+@@ -12938,6 +12954,7 @@ async function runToolLoop(
+     model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
+     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
++    ...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),
+   });
+   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
+   // text and no tool call, and the owner was told „try again" — the same words
+diff --git a/src/services/smallTalk.ts b/src/services/smallTalk.ts
+index f223581..9b94719 100644
+--- a/src/services/smallTalk.ts
++++ b/src/services/smallTalk.ts
+@@ -71,3 +71,22 @@ const NEEDS_A_LOOKUP_RE = /(ამინდ|weather|погод|tiempo)/iu;
+ export function isToolFreeSmallTalk(message: string): boolean {
+   return isSmallTalk(message) && !NEEDS_A_LOOKUP_RE.test(message);
+ }
++
++/** Longer than this, a line naming the weather is about something else (a need, a story). */
++const WEATHER_QUESTION_MAX_CHARS = 60;
++const ASKS_RE = /[?？]|^\s*(?:რა|როგორი|what|how|какая|как|qué|cómo)\s/iu;
++
++/**
++ * The tester's 15th chat (conv 49108): „რა ამინდია დღეს თბილისში?" was answered
++ * „I could not check it, look at a weather app", with no tool called. A short
++ * question about the weather is looked up, not left to the model's choice.
++ */
++export function asksTheWeather(message: string): boolean {
++  const text = message.trim();
++  return (
++    text.length <= WEATHER_QUESTION_MAX_CHARS &&
++    NEEDS_A_LOOKUP_RE.test(text) &&
++    ASKS_RE.test(text) &&
++    !statesANeed(text)
++  );
++}
+-- 
+2.43.0
+

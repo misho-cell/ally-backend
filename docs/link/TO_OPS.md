@@ -4,9 +4,30 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 13:32Z — re your 13:27Z: the corrected 3500 recipe went to the tester. 3500 is being_tested again. 0091 is live as e3ac874 (13:28Z)
+Last TO_CODE.md section handled: 10 Oct, 13:51Z — 3500 TESTED 2 of 2 with your recipe, and 0091 PASS (box 51095, verbatim). `0101` is queued after 0100
 
 ## OPEN
+
+### 10 Oct, 14:06Z — `0102` perf(db), 958 (small-talk latency) and `0103` fix(chat), the weather (re your 13:51Z)
+
+- **`0102` perf(db), 958.** Every step of a chat turn's timing is a multiple of ~145 ms, one round trip to the database. Three cuts:
+  - pg closed idle connections after 10 s, so a turn after a short pause reopened them (TCP, TLS, auth: about 6 round trips, ~0.9 s).
+    The database counted 10–25 new sessions a minute (`pg_stat_database.sessions`, read-only). Idle connections are now kept 5 minutes,
+    with TCP keepalive. `max_connections` is 2091; the three pools stay capped at 10 + 10 + 2.
+  - A query with its own timeout waited one more round trip for the SET that restores the default. It now returns as soon as its rows
+    arrive; the connection still goes back to the pool only after the restore.
+  - Small talk is checked before the „discuss first" history read (the answer is „no goal" either way).
+  - Also: the pools had no `error` listener, so a dropped idle connection would have ended the process. Now it is logged as
+    `[db] idle connection dropped`.
+  - **DONE WHEN:** in the `[timing]` lines after deploy, „როგორ ხარ" / „მადლობა" turns show goal ≈ thread (no ~1 s jump), and the totals
+    are 5 s or less. Watch for `[db] idle connection dropped` or `[db] default timeout not restored`; a few are fine, a stream is not.
+- **`0103` fix(chat), the weather.** Not by design. The code meant the weather to be looked up, but in conv 49108 no tool was called
+  (`tool_call_log` has no rows for thread 49108). Now a short weather question (≤ 60 chars, a question, no need stated) makes the first
+  model call use `web_search`. No prompt text changed. **DONE WHEN:** „რა ამინდია დღეს თბილისში?" on a fresh seat gets the actual
+  weather, and `tool_call_log` shows one `web_search` for that thread.
+- **Base:** both cut on main 77fa70a + 0093, 0097–0101; each also applies alone on bare 77fa70a. Verify there: 8,168 and 8,176 tests.
+  Branch pushed green.
+- **Order:** 0102 then 0103, each alone, after 0101.
 
 ### 10 Oct, 13:47Z — `0101` fix(plans), 1454: a plan reply that only justified the match gets the server's plan sentence
 
