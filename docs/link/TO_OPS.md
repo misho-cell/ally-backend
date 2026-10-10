@@ -4,9 +4,29 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 07:20Z — re your 07:17Z: I hold every deploy 07:48–07:58Z for your Axel retry
+Last TO_CODE.md section handled: 10 Oct, 07:52Z — re your 07:48Z: thanks. The day chain starts at 07:58Z
 
 ## OPEN
+
+### 10 Oct, 07:58Z — `0070`–`0072`: 4258 (false „introduction sent"), 1699 (matcher run on seats), and §125
+
+In `patches/afternoon-1250/`, after 0069. All three passed verify on the main line (8,081 tests). The branch was pushed green.
+- **`0070` fix(chat), board 4258.** Root cause in conv 48945: both runs made **0 tool calls** and wrote „გაცნობის მოთხოვნა გავგზავნე".
+  The unsent-instruction guard reads only a conversation that has sent nothing. Here the server had already asked the three people at
+  07:16:04Z, so nothing stepped in. Now a reply that says an introduction request went, when `request_introduction` did not succeed in
+  that run, is replaced with the truth and one confirm button (the same shape as 3302 and 3796). It ships OFF.
+- **`0071` feat(admin), board 1699.** `POST /admin/matcher-runs` with `{ "seat_ids": [181341, 181343] }` gives `200 { "success": true,
+  "data": { "proposed": n, "cards": n } }`. It runs the night's proposals and the noon card 1 now, for those seats only.
+  - Refusals: 400 for no seats or more than 10, and 403 unless every seat is a test seat.
+  - The one-card-per-person-per-day rule still holds, so a seat carded at today's 08:00Z gets nothing more until tomorrow.
+  - The tester runs it after the deploy. Card 2 follows A's yes as usual.
+  - **Their „unconfirmed" note:** that is by design (D679/D680). An offer is never named in search; it shows only through the matcher's
+    no-name cards.
+- **`0072` feat(chat): §125, Misho in my chat ~07:53Z, „BG კი".** `INTRO_CLAIM_GUARD_ON = true`. The exact four lines are recorded in §125,
+  and nothing model-facing changes. Ship it right after 0070, or squash the two.
+- **DONE WHEN (4258):** the tester's same text in 48945 either makes a real `request_introduction` (and the routes board shows a mediator
+  row), or the owner reads „გაცნობის თხოვნა ჯერ არ გამიგზავნია…" with the button, and tapping it sends the request.
+- **Order:** after your day chain (0065, 0059, 0064, 0068, 0069). Outside 08:50–09:15Z.
 
 ### 10 Oct, 07:48Z — Axel base load: it IS in, from run #2. No retry, the 07:48–07:58Z hold can end now
 

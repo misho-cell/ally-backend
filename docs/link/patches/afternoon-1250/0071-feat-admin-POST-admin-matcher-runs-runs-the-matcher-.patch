@@ -1,0 +1,309 @@
+From f86dbaf00e5caf414d4f640071d7b16494cf7793 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 07:51:29 +0000
+Subject: [PATCH 71/71] feat(admin): POST /admin/matcher-runs runs the matcher
+ and card 1 now, on test seats only (1699)
+
+Tester 50557: the night's matcher (02:00Z) and the noon cards (08:00Z) put
+the earliest read a day away. The same proposals and the same card 1, for
+the named seats alone; 400 for no seats or more than 10, 403 unless every
+one is a test seat.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                | 44 ++++++++++
+ .../__tests__/matcherForSeats.test.ts         | 82 +++++++++++++++++++
+ src/services/matchFlow.service.ts             | 12 ++-
+ src/services/needsOffers.service.ts           | 65 +++++++++++++--
+ 4 files changed, 192 insertions(+), 11 deletions(-)
+ create mode 100644 src/services/__tests__/matcherForSeats.test.ts
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 06b28b6..cce73a3 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -319,6 +319,7 @@ import {
+   writeStaleFact,
+ } from '../../services/seatFixtures.service';
+ import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
++import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -7140,6 +7141,49 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
+   }
+ });
+ 
++/** What the seat matcher run answers for each outcome other than a run. */
++const SEAT_MATCH_REFUSAL: Readonly<Record<string, { status: number; error: string }>> = {
++  [SeatMatchOutcome.BadInput]: {
++    status: 400,
++    error: 'seat_ids must be 1 to 10 user ids',
++  },
++  [SeatMatchOutcome.NotATestSeat]: {
++    status: 403,
++    error: 'every seat must be a test seat',
++  },
++};
++
++function seatIdsOf(body: unknown): number[] | null {
++  const raw = (body as { seat_ids?: unknown } | null)?.seat_ids;
++  if (!Array.isArray(raw)) return null;
++  const ids = raw.map(Number);
++  return ids.every((id) => Number.isInteger(id) && id > 0) ? ids : null;
++}
++
++/**
++ * 1699 (tester 50557): POST /admin/matcher-runs { seat_ids: [a, b] } — the
++ * night's matcher and the noon card 1, now, on test seats only.
++ */
++adminRouter.post('/matcher-runs', async (req: Request, res: Response) => {
++  const seatIds = seatIdsOf(req.body);
++  try {
++    const run =
++      seatIds === null
++        ? { outcome: SeatMatchOutcome.BadInput, proposed: 0, cards: 0 }
++        : await runMatcherForSeats(seatIds);
++    const refusal = SEAT_MATCH_REFUSAL[run.outcome];
++    if (refusal !== undefined) {
++      res.status(refusal.status).json({ success: false, error: refusal.error });
++      return;
++    }
++    res.status(200).json({ success: true, data: { proposed: run.proposed, cards: run.cards } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[matcher-runs]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'The matcher did not run' });
++  }
++});
++
+ /**
+  * 1691 (tester 49931): GET /admin/goals/:id/wave-ranking — the server's own
+  * ranking of a fictional seat's plan, with the signals behind each place.
+diff --git a/src/services/__tests__/matcherForSeats.test.ts b/src/services/__tests__/matcherForSeats.test.ts
+new file mode 100644
+index 0000000..49d178e
+--- /dev/null
++++ b/src/services/__tests__/matcherForSeats.test.ts
+@@ -0,0 +1,82 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++}));
++jest.mock('../matchFlow.service', () => ({
++  deliverDueCards: jest.fn(() => Promise.resolve(1)),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { deliverDueCards } from '../matchFlow.service';
++import { MAX_SEATS_PER_RUN, runMatcherForSeats, SeatMatchOutcome } from '../needsOffers.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockCards = deliverDueCards as jest.MockedFunction<typeof deliverDueCards>;
++
++/** 1699 (tester 50557): the night's matcher and card 1, now, on test seats only. */
++describe('the matcher run on test seats', () => {
++  beforeEach(() => {
++    mockQuery.mockReset();
++    mockCards.mockClear();
++  });
++
++  it('refuses no seats, or more than a handful, without reading anything', async () => {
++    const tooMany = Array.from({ length: MAX_SEATS_PER_RUN + 1 }, (_, i) => i + 1);
++    for (const seats of [[], tooMany]) {
++      await expect(runMatcherForSeats(seats)).resolves.toEqual({
++        outcome: SeatMatchOutcome.BadInput,
++        proposed: 0,
++        cards: 0,
++      });
++    }
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('refuses when any seat is not a test seat, and writes nothing', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ n: 1 }] } as never);
++    await expect(runMatcherForSeats([181341, 181343])).resolves.toEqual({
++      outcome: SeatMatchOutcome.NotATestSeat,
++      proposed: 0,
++      cards: 0,
++    });
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++    expect(mockCards).not.toHaveBeenCalled();
++  });
++
++  it('reads only these seats’ offers and goals, proposes the sure pair, and sends their card 1', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ n: 2 }] } as never)
++      .mockResolvedValueOnce({
++        rows: [{ id: 100, user_id: 181341, text: 'hotel work', field: 'hospitality' }],
++      } as never)
++      .mockResolvedValueOnce({
++        rows: [{ id: 24026, user_id: 181343, title: 'hospitality: hotel management in Adjara' }],
++      } as never)
++      .mockResolvedValueOnce({ rows: [{ id: 9 }] } as never);
++
++    const run = await runMatcherForSeats([181341, 181343, 181343]);
++
++    const [offersSql, offersParams] = mockQuery.mock.calls[1];
++    expect(String(offersSql)).toContain('user_id = ANY($2::int[])');
++    expect(offersParams).toEqual([expect.any(Number), [181341, 181343]]);
++    const [, goalsParams] = mockQuery.mock.calls[2];
++    expect(goalsParams).toEqual([expect.any(Number), ['181341', '181343']]);
++    expect(mockCards).toHaveBeenCalledWith([181341, 181343]);
++    expect(run.outcome).toBe(SeatMatchOutcome.Ran);
++    expect(run.cards).toBe(1);
++  });
++});
++
++describe('the route', () => {
++  it('is POST /admin/matcher-runs, refusing with 400 and 403 before any run', () => {
++    const routes = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
++      'utf8',
++    );
++    expect(routes).toContain("adminRouter.post('/matcher-runs'");
++    expect(routes).toContain('[SeatMatchOutcome.BadInput]: {\n    status: 400');
++    expect(routes).toContain('[SeatMatchOutcome.NotATestSeat]: {\n    status: 403');
++  });
++});
+diff --git a/src/services/matchFlow.service.ts b/src/services/matchFlow.service.ts
+index 3a441d9..72eb534 100644
+--- a/src/services/matchFlow.service.ts
++++ b/src/services/matchFlow.service.ts
+@@ -42,8 +42,13 @@ async function push(userId: number, text: string, threadId: number): Promise<voi
+   }).catch(() => undefined);
+ }
+ 
+-/** Card 1 for each proposed match whose owner had no match card in the last day. */
+-export async function deliverDueCards(): Promise<number> {
++/**
++ * Card 1 for each proposed match whose owner had no match card in the last day.
++ * `needUserIds` limits it to those owners (1699's on-demand run on test seats).
++ */
++export async function deliverDueCards(
++  needUserIds: readonly number[] | null = null,
++): Promise<number> {
+   const due = await query<DueMatch>(
+     `SELECT m.id, m.need_user_id, o.field, t.thread_id
+        FROM matches m
+@@ -53,8 +58,9 @@ export async function deliverDueCards(): Promise<number> {
+         AND NOT EXISTS (SELECT 1 FROM matches x
+                          WHERE x.need_user_id = m.need_user_id
+                            AND x.card1_at > NOW() - INTERVAL '1 day')
++        AND ($2::int[] IS NULL OR m.need_user_id = ANY($2::int[]))
+       ORDER BY m.id LIMIT $1`,
+-    [CARDS_PER_RUN],
++    [CARDS_PER_RUN, needUserIds],
+     QUERY_TIMEOUT_MS,
+   );
+   const carded = new Set<number>();
+diff --git a/src/services/needsOffers.service.ts b/src/services/needsOffers.service.ts
+index 0fb2f47..549c1b5 100644
+--- a/src/services/needsOffers.service.ts
++++ b/src/services/needsOffers.service.ts
+@@ -1,5 +1,6 @@
+ import { query } from '../db/postgres/client';
+ import { fieldFits, placeFits } from './fieldPlaces';
++import { deliverDueCards } from './matchFlow.service';
+ 
+ /**
+  * 1699 (A16, D679/D680): two members — one with a need, one who said he is
+@@ -60,21 +61,27 @@ export function surePairs(
+   return pairs;
+ }
+ 
+-async function openGoals(): Promise<OpenGoal[]> {
++/** Every member when null; otherwise only these (the on-demand run on test seats). */
++type MemberScope = readonly number[] | null;
++
++async function openGoals(scope: MemberScope): Promise<OpenGoal[]> {
+   const result = await query<OpenGoal>(
+     `SELECT id, user_id::int AS user_id, title FROM tasks
+       WHERE status = 'open' AND title IS NOT NULL
++        AND ($2::text[] IS NULL OR user_id = ANY($2::text[]))
+       ORDER BY id DESC LIMIT $1`,
+-    [GOALS_READ],
++    [GOALS_READ, scope === null ? null : scope.map(String)],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows;
+ }
+ 
+-async function activeOffers(): Promise<ActiveOffer[]> {
++async function activeOffers(scope: MemberScope): Promise<ActiveOffer[]> {
+   const result = await query<ActiveOffer>(
+-    `SELECT id, user_id, text, field FROM offers WHERE active ORDER BY id DESC LIMIT $1`,
+-    [OFFERS_READ],
++    `SELECT id, user_id, text, field FROM offers
++      WHERE active AND ($2::int[] IS NULL OR user_id = ANY($2::int[]))
++      ORDER BY id DESC LIMIT $1`,
++    [OFFERS_READ, scope],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows;
+@@ -116,10 +123,10 @@ async function proposeIfReachable(goal: OpenGoal, offer: ActiveOffer): Promise<b
+ }
+ 
+ /** One night's proposals; the number written. A failed pair is logged and the rest go on. */
+-export async function proposeMatches(): Promise<number> {
+-  const offers = await activeOffers();
++export async function proposeMatches(scope: MemberScope = null): Promise<number> {
++  const offers = await activeOffers(scope);
+   if (offers.length === 0) return 0;
+-  const pairs = surePairs(await openGoals(), offers);
++  const pairs = surePairs(await openGoals(scope), offers);
+   let proposed = 0;
+   for (const { goal, offer } of pairs) {
+     try {
+@@ -131,3 +138,45 @@ export async function proposeMatches(): Promise<number> {
+   }
+   return proposed;
+ }
++
++export enum SeatMatchOutcome {
++  BadInput = 'bad_input',
++  NotATestSeat = 'not_a_test_seat',
++  Ran = 'ran',
++}
++
++/** The on-demand run takes a pair of seats or a few more, never a sweep. */
++export const MAX_SEATS_PER_RUN = 10;
++
++async function allAreTestSeats(userIds: readonly number[]): Promise<boolean> {
++  const result = await query<{ n: number }>(
++    `SELECT COUNT(*)::int AS n FROM test_seats WHERE user_id = ANY($1::int[])`,
++    [userIds],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rows[0]?.n ?? 0) === userIds.length;
++}
++
++/**
++ * 1699 (tester 50557): the night's matcher and the noon cards, run now on
++ * fictional seats only — the same proposals and the same card 1 the two
++ * scheduled runs make, so the tester reads the cards today, not tomorrow.
++ * Every seat named must be a test seat; nobody else is read or written.
++ */
++export interface SeatMatchRun {
++  readonly outcome: SeatMatchOutcome;
++  readonly proposed: number;
++  readonly cards: number;
++}
++
++export async function runMatcherForSeats(seatIds: readonly number[]): Promise<SeatMatchRun> {
++  const unique = [...new Set(seatIds)];
++  if (unique.length === 0 || unique.length > MAX_SEATS_PER_RUN) {
++    return { outcome: SeatMatchOutcome.BadInput, proposed: 0, cards: 0 };
++  }
++  if (!(await allAreTestSeats(unique))) {
++    return { outcome: SeatMatchOutcome.NotATestSeat, proposed: 0, cards: 0 };
++  }
++  const proposed = await proposeMatches(unique);
++  return { outcome: SeatMatchOutcome.Ran, proposed, cards: await deliverDueCards(unique) };
++}
+-- 
+2.43.0
+

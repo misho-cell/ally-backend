@@ -1,0 +1,198 @@
+From c1581438acc00ef04802103ae7437fd900cea1c3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 07:51:29 +0000
+Subject: [PATCH 70/71] fix(chat): an introduction said to be sent is checked
+ against the run (4258), off until the text's yes
+
+Box 50524, goal conv 48945: two replies said the introduction request went
+with no tool call; the unsent-instruction guard reads only a conversation
+that has sent nothing, and this one had asked three people. Like 3302 and
+3796, the owner reads the truth with one confirm button instead. Behind
+INTRO_CLAIM_GUARD_ON (false) until Misho's yes on the four lines (BG).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/NIGHT_QUESTIONS.md                   |  8 ++++
+ src/services/__tests__/introClaim.test.ts | 50 ++++++++++++++++++++
+ src/services/chat.service.ts              | 16 +++++++
+ src/services/introClaim.ts                | 57 +++++++++++++++++++++++
+ 4 files changed, 131 insertions(+)
+ create mode 100644 src/services/__tests__/introClaim.test.ts
+ create mode 100644 src/services/introClaim.ts
+
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index af50795..c8a8b61 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -72,6 +72,14 @@ while its questions are unanswered is a list that loses them.
+ 
+ ## Waiting on Misho or the founder
+ 
++- **BG — 4258, a false „introduction request sent". Built OFF 10 Oct 07:50 UTC (`INTRO_CLAIM_GUARD_ON`), for Misho's yes.** When a
++  reply says an introduction request went and none went in that run, the owner reads this line with one button instead, like 3302's
++  „deleted" and 3796's „saved". These are new texts that real people read:
++  > ka: „გაცნობის თხოვნა ჯერ არ გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი." — button „კი, გააგზავნე"
++  > en: „I have not sent the introduction request yet. Confirm and I will send it now." — „Yes, send it"
++  > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
++  > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
++
+ **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
+ 
+ P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
+diff --git a/src/services/__tests__/introClaim.test.ts b/src/services/__tests__/introClaim.test.ts
+new file mode 100644
+index 0000000..d773a31
+--- /dev/null
++++ b/src/services/__tests__/introClaim.test.ts
+@@ -0,0 +1,50 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from '../introClaim';
++import type { RunLanguage } from '../runLanguage';
++
++const LANGUAGES: readonly RunLanguage[] = ['ka', 'en', 'ru', 'es'];
++
++/** 4258 (box 50524, conv 48945): a goal thread said „sent" for an introduction it never asked for. */
++describe('an introduction request said to be sent', () => {
++  it.each([
++    'ბახვა გამოგონილის მეშვეობით თამთა გამოგონილთან გაცნობის მოთხოვნა გავგზავნე.',
++    'ბახვა გამოგონილს თამთა გამოგონილთან გაცნობის მოთხოვნა ახლა გავუგზავნე.',
++    'გავუგზავნე გაცნობის თხოვნა ბახვას.',
++    'I have sent the introduction request to Bakhva.',
++    'The introduction request was sent to Bakhva.',
++  ])('is caught when nothing went: %s', (reply) => {
++    expect(introClaimWithoutSend(reply, false)).toBe(true);
++  });
++
++  it('is left alone when request_introduction succeeded in the run', () => {
++    expect(introClaimWithoutSend('გაცნობის მოთხოვნა გავგზავნე.', true)).toBe(false);
++  });
++
++  it.each([
++    'გაცნობის მოთხოვნა ვერ გავუგზავნე — ბახვა ჯერ არ შემოსულა.',
++    'გაცნობის მოთხოვნა არ გაიგზავნა.',
++    'I have not sent the introduction request yet.',
++    'ლევანს, ნინოს და დათოს უკვე მივწერე.',
++    'თამთაზე ბახვასგან გაცნობასაც მოვითხოვ.',
++  ])('does not read a refusal, an ask or a promise as a sent request: %s', (reply) => {
++    expect(introClaimWithoutSend(reply, false)).toBe(false);
++  });
++});
++
++describe('the truth the owner reads instead', () => {
++  it.each(LANGUAGES)('has a line and a confirm button in %s', (language) => {
++    const line = introNotSentLine(language);
++    expect(line.text.length).toBeGreaterThan(0);
++    expect(line.confirm.length).toBeGreaterThan(0);
++  });
++
++  it('is off until Misho’s yes on the exact lines', () => {
++    expect(INTRO_CLAIM_GUARD_ON).toBe(false);
++  });
++
++  it('reads the run’s own successful request, after the offer guard', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('introClaimWithoutSend(finalText, runIntroSent.has(runId))');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 600fdb1..7c0dd7a 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -74,6 +74,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
+ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+ import { asksToReopen } from './reopenIntent';
+ import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
++import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
+ import { askedLanguage, languagePreference } from './languagePreference';
+ import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
+ import { withOwnersNetwork } from './planVoice';
+@@ -13858,6 +13859,21 @@ async function runToolLoop(
+     choices = [notSaved.confirm];
+   }
+ 
++  // 4258: „introduction request sent" is said only when one went; otherwise the truth and a button.
++  if (
++    INTRO_CLAIM_GUARD_ON &&
++    !ownerAbsent &&
++    introClaimWithoutSend(finalText, runIntroSent.has(runId))
++  ) {
++    // eslint-disable-next-line no-console
++    console.warn(
++      `[intro-claim] run ${runId} thread ${threadId}: said the request went, none did — corrected`,
++    );
++    const notSent = introNotSentLine(runLang(runId));
++    finalText = notSent.text;
++    choices = [notSent.confirm];
++  }
++
+   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.
+   if (!ownerAbsent && choices !== undefined && choices.length > 0) {
+     choices = await checkedOwnerButtons(finalText, choices, runLang(runId));
+diff --git a/src/services/introClaim.ts b/src/services/introClaim.ts
+new file mode 100644
+index 0000000..61529cf
+--- /dev/null
++++ b/src/services/introClaim.ts
+@@ -0,0 +1,57 @@
++import { RunLanguage } from './runLanguage';
++import { NotDeletedLine } from './deletionClaim';
++
++/**
++ * 4258 (box 50524, goal conv 48945): „გამაცანი თამთა … ბახვას მეშვეობით" was
++ * answered twice „გაცნობის მოთხოვნა გავგზავნე" / „ახლა გავუგზავნე" with no
++ * tool called, and the go-between had no request. The unsent-instruction guard
++ * reads only a conversation that has sent nothing, and this one had already
++ * asked three people. Like 3302's „deleted" and 3796's „saved": a reply may say
++ * an introduction request went only when request_introduction succeeded in
++ * that run. Otherwise the owner reads the truth with a button to confirm, and
++ * the next run makes the request the ordinary way.
++ *
++ * Off until Misho's yes on the exact lines below (a new text real people read).
++ */
++export const INTRO_CLAIM_GUARD_ON = false;
++
++const REQUEST_WORDS = '(?:გაცნობის\\s+(?:მო)?თხოვნ\\p{L}*|introduction\\s+request)';
++const SENT_WORDS =
++  '(?:გავგზავნე|გავუგზავნე|გავაგზავნე|გადავუგზავნე|გაიგზავნა|sent|made|passed\\s+on)';
++const NOT_BEFORE = "(?<!(?:არ|ვერ|not|n't)\\s)";
++/** Up to a few words between the two halves („… ახლა გავუგზავნე"), within one sentence. */
++const BETWEEN = '[^.!?\\n]{0,40}?';
++
++const CLAIMS_INTRO_SENT_RE = new RegExp(
++  `${REQUEST_WORDS}${BETWEEN}${NOT_BEFORE}${SENT_WORDS}(?![\\p{L}\\p{M}])` +
++    `|(?<![\\p{L}\\p{M}])${NOT_BEFORE}${SENT_WORDS}${BETWEEN}${REQUEST_WORDS}`,
++  'iu',
++);
++
++/** The reply says an introduction request went, and none went in this run. */
++export function introClaimWithoutSend(reply: string, introSentThisRun: boolean): boolean {
++  return !introSentThisRun && CLAIMS_INTRO_SENT_RE.test(reply);
++}
++
++const NOT_SENT: Readonly<Record<RunLanguage, NotDeletedLine>> = {
++  ka: {
++    text: 'გაცნობის თხოვნა ჯერ არ გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი.',
++    confirm: 'კი, გააგზავნე',
++  },
++  en: {
++    text: 'I have not sent the introduction request yet. Confirm and I will send it now.',
++    confirm: 'Yes, send it',
++  },
++  ru: {
++    text: 'Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас.',
++    confirm: 'Да, отправь',
++  },
++  es: {
++    text: 'Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora.',
++    confirm: 'Sí, envíala',
++  },
++};
++
++export function introNotSentLine(language: RunLanguage): NotDeletedLine {
++  return NOT_SENT[language] ?? NOT_SENT.ka;
++}
+-- 
+2.43.0
+
