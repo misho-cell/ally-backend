@@ -6,7 +6,6 @@ import {
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
-import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import { importContacts, parseVcf } from '../../services/contacts.service';
 import {
   contactImportState,
@@ -23,7 +22,6 @@ const contactsRouter = Router();
 
 contactsRouter.use(authenticateJwt, requireUserRole);
 contactsRouter.use(requireSubscription);
-contactsRouter.use(captureDeviceFingerprint);
 
 /** The import-state routes are read on every visit to the sync page. */
 const IMPORT_STATE_PER_MINUTE = 30;
