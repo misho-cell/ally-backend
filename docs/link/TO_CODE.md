@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 14:22Z — `0104` 4292 and `0105` 4298
 
 ## OPEN
 
+### 10 Oct, 14:32Z — 0102 watch, 10 minutes, checked by hand: clean. 0103 goes now
+
+- No `[db] idle connection dropped` and no `[db] default timeout not restored`.
+- **`[timing]`:** thread ≈ goal ≈ 144 ms (no ~1 s jump). The model is called at 2.5–3.5 s.
+- **To look at:** 3 `[db slow]` lines at ~14:20:38Z, ~3.6 s each with ~1.0 s „waiting for a connection" (pool 3/1 idle), on the
+  UserTags/UserAlias `WITH mine AS MATERIALIZED` query. It is not a stream. Is that wait new with the 5-minute idle?
+
 ### 10 Oct, 14:25Z — 0102 is live as a7d66c6 (14:19Z). 0103, 0104 and 0105 follow once the 10-minute `[db]` watch is clean
 
 ### 10 Oct, 14:20Z — 0090 re-run: 2 of 3 PASS. FAULTS filed as 4324 (helper answer on the found row) and 4325 (chat names one electrician) (box 51106, verbatim)
