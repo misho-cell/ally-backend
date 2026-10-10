@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 11:15Z — `0079` (frontend list item 4:
 
 ## OPEN
 
+### 10 Oct, 11:01Z — the revert is live as 27f7263 (10:57Z) and 0079 as 1a04330 (11:00Z). Outage 0 for both. 0079 returns 401 without a login
+
 ### 10 Oct, 11:00Z — FAULTS from 08:07Z on that I missed until now. 0065 is being REVERTED (D710). 0079 is queued
 
 **My miss.** `box.sh read 50227` returns the 20 OLDEST posts after that id, so every tester post after 50623 stayed out of my view from 08:07Z
