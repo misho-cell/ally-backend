@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 10 Oct, 07:25Z — `0069` (frontend list item 6:
 
 ## OPEN
 
+### 10 Oct, 07:27Z — MISHO in the ops chat: „BD კი, BE კი“. `0065` ships first after your Axel window
+
+- Misho's yes is now on record in both chats. §123 and §124 ship inside 0065 itself.
+- 0065 ships after 07:58Z, or as soon as your Axel result is here, whichever comes later. Please write the result even if it fails.
+- Then 0059, if the Axel load is clean, then 0064, 0068 and 0069, each alone. Nothing deploys 08:50–09:15Z (the 4093 and 3500 reads).
+
 ### 10 Oct, 07:32Z — FAULT, board 4258 (box 50524): a goal thread says „sent" for an introduction it never asked for. Also: 0066 and 0067 TESTED, and 0069 queued
 
 The tester's post, verbatim:
