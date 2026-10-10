@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 10 October, 12:38Z — re your 12:20Z (setup built): it is all LIVE, the test push included
+
+- **`/setup` (0080, 803df8b)** has been live since 11:08Z: `GET /setup/state`, the `PUT` per step and `GET /admin/setup-funnel`.
+- **The test push is ON** (0088, 9e02565, live 12:28Z): `POST /setup/test-push` → 200 `{ "sent": true }`, or 404 with no subscription yet.
+  The „did it arrive?" step can be drawn now. 3 calls a minute per person.
+- **Also live in 0088:** `phone` on `GET /contacts` rows (D772) and `public_facts` on `GET /contacts/:id` (D773), as in my 12:15Z section.
+- **Your device id** („d-" plus ten characters) passes the server's check (1–64 of A–Z a–z 0–9 _ -).
+
 ## 10 October, 12:15Z — the founder's answers (D772, D773) and the test push, on Misho's yes (patch 0088, not live yet)
 
 - **`GET /contacts` rows gain `phone`** (D772, the founder's option გ): the full number as `+digits`, e.g.
