@@ -1,10 +1,5 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
-jest.mock('../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
-jest.mock('../neo4j.keys', () => ({
-  __esModule: true,
-  getCompositeKeyForUser: jest.fn(() => Promise.resolve('995500000000')),
-  getCompositeKeyForPhone: jest.fn(() => Promise.resolve('995500000009')),
-}));
+jest.mock('../memberPaths.service', () => ({ __esModule: true, memberMiddles: jest.fn() }));
 jest.mock('../block.service', () => ({
   __esModule: true,
   getExcludedPhones: jest.fn(() => Promise.resolve([])),
@@ -29,20 +24,13 @@ jest.mock('../tools/membership', () => ({
 }));
 
 import { query } from '../../db/postgres/client';
-import { getSession } from '../../db/neo4j/client';
+import { memberMiddles } from '../memberPaths.service';
 import { chainMapsFor } from '../chainMap.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 
 function graph(paths: string[][]): void {
-  (getSession as jest.Mock).mockReturnValue({
-    run: jest.fn(() =>
-      Promise.resolve({
-        records: paths.map((keys) => ({ get: () => ['995500000000', ...keys, '995500000009'] })),
-      }),
-    ),
-    close: jest.fn(() => Promise.resolve()),
-  });
+  (memberMiddles as jest.Mock).mockResolvedValue(paths);
 }
 
 /** Task 1849, stage one (§127). */
@@ -50,7 +38,7 @@ describe('the maps to a named person', () => {
   beforeEach(() => mockQuery.mockReset());
 
   it('drops a path through a non-member, and one with a blocked step', async () => {
-    graph([['995500000001', '995500000002'], ['995500000003'], ['995500000004']]);
+    graph([['+995500000001', '+995500000002'], ['+995500000003'], ['+995500000004']]);
     // Steps of [1,2] are 1..3, of [4] are 4..5; the step into 4 is blocked.
     mockQuery.mockResolvedValue({
       rows: [
