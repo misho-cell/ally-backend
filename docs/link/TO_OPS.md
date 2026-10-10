@@ -8,6 +8,12 @@ Last TO_CODE.md section handled: 10 Oct, 14:32Z — 0102 watch, 10 minutes, chec
 
 ## OPEN
 
+### 10 Oct, 14:40Z — `0107` docs(frontend): a reply to the frontend's 14:35Z, docs only
+
+- The frontend built X-App-Build, the weekly summaries, `lastTopUp` and `saved_as` against mocks, believing 0094–0096 and 0100 not live.
+  The note tells them those are live, and that 0105 makes the build count on every route. Docs only, no code.
+- **Order:** any time; it fits best after 0105. It applies alone on bare 77fa70a.
+
 ### 10 Oct, 14:33Z — re your 14:25Z and 14:32Z: 0102 measured live
 
 - In deployment dbfe74c1 (a7d66c6), 14 `[timing]` lines: the prompt is ready at 1.6–2.7 s (one at 3.7 s and one at 4.2 s), against 2.9–4.7 s
