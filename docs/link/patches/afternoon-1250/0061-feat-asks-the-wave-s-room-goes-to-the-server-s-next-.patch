@@ -1,0 +1,149 @@
+From 5fe4fbc19c590b7aca79b370aeee9b24baabd6f1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 05:32:39 +0000
+Subject: [PATCH] feat(asks): the wave's room goes to the server's next people,
+ behind a switch (BD, 1691)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+NIGHT_QUESTIONS BD, from the tester's 49931: while a wave had room, any
+not-yet-asked plan person could be asked. So the model's own pick decided
+who went first, and the server's order (A8, 1691) was only advice.
+
+With WAVE_ORDER_GATE_ON, the free places of a wave go to the next people
+in the server's order. Anyone else is refused, and the model reads the
+drafted line, which names those people. The person the owner named is
+never held back (D625), the same as at a full wave.
+
+OFF in this commit. The line is model-facing (D44) and waits for Misho's
+yes on its exact words. Turning it on is a one-line change, recorded as a §.
+
+DONE WHEN (once on): with five plan people and a wave of three, an ask to
+the fourth before the first three is refused with their names; the three
+go; the owner-named person goes at any time.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/asksGoInWaves.test.ts | 35 ++++++++++++++++++
+ src/services/askWaves.service.ts             | 39 ++++++++++++++++++--
+ 2 files changed, 71 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/asksGoInWaves.test.ts b/src/services/__tests__/asksGoInWaves.test.ts
+index 5fe539d..738d99b 100644
+--- a/src/services/__tests__/asksGoInWaves.test.ts
++++ b/src/services/__tests__/asksGoInWaves.test.ts
+@@ -13,12 +13,15 @@ import { join } from 'path';
+ import { query } from '../../db/postgres/client';
+ import {
+   advanceWaveIfDone,
++  nextInOrder,
+   nextWaveNote,
++  notInOrderLine,
+   notYetAsked,
+   readWave,
+   waveIsDone,
+   waveMayWiden,
+   waveRoomFor,
++  WAVE_ORDER_GATE_ON,
+   waveSize,
+   widenWaveOnSilence,
+   type WaveSnapshot,
+@@ -237,3 +240,35 @@ describe('the wiring', () => {
+     expect(sql).toContain('UPDATE task_asks SET wave_no = 1');
+   });
+ });
++
++/** NIGHT_QUESTIONS BD (1691): the wave's room goes to the server's next people. */
++describe('the order gate (BD)', () => {
++  const snapshot = (inWave: number): WaveSnapshot => ({
++    wave: 1,
++    size: 3,
++    inWave,
++    openInWave: inWave,
++    remaining: EIGHT.slice(inWave),
++    nextWaveAt: null,
++  });
++
++  it('is off until Misho says yes to the exact line (D44)', () => {
++    expect(WAVE_ORDER_GATE_ON).toBe(false);
++  });
++
++  it('offers the free places to the next people in order', () => {
++    expect(nextInOrder(snapshot(0)).map((p) => p.name)).toEqual([
++      'Person 1',
++      'Person 2',
++      'Person 3',
++    ]);
++    expect(nextInOrder(snapshot(2)).map((p) => p.name)).toEqual(['Person 3']);
++    expect(nextInOrder(snapshot(3))).toEqual([]);
++  });
++
++  it('names them in the drafted line, and tells the owner nothing', () => {
++    const line = notInOrderLine(nextInOrder(snapshot(1)));
++    expect(line).toContain('ამ ტალღაში ჯერ ამათ მისწერე: Person 2, Person 3.');
++    expect(line).toContain('მფლობელს არაფერს ეუბნები.');
++  });
++});
+diff --git a/src/services/askWaves.service.ts b/src/services/askWaves.service.ts
+index 9a0de62..f283c71 100644
+--- a/src/services/askWaves.service.ts
++++ b/src/services/askWaves.service.ts
+@@ -181,6 +181,32 @@ export async function widenWaveOnSilence(
+   return openWaveAfter(task.id, snapshot.wave);
+ }
+ 
++/**
++ * NIGHT_QUESTIONS BD (1691, the tester's 49931): while a wave had room, anyone
++ * not yet asked could be asked, so the model's own pick decided who went
++ * first and the server's order was only advice. With this on, the room goes
++ * to the next people in the server's order (A8), and anyone else is refused
++ * with the line below. The person the owner named is never held back (D625).
++ *
++ * OFF until Misho's yes on the exact line (D44): the line is model-facing.
++ */
++export const WAVE_ORDER_GATE_ON = false;
++
++/** The wave's free places, filled in the server's order. */
++export function nextInOrder(snapshot: WaveSnapshot): readonly PlanPerson[] {
++  return snapshot.remaining.slice(0, Math.max(0, snapshot.size - snapshot.inWave));
++}
++
++/** NIGHT_QUESTIONS BD, the drafted line (10 Oct 04:10 UTC), awaiting Misho's yes. */
++export function notInOrderLine(next: readonly PlanPerson[]): string {
++  return (
++    `ეს ადამიანი ჯერ არ არის რიგში. ამ ტალღაში ჯერ ამათ მისწერე: ${next
++      .map((p) => p.name)
++      .join(', ')}. ` +
++    'დანარჩენები შემდეგ ტალღაში მიიღებენ — სერვერი თვითონ გეტყვის. მფლობელს არაფერს ეუბნები.'
++  );
++}
++
+ export type WaveRoom =
+   | { readonly allowed: true; readonly wave: number | null }
+   | { readonly allowed: false; readonly error: string };
+@@ -209,10 +235,17 @@ export async function waveRoomFor(
+     // it keeps the wave it was written in.
+     return { allowed: true, wave: await heldWaveFor(task.id, digits) };
+   }
+-  // D625: the person the owner named himself is never held back by a wave.
+-  if (snapshot.inWave < snapshot.size || (await ownerNamedThem())) {
+-    return { allowed: true, wave: snapshot.wave };
++  if (snapshot.inWave < snapshot.size) {
++    const next = nextInOrder(snapshot);
++    if (!WAVE_ORDER_GATE_ON || next.some((p) => phoneDigits(p.phone) === digits)) {
++      return { allowed: true, wave: snapshot.wave };
++    }
++    // D625: the person the owner named himself is never held back.
++    if (await ownerNamedThem()) return { allowed: true, wave: snapshot.wave };
++    return { allowed: false, error: notInOrderLine(next) };
+   }
++  // D625: the person the owner named himself is never held back by a wave.
++  if (await ownerNamedThem()) return { allowed: true, wave: snapshot.wave };
+   return {
+     allowed: false,
+     error:
+-- 
+2.43.0
+
