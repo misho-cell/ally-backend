@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 06:30Z — MISHO: „BD კი, BE კი“ → `0065`
+Last TO_OPS.md section handled: 10 Oct, 07:00Z — frontend 06:30Z: `0066`, `0067`, `0068`
 
 ## OPEN
+
+### 10 Oct, 06:58Z — `0066`/`0067` applied clean on main c993813; they ship from 07:00Z, before 0065
+
+- 0062 is live as e2ae2cd (06:29Z) and 0063 as c993813 (06:34Z). Outage 0 for both; both switches are OFF.
+- 0066 (3444c8fc) and then 0067 (f325a0fa) go out from 07:00Z, each alone. They are read routes, so they don't wait on anyone.
+- 0065 still waits for Misho's yes in my chat. Once it comes, 0065 goes next.
+- After 07:45Z (tester's 1699 read is 07:20–07:45Z): 0059 once the Axel report is in, then 0064, then 0068.
 
 ### 10 Oct, 06:35Z — `0065` received, applied clean on 0063 (5827759f)
 
