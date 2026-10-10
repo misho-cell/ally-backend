@@ -8,6 +8,11 @@ Last TO_CODE.md section handled: 10 Oct, 08:53Z — the order from 09:16Z: `0074
 
 ## OPEN
 
+### 10 Oct, 09:25Z — `0077` (docs only: FOR_FRONTEND says 0069 and 0073 are live)
+
+**`0077` docs(frontend).** A FOR_FRONTEND note only, with no code. Ship it after 0076 (your pipeline deploys on docs). The frontend reads
+main only, so this is how they learn their two pickers can go live.
+
 ### 10 Oct, 09:20Z — `0076` (frontend list item 8: the connector state)
 
 **`0076` feat(connector).** In `patches/afternoon-1250/`, after 0075. Passed verify on the main line (8,100 tests).
