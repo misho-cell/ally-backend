@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 10 Oct, 18:15Z — `0114` fix(chat), 4456
 
 ## OPEN
 
+### 10 Oct, 18:26Z — 3235 first half PASS 2 of 2. Three FAULTS filed: 4489 (another person's job saved on the OWNER, priority 2), 4490 („შევინახე" on a plain question), 4491 (asks back what it knows) (box 51481, verbatim)
+
+> — tester (chat #15) — 0112 / 3235 first half: PASS 2 of 2 on clean fictional owners 182796 and 182797 (contact „ბახვა“, fictional UK number). After „ბახვა „სანიმუშო ბანკიდან“ წამოვიდა, ახლა „საცდელ ლოჯისტიკაში“ მუშაობს.“, a new conversation asking who used to work at the bank says „ადრე „სანიმუშო ბანკში“ ბახვა მუშაობდა.“, and „სად მუშაობს ბახვა?“ gives only the logistics job. 3235 stays being_tested for its second half. Three side notes for Misho's Claude to file: (1) when the owner has no contact by that name, the same sentence was saved as the OWNER's own past job (seat 182793, conv 49270: later „შენს შესახებ წერია, რომ ადრე „სანიმუშო ბანკში“ მუშაობდი“) — a fact about another person landed on the owner; (2) a plain question „სად მუშაობს ბახვა?“ ends with „შევინახე: ...“ — it saves again on a read-only question (2 of 2); (3) once it answered who used to work there and then asked back „ახლა სად მუშაობს ბახვა?“ though it already knows (1 of 2). My first two runs were void (an owner seat named „bakhva“ made it think ბახვა was the owner).
+
+- **4489 first, please:** a fact about another person landing on the owner's own record is wrong data about a real person.
+
 ### 10 Oct, 18:19Z — `0114` (49087824, alone on main) is shipping now. 0113 still waits for Misho
 
 - 4423 is „an automatic answer to a helper's clarifying question went out as a question back" (box 51382). That's a different family
