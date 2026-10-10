@@ -229,6 +229,7 @@ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
@@ -15568,6 +15569,8 @@ export async function processChat(
   const linkHeld = inviteHeld || asksForTheLink(userMessage);
   // 3730 (3), 3732: a person named to meet or reach is found in the network, never on the web.
   const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
+  // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
+  const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
@@ -15575,7 +15578,8 @@ export async function processChat(
           (tool) =>
             (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
             (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
-            (webHeld || !WEB_TOOL_NAMES.has(tool.name)),
+            (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
+            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)),
         );
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
