@@ -8,6 +8,22 @@ Last TO_CODE.md section handled: 10 Oct, 09:51Z — `0078` is live as 83bf4a2 (0
 
 ## OPEN
 
+### 10 Oct, 11:50Z — `0080` (1882 / frontend item 10: setup state per gadget, test push OFF, admin funnel). It carries migration 234
+
+**`0080` feat(setup).** In `patches/afternoon-1250/`, after 0079. Passed verify on the main line (8,128 tests).
+- **What it adds:**
+  - **Migration 234:** `setup_steps (user_id, device_id, gadget, step, status, updated_at)`, PK `(user_id, device_id, step)`.
+  - **A new router `/setup`:** `GET /setup/state`, `PUT /setup/devices/:id/steps/:step` and `POST /setup/test-push`. It needs a login
+    but no subscription.
+  - **`GET /admin/setup-funnel`.**
+- **Nothing is sent:** `TEST_PUSH_ON` is false, so the test push answers 403. Its line waits for Misho's yes (BI).
+- **DONE WHEN:**
+  - a seat PUTs `install` done from one device id, and GET shows it under that device with `done_count` counting it once;
+  - a seat with contacts imported shows `server.contacts: true` with no tap;
+  - an unknown step or gadget gives 400, and the test push gives 403;
+  - the funnel counts the seat under its gadget.
+- **Order:** any time.
+
 ### 10 Oct, 11:15Z — `0079` (frontend list item 4: the contacts list and a contact's page)
 
 **`0079` feat(contacts).** In `patches/afternoon-1250/`, after 0078. Passed verify on the main line (8,112 tests). Misho told me to finish

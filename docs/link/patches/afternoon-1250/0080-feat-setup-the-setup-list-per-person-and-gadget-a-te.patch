@@ -1,0 +1,781 @@
+From 3e629f77bf4c6baa32373d89e7bb4c94c9e63fee Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 10:56:48 +0000
+Subject: [PATCH] feat(setup): the setup list per person and gadget, a test
+ push (off), and the admin funnel (1882, frontend 06:30Z item 10)
+
+Migration 234 setup_steps (person, device, gadget, step, done/failed/later).
+GET /setup/state joins what each gadget said with what the server sees for
+itself (contacts in, freshness on, a push subscription, the connector);
+PUT /setup/devices/:id/steps/:step records a tap; GET /admin/setup-funnel
+counts people per gadget and step. POST /setup/test-push is built behind
+TEST_PUSH_ON (false): its line waits for Misho's yes (BI).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  33 ++++
+ docs/NIGHT_QUESTIONS.md                       |   7 +
+ .../__tests__/everyRouteIsBehindAuth.test.ts  |   2 +
+ src/api/routes/__tests__/setup.routes.test.ts | 114 ++++++++++++
+ src/api/routes/admin.routes.ts                |  12 ++
+ src/api/routes/setup.routes.ts                |  98 ++++++++++
+ .../postgres/migrations/234_setup_steps.sql   |  17 ++
+ src/index.ts                                  |   2 +
+ src/services/__tests__/setupState.test.ts     | 134 ++++++++++++++
+ src/services/setupState.service.ts            | 168 ++++++++++++++++++
+ src/services/setupTestPush.service.ts         |  51 ++++++
+ 11 files changed, 638 insertions(+)
+ create mode 100644 src/api/routes/__tests__/setup.routes.test.ts
+ create mode 100644 src/api/routes/setup.routes.ts
+ create mode 100644 src/db/postgres/migrations/234_setup_steps.sql
+ create mode 100644 src/services/__tests__/setupState.test.ts
+ create mode 100644 src/services/setupState.service.ts
+ create mode 100644 src/services/setupTestPush.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 2641109..64fea67 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,39 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)
++
++```
++GET /setup/state
++→ 200 { "success": true, "data": {
++    "done_count": 3, "total": 5,
++    "server":  { "install": false, "notifications": true, "contacts": true, "freshness": false, "connector": true },
++    "devices": [ { "device_id": "ph-7f3a", "gadget": "iphone",
++                   "steps": { "install": "done", "freshness": "later" }, "updated_at": "2026-10-10T11:40:00.000Z" } ] } }
++
++PUT /setup/devices/ph-7f3a/steps/install    { "gadget": "iphone", "status": "done" }
++→ 200 with the same shape, already updated
++→ 400 an unknown step, gadget or status, or a device id that is not 1–64 of A–Z a–z 0–9 _ -
++
++POST /setup/test-push
++→ 200 { "sent": true }   ·   404 no notification subscription yet   ·   403 not switched on yet (see below)
++```
++
++- **Steps:** `install`, `notifications`, `contacts`, `freshness`, `connector`. **Gadgets:** `iphone`, `android`, `windows`, `mac`, `other`.
++  **Statuses:** `done` (Done), `failed` (It didn't work), `later` (Later).
++- **`device_id`:** yours to make. A random id kept in the browser's storage is enough. It only tells this person's gadgets apart.
++- **`server`:** what Netai sees for itself, whatever anyone tapped:
++  - `contacts`: an import brought contacts in;
++  - `freshness`: the monthly switch is on;
++  - `notifications`: a push subscription exists;
++  - `connector`: same as `/connector/state`;
++  - `install`: always false, because only the gadget can tell.
++- **`done_count`:** a step counts once, if the server sees it or any gadget said `done`. That gives your „2 of 5 done".
++- **The test push is OFF.** Its line is new text for real people and waits for Misho's yes (BI). Until then the route answers 403. Draw the
++  „did it arrive?" step only after I write here that it is on.
++- Login only, with no subscription needed (setup comes first). 30 calls a minute, and 3 test pushes a minute.
++- The admin side has `GET /admin/setup-funnel`, which counts people per gadget and step.
++
+ ## 10 October, 11:10Z — item 4 of your 06:30Z list: „ჩემი კონტაქტები" and a contact's page (patch 0079, not live yet)
+ 
+ Your FOR_TORNIKE.md went into the tester box word for word at 10:40Z (box 50854). Misho's word to me was to finish everything you need,
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index 79baeec..948a952 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -80,6 +80,13 @@ while its questions are unanswered is a list that loses them.
+   > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
+   > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
+ 
++- **BI — 1882 step 4, the test notification. Drafted 10 Oct 11:45 UTC for Misho's yes.** Sent once when the person taps „send a test"
++  in setup (`POST /setup/test-push`, 0080, `TEST_PUSH_ON` false). Title „Netai". The texts real people would read:
++  > ka: „შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს."
++  > en: „Notifications work. This is how I will tell you when someone answers."
++  > ru: „Уведомления работают. Так я сообщу, когда кто-то ответит."
++  > es: „Las notificaciones funcionan. Así te avisaré cuando alguien responda."
++
+ **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
+ 
+ P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
+diff --git a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+index 2254881..03aeee3 100644
+--- a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
++++ b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+@@ -46,6 +46,8 @@ const GUARDED_AT_THE_ROUTER = [
+   'contacts.routes.ts',
+   // The frontend's 06:30Z item 8: the person's own connector state.
+   'connector.routes.ts',
++  // 1882 / item 10: the person's own setup list.
++  'setup.routes.ts',
+   // #1850: the evening card is the person's own questions.
+   'eveningCard.routes.ts',
+   'status.routes.ts',
+diff --git a/src/api/routes/__tests__/setup.routes.test.ts b/src/api/routes/__tests__/setup.routes.test.ts
+new file mode 100644
+index 0000000..9ecb8fc
+--- /dev/null
++++ b/src/api/routes/__tests__/setup.routes.test.ts
+@@ -0,0 +1,114 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../services/setupState.service', () => ({
++  ...jest.requireActual('../../../services/setupState.service'),
++  recordStep: jest.fn(),
++  setupState: jest.fn(),
++}));
++jest.mock('../../../services/setupTestPush.service', () => ({
++  ...jest.requireActual('../../../services/setupTestPush.service'),
++  sendTestPush: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import setupRouter from '../setup.routes';
++import { recordStep, setupState } from '../../../services/setupState.service';
++import { sendTestPush, TestPushOutcome } from '../../../services/setupTestPush.service';
++
++const mockRecord = recordStep as jest.MockedFunction<typeof recordStep>;
++const mockState = setupState as jest.MockedFunction<typeof setupState>;
++const mockPush = sendTestPush as jest.MockedFunction<typeof sendTestPush>;
++
++const STATE = {
++  done_count: 1,
++  total: 5,
++  server: {
++    install: false,
++    notifications: false,
++    contacts: true,
++    freshness: false,
++    connector: false,
++  },
++  devices: [],
++};
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use(express.json());
++  app.use('/setup', setupRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/setup`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++const put = (path: string, body: unknown): Promise<Response> =>
++  fetch(`${base}${path}`, {
++    method: 'PUT',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify(body),
++  });
++
++/** 1882 / the frontend's 06:30Z item 10. */
++describe('the setup routes', () => {
++  it('GET /setup/state answers the person’s list', async () => {
++    mockState.mockResolvedValue(STATE as never);
++    const res = await fetch(`${base}/state`);
++    expect(res.status).toBe(200);
++    expect(mockState).toHaveBeenCalledWith(171);
++  });
++
++  it('PUT saves a gadget’s step and answers the new list', async () => {
++    mockState.mockResolvedValue(STATE as never);
++    const res = await put('/devices/ph1/steps/install', { gadget: 'iphone', status: 'done' });
++    expect(res.status).toBe(200);
++    expect(mockRecord).toHaveBeenCalledWith(171, 'ph1', 'iphone', 'install', 'done');
++  });
++
++  it.each([
++    ['/devices/ph1/steps/fly', { gadget: 'iphone', status: 'done' }],
++    ['/devices/ph1/steps/install', { gadget: 'nokia', status: 'done' }],
++    ['/devices/ph1/steps/install', { gadget: 'iphone', status: 'maybe' }],
++  ])('refuses %s %j with 400 and saves nothing', async (path, body) => {
++    expect((await put(path, body)).status).toBe(400);
++    expect(mockRecord).not.toHaveBeenCalled();
++  });
++
++  it('test push: 403 while off, 404 without a subscription, 200 when sent', async () => {
++    mockPush.mockResolvedValueOnce(TestPushOutcome.Off);
++    expect((await fetch(`${base}/test-push`, { method: 'POST' })).status).toBe(403);
++    mockPush.mockResolvedValueOnce(TestPushOutcome.NoSubscription);
++    expect((await fetch(`${base}/test-push`, { method: 'POST' })).status).toBe(404);
++    mockPush.mockResolvedValueOnce(TestPushOutcome.Sent);
++    expect((await fetch(`${base}/test-push`, { method: 'POST' })).status).toBe(200);
++  });
++
++  it('says 500 without the database error', async () => {
++    mockState.mockRejectedValue(new Error('relation setup_steps does not exist'));
++    const res = await fetch(`${base}/state`);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('relation');
++  });
++});
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index cce73a3..a47d003 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -320,6 +320,7 @@ import {
+ } from '../../services/seatFixtures.service';
+ import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
+ import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
++import { setupFunnel } from '../../services/setupState.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -7141,6 +7142,17 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
+   }
+ });
+ 
++/** 1882 part 9: GET /admin/setup-funnel — per gadget and step, how many said done / failed / later. */
++adminRouter.get('/setup-funnel', async (_req: Request, res: Response) => {
++  try {
++    res.status(200).json({ success: true, data: { rows: await setupFunnel() } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[setup-funnel]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the funnel' });
++  }
++});
++
+ /** What the seat matcher run answers for each outcome other than a run. */
+ const SEAT_MATCH_REFUSAL: Readonly<Record<string, { status: number; error: string }>> = {
+   [SeatMatchOutcome.BadInput]: {
+diff --git a/src/api/routes/setup.routes.ts b/src/api/routes/setup.routes.ts
+new file mode 100644
+index 0000000..9414e1e
+--- /dev/null
++++ b/src/api/routes/setup.routes.ts
+@@ -0,0 +1,98 @@
++import { Router, Request, Response } from 'express';
++import {
++  authenticateJwt,
++  requireUserRole,
++  AuthenticatedRequest,
++} from '../middleware/auth.middleware';
++import { rateLimit } from '../middleware/rateLimit.middleware';
++import {
++  isDeviceId,
++  isGadget,
++  isSetupStep,
++  isStepStatus,
++  recordStep,
++  setupState,
++} from '../../services/setupState.service';
++import { sendTestPush, TestPushOutcome } from '../../services/setupTestPush.service';
++
++/**
++ * 1882 / the frontend's 06:30Z item 10:
++ *   GET  /setup/state                              { done_count, total, server, devices }
++ *   PUT  /setup/devices/:deviceId/steps/:step      { gadget, status } → the new state
++ *   POST /setup/test-push                          one test notification to this person
++ * No subscription needed: setup is what a new person does first.
++ */
++const REQUESTS_PER_MINUTE = 30;
++const TEST_PUSHES_PER_MINUTE = 3;
++
++const setupRouter = Router();
++setupRouter.use(authenticateJwt, requireUserRole);
++setupRouter.use(rateLimit({ windowMs: 60_000, max: REQUESTS_PER_MINUTE }));
++
++function userIdOf(req: Request): number {
++  return Number((req as AuthenticatedRequest).user.userId);
++}
++
++setupRouter.get('/state', async (req: Request, res: Response): Promise<void> => {
++  try {
++    res.status(200).json({ success: true, data: await setupState(userIdOf(req)) });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /setup/state]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the setup state' });
++  }
++});
++
++setupRouter.put(
++  '/devices/:deviceId/steps/:step',
++  async (req: Request, res: Response): Promise<void> => {
++    const { deviceId, step } = req.params;
++    const { gadget, status } = (req.body ?? {}) as { gadget?: unknown; status?: unknown };
++    if (!isDeviceId(deviceId) || !isSetupStep(step) || !isGadget(gadget) || !isStepStatus(status)) {
++      res.status(400).json({
++        success: false,
++        error: 'deviceId (1-64 of A-Z a-z 0-9 _ -), a known step, gadget and status are required',
++      });
++      return;
++    }
++    try {
++      const userId = userIdOf(req);
++      await recordStep(userId, deviceId, gadget, step, status);
++      res.status(200).json({ success: true, data: await setupState(userId) });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[PUT /setup/steps]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not save the step' });
++    }
++  },
++);
++
++const TEST_PUSH_REFUSAL: Readonly<Record<string, { status: number; error: string }>> = {
++  [TestPushOutcome.Off]: { status: 403, error: 'The test notification is not switched on yet' },
++  [TestPushOutcome.NoSubscription]: {
++    status: 404,
++    error: 'No notification subscription on this account yet',
++  },
++};
++
++setupRouter.post(
++  '/test-push',
++  rateLimit({ windowMs: 60_000, max: TEST_PUSHES_PER_MINUTE }),
++  async (req: Request, res: Response): Promise<void> => {
++    try {
++      const outcome = await sendTestPush(userIdOf(req));
++      const refusal = TEST_PUSH_REFUSAL[outcome];
++      if (refusal !== undefined) {
++        res.status(refusal.status).json({ success: false, error: refusal.error });
++        return;
++      }
++      res.status(200).json({ success: true, data: { sent: true } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[POST /setup/test-push]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not send the test notification' });
++    }
++  },
++);
++
++export default setupRouter;
+diff --git a/src/db/postgres/migrations/234_setup_steps.sql b/src/db/postgres/migrations/234_setup_steps.sql
+new file mode 100644
+index 0000000..7aa9897
+--- /dev/null
++++ b/src/db/postgres/migrations/234_setup_steps.sql
+@@ -0,0 +1,17 @@
++-- 1882 / the frontend's 06:30Z item 10: the setup list ('2 of 5 done') per
++-- person AND per gadget. A step the person marks on one gadget (Done / It
++-- didn't work / Later) is that gadget's; the server's own ticks (contacts in,
++-- a push subscription, the connector) are read live and never stored here.
++CREATE TABLE IF NOT EXISTS setup_steps (
++  user_id    INTEGER     NOT NULL,
++  device_id  TEXT        NOT NULL CHECK (char_length(device_id) BETWEEN 1 AND 64),
++  gadget     TEXT        NOT NULL CHECK (gadget IN ('iphone', 'android', 'windows', 'mac', 'other')),
++  step       TEXT        NOT NULL
++             CHECK (step IN ('install', 'notifications', 'contacts', 'freshness', 'connector')),
++  status     TEXT        NOT NULL CHECK (status IN ('done', 'failed', 'later')),
++  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  PRIMARY KEY (user_id, device_id, step)
++);
++
++-- The admin funnel reads by gadget and step.
++CREATE INDEX IF NOT EXISTS setup_steps_by_gadget ON setup_steps (gadget, step, status);
+diff --git a/src/index.ts b/src/index.ts
+index fa573e8..bbe6837 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -13,6 +13,7 @@ import requestsRouter from './api/routes/requests.routes';
+ import updatesRouter from './api/routes/updates.routes';
+ import eveningCardRouter from './api/routes/eveningCard.routes';
+ import connectorRouter from './api/routes/connector.routes';
++import setupRouter from './api/routes/setup.routes';
+ import statusRouter from './api/routes/status.routes';
+ import tasksRouter from './api/routes/tasks.routes';
+ import privacyRouter from './api/routes/privacy.routes';
+@@ -113,6 +114,7 @@ app.use('/requests', requestsRouter);
+ app.use('/updates', updatesRouter);
+ app.use('/evening-card', eveningCardRouter);
+ app.use('/connector', connectorRouter);
++app.use('/setup', setupRouter);
+ app.use('/status', statusRouter);
+ app.use('/tasks', tasksRouter);
+ app.use('/privacy', privacyRouter);
+diff --git a/src/services/__tests__/setupState.test.ts b/src/services/__tests__/setupState.test.ts
+new file mode 100644
+index 0000000..8e3104b
+--- /dev/null
++++ b/src/services/__tests__/setupState.test.ts
+@@ -0,0 +1,134 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../connectorState.service', () => ({
++  __esModule: true,
++  connectorState: jest.fn(() => Promise.resolve({ connected: true, last_seen_at: null })),
++}));
++jest.mock('../notification.service', () => ({
++  __esModule: true,
++  sendPushNotification: jest.fn(() => Promise.resolve()),
++}));
++jest.mock('../threads.service', () => ({
++  __esModule: true,
++  userLanguage: jest.fn(() => Promise.resolve('ka')),
++}));
++
++import { query } from '../../db/postgres/client';
++import {
++  doneCount,
++  Gadget,
++  isDeviceId,
++  recordStep,
++  setupFunnel,
++  setupState,
++  SetupStep,
++  StepStatus,
++} from '../setupState.service';
++import {
++  sendTestPush,
++  TEST_PUSH_ON,
++  TestPushOutcome,
++  testPushText,
++} from '../setupTestPush.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++const NONE = {
++  [SetupStep.Install]: false,
++  [SetupStep.Notifications]: false,
++  [SetupStep.Contacts]: false,
++  [SetupStep.Freshness]: false,
++  [SetupStep.Connector]: false,
++};
++
++/** 1882 / the frontend's 06:30Z item 10: the setup list per person and gadget. */
++describe('the setup list', () => {
++  it('counts a step done when the server sees it or any gadget said Done', () => {
++    const devices = [
++      {
++        device_id: 'a',
++        gadget: Gadget.Iphone,
++        steps: { install: StepStatus.Done },
++        updated_at: '',
++      },
++      { device_id: 'b', gadget: Gadget.Mac, steps: { install: StepStatus.Failed }, updated_at: '' },
++    ];
++    expect(doneCount({ ...NONE, [SetupStep.Contacts]: true }, devices)).toBe(2);
++    expect(doneCount(NONE, [])).toBe(0);
++  });
++
++  it('reads the server’s own ticks and groups each gadget’s steps', async () => {
++    mockQuery
++      .mockResolvedValueOnce({
++        rows: [{ contacts: true, freshness: false, notifications: true }],
++      } as never)
++      .mockResolvedValueOnce({
++        rows: [
++          { device_id: 'ph1', gadget: 'iphone', step: 'install', status: 'done', updated_at: 't2' },
++          {
++            device_id: 'ph1',
++            gadget: 'iphone',
++            step: 'freshness',
++            status: 'later',
++            updated_at: 't1',
++          },
++        ],
++      } as never);
++
++    const state = await setupState(171);
++
++    expect(state.server).toEqual({
++      install: false,
++      notifications: true,
++      contacts: true,
++      freshness: false,
++      connector: true,
++    });
++    expect(state.devices).toEqual([
++      {
++        device_id: 'ph1',
++        gadget: 'iphone',
++        steps: { install: 'done', freshness: 'later' },
++        updated_at: 't2',
++      },
++    ]);
++    expect(state.done_count).toBe(4);
++    expect(state.total).toBe(5);
++  });
++
++  it('writes one row per person, gadget and step, as bound parameters', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await recordStep(171, 'ph1', Gadget.Android, SetupStep.Contacts, StepStatus.Failed);
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('ON CONFLICT (user_id, device_id, step)');
++    expect(params).toEqual([171, 'ph1', 'android', 'contacts', 'failed']);
++  });
++
++  it('takes only short plain device ids', () => {
++    expect(isDeviceId('a1_B-2')).toBe(true);
++    expect(isDeviceId('')).toBe(false);
++    expect(isDeviceId('x'.repeat(65))).toBe(false);
++    expect(isDeviceId("1'; DROP")).toBe(false);
++  });
++
++  it('counts people per gadget and step for the admin funnel', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await setupFunnel();
++    expect(String(mockQuery.mock.calls[0][0])).toContain('GROUP BY gadget, step');
++  });
++});
++
++describe('the test notification', () => {
++  it('is off until Misho’s yes on its text (BI), and sends nothing', async () => {
++    expect(TEST_PUSH_ON).toBe(false);
++    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.Off);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('has its line in every language', () => {
++    for (const language of ['ka', 'en', 'ru', 'es'] as const) {
++      expect(testPushText(language).length).toBeGreaterThan(0);
++    }
++  });
++});
+diff --git a/src/services/setupState.service.ts b/src/services/setupState.service.ts
+new file mode 100644
+index 0000000..b89567e
+--- /dev/null
++++ b/src/services/setupState.service.ts
+@@ -0,0 +1,168 @@
++import { query } from '../db/postgres/client';
++import { connectorState } from './connectorState.service';
++
++/**
++ * 1882 (founder, 6 Oct; the frontend's 06:30Z item 10): the setup list —
++ * install, notifications, contacts, freshness, connector — per person and per
++ * gadget. The person marks a step on a gadget; the server ticks what it can
++ * see for itself, so a step done is shown done even when nobody tapped Done.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const MAX_DEVICES = 20;
++
++export enum SetupStep {
++  Install = 'install',
++  Notifications = 'notifications',
++  Contacts = 'contacts',
++  Freshness = 'freshness',
++  Connector = 'connector',
++}
++
++export enum StepStatus {
++  Done = 'done',
++  Failed = 'failed',
++  Later = 'later',
++}
++
++export enum Gadget {
++  Iphone = 'iphone',
++  Android = 'android',
++  Windows = 'windows',
++  Mac = 'mac',
++  Other = 'other',
++}
++
++export const SETUP_STEPS: readonly SetupStep[] = Object.values(SetupStep);
++const DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
++
++export function isSetupStep(v: unknown): v is SetupStep {
++  return typeof v === 'string' && (SETUP_STEPS as readonly string[]).includes(v);
++}
++export function isStepStatus(v: unknown): v is StepStatus {
++  return typeof v === 'string' && (Object.values(StepStatus) as string[]).includes(v);
++}
++export function isGadget(v: unknown): v is Gadget {
++  return typeof v === 'string' && (Object.values(Gadget) as string[]).includes(v);
++}
++export function isDeviceId(v: unknown): v is string {
++  return typeof v === 'string' && DEVICE_ID_RE.test(v);
++}
++
++export type ServerTicks = Readonly<Record<SetupStep, boolean>>;
++
++export interface DeviceSetup {
++  readonly device_id: string;
++  readonly gadget: Gadget;
++  readonly steps: Partial<Record<SetupStep, StepStatus>>;
++  readonly updated_at: string;
++}
++
++export interface SetupState {
++  readonly done_count: number;
++  readonly total: number;
++  readonly server: ServerTicks;
++  readonly devices: readonly DeviceSetup[];
++}
++
++export async function recordStep(
++  userId: number,
++  deviceId: string,
++  gadget: Gadget,
++  step: SetupStep,
++  status: StepStatus,
++): Promise<void> {
++  await query(
++    `INSERT INTO setup_steps (user_id, device_id, gadget, step, status)
++     VALUES ($1, $2, $3, $4, $5)
++     ON CONFLICT (user_id, device_id, step)
++     DO UPDATE SET gadget = EXCLUDED.gadget, status = EXCLUDED.status, updated_at = NOW()`,
++    [userId, deviceId, gadget, step, status],
++    QUERY_TIMEOUT_MS,
++  );
++}
++
++/** What the server can see for itself; install is the gadget's own to say. */
++async function serverTicks(userId: number): Promise<ServerTicks> {
++  const [row, connector] = await Promise.all([
++    query<{ contacts: boolean; freshness: boolean; notifications: boolean }>(
++      `SELECT EXISTS (SELECT 1 FROM import_attempts
++                       WHERE user_id = $1 AND imported > 0 AND NOT in_progress) AS contacts,
++              COALESCE((SELECT contact_import_reminder FROM "User" WHERE id = $1), FALSE) AS freshness,
++              EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = $1) AS notifications`,
++      [userId],
++      QUERY_TIMEOUT_MS,
++    ),
++    connectorState(userId),
++  ]);
++  const r = row.rows[0];
++  return {
++    [SetupStep.Install]: false,
++    [SetupStep.Notifications]: r?.notifications === true,
++    [SetupStep.Contacts]: r?.contacts === true,
++    [SetupStep.Freshness]: r?.freshness === true,
++    [SetupStep.Connector]: connector.connected,
++  };
++}
++
++async function devicesOf(userId: number): Promise<DeviceSetup[]> {
++  const result = await query<{
++    device_id: string;
++    gadget: Gadget;
++    step: SetupStep;
++    status: StepStatus;
++    updated_at: string;
++  }>(
++    `SELECT device_id, gadget, step, status, updated_at FROM setup_steps
++      WHERE user_id = $1 ORDER BY updated_at DESC LIMIT $2`,
++    [userId, MAX_DEVICES * SETUP_STEPS.length],
++    QUERY_TIMEOUT_MS,
++  );
++  const byDevice = new Map<string, DeviceSetup>();
++  for (const r of result.rows) {
++    const device = byDevice.get(r.device_id) ?? {
++      device_id: r.device_id,
++      gadget: r.gadget,
++      steps: {},
++      updated_at: r.updated_at,
++    };
++    byDevice.set(r.device_id, { ...device, steps: { ...device.steps, [r.step]: r.status } });
++  }
++  return [...byDevice.values()].slice(0, MAX_DEVICES);
++}
++
++/** A step is done when the server sees it, or when any gadget said Done. */
++export function doneCount(server: ServerTicks, devices: readonly DeviceSetup[]): number {
++  return SETUP_STEPS.filter(
++    (step) => server[step] || devices.some((d) => d.steps[step] === StepStatus.Done),
++  ).length;
++}
++
++export async function setupState(userId: number): Promise<SetupState> {
++  const [server, devices] = await Promise.all([serverTicks(userId), devicesOf(userId)]);
++  return { done_count: doneCount(server, devices), total: SETUP_STEPS.length, server, devices };
++}
++
++export interface FunnelRow {
++  readonly gadget: Gadget;
++  readonly step: SetupStep;
++  readonly done: number;
++  readonly failed: number;
++  readonly later: number;
++}
++
++/** 1882 part 9: the admin funnel — per gadget and step, how many people said what. */
++export async function setupFunnel(): Promise<FunnelRow[]> {
++  const result = await query<FunnelRow>(
++    `SELECT gadget, step,
++            COUNT(DISTINCT user_id) FILTER (WHERE status = 'done')::int AS done,
++            COUNT(DISTINCT user_id) FILTER (WHERE status = 'failed')::int AS failed,
++            COUNT(DISTINCT user_id) FILTER (WHERE status = 'later')::int AS later
++       FROM setup_steps
++      GROUP BY gadget, step
++      ORDER BY gadget, step
++      LIMIT $1`,
++    [Object.values(Gadget).length * SETUP_STEPS.length],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
+diff --git a/src/services/setupTestPush.service.ts b/src/services/setupTestPush.service.ts
+new file mode 100644
+index 0000000..ff0efc2
+--- /dev/null
++++ b/src/services/setupTestPush.service.ts
+@@ -0,0 +1,51 @@
++import { query } from '../db/postgres/client';
++import { sendPushNotification } from './notification.service';
++import { RunLanguage } from './runLanguage';
++import { userLanguage } from './threads.service';
++
++/**
++ * 1882 step 4: after the person allows notifications, one test push — then
++ * „did it arrive?" on the screen. Off until Misho's yes on the exact lines
++ * below (NIGHT_QUESTIONS BI): a new text real people read.
++ */
++export const TEST_PUSH_ON = false;
++const QUERY_TIMEOUT_MS = 5_000;
++const SETUP_URL = '/setup';
++
++const TEST_PUSH_TEXT: Readonly<Record<RunLanguage, string>> = {
++  ka: 'შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს.',
++  en: 'Notifications work. This is how I will tell you when someone answers.',
++  ru: 'Уведомления работают. Так я сообщу, когда кто-то ответит.',
++  es: 'Las notificaciones funcionan. Así te avisaré cuando alguien responda.',
++};
++
++export function testPushText(language: RunLanguage): string {
++  return TEST_PUSH_TEXT[language] ?? TEST_PUSH_TEXT.ka;
++}
++
++export enum TestPushOutcome {
++  Off = 'off',
++  NoSubscription = 'no_subscription',
++  Sent = 'sent',
++}
++
++async function hasSubscription(userId: number): Promise<boolean> {
++  const result = await query<{ one: number }>(
++    `SELECT 1 AS one FROM push_subscriptions WHERE user_id = $1 LIMIT 1`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.length > 0;
++}
++
++export async function sendTestPush(userId: number): Promise<TestPushOutcome> {
++  if (!TEST_PUSH_ON) return TestPushOutcome.Off;
++  if (!(await hasSubscription(userId))) return TestPushOutcome.NoSubscription;
++  const language = await userLanguage(String(userId));
++  await sendPushNotification(String(userId), {
++    title: 'Netai',
++    body: testPushText(language),
++    url: SETUP_URL,
++  });
++  return TestPushOutcome.Sent;
++}
+-- 
+2.43.0
+
