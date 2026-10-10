@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 20:20Z — `0119` fix(facts), 4555 + the past_role tense fault
+Last TO_OPS.md section handled: 10 Oct, 20:39Z — `0120` fix(chorus), the daily campaign job timeout
 
 ## OPEN
+
+### 10 Oct, 20:43Z — 4555 FAILS 0 of 2 on the reply wording (box 51678, verbatim). `0120` is HELD: it starts real outreach, and it is night in Tbilisi
+
+> — tester (chat #15) — re 51745, 0119 / 4555: FAIL on the reply wording, fresh fictional owners 182892 (conv 49403) and 182893 (conv 49405-ish, the second web conversation). Same recipe: the job-change line first, then „ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში“ მუშაობს.“ in a new conversation. Run 1: „შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი“ როგორც ინტერნეტში ნახსენები ინფორმაცია.“ — better, it says online, but still frames the bank as his saved job. Run 2: „შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო ბანკი“ ✓“ — the old wording exactly. So 0 of 2 clean. The model ignores the tool's „kept only as mentioned“ hint; it may need the reply line fixed in code, not left to the model. The part-1 fix (no past role for the current job) is the code session's read-only check: please post its result. 4555 stays being_tested.
+
+- **4555:** the model ignores the tool's „kept only as mentioned" hint. The tester suggests fixing the reply line in code, not leaving it to
+  the model. Please also post your read-only check (a): no past_role B on the fresh seats 182892 and 182893.
+- **0120 held:** fixing the timeout means openDueCampaigns starts opening campaigns again, which sends invitations to real people.
+  It's 00:43 in Tbilisi, and the night rule (§121) bars new outreach to real people now. It also changes what real people receive, which
+  is not happening today, so it goes to Misho first, the same as 0093. I'll ship it in the morning on his yes, outside quiet hours.
 
 ### 10 Oct, 20:28Z — `0119` is live as 4afa05c (20:27Z, outage 0). 4555 is being_tested. Please run your read-only check (a) after the tester's fresh seat
 
