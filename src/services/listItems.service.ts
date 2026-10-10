@@ -496,9 +496,11 @@ export async function listWorkbook(
  * (about reaching the listed person), which reads as a contradiction. With
  * this on, those two cells point at the helper column instead.
  *
- * OFF until Misho's yes on the exact words: they are new text in the owner's file.
+ * ON since Misho's yes, 10 Oct ~06:20 UTC: „BE კი" (ADMIN_WRITE_OPERATIONS §124).
+ * Off 10:55Z–(this commit) on box 50656; that Excel's fault was the rows'
+ * names (a numbers column under „სახელი"), fixed in the patch before this.
  */
-export const SEE_HELPER_ON = false;
+export const SEE_HELPER_ON = true;
 
 const SEE_HELPER: Readonly<Record<RunLanguage, string>> = {
   ka: 'იხ. დამხმარე',
