@@ -315,6 +315,7 @@ import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAcco
 import {
   FixtureOutcome,
   writeAnswerRecord,
+  writeOldProfile,
   writeStaleFact,
 } from '../../services/seatFixtures.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
@@ -7106,5 +7107,33 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * 4226 (tester 49805): POST /admin/test-accounts/:id/fixtures/old-profile
+ *   { phone, employer, job_position } — an old Ally profile on the seat's
+ *   contact, whose own account must be a fictional seat as well.
+ */
+adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request, res: Response) => {
+  const seatId = seatIdOf(req);
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  if (seatId === null || typeof b.phone !== 'string') {
+    sendFixture(res, FixtureOutcome.BadInput);
+    return;
+  }
+  try {
+    sendFixture(
+      res,
+      await writeOldProfile(seatId, {
+        phone: b.phone,
+        employer: typeof b.employer === 'string' ? b.employer : '',
+        jobPosition: typeof b.job_position === 'string' ? b.job_position : '',
+      }),
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[fixtures/old-profile]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
 
 export default adminRouter;

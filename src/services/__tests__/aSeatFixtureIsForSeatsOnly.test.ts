@@ -1,5 +1,10 @@
 import { query } from '../../db/postgres/client';
-import { FixtureOutcome, writeAnswerRecord, writeStaleFact } from '../seatFixtures.service';
+import {
+  FixtureOutcome,
+  writeAnswerRecord,
+  writeOldProfile,
+  writeStaleFact,
+} from '../seatFixtures.service';
 
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
@@ -99,5 +104,46 @@ describe('the answer-record fixture (1691)', () => {
       }),
     ).resolves.toBe(FixtureOutcome.BadInput);
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+/** Tester 49805 (4226): an old Ally profile on a contact, only when that contact is fictional too. */
+describe('the old-profile fixture (4226)', () => {
+  const CONTACT_SEAT = 182201;
+  const INPUT = { phone: '+995 500 000 009', employer: 'Old Bank', jobPosition: 'Teller' };
+  beforeEach(() => jest.clearAllMocks());
+
+  it('writes the employer and title on the contact’s own fictional account', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
+      .mockResolvedValueOnce({ rows: [{ user_id: CONTACT_SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+    await expect(writeOldProfile(SEAT, INPUT)).resolves.toBe(FixtureOutcome.Written);
+    const [sql, params] = mockQuery.mock.calls[3];
+    expect(String(sql)).toContain('EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1)');
+    expect(params).toEqual([CONTACT_SEAT, 'Old Bank', 'Teller']);
+  });
+
+  it('never touches a real person’s profile', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+    await expect(writeOldProfile(SEAT, INPUT)).resolves.toBe(FixtureOutcome.NotATestSeat);
+    expect(mockQuery).toHaveBeenCalledTimes(3);
+  });
+
+  it('refuses a real seat, a stranger’s number, and an empty profile', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(writeOldProfile(501, INPUT)).resolves.toBe(FixtureOutcome.NotATestSeat);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
+      .mockResolvedValueOnce({ rows: [{ found: false }] } as never);
+    await expect(writeOldProfile(SEAT, INPUT)).resolves.toBe(FixtureOutcome.NotTheSeatsContact);
+    await expect(
+      writeOldProfile(SEAT, { phone: INPUT.phone, employer: ' ', jobPosition: '' }),
+    ).resolves.toBe(FixtureOutcome.BadInput);
+    expect(mockQuery).toHaveBeenCalledTimes(3);
   });
 });
