@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { askField } from './answerStats.service';
 import { FACT_FIELD_TYPES } from './contactFacts.service';
-import { normalizePhone } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 
 /**
  * Tester 49567 (rule B, 9 Oct): two plate rows wait on state no chat can make
@@ -17,6 +17,7 @@ export const MIN_DAYS_AGO = 1;
 export const MAX_DAYS_AGO = 3_650;
 const MAX_FACT_CHARS = 200;
 const MAX_STAT = 10_000;
+const MAX_PROFILE_CHARS = 120;
 
 export enum FixtureOutcome {
   Written = 'written',
@@ -128,6 +129,55 @@ export async function writeAnswerRecord(
        SET asked = $3, yes = $4, no = $5, referred = $6, first_answer_minutes_median = $7,
            updated_at = NOW()`,
     [seatId, field, input.asked, input.yes, input.no, input.referred, minutes],
+    QUERY_TIMEOUT_MS,
+  );
+  return FixtureOutcome.Written;
+}
+
+export interface OldProfileInput {
+  /** The contact's number as the seat saved it; its account must be a fictional seat too. */
+  readonly phone: string;
+  readonly employer: string;
+  readonly jobPosition: string;
+}
+
+/** The fictional seat that holds this number, if one does; a real account never matches. */
+async function fictionalAccountOf(phone: string): Promise<number | null> {
+  const digits = phoneDigits(phone);
+  if (digits === '') return null;
+  const result = await query<{ user_id: number }>(
+    `SELECT up."userId" AS user_id FROM "UserPhone" up
+       JOIN test_seats ts ON ts.user_id = up."userId"
+      WHERE up.phone = ANY($1::text[])
+      LIMIT 1`,
+    [[`+${digits}`, digits]],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.user_id ?? null;
+}
+
+/**
+ * 4226 (the tester's 49805): a contact with an old Ally profile — employer and
+ * job title on the contact's own account — so the owner's corrected word can
+ * be seen winning over it. Written only when the contact's account is itself
+ * a fictional seat; a real person's profile is never touched.
+ */
+export async function writeOldProfile(
+  seatId: number,
+  input: OldProfileInput,
+): Promise<FixtureOutcome> {
+  const employer = input.employer.trim().slice(0, MAX_PROFILE_CHARS);
+  const jobPosition = input.jobPosition.trim().slice(0, MAX_PROFILE_CHARS);
+  if (employer === '' && jobPosition === '') return FixtureOutcome.BadInput;
+  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
+  const phone = normalizePhone(input.phone);
+  if (!(await seatSavedThisNumber(seatId, phone))) return FixtureOutcome.NotTheSeatsContact;
+  const contactId = await fictionalAccountOf(phone);
+  if (contactId === null || contactId === seatId) return FixtureOutcome.NotATestSeat;
+  await query(
+    `UPDATE "User" SET employer = NULLIF($2, ''), "jobPosition" = NULLIF($3, '')
+      WHERE id = $1 AND EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1)`,
+    [contactId, employer, jobPosition],
     QUERY_TIMEOUT_MS,
   );
   return FixtureOutcome.Written;
