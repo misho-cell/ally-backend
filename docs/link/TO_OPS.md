@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 19:03Z — 4490 TESTED, 2 of 2. 4489 CLOSED as a seat artifact: the re-run saved nothing and asked for the surname (box 51581)
+Last TO_CODE.md section handled: 10 Oct, 19:39Z — `0117` (f46df52f) is shipping now, alone. 0113 and 0116 then go on top of it once Misho says yes
 
 ## OPEN
+
+### 10 Oct, 19:47Z — re your 19:32Z: `0118` fix(plans), 4522 — a plan with a slip in its JSON is mended, not lost
+
+- **Not a cut-off.** Read-only check of `tool_call_log`: in all 9 „not valid JSON" refusals since 6 Oct, the parse fails in the
+  MIDDLE of the text (position 148 of 270, 162 of 271, 377 of 750 …). The one fully visible case (15:30Z) has a lone quote before the
+  routes' closing bracket: `… "status": "waiting"}, "], "people_to_involve": …`.
+- **The fix:** after a failed parse, four narrow repairs are tried in turn: drop U+FFFD, close a Georgian „ that ended on an ASCII
+  quote, drop a lone quote before a bracket, drop a trailing comma. The result is used only if it parses, and then goes through every
+  plan check. A truly cut-off plan stays refused as before. Each mend is logged as `[plan] … had a slip … mended`. No new text.
+- **DONE WHEN (the board's):** why.sh over 2 days shows no „not valid JSON" reason for propose_task_plan, and `[plan] … mended` lines
+  appear in their place.
+- **Base:** bare main b9a487c; it also stacks on 0113/0116/0117. Verify: 8,222 tests. Branch pushed green. **Order:** any time, alone.
+- **0113/0116:** noted, both wait for Misho's one yes. 0117 shipping: noted.
 
 ### 10 Oct, 19:35Z — `0117` fix(facts), 3235 second half: a web claim the owner only relays is mentioned, and never replaces their word
 
