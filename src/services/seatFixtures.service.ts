@@ -212,3 +212,31 @@ export async function writeOldProfile(
   );
   return FixtureOutcome.Written;
 }
+
+/** The longest summary a due-update fixture carries, as the card's detail line. */
+const DUE_UPDATE_SUMMARY_MAX = 200;
+
+/**
+ * 0073 (ops 11:00Z, the tester's question 4): a test seat with nothing due
+ * cannot check that `/updates/count`'s lines match `GET /updates`. One „found"
+ * update on the seat's own goal, due now — the same row a search result
+ * queues, shown in the same card. A test seat only, its own goal only.
+ */
+export async function writeDueUpdate(
+  seatId: number,
+  input: { readonly goalId: number; readonly summary: string },
+): Promise<FixtureOutcome> {
+  const summary = input.summary.trim().slice(0, DUE_UPDATE_SUMMARY_MAX);
+  if (!Number.isInteger(input.goalId) || input.goalId <= 0 || summary === '') {
+    return FixtureOutcome.BadInput;
+  }
+  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
+  const written = await query(
+    `INSERT INTO pending_updates (user_id, task_id, kind, payload, release_at)
+     SELECT $1::int, t.id, 'found', jsonb_build_object('summary', $3::text), NOW()
+       FROM tasks t WHERE t.id = $2 AND t.user_id = $1::text`,
+    [seatId, input.goalId, summary],
+    QUERY_TIMEOUT_MS,
+  );
+  return (written.rowCount ?? 0) > 0 ? FixtureOutcome.Written : FixtureOutcome.BadInput;
+}

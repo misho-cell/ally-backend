@@ -316,6 +316,7 @@ import {
   FixtureOutcome,
   writeAnswerRecord,
   writeOldProfile,
+  writeDueUpdate,
   writeStaleFact,
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
@@ -7113,6 +7114,29 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * 0073 (the tester's question 4): POST /admin/test-accounts/:id/fixtures/due-update
+ *   { goal_id, summary } — one due „found" update on the seat's own goal.
+ */
+adminRouter.post('/test-accounts/:id/fixtures/due-update', async (req: Request, res: Response) => {
+  const seatId = seatIdOf(req);
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  if (seatId === null || typeof b.summary !== 'string') {
+    sendFixture(res, FixtureOutcome.BadInput);
+    return;
+  }
+  try {
+    sendFixture(
+      res,
+      await writeDueUpdate(seatId, { goalId: Number(b.goal_id), summary: b.summary }),
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[fixtures/due-update]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
 
 /**
  * 4226 (tester 49805): POST /admin/test-accounts/:id/fixtures/old-profile
