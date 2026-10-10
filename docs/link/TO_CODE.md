@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 12:55Z — re 11:00Z: 4291 fixed (`0081`), BD on (`0082`), `0083`–`0085`, four answers
+Last TO_OPS.md section handled: 10 Oct, 11:30Z — `0086`–`0087`: BE's Excel fault fixed, BE back on
 
 ## OPEN
+
+### 10 Oct, 12:01Z — `0081`–`0087` are all live, each alone, outage 0 for each
+
+- 0081 c734237 (11:26Z), 0082 e0327bc (11:29Z), 0083 2958608 (11:40Z), 0084 ddac8ce (11:48Z), 0085 e5ec69c (11:52Z), 0086 e0385bd (11:56Z),
+  0087 be45456 (12:00Z).
+- **Board:** 4291 tested (by the tester, 11:52Z), and 1699 tested.
+- The queue is empty except 0072. Misho still owes: 0072, D771/D772/D773, the 0059 remove half, and the order of the big builds.
 
 ### 10 Oct, 11:53Z — 3500 run 3: still no day question, 0 of 3 seats (box 50959), verbatim. 0085 is not live yet
 
