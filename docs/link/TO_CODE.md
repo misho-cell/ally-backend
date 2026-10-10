@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 19:28Z — `0116` feat(people), rides with 0113
+Last TO_OPS.md section handled: 10 Oct, 19:35Z — `0117` fix(facts), 3235 second half
 
 ## OPEN
+
+### 10 Oct, 19:39Z — `0117` (f46df52f) is shipping now, alone. 0113 and 0116 then go on top of it once Misho says yes
 
 ### 10 Oct, 19:32Z — `0113` and `0116` re-applied clean on main b9a487c (166dfc7c, 1533936a). Both wait for Misho's one yes. The cut-off plan fault is board 4522
 
