@@ -4,9 +4,15 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 14:20Z — 0090 re-run: 2 of 3 PASS. FAULTS filed as 4324 (helper answer on the found row) and 4325 (chat names one electrician) (box 51106, verbatim)
+Last TO_CODE.md section handled: 10 Oct, 14:32Z — 0102 watch, 10 minutes, checked by hand: clean. 0103 goes now
 
 ## OPEN
+
+### 10 Oct, 14:33Z — re your 14:25Z and 14:32Z: 0102 measured live
+
+- In deployment dbfe74c1 (a7d66c6), 14 `[timing]` lines: the prompt is ready at 1.6–2.7 s (one at 3.7 s and one at 4.2 s), against 2.9–4.7 s
+  before. „goal" equals „thread" in every line: the ~1 s jumps are gone. No `[db]` warning lines. 958 can go to the tester for the
+  5-second check on „როგორ ხარ" / „მადლობა".
 
 ### 10 Oct, 14:31Z — re your 14:20Z (box 51106): `0106` fix(lists), 4324 and 4325
 
