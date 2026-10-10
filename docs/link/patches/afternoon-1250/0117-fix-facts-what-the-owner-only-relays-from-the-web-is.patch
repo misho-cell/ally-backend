@@ -1,0 +1,210 @@
+From b4fde8084fca40fc214def05b6a8ba267b4e62ad Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 19:32:46 +0000
+Subject: [PATCH] fix(facts): what the owner only relays from the web is
+ mentioned, and never replaces their stated word (3235, second half)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MASTER TEST RUN ME-023 (seat 180021): „ინტერნეტში წერია, რომ ბახვა
+„სანიმუშო ბანკში" მუშაობს" was saved as the owner's own employer, over the
+one they had stated. Two server-side changes, no new text:
+
+- save_contact_fact saves as mentioned when the owner's line relays the
+  web or others (ინტერნეტში წერია, ამბობენ, I read online, говорят …).
+- A mentioned value for a core field (one value per field) that would
+  replace the owner's own stated row is kept beside it as a private note
+  („employer: …"), and the stated row stays.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...ebClaimDoesNotReplaceTheOwnersWord.test.ts | 62 +++++++++++++++++++
+ src/services/chat.service.ts                  |  7 ++-
+ src/services/contactFacts.service.ts          | 41 ++++++++++++
+ src/services/hearsay.ts                       | 12 ++++
+ 4 files changed, 121 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts
+ create mode 100644 src/services/hearsay.ts
+
+diff --git a/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts b/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts
+new file mode 100644
+index 0000000..b3705ed
+--- /dev/null
++++ b/src/services/__tests__/aWebClaimDoesNotReplaceTheOwnersWord.test.ts
+@@ -0,0 +1,62 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { submitContactFact } from '../contactFacts.service';
++import { relaysHearsay } from '../hearsay';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/** 3235's second half (ME-023): a web claim the owner only reported replaced their stated employer. */
++describe('a line that only relays the web or others', () => {
++  it.each([
++    'ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში" მუშაობს',
++    'ლინკდინზე ეწერა, რომ ნინო TBC-შია',
++    'ამბობენ, რომ გია ახლა ბათუმშია',
++    'I read online that Levan works at Colliers',
++    'Говорят, что он работает в банке',
++  ])('„%s" is hearsay', (line) => {
++    expect(relaysHearsay(line)).toBe(true);
++  });
++
++  it.each(['ბახვა „სანიმუშო ბანკში" მუშაობს', 'Levan works at Colliers'])(
++    '„%s" is the owner’s own word',
++    (line) => {
++      expect(relaysHearsay(line)).toBe(false);
++    },
++  );
++
++  it('makes save_contact_fact save as mentioned', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('relaysHearsay(runId === undefined');
++  });
++});
++
++describe('a mentioned value over the owner’s stated one', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('is kept as a note beside it, and the stated row is not touched', async () => {
++    mockQuery.mockImplementation(((sql: string) =>
++      Promise.resolve(sql.includes('COUNT(*)') ? { rows: [{ n: 1 }] } : { rows: [] })) as never);
++    const saved = await submitContactFact(
++      '171',
++      '+995599000001',
++      'employer',
++      'სანიმუშო ბანკი',
++      'chat',
++      'mentioned',
++    );
++    expect(saved).toEqual({ is_public: false, canonical_value: null });
++    const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
++    expect(
++      sqls.some((sql) =>
++        sql.includes('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)'),
++      ),
++    ).toBe(false);
++    const insert = mockQuery.mock.calls.find(([sql]) =>
++      String(sql).includes('INSERT INTO contact_facts'),
++    );
++    expect(insert?.[1]).toEqual(expect.arrayContaining(['note', 'employer: სანიმუშო ბანკი']));
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7ccf64c..466a399 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -446,6 +446,7 @@ import {
+ import { recordWarmth } from './warmth.service';
+ import { correctContactFact, keepEndedJob } from './factCorrections.service';
+ import { correctionIsAJobThatEnded } from './jobEnded';
++import { relaysHearsay } from './hearsay';
+ import { withoutSavedClaimOnAQuestion } from './savedClaim';
+ import {
+   getCampaignInviteContext,
+@@ -9261,7 +9262,11 @@ async function executeToolCall(
+           String(input['field_type'] ?? ''),
+           String(input['value'] ?? ''),
+           input['source'] === 'debrief' ? 'debrief' : 'chat',
+-          input['confidence'] === 'mentioned' ? 'mentioned' : 'stated',
++          // 3235: what the owner only relayed from the web is mentioned, whatever the model passed.
++          input['confidence'] === 'mentioned' ||
++            relaysHearsay(runId === undefined ? '' : (runOwnerLine.get(runId) ?? ''))
++            ? 'mentioned'
++            : 'stated',
+         );
+       } catch (err) {
+         // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
+diff --git a/src/services/contactFacts.service.ts b/src/services/contactFacts.service.ts
+index a456236..154f2ee 100644
+--- a/src/services/contactFacts.service.ts
++++ b/src/services/contactFacts.service.ts
+@@ -18,6 +18,7 @@ export type FactFieldType = (typeof FACT_FIELD_TYPES)[number];
+ // profile (role, skill, expertise, education, need, …) without the four fields
+ // having to know about each key.
+ export const MEMORY_FIELD_TYPE = 'note';
++const FACT_QUERY_TIMEOUT_MS = 5_000;
+ export const MAX_FIELD_TYPE_LEN = 40;
+ // A core fact is a short label (a job title, a company, a city). Anything
+ // longer is narrative — soft intel that must never sit in a public-capable,
+@@ -581,6 +582,32 @@ export function isAssistantsOwnReading(confidence: FactConfidence | null): boole
+ 
+ export class FactRefusedError extends Error {}
+ 
++const MENTIONED: FactConfidence = 'mentioned';
++const STATED: FactConfidence = 'stated';
++
++/**
++ * 3235's second half (MASTER TEST RUN ME-023, seat 180021): „ინტერნეტში წერია,
++ * რომ ბახვა „სანიმუშო ბანკში" მუშაობს" was saved over the employer the owner
++ * had stated. A core field holds one value, so a merely mentioned one that
++ * would replace the owner's own stated row is kept beside it as a note instead.
++ */
++async function mentionedOverStated(
++  userId: string,
++  neo4jContactId: string,
++  fieldType: string,
++  confidence: FactConfidence | null,
++): Promise<boolean> {
++  if (confidence !== MENTIONED || !isCoreFact(fieldType)) return false;
++  const result = await query<{ n: number }>(
++    `SELECT COUNT(*)::int AS n FROM contact_facts
++      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND field_type = $3
++        AND confidence = $4 AND retracted_at IS NULL`,
++    [neo4jContactId, userId, fieldType, STATED],
++    FACT_QUERY_TIMEOUT_MS,
++  );
++  return (result.rows[0]?.n ?? 0) > 0;
++}
++
+ export async function submitContactFact(
+   userId: string,
+   neo4jContactIdRaw: string,
+@@ -625,6 +652,20 @@ export async function submitContactFact(
+     );
+   }
+ 
++  // 3235 (ME-023): a value the owner only reported from the web never replaces their own word.
++  if (await mentionedOverStated(userId, neo4jContactId, fieldType, confidence)) {
++    await insertFreeFormFact(
++      userId,
++      neo4jContactId,
++      MEMORY_FIELD_TYPE,
++      `${fieldType}: ${value.trim()}`,
++      'private',
++      source,
++      confidence,
++    );
++    return { is_public: false, canonical_value: null };
++  }
++
+   // Any non-core key (note, role, skill, …) accumulates. Whether it is shared
+   // with other users is the AGENT's call at save time: purely professional
+   // facts go public, anything personal or ambiguous stays private (fail-closed).
+diff --git a/src/services/hearsay.ts b/src/services/hearsay.ts
+new file mode 100644
+index 0000000..2f20033
+--- /dev/null
++++ b/src/services/hearsay.ts
+@@ -0,0 +1,12 @@
++/**
++ * 3235's second half (ME-023): the owner only REPORTED what a web page says —
++ * „ინტერნეტში წერია, რომ …" — and it was saved as the owner's own word. A fact
++ * the owner relays from the web or from hearsay is saved as mentioned.
++ */
++const HEARSAY_RE =
++  /(ინტერნეტში|ვებში|გუგლში|ფეისბუქზე|ლინკდინზე|საიტზე|სადღაც)\s+(?:\p{L}+\s+){0,2}?(წერია|ვნახე|წავიკითხე|ეწერა)|ამბობენ|გავიგე,?\s+რომ|online|on the (?:internet|web)|I read (?:that|somewhere)|they say|I heard|в интернете|пишут|говорят|слышал|en internet|dicen que/iu;
++
++/** Did the owner's line relay something from the web or from others, not say it themselves? */
++export function relaysHearsay(ownerLine: string): boolean {
++  return HEARSAY_RE.test(ownerLine);
++}
+-- 
+2.43.0
+

@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 10 Oct, 19:03Z — 4490 TESTED, 2 of 2. 4489 CL
 
 ## OPEN
 
+### 10 Oct, 19:35Z — `0117` fix(facts), 3235 second half: a web claim the owner only relays is mentioned, and never replaces their word
+
+- **Cause (ME-023):** „ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში" მუშაობს" was saved as stated. A core field (employer, occupation,
+  city, industry) holds one value per owner, so it overwrote the employer the owner had stated.
+- **The fix, no new text:** save_contact_fact saves as `mentioned` when the owner's line relays the web or others (ინტერნეტში
+  წერია, ამბობენ, I read online, говорят …). A mentioned value that would replace the owner's own stated row is kept beside it as a
+  private note („employer: …"); the stated row stays.
+- **DONE WHEN (3235's own):** owner states „ბახვა „საცდელ ლოჯისტიკაში" მუშაობს", then „ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში"
+  მუშაობს" → „სად მუშაობს ბახვა?" still gives the logistics job. A read-only check finds the bank only as a `mentioned` note. 2 of 2.
+- **Base:** bare main b9a487c (independent of 0113/0116); it also stacks cleanly on them. Verify: 8,227 tests. Branch pushed green.
+- **Order:** any time, alone.
+
 ### 10 Oct, 19:28Z — `0116` feat(people): the path map searches members only (1849 stage one). Rides with 0113, after it
 
 - **What it closes:** 0113 read the graph's shortest paths and kept only all-member ones. If every shortest path had a non-member in
