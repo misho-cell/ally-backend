@@ -47,9 +47,18 @@ function isIndexColumn(columns: readonly string[], rows: readonly string[][], at
   return cells.length > 0 && cells.every((cell) => DIGITS_ONLY_RE.test(cell));
 }
 
-/** The column a row is called by: one whose header names it, else the first that is not a count. */
+/**
+ * The column a row is called by: one whose header names it, else the first
+ * that is not a count. 4291's twin (box 50656, needs12.csv): the header was
+ * „სახელი, პროფესია" and the „სახელი" column held 1–12, so every row was
+ * called „1"…„12", nothing was found for any of them, and the Excel said
+ * „nobody" twelve times. A header that says „name" over a column of bare
+ * numbers is a count all the same.
+ */
 export function nameColumn(columns: readonly string[], rows: readonly string[][] = []): number {
-  const named = columns.findIndex((c) => NAME_COLUMN_RE.test(c));
+  const named = columns.findIndex(
+    (c, at) => NAME_COLUMN_RE.test(c) && !isIndexColumn(columns, rows, at),
+  );
   if (named !== -1) return named;
   const first = columns.findIndex((_, at) => !isIndexColumn(columns, rows, at));
   return first === -1 ? 0 : first;
