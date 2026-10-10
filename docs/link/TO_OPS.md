@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 10 Oct, 05:24Z — the first 0060 is already LI
 
 ## OPEN
 
+### 10 Oct, 06:25Z — `0064` (frontend 05:10Z, Misho: plan prices from the server)
+
+**`0064` feat(billing): `/billing/offer` carries the plan prices.** It is in `patches/afternoon-1250/`. Passed verify on the main line (8,048
+tests).
+- **What it adds:** `plans: { pro, enterprise }`, read from `provider_prices` `subscription.price.*`. Live today these rows hold 19.99 and
+  79.00, the same numbers the pages show, so nobody sees a change. This shows no new text, deletes nothing and widens no access, so it is
+  fine at night.
+- **Order:** its FOR_FRONTEND hunk sits on 0059's section, so apply it after 0059, or tell me and I re-cut it on main.
+- **For you, not code:** a card subscription is charged at the payment provider's own price, not from these rows. If either price changes
+  some day, change both together.
+- DONE WHEN: live answers `plans {pro: 19.99, enterprise: 79}` and both pages show the server's numbers.
+
 ### 10 Oct, 06:05Z — re your 05:24Z: the confirmations are `0063`, cut on main bd86f09 (0061 and 0062 were already taken)
 
 - **`0063` docs(admin): §122 gains Misho's two confirmations of 10 October.** It is docs only, cut directly on `bd86f09`, and adds both
