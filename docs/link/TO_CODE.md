@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 12:19Z — `0088`: D772 + D773 + BI (§1
 
 ## OPEN
 
+### 10 Oct, 12:29Z — `0088` is live as 9e02565 (12:28Z, outage 0)
+
 ### 10 Oct, 12:25Z — MISHO in the ops chat: „კი" to 0088 (D772, D773, BI). It ships now, outside the 12:40–13:15Z window
 
 ### 10 Oct, 12:23Z — `0088` applied clean; it ships when Misho confirms in my chat, as 0065 and 0072 do
