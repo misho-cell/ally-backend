@@ -1,0 +1,184 @@
+From 549952416db99ecd13f2273fa84846530cc8a66a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 23:41:25 +0000
+Subject: [PATCH] 3730 (3), 3732: a person named to meet or reach is never
+ looked up on the web
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MASTER TEST RUN chat #8 (2 of 2 each): „introduce me to <seat>" and
+„როგორ მივწვდე ბახვა გამოგონილს?" ran web_search on the name, and the
+reply quoted real people from the web who share it. A person the owner
+names is reached through the network; the web only knows strangers with
+the same name.
+
+An owner's run whose line asks to meet or reach somebody (გამაცანი,
+დამაკავშირე, მივწვდე, introduce me, how can I reach…) and names no
+trade does not hold web_search or fetch_page — the same way inviteHeld
+holds invite_contact. No new words to the model. A line that names a
+trade, in any Georgian case („დამაკავშირე იურისტთან"), keeps the web
+for the 1454 web-people paragraph.
+
+Also: the ⚠ in answerNotQuestion.ts's comment was written as a literal
+escape in 0124; it is the sign again.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/personByName.test.ts | 34 +++++++++++++
+ src/services/answerNotQuestion.ts           |  2 +-
+ src/services/chat.service.ts                |  6 ++-
+ src/services/personByName.ts                | 56 +++++++++++++++++++++
+ 4 files changed, 96 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/personByName.test.ts
+ create mode 100644 src/services/personByName.ts
+
+diff --git a/src/services/__tests__/personByName.test.ts b/src/services/__tests__/personByName.test.ts
+new file mode 100644
+index 0000000..2515345
+--- /dev/null
++++ b/src/services/__tests__/personByName.test.ts
+@@ -0,0 +1,34 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { asksForAPersonByName, WEB_TOOL_NAMES } from '../personByName';
++
++/** 3730 (3), 3732: a person named to meet or reach is never looked up on the web. */
++describe('asksForAPersonByName', () => {
++  it('holds the web for a named person to meet or reach', () => {
++    expect(asksForAPersonByName('როგორ მივწვდე ბახვა გამოგონილს?')).toBe(true);
++    expect(asksForAPersonByName('გამაცანი ნინო სატესტო, გთხოვ')).toBe(true);
++    expect(asksForAPersonByName('დამაკავშირე თამუნასთან')).toBe(true);
++    expect(asksForAPersonByName('Please introduce me to Nino Testadze')).toBe(true);
++    expect(asksForAPersonByName('How can I reach Giorgi Example?')).toBe(true);
++  });
++
++  it('keeps the web for a trade, or a line that asks for no one', () => {
++    expect(asksForAPersonByName('გამაცანი კარგი ბუღალტერი')).toBe(false);
++    expect(asksForAPersonByName('დამაკავშირე კბილის ექიმთან')).toBe(false);
++    expect(asksForAPersonByName('introduce me to a lawyer')).toBe(false);
++    expect(asksForAPersonByName('როგორ მივწვდე ბუღალტერს?')).toBe(false);
++    expect(asksForAPersonByName('დამაკავშირე იურისტთან.')).toBe(false);
++    expect(asksForAPersonByName('რა ამინდია თბილისში?')).toBe(false);
++    expect(asksForAPersonByName('ვინ იცნობს ბახვას?')).toBe(false);
++  });
++
++  it('names both web tools', () => {
++    expect([...WEB_TOOL_NAMES].sort()).toEqual(['fetch_page', 'web_search']);
++  });
++
++  it('is applied to the owner run tools, beside the invite holds', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);');
++    expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name)),');
++  });
++});
+diff --git a/src/services/answerNotQuestion.ts b/src/services/answerNotQuestion.ts
+index c482351..99fef56 100644
+--- a/src/services/answerNotQuestion.ts
++++ b/src/services/answerNotQuestion.ts
+@@ -11,7 +11,7 @@
+  */
+ export const ANSWER_NOT_QUESTION_ON = false;
+ 
+-/** ⚠\uFE0F MODEL-FACING (D44), NOT YET APPROVED — NIGHT_QUESTIONS BL. */
++/** ⚠️ MODEL-FACING (D44), NOT YET APPROVED — NIGHT_QUESTIONS BL. */
+ export const ANSWER_NOT_QUESTION_NOTE =
+   'არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის სახელით პასუხობ — ეს პასუხი უნდა ' +
+   'იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ' +
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 12ff20b..7e58305 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -228,6 +228,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
+ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+ import { geoName } from './georgianCase';
+ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
++import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+ import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
+ import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
+ import {
+@@ -15565,13 +15566,16 @@ export async function processChat(
+   // 3400 (the tester's 47027, 1 of 3): get_invite_link wrote the invitation text before the
+   // owner said yes. It sits behind the same yes, or the owner asking for the link itself.
+   const linkHeld = inviteHeld || asksForTheLink(userMessage);
++  // 3730 (3), 3732: a person named to meet or reach is found in the network, never on the web.
++  const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
+   const runTools =
+     !ownerAbsent && isReminderRequestOnly(userMessage)
+       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
+       : tools.filter(
+           (tool) =>
+             (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
+-            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name),
++            (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
++            (webHeld || !WEB_TOOL_NAMES.has(tool.name)),
+         );
+   const promptReadyMs = Date.now() - startedAt;
+   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:
+diff --git a/src/services/personByName.ts b/src/services/personByName.ts
+new file mode 100644
+index 0000000..7914f9f
+--- /dev/null
++++ b/src/services/personByName.ts
+@@ -0,0 +1,56 @@
++import { matchOccupation } from './labelParser.service';
++import { professionFamilyIn, professionFamilyKey } from './professionFamilies';
++
++/**
++ * 3730 (3) and 3732 (MASTER TEST RUN chat #8, 9 Oct, 2 of 2 each): „please
++ * introduce me to <seat>" and „როგორ მივწვდე ბახვა გამოგონილს?" ran web_search
++ * on the person's name, and the reply quoted real people from the web who
++ * share it („ბახვა ბრეგვაძე, ბახვა ჩიქობავა"). A person the owner names is
++ * reached through the owner's own network; the web knows strangers with the
++ * same name. So a run whose owner line asks to meet or reach somebody BY NAME
++ * does not hold the web tools at all — no new words to the model, the tools
++ * are simply not offered (as inviteHeld does for invite_contact).
++ *
++ * A line that names a trade instead („გამაცანი კარგი ბუღალტერი") keeps them:
++ * looking beyond the network for a trade is the 1454 web-people paragraph.
++ */
++const MEET_OR_REACH_RE =
++  /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to)|reach out to)(?![\p{L}\p{M}])/iu;
++
++/** The web tools a run that names a person does not hold. */
++export const WEB_TOOL_NAMES: ReadonlySet<string> = new Set(['web_search', 'fetch_page']);
++
++/**
++ * Georgian case endings a trade word wears after „-ი" falls away: „ექიმთან",
++ * „ბუღალტერს", „იურისტთან". Longest first, so „ისთვის" wins over „ს".
++ */
++const CASE_ENDINGS: readonly string[] = ['ისთვის', 'თან', 'ით', 'ად', 'ის', 'მა', 'ს', 'ზე', 'ში'];
++const NOMINATIVE_ENDING = 'ი';
++
++function isTradeWord(word: string): boolean {
++  return professionFamilyKey(word) !== null || matchOccupation(word) !== null;
++}
++
++/** The word in its dictionary form when a case ending hides a trade word; else as it is. */
++function nominative(word: string): string {
++  for (const ending of CASE_ENDINGS) {
++    if (word.length <= ending.length || !word.endsWith(ending)) continue;
++    const base = `${word.slice(0, -ending.length)}${NOMINATIVE_ENDING}`;
++    if (isTradeWord(base)) return base;
++  }
++  return word;
++}
++
++/** Does the line name a trade, in any of its cases? */
++function namesATrade(line: string): boolean {
++  const asSaid = line
++    .split(/[^\p{L}\p{M}]+/u)
++    .map(nominative)
++    .join(' ');
++  return professionFamilyIn(asSaid) !== null || matchOccupation(asSaid) !== null;
++}
++
++/** Does the owner's line ask to meet or reach somebody it names, not a trade? */
++export function asksForAPersonByName(ownerLine: string): boolean {
++  return MEET_OR_REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
++}
+-- 
+2.43.0
+
