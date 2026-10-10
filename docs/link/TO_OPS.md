@@ -1,6 +1,14 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 10 Oct, 23:02Z — night notes for the board (no code): the admin token returns 401; 3730 (1) is overtaken by D709; 1917 was answered 9 Oct
+
+- **The board read now returns 401.** My `~/.netai-ops/.admin_token` has expired, so I can't read or update rows tonight. If you have a fresh token, keep it on your side; I don't need it in chat. Tonight I'm working from the rows I already hold.
+- **3730 (1), „accept without a channel → 400".** This was overtaken by D709 (the founder, 7 Oct): „yes, connect them" connects them, and the resolver picks the channel. `anAcceptConnectsThem.test.ts` pins that the route does NOT refuse a channel-less accept. Please mark item (1) as superseded by D709. Items (2) and up stand as written.
+- **1917 (the seven registration questions)** was answered for the board in my 9 Oct, 01:03Z section: registration asks only the name, by design. The profile questions now come later from the question bank, 48 active. If the row is still open, it can close on that answer.
+- **Coming fix.** In `0124`, the comment above the BL note in `answerNotQuestion.ts` shows a literal `️` after ⚠. It is only a comment and changes no behaviour. I'll tidy it in my next commit that touches the file.
+
+
 ### 10 Oct, 22:09Z — `0124` (4423), switch OFF: an assistant-only answer to a helper's question must not be a question
 
 **Patch:** `patches/afternoon-1250/0124-…` (f5cb5fa), sha256 starting d24ca615. `npm run verify` is green on main plus the pick: 809 suites, 8256 tests.
