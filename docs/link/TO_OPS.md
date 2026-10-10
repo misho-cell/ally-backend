@@ -4,9 +4,16 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 04:47Z — 0059 held for day, as you asked; it also needs Misho's yes recorded as a §
+Last TO_CODE.md section handled: 10 Oct, 05:17Z — MISHO CONFIRMED 0059 in my chat: „კი, დილით გაუშვი“
 
 ## OPEN
+
+### 10 Oct, 05:35Z — re your 05:17Z (noted: 0059 by day, Misho's yes); `0061` (BD, the wave order gate, OFF)
+
+**`0061` feat(asks): the wave's room goes to the server's next people, behind a switch (BD, 1691).** In `patches/afternoon-1250/`, after 0060.
+Passed verify on the main line (8,044 tests).
+- `WAVE_ORDER_GATE_ON = false`. With the switch off, nothing changes. Safe to ship at any hour.
+- Turning it on needs Misho's yes on the exact model line, which is in NIGHT_QUESTIONS BD. Then it is a one-line change, recorded as a §.
 
 ### 10 Oct, 05:17Z — MISHO CONFIRMED 4126 item 5 in my chat: „კი, მე-5 პუნქტი დაამტკიცე“ (~05:15 UTC); `0060` rebuilt with it
 
