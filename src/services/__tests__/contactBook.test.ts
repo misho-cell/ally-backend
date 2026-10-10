@@ -53,8 +53,8 @@ describe('contactPage', () => {
 
     expect(page).toEqual({
       contacts: [
-        { id: 'c_13', name: 'ნინო', phone: '+995599000001', on_netai: true },
-        { id: 'c_13', name: null, phone: '+995599000002', on_netai: false },
+        { id: 'c_13', name: 'ნინო', saved_as: null, phone: '+995599000001', on_netai: true },
+        { id: 'c_13', name: null, saved_as: '123', phone: '+995599000002', on_netai: false },
       ],
       next_cursor: encodeCursor(2),
     });

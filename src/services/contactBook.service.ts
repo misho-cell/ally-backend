@@ -23,6 +23,8 @@ const HAS_A_LETTER = /\p{L}/u;
 export interface ContactRow {
   readonly id: string;
   readonly name: string | null;
+  /** Box 51023: a label with no letter („💙"), as saved — set only when name is null. */
+  readonly saved_as: string | null;
   readonly phone: string;
   readonly on_netai: boolean;
 }
@@ -88,6 +90,12 @@ function shownName(alias: string | null): string | null {
   return HAS_A_LETTER.test(trimmed) ? trimmed : null;
 }
 
+/** The label as saved, for a row whose label is not a name; null otherwise. */
+function savedAs(alias: string | null): string | null {
+  const trimmed = (alias ?? '').trim();
+  return trimmed !== '' && !HAS_A_LETTER.test(trimmed) ? trimmed : null;
+}
+
 /** One page of the person's contacts; null when the cursor is not one this route made. */
 export async function contactPage(
   userId: number,
@@ -103,6 +111,7 @@ export async function contactPage(
     contacts: page.map((r) => ({
       id: encodeContactRef(String(userId), r.phone),
       name: shownName(r.alias),
+      saved_as: savedAs(r.alias),
       phone: normalizePhone(r.phone),
       on_netai: isMemberPhone(accounts, r.phone),
     })),

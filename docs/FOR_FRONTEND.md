@@ -15,6 +15,11 @@ messages in their name.
 
 ---
 
+## 10 October, 13:21Z — `GET /contacts` rows gain `saved_as` (patch 0100, not live yet)
+
+A contact saved only as a symbol („💙") has `name: null`. Its row now also carries `saved_as: "💙"`, the label exactly as the person
+saved it. It's `null` whenever `name` is set. Draw `name`, else `saved_as`, else „…".
+
 ## 10 October, 13:17Z — plate rows NEW-3, NEW-5, NEW-7: two additions and one ask of you (patches 0094–0096, not live yet)
 
 - **4296, last week's summary opens again:** `GET /updates/weekly-summaries` → `{ "summaries": [ <the same card shape as GET /updates> ] }`,

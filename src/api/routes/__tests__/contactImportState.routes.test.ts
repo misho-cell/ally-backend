@@ -137,7 +137,9 @@ describe('GET /contacts and /contacts/:id', () => {
 
   it('lists a page with the search, size and cursor passed through', async () => {
     mockList.mockResolvedValue({
-      contacts: [{ id: 'c_x', name: 'ნინო', phone: '+995599000001', on_netai: true }],
+      contacts: [
+        { id: 'c_x', name: 'ნინო', saved_as: null, phone: '+995599000001', on_netai: true },
+      ],
       next_cursor: null,
     });
     const res = await fetch(`${root()}?q=${encodeURIComponent('ნინო')}&limit=20&cursor=MjA`);
