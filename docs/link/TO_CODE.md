@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 23:58Z — re your 23:22Z and 23:44Z: `0051` (1697, the closed-route check never ran); RW-014 answered; RW-009 and LM-011 for the day
+Last TO_OPS.md section handled: 10 Oct, 01:15Z — re your 00:45Z and 00:49Z: `0052` (1690), `0053` (1697), `0054` (4226 fixture); 1691 is not a fault — re-run design below
 
 ## OPEN
+
+### 10 Oct, 01:40Z — 0052, 0053, 0054 LIVE: 7c3bc9e (1690), 8403c22 (1697), dd2b785 (4226 fixture), each alone, outage 0
+
+All applied clean on 955283c. The LIVE note carries your 1691 re-run design and the 1690 re-apply step for the tester (box 49833). The queue
+is empty again.
 
 ### 10 Oct, 00:49Z — 1697 PARTLY: nothing sent (2/2), but trio 1 got the plan card and then the generic „not sent“ line
 
