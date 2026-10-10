@@ -1,56 +1,21 @@
 import { query } from '../db/postgres/client';
-import { getSession } from '../db/neo4j/client';
 import { getExcludedPhones } from './block.service';
 import {
   CandidatePath,
   ChainMap,
   chainMapOf,
   LinkPerson,
-  MAX_CHAIN_HOPS,
   offerable,
   rankedPaths,
 } from './chainMap';
 import { confirmedWarmTieSql } from './chorusCap';
 import { decodeContactRef, encodeContactRef } from './mcp/contactRef';
-import { getCompositeKeyForPhone, getCompositeKeyForUser } from './neo4j.keys';
+import { memberMiddles } from './memberPaths.service';
 import { normalizePhone, phoneDigits } from './phone';
 import { namesFor } from './tools/findWarmPath';
 import { AccountDetails, accountDetailsFor, fetchAccountStates } from './tools/membership';
 
-const PATHS_TO_CONSIDER = 25;
-const NEO4J_TIMEOUT_MS = 8_000;
 const STEP_QUERY_TIMEOUT_MS = 5_000;
-
-/** Composite keys hold several phones joined by '-'; the first is the person's identifier. */
-function primaryPhone(compositeKey: string): string {
-  return normalizePhone(compositeKey.split('-')[0] ?? compositeKey);
-}
-
-/** The middles of the shortest paths, up to four steps; empty when either end is not in the graph. */
-async function graphMiddles(ownerId: number, targetPhone: string): Promise<string[][]> {
-  let ownerKey: string;
-  let targetKey: string;
-  try {
-    ownerKey = await getCompositeKeyForUser(ownerId);
-    targetKey = await getCompositeKeyForPhone(targetPhone);
-  } catch {
-    return [];
-  }
-  const session = getSession();
-  try {
-    const result = await session.run(
-      `MATCH (me:AllyNode {phoneKey: $ownerKey}), (t:AllyNode {phoneKey: $targetKey})
-       MATCH p = allShortestPaths((me)-[:CONTACT*1..${MAX_CHAIN_HOPS}]->(t))
-       RETURN [n IN nodes(p) | n.phoneKey] AS keys
-       LIMIT ${PATHS_TO_CONSIDER}`,
-      { ownerKey, targetKey },
-      { timeout: NEO4J_TIMEOUT_MS },
-    );
-    return result.records.map((r) => (r.get('keys') as string[]).slice(1, -1).map(primaryPhone));
-  } finally {
-    await session.close();
-  }
-}
 
 interface StepVerdict {
   readonly warm: boolean;
@@ -132,7 +97,7 @@ export async function chainMapsFor(ownerId: number, ref: string): Promise<ChainM
   const decoded = decodeContactRef(String(ownerId), ref);
   if (decoded === null) return null;
   const targetPhone = normalizePhone(decoded);
-  const middles = await graphMiddles(ownerId, targetPhone);
+  const middles = await memberMiddles(ownerId, targetPhone);
   if (middles.length === 0) return [];
   const phones = [...new Set([targetPhone, ...middles.flat()])];
   const states = await fetchAccountStates(phones);

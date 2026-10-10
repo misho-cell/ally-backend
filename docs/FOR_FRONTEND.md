@@ -71,8 +71,8 @@ routes are keyed by the **sealed id the contacts list already gives you** (`GET 
 - `state` in this stage is only `next` (the first member) and `not_contacted`. `asked` / `agreed` / `waiting` / `blocked` come with
   stage two, when the request really travels. That stage waits for Misho's word.
 - `"paths": []` means no path a member can carry. **404** for an id that is not yours. **500** with a plain message.
-- **Known limit of stage one:** it reads the shortest paths only. If every shortest path has a non-member in the middle, a longer
-  all-member path is not looked for yet.
+- **Members only, found directly (patch 0116):** the path is searched through members' own phonebooks, so a longer all-member path
+  is found even when every shortest path has a non-member in the middle.
 
 ## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
 

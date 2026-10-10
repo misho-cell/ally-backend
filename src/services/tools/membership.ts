@@ -59,7 +59,7 @@ export interface AccountDetails {
  * surviving, and counting them as users is the safe direction: mislabelling a
  * real user as a target would put them on an invitation list.
  */
-const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
+export const NETAI_ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'];
 
 const NONE: AccountDetails = {
   state: 'none',
