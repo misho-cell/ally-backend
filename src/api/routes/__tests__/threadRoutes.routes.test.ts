@@ -18,10 +18,6 @@ jest.mock('../../middleware/subscription.middleware', () => ({
   requireSubscriptionUnlessAnswering: (_req: unknown, _res: unknown, next: () => void): void =>
     next(),
 }));
-jest.mock('../../middleware/deviceFingerprint.middleware', () => ({
-  __esModule: true,
-  captureDeviceFingerprint: (_req: unknown, _res: unknown, next: () => void): void => next(),
-}));
 jest.mock('../../../services/routesBoard.service', () => ({
   ...jest.requireActual('../../../services/routesBoard.service'),
   routesForThread: jest.fn(),

@@ -14,7 +14,6 @@ import {
 } from '../middleware/auth.middleware';
 import { requireSubscriptionUnlessAnswering } from '../middleware/subscription.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
-import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import {
   getThreadsForUser,
   createThread,
@@ -499,7 +498,6 @@ threadsRouter.use(
     },
   }),
 );
-threadsRouter.use(captureDeviceFingerprint);
 
 function handleValidationErrors(
   req: Request,

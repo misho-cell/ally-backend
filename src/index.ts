@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import { rateLimit } from './api/middleware/rateLimit.middleware';
+import { captureDeviceFingerprint } from './api/middleware/deviceFingerprint.middleware';
 import authRouter from './api/routes/auth.routes';
 import chatRouter from './api/routes/chat.routes';
 import adminRouter from './api/routes/admin.routes';
@@ -103,6 +104,8 @@ app.get('/health', rateLimit({ windowMs: 60_000, max: 60 }), (req: Request, res:
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
 
 app.use(express.json({ limit: '10mb' }));
+// 4298: every signed-in request's device and app build, on every route.
+app.use(captureDeviceFingerprint);
 app.use('/auth', authRouter);
 app.use('/chat', chatRouter);
 app.use('/admin', adminRouter);

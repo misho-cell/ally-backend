@@ -17,10 +17,6 @@ jest.mock('../../middleware/subscription.middleware', () => ({
   __esModule: true,
   requireSubscription: (_req: unknown, _res: unknown, next: () => void): void => next(),
 }));
-jest.mock('../../middleware/deviceFingerprint.middleware', () => ({
-  __esModule: true,
-  captureDeviceFingerprint: (_req: unknown, _res: unknown, next: () => void): void => next(),
-}));
 jest.mock('../../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
 jest.mock('../../../db/postgres/client', () => ({
   __esModule: true,
