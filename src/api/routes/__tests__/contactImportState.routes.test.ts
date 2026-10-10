@@ -32,6 +32,16 @@ jest.mock('../../../services/contacts.service', () => ({
   importContacts: jest.fn(),
   parseVcf: jest.fn(),
 }));
+jest.mock('../../../services/contactBook.service', () => ({
+  __esModule: true,
+  DEFAULT_PAGE_SIZE: 50,
+  MAX_PAGE_SIZE: 100,
+  contactPage: jest.fn(),
+}));
+jest.mock('../../../services/contactPage.service', () => ({
+  __esModule: true,
+  contactPageFor: jest.fn(),
+}));
 jest.mock('../../../services/contactImportState.service', () => ({
   __esModule: true,
   contactImportState: jest.fn(),
@@ -42,12 +52,16 @@ import express from 'express';
 import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import contactsRouter from '../contacts.routes';
+import { contactPage } from '../../../services/contactBook.service';
+import { contactPageFor } from '../../../services/contactPage.service';
 import {
   contactImportState,
   setContactImportReminder,
 } from '../../../services/contactImportState.service';
 
 const mockState = contactImportState as jest.MockedFunction<typeof contactImportState>;
+const mockList = contactPage as jest.MockedFunction<typeof contactPage>;
+const mockPage = contactPageFor as jest.MockedFunction<typeof contactPageFor>;
 const mockSet = setContactImportReminder as jest.MockedFunction<typeof setContactImportReminder>;
 
 const STATE = {
@@ -115,4 +129,52 @@ describe('PUT /contacts/import-state', () => {
       expect(mockSet).not.toHaveBeenCalled();
     },
   );
+});
+
+/** The frontend's 06:30Z item 4: „ჩემი კონტაქტები" and a contact's page. */
+describe('GET /contacts and /contacts/:id', () => {
+  const root = (): string => base.replace('/import-state', '');
+
+  it('lists a page with the search, size and cursor passed through', async () => {
+    mockList.mockResolvedValue({
+      contacts: [{ id: 'c_x', name: 'ნინო', on_netai: true }],
+      next_cursor: null,
+    });
+    const res = await fetch(`${root()}?q=${encodeURIComponent('ნინო')}&limit=20&cursor=MjA`);
+    expect(res.status).toBe(200);
+    expect(mockList).toHaveBeenCalledWith(171, { q: 'ნინო', limit: 20, cursor: 'MjA' });
+  });
+
+  it('refuses a bad size or a foreign cursor with 400', async () => {
+    expect((await fetch(`${root()}?limit=500`)).status).toBe(400);
+    mockList.mockResolvedValue(null);
+    expect((await fetch(`${root()}?cursor=zz`)).status).toBe(400);
+  });
+
+  it('answers the page, 404 for someone else’s id, and 500 without the database error', async () => {
+    mockPage.mockResolvedValueOnce({
+      id: 'c_x',
+      name: 'ნინო',
+      role: null,
+      on_netai: true,
+      labels: [],
+      warmth: 'neutral' as never,
+      facts: [],
+      exclusions: [],
+    });
+    expect((await fetch(`${root()}/c_x`)).status).toBe(200);
+    expect(mockPage).toHaveBeenCalledWith(171, 'c_x');
+    mockPage.mockResolvedValueOnce(null);
+    expect((await fetch(`${root()}/c_other`)).status).toBe(404);
+    mockPage.mockRejectedValueOnce(new Error('relation "UserTags" is locked'));
+    const res = await fetch(`${root()}/c_x`);
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toContain('relation');
+  });
+
+  it('still routes /import-state to the import state, not to a contact', async () => {
+    mockState.mockResolvedValue(STATE);
+    expect((await fetch(base)).status).toBe(200);
+    expect(mockPage).not.toHaveBeenCalled();
+  });
 });
