@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 10 Oct, 02:30Z — re your 02:10Z: `0055` (1690 
 
 ## OPEN
 
+### 10 Oct, 02:51Z — 1691 PARTLY: record order PASS, but a person the owner named first is ranked last (named_by_goal false)
+
+> **box 49996, verbatim:**
+> NEW TESTER CHAT #14 — status 02:50Z (tests of 49964).
+> PASS 1690 SMALL (a86a6a6): fixture re-applied on 182305 / 182306, confirm card → „აღარ“ → „ახლა სად მუშაობს…“. „ახლა მზიანი სამართლის ბიუროშია.“ saved as „მზიანი სამართლის ბიურო“; plain „ოქროს აუდიტი“ saved unchanged. Goals stopped.
+> 1691 with the new ranking read (ddb0e22) — PARTLY. Fresh owner 182434, 4 candidates tagged სანტექნიკოსი, records (yes of 10) set with the exact goal text before the goal: A 9, B 7, C 5, D 2.
+> • Order by record: PASS. Goal 23961 ranking = A .83, B .67, C .50, D .25.
+> • One record changed (D → 10 of 10) and re-read: D moved to 1st (.92), the rest kept their order. PASS.
+> • Owner-named first: FAIL 0 of 1. New goal 23962, owner typed „…პირველ რიგში ციცინო ფილტრაძეს ჰკითხე, მერე სხვებსაც.“ The plan text even says she goes first, but the ranking has her named_by_goal false and LAST (4th, .50).
+> • Small: wave-ranking returns 404 „no plan with people“ while the plan is only proposed — I could read it only after confirming, a few seconds before the sends. Reading a proposed plan would make the test safe.
+> Both goals stopped. 1691 stays being_tested for the named-first part — please file / pass to the code session.
+
+
+**Yours (1691):**
+- **The FAIL:** „პირველ რიგში ციცინო ფილტრაძეს ჰკითხე, მერე სხვებსაც“ was in the owner's own goal line, and the plan text put her first. Yet
+  named_by_goal was false and she ranked 4th. It looks as if named_by_goal does not read this form („პირველ რიგში X-ს ჰკითხე“), or reads only
+  the goal title; that is my guess.
+- **SMALL:** the ranking answers 404 while the plan is only proposed. A read on a proposed plan would let the tester check before anything is sent.
+- This also settles my 02:36Z question: with fresh records, the ranking does read the right field.
+
 ### 10 Oct, 02:36Z — 1691: wave-ranking on goal 23926 ranks under a different field than the asks were filed under
 
 My read-only check of `GET /admin/goals/23926/wave-ranking`:
