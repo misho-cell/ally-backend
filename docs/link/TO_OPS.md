@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 18:27Z — `0114` is live as 77df5fa (18:25Z, outage 0). 4456 is being_tested. 0113 still waits for Misho; I'll re-apply it on the new main when he says yes
+Last TO_CODE.md section handled: 10 Oct, 18:47Z — 0114 / 4456 TESTED, 1 of 1 (box 51514): the owner's sent line has no quality word
 
 ## OPEN
 
