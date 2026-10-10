@@ -1,0 +1,225 @@
+From e842d25736a2d8fefdf7909d1cb1fbf9e8e183af Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 20:46:24 +0000
+Subject: [PATCH] =?UTF-8?q?feat(facts):=20the=20owner's=20line=20after=20a?=
+ =?UTF-8?q?=20mentioned-only=20save,=20said=20by=20the=20server=20?=
+ =?UTF-8?q?=E2=80=94=20OFF=20until=20Misho's=20yes=20(4555,=20BK)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 51778, 0 of 2 after 0119: the model ignored the save's kept_as:
+mentioned_note and still wrote „შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო
+ბანკი" ✓". The sentence that claims the save is now replaced, once, by the
+server's own line — new user-visible text, so MENTIONED_NOTE_LINE_ON stays
+false and the exact lines (ka/en/ru/es) wait in NIGHT_QUESTIONS BK.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/NIGHT_QUESTIONS.md                       | 10 ++++
+ .../aMentionedNoteIsNotSaidSaved.test.ts      | 31 ++++++++++
+ .../__tests__/contactFacts.service.test.ts    |  2 +-
+ src/services/chat.service.ts                  | 13 ++++-
+ src/services/mentionedNoteLine.ts             | 58 +++++++++++++++++++
+ 5 files changed, 112 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts
+ create mode 100644 src/services/mentionedNoteLine.ts
+
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index a962f51..aeebd2e 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -87,6 +87,16 @@ while its questions are unanswered is a list that loses them.
+   > ru: „Уведомления работают. Так я сообщу, когда кто-то ответит."
+   > es: „Las notificaciones funcionan. Así te avisaré cuando alguien responda."
+ 
++- **BK — 4555, the owner's line after a value kept only as „mentioned". Drafted 10 Oct 20:55 UTC for Misho's yes on the exact text.**
++  When the owner relays something from the web or from others („ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში" მუშაობს") and it is
++  kept only as a mentioned note beside what they stated, the reply said „შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო ბანკი" ✓" (2 of 2).
++  With `MENTIONED_NOTE_LINE_ON = true` (mentionedNoteLine.ts) the sentence claiming the save is replaced, once, by:
++  > ka: „ეს ჩავინიშნე როგორც ნახსენები: „{value}“. შენი ნათქვამი უცვლელად დარჩა."
++  > en: „I noted this as something mentioned: “{value}”. What you told me stays as it was."
++  > ru: „Я записал это как упомянутое: «{value}». То, что сказал ты, осталось без изменений."
++  > es: „Lo anoté como algo mencionado: «{value}». Lo que tú me dijiste sigue igual."
++  `{value}` is what was mentioned (e.g. „სანიმუშო ბანკი"). Undo: the switch back to false.
++
+ - **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
+   Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
+   regular conversation, no goal, like the day's question) gets this section:
+diff --git a/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts b/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts
+new file mode 100644
+index 0000000..c48e17c
+--- /dev/null
++++ b/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts
+@@ -0,0 +1,31 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { MENTIONED_NOTE_LINE_ON, withMentionedNoteLine } from '../mentionedNoteLine';
++
++/** 4555 (box 51778, 0 of 2 after 0119): „შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო ბანკი" ✓". */
++describe('a value kept only as a mentioned note', () => {
++  it('replaces the sentence that claims it was saved, once', () => {
++    const reply = 'შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო ბანკი“ ✓\nსხვა რამეში დაგეხმარო?';
++    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka', true)).toBe(
++      'ეს ჩავინიშნე როგორც ნახსენები: „სანიმუშო ბანკი“. შენი ნათქვამი უცვლელად დარჩა.\nსხვა რამეში დაგეხმარო?',
++    );
++  });
++
++  it('leaves a reply that does not claim the save alone', () => {
++    const reply = 'კარგი, გავიგე.';
++    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka', true)).toBe(reply);
++  });
++
++  it('does nothing while it is off, which it is until Misho’s yes (BK)', () => {
++    const reply = 'შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი“.';
++    expect(MENTIONED_NOTE_LINE_ON).toBe(false);
++    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka')).toBe(reply);
++  });
++
++  it('is applied to every reply, with the value the save kept as a note', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      "finalText = withMentionedNoteLine(finalText, runMentionedNote.get(runId) ?? '', runLang(runId));",
++    );
++  });
++});
+diff --git a/src/services/__tests__/contactFacts.service.test.ts b/src/services/__tests__/contactFacts.service.test.ts
+index 29fdeb5..f89c5cd 100644
+--- a/src/services/__tests__/contactFacts.service.test.ts
++++ b/src/services/__tests__/contactFacts.service.test.ts
+@@ -748,7 +748,7 @@ describe('a fact carrying no contact', () => {
+     const dispatcher = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+ 
+     expect(dispatcher).toContain(
+-      'return await submitContactFact(\n' +
++      'const saved = await submitContactFact(\n' +
+         '          userId,\n' +
+         "          String(input['phone'] ?? ''),\n" +
+         "          String(input['field_type'] ?? ''),\n" +
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 466a399..12ff20b 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -448,6 +448,7 @@ import { correctContactFact, keepEndedJob } from './factCorrections.service';
+ import { correctionIsAJobThatEnded } from './jobEnded';
+ import { relaysHearsay } from './hearsay';
+ import { withoutSavedClaimOnAQuestion } from './savedClaim';
++import { withMentionedNoteLine } from './mentionedNoteLine';
+ import {
+   getCampaignInviteContext,
+   buildCampaignInviteSection,
+@@ -8655,6 +8656,8 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
+ const runLastCaption = new Map<string, string>();
+ /** The owner's own line this run answers; absent on a run the system started. */
+ const runOwnerLine = new Map<string, string>();
++/** 4555: the value a save kept only as a mentioned note in this run. */
++const runMentionedNote = new Map<string, string>();
+ /** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
+ const runRepeatedGoal = new Map<string, number>();
+ 
+@@ -8666,6 +8669,7 @@ function clearRunState(runId: string): void {
+   runModes.delete(runId);
+   runLastCaption.delete(runId);
+   runOwnerLine.delete(runId);
++  runMentionedNote.delete(runId);
+   runRepeatedGoal.delete(runId);
+   runLanguages.delete(runId);
+   runSearchResults.delete(runId);
+@@ -9256,7 +9260,7 @@ async function executeToolCall(
+         // arrives as `undefined` and `fieldTypeRaw.trim()` throws a TypeError
+         // that ends the whole run. The connector's door coerces and checks
+         // both; this one did neither.
+-        return await submitContactFact(
++        const saved = await submitContactFact(
+           userId,
+           String(input['phone'] ?? ''),
+           String(input['field_type'] ?? ''),
+@@ -9268,6 +9272,10 @@ async function executeToolCall(
+             ? 'mentioned'
+             : 'stated',
+         );
++        if (saved.kept_as !== undefined && runId !== undefined) {
++          runMentionedNote.set(runId, String(input['value'] ?? ''));
++        }
++        return saved;
+       } catch (err) {
+         // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
+         if (err instanceof FactRefusedError) return { saved: false, error: err.message };
+@@ -13895,6 +13903,9 @@ async function runToolLoop(
+     choices = [notDeleted.confirm];
+   }
+ 
++  // 4555: „I saved his job" for a value kept only as a mentioned note becomes the server's line.
++  finalText = withMentionedNoteLine(finalText, runMentionedNote.get(runId) ?? '', runLang(runId));
++
+   // 4490: a plain question saves nothing — an „I saved" sentence under its answer is taken out.
+   if (!ownerAbsent) {
+     finalText = withoutSavedClaimOnAQuestion(
+diff --git a/src/services/mentionedNoteLine.ts b/src/services/mentionedNoteLine.ts
+new file mode 100644
+index 0000000..56b9f62
+--- /dev/null
++++ b/src/services/mentionedNoteLine.ts
+@@ -0,0 +1,58 @@
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 4555 (tester box 51778, 0 of 2 after 0119): after „ინტერნეტში წერია, რომ
++ * ბახვა „სანიმუშო ბანკში" მუშაობს", the bank was kept only as a mentioned
++ * note beside the job the owner stated — and the reply still said „შევინახე:
++ * ბახვა, დამსაქმებელი: „სანიმუშო ბანკი" ✓". The save's own result says what
++ * happened (kept_as: mentioned_note) and the model ignored it both times. So
++ * the sentence that claims the save is replaced by the server's own line.
++ *
++ * OFF until Misho's yes on the exact lines below (NIGHT_QUESTIONS BK).
++ */
++export const MENTIONED_NOTE_LINE_ON = false;
++
++const MENTIONED_LINE: Readonly<Record<RunLanguage, (value: string) => string>> = {
++  ka: (value) => `ეს ჩავინიშნე როგორც ნახსენები: „${value}“. შენი ნათქვამი უცვლელად დარჩა.`,
++  en: (value) =>
++    `I noted this as something mentioned: “${value}”. What you told me stays as it was.`,
++  ru: (value) =>
++    `Я записал это как упомянутое: «${value}». То, что сказал ты, осталось без изменений.`,
++  es: (value) => `Lo anoté como algo mencionado: «${value}». Lo que tú me dijiste sigue igual.`,
++};
++
++const SAID_SAVED_RE =
++  /(?<![\p{L}\p{M}])(?:შევინახე|დავიმახსოვრე|ჩავიწერე|saved|noted|сохранил[аи]?|запомнил[аи]?|guardé)(?![\p{L}\p{M}])/iu;
++/** A sentence ends at . ! ? or a line break; the mark stays with its sentence. */
++const SENTENCE_RE = /[^.!?\n]+[.!?]*\s*|\n+/gu;
++const VALUE_STEM_CHARS = 5;
++
++function speaksOfValue(sentence: string, value: string): boolean {
++  const stem = value.trim().toLowerCase().slice(0, VALUE_STEM_CHARS);
++  return stem !== '' && sentence.toLowerCase().includes(stem);
++}
++
++/**
++ * The reply with each sentence that claims the mentioned value was saved
++ * replaced by the server's line, said once. Untouched when nothing claims it.
++ */
++export function withMentionedNoteLine(
++  reply: string,
++  mentionedValue: string,
++  language: RunLanguage,
++  on: boolean = MENTIONED_NOTE_LINE_ON,
++): string {
++  if (!on || mentionedValue.trim() === '') return reply;
++  const line = (MENTIONED_LINE[language] ?? MENTIONED_LINE.ka)(mentionedValue.trim());
++  let said = false;
++  const sentences = (reply.match(SENTENCE_RE) ?? []).flatMap((sentence) => {
++    if (!SAID_SAVED_RE.test(sentence) || !speaksOfValue(sentence, mentionedValue)) {
++      return [sentence];
++    }
++    if (said) return [];
++    said = true;
++    const trailing = /\s*$/u.exec(sentence)?.[0] ?? '';
++    return [`${line}${trailing === '' ? ' ' : trailing}`];
++  });
++  return said ? sentences.join('').trim() : reply;
++}
+-- 
+2.43.0
+

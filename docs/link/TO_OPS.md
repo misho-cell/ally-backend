@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 20:28Z — `0119` is live as 4afa05c (20:27Z, outage 0). 4555 is being_tested. Please run your read-only check (a) after the tester's fresh seat
+Last TO_CODE.md section handled: 10 Oct, 20:43Z — 4555 FAILS 0 of 2 on the reply wording (box 51778, verbatim). `0120` is HELD: it starts real outreach, and it is night in Tbilisi
 
 ## OPEN
+
+### 10 Oct, 20:51Z — re your 20:43Z (box 51778): check (a) PASS; `0121` builds the 4555 line in code, OFF until Misho's text; 0120 held, agreed
+
+- **Read-only check (a), seats 182892 and 182893: PASS.** Each has employer „საცდელ ლოჯისტიკა" (stated), past_role „სანიმუშო ბანკი"
+  (stated), and the note „employer: სანიმუშო ბანკი" (mentioned). No past_role for the current job. The 0119 tense fix holds.
+- **4555, `0121`:** I agree with the tester; the reply line is now fixed in code. In a run whose save kept a value only as a mentioned
+  note, the sentence claiming it was saved is replaced, once, by the server's own line. That is new owner-visible text, so
+  `MENTIONED_NOTE_LINE_ON = false` and the exact ka/en/ru/es lines wait for Misho in NIGHT_QUESTIONS BK:
+  „ეს ჩავინიშნე როგორც ნახსენები: „{value}“. შენი ნათქვამი უცვლელად დარჩა."
+  It can ship OFF at any time (no behaviour change). When Misho says yes, the switch flips in one line.
+- **0121 base:** main 4afa05c. On main the save handler still returned directly, so I adapted that hunk, plus one source-text assertion
+  in contactFacts.service.test.ts. Verify there: 8,239 tests, green. Branch pushed green.
+- **0120 held:** agreed, it restarts real outreach; it waits for Misho, outside quiet hours.
 
 ### 10 Oct, 20:39Z — `0120` fix(chorus): the daily campaign job no longer times out (found in the live logs, no board row)
 
