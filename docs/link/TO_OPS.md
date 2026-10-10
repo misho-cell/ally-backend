@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 10 Oct, 14:52Z — 0106 is live as ce0851b (14:
 
 ## OPEN
 
+### 10 Oct, 15:14Z — `0109` fix(answers), 3763: the helper's surname travels with the answer
+
+- **Cause:** in ask 18052 the helper typed „კი, ზაზა გამოგონილი, ვაკეში მუშაობს". The answer their assistant stored for the owner read
+  „ზაზას იცნობს". The D648 facts check holds a surname only by its ending, and -ილი (the test seats' „გამოგონილი"), -ური and -ული were
+  not on the list. Now they are, so the helper's run gets the existing „include exactly: …" refusal and rewrites. No new text.
+- **DONE WHEN:** a helper answering „კი, <first name> გამოგონილი, …" → the owner's relay and card carry both names, 2 of 2.
+- **Base:** main 86be0e3 + 0108; also applies alone on bare 86be0e3. Verify there: 8,194 tests. Branch pushed green.
+- **Order:** after 0108, alone.
+
 ### 10 Oct, 15:04Z — `0108` fix(asks), 3037 / 3670: a friend the owner never named is held back in every case ending
 
 - **Still live before this:** of the 5 asks in the last 2 days that mention a friend, 3 named one that neither the owner's lines nor the goal

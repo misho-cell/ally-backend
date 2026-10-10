@@ -1,0 +1,80 @@
+From 2a3a64af9808b60e8117e73d71179597f24da125 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 15:11:35 +0000
+Subject: [PATCH] =?UTF-8?q?fix(answers):=20a=20surname=20ending=20in=20-?=
+ =?UTF-8?q?=E1=83=98=E1=83=9A=E1=83=98,=20-=E1=83=A3=E1=83=A0=E1=83=98=20o?=
+ =?UTF-8?q?r=20-=E1=83=A3=E1=83=9A=E1=83=98=20travels=20with=20the=20helpe?=
+ =?UTF-8?q?r's=20answer=20(3763)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 48564, ask 18052: the helper typed „კი, ზაზა გამოგონილი, ვაკეში
+მუშაობს", and the answer stored for the owner read „ზაზას იცნობს". The
+D648 facts check holds a surname only after a first name and only by its
+ending; -ილი, -ური and -ული were not among them. They are now, so the
+helper's run is told to keep the surname, with the existing refusal.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theHelpersFactsTravelExact.test.ts        | 24 +++++++++++++++++++
+ src/services/answerFacts.ts                   | 10 ++++++--
+ 2 files changed, 32 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/theHelpersFactsTravelExact.test.ts b/src/services/__tests__/theHelpersFactsTravelExact.test.ts
+index a31e377..da473eb 100644
+--- a/src/services/__tests__/theHelpersFactsTravelExact.test.ts
++++ b/src/services/__tests__/theHelpersFactsTravelExact.test.ts
+@@ -87,3 +87,27 @@ describe('the helper’s reply after the send', () => {
+     expect(withoutQuotedCopy('გადავეცი, მადლობა.')).toBe('გადავეცი, მადლობა.');
+   });
+ });
++
++/** 3763 (box 48564, ask 18052): the helper's „ზაზა გამოგონილი" reached the owner as „ზაზას". */
++describe('a surname the helper wrote', () => {
++  it('is held to the answer when it ends in -ილი, -ური or -ული', () => {
++    expect(
++      missingFacts(
++        'კი, ზაზა გამოგონილი, ვაკეში მუშაობს, ძალიან კარგია.',
++        'ზაზას იცნობს, ვაკეში მუშაობს სანტექნიკოსად და ძალიან კარგია.',
++      ),
++    ).toEqual(['გამოგონილი']);
++    expect(missingFacts('გიორგი გოგოლაური კარგი ხელოსანია.', 'გიორგის გირჩევს.')).toEqual([
++      'გოგოლაური',
++    ]);
++  });
++
++  it('is kept in any case ending', () => {
++    expect(
++      missingFacts(
++        'კი, ზაზა გამოგონილი, ვაკეში მუშაობს.',
++        'ზაზა გამოგონილს იცნობს, ვაკეში მუშაობს.',
++      ),
++    ).toEqual([]);
++  });
++});
+diff --git a/src/services/answerFacts.ts b/src/services/answerFacts.ts
+index bdca3f2..2f1b89e 100644
+--- a/src/services/answerFacts.ts
++++ b/src/services/answerFacts.ts
+@@ -19,8 +19,14 @@ const NUMBER_RE = /\d+(?:[.,:/-]\d+)*/gu;
+ const LINK_RE = /(?:https?:\/\/\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.]+)/giu;
+ const LATIN_WORD_RE = /\b[A-Za-z][A-Za-z'’-]{2,}\b/gu;
+ const WORD_RE = /[\p{L}]+/gu;
+-/** Words a surname ends with, in its plain or case form. */
+-const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი|ია)\p{L}{0,3}$/u;
++/**
++ * Words a surname ends with, in its plain or case form. 3763 (box 48564, ask
++ * 18052): „ზაზა გამოგონილი" reached the owner as „ზაზა" — -ილი was not a
++ * surname ending, nor were -ური and -ული („გოგოლაური"). A word
++ * right after a first name with one of these is held to the answer; a false
++ * hit costs one rewrite that keeps the helper's own word.
++ */
++const SURNAME_RE = /^\p{L}+(?:შვილ|ძე|ძის|ავა|უა|ანი|ელი|ია|ურ|ულ|ილ)\p{L}{0,3}$/u;
+ /** The word before one of these is the street's name. */
+ const STREET_RE = /([ა-ჰ]+)\s+(?:ქ\.|ქუჩ\p{L}*|გამზ\.|გამზირ\p{L}*|ჩიხ\p{L}*|შესახვ\p{L}*)/gu;
+ /**
+-- 
+2.43.0
+
