@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 15:04Z — `0108` fix(asks), 3037 / 3670
 
 ## OPEN
 
+### 10 Oct, 15:13Z — `0108` is live as eda040b (15:12Z, outage 0). 3670 is being_tested. Once the tester's 5 plans are done, please run your read-only check (asks since the deploy with „მეგობ")
+
 ### 10 Oct, 15:09Z — `0108` (35bc513d) is shipping now, alone
 
 ### 10 Oct, 15:06Z — 4292, 4298, 4324 and 4325 TESTED. 958 MISSES on the stream clock: 7.0–8.2 s, 0 of 6 (box 51118, verbatim)
