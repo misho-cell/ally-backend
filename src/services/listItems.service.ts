@@ -408,7 +408,7 @@ const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
   es: ['Netai: camino', 'Netai: a través de', 'Netai: estado', 'Netai: respuesta'],
 };
 
-interface WorkedRow {
+export interface WorkedRow {
   readonly row_data: string[];
   readonly way_in: string;
   readonly through_whom: string | null;
@@ -469,11 +469,46 @@ export async function listWorkbook(
     ...(helpers === null ? [] : [NEED_COLUMN[language] ?? NEED_COLUMN.ka]),
   ]);
   for (const r of result.rows) {
-    const needHelpers =
-      helpers === null ? [] : [helpers.get((r.row_data[needAt] ?? '').trim()) ?? ''];
-    sheet.addRow([...workedCells(r, language), ...needHelpers].map(fitsACell));
+    const helper = helpers === null ? null : (helpers.get((r.row_data[needAt] ?? '').trim()) ?? '');
+    const cells = workedCells(r, language);
+    sheet.addRow(
+      [
+        ...(helper ? withHelperSaid(cells, r, language) : cells),
+        ...(helper === null ? [] : [helper]),
+      ].map(fitsACell),
+    );
   }
   return Buffer.from(await book.xlsx.writeBuffer());
+}
+
+/**
+ * NIGHT_QUESTIONS BE (4160 note b, the tester's 49805): a row whose need
+ * column names a helper also said „შენს კონტაქტებში არავინ / გზა არ არის"
+ * (about reaching the listed person), which reads as a contradiction. With
+ * this on, those two cells point at the helper column instead.
+ *
+ * OFF until Misho's yes on the exact words: they are new text in the owner's file.
+ */
+export const SEE_HELPER_ON = false;
+
+const SEE_HELPER: Readonly<Record<RunLanguage, string>> = {
+  ka: 'იხ. დამხმარე',
+  en: 'see the helper',
+  ru: 'см. помощника',
+  es: 'ver quién ayuda',
+};
+
+/** The way-in and state cells of a nobody/no-route row, when a helper is named. */
+export function withHelperSaid(
+  cells: string[],
+  r: WorkedRow,
+  language: RunLanguage,
+  on: boolean = SEE_HELPER_ON,
+): string[] {
+  if (!on || r.way_in !== 'none') return cells;
+  const see = SEE_HELPER[language] ?? SEE_HELPER.ka;
+  const at = r.row_data.length;
+  return cells.map((c, i) => (i === at || (i === at + 2 && r.state === 'no_route') ? see : c));
 }
 
 /** One row's own cells and Netai's four. */
