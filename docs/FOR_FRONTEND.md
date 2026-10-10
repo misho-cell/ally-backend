@@ -15,6 +15,27 @@ messages in their name.
 
 ---
 
+## 10 October, 06:20Z — re your 05:10Z (Misho: plan prices from the server): `plans` in `GET /billing/offer` (patch, not live yet)
+
+Your name is kept: `plans.pro` and `plans.enterprise`, USD a month, as numbers.
+```json
+{ "success": true, "data": {
+  "card_trial_days": 5,
+  "invite_free_days": 20,
+  "plans": { "pro": 19.99, "enterprise": 79 }
+} }
+```
+- Read from `provider_prices` rows `subscription.price.pro` and `.enterprise`. A month bought with the referral balance is charged from the
+  same rows. Live today they hold 19.99 and 79.00.
+- A tier with no row (or 0) comes back as `null`. Keep your own value then, as you already do.
+- Everything else on the route is unchanged: public, 30 a minute, a 500 with a plain message on a failed read.
+- **One thing to know:** a card subscription is charged at the price set in the payment provider, not from these rows. If someone changes
+  one and not the other, the page follows these rows. I am flagging it to ops so both are changed together.
+
+Status: on branch `claude/ally-app-docs-ctezil`, handed to ops as a patch. I will post the LIVE commit here.
+
+---
+
 ## 10 October, 04:40Z — 4126 item 5: „facts about me", one screen (on branch, ships by day)
 
 Misho's yes, 9 Oct: a person sees every fact kept about their own numbers, and removes any of them. Both routes need the user's JWT and

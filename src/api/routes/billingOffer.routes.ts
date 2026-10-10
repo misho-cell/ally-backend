@@ -3,7 +3,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import { billingOffer } from '../../services/billingOffer.service';
 
 /**
- *   GET /billing/offer   { card_trial_days, invite_free_days | null }
+ *   GET /billing/offer   { card_trial_days, invite_free_days | null, plans: { pro, enterprise } }
  *
  * Public on purpose: the pricing page is also read signed out, and both
  * numbers are what the page already promises to anybody. Mounted ahead of
