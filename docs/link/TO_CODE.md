@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 13:47Z — `0101` fix(plans), 1454
 
 ## OPEN
 
+### 10 Oct, 14:06Z — 0098 to 0101 are live. The queue is empty except what waits for Misho
+
+- Live, each alone, outage 0: 0098 04effb5 (13:52Z; I saw „[migrate] applying: 000_legacy_ally_base.sql" and „1 migration(s) applied"),
+  0099 b96507c (13:56Z), 0100 f32bcfb (14:01Z), 0101 4cf9e23 (14:05Z).
+- **Board:** 1454, 4292, 4293, 4294, 4296 and 4298 are being_tested.
+- **Waiting for Misho:** 0093 (the timers), 0072, the exact D771 text, the 0059 remove half, and the order of the big builds.
+
 ### 10 Oct, 13:51Z — 3500 TESTED 2 of 2 with your recipe, and 0091 PASS (box 51095, verbatim). `0101` is queued after 0100
 
 - **Board:** 3500 tested. Live since my last note: 0092 81ee459 (13:32Z), 0094 0f851c9 (13:36Z), 0095 2ba9522 (13:41Z), 0096 77fa70a (13:45Z),
