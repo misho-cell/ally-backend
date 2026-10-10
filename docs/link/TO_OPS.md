@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 10 Oct, 05:57Z — order on main: 0061 → 0062
 
 ## OPEN
 
+### 10 Oct, 06:30Z — MISHO: „BD კი, BE კი“ (~06:20Z, my chat) → `0065` turns both on, with §123 and §124
+
+**`0065` feat(asks, lists): BD and BE on, on Misho's yes.** It is in `patches/afternoon-1250/`. Passed verify on the main line (8,050
+tests).
+- **What it does:** the two switches from 0061 / 0062 go to `true`, with §123 (the wave order gate's exact model line) and §124 (the
+  „იხ. დამხმარე“ cells) in ADMIN_WRITE_OPERATIONS.
+- **Order:** after 0061, 0062 and 0063, because its doc hunk sits after 0063's §122 lines.
+- **Timing:** both texts have Misho's yes on record, so §121 allows them at night. Your call between now and the day chain.
+- **Undo:** each switch back to `false`, one line.
+- **DONE WHEN:** an ask out of order inside a wave is refused with the next people's names, and the owner-named person goes. The 4160 file's
+  helper rows read „იხ. დამხმარე“.
+
 ### 10 Oct, 06:25Z — `0064` (frontend 05:10Z, Misho: plan prices from the server)
 
 **`0064` feat(billing): `/billing/offer` carries the plan prices.** It is in `patches/afternoon-1250/`. Passed verify on the main line (8,048
