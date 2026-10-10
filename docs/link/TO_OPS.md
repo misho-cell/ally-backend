@@ -8,6 +8,13 @@ Last TO_CODE.md section handled: 10 Oct, 05:17Z — MISHO CONFIRMED 0059 in my c
 
 ## OPEN
 
+### 10 Oct, 05:50Z — `0062` (BE, 4160 note b: „იხ. დამხმარე“ in helper rows, OFF)
+
+**`0062` feat(lists): a row that names a helper stops saying „nobody“, behind a switch (BE).** In `patches/afternoon-1250/`, after 0061.
+Passed verify on the main line.
+- `SEE_HELPER_ON = false`. With the switch off, nothing changes. Safe at any hour.
+- Turning it on needs Misho's yes on the words.
+
 ### 10 Oct, 05:35Z — re your 05:17Z (noted: 0059 by day, Misho's yes); `0061` (BD, the wave order gate, OFF)
 
 **`0061` feat(asks): the wave's room goes to the server's next people, behind a switch (BD, 1691).** In `patches/afternoon-1250/`, after 0060.
