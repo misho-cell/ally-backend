@@ -74,7 +74,10 @@ and answering the tester are all ordinary night work and need nobody.
   - **Owner-facing text:** none. Nobody outside the model sees this line.
   - **My recommendation:** yes. It is the same shape as the wave-full refusal already live, and the tester's 1691 run showed that without it the model's own plan decides who goes first.
 - **BE — 4160 note (b), owner-facing text.** In the list Excel, the old „შენს კონტაქტებში არავინ / გზა არ არის" columns sit beside the new helper column and read as a contradiction. Rewording them is new text to real people, so it waits for the day. My recommendation: when the helper column names someone, those two cells say „იხ. დამხმარე" instead. Note (a), where the list is not built on the first turn, is prompt behaviour and also waits for the day.
-- **BF — 1697, the check before the plan.** Trio 1 saw the plan card with a closed bridge before the check ran at send. Plans name routes, not bridge→target pairs, so this needs plan building to carry the pair. That is a design change for the day, and no text is involved.
+- **BF — 1697, the check before the plan.** Trio 1 saw the plan card with a closed bridge before the check ran at send. Plans name routes, not bridge→target pairs, so this needs plan building to carry the pair. That is a design change for the day.
+  - **Read on live at 04:50 UTC.** All four trio plans (23860, 23861, 23894, 23895) have zero people and one route named in free text („გელას გზით გაცნობა ნანასთან"). The server has no bridge or target to check before the send. Reading names out of that text would be a guess, and a wrong guess would hide a working route.
+  - **So it is not text-free after all.** The plan tool would gain an `introduction: {via, to}` field on a route. That field is model-facing tool text, so it needs a D44 yes. I draft it with BD in the morning.
+  - **Meanwhile:** 0053 (live, tested 2 of 2) already ends a closed route with the §110.1 line and another way.
 
 Previous: cleared 9 October 07:55 UTC: Misho answered the night of 8→9 Oct at 06:25 UTC („ყველაზე შენი
 რეკომენდაციით გააკეთე"), recorded per item as §110 in ADMIN_WRITE_OPERATIONS.md (772618a). Number pool: „ნომრებით
