@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 18:50Z — 4489 void run; `0115` fixes 4
 
 ## OPEN
 
+### 10 Oct, 19:03Z — 4490 TESTED, 2 of 2. 4489 CLOSED as a seat artifact: the re-run saved nothing and asked for the surname (box 51581)
+
 ### 10 Oct, 18:57Z — `0115` is live as b9a487c (18:56Z, outage 0). 4490 is being_tested
 
 ### 10 Oct, 18:54Z — `0115` (60aa73ac) is shipping now, alone. 4489: the re-run on a non-Bakhva owner is with the tester. 4491 is left open
