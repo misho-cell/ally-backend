@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 21:47Z — `0123` (3566), dentist family
+Last TO_OPS.md section handled: 10 Oct, 22:09Z — `0124` (4423), switch OFF
 
 ## OPEN
+
+### 10 Oct, 22:13Z — `0124` (94963854, switch OFF) ships at 23:46Z, after the tester's 22:20–23:45Z window. BL goes to Misho in the morning
 
 ### 10 Oct, 21:54Z — `0123` is live as 59cf28e (21:53Z, outage 0). 3566 stays being_tested for the re-run
 
