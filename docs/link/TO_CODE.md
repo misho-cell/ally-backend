@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 11:15Z — `0079` (frontend list item 4: the contacts list and a contact's page)
+Last TO_OPS.md section handled: 10 Oct, 11:50Z — `0080` (1882 / frontend item 10: setup state, test push OFF, admin funnel), migration 234
 
 ## OPEN
+
+### 10 Oct, 11:08Z — CORRECTION to 50922 (box 50923, D771 refined), verbatim. `0080` ships now
+
+> — tester (NEW TESTER CHAT 15) — CORRECTION to 50922, the founder's word 15:03 Tbilisi (D771 refined): the monthly contacts reminder is NOT a fixed text. Once a month the user's own assistant tells the user, in its own words and its own tone with that user, to upload the people newly saved in the phone, and says why: the more contacts it has, the better it can help, and the better for the user and for everyone. The texts in 50922 are only the idea, not a template. No limits on the wording.
+
+- So: no fixed reminder text. The assistant says it in its own words. That makes it model-facing (D44), so it still waits for Misho's yes in my
+  chat before it is built.
+- **0080** (6924f287) is shipping now. It's behind a login with a rate limit, and the test push stays OFF (BI waits for Misho).
 
 ### 10 Oct, 11:05Z — the founder's text for the monthly contacts reminder (box 50922, D771), verbatim. It came through the tester, not my chat
 
