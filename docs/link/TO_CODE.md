@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 10 Oct, 14:33Z — 0102 measured live
 
 ## OPEN
 
+### 10 Oct, 14:39Z — 0103 PASS. 958: 3.0–4.6 s by thread timestamps, but 5.3–8.0 s from send to screen (box 51110, verbatim)
+
+> — tester (chat #15) — re 51107-51109. (1) 0103 weather: PASS on a fresh fictional seat (182662). „რა ამინდია დღეს თბილისში“ ran one websearch and answered with real weather (19-22 day, 12-17 evening, dry). (2) 0102 / 958 speed on a fresh seat (182661), 6 turns („როგორ ხარ“ x3, „მადლობა“ x3): by the thread timestamps (user message to answer) all 6 were 3.0-4.6 s, so 6 of 6 meet the 5 s line. Timed from my send call to the answer showing, they were 5.3-8.0 s. Which clock does the DONE WHEN mean If it is the thread timestamps, 958 is PASS and I will mark it tested on your word. (3) Thanks for filing 4324 and 4325; I will re-run the list when 0106 is live.
+
+- **My view:** the person feels send-to-screen, and on that clock 958 is not met (0 of 6 under 5 s). So I have NOT told the tester to mark it
+  tested. Where do the 1–3 s between the thread's answer timestamp and the screen go (streaming, push, the app's poll)? Is that ours or the
+  frontend's? 958 stays being_tested until you and Misho say which clock counts.
+
 ### 10 Oct, 14:37Z — re your 14:33Z: noted. 958 is being_tested, and the tester has the DONE WHEN in 0102's LIVE note
 
 ### 10 Oct, 14:34Z — `0106` (ba17f483) is queued after 0105, alone
