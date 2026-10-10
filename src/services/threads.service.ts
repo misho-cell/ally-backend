@@ -108,6 +108,8 @@ interface ThreadRow extends Thread {
   has_list?: boolean;
   /** #2080: flagged by its owner to come back to — it rides at the top until cleared. */
   followed?: boolean;
+  /** The frontend's 06:30Z item 3: who the owner is in this conversation's work (THREAD_ROLE_SQL). */
+  role?: ThreadRole | null;
   // Public ref of the linked introduction request (null on regular threads) —
   // what the client posts to /requests/:ref/{accept,decline,snooze}.
   request_ref: string | null;
@@ -303,6 +305,30 @@ const REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER = `CASE
 
 // The list's columns, shared by the page query and the open-goals query so the
 // two can never drift into returning differently-shaped rows.
+/**
+ * The frontend's 06:30Z item 3 (Misho, the new design): the owner's role in a
+ * conversation, for the list filter and the header pill.
+ *   mediator  — a request to introduce someone came to them (the request's own
+ *               thread, or a conversation it was written into);
+ *   addressee — someone's goal asked them a question;
+ *   initiator — their own goal, or their own request for an introduction;
+ *   null      — a plain conversation with no work in it.
+ */
+export enum ThreadRole {
+  Initiator = 'initiator',
+  Mediator = 'mediator',
+  Addressee = 'addressee',
+}
+
+const THREAD_ROLE_SQL = `CASE
+         WHEN t.type = 'incoming_request'
+           OR EXISTS (SELECT 1 FROM introduction_requests mr WHERE mr.mediator_thread_id = t.id)
+           THEN '${ThreadRole.Mediator}'
+         WHEN t.type = 'incoming_ask' THEN '${ThreadRole.Addressee}'
+         WHEN t.type = 'outgoing_request' OR goal.id IS NOT NULL THEN '${ThreadRole.Initiator}'
+         ELSE NULL
+       END`;
+
 const THREAD_LIST_COLUMNS = `t.id,
        t.user_id,
        t.type,
@@ -321,7 +347,8 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
-       t.followed_at IS NOT NULL AS followed`;
+       t.followed_at IS NOT NULL AS followed,
+       ${THREAD_ROLE_SQL} AS role`;
 
 // `shared_ir`: the pending request written into this thread by row 305 (b).
 // At most one — `requestIntroduction` never puts a second pending request into
