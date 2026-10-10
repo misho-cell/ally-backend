@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 17:00Z — `0112` fix(facts), 3235
+Last TO_OPS.md section handled: 10 Oct, 17:21Z — `0113` feat(people), member card and path map (1849 stage one, §127)
 
 ## OPEN
+
+### 10 Oct, 17:25Z — `0113` applied clean (a fresh hash on the chain). It ships when Misho confirms in my chat
+
+- It shows a person another member's card (role, company, city, areas, offers) and paths through other members. That widens what one
+  member sees of another, so I ask him here too, as I did for 0088. If he says yes, it ships at once, alone.
 
 ### 10 Oct, 17:07Z — `0112` is live as 7e43eb5 (17:06Z, outage 0). 3235 is being_tested (first half only)
 
