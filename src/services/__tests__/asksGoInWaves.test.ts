@@ -1,5 +1,6 @@
 jest.mock('../waveOrder', () => ({
   inWaveOrder: jest.fn((people: unknown[]) => Promise.resolve([...people])),
+  ownerGoalWords: jest.fn(() => Promise.resolve('')),
 }));
 jest.mock('../../db/postgres/client', () => ({
   __esModule: true,

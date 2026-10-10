@@ -20,11 +20,15 @@ const C = { name: 'ცირა ტესტური', phone: '+447700900203', 
 const F = { name: 'ფიქრია ტესტური', phone: '+447700900206', route: 'r' };
 const TITLE = 'ელექტრიკოსი მჭირდება სახლში გაყვანილობის შესაკეთებლად';
 
-function goal(people: readonly (typeof A)[]): Awaited<ReturnType<typeof getTaskById>> {
+function goal(
+  people: readonly (typeof A)[],
+  proposed: readonly (typeof A)[] | null = null,
+): Awaited<ReturnType<typeof getTaskById>> {
   return {
     user_id: '182405',
     title: TITLE,
     plan: { people_to_involve: people },
+    plan_proposed: proposed === null ? null : { people_to_involve: proposed },
     plan_version: 1,
     plan_approved_at: null,
   } as unknown as Awaited<ReturnType<typeof getTaskById>>;
@@ -55,9 +59,12 @@ describe('the wave ranking read (1691)', () => {
         ]),
       ),
     );
-    mockQuery.mockResolvedValueOnce({ rows: [{ found: true }] } as never).mockResolvedValueOnce({
-      rows: [stat(A.phone, 9, 10), stat(C.phone, 5, 10), stat(F.phone, 0, 10)],
-    } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({
+        rows: [stat(A.phone, 9, 10), stat(C.phone, 5, 10), stat(F.phone, 0, 10)],
+      } as never);
     const result = await goalWaveRanking(23926);
     expect(result.outcome).toBe(WaveRankingOutcome.Read);
     expect(result.ranking?.map((r) => [r.rank, r.name])).toEqual([
@@ -68,6 +75,25 @@ describe('the wave ranking read (1691)', () => {
     expect(result.ranking?.[0].field_rate).toBeCloseTo(10 / 12);
     expect(result.ranking?.[0].prematch).toBe(PrematchWord.Possibly);
     expect(JSON.stringify(result)).not.toContain('447700');
+  });
+
+  /** The tester's 49996: the owner named her in his own line; the title left her out. */
+  it('puts the person the owner named first, from his own line, on a proposed plan', async () => {
+    mockTask.mockResolvedValue(goal([], [A, C, F]));
+    mockWords.mockResolvedValue(new Map());
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
+      .mockResolvedValueOnce({
+        rows: [{ content: 'პირველ რიგში ფიქრია ტესტურს ჰკითხე, მერე სხვებსაც.' }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [stat(A.phone, 9, 10), stat(F.phone, 0, 10)] } as never);
+    const result = await goalWaveRanking(23962);
+    expect(result.plan_state).toBe('proposed');
+    expect(result.ranking?.map((r) => [r.name, r.named_by_goal])).toEqual([
+      [F.name, true],
+      [A.name, false],
+      [C.name, false],
+    ]);
   });
 
   it('reads no real owner’s plan', async () => {

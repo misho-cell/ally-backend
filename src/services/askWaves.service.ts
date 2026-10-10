@@ -1,7 +1,7 @@
 import { query } from '../db/postgres/client';
 import { askStateOf, isOpenAskState } from './askState';
 import { phoneDigits } from './phone';
-import { inWaveOrder } from './waveOrder';
+import { inWaveOrder, ownerGoalWords } from './waveOrder';
 import { planInForce, type PlanPerson, type StoredPlan } from './taskPlans.service';
 import type { Task } from './taskStore.service';
 
@@ -121,7 +121,12 @@ export async function readWave(
   const plan = planInForce(task);
   if (plan === null || plan.approved_at === null) return null;
   const { wave, next_wave_at } = await readWaveNumber(task.id);
-  const [asks, asked] = await Promise.all([readWaveAsks(task.id, wave), readAskedDigits(task.id)]);
+  const [asks, asked, ownerWords] = await Promise.all([
+    readWaveAsks(task.id, wave),
+    readAskedDigits(task.id),
+    // A failed read ranks by the title alone, as before 49996.
+    ownerGoalWords(task.id).catch(() => ''),
+  ]);
   const now = new Date();
   return {
     wave,
@@ -130,7 +135,11 @@ export async function readWave(
     openInWave: asks.filter((a) =>
       a.status === 'held' ? true : isOpenAskState(askStateOf(a, now)),
     ).length,
-    remaining: await inWaveOrder(notYetAsked(plan.people_to_involve, asked), task.title),
+    remaining: await inWaveOrder(
+      notYetAsked(plan.people_to_involve, asked),
+      task.title,
+      ownerWords,
+    ),
     nextWaveAt: next_wave_at,
   };
 }
