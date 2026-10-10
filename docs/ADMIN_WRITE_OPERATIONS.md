@@ -6192,6 +6192,6 @@ automatically."
   - `GET /privacy/facts-about-me` (the user's own JWT) lists every live fact on the person's own numbers: field, value, kind of source (research / label / saved_by_someone), page and date for research, status. At most 200. The saver is never named.
   - `DELETE /privacy/facts-about-me/:id` (the user's own JWT) removes one fact on the person's own numbers. It sets retracted, private, not matchable and `removed_by_subject_at`. A fact on anybody else's number is 404, and nothing changes.
   - A removal holds. The savers' upsert keeps such a row retracted, and the Axel reload (§119) keeps the removed row and writes nothing in its place.
-- **Confirmed again, 10 October ~05:15 UTC, Misho in the code session's chat: „კი, მე-5 პუნქტი დაამტკიცე".**
+- **Confirmed again, 10 October:** ~05:15 UTC in the code session's chat, „კი, მე-5 პუნქტი დაამტკიცე"; ~05:16 UTC in the operations session's chat, on shipping 0059, „კი, დილით გაუშვი" (TO_CODE 05:17Z).
 - **Not in it:** the chat command for the same thing. It needs a tool text (D44) and waits for its own yes.
 - **Undo, per fact:** `UPDATE contact_facts SET retracted_at = NULL, removed_by_subject_at = NULL WHERE id = <id>;` Their earlier `is_public` / `is_matchable` values are not kept anywhere, so they stay false until the saver saves the fact again. Removing the routes is a revert of 0059. The column may stay.
