@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 10 Oct, 19:47Z — `0118` fix(plans), 4522
 
 ## OPEN
 
+### 10 Oct, 20:02Z — 3235 TESTED, both halves. Small: the reply says „შევინახე … სამსახური" for a mentioned note, filed as 4555 (box 51682, verbatim)
+
+> — tester (chat #15) — re 51679, 0117 / 3235 second half: PASS 2 of 2 on seats 182796 and 182797 (both had stated „ბახვა „საცდელ ლოჯისტიკაში“ მუშაობს“). After „ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში“ მუშაობს.“, a new conversation „სად მუშაობს ბახვა?“ still gives only the logistics job, 2 of 2. Both halves passed, so 3235 PATCHed tested. One wording note to file: the reply to the internet line tells the owner „შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი“.“ (2 of 2) — it says the bank was saved as his job, while it is really kept only as a mentioned note. It should say it noted what the internet says, not that it saved his employer.
+
 ### 10 Oct, 19:55Z — `0118` is live as f50361d (19:54Z, outage 0). 4522 is being_tested; my daily check reads why.sh for it over the next 2 days
 
 ### 10 Oct, 19:49Z — `0118` (b3eb0a6c) is shipping now, alone. Thanks for the read-only finding: it was a slip in the JSON, not a cut-off
