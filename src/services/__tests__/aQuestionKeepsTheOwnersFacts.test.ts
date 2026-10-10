@@ -63,6 +63,43 @@ describe('a question keeps the facts the owner wrote', () => {
 });
 
 /** Tester 39832 (#1552): cargo became furniture on the way. */
+/** 3037/3670 (asks 17039, 17722, 18252): every singular „friend" the owner never said. */
+describe('a friend in any case ending', () => {
+  it.each([
+    [
+      'იცნობ კარგ მებაღეს? მეგობარს ეზო აქვს მოსაწესრიგებელი.',
+      'კარგი მებაღის მოძიება ეზოს მოსაწესრიგებლად',
+    ],
+    [
+      'გამარჯობა გია, ჩემმა მეგობარმა საკვების ექსპორტი დაიწყო და საბაჟო გაფორმებაში დახმარება სჭირდება.',
+      'საკვების ექსპორტს ვიწყებ და საბაჟო გაფორმებაში დახმარება მჭირდება',
+    ],
+    ['მეგობარს ესაჭიროება ელექტრიკოსი თბილისში.', 'ელექტრიკოსი მჭირდება თბილისში'],
+    [
+      'Netai Test 694 Owner E-ს მეგობარი ეძებს ბუღალტერს.',
+      'ვეძებ კარგ ბუღალტერს მცირე ბიზნესისთვის',
+    ],
+  ])('holds back „%s"', (question, owner) => {
+    expect(factChangedIn(question, [owner])?.change).toBe(FactChange.Beneficiary);
+  });
+
+  it.each([
+    'შენს მეგობრებში ხომ არ არის კარგი ელექტრიკოსი?',
+    'შენი მეგობრებიდან ვინმე იცნობს ბუღალტერს?',
+    'მეგობრულად გკითხავ: იცნობ ელექტრიკოსს?',
+  ])('lets „%s" through: among your friends is how a question is asked', (question) => {
+    expect(factChangedIn(question, ['ელექტრიკოსი მჭირდება თბილისში'])).toBeNull();
+  });
+
+  it('lets it through when the owner said it is for a friend', () => {
+    expect(
+      factChangedIn('იცნობ კარგ ფსიქოლოგს? მეგობარს სჭირდება დახმარება.', [
+        'ჩემს მეგობარს ფსიქოლოგი სჭირდება',
+      ]),
+    ).toBeNull();
+  });
+});
+
 describe('a detail in brackets the owner never gave', () => {
   const owner = [
     'სოფო ტესტაძეს ჰკითხე, კარგ მეურმეს ხომ არ მირჩევს, სოფლიდან ტვირთი მაქვს ჩამოსატანი',

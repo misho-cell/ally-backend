@@ -17,8 +17,14 @@ import { nameKey } from './tools/transliterate';
  * A miss costs a question that goes out as today; a false refusal costs one
  * rewrite. Both checks therefore fire only on a word that is plainly there.
  */
+/**
+ * 3037/3670 (tester 44551; asks 17039, 17722, 18252 on 8–9 October): „მეგობარს
+ * ეზო აქვს", „ჩემმა მეგობარმა", „მეგობარს ესაჭიროება" went out though the owner
+ * named nobody. Every SINGULAR case of „friend" counts; the plural („შენს
+ * მეგობრებში" — among your friends) is how a question is asked, and stays.
+ */
 const BENEFICIARY_IN_QUESTION_RE =
-  /(მეგობრისთვის|მეგობარს\s+(სჭირდება|უნდა|ეძებს)|ჩემს\s+მეგობარს|ჩემი\s+მეგობარი|ნაცნობისთვის|ჩემს\s+ნაცნობს|for\s+a\s+friend|a\s+friend\s+of\s+mine|my\s+friend|для\s+друга|мой\s+друг|моему\s+другу)/iu;
+  /(მეგობ(?:არ(?:ს|მა|ი|ის|თან)?|რის(?:თვის)?)(?![\p{L}])|ნაცნობისთვის|ჩემს\s+ნაცნობს|for\s+a\s+friend|a\s+friend\s+of\s+mine|my\s+friend|для\s+друга|мой\s+друг|моему\s+другу)/iu;
 
 /** The owner naming somebody else at all: a friend, an acquaintance, family. */
 const OWNER_NAMES_SOMEONE_ELSE_RE =
