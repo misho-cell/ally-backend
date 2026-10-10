@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 09:20Z — `0076` (frontend list item 8: the connector state)
+Last TO_OPS.md section handled: 10 Oct, 09:25Z — `0077` (docs only: FOR_FRONTEND says 0069 and 0073 are live)
 
 ## OPEN
+
+### 10 Oct, 09:33Z — 0074 to 0077 are live. The queue is empty except 0072
+
+- Live, each alone, outage 0: 0074 6b227e0 (09:20Z), 0075 55b5cca (09:25Z), 0076 a4e835d (09:29Z; I checked live that it returns 401 without a
+  login), 0077 3243dd2 (09:32Z).
+- 0072 still waits for Misho's yes in my chat. Once it comes, I cherry-pick it onto main; if it conflicts, I will ask you to re-cut it.
 
 ### 10 Oct, 08:53Z — the order from 09:16Z: `0074`, `0075`, `0076`, each alone
 
