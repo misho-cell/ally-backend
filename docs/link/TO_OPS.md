@@ -8,6 +8,15 @@ Last TO_CODE.md section handled: 10 Oct, 07:52Z — re your 07:48Z: thanks. The 
 
 ## OPEN
 
+### 10 Oct, 08:30Z — `0073` (frontend list item 5: three story lines on `/updates/count`)
+
+**`0073` feat(updates).** In `patches/afternoon-1250/`, after 0072. Passed verify on the main line (8,084 tests).
+- **What it adds:** `GET /updates/count` gains `lines`, at most 3 strings. Each is the first due update's existing card title and detail.
+- **Read-only:** a SELECT with the count's own conditions. Nothing is released or marked seen. No new wording.
+- **DONE WHEN:** a seat with due updates gets `lines` that match the first cards of `GET /updates`, and the count's `due` is unchanged
+  after the call. A seat with nothing due gets `lines: []`.
+- **Order:** any time after 0072, outside 08:50–09:15Z.
+
 ### 10 Oct, 07:58Z — `0070`–`0072`: 4258 (false „introduction sent"), 1699 (matcher run on seats), and §125
 
 In `patches/afternoon-1250/`, after 0069. All three passed verify on the main line (8,081 tests). The branch was pushed green.

@@ -1,0 +1,243 @@
+From 60a73d0fdda775eb7459ba0c2b0d35d7381e66fd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 08:13:18 +0000
+Subject: [PATCH] feat(updates): GET /updates/count carries up to three story
+ lines, read-only (frontend 06:30Z item 5)
+
+The home card can call only the count, because GET /updates spends what it
+returns. `lines` peeks at the first due updates with the count's own
+conditions (a SELECT, nothing released or marked) and says each with the
+card's existing title and detail, in the language GET /updates uses.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 17 ++++++++
+ src/api/routes/updates.routes.ts              | 40 +++++++++++++++----
+ .../anUpdatesCountSpendsNothing.test.ts       | 37 ++++++++++++++++-
+ .../theQuestionsAfterItIsOver.test.ts         |  7 ++--
+ src/services/pendingUpdates.service.ts        | 22 ++++++++++
+ src/services/updateCard.ts                    |  5 +++
+ 6 files changed, 117 insertions(+), 11 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 9db212c..4b594bf 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,23 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)
++
++`GET /updates/count` gains one field, `lines`. It holds at most 3 strings: the first updates that are due, oldest first, one line each.
++It is still read-only, so nothing is released or marked seen.
++
++```json
++{ "success": true, "data": { "due": 4, "held": 2, "followed": 1,
++  "lines": ["ოფისი რუსთავში — ლევანმა უპასუხა", "Weekly summary — 3 goals, 1 waits on you"] } }
++```
++
++- **Each line** is the card's own `title`, then „ — " and its `detail` when the card has one. It is the same text `GET /updates` would
++  draw for that card, with no new wording.
++- **Language:** the same rule as `GET /updates`. Your `X-Locale` comes first, then the one we infer.
++- **Empty:** `lines: []` when nothing is due. `due` can be larger than the number of lines; draw „+N" from the difference if you want it.
++- **Status codes:** unchanged, 200 / 401 / 500.
++- **Live:** not yet. Patch 0073 on our side; I'll write here when ops ships it.
++
+ ## 10 October, 07:20Z — item 6 of your 06:30Z list: the evening hour as a setting (patch 0069, not live yet)
+ 
+ `GET /evening-card/hour` → `{ "success": true, "data": { "hour": 19 } }` (19 when the person never set one).
+diff --git a/src/api/routes/updates.routes.ts b/src/api/routes/updates.routes.ts
+index edf7516..ed8de78 100644
+--- a/src/api/routes/updates.routes.ts
++++ b/src/api/routes/updates.routes.ts
+@@ -11,6 +11,7 @@ import {
+   listSeenUpdates,
+   countHeldUpdates,
+   countUpdatesForBadge,
++  peekDueUpdates,
+   UpdateCounts,
+   snoozeUpdate,
+   markUpdateSeen,
+@@ -27,6 +28,7 @@ import {
+   cardHeading,
+   debriefAskId,
+   normalisedPayload,
++  storyLine,
+ } from '../../services/updateCard';
+ import { userLanguage } from '../../services/threads.service';
+ import {
+@@ -149,22 +151,46 @@ interface UpdatesView {
+  * reload is not a blank page. It is only this reply, where they are already
+  * being shown as due, that they are not also history.
+  */
++/** The first due updates, one line each, in the reader's language — read without spending them. */
++async function storyLines(userId: string, chosen: RunLanguage | null): Promise<string[]> {
++  const [due, lang] = await Promise.all([
++    peekDueUpdates(userId),
++    chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
++  ]);
++  const titles = await goalTitlesFor(due.map((u) => u.task_id));
++  return due.map((u) =>
++    storyLine(
++      cardHeading(
++        u.kind,
++        normalisedPayload(u.kind, u.payload),
++        u.task_id === null ? null : (titles.get(u.task_id) ?? null),
++        lang,
++      ),
++    ),
++  );
++}
++
++interface CountView extends UpdateCounts {
++  readonly followed: number;
++  /** The frontend's 06:30Z item 5: at most three lines for the home card; spends nothing. */
++  readonly lines: readonly string[];
++}
++
+ // #387, the frontend's ask (3 October): a read-only count for a sidebar badge.
+ // GET / releases and marks what it returns, so it cannot be asked „how many";
+-// this spends nothing.  GET /updates/count → { due, held }
++// this spends nothing.  GET /updates/count → { due, held, followed, lines }
+ updatesRouter.get(
+   '/count',
+-  async (
+-    req: Request,
+-    res: Response<ApiResponse<UpdateCounts & { readonly followed: number }>>,
+-  ): Promise<void> => {
++  async (req: Request, res: Response<ApiResponse<CountView>>): Promise<void> => {
+     const userId = String((req as AuthenticatedRequest).user.userId);
+     try {
+-      const [counts, followed] = await Promise.all([
++      const [counts, followed, lines] = await Promise.all([
+         countUpdatesForBadge(userId),
+         countFollowedUpdates(userId),
++        // The same language rule as GET / (X-Locale first, then the inferred one).
++        storyLines(userId, asRunLanguage(req.get('X-Locale'))),
+       ]);
+-      res.status(200).json({ success: true, data: { ...counts, followed } });
++      res.status(200).json({ success: true, data: { ...counts, followed, lines } });
+     } catch (error) {
+       // eslint-disable-next-line no-console
+       console.error('[GET /updates/count]', error);
+diff --git a/src/services/__tests__/anUpdatesCountSpendsNothing.test.ts b/src/services/__tests__/anUpdatesCountSpendsNothing.test.ts
+index 18df559..8464e68 100644
+--- a/src/services/__tests__/anUpdatesCountSpendsNothing.test.ts
++++ b/src/services/__tests__/anUpdatesCountSpendsNothing.test.ts
+@@ -3,7 +3,8 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+ import { query } from '../../db/postgres/client';
+-import { countUpdatesForBadge } from '../pendingUpdates.service';
++import { countUpdatesForBadge, peekDueUpdates, STORY_LINES_MAX } from '../pendingUpdates.service';
++import { storyLine } from '../updateCard';
+ 
+ /**
+  * #387, the frontend's ask: a badge count that does not release or mark
+@@ -53,3 +54,37 @@ describe('the route', () => {
+     );
+   });
+ });
++
++/** The frontend's 06:30Z item 5: the home card's lines, read without spending anything. */
++describe('the story lines', () => {
++  it('peek at the first due updates only: a SELECT, the count’s own conditions, at most three', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++
++    await peekDueUpdates('165699');
++
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql.trim().startsWith('SELECT')).toBe(true);
++    expect(sql).not.toMatch(/\bUPDATE\b/);
++    expect(sql).toContain("p.status = 'held'");
++    expect(sql).toContain('p.release_at <= NOW()');
++    expect(sql).toContain('t.pending_question_at IS NOT NULL');
++    expect(params).toEqual(['165699', expect.any(Array), expect.any(Array), STORY_LINES_MAX]);
++    expect(STORY_LINES_MAX).toBe(3);
++  });
++
++  it('say the card’s own title, and its detail when it has one', () => {
++    expect(storyLine({ title: 'Office in Rustavi', detail: '' })).toBe('Office in Rustavi');
++    expect(storyLine({ title: 'Office in Rustavi', detail: 'Levan answered' })).toBe(
++      'Office in Rustavi — Levan answered',
++    );
++  });
++
++  it('ride on GET /updates/count beside the counts', () => {
++    const routes = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'updates.routes.ts'),
++      'utf8',
++    );
++    expect(routes).toContain('data: { ...counts, followed, lines }');
++    expect(routes).toContain("storyLines(userId, asRunLanguage(req.get('X-Locale')))");
++  });
++});
+diff --git a/src/services/__tests__/theQuestionsAfterItIsOver.test.ts b/src/services/__tests__/theQuestionsAfterItIsOver.test.ts
+index 0a01cba..184b20d 100644
+--- a/src/services/__tests__/theQuestionsAfterItIsOver.test.ts
++++ b/src/services/__tests__/theQuestionsAfterItIsOver.test.ts
+@@ -282,9 +282,10 @@ describe('a card queued by a close survives the close', () => {
+     const sql = updates.replace(/\/\*[\s\S]*?\*\//g, '');
+     const uses = sql.match(/KINDS_THAT_OUTLIVE_THEIR_GOAL/g) ?? [];
+ 
+-    // The declaration plus four call sites: release, count, the row list, and
+-    // the badge count (#387, 3 October), each a bound parameter.
+-    expect(uses).toHaveLength(5);
++    // The declaration plus five call sites: release, count, the row list, the
++    // badge count (#387, 3 October) and the home card's peek (frontend item 5,
++    // 10 October), each a bound parameter.
++    expect(uses).toHaveLength(6);
+     expect(sql).not.toMatch(/\$\{KINDS_THAT_OUTLIVE_THEIR_GOAL/);
+   });
+ 
+diff --git a/src/services/pendingUpdates.service.ts b/src/services/pendingUpdates.service.ts
+index 04cba49..7865e31 100644
+--- a/src/services/pendingUpdates.service.ts
++++ b/src/services/pendingUpdates.service.ts
+@@ -520,6 +520,28 @@ export async function countUpdatesForBadge(userId: string): Promise<UpdateCounts
+   };
+ }
+ 
++/** The frontend's 06:30Z item 5: the home card says at most this many updates in a line each. */
++export const STORY_LINES_MAX = 3;
++
++/**
++ * The first updates that are due, oldest first — READ ONLY. Nothing is marked
++ * seen or released here: the same rows `countUpdatesForBadge` counts as due,
++ * so the home card can say what they are without spending them.
++ */
++export async function peekDueUpdates(userId: string): Promise<PendingUpdate[]> {
++  const result = await query<PendingUpdate>(
++    `SELECT p.id, p.task_id, p.kind, p.payload
++       ${HELD_AND_STILL_REAL}
++       AND p.release_at <= NOW()
++       AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
++     ORDER BY p.release_at ASC, p.id ASC
++     LIMIT $4`,
++    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, STICKY_KINDS, STORY_LINES_MAX],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
+ /**
+  * The ONE identifier for a waiting update, shared by every surface that names
+  * one — the connector and the REST route both import these rather than each
+diff --git a/src/services/updateCard.ts b/src/services/updateCard.ts
+index c538f91..39b09f3 100644
+--- a/src/services/updateCard.ts
++++ b/src/services/updateCard.ts
+@@ -279,3 +279,8 @@ export function cardHeading(
+   const title = goal !== '' ? goal : fallback !== '' ? fallback : UNTITLED[language];
+   return { title: oneLine(title), detail: detailOf(kind, payload, language) };
+ }
++
++/** One line for the home card: the card's own title, and its detail when it has one. */
++export function storyLine(heading: CardHeading): string {
++  return heading.detail === '' ? heading.title : `${heading.title} — ${heading.detail}`;
++}
+-- 
+2.43.0
+
