@@ -13,12 +13,15 @@ import { join } from 'path';
 import { query } from '../../db/postgres/client';
 import {
   advanceWaveIfDone,
+  nextInOrder,
   nextWaveNote,
+  notInOrderLine,
   notYetAsked,
   readWave,
   waveIsDone,
   waveMayWiden,
   waveRoomFor,
+  WAVE_ORDER_GATE_ON,
   waveSize,
   widenWaveOnSilence,
   type WaveSnapshot,
@@ -235,5 +238,37 @@ describe('the wiring', () => {
   it('numbers the asks of goals already in flight as their first wave', () => {
     const sql = read('..', 'db', 'postgres', 'migrations', '209_asks_go_in_waves.sql');
     expect(sql).toContain('UPDATE task_asks SET wave_no = 1');
+  });
+});
+
+/** NIGHT_QUESTIONS BD (1691): the wave's room goes to the server's next people. */
+describe('the order gate (BD)', () => {
+  const snapshot = (inWave: number): WaveSnapshot => ({
+    wave: 1,
+    size: 3,
+    inWave,
+    openInWave: inWave,
+    remaining: EIGHT.slice(inWave),
+    nextWaveAt: null,
+  });
+
+  it('is off until Misho says yes to the exact line (D44)', () => {
+    expect(WAVE_ORDER_GATE_ON).toBe(false);
+  });
+
+  it('offers the free places to the next people in order', () => {
+    expect(nextInOrder(snapshot(0)).map((p) => p.name)).toEqual([
+      'Person 1',
+      'Person 2',
+      'Person 3',
+    ]);
+    expect(nextInOrder(snapshot(2)).map((p) => p.name)).toEqual(['Person 3']);
+    expect(nextInOrder(snapshot(3))).toEqual([]);
+  });
+
+  it('names them in the drafted line, and tells the owner nothing', () => {
+    const line = notInOrderLine(nextInOrder(snapshot(1)));
+    expect(line).toContain('ამ ტალღაში ჯერ ამათ მისწერე: Person 2, Person 3.');
+    expect(line).toContain('მფლობელს არაფერს ეუბნები.');
   });
 });

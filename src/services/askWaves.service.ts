@@ -181,6 +181,32 @@ export async function widenWaveOnSilence(
   return openWaveAfter(task.id, snapshot.wave);
 }
 
+/**
+ * NIGHT_QUESTIONS BD (1691, the tester's 49931): while a wave had room, anyone
+ * not yet asked could be asked, so the model's own pick decided who went
+ * first and the server's order was only advice. With this on, the room goes
+ * to the next people in the server's order (A8), and anyone else is refused
+ * with the line below. The person the owner named is never held back (D625).
+ *
+ * OFF until Misho's yes on the exact line (D44): the line is model-facing.
+ */
+export const WAVE_ORDER_GATE_ON = false;
+
+/** The wave's free places, filled in the server's order. */
+export function nextInOrder(snapshot: WaveSnapshot): readonly PlanPerson[] {
+  return snapshot.remaining.slice(0, Math.max(0, snapshot.size - snapshot.inWave));
+}
+
+/** NIGHT_QUESTIONS BD, the drafted line (10 Oct 04:10 UTC), awaiting Misho's yes. */
+export function notInOrderLine(next: readonly PlanPerson[]): string {
+  return (
+    `ეს ადამიანი ჯერ არ არის რიგში. ამ ტალღაში ჯერ ამათ მისწერე: ${next
+      .map((p) => p.name)
+      .join(', ')}. ` +
+    'დანარჩენები შემდეგ ტალღაში მიიღებენ — სერვერი თვითონ გეტყვის. მფლობელს არაფერს ეუბნები.'
+  );
+}
+
 export type WaveRoom =
   | { readonly allowed: true; readonly wave: number | null }
   | { readonly allowed: false; readonly error: string };
@@ -209,10 +235,17 @@ export async function waveRoomFor(
     // it keeps the wave it was written in.
     return { allowed: true, wave: await heldWaveFor(task.id, digits) };
   }
-  // D625: the person the owner named himself is never held back by a wave.
-  if (snapshot.inWave < snapshot.size || (await ownerNamedThem())) {
-    return { allowed: true, wave: snapshot.wave };
+  if (snapshot.inWave < snapshot.size) {
+    const next = nextInOrder(snapshot);
+    if (!WAVE_ORDER_GATE_ON || next.some((p) => phoneDigits(p.phone) === digits)) {
+      return { allowed: true, wave: snapshot.wave };
+    }
+    // D625: the person the owner named himself is never held back.
+    if (await ownerNamedThem()) return { allowed: true, wave: snapshot.wave };
+    return { allowed: false, error: notInOrderLine(next) };
   }
+  // D625: the person the owner named himself is never held back by a wave.
+  if (await ownerNamedThem()) return { allowed: true, wave: snapshot.wave };
   return {
     allowed: false,
     error:
