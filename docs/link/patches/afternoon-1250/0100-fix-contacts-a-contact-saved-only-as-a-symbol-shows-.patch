@@ -1,0 +1,107 @@
+From d803366d2dbe4325429f9fdedea8177f452f7aaf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 13:21:58 +0000
+Subject: [PATCH] =?UTF-8?q?fix(contacts):=20a=20contact=20saved=20only=20a?=
+ =?UTF-8?q?s=20a=20symbol=20shows=20its=20label=20=E2=80=94=20saved=5Fas?=
+ =?UTF-8?q?=20on=20the=20list=20row=20(box=2051023)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+D772 PASS with a small fault: the contact saved as „💙" came back with name
+null, so its row would be blank. A row whose label has no letter now also
+carries saved_as, the label as the person saved it; name stays null so the
+screen never reads a symbol as a name.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                                     | 5 +++++
+ .../routes/__tests__/contactImportState.routes.test.ts   | 4 +++-
+ src/services/__tests__/contactBook.test.ts               | 4 ++--
+ src/services/contactBook.service.ts                      | 9 +++++++++
+ 4 files changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 6af06f4..e4cf369 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,11 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 13:21Z — `GET /contacts` rows gain `saved_as` (patch 0100, not live yet)
++
++A contact saved only as a symbol („💙") has `name: null`. Its row now also carries `saved_as: "💙"`, the label exactly as the person
++saved it. It's `null` whenever `name` is set. Draw `name`, else `saved_as`, else „…".
++
+ ## 10 October, 13:17Z — plate rows NEW-3, NEW-5, NEW-7: two additions and one ask of you (patches 0094–0096, not live yet)
+ 
+ - **4296, last week's summary opens again:** `GET /updates/weekly-summaries` → `{ "summaries": [ <the same card shape as GET /updates> ] }`,
+diff --git a/src/api/routes/__tests__/contactImportState.routes.test.ts b/src/api/routes/__tests__/contactImportState.routes.test.ts
+index 67a2048..843ce46 100644
+--- a/src/api/routes/__tests__/contactImportState.routes.test.ts
++++ b/src/api/routes/__tests__/contactImportState.routes.test.ts
+@@ -137,7 +137,9 @@ describe('GET /contacts and /contacts/:id', () => {
+ 
+   it('lists a page with the search, size and cursor passed through', async () => {
+     mockList.mockResolvedValue({
+-      contacts: [{ id: 'c_x', name: 'ნინო', phone: '+995599000001', on_netai: true }],
++      contacts: [
++        { id: 'c_x', name: 'ნინო', saved_as: null, phone: '+995599000001', on_netai: true },
++      ],
+       next_cursor: null,
+     });
+     const res = await fetch(`${root()}?q=${encodeURIComponent('ნინო')}&limit=20&cursor=MjA`);
+diff --git a/src/services/__tests__/contactBook.test.ts b/src/services/__tests__/contactBook.test.ts
+index 09f2d2c..2bc62a9 100644
+--- a/src/services/__tests__/contactBook.test.ts
++++ b/src/services/__tests__/contactBook.test.ts
+@@ -53,8 +53,8 @@ describe('contactPage', () => {
+ 
+     expect(page).toEqual({
+       contacts: [
+-        { id: 'c_13', name: 'ნინო', phone: '+995599000001', on_netai: true },
+-        { id: 'c_13', name: null, phone: '+995599000002', on_netai: false },
++        { id: 'c_13', name: 'ნინო', saved_as: null, phone: '+995599000001', on_netai: true },
++        { id: 'c_13', name: null, saved_as: '123', phone: '+995599000002', on_netai: false },
+       ],
+       next_cursor: encodeCursor(2),
+     });
+diff --git a/src/services/contactBook.service.ts b/src/services/contactBook.service.ts
+index 0645973..05a1ee8 100644
+--- a/src/services/contactBook.service.ts
++++ b/src/services/contactBook.service.ts
+@@ -23,6 +23,8 @@ const HAS_A_LETTER = /\p{L}/u;
+ export interface ContactRow {
+   readonly id: string;
+   readonly name: string | null;
++  /** Box 51023: a label with no letter („💙"), as saved — set only when name is null. */
++  readonly saved_as: string | null;
+   readonly phone: string;
+   readonly on_netai: boolean;
+ }
+@@ -88,6 +90,12 @@ function shownName(alias: string | null): string | null {
+   return HAS_A_LETTER.test(trimmed) ? trimmed : null;
+ }
+ 
++/** The label as saved, for a row whose label is not a name; null otherwise. */
++function savedAs(alias: string | null): string | null {
++  const trimmed = (alias ?? '').trim();
++  return trimmed !== '' && !HAS_A_LETTER.test(trimmed) ? trimmed : null;
++}
++
+ /** One page of the person's contacts; null when the cursor is not one this route made. */
+ export async function contactPage(
+   userId: number,
+@@ -103,6 +111,7 @@ export async function contactPage(
+     contacts: page.map((r) => ({
+       id: encodeContactRef(String(userId), r.phone),
+       name: shownName(r.alias),
++      saved_as: savedAs(r.alias),
+       phone: normalizePhone(r.phone),
+       on_netai: isMemberPhone(accounts, r.phone),
+     })),
+-- 
+2.43.0
+

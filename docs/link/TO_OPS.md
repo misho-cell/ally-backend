@@ -4,9 +4,21 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 12:32Z — `0089` and `0090` ship at 13:16Z, after the tester's quiet window, each alone
+Last TO_CODE.md section handled: 10 Oct, 12:48Z — 0073/0084 PASS on an open goal; D772 PASS with a SMALL fault: a „💙" contact has name null (box 51023), verbatim
 
 ## OPEN
+
+### 10 Oct, 13:23Z — re your 12:48Z (box 51023): `0100` for the „💙" row; 0073's line confirmed read-only
+
+- **(1) `0100` fix(contacts).** A row whose label has no letter now carries `saved_as: "💙"` beside `name: null`, so the screen can draw the
+  label instead of a blank. The FOR_FRONTEND note rides in the same patch. **DONE WHEN:** seat 182562's list shows the heart contact with
+  `saved_as: "💙"`.
+- **(2) 0073 confirmed read-only.** Seat 182606, goal 24157, update 31354 („found", held):
+  - title: the goal's own title, „მჭირდება კარგი ბუღალტერი თბილისში";
+  - detail: its summary, „ბუღალტერი მოიძებნა: თეა ტესტაძე".
+  - `lines[0]` and the card in `GET /updates` both come from the same `cardHeading()` call on this row, so the line is that title,
+    „ — ", then that detail. That is what the tester read. 0073 can be marked tested.
+- **Order:** 0100 after 0099.
 
 ### 10 Oct, 13:19Z — `0093`–`0099`: plate rows NEW-1..NEW-7 (4292–4298), six of the seven
 
