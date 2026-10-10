@@ -1,0 +1,144 @@
+From 2e40b191496bf3c5765781187e8fb405e7a4759d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 13:40:13 +0000
+Subject: [PATCH] fix(plans): a plan reply that only justified the match gets
+ the server's plan sentence (1454)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 50625 (owner 182501, 08:02Z): the reply was „ვიპოვე გზა: …
+ბახვა … შენი პირდაპირი კონტაქტია და თავად იყენებს ნეტაის. დავიწყო?" — no
+plan sentence at all. It ended on the plan question, so it counted as
+carrying the plan, and D739's filter keys on a plan sentence it never had;
+its sentence also hit one justification marker of the two needed. Now the
+markers also read „იყენებს ნეტაის" and „ხიდი / მეორე წრის", and a reply
+with no plan sentence of its own gets the server's (D663's one sentence)
+in place of the justification; other news stays first, the question ends it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/planJustification.test.ts       | 28 +++++++++++++++++--
+ src/services/chat.service.ts                  | 12 ++++++--
+ src/services/planJustification.ts             | 26 ++++++++++++++++-
+ 3 files changed, 61 insertions(+), 5 deletions(-)
+
+diff --git a/src/services/__tests__/planJustification.test.ts b/src/services/__tests__/planJustification.test.ts
+index 7478e91..fedba1f 100644
+--- a/src/services/__tests__/planJustification.test.ts
++++ b/src/services/__tests__/planJustification.test.ts
+@@ -1,6 +1,6 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { withoutMatchJustification } from '../planJustification';
++import { withoutMatchJustification, withPlanSentence } from '../planJustification';
+ 
+ /**
+  * 1454 / D739: an introduction plan is one sentence and one question; the
+@@ -42,6 +42,30 @@ describe('the plan is its one sentence and one question (D739)', () => {
+ 
+   it('the plan reply passes through it', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain('withClosingQuestion(withoutMatchJustification(reply), runLang(runId))');
++    expect(chat).toContain('withPlanSentence(withoutMatchJustification(reply), plan.text)');
++  });
++});
++
++/** 1454 (the tester's 50625, owner 182501): a reply with only the justification and the question. */
++describe('a plan reply without the plan sentence', () => {
++  const plan = 'ბახვა გამოგონილის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
++  const said =
++    'ვიპოვე გზა: თამთა გამოგონილი თქვენი მეორე წრის კონტაქტია და მასთან ერთადერთი ხიდი სწორედ ბახვა ' +
++    'გამოგონილია, რომელიც თქვენი პირდაპირი კონტაქტია და თავად იყენებს ნეტაის. დავიწყო?';
++
++  it('gets the server’s plan sentence in place of the justification', () => {
++    expect(withPlanSentence(said, plan)).toBe(plan);
++  });
++
++  it('keeps real news first, and leaves a reply that has its plan sentence alone', () => {
++    expect(withPlanSentence(`ლევანმა უპასუხა, ბინა აქვს. ${said}`, plan)).toBe(
++      `ლევანმა უპასუხა, ბინა აქვს.\n\n${plan}`,
++    );
++    const good = `${plan} დავიწყო?`;
++    expect(withPlanSentence(good, plan)).toBe(good);
++  });
++
++  it('changes nothing when the server has no plan sentence of its own', () => {
++    expect(withPlanSentence(said, 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას.')).toBe(said);
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7c0dd7a..fe48f29 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -76,7 +76,11 @@ import { asksToReopen } from './reopenIntent';
+ import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
+ import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
+ import { askedLanguage, languagePreference } from './languagePreference';
+-import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
++import {
++  carriesPlanSentence,
++  withoutMatchJustification,
++  withPlanSentence,
++} from './planJustification';
+ import { withOwnersNetwork } from './planVoice';
+ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
+@@ -7650,7 +7654,11 @@ function withPlanInReply(
+   const reply = withOwnersNetwork(written);
+   if (replyCarriesPlan(reply, plan)) {
+     // D739: the plan is its one sentence and one question — no sentence explaining the match.
+-    return withClosingQuestion(withoutMatchJustification(reply), runLang(runId));
++    // 1454: a reply that said only why the match fits gets the server's plan sentence instead.
++    return withClosingQuestion(
++      withPlanSentence(withoutMatchJustification(reply), plan.text),
++      runLang(runId),
++    );
+   }
+   // eslint-disable-next-line no-console
+   console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+diff --git a/src/services/planJustification.ts b/src/services/planJustification.ts
+index 5888eb4..0aec6db 100644
+--- a/src/services/planJustification.ts
++++ b/src/services/planJustification.ts
+@@ -23,7 +23,9 @@ export function carriesPlanSentence(text: string): boolean {
+ 
+ const JUSTIFICATION_MARKERS: readonly RegExp[] = [
+   /პირდაპირი\s+კონტაქტ|შენი\s+კონტაქტ|direct\s+contact|your\s+contact|прямой\s+контакт|tu\s+contacto/iu,
+-  /ნეტაიზე|წევრია|წევრი\s+არის|on\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
++  /ნეტაიზე|ნეტაის|ნეტაი-ს|netai-ს|წევრია|წევრი\s+არის|on\s+netai|uses\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
++  // 1454 (owner 182501): „…ერთადერთი ხიდი სწორედ ბახვაა…", „მეორე წრის კონტაქტია".
++  /ხიდ|მეორე\s+წრ|bridge|second\s+circle|мост|puente/iu,
+   /იცნობს|knows|знает|conoce/iu,
+   /ემთხვევა|matches|соответствует|coincide/iu,
+ ];
+@@ -62,3 +64,25 @@ export function withoutMatchJustification(reply: string): string {
+     .filter((paragraph) => paragraph.trim() !== '');
+   return kept.join('\n\n');
+ }
++
++/**
++ * 1454 (the tester's 50625, owner 182501, 08:02Z): the reply had no plan
++ * sentence at all — only the match justification („ვიპოვე გზა: … ბახვა …
++ * შენი პირდაპირი კონტაქტია და თავად იყენებს ნეტაის.") and „დავიწყო?". It ended
++ * on the plan question, so it counted as carrying the plan, and the filter
++ * above keys on a plan sentence it did not have. When the server's own plan
++ * sentence exists and the reply lacks one, the justification goes and the
++ * server's sentence stands in its place; any other news stays first, and the
++ * closing question is put back by the caller.
++ */
++export function withPlanSentence(reply: string, planText: string): string {
++  if (carriesPlanSentence(reply) || !carriesPlanSentence(planText)) return reply;
++  const sentences = reply
++    .split(/\n\s*\n/u)
++    .flatMap((paragraph) => paragraph.split(SENTENCE_SPLIT_RE))
++    .map((sentence) => sentence.trim())
++    .filter((sentence) => sentence !== '' && !isAMatchJustification(sentence));
++  const last = sentences[sentences.length - 1];
++  const news = last !== undefined && last.endsWith('?') ? sentences.slice(0, -1) : sentences;
++  return news.length === 0 ? planText : `${news.join(' ')}\n\n${planText}`;
++}
+-- 
+2.43.0
+

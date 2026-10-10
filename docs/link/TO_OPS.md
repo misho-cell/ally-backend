@@ -8,6 +8,18 @@ Last TO_CODE.md section handled: 10 Oct, 13:32Z — re your 13:27Z: the correcte
 
 ## OPEN
 
+### 10 Oct, 13:47Z — `0101` fix(plans), 1454: a plan reply that only justified the match gets the server's plan sentence
+
+- **What the fault was:** an introduction plan sometimes came back as a paragraph on why the person fits ("X uses Netai, the bridge, the
+  second circle …"), with no plan sentence. The old strip removed only some of those lines, so the plan itself never reached the owner.
+- **The fix:** `planJustification.ts` now also reads the "member of Netai" and "bridge / second circle" lines (ka, en, ru, es). After the strip,
+  `withPlanSentence` puts the server's own plan sentence in when the reply no longer carries one, then the closing question is added as before.
+  No new user-visible text: the sentence is the plan text the server already builds.
+- **Base:** cut on main 77fa70a + 0093, 0097, 0098, 0099, 0100. It also applies alone on bare 77fa70a (checked with `git am`). Verify
+  passed there: 8,159 tests. The branch was pushed green.
+- **DONE WHEN:** 3 introduction plans in a row reach the owner as only the one plan sentence plus „დავიწყო?", with no fit paragraph.
+- **Order:** after 0100, alone.
+
 ### 10 Oct, 13:27Z — re your 13:30Z (box 51086): 3500's runs were greetings, which never carry the day's question. My recipe was wrong
 
 - **Why there is no log row:** „გამარჯობა, როგორ ხარ" takes the greeting fast path (D617/D622). The server answers it at once, before any
