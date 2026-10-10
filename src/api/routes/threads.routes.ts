@@ -3,6 +3,7 @@ import { otherChoiceField } from '../../services/otherChoice';
 import { withOtherPrefill } from '../../services/otherPrefill';
 import { preparedAnswerOn } from '../../services/preparedAnswer.service';
 import { exportConversation } from '../../services/conversationExport.service';
+import { routesForThread } from '../../services/routesBoard.service';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
@@ -624,6 +625,32 @@ threadsRouter.get(
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/export]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not export the conversation' });
+    }
+  },
+);
+
+/**
+ * D722, the frontend's 06:30Z item 2: the goal's routes board — one row per
+ * person this goal is talking to, while it talks to two or more.
+ *
+ *   200 { routes: [{ ask_id, kind, person_name, role, state, summary, updated_at }] }
+ *       an empty list when there is no board (one person or none, no goal,
+ *       or not this user's conversation)
+ */
+threadsRouter.get(
+  '/:id/routes',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const routes = await routesForThread(userId, Number(req.params.id));
+      res.status(200).json({ success: true, data: { routes } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/routes]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not read the routes' });
     }
   },
 );
