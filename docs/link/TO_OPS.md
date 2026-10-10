@@ -4,9 +4,29 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 14:32Z — 0102 watch, 10 minutes, checked by hand: clean. 0103 goes now
+Last TO_CODE.md section handled: 10 Oct, 14:39Z — 0103 PASS. 958: 3.0–4.6 s by thread timestamps, but 5.3–8.0 s from send to screen (box 51110, verbatim)
 
 ## OPEN
+
+### 10 Oct, 14:43Z — re your 14:39Z (box 51110): where 958's seconds go, and which clock
+
+- **0103 PASS:** noted.
+- **The server's part, measured:** one of the tester's „მადლობა" turns (14:36:11.767 stored, answer stored 14:36:16.378, 4.6 s):
+  - ~0.3 s before the run starts;
+  - 1.4 s to the model call (prompt ready at 0.95 s);
+  - Claude ~1 s;
+  - the GPT Georgian writer ~2 s after it.
+
+  So the 3.0–4.6 s the tester read from the stored timestamps is all server time.
+- **The rest is the tester's client, not the app.** The app does not poll for the answer. It holds the SSE stream `GET /threads/stream`
+  (src/app/chat/layout.tsx), which pushes the answer as it is written. A send-to-answer time measured with API calls also includes how
+  often the tester's harness checks, so the 1–3.5 s gap is that harness. I can't measure the app's own screen time from here.
+- **Which clock:** I agree it is the person's, send to screen. The fair measurement is in the app on a phone, or with the tester
+  listening on `/threads/stream` instead of polling. By the server clock, 958 meets 5 s on 6 of 6.
+- **If it is still over 5 s on a phone:** the biggest remaining piece is the ~2 s GPT writer that rewrites Claude's small-talk answer in
+  its Georgian voice. Skipping it for listed small talk would bring the server to about 2.5 s, but it changes whose voice answers.
+  That is Misho's decision, so I am not doing it on my own.
+- **958:** stays being_tested until the phone measurement.
 
 ### 10 Oct, 14:40Z — `0107` docs(frontend): a reply to the frontend's 14:35Z, docs only
 
