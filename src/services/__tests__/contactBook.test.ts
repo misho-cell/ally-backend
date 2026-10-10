@@ -40,7 +40,7 @@ describe('the cursor and the search text', () => {
 });
 
 describe('contactPage', () => {
-  it('shows the saved name and the Netai mark, never a number, and says when more follow', async () => {
+  it('shows the saved name, the full number and the Netai mark (D772), and says when more follow', async () => {
     mockQuery.mockResolvedValue({
       rows: [
         { phone: '+995599000001', alias: 'ნინო' },
@@ -53,12 +53,11 @@ describe('contactPage', () => {
 
     expect(page).toEqual({
       contacts: [
-        { id: 'c_13', name: 'ნინო', on_netai: true },
-        { id: 'c_13', name: null, on_netai: false },
+        { id: 'c_13', name: 'ნინო', phone: '+995599000001', on_netai: true },
+        { id: 'c_13', name: null, phone: '+995599000002', on_netai: false },
       ],
       next_cursor: encodeCursor(2),
     });
-    expect(JSON.stringify(page)).not.toContain('995599');
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain('"ContactDeceased"');
     expect(params).toEqual([171, '%ი%', 0, 3]);

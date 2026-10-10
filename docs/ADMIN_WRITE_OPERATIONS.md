@@ -6216,3 +6216,17 @@ automatically."
   „Да, отправь". In Spanish: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala".
 - No model-facing text. Every other reply is unchanged.
 - **Undo:** `INTRO_CLAIM_GUARD_ON = false`, one line, and ship.
+
+**§126 — 10 October ~12:10 UTC, Misho in the code session's chat: „ორივეზე კის გეუბნები"** (to the two items put to him at ~11:55Z:
+D772 + D773, and D771 + BI; the founder's answers came through the tester's box, 50923/50925/50926).
+
+- **D772 — the full number on the person's own contacts list.** `GET /contacts` rows gain `phone` (normalized, `+digits`). Only the
+  person's own phonebook is ever listed; the row id stays the sealed reference, so a number never travels in a URL.
+- **D773 — public facts on a contact's page.** `GET /contacts/:id` gains `public_facts`: `contact_facts` rows of source
+  `public_research` (the §119 load), not retracted, with `source_url` and `fact_date`. Nothing another member saved is shown.
+- **BI — the test notification.** `TEST_PUSH_ON = true` (setupTestPush.service.ts). The exact lines are recorded in NIGHT_QUESTIONS BI:
+  „შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს." (and the en / ru / es twins), title „Netai".
+- **D771 — the monthly contacts reminder in the assistant's own words.** Taken as a yes on the idea. The instruction is model-facing
+  (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
+- **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
+

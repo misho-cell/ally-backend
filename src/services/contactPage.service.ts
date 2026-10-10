@@ -8,14 +8,17 @@ import { fetchAccountStates, isMemberPhone } from './tools/membership';
 /**
  * The frontend's 06:30Z item 4, the contact's own page: what THIS person keeps
  * about one of their contacts — their own labels, how close they said they
- * are, their own facts, and the goals they kept this contact out of. Nothing
- * another member saved, and never the contact's own topic boundary (D421: the
- * asker is never told a boundary exists).
+ * are, their own facts, and the goals they kept this contact out of — plus
+ * what is public or published about the person, each with its source (D773,
+ * Misho's yes §126). Nothing another member saved, and never the contact's
+ * own topic boundary (D421: the asker is never told a boundary exists).
  */
 const QUERY_TIMEOUT_MS = 5_000;
 const MAX_LABELS = 50;
 const MAX_FACTS = 100;
 const MAX_EXCLUSIONS = 50;
+const MAX_PUBLIC_FACTS = 50;
+const PUBLIC_RESEARCH_SOURCE = 'public_research';
 const ROLE_FIELDS: readonly string[] = ['occupation', 'employer'];
 
 export enum Warmth {
@@ -28,6 +31,13 @@ export interface ContactFact {
   readonly field: string;
   readonly value: string;
   readonly saved_at: string;
+}
+
+export interface PublicFact {
+  readonly field: string;
+  readonly value: string;
+  readonly source_url: string | null;
+  readonly fact_date: string | null;
 }
 
 export interface ContactExclusionView {
@@ -43,6 +53,7 @@ export interface ContactPageView {
   readonly labels: readonly string[];
   readonly warmth: Warmth;
   readonly facts: readonly ContactFact[];
+  readonly public_facts: readonly PublicFact[];
   readonly exclusions: readonly ContactExclusionView[];
 }
 
@@ -101,6 +112,24 @@ async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
   return result.rows;
 }
 
+/**
+ * What is public or published about the person (the research load, §119),
+ * with its source. A fact the person themselves removed (4126 item 5) is
+ * retracted and never shown.
+ */
+async function publicFacts(phone: string): Promise<PublicFact[]> {
+  const result = await query<PublicFact>(
+    `SELECT field_type AS field, COALESCE(canonical_value, value) AS value, source_url,
+            TO_CHAR(fact_date, 'YYYY-MM-DD') AS fact_date
+       FROM contact_facts
+      WHERE neo4j_contact_id = $1 AND source = $2 AND retracted_at IS NULL
+      ORDER BY field_type, updated_at DESC LIMIT $3`,
+    [normalizePhone(phone), PUBLIC_RESEARCH_SOURCE, MAX_PUBLIC_FACTS],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
   const result = await query<ContactExclusionView>(
     `SELECT excluded_for, reason FROM contact_exclusions
@@ -126,10 +155,11 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
   if (phone === null) return null;
   const name = await savedName(userId, phone);
   if (name === undefined) return null;
-  const [labels, warmth, facts, exclusions, accounts] = await Promise.all([
+  const [labels, warmth, facts, published, exclusions, accounts] = await Promise.all([
     ownLabels(userId, phone),
     warmthOf(userId, phone),
     ownFacts(userId, phone),
+    publicFacts(phone),
     exclusionsOf(userId, phone),
     fetchAccountStates([phone]),
   ]);
@@ -141,6 +171,7 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
     labels,
     warmth,
     facts,
+    public_facts: published,
     exclusions,
   };
 }

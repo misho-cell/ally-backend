@@ -137,7 +137,7 @@ describe('GET /contacts and /contacts/:id', () => {
 
   it('lists a page with the search, size and cursor passed through', async () => {
     mockList.mockResolvedValue({
-      contacts: [{ id: 'c_x', name: 'ნინო', on_netai: true }],
+      contacts: [{ id: 'c_x', name: 'ნინო', phone: '+995599000001', on_netai: true }],
       next_cursor: null,
     });
     const res = await fetch(`${root()}?q=${encodeURIComponent('ნინო')}&limit=20&cursor=MjA`);
@@ -160,6 +160,7 @@ describe('GET /contacts and /contacts/:id', () => {
       labels: [],
       warmth: 'neutral' as never,
       facts: [],
+      public_facts: [],
       exclusions: [],
     });
     expect((await fetch(`${root()}/c_x`)).status).toBe(200);

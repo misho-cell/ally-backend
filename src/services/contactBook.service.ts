@@ -1,16 +1,17 @@
 import { query } from '../db/postgres/client';
 import { encodeContactRef } from './mcp/contactRef';
+import { normalizePhone } from './phone';
 import { fetchAccountStates, isMemberPhone } from './tools/membership';
 
 /**
  * The frontend's 06:30Z item 4 (design 4.8, „ჩემი კონტაქტები"): the person's
  * own phonebook, searchable by name, a page at a time.
  *
- * What a row shows is the narrowest of the shapes put to Tornike (box 50854,
- * option ა): the name the person saved and whether that contact is on Netai.
- * No number leaves the server (D149) — a row's id is the same sealed,
- * per-user reference the connector uses. A wider shape, if Tornike picks one,
- * is a field added here.
+ * A row shows the name the person saved, whether that contact is on Netai,
+ * and the full number (D772, the founder's option გ, Misho's yes §126): these
+ * are the person's own contacts and only they ever see their own book. The
+ * id is still the sealed per-user reference the connector uses, so a number
+ * never travels in a URL.
  */
 const QUERY_TIMEOUT_MS = 8_000;
 export const DEFAULT_PAGE_SIZE = 50;
@@ -22,6 +23,7 @@ const HAS_A_LETTER = /\p{L}/u;
 export interface ContactRow {
   readonly id: string;
   readonly name: string | null;
+  readonly phone: string;
   readonly on_netai: boolean;
 }
 
@@ -101,6 +103,7 @@ export async function contactPage(
     contacts: page.map((r) => ({
       id: encodeContactRef(String(userId), r.phone),
       name: shownName(r.alias),
+      phone: normalizePhone(r.phone),
       on_netai: isMemberPhone(accounts, r.phone),
     })),
     next_cursor: rows.length > request.limit ? encodeCursor(offset + request.limit) : null,
