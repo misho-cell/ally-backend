@@ -1,0 +1,234 @@
+From 58423946d4a9954bad5e74f89219ee239634e114 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:53:06 +0000
+Subject: [PATCH 96/98] =?UTF-8?q?feat(admin):=20which=20app=20build=20peop?=
+ =?UTF-8?q?le=20keep=20using=20=E2=80=94=20X-App-Build=20kept=20per=20devi?=
+ =?UTF-8?q?ce,=20GET=20/admin/app-builds=20(4298)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Plate NEW-7: nothing recorded the app's version. Migration 235 adds
+device_fingerprints.app_build; the fingerprint middleware keeps the build
+code the app sends as X-App-Build (an absent header never wipes a known
+one); GET /admin/app-builds counts people and devices per build over the
+last seven days. The frontend has to send the header for it to fill.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../deviceFingerprint.middleware.ts           | 11 ++--
+ src/api/routes/admin.routes.ts                | 12 +++++
+ .../migrations/235_device_app_build.sql       |  5 ++
+ .../whichBuildPeopleKeepUsing.test.ts         | 54 +++++++++++++++++++
+ src/services/deviceFingerprint.service.ts     | 48 +++++++++++++++--
+ 5 files changed, 122 insertions(+), 8 deletions(-)
+ create mode 100644 src/db/postgres/migrations/235_device_app_build.sql
+ create mode 100644 src/services/__tests__/whichBuildPeopleKeepUsing.test.ts
+
+diff --git a/src/api/middleware/deviceFingerprint.middleware.ts b/src/api/middleware/deviceFingerprint.middleware.ts
+index 7b1261c..7a3b718 100644
+--- a/src/api/middleware/deviceFingerprint.middleware.ts
++++ b/src/api/middleware/deviceFingerprint.middleware.ts
+@@ -1,6 +1,6 @@
+ import { NextFunction, Request, Response } from 'express';
+ import { AuthenticatedRequest } from './auth.middleware';
+-import { recordDevice } from '../../services/deviceFingerprint.service';
++import { appBuildOf, recordDevice } from '../../services/deviceFingerprint.service';
+ 
+ function clientIp(req: Request): string | null {
+   const forwarded = req.headers['x-forwarded-for'];
+@@ -21,9 +21,12 @@ export function captureDeviceFingerprint(req: Request, _res: Response, next: Nex
+   if (user?.userId && typeof deviceId === 'string' && deviceId.trim().length > 0) {
+     const userAgent =
+       typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null;
+-    void recordDevice(user.userId, deviceId.trim(), userAgent, clientIp(req)).catch(() => {
+-      // best-effort: fingerprinting must never break the request
+-    });
++    const appBuild = appBuildOf(req.headers['x-app-build']);
++    void recordDevice(user.userId, deviceId.trim(), userAgent, clientIp(req), appBuild).catch(
++      () => {
++        // best-effort: fingerprinting must never break the request
++      },
++    );
+   }
+ 
+   next();
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 83121b4..6bf47c7 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -322,6 +322,7 @@ import {
+ import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
+ import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
+ import { setupFunnel } from '../../services/setupState.service';
++import { appBuildsInUse } from '../../services/deviceFingerprint.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+ import {
+   AdminSnoozeOutcome,
+@@ -7166,6 +7167,17 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
+   }
+ });
+ 
++/** 4298: GET /admin/app-builds — per app build, people and devices seen in the last 7 days. */
++adminRouter.get('/app-builds', async (_req: Request, res: Response) => {
++  try {
++    res.status(200).json({ success: true, data: { days: 7, builds: await appBuildsInUse() } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[app-builds]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the app builds' });
++  }
++});
++
+ /** 1882 part 9: GET /admin/setup-funnel — per gadget and step, how many said done / failed / later. */
+ adminRouter.get('/setup-funnel', async (_req: Request, res: Response) => {
+   try {
+diff --git a/src/db/postgres/migrations/235_device_app_build.sql b/src/db/postgres/migrations/235_device_app_build.sql
+new file mode 100644
+index 0000000..e8f496b
+--- /dev/null
++++ b/src/db/postgres/migrations/235_device_app_build.sql
+@@ -0,0 +1,5 @@
++-- 4298 (plate NEW-7): which app build people keep using. The app sends its
++-- build code as X-App-Build; the newest one a device was seen with is kept
++-- beside it. NULL until the app sends the header.
++ALTER TABLE device_fingerprints ADD COLUMN IF NOT EXISTS app_build TEXT;
++CREATE INDEX IF NOT EXISTS idx_device_fp_build_seen ON device_fingerprints (app_build, last_seen);
+diff --git a/src/services/__tests__/whichBuildPeopleKeepUsing.test.ts b/src/services/__tests__/whichBuildPeopleKeepUsing.test.ts
+new file mode 100644
+index 0000000..6463c58
+--- /dev/null
++++ b/src/services/__tests__/whichBuildPeopleKeepUsing.test.ts
+@@ -0,0 +1,54 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { appBuildOf, appBuildsInUse, recordDevice } from '../deviceFingerprint.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** 4298 (plate NEW-7): which app build people keep using. */
++describe('the app build', () => {
++  it('is taken from X-App-Build only when it looks like a build code', () => {
++    expect(appBuildOf(' 1953859 ')).toBe('1953859');
++    expect(appBuildOf('v2.4.1-rc_1')).toBe('v2.4.1-rc_1');
++    expect(appBuildOf(undefined)).toBeNull();
++    expect(appBuildOf("1'; DROP TABLE x")).toBeNull();
++    expect(appBuildOf('x'.repeat(41))).toBeNull();
++  });
++
++  it('is kept beside the device, and an absent header never wipes a known one', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await recordDevice('171', 'd-abc', 'UA', '1.2.3.4', '1953859');
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('COALESCE(EXCLUDED.app_build, device_fingerprints.app_build)');
++    expect(params).toEqual(['171', 'd-abc', 'UA', '1.2.3.4', '1953859']);
++  });
++
++  it('is reported per build over the last seven days, people and devices', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ app_build: '1953859', people: 12, devices: 15 }],
++    } as never);
++    await expect(appBuildsInUse()).resolves.toEqual([
++      { app_build: '1953859', people: 12, devices: 15 },
++    ]);
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('GROUP BY app_build');
++    expect(params?.[0]).toBe(7);
++  });
++
++  it('is read by the fingerprint middleware and served at GET /admin/app-builds', () => {
++    const mw = readFileSync(
++      join(__dirname, '..', '..', 'api', 'middleware', 'deviceFingerprint.middleware.ts'),
++      'utf8',
++    );
++    expect(mw).toContain("appBuildOf(req.headers['x-app-build'])");
++    const admin = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'admin.routes.ts'),
++      'utf8',
++    );
++    expect(admin).toContain("adminRouter.get('/app-builds'");
++  });
++});
+diff --git a/src/services/deviceFingerprint.service.ts b/src/services/deviceFingerprint.service.ts
+index 8f3b8a0..a9012a6 100644
+--- a/src/services/deviceFingerprint.service.ts
++++ b/src/services/deviceFingerprint.service.ts
+@@ -1,25 +1,65 @@
+ import { query } from '../db/postgres/client';
+ 
+ const MAX_FIELD = 256;
++const QUERY_TIMEOUT_MS = 5_000;
+ 
+ /**
+  * Record (or update) a device seen for a user. Best-effort: callers invoke
+  * this fire-and-forget so it never blocks or fails a request.
+  */
++/** A build code as the app writes it: letters, digits, dot, dash, underscore. */
++const APP_BUILD_RE = /^[A-Za-z0-9._-]{1,40}$/;
++
++/** The app's build code from its header, or null when absent or not one. */
++export function appBuildOf(header: unknown): string | null {
++  return typeof header === 'string' && APP_BUILD_RE.test(header.trim()) ? header.trim() : null;
++}
++
+ export async function recordDevice(
+   userId: string,
+   deviceId: string,
+   userAgent: string | null,
+   ip: string | null,
++  appBuild: string | null = null,
+ ): Promise<void> {
+   await query(
+-    `INSERT INTO device_fingerprints (user_id, device_id, user_agent, ip)
+-     VALUES ($1, $2, $3, $4)
++    `INSERT INTO device_fingerprints (user_id, device_id, user_agent, ip, app_build)
++     VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (user_id, device_id)
+      DO UPDATE SET request_count = device_fingerprints.request_count + 1,
+                    last_seen     = NOW(),
+                    user_agent    = EXCLUDED.user_agent,
+-                   ip            = EXCLUDED.ip`,
+-    [userId, deviceId.slice(0, MAX_FIELD), userAgent?.slice(0, MAX_FIELD) ?? null, ip],
++                   ip            = EXCLUDED.ip,
++                   app_build     = COALESCE(EXCLUDED.app_build, device_fingerprints.app_build)`,
++    [userId, deviceId.slice(0, MAX_FIELD), userAgent?.slice(0, MAX_FIELD) ?? null, ip, appBuild],
++    QUERY_TIMEOUT_MS,
++  );
++}
++
++const BUILD_REPORT_DAYS = 7;
++const MAX_BUILDS_LISTED = 50;
++
++export interface BuildUse {
++  readonly app_build: string | null;
++  readonly people: number;
++  readonly devices: number;
++}
++
++/**
++ * 4298 (plate NEW-7): per app build, how many people used it in the last
++ * seven days — by the build each device was last seen with. A null build is
++ * the app before it sent the header.
++ */
++export async function appBuildsInUse(): Promise<BuildUse[]> {
++  const result = await query<BuildUse>(
++    `SELECT app_build, COUNT(DISTINCT user_id)::int AS people, COUNT(*)::int AS devices
++       FROM device_fingerprints
++      WHERE last_seen > NOW() - make_interval(days => $1)
++      GROUP BY app_build
++      ORDER BY people DESC
++      LIMIT $2`,
++    [BUILD_REPORT_DAYS, MAX_BUILDS_LISTED],
++    QUERY_TIMEOUT_MS,
+   );
++  return result.rows;
+ }
+-- 
+2.43.0
+

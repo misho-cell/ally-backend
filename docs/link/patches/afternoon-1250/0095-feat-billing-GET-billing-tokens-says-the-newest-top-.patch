@@ -1,0 +1,143 @@
+From 6b27453ace46ba09454c3e31221ee509ab013362 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:51:45 +0000
+Subject: [PATCH 95/98] =?UTF-8?q?feat(billing):=20GET=20/billing/tokens=20?=
+ =?UTF-8?q?says=20the=20newest=20top-up=20=E2=80=94=20amount,=20date=20and?=
+ =?UTF-8?q?=20kind=20(4294)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Plate NEW-3: the wallet showed the period's totals only, so after a weekly
+top-up the screen could not say how much came in or when. lastTopUp is the
+newest credit of the period grant, a bought pack or the trial's, as
+written; null for someone never credited. Nothing existing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/tokenWallet.service.test.ts     | 30 ++++++++++++++
+ src/services/tokenWallet.service.ts           | 41 +++++++++++++++++++
+ 2 files changed, 71 insertions(+)
+
+diff --git a/src/services/__tests__/tokenWallet.service.test.ts b/src/services/__tests__/tokenWallet.service.test.ts
+index 3b27553..3537c9e 100644
+--- a/src/services/__tests__/tokenWallet.service.test.ts
++++ b/src/services/__tests__/tokenWallet.service.test.ts
+@@ -23,7 +23,9 @@ import {
+   ensurePeriodGrant,
+   expireStaleGrants,
+   getWalletSummary,
++  lastTopUp,
+   listTopupPackages,
++  TopUpKind,
+ } from '../tokenWallet.service';
+ 
+ const mockQuery = query as jest.MockedFunction<typeof query>;
+@@ -470,10 +472,38 @@ describe('getWalletSummary', () => {
+       spentThisPeriod: 260,
+       window: 'calendar_month',
+       resetsAt: '',
++      lastTopUp: null,
+     });
+   });
+ });
+ 
++/** 4294 (plate NEW-3): the wallet says the newest credit, not only the period's totals. */
++describe('lastTopUp', () => {
++  it('is the newest grant, pack or trial credit, with its amount, date and kind', async () => {
++    mockQuery.mockReset();
++    mockQuery.mockResolvedValueOnce(
++      rows([
++        { amount: '250', created_at: new Date('2026-10-06T00:00:05Z'), reason: 'monthly_grant' },
++      ]) as never,
++    );
++    await expect(lastTopUp('7')).resolves.toEqual({
++      amount: 250,
++      at: '2026-10-06T00:00:05.000Z',
++      kind: TopUpKind.Grant,
++    });
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('amount > 0');
++    expect(sql).toContain('ORDER BY created_at DESC');
++    expect(params?.[1]).toEqual(['monthly_grant', 'topup', 'trial_grant']);
++  });
++
++  it('is null for someone never credited', async () => {
++    mockQuery.mockReset();
++    mockQuery.mockResolvedValueOnce(rows([]) as never);
++    await expect(lastTopUp('7')).resolves.toBeNull();
++  });
++});
++
+ // Ticket 10 Task 25 (c), D124: one variable moves the grant, its expiry and
+ // the summary from the calendar month to the calendar week. Everything above
+ // ran with the variable unset, which is the month — nothing changed there.
+diff --git a/src/services/tokenWallet.service.ts b/src/services/tokenWallet.service.ts
+index 30119a3..342063c 100644
+--- a/src/services/tokenWallet.service.ts
++++ b/src/services/tokenWallet.service.ts
+@@ -26,6 +26,45 @@ export interface WalletSummary {
+   window: 'calendar_month' | 'calendar_week';
+   /** When the allowance resets — the screen's „renews" date for tokens (Ticket 12 Task 34). */
+   resetsAt: string;
++  /** 4294 (plate NEW-3): the newest credit — the period's grant, a bought pack or the trial's. */
++  lastTopUp: LastTopUp | null;
++}
++
++export enum TopUpKind {
++  Grant = 'grant',
++  Topup = 'topup',
++  Trial = 'trial',
++}
++
++export interface LastTopUp {
++  readonly amount: number;
++  readonly at: string;
++  readonly kind: TopUpKind;
++}
++
++const KIND_OF_REASON: Readonly<Record<string, TopUpKind>> = {
++  [MONTHLY_GRANT_REASON]: TopUpKind.Grant,
++  [TOPUP_REASON]: TopUpKind.Topup,
++  [TRIAL_GRANT_REASON]: TopUpKind.Trial,
++};
++
++/**
++ * 4294 (plate NEW-3): the wallet showed the period's totals only, so after a
++ * weekly top-up the screen could not say how much came in, or when. The
++ * newest credit of the three kinds, read as it was written.
++ */
++export async function lastTopUp(userId: string): Promise<LastTopUp | null> {
++  const result = await query<{ amount: string; created_at: Date | string; reason: string }>(
++    `SELECT amount, created_at, reason FROM token_transactions
++      WHERE user_id = $1 AND amount > 0 AND reason = ANY($2::text[])
++      ORDER BY created_at DESC, id DESC LIMIT 1`,
++    [userId, Object.keys(KIND_OF_REASON)],
++  );
++  const row = result.rows[0];
++  const kind = row === undefined ? undefined : KIND_OF_REASON[row.reason];
++  if (row === undefined || kind === undefined) return null;
++  const at = row.created_at instanceof Date ? row.created_at : new Date(row.created_at);
++  return { amount: Number(row.amount), at: at.toISOString(), kind };
+ }
+ 
+ export async function isWalletEnabled(): Promise<boolean> {
+@@ -491,6 +530,7 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
+ 
+   const row = result.rows[0];
+   const resets = row?.resets_at instanceof Date ? row.resets_at : new Date(row?.resets_at ?? NaN);
++  const newest = await lastTopUp(userId);
+   return {
+     enabled,
+     balance: Number(row?.balance ?? 0),
+@@ -498,5 +538,6 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
+     spentThisPeriod: Number(row?.spent ?? 0),
+     window: window.label,
+     resetsAt: Number.isNaN(resets.getTime()) ? '' : resets.toISOString(),
++    lastTopUp: newest,
+   };
+ }
+-- 
+2.43.0
+

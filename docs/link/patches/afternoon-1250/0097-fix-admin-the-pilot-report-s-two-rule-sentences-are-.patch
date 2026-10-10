@@ -1,0 +1,89 @@
+From 1112210d4318999a95a7ce1b53538ba0efd1f83f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:54:13 +0000
+Subject: [PATCH 97/98] fix(admin): the pilot report's two rule sentences are
+ Georgian, as the page is (4292)
+
+Plate NEW-1: the page's own labels are Georgian; the two sentences the
+server sends with the numbers (who counts as real, what paying means) were
+still English. Same facts, in Georgian.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../thePilotsNumbersSayWhoTheyCount.test.ts   | 12 ++++++----
+ src/services/pilotReport.service.ts           | 24 +++++++++++--------
+ 2 files changed, 21 insertions(+), 15 deletions(-)
+
+diff --git a/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts b/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts
+index f3b231f..8c1d7cb 100644
+--- a/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts
++++ b/src/services/__tests__/thePilotsNumbersSayWhoTheyCount.test.ts
+@@ -75,9 +75,10 @@ describe('the population is written into the query, not assumed', () => {
+ 
+     expect(report.population).toContain('hasAccessToAlly');
+     expect(report.population).toContain('test_seats');
+-    expect(report.population).toContain('legacy Ally');
++    expect(report.population).toContain('Ally-ის 62,200 ძველი ანგარიში');
+     // And it says USE first, because that is what the flag alone got wrong.
+-    expect(report.population).toContain('USED Netai');
++    // 4292: in Georgian, as the page is.
++    expect(report.population).toContain('ვინც Netai უკვე გამოიყენა');
+   });
+ 
+   /**
+@@ -212,9 +213,10 @@ describe('paying means somebody we bill', () => {
+   it('carries what paying MEANS in the payload', async () => {
+     const report = await pilotReport(7);
+ 
+-    expect(report.payment_rule).toContain('Stripe customer');
+-    expect(report.payment_rule).toContain('admin grant');
+-    expect(report.payment_rule).toContain('not revenue');
++    // 4292: in Georgian, as the page is.
++    expect(report.payment_rule).toContain('Stripe-ის მომხმარებელი');
++    expect(report.payment_rule).toContain('ადმინისტრატორის მიერ მიცემული');
++    expect(report.payment_rule).toContain('შემოსავალი არ არის');
+   });
+ 
+   /** The 20-day cohort is the revenue question, so it takes the same rule. */
+diff --git a/src/services/pilotReport.service.ts b/src/services/pilotReport.service.ts
+index e44c926..3c6ec61 100644
+--- a/src/services/pilotReport.service.ts
++++ b/src/services/pilotReport.service.ts
+@@ -245,19 +245,23 @@ function withParam(fragment: string, n: number): string {
+   return fragment.replace('$PAYING$', `$${n}`);
+ }
+ 
++/**
++ * 4292 (plate NEW-1): the page reads in Georgian, and these two sentences
++ * travel with the numbers, so they are Georgian too. Same facts as before.
++ */
+ const PAYMENT_RULE =
+-  'paying = a live subscription AND a Stripe customer — somebody we actually bill. ' +
+-  'access_granted_by_hand = the status says active and there is no Stripe record at ' +
+-  'all, which is an admin grant. On 24 September that was 4 and 11: reading the status ' +
+-  'column alone would call all 15 paying. Both are real and they are not the same ' +
+-  'fact — a hand-granted account is a person using the product, and it is not revenue.';
++  'გადამხდელი = მოქმედი გამოწერა და Stripe-ის მომხმარებელი — ვისაც ნამდვილად ვაკისრებთ თანხას. ' +
++  'ხელით მიცემული წვდომა = სტატუსი „აქტიურია“, მაგრამ Stripe-ში ჩანაწერი საერთოდ არ არის, ' +
++  'ანუ ადმინისტრატორის მიერ მიცემული. 24 სექტემბერს ეს იყო 4 და 11: მხოლოდ სტატუსის სვეტით ' +
++  'სამივე 15 გადამხდელად ჩაითვლებოდა. ორივე ნამდვილია, მაგრამ ერთი და იგივე არ არის — ' +
++  'ხელით მიცემული ანგარიში პროდუქტს იყენებს, მაგრამ შემოსავალი არ არის.';
+ 
+ const POPULATION_RULE =
+-  'real = somebody who has USED Netai (has a thread here) or registered through it ' +
+-  '(hasAccessToAlly), and is not in test_seats. USE and not the flag: 35 of the 45 real ' +
+-  'people who have used this product do not carry it, including the second most active ' +
+-  'account. seats = the fictional accounts the seat route created. The 62,200 legacy Ally ' +
+-  'accounts are in neither: they have no thread here.';
++  'ნამდვილი = ვინც Netai უკვე გამოიყენა (აქვს საუბარი აქ) ან მისი გავლით დარეგისტრირდა ' +
++  '(hasAccessToAlly), და არ არის test_seats-ში. გამოყენება და არა ნიშანი: 45 ნამდვილი ' +
++  'მომხმარებლიდან, ვინც პროდუქტი გამოიყენა, 35-ს ნიშანი არ აქვს, მათ შორის მეორე ყველაზე ' +
++  'აქტიურ ანგარიშს. სატესტო = გამოგონილი ანგარიშები, რომლებიც სატესტო მარშრუტმა შექმნა. ' +
++  'Ally-ის 62,200 ძველი ანგარიში არცერთშია: აქ საუბარი არ აქვთ.';
+ 
+ interface DayRow {
+   day: Date | string;
+-- 
+2.43.0
+

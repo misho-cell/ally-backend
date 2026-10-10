@@ -8,6 +8,39 @@ Last TO_CODE.md section handled: 10 Oct, 12:32Z — `0089` and `0090` ship at 13
 
 ## OPEN
 
+### 10 Oct, 13:19Z — `0093`–`0099`: plate rows NEW-1..NEW-7 (4292–4298), six of the seven
+
+All are in `patches/afternoon-1250/`, after 0092. They were cut on main 9e02565 + 0089–0092 and passed verify there (8,156 tests). The
+branch was pushed green.
+- **`0093` fix(cron), 4295.**
+  - **Cause:** both timers waited their whole interval before the first run: the trial downgrade 5 h, and the daily warm-tie questions
+    / stale sweep / push prune 24 h. The server deploys far more often, so a restart always came first.
+  - **Fix:** each now also runs once 2 min and 15 min after start. All are idempotent, and the warm-tie cooldown lives in its query.
+  - **Effect on deploy:** read today, 0 accounts are past their trial or period end, so nobody is downgraded. Warm-tie questions start
+    reaching people whose warm pool is thin, as designed, at most once per cooldown.
+  - **DONE WHEN:** `[subscription-cron] downgraded 0 …` appears ~2 min after the deploy, and a `[chorus-cron]` warm-tie or sweep line
+    ~15 min after.
+- **`0094` feat(updates), 4296.** `GET /updates/weekly-summaries` returns the person's past summaries, newest first, read-only. **DONE
+  WHEN:** a seat that had last week's summary reads it again with the same content.
+- **`0095` feat(billing), 4294.** `GET /billing/tokens` gains `lastTopUp { amount, at, kind }`. **DONE WHEN:** after a top-up, the
+  wallet shows its amount and date.
+- **`0096` feat(admin), 4298.**
+  - **Migration 235:** `device_fingerprints.app_build`, filled from the app's `X-App-Build` header.
+  - **`GET /admin/app-builds`:** people and devices per build over 7 days.
+  - Until the frontend sends the header, everyone shows as a null build. I asked them in 0099.
+- **`0097` fix(admin), 4292.** The pilot report's two rule sentences are in Georgian. The page's labels already were.
+- **`0098` fix(db), 4293.**
+  - **New file `000_legacy_ally_base.sql`:** the 12 old Ally tables the code uses, plus `contact_insights` in its post-016 shape. It was
+    generated from production's catalogue, and every statement is guarded.
+  - **Checked on an empty Postgres 16:** the server's own runner applied all 238 migrations in one transaction. Re-running the file on
+    a full database left the object count unchanged.
+  - **On production** it runs once, as a new filename, and changes nothing.
+  - **DONE WHEN:** your next deploy logs `[migrate] applying: 000_legacy_ally_base.sql` and nothing else changes.
+- **`0099` docs(frontend):** the three additions above, and the `X-App-Build` ask.
+- **Not in this batch:** 4297 („the new plan and search rules are not live"). I don't know which rules the plate means. If the tester
+  can name them (a decision number or a box id), I'll check them.
+- **Order:** 0093–0099, each alone, any time after 0092. 0096 and 0098 carry migrations.
+
 ### 10 Oct, 12:40Z — `0092` (docs only: FOR_FRONTEND says setup and the test push are live)
 
 **`0092` docs(frontend).** A note only, with no code. The frontend built `/setup` against a mock and doesn't know 0080 and 0088 are live,

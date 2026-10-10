@@ -1,0 +1,150 @@
+From 3c4b3eaefa7830adef55edcafccf56e2eaeeb84f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:50:49 +0000
+Subject: [PATCH 94/98] =?UTF-8?q?feat(updates):=20GET=20/updates/weekly-su?=
+ =?UTF-8?q?mmaries=20=E2=80=94=20last=20week's=20summary=20opens=20again?=
+ =?UTF-8?q?=20(4296)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Plate NEW-5: the seen list is the newest fifty updates of any kind, and a
+week of search results pushed the summary off its end, so last week's
+could not be opened again. The person's own summaries, newest first, read
+or not, as the same cards GET /updates draws; read-only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/updates.routes.ts              | 31 ++++++++++++++++
+ .../lastWeeksSummaryOpensAgain.test.ts        | 35 +++++++++++++++++++
+ src/services/pendingUpdates.service.ts        | 22 ++++++++++++
+ 3 files changed, 88 insertions(+)
+ create mode 100644 src/services/__tests__/lastWeeksSummaryOpensAgain.test.ts
+
+diff --git a/src/api/routes/updates.routes.ts b/src/api/routes/updates.routes.ts
+index ed8de78..289c0c6 100644
+--- a/src/api/routes/updates.routes.ts
++++ b/src/api/routes/updates.routes.ts
+@@ -12,6 +12,7 @@ import {
+   countHeldUpdates,
+   countUpdatesForBadge,
+   peekDueUpdates,
++  pastWeeklySummaries,
+   UpdateCounts,
+   snoozeUpdate,
+   markUpdateSeen,
+@@ -199,6 +200,36 @@ updatesRouter.get(
+   },
+ );
+ 
++/**
++ * 4296 (plate NEW-5): GET /updates/weekly-summaries → { summaries: [UpdateRow] },
++ * newest first — last week's summary opened again, word for word. Spends nothing.
++ */
++updatesRouter.get(
++  '/weekly-summaries',
++  async (
++    req: Request,
++    res: Response<ApiResponse<{ readonly summaries: readonly UpdateRow[] }>>,
++  ): Promise<void> => {
++    const userId = String((req as AuthenticatedRequest).user.userId);
++    try {
++      const chosen = asRunLanguage(req.get('X-Locale'));
++      const [rows, language] = await Promise.all([
++        pastWeeklySummaries(userId),
++        chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
++      ]);
++      const none = new Map<number, string>();
++      res.status(200).json({
++        success: true,
++        data: { summaries: rows.map((u) => updatePayload(u, none, none, language, new Set())) },
++      });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /updates/weekly-summaries]', error);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ updatesRouter.get('/', async (req: Request, res: Response<ApiResponse<UpdatesView>>) => {
+   const userId = String((req as AuthenticatedRequest).user.userId);
+   try {
+diff --git a/src/services/__tests__/lastWeeksSummaryOpensAgain.test.ts b/src/services/__tests__/lastWeeksSummaryOpensAgain.test.ts
+new file mode 100644
+index 0000000..26f8717
+--- /dev/null
++++ b/src/services/__tests__/lastWeeksSummaryOpensAgain.test.ts
+@@ -0,0 +1,35 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { PAST_SUMMARIES_LIMIT, pastWeeklySummaries } from '../pendingUpdates.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/** 4296 (plate NEW-5): last week's summary could not be opened again. */
++describe('a past weekly summary', () => {
++  it('is read back for its own person, newest first, read or not, without spending anything', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ id: 9, task_id: null, kind: 'weekly_summary', payload: {} }],
++    } as never);
++    await expect(pastWeeklySummaries('171')).resolves.toHaveLength(1);
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql.trim().startsWith('SELECT')).toBe(true);
++    expect(sql).not.toMatch(/\bUPDATE\b/);
++    expect(sql).not.toContain("status = 'seen'");
++    expect(sql).toContain('ORDER BY p.release_at DESC');
++    expect(params).toEqual(['171', 'weekly_summary', PAST_SUMMARIES_LIMIT]);
++  });
++
++  it('is served at GET /updates/weekly-summaries, behind the router’s login', () => {
++    const routes = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'updates.routes.ts'),
++      'utf8',
++    );
++    expect(routes).toContain("'/weekly-summaries',");
++    expect(routes.indexOf("'/weekly-summaries',")).toBeGreaterThan(
++      routes.indexOf('updatesRouter.use(authenticateJwt, requireUserRole);'),
++    );
++  });
++});
+diff --git a/src/services/pendingUpdates.service.ts b/src/services/pendingUpdates.service.ts
+index 7865e31..1b22d25 100644
+--- a/src/services/pendingUpdates.service.ts
++++ b/src/services/pendingUpdates.service.ts
+@@ -344,6 +344,28 @@ export async function listSeenUpdates(
+   return result.rows;
+ }
+ 
++/** How many past weekly summaries can be opened again (about two months). */
++export const PAST_SUMMARIES_LIMIT = 8;
++
++/**
++ * 4296 (plate NEW-5): last week's summary could not be opened again — the
++ * `seen` list is the newest fifty updates of any kind, and a week of search
++ * results pushes the summary off its end. The person's own summaries, newest
++ * first, whether read or not. Read-only: nothing is released or marked.
++ */
++export async function pastWeeklySummaries(userId: string): Promise<PendingUpdate[]> {
++  const result = await query<PendingUpdate>(
++    `SELECT p.id, p.task_id, p.kind, p.payload
++       FROM pending_updates p
++      WHERE p.user_id = $1 AND p.kind = $2 AND p.release_at <= NOW()
++      ORDER BY p.release_at DESC, p.id DESC
++      LIMIT $3`,
++    [userId, UNSPENT_KINDS[0], PAST_SUMMARIES_LIMIT],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
+ /**
+  * How many updates are still held for the user (due later) — the "more coming"
+  * hint. Excludes updates for a closed goal (they never release), and must be
+-- 
+2.43.0
+
