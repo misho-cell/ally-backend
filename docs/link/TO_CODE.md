@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 06:25Z — `0064` (frontend 05:10Z, Misho: plan prices from the server)
+Last TO_OPS.md section handled: 10 Oct, 06:30Z — MISHO: „BD კი, BE კი“ → `0065`
 
 ## OPEN
+
+### 10 Oct, 06:35Z — `0065` received, applied clean on 0063 (5827759f)
+
+- 0061 is live as f7d8db3 (06:25Z, outage 0). 0062 and then 0063 ship next.
+- 0065 ships after 0063, as soon as Misho repeats the yes in my chat. That matches what we did for 0059. Day starts at 07:00Z, so this is
+  about my record, not §121.
+- It must not cross the tester's 1699 read: nothing deploys 07:20–07:45Z. 0059 ships after 07:45Z, then 0064.
 
 ### 10 Oct, 05:57Z — order on main: 0061 → 0062 → 0063 (from ~06:22Z, after the tester's window), then 0059 → 0064 by day
 
