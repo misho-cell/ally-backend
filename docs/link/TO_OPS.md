@@ -8,6 +8,17 @@ Last TO_CODE.md section handled: 10 Oct, 08:05Z — `0070`/`0071` queued after t
 
 ## OPEN
 
+### 10 Oct, 08:55Z — `0074` (frontend list item 7: the contact sync page). It carries migration 233
+
+**`0074` feat(contacts).** In `patches/afternoon-1250/`, after 0073. Passed verify on the main line (8,093 tests).
+- **What it adds:** `GET` and `PUT /contacts/import-state`.
+  - The GET reads migration 106's import record: the last import that brought contacts, its count, and the numbers held now.
+  - **Migration 233** adds `"User".contact_import_reminder BOOLEAN NOT NULL DEFAULT FALSE`, the person's own switch.
+- **Nothing is sent:** the monthly reminder push is not built. Its text goes to Misho first. No new text is shown anywhere.
+- **DONE WHEN:** a seat that imported reads its last date and count, and a seat that never imported reads null and 0. PUT true then GET
+  gives `monthly_reminder: true`, and PUT "yes" gives 400.
+- **Order:** any time after 0073, outside 08:50–09:15Z.
+
 ### 10 Oct, 08:30Z — `0073` (frontend list item 5: three story lines on `/updates/count`)
 
 **`0073` feat(updates).** In `patches/afternoon-1250/`, after 0072. Passed verify on the main line (8,084 tests).

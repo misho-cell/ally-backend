@@ -1,0 +1,381 @@
+From 3c02e624c5af68cdff8b6a4e8b8cb05b42915879 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 08:22:37 +0000
+Subject: [PATCH] feat(contacts): GET/PUT /contacts/import-state, the contact
+ sync page (frontend 06:30Z item 7)
+
+The last import that brought contacts (from migration 106's record), how
+many it brought, how many numbers the person holds now, and the monthly
+reminder switch (migration 233, off by default). The reminder push itself
+is not built: its text waits for Misho's yes, so the switch is only saved.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  20 +++
+ .../contactImportState.routes.test.ts         | 118 ++++++++++++++++++
+ src/api/routes/contacts.routes.ts             |  42 +++++++
+ .../233_contact_import_reminder.sql           |   4 +
+ .../__tests__/contactImportState.test.ts      |  57 +++++++++
+ src/services/contactImportState.service.ts    |  58 +++++++++
+ 6 files changed, 299 insertions(+)
+ create mode 100644 src/api/routes/__tests__/contactImportState.routes.test.ts
+ create mode 100644 src/db/postgres/migrations/233_contact_import_reminder.sql
+ create mode 100644 src/services/__tests__/contactImportState.test.ts
+ create mode 100644 src/services/contactImportState.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 4b594bf..0b61bff 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,26 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 08:45Z — item 7 of your 06:30Z list: the contact sync page (patch 0074, not live yet)
++
++```
++GET /contacts/import-state
++→ 200 { "success": true, "data": { "last_import_at": "2026-10-01T09:00:00.000Z", "last_import_count": 412,
++                                   "count": 420, "monthly_reminder": false } }
++
++PUT /contacts/import-state   { "monthly_reminder": true }
++→ 200 with the same shape, already updated
++→ 400 { "success": false, "error": "monthly_reminder must be true or false" }
++```
++
++- **`last_import_at`:** the last import that actually brought contacts. An import still running, or one that brought nothing, does not
++  count. It is null for someone who never imported.
++- **`last_import_count`:** how many contacts that import brought. **`count`:** how many distinct numbers the person holds now, from every
++  import.
++- **`monthly_reminder`:** the person's own switch, off by default. **The reminder itself is not built yet.** Its push text waits for
++  Misho's yes, so for now the switch is saved and nothing is sent. I'll write here when the push goes.
++- Same login and subscription as `POST /contacts/import`. Both routes answer 30 calls a minute. Status codes: 200 / 400 / 401 / 500.
++
+ ## 10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)
+ 
+ `GET /updates/count` gains one field, `lines`. It holds at most 3 strings: the first updates that are due, oldest first, one line each.
+diff --git a/src/api/routes/__tests__/contactImportState.routes.test.ts b/src/api/routes/__tests__/contactImportState.routes.test.ts
+new file mode 100644
+index 0000000..51e4139
+--- /dev/null
++++ b/src/api/routes/__tests__/contactImportState.routes.test.ts
+@@ -0,0 +1,118 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../middleware/subscription.middleware', () => ({
++  __esModule: true,
++  requireSubscription: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/deviceFingerprint.middleware', () => ({
++  __esModule: true,
++  captureDeviceFingerprint: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
++jest.mock('../../../db/postgres/client', () => ({
++  __esModule: true,
++  default: {},
++  query: jest.fn(),
++}));
++jest.mock('../../../services/contacts.service', () => ({
++  __esModule: true,
++  importContacts: jest.fn(),
++  parseVcf: jest.fn(),
++}));
++jest.mock('../../../services/contactImportState.service', () => ({
++  __esModule: true,
++  contactImportState: jest.fn(),
++  setContactImportReminder: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import contactsRouter from '../contacts.routes';
++import {
++  contactImportState,
++  setContactImportReminder,
++} from '../../../services/contactImportState.service';
++
++const mockState = contactImportState as jest.MockedFunction<typeof contactImportState>;
++const mockSet = setContactImportReminder as jest.MockedFunction<typeof setContactImportReminder>;
++
++const STATE = {
++  last_import_at: '2026-10-01T09:00:00Z',
++  last_import_count: 412,
++  count: 420,
++  monthly_reminder: false,
++};
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use(express.json());
++  app.use('/contacts', contactsRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/contacts/import-state`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++/** The frontend's 06:30Z item 7: the contact sync page. */
++describe('GET /contacts/import-state', () => {
++  it('answers the signed-in person’s import state', async () => {
++    mockState.mockResolvedValue(STATE);
++    const res = await fetch(base);
++    expect(res.status).toBe(200);
++    expect(((await res.json()) as { data: unknown }).data).toEqual(STATE);
++    expect(mockState).toHaveBeenCalledWith(171);
++  });
++
++  it('says 500 without the database error', async () => {
++    mockState.mockRejectedValue(new Error('relation import_attempts is locked'));
++    const res = await fetch(base);
++    expect(res.status).toBe(500);
++    expect(JSON.stringify(await res.json())).not.toContain('relation');
++  });
++});
++
++describe('PUT /contacts/import-state', () => {
++  const put = (body: unknown): Promise<Response> =>
++    fetch(base, {
++      method: 'PUT',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(body),
++    });
++
++  it('saves the switch and answers the new state', async () => {
++    mockState.mockResolvedValue({ ...STATE, monthly_reminder: true });
++    const res = await put({ monthly_reminder: true });
++    expect(res.status).toBe(200);
++    expect(mockSet).toHaveBeenCalledWith(171, true);
++    expect(((await res.json()) as { data: typeof STATE }).data.monthly_reminder).toBe(true);
++  });
++
++  it.each([{}, { monthly_reminder: 'yes' }, { monthly_reminder: 1 }])(
++    'refuses %j with 400 and saves nothing',
++    async (body) => {
++      expect((await put(body)).status).toBe(400);
++      expect(mockSet).not.toHaveBeenCalled();
++    },
++  );
++});
+diff --git a/src/api/routes/contacts.routes.ts b/src/api/routes/contacts.routes.ts
+index 4872f46..4972a75 100644
+--- a/src/api/routes/contacts.routes.ts
++++ b/src/api/routes/contacts.routes.ts
+@@ -8,6 +8,11 @@ import {
+ import { requireSubscription } from '../middleware/subscription.middleware';
+ import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
+ import { importContacts, parseVcf } from '../../services/contacts.service';
++import {
++  contactImportState,
++  setContactImportReminder,
++} from '../../services/contactImportState.service';
++import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { ApiResponse, ImportResult } from '../../types';
+ import { getSession } from '../../db/neo4j/client';
+ import pool from '../../db/postgres/client';
+@@ -18,6 +23,43 @@ contactsRouter.use(authenticateJwt, requireUserRole);
+ contactsRouter.use(requireSubscription);
+ contactsRouter.use(captureDeviceFingerprint);
+ 
++/** The import-state routes are read on every visit to the sync page. */
++const IMPORT_STATE_PER_MINUTE = 30;
++const importStateLimit = rateLimit({ windowMs: 60_000, max: IMPORT_STATE_PER_MINUTE });
++
++/**
++ * The frontend's 06:30Z item 7 (the contact sync page):
++ *   GET /contacts/import-state  { last_import_at, last_import_count, count, monthly_reminder }
++ *   PUT /contacts/import-state  { monthly_reminder: boolean }
++ */
++contactsRouter.get('/import-state', importStateLimit, async (req: Request, res: Response) => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    res.status(200).json({ success: true, data: await contactImportState(userId) });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /contacts/import-state]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read the import state' });
++  }
++});
++
++contactsRouter.put('/import-state', importStateLimit, async (req: Request, res: Response) => {
++  const on = (req.body as { monthly_reminder?: unknown } | undefined)?.monthly_reminder;
++  if (typeof on !== 'boolean') {
++    res.status(400).json({ success: false, error: 'monthly_reminder must be true or false' });
++    return;
++  }
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    await setContactImportReminder(userId, on);
++    res.status(200).json({ success: true, data: await contactImportState(userId) });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[PUT /contacts/import-state]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not save the reminder' });
++  }
++});
++
+ contactsRouter.post(
+   '/import',
+   body('contacts')
+diff --git a/src/db/postgres/migrations/233_contact_import_reminder.sql b/src/db/postgres/migrations/233_contact_import_reminder.sql
+new file mode 100644
+index 0000000..96cbb01
+--- /dev/null
++++ b/src/db/postgres/migrations/233_contact_import_reminder.sql
+@@ -0,0 +1,4 @@
++-- The frontend's 06:30Z item 7 (Misho, the new design, onboarding B6/B7): the
++-- monthly „sync your contacts again" reminder is the person's own switch. Off
++-- until they turn it on; the reminder itself waits for its text's yes.
++ALTER TABLE "User" ADD COLUMN IF NOT EXISTS contact_import_reminder BOOLEAN NOT NULL DEFAULT FALSE;
+diff --git a/src/services/__tests__/contactImportState.test.ts b/src/services/__tests__/contactImportState.test.ts
+new file mode 100644
+index 0000000..7e59cfa
+--- /dev/null
++++ b/src/services/__tests__/contactImportState.test.ts
+@@ -0,0 +1,57 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { contactImportState, setContactImportReminder } from '../contactImportState.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** The frontend's 06:30Z item 7: the contact sync page's numbers. */
++describe('contactImportState', () => {
++  it('reads the last import that brought contacts, the count held now, and the switch', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [
++        {
++          last_import_at: '2026-10-01T09:00:00Z',
++          last_import_count: 412,
++          count: 420,
++          monthly_reminder: true,
++        },
++      ],
++    } as never);
++
++    await expect(contactImportState(171)).resolves.toEqual({
++      last_import_at: '2026-10-01T09:00:00Z',
++      last_import_count: 412,
++      count: 420,
++      monthly_reminder: true,
++    });
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('ia.imported > 0 AND NOT ia.in_progress');
++    expect(sql).toContain('LIMIT 1');
++    expect(params).toEqual([171]);
++  });
++
++  it('answers a person who never imported with nulls and zeros, the switch off', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ last_import_at: null, last_import_count: null, count: 0, monthly_reminder: null }],
++    } as never);
++    await expect(contactImportState(171)).resolves.toEqual({
++      last_import_at: null,
++      last_import_count: 0,
++      count: 0,
++      monthly_reminder: false,
++    });
++  });
++});
++
++describe('setContactImportReminder', () => {
++  it('writes the person’s own row only, as a bound parameter', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await setContactImportReminder(171, true);
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('UPDATE "User" SET contact_import_reminder = $2 WHERE id = $1');
++    expect(params).toEqual([171, true]);
++  });
++});
+diff --git a/src/services/contactImportState.service.ts b/src/services/contactImportState.service.ts
+new file mode 100644
+index 0000000..1339d27
+--- /dev/null
++++ b/src/services/contactImportState.service.ts
+@@ -0,0 +1,58 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * The frontend's 06:30Z item 7 (onboarding B6/B7, the contact sync page): when
++ * the person last imported their phonebook, how many contacts that import
++ * brought, how many they hold now, and their monthly reminder switch.
++ *
++ * Read from migration 106's record of every import. An import still running,
++ * or one that brought nothing, is not „the last import": the page says when
++ * the phonebook last really arrived.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++
++export interface ContactImportState {
++  readonly last_import_at: string | null;
++  readonly last_import_count: number;
++  readonly count: number;
++  readonly monthly_reminder: boolean;
++}
++
++interface StateRow {
++  readonly last_import_at: string | null;
++  readonly last_import_count: number | null;
++  readonly count: number;
++  readonly monthly_reminder: boolean | null;
++}
++
++export async function contactImportState(userId: number): Promise<ContactImportState> {
++  const result = await query<StateRow>(
++    `SELECT last.created_at AS last_import_at, last.imported AS last_import_count,
++            (SELECT COUNT(DISTINCT ua.phone)::int FROM "UserAlias" ua
++              WHERE ua."contactId" = $1) AS count,
++            (SELECT u.contact_import_reminder FROM "User" u WHERE u.id = $1) AS monthly_reminder
++       FROM (SELECT 1) one
++       LEFT JOIN LATERAL (
++         SELECT ia.created_at, ia.imported FROM import_attempts ia
++          WHERE ia.user_id = $1 AND ia.imported > 0 AND NOT ia.in_progress
++          ORDER BY ia.created_at DESC LIMIT 1
++       ) last ON TRUE`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  return {
++    last_import_at: row?.last_import_at ?? null,
++    last_import_count: row?.last_import_count ?? 0,
++    count: row?.count ?? 0,
++    monthly_reminder: row?.monthly_reminder ?? false,
++  };
++}
++
++export async function setContactImportReminder(userId: number, on: boolean): Promise<void> {
++  await query(
++    `UPDATE "User" SET contact_import_reminder = $2 WHERE id = $1`,
++    [userId, on],
++    QUERY_TIMEOUT_MS,
++  );
++}
+-- 
+2.43.0
+
