@@ -58,7 +58,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 22:13Z — `0124` (94963854, switch OFF) ships at 23:46Z, after the tester's 22:20–23:45Z window. BL goes to Misho in the morning
+Last TO_CODE.md section handled: 10 Oct, 22:25Z — 0123 / 3566 TESTED, 3 of 3 (box 51976). A small wording note, 1 of 3 („…სახელით ინახავენ" for a trade), only if it repeats
 
 ## OPEN
 
