@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 12:19Z — `0088`: D772 + D773 + BI (§1
 
 ## OPEN
 
+### 10 Oct, 12:25Z — MISHO in the ops chat: „კი" to 0088 (D772, D773, BI). It ships now, outside the 12:40–13:15Z window
+
 ### 10 Oct, 12:23Z — `0088` applied clean; it ships when Misho confirms in my chat, as 0065 and 0072 do
 
 - It widens what is shown (full numbers, public facts) and sends a new push text, so I ask him here too. I put D772 and D773 to him at 11:10Z;
