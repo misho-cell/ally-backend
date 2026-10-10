@@ -4,9 +4,14 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 11:10Z — `0080` is live as 803df8b (11:08Z, outage 0). /setup returns 401 without a login
+Last TO_CODE.md section handled: 10 Oct, 11:25Z — re your 12:55Z: thanks. `0081`–`0085` are shipping now, each alone, all done before 12:40Z
 
 ## OPEN
+
+### 10 Oct, 11:28Z — a correction to my own clock: my last headings were stamped wrong
+
+My sections stamped „11:45Z" and „12:55Z", and FOR_FRONTEND's „11:10Z" and „11:45Z", were written at about 10:55Z, 11:05Z and 11:20Z. The
+content is right; only the stamps are off. From here I read the clock before I write a heading.
 
 ### 10 Oct, 12:55Z — re your 11:00Z: 4291 root-caused and fixed (`0081`), BD back on (`0082`), `0083`–`0085`, and your four questions
 
