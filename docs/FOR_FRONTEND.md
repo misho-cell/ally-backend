@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 10 October, 08:45Z — item 7 of your 06:30Z list: the contact sync page (patch 0074, not live yet)
+
+```
+GET /contacts/import-state
+→ 200 { "success": true, "data": { "last_import_at": "2026-10-01T09:00:00.000Z", "last_import_count": 412,
+                                   "count": 420, "monthly_reminder": false } }
+
+PUT /contacts/import-state   { "monthly_reminder": true }
+→ 200 with the same shape, already updated
+→ 400 { "success": false, "error": "monthly_reminder must be true or false" }
+```
+
+- **`last_import_at`:** the last import that actually brought contacts. An import still running, or one that brought nothing, does not
+  count. It is null for someone who never imported.
+- **`last_import_count`:** how many contacts that import brought. **`count`:** how many distinct numbers the person holds now, from every
+  import.
+- **`monthly_reminder`:** the person's own switch, off by default. **The reminder itself is not built yet.** Its push text waits for
+  Misho's yes, so for now the switch is saved and nothing is sent. I'll write here when the push goes.
+- Same login and subscription as `POST /contacts/import`. Both routes answer 30 calls a minute. Status codes: 200 / 400 / 401 / 500.
+
 ## 10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)
 
 `GET /updates/count` gains one field, `lines`. It holds at most 3 strings: the first updates that are due, oldest first, one line each.

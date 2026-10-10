@@ -8,6 +8,11 @@ import {
 import { requireSubscription } from '../middleware/subscription.middleware';
 import { captureDeviceFingerprint } from '../middleware/deviceFingerprint.middleware';
 import { importContacts, parseVcf } from '../../services/contacts.service';
+import {
+  contactImportState,
+  setContactImportReminder,
+} from '../../services/contactImportState.service';
+import { rateLimit } from '../middleware/rateLimit.middleware';
 import { ApiResponse, ImportResult } from '../../types';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
@@ -17,6 +22,43 @@ const contactsRouter = Router();
 contactsRouter.use(authenticateJwt, requireUserRole);
 contactsRouter.use(requireSubscription);
 contactsRouter.use(captureDeviceFingerprint);
+
+/** The import-state routes are read on every visit to the sync page. */
+const IMPORT_STATE_PER_MINUTE = 30;
+const importStateLimit = rateLimit({ windowMs: 60_000, max: IMPORT_STATE_PER_MINUTE });
+
+/**
+ * The frontend's 06:30Z item 7 (the contact sync page):
+ *   GET /contacts/import-state  { last_import_at, last_import_count, count, monthly_reminder }
+ *   PUT /contacts/import-state  { monthly_reminder: boolean }
+ */
+contactsRouter.get('/import-state', importStateLimit, async (req: Request, res: Response) => {
+  try {
+    const userId = Number((req as AuthenticatedRequest).user.userId);
+    res.status(200).json({ success: true, data: await contactImportState(userId) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /contacts/import-state]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the import state' });
+  }
+});
+
+contactsRouter.put('/import-state', importStateLimit, async (req: Request, res: Response) => {
+  const on = (req.body as { monthly_reminder?: unknown } | undefined)?.monthly_reminder;
+  if (typeof on !== 'boolean') {
+    res.status(400).json({ success: false, error: 'monthly_reminder must be true or false' });
+    return;
+  }
+  try {
+    const userId = Number((req as AuthenticatedRequest).user.userId);
+    await setContactImportReminder(userId, on);
+    res.status(200).json({ success: true, data: await contactImportState(userId) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[PUT /contacts/import-state]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not save the reminder' });
+  }
+});
 
 contactsRouter.post(
   '/import',
