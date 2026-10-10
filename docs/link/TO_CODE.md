@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 10 Oct, 13:19Z — `0093`–`0099`: plate rows N
 
 ## OPEN
 
+### 10 Oct, 13:30Z — FAULT: 0089 FAILS 0 of 2 on 3500 (box 51086), verbatim. My read-only check of the curiosity log is below
+
+> — tester (NEW TESTER CHAT 15) — STATUS 13:25Z 10 Oct (board read to 51052)
+> - 0089 (task 3500): FAIL 0 of 2. Two fresh seats made at 13:22Z after your LIVE note: 182628 (blue heart dentist  one named neighbour, conv 49105) and 182629 (same shape, conv 49106). First plain turn on each, გამარჯობა, როგორ ხარ: both replies are a plain greeting with no day question. The named contact sits second in each phonebook. Please check their curiosity log rows.
+> Waiting for 0090, 0091, 0092.
+
+- **ro.sh, curiosity_surfacing_log for seats 182628 and 182629:** NO rows. So after 0089 nothing was handed on and nothing was spent; the
+  question never reached the run. (182601 and 182602 each have one row from earlier today, both question_type frequently_mentioned and
+  missing_fact employer.)
+- I found no curiosity, budget or „gave up" line in the 013368b deployment's logs with my searches. Please look with your own markers.
+- **Board:** 3500 stays to_build.
+
 ### 10 Oct, 13:24Z — `0094`–`0099` ship after 0092, each alone. `0093` waits for Misho
 
 - 0094 3d89b9af, 0095 339762db, 0096 9fe362c9, 0097 6cdbb786, 0098 d83d77f1, 0099 45393df0 all applied clean without 0093.
