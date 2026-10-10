@@ -1,0 +1,216 @@
+From a58c000fef000afdf52d1230d07463c68552b9d7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 01:12:27 +0000
+Subject: [PATCH 54/54] feat(admin): an old-profile fixture for 4226, fictional
+ contacts only
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 49805: 4226 (the owner's corrected job wins over a contact's
+old Ally profile) cannot be tested — no chat can give a fictional contact
+an old profile.
+
+POST /admin/test-accounts/:id/fixtures/old-profile
+  { phone, employer, job_position }
+writes employer and "jobPosition" on the account that holds that number.
+Both sides must be fictional: the seat must be a test seat, the number one
+of its own contacts, and the account behind the number a test seat as well.
+A real person's profile is never matched, and the UPDATE itself re-checks
+test_seats. 400 for an empty profile, 403 when either side is not a test
+seat, 404 when the number is not the seat's contact.
+
+DONE WHEN: the tester sets an old profile on a fictional contact and runs
+4226's two cases.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                | 29 +++++++++++
+ .../aSeatFixtureIsForSeatsOnly.test.ts        | 48 ++++++++++++++++-
+ src/services/seatFixtures.service.ts          | 52 ++++++++++++++++++-
+ 3 files changed, 127 insertions(+), 2 deletions(-)
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 0e81fe1..dab8b8c 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -315,6 +315,7 @@ import { deleteEmptyAccount, EmptyDeleteOutcome } from '../../services/emptyAcco
+ import {
+   FixtureOutcome,
+   writeAnswerRecord,
++  writeOldProfile,
+   writeStaleFact,
+ } from '../../services/seatFixtures.service';
+ import { updatesForAdmin } from '../../services/pendingUpdates.service';
+@@ -7107,4 +7108,32 @@ adminRouter.post(
+   },
+ );
+ 
++/**
++ * 4226 (tester 49805): POST /admin/test-accounts/:id/fixtures/old-profile
++ *   { phone, employer, job_position } — an old Ally profile on the seat's
++ *   contact, whose own account must be a fictional seat as well.
++ */
++adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request, res: Response) => {
++  const seatId = seatIdOf(req);
++  const b = (req.body ?? {}) as Record<string, unknown>;
++  if (seatId === null || typeof b.phone !== 'string') {
++    sendFixture(res, FixtureOutcome.BadInput);
++    return;
++  }
++  try {
++    sendFixture(
++      res,
++      await writeOldProfile(seatId, {
++        phone: b.phone,
++        employer: typeof b.employer === 'string' ? b.employer : '',
++        jobPosition: typeof b.job_position === 'string' ? b.job_position : '',
++      }),
++    );
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[fixtures/old-profile]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Nothing was written' });
++  }
++});
++
+ export default adminRouter;
+diff --git a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+index ed3cdb0..de5989b 100644
+--- a/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
++++ b/src/services/__tests__/aSeatFixtureIsForSeatsOnly.test.ts
+@@ -1,5 +1,10 @@
+ import { query } from '../../db/postgres/client';
+-import { FixtureOutcome, writeAnswerRecord, writeStaleFact } from '../seatFixtures.service';
++import {
++  FixtureOutcome,
++  writeAnswerRecord,
++  writeOldProfile,
++  writeStaleFact,
++} from '../seatFixtures.service';
+ 
+ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+ 
+@@ -101,3 +106,44 @@ describe('the answer-record fixture (1691)', () => {
+     expect(mockQuery).not.toHaveBeenCalled();
+   });
+ });
++
++/** Tester 49805 (4226): an old Ally profile on a contact, only when that contact is fictional too. */
++describe('the old-profile fixture (4226)', () => {
++  const CONTACT_SEAT = 182201;
++  const INPUT = { phone: '+995 500 000 009', employer: 'Old Bank', jobPosition: 'Teller' };
++  beforeEach(() => jest.clearAllMocks());
++
++  it('writes the employer and title on the contact’s own fictional account', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
++      .mockResolvedValueOnce({ rows: [{ user_id: CONTACT_SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(writeOldProfile(SEAT, INPUT)).resolves.toBe(FixtureOutcome.Written);
++    const [sql, params] = mockQuery.mock.calls[3];
++    expect(String(sql)).toContain('EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1)');
++    expect(params).toEqual([CONTACT_SEAT, 'Old Bank', 'Teller']);
++  });
++
++  it('never touches a real person’s profile', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [{ found: true }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await expect(writeOldProfile(SEAT, INPUT)).resolves.toBe(FixtureOutcome.NotATestSeat);
++    expect(mockQuery).toHaveBeenCalledTimes(3);
++  });
++
++  it('refuses a real seat, a stranger’s number, and an empty profile', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(writeOldProfile(501, INPUT)).resolves.toBe(FixtureOutcome.NotATestSeat);
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: SEAT }] } as never)
++      .mockResolvedValueOnce({ rows: [{ found: false }] } as never);
++    await expect(writeOldProfile(SEAT, INPUT)).resolves.toBe(FixtureOutcome.NotTheSeatsContact);
++    await expect(
++      writeOldProfile(SEAT, { phone: INPUT.phone, employer: ' ', jobPosition: '' }),
++    ).resolves.toBe(FixtureOutcome.BadInput);
++    expect(mockQuery).toHaveBeenCalledTimes(3);
++  });
++});
+diff --git a/src/services/seatFixtures.service.ts b/src/services/seatFixtures.service.ts
+index 304f878..8f7a5cb 100644
+--- a/src/services/seatFixtures.service.ts
++++ b/src/services/seatFixtures.service.ts
+@@ -1,7 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { askField } from './answerStats.service';
+ import { FACT_FIELD_TYPES } from './contactFacts.service';
+-import { normalizePhone } from './phone';
++import { normalizePhone, phoneDigits } from './phone';
+ 
+ /**
+  * Tester 49567 (rule B, 9 Oct): two plate rows wait on state no chat can make
+@@ -17,6 +17,7 @@ export const MIN_DAYS_AGO = 1;
+ export const MAX_DAYS_AGO = 3_650;
+ const MAX_FACT_CHARS = 200;
+ const MAX_STAT = 10_000;
++const MAX_PROFILE_CHARS = 120;
+ 
+ export enum FixtureOutcome {
+   Written = 'written',
+@@ -132,3 +133,52 @@ export async function writeAnswerRecord(
+   );
+   return FixtureOutcome.Written;
+ }
++
++export interface OldProfileInput {
++  /** The contact's number as the seat saved it; its account must be a fictional seat too. */
++  readonly phone: string;
++  readonly employer: string;
++  readonly jobPosition: string;
++}
++
++/** The fictional seat that holds this number, if one does; a real account never matches. */
++async function fictionalAccountOf(phone: string): Promise<number | null> {
++  const digits = phoneDigits(phone);
++  if (digits === '') return null;
++  const result = await query<{ user_id: number }>(
++    `SELECT up."userId" AS user_id FROM "UserPhone" up
++       JOIN test_seats ts ON ts.user_id = up."userId"
++      WHERE up.phone = ANY($1::text[])
++      LIMIT 1`,
++    [[`+${digits}`, digits]],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.user_id ?? null;
++}
++
++/**
++ * 4226 (the tester's 49805): a contact with an old Ally profile — employer and
++ * job title on the contact's own account — so the owner's corrected word can
++ * be seen winning over it. Written only when the contact's account is itself
++ * a fictional seat; a real person's profile is never touched.
++ */
++export async function writeOldProfile(
++  seatId: number,
++  input: OldProfileInput,
++): Promise<FixtureOutcome> {
++  const employer = input.employer.trim().slice(0, MAX_PROFILE_CHARS);
++  const jobPosition = input.jobPosition.trim().slice(0, MAX_PROFILE_CHARS);
++  if (employer === '' && jobPosition === '') return FixtureOutcome.BadInput;
++  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
++  const phone = normalizePhone(input.phone);
++  if (!(await seatSavedThisNumber(seatId, phone))) return FixtureOutcome.NotTheSeatsContact;
++  const contactId = await fictionalAccountOf(phone);
++  if (contactId === null || contactId === seatId) return FixtureOutcome.NotATestSeat;
++  await query(
++    `UPDATE "User" SET employer = NULLIF($2, ''), "jobPosition" = NULLIF($3, '')
++      WHERE id = $1 AND EXISTS (SELECT 1 FROM test_seats WHERE user_id = $1)`,
++    [contactId, employer, jobPosition],
++    QUERY_TIMEOUT_MS,
++  );
++  return FixtureOutcome.Written;
++}
+-- 
+2.43.0
+

@@ -4,9 +4,45 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 00:37Z — the whole night queue is LIVE (0044–0051), each alone, outage 0; the two empty accounts deleted
+Last TO_CODE.md section handled: 10 Oct, 00:49Z — 1697 PARTLY: nothing sent (2/2), but trio 1 got the plan card and then the generic „not sent“ line
 
 ## OPEN
+
+### 10 Oct, 01:15Z — re your 00:45Z and 00:49Z: `0052` (1690), `0053` (1697), `0054` (4226 fixture); 1691 is not a fault — re-run design below
+
+Three patches, each alone, in `patches/afternoon-1250/`, built on the queued line (after 0051). Each passed `npm run verify` on the
+branch and on the main line (8,021 tests on main). None shows anyone new text, deletes data or widens access (§121): 0052 lets 1690's
+own released card through, 0053 stops an overwrite, 0054 writes on fictional seats only.
+
+- **`0052` fix(facts): the confirm card goes out with the reply that used the fact (1690).** The confirm DID fire on both seats.
+  `fact_confirms` has the row and `confirm_asked_at` was stamped at 00:35:18 and 00:36:56. But the card carries no goal, and the D617 filter
+  (other goals come up only when asked) held it as „not asked about other goals“. Nothing notes it again, so it was lost. Now a card about this
+  reply goes out with it. **For the re-run:** re-apply the stale-fact fixture first. It clears `confirm_asked_at`, and both facts are
+  marked asked now.
+- **`0053` fix(intro): a closed route is not followed by „not sent — write it again“ (1697).** On trio 1, the 44367 unsent-instruction
+  guard replaced the reply with the generic line after the `route_closed` refusal. A run whose `request_introduction` came back `route_closed` is no longer
+  taken for an unsent instruction. The reply the model wrote under §110.1 stands. Not in it: running the check before the plan names the
+  bridge. That moves into plan building and is a day item.
+- **`0054` feat(admin): old-profile fixture (4226).** `POST /admin/test-accounts/:id/fixtures/old-profile {phone, employer, job_position}`.
+  The seat must be a test seat and the number one of its contacts. The account behind the number must ALSO be a test seat, so use a second
+  fictional seat as the contact. 403 / 404 / 400 as the other fixtures.
+
+**1691 — not a fault in the record. Please tell the tester:**
+- The record was matched. That seat's `answer_stats` holds only `''` and „elektrikosi saklsi gakvanilobis“, which is the field the asks were
+  filed under. So the fixture sat on that field, and the recount after each ask rebuilt it from the real asks (asked 1 / yes 0). That is
+  by design: the record is read when the wave is ordered, before the sends.
+- The order cannot show in that run. Goal 23834 is `real_work`, so the wave size is 5, and all 4 candidates were in wave 1. The four
+  ask_contact calls run in parallel, so millisecond send times are not an order.
+- **Re-run that can show it:**
+  - Use either 6 candidates on a real-work goal, or 4 on a small goal (wave 3). Re-apply the records before the goal. Expected: the
+    lowest-ranked one(s) stay for wave 2.
+  - The wave note also names wave 1 in the server's order, and the owner's line „ახლა ვეკითხები: …“ follows it.
+- **Known gap, for the day:** the wave gate admits any not-yet-asked plan person while the wave has room. It does not admit only the top
+  ones. If the model picks out of order, the server does not stop it. Closing that needs a new refusal text for the model, which is a
+  prompt change. It waits for Misho.
+
+**4160 notes:** both go on the day list as SMALL. (a) The list was not built on the first turn. (b) The old „არავინ / გზა არ არის“
+columns read as contradicting the helper column.
 
 ### 9 Oct, 23:58Z — re your 23:22Z and 23:44Z: `0051` (1697, the closed-route check never ran); RW-014 answered; RW-009 and LM-011 for the day
 

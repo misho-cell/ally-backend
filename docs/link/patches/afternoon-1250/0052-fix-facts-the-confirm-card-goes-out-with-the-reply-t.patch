@@ -1,0 +1,93 @@
+From 1646a3aaacf34ea699245b6223053297f5fb5b2a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 01:09:29 +0000
+Subject: [PATCH 52/54] fix(facts): the confirm card goes out with the reply
+ that used the fact (1690)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 49807: 0 of 2. Both seats' old employer fact WAS picked — the
+fact_confirms row is there and confirm_asked_at was stamped at 00:35:18 and
+00:36:56 — but no card reached the chat. The card carries no goal, and the
+D617 filter (other goals come up only when the owner asks) held every
+goal-less item on a run that did not look at goals. Nothing notes the card
+again, and the fact was marked asked, so it was lost, not delayed.
+
+A card about this very reply is not another goal's item: the fact-confirm
+card now goes out with its reply, in a goal's conversation or outside one.
+Everything else the filter holds stays held. The card's text and buttons are
+1690's own, unchanged.
+
+DONE WHEN: a search that leans on a core fact older than 180 days ends with
+the one confirm line and its three taps, in a goal's conversation and
+outside one.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/otherGoalsWaitUntilAsked.test.ts  | 17 +++++++++++++++++
+ src/services/chat.service.ts                    | 11 ++++++++++-
+ 2 files changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/otherGoalsWaitUntilAsked.test.ts b/src/services/__tests__/otherGoalsWaitUntilAsked.test.ts
+index 75ab6ce..f5a50d4 100644
+--- a/src/services/__tests__/otherGoalsWaitUntilAsked.test.ts
++++ b/src/services/__tests__/otherGoalsWaitUntilAsked.test.ts
+@@ -55,6 +55,23 @@ describe('the waiting items', () => {
+     ]);
+   });
+ 
++  /** The tester's 49807 (1690): the confirm card was held as another goal's item, 0 of 2. */
++  it('the confirm card of this reply goes out with it, in a goal or outside one', async () => {
++    const CONFIRM: PendingItemInput = {
++      kind: 'fact_confirm',
++      task_id: null,
++      payload: { text: 'q', choices: ['a'] },
++    };
++    mockGoal.mockResolvedValue(null);
++    expect(
++      await waitingItemsToDeliver([...ALL, CONFIRM], false, THREAD, calledTool('search_by_tag')),
++    ).toEqual([CONFIRM]);
++    mockGoal.mockResolvedValue({ id: 7 } as Awaited<ReturnType<typeof getOpenTaskByThread>>);
++    expect(
++      await waitingItemsToDeliver([...ALL, CONFIRM], false, THREAD, calledTool('search_by_tag')),
++    ).toEqual([OWN, CONFIRM]);
++  });
++
+   it('all go out on a run the system started', async () => {
+     expect(await waitingItemsToDeliver(ALL, true, THREAD, [])).toEqual(ALL);
+     expect(mockGoal).not.toHaveBeenCalled();
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c5e7940..96ae303 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -12340,7 +12340,14 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
+  * system run or when this run looked at goals or the inbox; in a goal's own
+  * conversation only that goal's items; anywhere else nothing. What is held
+  * waits for the next of those — nothing is lost.
++ *
++ * The tester's 49807 (1690): a card about THIS reply is not another goal's
++ * item. The confirm question for the fact the search just leaned on carries
++ * no goal, so it was held as „not asked about other goals" — and nothing notes
++ * it again, so it was lost (0 of 2). It goes out with its reply.
+  */
++const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND]);
++
+ export async function waitingItemsToDeliver(
+   items: readonly PendingItemInput[],
+   ownerAbsent: boolean,
+@@ -12350,7 +12357,9 @@ export async function waitingItemsToDeliver(
+   if (items.length === 0 || ownerAbsent || lookedAtGoals(turns)) return items;
+   try {
+     const goal = await getOpenTaskByThread(threadId);
+-    return goal === null ? [] : items.filter((item) => item.task_id === goal.id);
++    return items.filter(
++      (item) => THIS_REPLYS_OWN.has(item.kind) || (goal !== null && item.task_id === goal.id),
++    );
+   } catch (err) {
+     // A failed read delivers: a card shown once too often beats one never shown.
+     // eslint-disable-next-line no-console
+-- 
+2.43.0
+

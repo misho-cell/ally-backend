@@ -1,0 +1,122 @@
+From fbe9bd0263712acaa0f1592913d66983ae2569a3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 01:10:48 +0000
+Subject: [PATCH 53/54] =?UTF-8?q?fix(intro):=20a=20closed=20route=20is=20n?=
+ =?UTF-8?q?ot=20followed=20by=20=E2=80=9Enot=20sent=20=E2=80=94=20write=20?=
+ =?UTF-8?q?it=20again"=20(1697)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 49809, trio 1: request_introduction was refused twice with
+„route looks closed" (§110.1), and then the unsent-instruction guard
+(44367) replaced the reply with „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ
+ერთხელ მომწერე." — an invitation to retry the very route that is closed.
+Trio 2, where the guard did not fire, read the §110.1 line and another way.
+
+A run whose request_introduction came back with reason route_closed is now
+never taken for an instruction left unsent: the refusal was the server's
+own decision, and the reply the model wrote under §110.1 stands. No new text
+reaches anyone; the guard simply does not overwrite.
+
+Not in this change: running the closed-route check before the plan names
+the bridge (trio 1 saw the plan card first). That moves the check into plan
+building and is a day item.
+
+DONE WHEN: a closed-route refusal ends with the §110.1 line and another
+way, never the generic not-sent line, in 2 of 2 trios.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anInstructionIsNotLeftUnsent.test.ts         | 11 +++++++++++
+ .../__tests__/theRetryIsAtTheReopening.test.ts   |  3 ++-
+ src/services/chat.service.ts                     | 16 ++++++++++++++++
+ 3 files changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts b/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
+index 302cecb..3b19e70 100644
+--- a/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
++++ b/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
+@@ -73,6 +73,17 @@ describe('an owner instruction left unsent', () => {
+     expect(guard.slice(0, 900)).toContain('!runAskSent.has(runId) &&');
+   });
+ 
++  /** The tester's 49809: a closed route ended on „not sent — write it again". */
++  it('is never called unsent when the run’s introduction met a closed route (1697)', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const guard = chat.slice(chat.indexOf('const instructionUnsent ='));
++    expect(guard.slice(0, 1_100)).toContain('!runRouteClosed.has(runId) &&');
++    expect(chat).toContain('noteRouteClosed(runId, block.name, rawResult);');
++    expect(chat).toContain("const ROUTE_CLOSED_REASON = 'route_closed';");
++    const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
++    expect(tool).toContain("reason: 'route_closed'");
++  });
++
+   it('says plainly that nothing went when the second chance sent nothing either', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     // §97: the server first asks the one named contact; only then the plain line.
+diff --git a/src/services/__tests__/theRetryIsAtTheReopening.test.ts b/src/services/__tests__/theRetryIsAtTheReopening.test.ts
+index dd01534..894f07d 100644
+--- a/src/services/__tests__/theRetryIsAtTheReopening.test.ts
++++ b/src/services/__tests__/theRetryIsAtTheReopening.test.ts
+@@ -34,6 +34,7 @@ describe('the retry happens when the recipient can be asked again', () => {
+     const note = chat.slice(chat.indexOf('function noteWakeNoLaterThan'));
+     expect(note.slice(0, 600)).toContain('when < earlier');
+     const clear = chat.slice(chat.indexOf('function clearRunState'));
+-    expect(clear.slice(0, 1500)).toContain('runWakeCaps.delete(runId)');
++    // The whole function, so a line added above it never pushes this one out.
++    expect(clear.slice(0, clear.indexOf('\n}\n'))).toContain('runWakeCaps.delete(runId)');
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 96ae303..600fdb1 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -7431,6 +7431,18 @@ const runAnswerSent = new Set<string>();
+ const runAskSent = new Set<string>();
+ /** Who this run's sent questions went to, as the owner saved them. */
+ const runAskSentTo = new Map<string, string[]>();
++/**
++ * The tester's 49809 (1697): runs whose introduction was refused because the
++ * route looks closed. The reply says so and proposes another way (§110.1);
++ * the generic „not sent — write it again" would invite a retry of that route.
++ */
++const runRouteClosed = new Set<string>();
++const ROUTE_CLOSED_REASON = 'route_closed';
++
++function noteRouteClosed(runId: string, toolName: string, result: unknown): void {
++  if (toolName !== 'request_introduction' || result === null || typeof result !== 'object') return;
++  if ((result as { reason?: unknown }).reason === ROUTE_CLOSED_REASON) runRouteClosed.add(runId);
++}
+ 
+ function noteAskSentTo(runId: string | undefined, toName: unknown): void {
+   if (runId === undefined || typeof toName !== 'string' || toName === '') return;
+@@ -8660,6 +8672,7 @@ function clearRunState(runId: string): void {
+   runAnswerSent.delete(runId);
+   runAskSent.delete(runId);
+   runAskSentTo.delete(runId);
++  runRouteClosed.delete(runId);
+   runRelaySent.delete(runId);
+   runPlanApprovedInRun.delete(runId);
+   runSentLineOnScreen.delete(runId);
+@@ -10981,6 +10994,7 @@ async function runOneToolBlock(
+   if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
+   // 1690 (A7): the numbers a search showed, for the one confirm question after the reply.
+   if (SEARCH_TOOLS.has(block.name)) noteSearchedPhones(runId, phonesIn(labelled));
++  noteRouteClosed(runId, block.name, rawResult);
+   // 3169: the names it found, as saved, so the reply cannot respell them.
+   if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
+     noteSavedNames(runId, savedNamesIn(labelled));
+@@ -13509,6 +13523,8 @@ async function runToolLoop(
+     // 4159 (conv 48452): the ask went out on a goal the run opened in another
+     // conversation, so this one's goals hold nothing — but this run DID send.
+     !runAskSent.has(runId) &&
++    // 1697: a closed route was refused on purpose; the reply proposes another way.
++    !runRouteClosed.has(runId) &&
+     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
+   if (instructionUnsent) {
+     // eslint-disable-next-line no-console
+-- 
+2.43.0
+
