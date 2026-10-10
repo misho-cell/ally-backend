@@ -1,0 +1,214 @@
+From 479f363b345ce357d9d6dcd2272432c09acb99df Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 16:57:00 +0000
+Subject: [PATCH] fix(facts): a job the owner says ended is kept as past_role,
+ not corrected away (3235)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MASTER TEST RUN ME-024: „ბახვა „სანიმუშო ბანკიდან" წამოვიდა, ახლა
+„საცდელ ლოჯისტიკაში" მუშაობს." The model called correct_contact_fact on
+the bank, which retracts the row AND writes a veto — so „who used to work
+at the bank?" could no longer name him.
+
+When the owner's line says the job ended (წამოვიდა, აღარ მუშაობს, left,
+больше не работает …) and the correction is of a job field, the present
+row is retracted, the same value is saved as past_role in the owner's
+word, and no veto is written. Any other correction is as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/anEndedJobIsKept.test.ts        | 57 +++++++++++++++++++
+ src/services/chat.service.ts                  | 21 ++++++-
+ src/services/factCorrections.service.ts       | 27 ++++++++-
+ src/services/jobEnded.ts                      | 22 +++++++
+ 4 files changed, 124 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/anEndedJobIsKept.test.ts
+ create mode 100644 src/services/jobEnded.ts
+
+diff --git a/src/services/__tests__/anEndedJobIsKept.test.ts b/src/services/__tests__/anEndedJobIsKept.test.ts
+new file mode 100644
+index 0000000..0fa3490
+--- /dev/null
++++ b/src/services/__tests__/anEndedJobIsKept.test.ts
+@@ -0,0 +1,57 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../contactFacts.service', () => ({
++  __esModule: true,
++  retractOwnFacts: jest.fn(() => Promise.resolve({ retracted: 1 })),
++  submitContactFact: jest.fn(() => Promise.resolve({ saved: true })),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { retractOwnFacts, submitContactFact } from '../contactFacts.service';
++import { keepEndedJob } from '../factCorrections.service';
++import { correctionIsAJobThatEnded } from '../jobEnded';
++
++/** 3235 (ME-024): „left the bank, now at logistics" deleted the bank instead of keeping it as history. */
++describe('a job the owner says ended', () => {
++  it.each([
++    'ბახვა გამოგონილი „სანიმუშო ბანკიდან" წამოვიდა, ახლა „საცდელ ლოჯისტიკაში" მუშაობს.',
++    'ნინო აღარ მუშაობს TBC-ში',
++    'Levan left Colliers last month',
++    'Гия больше не работает в банке',
++  ])('is read in „%s"', (line) => {
++    expect(correctionIsAJobThatEnded(line, 'employer')).toBe(true);
++    expect(correctionIsAJobThatEnded(line, undefined)).toBe(true);
++  });
++
++  it('is not read in a plain correction, or for a field that is not a job', () => {
++    expect(correctionIsAJobThatEnded('ნინო ბუღალტერი არ არის, იურისტია', 'occupation')).toBe(false);
++    expect(correctionIsAJobThatEnded('ბახვა ბათუმიდან წამოვიდა', 'city')).toBe(false);
++  });
++
++  it('keeps the old job as past_role and writes no veto', async () => {
++    const outcome = await keepEndedJob('171', '+995599000001', 'სანიმუშო ბანკი', 'employer');
++    expect(outcome).toEqual({ corrected: true, retracted: 1, past_role: 'სანიმუშო ბანკი' });
++    expect(retractOwnFacts).toHaveBeenCalledWith('171', expect.any(String), {
++      fieldType: 'employer',
++      valueFragment: 'სანიმუშო ბანკი',
++    });
++    expect(submitContactFact).toHaveBeenCalledWith(
++      '171',
++      expect.any(String),
++      'past_role',
++      'სანიმუშო ბანკი',
++      'chat',
++      'stated',
++    );
++    expect(query).not.toHaveBeenCalled();
++  });
++
++  it('is what correct_contact_fact does when the owner said the job ended', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const at = chat.indexOf("case 'correct_contact_fact': {");
++    const body = chat.slice(at, at + 1200);
++    expect(body).toContain('correctionIsAJobThatEnded(');
++    expect(body.indexOf('keepEndedJob(')).toBeLessThan(body.indexOf('correctContactFact('));
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 33fca1a..269ee11 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -442,7 +442,8 @@ import {
+   RunMode,
+ } from './promptBlocks.service';
+ import { recordWarmth } from './warmth.service';
+-import { correctContactFact } from './factCorrections.service';
++import { correctContactFact, keepEndedJob } from './factCorrections.service';
++import { correctionIsAJobThatEnded } from './jobEnded';
+ import {
+   getCampaignInviteContext,
+   buildCampaignInviteSection,
+@@ -10808,6 +10809,22 @@ async function executeToolCall(
+     case 'respond_to_thanks_loop_offer':
+       return respondToThanksLoopOffer(userId, input['consented'] === true);
+     case 'correct_contact_fact': {
++      const fieldType =
++        typeof input['field_type'] === 'string' ? (input['field_type'] as string) : undefined;
++      // 3235: a job the owner says ended is history, kept as past_role — not a mistake to veto.
++      if (
++        correctionIsAJobThatEnded(
++          runId === undefined ? '' : (runOwnerLine.get(runId) ?? ''),
++          fieldType,
++        )
++      ) {
++        return keepEndedJob(
++          userId,
++          String(input['phone'] ?? ''),
++          String(input['wrong_value'] ?? ''),
++          fieldType,
++        );
++      }
+       // A correction is not a note (ticket 9 task 14): it retracts the wrong
+       // row AND leaves a standing veto the search layer reads, so the claim
+       // cannot be offered back to this user tomorrow.
+@@ -10815,7 +10832,7 @@ async function executeToolCall(
+         userId,
+         String(input['phone'] ?? ''),
+         String(input['wrong_value'] ?? ''),
+-        typeof input['field_type'] === 'string' ? (input['field_type'] as string) : undefined,
++        fieldType,
+       );
+       return outcome.corrected
+         ? {
+diff --git a/src/services/factCorrections.service.ts b/src/services/factCorrections.service.ts
+index 3b0c8ad..34dea85 100644
+--- a/src/services/factCorrections.service.ts
++++ b/src/services/factCorrections.service.ts
+@@ -1,6 +1,6 @@
+ import { query } from '../db/postgres/client';
+ import { normalizePhone } from './phone';
+-import { retractOwnFacts } from './contactFacts.service';
++import { retractOwnFacts, submitContactFact } from './contactFacts.service';
+ 
+ const CORRECTION_QUERY_TIMEOUT_MS = 8_000;
+ 
+@@ -47,6 +47,31 @@ export interface CorrectionOutcome {
+   corrected: boolean;
+   retracted: number;
+   error?: string;
++  /** 3235: the ended job, kept as the person's past role instead of denied. */
++  past_role?: string;
++}
++
++/**
++ * 3235: the owner said the job ENDED. The present-tense row goes, the same
++ * value is kept as past_role in the owner's own word, and no veto is written —
++ * a veto would hide him from „who used to work there?" too.
++ */
++export async function keepEndedJob(
++  userId: string,
++  contactPhoneRaw: string,
++  endedValue: string,
++  fieldType?: string,
++): Promise<CorrectionOutcome> {
++  const contactPhone = normalizePhone(contactPhoneRaw);
++  const value = endedValue.trim();
++  if (!contactPhone) return { corrected: false, retracted: 0, error: 'Pass the contact phone.' };
++  if (!value) return { corrected: false, retracted: 0, error: 'Pass the job that ended.' };
++  const { retracted } = await retractOwnFacts(userId, contactPhone, {
++    ...(fieldType ? { fieldType } : {}),
++    valueFragment: value,
++  });
++  await submitContactFact(userId, contactPhone, 'past_role', value, 'chat', 'stated');
++  return { corrected: true, retracted, past_role: value };
+ }
+ 
+ /**
+diff --git a/src/services/jobEnded.ts b/src/services/jobEnded.ts
+new file mode 100644
+index 0000000..b0c9a5d
+--- /dev/null
++++ b/src/services/jobEnded.ts
+@@ -0,0 +1,22 @@
++/**
++ * 3235 (MASTER TEST RUN ME-024, seats 179996 and 180021): „ბახვა გამოგონილი
++ * „სანიმუშო ბანკიდან" წამოვიდა, ახლა „საცდელ ლოჯისტიკაში" მუშაობს." The old
++ * employer was corrected away — retracted and vetoed — so „who used to work at
++ * the bank?" could no longer find him. A job the owner says ENDED is history,
++ * not a mistake.
++ */
++const JOB_ENDED_RE =
++  /(წამოვიდა|წავიდა|დატოვა|აღარ\s+მუშაობს|გაეთავისუფლა|გაათავისუფლეს|ადრე\s+მუშაობდა|მუშაობდა|ყოფილი|\bleft\b|\bquit\b|no\s+longer\s+works|used\s+to\s+work|former(?:ly)?|ушёл|ушел|уволил\p{L}*|больше\s+не\s+работает|раньше\s+работал\p{L}*|бывш\p{L}*|dejó|ya\s+no\s+trabaja|trabajaba)/iu;
++
++/** Field types a job lives in; a correction of another field is never a job that ended. */
++const JOB_FIELDS: ReadonlySet<string> = new Set(['employer', 'occupation', 'role']);
++
++/** Did the owner's line say a job ended, for a correction of this field? */
++export function correctionIsAJobThatEnded(
++  ownerLine: string,
++  fieldType: string | undefined,
++): boolean {
++  const field = (fieldType ?? '').trim().toLowerCase();
++  if (field !== '' && !JOB_FIELDS.has(field)) return false;
++  return JOB_ENDED_RE.test(ownerLine);
++}
+-- 
+2.43.0
+

@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 10 Oct, 16:23Z — 0100 PASS on the list. The c
 
 ## OPEN
 
+### 10 Oct, 17:00Z — `0112` fix(facts), 3235: a job the owner says ended is kept as past_role
+
+- **Cause:** after „ბახვა „სანიმუშო ბანკიდან" წამოვიდა, ახლა „საცდელ ლოჯისტიკაში" მუშაობს." the model calls correct_contact_fact
+  on the bank. That retracts the row and writes a veto (3103), so „who used to work at the bank?" can no longer name him.
+- **The fix:** when the owner's own line says the job ended (წამოვიდა, აღარ მუშაობს, left, больше не работает …) and the
+  correction is of a job field, the present row goes and the same value is saved as past_role. No veto is written. Any other correction
+  is as before. No new text.
+- **DONE WHEN** (ME-024): after that line, „ვინ მყავს „სანიმუშო ბანკში" ნამუშევარი?" names him as a former employee, and
+  „სად მუშაობს ბახვა?" gives only the logistics job. 2 of 2.
+- **Not in this patch:** 3235's second half („a web claim the owner only reports is saved as mentioned").
+- **Base:** main 7074ceb + 0110, 0111; also applies alone on bare 7074ceb. Verify: 8,208 tests. Branch pushed green.
+- **Order:** after 0111, alone.
+
 ### 10 Oct, 16:45Z — re your 16:23Z (box 51286): `0111` fix(contacts), 4390 — saved_as on the contact page
 
 - **Cause:** 0100 added `saved_as` to the list row only. `GET /contacts/:id` kept its own name rule, so a „💙" contact had `name: null`
