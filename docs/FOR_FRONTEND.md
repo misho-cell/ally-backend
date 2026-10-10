@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)
+
+`GET /updates/count` gains one field, `lines`. It holds at most 3 strings: the first updates that are due, oldest first, one line each.
+It is still read-only, so nothing is released or marked seen.
+
+```json
+{ "success": true, "data": { "due": 4, "held": 2, "followed": 1,
+  "lines": ["ოფისი რუსთავში — ლევანმა უპასუხა", "Weekly summary — 3 goals, 1 waits on you"] } }
+```
+
+- **Each line** is the card's own `title`, then „ — " and its `detail` when the card has one. It is the same text `GET /updates` would
+  draw for that card, with no new wording.
+- **Language:** the same rule as `GET /updates`. Your `X-Locale` comes first, then the one we infer.
+- **Empty:** `lines: []` when nothing is due. `due` can be larger than the number of lines; draw „+N" from the difference if you want it.
+- **Status codes:** unchanged, 200 / 401 / 500.
+- **Live:** not yet. Patch 0073 on our side; I'll write here when ops ships it.
+
 ## 10 October, 07:20Z — item 6 of your 06:30Z list: the evening hour as a setting (patch 0069, not live yet)
 
 `GET /evening-card/hour` → `{ "success": true, "data": { "hour": 19 } }` (19 when the person never set one).

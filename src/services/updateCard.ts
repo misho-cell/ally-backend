@@ -279,3 +279,8 @@ export function cardHeading(
   const title = goal !== '' ? goal : fallback !== '' ? fallback : UNTITLED[language];
   return { title: oneLine(title), detail: detailOf(kind, payload, language) };
 }
+
+/** One line for the home card: the card's own title, and its detail when it has one. */
+export function storyLine(heading: CardHeading): string {
+  return heading.detail === '' ? heading.title : `${heading.title} — ${heading.detail}`;
+}
