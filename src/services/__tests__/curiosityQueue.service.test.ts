@@ -344,6 +344,36 @@ describe('the day’s question is logged only when it is handed on', () => {
   });
 });
 
+/** 3500 (box 50986, seat 182602): „💙" first in the queue spent the day; the named contact behind it never came. */
+describe('the day’s question goes to a contact with a name', () => {
+  it('passes over a label with no letter and hands on the named contact', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000041' }, { contact_phone: '+995500000042' }],
+      presence: [],
+      labels: [
+        { phone: '+995500000041', label: '💙' },
+        { phone: '+995500000042', label: 'ზურაბ კვარაცხელია' },
+      ],
+    });
+    const out = await maybeCuriosityUpdate('105');
+    expect(out?.payload).toEqual(expect.objectContaining({ who: 'ზურაბ კვარაცხელია' }));
+  });
+
+  it('hands on nothing, and spends nothing, when no contact has a name', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000043' }],
+      presence: [],
+      labels: [{ phone: '+995500000043', label: '💙' }],
+    });
+    expect(await maybeCuriosityUpdate('106')).toBeNull();
+    await new Promise((resolve) => setImmediate(resolve));
+    const logged = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO curiosity_surfacing_log'),
+    );
+    expect(logged).toHaveLength(0);
+  });
+});
+
 describe('the curiosity queue must not cost a conversation its first breath', () => {
   it('runs the five tiers together, not one after another', async () => {
     routeQueueQueries({
