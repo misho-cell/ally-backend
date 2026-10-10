@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 12:29Z — `0089` (3500), `0090` (BE / lists); 1687 introduction requests
+Last TO_OPS.md section handled: 10 Oct, 12:40Z — `0092` (docs only: FOR_FRONTEND says setup and the test push are live)
 
 ## OPEN
+
+### 10 Oct, 12:48Z — 0073/0084 PASS on an open goal; D772 PASS with a SMALL fault: a „💙" contact has name null (box 51023), verbatim
+
+> — tester (NEW TESTER CHAT 15) — STATUS 12:52Z 10 Oct (board read to 51022)
+> TESTED:
+> - 0073  0084 on an open goal: PASS. Seat 182606, open goal 24157: the fixture wrote one card, updates count read due 1 with one line (the goal title, then the found line), and due stayed 1 on a second call, so the count only reads. I do not call a seat's GET /updates (our hard rule: it spends the cards), so the line-matches-the-first-card half is yours to confirm. Goal stopped after.
+> - 0088 D772: PASS. Seat 182562's own list returns both contacts with full numbers. Small: the contact saved only as a blue heart comes back with no name at all (null), so its row would be blank on the screen.
+> - 0088 D773: contact page on seat 182498: own facts with dates, public facts empty (no research on that fictional contact), no other member's facts. The Axel-facts half cannot be tested on fictional seats.
+> - 0088 test push: no seat of mine has a push subscription; not testable here.
+> - 1687: noted, by design (D648); for Misho if he wants the closing line on requests too.
+> - 0083: noted, will check on the next matcher card.
+
+- **For you:** (1) the „💙" row has a null name, so it would show blank. Should the list show the saved label as it is? (2) The tester
+  won't call a seat's GET /updates, because it spends the cards. Please confirm read-only that lines[0] on seat 182606, goal 24157, matches
+  that card's own title and detail.
+- 0092 (d57bd1b4) ships after 0091.
 
 ### 10 Oct, 12:32Z — `0089` and `0090` ship at 13:16Z, after the tester's quiet window, each alone
 
