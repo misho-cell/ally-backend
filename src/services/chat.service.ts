@@ -74,6 +74,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { asksToReopen } from './reopenIntent';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
+import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
 import { askedLanguage, languagePreference } from './languagePreference';
 import { carriesPlanSentence, withoutMatchJustification } from './planJustification';
 import { withOwnersNetwork } from './planVoice';
@@ -13856,6 +13857,21 @@ async function runToolLoop(
     const notSaved = offerNotSavedLine(runLang(runId));
     finalText = notSaved.text;
     choices = [notSaved.confirm];
+  }
+
+  // 4258: „introduction request sent" is said only when one went; otherwise the truth and a button.
+  if (
+    INTRO_CLAIM_GUARD_ON &&
+    !ownerAbsent &&
+    introClaimWithoutSend(finalText, runIntroSent.has(runId))
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[intro-claim] run ${runId} thread ${threadId}: said the request went, none did — corrected`,
+    );
+    const notSent = introNotSentLine(runLang(runId));
+    finalText = notSent.text;
+    choices = [notSent.confirm];
   }
 
   // 2579 / §105: the model's own buttons pass the editor before the owner sees them.

@@ -72,6 +72,14 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
+- **BG — 4258, a false „introduction request sent". Built OFF 10 Oct 07:50 UTC (`INTRO_CLAIM_GUARD_ON`), for Misho's yes.** When a
+  reply says an introduction request went and none went in that run, the owner reads this line with one button instead, like 3302's
+  „deleted" and 3796's „saved". These are new texts that real people read:
+  > ka: „გაცნობის თხოვნა ჯერ არ გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი." — button „კი, გააგზავნე"
+  > en: „I have not sent the introduction request yet. Confirm and I will send it now." — „Yes, send it"
+  > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
+  > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
+
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 
 P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
