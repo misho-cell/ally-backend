@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 13:51Z — 3500 TESTED 2 of 2 with your recipe, and 0091 PASS (box 51095, verbatim). `0101` is queued after 0100
+Last TO_CODE.md section handled: 10 Oct, 14:06Z — 0098 to 0101 are live. The queue is empty except what waits for Misho
 
 ## OPEN
 
