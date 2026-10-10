@@ -14,6 +14,16 @@ const DEFAULT_QUERY_TIMEOUT_MS = 8000;
 // Background scans are allowed to be slow — they compete with nobody.
 const BACKGROUND_QUERY_TIMEOUT_MS = 30_000;
 
+/**
+ * 958: how long an idle connection is kept. pg's own default is ten seconds,
+ * so a chat turn after a short pause opened its connections afresh — TCP, TLS
+ * and auth, about six round trips at ~145 ms each — before its first query.
+ * The database counted 10–25 new sessions a minute on 10 October. Five
+ * minutes keeps an ordinary conversation on warm connections; the pools' `max`
+ * still bounds how many there are.
+ */
+const IDLE_CONNECTION_KEEP_MS = 5 * 60_000;
+
 const BASE_POOL_CONFIG = {
   host: process.env.POSTGRES_HOST,
   port: Number(process.env.POSTGRES_PORT ?? 5432),
@@ -21,6 +31,9 @@ const BASE_POOL_CONFIG = {
   user: process.env.POSTGRES_NAME,
   password: process.env.POSTGRES_PASS,
   ssl: SSL_CONFIG,
+  idleTimeoutMillis: IDLE_CONNECTION_KEEP_MS,
+  // A kept connection must notice a dropped network instead of sitting dead.
+  keepAlive: true,
 };
 
 const pool = new Pool({
@@ -95,6 +108,18 @@ const backgroundPool = new Pool({
   connectionTimeoutMillis: 30_000,
   options: `-c statement_timeout=${BACKGROUND_QUERY_TIMEOUT_MS}`,
 });
+
+/**
+ * 958: an idle connection the database or the network drops is emitted as an
+ * `error` on its pool, and an `error` event with no listener ends the process.
+ * The pool has already discarded that connection; the next query opens another.
+ */
+for (const eachPool of [pool, longQueryPool, backgroundPool]) {
+  eachPool.on('error', (error: Error) => {
+    // eslint-disable-next-line no-console
+    console.warn(`[db] idle connection dropped: ${error.message}`);
+  });
+}
 
 /**
  * A query slower than this is named in the log with how long it took. A
@@ -240,14 +265,30 @@ async function runOnPoolUntimed<T extends QueryResultRow>(
     // flight corrupts the pool.
     return await client.query<T>({ text: queryText, values: params });
   } finally {
-    try {
-      await client.query(`SET statement_timeout = ${defaultTimeoutMs}`);
-      client.release();
-    } catch {
-      // The connection is in an unknown state — destroy it rather than
-      // returning it to the pool with a foreign timeout.
-      client.release(true);
-    }
+    void restoreThenRelease(client, defaultTimeoutMs);
+  }
+}
+
+/**
+ * 958: the restore is the connection's business, not the caller's. With the
+ * database ~145 ms away the caller used to wait one more round trip for it
+ * after its rows had arrived. The connection still goes back to the pool only
+ * once the default is restored, so no borrower ever gets a foreign timeout.
+ */
+async function restoreThenRelease(client: PoolClient, defaultTimeoutMs: number): Promise<void> {
+  try {
+    await client.query(`SET statement_timeout = ${defaultTimeoutMs}`);
+    client.release();
+  } catch (error) {
+    // The connection is in an unknown state — destroy it rather than
+    // returning it to the pool with a foreign timeout.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[db] default timeout not restored, connection dropped: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    client.release(true);
   }
 }
 

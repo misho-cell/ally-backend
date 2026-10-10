@@ -31,6 +31,8 @@ interface FakePool {
   readonly label: string;
   query: jest.Mock;
   connect: jest.Mock;
+  on: jest.Mock;
+  readonly config: Readonly<Record<string, unknown>>;
   totalCount: number;
   idleCount: number;
   waitingCount: number;
@@ -40,7 +42,7 @@ const pools: FakePool[] = [];
 
 jest.mock('pg', () => ({
   __esModule: true,
-  Pool: jest.fn().mockImplementation((config: { max?: number }) => {
+  Pool: jest.fn().mockImplementation((config: { max?: number } & Record<string, unknown>) => {
     const client = {
       query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
       release: jest.fn(),
@@ -49,6 +51,8 @@ jest.mock('pg', () => ({
       label: `max=${config.max ?? '?'}#${pools.length}`,
       query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
       connect: jest.fn().mockResolvedValue(client),
+      on: jest.fn(),
+      config,
       totalCount: 0,
       idleCount: 0,
       waitingCount: 0,
@@ -149,6 +153,65 @@ describe('which pool answers a query', () => {
     expect(backgroundPool.query).toHaveBeenCalledTimes(1);
     expect(shortPool.query).not.toHaveBeenCalled();
     expect(longPool.connect).not.toHaveBeenCalled();
+  });
+});
+
+/** 958: the caller has its rows one round trip sooner; the pool still gets the connection back clean. */
+describe('a custom-timeout query hands back its connection', () => {
+  function borrowedClient(): { query: jest.Mock; release: jest.Mock } {
+    const client = { query: jest.fn(), release: jest.fn() };
+    shortPool.connect.mockResolvedValueOnce(client);
+    return client;
+  }
+
+  it('answers before the default timeout is restored, and releases only after it', async () => {
+    const client = borrowedClient();
+    let restored: (() => void) | undefined;
+    client.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [{ n: 1 }], rowCount: 1 })
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (restored = () => resolve({ rows: [], rowCount: 0 }))),
+      );
+
+    const result = await query('SELECT 1 AS n FROM contact_exclusions', [1], 5_000);
+
+    expect(result.rows).toEqual([{ n: 1 }]);
+    expect(client.query).toHaveBeenLastCalledWith('SET statement_timeout = 8000');
+    expect(client.release).not.toHaveBeenCalled();
+    restored?.();
+    await new Promise(setImmediate);
+    expect(client.release).toHaveBeenCalledWith();
+  });
+
+  it('destroys the connection when the restore fails', async () => {
+    const client = borrowedClient();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    client.query
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockRejectedValueOnce(new Error('connection lost'));
+
+    await query('SELECT 1 FROM contact_exclusions', [1], 5_000);
+    await new Promise(setImmediate);
+
+    expect(client.release).toHaveBeenCalledWith(true);
+    warn.mockRestore();
+  });
+});
+
+/** 958: connections stay warm between turns, and a dropped one does not end the process. */
+describe('how the pools keep their connections', () => {
+  it.each(pools.map((p) => [p.label, p]))(
+    '%s keeps idle connections for minutes, not seconds',
+    (_, p) => {
+      expect(p.config.idleTimeoutMillis).toBeGreaterThanOrEqual(60_000);
+      expect(p.config.keepAlive).toBe(true);
+    },
+  );
+
+  it.each(pools.map((p) => [p.label, p]))('%s listens for a dropped idle connection', (_, p) => {
+    expect(p.on).toHaveBeenCalledWith('error', expect.any(Function));
   });
 });
 
