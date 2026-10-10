@@ -87,6 +87,16 @@ while its questions are unanswered is a list that loses them.
   > ru: „Уведомления работают. Так я сообщу, когда кто-то ответит."
   > es: „Las notificaciones funcionan. Así te avisaré cuando alguien responda."
 
+- **BK — 4555, the owner's line after a value kept only as „mentioned". Drafted 10 Oct 20:55 UTC for Misho's yes on the exact text.**
+  When the owner relays something from the web or from others („ინტერნეტში წერია, რომ ბახვა „სანიმუშო ბანკში" მუშაობს") and it is
+  kept only as a mentioned note beside what they stated, the reply said „შევინახე: ბახვა, დამსაქმებელი: „სანიმუშო ბანკი" ✓" (2 of 2).
+  With `MENTIONED_NOTE_LINE_ON = true` (mentionedNoteLine.ts) the sentence claiming the save is replaced, once, by:
+  > ka: „ეს ჩავინიშნე როგორც ნახსენები: „{value}“. შენი ნათქვამი უცვლელად დარჩა."
+  > en: „I noted this as something mentioned: “{value}”. What you told me stays as it was."
+  > ru: „Я записал это как упомянутое: «{value}». То, что сказал ты, осталось без изменений."
+  > es: „Lo anoté como algo mencionado: «{value}». Lo que tú me dijiste sigue igual."
+  `{value}` is what was mentioned (e.g. „სანიმუშო ბანკი"). Undo: the switch back to false.
+
 - **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
   Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
   regular conversation, no goal, like the day's question) gets this section:

@@ -448,6 +448,7 @@ import { correctContactFact, keepEndedJob } from './factCorrections.service';
 import { correctionIsAJobThatEnded } from './jobEnded';
 import { relaysHearsay } from './hearsay';
 import { withoutSavedClaimOnAQuestion } from './savedClaim';
+import { withMentionedNoteLine } from './mentionedNoteLine';
 import {
   getCampaignInviteContext,
   buildCampaignInviteSection,
@@ -8655,6 +8656,8 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
 const runLastCaption = new Map<string, string>();
 /** The owner's own line this run answers; absent on a run the system started. */
 const runOwnerLine = new Map<string, string>();
+/** 4555: the value a save kept only as a mentioned note in this run. */
+const runMentionedNote = new Map<string, string>();
 /** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
 const runRepeatedGoal = new Map<string, number>();
 
@@ -8666,6 +8669,7 @@ function clearRunState(runId: string): void {
   runModes.delete(runId);
   runLastCaption.delete(runId);
   runOwnerLine.delete(runId);
+  runMentionedNote.delete(runId);
   runRepeatedGoal.delete(runId);
   runLanguages.delete(runId);
   runSearchResults.delete(runId);
@@ -9256,7 +9260,7 @@ async function executeToolCall(
         // arrives as `undefined` and `fieldTypeRaw.trim()` throws a TypeError
         // that ends the whole run. The connector's door coerces and checks
         // both; this one did neither.
-        return await submitContactFact(
+        const saved = await submitContactFact(
           userId,
           String(input['phone'] ?? ''),
           String(input['field_type'] ?? ''),
@@ -9268,6 +9272,10 @@ async function executeToolCall(
             ? 'mentioned'
             : 'stated',
         );
+        if (saved.kept_as !== undefined && runId !== undefined) {
+          runMentionedNote.set(runId, String(input['value'] ?? ''));
+        }
+        return saved;
       } catch (err) {
         // A guess about a person is refused, not stored (Ticket 11 Task 5 (d)).
         if (err instanceof FactRefusedError) return { saved: false, error: err.message };
@@ -13894,6 +13902,9 @@ async function runToolLoop(
     finalText = notDeleted.text;
     choices = [notDeleted.confirm];
   }
+
+  // 4555: „I saved his job" for a value kept only as a mentioned note becomes the server's line.
+  finalText = withMentionedNoteLine(finalText, runMentionedNote.get(runId) ?? '', runLang(runId));
 
   // 4490: a plain question saves nothing — an „I saved" sentence under its answer is taken out.
   if (!ownerAbsent) {
