@@ -18,6 +18,7 @@ export type FactFieldType = (typeof FACT_FIELD_TYPES)[number];
 // profile (role, skill, expertise, education, need, …) without the four fields
 // having to know about each key.
 export const MEMORY_FIELD_TYPE = 'note';
+const FACT_QUERY_TIMEOUT_MS = 5_000;
 export const MAX_FIELD_TYPE_LEN = 40;
 // A core fact is a short label (a job title, a company, a city). Anything
 // longer is narrative — soft intel that must never sit in a public-capable,
@@ -581,6 +582,32 @@ export function isAssistantsOwnReading(confidence: FactConfidence | null): boole
 
 export class FactRefusedError extends Error {}
 
+const MENTIONED: FactConfidence = 'mentioned';
+const STATED: FactConfidence = 'stated';
+
+/**
+ * 3235's second half (MASTER TEST RUN ME-023, seat 180021): „ინტერნეტში წერია,
+ * რომ ბახვა „სანიმუშო ბანკში" მუშაობს" was saved over the employer the owner
+ * had stated. A core field holds one value, so a merely mentioned one that
+ * would replace the owner's own stated row is kept beside it as a note instead.
+ */
+async function mentionedOverStated(
+  userId: string,
+  neo4jContactId: string,
+  fieldType: string,
+  confidence: FactConfidence | null,
+): Promise<boolean> {
+  if (confidence !== MENTIONED || !isCoreFact(fieldType)) return false;
+  const result = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM contact_facts
+      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND field_type = $3
+        AND confidence = $4 AND retracted_at IS NULL`,
+    [neo4jContactId, userId, fieldType, STATED],
+    FACT_QUERY_TIMEOUT_MS,
+  );
+  return (result.rows[0]?.n ?? 0) > 0;
+}
+
 export async function submitContactFact(
   userId: string,
   neo4jContactIdRaw: string,
@@ -623,6 +650,20 @@ export async function submitContactFact(
       'A guess is not a fact. Nothing was saved: „possibly / probably / ალბათ" about a real person ' +
         'is speculation, and the record holds only what somebody stated or a page said.',
     );
+  }
+
+  // 3235 (ME-023): a value the owner only reported from the web never replaces their own word.
+  if (await mentionedOverStated(userId, neo4jContactId, fieldType, confidence)) {
+    await insertFreeFormFact(
+      userId,
+      neo4jContactId,
+      MEMORY_FIELD_TYPE,
+      `${fieldType}: ${value.trim()}`,
+      'private',
+      source,
+      confidence,
+    );
+    return { is_public: false, canonical_value: null };
   }
 
   // Any non-core key (note, role, skill, …) accumulates. Whether it is shared
