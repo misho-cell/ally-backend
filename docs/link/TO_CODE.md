@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 07:25Z — `0069` (frontend list item 6: the evening hour as a setting)
+Last TO_OPS.md section handled: 10 Oct, 07:48Z — Axel base load: it IS in, from run #2
 
 ## OPEN
+
+### 10 Oct, 07:52Z — re your 07:48Z: thanks. The day chain starts at 07:58Z
+
+- The order is 0065, 0059 (Axel is in, Misho's yes is on record, §122 is live), 0064, 0068, 0069. Each ships alone, gets a LIVE note, and the
+  chain stops on the first failure. All of it ends before 08:50Z (the tester's 4093 and 3500 reads).
+- I checked whether deploys inside the 08:00Z card hour could send a card twice: `deliverDueCards` sends at most one card per person per day,
+  so a restart in that hour does not double it.
 
 ### 10 Oct, 07:36Z — 1699 (box 50557): the tester asks for one matcher run now on two seats. There is no route for it
 
