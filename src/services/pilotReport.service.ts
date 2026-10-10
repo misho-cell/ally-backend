@@ -245,19 +245,23 @@ function withParam(fragment: string, n: number): string {
   return fragment.replace('$PAYING$', `$${n}`);
 }
 
+/**
+ * 4292 (plate NEW-1): the page reads in Georgian, and these two sentences
+ * travel with the numbers, so they are Georgian too. Same facts as before.
+ */
 const PAYMENT_RULE =
-  'paying = a live subscription AND a Stripe customer — somebody we actually bill. ' +
-  'access_granted_by_hand = the status says active and there is no Stripe record at ' +
-  'all, which is an admin grant. On 24 September that was 4 and 11: reading the status ' +
-  'column alone would call all 15 paying. Both are real and they are not the same ' +
-  'fact — a hand-granted account is a person using the product, and it is not revenue.';
+  'გადამხდელი = მოქმედი გამოწერა და Stripe-ის მომხმარებელი — ვისაც ნამდვილად ვაკისრებთ თანხას. ' +
+  'ხელით მიცემული წვდომა = სტატუსი „აქტიურია“, მაგრამ Stripe-ში ჩანაწერი საერთოდ არ არის, ' +
+  'ანუ ადმინისტრატორის მიერ მიცემული. 24 სექტემბერს ეს იყო 4 და 11: მხოლოდ სტატუსის სვეტით ' +
+  'სამივე 15 გადამხდელად ჩაითვლებოდა. ორივე ნამდვილია, მაგრამ ერთი და იგივე არ არის — ' +
+  'ხელით მიცემული ანგარიში პროდუქტს იყენებს, მაგრამ შემოსავალი არ არის.';
 
 const POPULATION_RULE =
-  'real = somebody who has USED Netai (has a thread here) or registered through it ' +
-  '(hasAccessToAlly), and is not in test_seats. USE and not the flag: 35 of the 45 real ' +
-  'people who have used this product do not carry it, including the second most active ' +
-  'account. seats = the fictional accounts the seat route created. The 62,200 legacy Ally ' +
-  'accounts are in neither: they have no thread here.';
+  'ნამდვილი = ვინც Netai უკვე გამოიყენა (აქვს საუბარი აქ) ან მისი გავლით დარეგისტრირდა ' +
+  '(hasAccessToAlly), და არ არის test_seats-ში. გამოყენება და არა ნიშანი: 45 ნამდვილი ' +
+  'მომხმარებლიდან, ვინც პროდუქტი გამოიყენა, 35-ს ნიშანი არ აქვს, მათ შორის მეორე ყველაზე ' +
+  'აქტიურ ანგარიშს. სატესტო = გამოგონილი ანგარიშები, რომლებიც სატესტო მარშრუტმა შექმნა. ' +
+  'Ally-ის 62,200 ძველი ანგარიში არცერთშია: აქ საუბარი არ აქვთ.';
 
 interface DayRow {
   day: Date | string;

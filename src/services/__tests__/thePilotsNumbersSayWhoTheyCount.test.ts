@@ -75,9 +75,10 @@ describe('the population is written into the query, not assumed', () => {
 
     expect(report.population).toContain('hasAccessToAlly');
     expect(report.population).toContain('test_seats');
-    expect(report.population).toContain('legacy Ally');
+    expect(report.population).toContain('Ally-ის 62,200 ძველი ანგარიში');
     // And it says USE first, because that is what the flag alone got wrong.
-    expect(report.population).toContain('USED Netai');
+    // 4292: in Georgian, as the page is.
+    expect(report.population).toContain('ვინც Netai უკვე გამოიყენა');
   });
 
   /**
@@ -212,9 +213,10 @@ describe('paying means somebody we bill', () => {
   it('carries what paying MEANS in the payload', async () => {
     const report = await pilotReport(7);
 
-    expect(report.payment_rule).toContain('Stripe customer');
-    expect(report.payment_rule).toContain('admin grant');
-    expect(report.payment_rule).toContain('not revenue');
+    // 4292: in Georgian, as the page is.
+    expect(report.payment_rule).toContain('Stripe-ის მომხმარებელი');
+    expect(report.payment_rule).toContain('ადმინისტრატორის მიერ მიცემული');
+    expect(report.payment_rule).toContain('შემოსავალი არ არის');
   });
 
   /** The 20-day cohort is the revenue question, so it takes the same rule. */
