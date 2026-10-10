@@ -50,6 +50,10 @@ describe('the owner’s own word about his contact', () => {
     const upsert = service.slice(
       service.indexOf('ON CONFLICT (neo4j_contact_id, submitted_by_user_id, field_type)'),
     );
-    expect(upsert.slice(0, 600)).toContain('retracted_at = NULL');
+    // 4126 item 5: cleared unless the person the fact is about removed it.
+    expect(upsert.slice(0, 900)).toContain(
+      'retracted_at = CASE WHEN contact_facts.removed_by_subject_at IS NULL',
+    );
+    expect(upsert.slice(0, 900)).toContain('THEN NULL ELSE contact_facts.retracted_at END');
   });
 });

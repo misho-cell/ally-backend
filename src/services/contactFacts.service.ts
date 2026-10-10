@@ -211,7 +211,9 @@ async function upsertFact(
                    source = $5, confidence = $6, is_matchable = $7,
                    -- 4226: a new value saved over a retracted one is the owner's
                    -- new word; left retracted it reported „saved" and showed nowhere.
-                   retracted_at = NULL`,
+                   -- 4126 item 5: unless the person it is about removed it.
+                   retracted_at = CASE WHEN contact_facts.removed_by_subject_at IS NULL
+                                       THEN NULL ELSE contact_facts.retracted_at END`,
     [
       neo4jContactId,
       userId,

@@ -66,17 +66,39 @@ function writable(facts: readonly ResearchFact[], skipped: Record<string, number
   });
 }
 
+/**
+ * 4126 item 5: a research fact the person removed about themselves stays
+ * removed. Its row is kept, and the reload writes nothing in its place: a
+ * one-per-saver key is matched by key, any other key by key and value.
+ */
+function removedKey(key: string, value: string): string {
+  return ONE_PER_SAVER.has(key) ? key : `${key}\u0000${value}`;
+}
+
+async function removedBySubject(client: PoolClient, phone: string): Promise<Set<string>> {
+  const result = await client.query<{ field_type: string; value: string }>(
+    `SELECT field_type, value FROM contact_facts
+      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3
+        AND removed_by_subject_at IS NOT NULL`,
+    [phone, SYSTEM_SAVER_ID, PUBLIC_RESEARCH],
+  );
+  return new Set(result.rows.map((r) => removedKey(r.field_type, r.value)));
+}
+
 async function replaceNumber(
   client: PoolClient,
   phone: string,
   facts: readonly ResearchFact[],
 ): Promise<number> {
+  const removed = await removedBySubject(client, phone);
   await client.query(
     `DELETE FROM contact_facts
-      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3`,
+      WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND source = $3
+        AND removed_by_subject_at IS NULL`,
     [phone, SYSTEM_SAVER_ID, PUBLIC_RESEARCH],
   );
-  for (const f of facts) {
+  const kept = facts.filter((f) => !removed.has(removedKey(f.key, f.value)));
+  for (const f of kept) {
     await client.query(
       `INSERT INTO contact_facts
          (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source,
@@ -85,7 +107,7 @@ async function replaceNumber(
       [phone, SYSTEM_SAVER_ID, f.key, f.value, PUBLIC_RESEARCH, f.sourceUrl, f.factDate, f.status],
     );
   }
-  return facts.length;
+  return kept.length;
 }
 
 export async function loadAxelBase(
