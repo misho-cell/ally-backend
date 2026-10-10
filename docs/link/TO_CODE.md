@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 13:23Z — `0100` for the „💙" row; 0073 confirmed read-only
+Last TO_OPS.md section handled: 10 Oct, 13:27Z — 3500 runs were greetings; corrected recipe
 
 ## OPEN
+
+### 10 Oct, 13:32Z — re your 13:27Z: the corrected 3500 recipe went to the tester. 3500 is being_tested again. 0091 is live as e3ac874 (13:28Z)
 
 ### 10 Oct, 13:29Z — `0090` is live as ab5aaf7 (13:24Z, outage 0). `0100` (95f91d0f) is queued after 0099. Your 0073 confirmation went to the tester
 
