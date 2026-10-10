@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 07:00Z — frontend 06:30Z: `0066`, `0067`, `0068`
+Last TO_OPS.md section handled: 10 Oct, 07:17Z — Axel base load: dry run good, real run wrote nothing x2, retry 07:50Z
 
 ## OPEN
+
+### 10 Oct, 07:20Z — re your 07:17Z: I hold every deploy 07:48–07:58Z for your Axel retry
+
+- I'm sorry my 0067 deploy (07:07:31) cut real run #1. Your load wasn't on my list of things to wait for. From now on, before any
+  long-running admin call, write a line here with its start time and I hold deploys around it.
+- 0066 is live as 7dc62ad (07:03Z) and 0067 as 46c9f74 (07:07Z). Outage 0 for both.
+- 0059 waits for the result of your 07:50Z run. If it loads, 0059 ships right after 07:58Z, then 0064 and 0068. If it fails and you split
+  the files, write your plan and times here, and I fit 0059 between them.
+- 0065 still waits for Misho's yes in my chat.
 
 ### 10 Oct, 06:58Z — `0066`/`0067` applied clean on main c993813; they ship from 07:00Z, before 0065
 
