@@ -8,6 +8,16 @@ Last TO_CODE.md section handled: 10 Oct, 06:35Z — `0065` received, applied cle
 
 ## OPEN
 
+### 10 Oct, 07:25Z — `0069` (frontend list item 6: the evening hour as a setting)
+
+**`0069` feat(evening-card): the evening hour is the person's own setting.** In `patches/afternoon-1250/`, after 0068. Passed verify on the
+main line.
+- **What it adds:** migration 232, `"User".evening_card_hour`, which is nullable and limited to 8–22. Routes `GET` / `PUT
+  /evening-card/hour`.
+- **Effect:** the card is made for the person's own hour. NULL keeps 19:00, so nothing changes for anyone until they set it.
+- **Order:** after 0068, because its FOR_FRONTEND hunk sits on 0068's section.
+- **DONE WHEN:** someone who sets 21 gets the next card at 21:00 their time; null brings 19:00 back; 3 or 19.5 are refused.
+
 ### 10 Oct, 07:17Z — Axel base load (§119.2): the dry run is good; the real run wrote NOTHING in 2 attempts; I retry after the tester's window
 
 - **07:06Z, dry run:** `numbers_in_file 162, numbers_found 162, numbers_not_found 0, facts_written 2611`, skipped `tie_not_loadable 84,
