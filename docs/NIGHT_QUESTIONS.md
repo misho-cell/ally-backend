@@ -62,22 +62,11 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-**Night of 9→10 Oct (code session, added 22:20 UTC). For Misho in the morning:**
-- **BA — Axel base load (board 4225), a live write about ~160 real people.** It waits on Misho's own yes on a D44 entry (route, body, undo), which I write in the morning before building. The loader uses the 4126 item-2 fields (source, date, confidence) Misho already said yes to.
-- **BB — 3829 (a), prompt text.** On a vague helper answer („ბიძაშვილის ნაცნობი ბუღალტერია ერთი") the helper is not asked for the name, and change 114's clause missed it twice. Prompt changes are a night item: I draft the exact text in the morning for Misho's yes.
-- **BC — 4126 items 3 and 4** are with Tornike (box 49338). Items 1, 2 and 5 can be built by day: item 1 spends, so it is daytime only.
-- Built tonight and handed to ops (no live writes): 0044 (3928), 0045 (§118 = D766), 0046 (4160), 0047 (4226).
-- Later tonight, also LIVE: 0048–0051, and 0052 (1690 card delivered), 0053 (1697 no „write it again" after a closed route), 0054 (4226 fixture).
-- **BD — ✅ Misho „BD კი" 10 Oct ~06:20 UTC, §123, 0065. 1691, the wave gate does not enforce the order.** While a wave has room, any not-yet-asked plan person may be asked, so the model can skip the top-ranked ones. Closing it means a new refusal line the model reads („ask these first: …"), a prompt change (D44). The draft is below, for Misho's yes on the exact words.
-  - **The behaviour:** while a wave has room, the server lets through only the next names in its own order (A8, 1691: whom the owner named, then the pre-match word, then the answer record). Anyone else is refused, and the model reads the line below. The person the owner named is never held back (D625, as today).
-  - **The exact line the model would read (ka), drafted 10 Oct 04:10 UTC:** „ეს ადამიანი ჯერ არ არის რიგში. ამ ტალღაში ჯერ ამათ მისწერე: {names}. დანარჩენები შემდეგ ტალღაში მიიღებენ — სერვერი თვითონ გეტყვის. მფლობელს არაფერს ეუბნები."
-  - **Owner-facing text:** none. Nobody outside the model sees this line.
-  - **My recommendation:** yes. It is the same shape as the wave-full refusal already live, and the tester's 1691 run showed that without it the model's own plan decides who goes first.
-- **BE — ✅ Misho „BE კი" 10 Oct ~06:20 UTC, §124, 0065. 4160 note (b), owner-facing text.** In the list Excel, the old „შენს კონტაქტებში არავინ / გზა არ არის" columns sit beside the new helper column and read as a contradiction. Rewording them is new text to real people, so it waits for the day. My recommendation: when the helper column names someone, those two cells say „იხ. დამხმარე" instead. Note (a), where the list is not built on the first turn, is prompt behaviour and also waits for the day.
-- **BF — 1697, the check before the plan.** Trio 1 saw the plan card with a closed bridge before the check ran at send. Plans name routes, not bridge→target pairs, so this needs plan building to carry the pair. That is a design change for the day.
-  - **Read on live at 04:50 UTC.** All four trio plans (23860, 23861, 23894, 23895) have zero people and one route named in free text („გელას გზით გაცნობა ნანასთან"). The server has no bridge or target to check before the send. Reading names out of that text would be a guess, and a wrong guess would hide a working route.
-  - **So it is not text-free after all.** The plan tool would gain an `introduction: {via, to}` field on a route. That field is model-facing tool text, so it needs a D44 yes. I draft it with BD in the morning.
-  - **Meanwhile:** 0053 (live, tested 2 of 2) already ends a closed route with the §110.1 line and another way.
+Cleared 10 October 07:25 UTC (morning handover). Answered overnight by Misho: BD „BD კი" (§123), BE „BE კი" (§124), 4126 item 5
+„კი, მე-5 პუნქტი დაამტკიცე" (§122), all in 0059–0065. BA: the Axel load has its yes (§119). The dry run at 07:06Z matched (162 / 2,611); the
+real run wrote nothing twice (a deploy, then a timeout) and is retried at 07:50Z. Built and handed over overnight: 0052–0069. Still open,
+moved to **Waiting** below: BB (3829 prompt text, mine to draft), BC (4126 items 3–4, Tornike), BF (the plan tool's introduction field, a
+D44 text, mine to draft).
 
 Previous: cleared 9 October 07:55 UTC: Misho answered the night of 8→9 Oct at 06:25 UTC („ყველაზე შენი
 რეკომენდაციით გააკეთე"), recorded per item as §110 in ADMIN_WRITE_OPERATIONS.md (772618a). Number pool: „ნომრებით
@@ -105,6 +94,12 @@ waiting on a person is below, in **Waiting**, because a list that is emptied
 while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
+
+- **BB — 3829 (a), prompt text** (from the night of 9→10 Oct). On a vague helper answer („ბიძაშვილის ნაცნობი ბუღალტერია ერთი"), the helper
+  is not asked for the name. I draft the exact text for Misho's yes.
+- **BC — 4126 items 3 and 4**: Tornike decides (box 49338).
+- **BF — 1697, the closed-route check before the plan.** The plan tool needs an `introduction: {via, to}` field on a route. That is model-facing
+  tool text, so it needs a D44 yes. I draft it.
 
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 
