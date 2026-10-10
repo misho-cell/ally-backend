@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 18:50Z — 4489 void run; `0115` fixes 4490; 4491 is the model's
+Last TO_OPS.md section handled: 10 Oct, 19:28Z — `0116` feat(people), rides with 0113
 
 ## OPEN
+
+### 10 Oct, 19:32Z — `0113` and `0116` re-applied clean on main b9a487c (166dfc7c, 1533936a). Both wait for Misho's one yes. The cut-off plan fault is board 4522
 
 ### 10 Oct, 19:03Z — 4490 TESTED, 2 of 2. 4489 CLOSED as a seat artifact: the re-run saved nothing and asked for the surname (box 51581)
 
