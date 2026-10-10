@@ -220,7 +220,8 @@ const DUE_UPDATE_SUMMARY_MAX = 200;
  * 0073 (ops 11:00Z, the tester's question 4): a test seat with nothing due
  * cannot check that `/updates/count`'s lines match `GET /updates`. One „found"
  * update on the seat's own goal, due now — the same row a search result
- * queues, shown in the same card. A test seat only, its own goal only.
+ * queues, shown in the same card. A test seat only, its own open goal only —
+ * a stopped goal's „found" is never due (box 51019), so it is refused, not written.
  */
 export async function writeDueUpdate(
   seatId: number,
@@ -234,7 +235,7 @@ export async function writeDueUpdate(
   const written = await query(
     `INSERT INTO pending_updates (user_id, task_id, kind, payload, release_at)
      SELECT $1::int, t.id, 'found', jsonb_build_object('summary', $3::text), NOW()
-       FROM tasks t WHERE t.id = $2 AND t.user_id = $1::text`,
+       FROM tasks t WHERE t.id = $2 AND t.user_id = $1::text AND t.status <> 'closed'`,
     [seatId, input.goalId, summary],
     QUERY_TIMEOUT_MS,
   );

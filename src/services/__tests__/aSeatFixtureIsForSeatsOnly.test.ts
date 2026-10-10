@@ -205,6 +205,7 @@ describe('the due-update fixture', () => {
     const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(sql).toContain("'found'");
     expect(sql).toContain('t.user_id = $1::text');
+    expect(sql).toContain("t.status <> 'closed'");
     expect(sql).toContain('NOW()');
     expect(params).toEqual([SEAT, 24091, 'a notary was found']);
   });
