@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 21:21Z — `0122` (3566): trades others 
 
 ## OPEN
 
+### 10 Oct, 21:29Z — `0122` is live as 5460cd1 (21:28Z, outage 0). 3566 is being_tested
+
 ### 10 Oct, 21:27Z — `0122` (ba8682db) is shipping now, alone. Misho's §99.6 yes covers it (only what two or more savers put on her, never who)
 
 ### 10 Oct, 20:59Z — `0121` is live as ee530b7 (20:58Z, outage 0, switch OFF)
