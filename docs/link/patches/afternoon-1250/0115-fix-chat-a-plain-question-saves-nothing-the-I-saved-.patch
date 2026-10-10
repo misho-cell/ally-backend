@@ -1,0 +1,143 @@
+From 927e985aea938049aabdc6e5db1f48cfcf8bc6fb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 18:46:34 +0000
+Subject: [PATCH] =?UTF-8?q?fix(chat):=20a=20plain=20question=20saves=20not?=
+ =?UTF-8?q?hing=20=E2=80=94=20the=20=E2=80=9EI=20saved"=20sentence=20under?=
+ =?UTF-8?q?=20its=20answer=20goes=20(4490)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 51481, threads 49281 and 49284, 2 of 2: „სად მუშაობს ბახვა?" was
+answered with the job and then „შევინახე: ბახვა, სამუშაო ადგილი: …"
+though only search_contact_by_name ran. When the owner's line is a
+question and no saving tool ran in the run, the sentences that say „I
+saved / noted" are taken out; the answer stays. „შენახულია" (it is
+saved) is left alone, and a reply that is only the claim is not emptied.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aQuestionSavesNothing.test.ts   | 40 +++++++++++++++++++
+ src/services/chat.service.ts                  | 10 +++++
+ src/services/savedClaim.ts                    | 33 +++++++++++++++
+ 3 files changed, 83 insertions(+)
+ create mode 100644 src/services/__tests__/aQuestionSavesNothing.test.ts
+ create mode 100644 src/services/savedClaim.ts
+
+diff --git a/src/services/__tests__/aQuestionSavesNothing.test.ts b/src/services/__tests__/aQuestionSavesNothing.test.ts
+new file mode 100644
+index 0000000..1f5550a
+--- /dev/null
++++ b/src/services/__tests__/aQuestionSavesNothing.test.ts
+@@ -0,0 +1,40 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { withoutSavedClaimOnAQuestion } from '../savedClaim';
++
++/** 4490 (box 51481, threads 49281 and 49284): „შევინახე" under the answer to a plain question. */
++describe('an „I saved" sentence under a plain question', () => {
++  const asked = 'სად მუშაობს ბახვა?';
++
++  it('is taken out when nothing was saved; the answer stays', () => {
++    const reply =
++      'ბახვა მუშაობს „საცდელ ლოჯისტიკაში“.  შევინახე: ბახვა, სამუშაო ადგილი: „საცდელი ლოჯისტიკა“.';
++    expect(withoutSavedClaimOnAQuestion(reply, asked, ['search_contact_by_name'])).toBe(
++      'ბახვა მუშაობს „საცდელ ლოჯისტიკაში“.',
++    );
++  });
++
++  it('stays when a save ran in the run', () => {
++    const reply = 'ბახვა მუშაობს „საცდელ ლოჯისტიკაში“. შევინახე.';
++    expect(withoutSavedClaimOnAQuestion(reply, asked, ['save_contact_fact'])).toBe(reply);
++  });
++
++  it('stays when the owner’s line was not a question', () => {
++    const reply = 'შევინახე: ბახვა „საცდელ ლოჯისტიკაში“ მუშაობს.';
++    expect(withoutSavedClaimOnAQuestion(reply, 'ბახვა ახლა ლოჯისტიკაშია', [])).toBe(reply);
++  });
++
++  it('leaves „it is saved" alone — that can be true of an earlier save', () => {
++    const reply = 'ბახვას სამსახური უკვე შენახულია: „საცდელი ლოჯისტიკა“.';
++    expect(withoutSavedClaimOnAQuestion(reply, asked, [])).toBe(reply);
++  });
++
++  it('never empties a reply that is only the claim', () => {
++    expect(withoutSavedClaimOnAQuestion('შევინახე.', asked, [])).toBe('შევინახე.');
++  });
++
++  it('runs on every reply the owner reads', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('finalText = withoutSavedClaimOnAQuestion(');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index a548456..7ccf64c 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -446,6 +446,7 @@ import {
+ import { recordWarmth } from './warmth.service';
+ import { correctContactFact, keepEndedJob } from './factCorrections.service';
+ import { correctionIsAJobThatEnded } from './jobEnded';
++import { withoutSavedClaimOnAQuestion } from './savedClaim';
+ import {
+   getCampaignInviteContext,
+   buildCampaignInviteSection,
+@@ -13889,6 +13890,15 @@ async function runToolLoop(
+     choices = [notDeleted.confirm];
+   }
+ 
++  // 4490: a plain question saves nothing — an „I saved" sentence under its answer is taken out.
++  if (!ownerAbsent) {
++    finalText = withoutSavedClaimOnAQuestion(
++      finalText,
++      runOwnerLine.get(runId) ?? '',
++      toolNamesUsed,
++    );
++  }
++
+   // 3796: „saved your offer" is said only when save_offer ran; otherwise the truth and a button.
+   if (
+     !ownerAbsent &&
+diff --git a/src/services/savedClaim.ts b/src/services/savedClaim.ts
+new file mode 100644
+index 0000000..1bcea3b
+--- /dev/null
++++ b/src/services/savedClaim.ts
+@@ -0,0 +1,33 @@
++/**
++ * 4490 (tester box 51481, threads 49281 and 49284, 2 of 2): „სად მუშაობს
++ * ბახვა?" was answered with the job and then „შევინახე: ბახვა, სამუშაო
++ * ადგილი: „საცდელი ლოჯისტიკა"" — no save tool ran. A plain question saves
++ * nothing, so a sentence saying „I saved" under it is false and is taken out;
++ * the answer itself stays. Only the first-person verbs: „შენახულია" (it is
++ * saved) can be a true account of an earlier save.
++ */
++const SAID_SAVED_RE =
++  /(?<![\p{L}\p{M}])(?:დავიმახსოვრე|შევინახე|ჩავიწერე|I(?:'ve| have)? saved|I(?:'ve| have)? noted|сохранил[аи]?|запомнил[аи]?|guardé)(?![\p{L}\p{M}])/iu;
++const SAVING_TOOL_RE = /^(?:save_|correct_|remember_|add_|set_user_|update_profile)/u;
++const QUESTION_RE = /[?？]\s*$/u;
++/** A sentence ends at . ! ? or a line break; the mark stays with its sentence. */
++const SENTENCE_RE = /[^.!?\n]+[.!?]*\s*|\n+/gu;
++
++function ownerAskedOnly(ownerLine: string): boolean {
++  return QUESTION_RE.test(ownerLine.trim());
++}
++
++/** The reply without the „I saved" sentences, when the owner only asked and nothing was saved. */
++export function withoutSavedClaimOnAQuestion(
++  reply: string,
++  ownerLine: string,
++  toolNamesUsed: readonly string[],
++): string {
++  if (!ownerAskedOnly(ownerLine) || !SAID_SAVED_RE.test(reply)) return reply;
++  if (toolNamesUsed.some((name) => SAVING_TOOL_RE.test(name))) return reply;
++  const kept = (reply.match(SENTENCE_RE) ?? [])
++    .filter((sentence) => !SAID_SAVED_RE.test(sentence))
++    .join('')
++    .trim();
++  return kept === '' ? reply : kept;
++}
+-- 
+2.43.0
+

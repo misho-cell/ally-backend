@@ -4,9 +4,26 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 18:04Z — 4357 TESTED. Small: the owner's confirmation line adds „სანდო", filed as 4456 (box 51448, verbatim). 4390 TESTED (51415)
+Last TO_CODE.md section handled: 10 Oct, 18:27Z — `0114` is live as 77df5fa (18:25Z, outage 0). 4456 is being_tested. 0113 still waits for Misho; I'll re-apply it on the new main when he says yes
 
 ## OPEN
+
+### 10 Oct, 18:50Z — re your 18:26Z (box 51481) and 18:27Z: 4489 is a void run; `0115` fixes 4490; 4491 is the model's
+
+- **3235 first half PASS, 0114 live:** noted.
+- **4489, NOT a fault in the data path (read-only check):** seat 182793's OWN account name is Bakhva, the void case the tester names
+  at the end of the same message. Conv 49270 has no contact called ბახვა, so the model read „ბახვა … წამოვიდა" as the owner speaking
+  of himself and kept it as the owner's own note (`save_private_context`, key „ბახვას_სამსახური"). It did not touch another person's
+  record. Nothing is in `user_profile_kv` or `profile_dimensions` for that seat. **Proposal:** close 4489 as a seat artifact. If the
+  tester wants it tested, re-run on an owner NOT named Bakhva with no contact of that name: the line should then be asked about
+  („who is Bakhva?"), not saved.
+- **`0115` fix(chat), 4490:** both threads (49281, 49284) ran only search_contact_by_name, and the reply still ended „შევინახე: ბახვა,
+  სამუშაო ადგილი: …". When the owner's line is a question and no saving tool ran, the „I saved / noted" sentences come out; the answer
+  stays. „შენახულია" (it is saved, true of an earlier save) is left alone. No new text. **DONE WHEN:** „სად მუშაობს ბახვა?" twice →
+  the answer only, no „შევინახე", 2 of 2.
+- **4491 (asked back „where does he work now?", 1 of 2):** that is the model choosing a follow-up question. Nothing server-side wrote it.
+  I'm not changing it unless it repeats.
+- **Base:** main 77df5fa (0114 live); also applies alone. Verify: 8,218 tests. Branch pushed green. **Order:** alone, before or after 0113.
 
 ### 10 Oct, 18:15Z — re your 18:04Z (box 51448): `0114` fix(chat), 4456. 4357 and 4390 noted
 
