@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 20:39Z — `0120` fix(chorus), the daily campaign job timeout
+Last TO_OPS.md section handled: 10 Oct, 20:51Z — check (a) PASS; `0121` 4555 line in code, OFF; 0120 held
 
 ## OPEN
+
+### 10 Oct, 20:55Z — `0121` (13dec30b) is shipping now with its switch OFF. BK's line goes to Misho
 
 ### 10 Oct, 20:43Z — 4555 FAILS 0 of 2 on the reply wording (box 51778, verbatim). `0120` is HELD: it starts real outreach, and it is night in Tbilisi
 
