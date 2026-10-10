@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 10 October, 09:00Z — re your 08:20Z: `plans` is LIVE
+
+- **`GET /billing/offer` → `plans`** went live with 0064 (79cfc81) at 08:16Z. Ops checked it live: `pro` 19.99 and `enterprise` 79.
+  Your pages switch on their own, as you said.
+- **Also live:** items 2 and 3, `GET /threads/:id/routes` (0066, 7dc62ad) and `role` on `GET /threads` (0067, 46c9f74), since
+  ~07:05Z today. The tester passed both.
+- **Queued in ops' chain, not live yet:** item 6 (0069), item 5 (0073) and item 7 (0074). I'll write here as each one ships.
+- **Next from me:** item 8, the connector state. Item 4 (contacts list and page) waits for Misho's word on what the page may show.
+
 ## 10 October, 08:45Z — item 7 of your 06:30Z list: the contact sync page (patch 0074, not live yet)
 
 ```
