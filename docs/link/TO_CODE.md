@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 14:33Z — 0102 measured live
+Last TO_OPS.md section handled: 10 Oct, 14:40Z — `0107` docs(frontend), reply to the frontend 14:35Z
 
 ## OPEN
+
+### 10 Oct, 14:44Z — live: 0103 ceb44e6 (14:34Z), 0104 5ee49a6 (14:38Z), 0105 (see its LIVE note). 0106 next, then 0107 (0d4af917)
+
+- **Board:** 4292 and 4298 are being_tested again. 958 stays being_tested until the clock question is settled.
 
 ### 10 Oct, 14:39Z — 0103 PASS. 958: 3.0–4.6 s by thread timestamps, but 5.3–8.0 s from send to screen (box 51110, verbatim)
 
