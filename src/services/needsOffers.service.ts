@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { fieldFits, placeFits } from './fieldPlaces';
+import { deliverDueCards } from './matchFlow.service';
 
 /**
  * 1699 (A16, D679/D680): two members — one with a need, one who said he is
@@ -60,21 +61,27 @@ export function surePairs(
   return pairs;
 }
 
-async function openGoals(): Promise<OpenGoal[]> {
+/** Every member when null; otherwise only these (the on-demand run on test seats). */
+type MemberScope = readonly number[] | null;
+
+async function openGoals(scope: MemberScope): Promise<OpenGoal[]> {
   const result = await query<OpenGoal>(
     `SELECT id, user_id::int AS user_id, title FROM tasks
       WHERE status = 'open' AND title IS NOT NULL
+        AND ($2::text[] IS NULL OR user_id = ANY($2::text[]))
       ORDER BY id DESC LIMIT $1`,
-    [GOALS_READ],
+    [GOALS_READ, scope === null ? null : scope.map(String)],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
 }
 
-async function activeOffers(): Promise<ActiveOffer[]> {
+async function activeOffers(scope: MemberScope): Promise<ActiveOffer[]> {
   const result = await query<ActiveOffer>(
-    `SELECT id, user_id, text, field FROM offers WHERE active ORDER BY id DESC LIMIT $1`,
-    [OFFERS_READ],
+    `SELECT id, user_id, text, field FROM offers
+      WHERE active AND ($2::int[] IS NULL OR user_id = ANY($2::int[]))
+      ORDER BY id DESC LIMIT $1`,
+    [OFFERS_READ, scope],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
@@ -116,10 +123,10 @@ async function proposeIfReachable(goal: OpenGoal, offer: ActiveOffer): Promise<b
 }
 
 /** One night's proposals; the number written. A failed pair is logged and the rest go on. */
-export async function proposeMatches(): Promise<number> {
-  const offers = await activeOffers();
+export async function proposeMatches(scope: MemberScope = null): Promise<number> {
+  const offers = await activeOffers(scope);
   if (offers.length === 0) return 0;
-  const pairs = surePairs(await openGoals(), offers);
+  const pairs = surePairs(await openGoals(scope), offers);
   let proposed = 0;
   for (const { goal, offer } of pairs) {
     try {
@@ -130,4 +137,46 @@ export async function proposeMatches(): Promise<number> {
     }
   }
   return proposed;
+}
+
+export enum SeatMatchOutcome {
+  BadInput = 'bad_input',
+  NotATestSeat = 'not_a_test_seat',
+  Ran = 'ran',
+}
+
+/** The on-demand run takes a pair of seats or a few more, never a sweep. */
+export const MAX_SEATS_PER_RUN = 10;
+
+async function allAreTestSeats(userIds: readonly number[]): Promise<boolean> {
+  const result = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM test_seats WHERE user_id = ANY($1::int[])`,
+    [userIds],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rows[0]?.n ?? 0) === userIds.length;
+}
+
+/**
+ * 1699 (tester 50557): the night's matcher and the noon cards, run now on
+ * fictional seats only — the same proposals and the same card 1 the two
+ * scheduled runs make, so the tester reads the cards today, not tomorrow.
+ * Every seat named must be a test seat; nobody else is read or written.
+ */
+export interface SeatMatchRun {
+  readonly outcome: SeatMatchOutcome;
+  readonly proposed: number;
+  readonly cards: number;
+}
+
+export async function runMatcherForSeats(seatIds: readonly number[]): Promise<SeatMatchRun> {
+  const unique = [...new Set(seatIds)];
+  if (unique.length === 0 || unique.length > MAX_SEATS_PER_RUN) {
+    return { outcome: SeatMatchOutcome.BadInput, proposed: 0, cards: 0 };
+  }
+  if (!(await allAreTestSeats(unique))) {
+    return { outcome: SeatMatchOutcome.NotATestSeat, proposed: 0, cards: 0 };
+  }
+  const proposed = await proposeMatches(unique);
+  return { outcome: SeatMatchOutcome.Ran, proposed, cards: await deliverDueCards(unique) };
 }

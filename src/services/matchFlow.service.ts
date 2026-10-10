@@ -42,8 +42,13 @@ async function push(userId: number, text: string, threadId: number): Promise<voi
   }).catch(() => undefined);
 }
 
-/** Card 1 for each proposed match whose owner had no match card in the last day. */
-export async function deliverDueCards(): Promise<number> {
+/**
+ * Card 1 for each proposed match whose owner had no match card in the last day.
+ * `needUserIds` limits it to those owners (1699's on-demand run on test seats).
+ */
+export async function deliverDueCards(
+  needUserIds: readonly number[] | null = null,
+): Promise<number> {
   const due = await query<DueMatch>(
     `SELECT m.id, m.need_user_id, o.field, t.thread_id
        FROM matches m
@@ -53,8 +58,9 @@ export async function deliverDueCards(): Promise<number> {
         AND NOT EXISTS (SELECT 1 FROM matches x
                          WHERE x.need_user_id = m.need_user_id
                            AND x.card1_at > NOW() - INTERVAL '1 day')
+        AND ($2::int[] IS NULL OR m.need_user_id = ANY($2::int[]))
       ORDER BY m.id LIMIT $1`,
-    [CARDS_PER_RUN],
+    [CARDS_PER_RUN, needUserIds],
     QUERY_TIMEOUT_MS,
   );
   const carded = new Set<number>();

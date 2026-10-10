@@ -319,6 +319,7 @@ import {
   writeStaleFact,
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
+import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -7137,6 +7138,49 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
     // eslint-disable-next-line no-console
     console.error('[fixtures/old-profile]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+/** What the seat matcher run answers for each outcome other than a run. */
+const SEAT_MATCH_REFUSAL: Readonly<Record<string, { status: number; error: string }>> = {
+  [SeatMatchOutcome.BadInput]: {
+    status: 400,
+    error: 'seat_ids must be 1 to 10 user ids',
+  },
+  [SeatMatchOutcome.NotATestSeat]: {
+    status: 403,
+    error: 'every seat must be a test seat',
+  },
+};
+
+function seatIdsOf(body: unknown): number[] | null {
+  const raw = (body as { seat_ids?: unknown } | null)?.seat_ids;
+  if (!Array.isArray(raw)) return null;
+  const ids = raw.map(Number);
+  return ids.every((id) => Number.isInteger(id) && id > 0) ? ids : null;
+}
+
+/**
+ * 1699 (tester 50557): POST /admin/matcher-runs { seat_ids: [a, b] } — the
+ * night's matcher and the noon card 1, now, on test seats only.
+ */
+adminRouter.post('/matcher-runs', async (req: Request, res: Response) => {
+  const seatIds = seatIdsOf(req.body);
+  try {
+    const run =
+      seatIds === null
+        ? { outcome: SeatMatchOutcome.BadInput, proposed: 0, cards: 0 }
+        : await runMatcherForSeats(seatIds);
+    const refusal = SEAT_MATCH_REFUSAL[run.outcome];
+    if (refusal !== undefined) {
+      res.status(refusal.status).json({ success: false, error: refusal.error });
+      return;
+    }
+    res.status(200).json({ success: true, data: { proposed: run.proposed, cards: run.cards } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[matcher-runs]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'The matcher did not run' });
   }
 });
 
