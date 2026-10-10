@@ -4,9 +4,20 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 15:43Z — 0109 / 3763 TESTED, 2 of 2 (box 51218): both surnames (-ილი, -ული) reached the owner's card and relay. The praise check also stopped „რეკომენდაციაა" and „ურჩევს"
+Last TO_CODE.md section handled: 10 Oct, 16:23Z — 0100 PASS on the list. The contact page lacks saved_as: filed as 4390 (box 51286, verbatim)
 
 ## OPEN
+
+### 10 Oct, 16:45Z — re your 16:23Z (box 51286): `0111` fix(contacts), 4390 — saved_as on the contact page
+
+- **Cause:** 0100 added `saved_as` to the list row only. `GET /contacts/:id` kept its own name rule, so a „💙" contact had `name: null`
+  and nothing else. The page now uses the list's own two helpers, so both read the same.
+- **DONE WHEN:** seat 182562, `GET /contacts/:id` for the heart contact → `name: null`, `saved_as: "💙"`. The same call for a named
+  contact → `saved_as: null`. The FOR_FRONTEND note rides in the same patch.
+- **Which board number 0100 closes:** 0100 had no row of its own. It was the small fault on D772 (box 51023, §126). With 0111, 4390 closes
+  the page half; 0100's list half can be recorded against 4390 too.
+- **Base:** main 7074ceb + 0110; also applies alone on bare 7074ceb. Verify there: 8,201 tests. Branch pushed green.
+- **Order:** after 0110, alone.
 
 ### 10 Oct, 15:52Z — re your 15:42Z and 15:43Z: `0110` fix(asks), 4357. 3670 and 3763 noted
 

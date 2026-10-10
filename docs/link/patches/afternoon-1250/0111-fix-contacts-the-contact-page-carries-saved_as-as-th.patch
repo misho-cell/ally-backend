@@ -1,0 +1,148 @@
+From bb7f5cd5e0fb07c61b0d957effd4bfa0963e3c33 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 16:41:57 +0000
+Subject: [PATCH] fix(contacts): the contact page carries saved_as, as the list
+ row does (4390, box 51286)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0100 gave a list row whose label has no letter („💙") its label as
+saved_as. GET /contacts/:id for the same contact still had name null and
+no saved_as, so the page drew no name. The page now uses the list's own
+two helpers (shownName, savedAs), exported from contactBook.service.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                               |  7 +++++++
+ .../__tests__/contactImportState.routes.test.ts    |  1 +
+ src/services/__tests__/contactPage.test.ts         | 14 ++++++++++++--
+ src/services/contactBook.service.ts                |  4 ++--
+ src/services/contactPage.service.ts                |  6 +++++-
+ 5 files changed, 27 insertions(+), 5 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 1d75709..3924ad8 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,13 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
++
++- The page now carries `saved_as` beside `name`, with the same rule as the list (0100): when the label has no letter („💙"), `name` is
++  `null` and `saved_as` is the label as saved; otherwise `saved_as` is `null`.
++- Example: `{ "id": "c_…", "name": null, "saved_as": "💙", "role": "…", "on_netai": false, "labels": ["სტომატოლოგი"], … }`.
++- Draw `name`, else `saved_as`, else „…", the same as the list.
++
+ ## 10 October, 14:39Z — re your 14:35Z: 0094–0096 and 0100 are LIVE now; X-App-Build is counted on every route once 0105 ships
+ 
+ - **Live since your note was written:** 0094 weekly summaries (13:36Z), 0095 `lastTopUp` (13:41Z), 0096 `X-App-Build` (13:45Z), 0100
+diff --git a/src/api/routes/__tests__/contactImportState.routes.test.ts b/src/api/routes/__tests__/contactImportState.routes.test.ts
+index e2f831e..615f12a 100644
+--- a/src/api/routes/__tests__/contactImportState.routes.test.ts
++++ b/src/api/routes/__tests__/contactImportState.routes.test.ts
+@@ -153,6 +153,7 @@ describe('GET /contacts and /contacts/:id', () => {
+     mockPage.mockResolvedValueOnce({
+       id: 'c_x',
+       name: 'ნინო',
++      saved_as: null,
+       role: null,
+       on_netai: true,
+       labels: [],
+diff --git a/src/services/__tests__/contactPage.test.ts b/src/services/__tests__/contactPage.test.ts
+index 08f3a7e..a737765 100644
+--- a/src/services/__tests__/contactPage.test.ts
++++ b/src/services/__tests__/contactPage.test.ts
+@@ -19,9 +19,9 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
+ beforeEach(() => mockQuery.mockReset());
+ 
+ /** Answers the page's reads in the order they are made. */
+-function pageReads(warm: boolean, distant: boolean): void {
++function pageReads(warm: boolean, distant: boolean, alias = 'ნინო'): void {
+   mockQuery.mockImplementation((sql: string) => {
+-    if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias: 'ნინო' }] });
++    if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias }] });
+     if (sql.includes('FROM "UserTags"'))
+       return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
+     if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
+@@ -57,6 +57,7 @@ describe('contactPageFor', () => {
+     expect(page).toEqual({
+       id: 'c_mine',
+       name: 'ნინო',
++      saved_as: null,
+       role: 'ბუღალტერი · TBC',
+       on_netai: true,
+       labels: ['ბუღალტერი'],
+@@ -83,6 +84,15 @@ describe('contactPageFor', () => {
+     expect(publicSql).not.toContain('submitted_by_user_id');
+   });
+ 
++  /** 4390 (box 51286): the list showed „💙" as saved_as and the page showed nothing. */
++  it('carries a label with no letter as saved_as, as the list row does', async () => {
++    pageReads(true, false, '💙');
++    await expect(contactPageFor(171, 'c_mine')).resolves.toMatchObject({
++      name: null,
++      saved_as: '💙',
++    });
++  });
++
+   it('reads red as distant and no confirmed tie as neutral', async () => {
+     pageReads(false, true);
+     await expect(contactPageFor(171, 'c_mine')).resolves.toMatchObject({ warmth: Warmth.Distant });
+diff --git a/src/services/contactBook.service.ts b/src/services/contactBook.service.ts
+index 05a1ee8..66e1755 100644
+--- a/src/services/contactBook.service.ts
++++ b/src/services/contactBook.service.ts
+@@ -85,13 +85,13 @@ async function phonebookRows(
+   return result.rows;
+ }
+ 
+-function shownName(alias: string | null): string | null {
++export function shownName(alias: string | null): string | null {
+   const trimmed = (alias ?? '').trim();
+   return HAS_A_LETTER.test(trimmed) ? trimmed : null;
+ }
+ 
+ /** The label as saved, for a row whose label is not a name; null otherwise. */
+-function savedAs(alias: string | null): string | null {
++export function savedAs(alias: string | null): string | null {
+   const trimmed = (alias ?? '').trim();
+   return trimmed !== '' && !HAS_A_LETTER.test(trimmed) ? trimmed : null;
+ }
+diff --git a/src/services/contactPage.service.ts b/src/services/contactPage.service.ts
+index a3e8d51..12ad0b5 100644
+--- a/src/services/contactPage.service.ts
++++ b/src/services/contactPage.service.ts
+@@ -1,6 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { confirmedWarmTieSql } from './chorusCap';
+ import { decodeContactRef } from './mcp/contactRef';
++import { savedAs, shownName } from './contactBook.service';
+ import { normalizePhone, phoneDigits } from './phone';
+ import { isDisplayableTag } from './tools/getContactFullProfile';
+ import { fetchAccountStates, isMemberPhone } from './tools/membership';
+@@ -48,6 +49,8 @@ export interface ContactExclusionView {
+ export interface ContactPageView {
+   readonly id: string;
+   readonly name: string | null;
++  /** 4390 (box 51286): the label as saved when it has no letter („💙"); null otherwise, as on the list row. */
++  readonly saved_as: string | null;
+   readonly role: string | null;
+   readonly on_netai: boolean;
+   readonly labels: readonly string[];
+@@ -165,7 +168,8 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
+   ]);
+   return {
+     id,
+-    name: name !== null && /\p{L}/u.test(name) ? name : null,
++    name: shownName(name),
++    saved_as: savedAs(name),
+     role: roleFrom(facts),
+     on_netai: isMemberPhone(accounts, phone),
+     labels,
+-- 
+2.43.0
+
