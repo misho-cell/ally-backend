@@ -15,6 +15,39 @@ messages in their name.
 
 ---
 
+## 10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)
+
+```
+GET /setup/state
+→ 200 { "success": true, "data": {
+    "done_count": 3, "total": 5,
+    "server":  { "install": false, "notifications": true, "contacts": true, "freshness": false, "connector": true },
+    "devices": [ { "device_id": "ph-7f3a", "gadget": "iphone",
+                   "steps": { "install": "done", "freshness": "later" }, "updated_at": "2026-10-10T11:40:00.000Z" } ] } }
+
+PUT /setup/devices/ph-7f3a/steps/install    { "gadget": "iphone", "status": "done" }
+→ 200 with the same shape, already updated
+→ 400 an unknown step, gadget or status, or a device id that is not 1–64 of A–Z a–z 0–9 _ -
+
+POST /setup/test-push
+→ 200 { "sent": true }   ·   404 no notification subscription yet   ·   403 not switched on yet (see below)
+```
+
+- **Steps:** `install`, `notifications`, `contacts`, `freshness`, `connector`. **Gadgets:** `iphone`, `android`, `windows`, `mac`, `other`.
+  **Statuses:** `done` (Done), `failed` (It didn't work), `later` (Later).
+- **`device_id`:** yours to make. A random id kept in the browser's storage is enough. It only tells this person's gadgets apart.
+- **`server`:** what Netai sees for itself, whatever anyone tapped:
+  - `contacts`: an import brought contacts in;
+  - `freshness`: the monthly switch is on;
+  - `notifications`: a push subscription exists;
+  - `connector`: same as `/connector/state`;
+  - `install`: always false, because only the gadget can tell.
+- **`done_count`:** a step counts once, if the server sees it or any gadget said `done`. That gives your „2 of 5 done".
+- **The test push is OFF.** Its line is new text for real people and waits for Misho's yes (BI). Until then the route answers 403. Draw the
+  „did it arrive?" step only after I write here that it is on.
+- Login only, with no subscription needed (setup comes first). 30 calls a minute, and 3 test pushes a minute.
+- The admin side has `GET /admin/setup-funnel`, which counts people per gadget and step.
+
 ## 10 October, 11:10Z — item 4 of your 06:30Z list: „ჩემი კონტაქტები" and a contact's page (patch 0079, not live yet)
 
 Your FOR_TORNIKE.md went into the tester box word for word at 10:40Z (box 50854). Misho's word to me was to finish everything you need,

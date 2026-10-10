@@ -320,6 +320,7 @@ import {
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
 import { runMatcherForSeats, SeatMatchOutcome } from '../../services/needsOffers.service';
+import { setupFunnel } from '../../services/setupState.service';
 import { updatesForAdmin } from '../../services/pendingUpdates.service';
 import {
   AdminSnoozeOutcome,
@@ -7138,6 +7139,17 @@ adminRouter.post('/test-accounts/:id/fixtures/old-profile', async (req: Request,
     // eslint-disable-next-line no-console
     console.error('[fixtures/old-profile]', (error as Error).message);
     res.status(500).json({ success: false, error: 'Nothing was written' });
+  }
+});
+
+/** 1882 part 9: GET /admin/setup-funnel — per gadget and step, how many said done / failed / later. */
+adminRouter.get('/setup-funnel', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: { rows: await setupFunnel() } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[setup-funnel]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read the funnel' });
   }
 });
 

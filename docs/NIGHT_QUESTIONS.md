@@ -80,6 +80,13 @@ while its questions are unanswered is a list that loses them.
   > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
   > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
 
+- **BI — 1882 step 4, the test notification. Drafted 10 Oct 11:45 UTC for Misho's yes.** Sent once when the person taps „send a test"
+  in setup (`POST /setup/test-push`, 0080, `TEST_PUSH_ON` false). Title „Netai". The texts real people would read:
+  > ka: „შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს."
+  > en: „Notifications work. This is how I will tell you when someone answers."
+  > ru: „Уведомления работают. Так я сообщу, когда кто-то ответит."
+  > es: „Las notificaciones funcionan. Así te avisaré cuando alguien responda."
+
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 
 P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
