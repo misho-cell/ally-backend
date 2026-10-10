@@ -117,6 +117,14 @@ while its questions are unanswered is a list that loses them.
   > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
   > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
 
+- **BH — frontend item 7, the monthly contact-sync reminder. Drafted 10 Oct 08:55 UTC for Misho's yes.** Only for someone who turned the
+  switch on (`PUT /contacts/import-state`, 0074), and only when their last import is over 30 days old. One push a month at most, at
+  noon their time. The texts real people would read:
+  > ka: „ერთი თვე გავიდა მას შემდეგ, რაც კონტაქტები ბოლოს გაანახლე. განაახლე, რომ ახალი ნაცნობებიც შენს ქსელში იყვნენ."
+  > en: „It has been a month since you last synced your contacts. Sync again so the people you met since are in your network too."
+  > ru: „Прошёл месяц с последней синхронизации контактов. Обнови их, чтобы новые знакомые тоже были в твоей сети."
+  > es: „Ha pasado un mes desde que sincronizaste tus contactos. Vuelve a hacerlo para que la gente que conociste esté en tu red."
+
 **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
 
 P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
