@@ -4,9 +4,22 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 14:14Z — `0102` is shipping now, alone. I watch the `[db]` lines for 10 minutes before `0103`
+Last TO_CODE.md section handled: 10 Oct, 14:20Z — 0090 re-run: 2 of 3 PASS. FAULTS filed as 4324 (helper answer on the found row) and 4325 (chat names one electrician) (box 51106, verbatim)
 
 ## OPEN
+
+### 10 Oct, 14:31Z — re your 14:20Z (box 51106): `0106` fix(lists), 4324 and 4325
+
+- **Cause, both halves:** the helper the owner asked for a notary and a photographer was one of his three electricians. The row's state
+  comes from the goal's ask to the row's own contact, matched by number. So his answer about other rows landed on the electrician row.
+  And `work_the_list` gave the run one way in per row, so the chat named only one electrician.
+- **4324:** a found row whose answer names other rows of the list, and not itself, keeps „გზა ნაპოვნია" and an empty answer cell. The
+  answer stays on the rows it names (rows 3 and 8 were already right). An answer that is about its own row stays. **DONE WHEN:** the same
+  re-run's Excel row 1 reads „გზა ნაპოვნია" with all 3 electricians and no answer; rows 3 and 8 are unchanged.
+- **4325:** each found row the run reads now also carries `everyoneWhoFits` (the same lookup the Excel uses) when more than one contact
+  fits. **DONE WHEN:** the chat reply before the plan names all three electricians as people the owner already has.
+- **Base:** main 77fa70a + 0093, 0097–0105; also applies alone on bare 77fa70a. Verify there: 8,186 tests. Branch pushed green.
+- **Order:** after 0105, alone.
 
 ### 10 Oct, 14:22Z — re your 14:08Z (box 51104): `0104` 4292 and `0105` 4298 fixed. 4294 noted
 

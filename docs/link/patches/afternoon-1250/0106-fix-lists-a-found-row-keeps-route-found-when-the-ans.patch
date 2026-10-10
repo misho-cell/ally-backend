@@ -1,0 +1,249 @@
+From 3013a5f70e595d6621578e358c56ad16f783bcc6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 14:28:05 +0000
+Subject: [PATCH] =?UTF-8?q?fix(lists):=20a=20found=20row=20keeps=20?=
+ =?UTF-8?q?=E2=80=9Eroute=20found"=20when=20the=20answer=20is=20about=20ot?=
+ =?UTF-8?q?her=20rows,=20and=20the=20run=20reads=20every=20contact=20who?=
+ =?UTF-8?q?=20fits=20(4324,=204325)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 51106 (goal 24190, needs list). The helper asked for a notary and a
+photographer was one of the owner's three electricians:
+
+- 4324: his answer matched the electrician row by his number, so that row
+  read „უპასუხა" with an answer about rows 3 and 8. A found row whose answer
+  names other rows of the list and not itself now keeps „route found" and an
+  empty answer cell; the answer stays on the rows it names.
+- 4325: work_the_list gave the run one way in per row, so the chat named one
+  electrician. A found row now also carries everyoneWhoFits (the same lookup
+  the Excel file uses), when more than the one contact fits. Not stored.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aListBecomesTheWorkOfOneGoal.test.ts      | 56 ++++++++++++++++++
+ src/services/listItems.service.ts             | 59 ++++++++++++++++++-
+ 2 files changed, 112 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts b/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
+index 188cd22..bf49505 100644
+--- a/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
++++ b/src/services/__tests__/aListBecomesTheWorkOfOneGoal.test.ts
+@@ -16,6 +16,7 @@ import {
+   portionsOf,
+   startListWork,
+   stateOf,
++  withEveryoneWhoFits,
+ } from '../listItems.service';
+ 
+ /**
+@@ -28,6 +29,7 @@ const mockWaysIn = findWaysIn as jest.MockedFunction<typeof findWaysIn>;
+ beforeEach(() => {
+   mockQuery.mockReset();
+   mockWaysIn.mockReset();
++  (ownMatchesFor as jest.MockedFunction<typeof ownMatchesFor>).mockReset().mockResolvedValue([]);
+ });
+ 
+ describe('the column a row is called by', () => {
+@@ -155,6 +157,32 @@ describe('starting work on a list', () => {
+ });
+ 
+ /** Board #893: „the plan says how many today and how many later". */
++/** 4325 (tester box 51106): the chat named one electrician of the owner's three. */
++describe('a found row as the run reads it', () => {
++  const found = {
++    row: 1,
++    label: 'ელექტრიკოსი',
++    state: ListItemState.RouteFound,
++    throughWhom: 'ვახო ელექტრიკოსი',
++  };
++
++  it('names every contact who fits it', () => {
++    const fitting = new Map([
++      ['ელექტრიკოსი', 'ვახო ელექტრიკოსი, ტარიელ ელექტრიკოსი, ბესო ელექტრიკოსი'],
++    ]);
++    expect(withEveryoneWhoFits([found], fitting)[0].everyoneWhoFits).toBe(
++      'ვახო ელექტრიკოსი, ტარიელ ელექტრიკოსი, ბესო ელექტრიკოსი',
++    );
++  });
++
++  it('adds nothing when only its way in fits, or the row has no way in', () => {
++    const fitting = new Map([['ელექტრიკოსი', 'ვახო ელექტრიკოსი']]);
++    expect(withEveryoneWhoFits([found], fitting)[0]).toEqual(found);
++    const none = { ...found, state: ListItemState.NoRoute, throughWhom: null };
++    expect(withEveryoneWhoFits([none], new Map([['ელექტრიკოსი', 'ვახო']]))[0]).toEqual(none);
++  });
++});
++
+ describe('the portions a list is written to in', () => {
+   const routed = (row: number, who: string | null) => ({
+     row,
+@@ -365,6 +393,9 @@ describe('the worked list as Excel', () => {
+     const values = (n: number): unknown[] =>
+       (book.worksheets[0].getRow(n).values as unknown[]).slice(1);
+     expect(values(2)[3]).toBe('ნოდარ ელექტრიკოსი, კახა ელექტრიკოსი, შოთა ელექტრიკოსი');
++    // 4324 (box 51106): the helper is one of the electricians, and his answer is about other rows.
++    expect(values(2)[4]).toBe('გზა ნაპოვნია');
++    expect(values(2)[5] ?? '').toBe('');
+     expect(values(3).slice(2)).toEqual([
+       'იხ. დამხმარე',
+       'ნოდარ ელექტრიკოსი',
+@@ -374,6 +405,31 @@ describe('the worked list as Excel', () => {
+     expect(values(4).slice(2)).toEqual(['შენს კონტაქტებში არავინ', '', 'გზა არ არის', '']);
+   });
+ 
++  it('keeps an answer on a found row when it speaks of that row', async () => {
++    const said = 'ელექტრიკოსს ხვალ გამოგიგზავნი.';
++    mockQuery
++      .mockResolvedValueOnce({
++        rows: [
++          {
++            label: 'ელექტრიკოსი',
++            row_data: ['1', 'ელექტრიკოსი'],
++            way_in: 'first_circle',
++            through_whom: 'ნოდარ ელექტრიკოსი',
++            state: 'answered',
++            answer: said,
++            columns: ['სახელი', 'პროფესია'],
++          },
++        ],
++      } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    const buffer = await listWorkbook('501', 10, 'ka');
++    if (buffer === null) throw new Error('expected a workbook');
++    const book = new ExcelJS.Workbook();
++    await book.xlsx.load(buffer as unknown as ArrayBuffer);
++    const values = (book.worksheets[0].getRow(2).values as unknown[]).slice(1);
++    expect(values.slice(4)).toEqual(['უპასუხა', said]);
++  });
++
+   it('is nothing when the goal has no list of this owner’s', async () => {
+     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+     await expect(listWorkbook('501', 10, 'ka')).resolves.toBeNull();
+diff --git a/src/services/listItems.service.ts b/src/services/listItems.service.ts
+index 40f9414..c09ec93 100644
+--- a/src/services/listItems.service.ts
++++ b/src/services/listItems.service.ts
+@@ -5,7 +5,7 @@ import { findWaysIn, WayIn, WayInOrigin } from './openingSearch.service';
+ import { ownMatchesFor } from './tools/searchByTag';
+ import { scrubText, stripAllowedSpans } from './privacyScrub';
+ import { DAY_ONE_FIRST_PEOPLE } from './taskEngine.events';
+-import { answerForRow, answersOnGoal, GoalAnswer } from './listRowHelpers';
++import { answerForRow, answerNamesRow, answersOnGoal, GoalAnswer } from './listRowHelpers';
+ 
+ /**
+  * Board #893 (the founder, 4 October): a list the owner gave Netai becomes the
+@@ -100,6 +100,12 @@ export interface ListItemLine {
+   readonly label: string;
+   readonly state: ListItemState;
+   readonly throughWhom: string | null;
++  /**
++   * 4325 (tester box 51106): every one of the owner's contacts who fits a
++   * found row („ვახო, ტარიელ, ბესო"), when there is more than the one way in.
++   * Shown to the run, never stored.
++   */
++  readonly everyoneWhoFits?: string;
+ }
+ 
+ /** Board #893: „the plan says how many today and how many later". */
+@@ -169,17 +175,35 @@ export async function startListWork(
+     items,
+     lines.map((l) => ({ data: l.row, throughPhone: phones.get(l.label) ?? null })),
+   );
++  const shown = items.slice(0, MAX_ITEMS_SHOWN);
+   return {
+     ok: true,
+     value: {
+       total: items.length,
+       counts: countByState(items),
+       portions: portionsOf(items),
+-      items: items.slice(0, MAX_ITEMS_SHOWN),
++      items: withEveryoneWhoFits(shown, await helpersForNeeds(userId, foundLabels(shown))),
+     },
+   };
+ }
+ 
++function foundLabels(items: readonly ListItemLine[]): string[] {
++  return items.filter((item) => item.throughWhom !== null).map((item) => item.label);
++}
++
++/** A found row also names the owner's other contacts who fit it, when there are any. */
++export function withEveryoneWhoFits(
++  items: readonly ListItemLine[],
++  fitting: ReadonlyMap<string, string>,
++): ListItemLine[] {
++  return items.map((item) => {
++    const everyone = item.throughWhom === null ? '' : (fitting.get(item.label) ?? '');
++    return everyone === '' || everyone === item.throughWhom
++      ? item
++      : { ...item, everyoneWhoFits: everyone };
++  });
++}
++
+ /** States a lookup set and nobody has acted on: a fresh pass may replace them. */
+ const LOOKED_UP_ONLY: readonly string[] = [
+   ListItemState.RouteFound,
+@@ -461,6 +485,30 @@ async function workedRows(userId: string, taskId: number): Promise<WorkedRow[]>
+   return result.rows;
+ }
+ 
++/**
++ * 4324 (tester box 51106, goal 24190): the helper asked for a notary and a
++ * photographer was one of the owner's electricians, so his answer matched the
++ * electrician row by his number and that row read „უპასუხა" with an answer
++ * about other rows. A found row whose answer speaks of OTHER rows of the list,
++ * and not of itself, keeps „route found" and leaves the answer to those rows.
++ */
++function withoutOtherRowsAnswer(
++  cells: string[],
++  r: WorkedRow,
++  language: RunLanguage,
++  labels: readonly string[],
++): string[] {
++  const answer = r.answer;
++  const label = r.label ?? '';
++  if (answer === null || answerNamesRow(answer, label)) return cells;
++  if (!labels.some((other) => other !== label && answerNamesRow(answer, other))) return cells;
++  const words = STATE_WORDS[language] ?? STATE_WORDS.ka;
++  const at = r.row_data.length;
++  return cells.map((c, i) =>
++    i === at + 2 ? (words[ListItemState.RouteFound] ?? c) : i === at + 3 ? '' : c,
++  );
++}
++
+ /**
+  * Box 50986: on a list whose rows ARE the needs, every one of the owner's
+  * contacts who fits a found row is named (three electricians, not the first),
+@@ -471,12 +519,14 @@ function needRowCells(
+   language: RunLanguage,
+   fitting: ReadonlyMap<string, string>,
+   answers: readonly GoalAnswer[],
++  labels: readonly string[],
+ ): string[] {
+   const cells = workedCells(r, language);
+   const label = (r.label ?? '').trim();
+   const at = r.row_data.length;
+   const everyone = fitting.get(label) ?? '';
+   if (r.way_in === 'first_circle' && everyone !== '') cells[at + 1] = everyone;
++  if (r.way_in === 'first_circle') return withoutOtherRowsAnswer(cells, r, language, labels);
+   if (r.way_in !== 'none' || r.answer !== null) return cells;
+   const answered = answerForRow(answers, label);
+   if (answered === undefined) return cells;
+@@ -504,8 +554,11 @@ export async function listWorkbook(
+       helpersForNeeds(userId, found),
+       answersOnGoal(userId, taskId),
+     ]);
++    const labels = rows.map((r) => (r.label ?? '').trim());
+     sheet.addRow(header);
+-    for (const r of rows) sheet.addRow(needRowCells(r, language, fitting, answers).map(fitsACell));
++    for (const r of rows) {
++      sheet.addRow(needRowCells(r, language, fitting, answers, labels).map(fitsACell));
++    }
+     return Buffer.from(await book.xlsx.writeBuffer());
+   }
+   const helpers = await helpersForNeeds(
+-- 
+2.43.0
+
