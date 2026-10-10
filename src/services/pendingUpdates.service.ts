@@ -520,6 +520,28 @@ export async function countUpdatesForBadge(userId: string): Promise<UpdateCounts
   };
 }
 
+/** The frontend's 06:30Z item 5: the home card says at most this many updates in a line each. */
+export const STORY_LINES_MAX = 3;
+
+/**
+ * The first updates that are due, oldest first — READ ONLY. Nothing is marked
+ * seen or released here: the same rows `countUpdatesForBadge` counts as due,
+ * so the home card can say what they are without spending them.
+ */
+export async function peekDueUpdates(userId: string): Promise<PendingUpdate[]> {
+  const result = await query<PendingUpdate>(
+    `SELECT p.id, p.task_id, p.kind, p.payload
+       ${HELD_AND_STILL_REAL}
+       AND p.release_at <= NOW()
+       AND (p.kind <> ALL($3::text[]) OR t.pending_question_at IS NOT NULL)
+     ORDER BY p.release_at ASC, p.id ASC
+     LIMIT $4`,
+    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, STICKY_KINDS, STORY_LINES_MAX],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /**
  * The ONE identifier for a waiting update, shared by every surface that names
  * one — the connector and the REST route both import these rather than each

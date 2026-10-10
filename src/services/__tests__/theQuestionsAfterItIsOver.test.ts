@@ -282,9 +282,10 @@ describe('a card queued by a close survives the close', () => {
     const sql = updates.replace(/\/\*[\s\S]*?\*\//g, '');
     const uses = sql.match(/KINDS_THAT_OUTLIVE_THEIR_GOAL/g) ?? [];
 
-    // The declaration plus four call sites: release, count, the row list, and
-    // the badge count (#387, 3 October), each a bound parameter.
-    expect(uses).toHaveLength(5);
+    // The declaration plus five call sites: release, count, the row list, the
+    // badge count (#387, 3 October) and the home card's peek (frontend item 5,
+    // 10 October), each a bound parameter.
+    expect(uses).toHaveLength(6);
     expect(sql).not.toMatch(/\$\{KINDS_THAT_OUTLIVE_THEIR_GOAL/);
   });
 

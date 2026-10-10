@@ -11,6 +11,7 @@ import {
   listSeenUpdates,
   countHeldUpdates,
   countUpdatesForBadge,
+  peekDueUpdates,
   UpdateCounts,
   snoozeUpdate,
   markUpdateSeen,
@@ -27,6 +28,7 @@ import {
   cardHeading,
   debriefAskId,
   normalisedPayload,
+  storyLine,
 } from '../../services/updateCard';
 import { userLanguage } from '../../services/threads.service';
 import {
@@ -149,22 +151,46 @@ interface UpdatesView {
  * reload is not a blank page. It is only this reply, where they are already
  * being shown as due, that they are not also history.
  */
+/** The first due updates, one line each, in the reader's language — read without spending them. */
+async function storyLines(userId: string, chosen: RunLanguage | null): Promise<string[]> {
+  const [due, lang] = await Promise.all([
+    peekDueUpdates(userId),
+    chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
+  ]);
+  const titles = await goalTitlesFor(due.map((u) => u.task_id));
+  return due.map((u) =>
+    storyLine(
+      cardHeading(
+        u.kind,
+        normalisedPayload(u.kind, u.payload),
+        u.task_id === null ? null : (titles.get(u.task_id) ?? null),
+        lang,
+      ),
+    ),
+  );
+}
+
+interface CountView extends UpdateCounts {
+  readonly followed: number;
+  /** The frontend's 06:30Z item 5: at most three lines for the home card; spends nothing. */
+  readonly lines: readonly string[];
+}
+
 // #387, the frontend's ask (3 October): a read-only count for a sidebar badge.
 // GET / releases and marks what it returns, so it cannot be asked „how many";
-// this spends nothing.  GET /updates/count → { due, held }
+// this spends nothing.  GET /updates/count → { due, held, followed, lines }
 updatesRouter.get(
   '/count',
-  async (
-    req: Request,
-    res: Response<ApiResponse<UpdateCounts & { readonly followed: number }>>,
-  ): Promise<void> => {
+  async (req: Request, res: Response<ApiResponse<CountView>>): Promise<void> => {
     const userId = String((req as AuthenticatedRequest).user.userId);
     try {
-      const [counts, followed] = await Promise.all([
+      const [counts, followed, lines] = await Promise.all([
         countUpdatesForBadge(userId),
         countFollowedUpdates(userId),
+        // The same language rule as GET / (X-Locale first, then the inferred one).
+        storyLines(userId, asRunLanguage(req.get('X-Locale'))),
       ]);
-      res.status(200).json({ success: true, data: { ...counts, followed } });
+      res.status(200).json({ success: true, data: { ...counts, followed, lines } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /updates/count]', error);

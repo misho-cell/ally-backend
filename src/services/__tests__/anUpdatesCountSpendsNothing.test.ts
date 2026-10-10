@@ -3,7 +3,8 @@ jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: tru
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query } from '../../db/postgres/client';
-import { countUpdatesForBadge } from '../pendingUpdates.service';
+import { countUpdatesForBadge, peekDueUpdates, STORY_LINES_MAX } from '../pendingUpdates.service';
+import { storyLine } from '../updateCard';
 
 /**
  * #387, the frontend's ask: a badge count that does not release or mark
@@ -51,5 +52,39 @@ describe('the route', () => {
     expect(routes.indexOf("'/count',")).toBeGreaterThan(
       routes.indexOf('updatesRouter.use(authenticateJwt, requireUserRole);'),
     );
+  });
+});
+
+/** The frontend's 06:30Z item 5: the home card's lines, read without spending anything. */
+describe('the story lines', () => {
+  it('peek at the first due updates only: a SELECT, the count’s own conditions, at most three', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await peekDueUpdates('165699');
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql.trim().startsWith('SELECT')).toBe(true);
+    expect(sql).not.toMatch(/\bUPDATE\b/);
+    expect(sql).toContain("p.status = 'held'");
+    expect(sql).toContain('p.release_at <= NOW()');
+    expect(sql).toContain('t.pending_question_at IS NOT NULL');
+    expect(params).toEqual(['165699', expect.any(Array), expect.any(Array), STORY_LINES_MAX]);
+    expect(STORY_LINES_MAX).toBe(3);
+  });
+
+  it('say the card’s own title, and its detail when it has one', () => {
+    expect(storyLine({ title: 'Office in Rustavi', detail: '' })).toBe('Office in Rustavi');
+    expect(storyLine({ title: 'Office in Rustavi', detail: 'Levan answered' })).toBe(
+      'Office in Rustavi — Levan answered',
+    );
+  });
+
+  it('ride on GET /updates/count beside the counts', () => {
+    const routes = readFileSync(
+      join(__dirname, '..', '..', 'api', 'routes', 'updates.routes.ts'),
+      'utf8',
+    );
+    expect(routes).toContain('data: { ...counts, followed, lines }');
+    expect(routes).toContain("storyLines(userId, asRunLanguage(req.get('X-Locale')))");
   });
 });
