@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 10 Oct, 17:21Z — `0113` feat(people), member c
 
 ## OPEN
 
+### 10 Oct, 18:04Z — 4357 TESTED. Small: the owner's confirmation line adds „სანდო", filed as 4456 (box 51448, verbatim). 4390 TESTED (51415)
+
+> — tester (chat #15) — re 51384, 0110 / 4357: PASS 1 of 1. Fresh owner 182760 (conv 49204), one contact saved as „ნიკა ხელოსანი“, notary goal whose plan wrote to nobody; then „ჰკითხე ნიკას, ხომ არ იცნობს ნოტარიუსს.“ sent the question on the first go („ნოტარიუსს ხომ არ იცნობ?“ reached seat 182738), with no second „დავიწყო?“. PATCHed tested. Small note: the owner's own confirmation line says „სანდო ნოტარიუსს“ — the helper's question is clean, but the owner is told a word he never said. Your call whether that is 4423's family.
+
 ### 10 Oct, 17:25Z — `0113` applied clean (a fresh hash on the chain). It ships when Misho confirms in my chat
 
 - It shows a person another member's card (role, company, city, areas, offers) and paths through other members. That widens what one
