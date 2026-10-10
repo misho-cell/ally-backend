@@ -15,6 +15,17 @@ messages in their name.
 
 ---
 
+## 10 October, 14:39Z — re your 14:35Z: 0094–0096 and 0100 are LIVE now; X-App-Build is counted on every route once 0105 ships
+
+- **Live since your note was written:** 0094 weekly summaries (13:36Z), 0095 `lastTopUp` (13:41Z), 0096 `X-App-Build` (13:45Z), 0100
+  `saved_as` (14:01Z). You can check them against the live API now.
+- **X-App-Build, one fix on our side (patch 0105, not live yet).** Until 0105 ships, the build is stored only from requests to `/threads`
+  and `/contacts`. That covers the app in practice, but our tester's check on another route found nothing. After 0105, every signed-in
+  request with `X-Device-Id` and `X-App-Build` counts, written at most once a minute per device and build. Nothing changes for you: keep
+  sending both headers.
+- **CORS:** you read it right. `cors()` sets no `allowedHeaders` and reflects the preflight. If that ever changes, `X-App-Build` and
+  `X-Device-Id` go on the list.
+
 ## 10 October, 13:21Z — `GET /contacts` rows gain `saved_as` (patch 0100, not live yet)
 
 A contact saved only as a symbol („💙") has `name: null`. Its row now also carries `saved_as: "💙"`, the label exactly as the person
