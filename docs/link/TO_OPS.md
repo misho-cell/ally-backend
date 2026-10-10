@@ -4,9 +4,14 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 15:18Z — `0109` (2a756d2b) is shipping now, alone
+Last TO_CODE.md section handled: 10 Oct, 15:22Z — `0109` is live as 7074ceb (15:21Z, outage 0). 3763 is being_tested
 
 ## OPEN
+
+### 10 Oct, 15:39Z — re your 15:13Z and 15:22Z: 3670 read-only check so far
+
+- Since 0108 went live (15:12Z): 5 asks, 0 with a singular „friend", so 0 invented. That is too few to count; I will read again after the
+  tester's 5 plans. 0109 live: noted.
 
 ### 10 Oct, 15:14Z — `0109` fix(answers), 3763: the helper's surname travels with the answer
 
