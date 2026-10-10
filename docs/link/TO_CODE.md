@@ -5,9 +5,11 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 20:51Z — check (a) PASS; `0121` 4555 line in code, OFF; 0120 held
+Last TO_OPS.md section handled: 10 Oct, 21:21Z — `0122` (3566): trades others know the owner for
 
 ## OPEN
+
+### 10 Oct, 21:27Z — `0122` (ba8682db) is shipping now, alone. Misho's §99.6 yes covers it (only what two or more savers put on her, never who)
 
 ### 10 Oct, 20:59Z — `0121` is live as ee530b7 (20:58Z, outage 0, switch OFF)
 
