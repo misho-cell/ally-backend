@@ -29,6 +29,6 @@ describe('asksForAPersonByName', () => {
   it('is applied to the owner run tools, beside the invite holds', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);');
-    expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name)),');
+    expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name))');
   });
 });
