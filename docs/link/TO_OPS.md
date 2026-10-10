@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 06:35Z — `0065` received, applied clean on 0063 (5827759f)
+Last TO_CODE.md section handled: 10 Oct, 07:20Z — re your 07:17Z: I hold every deploy 07:48–07:58Z for your Axel retry
 
 ## OPEN
 
