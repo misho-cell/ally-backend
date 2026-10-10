@@ -1,0 +1,381 @@
+From 5470cd386cb25a92ac459c733f97532e6748b276 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 12:15:49 +0000
+Subject: [PATCH] =?UTF-8?q?feat(contacts,=20setup):=20D772=20full=20number?=
+ =?UTF-8?q?=20on=20the=20list,=20D773=20public=20facts=20on=20the=20page,?=
+ =?UTF-8?q?=20BI=20test=20push=20on=20(=C2=A7126)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes in the code session's chat, ~12:10 UTC („ორივეზე კის
+გეუბნები"), to the founder's answers that came through the tester's box:
+GET /contacts rows carry the full number (own phonebook only; the id is
+still the sealed reference); GET /contacts/:id carries public_facts — the
+public research rows with their source, never another member's saved
+facts; TEST_PUSH_ON is true. D771's instruction is drafted (BJ) and waits
+for the exact text's yes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                | 13 +++++++
+ docs/FOR_FRONTEND.md                          | 12 ++++++
+ docs/NIGHT_QUESTIONS.md                       |  8 +++-
+ .../contactImportState.routes.test.ts         |  3 +-
+ src/services/__tests__/contactBook.test.ts    |  7 ++--
+ src/services/__tests__/contactPage.test.ts    | 25 +++++++++++-
+ src/services/__tests__/setupState.test.ts     | 13 +++++--
+ src/services/contactBook.service.ts           | 13 ++++---
+ src/services/contactPage.service.ts           | 39 +++++++++++++++++--
+ src/services/setupTestPush.service.ts         |  6 +--
+ 10 files changed, 116 insertions(+), 23 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 906e12d..ac75c7c 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6206,3 +6206,16 @@ automatically."
+ 
+ - **What turns on:** `SEE_HELPER_ON = true` (listItems.service.ts). In the list Excel, a row whose need column names a helper, with way-in „nobody" and state „no route", says „იხ. დამხმარე" in those two cells. The other languages say „see the helper" / „см. помощника" / „ver quién ayuda". Every other row is unchanged.
+ - **Undo:** `SEE_HELPER_ON = false`, one line, and ship.
++
++**§126 — 10 October ~12:10 UTC, Misho in the code session's chat: „ორივეზე კის გეუბნები"** (to the two items put to him at ~11:55Z:
++D772 + D773, and D771 + BI; the founder's answers came through the tester's box, 50923/50925/50926).
++
++- **D772 — the full number on the person's own contacts list.** `GET /contacts` rows gain `phone` (normalized, `+digits`). Only the
++  person's own phonebook is ever listed; the row id stays the sealed reference, so a number never travels in a URL.
++- **D773 — public facts on a contact's page.** `GET /contacts/:id` gains `public_facts`: `contact_facts` rows of source
++  `public_research` (the §119 load), not retracted, with `source_url` and `fact_date`. Nothing another member saved is shown.
++- **BI — the test notification.** `TEST_PUSH_ON = true` (setupTestPush.service.ts). The exact lines are recorded in NIGHT_QUESTIONS BI:
++  „შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს." (and the en / ru / es twins), title „Netai".
++- **D771 — the monthly contacts reminder in the assistant's own words.** Taken as a yes on the idea. The instruction is model-facing
++  (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
++- **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 64fea67..cd6d43b 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,18 @@ messages in their name.
+ 
+ ---
+ 
++## 10 October, 12:15Z — the founder's answers (D772, D773) and the test push, on Misho's yes (patch 0088, not live yet)
++
++- **`GET /contacts` rows gain `phone`** (D772, the founder's option გ): the full number as `+digits`, e.g.
++  `{ "id": "c_Zq3…", "name": "ნინო ბერიძე", "phone": "+995599000001", "on_netai": true }`. Use the `id` for the page URL as before. The number
++  never needs to be in a URL.
++- **`GET /contacts/:id` gains `public_facts`** (D773): what is public or published about the person, each with its source:
++  `"public_facts": [ { "field": "employer", "value": "TBC Bank", "source_url": "https://…", "fact_date": "2026-05-01" } ]`.
++  `source_url` and `fact_date` can be null. It is empty for most contacts, and never holds what other members saved.
++- **`POST /setup/test-push` is ON** (BI): 200 `{ "sent": true }`, or 404 with no subscription yet. The „did it arrive?" step can be built.
++- **The monthly reminder (D771)** will be the assistant's own words in the chat, not a push text. Its instruction waits for Misho's yes
++  on the exact wording. The profile switch stays as it is until I write here.
++
+ ## 10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)
+ 
+ ```
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index 298b285..a962f51 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -80,13 +80,19 @@ while its questions are unanswered is a list that loses them.
+   > ru: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." — „Да, отправь"
+   > es: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala"
+ 
+-- **BI — 1882 step 4, the test notification. Drafted 10 Oct 11:45 UTC for Misho's yes.** Sent once when the person taps „send a test"
++- **BI — 1882 step 4, the test notification. Drafted 10 Oct ~11:05 UTC; ON by Misho's yes ~12:10 UTC, §126.** Sent once when the person taps „send a test"
+   in setup (`POST /setup/test-push`, 0080, `TEST_PUSH_ON` false). Title „Netai". The texts real people would read:
+   > ka: „შეტყობინებები მუშაობს. ასე გაგაგებინებ, როცა ვინმე გიპასუხებს."
+   > en: „Notifications work. This is how I will tell you when someone answers."
+   > ru: „Уведомления работают. Так я сообщу, когда кто-то ответит."
+   > es: „Las notificaciones funcionan. Así te avisaré cuando alguien responda."
+ 
++- **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
++  Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
++  regular conversation, no goal, like the day's question) gets this section:
++  > ## კონტაქტების განახლება (D771)
++  > ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, შენი სიტყვებით და შენი ტონით სთხოვე, ტელეფონში ახლად შენახული ადამიანები Netai-ში ატვირთოს, და ერთი წინადადებით უთხარი რატომ: რაც მეტი კონტაქტი გაქვს, მით უკეთ შეძლებ მის დახმარებას — მისთვისაც და ყველასთვის. ერთხელ, მოკლედ, ღილაკის გარეშე.
++
+ **From the night of 6→7 October, put to Misho again at ~07:15 UTC:**
+ 
+ P. **DONE 7 Oct 11:52Z (see ADMIN_WRITE_OPERATIONS §93): §93 wake of goals 5482 and 15677 (Misho, 6 Oct ~22:15 UTC: „კარგი დილით გაუშვი")** — wake the two real goals whose check
+diff --git a/src/api/routes/__tests__/contactImportState.routes.test.ts b/src/api/routes/__tests__/contactImportState.routes.test.ts
+index fb535f7..67a2048 100644
+--- a/src/api/routes/__tests__/contactImportState.routes.test.ts
++++ b/src/api/routes/__tests__/contactImportState.routes.test.ts
+@@ -137,7 +137,7 @@ describe('GET /contacts and /contacts/:id', () => {
+ 
+   it('lists a page with the search, size and cursor passed through', async () => {
+     mockList.mockResolvedValue({
+-      contacts: [{ id: 'c_x', name: 'ნინო', on_netai: true }],
++      contacts: [{ id: 'c_x', name: 'ნინო', phone: '+995599000001', on_netai: true }],
+       next_cursor: null,
+     });
+     const res = await fetch(`${root()}?q=${encodeURIComponent('ნინო')}&limit=20&cursor=MjA`);
+@@ -160,6 +160,7 @@ describe('GET /contacts and /contacts/:id', () => {
+       labels: [],
+       warmth: 'neutral' as never,
+       facts: [],
++      public_facts: [],
+       exclusions: [],
+     });
+     expect((await fetch(`${root()}/c_x`)).status).toBe(200);
+diff --git a/src/services/__tests__/contactBook.test.ts b/src/services/__tests__/contactBook.test.ts
+index 1588ba2..09f2d2c 100644
+--- a/src/services/__tests__/contactBook.test.ts
++++ b/src/services/__tests__/contactBook.test.ts
+@@ -40,7 +40,7 @@ describe('the cursor and the search text', () => {
+ });
+ 
+ describe('contactPage', () => {
+-  it('shows the saved name and the Netai mark, never a number, and says when more follow', async () => {
++  it('shows the saved name, the full number and the Netai mark (D772), and says when more follow', async () => {
+     mockQuery.mockResolvedValue({
+       rows: [
+         { phone: '+995599000001', alias: 'ნინო' },
+@@ -53,12 +53,11 @@ describe('contactPage', () => {
+ 
+     expect(page).toEqual({
+       contacts: [
+-        { id: 'c_13', name: 'ნინო', on_netai: true },
+-        { id: 'c_13', name: null, on_netai: false },
++        { id: 'c_13', name: 'ნინო', phone: '+995599000001', on_netai: true },
++        { id: 'c_13', name: null, phone: '+995599000002', on_netai: false },
+       ],
+       next_cursor: encodeCursor(2),
+     });
+-    expect(JSON.stringify(page)).not.toContain('995599');
+     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+     expect(sql).toContain('"ContactDeceased"');
+     expect(params).toEqual([171, '%ი%', 0, 3]);
+diff --git a/src/services/__tests__/contactPage.test.ts b/src/services/__tests__/contactPage.test.ts
+index 1999d51..08f3a7e 100644
+--- a/src/services/__tests__/contactPage.test.ts
++++ b/src/services/__tests__/contactPage.test.ts
+@@ -25,6 +25,17 @@ function pageReads(warm: boolean, distant: boolean): void {
+     if (sql.includes('FROM "UserTags"'))
+       return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
+     if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
++    if (sql.includes('FROM contact_facts') && sql.includes('source = $2'))
++      return Promise.resolve({
++        rows: [
++          {
++            field: 'employer',
++            value: 'TBC Bank',
++            source_url: 'https://example.ge/team',
++            fact_date: '2026-05-01',
++          },
++        ],
++      });
+     if (sql.includes('FROM contact_facts'))
+       return Promise.resolve({
+         rows: [
+@@ -51,13 +62,25 @@ describe('contactPageFor', () => {
+       labels: ['ბუღალტერი'],
+       warmth: Warmth.Warm,
+       facts: expect.any(Array),
++      public_facts: [
++        {
++          field: 'employer',
++          value: 'TBC Bank',
++          source_url: 'https://example.ge/team',
++          fact_date: '2026-05-01',
++        },
++      ],
+       exclusions: [{ excluded_for: 'office in Rustavi', reason: null }],
+     });
+     const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
+     expect(sqls.some((sql) => sql.includes('ask_boundaries'))).toBe(false);
+-    expect(sqls.find((sql) => sql.includes('FROM contact_facts'))).toContain(
++    expect(sqls.find((sql) => sql.includes('submitted_by_user_id'))).toContain(
+       'submitted_by_user_id = $2',
+     );
++    // D773: the public part is the research load only, never another member's saved facts.
++    const publicSql = sqls.find((sql) => sql.includes('source = $2')) ?? '';
++    expect(publicSql).toContain('retracted_at IS NULL');
++    expect(publicSql).not.toContain('submitted_by_user_id');
+   });
+ 
+   it('reads red as distant and no confirmed tie as neutral', async () => {
+diff --git a/src/services/__tests__/setupState.test.ts b/src/services/__tests__/setupState.test.ts
+index 8e3104b..7560f5d 100644
+--- a/src/services/__tests__/setupState.test.ts
++++ b/src/services/__tests__/setupState.test.ts
+@@ -120,10 +120,15 @@ describe('the setup list', () => {
+ });
+ 
+ describe('the test notification', () => {
+-  it('is off until Misho’s yes on its text (BI), and sends nothing', async () => {
+-    expect(TEST_PUSH_ON).toBe(false);
+-    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.Off);
+-    expect(mockQuery).not.toHaveBeenCalled();
++  it('is on, on Misho’s yes to its text (BI, §126); no subscription sends nothing', async () => {
++    expect(TEST_PUSH_ON).toBe(true);
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.NoSubscription);
++  });
++
++  it('sends once to a person with a subscription', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ one: 1 }] } as never);
++    await expect(sendTestPush(171)).resolves.toBe(TestPushOutcome.Sent);
+   });
+ 
+   it('has its line in every language', () => {
+diff --git a/src/services/contactBook.service.ts b/src/services/contactBook.service.ts
+index 1ad792f..0645973 100644
+--- a/src/services/contactBook.service.ts
++++ b/src/services/contactBook.service.ts
+@@ -1,16 +1,17 @@
+ import { query } from '../db/postgres/client';
+ import { encodeContactRef } from './mcp/contactRef';
++import { normalizePhone } from './phone';
+ import { fetchAccountStates, isMemberPhone } from './tools/membership';
+ 
+ /**
+  * The frontend's 06:30Z item 4 (design 4.8, „ჩემი კონტაქტები"): the person's
+  * own phonebook, searchable by name, a page at a time.
+  *
+- * What a row shows is the narrowest of the shapes put to Tornike (box 50854,
+- * option ა): the name the person saved and whether that contact is on Netai.
+- * No number leaves the server (D149) — a row's id is the same sealed,
+- * per-user reference the connector uses. A wider shape, if Tornike picks one,
+- * is a field added here.
++ * A row shows the name the person saved, whether that contact is on Netai,
++ * and the full number (D772, the founder's option გ, Misho's yes §126): these
++ * are the person's own contacts and only they ever see their own book. The
++ * id is still the sealed per-user reference the connector uses, so a number
++ * never travels in a URL.
+  */
+ const QUERY_TIMEOUT_MS = 8_000;
+ export const DEFAULT_PAGE_SIZE = 50;
+@@ -22,6 +23,7 @@ const HAS_A_LETTER = /\p{L}/u;
+ export interface ContactRow {
+   readonly id: string;
+   readonly name: string | null;
++  readonly phone: string;
+   readonly on_netai: boolean;
+ }
+ 
+@@ -101,6 +103,7 @@ export async function contactPage(
+     contacts: page.map((r) => ({
+       id: encodeContactRef(String(userId), r.phone),
+       name: shownName(r.alias),
++      phone: normalizePhone(r.phone),
+       on_netai: isMemberPhone(accounts, r.phone),
+     })),
+     next_cursor: rows.length > request.limit ? encodeCursor(offset + request.limit) : null,
+diff --git a/src/services/contactPage.service.ts b/src/services/contactPage.service.ts
+index 19cb79b..a3e8d51 100644
+--- a/src/services/contactPage.service.ts
++++ b/src/services/contactPage.service.ts
+@@ -8,14 +8,17 @@ import { fetchAccountStates, isMemberPhone } from './tools/membership';
+ /**
+  * The frontend's 06:30Z item 4, the contact's own page: what THIS person keeps
+  * about one of their contacts — their own labels, how close they said they
+- * are, their own facts, and the goals they kept this contact out of. Nothing
+- * another member saved, and never the contact's own topic boundary (D421: the
+- * asker is never told a boundary exists).
++ * are, their own facts, and the goals they kept this contact out of — plus
++ * what is public or published about the person, each with its source (D773,
++ * Misho's yes §126). Nothing another member saved, and never the contact's
++ * own topic boundary (D421: the asker is never told a boundary exists).
+  */
+ const QUERY_TIMEOUT_MS = 5_000;
+ const MAX_LABELS = 50;
+ const MAX_FACTS = 100;
+ const MAX_EXCLUSIONS = 50;
++const MAX_PUBLIC_FACTS = 50;
++const PUBLIC_RESEARCH_SOURCE = 'public_research';
+ const ROLE_FIELDS: readonly string[] = ['occupation', 'employer'];
+ 
+ export enum Warmth {
+@@ -30,6 +33,13 @@ export interface ContactFact {
+   readonly saved_at: string;
+ }
+ 
++export interface PublicFact {
++  readonly field: string;
++  readonly value: string;
++  readonly source_url: string | null;
++  readonly fact_date: string | null;
++}
++
+ export interface ContactExclusionView {
+   readonly excluded_for: string;
+   readonly reason: string | null;
+@@ -43,6 +53,7 @@ export interface ContactPageView {
+   readonly labels: readonly string[];
+   readonly warmth: Warmth;
+   readonly facts: readonly ContactFact[];
++  readonly public_facts: readonly PublicFact[];
+   readonly exclusions: readonly ContactExclusionView[];
+ }
+ 
+@@ -101,6 +112,24 @@ async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
+   return result.rows;
+ }
+ 
++/**
++ * What is public or published about the person (the research load, §119),
++ * with its source. A fact the person themselves removed (4126 item 5) is
++ * retracted and never shown.
++ */
++async function publicFacts(phone: string): Promise<PublicFact[]> {
++  const result = await query<PublicFact>(
++    `SELECT field_type AS field, COALESCE(canonical_value, value) AS value, source_url,
++            TO_CHAR(fact_date, 'YYYY-MM-DD') AS fact_date
++       FROM contact_facts
++      WHERE neo4j_contact_id = $1 AND source = $2 AND retracted_at IS NULL
++      ORDER BY field_type, updated_at DESC LIMIT $3`,
++    [normalizePhone(phone), PUBLIC_RESEARCH_SOURCE, MAX_PUBLIC_FACTS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
+ async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
+   const result = await query<ContactExclusionView>(
+     `SELECT excluded_for, reason FROM contact_exclusions
+@@ -126,10 +155,11 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
+   if (phone === null) return null;
+   const name = await savedName(userId, phone);
+   if (name === undefined) return null;
+-  const [labels, warmth, facts, exclusions, accounts] = await Promise.all([
++  const [labels, warmth, facts, published, exclusions, accounts] = await Promise.all([
+     ownLabels(userId, phone),
+     warmthOf(userId, phone),
+     ownFacts(userId, phone),
++    publicFacts(phone),
+     exclusionsOf(userId, phone),
+     fetchAccountStates([phone]),
+   ]);
+@@ -141,6 +171,7 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
+     labels,
+     warmth,
+     facts,
++    public_facts: published,
+     exclusions,
+   };
+ }
+diff --git a/src/services/setupTestPush.service.ts b/src/services/setupTestPush.service.ts
+index ff0efc2..17f78fe 100644
+--- a/src/services/setupTestPush.service.ts
++++ b/src/services/setupTestPush.service.ts
+@@ -5,10 +5,10 @@ import { userLanguage } from './threads.service';
+ 
+ /**
+  * 1882 step 4: after the person allows notifications, one test push — then
+- * „did it arrive?" on the screen. Off until Misho's yes on the exact lines
+- * below (NIGHT_QUESTIONS BI): a new text real people read.
++ * „did it arrive?" on the screen. On, on Misho's yes to the exact lines
++ * below (BI, §126).
+  */
+-export const TEST_PUSH_ON = false;
++export const TEST_PUSH_ON = true;
+ const QUERY_TIMEOUT_MS = 5_000;
+ const SETUP_URL = '/setup';
+ 
+-- 
+2.43.0
+

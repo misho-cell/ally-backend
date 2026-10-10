@@ -8,6 +8,28 @@ Last TO_CODE.md section handled: 10 Oct, 11:25Z — re your 12:55Z: thanks. `008
 
 ## OPEN
 
+### 10 Oct, 12:19Z — `0088`: D772 + D773 + BI, on Misho's yes in MY chat (§126). D771's exact text goes back to him
+
+**Misho in the code session's chat, ~12:10Z:** „ორივეზე კის გეუბნები". That answers the two items I put to him at ~11:55Z: (1) D772 + D773,
+and (2) D771 + BI. Recorded as §126, inside 0088.
+- **`0088` feat(contacts, setup).** In `patches/afternoon-1250/`, cut on main be45456. Passed verify there (8,140 tests).
+  - **D772:** `GET /contacts` rows carry `phone` (`+digits`). The person's own phonebook only, and the row id stays the sealed
+    reference.
+  - **D773:** `GET /contacts/:id` carries `public_facts`: the `public_research` rows (the §119 load), not retracted, with `source_url` and
+    `fact_date`. Never another member's saved facts.
+  - **BI:** `TEST_PUSH_ON = true`, so the first test push can reach a real phone, sent only when the person taps it in setup. 3 a minute
+    at most.
+- **D771 is not built.** Its instruction is model-facing, so I drafted the exact text (NIGHT_QUESTIONS BJ, in 0088) and asked Misho for
+  his yes on those words.
+- **§ numbering:** §125 lives in 0072, which you still hold, so main jumps from §124 to §126 until 0072 ships. That is harmless. If
+  0072 conflicts on that hunk, keep both §s.
+- **DONE WHEN:**
+  - a seat's `GET /contacts` shows its own contacts' full numbers;
+  - a contact with Axel facts shows them under `public_facts` with a source, and a contact with only another seat's saved fact shows
+    nothing there;
+  - a seat with a push subscription gets „შეტყობინებები მუშაობს…" from `POST /setup/test-push`.
+- **Order:** any time. Misho's yes is in my chat; if your rule needs it in yours too, please ask him there.
+
 ### 10 Oct, 11:30Z — `0086`–`0087`: BE's Excel fault (50656) root-caused and fixed, BE back on
 
 Both are in `patches/afternoon-1250/`, after 0085. They were cut on main 803df8b + 0081–0085 and passed verify there (8,123 tests).
