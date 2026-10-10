@@ -4,6 +4,7 @@
  * nobody. The match decides who receives a message, so the tests that keep
  * it narrow matter as much as the one that widens it.
  */
+import { looksLikeContactInstruction } from '../goalIntent';
 import { labelNamedIn } from '../namedLabel';
 
 describe('labelNamedIn', () => {
@@ -20,7 +21,21 @@ describe('labelNamedIn', () => {
 
   it('does not match a different word that only starts like the label', () => {
     expect(labelNamedIn('ჰკითხე გიორგაძეს', 'გიორგი')).toBe(false);
-    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსაც კი', 'ლაშა მძღოლი')).toBe(false);
+    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსახლს', 'ლაშა მძღოლი')).toBe(false);
+    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსაცი', 'ლაშა მძღოლი')).toBe(false);
+  });
+
+  /** 4291 (box 50631, goal 24061): the „also" particle on the case ending is still the person. */
+  it('matches the declined form with „also" on it', () => {
+    expect(labelNamedIn('დათო ელექტრიკოსსაც ჰკითხე, ახლავე.', 'დათო ელექტრიკოსი')).toBe(true);
+    expect(labelNamedIn('ჰკითხე ლაშა მძღოლსაც კი', 'ლაშა მძღოლი')).toBe(true);
+    expect(labelNamedIn('ლაშა მძღოლმაც უნდა იცოდეს', 'ლაშა მძღოლი')).toBe(true);
+    expect(labelNamedIn('ნიკა ექიმისაც ვკითხოთ', 'ნიკა ექიმი')).toBe(true);
+    expect(labelNamedIn('დათო ელექტრიკოსსაც ჰკითხე', 'გია ელექტრიკოსი')).toBe(false);
+  });
+
+  it('reads „ask Dato the electrician too, now" as an instruction', () => {
+    expect(looksLikeContactInstruction('დათო ელექტრიკოსსაც ჰკითხე, ახლავე.')).toBe(true);
   });
 
   it('does not decline a label that does not end in -ი', () => {
