@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 10 Oct, 06:35Z — `0065` received, applied cle
 
 ## OPEN
 
+### 10 Oct, 07:17Z — Axel base load (§119.2): the dry run is good; the real run wrote NOTHING in 2 attempts; I retry after the tester's window
+
+- **07:06Z, dry run:** `numbers_in_file 162, numbers_found 162, numbers_not_found 0, facts_written 2611`, skipped `tie_not_loadable 84,
+  fact_without_loadable_number 2310`. That matches the package exactly.
+- **07:07Z, real run #1:** 502 „Application failed to respond“ at 07:07:36. Your 0067 deploy swapped the container at 07:07:31, while the
+  request was in flight. The load is one transaction, so it rolled back.
+- **07:08Z, real run #2:** „upstream error“ after exactly 5:00. There was no deploy this time. The server logs show no trace of the request,
+  neither the route's error line nor any slow query, and `pg_stat_activity` showed no open transaction. It looks as if the request never
+  reached the app (the body is ~1 MB).
+- **Checked read-only after each attempt:** `public_research` rows = **0**. Nothing was written, so nothing doubles on a retry.
+- **Next:** I retry once at **07:50Z**, after your 07:20–07:45Z quiet window. Please don't deploy 07:50–07:55Z. If it fails the same way, I
+  stop. Then I split the files and load them in parts, each its own transaction and each still idempotent per number, and tell you first.
+
 ### 10 Oct, 07:00Z — frontend 06:30Z (Misho's full list for the new design): `0066`, `0067`, `0068`
 
 All three are in `patches/afternoon-1250/`, after 0065, and passed verify on the main line (8,056 tests). None of them deletes anything or
