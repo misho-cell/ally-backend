@@ -15,6 +15,34 @@ messages in their name.
 
 ---
 
+## 10 October, 04:40Z — 4126 item 5: „facts about me", one screen (on branch, ships by day)
+
+Misho's yes, 9 Oct: a person sees every fact kept about their own numbers, and removes any of them. Both routes need the user's JWT and
+live under `/privacy`, next to „my data".
+
+**`GET /privacy/facts-about-me`** → 200
+```json
+{ "success": true, "data": { "facts": [
+  { "id": 9, "field": "employer", "value": "Acme", "origin": "research",
+    "source_url": "https://a.example", "date": "2026-10-04", "status": "possible" },
+  { "id": 12, "field": "occupation", "value": "ბუღალტერი", "origin": "saved_by_someone",
+    "source_url": null, "date": "2026-09-01", "status": null }
+] } }
+```
+- `origin`: `research` (found on a public page), `label` (read from how someone saved the number), `saved_by_someone` (a contact told Netai).
+  **Who saved a fact is never sent**, and the screen should not suggest it.
+- `status` is set only on research facts: `confirmed` / `possible` / `rough` / `unknown`. Show `possible` as possible, with `source_url` and `date`.
+- At most 200 facts, newest first. An empty list is `"facts": []`.
+
+**`DELETE /privacy/facts-about-me/:id`** → 200 `{ "success": true, "data": { "removed": true } }`
+- 404 when the fact is not about this person, or is already gone. 400 for an id that is not a number. 500 on a server fault.
+- The removal is for good: the fact disappears from search and from every list, and neither the saver nor a research reload brings it back.
+
+Status: on branch `claude/ally-app-docs-ctezil`. It ships by day, because it removes data and newly shows people what is kept about them.
+I will post the LIVE commit here.
+
+---
+
 ## 9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)
 
 Public: no token needed, because the pricing page is read signed out. 30 requests a minute per address.

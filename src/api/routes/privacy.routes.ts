@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import { authenticateJwt, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { ApiResponse } from '../../types';
@@ -10,6 +10,12 @@ import {
   ErasureReport,
   OWNED_TABLE_LABELS_KA,
 } from '../../services/privacyRights.service';
+import {
+  FactAboutMe,
+  factsAboutMe,
+  removeFactAboutMe,
+  RemoveOutcome,
+} from '../../services/factsAboutMe.service';
 
 // The rights portal the Privacy Policy already promises (ticket 4, item 0).
 // Deliberately NOT behind requireSubscription: the right to erasure cannot
@@ -99,6 +105,49 @@ privacyRouter.post(
       // eslint-disable-next-line no-console
       console.error('[POST /privacy/my-data/delete]', error);
       res.status(500).json({ success: false, error: 'წაშლა ვერ დასრულდა — ცვლილება არ შესულა' });
+    }
+  },
+);
+
+/**
+ * 4126 item 5 (Misho's yes, 9 Oct): every fact kept about the person's own
+ * numbers, with its kind of source and date — never who saved it.
+ */
+privacyRouter.get(
+  '/facts-about-me',
+  async (req: Request, res: Response<ApiResponse<{ facts: FactAboutMe[] }>>): Promise<void> => {
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      res.status(200).json({ success: true, data: { facts: await factsAboutMe(userId) } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /privacy/facts-about-me]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** 4126 item 5: removes one fact about the person, everywhere, for good. */
+privacyRouter.delete(
+  '/facts-about-me/:id',
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response<ApiResponse<{ removed: true }>>): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'ფაქტის id საჭიროა' });
+      return;
+    }
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const outcome = await removeFactAboutMe(userId, Number(req.params.id));
+      if (outcome === RemoveOutcome.NotFound) {
+        res.status(404).json({ success: false, error: 'ასეთი ფაქტი შენზე არ მოიძებნა' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { removed: true } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /privacy/facts-about-me]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
 );

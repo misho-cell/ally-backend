@@ -97,8 +97,10 @@ describe('the load', () => {
   it('replaces the number’s research rows whole, as the system saver, private', async () => {
     const report = await loadAxelBase(NUMBERS, FACTS, false);
     expect(report.facts_written).toBe(2);
-    const [del, ...inserts] = client.query.mock.calls;
+    const [removed, del, ...inserts] = client.query.mock.calls;
+    expect(String(removed[0])).toContain('removed_by_subject_at IS NOT NULL');
     expect(String(del[0])).toContain('DELETE FROM contact_facts');
+    expect(String(del[0])).toContain('removed_by_subject_at IS NULL');
     expect(del[1]).toEqual(['+995500000001', SYSTEM_SAVER_ID, PUBLIC_RESEARCH]);
     expect(inserts).toHaveLength(2);
     expect(String(inserts[0][0])).toContain("false, $5, 'mentioned', false");
@@ -112,6 +114,16 @@ describe('the load', () => {
       '2026-10-04',
       'confirmed',
     ]);
+  });
+
+  /** 4126 item 5: what the person removed about themselves is not written back. */
+  it('keeps a fact the person removed about themselves removed on reload', async () => {
+    client.query.mockResolvedValueOnce({ rows: [{ field_type: 'employer', value: 'old' }] });
+    const report = await loadAxelBase(NUMBERS, FACTS, false);
+    expect(report.facts_written).toBe(1);
+    const inserts = client.query.mock.calls.slice(2);
+    expect(inserts).toHaveLength(1);
+    expect((inserts[0][1] as unknown[])[2]).not.toBe('employer');
   });
 
   it('counts a number the server does not hold, and writes nothing for it', async () => {
