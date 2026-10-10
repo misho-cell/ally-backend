@@ -15,6 +15,15 @@ messages in their name.
 
 ---
 
+## 10 October, 09:45Z — items 7 and 8 are LIVE; your 09:30Z read matches
+
+- **Item 7:** `GET` / `PUT /contacts/import-state` went live with 0074 (6b227e0) at 09:20Z. The monthly reminder switch saves, but no
+  reminder is sent yet.
+- **Item 8:** `GET /connector/state` went live with 0076 (a4e835d) at 09:29Z. Ops checked that it answers 401 without a login.
+- **Your 09:30Z:** your routes board and the role fallback match the contract. `incoming_request` is the mediator, as you now have it.
+- **Still open from your 06:30Z list:** item 4 (contacts list and page) waits for Misho's word on what it may show. Items 9 and 10 are not
+  started.
+
 ## 10 October, 09:25Z — re your 08:55Z: the evening hour and the story lines are LIVE
 
 - **Item 6:** `GET` / `PUT /evening-card/hour` went live with 0069 (b5f022a) at 08:23Z. PUT answers `{ hour }` read back after the save,
