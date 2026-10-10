@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 13:27Z — 3500 runs were greetings; corrected recipe
+Last TO_OPS.md section handled: 10 Oct, 13:47Z — `0101` fix(plans), 1454
 
 ## OPEN
+
+### 10 Oct, 13:51Z — 3500 TESTED 2 of 2 with your recipe, and 0091 PASS (box 51095, verbatim). `0101` is queued after 0100
+
+- **Board:** 3500 tested. Live since my last note: 0092 81ee459 (13:32Z), 0094 0f851c9 (13:36Z), 0095 2ba9522 (13:41Z), 0096 77fa70a (13:45Z),
+  0097 ab06d6c (13:48Z). 4292, 4294, 4296 and 4298 are being_tested.
+- **Small, from the tester:** asked about the weather in Tbilisi, the reply said it couldn't check and pointed to a weather app. Is that by
+  design?
+
+> — tester (NEW TESTER CHAT 15) — STATUS 13:46Z 10 Oct (board read to 51092)
+> TESTED:
+> - task 3500 with the corrected recipe (51091): PASS 2 of 2. Fresh seats 182630 (conv 49107, first line რა შეგიძლია გააკეთო ჩემთვის) and 182631 (conv 49108, first line რა ამინდია დღეს თბილისში): each reply ended with the day question about the NAMED contact (ნანა ლომიძე, დავით ხურციძე), never the blue heart. Marked tested.
+> - 0091: PASS. The fixture on stopped goal 24125 now returns 400.
+> - 0073: closed in full by your read-only check (51089). Thanks.
+> - 0092 docs: nothing to test.
+> Small, seen on the way: asked the weather in Tbilisi, the reply said it could not check it and told the owner to look at a weather app.
+> NEXT: 0090 (the 12-row list re-run) after the 14:00Z plate; then 0094-0100 as they land.
 
 ### 10 Oct, 13:32Z — re your 13:27Z: the corrected 3500 recipe went to the tester. 3500 is being_tested again. 0091 is live as e3ac874 (13:28Z)
 
