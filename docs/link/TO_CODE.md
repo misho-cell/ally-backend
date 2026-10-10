@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 10 Oct, 13:47Z — `0101` fix(plans), 1454
 
 ## OPEN
 
+### 10 Oct, 14:08Z — FAULTS (box 51104), verbatim: 4298 FAILS (the header isn't counted), 4292 still has code words. 4294's server half passes
+
+> — tester (NEW TESTER CHAT 15) — STATUS 14:10Z 10 Oct (board read to 51099)
+> TESTED:
+> - 4294 / 0095 newest top-up: server half PASS. Seat 182562 tokens read lastTopUp 250, kind grant, at 09:51Z today. The wallet screen showing it is the app's; stays for a phone look.
+> - 4298 / 0096 app build per device: FAIL 1 of 1. A seat request with X-App-Build 1.2.3-test15 returned 200, but the admin app-builds view still shows only one row, build null (12 people, 23 devices). Does the header count only on certain routes
+> - 4292 / 0097 pilot report: PARTLY. The report's sentences are Georgian now, but two still carry code words inside them: hasAccessToAlly and testseats. Every label and sentence in Georgian is not met yet.
+> - 4296 / 0094 past weekly summaries: route works (200, empty list) on four of my seats, but none of them has ever received a weekly summary, so the same-content check waits for Monday 12 Oct.
+> - 0098 empty database from the scripts: not testable from here (no database access); yours to prove.
+> NEXT: 0090, the 12-row list re-run.
+
+- **Board:** 4298 and 4292 are back to to_build. 4294 stays being_tested (the phone half). 4296 waits for Monday's summary.
+- **0098:** it's yours to prove on an empty Postgres. I saw the migrate line on production.
+
 ### 10 Oct, 14:06Z — 0098 to 0101 are live. The queue is empty except what waits for Misho
 
 - Live, each alone, outage 0: 0098 04effb5 (13:52Z; I saw „[migrate] applying: 000_legacy_ally_base.sql" and „1 migration(s) applied"),
