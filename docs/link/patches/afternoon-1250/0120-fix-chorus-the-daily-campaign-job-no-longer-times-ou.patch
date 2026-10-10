@@ -1,0 +1,88 @@
+From d5b6eb780534e2e5e8d26eecc2ca0b3b765a1c7a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 20:35:44 +0000
+Subject: [PATCH] fix(chorus): the daily campaign job no longer times out
+ choosing inviters
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The chorus cron's openDueCampaigns failed with a statement timeout in each
+of the last deployments (8.2 s, [db failed] on the inviter query). It
+gathered every phonebook and old-Ally connection holding each target —
+thousands of accounts — before keeping the few active subscribers, then
+ran three warm-tie checks per row.
+
+The eligible inviters (active subscriber, not a test seat, not opted out)
+are now taken first and each branch of the UNION is limited to them. On
+production, over the last 25 campaign targets: the same 29 rows and the
+same hash, 1.1 s → 86 ms.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/chorusIsCapped.test.ts |  2 +-
+ src/services/chorusCampaign.service.ts        | 27 ++++++++++++-------
+ 2 files changed, 19 insertions(+), 10 deletions(-)
+
+diff --git a/src/services/__tests__/chorusIsCapped.test.ts b/src/services/__tests__/chorusIsCapped.test.ts
+index 588a88a..21264fc 100644
+--- a/src/services/__tests__/chorusIsCapped.test.ts
++++ b/src/services/__tests__/chorusIsCapped.test.ts
+@@ -121,7 +121,7 @@ describe('a Chorus inviter needs a confirmed warm tie', () => {
+ 
+   it('is required when inviters are chosen and again at every send', () => {
+     const chorus = readFileSync(join(__dirname, '..', 'chorusCampaign.service.ts'), 'utf8');
+-    expect(chorus).toContain("AND ${confirmedWarmTieSql('x.uid::int', 'x.phone')}");
++    expect(chorus).toContain("WHERE ${confirmedWarmTieSql('x.uid::int', 'x.phone')}");
+     expect(chorus).toContain("AND ${confirmedWarmTieSql('p.inviter_user_id', 'c.target_phone')}");
+   });
+ });
+diff --git a/src/services/chorusCampaign.service.ts b/src/services/chorusCampaign.service.ts
+index ef058ef..606d811 100644
+--- a/src/services/chorusCampaign.service.ts
++++ b/src/services/chorusCampaign.service.ts
+@@ -176,22 +176,31 @@ async function inviterCandidatesForPhones(
+   const out = new Map<string, InviterCandidate[]>();
+   if (phones.length === 0) return out;
+   const result = await query<{ phone: string; user_id: number; strength: number | null }>(
+-    `SELECT x.phone, x.uid AS user_id, crs.strength_score AS strength
++    // The night's chorus cron timed out here on every run (8 s, 10 Oct): it
++    // gathered everyone holding each target — old-Ally accounts by the
++    // thousand — before keeping the few active subscribers. The eligible
++    // inviters are now taken first; the rows are the same (checked on
++    // production, same 29 rows and hash) and the read is 13x faster.
++    `WITH inviters AS MATERIALIZED (
++       SELECT u.id FROM "User" u
++        WHERE u.subscription_status = 'active'
++          -- A fictional seat must not be chosen as the person who invites somebody.
++          AND ${notATestSeat('u.id')}
++          AND NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = u.id)
++     )
++     SELECT x.phone, x.uid AS user_id, crs.strength_score AS strength
+      FROM (
+-       SELECT phone, "contactId" AS uid FROM "UserAlias" WHERE phone = ANY($1)
++       SELECT ua.phone, ua."contactId" AS uid FROM "UserAlias" ua
++        WHERE ua."contactId" IN (SELECT id FROM inviters) AND ua.phone = ANY($1)
+        UNION
+        SELECT ucp.phone, uc."originUserId" AS uid
+        FROM "UserConnectionPhone" ucp JOIN "UserConnection" uc ON uc.id = ucp."connectionId"
+-       WHERE ucp.phone = ANY($1)
++       WHERE uc."originUserId" IN (SELECT id FROM inviters) AND ucp.phone = ANY($1)
+      ) x
+-     -- A fictional seat must not be chosen as the person who invites somebody.
+-     JOIN "User" u ON u.id = x.uid AND u.subscription_status = 'active'
+-       AND ${notATestSeat('u.id')}
+      LEFT JOIN contact_relationship_scores crs
+        ON crs.user_id = x.uid AND crs.contact_phone = x.phone
+-     WHERE NOT EXISTS (SELECT 1 FROM ask_optouts ao WHERE ao.user_id = x.uid)
+-       -- D544: only an inviter whose tie to the target is CONFIRMED warm.
+-       AND ${confirmedWarmTieSql('x.uid::int', 'x.phone')}
++     -- D544: only an inviter whose tie to the target is CONFIRMED warm.
++     WHERE ${confirmedWarmTieSql('x.uid::int', 'x.phone')}
+      ORDER BY x.phone, crs.strength_score DESC NULLS LAST`,
+     [phones],
+     CAMPAIGN_QUERY_TIMEOUT_MS,
+-- 
+2.43.0
+

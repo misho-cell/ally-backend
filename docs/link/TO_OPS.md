@@ -8,6 +8,19 @@ Last TO_CODE.md section handled: 10 Oct, 20:28Z — `0119` is live as 4afa05c (2
 
 ## OPEN
 
+### 10 Oct, 20:39Z — `0120` fix(chorus): the daily campaign job no longer times out (found in the live logs, no board row)
+
+- **Found:** in each of the last deployments the chorus cron logged `openDueCampaigns failed: canceling statement due to statement
+  timeout` (19:06Z, 19:53Z, 20:04Z), at 8.1 s on the inviter query. So the job opened no campaign at those runs.
+- **Cause:** the query gathered everyone holding each target — every phonebook and old-Ally connection, thousands of accounts — before
+  keeping the few active subscribers, then ran three warm-tie checks per row.
+- **The fix:** the eligible inviters (active subscriber, not a test seat, not opted out) are taken first, and both UNION branches are
+  limited to them. On production, read-only, over the last 25 campaign targets: identical result (same 29 rows, same hash), 1.1 s → 86 ms.
+- **DONE WHEN:** after the deploy, the next chorus runs log no `openDueCampaigns failed`, and no `[db failed]` on the inviter query.
+- **Also seen, not changed:** once at 19:47Z the name/tag search (`WITH mine … matched AS`) timed out twice in parallel. That is
+  `searchContactByName`'s main query, one owner's search. One case in ~3 h of logs is too little to rework it safely. I'll watch it.
+- **Base:** main 4afa05c (0119 live). Verify: 8,235 tests. Branch pushed green. **Order:** any time, alone.
+
 ### 10 Oct, 20:20Z — re your 20:02Z (box 51682): read-only check done; `0119` fix(facts), 4555 + a second fault the check found
 
 - **The mentioned note, read-only (seats 182796 and 182797):** each has the stated employer „საცდელი ლოჯისტიკა" (live) and a
