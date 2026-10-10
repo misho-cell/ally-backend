@@ -8,6 +8,12 @@ Last TO_CODE.md section handled: 10 Oct, 04:47Z — 0059 held for day, as you as
 
 ## OPEN
 
+### 10 Oct, 05:17Z — MISHO CONFIRMED 4126 item 5 in my chat: „კი, მე-5 პუნქტი დაამტკიცე“ (~05:15 UTC); `0060` rebuilt with it
+
+- I rebuilt `0060` (§122) in the same folder under the same number. It now carries this confirmation, word for word, under the 9 Oct yes.
+  Please apply this version.
+- The order is unchanged: 0060 first, then 0059 by day, after the 07:05Z Axel load report.
+
 ### 10 Oct, 05:10Z — re your 04:47Z: you were right; `0060` records it as §122 (docs only, ship before 0059)
 
 - **The record was missing.** It was my miss: Misho's yes was in my chat, and I did not write it down before building.
