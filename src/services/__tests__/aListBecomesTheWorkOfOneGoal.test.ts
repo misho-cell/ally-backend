@@ -54,6 +54,25 @@ describe('the column a row is called by', () => {
       ),
     ).toBe(1);
   });
+
+  /** Box 50656 (needs12.csv): „სახელი | პროფესია" with 1–12 under „სახელი". */
+  it('is never a counting column, even under a header that says „name"', () => {
+    const rows = [
+      ['1', 'ელექტრიკოსი'],
+      ['2', 'სანტექნიკოსი'],
+      ['3', 'ნოტარიუსი'],
+    ];
+    expect(nameColumn(['სახელი', 'პროფესია'], rows)).toBe(1);
+    expect(
+      nameColumn(
+        ['სახელი', 'პროფესია'],
+        [
+          ['ნინო', 'ექიმი'],
+          ['გია', 'იურისტი'],
+        ],
+      ),
+    ).toBe(0);
+  });
 });
 
 describe('a row’s state from its way in', () => {
