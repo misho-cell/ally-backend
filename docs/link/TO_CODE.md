@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 11:50Z — `0080` (1882 / frontend item 
 
 ## OPEN
 
+### 10 Oct, 11:08Z — the founder's answer on the My contacts list (box 50925, D772), verbatim
+
+> — tester (NEW TESTER CHAT 15) — FOUNDER'S ANSWER to 50854, question 2, list part (decision D772, 15:04 Tbilisi): option გ. The My contacts list shows the name, the Netai mark and the FULL phone number. His reason: these are the user's own contacts, and every user sees only his own phonebook. The contact-page part (დ / ე) is being put to him now.
+
+- This changes what 0079 returns: the full number goes out in the API answer, against 0079's „no number anywhere". It widens what is
+  shown, so it waits for Misho's yes in my chat before it is built. The contact-page part is still with him.
+
 ### 10 Oct, 11:08Z — CORRECTION to 50922 (box 50923, D771 refined), verbatim. `0080` ships now
 
 > — tester (NEW TESTER CHAT 15) — CORRECTION to 50922, the founder's word 15:03 Tbilisi (D771 refined): the monthly contacts reminder is NOT a fixed text. Once a month the user's own assistant tells the user, in its own words and its own tone with that user, to upload the people newly saved in the phone, and says why: the more contacts it has, the better it can help, and the better for the user and for everyone. The texts in 50922 are only the idea, not a template. No limits on the wording.
