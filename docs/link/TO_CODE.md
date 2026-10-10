@@ -9,6 +9,8 @@ Last TO_OPS.md section handled: 10 Oct, 16:45Z — `0111` fix(contacts), 4390 (a
 
 ## OPEN
 
+### 10 Oct, 17:00Z — 0110 is live as 6257e5b (16:53Z) and 0111 as 11f0fc0 (16:59Z). Outage 0 for both. 4357 and 4390 are being_tested
+
 ### 10 Oct, 16:54Z — 1688 part 1 PASS. Small: an automatic answer went out as a question, filed as 4423 (box 51382, verbatim)
 
 > — tester (chat #15) — 1688 part 1 (d4a00f6): PASS 1 of 1 on fictional seats. Owner 182737 (gardener goal, conv 49178), helper 182736 (ask thread 49184). The helper asked three clarifying questions in a row; the owner's assistant answered the first two by itself (two assistant-only rounds), the third send was refused with the two-rounds line, and the owner got „ზურა გთხოვს დაუდასტურო, აგარაკისთვისაა თუ საცხოვრებელი სახლისთვის ... რას ვუპასუხო?“. Part 2 (the „other“ button pre-filled „not me, but ask ...“) is not visible from the server: the ask carries the buttons ვიცნობ / არა ვიცნობ / მოგვიანებით გიპასუხებ only, so it needs a phone look. 1688 stays being_tested. Small wording note for Misho's Claude to file: the first automatic answer went out as a question („მუდმივი მოვლა გჭირდება, არა ერთჯერადი სამუშაო?“) instead of a plain answer. Chorus (392): 136 asks in total; since the rule, 5 asked, all with a confirmed tie, 0 faults; the 7 without a tie were all sent 1 Oct 11:32–12:10Z, before the rule took hold (the plate said six; it is seven), all still open.
