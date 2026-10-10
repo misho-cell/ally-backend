@@ -1,0 +1,142 @@
+From 0d7930e788e563aa29185883b123d2ef84050633 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 10 Oct 2026 05:39:19 +0000
+Subject: [PATCH] =?UTF-8?q?feat(lists):=20a=20row=20that=20names=20a=20hel?=
+ =?UTF-8?q?per=20stops=20saying=20=E2=80=9Enobody",=20behind=20a=20switch?=
+ =?UTF-8?q?=20(BE,=204160)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+NIGHT_QUESTIONS BE, the tester's 49805 note (b): in the list Excel, a row
+whose need column names one of the owner's contacts as a helper also said
+„შენს კონტაქტებში არავინ" and „გზა არ არის". Those are about reaching the
+listed person, and an owner reads them as a contradiction.
+
+With SEE_HELPER_ON, those two cells say „იხ. დამხმარე" (en/ru/es drafted
+alike) on such a row. A row with a real way in, or a state other than
+no_route, is unchanged.
+
+OFF in this commit. The words are new text in the owner's file and wait for
+Misho's yes.
+
+DONE WHEN (once on): the 4160 file's helper rows read „იხ. დამხმარე" in
+the way-in and state columns; every other row is as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aHelperRowDoesNotSayNobody.test.ts        | 35 +++++++++++++++
+ src/services/listItems.service.ts             | 43 +++++++++++++++++--
+ 2 files changed, 74 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts
+
+diff --git a/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts b/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts
+new file mode 100644
+index 0000000..25efd9d
+--- /dev/null
++++ b/src/services/__tests__/aHelperRowDoesNotSayNobody.test.ts
+@@ -0,0 +1,35 @@
++import { SEE_HELPER_ON, withHelperSaid, type WorkedRow } from '../listItems.service';
++
++/** NIGHT_QUESTIONS BE (4160 note b): „nobody / no route" beside a named helper read as a contradiction. */
++const row = (wayIn: string, state: string): WorkedRow => ({
++  row_data: ['ნინო', 'ბუღალტერი'],
++  way_in: wayIn,
++  through_whom: null,
++  state,
++  answer: null,
++  columns: ['name', 'need'],
++});
++const cells = ['ნინო', 'ბუღალტერი', 'შენს კონტაქტებში არავინ', '', 'გზა არ არის', ''];
++
++describe('a row whose need names a helper', () => {
++  it('is unchanged until Misho says yes to the words', () => {
++    expect(SEE_HELPER_ON).toBe(false);
++    expect(withHelperSaid(cells, row('none', 'no_route'), 'ka')).toEqual(cells);
++  });
++
++  it('points the way-in and state cells at the helper, once on', () => {
++    expect(withHelperSaid(cells, row('none', 'no_route'), 'ka', true)).toEqual([
++      'ნინო',
++      'ბუღალტერი',
++      'იხ. დამხმარე',
++      '',
++      'იხ. დამხმარე',
++      '',
++    ]);
++  });
++
++  it('leaves a row with a real way in, and a state that is not „no route", as they are', () => {
++    expect(withHelperSaid(cells, row('first_circle', 'route_found'), 'ka', true)).toEqual(cells);
++    expect(withHelperSaid(cells, row('none', 'unchecked'), 'ka', true)[4]).toBe('გზა არ არის');
++  });
++});
+diff --git a/src/services/listItems.service.ts b/src/services/listItems.service.ts
+index 253b4c4..16c525c 100644
+--- a/src/services/listItems.service.ts
++++ b/src/services/listItems.service.ts
+@@ -408,7 +408,7 @@ const NETAI_COLUMNS: Readonly<Record<RunLanguage, readonly string[]>> = {
+   es: ['Netai: camino', 'Netai: a través de', 'Netai: estado', 'Netai: respuesta'],
+ };
+ 
+-interface WorkedRow {
++export interface WorkedRow {
+   readonly row_data: string[];
+   readonly way_in: string;
+   readonly through_whom: string | null;
+@@ -469,13 +469,48 @@ export async function listWorkbook(
+     ...(helpers === null ? [] : [NEED_COLUMN[language] ?? NEED_COLUMN.ka]),
+   ]);
+   for (const r of result.rows) {
+-    const needHelpers =
+-      helpers === null ? [] : [helpers.get((r.row_data[needAt] ?? '').trim()) ?? ''];
+-    sheet.addRow([...workedCells(r, language), ...needHelpers].map(fitsACell));
++    const helper = helpers === null ? null : (helpers.get((r.row_data[needAt] ?? '').trim()) ?? '');
++    const cells = workedCells(r, language);
++    sheet.addRow(
++      [
++        ...(helper ? withHelperSaid(cells, r, language) : cells),
++        ...(helper === null ? [] : [helper]),
++      ].map(fitsACell),
++    );
+   }
+   return Buffer.from(await book.xlsx.writeBuffer());
+ }
+ 
++/**
++ * NIGHT_QUESTIONS BE (4160 note b, the tester's 49805): a row whose need
++ * column names a helper also said „შენს კონტაქტებში არავინ / გზა არ არის"
++ * (about reaching the listed person), which reads as a contradiction. With
++ * this on, those two cells point at the helper column instead.
++ *
++ * OFF until Misho's yes on the exact words: they are new text in the owner's file.
++ */
++export const SEE_HELPER_ON = false;
++
++const SEE_HELPER: Readonly<Record<RunLanguage, string>> = {
++  ka: 'იხ. დამხმარე',
++  en: 'see the helper',
++  ru: 'см. помощника',
++  es: 'ver quién ayuda',
++};
++
++/** The way-in and state cells of a nobody/no-route row, when a helper is named. */
++export function withHelperSaid(
++  cells: string[],
++  r: WorkedRow,
++  language: RunLanguage,
++  on: boolean = SEE_HELPER_ON,
++): string[] {
++  if (!on || r.way_in !== 'none') return cells;
++  const see = SEE_HELPER[language] ?? SEE_HELPER.ka;
++  const at = r.row_data.length;
++  return cells.map((c, i) => (i === at || (i === at + 2 && r.state === 'no_route') ? see : c));
++}
++
+ /** One row's own cells and Netai's four. */
+ function workedCells(r: WorkedRow, language: RunLanguage): string[] {
+   const words = STATE_WORDS[language] ?? STATE_WORDS.ka;
+-- 
+2.43.0
+
