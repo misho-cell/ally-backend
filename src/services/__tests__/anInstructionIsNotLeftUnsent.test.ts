@@ -73,6 +73,17 @@ describe('an owner instruction left unsent', () => {
     expect(guard.slice(0, 900)).toContain('!runAskSent.has(runId) &&');
   });
 
+  /** The tester's 49809: a closed route ended on „not sent — write it again". */
+  it('is never called unsent when the run’s introduction met a closed route (1697)', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const guard = chat.slice(chat.indexOf('const instructionUnsent ='));
+    expect(guard.slice(0, 1_100)).toContain('!runRouteClosed.has(runId) &&');
+    expect(chat).toContain('noteRouteClosed(runId, block.name, rawResult);');
+    expect(chat).toContain("const ROUTE_CLOSED_REASON = 'route_closed';");
+    const tool = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
+    expect(tool).toContain("reason: 'route_closed'");
+  });
+
   it('says plainly that nothing went when the second chance sent nothing either', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     // §97: the server first asks the one named contact; only then the plain line.
