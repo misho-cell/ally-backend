@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { SaverWord, tradesKnownFor } from './knownFor';
 import { normalizePhone } from './phone';
 import { foldedLower } from './tools/georgianCase';
 import { getUserProfile } from './userProfile.service';
@@ -20,6 +21,7 @@ const MAX_PUBLIC_FACTS = 40;
 const MAX_OWN_ANSWERS = 20;
 const MAX_SAVED_AS = 10;
 const MIN_SAVERS_FOR_A_LABEL = 2;
+const MAX_SAVER_WORDS = 200;
 
 export interface PublicFact {
   readonly field_type: string;
@@ -41,6 +43,7 @@ export interface AboutMe {
   readonly what_others_see: readonly PublicFact[];
   readonly my_answers: readonly OwnAnswer[];
   readonly names_others_saved_you_as: readonly string[];
+  readonly trades_others_know_you_for: readonly string[];
 }
 
 async function ownName(userId: string): Promise<string | null> {
@@ -135,14 +138,36 @@ async function labelsOthersSaved(numbers: readonly string[]): Promise<string[]> 
      HAVING COUNT(DISTINCT ua."contactId") >= $2
       ORDER BY COUNT(DISTINCT ua."contactId") DESC
       LIMIT $3`,
-    [
-      [...new Set([...numbers, ...numbers.map((n) => normalizePhone(n))])].filter((n) => n !== ''),
-      MIN_SAVERS_FOR_A_LABEL,
-      MAX_SAVED_AS,
-    ],
+    [savedForms(numbers), MIN_SAVERS_FOR_A_LABEL, MAX_SAVED_AS],
     ABOUT_ME_TIMEOUT_MS,
   );
   return result.rows.map((row) => row.label);
+}
+
+/** Every phone form the owner may be saved under. */
+function savedForms(numbers: readonly string[]): string[] {
+  return [...new Set([...numbers, ...numbers.map((n) => normalizePhone(n))])].filter(
+    (n) => n !== '',
+  );
+}
+
+/** 3566: the tags and labels others put on the owner's numbers, each with who put it (never said). */
+async function wordsOthersPut(numbers: readonly string[], userId: string): Promise<SaverWord[]> {
+  if (numbers.length === 0) return [];
+  const result = await query<{ saver_id: number; word: string }>(
+    `SELECT saver_id, word FROM (
+       SELECT t."contactId" AS saver_id, TRIM(t.tag) AS word
+         FROM "UserTags" t WHERE t.phone = ANY($1::text[])
+       UNION
+       SELECT ua."contactId" AS saver_id, TRIM(ua.alias) AS word
+         FROM "UserAlias" ua WHERE ua.phone = ANY($1::text[])
+     ) w
+     WHERE saver_id IS NOT NULL AND saver_id::text <> $2 AND NULLIF(word, '') IS NOT NULL
+     LIMIT $3`,
+    [savedForms(numbers), userId, MAX_SAVER_WORDS],
+    ABOUT_ME_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => ({ saverId: Number(row.saver_id), word: row.word }));
 }
 
 export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
@@ -152,12 +177,18 @@ export async function whatNetaiKnowsAboutMe(userId: string): Promise<AboutMe> {
     getUserProfile(userId),
     ownAnswers(userId),
   ]);
+  const [othersSee, savedAs, othersWords] = await Promise.all([
+    publicFactsAbout(numbers),
+    labelsOthersSaved(numbers),
+    wordsOthersPut(numbers, userId),
+  ]);
   return {
     name,
     own_numbers: numbers,
     my_profile: profile,
-    what_others_see: await publicFactsAbout(numbers),
+    what_others_see: othersSee,
     my_answers: answers,
-    names_others_saved_you_as: await labelsOthersSaved(numbers),
+    names_others_saved_you_as: savedAs,
+    trades_others_know_you_for: tradesKnownFor(othersWords),
   };
 }

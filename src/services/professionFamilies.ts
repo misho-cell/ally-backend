@@ -63,6 +63,14 @@ export function relatedProfessionWords(searched: string): readonly string[] {
   return family === undefined ? [] : family.filter((w) => normalized(w) !== key);
 }
 
+/** The first word of the family the word belongs to (its shared key); null if none. */
+export function professionFamilyKey(word: string): string | null {
+  const key = normalized(word);
+  if (key === '') return null;
+  const family = PROFESSION_FAMILIES.find((words) => words.some((w) => normalized(w) === key));
+  return family === undefined ? null : family[0];
+}
+
 /** Board #510, 1086: the server searches the family itself; the run is told not to repeat it. */
 export const ALSO_SEARCHED_NOTE =
   'People are saved under the words their friends use, not the word asked with. The words in ' +
