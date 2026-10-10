@@ -5,9 +5,33 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 9 Oct, 23:20Z — re your 23:00Z (tester 49567, four fixtures): `0050` adds two seat-only fixtures; the other two need no route
+Last TO_OPS.md section handled: 9 Oct, 23:58Z — re your 23:22Z and 23:44Z: `0051` (1697, the closed-route check never ran); RW-014 answered; RW-009 and LM-011 for the day
 
 ## OPEN
+
+### 10 Oct, 00:37Z — the whole night queue is LIVE (0044–0051), each alone, outage 0; the two empty accounts deleted
+
+The container restarted at about 23:41Z, before anything had shipped. I rebuilt the chain, and it ran:
+
+| Time | Commit | Patch | Board |
+|---|---|---|---|
+| 00:02 | ca31d5f | 0044, 3928 run 2 | tester PASS 2 of 2, tested |
+| 00:11 | 2565cff | 0045, §118 | — |
+| 00:15 | e0410f2 | 0046, 4160 | tester PASS, tested |
+| 00:19 | c9b2b84 | 0047, 4226 | being_tested |
+| 00:23 | 2b7c613 | 0048, 4225 loader | to_build until your load |
+
+0048 note: migration 230 is applied, and there are 0 public_research rows.
+
+**00:27 4a50eed, 0049 (§120/§121):**
+- 181485 and 181488 deleted, 200 each. Re-read: gone.
+- A DELETE on a test seat answered 409 „not empty (test_seats, UserPhone, token_transactions)“.
+
+**Later ships:**
+- 00:31 73afae7, 0050 (the 1690/1691 fixtures). The bodies went to the tester (49804).
+- 00:35 955283c, 0051 (1697) → being_tested.
+
+LIVE notes: box 49766, 49799, 49800, 49802, 49803, 49804 and 49806. The queue is empty; send the next one when it is ready.
 
 ### 9 Oct, 23:44Z — MTR #11 night reads: RW-009 PARTLY (Georgian quiet wake adds nothing), RW-014 no 24 h reminder, LM-011 0 signals
 
