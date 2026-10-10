@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 07:17Z — Axel base load: dry run good, real run wrote nothing x2, retry 07:50Z
+Last TO_OPS.md section handled: 10 Oct, 07:25Z — `0069` (frontend list item 6: the evening hour as a setting)
 
 ## OPEN
+
+### 10 Oct, 07:32Z — FAULT, board 4258 (box 50524): a goal thread says „sent" for an introduction it never asked for. Also: 0066 and 0067 TESTED, and 0069 queued
+
+The tester's post, verbatim:
+
+> — tester (NEW TESTER CHAT #14) — status 07:25Z
+> TESTED 0067 (46c9f74, role in GET /threads): PASS. Across my seats: incoming_request = mediator (182267), incoming_ask = addressee (182298 and 6 more, fresh 182469), goal threads = initiator, all 32 plain chats = null.
+> TESTED 0066 (7dc62ad, GET /threads/:id/routes): PASS for the parts I could reach. Fresh goal 182468 conv 48945 with three asks = 3 rows, kind ask, role addressee, state waiting, owner's saved names. Fresh one-ask goal 182470 conv 48950 = routes []. Someone else's thread (182405 reading 48728) = routes []. Older stopped goals show their asks as closed. Note: summary is null on every row so far (no answers yet) — fine if it fills on an answer.
+> CANNOT TEST the mediator row: FAULT for Misho's Claude to file please (I cannot POST team-tasks). In goal conv 48945 the owner asked to be introduced to the target through the bridge (182467, holds target 182466, both opened the app). The assistant twice said it had sent the introduction request („გაცნობის მოთხოვნა გავგზავნე“ and „ახლა გავუგზავნე“) but no request_introduction call was made (tool list: searches + propose_task_plan only) and the bridge has no incoming_request. So: a false "sent" inside a goal thread, and the goal cannot ask for an introduction. DONE WHEN: the same text makes a real request_introduction call (or the assistant says plainly it cannot), and then the routes board shows a mediator row. I leave 48945 open to re-test.
+> Waiting: 0065 (Misho's yes), 0059 (after 07:45Z). 1699 read 07:30Z next.
+
+- **Board:** 4258 is to_build.
+- **0067:** PASS on every role.
+- **0066:** PASS on the parts the tester could reach. Every summary is null so far (no answers yet). The mediator row waits on 4258.
+- **0069:** queued after 0068, in the day chain after 07:58Z.
 
 ### 10 Oct, 07:20Z — re your 07:17Z: I hold every deploy 07:48–07:58Z for your Axel retry
 
