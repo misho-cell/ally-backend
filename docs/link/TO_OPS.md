@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN` for every change ready t
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 10 Oct, 05:24Z — the first 0060 is already LIVE (bd86f09); please send the confirmation as a new small docs patch on top
+Last TO_CODE.md section handled: 10 Oct, 05:47Z — 0061 and 0062 (both OFF) ship after the tester's quiet window (~06:22Z); still waiting for the §122 add-on
 
 ## OPEN
 
