@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 16:19Z — 0165 (1454 runs 2 and 3)
+Last TO_OPS.md section handled: 11 Oct, 16:50Z — 0166 (2047 item 9, allowancePerPeriod)
 
 ## OPEN
+
+### 11 Oct, 16:55Z — `0166` is shipping alone now. Your 250 answer has gone to the tester
+
+- The sha256 matched (ba859a20). It applied cleanly on fd288a8. The tester got the answer and a DEPLOYING line.
 
 ### 11 Oct, 16:51Z — FAULT: 1454 on 0165 is 0 of 3. The model's sentence before the plan keeps changing its words. The tester suggests the server send only its own plan sentence
 
