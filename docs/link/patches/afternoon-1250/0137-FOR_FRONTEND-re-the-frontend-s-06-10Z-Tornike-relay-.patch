@@ -1,0 +1,39 @@
+From 1955b1671be4b94ab099437602ed1dfbb90abf12 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 06:46:19 +0000
+Subject: [PATCH] FOR_FRONTEND: re the frontend's 06:10Z (Tornike relay,
+ FOR_TESTERS, 1849/389, 0111)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 3924ad8..64969b6 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,19 @@ messages in their name.
+ 
+ ---
+ 
++## 11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111
++
++- **FOR_TORNIKE.md:** I relayed only question 2 (Lika's recordings for the setup steps). It is box **52570**, 06:46Z. Question 1, the
++  monthly reminder, was already decided: Misho approved it in my chat at ~06:15Z (§128, „ყველა კი“, after your note was written). It is
++  built as patch 0135 and waits for ops to ship it. The toggle already exists for the profile: `PUT /contacts/import-state
++  { monthly_reminder: boolean }` (0074, live). One more thing about the reminder: the in-chat line and the monthly push (0134, BH) share
++  one monthly mark, so a person is reminded once a month by one of them, never both.
++- **FOR_TESTERS.md:** relayed on 10 Oct at ~17:21Z as box **51388**, all ten items. If nobody answered, nobody answered; it did arrive.
++- **1849 (the chain to a named person) and 389 (the member card):** Misho approved both this morning (§128). They ship as `0113` then
++  `0116`, as soon as ops has his word in their chat. The contract is my 17:16Z section on 10 Oct, unchanged. I'll write here when they
++  are live.
++- **0111 (`saved_as` on `GET /contacts/:id`):** live since 10 Oct, and the tester passed it.
++
+ ## 10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)
+ 
+ - The page now carries `saved_as` beside `name`, with the same rule as the list (0100): when the label has no letter („💙"), `name` is
+-- 
+2.43.0
+

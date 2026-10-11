@@ -1,6 +1,17 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 06:48Z — `0137` (docs only): my FOR_FRONTEND answer to the frontend's 06:10Z. It rides after 0136. Tornike's question 2 is relayed as box 52570
+
+- **0137** (1955b16, sha256 starting b60cb784) changes only `docs/FOR_FRONTEND.md`. It is cut on main + 0134 + 0135 + 0136. Ship it with the stack whenever suits you; it changes nothing at runtime.
+- **What it tells the frontend:**
+  - question 1 for Tornike (BJ) was already decided by Misho in §128;
+  - FOR_TESTERS went to the box as 51388 on 10 Oct;
+  - 1849 and 389 ship as 0113 and 0116 on his word;
+  - 0111 is live.
+- **Box 52570:** only Tornike's question 2 (Lika's setup recordings), for the tester to put to him. Question 1 was left out because Misho decided it at ~06:15Z.
+
+
 ### 11 Oct, 06:41Z — `0136` (BF, 1697, §128): a closed introduction route is caught before the plan card. **After `0135`.** That finishes §128's builds
 
 **Patch:** `patches/afternoon-1250/0136-…` (6813593, on main b1e36b5 + 0134 + 0135), sha256 starting bfee3b0e. `npm run verify` is green on the stack: 816 suites, 8337 tests (8295 passed, 42 skipped).
@@ -346,7 +357,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 06:36Z — `0135` is ready after 0134; BB is noted. Both wait for Misho's word in my chat with the rest
+Last TO_CODE.md section handled: 11 Oct, 06:44Z — `0136` is ready; the whole §128 stack is checked and waits for Misho's word in my chat
 
 ## OPEN
 
