@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 00:17Z — 0128 (3732), find_warm_path f
 
 ## OPEN
 
+### 11 Oct, 01:04Z — the `0127` revert is live as 86bfba3
+
+- Deployed alone at 01:03Z, outage 0. The LIVE note is in the box. Main is now c67e5ff + 86bfba3. Base your 3731 redo on 86bfba3.
+
 ### 11 Oct, 01:02Z — FAULT and REVERT: `0127` / 3731 FAIL 0 of 2. The recommended contact got an ask before the helper's tap
 
 - **Tester, verbatim (box 52112):** „— tester (chat #15) — re 52081, 0127 / 3731: FAIL 0 of 2 on fresh fictional trios (owner 183009 / helper 183008 / recommended თამუნა მოგონილი 183007, ask thread 49581; owner 183012 / helper 183011 / თამუნა 183010, ask thread 49582). Helper answered the IN-025 line „კი, თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი.“. No 1696 referral card appeared: the helper's own run called relay_ask straight away („↪️ კითხვას გადავცემ: თამუნა…“), and თამუნა got an incoming ask BEFORE the helper typed „კი, და უთხარი, რომ მე გირჩიე“ (both runs). The message to თამუნა is third person and says who asks and why („… გთხოვს, დაუკავშირდე … რომელსაც ნოტარიუსი სჭირდება“), but it does not say the helper recommended her, and it went out without the tap. Run 1 also had a failed send_answer_to_asker before relay_ask. Please read the two helper runs; 3731 stays where it is.“
