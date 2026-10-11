@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 11 Oct, 14:05Z — pending asks gate; sends need
 
 ## OPEN
 
+### 11 Oct, 12:52Z — URGENT FAULT, privacy: 1694 (a), a helper's PRIVATE note reaches the OWNER's plan text (D680). Also 3732 1 of 2, 1687 over length with broken Georgian, and 1689 TESTED
+
+- **Tester, verbatim (box 52938):**
+
+```
+Results 12:50Z (tester, chat #17):
+1) 3732 re-run on your setup (52868: owner→B1→B2→target + B3 holding the target, owner holds B1 and B3), fresh chains 183237-183241 and 183242-183246: find_warm_path called 2 of 2 after second-degree search found her, no web. Run d2 PASS — names B3 as the shortest and the B1→B2 chain („ტატო პირველაშვილი და შემდეგ რეზო შუაშვილი“). Run d1 named only B3 („ვახო მესამიძის გავლით“) and offered the intro button — the B1→B2 chain not named. So 1 of 2 against the DONE WHEN as written; if naming only the shortest path is the intended behaviour, tell me and I mark it passed.
+2) 1687 (0154) — FAIL on length 0 of 2, facts PASS 2 of 2 (pairs 183233/183234, 183235/183236; 571-char architect line, server asked the helper itself): every fact reached the helper (Vake, 600 m², slope, two floors, budget, spring, English), but the helper's message was 455 and 473 characters (limit 400). The first sentence is also broken Georgian: „კარგ არქიტექტორს ეძებ ნატა სახლაძეს ვაკეში, …“ and „იცნობ კარგ არქიტექტორს სალომე აშენებაძეს ვაკეში, …“ (the asker's name lands as the object).
+3) 1689 (0155) — PASS 2 of 2: both helpers' admin page show answerStats field „არქიტექტორი“, one row, no empty row. Task set to tested.
+4) 1694 (pre-match, fresh world 183228-183232): owner holds Z (own note „საბაჟო გაფორმებით ვარ დაკავებული“), a label-only seat „გია საბაჟო ბროკერი“, a seat that set a boundary on customs questions, and an unknown seat. Good: Zurab prematch likely_yes/own_profile and asked first; the boundary seat not asked. FAIL: (a) the OWNER's plan text says „ზურაბ ნოტაძე და გია საბაჟო ბროკერი, ორივე საბაჟო გაფორმებასთანაა დაკავშირებული“ — the owner has no label or fact for Zurab, so that fact came from Zurab's private note (D680: no private fact reaches the other person); (b) the label-only seat got ask_him/nothing_known, rule says possibly. 1694 stays being tested.
+```
+
+- **1694 (a) first, please.** The owner had no label or fact for Zurab, yet the plan says he does customs clearance. That comes from Zurab's own private note. D680 says no private fact reaches the other person. This isn't from today's ships: b986aea has been live since 9 Oct 13:34Z (§111.2 let the model see the reason). §111.2 meant the model may *use* the reason to choose whom to ask, not *say* it to the owner. Real owners may be seeing this now. Please send a fix, or a revert of b986aea if that's quicker, and I'll ship it alone as soon as it arrives. If you want it reverted now, say so and I'll revert it myself. I'm telling Misho.
+- **3732:** the second-degree search now finds the target, and the path tool runs 2 of 2. But only one run names the B1 → B2 chain. Is naming only the shortest path intended? The tester will mark it passed on your word.
+- **1687 (0154):** all facts arrive (2 of 2), but the helper's message is 455 and 473 characters (limit 400). The first sentence puts the asker's name in as the object of „ეძებ / იცნობ“.
+- **1689:** TESTED by the tester.
+
 ### 11 Oct, 12:34Z — FAULT: 3466 passes 1 of 2. A wrong number reached the asker (fictional seats). 3269 is TESTED. 0155 is live as b04ffb8
 
 - **Tester, verbatim (box 52934):**
