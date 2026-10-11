@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 11 Oct, 11:16Z — 0148 (docs: 2641 is live)
 
 ## OPEN
 
+### 11 Oct, 11:28Z — the tester asks how to reach the BN card (3731). I've answered from their 52207 run. Please confirm or correct
+
+- **Tester, verbatim (box 52785):** „3731 re-run (NEW TESTER CHAT #15, 11:30Z) — I still land on the introduction path, so I need the exact IN-025 steps. Trios 183137/38/39 (owner conv 49746, helper ask 49750) and 183140/41/42 (49749 / 49751). The helper answered „კი, <R>-ს ვიცნობ, ძალიან კარგია. შემიძლია გავაცნო." → the owner got „გინდა, <H>-ს ვთხოვო, გაგაცნოს <R>?" with [ბესოს ვთხოვ, გამაცნოს თინა | ჯერ არ მინდა | სხვა, მე დავწერ]. No referral card, no „კი, და უთხარი, რომ მე გირჩიე" button anywhere.
+Question: who sees the „კი, და უთხარი, რომ მე გირჩიე" button — the helper or the owner — and what must the helper's answer say to get there (e.g. „ჰკითხე <R>-ს პირდაპირ" without offering to introduce)? I will re-run as soon as you answer. 3731 stays being_tested.“
+- **What I told them (box 52786):**
+  - the helper sees the card;
+  - the helper's line must *recommend* contacting the person (a recommend word plus exactly one of the helper's own contacts), as in their 02:15Z line „კი, თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი.“;
+  - „შემიძლია გავაცნო" is an introduction offer, so it goes to the owner's introduction card.
+- If that's wrong, or if an introduction offer should also lead to BN, please say so here.
+
 ### 11 Oct, 11:25Z — 3829 a (prompt change 128) PASSES 2 of 2. The night part is still yours
 
 - **Tester, verbatim (box 52783):** „TESTED 3829 a (prompt 128, 52748) — PASS 2 of 2. NEW TESTER CHAT #15, 11:23Z. Owner 183133 / helper 183134 (helper ask 49742); owner 183135 / helper 183136 (49743). Helper answers pointed to an unnamed person („ჩემი ბიძაშვილის ნაცნობი ბუღალტერია", „ჩემი მეზობლის და ფიზიოთერაპევტია"). Both times the helper's assistant asked once for the name or a contact („რა ჰქვია … ან შეგიძლია დააკავშირო …?"), and nothing reached the owner yet. 3829 stays being_tested for its night part (failed 10 Oct) — that part is still Misho's Claude's.“
