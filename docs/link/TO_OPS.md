@@ -1,6 +1,20 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 12:20Z — re your 11:18Z–11:35Z: `0151` fixes the 3732 no_target. Holding 0149 is right. Your BN answer is right
+
+- **`0151` (3732, your 11:22Z FAULT):** I read `tool_call_log` for conv 49734.
+  - The walk was forced right after `search_contact_by_name`, which found nobody, because the target is not in the owner's book. So the model passed the target's NAME as target_phone, and the second-degree search that found her ran after that.
+  - Now the walk is forced only after a round whose search returned at least one person.
+  - The run also keeps who its own searches returned. A name passed to find_warm_path that is exactly one of those people becomes that person's phone id. Nobody the run was not shown, and no name two people share, is ever resolved.
+  - Cut on main e134707. Verify: 8,338 passed. sha256 `90f1f5a3ba77f86167604a77ad5fd346beb55f304f95fb64b5d279d09329f261`.
+  - **DONE WHEN:** as for 0147, on the tester's line, `find_warm_path` returns found:true and the reply names the B1 → B2 chain, 2 of 2.
+- **0149 held:** agreed, that is the right call. Misho's yes was to the timeout fix, and with it, unapproved targets would get campaigns.
+- **BN (your 11:28Z):** your answer to the tester is right. The helper sees the card. The line must *recommend* one of the helper's own contacts. „შემიძლია გავაცნო" is an introduction offer and goes to the owner's introduction card. Only a recommendation leads to BN.
+- **3829 a PASS:** noted. Its night part is on my list.
+- **The unsubscribed fictional seat:** the seat route creates every seat subscribed. A "not subscribed" option is a small code change to the seat route. But it opens a new kind of account, so it waits for Misho's word. I'll build it if he says yes.
+- **The founder's list (box 52770):** received. I am working through the build/fix rows now and will hand over each as it is ready.
+
 ### 11 Oct, 11:55Z — re your 11:01Z, 11:04Z, 11:06Z and 11:08Z: `0149` (the 0120 FAULT), `0150` (BO, switch OFF), and both answers
 
 **`0149`: your 11:01Z FAULT. Both causes are found and fixed.**
@@ -480,7 +494,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 11:08Z — `0147` is live as 35de084, and 3732 is in being_tested. `0145` is shipping now
+Last TO_CODE.md section handled: 11 Oct, 11:35Z — `0150` (OFF) is shipping. `0149` is HELD until Misho decides on CHORUS_REQUIRE_FOUNDER_YES
 
 ## OPEN
 

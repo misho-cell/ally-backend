@@ -1,0 +1,242 @@
+From 241bec64a1ec0ed4a44139fdb4ca7aabdc1ead5a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 11:33:39 +0000
+Subject: [PATCH] 3732: the walk waits for a search that found the person, and
+ takes the phone id of the person the run found
+
+Box 52781 (0 of 2 on 0147): find_warm_path now ran with no web search, but
+answered no_target. tool_call_log of conv 49734: the walk was forced right
+after search_contact_by_name, which found nobody (the target is not in the
+owner's book), so the model passed the NAME as target_phone; the
+second-degree search that found her came after.
+
+- The walk is forced only after a round whose search returned at least one
+  person.
+- The run keeps who its own searches returned (phone id and name); a name
+  passed to find_warm_path that is exactly one of those people becomes that
+  person's phone id. Nobody the run was not shown, and no name two people
+  share, is ever resolved.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aChainOfMembersIsWalkedTo.test.ts         | 47 ++++++++++++++++++-
+ src/services/chat.service.ts                  | 29 +++++++++++-
+ src/services/warmPathAfterSearch.ts           | 37 +++++++++++++++
+ 3 files changed, 110 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts b/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts
+index 932ab94..119b7b0 100644
+--- a/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts
++++ b/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts
+@@ -1,6 +1,11 @@
+ import { asksForAPersonByName } from '../personByName';
+ import { withMemberChains } from '../tools/findWarmPath';
+-import { walksToTheNamedPerson, WARM_PATH_TOOL } from '../warmPathAfterSearch';
++import {
++  peopleFoundIn,
++  walksToTheNamedPerson,
++  walkTargetPhone,
++  WARM_PATH_TOOL,
++} from '../warmPathAfterSearch';
+ 
+ /** 3732 (box 52742): the tester's own line, on both fictional chains. */
+ const TESTER_LINE = 'მინდა ნინო გამოგონილს დავუკავშირდე. ვისი გავლით შემიძლია?';
+@@ -11,6 +16,7 @@ function round(overrides: Partial<Parameters<typeof walksToTheNamedPerson>[0]> =
+     toolsUsed: ['search_contact_by_name', 'search_second_degree'],
+     roundTools: ['search_second_degree'],
+     walkOffered: true,
++    roundFoundSomeone: true,
+     ...overrides,
+   });
+ }
+@@ -33,6 +39,11 @@ describe('3732: a person asked for by name is walked to after the search finds t
+     expect(round({ roundTools: ['get_my_tasks'], toolsUsed: ['get_my_tasks'] })).toBe(false);
+   });
+ 
++  // Box 52781: forced after a name search that found nobody, the walk got the name and no phone.
++  it('does not walk after a search round that found nobody', () => {
++    expect(round({ roundTools: ['search_contact_by_name'], roundFoundSomeone: false })).toBe(false);
++  });
++
+   it('walks once only', () => {
+     expect(round({ toolsUsed: ['search_second_degree', WARM_PATH_TOOL] })).toBe(false);
+   });
+@@ -58,3 +69,37 @@ describe('3732: the members chain sits beside the graph paths', () => {
+     ]);
+   });
+ });
++
++describe('3732: the walk takes the phone of the person this run found', () => {
++  const found = peopleFoundIn({
++    results: [
++      { phone: 'p-target', name: 'მანანა სამიზნიშვილი' },
++      { phone: 'p-other', name: 'სხვა ადამიანი' },
++      { name: 'no phone here' },
++    ],
++  });
++
++  it('reads the people a search returned, skipping rows with no phone id', () => {
++    expect(found).toEqual([
++      { phone: 'p-target', name: 'მანანა სამიზნიშვილი' },
++      { phone: 'p-other', name: 'სხვა ადამიანი' },
++    ]);
++  });
++
++  it('turns the name the model passed into that person’s phone id', () => {
++    expect(walkTargetPhone(' მანანა სამიზნიშვილი ', found)).toBe('p-target');
++  });
++
++  it('keeps a phone id the model passed as it is', () => {
++    expect(walkTargetPhone('p-other', found)).toBe('p-other');
++  });
++
++  it('never resolves a name the run was not shown, or one two people share', () => {
++    expect(walkTargetPhone('უცნობი', found)).toBe('უცნობი');
++    const twins = [
++      { phone: 'a', name: 'ნინო' },
++      { phone: 'b', name: 'ნინო' },
++    ];
++    expect(walkTargetPhone('ნინო', twins)).toBe('ნინო');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c0f2599..dfa65db 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -231,7 +231,13 @@ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+ import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
+ import { contactsReminderSection } from './contactsReminderSection';
+ import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+-import { walksToTheNamedPerson, WARM_PATH_TOOL } from './warmPathAfterSearch';
++import {
++  FoundPerson,
++  peopleFoundIn,
++  walksToTheNamedPerson,
++  walkTargetPhone,
++  WARM_PATH_TOOL,
++} from './warmPathAfterSearch';
+ import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+ import { refersSomebody } from './referralRecommendation';
+ import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
+@@ -5441,6 +5447,18 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
+ // it; in-app a single transient/cold-cache spike reached the user as "timeout,
+ // come back later" — thread 7428), then log the activity with its result count
+ // (fire-and-forget so logging never blocks or fails the search).
++/** 3732: who this run's own searches returned, so the walk can take a name the run was shown. */
++const runFoundPeople = new Map<string, FoundPerson[]>();
++
++function notePeopleFound(runId: string, result: unknown): void {
++  const found = peopleFoundIn(result);
++  if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
++}
++
++function peopleFoundCount(runId: string): number {
++  return runFoundPeople.get(runId)?.length ?? 0;
++}
++
+ async function runLoggedSearch(
+   userId: string,
+   tool: string,
+@@ -5468,6 +5486,7 @@ async function runLoggedSearch(
+     },
+   );
+   if (searchId !== null && runId) noteSearchResults(runId, searchId, result, threadId);
++  if (runId) notePeopleFound(runId, result);
+   return searchId === null ? result : { ...result, search_id: searchId };
+ }
+ 
+@@ -8702,6 +8721,7 @@ function clearRunState(runId: string): void {
+   runModes.delete(runId);
+   runLastCaption.delete(runId);
+   runOwnerLine.delete(runId);
++  runFoundPeople.delete(runId);
+   runMentionedNote.delete(runId);
+   runRepeatedGoal.delete(runId);
+   runLanguages.delete(runId);
+@@ -10961,7 +10981,10 @@ async function executeToolCall(
+     case 'find_warm_path':
+       return findWarmPath(
+         userId,
+-        String(input['target_phone'] ?? ''),
++        walkTargetPhone(
++          String(input['target_phone'] ?? ''),
++          (runId && runFoundPeople.get(runId)) || [],
++        ),
+         typeof input['max_hops'] === 'number' ? input['max_hops'] : undefined,
+         // 1697 (A14): the open goal's words order the bridges.
+         threadId === undefined
+@@ -13178,6 +13201,7 @@ async function runToolLoop(
+ 
+       scanAssistantBlocks(response.content);
+ 
++      const foundBeforeRound = peopleFoundCount(runId);
+       const toolResults = await processToolBlocks(
+         userId,
+         threadId,
+@@ -13221,6 +13245,7 @@ async function runToolLoop(
+         toolsUsed: toolNamesUsed,
+         roundTools,
+         walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
++        roundFoundSomeone: peopleFoundCount(runId) > foundBeforeRound,
+       });
+       response = await callClaude(messages, systemPrompt, tools, ctx, {
+         onText: stream,
+diff --git a/src/services/warmPathAfterSearch.ts b/src/services/warmPathAfterSearch.ts
+index 2e2a23d..026debf 100644
+--- a/src/services/warmPathAfterSearch.ts
++++ b/src/services/warmPathAfterSearch.ts
+@@ -28,6 +28,8 @@ export interface RoundAfterSearch {
+   readonly roundTools: readonly string[];
+   /** Whether find_warm_path is among the tools this run holds. */
+   readonly walkOffered: boolean;
++  /** Whether a search of this round returned at least one person (box 52781: an empty one did). */
++  readonly roundFoundSomeone: boolean;
+ }
+ 
+ /** Should the next call be the walk to the person the owner named? */
+@@ -36,6 +38,41 @@ export function walksToTheNamedPerson(round: RoundAfterSearch): boolean {
+     round.walkOffered &&
+     !round.toolsUsed.includes(WARM_PATH_TOOL) &&
+     round.roundTools.some((name) => PERSON_SEARCH_TOOLS.has(name)) &&
++    round.roundFoundSomeone &&
+     asksForAPersonByName(round.ownerLine)
+   );
+ }
++
++/** A person one of this run's own searches returned: the phone id and the name it showed. */
++export interface FoundPerson {
++  readonly phone: string;
++  readonly name: string | null;
++}
++
++/** The people a person-search result returned, by its `results` rows. */
++export function peopleFoundIn(result: unknown): FoundPerson[] {
++  const rows = (result as { results?: unknown } | null)?.results;
++  if (!Array.isArray(rows)) return [];
++  return rows.flatMap((row) => {
++    const r = (row ?? {}) as { phone?: unknown; name?: unknown };
++    if (typeof r.phone !== 'string' || r.phone === '') return [];
++    return [{ phone: r.phone, name: typeof r.name === 'string' ? r.name : null }];
++  });
++}
++
++function sameName(a: string, b: string): boolean {
++  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
++}
++
++/**
++ * 3732 (box 52781): the walk was given the person's NAME as target_phone and
++ * answered no_target. When what the model passed is the name of exactly one
++ * person this run's own searches found, the walk takes that person's phone id.
++ * Only those people: a name never reaches anyone the run has not been shown.
++ */
++export function walkTargetPhone(given: string, found: readonly FoundPerson[]): string {
++  if (found.some((person) => person.phone === given)) return given;
++  const named = found.filter((person) => person.name !== null && sameName(person.name, given));
++  const phones = new Set(named.map((person) => person.phone));
++  return phones.size === 1 ? [...phones][0] : given;
++}
+-- 
+2.43.0
+
