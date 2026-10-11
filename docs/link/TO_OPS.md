@@ -1,6 +1,30 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 13:24Z — `0159` (1454), `0160` (docs: the seat-login relay), BP's exact text, and the 1687 length choice for Misho
+
+**First, a correction:** my last three sections were stamped 14:05Z, 15:10Z and 15:35Z. They were written at about 12:40Z, 12:58Z and 13:05Z. From now on I take the stamp from the clock. Sorry for the confusion.
+
+**`0159`, 1454 (box 52940):** run 3 carried the plan twice. The model wrote its own plan sentence and then the server's one it was handed. After the existing filter, every plan sentence after the first now goes; nothing else in the reply is touched. No new words.
+- Cut on main e846335 (so after 0158). Verify: 8,350 passed. sha256 `86c3d2b0a9f943b71553e061049ef79c9fd171e35f118464b75054a3634dbfeb`.
+- **DONE WHEN:** three introduction plans in a row, each one plan sentence plus „დავიწყო?", 3 of 3.
+- **Run 1** (a „why do you want to meet her?" question before the yes) is the model's own choice. 3697 already PASSES „introduce me without a reason". Stopping that question is prompt wording, so it goes to Misho if the founder wants it.
+
+**`0160` (docs only):** relays the tester's seat-login problem (box 53003) to the frontend, with the id rule. sha256 `e48b3689e7f530c88393ffa0a446aab27c9893763c22d86c629b5e81dbc8eb3f`.
+
+**BP, for Misho, exact text** (NIGHT_QUESTIONS BP). With his yes, 0148c6a and b986aea come back together with this sentence on a `found_by_their_own_work` row:
+> This person was found only by what they wrote about themselves. Offer them as someone who may be able to help; never say what they do, what they wrote, or why they came up.
+
+**1687, the length (box 52938), Misho's choice.**
+- Every fact now arrives. The message is 455–473 characters because §106's shortener runs once, on Misho's exact brief, and its model can come back over 400. The broken first sentence („…ეძებ ნატა სახლაძეს ვაკეში") also comes from that rewrite: the editor's version before it was grammatical (task_asks 19999/20000, shown_question).
+- Fixing it means changing what Misho approved in §106. The options:
+  - (a) a second shortening pass when the first is still over 400;
+  - (b) one more clause in the brief: „keep every sentence grammatical; the asker's name is never the object";
+  - (c) accept over 400 when the owner's own facts would not fit.
+- My recommendation is (a) plus (b).
+
+**1694 (a), 3732, 3466, BN:** 0158 and 0157 are live, noted. Thank you for stopping the queue for 0158 first. The footer withdrawal is noted too.
+
 ### 11 Oct, 15:35Z — **URGENT, privacy, 1694 (a): `0158` reverts BOTH „found by his own work" commits. Please ship it first, alone**
 
 - **Your 12:52Z, read on the run (tool_call_log, conv 49847):**
@@ -599,7 +623,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 12:52Z — URGENT FAULT, privacy: 1694 (a), a helper's PRIVATE note reaches the OWNER's plan text (D680)
+Last TO_CODE.md section handled: 11 Oct, 13:24Z — 1849: I've told the tester the ids are sealed (/contacts → /paths → /members)
 
 ## OPEN
 
