@@ -1,6 +1,22 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 07:17Z — re your 07:00Z: re-cut on e4632c5 + 0133 as `0138` (was 0113), `0139` (was 0116), `0140` (was 0131). The whole order applies and verifies
+
+- **New names and hashes:**
+
+  | New | Was | sha256 starts |
+  | --- | --- | --- |
+  | `0138` | 0113 | 1e35a2ea |
+  | `0139` | 0116 | 82423dd3 |
+  | `0140` | 0131 | 2bfef2fc |
+
+  Only the docs changed. §127 now sits before §128, and the FOR_FRONTEND sections sit below my 06:50Z one. The code is the same.
+- **I checked your full order with `git am -3` on a clean e4632c5:** 0133 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140. Every patch applies, and `npm run verify` on the top is green: 823 suites, 8361 tests (8319 passed, 42 skipped).
+- **Drop the old files** 0113, 0116 and 0131. The new three replace them.
+- 0120 is unchanged and still for Tbilisi daylight, on his word.
+
+
 ### 11 Oct, 06:48Z — `0137` (docs only): my FOR_FRONTEND answer to the frontend's 06:10Z. It rides after 0136. Tornike's question 2 is relayed as box 52570
 
 - **0137** (1955b16, sha256 starting b60cb784) changes only `docs/FOR_FRONTEND.md`. It is cut on main + 0134 + 0135 + 0136. Ship it with the stack whenever suits you; it changes nothing at runtime.
@@ -357,7 +373,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 06:44Z — `0136` is ready; the whole §128 stack is checked and waits for Misho's word in my chat
+Last TO_CODE.md section handled: 11 Oct, 07:00Z — `0137` is live as e4632c5. Please re-cut `0113`, `0116` and `0131` on main e4632c5 + 0133
 
 ## OPEN
 

@@ -1,0 +1,244 @@
+From 1efcfa09c3eeed493de440d0a1fcfe0b0e48a07a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 02:03:40 +0000
+Subject: [PATCH 140/140] 2641: GET /invite-codes/:code answers whether an
+ invite code would be taken
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+§99.11 (Misho's word: „a public route that answers only whether an invite
+code exists, rate-limited"). The join page drew its welcome for any code
+in the link, a made-up one included. Now it can ask first.
+
+One bit: a member's own referral code, or a company cohort code while
+personal-codes-only is off — the same doors as the registration gate.
+Never whose code, never which cohort. Public, 20 checks a minute per IP,
+400 for a malformed code. Contract in FOR_FRONTEND.md.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 15 ++++
+ .../__tests__/everyRouteIsBehindAuth.test.ts  |  2 +
+ src/api/routes/inviteCodes.routes.ts          | 37 +++++++++
+ src/index.ts                                  |  2 +
+ .../__tests__/inviteCodeCheck.test.ts         | 75 +++++++++++++++++++
+ src/services/inviteCodeCheck.service.ts       | 20 +++++
+ 6 files changed, 151 insertions(+)
+ create mode 100644 src/api/routes/inviteCodes.routes.ts
+ create mode 100644 src/services/__tests__/inviteCodeCheck.test.ts
+ create mode 100644 src/services/inviteCodeCheck.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index fe7f149..279474f 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -28,6 +28,21 @@ messages in their name.
+   are live.
+ - **0111 (`saved_as` on `GET /contacts/:id`):** live since 10 Oct, and the tester passed it.
+ 
++## 11 October, 02:30Z — 2641: `GET /invite-codes/:code` answers whether an invite code would be taken (patch 0131, not live yet)
++
++Ask before the join page draws its welcome. The route is public (no token) and rate-limited to 20 checks a minute per IP.
++
++```
++GET /invite-codes/ABC123
++200 { "success": true, "data": { "exists": true } }    — a member's own code, or a company cohort code while those are open
++200 { "success": true, "data": { "exists": false } }   — nobody's code; show the "this invitation link is not valid" state
++400 { "success": false, "error": "Not a valid invite code" }  — empty, longer than 32, or not letters / digits / _ / -
++429 — too many checks; the Retry-After header says when to try again
++500 { "success": false, "error": "Could not check the invite code" }
++```
++
++The answer is one bit. It never says whose code it is, or which cohort. Codes are matched case-insensitively. Misho approved it in §99.11. It opens a public route, so ops ships it in daylight; I'll write here when it is live.
++
+ ## 10 October, 17:16Z — item 9 of your 06:30Z list: the member card and the path map (1849 stage one; patch 0113, not live yet)
+ 
+ Misho put the frontend first and answered both questions (§127): the chain is built in stages, and the member card is your list. Both
+diff --git a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+index c970271..366d586 100644
+--- a/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
++++ b/src/api/routes/__tests__/everyRouteIsBehindAuth.test.ts
+@@ -72,6 +72,8 @@ const GUARDED_AT_THE_ROUTER = [
+  */
+ const AUTHENTICATED_ANOTHER_WAY: Record<string, string> = {
+   'auth.routes.ts': 'registration, login and OTP — there is no token yet',
++  'inviteCodes.routes.ts':
++    'the join page, before an account exists — one bit, rate limited (2641, §99.11)',
+   'billingOffer.routes.ts':
+     'the two free periods the public pricing page promises — rate limited, no user data',
+   'oauth.routes.ts': 'the OAuth flow itself, which issues the token',
+diff --git a/src/api/routes/inviteCodes.routes.ts b/src/api/routes/inviteCodes.routes.ts
+new file mode 100644
+index 0000000..0576203
+--- /dev/null
++++ b/src/api/routes/inviteCodes.routes.ts
+@@ -0,0 +1,37 @@
++import { Router, Request, Response } from 'express';
++import { param, validationResult } from 'express-validator';
++import { rateLimit } from '../middleware/rateLimit.middleware';
++import { inviteCodeExists } from '../../services/inviteCodeCheck.service';
++
++/**
++ * 2641 (§99.11): GET /invite-codes/:code → { exists: boolean }, before the
++ * join page draws its welcome. Public (the person has no account yet), so it
++ * is rate-limited by IP and answers one bit only.
++ */
++const CHECKS_PER_MINUTE = 20;
++const MAX_CODE_CHARS = 32;
++const CODE_RE = /^[A-Za-z0-9_-]+$/;
++
++const inviteCodesRouter = Router();
++inviteCodesRouter.use(rateLimit({ windowMs: 60_000, max: CHECKS_PER_MINUTE }));
++
++inviteCodesRouter.get(
++  '/:code',
++  param('code').trim().isLength({ min: 1, max: MAX_CODE_CHARS }).matches(CODE_RE),
++  async (req: Request, res: Response): Promise<void> => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({ success: false, error: 'Not a valid invite code' });
++      return;
++    }
++    try {
++      const exists = await inviteCodeExists(String(req.params.code));
++      res.status(200).json({ success: true, data: { exists } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /invite-codes/:code]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not check the invite code' });
++    }
++  },
++);
++
++export default inviteCodesRouter;
+diff --git a/src/index.ts b/src/index.ts
+index 9bfbeea..2530bb1 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -17,6 +17,7 @@ import connectorRouter from './api/routes/connector.routes';
+ import { membersRouter, pathsRouter } from './api/routes/people.routes';
+ import setupRouter from './api/routes/setup.routes';
+ import statusRouter from './api/routes/status.routes';
++import inviteCodesRouter from './api/routes/inviteCodes.routes';
+ import tasksRouter from './api/routes/tasks.routes';
+ import privacyRouter from './api/routes/privacy.routes';
+ import speechRouter from './api/routes/speech.routes';
+@@ -122,6 +123,7 @@ app.use('/members', membersRouter);
+ app.use('/paths', pathsRouter);
+ app.use('/setup', setupRouter);
+ app.use('/status', statusRouter);
++app.use('/invite-codes', inviteCodesRouter);
+ app.use('/tasks', tasksRouter);
+ app.use('/privacy', privacyRouter);
+ // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
+diff --git a/src/services/__tests__/inviteCodeCheck.test.ts b/src/services/__tests__/inviteCodeCheck.test.ts
+new file mode 100644
+index 0000000..1e833d7
+--- /dev/null
++++ b/src/services/__tests__/inviteCodeCheck.test.ts
+@@ -0,0 +1,75 @@
++jest.mock('../referralCode.service', () => ({
++  __esModule: true,
++  findUserByReferralCode: jest.fn(),
++}));
++jest.mock('../inviteCohorts.service', () => ({ __esModule: true, findCohortByCode: jest.fn() }));
++jest.mock('../inviteGate.service', () => ({
++  __esModule: true,
++  isPersonalCodeOnlyEnabled: jest.fn(),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { findCohortByCode } from '../inviteCohorts.service';
++import { isPersonalCodeOnlyEnabled } from '../inviteGate.service';
++import { inviteCodeExists } from '../inviteCodeCheck.service';
++import { findUserByReferralCode } from '../referralCode.service';
++
++/** 2641 (§99.11): the join page asks whether a code would be taken, before the welcome. */
++const personal = findUserByReferralCode as jest.MockedFunction<typeof findUserByReferralCode>;
++const cohort = findCohortByCode as jest.MockedFunction<typeof findCohortByCode>;
++const personalOnly = isPersonalCodeOnlyEnabled as jest.MockedFunction<
++  typeof isPersonalCodeOnlyEnabled
++>;
++const A_COHORT = { code: 'TEAM' } as Awaited<ReturnType<typeof findCohortByCode>>;
++
++beforeEach(() => {
++  personal.mockReset().mockResolvedValue(null);
++  cohort.mockReset().mockResolvedValue(null);
++  personalOnly.mockReset().mockResolvedValue(false);
++});
++
++describe('inviteCodeExists', () => {
++  it('is yes for a member’s own code, without reading the cohorts', async () => {
++    personal.mockResolvedValue({ userId: 7, subscribed: true });
++    await expect(inviteCodeExists('ABC123')).resolves.toBe(true);
++    expect(cohort).not.toHaveBeenCalled();
++  });
++
++  it('is yes for a cohort code while personal-codes-only is off, no while it is on', async () => {
++    cohort.mockResolvedValue(A_COHORT);
++    await expect(inviteCodeExists('TEAM')).resolves.toBe(true);
++    personalOnly.mockResolvedValue(true);
++    await expect(inviteCodeExists('TEAM')).resolves.toBe(false);
++  });
++
++  it('is no for a made-up code', async () => {
++    await expect(inviteCodeExists('NOPE42')).resolves.toBe(false);
++  });
++});
++
++describe('GET /invite-codes/:code', () => {
++  const route = readFileSync(
++    join(__dirname, '..', '..', 'api', 'routes', 'inviteCodes.routes.ts'),
++    'utf8',
++  );
++  const index = readFileSync(join(__dirname, '..', '..', 'index.ts'), 'utf8');
++
++  it('is public, rate-limited by IP, and mounted', () => {
++    expect(route).not.toContain('authenticateJwt');
++    expect(route).toContain(
++      'inviteCodesRouter.use(rateLimit({ windowMs: 60_000, max: CHECKS_PER_MINUTE }));',
++    );
++    expect(index).toContain("app.use('/invite-codes', inviteCodesRouter);");
++  });
++
++  it('refuses a malformed code with 400 and answers one bit', () => {
++    expect(route).toContain(
++      "param('code').trim().isLength({ min: 1, max: MAX_CODE_CHARS }).matches(CODE_RE),",
++    );
++    expect(route).toContain(
++      "res.status(400).json({ success: false, error: 'Not a valid invite code' });",
++    );
++    expect(route).toContain('res.status(200).json({ success: true, data: { exists } });');
++  });
++});
+diff --git a/src/services/inviteCodeCheck.service.ts b/src/services/inviteCodeCheck.service.ts
+new file mode 100644
+index 0000000..282faf7
+--- /dev/null
++++ b/src/services/inviteCodeCheck.service.ts
+@@ -0,0 +1,20 @@
++import { isPersonalCodeOnlyEnabled } from './inviteGate.service';
++import { findCohortByCode } from './inviteCohorts.service';
++import { findUserByReferralCode } from './referralCode.service';
++
++/**
++ * 2641 (§99.11, Misho's word: „a public route that answers only whether an
++ * invite code exists"): the join page drew its welcome for any code in the
++ * link, a made-up one included, and the person found out only at the end. It
++ * now asks first. The answer is one bit — would this code be taken as an
++ * invitation right now — never whose code it is, which cohort, or anything
++ * else about it.
++ *
++ * The same doors as the registration gate: a member's own code always, a
++ * company cohort code only while personal-codes-only is off.
++ */
++export async function inviteCodeExists(code: string): Promise<boolean> {
++  if ((await findUserByReferralCode(code)) !== null) return true;
++  if ((await findCohortByCode(code)) === null) return false;
++  return !(await isPersonalCodeOnlyEnabled());
++}
+-- 
+2.43.0
+
