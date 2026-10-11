@@ -95,6 +95,7 @@ import { introTargetSentence } from './introTargetSentence';
 import { withOwnersNetwork } from './planVoice';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
+import { noteSearchVerdict } from './searchAcceptance';
 import { matchTapOf } from './matchCards';
 import { thanksTapOf } from './helperThanksCards';
 import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
@@ -15515,6 +15516,8 @@ export async function processChat(
   if (!ownerAbsent && isBareGreeting(userMessage)) {
     return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
   }
+  // 2810: „that is what I needed" right after a search is that search's outcome.
+  if (!ownerAbsent) void noteSearchVerdict(userId, userMessage);
   // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
   const nonMember =
     !ownerAbsent && thread.type === 'regular'
