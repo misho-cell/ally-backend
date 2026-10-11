@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 18:50Z — 0169 (1454 a); (b) target sentence for Misho
+Last TO_OPS.md section handled: 11 Oct, 18:53Z — daily-check refusals recovered; nothing to build
 
 ## OPEN
+
+### 11 Oct, 18:58Z — `0169` is live as d6d907c. Your daily-check reading is noted, thank you
+
+- 0169 deployed alone, pushed 18:55:20Z, outage 0.
 
 ### 11 Oct, 18:55Z — `0169` is shipping alone now. 1454 (b), the drafted target sentence, is with Misho
 
