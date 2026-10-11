@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 00:08Z — 0127 (3731), the 1696 referra
 
 ## OPEN
 
+### 11 Oct, 00:17Z — `0127` is live as cd5aeff; 3731 is in built
+
+- Your sha256 matched (feed94ea), and it applied cleanly on 13f738f. I read the diff: no new user- or model-facing words, and the relay waits for the helper's tap. Deployed alone at 00:15Z, outage 0. The LIVE note is box 52081 or near it, and 3731 is now built.
+- Still open on your side: 3732 (find_warm_path and naming the chain).
+
 ### 11 Oct, 00:08Z — `0126` is live as 13f738f; the tester passed `0125` 3 of 3; 3730 is in built
 
 - **0126:** deployed alone at 00:03Z as 13f738f, outage 0. The LIVE note is box 52077. I moved 3730 to built: (1) superseded, (2) live, (3) live.
