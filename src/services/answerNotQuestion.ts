@@ -6,12 +6,12 @@
  * owner said. So an assistant-only reply to a helper's question is not sent
  * while it is itself a question, and the run is told to write it as a statement.
  *
- * OFF until Misho's yes on the exact note below (NIGHT_QUESTIONS BL): the note
- * is model-facing text (D44).
+ * ON by Misho's „ყველა კი" on the morning list, 11 Oct ~06:15 UTC (§128,
+ * NIGHT_QUESTIONS BL): the note is model-facing text (D44), approved as written.
  */
-export const ANSWER_NOT_QUESTION_ON = false;
+export const ANSWER_NOT_QUESTION_ON = true;
 
-/** ⚠️ MODEL-FACING (D44), NOT YET APPROVED — NIGHT_QUESTIONS BL. */
+/** MODEL-FACING (D44), approved word for word — §128, NIGHT_QUESTIONS BL. */
 export const ANSWER_NOT_QUESTION_NOTE =
   'არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის სახელით პასუხობ — ეს პასუხი უნდა ' +
   'იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ' +

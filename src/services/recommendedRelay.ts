@@ -9,11 +9,11 @@ import { RunLanguage } from './runLanguage';
  * person recommended to help is told who recommended her (or that somebody
  * did), who needs what, and asked whether she can help.
  *
- * ⚠️ USER-VISIBLE (D44), NOT YET APPROVED — NIGHT_QUESTIONS BN. OFF until
- * Misho's yes on the exact lines; only Georgian was drafted, so any other
- * language keeps the 1696 line.
+ * USER-VISIBLE (D44), ON by Misho's „ყველა კი" on the morning list, 11 Oct
+ * ~06:15 UTC (§128, NIGHT_QUESTIONS BN). Only Georgian was drafted, so any
+ * other language keeps the 1696 line.
  */
-export const RECOMMENDED_RELAY_ON = false;
+export const RECOMMENDED_RELAY_ON = true;
 
 export interface RecommendedRelay {
   /** The helper, as the recommended person knows them; null when the helper chose no name. */

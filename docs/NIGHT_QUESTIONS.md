@@ -62,6 +62,9 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
+Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
+(also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
+
 Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
 
 Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.

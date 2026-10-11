@@ -39,9 +39,10 @@ describe('answersAQuestionWithAQuestion', () => {
     expect(answersAQuestionWithAQuestion({ ...base, assistantOnly: false }, true)).toBe(false);
   });
 
-  it('is OFF until Misho approves the note (NIGHT_QUESTIONS BL)', () => {
-    expect(ANSWER_NOT_QUESTION_ON).toBe(false);
-    expect(answersAQuestionWithAQuestion(base)).toBe(false);
+  it('is ON by Misho’s yes (§128, BL), and lets everything through when switched off', () => {
+    expect(ANSWER_NOT_QUESTION_ON).toBe(true);
+    expect(answersAQuestionWithAQuestion(base)).toBe(true);
+    expect(answersAQuestionWithAQuestion(base, false)).toBe(false);
   });
 
   it('is checked in createAsk on the answered ask, after the round cap', () => {
