@@ -473,7 +473,28 @@ describe('getWalletSummary', () => {
       window: 'calendar_month',
       resetsAt: '',
       lastTopUp: null,
+      allowancePerPeriod: 1000,
     });
+  });
+
+  /** 2047 (box 53263): a seat's opening 500 and the week's 250 are not „750 every week". */
+  it('says what the plan adds every week apart from the week’s credits', async () => {
+    process.env.BUDGET_WINDOW = 'week';
+    try {
+      setWorld({ walletEnabled: false, subscriptionStatus: 'active', balance: 741, runCostUsd: 0 });
+      const summary = await getWalletSummary('7');
+      expect(summary.grantedThisPeriod).toBe(1000);
+      expect(summary.allowancePerPeriod).toBe(250);
+    } finally {
+      delete process.env.BUDGET_WINDOW;
+    }
+  });
+
+  it('adds nothing every week for a trial or no plan', async () => {
+    setWorld({ walletEnabled: false, subscriptionStatus: 'trialing', balance: 120, runCostUsd: 0 });
+    await expect(getWalletSummary('7')).resolves.toMatchObject({ allowancePerPeriod: 0 });
+    setWorld({ walletEnabled: false, subscriptionStatus: null, balance: 0, runCostUsd: 0 });
+    await expect(getWalletSummary('7')).resolves.toMatchObject({ allowancePerPeriod: 0 });
   });
 });
 

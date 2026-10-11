@@ -28,6 +28,12 @@ export interface WalletSummary {
   resetsAt: string;
   /** 4294 (plate NEW-3): the newest credit — the period's grant, a bought pack or the trial's. */
   lastTopUp: LastTopUp | null;
+  /**
+   * 2047 (box 53263): what an active plan adds every window, and 0 for anyone
+   * else. grantedThisPeriod is every credit in the window — a seat's opening
+   * 500 plus the week's 250 read as „750 every week".
+   */
+  allowancePerPeriod: number;
 }
 
 export enum TopUpKind {
@@ -83,6 +89,34 @@ export async function getBalance(userId: string): Promise<number> {
   return Number(result.rows[0]?.balance ?? 0);
 }
 
+interface Subscription {
+  readonly status: string | undefined;
+  readonly tier: string;
+}
+
+async function subscriptionOf(userId: string): Promise<Subscription> {
+  const result = await query<{ subscription_status: string; subscription_tier: string }>(
+    'SELECT subscription_status, subscription_tier FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
+    [userId],
+  );
+  return {
+    status: result.rows[0]?.subscription_status,
+    tier: result.rows[0]?.subscription_tier ?? '',
+  };
+}
+
+/**
+ * The grant an active subscriber of this tier gets each window. The window
+ * decides which grant is read (Ticket 10 Task 25 (c), D124): the plan's
+ * monthly tokens, a quarter of them when BUDGET_WINDOW=week.
+ */
+async function periodGrantFor(tier: string): Promise<number> {
+  const window = budgetWindow();
+  const tierGrant = tier ? await getPrice(`${window.grantPriceKey}.${tier}`) : 0;
+  const monthly = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
+  return Math.floor(monthly / window.grantShareOfMonth);
+}
+
 /**
  * Lazy granting: called before balance checks. Active subscribers get their
  * tier's monthly grant once per calendar month (pro 1000 / enterprise 5500 /
@@ -92,26 +126,15 @@ export async function getBalance(userId: string): Promise<number> {
  * race-safe (second insert is a no-op).
  */
 export async function ensurePeriodGrant(userId: string): Promise<void> {
-  const statusResult = await query<{ subscription_status: string; subscription_tier: string }>(
-    'SELECT subscription_status, subscription_tier FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
-    [userId],
-  );
-  const status = statusResult.rows[0]?.subscription_status;
+  const { status, tier } = await subscriptionOf(userId);
   if (status !== 'active' && status !== 'trialing') return;
 
   if (status === 'active') {
-    const tier = statusResult.rows[0]?.subscription_tier ?? '';
-    // The window decides which grant is read and which key the row carries
-    // (Ticket 10 Task 25 (c), D124): tokens.monthly_grant under 'm:YYYY-MM' by
-    // default, tokens.weekly_grant under 'w:IYYY-Www' when BUDGET_WINDOW=week.
-    const window = budgetWindow();
-    const tierGrant = tier ? await getPrice(`${window.grantPriceKey}.${tier}`) : 0;
-    const monthly = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
-    const grant = Math.floor(monthly / window.grantShareOfMonth);
+    const grant = await periodGrantFor(tier);
     if (grant <= 0) return;
     await query(
       `INSERT INTO token_transactions (user_id, amount, reason, period_key)
-       VALUES ($1, $2, $3, ${window.currentKeySql})
+       VALUES ($1, $2, $3, ${budgetWindow().currentKeySql})
        ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
       [userId, grant, MONTHLY_GRANT_REASON],
     );
@@ -502,6 +525,12 @@ export async function takeGraceAnswer(userId: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+/** What an active plan adds every window; 0 for a trial, a lapsed plan or no plan. */
+async function allowancePerPeriod(userId: string): Promise<number> {
+  const { status, tier } = await subscriptionOf(userId);
+  return status === 'active' ? periodGrantFor(tier) : 0;
+}
+
 /** Balance view for the app (GET /billing/tokens). */
 export async function getWalletSummary(userId: string): Promise<WalletSummary> {
   const enabled = await isWalletEnabled();
@@ -530,7 +559,7 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
 
   const row = result.rows[0];
   const resets = row?.resets_at instanceof Date ? row.resets_at : new Date(row?.resets_at ?? NaN);
-  const newest = await lastTopUp(userId);
+  const [newest, allowance] = await Promise.all([lastTopUp(userId), allowancePerPeriod(userId)]);
   return {
     enabled,
     balance: Number(row?.balance ?? 0),
@@ -539,5 +568,6 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
     window: window.label,
     resetsAt: Number.isNaN(resets.getTime()) ? '' : resets.toISOString(),
     lastTopUp: newest,
+    allowancePerPeriod: allowance,
   };
 }
