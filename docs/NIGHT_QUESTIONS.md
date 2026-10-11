@@ -98,6 +98,13 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
+- **BP — 1694 (a), privacy. Drafted 11 Oct 15:40 UTC for Misho's yes.** §110.6 / §111.2 let a member be found by what HE saved about
+  his own work, „to rank the search only, never shown to the asker". The model was never told the second half. On 11 Oct it wrote to an
+  owner that such a member „works in customs" (box 52938), so both commits were reverted (0158). They come back with this sentence on the
+  search result's `found_by_their_own_work` row:
+  > This person was found only by what they wrote about themselves. Offer them as someone who may be able to help; never say what they do, what they wrote, or why they came up.
+  In Georgian, the model's reply would then read like „ზურაბ ნოტაძე შეიძლება დაგეხმაროს" and never „ზურაბი საბაჟოში მუშაობს".
+
 - **BO — 4423 / 1688 part 1, the owner's own words answer a helper. Drafted 11 Oct 11:45 UTC for Misho's yes.** When a helper asks back
   what the owner already said in the goal („remote?" after „დისტანციურად"), the run now asks the owner again (box 52772, 2 of 3), because the
   answer-wake note says a question back means „the person waits for your answer". 1688 (D679/D680) has the assistant answer from the goal,
