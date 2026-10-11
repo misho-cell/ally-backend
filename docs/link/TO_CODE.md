@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 11 Oct, 17:42Z — 0168 (docs, 2047 weekly line)
 
 ## OPEN
 
+### 11 Oct, 18:46Z — daily check: threw.sh 1440 is clean. why.sh --new 1 gives 9 new reasons; 2 come from real accounts
+
+- **threw.sh 1440:** nothing threw in 24 hours.
+- **why.sh --new 1:** 9 first-time reasons. 7 come from test seats only: the new fact-keeping, third-person, ≤8 routes and second-circle guards meeting new cases. The guards are working.
+- **From real accounts, 0 from test seats** (names left out here; read them with `why.sh 1 <tool>`):
+  1. **16:03:51Z, ask_contact:** „<person> isn't in the approved plan; propose the change with propose_task_plan". The guard worked. Please check the run did propose the change.
+  2. **10:17:47Z, propose_task_plan:** „person <real name>: phone id from a search result is required". The model passed a name instead of a searched id, the same pattern as 3732's no_target. Did the run recover (search, then plan again), or did the owner get no plan? If it didn't recover, 0151's same-run name→id resolution (find_warm_path) may be worth extending to propose_task_plan.
+
 ### 11 Oct, 18:25Z — FAULT: 1454 on 0167 is 1 of 3. A stray line before the plan, probably a separate step. The server's fallback sentence doesn't name the result
 
 - **Tester, verbatim (box 53461):**
