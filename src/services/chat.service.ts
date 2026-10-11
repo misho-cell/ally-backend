@@ -237,6 +237,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
@@ -3176,6 +3177,17 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
               properties: {
                 name: { type: 'string' },
                 status: { type: 'string', enum: ['running', 'waiting', 'done', 'dropped'] },
+                // BF (1697, §128): the closed-route check runs on this pair before the card.
+                introduction: {
+                  type: 'object',
+                  description: INTRODUCTION_FIELD_DESCRIPTION,
+                  properties: {
+                    via_phone: { type: 'string' },
+                    to_name: { type: 'string' },
+                    to_phone: { type: 'string' },
+                  },
+                  required: ['via_phone', 'to_name'],
+                },
               },
               required: ['name', 'status'],
             },
@@ -10212,6 +10224,9 @@ async function executeToolCall(
             'გეგმაში არა. მერე ხელახლა გამოიძახე.',
         };
       }
+      // BF (1697, §128): a route whose introduction is closed never reaches the card.
+      const closedRoute = await closedPlanRoute(taskId, input['plan']);
+      if (closedRoute !== null) return closedRoute;
       // Ticket 19 [4], the door nobody guarded. That rule — one thread, one
       // open goal, because „the buttons under a plan carry no goal on their
       // face" — was enforced on create_task, which opens a second goal on its

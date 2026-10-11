@@ -620,7 +620,7 @@ async function requestIntroductionInner(
 }
 
 /** The one contact in the bridge's own phonebook the target's name points to; none on doubt. */
-async function receiverInBridgesBook(
+export async function receiverInBridgesBook(
   mediatorUserId: string,
   targetName: string,
 ): Promise<string | undefined> {
