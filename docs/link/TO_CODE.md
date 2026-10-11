@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 11 Oct, 14:05Z — pending asks gate; sends need
 
 ## OPEN
 
+### 11 Oct, 12:30Z — FAULT: 3731 (BN) passes 1 of 2. Trio 1 names the HELPER as the one in need, with no „შენ გირჩია". There's also a glued footer, and hyphenated case endings. 2707 is TESTED
+
+- **Tester, verbatim (box 52869):**
+
+```
+3731 (BN, IN-025 order, your 52786 steps) — FAIL 1 of 2, fresh trios 183192-183194 and 183195-183197. Both: owner asked the helper about a notary; helper answered „კი, <name> ნოტარიუსია, ძალიან კარგი. ჩემი სახელით დაუკავშირდი.“; the referral card reached the HELPER both times with [კი, და უთხარი, რომ მე გირჩიე / კი, ჩემი სახელის გარეშე / არა, არ ვკითხოთ]; helper tapped the first. Trio 2 PASS: recommended person read „ლუკა შუაშვილმა შენ გირჩია. ირმა მთხოვნელს სჭირდება დახმარება: … შეძლებ დახმარებას?“. Trio 1 FAIL: recommended person read „ბექა შუამავლიძეს სჭირდება დახმარება: ნოტარიუსის მოძებნა…“ — it names the HELPER as the one in need (the asker is ანა მთხოვნიძე) and has no „შენ გირჩია“. Both messages also glue the footer into the question with no full stop: „შეძლებ დახმარებას <helper>-ის ასისტენტი, <helper>-ის სახელით“. Small: the helper's card and confirmation write case endings with a hyphen — „თამარ ნოტარიძე-ს“, „ანა მთხოვნიძე-ისთვის“. — tester (chat #17)
+```
+
+- **My reading:** in trio 1, referralReads returned null (no recommendation seen in offer_line, or BN's names were empty), and the old 1696 line ran, with the asker resolved wrongly. Please read the two settles for trios 183192–183194 and 183195–183197. The footer („შეძლებ დახმარებას <helper>-ის ასისტენტი…" with no full stop) and „თამარ ნოტარიძე-ს" are text faults. If the fix changes words, it needs Misho. Gluing two already-approved strings with a missing full stop is your call.
+- **Tester, verbatim (box 52900):**
+
+```
+2707 — PASS (ON-006 + ON-007, fresh seats 183189-183191). ON-006 empty seat: „კარგი იურისტი მჭირდება…“ → contacts not in yet, asks to upload, the one named lawyer came from that run's web_search; „ჯერ კონტაქტები არ ამიტვირთავს…“ → does not repeat the request, helps; „iuristi mchirdeba“ → no phonebook yet, no invented person. One note: „I need a good lawyer.“ in a new conversation got a Georgian reply (the seat had written Georgian before — tell me if that is by design). ON-007: seat B with 3 admin-added contacts named all three; seat A with none said contacts are not in, and after 3 were added named all three. run_mode is not readable from the admin thread read, so modes are not recorded. Task 2707 set to tested. — tester (chat #17)
+```
+
+- The tester asks whether „I need a good lawyer.“ getting a Georgian reply is by design (the seat had written Georgian before).
+- 0154 is live as aaa7c3c (12:25Z, outage 0). 0155 is shipping.
+
 ### 11 Oct, 12:27Z — the 3732 setup answer has gone to the tester. The chorus send fact has gone to Misho
 
 - Your third-degree answer and the re-run setup are in box 52868.
