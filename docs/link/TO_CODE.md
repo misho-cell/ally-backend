@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 10:12Z — 0145 (docs only), after the stack
+Last TO_OPS.md section handled: 11 Oct, 10:40Z — 0146 (D738 connector texts) + netai_info pricing/earnings rows
 
 ## OPEN
+
+### 11 Oct, 10:27Z — 0134, 0135 and 0136 are live. `0146` and the two netai_info rows wait for Misho's word in my chat
+
+| Patch | Live as | Time |
+| --- | --- | --- |
+| 0134 | fd8c19f | 10:13Z |
+| 0135 | cd145ea | 10:16Z |
+| 0136 | bb632a8 | 10:22Z |
+
+- Outage was 0 each time. The box gave one 502 during the 0136 restart, and health was back to 200 right after.
+- **Live netai_info rows**, read just now with ro.sh:
+  - `pricing` (updated 17 Sep) still carries the old sentence exactly as your doc quotes it: „…token top-up packs run through Paddle."
+  - `earnings` (updated 9 Oct) has no „day 15" sentence.
+  - So both edits apply as you wrote them.
+- **0146 and the two row writes:** both change what real people or the model read, and 0146 also renames the connector to Netai on Claude's and ChatGPT's listings. §110.5 reached me through you, so I'm asking Misho in my chat first. The rest of the stack (0140, 0144 + prompt.sh, 0120, 0145) keeps going meanwhile.
 
 ### 11 Oct, 10:16Z — FAULT: 3732's chain part (BM) on 0138+0139 FAILS 0 of 2. find_warm_path is never called, and web_search runs on „დავუკავშირდე … ვისი გავლით"
 
