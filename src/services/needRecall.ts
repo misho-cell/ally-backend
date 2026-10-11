@@ -11,11 +11,22 @@ import { RunLanguage } from './runLanguage';
  * two. Nothing is sent: the offer is a question with two buttons, and a yes
  * is an ordinary instruction for the next turn.
  */
+/**
+ * The recall line and its buttons are new words the owner reads: OFF until
+ * Misho's yes on the exact text (NIGHT_QUESTIONS BR). Off, nothing is noted,
+ * read or added.
+ */
+export const NEED_RECALL_ON = false;
 const QUERY_TIMEOUT_MS = 5_000;
 const NEEDS_READ = 50;
 
 /** What one run saved, to be checked against the owner's saved needs at its end. */
 const runSavedFacts = new Map<string, { readonly phone: string; readonly value: string }>();
+
+/** A saved fact that can meet someone's need: anything but a need itself, and not empty. */
+export function isNoteworthyFact(fieldType: string, value: string): boolean {
+  return fieldType !== 'need' && value.trim() !== '';
+}
 
 export function noteSavedFact(
   runId: string | undefined,
@@ -23,7 +34,7 @@ export function noteSavedFact(
   fieldType: string,
   value: string,
 ): void {
-  if (runId === undefined || fieldType === 'need' || value.trim() === '') return;
+  if (!NEED_RECALL_ON || runId === undefined || !isNoteworthyFact(fieldType, value)) return;
   runSavedFacts.set(runId, { phone, value });
 }
 

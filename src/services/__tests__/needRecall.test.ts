@@ -4,6 +4,8 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query as _query } from '../../db/postgres/client';
 import {
+  isNoteworthyFact,
+  NEED_RECALL_ON,
   needThisFactMeets,
   noteSavedFact,
   recallChoices,
@@ -41,11 +43,15 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
     await expect(needThisFactMeets('7', '+995555000002', 'ექიმია')).resolves.toBeNull();
   });
 
-  it('only facts that are not needs are noted, once per run', () => {
-    noteSavedFact('r1', '+1', 'need', 'warehouse');
-    expect(takeSavedFact('r1')).toBeNull();
+  it('only facts that are not needs, and not empty, can meet a need', () => {
+    expect(isNoteworthyFact('need', 'warehouse')).toBe(false);
+    expect(isNoteworthyFact('note', '  ')).toBe(false);
+    expect(isNoteworthyFact('note', 'has a warehouse')).toBe(true);
+  });
+
+  it('is off until Misho’s yes on the text: nothing is noted, so nothing is read or added', () => {
+    expect(NEED_RECALL_ON).toBe(false);
     noteSavedFact('r1', '+1', 'note', 'has a warehouse');
-    expect(takeSavedFact('r1')).toEqual({ phone: '+1', value: 'has a warehouse' });
     expect(takeSavedFact('r1')).toBeNull();
   });
 

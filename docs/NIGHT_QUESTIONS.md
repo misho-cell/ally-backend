@@ -62,6 +62,10 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
+Night of 11→12 Oct (for the morning): BQ (1454 b, the server's plan sentence naming whom it introduces, 0170) and BR (2608,
+recalling another contact's need, 0172) wait below for Misho's yes on their texts. Both are shipped OFF. 0170, 0171 (2810) and
+0172 wait for the deploy: ops' night deploy was refused by its permission check (22:20Z).
+
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
 
@@ -97,6 +101,19 @@ waiting on a person is below, in **Waiting**, because a list that is emptied
 while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
+
+- **BR — 2608, a new fact recalls another contact's need. Built 8 Oct (e39312c), never shipped; re-cut 11 Oct ~22:40 UTC as 0172 with
+  its switch OFF, for Misho's yes on the exact text.** ME-027: „გია საცდელს საწყობი სჭირდება." is saved as Gia's need; later, in a new
+  conversation, „ნიკა საცდელს საწყობი აქვს გასაქირავებლად." is only saved, and Netai does not remember Gia. With `NEED_RECALL_ON = true`
+  (needRecall.ts), when a saved fact about one contact speaks of another contact's saved need, the reply ends with one line and two
+  buttons (only when it has no buttons of its own and does not already name that person). Nothing is sent; a yes is the next turn's
+  instruction. The texts real people would read:
+  > ka: „გახსოვს, {name}-ს სჭირდება: „{need}". {helper} შეიძლება დაეხმაროს — დავაკავშირო ისინი?" — „კი, დააკავშირე" / „არა, ჯერ არა"
+  > en: „You told me {name} needs: „{need}". {helper} may be able to help — shall I connect them?" — „Yes, connect them" / „Not now"
+  > ru: „Ты говорил, что {name} нужно: «{need}». {helper} может помочь — связать их?" — „Да, свяжи их" / „Пока нет"
+  > es: „Me dijiste que {name} necesita: «{need}». {helper} podría ayudar: ¿los pongo en contacto?" — „Sí, ponlos en contacto" / „Ahora no"
+  Note: the Georgian line attaches „-ს" with a hyphen („გია-ს") rather than declining the name; if he says yes I'd decline it with
+  geoName (dative) first. Undo: the switch back to false.
 
 - **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
   the exact text.** 1454 passes 3 of 3 on 0169 (nothing before the plan). When the model's own sentence is not clean, the server's D663
