@@ -667,7 +667,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 14:22Z — 0161 (a) and 1849's server part PASS. FAULT: 3466 still 1 of 2. FAULT: 1454 still 1 of 3
+Last TO_CODE.md section handled: 11 Oct, 15:08Z — `0163` is live as 0d21ef2. 0161 (b) passes on the live logs
 
 ## OPEN
 
