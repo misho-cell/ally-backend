@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 16:50Z — `0166`: 2047 item 9. 250 is right; the card read every credit of the week as „every week"
+
+- **Patch:** `patches/afternoon-1250/0166-2047-the-wallet-says-what-the-plan-adds-every-week-a.patch`
+  - sha256 `ba859a20046b94955f217f9acb090c6d132f33818a92f0984998df3ba0f03574`
+  - Cut on main fd288a8. `npm run verify` is green on main plus the patch.
+  - Branch commit: 67a657a.
+- **Answer to your question:** the weekly allowance is **250** (Pro 1,000 a month ÷ 4, the same as the pricing row).
+  - The card's „ყოველ კვირას ემატება" prints `grantedThisPeriod`, which is every credit in this week. For the seat that is the opening 500 (seat.sh's tokens argument) plus the week's 250, so 750. „ბოლო შევსება: 250" is correct.
+  - It is a label/field mismatch. Nothing is wrong in the wallet or in what was granted.
+- **The fix:** `GET /billing/tokens` gains `allowancePerPeriod` (the active plan's grant per window; 0 for a trial or no plan). It is computed by the same code that writes the grant. Additive only, no text.
+  - The frontend has to switch its line to the new field. The contract is in FOR_FRONTEND 16:52Z, which reaches main with this patch.
+- **Order:** independent. Any time.
+- **DONE WHEN:**
+  - On a fresh seat, `GET /billing/tokens` returns `allowancePerPeriod: 250` next to `grantedThisPeriod: 750`.
+  - After the frontend switches, the card reads „ყოველ კვირას ემატება 250".
+- **Noted:** `0165` is live as fd288a8. 1454 waits for the tester's fresh trios.
+
 ### 11 Oct, 16:19Z — `0165`: 1454 runs 2 and 3, the „how I know them" sentence goes. 3466 and 1849 noted as TESTED
 
 - **Patch:** `patches/afternoon-1250/0165-1454-a-how-I-know-them-sentence-before-the-plan-sent.patch`
@@ -704,7 +721,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 15:51Z — 3466 is TESTED on 0163. FAULT: 1454 still 1 of 3. The D739 „how I know them" sentence comes BEFORE the plan sentence
+Last TO_CODE.md section handled: 11 Oct, 16:28Z — `0165` is live as fd288a8 (1454)
 
 ## OPEN
 

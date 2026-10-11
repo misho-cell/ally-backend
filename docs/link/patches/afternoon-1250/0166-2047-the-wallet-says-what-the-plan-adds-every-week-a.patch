@@ -1,0 +1,211 @@
+From 3206a5b5a5b9c366dbe2fb3816abc2dd99fecb32 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 16:46:36 +0000
+Subject: [PATCH] 2047: the wallet says what the plan adds every week
+ (allowancePerPeriod)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 53263, item 9: the tokens card read „750 every week" when the plan adds
+250. The card shows grantedThisPeriod, which is every credit in the window:
+a test seat's opening 500 plus the week's 250. A bought pack inflates it
+the same way.
+
+GET /billing/tokens gains allowancePerPeriod: the active plan's grant per
+window, read from the same price rows the grant itself uses, and 0 for a
+trial or no plan. The subscription read and the per-window grant are
+extracted from ensurePeriodGrant, so the grant and the field cannot drift.
+
+FOR_FRONTEND: the contract, and a fallback until it is live.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 23 +++++++
+ .../__tests__/tokenWallet.service.test.ts     | 21 +++++++
+ src/services/tokenWallet.service.ts           | 60 ++++++++++++++-----
+ 3 files changed, 89 insertions(+), 15 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 380a151..2cdf627 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,29 @@ messages in their name.
+ 
+ ---
+ 
++## 11 October, 16:52Z — 2047 item 9: „ყოველ კვირას ემატება" should read the new `allowancePerPeriod`, not `grantedThisPeriod`
++
++- **What the tester saw (box 53263):** „741 დაგრჩა … ყოველ კვირას ემატება 750 … ბოლო შევსება: 250". **250 is right.**
++- **Why 750:** `grantedThisPeriod` is every credit in the current window. A test seat starts with a one-off 500 (seat.sh's tokens argument), and the week's grant is 250, so that is 750 in this window. A real person who buys a pack would see the same inflation. The field is accurate for what it is (the meter's total), but it is not the weekly allowance.
++- **New field, same route:** `GET /billing/tokens` (auth, unchanged otherwise). 200 → `{ success: true, data: {...} }`; 401 without a token; 500 `{ success: false, error }`.
++
++```json
++{
++  "enabled": true,
++  "balance": 741,
++  "grantedThisPeriod": 750,
++  "spentThisPeriod": 9,
++  "window": "calendar_week",
++  "resetsAt": "2026-10-12T00:00:00.000Z",
++  "lastTopUp": { "amount": 250, "at": "2026-10-11T10:02:11.000Z", "kind": "grant" },
++  "allowancePerPeriod": 250
++}
++```
++
++- **`allowancePerPeriod`** (number): what an active plan adds every window, from the plan's own price row (Pro 1,000 a month is 250 a week). It is `0` for a trial, a lapsed plan or no plan. In that case, don't show the „ყოველ კვირას ემატება" line.
++- **Please:** use `allowancePerPeriod` for `addedWeekly` / `addedWeeklyNoDate` in `profile/page.tsx`. Keep `grantedThisPeriod` for the meter if you want it.
++- **Status:** on my branch now; it reaches main as patch `0166` through ops. Until it is live the field is absent, so fall back to `grantedThisPeriod` while `allowancePerPeriod` is `undefined`.
++
+ ## 11 October, 16:13Z — 1849 tested (2 of 2 on the desktop app); one UX suggestion: a member card with nothing to show
+ 
+ - **Tested:** the contact page shows the walk („ჯაჭვი · 4 ადამიანი", owner → B1 → B2 → target), and tapping a middle person opens `/members/<id>` with their name.
+diff --git a/src/services/__tests__/tokenWallet.service.test.ts b/src/services/__tests__/tokenWallet.service.test.ts
+index 3537c9e..0ac6ce1 100644
+--- a/src/services/__tests__/tokenWallet.service.test.ts
++++ b/src/services/__tests__/tokenWallet.service.test.ts
+@@ -473,8 +473,29 @@ describe('getWalletSummary', () => {
+       window: 'calendar_month',
+       resetsAt: '',
+       lastTopUp: null,
++      allowancePerPeriod: 1000,
+     });
+   });
++
++  /** 2047 (box 53263): a seat's opening 500 and the week's 250 are not „750 every week". */
++  it('says what the plan adds every week apart from the week’s credits', async () => {
++    process.env.BUDGET_WINDOW = 'week';
++    try {
++      setWorld({ walletEnabled: false, subscriptionStatus: 'active', balance: 741, runCostUsd: 0 });
++      const summary = await getWalletSummary('7');
++      expect(summary.grantedThisPeriod).toBe(1000);
++      expect(summary.allowancePerPeriod).toBe(250);
++    } finally {
++      delete process.env.BUDGET_WINDOW;
++    }
++  });
++
++  it('adds nothing every week for a trial or no plan', async () => {
++    setWorld({ walletEnabled: false, subscriptionStatus: 'trialing', balance: 120, runCostUsd: 0 });
++    await expect(getWalletSummary('7')).resolves.toMatchObject({ allowancePerPeriod: 0 });
++    setWorld({ walletEnabled: false, subscriptionStatus: null, balance: 0, runCostUsd: 0 });
++    await expect(getWalletSummary('7')).resolves.toMatchObject({ allowancePerPeriod: 0 });
++  });
+ });
+ 
+ /** 4294 (plate NEW-3): the wallet says the newest credit, not only the period's totals. */
+diff --git a/src/services/tokenWallet.service.ts b/src/services/tokenWallet.service.ts
+index 342063c..c460b39 100644
+--- a/src/services/tokenWallet.service.ts
++++ b/src/services/tokenWallet.service.ts
+@@ -28,6 +28,12 @@ export interface WalletSummary {
+   resetsAt: string;
+   /** 4294 (plate NEW-3): the newest credit — the period's grant, a bought pack or the trial's. */
+   lastTopUp: LastTopUp | null;
++  /**
++   * 2047 (box 53263): what an active plan adds every window, and 0 for anyone
++   * else. grantedThisPeriod is every credit in the window — a seat's opening
++   * 500 plus the week's 250 read as „750 every week".
++   */
++  allowancePerPeriod: number;
+ }
+ 
+ export enum TopUpKind {
+@@ -83,6 +89,34 @@ export async function getBalance(userId: string): Promise<number> {
+   return Number(result.rows[0]?.balance ?? 0);
+ }
+ 
++interface Subscription {
++  readonly status: string | undefined;
++  readonly tier: string;
++}
++
++async function subscriptionOf(userId: string): Promise<Subscription> {
++  const result = await query<{ subscription_status: string; subscription_tier: string }>(
++    'SELECT subscription_status, subscription_tier FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
++    [userId],
++  );
++  return {
++    status: result.rows[0]?.subscription_status,
++    tier: result.rows[0]?.subscription_tier ?? '',
++  };
++}
++
++/**
++ * The grant an active subscriber of this tier gets each window. The window
++ * decides which grant is read (Ticket 10 Task 25 (c), D124): the plan's
++ * monthly tokens, a quarter of them when BUDGET_WINDOW=week.
++ */
++async function periodGrantFor(tier: string): Promise<number> {
++  const window = budgetWindow();
++  const tierGrant = tier ? await getPrice(`${window.grantPriceKey}.${tier}`) : 0;
++  const monthly = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
++  return Math.floor(monthly / window.grantShareOfMonth);
++}
++
+ /**
+  * Lazy granting: called before balance checks. Active subscribers get their
+  * tier's monthly grant once per calendar month (pro 1000 / enterprise 5500 /
+@@ -92,26 +126,15 @@ export async function getBalance(userId: string): Promise<number> {
+  * race-safe (second insert is a no-op).
+  */
+ export async function ensurePeriodGrant(userId: string): Promise<void> {
+-  const statusResult = await query<{ subscription_status: string; subscription_tier: string }>(
+-    'SELECT subscription_status, subscription_tier FROM "User" WHERE id = $1 AND "deletedAt" IS NULL',
+-    [userId],
+-  );
+-  const status = statusResult.rows[0]?.subscription_status;
++  const { status, tier } = await subscriptionOf(userId);
+   if (status !== 'active' && status !== 'trialing') return;
+ 
+   if (status === 'active') {
+-    const tier = statusResult.rows[0]?.subscription_tier ?? '';
+-    // The window decides which grant is read and which key the row carries
+-    // (Ticket 10 Task 25 (c), D124): tokens.monthly_grant under 'm:YYYY-MM' by
+-    // default, tokens.weekly_grant under 'w:IYYY-Www' when BUDGET_WINDOW=week.
+-    const window = budgetWindow();
+-    const tierGrant = tier ? await getPrice(`${window.grantPriceKey}.${tier}`) : 0;
+-    const monthly = tierGrant > 0 ? tierGrant : await getPrice(window.grantPriceKey);
+-    const grant = Math.floor(monthly / window.grantShareOfMonth);
++    const grant = await periodGrantFor(tier);
+     if (grant <= 0) return;
+     await query(
+       `INSERT INTO token_transactions (user_id, amount, reason, period_key)
+-       VALUES ($1, $2, $3, ${window.currentKeySql})
++       VALUES ($1, $2, $3, ${budgetWindow().currentKeySql})
+        ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
+       [userId, grant, MONTHLY_GRANT_REASON],
+     );
+@@ -502,6 +525,12 @@ export async function takeGraceAnswer(userId: string): Promise<boolean> {
+   return (result.rowCount ?? 0) > 0;
+ }
+ 
++/** What an active plan adds every window; 0 for a trial, a lapsed plan or no plan. */
++async function allowancePerPeriod(userId: string): Promise<number> {
++  const { status, tier } = await subscriptionOf(userId);
++  return status === 'active' ? periodGrantFor(tier) : 0;
++}
++
+ /** Balance view for the app (GET /billing/tokens). */
+ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
+   const enabled = await isWalletEnabled();
+@@ -530,7 +559,7 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
+ 
+   const row = result.rows[0];
+   const resets = row?.resets_at instanceof Date ? row.resets_at : new Date(row?.resets_at ?? NaN);
+-  const newest = await lastTopUp(userId);
++  const [newest, allowance] = await Promise.all([lastTopUp(userId), allowancePerPeriod(userId)]);
+   return {
+     enabled,
+     balance: Number(row?.balance ?? 0),
+@@ -539,5 +568,6 @@ export async function getWalletSummary(userId: string): Promise<WalletSummary> {
+     window: window.label,
+     resetsAt: Number.isNaN(resets.getTime()) ? '' : resets.toISOString(),
+     lastTopUp: newest,
++    allowancePerPeriod: allowance,
+   };
+ }
+-- 
+2.43.0
+
