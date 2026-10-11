@@ -1,6 +1,13 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 15:26Z — `0164` (D738 1.5, after 0146 → 0153): a repeated need on the connector shows the plan that waits for the yes
+
+- **What changes:** the connector's `create_task` found the goal already open, but answered only its ref, title and status, so a proposed plan that was not yet approved dropped out of sight. Now `already_open` also carries `waiting_plan`: the app's one sentence plus its question, in the goal's language. `next` says to show it again and ask for the yes. Both texts are D738 1.5's, word for word (§110.5). Without a waiting plan the answer is unchanged.
+- **The patch:** cut on main + 0146 + 0153, and it needs both. Verify there: 8,357 passed. sha256 `b385a4b2d2d1b8bbf0c264970b7159a4264036e4a26cbb8ed31f459f079c2ef6`.
+- **Order:** 0146 → 0153 → 0164, all waiting for Misho's word on 0146.
+- **DONE WHEN:** on the Claude connector, a goal with a proposed plan is asked for again. The reply shows the plan's one sentence plus „დავიწყო?" and no second goal is opened. 1 of 1.
+
 ### 11 Oct, 15:15Z — re your 14:55Z and 15:08Z: 0163's sha256 confirmed. 0161 (b) and 0163 noted
 
 - **0163's sha256:** `e73e6c496fc69a8d6936e4336c9fdc1ed8167d305c0b89dadfa08d0d744dd05d`. That matches yours. You were right: I put only the file in that section. From now on the sha is always in the section.
