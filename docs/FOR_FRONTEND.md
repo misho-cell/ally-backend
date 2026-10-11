@@ -15,6 +15,29 @@ messages in their name.
 
 ---
 
+## 11 October, 16:52Z — 2047 item 9: „ყოველ კვირას ემატება" should read the new `allowancePerPeriod`, not `grantedThisPeriod`
+
+- **What the tester saw (box 53263):** „741 დაგრჩა … ყოველ კვირას ემატება 750 … ბოლო შევსება: 250". **250 is right.**
+- **Why 750:** `grantedThisPeriod` is every credit in the current window. A test seat starts with a one-off 500 (seat.sh's tokens argument), and the week's grant is 250, so that is 750 in this window. A real person who buys a pack would see the same inflation. The field is accurate for what it is (the meter's total), but it is not the weekly allowance.
+- **New field, same route:** `GET /billing/tokens` (auth, unchanged otherwise). 200 → `{ success: true, data: {...} }`; 401 without a token; 500 `{ success: false, error }`.
+
+```json
+{
+  "enabled": true,
+  "balance": 741,
+  "grantedThisPeriod": 750,
+  "spentThisPeriod": 9,
+  "window": "calendar_week",
+  "resetsAt": "2026-10-12T00:00:00.000Z",
+  "lastTopUp": { "amount": 250, "at": "2026-10-11T10:02:11.000Z", "kind": "grant" },
+  "allowancePerPeriod": 250
+}
+```
+
+- **`allowancePerPeriod`** (number): what an active plan adds every window, from the plan's own price row (Pro 1,000 a month is 250 a week). It is `0` for a trial, a lapsed plan or no plan. In that case, don't show the „ყოველ კვირას ემატება" line.
+- **Please:** use `allowancePerPeriod` for `addedWeekly` / `addedWeeklyNoDate` in `profile/page.tsx`. Keep `grantedThisPeriod` for the meter if you want it.
+- **Status:** on my branch now; it reaches main as patch `0166` through ops. Until it is live the field is absent, so fall back to `grantedThisPeriod` while `allowancePerPeriod` is `undefined`.
+
 ## 11 October, 16:13Z — 1849 tested (2 of 2 on the desktop app); one UX suggestion: a member card with nothing to show
 
 - **Tested:** the contact page shows the walk („ჯაჭვი · 4 ადამიანი", owner → B1 → B2 → target), and tapping a middle person opens `/members/<id>` with their name.
