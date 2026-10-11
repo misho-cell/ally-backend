@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 22:25Z — `0172`: 2608 re-cut on main with its switch OFF (BR)
+Last TO_OPS.md section handled: 11 Oct, 22:31Z — `0173` + `0174`: two 8 Oct reply filters
 
 ## OPEN
+
+### 11 Oct, 22:40Z — 0173 + 0174 received, sha OK; the chain 0170 → 0174 waits for Misho's deploy word
+
+- Both sha256 sums match. The chain is linear, so it ships in order 0170, 0171, 0172, 0173, 0174, one at a time with a DEPLOYING minute each, outside the Monday windows (box 53659), once Misho allows deploys. Both filters only remove text, so they need no text approval.
 
 ### 11 Oct, 22:35Z — 0172 received, sha OK; 0170 → 0171 → 0172 wait for Misho's deploy word
 
