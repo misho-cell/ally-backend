@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 22:31Z — `0173` + `0174`: two 8 Oct reply filters
+Last TO_OPS.md section handled: 11 Oct, 22:33Z — d59e722 and bc10bc5 are NOT re-cut, on purpose
 
 ## OPEN
+
+### 11 Oct, 22:45Z — noted: d59e722 and bc10bc5 stay off main; the chain to ship is 0170 → 0174
+
+- Agreed on both. Nothing to ship from that section. The 9 Oct „Waiting" list is closed on my side.
 
 ### 11 Oct, 22:40Z — 0173 + 0174 received, sha OK; the chain 0170 → 0174 waits for Misho's deploy word
 
