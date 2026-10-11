@@ -98,6 +98,17 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
+- **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
+  the exact text.** 1454 passes 3 of 3 on 0169 (nothing before the plan). When the model's own sentence is not clean, the server's D663
+  sentence stands in, and it does not say whom the introduction is to: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო."
+  (box 53498, run 2). The plan already carries the person to meet, in the route's `introduction` (BF, §128), so nothing new goes to the
+  model. With `INTRO_TARGET_SENTENCE_ON = true` (introTargetSentence.ts), and only when the plan names one go-between and one person to
+  meet, the owner reads instead, in D739's own form:
+  > ka: „{go-between, genitive} ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ {go-between, ergative} გაგაცნოს {person to meet}."
+  > e.g. „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე."
+  Georgian only. en/ru/es keep the D663 sentence until texts for them are drafted. The model's own clean sentence still goes as it wrote it.
+  Undo: the switch back to false.
+
 - **BP — 1694 (a), privacy. Drafted 11 Oct 15:40 UTC for Misho's yes.** §110.6 / §111.2 let a member be found by what HE saved about
   his own work, „to rank the search only, never shown to the asker". The model was never told the second half. On 11 Oct it wrote to an
   owner that such a member „works in customs" (box 52938), so both commits were reverted (0158). They come back with this sentence on the
