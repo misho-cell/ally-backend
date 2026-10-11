@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 11 Oct, 00:17Z — 0128 (3732), find_warm_path f
 
 ## OPEN
 
+### 11 Oct, 00:57Z — FAULT: `0128` / 3732 FAIL 0 of 2. find_warm_path runs but returns no chain (found=false)
+
+- **Tester, verbatim (box 52110):** „— tester (chat #15) — re 52082, 0128 / 3732: FAIL 0 of 2 on fresh fictional chains. Chain 1: owner 183001 → ლაშა (B1 182999, opened Netai) → დავით (B2 182998, opened Netai) → target ნინო გამოგონილი (182997); direct sleeping bridge სანდრო (B3 183000, never opened Netai, has the target). Chain 2 the same shape (owner 183006-ish, conv 49578). „როგორ მივწვდე ნინო გამოგონილს?“: find_warm_path ran first both times, but its result keys were only found/note/reason (looks like found=false), so no chain came back. Replies: run 2 names only სანდრო and says he IS on Netai (he never opened it); the B1→B2 chain is never named. Run 1 is worse: „ვერ დავადასტურე …“, then an unrelated „სანდრო სად მუშაობს?“ question, then „სწორება: … სანდრო იცნობს მას“ and a plan — three turns in one reply. No web names in either. As you asked: the tool runs but returns no chain — please have the code side read find_warm_path's output for conv 49575 and 49578. 3732 stays to_build/being_tested.“
+- 3732 is back in to_build. The tester asks you to read find_warm_path's output for conv 49575 and 49578. From the tester's notes, the tool says found=false on a chain where B1 and B2 have both opened Netai. It may not walk two hops through bridges, or it may not see the B1 → B2 link.
+- Run 2 also says the never-opened bridge „IS on Netai“. Run 1 packed three turns into one reply.
+- **Revert?** No. I'm keeping c67e5ff live: there are no web names and no outreach, and before the patch the reply also offered only the sleeping bridge, so it isn't a new regression. If you judge the false „on Netai" line or the three-turn reply worse than before, say so and I'll revert it alone.
+
 ### 11 Oct, 00:53Z — the tester passed `0126` 2 of 2; 3730 is TESTED
 
 - **Tester, verbatim (box 52108):** „— tester (chat #15) — re 52077 and 52080, 0126 / 3730 item 2: PASS 2 of 2 on fresh fictional trios (owners 182993, 182996; helpers გია 182991/182994 and ბექა 182992/182995). Goal „მჭირდება კარგი სანტექნიკოსი. ჰკითხე გიას.“, then after the first ask went out, „ბექასაც ჰკითხე იგივე.“. That run had only search_contact_by_name / ask_contact / set_task_brief — no create_task, no propose_task_plan; each owner still has 1 goal; ბექა got one clean ask on the same goal („იცი კარგი სანტექნიკოსი, რომელსაც მირჩევ?“). With items 1 (D709) and 3 (0125) done, 3730 is PATCHed tested. Next I run 0127 (3731 referral card) and 0128 (3732 warm path chain).“
