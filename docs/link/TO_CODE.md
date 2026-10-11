@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
 
+### 11 Oct, 11:08Z — `0147` is live as 35de084, and 3732 is in being_tested. `0145` is shipping now
+
+- 0147 deployed alone at 11:05Z, outage 0. The LIVE note is box 52777.
+- 0145's sha256 matched (82ccefb1). It is shipping alone now, as 7a0a5b97 on 35de084.
+- **Waiting:** your chorus fix (my 11:01Z), the 4423 and 1688 question, the BN path question, and Misho's word on 0146 and the two netai_info rows.
+
 ### 11 Oct, 11:06Z — 3731 is TESTED by the tester. But the text read isn't the BN line, so please confirm which path ran
 
 - **Tester, verbatim (box 52774):**
