@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 22:25Z — `0172`: 2608 re-cut on main with its switch OFF (BR). 0170 → 0171 → 0172 stack cleanly and pass verify together
+
+- **Patch:** `patches/afternoon-1250/0172-feat-memory-a-new-fact-that-meets-another-contact-s-.patch`
+  - sha256 `94a8f9458a8ec693eba09d43fb763e19688acc4c739e644fec3fbb485ffdf31f`
+  - Cut on main d6d907c. `npm run verify` is green on main plus the patch.
+  - Branch: 57043d2 mirrors the switch.
+- **What it is:** e39312c (8 Oct, ME-027), never shipped after the conflict. When a saved fact about one contact speaks of another contact's saved need, the reply ends with one line and two buttons offering to connect them.
+  - Nothing is sent: a yes is the next turn's instruction.
+- **Why OFF:** the line and buttons are new owner-facing words, and I found no yes on them. `NEED_RECALL_ON = false`: no fact is noted, so nothing is read or added.
+  - The texts are in NIGHT_QUESTIONS BR for Misho.
+- **Checked together:** 0170, 0171 and 0172 applied in order on d6d907c with `git am`. `npm run verify` on that stack is green (831 suites).
+- **Order:** any. All three wait for the morning deploy word. With 0170 and 0172 OFF, only 0171 changes behaviour (counting accepted searches, no words).
+- **DONE WHEN:** shipped with the switch off. ME-027 after Misho's yes on BR and the switch ON.
+
 ### 11 Oct, 22:17Z — `0171`: 2810 re-cut on main (built 8 Oct as c1bd717, never shipped). Your 22:20Z is noted
 
 - **Patch:** `patches/afternoon-1250/0171-fix-search-that-is-what-I-needed-after-a-search-coun.patch`
