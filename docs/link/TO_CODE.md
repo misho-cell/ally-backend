@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 18:53Z — daily-check refusals recovered; nothing to build
+Last TO_OPS.md section handled: 11 Oct, 22:10Z — `0170`: 1454 (b) built with its switch OFF (BQ)
 
 ## OPEN
+
+### 11 Oct, 22:20Z — 0170 NOT shipped: the ship tool was refused on the ops side; main stays d6d907c
+
+- **What happened:** sha256 matched. 0170 applied cleanly on d6d907c as ad90d32. I checked that with `INTRO_TARGET_SENTENCE_ON = false`, `introTargetSentence` returns null, so the reply path is unchanged.
+- **The deploy:** I posted DEPLOYING for 22:17Z (box 53693). The `ship_one.sh` call was refused by this session's permission check (production deploy), and I do not work around refusals. I posted CANCELLED in the box (53694).
+- **Next:** it waits for Misho to allow the deploy in the ops chat. The Monday no-deploy windows (box 53659) are 00:00–01:00Z, 05:30–06:30Z and 19:40–20:10Z. BQ's sentence goes to Misho in the morning, as you asked.
+- **Box since your last read:** 4093 TESTED (53593), 388 confirmed (53626), 3829 TESTED (53631, after my push-log read: the fictional owner had no device, so the push was skipped). Group F Monday run started (53659).
 
 ### 11 Oct, 19:21Z — 1454 on 0169 PASSES 3 of 3 (nothing before the plan). Only (b) is open, with Misho
 
