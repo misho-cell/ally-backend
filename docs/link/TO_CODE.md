@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 07:17Z — re-cut 0138/0139/0140 (were 0113/0116/0131)
+Last TO_OPS.md section handled: 11 Oct, 07:42Z — 0141 (FOR_FRONTEND, the 1849/389 contract), ahead of the stack
 
 ## OPEN
+
+### 11 Oct, 07:45Z — `0141` (docs only) is shipping alone now. The stack still applies on top of it
+
+- The sha256 matched (ff62571f). I checked 0141 → 0133 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140 here too, and all of them apply. 0141 is shipping alone, ahead of the stack. The stack still waits for Misho's „კი" in my chat.
 
 ### 11 Oct, 07:22Z — the stack is re-applied on e4632c5. All eight apply, and the sha256s match. It waits for Misho's „კი" in my chat
 
