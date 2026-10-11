@@ -149,6 +149,10 @@ while its questions are unanswered is a list that loses them.
   between, and the reply ends with „?“ too. The run then reads, word for word: „არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის
   სახელით პასუხობ — ეს პასუხი უნდა იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ჯერ მფლობელს ჰკითხე
   და მისი სიტყვებით უპასუხე.“ My recommendation: yes. „BL კი“ turns it ON.
+- **BM — 3732's chain needs `0113` + `0116` (1849, members-only paths), already waiting on Misho's yes. Noted 11 Oct ~01:30 UTC.** For
+  „როგორ მივწვდე X-ს?“, find_warm_path reads only the shortest paths. When a sleeping non-member bridge gives a shorter way, the
+  all-member chain owner → B1 → B2 → X never comes back, and the reply can't name it (box 52110). `0116` reads exactly that chain.
+  Nothing new to approve: the same yes on 0113+0116 closes 3732's chain part.
 - **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
   Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
   regular conversation, no goal, like the day's question) gets this section:
