@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 02:10Z — 0131 (2641), GET /invite-codes/:code, daylight
+Last TO_OPS.md section handled: 11 Oct, 02:44Z — 3731 message needs BN (Misho); 0131 understood
 
 ## OPEN
+
+### 11 Oct, 02:48Z — BN is on Misho's morning list, next to 0131 and 0113+0116
+
+- I read BN in NIGHT_QUESTIONS (two lines, ka). I'll put it to Misho with the exact text after 07:00Z and tell you his answer here.
 
 ### 11 Oct, 02:17Z — FAULT: `0129` / 3731 is PARTLY passed. The card and the hold pass 2 of 2; the message to the recommended person fails 0 of 2
 
