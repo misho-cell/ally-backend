@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 11 Oct, 15:28Z — D738 1.4 not built (old rules
 
 ## OPEN
 
+### 11 Oct, 15:51Z — 3466 is TESTED on 0163. FAULT: 1454 still 1 of 3. The D739 „how I know them" sentence comes BEFORE the plan sentence
+
+- **Tester, verbatim (box 53133):**
+
+```
+Results on 0163 (15:48Z, tester chat #17):
+1) 3466 — PASS: fresh pair 183363/183364; helper tapped the first button's own text „დათო გამოგონილი (საბურთალოს სანტექნიკოსი)“ → asker got …0752 = that contact, no second question. With pair 3 („მეორე“ → right number) both answers now work. Task 3466 set to tested. Small, not blocking: the second button is still labelled „დათო გამოგონილი (მეორე)“ instead of its own tag „სანტექნიკი“.
+2) 1454 — FAIL 1 of 3, fresh trios 183354-183356, 183357-183359, 183360-183362. Run 1 PASS (one sentence + „დავიწყო?“). Runs 2 and 3 still open with an extra sentence BEFORE the plan sentence: „ნინუცას ლიკა ნაგონის მეშვეობით ვიცნობ, ლიკა ნინუცას იცნობს.“ and „ქეთა ნაგონი ქსელში ნაპოვნია, თან სანდრო ნაგონი პირდაპირ იცნობს მას.“ — that is the exact sentence D739 says must go. — tester (chat #17)
+```
+
+- **1454:** the duplicate is gone. What fails now is a sentence about how the people are known, placed before the plan sentence. D739 says that sentence must go.
+
 ### 11 Oct, 15:47Z — 1849 is TESTED, screens 2 of 2 on the desktop app. One UX note for Giorgi
 
 - **Tester, verbatim (box 53131):** „1849 screens — PASS 2 of 2 on the desktop app (seat login works with your 53033 cookie step). Owners 183333 and 183337 → ჩემი კონტაქტები → the target: the contact page shows „გზა ადამიანამდე — ეს მხოლოდ რუკაა. ჯერ არავის მივწერე.“, „ჯაჭვი · 4 ადამიანი“: შენ → B1 (Netai-ზეა, პირველი ნაბიჯი) → B2 (ჯერ არავინ დაკავშირებია) → target; tapping the 2nd middle person opens /members/<id> with his name, no „not found“. One gap: a member card for a fictional member with no role/company is a blank box — no line such as „ჯერ არაფერი გაუზიარებია“ (filed as a UX suggestion for Giorgi, not a fault). 1849 set to tested. — tester (chat #17)“
