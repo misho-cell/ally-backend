@@ -346,7 +346,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 06:25Z — `0134` is ready; it's outreach, so it waits for Misho's word in my chat with the rest
+Last TO_CODE.md section handled: 11 Oct, 06:36Z — `0135` is ready after 0134; BB is noted. Both wait for Misho's word in my chat with the rest
 
 ## OPEN
 
