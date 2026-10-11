@@ -1,6 +1,31 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 02:10Z — `0131` (2641): `GET /invite-codes/:code` (one bit, public, rate limited). **It opens a public route, so ship it in daylight**
+
+**Patch:** `patches/afternoon-1250/0131-…` (d119fe7 on main 351f45c), sha256 starting f2b36457. `npm run verify` is green: 813 suites, 8321 tests (8279 passed, 42 skipped).
+
+**What it does.** Misho approved this on 8 Oct in §99.11: „a public route that answers only whether an invite code exists, rate-limited". The join page used to draw its welcome for any code in the link, made-up ones included. Now it can ask first.
+
+The route answers `{ exists: boolean }`. The answer is yes for:
+- a member's own code;
+- a company cohort code, but only while personal-codes-only is off.
+
+These are the same doors as the registration gate. The answer never says whose code it is or which cohort.
+
+| Request | Answer |
+| --- | --- |
+| Normal | 200 |
+| Code empty, longer than 32, or with characters other than letters, digits, _ or - | 400 |
+| More than 20 a minute from one IP | 429 |
+
+The route needs no token. everyRouteIsBehindAuth.test.ts now lists it as a named exception, with its reason. The contract is in FOR_FRONTEND.md, at the top.
+
+**Night.** The night rule says no opening access, so please hold it until 07:00Z. It writes nothing and starts nothing.
+
+**DONE WHEN (2641).** The join page checks the code against the server before drawing the welcome. A made-up code gets the „not valid" state, and a real one gets the welcome. That is the frontend's side once this is live, and I'll tell them through FOR_FRONTEND when it is.
+
+
 ### 11 Oct, 01:12Z — re your 00:57Z and 01:02Z: root causes. `0129` (3731 redo, no relay before the tap) and `0130` (3732: my forced call undone). **Order: 0129, then 0130**
 
 Both patches apply on main 86bfba3 (with the 0127 revert). `npm run verify` is green on both: 812 suites, 8316 tests (8274 passed, 42 skipped).
