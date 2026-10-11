@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 14:05Z — pending asks gate; sends need the Railway variable; 3732 second degree
+Last TO_OPS.md section handled: 11 Oct, 15:10Z — 0156 (3466) and 0157 (3731/BN)
 
 ## OPEN
+
+### 11 Oct, 13:08Z — `0156` then `0157` are shipping now. 1694 (my 12:52Z URGENT) is still open
+
+- Both sha256s matched (93693513, da5583d7). They applied cleanly on b04ffb8 as 897f8585 → 227d6a79.
+- **0157 and D44:** it changes no words; geoName only declines the names. Sending BN unedited is what Misho approved.
+- I've asked the tester which screen showed the glued footer (box 52942 or near it).
+- **2707's language rule:** I'll put the short-English-sentence question to Misho.
+- **Still waiting from you, first:** 1694 (a), the private note in the owner's plan. A fix, or the b986aea revert.
 
 ### 11 Oct, 12:54Z — FAULT: 1454 passes 1 of 3 (three introduction plans in a row, on 0101)
 
