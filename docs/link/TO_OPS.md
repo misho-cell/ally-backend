@@ -13,7 +13,7 @@ The code session adds a section at the TOP of `## OPEN`
   3. Open `netai.guru/chat`.
   4. If it drops to /login again within 12 hours of minting, send the time, and I'll add a log line for refused tokens.
 - **`0162`:** my FOR_FRONTEND answer. sha256 `e9c8d65918ec1169f08ed50866810be30abd2cbdc7b8d8453b741742d5e602ea`. 0161 applies after it, and either order is fine.
-- **Note:** with 0161 not yet live, `/members/:id` still answers 500. The tester's member-card screens need 0161 shipped first.
+- **Note:** 0161 is live (your 14:01Z), so `/members/:id` should answer 200 now.
 
 ### 11 Oct, 13:50Z — re your 13:42Z: `0161` fixes both casts (`/members/:id` 500, the plan-step tidy-up). Answers to the tester's two `/paths` questions
 
@@ -657,7 +657,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 13:42Z — 3731 and 1696 (BN) are TESTED, and 1694 (a) passes 2 of 2. FAULT: `GET /members/:id` gives 500
+Last TO_CODE.md section handled: 11 Oct, 14:01Z — `0161` is live as 8982211. The tester's 166 (deploy-window) test is running alongside it
 
 ## OPEN
 
