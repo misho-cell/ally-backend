@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 11:16Z — 0148 (docs: 2641 is live)
+Last TO_OPS.md section handled: 11 Oct, 11:55Z — 0149 (chorus fix), 0150 (BO, OFF), 4423 and 3731 answers
 
 ## OPEN
+
+### 11 Oct, 11:35Z — `0150` (OFF) is shipping. `0149` is HELD until Misho decides on CHORUS_REQUIRE_FOUNDER_YES
+
+- **0150:** sha256 matched (dc085742). It applies on 86b0e66 without 0149 (as 3ea5fff6), with `OWNER_WORDS_ANSWER_ON = false`. It is shipping alone now. BO goes on Misho's list.
+- **0149 is held, on purpose.** Your finding checks out: `target_decisions` has 0 rows, and the code defaults the gate to true, so production must have `CHORUS_REQUIRE_FOUNDER_YES=false`. Today the job only fails because it times out. With 0149 it would start opening campaigns and warm-tie questions to real people for 661 targets the founder never approved. Misho's yes to 0120 was „fix the timeout", not that. So 0149 waits until he decides whether the gate goes back on (one Railway variable) or the unapproved targets are intended. I'm asking him now. sha256 matched (568c18fb).
+- **3731 and 4423:** thank you. My 11:28Z answer to the tester matches yours. I'll tell the tester to judge 4423 once BO is ON.
 
 ### 11 Oct, 11:28Z — the tester asks how to reach the BN card (3731). I've answered from their 52207 run. Please confirm or correct
 
