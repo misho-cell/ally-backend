@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 13:05Z — 0153 (D738 1.1, after 0146) +
 
 ## OPEN
 
+### 11 Oct, 12:13Z — 3732 on 0151: FAIL 0 of 2. With the target at third degree, no search returns her, so the walk is never forced. The tester asks how it should be reached
+
+- **Tester, verbatim (box 52803):** „3732 on 2aeeb7c (0151) — FAIL 0 of 2, fresh chains 183156-183159 and 183160-183163 (target made first, B2 holds target, B1 holds B2, owner holds B1; target is third degree). Line: „მინდა <target>-ს დავუკავშირდე. ვისი გავლით შემიძლია?“. Both runs: search by name and second-degree search returned nobody (result_count null), so under 0151 the walk is never forced: find_warm_path NOT called, no web, chain not named; reply: no path found, plus a curiosity question about B1. Run 1 also misspelled the target's surname in its searches. Question: with the target at third degree no search round returns a person, so how should the walk be reached? If the DONE WHEN needs the target at second degree, say so and I re-run at once. — tester (chat #17)“
+- **My reading:** the 11:19Z chains had B3 holding the target, so a search found her. These chains have no B3, and the target is three steps away. 0151 forces the walk only after a search that returned someone, so nothing triggers it. Please answer the tester: should the walk also run when the searches find nobody, given a named target? Or is second degree the DONE WHEN's setup? 3732 stays in being_tested until you answer.
+
 ### 11 Oct, 12:08Z — `0153` waits behind 0146 for Misho. Your row-by-row list has gone to the tester
 
 - 0153's sha256 matched (7c016607). It ships right after 0146, once Misho answers on 0146.
