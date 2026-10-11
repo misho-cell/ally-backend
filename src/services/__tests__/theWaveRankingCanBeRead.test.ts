@@ -8,6 +8,7 @@ jest.mock('../prematch.service', () => ({
 import { query } from '../../db/postgres/client';
 import { prematchMany, PrematchSource, PrematchWord } from '../prematch.service';
 import { getTaskById } from '../taskStore.service';
+import { askField } from '../answerStats.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../waveRanking.service';
 
 /** The tester's 49931 (1691): the server's ranking, read without the model's plan choosing. */
@@ -40,7 +41,7 @@ const stat = (
   asked: number,
 ): { phone: string; field: string; asked: number; yes: number; referred: number } => ({
   phone,
-  field: 'elektrikosi saklsi gakvanilobis',
+  field: askField(TITLE),
   asked,
   yes,
   referred: 0,

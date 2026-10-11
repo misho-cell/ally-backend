@@ -44,13 +44,22 @@ function nominative(word: string): string {
   return word;
 }
 
-/** Does the line name a trade, in any of its cases? */
-function namesATrade(line: string): boolean {
+/**
+ * The trade a line names, in any of its cases: the profession family's own word
+ * when it belongs to one, else the occupation; null when it names no trade.
+ * 1689 files a person's answers under it.
+ */
+export function tradeNamedIn(line: string): string | null {
   const asSaid = line
     .split(/[^\p{L}\p{M}]+/u)
     .map(nominative)
     .join(' ');
-  return professionFamilyIn(asSaid) !== null || matchOccupation(asSaid) !== null;
+  return professionFamilyIn(asSaid) ?? matchOccupation(asSaid);
+}
+
+/** Does the line name a trade, in any of its cases? */
+function namesATrade(line: string): boolean {
+  return tradeNamedIn(line) !== null;
 }
 
 /** Does the owner's line ask to meet or reach somebody it names, not a trade? */
