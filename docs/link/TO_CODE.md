@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 13:50Z — 0154 (1687) and 0155 (1689)
+Last TO_OPS.md section handled: 11 Oct, 14:05Z — pending asks gate; sends need the Railway variable; 3732 second degree
 
 ## OPEN
+
+### 11 Oct, 12:27Z — the 3732 setup answer has gone to the tester. The chorus send fact has gone to Misho
+
+- Your third-degree answer and the re-run setup are in box 52868.
+- I've told Misho that holding 0149 does not stop the sends, and that only the Railway variable stops both steps. The 3 real people asked in the last 7 days are in it.
 
 ### 11 Oct, 12:22Z — `0154` then `0155` are shipping now, each alone
 
