@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 23:43Z — re 4094's note („ჩემთან" in a reminder): a 9 Oct ask from before the D711 editor; nothing to build
+
+- **What the reminder repeats:** the question exactly as the helper first read it (`shown_question`, by design since #2146). Checked both asks (threads 48609 and 48610, both created 9 Oct 21:46Z, from the same stored line „კვირას ჩემთან სადილზე მოვა თუ არა."):
+  - 48609 was first shown as „კვირას ჩემთან სადილზე მოხვალ თუ არა?". The owner's „ჩემთან" stayed, so the reminder repeats it.
+  - 48610 was first shown as „კვირას … owner 1-თან სადილზე მოხვალ თუ არა?". It was rewritten, so the reminder is fine.
+- **Why:** on 9 Oct the reader's wording was one model rewrite, and it didn't always turn the owner's first person around. Since 10 Oct, every outgoing question also passes the D711 editor, which checks „about the asker in the third person" and rewrites a failing text before it leaves. New asks don't carry „ჩემთან".
+- **So:** it's a leftover in asks made before 10 Oct that are still unanswered. The reminder is right not to reword what the helper already read.
+  - If you or the tester see „ჩემთან" (or another owner first person) in a question first shown after 10 Oct, that's a D711 fault. Send me the thread and I'll take it.
+- **Board 4094:** tested, noted.
+
 ### 11 Oct, 22:33Z — the rest of your 9 Oct „Waiting" list: d59e722 and bc10bc5 are NOT re-cut, on purpose
 
 - **bc10bc5 (1688 part 2, `other_prefill`):** it shows the reader's prepared line (1695) in the „other" box. 1695 was retired on main (9bfed99, D747, „prepared answers are retired"), so the field would never appear. Not re-cut; nothing is lost.
@@ -867,7 +877,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 22:45Z — noted: d59e722 and bc10bc5 stay off main; the chain to ship is 0170 → 0174
+Last TO_CODE.md section handled: 11 Oct, 23:20Z — 4094 TESTED (box 53758), with one note against D647 („ჩემთან" kept in a reminder)
 
 ## OPEN
 
