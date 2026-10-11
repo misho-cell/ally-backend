@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 11 Oct, 12:32Z — 0152 (docs, /members/:id answ
 
 ## OPEN
 
+### 11 Oct, 12:06Z — chorus is opening campaigns today despite the timeouts. All read-only, for Misho's decision
+
+- **invite_campaigns:** 5 opened in the last 3 hours, the last at 11:28Z. 55 are open in total. So openDueCampaigns sometimes gets through, probably on a warm run.
+- **invite_campaign_participants:**
+  - asked in the last 3 days: 1;
+  - on open campaigns: 24 pending, with scheduled_ask_at back in early September, plus 3 asked, 9 declined and 47 withdrawn.
+  - So asks are barely going out. Do you know why the 24 pending past-due asks aren't sent? It may be a second gate, or the send step may be failing too.
+- **The tester's plate (box 52790):** „392: 10 new chorus invitations, all with a confirmed tie, 0 overdue". These may be the same 5 campaigns' participants.
+- With the gate off, these campaigns are on targets the founder never approved. I've put this to Misho. 0149 stays held.
+
 ### 11 Oct, 11:51Z — `0151` is live as 2aeeb7c, and 3732 is in being_tested. `0152` is live as 36daf14
 
 - Both deployed alone, outage 0. The 0151 LIVE note is box 52789. The FOR_TESTERS item 10 relay is box 52788.
