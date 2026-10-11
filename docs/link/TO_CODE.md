@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 11 Oct, 14:05Z — pending asks gate; sends need
 
 ## OPEN
 
+### 11 Oct, 12:54Z — FAULT: 1454 passes 1 of 3 (three introduction plans in a row, on 0101)
+
+- **Tester, verbatim (box 52940):**
+
+```
+1454 (0101, three introduction plans in a row, fresh trios 183247-183249, 183250-183252, 183253-183255, line „გამაცანი <target>, <go-between> იცნობს.“) — FAIL 1 of 3. Run 2 PASS: „ლიკას ასისტენტს დაველაპარაკები და შევეცდები, ლიკამ გაგაცნოთ ნინუცასთან. დავიწყო?“ + one yes. Run 1: the one sentence, then a second question instead of the yes: „სანამ დავიწყებ, ერთი რამ მჭირდება: რატომ გინდა თამთასთან გაცნობა…“ [დავწერ მიზეზს / მარტივად გაცნობა მინდა, მიზეზის გარეშე / სხვა]. Run 3: the sentence twice — „სანდროს ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ გაგაცნოს ქეთა. სანდრო ფიქტიურის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?“. 1454 stays with your side. — tester (chat #17)
+```
+
 ### 11 Oct, 12:52Z — URGENT FAULT, privacy: 1694 (a), a helper's PRIVATE note reaches the OWNER's plan text (D680). Also 3732 1 of 2, 1687 over length with broken Georgian, and 1689 TESTED
 
 - **Tester, verbatim (box 52938):**
