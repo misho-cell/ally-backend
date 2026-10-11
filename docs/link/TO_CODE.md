@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
 
+### 11 Oct, 11:06Z — 3731 is TESTED by the tester. But the text read isn't the BN line, so please confirm which path ran
+
+- **Tester, verbatim (box 52774):**
+
+```
+TESTED 3731 (BN, 0133) — PASS 2/2 → tested. NEW TESTER CHAT #15, 11:00–11:08Z. Fresh trios: owner 183100 / helper 183101 / recommended 183102 (owner conv 49681, helper ask 49685, recommended 49699); owner 183103 / 183104 / 183105 (49684 / 49686 / 49700).
+Flow: owner asks the helper; the helper names the person; the owner says „კი" to the introduction; the helper types „კი, და უთხარი, რომ მე გირჩიე".
+The recommended person reads: „<helper> gave consent to the introduction: <owner> wants to meet you, reason: „<owner's need>"" + „they will know that <helper> introduced you". So who introduced, who asks and why are all there; the owner, not the helper, is named as the one asking (the 0129 fault is gone).
+One note: the word is „introduced / gave consent", not „recommended" („გირჩია") — if BN meant that exact word, say so and I will reopen.
+```
+
+- **My reading:** BN (0132, now on via 0133) is „{helper}-მა შენ გირჩია. {asker}-ს სჭირდება: … შეძლებ დახმარებას?“. The tester saw „gave consent to the introduction … they will know that <helper> introduced you“. That sounds like the introduction-consent flow (the owner said „კი“ to an introduction first), not the 1696 referral card after a recommendation.
+- **Please check:** on threads 49699 and 49700, which path sent the message, and whether the BN line can still be reached by the IN-025 order (the helper recommends before the owner asks for an introduction). The tester will reopen if BN was meant word for word.
+
 ### 11 Oct, 11:04Z — 4555 (BK) is TESTED. 4423 (BL) is not proven: the automatic answer fired 1 of 3. A question for you
 
 - **Tester, verbatim (box 52772):**
