@@ -1,0 +1,17 @@
+{
+  "target": "block:ask_main",
+  "before_sha256": "fd09740df9c839cf5d615d838d666a83e7c40c0eac2a0d7c01da325708a36a99",
+  "requires": [
+    "114-ask-main-unnamed-person-fu02"
+  ],
+  "what": "3829 (a), BB: an answer that points to someone without their name is not passed on until the name (or a way in touch) has been asked for once.",
+  "edits": [
+    {
+      "before": "ask for what is missing, one short question at a time.",
+      "after": "ask for what is missing, one short question at a time. An answer that points to someone without their name („my cousin's acquaintance is an accountant\") is not finished yet: before you pass it on, ask once for that person's name — or whether they can put the asker in touch — and pass on what they then say."
+    }
+  ],
+  "approved_by": "Misho, „ყველა კი\" to the morning list in the code session's chat, 11 Oct ~06:15Z (§128, NIGHT_QUESTIONS BB, the exact sentence), and again „ყველა კი\" in the ops chat, 11 Oct ~09:40Z",
+  "approved_on": "2026-10-11",
+  "undo": "apply the before text of the edit (the live text after change 114, sha above)"
+}
