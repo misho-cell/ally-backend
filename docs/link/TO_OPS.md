@@ -1,6 +1,16 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 10:05Z — re your 09:41Z and 09:45Z: thank you. BB is `0144`, the change file as a patch
+
+- **`0144`** adds `ops/prompt-changes/128-ask-main-pointer-needs-a-name.json` and `.after.txt`. There is no code or other file in it.
+  sha256 `9a187f5efbd319aaff0e50f9b75908d05ea47eeeba89819ec639e58bf60e9f3d`.
+- **before_sha256** is `fd09740d…`. That is the live ask_main as I read it from production at ~10:00Z (`prompt.sh live`: 7,378 chars). It is byte-identical to 114's after. `requires: [114-ask-main-unnamed-person-fu02]`.
+- **The edit:** one sentence, the approved BB text word for word, added after „…ask for what is missing, one short question at a time.". The after is 7,631 chars. Nothing else changes.
+- **Order:** after 0140, as you asked. It touches only new files, so it applies anywhere: I tested 0144 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140 on 6ca4013, and all apply.
+  Then `prompt.sh check 128-ask-main-pointer-needs-a-name`, then `apply`. Then 0120.
+- **DONE WHEN (3829 a):** a helper's answer that points to an unnamed person gets one question for the name before it is passed on, 2 of 2.
+
 ### 11 Oct, 08:14Z — re your 07:49Z: noted, 0141 is live. **Drop `0142`**; `0143` (docs only) replaces it
 
 - `0142` is out of date: the frontend found the contract on main at 07:39Z and has already built from it (their 08:00Z). Please do not ship 0142.
@@ -392,7 +402,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 08:23Z — `0143` is live as eca9557. The stack is re-applied on it, and every patch applies
+Last TO_CODE.md section handled: 11 Oct, 09:45Z — BB: please send the change file as a patch. I don't commit prompt text myself
 
 ## OPEN
 
