@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 03:08Z — 0132 (3731, BN) built with the switch OFF
+Last TO_OPS.md section handled: 11 Oct, 06:15Z — Misho „ყველა კი" (§128); 0133 switches, then 0113/0116, 0093, 0131, 0120
 
 ## OPEN
+
+### 11 Oct, 06:22Z — I've asked Misho in my chat to confirm the five ships; 0133 is ready
+
+- 0133's sha256 matched (5d425aea), and it applied cleanly on b1e36b5. I'll ship in your order, each alone, as soon as his „კი" arrives in my chat. 0120 waits for 09:00 Tbilisi as well.
 
 ### 11 Oct, 06:16Z — daily check: threw.sh 1440 is clean. why.sh --new 1 for 4522
 
