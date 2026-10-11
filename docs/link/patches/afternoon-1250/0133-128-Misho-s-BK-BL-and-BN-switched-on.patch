@@ -1,0 +1,190 @@
+From 10cc1f77847026666c616588ee51c239dc3df884 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 06:11:34 +0000
+Subject: [PATCH] =?UTF-8?q?=C2=A7128:=20Misho's=20=E2=80=9E=E1=83=A7?=
+ =?UTF-8?q?=E1=83=95=E1=83=94=E1=83=9A=E1=83=90=20=E1=83=99=E1=83=98"=20?=
+ =?UTF-8?q?=E2=80=94=20BK,=20BL=20and=20BN=20switched=20on?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho answered the whole morning list „ყველა კი" (11 Oct ~06:15 UTC,
+recorded as §128 in ADMIN_WRITE_OPERATIONS). The three items already
+built behind a switch go ON:
+
+- BK (4555): MENTIONED_NOTE_LINE_ON — the owner's line after a value kept
+  only as „mentioned".
+- BL (4423): ANSWER_NOT_QUESTION_ON — an assistant-only answer to a
+  helper's question is not sent while it is a question.
+- BN (3731): RECOMMENDED_RELAY_ON — the recommended person is told who
+  recommended her and what is needed.
+
+Each test now pins the switch ON and the old behaviour when passed off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                  | 17 +++++++++++++++++
+ docs/NIGHT_QUESTIONS.md                         |  3 +++
+ .../aMentionedNoteIsNotSaidSaved.test.ts        |  7 ++++---
+ .../__tests__/answerNotQuestion.test.ts         |  7 ++++---
+ src/services/__tests__/recommendedRelay.test.ts |  7 ++++---
+ src/services/answerNotQuestion.ts               |  8 ++++----
+ src/services/mentionedNoteLine.ts               |  4 ++--
+ src/services/recommendedRelay.ts                |  8 ++++----
+ 8 files changed, 42 insertions(+), 19 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index ac75c7c..0ed3f3c 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6219,3 +6219,20 @@ D772 + D773, and D771 + BI; the founder's answers came through the tester's box,
+ - **D771 — the monthly contacts reminder in the assistant's own words.** Taken as a yes on the idea. The instruction is model-facing
+   (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
+ - **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
++
++**§128 — 11 October ~06:15 UTC, Misho in the code session's chat: „ყველა კი"** (yes to every item on the morning list I put to him at
++~06:05 UTC). Each item, as it stood on that list:
++
++- **0113 + 0116 (1849, members-only paths and the member card, §127):** ship. They also close 3732's chain part (NIGHT_QUESTIONS BM).
++- **BN (3731):** the line the recommended person reads after the helper's tap, exactly as in NIGHT_QUESTIONS BN.
++  `RECOMMENDED_RELAY_ON = true`.
++- **BL (4423):** the note that stops an assistant-only question sent back to a helper, exactly as in NIGHT_QUESTIONS BL.
++  `ANSWER_NOT_QUESTION_ON = true`.
++- **BK (4555):** the owner's line after a value kept only as „mentioned", exactly as in NIGHT_QUESTIONS BK. `MENTIONED_NOTE_LINE_ON = true`.
++- **0131 (2641):** the public `GET /invite-codes/:code` route, one bit, rate-limited. It opens access, on this word (and §99.11).
++- **0120 (chorus):** the inviter read that no longer times out. It restarts the campaign's real outreach, so it ships in daylight
++  (Tbilisi), not at night (§121).
++- **BJ (D771), BB (3829 a), BF (1697), BH (frontend item 7):** the drafted texts in NIGHT_QUESTIONS, approved as written. Each is built
++  and shipped on its own.
++- **0093 (4295):** the timers run between deploys.
++- **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index 80eb29b..324ef45 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -62,6 +62,9 @@ and answering the tester are all ordinary night work and need nobody.
+ 
+ ## Tonight's list
+ 
++Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
++(also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
++
+ Cleared 7 October 07:15 UTC: Q is done (c258f69, follow-up ae146b6); P was put to Misho again and waits below.
+ 
+ Cleared 6 October 07:15 UTC: M, N and O were put to Misho in Georgian after the night window; they wait below.
+diff --git a/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts b/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts
+index c48e17c..f41e646 100644
+--- a/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts
++++ b/src/services/__tests__/aMentionedNoteIsNotSaidSaved.test.ts
+@@ -16,10 +16,11 @@ describe('a value kept only as a mentioned note', () => {
+     expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka', true)).toBe(reply);
+   });
+ 
+-  it('does nothing while it is off, which it is until Misho’s yes (BK)', () => {
++  it('is ON by Misho’s yes (§128, BK), and does nothing when switched off', () => {
+     const reply = 'შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი“.';
+-    expect(MENTIONED_NOTE_LINE_ON).toBe(false);
+-    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka')).toBe(reply);
++    expect(MENTIONED_NOTE_LINE_ON).toBe(true);
++    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka')).not.toBe(reply);
++    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka', false)).toBe(reply);
+   });
+ 
+   it('is applied to every reply, with the value the save kept as a note', () => {
+diff --git a/src/services/__tests__/answerNotQuestion.test.ts b/src/services/__tests__/answerNotQuestion.test.ts
+index 671590a..98bec6d 100644
+--- a/src/services/__tests__/answerNotQuestion.test.ts
++++ b/src/services/__tests__/answerNotQuestion.test.ts
+@@ -39,9 +39,10 @@ describe('answersAQuestionWithAQuestion', () => {
+     expect(answersAQuestionWithAQuestion({ ...base, assistantOnly: false }, true)).toBe(false);
+   });
+ 
+-  it('is OFF until Misho approves the note (NIGHT_QUESTIONS BL)', () => {
+-    expect(ANSWER_NOT_QUESTION_ON).toBe(false);
+-    expect(answersAQuestionWithAQuestion(base)).toBe(false);
++  it('is ON by Misho’s yes (§128, BL), and lets everything through when switched off', () => {
++    expect(ANSWER_NOT_QUESTION_ON).toBe(true);
++    expect(answersAQuestionWithAQuestion(base)).toBe(true);
++    expect(answersAQuestionWithAQuestion(base, false)).toBe(false);
+   });
+ 
+   it('is checked in createAsk on the answered ask, after the round cap', () => {
+diff --git a/src/services/__tests__/recommendedRelay.test.ts b/src/services/__tests__/recommendedRelay.test.ts
+index b67a2ca..76d8abd 100644
+--- a/src/services/__tests__/recommendedRelay.test.ts
++++ b/src/services/__tests__/recommendedRelay.test.ts
+@@ -24,9 +24,10 @@ describe('recommendedRelayLine', () => {
+     expect(recommendedRelayLine('ka', { ...RELAY, asker: '' }, true)).toBeNull();
+   });
+ 
+-  it('is OFF until Misho approves the lines (NIGHT_QUESTIONS BN)', () => {
+-    expect(RECOMMENDED_RELAY_ON).toBe(false);
+-    expect(recommendedRelayLine('ka', RELAY)).toBeNull();
++  it('is ON by Misho’s yes (§128, BN), and keeps the 1696 line when switched off', () => {
++    expect(RECOMMENDED_RELAY_ON).toBe(true);
++    expect(recommendedRelayLine('ka', RELAY)).not.toBeNull();
++    expect(recommendedRelayLine('ka', RELAY, false)).toBeNull();
+   });
+ 
+   it('is used only for a recommendation, with the names the referred person knows', () => {
+diff --git a/src/services/answerNotQuestion.ts b/src/services/answerNotQuestion.ts
+index 99fef56..a257171 100644
+--- a/src/services/answerNotQuestion.ts
++++ b/src/services/answerNotQuestion.ts
+@@ -6,12 +6,12 @@
+  * owner said. So an assistant-only reply to a helper's question is not sent
+  * while it is itself a question, and the run is told to write it as a statement.
+  *
+- * OFF until Misho's yes on the exact note below (NIGHT_QUESTIONS BL): the note
+- * is model-facing text (D44).
++ * ON by Misho's „ყველა კი" on the morning list, 11 Oct ~06:15 UTC (§128,
++ * NIGHT_QUESTIONS BL): the note is model-facing text (D44), approved as written.
+  */
+-export const ANSWER_NOT_QUESTION_ON = false;
++export const ANSWER_NOT_QUESTION_ON = true;
+ 
+-/** ⚠️ MODEL-FACING (D44), NOT YET APPROVED — NIGHT_QUESTIONS BL. */
++/** MODEL-FACING (D44), approved word for word — §128, NIGHT_QUESTIONS BL. */
+ export const ANSWER_NOT_QUESTION_NOTE =
+   'არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის სახელით პასუხობ — ეს პასუხი უნდა ' +
+   'იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ' +
+diff --git a/src/services/mentionedNoteLine.ts b/src/services/mentionedNoteLine.ts
+index 56b9f62..91662a3 100644
+--- a/src/services/mentionedNoteLine.ts
++++ b/src/services/mentionedNoteLine.ts
+@@ -8,9 +8,9 @@ import { RunLanguage } from './runLanguage';
+  * happened (kept_as: mentioned_note) and the model ignored it both times. So
+  * the sentence that claims the save is replaced by the server's own line.
+  *
+- * OFF until Misho's yes on the exact lines below (NIGHT_QUESTIONS BK).
++ * ON by Misho's „ყველა კი" on the morning list, 11 Oct ~06:15 UTC (§128, NIGHT_QUESTIONS BK).
+  */
+-export const MENTIONED_NOTE_LINE_ON = false;
++export const MENTIONED_NOTE_LINE_ON = true;
+ 
+ const MENTIONED_LINE: Readonly<Record<RunLanguage, (value: string) => string>> = {
+   ka: (value) => `ეს ჩავინიშნე როგორც ნახსენები: „${value}“. შენი ნათქვამი უცვლელად დარჩა.`,
+diff --git a/src/services/recommendedRelay.ts b/src/services/recommendedRelay.ts
+index 6115f05..4562107 100644
+--- a/src/services/recommendedRelay.ts
++++ b/src/services/recommendedRelay.ts
+@@ -9,11 +9,11 @@ import { RunLanguage } from './runLanguage';
+  * person recommended to help is told who recommended her (or that somebody
+  * did), who needs what, and asked whether she can help.
+  *
+- * ⚠️ USER-VISIBLE (D44), NOT YET APPROVED — NIGHT_QUESTIONS BN. OFF until
+- * Misho's yes on the exact lines; only Georgian was drafted, so any other
+- * language keeps the 1696 line.
++ * USER-VISIBLE (D44), ON by Misho's „ყველა კი" on the morning list, 11 Oct
++ * ~06:15 UTC (§128, NIGHT_QUESTIONS BN). Only Georgian was drafted, so any
++ * other language keeps the 1696 line.
+  */
+-export const RECOMMENDED_RELAY_ON = false;
++export const RECOMMENDED_RELAY_ON = true;
+ 
+ export interface RecommendedRelay {
+   /** The helper, as the recommended person knows them; null when the helper chose no name. */
+-- 
+2.43.0
+

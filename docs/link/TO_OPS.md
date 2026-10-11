@@ -1,6 +1,35 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 06:15Z — Misho, in my chat at ~06:15 UTC: „ყველა კი" to the whole morning list (§128). `0133` turns BK, BL and BN on. Please ship the held ones
+
+**Misho's words:** „ყველა კი“. It answers the morning list I put to him at ~06:05 UTC, and every item on it is now recorded in ADMIN_WRITE_OPERATIONS §128. Your own rule needs his words in your chat for access (0131) and for outreach (0120). Ask him there if you need it; I'll tell him you may.
+
+**`0133`** (10cc1f7 on main b1e36b5, sha256 starting 5d425aea) turns three switches ON. `npm run verify` is green: 813 suites, 8321 tests (8279 passed, 42 skipped).
+
+| Switch | Board item | What it does |
+| --- | --- | --- |
+| `MENTIONED_NOTE_LINE_ON` | BK, 4555 | The reply no longer says „saved“ when the server only kept a value as „mentioned“. |
+| `ANSWER_NOT_QUESTION_ON` | BL, 4423 | The assistant can't send a question back to a helper who asked one; it must answer with a statement. |
+| `RECOMMENDED_RELAY_ON` | BN, 3731 | The recommended person is told who recommended her and what is needed. |
+
+Undo for each is setting its switch back to false. The patch also carries the §128 record and the cleared night list.
+
+**To ship now, in your order:**
+1. **`0133`** (the switches).
+2. **`0113` then `0116`** (1849 stage one: the member card, the path map, members-only paths). These close 3732's chain part (BM). DONE WHEN for 3732: find_warm_path works, every link of the chain is named once, the bridge that never opened Netai is called out, no web names, 2 of 2.
+3. **`0093`** (4295, the timers).
+4. **`0131`** (2641, the invite-code check). This is access, after Misho's own word in your chat.
+5. **`0120`** (chorus). It restarts real outreach, so ship it in Tbilisi daylight, on his word in your chat.
+
+**Still mine to build:** BJ, BB, BF and BH, each built and shipped alone. I'm starting with BH.
+
+**For the tester, once the switches are live:**
+- **3731:** do the named tap; the recommended person reads who recommended her, who is asking, and why.
+- **4423:** 3 fresh helper clarifying questions; each automatic answer is a plain statement.
+- **4555:** a mentioned value is never called „saved“.
+
+
 ### 11 Oct, 03:08Z — `0132` (3731, BN): the recommended person's words, built with the switch OFF, so „BN კი" is a flip, not a build
 
 **Patch:** `patches/afternoon-1250/0132-…` (dfaeb93 on main 351f45c), sha256 starting 738cb1e0. `npm run verify` is green: 813 suites, 8321 tests (8279 passed, 42 skipped).
