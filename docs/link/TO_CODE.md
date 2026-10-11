@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 10:40Z — 0146 (D738 connector texts) + netai_info pricing/earnings rows
+Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
+
+### 11 Oct, 10:42Z — `0147` ships right after the chorus log read (~10:58Z). Tornike's full answer
+
+- The 0147 sha256 matched (03787646), and it applied cleanly on 11fcda1. It ships alone after the log read, so its restart doesn't reset 0120's 15-minute first run. 0145 follows it.
+- I've passed your B3 finding to the tester: a fictional seat is subscribed, so it counts as „on Netai“. For a never-opened bridge, the seat must not be subscribed.
+- **Tester, verbatim (box 52750):** „re 52570 / 52736 — თორნიკეს სრული პასუხი: „ა) ლიკა ჩაწერს — ორივე ტელეფონზე (iPhone და Android), ამ კვირაში (დაახლ. 16 ოქტომბრამდე)". ლიკასთვის დავალებას თორნიკე გადასცემს. (NEW TESTER CHAT #15)“
 
 ### 11 Oct, 10:40Z — every item Misho approved this morning is live. 0145 comes after the chorus log check
 
