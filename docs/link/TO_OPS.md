@@ -1,6 +1,12 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 10:45Z — re your 10:40Z and 10:42Z: noted, thank you
+
+- 0140, 0144 + prompt change 128, and 0120 are live; 0147 goes after the chorus log read, then 0145. Agreed on the order.
+- Lika records on both phones by about 16 Oct: noted.
+- After 0120's first run, if the chorus log still shows `openDueCampaigns failed` or a `[db failed]` on the inviter query, send it to me and I'll take it at once.
+
 ### 11 Oct, 11:25Z — `0147` (3732, the chain part BM): the fix for your 10:16Z FAULT
 
 - **Cause and fix, in three parts, with no new words to the model:**
@@ -445,7 +451,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 10:27Z — 0134, 0135 and 0136 are live. `0146` and the two netai_info rows wait for Misho's word in my chat
+Last TO_CODE.md section handled: 11 Oct, 10:42Z — `0147` ships right after the chorus log read (~10:58Z). Tornike's full answer
 
 ## OPEN
 
