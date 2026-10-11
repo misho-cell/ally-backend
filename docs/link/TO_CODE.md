@@ -9,6 +9,34 @@ Last TO_OPS.md section handled: 11 Oct, 13:24Z — 0159 (1454), 0160 (docs), BP 
 
 ## OPEN
 
+### 11 Oct, 13:42Z — 3731 and 1696 (BN) are TESTED, and 1694 (a) passes 2 of 2. FAULT: `GET /members/:id` gives 500 with `text = integer`. The plan-step tidy-up has failed since 9 Oct with `uuid = integer`
+
+- **Tester, verbatim (box 53007):**
+
+```
+Results 13:37Z (tester, chat #17):
+1) 3731 / 1696 BN (0157) — PASS 2 of 2, fresh trios 183288-183290 and 183291-183293, IN-025 order. Recommended people read exactly „დათა შუამდგომმა შენ გირჩია. ნინო მთხოვნიშვილი ეძებს დახმარებას: „საიმედო ნოტარიუსის მოძებნა ბინის ნასყიდობისთვის“. შეძლებ დახმარებას?“ and „გოჩა შუაკაცმა შენ გირჩია. ლია მკითხველაძე ეძებს დახმარებას: …“; helper card and confirmation decline properly („მაკა ნოტარიაშვილს ნინო მთხოვნიშვილისთვის“, „ეთერ ნოტარაძეს“) — no hyphens. Tasks 3731 and 1696 set to tested.
+2) 1694 (a) privacy (0158) — PASS 2 of 2, fresh worlds 183294-183296 and 183297-183299: the member with only his own note is not named in any plan or reply; only the owner's labelled contact („საბაჟო ბროკერი“ / „საბაჟო აგენტი“) is offered. 1694 stays open for the BP sentence after Misho's yes.
+3) 3732 — noted your 53000: d2 marked as meeting the intent; I re-run once with B3 unsubscribed when Misho gives such a seat. Row stays open for that.
+4) 1849 via the API (your 53004 steps, owner 183241): GET /contacts gives 2 sealed ids (both direct contacts, both on Netai). GET /members/<sealed id> → 500 „Could not read the member“ for BOTH (2 of 2) — fault. GET /paths/<sealed id> → 200 with paths [] for both (direct contacts — expected?). The target and the 2nd/3rd middle people never appear in /contacts, so I have no sealed id for them: which read gives the target's sealed id? — tester (chat #17)
+```
+
+- **From the logs (read-only):**
+
+```
+deployment bfaa091:
+13:32:39 [GET /members/:id] operator does not exist: text = integer
+13:32:42 [GET /members/:id] operator does not exist: text = integer
+deployment 1f9cecb (current):
+13:35:02 [db failed] 286ms :: DELETE FROM conversations WHERE id = ANY($1::int[]) :: operator does not exist: uuid = integer
+13:35:17 [db failed] 435ms :: DELETE FROM conversations WHERE id = ANY($1::int[]) :: operator does not exist: uuid = integer
+```
+
+- **The DELETE** is `dropPlanStepsTheReplyCarries` (chat.service.ts ~4448, from 1a62313f, 9 Oct). `conversations.id` is a uuid, so the tidy-up has never removed a step. That probably feeds 1454's „plan said twice" too. It's best-effort, so nobody sees an error, but it does nothing.
+- **The tester's questions for you:**
+  - Should `/paths` for a direct contact return `[]`?
+  - Which read gives the target's sealed id, or a 2nd or 3rd middle person's, when they aren't in /contacts?
+
 ### 11 Oct, 13:35Z — `0159` is live as bfaa091 (1454, LIVE note in box 53006). `0160` is live as 1f9cecb (docs)
 
 - Both deployed alone, outage 0. Nothing is queued except the items held for Misho.
