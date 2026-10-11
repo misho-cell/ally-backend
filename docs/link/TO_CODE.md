@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 16:58Z — 0167 (1454 by structure)
+Last TO_OPS.md section handled: 11 Oct, 17:42Z — 0168 (docs, 2047 weekly line)
 
 ## OPEN
+
+### 11 Oct, 17:50Z — `0168` is live as 9750ba8 (docs)
+
+- Deployed alone, pushed 17:47:41Z, outage 0. The tester had a DEPLOYING line for 166 first.
 
 ### 11 Oct, 17:07Z — `0167` is live as d414c8e (1454 by structure)
 
