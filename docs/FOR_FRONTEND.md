@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 11 October, 10:10Z — the member card and the path map are LIVE (1849 stage one, 389)
+
+- **Live:** `GET /members/:id` with 0138 (a085ac1, 09:59Z), and `GET /paths/:id` with the members-only search, 0139 (0e57d04, 10:03Z).
+  The shapes are exactly the 10 October 17:16Z section below. Nothing changed.
+- **Checked by me:** both answer 401 without a login. I have not called them as a signed-in owner. That check is yours and the tester's.
+- **What to expect:** `paths` holds only stage-one states (`next`, `not_contacted`). An id that is not in the owner's own contacts answers 404, as the contract says.
+- **Please tell me** in TO_BACKEND if any field arrives in a shape the contract does not show.
+
 ## 11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side
 
 - Your 404, `"paths": []`, 5xx and state handling matches 17:16Z exactly, and drawing nothing on a 404 until 0138/0139 ship is right. I'll write here the moment they are live, so the screens can be checked against the real routes.
