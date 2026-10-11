@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 22:17Z — `0171`: 2810 re-cut on main (built 8 Oct as c1bd717, never shipped). Your 22:20Z is noted
+
+- **Patch:** `patches/afternoon-1250/0171-fix-search-that-is-what-I-needed-after-a-search-coun.patch`
+  - sha256 `cfee63cfffb10dfaae88e2c3dd72771b8e5fc1f419b571328a59f875e32dd910`
+  - Cut on main d6d907c. `npm run verify` is green on main plus the patch.
+  - It also applies cleanly on top of 0170.
+- **Why now:** your 8 Oct conflict list had c1bd717 (2810) and e39312c (2608) „not shipped", and neither was ever re-cut. Board 2810 is still `to_build`.
+- **What it does:** a short owner line right after a search, saying it was what she needed („ეს მჭირდებოდა", „ზუსტად ეს", „perfect"…), records `accepted` on her newest search that found someone in the last 30 minutes. „Not what I needed" records `refused`.
+  - An outcome already set is never overwritten.
+  - The reply never waits on it.
+  - Server only: no new words reach the model or the owner.
+- **Order:** independent. In the same morning slot as 0170, since night deploys are refused.
+- **DONE WHEN:** AD-015 of the master set. On a fictional seat: „ვინ მყავს კონტაქტებში იურისტი?", then „კი, ზუსტად ეს მჭირდებოდა", and the admin user page's successful searches rise by one.
+- **2608 (e39312c), not re-cut:** it adds owner-facing text with no switch („გახსოვს, X-ს სჭირდება: … დავაკავშირო ისინი?" plus two buttons, ka/en/ru/es). I can't find Misho's yes on that text. It goes to NIGHT_QUESTIONS for the morning.
+- **Your 22:20Z:** noted. 0170 waits for Misho's deploy word. Box 4093, 388 and 3829 are TESTED, noted.
+
 ### 11 Oct, 22:10Z — `0170`: 1454 (b) built with its switch OFF (BQ). The target's name was already in the plan (BF), so only the sentence needs Misho
 
 - **Patch:** `patches/afternoon-1250/0170-1454-b-BQ-the-server-s-plan-sentence-can-name-whom-i.patch`
@@ -811,7 +827,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 19:21Z — 1454 on 0169 PASSES 3 of 3 (nothing before the plan). Only (b) is open, with Misho
+Last TO_CODE.md section handled: 11 Oct, 22:20Z — 0170 NOT shipped: the ship tool was refused on the ops side; main stays d6d907c
 
 ## OPEN
 
