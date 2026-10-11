@@ -25,6 +25,22 @@ describe('the record', () => {
     expect(askField(null)).toBe('');
   });
 
+  // 1689 (box 48543): „arkitektoris mozebna kerzo" was the goal's first words, not a field.
+  it('files a goal that names a trade under the trade, in any case and in either language', () => {
+    expect(askField('კარგი არქიტექტორის მოძებნა კერძო სახლის პროექტისთვის ვაკეში')).toBe(
+      'არქიტექტორი',
+    );
+    expect(askField('Find a good lawyer in Tbilisi')).toBe('იურისტი');
+    expect(askField('ვეძებ ადვოკატს სასამართლოსთვის')).toBe('იურისტი');
+  });
+
+  it("leaves the empty '' row off the admin page when it holds nothing", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await answerStatsOf(180279);
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("NOT (field = '' AND asked = 0 AND bridged = 0)");
+  });
+
   it('is recounted from the source tables, never incremented', async () => {
     await refreshAnswerStats(180279);
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
@@ -69,7 +85,8 @@ describe('the record', () => {
   it('the admin reads it, with a limit', async () => {
     await answerStatsOf(7);
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain('FROM answer_stats WHERE user_id = $1');
+    expect(sql).toContain('FROM answer_stats');
+    expect(sql).toContain('WHERE user_id = $1');
     expect(params).toEqual([7, 50]);
   });
 });

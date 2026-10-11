@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { fieldTerms } from './prematch.service';
+import { tradeNamedIn } from './personByName';
 import type { AnswerStatsRow } from '../types';
 
 /**
@@ -19,11 +20,16 @@ const SWEEP_LOOKBACK_HOURS = 2;
 const SWEEP_USERS_MAX = 500;
 const ADMIN_ROWS_MAX = 50;
 
-/** The field an ask is filed under: the goal's first field words, '' when it names none. */
+/**
+ * The field an ask is filed under. 1689 (box 48543): it was the goal's first
+ * three words, so „კარგი არქიტექტორის მოძებნა…" was filed as „arkitektoris
+ * mozebna kerzo" and every goal made a field of its own. A goal that names a
+ * trade is filed under the trade's own word, so a person's record adds up across
+ * goals; one that names none keeps its first field words; '' when it has none.
+ */
 export function askField(goalText: string | null): string {
-  return fieldTerms(goalText ?? '')
-    .slice(0, FIELD_WORDS)
-    .join(' ');
+  const text = goalText ?? '';
+  return tradeNamedIn(text) ?? fieldTerms(text).slice(0, FIELD_WORDS).join(' ');
 }
 
 /** Recount one person's record from the source tables, every field at once. */
@@ -106,12 +112,17 @@ export async function sweepAnswerStats(): Promise<number> {
   return recent.rows.length;
 }
 
-/** The admin per-user page's read-only box. */
+/**
+ * The admin per-user page's read-only box. 1689 (box 48543): the '' row, kept for
+ * `bridged`, showed as an empty line when it held nothing; it is left off then.
+ */
 export async function answerStatsOf(userId: number): Promise<AnswerStatsRow[]> {
   const result = await query<AnswerStatsRow>(
     `SELECT field, asked, yes, no, referred, later, silent, first_answer_minutes_median,
             helped, bridged
-       FROM answer_stats WHERE user_id = $1 ORDER BY asked DESC LIMIT $2`,
+       FROM answer_stats
+      WHERE user_id = $1 AND NOT (field = '' AND asked = 0 AND bridged = 0)
+      ORDER BY asked DESC LIMIT $2`,
     [userId, ADMIN_ROWS_MAX],
     QUERY_TIMEOUT_MS,
   );
