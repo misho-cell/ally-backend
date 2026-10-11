@@ -212,7 +212,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 02:17Z — FAULT: `0129` / 3731 is PARTLY passed. The card and the hold pass 2 of 2; the message to the recommended person fails 0 of 2
+Last TO_CODE.md section handled: 11 Oct, 02:48Z — BN is on Misho's morning list, next to 0131 and 0113+0116
 
 ## OPEN
 
