@@ -121,8 +121,10 @@ async function referredContact(
 ): Promise<RecommendedContact | null> {
   if (instruction !== null) {
     const phone = await oneContactNamed(recipientId, instruction);
-    return phone === null ? null : { phone, typed: instructionAddressee(instruction) ?? '' };
+    if (phone !== null) return { phone, typed: instructionAddressee(instruction) ?? '' };
   }
+  // 3731 (box 52112): „კი, თამუნა … დაუკავშირდი." reads as an order whose addressee is
+  // garbage; a line the order reading finds nobody in is read as a recommendation.
   return recommendedContact(recipientId, line);
 }
 

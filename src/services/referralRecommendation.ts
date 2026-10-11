@@ -1,4 +1,5 @@
 import { phoneForWords } from './instructedAsk';
+import { contactInstructionIn } from './instructionUnsent';
 
 /**
  * 3731 (MASTER TEST RUN chat #8, IN-025, 2 of 2): the helper answered
@@ -47,6 +48,17 @@ export interface RecommendedContact {
 /** Does the line recommend getting in touch with somebody? */
 export function recommendsSomebody(line: string): boolean {
   return RECOMMENDS_RE.test(line);
+}
+
+/**
+ * 3731 (box 52112, 0 of 2): when no card could be shown, the reader's own run
+ * called relay_ask at once, and the recommended person was asked before any
+ * tap. A line that refers the asker to somebody — an order to ask her, or a
+ * recommendation — is answered by the 1696 card or not at all: that run does
+ * not hold relay_ask. Nothing goes to the referred person before the tap.
+ */
+export function refersSomebody(line: string): boolean {
+  return contactInstructionIn(line) !== null || recommendsSomebody(line);
 }
 
 function nameWordsOf(line: string): string[] {

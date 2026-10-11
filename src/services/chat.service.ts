@@ -239,6 +239,7 @@ import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { asksForAPersonByName, asksToReachAPersonByName, WEB_TOOL_NAMES } from './personByName';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+import { refersSomebody } from './referralRecommendation';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
 import { closeLineIsTheWholeAnswer, SentSide, withoutSentRestatement } from './sentLineGuard';
 import {
@@ -15616,6 +15617,8 @@ export async function processChat(
   const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);
   // 3730 (2): „ask X too" on a goal that has asked is a follow-up, not a new goal and plan.
   const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));
+  // 3731: a reader's line that refers the asker to somebody relays only through the card's tap.
+  const relayHeld = ownerAbsent || thread.type !== 'incoming_ask' || !refersSomebody(userMessage);
   const runTools =
     !ownerAbsent && isReminderRequestOnly(userMessage)
       ? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)
@@ -15624,7 +15627,8 @@ export async function processChat(
             (inviteHeld || tool.name !== INVITE_CONTACT_TOOL.name) &&
             (linkHeld || tool.name !== GET_INVITE_LINK_TOOL.name) &&
             (webHeld || !WEB_TOOL_NAMES.has(tool.name)) &&
-            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)),
+            (newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)) &&
+            (relayHeld || tool.name !== RELAY_ASK_TOOL.name),
         );
   const promptReadyMs = Date.now() - startedAt;
   // Stamp which mode resolved and which blocks loaded (prompt-team request 5c:

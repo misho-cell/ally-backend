@@ -3,7 +3,7 @@ jest.mock('../instructedAsk', () => ({ __esModule: true, phoneForWords: jest.fn(
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { phoneForWords } from '../instructedAsk';
-import { recommendedContact, recommendsSomebody } from '../referralRecommendation';
+import { recommendedContact, recommendsSomebody, refersSomebody } from '../referralRecommendation';
 
 /** 3731 (IN-025, 2 of 2): the helper recommended her own contact, and that person heard nothing. */
 const mockPhone = phoneForWords as jest.MockedFunction<typeof phoneForWords>;
@@ -54,9 +54,36 @@ describe('recommendedContact', () => {
     expect(mockPhone).not.toHaveBeenCalled();
   });
 
-  it('feeds the 1696 card, which sends nothing before the reader taps', () => {
+  it('feeds the 1696 card, falling back to the recommendation when the order names nobody', () => {
     const service = readFileSync(join(__dirname, '..', 'askReferral.service.ts'), 'utf8');
     expect(service).toContain('if (sentence === null && !recommendsSomebody(line)) return null;');
+    expect(service).toContain(
+      "if (phone !== null) return { phone, typed: instructionAddressee(instruction) ?? '' };",
+    );
     expect(service).toContain('return recommendedContact(recipientId, line);');
+  });
+});
+
+/** 3731 (box 52112, 0 of 2): the recommended person was asked before the helper's tap. */
+describe('refersSomebody — no relay before the tap', () => {
+  const BOX_LINE = 'კი, თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი.';
+
+  it('is the tester line, an order to ask, and a recommendation', () => {
+    expect(refersSomebody(BOX_LINE)).toBe(true);
+    expect(refersSomebody('ჰკითხე ეკას, ის გეტყვის')).toBe(true);
+    expect(refersSomebody('ნინოს მიწერე')).toBe(true);
+  });
+
+  it('is not a plain answer', () => {
+    expect(refersSomebody('კი, ვიცნობ, ხვალ დაგირეკავს')).toBe(false);
+    expect(refersSomebody('არ ვიცი')).toBe(false);
+  });
+
+  it('takes relay_ask away from the reader run on such a line, so only the card relays', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "const relayHeld = ownerAbsent || thread.type !== 'incoming_ask' || !refersSomebody(userMessage);",
+    );
+    expect(chat).toContain('(relayHeld || tool.name !== RELAY_ASK_TOOL.name),');
   });
 });
