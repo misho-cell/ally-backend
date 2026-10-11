@@ -3,11 +3,12 @@ jest.mock('../../taskStore.service', () => ({
   __esModule: true,
   createTask: jest.fn(),
   findOpenTaskNamedIn: jest.fn(),
+  getTaskById: jest.fn().mockResolvedValue(null),
 }));
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { createTask, findOpenTaskNamedIn } from '../../taskStore.service';
+import { createTask, findOpenTaskNamedIn, getTaskById } from '../../taskStore.service';
 import { goalNamedIn } from '../../goalMention';
 import { mcpCreateTask } from '../handlers';
 
@@ -201,5 +202,32 @@ describe('every wire that opens a goal asks first', () => {
     expect(
       chat.slice(chat.indexOf('const CREATE_TASK_TOOL'), chat.indexOf('const ASK_CONTACT_TOOL')),
     ).toContain('separate: {');
+  });
+});
+
+// D738 1.5 (D667): the open goal's plan still waits for the yes — the answer carries it.
+describe('a repeated need whose plan waits for the yes', () => {
+  it('carries the waiting plan, in the app’s one sentence and question, and says to show it', async () => {
+    named.mockResolvedValue(goal('კარგი სანტექნიკოსის მოძებნა'));
+    (getTaskById as jest.Mock).mockResolvedValueOnce({
+      id: 9439,
+      title: 'კარგი სანტექნიკოსის მოძებნა',
+      plan_proposed: {
+        solved_when: 'x',
+        routes: [{ name: 'ქსელი', status: 'pending' }],
+        people_to_involve: [{ name: 'ლიკა', phone: '+995599111222', route: 'ქსელი' }],
+        never_contact: [],
+      },
+    });
+
+    const out = (await mcpCreateTask('501', { title: 'კარგი სანტექნიკოსის მოძებნა' })) as {
+      already_open: { waiting_plan?: string };
+      next: string;
+    };
+
+    expect(out.already_open.waiting_plan).toContain('ლიკა');
+    expect(out.already_open.waiting_plan?.endsWith('დავიწყო?')).toBe(true);
+    expect(out.next).toContain('Show waiting_plan again and ask for the yes');
+    expect(made).not.toHaveBeenCalled();
   });
 });

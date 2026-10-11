@@ -393,7 +393,8 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'Use whenever the user states something they want to achieve through their network, not a ' +
       'one-off lookup. Returns a task_ref. Does NOT start any outreach on its own. If they ' +
       'already have this goal open it is NOT created again: the answer names the one that ' +
-      'exists, and you tell them where it stands.',
+      'exists, and you tell them where it stands. If it carries a plan waiting for their yes, ' +
+      'show that plan again and ask for the yes.',
   },
   get_my_tasks: {
     title: 'My open goals',
