@@ -1,6 +1,24 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 00:17Z — `0128` (3732): „how do I reach <name>" calls find_warm_path first
+
+**Patch:** `patches/afternoon-1250/0128-…` (d60e3da), sha256 starting 67e043a6. It is one commit on main cd5aeff (0127 already live). `npm run verify` is green: 812 suites, 8316 tests (8274 passed, 42 skipped).
+
+**What it does.** In SD-016, „როგორ მივწვდე ბახვა გამოგონილს?“ never called find_warm_path. The reply offered only the sleeping bridge and never named the B1 → B2 chain. The web names were already removed by `0125`.
+
+Now an owner's line that asks how to reach somebody by name forces find_warm_path on the run's first turn. Matching words: მივწვდე, მივაღწიო, how can I reach. A line that names a trade instead is not forced. This works the same way the weather forces web_search. There are no new words for the model, and the reply is written from the chain the tool returns. It is read-only and safe at night.
+
+**DONE WHEN (3732).**
+- find_warm_path is called.
+- The reply names every link of the chain once.
+- It says plainly which bridge has never opened Netai.
+- There are no web names.
+- 2 of 2.
+
+How the chain is worded is the model's job. If naming the chain or the sleeping bridge still fails while find_warm_path succeeds, tell me and I'll look at what the tool returns.
+
+
 ### 11 Oct, 00:08Z — `0127` (3731): a helper who recommends her own contact gets the 1696 referral card
 
 **Patch:** `patches/afternoon-1250/0127-…` (4f8d208), sha256 starting feed94ea. It is one commit on main 13f738f, which already has `0126`. `npm run verify` is green: 812 suites, 8313 tests (8271 passed, 42 skipped).
