@@ -2,6 +2,11 @@ import { query } from '../db/postgres/client';
 import { instructionAddressee } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { oneContactNamed, ownersLabel } from './instructedAsk';
+import {
+  recommendedContact,
+  RecommendedContact,
+  recommendsSomebody,
+} from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
 import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
 
@@ -108,6 +113,19 @@ async function isTheAskersNumber(askerId: number, phone: string): Promise<boolea
   return result.rows[0]?.hit === true;
 }
 
+/** The person the reader's line refers the asker to: an order to ask her, or a recommendation (3731). */
+async function referredContact(
+  recipientId: string,
+  instruction: string | null,
+  line: string,
+): Promise<RecommendedContact | null> {
+  if (instruction !== null) {
+    const phone = await oneContactNamed(recipientId, instruction);
+    return phone === null ? null : { phone, typed: instructionAddressee(instruction) ?? '' };
+  }
+  return recommendedContact(recipientId, line);
+}
+
 export interface ReferralCard {
   readonly text: string;
   readonly choices: readonly string[];
@@ -126,13 +144,14 @@ export async function offerReferral(
   language: RunLanguage,
 ): Promise<ReferralCard | null> {
   const sentence = contactInstructionIn(line);
-  if (sentence === null) return null;
+  if (sentence === null && !recommendsSomebody(line)) return null;
   const ask = await askOpenForReferral(recipientId, threadId);
   const asker = ask?.asker_name?.trim() ?? '';
   if (ask === null || asker === '') return null;
-  const phone = await oneContactNamed(recipientId, sentence);
-  if (phone === null || (await isTheAskersNumber(ask.from_user_id, phone))) return null;
-  const name = await ownersLabel(recipientId, phone, instructionAddressee(sentence) ?? '');
+  const named = await referredContact(recipientId, sentence, line);
+  if (named === null || (await isTheAskersNumber(ask.from_user_id, named.phone))) return null;
+  const phone = named.phone;
+  const name = await ownersLabel(recipientId, phone, named.typed);
   await query(
     `UPDATE task_asks
         SET referral_phone = $2, referral_name = $3, referral_offered_at = NOW()
