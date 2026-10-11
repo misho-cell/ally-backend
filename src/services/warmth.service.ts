@@ -211,7 +211,8 @@ export async function queueWarmTieQuestions(limit: number): Promise<number> {
        ) < $3
        AND NOT EXISTS (
          SELECT 1 FROM pending_updates p
-         WHERE p.user_id = u.id AND p.kind = $4
+         -- pending_updates.user_id is TEXT (11 Oct: „operator does not exist: text = integer").
+         WHERE p.user_id = u.id::text AND p.kind = $4
            AND p.created_at > NOW() - ($5 || ' days')::INTERVAL
        )
      ORDER BY u.id

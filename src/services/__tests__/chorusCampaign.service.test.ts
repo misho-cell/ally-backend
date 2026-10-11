@@ -194,6 +194,28 @@ describe('openDueCampaigns', () => {
     expect(inserts).toHaveLength(0);
   });
 
+  // 0120's DONE WHEN failed live (11 Oct 11:01Z): 661 targets in one read timed out cold.
+  it('reads the inviters in batches of at most 100 targets, each on the background limit', async () => {
+    const phones = Array.from({ length: 250 }, (_, i) => `+9955000${String(i).padStart(5, '0')}`);
+    mockBuildTargetList.mockResolvedValue(
+      phones.map((phone) => ({ phone, label: 'x', city: null, score: 0.5, parts: {} as never })),
+    );
+    (approvedTargetPhones as jest.Mock).mockResolvedValueOnce(new Set(phones));
+    routeOpenQueries({ inviters: [] });
+
+    await openDueCampaigns(30);
+
+    const reads = mockQuery.mock.calls.filter(([sql]) =>
+      (sql as string).includes('contact_relationship_scores crs'),
+    );
+    expect(reads).toHaveLength(3);
+    for (const [, params, timeout] of reads) {
+      expect((params as string[][])[0].length).toBeLessThanOrEqual(100);
+      expect(timeout).toBe(20_000);
+    }
+    expect(reads.flatMap(([, params]) => (params as string[][])[0])).toEqual(phones);
+  });
+
   // 46 of 93 campaigns opened and closed as `closed_no_inviters` the same
   // second, and every one of those people then sat in cooldown without a
   // single message having been sent.
