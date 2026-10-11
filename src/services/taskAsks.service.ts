@@ -1,4 +1,5 @@
 import { ALREADY_ON_CARD } from './answerCardGuard';
+import { ownerWordsAnswerNote } from './ownerWordsAnswer';
 import { missingFacts, missingFactsRefusal } from './answerFacts';
 import { sentenceCarriedOver } from './sentenceCarriedOver';
 import {
@@ -2809,7 +2810,9 @@ export function buildShownAnswersWakeEvent(answers: readonly ArrivedAnswer[]): s
     `სერვერმა ეს პასუხები ${ALREADY_ON_CARD} — ბარათად, შენი პასუხის ზემოთ, ვინ რა ` +
     'უპასუხა. პასუხის სიტყვები არ გაიმეორო: არ ჩამოთვალო, არ დააციტირო, არ გადმოსცე. თქვი ' +
     'მხოლოდ ის, რა უნდა გააკეთოს მფლობელმა შემდეგ — ერთი წინადადებით; თუ რომელიმე პასუხი ' +
-    'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება. არასდროს თქვა, რომ ვინმეს ' +
+    'კითხვაა, ეს წინადადება ისაა, რომ ადამიანი პასუხს ელოდება.' +
+    ownerWordsAnswerNote() +
+    ' არასდროს თქვა, რომ ვინმეს ' +
     `ჯერ არ უპასუხია, თუ მისი პასუხი ბარათზეა. ${AGREED_UNDER_CARD}${MEETING_UNDER_CARD}` +
     `${NO_SEARCH_AGAIN}შემდეგ ` +
     'გააგრძელე დავალება.' +
