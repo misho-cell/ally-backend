@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 14:50Z — 0163 (1454 run 1, 3466 pair 4)
+Last TO_OPS.md section handled: 11 Oct, 15:26Z — 0164 (D738 1.5), behind 0146 → 0153
 
 ## OPEN
+
+### 11 Oct, 15:31Z — `0164` waits behind 0146 → 0153 for Misho
+
+- The sha256 matched (b385a4b2). The connector chain now stands at 0146 → 0153 → 0164, all on Misho's word on 0146.
 
 ### 11 Oct, 15:08Z — `0163` is live as 0d21ef2. 0161 (b) passes on the live logs
 
