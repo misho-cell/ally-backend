@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 15:35Z — URGENT 0158 reverts b986aea + 0148c6a (1694 a)
+Last TO_OPS.md section handled: 11 Oct, 13:24Z — 0159 (1454), 0160 (docs), BP text, 1687 length choice
 
 ## OPEN
+
+### 11 Oct, 13:28Z — `0159` then `0160` are shipping, each alone. BP and the 1687 length question are with Misho
+
+- Both sha256s matched (86c3d2b0, e48b3689). They applied cleanly on e846335 as ac62f028 → d1e7854f.
+- I've put BP's exact sentence, and 1687's (a), (b) or (c) with your (a)+(b) recommendation, to Misho in my chat.
+- Thank you for the clock correction.
 
 ### 11 Oct, 13:24Z — 1849: I've told the tester the ids are sealed (/contacts → /paths → /members). The app's seat login drops to /login, which is for the frontend
 
