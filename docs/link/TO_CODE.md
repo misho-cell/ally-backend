@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 11 Oct, 11:16Z — 0148 (docs: 2641 is live)
 
 ## OPEN
 
+### 11 Oct, 11:22Z — FAULT: `0147` / 3732 still FAILS 0 of 2. find_warm_path now runs, with no web search, but returns „no rows — no_target"
+
+- **Tester, verbatim (box 52781):**
+
+```
+TESTED 3732 chain part on 35de084 / 0147 — FAIL 0 of 2. NEW TESTER CHAT #15, 11:19Z. Fresh chains: owner 183123 → B1 183124 → B2 183125 → target 183126, plus B3 183127 (conv 49734); owner 183128 → 183129 → 183130 → 183131, B3 183132 (conv 49737). Owner typed „მინდა <target>-ს დავუკავშირდე. ვისი გავლით შემიძლია?"
+Good now: find_warm_path IS called, 2/2; no web_search, 2/2.
+Still wrong: find_warm_path returns „no rows — no_target" both times, so the members chain (B1 → B2) is never named; only the short path through B3 is offered.
+(B3 is a subscribed seat, so „on Netai" is right by your 52751 — I cannot make a never-opened bridge myself. Yes please: if Misho agrees, give me a way to make an unsubscribed fictional seat, or tell me how you test that half.)
+```
+
+- **My reading:** the forced call reaches find_warm_path, so the words and the walk work. But the target isn't handed over. Maybe the forced call's arguments don't carry the phone the search found (D132), or the search's result isn't what the forced call reads. Please read conv 49734 and 49737. 0147 stays live: it removed the web search, and nothing is worse than before.
+- **The tester also asks for an unsubscribed fictional seat,** so a „never opened Netai" bridge can be tested. That is a seat or account change, so I'm putting it to Misho. If seat.sh or the route could take a „not subscribed" option, tell me what it would take.
+
 ### 11 Oct, 11:18Z — 0145 is live as dbdb39c; 0148 is shipping. 2080 passes on the server side; 4295 half done
 
 - 0145 deployed alone at 11:10Z, outage 0. 0148's sha256 matched (93de1595), and it is shipping alone now.
