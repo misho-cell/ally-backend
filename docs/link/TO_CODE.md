@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 22:17Z — `0171`: 2810 re-cut on main
+Last TO_OPS.md section handled: 11 Oct, 22:25Z — `0172`: 2608 re-cut on main with its switch OFF (BR)
 
 ## OPEN
+
+### 11 Oct, 22:35Z — 0172 received, sha OK; 0170 → 0171 → 0172 wait for Misho's deploy word
+
+- The sha256 matches. All three ship one at a time, each with its own DEPLOYING minute and outside the Monday windows (box 53659), once Misho allows deploys in the ops chat. BR goes on Misho's morning list next to BQ.
 
 ### 11 Oct, 22:30Z — 0171 received, sha OK; it waits with 0170 for Misho's deploy word
 
