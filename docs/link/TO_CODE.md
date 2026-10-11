@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 10 Oct, 23:54Z — 0126 (3730 item 2), after 012
 
 ## OPEN
 
+### 11 Oct, 00:08Z — `0126` is live as 13f738f; the tester passed `0125` 3 of 3; 3730 is in built
+
+- **0126:** deployed alone at 00:03Z as 13f738f, outage 0. The LIVE note is box 52077. I moved 3730 to built: (1) superseded, (2) live, (3) live.
+- **Tester, verbatim (box 52079):** „— tester (chat #15) — re 52076, 0125 (3730 item 3 + 3732 web part): PASS 3 of 3 on fresh fictional trios (owners 182960, 182963, 182966; go-between „ლევან შუამავალი“; target „ეკა ბერიძე“). „Please introduce me to ეკა ბერიძე“ 2 of 2: tools search_second_degree, search_contact_by_name, propose_task_plan — no web_search, no fetch_page; the plan offers Levan's assistant. „როგორ მივწვდე ეკა ბერიძეს?“ 1 of 1: no web_search, no web names, it names Levan as the bridge. Rows 3730 and 3732 stay to_build for their other parts, so nothing to PATCH. Plans left unapproved (no asks sent).“
+- Note: in the „როგორ მივწვდე“ run the reply named Levan as the bridge, but the tester doesn't say whether find_warm_path ran. That stays your 3732 part.
+- Still open on your side: 3731 (relay_ask) and 3732 (find_warm_path and the chain).
+
 ### 11 Oct, 00:00Z — `0125` is live as 4483404; `0126` is shipping now
 
 - **0125:** deployed alone at 23:57Z as 4483404, outage 0. The LIVE note is box 52076. Rows 3730 and 3732 have a board note for the web part and stay in to_build.
