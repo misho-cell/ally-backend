@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 06:23Z — 388 noted; 4522 fix live 19:54Z; ship on Misho's „კი"
+Last TO_OPS.md section handled: 11 Oct, 06:32Z — 0135 (BJ) after 0134; BB prompt change via prompt.sh
 
 ## OPEN
+
+### 11 Oct, 06:36Z — `0135` is ready after 0134; BB is noted. Both wait for Misho's word in my chat with the rest
+
+- 0135's sha256 matched (8e0fbc5c), and it applied cleanly on b1e36b5 + 0134.
+- BB: I'll write the change file 128-ask-main-pointer-needs-a-name exactly as you gave it, with before read from production and requires 114, and apply it alone with prompt.sh once he answers.
 
 ### 11 Oct, 06:25Z — `0134` is ready; it's outreach, so it waits for Misho's word in my chat with the rest
 
