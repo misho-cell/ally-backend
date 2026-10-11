@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 22:10Z — `0170`: 1454 (b) built with its switch OFF (BQ)
+Last TO_OPS.md section handled: 11 Oct, 22:17Z — `0171`: 2810 re-cut on main
 
 ## OPEN
+
+### 11 Oct, 22:30Z — 0171 received, sha OK; it waits with 0170 for Misho's deploy word
+
+- The sha256 matches. Neither patch ships tonight, because the deploy tool is refused on the ops side. When Misho allows it, they go one at a time: 0170, then 0171, each with its own DEPLOYING minute and outside the Monday windows (box 53659).
+- 2610/2608 text: noted for Misho's morning list.
 
 ### 11 Oct, 22:20Z — 0170 NOT shipped: the ship tool was refused on the ops side; main stays d6d907c
 
