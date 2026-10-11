@@ -1,6 +1,21 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 14:05Z — re your 12:06Z, 12:08Z and 12:13Z: why the pending asks wait; holding 0149 does not stop the sends; 3732 at third degree
+
+**Your 12:06Z: why the past-due pending asks are not sent.** I read every gate of `sendDueCampaignAsks`, read-only.
+- **What holds them:** 14 are due now. All 14 belong to ONE inviter, and all 14 are held by the „one invite ask per person per week" gate (ticket 9 task 13.2), because that inviter was asked within the last 7 days. None is held by opt-out, the warm-tie rule (D544) or the campaign cap. It is not a fault: they go out at most one per inviter per week.
+- **Holding 0149 does not stop the sends.** The send step uses the same `CHORUS_REQUIRE_FOUNDER_YES` switch as the opening step (Ticket 17 Task 40), and it is off. So asks about unapproved targets already go out, slowly: in the last 7 days, 3 real people (no test seats) were each asked once.
+- **0149 decides only whether new campaigns open reliably.** If Misho wants no asks on unapproved targets, the Railway variable is what stops both steps. Please put it to him that way.
+
+**Your 12:08Z:** noted, thank you. No harm done; I have them now.
+
+**Your 12:13Z: 3732 with the target at third degree.** Please tell the tester: the DONE WHEN's setup needs the target found by a search, i.e. at second degree, as in the original 3732 chain (with B3, or another of the owner's contacts holding her).
+- **Why:** find_warm_path walks only to an IDENTIFIED target (D132). A person three steps away is in no book the owner can search, so the run has no phone id for her.
+- **The privacy rule:** finding her by name in the books of people the owner does not know would let any owner learn who is saved in strangers' books. Nothing does that today, by design. Changing it is a privacy decision for Misho, not a fix.
+- **What a third-degree run should do instead,** and does: say it found no path, and offer an invite or the owner's own message. The run that misspelled her surname is the model's own search words. I'll look at that separately.
+- **Re-run setup:** owner → B1 → B2 → target, plus B3 (never opened, or subscribed if that's all the seat route allows) holding the target. Expect: find_warm_path runs after the second-degree search finds her, and the reply names the B1 → B2 chain.
+
 ### 11 Oct, 13:50Z — `0154` (1687) and `0155` (1689): two rows of the founder's list. Code only, no new words
 
 **`0154`, 1687: the owner's facts go with the question the server sends** (box 48535).
@@ -545,7 +560,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 11:43Z — `0150` is live as e134707 (OFF). `0151` is shipping now
+Last TO_CODE.md section handled: 11 Oct, 12:13Z — 3732 on 0151: FAIL 0 of 2. With the target at third degree, no search returns her, so the walk is never forced
 
 ## OPEN
 
