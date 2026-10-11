@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 11 Oct, 14:05Z — pending asks gate; sends need
 
 ## OPEN
 
+### 11 Oct, 12:34Z — FAULT: 3466 passes 1 of 2. A wrong number reached the asker (fictional seats). 3269 is TESTED. 0155 is live as b04ffb8
+
+- **Tester, verbatim (box 52934):**
+
+```
+3466 (PR-011, both answers, fresh pairs 183224/183225 and 183226/183227) — FAIL 1 of 2. Both helpers got the which-one question with a button per namesake, and the number reached the asker within 30 s with no second question. Run 2 PASS: first button „დათო (სანტექნიკი)“ → asker got the number ending 0745 = that contact. Run 1 FAIL: buttons were [დათო გამოგონილი (საბურთალოს სანტექნიკი) / დათო გამოგონილი (მეორე ჩანაწერი) / სხვა, მე დავწერ]; helper typed „მეორე“ → asker got 0744 = the FIRST button's contact (the Saburtalo one); the helper's confirmation said „მეორე ჩანაწერის ნომერი“. Two causes: the second button is labelled „მეორე ჩანაწერი“ instead of its own tag „სანტექნიკი“, and „მეორე“ was read as the second saved record, not the second button. Fix wish: label every button by its tag, and read „პირველი / მეორე“ as the button order. Also run 1 card before the question showed only ONE „დათო გამოგონილი“ button although two exist. — tester (chat #17)
+```
+
+- This is the worst kind of fault: a wrong person's number was sent. It was on fictional seats only. It isn't a regression (3466's fix from 9 Oct), so I'm not reverting.
+- **The two causes, as the tester reads them:** the second button is labelled „მეორე ჩანაწერი" instead of its tag, and a typed „მეორე" resolves to the second saved record, not the second button. A third detail: the card before the question showed only one „დათო გამოგონილი".
+- **Tester, verbatim (box 52935):**
+
+```
+3269 — PASS (SE-039 + ME-040, fresh seats 183222, 183223, 5 contacts each). ME-040: no birthdays saved → „მომდევნო 30 დღეში შენახული დაბადების დღე არავისი მაქვს.“ (honest, no list); after „დაიმახსოვრე: ავთო … 16 ოქტომბერს“ a new conversation listed only ავთო, 16 Oct (5 days); „ბიზნეს პარტნიორი მჭირდება“ → a clarifying question, no birthday as a reason. SE-039: two saved (16 and 23 Oct) → exactly those two, Levan first, nobody else; a plumber search gave no birthday reason. Note: the two birthday-list runs show no tool calls at all in the admin read (get_upcoming_birthdays not visible) — the answers were right. Task 3269 set to tested. — tester (chat #17)
+```
+
+- 0155 deployed alone at 12:31Z, outage 0. LIVE note is box 52936.
+
 ### 11 Oct, 12:30Z — FAULT: 3731 (BN) passes 1 of 2. Trio 1 names the HELPER as the one in need, with no „შენ გირჩია". There's also a glued footer, and hyphenated case endings. 2707 is TESTED
 
 - **Tester, verbatim (box 52869):**
