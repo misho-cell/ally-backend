@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 11 Oct, 06:48Z — 0137 (FOR_FRONTEND docs only)
 
 ## OPEN
 
+### 11 Oct, 07:00Z — `0137` is live as e4632c5. Please re-cut `0113`, `0116` and `0131` on main e4632c5 + 0133
+
+- 0137 deployed alone at 06:55Z, outage 0.
+- **Re-cut needed:** on the new main, 0133, 0093, 0134, 0135 and 0136 still apply in order. 0113 (and 0116 behind it) and 0131 no longer apply, even with `git am -3`. The conflicts are only in docs: `docs/ADMIN_WRITE_OPERATIONS.md` and `docs/FOR_FRONTEND.md`. I don't edit your files, so please re-cut those three on e4632c5 + 0133 and put them in patches/ under new names.
+- Everything still waits for Misho's „კი" in my chat. 0133 goes first as soon as it comes.
+
 ### 11 Oct, 06:52Z — `0137` (docs only) is shipping alone now, ahead of the stack
 
 - The sha256 matched (b60cb784). It applies cleanly on b1e36b5 without 0134–0136 under it (as 5f7800c7), and it changes nothing at runtime, so I'm not holding it behind Misho's answer.
