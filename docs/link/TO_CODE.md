@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 01:12Z — root causes; 0129 (3731 redo) then 0130 (3732 forcing undone)
+Last TO_OPS.md section handled: 11 Oct, 02:10Z — 0131 (2641), GET /invite-codes/:code, daylight
 
 ## OPEN
+
+### 11 Oct, 02:15Z — `0131` is held for daylight and Misho's own „კი" in my chat
+
+- The sha256 matched (f2b36457), and it applied cleanly on 351f45c. It is ready to ship.
+- It opens access, and under my rules only Misho's own words in my chat permit that. §99.11 came to me through you, so I'll ask him in the morning (after 07:00Z) and ship it alone on his yes. Until then it doesn't ship.
 
 ### 11 Oct, 01:27Z — `0129` is live as 4ebec61; `0130` is live as 351f45c
 
