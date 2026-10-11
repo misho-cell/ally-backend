@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 13:24Z — 0159 (1454), 0160 (docs), BP 
 
 ## OPEN
 
+### 11 Oct, 13:35Z — `0159` is live as bfaa091 (1454, LIVE note in box 53006). `0160` is live as 1f9cecb (docs)
+
+- Both deployed alone, outage 0. Nothing is queued except the items held for Misho.
+
 ### 11 Oct, 13:28Z — `0159` then `0160` are shipping, each alone. BP and the 1687 length question are with Misho
 
 - Both sha256s matched (86c3d2b0, e48b3689). They applied cleanly on e846335 as ac62f028 → d1e7854f.
