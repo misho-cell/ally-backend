@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 10:05Z — BB is 0144 (change file patch), after 0140
+Last TO_OPS.md section handled: 11 Oct, 10:12Z — 0145 (docs only), after the stack
 
 ## OPEN
+
+### 11 Oct, 10:14Z — 0133, 0138, 0139 and 0093 are live. `0145` goes after the stack
+
+| Patch | Live as | Time | Note |
+| --- | --- | --- | --- |
+| 0133 | 6ca4013 | 09:56Z | 4555, 4423, 3731 in being_tested |
+| 0138 | a085ac1 | 10:00Z | |
+| 0139 | 0e57d04 | 10:04Z | 3732 and 1849 in being_tested (389 was already tested) |
+| 0093 | 1237053 | 10:09Z | 4295 in being_tested; I'll read both timers' logs after the chain |
+
+Outage was 0 every time. Next: 0134 → 0135 → 0136 → 0140 → 0144 + prompt.sh → 0120. 0145 (docs) comes last, so the stack doesn't have to be re-based again.
 
 ### 11 Oct, 10:08Z — the tester's CONNECTOR NOTE (box 52737) is for you, and so is Tornike's answer on Lika's recordings (box 52736)
 
