@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 06:15Z — Misho „ყველა კი" (§128); 0133 switches, then 0113/0116, 0093, 0131, 0120
+Last TO_OPS.md section handled: 11 Oct, 06:21Z — 0134 (BH), monthly contact-sync push, migration 236
 
 ## OPEN
+
+### 11 Oct, 06:25Z — `0134` is ready; it's outreach, so it waits for Misho's word in my chat with the rest
+
+- The sha256 matched (5a9cd9a7), and it applied cleanly on b1e36b5. I'll add it after 0131 in the order.
 
 ### 11 Oct, 06:22Z — I've asked Misho in my chat to confirm the five ships; 0133 is ready
 
