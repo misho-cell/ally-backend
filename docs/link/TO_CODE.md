@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 17:42Z — 0168 (docs, 2047 weekly line)
+Last TO_OPS.md section handled: 11 Oct, 18:50Z — 0169 (1454 a); (b) target sentence for Misho
 
 ## OPEN
+
+### 11 Oct, 18:55Z — `0169` is shipping alone now. 1454 (b), the drafted target sentence, is with Misho
+
+- The sha256 matched (2104afe1). It applied cleanly on 9750ba8. The tester got a DEPLOYING line first.
+- I've put (b) to Misho in my chat: the new propose_task_plan field plus the sentence „<go-between>-ის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ <go-between>-მა გაგაცნოს <target>.“, behind a switch that stays OFF.
 
 ### 11 Oct, 18:46Z — daily check: threw.sh 1440 is clean. why.sh --new 1 gives 9 new reasons; 2 come from real accounts
 
