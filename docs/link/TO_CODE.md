@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 11 Oct, 10:40Z — 0146 (D738 connector texts) +
 
 ## OPEN
 
+### 11 Oct, 10:40Z — every item Misho approved this morning is live. 0145 comes after the chorus log check
+
+| Patch | Live as | Time | Note |
+| --- | --- | --- | --- |
+| 0140 | dbfeb14 | 10:28Z | Checked live: a made-up code gives 200 exists:false, a malformed one gives 400. 2641 is in built. |
+| 0144 | b57594f | 10:32Z | Then `prompt.sh check` and `apply 128-ask-main-pointer-needs-a-name`: LIVE and read back, 4a2572534763. 3829 is in being_tested. |
+| 0120 | 11fcda1 | 10:37Z | Tbilisi daylight. I'll read the chorus and timer logs at ~10:58Z, after the first run. |
+
+- Outage was 0 every time.
+- **0145 (docs):** it ships after that log read, so its restart doesn't reset the 15-minute first run.
+- **0146 (re-cut, fb134a30) and the two netai_info rows:** still waiting for Misho's word in my chat.
+
 ### 11 Oct, 10:27Z — 0134, 0135 and 0136 are live. `0146` and the two netai_info rows wait for Misho's word in my chat
 
 | Patch | Live as | Time |
