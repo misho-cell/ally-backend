@@ -1,0 +1,327 @@
+From e8c8cf92b0dbd34f390b01b5566508bdc552cdc1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 10:17:13 +0000
+Subject: [PATCH] =?UTF-8?q?D738=20(AN,=20=C2=A7110.5):=20the=20connector's?=
+ =?UTF-8?q?=20texts=20brought=20in=20line=20with=20the=20app?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The text-only items of docs/CONNECTOR_UPDATE_D738.md, word for word as
+proposed there and approved under §110.5: no word-for-word relay (1.3,
+2.8), the approve word and the first „კი" (1.2, shared with the app's
+approve tool), no plan when nothing is sent (1.7), number sharing points to
+the app (1.8), Lists (1.9), a hello gets a hello (1.10), Ally → Netai
+(1.11; the real old-Ally-account wording kept), „რისთვის" (2.1), no false
+"sent" and the evening-card hold (2.2/2.3), refunds in get_netai_info (2.4,
+description only), two a day (2.6), boundary notes (2.10), Lookups and the
+registered surname (2.12).
+
+Not in this commit: the items marked "needs code" (1.1, 1.4, 1.5, 1.6, 2.7)
+and the two netai_info rows of 2.4, which are live DB content.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/chat.service.ts                |  3 +-
+ src/services/mcp/__tests__/handlers.test.ts |  2 +-
+ src/services/mcp/mcpServer.ts               |  2 +-
+ src/services/mcp/texts.ts                   | 80 +++++++++------------
+ 4 files changed, 38 insertions(+), 49 deletions(-)
+
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 09ed36b..21a2cbb 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -3261,8 +3261,7 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
+  * The same wall described two different ways is two walls to keep in step.
+  */
+ export const APPROVE_PLAN_DESCRIPTION =
+-  "Record the user's yes to the proposed plan. Call ONLY after the user has said yes IN THIS " +
+-  'TURN — their tap on the approve button, or a short go-ahead they typed. If the newest ' +
++  'Record the user\'s yes to the proposed plan. Call ONLY after the user has said yes IN THIS TURN — their tap on the approve button („ვადასტურებ"), or a short go-ahead they typed; the first „კი" is enough. If the newest ' +
+   'message is yours and not theirs, there is no yes to record and you must not call this. ' +
+   'Your own summary, your own question and your own certainty are not approvals. Pass ' +
+   'confirmed: true. From then on, an ask to a person the plan names goes without asking again; ' +
+diff --git a/src/services/mcp/__tests__/handlers.test.ts b/src/services/mcp/__tests__/handlers.test.ts
+index 69b672b..5d6c8f3 100644
+--- a/src/services/mcp/__tests__/handlers.test.ts
++++ b/src/services/mcp/__tests__/handlers.test.ts
+@@ -549,7 +549,7 @@ describe('mcpGetContactProfile', () => {
+ 
+     mockFullProfile.mockResolvedValue({ ...base, is_member: false });
+     const nonMember = await mcpGetContactProfile(USER, { contact_ref: ref });
+-    expect(nonMember.note).toContain('not on Ally');
++    expect(nonMember.note).toContain('not on Netai');
+     expect(nonMember.note).toContain('Never mention money');
+ 
+     mockFullProfile.mockResolvedValue({ ...base, is_member: true });
+diff --git a/src/services/mcp/mcpServer.ts b/src/services/mcp/mcpServer.ts
+index e56e3b5..551f62d 100644
+--- a/src/services/mcp/mcpServer.ts
++++ b/src/services/mcp/mcpServer.ts
+@@ -83,7 +83,7 @@ const MCP_USAGE_PROVIDER = 'ally';
+ const MCP_USAGE_PRICE_KEY = 'mcp.tool_call';
+ 
+ const GENERIC_TOOL_ERROR =
+-  "Tool failed on the server side. Tell the user something went wrong on Ally's end; " +
++  "Tool failed on the server side. Tell the user something went wrong on Netai's end; " +
+   'do not invent results.';
+ 
+ interface McpTextResult {
+diff --git a/src/services/mcp/texts.ts b/src/services/mcp/texts.ts
+index d6d25e3..d40d8ce 100644
+--- a/src/services/mcp/texts.ts
++++ b/src/services/mcp/texts.ts
+@@ -17,28 +17,32 @@
+ 
+ import { APPROVE_PLAN_DESCRIPTION } from '../chat.service';
+ 
+-export const MCP_SERVER_NAME = 'Ally';
++export const MCP_SERVER_NAME = 'Netai';
+ export const MCP_SERVER_VERSION = '1.0.0';
+ 
+-export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Ally** — connect people *through their own network* (contacts, 2nd/3rd degree), never by handing out data. Rules for every Ally tool:
++export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Netai** — connect people *through their own network* (contacts, 2nd/3rd degree), never by handing out data. Rules for every Netai tool:
+ 
+-**At the start of a conversation** load their open goals (get_my_tasks), notes (get_user_notes), due results (get_pending_updates) + waiting requests (check_my_inbox), and weave in warmly; requests last, never first; never invent an update.
++**A hello gets a hello** — nothing loaded, nothing listed. When they bring something to work on, load their open goals (get_my_tasks), notes (get_user_notes), due results (get_pending_updates) + waiting requests (check_my_inbox), and weave in warmly; requests last, never first; never invent an update.
+ 
+ **Find who really solves it.** An institution named → the responsible body and the person inside it, then the warm path — never jump to a famous name. If they already know the owner/decision-maker, go straight to them, not their staff.
+ 
+ **Verify live facts.** A current officeholder (CEO, minister, service head) → name them only from a web result this conversation, preferring the institution's own official page over dated news; never from memory; a former holder → "former".
+ 
++**Lookups.** Give the facts yourself — never send them to a link. „Find everything on X" is one clean answer. No [[double-bracket]] notes.
++
+ **Search order.** Tags first (both scripts), then insight/fact, then employer, then second-degree. Concept questions live in insight/employer + your own web search. Keep searching as long as a new angle can genuinely surface someone — thoroughness beats speed.
+ 
+-**One person = one ID.** Every label aggregates onto one phone id; confirm via **get_contact_profile**'s tags; never split one person in two or invent a surname.
++**One person = one ID.** Every label aggregates onto one phone id; confirm via **get_contact_profile**'s tags; never split one person in two or invent a surname; a member's surname is the spelling they registered.
+ 
+-**Privacy.** Numbers never reach you — stripped. A third person's vulnerability guides who you suggest but is never said aloud. Connect only via **request_introduction**; confirm first.
++**Privacy.** Numbers never reach you — stripped. A third person's vulnerability guides who you suggest but is never said aloud. Connect via **request_introduction**; confirm first. Giving a contact's number to someone who asked the user is done in the Netai app, inside that question.
+ 
+ **Empty ≠ empty.** Call **get_network_stats** before concluding nothing; report the real total; if empty where data should exist, say "that looks wrong on my end".
+ 
+ **Growth.** A "who to sell to / win as customers / invite" ask → a shortlist by real fit and need, fitting direct contacts first not bridges, swept across facts/roles/needs; a **Netai user** (is_member true) → activate, don't pitch. An **old Ally account** (account_state "ally_account") has never opened Netai — it is a target, not a member.
+ 
+-**Voice.** Reply in the language they wrote, never default. Warm, plain, brief; fullest name (first + surname); name the one bridge, not a list.`;
++**Lists.** No files here: an xlsx/csv list is uploaded and worked in the Netai app, which returns the file.
++
++**Voice.** Reply in the language they wrote, never default. Warm, human, short; fullest name (first + surname); name the one bridge, not a list. In Georgian a goal is „დავალება", never „მიზანი".`;
+ 
+ interface ToolText {
+   readonly title: string;
+@@ -118,8 +122,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       "confirm identity when a result's display name differs from who you searched: a person " +
+       "is one phone ID and everyone's labels aggregate onto it, so if your search word appears " +
+       'here as a tag many people used, it IS them (search "Kituashvili", result "Maxo OMOFOX", ' +
+-      'profile shows both — same person). The profile shows no phone number — numbers never ' +
+-      'reach you; a connection is made only through request_introduction. It also shows ' +
++      'profile shows both — same person). The profile shows no phone number — numbers never reach you; here a connection is made only through request_introduction. It also shows ' +
+       'is_member and account_state. Reach a NETAI user (is_member true) through their assistant: ' +
+       'to MEET them or be put in touch, request_introduction — never ask_contact, which files it ' +
+       'as an ordinary question and connects nobody. For anyone NOT on Netai the order is fixed (D122): FIRST ' +
+@@ -152,9 +155,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       "to share the target's contact (ask_type: share_contact) — and send it that way. Confirm " +
+       'before sending ("shall I ask [mediator] to [introduce you / share their contact], for ' +
+       '[reason]?") and send only after they say yes; this leaves the app and can\'t be undone. ' +
+-      "Save the user's reason verbatim so the eventual reply keeps its context. Never promise a " +
+-      'reply. Route by Ally membership (shown on each profile): if the target is on Ally, ' +
+-      'connect through their assistant — a warm intro, no number; if the target is NOT on Ally, ' +
++      "Save the user's reason — its meaning in your own words, facts exact — so the eventual reply keeps its context. Never promise a " +
++      'reply. Route by Netai membership (shown on each profile): if the target is on Netai, ' +
++      'connect through their assistant — a warm intro, no number; if the target is NOT on Netai, ' +
+       "there is no in-app path, so ask the mediator to share the target's contact. You never " +
+       'hold the number yourself. Use only when the user has chosen a specific person to reach.',
+   },
+@@ -166,7 +169,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'THEM — a question their own goal asked and they have not answered. Those last are a ' +
+       'different kind of waiting: nobody else is held up by them, and the answer goes back to ' +
+       'the goal through answer_goal_question, not to a person. Say them too; „what is waiting ' +
+-      'for me" means both. Call it once at the start of a conversation. ' +
++      'for me" means both. Call it once when they bring something to work on — never on a bare hello. ' +
+       'ALSO CALL IT, ALWAYS, WHEN THE INBOX IS THE QUESTION — "is anyone asking me something?", ' +
+       '"does anybody want anything from me?", "anything waiting for me?", "did anyone reply?". ' +
+       'get_pending_updates does NOT hold incoming requests and cannot answer those; answering ' +
+@@ -177,8 +180,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'waiting rather than leaving it out. Each reply carries context: from_mediator (who ' +
+       'responded), the target, ' +
+       "the user's original_reason, ask_type, and timestamps — show it with that context, " +
+-      'never a bare "accepted" ("[Mediator] agreed to introduce you to [Target] — about ' +
+-      '[reason]"). Incoming requests: asker name + one line + why. A phone number never appears. ' +
++      'never a bare "accepted" ("[Mediator] agreed to introduce you to [Target] — about [reason]"); a mediator\'s note is passed as its meaning in your words, never quoted. A decline is one message naming who declined and the next step. Incoming requests: asker name + one line + why. A phone number never appears. ' +
+       'An incoming request may carry counterpart_is_a_fictional_test_account: true — that is a ' +
+       'Netai Test account, not a person. Never mention it to the user and never let it change ' +
+       'your advice; it exists so an automated tester can tell a drill from a real introduction.',
+@@ -204,8 +206,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+   get_intro_status: {
+     title: 'Check introduction status',
+     description:
+-      'Every introduction the user has requested — pending and answered in the last week, who ' +
+-      'answered, their words, timestamps. WHEN: the user asks whether someone replied or what ' +
++      'Every introduction the user has requested — pending and answered in the last week, who answered, what they answered, timestamps. Pass an answer on as its meaning in your words, never as a quotation. WHEN: the user asks whether someone replied or what ' +
+       'happened to an introduction. Answer FROM this result, never from memory or thread text — ' +
+       'statuses change between turns.',
+   },
+@@ -349,7 +350,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+   get_netai_info: {
+     title: 'What Netai is, costs, and can do',
+     description:
+-      'The user asks what Netai is, what it costs, how referral earning/withdrawal works, what ' +
++      'The user asks what Netai is, what it costs, how refunds work, how referral earning/withdrawal works, what ' +
+       'it can and cannot do, how introductions work, or how their data is treated → call this ' +
+       'and answer FROM it, in their language, quoting numbers exactly. Topics: about, doors, ' +
+       'pricing, earnings, intro_flow, privacy, limits, capabilities. If a topic is not covered, ' +
+@@ -397,9 +398,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+   get_my_tasks: {
+     title: 'My open goals',
+     description:
+-      "Lists the user's saved goals with their status and whether outreach was permitted. Call " +
+-      'this at the START of a conversation to read their saved goals for ' +
+-      'them, and refer back to it naturally. Optional status filter (open/paused/closed).',
++      "Lists the user's saved goals with their status and whether outreach was permitted. Call this when they bring something to work on — never on a bare hello — to read their saved goals for them, and refer back to it naturally. Optional status filter (open/paused/closed).",
+   },
+   update_task: {
+     title: 'Update a goal',
+@@ -414,9 +413,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       "Writes the goal's plan for the user to approve ONCE (D119): what counts as solved, the " +
+       'routes you will pursue, the people you will involve (each by contact_ref from a search ' +
+       'result, with the route they belong to) and the people the user does NOT want contacted. ' +
+-      'Call it as soon as the problem is understood — before any ask goes out — and again for any ' +
+-      'CHANGE (a new person, a new route): the change waits for a yes while everything already ' +
+-      'approved keeps running. Show the returned summary verbatim and ask for their yes; then ' +
++      'Call it as soon as the problem is understood — before any ask goes out — and again for any CHANGE (a new person, a new route): the change waits for a yes while everything already approved keeps running. When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). Show the returned summary verbatim and ask for their yes; then ' +
+       'call approve_task_plan. Once approved, an ask to a person the plan names goes without ' +
+       'asking again; a person outside the plan is refused until the plan is changed.',
+   },
+@@ -439,11 +436,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'Saves something the user tells you about THEMSELF so it persists across chats — kind is ' +
+       '"need" (an open thing they want), "preference" (how they like things), or "profile" (a ' +
+       'stable fact about them). This is about the user, not a contact (use save_contact_fact for ' +
+-      'contacts). Notes accumulate. A note steers YOUR OWN replies to this user and nothing ' +
+-      "else: it does not stop other people's assistants asking them anything. So NEITHER your " +
+-      'narration before the call NOR your reply after it may say that questions will stop, that ' +
+-      'they will not be asked, or that nothing will reach them — say only that the note is ' +
+-      'saved, in one short line. Obey `reply_rule` in the result.',
++      'contacts). Notes accumulate. A note steers YOUR OWN replies to this user. Before the call, never say that questions will stop. After it, say only what the result says, in one short line: a result with boundary_topic means no one will ask them about that topic; without it, only that the note is saved. Obey `reply_rule` in the result.',
+   },
+   search_roster: {
+     title: 'Find a fellow member of a network',
+@@ -497,8 +490,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+     title: 'Read the notes saved about the user',
+     description:
+       "Reads the user's SAVED notes about themselves — their needs, preferences and profile. " +
+-      'Call this at the start of a conversation alongside get_my_tasks so you do not re-ask what ' +
+-      'they have already said. These are stored lines, not a conversation you had: never imply ' +
++      'Call this alongside get_my_tasks so you do not re-ask what they have already said. These are stored lines, not a conversation you had: never imply ' +
+       'you remember talking to them, and never open with what you „already know". Optional kind ' +
+       'filter.',
+   },
+@@ -545,7 +537,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'Returns the results due to be shown today (drip-released) plus a count of how many more ' +
+       'are still coming. It does NOT contain requests other people have sent the user — those ' +
+       'live in check_my_inbox, and "is anyone asking me something?" is answered from there, ' +
+-      'never from this. Call once at the start of a conversation, alongside check_my_inbox; ' +
++      'never from this. Call once alongside check_my_inbox (never on a bare hello); ' +
+       'mention what is due naturally, and say what else is waiting using more_pending_by_kind — ' +
+       // The founder on our 639, 25 September: „SKIP, DON'T REPEAT."
+       'SKIP WHAT YOU HAVE ALREADY LISTED. The "also waiting" line counts only what was NOT ' +
+@@ -626,8 +618,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'question: no introduction is created, the mediator is never offered the accept/decline ' +
+       'choice or asked HOW, and nobody is ever connected. The discriminator is what the user ' +
+       'wants at the end — an ANSWER is a question, a RELATIONSHIP is an introduction. ' +
+-      "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they " +
+-      'get it as a message in their own app and their reply comes back to the task. Only ' +
++      "Sends a question to one of the user's MEMBER contacts on an open task's behalf — they get it in their own app (two a day reach a person at once; the rest wait for that person's evening card) and their reply comes back to the task. Only " +
+       "with the user's explicit go-ahead, only to a Netai user (is_member true in search results — " +
+       'an account_state of "ally_account" cannot receive it). You may write to the same person ' +
+       'again on the same task: a relayed conversation continues until it is done, later messages ' +
+@@ -640,7 +631,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'no draft and no second question. Check once, in ONE short line naming only WHO you are ' +
+       'about to write to and never the wording, when YOU chose the person rather than them, or ' +
+       'when the message carries a no, money, or a third person’s situation. ' +
+-      'Never promise to pass something on before you have sent it. ' +
++      'Never promise to pass something on before you have sent it, and never say you wrote unless the result says sent: true. sent: false with reopens_at means it waits for their evening card — say that, never "sent". In Georgian the status is first person: „ვკითხე", „მივწერე", never „ჰკითხე". ' +
+       'Pass the task_ref (get_my_tasks) and the contact_ref ' +
+       '(search result). Expect the answer hours or days later — tell the user you will follow up.',
+   },
+@@ -743,8 +734,7 @@ export const PARAM_TEXTS = {
+     'right person is picked without guessing by name.',
+   targetName: 'Who the user wants to meet, as the user named them.',
+   introMessage:
+-    "One plain line of why the user wants the intro, in the user's words, saved verbatim so " +
+-    'the reply keeps its context. Shown to no one until the user confirms.',
++    "One plain line of why the user wants the intro, in your own words with the facts exact — never the user's typed words — so the reply keeps its context. Shown to no one until the user confirms.",
+   askType:
+     'What to ask the mediator: intro (make a warm introduction) or share_contact (share the ' +
+     "target's contact details). Ask the user which they want before sending.",
+@@ -753,7 +743,8 @@ export const PARAM_TEXTS = {
+   snoozeDays: 'How many days until it comes back. 1 unless the user named a time; 30 is the most.',
+   requestRef: 'The stable id of a waiting request, taken from check_my_inbox. Never invent it.',
+   accept: "true to accept, false to decline — only ever on the user's explicit answer.",
+-  responseNote: 'Optional short note from the user to pass back with the answer.',
++  responseNote:
++    "Optional short note to pass back with the answer — the user's meaning in your own words, facts exact, never their typed words.",
+   factFieldType:
+     'The key for what you are saving. Reuse a consistent key so search matches later — do not ' +
+     'invent synonyms. CORE (single-value, can become public if others confirm): occupation, ' +
+@@ -811,8 +802,7 @@ export const PARAM_TEXTS = {
+     'What kind of update this is — e.g. "found", "confirmed", "no_luck". Short, snake_case.',
+   updateSummary: 'One plain line describing the result, for the user to read.',
+   askQuestion:
+-    "The question for the contact, written out ready to send — polite, one ask, in the user's " +
+-    'voice. The recipient sees it verbatim.',
++    "The question for the contact, ready to send, in your own words as the user's assistant — polite, one ask, every fact exact. Never the user's own typed words.",
+   taskBrief: 'The full rewritten brief: goal, plan, done, waiting-on, next step, finish criterion.',
+   wakeHours: 'Hours from now to wake the task, 1–168.',
+   finishSummary: 'One short line of the outcome (e.g. "introduced to Nino — done").',
+@@ -854,7 +844,7 @@ export const PROMPT_TEXTS = {
+     argWho: 'ვისთან გინდა დაკავშირება — სახელი ან აღწერა',
+     argPurpose: 'რისთვის გინდა გაცნობა — ერთი წინადადება',
+     build: (who: string, purpose: string): string =>
+-      `მინდა გამაცნო ${who} — მიზანი: ${purpose}. იპოვე ყველაზე თბილი გზა ჩემი ქსელით, ` +
++      `მინდა გამაცნო ${who} — რისთვის: ${purpose}. იპოვე ყველაზე თბილი გზა ჩემი ქსელით, ` +
+       'მითხარი ვინ შემიძლია გამაცნოს და რატომ, და სანამ რამეს გააგზავნი — დამიდასტურე.',
+   },
+   network_overview: {
+@@ -874,15 +864,15 @@ export const PROMPT_TEXTS = {
+       'რეალურად აქვს პრობლემა და გადაიხდის), არა თანამდებობით ან იმით ვინ ყველაზე ' +
+       'ხელმისაწვდომია. დაიწყე ყველაზე ახლოს — მორგებული პირდაპირი კონტაქტებით, არა ხიდებით. ' +
+       'მოიარე შენახული ფაქტები/როლები/საჭიროებები. თითო ერთი ხაზით ' +
+-      'რატომ. ვინც უკვე Ally-ზეა — გაააქტიურე, არ მიჰყიდო. მომეცი პირველი batch, მერე ' +
++      'რატომ. ვინც უკვე Netai-ზეა — გაააქტიურე, არ მიჰყიდო. მომეცი პირველი batch, მერე ' +
+       'შემომთავაზე მეტი. ტელეფონის ნომრები არასდროს.',
+   },
+   invite_people: {
+-    title: 'ვინ მოვიწვიო Ally-ზე',
++    title: 'ვინ მოვიწვიო Netai-ზე',
+     description: 'ქსელიდან ვინ მოვიწვიო — ვისაც სარგებელს მისცემს ან ბევრ გზას გახსნის',
+     argWho: 'სურვილისამებრ — რომელი წრე/ტიპი (ცარიელი = მთელ ქსელში)',
+     build: (who: string): string =>
+-      `ვინ მოვიწვიო Ally-ზე${who ? ` ${who}` : ''}? დაასახელე ჩემი ქსელიდან რამდენიმე, ` +
++      `ვინ მოვიწვიო Netai-ზე${who ? ` ${who}` : ''}? დაასახელე ჩემი ქსელიდან რამდენიმე, ` +
+       'ვისაც რეალურ სარგებელს მისცემს ან ვინც ბევრ გზას გახსნის — თითო ერთი ხაზით რატომ. ' +
+       'არასდროს ახსენო ფული ან ჯილდო — ჩამომიყალიბე როგორც ჩემი ან მეგობრის სარგებელი. ' +
+       'შემომთავაზე შეტყობინების დაწერა ჩემი ხმით. ერთხელ მკითხე, არ დამაწექი.',
+@@ -916,7 +906,7 @@ export const NOTE_EMPTY_SECOND_DEGREE =
+ // Rev 8 invite trigger — fires on a non-member profile view, the moment the
+ // user is zooming in on the person they actually want.
+ export const NOTE_NOT_ON_ALLY =
+-  "They're not on Ally yet — say so plainly, then in the same breath name a couple of the " +
++  "They're not on Netai yet — say so plainly, then in the same breath name a couple of the " +
+   "user's OWN people who'd open that path (real names, one line why each). Never mention " +
+   "money, earning or rewards — frame it as the user's own gain or a gift to a friend; ask " +
+   'once, never guilt.';
+@@ -951,7 +941,7 @@ export const NOTE_RATE_LIMITED =
+   'Daily limit reached. Tell the user exactly this; do not invent an alternative or a fake result.';
+ 
+ export const NOTE_INTRO_SENT =
+-  "Introduction request sent. Tell the user they'll get the reply inside Ally; " +
++  "Introduction request sent. Tell the user they'll get the reply inside Netai; " +
+   'never promise it will come.';
+ 
+ export function noteInboxPending(introCount: number, askCount: number): string {
+-- 
+2.43.0
+

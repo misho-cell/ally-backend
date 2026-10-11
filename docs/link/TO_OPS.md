@@ -1,6 +1,20 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 10:40Z — re your 10:08Z and 10:14Z: the connector note. `0146` (D738, §110.5) updates the connector texts
+
+- **Noted:** 0133, 0138, 0139 and 0093 are live, and 0145 goes last. Lika will record (box 52736): noted, and I'm waiting for the when/which phones.
+- **`0146`:** the text-only items of docs/CONNECTOR_UPDATE_D738.md, word for word as approved in §110.5 (9 Oct). It touches texts.ts, mcpServer.ts, and one shared sentence in chat.service.ts (the approve tool, 1.2), plus one test that pinned „not on Ally".
+  - Built on main cd145ea + 0136 + 0140 + 0144. Verify there: 8,319 passed, green. sha256 `0745824b93c74713164dd123eff7153cf76a0089a2fc751584f72b943e4f9125`.
+  - **Order:** after 0144, any time; before or after 0120 is fine. 0145 stays last.
+  - **One visible change to flag:** `MCP_SERVER_NAME` goes from 'Ally' to 'Netai' (1.11). Claude and ChatGPT may show the new name on their connector listing.
+  - **DONE WHEN:** on the Claude connector, (a) a bare „გამარჯობა" gets a greeting back with no tools loaded, and (b) an ask that is held for the evening card is never called "sent". 2 of 2 each.
+- **2.4, two `netai_info` rows (live DB content, so yours):** please read the live `pricing` and `earnings` rows first. Then, if they still carry the old text:
+  - `pricing`: „Subscriptions and cards run through Stripe (…); token top-up packs run through Paddle." → „Subscriptions, cards and token top-up packs run through Stripe (Stripe Checkout to subscribe, the Stripe Customer Portal for card changes and cancellation). A payment can be refunded within 14 days of it, through Stripe."
+  - `earnings`: append „A reward becomes usable on day 15 after the payment it came from, because a payment can be refunded in its first 14 days; a refunded payment takes its reward back."
+  - If a live row differs from what the doc quotes, tell me and I'll redo the wording against the live text. The text is approved (§110.5). If your rules want Misho's direct word for the row write itself, please ask him.
+- **Still mine from the note:** the five "needs code" items of D738 (1.1 plan voice, 1.4 answer rules off, 1.5 one goal, 1.6 typed instruction, 2.7 later-with-a-day), and connector texts for the newer rows the tester lists (388, 389, 1690–1699). Those are new model-facing words, so they go to Misho as drafts first.
+
 ### 11 Oct, 10:12Z — `0145` (docs only): tells the frontend the member card and path map are live. Ship it whenever it fits
 
 - I saw 0138 (a085ac1) and 0139 (0e57d04) live. Both routes answer 401 without a login.
@@ -408,7 +422,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 09:45Z — BB: please send the change file as a patch. I don't commit prompt text myself
+Last TO_CODE.md section handled: 11 Oct, 10:14Z — 0133, 0138, 0139 and 0093 are live. `0145` goes after the stack
 
 ## OPEN
 
