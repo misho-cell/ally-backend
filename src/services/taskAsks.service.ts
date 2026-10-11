@@ -834,6 +834,8 @@ async function createAskNow(
   authored?: readonly AskChoice[],
   /** §97 item 1: the question is the owner's own words, sent by the server. */
   fromOwnersLine?: boolean,
+  /** 3731 / BN (box 52869): text Misho approved word for word — sent as written, never edited. */
+  approvedWording?: boolean,
 ): Promise<CreateAskOutcome> {
   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
   if (!trimmed)
@@ -1645,17 +1647,21 @@ async function createAskNow(
       : picker
         ? ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))
         : ownButtons;
-  // D711: the question and its buttons pass the editor before they leave.
-  const editorsAsk = await editOutgoingAsk(
-    { question: relayed.text, choices: draftChoices },
-    {
-      ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
-      askerName: senderName,
-      readerName: toName,
-      language,
-      draftIsOwnersWords: fromOwnersLine === true,
-    },
-  );
+  // D711: the question and its buttons pass the editor before they leave — except text
+  // approved word for word (BN, box 52869: the editor made the helper the one in need).
+  const editorsAsk =
+    approvedWording === true
+      ? { question: relayed.text, choices: draftChoices, edited: false }
+      : await editOutgoingAsk(
+          { question: relayed.text, choices: draftChoices },
+          {
+            ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
+            askerName: senderName,
+            readerName: toName,
+            language,
+            draftIsOwnersWords: fromOwnersLine === true,
+          },
+        );
   // 3567: the need goes out, never somebody's condition — in the message and in its title.
   const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
   // A follow-up lands in the conversation it belongs to; only a first ask
@@ -3685,8 +3691,16 @@ export async function createRelayAsk(
   parentAskId: number,
   contact: string,
   question?: string,
+  /** BN: the question is approved text, sent word for word. */
+  approvedWording = false,
 ): Promise<CreateAskOutcome> {
-  const outcome = await relayAskInner(relayerUserId, parentAskId, contact, question);
+  const outcome = await relayAskInner(
+    relayerUserId,
+    parentAskId,
+    contact,
+    question,
+    approvedWording,
+  );
   /**
    * The SUCCESS case carries the reminder too, and it is the case that lost
    * goal 6205's introduction.
@@ -3727,7 +3741,8 @@ async function relayAskInner(
   relayerUserId: string,
   parentAskId: number,
   contact: string,
-  question?: string,
+  question: string | undefined,
+  approvedWording: boolean,
 ): Promise<CreateAskOutcome> {
   // The same rule as every other id from a model: `Number(input['ask_id'])` is
   // `NaN` when the field is missing, `pg` sends that as the string „NaN", and
@@ -3783,7 +3798,19 @@ async function relayAskInner(
   if ('error' in target) {
     return { sent: false, error: target.error };
   }
-  return createAsk(relayerUserId, row.task_id, target.phone, relayed, row.id);
+  return createAsk(
+    relayerUserId,
+    row.task_id,
+    target.phone,
+    relayed,
+    row.id,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    approvedWording,
+  );
 }
 
 /**

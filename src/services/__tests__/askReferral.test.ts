@@ -95,6 +95,7 @@ describe('the tap on it (1696)', () => {
       77,
       '+995555000009',
       "I'm asking for Nino: Do you know a good notary?",
+      false,
     );
     const decision = mockQuery.mock.calls.find(([sql]) =>
       String(sql).includes('referral_approved = $2'),
@@ -143,5 +144,25 @@ describe('the tap on it (1696)', () => {
     expect(chat).toContain('? await answerReferral(userId, threadId, userMessage, runId, intent)');
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toContain('CASE WHEN p.may_name_referrer IS FALSE THEN NULL ELSE b.name END');
+  });
+});
+
+// Box 52869: „თამარ ნოტარიძე-ს ანა მთხოვნიძე-ისთვის" — the names are declined, not hyphenated.
+describe('the Georgian lines decline the names', () => {
+  const lines = jest.requireActual(
+    '../askReferral.service',
+  ) as typeof import('../askReferral.service');
+
+  it('writes the dative and the „for" form without a hyphen', () => {
+    expect(lines.referralQuestion('ka', 'თამარ ნოტარიძე', 'ანა მთხოვნიძე')).toContain(
+      'თამარ ნოტარიძეს ანა მთხოვნიძისთვის',
+    );
+    expect(lines.askedForThemLine('ka', 'თამარ ნოტარიძე', 'ანა მთხოვნიძე')).toBe(
+      'ვკითხე თამარ ნოტარიძეს. პასუხს ანა მთხოვნიძეს გადავცემ.',
+    );
+    expect(lines.declinedLine('ka', 'ანა მთხოვნიძე')).toContain('ანა მთხოვნიძეს ვეტყვი');
+    expect(lines.relayedQuestion('ka', 'ანა მთხოვნიძე', 'იცნობ?')).toBe(
+      'ანა მთხოვნიძისთვის გეკითხები: იცნობ?',
+    );
   });
 });

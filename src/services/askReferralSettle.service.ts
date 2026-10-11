@@ -138,11 +138,14 @@ async function askTheReferral(
   language: RunLanguage,
 ): Promise<string | null> {
   const asker = offer.asker_name?.trim() ?? '';
+  // BN's line is Misho's text word for word (§128): it goes out as written.
+  const approvedLine = referralReads(offer, tap, language);
   const outcome = await createRelayAsk(
     recipientId,
     offer.id,
     offer.referral_phone,
-    referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),
+    approvedLine ?? relayedQuestion(language, asker, offer.question),
+    approvedLine !== null,
   );
   if (!outcome.sent) {
     if (outcome.reason !== undefined && NOT_ON_NETAI_REASONS.has(outcome.reason)) {

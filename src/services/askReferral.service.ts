@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { geoName } from './georgianCase';
 import { instructionAddressee } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { oneContactNamed, ownersLabel } from './instructedAsk';
@@ -52,7 +53,7 @@ const REFERRAL_LABELS: Readonly<Record<RunLanguage, Readonly<Record<ReferralTap,
 const REFERRAL_QUESTION: Readonly<
   Record<RunLanguage, (referral: string, asker: string) => string>
 > = {
-  ka: (referral, asker) => `ვკითხო ${referral}-ს ${asker}-ისთვის?`,
+  ka: (referral, asker) => `ვკითხო ${geoName(referral, 'dat')} ${geoName(asker, 'gen')}თვის?`,
   en: (referral, asker) => `Shall I ask ${referral} for ${asker}?`,
   ru: (referral, asker) => `Спросить у ${referral} — для ${asker}?`,
   es: (referral, asker) => `¿Le pregunto a ${referral} de parte de ${asker}?`,
@@ -170,14 +171,15 @@ export async function offerReferral(
 
 const RELAYED_QUESTION: Readonly<Record<RunLanguage, (asker: string, question: string) => string>> =
   {
-    ka: (asker, question) => `${asker}-ისთვის გეკითხები: ${question}`,
+    ka: (asker, question) => `${geoName(asker, 'gen')}თვის გეკითხები: ${question}`,
     en: (asker, question) => `I'm asking for ${asker}: ${question}`,
     ru: (asker, question) => `Спрашиваю для ${asker}: ${question}`,
     es: (asker, question) => `Pregunto de parte de ${asker}: ${question}`,
   };
 
 const ASKED_FOR_THEM: Readonly<Record<RunLanguage, (referral: string, asker: string) => string>> = {
-  ka: (referral, asker) => `ვკითხე ${referral}-ს. პასუხს ${asker}-ს გადავცემ.`,
+  ka: (referral, asker) =>
+    `ვკითხე ${geoName(referral, 'dat')}. პასუხს ${geoName(asker, 'dat')} გადავცემ.`,
   en: (referral, asker) => `I've asked ${referral}. The answer goes to ${asker}.`,
   ru: (referral, asker) => `Спросил у ${referral}. Ответ передам ${asker}.`,
   es: (referral, asker) => `Le pregunté a ${referral}. La respuesta le llegará a ${asker}.`,
@@ -195,7 +197,7 @@ const NOT_ON_NETAI: Readonly<Record<RunLanguage, (referral: string) => string>> 
 };
 
 const DECLINED: Readonly<Record<RunLanguage, (asker: string) => string>> = {
-  ka: (asker) => `კარგი, არავის ვკითხავ. ${asker}-ს ვეტყვი, რომ ამაში ვერ დაეხმარე.`,
+  ka: (asker) => `კარგი, არავის ვკითხავ. ${geoName(asker, 'dat')} ვეტყვი, რომ ამაში ვერ დაეხმარე.`,
   en: (asker) => `Fine, I won't ask anyone. I'll let ${asker} know you couldn't help with this.`,
   ru: (asker) => `Хорошо, никого спрашивать не буду. Передам ${asker}, что помочь не получилось.`,
   es: (asker) => `Vale, no preguntaré a nadie. Le diré a ${asker} que no pudiste ayudar.`,

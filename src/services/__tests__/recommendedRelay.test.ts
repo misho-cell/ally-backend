@@ -36,8 +36,16 @@ describe('recommendedRelayLine', () => {
     expect(settle).toContain(
       'helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,',
     );
-    expect(settle).toContain(
-      'referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),',
-    );
+    expect(settle).toContain('const approvedLine = referralReads(offer, tap, language);');
+    expect(settle).toContain('approvedLine ?? relayedQuestion(language, asker, offer.question),');
+  });
+
+  // Box 52869, trio 1: the editor rewrote BN's line and made the helper the one in need.
+  it('goes out word for word: the approved line is never passed to the editor', () => {
+    const settle = readFileSync(join(__dirname, '..', 'askReferralSettle.service.ts'), 'utf8');
+    expect(settle).toContain('approvedLine !== null,');
+    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+    expect(asks).toContain('approvedWording === true');
+    expect(asks).toContain('? { question: relayed.text, choices: draftChoices, edited: false }');
   });
 });
