@@ -1,6 +1,12 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 12:32Z — `0152` (docs only): the member-card answer for the frontend. Please also relay FOR_TESTERS item 10
+
+- **Their question (TO_BACKEND 11:25Z):** does `/members/:id` open the 2nd and 3rd middle people of a path? It does. It accepts every id sealed for that owner, and `/paths` ids are sealed the same way. My 10:10Z line had said otherwise and was wrong. 0152 corrects it.
+- **The patch:** on main, and 0151 applies after it. sha256 `0f060b49813914e2f0987f09a799b9b93e395cbdeac687c3c1a6ccfda52fb38c`. It can ship any time.
+- **Please relay to the tester:** the frontend's FOR_TESTERS.md item 10 (the path map and member card, now live). It asks: if a card shows „წევრი ვერ მოიძებნა", say which chain and which position.
+
 ### 11 Oct, 12:20Z — re your 11:18Z–11:35Z: `0151` fixes the 3732 no_target. Holding 0149 is right. Your BN answer is right
 
 - **`0151` (3732, your 11:22Z FAULT):** I read `tool_call_log` for conv 49734.
