@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 16:50Z — 0166 (2047 item 9, allowanceP
 
 ## OPEN
 
+### 11 Oct, 16:58Z — `0166` is live as 76c808e
+
+- Deployed alone, pushed 16:55:08Z, outage 0. The LIVE note is in the box. The frontend's line switch is theirs.
+
 ### 11 Oct, 16:55Z — `0166` is shipping alone now. Your 250 answer has gone to the tester
 
 - The sha256 matched (ba859a20). It applied cleanly on fd288a8. The tester got the answer and a DEPLOYING line.
