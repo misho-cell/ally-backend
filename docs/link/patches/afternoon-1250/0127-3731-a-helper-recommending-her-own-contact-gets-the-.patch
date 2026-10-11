@@ -1,0 +1,260 @@
+From 16bd02a0fed4e06d6ac1c9b353d32339d3200c1d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 00:05:45 +0000
+Subject: [PATCH] 3731: a helper recommending her own contact gets the 1696
+ referral card
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MASTER TEST RUN chat #8, IN-025 (2 of 2): the helper answered „შემიძლია
+დაგაკავშირო. თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი." Her
+assistant only passed the line to the asker, and the person she
+recommended heard nothing. 1696's card (shall I ask her for the asker,
+with my name, without it, or not at all) read only an order to ask.
+
+A line that recommends getting in touch with somebody (დაუკავშირდი,
+მიწერე, დაურეკე, მიმართე, დაგაკავშირებ, contact her, talk to…) and names
+exactly one of the helper's own contacts is the same referral: the same
+card, with its approved words, and nothing goes to the recommended person
+before the helper taps. Every word is tried as the start of a name; two
+different people found means no card.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/referralRecommendation.test.ts  | 62 +++++++++++++++
+ src/services/askReferral.service.ts           | 27 ++++++-
+ src/services/instructedAsk.ts                 |  5 +-
+ src/services/referralRecommendation.ts        | 79 +++++++++++++++++++
+ 4 files changed, 168 insertions(+), 5 deletions(-)
+ create mode 100644 src/services/__tests__/referralRecommendation.test.ts
+ create mode 100644 src/services/referralRecommendation.ts
+
+diff --git a/src/services/__tests__/referralRecommendation.test.ts b/src/services/__tests__/referralRecommendation.test.ts
+new file mode 100644
+index 0000000..b4c7b91
+--- /dev/null
++++ b/src/services/__tests__/referralRecommendation.test.ts
+@@ -0,0 +1,62 @@
++jest.mock('../instructedAsk', () => ({ __esModule: true, phoneForWords: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { phoneForWords } from '../instructedAsk';
++import { recommendedContact, recommendsSomebody } from '../referralRecommendation';
++
++/** 3731 (IN-025, 2 of 2): the helper recommended her own contact, and that person heard nothing. */
++const mockPhone = phoneForWords as jest.MockedFunction<typeof phoneForWords>;
++const LINE = 'შემიძლია დაგაკავშირო. თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი.';
++const TAMUNA = '995500000001';
++
++beforeEach(() => mockPhone.mockReset());
++
++describe('recommendsSomebody', () => {
++  it('reads a recommendation to get in touch, in Georgian and English', () => {
++    expect(recommendsSomebody(LINE)).toBe(true);
++    expect(recommendsSomebody('ნინოს მიწერე, ის გეტყვის')).toBe(true);
++    expect(recommendsSomebody('Talk to Nino, she knows')).toBe(true);
++  });
++
++  it('is not a plain answer', () => {
++    expect(recommendsSomebody('არ ვიცი, ბოდიში')).toBe(false);
++    expect(recommendsSomebody('ვიცნობ ერთ ნოტარიუსს')).toBe(false);
++  });
++});
++
++describe('recommendedContact', () => {
++  it('finds the one contact the line names, starting where her name starts', async () => {
++    mockPhone.mockImplementation(async (_user, words) => (words[0] === 'თამუნა' ? TAMUNA : null));
++    await expect(recommendedContact('7', LINE)).resolves.toEqual({
++      phone: TAMUNA,
++      typed: 'თამუნა',
++    });
++    // „ჩემი", „სახელით", „შემიძლია" and the verbs are never tried as a name.
++    const firstWords = mockPhone.mock.calls.map(([, words]) => words[0]);
++    expect(firstWords).not.toContain('ჩემი');
++    expect(firstWords).not.toContain('სახელით');
++    expect(firstWords).not.toContain('შემიძლია');
++    expect(firstWords).not.toContain('დაუკავშირდი');
++  });
++
++  it('is null when two different people are named, or nobody', async () => {
++    mockPhone.mockImplementation(async (_user, words) =>
++      words[0] === 'თამუნა' ? TAMUNA : words[0] === 'ნოტარიუსია' ? '995500000002' : null,
++    );
++    await expect(recommendedContact('7', LINE)).resolves.toBeNull();
++    mockPhone.mockResolvedValue(null);
++    await expect(recommendedContact('7', LINE)).resolves.toBeNull();
++  });
++
++  it('reads nothing for a line that recommends nobody', async () => {
++    await expect(recommendedContact('7', 'არ ვიცი')).resolves.toBeNull();
++    expect(mockPhone).not.toHaveBeenCalled();
++  });
++
++  it('feeds the 1696 card, which sends nothing before the reader taps', () => {
++    const service = readFileSync(join(__dirname, '..', 'askReferral.service.ts'), 'utf8');
++    expect(service).toContain('if (sentence === null && !recommendsSomebody(line)) return null;');
++    expect(service).toContain('return recommendedContact(recipientId, line);');
++  });
++});
+diff --git a/src/services/askReferral.service.ts b/src/services/askReferral.service.ts
+index a321d54..ab32704 100644
+--- a/src/services/askReferral.service.ts
++++ b/src/services/askReferral.service.ts
+@@ -2,6 +2,11 @@ import { query } from '../db/postgres/client';
+ import { instructionAddressee } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { oneContactNamed, ownersLabel } from './instructedAsk';
++import {
++  recommendedContact,
++  RecommendedContact,
++  recommendsSomebody,
++} from './referralRecommendation';
+ import { RunLanguage } from './runLanguage';
+ import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
+ 
+@@ -108,6 +113,19 @@ async function isTheAskersNumber(askerId: number, phone: string): Promise<boolea
+   return result.rows[0]?.hit === true;
+ }
+ 
++/** The person the reader's line refers the asker to: an order to ask her, or a recommendation (3731). */
++async function referredContact(
++  recipientId: string,
++  instruction: string | null,
++  line: string,
++): Promise<RecommendedContact | null> {
++  if (instruction !== null) {
++    const phone = await oneContactNamed(recipientId, instruction);
++    return phone === null ? null : { phone, typed: instructionAddressee(instruction) ?? '' };
++  }
++  return recommendedContact(recipientId, line);
++}
++
+ export interface ReferralCard {
+   readonly text: string;
+   readonly choices: readonly string[];
+@@ -126,13 +144,14 @@ export async function offerReferral(
+   language: RunLanguage,
+ ): Promise<ReferralCard | null> {
+   const sentence = contactInstructionIn(line);
+-  if (sentence === null) return null;
++  if (sentence === null && !recommendsSomebody(line)) return null;
+   const ask = await askOpenForReferral(recipientId, threadId);
+   const asker = ask?.asker_name?.trim() ?? '';
+   if (ask === null || asker === '') return null;
+-  const phone = await oneContactNamed(recipientId, sentence);
+-  if (phone === null || (await isTheAskersNumber(ask.from_user_id, phone))) return null;
+-  const name = await ownersLabel(recipientId, phone, instructionAddressee(sentence) ?? '');
++  const named = await referredContact(recipientId, sentence, line);
++  if (named === null || (await isTheAskersNumber(ask.from_user_id, named.phone))) return null;
++  const phone = named.phone;
++  const name = await ownersLabel(recipientId, phone, named.typed);
+   await query(
+     `UPDATE task_asks
+         SET referral_phone = $2, referral_name = $3, referral_offered_at = NOW()
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index 128a917..f9a0bd7 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -78,7 +78,10 @@ export async function ownersLabel(userId: string, phone: string, typed: string):
+ }
+ 
+ /** The one phone these typed words name; null for none or several. */
+-async function phoneForWords(userId: string, words: readonly string[]): Promise<string | null> {
++export async function phoneForWords(
++  userId: string,
++  words: readonly string[],
++): Promise<string | null> {
+   for (const count of NAME_WORDS_TRIED) {
+     if (words.length < count) continue;
+     const phones = await findContactPhonesByName(
+diff --git a/src/services/referralRecommendation.ts b/src/services/referralRecommendation.ts
+new file mode 100644
+index 0000000..f510d44
+--- /dev/null
++++ b/src/services/referralRecommendation.ts
+@@ -0,0 +1,79 @@
++import { phoneForWords } from './instructedAsk';
++
++/**
++ * 3731 (MASTER TEST RUN chat #8, IN-025, 2 of 2): the helper answered
++ * „შემიძლია დაგაკავშირო. თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით
++ * დაუკავშირდი." — a recommendation of one of her own contacts, told to the
++ * asker. 1696's card (shall I ask her for the asker, with my name or without)
++ * reads only an order to ask („ჰკითხე ეკას"), so this line went to the asker
++ * and the recommended person heard nothing. A line that recommends getting in
++ * touch with somebody, and names exactly one of the helper's own contacts, is
++ * the same referral: the same card, nothing sent before her tap.
++ */
++const RECOMMENDS_RE =
++  /(?<![\p{L}\p{M}])(?:დაუკავშირდი(?:თ)?|მიწერე(?:თ)?|დაურეკე(?:თ)?|მიმართე(?:თ)?|დაგაკავშირებ\p{L}*|დაგაკავშირო|contact (?:her|him|them)|reach out to|get in touch with|talk to|call (?:her|him|them))(?![\p{L}\p{M}])/iu;
++
++/** Words that are never a person's name in such a line. */
++const NOT_A_NAME: ReadonlySet<string> = new Set([
++  'ჩემი',
++  'შენი',
++  'მისი',
++  'სახელით',
++  'შემიძლია',
++  'მაგრამ',
++  'ისიც',
++  'ის',
++  'და',
++  'კი',
++  'არა',
++  'my',
++  'name',
++  'her',
++  'him',
++  'them',
++  'can',
++  'you',
++]);
++/** How many words of the line are tried as the start of a name. */
++const NAME_POSITIONS_TRIED = 8;
++const MIN_NAME_CHARS = 2;
++
++export interface RecommendedContact {
++  readonly phone: string;
++  /** The word the helper typed where the name begins. */
++  readonly typed: string;
++}
++
++/** Does the line recommend getting in touch with somebody? */
++export function recommendsSomebody(line: string): boolean {
++  return RECOMMENDS_RE.test(line);
++}
++
++function nameWordsOf(line: string): string[] {
++  return line
++    .split(/[^\p{L}\p{M}]+/u)
++    .filter((w) => w.length >= MIN_NAME_CHARS && !NOT_A_NAME.has(w.toLowerCase()))
++    .filter((w) => !RECOMMENDS_RE.test(w));
++}
++
++/**
++ * The one contact of this helper's own that the recommendation names: every
++ * word is tried as the start of a name, and the answer stands only when all
++ * the names found are one person. Null for none or for two different people.
++ */
++export async function recommendedContact(
++  userId: string,
++  line: string,
++): Promise<RecommendedContact | null> {
++  if (!recommendsSomebody(line)) return null;
++  const words = nameWordsOf(line).slice(0, NAME_POSITIONS_TRIED);
++  const found = await Promise.all(
++    words.map(async (typed, at) => ({
++      typed,
++      phone: await phoneForWords(userId, words.slice(at)),
++    })),
++  );
++  const hits = found.filter((f): f is RecommendedContact => f.phone !== null);
++  const phones = new Set(hits.map((h) => h.phone));
++  return phones.size === 1 ? hits[0] : null;
++}
+-- 
+2.43.0
+

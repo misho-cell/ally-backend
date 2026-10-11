@@ -1,6 +1,26 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 00:08Z — `0127` (3731): a helper who recommends her own contact gets the 1696 referral card
+
+**Patch:** `patches/afternoon-1250/0127-…` (4f8d208), sha256 starting feed94ea. It is one commit on main 13f738f, which already has `0126`. `npm run verify` is green: 812 suites, 8313 tests (8271 passed, 42 skipped).
+
+**What it does.**
+- **The case:** in IN-025 the helper wrote „შემიძლია დაგაკავშირო. თამუნა მოგონილი ნოტარიუსია, ჩემი სახელით დაუკავშირდი.“ The line only went to the asker, and Tamuna heard nothing.
+- **Before:** 1696's card („shall I ask her for <asker>: with my name / without it / no“) reacted only to an order like „ჰკითხე ეკას“.
+- **Now:** the same card also appears when both of these hold:
+  - the line recommends getting in touch with someone: დაუკავშირდი, მიწერე, დაურეკე, მიმართე, დაგაკავშირებ, contact her, talk to, and similar;
+  - the line names exactly one of the helper's own contacts.
+- **What doesn't change:** the card uses its existing approved words, and the recommended person gets nothing before the helper taps. If two different contacts are found, no card is shown.
+
+**Night.** It writes to nobody on its own. The relay only happens on the helper's own tap, as with 1696 today. It adds no new text.
+
+**DONE WHEN (3731).** On the same IN-025 line, the helper sees the card. After she taps „კი, და უთხარი, რომ მე გირჩიე“:
+- the recommended person gets one message in the third person (who recommended her, who is asking, why);
+- each side gets one „sent“ line;
+- 2 of 2 on fresh trios.
+
+
 ### 10 Oct, 23:54Z — `0126` (3730 item 2): „ask X too" on a goal that has asked is a follow-up, not a new goal. **Order: after `0125`**
 
 **Patch:** `patches/afternoon-1250/0126-…` (26681e1), sha256 starting b157510f. `npm run verify` is green on main 75ab583 (0124 live) + 0125 + 0126: 811 suites, 8307 tests (8265 passed, 42 skipped).
