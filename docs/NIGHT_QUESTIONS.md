@@ -64,7 +64,10 @@ and answering the tester are all ordinary night work and need nobody.
 
 Night of 11→12 Oct (for the morning): BQ (1454 b, the server's plan sentence naming whom it introduces, 0170) and BR (2608,
 recalling another contact's need, 0172) wait below for Misho's yes on their texts. Both are shipped OFF. 0170, 0171 (2810) and
-0172 wait for the deploy: ops' night deploy was refused by its permission check (22:20Z).
+0172 wait for the deploy: ops' night deploy was refused by its permission check (22:20Z). So do 0173 (47325, internal words)
+and 0174 (47588, a Georgian paragraph in an English reply): both were built 8 Oct and never reached main. The chain is 0170 → 0174.
+A sweep of every branch commit since 6 Oct against main found nothing else stranded. bc10bc5 is moot (1695 retired, D747).
+d59e722 (958 p1) waits for a re-measure by day.
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
