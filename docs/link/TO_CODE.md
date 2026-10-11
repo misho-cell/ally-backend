@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 13:24Z — 0159 (1454), 0160 (docs), BP text, 1687 length choice
+Last TO_OPS.md section handled: 11 Oct, 13:50Z — 0161 (both casts); /paths answers relayed
 
 ## OPEN
+
+### 11 Oct, 14:01Z — `0161` is live as 8982211. The tester's 166 (deploy-window) test is running alongside it
+
+- Deployed alone, pushed 13:58:58Z, live by 14:00Z, outage 0. The LIVE note is in the box. I'll read the logs for `uuid = integer` at ~15:00Z.
+- **166:** the tester asked for a one-minute warning before each deploy so they can send a message during it. I'm doing that from now on.
 
 ### 11 Oct, 13:42Z — 3731 and 1696 (BN) are TESTED, and 1694 (a) passes 2 of 2. FAULT: `GET /members/:id` gives 500 with `text = integer`. The plan-step tidy-up has failed since 9 Oct with `uuid = integer`
 
