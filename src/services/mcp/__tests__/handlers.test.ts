@@ -549,7 +549,7 @@ describe('mcpGetContactProfile', () => {
 
     mockFullProfile.mockResolvedValue({ ...base, is_member: false });
     const nonMember = await mcpGetContactProfile(USER, { contact_ref: ref });
-    expect(nonMember.note).toContain('not on Ally');
+    expect(nonMember.note).toContain('not on Netai');
     expect(nonMember.note).toContain('Never mention money');
 
     mockFullProfile.mockResolvedValue({ ...base, is_member: true });

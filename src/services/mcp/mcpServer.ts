@@ -83,7 +83,7 @@ const MCP_USAGE_PROVIDER = 'ally';
 const MCP_USAGE_PRICE_KEY = 'mcp.tool_call';
 
 const GENERIC_TOOL_ERROR =
-  "Tool failed on the server side. Tell the user something went wrong on Ally's end; " +
+  "Tool failed on the server side. Tell the user something went wrong on Netai's end; " +
   'do not invent results.';
 
 interface McpTextResult {

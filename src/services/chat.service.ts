@@ -3271,8 +3271,7 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
  * The same wall described two different ways is two walls to keep in step.
  */
 export const APPROVE_PLAN_DESCRIPTION =
-  "Record the user's yes to the proposed plan. Call ONLY after the user has said yes IN THIS " +
-  'TURN — their tap on the approve button, or a short go-ahead they typed. If the newest ' +
+  'Record the user\'s yes to the proposed plan. Call ONLY after the user has said yes IN THIS TURN — their tap on the approve button („ვადასტურებ"), or a short go-ahead they typed; the first „კი" is enough. If the newest ' +
   'message is yours and not theirs, there is no yes to record and you must not call this. ' +
   'Your own summary, your own question and your own certainty are not approvals. Pass ' +
   'confirmed: true. From then on, an ask to a person the plan names goes without asking again; ' +
