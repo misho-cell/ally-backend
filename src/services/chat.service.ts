@@ -4436,7 +4436,7 @@ async function dropPlanStepsTheReplyCarries(
 ): Promise<void> {
   if (!runId || !carriesPlanSentence(reply)) return;
   try {
-    const steps = await query<{ id: number; content: string }>(
+    const steps = await query<{ id: string; content: string }>(
       `SELECT id, content FROM conversations
         WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
         ORDER BY id LIMIT $3`,
@@ -4445,7 +4445,12 @@ async function dropPlanStepsTheReplyCarries(
     );
     const ids = steps.rows.filter((s) => carriesPlanSentence(s.content)).map((s) => s.id);
     if (ids.length === 0) return;
-    await query(`DELETE FROM conversations WHERE id = ANY($1::int[])`, [ids], STEP_TIDY_TIMEOUT_MS);
+    // conversations.id is a uuid: as int[] this failed on every call since 9 Oct (ops, 11 Oct).
+    await query(
+      `DELETE FROM conversations WHERE id = ANY($1::uuid[])`,
+      [ids],
+      STEP_TIDY_TIMEOUT_MS,
+    );
     // eslint-disable-next-line no-console
     console.log(`[chat] run ${runId}: dropped ${ids.length} plan step(s) the reply tells again`);
   } catch (error) {

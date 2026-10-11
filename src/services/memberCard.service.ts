@@ -61,10 +61,11 @@ async function memberRow(memberId: number): Promise<MemberRow | null> {
 
 async function profileValues(memberId: number): Promise<ReadonlyMap<string, string>> {
   const result = await query<{ key: string; value: string }>(
+    // user_profile_kv.user_id is TEXT: as int this answered 500 on every card (ops, 11 Oct).
     `SELECT key, value FROM user_profile_kv
-      WHERE user_id = $1::int AND key = ANY($2::text[]) AND value IS NOT NULL
+      WHERE user_id = $1::text AND key = ANY($2::text[]) AND value IS NOT NULL
       LIMIT $3`,
-    [memberId, PROFILE_KEYS, PROFILE_KEYS.length],
+    [String(memberId), PROFILE_KEYS, PROFILE_KEYS.length],
     CARD_QUERY_TIMEOUT_MS,
   );
   return new Map(result.rows.map((row) => [row.key, row.value]));
