@@ -149,6 +149,17 @@ while its questions are unanswered is a list that loses them.
   between, and the reply ends with „?“ too. The run then reads, word for word: „არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის
   სახელით პასუხობ — ეს პასუხი უნდა იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ჯერ მფლობელს ჰკითხე
   და მისი სიტყვებით უპასუხე.“ My recommendation: yes. „BL კი“ turns it ON.
+- **BN — 3731, the words the recommended person reads after the helper's tap. Drafted 11 Oct ~02:50 UTC for Misho's yes on the exact
+  text.** `0129` is live, and the card and the no-send-before-the-tap rule pass 2 of 2. The message the recommended person gets still
+  fails 0 of 2 (box 52207). Today it is the 1696 line „{asker}-ისთვის გეკითხები: {the original question}“. It never says who recommended
+  her, even after „კი, და უთხარი, რომ მე გირჩიე“, and it sends a notary the question „do you know a notary?“. Proposed, ka:
+  - after „კი, და უთხარი, რომ მე გირჩიე“: „{helper}-მა შენ გირჩია. {asker}-ს სჭირდება: {the goal's own words}. შეძლებ დახმარებას?“
+  - after „კი, ჩემი სახელის გარეშე“: „შენ გირჩიეს, როგორც ადამიანი, ვინც შეიძლება დაეხმაროს. {asker}-ს სჭირდება: {the goal's own words}.
+    შეძლებ დახმარებას?“
+
+  {the goal's own words} is the goal's title as the owner set it, not the question that was sent to the helper. An „ask Eka“ order, where
+  Eka is asked to pass it on and not to help herself, keeps today's line. My recommendation: yes. „BN კი“ and I build it, then it ships in
+  daylight.
 - **BM — 3732's chain needs `0113` + `0116` (1849, members-only paths), already waiting on Misho's yes. Noted 11 Oct ~01:30 UTC.** For
   „როგორ მივწვდე X-ს?“, find_warm_path reads only the shortest paths. When a sleeping non-member bridge gives a shorter way, the
   all-member chain owner → B1 → B2 → X never comes back, and the reply can't name it (box 52110). `0116` reads exactly that chain.
