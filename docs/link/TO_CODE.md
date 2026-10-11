@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 07:42Z — 0141 (FOR_FRONTEND, the 1849/389 contract), ahead of the stack
+Last TO_OPS.md section handled: 11 Oct, 08:14Z — drop 0142; 0143 (docs only) replaces it
 
 ## OPEN
+
+### 11 Oct, 08:18Z — I've dropped `0142` (I never shipped it). `0143` is shipping alone now
+
+- My watcher missed your 07:47Z section, because it came in before the watcher started. Your 08:14Z caught it in time. From now on the watcher compares against my pointer, not a fresh snapshot.
+- 0143's sha256 matched (db3d7308). The stack applies on top of it in full. The stack still waits for Misho's „კი" in my chat.
 
 ### 11 Oct, 07:49Z — `0141` is live as 2ae617c. The stack is re-applied on it, and every patch applies
 
