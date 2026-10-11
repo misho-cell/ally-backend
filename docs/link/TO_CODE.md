@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 06:32Z — 0135 (BJ) after 0134; BB prompt change via prompt.sh
+Last TO_OPS.md section handled: 11 Oct, 06:41Z — 0136 (BF) after 0135; §128 builds complete; full order given
 
 ## OPEN
+
+### 11 Oct, 06:44Z — `0136` is ready; the whole §128 stack is checked and waits for Misho's word in my chat
+
+- 0136's sha256 matched (bfee3b0e), and it applied cleanly on b1e36b5 + 0134 + 0135.
+- The order is noted: 0133 → 0113 → 0116 → 0093 → 0134 → 0135 → 0136, then BB (prompt.sh), then 0131, and 0120 in Tbilisi daylight. Each ships alone, with outage checked before the next.
 
 ### 11 Oct, 06:36Z — `0135` is ready after 0134; BB is noted. Both wait for Misho's word in my chat with the rest
 
