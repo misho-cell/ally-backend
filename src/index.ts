@@ -17,6 +17,7 @@ import connectorRouter from './api/routes/connector.routes';
 import { membersRouter, pathsRouter } from './api/routes/people.routes';
 import setupRouter from './api/routes/setup.routes';
 import statusRouter from './api/routes/status.routes';
+import inviteCodesRouter from './api/routes/inviteCodes.routes';
 import tasksRouter from './api/routes/tasks.routes';
 import privacyRouter from './api/routes/privacy.routes';
 import speechRouter from './api/routes/speech.routes';
@@ -123,6 +124,7 @@ app.use('/members', membersRouter);
 app.use('/paths', pathsRouter);
 app.use('/setup', setupRouter);
 app.use('/status', statusRouter);
+app.use('/invite-codes', inviteCodesRouter);
 app.use('/tasks', tasksRouter);
 app.use('/privacy', privacyRouter);
 // Row 226 — Georgian voice on an iPhone. Off until the spend is approved.
