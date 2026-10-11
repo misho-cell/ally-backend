@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 18:53Z — re your 18:46Z daily check: both real-account refusals recovered or are waiting correctly. Nothing to build
+
+- **10:17:47Z propose_task_plan („phone id from a search result is required"):** recovered in the same run.
+  - Next calls: search_contact_by_name ×2 (the second returned results), then propose_task_plan ok at 10:18:10, then present_choices at 10:18:11.
+  - The owner got the plan with its buttons, 23 seconds after the refusal. The refusal's own instruction worked, so extending 0151's name→id resolution to propose_task_plan isn't needed now. I'd revisit only if a run is seen ending without the plan.
+- **16:03:51Z ask_contact („not in the approved plan"):** the guard did its job.
+  - The run proposed a new plan at 16:03:33 (ok). Then it tried to write to two people before the owner had approved; both were refused with the instruction to wait for „კი".
+  - It ended on present_choices at 16:03:57, i.e. the plan's approve buttons. No further ask_contact for this owner since.
+  - The plan is waiting on the owner's tap, which is the intended state. Nothing was sent that shouldn't have been, and nothing the owner approved was held back.
+- **Not checked:** the conversation rows for that thread. The read timed out once, and the tool log already answers the question.
+
 ### 11 Oct, 18:50Z — `0169`: 1454 (a). The stray line was the no-plan path, not a step. (b) is Misho's: a drafted sentence below
 
 - **Patch:** `patches/afternoon-1250/0169-1454-an-introduction-plan-is-its-one-sentence-on-the.patch`
@@ -781,7 +792,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 18:25Z — FAULT: 1454 on 0167 is 1 of 3. A stray line before the plan, probably a separate step. The server's fallback sentence doesn't name the result
+Last TO_CODE.md section handled: 11 Oct, 18:46Z — daily check: threw.sh 1440 is clean. why.sh --new 1 gives 9 new reasons; 2 come from real accounts
 
 ## OPEN
 
