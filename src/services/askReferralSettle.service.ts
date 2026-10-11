@@ -8,8 +8,14 @@ import {
   ReferralTap,
   relayedQuestion,
 } from './askReferral.service';
+import { recommendedRelayLine } from './recommendedRelay';
+import { recommendsSomebody } from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
-import { ASKED_AS_THE_ASKER_SAVED_THEM, ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
+import {
+  ASKED_AS_THE_ASKER_SAVED_THEM,
+  ASKER_AS_THE_READER_SAVED_THEM,
+  nameAsSavedBySql,
+} from './savedNameSql';
 import { createRelayAsk, sendApprovedAskAnswer } from './taskAsks.service';
 import { saveThreadMessage, userLanguage } from './threads.service';
 
@@ -35,7 +41,17 @@ interface OfferedReferral {
   readonly asker_name: string | null;
   readonly reader_name: string | null;
   readonly task_thread_id: number | null;
+  /** 3731: the goal's own words, and the names the referred person knows the two by. */
+  readonly goal_title: string | null;
+  readonly offer_line: string | null;
+  readonly helper_as_referral_knows: string | null;
+  readonly asker_as_referral_knows: string | null;
 }
+
+/** The referred person's account, by the number the reader gave; SQL over the ask row. */
+const REFERRAL_USER_SQL = `(SELECT up."userId" FROM "UserPhone" up
+   WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(ta.referral_phone, '\\D', '', 'g')
+   LIMIT 1)`;
 
 /** The referral this reader was offered on this conversation and has not decided yet. */
 async function offeredReferral(
@@ -47,7 +63,14 @@ async function offeredReferral(
             COALESCE(ta.shown_question, ta.question) AS question,
             ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name,
             ${ASKED_AS_THE_ASKER_SAVED_THEM} AS reader_name,
-            (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id
+            (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
+            (SELECT NULLIF(TRIM(t.title), '') FROM tasks t WHERE t.id = ta.task_id) AS goal_title,
+            (SELECT c.content FROM conversations c
+              WHERE c.thread_id = ta.ask_thread_id AND c.role = 'user'
+                AND c.created_at <= ta.referral_offered_at
+              ORDER BY c.id DESC LIMIT 1) AS offer_line,
+            ${nameAsSavedBySql(REFERRAL_USER_SQL, 'ta.to_user_id')} AS helper_as_referral_knows,
+            ${nameAsSavedBySql(REFERRAL_USER_SQL, 'ta.from_user_id')} AS asker_as_referral_knows
        FROM task_asks ta
       WHERE ta.ask_thread_id = $1 AND ta.to_user_id = $2::int AND ta.status = 'sent'
         AND ta.referral_offered_at IS NOT NULL AND ta.referral_approved IS NULL
@@ -91,6 +114,23 @@ async function tellTheAsker(offer: OfferedReferral, mayName: boolean): Promise<v
   }
 }
 
+/**
+ * 3731: what the referred person reads when the reader RECOMMENDED her to help
+ * (not an order to ask her); null keeps the 1696 line. OFF until BN.
+ */
+function referralReads(
+  offer: OfferedReferral,
+  tap: ReferralTap,
+  language: RunLanguage,
+): string | null {
+  if (!recommendsSomebody(offer.offer_line ?? '')) return null;
+  return recommendedRelayLine(language, {
+    helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,
+    asker: offer.asker_as_referral_knows ?? '',
+    need: offer.goal_title ?? '',
+  });
+}
+
 async function askTheReferral(
   recipientId: string,
   offer: OfferedReferral,
@@ -102,7 +142,7 @@ async function askTheReferral(
     recipientId,
     offer.id,
     offer.referral_phone,
-    relayedQuestion(language, asker, offer.question),
+    referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),
   );
   if (!outcome.sent) {
     if (outcome.reason !== undefined && NOT_ON_NETAI_REASONS.has(outcome.reason)) {

@@ -153,12 +153,17 @@ while its questions are unanswered is a list that loses them.
   text.** `0129` is live, and the card and the no-send-before-the-tap rule pass 2 of 2. The message the recommended person gets still
   fails 0 of 2 (box 52207). Today it is the 1696 line „{asker}-ისთვის გეკითხები: {the original question}“. It never says who recommended
   her, even after „კი, და უთხარი, რომ მე გირჩიე“, and it sends a notary the question „do you know a notary?“. Proposed, ka:
-  - after „კი, და უთხარი, რომ მე გირჩიე“: „{helper}-მა შენ გირჩია. {asker}-ს სჭირდება: {the goal's own words}. შეძლებ დახმარებას?“
-  - after „კი, ჩემი სახელის გარეშე“: „შენ გირჩიეს, როგორც ადამიანი, ვინც შეიძლება დაეხმაროს. {asker}-ს სჭირდება: {the goal's own words}.
-    შეძლებ დახმარებას?“
+  - after „კი, და უთხარი, რომ მე გირჩიე“: „{helper, ergative: ნინომ / გიორგიმ} შენ გირჩია. {asker} ეძებს დახმარებას: „{the goal's own words}“. შეძლებ
+    დახმარებას?“
+  - after „კი, ჩემი სახელის გარეშე“: „შენ გირჩიეს, როგორც ადამიანი, ვინც შეიძლება დაეხმაროს. {asker} ეძებს დახმარებას: „{the goal's own
+    words}“. შეძლებ დახმარებას?“
+
+  The goal's words are quoted because owners write them in the first person. On the tester's trio that reads: „… ეძებს დახმარებას:
+  „მჭირდება ნოტარიუსი“.“ Names are the ones the recommended person knows: her own label for them, else their registered name. Already
+  built behind `RECOMMENDED_RELAY_ON = false` (recommendedRelay.ts). Only Georgian was drafted; other languages keep today's line.
 
   {the goal's own words} is the goal's title as the owner set it, not the question that was sent to the helper. An „ask Eka“ order, where
-  Eka is asked to pass it on and not to help herself, keeps today's line. My recommendation: yes. „BN კი“ and I build it, then it ships in
+  Eka is asked to pass it on and not to help herself, keeps today's line. My recommendation: yes. „BN კი“ turns it on, and it ships in
   daylight.
 - **BM — 3732's chain needs `0113` + `0116` (1849, members-only paths), already waiting on Misho's yes. Noted 11 Oct ~01:30 UTC.** For
   „როგორ მივწვდე X-ს?“, find_warm_path reads only the shortest paths. When a sleeping non-member bridge gives a shorter way, the
