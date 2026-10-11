@@ -199,6 +199,14 @@ describe('queueWarmTieQuestions — source 2 reaches the user through the one li
     expect(sql).toContain("u.subscription_status = 'active'");
   });
 
+  // 11 Oct 10:52Z, live: „operator does not exist: text = integer" — pending_updates.user_id is TEXT.
+  it('compares pending_updates.user_id as text', async () => {
+    await queueWarmTieQuestions(25);
+
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('p.user_id = u.id::text');
+  });
+
   it('queues an instruction that says how to ask and when to drop it', async () => {
     mockQuery.mockResolvedValue(rows([{ user_id: 501 }]) as never);
 

@@ -23,6 +23,16 @@ import {
 } from './chorusCap';
 
 const CAMPAIGN_QUERY_TIMEOUT_MS = 8_000;
+/**
+ * 0120's DONE WHEN failed live (ops, 11 Oct 11:01Z): the inviter read still hit
+ * 8 s on the first run. It had been measured warm, on 25 targets; the job asks
+ * for all 661 at once, and cold, the UserConnection lookups behind each phone
+ * are disk reads (130 phones: 4.5 s cold, 0.18 s warm). So the phones go in
+ * batches, each a statement well inside its own limit. The limit is longer than
+ * a request's because this is the 6-hourly background job, never a person waiting.
+ */
+const INVITER_PHONES_PER_READ = 100;
+const INVITER_READ_TIMEOUT_MS = 20_000;
 // The typed pending_updates item a due ask ALSO becomes (T9's one list).
 const CHORUS_ASK_KIND = 'chorus_ask';
 
@@ -174,6 +184,18 @@ async function inviterCandidatesForPhones(
   phones: readonly string[],
 ): Promise<Map<string, InviterCandidate[]>> {
   const out = new Map<string, InviterCandidate[]>();
+  for (let start = 0; start < phones.length; start += INVITER_PHONES_PER_READ) {
+    const batch = phones.slice(start, start + INVITER_PHONES_PER_READ);
+    for (const [phone, list] of await inviterCandidatesForBatch(batch)) out.set(phone, list);
+  }
+  return out;
+}
+
+/** One batch of {@link inviterCandidatesForPhones}; a phone appears in one batch only. */
+async function inviterCandidatesForBatch(
+  phones: readonly string[],
+): Promise<Map<string, InviterCandidate[]>> {
+  const out = new Map<string, InviterCandidate[]>();
   if (phones.length === 0) return out;
   const result = await query<{ phone: string; user_id: number; strength: number | null }>(
     // The night's chorus cron timed out here on every run (8 s, 10 Oct): it
@@ -203,7 +225,7 @@ async function inviterCandidatesForPhones(
      WHERE ${confirmedWarmTieSql('x.uid::int', 'x.phone')}
      ORDER BY x.phone, crs.strength_score DESC NULLS LAST`,
     [phones],
-    CAMPAIGN_QUERY_TIMEOUT_MS,
+    INVITER_READ_TIMEOUT_MS,
   );
   for (const row of result.rows) {
     const list = out.get(row.phone) ?? [];
