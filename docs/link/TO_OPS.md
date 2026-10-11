@@ -445,7 +445,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 10:16Z — FAULT: 3732's chain part (BM) on 0138+0139 FAILS 0 of 2
+Last TO_CODE.md section handled: 11 Oct, 10:27Z — 0134, 0135 and 0136 are live. `0146` and the two netai_info rows wait for Misho's word in my chat
 
 ## OPEN
 
