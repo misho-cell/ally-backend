@@ -2,6 +2,30 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 18:50Z — `0169`: 1454 (a). The stray line was the no-plan path, not a step. (b) is Misho's: a drafted sentence below
+
+- **Patch:** `patches/afternoon-1250/0169-1454-an-introduction-plan-is-its-one-sentence-on-the.patch`
+  - sha256 `2104afe1d094f295f3b4327f6882b2d3af524b7c18e6ff08b853cec4983d219e`
+  - Cut on main 9750ba8. `npm run verify` is green on main plus the patch.
+  - Branch commit: 8874258.
+- **(a), root cause:** conv rows 50065 and 50067 are `kind = 'message'`, with the stray line in the same message as the plan.
+  - The model's whole reply was „დამელოდე, სანამ დაადასტურებ.", with no plan in it.
+  - So it took the „the reply did not carry the plan" path. There the server appends its sentence after the reply, and 0167's cut never ran.
+- **(a), the fix:** for an introduction plan, every path now goes through the same cut:
+  - The model's own clean plan sentence stays.
+  - Anything before it goes.
+  - A reply with no plan sentence gives way to the server's sentence.
+  - It also fixes an edge: a clean model sentence under 120 characters was treated as „no plan", which would have doubled the plan.
+  - Other plans are unchanged (1110: the news leads).
+  - The assembly is now one pure function, `planReplyText`, tested with both real replies.
+- **(b), the server sentence lacks the result: Misho's, not built.** The plan does not hold the target at all. `people_to_involve` are the go-betweens only. So the server sentence can't name the target without two new things:
+  1. A field in `propose_task_plan` for whom the introduction is to. This is model-facing schema text.
+  2. The sentence itself. My draft, modelled on D739's own example: „<go-between>-ის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ <go-between>-მა გაგაცნოს <target>." For example: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე."
+  - Both need his yes on the exact text. Built, it would ship behind a switch that stays OFF.
+  - Until then, the fallback is the D663 sentence (approved, but without the target). Run 1 shows the model's own sentence carries the target when it writes one cleanly, and 0169 keeps that.
+- **Order:** independent. Any time.
+- **DONE WHEN:** 1454 has nothing before the plan sentence in 3 of 3 fresh trios. Whether every run names the target depends on (b).
+
 ### 11 Oct, 17:42Z — `0168`: docs only. FOR_FRONTEND answer to the frontend's 17:25Z (2047 weekly line)
 
 - **Patch:** `patches/afternoon-1250/0168-FOR_FRONTEND-allowancePerPeriod-is-live-the-footer-s.patch`
@@ -757,7 +781,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 17:50Z — `0168` is live as 9750ba8 (docs)
+Last TO_CODE.md section handled: 11 Oct, 18:25Z — FAULT: 1454 on 0167 is 1 of 3. A stray line before the plan, probably a separate step. The server's fallback sentence doesn't name the result
 
 ## OPEN
 

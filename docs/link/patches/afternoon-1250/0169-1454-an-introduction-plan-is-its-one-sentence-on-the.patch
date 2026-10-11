@@ -1,0 +1,162 @@
+From 7ef93a3421dd31ffeec2e80ae158eeeefce86ff0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 18:46:52 +0000
+Subject: [PATCH] 1454: an introduction plan is its one sentence on the no-plan
+ path too
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 53461, 1 of 3 on 0167. Conv rows 50065 and 50067 show the stray line
+in the same message as the plan, not as a step: the model's reply was only
+„დამელოდე, სანამ დაადასტურებ." It carried no plan, so it took the other
+path. The server put its plan sentence after the reply, and 0167's
+cut never ran there.
+
+The plan reply's text is now one pure function, planReplyText. For an
+introduction plan, every path goes through introPlanOnly:
+- the model's own clean plan sentence stays, even under the 120-char
+  "carries the plan" length;
+- anything before it goes;
+- a reply with no plan sentence gives way to the server's sentence.
+Other plans behave as before (the tester's 1110: the news leads).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...anIntroductionPlanIsItsOneSentence.test.ts | 42 +++++++++++++++
+ src/services/chat.service.ts                  | 54 +++++++++++--------
+ 2 files changed, 75 insertions(+), 21 deletions(-)
+ create mode 100644 src/services/__tests__/anIntroductionPlanIsItsOneSentence.test.ts
+
+diff --git a/src/services/__tests__/anIntroductionPlanIsItsOneSentence.test.ts b/src/services/__tests__/anIntroductionPlanIsItsOneSentence.test.ts
+new file mode 100644
+index 0000000..3964b64
+--- /dev/null
++++ b/src/services/__tests__/anIntroductionPlanIsItsOneSentence.test.ts
+@@ -0,0 +1,42 @@
++import { planReplyText } from '../chat.service';
++
++/**
++ * 1454 (box 53461, conv 50065 and 50067, on 0167): the model's reply was only
++ * „დამელოდე, სანამ დაადასტურებ." — no plan — and the server put its plan
++ * sentence after it, so the owner read the stray line first. An introduction
++ * plan is its one sentence and one question (D739) on every path.
++ */
++const SERVER = 'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
++const INTRODUCTION = { text: SERVER, names: ['ლიკა მეხუთე'] };
++
++describe('an introduction plan is its one sentence and one question', () => {
++  it.each([
++    'დამელოდე, სანამ დაადასტურებ.',
++    'დაელოდე ჩემს კითხვას და დამიდასტურე, როცა მზად იქნები.',
++  ])('a reply without the plan („%s") gives way to the server’s sentence', (reply) => {
++    expect(planReplyText(reply, INTRODUCTION, 'ka')).toBe(`${SERVER}\n\nდავიწყო?`);
++  });
++
++  it('keeps run 1’s own clean sentence, which names whom it introduces', () => {
++    const own =
++      'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ლიკამ გაგაცნოთ ნინუცა მეხუთესთან.';
++    expect(planReplyText(`${own}\n\nდავიწყო?`, INTRODUCTION, 'ka')).toBe(`${own}\n\nდავიწყო?`);
++  });
++
++  it('leaves a plan without the plan sentence as before: the news leads (the tester’s 1110)', () => {
++    const other = {
++      text: 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას, და ჯერ არავის ვწერ.',
++      names: [],
++    };
++    expect(planReplyText('სამი ნოტარიუსი ვიპოვე.', other, 'ka')).toBe(
++      `სამი ნოტარიუსი ვიპოვე.\n\n${other.text}\n\nდავიწყო?`,
++    );
++  });
++});
++
++describe('a short clean plan sentence', () => {
++  it('stays even when the reply is under the length that counts as carrying the plan', () => {
++    const own = 'ლიკა მეხუთის ასისტენტს დაველაპარაკები, რომ ნინუცა გაგაცნოს.';
++    expect(planReplyText(own, INTRODUCTION, 'ka')).toBe(`${own}\n\nდავიწყო?`);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 2c75d38..8f567f4 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -7485,7 +7485,7 @@ function wakeCapFor(runId: string | undefined, taskId: number): Date | null {
+  * it is remembered: what the approve button approves must be on the screen,
+  * and without the card nothing else guarantees that.
+  */
+-interface PlanForReply {
++export interface PlanForReply {
+   readonly text: string;
+   readonly names: readonly string[];
+ }
+@@ -7706,6 +7706,34 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
+   return plan.names.every((name) => reply.includes(name));
+ }
+ 
++/**
++ * The plan reply's text: the model's reply with the plan in it, said once and
++ * ended on the agreed question.
++ */
++export function planReplyText(reply: string, plan: PlanForReply, language: RunLanguage): string {
++  // D739: an introduction plan is its one sentence and one question, on every
++  // path. 1454: nothing the model wrote before it is kept (box 53296), and a
++  // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
++  // 50065) — gives way to the server's sentence instead of standing before it.
++  if (carriesPlanSentence(plan.text)) {
++    return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), language);
++  }
++  if (replyCarriesPlan(reply, plan)) {
++    return withClosingQuestion(
++      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
++      language,
++    );
++  }
++  // The tester's 1110 (33975): the plan line went first and the findings came
++  // after it. The news leads; the plan follows it, and the question ends it.
++  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
++  // stood alone under its buttons without „დავიწყო?". It ends on it too.
++  return withClosingQuestion(
++    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
++    language,
++  );
++}
++
+ /**
+  * The reply, with the plan in plain sentences in front of it when the model
+  * left the plan out. A reply that carries it is untouched.
+@@ -7724,27 +7752,11 @@ function withPlanInReply(
+   if (!replyAsksForApproval(offered)) return written;
+   // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
+   const reply = withOwnersNetwork(written);
+-  if (replyCarriesPlan(reply, plan)) {
+-    // D739: the plan is its one sentence and one question. 1454 (box 53296):
+-    // for an introduction plan nothing the model wrote before it is kept.
+-    if (carriesPlanSentence(plan.text)) {
+-      return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), runLang(runId));
+-    }
+-    return withClosingQuestion(
+-      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
+-      runLang(runId),
+-    );
++  if (!replyCarriesPlan(reply, plan)) {
++    // eslint-disable-next-line no-console
++    console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+   }
+-  // eslint-disable-next-line no-console
+-  console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
+-  // The tester's 1110 (33975): the plan line went first and the findings came
+-  // after it. The news leads; the plan follows it, and the question ends it.
+-  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
+-  // stood alone under its buttons without „დავიწყო?". It ends on it too.
+-  return withClosingQuestion(
+-    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
+-    runLang(runId),
+-  );
++  return planReplyText(reply, plan, runLang(runId));
+ }
+ 
+ /**
+-- 
+2.43.0
+
