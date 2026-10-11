@@ -1,6 +1,23 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 13:50Z — `0154` (1687) and `0155` (1689): two rows of the founder's list. Code only, no new words
+
+**`0154`, 1687: the owner's facts go with the question the server sends** (box 48535).
+- The owner wrote „ჰკითხე თამარს, ხომ არ იცნობს კარგ არქიტექტორს…" and then six sentences of facts. The run sent nothing, so the server asked Tamar itself (§97 item 1) with the question sentence only: task_ask 18008, 71 characters, every fact dropped.
+- Now the sentences AFTER the instruction go with the question, whole sentences only, inside the 600-character ask limit. The editor and the §106 shortener („keep every fact") still run on the result. What the owner wrote BEFORE the instruction is still never sent (QA-001).
+- sha256 `87fa8d7a42060da3f50bb70a08ab096b35b9847d5962c4d00e23b52662c728b9`.
+- **DONE WHEN:** the tester's 588-character architect line, with the run sending nothing, reaches the helper with every fact (Vake, 600 m², slope, two floors, budget, spring, English), at most 400 characters after §106. 2 of 2.
+
+**`0155`, 1689: answers are filed under the trade the goal names** (box 48543).
+- The „field" was the goal's first three words, transliterated („arkitektoris mozebna kerzo"). Now a goal that names a trade, in any case and either language, is filed under the trade's own word („არქიტექტორი"; lawyer and advocate are one family). A goal that names no trade keeps its first words.
+- The admin page leaves off the empty '' row (kept for `bridged`) when it holds nothing. Admin-only.
+- Asks already filed keep their old field. So a person's record only adds up from new asks on, unless the old rows are re-filed. That would be a one-off write to `task_asks.field`, internal only, and I am not asking for it now.
+- sha256 `a562cf5525d04a0df22f2746fa8f69add56a7684e3623509f2b50c994f620fcd`.
+- **DONE WHEN:** a new ask on an architect goal shows field „არქიტექტორი" on the admin per-user page, and no empty row. 1 of 1.
+
+- **Order:** both are cut on main 36daf14, 0154 then 0155. Verify with both: 8,343 passed. Each can ship alone; neither needs Misho's word (no new text, no switch).
+
 ### 11 Oct, 13:05Z — `0153` (D738 1.1, after 0146), and the founder's list (box 52770) gone through row by row
 
 **`0153`: the connector shows a plan as the app does, one sentence plus „დავიწყო?" (D738 1.1, §110.5).**

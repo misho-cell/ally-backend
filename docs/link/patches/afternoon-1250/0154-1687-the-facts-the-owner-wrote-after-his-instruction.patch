@@ -1,0 +1,216 @@
+From a19ea17b131cd51f22ce4527bacc1bc8607c6c8b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 12:08:29 +0000
+Subject: [PATCH] 1687: the facts the owner wrote after his instruction go with
+ the question the server sends
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 48535 (never relayed until the founder's list, 52770): the owner wrote
+„ჰკითხე თამარს, ხომ არ იცნობს კარგ არქიტექტორს…" and six sentences of
+facts (Vake, a 600 m² slope plot, two floors, the budget, spring, slope
+experience, English). The run sent nothing, so the server asked Tamar itself
+(§97 item 1) with the instruction's question only — task_ask 18008, 71
+characters, every fact dropped — while the owner was told his requirements
+had gone.
+
+The sentences AFTER the instruction now go with the question, whole
+sentences only, inside createAsk's 600-character limit; the editor and the
+§106 shortener („keep every fact") still run on the result. What the owner
+wrote BEFORE the instruction is still never sent (QA-001). No new words.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theOwnersFactsGoWithHisQuestion.test.ts   | 70 +++++++++++++++++++
+ src/services/goalIntent.ts                    |  5 ++
+ src/services/instructedAsk.ts                 | 12 +++-
+ src/services/instructedFacts.ts               | 40 +++++++++++
+ 4 files changed, 126 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts
+ create mode 100644 src/services/instructedFacts.ts
+
+diff --git a/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts b/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts
+new file mode 100644
+index 0000000..2f38f7d
+--- /dev/null
++++ b/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts
+@@ -0,0 +1,70 @@
++const mockFindPhones = jest.fn();
++const mockCreateAsk = jest.fn();
++jest.mock('../tools/nameMatch', () => ({
++  findContactPhonesByName: (...a: unknown[]) => mockFindPhones(...a),
++  messageNamesOwnContact: jest.fn(),
++}));
++jest.mock('../block.service', () => ({
++  isDeceasedOrBlockedFor: jest.fn().mockResolvedValue(false),
++}));
++jest.mock('../taskAsks.service', () => ({ createAsk: (...a: unknown[]) => mockCreateAsk(...a) }));
++jest.mock('../taskStore.service', () => ({
++  getOpenTaskByThread: jest.fn().mockResolvedValue(null),
++  createTask: jest.fn().mockResolvedValue({ id: 77 }),
++  grantTaskPermission: jest.fn().mockResolvedValue(true),
++  findOpenTaskNamedIn: jest.fn().mockResolvedValue(null),
++}));
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn() }));
++
++import { isInstructionSentence } from '../goalIntent';
++import { sendInstructedAsk } from '../instructedAsk';
++import { factsAround, questionWithFacts } from '../instructedFacts';
++
++/** 1687 (box 48535): the tester's own line, conv 47556 — 588 characters, six facts after the ask. */
++const ARCHITECT =
++  'ჰკითხე თამარ გამოგონილს, ხომ არ იცნობს კარგ არქიტექტორს, რომელიც კერძო სახლის პროექტს ' +
++  'გააკეთებს. ვაკეში ნაკვეთი მაქვს, დაახლოებით 600 კვადრატული მეტრი, ფერდობზეა და ქვემოთ ' +
++  'ხევია, ამიტომ საძირკველი რთული იქნება. მინდა ორსართულიანი სახლი, ოთხი საძინებლით, დიდი ' +
++  'მისაღებით და ტერასით, რომელიც ქალაქს გადაჰყურებს. ბიუჯეტი პროექტისთვის დაახლოებით 15 ' +
++  'ათასი ლარია, მშენებლობა გაზაფხულზე უნდა დავიწყოთ. მნიშვნელოვანია, რომ არქიტექტორს ' +
++  'ჰქონდეს ფერდობზე აშენებული სახლების გამოცდილება და შეეძლოს ნებართვების მომზადებაც ' +
++  'მერიაში. სასურველია, რომ ინგლისურადაც ლაპარაკობდეს, რადგან ჩემი მეუღლე უცხოელია.';
++
++beforeEach(() => {
++  jest.clearAllMocks();
++  jest.spyOn(console, 'log').mockImplementation(() => undefined);
++  mockCreateAsk.mockResolvedValue({ sent: true, ask_id: 9, to_name: 'თამარ გამოგონილი' });
++});
++
++describe('1687: the facts the owner wrote after his instruction go with the question', () => {
++  it('sends every fact of the tester’s line, not the question alone', async () => {
++    mockFindPhones.mockResolvedValue(['995500000001']);
++
++    await sendInstructedAsk('181155', 47556, ARCHITECT);
++
++    const question = mockCreateAsk.mock.calls[0][3] as string;
++    for (const fact of [
++      'ვაკეში',
++      '600',
++      'ფერდობზეა',
++      'ოთხი საძინებლით',
++      '15',
++      'გაზაფხულზე',
++      'ინგლისურადაც',
++    ])
++      expect(question).toContain(fact);
++    expect(question).not.toContain('ჰკითხე');
++    expect(question.length).toBeLessThanOrEqual(600);
++  });
++
++  it('never sends what the owner wrote BEFORE the instruction (QA-001)', () => {
++    const line =
++      'მეყავს ნაცნობი გია, ორბიში CFO-ა. ჰკითხე გიგას, იცნობს თუ არა გიას. ხვალ მჭირდება.';
++    expect(factsAround(line, isInstructionSentence)).toEqual(['ხვალ მჭირდება.']);
++  });
++
++  it('adds whole sentences only, stopping before the limit', () => {
++    expect(questionWithFacts('Q?', ['one.', 'two two.', 'three.'], 13)).toBe('Q? one.');
++    expect(questionWithFacts('Q?', [], 600)).toBe('Q?');
++  });
++});
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index 70c00fe..f367acf 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -715,6 +715,11 @@ function datedNameBefore(beforeVerb: string): string {
+  */
+ const SENTENCE_RE = /[^.!?\n]+[.!?]?/gu;
+ 
++/** 1687: does this sentence carry an instruction to contact somebody? */
++export function isInstructionSentence(sentence: string): boolean {
++  return CONTACT_VERB_RE.test(sentence);
++}
++
+ export function instructionSentence(text: string): string {
+   if (text.length <= MAX_INSTRUCTION_CHARS) return text;
+   return (text.match(SENTENCE_RE) ?? []).find((part) => CONTACT_VERB_RE.test(part))?.trim() ?? text;
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index f9a0bd7..17cacab 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -1,4 +1,5 @@
+ import { isDeceasedOrBlockedFor } from './block.service';
++import { factsAround, questionWithFacts } from './instructedFacts';
+ import { query } from '../db/postgres/client';
+ import {
+   goalTitleFrom,
+@@ -8,6 +9,7 @@ import {
+   instructionNeed,
+   instructionQuestion,
+   isMeetingInstruction,
++  isInstructionSentence,
+ } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { createAsk } from './taskAsks.service';
+@@ -29,6 +31,8 @@ const NAME_WORDS_TRIED = [2, 1] as const;
+ const MATCHES_LOOKED_AT = 2;
+ 
+ const LABEL_QUERY_TIMEOUT_MS = 3_000;
++/** createAsk keeps 600 characters of a question; the facts stop a sentence before that. */
++const INSTRUCTED_QUESTION_MAX_CHARS = 600;
+ 
+ /** What the server's send came to. */
+ export enum InstructedAskResult {
+@@ -219,7 +223,13 @@ export async function sendInstructedAsk(
+   await grantTaskPermission(userId, taskId);
+   // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
+   // 3928: a line with no question after the names asks about the need said before them.
+-  const question = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
++  const asked = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
++  // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
++  const question = questionWithFacts(
++    asked,
++    factsAround(ownerLine.trim(), isInstructionSentence),
++    INSTRUCTED_QUESTION_MAX_CHARS,
++  );
+   for (const c of askable) {
+     const outcome = await askOne(userId, taskId, c, question, threadId);
+     if (outcome !== null) people.push(outcome);
+diff --git a/src/services/instructedFacts.ts b/src/services/instructedFacts.ts
+new file mode 100644
+index 0000000..932d3b6
+--- /dev/null
++++ b/src/services/instructedFacts.ts
+@@ -0,0 +1,40 @@
++/**
++ * 1687 (box 48535, 1 of 1): the owner wrote „ჰკითხე თამარს, ხომ არ იცნობს კარგ
++ * არქიტექტორს…" and then six sentences of facts — Vake, a 600 m² slope plot,
++ * two floors, the budget, spring, slope experience, English. The run sent
++ * nothing, so the server asked Tamar itself (§97 item 1) with the instruction's
++ * question only: 71 characters, every fact dropped, while the owner was told
++ * his requirements had gone. The facts the owner wrote around the instruction
++ * now go with the question, as his own words like the question itself; the
++ * editor and the §106 shortener („keep every fact") still run on the result.
++ */
++const SENTENCE_END_RE = /(?<=[.!?…])\s+/u;
++
++/**
++ * The owner's sentences AFTER the instruction, in his order. What he wrote
++ * before it is context for Netai, never sent (QA-001, conv 42765), and the
++ * instruction itself is already the question.
++ */
++export function factsAround(ownerLine: string, isInstruction: (s: string) => boolean): string[] {
++  const sentences = ownerLine
++    .split(SENTENCE_END_RE)
++    .map((sentence) => sentence.trim())
++    .filter((sentence) => sentence !== '');
++  const at = sentences.findIndex(isInstruction);
++  return at === -1 ? [] : sentences.slice(at + 1);
++}
++
++/** The question followed by as many whole fact sentences as fit in `maxChars`. */
++export function questionWithFacts(
++  question: string,
++  facts: readonly string[],
++  maxChars: number,
++): string {
++  let text = question.trim();
++  for (const fact of facts) {
++    const longer = `${text} ${fact}`;
++    if (longer.length > maxChars) break;
++    text = longer;
++  }
++  return text;
++}
+-- 
+2.43.0
+

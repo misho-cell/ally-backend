@@ -1,0 +1,175 @@
+From a4e5be832e3358d99d4ed042c1bc4ca4d7b3d06a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 12:14:28 +0000
+Subject: [PATCH] 1689: a person's answers are filed under the trade the goal
+ names, and the empty '' row leaves the admin page
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 48543 (never relayed until the founder's list, 52770): the per-person
+record's „field" was the goal's first three words, transliterated — task_ask
+18008 was filed as „arkitektoris mozebna kerzo" — so every goal made a field
+of its own and a person's answers never added up; and an empty row showed.
+
+- askField: a goal that names a trade, in any case and either language, is
+  filed under the trade's own word (personByName's reading, now exported as
+  tradeNamedIn; lawyer and advocate are one family); a goal that names none
+  keeps its first field words. Asks already filed keep their old field.
+- The admin page leaves off the '' row (kept for `bridged`) when it holds
+  nothing.
+
+Admin-only; no words a user reads.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../everyoneHasAnAnswerRecord.test.ts         | 19 ++++++++++++++-
+ .../__tests__/theWaveRankingCanBeRead.test.ts |  3 ++-
+ src/services/answerStats.service.ts           | 23 ++++++++++++++-----
+ src/services/personByName.ts                  | 15 +++++++++---
+ 4 files changed, 49 insertions(+), 11 deletions(-)
+
+diff --git a/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts b/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts
+index 1561145..315714f 100644
+--- a/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts
++++ b/src/services/__tests__/everyoneHasAnAnswerRecord.test.ts
+@@ -25,6 +25,22 @@ describe('the record', () => {
+     expect(askField(null)).toBe('');
+   });
+ 
++  // 1689 (box 48543): „arkitektoris mozebna kerzo" was the goal's first words, not a field.
++  it('files a goal that names a trade under the trade, in any case and in either language', () => {
++    expect(askField('კარგი არქიტექტორის მოძებნა კერძო სახლის პროექტისთვის ვაკეში')).toBe(
++      'არქიტექტორი',
++    );
++    expect(askField('Find a good lawyer in Tbilisi')).toBe('იურისტი');
++    expect(askField('ვეძებ ადვოკატს სასამართლოსთვის')).toBe('იურისტი');
++  });
++
++  it("leaves the empty '' row off the admin page when it holds nothing", async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
++    await answerStatsOf(180279);
++    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain("NOT (field = '' AND asked = 0 AND bridged = 0)");
++  });
++
+   it('is recounted from the source tables, never incremented', async () => {
+     await refreshAnswerStats(180279);
+     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+@@ -69,7 +85,8 @@ describe('the record', () => {
+   it('the admin reads it, with a limit', async () => {
+     await answerStatsOf(7);
+     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+-    expect(sql).toContain('FROM answer_stats WHERE user_id = $1');
++    expect(sql).toContain('FROM answer_stats');
++    expect(sql).toContain('WHERE user_id = $1');
+     expect(params).toEqual([7, 50]);
+   });
+ });
+diff --git a/src/services/__tests__/theWaveRankingCanBeRead.test.ts b/src/services/__tests__/theWaveRankingCanBeRead.test.ts
+index 5fbc4d4..17ba018 100644
+--- a/src/services/__tests__/theWaveRankingCanBeRead.test.ts
++++ b/src/services/__tests__/theWaveRankingCanBeRead.test.ts
+@@ -8,6 +8,7 @@ jest.mock('../prematch.service', () => ({
+ import { query } from '../../db/postgres/client';
+ import { prematchMany, PrematchSource, PrematchWord } from '../prematch.service';
+ import { getTaskById } from '../taskStore.service';
++import { askField } from '../answerStats.service';
+ import { goalWaveRanking, WaveRankingOutcome } from '../waveRanking.service';
+ 
+ /** The tester's 49931 (1691): the server's ranking, read without the model's plan choosing. */
+@@ -40,7 +41,7 @@ const stat = (
+   asked: number,
+ ): { phone: string; field: string; asked: number; yes: number; referred: number } => ({
+   phone,
+-  field: 'elektrikosi saklsi gakvanilobis',
++  field: askField(TITLE),
+   asked,
+   yes,
+   referred: 0,
+diff --git a/src/services/answerStats.service.ts b/src/services/answerStats.service.ts
+index 7dcc7ca..f115a5c 100644
+--- a/src/services/answerStats.service.ts
++++ b/src/services/answerStats.service.ts
+@@ -1,5 +1,6 @@
+ import { query } from '../db/postgres/client';
+ import { fieldTerms } from './prematch.service';
++import { tradeNamedIn } from './personByName';
+ import type { AnswerStatsRow } from '../types';
+ 
+ /**
+@@ -19,11 +20,16 @@ const SWEEP_LOOKBACK_HOURS = 2;
+ const SWEEP_USERS_MAX = 500;
+ const ADMIN_ROWS_MAX = 50;
+ 
+-/** The field an ask is filed under: the goal's first field words, '' when it names none. */
++/**
++ * The field an ask is filed under. 1689 (box 48543): it was the goal's first
++ * three words, so „კარგი არქიტექტორის მოძებნა…" was filed as „arkitektoris
++ * mozebna kerzo" and every goal made a field of its own. A goal that names a
++ * trade is filed under the trade's own word, so a person's record adds up across
++ * goals; one that names none keeps its first field words; '' when it has none.
++ */
+ export function askField(goalText: string | null): string {
+-  return fieldTerms(goalText ?? '')
+-    .slice(0, FIELD_WORDS)
+-    .join(' ');
++  const text = goalText ?? '';
++  return tradeNamedIn(text) ?? fieldTerms(text).slice(0, FIELD_WORDS).join(' ');
+ }
+ 
+ /** Recount one person's record from the source tables, every field at once. */
+@@ -106,12 +112,17 @@ export async function sweepAnswerStats(): Promise<number> {
+   return recent.rows.length;
+ }
+ 
+-/** The admin per-user page's read-only box. */
++/**
++ * The admin per-user page's read-only box. 1689 (box 48543): the '' row, kept for
++ * `bridged`, showed as an empty line when it held nothing; it is left off then.
++ */
+ export async function answerStatsOf(userId: number): Promise<AnswerStatsRow[]> {
+   const result = await query<AnswerStatsRow>(
+     `SELECT field, asked, yes, no, referred, later, silent, first_answer_minutes_median,
+             helped, bridged
+-       FROM answer_stats WHERE user_id = $1 ORDER BY asked DESC LIMIT $2`,
++       FROM answer_stats
++      WHERE user_id = $1 AND NOT (field = '' AND asked = 0 AND bridged = 0)
++      ORDER BY asked DESC LIMIT $2`,
+     [userId, ADMIN_ROWS_MAX],
+     QUERY_TIMEOUT_MS,
+   );
+diff --git a/src/services/personByName.ts b/src/services/personByName.ts
+index 33e6f4e..d7e7271 100644
+--- a/src/services/personByName.ts
++++ b/src/services/personByName.ts
+@@ -44,13 +44,22 @@ function nominative(word: string): string {
+   return word;
+ }
+ 
+-/** Does the line name a trade, in any of its cases? */
+-function namesATrade(line: string): boolean {
++/**
++ * The trade a line names, in any of its cases: the profession family's own word
++ * when it belongs to one, else the occupation; null when it names no trade.
++ * 1689 files a person's answers under it.
++ */
++export function tradeNamedIn(line: string): string | null {
+   const asSaid = line
+     .split(/[^\p{L}\p{M}]+/u)
+     .map(nominative)
+     .join(' ');
+-  return professionFamilyIn(asSaid) !== null || matchOccupation(asSaid) !== null;
++  return professionFamilyIn(asSaid) ?? matchOccupation(asSaid);
++}
++
++/** Does the line name a trade, in any of its cases? */
++function namesATrade(line: string): boolean {
++  return tradeNamedIn(line) !== null;
+ }
+ 
+ /** Does the owner's line ask to meet or reach somebody it names, not a trade? */
+-- 
+2.43.0
+
