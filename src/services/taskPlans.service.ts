@@ -389,7 +389,9 @@ export async function proposeTaskPlan(
   raw: unknown,
   /** The conversation's language — the card is read by the owner, not by us. */
   language: RunLanguage = 'ka',
-): Promise<PlanOutcome<{ version: number; summary: string; everApproved: boolean }>> {
+): Promise<
+  PlanOutcome<{ version: number; summary: string; sentence: string; everApproved: boolean }>
+> {
   // A GOAL ID THAT IS NOT A GOAL ID IDENTIFIES NO GOAL. See isARealId: the
   // door hands over `Number(input['task_id'])`, `Number(undefined)` is `NaN`,
   // and `pg` sends that to `WHERE id = $1` as the STRING „NaN". The answer is
@@ -449,6 +451,8 @@ export async function proposeTaskPlan(
     value: {
       version,
       summary: renderPlan(plan, version, null, everApproved, language),
+      // D738 1.1: the one-sentence plan the app shows, for the connector.
+      sentence: planInSentences(plan, language),
       everApproved,
     },
   };

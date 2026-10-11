@@ -413,8 +413,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       "Writes the goal's plan for the user to approve ONCE (D119): what counts as solved, the " +
       'routes you will pursue, the people you will involve (each by contact_ref from a search ' +
       'result, with the route they belong to) and the people the user does NOT want contacted. ' +
-      'Call it as soon as the problem is understood — before any ask goes out — and again for any CHANGE (a new person, a new route): the change waits for a yes while everything already approved keeps running. When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). Show the returned summary verbatim and ask for their yes; then ' +
-      'call approve_task_plan. Once approved, an ask to a person the plan names goes without ' +
+      'Call it as soon as the problem is understood — before any ask goes out — and again for any CHANGE (a new person, a new route): the change waits for a yes while everything already approved keeps running. When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). Show the returned summary as it is: one sentence naming whose assistant you will talk to and the result. No routes, no „signal", no „counted as solved", never the text you will send. End on its one question and wait for their yes; then call approve_task_plan. Once approved, an ask to a person the plan names goes without ' +
       'asking again; a person outside the plan is refused until the plan is changed.',
   },
   approve_task_plan: {

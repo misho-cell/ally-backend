@@ -46,7 +46,8 @@ import {
   Task,
 } from '../taskStore.service';
 import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
-import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
+import { approveTaskPlan, PLAN_CLOSING_QUESTION, proposeTaskPlan } from '../taskPlans.service';
+import { detectRunLanguage, RunLanguage } from '../runLanguage';
 import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
 import { searchRoster } from '../tools/searchRoster';
 import { findWarmPath } from '../tools/findWarmPath';
@@ -1170,6 +1171,21 @@ export interface McpPlanInput {
   real_work?: boolean;
 }
 
+/**
+ * D738 1.1 (D663): the connector has no conversation to read a language from,
+ * so the plan's own words — written by the model in the user's language — say
+ * which language its one sentence and closing question are in.
+ */
+export function planLanguage(plan: McpPlanInput): RunLanguage {
+  const words = [plan.solved_when ?? '', ...(plan.routes ?? []).map((r) => r.name ?? '')];
+  return detectRunLanguage(words.join(' '));
+}
+
+/** D738 1.1: what the user reads — the app's one sentence and its one question, nothing else. */
+export function connectorPlanSummary(sentence: string, language: RunLanguage): string {
+  return `${sentence} ${PLAN_CLOSING_QUESTION[language]}`;
+}
+
 export async function mcpProposeTaskPlan(
   userId: string,
   args: { task_ref: string; plan: McpPlanInput },
@@ -1188,15 +1204,25 @@ export async function mcpProposeTaskPlan(
     const phone = n.contact_ref ? decodeContactRef(userId, n.contact_ref) : null;
     never.push(phone ? { name: n.name, phone } : { name: n.name });
   }
-  const outcome = await proposeTaskPlan(userId, taskId, {
-    solved_when: plan.solved_when,
-    routes: plan.routes,
-    people_to_involve: people,
-    never_contact: never,
-    ...(plan.real_work === true && { real_work: true }),
-  });
+  const language = planLanguage(plan);
+  const outcome = await proposeTaskPlan(
+    userId,
+    taskId,
+    {
+      solved_when: plan.solved_when,
+      routes: plan.routes,
+      people_to_involve: people,
+      never_contact: never,
+      ...(plan.real_work === true && { real_work: true }),
+    },
+    language,
+  );
   return outcome.ok
-    ? { proposed: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
+    ? {
+        proposed: true,
+        version: outcome.value.version,
+        summary: scrubText(connectorPlanSummary(outcome.value.sentence, language)),
+      }
     : { proposed: false, error: outcome.error };
 }
 

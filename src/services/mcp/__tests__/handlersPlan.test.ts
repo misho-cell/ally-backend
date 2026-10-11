@@ -5,6 +5,7 @@ jest.mock('../../taskPlans.service', () => ({
   __esModule: true,
   proposeTaskPlan: jest.fn(),
   approveTaskPlan: jest.fn(),
+  PLAN_CLOSING_QUESTION: jest.requireActual('../../taskPlans.service').PLAN_CLOSING_QUESTION,
 }));
 // The engine is reached through a dynamic import (it imports the chat service,
 // which imports this one), so the module is mocked whole rather than the call.
@@ -13,7 +14,7 @@ jest.mock('../../taskEngine.service', () => ({ __esModule: true, startDayOne: je
 import { approveTaskPlan, proposeTaskPlan } from '../../taskPlans.service';
 import { startDayOne } from '../../taskEngine.service';
 import { encodeContactRef } from '../contactRef';
-import { mcpApproveTaskPlan, mcpProposeTaskPlan } from '../handlers';
+import { mcpApproveTaskPlan, mcpProposeTaskPlan, planLanguage } from '../handlers';
 
 const mockPropose = proposeTaskPlan as jest.MockedFunction<typeof proposeTaskPlan>;
 const mockApprove = approveTaskPlan as jest.MockedFunction<typeof approveTaskPlan>;
@@ -28,7 +29,15 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('propose_task_plan on the connector', () => {
   it('decodes every contact_ref into the phone the plan stores — no number crosses the boundary', async () => {
-    mockPropose.mockResolvedValue({ ok: true, value: { version: 1, summary: 'გეგმა v1' } });
+    mockPropose.mockResolvedValue({
+      ok: true,
+      value: {
+        version: 1,
+        summary: 'გეგმა v1',
+        sentence: 'ლიკას ასისტენტს ვკითხავ.',
+        everApproved: false,
+      },
+    });
     const lika = encodeContactRef('501', '+995599111222');
     const nana = encodeContactRef('501', '+995599999999');
 
@@ -42,13 +51,23 @@ describe('propose_task_plan on the connector', () => {
       },
     });
 
-    expect(out).toEqual({ proposed: true, version: 1, summary: 'გეგმა v1' });
-    expect(mockPropose).toHaveBeenCalledWith('501', 1619, {
-      solved_when: 'x',
-      routes: [{ name: 'ქსელი' }],
-      people_to_involve: [{ name: 'ლიკა', phone: '+995599111222', route: 'ქსელი' }],
-      never_contact: [{ name: 'ნანა', phone: '+995599999999' }, { name: 'ყოფილი პარტნიორი' }],
+    // D738 1.1: the app's one sentence and its one question — never the four-part card.
+    expect(out).toEqual({
+      proposed: true,
+      version: 1,
+      summary: 'ლიკას ასისტენტს ვკითხავ. დავიწყო?',
     });
+    expect(mockPropose).toHaveBeenCalledWith(
+      '501',
+      1619,
+      {
+        solved_when: 'x',
+        routes: [{ name: 'ქსელი' }],
+        people_to_involve: [{ name: 'ლიკა', phone: '+995599111222', route: 'ქსელი' }],
+        never_contact: [{ name: 'ნანა', phone: '+995599999999' }, { name: 'ყოფილი პარტნიორი' }],
+      },
+      'ka',
+    );
   });
 
   it('refuses a ref minted for another user, naming the person', async () => {
@@ -130,5 +149,21 @@ describe('approve_task_plan on the connector', () => {
     expect(out.approved).toBe(true);
     expect(out.already_approved).toBe(true);
     expect(startDayOne).not.toHaveBeenCalled();
+  });
+});
+
+// D738 1.1: the connector reads the language from the plan's own words.
+describe('planLanguage', () => {
+  const plan = (solved: string, route: string): Parameters<typeof planLanguage>[0] => ({
+    solved_when: solved,
+    routes: [{ name: route }],
+    people_to_involve: [],
+    never_contact: [],
+  });
+
+  it('reads Georgian, English and Russian plans in their own language', () => {
+    expect(planLanguage(plan('ბუღალტერი ნაპოვნია', 'ჩემი ქსელი'))).toBe('ka');
+    expect(planLanguage(plan('an accountant is found', 'through my network'))).toBe('en');
+    expect(planLanguage(plan('бухгалтер найден', 'через мою сеть'))).toBe('ru');
   });
 });

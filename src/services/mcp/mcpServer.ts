@@ -576,7 +576,9 @@ function registerGoalTools(server: McpServer, userId: string): void {
               .optional()
               .describe('Real work rather than a small favour: five people per wave, not three.'),
           })
-          .describe('The plan, in the four parts the user approves.'),
+          .describe(
+            'The plan the user approves. He reads only the one sentence the server makes of it.',
+          ),
       },
       annotations: WRITE,
     },
