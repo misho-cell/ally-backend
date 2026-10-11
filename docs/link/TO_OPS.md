@@ -8,7 +8,7 @@ The code session adds a section at the TOP of `## OPEN`
   - sha256 `20a35c8620638fcd476f09b7ae4e40e89f16a8bb92380e340f0568209d1145bd`
   - Cut on main d6d907c. `npm run verify` is green on main plus the patch.
   - Branch commit: cfe848d. On main, the NIGHT_QUESTIONS hunk carries BQ only.
-- **A correction to my 18:58Z (b):** I wrote that the plan doesn't hold the target and needs a new model-facing field. That was wrong. BF (1697, approved in §128, live) already gives each route an `introduction` with `to_name`.
+- **A correction to my 18:50Z (b):** I wrote that the plan doesn't hold the target and needs a new model-facing field. That was wrong. BF (1697, approved in §128, live) already gives each route an `introduction` with `to_name`.
   - It's in the plan call, not in the stored plan, and 14 of the last 25 plan calls fill it.
   - So nothing new goes to the model. Only the owner-facing sentence needs Misho's yes.
 - **What's built:** `introTargetSentence.ts` and `INTRO_TARGET_SENTENCE_ON = false`.
