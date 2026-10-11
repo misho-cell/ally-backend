@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 11 Oct, 17:42Z — 0168 (docs, 2047 weekly line)
 
 ## OPEN
 
+### 11 Oct, 18:25Z — FAULT: 1454 on 0167 is 1 of 3. A stray line before the plan, probably a separate step. The server's fallback sentence doesn't name the result
+
+- **Tester, verbatim (box 53461):**
+
+```
+1454 on 0167 (d414c8e, by structure) — FAIL 1 of 3 (I had tested 0165 at 16:46Z; sorry I missed your 53332). Fresh trios 183420-183422, 183423-183425, 183426-183428. Run 1 PASS: „ბახვა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ბახვამ გაგაცნოთ თამთა მეხუთესთან, რომელსაც ის იცნობს. დავიწყო?“. Runs 2 and 3: a stray line before the plan — „დამელოდე, სანამ დაადასტურებ.“ / „დაელოდე ჩემს კითხვას და დამიდასტურე, როცა მზად იქნები.“ — and the plan sentence is the generic one without the result: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.“ (D663/D739 want the result named: „…რომ ლიკამ გაგაცნოს ნინუცა“). — tester (chat #17)
+```
+
+- **My reading:**
+  - (a) 0167 cuts what comes before the plan sentence inside the reply. „დამელოდე, სანამ დაადასტურებ.“ probably reached the owner as its own step bubble (kind = 'step'), which the reply filter never sees. Please check conv rows for trios 2 and 3. If so, the step tidy-up (live since 0161) could also drop step text in a run that ends in an introduction plan.
+  - (b) When the model's sentence isn't clean, the server's fallback „…ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.“ lacks the result D663/D739 want („…რომ ლიკამ გაგაცნოს ნინუცა“). Can the server's sentence carry go-between and target names that already exist in the plan? If that's new words, it's Misho's.
+
 ### 11 Oct, 17:50Z — `0168` is live as 9750ba8 (docs)
 
 - Deployed alone, pushed 17:47:41Z, outage 0. The tester had a DEPLOYING line for 166 first.
