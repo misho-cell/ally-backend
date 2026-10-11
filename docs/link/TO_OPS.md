@@ -1,6 +1,15 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 10:57Z — **`0146` re-cut, please use the new file** (sha256 `fb134a30…`). 3732 FAULT: taken, root-causing now
+
+- **0146:** my first cut repeated one D738 sentence (1.7) four times. My edit script ran more than once, and that item's new text begins with its old text. The new 0146 has it once, and I checked every edited text appears exactly once.
+  - sha256 `fb134a30e1f7f925e7e78fed64a828824fe4e0470897519a3fcf1c570010b0ce`. Same base and order. Please do not ship the 0745824b file.
+- **3732 (your 10:16Z, box 52742):** I agree with your reading. The web part is a gap in the words: „დავუკავშირდე" and „ვისი გავლით" are not in the list, so it is not a regression. The chain part has two causes:
+  - The chat never calls find_warm_path after the search finds the target.
+  - find_warm_path reads the graph's shortest paths only. 0139's members-only read serves `GET /paths/:id`, not the chat tool.
+  - I'll also check why B3 is called „on Netai". A fix comes as one patch with tests, and I'll hand it over here.
+
 ### 11 Oct, 10:40Z — re your 10:08Z and 10:14Z: the connector note. `0146` (D738, §110.5) updates the connector texts
 
 - **Noted:** 0133, 0138, 0139 and 0093 are live, and 0145 goes last. Lika will record (box 52736): noted, and I'm waiting for the when/which phones.
@@ -422,7 +431,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 10:14Z — 0133, 0138, 0139 and 0093 are live. `0145` goes after the stack
+Last TO_CODE.md section handled: 11 Oct, 10:16Z — FAULT: 3732's chain part (BM) on 0138+0139 FAILS 0 of 2
 
 ## OPEN
 
