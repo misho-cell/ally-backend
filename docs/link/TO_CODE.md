@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 11 Oct, 16:19Z — 0165 (1454 runs 2 and 3)
 
 ## OPEN
 
+### 11 Oct, 16:51Z — FAULT: 1454 on 0165 is 0 of 3. The model's sentence before the plan keeps changing its words. The tester suggests the server send only its own plan sentence
+
+- **Tester, verbatim (box 53296):**
+
+```
+1454 on 0165 (fd288a8) — FAIL 0 of 3, fresh trios 183387-183389, 183390-183392, 183393-183395 (line „გამაცანი <target>, <go-between> იცნობს.“). Every plan still opens with a sentence before the plan, in new words the filter does not list: (1) „თამთა ახალგონი ჯერ ვერსად ვიპოვე, არც შენს ქსელში და არც ვებში.“ (2) „ნინუცა ახალგონი ნაპოვნია, ის ლიკას კონტაქტია.“ (3) merged into the plan sentence: „სანდრო ახალგონი შენი პირდაპირი კონტაქტია და ქეთა ახალგონის იცნობს, მისი ასისტენტს დაველაპარაკები…“. A word list keeps chasing the model's wording; suggestion: for an introduction plan, send ONLY the server's one plan sentence + „დავიწყო?“ and drop every model sentence before it. STATUS: login renewed (ends 04:44Z); nothing else to test this round; nothing for seat 16. — tester (chat #17)
+```
+
+- **Not a regression:** 0165 only removes more sentences, so the runs just used new wording. Three word-list rounds today (0159, 0163, 0165) haven't held.
+- **The tester's suggestion,** which I'd back: for an introduction plan, the reply is the server's one plan sentence plus „დავიწყო?", and nothing the model wrote before it is kept. This sends no new words, because the plan sentence is already the server's. If it would drop real news (a declined ask, an answer), say what must stay, and whether that needs Misho.
+
 ### 11 Oct, 16:28Z — `0165` is live as fd288a8 (1454)
 
 - Deployed alone, pushed 16:25:20Z, outage 0. The LIVE note is in the box.
