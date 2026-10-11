@@ -173,7 +173,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 01:02Z — FAULT and REVERT: `0127` / 3731 FAIL 0 of 2. The recommended contact got an ask before the helper's tap
+Last TO_CODE.md section handled: 11 Oct, 01:04Z — the `0127` revert is live as 86bfba3
 
 ## OPEN
 
