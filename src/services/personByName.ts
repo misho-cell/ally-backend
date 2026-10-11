@@ -11,11 +11,14 @@ import { professionFamilyIn, professionFamilyKey } from './professionFamilies';
  * does not hold the web tools at all — no new words to the model, the tools
  * are simply not offered (as inviteHeld does for invite_contact).
  *
+ * 3732 (box 52742): „მინდა <name>-ს დავუკავშირდე. ვისი გავლით შემიძლია?" asks the same thing
+ * („I want to contact <name> — through whom?") and is read the same way.
+ *
  * A line that names a trade instead („გამაცანი კარგი ბუღალტერი") keeps them:
  * looking beyond the network for a trade is the 1454 web-people paragraph.
  */
 const MEET_OR_REACH_RE =
-  /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to)|reach out to)(?![\p{L}\p{M}])/iu;
+  /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|დავუკავშირდ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|ვისი გავლით|ვის გავლით|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to|connect with)|through whom|reach out to)(?![\p{L}\p{M}])/iu;
 
 /** The web tools a run that names a person does not hold. */
 export const WEB_TOOL_NAMES: ReadonlySet<string> = new Set(['web_search', 'fetch_page']);

@@ -9,6 +9,10 @@ jest.mock('../../block.service', () => ({
   __esModule: true,
   getExcludedPhones: jest.fn().mockResolvedValue([]),
 }));
+jest.mock('../../memberPaths.service', () => ({
+  __esModule: true,
+  memberMiddles: jest.fn().mockResolvedValue([]),
+}));
 jest.mock('../membership', () => ({
   __esModule: true,
   fetchAccountStates: jest.fn().mockResolvedValue(new Map()),
@@ -23,12 +27,14 @@ import { getSession } from '../../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../../neo4j.keys';
 import { getExcludedPhones } from '../../block.service';
 import { findWarmPath } from '../findWarmPath';
+import { memberMiddles } from '../../memberPaths.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSession = getSession as jest.MockedFunction<typeof getSession>;
 const mockUserKey = getCompositeKeyForUser as jest.MockedFunction<typeof getCompositeKeyForUser>;
 const mockPhoneKey = getCompositeKeyForPhone as jest.MockedFunction<typeof getCompositeKeyForPhone>;
 const mockExcluded = getExcludedPhones as jest.MockedFunction<typeof getExcludedPhones>;
+const mockMemberMiddles = memberMiddles as jest.MockedFunction<typeof memberMiddles>;
 
 function graphReturning(paths: string[][]): { run: jest.Mock; close: jest.Mock } {
   const session = {
@@ -46,6 +52,7 @@ beforeEach(() => {
   mockUserKey.mockResolvedValue('+995500000001');
   mockPhoneKey.mockResolvedValue('+995500000009');
   mockExcluded.mockResolvedValue([]);
+  mockMemberMiddles.mockResolvedValue([]);
   mockQuery.mockResolvedValue({
     rows: [
       { phone: '+995500000002', name: 'გია' },
@@ -142,5 +149,33 @@ describe('findWarmPath', () => {
     const out = await findWarmPath('1', '+995500000009');
 
     expect((out as { reason: string }).reason).toBe('target_not_in_graph');
+  });
+
+  // 3732 (box 52742): the members' own longer chain is offered beside the graph's short path.
+  it('adds the members-only chain the shortest-path read never returns', async () => {
+    graphReturning([['+995500000001', '+995500000003', '+995500000009']]);
+    mockMemberMiddles.mockResolvedValue([['+995500000002', '+995500000004']]);
+
+    const out = await findWarmPath('1', '+995500000009');
+
+    expect(out.found).toBe(true);
+    if (!out.found) return;
+    expect(out.paths.map((p) => p.bridges.map((b) => b.phone))).toEqual([
+      ['+995500000003'],
+      ['+995500000002', '+995500000004'],
+    ]);
+    expect(out.paths[1]?.relayable).toBe(true);
+  });
+
+  it('keeps the graph paths alone when the members read fails', async () => {
+    graphReturning([['+995500000001', '+995500000002', '+995500000009']]);
+    mockMemberMiddles.mockRejectedValue(new Error('statement timeout'));
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const out = await findWarmPath('1', '+995500000009');
+
+    expect(out.found).toBe(true);
+    if (!out.found) return;
+    expect(out.paths).toHaveLength(1);
   });
 });
