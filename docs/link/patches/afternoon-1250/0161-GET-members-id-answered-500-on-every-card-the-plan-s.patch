@@ -1,0 +1,108 @@
+From 74c37461ca941b23f52f9461283599cb37f8d3c1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 13:46:51 +0000
+Subject: [PATCH] =?UTF-8?q?GET=20/members/:id=20answered=20500=20on=20ever?=
+ =?UTF-8?q?y=20card;=20the=20plan-step=20tidy-up=20never=20removed=20a=20s?=
+ =?UTF-8?q?tep=20=E2=80=94=20two=20casts=20fixed?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops, 11 Oct 13:42Z, from the live logs:
+- „[GET /members/:id] operator does not exist: text = integer":
+  user_profile_kv.user_id is TEXT, read as $1::int. Now $1::text with the
+  id as a string. Every member card answered 500 since 0138.
+- „DELETE FROM conversations WHERE id = ANY($1::int[]) :: uuid = integer":
+  conversations.id is a UUID. dropPlanStepsTheReplyCarries has removed no
+  plan step since 9 Oct (it is best-effort, so nothing surfaced); now
+  $1::uuid[], the ids read as strings.
+
+A test pins both casts to the column types.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theCastsMatchTheColumns.test.ts | 24 +++++++++++++++++++
+ src/services/chat.service.ts                  |  9 +++++--
+ src/services/memberCard.service.ts            |  5 ++--
+ 3 files changed, 34 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/theCastsMatchTheColumns.test.ts
+
+diff --git a/src/services/__tests__/theCastsMatchTheColumns.test.ts b/src/services/__tests__/theCastsMatchTheColumns.test.ts
+new file mode 100644
+index 0000000..270c6d9
+--- /dev/null
++++ b/src/services/__tests__/theCastsMatchTheColumns.test.ts
+@@ -0,0 +1,24 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * Ops, 11 Oct 13:42Z, from the live logs: two queries cast to the wrong column
++ * type, so Postgres refused them on every call — `GET /members/:id` answered
++ * 500 („text = integer": user_profile_kv.user_id is TEXT), and the plan-step
++ * tidy-up never removed a step („uuid = integer": conversations.id is a UUID).
++ */
++const source = (file: string): string => readFileSync(join(__dirname, '..', file), 'utf8');
++
++describe('the casts match the columns', () => {
++  it('reads a member’s profile by a text user_id', () => {
++    const card = source('memberCard.service.ts');
++    expect(card).toContain('WHERE user_id = $1::text AND key = ANY($2::text[])');
++    expect(card).toContain('[String(memberId), PROFILE_KEYS, PROFILE_KEYS.length]');
++  });
++
++  it('deletes plan steps by their uuid ids', () => {
++    const chat = source('chat.service.ts');
++    expect(chat).toContain('DELETE FROM conversations WHERE id = ANY($1::uuid[])');
++    expect(chat).not.toContain('DELETE FROM conversations WHERE id = ANY($1::int[])');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 44077b6..4b9eaaa 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -4436,7 +4436,7 @@ async function dropPlanStepsTheReplyCarries(
+ ): Promise<void> {
+   if (!runId || !carriesPlanSentence(reply)) return;
+   try {
+-    const steps = await query<{ id: number; content: string }>(
++    const steps = await query<{ id: string; content: string }>(
+       `SELECT id, content FROM conversations
+         WHERE thread_id = $1 AND run_id = $2 AND kind = 'step' AND role = 'assistant'
+         ORDER BY id LIMIT $3`,
+@@ -4445,7 +4445,12 @@ async function dropPlanStepsTheReplyCarries(
+     );
+     const ids = steps.rows.filter((s) => carriesPlanSentence(s.content)).map((s) => s.id);
+     if (ids.length === 0) return;
+-    await query(`DELETE FROM conversations WHERE id = ANY($1::int[])`, [ids], STEP_TIDY_TIMEOUT_MS);
++    // conversations.id is a uuid: as int[] this failed on every call since 9 Oct (ops, 11 Oct).
++    await query(
++      `DELETE FROM conversations WHERE id = ANY($1::uuid[])`,
++      [ids],
++      STEP_TIDY_TIMEOUT_MS,
++    );
+     // eslint-disable-next-line no-console
+     console.log(`[chat] run ${runId}: dropped ${ids.length} plan step(s) the reply tells again`);
+   } catch (error) {
+diff --git a/src/services/memberCard.service.ts b/src/services/memberCard.service.ts
+index f323648..fcf23cd 100644
+--- a/src/services/memberCard.service.ts
++++ b/src/services/memberCard.service.ts
+@@ -61,10 +61,11 @@ async function memberRow(memberId: number): Promise<MemberRow | null> {
+ 
+ async function profileValues(memberId: number): Promise<ReadonlyMap<string, string>> {
+   const result = await query<{ key: string; value: string }>(
++    // user_profile_kv.user_id is TEXT: as int this answered 500 on every card (ops, 11 Oct).
+     `SELECT key, value FROM user_profile_kv
+-      WHERE user_id = $1::int AND key = ANY($2::text[]) AND value IS NOT NULL
++      WHERE user_id = $1::text AND key = ANY($2::text[]) AND value IS NOT NULL
+       LIMIT $3`,
+-    [memberId, PROFILE_KEYS, PROFILE_KEYS.length],
++    [String(memberId), PROFILE_KEYS, PROFILE_KEYS.length],
+     CARD_QUERY_TIMEOUT_MS,
+   );
+   return new Map(result.rows.map((row) => [row.key, row.value]));
+-- 
+2.43.0
+
