@@ -17,6 +17,10 @@ import { professionFamilyIn, professionFamilyKey } from './professionFamilies';
 const MEET_OR_REACH_RE =
   /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to)|reach out to)(?![\p{L}\p{M}])/iu;
 
+/** 3732: the reach words alone — „how do I get to X", not „introduce me". */
+const REACH_RE =
+  /(?<![\p{L}\p{M}])(?:მივწვდე|მივწვდები|მივაღწიო|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to))(?![\p{L}\p{M}])/iu;
+
 /** The web tools a run that names a person does not hold. */
 export const WEB_TOOL_NAMES: ReadonlySet<string> = new Set(['web_search', 'fetch_page']);
 
@@ -53,4 +57,13 @@ function namesATrade(line: string): boolean {
 /** Does the owner's line ask to meet or reach somebody it names, not a trade? */
 export function asksForAPersonByName(ownerLine: string): boolean {
   return MEET_OR_REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
+}
+
+/**
+ * 3732 (SD-016, 2 of 2): „როგორ მივწვდე ბახვა გამოგონილს?" never called
+ * find_warm_path, so the chain owner → B1 → B2 → target was never read and the
+ * reply offered only a sleeping bridge. Such a line's first turn calls it.
+ */
+export function asksToReachAPersonByName(ownerLine: string): boolean {
+  return REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
 }
