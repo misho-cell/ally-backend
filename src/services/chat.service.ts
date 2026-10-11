@@ -86,6 +86,7 @@ import { askedLanguage, languagePreference } from './languagePreference';
 import { safetyReplyFor } from './safetyWorry';
 import {
   carriesPlanSentence,
+  introPlanOnly,
   withoutMatchJustification,
   withPlanSentence,
   withOnePlanSentence,
@@ -7733,8 +7734,11 @@ function withPlanInReply(
   // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
   const reply = withOwnersNetwork(written);
   if (replyCarriesPlan(reply, plan)) {
-    // D739: the plan is its one sentence and one question — no sentence explaining the match.
-    // 1454: a reply that said only why the match fits gets the server's plan sentence instead.
+    // D739: the plan is its one sentence and one question. 1454 (box 53296):
+    // for an introduction plan nothing the model wrote before it is kept.
+    if (carriesPlanSentence(plan.text)) {
+      return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), runLang(runId));
+    }
     return withClosingQuestion(
       withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
       runLang(runId),

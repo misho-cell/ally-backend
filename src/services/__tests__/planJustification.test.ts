@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
+  introPlanOnly,
   withOnePlanSentence,
   withoutMatchJustification,
   withPlanSentence,
@@ -122,5 +123,42 @@ describe('withOnePlanSentence, any form of the verb', () => {
     expect(withOnePlanSentence(run1)).toBe(
       'მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, ბახვამ თამთასთან გაგაცნოთ. დავიწყო?',
     );
+  });
+});
+
+/** 1454 (box 53296, 0 of 3 on 0165): nothing the model wrote before an introduction plan is kept. */
+describe('introPlanOnly', () => {
+  const SERVER = 'სანდრო ახალგონის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
+  const plan = { text: SERVER, names: ['სანდრო ახალგონი'] };
+  const OWN =
+    'სანდრო ახალგონის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ გაგაცნოს ქეთა ახალგონი.';
+
+  it('run 1: a sentence in new words before the plan goes', () => {
+    const reply = `თამთა ახალგონი ჯერ ვერსად ვიპოვე, არც შენს ქსელში და არც ვებში. ${OWN}\n\nდავიწყო?`;
+    expect(introPlanOnly(reply, plan)).toBe(`${OWN}\n\nდავიწყო?`);
+  });
+
+  it('run 2: the same as its own paragraph', () => {
+    const reply = `ნინუცა ახალგონი ნაპოვნია, ის ლიკას კონტაქტია.\n\n${OWN} დავიწყო?`;
+    expect(introPlanOnly(reply, plan)).toBe(`${OWN} დავიწყო?`);
+  });
+
+  it('run 3: a plan sentence merged with the explanation is the server’s sentence', () => {
+    const reply =
+      'სანდრო ახალგონი შენი პირდაპირი კონტაქტია და ქეთა ახალგონის იცნობს, მისი ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო. დავიწყო?';
+    expect(introPlanOnly(reply, plan)).toBe(`${SERVER} დავიწყო?`);
+  });
+
+  it('keeps the model’s own clean plan sentence, which names whom it introduces', () => {
+    expect(introPlanOnly(`${OWN}\n\nდავიწყო?`, plan)).toBe(`${OWN}\n\nდავიწყო?`);
+  });
+
+  it('is the server’s sentence when the reply has no plan sentence at all', () => {
+    expect(introPlanOnly('სანდრო შენი კონტაქტია. დავიწყო?', plan)).toBe(SERVER);
+  });
+
+  it('a go-between written in another script is the server’s sentence', () => {
+    const latin = { text: SERVER, names: ['❤️ Sandro'] };
+    expect(introPlanOnly(`ბლა. ${OWN}`, latin)).toBe(SERVER);
   });
 });
