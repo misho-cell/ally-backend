@@ -231,6 +231,7 @@ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+import { walksToTheNamedPerson, WARM_PATH_TOOL } from './warmPathAfterSearch';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
@@ -13214,9 +13215,17 @@ async function runToolLoop(
       // This turn ended in tool calls — its streamed text was narration, and
       // it was already emitted as a step above; don't emit it twice.
       resetTurnStream(false);
+      // 3732: a search found the person the owner asked to reach by name — walk to them next.
+      const walkNext = walksToTheNamedPerson({
+        ownerLine: runOwnerLine.get(runId) ?? '',
+        toolsUsed: toolNamesUsed,
+        roundTools,
+        walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
+      });
       response = await callClaude(messages, systemPrompt, tools, ctx, {
         onText: stream,
         model: TOOL_TURN_MODEL,
+        ...(walkNext && { forceTool: WARM_PATH_TOOL }),
       });
     }
 

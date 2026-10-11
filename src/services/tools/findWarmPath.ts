@@ -4,6 +4,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { memberMiddles } from '../memberPaths.service';
 import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
 
 /**
@@ -184,6 +185,39 @@ export async function namesFor(
   return new Map(result.rows.map((r) => [normalizePhone(r.phone), r.name]));
 }
 
+/**
+ * 3732 (box 52742): the graph returns the SHORTEST paths only, so beside a
+ * short path through somebody who cannot carry the request, the members' own
+ * longer chain (owner → B1 → B2 → target) was never offered. 1849's members-only
+ * read (memberPaths) finds it; it is added here, so the chat sees what the path
+ * map sees. Fails towards the graph's paths alone.
+ */
+async function memberChainsTo(userId: string, targetPhone: string): Promise<string[][]> {
+  try {
+    const chains = await memberMiddles(Number(userId), targetPhone);
+    return chains.map((middle) => middle.map(normalizePhone));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('findWarmPath member chains:', (err as Error).message);
+    return [];
+  }
+}
+
+/** The graph's middles, then each member chain the graph did not already return. */
+export function withMemberChains(
+  graphMiddles: readonly string[][],
+  memberChains: readonly string[][],
+): string[][] {
+  const seen = new Set(graphMiddles.map((middle) => middle.join('>')));
+  const added = memberChains.filter((middle) => {
+    const key = middle.join('>');
+    if (middle.length === 0 || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return [...graphMiddles, ...added];
+}
+
 export async function findWarmPath(
   userId: string,
   targetPhoneRaw: string,
@@ -241,9 +275,13 @@ export async function findWarmPath(
 
   const blocked = new Set((await getExcludedPhones(userId)).map(normalizePhone));
   // Middlemen only: the first key is the user, the last the target.
-  const candidates = rows
-    .map((r) => r.keys.slice(1, -1).map((k) => normalizePhone(primaryPhone(k))))
-    .filter((bridges) => bridges.every((p) => !blocked.has(p)));
+  const graphMiddles = rows.map((r) =>
+    r.keys.slice(1, -1).map((k) => normalizePhone(primaryPhone(k))),
+  );
+  const candidates = withMemberChains(
+    graphMiddles,
+    await memberChainsTo(userId, targetPhone),
+  ).filter((bridges) => bridges.every((p) => !blocked.has(p)));
   if (candidates.length === 0) {
     return {
       found: false,
