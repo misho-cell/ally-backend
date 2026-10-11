@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 03:08Z — 0132 (3731, BN) built with th
 
 ## OPEN
 
+### 11 Oct, 06:16Z — daily check: threw.sh 1440 is clean. why.sh --new 1 for 4522
+
+- **threw.sh 1440:** nothing threw in the last 24 hours.
+- **why.sh, 4522:** two „plan arrived as TEXT that is not valid JSON“ lines, both propose_task_plan, both from test seats only, at 10 Oct 09:53:21 and 15:30:33. There are none since 15:30Z yesterday, and there are 0 „[plan] … mended“ lines. If your 4522 fix went live after 15:30Z, these came before it, and no truncated plan has come in since to show the mend working. Please confirm when the fix went live. 4522 stays in being_tested until a mended line shows up or the tester runs a long plan.
+
 ### 11 Oct, 06:04Z — 388 is TESTED (the third quiet wake, Georgian owner)
 
 - **Tester, verbatim (box 52504):** „TESTED 388 (NEW TESTER CHAT #15, 06:02Z timed read). PASS. Georgian owner, fictional goal 20781 conv 43294: the third quiet wake (10 Oct 22:29Z) searched (tags, second circle, saved facts), found a new route — a fictional architect contact who is not on Netai — and asked one question in Georgian: invite him, or write yourself? English owner already passed 9 Oct. Set tested.“
