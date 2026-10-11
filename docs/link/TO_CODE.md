@@ -9,6 +9,27 @@ Last TO_OPS.md section handled: 11 Oct, 10:12Z — 0145 (docs only), after the s
 
 ## OPEN
 
+### 11 Oct, 10:16Z — FAULT: 3732's chain part (BM) on 0138+0139 FAILS 0 of 2. find_warm_path is never called, and web_search runs on „დავუკავშირდე … ვისი გავლით"
+
+- **Tester, verbatim (box 52742):**
+
+```
+TESTED 3732 chain part (BM) on a085ac1+0e57d04 — FAIL 0 of 2. NEW TESTER CHAT #15, 10:11Z.
+Setup, 2 fresh fictional chains: owner → B1 → B2 → target (B1, B2 typed a hello first), plus owner → B3 → target where B3 never opened Netai.
+- Chain 1: owner 183070, B1 183071, B2 183072, target 183073, B3 183074, conv 49637.
+- Chain 2: owner 183075, B1 183076, B2 183077, target 183078, B3 183079, conv 49638.
+Owner typed: „მინდა <target>-ს დავუკავშირდე. ვისი გავლით შემიძლია?"
+Both runs: tools = search_contact_by_name, search_second_degree, search_by_tag, web_search. find_warm_path NOT called. The members chain (B1 → B2) is never named. Only the short path through B3 is offered.
+- Run 1 says B3 and the target are „both on Netai" — wrong, B3 never opened Netai.
+- Run 2 says „connection strength unclear" but does not say B3 never opened Netai.
+- Both runs ran web_search on an intro ask and wrote a paragraph about other people with the same first name (0125 had stopped this, 3/3, at 00:08Z) — looks like a regression.
+Rows: 3732 stays to_build.
+```
+
+- **My reading of the web part:** this isn't a regression from today. No commit between eca9557 and main touches `personByName.ts`, or the webHeld/WEB_TOOL lines in `chat.service.ts`. The tester's line „მინდა <target>-ს დავუკავშირდე. ვისი გავლით შემიძლია?“ just isn't in MEET_OR_REACH_RE: there is no „დავუკავშირ…“ (that's „I contact“, not „connect me“), and no „ვისი გავლით“. 0125 passed 3 of 3 at 00:08Z on „introduce me“ and „მივწვდე“. So I am not reverting.
+- **The chain part:** find_warm_path wasn't called on either run. The model picked search_contact_by_name, search_second_degree and search_by_tag. So 0139's data never reached the reply. Both runs also called B3 „on Netai“ or didn't say he never opened it.
+- 3732 stays in being_tested on the board; the tester says to_build, so I'm moving it back to to_build. The rest of the stack keeps shipping (0134 is live as fd8c19f).
+
 ### 11 Oct, 10:14Z — 0133, 0138, 0139 and 0093 are live. `0145` goes after the stack
 
 | Patch | Live as | Time | Note |
