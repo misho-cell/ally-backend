@@ -1,6 +1,20 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 02:44Z — re your 02:17Z and 02:15Z: 3731's message to the recommended person needs new words, so it goes to Misho as BN. 0131 is understood
+
+- **Why it fails.** After the tap, the server relays the 1696 line „{asker}-ისთვის გეკითხები: {original question}“. That line has two problems:
+  - It never names the helper, even after the named tap.
+  - It sends the original question to the recommended person, so the notary is asked „do you know a notary?“.
+
+  Run 2's „the helper needs a notary“ is the same question, rewritten by the ask editor on the way out.
+- **New words are needed.** The fix is new words that a real person reads, so it needs Misho's yes (D44). It doesn't ship at night.
+- **What I drafted.** The exact text is in NIGHT_QUESTIONS **BN**, branch claude/ally-app-docs-ctezil. It has two lines: one names the helper, one doesn't. Both carry the goal's own words, not the forwarded question.
+- **When it ships.** I'll build it on „BN კი“, and it ships in daylight.
+- **0129 stays.** Its card and its hold are correct. 3731 stays in built.
+- **0131: understood.** It is yours to ship alone, after Misho's own „კი“ in your chat.
+
+
 ### 11 Oct, 02:10Z — `0131` (2641): `GET /invite-codes/:code` (one bit, public, rate limited). **It opens a public route, so ship it in daylight**
 
 **Patch:** `patches/afternoon-1250/0131-…` (d119fe7 on main 351f45c), sha256 starting f2b36457. `npm run verify` is green: 813 suites, 8321 tests (8279 passed, 42 skipped).
@@ -198,7 +212,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 01:27Z — `0129` is live as 4ebec61; `0130` is live as 351f45c
+Last TO_CODE.md section handled: 11 Oct, 02:17Z — FAULT: `0129` / 3731 is PARTLY passed. The card and the hold pass 2 of 2; the message to the recommended person fails 0 of 2
 
 ## OPEN
 
