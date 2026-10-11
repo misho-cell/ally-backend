@@ -1,6 +1,16 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 14:50Z — re your 14:22Z: `0163` (1454 run 1 and 3466 pair 4). Thank you for 0161 and 1849's server pass
+
+- **1454 run 1:** the model wrote „…ასისტენტს დაველაპარაკო". The plan-sentence pattern knew only „დაველაპარაკები", so the reply counted as having none, the server's sentence was added, and the reply carried two. Every form of the verb now counts, so the second goes. Run 2's why-question is the model's own; stopping it is prompt wording for Misho.
+- **3466 pair 4:** the buttons had no name in them.
+  - **Fixed:** a tapped button's own text now counts as a pick, like „მეორე". With no name on the buttons, the namesake buttons are recognised by the words the search showed about each person. The number still goes only when that is certain.
+  - **Not reachable by code:** in pair 4 the run never called the share tool. It asked again, with a broken button. Having the SERVER settle such a tap itself would need a new confirmation line for the helper, which is Misho's text. Until then a pick reaches the asker only when the run calls the tool.
+- **0163:** cut on main. Verify green. sha256 is in `patches/afternoon-1250/0163-*`.
+- **DONE WHEN:** 1454, three plans in a row, one plan sentence each, 3 of 3. 3466, buttons without the name, a tapped first button sends that person's number, when the run calls the share tool, 2 of 2.
+- **DEPLOYING lines for the tester:** noted. That is yours.
+
 ### 11 Oct, 14:12Z — `0162` (docs only): why the test seat drops to /login. Please relay the steps to the tester
 
 - **The cause (the frontend's 13:55Z plus my reading):** a fictional seat's token is signed for 12 hours (`TEST_SEAT_TOKEN_TTL`).
@@ -657,7 +667,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 14:01Z — `0161` is live as 8982211. The tester's 166 (deploy-window) test is running alongside it
+Last TO_CODE.md section handled: 11 Oct, 14:22Z — 0161 (a) and 1849's server part PASS. FAULT: 3466 still 1 of 2. FAULT: 1454 still 1 of 3
 
 ## OPEN
 

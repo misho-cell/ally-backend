@@ -1,0 +1,191 @@
+From 5e1b99bfd18a98194997f02416895b6141cb10c3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 14:46:21 +0000
+Subject: [PATCH] 1454 and 3466: any form of the plan verb counts; a tapped
+ button's own text is a pick
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 53065.
+- 1454 run 1: „მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, …" — the
+  plan-sentence pattern knew only „დაველაპარაკები", so the reply counted as
+  having none, the server's sentence was added, and the reply carried two.
+  Every form of the verb now counts, so the second is dropped.
+- 3466 pair 4: the buttons did not carry the name („სანტექნიკის ნომერი",
+  „საბურთალოს სანტექნიკის ნომერი"), and the helper tapped the first. A
+  tapped button's own text is now read as its position, like „მეორე"; when
+  no button starts with the name, the namesake buttons are those that use
+  words the search showed about them. The phone still goes only when the
+  buttons settle it; otherwise the run's own choice stands.
+
+What this does not reach: in pair 4 the run never called the share tool and
+asked again instead; a server-settled tap would need a new confirmation line
+for the helper (Misho's text).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aButtonNamesOnePerson.test.ts   | 24 ++++++++++++-
+ .../__tests__/planJustification.test.ts       | 12 +++++++
+ src/services/namesakeButtons.ts               | 36 ++++++++++++++++---
+ src/services/planJustification.ts             |  3 +-
+ src/services/shareNumber.service.ts           | 12 ++++---
+ 5 files changed, 76 insertions(+), 11 deletions(-)
+
+diff --git a/src/services/__tests__/aButtonNamesOnePerson.test.ts b/src/services/__tests__/aButtonNamesOnePerson.test.ts
+index 87d3352..3e32aac 100644
+--- a/src/services/__tests__/aButtonNamesOnePerson.test.ts
++++ b/src/services/__tests__/aButtonNamesOnePerson.test.ts
+@@ -1,4 +1,4 @@
+-import { namesakesIn, phoneForButton } from '../namesakeButtons';
++import { namesakesIn, phoneForButton, tappedButtonIndex } from '../namesakeButtons';
+ 
+ /** 3466 (box 52934): which namesake a button stands for, or nobody when it cannot be told. */
+ const found = namesakesIn({
+@@ -39,3 +39,25 @@ describe('3466: a button names one person, or nobody', () => {
+     expect(phoneForButton([OTHER_BUTTON], 0, found)).toBeNull();
+   });
+ });
++
++// Box 53065, pair 4: the buttons did not carry the name, and the helper tapped the first one.
++describe('3466: buttons without the name', () => {
++  const plumbers = namesakesIn({
++    results: [
++      { phone: 'p-any', name: 'დათო გამოგონილი', tags: ['სანტექნიკი'] },
++      { phone: 'p-sab', name: 'დათო გამოგონილი', tags: ['სანტექნიკი'], note: 'საბურთალო' },
++    ],
++  });
++  const buttons = ['სანტექნიკის ნომერი', 'საბურთალოს სანტექნიკის ნომერი', OTHER_BUTTON];
++
++  it('reads the tapped button’s own text as its position', () => {
++    expect(tappedButtonIndex('სანტექნიკის ნომერი', buttons, plumbers)).toBe(0);
++    expect(tappedButtonIndex('საბურთალოს სანტექნიკის ნომერი', buttons, plumbers)).toBe(1);
++    expect(tappedButtonIndex(OTHER_BUTTON, buttons, plumbers)).toBe(-1);
++  });
++
++  it('gives each button its person, the plain one by elimination', () => {
++    expect(phoneForButton(buttons, 1, plumbers)).toBe('p-sab');
++    expect(phoneForButton(buttons, 0, plumbers)).toBe('p-any');
++  });
++});
+diff --git a/src/services/__tests__/planJustification.test.ts b/src/services/__tests__/planJustification.test.ts
+index 3e2c3e1..4919883 100644
+--- a/src/services/__tests__/planJustification.test.ts
++++ b/src/services/__tests__/planJustification.test.ts
+@@ -92,3 +92,15 @@ describe('withOnePlanSentence', () => {
+     expect(withOnePlanSentence(one)).toBe(one);
+   });
+ });
++
++// 1454 (box 53065, run 1): the model's own sentence used another form of the verb.
++describe('withOnePlanSentence, any form of the verb', () => {
++  it('drops the server sentence after „…ასისტენტს დაველაპარაკო"', () => {
++    const run1 =
++      'მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, ბახვამ თამთასთან გაგაცნოთ. ' +
++      'ბახვა ფიქციურის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?';
++    expect(withOnePlanSentence(run1)).toBe(
++      'მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, ბახვამ თამთასთან გაგაცნოთ. დავიწყო?',
++    );
++  });
++});
+diff --git a/src/services/namesakeButtons.ts b/src/services/namesakeButtons.ts
+index 5d73635..e7af626 100644
+--- a/src/services/namesakeButtons.ts
++++ b/src/services/namesakeButtons.ts
+@@ -56,6 +56,36 @@ function namesakeNamedBy(label: string, namesakes: readonly Namesake[]): string
+   return hits.length === 1 ? hits[0].phone : null;
+ }
+ 
++/**
++ * The buttons that stand for a namesake, in their order: those that start with
++ * the shared name; or, when none does (box 53065: [„სანტექნიკის ნომერი",
++ * „საბურთალოს სანტექნიკის ნომერი"]), those that use words the search showed
++ * about one of them — „სხვა, მე დავწერ" uses none and is left out either way.
++ */
++function namesakeButtons(buttons: readonly string[], namesakes: readonly Namesake[]): string[] {
++  const names = namesakes.map((n) => n.name).filter((name) => name !== '');
++  const named = buttons.filter((label) => {
++    const lower = label.trim().toLocaleLowerCase();
++    return names.some((name) => lower.startsWith(name));
++  });
++  if (named.length > 0) return named;
++  return buttons.filter((label) =>
++    stemsOf(label).some((stem) => namesakes.some((n) => n.text.includes(stem))),
++  );
++}
++
++/** The position, among the namesake buttons, of the button whose text the line is; -1 if none. */
++export function tappedButtonIndex(
++  line: string,
++  buttons: readonly string[],
++  namesakes: readonly Namesake[],
++): number {
++  const said = line.trim().toLocaleLowerCase();
++  return namesakeButtons(buttons, namesakes).findIndex(
++    (label) => label.trim().toLocaleLowerCase() === said,
++  );
++}
++
+ /**
+  * The phone the button at `index` stands for; null when it cannot be told for
+  * certain. Only buttons that start with the shared name count as namesake
+@@ -66,11 +96,7 @@ export function phoneForButton(
+   index: number,
+   namesakes: readonly Namesake[],
+ ): string | null {
+-  const names = namesakes.map((n) => n.name).filter((name) => name !== '');
+-  const own = buttons.filter((label) => {
+-    const lower = label.trim().toLocaleLowerCase();
+-    return names.some((name) => lower.startsWith(name));
+-  });
++  const own = namesakeButtons(buttons, namesakes);
+   if (index < 0 || index >= own.length || own.length !== namesakes.length) return null;
+   const named = own.map((label) => namesakeNamedBy(label, namesakes));
+   const direct = named[index];
+diff --git a/src/services/planJustification.ts b/src/services/planJustification.ts
+index 32ce5f7..ca0be25 100644
+--- a/src/services/planJustification.ts
++++ b/src/services/planJustification.ts
+@@ -12,8 +12,9 @@
+  */
+ 
+ /** The plan sentence: the assistant talking to another assistant. */
++// 1454 (box 53065, run 1): „…ასისტენტს დაველაპარაკო" — every form of the verb counts.
+ const PLAN_SENTENCE_RE =
+-  /(ასისტენტს\s+დაველაპარაკები|ასისტენტებს\s+დაველაპარაკები|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
++  /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
+ 
+ /** What a match justification says: contact, member, knows, matches. */
+ /** 48247: does this text carry the plan sentence? */
+diff --git a/src/services/shareNumber.service.ts b/src/services/shareNumber.service.ts
+index 7c3c4dc..4802755 100644
+--- a/src/services/shareNumber.service.ts
++++ b/src/services/shareNumber.service.ts
+@@ -1,5 +1,5 @@
+ import { query } from '../db/postgres/client';
+-import { Namesake, phoneForButton } from './namesakeButtons';
++import { Namesake, phoneForButton, tappedButtonIndex } from './namesakeButtons';
+ import { nameKey } from './tools/transliterate';
+ import { getExcludedPhoneSet } from './block.service';
+ import { normalizePhone } from './phone';
+@@ -269,9 +269,13 @@ async function pickedPhone(askThreadId: number, phone: string): Promise<string>
+   const offered = offeredNamesakes.get(askThreadId);
+   if (offered === undefined) return phone;
+   const [latest] = await ownersLatestLines(askThreadId);
+-  const index = latest === undefined ? null : ordinalPicked(latest);
+-  if (index === null) return phone;
+-  return phoneForButton(await buttonsOnScreen(askThreadId), index, offered) ?? phone;
++  if (latest === undefined) return phone;
++  const buttons = await buttonsOnScreen(askThreadId);
++  // A typed „მეორე", or the tapped button's own text (box 53065) — both name a button.
++  const ordinal = ordinalPicked(latest);
++  const index = ordinal ?? tappedButtonIndex(latest, buttons, offered);
++  if (index < 0) return phone;
++  return phoneForButton(buttons, index, offered) ?? phone;
+ }
+ 
+ /**
+-- 
+2.43.0
+
