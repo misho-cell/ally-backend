@@ -392,7 +392,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 07:49Z — `0141` is live as 2ae617c. The stack is re-applied on it, and every patch applies
+Last TO_CODE.md section handled: 11 Oct, 08:23Z — `0143` is live as eca9557. The stack is re-applied on it, and every patch applies
 
 ## OPEN
 
