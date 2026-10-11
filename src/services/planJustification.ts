@@ -116,3 +116,59 @@ export function withOnePlanSentence(reply: string): string {
     .filter((paragraph) => paragraph.trim() !== '')
     .join('\n\n');
 }
+
+/** The plan the server proposed: its own plan sentence and the go-betweens it names. */
+export interface IntroPlan {
+  readonly text: string;
+  readonly names: readonly string[];
+}
+
+/** Shorter stems would match ordinary words. */
+const MIN_NAME_STEM = 3;
+const NOT_A_LETTER_RE = /[^\p{L}\s]/gu;
+const FINAL_VOWEL_RE = /[აეიოუaeiouаеиоуыэюя]$/iu;
+
+/** The first word of a name without its last vowel: „სანდრო" → „სანდრ", which „სანდროს" starts with. */
+function nameStem(name: string): string {
+  const first = name.replace(NOT_A_LETTER_RE, ' ').trim().split(/\s+/u)[0] ?? '';
+  return first.replace(FINAL_VOWEL_RE, '').toLocaleLowerCase();
+}
+
+/** A clause break: a plan sentence with one before its verb carries more than the plan. */
+const CLAUSE_BREAK_RE = /[,;:–—]/u;
+
+/**
+ * Is the sentence the plan alone — the go-between's name and then the verb
+ * („სანდროს ასისტენტს…")? Run 3 opened with the name too, and explained the
+ * match in a clause before the verb.
+ */
+function isThePlanAlone(sentence: string, names: readonly string[]): boolean {
+  const verbAt = sentence.search(PLAN_SENTENCE_RE);
+  if (verbAt < 0 || CLAUSE_BREAK_RE.test(sentence.slice(0, verbAt))) return false;
+  const opening = sentence.trimStart().toLocaleLowerCase();
+  return names
+    .map(nameStem)
+    .some((stem) => stem.length >= MIN_NAME_STEM && opening.startsWith(stem));
+}
+
+/**
+ * 1454 (box 53296, 0 of 3 on 0165): three word-list rounds did not hold — each
+ * run put a sentence before the plan in new words („…ჯერ ვერსად ვიპოვე…",
+ * „…ნაპოვნია, ის ლიკას კონტაქტია.") or merged one into the plan sentence
+ * („…პირდაპირი კონტაქტია და ქეთას იცნობს, მისი ასისტენტს დაველაპარაკები…").
+ * D739: an introduction plan is its one sentence and one question. So nothing
+ * the model wrote before the plan sentence is kept. Its own plan sentence
+ * stays when it is the plan alone, opening with the go-between as the
+ * founder's example does; otherwise the server's sentence stands in its place. What follows the plan
+ * sentence (the question) is left for the caller to settle.
+ */
+export function introPlanOnly(reply: string, plan: IntroPlan): string {
+  const sentences = reply
+    .split(/\n\s*\n/u)
+    .flatMap((paragraph) => paragraph.split(SENTENCE_SPLIT_RE))
+    .map((sentence) => sentence.trim());
+  const own = sentences.find((sentence) => PLAN_SENTENCE_RE.test(sentence));
+  if (own === undefined) return plan.text;
+  const after = reply.slice(reply.indexOf(own) + own.length);
+  return `${isThePlanAlone(own, plan.names) ? own : plan.text}${after}`;
+}
