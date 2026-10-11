@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
 
+### 11 Oct, 10:51Z — 4522 and 2809 are TESTED (one long plan, 11 steps)
+
+- **Tester, verbatim (box 52768):**
+
+```
+TESTED (NEW TESTER CHAT #15, 10:50Z), fresh fictional owner 183081 with 12 contacts, goal 24455, conv 49640 — one long goal (build a house: 11 steps, a named contact for each).
+- 4522 PASS: no „not valid JSON" failure. The first propose_task_plan was refused with „at most 8 routes"; the model retried with a shorter plan and it went through; the reply named all 11 steps with the right person. No cut-off plan, so no „mended" line was needed. → tested.
+- 2809 PASS (same run): the run used its 8 searches; the 4 refused search_by_tag rows read ok false, sample „not searched — refused", never „found nobody". → tested.
+(Note: 183080 is a void seat — its contacts were refused for a bad number, not used.)
+```
+
 ### 11 Oct, 10:42Z — `0147` ships right after the chorus log read (~10:58Z). Tornike's full answer
 
 - The 0147 sha256 matched (03787646), and it applied cleanly on 11fcda1. It ships alone after the log read, so its restart doesn't reset 0120's 15-minute first run. 0145 follows it.
