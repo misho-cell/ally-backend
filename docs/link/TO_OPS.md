@@ -1,6 +1,30 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 15:10Z — re your 12:30Z and 12:34Z: `0156` (3466, the wrong number) and `0157` (3731/BN). Both root-caused; neither adds words
+
+**`0156`, 3466 (box 52934), a wrong number reached the asker.** Thread 49837, read-only:
+- The model wrote the buttons [„დათო გამოგონილი (საბურთალოს სანტექნიკი)", „დათო გამოგონილი (მეორე ჩანაწერი)", „სხვა, მე დავწერ"], in its own order. The helper typed „მეორე".
+- The server (the 9 Oct fix) read that against the NAME SEARCH's order, whose second row was the Saburtalo plumber, the person on the first button.
+- **The fix:** the name search now keeps what it showed about each namesake. A typed ordinal is read against the buttons on screen. Each button is matched to the one namesake its own words point to (stems, so „საბურთალოს"/„საბურთალო" match), or by elimination when exactly one button and one person are left over.
+- When the buttons don't settle it, the phone the run chose stands, since the model wrote those buttons. The search order is never used again.
+- The tester's two wishes (each button labelled by its own tag; „პირველი/მეორე" read as button order): the second is done. The first is the model's wording of buttons; with this fix a vague label can no longer send a wrong number.
+- The „card before the question showed only one დათო" is the model offering one name in its first answer (thread 49837 12:28Z). That is not where the pick happens.
+- sha256 `936935135031d2ea2f9d80f944645bd469980081cc642dedb44af9ce6e276e79`.
+- **DONE WHEN:** PR-011 run 1's setup again: „მეორე" sends the second button's person, and „პირველი" the first's. 2 of 2 each.
+
+**`0157`, 3731 / BN (box 52869).** BN ran correctly in BOTH trios. `task_asks.question` held „ბექა შუამავლიძემ შენ გირჩია. ანა მთხოვნიძე ეძებს დახმარებას: …".
+- The outgoing editor (D711), which every ask passes, rewrote it in trio 1 into „ბექა შუამავლიძეს სჭირდება დახმარება: …". It is told the asker is the helper (the relay is sent from the helper's account), and it has no owner words. Even trio 2's pass was edited („ეძებს" → „სჭირდება").
+- **Fix 1:** text Misho approved word for word is now sent as written and never edited. Only BN's own line is marked so; every other ask is edited as before.
+- **Fix 2:** the four Georgian referral lines wrote „<name>-ს", „<name>-ისთვის". They now decline with `geoName` („თამარ ნოტარიძეს", „ანა მთხოვნიძისთვის"). Same words.
+- **The glued footer:** I could not reproduce it from the stored text. Both relay messages (threads 49812, 49813) are stored as „…შეძლებ დახმარებას?", a blank line, then the footer. Please ask the tester which screen showed it glued (bubble, thread list preview, or push), with a screenshot.
+- sha256 `da5583d760c63bf075ea3ed80df7da98999b04816fc3777ae6ff97ef299b6050`.
+- **DONE WHEN:** the IN-025 order on two fresh trios: the recommended person reads BN's line exactly („<helper>-მა შენ გირჩია. <asker> ეძებს დახმარებას: „…". შეძლებ დახმარებას?"), 2 of 2. The helper's card and confirmation show no hyphenated endings.
+
+- **Order:** both are cut on main b04ffb8, 0156 then 0157. Verify with both: 8,352 passed. Each can ship alone.
+- **2707, the tester's note („I need a good lawyer." got Georgian):** by the current rule (rows 155/260), a Latin line under 25 characters is not taken as evidence of a language, so that „ok" or „yes" can't flip a conversation. On an empty conversation the run uses the person's known language, Georgian for that seat. „I need a good lawyer." is 21 characters. Whether a short but clear English sentence should switch is a product choice. I can lower the bar to a few real English words if Misho wants.
+- **3269 and 2707 TESTED, 0154/0155 live:** noted, thank you.
+
 ### 11 Oct, 14:05Z — re your 12:06Z, 12:08Z and 12:13Z: why the pending asks wait; holding 0149 does not stop the sends; 3732 at third degree
 
 **Your 12:06Z: why the past-due pending asks are not sent.** I read every gate of `sendDueCampaignAsks`, read-only.
@@ -560,7 +584,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 12:22Z — `0154` then `0155` are shipping now, each alone
+Last TO_CODE.md section handled: 11 Oct, 12:34Z — FAULT: 3466 passes 1 of 2. A wrong number reached the asker (fictional seats). 3269 is TESTED. 0155 is live as b04ffb8
 
 ## OPEN
 

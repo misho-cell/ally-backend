@@ -1,0 +1,287 @@
+From f49e17851a96a35a923e34ef45d7bed5dc796946 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 12:54:11 +0000
+Subject: [PATCH] 3731 / BN: the approved line goes out word for word; the
+ referral lines decline the names
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 52869 (1 of 2). BN ran correctly in both trios — task_asks.question held
+„ბექა შუამავლიძემ შენ გირჩია. ანა მთხოვნიძე ეძებს დახმარებას: …" — but every
+ask passes the outgoing editor (D711), which for a relay is told the asker
+is the helper and has no owner words; in trio 1 it rewrote the line into
+„ბექა შუამავლიძეს სჭირდება დახმარება: …", dropping „შენ გირჩია" and the real
+asker. Trio 2 passed, edited too („ეძებს" → „სჭირდება").
+
+- createAskNow takes approvedWording: text Misho approved word for word is
+  sent as written and never edited. Only BN's own line sets it, through
+  createRelayAsk; every other ask is edited as before.
+- askReferral's four Georgian lines wrote „<name>-ს", „<name>-ისთვის"; they
+  now use geoName („თამარ ნოტარიძეს", „ანა მთხოვნიძისთვის"). Same words.
+
+The glued footer could not be reproduced from the stored text (the „?" and
+the blank line before the footer are there); asked the tester which screen.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anEditorChecksEveryQuestion.test.ts       |  2 +-
+ src/services/__tests__/askReferral.test.ts    | 21 +++++++
+ .../__tests__/recommendedRelay.test.ts        | 14 ++++-
+ ...theHelpersTitleIsTheEditedQuestion.test.ts |  2 +-
+ src/services/askReferral.service.ts           | 10 ++--
+ src/services/askReferralSettle.service.ts     |  5 +-
+ src/services/taskAsks.service.ts              | 55 ++++++++++++++-----
+ 7 files changed, 85 insertions(+), 24 deletions(-)
+
+diff --git a/src/services/__tests__/anEditorChecksEveryQuestion.test.ts b/src/services/__tests__/anEditorChecksEveryQuestion.test.ts
+index 1af22a6..4187d86 100644
+--- a/src/services/__tests__/anEditorChecksEveryQuestion.test.ts
++++ b/src/services/__tests__/anEditorChecksEveryQuestion.test.ts
+@@ -121,7 +121,7 @@ describe('the ask path', () => {
+   const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+ 
+   it('checks every question before it is saved for the reader', () => {
+-    const edit = asks.indexOf('const editorsAsk = await editOutgoingAsk(');
++    const edit = asks.indexOf('const editorsAsk =');
+     expect(edit).toBeGreaterThan(-1);
+     expect(asks.indexOf('const opening = buildAskOpening(', edit)).toBeGreaterThan(edit);
+   });
+diff --git a/src/services/__tests__/askReferral.test.ts b/src/services/__tests__/askReferral.test.ts
+index d8a5041..fc933a3 100644
+--- a/src/services/__tests__/askReferral.test.ts
++++ b/src/services/__tests__/askReferral.test.ts
+@@ -95,6 +95,7 @@ describe('the tap on it (1696)', () => {
+       77,
+       '+995555000009',
+       "I'm asking for Nino: Do you know a good notary?",
++      false,
+     );
+     const decision = mockQuery.mock.calls.find(([sql]) =>
+       String(sql).includes('referral_approved = $2'),
+@@ -145,3 +146,23 @@ describe('the tap on it (1696)', () => {
+     expect(asks).toContain('CASE WHEN p.may_name_referrer IS FALSE THEN NULL ELSE b.name END');
+   });
+ });
++
++// Box 52869: „თამარ ნოტარიძე-ს ანა მთხოვნიძე-ისთვის" — the names are declined, not hyphenated.
++describe('the Georgian lines decline the names', () => {
++  const lines = jest.requireActual(
++    '../askReferral.service',
++  ) as typeof import('../askReferral.service');
++
++  it('writes the dative and the „for" form without a hyphen', () => {
++    expect(lines.referralQuestion('ka', 'თამარ ნოტარიძე', 'ანა მთხოვნიძე')).toContain(
++      'თამარ ნოტარიძეს ანა მთხოვნიძისთვის',
++    );
++    expect(lines.askedForThemLine('ka', 'თამარ ნოტარიძე', 'ანა მთხოვნიძე')).toBe(
++      'ვკითხე თამარ ნოტარიძეს. პასუხს ანა მთხოვნიძეს გადავცემ.',
++    );
++    expect(lines.declinedLine('ka', 'ანა მთხოვნიძე')).toContain('ანა მთხოვნიძეს ვეტყვი');
++    expect(lines.relayedQuestion('ka', 'ანა მთხოვნიძე', 'იცნობ?')).toBe(
++      'ანა მთხოვნიძისთვის გეკითხები: იცნობ?',
++    );
++  });
++});
+diff --git a/src/services/__tests__/recommendedRelay.test.ts b/src/services/__tests__/recommendedRelay.test.ts
+index 76d8abd..2358a87 100644
+--- a/src/services/__tests__/recommendedRelay.test.ts
++++ b/src/services/__tests__/recommendedRelay.test.ts
+@@ -36,8 +36,16 @@ describe('recommendedRelayLine', () => {
+     expect(settle).toContain(
+       'helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,',
+     );
+-    expect(settle).toContain(
+-      'referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),',
+-    );
++    expect(settle).toContain('const approvedLine = referralReads(offer, tap, language);');
++    expect(settle).toContain('approvedLine ?? relayedQuestion(language, asker, offer.question),');
++  });
++
++  // Box 52869, trio 1: the editor rewrote BN's line and made the helper the one in need.
++  it('goes out word for word: the approved line is never passed to the editor', () => {
++    const settle = readFileSync(join(__dirname, '..', 'askReferralSettle.service.ts'), 'utf8');
++    expect(settle).toContain('approvedLine !== null,');
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    expect(asks).toContain('approvedWording === true');
++    expect(asks).toContain('? { question: relayed.text, choices: draftChoices, edited: false }');
+   });
+ });
+diff --git a/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts b/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts
+index a45ba6a..3c20e8b 100644
+--- a/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts
++++ b/src/services/__tests__/theHelpersTitleIsTheEditedQuestion.test.ts
+@@ -5,7 +5,7 @@ import { join } from 'path';
+ describe('theHelpersTitleIsTheEditedQuestion', () => {
+   it('opens the helper’s thread after the editor, titled with the edited question', () => {
+     const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+-    const edited = source.indexOf('const editorsAsk = await editOutgoingAsk(');
++    const edited = source.indexOf('const editorsAsk =');
+     const opened = source.indexOf(
+       'liveThreadId ?? (await openAskThread(toUserId, senderName, edited.question, language));',
+     );
+diff --git a/src/services/askReferral.service.ts b/src/services/askReferral.service.ts
+index 29eba5c..bf32a7c 100644
+--- a/src/services/askReferral.service.ts
++++ b/src/services/askReferral.service.ts
+@@ -1,4 +1,5 @@
+ import { query } from '../db/postgres/client';
++import { geoName } from './georgianCase';
+ import { instructionAddressee } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { oneContactNamed, ownersLabel } from './instructedAsk';
+@@ -52,7 +53,7 @@ const REFERRAL_LABELS: Readonly<Record<RunLanguage, Readonly<Record<ReferralTap,
+ const REFERRAL_QUESTION: Readonly<
+   Record<RunLanguage, (referral: string, asker: string) => string>
+ > = {
+-  ka: (referral, asker) => `ვკითხო ${referral}-ს ${asker}-ისთვის?`,
++  ka: (referral, asker) => `ვკითხო ${geoName(referral, 'dat')} ${geoName(asker, 'gen')}თვის?`,
+   en: (referral, asker) => `Shall I ask ${referral} for ${asker}?`,
+   ru: (referral, asker) => `Спросить у ${referral} — для ${asker}?`,
+   es: (referral, asker) => `¿Le pregunto a ${referral} de parte de ${asker}?`,
+@@ -170,14 +171,15 @@ export async function offerReferral(
+ 
+ const RELAYED_QUESTION: Readonly<Record<RunLanguage, (asker: string, question: string) => string>> =
+   {
+-    ka: (asker, question) => `${asker}-ისთვის გეკითხები: ${question}`,
++    ka: (asker, question) => `${geoName(asker, 'gen')}თვის გეკითხები: ${question}`,
+     en: (asker, question) => `I'm asking for ${asker}: ${question}`,
+     ru: (asker, question) => `Спрашиваю для ${asker}: ${question}`,
+     es: (asker, question) => `Pregunto de parte de ${asker}: ${question}`,
+   };
+ 
+ const ASKED_FOR_THEM: Readonly<Record<RunLanguage, (referral: string, asker: string) => string>> = {
+-  ka: (referral, asker) => `ვკითხე ${referral}-ს. პასუხს ${asker}-ს გადავცემ.`,
++  ka: (referral, asker) =>
++    `ვკითხე ${geoName(referral, 'dat')}. პასუხს ${geoName(asker, 'dat')} გადავცემ.`,
+   en: (referral, asker) => `I've asked ${referral}. The answer goes to ${asker}.`,
+   ru: (referral, asker) => `Спросил у ${referral}. Ответ передам ${asker}.`,
+   es: (referral, asker) => `Le pregunté a ${referral}. La respuesta le llegará a ${asker}.`,
+@@ -195,7 +197,7 @@ const NOT_ON_NETAI: Readonly<Record<RunLanguage, (referral: string) => string>>
+ };
+ 
+ const DECLINED: Readonly<Record<RunLanguage, (asker: string) => string>> = {
+-  ka: (asker) => `კარგი, არავის ვკითხავ. ${asker}-ს ვეტყვი, რომ ამაში ვერ დაეხმარე.`,
++  ka: (asker) => `კარგი, არავის ვკითხავ. ${geoName(asker, 'dat')} ვეტყვი, რომ ამაში ვერ დაეხმარე.`,
+   en: (asker) => `Fine, I won't ask anyone. I'll let ${asker} know you couldn't help with this.`,
+   ru: (asker) => `Хорошо, никого спрашивать не буду. Передам ${asker}, что помочь не получилось.`,
+   es: (asker) => `Vale, no preguntaré a nadie. Le diré a ${asker} que no pudiste ayudar.`,
+diff --git a/src/services/askReferralSettle.service.ts b/src/services/askReferralSettle.service.ts
+index c0b8073..9a08a24 100644
+--- a/src/services/askReferralSettle.service.ts
++++ b/src/services/askReferralSettle.service.ts
+@@ -138,11 +138,14 @@ async function askTheReferral(
+   language: RunLanguage,
+ ): Promise<string | null> {
+   const asker = offer.asker_name?.trim() ?? '';
++  // BN's line is Misho's text word for word (§128): it goes out as written.
++  const approvedLine = referralReads(offer, tap, language);
+   const outcome = await createRelayAsk(
+     recipientId,
+     offer.id,
+     offer.referral_phone,
+-    referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),
++    approvedLine ?? relayedQuestion(language, asker, offer.question),
++    approvedLine !== null,
+   );
+   if (!outcome.sent) {
+     if (outcome.reason !== undefined && NOT_ON_NETAI_REASONS.has(outcome.reason)) {
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index b376c9a..85a3f21 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -834,6 +834,8 @@ async function createAskNow(
+   authored?: readonly AskChoice[],
+   /** §97 item 1: the question is the owner's own words, sent by the server. */
+   fromOwnersLine?: boolean,
++  /** 3731 / BN (box 52869): text Misho approved word for word — sent as written, never edited. */
++  approvedWording?: boolean,
+ ): Promise<CreateAskOutcome> {
+   const trimmed = question.trim().slice(0, MAX_QUESTION_CHARS);
+   if (!trimmed)
+@@ -1645,17 +1647,21 @@ async function createAskNow(
+       : picker
+         ? ownPeopleBeside(picker.names, ownButtons, declineChoice(language), laterChoice(language))
+         : ownButtons;
+-  // D711: the question and its buttons pass the editor before they leave.
+-  const editorsAsk = await editOutgoingAsk(
+-    { question: relayed.text, choices: draftChoices },
+-    {
+-      ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
+-      askerName: senderName,
+-      readerName: toName,
+-      language,
+-      draftIsOwnersWords: fromOwnersLine === true,
+-    },
+-  );
++  // D711: the question and its buttons pass the editor before they leave — except text
++  // approved word for word (BN, box 52869: the editor made the helper the one in need).
++  const editorsAsk =
++    approvedWording === true
++      ? { question: relayed.text, choices: draftChoices, edited: false }
++      : await editOutgoingAsk(
++          { question: relayed.text, choices: draftChoices },
++          {
++            ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
++            askerName: senderName,
++            readerName: toName,
++            language,
++            draftIsOwnersWords: fromOwnersLine === true,
++          },
++        );
+   // 3567: the need goes out, never somebody's condition — in the message and in its title.
+   const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
+   // A follow-up lands in the conversation it belongs to; only a first ask
+@@ -3684,8 +3690,16 @@ export async function createRelayAsk(
+   parentAskId: number,
+   contact: string,
+   question?: string,
++  /** BN: the question is approved text, sent word for word. */
++  approvedWording = false,
+ ): Promise<CreateAskOutcome> {
+-  const outcome = await relayAskInner(relayerUserId, parentAskId, contact, question);
++  const outcome = await relayAskInner(
++    relayerUserId,
++    parentAskId,
++    contact,
++    question,
++    approvedWording,
++  );
+   /**
+    * The SUCCESS case carries the reminder too, and it is the case that lost
+    * goal 6205's introduction.
+@@ -3726,7 +3740,8 @@ async function relayAskInner(
+   relayerUserId: string,
+   parentAskId: number,
+   contact: string,
+-  question?: string,
++  question: string | undefined,
++  approvedWording: boolean,
+ ): Promise<CreateAskOutcome> {
+   // The same rule as every other id from a model: `Number(input['ask_id'])` is
+   // `NaN` when the field is missing, `pg` sends that as the string „NaN", and
+@@ -3782,7 +3797,19 @@ async function relayAskInner(
+   if ('error' in target) {
+     return { sent: false, error: target.error };
+   }
+-  return createAsk(relayerUserId, row.task_id, target.phone, relayed, row.id);
++  return createAsk(
++    relayerUserId,
++    row.task_id,
++    target.phone,
++    relayed,
++    row.id,
++    undefined,
++    undefined,
++    undefined,
++    undefined,
++    undefined,
++    approvedWording,
++  );
+ }
+ 
+ /**
+-- 
+2.43.0
+

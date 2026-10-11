@@ -1,0 +1,352 @@
+From 045802edcbc9d36943b1984968b09da92c3d8f75 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 12:49:10 +0000
+Subject: [PATCH] =?UTF-8?q?3466:=20a=20typed=20=E2=80=9E=E1=83=9B=E1=83=94?=
+ =?UTF-8?q?=E1=83=9D=E1=83=A0=E1=83=94"=20picks=20the=20second=20BUTTON=20?=
+ =?UTF-8?q?the=20helper=20saw,=20never=20the=20name=20search's=20second=20?=
+ =?UTF-8?q?row?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 52934 (fictional seats), a wrong number reached the asker: the helper
+saw [„დათო გამოგონილი (საბურთალოს სანტექნიკი)", „დათო გამოგონილი (მეორე
+ჩანაწერი)", „სხვა, მე დავწერ"] — written by the model, in its own order —
+typed „მეორე", and the server sent the name search's second row, which was
+the Saburtalo plumber on the FIRST button.
+
+- The name search now keeps, per namesake, what it showed about them.
+- An ordinal is read against the buttons on screen: a button is matched to
+  the one namesake its own words point to (stems, so case endings match),
+  or by elimination when exactly one button and one person are left over.
+- When the buttons do not settle it, the phone the run chose stands (the
+  model wrote those buttons). The search order is never used again.
+
+No new words; the refusal set is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aButtonNamesOnePerson.test.ts   | 41 ++++++++++
+ .../thePickedNamesakeReachesTheAsker.test.ts  | 45 ++++++++--
+ src/services/chat.service.ts                  |  3 +-
+ src/services/namesakeButtons.ts               | 82 +++++++++++++++++++
+ src/services/shareNumber.service.ts           | 32 ++++++--
+ 5 files changed, 191 insertions(+), 12 deletions(-)
+ create mode 100644 src/services/__tests__/aButtonNamesOnePerson.test.ts
+ create mode 100644 src/services/namesakeButtons.ts
+
+diff --git a/src/services/__tests__/aButtonNamesOnePerson.test.ts b/src/services/__tests__/aButtonNamesOnePerson.test.ts
+new file mode 100644
+index 0000000..87d3352
+--- /dev/null
++++ b/src/services/__tests__/aButtonNamesOnePerson.test.ts
+@@ -0,0 +1,41 @@
++import { namesakesIn, phoneForButton } from '../namesakeButtons';
++
++/** 3466 (box 52934): which namesake a button stands for, or nobody when it cannot be told. */
++const found = namesakesIn({
++  results: [
++    { phone: 'p-other', name: 'დათო გამოგონილი' },
++    { phone: 'p-plumber', name: 'დათო გამოგონილი', note: 'საბურთალოს სანტექნიკი' },
++  ],
++});
++const OTHER_BUTTON = 'სხვა, მე დავწერ';
++
++describe('3466: a button names one person, or nobody', () => {
++  it('reads the namesakes a search offered, with what it showed about each', () => {
++    expect(found.map((n) => n.phone)).toEqual(['p-other', 'p-plumber']);
++    expect(found[1].text).toContain('საბურთალოს');
++  });
++
++  it('matches a button by its own words, in another case ending too', () => {
++    const buttons = ['დათო გამოგონილი (საბურთალო, სანტექნიკოსი)', 'დათო გამოგონილი', OTHER_BUTTON];
++    expect(phoneForButton(buttons, 0, found)).toBe('p-plumber');
++  });
++
++  it('gives the one button nothing names to the one person nothing named', () => {
++    const buttons = ['დათო გამოგონილი (საბურთალოს სანტექნიკი)', 'დათო გამოგონილი (მეორე ჩანაწერი)'];
++    expect(phoneForButton(buttons, 1, found)).toBe('p-other');
++  });
++
++  it('names nobody when two buttons say nothing that tells them apart', () => {
++    const buttons = ['დათო გამოგონილი (1)', 'დათო გამოგონილი (2)', OTHER_BUTTON];
++    expect(phoneForButton(buttons, 0, found)).toBeNull();
++    expect(phoneForButton(buttons, 1, found)).toBeNull();
++  });
++
++  it('names nobody when a button points at both, or the buttons do not match the people', () => {
++    expect(
++      phoneForButton(['დათო გამოგონილი (დათო)', 'დათო გამოგონილი (საბურთალო)'], 2, found),
++    ).toBeNull();
++    expect(phoneForButton(['დათო გამოგონილი (საბურთალო)'], 0, found)).toBeNull();
++    expect(phoneForButton([OTHER_BUTTON], 0, found)).toBeNull();
++  });
++});
+diff --git a/src/services/__tests__/thePickedNamesakeReachesTheAsker.test.ts b/src/services/__tests__/thePickedNamesakeReachesTheAsker.test.ts
+index 5ccbb75..1a38a82 100644
+--- a/src/services/__tests__/thePickedNamesakeReachesTheAsker.test.ts
++++ b/src/services/__tests__/thePickedNamesakeReachesTheAsker.test.ts
+@@ -7,6 +7,7 @@ jest.mock('../taskAsks.service', () => ({ sendApprovedAskAnswer: jest.fn() }));
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+ import { query } from '../../db/postgres/client';
++import { Namesake } from '../namesakeButtons';
+ import { noteNamesakes, ordinalPicked, shareInsteadOfShowing } from '../shareNumber.service';
+ import { sendApprovedAskAnswer } from '../taskAsks.service';
+ 
+@@ -22,11 +23,31 @@ const FIRST = '+441174960097';
+ const SECOND = '+441174960098';
+ const ALIAS: Record<string, string> = { [FIRST]: 'დათო გამოგონილი', [SECOND]: 'დათო გამოგონილი' };
+ 
+-function answerWith(lines: string[]): void {
++/** Box 52934, run 1: the name search returned the other Dato first, the Saburtalo plumber second. */
++const OTHER: Namesake = {
++  phone: FIRST,
++  name: 'დათო გამოგონილი',
++  text: '{"name":"დათო გამოგონილი"}',
++};
++const SABURTALO: Namesake = {
++  phone: SECOND,
++  name: 'დათო გამოგონილი',
++  text: '{"name":"დათო გამოგონილი","note":"საბურთალოს სანტექნიკი"}',
++};
++/** …and the buttons the helper saw put the Saburtalo plumber FIRST. */
++const BUTTONS_SEEN = [
++  'დათო გამოგონილი (საბურთალოს სანტექნიკი)',
++  'დათო გამოგონილი (მეორე ჩანაწერი)',
++  'სხვა, მე დავწერ',
++];
++
++function answerWith(lines: string[], buttons: readonly string[] = BUTTONS_SEEN): void {
+   mockQuery.mockImplementation(((sql: string, params: unknown[]) => {
+     if (sql.includes('FROM task_asks')) return Promise.resolve({ rows: [{ id: 1 }] });
+     if (sql.includes('"UserAlias"'))
+       return Promise.resolve({ rows: [{ alias: ALIAS[String(params[1])] }] });
++    if (sql.includes('choices IS NOT NULL'))
++      return Promise.resolve({ rows: buttons.length === 0 ? [] : [{ choices: buttons }] });
+     if (sql.includes('FROM conversations'))
+       return Promise.resolve({ rows: lines.map((content) => ({ content })) });
+     return Promise.resolve({ rows: [] });
+@@ -36,7 +57,7 @@ function answerWith(lines: string[]): void {
+ beforeEach(() => {
+   jest.clearAllMocks();
+   mockSend.mockResolvedValue({ sent: true } as never);
+-  noteNamesakes(THREAD, [FIRST, SECOND]);
++  noteNamesakes(THREAD, [OTHER, SABURTALO]);
+ });
+ 
+ describe('an ordinal pick', () => {
+@@ -49,13 +70,27 @@ describe('an ordinal pick', () => {
+ });
+ 
+ describe('the number the helper picked goes to the asker', () => {
+-  it('„მეორე" sends the second namesake, whatever phone the run chose', async () => {
++  // Box 52934 run 1: „მეორე" is the second BUTTON — not the search's second row, the plumber.
++  it('„მეორე" sends the person on the second button, whatever the search order or the run chose', async () => {
+     answerWith(['მეორე', 'მიეცი დათო გამოგონილის ნომერი ჩემი წიგნიდან.']);
+-    const outcome = await shareInsteadOfShowing('180279', THREAD, FIRST);
++    const outcome = await shareInsteadOfShowing('180279', THREAD, SECOND);
+     expect(outcome).toEqual({ shared: true, name: 'დათო გამოგონილი' });
++    expect(mockSend.mock.calls[0][2]).toContain(FIRST);
++    expect(mockSend.mock.calls[0][2]).not.toContain(SECOND);
++  });
++
++  it('„პირველი" sends the person the first button names', async () => {
++    answerWith(['პირველი', 'მიეცი დათო გამოგონილის ნომერი ჩემი წიგნიდან.']);
++    await shareInsteadOfShowing('180279', THREAD, FIRST);
+     expect(mockSend.mock.calls[0][2]).toContain(SECOND);
+   });
+ 
++  it('with no buttons to read, the phone the run chose stands — never the search order', async () => {
++    answerWith(['მეორე', 'მიეცი დათო გამოგონილის ნომერი ჩემი წიგნიდან.'], []);
++    await shareInsteadOfShowing('180279', THREAD, FIRST);
++    expect(mockSend.mock.calls[0][2]).toContain(FIRST);
++  });
++
+   it('a tapped label sends the phone the run chose', async () => {
+     answerWith(['მეორე დათო გამოგონილი', 'მიეცი დათო გამოგონილის ნომერი ჩემი წიგნიდან.']);
+     await shareInsteadOfShowing('180279', THREAD, SECOND);
+@@ -73,7 +108,7 @@ describe('the number the helper picked goes to the asker', () => {
+     const at = chat.indexOf("case 'get_own_contact_number': {");
+     expect(chat.slice(at, at + 600)).toContain('await shareInsteadOfShowing(');
+     expect(chat).toContain(
+-      'if (threadId !== undefined) noteNamesakes(threadId, phonesIn(byName));',
++      'if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));',
+     );
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index dfa65db..d4f9e24 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -231,6 +231,7 @@ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+ import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
+ import { contactsReminderSection } from './contactsReminderSection';
+ import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
++import { namesakesIn } from './namesakeButtons';
+ import {
+   FoundPerson,
+   peopleFoundIn,
+@@ -9028,7 +9029,7 @@ async function executeToolCall(
+         threadId,
+       );
+       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
+-      if (threadId !== undefined) noteNamesakes(threadId, phonesIn(byName));
++      if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
+       return notInThePhonebook(byName) ? { ...byName, look_further: LOOK_ONE_RING_OUT } : byName;
+     }
+     case 'search_by_tag': {
+diff --git a/src/services/namesakeButtons.ts b/src/services/namesakeButtons.ts
+new file mode 100644
+index 0000000..5d73635
+--- /dev/null
++++ b/src/services/namesakeButtons.ts
+@@ -0,0 +1,82 @@
++/**
++ * 3466 (box 52934, fictional seats): two contacts saved as „დათო გამოგონილი".
++ * The helper saw the buttons [„დათო გამოგონილი (საბურთალოს სანტექნიკი)",
++ * „დათო გამოგონილი (მეორე ჩანაწერი)", „სხვა, მე დავწერ"], typed „მეორე", and
++ * the asker got the Saburtalo plumber's number: the ordinal was read against the
++ * name search's order, while the buttons — written by the model — came in their
++ * own order. An ordinal names a BUTTON. Each button is matched to the one
++ * namesake its own words point to (the words beyond the shared name, found in
++ * what the search showed about that person), or, when exactly one button and
++ * one namesake are left over, to that one. Anything less certain names nobody,
++ * and no number is sent on a guess.
++ */
++export interface Namesake {
++  readonly phone: string;
++  /** The name the search showed, lower-cased; namesakes share it. */
++  readonly name: string;
++  /** Everything the search showed about this person, lower-cased: the words a button may use. */
++  readonly text: string;
++}
++
++/** Georgian case endings differ („საბურთალოს" / „საბურთალო"): words match on their first letters. */
++const STEM_CHARS = 5;
++const MIN_WORD_CHARS = 3;
++
++/** The namesakes a person-search result offered, in its order, with what it showed about each. */
++export function namesakesIn(result: unknown): Namesake[] {
++  const rows = (result as { results?: unknown } | null)?.results;
++  if (!Array.isArray(rows)) return [];
++  return rows.flatMap((row) => {
++    const r = (row ?? {}) as Record<string, unknown>;
++    if (typeof r.phone !== 'string' || r.phone === '') return [];
++    const { phone, ...rest } = r;
++    const name = typeof r.name === 'string' ? r.name.trim().toLocaleLowerCase() : '';
++    return [{ phone, name, text: JSON.stringify(rest).toLocaleLowerCase() }];
++  });
++}
++
++function stemsOf(label: string): string[] {
++  return label
++    .toLocaleLowerCase()
++    .split(/[^\p{L}\p{N}]+/u)
++    .filter((word) => word.length >= MIN_WORD_CHARS)
++    .map((word) => word.slice(0, STEM_CHARS));
++}
++
++/** The words of a button that are not shared by every namesake: the ones that tell them apart. */
++function tellingStems(label: string, namesakes: readonly Namesake[]): string[] {
++  return stemsOf(label).filter((stem) => !namesakes.every((n) => n.text.includes(stem)));
++}
++
++/** The one namesake a button's telling words point to; null for none or several. */
++function namesakeNamedBy(label: string, namesakes: readonly Namesake[]): string | null {
++  const stems = tellingStems(label, namesakes);
++  if (stems.length === 0) return null;
++  const hits = namesakes.filter((n) => stems.some((stem) => n.text.includes(stem)));
++  return hits.length === 1 ? hits[0].phone : null;
++}
++
++/**
++ * The phone the button at `index` stands for; null when it cannot be told for
++ * certain. Only buttons that start with the shared name count as namesake
++ * buttons („სხვა, მე დავწერ" is not one), and they keep their order.
++ */
++export function phoneForButton(
++  buttons: readonly string[],
++  index: number,
++  namesakes: readonly Namesake[],
++): string | null {
++  const names = namesakes.map((n) => n.name).filter((name) => name !== '');
++  const own = buttons.filter((label) => {
++    const lower = label.trim().toLocaleLowerCase();
++    return names.some((name) => lower.startsWith(name));
++  });
++  if (index < 0 || index >= own.length || own.length !== namesakes.length) return null;
++  const named = own.map((label) => namesakeNamedBy(label, namesakes));
++  const direct = named[index];
++  if (direct !== null)
++    return named.filter((phone) => phone === direct).length === 1 ? direct : null;
++  const unnamedButtons = named.filter((phone) => phone === null).length;
++  const leftOver = namesakes.filter((n) => !named.includes(n.phone));
++  return unnamedButtons === 1 && leftOver.length === 1 ? leftOver[0].phone : null;
++}
+diff --git a/src/services/shareNumber.service.ts b/src/services/shareNumber.service.ts
+index 29c835a..7c3c4dc 100644
+--- a/src/services/shareNumber.service.ts
++++ b/src/services/shareNumber.service.ts
+@@ -1,4 +1,5 @@
+ import { query } from '../db/postgres/client';
++import { Namesake, phoneForButton } from './namesakeButtons';
+ import { nameKey } from './tools/transliterate';
+ import { getExcludedPhoneSet } from './block.service';
+ import { normalizePhone } from './phone';
+@@ -208,12 +209,12 @@ const NAMESAKE_THREADS_KEPT = 500;
+ /** A line that tells Netai to hand a number on, not to show it to her. */
+ const GIVE_WORD_RE =
+   /(მიეც|მიაწოდ|გაუგზავნ|გადაუგზავნ|გააგზავნ|გაუზიარ|\bgive\b|\bsend\b|\bshare\b|отправ|переш|дай|envía|envia|comparte|\bda(?:le)?\b)/iu;
+-const offeredNamesakes = new Map<number, readonly string[]>();
++const offeredNamesakes = new Map<number, readonly Namesake[]>();
+ 
+-export function noteNamesakes(threadId: number, phones: readonly string[]): void {
+-  if (phones.length < 2) return;
++export function noteNamesakes(threadId: number, namesakes: readonly Namesake[]): void {
++  if (namesakes.length < 2) return;
+   offeredNamesakes.delete(threadId);
+-  offeredNamesakes.set(threadId, [...phones]);
++  offeredNamesakes.set(threadId, [...namesakes]);
+   if (offeredNamesakes.size > NAMESAKE_THREADS_KEPT) {
+     const oldest = offeredNamesakes.keys().next().value;
+     if (oldest !== undefined) offeredNamesakes.delete(oldest);
+@@ -245,13 +246,32 @@ export function ordinalPicked(line: string): number | null {
+   return ORDINAL_INDEX[match[1].toLowerCase()] ?? null;
+ }
+ 
+-/** The namesake the owner's newest line picks by position, else the phone the model chose. */
++/** The buttons under the newest message that carried any, in their order on screen. */
++async function buttonsOnScreen(askThreadId: number): Promise<string[]> {
++  const result = await query<{ choices: unknown }>(
++    `SELECT choices FROM conversations
++      WHERE thread_id = $1 AND role = 'assistant' AND choices IS NOT NULL
++      ORDER BY created_at DESC LIMIT 1`,
++    [askThreadId],
++    SHARE_QUERY_TIMEOUT_MS,
++  );
++  const choices = result.rows[0]?.choices;
++  return Array.isArray(choices) ? choices.filter((c): c is string => typeof c === 'string') : [];
++}
++
++/**
++ * The namesake the owner's newest line picks by position — the position of a
++ * BUTTON she saw (3466, box 52934) — when the buttons settle it for certain;
++ * else the phone the model chose, since the model wrote those buttons. Never the
++ * name search's order: that order is not what she saw, and it sent a wrong number.
++ */
+ async function pickedPhone(askThreadId: number, phone: string): Promise<string> {
+   const offered = offeredNamesakes.get(askThreadId);
+   if (offered === undefined) return phone;
+   const [latest] = await ownersLatestLines(askThreadId);
+   const index = latest === undefined ? null : ordinalPicked(latest);
+-  return index !== null && index < offered.length ? offered[index] : phone;
++  if (index === null) return phone;
++  return phoneForButton(await buttonsOnScreen(askThreadId), index, offered) ?? phone;
+ }
+ 
+ /**
+-- 
+2.43.0
+
