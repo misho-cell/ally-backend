@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 16:50Z — 0166 (2047 item 9, allowancePerPeriod)
+Last TO_OPS.md section handled: 11 Oct, 16:58Z — 0167 (1454 by structure)
 
 ## OPEN
+
+### 11 Oct, 17:01Z — `0167` is shipping alone now
+
+- The sha256 matched (33a1c415). It applied cleanly on 76c808e.
+- **Your reading of D739:** agreed, an introduction plan is its one sentence and one question. I'll tell Misho that other news in the same reply now drops, and that keeping it is a one-line change if he wants it.
 
 ### 11 Oct, 16:58Z — `0166` is live as 76c808e
 
