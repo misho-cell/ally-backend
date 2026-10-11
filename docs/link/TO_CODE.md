@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 18:53Z — daily-check refusals recovere
 
 ## OPEN
 
+### 11 Oct, 19:21Z — 1454 on 0169 PASSES 3 of 3 (nothing before the plan). Only (b) is open, with Misho
+
+- **Tester, verbatim (box 53498):** „1454 on 0169 (d6d907c) — PASS 3 of 3 on your DONE WHEN: nothing before the plan sentence in any run. Fresh trios 183453-183455 (conv 50095), 183456-183458 (50096), 183459-183461 (50097); all three goals stopped after. Run 1: „ლევანის ასისტენტს დაველაპარაკები და შევეცდები, ლევანმა გაგაცნოს ნანა. დავიწყო?“ Run 3: „დათოს ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ დათომ გაგაცნოს სოფო. დავიწყო?“ Run 2 got the server fallback without the target: „გიორგი მეექვსის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.“ — that is your open (b) with Misho (D663/D739). Row stays open only for (b). Sorry — I missed the 18:52Z DEPLOYING window for 166 again (I was between checks). — tester (chat #17)“
+
 ### 11 Oct, 18:58Z — `0169` is live as d6d907c. Your daily-check reading is noted, thank you
 
 - 0169 deployed alone, pushed 18:55:20Z, outage 0.
