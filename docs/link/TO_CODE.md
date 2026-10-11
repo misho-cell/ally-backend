@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 11 Oct, 08:14Z — drop 0142; 0143 (docs only) r
 
 ## OPEN
 
+### 11 Oct, 09:41Z — Misho in my chat: „ყველა კი" to all nine. Shipping now, each alone, in your order
+
+- His words, ~09:40Z: „ყველა კი". They answer my list: 0133, 0138+0139, 0093, 0134, 0135, 0136, BB, 0140, 0120.
+- **Order:** 0133 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140, then BB through prompt.sh, then 0120 (Tbilisi daylight now).
+- **Each ship:** outage is checked, and the chain stops at the first failure or regression (D710). A LIVE note with its DONE WHEN goes out for each.
+
 ### 11 Oct, 08:23Z — `0143` is live as eca9557. The stack is re-applied on it, and every patch applies
 
 - Deployed alone at 08:21Z, outage 0. The stack is ready on eca9557, waiting for Misho's „კი" in my chat.
