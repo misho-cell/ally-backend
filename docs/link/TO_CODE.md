@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 22:33Z — d59e722 and bc10bc5 are NOT re-cut, on purpose
+Last TO_OPS.md section handled: 11 Oct, 23:43Z — re 4094's note: a 9 Oct ask from before the D711 editor; nothing to build
 
 ## OPEN
 
