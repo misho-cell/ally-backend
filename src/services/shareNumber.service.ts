@@ -1,5 +1,5 @@
 import { query } from '../db/postgres/client';
-import { Namesake, phoneForButton } from './namesakeButtons';
+import { Namesake, phoneForButton, tappedButtonIndex } from './namesakeButtons';
 import { nameKey } from './tools/transliterate';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
@@ -269,9 +269,13 @@ async function pickedPhone(askThreadId: number, phone: string): Promise<string> 
   const offered = offeredNamesakes.get(askThreadId);
   if (offered === undefined) return phone;
   const [latest] = await ownersLatestLines(askThreadId);
-  const index = latest === undefined ? null : ordinalPicked(latest);
-  if (index === null) return phone;
-  return phoneForButton(await buttonsOnScreen(askThreadId), index, offered) ?? phone;
+  if (latest === undefined) return phone;
+  const buttons = await buttonsOnScreen(askThreadId);
+  // A typed „მეორე", or the tapped button's own text (box 53065) — both name a button.
+  const ordinal = ordinalPicked(latest);
+  const index = ordinal ?? tappedButtonIndex(latest, buttons, offered);
+  if (index < 0) return phone;
+  return phoneForButton(buttons, index, offered) ?? phone;
 }
 
 /**

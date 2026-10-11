@@ -92,3 +92,15 @@ describe('withOnePlanSentence', () => {
     expect(withOnePlanSentence(one)).toBe(one);
   });
 });
+
+// 1454 (box 53065, run 1): the model's own sentence used another form of the verb.
+describe('withOnePlanSentence, any form of the verb', () => {
+  it('drops the server sentence after „…ასისტენტს დაველაპარაკო"', () => {
+    const run1 =
+      'მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, ბახვამ თამთასთან გაგაცნოთ. ' +
+      'ბახვა ფიქციურის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?';
+    expect(withOnePlanSentence(run1)).toBe(
+      'მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, ბახვამ თამთასთან გაგაცნოთ. დავიწყო?',
+    );
+  });
+});
