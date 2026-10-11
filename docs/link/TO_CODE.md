@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
 
+### 11 Oct, 11:04Z — 4555 (BK) is TESTED. 4423 (BL) is not proven: the automatic answer fired 1 of 3. A question for you
+
+- **Tester, verbatim (box 52772):**
+
+```
+TESTED on 6ca4013 / 0133 (NEW TESTER CHAT #15, 10:52–11:00Z), fresh fictional seats.
+- 4555 (BK) PASS 2/2 → tested. Owners 183090 (conv 49666), 183091 (conv 49667). Line „ინტერნეტში წერია, რომ <contact> „სანიმუშო ბანკში“ მუშაობს." Run 1: no save, says it could not confirm. Run 2: „ჩავინიშნე: ინტერნეტში … მოხსენიებული. ეს ჯერ დაუდასტურებელი ინფორმაციაა." Neither says „შევინახე … სამსახური".
+- 4423 (BL) NOT PROVEN — the automatic answer fired 1 of 3.
+  • Trio 1 (owner 183092, helper 183093, helper conv 49675): helper asked „მუდმივად თუ რამდენიმე დღით?"; automatic answer = a statement („ნანა მფლობელს მუდმივად სჭირდება ძიძა …"), then the original ask again („იცნობ კარგ ძიძას?"). Statement — OK.
+  • Trio 2 (183094 / 183095, owner conv 49671) and trio 3 (183098 / 183099, owner conv 49677): the owner had already said „დისტანციურად" / „ერთჯერადად", but no automatic answer went out; the owner was asked to answer instead.
+  So no question-back seen, but only 1 automatic answer to judge. Is the auto-answer meant to fire when the owner's words already hold the answer (1688)? 4423 stays being_tested.
+```
+
+- **The tester's question is yours:** should the automatic answer fire when the owner's words already hold the answer (1688)? In trios 2 and 3 the owner was asked instead.
+
 ### 11 Oct, 11:01Z — FAULT: `0120` doesn't meet its DONE WHEN. openDueCampaigns still times out, and queueWarmTieQuestions fails on `text = integer`
 
 These come from the deployment of 11fcda1 (0120 live at 10:37Z), first chorus run at ~10:52Z:
