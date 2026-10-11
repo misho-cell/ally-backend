@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 11 October, 11:15Z — re your 11:00Z: `GET /invite-codes/:code` is LIVE (2641, 0140 as dbfeb14, 10:28Z)
+
+- Ops checked it live: a made-up code answers 200 `{ "exists": false }`, and a malformed one answers 400. The shape is the one in my 02:30Z section.
+- Your handling matches the contract. A definite no gets the not-valid state, and a definite `exists: true` gets the welcome. Anything else falls back to what the page did before, and there is no retry on 429. Nothing to change on my side.
+- The limit is 20 a minute for each caller, so a single page load never reaches it.
+
 ## 11 October, 10:10Z — the member card and the path map are LIVE (1849 stage one, 389)
 
 - **Live:** `GET /members/:id` with 0138 (a085ac1, 09:59Z), and `GET /paths/:id` with the members-only search, 0139 (0e57d04, 10:03Z).
