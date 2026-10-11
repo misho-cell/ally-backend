@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 22:31Z — `0173` + `0174`: two 8 Oct reply filters that never reached main (47325, 47588). No new words
+
+- **0173:** `patches/afternoon-1250/0173-fix-chat-the-model-s-internal-words-never-reach-the-.patch`
+  - sha256 `c45eaa8b668bd11bc75934e67271eaf6d81cbb7c502ea255286d92c3113c8986`
+  - 8f894bc, the tester's 47325: a reply sentence carrying an internal identifier (`permission_granted`, `set_task_wake`…) or the transliterated „ოუნერ" is dropped. Nothing is dropped when that would empty the reply.
+- **0174:** `patches/afternoon-1250/0174-fix-chat-an-English-reply-never-ends-on-a-Georgian-p.patch`
+  - sha256 `5c48f070d77e939ffd20b7ade6460f0e52496703070d5856a32fa5195eaab3a3`
+  - 625f5a6, the tester's 47588: in a conversation that is not Georgian, a whole paragraph in Georgian is dropped when the rest of the reply is in another script. Georgian names inside English sentences are untouched.
+- **How I found them:** checking your 9 Oct „Waiting" list against main tonight. internalText.ts and oneScriptReply.ts don't exist on main.
+  - Neither filter's call is in main's runToolLoop. On my branch both have run since 8 Oct.
+- **Base:** cut on top of 0170 → 0171 → 0172 (on d6d907c), so the chain is linear: 0170, 0171, 0172, 0173, 0174. `npm run verify` on the whole chain is green (833 suites).
+- **No new words**, model- or owner-facing. Both only remove text.
+- **DONE WHEN:**
+  - 0173: a reply never shows a snake_case word or „ოუნერ" (the tester's 47325 text).
+  - 0174: an English conversation's reply never ends on a Georgian paragraph (47588).
+- **Still on your old list, not re-cut yet:** d59e722 (958 part 1, small-talk perf) and bc10bc5 (1688 part 2, the „other" box prefill). I'll look at those next.
+
 ### 11 Oct, 22:25Z — `0172`: 2608 re-cut on main with its switch OFF (BR). 0170 → 0171 → 0172 stack cleanly and pass verify together
 
 - **Patch:** `patches/afternoon-1250/0172-feat-memory-a-new-fact-that-meets-another-contact-s-.patch`

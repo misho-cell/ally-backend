@@ -1,0 +1,155 @@
+From 90cc6ba31127eedf8ee85e8261bf1c717f8d61c2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 22:37:43 +0000
+Subject: [PATCH 174/174] fix(chat): an English reply never ends on a Georgian
+ paragraph (the tester's 47588)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Re-cut on main: 625f5a6 (8 Oct) was handed over and never reached main.
+Same change, right after the 47325 filter as on the branch.
+
+Run f93fceab, 1 of 5 English lawyer answers: „Levan … is saved as a
+lawyer.\n\nრამე სხვა გჭირდება ამასთან დაკავშირებით?" The writer's Georgian
+voice slipped a whole closing line into an English conversation.
+
+In a conversation that is not Georgian, a paragraph written almost entirely
+in Georgian letters (3+ Georgian words, 80%+ of its letters) is dropped, as
+long as the rest of the reply is in another script. Georgian names and labels
+inside an English sentence, and lists that mix them with English words, stay.
+A reply with nothing left in another script is untouched.
+
+DONE WHEN: 5 English „Who do I have as a lawyer?" answers on fresh seats, none
+with a Georgian sentence.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/oneScriptReply.test.ts | 45 +++++++++++++++++++
+ src/services/chat.service.ts                  |  3 ++
+ src/services/oneScriptReply.ts                | 39 ++++++++++++++++
+ 3 files changed, 87 insertions(+)
+ create mode 100644 src/services/__tests__/oneScriptReply.test.ts
+ create mode 100644 src/services/oneScriptReply.ts
+
+diff --git a/src/services/__tests__/oneScriptReply.test.ts b/src/services/__tests__/oneScriptReply.test.ts
+new file mode 100644
+index 0000000..b61f23d
+--- /dev/null
++++ b/src/services/__tests__/oneScriptReply.test.ts
+@@ -0,0 +1,45 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { withoutStrayGeorgian } from '../oneScriptReply';
++
++/** The tester's 47588: an English answer ended on a Georgian closing line. */
++describe('an English reply never ends on a Georgian paragraph (47588)', () => {
++  it('the tester’s reply loses its Georgian closing line', () => {
++    const reply =
++      'Levan Mogoniladze is your direct contact and is saved as a lawyer.\n\n' +
++      'რამე სხვა გჭირდება ამასთან დაკავშირებით?';
++    expect(withoutStrayGeorgian(reply, 'en')).toBe(
++      'Levan Mogoniladze is your direct contact and is saved as a lawyer.',
++    );
++  });
++
++  it('a Georgian name or label inside an English sentence stays', () => {
++    const reply = 'You saved him as „ლევან იურისტი ვაკე". Shall I ask him?';
++    expect(withoutStrayGeorgian(reply, 'en')).toBe(reply);
++  });
++
++  it('a list paragraph of Georgian names with English words stays', () => {
++    const reply = 'Here they are:\n\nავთო გამოგონილი — electrician\nნინო საცდელაძე — lawyer';
++    expect(withoutStrayGeorgian(reply, 'en')).toBe(reply);
++  });
++
++  it('a Georgian conversation is never touched', () => {
++    const reply = 'Levan is a lawyer.\n\nრამე სხვა გჭირდება ამასთან დაკავშირებით?';
++    expect(withoutStrayGeorgian(reply, 'ka')).toBe(reply);
++  });
++
++  it('a reply that is all Georgian is left for the checks that judge it', () => {
++    const reply = 'ლევანი იურისტია.\n\nრამე სხვა გჭირდება ამასთან დაკავშირებით?';
++    expect(withoutStrayGeorgian(reply, 'en')).toBe(reply);
++  });
++
++  it('a Russian reply loses a Georgian paragraph too', () => {
++    const reply = 'Леван — юрист.\n\nრამე სხვა გჭირდება ამასთან დაკავშირებით?';
++    expect(withoutStrayGeorgian(reply, 'ru')).toBe('Леван — юрист.');
++  });
++
++  it('runs in the reply guards', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('finalText = withoutStrayGeorgian(finalText, runLang(runId));');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 08993e4..02c452c 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -94,6 +94,7 @@ import {
+ import { introTargetSentence } from './introTargetSentence';
+ import { withOwnersNetwork } from './planVoice';
+ import { withoutInternalText } from './internalText';
++import { withoutStrayGeorgian } from './oneScriptReply';
+ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
+ import { noteSearchVerdict } from './searchAcceptance';
+@@ -14001,6 +14002,8 @@ async function runToolLoop(
+   }
+   // The tester's 47325: the model's internal words never reach the owner.
+   finalText = withoutInternalText(finalText);
++  // The tester's 47588: an English reply never ends on a Georgian paragraph.
++  finalText = withoutStrayGeorgian(finalText, runLang(runId));
+   // 3236: digits are 0-9, and an owner asking to be rated gets no score.
+   finalText = withPlainDigits(finalText);
+   if (!ownerAbsent && asksForAScore(runOwnerLine.get(runId) ?? '')) {
+diff --git a/src/services/oneScriptReply.ts b/src/services/oneScriptReply.ts
+new file mode 100644
+index 0000000..4d1db17
+--- /dev/null
++++ b/src/services/oneScriptReply.ts
+@@ -0,0 +1,39 @@
++import { RunLanguage } from './runLanguage';
++
++/**
++ * The tester's 47588 (run f93fceab): an English answer ended „Levan … is saved
++ * as a lawyer.\n\nრამე სხვა გჭირდება ამასთან დაკავშირებით?" — the writer's
++ * Georgian voice slipped a whole closing line into an English conversation.
++ *
++ * In a conversation that is not Georgian, a paragraph written almost entirely
++ * in Georgian letters is dropped when the rest of the reply is not. Georgian
++ * names and labels inside an English sentence are untouched: only a paragraph
++ * that IS Georgian goes.
++ */
++const GEORGIAN_LETTER_RE = /[ა-ჿ]/gu;
++const ANY_LETTER_RE = /\p{L}/gu;
++const NON_GEORGIAN_LETTER_RE = /[A-Za-z\u0400-\u04FF]/u;
++const GEORGIAN_WORD_RE = /[ა-ჿ]{2,}/gu;
++const MIN_GEORGIAN_SHARE = 0.8;
++const MIN_GEORGIAN_WORDS = 3;
++
++function isAGeorgianParagraph(paragraph: string): boolean {
++  const letters = paragraph.match(ANY_LETTER_RE)?.length ?? 0;
++  if (letters === 0) return false;
++  const georgian = paragraph.match(GEORGIAN_LETTER_RE)?.length ?? 0;
++  const words = paragraph.match(GEORGIAN_WORD_RE)?.length ?? 0;
++  return words >= MIN_GEORGIAN_WORDS && georgian / letters >= MIN_GEORGIAN_SHARE;
++}
++
++/** The reply without whole Georgian paragraphs, in a conversation that is not Georgian. */
++export function withoutStrayGeorgian(reply: string, language: RunLanguage): string {
++  if (language === 'ka') return reply;
++  const paragraphs = reply.split(/\n\s*\n/u);
++  const kept = paragraphs.filter((paragraph) => !isAGeorgianParagraph(paragraph));
++  // A reply with nothing left in another script is not a stray line: it is left for the
++  // checks that judge a whole reply's language.
++  if (kept.length === paragraphs.length || !kept.some((p) => NON_GEORGIAN_LETTER_RE.test(p))) {
++    return reply;
++  }
++  return kept.join('\n\n');
++}
+-- 
+2.43.0
+
