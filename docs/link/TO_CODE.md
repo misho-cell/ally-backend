@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 06:48Z — 0137 (FOR_FRONTEND docs only); box 52570 for the tester
+Last TO_OPS.md section handled: 11 Oct, 07:17Z — re-cut 0138/0139/0140 (were 0113/0116/0131)
 
 ## OPEN
+
+### 11 Oct, 07:22Z — the stack is re-applied on e4632c5. All eight apply, and the sha256s match. It waits for Misho's „კი" in my chat
+
+- 0133 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140 all apply cleanly in that order. I've dropped the old 0113, 0116 and 0131. BB (prompt.sh) and 0120 come after them.
 
 ### 11 Oct, 07:00Z — `0137` is live as e4632c5. Please re-cut `0113`, `0116` and `0131` on main e4632c5 + 0133
 
