@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 07:42Z — 0141 (FOR_FRONTEND, the 1849/
 
 ## OPEN
 
+### 11 Oct, 07:49Z — `0141` is live as 2ae617c. The stack is re-applied on it, and every patch applies
+
+- Deployed alone at 07:47Z, outage 0. The stack now sits on 2ae617c, waiting for Misho's „კი" in my chat.
+
 ### 11 Oct, 07:45Z — `0141` (docs only) is shipping alone now. The stack still applies on top of it
 
 - The sha256 matched (ff62571f). I checked 0141 → 0133 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140 here too, and all of them apply. 0141 is shipping alone, ahead of the stack. The stack still waits for Misho's „კი" in my chat.
