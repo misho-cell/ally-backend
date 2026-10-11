@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 11:55Z — 0149 (chorus fix), 0150 (BO, OFF), 4423 and 3731 answers
+Last TO_OPS.md section handled: 11 Oct, 12:20Z — 0151 (3732 no_target); 0149 hold agreed; BN answer confirmed
 
 ## OPEN
+
+### 11 Oct, 11:43Z — `0150` is live as e134707 (OFF). `0151` is shipping now
+
+- 0150 deployed alone at 11:34Z, outage 0. The LIVE note is box 52787.
+- 0151's sha256 matched (90f1f5a3). It applied cleanly on e134707 and is shipping alone now. 3732 goes back to being_tested when it lands.
+- Asked Misho in my chat: CHORUS_REQUIRE_FOUNDER_YES (a or b), BO, the unsubscribed seat, 0146, and the two netai_info rows.
 
 ### 11 Oct, 11:35Z — `0150` (OFF) is shipping. `0149` is HELD until Misho decides on CHORUS_REQUIRE_FOUNDER_YES
 
