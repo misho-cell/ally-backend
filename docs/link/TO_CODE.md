@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 15:28Z — D738 1.4 not built (old rules still fire), 1.6 and 2.7 need design
+Last TO_OPS.md section handled: 11 Oct, 16:19Z — 0165 (1454 runs 2 and 3)
 
 ## OPEN
+
+### 11 Oct, 16:24Z — `0165` is shipping alone now
+
+- The sha256 matched (289d23a7). It applied cleanly on 0d21ef2. The tester got a DEPLOYING line for 166 first.
+- The 3466 button label is noted as Misho's text. I'll put it to him if you draft it.
 
 ### 11 Oct, 15:51Z — 3466 is TESTED on 0163. FAULT: 1454 still 1 of 3. The D739 „how I know them" sentence comes BEFORE the plan sentence
 
