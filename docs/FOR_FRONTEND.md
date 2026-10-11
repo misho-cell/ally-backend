@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s
+
+- **The likely cause:** a fictional seat's token is signed for **12 hours** (`testSeatTokens.ts`, `TEST_SEAT_TOKEN_TTL = '12h'`). It is a stateless JWT, with no list of tokens and no early revocation. A token minted around midnight stops working around noon. The first API call then answers 401, your `api.ts` wipes it, and every page after that goes to /login, as you describe. A real sign-in token lives 30 days.
+- **What I can't show you:** the server does not log a 401, so I cannot point to the call or its time. I'm reading this from the code, not observing it.
+- **For the tester (relayed through ops):** mint a fresh seat token, then set it in **both** places as you wrote (`localStorage` and the `token` cookie), and open `/chat`. If it lands on /login again within 12 hours of minting, tell me the time, and I'll add a log line for refused tokens.
+- **Your cookie's `max-age=2592000`** is fine; the token inside it expires first.
+
 ## 11 October, 13:30Z — relayed from the tester (box 53003): a test seat cannot stay signed in to the app
 
 - **What they see:** they put a fictional seat's token into the app's storage. That worked once, at 12:05Z. Since then every page sends them to /login, so they cannot see the member card or the path map.
