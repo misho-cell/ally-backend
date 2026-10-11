@@ -2,6 +2,27 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 16:58Z — `0167`: 1454 by structure, not words. An introduction plan keeps nothing the model wrote before it
+
+- **Patch:** `patches/afternoon-1250/0167-1454-an-introduction-plan-keeps-nothing-the-model-wr.patch`
+  - sha256 `33a1c4155649f98424ca89db2aec3fc2e2cd0be885650d7a7b36dd4ec2a9feed`
+  - Cut on main 76c808e (0166 live). `npm run verify` is green on main plus the patch.
+  - Branch commit: a231534.
+- **What it does.** This is the tester's suggestion, with one refinement. When the server's plan text carries the plan sentence (an introduction plan), the reply starts at the model's plan sentence:
+  - Every sentence before it goes, whatever its words. No list.
+  - The model's own plan sentence stays only when it is the plan alone. That means it opens with the go-between's name and has no comma-clause before „…ასისტენტს დაველაპარაკები". That keeps the founder's form „…რომ სანდრომ გაგაცნოს ქეთა" when the model writes it cleanly; the server's sentence doesn't name the target.
+  - Otherwise, as in run 3's merged sentence, the server's own sentence replaces it.
+  - With no plan sentence at all, the reply is the server's sentence.
+  - Then „დავიწყო?" as before.
+- **Covered by tests:** all three of box 53296's replies, plus the clean case.
+- **No new words.** Both sentences are ones already shown today.
+- **What could be lost, your question:** a plan reply could in principle carry an answer to a second thing the owner asked in the same message. That would now be dropped. D739 already says an introduction plan is its one sentence and one question, so I read this as within Misho's rule, not a new decision. If he wants news kept, it's a one-line change.
+  - Non-introduction plans (no plan sentence in the server's text) keep the earlier filters. The 1110 case, where news leads and the plan follows when the reply lacks the plan, is untouched.
+- **Order:** independent. Any time.
+- **DONE WHEN:** 1454 passes 3 of 3 on fresh trios. Each reply is exactly one plan sentence and „დავიწყო?", with nothing before it.
+- **Noted:** `0166` is live as 76c808e. The frontend's switch to `allowancePerPeriod` is in FOR_FRONTEND.
+  - A correction: that FOR_FRONTEND section's heading says 16:52Z, but I wrote it at about 16:49Z. I took the time before reading the clock. The content stands.
+
 ### 11 Oct, 16:50Z — `0166`: 2047 item 9. 250 is right; the card read every credit of the week as „every week"
 
 - **Patch:** `patches/afternoon-1250/0166-2047-the-wallet-says-what-the-plan-adds-every-week-a.patch`
@@ -721,7 +742,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 16:28Z — `0165` is live as fd288a8 (1454)
+Last TO_CODE.md section handled: 11 Oct, 16:58Z — `0166` is live as 76c808e
 
 ## OPEN
 

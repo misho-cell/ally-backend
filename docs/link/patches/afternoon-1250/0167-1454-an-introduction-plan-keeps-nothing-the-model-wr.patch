@@ -1,0 +1,178 @@
+From ad23368338ed2662366aaeaa90946ed3cd0f5640 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 16:55:38 +0000
+Subject: [PATCH] 1454: an introduction plan keeps nothing the model wrote
+ before it (D739)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 53296, 0 of 3 on 0165: every run put a sentence before the plan in
+words no list had („…ჯერ ვერსად ვიპოვე…", „…ნაპოვნია, ის ლიკას
+კონტაქტია."), or merged one into the plan sentence. Three word-list rounds
+did not hold, so for an introduction plan (the server's plan text carries
+the plan sentence) the reply now starts at the model's plan sentence:
+
+- everything before it goes, whatever its words;
+- the model's own sentence stays only when it is the plan alone, i.e.
+  it opens with the go-between's name and has no clause before the verb.
+  Otherwise the server's own sentence stands in its place;
+- with no plan sentence at all, the server's sentence is the reply.
+
+No new words. The closing question is settled as before. Plans without
+the server's plan sentence keep the earlier filters.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/planJustification.test.ts       | 38 +++++++++++++
+ src/services/chat.service.ts                  |  8 ++-
+ src/services/planJustification.ts             | 56 +++++++++++++++++++
+ 3 files changed, 100 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/planJustification.test.ts b/src/services/__tests__/planJustification.test.ts
+index 9920034..e663c4d 100644
+--- a/src/services/__tests__/planJustification.test.ts
++++ b/src/services/__tests__/planJustification.test.ts
+@@ -1,6 +1,7 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+ import {
++  introPlanOnly,
+   withOnePlanSentence,
+   withoutMatchJustification,
+   withPlanSentence,
+@@ -124,3 +125,40 @@ describe('withOnePlanSentence, any form of the verb', () => {
+     );
+   });
+ });
++
++/** 1454 (box 53296, 0 of 3 on 0165): nothing the model wrote before an introduction plan is kept. */
++describe('introPlanOnly', () => {
++  const SERVER = 'სანდრო ახალგონის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
++  const plan = { text: SERVER, names: ['სანდრო ახალგონი'] };
++  const OWN =
++    'სანდრო ახალგონის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ გაგაცნოს ქეთა ახალგონი.';
++
++  it('run 1: a sentence in new words before the plan goes', () => {
++    const reply = `თამთა ახალგონი ჯერ ვერსად ვიპოვე, არც შენს ქსელში და არც ვებში. ${OWN}\n\nდავიწყო?`;
++    expect(introPlanOnly(reply, plan)).toBe(`${OWN}\n\nდავიწყო?`);
++  });
++
++  it('run 2: the same as its own paragraph', () => {
++    const reply = `ნინუცა ახალგონი ნაპოვნია, ის ლიკას კონტაქტია.\n\n${OWN} დავიწყო?`;
++    expect(introPlanOnly(reply, plan)).toBe(`${OWN} დავიწყო?`);
++  });
++
++  it('run 3: a plan sentence merged with the explanation is the server’s sentence', () => {
++    const reply =
++      'სანდრო ახალგონი შენი პირდაპირი კონტაქტია და ქეთა ახალგონის იცნობს, მისი ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო. დავიწყო?';
++    expect(introPlanOnly(reply, plan)).toBe(`${SERVER} დავიწყო?`);
++  });
++
++  it('keeps the model’s own clean plan sentence, which names whom it introduces', () => {
++    expect(introPlanOnly(`${OWN}\n\nდავიწყო?`, plan)).toBe(`${OWN}\n\nდავიწყო?`);
++  });
++
++  it('is the server’s sentence when the reply has no plan sentence at all', () => {
++    expect(introPlanOnly('სანდრო შენი კონტაქტია. დავიწყო?', plan)).toBe(SERVER);
++  });
++
++  it('a go-between written in another script is the server’s sentence', () => {
++    const latin = { text: SERVER, names: ['❤️ Sandro'] };
++    expect(introPlanOnly(`ბლა. ${OWN}`, latin)).toBe(SERVER);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 4b9eaaa..2c75d38 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -86,6 +86,7 @@ import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from '.
+ import { askedLanguage, languagePreference } from './languagePreference';
+ import {
+   carriesPlanSentence,
++  introPlanOnly,
+   withoutMatchJustification,
+   withPlanSentence,
+   withOnePlanSentence,
+@@ -7724,8 +7725,11 @@ function withPlanInReply(
+   // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
+   const reply = withOwnersNetwork(written);
+   if (replyCarriesPlan(reply, plan)) {
+-    // D739: the plan is its one sentence and one question — no sentence explaining the match.
+-    // 1454: a reply that said only why the match fits gets the server's plan sentence instead.
++    // D739: the plan is its one sentence and one question. 1454 (box 53296):
++    // for an introduction plan nothing the model wrote before it is kept.
++    if (carriesPlanSentence(plan.text)) {
++      return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), runLang(runId));
++    }
+     return withClosingQuestion(
+       withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
+       runLang(runId),
+diff --git a/src/services/planJustification.ts b/src/services/planJustification.ts
+index 73a019a..692c00d 100644
+--- a/src/services/planJustification.ts
++++ b/src/services/planJustification.ts
+@@ -116,3 +116,59 @@ export function withOnePlanSentence(reply: string): string {
+     .filter((paragraph) => paragraph.trim() !== '')
+     .join('\n\n');
+ }
++
++/** The plan the server proposed: its own plan sentence and the go-betweens it names. */
++export interface IntroPlan {
++  readonly text: string;
++  readonly names: readonly string[];
++}
++
++/** Shorter stems would match ordinary words. */
++const MIN_NAME_STEM = 3;
++const NOT_A_LETTER_RE = /[^\p{L}\s]/gu;
++const FINAL_VOWEL_RE = /[აეიოუaeiouаеиоуыэюя]$/iu;
++
++/** The first word of a name without its last vowel: „სანდრო" → „სანდრ", which „სანდროს" starts with. */
++function nameStem(name: string): string {
++  const first = name.replace(NOT_A_LETTER_RE, ' ').trim().split(/\s+/u)[0] ?? '';
++  return first.replace(FINAL_VOWEL_RE, '').toLocaleLowerCase();
++}
++
++/** A clause break: a plan sentence with one before its verb carries more than the plan. */
++const CLAUSE_BREAK_RE = /[,;:–—]/u;
++
++/**
++ * Is the sentence the plan alone — the go-between's name and then the verb
++ * („სანდროს ასისტენტს…")? Run 3 opened with the name too, and explained the
++ * match in a clause before the verb.
++ */
++function isThePlanAlone(sentence: string, names: readonly string[]): boolean {
++  const verbAt = sentence.search(PLAN_SENTENCE_RE);
++  if (verbAt < 0 || CLAUSE_BREAK_RE.test(sentence.slice(0, verbAt))) return false;
++  const opening = sentence.trimStart().toLocaleLowerCase();
++  return names
++    .map(nameStem)
++    .some((stem) => stem.length >= MIN_NAME_STEM && opening.startsWith(stem));
++}
++
++/**
++ * 1454 (box 53296, 0 of 3 on 0165): three word-list rounds did not hold — each
++ * run put a sentence before the plan in new words („…ჯერ ვერსად ვიპოვე…",
++ * „…ნაპოვნია, ის ლიკას კონტაქტია.") or merged one into the plan sentence
++ * („…პირდაპირი კონტაქტია და ქეთას იცნობს, მისი ასისტენტს დაველაპარაკები…").
++ * D739: an introduction plan is its one sentence and one question. So nothing
++ * the model wrote before the plan sentence is kept. Its own plan sentence
++ * stays when it is the plan alone, opening with the go-between as the
++ * founder's example does; otherwise the server's sentence stands in its place. What follows the plan
++ * sentence (the question) is left for the caller to settle.
++ */
++export function introPlanOnly(reply: string, plan: IntroPlan): string {
++  const sentences = reply
++    .split(/\n\s*\n/u)
++    .flatMap((paragraph) => paragraph.split(SENTENCE_SPLIT_RE))
++    .map((sentence) => sentence.trim());
++  const own = sentences.find((sentence) => PLAN_SENTENCE_RE.test(sentence));
++  if (own === undefined) return plan.text;
++  const after = reply.slice(reply.indexOf(own) + own.length);
++  return `${isThePlanAlone(own, plan.names) ? own : plan.text}${after}`;
++}
+-- 
+2.43.0
+
