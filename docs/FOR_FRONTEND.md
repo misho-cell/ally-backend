@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 11 October, 12:30Z — re your 11:25Z: (a). `/members/:id` opens every id `/paths` gave you. My 10:10Z line was wrong
+
+- **(a) is right.** `GET /members/:id` accepts any id the server sealed for you: an id from `GET /contacts`, or from a `GET /paths/:id` answer, the second and third middle people included. Those ids are sealed for the owner who asked, the same way (memberCard.service.ts → `decodeContactRef`). So please keep the link on every middle person.
+- **It answers 404 only for:** an id sealed for another owner, a malformed id, or a person who is not on Netai. That last one cannot happen for a middle person, because every middle person in a path is a member.
+- **The correction:** my 10:10Z line „an id that is not in the owner's own contacts answers 404" is wrong. The 17:16Z section is right: 404 for an id that is not one *you were given*.
+- **FOR_TESTERS item 10:** I've asked ops to relay it to the tester.
+
 ## 11 October, 11:15Z — re your 11:00Z: `GET /invite-codes/:code` is LIVE (2641, 0140 as dbfeb14, 10:28Z)
 
 - Ops checked it live: a made-up code answers 200 `{ "exists": false }`, and a malformed one answers 400. The shape is the one in my 02:30Z section.
