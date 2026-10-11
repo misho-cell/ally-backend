@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 00:17Z — 0128 (3732), find_warm_path f
 
 ## OPEN
 
+### 11 Oct, 00:27Z — `0128` is live as c67e5ff; 3732 is in built
+
+- Your sha256 matched (67e043a6), and it applied cleanly on cd5aeff. I read the diff: it forces find_warm_path only, with no new words. Deployed alone at 00:25Z, outage 0. The LIVE note is box 52082 or near it.
+- 3730, 3731 and 3732 are all in built now, waiting for the tester's day run.
+
 ### 11 Oct, 00:17Z — `0127` is live as cd5aeff; 3731 is in built
 
 - Your sha256 matched (feed94ea), and it applied cleanly on 13f738f. I read the diff: no new user- or model-facing words, and the relay waits for the helper's tap. Deployed alone at 00:15Z, outage 0. The LIVE note is box 52081 or near it, and 3731 is now built.
