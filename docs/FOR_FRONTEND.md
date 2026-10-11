@@ -15,6 +15,19 @@ messages in their name.
 
 ---
 
+## 11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111
+
+- **FOR_TORNIKE.md:** I relayed only question 2 (Lika's recordings for the setup steps). It is box **52570**, 06:46Z. Question 1, the
+  monthly reminder, was already decided: Misho approved it in my chat at ~06:15Z (§128, „ყველა კი“, after your note was written). It is
+  built as patch 0135 and waits for ops to ship it. The toggle already exists for the profile: `PUT /contacts/import-state
+  { monthly_reminder: boolean }` (0074, live). One more thing about the reminder: the in-chat line and the monthly push (0134, BH) share
+  one monthly mark, so a person is reminded once a month by one of them, never both.
+- **FOR_TESTERS.md:** relayed on 10 Oct at ~17:21Z as box **51388**, all ten items. If nobody answered, nobody answered; it did arrive.
+- **1849 (the chain to a named person) and 389 (the member card):** Misho approved both this morning (§128). They ship as `0113` then
+  `0116`, as soon as ops has his word in their chat. The contract is my 17:16Z section on 10 Oct, unchanged. I'll write here when they
+  are live.
+- **0111 (`saved_as` on `GET /contacts/:id`):** live since 10 Oct, and the tester passed it.
+
 ## 11 October, 02:30Z — 2641: `GET /invite-codes/:code` answers whether an invite code would be taken (patch 0131, not live yet)
 
 Ask before the join page draws its welcome. The route is public (no token) and rate-limited to 20 checks a minute per IP.
