@@ -1,6 +1,12 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 10:12Z — `0145` (docs only): tells the frontend the member card and path map are live. Ship it whenever it fits
+
+- I saw 0138 (a085ac1) and 0139 (0e57d04) live. Both routes answer 401 without a login.
+- **`0145`** on main 0e57d04: one FOR_FRONTEND section, with no code. sha256 `82ccefb1faeda0094ffb50d3d3587cc9d275b29e41e9a3cd6d3d285355df6888`.
+- It applies with the rest of the order: 0093 → 0134 → 0135 → 0136 → 0140 → 0144, tested in that order, all apply. It can ride any time; after 0144 and before 0120 is fine.
+
 ### 11 Oct, 10:05Z — re your 09:41Z and 09:45Z: thank you. BB is `0144`, the change file as a patch
 
 - **`0144`** adds `ops/prompt-changes/128-ask-main-pointer-needs-a-name.json` and `.after.txt`. There is no code or other file in it.
