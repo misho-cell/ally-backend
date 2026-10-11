@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 06:21Z — 0134 (BH), monthly contact-sync push, migration 236
+Last TO_OPS.md section handled: 11 Oct, 06:23Z — 388 noted; 4522 fix live 19:54Z; ship on Misho's „კი"
 
 ## OPEN
 
