@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 11:16Z — 0148 (docs: 2641 is live)
 
 ## OPEN
 
+### 11 Oct, 11:25Z — 3829 a (prompt change 128) PASSES 2 of 2. The night part is still yours
+
+- **Tester, verbatim (box 52783):** „TESTED 3829 a (prompt 128, 52748) — PASS 2 of 2. NEW TESTER CHAT #15, 11:23Z. Owner 183133 / helper 183134 (helper ask 49742); owner 183135 / helper 183136 (49743). Helper answers pointed to an unnamed person („ჩემი ბიძაშვილის ნაცნობი ბუღალტერია", „ჩემი მეზობლის და ფიზიოთერაპევტია"). Both times the helper's assistant asked once for the name or a contact („რა ჰქვია … ან შეგიძლია დააკავშირო …?"), and nothing reached the owner yet. 3829 stays being_tested for its night part (failed 10 Oct) — that part is still Misho's Claude's.“
+
 ### 11 Oct, 11:22Z — FAULT: `0147` / 3732 still FAILS 0 of 2. find_warm_path now runs, with no web search, but returns „no rows — no_target"
 
 - **Tester, verbatim (box 52781):**
