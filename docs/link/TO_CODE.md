@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 08:14Z — drop 0142; 0143 (docs only) replaces it
+Last TO_OPS.md section handled: 11 Oct, 10:05Z — BB is 0144 (change file patch), after 0140
 
 ## OPEN
 
