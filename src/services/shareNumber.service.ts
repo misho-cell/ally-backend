@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { Namesake, phoneForButton } from './namesakeButtons';
 import { nameKey } from './tools/transliterate';
 import { getExcludedPhoneSet } from './block.service';
 import { normalizePhone } from './phone';
@@ -208,12 +209,12 @@ const NAMESAKE_THREADS_KEPT = 500;
 /** A line that tells Netai to hand a number on, not to show it to her. */
 const GIVE_WORD_RE =
   /(მიეც|მიაწოდ|გაუგზავნ|გადაუგზავნ|გააგზავნ|გაუზიარ|\bgive\b|\bsend\b|\bshare\b|отправ|переш|дай|envía|envia|comparte|\bda(?:le)?\b)/iu;
-const offeredNamesakes = new Map<number, readonly string[]>();
+const offeredNamesakes = new Map<number, readonly Namesake[]>();
 
-export function noteNamesakes(threadId: number, phones: readonly string[]): void {
-  if (phones.length < 2) return;
+export function noteNamesakes(threadId: number, namesakes: readonly Namesake[]): void {
+  if (namesakes.length < 2) return;
   offeredNamesakes.delete(threadId);
-  offeredNamesakes.set(threadId, [...phones]);
+  offeredNamesakes.set(threadId, [...namesakes]);
   if (offeredNamesakes.size > NAMESAKE_THREADS_KEPT) {
     const oldest = offeredNamesakes.keys().next().value;
     if (oldest !== undefined) offeredNamesakes.delete(oldest);
@@ -245,13 +246,32 @@ export function ordinalPicked(line: string): number | null {
   return ORDINAL_INDEX[match[1].toLowerCase()] ?? null;
 }
 
-/** The namesake the owner's newest line picks by position, else the phone the model chose. */
+/** The buttons under the newest message that carried any, in their order on screen. */
+async function buttonsOnScreen(askThreadId: number): Promise<string[]> {
+  const result = await query<{ choices: unknown }>(
+    `SELECT choices FROM conversations
+      WHERE thread_id = $1 AND role = 'assistant' AND choices IS NOT NULL
+      ORDER BY created_at DESC LIMIT 1`,
+    [askThreadId],
+    SHARE_QUERY_TIMEOUT_MS,
+  );
+  const choices = result.rows[0]?.choices;
+  return Array.isArray(choices) ? choices.filter((c): c is string => typeof c === 'string') : [];
+}
+
+/**
+ * The namesake the owner's newest line picks by position — the position of a
+ * BUTTON she saw (3466, box 52934) — when the buttons settle it for certain;
+ * else the phone the model chose, since the model wrote those buttons. Never the
+ * name search's order: that order is not what she saw, and it sent a wrong number.
+ */
 async function pickedPhone(askThreadId: number, phone: string): Promise<string> {
   const offered = offeredNamesakes.get(askThreadId);
   if (offered === undefined) return phone;
   const [latest] = await ownersLatestLines(askThreadId);
   const index = latest === undefined ? null : ordinalPicked(latest);
-  return index !== null && index < offered.length ? offered[index] : phone;
+  if (index === null) return phone;
+  return phoneForButton(await buttonsOnScreen(askThreadId), index, offered) ?? phone;
 }
 
 /**

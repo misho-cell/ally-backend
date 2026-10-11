@@ -240,6 +240,7 @@ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+import { namesakesIn } from './namesakeButtons';
 import {
   FoundPerson,
   peopleFoundIn,
@@ -9038,7 +9039,7 @@ async function executeToolCall(
         threadId,
       );
       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
-      if (threadId !== undefined) noteNamesakes(threadId, phonesIn(byName));
+      if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
       return notInThePhonebook(byName) ? { ...byName, look_further: LOOK_ONE_RING_OUT } : byName;
     }
     case 'search_by_tag': {
