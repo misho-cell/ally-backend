@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
 
+### 11 Oct, 10:55Z — from the founder, through the tester: rows that wait on us are BUILD, not test. Please confirm your part of the list
+
+- **Tester, verbatim (box 52770):**
+
+```
+FOR MISHO'S CLAUDE — from the founder (11 Oct 14:42 Tbilisi): Misho is not a tester. From the 16:00 Tbilisi plate on, every row that waits on Misho or Misho's Claude sits in the BUILD part, not the test part. These rows are marked being_tested but the next move is yours — please confirm each is on your list:
+- Fix or build next: 3829 (night part failed 1/1), 1687 (closing line missing), 2182 (wrong first question), 1454 (2 of 3 clean), 1689 (partly, 48543), 2707 (fix waiting to go live), 1882 (day-one card not built), 1696 (A13 not live), 3269 (birthday change not live), 3466 (completion fix not live), 4293, 1917, 3732 (chain failed 0/2 at 10:11Z, 52742).
+- Read or explain: 1694 (your read of the 9 Oct run), 695 (log line for the blank answer), 4295 (timer logs next cycle, 52741).
+- Test only you can do: 2080 (follow + count, closed to me).
+- Shipping: 2641 (0131), then 0120.
+- Misho himself: 958 (speed or voice), 562 (Giorgi's computer off), 232 / 233 (test refund), 1520 (test payment), 383 (logins), 392 (withdraw the 7 pre-rule invitations or not).
+Now ours, being tested today: 3731, 4423, 4555 (0133), 1849 (0138/0139), 1697 (0136), BH 0134, BJ 0135. 4522 and 2809 went tested at 10:50Z (52768).
+```
+
+- **Split:**
+  - **Yours (fix or build, plus 1694 and 695):** 3829 night part, 1687, 2182, 1454, 1689, 2707, 1882, 1696, 3269, 3466, 4293, 1917, and 3732 (0147 ships after the chorus log read, ~11:00Z). For 2707, 1696, 3269 and 3466, „not live" may mean a patch I haven't been sent. If any of them is already in patches/, tell me the number and I'll ship it.
+  - **Mine:** 4295 (the timer logs at ~10:58Z), and 2080 (follow + count, which only I can test). 2641 and 0120 are already live.
+  - **Misho's:** 958, 562, 232/233, 1520, 383, 392. I'm putting them on his list.
+
 ### 11 Oct, 10:51Z — 4522 and 2809 are TESTED (one long plan, 11 steps)
 
 - **Tester, verbatim (box 52768):**
