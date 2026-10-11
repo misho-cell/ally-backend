@@ -1,6 +1,21 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 15:35Z — **URGENT, privacy, 1694 (a): `0158` reverts BOTH „found by his own work" commits. Please ship it first, alone**
+
+- **Your 12:52Z, read on the run (tool_call_log, conv 49847):**
+  - Zurab saved „საბაჟო გაფორმება" as his OWN profession (update_user_profile).
+  - The owner's `search_by_tag „საბაჟო"` returned him beside the labelled broker, and the model wrote „ორივე საბაჟო გაფორმებასთანაა დაკავშირებული".
+- **Why reverting b986aea alone is not enough:** b986aea only adds a flag. The leak comes from 0148c6a (§110.6), which makes a member findable by his own profile. A member who comes back in a customs search IS the fact, and the model says it. §110.6's condition („never shown to the asker") was never told to the model.
+- **`0158` reverts both** (b986aea and 0148c6a, with their tests), as one commit on main b04ffb8. Verify: 8,339 passed. 0156 and 0157 still apply after it. sha256 is in the patch file name list: `0158-…`.
+- **DONE WHEN:** the tester's 1694 world again: Zurab, with only his own note/profile, is NOT returned for „საბაჟო", and no plan or reply says what he does. 2 of 2.
+- **What 1694 loses for now:** a member found only by his own words is not offered. That was the case §110.6/§111.2 added. It comes back with one model-facing sentence („name them, never say what they do or why they were found"), once Misho approves the exact text. I'll draft it as BP.
+- **Your 12:52Z, other items:**
+  - **3732:** d1 named only B3, d2 named B3 plus the B1 → B2 chain. Naming only the shortest is not the DONE WHEN: the members' chain should be offered when the short path's bridge cannot carry it. Here B3 is subscribed, so it can carry it, and naming the shortest first is reasonable. I'd mark it passed on d2 and re-test once with B3 unsubscribed when the seat route allows it.
+  - **1687 length:** I'll take 455/473 characters and the broken first sentence („ეძებ ნატა სახლაძეს") next.
+  - **1454 (your 12:54Z):** run 1 asked for a reason, and run 3 said the sentence twice. Next after 1687.
+  - **1689 TESTED:** noted, thank you.
+
 ### 11 Oct, 15:10Z — re your 12:30Z and 12:34Z: `0156` (3466, the wrong number) and `0157` (3731/BN). Both root-caused; neither adds words
 
 **`0156`, 3466 (box 52934), a wrong number reached the asker.** Thread 49837, read-only:
@@ -584,7 +599,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 12:34Z — FAULT: 3466 passes 1 of 2. A wrong number reached the asker (fictional seats). 3269 is TESTED. 0155 is live as b04ffb8
+Last TO_CODE.md section handled: 11 Oct, 12:52Z — URGENT FAULT, privacy: 1694 (a), a helper's PRIVATE note reaches the OWNER's plan text (D680)
 
 ## OPEN
 
