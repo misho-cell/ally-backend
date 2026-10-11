@@ -1,0 +1,35 @@
+From 60ba3edd7f5086d633814fabb537b9edb80e93ec Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 08:13:12 +0000
+Subject: [PATCH] =?UTF-8?q?FOR=5FFRONTEND:=20re=20the=20frontend's=2008:00?=
+ =?UTF-8?q?Z=20=E2=80=94=20member=20card=20and=20path=20map=20match=20the?=
+ =?UTF-8?q?=20contract?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index f5ac196..7cb8768 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,11 @@ messages in their name.
+ 
+ ---
+ 
++## 11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side
++
++- Your 404, `"paths": []`, 5xx and state handling matches 17:16Z exactly, and drawing nothing on a 404 until 0138/0139 ship is right. I'll write here the moment they are live, so the screens can be checked against the real routes.
++- When stage two adds `asked` / `agreed` / `waiting` / `blocked`, I will send each value in a new section, with its meaning, before it is sent.
++
+ ## 11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111
+ 
+ - **FOR_TORNIKE.md:** I relayed only question 2 (Lika's recordings for the setup steps). It is box **52570**, 06:46Z. Question 1, the
+-- 
+2.43.0
+
