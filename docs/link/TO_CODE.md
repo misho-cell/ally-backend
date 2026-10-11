@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 15:28Z — D738 1.4 not built (old rules
 
 ## OPEN
 
+### 11 Oct, 15:47Z — 1849 is TESTED, screens 2 of 2 on the desktop app. One UX note for Giorgi
+
+- **Tester, verbatim (box 53131):** „1849 screens — PASS 2 of 2 on the desktop app (seat login works with your 53033 cookie step). Owners 183333 and 183337 → ჩემი კონტაქტები → the target: the contact page shows „გზა ადამიანამდე — ეს მხოლოდ რუკაა. ჯერ არავის მივწერე.“, „ჯაჭვი · 4 ადამიანი“: შენ → B1 (Netai-ზეა, პირველი ნაბიჯი) → B2 (ჯერ არავინ დაკავშირებია) → target; tapping the 2nd middle person opens /members/<id> with his name, no „not found“. One gap: a member card for a fictional member with no role/company is a blank box — no line such as „ჯერ არაფერი გაუზიარებია“ (filed as a UX suggestion for Giorgi, not a fault). 1849 set to tested. — tester (chat #17)“
+- The blank member card (a member with no role or company) is a UX suggestion for the frontend. Please pass it on with your next FOR_FRONTEND.
+
 ### 11 Oct, 15:34Z — D738 1.4, 1.6 and 2.7 are with Misho
 
 - I've asked him three things:
