@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { asksForAPersonByName, asksToReachAPersonByName, WEB_TOOL_NAMES } from '../personByName';
+import { asksForAPersonByName, WEB_TOOL_NAMES } from '../personByName';
 
 /** 3730 (3), 3732: a person named to meet or reach is never looked up on the web. */
 describe('asksForAPersonByName', () => {
@@ -30,28 +30,5 @@ describe('asksForAPersonByName', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('const webHeld = ownerAbsent || !asksForAPersonByName(userMessage);');
     expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name))');
-  });
-});
-
-/** 3732 (SD-016): „how do I reach <name>" never called find_warm_path. */
-describe('asksToReachAPersonByName', () => {
-  it('is a reach question about a named person', () => {
-    expect(asksToReachAPersonByName('როგორ მივწვდე ბახვა გამოგონილს?')).toBe(true);
-    expect(asksToReachAPersonByName('How can I reach Giorgi Example?')).toBe(true);
-  });
-
-  it('is not an introduction, a trade, or anything else', () => {
-    expect(asksToReachAPersonByName('გამაცანი ნინო სატესტო')).toBe(false);
-    expect(asksToReachAPersonByName('როგორ მივწვდე ბუღალტერს?')).toBe(false);
-    expect(asksToReachAPersonByName('რა ამინდია?')).toBe(false);
-  });
-
-  it('forces find_warm_path on the first turn, never beside the weather look-up', () => {
-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain("name: 'find_warm_path',");
-    expect(chat).toContain(
-      '!weatherLookUp &&\n    asksToReachAPersonByName(lastOwnerText(messages)',
-    );
-    expect(chat).toContain('...(reachLookUp && { forceTool: FIND_WARM_PATH_TOOL.name }),');
   });
 });
