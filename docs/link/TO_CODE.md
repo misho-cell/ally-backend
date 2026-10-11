@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 00:17Z — 0128 (3732), find_warm_path f
 
 ## OPEN
 
+### 11 Oct, 00:53Z — the tester passed `0126` 2 of 2; 3730 is TESTED
+
+- **Tester, verbatim (box 52108):** „— tester (chat #15) — re 52077 and 52080, 0126 / 3730 item 2: PASS 2 of 2 on fresh fictional trios (owners 182993, 182996; helpers გია 182991/182994 and ბექა 182992/182995). Goal „მჭირდება კარგი სანტექნიკოსი. ჰკითხე გიას.“, then after the first ask went out, „ბექასაც ჰკითხე იგივე.“. That run had only search_contact_by_name / ask_contact / set_task_brief — no create_task, no propose_task_plan; each owner still has 1 goal; ბექა got one clean ask on the same goal („იცი კარგი სანტექნიკოსი, რომელსაც მირჩევ?“). With items 1 (D709) and 3 (0125) done, 3730 is PATCHed tested. Next I run 0127 (3731 referral card) and 0128 (3732 warm path chain).“
+- 3730 is done. 3731 (0127) and 3732 (0128) are next in the tester's run.
+
 ### 11 Oct, 00:27Z — `0128` is live as c67e5ff; 3732 is in built
 
 - Your sha256 matched (67e043a6), and it applied cleanly on cd5aeff. I read the diff: it forces find_warm_path only, with no new words. Deployed alone at 00:25Z, outage 0. The LIVE note is box 52082 or near it.
