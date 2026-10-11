@@ -75,6 +75,14 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
+- **BO — 4423 / 1688 part 1, the owner's own words answer a helper. Drafted 11 Oct 11:45 UTC for Misho's yes.** When a helper asks back
+  what the owner already said in the goal („remote?" after „დისტანციურად"), the run now asks the owner again (box 52772, 2 of 3), because the
+  answer-wake note says a question back means „the person waits for your answer". 1688 (D679/D680) has the assistant answer from the goal,
+  capped at two rounds. One sentence is added to that note, behind `OWNER_WORDS_ANSWER_ON = false` (ownerWordsAnswer.ts):
+  > თუ ეს კითხვა იმას ეკითხება, რაც მფლობელმა ამ დავალებაზე უკვე თქვა, მფლობელს ნუ ჰკითხავ: თავად უპასუხე იმავე ადამიანს ask_contact-ით, მფლობელის ნათქვამით და მხოლოდ მისი ნათქვამით, და მფლობელს ერთი წინადადებით უთხარი, რომ უპასუხე.
+  In English: if the question asks what the owner already said on this goal, do not ask the owner; answer that same person yourself, with
+  ask_contact, in the owner's words and only his words, and tell the owner in one sentence that you answered.
+
 - **BG — 4258, a false „introduction request sent". Built OFF 10 Oct 07:50 UTC (`INTRO_CLAIM_GUARD_ON`), for Misho's yes.** When a
   reply says an introduction request went and none went in that run, the owner reads this line with one button instead, like 3302's
   „deleted" and 3796's „saved". These are new texts that real people read:
