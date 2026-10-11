@@ -91,6 +91,7 @@ import {
   withPlanSentence,
   withOnePlanSentence,
 } from './planJustification';
+import { introTargetSentence } from './introTargetSentence';
 import { withOwnersNetwork } from './planVoice';
 import { offerReferral, referralTapOf } from './askReferral.service';
 import { settleReferralTap } from './askReferralSettle.service';
@@ -7488,6 +7489,8 @@ function wakeCapFor(runId: string | undefined, taskId: number): Date | null {
 export interface PlanForReply {
   readonly text: string;
   readonly names: readonly string[];
+  /** 1454 (b): the server's sentence naming whom the introduction is to, when it is on. */
+  readonly introSentence?: string;
 }
 const runPlanForReply = new Map<string, PlanForReply>();
 
@@ -7716,7 +7719,11 @@ export function planReplyText(reply: string, plan: PlanForReply, language: RunLa
   // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
   // 50065) — gives way to the server's sentence instead of standing before it.
   if (carriesPlanSentence(plan.text)) {
-    return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), language);
+    const serverSentence = plan.introSentence ?? plan.text;
+    return withClosingQuestion(
+      withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence })),
+      language,
+    );
   }
   if (replyCarriesPlan(reply, plan)) {
     return withClosingQuestion(
@@ -10356,9 +10363,15 @@ async function executeToolCall(
           } else {
             // Row 101 stays true without the card: if the reply does not
             // carry the plan, the server adds it — see withPlanInReply.
+            const introSentence = introTargetSentence(
+              input['plan'],
+              stored.people_to_involve,
+              runLang(runId),
+            );
             notePlanForReply(runId, {
               text: plainPlan,
               names: stored.people_to_involve.map((p) => p.name),
+              ...(introSentence !== null && { introSentence }),
             });
           }
           // Row 237: nothing the server deals may land on top of the plan.

@@ -75,6 +75,17 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
+- **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
+  the exact text.** 1454 passes 3 of 3 on 0169 (nothing before the plan). When the model's own sentence is not clean, the server's D663
+  sentence stands in, and it does not say whom the introduction is to: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო."
+  (box 53498, run 2). The plan already carries the person to meet, in the route's `introduction` (BF, §128), so nothing new goes to the
+  model. With `INTRO_TARGET_SENTENCE_ON = true` (introTargetSentence.ts), and only when the plan names one go-between and one person to
+  meet, the owner reads instead, in D739's own form:
+  > ka: „{go-between, genitive} ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ {go-between, ergative} გაგაცნოს {person to meet}."
+  > e.g. „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე."
+  Georgian only. en/ru/es keep the D663 sentence until texts for them are drafted. The model's own clean sentence still goes as it wrote it.
+  Undo: the switch back to false.
+
 - **BO — 4423 / 1688 part 1, the owner's own words answer a helper. Drafted 11 Oct 11:45 UTC for Misho's yes.** When a helper asks back
   what the owner already said in the goal („remote?" after „დისტანციურად"), the run now asks the owner again (box 52772, 2 of 3), because the
   answer-wake note says a question back means „the person waits for your answer". 1688 (D679/D680) has the assistant answer from the goal,
