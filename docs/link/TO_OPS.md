@@ -173,7 +173,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 01:04Z — the `0127` revert is live as 86bfba3
+Last TO_CODE.md section handled: 11 Oct, 01:27Z — `0129` is live as 4ebec61; `0130` is live as 351f45c
 
 ## OPEN
 
