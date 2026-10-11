@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { withoutMatchJustification, withPlanSentence } from '../planJustification';
+import {
+  withOnePlanSentence,
+  withoutMatchJustification,
+  withPlanSentence,
+} from '../planJustification';
 
 /**
  * 1454 / D739: an introduction plan is one sentence and one question; the
@@ -67,5 +71,24 @@ describe('a plan reply without the plan sentence', () => {
 
   it('changes nothing when the server has no plan sentence of its own', () => {
     expect(withPlanSentence(said, 'ჯერ ვეძებ, ვინ შეძლებს ამაში დახმარებას.')).toBe(said);
+  });
+});
+
+// 1454 (box 52940, run 3): the model's own plan sentence and then the server's, in one reply.
+describe('withOnePlanSentence', () => {
+  const RUN_3 =
+    'სანდროს ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ გაგაცნოს ქეთა. ' +
+    'სანდრო ფიქტიურის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?';
+
+  it('keeps the first plan sentence and the question, and drops the second plan sentence', () => {
+    expect(withOnePlanSentence(RUN_3)).toBe(
+      'სანდროს ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ გაგაცნოს ქეთა. დავიწყო?',
+    );
+  });
+
+  it('leaves a reply with one plan sentence, and its news, exactly as written', () => {
+    const one =
+      'ვიპოვე ორი გზა.\n\nლიკას ასისტენტს დაველაპარაკები და შევეცდები, ლიკამ გაგაცნოთ ნინუცასთან. დავიწყო?';
+    expect(withOnePlanSentence(one)).toBe(one);
   });
 });

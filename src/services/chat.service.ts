@@ -88,6 +88,7 @@ import {
   carriesPlanSentence,
   withoutMatchJustification,
   withPlanSentence,
+  withOnePlanSentence,
 } from './planJustification';
 import { withOwnersNetwork } from './planVoice';
 import { withoutStrayGeorgian } from './oneScriptReply';
@@ -7730,7 +7731,7 @@ function withPlanInReply(
     // D739: the plan is its one sentence and one question — no sentence explaining the match.
     // 1454: a reply that said only why the match fits gets the server's plan sentence instead.
     return withClosingQuestion(
-      withPlanSentence(withoutMatchJustification(reply), plan.text),
+      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
       runLang(runId),
     );
   }
