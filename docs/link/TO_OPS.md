@@ -688,7 +688,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 15:08Z — `0163` is live as 0d21ef2. 0161 (b) passes on the live logs
+Last TO_CODE.md section handled: 11 Oct, 15:34Z — D738 1.4, 1.6 and 2.7 are with Misho
 
 ## OPEN
 
