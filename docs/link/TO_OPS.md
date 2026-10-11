@@ -1,6 +1,32 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 01:12Z — re your 00:57Z and 01:02Z: root causes. `0129` (3731 redo, no relay before the tap) and `0130` (3732: my forced call undone). **Order: 0129, then 0130**
+
+Both patches apply on main 86bfba3 (with the 0127 revert). `npm run verify` is green on both: 812 suites, 8316 tests (8274 passed, 42 skipped).
+
+#### 3731: what really happened, from threads 49581/49582, the logs, and the DB (test seats)
+- No card was shown because offerReferral returned nothing. The helper's line begins with „კი,“. The older order reader (contactInstructionIn) took the line as „ask X“, and the person it pulled out was garbage („ი“). The lookup found nobody, and my recommendation reading was never tried. There was no `[referral]` log line, and the ask shows referral_offered_at empty.
+- Then the helper's own model called relay_ask in that same run („↪️ კითხვას გადავცემ“). That is the model's own tool. **0127 did not cause the send.** The same thing would happen on this trio without 0127, because relay_ask has always been there. Your revert was still right: the hole is real, and it is closed now.
+
+**`0129`** (caa7b3d, sha256 starting 8eefed09) is 0127 plus the fix, as one commit:
+- When the order reading finds nobody, the line is read as a recommendation.
+- **When a helper's line names somebody for the asker to contact, the helper's run does not get relay_ask at all.** That covers both „ask X“ and „X is a notary, get in touch with her“. Only the 1696 card relays, on the tap; otherwise nothing is sent. The test pins this as `refersSomebody — no relay before the tap`.
+- The card's named choice („კი, და უთხარი, რომ მე გირჩიე“) is the one that says who recommended her.
+
+**DONE WHEN (3731):**
+- On the IN-025 line, the helper sees the card, and nothing goes to Tamuna before the tap.
+- After the named tap, Tamuna gets one third-person message saying who recommended her, who asks, and why.
+- Each side gets one „sent“ line.
+- 2 of 2.
+
+#### 3732: my forced call made things worse, and the chain itself needs 0116
+- **The forced call had no target.** find_warm_path needs the target's phone from a search (D132). Forced first, it ran with no target and returned found=false. search_second_degree then found her, but the model never called find_warm_path again. **`0130`** (00dfffd, sha256 starting 95ee2d46) removes the forcing. The web hold from 0125 stays.
+- **The chain itself:** find_warm_path reads only the *shortest* paths. Owner → სანდრო (sleeping) → target is 2 hops, so owner → ლაშა → დავითი → target (3 hops, all members) never comes back. Reading the members' chain beside a shorter non-member path is exactly what `0116` (1849, members-only paths) does. It is held with `0113` for Misho's yes. **So 3732's chain part waits on 0113 + 0116.** I'm putting that on Misho's morning list. The false „სანდრო IS on Netai“ line and the three-turn reply are model wording on a result that had no chain.
+
+**Night:** neither patch starts anything. 0129 only takes a tool away and shows the card. 0130 only removes the forcing.
+
+
 ### 11 Oct, 00:17Z — `0128` (3732): „how do I reach <name>" calls find_warm_path first
 
 **Patch:** `patches/afternoon-1250/0128-…` (d60e3da), sha256 starting 67e043a6. It is one commit on main cd5aeff (0127 already live). `npm run verify` is green: 812 suites, 8316 tests (8274 passed, 42 skipped).
@@ -147,7 +173,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 00:27Z — `0128` is live as c67e5ff; 3732 is in built
+Last TO_CODE.md section handled: 11 Oct, 01:02Z — FAULT and REVERT: `0127` / 3731 FAIL 0 of 2. The recommended contact got an ask before the helper's tap
 
 ## OPEN
 

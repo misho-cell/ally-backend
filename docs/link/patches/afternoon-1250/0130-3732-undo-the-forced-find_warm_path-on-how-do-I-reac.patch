@@ -1,0 +1,133 @@
+From 00dfffdb026e08f353a0cadac31f167fb8f7ee7b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 01:08:59 +0000
+Subject: [PATCH] =?UTF-8?q?3732:=20undo=20the=20forced=20find=5Fwarm=5Fpat?=
+ =?UTF-8?q?h=20on=20=E2=80=9Ehow=20do=20I=20reach=20<name>"?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 52110 (0 of 2 on 0128): the forced first call ran before any search,
+with no identified target, so it came back found=false; the search that
+then found the target was never followed by a second call. find_warm_path
+needs a target phone from a search (D132), so forcing it first only spent
+a turn and told the model there was no path.
+
+The chain itself (owner → B1 → B2 → target beside a shorter sleeping
+bridge) is not something find_warm_path returns: it reads shortest paths
+only. That is the members-only path read of 1849 (0116), held for Misho.
+
+The web hold of 0125 stays.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/personByName.test.ts | 25 +--------------------
+ src/services/chat.service.ts                |  9 +-------
+ src/services/personByName.ts                | 13 -----------
+ 3 files changed, 2 insertions(+), 45 deletions(-)
+
+diff --git a/src/services/__tests__/personByName.test.ts b/src/services/__tests__/personByName.test.ts
+index 43360d9..cd07e05 100644
+--- a/src/services/__tests__/personByName.test.ts
++++ b/src/services/__tests__/personByName.test.ts
+@@ -1,6 +1,6 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { asksForAPersonByName, asksToReachAPersonByName, WEB_TOOL_NAMES } from '../personByName';
++import { asksForAPersonByName, WEB_TOOL_NAMES } from '../personByName';
+ 
+ /** 3730 (3), 3732: a person named to meet or reach is never looked up on the web. */
+ describe('asksForAPersonByName', () => {
+@@ -32,26 +32,3 @@ describe('asksForAPersonByName', () => {
+     expect(chat).toContain('(webHeld || !WEB_TOOL_NAMES.has(tool.name))');
+   });
+ });
+-
+-/** 3732 (SD-016): „how do I reach <name>" never called find_warm_path. */
+-describe('asksToReachAPersonByName', () => {
+-  it('is a reach question about a named person', () => {
+-    expect(asksToReachAPersonByName('როგორ მივწვდე ბახვა გამოგონილს?')).toBe(true);
+-    expect(asksToReachAPersonByName('How can I reach Giorgi Example?')).toBe(true);
+-  });
+-
+-  it('is not an introduction, a trade, or anything else', () => {
+-    expect(asksToReachAPersonByName('გამაცანი ნინო სატესტო')).toBe(false);
+-    expect(asksToReachAPersonByName('როგორ მივწვდე ბუღალტერს?')).toBe(false);
+-    expect(asksToReachAPersonByName('რა ამინდია?')).toBe(false);
+-  });
+-
+-  it('forces find_warm_path on the first turn, never beside the weather look-up', () => {
+-    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain("name: 'find_warm_path',");
+-    expect(chat).toContain(
+-      '!weatherLookUp &&\n    asksToReachAPersonByName(lastOwnerText(messages)',
+-    );
+-    expect(chat).toContain('...(reachLookUp && { forceTool: FIND_WARM_PATH_TOOL.name }),');
+-  });
+-});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 2bdb1ea..bbcc902 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -228,7 +228,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
+ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+ import { geoName } from './georgianCase';
+ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+-import { asksForAPersonByName, asksToReachAPersonByName, WEB_TOOL_NAMES } from './personByName';
++import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+ import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+ import { refersSomebody } from './referralRecommendation';
+ import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
+@@ -12941,12 +12941,6 @@ async function runToolLoop(
+     !ownerAbsent &&
+     asksTheWeather(lastOwnerText(messages) ?? '') &&
+     tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
+-  // 3732: „how do I reach <name>" reads the paths first, before anything is said.
+-  const reachLookUp =
+-    !ownerAbsent &&
+-    !weatherLookUp &&
+-    asksToReachAPersonByName(lastOwnerText(messages) ?? '') &&
+-    tools.some((tool) => tool.name === FIND_WARM_PATH_TOOL.name);
+   let options: DisambiguationCandidate[] | undefined;
+   let choices: string[] | undefined;
+   let openAiStarted = false;
+@@ -12997,7 +12991,6 @@ async function runToolLoop(
+     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+     ...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),
+-    ...(reachLookUp && { forceTool: FIND_WARM_PATH_TOOL.name }),
+   });
+   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
+   // text and no tool call, and the owner was told „try again" — the same words
+diff --git a/src/services/personByName.ts b/src/services/personByName.ts
+index 136a1af..7914f9f 100644
+--- a/src/services/personByName.ts
++++ b/src/services/personByName.ts
+@@ -17,10 +17,6 @@ import { professionFamilyIn, professionFamilyKey } from './professionFamilies';
+ const MEET_OR_REACH_RE =
+   /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to)|reach out to)(?![\p{L}\p{M}])/iu;
+ 
+-/** 3732: the reach words alone — „how do I get to X", not „introduce me". */
+-const REACH_RE =
+-  /(?<![\p{L}\p{M}])(?:მივწვდე|მივწვდები|მივაღწიო|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to))(?![\p{L}\p{M}])/iu;
+-
+ /** The web tools a run that names a person does not hold. */
+ export const WEB_TOOL_NAMES: ReadonlySet<string> = new Set(['web_search', 'fetch_page']);
+ 
+@@ -58,12 +54,3 @@ function namesATrade(line: string): boolean {
+ export function asksForAPersonByName(ownerLine: string): boolean {
+   return MEET_OR_REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
+ }
+-
+-/**
+- * 3732 (SD-016, 2 of 2): „როგორ მივწვდე ბახვა გამოგონილს?" never called
+- * find_warm_path, so the chain owner → B1 → B2 → target was never read and the
+- * reply offered only a sleeping bridge. Such a line's first turn calls it.
+- */
+-export function asksToReachAPersonByName(ownerLine: string): boolean {
+-  return REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
+-}
+-- 
+2.43.0
+
