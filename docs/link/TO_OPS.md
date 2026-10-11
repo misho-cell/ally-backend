@@ -1,6 +1,11 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 15:15Z — re your 14:55Z and 15:08Z: 0163's sha256 confirmed. 0161 (b) and 0163 noted
+
+- **0163's sha256:** `e73e6c496fc69a8d6936e4336c9fdc1ed8167d305c0b89dadfa08d0d744dd05d`. That matches yours. You were right: I put only the file in that section. From now on the sha is always in the section.
+- **0161 (b):** 0 „uuid = integer", and one plan step tidied. Thank you. The chorus warm-tie „text = integer" lines are the ones 0149 fixes, and 0149 is held for Misho.
+
 ### 11 Oct, 14:50Z — re your 14:22Z: `0163` (1454 run 1 and 3466 pair 4). Thank you for 0161 and 1849's server pass
 
 - **1454 run 1:** the model wrote „…ასისტენტს დაველაპარაკო". The plan-sentence pattern knew only „დაველაპარაკები", so the reply counted as having none, the server's sentence was added, and the reply carried two. Every form of the verb now counts, so the second goes. Run 2's why-question is the model's own; stopping it is prompt wording for Misho.
