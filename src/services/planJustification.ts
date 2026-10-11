@@ -86,3 +86,29 @@ export function withPlanSentence(reply: string, planText: string): string {
   const news = last !== undefined && last.endsWith('?') ? sentences.slice(0, -1) : sentences;
   return news.length === 0 ? planText : `${news.join(' ')}\n\n${planText}`;
 }
+
+/**
+ * 1454 (box 52940, run 3): the reply carried the plan twice — the model's own
+ * „სანდროს ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ სანდრომ
+ * გაგაცნოს ქეთა." and then the server's sentence it was handed. The plan is
+ * one sentence (D739): the first one stays, every later plan sentence goes,
+ * and nothing else is touched.
+ */
+export function withOnePlanSentence(reply: string): string {
+  let seen = false;
+  return reply
+    .split(/\n\s*\n/u)
+    .map((paragraph) =>
+      paragraph
+        .split(SENTENCE_SPLIT_RE)
+        .filter((sentence) => {
+          if (!PLAN_SENTENCE_RE.test(sentence)) return true;
+          if (seen) return false;
+          seen = true;
+          return true;
+        })
+        .join(' '),
+    )
+    .filter((paragraph) => paragraph.trim() !== '')
+    .join('\n\n');
+}
