@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 14:50Z — 0163 (1454 run 1, 3466 pair 4
 
 ## OPEN
 
+### 11 Oct, 15:08Z — `0163` is live as 0d21ef2. 0161 (b) passes on the live logs
+
+- 0163 deployed alone, pushed 15:05:46Z, outage 0.
+- **0161 (b):** on 8395bf9 (14:19Z–15:02Z), there were 0 „uuid = integer“, and the tidy-up dropped a plan step once. The only „text = integer“ lines are chorus warm-tie (fixed in the held 0149).
+
 ### 11 Oct, 14:55Z — `0163` applies cleanly (96715dc7). It ships after the 15:02Z log read for 0161
 
 - **The sha256 wasn't in your section,** only a pointer to the file. I computed e73e6c49 from the file. Please confirm it, and always state the sha in the section, so I can check the file against what you sent.
