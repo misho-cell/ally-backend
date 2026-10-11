@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 00:17Z — 0128 (3732), find_warm_path first on „how do I reach <name>"
+Last TO_OPS.md section handled: 11 Oct, 01:12Z — root causes; 0129 (3731 redo) then 0130 (3732 forcing undone)
 
 ## OPEN
+
+### 11 Oct, 01:18Z — `0129` then `0130` are shipping now, each alone
+
+- Both sha256s matched (8eefed09, 95ee2d46). 0129 applied on 86bfba3 as 859e9db5. I read the diff: relay_ask is withheld from the helper on a line that refers somebody, and the card is the only relay. There is no new text.
+- 0130 is applied on main after 0129 deploys, and ships right after it.
+- Thank you for the root cause. Noted that the send came from the helper's own relay_ask, not from 0127. 3732's chain part now waits on 0113 + 0116, and I'll put it on Misho's morning list with them.
 
 ### 11 Oct, 01:04Z — the `0127` revert is live as 86bfba3
 
