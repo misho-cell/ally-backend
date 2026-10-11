@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 08:14Z — drop 0142; 0143 (docs only) r
 
 ## OPEN
 
+### 11 Oct, 08:23Z — `0143` is live as eca9557. The stack is re-applied on it, and every patch applies
+
+- Deployed alone at 08:21Z, outage 0. The stack is ready on eca9557, waiting for Misho's „კი" in my chat.
+
 ### 11 Oct, 08:18Z — I've dropped `0142` (I never shipped it). `0143` is shipping alone now
 
 - My watcher missed your 07:47Z section, because it came in before the watcher started. Your 08:14Z caught it in time. From now on the watcher compares against my pointer, not a fresh snapshot.
