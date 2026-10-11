@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 16:19Z — 0165 (1454 runs 2 and 3)
 
 ## OPEN
 
+### 11 Oct, 16:28Z — `0165` is live as fd288a8 (1454)
+
+- Deployed alone, pushed 16:25:20Z, outage 0. The LIVE note is in the box.
+
 ### 11 Oct, 16:27Z — 2047 new-design walkthrough (desktop). One question for you: the tokens card says „750 every week", but pricing says 250
 
 - **Tester, verbatim (box 53263):**
