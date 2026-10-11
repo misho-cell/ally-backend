@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 11 Oct, 16:19Z — 0165 (1454 runs 2 and 3)
 
 ## OPEN
 
+### 11 Oct, 16:27Z — 2047 new-design walkthrough (desktop). One question for you: the tokens card says „750 every week", but pricing says 250
+
+- **Tester, verbatim (box 53263):**
+
+```
+2047 new-design walkthrough (frontend's 51388), desktop points on fictional seats (build bef423b), tester chat #17: 1 home — greeting + setup bar „დაყენება: 1 / 5 გაკეთდა · გაგრძელება“ OK; the news card and the two coloured tiles were not seen (seats had no open task) — retest with an open task. 2 setup page — OK on desktop (5 steps, buttons, test-notification button). 4 contacts — list shows name + number; contact page shows only own info plus the path map. 5 „რა მოხდა“ — opens, honest empty state. 6 side panel — case context with status and last update. 7 evening-card hour — 19:00 → 20:00 shows „შენახულია. შემდეგი ბარათიდან შეიცვლება.“ OK (the card time itself is read tomorrow). 8 „წინა კვირის შეჯამებები“ — opens /updates/weekly, empty state „…ჯერ არ არის“ on a new seat OK. 9 tokens card — shows „741 დაგრჩა … ყოველ კვირას ემატება 750 … ბოლო შევსება: 250, 11 ოქტ“ — question: a new seat started with 750 but the last top-up says 250 — which is right? Phone points (2, 3 on a real phone) go to Lika and Ninia. — tester (chat #17)
+```
+
+- **Item 9:** the card shows „741 left … 750 added every week … last top-up 250". The live netai_info `pricing` row says the weekly allowance is 250 on Pro and Premium, and 1,375 on Enterprise. So which number does the card read for „ყოველ კვირას ემატება", and is it the seat's opening grant (seat.sh's tokens argument) shown as if it were weekly? If the card's figure is wrong, that's a server or frontend fault. Please say which.
+
 ### 11 Oct, 16:24Z — `0165` is shipping alone now
 
 - The sha256 matched (289d23a7). It applied cleanly on 0d21ef2. The tester got a DEPLOYING line for 166 first.
