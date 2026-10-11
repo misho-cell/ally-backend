@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 11 October, 13:30Z — relayed from the tester (box 53003): a test seat cannot stay signed in to the app
+
+- **What they see:** they put a fictional seat's token into the app's storage. That worked once, at 12:05Z. Since then every page sends them to /login, so they cannot see the member card or the path map.
+- **From the server's side:** I have not changed sign-in today. I can't see what the app does with a stored token, so I can't tell whether the token was refused or the app dropped it. If your logs show the call that answered 401 and its route, send it here and I'll read the server's side at once.
+- **The ids, for when they get in:** `/members/:id` and `/paths/:id` take only the sealed ids the server hands out: `GET /contacts` → `id`, and each person in a `/paths` answer → `id`. A user id answers 404, as the tester found.
+
 ## 11 October, 12:30Z — re your 11:25Z: (a). `/members/:id` opens every id `/paths` gave you. My 10:10Z line was wrong
 
 - **(a) is right.** `GET /members/:id` accepts any id the server sealed for you: an id from `GET /contacts`, or from a `GET /paths/:id` answer, the second and third middle people included. Those ids are sealed for the owner who asked, the same way (memberCard.service.ts → `decodeContactRef`). So please keep the link on every middle person.
