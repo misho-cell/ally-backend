@@ -1,6 +1,34 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 13:05Z — `0153` (D738 1.1, after 0146), and the founder's list (box 52770) gone through row by row
+
+**`0153`: the connector shows a plan as the app does, one sentence plus „დავიწყო?" (D738 1.1, §110.5).**
+- The connector's propose_task_plan returned the old four-part card. Now it returns `planInSentences` plus `PLAN_CLOSING_QUESTION`, in the plan's own language (the connector has no conversation, so the plan's words decide). The two 1.1 texts ship with it, word for word as approved. The app's path is unchanged.
+- **It needs 0146 first** (same description string). Cut on main + 0146. Verify: 8,339 passed. sha256 `7c0166070026df2763ff59ccd50b488f6cf219de09e53b159b286e42b178d33c`.
+- **DONE WHEN:** on the Claude connector, a plan is shown as one sentence ending in „დავიწყო?" (or "Shall I start?"), with no routes, no "solved when", and no version. 2 of 2.
+
+**The founder's list, row by row** (I checked origin/main for each fix). Please pass this to the tester:
+- **Fix live, never re-tested, so the tester's move, no code:**
+  - **2707:** 89983d4, live 9 Oct 00:07Z. Re-run ON-006/ON-007.
+  - **3466:** f4240e5 + 3d0caa2, live 9 Oct 01:06Z. Re-run PR-011 with both answers.
+  - **3269:** 9650b9a, live 9 Oct 07:12Z. Re-run SE-039/ME-040.
+  - **1454:** 0101 = 4cf9e23, live 10 Oct 14:05Z, after its last FAIL. Three plans in a row.
+  - **1696 A13:** live, with BN ON since 0133. Re-run in the IN-025 order (your 11:28Z steps).
+- **3829 night part:** (a) is fixed by prompt change 128. (b), the answer reaching the owner at night, is by design (G-002): only the push waits for quiet hours. The tester's „did your phone ring?" (box 49470) was never answered. Please ask them to re-run FU-07 inside quiet hours and say whether the phone rang. Holding the message itself overnight would need a new ruling.
+- **The reads:**
+  - **1694:** already given in box 48519 (§110.6 kept the reason from the model). Misho's §111.2 then allowed it, and b986aea has been live since 9 Oct 13:34Z (48845). It needs a re-run of the 48418 scenario.
+  - **695:** box 33826. The blank-answer fix has been live since 3 Oct. I'll post the stored line and a current count.
+- **Mine, code, in this order:**
+  - **1689:** the per-person „field" is the goal's first three words. Production `task_asks.field` = „arkitektoris mozebna kerzo". It becomes a real field, admin-only, with no user text.
+  - **1687, facts lost** (box 48535, never relayed): the day-one wave writes its ask from the goal and drops the facts. The goal kept them all, and the 71-character ask kept none. I'll root-cause it.
+  - **4293:** I re-prove the empty-database build on current main.
+- **Misho's decision first:**
+  - **2182:** a need given in answer to profile question 3 starts a search instead of asking question 4 (48535). Should that need open a goal?
+  - **1917:** registration asks only the name, by design. Close it, or order a build?
+  - **1882:** the day-one card. The Axel base is in (2,611 facts, 10 Oct), so it can be built now, but its wording is new user text.
+- **Box 48533, 48535 and 48543 (9 Oct) never reached me through TO_CODE.** I've read them now. That is why 1687, 2182 and 1689 sat.
+
 ### 11 Oct, 12:32Z — `0152` (docs only): the member-card answer for the frontend. Please also relay FOR_TESTERS item 10
 
 - **Their question (TO_BACKEND 11:25Z):** does `/members/:id` open the 2nd and 3rd middle people of a path? It does. It accepts every id sealed for that owner, and `/paths` ids are sealed the same way. My 10:10Z line had said otherwise and was wrong. 0152 corrects it.

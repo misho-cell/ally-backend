@@ -1,0 +1,245 @@
+From 3d4565816d0da048f051b865fbac21634682e056 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 11:56:19 +0000
+Subject: [PATCH] =?UTF-8?q?D738=201.1=20(D663,=20=C2=A7110.5):=20the=20con?=
+ =?UTF-8?q?nector's=20plan=20is=20the=20app's=20one=20sentence=20and=20its?=
+ =?UTF-8?q?=20one=20question?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+propose_task_plan on the connector returned renderPlan's four-part card
+(title, version, solved-when, routes, people, never-ask). It now returns
+what the app shows: planInSentences plus PLAN_CLOSING_QUESTION, in the
+plan's own language (the connector has no conversation, so the plan's
+words decide: detectRunLanguage). proposeTaskPlan also returns the
+sentence; the app's path is unchanged.
+
+The two texts of 1.1 ship with it, word for word as approved (§110.5):
+the propose_task_plan description's summary sentence and the plan
+parameter's description.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../mcp/__tests__/handlersPlan.test.ts        | 51 ++++++++++++++++---
+ src/services/mcp/handlers.ts                  | 44 ++++++++++++----
+ src/services/mcp/mcpServer.ts                 |  4 +-
+ src/services/mcp/texts.ts                     |  3 +-
+ src/services/taskPlans.service.ts             |  6 ++-
+ 5 files changed, 87 insertions(+), 21 deletions(-)
+
+diff --git a/src/services/mcp/__tests__/handlersPlan.test.ts b/src/services/mcp/__tests__/handlersPlan.test.ts
+index d0c0731..d625979 100644
+--- a/src/services/mcp/__tests__/handlersPlan.test.ts
++++ b/src/services/mcp/__tests__/handlersPlan.test.ts
+@@ -5,6 +5,7 @@ jest.mock('../../taskPlans.service', () => ({
+   __esModule: true,
+   proposeTaskPlan: jest.fn(),
+   approveTaskPlan: jest.fn(),
++  PLAN_CLOSING_QUESTION: jest.requireActual('../../taskPlans.service').PLAN_CLOSING_QUESTION,
+ }));
+ // The engine is reached through a dynamic import (it imports the chat service,
+ // which imports this one), so the module is mocked whole rather than the call.
+@@ -13,7 +14,7 @@ jest.mock('../../taskEngine.service', () => ({ __esModule: true, startDayOne: je
+ import { approveTaskPlan, proposeTaskPlan } from '../../taskPlans.service';
+ import { startDayOne } from '../../taskEngine.service';
+ import { encodeContactRef } from '../contactRef';
+-import { mcpApproveTaskPlan, mcpProposeTaskPlan } from '../handlers';
++import { mcpApproveTaskPlan, mcpProposeTaskPlan, planLanguage } from '../handlers';
+ 
+ const mockPropose = proposeTaskPlan as jest.MockedFunction<typeof proposeTaskPlan>;
+ const mockApprove = approveTaskPlan as jest.MockedFunction<typeof approveTaskPlan>;
+@@ -28,7 +29,15 @@ beforeEach(() => jest.clearAllMocks());
+ 
+ describe('propose_task_plan on the connector', () => {
+   it('decodes every contact_ref into the phone the plan stores — no number crosses the boundary', async () => {
+-    mockPropose.mockResolvedValue({ ok: true, value: { version: 1, summary: 'გეგმა v1' } });
++    mockPropose.mockResolvedValue({
++      ok: true,
++      value: {
++        version: 1,
++        summary: 'გეგმა v1',
++        sentence: 'ლიკას ასისტენტს ვკითხავ.',
++        everApproved: false,
++      },
++    });
+     const lika = encodeContactRef('501', '+995599111222');
+     const nana = encodeContactRef('501', '+995599999999');
+ 
+@@ -42,13 +51,23 @@ describe('propose_task_plan on the connector', () => {
+       },
+     });
+ 
+-    expect(out).toEqual({ proposed: true, version: 1, summary: 'გეგმა v1' });
+-    expect(mockPropose).toHaveBeenCalledWith('501', 1619, {
+-      solved_when: 'x',
+-      routes: [{ name: 'ქსელი' }],
+-      people_to_involve: [{ name: 'ლიკა', phone: '+995599111222', route: 'ქსელი' }],
+-      never_contact: [{ name: 'ნანა', phone: '+995599999999' }, { name: 'ყოფილი პარტნიორი' }],
++    // D738 1.1: the app's one sentence and its one question — never the four-part card.
++    expect(out).toEqual({
++      proposed: true,
++      version: 1,
++      summary: 'ლიკას ასისტენტს ვკითხავ. დავიწყო?',
+     });
++    expect(mockPropose).toHaveBeenCalledWith(
++      '501',
++      1619,
++      {
++        solved_when: 'x',
++        routes: [{ name: 'ქსელი' }],
++        people_to_involve: [{ name: 'ლიკა', phone: '+995599111222', route: 'ქსელი' }],
++        never_contact: [{ name: 'ნანა', phone: '+995599999999' }, { name: 'ყოფილი პარტნიორი' }],
++      },
++      'ka',
++    );
+   });
+ 
+   it('refuses a ref minted for another user, naming the person', async () => {
+@@ -132,3 +151,19 @@ describe('approve_task_plan on the connector', () => {
+     expect(startDayOne).not.toHaveBeenCalled();
+   });
+ });
++
++// D738 1.1: the connector reads the language from the plan's own words.
++describe('planLanguage', () => {
++  const plan = (solved: string, route: string): Parameters<typeof planLanguage>[0] => ({
++    solved_when: solved,
++    routes: [{ name: route }],
++    people_to_involve: [],
++    never_contact: [],
++  });
++
++  it('reads Georgian, English and Russian plans in their own language', () => {
++    expect(planLanguage(plan('ბუღალტერი ნაპოვნია', 'ჩემი ქსელი'))).toBe('ka');
++    expect(planLanguage(plan('an accountant is found', 'through my network'))).toBe('en');
++    expect(planLanguage(plan('бухгалтер найден', 'через мою сеть'))).toBe('ru');
++  });
++});
+diff --git a/src/services/mcp/handlers.ts b/src/services/mcp/handlers.ts
+index f8a5846..2a84c1d 100644
+--- a/src/services/mcp/handlers.ts
++++ b/src/services/mcp/handlers.ts
+@@ -46,7 +46,8 @@ import {
+   Task,
+ } from '../taskStore.service';
+ import { cancelAsksForTask, createAsk, getPendingAsksForUser } from '../taskAsks.service';
+-import { approveTaskPlan, proposeTaskPlan } from '../taskPlans.service';
++import { approveTaskPlan, PLAN_CLOSING_QUESTION, proposeTaskPlan } from '../taskPlans.service';
++import { detectRunLanguage, RunLanguage } from '../runLanguage';
+ import { deleteAnswerRule, listAnswerRules } from '../answerRules.service';
+ import { searchRoster } from '../tools/searchRoster';
+ import { findWarmPath } from '../tools/findWarmPath';
+@@ -1170,6 +1171,21 @@ export interface McpPlanInput {
+   real_work?: boolean;
+ }
+ 
++/**
++ * D738 1.1 (D663): the connector has no conversation to read a language from,
++ * so the plan's own words — written by the model in the user's language — say
++ * which language its one sentence and closing question are in.
++ */
++export function planLanguage(plan: McpPlanInput): RunLanguage {
++  const words = [plan.solved_when ?? '', ...(plan.routes ?? []).map((r) => r.name ?? '')];
++  return detectRunLanguage(words.join(' '));
++}
++
++/** D738 1.1: what the user reads — the app's one sentence and its one question, nothing else. */
++export function connectorPlanSummary(sentence: string, language: RunLanguage): string {
++  return `${sentence} ${PLAN_CLOSING_QUESTION[language]}`;
++}
++
+ export async function mcpProposeTaskPlan(
+   userId: string,
+   args: { task_ref: string; plan: McpPlanInput },
+@@ -1188,15 +1204,25 @@ export async function mcpProposeTaskPlan(
+     const phone = n.contact_ref ? decodeContactRef(userId, n.contact_ref) : null;
+     never.push(phone ? { name: n.name, phone } : { name: n.name });
+   }
+-  const outcome = await proposeTaskPlan(userId, taskId, {
+-    solved_when: plan.solved_when,
+-    routes: plan.routes,
+-    people_to_involve: people,
+-    never_contact: never,
+-    ...(plan.real_work === true && { real_work: true }),
+-  });
++  const language = planLanguage(plan);
++  const outcome = await proposeTaskPlan(
++    userId,
++    taskId,
++    {
++      solved_when: plan.solved_when,
++      routes: plan.routes,
++      people_to_involve: people,
++      never_contact: never,
++      ...(plan.real_work === true && { real_work: true }),
++    },
++    language,
++  );
+   return outcome.ok
+-    ? { proposed: true, version: outcome.value.version, summary: scrubText(outcome.value.summary) }
++    ? {
++        proposed: true,
++        version: outcome.value.version,
++        summary: scrubText(connectorPlanSummary(outcome.value.sentence, language)),
++      }
+     : { proposed: false, error: outcome.error };
+ }
+ 
+diff --git a/src/services/mcp/mcpServer.ts b/src/services/mcp/mcpServer.ts
+index 551f62d..cd42bf1 100644
+--- a/src/services/mcp/mcpServer.ts
++++ b/src/services/mcp/mcpServer.ts
+@@ -576,7 +576,9 @@ function registerGoalTools(server: McpServer, userId: string): void {
+               .optional()
+               .describe('Real work rather than a small favour: five people per wave, not three.'),
+           })
+-          .describe('The plan, in the four parts the user approves.'),
++          .describe(
++            'The plan the user approves. He reads only the one sentence the server makes of it.',
++          ),
+       },
+       annotations: WRITE,
+     },
+diff --git a/src/services/mcp/texts.ts b/src/services/mcp/texts.ts
+index 9db8053..48e6323 100644
+--- a/src/services/mcp/texts.ts
++++ b/src/services/mcp/texts.ts
+@@ -413,8 +413,7 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       "Writes the goal's plan for the user to approve ONCE (D119): what counts as solved, the " +
+       'routes you will pursue, the people you will involve (each by contact_ref from a search ' +
+       'result, with the route they belong to) and the people the user does NOT want contacted. ' +
+-      'Call it as soon as the problem is understood — before any ask goes out — and again for any CHANGE (a new person, a new route): the change waits for a yes while everything already approved keeps running. When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). Show the returned summary verbatim and ask for their yes; then ' +
+-      'call approve_task_plan. Once approved, an ask to a person the plan names goes without ' +
++      'Call it as soon as the problem is understood — before any ask goes out — and again for any CHANGE (a new person, a new route): the change waits for a yes while everything already approved keeps running. When nothing will be sent to a person, there is no plan and no approval — just the answer (D626). Show the returned summary as it is: one sentence naming whose assistant you will talk to and the result. No routes, no „signal", no „counted as solved", never the text you will send. End on its one question and wait for their yes; then call approve_task_plan. Once approved, an ask to a person the plan names goes without ' +
+       'asking again; a person outside the plan is refused until the plan is changed.',
+   },
+   approve_task_plan: {
+diff --git a/src/services/taskPlans.service.ts b/src/services/taskPlans.service.ts
+index 4154695..a7ea458 100644
+--- a/src/services/taskPlans.service.ts
++++ b/src/services/taskPlans.service.ts
+@@ -389,7 +389,9 @@ export async function proposeTaskPlan(
+   raw: unknown,
+   /** The conversation's language — the card is read by the owner, not by us. */
+   language: RunLanguage = 'ka',
+-): Promise<PlanOutcome<{ version: number; summary: string; everApproved: boolean }>> {
++): Promise<
++  PlanOutcome<{ version: number; summary: string; sentence: string; everApproved: boolean }>
++> {
+   // A GOAL ID THAT IS NOT A GOAL ID IDENTIFIES NO GOAL. See isARealId: the
+   // door hands over `Number(input['task_id'])`, `Number(undefined)` is `NaN`,
+   // and `pg` sends that to `WHERE id = $1` as the STRING „NaN". The answer is
+@@ -449,6 +451,8 @@ export async function proposeTaskPlan(
+     value: {
+       version,
+       summary: renderPlan(plan, version, null, everApproved, language),
++      // D738 1.1: the one-sentence plan the app shows, for the connector.
++      sentence: planInSentences(plan, language),
+       everApproved,
+     },
+   };
+-- 
+2.43.0
+
