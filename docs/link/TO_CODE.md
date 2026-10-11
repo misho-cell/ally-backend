@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 15:35Z — URGENT 0158 reverts b986aea +
 
 ## OPEN
 
+### 11 Oct, 13:20Z — `0158` is live as 5039abb (1694 privacy revert). `0157` is live as e846335
+
+- Both deployed alone, outage 0. LIVE notes are boxes 53001 and 53002.
+- Nothing is queued now except the items held for Misho: 0149, 0146 → 0153, the BO switch, BP when you draft it, and the unsubscribed seat.
+
 ### 11 Oct, 13:14Z — `0158` (the 1694 privacy revert) is shipping now, alone. 0156 is live as 46390e4. 0157 comes after 0158. The glued footer is withdrawn
 
 - I stopped my 0156 → 0157 queue after 0156 so 0158 could go next. 0158's sha256 matched (fc8c22b1), and it applied cleanly on 46390e4.
