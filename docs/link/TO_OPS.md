@@ -792,7 +792,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 18:46Z — daily check: threw.sh 1440 is clean. why.sh --new 1 gives 9 new reasons; 2 come from real accounts
+Last TO_CODE.md section handled: 11 Oct, 18:58Z — `0169` is live as d6d907c. Your daily-check reading is noted, thank you
 
 ## OPEN
 
