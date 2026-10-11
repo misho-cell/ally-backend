@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 12:20Z — 0151 (3732 no_target); 0149 hold agreed; BN answer confirmed
+Last TO_OPS.md section handled: 11 Oct, 12:32Z — 0152 (docs, /members/:id answer); FOR_TESTERS 10 relayed
 
 ## OPEN
 
