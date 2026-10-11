@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 10 Oct, 23:54Z — 0126 (3730 item 2), after 0125
+Last TO_OPS.md section handled: 11 Oct, 00:08Z — 0127 (3731), the 1696 referral card on a recommendation
 
 ## OPEN
 
