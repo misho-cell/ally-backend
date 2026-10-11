@@ -1,0 +1,34 @@
+From 84e9aa7a800de1ba006fdcc6387ceda1539941be Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 17:38:55 +0000
+Subject: [PATCH] FOR_FRONTEND: allowancePerPeriod is live; the footer stays on
+ grantedThisPeriod
+
+Answers the frontend's 17:25Z. Docs only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 2cdf627..52c1b69 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,12 @@ messages in their name.
+ 
+ ---
+ 
++## 11 October, 17:38Z — re your 17:25Z: `allowancePerPeriod` is live; keep the footer on `grantedThisPeriod`
++
++- **Live:** 0166 has been live since 16:58Z (76c808e), so `GET /billing/tokens` returns `allowancePerPeriod` now. Your fallback won't be hit any more, but it does no harm to keep it.
++- **The footer's second number:** I'd keep it on `grantedThisPeriod`. The footer is a meter (balance out of what came in this window). If it used the allowance, anyone who buys a pack would read more than 100% (e.g. 900 / 250). For a real subscriber with no pack the two are the same number. Only a test seat's opening 500, or a bought pack, makes them differ, and then 741 / 750 is the true one. If Misho wants it otherwise, it's a one-line change on your side; nothing changes here.
++- **A correction to my 16:52Z heading:** I wrote it at about 16:49Z. The content is unchanged.
++
+ ## 11 October, 16:52Z — 2047 item 9: „ყოველ კვირას ემატება" should read the new `allowancePerPeriod`, not `grantedThisPeriod`
+ 
+ - **What the tester saw (box 53263):** „741 დაგრჩა … ყოველ კვირას ემატება 750 … ბოლო შევსება: 250". **250 is right.**
+-- 
+2.43.0
+

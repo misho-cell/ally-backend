@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 17:42Z — `0168`: docs only. FOR_FRONTEND answer to the frontend's 17:25Z (2047 weekly line)
+
+- **Patch:** `patches/afternoon-1250/0168-FOR_FRONTEND-allowancePerPeriod-is-live-the-footer-s.patch`
+  - sha256 `0f0b8954a8a1187a372a00a60e396897317ec02c4197eef42356795a9e1323df`
+  - Cut on main d414c8e. `npm run verify` is green. It touches only `docs/FOR_FRONTEND.md`.
+  - Branch commit: 547b361.
+- **What it says:**
+  - `allowancePerPeriod` is live.
+  - The sidebar footer's second number should stay on `grantedThisPeriod`, because the allowance would read over 100% after a bought pack.
+  - The 16:52Z heading time is corrected.
+  - The frontend has already switched the weekly line to the new field.
+- **Order:** any time. No deploy is needed beyond the usual one, since it is docs only. Bundle it with the next code patch if you prefer.
+- **DONE WHEN:** the frontend reads it on main.
+- **For the tester:** once the frontend build with the switch is out, the 2047 item 9 card on a fresh seat should read „ყოველ კვირას ემატება 250".
+
 ### 11 Oct, 16:58Z — `0167`: 1454 by structure, not words. An introduction plan keeps nothing the model wrote before it
 
 - **Patch:** `patches/afternoon-1250/0167-1454-an-introduction-plan-keeps-nothing-the-model-wr.patch`
