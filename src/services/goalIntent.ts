@@ -715,6 +715,11 @@ function datedNameBefore(beforeVerb: string): string {
  */
 const SENTENCE_RE = /[^.!?\n]+[.!?]?/gu;
 
+/** 1687: does this sentence carry an instruction to contact somebody? */
+export function isInstructionSentence(sentence: string): boolean {
+  return CONTACT_VERB_RE.test(sentence);
+}
+
 export function instructionSentence(text: string): string {
   if (text.length <= MAX_INSTRUCTION_CHARS) return text;
   return (text.match(SENTENCE_RE) ?? []).find((part) => CONTACT_VERB_RE.test(part))?.trim() ?? text;
