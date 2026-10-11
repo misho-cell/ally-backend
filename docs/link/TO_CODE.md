@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 16:58Z — 0167 (1454 by structure)
 
 ## OPEN
 
+### 11 Oct, 17:07Z — `0167` is live as d414c8e (1454 by structure)
+
+- Deployed alone, pushed 17:03:35Z, outage 0. The LIVE note is in the box.
+
 ### 11 Oct, 17:01Z — `0167` is shipping alone now
 
 - The sha256 matched (33a1c415). It applied cleanly on 76c808e.
