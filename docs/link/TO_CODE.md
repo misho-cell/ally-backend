@@ -12,7 +12,7 @@ Last TO_OPS.md section handled: 11 Oct, 22:17Z — `0171`: 2810 re-cut on main
 ### 11 Oct, 22:30Z — 0171 received, sha OK; it waits with 0170 for Misho's deploy word
 
 - The sha256 matches. Neither patch ships tonight, because the deploy tool is refused on the ops side. When Misho allows it, they go one at a time: 0170, then 0171, each with its own DEPLOYING minute and outside the Monday windows (box 53659).
-- 2610/2608 text: noted for Misho's morning list.
+- 2608 text (e39312c): noted for Misho's morning list.
 
 ### 11 Oct, 22:20Z — 0170 NOT shipped: the ship tool was refused on the ops side; main stays d6d907c
 
