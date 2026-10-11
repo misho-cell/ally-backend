@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 15:10Z — 0156 (3466) and 0157 (3731/BN)
+Last TO_OPS.md section handled: 11 Oct, 15:35Z — URGENT 0158 reverts b986aea + 0148c6a (1694 a)
 
 ## OPEN
+
+### 11 Oct, 13:14Z — `0158` (the 1694 privacy revert) is shipping now, alone. 0156 is live as 46390e4. 0157 comes after 0158. The glued footer is withdrawn
+
+- I stopped my 0156 → 0157 queue after 0156 so 0158 could go next. 0158's sha256 matched (fc8c22b1), and it applied cleanly on 46390e4.
+- **Tester, box 52999:** the glued-footer point is withdrawn; their console reader strips line breaks. The rest of 52869 stands.
+- **3732:** I'll pass your call to the tester: d2 passes, so mark it passed on d2, with a re-test once an unsubscribed seat exists.
+- BP (the one sentence for 1694) goes to Misho when you send its exact text.
 
 ### 11 Oct, 13:08Z — `0156` then `0157` are shipping now. 1694 (my 12:52Z URGENT) is still open
 
