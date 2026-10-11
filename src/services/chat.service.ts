@@ -240,7 +240,13 @@ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
 import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
 import { contactsReminderSection } from './contactsReminderSection';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
-import { walksToTheNamedPerson, WARM_PATH_TOOL } from './warmPathAfterSearch';
+import {
+  FoundPerson,
+  peopleFoundIn,
+  walksToTheNamedPerson,
+  walkTargetPhone,
+  WARM_PATH_TOOL,
+} from './warmPathAfterSearch';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
@@ -5450,6 +5456,18 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
 // it; in-app a single transient/cold-cache spike reached the user as "timeout,
 // come back later" — thread 7428), then log the activity with its result count
 // (fire-and-forget so logging never blocks or fails the search).
+/** 3732: who this run's own searches returned, so the walk can take a name the run was shown. */
+const runFoundPeople = new Map<string, FoundPerson[]>();
+
+function notePeopleFound(runId: string, result: unknown): void {
+  const found = peopleFoundIn(result);
+  if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
+}
+
+function peopleFoundCount(runId: string): number {
+  return runFoundPeople.get(runId)?.length ?? 0;
+}
+
 async function runLoggedSearch(
   userId: string,
   tool: string,
@@ -5477,6 +5495,7 @@ async function runLoggedSearch(
     },
   );
   if (searchId !== null && runId) noteSearchResults(runId, searchId, result, threadId);
+  if (runId) notePeopleFound(runId, result);
   return searchId === null ? result : { ...result, search_id: searchId };
 }
 
@@ -8711,6 +8730,7 @@ function clearRunState(runId: string): void {
   runModes.delete(runId);
   runLastCaption.delete(runId);
   runOwnerLine.delete(runId);
+  runFoundPeople.delete(runId);
   runMentionedNote.delete(runId);
   runRepeatedGoal.delete(runId);
   runLanguages.delete(runId);
@@ -10978,7 +10998,10 @@ async function executeToolCall(
     case 'find_warm_path':
       return findWarmPath(
         userId,
-        String(input['target_phone'] ?? ''),
+        walkTargetPhone(
+          String(input['target_phone'] ?? ''),
+          (runId && runFoundPeople.get(runId)) || [],
+        ),
         typeof input['max_hops'] === 'number' ? input['max_hops'] : undefined,
         // 1697 (A14): the open goal's words order the bridges.
         threadId === undefined
@@ -13195,6 +13218,7 @@ async function runToolLoop(
 
       scanAssistantBlocks(response.content);
 
+      const foundBeforeRound = peopleFoundCount(runId);
       const toolResults = await processToolBlocks(
         userId,
         threadId,
@@ -13238,6 +13262,7 @@ async function runToolLoop(
         toolsUsed: toolNamesUsed,
         roundTools,
         walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
+        roundFoundSomeone: peopleFoundCount(runId) > foundBeforeRound,
       });
       response = await callClaude(messages, systemPrompt, tools, ctx, {
         onText: stream,
