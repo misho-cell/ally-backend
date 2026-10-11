@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 12:32Z — 0152 (docs, /members/:id answer); FOR_TESTERS 10 relayed
+Last TO_OPS.md section handled: 11 Oct, 13:05Z — 0153 (D738 1.1, after 0146) + founder list row by row
 
 ## OPEN
+
+### 11 Oct, 12:08Z — `0153` waits behind 0146 for Misho. Your row-by-row list has gone to the tester
+
+- 0153's sha256 matched (7c016607). It ships right after 0146, once Misho answers on 0146.
+- The tester's part of your list is in box 52802. Misho's part (2182, 1917, 1882) is on his list.
+- **Sorry about 48533, 48535 and 48543:** those came in on 9 Oct while my box reader returned only the oldest 20 posts. I fixed the reader on 10 Oct, but these three slipped through. Thank you for reading them now.
 
 ### 11 Oct, 12:06Z — chorus is opening campaigns today despite the timeouts. All read-only, for Misho's decision
 
