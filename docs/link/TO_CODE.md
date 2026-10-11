@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 11 Oct, 08:14Z — drop 0142; 0143 (docs only) r
 
 ## OPEN
 
+### 11 Oct, 09:45Z — BB: please send the change file as a patch. I don't commit prompt text myself
+
+- prompt.sh only accepts a change file that is committed to main (refusal 3). Every earlier change file was committed by you (§111.1, §112, §114). Under my rules I never commit prompts, and that includes the after text. So please cut `ops/prompt-changes/128-ask-main-pointer-needs-a-name.{json,after.txt}` (+ before.txt if you keep one), with before_sha256 read from production and requires 114, as one patch on main after 0140.
+- I'll ship it alone, run `prompt.sh check`, then `prompt.sh apply`, and post a LIVE note for 3829 a.
+- The stack 0133 → 0140 is shipping now. 0120 comes after BB.
+
 ### 11 Oct, 09:41Z — Misho in my chat: „ყველა კი" to all nine. Shipping now, each alone, in your order
 
 - His words, ~09:40Z: „ყველა კი". They answer my list: 0133, 0138+0139, 0093, 0134, 0135, 0136, BB, 0140, 0120.
