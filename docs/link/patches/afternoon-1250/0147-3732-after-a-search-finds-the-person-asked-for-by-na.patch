@@ -1,0 +1,343 @@
+From a21b50cb1345bb3311e8b2a7fad8eab77ff19670 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 10:32:48 +0000
+Subject: [PATCH] 3732: after a search finds the person asked for by name, the
+ run walks to them, and the members' chain is in the walk
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 52742 (0 of 2 on 0138+0139). The owner line „მინდა <target>-ს
+დავუკავშირდე. ვისი გავლით შემიძლია?" ran three searches and web_search,
+and never find_warm_path; the members' chain owner → B1 → B2 → target never
+reached the reply. Three causes, three fixes, no new model-facing words:
+
+- personByName: „დავუკავშირდ…", „ვისი/ვის გავლით", "through whom" and
+  "how can I connect with" are read as asking for a person by name, so
+  0125's web hold covers this line too. A trade line keeps the web.
+- warmPathAfterSearch: after a round with a person search, on such a line,
+  the next call is forced to find_warm_path, once. Forcing it FIRST failed
+  (box 52110, no target yet); after the search the target is in hand.
+- findWarmPath: the graph's shortest paths are joined by 1849's members-only
+  chains (memberMiddles), deduplicated; a failed members read leaves the
+  graph's paths alone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aChainOfMembersIsWalkedTo.test.ts         | 60 +++++++++++++++++++
+ src/services/chat.service.ts                  |  9 +++
+ src/services/personByName.ts                  |  5 +-
+ .../tools/__tests__/findWarmPath.test.ts      | 35 +++++++++++
+ src/services/tools/findWarmPath.ts            | 44 +++++++++++++-
+ src/services/warmPathAfterSearch.ts           | 41 +++++++++++++
+ 6 files changed, 190 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts
+ create mode 100644 src/services/warmPathAfterSearch.ts
+
+diff --git a/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts b/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts
+new file mode 100644
+index 0000000..932ab94
+--- /dev/null
++++ b/src/services/__tests__/aChainOfMembersIsWalkedTo.test.ts
+@@ -0,0 +1,60 @@
++import { asksForAPersonByName } from '../personByName';
++import { withMemberChains } from '../tools/findWarmPath';
++import { walksToTheNamedPerson, WARM_PATH_TOOL } from '../warmPathAfterSearch';
++
++/** 3732 (box 52742): the tester's own line, on both fictional chains. */
++const TESTER_LINE = 'მინდა ნინო გამოგონილს დავუკავშირდე. ვისი გავლით შემიძლია?';
++
++function round(overrides: Partial<Parameters<typeof walksToTheNamedPerson>[0]> = {}): boolean {
++  return walksToTheNamedPerson({
++    ownerLine: TESTER_LINE,
++    toolsUsed: ['search_contact_by_name', 'search_second_degree'],
++    roundTools: ['search_second_degree'],
++    walkOffered: true,
++    ...overrides,
++  });
++}
++
++describe('3732: a person asked for by name is walked to after the search finds them', () => {
++  it('reads „დავუკავშირდე … ვისი გავლით" as asking for a person by name', () => {
++    expect(asksForAPersonByName(TESTER_LINE)).toBe(true);
++    expect(asksForAPersonByName('Through whom can I reach Nino Gamogonili?')).toBe(true);
++  });
++
++  it('still reads a trade as a trade, so the web stays on for it', () => {
++    expect(asksForAPersonByName('მინდა ბუღალტერს დავუკავშირდე')).toBe(false);
++  });
++
++  it('walks next, once a search round has run', () => {
++    expect(round()).toBe(true);
++  });
++
++  it('does not walk before any search has found the person', () => {
++    expect(round({ roundTools: ['get_my_tasks'], toolsUsed: ['get_my_tasks'] })).toBe(false);
++  });
++
++  it('walks once only', () => {
++    expect(round({ toolsUsed: ['search_second_degree', WARM_PATH_TOOL] })).toBe(false);
++  });
++
++  it('never forces a tool the run does not hold', () => {
++    expect(round({ walkOffered: false })).toBe(false);
++  });
++
++  it('leaves a line that asks for no person alone', () => {
++    expect(round({ ownerLine: 'ვინ არის ჩემს კონტაქტებში იურისტი?' })).toBe(false);
++  });
++});
++
++describe('3732: the members chain sits beside the graph paths', () => {
++  it('appends a member chain the graph did not return', () => {
++    expect(withMemberChains([['b3']], [['b1', 'b2']])).toEqual([['b3'], ['b1', 'b2']]);
++  });
++
++  it('never repeats a path the graph already gave', () => {
++    expect(withMemberChains([['b1']], [['b1'], ['b1', 'b2'], ['b1', 'b2']])).toEqual([
++      ['b1'],
++      ['b1', 'b2'],
++    ]);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 09ed36b..c0f2599 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -231,6 +231,7 @@ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+ import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
+ import { contactsReminderSection } from './contactsReminderSection';
+ import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
++import { walksToTheNamedPerson, WARM_PATH_TOOL } from './warmPathAfterSearch';
+ import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+ import { refersSomebody } from './referralRecommendation';
+ import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
+@@ -13214,9 +13215,17 @@ async function runToolLoop(
+       // This turn ended in tool calls — its streamed text was narration, and
+       // it was already emitted as a step above; don't emit it twice.
+       resetTurnStream(false);
++      // 3732: a search found the person the owner asked to reach by name — walk to them next.
++      const walkNext = walksToTheNamedPerson({
++        ownerLine: runOwnerLine.get(runId) ?? '',
++        toolsUsed: toolNamesUsed,
++        roundTools,
++        walkOffered: tools.some((tool) => tool.name === WARM_PATH_TOOL),
++      });
+       response = await callClaude(messages, systemPrompt, tools, ctx, {
+         onText: stream,
+         model: TOOL_TURN_MODEL,
++        ...(walkNext && { forceTool: WARM_PATH_TOOL }),
+       });
+     }
+ 
+diff --git a/src/services/personByName.ts b/src/services/personByName.ts
+index 7914f9f..33e6f4e 100644
+--- a/src/services/personByName.ts
++++ b/src/services/personByName.ts
+@@ -11,11 +11,14 @@ import { professionFamilyIn, professionFamilyKey } from './professionFamilies';
+  * does not hold the web tools at all — no new words to the model, the tools
+  * are simply not offered (as inviteHeld does for invite_contact).
+  *
++ * 3732 (box 52742): „მინდა <name>-ს დავუკავშირდე. ვისი გავლით შემიძლია?" asks the same thing
++ * („I want to contact <name> — through whom?") and is read the same way.
++ *
+  * A line that names a trade instead („გამაცანი კარგი ბუღალტერი") keeps them:
+  * looking beyond the network for a trade is the 1454 web-people paragraph.
+  */
+ const MEET_OR_REACH_RE =
+-  /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to)|reach out to)(?![\p{L}\p{M}])/iu;
++  /(?<![\p{L}\p{M}])(?:გამაცან\p{L}*|გამაცნობ\p{L}*|დამაკავშირ\p{L}*|დავუკავშირდ\p{L}*|მივწვდე|მივწვდები|მივაღწიო|ვისი გავლით|ვის გავლით|introduce me|connect me|put me in touch|(?:can|do|could) i reach|how (?:can|do) i (?:reach|get to|connect with)|through whom|reach out to)(?![\p{L}\p{M}])/iu;
+ 
+ /** The web tools a run that names a person does not hold. */
+ export const WEB_TOOL_NAMES: ReadonlySet<string> = new Set(['web_search', 'fetch_page']);
+diff --git a/src/services/tools/__tests__/findWarmPath.test.ts b/src/services/tools/__tests__/findWarmPath.test.ts
+index bb4ecd9..5e3e24f 100644
+--- a/src/services/tools/__tests__/findWarmPath.test.ts
++++ b/src/services/tools/__tests__/findWarmPath.test.ts
+@@ -9,6 +9,10 @@ jest.mock('../../block.service', () => ({
+   __esModule: true,
+   getExcludedPhones: jest.fn().mockResolvedValue([]),
+ }));
++jest.mock('../../memberPaths.service', () => ({
++  __esModule: true,
++  memberMiddles: jest.fn().mockResolvedValue([]),
++}));
+ jest.mock('../membership', () => ({
+   __esModule: true,
+   fetchAccountStates: jest.fn().mockResolvedValue(new Map()),
+@@ -23,12 +27,14 @@ import { getSession } from '../../../db/neo4j/client';
+ import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../../neo4j.keys';
+ import { getExcludedPhones } from '../../block.service';
+ import { findWarmPath } from '../findWarmPath';
++import { memberMiddles } from '../../memberPaths.service';
+ 
+ const mockQuery = query as jest.MockedFunction<typeof query>;
+ const mockSession = getSession as jest.MockedFunction<typeof getSession>;
+ const mockUserKey = getCompositeKeyForUser as jest.MockedFunction<typeof getCompositeKeyForUser>;
+ const mockPhoneKey = getCompositeKeyForPhone as jest.MockedFunction<typeof getCompositeKeyForPhone>;
+ const mockExcluded = getExcludedPhones as jest.MockedFunction<typeof getExcludedPhones>;
++const mockMemberMiddles = memberMiddles as jest.MockedFunction<typeof memberMiddles>;
+ 
+ function graphReturning(paths: string[][]): { run: jest.Mock; close: jest.Mock } {
+   const session = {
+@@ -46,6 +52,7 @@ beforeEach(() => {
+   mockUserKey.mockResolvedValue('+995500000001');
+   mockPhoneKey.mockResolvedValue('+995500000009');
+   mockExcluded.mockResolvedValue([]);
++  mockMemberMiddles.mockResolvedValue([]);
+   mockQuery.mockResolvedValue({
+     rows: [
+       { phone: '+995500000002', name: 'გია' },
+@@ -143,4 +150,32 @@ describe('findWarmPath', () => {
+ 
+     expect((out as { reason: string }).reason).toBe('target_not_in_graph');
+   });
++
++  // 3732 (box 52742): the members' own longer chain is offered beside the graph's short path.
++  it('adds the members-only chain the shortest-path read never returns', async () => {
++    graphReturning([['+995500000001', '+995500000003', '+995500000009']]);
++    mockMemberMiddles.mockResolvedValue([['+995500000002', '+995500000004']]);
++
++    const out = await findWarmPath('1', '+995500000009');
++
++    expect(out.found).toBe(true);
++    if (!out.found) return;
++    expect(out.paths.map((p) => p.bridges.map((b) => b.phone))).toEqual([
++      ['+995500000003'],
++      ['+995500000002', '+995500000004'],
++    ]);
++    expect(out.paths[1]?.relayable).toBe(true);
++  });
++
++  it('keeps the graph paths alone when the members read fails', async () => {
++    graphReturning([['+995500000001', '+995500000002', '+995500000009']]);
++    mockMemberMiddles.mockRejectedValue(new Error('statement timeout'));
++    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++
++    const out = await findWarmPath('1', '+995500000009');
++
++    expect(out.found).toBe(true);
++    if (!out.found) return;
++    expect(out.paths).toHaveLength(1);
++  });
+ });
+diff --git a/src/services/tools/findWarmPath.ts b/src/services/tools/findWarmPath.ts
+index e7166e8..1429329 100644
+--- a/src/services/tools/findWarmPath.ts
++++ b/src/services/tools/findWarmPath.ts
+@@ -4,6 +4,7 @@ import { getSession } from '../../db/neo4j/client';
+ import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
+ import { getExcludedPhones } from '../block.service';
+ import { normalizePhone } from '../phone';
++import { memberMiddles } from '../memberPaths.service';
+ import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
+ 
+ /**
+@@ -184,6 +185,39 @@ export async function namesFor(
+   return new Map(result.rows.map((r) => [normalizePhone(r.phone), r.name]));
+ }
+ 
++/**
++ * 3732 (box 52742): the graph returns the SHORTEST paths only, so beside a
++ * short path through somebody who cannot carry the request, the members' own
++ * longer chain (owner → B1 → B2 → target) was never offered. 1849's members-only
++ * read (memberPaths) finds it; it is added here, so the chat sees what the path
++ * map sees. Fails towards the graph's paths alone.
++ */
++async function memberChainsTo(userId: string, targetPhone: string): Promise<string[][]> {
++  try {
++    const chains = await memberMiddles(Number(userId), targetPhone);
++    return chains.map((middle) => middle.map(normalizePhone));
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('findWarmPath member chains:', (err as Error).message);
++    return [];
++  }
++}
++
++/** The graph's middles, then each member chain the graph did not already return. */
++export function withMemberChains(
++  graphMiddles: readonly string[][],
++  memberChains: readonly string[][],
++): string[][] {
++  const seen = new Set(graphMiddles.map((middle) => middle.join('>')));
++  const added = memberChains.filter((middle) => {
++    const key = middle.join('>');
++    if (middle.length === 0 || seen.has(key)) return false;
++    seen.add(key);
++    return true;
++  });
++  return [...graphMiddles, ...added];
++}
++
+ export async function findWarmPath(
+   userId: string,
+   targetPhoneRaw: string,
+@@ -241,9 +275,13 @@ export async function findWarmPath(
+ 
+   const blocked = new Set((await getExcludedPhones(userId)).map(normalizePhone));
+   // Middlemen only: the first key is the user, the last the target.
+-  const candidates = rows
+-    .map((r) => r.keys.slice(1, -1).map((k) => normalizePhone(primaryPhone(k))))
+-    .filter((bridges) => bridges.every((p) => !blocked.has(p)));
++  const graphMiddles = rows.map((r) =>
++    r.keys.slice(1, -1).map((k) => normalizePhone(primaryPhone(k))),
++  );
++  const candidates = withMemberChains(
++    graphMiddles,
++    await memberChainsTo(userId, targetPhone),
++  ).filter((bridges) => bridges.every((p) => !blocked.has(p)));
+   if (candidates.length === 0) {
+     return {
+       found: false,
+diff --git a/src/services/warmPathAfterSearch.ts b/src/services/warmPathAfterSearch.ts
+new file mode 100644
+index 0000000..2e2a23d
+--- /dev/null
++++ b/src/services/warmPathAfterSearch.ts
+@@ -0,0 +1,41 @@
++import { asksForAPersonByName } from './personByName';
++
++/**
++ * 3732 (box 52742, 0 of 2 on 0138+0139): „მინდა <target>-ს დავუკავშირდე. ვისი
++ * გავლით შემიძლია?" ran the name, second-degree and tag searches, found the
++ * target, and answered from them — find_warm_path was never called, so the
++ * members' chain (owner → B1 → B2 → target) never reached the reply. Forcing
++ * the walk FIRST failed before (box 52110): with no target found yet it came
++ * back empty. So the walk is forced AFTER a search round, once, and only on a
++ * line that asks to reach a person by name. No new words to the model: the
++ * tool is chosen for it, and it takes the target from the search it just read.
++ */
++export const WARM_PATH_TOOL = 'find_warm_path';
++
++/** The searches that can find the person the owner named. */
++export const PERSON_SEARCH_TOOLS: ReadonlySet<string> = new Set([
++  'search_contact_by_name',
++  'search_second_degree',
++  'search_by_tag',
++]);
++
++export interface RoundAfterSearch {
++  /** The owner's line this run answers. */
++  readonly ownerLine: string;
++  /** Every tool the run has called so far, this round included. */
++  readonly toolsUsed: readonly string[];
++  /** The tools of the round that just ran. */
++  readonly roundTools: readonly string[];
++  /** Whether find_warm_path is among the tools this run holds. */
++  readonly walkOffered: boolean;
++}
++
++/** Should the next call be the walk to the person the owner named? */
++export function walksToTheNamedPerson(round: RoundAfterSearch): boolean {
++  return (
++    round.walkOffered &&
++    !round.toolsUsed.includes(WARM_PATH_TOOL) &&
++    round.roundTools.some((name) => PERSON_SEARCH_TOOLS.has(name)) &&
++    asksForAPersonByName(round.ownerLine)
++  );
++}
+-- 
+2.43.0
+

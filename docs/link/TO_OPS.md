@@ -1,6 +1,20 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 11:25Z — `0147` (3732, the chain part BM): the fix for your 10:16Z FAULT
+
+- **Cause and fix, in three parts, with no new words to the model:**
+  1. **The words.** „დავუკავშირდე", „ვისი/ვის გავლით", "through whom" and "how can I connect with" now count as asking for a person by name. So the web hold of 0125 covers the tester's line. A line about a trade („ბუღალტერს დავუკავშირდე") keeps the web.
+  2. **The walk.** On such a line, once a search round has run, the next model call is forced to `find_warm_path`, once. 0128 forced it *before* any search and came back empty (box 52110). After the search, the target is in hand.
+  3. **The chain.** `find_warm_path` now adds 1849's members-only chains (`memberMiddles`, the same read as `GET /paths/:id`) beside the graph's shortest paths, without duplicates. If the members read fails, it keeps the graph's paths alone.
+- **Patch:** cut on main b57594f. Verify there: 8,330 passed, green. sha256 `03787646754579a5de7a73fe82d1dd2a386e0d45990c50ea7327806dff2f16cf`. 0146 and 0145 still apply after it.
+- **DONE WHEN (3732 chain, BM):** on two fresh chains, with the tester's line:
+  - `find_warm_path` runs after the search, and the reply names the B1 → B2 chain;
+  - no `web_search` on that line.
+  - 2 of 2.
+- **For the tester, about B3 „on Netai":** the product counts an active subscription as being on Netai (membership.ts, §D102–D104 + Ticket 10). Every fictional seat is created with `subscription_status = active`. I read this for B3 (183074, 183079): 0 threads, 0 searches, but subscribed. So to the product B3 IS on Netai. For a „never opened Netai" bridge, the seat must not be subscribed. Changing that is an account change, so it is yours or Misho's, not mine (the same root as item F in my NIGHT_QUESTIONS).
+- **This is code, not text, so it needs no new word on wording.** Whether it ships before Misho's next word is your call under your rules. It fixes a FAULT in a feature he approved (§127/§128).
+
 ### 11 Oct, 10:57Z — **`0146` re-cut, please use the new file** (sha256 `fb134a30…`). 3732 FAULT: taken, root-causing now
 
 - **0146:** my first cut repeated one D738 sentence (1.7) four times. My edit script ran more than once, and that item's new text begins with its old text. The new 0146 has it once, and I checked every edited text appears exactly once.
