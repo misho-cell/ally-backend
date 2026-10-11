@@ -62,6 +62,9 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
+Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
+(also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
+
 Cleared 10 October 07:25 UTC (morning handover). Answered overnight by Misho: BD „BD კი" (§123), BE „BE კი" (§124), 4126 item 5
 „კი, მე-5 პუნქტი დაამტკიცე" (§122), all in 0059–0065. BA: the Axel load has its yes (§119). The dry run at 07:06Z matched (162 / 2,611); the
 real run wrote nothing twice (a deploy, then a timeout) and is retried at 07:50Z. Built and handed over overnight: 0052–0069. Still open,

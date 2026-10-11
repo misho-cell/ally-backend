@@ -6241,3 +6241,20 @@ questions, „კი, ეტაპებად" and „ფრონტის ს
 - **The member card: the frontend's list.** Name, role · company, city, areas, and „open to" (the member's own saved offers). Every
   field the member hid in their own settings (`hideUserWorkInfo` and the rest) stays hidden.
 - **Undo:** the routes are read-only; removing them is one commit each.
+
+**§128 — 11 October ~06:15 UTC, Misho in the code session's chat: „ყველა კი"** (yes to every item on the morning list I put to him at
+~06:05 UTC). Each item, as it stood on that list:
+
+- **0113 + 0116 (1849, members-only paths and the member card, §127):** ship. They also close 3732's chain part (NIGHT_QUESTIONS BM).
+- **BN (3731):** the line the recommended person reads after the helper's tap, exactly as in NIGHT_QUESTIONS BN.
+  `RECOMMENDED_RELAY_ON = true`.
+- **BL (4423):** the note that stops an assistant-only question sent back to a helper, exactly as in NIGHT_QUESTIONS BL.
+  `ANSWER_NOT_QUESTION_ON = true`.
+- **BK (4555):** the owner's line after a value kept only as „mentioned", exactly as in NIGHT_QUESTIONS BK. `MENTIONED_NOTE_LINE_ON = true`.
+- **0131 (2641):** the public `GET /invite-codes/:code` route, one bit, rate-limited. It opens access, on this word (and §99.11).
+- **0120 (chorus):** the inviter read that no longer times out. It restarts the campaign's real outreach, so it ships in daylight
+  (Tbilisi), not at night (§121).
+- **BJ (D771), BB (3829 a), BF (1697), BH (frontend item 7):** the drafted texts in NIGHT_QUESTIONS, approved as written. Each is built
+  and shipped on its own.
+- **0093 (4295):** the timers run between deploys.
+- **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.

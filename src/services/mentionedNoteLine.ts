@@ -8,9 +8,9 @@ import { RunLanguage } from './runLanguage';
  * happened (kept_as: mentioned_note) and the model ignored it both times. So
  * the sentence that claims the save is replaced by the server's own line.
  *
- * OFF until Misho's yes on the exact lines below (NIGHT_QUESTIONS BK).
+ * ON by Misho's „ყველა კი" on the morning list, 11 Oct ~06:15 UTC (§128, NIGHT_QUESTIONS BK).
  */
-export const MENTIONED_NOTE_LINE_ON = false;
+export const MENTIONED_NOTE_LINE_ON = true;
 
 const MENTIONED_LINE: Readonly<Record<RunLanguage, (value: string) => string>> = {
   ka: (value) => `ეს ჩავინიშნე როგორც ნახსენები: „${value}“. შენი ნათქვამი უცვლელად დარჩა.`,

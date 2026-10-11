@@ -16,10 +16,11 @@ describe('a value kept only as a mentioned note', () => {
     expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka', true)).toBe(reply);
   });
 
-  it('does nothing while it is off, which it is until Misho’s yes (BK)', () => {
+  it('is ON by Misho’s yes (§128, BK), and does nothing when switched off', () => {
     const reply = 'შევინახე: ბახვა, სამსახური: „სანიმუშო ბანკი“.';
-    expect(MENTIONED_NOTE_LINE_ON).toBe(false);
-    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka')).toBe(reply);
+    expect(MENTIONED_NOTE_LINE_ON).toBe(true);
+    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka')).not.toBe(reply);
+    expect(withMentionedNoteLine(reply, 'სანიმუშო ბანკი', 'ka', false)).toBe(reply);
   });
 
   it('is applied to every reply, with the value the save kept as a note', () => {

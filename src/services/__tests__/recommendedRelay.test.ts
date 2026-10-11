@@ -24,9 +24,10 @@ describe('recommendedRelayLine', () => {
     expect(recommendedRelayLine('ka', { ...RELAY, asker: '' }, true)).toBeNull();
   });
 
-  it('is OFF until Misho approves the lines (NIGHT_QUESTIONS BN)', () => {
-    expect(RECOMMENDED_RELAY_ON).toBe(false);
-    expect(recommendedRelayLine('ka', RELAY)).toBeNull();
+  it('is ON by Misho’s yes (§128, BN), and keeps the 1696 line when switched off', () => {
+    expect(RECOMMENDED_RELAY_ON).toBe(true);
+    expect(recommendedRelayLine('ka', RELAY)).not.toBeNull();
+    expect(recommendedRelayLine('ka', RELAY, false)).toBeNull();
   });
 
   it('is used only for a recommendation, with the names the referred person knows', () => {
