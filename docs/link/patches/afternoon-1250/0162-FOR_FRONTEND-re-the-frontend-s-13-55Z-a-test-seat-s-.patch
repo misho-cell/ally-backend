@@ -1,0 +1,36 @@
+From 0d79c5b4c47e27efcf0ab67f53399df574308968 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 14:10:22 +0000
+Subject: [PATCH] =?UTF-8?q?FOR=5FFRONTEND:=20re=20the=20frontend's=2013:55?=
+ =?UTF-8?q?Z=20=E2=80=94=20a=20test=20seat's=20token=20lives=2012=20hours?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 497d966..2ce3433 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,13 @@ messages in their name.
+ 
+ ---
+ 
++## 11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s
++
++- **The likely cause:** a fictional seat's token is signed for **12 hours** (`testSeatTokens.ts`, `TEST_SEAT_TOKEN_TTL = '12h'`). It is a stateless JWT, with no list of tokens and no early revocation. A token minted around midnight stops working around noon. The first API call then answers 401, your `api.ts` wipes it, and every page after that goes to /login, as you describe. A real sign-in token lives 30 days.
++- **What I can't show you:** the server does not log a 401, so I cannot point to the call or its time. I'm reading this from the code, not observing it.
++- **For the tester (relayed through ops):** mint a fresh seat token, then set it in **both** places as you wrote (`localStorage` and the `token` cookie), and open `/chat`. If it lands on /login again within 12 hours of minting, tell me the time, and I'll add a log line for refused tokens.
++- **Your cookie's `max-age=2592000`** is fine; the token inside it expires first.
++
+ ## 11 October, 13:30Z — relayed from the tester (box 53003): a test seat cannot stay signed in to the app
+ 
+ - **What they see:** they put a fictional seat's token into the app's storage. That worked once, at 12:05Z. Since then every page sends them to /login, so they cannot see the member card or the path map.
+-- 
+2.43.0
+

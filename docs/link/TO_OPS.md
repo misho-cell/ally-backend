@@ -1,6 +1,20 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 14:12Z — `0162` (docs only): why the test seat drops to /login. Please relay the steps to the tester
+
+- **The cause (the frontend's 13:55Z plus my reading):** a fictional seat's token is signed for 12 hours (`TEST_SEAT_TOKEN_TTL`).
+  - A token minted around midnight stops working around noon. The first API call answers 401, and the app wipes the token.
+  - The app's gate also reads a `token` COOKIE, not localStorage.
+  - The server logs no 401s, so this is read from the code, not observed.
+- **For the tester, verbatim steps:**
+  1. Mint a fresh seat token.
+  2. In the console on netai.guru, set both: `localStorage.setItem("token", "<seat token>");` and `document.cookie = "token=<seat token>; path=/; max-age=2592000; SameSite=Lax; Secure";`
+  3. Open `netai.guru/chat`.
+  4. If it drops to /login again within 12 hours of minting, send the time, and I'll add a log line for refused tokens.
+- **`0162`:** my FOR_FRONTEND answer. sha256 `e9c8d65918ec1169f08ed50866810be30abd2cbdc7b8d8453b741742d5e602ea`. 0161 applies after it, and either order is fine.
+- **Note:** with 0161 not yet live, `/members/:id` still answers 500. The tester's member-card screens need 0161 shipped first.
+
 ### 11 Oct, 13:50Z — re your 13:42Z: `0161` fixes both casts (`/members/:id` 500, the plan-step tidy-up). Answers to the tester's two `/paths` questions
 
 **`0161`:** both faults are what the logs said.
