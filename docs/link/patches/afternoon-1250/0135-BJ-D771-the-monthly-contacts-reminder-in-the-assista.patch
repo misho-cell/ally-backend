@@ -1,0 +1,213 @@
+From ffd679e6722685e85dbc4631d0565612a0a0f7bd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 06:27:30 +0000
+Subject: [PATCH] =?UTF-8?q?BJ=20(D771):=20the=20monthly=20contacts=20remin?=
+ =?UTF-8?q?der=20in=20the=20assistant's=20own=20words=20(=C2=A7128)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Approved in §128 (Misho's „ყველა კი", 11 Oct) with the section text in
+NIGHT_QUESTIONS BJ, word for word.
+
+Once a month, the owner's own run — a regular conversation, owner
+present, no goal, the same places the day's question may run — carries
+the approved section asking, in the assistant's own words, for the
+contacts saved since the last import. Only for someone whose reminder
+switch is on and whose last real import is over 30 days old. It shares
+BH's monthly mark (contact_import_reminded_at, migration 236), claimed in
+one UPDATE: a person is reminded once a month, by push or in chat, never
+both. Never beside the day's question; a failed read adds nothing.
+
+Requires 0134 (the column and SYNC_REMINDER_DAYS).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anEmptyPhonebookIsSaidOnce.test.ts        |  2 +-
+ .../__tests__/contactsReminderSection.test.ts | 53 +++++++++++++++++
+ src/services/chat.service.ts                  | 17 ++++++
+ src/services/contactsReminderSection.ts       | 57 +++++++++++++++++++
+ 4 files changed, 128 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/contactsReminderSection.test.ts
+ create mode 100644 src/services/contactsReminderSection.ts
+
+diff --git a/src/services/__tests__/anEmptyPhonebookIsSaidOnce.test.ts b/src/services/__tests__/anEmptyPhonebookIsSaidOnce.test.ts
+index 0d3085d..ab39e45 100644
+--- a/src/services/__tests__/anEmptyPhonebookIsSaidOnce.test.ts
++++ b/src/services/__tests__/anEmptyPhonebookIsSaidOnce.test.ts
+@@ -31,6 +31,6 @@ describe('a goal run with no phonebook', () => {
+     expect(chat).toContain(
+       '!ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined',
+     );
+-    expect(chat).toMatch(/contactQuestion \+\s+noContacts \+/u);
++    expect(chat).toMatch(/contactQuestion \+\s+contactsReminder \+\s+noContacts \+/u);
+   });
+ });
+diff --git a/src/services/__tests__/contactsReminderSection.test.ts b/src/services/__tests__/contactsReminderSection.test.ts
+new file mode 100644
+index 0000000..282cfbe
+--- /dev/null
++++ b/src/services/__tests__/contactsReminderSection.test.ts
+@@ -0,0 +1,53 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { CONTACTS_REMINDER_SECTION, contactsReminderSection } from '../contactsReminderSection';
++
++/** BJ (D771, §128): the monthly contacts reminder in the assistant's own words. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const OWN_RUN = { ownerPresent: true, regularThread: true, goalBound: false, preview: false };
++
++beforeEach(() => mockQuery.mockReset());
++
++describe('contactsReminderSection', () => {
++  it('adds the approved section when this month’s reminder is claimed', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ id: 7 }], rowCount: 1 } as never);
++    await expect(contactsReminderSection('7', OWN_RUN, false)).resolves.toBe(
++      CONTACTS_REMINDER_SECTION,
++    );
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(sql).toContain('UPDATE "User" u SET contact_import_reminded_at = NOW()');
++    expect(sql).toContain('u.contact_import_reminder');
++    expect(params).toEqual(['7', 30]);
++  });
++
++  it('adds nothing when it is not due', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++    await expect(contactsReminderSection('7', OWN_RUN, false)).resolves.toBe('');
++  });
++
++  it('never rides beside the day’s question, in a goal, or without the owner', async () => {
++    await expect(contactsReminderSection('7', OWN_RUN, true)).resolves.toBe('');
++    await expect(
++      contactsReminderSection('7', { ...OWN_RUN, goalBound: true }, false),
++    ).resolves.toBe('');
++    await expect(
++      contactsReminderSection('7', { ...OWN_RUN, ownerPresent: false }, false),
++    ).resolves.toBe('');
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('fails towards nothing when the read fails', async () => {
++    mockQuery.mockRejectedValue(new Error('timeout'));
++    await expect(contactsReminderSection('7', OWN_RUN, false)).resolves.toBe('');
++  });
++
++  it('is the approved text, and goes into the owner’s run after the day’s question', () => {
++    expect(CONTACTS_REMINDER_SECTION).toContain('## კონტაქტების განახლება (D771)');
++    expect(CONTACTS_REMINDER_SECTION).toContain('ერთხელ, მოკლედ, ღილაკის გარეშე.');
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('      contactQuestion +\n      contactsReminder +\n');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index bbcc902..c1fd07b 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -228,6 +228,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
+ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+ import { geoName } from './georgianCase';
+ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
++import { contactsReminderSection } from './contactsReminderSection';
+ import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+ import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+ import { refersSomebody } from './referralRecommendation';
+@@ -5288,6 +5289,21 @@ async function buildAgentSystemPrompt(
+     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+     ownerLine,
+   });
++  // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words.
++  const contactsReminder = await contactsReminderSection(
++    userId,
++    {
++      ownerPresent: !ownerAbsent,
++      regularThread: threadType === 'regular',
++      goalBound: boundTask !== null,
++      preview: forcedMode !== undefined,
++      ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
++      ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
++      ownerAsksWhatWaits: asksWhatWaits(ownerLine),
++      ownerLine,
++    },
++    contactQuestion !== '',
++  );
+   // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
+   const noContacts =
+     !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
+@@ -5312,6 +5328,7 @@ async function buildAgentSystemPrompt(
+       waveNote +
+       firstAsk +
+       contactQuestion +
++      contactsReminder +
+       noContacts +
+       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
+       // Row 211: beside the ask section and for the same reason — what this
+diff --git a/src/services/contactsReminderSection.ts b/src/services/contactsReminderSection.ts
+new file mode 100644
+index 0000000..6372e35
+--- /dev/null
++++ b/src/services/contactsReminderSection.ts
+@@ -0,0 +1,57 @@
++import { query } from '../db/postgres/client';
++import { SYNC_REMINDER_DAYS } from './contactSyncReminder';
++import { contactQuestionMayRun, RunPresence } from './dailyContactQuestion';
++
++/**
++ * BJ (D771; §128, Misho's „ყველა კი", 11 Oct): once a month the owner's own
++ * run asks, in the assistant's own words, for the contacts saved since the
++ * last import — only for someone whose reminder switch is on and whose last
++ * real import is over 30 days old, in a regular conversation with no goal,
++ * like the day's question. It shares BH's monthly mark
++ * (contact_import_reminded_at), so a person is reminded once a month, by push
++ * or in chat, never both.
++ */
++const QUERY_TIMEOUT_MS = 4_000;
++
++/** The approved section, word for word (NIGHT_QUESTIONS BJ). */
++export const CONTACTS_REMINDER_SECTION =
++  '\n\n## კონტაქტების განახლება (D771)\n' +
++  'ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, შენი სიტყვებით და შენი ტონით სთხოვე, ' +
++  'ტელეფონში ახლად შენახული ადამიანები Netai-ში ატვირთოს, და ერთი წინადადებით უთხარი რატომ: რაც მეტი ' +
++  'კონტაქტი გაქვს, მით უკეთ შეძლებ მის დახმარებას — მისთვისაც და ყველასთვის. ერთხელ, მოკლედ, ღილაკის გარეშე.';
++
++/** Claims this month's reminder for the owner when it is due; false when it is not (or the read fails). */
++async function claimMonthlyReminder(userId: string): Promise<boolean> {
++  try {
++    const result = await query<{ id: number }>(
++      `UPDATE "User" u SET contact_import_reminded_at = NOW()
++        WHERE u.id = $1::int AND u.contact_import_reminder
++          AND (u.contact_import_reminded_at IS NULL
++               OR u.contact_import_reminded_at < NOW() - make_interval(days => $2))
++          AND (SELECT MAX(ia.created_at) FROM import_attempts ia
++                WHERE ia.user_id = u.id AND ia.imported > 0 AND NOT ia.in_progress)
++              < NOW() - make_interval(days => $2)
++        RETURNING u.id`,
++      [userId, SYNC_REMINDER_DAYS],
++      QUERY_TIMEOUT_MS,
++    );
++    return result.rows.length > 0;
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(`[contacts-reminder] user ${userId}:`, (err as Error).message);
++    return false;
++  }
++}
++
++/**
++ * The section for this run, or ''. Never beside the day's question: one side
++ * request per reply, and the reminder waits for another run.
++ */
++export async function contactsReminderSection(
++  userId: string,
++  presence: RunPresence,
++  dayQuestionShown: boolean,
++): Promise<string> {
++  if (dayQuestionShown || !contactQuestionMayRun(presence)) return '';
++  return (await claimMonthlyReminder(userId)) ? CONTACTS_REMINDER_SECTION : '';
++}
+-- 
+2.43.0
+

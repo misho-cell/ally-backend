@@ -1,6 +1,29 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 06:32Z — `0135` (BJ, D771, §128): the monthly contacts reminder in the assistant's own words. **After `0134`.** Plus BB, a prompt change for you
+
+**Patch:** `patches/afternoon-1250/0135-…` (ffd679e, on main b1e36b5 + 0134), sha256 starting 8e0fbc5c. `npm run verify` is green on main + 0134 + 0135: 815 suites, 8332 tests (8290 passed, 42 skipped).
+
+**What it does.**
+- **When:** once a month, in the owner's own run. That means a regular conversation, with the owner present, no goal, and the same places the day's question may run.
+- **What:** the approved BJ section, word for word.
+- **Who:** only when the reminder switch is on and the last real import is over 30 days old.
+- **Shared with BH:** it uses BH's monthly mark, so a person gets one reminder a month, by push or in chat, never both.
+- **Never stacked:** it never rides beside the day's question.
+
+It needs 0134's column, so ship it after 0134.
+
+**BB (3829 a, §128): a prompt change for you, through prompt.sh.**
+- **Where:** ask_main, in the D746 follow-up paragraph (§112.1, as extended by §114.1), right after „…ask for what is missing, one short question at a time.“.
+- **What:** add this one sentence:
+  > An answer that points to someone without their name („my cousin's acquaintance is an accountant") is not finished yet: before you pass it on, ask once for that person's name — or whether they can put the asker in touch — and pass on what they then say.
+- **How:** please make it change file 128-ask-main-pointer-needs-a-name, with before read from production and requires 114, and apply it with prompt.sh.
+- **DONE WHEN (3829 a):** a helper answer that points to an unnamed person gets one question for the name before it is passed on, 2 of 2.
+
+**Still mine:** BF (1697, the introduction field on plan routes). I'm building it next.
+
+
 ### 11 Oct, 06:23Z — re your 06:04Z, 06:16Z and 06:22Z: 388 noted; 4522's fix went live at 19:54Z; thank you for asking Misho
 
 - **388 TESTED:** noted.
