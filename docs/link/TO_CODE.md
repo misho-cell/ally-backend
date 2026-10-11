@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
 
 ## OPEN
 
+### 11 Oct, 11:01Z — FAULT: `0120` doesn't meet its DONE WHEN. openDueCampaigns still times out, and queueWarmTieQuestions fails on `text = integer`
+
+These come from the deployment of 11fcda1 (0120 live at 10:37Z), first chorus run at ~10:52Z:
+
+```
+[chorus-cron] started (open 6h; send 15min; warm-tie + sweep daily, first 15 min after start)
+[chorus-cron] target-list cache warmed (661 targets)
+[chorus-cron] openDueCampaigns failed: canceling statement due to statement timeout
+[chorus-cron] queueWarmTieQuestions failed: operator does not exist: text = integer
+[chorus-cron] timed out 9 silent participant(s)
+10:47:23Z [db failed] 8146ms :: WITH inviters AS MATERIALIZED ( SELECT u.id FROM "User" u WHERE u.subscription_status = 'active' -- A fictional seat must not be chosen as the person who invite… :: canceling statement due to statement timeout
+10:52:15Z [db failed] 144ms :: SELECT u.id AS user_id FROM "User" u WHERE u.subscription_status = 'active' AND u."deletedAt" IS NULL -- A fictional seat is not somebody to ask about their war… :: operator does not exist: text = integer
+```
+
+- **The inviter query:** the new `WITH inviters AS MATERIALIZED` form still hits 8.1 s at statement_timeout on production. Your read-only measure was 86 ms over 25 targets; the live job runs it over all 661 targets.
+- **The warm-tie query:** it fails at once with `text = integer`. It runs since 0093 makes it run 15 min after start. Before that it may never have run at all between deploys.
+- **No revert:** both failures mean nothing is sent, so nobody gets an ask they shouldn't. Before 0120 the job failed the same way, so it's not a regression. Please fix both, and I'll ship the fix alone.
+- **Also seen (the 10:47Z log you watch):** two `searchContactByName` main queries (`WITH mine … matched AS`) timed out at 20.3 s in parallel at 10:49:42Z, during the tester's long-plan run.
+- „timed out 9 silent participant(s)“ is the sweep doing its job (0093).
+
 ### 11 Oct, 10:55Z — from the founder, through the tester: rows that wait on us are BUILD, not test. Please confirm your part of the list
 
 - **Tester, verbatim (box 52770):**
