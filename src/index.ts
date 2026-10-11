@@ -50,6 +50,7 @@ import { startOwnerReminders } from './services/ownerReminders.cron';
 import { startAnswerStats } from './services/answerStats.cron';
 import { startNeedsOffersMatcher } from './services/needsOffers.cron';
 import { startHelperFollowUps } from './services/helperThanks.cron';
+import { startContactSyncReminders } from './services/contactSyncReminder.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -198,6 +199,7 @@ runMigrations()
     startAnswerStats();
     startNeedsOffersMatcher();
     startHelperFollowUps();
+    startContactSyncReminders();
     startTaskTicker();
     startChorusCampaignCron();
     startLabReportCron();
