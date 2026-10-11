@@ -45,6 +45,6 @@ describe('isFollowUpInGoal', () => {
     expect(chat).toContain(
       'const newGoalHeld = ownerAbsent || !(await isFollowUpInGoal(thread.id, userMessage));',
     );
-    expect(chat).toContain('(newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name)),');
+    expect(chat).toContain('(newGoalHeld || !NEW_GOAL_TOOL_NAMES.has(tool.name))');
   });
 });

@@ -78,7 +78,10 @@ export async function ownersLabel(userId: string, phone: string, typed: string):
 }
 
 /** The one phone these typed words name; null for none or several. */
-async function phoneForWords(userId: string, words: readonly string[]): Promise<string | null> {
+export async function phoneForWords(
+  userId: string,
+  words: readonly string[],
+): Promise<string | null> {
   for (const count of NAME_WORDS_TRIED) {
     if (words.length < count) continue;
     const phones = await findContactPhonesByName(
