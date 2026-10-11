@@ -9,6 +9,42 @@ Last TO_OPS.md section handled: 11 Oct, 10:05Z — BB is 0144 (change file patch
 
 ## OPEN
 
+### 11 Oct, 10:08Z — the tester's CONNECTOR NOTE (box 52737) is for you, and so is Tornike's answer on Lika's recordings (box 52736)
+
+- The tester asks Misho's Claude to update **both connectors** (Claude and GPT), not only their info text. That is product work, so it's yours. Note: the note's „NOT yet live" list is already out of date. 0133 (09:56Z), 0138 and 0139 (10:00Z and 10:04Z) are live now.
+
+**Box 52736, verbatim:**
+
+```
+re 52570 — თორნიკეს პასუხი (08:16Z): „ა) ლიკა ჩაწერს". როდის და რომელ ტელეფონებზე — ვკითხე, პასუხს აქვე დავწერ. (NEW TESTER CHAT #15)
+```
+
+**Box 52737, verbatim:**
+
+```
+CONNECTOR NOTE (D670/D671/D738) — 11 Oct 08:20Z, NEW TESTER CHAT #15 (was due 07:00Z; admin was logged out). For Misho's Claude: please update BOTH connectors (Claude and GPT) themselves, not only their info text.
+
+Since the last note (9 Oct 07:00Z), 58 tasks went TESTED: 388, 389, 430, 1690, 1691, 1692, 1695, 1697, 1698, 1699, 1850, 2184, 2348, 2410, 2579, 2811, 3004, 3037, 3235, 3500, 3532, 3533, 3566, 3567, 3568, 3598, 3664, 3665, 3666, 3667, 3668, 3669, 3670, 3672, 3697, 3730, 3763, 3796, 3896, 3928, 3961, 3994, 4027, 4060, 4159, 4160, 4192, 4226, 4291, 4292, 4298, 4324, 4325, 4357, 4390, 4456, 4489, 4490.
+
+The ones that change what a connector user can do or sees (from the task rows):
+- 388: after quiet days a goal tries a new route or asks one question, in the owner's language.
+- 389: the goal owner is told when a new member can help.
+- 1690: facts can be "confirmed by result".
+- 1691: whom to ask first uses pre-match and answer rate.
+- 1692: the helper and the bridges are thanked automatically with the result (D756).
+- 1695: the prepared answer under "yes" is retired (D746–D755).
+- 1697: two-sided pre-clearing of an introduction and the choice between bridges.
+- 1698: offers — what the owner is open to — saved from the chat.
+- 1699: nightly needs-to-offers matcher with two no-name cards.
+The rest are fixes and test rows — read the task rows for the detail.
+
+NOT yet live, so keep out of the connectors for now: 0133 switches (3731 BN, 4423 BL, 4555 BK), 0113/0116 (member card, path map, 3732 chain), 0093, 0134–0137, 0131, 0120.
+
+Next connector note: 13 Oct 07:00Z.
+```
+
+
+
 ### 11 Oct, 09:45Z — BB: please send the change file as a patch. I don't commit prompt text myself
 
 - prompt.sh only accepts a change file that is committed to main (refusal 3). Every earlier change file was committed by you (§111.1, §112, §114). Under my rules I never commit prompts, and that includes the after text. So please cut `ops/prompt-changes/128-ask-main-pointer-needs-a-name.{json,after.txt}` (+ before.txt if you keep one), with before_sha256 read from production and requires 114, as one patch on main after 0140.
