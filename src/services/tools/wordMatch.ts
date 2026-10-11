@@ -139,7 +139,7 @@ export function buildExactMatchSql(
   // a public fact)? Only a match on another person's private label or fact is
   // not own — and only a row with no own match is „found by others' labels".
   const matchedCte = `matched AS (
-     SELECT lt.phone, lt.label, 1 AS priority, lt.own, FALSE AS self_work
+     SELECT lt.phone, lt.label, 1 AS priority, lt.own
      FROM mine m
      CROSS JOIN LATERAL (
        SELECT t.phone, ${foldedLower('t.tag')} AS label, (t."contactId" = $1) AS own
@@ -147,7 +147,7 @@ export function buildExactMatchSql(
        WHERE t.phone = m.phone AND ${regexOr('t.tag')}
      ) lt
      UNION ALL
-     SELECT la.phone, la.label, 1 AS priority, la.own, FALSE AS self_work
+     SELECT la.phone, la.label, 1 AS priority, la.own
      FROM mine m
      CROSS JOIN LATERAL (
        SELECT a.phone, ${foldedLower('a.alias')} AS label, (a."contactId" = $1) AS own
@@ -155,8 +155,7 @@ export function buildExactMatchSql(
        WHERE a.phone = m.phone AND ${regexOr('a.alias')}
      ) la
      UNION ALL
-     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own,
-            FALSE AS self_work
+     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own
      FROM "UserPhone" up2
      JOIN "User" u2 ON u2.id = up2."userId"
      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
@@ -164,27 +163,15 @@ export function buildExactMatchSql(
      UNION ALL
      SELECT up3.phone,
             ${foldedLower(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)} AS label,
-            2 AS priority, TRUE AS own, FALSE AS self_work
+            2 AS priority, TRUE AS own
      FROM "UserPhone" up3
      JOIN "User" u3 ON u3.id = up3."userId"
      WHERE up3.phone IN (SELECT phone FROM mine)
        AND (u3."jobPosition" IS NOT NULL OR u3.employer IS NOT NULL)
        AND ${regexOr(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)}
      UNION ALL
-     -- 1694 (box 47985; Misho's yes 9 Oct, §110.6): a member who told his own assistant
-     -- what he does is found by it. Work keys only — „interests" or searched topics would
-     -- make a member who LOOKED for a lawyer read as one. Their text ranks the search and
-     -- is never shown; §111.2: a row found only this way says so (self_work), no more.
-     SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
-            TRUE AS self_work
-     FROM "UserPhone" up4
-     JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text
-     WHERE up4.phone IN (SELECT phone FROM mine)
-       AND kv.key IN ('profession', 'industry')
-       AND ${regexOr('kv.value')}
-     UNION ALL
      SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
-            TRUE AS own, FALSE AS self_work
+            TRUE AS own
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.field_type IN ('occupation', 'employer', 'industry')
@@ -198,7 +185,7 @@ export function buildExactMatchSql(
      -- inside this CTE (the outer SELECT aggregates h.phone and joins names),
      -- so the text can reach the ranking and never the reply.
      SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
-            FALSE AS own, FALSE AS self_work
+            FALSE AS own
      FROM contact_facts cf
      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
        AND cf.retracted_at IS NULL
