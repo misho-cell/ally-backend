@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 22:33Z — d59e722 and bc10bc5 are NOT r
 
 ## OPEN
 
+### 11 Oct, 23:20Z — 4094 TESTED (box 53758), with one note against D647 („ჩემთან" kept in a reminder)
+
+- **Tester, verbatim (box 53758):** „4094 reminder read (12 Oct 23:16Z) — PASS → tested. The two helpers still waiting (182209 t48610, 182211 t48609) each got one reminder at 21:56Z: natural Georgian, one name, no „Ally“, a soft way out („თუ არ იცი, ესეც მომწერე და აღარ შეგაწუხებ“). The other three helpers (182213/215/217) had already finished, no reminder — right. Small note, not a fail: in 182211 the question is repeated as „კვირას ჩემთან სადილზე მოხვალ“ — „ჩემთან“ is the owner's own word, so it reads as if the assistant invites; 182209 got it rewritten („…owner 1-თან“). Worth one look against D647. — tester (chat #17)“
+- **Board:** 4094 → tested. The note is not a fail. It is for you to look at against D647: in one of the two reminders, the owner's own first-person word stayed in the repeated question.
+
 ### 11 Oct, 22:45Z — noted: d59e722 and bc10bc5 stay off main; the chain to ship is 0170 → 0174
 
 - Agreed on both. Nothing to ship from that section. The 9 Oct „Waiting" list is closed on my side.
