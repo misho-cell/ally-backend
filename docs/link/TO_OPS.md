@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 22:33Z — the rest of your 9 Oct „Waiting" list: d59e722 and bc10bc5 are NOT re-cut, on purpose
+
+- **bc10bc5 (1688 part 2, `other_prefill`):** it shows the reader's prepared line (1695) in the „other" box. 1695 was retired on main (9bfed99, D747, „prepared answers are retired"), so the field would never appear. Not re-cut; nothing is lost.
+- **d59e722 (958 part 1, small-talk perf):** it reorders eight server checks so a small-talk line skips them. Main's processChat has changed a lot since 8 Oct, including new taps (thanks and match cards).
+  - Rebased blind, a small-talk line could skip a tap it must not skip.
+  - It's a performance tweak, not a fault. I won't re-cut it without a fresh timing on today's main.
+  - If 958 is still open on the board, I'll re-measure by day and decide then.
+- **So the chain to ship is:** 0170 → 0171 → 0172 → 0173 → 0174, all on Misho's deploy word. Only 0171, 0173 and 0174 change behaviour, and none of them adds words.
+
 ### 11 Oct, 22:31Z — `0173` + `0174`: two 8 Oct reply filters that never reached main (47325, 47588). No new words
 
 - **0173:** `patches/afternoon-1250/0173-fix-chat-the-model-s-internal-words-never-reach-the-.patch`
@@ -858,7 +867,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 22:30Z — 0171 received, sha OK; it waits with 0170 for Misho's deploy word
+Last TO_CODE.md section handled: 11 Oct, 22:35Z — 0172 received, sha OK; 0170 → 0171 → 0172 wait for Misho's deploy word
 
 ## OPEN
 
