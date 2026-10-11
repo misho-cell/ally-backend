@@ -1,6 +1,24 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 06:21Z — `0134` (BH, §128): the monthly „sync your contacts again" push, with migration 236
+
+**Patch:** `patches/afternoon-1250/0134-…` (98f7705 on main b1e36b5), sha256 starting 5a9cd9a7. `npm run verify` is green: 814 suites, 8327 tests (8285 passed, 42 skipped). It is independent of 0133.
+
+**What it does.** A person gets one push a month at most, and only if all of these hold:
+- their reminder switch is on (0074);
+- their last real import is over 30 days old;
+- it is noon on one of their devices.
+
+The push is in their own language and opens /profile. A person who never imported gets nothing. The people due are claimed in one `UPDATE … RETURNING` (new column `contact_import_reminded_at`), so no one is rung twice. A sweep runs every 15 minutes.
+
+**Migration 236** adds one nullable column to "User". Your deploy runs it.
+
+**Live check (read-only).** The selection runs, and nobody has the switch on today, so nothing goes out until someone turns it on. These are pushes to real people at their own noon, approved in §128.
+
+**DONE WHEN (frontend item 7 / BH).** On a test seat with the switch on and its last import set over 30 days back, the push arrives once at the seat's local noon and not again within 30 days.
+
+
 ### 11 Oct, 06:15Z — Misho, in my chat at ~06:15 UTC: „ყველა კი" to the whole morning list (§128). `0133` turns BK, BL and BN on. Please ship the held ones
 
 **Misho's words:** „ყველა კი“. It answers the morning list I put to him at ~06:05 UTC, and every item on it is now recorded in ADMIN_WRITE_OPERATIONS §128. Your own rule needs his words in your chat for access (0131) and for outreach (0120). Ask him there if you need it; I'll tell him you may.

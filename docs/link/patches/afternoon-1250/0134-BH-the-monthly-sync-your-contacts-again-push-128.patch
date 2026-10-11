@@ -1,0 +1,295 @@
+From 98f770578043678884468031e86d6146a6eea6b4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 06:18:34 +0000
+Subject: [PATCH] =?UTF-8?q?BH:=20the=20monthly=20=E2=80=9Esync=20your=20co?=
+ =?UTF-8?q?ntacts=20again"=20push=20(=C2=A7128)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 06:30Z item 7. Approved in §128 (Misho's „ყველა კი", 11
+Oct) with the texts in NIGHT_QUESTIONS BH.
+
+Once a month at most, a person whose reminder switch is on (0074) and
+whose last real import is over 30 days old is rung once, at noon on one
+of their devices' own clock, in their own language, opening /profile. A
+person who never imported is not reminded. The due people are claimed
+in one UPDATE … RETURNING (migration 236: contact_import_reminded_at), so
+two processes never ring the same person; a sweep every 15 minutes
+catches each zone's noon. One failed push never stops the next.
+
+Checked read-only on live: the selection runs; nobody has the switch on
+yet, so nobody is rung until somebody turns it on.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../236_contact_import_reminded_at.sql        |  3 +
+ src/index.ts                                  |  2 +
+ .../__tests__/contactSyncReminder.test.ts     | 73 +++++++++++++++++++
+ src/services/contactSyncReminder.cron.ts      | 22 ++++++
+ src/services/contactSyncReminder.service.ts   | 60 +++++++++++++++
+ src/services/contactSyncReminder.ts           | 45 ++++++++++++
+ 6 files changed, 205 insertions(+)
+ create mode 100644 src/db/postgres/migrations/236_contact_import_reminded_at.sql
+ create mode 100644 src/services/__tests__/contactSyncReminder.test.ts
+ create mode 100644 src/services/contactSyncReminder.cron.ts
+ create mode 100644 src/services/contactSyncReminder.service.ts
+ create mode 100644 src/services/contactSyncReminder.ts
+
+diff --git a/src/db/postgres/migrations/236_contact_import_reminded_at.sql b/src/db/postgres/migrations/236_contact_import_reminded_at.sql
+new file mode 100644
+index 0000000..b3e454b
+--- /dev/null
++++ b/src/db/postgres/migrations/236_contact_import_reminded_at.sql
+@@ -0,0 +1,3 @@
++-- BH (§128, the frontend's 06:30Z item 7): the monthly „sync your contacts
++-- again" push goes at most once a month; this is when it last went.
++ALTER TABLE "User" ADD COLUMN IF NOT EXISTS contact_import_reminded_at TIMESTAMPTZ;
+diff --git a/src/index.ts b/src/index.ts
+index a65d50d..9ca32ad 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -48,6 +48,7 @@ import { startOwnerReminders } from './services/ownerReminders.cron';
+ import { startAnswerStats } from './services/answerStats.cron';
+ import { startNeedsOffersMatcher } from './services/needsOffers.cron';
+ import { startHelperFollowUps } from './services/helperThanks.cron';
++import { startContactSyncReminders } from './services/contactSyncReminder.cron';
+ import { startTaskTicker } from './services/taskEngine.service';
+ import { clientErrorReply } from './api/middleware/clientError';
+ import { ApiResponse } from './types';
+@@ -193,6 +194,7 @@ runMigrations()
+     startAnswerStats();
+     startNeedsOffersMatcher();
+     startHelperFollowUps();
++    startContactSyncReminders();
+     startTaskTicker();
+     startChorusCampaignCron();
+     startLabReportCron();
+diff --git a/src/services/__tests__/contactSyncReminder.test.ts b/src/services/__tests__/contactSyncReminder.test.ts
+new file mode 100644
+index 0000000..a9d3619
+--- /dev/null
++++ b/src/services/__tests__/contactSyncReminder.test.ts
+@@ -0,0 +1,73 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../notification.service', () => ({ __esModule: true, sendPushNotification: jest.fn() }));
++jest.mock('../threads.service', () => ({ __esModule: true, userLanguage: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { syncReminderPush, SYNC_REMINDER_DAYS, SYNC_REMINDER_URL } from '../contactSyncReminder';
++import { sendDueSyncReminders } from '../contactSyncReminder.service';
++import { sendPushNotification } from '../notification.service';
++import { userLanguage } from '../threads.service';
++
++/** BH (§128): the monthly „sync your contacts again" push, approved word for word. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockPush = sendPushNotification as jest.MockedFunction<typeof sendPushNotification>;
++const mockLanguage = userLanguage as jest.MockedFunction<typeof userLanguage>;
++
++beforeEach(() => {
++  mockQuery.mockReset();
++  mockPush.mockReset().mockResolvedValue(undefined);
++  mockLanguage.mockReset().mockResolvedValue('ka');
++});
++
++describe('syncReminderPush', () => {
++  it('says the approved Georgian line and opens the sync page', () => {
++    expect(syncReminderPush('ka')).toEqual({
++      title: 'Netai',
++      body: 'ერთი თვე გავიდა მას შემდეგ, რაც კონტაქტები ბოლოს გაანახლე. განაახლე, რომ ახალი ნაცნობებიც შენს ქსელში იყვნენ.',
++      url: SYNC_REMINDER_URL,
++    });
++  });
++
++  it('has the approved line in each language', () => {
++    expect(syncReminderPush('en').body).toBe(
++      'It has been a month since you last synced your contacts. Sync again so the people you met since are in your network too.',
++    );
++    expect(syncReminderPush('ru').body).toContain('Прошёл месяц');
++    expect(syncReminderPush('es').body).toContain('Ha pasado un mes');
++  });
++});
++
++describe('sendDueSyncReminders', () => {
++  it('claims the due people in one statement and rings each in their language', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ id: 7 }, { id: 8 }], rowCount: 2 } as never);
++    mockLanguage.mockResolvedValueOnce('ka').mockResolvedValueOnce('en');
++    await expect(sendDueSyncReminders()).resolves.toBe(2);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(sql).toContain('UPDATE "User" u SET contact_import_reminded_at = NOW()');
++    expect(sql).toContain('WHERE u2.contact_import_reminder');
++    expect(sql).toContain('ia.imported > 0 AND NOT ia.in_progress');
++    expect(sql).toContain('EXTRACT(HOUR FROM NOW() AT TIME ZONE COALESCE(ps.time_zone, $2)) = $3');
++    expect(params).toEqual([SYNC_REMINDER_DAYS, 'Asia/Tbilisi', 12, 200]);
++    expect(mockPush).toHaveBeenNthCalledWith(1, '7', syncReminderPush('ka'));
++    expect(mockPush).toHaveBeenNthCalledWith(2, '8', syncReminderPush('en'));
++  });
++
++  it('rings nobody when nobody is due', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++    await expect(sendDueSyncReminders()).resolves.toBe(0);
++    expect(mockPush).not.toHaveBeenCalled();
++  });
++
++  it('keeps going when one push fails', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ id: 7 }, { id: 8 }], rowCount: 2 } as never);
++    mockPush.mockRejectedValueOnce(new Error('gone'));
++    await expect(sendDueSyncReminders()).resolves.toBe(1);
++  });
++
++  it('is started with the other timers', () => {
++    const index = readFileSync(join(__dirname, '..', '..', 'index.ts'), 'utf8');
++    expect(index).toContain('    startContactSyncReminders();\n');
++  });
++});
+diff --git a/src/services/contactSyncReminder.cron.ts b/src/services/contactSyncReminder.cron.ts
+new file mode 100644
+index 0000000..4d839a0
+--- /dev/null
++++ b/src/services/contactSyncReminder.cron.ts
+@@ -0,0 +1,22 @@
++import { sendDueSyncReminders } from './contactSyncReminder.service';
++
++/**
++ * BH: checked every 15 minutes, so each time zone's noon is caught; the claim
++ * in sendDueSyncReminders keeps it to one push a month per person.
++ */
++const CHECK_EVERY_MS = 15 * 60 * 1000;
++
++export function startContactSyncReminders(): void {
++  const tick = (): void => {
++    void sendDueSyncReminders()
++      .then((n) => {
++        // eslint-disable-next-line no-console
++        if (n > 0) console.log(`[sync-reminder] ${n} monthly reminder(s) sent`);
++      })
++      .catch((err: unknown) =>
++        // eslint-disable-next-line no-console
++        console.error('[sync-reminder] sweep failed:', (err as Error).message),
++      );
++  };
++  setInterval(tick, CHECK_EVERY_MS).unref();
++}
+diff --git a/src/services/contactSyncReminder.service.ts b/src/services/contactSyncReminder.service.ts
+new file mode 100644
+index 0000000..32bc488
+--- /dev/null
++++ b/src/services/contactSyncReminder.service.ts
+@@ -0,0 +1,60 @@
++import { query } from '../db/postgres/client';
++import {
++  SYNC_REMINDER_DAYS,
++  SYNC_REMINDER_LOCAL_HOUR,
++  syncReminderPush,
++} from './contactSyncReminder';
++import { sendPushNotification } from './notification.service';
++import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
++import { userLanguage } from './threads.service';
++
++const QUERY_TIMEOUT_MS = 8_000;
++/** At most this many people are rung in one sweep; the rest wait for the next. */
++const MAX_PER_SWEEP = 200;
++
++/**
++ * BH: the people due a reminder now, claimed in one statement so two
++ * processes never ring the same person: the switch is on, the last real import
++ * is over a month old, the last reminder too (or there was none), and one of
++ * their devices reads noon. A person who never imported is not reminded —
++ * there is nothing to sync again.
++ */
++async function claimDueReminders(): Promise<number[]> {
++  const result = await query<{ id: number }>(
++    `UPDATE "User" u SET contact_import_reminded_at = NOW()
++      WHERE u.id IN (
++        SELECT u2.id FROM "User" u2
++         WHERE u2.contact_import_reminder
++           AND (u2.contact_import_reminded_at IS NULL
++                OR u2.contact_import_reminded_at < NOW() - make_interval(days => $1))
++           AND (SELECT MAX(ia.created_at) FROM import_attempts ia
++                 WHERE ia.user_id = u2.id AND ia.imported > 0 AND NOT ia.in_progress)
++               < NOW() - make_interval(days => $1)
++           AND EXISTS (
++             SELECT 1 FROM push_subscriptions ps
++              WHERE ps.user_id = u2.id
++                AND EXTRACT(HOUR FROM NOW() AT TIME ZONE COALESCE(ps.time_zone, $2)) = $3)
++         LIMIT $4)
++      RETURNING u.id`,
++    [SYNC_REMINDER_DAYS, DEFAULT_PUSH_TIME_ZONE, SYNC_REMINDER_LOCAL_HOUR, MAX_PER_SWEEP],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((row) => Number(row.id));
++}
++
++/** One sweep: ring everyone due, each in their own language. Returns how many were rung. */
++export async function sendDueSyncReminders(): Promise<number> {
++  const due = await claimDueReminders();
++  let rung = 0;
++  for (const userId of due) {
++    try {
++      const language = await userLanguage(String(userId));
++      await sendPushNotification(String(userId), syncReminderPush(language));
++      rung += 1;
++    } catch (err) {
++      // eslint-disable-next-line no-console
++      console.error(`[sync-reminder] user ${userId}:`, (err as Error).message);
++    }
++  }
++  return rung;
++}
+diff --git a/src/services/contactSyncReminder.ts b/src/services/contactSyncReminder.ts
+new file mode 100644
+index 0000000..cae6187
+--- /dev/null
++++ b/src/services/contactSyncReminder.ts
+@@ -0,0 +1,45 @@
++import { RunLanguage } from './runLanguage';
++
++/**
++ * BH (§128, Misho's „ყველა კი", 11 Oct; the frontend's 06:30Z item 7): once a
++ * month, a person who turned the reminder on and whose last import is over 30
++ * days old is rung once, at noon on their own device's clock, to sync their
++ * contacts again. The texts are the ones approved in NIGHT_QUESTIONS BH.
++ */
++export const SYNC_REMINDER_DAYS = 30;
++export const SYNC_REMINDER_LOCAL_HOUR = 12;
++/** The page with the sync switch and the import. */
++export const SYNC_REMINDER_URL = '/profile';
++
++const SYNC_REMINDER: Readonly<
++  Record<RunLanguage, { readonly title: string; readonly body: string }>
++> = {
++  ka: {
++    title: 'Netai',
++    body: 'ერთი თვე გავიდა მას შემდეგ, რაც კონტაქტები ბოლოს გაანახლე. განაახლე, რომ ახალი ნაცნობებიც შენს ქსელში იყვნენ.',
++  },
++  en: {
++    title: 'Netai',
++    body: 'It has been a month since you last synced your contacts. Sync again so the people you met since are in your network too.',
++  },
++  ru: {
++    title: 'Netai',
++    body: 'Прошёл месяц с последней синхронизации контактов. Обнови их, чтобы новые знакомые тоже были в твоей сети.',
++  },
++  es: {
++    title: 'Netai',
++    body: 'Ha pasado un mes desde que sincronizaste tus contactos. Vuelve a hacerlo para que la gente que conociste esté en tu red.',
++  },
++};
++
++export interface SyncReminderPush {
++  readonly title: string;
++  readonly body: string;
++  readonly url: string;
++}
++
++/** The push, in the person's language (Georgian when there is no line for it). */
++export function syncReminderPush(language: RunLanguage): SyncReminderPush {
++  const text = SYNC_REMINDER[language] ?? SYNC_REMINDER.ka;
++  return { ...text, url: SYNC_REMINDER_URL };
++}
+-- 
+2.43.0
+
