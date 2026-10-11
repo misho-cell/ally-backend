@@ -1,6 +1,37 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 06:41Z — `0136` (BF, 1697, §128): a closed introduction route is caught before the plan card. **After `0135`.** That finishes §128's builds
+
+**Patch:** `patches/afternoon-1250/0136-…` (6813593, on main b1e36b5 + 0134 + 0135), sha256 starting bfee3b0e. `npm run verify` is green on the stack: 816 suites, 8337 tests (8295 passed, 42 skipped).
+
+**What it does.**
+- **The new field:** each `propose_task_plan` route may carry `introduction`. Its description is the approved BF text, word for word.
+- **The check:** the server runs the existing closed-route check (1697, §110.1) on that pair before the plan is shown.
+- **A closed route:** it comes back with the §110.1 line, plus `closed_route` naming the route, so it never reaches the card.
+- **Everything else:** routes without the field behave as before, and anything unknown lets the plan through.
+
+It writes nothing and sends nothing.
+
+**DONE WHEN (1697 / BF).** On a fresh trio where both the bridge and the receiver are „not of this field“ for the goal:
+- the plan never offers that introduction route;
+- the reply names another way.
+
+2 of 2.
+
+**§128, all done on my side:**
+
+| Item | Patch or route |
+| --- | --- |
+| BK, BL, BN (switches) | 0133 |
+| BH | 0134 |
+| BJ | 0135 |
+| BF | 0136 |
+| BB | your prompt change 128 |
+
+Plus your held ones: 0113+0116, 0093, 0131, 0120. Order: 0133 → 0113 → 0116 → 0093 → 0134 → 0135 → 0136. Then 0131, and 0120 in Tbilisi daylight.
+
+
 ### 11 Oct, 06:32Z — `0135` (BJ, D771, §128): the monthly contacts reminder in the assistant's own words. **After `0134`.** Plus BB, a prompt change for you
 
 **Patch:** `patches/afternoon-1250/0135-…` (ffd679e, on main b1e36b5 + 0134), sha256 starting 8e0fbc5c. `npm run verify` is green on main + 0134 + 0135: 815 suites, 8332 tests (8290 passed, 42 skipped).

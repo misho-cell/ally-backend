@@ -1,0 +1,291 @@
+From 6813593961ec79d0ad714db1c4045fb84a784e85 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 06:38:11 +0000
+Subject: [PATCH] =?UTF-8?q?BF=20(1697):=20a=20closed=20introduction=20rout?=
+ =?UTF-8?q?e=20is=20caught=20before=20the=20plan=20card=20(=C2=A7128)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Approved in §128 (Misho's „ყველა კი", 11 Oct) with the field description
+in NIGHT_QUESTIONS BF, word for word.
+
+The closed-route check (1697 part 2, §110.1) ran only when an
+introduction was requested — after the owner had already approved a plan
+whose route could never answer. A propose_task_plan route may now carry
+`introduction` (via_phone, to_name, to_phone when a search gave it). The
+server runs the same check on that pair before the plan is shown; a
+closed route comes back with the §110.1 line and `closed_route` naming
+it, so it never reaches the card. The receiver is looked up in the
+bridge's own phonebook when no phone was given, as request_introduction
+does. Routes without the field behave as before; anything unknown lets
+the plan through.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/planClosedRoute.test.ts         | 91 +++++++++++++++++
+ src/services/chat.service.ts                  | 15 +++
+ src/services/planClosedRoute.ts               | 98 +++++++++++++++++++
+ src/services/tools/requestIntroduction.ts     |  2 +-
+ 4 files changed, 205 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/planClosedRoute.test.ts
+ create mode 100644 src/services/planClosedRoute.ts
+
+diff --git a/src/services/__tests__/planClosedRoute.test.ts b/src/services/__tests__/planClosedRoute.test.ts
+new file mode 100644
+index 0000000..ea5f8ca
+--- /dev/null
++++ b/src/services/__tests__/planClosedRoute.test.ts
+@@ -0,0 +1,91 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../closedRoute', () => ({
++  __esModule: true,
++  CLOSED_ROUTE_ON: true,
++  CLOSED_ROUTE_LINE: 'Not sent: this route looks closed.',
++  closedRouteFor: jest.fn(),
++}));
++jest.mock('../tools/requestIntroduction', () => ({
++  __esModule: true,
++  receiverInBridgesBook: jest.fn(),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { closedRouteFor } from '../closedRoute';
++import { closedPlanRoute, routeIntroductions } from '../planClosedRoute';
++import { receiverInBridgesBook } from '../tools/requestIntroduction';
++
++/** BF (1697, §128): a closed route is caught before the plan card, not after the owner approved it. */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockClosed = closedRouteFor as jest.MockedFunction<typeof closedRouteFor>;
++const mockReceiver = receiverInBridgesBook as jest.MockedFunction<typeof receiverInBridgesBook>;
++const PLAN = {
++  solved_when: 'x',
++  routes: [
++    { name: 'ჩემი კონტაქტები', status: 'running' },
++    {
++      name: 'ნინოს გავლით',
++      status: 'waiting',
++      introduction: { via_phone: '995500000001', to_name: 'გია ტესტაძე' },
++    },
++  ],
++};
++
++beforeEach(() => {
++  mockQuery.mockReset().mockResolvedValue({ rows: [{ user_id: 7 }], rowCount: 1 } as never);
++  mockClosed.mockReset().mockResolvedValue(false);
++  mockReceiver.mockReset().mockResolvedValue('995500000002');
++});
++
++describe('routeIntroductions', () => {
++  it('reads only routes that name a bridge and a person', () => {
++    expect(routeIntroductions(PLAN)).toEqual([
++      { routeName: 'ნინოს გავლით', viaPhone: '995500000001', toName: 'გია ტესტაძე' },
++    ]);
++    expect(routeIntroductions({ routes: 'nope' })).toEqual([]);
++    expect(routeIntroductions(null)).toEqual([]);
++  });
++});
++
++describe('closedPlanRoute', () => {
++  it('refuses the plan with the §110.1 line when a named introduction is closed', async () => {
++    mockClosed.mockResolvedValue(true);
++    await expect(closedPlanRoute(24, PLAN)).resolves.toEqual({
++      proposed: false,
++      closed_route: 'ნინოს გავლით',
++      error: 'Not sent: this route looks closed.',
++    });
++    expect(mockReceiver).toHaveBeenCalledWith('7', 'გია ტესტაძე');
++    expect(mockClosed).toHaveBeenCalledWith(24, '995500000001', '995500000002');
++  });
++
++  it('uses the receiver phone when the search gave it, without a phonebook read', async () => {
++    const plan = {
++      routes: [
++        {
++          name: 'r',
++          status: 'running',
++          introduction: { via_phone: '1', to_name: 'x', to_phone: '2' },
++        },
++      ],
++    };
++    await expect(closedPlanRoute(24, plan)).resolves.toBeNull();
++    expect(mockReceiver).not.toHaveBeenCalled();
++    expect(mockClosed).toHaveBeenCalledWith(24, '1', '2');
++  });
++
++  it('lets a plan without introductions, or with an open one, through', async () => {
++    await expect(
++      closedPlanRoute(24, { routes: [{ name: 'a', status: 'running' }] }),
++    ).resolves.toBeNull();
++    await expect(closedPlanRoute(24, PLAN)).resolves.toBeNull();
++  });
++
++  it('is checked in propose_task_plan, and the route field carries the approved description', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain("const closedRoute = await closedPlanRoute(taskId, input['plan']);");
++    expect(chat).toContain('description: INTRODUCTION_FIELD_DESCRIPTION,');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c1fd07b..09ed36b 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -228,6 +228,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
+ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+ import { geoName } from './georgianCase';
+ import { whatNetaiKnowsAboutMe } from './aboutMe.service';
++import { closedPlanRoute, INTRODUCTION_FIELD_DESCRIPTION } from './planClosedRoute';
+ import { contactsReminderSection } from './contactsReminderSection';
+ import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
+ import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
+@@ -3166,6 +3167,17 @@ const PROPOSE_TASK_PLAN_TOOL: AnthropicTool = {
+               properties: {
+                 name: { type: 'string' },
+                 status: { type: 'string', enum: ['running', 'waiting', 'done', 'dropped'] },
++                // BF (1697, §128): the closed-route check runs on this pair before the card.
++                introduction: {
++                  type: 'object',
++                  description: INTRODUCTION_FIELD_DESCRIPTION,
++                  properties: {
++                    via_phone: { type: 'string' },
++                    to_name: { type: 'string' },
++                    to_phone: { type: 'string' },
++                  },
++                  required: ['via_phone', 'to_name'],
++                },
+               },
+               required: ['name', 'status'],
+             },
+@@ -10194,6 +10206,9 @@ async function executeToolCall(
+             'გეგმაში არა. მერე ხელახლა გამოიძახე.',
+         };
+       }
++      // BF (1697, §128): a route whose introduction is closed never reaches the card.
++      const closedRoute = await closedPlanRoute(taskId, input['plan']);
++      if (closedRoute !== null) return closedRoute;
+       // Ticket 19 [4], the door nobody guarded. That rule — one thread, one
+       // open goal, because „the buttons under a plan carry no goal on their
+       // face" — was enforced on create_task, which opens a second goal on its
+diff --git a/src/services/planClosedRoute.ts b/src/services/planClosedRoute.ts
+new file mode 100644
+index 0000000..b7601e4
+--- /dev/null
++++ b/src/services/planClosedRoute.ts
+@@ -0,0 +1,98 @@
++import { query } from '../db/postgres/client';
++import { closedRouteFor, CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON } from './closedRoute';
++import { receiverInBridgesBook } from './tools/requestIntroduction';
++
++/**
++ * BF (1697; §128, Misho's „ყველა კი", 11 Oct): the closed-route check ran only
++ * when an introduction was requested — after the owner had already approved a
++ * plan whose route could never answer. A plan route may now say which
++ * introduction it means; the check runs on that pair before the plan is shown,
++ * and a closed route comes back with the §110.1 line, so it never reaches the
++ * card. Routes without the field behave as before.
++ */
++const QUERY_TIMEOUT_MS = 4_000;
++
++/** NIGHT_QUESTIONS BF, the approved field description (§128). */
++export const INTRODUCTION_FIELD_DESCRIPTION =
++  "introduction — only for a route that asks one of the user's contacts to introduce them to someone. via_phone: that contact's phone id from a search result. to_name: the person to meet, as the user named them; to_phone: their phone id too, when a search returned it.";
++
++export interface RouteIntroduction {
++  readonly routeName: string;
++  readonly viaPhone: string;
++  readonly toName: string;
++  readonly toPhone?: string;
++}
++
++function asText(value: unknown): string {
++  return typeof value === 'string' ? value.trim() : '';
++}
++
++/** The plan's routes that name an introduction, read defensively from the model's input. */
++export function routeIntroductions(plan: unknown): RouteIntroduction[] {
++  const routes = (plan as { routes?: unknown } | null)?.routes;
++  if (!Array.isArray(routes)) return [];
++  return routes.flatMap((route: unknown) => {
++    const intro = (route as { introduction?: unknown } | null)?.introduction as
++      | Record<string, unknown>
++      | undefined;
++    const viaPhone = asText(intro?.['via_phone']);
++    const toName = asText(intro?.['to_name']);
++    if (viaPhone === '' || toName === '') return [];
++    const toPhone = asText(intro?.['to_phone']);
++    return [
++      {
++        routeName: asText((route as { name?: unknown }).name),
++        viaPhone,
++        toName,
++        ...(toPhone !== '' && { toPhone }),
++      },
++    ];
++  });
++}
++
++async function memberIdForPhone(phone: string): Promise<string | null> {
++  const result = await query<{ user_id: number }>(
++    `SELECT "userId" AS user_id FROM "UserPhone"
++      WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
++      LIMIT 1`,
++    [phone],
++    QUERY_TIMEOUT_MS,
++  );
++  const id = result.rows[0]?.user_id;
++  return id === undefined ? null : String(id);
++}
++
++/** Is this one introduction a closed route? False whenever anything is unknown. */
++async function introductionIsClosed(taskId: number, intro: RouteIntroduction): Promise<boolean> {
++  let receiver = intro.toPhone;
++  if (receiver === undefined) {
++    const bridgeId = await memberIdForPhone(intro.viaPhone).catch(() => null);
++    if (bridgeId === null) return false;
++    receiver = await receiverInBridgesBook(bridgeId, intro.toName);
++  }
++  return closedRouteFor(taskId, intro.viaPhone, receiver);
++}
++
++export interface ClosedPlanRoute {
++  readonly proposed: false;
++  readonly closed_route: string;
++  readonly error: string;
++}
++
++/** The refusal for the first closed route in the plan, or null when none is closed. */
++export async function closedPlanRoute(
++  taskId: number,
++  plan: unknown,
++): Promise<ClosedPlanRoute | null> {
++  if (!CLOSED_ROUTE_ON || !Number.isFinite(taskId)) return null;
++  for (const intro of routeIntroductions(plan)) {
++    if (await introductionIsClosed(taskId, intro)) {
++      // eslint-disable-next-line no-console
++      console.log(
++        `[closed-route] goal ${taskId}: plan route „${intro.routeName}" closed — not shown`,
++      );
++      return { proposed: false, closed_route: intro.routeName, error: CLOSED_ROUTE_LINE };
++    }
++  }
++  return null;
++}
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 5f0aebf..8f46bee 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -620,7 +620,7 @@ async function requestIntroductionInner(
+ }
+ 
+ /** The one contact in the bridge's own phonebook the target's name points to; none on doubt. */
+-async function receiverInBridgesBook(
++export async function receiverInBridgesBook(
+   mediatorUserId: string,
+   targetName: string,
+ ): Promise<string | undefined> {
+-- 
+2.43.0
+
