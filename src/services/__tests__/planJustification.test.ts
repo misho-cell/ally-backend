@@ -30,6 +30,26 @@ describe('the plan is its one sentence and one question (D739)', () => {
     );
   });
 
+  it('box 53133 run 2: „how I know them" before the plan goes', () => {
+    const reply = 'ბახვა გამოგონილს ლიკა ნაგონის მეშვეობით ვიცნობ, ლიკა ბახვას იცნობს. ' + PLAN;
+    expect(withoutMatchJustification(reply)).toBe(PLAN);
+  });
+
+  it('box 53133 run 3: „found in the network, knows directly" goes, as its own paragraph too', () => {
+    const reply =
+      'თამთა გამოგონილი ქსელში ნაპოვნია, თან ბახვა გამოგონილი პირდაპირ იცნობს მას.\n\n' + PLAN;
+    expect(withoutMatchJustification(reply)).toBe(PLAN);
+  });
+
+  it('news and a „how I know them" sentence in one paragraph: only the news stays', () => {
+    const reply =
+      'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე. თამთა ქსელში ნაპოვნია, ბახვა მას პირდაპირ იცნობს.\n\n' +
+      PLAN;
+    expect(withoutMatchJustification(reply)).toBe(
+      'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე.\n\n' + PLAN,
+    );
+  });
+
   it('news ahead of the plan stays (the tester’s 1110)', () => {
     const reply = 'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე.\n\n' + PLAN;
     expect(withoutMatchJustification(reply)).toBe(reply);

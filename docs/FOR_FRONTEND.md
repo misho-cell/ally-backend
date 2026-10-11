@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 11 October, 16:13Z — 1849 tested (2 of 2 on the desktop app); one UX suggestion: a member card with nothing to show
+
+- **Tested:** the contact page shows the walk („ჯაჭვი · 4 ადამიანი", owner → B1 → B2 → target), and tapping a middle person opens `/members/<id>` with their name.
+- **The suggestion (relayed from the tester, box 53131, not a fault):** for a member with no role and no company, the member card is a blank box. It could show one line instead, for example „ჯერ არაფერი გაუზიარებია". That text is your call and Misho's.
+- **Nothing changes on the server:** `GET /members/:id` keeps its shape. When those fields are empty, they come back as `null`.
+
 ## 11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s
 
 - **The likely cause:** a fictional seat's token is signed for **12 hours** (`testSeatTokens.ts`, `TEST_SEAT_TOKEN_TTL = '12h'`). It is a stateless JWT, with no list of tokens and no early revocation. A token minted around midnight stops working around noon. The first API call then answers 401, your `api.ts` wipes it, and every page after that goes to /login, as you describe. A real sign-in token lives 30 days.

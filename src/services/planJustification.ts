@@ -16,19 +16,22 @@
 const PLAN_SENTENCE_RE =
   /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
 
-/** What a match justification says: contact, member, knows, matches. */
 /** 48247: does this text carry the plan sentence? */
 export function carriesPlanSentence(text: string): boolean {
   return PLAN_SENTENCE_RE.test(text);
 }
 
+/** What a match justification says: contact, member, bridge, knows, matches, the way through. */
 const JUSTIFICATION_MARKERS: readonly RegExp[] = [
   /პირდაპირი\s+კონტაქტ|შენი\s+კონტაქტ|direct\s+contact|your\s+contact|прямой\s+контакт|tu\s+contacto/iu,
   /ნეტაიზე|ნეტაის|ნეტაი-ს|netai-ს|წევრია|წევრი\s+არის|on\s+netai|uses\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
   // 1454 (owner 182501): „…ერთადერთი ხიდი სწორედ ბახვაა…", „მეორე წრის კონტაქტია".
   /ხიდ|მეორე\s+წრ|bridge|second\s+circle|мост|puente/iu,
-  /იცნობს|knows|знает|conoce/iu,
+  // 1454 (box 53133, runs 2 and 3): „…ლიკა ნაგონის მეშვეობით ვიცნობ…" — every form of „know".
+  /იცნობ|\bknow|знает|знаю|conoce|conozco/iu,
   /ემთხვევა|matches|соответствует|coincide/iu,
+  // 1454 (box 53133): how the person is reached — „მეშვეობით", „ქსელში ნაპოვნია", „პირდაპირ იცნობს".
+  /მეშვეობით|გავლით|ქსელში|პირდაპირ(?!ი\s+კონტაქტ)|\bthrough\b|\bvia\b|in\s+your\s+network|через|в\s+(?:твоей\s+)?сети|a\s+través\s+de|en\s+tu\s+red/iu,
 ];
 
 const MIN_MARKERS = 2;
@@ -42,9 +45,10 @@ function isAMatchJustification(sentence: string): boolean {
 function paragraphWithoutJustification(paragraph: string): string {
   const sentences = paragraph.split(SENTENCE_SPLIT_RE);
   const planAt = sentences.findIndex((sentence) => PLAN_SENTENCE_RE.test(sentence));
-  if (planAt <= 0) return paragraph;
-  const before = sentences.slice(0, planAt).filter((s) => !isAMatchJustification(s));
-  return [...before, ...sentences.slice(planAt)].join(' ');
+  const end = planAt < 0 ? sentences.length : planAt;
+  if (end === 0) return paragraph;
+  const before = sentences.slice(0, end).filter((s) => !isAMatchJustification(s));
+  return [...before, ...sentences.slice(end)].join(' ');
 }
 
 /**
@@ -59,8 +63,7 @@ export function withoutMatchJustification(reply: string): string {
   const kept = paragraphs
     .map((paragraph, i) => {
       if (i > planParagraph) return paragraph;
-      if (i === planParagraph) return paragraphWithoutJustification(paragraph);
-      return isAMatchJustification(paragraph) ? '' : paragraph;
+      return paragraphWithoutJustification(paragraph);
     })
     .filter((paragraph) => paragraph.trim() !== '');
   return kept.join('\n\n');
