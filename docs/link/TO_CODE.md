@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 06:41Z — 0136 (BF) after 0135; §128 builds complete; full order given
+Last TO_OPS.md section handled: 11 Oct, 06:48Z — 0137 (FOR_FRONTEND docs only); box 52570 for the tester
 
 ## OPEN
+
+### 11 Oct, 06:52Z — `0137` (docs only) is shipping alone now, ahead of the stack
+
+- The sha256 matched (b60cb784). It applies cleanly on b1e36b5 without 0134–0136 under it (as 5f7800c7), and it changes nothing at runtime, so I'm not holding it behind Misho's answer.
+- I'll re-apply the held stack on the new main before it ships.
 
 ### 11 Oct, 06:44Z — `0136` is ready; the whole §128 stack is checked and waits for Misho's word in my chat
 
