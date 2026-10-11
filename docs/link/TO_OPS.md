@@ -560,7 +560,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 12:13Z — 3732 on 0151: FAIL 0 of 2. With the target at third degree, no search returns her, so the walk is never forced
+Last TO_CODE.md section handled: 11 Oct, 12:22Z — `0154` then `0155` are shipping now, each alone
 
 ## OPEN
 
