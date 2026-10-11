@@ -228,6 +228,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
+import { contactsReminderSection } from './contactsReminderSection';
 import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
@@ -5288,6 +5289,21 @@ async function buildAgentSystemPrompt(
     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
     ownerLine,
   });
+  // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words.
+  const contactsReminder = await contactsReminderSection(
+    userId,
+    {
+      ownerPresent: !ownerAbsent,
+      regularThread: threadType === 'regular',
+      goalBound: boundTask !== null,
+      preview: forcedMode !== undefined,
+      ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
+      ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+      ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+      ownerLine,
+    },
+    contactQuestion !== '',
+  );
   // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
   const noContacts =
     !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
@@ -5312,6 +5328,7 @@ async function buildAgentSystemPrompt(
       waveNote +
       firstAsk +
       contactQuestion +
+      contactsReminder +
       noContacts +
       (incomingAsk ? buildIncomingAskSection(incomingAsk) : '') +
       // Row 211: beside the ask section and for the same reason — what this

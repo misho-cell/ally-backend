@@ -31,6 +31,6 @@ describe('a goal run with no phonebook', () => {
     expect(chat).toContain(
       '!ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined',
     );
-    expect(chat).toMatch(/contactQuestion \+\s+noContacts \+/u);
+    expect(chat).toMatch(/contactQuestion \+\s+contactsReminder \+\s+noContacts \+/u);
   });
 });
