@@ -1,6 +1,22 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+
+### 11 Oct, 16:19Z — `0165`: 1454 runs 2 and 3, the „how I know them" sentence goes. 3466 and 1849 noted as TESTED
+
+- **Patch:** `patches/afternoon-1250/0165-1454-a-how-I-know-them-sentence-before-the-plan-sent.patch`
+  - sha256 `289d23a7c82ae403a1c2012ade2e92bbad93f2c1bba8f99ec015b1d7c19f77cd`
+  - Cut on main 0d21ef2. `npm run verify` is green on main plus the patch.
+  - Branch commit: b3622de.
+- **Board 1454.** The two sentences from box 53133 each carried one justification marker, so the filter let them through.
+  - Every form of „know" now counts (ვიცნობ, იცნობს).
+  - A new marker covers the way through: მეშვეობით, გავლით, ქსელში, and პირდაპირ when it is not part of „პირდაპირი კონტაქტი".
+  - A paragraph before the plan is now filtered sentence by sentence, so news there stays.
+  - Server text filter only. No new words reach the model or the user.
+- **Order:** independent of the 0146 → 0153 → 0164 chain. It can go any time.
+- **DONE WHEN:** 1454 passes 3 of 3 on fresh trios. Each run opens with the one plan sentence and „დავიწყო?", with no sentence about how the people are known before it.
+- **Noted:** 3466 is TESTED on 0163. 1849 is TESTED. The blank member card suggestion went to FOR_FRONTEND (16:13Z, on my branch). It reaches main with 0165, because the same commit carries it.
+- **The 3466 small note** (second button labelled „(მეორე)" instead of its tag): that label is the model's own button text. Changing it means new model-facing words, so it waits for Misho's yes on the exact text. I'm not building it now.
 ### 11 Oct, 15:28Z — D738's code items: 1.1 (0153) and 1.5 (0164) are built. 1.4 is NOT built, with the reason; 1.6 and 2.7 need a design word. For Misho
 
 - **1.4 (remove `list_answer_rules` / `delete_answer_rule` from the connector): not built.**
@@ -688,7 +704,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 15:34Z — D738 1.4, 1.6 and 2.7 are with Misho
+Last TO_CODE.md section handled: 11 Oct, 15:51Z — 3466 is TESTED on 0163. FAULT: 1454 still 1 of 3. The D739 „how I know them" sentence comes BEFORE the plan sentence
 
 ## OPEN
 

@@ -1,0 +1,134 @@
+From 12ebb26f487575a39d797e2f6b68e5431ded9129 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 16:17:01 +0000
+Subject: [PATCH] 1454: a "how I know them" sentence before the plan sentence
+ goes (D739)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 53133, runs 2 and 3 of 3: the reply opened with a sentence on how the
+person is reached ("... through Lika I know her, Lika knows her" / "found
+in the network, ... knows her directly") before the plan sentence. It had
+only one justification marker, so it stayed.
+
+- Every form of "know" counts (ვიცნობ, იცნობს).
+- New marker for the way through: მეშვეობით, გავლით, ქსელში, პირდაპირ
+  (not as part of "direct contact"), through, via, and the ru/es forms.
+- A paragraph before the plan is filtered sentence by sentence, so news
+  sharing a paragraph with such a sentence stays and the sentence goes.
+
+FOR_FRONTEND: 1849 tested, plus the tester's UX note on a blank member card.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  6 ++++++
+ .../__tests__/planJustification.test.ts       | 20 +++++++++++++++++++
+ src/services/planJustification.ts             | 17 +++++++++-------
+ 3 files changed, 36 insertions(+), 7 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 2ce3433..380a151 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,12 @@ messages in their name.
+ 
+ ---
+ 
++## 11 October, 16:13Z — 1849 tested (2 of 2 on the desktop app); one UX suggestion: a member card with nothing to show
++
++- **Tested:** the contact page shows the walk („ჯაჭვი · 4 ადამიანი", owner → B1 → B2 → target), and tapping a middle person opens `/members/<id>` with their name.
++- **The suggestion (relayed from the tester, box 53131, not a fault):** for a member with no role and no company, the member card is a blank box. It could show one line instead, for example „ჯერ არაფერი გაუზიარებია". That text is your call and Misho's.
++- **Nothing changes on the server:** `GET /members/:id` keeps its shape. When those fields are empty, they come back as `null`.
++
+ ## 11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s
+ 
+ - **The likely cause:** a fictional seat's token is signed for **12 hours** (`testSeatTokens.ts`, `TEST_SEAT_TOKEN_TTL = '12h'`). It is a stateless JWT, with no list of tokens and no early revocation. A token minted around midnight stops working around noon. The first API call then answers 401, your `api.ts` wipes it, and every page after that goes to /login, as you describe. A real sign-in token lives 30 days.
+diff --git a/src/services/__tests__/planJustification.test.ts b/src/services/__tests__/planJustification.test.ts
+index 4919883..9920034 100644
+--- a/src/services/__tests__/planJustification.test.ts
++++ b/src/services/__tests__/planJustification.test.ts
+@@ -30,6 +30,26 @@ describe('the plan is its one sentence and one question (D739)', () => {
+     );
+   });
+ 
++  it('box 53133 run 2: „how I know them" before the plan goes', () => {
++    const reply = 'ბახვა გამოგონილს ლიკა ნაგონის მეშვეობით ვიცნობ, ლიკა ბახვას იცნობს. ' + PLAN;
++    expect(withoutMatchJustification(reply)).toBe(PLAN);
++  });
++
++  it('box 53133 run 3: „found in the network, knows directly" goes, as its own paragraph too', () => {
++    const reply =
++      'თამთა გამოგონილი ქსელში ნაპოვნია, თან ბახვა გამოგონილი პირდაპირ იცნობს მას.\n\n' + PLAN;
++    expect(withoutMatchJustification(reply)).toBe(PLAN);
++  });
++
++  it('news and a „how I know them" sentence in one paragraph: only the news stays', () => {
++    const reply =
++      'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე. თამთა ქსელში ნაპოვნია, ბახვა მას პირდაპირ იცნობს.\n\n' +
++      PLAN;
++    expect(withoutMatchJustification(reply)).toBe(
++      'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე.\n\n' + PLAN,
++    );
++  });
++
+   it('news ahead of the plan stays (the tester’s 1110)', () => {
+     const reply = 'შენს კონტაქტებში სამი ნოტარიუსი ვიპოვე.\n\n' + PLAN;
+     expect(withoutMatchJustification(reply)).toBe(reply);
+diff --git a/src/services/planJustification.ts b/src/services/planJustification.ts
+index ca0be25..73a019a 100644
+--- a/src/services/planJustification.ts
++++ b/src/services/planJustification.ts
+@@ -16,19 +16,22 @@
+ const PLAN_SENTENCE_RE =
+   /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
+ 
+-/** What a match justification says: contact, member, knows, matches. */
+ /** 48247: does this text carry the plan sentence? */
+ export function carriesPlanSentence(text: string): boolean {
+   return PLAN_SENTENCE_RE.test(text);
+ }
+ 
++/** What a match justification says: contact, member, bridge, knows, matches, the way through. */
+ const JUSTIFICATION_MARKERS: readonly RegExp[] = [
+   /პირდაპირი\s+კონტაქტ|შენი\s+კონტაქტ|direct\s+contact|your\s+contact|прямой\s+контакт|tu\s+contacto/iu,
+   /ნეტაიზე|ნეტაის|ნეტაი-ს|netai-ს|წევრია|წევრი\s+არის|on\s+netai|uses\s+netai|netai\s+member|member\s+of\s+netai|в\s+netai|en\s+netai/iu,
+   // 1454 (owner 182501): „…ერთადერთი ხიდი სწორედ ბახვაა…", „მეორე წრის კონტაქტია".
+   /ხიდ|მეორე\s+წრ|bridge|second\s+circle|мост|puente/iu,
+-  /იცნობს|knows|знает|conoce/iu,
++  // 1454 (box 53133, runs 2 and 3): „…ლიკა ნაგონის მეშვეობით ვიცნობ…" — every form of „know".
++  /იცნობ|\bknow|знает|знаю|conoce|conozco/iu,
+   /ემთხვევა|matches|соответствует|coincide/iu,
++  // 1454 (box 53133): how the person is reached — „მეშვეობით", „ქსელში ნაპოვნია", „პირდაპირ იცნობს".
++  /მეშვეობით|გავლით|ქსელში|პირდაპირ(?!ი\s+კონტაქტ)|\bthrough\b|\bvia\b|in\s+your\s+network|через|в\s+(?:твоей\s+)?сети|a\s+través\s+de|en\s+tu\s+red/iu,
+ ];
+ 
+ const MIN_MARKERS = 2;
+@@ -42,9 +45,10 @@ function isAMatchJustification(sentence: string): boolean {
+ function paragraphWithoutJustification(paragraph: string): string {
+   const sentences = paragraph.split(SENTENCE_SPLIT_RE);
+   const planAt = sentences.findIndex((sentence) => PLAN_SENTENCE_RE.test(sentence));
+-  if (planAt <= 0) return paragraph;
+-  const before = sentences.slice(0, planAt).filter((s) => !isAMatchJustification(s));
+-  return [...before, ...sentences.slice(planAt)].join(' ');
++  const end = planAt < 0 ? sentences.length : planAt;
++  if (end === 0) return paragraph;
++  const before = sentences.slice(0, end).filter((s) => !isAMatchJustification(s));
++  return [...before, ...sentences.slice(end)].join(' ');
+ }
+ 
+ /**
+@@ -59,8 +63,7 @@ export function withoutMatchJustification(reply: string): string {
+   const kept = paragraphs
+     .map((paragraph, i) => {
+       if (i > planParagraph) return paragraph;
+-      if (i === planParagraph) return paragraphWithoutJustification(paragraph);
+-      return isAMatchJustification(paragraph) ? '' : paragraph;
++      return paragraphWithoutJustification(paragraph);
+     })
+     .filter((paragraph) => paragraph.trim() !== '');
+   return kept.join('\n\n');
+-- 
+2.43.0
+
