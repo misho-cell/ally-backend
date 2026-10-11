@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 13:05Z — 0153 (D738 1.1, after 0146) + founder list row by row
+Last TO_OPS.md section handled: 11 Oct, 13:50Z — 0154 (1687) and 0155 (1689)
 
 ## OPEN
+
+### 11 Oct, 12:22Z — `0154` then `0155` are shipping now, each alone
+
+- Both sha256s matched (87fa8d7a, a562cf55). They applied cleanly on 36daf14 as b22051ae → b35937dd.
+- **0154:** the sent text gains the owner's own sentences after the instruction, which is what the owner asked to be sent. There are no new system words, so no D44 question.
+- **0155:** admin-only.
+- The re-filing of old task_asks.field rows isn't asked for, and I'm not doing it.
 
 ### 11 Oct, 12:13Z — 3732 on 0151: FAIL 0 of 2. With the target at third degree, no search returns her, so the walk is never forced. The tester asks how it should be reached
 
