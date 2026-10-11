@@ -1,0 +1,275 @@
+From ee37d2438c0e37ce4583ef5e9e0fdfb1a10df1e9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 22:05:44 +0000
+Subject: [PATCH] 1454 (b) / BQ: the server's plan sentence can name whom it
+ introduces (OFF)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 53498, run 2: when the model's own plan sentence is not clean, the
+server's D663 sentence stands in. It does not say whom the introduction
+is to. The plan's route already carries the person to meet (BF, §128,
+`introduction.to_name`; 14 of the last 25 plan calls fill it), so
+nothing new goes to the model.
+
+introTargetSentence.ts builds D739's form from the plan call: the
+go-between in the genitive and the ergative, then the person to meet.
+It applies only when the plan names exactly one reachable go-between and
+one person to meet through them. planReplyText uses it in place of the
+D663 sentence on the introduction path.
+
+New words the owner reads, so INTRO_TARGET_SENTENCE_ON is false until
+Misho's yes on the exact text (NIGHT_QUESTIONS BQ). Georgian only;
+en/ru/es keep the D663 sentence. With the switch off nothing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/NIGHT_QUESTIONS.md                       | 11 +++
+ ...theServerPlanNamesWhomItIntroduces.test.ts | 77 +++++++++++++++++++
+ src/services/chat.service.ts                  | 15 +++-
+ src/services/introTargetSentence.ts           | 75 ++++++++++++++++++
+ 4 files changed, 177 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts
+ create mode 100644 src/services/introTargetSentence.ts
+
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index 2c6c8ec..9c489fc 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -75,6 +75,17 @@ while its questions are unanswered is a list that loses them.
+ 
+ ## Waiting on Misho or the founder
+ 
++- **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
++  the exact text.** 1454 passes 3 of 3 on 0169 (nothing before the plan). When the model's own sentence is not clean, the server's D663
++  sentence stands in, and it does not say whom the introduction is to: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო."
++  (box 53498, run 2). The plan already carries the person to meet, in the route's `introduction` (BF, §128), so nothing new goes to the
++  model. With `INTRO_TARGET_SENTENCE_ON = true` (introTargetSentence.ts), and only when the plan names one go-between and one person to
++  meet, the owner reads instead, in D739's own form:
++  > ka: „{go-between, genitive} ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ {go-between, ergative} გაგაცნოს {person to meet}."
++  > e.g. „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე."
++  Georgian only. en/ru/es keep the D663 sentence until texts for them are drafted. The model's own clean sentence still goes as it wrote it.
++  Undo: the switch back to false.
++
+ - **BO — 4423 / 1688 part 1, the owner's own words answer a helper. Drafted 11 Oct 11:45 UTC for Misho's yes.** When a helper asks back
+   what the owner already said in the goal („remote?" after „დისტანციურად"), the run now asks the owner again (box 52772, 2 of 3), because the
+   answer-wake note says a question back means „the person waits for your answer". 1688 (D679/D680) has the assistant answer from the goal,
+diff --git a/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts b/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts
+new file mode 100644
+index 0000000..b0ca9bc
+--- /dev/null
++++ b/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts
+@@ -0,0 +1,77 @@
++import { planReplyText } from '../chat.service';
++import {
++  georgianSentence,
++  INTRO_TARGET_SENTENCE_ON,
++  introTargetSentence,
++  plannedIntroduction,
++} from '../introTargetSentence';
++
++/**
++ * 1454 (b), box 53498 run 2: the server's fallback „ლიკა მეხუთის ასისტენტს
++ * დაველაპარაკები და შევეცდები, ეს მოვაგვარო." did not say whom it is about. The
++ * plan's route already carries it (BF, §128); the sentence that names it is OFF
++ * until Misho's yes on the text (NIGHT_QUESTIONS BQ).
++ */
++const LIKA = { name: 'ლიკა მეხუთე', phone: 'p-lika' };
++const PLAN_INPUT = {
++  routes: [
++    {
++      name: 'გაცნობა',
++      status: 'waiting',
++      introduction: { via_phone: 'p-lika', to_name: 'ნინუცა მეხუთე' },
++    },
++  ],
++};
++
++describe('the plan’s one introduction', () => {
++  it('is the go-between and the person to meet', () => {
++    expect(plannedIntroduction(PLAN_INPUT, [LIKA])).toEqual({
++      via: 'ლიკა მეხუთე',
++      to: 'ნინუცა მეხუთე',
++    });
++  });
++
++  it('is none with two go-betweens, a go-between who cannot be asked, or no introduction', () => {
++    expect(plannedIntroduction(PLAN_INPUT, [LIKA, { name: 'გია', phone: 'p-gia' }])).toBeNull();
++    expect(plannedIntroduction(PLAN_INPUT, [{ ...LIKA, reach: 'not_member' }])).toBeNull();
++    expect(plannedIntroduction({ routes: [{ name: 'x', status: 'waiting' }] }, [LIKA])).toBeNull();
++  });
++
++  it('is none when the routes through the go-between name two different people', () => {
++    const two = {
++      routes: [
++        ...PLAN_INPUT.routes,
++        { name: 'b', status: 'waiting', introduction: { via_phone: 'p-lika', to_name: 'სოფო' } },
++      ],
++    };
++    expect(plannedIntroduction(two, [LIKA])).toBeNull();
++  });
++});
++
++describe('the sentence (D739’s form)', () => {
++  it('names the go-between in its cases and whom they introduce', () => {
++    expect(georgianSentence({ via: 'ლიკა მეხუთე', to: 'ნინუცა მეხუთე' })).toBe(
++      'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე.',
++    );
++  });
++
++  it('is off until Misho’s yes: nothing changes for anyone today', () => {
++    expect(INTRO_TARGET_SENTENCE_ON).toBe(false);
++    expect(introTargetSentence(PLAN_INPUT, [LIKA], 'ka')).toBeNull();
++  });
++});
++
++describe('the plan reply with the sentence', () => {
++  const SERVER = 'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.';
++  const NAMED = georgianSentence({ via: 'ლიკა მეხუთე', to: 'ნინუცა მეხუთე' });
++  const plan = { text: SERVER, names: ['ლიკა მეხუთე'], introSentence: NAMED };
++
++  it('stands in for a reply without the plan', () => {
++    expect(planReplyText('დამელოდე, სანამ დაადასტურებ.', plan, 'ka')).toBe(`${NAMED}\n\nდავიწყო?`);
++  });
++
++  it('leaves the model’s own clean sentence as it is', () => {
++    const own = 'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ლიკამ გაგაცნოს ნინუცა.';
++    expect(planReplyText(`${own}\n\nდავიწყო?`, plan, 'ka')).toBe(`${own}\n\nდავიწყო?`);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 8f567f4..df714ec 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -91,6 +91,7 @@ import {
+   withPlanSentence,
+   withOnePlanSentence,
+ } from './planJustification';
++import { introTargetSentence } from './introTargetSentence';
+ import { withOwnersNetwork } from './planVoice';
+ import { offerReferral, referralTapOf } from './askReferral.service';
+ import { settleReferralTap } from './askReferralSettle.service';
+@@ -7488,6 +7489,8 @@ function wakeCapFor(runId: string | undefined, taskId: number): Date | null {
+ export interface PlanForReply {
+   readonly text: string;
+   readonly names: readonly string[];
++  /** 1454 (b): the server's sentence naming whom the introduction is to, when it is on. */
++  readonly introSentence?: string;
+ }
+ const runPlanForReply = new Map<string, PlanForReply>();
+ 
+@@ -7716,7 +7719,11 @@ export function planReplyText(reply: string, plan: PlanForReply, language: RunLa
+   // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
+   // 50065) — gives way to the server's sentence instead of standing before it.
+   if (carriesPlanSentence(plan.text)) {
+-    return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), language);
++    const serverSentence = plan.introSentence ?? plan.text;
++    return withClosingQuestion(
++      withOnePlanSentence(introPlanOnly(reply, { ...plan, text: serverSentence })),
++      language,
++    );
+   }
+   if (replyCarriesPlan(reply, plan)) {
+     return withClosingQuestion(
+@@ -10356,9 +10363,15 @@ async function executeToolCall(
+           } else {
+             // Row 101 stays true without the card: if the reply does not
+             // carry the plan, the server adds it — see withPlanInReply.
++            const introSentence = introTargetSentence(
++              input['plan'],
++              stored.people_to_involve,
++              runLang(runId),
++            );
+             notePlanForReply(runId, {
+               text: plainPlan,
+               names: stored.people_to_involve.map((p) => p.name),
++              ...(introSentence !== null && { introSentence }),
+             });
+           }
+           // Row 237: nothing the server deals may land on top of the plan.
+diff --git a/src/services/introTargetSentence.ts b/src/services/introTargetSentence.ts
+new file mode 100644
+index 0000000..a5c370f
+--- /dev/null
++++ b/src/services/introTargetSentence.ts
+@@ -0,0 +1,75 @@
++import { geoName } from './georgianCase';
++import { routeIntroductions } from './planClosedRoute';
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 1454 (b), box 53498: when the model's own plan sentence is not clean, the
++ * server's D663 sentence stands in — „ლიკა მეხუთის ასისტენტს დაველაპარაკები და
++ * შევეცდები, ეს მოვაგვარო." — and the owner is not told whom it is about.
++ * D739's own example names the result: „…რომ ბახვამ გაგაცნოთ თამთა". The plan
++ * already carries the person to meet (BF, §128: a route's `introduction`), so
++ * the server's sentence can name them. New words the owner reads: OFF until
++ * Misho's yes on the exact text (NIGHT_QUESTIONS BQ).
++ */
++export const INTRO_TARGET_SENTENCE_ON = false;
++
++/** A go-between as the plan stores them: name, phone id, whether they can be asked. */
++export interface GoBetween {
++  readonly name: string;
++  readonly phone: string;
++  readonly reach?: string;
++}
++
++/** An introduction the plan asks for: through whom, and to whom. */
++export interface PlannedIntroduction {
++  readonly via: string;
++  readonly to: string;
++}
++
++/** Only a go-between who can be asked: anyone else carries a note the D663 sentence keeps. */
++function reachable(person: GoBetween): boolean {
++  return person.reach === undefined || person.reach === 'ok';
++}
++
++/**
++ * The one introduction the plan asks for: exactly one go-between, reachable,
++ * and every route's introduction through them naming the same person. Anything
++ * else (two go-betweens, two people to meet, none) leaves the D663 sentence.
++ */
++export function plannedIntroduction(
++  planInput: unknown,
++  people: readonly GoBetween[],
++): PlannedIntroduction | null {
++  if (people.length !== 1 || !reachable(people[0])) return null;
++  const via = people[0];
++  const targets = new Set(
++    routeIntroductions(planInput)
++      .filter((intro) => intro.viaPhone === via.phone)
++      .map((intro) => intro.toName),
++  );
++  return targets.size === 1 ? { via: via.name, to: [...targets][0] } : null;
++}
++
++/** D739's form, in Georgian: „<via-ის> ასისტენტს დაველაპარაკები … რომ <via-მ> გაგაცნოს <to>." */
++export function georgianSentence(intro: PlannedIntroduction): string {
++  return (
++    `${geoName(intro.via, 'gen')} ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, ` +
++    `რომ ${geoName(intro.via, 'erg')} გაგაცნოს ${intro.to}.`
++  );
++}
++
++/**
++ * The server's plan sentence naming whom the introduction is to, or null to
++ * keep the D663 sentence: the switch is off, the plan names no single
++ * introduction, or the run is not in Georgian (only the Georgian text was
++ * drafted).
++ */
++export function introTargetSentence(
++  planInput: unknown,
++  people: readonly GoBetween[],
++  language: RunLanguage,
++): string | null {
++  if (!INTRO_TARGET_SENTENCE_ON || language !== 'ka') return null;
++  const intro = plannedIntroduction(planInput, people);
++  return intro === null ? null : georgianSentence(intro);
++}
+-- 
+2.43.0
+

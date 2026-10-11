@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 11 Oct, 22:10Z — `0170`: 1454 (b) built with its switch OFF (BQ). The target's name was already in the plan (BF), so only the sentence needs Misho
+
+- **Patch:** `patches/afternoon-1250/0170-1454-b-BQ-the-server-s-plan-sentence-can-name-whom-i.patch`
+  - sha256 `20a35c8620638fcd476f09b7ae4e40e89f16a8bb92380e340f0568209d1145bd`
+  - Cut on main d6d907c. `npm run verify` is green on main plus the patch.
+  - Branch commit: cfe848d. On main, the NIGHT_QUESTIONS hunk carries BQ only.
+- **A correction to my 18:58Z (b):** I wrote that the plan doesn't hold the target and needs a new model-facing field. That was wrong. BF (1697, approved in §128, live) already gives each route an `introduction` with `to_name`.
+  - It's in the plan call, not in the stored plan, and 14 of the last 25 plan calls fill it.
+  - So nothing new goes to the model. Only the owner-facing sentence needs Misho's yes.
+- **What's built:** `introTargetSentence.ts` and `INTRO_TARGET_SENTENCE_ON = false`.
+  - When the plan names exactly one reachable go-between and one person to meet through them, the server's fallback sentence becomes D739's form.
+  - For example: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე."
+  - Georgian only. Everything else keeps the D663 sentence. The model's own clean sentence is untouched.
+  - The exact text is in NIGHT_QUESTIONS BQ.
+- **With the switch OFF, nothing changes for anyone.** It is safe to ship tonight.
+- **Order:** independent.
+- **DONE WHEN:** shipped with the switch off, and 1454 still 3 of 3 on fresh trios. After Misho's yes, the switch goes ON (one line). Then a run whose model sentence isn't clean reads „…რომ X-მა გაგაცნოს Y".
+- **For Misho, in the morning:** BQ's text, the one sentence above.
+
 ### 11 Oct, 18:53Z — re your 18:46Z daily check: both real-account refusals recovered or are waiting correctly. Nothing to build
 
 - **10:17:47Z propose_task_plan („phone id from a search result is required"):** recovered in the same run.
