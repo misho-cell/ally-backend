@@ -1,4 +1,5 @@
 import { isDeceasedOrBlockedFor } from './block.service';
+import { factsAround, questionWithFacts } from './instructedFacts';
 import { query } from '../db/postgres/client';
 import {
   goalTitleFrom,
@@ -8,6 +9,7 @@ import {
   instructionNeed,
   instructionQuestion,
   isMeetingInstruction,
+  isInstructionSentence,
 } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { createAsk } from './taskAsks.service';
@@ -29,6 +31,8 @@ const NAME_WORDS_TRIED = [2, 1] as const;
 const MATCHES_LOOKED_AT = 2;
 
 const LABEL_QUERY_TIMEOUT_MS = 3_000;
+/** createAsk keeps 600 characters of a question; the facts stop a sentence before that. */
+const INSTRUCTED_QUESTION_MAX_CHARS = 600;
 
 /** What the server's send came to. */
 export enum InstructedAskResult {
@@ -219,7 +223,13 @@ export async function sendInstructedAsk(
   await grantTaskPermission(userId, taskId);
   // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
   // 3928: a line with no question after the names asks about the need said before them.
-  const question = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
+  const asked = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
+  // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
+  const question = questionWithFacts(
+    asked,
+    factsAround(ownerLine.trim(), isInstructionSentence),
+    INSTRUCTED_QUESTION_MAX_CHARS,
+  );
   for (const c of askable) {
     const outcome = await askOne(userId, taskId, c, question, threadId);
     if (outcome !== null) people.push(outcome);
