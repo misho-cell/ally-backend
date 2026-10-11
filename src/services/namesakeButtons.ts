@@ -57,6 +57,36 @@ function namesakeNamedBy(label: string, namesakes: readonly Namesake[]): string 
 }
 
 /**
+ * The buttons that stand for a namesake, in their order: those that start with
+ * the shared name; or, when none does (box 53065: [„სანტექნიკის ნომერი",
+ * „საბურთალოს სანტექნიკის ნომერი"]), those that use words the search showed
+ * about one of them — „სხვა, მე დავწერ" uses none and is left out either way.
+ */
+function namesakeButtons(buttons: readonly string[], namesakes: readonly Namesake[]): string[] {
+  const names = namesakes.map((n) => n.name).filter((name) => name !== '');
+  const named = buttons.filter((label) => {
+    const lower = label.trim().toLocaleLowerCase();
+    return names.some((name) => lower.startsWith(name));
+  });
+  if (named.length > 0) return named;
+  return buttons.filter((label) =>
+    stemsOf(label).some((stem) => namesakes.some((n) => n.text.includes(stem))),
+  );
+}
+
+/** The position, among the namesake buttons, of the button whose text the line is; -1 if none. */
+export function tappedButtonIndex(
+  line: string,
+  buttons: readonly string[],
+  namesakes: readonly Namesake[],
+): number {
+  const said = line.trim().toLocaleLowerCase();
+  return namesakeButtons(buttons, namesakes).findIndex(
+    (label) => label.trim().toLocaleLowerCase() === said,
+  );
+}
+
+/**
  * The phone the button at `index` stands for; null when it cannot be told for
  * certain. Only buttons that start with the shared name count as namesake
  * buttons („სხვა, მე დავწერ" is not one), and they keep their order.
@@ -66,11 +96,7 @@ export function phoneForButton(
   index: number,
   namesakes: readonly Namesake[],
 ): string | null {
-  const names = namesakes.map((n) => n.name).filter((name) => name !== '');
-  const own = buttons.filter((label) => {
-    const lower = label.trim().toLocaleLowerCase();
-    return names.some((name) => lower.startsWith(name));
-  });
+  const own = namesakeButtons(buttons, namesakes);
   if (index < 0 || index >= own.length || own.length !== namesakes.length) return null;
   const named = own.map((label) => namesakeNamedBy(label, namesakes));
   const direct = named[index];

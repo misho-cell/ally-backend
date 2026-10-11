@@ -1,4 +1,4 @@
-import { namesakesIn, phoneForButton } from '../namesakeButtons';
+import { namesakesIn, phoneForButton, tappedButtonIndex } from '../namesakeButtons';
 
 /** 3466 (box 52934): which namesake a button stands for, or nobody when it cannot be told. */
 const found = namesakesIn({
@@ -37,5 +37,27 @@ describe('3466: a button names one person, or nobody', () => {
     ).toBeNull();
     expect(phoneForButton(['დათო გამოგონილი (საბურთალო)'], 0, found)).toBeNull();
     expect(phoneForButton([OTHER_BUTTON], 0, found)).toBeNull();
+  });
+});
+
+// Box 53065, pair 4: the buttons did not carry the name, and the helper tapped the first one.
+describe('3466: buttons without the name', () => {
+  const plumbers = namesakesIn({
+    results: [
+      { phone: 'p-any', name: 'დათო გამოგონილი', tags: ['სანტექნიკი'] },
+      { phone: 'p-sab', name: 'დათო გამოგონილი', tags: ['სანტექნიკი'], note: 'საბურთალო' },
+    ],
+  });
+  const buttons = ['სანტექნიკის ნომერი', 'საბურთალოს სანტექნიკის ნომერი', OTHER_BUTTON];
+
+  it('reads the tapped button’s own text as its position', () => {
+    expect(tappedButtonIndex('სანტექნიკის ნომერი', buttons, plumbers)).toBe(0);
+    expect(tappedButtonIndex('საბურთალოს სანტექნიკის ნომერი', buttons, plumbers)).toBe(1);
+    expect(tappedButtonIndex(OTHER_BUTTON, buttons, plumbers)).toBe(-1);
+  });
+
+  it('gives each button its person, the plain one by elimination', () => {
+    expect(phoneForButton(buttons, 1, plumbers)).toBe('p-sab');
+    expect(phoneForButton(buttons, 0, plumbers)).toBe('p-any');
   });
 });

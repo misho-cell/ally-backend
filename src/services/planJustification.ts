@@ -12,8 +12,9 @@
  */
 
 /** The plan sentence: the assistant talking to another assistant. */
+// 1454 (box 53065, run 1): „…ასისტენტს დაველაპარაკო" — every form of the verb counts.
 const PLAN_SENTENCE_RE =
-  /(ასისტენტს\s+დაველაპარაკები|ასისტენტებს\s+დაველაპარაკები|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
+  /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
 
 /** What a match justification says: contact, member, knows, matches. */
 /** 48247: does this text carry the plan sentence? */
