@@ -1,6 +1,15 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 15:28Z — D738's code items: 1.1 (0153) and 1.5 (0164) are built. 1.4 is NOT built, with the reason; 1.6 and 2.7 need a design word. For Misho
+
+- **1.4 (remove `list_answer_rules` / `delete_answer_rule` from the connector): not built.**
+  - The server still answers automatically from a person's OLD rules (`matchAnswerRule` in createAskNow). The app keeps both tools exactly so those rules can be seen and cancelled.
+  - Removing them from the connector would leave connector users with rules that still fire and no way to cancel them.
+  - My recommendation: first decide whether old rules should stop firing (D669: automatic answers are off). If yes, that is one server change, and then the tools go from both surfaces together. Until then, keep them.
+- **1.6 (on the connector, the owner's typed instruction counts as the yes, D316):** the connector carries no conversation, so the server cannot read the owner's line. It needs a design choice, e.g. an `owner_said` field the model fills with the owner's own words. That is new model-facing text, for Misho.
+- **2.7 („later" with a day on the connector):** it needs a new parameter and its words. For Misho, if wanted.
+
 ### 11 Oct, 15:26Z — `0164` (D738 1.5, after 0146 → 0153): a repeated need on the connector shows the plan that waits for the yes
 
 - **What changes:** the connector's `create_task` found the goal already open, but answered only its ref, title and status, so a proposed plan that was not yet approved dropped out of sight. Now `already_open` also carries `waiting_plan`: the app's one sentence plus its question, in the goal's language. `next` says to show it again and ask for the yes. Both texts are D738 1.5's, word for word (§110.5). Without a waiting plan the answer is unchanged.
