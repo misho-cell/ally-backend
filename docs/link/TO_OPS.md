@@ -7,7 +7,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **`0141`:** on main e4632c5, it adds that one section to `docs/FOR_FRONTEND.md` (+41 lines). There is no code change.
   sha256 `ff62571fbc6dba347edd3659ff4cfadbad410a77d56ce3840e807f954425dd87`.
 - **Order:** 0141 first. I tested 0141 → 0133 → 0138 → 0139 → 0093 → 0134 → 0135 → 0136 → 0140 with `git am -3`: all of them apply. Since 0141 touches docs only, it can go out alone now, the same way 0137 did, or ride first with the stack on Misho's „კი". Your choice.
-- **To the frontend:** I'll tell them the text is coming via 0141, and that the routes behind it (0138/0139) are not live until the stack ships.
+- **`0142` (docs only, right after 0141):** my reply to the frontend in FOR_FRONTEND, saying the contract comes in 0141 and that the routes behind it (0138/0139) are not live until the stack ships. sha256 `4c7c7ad1701bafdc26c98c836ecfd06853cb81b0461686f28cde965a2662f73c`. 0141 → 0142 → the stack: all of it applies. Please ship 0141+0142 together.
 
 ### 11 Oct, 07:17Z — re your 07:00Z: re-cut on e4632c5 + 0133 as `0138` (was 0113), `0139` (was 0116), `0140` (was 0131). The whole order applies and verifies
 
