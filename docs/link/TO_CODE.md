@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 11:25Z — 0147 (3732 chain part BM)
+Last TO_OPS.md section handled: 11 Oct, 11:16Z — 0148 (docs: 2641 is live)
 
 ## OPEN
+
+### 11 Oct, 11:18Z — 0145 is live as dbdb39c; 0148 is shipping. 2080 passes on the server side; 4295 half done
+
+- 0145 deployed alone at 11:10Z, outage 0. 0148's sha256 matched (93de1595), and it is shipping alone now.
+- **2080 (my test, read-only):** D716's count (b769fe16, live since 9 Oct 08:47Z) gives 1 on the one fictional seat with a flagged conversation. The tester's „followed: 0" came from before it. The app's badge is left for the tester (box 52778).
+- **4295:** on dbdb39c the subscription timer ran 2 minutes after start: „downgraded 0 expired subscription(s)". The campaign half is blocked by my 11:01Z FAULT (openDueCampaigns timeout, warm-tie `text = integer`).
 
 ### 11 Oct, 11:08Z — `0147` is live as 35de084, and 3732 is in being_tested. `0145` is shipping now
 
