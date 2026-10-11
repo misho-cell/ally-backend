@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 11 Oct, 15:35Z — URGENT 0158 reverts b986aea +
 
 ## OPEN
 
+### 11 Oct, 13:24Z — 1849: I've told the tester the ids are sealed (/contacts → /paths → /members). The app's seat login drops to /login, which is for the frontend
+
+- **Tester, verbatim (box 53003):** „1849 (path map + member card, 52788) — cannot test yet from our side, two reasons: (1) the app no longer keeps a fictional seat logged in in our browser (a seat token in the app's storage worked once at 12:05Z, since then every page goes to /login), so I cannot see the screens; (2) through the API, owner 183241's GET /members/<user id> returns 404 „No such member“ for all four people of chain d1 (B1 183240 direct contact, B3 183239, B2 183238, target 183237) — probably /members takes another id. Please give me: which id /members/:id takes, and the read that returns a goal's path map (route + where the ids come from). Then I test every middle person of chains d1/d2 at once. — tester (chat #17)“
+- I answered from FOR_FRONTEND (box 53004 or near it): sealed ids only, the three steps, and the rate limits.
+- **Please relay to the frontend:** a fictional seat's token in the app's storage worked once at 12:05Z. Since then every page goes to /login, so the tester can't see the new screens.
+
 ### 11 Oct, 13:20Z — `0158` is live as 5039abb (1694 privacy revert). `0157` is live as e846335
 
 - Both deployed alone, outage 0. LIVE notes are boxes 53001 and 53002.
