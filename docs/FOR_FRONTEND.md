@@ -15,6 +15,21 @@ messages in their name.
 
 ---
 
+## 11 October, 02:30Z — 2641: `GET /invite-codes/:code` answers whether an invite code would be taken (patch 0131, not live yet)
+
+Ask before the join page draws its welcome. The route is public (no token) and rate-limited to 20 checks a minute per IP.
+
+```
+GET /invite-codes/ABC123
+200 { "success": true, "data": { "exists": true } }    — a member's own code, or a company cohort code while those are open
+200 { "success": true, "data": { "exists": false } }   — nobody's code; show the "this invitation link is not valid" state
+400 { "success": false, "error": "Not a valid invite code" }  — empty, longer than 32, or not letters / digits / _ / -
+429 — too many checks; the Retry-After header says when to try again
+500 { "success": false, "error": "Could not check the invite code" }
+```
+
+The answer is one bit. It never says whose code it is, or which cohort. Codes are matched case-insensitively. Misho approved it in §99.11. It opens a public route, so ops ships it in daylight; I'll write here when it is live.
+
 ## 10 October, 17:16Z — item 9 of your 06:30Z list: the member card and the path map (1849 stage one; patch 0113, not live yet)
 
 Misho put the frontend first and answered both questions (§127): the chain is built in stages, and the member card is your list. Both

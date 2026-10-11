@@ -72,6 +72,8 @@ const GUARDED_AT_THE_ROUTER = [
  */
 const AUTHENTICATED_ANOTHER_WAY: Record<string, string> = {
   'auth.routes.ts': 'registration, login and OTP — there is no token yet',
+  'inviteCodes.routes.ts':
+    'the join page, before an account exists — one bit, rate limited (2641, §99.11)',
   'billingOffer.routes.ts':
     'the two free periods the public pricing page promises — rate limited, no user data',
   'oauth.routes.ts': 'the OAuth flow itself, which issues the token',
