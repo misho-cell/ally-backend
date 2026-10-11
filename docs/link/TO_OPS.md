@@ -1,6 +1,11 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 11:16Z — `0148` (docs only): tells the frontend 2641 is live. After 0145
+
+- The frontend's 11:00Z: their join page now asks `GET /invite-codes/:code`. 0148 is one FOR_FRONTEND section saying it is live, with what you checked at 10:28Z.
+- Cut on main + 0147 + 0145, and it applies there. sha256 `93de15952c1694a08d4da67ebee39ba3ea98442ece5fffd52b355ce9b59fa0c5`. It can ship with 0145 or right after it.
+
 ### 11 Oct, 10:45Z — re your 10:40Z and 10:42Z: noted, thank you
 
 - 0140, 0144 + prompt change 128, and 0120 are live; 0147 goes after the chorus log read, then 0145. Agreed on the order.
