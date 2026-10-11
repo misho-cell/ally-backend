@@ -7485,7 +7485,7 @@ function wakeCapFor(runId: string | undefined, taskId: number): Date | null {
  * it is remembered: what the approve button approves must be on the screen,
  * and without the card nothing else guarantees that.
  */
-interface PlanForReply {
+export interface PlanForReply {
   readonly text: string;
   readonly names: readonly string[];
 }
@@ -7707,6 +7707,34 @@ export function replyCarriesPlan(reply: string, plan: PlanForReply): boolean {
 }
 
 /**
+ * The plan reply's text: the model's reply with the plan in it, said once and
+ * ended on the agreed question.
+ */
+export function planReplyText(reply: string, plan: PlanForReply, language: RunLanguage): string {
+  // D739: an introduction plan is its one sentence and one question, on every
+  // path. 1454: nothing the model wrote before it is kept (box 53296), and a
+  // reply without the plan — „დამელოდე, სანამ დაადასტურებ." (box 53461, conv
+  // 50065) — gives way to the server's sentence instead of standing before it.
+  if (carriesPlanSentence(plan.text)) {
+    return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), language);
+  }
+  if (replyCarriesPlan(reply, plan)) {
+    return withClosingQuestion(
+      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
+      language,
+    );
+  }
+  // The tester's 1110 (33975): the plan line went first and the findings came
+  // after it. The news leads; the plan follows it, and the question ends it.
+  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
+  // stood alone under its buttons without „დავიწყო?". It ends on it too.
+  return withClosingQuestion(
+    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
+    language,
+  );
+}
+
+/**
  * The reply, with the plan in plain sentences in front of it when the model
  * left the plan out. A reply that carries it is untouched.
  */
@@ -7724,27 +7752,11 @@ function withPlanInReply(
   if (!replyAsksForApproval(offered)) return written;
   // P3 (47972): Netai has no network of its own — „ჩემს ნაცნობებში" is the owner's.
   const reply = withOwnersNetwork(written);
-  if (replyCarriesPlan(reply, plan)) {
-    // D739: the plan is its one sentence and one question. 1454 (box 53296):
-    // for an introduction plan nothing the model wrote before it is kept.
-    if (carriesPlanSentence(plan.text)) {
-      return withClosingQuestion(withOnePlanSentence(introPlanOnly(reply, plan)), runLang(runId));
-    }
-    return withClosingQuestion(
-      withOnePlanSentence(withPlanSentence(withoutMatchJustification(reply), plan.text)),
-      runLang(runId),
-    );
+  if (!replyCarriesPlan(reply, plan)) {
+    // eslint-disable-next-line no-console
+    console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
   }
-  // eslint-disable-next-line no-console
-  console.warn(`[plan] run ${runId}: the reply did not carry the plan — the server added it`);
-  // The tester's 1110 (33975): the plan line went first and the findings came
-  // after it. The news leads; the plan follows it, and the question ends it.
-  // 2909 (conv 44115): the reply was a stage direction, dropped, and the plan
-  // stood alone under its buttons without „დავიწყო?". It ends on it too.
-  return withClosingQuestion(
-    reply.trim() === '' ? plan.text : `${reply.trimEnd()}\n\n${plan.text}`,
-    runLang(runId),
-  );
+  return planReplyText(reply, plan, runLang(runId));
 }
 
 /**
