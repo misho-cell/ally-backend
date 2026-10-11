@@ -1,0 +1,246 @@
+From dfaeb937dd183f8238ba10644aa28609a7eeb997 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 03:05:20 +0000
+Subject: [PATCH] 3731: the recommended person is told who recommended her
+ (switch OFF, BN)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 52207 (0 of 2 on 0129): after „კი, და უთხარი, რომ მე გირჩიე" the
+recommended notary got the 1696 line — the helper's own question, „do you
+know a notary?" — and no word that the helper had recommended her.
+
+When the helper's line RECOMMENDED her to help (recommendsSomebody on the
+line the card answered), she reads who recommended her (or that somebody
+did, after the unnamed tap), who is looking for help, and the goal's own
+words, quoted. Names are the ones she knows: her label for them, else
+their registered name; the helper's in the ergative (geoName). An order
+to ask somebody keeps the 1696 line, and so does every language but
+Georgian.
+
+User-visible text (D44): RECOMMENDED_RELAY_ON stays false until Misho's
+yes on the exact lines (NIGHT_QUESTIONS BN). With it off, nothing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/NIGHT_QUESTIONS.md                       | 16 +++++++
+ .../__tests__/recommendedRelay.test.ts        | 42 +++++++++++++++++
+ src/services/askReferralSettle.service.ts     | 46 +++++++++++++++++--
+ src/services/recommendedRelay.ts              | 39 ++++++++++++++++
+ 4 files changed, 140 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/recommendedRelay.test.ts
+ create mode 100644 src/services/recommendedRelay.ts
+
+diff --git a/docs/NIGHT_QUESTIONS.md b/docs/NIGHT_QUESTIONS.md
+index 55df2cd..80eb29b 100644
+--- a/docs/NIGHT_QUESTIONS.md
++++ b/docs/NIGHT_QUESTIONS.md
+@@ -104,6 +104,22 @@ while its questions are unanswered is a list that loses them.
+   between, and the reply ends with „?“ too. The run then reads, word for word: „არ გაიგზავნა: დამხმარემ კითხვა დაგისვა, და მფლობელის
+   სახელით პასუხობ — ეს პასუხი უნდა იყოს, არა კითხვა. დაწერე, რა თქვა მფლობელმა, კითხვის ნიშნის გარეშე. თუ ეს არ იცი, ჯერ მფლობელს ჰკითხე
+   და მისი სიტყვებით უპასუხე.“ My recommendation: yes. „BL კი“ turns it ON.
++- **BN — 3731, the words the recommended person reads after the helper's tap. Drafted 11 Oct ~02:50 UTC for Misho's yes on the exact
++  text.** `0129` is live, and the card and the no-send-before-the-tap rule pass 2 of 2. The message the recommended person gets still
++  fails 0 of 2 (box 52207). Today it is the 1696 line „{asker}-ისთვის გეკითხები: {the original question}“. It never says who recommended
++  her, even after „კი, და უთხარი, რომ მე გირჩიე“, and it sends a notary the question „do you know a notary?“. Proposed, ka:
++  - after „კი, და უთხარი, რომ მე გირჩიე“: „{helper, ergative: ნინომ / გიორგიმ} შენ გირჩია. {asker} ეძებს დახმარებას: „{the goal's own words}“. შეძლებ
++    დახმარებას?“
++  - after „კი, ჩემი სახელის გარეშე“: „შენ გირჩიეს, როგორც ადამიანი, ვინც შეიძლება დაეხმაროს. {asker} ეძებს დახმარებას: „{the goal's own
++    words}“. შეძლებ დახმარებას?“
++
++  The goal's words are quoted because owners write them in the first person. On the tester's trio that reads: „… ეძებს დახმარებას:
++  „მჭირდება ნოტარიუსი“.“ Names are the ones the recommended person knows: her own label for them, else their registered name. Already
++  built behind `RECOMMENDED_RELAY_ON = false` (recommendedRelay.ts). Only Georgian was drafted; other languages keep today's line.
++
++  {the goal's own words} is the goal's title as the owner set it, not the question that was sent to the helper. An „ask Eka“ order, where
++  Eka is asked to pass it on and not to help herself, keeps today's line. My recommendation: yes. „BN კი“ turns it on, and it ships in
++  daylight.
+ - **BJ — D771, the monthly contacts reminder in the assistant's own words. Drafted 10 Oct 12:15 UTC for Misho's yes on the exact text.**
+   Once a month, only for someone whose last import is over 30 days old and whose reminder switch is on, the owner's own run (a
+   regular conversation, no goal, like the day's question) gets this section:
+diff --git a/src/services/__tests__/recommendedRelay.test.ts b/src/services/__tests__/recommendedRelay.test.ts
+new file mode 100644
+index 0000000..b67a2ca
+--- /dev/null
++++ b/src/services/__tests__/recommendedRelay.test.ts
+@@ -0,0 +1,42 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { RECOMMENDED_RELAY_ON, recommendedRelayLine } from '../recommendedRelay';
++
++/** 3731 (box 52207): the recommended notary was asked „do you know a notary?", and not told who recommended her. */
++const RELAY = { helper: 'ნინო', asker: 'გიორგი', need: 'მჭირდება ნოტარიუსი' };
++
++describe('recommendedRelayLine', () => {
++  it('names the helper after the named tap, and quotes the goal', () => {
++    expect(recommendedRelayLine('ka', RELAY, true)).toBe(
++      'ნინომ შენ გირჩია. გიორგი ეძებს დახმარებას: „მჭირდება ნოტარიუსი“. შეძლებ დახმარებას?',
++    );
++  });
++
++  it('says only that somebody recommended her after the unnamed tap', () => {
++    expect(recommendedRelayLine('ka', { ...RELAY, helper: null }, true)).toBe(
++      'შენ გირჩიეს, როგორც ადამიანი, ვინც შეიძლება დაეხმაროს. გიორგი ეძებს დახმარებას: „მჭირდება ნოტარიუსი“. შეძლებ დახმარებას?',
++    );
++  });
++
++  it('keeps the 1696 line where nothing approved exists: other languages, no goal words, no asker', () => {
++    expect(recommendedRelayLine('en', RELAY, true)).toBeNull();
++    expect(recommendedRelayLine('ka', { ...RELAY, need: ' ' }, true)).toBeNull();
++    expect(recommendedRelayLine('ka', { ...RELAY, asker: '' }, true)).toBeNull();
++  });
++
++  it('is OFF until Misho approves the lines (NIGHT_QUESTIONS BN)', () => {
++    expect(RECOMMENDED_RELAY_ON).toBe(false);
++    expect(recommendedRelayLine('ka', RELAY)).toBeNull();
++  });
++
++  it('is used only for a recommendation, with the names the referred person knows', () => {
++    const settle = readFileSync(join(__dirname, '..', 'askReferralSettle.service.ts'), 'utf8');
++    expect(settle).toContain("if (!recommendsSomebody(offer.offer_line ?? '')) return null;");
++    expect(settle).toContain(
++      'helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,',
++    );
++    expect(settle).toContain(
++      'referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),',
++    );
++  });
++});
+diff --git a/src/services/askReferralSettle.service.ts b/src/services/askReferralSettle.service.ts
+index 2d4938d..c0b8073 100644
+--- a/src/services/askReferralSettle.service.ts
++++ b/src/services/askReferralSettle.service.ts
+@@ -8,8 +8,14 @@ import {
+   ReferralTap,
+   relayedQuestion,
+ } from './askReferral.service';
++import { recommendedRelayLine } from './recommendedRelay';
++import { recommendsSomebody } from './referralRecommendation';
+ import { RunLanguage } from './runLanguage';
+-import { ASKED_AS_THE_ASKER_SAVED_THEM, ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
++import {
++  ASKED_AS_THE_ASKER_SAVED_THEM,
++  ASKER_AS_THE_READER_SAVED_THEM,
++  nameAsSavedBySql,
++} from './savedNameSql';
+ import { createRelayAsk, sendApprovedAskAnswer } from './taskAsks.service';
+ import { saveThreadMessage, userLanguage } from './threads.service';
+ 
+@@ -35,8 +41,18 @@ interface OfferedReferral {
+   readonly asker_name: string | null;
+   readonly reader_name: string | null;
+   readonly task_thread_id: number | null;
++  /** 3731: the goal's own words, and the names the referred person knows the two by. */
++  readonly goal_title: string | null;
++  readonly offer_line: string | null;
++  readonly helper_as_referral_knows: string | null;
++  readonly asker_as_referral_knows: string | null;
+ }
+ 
++/** The referred person's account, by the number the reader gave; SQL over the ask row. */
++const REFERRAL_USER_SQL = `(SELECT up."userId" FROM "UserPhone" up
++   WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace(ta.referral_phone, '\\D', '', 'g')
++   LIMIT 1)`;
++
+ /** The referral this reader was offered on this conversation and has not decided yet. */
+ async function offeredReferral(
+   recipientId: string,
+@@ -47,7 +63,14 @@ async function offeredReferral(
+             COALESCE(ta.shown_question, ta.question) AS question,
+             ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name,
+             ${ASKED_AS_THE_ASKER_SAVED_THEM} AS reader_name,
+-            (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id
++            (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
++            (SELECT NULLIF(TRIM(t.title), '') FROM tasks t WHERE t.id = ta.task_id) AS goal_title,
++            (SELECT c.content FROM conversations c
++              WHERE c.thread_id = ta.ask_thread_id AND c.role = 'user'
++                AND c.created_at <= ta.referral_offered_at
++              ORDER BY c.id DESC LIMIT 1) AS offer_line,
++            ${nameAsSavedBySql(REFERRAL_USER_SQL, 'ta.to_user_id')} AS helper_as_referral_knows,
++            ${nameAsSavedBySql(REFERRAL_USER_SQL, 'ta.from_user_id')} AS asker_as_referral_knows
+        FROM task_asks ta
+       WHERE ta.ask_thread_id = $1 AND ta.to_user_id = $2::int AND ta.status = 'sent'
+         AND ta.referral_offered_at IS NOT NULL AND ta.referral_approved IS NULL
+@@ -91,6 +114,23 @@ async function tellTheAsker(offer: OfferedReferral, mayName: boolean): Promise<v
+   }
+ }
+ 
++/**
++ * 3731: what the referred person reads when the reader RECOMMENDED her to help
++ * (not an order to ask her); null keeps the 1696 line. OFF until BN.
++ */
++function referralReads(
++  offer: OfferedReferral,
++  tap: ReferralTap,
++  language: RunLanguage,
++): string | null {
++  if (!recommendsSomebody(offer.offer_line ?? '')) return null;
++  return recommendedRelayLine(language, {
++    helper: tap === ReferralTap.Named ? offer.helper_as_referral_knows : null,
++    asker: offer.asker_as_referral_knows ?? '',
++    need: offer.goal_title ?? '',
++  });
++}
++
+ async function askTheReferral(
+   recipientId: string,
+   offer: OfferedReferral,
+@@ -102,7 +142,7 @@ async function askTheReferral(
+     recipientId,
+     offer.id,
+     offer.referral_phone,
+-    relayedQuestion(language, asker, offer.question),
++    referralReads(offer, tap, language) ?? relayedQuestion(language, asker, offer.question),
+   );
+   if (!outcome.sent) {
+     if (outcome.reason !== undefined && NOT_ON_NETAI_REASONS.has(outcome.reason)) {
+diff --git a/src/services/recommendedRelay.ts b/src/services/recommendedRelay.ts
+new file mode 100644
+index 0000000..6115f05
+--- /dev/null
++++ b/src/services/recommendedRelay.ts
+@@ -0,0 +1,39 @@
++import { geoName } from './georgianCase';
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 3731 (box 52207, 0 of 2 on 0129): after the helper tapped „კი, და უთხარი,
++ * რომ მე გირჩიე", the recommended notary got the 1696 line „{asker}-ისთვის
++ * გეკითხები: {the question the helper was asked}" — „do you know a notary?",
++ * sent to a notary, and never a word that the helper had recommended her. A
++ * person recommended to help is told who recommended her (or that somebody
++ * did), who needs what, and asked whether she can help.
++ *
++ * ⚠️ USER-VISIBLE (D44), NOT YET APPROVED — NIGHT_QUESTIONS BN. OFF until
++ * Misho's yes on the exact lines; only Georgian was drafted, so any other
++ * language keeps the 1696 line.
++ */
++export const RECOMMENDED_RELAY_ON = false;
++
++export interface RecommendedRelay {
++  /** The helper, as the recommended person knows them; null when the helper chose no name. */
++  readonly helper: string | null;
++  readonly asker: string;
++  /** The goal's own words, as its owner set them (often first person, so they are quoted). */
++  readonly need: string;
++}
++
++/** The Georgian line the recommended person reads; null where no approved line exists. */
++export function recommendedRelayLine(
++  language: RunLanguage,
++  relay: RecommendedRelay,
++  on: boolean = RECOMMENDED_RELAY_ON,
++): string | null {
++  const need = relay.need.trim();
++  if (!on || language !== 'ka' || need === '' || relay.asker.trim() === '') return null;
++  const opening =
++    relay.helper === null || relay.helper.trim() === ''
++      ? 'შენ გირჩიეს, როგორც ადამიანი, ვინც შეიძლება დაეხმაროს.'
++      : `${geoName(relay.helper, 'erg')} შენ გირჩია.`;
++  return `${opening} ${relay.asker.trim()} ეძებს დახმარებას: „${need}“. შეძლებ დახმარებას?`;
++}
+-- 
+2.43.0
+

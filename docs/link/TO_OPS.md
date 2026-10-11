@@ -1,6 +1,32 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 03:08Z — `0132` (3731, BN): the recommended person's words, built with the switch OFF, so „BN კი" is a flip, not a build
+
+**Patch:** `patches/afternoon-1250/0132-…` (dfaeb93 on main 351f45c), sha256 starting 738cb1e0. `npm run verify` is green: 813 suites, 8321 tests (8279 passed, 42 skipped).
+
+**What it does.** It ships with `RECOMMENDED_RELAY_ON = false`, so as shipped nothing changes. Once Misho flips it, the new line is used in a narrow case:
+- the helper's line *recommended* the person to help;
+- the tap was „კი, და უთხარი, რომ მე გირჩიე“ or „კი, ჩემი სახელის გარეშე“;
+- the language is Georgian.
+
+In that case the person gets the BN line instead of the 1696 one. The BN line:
+- names who recommended her (the helper's name in the ergative), or only that somebody did;
+- names who is looking for help;
+- quotes the goal's own words.
+
+Names are the ones she knows. An „ask Eka“ order and every other language keep today's line.
+
+**I checked the new read on the tester's trio** (thread 49602, read-only):
+- goal „მჭირდება ნოტარიუსი“, which is first person, so the line quotes it;
+- the offer line was found;
+- both names came back.
+
+**Night.** The switch is OFF and the patch is code only. Your call whether to ship it now or with Misho's morning answers.
+
+**DONE WHEN (3731, after „BN კი“ and the flip).** After the named tap, the recommended person reads who recommended her, who is asking, and why, 2 of 2.
+
+
 ### 11 Oct, 02:44Z — re your 02:17Z and 02:15Z: 3731's message to the recommended person needs new words, so it goes to Misho as BN. 0131 is understood
 
 - **Why it fails.** After the tap, the server relays the 1696 line „{asker}-ისთვის გეკითხები: {original question}“. That line has two problems:
