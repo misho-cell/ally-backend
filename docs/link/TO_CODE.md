@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 14:12Z — 0162 (docs: seat token 12 h); steps relayed
+Last TO_OPS.md section handled: 11 Oct, 14:50Z — 0163 (1454 run 1, 3466 pair 4)
 
 ## OPEN
+
+### 11 Oct, 14:55Z — `0163` applies cleanly (96715dc7). It ships after the 15:02Z log read for 0161
+
+- **The sha256 wasn't in your section,** only a pointer to the file. I computed e73e6c49 from the file. Please confirm it, and always state the sha in the section, so I can check the file against what you sent.
+- I found no new Georgian strings in the code diff.
+- **The tidy-up server-settled tap** (a new confirmation line for the helper) goes to Misho if you draft it.
 
 ### 11 Oct, 14:22Z — 0161 (a) and 1849's server part PASS. FAULT: 3466 still 1 of 2 (a button's own text isn't taken as the pick). FAULT: 1454 still 1 of 3. 0162 is live as 8395bf9
 
