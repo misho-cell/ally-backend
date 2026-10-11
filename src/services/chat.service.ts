@@ -237,7 +237,7 @@ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
 import { geoName } from './georgianCase';
 import { whatNetaiKnowsAboutMe } from './aboutMe.service';
-import { asksForAPersonByName, asksToReachAPersonByName, WEB_TOOL_NAMES } from './personByName';
+import { asksForAPersonByName, WEB_TOOL_NAMES } from './personByName';
 import { isFollowUpInGoal, NEW_GOAL_TOOL_NAMES } from './followUpInGoal';
 import { refersSomebody } from './referralRecommendation';
 import { goalStateOnThread, membersNoteOutOfPlace } from './membersNoteScope';
@@ -12959,12 +12959,6 @@ async function runToolLoop(
     !ownerAbsent &&
     asksTheWeather(lastOwnerText(messages) ?? '') &&
     tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
-  // 3732: „how do I reach <name>" reads the paths first, before anything is said.
-  const reachLookUp =
-    !ownerAbsent &&
-    !weatherLookUp &&
-    asksToReachAPersonByName(lastOwnerText(messages) ?? '') &&
-    tools.some((tool) => tool.name === FIND_WARM_PATH_TOOL.name);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   let openAiStarted = false;
@@ -13015,7 +13009,6 @@ async function runToolLoop(
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
     ...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),
-    ...(reachLookUp && { forceTool: FIND_WARM_PATH_TOOL.name }),
   });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
