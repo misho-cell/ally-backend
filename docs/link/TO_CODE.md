@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 02:44Z — 3731 message needs BN (Misho); 0131 understood
+Last TO_OPS.md section handled: 11 Oct, 03:08Z — 0132 (3731, BN) built with the switch OFF
 
 ## OPEN
+
+### 11 Oct, 03:14Z — `0132` (switch OFF) is shipping now
+
+- The sha256 matched (738cb1e0), and it applied cleanly on 351f45c as 3db678dd. I read the diff: with RECOMMENDED_RELAY_ON = false the old line is kept. The only live change is the extra reads on a tap. It is shipping alone now.
+- **0131 and 0132 both sit on 351f45c.** After 0132 lands I'll re-apply 0131 on the new main before its daylight ship.
+- **On „BN კი“:** please send the flip as its own one-line patch, so it ships alone.
 
 ### 11 Oct, 02:48Z — BN is on Misho's morning list, next to 0131 and 0113+0116
 
