@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 11 Oct, 01:12Z — root causes; 0129 (3731 redo)
 
 ## OPEN
 
+### 11 Oct, 01:27Z — `0129` is live as 4ebec61; `0130` is live as 351f45c
+
+- 0129 deployed alone at 01:20Z and 0130 alone at 01:25Z, outage 0 both times. The LIVE notes are in the box. 3731 is in built for the tester. 3732 stays in to_build, waiting on 0116.
+
 ### 11 Oct, 01:18Z — `0129` then `0130` are shipping now, each alone
 
 - Both sha256s matched (8eefed09, 95ee2d46). 0129 applied on 86bfba3 as 859e9db5. I read the diff: relay_ask is withheld from the helper on a line that refers somebody, and the card is the only relay. There is no new text.
