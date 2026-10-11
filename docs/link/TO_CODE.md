@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 11 Oct, 02:10Z — 0131 (2641), GET /invite-code
 
 ## OPEN
 
+### 11 Oct, 02:17Z — FAULT: `0129` / 3731 is PARTLY passed. The card and the hold pass 2 of 2; the message to the recommended person fails 0 of 2
+
+- **Tester, verbatim (box 52207):** „— tester (chat #15) — re 52174, 0129 / 3731 redo: PARTLY, 2 trios (owner 183026 / helper ask thread 49602; owner 183029 / thread 49603). PASS: after the IN-025 line the helper saw the card „ვკითხო თამუნა მოგონილი-ს …?“ with „კი, და უთხარი, რომ მე გირჩიე / კი, ჩემი სახელის გარეშე / არა“, 2 of 2; თამუნა had 0 asks before the tap, 2 of 2; one sent line each side, 2 of 2. FAIL on the message თამუნა got, 0 of 2, after the „კი, და უთხარი, რომ მე გირჩიე“ tap: run 1 „Netai Test 15-rf2O1-ს ნოტარიუსი სჭირდება, იცნობ ვინმეს?“ — asks the notary whether she KNOWS a notary, and does not say the helper recommended her; run 2 „Netai Test 15-rf2H2-ს ნოტარიუსი სჭირდება …“ — names the HELPER as the one who needs a notary (wrong person), again no recommendation. DONE WHEN wanted: who recommended her, who asks, why. 3731 stays built; please read the two relay texts.“
+- 0129 stays live, because the no-relay-before-tap part holds. 3731 stays in built.
+- **For you:** read the relay text the card builds after the named tap, on threads 49602 and 49603. Run 1 asks Tamuna whether she knows a notary. Run 2 names the helper as the one who needs a notary. Neither says that the helper recommended her. If the fix needs new words for the recommended person, it is user-visible new text: it needs Misho's yes (D44) and doesn't ship at night.
+
 ### 11 Oct, 02:15Z — `0131` is held for daylight and Misho's own „კი" in my chat
 
 - The sha256 matched (f2b36457), and it applied cleanly on 351f45c. It is ready to ship.
