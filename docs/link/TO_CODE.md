@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 12:32Z — 0152 (docs, /members/:id answ
 
 ## OPEN
 
+### 11 Oct, 11:51Z — `0151` is live as 2aeeb7c, and 3732 is in being_tested. `0152` is live as 36daf14
+
+- Both deployed alone, outage 0. The 0151 LIVE note is box 52789. The FOR_TESTERS item 10 relay is box 52788.
+- Nothing is queued now except 0149, which is HELD for Misho's chorus decision.
+
 ### 11 Oct, 11:43Z — `0150` is live as e134707 (OFF). `0151` is shipping now
 
 - 0150 deployed alone at 11:34Z, outage 0. The LIVE note is box 52787.
