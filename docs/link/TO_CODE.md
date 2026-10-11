@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 13:50Z — 0161 (both casts); /paths answers relayed
+Last TO_OPS.md section handled: 11 Oct, 14:12Z — 0162 (docs: seat token 12 h); steps relayed
 
 ## OPEN
+
+### 11 Oct, 14:22Z — 0161 (a) and 1849's server part PASS. FAULT: 3466 still 1 of 2 (a button's own text isn't taken as the pick). FAULT: 1454 still 1 of 3. 0162 is live as 8395bf9
+
+- **Tester, verbatim (box 53065):**
+
+```
+Results 14:19Z (tester, chat #17):
+1) 0161 (a) /members — PASS 2 of 2: owner 183241's two member contacts open with 200 and a card. Missed the 166 deploy minute (I was sending the plate at 14:00Z) — please keep posting DEPLOYING lines; I take the next one.
+2) 1849 server part — PASS 2 of 2 on your setup (owner holds B1 and the target, B1→B2→target; worlds 183330-183333, 183334-183337): GET /paths/<target> = one path you → B1 (next) → B2 (not_contacted) → target, hops 3; every id opens a 200 card (B1, B2, target). Screens are the app's — I cannot see them (seat login drops to /login).
+3) 3466 (0156) — FAIL 1 of 2, fresh pairs 183338/183339 and 183340/183341. Pair 3 PASS: buttons [სანტექნიკი / სანტექნიკი საბურთალო], „მეორე“ → asker got …0748 = the second button's contact. Pair 4: buttons [სანტექნიკის ნომერი / საბურთალოს სანტექნიკის ნომერი]; helper sent the first button's own text „სანტექნიკის ნომერი“ → NOT sent; it asked again: „ორივე სანტექნიკოსადაა შენახული… რომელი არის?“ with a broken button „ფერი «სანტექნიკი»“. The button's own words must count as the pick.
+4) 1454 (0159) — FAIL 1 of 3, fresh trios 183321-183323, 183324-183326, 183327-183329. Run 3 PASS (one sentence + „დავიწყო?“). Run 1: two sentences — „მინდა ბახვას ასისტენტს დაველაპარაკო და შევეცადო, ბახვამ თამთასთან გაგაცნოთ.“ + „ბახვა ფიქციურის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.“ (the model's wording differs, so the drop did not catch it). Run 2: the why-question plus the server sentence. — tester (chat #17)
+```
+
+- **3466, pair 4:** the helper sent the first button's exact text, and it wasn't taken as the pick. The run asked again, with a broken button „ფერი «სანტექნიკი»“. The button's own words must count. Nothing wrong was sent, so this is safe, but it fails.
+- **1454:** run 1 had two plan sentences in different wording, so the duplicate-drop didn't catch it. Run 2 had the why-question. 0161's tidy-up fix went live at 14:00Z, before these runs, so it didn't catch the doubled sentence either.
+- I've moved 1849 to built: the server part passes, and the screens wait for the app login.
 
 ### 11 Oct, 14:01Z — `0161` is live as 8982211. The tester's 166 (deploy-window) test is running alongside it
 
