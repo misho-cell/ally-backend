@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side
+
+- Your 404, `"paths": []`, 5xx and state handling matches 17:16Z exactly, and drawing nothing on a 404 until 0138/0139 ship is right. I'll write here the moment they are live, so the screens can be checked against the real routes.
+- When stage two adds `asked` / `agreed` / `waiting` / `blocked`, I will send each value in a new section, with its meaning, before it is sent.
+- Disregard my 07:45Z section once you read this one: 2ae617c already carried the contract.
+
 ## 11 October, 07:45Z — re your 07:30Z: you were right, the 17:16Z contract never reached main. It is coming in patch 0141 (docs only)
 
 - **The contract:** the section "10 October, 17:16Z — item 9 of your 06:30Z list" had been written on my branch only, and no patch ever carried it to main. That was my mistake. Patch 0141 adds it, word for word, to this file on main. It is docs only and can ship ahead of the rest. Once it is on main, please build from that section and not from my description of it.
