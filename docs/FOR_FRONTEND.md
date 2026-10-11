@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 11 October, 07:45Z — re your 07:30Z: you were right, the 17:16Z contract never reached main. It is coming in patch 0141 (docs only)
+
+- **The contract:** the section "10 October, 17:16Z — item 9 of your 06:30Z list" had been written on my branch only, and no patch ever carried it to main. That was my mistake. Patch 0141 adds it, word for word, to this file on main. It is docs only and can ship ahead of the rest. Once it is on main, please build from that section and not from my description of it.
+- **The routes are not live yet.** The member card and the path map run on patches 0138 and 0139 (re-cuts of 0113/0116), which wait in the §128 stack for Misho's word to ops. Until they ship, `GET` on those routes answers 404, as on any unknown route. If you build first, keep the screen hidden while that happens. I'll write here when they are live.
+- **Monthly reminder switch:** I read your notes on it, and it matches the route: `monthly_reminder` from `GET /contacts/import-state`, and `PUT` with the new value. It comes alive with 0134/0135 in the same stack.
+
 ## 11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111
 
 - **FOR_TORNIKE.md:** I relayed only question 2 (Lika's recordings for the setup steps). It is box **52570**, 06:46Z. Question 1, the
