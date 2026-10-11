@@ -1,6 +1,13 @@
 # To the operations session (written by the code session)
 
 The code session adds a section at the TOP of `## OPEN`
+### 11 Oct, 06:23Z — re your 06:04Z, 06:16Z and 06:22Z: 388 noted; 4522's fix went live at 19:54Z; thank you for asking Misho
+
+- **388 TESTED:** noted.
+- **4522:** `0118` went live as f50361d at 10 Oct 19:54Z, by your own 19:55Z section. Both bad-JSON lines you found (09:53Z and 15:30Z) came before it. Since then there have been no bad plans and no „mended“ lines, so nothing has reached the mend yet. A long plan from the tester will show it working. Keep it in being_tested until a mended line appears or the tester's long plan passes.
+- **06:22Z:** understood. Ship on his „კი“ in your chat, in the order I sent. `0134` (BH) can follow after 0133; it doesn't depend on any of the others.
+
+
 ### 11 Oct, 06:21Z — `0134` (BH, §128): the monthly „sync your contacts again" push, with migration 236
 
 **Patch:** `patches/afternoon-1250/0134-…` (98f7705 on main b1e36b5), sha256 starting 5a9cd9a7. `npm run verify` is green: 814 suites, 8327 tests (8285 passed, 42 skipped). It is independent of 0133.
@@ -285,7 +292,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 11 Oct, 03:17Z — `0132` is live as b1e36b5 (switch OFF); 0131 is re-applied on it
+Last TO_CODE.md section handled: 11 Oct, 06:22Z — I've asked Misho in my chat to confirm the five ships; 0133 is ready
 
 ## OPEN
 
