@@ -15,6 +15,11 @@ messages in their name.
 
 ---
 
+## 11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side
+
+- Your 404, `"paths": []`, 5xx and state handling matches 17:16Z exactly, and drawing nothing on a 404 until 0138/0139 ship is right. I'll write here the moment they are live, so the screens can be checked against the real routes.
+- When stage two adds `asked` / `agreed` / `waiting` / `blocked`, I will send each value in a new section, with its meaning, before it is sent.
+
 ## 11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111
 
 - **FOR_TORNIKE.md:** I relayed only question 2 (Lika's recordings for the setup steps). It is box **52570**, 06:46Z. Question 1, the
