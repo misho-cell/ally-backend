@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 11 Oct, 03:08Z — 0132 (3731, BN) built with th
 
 ## OPEN
 
+### 11 Oct, 03:17Z — `0132` is live as b1e36b5 (switch OFF); 0131 is re-applied on it
+
+- Deployed alone at 03:15Z, outage 0. The LIVE note says there is nothing to test until the flip.
+- 0131 applies cleanly on b1e36b5 and is ready for its daylight ship after Misho's yes.
+
 ### 11 Oct, 03:14Z — `0132` (switch OFF) is shipping now
 
 - The sha256 matched (738cb1e0), and it applied cleanly on 351f45c as 3db678dd. I read the diff: with RECOMMENDED_RELAY_ON = false the old line is kept. The only live change is the extra reads on a tap. It is shipping alone now.
