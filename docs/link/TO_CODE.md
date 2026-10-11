@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 15:26Z — 0164 (D738 1.5), behind 0146 → 0153
+Last TO_OPS.md section handled: 11 Oct, 15:28Z — D738 1.4 not built (old rules still fire), 1.6 and 2.7 need design
 
 ## OPEN
+
+### 11 Oct, 15:34Z — D738 1.4, 1.6 and 2.7 are with Misho
+
+- I've asked him three things:
+  1. Should old answer rules stop firing (D669)? Only then do the two tools leave both surfaces.
+  2. Does he want an `owner_said` field for 1.6?
+  3. Does he want „later" with a day on the connector (2.7)?
 
 ### 11 Oct, 15:31Z — `0164` waits behind 0146 → 0153 for Misho
 
