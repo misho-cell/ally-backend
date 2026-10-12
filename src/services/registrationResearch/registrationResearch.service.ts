@@ -15,14 +15,15 @@ import {
  * 4126 item 1 — one research run per new user, at registration (D757 §5), within
  * Misho's hard stop.
  *
- * OFF until Misho says yes to REGISTRATION_EXTRACT_BRIEF (D44); it also spends
- * on searches. While off, nothing is queued and the ticker never starts.
+ * ON since Misho's yes to REGISTRATION_EXTRACT_BRIEF, 12 Oct (§129). Back to
+ * false stops it: nothing is queued and the ticker never starts.
  */
-export const REGISTRATION_RESEARCH_ON = false;
+export const REGISTRATION_RESEARCH_ON = true;
 
 /** The same saver and the same private, unmatchable shape as the Axel research (4225). */
 const SYSTEM_SAVER_ID = '0';
-const RESEARCH_SOURCE = 'research';
+/** The Axel research's own source: facts about me, the republish passes and the reads all know it. */
+const RESEARCH_SOURCE = 'public_research';
 const QUERY_TIMEOUT_MS = 10_000;
 const TICK_INTERVAL_MS = 60_000;
 const MAX_ERROR_CHARS = 300;

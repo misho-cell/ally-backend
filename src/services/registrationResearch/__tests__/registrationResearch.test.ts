@@ -35,10 +35,10 @@ describe('registration research run', () => {
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it('is OFF: nothing is queued and no ticker starts', async () => {
-    expect(REGISTRATION_RESEARCH_ON).toBe(false);
-    expect(await queueRegistrationResearch(7)).toBe(false);
-    expect(startRegistrationResearch()).toBe(false);
+  it('is ON since Misho’s yes (§129); switched off, nothing is queued and no ticker starts', async () => {
+    expect(REGISTRATION_RESEARCH_ON).toBe(true);
+    expect(await queueRegistrationResearch(7, false)).toBe(false);
+    expect(startRegistrationResearch(false)).toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
@@ -76,7 +76,7 @@ describe('registration research run', () => {
       '0',
       'employer',
       'Bank A',
-      'research',
+      'public_research',
       PAGE_URL,
       null,
       'possible',

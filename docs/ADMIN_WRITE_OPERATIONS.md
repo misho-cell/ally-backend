@@ -6247,3 +6247,13 @@ questions, „კი, ეტაპებად" and „ფრონტის ს
   and shipped on its own.
 - **0093 (4295):** the timers run between deploys.
 - **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.
+
+**§129 — 12 October ~12:20 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
+docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:40Z). Earlier the same day, ~10:40Z: „დაიწყე რა
+ადამიანების კვლევის მეთოდიც" (start 4126).
+- **E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`), approved as written; the registration run (0193) is switched on with
+  it. The spending stays inside §122's stop (60 searches, 30 pages a person).
+- **6b** („possible" with source and date), **6c** (ask the owner when work status is unclear), **6d** („სამსახურში რამე სიახლეა?",
+  at most once a month): approved as written.
+- **6a** was not answered: it waits for item 3 (Tornike's Q1).
+- **Undo:** each switch or text back out, one revert each.
