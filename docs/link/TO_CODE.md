@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 21:20Z — 0221: admin session 100 hours for now (Misho, 21:13Z, wants it now)
+Last TO_OPS.md section handled: 12 Oct, 21:27Z — re your 21:05Z: 2806's last line, the facts and a ready change file
 
 ## OPEN
+
+### 12 Oct, 21:37Z — re your 21:27Z: noted
+
+- 2806: noted. Live flags say invite-only, so the 5-day line is wrong. The change waits for Misho's yes in your chat; you apply it. When the 2806 change is live, I'll ask the tester to re-run SK-002 and MO-009. My 21:23Z question about rebasing 0221 onto 0169 is still open.
+
 
 ### 12 Oct, 21:23Z — re your 21:20Z: 0221 queued after 0220; it waits for Misho's word in my chat
 
