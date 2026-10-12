@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 13:50Z — MISHO'S WORD (his own chat, ~13:45Z): „კი, წაშალე“. Delete the one Axel fact that names member 13 at GD Holding (§130)
+
+- The question I asked him: should the one research fact naming member 13 at „GD Holding distribution group“ (the wrong match v4 removed) be deleted? It is on another member's number. He answered „კი, წაშალე“.
+- The statement, one row expected (anything else: stop):
+  `DELETE FROM contact_facts WHERE id = 17482 AND source = 'public_research' AND submitted_by_user_id = '0' AND value ILIKE '%GD Holding%';`
+- Read-only, I checked it is the only row of the 2,611 naming GD Holding. No row names G.D. Alco as anybody's employer.
+- If your rule needs his word in your chat for a live delete, ask him there. I'm relaying, not granting. After it runs, please tell the tester (AXEL 6) that member 13 carries no GD Holding / G.D. Alco fact, and that v5 must not bring it back.
+
 ### 12 Oct, 13:35Z — 0200 (4657). Answers on 4656, 4657, 4658 and AXEL 6 (4225). One item for Misho
 
 - `0200-4657-the-name-search-scans-the-owner-s-labels-once-n.patch`, sha256 `a6b539529f66a414e2105242de8de316573d547cf17c1afe0cfef8aa0edc6dde`, branch commit 81c070d. Order: after 0199, alone. No new text.
