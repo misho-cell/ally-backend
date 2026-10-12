@@ -1,0 +1,283 @@
+From 6d0a05b55921c3c508a6991ed6b073bfaab91c52 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 20:41:18 +0000
+Subject: [PATCH 219/220] 1256: the connector can answer a question another
+ member asked (OFF)
+
+check_my_inbox lists questions_for_me with an ask_id, and no connector
+tool took that id: a user living in Claude could read a member's question
+and never answer it. answer_member_question finds the ask's own thread for
+its recipient (latest round only) and sends through the app's path,
+sendApprovedAskAnswer, so D48/D648 and every refusal stay the same.
+
+Registered only when ANSWER_MEMBER_QUESTION_ON is true; it stays false
+until Misho says yes to the tool's exact description.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...nnectorUserAnswersAMembersQuestion.test.ts | 89 +++++++++++++++++++
+ src/services/mcp/answerMemberQuestion.ts      | 76 ++++++++++++++++
+ src/services/mcp/mcpServer.ts                 | 21 +++++
+ src/services/mcp/texts.ts                     | 14 +++
+ 4 files changed, 200 insertions(+)
+ create mode 100644 src/services/mcp/__tests__/aConnectorUserAnswersAMembersQuestion.test.ts
+ create mode 100644 src/services/mcp/answerMemberQuestion.ts
+
+diff --git a/src/services/mcp/__tests__/aConnectorUserAnswersAMembersQuestion.test.ts b/src/services/mcp/__tests__/aConnectorUserAnswersAMembersQuestion.test.ts
+new file mode 100644
+index 0000000..bf62b8e
+--- /dev/null
++++ b/src/services/mcp/__tests__/aConnectorUserAnswersAMembersQuestion.test.ts
+@@ -0,0 +1,89 @@
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../../taskAsks.service', () => ({
++  __esModule: true,
++  sendApprovedAskAnswer: jest.fn(),
++}));
++
++import { query } from '../../../db/postgres/client';
++import { sendApprovedAskAnswer } from '../../taskAsks.service';
++import { answerMemberQuestion, askIdOf } from '../answerMemberQuestion';
++
++/**
++ * 1256: check_my_inbox lists what another member asked this user, with an
++ * ask_id, and the connector had no way to answer it. The answer now goes
++ * through the app's own path, for the ask's recipient only.
++ */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockSend = sendApprovedAskAnswer as jest.MockedFunction<typeof sendApprovedAskAnswer>;
++const RECIPIENT = '183656';
++const ASK_THREAD = 9101;
++
++function threadRows(ids: number[]): { rows: Array<{ ask_thread_id: number }>; rowCount: number } {
++  return { rows: ids.map((id) => ({ ask_thread_id: id })), rowCount: ids.length };
++}
++
++describe('answer_member_question', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockSend.mockResolvedValue({ sent: true });
++  });
++
++  it('sends the confirmed answer on the ask’s own thread', async () => {
++    mockQuery.mockResolvedValue(threadRows([ASK_THREAD]) as never);
++    const result = await answerMemberQuestion(RECIPIENT, {
++      ask_id: '4410',
++      answer: 'კი, ნინოს ვიცნობ, 599 00 00 00',
++      confirmed: true,
++    });
++    expect(result).toEqual({ sent: true });
++    expect(mockQuery.mock.calls[0][1]).toEqual([4410, RECIPIENT]);
++    expect(mockSend).toHaveBeenCalledWith(RECIPIENT, ASK_THREAD, 'კი, ნინოს ვიცნობ, 599 00 00 00');
++  });
++
++  it('sends nothing without confirmed=true', async () => {
++    const result = await answerMemberQuestion(RECIPIENT, { ask_id: '4410', answer: 'კი' });
++    expect(result.sent).toBe(false);
++    expect(mockQuery).not.toHaveBeenCalled();
++    expect(mockSend).not.toHaveBeenCalled();
++  });
++
++  it('sends nothing for an ask that is not this user’s, or not the latest round', async () => {
++    mockQuery.mockResolvedValue(threadRows([]) as never);
++    const result = await answerMemberQuestion(RECIPIENT, {
++      ask_id: '4410',
++      answer: 'კი',
++      confirmed: true,
++    });
++    expect(result.sent).toBe(false);
++    expect(result.error).toContain('check_my_inbox');
++    expect(mockSend).not.toHaveBeenCalled();
++  });
++
++  it('passes the app path’s refusal on unchanged', async () => {
++    mockQuery.mockResolvedValue(threadRows([ASK_THREAD]) as never);
++    mockSend.mockResolvedValue({ sent: false, already_delivered: true, error: 'already' });
++    const result = await answerMemberQuestion(RECIPIENT, {
++      ask_id: '4410',
++      answer: 'კი',
++      confirmed: true,
++    });
++    expect(result).toEqual({ sent: false, already_delivered: true, error: 'already' });
++  });
++
++  it('propagates a failed read instead of claiming a send', async () => {
++    mockQuery.mockRejectedValue(new Error('statement timeout'));
++    await expect(
++      answerMemberQuestion(RECIPIENT, { ask_id: '4410', answer: 'კი', confirmed: true }),
++    ).rejects.toThrow('statement timeout');
++    expect(mockSend).not.toHaveBeenCalled();
++  });
++});
++
++describe('askIdOf', () => {
++  it('reads a plain positive id and refuses anything else', () => {
++    expect(askIdOf(' 4410 ')).toBe(4410);
++    expect(askIdOf('ask_4410')).toBeNull();
++    expect(askIdOf('0')).toBeNull();
++    expect(askIdOf(undefined)).toBeNull();
++  });
++});
+diff --git a/src/services/mcp/answerMemberQuestion.ts b/src/services/mcp/answerMemberQuestion.ts
+new file mode 100644
+index 0000000..bf45f5d
+--- /dev/null
++++ b/src/services/mcp/answerMemberQuestion.ts
+@@ -0,0 +1,76 @@
++import { query } from '../../db/postgres/client';
++import { SentAnswer, sendApprovedAskAnswer } from '../taskAsks.service';
++
++/**
++ * 1256 (Tornike's customer, 5 Oct; done when the four work on a real account):
++ * a user who lives in Claude must be able to answer a question from inside it.
++ * check_my_inbox has listed `questions_for_me` — what another member asked
++ * this user, with an ask_id — since 3367, and no connector tool took that id:
++ * the question could be read and never answered. The app's answer path
++ * (sendApprovedAskAnswer, D48/D648) is keyed to the incoming-ask thread; this
++ * finds that thread from the ask_id, for the ask's own recipient only.
++ *
++ * OFF until Misho says yes to the tool's exact description (model-facing text).
++ */
++export const ANSWER_MEMBER_QUESTION_ON = false;
++
++const QUERY_TIMEOUT_MS = 5_000;
++const ASK_ID_RE = /^\d+$/u;
++
++const NOT_CONFIRMED =
++  'Not sent: confirmed must be true, and only when these words are the user’s own answer.';
++const UNKNOWN_ASK =
++  'Not sent: no open question with that ask_id is waiting for this user. Take ask_id from ' +
++  'questions_for_me in check_my_inbox.';
++
++export interface MemberAnswerArgs {
++  readonly ask_id?: string;
++  readonly answer?: string;
++  readonly confirmed?: boolean;
++}
++
++/**
++ * The incoming-ask thread of this ask, when the ask is addressed to this user
++ * and is the latest round on its thread (sendApprovedAskAnswer answers the
++ * latest round, so an older id must not reach it); null otherwise.
++ */
++export async function askThreadOfRecipient(userId: string, askId: number): Promise<number | null> {
++  const result = await query<{ ask_thread_id: number }>(
++    `SELECT ta.ask_thread_id FROM task_asks ta
++      WHERE ta.id = $1 AND ta.to_user_id = $2::int AND ta.ask_thread_id IS NOT NULL
++        AND ta.id = (SELECT MAX(t2.id) FROM task_asks t2 WHERE t2.ask_thread_id = ta.ask_thread_id)
++      LIMIT 1`,
++    [askId, userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.ask_thread_id ?? null;
++}
++
++/** The ask id as a number; null for anything that is not one. */
++export function askIdOf(raw: string | undefined): number | null {
++  const trimmed = (raw ?? '').trim();
++  if (!ASK_ID_RE.test(trimmed)) return null;
++  const id = Number(trimmed);
++  return Number.isSafeInteger(id) && id > 0 ? id : null;
++}
++
++/** Sends the user's answer to the member who asked; says plainly when nothing went. */
++export async function answerMemberQuestion(
++  userId: string,
++  args: MemberAnswerArgs,
++): Promise<SentAnswer> {
++  if (args.confirmed !== true) return { sent: false, error: NOT_CONFIRMED };
++  const askId = askIdOf(args.ask_id);
++  if (askId === null) return { sent: false, error: UNKNOWN_ASK };
++  const threadId = await askThreadOfRecipient(userId, askId);
++  if (threadId === null) return { sent: false, error: UNKNOWN_ASK };
++  return sendApprovedAskAnswer(userId, threadId, args.answer ?? '');
++}
++
++/** The connector's payload: the send's outcome, as a plain record. */
++export async function mcpAnswerMemberQuestion(
++  userId: string,
++  args: MemberAnswerArgs,
++): Promise<Record<string, unknown>> {
++  return { ...(await answerMemberQuestion(userId, args)) };
++}
+diff --git a/src/services/mcp/mcpServer.ts b/src/services/mcp/mcpServer.ts
+index e56e3b5..efa0c86 100644
+--- a/src/services/mcp/mcpServer.ts
++++ b/src/services/mcp/mcpServer.ts
+@@ -1,5 +1,6 @@
+ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+ import { z } from 'zod';
++import { ANSWER_MEMBER_QUESTION_ON, mcpAnswerMemberQuestion } from './answerMemberQuestion';
+ import { recordFixedUsage } from '../costLedger.service';
+ import { logToolCall } from '../toolCallLog.service';
+ import { SEARCH_OUTCOMES } from '../searchOutcome.service';
+@@ -1108,6 +1109,25 @@ function promptMessage(text: string): {
+ 
+ // Ready-made scenarios for claude.ai's "+" menu. They carry user-message
+ // strength — stronger than any passive hint the connector can give.
++/** 1256: the user answers a question another member asked them (questions_for_me). */
++function registerMemberAnswerTool(server: McpServer, userId: string): void {
++  server.registerTool(
++    'answer_member_question',
++    {
++      title: TOOL_TEXTS.answer_member_question.title,
++      description: TOOL_TEXTS.answer_member_question.description,
++      inputSchema: {
++        ask_id: z.string().describe(PARAM_TEXTS.memberAskId),
++        answer: z.string().describe(PARAM_TEXTS.memberAnswer),
++        confirmed: z.boolean().describe(PARAM_TEXTS.memberAnswerConfirmed),
++      },
++      annotations: WRITE,
++    },
++    (args) =>
++      runTool(userId, 'answer_member_question', args, () => mcpAnswerMemberQuestion(userId, args)),
++  );
++}
++
+ function registerPrompts(server: McpServer): void {
+   server.registerPrompt(
+     'find_in_network',
+@@ -1174,6 +1194,7 @@ export function buildMcpServer(userId: string): McpServer {
+   registerMemoryAndBlockTools(server, userId);
+   registerGraphTools(server, userId);
+   registerGoalTools(server, userId);
++  if (ANSWER_MEMBER_QUESTION_ON) registerMemberAnswerTool(server, userId);
+   registerPrompts(server);
+   return server;
+ }
+diff --git a/src/services/mcp/texts.ts b/src/services/mcp/texts.ts
+index d6d25e3..2269b77 100644
+--- a/src/services/mcp/texts.ts
++++ b/src/services/mcp/texts.ts
+@@ -558,6 +558,17 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+       'follow it. Pass include_seen=true only when the user asks for everything that is ' +
+       'waiting or was shown before: the already_shown list is a read, not new news.',
+   },
++  answer_member_question: {
++    title: 'Answer a question another member asked the user',
++    description:
++      'Sends the user’s answer to a question another Netai member asked them (questions_for_me ' +
++      'in check_my_inbox; ask_id comes from there). Nothing reaches the asker without this call. ' +
++      'Write the answer in your own words, with every name, number, price, time, date, address ' +
++      'and link exactly as the user gave it; never add a name or detail the user did not give. ' +
++      'Send it with confirmed=true once the user has told you what to answer. When the answer ' +
++      'shares a third person’s private details (health, family, money), show it to the user in ' +
++      'one line and send only on their yes. „Later" is not an answer: send nothing.',
++  },
+   answer_goal_question: {
+     title: "Deliver the user's answer to a blocked goal",
+     description:
+@@ -709,6 +720,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
+ };
+ 
+ export const PARAM_TEXTS = {
++  memberAskId: 'The ask_id from questions_for_me in check_my_inbox',
++  memberAnswer: 'The answer to send to the member who asked',
++  memberAnswerConfirmed: 'true only when these words are the user’s own answer',
+   tag:
+     'One tag word, Georgian or English (e.g. "იურისტი", "ceo"). One word, not a phrase or ' +
+     'several words. Try both scripts across calls.',
+-- 
+2.43.0
+

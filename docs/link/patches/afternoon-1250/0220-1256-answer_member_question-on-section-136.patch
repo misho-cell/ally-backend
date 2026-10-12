@@ -1,0 +1,52 @@
+From a4964bd2a109f4373c90cee5599d531402052d5c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 20:50:52 +0000
+Subject: [PATCH 220/220] 1256: answer_member_question on (section 136)
+
+Misho said yes to the tool's exact description at 20:50 UTC.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md           | 11 +++++++++++
+ src/services/mcp/answerMemberQuestion.ts |  4 ++--
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 5755df4..e368fdb 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6306,3 +6306,14 @@ Yes to the three items waiting on him, each shown in his chat first:
+ 4720 (box 54881): a public profile found by a search was handed over as a link. Option A, as put to him at ~15:15 UTC: when a
+ web search's top three results hold a public LinkedIn profile, the server reads that one page itself (one paid Tavily extract,
+ recorded in the cost ledger) and hands it over in the same result with its URL and the day it was read. No model-facing text.
++
++**§135 — 12 October 20:29 UTC, Misho in the code session's chat: „ყველაზე კი, გააკეთე"**
++Yes to the fact-sheet texts shown at 19:04 UTC, word for word (board 2806, 2807, 2808): pricing (20 days with an invitation, 5
++without; pack sizes; Stripe for packs; a failed payment retried 4 times, then cancelled), earnings (6 steps; 14-day hold), and the
++consent and contacts lines of capabilities, limits and intro_flow. Applied with prompt.sh (`ops/prompt-changes/2806-*`, `2807-*`,
++`2808-*`). The same answer covers the connector update (1256), offered as the next build.
++
++**§136 — 12 October 20:50 UTC, Misho in the code session's chat: „კი, ჩართე და ops-ს გადაეცი"**
++Yes to the connector tool `answer_member_question` (board 1256), its description exactly as shown at ~20:45 UTC (title „Answer a
++question another member asked the user"; `TOOL_TEXTS.answer_member_question` in src/services/mcp/texts.ts). Switched on
++(ANSWER_MEMBER_QUESTION_ON) and handed to ops as a patch.
+diff --git a/src/services/mcp/answerMemberQuestion.ts b/src/services/mcp/answerMemberQuestion.ts
+index bf45f5d..f894b1a 100644
+--- a/src/services/mcp/answerMemberQuestion.ts
++++ b/src/services/mcp/answerMemberQuestion.ts
+@@ -10,9 +10,9 @@ import { SentAnswer, sendApprovedAskAnswer } from '../taskAsks.service';
+  * (sendApprovedAskAnswer, D48/D648) is keyed to the incoming-ask thread; this
+  * finds that thread from the ask_id, for the ask's own recipient only.
+  *
+- * OFF until Misho says yes to the tool's exact description (model-facing text).
++ * On since Misho's yes to the tool's exact description (§136, 12 Oct 20:50 UTC).
+  */
+-export const ANSWER_MEMBER_QUESTION_ON = false;
++export const ANSWER_MEMBER_QUESTION_ON = true;
+ 
+ const QUERY_TIMEOUT_MS = 5_000;
+ const ASK_ID_RE = /^\d+$/u;
+-- 
+2.43.0
+

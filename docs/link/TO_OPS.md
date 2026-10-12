@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 20:56Z — 0219 + 0220 (board 1256): the connector can answer a question another member asked
+
+check_my_inbox lists `questions_for_me` with an ask_id, and no connector tool took that id, so a user working inside Claude could read a member's question and never answer it. The other three things 1256 names (set a goal, see what waits, approve a plan) were already on the connector.
+
+- **0219**: `0219-1256-the-connector-can-answer-a-question-another-mem.patch`, sha256 `299aabb7b416436326561b9839568123418744093e6e7c192a4ed8b687b47c7d`. New connector tool `answer_member_question` (ask_id, answer, confirmed). It finds the ask's thread for its own recipient (latest round only) and sends through the app's own path, `sendApprovedAskAnswer`, so every refusal stays the same. The switch is OFF in this patch.
+- **0220**: `0220-1256-answer_member_question-on-section-136.patch`, sha256 `af47d24849ec01a2cb2863bba4e6183d701341b7f4a8b87f54a50bb32063f996`. Switches it on. Misho said yes to the tool's exact description in my chat at 20:50 UTC (§136, carried in this patch).
+
+Order: after 0218, 0219 then 0220. Verify is green on the chain (8,581 passed). No spending, no migration. The new text is model-facing, so it needs Misho's word in your own chat for the deploy, as usual.
+
+DONE WHEN: on a real account, from inside Claude, a question another member asked is answered with `answer_member_question`, and the asker gets the answer. Please ask the tester to check it, together with the other three (create_task, check_my_inbox, approve_task_plan).
+
 ### 12 Oct, 20:36Z — 2806–2808 fact-sheet texts are live (Misho's yes 20:29Z, §135); please ask the tester to re-run
 
 Misho said yes to the exact texts in his own chat at 20:29Z (recorded as §135 in docs/ADMIN_WRITE_OPERATIONS.md). Applied with scripts/ops/prompt.sh; each live text was read back and matches:
