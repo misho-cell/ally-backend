@@ -6027,7 +6027,7 @@ being the person's name:
 
 The owner's own words (or his line sent by the server) reset the count to 0. Undo: revert.
 
-**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:30 UTC, NIGHT_QUESTIONS AM).** The code is
+**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:15 UTC, NIGHT_QUESTIONS AM).** The code is
 in and can ship, but no run is given the tools while `OFFER_TOOLS_ON` is false. On his yes the switch flips
 and these three tool descriptions reach the model:
 
@@ -6207,6 +6207,16 @@ automatically."
 - **What turns on:** `SEE_HELPER_ON = true` (listItems.service.ts). In the list Excel, a row whose need column names a helper, with way-in „nobody" and state „no route", says „იხ. დამხმარე" in those two cells. The other languages say „see the helper" / „см. помощника" / „ver quién ayuda". Every other row is unchanged.
 - **Undo:** `SEE_HELPER_ON = false`, one line, and ship.
 
+**§125 — 10 October ~07:53 UTC, Misho in the code session's chat: „BG კი"** (NIGHT_QUESTIONS BG, 4258).
+
+- **What turns on:** `INTRO_CLAIM_GUARD_ON = true` (introClaim.ts). When a reply says an introduction request went and
+  request_introduction did not succeed in that run, the owner reads this line with one button instead: „გაცნობის თხოვნა ჯერ არ
+  გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი." — „კი, გააგზავნე". In English: „I have not sent the introduction request yet. Confirm
+  and I will send it now." — „Yes, send it". In Russian: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." —
+  „Да, отправь". In Spanish: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala".
+- No model-facing text. Every other reply is unchanged.
+- **Undo:** `INTRO_CLAIM_GUARD_ON = false`, one line, and ship.
+
 **§126 — 10 October ~12:10 UTC, Misho in the code session's chat: „ორივეზე კის გეუბნები"** (to the two items put to him at ~11:55Z:
 D772 + D773, and D771 + BI; the founder's answers came through the tester's box, 50923/50925/50926).
 
@@ -6219,6 +6229,7 @@ D772 + D773, and D771 + BI; the founder's answers came through the tester's box,
 - **D771 — the monthly contacts reminder in the assistant's own words.** Taken as a yes on the idea. The instruction is model-facing
   (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
 - **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
+
 
 **§127 — 10 October ~17:10 UTC, Misho in the code session's chat: „ფრონტის დავალებები დააპრიორიტეტე", then, asked two
 questions, „კი, ეტაპებად" and „ფრონტის სია"** (the frontend's item 9: task 1849, the chain to a named person, and the member card).
@@ -6248,8 +6259,8 @@ questions, „კი, ეტაპებად" and „ფრონტის ს
 - **0093 (4295):** the timers run between deploys.
 - **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.
 
-**§129 — 12 October ~12:20 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
-docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:40Z). Earlier the same day, ~10:40Z: „დაიწყე რა
+**§129 — 12 October 10:16 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
+docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~09:40Z). Earlier the same day: „დაიწყე რა
 ადამიანების კვლევის მეთოდიც" (start 4126).
 - **E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`), approved as written; the registration run (0193) is switched on with
   it. The spending stays inside §122's stop (60 searches, 30 pages a person).
@@ -6258,3 +6269,29 @@ docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:
 - **6a** was not answered: it waits for item 3 (Tornike's Q1).
 - **Later the same day, „6d კი"**: the sentence around the question (`WORK_NEWS_INSTRUCTION`), approved as written; 6d is switched on.
 - **Undo:** each switch or text back out, one revert each.
+
+**§130 — 12 October 11:00 UTC, Misho in the code session's chat: „კი, წაშალე"** (asked at 10:58Z: the one Axel research fact that
+names member 13 at „GD Holding distribution group", the wrong company match v4 removed; AXEL INTELLIGENCE 6, box 54320).
+- **The row:** `contact_facts.id = 17482` (affiliation, `source = 'public_research'`, `submitted_by_user_id = '0'`, loaded 10 Oct 07:08Z),
+  on another member's number, not member 13's. Read-only check: it is the only row of the 2,611 that names GD Holding; no row names
+  G.D. Alco as anybody's employer.
+- **Statement (run by the operations session, on Misho's word in its chat):**
+  `DELETE FROM contact_facts WHERE id = 17482 AND source = 'public_research' AND submitted_by_user_id = '0' AND value ILIKE '%GD Holding%';`
+  One row expected; any other count means stop.
+- **Undo:** none needed for a wrong fact. Package v5 must not carry it again.
+
+**§131 — 12 October 11:06 UTC, Misho in the code session's chat: „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ"**
+(yes to everything waiting on him; ship it and we will test). Covered, each as already put to him in this chat:
+- the deploy of the chain 0170 → 0200, each alone, in order;
+- the registration research run's spending (0196, §122's stop) and the GD Holding delete (§130);
+- 0149 (chorus), asked again at ~06:50Z with the point that with the gate off campaigns open on targets the founder never approved;
+- 3070's day-one sentences (the exact text shown at ~08:10Z): switched on as its own patch;
+- the texts shown word for word at ~08:40Z for 2642 (refund rules in Netai's information), 2940 and 4491: each built and shipped on its own.
+Not covered, because its exact text was never shown to him: 2114's greeting in kind (40d52b9, OFF).
+
+**§132 — 12 October 11:39 UTC, Misho in the code session's chat: „1 კი, 2 კი, 3 კი, 4 A"**
+Answers to the four questions put to him at ~11:35Z, each with its exact text shown:
+1. 2114: a time-of-day greeting answered with the person's own words („დილა მშვიდობისა, მიშო! რით დაგეხმარო?") — yes; switched on.
+2. 4657: LIKELY_EMPLOYER_NOTE, word for word as in `src/services/tools/likelyEmployer.ts` — yes; switched on.
+3. 4657: the two covering indexes on "UserTags" and "UserAlias" (`ops/pending-migrations/4657_label_covering_indexes.sql`, CONCURRENTLY, ~1.2 GB, nothing deleted) — yes to preparing and running them. Ops runs it; ops' own rule asks his word in its chat too.
+4. 2909: A — the plan sentence stays as it is; D561 (no „solved when" in the plan the owner reads) stands.
