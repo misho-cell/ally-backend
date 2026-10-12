@@ -4,11 +4,15 @@ jest.mock('../../tools/webSearch', () => ({
   webSearch: jest.fn(),
   fetchPage: jest.fn(),
 }));
-jest.mock('../extract', () => ({ __esModule: true, extractFacts: jest.fn() }));
+jest.mock('../extract', () => ({
+  __esModule: true,
+  extractFacts: jest.fn(),
+  extractResearch: jest.fn(),
+}));
 
 import { query } from '../../../db/postgres/client';
 import { fetchPage, webSearch } from '../../tools/webSearch';
-import { extractFacts } from '../extract';
+import { extractFacts, extractResearch } from '../extract';
 import {
   queueRegistrationResearch,
   REGISTRATION_RESEARCH_ON,
@@ -20,6 +24,7 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSearch = webSearch as jest.MockedFunction<typeof webSearch>;
 const mockFetch = fetchPage as jest.MockedFunction<typeof fetchPage>;
 const mockExtract = extractFacts as jest.MockedFunction<typeof extractFacts>;
+const mockResearch = extractResearch as jest.MockedFunction<typeof extractResearch>;
 const PAGE_URL = 'https://a.ge/nino';
 
 function sqlOf(call: unknown[]): string {
@@ -106,5 +111,40 @@ describe('registration research run', () => {
       .mockResolvedValue({ rows: [], rowCount: 1 } as never);
     expect(await researchNextUser()).toBe(true);
     expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it('with the list switch on, keeps the people a public list names in list_people (4126 item 3)', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Nino Satsdeli', city: null }] } as never)
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
+      .mockResolvedValue({ rows: [], rowCount: 1 } as never);
+    mockSearch.mockResolvedValue({
+      results: [{ url: PAGE_URL, title: 'Board', snippet: 'board' }],
+    });
+    mockFetch.mockResolvedValue({ url: PAGE_URL, content: 'Board of Bank A: Nino Satsdeli.' });
+    mockResearch.mockResolvedValueOnce({
+      facts: [{ key: 'employer', value: 'Bank A', sources: [PAGE_URL], date: null }],
+      listed: [
+        {
+          name: 'Nino Satsdeli',
+          organisation: 'Bank A',
+          listedRole: 'Board member',
+          sourceUrl: PAGE_URL,
+          checkedOn: '2026-10-12',
+        },
+      ],
+    });
+
+    expect(await researchNextUser(true)).toBe(true);
+    expect(mockExtract).not.toHaveBeenCalled();
+    const listed = mockQuery.mock.calls.find((c) => sqlOf(c).includes('INSERT INTO list_people'));
+    expect(listed?.[1]).toEqual([
+      'Nino Satsdeli',
+      'Bank A',
+      'Board member',
+      PAGE_URL,
+      '2026-10-12',
+      '+995500000001',
+    ]);
   });
 });
