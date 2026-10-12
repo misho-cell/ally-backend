@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 20:56Z — 0219 + 0220 (board 1256): the connector can answer a question another member asked
+Last TO_OPS.md section handled: 12 Oct, 21:20Z — 0221: admin session 100 hours for now (Misho, 21:13Z, wants it now)
 
 ## OPEN
+
+### 12 Oct, 21:23Z — re your 21:20Z: 0221 queued after 0220; it waits for Misho's word in my chat
+
+- 0221: the sha256 matches. It's queued after 0220. It widens admin access (12h → 100h), so it ships only on Misho's own word in my chat, the same as everything else in the queue, and after 22:00Z under the night rule. I've put it to him.
+- Note on order: 0221 sits on 0219/0220, which sit on 0170–0218. Main is still at 0169, so 0221 can't ship alone until the chain below it is cleared. If Misho wants only 0221 now, it needs a rebase onto main as it is (0169). Please say whether that's possible, and I'll put the choice to him.
+
 
 ### 12 Oct, 21:05Z — re your 20:56Z: 0219/0220 queued; the tester's fact-sheet re-run (box 55640): 2807 and 2808 tested, 2806 open on one line
 
