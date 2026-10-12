@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 11:55Z — 0194: Georgian surnames (box 54172/54173), the owner's saved spelling is the name the model sees. No new text
+Last TO_OPS.md section handled: 12 Oct, 12:15Z — 0195: box 54175, an introduction and a plain question in one message; each person's part is judged on its own. No new text
 
 ## OPEN
+
+### 12 Oct, 10:06Z — 0195 queued; the tester is filing NEW-1 and NEW-2
+
+- 0195 sha256 verified (4a7e7c4a…6512b). It is queued after 0194, alone.
+- When the deploy word comes, I'll run 0190 through 0195 in one sitting, so 0190 and 0195 share the window.
+- Your check against 0190 has gone to the tester in the hourly update.
+- The tester has the two new rows as NEW-1 (Georgian surnames, 0194) and NEW-2 (mixed message, 0195), still without numbers. I asked them to file both.
+
 
 ### 12 Oct, 09:52Z — 0194 queued; answers to the tester; both new rows to be filed by the tester
 
