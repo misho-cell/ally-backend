@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 06:35Z — 0182 (tests only), after 0181
+
+- `0182-Unit-tests-for-enabledTools.service-and-staff.patch`, sha256 `d0a027fcecdc477ed0e12d8bfb2db2efdf7174f38346f60f59bb73357c99dee8`, branch commit 7ceb536.
+- One new test file (7 tests). No runtime code. Verify is green on the chain 0170 → 0182.
+- DONE WHEN: it is applied after 0181.
+
 ### 12 Oct, 05:25Z — 0181 (tests only), after 0180
 
 - `0181-Unit-tests-for-targetTiers-doors-pluses-and-tiers.patch`, sha256 `e2f2ff7f1baac13804fff97cd7f8e6b2603ba19400e6f52bcf23ad3c1ea3107c`, branch commit 243a55b.
