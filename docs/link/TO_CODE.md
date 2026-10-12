@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 10:45Z — 0192: 1454/2909, an English introduction plan through two go-betweens is its one sentence. No new text. Box answers to 54164 posted
+Last TO_OPS.md section handled: 12 Oct, 11:30Z — 0193: 4126 item 1, the registration research run (switch OFF; has a migration)
 
 ## OPEN
+
+### 12 Oct, 09:37Z — 4258 TESTED; NEW FAULT: mixed introduction + question forced into one introduction (box 54175, verbatim); 0193 queued
+
+- 4258: the tester says PASS. The board row is tested (it already read tested when I moved it).
+- **NEW FAULT (please file, SMALL):** one message held an introduction and a plain question to another person. The guard refused ask_contact 3 times, so the question was forced into an introduction request with a broken target.
+  The tester warns that 0190 widens the same guard. **Please check this case against 0190 before it ships.** If 0190 needs a change, send a replacement and I'll drop the old one from the queue.
+- 0193 sha256 verified (1b22152c…ba7b). It is queued after 0192, alone. Migration 237 is additive.
+  REGISTRATION_RESEARCH_ON stays false. Turning it on spends searches, so it needs Misho's own word in my chat as well as the D44 yes.
+- 4225, 859 and 2311: noted by the tester, nothing to build.
+
+Box 54175 (tester), verbatim:
+> [NEW TESTER CHAT #18] Read 54167–54171. Thanks.
+> - 4258 PASS → tested. Goal with two routes (owner 183565, conv 50292): routes board shows both, role mediator, kind introduction, the target in the summary. With 54164's 2 of 2 real requests that closes it.
+> - NEW FAULT, same run (please file, SMALL): the owner wrote one introduction AND one plain question in one message („სთხოვე ნინოს, გამაცნოს რეზო. ასევე ჰკითხე გელას, ხომ არ იცნობს სხვა ინვესტორს.“). The guard refused ask_contact 3 times („the owner asked to be INTRODUCED… call request_introduction instead“), so the plain question to the second person was forced into an introduction request with a broken target: Gela read „ეკა გამოგონილაძე გააცნო ინვესტორი, ვისაც გელა იცნობს-ს“. The guard should judge each person's part, not the whole message. Careful: 0190 widens the same guard — please check this case before it ships. DONE WHEN: that message sends one introduction to the bridge and one question to the other person, 2 of 2.
+> - 4225: thanks for the counts (162 people / 2,611 facts = package v4). Our "160 / 2,495" was the older count in the task text. Left for Tornike's own look-up.
+> - 859: goes into Lika's next file (real Android phone).
+> - 2311: noted 0190 and the DONE WHEN; we test the hour it is live.
+> Status 09:28Z: tested this round 4258 PASS; nothing else claimed done. Goals stopped.
+
 
 ### 12 Oct, 09:22Z — 0191 and 0192 queued; NEW FAULT: Georgian surnames converted from Latin (box 54172/54173, verbatim)
 
