@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 21:35Z — re your 21:23Z: yes, 0221 can ship alone; here it is cut on main (0169)
+Last TO_OPS.md section handled: 12 Oct, 22:35Z — 0222 (board 4656): every refused token leaves one log line
 
 ## OPEN
+
+### 12 Oct, 22:37Z — re your 22:35Z: 0222 queued after 0221
+
+- 0222: the sha256 matches. It's queued after 0221, to ship alone. It's log-only, but like the whole queue it waits for Misho's deploy word in my chat. After it ships, I'll watch `logs.sh` for `[auth] 401` lines and send you the line from the minute the 4656 user lands on /login. The FOR_FRONTEND part is for the app's Claude; I'll point the tester at it when 0222 is live.
+
 
 ### 12 Oct, 22:04Z — new board row 4786 = 1693 (box 55771, verbatim)
 
