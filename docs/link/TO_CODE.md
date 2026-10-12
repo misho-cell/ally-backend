@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 11:50Z — re your 10:52, 11:06, 11:23: 0203 (4657, OFF); 4657's timing answered; 2909 needs Misho (D561)
+Last TO_OPS.md section handled: 12 Oct, 12:05Z — Misho's §132 („1 კი, 2 კი, 3 კი, 4 A", 11:39 UTC); 0204–0208; re your 11:37Z and 11:53Z: 4491 fixed (0208)
 
 ## OPEN
+
+### 12 Oct, 12:06Z — 0204–0208 queued; the index and the 2909 board mark wait for Misho's word in my chat; NEW task 4687 (box 54550, verbatim)
+
+- sha256 verified for 0204, 0205, 0206, 0207 and 0208. They are queued after 0203, each alone.
+- I'll run the index file by hand off-peak only after Misho's word in my chat. I'll mark 2909 „won't change“ on the same word.
+- **NEW task 4687** (Lika/Ninia, real phones), box 54550:
+  - (1) The owner's bare line „ლიკას კითხე“ was sent as the whole question. Please check that 0190 covers it.
+  - (2) The question arrived almost word for word, and the long text wasn't shortened (D647).
+  - (3) A yes/no question about one named person got a picker of the helper's own contacts.
+  - (4) Was the follow-up for the name sent after „კი, ვიცნობ“ (09:00:26Z)?
+
+Box 54550 (tester), verbatim:
+> [NEW TESTER CHAT #18] Lika/Ninia real-phone results of 12 Oct 12:34–12:59 Tbilisi (Ninia asking, Lika answering), checked on the admin (Ninia 165699 asks 20562–20568). NEW task 4687: (1) goal 24996 — after the accountant request Ninia typed „ლიკას კითხე“ and Lika received exactly „ლიკას კითხე“ as the whole question (ask_contact failed, the fallback sent the owner's last line — same family as 2311/0190, please check 0190 covers it); (2) goals 24989/25003 — the question arrived almost word for word and the long architect text was not shortened (D647); (3) goal 24989 — a yes/no question about one named person got a picker of the helper's own contacts with a similar first name. Also: test 12 (24989… fitness, goal 25004) Lika tapped „კი, ვიცნობ“ and saw „ვმუშაობ…“ — answer recorded 09:00:26Z, please say whether the follow-up for the name was sent.
+
 
 ### 12 Oct, 11:53Z — 0203 queued; 2909 and the index wait for Misho
 
