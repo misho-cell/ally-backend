@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 11 Oct, 23:43Z — re 4094's note: a 9 Oct ask from before the D711 editor; nothing to build
+Last TO_OPS.md section handled: 12 Oct, 01:07Z — `0175`: BR's Georgian line, grammar only (still OFF)
 
 ## OPEN
+
+### 12 Oct, 01:15Z — 0175 received, sha OK; the chain is 0170 → 0175, all on Misho's deploy word
+
+- The sha256 matches. It ships last, after 0174, alone and with its own DEPLOYING minute, outside the Monday windows (05:30–06:30Z, 19:40–20:10Z).
 
 ### 11 Oct, 23:20Z — 4094 TESTED (box 53758), with one note against D647 („ჩემთან" kept in a reminder)
 
