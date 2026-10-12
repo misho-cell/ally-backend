@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 13:00Z — 0199: 4126 6d ON (Misho, his own chat: „6d კი“ on the sentence around the question)
+
+- `0199-4126-6d-ON-the-monthly-work-question-on-Misho-s-yes-.patch`, sha256 `71597893a4667b1463bee4efa8a2130722d528924b3584aea0613189975085d1`, branch commit 779f6ed.
+- Once a day, each active user (never a test seat) who has had no work question in 30 days gets one pending item: „სამსახურში რამე სიახლეა?“. It is asked when the conversation has room, and never pushed.
+  It reaches real users, but as an item on their own list, not a message or a push. If your rule wants his word for it in your chat, ask together with the rest.
+- Order: after 0198, alone. DONE WHEN: on a fresh active fictional seat, one work_news_question item appears within a day of the deploy, and a second never appears within 30 days.
+
 ### 12 Oct, 12:40Z — 0196, 0197, 0198: 4126 on Misho's „E კი, 6b კი, 6c კი, 6d კი“ (his own chat, ~12:20Z; §129)
 
 - `0196-4126-E-ON-…patch` sha256 `0baddf51ee3659a8c316c56cc7e7c77a32d33ac33f563325891480ceb31eb226` (a13548d). It switches the registration research run ON. It also fixes 0193: the source is now `public_research`, the one every reader knows.

@@ -1,0 +1,86 @@
+From c8f5ee10cd1448e6f0cb17de938277c9e04b2a31 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 10:40:45 +0000
+Subject: [PATCH] 4126 6d ON: the monthly work question, on Misho's yes to its
+ sentence
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 12 Oct, in his own chat: „6d კი" — the sentence around the approved
+question (WORK_NEWS_INSTRUCTION), word for word. WORK_NEWS_QUESTION_ON =
+true: once a day, each active user (no test seat) with no work question in
+the last 30 days gets one item on the pending list; it is never pushed.
+Recorded under §129. Undo: the switch back to false.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                  |  1 +
+ src/services/__tests__/workNewsQuestion.test.ts | 16 ++++++++++++----
+ src/services/workNewsQuestion.service.ts        |  8 ++++----
+ 3 files changed, 17 insertions(+), 8 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 10d81a6..2b84e0a 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6256,4 +6256,5 @@ docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:
+ - **6b** („possible" with source and date), **6c** (ask the owner when work status is unclear), **6d** („სამსახურში რამე სიახლეა?",
+   at most once a month): approved as written.
+ - **6a** was not answered: it waits for item 3 (Tornike's Q1).
++- **Later the same day, „6d კი"**: the sentence around the question (`WORK_NEWS_INSTRUCTION`), approved as written; 6d is switched on.
+ - **Undo:** each switch or text back out, one revert each.
+diff --git a/src/services/__tests__/workNewsQuestion.test.ts b/src/services/__tests__/workNewsQuestion.test.ts
+index d26be19..74eeee0 100644
+--- a/src/services/__tests__/workNewsQuestion.test.ts
++++ b/src/services/__tests__/workNewsQuestion.test.ts
+@@ -19,13 +19,21 @@ const mockQueue = queueFollowUp as jest.MockedFunction<typeof queueFollowUp>;
+ describe('the monthly work question', () => {
+   beforeEach(() => jest.resetAllMocks());
+ 
+-  it('is OFF until Misho’s yes on the sentence around the question', async () => {
+-    expect(WORK_NEWS_QUESTION_ON).toBe(false);
+-    expect(await queueWorkNewsQuestions()).toBe(0);
+-    expect(startWorkNewsQuestions()).toBe(false);
++  it('is ON since Misho’s yes (§129); switched off, nothing is queued', async () => {
++    expect(WORK_NEWS_QUESTION_ON).toBe(true);
++    expect(await queueWorkNewsQuestions(200, false)).toBe(0);
++    expect(startWorkNewsQuestions(false)).toBe(false);
+     expect(mockQuery).not.toHaveBeenCalled();
+   });
+ 
++  it('is the approved sentence, word for word', () => {
++    expect(WORK_NEWS_INSTRUCTION).toBe(
++      "When the conversation has room for it — never as the opening line — ask once, in the user's " +
++        'language: „სამსახურში რამე სიახლეა?" Save what they say about their own work; if they ' +
++        'would rather not say, drop it.',
++    );
++  });
++
+   it('carries the approved question word for word', () => {
+     expect(WORK_NEWS_QUESTION).toBe('სამსახურში რამე სიახლეა?');
+     expect(WORK_NEWS_INSTRUCTION).toContain(`„${WORK_NEWS_QUESTION}"`);
+diff --git a/src/services/workNewsQuestion.service.ts b/src/services/workNewsQuestion.service.ts
+index bdf8bf2..5e24cc9 100644
+--- a/src/services/workNewsQuestion.service.ts
++++ b/src/services/workNewsQuestion.service.ts
+@@ -10,11 +10,11 @@ import { notATestSeat } from './testSeatCreate.service';
+  * It reaches the user the way the warm-tie question does: one item on the
+  * pending list, asked when the conversation has room, never pushed.
+  *
+- * The question is approved. The one sentence around it
+- * (WORK_NEWS_INSTRUCTION) is MODEL-FACING and new, so the whole thing stays
+- * OFF until Misho says yes to that sentence (D44).
++ * The question and the sentence around it (WORK_NEWS_INSTRUCTION) are both
++ * Misho's yes, word for word: the question on 12 Oct (§129), the sentence the
++ * same day („6d კი"). Back to false stops it.
+  */
+-export const WORK_NEWS_QUESTION_ON = false;
++export const WORK_NEWS_QUESTION_ON = true;
+ 
+ export const WORK_NEWS_KIND = 'work_news_question';
+ export const WORK_NEWS_QUESTION = 'სამსახურში რამე სიახლეა?';
+-- 
+2.43.0
+
