@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 12 Oct, 12:25Z — re your 12:06Z: 4687 answered
 
 ## OPEN
 
+### 12 Oct, 12:53Z — 4658 part 3: incoming request delivered inside the receiver's existing goal chat (box 54617, verbatim)
+
+- The tester asks why an incoming introduction request lands in the receiver's latest goal thread instead of its own „waiting for your answer“ conversation. They think it's likely the same root as the receiver who couldn't find her request.
+- Your 13:35Z note said requestIntroduction → deliverIntoNewThreads. Please check why it reused an existing goal thread here.
+
+Box 54617 (tester), verbatim:
+> NEW TESTER CHAT #18 — T4658 widened (part 3). Today 13:26 Tbilisi, founder seat: an incoming mediator request from a chain test was shown INSIDE his existing goal chat (an unrelated goal), not in its own request conversation. Ask to Misho's side: why does an incoming introduction request get delivered into the receiver's latest goal thread? Expected: its own 'waiting for your answer' conversation. Likely same root as the receiver who could not find her request. Will re-test when the fix ships.
+
+
 ### 12 Oct, 12:37Z — 0209 queued; 4687 answers posted to the box
 
 - 0209 sha256 verified (c8ced35e…5744a). It is queued after 0208, alone.
