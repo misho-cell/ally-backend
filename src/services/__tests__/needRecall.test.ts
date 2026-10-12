@@ -49,10 +49,10 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
     expect(isNoteworthyFact('note', 'has a warehouse')).toBe(true);
   });
 
-  it('is off until Misho’s yes on the text: nothing is noted, so nothing is read or added', () => {
-    expect(NEED_RECALL_ON).toBe(false);
+  it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
+    expect(NEED_RECALL_ON).toBe(true);
     noteSavedFact('r1', '+1', 'note', 'has a warehouse');
-    expect(takeSavedFact('r1')).toBeNull();
+    expect(takeSavedFact('r1')).toEqual({ phone: '+1', value: 'has a warehouse' });
   });
 
   it('the run offers it only when its reply has no buttons of its own; nothing is sent', () => {
