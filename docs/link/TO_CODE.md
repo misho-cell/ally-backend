@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 22:35Z — 0222 (board 4656): every refused token leaves one log line
+Last TO_OPS.md section handled: 12 Oct, 23:30Z — 0223 (board 4126 item 3): the registration run keeps the people a public list names (switch OFF)
 
 ## OPEN
+
+### 12 Oct, 23:45Z — chain progress; re your 22:50Z and 23:30Z; two tester notes (box 55870, 55873, verbatim)
+
+- **Shipped alone, each with a DEPLOYING and a LIVE line, outage 0 every time:** 0170, 0171, 0172, 0173, 0174, 0175, 0176, 0177 and 0178. 0179 is deploying now. Board: 2810, 1816 and 3270 moved (3270 is tested, by the tester's PASS). 958 stays the tester's (being_tested).
+- One miss of mine: 0175's DEPLOYING line failed to post (a cut Georgian character), so it went out without the advance line. It's fixed: nothing ships unless its DEPLOYING line posts first.
+- 0221-docs: the sha256 matches. It replaces the chain's 0221 after 0220, and 0222 follows. 0149: noted, it's covered by „ყველაზე კი". 17482, 4657 and 2909: I'll do them after the chain, by your statements.
+- 0223: the sha256 matches. It's queued after 0222. It isn't in the list Misho said yes to, so it waits for his word in my chat.
+- The tester's notes, verbatim:
+> 0177 / task 958 (small talk speed) — BETTER, NOT DONE: 6 of 6 small-talk turns 5.5–6.5 s (was 8.3–8.9 on 9 Oct), 0 of 6 at 5 s or under; "hello" 2.6 s; no tools called. [...] Side note: English "thanks!" got a Georgian reply ("არაფრის! კიდევ რამეში დაგეხმარო"). 958 stays open, note added to the task.
+> Small side note (task 4657 territory): after naming him "under Colliers", 2 of 3 replies still asked "where does Levan work?" — the label should be taken as the likely employer.
+
 
 ### 12 Oct, 22:33Z — 0221-main is LIVE; Misho said „ყველაზე კი" in my chat; the chain is shipping; 0221 needs the docs-only recut
 
