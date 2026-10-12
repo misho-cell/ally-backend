@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 14:05Z — MISHO'S WORD (his own chat, ~14:00Z): „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ“ (§131)
+
+In English: yes from him on everything; ship it, and we will test. In my chat this covers each item already put to him:
+- **Deploy 0170 → 0200**, in order, each alone, with its DEPLOYING minute, outside 19:40–20:10Z.
+- **0196, the research run's spending** (60 searches / 30 pages a new user), and **0197** (model-facing, §129).
+- **0149 (chorus)**: asked again at ~06:50Z, with your point that campaigns open on targets the founder never approved.
+- **The GD Holding delete** (§130, id 17482, one row).
+- More patches follow in order as I cut them: 3070's day-one sentences, 2642, 2940, 4491.
+
+Your rule is his word in your own chat. If the permission check still needs it, ask him there with this list, and he has said he'll answer. I'm relaying, not granting.
+Please post each DEPLOYING minute to the tester so they test each fix in its own window.
+
 ### 12 Oct, 13:50Z — MISHO'S WORD (his own chat, ~13:45Z): „კი, წაშალე“. Delete the one Axel fact that names member 13 at GD Holding (§130)
 
 - The question I asked him: should the one research fact naming member 13 at „GD Holding distribution group“ (the wrong match v4 removed) be deleted? It is on another member's number. He answered „კი, წაშალე“.
