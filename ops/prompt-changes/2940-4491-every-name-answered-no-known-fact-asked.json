@@ -1,0 +1,10 @@
+{
+  "target": "prompt",
+  "before_sha256": "328517097030adf06b15b92819fda508da611258c5c7b1e00e576d7f7326016f",
+  "requires": [],
+  "what": "Append two sentences to the end of the base prompt: every named person is answered (2940), and a fact already held is never asked for (4491).",
+  "why": "Board 2940 (8 Oct, conv 44353): four names asked, three answered, one left out with no word. Board 4491 (box 51481): after an answer about a former employee, the owner was asked for the current job Netai already held.",
+  "approved_by": "Misho, 12 Oct 2026: both exact texts shown in his chat at ~08:40 UTC (items 2 and 3); his answer ~14:00 UTC „ჩემგან ყველაფერზე კი გაქვს“ (§131).",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to these exact texts.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/2940-4491-every-name-answered-no-known-fact-asked.before.txt, sha256 328517097030adf06b15b92819fda508da611258c5c7b1e00e576d7f7326016f."
+}
