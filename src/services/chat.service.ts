@@ -131,6 +131,7 @@ import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './short
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { withPublicProfile } from './tools/publicProfileRead';
+import { searchVerdictOf } from './searchVerdict';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { inviteContact } from './tools/inviteContact';
 import { getInviteLink } from './referralLink.service';
@@ -5829,6 +5830,35 @@ export async function markSearchSent(
     await writeSentOutcome(earlier[i].searchId, userId, AUTO_SENT_LATER_RUN_REASON);
     return;
   }
+}
+
+const AUTO_VERDICT_REASON = "auto: the owner's own next line accepted or refused this search";
+
+/**
+ * 2810: the newest search of this conversation that returned people, judged by
+ * the owner's next line (searchVerdict.ts). Never overwrites a recorded rung.
+ */
+export async function recordSearchVerdict(
+  userId: string,
+  threadId: number,
+  line: string,
+): Promise<void> {
+  const verdict = searchVerdictOf(line);
+  if (verdict === null) return;
+  const searches = pruneThreadSearches(threadId, Date.now());
+  const latest = searches[searches.length - 1];
+  if (latest === undefined) return;
+  await recordSearchOutcome({
+    searchId: latest.searchId,
+    userId,
+    outcome: verdict,
+    reason: AUTO_VERDICT_REASON,
+    worked: verdict === 'accepted' ? null : false,
+    onlyIfUnset: true,
+  }).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[search-outcome] verdict not recorded:', (err as Error).message),
+  );
 }
 
 async function writeSentOutcome(searchId: number, userId: string, reason: string): Promise<void> {
@@ -15684,6 +15714,8 @@ export async function processChat(
     ? await answerMatchTap(userId, threadId, userMessage, runId, intent)
     : null;
   if (matchSettled !== null) return matchSettled;
+  // 2810: the owner's verdict on the search just shown, before a thanks line is answered.
+  if (!ownerAbsent) void recordSearchVerdict(userId, threadId, userMessage);
   const thanksSettled = !ownerAbsent
     ? await answerThanksTap(userId, threadId, userMessage, runId, intent)
     : null;
