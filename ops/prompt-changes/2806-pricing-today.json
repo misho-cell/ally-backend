@@ -4,7 +4,7 @@
   "requires": [],
   "what": "Bring this fact-sheet section in line with today's rules (see the .after.txt).",
   "why": "Board 2806 (MO-009 / SK-002): the pricing section said a 5-day trial with a launch window to 15 October and Paddle for packs; it named no pack sizes and no failed-payment rule.",
-  "approved_by": "PENDING — Misho's yes to the exact changed sentences, shown in his chat.",
-  "authorization_still_needed": "Misho's yes (D44). Do not apply before it is recorded here.",
+  "approved_by": "Misho, 12 Oct 2026: the exact changed sentences were shown in his chat at 19:04 UTC; his answer 20:29 UTC „ყველაზე კი, გააკეთე“ (§135).",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to these exact sentences.",
   "undo": "PUT the prior content back; it is ops/prompt-changes/2806-pricing-today.before.txt, sha256 e0c3301583406d6ad5b628f0489fb7c7182d5a436def52a83269861d37f73fd1."
 }

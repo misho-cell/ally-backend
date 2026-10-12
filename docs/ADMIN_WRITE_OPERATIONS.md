@@ -6306,3 +6306,9 @@ Yes to the three items waiting on him, each shown in his chat first:
 4720 (box 54881): a public profile found by a search was handed over as a link. Option A, as put to him at ~15:15 UTC: when a
 web search's top three results hold a public LinkedIn profile, the server reads that one page itself (one paid Tavily extract,
 recorded in the cost ledger) and hands it over in the same result with its URL and the day it was read. No model-facing text.
+
+**§135 — 12 October 20:29 UTC, Misho in the code session's chat: „ყველაზე კი, გააკეთე"**
+Yes to the fact-sheet texts shown at 19:04 UTC, word for word (board 2806, 2807, 2808): pricing (20 days with an invitation, 5
+without; pack sizes; Stripe for packs; a failed payment retried 4 times, then cancelled), earnings (6 steps; 14-day hold), and the
+consent and contacts lines of capabilities, limits and intro_flow. Applied with prompt.sh (`ops/prompt-changes/2806-*`, `2807-*`,
+`2808-*`). The same answer covers the connector update (1256), offered as the next build.

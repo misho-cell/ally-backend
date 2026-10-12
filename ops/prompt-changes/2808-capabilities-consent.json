@@ -4,7 +4,7 @@
   "requires": [],
   "what": "Bring this fact-sheet section in line with today's rules (see the .after.txt).",
   "why": "Board 2808 (SK-004 / SK-012): the section promised a yes on the exact wording of every message and answers quoted; today consent is the approved plan or the typed one-person instruction (D119, D316, D626), and nothing is passed on word for word (D647/D648).",
-  "approved_by": "PENDING — Misho's yes to the exact changed sentences, shown in his chat.",
-  "authorization_still_needed": "Misho's yes (D44). Do not apply before it is recorded here.",
+  "approved_by": "Misho, 12 Oct 2026: the exact changed sentences were shown in his chat at 19:04 UTC; his answer 20:29 UTC „ყველაზე კი, გააკეთე“ (§135).",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to these exact sentences.",
   "undo": "PUT the prior content back; it is ops/prompt-changes/2808-capabilities-consent.before.txt, sha256 5abbd3d99c2502ee63bf22ac6b7fb1a6af5bf663a164e6eb98518ca29e5ad2c4."
 }
