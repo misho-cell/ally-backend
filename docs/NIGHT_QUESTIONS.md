@@ -75,6 +75,8 @@ More from the board sweep (03:30 UTC): 2411 is built (xlsxFallback reads `inline
 fixes on main and want a tester re-run, not code; 1816's server half is 0176 (every push now carries its page; the tap itself is
 the app's service worker); 2346's server half holds (an upload never starts a run; the Send button is the app's); 370 needs a phone
 test (speech was last used 29 Sep, no server errors since); 958 is 0177 (measured: the prompt build, not d59e722's chain).
+Later the same night: 3270 is 0178 (search half; the label-reading half is the model's), 2971 is 0179, and 3106 wants a re-test
+(the weather line was handled after it was filed: smallTalk.ts, the tester's chat 15, conv 49108).
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
