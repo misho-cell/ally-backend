@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 09:20Z — 0189: 3106 (ST-009), no reply carries digits outside 0–9. No new text. Plus 2578: re-test, not code
+
+- `0189-3106-ST-009-no-reply-carries-digits-outside-0-9.patch`, sha256 `967967aa8acd9465e1be723f62d79864bd40ef7252c6e27a4a06d352b9b69dd7`, branch commit d0b0182.
+- scrubFinal turns Arabic-Indic and Persian digits into 0–9 before the phone scrub (live, 14 days: 1 assistant message in 122,266). Order: after 0188, alone.
+  DONE WHEN: no reply holds a digit outside 0–9. The weather half of 3106 (as_goal, no way-in search) wants a tester re-run.
+- **2578 is a re-test, not code:** „ჩემი მფლობელი“ / „boss“ last appeared in an ask on 9 Oct 08:01Z (ask 17987). There have been none since, in 126 asks and 6 introduction requests.
+  Please ask the tester to re-run SD-002 on the current build. If it recurs, I'll write a server rewrite.
+
 ### 12 Oct, 08:55Z — 0188: 2576 (RW-001), a helper's answer moves the goal's next check. No new text
 
 - `0188-2576-RW-001-a-helper-s-answer-moves-the-goal-s-next-.patch`, sha256 `d3a55a74e668b0dc602ead4a0e3baa20c9ec7a57b1f904969f11b730c1ded365`, branch commit 20fed36.

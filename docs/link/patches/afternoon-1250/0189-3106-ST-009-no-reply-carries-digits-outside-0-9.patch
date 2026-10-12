@@ -1,0 +1,109 @@
+From b4fe31c833260f5dc9d8df1e500b96450bbf857a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 08:26:27 +0000
+Subject: [PATCH] 3106 (ST-009): no reply carries digits outside 0-9
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+A Georgian weather reply came out with Persian digits („ტენიანობა ۵۴-۸۸%").
+Live, 14 days: 1 assistant message in 122,266. scrubFinal now turns
+Arabic-Indic and Extended Arabic-Indic digits into 0-9 first, so the phone
+scrub, which reads 0-9, also sees them. No new text. The way-in half of
+3106 (the weather line with as_goal) was handled earlier and wants a
+re-test.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/westernDigits.test.ts | 24 ++++++++++++++++++++
+ src/services/chat.service.ts                 |  5 +++-
+ src/services/westernDigits.ts                | 22 ++++++++++++++++++
+ 3 files changed, 50 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/westernDigits.test.ts
+ create mode 100644 src/services/westernDigits.ts
+
+diff --git a/src/services/__tests__/westernDigits.test.ts b/src/services/__tests__/westernDigits.test.ts
+new file mode 100644
+index 0000000..e7ac09a
+--- /dev/null
++++ b/src/services/__tests__/westernDigits.test.ts
+@@ -0,0 +1,24 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { westernDigits } from '../westernDigits';
++
++/** 3106 (ST-009): no reply carries digits outside 0–9. */
++describe('westernDigits', () => {
++  it('turns Extended Arabic-Indic (Persian) digits into 0–9', () => {
++    expect(westernDigits('ტენიანობა ۵۴-۸۸%')).toBe('ტენიანობა 54-88%');
++  });
++
++  it('turns Arabic-Indic digits into 0–9', () => {
++    expect(westernDigits('٠١٢٣٤٥٦٧٨٩')).toBe('0123456789');
++  });
++
++  it('leaves every other character alone', () => {
++    const text = 'Tbilisi 21°C, ქარი 1-2 მ/წმ.';
++    expect(westernDigits(text)).toBe(text);
++  });
++
++  it('runs first in the final scrub, so the phone scrub reads 0–9', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('withoutLeadingSelfNote(westernDigits(text), runLang(runId))');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 1f5cb75..e9dccb8 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -146,6 +146,7 @@ import {
+   RunLanguage,
+ } from './runLanguage';
+ import { getEnabledToolKeys } from './enabledTools.service';
++import { westernDigits } from './westernDigits';
+ import { getUserProfile, setUserProfileField } from './userProfile.service';
+ import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
+ import {
+@@ -8861,7 +8862,9 @@ export function scrubFinal(text: string, runId: string | undefined): string {
+   const withoutNote = withoutStrayGeorgianCapitals(
+     withNothingFoundLast(
+       withoutLeadingInterjection(
+-        withoutAlreadyShownNote(withoutNoteTalk(withoutLeadingSelfNote(text, runLang(runId)))),
++        withoutAlreadyShownNote(
++          withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
++        ),
+         runLang(runId),
+       ),
+     ),
+diff --git a/src/services/westernDigits.ts b/src/services/westernDigits.ts
+new file mode 100644
+index 0000000..ac36520
+--- /dev/null
++++ b/src/services/westernDigits.ts
+@@ -0,0 +1,22 @@
++/**
++ * 3106 (ST-009, 8 Oct): a Georgian weather reply came out with Persian digits
++ * („ტენიანობა ۵۴-۸۸%"). Live, 14 days: 1 assistant message in 122,266. Rare,
++ * but a digit the reader cannot read is a wrong answer, and a phone number
++ * written in those digits would also pass the phone scrub, which reads 0–9.
++ * So every final reply has its Arabic-Indic and Extended Arabic-Indic digits
++ * turned into 0–9 before anything else reads it.
++ */
++const ARABIC_INDIC_ZERO = 0x0660;
++const EXTENDED_ARABIC_INDIC_ZERO = 0x06f0;
++const EASTERN_DIGIT_RE = /[٠-٩۰-۹]/gu;
++
++function westernDigit(digit: string): string {
++  const code = digit.codePointAt(0) ?? 0;
++  const zero = code >= EXTENDED_ARABIC_INDIC_ZERO ? EXTENDED_ARABIC_INDIC_ZERO : ARABIC_INDIC_ZERO;
++  return String(code - zero);
++}
++
++/** The same text with every Eastern Arabic digit written as 0–9. */
++export function westernDigits(text: string): string {
++  return text.replace(EASTERN_DIGIT_RE, westernDigit);
++}
+-- 
+2.43.0
+
