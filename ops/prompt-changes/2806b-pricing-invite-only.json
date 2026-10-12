@@ -1,0 +1,10 @@
+{
+  "target": "info:pricing",
+  "before_sha256": "d7be035fac7ab4b1dad919dea182d277ea2ed0639e5fb4ff8eca558e2614330c",
+  "requires": [],
+  "what": "Drop the 5-day trial for joining without an invitation; say Netai is invite-only (see the .after.txt).",
+  "why": "Board 2806, tester 55640 (SK-002/MO-009): pricing said a 5-day trial without an invitation, while about says invite-only. Live flags invite_only, netai_invite_only_login and invite_personal_code_only are all on: nobody joins without an invitation.",
+  "approved_by": "PENDING: the exact changed sentence was put to Misho at ~21:25 UTC.",
+  "authorization_still_needed": "Misho's yes to the exact sentence.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/2806b-pricing-invite-only.before.txt, sha256 d7be035fac7ab4b1dad919dea182d277ea2ed0639e5fb4ff8eca558e2614330c."
+}
