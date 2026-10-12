@@ -1,0 +1,151 @@
+From 57470d49784398b0826a2d510b9910193a1fc8c4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 16:41:02 +0000
+Subject: [PATCH] 2971: buttons always come with their question
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's run (8 Oct, conv 44420, 1 of 3): „რისი ცოდნა გინდა ჩემზე?" —
+the profile question went out only as a live step bubble, and the kept
+message said „ვუცდი შენს პასუხს." over five answer buttons; once the bubble
+was gone the owner saw buttons and no question.
+
+A reply with buttons that asks nothing takes the last question a step of
+the same run asked, at its top. The step goes only when it said nothing
+else; one with more in it keeps its words. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../buttonsComeWithTheirQuestion.test.ts      | 40 +++++++++++++++++++
+ src/services/buttonsCarryTheQuestion.ts       | 36 +++++++++++++++++
+ src/services/chat.service.ts                  | 15 +++++++
+ 3 files changed, 91 insertions(+)
+ create mode 100644 src/services/__tests__/buttonsComeWithTheirQuestion.test.ts
+ create mode 100644 src/services/buttonsCarryTheQuestion.ts
+
+diff --git a/src/services/__tests__/buttonsComeWithTheirQuestion.test.ts b/src/services/__tests__/buttonsComeWithTheirQuestion.test.ts
+new file mode 100644
+index 0000000..b6a1083
+--- /dev/null
++++ b/src/services/__tests__/buttonsComeWithTheirQuestion.test.ts
+@@ -0,0 +1,40 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { lastQuestionIn, questionForButtons } from '../buttonsCarryTheQuestion';
++
++/**
++ * 2971 (conv 44420): the profile question went out only as a step bubble; the
++ * kept message said „ვუცდი შენს პასუხს." over five buttons.
++ */
++const STEP = { id: 7, text: 'რომელი ტიპის გაცნობა არ გავაკეთო შენთვის?' };
++
++describe('the question the buttons answer', () => {
++  it('is taken from the last step that asked one, when the reply asks nothing', () => {
++    expect(questionForButtons('ვუცდი შენს პასუხს.', [{ id: 6, text: 'ვეძებ…' }, STEP])).toEqual({
++      question: 'რომელი ტიპის გაცნობა არ გავაკეთო შენთვის?',
++      step: STEP,
++    });
++  });
++
++  it('is none when the reply asks its own question, or no step asked one', () => {
++    expect(questionForButtons('გინდა, ვკითხო?', [STEP])).toBeNull();
++    expect(
++      questionForButtons('ვუცდი შენს პასუხს.', [{ id: 6, text: 'ვეძებ კონტაქტებში.' }]),
++    ).toBeNull();
++  });
++
++  it('reads the last question sentence of a longer step', () => {
++    expect(lastQuestionIn('ორი რამ ვნახე. რომელი გირჩევნია? მეორე უფრო ახლოსაა.')).toBe(
++      'რომელი გირჩევნია?',
++    );
++  });
++});
++
++describe('where it runs', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++  it('only under a reply that has buttons, and drops a step that said nothing else', () => {
++    expect(chat).toContain('!buriedAnswer && choices !== undefined && choices.length > 0');
++    expect(chat).toContain('if (askedInAStep.step.text.trim() === askedInAStep.question) {');
++  });
++});
+diff --git a/src/services/buttonsCarryTheQuestion.ts b/src/services/buttonsCarryTheQuestion.ts
+new file mode 100644
+index 0000000..b01cabe
+--- /dev/null
++++ b/src/services/buttonsCarryTheQuestion.ts
+@@ -0,0 +1,36 @@
++/**
++ * 2971 (the tester's run, 8 Oct, conv 44420, 1 of 3): „რისი ცოდნა გინდა
++ * ჩემზე?" — the profile question went out only as a live step bubble, and the
++ * message the owner keeps said „ვუცდი შენს პასუხს." over five answer buttons.
++ * Once the bubble was gone the owner saw buttons and no question.
++ *
++ * A reply with buttons and no question of its own takes the last question a
++ * step of the same run asked; that step goes.
++ */
++const QUESTION_MARK_RE = /[?？]/u;
++const SENTENCE_RE = /[^.!?？\n]*[?？]/gu;
++
++export interface StepText {
++  readonly id: number | string;
++  readonly text: string;
++}
++
++/** The last question sentence in a text, trimmed; null when it asks nothing. */
++export function lastQuestionIn(text: string): string | null {
++  const questions = text.match(SENTENCE_RE);
++  const last = questions?.[questions.length - 1]?.trim() ?? '';
++  return last === '' ? null : last;
++}
++
++/** The question the buttons answer, and the step it came from; null when the reply asks it itself. */
++export function questionForButtons(
++  reply: string,
++  steps: readonly StepText[],
++): { readonly question: string; readonly step: StepText } | null {
++  if (QUESTION_MARK_RE.test(reply)) return null;
++  for (let i = steps.length - 1; i >= 0; i -= 1) {
++    const question = lastQuestionIn(steps[i].text);
++    if (question !== null) return { question, step: steps[i] };
++  }
++  return null;
++}
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c0351c6..4d773ef 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -132,6 +132,7 @@ import { searchContactsByCountry } from './tools/searchContactsByCountry';
+ import { webSearch, fetchPage } from './tools/webSearch';
+ import { withPublicProfile } from './tools/publicProfileRead';
+ import { searchVerdictOf } from './searchVerdict';
++import { questionForButtons } from './buttonsCarryTheQuestion';
+ import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
+ import { inviteContact } from './tools/inviteContact';
+ import { getInviteLink } from './referralLink.service';
+@@ -13644,6 +13645,20 @@ async function runToolLoop(
+     const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
+     if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
+   }
++  // 2971: buttons under a reply that asks nothing take the question a step asked.
++  const askedInAStep =
++    !buriedAnswer && choices !== undefined && choices.length > 0
++      ? questionForButtons(finalText, draftSteps)
++      : null;
++  if (askedInAStep !== null) {
++    finalText = `${askedInAStep.question}\n\n${finalText}`.trim();
++    // Only a step that said nothing else goes; one with more in it keeps its words.
++    if (askedInAStep.step.text.trim() === askedInAStep.question) {
++      await dropDraftSteps(userId, threadId, runId, [
++        { id: Number(askedInAStep.step.id), text: askedInAStep.step.text },
++      ]);
++    }
++  }
+   if (buriedAnswer) {
+     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
+     promoted = true;
+-- 
+2.43.0
+

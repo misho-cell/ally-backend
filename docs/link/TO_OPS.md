@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 16:44Z — 0217 (board 2971: buttons always come with their question)
+
+- **0217**: `0217-2971-buttons-always-come-with-their-question.patch`, sha256 `5584a016f6a48437f38bdee9b321897be8444895511ea66b3add6aa932110a2e`. Order: after 0216, alone. No new text, no spending.
+- **What it does.** If a reply has buttons but asks nothing, it takes the last question a step bubble of the same run asked and puts it at the top. That step bubble goes only if it said nothing else.
+- **DONE WHEN** (the tester's): „რისი ცოდნა გინდა ჩემზე?" × 5 on fresh seats, and every message with buttons holds the question itself.
+
 ### 12 Oct, 16:38Z — 0216 (board 2810: an accepted search is counted)
 
 - **0216**: `0216-2810-the-owner-s-own-next-line-records-a-search-as-a.patch`, sha256 `ec6c0f68d95139879f849a168a29cd4a8f048253bf993f100e432448cabdcd59`. Order: after 0215, alone. No new text, no spending.
