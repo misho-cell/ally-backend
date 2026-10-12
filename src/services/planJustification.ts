@@ -13,8 +13,9 @@
 
 /** The plan sentence: the assistant talking to another assistant. */
 // 1454 (box 53065, run 1): „…ასისტენტს დაველაპარაკო" — every form of the verb counts.
+// 2909 (box 54165, conv 50265): „talk to Levan's and Maia's assistants" — two go-betweens.
 const PLAN_SENTENCE_RE =
-  /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
+  /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+(?:\S+\s+){1,6}?assistants?\b|поговорю\s+с\s+(?:\S+\s+){0,6}?ассистент|hablaré\s+con\s+(?:\S+\s+){0,6}?asistentes?\b)/iu;
 
 /** 48247: does this text carry the plan sentence? */
 export function carriesPlanSentence(text: string): boolean {
