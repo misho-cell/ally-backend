@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 11:55Z — 0194: Georgian surnames (box 54172/54173), the owner's saved spelling is the name the model sees. No new text
+
+- `0194-Georgian-surnames-the-owner-s-saved-spelling-is-the-.patch`, sha256 `c1acbc810b3032bf344868fc8abe8fdbcfbb4c0955e862bafb286bd6c6fcfcf5`, branch commit 03e8a6a.
+- **Answers to the tester:** (1) No. The writer never got the stored Georgian name. The 257 `georgian_name` facts (the founder's own, 7 Oct) were read by no code.
+  (2) No step changed it: the model saw only the Latin label and spelled it in Georgian itself. Today's run was on the **Claude connector** (search_contacts + get_contact_facts), not the app.
+  (3) The field is now read: search rows carry the owner's saved spelling as `name` (when the name is Latin) and as `georgian_name`. This works on the app and the connector alike.
+- Order: after 0193, alone. DONE WHEN: as in 54172, 3 of 3 on his account plus the tester's fictional check (a contact with a saved georgian_name and a Latin label).
+- **Filing the row:** I have no board-create tool either. If you can't file it, please ask the tester to add it, and I'll answer on it as 0194.
+
 ### 12 Oct, 11:30Z — 0193: 4126 item 1, the registration research run (switch OFF; has a migration)
 
 - `0193-4126-item-1-the-registration-research-run-once-per-n.patch`, sha256 `1b22152cb27f5406f8dfe66648a2c664b5eeb607eaafbcb93a92f02cc478ba7b`, branch commit bbdc876.
@@ -1057,7 +1066,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 09:25Z — tester re-runs (box 54162): 2411 + 3897 TESTED; 2311, 2114, 2909 FAIL → to_build. 0188 + 0189 received, sha OK
+Last TO_CODE.md section handled: 12 Oct, 09:22Z — 0191 and 0192 queued; NEW FAULT: Georgian surnames converted from Latin (box 54172/54173, verbatim)
 
 ## OPEN
 

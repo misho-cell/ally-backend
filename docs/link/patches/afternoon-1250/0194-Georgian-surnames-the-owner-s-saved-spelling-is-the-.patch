@@ -1,0 +1,192 @@
+From 75ee64cea705f05856946b9ff14e06378e30a24c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 09:39:00 +0000
+Subject: [PATCH] Georgian surnames: the owner's saved spelling is the name the
+ model sees
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 54172/54173 (Tornike, 12 Oct, connector): two surnames came out wrong
+(„ც" written „წ"). The owner had saved the right spelling for 257 contacts
+as a georgian_name fact on 7 Oct, and no code read it, so the model saw
+only the Latin label and spelled it in Georgian itself. fetchFactsForPhones
+now reads the owner's own georgian_name (never another person's), and
+applyFacts puts it in place of a Latin name and carries it as
+georgian_name. search_by_tag and the name search use it, on the app and the
+connector alike. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aSavedGeorgianSpellingIsUsed.test.ts      | 71 +++++++++++++++++++
+ src/services/tools/factEnrichment.ts          | 42 ++++++++++-
+ 2 files changed, 112 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/tools/__tests__/aSavedGeorgianSpellingIsUsed.test.ts
+
+diff --git a/src/services/tools/__tests__/aSavedGeorgianSpellingIsUsed.test.ts b/src/services/tools/__tests__/aSavedGeorgianSpellingIsUsed.test.ts
+new file mode 100644
+index 0000000..ba895c1
+--- /dev/null
++++ b/src/services/tools/__tests__/aSavedGeorgianSpellingIsUsed.test.ts
+@@ -0,0 +1,71 @@
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../../db/postgres/client';
++import { applyFacts, fetchFactsForPhones, nameAsSpelled } from '../factEnrichment';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const PHONE = '+995500000001';
++const OWNER = '501';
++const SAVED = 'ნიკა ციცქიშვილი';
++
++function row(name: string): {
++  phone: string;
++  name: string;
++  employer: null;
++  jobPosition: null;
++  city: null;
++} {
++  return { phone: PHONE, name, employer: null, jobPosition: null, city: null };
++}
++
++/** Box 54172/54173: a Georgian surname spelled from the Latin label came out wrong. */
++describe('the owner’s saved Georgian spelling is the name shown', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('puts the saved spelling in place of a Latin name', () => {
++    expect(nameAsSpelled('Nika Tsitskishvili', SAVED)).toBe(SAVED);
++  });
++
++  it('leaves a name that is already in Georgian, and a contact with nothing saved', () => {
++    expect(nameAsSpelled('ნიკა', SAVED)).toBe('ნიკა');
++    expect(nameAsSpelled('Nika', null)).toBe('Nika');
++  });
++
++  it('reads only the owner’s own georgian_name and carries it on the search row', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        { phone: PHONE, field_type: 'georgian_name', value: SAVED, as_of: '2026-10-07', own: true },
++        {
++          phone: PHONE,
++          field_type: 'georgian_name',
++          value: 'სხვისი',
++          as_of: '2026-10-07',
++          own: false,
++        },
++      ],
++    } as never);
++    const facts = await fetchFactsForPhones(OWNER, [PHONE]);
++    const shown = applyFacts(row('Nika Tsitskishvili'), facts) as {
++      name: string;
++      georgian_name: string;
++    };
++    expect(shown.name).toBe(SAVED);
++    expect(shown.georgian_name).toBe(SAVED);
++  });
++
++  it('ignores another person’s georgian_name', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        {
++          phone: PHONE,
++          field_type: 'georgian_name',
++          value: 'სხვისი',
++          as_of: '2026-10-07',
++          own: false,
++        },
++      ],
++    } as never);
++    const facts = await fetchFactsForPhones(OWNER, [PHONE]);
++    expect((applyFacts(row('Nika'), facts) as { name: string }).name).toBe('Nika');
++  });
++});
+diff --git a/src/services/tools/factEnrichment.ts b/src/services/tools/factEnrichment.ts
+index 883aa2d..d052116 100644
+--- a/src/services/tools/factEnrichment.ts
++++ b/src/services/tools/factEnrichment.ts
+@@ -13,12 +13,22 @@ export interface ContactFactFields {
+   dates: Partial<Record<FactDateField, string>>;
+   /** 4226: the fields whose value is the searching owner's own saved word. */
+   own: Partial<Record<FactDateField, true>>;
++  /** Box 54172: the Georgian spelling the owner saved for this contact, never another's. */
++  georgianName: string | null;
+ }
+ 
+ const ENRICH_TIMEOUT_MS = 8_000;
+ 
+ function emptyFields(): ContactFactFields {
+-  return { employer: null, jobPosition: null, city: null, industry: null, dates: {}, own: {} };
++  return {
++    employer: null,
++    jobPosition: null,
++    city: null,
++    industry: null,
++    dates: {},
++    own: {},
++    georgianName: null,
++  };
+ }
+ 
+ /**
+@@ -59,6 +69,9 @@ export async function fetchFactsForPhones(
+   for (const row of result.rows) {
+     const key = normalizePhone(row.phone);
+     const entry = map.get(key) ?? emptyFields();
++    if (row.field_type === GEORGIAN_NAME_TYPE && row.own && entry.georgianName === null) {
++      entry.georgianName = row.value.trim() || null;
++    }
+     const field = FIELD_OF_TYPE[row.field_type];
+     if (field !== undefined && !entry[field]) {
+       entry[field] = row.value;
+@@ -70,6 +83,22 @@ export async function fetchFactsForPhones(
+   return map;
+ }
+ 
++/**
++ * Box 54172/54173 (Tornike, 12 Oct): two Georgian surnames came out wrong
++ * („ც" written „წ"), because the writer saw only the Latin label and spelled it
++ * in Georgian itself. The owner had saved the right spelling as a
++ * `georgian_name` fact (257 contacts, 7 Oct), and nothing read it. A Latin name
++ * now gives way to the Georgian spelling the owner saved.
++ */
++const GEORGIAN_NAME_TYPE = 'georgian_name';
++const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
++
++/** The name to show: the owner's saved Georgian spelling when the name has no Georgian letters. */
++export function nameAsSpelled(name: string | null, georgianName: string | null): string | null {
++  if (georgianName === null) return name;
++  return name !== null && GEORGIAN_LETTER_RE.test(name) ? name : georgianName;
++}
++
+ const FIELD_OF_TYPE: Readonly<Record<string, FactDateField>> = {
+   employer: 'employer',
+   occupation: 'jobPosition',
+@@ -92,6 +121,16 @@ function factWins(
+   return Boolean(f[field]) && (f.own[field] === true || !profileValue);
+ }
+ 
++function withGeorgianSpelling(
++  row: object,
++  georgianName: string | null,
++): { name?: string | null; georgian_name?: string } {
++  if (georgianName === null) return {};
++  const shown = (row as { name?: unknown }).name;
++  const name = typeof shown === 'string' ? shown : null;
++  return { name: nameAsSpelled(name, georgianName), georgian_name: georgianName };
++}
++
+ /** Overlay saved-fact fields onto a search row, keeping any non-empty existing value. */
+ export function applyFacts<
+   T extends {
+@@ -118,6 +157,7 @@ export function applyFacts<
+   if (f.industry && f.dates.industry) asOf.industry = f.dates.industry;
+   return {
+     ...row,
++    ...withGeorgianSpelling(row, f.georgianName),
+     employer: useEmployer ? f.employer : row.employer,
+     jobPosition: useJob ? f.jobPosition : row.jobPosition,
+     city: useCity ? f.city : row.city,
+-- 
+2.43.0
+
