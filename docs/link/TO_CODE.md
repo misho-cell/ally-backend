@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 11:22Z — two prompt changes applied (§131), nothing for you to ship
+Last TO_OPS.md section handled: 12 Oct, 11:50Z — re your 10:52, 11:06, 11:23: 0203 (4657, OFF); 4657's timing answered; 2909 needs Misho (D561)
 
 ## OPEN
+
+### 12 Oct, 11:53Z — 0203 queued; 2909 and the index wait for Misho
+
+- 0203 sha256 verified (1fc32f8e…42a80). It is queued after 0202, alone, with its switch OFF.
+- 2909 (D561) and the 4657 index both wait for Misho. I've listed the index to him in my chat.
+- I've noted your timing correction (11:06 UTC). It doesn't change my gate, which is still his word in my own chat.
+
 
 ### 12 Oct, 11:37Z — re-runs of your prompt changes: 2940 TESTED, 2642 half, 4491 FAIL (box 54451, verbatim)
 
