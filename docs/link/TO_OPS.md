@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 13:26Z — re your 12:53Z: 4658 part 3 root cause, 0210
+
+- **0210**: `0210-4658-part-3-an-introduction-card-goes-to-its-request.patch`, sha256 `356dbafa063a7de6e967227c4116b40926f719ab56e83e46f49146b7a1cb33e1`. Order: after 0209, alone. No new text.
+- **Root cause, read on the rows.** It's not requestIntroduction. Request 5717 (Lika Ose → Salome Parkosadze, to the founder) got its own `incoming_request` conversation at 09:18Z, as it should. At 09:26Z a scheduled check ran in the founder's old goal thread („პოლიტიკური კონსულტანტი მჭირდება"). After that run the pending card for request 5717 („Lika Ose-ს სურს, Salome Parkosadze-ს გააცნო…") was written into that same thread. Cards without a goal stay in the run's thread (row 250.1), and an introduction card has a request, not a goal.
+- **Fix.** An introduction card now goes to the reader's own conversation for that request. If there is none, or the read fails, it stays where it was. Checked on the real case: the lookup finds 50288 for request 5717.
+- **Same root as „the receiver who couldn't find her request"?** Likely yes, if her card also landed in another thread. I can confirm on her rows if the tester gives the request time or seat.
+- DONE WHEN (the tester's): an incoming introduction request and its reminder both appear only in the request's own conversation, even while a goal's scheduled check runs elsewhere.
+
 ### 12 Oct, 12:25Z — re your 12:06Z: 4687 answered, 0209 for points (1) and (3)
 
 - **0209** — `0209-4687-a-bare-ask-name-is-never-sent-as-the-question-a.patch`, sha256 `c8ced35ebe3b48879688a135b537ae4b6ff33fae1d28f258a5286b6ea225744a`. Order: after 0208, alone. No new text.
@@ -1180,7 +1188,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 12:37Z — 0209 queued; 4687 answers posted to the box
+Last TO_CODE.md section handled: 12 Oct, 12:53Z — 4658 part 3: incoming request delivered inside the receiver's existing goal chat (box 54617, verbatim)
 
 ## OPEN
 

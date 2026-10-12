@@ -1,0 +1,211 @@
+From 7f50e21b21b6b254289538c1be13e4a343178431 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 13:23:21 +0000
+Subject: [PATCH] 4658 part 3: an introduction card goes to its request's own
+ conversation
+
+The tester's box 54617 (the founder's seat, 12 Oct): an incoming introduction
+request was shown inside an unrelated goal's chat. Read on the rows: request
+5717 had its own incoming_request conversation from 09:18Z; at 09:26Z a
+scheduled check ran in the founder's old goal thread, and its pending card
+for the request was written there. A card that names no goal stayed in the
+run's thread (row 250.1), and an introduction card names a request, not a
+goal.
+
+An introduction card now goes to the reader's own conversation for that
+request (threads.introduction_request_id, type incoming_request); with none,
+or a failed read, it stays where it was. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aCardBelongsToItsOwnGoal.test.ts          |  7 ++-
+ ...equestCardGoesToItsOwnConversation.test.ts | 56 +++++++++++++++++++
+ src/services/chat.service.ts                  | 19 ++++++-
+ src/services/requestCardThread.ts             | 35 ++++++++++++
+ 4 files changed, 111 insertions(+), 6 deletions(-)
+ create mode 100644 src/services/__tests__/aRequestCardGoesToItsOwnConversation.test.ts
+ create mode 100644 src/services/requestCardThread.ts
+
+diff --git a/src/services/__tests__/aCardBelongsToItsOwnGoal.test.ts b/src/services/__tests__/aCardBelongsToItsOwnGoal.test.ts
+index ce73a5e..bfdabc4 100644
+--- a/src/services/__tests__/aCardBelongsToItsOwnGoal.test.ts
++++ b/src/services/__tests__/aCardBelongsToItsOwnGoal.test.ts
+@@ -45,7 +45,7 @@ describe('a card goes to the goal it is about', () => {
+       chat.indexOf('async function savePendingMessage'),
+     );
+ 
+-    expect(deliver).toContain('const target = await threadForPendingItem(item, threadId);');
++    expect(deliver).toContain('const target = await threadForPendingItem(userId, item, threadId);');
+     // All three writes follow the item, not the run.
+     expect(deliver.match(/\btarget\b/g)?.length).toBeGreaterThanOrEqual(4);
+     expect(deliver).not.toContain('emitMessageAppended(userId, threadId, runId');
+@@ -54,8 +54,9 @@ describe('a card goes to the goal it is about', () => {
+ 
+ describe('what deliberately still goes to the current thread', () => {
+   /**
+-   * An introduction, a chorus ask, a thanks-loop name a PERSON and not a
+-   * goal. They have no thread of their own, and the ruling is about goals.
++   * A chorus ask and a thanks-loop name a PERSON and not a goal. They have no
++   * thread of their own, and the ruling is about goals. (An introduction has
++   * one, its request's conversation: aRequestCardGoesToItsOwnConversation.)
+    */
+   it('leaves an item with no goal where it is', () => {
+     expect(fn).toContain('if (item.task_id === null) return fallbackThreadId;');
+diff --git a/src/services/__tests__/aRequestCardGoesToItsOwnConversation.test.ts b/src/services/__tests__/aRequestCardGoesToItsOwnConversation.test.ts
+new file mode 100644
+index 0000000..b561b17
+--- /dev/null
++++ b/src/services/__tests__/aRequestCardGoesToItsOwnConversation.test.ts
+@@ -0,0 +1,56 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { requestIdOfCard, requestThreadOf } from '../requestCardThread';
++
++/**
++ * 4658 part 3 (box 54617): the founder's incoming introduction request had its
++ * own conversation, and its reminder card landed inside an unrelated goal's
++ * chat, where a scheduled check happened to run. The card goes to the request.
++ */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++describe('the request a card is about', () => {
++  it('reads the request id of an introduction card, as a number or as digits', () => {
++    expect(requestIdOfCard('intro_request', { request_id: 5717 })).toBe(5717);
++    expect(requestIdOfCard('intro_request', { request_id: '5717' })).toBe(5717);
++  });
++
++  it('is none for any other card, or a card without a usable id', () => {
++    expect(requestIdOfCard('goal_question', { request_id: 5717 })).toBeNull();
++    expect(requestIdOfCard('intro_request', {})).toBeNull();
++    expect(requestIdOfCard('intro_request', { request_id: 'x1' })).toBeNull();
++  });
++});
++
++describe('requestThreadOf', () => {
++  it('finds the reader’s own incoming-request conversation', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ id: 50288 }], rowCount: 1 } as never);
++    await expect(requestThreadOf('501', 5717)).resolves.toBe(50288);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(sql).toContain('introduction_request_id = $2 AND type = $3');
++    expect(params).toEqual(['501', 5717, 'incoming_request']);
++  });
++
++  it('is none when the request has no conversation of the reader’s', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++    await expect(requestThreadOf('501', 5717)).resolves.toBeNull();
++  });
++});
++
++describe('card delivery', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++  const fn = chat.slice(
++    chat.indexOf('async function threadForPendingItem'),
++    chat.indexOf('async function deliverPendingMessages'),
++  );
++
++  it('sends an introduction card to its request’s conversation, and falls back when there is none', () => {
++    expect(fn).toContain('const requestId = requestIdOfCard(item.kind, item.payload);');
++    expect(fn).toContain('return own ?? fallbackThreadId;');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 9684d48..af0c07f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -506,6 +506,7 @@ import {
+   needsNoOpeningSearch,
+ } from './goalIntent';
+ import { renderPendingMessage, PendingItemInput } from './pendingMessages';
++import { requestIdOfCard, requestThreadOf } from './requestCardThread';
+ import { HOUSEKEEPING_TOOLS } from './housekeepingTools';
+ import {
+   recordGoalFeedback,
+@@ -14903,15 +14904,27 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
+  * His „closed lawyer goal with a painters reminder in it" is 25 rows, not an
+  * anecdote.
+  *
+- * An item that names NO goal — an introduction, a chorus ask, a thanks-loop —
+- * has no thread of its own to go to and stays where it is. That is not a
++ * An item that names NO goal — a chorus ask, a thanks-loop — has no thread of
++ * its own to go to and stays where it is. An introduction has one: its request's
++ * conversation (4658 part 3). That is not a
+  * loophole: those are about a person, not a goal, and the ruling is about
+  * goals.
+  */
+ async function threadForPendingItem(
++  userId: string,
+   item: PendingItemInput,
+   fallbackThreadId: number,
+ ): Promise<number> {
++  // 4658 part 3: an introduction card goes to the request's own conversation.
++  const requestId = requestIdOfCard(item.kind, item.payload);
++  if (requestId !== null) {
++    const own = await requestThreadOf(userId, requestId).catch((error: unknown) => {
++      // eslint-disable-next-line no-console
++      console.error('[pending] could not read the request’s thread:', (error as Error).message);
++      return null;
++    });
++    return own ?? fallbackThreadId;
++  }
+   if (item.task_id === null) return fallbackThreadId;
+   try {
+     const own = await query<{ thread_id: number | null }>(
+@@ -14942,7 +14955,7 @@ async function deliverPendingMessages(
+       const rendered = renderPendingMessage(item, language);
+       if (rendered === null) continue;
+       // Row 250.1: its own goal's thread, not whichever one the run was in.
+-      const target = await threadForPendingItem(item, threadId);
++      const target = await threadForPendingItem(userId, item, threadId);
+       if (rendered.instruction !== '') {
+         await saveMessage(
+           userId,
+diff --git a/src/services/requestCardThread.ts b/src/services/requestCardThread.ts
+new file mode 100644
+index 0000000..ca84943
+--- /dev/null
++++ b/src/services/requestCardThread.ts
+@@ -0,0 +1,35 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * 4658 part 3 (box 54617, the founder's seat, 12 Oct 09:26Z): an introduction
++ * request to him had its own „waiting for your answer" conversation (opened at
++ * 09:18Z), and its reminder card still landed inside an unrelated goal's chat —
++ * the one a scheduled check happened to run in. A card that names no goal
++ * stays in the run's thread (row 250.1), and an introduction card names a
++ * request, not a goal. The request's own conversation is its place.
++ */
++const INTRO_REQUEST_KIND = 'intro_request';
++const INCOMING_REQUEST_THREAD = 'incoming_request';
++const QUERY_TIMEOUT_MS = 5_000;
++const DIGITS_RE = /^\d+$/u;
++
++/** The request id an introduction card is about; null for any other card. */
++export function requestIdOfCard(kind: string, payload: Record<string, unknown>): number | null {
++  if (kind !== INTRO_REQUEST_KIND) return null;
++  const raw = payload.request_id;
++  const id = typeof raw === 'string' && DIGITS_RE.test(raw) ? Number(raw) : raw;
++  return typeof id === 'number' && Number.isInteger(id) && id > 0 ? id : null;
++}
++
++/** The reader's own conversation for this request; null when it has none. */
++export async function requestThreadOf(userId: string, requestId: number): Promise<number | null> {
++  const result = await query<{ id: number }>(
++    `SELECT id FROM threads
++      WHERE user_id = $1 AND introduction_request_id = $2 AND type = $3
++      ORDER BY id DESC
++      LIMIT 1`,
++    [userId, requestId, INCOMING_REQUEST_THREAD],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.id ?? null;
++}
+-- 
+2.43.0
+
