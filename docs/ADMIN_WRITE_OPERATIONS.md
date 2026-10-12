@@ -6317,3 +6317,8 @@ consent and contacts lines of capabilities, limits and intro_flow. Applied with 
 Yes to the connector tool `answer_member_question` (board 1256), its description exactly as shown at ~20:45 UTC (title „Answer a
 question another member asked the user"; `TOOL_TEXTS.answer_member_question` in src/services/mcp/texts.ts). Switched on
 (ANSWER_MEMBER_QUESTION_ON) and handed to ops as a patch.
+
+**§137 — 12 October 21:13 UTC, Misho in the code session's chat: „ადმინკის ტოკენს მინდა რომ ვადა გავუზარდო დროებით 100 საათზე და გთხოვ ახლავე გააკეთე"**
+The admin session (ADMIN_TOKEN_TTL in src/services/auth.service.ts) raised from 12h to 100h, temporarily, on his direct word.
+Cost, as written beside the constant: no refresh and no revocation list, so a stolen admin token is usable for 100 hours.
+Tokens issued before the deploy keep their 12h; it goes back to 12h when he says so.
