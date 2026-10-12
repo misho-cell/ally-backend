@@ -1,6 +1,7 @@
 import { query } from '../../db/postgres/client';
 import { fetchPage, webSearch } from '../tools/webSearch';
-import { extractFacts, PersonGiven, ReadText } from './extract';
+import { Extracted, extractFacts, extractResearch, PersonGiven, ReadText } from './extract';
+import { LIST_PEOPLE_ON, newUserAsKnown, storeListedPeople } from './listedPeople';
 import {
   factsToStore,
   firstQueries,
@@ -163,11 +164,24 @@ async function finish(
   );
 }
 
+/** The extractor's answer; the listed people are asked for only while LIST_PEOPLE_ON. */
+async function extracted(
+  userId: number,
+  given: PersonGiven,
+  texts: readonly ReadText[],
+  withListedPeople: boolean,
+): Promise<Extracted> {
+  if (!withListedPeople) return { facts: await extractFacts(userId, given, texts), listed: [] };
+  return extractResearch(userId, given, texts, true);
+}
+
 /** One queued user researched; false when nobody was waiting. */
-export async function researchNextUser(): Promise<boolean> {
+export async function researchNextUser(
+  withListedPeople: boolean = LIST_PEOPLE_ON,
+): Promise<boolean> {
   const person = await claimNext();
   if (person === null) return false;
-  const counts = { searches: 0, pages: 0, facts: 0 };
+  const counts = { searches: 0, pages: 0, facts: 0, listed: 0 };
   try {
     if (person.name === '' || person.phones.length === 0) {
       await finish(person.userId, 'done', counts, 'no name or number to research');
@@ -177,13 +191,16 @@ export async function researchNextUser(): Promise<boolean> {
     const gathered = await gather(given);
     counts.searches = gathered.searches;
     counts.pages = gathered.pages;
-    const facts = factsToStore(await extractFacts(person.userId, given, gathered.texts));
+    const found = await extracted(person.userId, given, gathered.texts, withListedPeople);
+    const facts = factsToStore(found.facts);
     counts.facts = await storeFacts(person.phones, facts);
+    const newUser = newUserAsKnown(person.phones[0], person.name, facts);
+    counts.listed = await storeListedPeople(found.listed, newUser);
     await finish(person.userId, 'done', counts, null);
     // eslint-disable-next-line no-console
     console.log(
       `[registration-research] user ${person.userId}: ${counts.searches} searches, ` +
-        `${counts.pages} pages, ${counts.facts} facts`,
+        `${counts.pages} pages, ${counts.facts} facts, ${counts.listed} listed people`,
     );
   } catch (err) {
     const message = (err as Error).message.slice(0, MAX_ERROR_CHARS);
