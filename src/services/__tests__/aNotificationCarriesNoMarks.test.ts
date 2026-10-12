@@ -50,6 +50,7 @@ describe('sendAiNotification', () => {
     expect(mockPush).toHaveBeenCalledWith(USER_ID, {
       title: 'ნინო გელოდება',
       body: 'ახალი კონტაქტი, ნახე',
+      url: '/chat',
     });
   });
 
@@ -61,6 +62,7 @@ describe('sendAiNotification', () => {
     expect(mockPush).toHaveBeenCalledWith(USER_ID, {
       title: 'ნინო გელოდება',
       body: 'ახალი კონტაქტი შენს ქსელში',
+      url: '/chat',
     });
   });
 });
