@@ -10,7 +10,7 @@
  * OFF until Misho says yes to the exact text: it is model-facing (D44), and it
  * lets the assistant write to a helper in the owner's name.
  */
-export const OWNER_WORDS_ANSWER_ON = false;
+export const OWNER_WORDS_ANSWER_ON = true;
 
 /** MODEL-FACING (D44), waiting for Misho's yes word for word. */
 export const OWNER_WORDS_ANSWER_NOTE =

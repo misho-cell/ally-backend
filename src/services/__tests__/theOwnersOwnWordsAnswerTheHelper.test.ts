@@ -15,15 +15,14 @@ const HELPER_ASKS = [
 ];
 
 describe('4423: the owner’s own words answer a helper’s question', () => {
-  it('stays OFF until Misho says yes to the exact text', () => {
-    expect(OWNER_WORDS_ANSWER_ON).toBe(false);
+  it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
+    expect(OWNER_WORDS_ANSWER_ON).toBe(true);
   });
 
-  it('leaves the answer-wake note exactly as it was while OFF', () => {
+  it('puts the approved sentence right after the „a question waits" clause', () => {
     expect(buildShownAnswersWakeEvent(HELPER_ASKS)).toContain(
-      'ადამიანი პასუხს ელოდება. არასდროს თქვა',
+      'ადამიანი პასუხს ელოდება.' + OWNER_WORDS_ANSWER_NOTE + ' არასდროს თქვა',
     );
-    expect(buildShownAnswersWakeEvent(HELPER_ASKS)).not.toContain('ask_contact-ით');
   });
 
   it('when ON, tells the run to answer from the owner’s words and only them', () => {
