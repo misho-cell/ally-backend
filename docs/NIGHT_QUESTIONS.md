@@ -69,6 +69,11 @@ Night of 12 → 13 October, for the morning:
   gets 20 free days. After the trial, …". Live flags confirm invite-only. On his yes: apply, then ops asks the tester to re-run SK-002, MO-009.
 - **CB (admin session 100h, §137).** Built and handed over twice: 0221 in the chain and 0221-main, cut on main to ship alone. Not live: ops
   ships it only on Misho's own word in ops' chat, which I told him at ~21:40 UTC. Nothing more is mine.
+- **CC (3671, 4297): prompt work, so not at night (D44).** 3671: a model-written owner answer mixed persons („თუ გინდა, თვითონ
+  გკითხავ შეგახსენო და დაელაპარაკო"). The fix is a writer rule or an editor check on owner answers, and its text needs Misho's yes. 4297:
+  „the new plan and search rules are live" means applying prompt texts. By day I'll find which texts are not live yet and put them to him.
+- **Built tonight:** 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
+  app's side.
 
 Cleared 12 October ~07:10 UTC. Misho answered in his own chat at ~06:45 UTC, to four numbered questions: „1. გააკეთე 2. კარგი 3. კი 4. კარგი“.
 (1) Deploy of the chain 0170 → 0182, relayed to ops (TO_OPS 06:50Z). (3) BQ, BR, BO switched ON as 0183, 0184, 0185 (TO_OPS 07:00Z). BP is approved,
