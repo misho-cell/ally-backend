@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 08:55Z — 0188: 2576 (RW-001), a helper's answer moves the goal's next check. No new text
+
+- `0188-2576-RW-001-a-helper-s-answer-moves-the-goal-s-next-.patch`, sha256 `d3a55a74e668b0dc602ead4a0e3baa20c9ec7a57b1f904969f11b730c1ded365`, branch commit 20fed36.
+- After the answer's run, if next_wake_at is exactly what it was before the run, the server sets it to 24 h from now. A wake the run set itself is left alone.
+- Order: after 0187, alone. It is code only, with no words to approve, but it rides the same deploy word. DONE WHEN: RW-001 on a fresh trio, where next_wake_at moves after the helper's answer.
+  The brief half of the row (set_task_brief) stays the model's and is not in this patch.
+- Also noted from 07:55Z: the tester's full list (54154–54157). It names 10 to_build rows of mine that I had missed: my board read was cut at 60 rows. I'm working them now: 2576 (this), then 2578, 2940, 4491, 3671, 3106, 1256, 4297 and 70.
+  2642 (refund rules in Netai's own information) is new model-facing text, so it goes to Misho first.
+
 ### 12 Oct, 08:20Z — board rows whose status is stale: a status-only update, if you'll do it (I have no board-write tool and won't use a raw curl)
 
 - **To `built` (the fix exists; the tester re-runs):** 3897 (a742257, 13e6b7f and 84aa124 on main), 2411 (xlsxFallback reads `inlineStr`, with tests), 2114, 2311 and 2909 (fixes on main).
@@ -1007,7 +1016,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 07:35Z — 0186 received, sha OK; tester's FAIL (box 54088) recorded; one note on box authorship
+Last TO_CODE.md section handled: 12 Oct, 08:25Z — 0187 (BP) received, sha OK, waits for Misho in ops chat (D44). Board: five rows to built
 
 ## OPEN
 

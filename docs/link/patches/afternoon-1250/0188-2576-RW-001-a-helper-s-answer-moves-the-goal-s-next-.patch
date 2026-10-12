@@ -1,0 +1,166 @@
+From 43aa0b85bd3ebe9171a1e5fc2e873422e191e643 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 08:18:02 +0000
+Subject: [PATCH] 2576 (RW-001): a helper's answer moves the goal's next check
+
+After an answer arrived the owner's run showed the card and buttons but
+never called set_task_wake, so next_wake_at stayed at the send-time value
+(goal 20796). Now, when the answer's run leaves the wake exactly as it
+found it, the server moves it to 24 h from now; a wake the run chose is
+never touched. The wake is compared as stored text, because the column
+keeps microseconds and a JS Date does not. No new text. The brief half of
+the row stays the model's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anAnswerMovesTheNextCheck.test.ts         | 55 +++++++++++++++++++
+ src/services/taskEngine.service.ts            | 10 ++++
+ src/services/taskStore.service.ts             | 34 ++++++++++++
+ 3 files changed, 99 insertions(+)
+ create mode 100644 src/services/__tests__/anAnswerMovesTheNextCheck.test.ts
+
+diff --git a/src/services/__tests__/anAnswerMovesTheNextCheck.test.ts b/src/services/__tests__/anAnswerMovesTheNextCheck.test.ts
+new file mode 100644
+index 0000000..1bd9cf8
+--- /dev/null
++++ b/src/services/__tests__/anAnswerMovesTheNextCheck.test.ts
+@@ -0,0 +1,55 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++  withTransaction: jest.fn(),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { moveWakeAfterAnswer, nextWakeText } from '../taskStore.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const WAKE_BEFORE = '2026-10-08 22:31:35.635912';
++const HOURS = 24;
++
++/** 2576 (RW-001): after a helper's answer the goal's next check moves. */
++describe('an answer moves the goal’s next check', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('moves the wake only when the run left it exactly as it was', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
++    expect(await moveWakeAfterAnswer(20796, WAKE_BEFORE, HOURS)).toBe(true);
++    const [sql, params, timeout] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('next_wake_at::text IS NOT DISTINCT FROM $2');
++    expect(String(sql)).toContain("status = 'open'");
++    expect(params).toEqual([20796, WAKE_BEFORE, HOURS]);
++    expect(timeout).toBeGreaterThan(0);
++  });
++
++  it('reports false when the run chose its own wake', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
++    expect(await moveWakeAfterAnswer(20796, WAKE_BEFORE, HOURS)).toBe(false);
++  });
++
++  it('reads the wake as stored text, microseconds and all', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ wake: WAKE_BEFORE }] } as never);
++    expect(await nextWakeText(20796)).toBe(WAKE_BEFORE);
++    expect(String(mockQuery.mock.calls[0][0])).toContain('next_wake_at::text');
++  });
++
++  it('touches nothing for an id that is not an id', async () => {
++    expect(await moveWakeAfterAnswer(Number.NaN, null, HOURS)).toBe(false);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('is called after the answer run, with the wake read before it', () => {
++    const engine = readFileSync(join(__dirname, '..', 'taskEngine.service.ts'), 'utf8');
++    const read = engine.indexOf('const wakeBeforeRun = await nextWakeText(taskId);');
++    const run = engine.indexOf('buildShownAnswersWakeEvent(arrived)', read);
++    const move = engine.indexOf('moveWakeAfterAnswer(taskId, wakeBeforeRun', run);
++    expect(read).toBeGreaterThan(-1);
++    expect(run).toBeGreaterThan(read);
++    expect(move).toBeGreaterThan(run);
++  });
++});
+diff --git a/src/services/taskEngine.service.ts b/src/services/taskEngine.service.ts
+index db28280..9b52b99 100644
+--- a/src/services/taskEngine.service.ts
++++ b/src/services/taskEngine.service.ts
+@@ -42,6 +42,8 @@ import {
+   ensureNextWake,
+   touchTaskActivity,
+   clearTaskWake,
++  moveWakeAfterAnswer,
++  nextWakeText,
+   Task,
+ } from './taskStore.service';
+ import {
+@@ -680,6 +682,7 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
+   ) {
+     noteQuietAfterDecline(threadId);
+   }
++  const wakeBeforeRun = await nextWakeText(taskId);
+   const woken = onScreen
+     ? await wakeTask(taskId, buildShownAnswersWakeEvent(arrived))
+     : await wakeTask(
+@@ -689,6 +692,13 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
+       );
+   if (woken !== 'woken') return 0;
+   for (const ask of owed) await markAskWakeDelivered(ask.id);
++  await moveWakeAfterAnswer(taskId, wakeBeforeRun, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
++    // eslint-disable-next-line no-console
++    console.error(
++      `[task-engine] task ${taskId}: next check after the answer not set:`,
++      (err as Error).message,
++    ),
++  );
+   return owed.length;
+ }
+ 
+diff --git a/src/services/taskStore.service.ts b/src/services/taskStore.service.ts
+index 0f54767..06d826d 100644
+--- a/src/services/taskStore.service.ts
++++ b/src/services/taskStore.service.ts
+@@ -325,6 +325,40 @@ export async function wakeTaskNoLaterThan(taskId: number, at: Date): Promise<boo
+   return (result.rowCount ?? 0) > 0;
+ }
+ 
++/**
++ * The goal's wake exactly as stored, as text: the column keeps microseconds and
++ * a JS Date keeps milliseconds, so a Date read back never equals the row again.
++ */
++export async function nextWakeText(taskId: number): Promise<string | null> {
++  if (!isARealId(taskId)) return null;
++  const result = await query<{ wake: string | null }>(
++    `SELECT next_wake_at::text AS wake FROM tasks WHERE id = $1 LIMIT 1`,
++    [taskId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows[0]?.wake ?? null;
++}
++
++/**
++ * 2576 (RW-001): after a helper's answer the goal sets its next check. When the
++ * answer's run left the wake exactly as it found it, the server moves it to
++ * `hours` from now; a wake the run chose for itself is never touched.
++ */
++export async function moveWakeAfterAnswer(
++  taskId: number,
++  wakeBeforeRun: string | null,
++  hours: number,
++): Promise<boolean> {
++  if (!isARealId(taskId)) return false;
++  const result = await query(
++    `UPDATE tasks SET next_wake_at = NOW() + ($3 || ' hours')::interval
++      WHERE id = $1 AND status = 'open' AND next_wake_at::text IS NOT DISTINCT FROM $2`,
++    [taskId, wakeBeforeRun, hours],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0;
++}
++
+ /** Open tasks whose wake time has arrived — the ticker's worklist. */
+ export async function getDueTasks(limit: number): Promise<Array<Task & { user_id: string }>> {
+   const result = await query<Task & { user_id: string }>(
+-- 
+2.43.0
+
