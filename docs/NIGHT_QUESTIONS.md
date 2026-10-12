@@ -62,37 +62,13 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-Night of 11→12 Oct (for the morning): BQ (1454 b, the server's plan sentence naming whom it introduces, 0170) and BR (2608,
-recalling another contact's need, 0172) wait below for Misho's yes on their texts. Both are shipped OFF. 0170, 0171 (2810) and
-0172 wait for the deploy: ops' night deploy was refused by its permission check (22:20Z). So do 0173 (47325, internal words)
-and 0174 (47588, a Georgian paragraph in an English reply): both were built 8 Oct and never reached main. The chain is 0170 → 0174.
-A sweep of every branch commit since 6 Oct against main found nothing else stranded. bc10bc5 is moot (1695 retired, D747).
-d59e722 (958 p1) waits for a re-measure by day.
-Board rows that read `to_build` but are not (a live write, so left for the morning; mine to PATCH by day):
-3897 (lists: a742257, 13e6b7f, 84aa124 are on main, so the tester should re-run the list), 4225 (the Axel load is done, 2,611 facts),
-4258 (BG is ON since 10 Oct, §125), 2810 (0171, once shipped), 859 (server half on main: f2f0b12 and the delivery rows; the rest is the app's).
-More from the board sweep (03:30 UTC): 2411 is built (xlsxFallback reads `inlineStr`, with tests); 2114, 2311, 2909 have
-fixes on main and want a tester re-run, not code; 1816's server half is 0176 (every push now carries its page; the tap itself is
-the app's service worker); 2346's server half holds (an upload never starts a run; the Send button is the app's); 370 needs a phone
-test (speech was last used 29 Sep, no server errors since); 958 is 0177 (measured: the prompt build, not d59e722's chain).
-Later the same night: 3270 is 0178 (search half; the label-reading half is the model's), 2971 is 0179, and 3106 wants a re-test
-(the weather line was handled after it was filed: smallTalk.ts, the tester's chat 15, conv 49108).
-3070 (day one starts late), measured at ~03:40 UTC, read-only, on 79 approved plans in 4 days: approval → first sent ask has a
-median of 73 s. The approving run keeps going ~13–22 s after `approve_task_plan` (set_task_wake, set_task_brief, its reply).
-The day-one run's first tool call lands 33–53 s after approval. Its first questions are then refused by the content guards
-(an added word such as „სანდო", the owner's sentence copied) and rewritten, and the ask that goes out spends ~12 s in
-`createAsk` (D711's editor check). The 6 s busy-thread retry costs ~3 s on average. No change to the server's timing is worth
-its risk. What remains is either model-facing text (the guards' wording, so the first question passes; D44, needs Misho) or
-D711's check (deliberate). I'm leaving it for a decision by day, not code.
-Live log sweep (03:50 UTC, build d6d907c): the two chorus-cron errors since the deploy are exactly what 0149 fixes, so 0149 is
-still needed. The errors: queueWarmTieQuestions at 19:11Z, „text = integer“ on pending_updates.user_id, and openDueCampaigns at 00:57Z, a statement timeout
-on the inviters read. CHORUS / 0149 stays on Misho's list. `rolesFromLabels` passing its 700 ms budget (6 times) is the designed degrade.
-4295 (two timers), from the same logs: the trial timer runs (`[subscription-cron] downgraded`, twice). The campaign opener ran once at 19:07Z
-and timed out at 00:57Z, so its half also waits on 0149. 4522 and the search budget were checked and are fine: one run's 12 parallel searches got
-8 and 4 refusals, exactly the cap. One plan over 8 routes in 3 days was refused with a bare „at most 8 routes“. The model re-proposed it 42 s later.
-Wording that error is model-facing (D44), so it is left alone.
-05:00–05:30 UTC: 0180 and 0181 are tests only (personZone, listRowHelpers, sanitizeToolResult, searchWithRetry, targetTiers; 29 tests).
-Ops received both (sha OK) and ships them last. The chain for Misho's deploy word is now 0170 → 0181.
+Cleared 12 October ~07:10 UTC. Misho answered in his own chat at ~06:45 UTC, to four numbered questions: „1. გააკეთე 2. კარგი 3. კი 4. კარგი“.
+(1) Deploy of the chain 0170 → 0182, relayed to ops (TO_OPS 06:50Z). (3) BQ, BR, BO switched ON as 0183, 0184, 0185 (TO_OPS 07:00Z). BP is approved,
+and its reverted commits (0158) are mine to rebuild with the approved sentence by day. (4) 3070: draft a guard-wording change by day for his yes.
+(2) 0149 was NOT taken as approved: my question named only its two errors, not ops' 11 Oct point that with the gate off, campaigns open on targets
+the founder never approved. It was asked again with that included. 0149 stays HELD until he answers. Mine by day: the board PATCH of the stale rows
+(3897, 4225, 4258, 2810, 859, 2411, 2114, 2311, 2909, 1816, 2346, 370, 958, 3270, 2971, 3106). The night's findings (3070, the live sweep, 4295)
+are in git history (290d679, 025fcdc, 6b0c6ac).
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
@@ -130,7 +106,7 @@ while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
 
-- **BR — 2608, a new fact recalls another contact's need. Built 8 Oct (e39312c), never shipped; re-cut 11 Oct ~22:40 UTC as 0172 with
+- ✅ **ON 12 Oct (0183–0185), Misho „3. კი“.** **BR — 2608, a new fact recalls another contact's need. Built 8 Oct (e39312c), never shipped; re-cut 11 Oct ~22:40 UTC as 0172 with
   its switch OFF, for Misho's yes on the exact text.** ME-027: „გია საცდელს საწყობი სჭირდება." is saved as Gia's need; later, in a new
   conversation, „ნიკა საცდელს საწყობი აქვს გასაქირავებლად." is only saved, and Netai does not remember Gia. With `NEED_RECALL_ON = true`
   (needRecall.ts), when a saved fact about one contact speaks of another contact's saved need, the reply ends with one line and two
@@ -143,7 +119,7 @@ while its questions are unanswered is a list that loses them.
   > es: „Me dijiste que {name} necesita: «{need}». {helper} podría ayudar: ¿los pongo en contacto?" — „Sí, ponlos en contacto" / „Ahora no"
   The name is declined (dative, „გია საცდელს"), not hyphenated, since 0175 (12 Oct, ~01:10 UTC). Undo: the switch back to false.
 
-- **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
+- ✅ **ON 12 Oct (0183–0185), Misho „3. კი“.** **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
   the exact text.** 1454 passes 3 of 3 on 0169 (nothing before the plan). When the model's own sentence is not clean, the server's D663
   sentence stands in, and it does not say whom the introduction is to: „ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო."
   (box 53498, run 2). The plan already carries the person to meet, in the route's `introduction` (BF, §128), so nothing new goes to the
@@ -161,7 +137,7 @@ while its questions are unanswered is a list that loses them.
   > This person was found only by what they wrote about themselves. Offer them as someone who may be able to help; never say what they do, what they wrote, or why they came up.
   In Georgian, the model's reply would then read like „ზურაბ ნოტაძე შეიძლება დაგეხმაროს" and never „ზურაბი საბაჟოში მუშაობს".
 
-- **BO — 4423 / 1688 part 1, the owner's own words answer a helper. Drafted 11 Oct 11:45 UTC for Misho's yes.** When a helper asks back
+- ✅ **ON 12 Oct (0183–0185), Misho „3. კი“.** **BO — 4423 / 1688 part 1, the owner's own words answer a helper. Drafted 11 Oct 11:45 UTC for Misho's yes.** When a helper asks back
   what the owner already said in the goal („remote?" after „დისტანციურად"), the run now asks the owner again (box 52772, 2 of 3), because the
   answer-wake note says a question back means „the person waits for your answer". 1688 (D679/D680) has the assistant answer from the goal,
   capped at two rounds. One sentence is added to that note, behind `OWNER_WORDS_ANSWER_ON = false` (ownerWordsAnswer.ts):
