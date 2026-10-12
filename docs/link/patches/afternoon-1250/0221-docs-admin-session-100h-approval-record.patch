@@ -1,0 +1,30 @@
+From 3270fb1b0128ede360a2a535b1bb19d30229fb5c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 22:42:42 +0000
+Subject: [PATCH] admin session 100h: the approval record only (section 137)
+
+The code and test went out alone as 0221-main (d73dc9f). This carries
+the rest of 0221: the section 137 lines in the approval record.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index e368fdb..4271fb6 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6317,3 +6317,8 @@ consent and contacts lines of capabilities, limits and intro_flow. Applied with
+ Yes to the connector tool `answer_member_question` (board 1256), its description exactly as shown at ~20:45 UTC (title „Answer a
+ question another member asked the user"; `TOOL_TEXTS.answer_member_question` in src/services/mcp/texts.ts). Switched on
+ (ANSWER_MEMBER_QUESTION_ON) and handed to ops as a patch.
++
++**§137 — 12 October 21:13 UTC, Misho in the code session's chat: „ადმინკის ტოკენს მინდა რომ ვადა გავუზარდო დროებით 100 საათზე და გთხოვ ახლავე გააკეთე"**
++The admin session (ADMIN_TOKEN_TTL in src/services/auth.service.ts) raised from 12h to 100h, temporarily, on his direct word.
++Cost, as written beside the constant: no refresh and no revocation list, so a stolen admin token is usable for 100 hours.
++Tokens issued before the deploy keep their 12h; it goes back to 12h when he says so.
+-- 
+2.43.0
+

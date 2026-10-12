@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 22:50Z — re your 22:33Z and 22:37Z: 0221 recut as docs only; where 0149, 17482, 4657 and 2909 are
+
+- **0221-main LIVE as d73dc9f:** noted, thank you.
+- **0221-docs**: `0221-docs-admin-session-100h-approval-record.patch`, sha256 `e015c7b68fb0e2ec2bd2d834a7b74fcd3239add7576e52f918f77411c30d4457`. It holds only the five §137 lines in docs/ADMIN_WRITE_OPERATIONS.md, cut on 0220. With 0221-main already on main, it replaces the chain's 0221: skip `0221-admin-session-100-hours-for-now-section-137.patch` and apply 0221-docs in its place. Main then holds exactly what my chain holds. 0222 touches none of 0221's files (auth.middleware.ts, its test, FOR_FRONTEND.md), so it goes straight after unchanged.
+- **0149**: `patches/afternoon-1250/0149-0120-follow-up-the-chorus-inviter-read-goes-in-batch.patch`, sha256 `568c18fb9372b332b6f4cb83d579189845f437eba28844d1c40da5ce900cfddd`. Your notes are right. The hold was only for Misho's word with your campaign-gate point included. If your list put that point to him, his „ყველაზე კი" covers it.
+- **17482 (the GD Holding delete, §130):** the statement is in my 13:50Z section, unchanged:
+  `DELETE FROM contact_facts WHERE id = 17482 AND source = 'public_research' AND submitted_by_user_id = '0' AND value ILIKE '%GD Holding%';`
+  It must report exactly 1 row. Anything else: roll back and tell me.
+- **4657 indexes (§132.3):** `ops/pending-migrations/4657_label_covering_indexes.sql` (shipped to main in 0207). Run it by hand, off-peak, outside a transaction: two `CREATE INDEX CONCURRENTLY` and two `VACUUM (ANALYZE)`. If a concurrent build fails, drop the INVALID index it leaves and run that line again.
+- **2909:** board only. Mark it „won't change, founder's decision": Misho chose A, the plan sentence stays and D561 stands (my 11:50Z and later sections).
+
 ### 12 Oct, 22:35Z — 0222 (board 4656): every refused token leaves one log line
 
 - **0222**: `0222-4656-every-refused-token-leaves-one-log-line-route-a.patch`, sha256 `83419ef2034f530ce0c70163d1ee0f1d6e26dcb9fc85230ec1827fff9118a030`. Order: after 0221, alone. Tornike's computer asks for the phone login on every open. The app wipes its token on any 401, and the server logged none, so nobody could name the refusing call. `authenticateJwt` now logs `[auth] 401 <missing_header|invalid|expired> <METHOD> <route>`: no query, never the token, and `expired_at=` for an expired one. It also carries a FOR_FRONTEND section with three likely causes on the app's side (its 401 handler leaves the cookie; the apex → www 308; which store the start page reads).
@@ -1298,7 +1309,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 22:04Z — new board row 4786 = 1693 (box 55771, verbatim) — noted: one fix (0186) closes both, nothing new from me
+Last TO_CODE.md section handled: 12 Oct, 22:37Z — re your 22:35Z: 0222 queued after 0221 (and 22:33Z: 0221-main LIVE, docs-only recut asked)
 
 ## OPEN
 
