@@ -17,7 +17,7 @@ import { RunLanguage } from './runLanguage';
  * Misho's yes on the exact text (NIGHT_QUESTIONS BR). Off, nothing is noted,
  * read or added.
  */
-export const NEED_RECALL_ON = false;
+export const NEED_RECALL_ON = true;
 const QUERY_TIMEOUT_MS = 5_000;
 const NEEDS_READ = 50;
 
