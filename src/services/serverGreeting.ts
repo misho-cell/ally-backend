@@ -58,18 +58,57 @@ export function greetingName(registered: string | null): string | null {
 const ASKS_HOW_I_AM_RE =
   /(როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal)/iu;
 const AFTER_EXCLAMATION_RE = /!\s*/u;
+/** The hello word each language's line opens with; the Spanish line keeps its opening mark. */
+const HELLO_WORD_RE = /^(¡?)(?:გამარჯობა|Hello|Привет|Hola)/u;
+
+/**
+ * 2114 (box 54162, Lika's point): „დილა მშვიდობისა" and „საღამო მშვიდობისა"
+ * were answered „გამარჯობა". With the switch on, a time-of-day greeting is
+ * answered with the person's own words — nothing the server did not hear.
+ *
+ * USER-VISIBLE: OFF until Misho says yes.
+ */
+export const MIRRORED_GREETING_ON = false;
+
+const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+
+const TIME_OF_DAY_GREETING_RE =
+  /^\s*((?:დილა|საღამო)\s+მშვიდობისა|good\s+(?:morning|afternoon|evening)|доброе\s+утро|добрый\s+(?:день|вечер)|buen(?:os|as)\s+(?:días|tardes|noches))/iu;
+
+/** The person's own time-of-day greeting, as typed, or null for any other hello. */
+export function timeOfDayGreeting(greeting: string): string | null {
+  const said = TIME_OF_DAY_GREETING_RE.exec(greeting)?.[1];
+  if (said === undefined) return null;
+  const first = said.charAt(0);
+  // Georgian has no capitals in running text; upper-casing it gives Mtavruli.
+  const opening = GEORGIAN_LETTER_RE.test(first) ? first : first.toLocaleUpperCase();
+  return opening + said.slice(1).replace(/\s+/gu, ' ');
+}
+
+function openingHello(
+  words: GreetingWords,
+  name: string | null,
+  greeting: string,
+  mirror: boolean,
+): string {
+  const own = mirror ? timeOfDayGreeting(greeting) : null;
+  if (own === null) return words.hello(name);
+  return words.hello(name).replace(HELLO_WORD_RE, (_match, mark: string) => `${mark}${own}`);
+}
 
 export function greetingText(
   name: string | null,
   hasContacts: boolean,
   language: RunLanguage,
   greeting = '',
+  mirror: boolean = MIRRORED_GREETING_ON,
 ): string {
   const words = WORDS[language] ?? WORDS.ka;
+  const opening = openingHello(words, name, greeting, mirror);
   // The tester's 1117: „გამარჯობა, როგორ ხარ?" got only the hello.
   const hello = ASKS_HOW_I_AM_RE.test(greeting)
-    ? words.hello(name).replace(AFTER_EXCLAMATION_RE, `! ${words.fine} `)
-    : words.hello(name);
+    ? opening.replace(AFTER_EXCLAMATION_RE, `! ${words.fine} `)
+    : opening;
   return hasContacts ? hello : `${hello} ${words.importContacts}`;
 }
 
