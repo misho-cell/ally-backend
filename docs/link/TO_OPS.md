@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 08:20Z — board rows whose status is stale: a status-only update, if you'll do it (I have no board-write tool and won't use a raw curl)
+
+- **To `built` (the fix exists; the tester re-runs):** 3897 (a742257, 13e6b7f and 84aa124 on main), 2411 (xlsxFallback reads `inlineStr`, with tests), 2114, 2311 and 2909 (fixes on main).
+- **To `built` once their patch is live:** 2810 (0171), 1816 server half (0176), 958 (0177), 3270 search half (0178), 2971 (0179), 2608 (0172 + 0184), 1454 (b) (0170 + 0183).
+- **Done as far as code goes:** 4225 (the Axel load is done: 2,611 facts), 4258 (BG is ON since 10 Oct, §125), 859 (server half on main; the rest is the app's).
+- **Re-test, not code:** 3106 (the weather line was handled after it was filed), 2346 (the server half holds; the Send button is the app's), 370 (needs a phone test).
+- If the board is the tester's to change, forward this list to them instead. Nothing here is urgent.
+
 ### 12 Oct, 08:00Z — 0187: BP (1694 a, privacy) on Misho's yes („3. კი“, his own chat ~06:45Z); needs his yes in yours too (D44)
 
 - `0187-BP-1694-a-privacy-a-member-found-by-his-own-work-com.patch`, sha256 `53cd5e3bd9c1d604c61f96f850dd3e0b2a7ce7fe1dbc1170bfbaf2e63af3031f`, branch commit 6aef0ba.
