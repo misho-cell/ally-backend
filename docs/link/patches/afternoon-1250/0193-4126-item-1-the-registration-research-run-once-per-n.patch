@@ -1,0 +1,909 @@
+From 963abfde80c2f275f56e1b4ef1ff189a9d14cf56 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 09:27:14 +0000
+Subject: [PATCH] =?UTF-8?q?4126=20item=201:=20the=20registration=20researc?=
+ =?UTF-8?q?h=20run=20=E2=80=94=20once=20per=20new=20user,=20inside=20the?=
+ =?UTF-8?q?=20stop=20(switch=20OFF)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes to start 4126, 12 Oct ~10:40 UTC; item 1 „შეზღუდე" (§122 scope):
+one deep research run at registration, with a hard stop of 60 searches and
+30 pages per person.
+- migration 237: registration_research (user_id is the primary key, so a
+  user is researched once) with what each run spent; contact_facts gains
+  conflict_note (item 2: conflicting sources kept and explained);
+- registrationResearch/plan.ts: the searches, the stop, confidence (an
+  official source or two independent sites confirm; one ordinary source is
+  possible), and a one-value key keeping its strongest value with a note of
+  what else was found;
+- registrationResearch/extract.ts: one model call turns the searches and
+  pages into sourced work facts; nothing when it cannot tell the person
+  apart from a namesake. REGISTRATION_EXTRACT_BRIEF is MODEL-FACING (D44);
+- registrationResearch.service.ts: queued right after registerUser, a
+  ticker takes one user a minute; facts go on the user's own numbers,
+  private and unmatchable, as saver 0 with source „research", URL, date and
+  confidence; a fact the person removed stays removed; Axel facts win.
+REGISTRATION_RESEARCH_ON = false until Misho says yes to the brief: nothing
+is queued, searched or spent while it is off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/237_registration_research.sql  |  22 ++
+ src/index.ts                                  |   2 +
+ src/services/auth.service.ts                  |   6 +
+ .../__tests__/extract.test.ts                 |  71 ++++++
+ .../__tests__/plan.test.ts                    |  89 ++++++++
+ .../__tests__/registrationResearch.test.ts    | 110 ++++++++++
+ src/services/registrationResearch/extract.ts  | 113 ++++++++++
+ src/services/registrationResearch/plan.ts     | 158 ++++++++++++++
+ .../registrationResearch.service.ts           | 206 ++++++++++++++++++
+ 9 files changed, 777 insertions(+)
+ create mode 100644 src/db/postgres/migrations/237_registration_research.sql
+ create mode 100644 src/services/registrationResearch/__tests__/extract.test.ts
+ create mode 100644 src/services/registrationResearch/__tests__/plan.test.ts
+ create mode 100644 src/services/registrationResearch/__tests__/registrationResearch.test.ts
+ create mode 100644 src/services/registrationResearch/extract.ts
+ create mode 100644 src/services/registrationResearch/plan.ts
+ create mode 100644 src/services/registrationResearch/registrationResearch.service.ts
+
+diff --git a/src/db/postgres/migrations/237_registration_research.sql b/src/db/postgres/migrations/237_registration_research.sql
+new file mode 100644
+index 0000000..15cfb93
+--- /dev/null
++++ b/src/db/postgres/migrations/237_registration_research.sql
+@@ -0,0 +1,22 @@
++-- 4126 item 1 (D757 §5; Misho's „შეზღუდე", §122 scope): a new user is
++-- researched ONCE, at registration, within a hard stop. The primary key is the
++-- „once": a second row for the same user cannot exist. The counters are what the
++-- run spent, so the stop can be checked from the record.
++CREATE TABLE IF NOT EXISTS registration_research (
++  user_id     INTEGER PRIMARY KEY,
++  status      TEXT NOT NULL DEFAULT 'queued'
++                CHECK (status IN ('queued', 'running', 'done', 'failed')),
++  searches    INTEGER NOT NULL DEFAULT 0,
++  pages       INTEGER NOT NULL DEFAULT 0,
++  facts       INTEGER NOT NULL DEFAULT 0,
++  error       TEXT,
++  queued_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  started_at  TIMESTAMPTZ,
++  finished_at TIMESTAMPTZ
++);
++
++CREATE INDEX IF NOT EXISTS registration_research_queued_idx
++  ON registration_research (queued_at) WHERE status = 'queued';
++
++-- 4126 item 2: two sources that disagree are both kept, and the fact says so.
++ALTER TABLE contact_facts ADD COLUMN IF NOT EXISTS conflict_note TEXT;
+diff --git a/src/index.ts b/src/index.ts
+index 6fcefe8..8c9363f 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -52,6 +52,7 @@ import { startNeedsOffersMatcher } from './services/needsOffers.cron';
+ import { startHelperFollowUps } from './services/helperThanks.cron';
+ import { startContactSyncReminders } from './services/contactSyncReminder.cron';
+ import { startTaskTicker } from './services/taskEngine.service';
++import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
+ import { clientErrorReply } from './api/middleware/clientError';
+ import { ApiResponse } from './types';
+ 
+@@ -201,6 +202,7 @@ runMigrations()
+     startHelperFollowUps();
+     startContactSyncReminders();
+     startTaskTicker();
++    startRegistrationResearch();
+     startChorusCampaignCron();
+     startLabReportCron();
+     startIdentityScanCron();
+diff --git a/src/services/auth.service.ts b/src/services/auth.service.ts
+index b6eb9a7..ef1ba53 100644
+--- a/src/services/auth.service.ts
++++ b/src/services/auth.service.ts
+@@ -6,6 +6,7 @@ import { sendWhatsAppMessage } from './whatsapp.service';
+ import { sendSmsOtp, checkTwilioCode } from './twilio.service';
+ import { createUserPhoneNode } from './contacts.service';
+ import { runWelcomeStudy } from './welcomeStudy.service';
++import { queueRegistrationResearch } from './registrationResearch/registrationResearch.service';
+ import { checkRegistrationEligibility, isLoginInviteOnlyEnabled } from './inviteGate.service';
+ import { isReviewPhone } from './reviewAccess';
+ import {
+@@ -561,6 +562,11 @@ export async function registerUser(
+       // eslint-disable-next-line no-console
+       console.error(`[welcome-study] user ${userId} failed to start:`, (err as Error).message),
+     );
++    // 4126 item 1: the one deep research run, queued (nothing while it is switched off).
++    void queueRegistrationResearch(Number(userId)).catch((err: unknown) =>
++      // eslint-disable-next-line no-console
++      console.error(`[registration-research] user ${userId} not queued:`, (err as Error).message),
++    );
+ 
+     /**
+      * Row 262 (D498 option B). The one moment this can be noticed: somebody
+diff --git a/src/services/registrationResearch/__tests__/extract.test.ts b/src/services/registrationResearch/__tests__/extract.test.ts
+new file mode 100644
+index 0000000..bb10392
+--- /dev/null
++++ b/src/services/registrationResearch/__tests__/extract.test.ts
+@@ -0,0 +1,71 @@
++jest.mock('../../../config/anthropic', () => ({
++  __esModule: true,
++  default: { messages: { create: jest.fn() } },
++}));
++jest.mock('../../costLedger.service', () => ({
++  __esModule: true,
++  recordClaudeUsage: jest.fn().mockResolvedValue(undefined),
++}));
++
++import anthropic from '../../../config/anthropic';
++import { extractFacts, extractInput, factsFromReply, REGISTRATION_EXTRACT_BRIEF } from '../extract';
++
++const mockCreate = anthropic.messages.create as unknown as jest.Mock;
++const PERSON = { name: 'Nino Satsdeli', city: 'Tbilisi' };
++const HIT = {
++  url: 'https://a.ge/x',
++  title: 'Nino',
++  text: 'Nino Satsdeli, auditor at Bank A',
++  isPage: false,
++};
++
++/** 4126 item 1: the extractor reads only what it is given and returns sourced work facts. */
++describe('registration research extractor', () => {
++  beforeEach(() => mockCreate.mockReset());
++
++  it('asks for work facts only, with sources, and nothing when unsure who it is', () => {
++    expect(REGISTRATION_EXTRACT_BRIEF).toContain('never guess');
++    expect(REGISTRATION_EXTRACT_BRIEF).toContain('same_person to false');
++    expect(REGISTRATION_EXTRACT_BRIEF).toContain('never family, health, religion, politics');
++  });
++
++  it('puts each text under its URL, with the person and the city given', () => {
++    const input = extractInput(PERSON, [HIT]);
++    expect(input).toContain('Person: Nino Satsdeli, city given: Tbilisi');
++    expect(input).toContain('URL: https://a.ge/x');
++  });
++
++  it('reads the facts from the JSON reply', () => {
++    const reply =
++      'Here: {"same_person": true, "facts": [{"key": "employer", "value": "Bank A", ' +
++      '"sources": ["https://a.ge/x"], "date": null}]}';
++    expect(factsFromReply(reply)).toEqual([
++      { key: 'employer', value: 'Bank A', sources: ['https://a.ge/x'], date: null },
++    ]);
++  });
++
++  it('gives nothing when it is not the same person, or the reply is not JSON', () => {
++    expect(factsFromReply('{"same_person": false, "facts": [{"key": "employer"}]}')).toEqual([]);
++    expect(factsFromReply('no json here')).toEqual([]);
++    expect(factsFromReply('{broken')).toEqual([]);
++  });
++
++  it('makes no call when there is nothing to read', async () => {
++    expect(await extractFacts(7, PERSON, [])).toEqual([]);
++    expect(mockCreate).not.toHaveBeenCalled();
++  });
++
++  it('calls the model once with the brief and returns its facts', async () => {
++    mockCreate.mockResolvedValueOnce({
++      usage: {},
++      content: [
++        {
++          type: 'text',
++          text: '{"same_person": true, "facts": [{"key": "city", "value": "Tbilisi", "sources": ["https://a.ge/x"], "date": null}]}',
++        },
++      ],
++    });
++    expect(await extractFacts(7, PERSON, [HIT])).toHaveLength(1);
++    expect(mockCreate.mock.calls[0][0].system).toBe(REGISTRATION_EXTRACT_BRIEF);
++  });
++});
+diff --git a/src/services/registrationResearch/__tests__/plan.test.ts b/src/services/registrationResearch/__tests__/plan.test.ts
+new file mode 100644
+index 0000000..2a6ed25
+--- /dev/null
++++ b/src/services/registrationResearch/__tests__/plan.test.ts
+@@ -0,0 +1,89 @@
++import {
++  confidenceOf,
++  FactConfidence,
++  factsToStore,
++  firstQueries,
++  MAX_PAGES_PER_PERSON,
++  MAX_SEARCHES_PER_PERSON,
++  pagesLeft,
++  searchesLeft,
++  sourceHost,
++  usableFact,
++} from '../plan';
++
++const SITE_A = 'https://www.example-a.ge/team';
++const SITE_B = 'https://news.example-b.com/item';
++const OFFICIAL = 'https://www.parliament.ge/members/1';
++
++/** 4126 item 1: the searches, the stop and how sure each fact is (D757 §3). */
++describe('registration research plan', () => {
++  it('searches the name alone first, then with the city given', () => {
++    expect(firstQueries('ნინო საცდელი', 'თბილისი')).toEqual([
++      '"ნინო საცდელი"',
++      '"ნინო საცდელი" თბილისი',
++      '"ნინო საცდელი" LinkedIn',
++      '"ნინო საცდელი" company',
++      '"ნინო საცდელი" სამსახური',
++    ]);
++    expect(firstQueries('  ', null)).toEqual([]);
++  });
++
++  it('keeps Misho’s stop: 60 searches and 30 pages per person', () => {
++    expect(MAX_SEARCHES_PER_PERSON).toBe(60);
++    expect(MAX_PAGES_PER_PERSON).toBe(30);
++    expect(searchesLeft(59)).toBe(1);
++    expect(searchesLeft(70)).toBe(0);
++    expect(pagesLeft(30)).toBe(0);
++  });
++
++  it('calls one ordinary source possible, two sites or one official source confirmed', () => {
++    expect(confidenceOf([SITE_A])).toBe(FactConfidence.Possible);
++    expect(confidenceOf([SITE_A, `${SITE_A}/again`])).toBe(FactConfidence.Possible);
++    expect(confidenceOf([SITE_A, SITE_B])).toBe(FactConfidence.Confirmed);
++    expect(confidenceOf([OFFICIAL])).toBe(FactConfidence.Confirmed);
++  });
++
++  it('reads the site without www, and nothing from a non-URL', () => {
++    expect(sourceHost(SITE_A)).toBe('example-a.ge');
++    expect(sourceHost('not a url')).toBeNull();
++  });
++
++  it('drops a fact with an unknown key, no value or no real source', () => {
++    expect(usableFact({ key: 'religion', value: 'x', sources: [SITE_A], date: null })).toBeNull();
++    expect(usableFact({ key: 'employer', value: ' ', sources: [SITE_A], date: null })).toBeNull();
++    expect(usableFact({ key: 'employer', value: 'TBC', sources: ['nope'], date: null })).toBeNull();
++    expect(usableFact({ key: 'Employer', value: 'TBC', sources: [SITE_A], date: '2025' })).toEqual({
++      key: 'employer',
++      value: 'TBC',
++      sources: [SITE_A],
++      date: null,
++    });
++  });
++
++  it('keeps the strongest of two employers and says what else was found', () => {
++    const stored = factsToStore([
++      { key: 'employer', value: 'Bank A', sources: [SITE_A], date: null },
++      { key: 'employer', value: 'Bank B', sources: [SITE_A, SITE_B], date: '2025-03-01' },
++      { key: 'expertise', value: 'audit', sources: [SITE_B], date: null },
++    ]);
++    const employer = stored.find((f) => f.key === 'employer');
++    expect(employer).toEqual({
++      key: 'employer',
++      value: 'Bank B',
++      sourceUrl: SITE_A,
++      date: '2025-03-01',
++      confidence: FactConfidence.Confirmed,
++      conflictNote: `also found: „Bank A" (${SITE_A})`,
++    });
++    expect(stored.find((f) => f.key === 'expertise')?.confidence).toBe(FactConfidence.Possible);
++  });
++
++  it('notes no conflict when the same value comes twice', () => {
++    const stored = factsToStore([
++      { key: 'city', value: 'Tbilisi', sources: [SITE_A], date: null },
++      { key: 'city', value: 'tbilisi', sources: [SITE_B], date: null },
++    ]);
++    expect(stored).toHaveLength(1);
++    expect(stored[0].conflictNote).toBeNull();
++  });
++});
+diff --git a/src/services/registrationResearch/__tests__/registrationResearch.test.ts b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+new file mode 100644
+index 0000000..9c3f20d
+--- /dev/null
++++ b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+@@ -0,0 +1,110 @@
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../../tools/webSearch', () => ({
++  __esModule: true,
++  webSearch: jest.fn(),
++  fetchPage: jest.fn(),
++}));
++jest.mock('../extract', () => ({ __esModule: true, extractFacts: jest.fn() }));
++
++import { query } from '../../../db/postgres/client';
++import { fetchPage, webSearch } from '../../tools/webSearch';
++import { extractFacts } from '../extract';
++import {
++  queueRegistrationResearch,
++  REGISTRATION_RESEARCH_ON,
++  researchNextUser,
++  startRegistrationResearch,
++} from '../registrationResearch.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockSearch = webSearch as jest.MockedFunction<typeof webSearch>;
++const mockFetch = fetchPage as jest.MockedFunction<typeof fetchPage>;
++const mockExtract = extractFacts as jest.MockedFunction<typeof extractFacts>;
++const PAGE_URL = 'https://a.ge/nino';
++
++function sqlOf(call: unknown[]): string {
++  return String(call[0]);
++}
++
++/** 4126 item 1: one run per new user, inside the stop, OFF until Misho's yes. */
++describe('registration research run', () => {
++  beforeEach(() => {
++    jest.resetAllMocks();
++    jest.spyOn(console, 'log').mockImplementation(() => undefined);
++    jest.spyOn(console, 'error').mockImplementation(() => undefined);
++  });
++  afterEach(() => jest.restoreAllMocks());
++
++  it('is OFF: nothing is queued and no ticker starts', async () => {
++    expect(REGISTRATION_RESEARCH_ON).toBe(false);
++    expect(await queueRegistrationResearch(7)).toBe(false);
++    expect(startRegistrationResearch()).toBe(false);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('queues a user once: the insert does nothing for a second time', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
++    expect(await queueRegistrationResearch(7, true)).toBe(true);
++    expect(sqlOf(mockQuery.mock.calls[0])).toContain('ON CONFLICT (user_id) DO NOTHING');
++  });
++
++  it('does nothing when nobody is queued', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    expect(await researchNextUser()).toBe(false);
++    expect(mockSearch).not.toHaveBeenCalled();
++  });
++
++  it('searches, reads the pages, and stores sourced facts on the user’s own number', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Nino Satsdeli', city: null }] } as never)
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValue({ rows: [], rowCount: 1 } as never);
++    mockSearch.mockResolvedValue({
++      results: [{ url: PAGE_URL, title: 'Nino', snippet: 'auditor' }],
++    });
++    mockFetch.mockResolvedValue({ url: PAGE_URL, content: 'Nino Satsdeli works at Bank A.' });
++    mockExtract.mockResolvedValueOnce([
++      { key: 'employer', value: 'Bank A', sources: [PAGE_URL], date: null },
++    ]);
++
++    expect(await researchNextUser()).toBe(true);
++    expect(mockSearch).toHaveBeenCalledTimes(4);
++    expect(mockFetch).toHaveBeenCalledTimes(1);
++    const insert = mockQuery.mock.calls.find((c) => sqlOf(c).includes('INSERT INTO contact_facts'));
++    expect(insert?.[1]).toEqual([
++      '+995500000001',
++      '0',
++      'employer',
++      'Bank A',
++      'research',
++      PAGE_URL,
++      null,
++      'possible',
++      null,
++    ]);
++    expect(sqlOf(insert ?? [])).toContain('removed_by_subject_at IS NOT NULL');
++    const done = mockQuery.mock.calls.find((c) => sqlOf(c).includes('SET status = $2'));
++    expect(done?.[1]).toEqual([7, 'done', 4, 1, 1, null]);
++  });
++
++  it('records a failure with what was spent, and never throws', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Nino', city: null }] } as never)
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValue({ rows: [], rowCount: 1 } as never);
++    mockSearch.mockRejectedValueOnce(new Error('search down'));
++    expect(await researchNextUser()).toBe(true);
++    const failed = mockQuery.mock.calls.find((c) => sqlOf(c).includes('SET status = $2'));
++    expect(failed?.[1]?.[1]).toBe('failed');
++    expect(failed?.[1]?.[5]).toBe('search down');
++  });
++
++  it('closes a user with no name or number without searching', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: null, city: null }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never)
++      .mockResolvedValue({ rows: [], rowCount: 1 } as never);
++    expect(await researchNextUser()).toBe(true);
++    expect(mockSearch).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/registrationResearch/extract.ts b/src/services/registrationResearch/extract.ts
+new file mode 100644
+index 0000000..f621938
+--- /dev/null
++++ b/src/services/registrationResearch/extract.ts
+@@ -0,0 +1,113 @@
++import Anthropic from '@anthropic-ai/sdk';
++import anthropic from '../../config/anthropic';
++import { recordClaudeUsage } from '../costLedger.service';
++import { FoundFact, MAX_PAGE_CHARS, MAX_SNIPPET_CHARS } from './plan';
++
++/**
++ * 4126 item 1: what the searches and pages say about the new user, turned into
++ * facts — each with the pages that say it.
++ *
++ * MODEL-FACING (D44): REGISTRATION_EXTRACT_BRIEF needs Misho's yes word for
++ * word before the run is switched on.
++ */
++export const REGISTRATION_EXTRACT_BRIEF =
++  'You read web search results and pages about one person who has just joined Netai, and you ' +
++  'return what they say about that person’s work. Use only what the given texts say; never guess ' +
++  'or add. First decide whether the texts are about this person at all: the name must match, and ' +
++  'anything else known about them (city, profile link) must not contradict it. If several people ' +
++  'share the name and you cannot tell which is them, set same_person to false and return no facts. ' +
++  'Return work facts only — occupation, employer, industry, city, education, affiliation, ' +
++  'expertise, other_role, headline — never family, health, religion, politics or private life. ' +
++  'For every fact give the URLs of the texts that say it, and the date the text gives for it if ' +
++  'there is one (YYYY-MM-DD). Reply with JSON only: {"same_person": true|false, "facts": ' +
++  '[{"key": "...", "value": "...", "sources": ["https://..."], "date": "YYYY-MM-DD" | null}]}.';
++
++export const EXTRACT_MODEL = process.env.REGISTRATION_RESEARCH_MODEL?.trim() || 'claude-sonnet-5';
++const EXTRACT_MAX_TOKENS = 2_000;
++const EXTRACT_BUDGET_MS = 60_000;
++
++export interface PersonGiven {
++  readonly name: string;
++  readonly city: string | null;
++}
++
++export interface ReadText {
++  readonly url: string;
++  readonly title: string | null;
++  readonly text: string;
++  readonly isPage: boolean;
++}
++
++/** The texts as the extractor reads them, each under its URL. */
++export function extractInput(person: PersonGiven, texts: readonly ReadText[]): string {
++  const about = `Person: ${person.name}${person.city ? `, city given: ${person.city}` : ''}`;
++  const blocks = texts.map((t) => {
++    const cap = t.isPage ? MAX_PAGE_CHARS : MAX_SNIPPET_CHARS;
++    return `URL: ${t.url}\nTitle: ${t.title ?? ''}\n${t.text.slice(0, cap)}`;
++  });
++  return `${about}\n\n${blocks.join('\n\n---\n\n')}`;
++}
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null;
++}
++
++function asFact(value: unknown): FoundFact | null {
++  if (!isRecord(value)) return null;
++  const { key, value: said, sources, date } = value;
++  if (typeof key !== 'string' || typeof said !== 'string' || !Array.isArray(sources)) return null;
++  return {
++    key,
++    value: said,
++    sources: sources.filter((s): s is string => typeof s === 'string'),
++    date: typeof date === 'string' ? date : null,
++  };
++}
++
++const JSON_OBJECT_RE = /\{[\s\S]*\}/u;
++
++/** The extractor's facts; none when it was not sure the texts are about this person. */
++export function factsFromReply(reply: string): FoundFact[] {
++  const json = JSON_OBJECT_RE.exec(reply)?.[0];
++  if (json === undefined) return [];
++  let parsed: unknown;
++  try {
++    parsed = JSON.parse(json);
++  } catch {
++    return [];
++  }
++  if (!isRecord(parsed) || parsed.same_person !== true || !Array.isArray(parsed.facts)) return [];
++  return parsed.facts.map(asFact).filter((f): f is FoundFact => f !== null);
++}
++
++/** One extractor call; an error or an unusable reply gives no facts, never a guess. */
++export async function extractFacts(
++  userId: number,
++  person: PersonGiven,
++  texts: readonly ReadText[],
++): Promise<FoundFact[]> {
++  if (texts.length === 0) return [];
++  const response = await anthropic.messages.create(
++    {
++      model: EXTRACT_MODEL,
++      max_tokens: EXTRACT_MAX_TOKENS,
++      system: REGISTRATION_EXTRACT_BRIEF,
++      messages: [{ role: 'user', content: extractInput(person, texts) }],
++    },
++    { timeout: EXTRACT_BUDGET_MS, maxRetries: 0 },
++  );
++  void recordClaudeUsage({
++    userId: String(userId),
++    kind: 'registration_research',
++    model: EXTRACT_MODEL,
++    usage: response.usage,
++  }).catch((err: unknown) => {
++    // eslint-disable-next-line no-console
++    console.error('[registration-research] usage not recorded:', (err as Error).message);
++  });
++  const said = response.content
++    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
++    .map((block) => block.text)
++    .join('');
++  return factsFromReply(said);
++}
+diff --git a/src/services/registrationResearch/plan.ts b/src/services/registrationResearch/plan.ts
+new file mode 100644
+index 0000000..419fab9
+--- /dev/null
++++ b/src/services/registrationResearch/plan.ts
+@@ -0,0 +1,158 @@
++/**
++ * 4126 item 1 — the pure half of the registration research run: which searches
++ * to make, how far the run may go, and how sure each fact is.
++ *
++ * D757 (Lika + Tornike): a user is researched ONCE, at registration, as deep as
++ * possible. Misho's „შეზღუდე" (§122 scope): with a hard stop per person, so one
++ * common name cannot spend without limit.
++ */
++
++/** Misho's stop, per person (scope item 1). */
++export const MAX_SEARCHES_PER_PERSON = 60;
++export const MAX_PAGES_PER_PERSON = 30;
++
++/** The extractor reads at most this much of one page. */
++export const MAX_PAGE_CHARS = 6_000;
++export const MAX_SNIPPET_CHARS = 600;
++export const MAX_FACT_CHARS = 500;
++
++/** Keys a fact may carry; anything else the extractor returns is dropped. */
++export const RESEARCH_FACT_KEYS: ReadonlySet<string> = new Set([
++  'occupation',
++  'employer',
++  'industry',
++  'city',
++  'education',
++  'affiliation',
++  'expertise',
++  'other_role',
++  'headline',
++]);
++
++/** contact_facts holds one value per saver for these (uq_contact_facts_structured). */
++export const ONE_VALUE_KEYS: ReadonlySet<string> = new Set([
++  'occupation',
++  'employer',
++  'city',
++  'industry',
++]);
++
++export enum FactConfidence {
++  Confirmed = 'confirmed',
++  Possible = 'possible',
++}
++
++export interface FoundFact {
++  readonly key: string;
++  readonly value: string;
++  readonly sources: readonly string[];
++  readonly date: string | null;
++}
++
++export interface StoredFact {
++  readonly key: string;
++  readonly value: string;
++  readonly sourceUrl: string;
++  readonly date: string | null;
++  readonly confidence: FactConfidence;
++  readonly conflictNote: string | null;
++}
++
++/** The first searches for a person: the name alone, then with what they gave at signup. */
++export function firstQueries(name: string, city: string | null): string[] {
++  const person = name.trim();
++  if (person === '') return [];
++  const quoted = `"${person}"`;
++  const queries = [quoted, `${quoted} LinkedIn`, `${quoted} company`, `${quoted} სამსახური`];
++  if (city !== null && city.trim() !== '') queries.splice(1, 0, `${quoted} ${city.trim()}`);
++  return queries.slice(0, MAX_SEARCHES_PER_PERSON);
++}
++
++/** How many more searches the stop allows. */
++export function searchesLeft(spent: number): number {
++  return Math.max(0, MAX_SEARCHES_PER_PERSON - spent);
++}
++
++/** How many more pages the stop allows. */
++export function pagesLeft(spent: number): number {
++  return Math.max(0, MAX_PAGES_PER_PERSON - spent);
++}
++
++const OFFICIAL_HOST_RE = /(?:^|\.)gov(?:\.[a-z]{2})?$|(?:^|\.)gov\.ge$|(?:^|\.)parliament\.ge$/iu;
++const WWW_RE = /^www\./iu;
++const DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
++
++/** The site a source lives on, without „www."; null for anything that is not a URL. */
++export function sourceHost(url: string): string | null {
++  try {
++    return new URL(url).hostname.replace(WWW_RE, '').toLowerCase();
++  } catch {
++    return null;
++  }
++}
++
++/**
++ * D757 §3: source quality, not count, decides. An official source confirms on
++ * its own; otherwise two independent sites do. One ordinary source is
++ * „possible".
++ */
++export function confidenceOf(sources: readonly string[]): FactConfidence {
++  const hosts = new Set(sources.map(sourceHost).filter((h): h is string => h !== null));
++  if ([...hosts].some((h) => OFFICIAL_HOST_RE.test(h))) return FactConfidence.Confirmed;
++  return hosts.size >= 2 ? FactConfidence.Confirmed : FactConfidence.Possible;
++}
++
++/** A fact the store can take: a known key, a value, and at least one real source. */
++export function usableFact(fact: FoundFact): FoundFact | null {
++  const key = fact.key.trim().toLowerCase();
++  const value = fact.value.trim().slice(0, MAX_FACT_CHARS);
++  const sources = fact.sources.filter((url) => sourceHost(url) !== null);
++  if (!RESEARCH_FACT_KEYS.has(key) || value === '' || sources.length === 0) return null;
++  const date = fact.date !== null && DATE_RE.test(fact.date) ? fact.date : null;
++  return { key, value, sources, date };
++}
++
++function strength(fact: FoundFact): number {
++  return (
++    (confidenceOf(fact.sources) === FactConfidence.Confirmed ? 1_000 : 0) + fact.sources.length
++  );
++}
++
++/**
++ * The facts as they will be stored. A one-value key keeps its strongest value;
++ * the others are not dropped silently — the kept fact says what else was found
++ * and where (D757 §3: conflicting sources are both kept and explained).
++ */
++export function factsToStore(found: readonly FoundFact[]): StoredFact[] {
++  const usable = found.map(usableFact).filter((f): f is FoundFact => f !== null);
++  const out: StoredFact[] = [];
++  const byOneValueKey = new Map<string, FoundFact[]>();
++  for (const fact of usable) {
++    if (ONE_VALUE_KEYS.has(fact.key)) {
++      byOneValueKey.set(fact.key, [...(byOneValueKey.get(fact.key) ?? []), fact]);
++    } else {
++      out.push(stored(fact, null));
++    }
++  }
++  for (const facts of byOneValueKey.values()) {
++    const [best, ...others] = [...facts].sort((a, b) => strength(b) - strength(a));
++    const differing = others.filter((o) => o.value.toLowerCase() !== best.value.toLowerCase());
++    const note =
++      differing.length === 0
++        ? null
++        : differing.map((o) => `also found: „${o.value}" (${o.sources[0]})`).join('; ');
++    out.push(stored(best, note));
++  }
++  return out;
++}
++
++function stored(fact: FoundFact, conflictNote: string | null): StoredFact {
++  return {
++    key: fact.key,
++    value: fact.value,
++    sourceUrl: fact.sources[0],
++    date: fact.date,
++    confidence: confidenceOf(fact.sources),
++    conflictNote,
++  };
++}
+diff --git a/src/services/registrationResearch/registrationResearch.service.ts b/src/services/registrationResearch/registrationResearch.service.ts
+new file mode 100644
+index 0000000..13e4c65
+--- /dev/null
++++ b/src/services/registrationResearch/registrationResearch.service.ts
+@@ -0,0 +1,206 @@
++import { query } from '../../db/postgres/client';
++import { fetchPage, webSearch } from '../tools/webSearch';
++import { extractFacts, PersonGiven, ReadText } from './extract';
++import {
++  factsToStore,
++  firstQueries,
++  MAX_SNIPPET_CHARS,
++  pagesLeft,
++  searchesLeft,
++  sourceHost,
++  StoredFact,
++} from './plan';
++
++/**
++ * 4126 item 1 — one research run per new user, at registration (D757 §5), within
++ * Misho's hard stop.
++ *
++ * OFF until Misho says yes to REGISTRATION_EXTRACT_BRIEF (D44); it also spends
++ * on searches. While off, nothing is queued and the ticker never starts.
++ */
++export const REGISTRATION_RESEARCH_ON = false;
++
++/** The same saver and the same private, unmatchable shape as the Axel research (4225). */
++const SYSTEM_SAVER_ID = '0';
++const RESEARCH_SOURCE = 'research';
++const QUERY_TIMEOUT_MS = 10_000;
++const TICK_INTERVAL_MS = 60_000;
++const MAX_ERROR_CHARS = 300;
++
++/** Queue the new user once; a second call for the same user does nothing. */
++export async function queueRegistrationResearch(
++  userId: number,
++  on: boolean = REGISTRATION_RESEARCH_ON,
++): Promise<boolean> {
++  if (!on) return false;
++  const result = await query(
++    `INSERT INTO registration_research (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
++    [userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0;
++}
++
++interface Claimed {
++  readonly userId: number;
++  readonly name: string;
++  readonly city: string | null;
++  readonly phones: readonly string[];
++}
++
++/** The oldest queued user, marked running in the same statement so no other tick takes it. */
++async function claimNext(): Promise<Claimed | null> {
++  const result = await query<{ user_id: number; name: string | null; city: string | null }>(
++    `UPDATE registration_research r SET status = 'running', started_at = NOW()
++      WHERE r.user_id = (
++        SELECT user_id FROM registration_research WHERE status = 'queued'
++         ORDER BY queued_at LIMIT 1 FOR UPDATE SKIP LOCKED)
++      RETURNING r.user_id,
++        (SELECT name FROM "User" WHERE id = r.user_id) AS name,
++        (SELECT value FROM user_profile_kv WHERE user_id = r.user_id::text AND key = 'city' LIMIT 1) AS city`,
++    [],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  if (row === undefined) return null;
++  const phones = await query<{ phone: string }>(
++    `SELECT phone FROM "UserPhone" WHERE "userId" = $1 LIMIT 5`,
++    [row.user_id],
++    QUERY_TIMEOUT_MS,
++  );
++  return {
++    userId: row.user_id,
++    name: (row.name ?? '').trim(),
++    city: row.city,
++    phones: phones.rows.map((p) => p.phone),
++  };
++}
++
++interface Gathered {
++  readonly texts: ReadText[];
++  readonly searches: number;
++  readonly pages: number;
++}
++
++function hitsOf(reply: object): ReadText[] {
++  const raw = (reply as Record<string, unknown>).results;
++  if (!Array.isArray(raw)) return [];
++  return raw.flatMap((hit: unknown) => {
++    const h = hit as Record<string, unknown>;
++    if (typeof h.url !== 'string' || sourceHost(h.url) === null) return [];
++    const text = typeof h.snippet === 'string' ? h.snippet : '';
++    const title = typeof h.title === 'string' ? h.title : null;
++    return [{ url: h.url, title, text: text.slice(0, MAX_SNIPPET_CHARS), isPage: false }];
++  });
++}
++
++/** Searches, then the pages they found, both inside the stop. */
++async function gather(person: PersonGiven): Promise<Gathered> {
++  const snippets: ReadText[] = [];
++  const queries = firstQueries(person.name, person.city).slice(0, searchesLeft(0));
++  for (const q of queries) snippets.push(...hitsOf(await webSearch(q)));
++  const urls = [...new Set(snippets.map((s) => s.url))].slice(0, pagesLeft(0));
++  const pages: ReadText[] = [];
++  for (const url of urls) {
++    const page = (await fetchPage(url)) as Record<string, unknown>;
++    if (typeof page.content === 'string' && page.content.trim() !== '') {
++      pages.push({ url, title: null, text: page.content, isPage: true });
++    }
++  }
++  return { texts: [...snippets, ...pages], searches: queries.length, pages: urls.length };
++}
++
++/** The facts on every number of the user's own; a fact the user removed stays removed. */
++async function storeFacts(
++  phones: readonly string[],
++  facts: readonly StoredFact[],
++): Promise<number> {
++  let stored = 0;
++  for (const phone of phones) {
++    for (const f of facts) {
++      const result = await query(
++        `INSERT INTO contact_facts
++           (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source,
++            confidence, is_matchable, source_url, fact_date, research_status, conflict_note)
++         SELECT $1, $2, $3, $4, false, $5, 'mentioned', false, $6, $7::date, $8, $9
++          WHERE NOT EXISTS (
++            SELECT 1 FROM contact_facts
++             WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND field_type = $3
++               AND (value = $4 OR removed_by_subject_at IS NOT NULL))
++         ON CONFLICT DO NOTHING`,
++        [
++          phone,
++          SYSTEM_SAVER_ID,
++          f.key,
++          f.value,
++          RESEARCH_SOURCE,
++          f.sourceUrl,
++          f.date,
++          f.confidence,
++          f.conflictNote,
++        ],
++        QUERY_TIMEOUT_MS,
++      );
++      stored += result.rowCount ?? 0;
++    }
++  }
++  return stored;
++}
++
++async function finish(
++  userId: number,
++  status: 'done' | 'failed',
++  counts: { searches: number; pages: number; facts: number },
++  error: string | null,
++): Promise<void> {
++  await query(
++    `UPDATE registration_research
++        SET status = $2, searches = $3, pages = $4, facts = $5, error = $6, finished_at = NOW()
++      WHERE user_id = $1`,
++    [userId, status, counts.searches, counts.pages, counts.facts, error],
++    QUERY_TIMEOUT_MS,
++  );
++}
++
++/** One queued user researched; false when nobody was waiting. */
++export async function researchNextUser(): Promise<boolean> {
++  const person = await claimNext();
++  if (person === null) return false;
++  const counts = { searches: 0, pages: 0, facts: 0 };
++  try {
++    if (person.name === '' || person.phones.length === 0) {
++      await finish(person.userId, 'done', counts, 'no name or number to research');
++      return true;
++    }
++    const given = { name: person.name, city: person.city };
++    const gathered = await gather(given);
++    counts.searches = gathered.searches;
++    counts.pages = gathered.pages;
++    const facts = factsToStore(await extractFacts(person.userId, given, gathered.texts));
++    counts.facts = await storeFacts(person.phones, facts);
++    await finish(person.userId, 'done', counts, null);
++    // eslint-disable-next-line no-console
++    console.log(
++      `[registration-research] user ${person.userId}: ${counts.searches} searches, ` +
++        `${counts.pages} pages, ${counts.facts} facts`,
++    );
++  } catch (err) {
++    const message = (err as Error).message.slice(0, MAX_ERROR_CHARS);
++    // eslint-disable-next-line no-console
++    console.error(`[registration-research] user ${person.userId} failed:`, message);
++    await finish(person.userId, 'failed', counts, message);
++  }
++  return true;
++}
++
++/** The ticker: one user a minute, and only while the run is on. */
++export function startRegistrationResearch(on: boolean = REGISTRATION_RESEARCH_ON): boolean {
++  if (!on) return false;
++  setInterval(() => {
++    void researchNextUser().catch((err: unknown) =>
++      // eslint-disable-next-line no-console
++      console.error('[registration-research] tick failed:', (err as Error).message),
++    );
++  }, TICK_INTERVAL_MS).unref();
++  return true;
++}
+-- 
+2.43.0
+

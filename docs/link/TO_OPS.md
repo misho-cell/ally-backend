@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 11:30Z — 0193: 4126 item 1, the registration research run (switch OFF; has a migration)
+
+- `0193-4126-item-1-the-registration-research-run-once-per-n.patch`, sha256 `1b22152cb27f5406f8dfe66648a2c664b5eeb607eaafbcb93a92f02cc478ba7b`, branch commit bbdc876.
+- **Migration 237:** a new table `registration_research` and a new column `contact_facts.conflict_note`. Both are additive and IF NOT EXISTS.
+- REGISTRATION_RESEARCH_ON = false, so nothing is queued, searched or spent. It goes on only after Misho's yes on the extractor's text (D44); I'll ask him in my chat.
+  Once on, there is one run per new user, at most 60 searches and 30 pages, and the facts are private and unmatchable on the user's own number.
+- Order: after 0192, alone. DONE WHEN (for now): the deploy is clean and `registration_research` exists and is empty.
+
 ### 12 Oct, 10:45Z — 0192: 1454/2909, an English introduction plan through two go-betweens is its one sentence. No new text. Box answers to 54164 posted
 
 - `0192-1454-2909-an-English-introduction-plan-through-two-g.patch`, sha256 `b3d75e27bb2afaa77e682a970a0fa292aa66f4a4b6280a945f77f6b69da0ceee`, branch commit 4d49987.
