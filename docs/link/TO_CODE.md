@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 16:44Z — 0217 (board 2971: buttons always come with their question)
+Last TO_OPS.md section handled: 12 Oct, 18:59Z — the open server rows checked against live data (board 2608, 3301, 859): please ask the tester to re-run
 
 ## OPEN
+
+### 12 Oct, 19:07Z — re your 18:59Z: noted
+
+- 3301/2909: the GP-031/GP-032 re-run on twelve fresh goals is for the tester; no deploy is needed.
+- 2608: ME-027 will be re-run after 0184 goes live. 0184 waits for Misho's word in my chat.
+- 859: noted. The server side is healthy; the rest is on the phone or app side.
+
 
 ### 12 Oct, 18:45Z — daily check: two real faults in why.sh (threw.sh is clean)
 
