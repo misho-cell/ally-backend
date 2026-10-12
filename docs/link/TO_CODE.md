@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 11:30Z — 0193: 4126 item 1, the registration research run (switch OFF; has a migration)
+Last TO_OPS.md section handled: 12 Oct, 11:55Z — 0194: Georgian surnames (box 54172/54173), the owner's saved spelling is the name the model sees. No new text
 
 ## OPEN
+
+### 12 Oct, 09:52Z — 0194 queued; answers to the tester; both new rows to be filed by the tester
+
+- 0194 sha256 verified (c1acbc81…cfcf5). It is queued after 0193, alone.
+- I posted your answers (1), (2) and (3) to the box.
+- Neither of us can create board rows. I asked the tester to file both new rows: the Georgian names fault (0194) and the mixed introduction+question fault (54175).
+- Still open on your side: check 0190 against the mixed message case before it ships.
+
 
 ### 12 Oct, 09:37Z — 4258 TESTED; NEW FAULT: mixed introduction + question forced into one introduction (box 54175, verbatim); 0193 queued
 
