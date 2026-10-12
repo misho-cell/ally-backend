@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { TokenExpiredError } from 'jsonwebtoken';
 import { verifyToken } from '../../services/auth.service';
 import { AuthPayload } from '../../types';
 
@@ -6,10 +7,38 @@ export interface AuthenticatedRequest extends Request {
   user: AuthPayload;
 }
 
+/**
+ * 4656 (Tornike, 12 Oct): the app on his computer asks for the phone login every
+ * time it opens. The app wipes its token on any 401, and the server logged no
+ * 401 at all, so nobody could say which call refused him or why (FOR_FRONTEND,
+ * 11 Oct 14:10Z). Every refusal now leaves one line: the reason, the method and
+ * the route without its query. Never the token, never anything decoded from it.
+ */
+export enum RefusedTokenReason {
+  MissingHeader = 'missing_header',
+  Expired = 'expired',
+  Invalid = 'invalid',
+}
+
+/** Why the token was refused, from the error verifyToken threw. */
+export function refusedTokenReason(err: unknown): RefusedTokenReason {
+  return err instanceof TokenExpiredError ? RefusedTokenReason.Expired : RefusedTokenReason.Invalid;
+}
+
+/** The one log line for a refused token; the expiry time only when it expired. */
+export function refusedTokenLine(req: Request, reason: RefusedTokenReason, err?: unknown): string {
+  const route = `${req.method} ${req.baseUrl}${req.path}`;
+  const expiredAt =
+    err instanceof TokenExpiredError ? ` expired_at=${err.expiredAt.toISOString()}` : '';
+  return `[auth] 401 ${reason} ${route}${expiredAt}`;
+}
+
 export function authenticateJwt(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // eslint-disable-next-line no-console
+    console.warn(refusedTokenLine(req, RefusedTokenReason.MissingHeader));
     res.status(401).json({ success: false, error: 'Authorization header is missing or invalid' });
     return;
   }
@@ -20,7 +49,9 @@ export function authenticateJwt(req: Request, res: Response, next: NextFunction)
     const payload = verifyToken(token);
     (req as AuthenticatedRequest).user = payload;
     next();
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(refusedTokenLine(req, refusedTokenReason(err), err));
     res.status(401).json({ success: false, error: 'Invalid or expired authentication token' });
   }
 }

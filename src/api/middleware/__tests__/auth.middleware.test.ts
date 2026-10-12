@@ -1,7 +1,13 @@
 jest.mock('../../../services/auth.service', () => ({ verifyToken: jest.fn(), __esModule: true }));
 
 import { Request, Response } from 'express';
-import { requireAdminRole, requireUserRole, AuthenticatedRequest } from '../auth.middleware';
+import { TokenExpiredError } from 'jsonwebtoken';
+import {
+  authenticateJwt,
+  requireAdminRole,
+  requireUserRole,
+  AuthenticatedRequest,
+} from '../auth.middleware';
 
 function makeRes(): { res: Response; status: jest.Mock; json: jest.Mock } {
   const json = jest.fn();
@@ -48,5 +54,64 @@ describe('requireAdminRole', () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(status).toHaveBeenCalledWith(403);
+  });
+});
+
+describe('a refused token leaves one line (4656)', () => {
+  const { verifyToken } = jest.requireMock('../../../services/auth.service') as {
+    verifyToken: jest.Mock;
+  };
+  const SECRET_LOOKING_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.e30.secret-part';
+
+  function refusedReq(authorization?: string): Request {
+    return {
+      method: 'GET',
+      baseUrl: '/chat',
+      path: '/threads',
+      headers: authorization === undefined ? {} : { authorization },
+    } as unknown as Request;
+  }
+
+  let warn: jest.SpyInstance;
+  beforeEach(() => {
+    warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+  afterEach(() => warn.mockRestore());
+
+  it('names an expired token, its route and when it expired', () => {
+    const expiredAt = new Date('2026-10-12T10:00:00.000Z');
+    verifyToken.mockImplementation(() => {
+      throw new TokenExpiredError('jwt expired', expiredAt);
+    });
+    const { res, status } = makeRes();
+    authenticateJwt(refusedReq(`Bearer ${SECRET_LOOKING_TOKEN}`), res, jest.fn());
+    expect(status).toHaveBeenCalledWith(401);
+    expect(warn).toHaveBeenCalledWith(
+      '[auth] 401 expired GET /chat/threads expired_at=2026-10-12T10:00:00.000Z',
+    );
+  });
+
+  it('names a token that does not verify, and never prints the token', () => {
+    verifyToken.mockImplementation(() => {
+      throw new Error('invalid signature');
+    });
+    const { res } = makeRes();
+    authenticateJwt(refusedReq(`Bearer ${SECRET_LOOKING_TOKEN}`), res, jest.fn());
+    expect(warn).toHaveBeenCalledWith('[auth] 401 invalid GET /chat/threads');
+    expect(String(warn.mock.calls[0][0])).not.toContain('secret-part');
+  });
+
+  it('names a missing header', () => {
+    const { res } = makeRes();
+    authenticateJwt(refusedReq(), res, jest.fn());
+    expect(warn).toHaveBeenCalledWith('[auth] 401 missing_header GET /chat/threads');
+  });
+
+  it('logs nothing for a token that verifies', () => {
+    verifyToken.mockReturnValue({ userId: '7', role: 'user' });
+    const next = jest.fn();
+    authenticateJwt(refusedReq('Bearer ok'), makeRes().res, next);
+    expect(next).toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
