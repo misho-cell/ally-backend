@@ -68,6 +68,9 @@ recalling another contact's need, 0172) wait below for Misho's yes on their text
 and 0174 (47588, a Georgian paragraph in an English reply): both were built 8 Oct and never reached main. The chain is 0170 → 0174.
 A sweep of every branch commit since 6 Oct against main found nothing else stranded. bc10bc5 is moot (1695 retired, D747).
 d59e722 (958 p1) waits for a re-measure by day.
+Board rows that read `to_build` but are not (a live write, so left for the morning; mine to PATCH by day):
+3897 (lists: a742257, 13e6b7f, 84aa124 are on main, so the tester should re-run the list), 4225 (the Axel load is done, 2,611 facts),
+4258 (BG is ON since 10 Oct, §125), 2810 (0171, once shipped).
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
