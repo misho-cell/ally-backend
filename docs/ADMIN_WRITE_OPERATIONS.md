@@ -6259,8 +6259,8 @@ questions, „კი, ეტაპებად" and „ფრონტის ს
 - **0093 (4295):** the timers run between deploys.
 - **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.
 
-**§129 — 12 October ~12:20 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
-docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:40Z). Earlier the same day, ~10:40Z: „დაიწყე რა
+**§129 — 12 October 10:16 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
+docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~09:40Z). Earlier the same day: „დაიწყე რა
 ადამიანების კვლევის მეთოდიც" (start 4126).
 - **E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`), approved as written; the registration run (0193) is switched on with
   it. The spending stays inside §122's stop (60 searches, 30 pages a person).
@@ -6270,7 +6270,7 @@ docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:
 - **Later the same day, „6d კი"**: the sentence around the question (`WORK_NEWS_INSTRUCTION`), approved as written; 6d is switched on.
 - **Undo:** each switch or text back out, one revert each.
 
-**§130 — 12 October ~13:45 UTC, Misho in the code session's chat: „კი, წაშალე"** (asked at ~13:40Z: the one Axel research fact that
+**§130 — 12 October 11:00 UTC, Misho in the code session's chat: „კი, წაშალე"** (asked at 10:58Z: the one Axel research fact that
 names member 13 at „GD Holding distribution group", the wrong company match v4 removed; AXEL INTELLIGENCE 6, box 54320).
 - **The row:** `contact_facts.id = 17482` (affiliation, `source = 'public_research'`, `submitted_by_user_id = '0'`, loaded 10 Oct 07:08Z),
   on another member's number, not member 13's. Read-only check: it is the only row of the 2,611 that names GD Holding; no row names
