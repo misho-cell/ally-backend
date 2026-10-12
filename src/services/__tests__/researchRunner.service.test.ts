@@ -284,7 +284,8 @@ describe('it records evidence and never a claim about a person', () => {
     withDatabase();
     await runResearchOnce();
 
-    const writes = statements.filter((s) => /INSERT|UPDATE|DELETE/i.test(s));
+    // Whole words: a read naming the "deletedAt" column is not a write.
+    const writes = statements.filter((s) => /\b(?:INSERT|UPDATE|DELETE)\b/i.test(s));
     expect(writes.length).toBeGreaterThan(0);
     for (const sql of writes) {
       expect(sql).toMatch(/INSERT INTO research_(steps|findings)/);

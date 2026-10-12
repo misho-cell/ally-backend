@@ -113,6 +113,14 @@ async function searchesToday(): Promise<number> {
 }
 
 /**
+ * 4126 item 4 (D757, Misho's yes §133): research is about work. A number
+ * somebody's own labels mark as family or close is never researched, and a
+ * person who is a Netai user is researched once — never again every 30 days
+ * (D757 §5: once, at registration).
+ */
+const PRIVATE_RELATIONSHIPS: readonly string[] = ['family', 'close'];
+
+/**
  * Who to research next: people the engine listed, longest un-researched first.
  *
  * Read from the score history rather than by rebuilding the list — the build
@@ -131,10 +139,17 @@ async function nextPeople(limit: number, refreshDays: number): Promise<{ phone: 
      LEFT JOIN (
        SELECT phone, MAX(ran_at) AS last_run FROM research_steps GROUP BY phone
      ) r ON r.phone = l.phone
-     WHERE r.last_run IS NULL OR r.last_run < NOW() - ($2::int * INTERVAL '1 day')
+     WHERE (r.last_run IS NULL
+            OR (r.last_run < NOW() - ($2::int * INTERVAL '1 day')
+                AND NOT EXISTS (
+                  SELECT 1 FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
+                   WHERE up.phone = l.phone AND u."deletedAt" IS NULL)))
+       AND NOT EXISTS (
+         SELECT 1 FROM contact_relationship_scores cr
+          WHERE cr.contact_phone = l.phone AND cr.relationship_type = ANY($3::text[]))
      ORDER BY r.last_run ASC NULLS FIRST, l.rank ASC
      LIMIT $1::int`,
-    [limit, refreshDays],
+    [limit, refreshDays, PRIVATE_RELATIONSHIPS],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
