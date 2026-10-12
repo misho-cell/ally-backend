@@ -72,7 +72,12 @@ Night of 12 → 13 October, for the morning:
 - **CC (3671, 4297): prompt work, so not at night (D44).** 3671: a model-written owner answer mixed persons („თუ გინდა, თვითონ
   გკითხავ შეგახსენო და დაელაპარაკო"). The fix is a writer rule or an editor check on owner answers, and its text needs Misho's yes. 4297:
   „the new plan and search rules are live" means applying prompt texts. By day I'll find which texts are not live yet and put them to him.
-- **Built tonight:** 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
+- **CD (4126 item 3, a new brief sentence for his yes, D44).** 0223 makes the registration run keep the people a public member list
+  names (list_people, never a knows link). It is OFF until he says yes to this sentence, added to the extractor's brief: „If one of the
+  texts is a public list of the people who belong to an organisation (members, staff, a board, attendees), also return the people it
+  lists, under "listed_people": [...]. Copy each name and role exactly as the list writes it. Being on the same list says nothing about
+  who knows whom: never turn it into a fact about this person."
+- **Built tonight:** 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
   app's side.
 
 Cleared 12 October ~07:10 UTC. Misho answered in his own chat at ~06:45 UTC, to four numbered questions: „1. გააკეთე 2. კარგი 3. კი 4. კარგი“.
