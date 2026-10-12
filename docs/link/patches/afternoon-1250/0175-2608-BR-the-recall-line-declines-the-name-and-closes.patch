@@ -1,0 +1,70 @@
+From a032653546907342d8134caedf554bf9050038a8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 01:05:24 +0000
+Subject: [PATCH] =?UTF-8?q?2608=20/=20BR:=20the=20recall=20line=20declines?=
+ =?UTF-8?q?=20the=20name=20and=20closes=20the=20quote=20(=E2=80=9E?=
+ =?UTF-8?q?=E1=83=92=E1=83=98=E1=83=90=20=E1=83=A1=E1=83=90=E1=83=AA?=
+ =?UTF-8?q?=E1=83=93=E1=83=94=E1=83=9A=E1=83=A1",=20=E2=80=9E=E2=80=A6?=
+ =?UTF-8?q?=E2=80=9C)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The Georgian line attached „-ს" with a hyphen („გია საცდელი-ს") and closed
+the quote with a plain ". It now declines the name with geoName (dative)
+and closes with “, as Georgian text does. Still behind NEED_RECALL_ON =
+false; BR in NIGHT_QUESTIONS shows the corrected text for Misho's yes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/needRecall.test.ts | 8 +++++++-
+ src/services/needRecall.ts                | 3 ++-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/needRecall.test.ts b/src/services/__tests__/needRecall.test.ts
+index 0ebae30..66867c6 100644
+--- a/src/services/__tests__/needRecall.test.ts
++++ b/src/services/__tests__/needRecall.test.ts
+@@ -31,7 +31,7 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
+       helperName: 'ნიკა საცდელი',
+     });
+     expect(recallLine('ka', recalled!)).toBe(
+-      'გახსოვს, გია საცდელი-ს სჭირდება: „საწყობი სჭირდება". ნიკა საცდელი შეიძლება დაეხმაროს — დავაკავშირო ისინი?',
++      'გახსოვს, გია საცდელს სჭირდება: „საწყობი სჭირდება“. ნიკა საცდელი შეიძლება დაეხმაროს — დავაკავშირო ისინი?',
+     );
+     expect(recallChoices('ka')).toEqual(['კი, დააკავშირე', 'არა, ჯერ არა']);
+   });
+@@ -62,4 +62,10 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
+     );
+     expect(chat).toContain('choices = recallChoices(runLang(runId));');
+   });
++
++  it('declines the name in Georgian and closes the quote the Georgian way', () => {
++    const line = recallLine('ka', { needName: 'გია საცდელი', need: 'საწყობი', helperName: 'ნიკა' });
++    expect(line).toContain('გახსოვს, გია საცდელს სჭირდება: „საწყობი“.');
++    expect(line).not.toContain('-ს ');
++  });
+ });
+diff --git a/src/services/needRecall.ts b/src/services/needRecall.ts
+index ff3cff1..ae5bb1c 100644
+--- a/src/services/needRecall.ts
++++ b/src/services/needRecall.ts
+@@ -1,4 +1,5 @@
+ import { query } from '../db/postgres/client';
++import { geoName } from './georgianCase';
+ import { fieldTerms, textSpeaksOf } from './prematch.service';
+ import { RunLanguage } from './runLanguage';
+ 
+@@ -89,7 +90,7 @@ export async function needThisFactMeets(
+ 
+ const RECALL_LINE: Readonly<Record<RunLanguage, (r: RecalledNeed) => string>> = {
+   ka: (r) =>
+-    `გახსოვს, ${r.needName}-ს სჭირდება: „${r.need}". ${r.helperName} შეიძლება დაეხმაროს — დავაკავშირო ისინი?`,
++    `გახსოვს, ${geoName(r.needName, 'dat')} სჭირდება: „${r.need}“. ${r.helperName} შეიძლება დაეხმაროს — დავაკავშირო ისინი?`,
+   en: (r) =>
+     `You told me ${r.needName} needs: „${r.need}". ${r.helperName} may be able to help — shall I connect them?`,
+   ru: (r) =>
+-- 
+2.43.0
+

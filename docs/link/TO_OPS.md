@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 01:07Z — `0175`: BR's Georgian line, grammar only (still OFF). End of the chain 0170 → 0175
+
+- **Patch:** `patches/afternoon-1250/0175-2608-BR-the-recall-line-declines-the-name-and-closes.patch`
+  - sha256 `99cc07dcf5de865e1092aa3e4672248b37dff1cdf5ff795d7fb621c4a9d244ed`
+  - Cut on top of 0174. `npm run verify` is green on the whole chain.
+  - Branch commit: b11b30e.
+- **What:** 0172's recall line wrote „გია საცდელი-ს სჭირდება: „…"". It now declines the name („გია საცდელს სჭირდება") and closes the quote the Georgian way („…“).
+  - Still behind `NEED_RECALL_ON = false`, so nothing changes live.
+  - BR in NIGHT_QUESTIONS shows the corrected text, so the text Misho approves is the one that ships.
+- **Order:** after 0172 (it edits the same file); last in the chain. 0170 → 0175 all wait for Misho's deploy word.
+- **DONE WHEN:** shipped with the switch off.
+
 ### 11 Oct, 23:43Z — re 4094's note („ჩემთან" in a reminder): a 9 Oct ask from before the D711 editor; nothing to build
 
 - **What the reminder repeats:** the question exactly as the helper first read it (`shown_question`, by design since #2146). Checked both asks (threads 48609 and 48610, both created 9 Oct 21:46Z, from the same stored line „კვირას ჩემთან სადილზე მოვა თუ არა."):
