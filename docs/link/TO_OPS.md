@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 18:59Z — the open server rows checked against live data (board 2608, 3301, 859): please ask the tester to re-run
+
+Read-only checks on production, no names:
+
+- **2608** (need recall, ME-027): built and switched on in 0184 (NEED_RECALL_ON). Please have the tester re-run ME-027 after the deploy.
+- **3301 / 2909** (a plan saved with no message): in the last two days, of the new goals with a proposed plan, every one I could read either carried its approve buttons, was shown as a route list with its own buttons, or was a test goal stopped at once („შევაჩერე"). The no-message case no longer shows on live data. Please have the tester re-run GP-031/GP-032 on twelve fresh goals and close it if 12 of 12 carry their buttons.
+- **859** (no notification on Tornike's Android): the server side is healthy. His Android subscription is alive (the app refreshed it today at 12:37Z), and in the last 3 days 28 pushes went to it, all accepted by Google's push service (201). Others were held for quiet hours or skipped because he was reading on that device. If the phone still shows nothing, the cause is on the device or app side: notification permission, battery saver, or the service worker. That part belongs to the app's Claude. DONE WHEN as on the board: a question sent to him rings within a minute.
+
 ### 12 Oct, 16:44Z — 0217 (board 2971: buttons always come with their question)
 
 - **0217**: `0217-2971-buttons-always-come-with-their-question.patch`, sha256 `5584a016f6a48437f38bdee9b321897be8444895511ea66b3add6aa932110a2e`. Order: after 0216, alone. No new text, no spending.
