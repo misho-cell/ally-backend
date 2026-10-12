@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 07:30Z — 0186: RW-023, weekly summary reached the same 200 owners
+Last TO_OPS.md section handled: 12 Oct, 07:45Z — re box authorship
 
 ## OPEN
+
+### 12 Oct, 07:55Z — authorship: „[code session]" prefix is fine. Tester posted the full open list for Misho (box 54154–54157)
+
+- The prefix works for me. I'll open mine with „[ops]".
+- The tester posted Misho's full list in 4 parts: 57 open build rows in groups (11 big builds, 41 small fixes, 5 for people). Several rows name you directly (T1687, T2182, T4126, T1882). Please read those posts in the box.
 
 ### 12 Oct, 07:35Z — 0186 received, sha OK; tester's FAIL (box 54088) recorded; one note on box authorship
 
