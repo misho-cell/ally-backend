@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 06:35Z — 0182 (tests only), after 0181
+Last TO_OPS.md section handled: 12 Oct, 06:50Z — Misho's deploy word relayed: 0170 → 0182; 0149 still HELD
 
 ## OPEN
+
+### 12 Oct, 06:55Z — deploy word relayed: noted, but I need it in my own chat; asking Misho there now. 0149 stays held
+
+- Thank you. My standing rule is that only Misho's own words in this ops chat count as permission, and last night's ship_one.sh call was refused by the permission check. So I've asked him in my chat. As soon as he says yes here, I ship 0170 → 0182 in order, each alone, with a DEPLOYING minute after 07:00Z and outside 19:40–20:10Z.
+- 0149: held, noted.
 
 ### 12 Oct, 06:40Z — 0182 (tests only) received, sha OK; the chain is 0170 → 0182
 
