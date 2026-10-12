@@ -2,6 +2,28 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 13:35Z — 0200 (4657). Answers on 4656, 4657, 4658 and AXEL 6 (4225). One item for Misho
+
+- `0200-4657-the-name-search-scans-the-owner-s-labels-once-n.patch`, sha256 `a6b539529f66a414e2105242de8de316573d547cf17c1afe0cfef8aa0edc6dde`, branch commit 81c070d. Order: after 0199, alone. No new text.
+- **4657, read on the founder's account (read-only, no names posted):**
+  - (1) Did the run read his labels first? It tried: search_contact_by_name ran first, twice, and **timed out both times (8.6 s)**. Second degree timed out too (16.9 s). With nothing back, the model answered from the web search's namesake.
+  - The contact IS saved, in Latin letters (3 labels). The Georgian query's spelling variants match it, so this was not a spelling miss, only time.
+  - His 1,908 numbers carry 89,308 labels, and the name search ran its scan twice in parallel (page + total). 0200 makes it one scan. Her member profile is part of that same search (the registered-name branch), so it was never reached.
+  - (2) The curiosity question ignoring a company word in a label is the model's wording, not a server step. I'm leaving it for a D44 text if the tester's fictional reproduction shows it again.
+  - DONE WHEN: on his account, the same question finds her from his own labels, 3 of 3, with no web namesake.
+- **4658:** the incoming introduction request's push already carries its own url, the new thread it was delivered into (requestIntroduction → deliverIntoNewThreads). The server half is there. 0176 covers the other push (engagement).
+  If the tap still opens only the app, it is the app's service worker not following `url`. Where the request lives on screen is the app's design question too: please pass both to the frontend.
+- **4656:** the server sets no cookie. /login returns a JWT valid for **30 days** with no refresh. The app keeps it (its own code clears a `token` cookie on logout). A login that does not survive closing the browser is the app's storage choice: please tell the tester it's the app's.
+- **AXEL 6 / 4225, read-only on live:**
+  - **The extra 116 facts and 2 extra rows:** 3 people in v4 have more than one number (one has three), and the load wrote each person's facts on every number (§119.1). That makes exactly 4 extra numbers and exactly 116 extra facts.
+    162 numbers − 4 = 158 people carry facts, so 2 of v4's 160 had no number found. No „possible“-only or pre-v4 rows are extra. Their statuses are confirmed 303, possible 2,239, rough 68, unknown 1, all from v4's file.
+  - **Member 13 / G.D. Alco:** across all 2,611 rows, only 2 mention Alco/GD:
+    - one is a bank's „ALCO“ committee (unrelated);
+    - the other is an **affiliation fact on another member's number** (17 facts there). It reads that member 13 is at „GD Holding distribution group“ and that the two share a work domain, citing the founder's 4 Oct note.
+    Nothing claims G.D. Alco as member 13's own employer. If that tie fact is one of the 19 removed in v4, it must go, and removing it is a delete on live data: **for Misho**. I'll ask him.
+  - **Through the connector:** loaded facts were read by nothing but the contact page until now. 0197 (6b/6c, approved §129) puts them into get_contact_facts on the app and the connector alike, with status, source and date.
+    After 0197 is live, the tester can check them from the connector or a fictional seat.
+
 ### 12 Oct, 13:00Z — 0199: 4126 6d ON (Misho, his own chat: „6d კი“ on the sentence around the question)
 
 - `0199-4126-6d-ON-the-monthly-work-question-on-Misho-s-yes-.patch`, sha256 `71597893a4667b1463bee4efa8a2130722d528924b3584aea0613189975085d1`, branch commit 779f6ed.
@@ -1091,7 +1113,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 10:06Z — 0195 queued; the tester is filing NEW-1 and NEW-2
+Last TO_CODE.md section handled: 12 Oct, 10:37Z — 0196–0198 queued (gated); NEW FAULTS 4657, 4658; AXEL INTELLIGENCE 6 on 4225 (verbatim)
 
 ## OPEN
 
