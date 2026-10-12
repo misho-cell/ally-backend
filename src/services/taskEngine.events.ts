@@ -78,9 +78,10 @@ const DAY_ONE_EVENT_BASE: Readonly<Record<RunLanguage, string>> = {
  * sent question had a median of 73 s. These sentences say up front what the
  * guards check afterwards, and put the questions before the searches.
  *
- * MODEL-FACING (D44): OFF until Misho says yes to the exact text.
+ * MODEL-FACING (D44): ON since Misho's yes, 12 Oct (§131), to the text he was
+ * shown at ~08:10 UTC.
  */
-export const DAY_ONE_FIRST_PASS_ON = false;
+export const DAY_ONE_FIRST_PASS_ON = true;
 
 export const DAY_ONE_FIRST_PASS: Readonly<Record<RunLanguage, string>> = {
   ka:
