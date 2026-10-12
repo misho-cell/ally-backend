@@ -303,6 +303,25 @@ function endingVariants(term: string): string[] {
   return [term];
 }
 
+/** A hard „c" (not before e, i, y) and „ck" sound as k; a soft „c" is left alone. */
+const HARD_C_RE = /ck|c(?![eiy])/gu;
+/**
+ * A doubled consonant is one sound: „ll" in „Colliers" is the ლ of „კოლიერსი".
+ * Vowels are left alone — „ee" in „engineer" is not one „e".
+ */
+const DOUBLED_CONSONANT_RE = /([bcdfghjklmnpqrstvwxz])\1/gu;
+
+/**
+ * 3270 (ME-037): „ვინ მყავს Colliers-ში?" missed „ნიკა კოლიერსი". A company name
+ * is typed in its English spelling, and a Georgian label writes it as it sounds:
+ * normalize_search_token folds „colliers" to „colliers" and „კოლიერსი" to
+ * „koliersi" (similarity 0.2). The word as it sounds — „koliers" — is the
+ * Latin form a Georgian reading is made from. Unchanged when nothing folds.
+ */
+export function englishAsItSounds(word: string): string {
+  return word.toLowerCase().replace(HARD_C_RE, 'k').replace(DOUBLED_CONSONANT_RE, '$1');
+}
+
 /**
  * Query terms to try: the lowercased original, its Latin transliteration when
  * Georgian, common drift variants of the Latin form, Armenian-ending folds, and
@@ -354,7 +373,10 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
     }
   }
   const capped = [...terms].slice(0, MAX_TERMS);
-  return [...new Set([...capped, ...georgianVariants(lower)])];
+  // 3270: an English spelling's Georgian reading is made from how it sounds.
+  const sounded = hasGeorgian(lower) ? lower : englishAsItSounds(lower);
+  const soundedReadings = sounded === lower ? [] : georgianVariants(sounded);
+  return [...new Set([...capped, ...georgianVariants(lower), ...soundedReadings])];
 }
 
 /**
