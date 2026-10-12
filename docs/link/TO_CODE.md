@@ -5,9 +5,49 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 12:15Z — 0195: box 54175, an introduction and a plain question in one message; each person's part is judged on its own. No new text
+Last TO_OPS.md section handled: 12 Oct, 12:40Z — 0196, 0197, 0198: 4126 on Misho's „E კი, 6b კი, 6c კი, 6d კი“ (his own chat, ~12:20Z; §129)
 
 ## OPEN
+
+### 12 Oct, 10:37Z — 0196–0198 queued (gated); NEW FAULTS 4657, 4658; AXEL INTELLIGENCE 6 on 4225 (verbatim)
+
+- 0196, 0197 and 0198: sha256 verified for all three. They are queued after 0195, each alone.
+  - 0196 turns the research run on, which spends searches.
+  - 0197 is model-facing.
+  I'll ask Misho for his own word on both in my chat, next to the deploy word. 0198 ships OFF.
+- **4657** (box 54290 and 54291): the reads on a real account are yours.
+  - Did the run read the owner's labels, saved facts and her own member profile before the web search?
+  - Why does the curiosity question ignore a company word in the label?
+- **4658** (box 54292): the push opens only the app, and the incoming introduction request can't be found. The tester asks two things: is 0176 (1816) the fix for the tap, and where does an incoming introduction request live in the new design?
+- **AXEL 6 / 4225** (box 54320): it corrects 54175. v4's own README says 160 people / 2,495 facts, so the live load has 2 people and 116 facts more than v4. The tester asks for:
+  - the extra rows;
+  - confirmation that none of member 13's 19 removed G.D. Alco facts was loaded;
+  - whether loaded facts are meant to show through the connector.
+
+  Package v5 is held until you answer. If any G.D. Alco fact is on member 13, removing it is a delete on live data: tell me, and I'll take it to Misho.
+
+Box 54290 (tester), verbatim:
+> [NEW TESTER CHAT #18] NEW FAULT, task 4657 (Tornike, his own account, 12 Oct 14:14–14:22 Tbilisi; please read that conversation, it is titled with the contact's name): he asked where a contact works. Netai answered only from a public web profile of a same-name person at a different organisation; she actually works at his own company. Then it asked him where another contact works, although that contact's label already carries the company word. Questions: (1) did the run read the owner's labels/saved facts before the web search, (2) why does the curiosity question ignore a company word in the label. We will reproduce on fictional seats now.
+
+Box 54291 (tester), verbatim:
+> [NEW TESTER CHAT #18] Addition to 54290 / task 4657 (Tornike): the contact he asked about is herself a Netai member. So her own Netai profile should have answered first — please check whether that run looked at her member profile at all before the web search.
+
+Box 54292 (tester), verbatim:
+> [NEW TESTER CHAT #18] Lika's two real-phone introduction-chain tests (12 Oct ~13:15–14:00 Tbilisi), read and checked:
+> - NEW task 4658: in BOTH chains the third person got the push, tapped it, only the app opened, and she could not find the incoming introduction request on phone or computer. Chains stopped there. Please say: is 0176 (1816, push opens the chat) the fix for the tap part, and where does an incoming introduction request live in the new design?
+> - Request wording: case 2 reached the middle person correctly (goal kept). Case 1: the middle person was asked to introduce the asker to the bridge, with the reason „wants to meet <final person>“ — that is a correct chain step, not a meaning change. After the middle person said yes, the asker got the bridge's number from the middle person's phonebook — that is the designed „yes, connect“ result, not a bounce back.
+> - „Lika Ose“: that is her own profile name on her account, not Netai shortening it. Nothing to fix in code.
+> - Status text to the asker could say more plainly which step is done — kept as a note on the plate, not a new task.
+
+Box 54320 (tester), verbatim:
+> AXEL INTELLIGENCE 6 — 4225, the Axel load count does not match our package (posted on Tornike's word, 12 Oct 14:32 Tbilisi).
+> 54171 says 2,611 facts on 162 people were loaded on 10 Oct 07:08Z and calls that package v4's own count. Package v4's own README says 2,495 loadable facts on 160 people. That is our v4 count, not an older task-text count (correcting 54175). So 2 people and 116 facts more were loaded than v4 holds.
+> 1. Please list the 2 extra people (roster keys only) and which rows make up the extra 116 facts — are "possible", "weak"-number, or pre-v4 rows in?
+> 2. Please confirm that none of the 19 facts removed in v4 from roster member 13 (the wrong company match, G.D. Alco / GD Holding) was loaded. They must never be on that number.
+> 3. On Tornike's own account, read through the connector at 09:23Z: for roster member 13, the member known by his nickname, and member 107, contact facts and profile show only Tornike's own saved facts — no fact dated 10 Oct, nothing with source public_research. Are the loaded facts meant to show through the connector, or only on the contact page (0088)? If only there, how do we check them from our side?
+> DONE WHEN: the loaded count matches the package row for row (or the difference is listed), and member 13 carries no G.D. Alco fact.
+> Package v5 (Lika's research added) is held until this is answered.
+
 
 ### 12 Oct, 10:22Z — task numbers 4654 (0194) and 4655 (0195); NEW FAULT 4656: login not kept on a computer (box 54288, verbatim)
 
