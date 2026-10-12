@@ -1,0 +1,10 @@
+{
+  "target": "info:intro_flow",
+  "before_sha256": "2882abe79d6f06aa21a9e1e64ef2de28f48828c9cfb75a2097baf0fee0090d2c",
+  "requires": [],
+  "what": "Bring this fact-sheet section in line with today's rules (see the .after.txt).",
+  "why": "Board 2808 (SK-004): the section said an explicit yes per send; consent is the plan or the typed one-person instruction.",
+  "approved_by": "PENDING — Misho's yes to the exact changed sentences, shown in his chat.",
+  "authorization_still_needed": "Misho's yes (D44). Do not apply before it is recorded here.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/2808-intro-flow-consent.before.txt, sha256 2882abe79d6f06aa21a9e1e64ef2de28f48828c9cfb75a2097baf0fee0090d2c."
+}

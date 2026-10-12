@@ -1,0 +1,10 @@
+{
+  "target": "info:earnings",
+  "before_sha256": "aab40c05e42444ec0a27f460d66766ceb63682f3d4731ade69e5615bce51e5d1",
+  "requires": [],
+  "what": "Bring this fact-sheet section in line with today's rules (see the .after.txt).",
+  "why": "Board 2807 (MO-010 / SK-003): the 14-day hold was missing, so „when can I withdraw?\" got only the $10; the page word is „ნაბიჯი\", the sheet said levels.",
+  "approved_by": "PENDING — Misho's yes to the exact changed sentences, shown in his chat.",
+  "authorization_still_needed": "Misho's yes (D44). Do not apply before it is recorded here.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/2807-earnings-hold-and-steps.before.txt, sha256 aab40c05e42444ec0a27f460d66766ceb63682f3d4731ade69e5615bce51e5d1."
+}

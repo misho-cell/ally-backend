@@ -1,0 +1,10 @@
+{
+  "target": "info:limits",
+  "before_sha256": "e7dfd91d9dbddbc8a5c654529d6300a76b2c1348d4d8f453c1d8d0b8a5c364cc",
+  "requires": [],
+  "what": "Bring this fact-sheet section in line with today's rules (see the .after.txt).",
+  "why": "Board 2808 (SK-004, ON-009): the section said the exact wording is approved per message and contacts come only from a one-time import; „how do I add my contacts?\" got „write to the team\".",
+  "approved_by": "PENDING — Misho's yes to the exact changed sentences, shown in his chat.",
+  "authorization_still_needed": "Misho's yes (D44). Do not apply before it is recorded here.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/2808-limits-consent-contacts.before.txt, sha256 e7dfd91d9dbddbc8a5c654529d6300a76b2c1348d4d8f453c1d8d0b8a5c364cc."
+}
