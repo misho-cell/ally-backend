@@ -325,6 +325,40 @@ export async function wakeTaskNoLaterThan(taskId: number, at: Date): Promise<boo
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * The goal's wake exactly as stored, as text: the column keeps microseconds and
+ * a JS Date keeps milliseconds, so a Date read back never equals the row again.
+ */
+export async function nextWakeText(taskId: number): Promise<string | null> {
+  if (!isARealId(taskId)) return null;
+  const result = await query<{ wake: string | null }>(
+    `SELECT next_wake_at::text AS wake FROM tasks WHERE id = $1 LIMIT 1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.wake ?? null;
+}
+
+/**
+ * 2576 (RW-001): after a helper's answer the goal sets its next check. When the
+ * answer's run left the wake exactly as it found it, the server moves it to
+ * `hours` from now; a wake the run chose for itself is never touched.
+ */
+export async function moveWakeAfterAnswer(
+  taskId: number,
+  wakeBeforeRun: string | null,
+  hours: number,
+): Promise<boolean> {
+  if (!isARealId(taskId)) return false;
+  const result = await query(
+    `UPDATE tasks SET next_wake_at = NOW() + ($3 || ' hours')::interval
+      WHERE id = $1 AND status = 'open' AND next_wake_at::text IS NOT DISTINCT FROM $2`,
+    [taskId, wakeBeforeRun, hours],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 /** Open tasks whose wake time has arrived — the ticker's worklist. */
 export async function getDueTasks(limit: number): Promise<Array<Task & { user_id: string }>> {
   const result = await query<Task & { user_id: string }>(
