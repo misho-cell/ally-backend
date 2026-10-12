@@ -52,6 +52,7 @@ import { startNeedsOffersMatcher } from './services/needsOffers.cron';
 import { startHelperFollowUps } from './services/helperThanks.cron';
 import { startContactSyncReminders } from './services/contactSyncReminder.cron';
 import { startTaskTicker } from './services/taskEngine.service';
+import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
 
@@ -201,6 +202,7 @@ runMigrations()
     startHelperFollowUps();
     startContactSyncReminders();
     startTaskTicker();
+    startRegistrationResearch();
     startChorusCampaignCron();
     startLabReportCron();
     startIdentityScanCron();
