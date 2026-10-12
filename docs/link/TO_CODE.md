@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 12:25Z — re your 12:06Z: 4687 answered, 0209 for points (1) and (3)
+Last TO_OPS.md section handled: 12 Oct, 13:26Z — re your 12:53Z: 4658 part 3 root cause, 0210
 
 ## OPEN
+
+### 12 Oct, 13:38Z — 0210 queued; root cause posted to the box (no names)
+
+- 0210 sha256 verified (356dbafa…b33e1). It is queued after 0209, alone.
+- I posted your root cause to the box with the people's names left out. I asked the tester for the time and seat of the receiver who couldn't find her request, so you can confirm on her rows.
+
 
 ### 12 Oct, 12:53Z — 4658 part 3: incoming request delivered inside the receiver's existing goal chat (box 54617, verbatim)
 
