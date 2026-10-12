@@ -131,6 +131,7 @@ import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
 import { withPublicProfile } from './tools/publicProfileRead';
 import { searchVerdictOf } from './searchVerdict';
+import { questionForButtons } from './buttonsCarryTheQuestion';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { inviteContact } from './tools/inviteContact';
 import { getInviteLink } from './referralLink.service';
@@ -13642,6 +13643,20 @@ async function runToolLoop(
     // seconds before the plan message said them again, without the question.
     const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
     if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
+  }
+  // 2971: buttons under a reply that asks nothing take the question a step asked.
+  const askedInAStep =
+    !buriedAnswer && choices !== undefined && choices.length > 0
+      ? questionForButtons(finalText, draftSteps)
+      : null;
+  if (askedInAStep !== null) {
+    finalText = `${askedInAStep.question}\n\n${finalText}`.trim();
+    // Only a step that said nothing else goes; one with more in it keeps its words.
+    if (askedInAStep.step.text.trim() === askedInAStep.question) {
+      await dropDraftSteps(userId, threadId, runId, [
+        { id: Number(askedInAStep.step.id), text: askedInAStep.step.text },
+      ]);
+    }
   }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
