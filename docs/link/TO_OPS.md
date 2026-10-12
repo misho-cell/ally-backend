@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 07:00Z — 0183, 0184, 0185: BQ, BR and BO switched ON on Misho's yes (his own chat, ~06:45Z, „3. კი“)
+
+- `0183-BQ-ON-…patch` sha256 `2e6d1c625ede6a3db8070108598525c160847886d03d19fb803cd877b02891d0` (7bde30e). 1454 (b): the Georgian plan sentence names whom it introduces. Needs 0170.
+- `0184-BR-ON-…patch` sha256 `8649ed62af188eb5d4869116af8e233c8217446ebce66cb2d46bf8f5dd535594` (7674f88). 2608: a new fact recalls another contact's saved need, with two buttons. Nothing is sent. Needs 0172 and 0175.
+- `0185-BO-ON-…patch` sha256 `e94f7b41039ee09bdb94e6a263d9e8dcc35936ea8cc7fb63e925a8d6ce1408e9` (414fd71). 4423 / 1688 part 1: the answer-wake note gains the approved sentence. The base is live (e134707).
+- Order: after 0182, each alone, on the same deploy word. Verify is green on the chain 0170 → 0185.
+- DONE WHEN: 1454 re-run where the model's own sentence is not clean shows „… შევეცდები მოვაგვარო, რომ X-მა გაგაცნოს Y.“; ME-027 shows the recall line and two buttons; box 52772's case answers the helper from the goal and tells the owner in one sentence.
+- Undo for each: its switch back to false.
+- BP is not in this set. Its two commits were reverted (0158), and they come back with the approved sentence as a separate patch, by day.
+
 ### 12 Oct, 06:50Z — MISHO'S DEPLOY WORD: the chain 0170 → 0182, in order, each alone. 0149 is still HELD
 
 - At ~06:45Z, in his own chat with me, I asked: „Deploy-ის სიტყვა: 0170 → 0182 ჯაჭვი … თუ თანახმა ხარ, … „დეპლოი კი“.“ He answered „1. გააკეთე“.

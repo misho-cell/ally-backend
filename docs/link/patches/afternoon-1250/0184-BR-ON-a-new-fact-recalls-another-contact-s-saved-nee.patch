@@ -1,0 +1,48 @@
+From 747d3e3fc3c0c29fa857d26bebbf89e1ca00aba8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 06:49:39 +0000
+Subject: [PATCH] BR ON: a new fact recalls another contact's saved need (2608)
+
+Misho's yes on the exact texts, 12 Oct ~06:45 UTC, in his own chat. NEED_RECALL_ON = true. Nothing is sent; a yes on the button is the next turn's instruction. Undo: the switch back to false.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/needRecall.test.ts | 6 +++---
+ src/services/needRecall.ts                | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/needRecall.test.ts b/src/services/__tests__/needRecall.test.ts
+index 66867c6..2b6df71 100644
+--- a/src/services/__tests__/needRecall.test.ts
++++ b/src/services/__tests__/needRecall.test.ts
+@@ -49,10 +49,10 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
+     expect(isNoteworthyFact('note', 'has a warehouse')).toBe(true);
+   });
+ 
+-  it('is off until Misho’s yes on the text: nothing is noted, so nothing is read or added', () => {
+-    expect(NEED_RECALL_ON).toBe(false);
++  it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
++    expect(NEED_RECALL_ON).toBe(true);
+     noteSavedFact('r1', '+1', 'note', 'has a warehouse');
+-    expect(takeSavedFact('r1')).toBeNull();
++    expect(takeSavedFact('r1')).toEqual({ phone: '+1', value: 'has a warehouse' });
+   });
+ 
+   it('the run offers it only when its reply has no buttons of its own; nothing is sent', () => {
+diff --git a/src/services/needRecall.ts b/src/services/needRecall.ts
+index ae5bb1c..9cc2119 100644
+--- a/src/services/needRecall.ts
++++ b/src/services/needRecall.ts
+@@ -17,7 +17,7 @@ import { RunLanguage } from './runLanguage';
+  * Misho's yes on the exact text (NIGHT_QUESTIONS BR). Off, nothing is noted,
+  * read or added.
+  */
+-export const NEED_RECALL_ON = false;
++export const NEED_RECALL_ON = true;
+ const QUERY_TIMEOUT_MS = 5_000;
+ const NEEDS_READ = 50;
+ 
+-- 
+2.43.0
+

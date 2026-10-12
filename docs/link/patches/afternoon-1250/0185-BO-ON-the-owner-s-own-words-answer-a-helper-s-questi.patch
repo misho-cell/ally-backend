@@ -1,0 +1,55 @@
+From 2b88dfff1942008aab7273f252cb3f8ea0a68672 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 06:49:39 +0000
+Subject: [PATCH] BO ON: the owner's own words answer a helper's question (4423
+ / 1688 part 1)
+
+Misho's yes on the exact text, 12 Oct ~06:45 UTC, in his own chat. OWNER_WORDS_ANSWER_ON = true: the answer-wake note carries the approved sentence. Undo: the switch back to false.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theOwnersOwnWordsAnswerTheHelper.test.ts   | 9 ++++-----
+ src/services/ownerWordsAnswer.ts                         | 2 +-
+ 2 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/src/services/__tests__/theOwnersOwnWordsAnswerTheHelper.test.ts b/src/services/__tests__/theOwnersOwnWordsAnswerTheHelper.test.ts
+index 5cf0eac..7559f87 100644
+--- a/src/services/__tests__/theOwnersOwnWordsAnswerTheHelper.test.ts
++++ b/src/services/__tests__/theOwnersOwnWordsAnswerTheHelper.test.ts
+@@ -15,15 +15,14 @@ const HELPER_ASKS = [
+ ];
+ 
+ describe('4423: the owner’s own words answer a helper’s question', () => {
+-  it('stays OFF until Misho says yes to the exact text', () => {
+-    expect(OWNER_WORDS_ANSWER_ON).toBe(false);
++  it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
++    expect(OWNER_WORDS_ANSWER_ON).toBe(true);
+   });
+ 
+-  it('leaves the answer-wake note exactly as it was while OFF', () => {
++  it('puts the approved sentence right after the „a question waits" clause', () => {
+     expect(buildShownAnswersWakeEvent(HELPER_ASKS)).toContain(
+-      'ადამიანი პასუხს ელოდება. არასდროს თქვა',
++      'ადამიანი პასუხს ელოდება.' + OWNER_WORDS_ANSWER_NOTE + ' არასდროს თქვა',
+     );
+-    expect(buildShownAnswersWakeEvent(HELPER_ASKS)).not.toContain('ask_contact-ით');
+   });
+ 
+   it('when ON, tells the run to answer from the owner’s words and only them', () => {
+diff --git a/src/services/ownerWordsAnswer.ts b/src/services/ownerWordsAnswer.ts
+index 56c4ebb..7de29fe 100644
+--- a/src/services/ownerWordsAnswer.ts
++++ b/src/services/ownerWordsAnswer.ts
+@@ -10,7 +10,7 @@
+  * OFF until Misho says yes to the exact text: it is model-facing (D44), and it
+  * lets the assistant write to a helper in the owner's name.
+  */
+-export const OWNER_WORDS_ANSWER_ON = false;
++export const OWNER_WORDS_ANSWER_ON = true;
+ 
+ /** MODEL-FACING (D44), waiting for Misho's yes word for word. */
+ export const OWNER_WORDS_ANSWER_NOTE =
+-- 
+2.43.0
+

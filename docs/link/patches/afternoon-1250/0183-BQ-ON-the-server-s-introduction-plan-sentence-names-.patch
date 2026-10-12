@@ -1,0 +1,50 @@
+From 13307b902ff07de658cdbba1bd469d533b0e4312 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 06:49:38 +0000
+Subject: [PATCH] BQ ON: the server's introduction-plan sentence names whom it
+ introduces (1454 b)
+
+Misho's yes on the exact text, 12 Oct ~06:45 UTC, in his own chat. INTRO_TARGET_SENTENCE_ON = true. Georgian only; en/ru/es keep the D663 sentence. Undo: the switch back to false.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theServerPlanNamesWhomItIntroduces.test.ts  | 8 +++++---
+ src/services/introTargetSentence.ts                       | 2 +-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts b/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts
+index b0ca9bc..cd5e617 100644
+--- a/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts
++++ b/src/services/__tests__/theServerPlanNamesWhomItIntroduces.test.ts
+@@ -55,9 +55,11 @@ describe('the sentence (D739’s form)', () => {
+     );
+   });
+ 
+-  it('is off until Misho’s yes: nothing changes for anyone today', () => {
+-    expect(INTRO_TARGET_SENTENCE_ON).toBe(false);
+-    expect(introTargetSentence(PLAN_INPUT, [LIKA], 'ka')).toBeNull();
++  it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
++    expect(INTRO_TARGET_SENTENCE_ON).toBe(true);
++    expect(introTargetSentence(PLAN_INPUT, [LIKA], 'ka')).toBe(
++      'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე.',
++    );
+   });
+ });
+ 
+diff --git a/src/services/introTargetSentence.ts b/src/services/introTargetSentence.ts
+index a5c370f..764b22c 100644
+--- a/src/services/introTargetSentence.ts
++++ b/src/services/introTargetSentence.ts
+@@ -11,7 +11,7 @@ import { RunLanguage } from './runLanguage';
+  * the server's sentence can name them. New words the owner reads: OFF until
+  * Misho's yes on the exact text (NIGHT_QUESTIONS BQ).
+  */
+-export const INTRO_TARGET_SENTENCE_ON = false;
++export const INTRO_TARGET_SENTENCE_ON = true;
+ 
+ /** A go-between as the plan stores them: name, phone id, whether they can be asked. */
+ export interface GoBetween {
+-- 
+2.43.0
+
