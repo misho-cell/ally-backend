@@ -806,8 +806,11 @@ export async function completeLogin(
  * is the point where „long enough for a day" meets „short enough to sleep on".
  * It is a constant rather than an env var on purpose: this number should be
  * read in a diff, not changed quietly in a dashboard.
+ *
+ * TEMPORARY, 12 October 21:15 UTC: Misho asked for 100 hours for now (§137).
+ * A stolen admin token now lives four days. It goes back to 12h when he says so.
  */
-const ADMIN_TOKEN_TTL = '12h';
+const ADMIN_TOKEN_TTL = '100h';
 
 export async function adminLogin(email: string, password: string): Promise<{ token: string }> {
   const result = await query<{ id: number; password: string; hasAccessToAlly: boolean }>(

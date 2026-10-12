@@ -1,49 +1,47 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+
+jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
+jest.mock('bcrypt', () => ({ __esModule: true, default: { compare: jest.fn() } }));
+
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { query } from '../../db/postgres/client';
+import { adminLogin } from '../auth.service';
 
 /**
- * Misho's ask, 19 September: raise the admin session from 8 hours to 12.
- *
- * A working day here is longer than eight hours, and an admin re-authenticating
- * mid-afternoon is a person interrupted. Today that meant the tester's seat
- * signed out of a test account with the whole acceptance run waiting behind
- * somebody typing a code.
- *
- * The cost is written beside the constant rather than only here: a stolen
- * admin token is usable for twelve hours instead of eight, there is no refresh
- * and no revocation list, so the TTL IS the blast radius.
- *
- * This test exists because the number is a security parameter. It should not
- * be possible to change it by accident, and if somebody changes it on purpose
- * they should have to say so by editing an assertion that names the trade-off.
+ * The admin session length is a security parameter: there is no refresh and
+ * no revocation list, so the TTL IS the blast radius of a stolen admin token.
+ * Raised from 8h to 12h on 19 September, and temporarily to 100h on
+ * 12 October (§137) on Misho's ask. This test reads the token adminLogin really
+ * issues, so the number cannot change without this assertion changing with it.
  */
+const mockQuery = query as jest.MockedFunction<typeof query>;
+const mockCompare = bcrypt.compare as unknown as jest.Mock;
+const HOUR_SECONDS = 60 * 60;
+const ADMIN_SESSION_HOURS = 100;
+
+function ttlSeconds(token: string): number {
+  const decoded = jwt.decode(token) as { iat: number; exp: number };
+  return decoded.exp - decoded.iat;
+}
+
 describe('the admin session length', () => {
-  const SECRET = 'test-secret-for-ttl';
-
-  function ttlSeconds(token: string): number {
-    const decoded = jwt.decode(token) as { iat: number; exp: number };
-    return decoded.exp - decoded.iat;
-  }
-
-  it('is twelve hours', () => {
-    const token = jwt.sign({ userId: '1', role: 'admin' }, SECRET, { expiresIn: '12h' });
-    expect(ttlSeconds(token)).toBe(12 * 60 * 60);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockQuery.mockResolvedValue({
+      rows: [{ id: 7, password: 'hash', hasAccessToAlly: true }],
+      rowCount: 1,
+    } as never);
+    mockCompare.mockResolvedValue(true);
   });
 
-  it('is longer than a working day and shorter than a night plus a day', () => {
-    // The two bounds the number was chosen between: long enough that nobody is
-    // interrupted mid-afternoon, short enough that a token taken in the evening
-    // is dead by morning.
-    const twelveHours = 12 * 60 * 60;
-    expect(twelveHours).toBeGreaterThan(8 * 60 * 60);
-    expect(twelveHours).toBeLessThan(24 * 60 * 60);
+  it('is one hundred hours for now (§137, temporary)', async () => {
+    const { token } = await adminLogin('admin@example.com', 'right');
+    expect(ttlSeconds(token)).toBe(ADMIN_SESSION_HOURS * HOUR_SECONDS);
   });
 
-  it('is not the USER token length, which is thirty days and a different decision', () => {
-    // A user signs in on their own phone and stays signed in; an admin holds a
-    // key to everybody's data. The two numbers must never be reasoned about
-    // together, and the gap between them is the reminder.
-    const user = jwt.sign({ userId: '1', role: 'user' }, SECRET, { expiresIn: '30d' });
-    expect(ttlSeconds(user)).toBe(30 * 24 * 60 * 60);
-    expect(ttlSeconds(user)).toBeGreaterThan(12 * 60 * 60);
+  it('issues nothing on a wrong password', async () => {
+    mockCompare.mockResolvedValue(false);
+    await expect(adminLogin('admin@example.com', 'wrong')).rejects.toThrow();
   });
 });
