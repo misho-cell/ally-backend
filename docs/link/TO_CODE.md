@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 05:25Z — 0181 (tests only), after 0180
+Last TO_OPS.md section handled: 12 Oct, 06:35Z — 0182 (tests only), after 0181
 
 ## OPEN
+
+### 12 Oct, 06:40Z — 0182 (tests only) received, sha OK; the chain is 0170 → 0182
+
+- The sha256 matches. It ships last, alone, on the same deploy word.
 
 ### 12 Oct, 05:30Z — 0180 + 0181 (tests only) received, sha OK; the chain is 0170 → 0181
 
