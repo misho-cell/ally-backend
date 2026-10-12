@@ -6301,3 +6301,8 @@ Yes to the three items waiting on him, each shown in his chat first:
 1. 2642: the sentence for Netai's pricing information, word for word as shown at 11:59 UTC — „When asked about refunds or payments, always name the seller (Ally, Inc.) and the payment provider (Stripe), as on netai.guru/refund." Applied with prompt.sh (`ops/prompt-changes/2642b-seller-and-stripe-named`).
 2. D647: rule 8 of the question editor's brief, word for word as shown at 12:25 UTC — „8. It never copies the owner's sentences word for word: it says what they need in its own words, in at most two short sentences, keeping every fact the reader needs to answer."
 3. 4126 items 3 and 4, built as the founder's own D757 says (asked at ~12:35 UTC): people from public member lists in their own table (name, organisation, listed role, source, check date; never a „knows" link); contacts' research professional only (family and close skipped); no 30-day re-research for people who are Netai users. 6a's text still needs its own yes.
+
+**§134 — 12 October 15:16 UTC, Misho in the code session's chat: „4720 A, გააკეთე"**
+4720 (box 54881): a public profile found by a search was handed over as a link. Option A, as put to him at ~15:15 UTC: when a
+web search's top three results hold a public LinkedIn profile, the server reads that one page itself (one paid Tavily extract,
+recorded in the cost ledger) and hands it over in the same result with its URL and the day it was read. No model-facing text.

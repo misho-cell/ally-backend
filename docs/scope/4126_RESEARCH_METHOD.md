@@ -79,7 +79,7 @@ Items 1, 2 and 5 can be built now. Items 3 and 4 wait for Tornike. Building item
   237 adds `conflict_note`. Confidence: an official source, or two independent sites, confirms; one ordinary
   source is possible.
 - Item 5: already built (3db7dd2).
-- Items 3 and 4 still wait for Tornike (box 49338, Q1 and Q2).
+- Items 3 and 4: built on Misho's yes (§133, 14:03 UTC) as D757 says — 0213 (runner) and 0214 (`list_people`). The tester answered Q1 and Q2 for Tornike the same afternoon: „Yes to both, it's already in T4126."
 
 ## Texts for Misho's yes (D44), word for word
 

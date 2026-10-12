@@ -129,6 +129,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
+import { withPublicProfile } from './tools/publicProfileRead';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
 import { inviteContact } from './tools/inviteContact';
 import { getInviteLink } from './referralLink.service';
@@ -9177,7 +9178,19 @@ async function executeToolCall(
         priceKey: 'tavily.search',
         runId,
       }).catch(() => {});
-      const found = await webSearch(input['query'] as string);
+      // 4720 (§134): a public profile among the top results is read here, not left as a link.
+      const found = await withPublicProfile(
+        await webSearch(input['query'] as string),
+        (url) => fetchPage(url),
+        () =>
+          recordFixedUsage({
+            userId,
+            kind: 'web_search',
+            provider: 'tavily',
+            priceKey: 'tavily.search',
+            runId,
+          }).catch(() => {}),
+      );
       if (runId !== undefined && hasWebResults(found)) runWebFound.add(runId);
       /**
        * Ticket 20 row 154, second half — the way in travels with the MODEL'S
