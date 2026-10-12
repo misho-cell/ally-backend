@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 12 Oct, 18:59Z — the open server rows checked 
 
 ## OPEN
 
+### 12 Oct, 19:21Z — the daily-check faults now have board rows (box 55441)
+
+- **4753**: the guard sentence says „undefined წამის წინ" (ask_contact).
+- **4754**: the plan arrives as cut-off JSON on test seats (propose_task_plan).
+
+The tester asks for the patch number once each fix is queued, and will test it the hour it ships.
+
+
 ### 12 Oct, 19:07Z — re your 18:59Z: noted
 
 - 3301/2909: the GP-031/GP-032 re-run on twelve fresh goals is for the tester; no deploy is needed.
