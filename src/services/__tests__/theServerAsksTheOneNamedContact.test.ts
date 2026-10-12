@@ -73,6 +73,17 @@ describe('the server asks the one contact the owner named', () => {
     expect(mockCreateAsk).not.toHaveBeenCalled();
   });
 
+  it('sends nothing, and opens no goal, for a line that names whom to ask but not what (4687)', async () => {
+    mockFindPhones.mockResolvedValue(['995599000001']);
+    await expect(sendInstructedAsk('165699', 24996, 'ლიკას კითხე')).resolves.toEqual({
+      result: InstructedAskResult.NotSent,
+    });
+    expect(mockFindPhones).toHaveBeenCalled();
+    expect(mockCreateAsk).not.toHaveBeenCalled();
+    expect(mockCreateTask).not.toHaveBeenCalled();
+    expect(mockGrant).not.toHaveBeenCalled();
+  });
+
   it('sends nothing for a line that is no instruction', async () => {
     await expect(sendInstructedAsk('178582', 42485, 'მჭირდება ბუღალტერი')).resolves.toEqual({
       result: InstructedAskResult.NotSent,

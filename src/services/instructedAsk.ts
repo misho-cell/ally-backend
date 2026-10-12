@@ -219,11 +219,15 @@ export async function sendInstructedAsk(
   const askable = contacts.filter((c) => !excluded.has(c.phone));
   // 3268: before any goal is opened for it — nobody left to ask, no goal.
   if (askable.length === 0) return summed(people);
-  const taskId = await goalFor(userId, threadId, ownerLine);
-  await grantTaskPermission(userId, taskId);
   // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
   // 3928: a line with no question after the names asks about the need said before them.
-  const asked = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
+  const asked = instructionQuestion(sentence) ?? instructionNeed(sentence);
+  // 4687 (box 54550, goal 24996): „ლიკას კითხე" alone — the question was the owner's
+  // earlier message — reached Lika as the whole question. A line that names whom to
+  // ask but not what is no question; the run, which read the earlier message, asks.
+  if (asked === null) return NOT_SENT;
+  const taskId = await goalFor(userId, threadId, ownerLine);
+  await grantTaskPermission(userId, taskId);
   // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
   const question = questionWithFacts(
     asked,
