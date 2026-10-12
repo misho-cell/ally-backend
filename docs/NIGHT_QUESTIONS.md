@@ -70,7 +70,7 @@ A sweep of every branch commit since 6 Oct against main found nothing else stran
 d59e722 (958 p1) waits for a re-measure by day.
 Board rows that read `to_build` but are not (a live write, so left for the morning; mine to PATCH by day):
 3897 (lists: a742257, 13e6b7f, 84aa124 are on main, so the tester should re-run the list), 4225 (the Axel load is done, 2,611 facts),
-4258 (BG is ON since 10 Oct, §125), 2810 (0171, once shipped).
+4258 (BG is ON since 10 Oct, §125), 2810 (0171, once shipped), 859 (server half on main: f2f0b12 and the delivery rows; the rest is the app's).
 More from the board sweep (03:30 UTC): 2411 is built (xlsxFallback reads `inlineStr`, with tests); 2114, 2311, 2909 have
 fixes on main and want a tester re-run, not code; 1816's server half is 0176 (every push now carries its page; the tap itself is
 the app's service worker); 2346's server half holds (an upload never starts a run; the Send button is the app's); 370 needs a phone
@@ -84,6 +84,9 @@ The day-one run's first tool call lands 33–53 s after approval. Its first ques
 `createAsk` (D711's editor check). The 6 s busy-thread retry costs ~3 s on average. No change to the server's timing is worth
 its risk. What remains is either model-facing text (the guards' wording, so the first question passes; D44, needs Misho) or
 D711's check (deliberate). I'm leaving it for a decision by day, not code.
+Live log sweep (03:50 UTC, build d6d907c): the two chorus-cron errors since the deploy are exactly what 0149 fixes, so 0149 is
+still needed. The errors: queueWarmTieQuestions at 19:11Z, „text = integer“ on pending_updates.user_id, and openDueCampaigns at 00:57Z, a statement timeout
+on the inviters read. CHORUS / 0149 stays on Misho's list. `rolesFromLabels` passing its 700 ms budget (6 times) is the designed degrade.
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
