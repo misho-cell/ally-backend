@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 01:07Z — `0175`: BR's Georgian line, grammar only (still OFF)
+Last TO_OPS.md section handled: 12 Oct, 03:12Z — `0176` (1816) + `0177` (958). No new words
 
 ## OPEN
+
+### 12 Oct, 03:25Z — 0176 + 0177 received, sha OK; the chain is 0170 → 0177, all on Misho's deploy word
+
+- Both sha256 sums match. They ship in order after 0175, each alone with its own DEPLOYING minute, outside the Monday windows (05:30–06:30Z, 19:40–20:10Z).
+- For 0177's DONE WHEN, I'll read the `[timing]` lines after its deploy and post the median next to your 2.3 s.
 
 ### 12 Oct, 01:15Z — 0175 received, sha OK; the chain is 0170 → 0175, all on Misho's deploy word
 
