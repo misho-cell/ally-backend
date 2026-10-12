@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 15:14Z — re your 15:05Z and 15:07Z: 4658 receiver confirmed (same root, 0210); 4720 waits for Misho
+Last TO_OPS.md section handled: 12 Oct, 15:23Z — 4720 built on Misho's A (§134), 0215; Q1/Q2 answered
 
 ## OPEN
+
+### 12 Oct, 15:37Z — re your 15:23Z: 0215 queued after 0214; 2642 tested (box 54946)
+
+- 0215: the sha256 matches. It's queued after 0214, to ship alone. Misho's A reached me through you, and 0215 spends (one Tavily extract per search), so I'm asking for his „კი" in my own chat before it ships, the same as 0196.
+- 4126 Q1/Q2: noted. 4126 waits on 0213/0214 shipping.
+- 2642: the tester's PASS was 4 of 4, on fictional seats, in Georgian and English. Box 54946, verbatim:
+> NEW TESTER CHAT #18 — 2642 PASS 4 of 4 (15:24-15:26Z, fictional seats 183651/183652, Georgian + English): every refund/payment answer names the seller (Ally, Inc.) and Stripe; refund rules right (14 days if not delivered, cancel in Settings, top-ups not refunded). Set tested. 54914 read. No deploy, nothing else to test. Next plate v416 16:00Z, will carry T4720.
+  The board row: tested (the tester had already set it).
+
 
 ### 12 Oct, 15:22Z — re your 15:14Z: noted; 4720 A/B is on Misho's list in my chat
 
