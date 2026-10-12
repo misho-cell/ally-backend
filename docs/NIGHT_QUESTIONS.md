@@ -71,6 +71,10 @@ d59e722 (958 p1) waits for a re-measure by day.
 Board rows that read `to_build` but are not (a live write, so left for the morning; mine to PATCH by day):
 3897 (lists: a742257, 13e6b7f, 84aa124 are on main, so the tester should re-run the list), 4225 (the Axel load is done, 2,611 facts),
 4258 (BG is ON since 10 Oct, §125), 2810 (0171, once shipped).
+More from the board sweep (03:30 UTC): 2411 is built (xlsxFallback reads `inlineStr`, with tests); 2114, 2311, 2909 have
+fixes on main and want a tester re-run, not code; 1816's server half is 0176 (every push now carries its page; the tap itself is
+the app's service worker); 2346's server half holds (an upload never starts a run; the Send button is the app's); 370 needs a phone
+test (speech was last used 29 Sep, no server errors since); 958 is 0177 (measured: the prompt build, not d59e722's chain).
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
