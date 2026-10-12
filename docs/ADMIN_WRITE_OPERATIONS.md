@@ -6267,4 +6267,5 @@ docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:
 - **6b** („possible" with source and date), **6c** (ask the owner when work status is unclear), **6d** („სამსახურში რამე სიახლეა?",
   at most once a month): approved as written.
 - **6a** was not answered: it waits for item 3 (Tornike's Q1).
+- **Later the same day, „6d კი"**: the sentence around the question (`WORK_NEWS_INSTRUCTION`), approved as written; 6d is switched on.
 - **Undo:** each switch or text back out, one revert each.

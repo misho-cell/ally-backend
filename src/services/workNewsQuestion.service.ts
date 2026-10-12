@@ -10,11 +10,11 @@ import { notATestSeat } from './testSeatCreate.service';
  * It reaches the user the way the warm-tie question does: one item on the
  * pending list, asked when the conversation has room, never pushed.
  *
- * The question is approved. The one sentence around it
- * (WORK_NEWS_INSTRUCTION) is MODEL-FACING and new, so the whole thing stays
- * OFF until Misho says yes to that sentence (D44).
+ * The question and the sentence around it (WORK_NEWS_INSTRUCTION) are both
+ * Misho's yes, word for word: the question on 12 Oct (§129), the sentence the
+ * same day („6d კი"). Back to false stops it.
  */
-export const WORK_NEWS_QUESTION_ON = false;
+export const WORK_NEWS_QUESTION_ON = true;
 
 export const WORK_NEWS_KIND = 'work_news_question';
 export const WORK_NEWS_QUESTION = 'სამსახურში რამე სიახლეა?';

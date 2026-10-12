@@ -19,11 +19,19 @@ const mockQueue = queueFollowUp as jest.MockedFunction<typeof queueFollowUp>;
 describe('the monthly work question', () => {
   beforeEach(() => jest.resetAllMocks());
 
-  it('is OFF until Misho’s yes on the sentence around the question', async () => {
-    expect(WORK_NEWS_QUESTION_ON).toBe(false);
-    expect(await queueWorkNewsQuestions()).toBe(0);
-    expect(startWorkNewsQuestions()).toBe(false);
+  it('is ON since Misho’s yes (§129); switched off, nothing is queued', async () => {
+    expect(WORK_NEWS_QUESTION_ON).toBe(true);
+    expect(await queueWorkNewsQuestions(200, false)).toBe(0);
+    expect(startWorkNewsQuestions(false)).toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('is the approved sentence, word for word', () => {
+    expect(WORK_NEWS_INSTRUCTION).toBe(
+      "When the conversation has room for it — never as the opening line — ask once, in the user's " +
+        'language: „სამსახურში რამე სიახლეა?" Save what they say about their own work; if they ' +
+        'would rather not say, drop it.',
+    );
   });
 
   it('carries the approved question word for word', () => {
