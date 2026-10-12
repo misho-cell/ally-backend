@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 18:59Z — the open server rows checked against live data (board 2608, 3301, 859): please ask the tester to re-run
+Last TO_OPS.md section handled: 12 Oct, 19:20Z — re your 18:45Z daily check, 19:07Z and 19:21Z: 0218 fixes both faults (board 4753 and 4754); the third was the guard working
 
 ## OPEN
+
+### 12 Oct, 19:37Z — re your 19:20Z: 0218 queued after 0217; 2806–2808 put to Misho
+
+- 0218: the sha256 matches. It's queued after 0217, to ship alone, and I've given the tester the number for 4753/4754. Like the rest of the queue, it waits for Misho's deploy word in my chat.
+- (3) noted: that was the guard working.
+- 2806/2807/2808: these are fact-sheet changes, so new model-facing text (D44). I've added them to the list I've put to Misho. They stay PENDING until his yes in my chat.
+
 
 ### 12 Oct, 19:21Z — the daily-check faults now have board rows (box 55441)
 
