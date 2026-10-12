@@ -1,0 +1,113 @@
+From 3f8423a70396af3150b4e1faa48f6dcc8a964014 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 03:21:42 +0000
+Subject: [PATCH] 3270: a company typed in its English spelling reaches its
+ Georgian label
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ME-037, 2 of 2: „ვინ მყავს Colliers-ში?" missed the contact saved as
+„ნიკა კოლიერსი". normalize_search_token gives „colliers" and „koliersi"
+(trigram similarity 0.2), and the Georgian readings of a Latin word were
+made letter by letter (c → ც), so no term reached the label.
+
+buildSearchTerms now also reads an English spelling as it sounds before
+making its Georgian readings: a hard c (and ck) is k, a doubled consonant is
+one. „Colliers" → „koliers" → „კოლიერს", which the label contains. Words
+that sound as spelled add nothing. Server search only, no new words.
+
+Not covered here: the second half of ME-037 („რა იცი ნიკა კოლიერსზე?"
+answered „saved as a friend"), which is how the model reads the label.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...yInItsEnglishSpellingFindsTheLabel.test.ts | 32 +++++++++++++++++++
+ src/services/tools/transliterate.ts           | 24 +++++++++++++-
+ 2 files changed, 55 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aCompanyInItsEnglishSpellingFindsTheLabel.test.ts
+
+diff --git a/src/services/__tests__/aCompanyInItsEnglishSpellingFindsTheLabel.test.ts b/src/services/__tests__/aCompanyInItsEnglishSpellingFindsTheLabel.test.ts
+new file mode 100644
+index 0000000..eaf3342
+--- /dev/null
++++ b/src/services/__tests__/aCompanyInItsEnglishSpellingFindsTheLabel.test.ts
+@@ -0,0 +1,32 @@
++import { buildSearchTerms, englishAsItSounds } from '../tools/transliterate';
++
++/**
++ * 3270 (ME-037, 2 of 2): a contact saved as „ნიკა კოლიერსი" was not found by
++ * „ვინ მყავს Colliers-ში?". The English spelling's Georgian reading is now made
++ * from how it sounds, so the label is reached.
++ */
++describe('a company typed in its English spelling', () => {
++  it('is read as it sounds: a hard c is k, a doubled consonant is one', () => {
++    expect(englishAsItSounds('Colliers')).toBe('koliers');
++    expect(englishAsItSounds('Rocket')).toBe('roket');
++    expect(englishAsItSounds('Cisco')).toBe('cisko');
++    expect(englishAsItSounds('lawyer')).toBe('lawyer');
++    expect(englishAsItSounds('engineer')).toBe('engineer');
++  });
++
++  it('reaches the Georgian label „ნიკა კოლიერსი"', () => {
++    const terms = buildSearchTerms('Colliers');
++    expect(terms.some((term) => 'ნიკა კოლიერსი'.includes(term))).toBe(true);
++  });
++
++  it('adds nothing for a word that sounds as it is spelled', () => {
++    const before = buildSearchTerms('lawyer');
++    expect(before.filter((term) => term.includes('ლ')).length).toBeGreaterThan(0);
++    expect(new Set(before).size).toBe(before.length);
++  });
++
++  it('leaves a Georgian query untouched by the English fold', () => {
++    expect(buildSearchTerms('კოლიერსი')).toEqual(buildSearchTerms('კოლიერსი'));
++    expect(englishAsItSounds('კოლიერსი')).toBe('კოლიერსი');
++  });
++});
+diff --git a/src/services/tools/transliterate.ts b/src/services/tools/transliterate.ts
+index 64c256c..2ccd740 100644
+--- a/src/services/tools/transliterate.ts
++++ b/src/services/tools/transliterate.ts
+@@ -303,6 +303,25 @@ function endingVariants(term: string): string[] {
+   return [term];
+ }
+ 
++/** A hard „c" (not before e, i, y) and „ck" sound as k; a soft „c" is left alone. */
++const HARD_C_RE = /ck|c(?![eiy])/gu;
++/**
++ * A doubled consonant is one sound: „ll" in „Colliers" is the ლ of „კოლიერსი".
++ * Vowels are left alone — „ee" in „engineer" is not one „e".
++ */
++const DOUBLED_CONSONANT_RE = /([bcdfghjklmnpqrstvwxz])\1/gu;
++
++/**
++ * 3270 (ME-037): „ვინ მყავს Colliers-ში?" missed „ნიკა კოლიერსი". A company name
++ * is typed in its English spelling, and a Georgian label writes it as it sounds:
++ * normalize_search_token folds „colliers" to „colliers" and „კოლიერსი" to
++ * „koliersi" (similarity 0.2). The word as it sounds — „koliers" — is the
++ * Latin form a Georgian reading is made from. Unchanged when nothing folds.
++ */
++export function englishAsItSounds(word: string): string {
++  return word.toLowerCase().replace(HARD_C_RE, 'k').replace(DOUBLED_CONSONANT_RE, '$1');
++}
++
+ /**
+  * Query terms to try: the lowercased original, its Latin transliteration when
+  * Georgian, common drift variants of the Latin form, Armenian-ending folds, and
+@@ -354,7 +373,10 @@ export function buildSearchTerms(rawQuery: string): readonly string[] {
+     }
+   }
+   const capped = [...terms].slice(0, MAX_TERMS);
+-  return [...new Set([...capped, ...georgianVariants(lower)])];
++  // 3270: an English spelling's Georgian reading is made from how it sounds.
++  const sounded = hasGeorgian(lower) ? lower : englishAsItSounds(lower);
++  const soundedReadings = sounded === lower ? [] : georgianVariants(sounded);
++  return [...new Set([...capped, ...georgianVariants(lower), ...soundedReadings])];
+ }
+ 
+ /**
+-- 
+2.43.0
+

@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 03:24Z — `0178`: 3270, a company in its English spelling reaches the Georgian label. No new words
+
+- **Patch:** `patches/afternoon-1250/0178-3270-a-company-typed-in-its-English-spelling-reaches.patch`
+  - sha256 `8d772b00cba48a05e7e492c07c1716c0bf3a023e4af8cdc2df8fbc3309d506f3`
+  - Cut on the chain after 0177. `npm run verify` is green on the whole chain.
+  - Branch: b2d9ba6.
+- **Root cause, checked on the DB with read-only functions:**
+  - `normalize_search_token` gives „colliers" for Colliers and „koliersi" for კოლიერსი (trigram similarity 0.2), so the fuzzy pass can't bridge them.
+  - The Georgian readings of a Latin word were made letter by letter (c → ც).
+- **Fix:** `buildSearchTerms` also reads an English spelling as it sounds before making its Georgian readings.
+  - A hard c (and ck) is k; a doubled consonant is one.
+  - „Colliers" → „koliers" → „კოლიერს", which the label „ნიკა კოლიერსი" contains.
+  - Vowels are left alone („engineer" is unchanged); words that sound as spelled add no terms.
+- **Not covered:** ME-037's second half („რა იცი ნიკა კოლიერსზე?" answered „saved as a friend"). That is how the model reads the label, so it's prompt territory and needs Misho.
+- **Order:** after 0177. All of 0170 → 0178 wait for the deploy word.
+- **DONE WHEN:** ME-037 step 1: „ვინ მყავს Colliers-ში?" names the contact saved as „ნიკა კოლიერსი".
+
 ### 12 Oct, 03:12Z — `0176` (1816, every push opens its page) + `0177` (958, the prompt reads run together). No new words
 
 - **0176:** `patches/afternoon-1250/0176-1816-the-engagement-push-opens-the-conversation-too-.patch`
