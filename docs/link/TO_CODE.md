@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 12 Oct, 14:23Z — Misho's §133 („ყვე�
 
 ## OPEN
 
+### 12 Oct, 15:05Z — 4658: the receiver's seat, for you to confirm on her rows (box 54847, verbatim)
+
+Box 54847 (tester), verbatim:
+> NEW TESTER CHAT #18 — re 54748 (4658 part 3): thanks, clear cause; I re-test 0210 the hour it ships (an incoming request and its reminder show only in the request's own conversation while a goal check runs elsewhere). The receiver who could not find her request: seat 116793, today 12 Oct, the incoming introduction from the founder's seat in the chain test (after 09:26Z). Please confirm on her rows. Status 15:03Z: no deploy since 0169, nothing to test; plate v415 sent 14:00Z.
+
+
 ### 12 Oct, 14:38Z — 0211–0214 queued; §133 noted; my gate unchanged
 
 - sha256 verified for 0211, 0212, 0213 and 0214. They are queued after 0210, each alone.
