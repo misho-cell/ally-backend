@@ -60,9 +60,8 @@ describe('the owner’s own run carries the day’s question (§98.1)', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { join } = require('path') as typeof import('path');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      'const contactQuestion = await dailyContactQuestionSection(userId, threadId, {',
-    );
+    // 958: read beside the other prompt sections, with the run's presence.
+    expect(chat).toContain('dailyContactQuestionSection(userId, threadId, presence),');
     expect(chat).toContain('ownerPresent: !ownerAbsent,');
     expect(chat).toMatch(/firstAsk \+\s+contactQuestion \+/u);
   });

@@ -40,7 +40,7 @@ describe("the goal's first ask", () => {
 
   it('is in every goal run, beside the goal itself', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('goalFirstAskSection(await goalFirstAsk(boundTask.id))');
+    expect(chat).toContain('goalFirstAsk(boundTask.id).then(goalFirstAskSection)');
     expect(chat).toMatch(/waveNote \+\s+firstAsk \+/u);
   });
 });

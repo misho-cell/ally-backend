@@ -5310,13 +5310,7 @@ async function buildAgentSystemPrompt(
   //
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
-  const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
-  const askStates = boundTask ? await askStatusSectionOrNothing(boundTask, boundAsks) : '';
-  const waveNote = boundTask ? await waveSectionOrNothing(boundTask) : '';
-  // D713 (phase 1): the owner's first ask on this goal, on every turn.
-  const firstAsk = boundTask ? goalFirstAskSection(await goalFirstAsk(boundTask.id)) : '';
-  // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
-  const contactQuestion = await dailyContactQuestionSection(userId, threadId, {
+  const presence = {
     ownerPresent: !ownerAbsent,
     regularThread: threadType === 'regular',
     goalBound: boundTask !== null,
@@ -5325,27 +5319,25 @@ async function buildAgentSystemPrompt(
     ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
     ownerLine,
-  });
-  // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words.
-  const contactsReminder = await contactsReminderSection(
-    userId,
-    {
-      ownerPresent: !ownerAbsent,
-      regularThread: threadType === 'regular',
-      goalBound: boundTask !== null,
-      preview: forcedMode !== undefined,
-      ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
-      ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
-      ownerAsksWhatWaits: asksWhatWaits(ownerLine),
-      ownerLine,
-    },
-    contactQuestion !== '',
-  );
-  // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
-  const noContacts =
+  };
+  // 958: these six reads do not depend on each other, so they run together; one
+  // after another they were the slowest part of building the prompt.
+  const [heldNote, askStates, waveNote, firstAsk, contactQuestion, noContacts] = await Promise.all([
+    boundTask ? heldAsksNoteOrNothing(boundTask.id, userId) : Promise.resolve(''),
+    boundTask ? askStatusSectionOrNothing(boundTask, boundAsks) : Promise.resolve(''),
+    boundTask ? waveSectionOrNothing(boundTask) : Promise.resolve(''),
+    // D713 (phase 1): the owner's first ask on this goal, on every turn.
+    boundTask ? goalFirstAsk(boundTask.id).then(goalFirstAskSection) : Promise.resolve(''),
+    // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
+    dailyContactQuestionSection(userId, threadId, presence),
+    // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
     !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
-      ? await noContactsYetSection(userId, threadId)
-      : '';
+      ? noContactsYetSection(userId, threadId)
+      : Promise.resolve(''),
+  ]);
+  // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words —
+  // after the day's question, which it gives way to.
+  const contactsReminder = await contactsReminderSection(userId, presence, contactQuestion !== '');
   const stablePrompt = joinStablePrompt(
     // Global — identical for every account, every run. Its own cache
     // breakpoint follows it (systemPromptParts), so a change further down
