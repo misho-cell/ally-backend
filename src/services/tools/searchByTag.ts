@@ -69,6 +69,8 @@ export interface TagRow {
   own_tags: string[] | null;
   /** The tester's 988: did any match come from the owner's own label or a public field? */
   own_hit?: boolean | null;
+  /** 1694 (§111.2): found only through the member's own profession / industry. */
+  self_work_only?: boolean | null;
   employer: string | null;
   jobPosition: string | null;
   city: string | null;
@@ -177,18 +179,19 @@ async function runExactSearch(
   rawGroups: string[][],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const m = buildExactMatchSql(userId, rawGroups, blockedPhones);
+  const m = buildExactMatchSql(userId, rawGroups, blockedPhones, true);
   const [result, countResult] = await Promise.all([
     query<TagRow>(
       `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
        hits AS (
          SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
-                bool_or(own) AS own_hit
+                bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
          FROM matched
          WHERE phone != ALL($${m.blockIdx})
          GROUP BY phone
        )
-       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit
+       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
+              BOOL_AND(h.self_work_only) AS self_work_only
        ${AGG_JOINS}
        GROUP BY h.phone
        ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
@@ -417,6 +420,19 @@ export function withOthersSavedAs(
   return row.found_by_others_labels === true ? { ...row, others_saved_as: tagQuery.trim() } : row;
 }
 
+/**
+ * BP (1694 a, privacy; Misho's yes on the exact text, 12 Oct). MODEL-FACING
+ * (D44): a member found only by what they wrote about themselves may be
+ * offered, never described.
+ */
+export const FOUND_BY_OWN_WORK_NOTE =
+  'This person was found only by what they wrote about themselves. Offer them as someone ' +
+  'who may be able to help; never say what they do, what they wrote, or why they came up.';
+
+function foundByOwnWorkOnly(row: TagRow): boolean {
+  return row.self_work_only === true;
+}
+
 function shape(
   row: TagRow,
   facts: Map<string, ContactFactFields>,
@@ -442,8 +458,12 @@ function shape(
        */
       tags: ownDisplayableTags(row),
       ...(othersLabelsMatched(row) && { found_by_others_labels: true }),
-      employer: row.employer ?? null,
-      jobPosition: row.jobPosition ?? null,
+      // 1694 (Misho, §111.2; BP, his yes of 12 Oct): matched only on what the
+      // member said about their own work. The row says how it may be used, and
+      // carries no role of theirs to repeat (box 52938: „works in customs").
+      ...(foundByOwnWorkOnly(row) && { found_by_their_own_work: FOUND_BY_OWN_WORK_NOTE }),
+      employer: foundByOwnWorkOnly(row) ? null : (row.employer ?? null),
+      jobPosition: foundByOwnWorkOnly(row) ? null : (row.jobPosition ?? null),
       city: row.city ?? null,
     },
     facts,
