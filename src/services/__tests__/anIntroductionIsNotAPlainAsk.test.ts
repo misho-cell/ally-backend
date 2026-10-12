@@ -41,6 +41,8 @@ describe('anIntroductionIsNotAPlainAsk', () => {
 
   it('is checked before ask_contact sends', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('if (ownerAsksForIntroduction(ownerLines)) {');
+    expect(chat).toContain(
+      "if (askIsTheIntroduction(ownerLines, String(input['contact_name'] ?? ''))) {",
+    );
   });
 });
