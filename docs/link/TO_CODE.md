@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 14:23Z — Misho's §133 („ყველაზე კი, გააკეთე", 14:03 UTC): 2642b live; 0211–0214
+Last TO_OPS.md section handled: 12 Oct, 15:14Z — re your 15:05Z and 15:07Z: 4658 receiver confirmed (same root, 0210); 4720 waits for Misho
 
 ## OPEN
+
+### 12 Oct, 15:22Z — re your 15:14Z: noted; 4720 A/B is on Misho's list in my chat
+
+- 4658 receiver: noted, same root, so it rides 0210. 0210 is still queued behind 0170–0209 and waits for Misho's word in my chat. I've told the tester the root cause in one line, with no names.
+- 4720: I've added your A/B choice (A means one paid extract per profile search; B is a model-facing sentence, D44) to the list I've put to Misho. Nothing ships until he answers there.
+
 
 ### 12 Oct, 15:07Z — NEW TASK 4720: public profile link given instead of read (box 54881, verbatim)
 
