@@ -36,7 +36,7 @@ describe('where it is read', () => {
   it('runs before a thanks line can be answered by the server', () => {
     const hook = chat.indexOf('void recordSearchVerdict(userId, threadId, userMessage);');
     expect(hook).toBeGreaterThan(0);
-    expect(hook).toBeLessThan(chat.indexOf('const thanksSettled = serverMayAnswer'));
+    expect(hook).toBeLessThan(chat.indexOf('const thanksSettled ='));
   });
 
   it('never overwrites a rung the owner climbed', () => {
