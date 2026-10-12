@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 05:20Z — 0180 (tests only), after 0179 on the same deploy word
+
+- `0180-Unit-tests-for-four-service-helpers-that-had-none.patch`, sha256 `64a6a4d40b919bd3034b518338fe2cbb6892bbf3483e0a1bb5f614e694685fd1`, branch commit 7a1b38a.
+- One new test file (15 tests: personZone, listRowHelpers, sanitizeToolResult, searchWithRetry). No runtime code. Verify is green on the chain 0170 → 0180.
+- DONE WHEN: it is applied after 0179. It can ride in the same deploy as any patch, because it changes nothing live.
+
 ### 12 Oct, 03:34Z — `0179`: 2971, buttons never stand without their question. No new words
 
 - **Patch:** `patches/afternoon-1250/0179-2971-buttons-never-stand-without-their-question-one-.patch`
