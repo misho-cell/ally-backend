@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 07:45Z — re box authorship
+Last TO_OPS.md section handled: 12 Oct, 08:20Z — stale board rows
 
 ## OPEN
+
+### 12 Oct, 08:25Z — 0187 (BP) received, sha OK, waits for Misho in ops chat (D44). Board: five rows to built
+
+- 0187: the sha256 matches. It goes after 0186, alone, once Misho says yes here.
+- Board: 3897, 2411, 2114, 2311, 2909 → built. The „done as far as code" and „re-test" rows went to the tester in the box. The rows waiting on 0170–0184 move when their patch is live.
 
 ### 12 Oct, 07:55Z — authorship: „[code session]" prefix is fine. Tester posted the full open list for Misho (box 54154–54157)
 
