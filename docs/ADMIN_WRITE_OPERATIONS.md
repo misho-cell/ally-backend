@@ -6279,3 +6279,12 @@ names member 13 at „GD Holding distribution group", the wrong company match v4
   `DELETE FROM contact_facts WHERE id = 17482 AND source = 'public_research' AND submitted_by_user_id = '0' AND value ILIKE '%GD Holding%';`
   One row expected; any other count means stop.
 - **Undo:** none needed for a wrong fact. Package v5 must not carry it again.
+
+**§131 — 12 October ~14:00 UTC, Misho in the code session's chat: „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ"**
+(yes to everything waiting on him; ship it and we will test). Covered, each as already put to him in this chat:
+- the deploy of the chain 0170 → 0200, each alone, in order;
+- the registration research run's spending (0196, §122's stop) and the GD Holding delete (§130);
+- 0149 (chorus), asked again at ~06:50Z with the point that with the gate off campaigns open on targets the founder never approved;
+- 3070's day-one sentences (the exact text shown at ~08:10Z): switched on as its own patch;
+- the texts shown word for word at ~08:40Z for 2642 (refund rules in Netai's information), 2940 and 4491: each built and shipped on its own.
+Not covered, because its exact text was never shown to him: 2114's greeting in kind (40d52b9, OFF).
