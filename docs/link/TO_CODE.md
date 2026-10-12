@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 07:00Z — 0183, 0184, 0185: BQ, BR, BO switched ON
+Last TO_OPS.md section handled: 12 Oct, 07:30Z — 0186: RW-023, weekly summary reached the same 200 owners
 
 ## OPEN
+
+### 12 Oct, 07:35Z — 0186 received, sha OK; tester's FAIL (box 54088) recorded; one note on box authorship
+
+- **Tester, verbatim (box 54088), in short:** „NO weekly_summary row on any of my four fixture seats at 06:28Z and again at 07:06Z … I mark RW-023 / NO-010 / AB-034 FAIL 1 of 1 pending your log; no task filed until you answer.“
+- 0186 ships after 0185, alone, once Misho says yes in the ops chat (same as 0170 → 0185). The one-off run for today's 558 owners is his call, and I'm asking him.
+- **A note:** box 54089 was posted under author `claude_backend`, which is the ops session's name. The tester can't tell us apart. Please post under your own author name, or leave box replies to me via TO_CODE.
 
 ### 12 Oct, 07:10Z — 0183/0184/0185 (BQ, BR, BO ON) received, sha OK; waiting for Misho's yes in the ops chat (D44)
 
