@@ -1,0 +1,188 @@
+From 25e3765795b2bb4560e5ae8bf65794a5dcc0a6ad Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 10:23:35 +0000
+Subject: [PATCH] =?UTF-8?q?4126=206b=20+=206c:=20researched=20facts=20reac?=
+ =?UTF-8?q?h=20the=20model=20with=20their=20doubt=20(=C2=A7119.4's=20read?=
+ =?UTF-8?q?=20step)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 12 Oct (§129), on 6b and 6c word for word. get_contact_facts (app, full profile,
+connector) now carries a contact's standing research facts with status (confirmed / possible),
+source URL, date and any conflict, and RESEARCH_FACTS_NOTE: a possible fact is said as possible
+with source and date, and an unclear work status is asked of the owner. Removed and retracted facts
+never show.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/contactFacts.service.test.ts    |  2 +
+ ...researchFactsAreReadWithTheirDoubt.test.ts | 49 +++++++++++++++++
+ src/services/contactFacts.service.ts          |  6 +-
+ src/services/researchFactsView.ts             | 55 +++++++++++++++++++
+ 4 files changed, 111 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/researchFactsAreReadWithTheirDoubt.test.ts
+ create mode 100644 src/services/researchFactsView.ts
+
+diff --git a/src/services/__tests__/contactFacts.service.test.ts b/src/services/__tests__/contactFacts.service.test.ts
+index f89c5cd..6f59147 100644
+--- a/src/services/__tests__/contactFacts.service.test.ts
++++ b/src/services/__tests__/contactFacts.service.test.ts
+@@ -386,6 +386,8 @@ describe('getVisibleFacts — owner value never hidden by the crowd (F1)', () =>
+     mockQuery.mockImplementation((sql: string) => {
+       if (sql.includes('submitted_by_user_id = $2')) return Promise.resolve(rows(own) as never);
+       if (sql.includes('is_public = true')) return Promise.resolve(rows(pub) as never);
++      // 4126 / §119.4: the researched facts are read beside them; none here.
++      if (sql.includes('research_status')) return Promise.resolve(rows([]) as never);
+       throw new Error(`Unexpected query: ${sql}`);
+     });
+   }
+diff --git a/src/services/__tests__/researchFactsAreReadWithTheirDoubt.test.ts b/src/services/__tests__/researchFactsAreReadWithTheirDoubt.test.ts
+new file mode 100644
+index 0000000..3a4980e
+--- /dev/null
++++ b/src/services/__tests__/researchFactsAreReadWithTheirDoubt.test.ts
+@@ -0,0 +1,49 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { RESEARCH_FACTS_NOTE, researchFactsFor, researchPartOf } from '../researchFactsView';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const PHONE = '+995500000001';
++const FACT = {
++  field_type: 'employer',
++  value: 'Bank A',
++  status: 'possible',
++  source_url: 'https://a.ge/x',
++  found_on: '2025-03-01',
++  conflict: null,
++};
++
++/** 4126 (D757 §3, §119.4) and §129's 6b + 6c: researched facts reach the model with their doubt. */
++describe('researched facts are read with their doubt', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('reads only standing research facts, with status, source and date, limited', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [FACT] } as never);
++    expect(await researchFactsFor(PHONE)).toEqual([FACT]);
++    const [sql, params, timeout] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('removed_by_subject_at IS NULL');
++    expect(String(sql)).toContain('retracted_at IS NULL');
++    expect(params).toEqual([PHONE, 'public_research', 20]);
++    expect(timeout).toBeGreaterThan(0);
++  });
++
++  it('carries Misho’s approved note with them, and nothing when there are none', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [FACT] } as never);
++    expect(await researchPartOf(PHONE)).toEqual({
++      research: [FACT],
++      research_note: RESEARCH_FACTS_NOTE,
++    });
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    expect(await researchPartOf(PHONE)).toEqual({});
++  });
++
++  it('is the approved text, word for word', () => {
++    expect(RESEARCH_FACTS_NOTE).toBe(
++      'A fact marked possible comes from one source. Say it as possible, with where and when it was ' +
++        'found — „possibly works at X (per site.ge, March 2025)" — never as certain. When you are not ' +
++        'sure a contact still works where a fact says, ask the owner one short question before relying ' +
++        'on it.',
++    );
++  });
++});
+diff --git a/src/services/contactFacts.service.ts b/src/services/contactFacts.service.ts
+index 5b1cc0b..af4531f 100644
+--- a/src/services/contactFacts.service.ts
++++ b/src/services/contactFacts.service.ts
+@@ -1,4 +1,5 @@
+ import Anthropic from '@anthropic-ai/sdk';
++import { researchPartOf, ResearchFactView } from './researchFactsView';
+ import { recordClaudeUsage } from './costLedger.service';
+ import { query, backgroundQuery } from '../db/postgres/client';
+ import { normalizePhone } from './phone';
+@@ -71,6 +72,9 @@ export interface VisibleFact {
+ export interface VisibleFactsResult {
+   facts: VisibleFact[];
+   ask_about: string | null;
++  /** 4126 / §119.4: researched facts, each with status, source and date. */
++  research?: ResearchFactView[];
++  research_note?: string;
+ }
+ 
+ export async function runSemanticMatching(
+@@ -876,7 +880,7 @@ export async function getVisibleFacts(
+   const knownFields = new Set([...ownFieldTypes, ...publicResult.rows.map((r) => r.field_type)]);
+   const ask_about = FACT_FIELD_TYPES.find((f) => !knownFields.has(f)) ?? null;
+ 
+-  return { facts, ask_about };
++  return { facts, ask_about, ...(await researchPartOf(neo4jContactId)) };
+ }
+ 
+ // Backfill: run existing PRIVATE free-form notes through the same agent
+diff --git a/src/services/researchFactsView.ts b/src/services/researchFactsView.ts
+new file mode 100644
+index 0000000..ce897f8
+--- /dev/null
++++ b/src/services/researchFactsView.ts
+@@ -0,0 +1,55 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * 4126 (D757 §3) and §119.4's read step: the researched facts about one
++ * person, as the model reads them — each with how sure it is, where it was
++ * found and when. Research facts are written private and unmatchable (§119.1);
++ * this is the one place they are read for an answer.
++ *
++ * The note is MODEL-FACING, Misho's yes word for word on 12 Oct (§129):
++ * 6b and 6c.
++ */
++export const RESEARCH_FACTS_NOTE =
++  'A fact marked possible comes from one source. Say it as possible, with where and when it was ' +
++  'found — „possibly works at X (per site.ge, March 2025)" — never as certain. When you are not ' +
++  'sure a contact still works where a fact says, ask the owner one short question before relying ' +
++  'on it.';
++
++const RESEARCH_SOURCE = 'public_research';
++const MAX_RESEARCH_FACTS = 20;
++const QUERY_TIMEOUT_MS = 8_000;
++
++export interface ResearchFactView {
++  readonly field_type: string;
++  readonly value: string;
++  /** confirmed | possible | rough | unknown */
++  readonly status: string | null;
++  readonly source_url: string | null;
++  readonly found_on: string | null;
++  readonly conflict: string | null;
++}
++
++/** The person's researched facts that stand: not retracted, not removed by the person. */
++export async function researchFactsFor(phone: string): Promise<ResearchFactView[]> {
++  const result = await query<ResearchFactView>(
++    `SELECT field_type, value, research_status AS status, source_url,
++            TO_CHAR(COALESCE(fact_date, created_at::date), 'YYYY-MM-DD') AS found_on,
++            conflict_note AS conflict
++       FROM contact_facts
++      WHERE neo4j_contact_id = $1 AND source = $2
++        AND retracted_at IS NULL AND removed_by_subject_at IS NULL
++      ORDER BY (research_status = 'confirmed') DESC, field_type
++      LIMIT $3`,
++    [phone, RESEARCH_SOURCE, MAX_RESEARCH_FACTS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** The research part of a contact's facts, with its note; nothing when there is none. */
++export async function researchPartOf(
++  phone: string,
++): Promise<{ research?: ResearchFactView[]; research_note?: string }> {
++  const research = await researchFactsFor(phone);
++  return research.length === 0 ? {} : { research, research_note: RESEARCH_FACTS_NOTE };
++}
+-- 
+2.43.0
+

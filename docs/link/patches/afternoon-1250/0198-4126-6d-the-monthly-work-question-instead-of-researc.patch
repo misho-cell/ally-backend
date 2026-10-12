@@ -1,0 +1,184 @@
+From c3c0b73d30b16e1afd9af69e16a0bf993681bae1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 10:23:35 +0000
+Subject: [PATCH] 4126 6d: the monthly work question, instead of research
+ (switch OFF)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 12 Oct (§129), on the question „სამსახურში რამე სიახლეა?“, at most once a month. It
+goes on the pending list like the warm-tie question, never pushed. The one sentence around it
+(WORK_NEWS_INSTRUCTION) is new and model-facing, so WORK_NEWS_QUESTION_ON = false until Misho says
+yes to it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/index.ts                                  |  2 +
+ .../__tests__/workNewsQuestion.test.ts        | 49 ++++++++++++
+ src/services/workNewsQuestion.service.ts      | 76 +++++++++++++++++++
+ 3 files changed, 127 insertions(+)
+ create mode 100644 src/services/__tests__/workNewsQuestion.test.ts
+ create mode 100644 src/services/workNewsQuestion.service.ts
+
+diff --git a/src/index.ts b/src/index.ts
+index 8c9363f..dccf2d5 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -53,6 +53,7 @@ import { startHelperFollowUps } from './services/helperThanks.cron';
+ import { startContactSyncReminders } from './services/contactSyncReminder.cron';
+ import { startTaskTicker } from './services/taskEngine.service';
+ import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
++import { startWorkNewsQuestions } from './services/workNewsQuestion.service';
+ import { clientErrorReply } from './api/middleware/clientError';
+ import { ApiResponse } from './types';
+ 
+@@ -203,6 +204,7 @@ runMigrations()
+     startContactSyncReminders();
+     startTaskTicker();
+     startRegistrationResearch();
++    startWorkNewsQuestions();
+     startChorusCampaignCron();
+     startLabReportCron();
+     startIdentityScanCron();
+diff --git a/src/services/__tests__/workNewsQuestion.test.ts b/src/services/__tests__/workNewsQuestion.test.ts
+new file mode 100644
+index 0000000..d26be19
+--- /dev/null
++++ b/src/services/__tests__/workNewsQuestion.test.ts
+@@ -0,0 +1,49 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../pendingUpdates.service', () => ({ __esModule: true, queueFollowUp: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { queueFollowUp } from '../pendingUpdates.service';
++import {
++  queueWorkNewsQuestions,
++  startWorkNewsQuestions,
++  WORK_NEWS_INSTRUCTION,
++  WORK_NEWS_KIND,
++  WORK_NEWS_QUESTION,
++  WORK_NEWS_QUESTION_ON,
++} from '../workNewsQuestion.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockQueue = queueFollowUp as jest.MockedFunction<typeof queueFollowUp>;
++
++/** 4126 6d (§129): „სამსახურში რამე სიახლეა?" at most once a month, instead of research. */
++describe('the monthly work question', () => {
++  beforeEach(() => jest.resetAllMocks());
++
++  it('is OFF until Misho’s yes on the sentence around the question', async () => {
++    expect(WORK_NEWS_QUESTION_ON).toBe(false);
++    expect(await queueWorkNewsQuestions()).toBe(0);
++    expect(startWorkNewsQuestions()).toBe(false);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++
++  it('carries the approved question word for word', () => {
++    expect(WORK_NEWS_QUESTION).toBe('სამსახურში რამე სიახლეა?');
++    expect(WORK_NEWS_INSTRUCTION).toContain(`„${WORK_NEWS_QUESTION}"`);
++  });
++
++  it('when on, asks each due user once, never twice in 30 days, never a test seat', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ user_id: 7 }, { user_id: 8 }] } as never);
++    mockQueue.mockResolvedValue({ id: 1 });
++    expect(await queueWorkNewsQuestions(200, true)).toBe(2);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('p.kind = $2');
++    expect(params).toEqual([200, WORK_NEWS_KIND, 30]);
++    expect(mockQueue).toHaveBeenCalledWith(
++      '7',
++      null,
++      WORK_NEWS_KIND,
++      expect.objectContaining({ instruction: WORK_NEWS_INSTRUCTION }),
++      0,
++    );
++  });
++});
+diff --git a/src/services/workNewsQuestion.service.ts b/src/services/workNewsQuestion.service.ts
+new file mode 100644
+index 0000000..bdf8bf2
+--- /dev/null
++++ b/src/services/workNewsQuestion.service.ts
+@@ -0,0 +1,76 @@
++import { query } from '../db/postgres/client';
++import { queueFollowUp } from './pendingUpdates.service';
++import { notATestSeat } from './testSeatCreate.service';
++
++/**
++ * 4126, 6d (D757 §5: a user is researched once; after that Netai learns by
++ * asking). Misho's yes, 12 Oct (§129), on the question itself: „სამსახურში
++ * რამე სიახლეა?", asked of the user at most once a month, instead of research.
++ *
++ * It reaches the user the way the warm-tie question does: one item on the
++ * pending list, asked when the conversation has room, never pushed.
++ *
++ * The question is approved. The one sentence around it
++ * (WORK_NEWS_INSTRUCTION) is MODEL-FACING and new, so the whole thing stays
++ * OFF until Misho says yes to that sentence (D44).
++ */
++export const WORK_NEWS_QUESTION_ON = false;
++
++export const WORK_NEWS_KIND = 'work_news_question';
++export const WORK_NEWS_QUESTION = 'სამსახურში რამე სიახლეა?';
++export const WORK_NEWS_INSTRUCTION =
++  `When the conversation has room for it — never as the opening line — ask once, in the user's ` +
++  `language: „${WORK_NEWS_QUESTION}" Save what they say about their own work; if they would ` +
++  'rather not say, drop it.';
++
++const COOLDOWN_DAYS = 30;
++const BATCH_LIMIT = 200;
++const QUERY_TIMEOUT_MS = 15_000;
++const DAY_MS = 24 * 60 * 60 * 1000;
++
++/** Active users with no work question in the last month; each gets one. */
++export async function queueWorkNewsQuestions(
++  limit: number = BATCH_LIMIT,
++  on: boolean = WORK_NEWS_QUESTION_ON,
++): Promise<number> {
++  if (!on) return 0;
++  const due = await query<{ user_id: number }>(
++    `SELECT u.id AS user_id
++       FROM "User" u
++      WHERE u.subscription_status = 'active' AND u."deletedAt" IS NULL
++        AND ${notATestSeat('u.id')}
++        AND NOT EXISTS (
++          SELECT 1 FROM pending_updates p
++           WHERE p.user_id = u.id::text AND p.kind = $2
++             AND p.created_at > NOW() - ($3 || ' days')::INTERVAL)
++      ORDER BY u.id
++      LIMIT $1`,
++    [limit, WORK_NEWS_KIND, COOLDOWN_DAYS],
++    QUERY_TIMEOUT_MS,
++  );
++  for (const row of due.rows) {
++    await queueFollowUp(
++      String(row.user_id),
++      null,
++      WORK_NEWS_KIND,
++      {
++        why: 'D757 §5: asked monthly instead of researching again',
++        instruction: WORK_NEWS_INSTRUCTION,
++      },
++      0,
++    );
++  }
++  return due.rows.length;
++}
++
++/** Once a day, only while switched on. */
++export function startWorkNewsQuestions(on: boolean = WORK_NEWS_QUESTION_ON): boolean {
++  if (!on) return false;
++  setInterval(() => {
++    void queueWorkNewsQuestions().catch((err: unknown) =>
++      // eslint-disable-next-line no-console
++      console.error('[work-news] queue failed:', (err as Error).message),
++    );
++  }, DAY_MS).unref();
++  return true;
++}
+-- 
+2.43.0
+

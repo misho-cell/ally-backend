@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 12:40Z — 0196, 0197, 0198: 4126 on Misho's „E კი, 6b კი, 6c კი, 6d კი“ (his own chat, ~12:20Z; §129)
+
+- `0196-4126-E-ON-…patch` sha256 `0baddf51ee3659a8c316c56cc7e7c77a32d33ac33f563325891480ceb31eb226` (a13548d). It switches the registration research run ON. It also fixes 0193: the source is now `public_research`, the one every reader knows.
+  This run spends searches: at most 60 searches and 30 pages per new user (§122's stop). Your rule is his word in your chat, so please ask him there along with the deploy word.
+- `0197-4126-6b-6c-…patch` sha256 `84a3544bcc1f781cd9943789d73b77f87754de7e35368778cdc7fd6e286d6b83` (3326ab7). get_contact_facts carries a contact's researched facts with their status, source and date, plus the approved note. This is model-facing and approved (§129).
+- `0198-4126-6d-…patch` sha256 `97b4ec2d461344973b524edea60aff04657235d87b949110e4c971983c55a8d7` (daf9b12). The monthly work question ships with its switch OFF: the sentence around the approved question still needs his yes.
+- Order: after 0195, each alone. Verify is green on the chain 0170 → 0198.
+- DONE WHEN (4126, the founder's): a fresh seat registers and its own work facts appear within the run, each with source and date, and a single-source fact is shown as possible, with source and date.
+  The person removing one fact (item 5, built) is already covered. The member-list half waits for Tornike's Q1.
+
 ### 12 Oct, 12:15Z — 0195: box 54175, an introduction and a plain question in one message; each person's part is judged on its own. No new text
 
 - `0195-Box-54175-an-introduction-and-a-plain-question-in-on.patch`, sha256 `4a7e7c4a20986fa347377d54bc374112424c0e74e063e5edcb5102dc8836512b`, branch commit 9121611.

@@ -1,0 +1,95 @@
+From ad9a1a3309da1b4d54de6fddd250161a675390f9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 10:23:35 +0000
+Subject: [PATCH] 4126 E ON: the registration research run is switched on; its
+ facts use the research source the app knows
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 12 Oct ~12:20 UTC: „E კი“ (§129). REGISTRATION_RESEARCH_ON = true. Fix to 0193: the run
+wrote source „research“, which no reader knows; it now writes „public_research“, the Axel research's
+own, so „facts about me“ lists and removes them and the republish passes leave them out. §129 recorded
+in ADMIN_WRITE_OPERATIONS. Undo: the switch back to false.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                         | 10 ++++++++++
+ .../__tests__/registrationResearch.test.ts             | 10 +++++-----
+ .../registrationResearch.service.ts                    |  9 +++++----
+ 3 files changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 37b1014..10d81a6 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6247,3 +6247,13 @@ questions, „კი, ეტაპებად" and „ფრონტის ს
+   and shipped on its own.
+ - **0093 (4295):** the timers run between deploys.
+ - **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.
++
++**§129 — 12 October ~12:20 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
++docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:40Z). Earlier the same day, ~10:40Z: „დაიწყე რა
++ადამიანების კვლევის მეთოდიც" (start 4126).
++- **E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`), approved as written; the registration run (0193) is switched on with
++  it. The spending stays inside §122's stop (60 searches, 30 pages a person).
++- **6b** („possible" with source and date), **6c** (ask the owner when work status is unclear), **6d** („სამსახურში რამე სიახლეა?",
++  at most once a month): approved as written.
++- **6a** was not answered: it waits for item 3 (Tornike's Q1).
++- **Undo:** each switch or text back out, one revert each.
+diff --git a/src/services/registrationResearch/__tests__/registrationResearch.test.ts b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+index 9c3f20d..0ce45be 100644
+--- a/src/services/registrationResearch/__tests__/registrationResearch.test.ts
++++ b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+@@ -35,10 +35,10 @@ describe('registration research run', () => {
+   });
+   afterEach(() => jest.restoreAllMocks());
+ 
+-  it('is OFF: nothing is queued and no ticker starts', async () => {
+-    expect(REGISTRATION_RESEARCH_ON).toBe(false);
+-    expect(await queueRegistrationResearch(7)).toBe(false);
+-    expect(startRegistrationResearch()).toBe(false);
++  it('is ON since Misho’s yes (§129); switched off, nothing is queued and no ticker starts', async () => {
++    expect(REGISTRATION_RESEARCH_ON).toBe(true);
++    expect(await queueRegistrationResearch(7, false)).toBe(false);
++    expect(startRegistrationResearch(false)).toBe(false);
+     expect(mockQuery).not.toHaveBeenCalled();
+   });
+ 
+@@ -76,7 +76,7 @@ describe('registration research run', () => {
+       '0',
+       'employer',
+       'Bank A',
+-      'research',
++      'public_research',
+       PAGE_URL,
+       null,
+       'possible',
+diff --git a/src/services/registrationResearch/registrationResearch.service.ts b/src/services/registrationResearch/registrationResearch.service.ts
+index 13e4c65..d1a74d6 100644
+--- a/src/services/registrationResearch/registrationResearch.service.ts
++++ b/src/services/registrationResearch/registrationResearch.service.ts
+@@ -15,14 +15,15 @@ import {
+  * 4126 item 1 — one research run per new user, at registration (D757 §5), within
+  * Misho's hard stop.
+  *
+- * OFF until Misho says yes to REGISTRATION_EXTRACT_BRIEF (D44); it also spends
+- * on searches. While off, nothing is queued and the ticker never starts.
++ * ON since Misho's yes to REGISTRATION_EXTRACT_BRIEF, 12 Oct (§129). Back to
++ * false stops it: nothing is queued and the ticker never starts.
+  */
+-export const REGISTRATION_RESEARCH_ON = false;
++export const REGISTRATION_RESEARCH_ON = true;
+ 
+ /** The same saver and the same private, unmatchable shape as the Axel research (4225). */
+ const SYSTEM_SAVER_ID = '0';
+-const RESEARCH_SOURCE = 'research';
++/** The Axel research's own source: facts about me, the republish passes and the reads all know it. */
++const RESEARCH_SOURCE = 'public_research';
+ const QUERY_TIMEOUT_MS = 10_000;
+ const TICK_INTERVAL_MS = 60_000;
+ const MAX_ERROR_CHARS = 300;
+-- 
+2.43.0
+
