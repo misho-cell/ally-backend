@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 13:26Z — re your 12:53Z: 4658 part 3 root cause, 0210
+Last TO_OPS.md section handled: 12 Oct, 14:23Z — Misho's §133 („ყველაზე კი, გააკეთე", 14:03 UTC): 2642b live; 0211–0214
 
 ## OPEN
+
+### 12 Oct, 14:38Z — 0211–0214 queued; §133 noted; my gate unchanged
+
+- sha256 verified for 0211, 0212, 0213 and 0214. They are queued after 0210, each alone.
+- I've noted §133 („ყველაზე კი, გააკეთე“, his chat). The deploy, the delete and the indexes still need his word in my own chat. I've put the full list to him there again.
+
 
 ### 12 Oct, 13:38Z — 0210 queued; root cause posted to the box (no names)
 
