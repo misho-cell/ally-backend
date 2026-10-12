@@ -1,0 +1,346 @@
+From a2ea234654881efad8b10ecbe23b96cb21bc7718 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 15:19:37 +0000
+Subject: [PATCH] 4720: a public profile in the search results is read, not
+ handed over as a link
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 54881 (Lika's real phone, 12 Oct 13:58Z): asked about a person outside
+her contacts, the run's web_search had the person's public LinkedIn page in
+its five results; the reply gave the link and said the current position
+could not be confirmed. The second question read the same page.
+
+Misho's choice A (§134, 15:16 UTC): when a public LinkedIn profile is among
+the top three results, the server reads that one page (one Tavily extract,
+recorded in the cost ledger) and hands it over in the same result as
+public_profile {url, read_on, content}. No profile, no read; a failed or
+empty read leaves the result as it was. No model-facing text.
+
+Also: §134 recorded; the 4126 scope notes the tester's answer to Q1/Q2
+(„Yes to both, it's already in T4126").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |   5 +
+ docs/scope/4126_RESEARCH_METHOD.md            | 104 ++++++++++++++++++
+ src/services/chat.service.ts                  |  15 ++-
+ .../aPublicProfileIsReadNotLinked.test.ts     |  69 ++++++++++++
+ src/services/tools/publicProfileRead.ts       |  70 ++++++++++++
+ 5 files changed, 262 insertions(+), 1 deletion(-)
+ create mode 100644 docs/scope/4126_RESEARCH_METHOD.md
+ create mode 100644 src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+ create mode 100644 src/services/tools/publicProfileRead.ts
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 571749a..5755df4 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6301,3 +6301,8 @@ Yes to the three items waiting on him, each shown in his chat first:
+ 1. 2642: the sentence for Netai's pricing information, word for word as shown at 11:59 UTC — „When asked about refunds or payments, always name the seller (Ally, Inc.) and the payment provider (Stripe), as on netai.guru/refund." Applied with prompt.sh (`ops/prompt-changes/2642b-seller-and-stripe-named`).
+ 2. D647: rule 8 of the question editor's brief, word for word as shown at 12:25 UTC — „8. It never copies the owner's sentences word for word: it says what they need in its own words, in at most two short sentences, keeping every fact the reader needs to answer."
+ 3. 4126 items 3 and 4, built as the founder's own D757 says (asked at ~12:35 UTC): people from public member lists in their own table (name, organisation, listed role, source, check date; never a „knows" link); contacts' research professional only (family and close skipped); no 30-day re-research for people who are Netai users. 6a's text still needs its own yes.
++
++**§134 — 12 October 15:16 UTC, Misho in the code session's chat: „4720 A, გააკეთე"**
++4720 (box 54881): a public profile found by a search was handed over as a link. Option A, as put to him at ~15:15 UTC: when a
++web search's top three results hold a public LinkedIn profile, the server reads that one page itself (one paid Tavily extract,
++recorded in the cost ledger) and hands it over in the same result with its URL and the day it was read. No model-facing text.
+diff --git a/docs/scope/4126_RESEARCH_METHOD.md b/docs/scope/4126_RESEARCH_METHOD.md
+new file mode 100644
+index 0000000..1fc5861
+--- /dev/null
++++ b/docs/scope/4126_RESEARCH_METHOD.md
+@@ -0,0 +1,104 @@
++# 4126 — the research method for people (D757–D764): exact scope for Misho's yes
++
++Written by the code session, 9 October ~20:30 UTC. Nothing here is built. Every item ships only after
++Misho's yes on that item (it widens what Netai researches and stores about people), and each prompt text
++needs its own yes, recorded with the exact text.
++
++## What exists today (read from the code)
++
++- `researchRunner.service.ts` researches **phone numbers from the target list**, not new users. It runs
++  every 15 minutes when `RESEARCH_RUNNER=on`, using web search only (Tavily). It is capped at 10 people
++  per tick, 200 searches a day, 3 steps per person, and it re-researches each person every 30 days.
++- What it finds is stored only as raw hits (`research_findings`: url, title, snippet, date). Nothing turns
++  them into facts.
++- Facts live in `contact_facts`: source chat / sweep / label / debrief, and confidence stated / mentioned.
++  There is no URL column and no research source.
++- A person can see the public facts about themselves only through a chat tool
++  (`get_what_netai_knows_about_me`). **Nothing lets a person remove facts other people saved about them.**
++- No table holds people who are neither users nor anybody's contacts.
++
++## The scope, item by item (each needs a yes)
++
++1. **One deep research run at registration, for the new user only.**
++   - Inputs: their name and anything they gave at signup (city, a profile link).
++   - Tools: web search plus page reading. No search cap for this one run.
++   - It runs once and never again (D757 §5).
++   - Cost: unknown until measured. I propose a hard stop of 60 searches and 30 pages per person, so one bad name cannot spend without limit. Misho decides between that and „no cap".
++2. **Facts gain source, date and confidence.**
++   - `contact_facts` gains `source = 'research'`, `source_url`, `checked_at` and `confidence` (confirmed / possible).
++   - A fact from one ordinary source is `possible`. An official source, or two independent sources, makes it `confirmed`.
++   - When sources conflict, both are kept, with a conflict note.
++3. **People found on public member lists get their own table** (`list_people`).
++   - Fields: name, organisation, listed role, source URL, check date. Nothing else: no phone and no photo.
++   - Such a person is never a „knows" link and never an introduction route.
++   - Before merging with a contact or user, a same-name check runs; on doubt, they are not merged.
++   - They are researched deeper only when a request makes them relevant.
++4. **Contacts' research stays professional only.**
++   - The runner skips any number the owner's labels mark as family or close (მამა, დედა, ძმა, და, ბებია, ბაბუა, ცოლი, ქმარი, ❤️ …).
++   - When it is unclear, Netai asks the owner instead.
++   - **Open question:** should the existing 30-day re-research of the target list stop for people who are themselves users (D757 §5: „once, at registration")?
++5. **A person sees and removes facts about themselves.**
++   - `GET /me/facts` lists every fact about their own numbers, with source and date: researched, label-derived and other users' facts (the submitter is never named).
++   - `DELETE /me/facts/:id` removes a fact everywhere: retracted, not matchable, not shown.
++   - The same is available as a chat command.
++   - The frontend needs one screen for it.
++6. **Prompt texts, each a separate D44 yes:**
++   - (a) list membership is never acquaintance;
++   - (b) a single-source fact is said as „possible", with source and date;
++   - (c) ask the owner when a contact's work status is unclear;
++   - (d) an occasional „სამსახურში რამე სიახლე?" to the user, instead of re-research.
++
++   I will draft the exact texts after items 1–5 are decided.
++
++## DONE WHEN (from the founder, 2 of 2)
++
++- A fresh seat registers, and its own work facts appear within the registration run, each with source and date.
++- A member-list person is stored without any „knows" link.
++- A single-source fact is shown as possible, with source and date.
++- The person removes one fact, and it is gone everywhere.
++
++## Misho's decisions, 9 October ~20:48 UTC (code session chat)
++
++| Item | Decision |
++|---|---|
++| 1. Registration run | „შეზღუდე": **limited** — a hard stop per person (60 searches, 30 pages proposed), not unlimited |
++| 2. Source, date, confidence on facts | „კი": **yes** |
++| 3. List-people table | „ეს თორნიკეს კითხე": **Tornike decides**, asked in box 49338 (Q1) |
++| 4. Professional only; stop the 30-day re-research of users | „თორნიკეს კითხე": **Tornike decides**, asked in box 49338 (Q2) |
++| 5. See and remove facts about oneself | „კარგი": **yes** |
++| 6. Prompt texts | „კარგი": **yes, to drafting**. Each exact text still needs its own yes before it ships |
++
++Items 1, 2 and 5 can be built now. Items 3 and 4 wait for Tornike. Building item 1 spends money, so it starts only in daytime.
++
++## Built 12 October (Misho's „დაიწყე", ~10:40 UTC)
++
++- Item 1: the registration run, as 0193 (bbdc876), switch OFF. It runs once per user (a primary key), with a stop
++  of 60 searches and 30 pages, private and unmatchable facts on the user's own numbers, the Axel facts winning,
++  and a removed fact staying removed.
++- Item 2: `research_status` (confirmed / possible), `source_url` and `fact_date` already exist (4225). Migration
++  237 adds `conflict_note`. Confidence: an official source, or two independent sites, confirms; one ordinary
++  source is possible.
++- Item 5: already built (3db7dd2).
++- Items 3 and 4: built on Misho's yes (§133, 14:03 UTC) as D757 says — 0213 (runner) and 0214 (`list_people`). The tester answered Q1 and Q2 for Tornike the same afternoon: „Yes to both, it's already in T4126."
++
++## Texts for Misho's yes (D44), word for word
++
++**E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`; the run stays off until this has a yes):
++
++> You read web search results and pages about one person who has just joined Netai, and you return what they say about that person's work. Use only what the given texts say; never guess or add. First decide whether the texts are about this person at all: the name must match, and anything else known about them (city, profile link) must not contradict it. If several people share the name and you cannot tell which is them, set same_person to false and return no facts. Return work facts only — occupation, employer, industry, city, education, affiliation, expertise, other_role, headline — never family, health, religion, politics or private life. For every fact give the URLs of the texts that say it, and the date the text gives for it if there is one (YYYY-MM-DD). Reply with JSON only: …
++
++**6a — a member list is not an acquaintance** (only needed once item 3 exists):
++
++> A person found only on a public member list is not someone the owner knows. Never call them an acquaintance, and never offer them as the way to reach someone.
++
++**6b — a single-source fact is „possible"**:
++
++> A fact marked possible comes from one source. Say it as possible, with where and when it was found — „possibly works at X (per site.ge, March 2025)" — never as certain.
++
++**6c — ask when work status is unclear**:
++
++> When you are not sure a contact still works where a fact says, ask the owner one short question before relying on it.
++
++**6d — the occasional work question, instead of re-research** (asked of the user, at most once a month):
++
++> „სამსახურში რამე სიახლეა?"
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index af0c07f..90db8f1 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -130,6 +130,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
+ import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
+ import { searchContactsByCountry } from './tools/searchContactsByCountry';
+ import { webSearch, fetchPage } from './tools/webSearch';
++import { withPublicProfile } from './tools/publicProfileRead';
+ import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
+ import { inviteContact } from './tools/inviteContact';
+ import { getInviteLink } from './referralLink.service';
+@@ -9178,7 +9179,19 @@ async function executeToolCall(
+         priceKey: 'tavily.search',
+         runId,
+       }).catch(() => {});
+-      const found = await webSearch(input['query'] as string);
++      // 4720 (§134): a public profile among the top results is read here, not left as a link.
++      const found = await withPublicProfile(
++        await webSearch(input['query'] as string),
++        (url) => fetchPage(url),
++        () =>
++          recordFixedUsage({
++            userId,
++            kind: 'web_search',
++            provider: 'tavily',
++            priceKey: 'tavily.search',
++            runId,
++          }).catch(() => {}),
++      );
+       if (runId !== undefined && hasWebResults(found)) runWebFound.add(runId);
+       /**
+        * Ticket 20 row 154, second half — the way in travels with the MODEL'S
+diff --git a/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts b/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+new file mode 100644
+index 0000000..f70c6b8
+--- /dev/null
++++ b/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+@@ -0,0 +1,69 @@
++import { profilePage, profileUrlIn, withPublicProfile } from '../publicProfileRead';
++
++/**
++ * 4720 (box 54881): the search found the person's public LinkedIn page and the
++ * reply handed over the link. The server reads that one page (Misho's A, §134).
++ */
++const PROFILE = 'https://ge.linkedin.com/in/someone-401492b1';
++const found = {
++  results: [
++    { title: 'A news page', url: 'https://news.ge/a' },
++    { title: 'Someone — LinkedIn', url: PROFILE },
++  ],
++};
++const NOW = new Date('2026-10-12T13:58:00Z');
++
++describe('the profile among the results', () => {
++  it('is the first public profile in the top three', () => {
++    expect(profileUrlIn(found)).toBe(PROFILE);
++  });
++
++  it('is none for a company page, a profile further down, or no results', () => {
++    expect(profileUrlIn({ results: [{ url: 'https://www.linkedin.com/company/tbc' }] })).toBeNull();
++    const far = { results: [{ url: 'a' }, { url: 'b' }, { url: 'c' }, { url: PROFILE }] };
++    expect(profileUrlIn(far)).toBeNull();
++    expect(profileUrlIn({ error: 'unavailable' })).toBeNull();
++  });
++});
++
++describe('withPublicProfile', () => {
++  it('reads the page once and hands it over with where and when it was read', async () => {
++    const read = jest.fn().mockResolvedValue({ content: 'Head of Sales at Wissol since 2023' });
++    const cost = jest.fn().mockResolvedValue(undefined);
++    await expect(withPublicProfile(found, read, cost, NOW)).resolves.toEqual({
++      ...found,
++      public_profile: {
++        url: PROFILE,
++        read_on: '2026-10-12',
++        content: 'Head of Sales at Wissol since 2023',
++      },
++    });
++    expect(read).toHaveBeenCalledTimes(1);
++    expect(cost).toHaveBeenCalledTimes(1);
++  });
++
++  it('reads nothing and costs nothing when no profile is among the results', async () => {
++    const read = jest.fn();
++    const cost = jest.fn();
++    const plain = { results: [{ url: 'https://news.ge/a' }] };
++    await expect(withPublicProfile(plain, read, cost, NOW)).resolves.toBe(plain);
++    expect(read).not.toHaveBeenCalled();
++    expect(cost).not.toHaveBeenCalled();
++  });
++
++  it('leaves the result as it was when the read fails or is empty', async () => {
++    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++    const cost = jest.fn().mockResolvedValue(undefined);
++    await expect(
++      withPublicProfile(found, jest.fn().mockRejectedValue(new Error('timeout')), cost, NOW),
++    ).resolves.toBe(found);
++    await expect(
++      withPublicProfile(found, jest.fn().mockResolvedValue({ error: 'blocked' }), cost, NOW),
++    ).resolves.toBe(found);
++  });
++
++  it('keeps at most 6,000 characters of the page', () => {
++    const page = profilePage(PROFILE, { content: 'x'.repeat(9_000) }, '2026-10-12');
++    expect(page?.content).toHaveLength(6_000);
++  });
++});
+diff --git a/src/services/tools/publicProfileRead.ts b/src/services/tools/publicProfileRead.ts
+new file mode 100644
+index 0000000..a035b63
+--- /dev/null
++++ b/src/services/tools/publicProfileRead.ts
+@@ -0,0 +1,70 @@
++/**
++ * 4720 (box 54881, Lika's real phone, 12 Oct 13:58Z): asked about a person
++ * outside her contacts, the run's web_search found the person's public LinkedIn
++ * page — and the reply handed over the link, saying the current position could
++ * not be confirmed. Only the second question read the page.
++ *
++ * Misho's choice A (12 Oct 15:16 UTC, §134): the server reads that one public
++ * profile itself and hands the page over in the same search result, with where
++ * and when it was read. One page per search, the first profile among the top
++ * results; nothing is read when no profile is there.
++ */
++const PROFILE_URL_RE = /^https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[^/?#\s]+/iu;
++/** Only a profile near the top is the person searched for often enough to read. */
++const TOP_RESULTS_LOOKED_AT = 3;
++const MAX_PROFILE_CHARS = 6_000;
++
++export interface PublicProfilePage {
++  readonly url: string;
++  readonly read_on: string;
++  readonly content: string;
++}
++
++type PageReader = (url: string) => Promise<object>;
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null;
++}
++
++/** The first public profile URL among the top results; null when there is none. */
++export function profileUrlIn(found: object): string | null {
++  const results = (found as Record<string, unknown>).results;
++  if (!Array.isArray(results)) return null;
++  for (const hit of results.slice(0, TOP_RESULTS_LOOKED_AT)) {
++    if (isRecord(hit) && typeof hit.url === 'string' && PROFILE_URL_RE.test(hit.url)) {
++      return hit.url;
++    }
++  }
++  return null;
++}
++
++/** The page as handed over, or null when the read gave no text. */
++export function profilePage(url: string, page: object, today: string): PublicProfilePage | null {
++  const content = (page as Record<string, unknown>).content;
++  if (typeof content !== 'string' || content.trim() === '') return null;
++  return { url, read_on: today, content: content.slice(0, MAX_PROFILE_CHARS) };
++}
++
++/**
++ * The search result with its profile page read, when it has one. A failed or
++ * empty read leaves the result exactly as it was; `beforeRead` runs only when a
++ * page is actually read (the cost is recorded there).
++ */
++export async function withPublicProfile(
++  found: object,
++  read: PageReader,
++  beforeRead: () => Promise<void>,
++  now: Date = new Date(),
++): Promise<object> {
++  const url = profileUrlIn(found);
++  if (url === null) return found;
++  try {
++    await beforeRead();
++    const page = profilePage(url, await read(url), now.toISOString().slice(0, 10));
++    return page === null ? found : { ...(found as Record<string, unknown>), public_profile: page };
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[public-profile] not read:', (err as Error).message);
++    return found;
++  }
++}
+-- 
+2.43.0
+

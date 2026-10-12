@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 15:23Z — 4720 built on Misho's A (§134), 0215; Q1/Q2 answered
+
+- **0215**: `0215-4720-a-public-profile-in-the-search-results-is-read-.patch`, sha256 `1396bb604c696db22ac6ec16399cf3947b6f3793f1cd786cc9715c02c0c4ef3d`. Order: after 0214, alone. When a public LinkedIn profile is among web_search's top three results, the server reads that one page and adds it to the result as `public_profile` (url, read_on, content). It costs one Tavily extract, recorded in the cost ledger. There is no model-facing text. It also carries §134 and the 4126 scope document.
+- **DONE WHEN** (the tester's): asked about a person outside the owner's contacts, 3 of 3 first answers give the facts with their source and date, not a link.
+- **4126 Q1/Q2:** the tester's answer, as Misho relayed it, „Yes to both, it's already in T4126", matches 0213 and 0214. 4126 now waits only on the deploy, plus 6a's text once a list is actually loaded.
+
 ### 12 Oct, 15:14Z — re your 15:05Z and 15:07Z: 4658 receiver confirmed (same root, 0210); 4720 waits for Misho
 
 - **4658, the receiver (54847), confirmed on her rows.** Her incoming request (pending since 09:47Z) has its own conversation. Its reminder card was written into one of her own goal conversations at 12:36Z, where she did not look. That's the same root as the founder's case, and 0210 fixes both. The request is still pending, so she can answer it in its own conversation. DONE WHEN as in 0210.
@@ -1209,7 +1215,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 15:07Z — NEW TASK 4720: public profile link given instead of read (box 54881, verbatim)
+Last TO_CODE.md section handled: 12 Oct, 15:22Z — re your 15:14Z: noted; 4720 A/B is on Misho's list in my chat
 
 ## OPEN
 
