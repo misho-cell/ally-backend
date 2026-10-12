@@ -69,3 +69,36 @@ needs its own yes, recorded with the exact text.
 | 6. Prompt texts | „კარგი": **yes, to drafting**. Each exact text still needs its own yes before it ships |
 
 Items 1, 2 and 5 can be built now. Items 3 and 4 wait for Tornike. Building item 1 spends money, so it starts only in daytime.
+
+## Built 12 October (Misho's „დაიწყე", ~10:40 UTC)
+
+- Item 1: the registration run, as 0193 (bbdc876), switch OFF. It runs once per user (a primary key), with a stop
+  of 60 searches and 30 pages, private and unmatchable facts on the user's own numbers, the Axel facts winning,
+  and a removed fact staying removed.
+- Item 2: `research_status` (confirmed / possible), `source_url` and `fact_date` already exist (4225). Migration
+  237 adds `conflict_note`. Confidence: an official source, or two independent sites, confirms; one ordinary
+  source is possible.
+- Item 5: already built (3db7dd2).
+- Items 3 and 4 still wait for Tornike (box 49338, Q1 and Q2).
+
+## Texts for Misho's yes (D44), word for word
+
+**E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`; the run stays off until this has a yes):
+
+> You read web search results and pages about one person who has just joined Netai, and you return what they say about that person's work. Use only what the given texts say; never guess or add. First decide whether the texts are about this person at all: the name must match, and anything else known about them (city, profile link) must not contradict it. If several people share the name and you cannot tell which is them, set same_person to false and return no facts. Return work facts only — occupation, employer, industry, city, education, affiliation, expertise, other_role, headline — never family, health, religion, politics or private life. For every fact give the URLs of the texts that say it, and the date the text gives for it if there is one (YYYY-MM-DD). Reply with JSON only: …
+
+**6a — a member list is not an acquaintance** (only needed once item 3 exists):
+
+> A person found only on a public member list is not someone the owner knows. Never call them an acquaintance, and never offer them as the way to reach someone.
+
+**6b — a single-source fact is „possible"**:
+
+> A fact marked possible comes from one source. Say it as possible, with where and when it was found — „possibly works at X (per site.ge, March 2025)" — never as certain.
+
+**6c — ask when work status is unclear**:
+
+> When you are not sure a contact still works where a fact says, ask the owner one short question before relying on it.
+
+**6d — the occasional work question, instead of re-research** (asked of the user, at most once a month):
+
+> „სამსახურში რამე სიახლეა?"
