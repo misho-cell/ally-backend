@@ -1,0 +1,75 @@
+From 57eec67c974e990447d11b9380c3dbb2b7e16c9f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 09:15:03 +0000
+Subject: [PATCH] 1454 / 2909: an English introduction plan through two
+ go-betweens is its one sentence
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 54165 (conv 50265): „I'll talk to Levan's and Maia's assistants…" was
+not read as the plan sentence (the pattern wanted one word between „talk
+to" and „assistant"), so the reply kept the model's paragraphs and asked
+for the reason twice; „I approve" then met no plan buttons. The pattern
+now reads one go-between or several in en/ru/es, as the Georgian one does,
+and the reply is the plan sentence and „Shall I start?". No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...anEnglishIntroPlanIsItsOneSentence.test.ts | 27 +++++++++++++++++++
+ src/services/planJustification.ts             |  3 ++-
+ 2 files changed, 29 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/anEnglishIntroPlanIsItsOneSentence.test.ts
+
+diff --git a/src/services/__tests__/anEnglishIntroPlanIsItsOneSentence.test.ts b/src/services/__tests__/anEnglishIntroPlanIsItsOneSentence.test.ts
+new file mode 100644
+index 0000000..e55273c
+--- /dev/null
++++ b/src/services/__tests__/anEnglishIntroPlanIsItsOneSentence.test.ts
+@@ -0,0 +1,27 @@
++import { planReplyText } from '../chat.service';
++import { carriesPlanSentence } from '../planJustification';
++
++/** 2909 / 1454 (box 54165, conv 50265): an English plan through two go-betweens. */
++describe('an introduction plan in English is its one sentence', () => {
++  const PLAN = {
++    text: "I'll talk to Levan's and Maia's assistants and try to arrange an introduction to Bakhva Gamogonili for you.",
++    names: ['Levan Nimushadze', 'Maia Fiktiuri'],
++  };
++
++  it('knows the plan sentence with one go-between or several', () => {
++    expect(carriesPlanSentence(PLAN.text)).toBe(true);
++    expect(carriesPlanSentence("I'll talk to Levan's assistant and try to arrange it.")).toBe(true);
++    expect(carriesPlanSentence('поговорю с ассистентами Левана и Майи')).toBe(true);
++    expect(carriesPlanSentence('hablaré con los asistentes de Levan y Maia')).toBe(true);
++    expect(carriesPlanSentence('I searched your contacts.')).toBe(false);
++  });
++
++  it('drops what the model wrote around it, the reason asked twice included', () => {
++    const reply =
++      "They're not in your own contacts, but they show up one ring out.\n\n" +
++      'Levan Nimushadze and Maia Fiktiuri both know Bakhva.\n\n' +
++      '1. Could you tell me in a line why you want to meet Bakhva?\n\n' +
++      'And if you can share why you would like to meet Bakhva, that line will help.\n\nShall I start?';
++    expect(planReplyText(reply, PLAN, 'en')).toBe(`${PLAN.text}\n\nShall I start?`);
++  });
++});
+diff --git a/src/services/planJustification.ts b/src/services/planJustification.ts
+index 692c00d..9711cc4 100644
+--- a/src/services/planJustification.ts
++++ b/src/services/planJustification.ts
+@@ -13,8 +13,9 @@
+ 
+ /** The plan sentence: the assistant talking to another assistant. */
+ // 1454 (box 53065, run 1): „…ასისტენტს დაველაპარაკო" — every form of the verb counts.
++// 2909 (box 54165, conv 50265): „talk to Levan's and Maia's assistants" — two go-betweens.
+ const PLAN_SENTENCE_RE =
+-  /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+\S+\s+assistant|поговорю\s+с\s+ассистент|hablaré\s+con\s+(?:el|la)\s+asistente)/iu;
++  /(ასისტენტ(?:ს|ებს)\s+დაველაპარაკ\p{L}*|talk\s+to\s+(?:\S+\s+){1,6}?assistants?\b|поговорю\s+с\s+(?:\S+\s+){0,6}?ассистент|hablaré\s+con\s+(?:\S+\s+){0,6}?asistentes?\b)/iu;
+ 
+ /** 48247: does this text carry the plan sentence? */
+ export function carriesPlanSentence(text: string): boolean {
+-- 
+2.43.0
+

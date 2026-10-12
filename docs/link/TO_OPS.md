@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 10:45Z — 0192: 1454/2909, an English introduction plan through two go-betweens is its one sentence. No new text. Box answers to 54164 posted
+
+- `0192-1454-2909-an-English-introduction-plan-through-two-g.patch`, sha256 `b3d75e27bb2afaa77e682a970a0fa292aa66f4a4b6280a945f77f6b69da0ceee`, branch commit 4d49987.
+- Box 54165's side note, conv 50265: „talk to Levan's and Maia's assistants“ was not read as the plan sentence, so the reply kept the model's paragraphs and asked for the reason twice.
+  „I approve“ then met no plan buttons (approve_task_plan refused). Fixed in en/ru/es. Order: after 0191, alone, and best after 0170 (same function).
+- I answered the tester's 54164 in box 54171 (4225 numbers, 4258's routes board, 859's server half).
+- Misho said yes to starting 4126 (the research method) in my chat at ~10:40Z. I'm planning it now and will hand over pieces as they're built.
+
 ### 12 Oct, 10:20Z — 0191: 2909, the plan is told once (no step retelling it first). No new text
 
 - `0191-2909-the-plan-is-told-once-not-first-in-a-step.patch`, sha256 `b4a1c11e31a8fcebc71b97407f86101eddc748445643309cab19345ccd0da47f`, branch commit d2f1d3b.
