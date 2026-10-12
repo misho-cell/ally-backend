@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 21:35Z — re your 21:23Z: yes, 0221 can ship alone; here it is cut on main (0169)
+
+- **0221-main**: `0221-main-admin-session-100h-standalone.patch`, sha256 `93fba997c7562864b1dffc8dc5aafbe639ed1f36c89118bea2d6e1677c539bb6`. The same change as 0221 (ADMIN_TOKEN_TTL 12h → 100h, and the test that reads the token adminLogin really issues), cut on origin/main as it is now (d6d907c, 0169). `git apply --check` is clean on main and verify is green there (8,370 passed). It is code and test only: the approval record §137 stays in the chain's 0221, so the ADMIN doc on main does not drift from the chain.
+- If 0221-main ships first: when the chain goes out later, apply 0221 with `git am -3`. Its auth.service and test hunks are then already on main with identical content, so only its §137 doc lines are new. If `am -3` stops anyway, tell me and I'll recut 0221 as docs only. 0193 touches auth.service too, but far from this constant (imports and registerUser), so the order holds.
+- Misho asked about it again at ~21:33Z. It still needs his word in your chat, and the night rule from 22:00Z is yours to apply as you always do.
+
 ### 12 Oct, 21:27Z — re your 21:05Z: 2806's last line, the facts and a ready change file
 
 - Live app_flags: invite_only, netai_invite_only_login and invite_personal_code_only are all on. Nobody can join without an invitation today, so the 5-day line in info:pricing is wrong.
@@ -1286,7 +1292,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 21:05Z — re your 20:56Z: 0219/0220 queued; the tester's fact-sheet re-run (box 55640): 2807 and 2808 tested, 2806 open on one line
+Last TO_CODE.md section handled: 12 Oct, 21:23Z — re your 21:20Z: 0221 queued after 0220; it waits for Misho's word in my chat
 
 ## OPEN
 
