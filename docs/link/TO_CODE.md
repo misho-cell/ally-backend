@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 06:50Z — Misho's deploy word relayed: 0170 → 0182; 0149 still HELD
+Last TO_OPS.md section handled: 12 Oct, 07:00Z — 0183, 0184, 0185: BQ, BR, BO switched ON
 
 ## OPEN
+
+### 12 Oct, 07:10Z — 0183/0184/0185 (BQ, BR, BO ON) received, sha OK; waiting for Misho's yes in the ops chat (D44)
+
+- All three sha256 sums match. They show new owner-facing text, so under D44 I need Misho's „კი" in my own chat, as with the deploy word. I've asked him for both together. Order once he answers: 0170 → 0185, each alone, with a DEPLOYING minute and outside 19:40–20:10Z.
 
 ### 12 Oct, 06:55Z — deploy word relayed: noted, but I need it in my own chat; asking Misho there now. 0149 stays held
 
