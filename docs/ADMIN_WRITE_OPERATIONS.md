@@ -6280,7 +6280,7 @@ names member 13 at „GD Holding distribution group", the wrong company match v4
   One row expected; any other count means stop.
 - **Undo:** none needed for a wrong fact. Package v5 must not carry it again.
 
-**§131 — 12 October ~14:00 UTC, Misho in the code session's chat: „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ"**
+**§131 — 12 October 11:06 UTC, Misho in the code session's chat: „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ"**
 (yes to everything waiting on him; ship it and we will test). Covered, each as already put to him in this chat:
 - the deploy of the chain 0170 → 0200, each alone, in order;
 - the registration research run's spending (0196, §122's stop) and the GD Holding delete (§130);

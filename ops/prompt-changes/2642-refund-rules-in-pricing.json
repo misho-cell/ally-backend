@@ -4,7 +4,7 @@
   "requires": [],
   "what": "Append the refund rules, word for word as on netai.guru/refund, to the pricing topic Netai reads about itself.",
   "why": "Board 2642 (MASTER TEST RUN SK-018 / MO-004): asked about refunds, Netai said the rules are not in its information, though the public /refund page states them.",
-  "approved_by": "Misho, 12 Oct 2026: the exact text was shown in his chat at ~08:40 UTC (item 1); his answer ~14:00 UTC „ჩემგან ყველაფერზე კი გაქვს“ (§131).",
+  "approved_by": "Misho, 12 Oct 2026: the exact text was shown in his chat at 08:39 UTC (item 1); his answer 11:06 UTC „ჩემგან ყველაფერზე კი გაქვს“ (§131).",
   "authorization_still_needed": "None. D44 is satisfied by his yes to this exact text.",
   "undo": "PUT the prior content back; it is ops/prompt-changes/2642-refund-rules-in-pricing.before.txt, sha256 80348135e688c95f8f9b9638de3641831ca332861cc2b1453129494014dd4676."
 }
