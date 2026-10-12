@@ -12,10 +12,10 @@ import { foldedLower } from './georgianCase';
  * Only the owner's own words are read (D539); the employers it is matched
  * against are a count, never anyone's record.
  *
- * MODEL-FACING (D44): LIKELY_EMPLOYER_NOTE needs Misho's yes word for word.
- * Until then the switch stays false and the profile is unchanged.
+ * MODEL-FACING (D44): LIKELY_EMPLOYER_NOTE is Misho's yes word for word, 12 Oct
+ * 11:39 UTC („2 კი", §132). Back to false leaves the profile as it was.
  */
-export const LIKELY_EMPLOYER_ON = false;
+export const LIKELY_EMPLOYER_ON = true;
 
 export const LIKELY_EMPLOYER_NOTE =
   'likely_employer is a word in how the owner saved this contact that other people name as ' +
