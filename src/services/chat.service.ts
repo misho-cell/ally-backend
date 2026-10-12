@@ -454,7 +454,11 @@ import {
 } from './dailyContactQuestion';
 import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
-import { ownerAsksForIntroduction, USE_INTRODUCTION_REFUSAL } from './introInstruction';
+import {
+  askIsTheIntroduction,
+  ownerAsksForIntroduction,
+  USE_INTRODUCTION_REFUSAL,
+} from './introInstruction';
 import { askedNotAsking, claimsItCannotSend } from './askedVerb';
 import { withoutRepeatedParagraphs } from './repeatedParagraphs';
 import {
@@ -9656,7 +9660,8 @@ async function executeToolCall(
       // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
       const ownerLines = await ownerLinesForGoal(task, threadId);
       // T2479 (§98.3): „გამაცანი X" is an introduction, never a plain question.
-      if (ownerAsksForIntroduction(ownerLines)) {
+      // Box 54175: unless this person's part of the owner's message is a plain question.
+      if (askIsTheIntroduction(ownerLines, String(input['contact_name'] ?? ''))) {
         // eslint-disable-next-line no-console
         console.log(
           `[intro-instruction] run ${runId} task ${taskId}: ask_contact turned to an intro`,
