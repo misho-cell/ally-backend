@@ -1,0 +1,162 @@
+From 8f0f981717c84913cb3808270bc1d085b2b446c0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 11:40:23 +0000
+Subject: [PATCH] =?UTF-8?q?4657:=20covering=20indexes=20for=20the=20label?=
+ =?UTF-8?q?=20scan,=20for=20ops=20to=20run=20by=20hand;=20=C2=A7132=20reco?=
+ =?UTF-8?q?rded?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ops/pending-migrations/4657_label_covering_indexes.sql: (phone, tag,
+"contactId") and (phone, alias, "contactId"), CONCURRENTLY, so the name
+search's scan of every label on the owner's numbers never touches the
+tables. Nothing deleted; run outside a transaction, off-peak.
+
+§132: Misho's „1 კი, 2 კი, 3 კი, 4 A" — 2114 on, the likely-employer note
+on, the indexes, and 2909 left as it is (D561 stands).
+
+The approval record is brought level with the branch: §125, §130, §131
+and §132, with today's times as the chat shows them (09:40Z texts, 10:16,
+11:00, 11:06, 11:39 UTC).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                | 43 ++++++++++++++++--
+ .../4657_label_covering_indexes.sql           | 44 +++++++++++++++++++
+ 2 files changed, 84 insertions(+), 3 deletions(-)
+ create mode 100644 ops/pending-migrations/4657_label_covering_indexes.sql
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 2b84e0a..98c3769 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6027,7 +6027,7 @@ being the person's name:
+ 
+ The owner's own words (or his line sent by the server) reset the count to 0. Undo: revert.
+ 
+-**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:30 UTC, NIGHT_QUESTIONS AM).** The code is
++**§109 — 1698 (A15, offers), PENDING Misho's yes (asked 8 Oct ~23:15 UTC, NIGHT_QUESTIONS AM).** The code is
+ in and can ship, but no run is given the tools while `OFFER_TOOLS_ON` is false. On his yes the switch flips
+ and these three tool descriptions reach the model:
+ 
+@@ -6207,6 +6207,16 @@ automatically."
+ - **What turns on:** `SEE_HELPER_ON = true` (listItems.service.ts). In the list Excel, a row whose need column names a helper, with way-in „nobody" and state „no route", says „იხ. დამხმარე" in those two cells. The other languages say „see the helper" / „см. помощника" / „ver quién ayuda". Every other row is unchanged.
+ - **Undo:** `SEE_HELPER_ON = false`, one line, and ship.
+ 
++**§125 — 10 October ~07:53 UTC, Misho in the code session's chat: „BG კი"** (NIGHT_QUESTIONS BG, 4258).
++
++- **What turns on:** `INTRO_CLAIM_GUARD_ON = true` (introClaim.ts). When a reply says an introduction request went and
++  request_introduction did not succeed in that run, the owner reads this line with one button instead: „გაცნობის თხოვნა ჯერ არ
++  გამიგზავნია. დამიდასტურე და ახლავე გავაგზავნი." — „კი, გააგზავნე". In English: „I have not sent the introduction request yet. Confirm
++  and I will send it now." — „Yes, send it". In Russian: „Я ещё не отправил просьбу о знакомстве. Подтверди, и я отправлю её сейчас." —
++  „Да, отправь". In Spanish: „Todavía no he enviado la solicitud de presentación. Confírmalo y la envío ahora." — „Sí, envíala".
++- No model-facing text. Every other reply is unchanged.
++- **Undo:** `INTRO_CLAIM_GUARD_ON = false`, one line, and ship.
++
+ **§126 — 10 October ~12:10 UTC, Misho in the code session's chat: „ორივეზე კის გეუბნები"** (to the two items put to him at ~11:55Z:
+ D772 + D773, and D771 + BI; the founder's answers came through the tester's box, 50923/50925/50926).
+ 
+@@ -6220,6 +6230,7 @@ D772 + D773, and D771 + BI; the founder's answers came through the tester's box,
+   (D44), so its exact text goes back to Misho first (NIGHT_QUESTIONS BJ) and is not built until he answers.
+ - **Undo:** D772 removes `phone` from the row; D773 removes `public_facts`; BI sets `TEST_PUSH_ON = false`. One commit each.
+ 
++
+ **§127 — 10 October ~17:10 UTC, Misho in the code session's chat: „ფრონტის დავალებები დააპრიორიტეტე", then, asked two
+ questions, „კი, ეტაპებად" and „ფრონტის სია"** (the frontend's item 9: task 1849, the chain to a named person, and the member card).
+ 
+@@ -6248,8 +6259,8 @@ questions, „კი, ეტაპებად" and „ფრონტის ს
+ - **0093 (4295):** the timers run between deploys.
+ - **Undo:** each switch back to false. 0113/0116/0131 are one revert each. 0120 is one revert.
+ 
+-**§129 — 12 October ~12:20 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
+-docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:40Z). Earlier the same day, ~10:40Z: „დაიწყე რა
++**§129 — 12 October 10:16 UTC, Misho in the code session's chat: „E კი, 6b კი, 6c კი, 6d კი"** (board 4126, the texts in
++docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~09:40Z). Earlier the same day: „დაიწყე რა
+ ადამიანების კვლევის მეთოდიც" (start 4126).
+ - **E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`), approved as written; the registration run (0193) is switched on with
+   it. The spending stays inside §122's stop (60 searches, 30 pages a person).
+@@ -6258,3 +6269,29 @@ docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:
+ - **6a** was not answered: it waits for item 3 (Tornike's Q1).
+ - **Later the same day, „6d კი"**: the sentence around the question (`WORK_NEWS_INSTRUCTION`), approved as written; 6d is switched on.
+ - **Undo:** each switch or text back out, one revert each.
++
++**§130 — 12 October 11:00 UTC, Misho in the code session's chat: „კი, წაშალე"** (asked at 10:58Z: the one Axel research fact that
++names member 13 at „GD Holding distribution group", the wrong company match v4 removed; AXEL INTELLIGENCE 6, box 54320).
++- **The row:** `contact_facts.id = 17482` (affiliation, `source = 'public_research'`, `submitted_by_user_id = '0'`, loaded 10 Oct 07:08Z),
++  on another member's number, not member 13's. Read-only check: it is the only row of the 2,611 that names GD Holding; no row names
++  G.D. Alco as anybody's employer.
++- **Statement (run by the operations session, on Misho's word in its chat):**
++  `DELETE FROM contact_facts WHERE id = 17482 AND source = 'public_research' AND submitted_by_user_id = '0' AND value ILIKE '%GD Holding%';`
++  One row expected; any other count means stop.
++- **Undo:** none needed for a wrong fact. Package v5 must not carry it again.
++
++**§131 — 12 October 11:06 UTC, Misho in the code session's chat: „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ"**
++(yes to everything waiting on him; ship it and we will test). Covered, each as already put to him in this chat:
++- the deploy of the chain 0170 → 0200, each alone, in order;
++- the registration research run's spending (0196, §122's stop) and the GD Holding delete (§130);
++- 0149 (chorus), asked again at ~06:50Z with the point that with the gate off campaigns open on targets the founder never approved;
++- 3070's day-one sentences (the exact text shown at ~08:10Z): switched on as its own patch;
++- the texts shown word for word at ~08:40Z for 2642 (refund rules in Netai's information), 2940 and 4491: each built and shipped on its own.
++Not covered, because its exact text was never shown to him: 2114's greeting in kind (40d52b9, OFF).
++
++**§132 — 12 October 11:39 UTC, Misho in the code session's chat: „1 კი, 2 კი, 3 კი, 4 A"**
++Answers to the four questions put to him at ~11:35Z, each with its exact text shown:
++1. 2114: a time-of-day greeting answered with the person's own words („დილა მშვიდობისა, მიშო! რით დაგეხმარო?") — yes; switched on.
++2. 4657: LIKELY_EMPLOYER_NOTE, word for word as in `src/services/tools/likelyEmployer.ts` — yes; switched on.
++3. 4657: the two covering indexes on "UserTags" and "UserAlias" (`ops/pending-migrations/4657_label_covering_indexes.sql`, CONCURRENTLY, ~1.2 GB, nothing deleted) — yes to preparing and running them. Ops runs it; ops' own rule asks his word in its chat too.
++4. 2909: A — the plan sentence stays as it is; D561 (no „solved when" in the plan the owner reads) stands.
+diff --git a/ops/pending-migrations/4657_label_covering_indexes.sql b/ops/pending-migrations/4657_label_covering_indexes.sql
+new file mode 100644
+index 0000000..1cb44fc
+--- /dev/null
++++ b/ops/pending-migrations/4657_label_covering_indexes.sql
+@@ -0,0 +1,44 @@
++-- 4657 — the name search's label scan, read from the index alone.
++--
++-- Authorised by Misho, 12 October 11:39 UTC, in the code session's chat:
++-- „3 კი" (§132). Ops runs it by hand, off-peak, outside any transaction — the
++-- migration runner wraps every file in BEGIN, where CONCURRENTLY is illegal
++-- (the same reason as 036's trigram index). Nothing is deleted; no row changes.
++--
++-- WHY. The founder's „ეკა კოპალიანი" timed out at 8.6 s. The search reads every
++-- label any user saved on the owner's numbers — for him 89,308 tags and 45,406
++-- saved names on 1,908 numbers. Measured on production, 12 Oct, one table at a
++-- time: ~0.7 s warm, ~3 s cold. The cold cost is disk: "UserTags" is 5.7 GB and
++-- "UserAlias" 2.6 GB against 2.5 GB of shared_buffers, and the existing
++-- (phone, tag) / (phone, alias) indexes do not hold "contactId", so every
++-- matching phone's rows are fetched from scattered table pages. With
++-- "contactId" in the index the scan (phone, label, and whether the owner saved
++-- it) never touches the table.
++--
++-- COST. About 0.7 GB and 0.5 GB of disk (the existing two-column indexes are
++-- 585 MB and 399 MB). CONCURRENTLY takes no write lock; it reads each table
++-- twice, so run it off-peak. If a build fails it leaves an INVALID index:
++-- check step 4 and, if invalid, tell the code session — do not drop anything
++-- without Misho's word.
++
++-- 1.
++CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_tags_phone_tag_contact
++  ON "UserTags" (phone, tag, "contactId");
++
++-- 2.
++CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_alias_phone_alias_contact
++  ON "UserAlias" (phone, alias, "contactId");
++
++-- 3. An index-only scan skips the table only for pages the visibility map
++-- marks all-visible. "UserAlias" was last vacuumed in June 2025. VACUUM changes
++-- no row; it refreshes that map and the planner's statistics.
++VACUUM (ANALYZE) "UserTags";
++VACUUM (ANALYZE) "UserAlias";
++
++-- 4. Both indexes valid (expect two rows, both true):
++SELECT c.relname, i.indisvalid
++  FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
++ WHERE c.relname IN ('idx_user_tags_phone_tag_contact', 'idx_user_alias_phone_alias_contact');
++
++-- DONE WHEN (the tester's, 4657): the founder's „ეკა კოპალიანი" search under
++-- 2 s cold, measured after 0200 is live.
+-- 
+2.43.0
+

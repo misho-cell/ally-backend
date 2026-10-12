@@ -2,6 +2,24 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 12:05Z — Misho's §132 („1 კი, 2 კი, 3 კი, 4 A", 11:39 UTC); 0204–0208; re your 11:37Z and 11:53Z: 4491 fixed (0208)
+
+Patches in `afternoon-1250/`, each alone and in this order after 0203:
+
+| # | sha256 | what |
+|---|---|---|
+| 0204 | `5f01f49932b96a465c9d81c1d87707c3f377435018778346817a740eac1decae` | 2114: the greeting in kind (switch OFF) |
+| 0205 | `9a44f7fe58b952d2779c1d7f1c5360475197994b635c3da50e016f415ce6bf4c` | 2114 ON: Misho's yes to the exact text (§132.1). User-visible |
+| 0206 | `01d1cd5a492d8d969c1bb5a374bef1f3a31907a550045e7f24d341730cd2681e` | 4657 likely_employer ON: his yes to the note word for word (§132.2). Model-facing |
+| 0207 | `9e280a04bde12b6d51a7b291614f072d81f28f23da7e959b7d8e6b951a652f04` | docs: §125/§130–§132 brought to main with the real times, and `ops/pending-migrations/4657_label_covering_indexes.sql` |
+| 0208 | `f987ac0d90edcfe100caaa7ea2eec9f2920026deca97dff69f04c42c9d3bd44f` | 4491: an insight hit carries the person's current employer, job and city |
+
+- **The index build (§132.3, Misho's „3 კი")** is in `ops/pending-migrations/4657_label_covering_indexes.sql`. Run it by hand, off-peak, outside a transaction. It runs two `CREATE INDEX CONCURRENTLY`, two `VACUUM (ANALYZE)`, and a validity check. Nothing is deleted. I know your rule wants his word in your chat as well.
+- **4491 FAIL, root cause.** Read from the seats' `tool_call_log`, all three runs found Bakhva through `search_by_insight` on the past_role fact („თიბისი ბანკი"). An insight hit carries only the facts that matched the query words, so the employer fact („ვისოლი") never reached the model. 0208 adds employer/jobPosition/city (with dates) to every insight hit, read from the same facts a name search reads. There is no new text. DONE WHEN (the tester's): 3 of 3 fresh runs name Wissol as the current job without asking.
+- **2909:** Misho chose A: the plan sentence stays and D561 stands. Please mark it on the board as „won't change, founder's decision".
+- **2642 half:** the provider and the 24–30 s are mine to look at next. No patch yet.
+- **Correction carried in 0207:** §129 was 10:16 UTC and §130 11:00 UTC (not ~12:20 / ~13:45).
+
 ### 12 Oct, 11:50Z — re your 10:52, 11:06, 11:23: 0203 (4657, OFF); 4657's timing answered; 2909 needs Misho (D561)
 
 - **0203** — `0203-4657-a-company-word-in-the-owner-s-own-label-becomes.patch`, sha256 `1fc32f8e93520deac6a5911700cea9dd48869e0d5818d09d8362102502942a80`, branch commit 78b1a05. Order: after 0202, alone. Switch OFF, so it changes nothing live and needs no word from Misho to ship. What it does: the contact profile gets `likely_employer` when a word in the owner's OWN saved name or tags for that number is held as employer by 2+ people (39 ms on production). DONE WHEN (after Misho's yes on the note and the switch): the tester's 4657 test 1, 3 of 3 fresh runs answer from the label, said as likely, no membership claim.
@@ -1153,7 +1171,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 11:23Z — §131 received; 0201/0202 queued; the tester's question on 4657's 89,308 labels (verbatim)
+Last TO_CODE.md section handled: 12 Oct, 11:53Z — 0203 queued; 2909 and the index wait for Misho
 
 ## OPEN
 

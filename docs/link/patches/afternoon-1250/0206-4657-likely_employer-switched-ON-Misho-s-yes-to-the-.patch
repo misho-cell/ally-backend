@@ -1,0 +1,61 @@
+From 9c0ace3ba3d5a8f002bdd4e1fd263560deaa57ac Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 11:40:23 +0000
+Subject: [PATCH] =?UTF-8?q?4657:=20likely=5Femployer=20switched=20ON=20(Mi?=
+ =?UTF-8?q?sho's=20yes=20to=20the=20note,=20=C2=A7132)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The contact profile now carries the company word from the owner's own label
+(held as employer by 2+ people) with LIKELY_EMPLOYER_NOTE, as approved word
+for word. Back to false leaves the profile as it was.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aCompanyWordInTheLabelIsALikelyEmployer.test.ts      | 9 ++++++---
+ src/services/tools/likelyEmployer.ts                     | 6 +++---
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts b/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts
+index 6e36efc..402969b 100644
+--- a/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts
++++ b/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts
+@@ -46,9 +46,12 @@ describe('the words a label offers', () => {
+ });
+ 
+ describe('likelyEmployerFor', () => {
+-  it('waits for Misho’s yes: the switch is off and reads nothing', async () => {
+-    expect(LIKELY_EMPLOYER_ON).toBe(false);
+-    await expect(likelyEmployerFor('501', '+995599000111')).resolves.toEqual({});
++  it('is on since Misho’s yes (§132)', () => {
++    expect(LIKELY_EMPLOYER_ON).toBe(true);
++  });
++
++  it('switched off, reads nothing', async () => {
++    await expect(likelyEmployerFor('501', '+995599000111', false)).resolves.toEqual({});
+     expect(mockQuery).not.toHaveBeenCalled();
+   });
+ 
+diff --git a/src/services/tools/likelyEmployer.ts b/src/services/tools/likelyEmployer.ts
+index e006191..43a1de9 100644
+--- a/src/services/tools/likelyEmployer.ts
++++ b/src/services/tools/likelyEmployer.ts
+@@ -12,10 +12,10 @@ import { foldedLower } from './georgianCase';
+  * Only the owner's own words are read (D539); the employers it is matched
+  * against are a count, never anyone's record.
+  *
+- * MODEL-FACING (D44): LIKELY_EMPLOYER_NOTE needs Misho's yes word for word.
+- * Until then the switch stays false and the profile is unchanged.
++ * MODEL-FACING (D44): LIKELY_EMPLOYER_NOTE is Misho's yes word for word, 12 Oct
++ * 11:39 UTC („2 კი", §132). Back to false leaves the profile as it was.
+  */
+-export const LIKELY_EMPLOYER_ON = false;
++export const LIKELY_EMPLOYER_ON = true;
+ 
+ export const LIKELY_EMPLOYER_NOTE =
+   'likely_employer is a word in how the owner saved this contact that other people name as ' +
+-- 
+2.43.0
+

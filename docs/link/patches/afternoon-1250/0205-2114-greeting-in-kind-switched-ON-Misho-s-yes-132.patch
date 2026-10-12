@@ -1,0 +1,62 @@
+From 57c13d6798457d4554070bff5270e8013b2a59ec Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 11:40:22 +0000
+Subject: [PATCH] =?UTF-8?q?2114:=20greeting=20in=20kind=20switched=20ON=20?=
+ =?UTF-8?q?(Misho's=20yes,=20=C2=A7132)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+„დილა მშვიდობისა" is answered „დილა მშვიდობისა, <name>! რით დაგეხმარო?" —
+the person's own words, nothing the server did not hear. Back to false
+answers every hello „გამარჯობა" again.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aGreetingIsAnsweredInKind.test.ts        | 10 ++++++++--
+ src/services/serverGreeting.ts                         |  5 +++--
+ 2 files changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts b/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts
+index 108bfa0..3339534 100644
+--- a/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts
++++ b/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts
+@@ -2,9 +2,15 @@ import { greetingText, MIRRORED_GREETING_ON, timeOfDayGreeting } from '../server
+ 
+ /** 2114 (box 54162): „დილა მშვიდობისა" was answered „გამარჯობა". */
+ describe('a time-of-day greeting is answered in kind', () => {
+-  it('is OFF until Misho’s yes: every hello reads as it did', () => {
+-    expect(MIRRORED_GREETING_ON).toBe(false);
++  it('is ON since Misho’s yes (§132): his own words come back by default', () => {
++    expect(MIRRORED_GREETING_ON).toBe(true);
+     expect(greetingText('ნინო', true, 'ka', 'დილა მშვიდობისა')).toBe(
++      'დილა მშვიდობისა, ნინო! რით დაგეხმარო?',
++    );
++  });
++
++  it('switched off, every hello reads as it did', () => {
++    expect(greetingText('ნინო', true, 'ka', 'დილა მშვიდობისა', false)).toBe(
+       'გამარჯობა, ნინო! რით დაგეხმარო?',
+     );
+   });
+diff --git a/src/services/serverGreeting.ts b/src/services/serverGreeting.ts
+index b8b213b..ed16d7e 100644
+--- a/src/services/serverGreeting.ts
++++ b/src/services/serverGreeting.ts
+@@ -66,9 +66,10 @@ const HELLO_WORD_RE = /^(¡?)(?:გამარჯობა|Hello|Привет|H
+  * were answered „გამარჯობა". With the switch on, a time-of-day greeting is
+  * answered with the person's own words — nothing the server did not hear.
+  *
+- * USER-VISIBLE: OFF until Misho says yes.
++ * USER-VISIBLE: ON since Misho's yes, 12 Oct 11:39 UTC („1 კი", §132). Back to
++ * false answers every hello „გამარჯობა" again.
+  */
+-export const MIRRORED_GREETING_ON = false;
++export const MIRRORED_GREETING_ON = true;
+ 
+ const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+ 
+-- 
+2.43.0
+
