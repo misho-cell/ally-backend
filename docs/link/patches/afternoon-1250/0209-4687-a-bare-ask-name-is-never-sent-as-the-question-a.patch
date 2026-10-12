@@ -1,0 +1,136 @@
+From 02df1c3bb5897d2ce102c72759bc1ae389b4f5de Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 12:20:55 +0000
+Subject: [PATCH] =?UTF-8?q?4687:=20a=20bare=20=E2=80=9Eask=20<name>"=20is?=
+ =?UTF-8?q?=20never=20sent=20as=20the=20question;=20a=20first=20name=20is?=
+ =?UTF-8?q?=20not=20a=20trade?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's real-phone round (box 54550, 12 Oct):
+
+(1) Goal 24996: after the accountant request the owner typed „ლიკას კითხე",
+and the helper received exactly „ლიკას კითხე" as the whole question. The
+model's ask was refused (wrong goal), it opened a goal and proposed a plan;
+the plan refusal sent the instruction itself (§97 path), and with no
+question and no need in the line the question fell back to the whole
+sentence. Now such a line sends nothing and opens no goal: the refusal
+tells the run to ask, and the run read the earlier message.
+
+(3) Goal 24989: „იცნობ ზაზა გამოგონილს…?" — „ზაზა" was read as the trade
+and the helper got a picker of her own contacts called Zaza under a yes/no
+question. A Georgian first name (the base's own list, the ambiguous ones
+excepted) is a person, not a need; no picker.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theHelpersOwnPeopleAreOffered.test.ts        |  6 ++++++
+ .../theServerAsksTheOneNamedContact.test.ts      | 11 +++++++++++
+ src/services/bridgePicker.ts                     | 16 +++++++++++++++-
+ src/services/instructedAsk.ts                    | 10 +++++++---
+ 4 files changed, 39 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts b/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts
+index 343fb74..8b6a451 100644
+--- a/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts
++++ b/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts
+@@ -61,6 +61,12 @@ describe('the need an instructed ask carries (46036)', () => {
+     expect(needFromQuestion('გამაცნობ გიას?')).toBeUndefined();
+   });
+ 
++  it('is nothing when the question asks about one named person (4687, goal 24989)', () => {
++    expect(needFromQuestion('იცნობ ზაზა გამოგონილს, რომელიც ავეჯს აწყობს?')).toBeUndefined();
++    expect(needFromQuestion('იცნობს თუ არა გიორგის?')).toBeUndefined();
++    expect(needFromQuestion('Do you know Nika from the gym?')).toBeUndefined();
++  });
++
+   it('is read from a request for a recommendation too (2186, box 47975)', () => {
+     expect(needFromQuestion('ნინო, კარგ სანტექნიკოსს ხომ ვერ მირჩევ?')).toEqual({
+       need: 'სანტექნიკოსი',
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index cd5dd9b..74f3cce 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -73,6 +73,17 @@ describe('the server asks the one contact the owner named', () => {
+     expect(mockCreateAsk).not.toHaveBeenCalled();
+   });
+ 
++  it('sends nothing, and opens no goal, for a line that names whom to ask but not what (4687)', async () => {
++    mockFindPhones.mockResolvedValue(['995599000001']);
++    await expect(sendInstructedAsk('165699', 24996, 'ლიკას კითხე')).resolves.toEqual({
++      result: InstructedAskResult.NotSent,
++    });
++    expect(mockFindPhones).toHaveBeenCalled();
++    expect(mockCreateAsk).not.toHaveBeenCalled();
++    expect(mockCreateTask).not.toHaveBeenCalled();
++    expect(mockGrant).not.toHaveBeenCalled();
++  });
++
+   it('sends nothing for a line that is no instruction', async () => {
+     await expect(sendInstructedAsk('178582', 42485, 'მჭირდება ბუღალტერი')).resolves.toEqual({
+       result: InstructedAskResult.NotSent,
+diff --git a/src/services/bridgePicker.ts b/src/services/bridgePicker.ts
+index 61c0fad..0b23517 100644
+--- a/src/services/bridgePicker.ts
++++ b/src/services/bridgePicker.ts
+@@ -5,6 +5,7 @@ import { scrubText } from './privacyScrub';
+ import { RunLanguage } from './runLanguage';
+ import { OwnMatch, ownMatchesFor } from './tools/searchByTag';
+ import { nameKey } from './tools/transliterate';
++import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
+ 
+ /**
+  * PLATE v301 G4 — THE MEDIATOR WAS ASKED „WILL YOU HELP?" AND NOTHING ELSE.
+@@ -67,10 +68,23 @@ function tradeWord(word: string): string {
+   return GEORGIAN_CONSONANT_END_RE.test(stem) ? `${stem}${GEORGIAN_NOMINATIVE}` : stem;
+ }
+ 
++/**
++ * 4687 (box 54550, goal 24989): „იცნობ ზაზა გამოგონილს…?" asks about one named
++ * person, and „ზაზა" was read as the trade — the helper got a picker of her own
++ * contacts called Zaza under a yes/no question. A first name is a person, not a
++ * need; only the names that are also ordinary words stay readable as one.
++ */
++function isAPersonsName(word: string): boolean {
++  return [word, tradeWord(word)].some((w) => {
++    const lower = w.toLowerCase();
++    return GEORGIAN_FIRST_NAMES.has(lower) && !AMBIGUOUS_FIRST_NAMES.has(lower);
++  });
++}
++
+ export function needFromQuestion(question: string): BridgeNeed | undefined {
+   const found = question.match(KNOWS_A_TRADE_RE) ?? question.match(RECOMMENDS_A_TRADE_RE);
+   const word = found?.[1] ?? found?.[2];
+-  if (word === undefined) return undefined;
++  if (word === undefined || isAPersonsName(word)) return undefined;
+   return { need: tradeWord(word) };
+ }
+ 
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index 17cacab..a03f5a1 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -219,11 +219,15 @@ export async function sendInstructedAsk(
+   const askable = contacts.filter((c) => !excluded.has(c.phone));
+   // 3268: before any goal is opened for it — nobody left to ask, no goal.
+   if (askable.length === 0) return summed(people);
+-  const taskId = await goalFor(userId, threadId, ownerLine);
+-  await grantTaskPermission(userId, taskId);
+   // QA-001 (conv 42765): only the question, never „ask <name>" or the context before it.
+   // 3928: a line with no question after the names asks about the need said before them.
+-  const asked = instructionQuestion(sentence) ?? instructionNeed(sentence) ?? sentence;
++  const asked = instructionQuestion(sentence) ?? instructionNeed(sentence);
++  // 4687 (box 54550, goal 24996): „ლიკას კითხე" alone — the question was the owner's
++  // earlier message — reached Lika as the whole question. A line that names whom to
++  // ask but not what is no question; the run, which read the earlier message, asks.
++  if (asked === null) return NOT_SENT;
++  const taskId = await goalFor(userId, threadId, ownerLine);
++  await grantTaskPermission(userId, taskId);
+   // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
+   const question = questionWithFacts(
+     asked,
+-- 
+2.43.0
+

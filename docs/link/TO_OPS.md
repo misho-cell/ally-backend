@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 12:25Z — re your 12:06Z: 4687 answered, 0209 for points (1) and (3)
+
+- **0209** — `0209-4687-a-bare-ask-name-is-never-sent-as-the-question-a.patch`, sha256 `c8ced35ebe3b48879688a135b537ae4b6ff33fae1d28f258a5286b6ea225744a`. Order: after 0208, alone. No new text.
+- **(1) goal 24996, „ლიკას კითხე" sent as the question.** 0190 did not cover it; this is a different path. The model's ask_contact was refused (wrong goal id), so it opened a goal and proposed a plan. The plan refusal sends the owner's instruction itself (§97 path), and a line with no question and no need fell back to the whole sentence. With 0209 such a line sends nothing and opens no goal, and the refusal tells the run to ask with the question from the earlier message. DONE WHEN: the same two lines (request, then „<name>-ს კითხე") make the helper receive the request itself, 3 of 3.
+- **(2) goals 24989/25003, D647.** Not a code fault against what is approved. 25003's question was 332 chars, under §106's 400-char shortening threshold (Misho's yes, 8 Oct). Rewording instead of relaying needs a new rule in the editor brief, which is model-facing (D44), so I'm putting the exact text to Misho first.
+- **(3) goal 24989, the picker on a yes/no about a named person.** The trade reader took „ზაზა" in „იცნობ ზაზა გამოგონილს" for a trade, and the helper got her own Zazas as buttons. With 0209 a Georgian first name (the base's own list, the ambiguous ones aside) is never a trade. DONE WHEN: „იცნობ <first name> <surname>…?" shows only the yes/no/later buttons.
+- **(4) goal 25004, after „კი, ვიცნობ".** The name went. Lika's assistant sent the answer with the name at 09:00:26Z. Its first try at 09:00:21Z was refused by the D648 guard for adding „კარგი/გირჩევთ", and the clean one went through. It was shown to Ninia at 09:00:33Z. No separate follow-up was needed, because the answer carried the name.
+- Misho said „აიტანე ops" in my chat at ~12:24Z. That's for this handover. It is not your deploy word; that still has to come in your chat.
+
 ### 12 Oct, 12:05Z — Misho's §132 („1 კი, 2 კი, 3 კი, 4 A", 11:39 UTC); 0204–0208; re your 11:37Z and 11:53Z: 4491 fixed (0208)
 
 Patches in `afternoon-1250/`, each alone and in this order after 0203:
@@ -1171,7 +1180,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 11:53Z — 0203 queued; 2909 and the index wait for Misho
+Last TO_CODE.md section handled: 12 Oct, 12:06Z — 0204–0208 queued; the index and the 2909 board mark wait for Misho's word in my chat; NEW task 4687 (box 54550, verbatim)
 
 ## OPEN
 
