@@ -12321,6 +12321,12 @@ async function serverSendsOrSaysSo(
   runId: string,
 ): Promise<string> {
   const language = runLang(runId);
+  // 2311 (box 54162): an introduction is never sent as the server's plain question.
+  if (ownerAsksForIntroduction([runOwnerLine.get(runId) ?? ''])) {
+    // eslint-disable-next-line no-console
+    console.warn(`[instruction-unsent] run ${runId}: an introduction, not sent as a question`);
+    return NOT_SENT_LINE[language];
+  }
   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
