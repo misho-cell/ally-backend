@@ -1,0 +1,10 @@
+{
+  "target": "info:pricing",
+  "before_sha256": "82ea8524365d363f649ae17325aa0593b6b9aa79fe3f7f1eb0ab30b17b3bf035",
+  "requires": [],
+  "what": "Append one sentence to the pricing topic: when asked about refunds or payments, name the seller (Ally, Inc.) and the payment provider (Stripe).",
+  "why": "Board 2642 re-run (box 54451): the refund rules were right 4 of 4, but the provider was named 0 of 4 although the text says it. The tool returned the full text (tool_call_log, 1,518 chars, ~145 ms).",
+  "approved_by": "Misho, 12 Oct 2026: the exact sentence was shown in his chat at 11:59 UTC; his answer 14:03 UTC „ყველაზე კი, გააკეთე“ (§133).",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to this exact text.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/2642b-seller-and-stripe-named.before.txt, sha256 82ea8524365d363f649ae17325aa0593b6b9aa79fe3f7f1eb0ab30b17b3bf035."
+}
