@@ -13,12 +13,22 @@ export interface ContactFactFields {
   dates: Partial<Record<FactDateField, string>>;
   /** 4226: the fields whose value is the searching owner's own saved word. */
   own: Partial<Record<FactDateField, true>>;
+  /** Box 54172: the Georgian spelling the owner saved for this contact, never another's. */
+  georgianName: string | null;
 }
 
 const ENRICH_TIMEOUT_MS = 8_000;
 
 function emptyFields(): ContactFactFields {
-  return { employer: null, jobPosition: null, city: null, industry: null, dates: {}, own: {} };
+  return {
+    employer: null,
+    jobPosition: null,
+    city: null,
+    industry: null,
+    dates: {},
+    own: {},
+    georgianName: null,
+  };
 }
 
 /**
@@ -59,6 +69,9 @@ export async function fetchFactsForPhones(
   for (const row of result.rows) {
     const key = normalizePhone(row.phone);
     const entry = map.get(key) ?? emptyFields();
+    if (row.field_type === GEORGIAN_NAME_TYPE && row.own && entry.georgianName === null) {
+      entry.georgianName = row.value.trim() || null;
+    }
     const field = FIELD_OF_TYPE[row.field_type];
     if (field !== undefined && !entry[field]) {
       entry[field] = row.value;
@@ -68,6 +81,22 @@ export async function fetchFactsForPhones(
     map.set(key, entry);
   }
   return map;
+}
+
+/**
+ * Box 54172/54173 (Tornike, 12 Oct): two Georgian surnames came out wrong
+ * („ც" written „წ"), because the writer saw only the Latin label and spelled it
+ * in Georgian itself. The owner had saved the right spelling as a
+ * `georgian_name` fact (257 contacts, 7 Oct), and nothing read it. A Latin name
+ * now gives way to the Georgian spelling the owner saved.
+ */
+const GEORGIAN_NAME_TYPE = 'georgian_name';
+const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+
+/** The name to show: the owner's saved Georgian spelling when the name has no Georgian letters. */
+export function nameAsSpelled(name: string | null, georgianName: string | null): string | null {
+  if (georgianName === null) return name;
+  return name !== null && GEORGIAN_LETTER_RE.test(name) ? name : georgianName;
 }
 
 const FIELD_OF_TYPE: Readonly<Record<string, FactDateField>> = {
@@ -90,6 +119,16 @@ function factWins(
   profileValue: string | null,
 ): boolean {
   return Boolean(f[field]) && (f.own[field] === true || !profileValue);
+}
+
+function withGeorgianSpelling(
+  row: object,
+  georgianName: string | null,
+): { name?: string | null; georgian_name?: string } {
+  if (georgianName === null) return {};
+  const shown = (row as { name?: unknown }).name;
+  const name = typeof shown === 'string' ? shown : null;
+  return { name: nameAsSpelled(name, georgianName), georgian_name: georgianName };
 }
 
 /** Overlay saved-fact fields onto a search row, keeping any non-empty existing value. */
@@ -118,6 +157,7 @@ export function applyFacts<
   if (f.industry && f.dates.industry) asOf.industry = f.dates.industry;
   return {
     ...row,
+    ...withGeorgianSpelling(row, f.georgianName),
     employer: useEmployer ? f.employer : row.employer,
     jobPosition: useJob ? f.jobPosition : row.jobPosition,
     city: useCity ? f.city : row.city,
