@@ -6288,3 +6288,10 @@ names member 13 at „GD Holding distribution group", the wrong company match v4
 - 3070's day-one sentences (the exact text shown at ~08:10Z): switched on as its own patch;
 - the texts shown word for word at ~08:40Z for 2642 (refund rules in Netai's information), 2940 and 4491: each built and shipped on its own.
 Not covered, because its exact text was never shown to him: 2114's greeting in kind (40d52b9, OFF).
+
+**§132 — 12 October 11:39 UTC, Misho in the code session's chat: „1 კი, 2 კი, 3 კი, 4 A"**
+Answers to the four questions put to him at ~11:35Z, each with its exact text shown:
+1. 2114: a time-of-day greeting answered with the person's own words („დილა მშვიდობისა, მიშო! რით დაგეხმარო?") — yes; switched on.
+2. 4657: LIKELY_EMPLOYER_NOTE, word for word as in `src/services/tools/likelyEmployer.ts` — yes; switched on.
+3. 4657: the two covering indexes on "UserTags" and "UserAlias" (`ops/pending-migrations/4657_label_covering_indexes.sql`, CONCURRENTLY, ~1.2 GB, nothing deleted) — yes to preparing and running them. Ops runs it; ops' own rule asks his word in its chat too.
+4. 2909: A — the plan sentence stays as it is; D561 (no „solved when" in the plan the owner reads) stands.
