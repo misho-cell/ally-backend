@@ -7650,6 +7650,18 @@ function withoutClosingVariant(reply: string, question: string): string {
   return lines.slice(0, -1).join('\n');
 }
 
+/**
+ * 2909: a step that says the run will talk to people's assistants is the plan
+ * told early — „ელენესა და რატის ასისტენტებს დავველაპარაკები და ვკითხავ…".
+ * When the plan message follows in the same run, it is the one copy.
+ */
+const PLAN_TALKS_RE =
+  /ასისტენტ\S*\s+(?:\S+\s+){0,3}?და?ვ?ველაპარაკ|\b(?:talk|speak)\s+to\s+(?:\S+\s+){0,6}?assistants?\b/iu;
+
+export function retellsThePlansTalks(step: string): boolean {
+  return PLAN_TALKS_RE.test(step);
+}
+
 /** Do the plan step and the final both end on the agreed question (D663)? */
 export function bothAskTheClosingQuestion(
   step: string,
@@ -13577,6 +13589,11 @@ async function runToolLoop(
     bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))
   ) {
     await dropDraftSteps(userId, threadId, runId, draftSteps);
+  } else if (!buriedAnswer && finalText.includes(PLAN_CLOSING_QUESTION[runLang(runId)])) {
+    // 2909 (box 54162, conv 50220): a step announced the plan's talks two
+    // seconds before the plan message said them again, without the question.
+    const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
+    if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
   }
   if (buriedAnswer) {
     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
