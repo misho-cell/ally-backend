@@ -1,0 +1,158 @@
+From 6dfd4c019d89ffaaa3e967191858fd9a7f09e87c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 03:30:35 +0000
+Subject: [PATCH] 2971: buttons never stand without their question; one said
+ only in a step is put back
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's chat #9 (conv 44420, 1 of 3): „რისი ცოდნა გინდა ჩემზე?" put
+the profile question only in a live step bubble, and the kept message was
+„ვუცდი შენს პასუხს." under five answer buttons. Once the bubble was gone,
+the owner saw buttons with no question.
+
+The run now keeps every step bubble it showed. When the model's final
+message carries buttons and asks nothing, the newest question from those
+steps is put in front of it, word for word. It applies only to the model's
+own buttons, before the server's correction lines (3302, 3796, 2608) set
+theirs. No new words.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theButtonsCarryTheirQuestion.test.ts      | 36 +++++++++++++++++++
+ src/services/chat.service.ts                  |  9 +++++
+ src/services/questionWithButtons.ts           | 29 +++++++++++++++
+ 3 files changed, 74 insertions(+)
+ create mode 100644 src/services/__tests__/theButtonsCarryTheirQuestion.test.ts
+ create mode 100644 src/services/questionWithButtons.ts
+
+diff --git a/src/services/__tests__/theButtonsCarryTheirQuestion.test.ts b/src/services/__tests__/theButtonsCarryTheirQuestion.test.ts
+new file mode 100644
+index 0000000..fbc6fd8
+--- /dev/null
++++ b/src/services/__tests__/theButtonsCarryTheirQuestion.test.ts
+@@ -0,0 +1,36 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { lastStepQuestion, withQuestionFromSteps } from '../questionWithButtons';
++
++/**
++ * 2971 (conv 44420): the profile question went only into a step bubble and the
++ * kept message was „ვუცდი შენს პასუხს." under five buttons.
++ */
++const STEP = 'ვნახე შენი პროფილი. რომელი ტიპის გაცნობა არ გავაკეთო შენთვის?';
++const FINAL = 'ვუცდი შენს პასუხს.';
++
++describe('a message with buttons carries its question', () => {
++  it('takes the question the run said only in a step', () => {
++    expect(withQuestionFromSteps(FINAL, [STEP])).toBe(
++      'რომელი ტიპის გაცნობა არ გავაკეთო შენთვის?\n\nვუცდი შენს პასუხს.',
++    );
++  });
++
++  it('leaves a message that already asks', () => {
++    const asks = 'რომელი ტიპის გაცნობა არ გავაკეთო შენთვის?';
++    expect(withQuestionFromSteps(asks, [STEP])).toBe(asks);
++  });
++
++  it('uses the newest step that asked, and leaves the message alone when none did', () => {
++    expect(lastStepQuestion(['პირველი?', 'მეორე ნაბიჯი.', 'ბოლო კითხვა?'])).toBe('ბოლო კითხვა?');
++    expect(withQuestionFromSteps(FINAL, ['ვეძებ.', 'ვნახე.'])).toBe(FINAL);
++  });
++
++  it('is applied only to the model’s buttons, before the server’s own lines', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const at = chat.indexOf('finalText = withQuestionFromSteps(finalText, stepTexts);');
++    expect(at).toBeGreaterThan(0);
++    expect(at).toBeLessThan(chat.indexOf('// 2608: a fact saved in this run'));
++    expect(at).toBeLessThan(chat.indexOf('// 3302: „deleted" is said only when'));
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 915dd54..1f5cb75 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -92,6 +92,7 @@ import {
+   withOnePlanSentence,
+ } from './planJustification';
+ import { introTargetSentence } from './introTargetSentence';
++import { withQuestionFromSteps } from './questionWithButtons';
+ import { withOwnersNetwork } from './planVoice';
+ import { withoutInternalText } from './internalText';
+ import { withoutStrayGeorgian } from './oneScriptReply';
+@@ -13045,6 +13046,8 @@ async function runToolLoop(
+     tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
+   let options: DisambiguationCandidate[] | undefined;
+   let choices: string[] | undefined;
++  // 2971: every step bubble the owner saw, so a question said only there is not lost.
++  const stepTexts: string[] = [];
+   let openAiStarted = false;
+   // Row 290: GPT reads Claude's prompt plus its OWN blocks for this mode,
+   // edited in the admin console with the model selector set to GPT.
+@@ -13234,6 +13237,7 @@ async function runToolLoop(
+       if (narration && narrationIsSafeToPublish(roundTools)) {
+         emitStepSummary(userId, threadId, runId, narration);
+         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
++        stepTexts.push(narration);
+         if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
+           draftSteps.push({ id: stepId, text: narration });
+         if (isHousekeepingRound(roundTools))
+@@ -13325,6 +13329,7 @@ async function runToolLoop(
+       if (narration && narrationIsSafeToPublish(roundTools)) {
+         emitStepSummary(userId, threadId, runId, narration);
+         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
++        stepTexts.push(narration);
+         if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
+           draftSteps.push({ id: stepId, text: narration });
+         if (isHousekeepingRound(roundTools))
+@@ -13981,6 +13986,10 @@ async function runToolLoop(
+     }
+   }
+ 
++  // 2971: the model's buttons never stand without their question; it may have said it only in a step.
++  if (!ownerAbsent && choices !== undefined && choices.length > 0) {
++    finalText = withQuestionFromSteps(finalText, stepTexts);
++  }
+   // 2608: a fact saved in this run that meets another contact's saved need is recalled, as an offer.
+   const savedFact = takeSavedFact(runId);
+   if (!ownerAbsent && savedFact !== null && (choices === undefined || choices.length === 0)) {
+diff --git a/src/services/questionWithButtons.ts b/src/services/questionWithButtons.ts
+new file mode 100644
+index 0000000..8585e2d
+--- /dev/null
++++ b/src/services/questionWithButtons.ts
+@@ -0,0 +1,29 @@
++/**
++ * 2971 (the tester's chat #9, conv 44420, 1 of 3): „რისი ცოდნა გინდა ჩემზე?"
++ * put the profile question — „რომელი ტიპის გაცნობა არ გავაკეთო შენთვის?" —
++ * only in a live step bubble, and the message the owner keeps said only
++ * „ვუცდი შენს პასუხს." with the five answer buttons under it. Once the bubble
++ * is gone the owner sees buttons with no question. The run's own question is
++ * put back in front of its buttons; no word is added.
++ */
++const QUESTION_MARK_RE = /[?？]/u;
++const QUESTION_END_RE = /[?？]\s*$/u;
++const SENTENCE_SPLIT_RE = /(?<=[.!?？…])\s+/u;
++
++/** The last question the run asked in its step bubbles, newest first; null for none. */
++export function lastStepQuestion(stepTexts: readonly string[]): string | null {
++  for (let i = stepTexts.length - 1; i >= 0; i -= 1) {
++    const sentences = stepTexts[i].split(SENTENCE_SPLIT_RE).map((s) => s.trim());
++    const question = [...sentences].reverse().find((s) => QUESTION_END_RE.test(s));
++    if (question !== undefined) return question;
++  }
++  return null;
++}
++
++/** The reply with its buttons' question in it: unchanged when it already asks one. */
++export function withQuestionFromSteps(reply: string, stepTexts: readonly string[]): string {
++  if (QUESTION_MARK_RE.test(reply)) return reply;
++  const question = lastStepQuestion(stepTexts);
++  if (question === null) return reply;
++  return reply.trim() === '' ? question : `${question}\n\n${reply.trimStart()}`;
++}
+-- 
+2.43.0
+

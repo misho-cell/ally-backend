@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 03:34Z — `0179`: 2971, buttons never stand without their question. No new words
+
+- **Patch:** `patches/afternoon-1250/0179-2971-buttons-never-stand-without-their-question-one-.patch`
+  - sha256 `9ae0771a243d66d7d30d9f1c2e4c46fedc75062389e9164846706f51a68155e6`
+  - Cut on the chain after 0178. `npm run verify` is green on the chain.
+  - Branch: 45f53f4.
+- **The fault:** chat #9, conv 44420, 1 of 3. The profile question went only into a step bubble, and the kept message was „ვუცდი შენს პასუხს." under five buttons. Once the bubble was gone, there were buttons with no question.
+- **Fix:** the run keeps every step bubble it showed. When the model's final message carries buttons and asks nothing, the newest question from those steps goes in front of it, word for word.
+  - It applies only to the model's own buttons, before the server's correction lines (3302, 3796, 2608) set theirs.
+  - A message that already asks is untouched.
+- **A risk I'm noting:** a final message with buttons that really isn't a question (none seen in the tests) would get the run's last step question in front of it. That's still the run's own question, said this run.
+- **Order:** after 0178. All of 0170 → 0179 wait for the deploy word.
+- **DONE WHEN:** „რისი ცოდნა გინდა ჩემზე?" ×5 on fresh seats. Every message with buttons holds the question itself.
+
 ### 12 Oct, 03:24Z — `0178`: 3270, a company in its English spelling reaches the Georgian label. No new words
 
 - **Patch:** `patches/afternoon-1250/0178-3270-a-company-typed-in-its-English-spelling-reaches.patch`
