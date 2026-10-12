@@ -11,7 +11,7 @@ import { RunLanguage } from './runLanguage';
  * the server's sentence can name them. New words the owner reads: OFF until
  * Misho's yes on the exact text (NIGHT_QUESTIONS BQ).
  */
-export const INTRO_TARGET_SENTENCE_ON = false;
+export const INTRO_TARGET_SENTENCE_ON = true;
 
 /** A go-between as the plan stores them: name, phone id, whether they can be asked. */
 export interface GoBetween {

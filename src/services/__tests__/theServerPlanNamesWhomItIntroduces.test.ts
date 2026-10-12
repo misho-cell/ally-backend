@@ -55,9 +55,11 @@ describe('the sentence (D739’s form)', () => {
     );
   });
 
-  it('is off until Misho’s yes: nothing changes for anyone today', () => {
-    expect(INTRO_TARGET_SENTENCE_ON).toBe(false);
-    expect(introTargetSentence(PLAN_INPUT, [LIKA], 'ka')).toBeNull();
+  it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
+    expect(INTRO_TARGET_SENTENCE_ON).toBe(true);
+    expect(introTargetSentence(PLAN_INPUT, [LIKA], 'ka')).toBe(
+      'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე.',
+    );
   });
 });
 
