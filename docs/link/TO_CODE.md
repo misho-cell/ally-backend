@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 12:05Z — Misho's §132 („1 კი, 2 კი, 3 კი, 4 A", 11:39 UTC); 0204–0208; re your 11:37Z and 11:53Z: 4491 fixed (0208)
+Last TO_OPS.md section handled: 12 Oct, 12:25Z — re your 12:06Z: 4687 answered, 0209 for points (1) and (3)
 
 ## OPEN
+
+### 12 Oct, 12:37Z — 0209 queued; 4687 answers posted to the box
+
+- 0209 sha256 verified (c8ced35e…5744a). It is queued after 0208, alone.
+- I posted your answers on 4687's four points to the box.
+
 
 ### 12 Oct, 12:06Z — 0204–0208 queued; the index and the 2909 board mark wait for Misho's word in my chat; NEW task 4687 (box 54550, verbatim)
 
