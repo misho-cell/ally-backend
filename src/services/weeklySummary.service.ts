@@ -38,6 +38,8 @@ import { planInForce, TaskPlan } from './taskPlans.service';
 const SUMMARY_QUERY_TIMEOUT_MS = 15_000;
 const WEEK_DAYS = 7;
 const MAX_USERS_PER_RUN = 200;
+/** A ceiling on one run: 50 batches of 200 is 10,000 people. */
+const MAX_BATCHES_PER_RUN = 50;
 export const WEEKLY_SUMMARY_KIND = 'weekly_summary';
 
 interface GoalRow {
@@ -257,18 +259,6 @@ export async function composeWeeklySummary(userId: string): Promise<WeeklySummar
   };
 }
 
-/** Was a summary already queued for this user in the last six days? */
-async function summarisedRecently(userId: string): Promise<boolean> {
-  const result = await query<{ id: number }>(
-    `SELECT id FROM pending_updates
-     WHERE user_id = $1 AND kind = $2 AND created_at >= NOW() - INTERVAL '6 days'
-     LIMIT 1`,
-    [userId, WEEKLY_SUMMARY_KIND],
-    SUMMARY_QUERY_TIMEOUT_MS,
-  );
-  return result.rows.length > 0;
-}
-
 /**
  * Send one user's summary: ONCE, into the pending list. Returns what was sent
  * so an admin run can show it.
@@ -333,27 +323,36 @@ export async function sendWeeklySummary(userId: string): Promise<WeeklySummary> 
   return summary;
 }
 
-/** Every user with an open goal who has not had this week's summary yet. */
-async function usersDueSummary(): Promise<string[]> {
+/**
+ * The tester's RW-023 (box 54088, 12 Oct): 758 people had an open goal and the
+ * job wrote to 200 — the same 200 every Monday, because the LIMIT was taken
+ * before the „already summarised" check, in text order of the id. The check is
+ * now part of the query, so each batch is people still owed this week's
+ * summary, and the run takes batches until nobody is left.
+ */
+/** Every user with an open goal still owed this week's summary, not yet tried in this run. */
+async function usersDueSummary(tried: ReadonlySet<string>): Promise<string[]> {
   const result = await query<{ user_id: string }>(
     `SELECT DISTINCT t.user_id FROM tasks t
      WHERE t.status = 'open'
+       AND NOT EXISTS (
+         SELECT 1 FROM pending_updates p
+         WHERE p.user_id = t.user_id AND p.kind = $2
+           AND p.created_at >= NOW() - INTERVAL '6 days'
+       )
+       AND NOT (t.user_id = ANY($3::text[]))
      ORDER BY t.user_id LIMIT $1`,
-    [MAX_USERS_PER_RUN],
+    [MAX_USERS_PER_RUN, WEEKLY_SUMMARY_KIND, [...tried]],
     SUMMARY_QUERY_TIMEOUT_MS,
   );
-  const due: string[] = [];
-  for (const row of result.rows) {
-    if (!(await summarisedRecently(row.user_id))) due.push(row.user_id);
-  }
-  return due;
+  return result.rows.map((row) => row.user_id);
 }
 
-/** The weekly run. Returns how many users were written to. */
-export async function sendWeeklySummaries(): Promise<number> {
-  const users = await usersDueSummary();
+/** Sends one batch; a user whose send failed is not tried again in this run. */
+async function sendBatch(users: readonly string[], tried: Set<string>): Promise<number> {
   let sent = 0;
   for (const userId of users) {
+    tried.add(userId);
     try {
       await sendWeeklySummary(userId);
       sent++;
@@ -361,6 +360,18 @@ export async function sendWeeklySummaries(): Promise<number> {
       // eslint-disable-next-line no-console
       console.error(`[weekly-summary] user ${userId} failed:`, (err as Error).message);
     }
+  }
+  return sent;
+}
+
+/** The weekly run, batch after batch until nobody is owed. Returns how many users were written to. */
+export async function sendWeeklySummaries(): Promise<number> {
+  const tried = new Set<string>();
+  let sent = 0;
+  for (let batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
+    const due = await usersDueSummary(tried);
+    if (due.length === 0) break;
+    sent += await sendBatch(due, tried);
   }
   return sent;
 }
