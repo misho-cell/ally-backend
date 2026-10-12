@@ -6,6 +6,7 @@ import { sendWhatsAppMessage } from './whatsapp.service';
 import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
+import { queueRegistrationResearch } from './registrationResearch/registrationResearch.service';
 import { checkRegistrationEligibility, isLoginInviteOnlyEnabled } from './inviteGate.service';
 import { isReviewPhone } from './reviewAccess';
 import {
@@ -560,6 +561,11 @@ export async function registerUser(
     void runWelcomeStudy(String(userId), name, cleanPhone).catch((err: unknown) =>
       // eslint-disable-next-line no-console
       console.error(`[welcome-study] user ${userId} failed to start:`, (err as Error).message),
+    );
+    // 4126 item 1: the one deep research run, queued (nothing while it is switched off).
+    void queueRegistrationResearch(Number(userId)).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[registration-research] user ${userId} not queued:`, (err as Error).message),
     );
 
     /**
