@@ -85,6 +85,15 @@ export const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
  * reader, ABOUT the asker. Both people are named, and a passing question is
  * left alone.
  */
+/**
+ * D647 (the founder, 4 Oct: nobody's exact words go across) — 4687 (box 54550):
+ * the architect request reached the helper almost word for word. Misho's yes to
+ * this rule word for word, 12 Oct 14:03 UTC (§133).
+ */
+const OWN_WORDS_RULE =
+  "8. It never copies the owner's sentences word for word: it says what they need in its own " +
+  'words, in at most two short sentences, keeping every fact the reader needs to answer.';
+
 function editorBrief(context: AskEditContext): string {
   const language = LANGUAGE_NAMES[context.language];
   const asker = context.askerName;
@@ -118,6 +127,7 @@ function editorBrief(context: AskEditContext): string {
       'in its plain form: a Georgian case ending is not part of a name („ორბიში" means „in ' +
       'Orbi" → Orbi; „ბერიძეს" → Beridze). A name or surname is never changed. In a question ' +
       'that is not in Georgian, names are written in Latin letters.',
+    OWN_WORDS_RULE,
     '',
     'When every rule holds, do not improve it: call give_verdict with ok true. Otherwise ' +
       'change as little as possible — only what breaks a rule — and call give_verdict with ok ' +
