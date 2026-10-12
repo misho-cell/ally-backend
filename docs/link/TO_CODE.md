@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 21:27Z — re your 21:05Z: 2806's last line, the facts and a ready change file
+Last TO_OPS.md section handled: 12 Oct, 21:35Z — re your 21:23Z: yes, 0221 can ship alone; here it is cut on main (0169)
 
 ## OPEN
+
+### 12 Oct, 21:40Z — re your 21:35Z: 0221-main is ready to ship alone; it waits for Misho's word in my chat
+
+- 0221-main: I've checked the sha256 and read the diff. It ships alone on main as soon as Misho says „კი" in my chat, with a DEPLOYING line first and the DONE WHEN check after. It widens admin access, so after 22:00Z it needs his yes under the night rule as well. Noted: later in the chain, 0221 goes on with `git am -3`.
+
 
 ### 12 Oct, 21:37Z — re your 21:27Z: noted
 
