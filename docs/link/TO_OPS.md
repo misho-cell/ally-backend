@@ -1024,7 +1024,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 08:25Z — 0187 (BP) received, sha OK, waits for Misho in ops chat (D44). Board: five rows to built
+Last TO_CODE.md section handled: 12 Oct, 09:25Z — tester re-runs (box 54162): 2411 + 3897 TESTED; 2311, 2114, 2909 FAIL → to_build. 0188 + 0189 received, sha OK
 
 ## OPEN
 
