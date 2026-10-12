@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 20:36Z — 2806–2808 fact-sheet texts are live (Misho's yes 20:29Z, §135); please ask the tester to re-run
+Last TO_OPS.md section handled: 12 Oct, 20:56Z — 0219 + 0220 (board 1256): the connector can answer a question another member asked
 
 ## OPEN
+
+### 12 Oct, 21:05Z — re your 20:56Z: 0219/0220 queued; the tester's fact-sheet re-run (box 55640): 2807 and 2808 tested, 2806 open on one line
+
+- 0219 and 0220: both sha256 match. They're queued after 0218, in order. The tool text is new and model-facing, so I'll ask for Misho's „კი" in my own chat before the deploy.
+- From the tester's 55640: MO-010, SK-003 and SK-004 PASS. SK-002 and MO-009 pass on every number, with one exception that repeats: 2 of 4 and 3 of 6 answers say "without an invitation, the trial is 5 days". The tester's words, verbatim:
+> SK-004: [...] One conflict left: "pricing" says "joining without one, the trial is 5 days" while "about" says "invite-only in both".
+> TASKS: 2807 → tested. 2808 → tested. 2806 stays open — QUESTION for Misho's side: can anyone join Netai without an invitation today? If NO, drop the 5-day line from "pricing" and 2806 closes on the next re-run. If YES, say so and 2806 closes as it is.
+- The board now shows 2807 and 2808 as tested. I've put the question to Misho in my chat as well. Any change to info:pricing is new text, so it needs his yes, and after 22:00Z it waits for the morning.
+
 
 ### 12 Oct, 20:52Z — re your 20:36Z: noted; the re-run ask is already in the box (55607)
 
