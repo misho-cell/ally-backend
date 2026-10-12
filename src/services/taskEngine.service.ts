@@ -42,6 +42,8 @@ import {
   ensureNextWake,
   touchTaskActivity,
   clearTaskWake,
+  moveWakeAfterAnswer,
+  nextWakeText,
   Task,
 } from './taskStore.service';
 import {
@@ -680,6 +682,7 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
   ) {
     noteQuietAfterDecline(threadId);
   }
+  const wakeBeforeRun = await nextWakeText(taskId);
   const woken = onScreen
     ? await wakeTask(taskId, buildShownAnswersWakeEvent(arrived))
     : await wakeTask(
@@ -689,6 +692,13 @@ async function deliverOwedAnswers(taskId: number): Promise<number> {
       );
   if (woken !== 'woken') return 0;
   for (const ask of owed) await markAskWakeDelivered(ask.id);
+  await moveWakeAfterAnswer(taskId, wakeBeforeRun, DEFAULT_NEXT_WAKE_HOURS).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error(
+      `[task-engine] task ${taskId}: next check after the answer not set:`,
+      (err as Error).message,
+    ),
+  );
   return owed.length;
 }
 
