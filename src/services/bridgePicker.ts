@@ -5,6 +5,7 @@ import { scrubText } from './privacyScrub';
 import { RunLanguage } from './runLanguage';
 import { OwnMatch, ownMatchesFor } from './tools/searchByTag';
 import { nameKey } from './tools/transliterate';
+import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
 
 /**
  * PLATE v301 G4 — THE MEDIATOR WAS ASKED „WILL YOU HELP?" AND NOTHING ELSE.
@@ -67,10 +68,23 @@ function tradeWord(word: string): string {
   return GEORGIAN_CONSONANT_END_RE.test(stem) ? `${stem}${GEORGIAN_NOMINATIVE}` : stem;
 }
 
+/**
+ * 4687 (box 54550, goal 24989): „იცნობ ზაზა გამოგონილს…?" asks about one named
+ * person, and „ზაზა" was read as the trade — the helper got a picker of her own
+ * contacts called Zaza under a yes/no question. A first name is a person, not a
+ * need; only the names that are also ordinary words stay readable as one.
+ */
+function isAPersonsName(word: string): boolean {
+  return [word, tradeWord(word)].some((w) => {
+    const lower = w.toLowerCase();
+    return GEORGIAN_FIRST_NAMES.has(lower) && !AMBIGUOUS_FIRST_NAMES.has(lower);
+  });
+}
+
 export function needFromQuestion(question: string): BridgeNeed | undefined {
   const found = question.match(KNOWS_A_TRADE_RE) ?? question.match(RECOMMENDS_A_TRADE_RE);
   const word = found?.[1] ?? found?.[2];
-  if (word === undefined) return undefined;
+  if (word === undefined || isAPersonsName(word)) return undefined;
   return { need: tradeWord(word) };
 }
 

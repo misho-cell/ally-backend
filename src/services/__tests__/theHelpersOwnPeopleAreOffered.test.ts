@@ -61,6 +61,12 @@ describe('the need an instructed ask carries (46036)', () => {
     expect(needFromQuestion('გამაცნობ გიას?')).toBeUndefined();
   });
 
+  it('is nothing when the question asks about one named person (4687, goal 24989)', () => {
+    expect(needFromQuestion('იცნობ ზაზა გამოგონილს, რომელიც ავეჯს აწყობს?')).toBeUndefined();
+    expect(needFromQuestion('იცნობს თუ არა გიორგის?')).toBeUndefined();
+    expect(needFromQuestion('Do you know Nika from the gym?')).toBeUndefined();
+  });
+
   it('is read from a request for a recommendation too (2186, box 47975)', () => {
     expect(needFromQuestion('ნინო, კარგ სანტექნიკოსს ხომ ვერ მირჩევ?')).toEqual({
       need: 'სანტექნიკოსი',
