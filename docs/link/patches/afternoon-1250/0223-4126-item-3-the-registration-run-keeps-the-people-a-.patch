@@ -1,0 +1,452 @@
+From e93e07e96a7ba8c9e2b049867d779884ab880add Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 23:05:15 +0000
+Subject: [PATCH] 4126 item 3: the registration run keeps the people a public
+ list names (OFF)
+
+The list_people table (f8d0dbf) was built and nothing wrote to it. When
+a page about a new user is a public member, staff or attendee list, the
+extractor now also returns the people it names, kept in list_people with
+the page and the day, never as a knows link. Only the new user's own
+entry can join a number (same name and organisation).
+
+LIST_PEOPLE_ON is false: the brief gains LIST_PEOPLE_BRIEF only while it
+is on, so the live brief is unchanged until Misho says yes to that text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/listedPeople.test.ts            | 96 +++++++++++++++++++
+ .../__tests__/registrationResearch.test.ts    | 44 ++++++++-
+ src/services/registrationResearch/extract.ts  | 57 +++++++++--
+ .../registrationResearch/listedPeople.ts      | 87 +++++++++++++++++
+ .../registrationResearch.service.ts           | 27 +++++-
+ 5 files changed, 295 insertions(+), 16 deletions(-)
+ create mode 100644 src/services/registrationResearch/__tests__/listedPeople.test.ts
+ create mode 100644 src/services/registrationResearch/listedPeople.ts
+
+diff --git a/src/services/registrationResearch/__tests__/listedPeople.test.ts b/src/services/registrationResearch/__tests__/listedPeople.test.ts
+new file mode 100644
+index 0000000..2b2a940
+--- /dev/null
++++ b/src/services/registrationResearch/__tests__/listedPeople.test.ts
+@@ -0,0 +1,96 @@
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../../db/postgres/client';
++import {
++  LIST_PEOPLE_BRIEF,
++  LIST_PEOPLE_ON,
++  listedPeopleIn,
++  newUserAsKnown,
++  storeListedPeople,
++} from '../listedPeople';
++import { extractBrief, REGISTRATION_EXTRACT_BRIEF } from '../extract';
++
++/**
++ * 4126 item 3: the people a public member list names reach list_people — the
++ * table was built and nothing wrote to it. Never a „knows" link; only the new
++ * user's own entry can join a number.
++ */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const LIST_URL = 'https://example.ge/board';
++const TODAY = '2026-10-12';
++const NEW_USER_PHONE = '+995500000001';
++
++const REPLY = {
++  same_person: true,
++  facts: [],
++  listed_people: [
++    { name: 'Nino Satsdeli', organisation: 'Bank A', role: 'Board member', source: LIST_URL },
++    { name: 'Giorgi Testadze', organisation: 'Bank A', role: null, source: LIST_URL },
++    { name: 'No Source', organisation: 'Bank A' },
++  ],
++};
++
++describe('listed people from the registration run', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('ships OFF, and the live brief is unchanged until it is on', () => {
++    expect(LIST_PEOPLE_ON).toBe(false);
++    expect(extractBrief(false)).toBe(REGISTRATION_EXTRACT_BRIEF);
++    expect(extractBrief(true)).toBe(`${REGISTRATION_EXTRACT_BRIEF} ${LIST_PEOPLE_BRIEF}`);
++  });
++
++  it('reads each listed person with the page and the day, and drops an entry with no source', () => {
++    expect(listedPeopleIn(REPLY, TODAY)).toEqual([
++      {
++        name: 'Nino Satsdeli',
++        organisation: 'Bank A',
++        listedRole: 'Board member',
++        sourceUrl: LIST_URL,
++        checkedOn: TODAY,
++      },
++      {
++        name: 'Giorgi Testadze',
++        organisation: 'Bank A',
++        listedRole: null,
++        sourceUrl: LIST_URL,
++        checkedOn: TODAY,
++      },
++    ]);
++  });
++
++  it('reads nobody when the extractor was not sure the texts are about this person', () => {
++    expect(listedPeopleIn({ ...REPLY, same_person: false }, TODAY)).toEqual([]);
++    expect(listedPeopleIn(null, TODAY)).toEqual([]);
++  });
++
++  it('joins only the new user’s own entry to their number; the others stay unmatched', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
++    const newUser = newUserAsKnown(NEW_USER_PHONE, 'Nino Satsdeli', [
++      { key: 'employer', value: 'Bank A' },
++      { key: 'city', value: 'Tbilisi' },
++    ]);
++    expect(newUser.organisations).toEqual(['Bank A']);
++    const stored = await storeListedPeople(listedPeopleIn(REPLY, TODAY), newUser);
++    expect(stored).toBe(2);
++    const matched = mockQuery.mock.calls.map((c) => (c[1] as unknown[])[5]);
++    expect(matched).toEqual([NEW_USER_PHONE, null]);
++    for (const call of mockQuery.mock.calls) {
++      expect(String(call[0])).toContain('INSERT INTO list_people');
++      expect(String(call[0])).not.toMatch(/knows|introduction/iu);
++    }
++  });
++
++  it('counts a person already stored as not new', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++    const newUser = newUserAsKnown(NEW_USER_PHONE, 'Someone Else', []);
++    expect(await storeListedPeople(listedPeopleIn(REPLY, TODAY), newUser)).toBe(0);
++  });
++
++  it('propagates a failed write instead of counting it', async () => {
++    mockQuery.mockRejectedValue(new Error('statement timeout'));
++    const newUser = newUserAsKnown(NEW_USER_PHONE, 'Nino Satsdeli', []);
++    await expect(storeListedPeople(listedPeopleIn(REPLY, TODAY), newUser)).rejects.toThrow(
++      'statement timeout',
++    );
++  });
++});
+diff --git a/src/services/registrationResearch/__tests__/registrationResearch.test.ts b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+index 0ce45be..d780f25 100644
+--- a/src/services/registrationResearch/__tests__/registrationResearch.test.ts
++++ b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+@@ -4,11 +4,15 @@ jest.mock('../../tools/webSearch', () => ({
+   webSearch: jest.fn(),
+   fetchPage: jest.fn(),
+ }));
+-jest.mock('../extract', () => ({ __esModule: true, extractFacts: jest.fn() }));
++jest.mock('../extract', () => ({
++  __esModule: true,
++  extractFacts: jest.fn(),
++  extractResearch: jest.fn(),
++}));
+ 
+ import { query } from '../../../db/postgres/client';
+ import { fetchPage, webSearch } from '../../tools/webSearch';
+-import { extractFacts } from '../extract';
++import { extractFacts, extractResearch } from '../extract';
+ import {
+   queueRegistrationResearch,
+   REGISTRATION_RESEARCH_ON,
+@@ -20,6 +24,7 @@ const mockQuery = query as jest.MockedFunction<typeof query>;
+ const mockSearch = webSearch as jest.MockedFunction<typeof webSearch>;
+ const mockFetch = fetchPage as jest.MockedFunction<typeof fetchPage>;
+ const mockExtract = extractFacts as jest.MockedFunction<typeof extractFacts>;
++const mockResearch = extractResearch as jest.MockedFunction<typeof extractResearch>;
+ const PAGE_URL = 'https://a.ge/nino';
+ 
+ function sqlOf(call: unknown[]): string {
+@@ -107,4 +112,39 @@ describe('registration research run', () => {
+     expect(await researchNextUser()).toBe(true);
+     expect(mockSearch).not.toHaveBeenCalled();
+   });
++
++  it('with the list switch on, keeps the people a public list names in list_people (4126 item 3)', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Nino Satsdeli', city: null }] } as never)
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValue({ rows: [], rowCount: 1 } as never);
++    mockSearch.mockResolvedValue({
++      results: [{ url: PAGE_URL, title: 'Board', snippet: 'board' }],
++    });
++    mockFetch.mockResolvedValue({ url: PAGE_URL, content: 'Board of Bank A: Nino Satsdeli.' });
++    mockResearch.mockResolvedValueOnce({
++      facts: [{ key: 'employer', value: 'Bank A', sources: [PAGE_URL], date: null }],
++      listed: [
++        {
++          name: 'Nino Satsdeli',
++          organisation: 'Bank A',
++          listedRole: 'Board member',
++          sourceUrl: PAGE_URL,
++          checkedOn: '2026-10-12',
++        },
++      ],
++    });
++
++    expect(await researchNextUser(true)).toBe(true);
++    expect(mockExtract).not.toHaveBeenCalled();
++    const listed = mockQuery.mock.calls.find((c) => sqlOf(c).includes('INSERT INTO list_people'));
++    expect(listed?.[1]).toEqual([
++      'Nino Satsdeli',
++      'Bank A',
++      'Board member',
++      PAGE_URL,
++      '2026-10-12',
++      '+995500000001',
++    ]);
++  });
+ });
+diff --git a/src/services/registrationResearch/extract.ts b/src/services/registrationResearch/extract.ts
+index f621938..47cf3f0 100644
+--- a/src/services/registrationResearch/extract.ts
++++ b/src/services/registrationResearch/extract.ts
+@@ -1,6 +1,8 @@
+ import Anthropic from '@anthropic-ai/sdk';
+ import anthropic from '../../config/anthropic';
+ import { recordClaudeUsage } from '../costLedger.service';
++import { ListPerson } from '../listPeople.service';
++import { LIST_PEOPLE_BRIEF, listedPeopleIn } from './listedPeople';
+ import { FoundFact, MAX_PAGE_CHARS, MAX_SNIPPET_CHARS } from './plan';
+ 
+ /**
+@@ -66,32 +68,65 @@ function asFact(value: unknown): FoundFact | null {
+ 
+ const JSON_OBJECT_RE = /\{[\s\S]*\}/u;
+ 
+-/** The extractor's facts; none when it was not sure the texts are about this person. */
+-export function factsFromReply(reply: string): FoundFact[] {
++/** The reply's JSON object, or null when it has none that parses. */
++function parsedReply(reply: string): unknown {
+   const json = JSON_OBJECT_RE.exec(reply)?.[0];
+-  if (json === undefined) return [];
+-  let parsed: unknown;
++  if (json === undefined) return null;
+   try {
+-    parsed = JSON.parse(json);
++    return JSON.parse(json) as unknown;
+   } catch {
+-    return [];
++    return null;
+   }
++}
++
++function factsIn(parsed: unknown): FoundFact[] {
+   if (!isRecord(parsed) || parsed.same_person !== true || !Array.isArray(parsed.facts)) return [];
+   return parsed.facts.map(asFact).filter((f): f is FoundFact => f !== null);
+ }
+ 
++/** The extractor's facts; none when it was not sure the texts are about this person. */
++export function factsFromReply(reply: string): FoundFact[] {
++  return factsIn(parsedReply(reply));
++}
++
++export interface Extracted {
++  readonly facts: FoundFact[];
++  /** 4126 item 3: the people a public list names; empty unless asked for. */
++  readonly listed: ListPerson[];
++}
++
++const NOTHING_EXTRACTED: Extracted = { facts: [], listed: [] };
++
++/** The brief the extractor reads: the live one, plus the list rule only when asked for. */
++export function extractBrief(withListedPeople: boolean): string {
++  return withListedPeople
++    ? `${REGISTRATION_EXTRACT_BRIEF} ${LIST_PEOPLE_BRIEF}`
++    : REGISTRATION_EXTRACT_BRIEF;
++}
++
+ /** One extractor call; an error or an unusable reply gives no facts, never a guess. */
+ export async function extractFacts(
+   userId: number,
+   person: PersonGiven,
+   texts: readonly ReadText[],
+ ): Promise<FoundFact[]> {
+-  if (texts.length === 0) return [];
++  return (await extractResearch(userId, person, texts, false)).facts;
++}
++
++/** One extractor call, with the people a public list names when asked for. */
++export async function extractResearch(
++  userId: number,
++  person: PersonGiven,
++  texts: readonly ReadText[],
++  withListedPeople: boolean,
++  now: Date = new Date(),
++): Promise<Extracted> {
++  if (texts.length === 0) return NOTHING_EXTRACTED;
+   const response = await anthropic.messages.create(
+     {
+       model: EXTRACT_MODEL,
+       max_tokens: EXTRACT_MAX_TOKENS,
+-      system: REGISTRATION_EXTRACT_BRIEF,
++      system: extractBrief(withListedPeople),
+       messages: [{ role: 'user', content: extractInput(person, texts) }],
+     },
+     { timeout: EXTRACT_BUDGET_MS, maxRetries: 0 },
+@@ -109,5 +144,9 @@ export async function extractFacts(
+     .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+     .map((block) => block.text)
+     .join('');
+-  return factsFromReply(said);
++  const parsed = parsedReply(said);
++  return {
++    facts: factsIn(parsed),
++    listed: withListedPeople ? listedPeopleIn(parsed, now.toISOString().slice(0, 10)) : [],
++  };
+ }
+diff --git a/src/services/registrationResearch/listedPeople.ts b/src/services/registrationResearch/listedPeople.ts
+new file mode 100644
+index 0000000..1e41518
+--- /dev/null
++++ b/src/services/registrationResearch/listedPeople.ts
+@@ -0,0 +1,87 @@
++import { KnownPerson, ListPerson, sameNamePerson, storeListPerson } from '../listPeople.service';
++
++/**
++ * 4126 item 3, the missing half: the list_people table (f8d0dbf) was built and
++ * nothing ever wrote to it. The registration run reads pages about a new user;
++ * when one of them is a public member, staff or attendee list, the people it
++ * names are kept in list_people — who belongs to which organisation, by which
++ * page, on which day — and never as a „knows" link (D757 point 2).
++ *
++ * OFF until Misho says yes to LIST_PEOPLE_BRIEF word for word (D44): it is
++ * added to the extractor's brief only while this is on, so the live brief does
++ * not change by one character until then.
++ */
++export const LIST_PEOPLE_ON = false;
++
++/** MODEL-FACING (D44): appended to REGISTRATION_EXTRACT_BRIEF only while LIST_PEOPLE_ON. */
++export const LIST_PEOPLE_BRIEF =
++  'If one of the texts is a public list of the people who belong to an organisation (members, ' +
++  'staff, a board, attendees), also return the people it lists, under "listed_people": ' +
++  '[{"name": "...", "organisation": "...", "role": "..." | null, "source": "https://..."}]. ' +
++  'Copy each name and role exactly as the list writes it. Being on the same list says nothing ' +
++  'about who knows whom: never turn it into a fact about this person.';
++
++/** Work facts that name an organisation the person belongs to. */
++const ORGANISATION_FACT_KEYS: ReadonlySet<string> = new Set(['employer', 'affiliation']);
++const MAX_LISTED_PER_RUN = 200;
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null;
++}
++
++function asListPerson(value: unknown, checkedOn: string): ListPerson | null {
++  if (!isRecord(value)) return null;
++  const { name, organisation, role, source } = value;
++  if (typeof name !== 'string' || typeof organisation !== 'string') return null;
++  if (typeof source !== 'string') return null;
++  return {
++    name,
++    organisation,
++    listedRole: typeof role === 'string' ? role : null,
++    sourceUrl: source,
++    checkedOn,
++  };
++}
++
++/**
++ * The listed people in the extractor's parsed reply; none unless it was sure
++ * the texts are about this person (the same gate its facts pass).
++ */
++export function listedPeopleIn(parsed: unknown, checkedOn: string): ListPerson[] {
++  if (!isRecord(parsed) || parsed.same_person !== true) return [];
++  const raw = parsed.listed_people;
++  if (!Array.isArray(raw)) return [];
++  return raw
++    .slice(0, MAX_LISTED_PER_RUN)
++    .map((entry: unknown) => asListPerson(entry, checkedOn))
++    .filter((p): p is ListPerson => p !== null);
++}
++
++/** The new user as the same-name check sees them: their number, name and organisations found. */
++export function newUserAsKnown(
++  phone: string,
++  name: string,
++  facts: readonly { readonly key: string; readonly value: string }[],
++): KnownPerson {
++  return {
++    phone,
++    name,
++    organisations: facts.filter((f) => ORGANISATION_FACT_KEYS.has(f.key)).map((f) => f.value),
++  };
++}
++
++/**
++ * Stores each listed person once. Only the new user's own entry can join a
++ * number, and only when name and organisation both match; everybody else on
++ * the list is kept unmatched. Returns how many rows were new.
++ */
++export async function storeListedPeople(
++  listed: readonly ListPerson[],
++  newUser: KnownPerson,
++): Promise<number> {
++  let stored = 0;
++  for (const person of listed) {
++    if (await storeListPerson(person, sameNamePerson(person, [newUser]))) stored += 1;
++  }
++  return stored;
++}
+diff --git a/src/services/registrationResearch/registrationResearch.service.ts b/src/services/registrationResearch/registrationResearch.service.ts
+index d1a74d6..2f584a2 100644
+--- a/src/services/registrationResearch/registrationResearch.service.ts
++++ b/src/services/registrationResearch/registrationResearch.service.ts
+@@ -1,6 +1,7 @@
+ import { query } from '../../db/postgres/client';
+ import { fetchPage, webSearch } from '../tools/webSearch';
+-import { extractFacts, PersonGiven, ReadText } from './extract';
++import { Extracted, extractFacts, extractResearch, PersonGiven, ReadText } from './extract';
++import { LIST_PEOPLE_ON, newUserAsKnown, storeListedPeople } from './listedPeople';
+ import {
+   factsToStore,
+   firstQueries,
+@@ -163,11 +164,24 @@ async function finish(
+   );
+ }
+ 
++/** The extractor's answer; the listed people are asked for only while LIST_PEOPLE_ON. */
++async function extracted(
++  userId: number,
++  given: PersonGiven,
++  texts: readonly ReadText[],
++  withListedPeople: boolean,
++): Promise<Extracted> {
++  if (!withListedPeople) return { facts: await extractFacts(userId, given, texts), listed: [] };
++  return extractResearch(userId, given, texts, true);
++}
++
+ /** One queued user researched; false when nobody was waiting. */
+-export async function researchNextUser(): Promise<boolean> {
++export async function researchNextUser(
++  withListedPeople: boolean = LIST_PEOPLE_ON,
++): Promise<boolean> {
+   const person = await claimNext();
+   if (person === null) return false;
+-  const counts = { searches: 0, pages: 0, facts: 0 };
++  const counts = { searches: 0, pages: 0, facts: 0, listed: 0 };
+   try {
+     if (person.name === '' || person.phones.length === 0) {
+       await finish(person.userId, 'done', counts, 'no name or number to research');
+@@ -177,13 +191,16 @@ export async function researchNextUser(): Promise<boolean> {
+     const gathered = await gather(given);
+     counts.searches = gathered.searches;
+     counts.pages = gathered.pages;
+-    const facts = factsToStore(await extractFacts(person.userId, given, gathered.texts));
++    const found = await extracted(person.userId, given, gathered.texts, withListedPeople);
++    const facts = factsToStore(found.facts);
+     counts.facts = await storeFacts(person.phones, facts);
++    const newUser = newUserAsKnown(person.phones[0], person.name, facts);
++    counts.listed = await storeListedPeople(found.listed, newUser);
+     await finish(person.userId, 'done', counts, null);
+     // eslint-disable-next-line no-console
+     console.log(
+       `[registration-research] user ${person.userId}: ${counts.searches} searches, ` +
+-        `${counts.pages} pages, ${counts.facts} facts`,
++        `${counts.pages} pages, ${counts.facts} facts, ${counts.listed} listed people`,
+     );
+   } catch (err) {
+     const message = (err as Error).message.slice(0, MAX_ERROR_CHARS);
+-- 
+2.43.0
+

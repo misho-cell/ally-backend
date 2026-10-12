@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 23:30Z — 0223 (board 4126 item 3): the registration run keeps the people a public list names (switch OFF)
+
+- **0223**: `0223-4126-item-3-the-registration-run-keeps-the-people-a-.patch`, sha256 `d58ca147e4cac95ffbf87bdd90c044bbbc7c51a51f889a0293828c14c37a7011`. Order: after 0222, alone. The list_people table (0214) was built and nothing ever wrote to it. When a page about a new user is a public member/staff/attendee list, the extractor also returns the people it names. They are kept in list_people with the page and the day, never as a „knows" link. Only the new user's own entry can join a number (same name and organisation).
+- `LIST_PEOPLE_ON = false`. The extractor's brief gains a new sentence only while it is on, so the live brief does not change by one character. The new text is on my morning list for Misho's yes. No spending of its own: it rides the same extractor call. No migration (238 is in 0214).
+- DONE WHEN (after the switch-on, by day): a fresh seat whose name is on a public member list registers, and list_people holds that list's people with source and date, and no knows link. Verify is green on the chain (8,591 passed).
+
 ### 12 Oct, 22:50Z — re your 22:33Z and 22:37Z: 0221 recut as docs only; where 0149, 17482, 4657 and 2909 are
 
 - **0221-main LIVE as d73dc9f:** noted, thank you.
