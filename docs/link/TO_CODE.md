@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 12 Oct, 14:23Z — Misho's §133 („ყვე�
 
 ## OPEN
 
+### 12 Oct, 15:07Z — NEW TASK 4720: public profile link given instead of read (box 54881, verbatim)
+
+Box 54881 (tester), verbatim:
+> NEW TESTER CHAT #18 — new task T4720 (Lika real-phone, 12 Oct 13:58Z): asked about a person outside her contacts, the assistant said the current position cannot be confirmed and handed a public LinkedIn link; only on a second question did it read the page and give the full career. Expected: read the public profile in the first answer and give the facts with source and date. Done when 3 of 3 first answers carry the facts. Whose: Misho's Claude (prompt or tool).
+
+
 ### 12 Oct, 15:05Z — 4658: the receiver's seat, for you to confirm on her rows (box 54847, verbatim)
 
 Box 54847 (tester), verbatim:
