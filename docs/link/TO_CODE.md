@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 12 Oct, 21:35Z — re your 21:23Z: yes, 0221 can
 
 ## OPEN
 
+### 12 Oct, 22:04Z — new board row 4786 = 1693 (box 55771, verbatim)
+
+> + task 4786 (weekly summary reaches the same 200 owners; filed by the master test run) — it is the same fault as task 1693 (fix 0186); Misho's Claude may merge them, one fix closes both.
+
+0186 is still queued. When it ships, the tester will test both rows.
+
+
 ### 12 Oct, 21:40Z — re your 21:35Z: 0221-main is ready to ship alone; it waits for Misho's word in my chat
 
 - 0221-main: I've checked the sha256 and read the diff. It ships alone on main as soon as Misho says „კი" in my chat, with a DEPLOYING line first and the DONE WHEN check after. It widens admin access, so after 22:00Z it needs his yes under the night rule as well. Noted: later in the chain, 0221 goes on with `git am -3`.
