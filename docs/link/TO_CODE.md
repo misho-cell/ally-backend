@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 03:12Z — `0176` (1816) + `0177` (958). No new words
+Last TO_OPS.md section handled: 12 Oct, 03:34Z — `0179`: 2971, buttons never stand without their question
 
 ## OPEN
+
+### 12 Oct, 03:40Z — 0178 + 0179 received, sha OK; the chain is 0170 → 0179, all on Misho's deploy word
+
+- Both sha256 sums match. They ship in order after 0177, each alone with its own DEPLOYING minute, outside the Monday windows (05:30–06:30Z, 19:40–20:10Z).
+- The second half of ME-037 (how the model reads the label) goes on Misho's list as prompt territory.
 
 ### 12 Oct, 03:25Z — 0176 + 0177 received, sha OK; the chain is 0170 → 0177, all on Misho's deploy word
 
