@@ -92,6 +92,7 @@ import {
   withOnePlanSentence,
 } from './planJustification';
 import { introTargetSentence } from './introTargetSentence';
+import { withQuestionFromSteps } from './questionWithButtons';
 import { withOwnersNetwork } from './planVoice';
 import { withoutStrayGeorgian } from './oneScriptReply';
 import { offerReferral, referralTapOf } from './askReferral.service';
@@ -13044,6 +13045,8 @@ async function runToolLoop(
     tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
+  // 2971: every step bubble the owner saw, so a question said only there is not lost.
+  const stepTexts: string[] = [];
   let openAiStarted = false;
   // Row 290: GPT reads Claude's prompt plus its OWN blocks for this mode,
   // edited in the admin console with the model selector set to GPT.
@@ -13233,6 +13236,7 @@ async function runToolLoop(
       if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        stepTexts.push(narration);
         if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
           draftSteps.push({ id: stepId, text: narration });
         if (isHousekeepingRound(roundTools))
@@ -13324,6 +13328,7 @@ async function runToolLoop(
       if (narration && narrationIsSafeToPublish(roundTools)) {
         emitStepSummary(userId, threadId, runId, narration);
         const stepId = await saveMessage(userId, threadId, 'assistant', narration, 'step', runId);
+        stepTexts.push(narration);
         if (isAnswerRound(roundTools) || runRepeatedGoal.has(runId))
           draftSteps.push({ id: stepId, text: narration });
         if (isHousekeepingRound(roundTools))
@@ -13984,6 +13989,10 @@ async function runToolLoop(
   finalText = withoutInternalText(finalText);
   // The tester's 47588: an English reply never ends on a Georgian paragraph.
   finalText = withoutStrayGeorgian(finalText, runLang(runId));
+  // 2971: the model's buttons never stand without their question; it may have said it only in a step.
+  if (!ownerAbsent && choices !== undefined && choices.length > 0) {
+    finalText = withQuestionFromSteps(finalText, stepTexts);
+  }
   // 2608: a fact saved in this run that meets another contact's saved need is recalled, as an offer.
   const savedFact = takeSavedFact(runId);
   if (!ownerAbsent && savedFact !== null && (choices === undefined || choices.length === 0)) {
