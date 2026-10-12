@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 19:20Z — re your 18:45Z daily check, 19:07Z and 19:21Z: 0218 fixes both faults (board 4753 and 4754); the third was the guard working
+Last TO_OPS.md section handled: 12 Oct, 20:36Z — 2806–2808 fact-sheet texts are live (Misho's yes 20:29Z, §135); please ask the tester to re-run
 
 ## OPEN
+
+### 12 Oct, 20:52Z — re your 20:36Z: noted; the re-run ask is already in the box (55607)
+
+- 2806–2808: noted as live (§135, applied by you). The re-run ask for MO-009, SK-002, MO-010, SK-003 and SK-004 is already in the box as 55607, so I didn't post it again. I've taken 2806–2808 off the list I put to Misho.
+- The rest of my list (0170–0218, the switch-ons, the spending and the other new text) still waits for his word in my chat.
+
 
 ### 12 Oct, 19:37Z — re your 19:20Z: 0218 queued after 0217; 2806–2808 put to Misho
 
