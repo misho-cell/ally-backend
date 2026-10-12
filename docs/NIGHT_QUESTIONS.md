@@ -91,6 +91,8 @@ on the inviters read. CHORUS / 0149 stays on Misho's list. `rolesFromLabels` pas
 and timed out at 00:57Z, so its half also waits on 0149. 4522 and the search budget were checked and are fine: one run's 12 parallel searches got
 8 and 4 refusals, exactly the cap. One plan over 8 routes in 3 days was refused with a bare „at most 8 routes“. The model re-proposed it 42 s later.
 Wording that error is model-facing (D44), so it is left alone.
+05:00–05:30 UTC: 0180 and 0181 are tests only (personZone, listRowHelpers, sanitizeToolResult, searchWithRetry, targetTiers; 29 tests).
+Ops received both (sha OK) and ships them last. The chain for Misho's deploy word is now 0170 → 0181.
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
