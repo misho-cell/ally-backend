@@ -2,9 +2,15 @@ import { greetingText, MIRRORED_GREETING_ON, timeOfDayGreeting } from '../server
 
 /** 2114 (box 54162): „დილა მშვიდობისა" was answered „გამარჯობა". */
 describe('a time-of-day greeting is answered in kind', () => {
-  it('is OFF until Misho’s yes: every hello reads as it did', () => {
-    expect(MIRRORED_GREETING_ON).toBe(false);
+  it('is ON since Misho’s yes (§132): his own words come back by default', () => {
+    expect(MIRRORED_GREETING_ON).toBe(true);
     expect(greetingText('ნინო', true, 'ka', 'დილა მშვიდობისა')).toBe(
+      'დილა მშვიდობისა, ნინო! რით დაგეხმარო?',
+    );
+  });
+
+  it('switched off, every hello reads as it did', () => {
+    expect(greetingText('ნინო', true, 'ka', 'დილა მშვიდობისა', false)).toBe(
       'გამარჯობა, ნინო! რით დაგეხმარო?',
     );
   });

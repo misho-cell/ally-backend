@@ -66,9 +66,10 @@ const HELLO_WORD_RE = /^(¡?)(?:გამარჯობა|Hello|Привет|H
  * were answered „გამარჯობა". With the switch on, a time-of-day greeting is
  * answered with the person's own words — nothing the server did not hear.
  *
- * USER-VISIBLE: OFF until Misho says yes.
+ * USER-VISIBLE: ON since Misho's yes, 12 Oct 11:39 UTC („1 კი", §132). Back to
+ * false answers every hello „გამარჯობა" again.
  */
-export const MIRRORED_GREETING_ON = false;
+export const MIRRORED_GREETING_ON = true;
 
 const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
 
