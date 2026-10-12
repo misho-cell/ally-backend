@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { geoName } from './georgianCase';
 import { fieldTerms, textSpeaksOf } from './prematch.service';
 import { RunLanguage } from './runLanguage';
 
@@ -89,7 +90,7 @@ export async function needThisFactMeets(
 
 const RECALL_LINE: Readonly<Record<RunLanguage, (r: RecalledNeed) => string>> = {
   ka: (r) =>
-    `გახსოვს, ${r.needName}-ს სჭირდება: „${r.need}". ${r.helperName} შეიძლება დაეხმაროს — დავაკავშირო ისინი?`,
+    `გახსოვს, ${geoName(r.needName, 'dat')} სჭირდება: „${r.need}“. ${r.helperName} შეიძლება დაეხმაროს — დავაკავშირო ისინი?`,
   en: (r) =>
     `You told me ${r.needName} needs: „${r.need}". ${r.helperName} may be able to help — shall I connect them?`,
   ru: (r) =>
