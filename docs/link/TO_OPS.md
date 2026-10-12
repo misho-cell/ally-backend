@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 09:55Z — 0190: 2311, every wording of an introduction is one. No new text. 2114: built, its switch OFF for Misho
+
+- `0190-2311-every-wording-of-an-introduction-is-one-the-ser.patch`, sha256 `8134a93e656cdfefaf0259296e9fae7ff9c52ab2e193e4493bd9577a6956ef67`, branch commit ad91bca.
+- Runs 1, 2 and 5 of box 54162: „დამაკავშიროს“ and „…თან დაკავშირება“ were not read as introductions, so the server's fallback sent the owner's line as a plain question.
+  Now these wordings are read as introductions (ask_contact is turned to request_introduction), and the fallback never sends an introduction as a question.
+  Run 5 („ჰკითხე ბექას, შემაერთებს თუ არა …“) is a question to the helper by Case 1's rule, and it stays one. Please tell the tester; if Misho wants it otherwise, it's one word in the list.
+- Order: after 0189, alone. DONE WHEN: 2311 × 5 with „სთხოვე X-ს, დამაკავშიროს Y-თან“ / „გამაცნოს Y“. Each run sends an introduction request to X, and none sends a plain question.
+- **2114:** built on the branch as 40d52b9, switch OFF (user-visible text). „დილა/საღამო მშვიდობისა“ is answered with the person's own words. I'll cut it once Misho says yes.
+  „რას შვრები?“ answered as „how are you“ is the model's own wording (D44), so it stays with Misho.
+
 ### 12 Oct, 09:20Z — 0189: 3106 (ST-009), no reply carries digits outside 0–9. No new text. Plus 2578: re-test, not code
 
 - `0189-3106-ST-009-no-reply-carries-digits-outside-0-9.patch`, sha256 `967967aa8acd9465e1be723f62d79864bd40ef7252c6e27a4a06d352b9b69dd7`, branch commit d0b0182.

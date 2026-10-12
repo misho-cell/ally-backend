@@ -1,0 +1,106 @@
+From b145eeaaac6c8d2dbd6c9c664ed040ec0a499d27 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 08:55:06 +0000
+Subject: [PATCH] 2311: every wording of an introduction is one; the server
+ never sends it as a question
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 54162, 2 of 5: „სთხოვე ლევანს, დამაკავშიროს თამთასთან" and „მაიას თხოვე
+ბახვასთან დაკავშირება" were not read as introductions (the detector knew
+only „დამაკავშირე", and a verb form inside a longer word could match), so
+the run's ask was not turned to request_introduction and the server's
+unsent-instruction fallback sent the owner's line as a plain question.
+- the detector reads დამაკავშიროს, დაგვაკავშიროს, შემაერთე, შემაერთოს,
+  შეგვაერთოს and „…თან დაკავშირება/გაცნობა"; each verb form must end the
+  word, so „შემაერთებს თუ არა" stays a question (Case 1's rule);
+- the fallback never sends an introduction as its own plain question; it
+  says the existing not-sent line instead.
+No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...ntroductionWordingIsAnIntroduction.test.ts | 32 +++++++++++++++++++
+ src/services/chat.service.ts                  |  6 ++++
+ src/services/introInstruction.ts              |  5 ++-
+ 3 files changed, 42 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/everyIntroductionWordingIsAnIntroduction.test.ts
+
+diff --git a/src/services/__tests__/everyIntroductionWordingIsAnIntroduction.test.ts b/src/services/__tests__/everyIntroductionWordingIsAnIntroduction.test.ts
+new file mode 100644
+index 0000000..12213a6
+--- /dev/null
++++ b/src/services/__tests__/everyIntroductionWordingIsAnIntroduction.test.ts
+@@ -0,0 +1,32 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { ownerAsksForIntroduction } from '../introInstruction';
++
++/** 2311 (box 54162): three ways of asking for an introduction went out as plain asks. */
++describe('every wording of an introduction is an introduction', () => {
++  it.each([
++    'სთხოვე ლევან საცდელაძეს, დამაკავშიროს თამთა ნიმუშაძესთან.',
++    'მაია გამოგონილს თხოვე ბახვა ფიქტიურთან დაკავშირება.',
++    'სთხოვე ნანას, შემაერთოს გურამთან.',
++    'ნანა გამოგონილაძეს სთხოვე, გამაცნოს გურამ ფიქციაშვილი.',
++  ])('reads „%s" as an introduction', (line) => {
++    expect(ownerAsksForIntroduction([line])).toBe(true);
++  });
++
++  it.each([
++    'ჰკითხე ბექა ნიმუშაშვილს, შემაერთებს თუ არა ირმა გამოგონილთან.',
++    'ჰკითხე გიას, გამაცნობს თუ არა ნინოს.',
++    'დამაკავშირდი ხვალ.',
++    'ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.',
++  ])('keeps „%s" a question', (line) => {
++    expect(ownerAsksForIntroduction([line])).toBe(false);
++  });
++
++  it('never lets the server send an introduction as its own plain question', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const guard = chat.indexOf("if (ownerAsksForIntroduction([runOwnerLine.get(runId) ?? ''])) {");
++    const send = chat.indexOf('await sendInstructedAsk(userId, threadId', guard);
++    expect(guard).toBeGreaterThan(-1);
++    expect(send).toBeGreaterThan(guard);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index e9dccb8..57d3f83 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -12322,6 +12322,12 @@ async function serverSendsOrSaysSo(
+   runId: string,
+ ): Promise<string> {
+   const language = runLang(runId);
++  // 2311 (box 54162): an introduction is never sent as the server's plain question.
++  if (ownerAsksForIntroduction([runOwnerLine.get(runId) ?? ''])) {
++    // eslint-disable-next-line no-console
++    console.warn(`[instruction-unsent] run ${runId}: an introduction, not sent as a question`);
++    return NOT_SENT_LINE[language];
++  }
+   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+     (err: unknown) => {
+       // eslint-disable-next-line no-console
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index 89ace07..161dbc4 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -9,9 +9,12 @@
+  * helper whether HE will introduce — that is a question, and stays one.
+  * 3697: „სთხოვე მაიას, გამაცნოს ბახვა" (ask Maia to introduce me) is the
+  * same request through a named go-between, and is one.
++ * 2311 (box 54162): „სთხოვე ლევანს, დამაკავშიროს თამთასთან", „შემაერთოს" and
++ * „მაიას თხოვე ბახვასთან დაკავშირება" are the same request; „შემაერთებს თუ არა"
++ * stays a question, like Case 1's „გამაცნობს თუ არა".
+  */
+ const OWNER_INTRO_RE =
+-  /(გამაცანი|დამაკავშირე|გამაცნოს|გაგვაცნოს|\bintroduce\s+(?:me|us)\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
++  /((?:გამაცანი|დამაკავშირე|გამაცნოს|გაგვაცნოს|დამაკავშიროს|დაგვაკავშიროს|შემაერთე|შემაერთოს|შეგვაერთოს)(?!\p{L})|\S+თან\s+(?:დაკავშირება|გაცნობა)|\bintroduce\s+(?:me|us)\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
+ 
+ /** True when one of the owner's lines on this goal tells Netai to introduce them. */
+ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean {
+-- 
+2.43.0
+
