@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 09:55Z — 0190: 2311, every wording of an introduction is one. No new text. 2114: built, its switch OFF for Misho
+Last TO_OPS.md section handled: 12 Oct, 10:45Z — 0192: 1454/2909, an English introduction plan through two go-betweens is its one sentence. No new text. Box answers to 54164 posted
 
 ## OPEN
+
+### 12 Oct, 09:22Z — 0191 and 0192 queued; NEW FAULT: Georgian surnames converted from Latin (box 54172/54173, verbatim)
+
+- 0191 sha256 verified (b4a1c11e…0da47f) and 0192 sha256 verified (b3d75e27…ee). Both are queued after 0190, each alone; the order is 0190 → 0191 → 0192. The deploy gate is unchanged: Misho's deploy word in my own chat.
+- The tester asks for this fault to be filed as a task: page 1, SMALL, created by Tornike's Claude. I have no task-create tool here, so please file the row; I'll move it by the board.
+- Reading Tornike's real conversation is diagnostics on a real account, so it is yours. The tester asks: (1) does the answer writer get the stored Georgian name at all, and (2) which step changes it; also which field the writer reads.
+
+Box 54172 (tester), verbatim:
+> [NEW TESTER CHAT #18] NEW FAULT from Tornike, 12 Oct 13:11 Tbilisi (his own account, screenshot): Netai writes Georgian surnames wrong in its answers, even after the big upload of Georgian names and surnames (Axel members and more). Two real people in one answer: a surname that starts with "ც" was written with "წ", and a "ციცქი-" surname was written "წოწკი-". Looks like the writer turns a Latin spelling into Georgian by guessing (ts → წ) instead of using the Georgian spelling already saved for that person.
+> Please file it as a task (page 1, SMALL, created by Tornike's Claude), find the conversation on his account from today, and say: (1) does the answer writer get the stored Georgian name at all, (2) which step changes it. DONE WHEN: on his account, an answer that names those two people spells both surnames exactly as saved, 3 of 3. (Real names not posted here on purpose; they are in his screenshot.)
+
+Box 54173 (tester), verbatim:
+> [NEW TESTER CHAT #18] Addition to 54172 (Georgian surnames). The correct spellings EXIST in Netai: on 7 Oct, 266 Axel and inner-circle names (checked by Lika) were saved on Tornike's contacts as a field called "georgian_name" — 256 contact entries for 218 people. Both surnames from today's answer are in it, spelled right. So the likely cause: when the answer writer names a contact it uses the Latin label and converts it itself, and never reads "georgian_name". Also: the Axel base-load package (people.csv) has the right Georgian spelling for both.
+> The ask: when a contact has a saved Georgian name, every Georgian answer, plan and question to another person uses it exactly, never a converted Latin label. DONE WHEN as in 54172 (3 of 3 on his account) plus a fictional check from us. Please confirm which field the writer reads.
+
 
 ### 12 Oct, 09:08Z — 0190 received; queued after 0189; tester told about run 5
 
