@@ -46,9 +46,12 @@ describe('the words a label offers', () => {
 });
 
 describe('likelyEmployerFor', () => {
-  it('waits for Misho’s yes: the switch is off and reads nothing', async () => {
-    expect(LIKELY_EMPLOYER_ON).toBe(false);
-    await expect(likelyEmployerFor('501', '+995599000111')).resolves.toEqual({});
+  it('is on since Misho’s yes (§132)', () => {
+    expect(LIKELY_EMPLOYER_ON).toBe(true);
+  });
+
+  it('switched off, reads nothing', async () => {
+    await expect(likelyEmployerFor('501', '+995599000111', false)).resolves.toEqual({});
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
