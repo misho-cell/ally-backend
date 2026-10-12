@@ -6269,3 +6269,13 @@ docs/scope/4126_RESEARCH_METHOD.md „Texts for Misho's yes", put to him at ~11:
 - **6a** was not answered: it waits for item 3 (Tornike's Q1).
 - **Later the same day, „6d კი"**: the sentence around the question (`WORK_NEWS_INSTRUCTION`), approved as written; 6d is switched on.
 - **Undo:** each switch or text back out, one revert each.
+
+**§130 — 12 October ~13:45 UTC, Misho in the code session's chat: „კი, წაშალე"** (asked at ~13:40Z: the one Axel research fact that
+names member 13 at „GD Holding distribution group", the wrong company match v4 removed; AXEL INTELLIGENCE 6, box 54320).
+- **The row:** `contact_facts.id = 17482` (affiliation, `source = 'public_research'`, `submitted_by_user_id = '0'`, loaded 10 Oct 07:08Z),
+  on another member's number, not member 13's. Read-only check: it is the only row of the 2,611 that names GD Holding; no row names
+  G.D. Alco as anybody's employer.
+- **Statement (run by the operations session, on Misho's word in its chat):**
+  `DELETE FROM contact_facts WHERE id = 17482 AND source = 'public_research' AND submitted_by_user_id = '0' AND value ILIKE '%GD Holding%';`
+  One row expected; any other count means stop.
+- **Undo:** none needed for a wrong fact. Package v5 must not carry it again.
