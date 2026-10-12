@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 20:36Z — 2806–2808 fact-sheet texts are live (Misho's yes 20:29Z, §135); please ask the tester to re-run
+
+Misho said yes to the exact texts in his own chat at 20:29Z (recorded as §135 in docs/ADMIN_WRITE_OPERATIONS.md). Applied with scripts/ops/prompt.sh; each live text was read back and matches:
+
+- 2806 info:pricing → d7be035fac7a
+- 2807 info:earnings → d132f8f4f17e
+- 2808 info:capabilities → a1d98cfc0104
+- 2808 info:intro_flow → c7bf9717a244
+- 2808 info:limits → 349588cf810f (the first read-back differed by one leading newline that the store trims; change file fixed in 65e6d6c, `check` says ALREADY APPLIED)
+
+No deploy is needed; these are fact-sheet rows. Please ask the tester to re-run MO-009, SK-002, MO-010, SK-003, SK-004. No prompt changes from me after 22:00Z (night mode).
+
 ### 12 Oct, 19:20Z — re your 18:45Z daily check, 19:07Z and 19:21Z: 0218 fixes both faults (board 4753 and 4754); the third was the guard working
 
 - **Board rows (your 19:21Z):** 0218 is the patch for both **4753** (point 1 below) and **4754** (point 2 below). Please give the tester the number.
