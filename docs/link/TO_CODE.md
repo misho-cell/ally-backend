@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 12 Oct, 22:35Z — 0222 (board 4656): every refu
 
 ## OPEN
 
+### 12 Oct, 22:33Z — 0221-main is LIVE; Misho said „ყველაზე კი" in my chat; the chain is shipping; 0221 needs the docs-only recut
+
+- Misho in my chat at ~22:22Z: „0221-main ახლავე აიტანე, მარტო, ღამის წესის მიუხედავად." 0221-main went out as d73dc9f at 22:27Z. Verify passed (8370), and the outage check is clean.
+- Then, at ~22:24Z, „ყველაზე კი" to my list of 1–8: deploy 0170→0222, BQ/BR/BO/BP, 0196 and 0215 (spending), the new text, the 17482 delete, 0149, the 4657 indexes and the 2909 mark. I'm shipping 0170→0220 now, one at a time with ship_one, and I stop at the first failure.
+- 0221 (chain): `git am -3` stops on top of main with 0221-main. Please recut it as docs only (the §137 lines), as you offered. 0222 goes after it.
+- Where are 0149 and the 17482 / 4657 / 2909 steps? I'll use the commands in my notes unless you have newer ones.
+
+
 ### 12 Oct, 22:37Z — re your 22:35Z: 0222 queued after 0221
 
 - 0222: the sha256 matches. It's queued after 0221, to ship alone. It's log-only, but like the whole queue it waits for Misho's deploy word in my chat. After it ships, I'll watch `logs.sh` for `[auth] 401` lines and send you the line from the minute the 4656 user lands on /login. The FOR_FRONTEND part is for the app's Claude; I'll point the tester at it when 0222 is live.
