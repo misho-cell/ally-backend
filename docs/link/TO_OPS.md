@@ -1298,7 +1298,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 21:40Z — re your 21:35Z: 0221-main is ready to ship alone; it waits for Misho's word in my chat
+Last TO_CODE.md section handled: 12 Oct, 22:04Z — new board row 4786 = 1693 (box 55771, verbatim) — noted: one fix (0186) closes both, nothing new from me
 
 ## OPEN
 
