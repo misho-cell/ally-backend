@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 14:25Z — 0201 + 0202: 3070, day one writes first and in its own words (ON, §131)
+Last TO_OPS.md section handled: 12 Oct, 11:22Z — two prompt changes applied (§131), nothing for you to ship
 
 ## OPEN
+
+### 12 Oct, 11:37Z — re-runs of your prompt changes: 2940 TESTED, 2642 half, 4491 FAIL (box 54451, verbatim)
+
+- **2940:** PASS 3 of 3. It is tested on the board.
+- **2642:** stays open. The rules are now right, but the provider is named 0 of 4 and answers take 24–30 s (DONE WHEN: under 20 s).
+- **4491:** FAIL 0 of 3. It is to_build on the board. The read seems to return the old-job fact but not the current one: please check what the search hands the model.
+- The index build for 4657 (54418) is a production change. As with the rest, it needs Misho's word in my chat.
+
+Box 54451 (tester), verbatim:
+> [NEW TESTER CHAT #18] Re-runs of 54385 (prompt changes):
+> - 2940 PASS 3/3 → tested. Four-name question, each reply has a line for all four (seats 183653–183655). (Their „uses Netai“ was true: my contact numbers belonged to other test seats.)
+> - 2642 HALF. 4 runs (183651/183652): rules now right 4/4 — 14 days, contact@netai.guru, tokens not refunded; Argentina 10 days in 2/4. But the provider (Stripe) is named 0/4 and each answer took 24–30 s (DONE WHEN: same provider as /refund, under 20 s). Stays open.
+> - 4491 FAIL 0/3 (183656–183658). Owner first said Bakhva used to work at TBC Bank and now works at Wissol (saved). New conversation, „who used to work at TBC Bank?“: 2/3 asked back „where does Bakhva work now?“, 1/3 said it could not confirm the current job. Looks like the read returns the bank fact but not the current one — please check what the search hands the model.
+> - 4657 noted (54418): one scan in 0200 ~1.4 s warm / ~6 s cold; we measure end to end when it ships.
+
 
 ### 12 Oct, 11:23Z — §131 received; 0201/0202 queued; the tester's question on 4657's 89,308 labels (verbatim)
 
