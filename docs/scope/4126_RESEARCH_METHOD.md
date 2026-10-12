@@ -1,0 +1,104 @@
+# 4126 — the research method for people (D757–D764): exact scope for Misho's yes
+
+Written by the code session, 9 October ~20:30 UTC. Nothing here is built. Every item ships only after
+Misho's yes on that item (it widens what Netai researches and stores about people), and each prompt text
+needs its own yes, recorded with the exact text.
+
+## What exists today (read from the code)
+
+- `researchRunner.service.ts` researches **phone numbers from the target list**, not new users. It runs
+  every 15 minutes when `RESEARCH_RUNNER=on`, using web search only (Tavily). It is capped at 10 people
+  per tick, 200 searches a day, 3 steps per person, and it re-researches each person every 30 days.
+- What it finds is stored only as raw hits (`research_findings`: url, title, snippet, date). Nothing turns
+  them into facts.
+- Facts live in `contact_facts`: source chat / sweep / label / debrief, and confidence stated / mentioned.
+  There is no URL column and no research source.
+- A person can see the public facts about themselves only through a chat tool
+  (`get_what_netai_knows_about_me`). **Nothing lets a person remove facts other people saved about them.**
+- No table holds people who are neither users nor anybody's contacts.
+
+## The scope, item by item (each needs a yes)
+
+1. **One deep research run at registration, for the new user only.**
+   - Inputs: their name and anything they gave at signup (city, a profile link).
+   - Tools: web search plus page reading. No search cap for this one run.
+   - It runs once and never again (D757 §5).
+   - Cost: unknown until measured. I propose a hard stop of 60 searches and 30 pages per person, so one bad name cannot spend without limit. Misho decides between that and „no cap".
+2. **Facts gain source, date and confidence.**
+   - `contact_facts` gains `source = 'research'`, `source_url`, `checked_at` and `confidence` (confirmed / possible).
+   - A fact from one ordinary source is `possible`. An official source, or two independent sources, makes it `confirmed`.
+   - When sources conflict, both are kept, with a conflict note.
+3. **People found on public member lists get their own table** (`list_people`).
+   - Fields: name, organisation, listed role, source URL, check date. Nothing else: no phone and no photo.
+   - Such a person is never a „knows" link and never an introduction route.
+   - Before merging with a contact or user, a same-name check runs; on doubt, they are not merged.
+   - They are researched deeper only when a request makes them relevant.
+4. **Contacts' research stays professional only.**
+   - The runner skips any number the owner's labels mark as family or close (მამა, დედა, ძმა, და, ბებია, ბაბუა, ცოლი, ქმარი, ❤️ …).
+   - When it is unclear, Netai asks the owner instead.
+   - **Open question:** should the existing 30-day re-research of the target list stop for people who are themselves users (D757 §5: „once, at registration")?
+5. **A person sees and removes facts about themselves.**
+   - `GET /me/facts` lists every fact about their own numbers, with source and date: researched, label-derived and other users' facts (the submitter is never named).
+   - `DELETE /me/facts/:id` removes a fact everywhere: retracted, not matchable, not shown.
+   - The same is available as a chat command.
+   - The frontend needs one screen for it.
+6. **Prompt texts, each a separate D44 yes:**
+   - (a) list membership is never acquaintance;
+   - (b) a single-source fact is said as „possible", with source and date;
+   - (c) ask the owner when a contact's work status is unclear;
+   - (d) an occasional „სამსახურში რამე სიახლე?" to the user, instead of re-research.
+
+   I will draft the exact texts after items 1–5 are decided.
+
+## DONE WHEN (from the founder, 2 of 2)
+
+- A fresh seat registers, and its own work facts appear within the registration run, each with source and date.
+- A member-list person is stored without any „knows" link.
+- A single-source fact is shown as possible, with source and date.
+- The person removes one fact, and it is gone everywhere.
+
+## Misho's decisions, 9 October ~20:48 UTC (code session chat)
+
+| Item | Decision |
+|---|---|
+| 1. Registration run | „შეზღუდე": **limited** — a hard stop per person (60 searches, 30 pages proposed), not unlimited |
+| 2. Source, date, confidence on facts | „კი": **yes** |
+| 3. List-people table | „ეს თორნიკეს კითხე": **Tornike decides**, asked in box 49338 (Q1) |
+| 4. Professional only; stop the 30-day re-research of users | „თორნიკეს კითხე": **Tornike decides**, asked in box 49338 (Q2) |
+| 5. See and remove facts about oneself | „კარგი": **yes** |
+| 6. Prompt texts | „კარგი": **yes, to drafting**. Each exact text still needs its own yes before it ships |
+
+Items 1, 2 and 5 can be built now. Items 3 and 4 wait for Tornike. Building item 1 spends money, so it starts only in daytime.
+
+## Built 12 October (Misho's „დაიწყე", ~10:40 UTC)
+
+- Item 1: the registration run, as 0193 (bbdc876), switch OFF. It runs once per user (a primary key), with a stop
+  of 60 searches and 30 pages, private and unmatchable facts on the user's own numbers, the Axel facts winning,
+  and a removed fact staying removed.
+- Item 2: `research_status` (confirmed / possible), `source_url` and `fact_date` already exist (4225). Migration
+  237 adds `conflict_note`. Confidence: an official source, or two independent sites, confirms; one ordinary
+  source is possible.
+- Item 5: already built (3db7dd2).
+- Items 3 and 4: built on Misho's yes (§133, 14:03 UTC) as D757 says — 0213 (runner) and 0214 (`list_people`). The tester answered Q1 and Q2 for Tornike the same afternoon: „Yes to both, it's already in T4126."
+
+## Texts for Misho's yes (D44), word for word
+
+**E — the extractor's brief** (`REGISTRATION_EXTRACT_BRIEF`; the run stays off until this has a yes):
+
+> You read web search results and pages about one person who has just joined Netai, and you return what they say about that person's work. Use only what the given texts say; never guess or add. First decide whether the texts are about this person at all: the name must match, and anything else known about them (city, profile link) must not contradict it. If several people share the name and you cannot tell which is them, set same_person to false and return no facts. Return work facts only — occupation, employer, industry, city, education, affiliation, expertise, other_role, headline — never family, health, religion, politics or private life. For every fact give the URLs of the texts that say it, and the date the text gives for it if there is one (YYYY-MM-DD). Reply with JSON only: …
+
+**6a — a member list is not an acquaintance** (only needed once item 3 exists):
+
+> A person found only on a public member list is not someone the owner knows. Never call them an acquaintance, and never offer them as the way to reach someone.
+
+**6b — a single-source fact is „possible"**:
+
+> A fact marked possible comes from one source. Say it as possible, with where and when it was found — „possibly works at X (per site.ge, March 2025)" — never as certain.
+
+**6c — ask when work status is unclear**:
+
+> When you are not sure a contact still works where a fact says, ask the owner one short question before relying on it.
+
+**6d — the occasional work question, instead of re-research** (asked of the user, at most once a month):
+
+> „სამსახურში რამე სიახლეა?"
