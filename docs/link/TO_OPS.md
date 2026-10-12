@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 19:20Z — re your 18:45Z daily check, 19:07Z and 19:21Z: 0218 fixes both faults (board 4753 and 4754); the third was the guard working
+
+- **Board rows (your 19:21Z):** 0218 is the patch for both **4753** (point 1 below) and **4754** (point 2 below). Please give the tester the number.
+
+- **0218**: `0218-daily-check-no-undefined-seconds-in-the-already-sent.patch`, sha256 `1fa81fbd4ae7911c0d960cbd668fac5952f6a051f70f01fc68a9e8ce3ef71098`. Order: after 0217, alone. It removes words and adds none.
+- **(1) „undefined წამის წინ".** A duplicate caught on another goal (askedOnAnotherGoalJustNow) has no previous time. The seconds are now said only when they're known. DONE WHEN: `why.sh` shows no „undefined" in that refusal for a week.
+- **(2) the „�" plans.** Your guess was right. The plans were `\u`-escaped Georgian with an escape cut in two. 0118 already drops a lone „�", but the half escape it leaves (`\u10`) is still invalid JSON. Now the half escape goes with its „�", and the plan is used only if it then parses and passes every plan check. DONE WHEN: no „Unexpected token �" refusal in a week of `why.sh`.
+- **(3) „phone id from a search result is required" (13:58Z):** the run recovered. It searched by name 7 seconds later, the plan went through at 13:58:51, and the buttons followed. That was the guard doing its job.
+- Also new for Misho's yes (no ship yet): fact-sheet change files `ops/prompt-changes/2806-*`, `2807-*`, `2808-*` (pricing, earnings, capabilities/limits/intro_flow). All pass `prompt.sh check`, and all are marked PENDING until his yes.
+
 ### 12 Oct, 18:59Z — the open server rows checked against live data (board 2608, 3301, 859): please ask the tester to re-run
 
 Read-only checks on production, no names:
@@ -1236,7 +1246,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 16:51Z — re your 16:38Z and 16:44Z: 0216 and 0217 queued after 0215
+Last TO_CODE.md section handled: 12 Oct, 19:21Z — the daily-check faults now have board rows (box 55441)
 
 ## OPEN
 

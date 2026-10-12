@@ -1,0 +1,118 @@
+From e30b1b0896f82d90c5c0e97babe01c5e9b370eec Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 19:16:40 +0000
+Subject: [PATCH] =?UTF-8?q?daily=20check:=20no=20=E2=80=9Eundefined"=20sec?=
+ =?UTF-8?q?onds=20in=20the=20already-sent=20refusal;=20a=20plan's=20half?=
+ =?UTF-8?q?=20escape=20is=20mended?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops' daily check (12 Oct 18:45Z), two real faults:
+
+1. ask_contact, 08:34Z, one real account, 4 calls: the „already sent, wait"
+   refusal told the model it sent the question „undefined წამის წინ". A
+   duplicate caught on another goal has no previous time; the seconds are
+   now said only when known (words removed, none added).
+
+2. propose_task_plan, 11 Oct 21:57Z and 23:57Z (test seats): plans of 2,844
+   and 1,474 characters, \u-escaped Georgian, failed „Unexpected token �"
+   mid-text. 0118 already drops a lone „�"; here an escape was cut in two,
+   and the half escape left behind (`\u10`) is still invalid. The half escape
+   now goes with its „�", and the plan is used only if it then parses.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aDuplicateAskSaysNoUndefinedTime.test.ts    | 17 +++++++++++++++++
+ .../__tests__/aPlanWithASlipIsMended.test.ts    |  5 +++++
+ src/services/planJsonRepair.ts                  |  8 ++++++++
+ src/services/taskAsks.service.ts                |  6 +++++-
+ 4 files changed, 35 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aDuplicateAskSaysNoUndefinedTime.test.ts
+
+diff --git a/src/services/__tests__/aDuplicateAskSaysNoUndefinedTime.test.ts b/src/services/__tests__/aDuplicateAskSaysNoUndefinedTime.test.ts
+new file mode 100644
+index 0000000..05b76f8
+--- /dev/null
++++ b/src/services/__tests__/aDuplicateAskSaysNoUndefinedTime.test.ts
+@@ -0,0 +1,17 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * Ops' daily check (12 Oct): a duplicate caught on another goal has no previous
++ * time, and „undefined წამის წინ" reached the model. The time is said only when known.
++ */
++describe('the already-sent refusal', () => {
++  const source = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++
++  it('names the seconds only when they are known', () => {
++    expect(source).toContain(
++      "(secondsSincePrevious === undefined ? '' : `${secondsSincePrevious} წამის წინ `)",
++    );
++    expect(source).not.toContain('უკვე გაუგზავნე ${secondsSincePrevious} წამის წინ');
++  });
++});
+diff --git a/src/services/__tests__/aPlanWithASlipIsMended.test.ts b/src/services/__tests__/aPlanWithASlipIsMended.test.ts
+index a0d0cd9..6aa8de1 100644
+--- a/src/services/__tests__/aPlanWithASlipIsMended.test.ts
++++ b/src/services/__tests__/aPlanWithASlipIsMended.test.ts
+@@ -23,6 +23,11 @@ describe('a plan whose JSON text has a slip', () => {
+     });
+   });
+ 
++  it('drops an escape cut in two together with its replacement character (daily check, 12 Oct)', () => {
++    const text = '{"solved_when": "\\u10d1\\u10d0\\u10\uFFFD\\u10d5", "routes": []}';
++    expect(repairedPlanJson(text)).toEqual({ solved_when: 'ბავ', routes: [] });
++  });
++
+   it('stays unmended when it really was cut off', () => {
+     expect(repairedPlanJson('{"solved_when": "ვაკეში ნოტარ')).toBeUndefined();
+   });
+diff --git a/src/services/planJsonRepair.ts b/src/services/planJsonRepair.ts
+index 88216e0..971613d 100644
+--- a/src/services/planJsonRepair.ts
++++ b/src/services/planJsonRepair.ts
+@@ -12,6 +12,13 @@
+  * as an object goes through.
+  */
+ const REPLACEMENT_CHAR_RE = /�/gu;
++/**
++ * Ops' daily check (12 Oct, two plans of 11 Oct, 2,844 and 1,474 chars): the plan
++ * came as \\u-escaped Georgian with a „�" mid-text, where an escape was cut in
++ * two. Dropping the „�" alone leaves the half escape (`\\u10`), still invalid —
++ * so the half escape goes with it.
++ */
++const BROKEN_ESCAPE_RE = /\\u[0-9a-fA-F]{0,3}�/gu;
+ /** A lone quote right before a closing bracket: `}, "]` → `}]`. */
+ const STRAY_QUOTE_RE = /([,{[\]}])\s*"\s*(?=[\]}])/gu;
+ /** A comma right before a closing bracket: `}, ]` → `}]`. */
+@@ -20,6 +27,7 @@ const TRAILING_COMMA_RE = /,\s*(?=[\]}])/gu;
+ const GEORGIAN_QUOTE_RE = /„([^"“\n]{0,200})"(?=[^,:}\]\s])/gu;
+ 
+ const REPAIRS: readonly ((text: string) => string)[] = [
++  (text) => text.replace(BROKEN_ESCAPE_RE, ''),
+   (text) => text.replace(REPLACEMENT_CHAR_RE, ''),
+   (text) => text.replace(GEORGIAN_QUOTE_RE, '„$1“'),
+   (text) => text.replace(STRAY_QUOTE_RE, '$1'),
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 85a3f21..18e0dd7 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -1479,7 +1479,11 @@ async function createAskNow(
+       sent: false,
+       reason: 'duplicate_ask_in_flight',
+       error:
+-        `${toName}-ს ეს კითხვა ამ მიზანზე უკვე გაუგზავნე ${secondsSincePrevious} წამის წინ და ` +
++        // Ops' daily check (12 Oct): caught on another goal, there is no previous time —
++        // „undefined წამის წინ" reached the model. The time is said only when known.
++        `${toName}-ს ეს კითხვა ამ მიზანზე უკვე გაუგზავნე ` +
++        (secondsSincePrevious === undefined ? '' : `${secondsSincePrevious} წამის წინ `) +
++        'და ' +
+         'პასუხი ჯერ არ მოსულა — მეორედ არ გაუგზავნო. სხვა სიტყვებით გადაკეთებაც იგივე ' +
+         'კითხვის მეორედ მიღებაა მისთვის. დაელოდე პასუხს; სანამ ელოდები, ამავე გაშვებაში ' +
+         'გააგრძელე სხვა ადამიანებით, მეორე წრით და ვებით.' +
+-- 
+2.43.0
+
