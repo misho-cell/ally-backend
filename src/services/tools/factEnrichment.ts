@@ -131,6 +131,35 @@ function withGeorgianSpelling(
   return { name: nameAsSpelled(name, georgianName), georgian_name: georgianName };
 }
 
+export interface CurrentWork {
+  readonly employer?: string;
+  readonly jobPosition?: string;
+  readonly city?: string;
+  readonly facts_as_of?: Partial<Record<FactDateField, string>>;
+}
+
+/**
+ * 4491 (box 54451, 0 of 3): „who used to work at TBC Bank?" found Bakhva by his
+ * past_role fact, and the run asked the owner where he works now — the
+ * employer fact he had just saved never reached it, because an insight hit
+ * carries only the facts that matched the query words. The same fields a name
+ * search carries, from the same facts, ride on the hit; a field with nothing
+ * saved is left out.
+ */
+export function currentWorkOf(phone: string, facts: Map<string, ContactFactFields>): CurrentWork {
+  const f = facts.get(normalizePhone(phone));
+  if (!f) return {};
+  const asOf: Partial<Record<FactDateField, string>> = {};
+  const out: { employer?: string; jobPosition?: string; city?: string } = {};
+  for (const field of ['employer', 'jobPosition', 'city'] as const) {
+    const value = f[field];
+    if (!value) continue;
+    out[field] = value;
+    if (f.dates[field]) asOf[field] = f.dates[field];
+  }
+  return { ...out, ...(Object.keys(asOf).length > 0 ? { facts_as_of: asOf } : {}) };
+}
+
 /** Overlay saved-fact fields onto a search row, keeping any non-empty existing value. */
 export function applyFacts<
   T extends {

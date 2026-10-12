@@ -14,6 +14,7 @@ import {
 import { vetoedPhonesFor } from '../factCorrections.service';
 import { fetchSignalStrength } from './searchSecondDegree';
 import { searchDidNotFinish } from './searchDidNotFinish';
+import { ContactFactFields, currentWorkOf, fetchFactsForPhones } from './factEnrichment';
 
 const RESULT_LIMIT = 20;
 const SEARCH_TIMEOUT_MS = 12_000;
@@ -818,7 +819,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
       };
     }
 
-    const [accountStates, inBook] = await Promise.all([
+    const [accountStates, inBook, facts] = await Promise.all([
       fetchAccountStates(scored.map((s) => s.hit.contact_id)),
       phonesInPhonebook(
         userId,
@@ -829,6 +830,15 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
         console.error('searchByInsight phonebook check failed:', (err as Error).message);
         return null;
       }),
+      fetchFactsForPhones(
+        userId,
+        scored.map((s) => s.hit.contact_id),
+      ).catch((err: unknown): Map<string, ContactFactFields> => {
+        // Without them the hit reads as before: the matched facts only.
+        // eslint-disable-next-line no-console
+        console.error('searchByInsight current work failed:', (err as Error).message);
+        return new Map();
+      }),
     ]);
     const results = scored.map((s) => ({
       // sql_hits is ranking machinery, not an answer — spreading the hit whole
@@ -837,6 +847,7 @@ export async function searchByInsight(userId: string, searchQuery: string): Prom
         ...rest,
         ...(negated.length > 0 && { negated, negated_note: NEGATED_VALUE_NOTE }),
       }))(s.hit),
+      ...currentWorkOf(s.hit.contact_id, facts),
       score: Math.round((s.hits / words.length) * 100) / 100,
       is_member: isMemberPhone(accountStates, s.hit.contact_id),
       account_state: accountStateFor(accountStates, s.hit.contact_id),
