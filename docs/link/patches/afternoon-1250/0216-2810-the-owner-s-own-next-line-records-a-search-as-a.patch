@@ -1,0 +1,182 @@
+From 7cf8e435d17851bd24836a3ebb501600635e7a70 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 16:32:43 +0000
+Subject: [PATCH] 2810: the owner's own next line records a search as accepted
+ or refused
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MASTER TEST RUN AD-015 (8 Oct, 2 of 2): „კი, ზუსტად ეს მჭირდებოდა, მადლობა."
+after a search that named the right contact left the search with no
+outcome; „successful searches" stayed 0 (0 of 7,588 on record). The model
+never calls record_search_outcome.
+
+At the start of a run, the owner's line is read against the newest search
+of the conversation that returned people: a word about the result itself
+(„ზუსტად", „ეს მჭირდებოდა", "exactly", "perfect"), or a yes together with
+thanks, records „accepted"; „ეს არ არის…", "not what I needed" records
+„refused". A bare „კი" records nothing — the reply to a search often ends
+with another question (T2181). Only an unset outcome is written; a rung the
+owner climbed is never overwritten. Read before the server's own thanks
+answer can return. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anAcceptedSearchIsCounted.test.ts         | 46 +++++++++++++++++++
+ src/services/chat.service.ts                  | 32 +++++++++++++
+ src/services/searchVerdict.ts                 | 31 +++++++++++++
+ 3 files changed, 109 insertions(+)
+ create mode 100644 src/services/__tests__/anAcceptedSearchIsCounted.test.ts
+ create mode 100644 src/services/searchVerdict.ts
+
+diff --git a/src/services/__tests__/anAcceptedSearchIsCounted.test.ts b/src/services/__tests__/anAcceptedSearchIsCounted.test.ts
+new file mode 100644
+index 0000000..e1fcc17
+--- /dev/null
++++ b/src/services/__tests__/anAcceptedSearchIsCounted.test.ts
+@@ -0,0 +1,46 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { searchVerdictOf } from '../searchVerdict';
++
++/**
++ * 2810 (AD-015): „კი, ზუსტად ეს მჭირდებოდა, მადლობა." after a search left the
++ * search without an outcome, so successful searches read 0. The owner's own
++ * next line now records it.
++ */
++describe('what the owner’s line says about the search just shown', () => {
++  it('reads an acceptance', () => {
++    expect(searchVerdictOf('კი, ზუსტად ეს მჭირდებოდა, მადლობა.')).toBe('accepted');
++    expect(searchVerdictOf('კარგი, მადლობა!')).toBe('accepted');
++    expect(searchVerdictOf('Yes, exactly who I needed')).toBe('accepted');
++    expect(searchVerdictOf('Perfect, thanks')).toBe('accepted');
++  });
++
++  it('reads a refusal', () => {
++    expect(searchVerdictOf('არა, ეს არ არის ის, ვინც მჭირდება')).toBe('refused');
++    expect(searchVerdictOf('Not what I needed')).toBe('refused');
++  });
++
++  it('says nothing about a bare yes, a question, or a long message', () => {
++    expect(searchVerdictOf('კი')).toBeNull();
++    expect(searchVerdictOf('კი, მაგრამ ვინ არის?')).toBeNull();
++    expect(searchVerdictOf('მადლობა')).toBeNull();
++    expect(
++      searchVerdictOf(`კი, ზუსტად. ${'და კიდევ ერთი რამ მინდა გკითხო '.repeat(5)}`),
++    ).toBeNull();
++  });
++});
++
++describe('where it is read', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++  it('runs before a thanks line can be answered by the server', () => {
++    const hook = chat.indexOf('void recordSearchVerdict(userId, threadId, userMessage);');
++    expect(hook).toBeGreaterThan(0);
++    expect(hook).toBeLessThan(chat.indexOf('const thanksSettled ='));
++  });
++
++  it('never overwrites a rung the owner climbed', () => {
++    const fn = chat.slice(chat.indexOf('export async function recordSearchVerdict'));
++    expect(fn.slice(0, 900)).toContain('onlyIfUnset: true');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 90db8f1..c0351c6 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -131,6 +131,7 @@ import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './short
+ import { searchContactsByCountry } from './tools/searchContactsByCountry';
+ import { webSearch, fetchPage } from './tools/webSearch';
+ import { withPublicProfile } from './tools/publicProfileRead';
++import { searchVerdictOf } from './searchVerdict';
+ import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
+ import { inviteContact } from './tools/inviteContact';
+ import { getInviteLink } from './referralLink.service';
+@@ -5825,6 +5826,35 @@ export async function markSearchSent(
+   }
+ }
+ 
++const AUTO_VERDICT_REASON = "auto: the owner's own next line accepted or refused this search";
++
++/**
++ * 2810: the newest search of this conversation that returned people, judged by
++ * the owner's next line (searchVerdict.ts). Never overwrites a recorded rung.
++ */
++export async function recordSearchVerdict(
++  userId: string,
++  threadId: number,
++  line: string,
++): Promise<void> {
++  const verdict = searchVerdictOf(line);
++  if (verdict === null) return;
++  const searches = pruneThreadSearches(threadId, Date.now());
++  const latest = searches[searches.length - 1];
++  if (latest === undefined) return;
++  await recordSearchOutcome({
++    searchId: latest.searchId,
++    userId,
++    outcome: verdict,
++    reason: AUTO_VERDICT_REASON,
++    worked: verdict === 'accepted' ? null : false,
++    onlyIfUnset: true,
++  }).catch((err: unknown) =>
++    // eslint-disable-next-line no-console
++    console.error('[search-outcome] verdict not recorded:', (err as Error).message),
++  );
++}
++
+ async function writeSentOutcome(searchId: number, userId: string, reason: string): Promise<void> {
+   await recordSearchOutcome({
+     searchId,
+@@ -15649,6 +15679,8 @@ export async function processChat(
+     ? await answerMatchTap(userId, threadId, userMessage, runId, intent)
+     : null;
+   if (matchSettled !== null) return matchSettled;
++  // 2810: the owner's verdict on the search just shown, before a thanks line is answered.
++  if (!ownerAbsent) void recordSearchVerdict(userId, threadId, userMessage);
+   const thanksSettled = !ownerAbsent
+     ? await answerThanksTap(userId, threadId, userMessage, runId, intent)
+     : null;
+diff --git a/src/services/searchVerdict.ts b/src/services/searchVerdict.ts
+new file mode 100644
+index 0000000..a0b2ad9
+--- /dev/null
++++ b/src/services/searchVerdict.ts
+@@ -0,0 +1,31 @@
++import { SearchOutcome } from './searchOutcome.service';
++
++/**
++ * 2810 (MASTER TEST RUN AD-015, 8 Oct, 2 of 2): the owner answered a search
++ * with „კი, ზუსტად ეს მჭირდებოდა, მადლობა." and the search stayed without an
++ * outcome — the model never calls record_search_outcome, so „successful
++ * searches" read 0 of 7,588. The server reads the owner's own next line.
++ *
++ * Deliberately narrow. The reply to a search often ends with another question
++ * (the day's contact question, T2181), so a bare „კი" may answer that one: an
++ * acceptance needs a word that is about the result itself, or a yes together
++ * with thanks. Anything else records nothing.
++ */
++const MAX_VERDICT_CHARS = 120;
++const QUESTION_RE = /[?？]/u;
++const EXACTLY_RE =
++  /ზუსტად|სწორედ|ეს მჭირდებოდა|ის მჭირდებოდა|\bexactly\b|just what i needed|that'?s (?:who|what) i needed|\bperfect\b/iu;
++const YES_RE = /^(?:კი|კარგი|დიახ|ჰო|yes|great|ok(?:ay)?)(?![\p{L}])/iu;
++const THANKS_RE = /მადლობ|გმადლობ|\bthank/iu;
++const REFUSED_RE =
++  /არ მჭირდებოდა|ეს არ არის|ის არ არის|არა ის|not what i needed|not (?:the )?(?:one|right person)/iu;
++
++/** What the owner's line says about the search just shown; null when it says nothing sure. */
++export function searchVerdictOf(line: string): SearchOutcome | null {
++  const text = line.trim();
++  if (text === '' || text.length > MAX_VERDICT_CHARS || QUESTION_RE.test(text)) return null;
++  if (REFUSED_RE.test(text)) return 'refused';
++  if (EXACTLY_RE.test(text)) return 'accepted';
++  if (YES_RE.test(text) && THANKS_RE.test(text)) return 'accepted';
++  return null;
++}
+-- 
+2.43.0
+

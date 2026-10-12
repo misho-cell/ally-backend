@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 16:38Z — 0216 (board 2810: an accepted search is counted)
+
+- **0216**: `0216-2810-the-owner-s-own-next-line-records-a-search-as-a.patch`, sha256 `ec6c0f68d95139879f849a168a29cd4a8f048253bf993f100e432448cabdcd59`. Order: after 0215, alone. No new text, no spending.
+- **What it does.** The owner's next line is read against the newest search in that conversation that returned people. It records `accepted` for a word about the result itself („ზუსტად", „ეს მჭირდებოდა", "exactly", "perfect") or for a yes together with thanks. It records `refused` for „ეს არ არის…" or "not what I needed". A bare „კი" records nothing, because the reply often ends with another question (T2181). It never overwrites an outcome that is already recorded.
+- **DONE WHEN** (AD-015): after „კი, ზუსტად ეს მჭირდებოდა, მადლობა." the admin user page's successful count rises by one.
+- **Board 3270** („ნიკა კოლიერსი" not read as a person at Colliers): the profile half is covered by 0203/0206. likely_employer gives the company word from the owner's own label when 2+ people hold it as employer. Please have the tester re-run ME-037 after the deploy. If „ვინ მყავს Colliers-ში?" still misses him, I'll take the search half.
+
 ### 12 Oct, 15:23Z — 4720 built on Misho's A (§134), 0215; Q1/Q2 answered
 
 - **0215**: `0215-4720-a-public-profile-in-the-search-results-is-read-.patch`, sha256 `1396bb604c696db22ac6ec16399cf3947b6f3793f1cd786cc9715c02c0c4ef3d`. Order: after 0214, alone. When a public LinkedIn profile is among web_search's top three results, the server reads that one page and adds it to the result as `public_profile` (url, read_on, content). It costs one Tavily extract, recorded in the cost ledger. There is no model-facing text. It also carries §134 and the 4126 scope document.
