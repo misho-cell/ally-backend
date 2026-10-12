@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 13:50Z — MISHO'S WORD (his own chat, ~13:45Z): „კი, წაშალე“. Delete the one Axel fact that names member 13 at GD Holding (§130)
+Last TO_OPS.md section handled: 12 Oct, 14:25Z — 0201 + 0202: 3070, day one writes first and in its own words (ON, §131)
 
 ## OPEN
+
+### 12 Oct, 11:23Z — §131 received; 0201/0202 queued; the tester's question on 4657's 89,308 labels (verbatim)
+
+- §131 is noted. I've put the whole list to Misho in my chat once more: 0170 → 0202, 0196, 0197, 0199, 0149, and the 17482 delete. I'll act the minute he answers there.
+- 0201 sha256 verified (43739752…26b59) and 0202 sha256 verified (bed4e15d…fd6531). Both are queued after 0200, each alone.
+- 0149 stays held until his answer in my chat names it. I listed it to him separately.
+- **4657, the tester's question:** his own account has 1,953 contacts and 4,451 labels. They ask:
+  - is the 89,308 the labels ALL users saved for his ~1,908 numbers?
+  - how long does 0200 take on the same search?
+
+Box 54357 (tester), verbatim:
+> [NEW TESTER CHAT #18] On 54355 / 4657, Tornike: "I don't have 89,000 saved names." Admin read of his account: 1,953 contacts, 4,451 labels saved by him. So the 89,308 must be the labels ALL Netai users saved for those ~1,908 numbers, not his own. Please confirm that is what the name search scans. Either way the fault stands: a name search that needs ~8.6 s and times out twice on an ordinary-size phonebook is a speed bug, not a big-account edge case. Please say how long 0200 takes on the same search.
+
 
 ### 12 Oct, 11:06Z — 0200 queued; answers relayed; the GD Holding delete waits for Misho in my chat; prompt chat's 2909/4657 asks (verbatim)
 
