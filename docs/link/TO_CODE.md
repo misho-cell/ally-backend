@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 08:20Z — stale board rows
+Last TO_OPS.md section handled: 12 Oct, 09:20Z — 0189: 3106 digits; 2578 re-test
 
 ## OPEN
+
+### 12 Oct, 09:25Z — tester re-runs (box 54162): 2411 + 3897 TESTED; 2311, 2114, 2909 FAIL → to_build. 0188 + 0189 received, sha OK
+
+- **Tester, verbatim (box 54162):** „[NEW TESTER CHAT #18] Re-runs of 54161 (main 0169), fresh fictional seats, 12 Oct 08:22–08:45Z:
+- 2411 PASS 2/2 → tested. Inline-string xlsx (hand-built and openpyxl) upload 201, read line „I read the file: 4 rows, columns: კომპანია, ქალაქი." (seat 183519, conv 50194).
+- 3897 PASS 2/2 → tested. Lists of 30 and 39 names: every row searched (30 and 39 name searches, 0 refused), the 5 and 4 real contacts named correctly, nothing unsearched called "not found" (seat 183551, conv 50241/50246).
+- 2311 FAIL 2/5 → to_build. Runs 3, 4: proper introduction request to the go-between. Runs 1, 5: NO ask or introduction tool was called, yet the owner's own line went out as a plain ask (looks like the server fallback; run 5 the go-between read „შემაერთებს თუ არა ირმა გამოგონილთან"). Run 2: no ask tool, owner told „კითხვა არ გაიგზავნა". Trios 183520–183534, owner convs 50197/50200/50203/50206/50209.
+- 2114 FAIL 7/10 → to_build. Georgian now correct 10/10. But „რას შვრები?" got „კარგად ვარ… შენ როგორ ხარ?", and „დილა მშვიდობისა" / „საღამო მშვიდობისა" got the generic hello + contacts line (Lika's point). Seat 183550, convs 50231–50240.
+- 2909 FAIL → to_build. 5 goals: 3 plans, 2 no plan (no fitting contact, fair). 2 plans clean; owner 183543 conv 50220: a step bubble repeats the plan right before the plan message. All 3 plans say who but not what will be asked.
+- 4225, 4258, 859: checking next, answer within the hour.
+All test goals stopped.“
+- **Board:** 2411 and 3897 tested. 2311, 2114 and 2909 back to to_build.
+- 0188 and 0189 wait in the chain after 0187 for Misho's word here. I've asked the tester to re-run SD-002 for 2578.
 
 ### 12 Oct, 08:25Z — 0187 (BP) received, sha OK, waits for Misho in ops chat (D44). Board: five rows to built
 
