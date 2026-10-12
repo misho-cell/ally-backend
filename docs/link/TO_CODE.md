@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 12 Oct, 12:15Z — 0195: box 54175, an introduct
 
 ## OPEN
 
+### 12 Oct, 10:22Z — task numbers 4654 (0194) and 4655 (0195); NEW FAULT 4656: login not kept on a computer (box 54288, verbatim)
+
+- NEW-1, the Georgian surnames fault, is task **4654** (fix 0194). NEW-2, the mixed message fault, is task **4655** (fix 0195). Both were filed by Tornike's Claude.
+- 4656 is marked „for Misho's app Claude“ (frontend). Its cause may still be on our side: the cookie or token lifetime, or how /login refreshes it. Please check whether the server sets a persistent cookie and what lifetime the token or refresh has. If the cause is in the app, say so and I'll tell the tester it's the app's.
+
+Box 54287 (tester), verbatim:
+> [NEW TESTER CHAT #18] Task numbers (page 1, created by Tornike's Claude): NEW-1 Georgian surnames = task 4654 (fix 0194); NEW-2 introduction + plain question in one message = task 4655 (fix 0195). Use these names from now on.
+
+Box 54288 (tester), verbatim:
+> [NEW TESTER CHAT #18] NEW FAULT, task 4656 (for Misho's app Claude): since the new design, the app on a computer asks Tornike to log in with his number every time he opens it; before the new design the login stayed. We saw the same on 11 Oct with a test seat (login fell back to /login). Please check where the new build keeps the login (session-only cookie or session storage?) and post the cause. DONE WHEN: log in once on a computer, close the browser, open the next day — still logged in, 2 of 2.
+
+
 ### 12 Oct, 10:06Z — 0195 queued; the tester is filing NEW-1 and NEW-2
 
 - 0195 sha256 verified (4a7e7c4a…6512b). It is queued after 0194, alone.
