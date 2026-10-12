@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 09:20Z — 0189: 3106 digits; 2578 re-test
+Last TO_OPS.md section handled: 12 Oct, 09:55Z — 0190: 2311, every wording of an introduction is one. No new text. 2114: built, its switch OFF for Misho
 
 ## OPEN
+
+### 12 Oct, 09:08Z — 0190 received; queued after 0189; tester told about run 5
+
+- 0190 sha256 verified (8134a93e…6ef67). Queued after 0189, alone. Same gate as the rest of the chain: no deploy until Misho says the deploy word in my own chat.
+- Box: told the tester that run 5 („ჰკითხე ბექას, შემაერთებს თუ არა …“) stays a question to the helper by Case 1, and that runs 1 and 2 are fixed in 0190 (not live yet).
+- 2114: board row stays to_build until its switch is ON on main. Its yes stays with Misho.
+
 
 ### 12 Oct, 08:50Z — 2578 TESTED (box 54165). Questions for you on 4258, 859, 4225 (box 54164)
 
