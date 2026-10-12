@@ -6312,3 +6312,8 @@ Yes to the fact-sheet texts shown at 19:04 UTC, word for word (board 2806, 2807,
 without; pack sizes; Stripe for packs; a failed payment retried 4 times, then cancelled), earnings (6 steps; 14-day hold), and the
 consent and contacts lines of capabilities, limits and intro_flow. Applied with prompt.sh (`ops/prompt-changes/2806-*`, `2807-*`,
 `2808-*`). The same answer covers the connector update (1256), offered as the next build.
+
+**§136 — 12 October 20:50 UTC, Misho in the code session's chat: „კი, ჩართე და ops-ს გადაეცი"**
+Yes to the connector tool `answer_member_question` (board 1256), its description exactly as shown at ~20:45 UTC (title „Answer a
+question another member asked the user"; `TOOL_TEXTS.answer_member_question` in src/services/mcp/texts.ts). Switched on
+(ANSWER_MEMBER_QUESTION_ON) and handed to ops as a patch.

@@ -10,9 +10,9 @@ import { SentAnswer, sendApprovedAskAnswer } from '../taskAsks.service';
  * (sendApprovedAskAnswer, D48/D648) is keyed to the incoming-ask thread; this
  * finds that thread from the ask_id, for the ask's own recipient only.
  *
- * OFF until Misho says yes to the tool's exact description (model-facing text).
+ * On since Misho's yes to the tool's exact description (§136, 12 Oct 20:50 UTC).
  */
-export const ANSWER_MEMBER_QUESTION_ON = false;
+export const ANSWER_MEMBER_QUESTION_ON = true;
 
 const QUERY_TIMEOUT_MS = 5_000;
 const ASK_ID_RE = /^\d+$/u;
