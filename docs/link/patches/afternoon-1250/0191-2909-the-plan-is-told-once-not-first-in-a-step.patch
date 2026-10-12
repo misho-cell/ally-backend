@@ -1,0 +1,108 @@
+From 39036982737d84819f705c5d52407959f98a8c3f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 09:03:00 +0000
+Subject: [PATCH] 2909: the plan is told once, not first in a step
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Box 54162 (conv 50220): a step said „ელენესა და რატის ასისტენტებს
+დავველაპარაკები და ვკითხავ…" two seconds before the plan message said the
+same talks again. The existing one-copy rule caught only a step that also
+ended on „დავიწყო?". Now, when the run's reply carries the plan's closing
+question, a step that announces talking to people's assistants is dropped.
+No new text. The row's other half (the plan says who but not what will be
+asked) is the plan sentence's wording and stays with Misho.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/thePlanIsToldOnce.test.ts       | 31 ++++++++++---------
+ src/services/chat.service.ts                  | 17 ++++++++++
+ 2 files changed, 34 insertions(+), 14 deletions(-)
+
+diff --git a/src/services/__tests__/thePlanIsToldOnce.test.ts b/src/services/__tests__/thePlanIsToldOnce.test.ts
+index ed5db20..891142c 100644
+--- a/src/services/__tests__/thePlanIsToldOnce.test.ts
++++ b/src/services/__tests__/thePlanIsToldOnce.test.ts
+@@ -1,25 +1,28 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { carriesPlanSentence } from '../planJustification';
++import { retellsThePlansTalks } from '../chat.service';
+ 
+-/** 48247 (thread 46960): a plan step and then the final reply told the same plan twice. */
+-describe('a plan told early as a step', () => {
+-  it('is recognised by the plan sentence, in the tester’s words', () => {
++/** 2909 (box 54162, conv 50220): a step told the plan two seconds before the plan message. */
++describe('the plan is told once', () => {
++  it('knows a step that announces the plan’s talks', () => {
+     expect(
+-      carriesPlanSentence(
+-        'ნიკოს, გიას, ლევანის და დავითის ასისტენტებს დაველაპარაკები და შევეცდები. დავიწყო?',
++      retellsThePlansTalks(
++        'ამასთან ერთად, ელენესა და რატის ასისტენტებს დავველაპარაკები და ვკითხავ, ხომ არ იცნობენ ბუღალტერს.',
+       ),
+     ).toBe(true);
+-    expect(carriesPlanSentence('ვეძებ შენს ნაცნობებში.')).toBe(false);
++    expect(retellsThePlansTalks("I will talk to Elene's and Rati's assistants.")).toBe(true);
+   });
+ 
+-  it('is dropped once the reply carries the plan, right after the word-for-word tidy-up', () => {
++  it('leaves every other step alone', () => {
++    expect(retellsThePlansTalks('🔍 კონტაქტებში ვეძებ: „ბუღალტერი"…')).toBe(false);
++    expect(retellsThePlansTalks('ორი ბუღალტერი ვიპოვე შენს კონტაქტებში.')).toBe(false);
++  });
++
++  it('drops such steps only when this run’s reply is the plan with its question', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    const repeats = chat.indexOf('await dropStepsTheReplyRepeats(threadId, runId, storedReply);');
+-    const plans = chat.indexOf('await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);');
+-    expect(repeats).toBeGreaterThan(-1);
+-    expect(plans).toBeGreaterThan(repeats);
+-    const fn = chat.slice(chat.indexOf('async function dropPlanStepsTheReplyCarries('));
+-    expect(fn.slice(0, 600)).toContain('if (!runId || !carriesPlanSentence(reply)) return;');
++    expect(chat).toContain(
++      '} else if (!buriedAnswer && finalText.includes(PLAN_CLOSING_QUESTION[runLang(runId)])) {',
++    );
++    expect(chat).toContain('draftSteps.filter((step) => retellsThePlansTalks(step.text))');
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 57d3f83..7056e42 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -7650,6 +7650,18 @@ function withoutClosingVariant(reply: string, question: string): string {
+   return lines.slice(0, -1).join('\n');
+ }
+ 
++/**
++ * 2909: a step that says the run will talk to people's assistants is the plan
++ * told early — „ელენესა და რატის ასისტენტებს დავველაპარაკები და ვკითხავ…".
++ * When the plan message follows in the same run, it is the one copy.
++ */
++const PLAN_TALKS_RE =
++  /ასისტენტ\S*\s+(?:\S+\s+){0,3}?და?ვ?ველაპარაკ|\b(?:talk|speak)\s+to\s+(?:\S+\s+){0,6}?assistants?\b/iu;
++
++export function retellsThePlansTalks(step: string): boolean {
++  return PLAN_TALKS_RE.test(step);
++}
++
+ /** Do the plan step and the final both end on the agreed question (D663)? */
+ export function bothAskTheClosingQuestion(
+   step: string,
+@@ -13577,6 +13589,11 @@ async function runToolLoop(
+     bothAskTheClosingQuestion(draft.text, finalText, runLang(runId))
+   ) {
+     await dropDraftSteps(userId, threadId, runId, draftSteps);
++  } else if (!buriedAnswer && finalText.includes(PLAN_CLOSING_QUESTION[runLang(runId)])) {
++    // 2909 (box 54162, conv 50220): a step announced the plan's talks two
++    // seconds before the plan message said them again, without the question.
++    const retelling = draftSteps.filter((step) => retellsThePlansTalks(step.text));
++    if (retelling.length > 0) await dropDraftSteps(userId, threadId, runId, retelling);
+   }
+   if (buriedAnswer) {
+     finalText = finalText.length === 0 ? bestNarration : `${bestNarration}\n\n${finalText}`;
+-- 
+2.43.0
+

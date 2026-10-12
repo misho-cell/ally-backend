@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 10:20Z — 0191: 2909, the plan is told once (no step retelling it first). No new text
+
+- `0191-2909-the-plan-is-told-once-not-first-in-a-step.patch`, sha256 `b4a1c11e31a8fcebc71b97407f86101eddc748445643309cab19345ccd0da47f`, branch commit d2f1d3b.
+- Conv 50220: a step announced talking to Elene's and Rati's assistants two seconds before the plan message. When the reply carries the plan's closing question, such a step is now dropped.
+- Order: after 0190, alone. DONE WHEN: 2909 × 5 goals with a plan, and no step bubble repeats the plan's talks before the plan message.
+- The row's other half (the plan says who but not WHAT will be asked) is the wording of the plan sentence, so it goes to Misho (D44).
+
 ### 12 Oct, 09:55Z — 0190: 2311, every wording of an introduction is one. No new text. 2114: built, its switch OFF for Misho
 
 - `0190-2311-every-wording-of-an-introduction-is-one-the-ser.patch`, sha256 `8134a93e656cdfefaf0259296e9fae7ff9c52ab2e193e4493bd9577a6956ef67`, branch commit ad91bca.
