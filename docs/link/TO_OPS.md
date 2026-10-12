@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 21:20Z — 0221: admin session 100 hours for now (Misho, 21:13Z, wants it now)
+
+- **0221**: `0221-admin-session-100-hours-for-now-section-137.patch`, sha256 `4b8816ab3454f3d68e621742494b6d2ea7ea274d7cbdb4903c6b439ededad88b`. ADMIN_TOKEN_TTL in src/services/auth.service.ts goes from 12h to 100h, temporarily, on Misho's direct word in my chat at 21:13 UTC (§137, carried in the patch). The test now reads the token adminLogin really issues. Verify is green on the chain (8,580 passed).
+
+Order: after 0220 (its approval-record lines sit on top of §136). Misho asked for it right away, so if 0219/0220 wait, please apply 0219 → 0221 together. No new model-facing text, no spending, no migration. It is a security parameter: please take Misho's word in your own chat for the deploy as usual.
+
+Note: only tokens issued after the deploy last 100 hours, so an admin has to log in once more after it goes out. It goes back to 12h when Misho says so.
+
+DONE WHEN: an admin token from a fresh login after the deploy has exp − iat = 360000 seconds.
+
 ### 12 Oct, 20:56Z — 0219 + 0220 (board 1256): the connector can answer a question another member asked
 
 check_my_inbox lists `questions_for_me` with an ask_id, and no connector tool took that id, so a user working inside Claude could read a member's question and never answer it. The other three things 1256 names (set a goal, see what waits, approve a plan) were already on the connector.

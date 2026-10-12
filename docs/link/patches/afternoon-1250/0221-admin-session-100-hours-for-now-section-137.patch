@@ -1,0 +1,138 @@
+From 5932e8f24472738099822bdea7bbaa616d02e604 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 21:12:11 +0000
+Subject: [PATCH] admin session: 100 hours for now (section 137)
+
+Misho asked for it at 21:13 UTC, temporarily. The test now reads the
+token adminLogin really issues instead of signing its own.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md               |  5 ++
+ src/services/__tests__/adminTokenTtl.test.ts | 72 ++++++++++----------
+ src/services/auth.service.ts                 |  5 +-
+ 3 files changed, 44 insertions(+), 38 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index e368fdb..4271fb6 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6317,3 +6317,8 @@ consent and contacts lines of capabilities, limits and intro_flow. Applied with
+ Yes to the connector tool `answer_member_question` (board 1256), its description exactly as shown at ~20:45 UTC (title „Answer a
+ question another member asked the user"; `TOOL_TEXTS.answer_member_question` in src/services/mcp/texts.ts). Switched on
+ (ANSWER_MEMBER_QUESTION_ON) and handed to ops as a patch.
++
++**§137 — 12 October 21:13 UTC, Misho in the code session's chat: „ადმინკის ტოკენს მინდა რომ ვადა გავუზარდო დროებით 100 საათზე და გთხოვ ახლავე გააკეთე"**
++The admin session (ADMIN_TOKEN_TTL in src/services/auth.service.ts) raised from 12h to 100h, temporarily, on his direct word.
++Cost, as written beside the constant: no refresh and no revocation list, so a stolen admin token is usable for 100 hours.
++Tokens issued before the deploy keep their 12h; it goes back to 12h when he says so.
+diff --git a/src/services/__tests__/adminTokenTtl.test.ts b/src/services/__tests__/adminTokenTtl.test.ts
+index 235547d..d5a714b 100644
+--- a/src/services/__tests__/adminTokenTtl.test.ts
++++ b/src/services/__tests__/adminTokenTtl.test.ts
+@@ -1,49 +1,47 @@
++process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('bcrypt', () => ({ __esModule: true, default: { compare: jest.fn() } }));
++
++import bcrypt from 'bcrypt';
+ import jwt from 'jsonwebtoken';
++import { query } from '../../db/postgres/client';
++import { adminLogin } from '../auth.service';
+ 
+ /**
+- * Misho's ask, 19 September: raise the admin session from 8 hours to 12.
+- *
+- * A working day here is longer than eight hours, and an admin re-authenticating
+- * mid-afternoon is a person interrupted. Today that meant the tester's seat
+- * signed out of a test account with the whole acceptance run waiting behind
+- * somebody typing a code.
+- *
+- * The cost is written beside the constant rather than only here: a stolen
+- * admin token is usable for twelve hours instead of eight, there is no refresh
+- * and no revocation list, so the TTL IS the blast radius.
+- *
+- * This test exists because the number is a security parameter. It should not
+- * be possible to change it by accident, and if somebody changes it on purpose
+- * they should have to say so by editing an assertion that names the trade-off.
++ * The admin session length is a security parameter: there is no refresh and
++ * no revocation list, so the TTL IS the blast radius of a stolen admin token.
++ * Raised from 8h to 12h on 19 September, and temporarily to 100h on
++ * 12 October (§137) on Misho's ask. This test reads the token adminLogin really
++ * issues, so the number cannot change without this assertion changing with it.
+  */
+-describe('the admin session length', () => {
+-  const SECRET = 'test-secret-for-ttl';
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockCompare = bcrypt.compare as unknown as jest.Mock;
++const HOUR_SECONDS = 60 * 60;
++const ADMIN_SESSION_HOURS = 100;
+ 
+-  function ttlSeconds(token: string): number {
+-    const decoded = jwt.decode(token) as { iat: number; exp: number };
+-    return decoded.exp - decoded.iat;
+-  }
++function ttlSeconds(token: string): number {
++  const decoded = jwt.decode(token) as { iat: number; exp: number };
++  return decoded.exp - decoded.iat;
++}
+ 
+-  it('is twelve hours', () => {
+-    const token = jwt.sign({ userId: '1', role: 'admin' }, SECRET, { expiresIn: '12h' });
+-    expect(ttlSeconds(token)).toBe(12 * 60 * 60);
++describe('the admin session length', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockQuery.mockResolvedValue({
++      rows: [{ id: 7, password: 'hash', hasAccessToAlly: true }],
++      rowCount: 1,
++    } as never);
++    mockCompare.mockResolvedValue(true);
+   });
+ 
+-  it('is longer than a working day and shorter than a night plus a day', () => {
+-    // The two bounds the number was chosen between: long enough that nobody is
+-    // interrupted mid-afternoon, short enough that a token taken in the evening
+-    // is dead by morning.
+-    const twelveHours = 12 * 60 * 60;
+-    expect(twelveHours).toBeGreaterThan(8 * 60 * 60);
+-    expect(twelveHours).toBeLessThan(24 * 60 * 60);
++  it('is one hundred hours for now (§137, temporary)', async () => {
++    const { token } = await adminLogin('admin@example.com', 'right');
++    expect(ttlSeconds(token)).toBe(ADMIN_SESSION_HOURS * HOUR_SECONDS);
+   });
+ 
+-  it('is not the USER token length, which is thirty days and a different decision', () => {
+-    // A user signs in on their own phone and stays signed in; an admin holds a
+-    // key to everybody's data. The two numbers must never be reasoned about
+-    // together, and the gap between them is the reminder.
+-    const user = jwt.sign({ userId: '1', role: 'user' }, SECRET, { expiresIn: '30d' });
+-    expect(ttlSeconds(user)).toBe(30 * 24 * 60 * 60);
+-    expect(ttlSeconds(user)).toBeGreaterThan(12 * 60 * 60);
++  it('issues nothing on a wrong password', async () => {
++    mockCompare.mockResolvedValue(false);
++    await expect(adminLogin('admin@example.com', 'wrong')).rejects.toThrow();
+   });
+ });
+diff --git a/src/services/auth.service.ts b/src/services/auth.service.ts
+index ef1ba53..7a47af5 100644
+--- a/src/services/auth.service.ts
++++ b/src/services/auth.service.ts
+@@ -812,8 +812,11 @@ export async function completeLogin(
+  * is the point where „long enough for a day" meets „short enough to sleep on".
+  * It is a constant rather than an env var on purpose: this number should be
+  * read in a diff, not changed quietly in a dashboard.
++ *
++ * TEMPORARY, 12 October 21:15 UTC: Misho asked for 100 hours for now (§137).
++ * A stolen admin token now lives four days. It goes back to 12h when he says so.
+  */
+-const ADMIN_TOKEN_TTL = '12h';
++const ADMIN_TOKEN_TTL = '100h';
+ 
+ export async function adminLogin(email: string, password: string): Promise<{ token: string }> {
+   const result = await query<{ id: number; password: string; hasAccessToAlly: boolean }>(
+-- 
+2.43.0
+
