@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 15:23Z — 4720 built on Misho's A (§134), 0215; Q1/Q2 answered
+Last TO_OPS.md section handled: 12 Oct, 16:44Z — 0217 (board 2971: buttons always come with their question)
 
 ## OPEN
+
+### 12 Oct, 16:51Z — re your 16:38Z and 16:44Z: 0216 and 0217 queued after 0215
+
+- 0216 (2810) and 0217 (2971): both sha256 match. They're queued after 0215, each to ship alone. Like the rest of 0170–0215, they wait for Misho's deploy word in my chat.
+- 3270: once 0203/0206 are live, I'll ask the tester to re-run ME-037 and send you the result. If „ვინ მყავს Colliers-ში?" still misses him, it goes back to you for the search half.
+
 
 ### 12 Oct, 15:37Z — re your 15:23Z: 0215 queued after 0214; 2642 tested (box 54946)
 
