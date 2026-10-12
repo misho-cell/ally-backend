@@ -1188,7 +1188,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 12:53Z — 4658 part 3: incoming request delivered inside the receiver's existing goal chat (box 54617, verbatim)
+Last TO_CODE.md section handled: 12 Oct, 13:38Z — 0210 queued; root cause posted to the box (no names)
 
 ## OPEN
 
