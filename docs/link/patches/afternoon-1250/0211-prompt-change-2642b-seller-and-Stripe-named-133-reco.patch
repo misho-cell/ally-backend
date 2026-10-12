@@ -1,0 +1,74 @@
+From f0cabaf16521320d8c40079a56fd4d5c2bc58c41 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 14:04:23 +0000
+Subject: [PATCH] =?UTF-8?q?prompt=20change=202642b=20(seller=20and=20Strip?=
+ =?UTF-8?q?e=20named);=20=C2=A7133=20recorded?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's „ყველაზე კი, გააკეთე" (14:03 UTC) to the sentence shown at 11:59 UTC.
+Change file from the live text (before 82ea8524365d).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                         |  6 ++++++
+ .../2642b-seller-and-stripe-named.after.txt            |  1 +
+ .../2642b-seller-and-stripe-named.before.txt           |  1 +
+ ops/prompt-changes/2642b-seller-and-stripe-named.json  | 10 ++++++++++
+ 4 files changed, 18 insertions(+)
+ create mode 100644 ops/prompt-changes/2642b-seller-and-stripe-named.after.txt
+ create mode 100644 ops/prompt-changes/2642b-seller-and-stripe-named.before.txt
+ create mode 100644 ops/prompt-changes/2642b-seller-and-stripe-named.json
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 98c3769..571749a 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6295,3 +6295,9 @@ Answers to the four questions put to him at ~11:35Z, each with its exact text sh
+ 2. 4657: LIKELY_EMPLOYER_NOTE, word for word as in `src/services/tools/likelyEmployer.ts` — yes; switched on.
+ 3. 4657: the two covering indexes on "UserTags" and "UserAlias" (`ops/pending-migrations/4657_label_covering_indexes.sql`, CONCURRENTLY, ~1.2 GB, nothing deleted) — yes to preparing and running them. Ops runs it; ops' own rule asks his word in its chat too.
+ 4. 2909: A — the plan sentence stays as it is; D561 (no „solved when" in the plan the owner reads) stands.
++
++**§133 — 12 October 14:03 UTC, Misho in the code session's chat: „ყველაზე კი, გააკეთე"**
++Yes to the three items waiting on him, each shown in his chat first:
++1. 2642: the sentence for Netai's pricing information, word for word as shown at 11:59 UTC — „When asked about refunds or payments, always name the seller (Ally, Inc.) and the payment provider (Stripe), as on netai.guru/refund." Applied with prompt.sh (`ops/prompt-changes/2642b-seller-and-stripe-named`).
++2. D647: rule 8 of the question editor's brief, word for word as shown at 12:25 UTC — „8. It never copies the owner's sentences word for word: it says what they need in its own words, in at most two short sentences, keeping every fact the reader needs to answer."
++3. 4126 items 3 and 4, built as the founder's own D757 says (asked at ~12:35 UTC): people from public member lists in their own table (name, organisation, listed role, source, check date; never a „knows" link); contacts' research professional only (family and close skipped); no 30-day re-research for people who are Netai users. 6a's text still needs its own yes.
+diff --git a/ops/prompt-changes/2642b-seller-and-stripe-named.after.txt b/ops/prompt-changes/2642b-seller-and-stripe-named.after.txt
+new file mode 100644
+index 0000000..bd2402e
+--- /dev/null
++++ b/ops/prompt-changes/2642b-seller-and-stripe-named.after.txt
+@@ -0,0 +1 @@
++Pro — $19.99/month. Enterprise — $79.00/month. 5-day trial at the start (an invitation from the founding team carries 20 days during the launch window, to 15 October 2026); after the trial, access is on or off — there is no free tier yet. Tokens: each tier includes a WEEKLY allowance — 250 tokens a week on Pro and Premium, 1,375 on Enterprise — that resets every Monday at 00:00 UTC; unused allowance expires when the week ends; when it runs out, work waits for a top-up or the reset (a goal is never closed for it); top-up packs can be bought ($10.99 / $19.99 / $44.99). Subscriptions and cards run through Stripe (Stripe Checkout to subscribe, the Stripe Customer Portal for card changes and cancellation); token top-up packs run through Paddle. Quote numbers exactly — never round, never guess. Refunds (netai.guru/refund): Netai is sold by Ally, Inc.; payments are processed by Stripe. Cancel any time in Settings → Subscription; it takes effect at the end of the current period, and unused time is not refunded unless the law requires it. If the service was not delivered at all, a full refund can be requested within 14 days of payment at contact@netai.guru. Token top-ups are not refundable. In Argentina, a subscription can be revoked within 10 calendar days, without reason, by cancelling in Settings. When asked about refunds or payments, always name the seller (Ally, Inc.) and the payment provider (Stripe), as on netai.guru/refund.
+\ No newline at end of file
+diff --git a/ops/prompt-changes/2642b-seller-and-stripe-named.before.txt b/ops/prompt-changes/2642b-seller-and-stripe-named.before.txt
+new file mode 100644
+index 0000000..31c14b5
+--- /dev/null
++++ b/ops/prompt-changes/2642b-seller-and-stripe-named.before.txt
+@@ -0,0 +1 @@
++Pro — $19.99/month. Enterprise — $79.00/month. 5-day trial at the start (an invitation from the founding team carries 20 days during the launch window, to 15 October 2026); after the trial, access is on or off — there is no free tier yet. Tokens: each tier includes a WEEKLY allowance — 250 tokens a week on Pro and Premium, 1,375 on Enterprise — that resets every Monday at 00:00 UTC; unused allowance expires when the week ends; when it runs out, work waits for a top-up or the reset (a goal is never closed for it); top-up packs can be bought ($10.99 / $19.99 / $44.99). Subscriptions and cards run through Stripe (Stripe Checkout to subscribe, the Stripe Customer Portal for card changes and cancellation); token top-up packs run through Paddle. Quote numbers exactly — never round, never guess. Refunds (netai.guru/refund): Netai is sold by Ally, Inc.; payments are processed by Stripe. Cancel any time in Settings → Subscription; it takes effect at the end of the current period, and unused time is not refunded unless the law requires it. If the service was not delivered at all, a full refund can be requested within 14 days of payment at contact@netai.guru. Token top-ups are not refundable. In Argentina, a subscription can be revoked within 10 calendar days, without reason, by cancelling in Settings.
+\ No newline at end of file
+diff --git a/ops/prompt-changes/2642b-seller-and-stripe-named.json b/ops/prompt-changes/2642b-seller-and-stripe-named.json
+new file mode 100644
+index 0000000..ce107ec
+--- /dev/null
++++ b/ops/prompt-changes/2642b-seller-and-stripe-named.json
+@@ -0,0 +1,10 @@
++{
++  "target": "info:pricing",
++  "before_sha256": "82ea8524365d363f649ae17325aa0593b6b9aa79fe3f7f1eb0ab30b17b3bf035",
++  "requires": [],
++  "what": "Append one sentence to the pricing topic: when asked about refunds or payments, name the seller (Ally, Inc.) and the payment provider (Stripe).",
++  "why": "Board 2642 re-run (box 54451): the refund rules were right 4 of 4, but the provider was named 0 of 4 although the text says it. The tool returned the full text (tool_call_log, 1,518 chars, ~145 ms).",
++  "approved_by": "Misho, 12 Oct 2026: the exact sentence was shown in his chat at 11:59 UTC; his answer 14:03 UTC „ყველაზე კი, გააკეთე“ (§133).",
++  "authorization_still_needed": "None. D44 is satisfied by his yes to this exact text.",
++  "undo": "PUT the prior content back; it is ops/prompt-changes/2642b-seller-and-stripe-named.before.txt, sha256 82ea8524365d363f649ae17325aa0593b6b9aa79fe3f7f1eb0ab30b17b3bf035."
++}
+\ No newline at end of file
+-- 
+2.43.0
+

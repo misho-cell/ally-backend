@@ -1,0 +1,125 @@
+From 18b78a627a51282f76a41c6cc5b4d8b3500871bd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 14:15:14 +0000
+Subject: [PATCH] 4126 item 4: the research runner skips family and close, and
+ researches a user once
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+D757 (the founder's final method) and Misho's yes (§133): research is about
+work. The automatic runner (on only with RESEARCH_RUNNER=on) now never picks
+a number somebody's labels mark family or close, and picks a Netai user only
+when never researched — the 30-day re-research stops for users (D757 §5).
+
+Measured on production before: of 3,339 people on the runner's list, 1,754
+carry a family/close mark from somebody and 1,962 are users; 48 were ever
+researched. The new pick takes 2.2 s inside its 15 s budget.
+
+The guard test that no write touches a person's tables read „DELETE" inside
+„deletedAt"; it now matches whole words only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../researchIsAboutWorkAndUsersOnce.test.ts   | 33 +++++++++++++++++++
+ .../__tests__/researchRunner.service.test.ts  |  3 +-
+ src/services/researchRunner.service.ts        | 19 +++++++++--
+ 3 files changed, 52 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/researchIsAboutWorkAndUsersOnce.test.ts
+
+diff --git a/src/services/__tests__/researchIsAboutWorkAndUsersOnce.test.ts b/src/services/__tests__/researchIsAboutWorkAndUsersOnce.test.ts
+new file mode 100644
+index 0000000..1b8be65
+--- /dev/null
++++ b/src/services/__tests__/researchIsAboutWorkAndUsersOnce.test.ts
+@@ -0,0 +1,33 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++  backgroundQuery: jest.fn(),
++}));
++jest.mock('../tools/webSearch', () => ({ __esModule: true, webSearch: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 4126 item 4 (D757, Misho's yes §133): the runner researches work. A number
++ * somebody marked family or close is never picked, and a Netai user is
++ * researched once, never again every 30 days.
++ */
++const source = readFileSync(join(__dirname, '..', 'researchRunner.service.ts'), 'utf8');
++const next = source.slice(source.indexOf('async function nextPeople'));
++
++describe('who the research runner picks', () => {
++  it('never picks a number somebody marked family or close', () => {
++    expect(source).toContain(
++      "const PRIVATE_RELATIONSHIPS: readonly string[] = ['family', 'close'];",
++    );
++    expect(next).toContain('cr.relationship_type = ANY($3::text[])');
++    expect(next).toContain('[limit, refreshDays, PRIVATE_RELATIONSHIPS]');
++  });
++
++  it('researches a Netai user only when never researched before', () => {
++    expect(next).toMatch(
++      /r\.last_run IS NULL\s+OR \(r\.last_run < NOW\(\)[\s\S]*?AND NOT EXISTS \(\s+SELECT 1 FROM "UserPhone"/,
++    );
++  });
++});
+diff --git a/src/services/__tests__/researchRunner.service.test.ts b/src/services/__tests__/researchRunner.service.test.ts
+index 47669da..8126756 100644
+--- a/src/services/__tests__/researchRunner.service.test.ts
++++ b/src/services/__tests__/researchRunner.service.test.ts
+@@ -284,7 +284,8 @@ describe('it records evidence and never a claim about a person', () => {
+     withDatabase();
+     await runResearchOnce();
+ 
+-    const writes = statements.filter((s) => /INSERT|UPDATE|DELETE/i.test(s));
++    // Whole words: a read naming the "deletedAt" column is not a write.
++    const writes = statements.filter((s) => /\b(?:INSERT|UPDATE|DELETE)\b/i.test(s));
+     expect(writes.length).toBeGreaterThan(0);
+     for (const sql of writes) {
+       expect(sql).toMatch(/INSERT INTO research_(steps|findings)/);
+diff --git a/src/services/researchRunner.service.ts b/src/services/researchRunner.service.ts
+index edd006f..9cfa3a5 100644
+--- a/src/services/researchRunner.service.ts
++++ b/src/services/researchRunner.service.ts
+@@ -112,6 +112,14 @@ async function searchesToday(): Promise<number> {
+   return Number(result.rows[0]?.n ?? 0);
+ }
+ 
++/**
++ * 4126 item 4 (D757, Misho's yes §133): research is about work. A number
++ * somebody's own labels mark as family or close is never researched, and a
++ * person who is a Netai user is researched once — never again every 30 days
++ * (D757 §5: once, at registration).
++ */
++const PRIVATE_RELATIONSHIPS: readonly string[] = ['family', 'close'];
++
+ /**
+  * Who to research next: people the engine listed, longest un-researched first.
+  *
+@@ -131,10 +139,17 @@ async function nextPeople(limit: number, refreshDays: number): Promise<{ phone:
+      LEFT JOIN (
+        SELECT phone, MAX(ran_at) AS last_run FROM research_steps GROUP BY phone
+      ) r ON r.phone = l.phone
+-     WHERE r.last_run IS NULL OR r.last_run < NOW() - ($2::int * INTERVAL '1 day')
++     WHERE (r.last_run IS NULL
++            OR (r.last_run < NOW() - ($2::int * INTERVAL '1 day')
++                AND NOT EXISTS (
++                  SELECT 1 FROM "UserPhone" up JOIN "User" u ON u.id = up."userId"
++                   WHERE up.phone = l.phone AND u."deletedAt" IS NULL)))
++       AND NOT EXISTS (
++         SELECT 1 FROM contact_relationship_scores cr
++          WHERE cr.contact_phone = l.phone AND cr.relationship_type = ANY($3::text[]))
+      ORDER BY r.last_run ASC NULLS FIRST, l.rank ASC
+      LIMIT $1::int`,
+-    [limit, refreshDays],
++    [limit, refreshDays, PRIVATE_RELATIONSHIPS],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows;
+-- 
+2.43.0
+

@@ -1,0 +1,82 @@
+From 46f03b58a21e8ecb07e4759910d4536505e14e66 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 14:07:55 +0000
+Subject: [PATCH] =?UTF-8?q?D647:=20the=20question=20editor's=20rule=208=20?=
+ =?UTF-8?q?=E2=80=94=20own=20words,=20at=20most=20two=20short=20sentences?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+4687 (box 54550): the architect request reached the helper almost word for
+word. The D711 editor already passes every outgoing question; its brief now
+fails a question that copies the owner's sentences, and the rewrite says the
+need in its own words, at most two short sentences, every fact kept.
+
+MODEL-FACING: Misho's yes to the rule word for word, 12 Oct 14:03 UTC (§133).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aQuestionIsSaidInItsOwnWords.test.ts      | 21 +++++++++++++++++++
+ src/services/askEditor.service.ts             | 10 +++++++++
+ 2 files changed, 31 insertions(+)
+ create mode 100644 src/services/__tests__/aQuestionIsSaidInItsOwnWords.test.ts
+
+diff --git a/src/services/__tests__/aQuestionIsSaidInItsOwnWords.test.ts b/src/services/__tests__/aQuestionIsSaidInItsOwnWords.test.ts
+new file mode 100644
+index 0000000..53c4f8d
+--- /dev/null
++++ b/src/services/__tests__/aQuestionIsSaidInItsOwnWords.test.ts
+@@ -0,0 +1,21 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * D647 / 4687 (box 54550): the architect request reached the helper almost
++ * word for word. The editor's rule 8, Misho's yes word for word (§133).
++ */
++describe('a question is said in the editor\u2019s own words', () => {
++  const source = readFileSync(join(__dirname, '..', 'askEditor.service.ts'), 'utf8');
++
++  it('carries rule 8 exactly as approved, inside the brief', () => {
++    expect(source).toContain(
++      '"8. It never copies the owner\'s sentences word for word: it says what they need in its own " +',
++    );
++    expect(source).toContain(
++      "'words, in at most two short sentences, keeping every fact the reader needs to answer.'",
++    );
++    const brief = source.slice(source.indexOf('function editorBrief'));
++    expect(brief.indexOf('OWN_WORDS_RULE,')).toBeGreaterThan(brief.indexOf('7. Every name'));
++  });
++});
+diff --git a/src/services/askEditor.service.ts b/src/services/askEditor.service.ts
+index 37eb4a8..ccf1612 100644
+--- a/src/services/askEditor.service.ts
++++ b/src/services/askEditor.service.ts
+@@ -85,6 +85,15 @@ export const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
+  * reader, ABOUT the asker. Both people are named, and a passing question is
+  * left alone.
+  */
++/**
++ * D647 (the founder, 4 Oct: nobody's exact words go across) — 4687 (box 54550):
++ * the architect request reached the helper almost word for word. Misho's yes to
++ * this rule word for word, 12 Oct 14:03 UTC (§133).
++ */
++const OWN_WORDS_RULE =
++  "8. It never copies the owner's sentences word for word: it says what they need in its own " +
++  'words, in at most two short sentences, keeping every fact the reader needs to answer.';
++
+ function editorBrief(context: AskEditContext): string {
+   const language = LANGUAGE_NAMES[context.language];
+   const asker = context.askerName;
+@@ -118,6 +127,7 @@ function editorBrief(context: AskEditContext): string {
+       'in its plain form: a Georgian case ending is not part of a name („ორბიში" means „in ' +
+       'Orbi" → Orbi; „ბერიძეს" → Beridze). A name or surname is never changed. In a question ' +
+       'that is not in Georgian, names are written in Latin letters.',
++    OWN_WORDS_RULE,
+     '',
+     'When every rule holds, do not improve it: call give_verdict with ok true. Otherwise ' +
+       'change as little as possible — only what breaks a rule — and call give_verdict with ok ' +
+-- 
+2.43.0
+

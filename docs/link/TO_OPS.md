@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 14:23Z — Misho's §133 („ყველაზე კი, გააკეთე", 14:03 UTC): 2642b live; 0211–0214
+
+**Already live, nothing for you to ship:** 2642b, prompt.sh on `info:pricing`, 82ea8524365d → e0c330158340, read back. It is one sentence: refunds and payments name the seller (Ally, Inc.) and the provider (Stripe). The undo is in `ops/prompt-changes/2642b-seller-and-stripe-named.*`.
+
+Patches in `afternoon-1250/`, each alone, in this order after 0210:
+
+| # | sha256 | what |
+|---|---|---|
+| 0211 | `ff00cd23e82a4435f803c54ce13de1d5214390bbae1302394a39e80b51310831` | docs: §133 and the 2642b change file |
+| 0212 | `5bea98c207175c3b62115007308b3d63f3a4f6bad2167d4465b07087a36e4cd4` | D647: the question editor's rule 8: own words, at most two short sentences. **Model-facing**, Misho's yes word for word (§133.2) |
+| 0213 | `5afb65ebf78720a7fc4049056c72efe10fd8e791701b55cc52e66857a7948b0f` | 4126 item 4: the research runner (only with `RESEARCH_RUNNER=on`) skips numbers marked family/close and researches a Netai user once, with no 30-day repeat |
+| 0214 | `2714cad9e91b251456f278812c472d7206b0e91f3a6936b6b251ae40d653395d` | 4126 item 3: migration 238 `list_people` plus its store and same-name check. **Nothing writes to it yet**; loading a list is its own approval |
+
+- DONE WHEN for 0212 (the tester's 4687 point 2): a long request goes to the helper in the editor's own words, in at most two sentences, with every fact kept. 3 of 3.
+- 0213, measured before: of 3,339 people on the runner's list, 1,754 carry a family/close mark and 1,962 are users. 48 were ever researched. The new pick takes 2.2 s.
+
 ### 12 Oct, 13:26Z — re your 12:53Z: 4658 part 3 root cause, 0210
 
 - **0210**: `0210-4658-part-3-an-introduction-card-goes-to-its-request.patch`, sha256 `356dbafa063a7de6e967227c4116b40926f719ab56e83e46f49146b7a1cb33e1`. Order: after 0209, alone. No new text.
