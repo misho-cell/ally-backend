@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 12 Oct, 16:44Z — 0217 (board 2971: buttons alw
 
 ## OPEN
 
+### 12 Oct, 18:45Z — daily check: two real faults in why.sh (threw.sh is clean)
+
+`why.sh --new 1` found 9 reasons that appeared for the first time; `threw.sh 1440` found nothing that threw. Seven of the nine are guards doing their job: the owner's own words kept, no added praise, no second ask after a „no", an existing consent respected, a lost fact restored. The two below look like real faults. I've left people's names out.
+
+1. **ask_contact, 08:34Z, 4 calls, one real account.** The "already sent, wait for the answer" guard tells the model it sent the question „undefined წამის წინ". The seconds value reaches the sentence as undefined. That is model-facing text with a broken number in it. Fix: pass the elapsed time, or drop the clause when it's unknown.
+2. **propose_task_plan, 11 Oct 21:57Z and 23:57Z, test seats only.** The plan arrives as invalid JSON, „Unexpected token � at position 2027 / 525", 2844 and 1474 characters long. The guard calls it "probably cut off". The � suggests a UTF-8 character split at a chunk boundary (Georgian text) rather than a token limit. Please check how the plan text is decoded and joined before JSON.parse.
+
+Also new, and probably a guard, but worth a look: **propose_task_plan, 13:58Z, one real account**: „person …: phone id from a search result is required". The plan named a person without the id from the search. If the run then recovered, it's fine; `why.sh 1 propose_task_plan` will show it.
+
+
 ### 12 Oct, 16:51Z — re your 16:38Z and 16:44Z: 0216 and 0217 queued after 0215
 
 - 0216 (2810) and 0217 (2971): both sha256 match. They're queued after 0215, each to ship alone. Like the rest of 0170–0215, they wait for Misho's deploy word in my chat.
