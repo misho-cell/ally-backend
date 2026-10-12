@@ -1,0 +1,83 @@
+jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+
+import { query } from '../../../db/postgres/client';
+import {
+  asWritten,
+  candidateWords,
+  LIKELY_EMPLOYER_NOTE,
+  LIKELY_EMPLOYER_ON,
+  likelyEmployerFor,
+} from '../likelyEmployer';
+
+/**
+ * 4657 (box 54353 test 1): a contact saved „<name> Arci" — asked where she
+ * works, the run said the workplace is not in the record. A company word in
+ * the owner's OWN label that other people hold as their employer is now
+ * handed over as likely_employer, said as likely.
+ */
+const mockQuery = query as jest.MockedFunction<typeof query>;
+
+function answer(labels: string[], employer: string | null): void {
+  mockQuery.mockImplementation(((sql: string) => {
+    if (sql.includes('FROM "UserAlias"')) {
+      return Promise.resolve({ rows: labels.map((label) => ({ label })), rowCount: labels.length });
+    }
+    const rows = employer === null ? [] : [{ word: employer, holders: 20 }];
+    return Promise.resolve({ rows, rowCount: rows.length });
+  }) as unknown as typeof query);
+}
+
+beforeEach(() => mockQuery.mockReset());
+
+describe('the words a label offers', () => {
+  it('gives each word and each adjacent pair once, lowercased; a short word only in a pair', () => {
+    expect(candidateWords(['Eka Arci', 'GD Holding', 'eka'])).toEqual([
+      'eka',
+      'eka arci',
+      'arci',
+      'gd holding',
+      'holding',
+    ]);
+  });
+
+  it('keeps the owner’s own spelling of the matched word', () => {
+    expect(asWritten(['Eka ARCI'], 'arci')).toBe('ARCI');
+  });
+});
+
+describe('likelyEmployerFor', () => {
+  it('waits for Misho’s yes: the switch is off and reads nothing', async () => {
+    expect(LIKELY_EMPLOYER_ON).toBe(false);
+    await expect(likelyEmployerFor('501', '+995599000111')).resolves.toEqual({});
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('names the company word other people work at, with its note', async () => {
+    answer(['Eka Arci'], 'arci');
+    await expect(likelyEmployerFor('501', '+995599000111', true)).resolves.toEqual({
+      likely_employer: 'Arci',
+      likely_employer_note: LIKELY_EMPLOYER_NOTE,
+    });
+  });
+
+  it('reads only the owner’s own labels, and asks for two holders at least', async () => {
+    answer(['Eka Arci'], 'arci');
+    await likelyEmployerFor('501', '+995599000111', true);
+    const [labelsSql, labelsParams] = mockQuery.mock.calls[0];
+    expect(labelsSql).toContain('"contactId" = $1 AND phone = $2');
+    expect(labelsParams?.slice(0, 2)).toEqual(['501', '+995599000111']);
+    const [, employerParams] = mockQuery.mock.calls[1];
+    expect(employerParams?.[1]).toBe(2);
+  });
+
+  it('gives nothing when no word is anybody’s employer', async () => {
+    answer(['Eka Tbilisi'], null);
+    await expect(likelyEmployerFor('501', '+995599000111', true)).resolves.toEqual({});
+  });
+
+  it('gives nothing, and does not throw, when the read fails', async () => {
+    mockQuery.mockRejectedValue(new Error('statement timeout'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    await expect(likelyEmployerFor('501', '+995599000111', true)).resolves.toEqual({});
+  });
+});

@@ -8,6 +8,7 @@ import {
   isSubscriberPhone,
   accountStateFor,
 } from './membership';
+import { LikelyEmployer, likelyEmployerFor } from './likelyEmployer';
 
 interface TagSummary {
   tag: string;
@@ -15,7 +16,7 @@ interface TagSummary {
   total_weight: number;
 }
 
-interface ContactFullProfile {
+interface ContactFullProfile extends LikelyEmployer {
   phone: string;
   // Whether this contact is a registered Ally member — steers intro vs. invite.
   is_member: boolean;
@@ -84,7 +85,7 @@ export async function getContactFullProfile(
 ): Promise<ContactFullProfile> {
   const lookupId = neo4jContactId ?? phone;
 
-  const [tagsResult, factsAndAsk] = await Promise.all([
+  const [tagsResult, factsAndAsk, likelyEmployer] = await Promise.all([
     query<TagSummary & { own: boolean }>(
       `SELECT
          ut.tag,
@@ -99,6 +100,7 @@ export async function getContactFullProfile(
       [phone, userId],
     ),
     getVisibleFacts(userId, lookupId),
+    likelyEmployerFor(userId, phone),
   ]);
 
   let insightData: Record<string, unknown> | null = null;
@@ -121,5 +123,6 @@ export async function getContactFullProfile(
     ...ownLabelsOnly(tagsResult.rows),
     insights: insightData,
     facts_and_ask: factsAndAsk,
+    ...likelyEmployer,
   };
 }
