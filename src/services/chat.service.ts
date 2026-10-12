@@ -505,6 +505,7 @@ import {
   needsNoOpeningSearch,
 } from './goalIntent';
 import { renderPendingMessage, PendingItemInput } from './pendingMessages';
+import { requestIdOfCard, requestThreadOf } from './requestCardThread';
 import { HOUSEKEEPING_TOOLS } from './housekeepingTools';
 import {
   recordGoalFeedback,
@@ -14902,15 +14903,27 @@ export function scrubInternalToolNames(text: string, threadId: number): string {
  * His „closed lawyer goal with a painters reminder in it" is 25 rows, not an
  * anecdote.
  *
- * An item that names NO goal — an introduction, a chorus ask, a thanks-loop —
- * has no thread of its own to go to and stays where it is. That is not a
+ * An item that names NO goal — a chorus ask, a thanks-loop — has no thread of
+ * its own to go to and stays where it is. An introduction has one: its request's
+ * conversation (4658 part 3). That is not a
  * loophole: those are about a person, not a goal, and the ruling is about
  * goals.
  */
 async function threadForPendingItem(
+  userId: string,
   item: PendingItemInput,
   fallbackThreadId: number,
 ): Promise<number> {
+  // 4658 part 3: an introduction card goes to the request's own conversation.
+  const requestId = requestIdOfCard(item.kind, item.payload);
+  if (requestId !== null) {
+    const own = await requestThreadOf(userId, requestId).catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[pending] could not read the request’s thread:', (error as Error).message);
+      return null;
+    });
+    return own ?? fallbackThreadId;
+  }
   if (item.task_id === null) return fallbackThreadId;
   try {
     const own = await query<{ thread_id: number | null }>(
@@ -14941,7 +14954,7 @@ async function deliverPendingMessages(
       const rendered = renderPendingMessage(item, language);
       if (rendered === null) continue;
       // Row 250.1: its own goal's thread, not whichever one the run was in.
-      const target = await threadForPendingItem(item, threadId);
+      const target = await threadForPendingItem(userId, item, threadId);
       if (rendered.instruction !== '') {
         await saveMessage(
           userId,

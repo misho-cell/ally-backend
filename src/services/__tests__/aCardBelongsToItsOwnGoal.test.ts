@@ -45,7 +45,7 @@ describe('a card goes to the goal it is about', () => {
       chat.indexOf('async function savePendingMessage'),
     );
 
-    expect(deliver).toContain('const target = await threadForPendingItem(item, threadId);');
+    expect(deliver).toContain('const target = await threadForPendingItem(userId, item, threadId);');
     // All three writes follow the item, not the run.
     expect(deliver.match(/\btarget\b/g)?.length).toBeGreaterThanOrEqual(4);
     expect(deliver).not.toContain('emitMessageAppended(userId, threadId, runId');
@@ -54,8 +54,9 @@ describe('a card goes to the goal it is about', () => {
 
 describe('what deliberately still goes to the current thread', () => {
   /**
-   * An introduction, a chorus ask, a thanks-loop name a PERSON and not a
-   * goal. They have no thread of their own, and the ruling is about goals.
+   * A chorus ask and a thanks-loop name a PERSON and not a goal. They have no
+   * thread of their own, and the ruling is about goals. (An introduction has
+   * one, its request's conversation: aRequestCardGoesToItsOwnConversation.)
    */
   it('leaves an item with no goal where it is', () => {
     expect(fn).toContain('if (item.task_id === null) return fallbackThreadId;');
