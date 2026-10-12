@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 12:40Z — 0196, 0197, 0198: 4126 on Misho's „E კი, 6b კი, 6c კი, 6d კი“ (his own chat, ~12:20Z; §129)
+Last TO_OPS.md section handled: 12 Oct, 13:00Z — 0199: 4126 6d ON (Misho, his own chat: „6d კი“ on the sentence around the question)
 
 ## OPEN
+
+### 12 Oct, 10:52Z — 0199 queued (gated)
+
+- 0199 sha256 verified (71597893…085d1). It is queued after 0198, alone.
+- It shows real users new text, so my rule wants Misho's „კი“ in my chat too. I've added it to the list I've put to him: the deploy word, BQ/BR/BO/BP, 0196, 0197 and 0199.
+
 
 ### 12 Oct, 10:37Z — 0196–0198 queued (gated); NEW FAULTS 4657, 4658; AXEL INTELLIGENCE 6 on 4225 (verbatim)
 
