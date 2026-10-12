@@ -39,7 +39,7 @@ import { RunLanguage } from './runLanguage';
  * 16 September when three goals had their first plan name people the owner had
  * asked us not to contact.
  */
-export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
+const DAY_ONE_EVENT_BASE: Readonly<Record<RunLanguage, string>> = {
   ka:
     'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
     'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად — ცალკე თანხმობა არ ' +
@@ -70,6 +70,47 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
     'a quién pregunté y luego exactamente «En cuanto alguien responda, te lo diré.» Nunca ' +
     'menciones horas ni días (D563).',
 };
+
+/**
+ * 3070 (measured 12 Oct, 4 days, 71 day-one runs): 31 had a first question
+ * refused by the content guards („სანდო" added, the owner's sentence copied)
+ * and rewritten, and 33 searched before writing to anybody. Approval → first
+ * sent question had a median of 73 s. These sentences say up front what the
+ * guards check afterwards, and put the questions before the searches.
+ *
+ * MODEL-FACING (D44): OFF until Misho says yes to the exact text.
+ */
+export const DAY_ONE_FIRST_PASS_ON = false;
+
+export const DAY_ONE_FIRST_PASS: Readonly<Record<RunLanguage, string>> = {
+  ka:
+    'ჯერ კითხვები გაგზავნე, ძებნა — მერე. კითხვაში მფლობელის ფაქტები შენი სიტყვებით დაწერე: ' +
+    'არაფერი დაამატო, რაც მას არ უთქვამს (მაგალითად „სანდო"), და მისი წინადადება სიტყვასიტყვით არ გადაიტანო.',
+  en:
+    'Send the questions first and search after. In each question, put the owner’s facts in your own ' +
+    'words: add nothing they did not say (such as "trusted"), and do not copy their sentence word for word.',
+  ru:
+    'Сначала отправь вопросы, поиск — потом. В каждом вопросе передай факты владельца своими словами: ' +
+    'не добавляй того, чего он не говорил (например, «надёжный»), и не переписывай его фразу дословно.',
+  es:
+    'Envía primero las preguntas y busca después. En cada pregunta, pon los datos del dueño con tus ' +
+    'palabras: no añadas nada que no haya dicho (como «de confianza») y no copies su frase palabra por palabra.',
+};
+
+/** Day one's event, with the 3070 sentences when they are switched on. */
+export function dayOneEvent(
+  on: boolean = DAY_ONE_FIRST_PASS_ON,
+): Readonly<Record<RunLanguage, string>> {
+  if (!on) return DAY_ONE_EVENT_BASE;
+  return {
+    ka: `${DAY_ONE_EVENT_BASE.ka} ${DAY_ONE_FIRST_PASS.ka}`,
+    en: `${DAY_ONE_EVENT_BASE.en} ${DAY_ONE_FIRST_PASS.en}`,
+    ru: `${DAY_ONE_EVENT_BASE.ru} ${DAY_ONE_FIRST_PASS.ru}`,
+    es: `${DAY_ONE_EVENT_BASE.es} ${DAY_ONE_FIRST_PASS.es}`,
+  };
+}
+
+export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = dayOneEvent();
 
 /**
  * #2014 (tester 42341): day one ran searches, called no send tool, and closed
