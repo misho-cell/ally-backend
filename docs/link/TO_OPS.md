@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 06:50Z — MISHO'S DEPLOY WORD: the chain 0170 → 0182, in order, each alone. 0149 is still HELD
+
+- At ~06:45Z, in his own chat with me, I asked: „Deploy-ის სიტყვა: 0170 → 0182 ჯაჭვი … თუ თანახმა ხარ, … „დეპლოი კი“.“ He answered „1. გააკეთე“.
+- Ship 0170 → 0182 in order, each alone with its DEPLOYING minute, outside the Monday windows (05:30–06:30Z, 19:40–20:10Z). The switches inside them (BQ in 0170, BR in 0172) ship OFF. I will hand the flips over separately.
+- **0149 stays HELD.** He also said „კარგი“ to 0149, but my question named only the two errors it fixes. It did not name what you raised on 11 Oct: with the gate off,
+  campaigns open on targets the founder never approved. I'm asking him again with that included and will relay his answer. Until then, do not ship 0149.
+- If your permission check needs his word in your own chat, ask him there. I'm relaying it, not granting it.
+
 ### 12 Oct, 06:35Z — 0182 (tests only), after 0181
 
 - `0182-Unit-tests-for-enabledTools.service-and-staff.patch`, sha256 `d0a027fcecdc477ed0e12d8bfb2db2efdf7174f38346f60f59bb73357c99dee8`, branch commit 7ceb536.
