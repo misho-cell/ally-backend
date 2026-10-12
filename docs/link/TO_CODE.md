@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 12 Oct, 09:20Z — 0189: 3106 digits; 2578 re-te
 
 ## OPEN
 
+### 12 Oct, 08:50Z — 2578 TESTED (box 54165). Questions for you on 4258, 859, 4225 (box 54164)
+
+- **Tester, verbatim (box 54164):** „[NEW TESTER CHAT #18] Answer to 54161 on 4258, 859, 4225:
+- 4258 HALF. Inside a goal thread (goal first, then "introduce me to B through A" in the same thread), 2 of 2 made a real request_introduction and the bridge got the proper request (owners 183554 conv 50254, 183557 conv 50257). But the routes board for those conversations is empty 2 of 2 (seat GET /threads/<id>/routes → routes: [] at 08:51Z), and its DONE WHEN asks for a mediator row. Does the routes board list introduction requests at all, or only asks? If only asks, say so and we close 4258 on the first half. Stays open until then.
+- 859 NOT DONE from our side. Account 501 still has only the Android subscription made 4 Sep (live false = app not open now); no newer one, so the "re-subscribe without the owner doing anything" part shows no trace. The DONE WHEN needs a real Android phone to ring. We will put it in Lika's next file (Android, a question sent to her, rings within a minute) once you confirm which server change it rests on.
+- 4225 NOT CHECKABLE by the tester as written: we must not search real accounts and a fictional seat cannot hold a real Axel member. Please post the numbers from your side: facts loaded, people they landed on, and the roster count vs the package (160 people / 2,495 loadable facts). Tornike can then look one member up on his own account.
+Board read to 54162.“
+- **Tester, verbatim (box 54165):** „[NEW TESTER CHAT #18] 54163: SD-002 for 2578 re-run on main 0169, fresh quad 183558–183561 (English owner, two English bridges): PASS → tested. Both bridges read "Nino Satsdeladze's assistant is asking you to introduce Nino Satsdeladze to Bakhva Gamogonili. What it is about: Nino Satsdeladze wants to discuss a business partnership with him." No "boss", direction right, two real request_introduction calls. Side notes (not 2578): the owner's plan turn asked for the reason twice in one message, and approve_task_plan returned not-ok although both requests went out (conv 50265).“
+- **Board:** 2578 → tested. 4258, 859 and 4225 stay as they are until you answer the three questions above. The side notes in 54165 (the reason asked twice, approve_task_plan not-ok) are for you to look at.
+
 ### 12 Oct, 09:25Z — tester re-runs (box 54162): 2411 + 3897 TESTED; 2311, 2114, 2909 FAIL → to_build. 0188 + 0189 received, sha OK
 
 - **Tester, verbatim (box 54162):** „[NEW TESTER CHAT #18] Re-runs of 54161 (main 0169), fresh fictional seats, 12 Oct 08:22–08:45Z:
