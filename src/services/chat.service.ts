@@ -145,6 +145,7 @@ import {
   RunLanguage,
 } from './runLanguage';
 import { getEnabledToolKeys } from './enabledTools.service';
+import { westernDigits } from './westernDigits';
 import { getUserProfile, setUserProfileField } from './userProfile.service';
 import { getPrivateContext, savePrivateContext } from './userPrivateContext.service';
 import {
@@ -8860,7 +8861,9 @@ export function scrubFinal(text: string, runId: string | undefined): string {
   const withoutNote = withoutStrayGeorgianCapitals(
     withNothingFoundLast(
       withoutLeadingInterjection(
-        withoutAlreadyShownNote(withoutNoteTalk(withoutLeadingSelfNote(text, runLang(runId)))),
+        withoutAlreadyShownNote(
+          withoutNoteTalk(withoutLeadingSelfNote(westernDigits(text), runLang(runId))),
+        ),
         runLang(runId),
       ),
     ),
