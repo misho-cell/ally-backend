@@ -386,6 +386,8 @@ describe('getVisibleFacts — owner value never hidden by the crowd (F1)', () =>
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('submitted_by_user_id = $2')) return Promise.resolve(rows(own) as never);
       if (sql.includes('is_public = true')) return Promise.resolve(rows(pub) as never);
+      // 4126 / §119.4: the researched facts are read beside them; none here.
+      if (sql.includes('research_status')) return Promise.resolve(rows([]) as never);
       throw new Error(`Unexpected query: ${sql}`);
     });
   }

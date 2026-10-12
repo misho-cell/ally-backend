@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { researchPartOf, ResearchFactView } from './researchFactsView';
 import { recordClaudeUsage } from './costLedger.service';
 import { query, backgroundQuery } from '../db/postgres/client';
 import { normalizePhone } from './phone';
@@ -71,6 +72,9 @@ export interface VisibleFact {
 export interface VisibleFactsResult {
   facts: VisibleFact[];
   ask_about: string | null;
+  /** 4126 / §119.4: researched facts, each with status, source and date. */
+  research?: ResearchFactView[];
+  research_note?: string;
 }
 
 export async function runSemanticMatching(
@@ -876,7 +880,7 @@ export async function getVisibleFacts(
   const knownFields = new Set([...ownFieldTypes, ...publicResult.rows.map((r) => r.field_type)]);
   const ask_about = FACT_FIELD_TYPES.find((f) => !knownFields.has(f)) ?? null;
 
-  return { facts, ask_about };
+  return { facts, ask_about, ...(await researchPartOf(neo4jContactId)) };
 }
 
 // Backfill: run existing PRIVATE free-form notes through the same agent
