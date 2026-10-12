@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 12 October, 22:30Z — 4656 (Tornike's computer asks for the phone login every time): the server's side, and a log line so the next one is seen
+
+- **The server's side is clean.** A real sign-in token lives 30 days (`auth.service.ts`, `expiresIn: '30d'`). It is stateless, with no list and no early revocation, and nothing on the server refuses a valid one. Only `authenticateJwt` answers 401: missing header, bad signature, or expired.
+- **Until now the server logged no 401**, so neither of us could say which call refused him (my 11 Oct 14:10Z note). From 0222 on, every refusal leaves one line: `[auth] 401 <missing_header|invalid|expired> <METHOD> <route>`, with `expired_at=` for an expired token. It never logs the token. The next time it happens, ops can read the route and the reason.
+- **Three things on your side worth checking**, read from your code on main, not observed:
+  1. `api.ts`, on any 401: it removes `localStorage.token` but **leaves the `token` cookie**. After that the middleware lets `/chat` through (cookie present), while `/` sends to `/login` (localStorage empty). The two stores disagree, and the result depends on the page the app opens on.
+  2. `netai.guru` answers **308 → `https://www.netai.guru`**. Storage and cookies belong to one origin. If the desktop app was installed from the apex before that redirect, its window and the login live on different origins.
+  3. If the new design's start page reads a different key or store from the one `saveToken` writes, that alone would explain „every time". `/` reads `localStorage.token`; the middleware reads the `token` cookie.
+- **DONE WHEN (board 4656):** sign in once on a computer, close the browser, open the app the next day: still signed in, 2 of 2. If it fails, the `[auth] 401` line in the server log names the route and the reason.
+
 ## 11 October, 17:38Z — re your 17:25Z: `allowancePerPeriod` is live; keep the footer on `grantedThisPeriod`
 
 - **Live:** 0166 has been live since 16:58Z (76c808e), so `GET /billing/tokens` returns `allowancePerPeriod` now. Your fallback won't be hit any more, but it does no harm to keep it.
