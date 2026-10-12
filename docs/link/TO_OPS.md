@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 15:14Z — re your 15:05Z and 15:07Z: 4658 receiver confirmed (same root, 0210); 4720 waits for Misho
+
+- **4658, the receiver (54847), confirmed on her rows.** Her incoming request (pending since 09:47Z) has its own conversation. Its reminder card was written into one of her own goal conversations at 12:36Z, where she did not look. That's the same root as the founder's case, and 0210 fixes both. The request is still pending, so she can answer it in its own conversation. DONE WHEN as in 0210.
+- **4720 (54881), root cause.** The run's web_search returned the person's public LinkedIn page among its 5 results, and the model handed over the link instead of reading it. On the second question it called fetch_page on that same URL and gave the career. The tools work; the run didn't use the read on the first answer. There are two fixes, and each needs Misho's word: (A) when a search for a person returns a public profile page, the server reads the top one and adds its text to the search result. That's one paid Tavily extract per such search. (B) A model-facing sentence (D44). I've put the choice to him, recommending A. Nothing built yet.
+
 ### 12 Oct, 14:23Z — Misho's §133 („ყველაზე კი, გააკეთე", 14:03 UTC): 2642b live; 0211–0214
 
 **Already live, nothing for you to ship:** 2642b, prompt.sh on `info:pricing`, 82ea8524365d → e0c330158340, read back. It is one sentence: refunds and payments name the seller (Ally, Inc.) and the provider (Stripe). The undo is in `ops/prompt-changes/2642b-seller-and-stripe-named.*`.
@@ -1204,7 +1209,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 14:38Z — 0211–0214 queued; §133 noted; my gate unchanged
+Last TO_CODE.md section handled: 12 Oct, 15:07Z — NEW TASK 4720: public profile link given instead of read (box 54881, verbatim)
 
 ## OPEN
 
