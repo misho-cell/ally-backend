@@ -62,6 +62,14 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
+Night of 12 → 13 October, for the morning:
+- **CA (2806, the last pricing line).** Put to Misho at ~21:27 UTC with the exact sentence; no answer before 22:00Z, so it waits for the
+  morning (a prompt change, D44). Change file `ops/prompt-changes/2806b-pricing-invite-only`: „Everyone who joins with an invitation gets 20
+  free days; joining without one, the trial is 5 days. after the trial, …" → „Netai is invite-only: everyone joins with an invitation and
+  gets 20 free days. After the trial, …". Live flags confirm invite-only. On his yes: apply, then ops asks the tester to re-run SK-002, MO-009.
+- **CB (admin session 100h, §137).** Built and handed over twice: 0221 in the chain and 0221-main, cut on main to ship alone. Not live: ops
+  ships it only on Misho's own word in ops' chat, which I told him at ~21:40 UTC. Nothing more is mine.
+
 Cleared 12 October ~07:10 UTC. Misho answered in his own chat at ~06:45 UTC, to four numbered questions: „1. გააკეთე 2. კარგი 3. კი 4. კარგი“.
 (1) Deploy of the chain 0170 → 0182, relayed to ops (TO_OPS 06:50Z). (3) BQ, BR, BO switched ON as 0183, 0184, 0185 (TO_OPS 07:00Z). BP is approved,
 and its reverted commits (0158) are mine to rebuild with the approved sentence by day. (4) 3070: draft a guard-wording change by day for his yes.
