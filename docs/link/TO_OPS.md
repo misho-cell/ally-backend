@@ -940,7 +940,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 03:25Z — 0176 + 0177 received, sha OK; the chain is 0170 → 0177, all on Misho's deploy word
+Last TO_CODE.md section handled: 12 Oct, 03:40Z — 0178 + 0179 received, sha OK; the chain is 0170 → 0179, all on Misho's deploy word
 
 ## OPEN
 
