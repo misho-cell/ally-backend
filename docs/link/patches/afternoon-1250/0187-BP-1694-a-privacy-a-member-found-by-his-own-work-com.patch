@@ -1,0 +1,238 @@
+From d830af3aa8a1b9b508e78b7a3398e63018d8903d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 07:52:08 +0000
+Subject: [PATCH] BP (1694 a, privacy): a member found by his own work comes
+ back, offered and never described
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes on the exact text, 12 Oct ~06:45 UTC, in his own chat.
+Restores 0148c6a (§110.6) and b986aea (§111.2), reverted in 5039abb after
+box 52938 („works in customs"), with what was missing:
+- the row's found_by_their_own_work carries the approved sentence
+  (FOUND_BY_OWN_WORK_NOTE), MODEL-FACING, D44;
+- such a row carries no employer or jobPosition to repeat;
+- the own-work branch is read only by search_by_tag's main search, where
+  the row can carry the sentence; the list search and the name search
+  no longer see it (they would have had no sentence).
+Undo: revert this commit.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aMemberIsFoundByHisOwnWork.test.ts        | 40 +++++++++++++++++++
+ src/services/tools/searchByTag.ts             | 30 +++++++++++---
+ src/services/tools/wordMatch.ts               | 36 +++++++++++++----
+ 3 files changed, 94 insertions(+), 12 deletions(-)
+ create mode 100644 src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+
+diff --git a/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts b/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+new file mode 100644
+index 0000000..7c5f053
+--- /dev/null
++++ b/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+@@ -0,0 +1,40 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { FOUND_BY_OWN_WORK_NOTE } from '../tools/searchByTag';
++import { buildExactMatchSql } from '../tools/wordMatch';
++
++/** 1694 (box 47985; §110.6, §111.2) and BP (box 52938; Misho's yes, 12 Oct). */
++describe('a member found by his own work', () => {
++  const tag = readFileSync(join(__dirname, '..', 'tools', 'searchByTag.ts'), 'utf8');
++
++  it('reads only the work keys of a member the owner holds', () => {
++    const sql = buildExactMatchSql('501', [['notary']], [], true).matchedCte;
++    expect(sql).toContain('JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text');
++    expect(sql).toContain('WHERE up4.phone IN (SELECT phone FROM mine)');
++    expect(sql).toContain("AND kv.key IN ('profession', 'industry')");
++    expect(sql).not.toMatch(/kv\.key IN \([^)]*interests/u);
++  });
++
++  it('marks only that branch as the member’s own work', () => {
++    const sql = buildExactMatchSql('501', [['notary']], [], true).matchedCte;
++    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(1);
++  });
++
++  it('is read only by the search that can carry the note — never by default', () => {
++    const sql = buildExactMatchSql('501', [['notary']], []).matchedCte;
++    expect(sql).not.toContain('user_profile_kv');
++    expect(sql).not.toContain('TRUE AS self_work');
++    expect(tag.match(/buildExactMatchSql\([^)]*, true\)/gu)).toHaveLength(1);
++  });
++
++  it('gives such a row the approved sentence and no role of theirs to repeat', () => {
++    expect(FOUND_BY_OWN_WORK_NOTE).toBe(
++      'This person was found only by what they wrote about themselves. Offer them as someone ' +
++        'who may be able to help; never say what they do, what they wrote, or why they came up.',
++    );
++    expect(tag).toContain('found_by_their_own_work: FOUND_BY_OWN_WORK_NOTE');
++    expect(tag).toContain('employer: foundByOwnWorkOnly(row) ? null');
++    expect(tag).toContain('jobPosition: foundByOwnWorkOnly(row) ? null');
++    expect(tag).not.toMatch(/kv\.value/u);
++  });
++});
+diff --git a/src/services/tools/searchByTag.ts b/src/services/tools/searchByTag.ts
+index e1b9500..0da6d29 100644
+--- a/src/services/tools/searchByTag.ts
++++ b/src/services/tools/searchByTag.ts
+@@ -69,6 +69,8 @@ export interface TagRow {
+   own_tags: string[] | null;
+   /** The tester's 988: did any match come from the owner's own label or a public field? */
+   own_hit?: boolean | null;
++  /** 1694 (§111.2): found only through the member's own profession / industry. */
++  self_work_only?: boolean | null;
+   employer: string | null;
+   jobPosition: string | null;
+   city: string | null;
+@@ -177,18 +179,19 @@ async function runExactSearch(
+   rawGroups: string[][],
+   blockedPhones: string[],
+ ): Promise<{ rows: TagRow[]; total: number }> {
+-  const m = buildExactMatchSql(userId, rawGroups, blockedPhones);
++  const m = buildExactMatchSql(userId, rawGroups, blockedPhones, true);
+   const [result, countResult] = await Promise.all([
+     query<TagRow>(
+       `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
+        hits AS (
+          SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
+-                bool_or(own) AS own_hit
++                bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
+          FROM matched
+          WHERE phone != ALL($${m.blockIdx})
+          GROUP BY phone
+        )
+-       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit
++       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
++              BOOL_AND(h.self_work_only) AS self_work_only
+        ${AGG_JOINS}
+        GROUP BY h.phone
+        ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
+@@ -417,6 +420,19 @@ export function withOthersSavedAs(
+   return row.found_by_others_labels === true ? { ...row, others_saved_as: tagQuery.trim() } : row;
+ }
+ 
++/**
++ * BP (1694 a, privacy; Misho's yes on the exact text, 12 Oct). MODEL-FACING
++ * (D44): a member found only by what they wrote about themselves may be
++ * offered, never described.
++ */
++export const FOUND_BY_OWN_WORK_NOTE =
++  'This person was found only by what they wrote about themselves. Offer them as someone ' +
++  'who may be able to help; never say what they do, what they wrote, or why they came up.';
++
++function foundByOwnWorkOnly(row: TagRow): boolean {
++  return row.self_work_only === true;
++}
++
+ function shape(
+   row: TagRow,
+   facts: Map<string, ContactFactFields>,
+@@ -442,8 +458,12 @@ function shape(
+        */
+       tags: ownDisplayableTags(row),
+       ...(othersLabelsMatched(row) && { found_by_others_labels: true }),
+-      employer: row.employer ?? null,
+-      jobPosition: row.jobPosition ?? null,
++      // 1694 (Misho, §111.2; BP, his yes of 12 Oct): matched only on what the
++      // member said about their own work. The row says how it may be used, and
++      // carries no role of theirs to repeat (box 52938: „works in customs").
++      ...(foundByOwnWorkOnly(row) && { found_by_their_own_work: FOUND_BY_OWN_WORK_NOTE }),
++      employer: foundByOwnWorkOnly(row) ? null : (row.employer ?? null),
++      jobPosition: foundByOwnWorkOnly(row) ? null : (row.jobPosition ?? null),
+       city: row.city ?? null,
+     },
+     facts,
+diff --git a/src/services/tools/wordMatch.ts b/src/services/tools/wordMatch.ts
+index da06bea..9410282 100644
+--- a/src/services/tools/wordMatch.ts
++++ b/src/services/tools/wordMatch.ts
+@@ -74,6 +74,12 @@ export function buildExactMatchSql(
+   userId: string,
+   rawGroups: readonly string[][],
+   blockedPhones: readonly string[],
++  /**
++   * BP (12 Oct): the member's-own-work branch is read only where the row can
++   * carry FOUND_BY_OWN_WORK_NOTE — search_by_tag's main search. Every other
++   * caller would hand the model such a row with nothing telling it not to say why.
++   */
++  withOwnWork = false,
+ ): ExactMatchSql {
+   const groupRegex = rawGroups.map((g) => g.map(toWordStartPattern));
+   const allRegex = groupRegex.flat();
+@@ -138,8 +144,23 @@ export function buildExactMatchSql(
+   // saved (their tag or alias), or from public fields (registered name, job,
+   // a public fact)? Only a match on another person's private label or fact is
+   // not own — and only a row with no own match is „found by others' labels".
++  // 1694 (box 47985; Misho's yes 9 Oct, §110.6): a member who told his own assistant
++  // what he does is found by it. Work keys only — „interests" or searched topics would
++  // make a member who LOOKED for a lawyer read as one. Their text ranks the search and
++  // is never shown; §111.2 and BP: a row found only this way says so (self_work).
++  const ownWorkBranch = withOwnWork
++    ? `SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
++            TRUE AS self_work
++     FROM "UserPhone" up4
++     JOIN user_profile_kv kv ON kv.user_id = up4."userId"::text
++     WHERE up4.phone IN (SELECT phone FROM mine)
++       AND kv.key IN ('profession', 'industry')
++       AND ${regexOr('kv.value')}
++     UNION ALL
++     `
++    : '';
+   const matchedCte = `matched AS (
+-     SELECT lt.phone, lt.label, 1 AS priority, lt.own
++     SELECT lt.phone, lt.label, 1 AS priority, lt.own, FALSE AS self_work
+      FROM mine m
+      CROSS JOIN LATERAL (
+        SELECT t.phone, ${foldedLower('t.tag')} AS label, (t."contactId" = $1) AS own
+@@ -147,7 +168,7 @@ export function buildExactMatchSql(
+        WHERE t.phone = m.phone AND ${regexOr('t.tag')}
+      ) lt
+      UNION ALL
+-     SELECT la.phone, la.label, 1 AS priority, la.own
++     SELECT la.phone, la.label, 1 AS priority, la.own, FALSE AS self_work
+      FROM mine m
+      CROSS JOIN LATERAL (
+        SELECT a.phone, ${foldedLower('a.alias')} AS label, (a."contactId" = $1) AS own
+@@ -155,7 +176,8 @@ export function buildExactMatchSql(
+        WHERE a.phone = m.phone AND ${regexOr('a.alias')}
+      ) la
+      UNION ALL
+-     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own
++     SELECT up2.phone, ${foldedLower('u2.name')} AS label, 1 AS priority, TRUE AS own,
++            FALSE AS self_work
+      FROM "UserPhone" up2
+      JOIN "User" u2 ON u2.id = up2."userId"
+      WHERE up2.phone IN (SELECT phone FROM mine) AND u2.name IS NOT NULL
+@@ -163,15 +185,15 @@ export function buildExactMatchSql(
+      UNION ALL
+      SELECT up3.phone,
+             ${foldedLower(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)} AS label,
+-            2 AS priority, TRUE AS own
++            2 AS priority, TRUE AS own, FALSE AS self_work
+      FROM "UserPhone" up3
+      JOIN "User" u3 ON u3.id = up3."userId"
+      WHERE up3.phone IN (SELECT phone FROM mine)
+        AND (u3."jobPosition" IS NOT NULL OR u3.employer IS NOT NULL)
+        AND ${regexOr(`COALESCE(u3."jobPosition", '') || ' ' || COALESCE(u3.employer, '')`)}
+      UNION ALL
+-     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
+-            TRUE AS own
++${ownWorkBranch}     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
++            TRUE AS own, FALSE AS self_work
+      FROM contact_facts cf
+      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+        AND cf.field_type IN ('occupation', 'employer', 'industry')
+@@ -185,7 +207,7 @@ export function buildExactMatchSql(
+      -- inside this CTE (the outer SELECT aggregates h.phone and joins names),
+      -- so the text can reach the ranking and never the reply.
+      SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label, 2 AS priority,
+-            FALSE AS own
++            FALSE AS own, FALSE AS self_work
+      FROM contact_facts cf
+      WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+        AND cf.retracted_at IS NULL
+-- 
+2.43.0
+
