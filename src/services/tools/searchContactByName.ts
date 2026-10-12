@@ -34,6 +34,8 @@ const RESULT_LIMIT = 20;
 
 export interface NameRow {
   phone: string;
+  /** 4657: how many contacts matched every word, read from the same scan. */
+  total_matches?: number | string | null;
   word_hits?: number | string | null;
   /** The tester's 988: did any match come from the owner's own label or a public field? */
   own_hit?: boolean | null;
@@ -184,20 +186,28 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
        LEFT JOIN "User"      u  ON u.id     = up."userId"
        GROUP BY h.phone`;
 
-    const [result, countResult] = await Promise.all([
-      query<NameRow>(
-        `WITH ${mineCte}, ${m.matchedCte}, ${hitsCte}
-         ${aggSelect}
-         ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
-                  MAX(ua.alias)
-         LIMIT ${RESULT_LIMIT}`,
-        m.params,
-      ),
-      query<{ total: string }>(`WITH ${mineCte}, ${m.matchedCte} ${m.totalSql}`, m.params),
-    ]);
+    /**
+     * 4657 (box 54290, the founder's account, 12 Oct): „ეკა კოპალიანი" timed out
+     * twice (8.6 s) and the run answered from a namesake on the web. The total
+     * was a second query running the same label scan in parallel — 89,308
+     * labels on his 1,908 numbers, twice at once. It is now read from the one
+     * scan's own hits.
+     */
+    const result = await query<NameRow>(
+      `WITH ${mineCte}, ${m.matchedCte}, ${hitsCte}
+       ${aggSelect.replace(
+         'FROM hits h',
+         `, (SELECT COUNT(*) FROM hits WHERE word_hits >= ${rawGroups.length}) AS total_matches
+       FROM hits h`,
+       )}
+       ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
+                MAX(ua.alias)
+       LIMIT ${RESULT_LIMIT}`,
+      m.params,
+    );
 
     const rows = result.rows.filter((r) => !isExcluded(r.phone));
-    const total = Number(countResult.rows[0]?.total ?? rows.length);
+    const total = Number(result.rows[0]?.total_matches ?? rows.length);
 
     if (rows.length === 0) {
       // Fallback: fuzzy similarity search via pg_trgm (catches typos like livingston/livingstone)

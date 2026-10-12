@@ -43,7 +43,11 @@ function setup(opts: {
   const relationships = opts.relationships ?? [];
   const humanTiers = opts.humanTiers ?? [];
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
+    // 4657: the main page carries its own total, read from the same scan.
+    if (sql.includes('AS total_matches'))
+      return Promise.resolve(
+        rows(main.map((r) => ({ ...(r as object), total_matches: String(count) }))) as never,
+      );
     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('human_relationship_tiers')) return Promise.resolve(rows(humanTiers) as never);
     if (sql.includes('contact_relationship_scores'))
@@ -252,7 +256,8 @@ describe('searchContactByName', () => {
 
     const mainSql = mockQuery.mock.calls.find(
       (c) =>
-        !(c[0] as string).includes('AS total') && !(c[0] as string).includes('word_similarity('),
+        !(c[0] as string).includes('AS total FROM') &&
+        !(c[0] as string).includes('word_similarity('),
     )?.[0] as string;
     // Recall is scoped to the user's own contact phones (the materialized
     // "mine" set — every branch joins FROM it)...
@@ -283,7 +288,8 @@ describe('searchContactByName', () => {
 
     const mainCall = mockQuery.mock.calls.find(
       (c) =>
-        !(c[0] as string).includes('AS total') && !(c[0] as string).includes('word_similarity('),
+        !(c[0] as string).includes('AS total FROM') &&
+        !(c[0] as string).includes('word_similarity('),
     );
     const mainSql = mainCall?.[0] as string;
     const mainParams = mainCall?.[1] as unknown[];
@@ -299,7 +305,7 @@ describe('searchContactByName', () => {
 
     await searchContactByName('42', 'Dachi Axel');
 
-    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('AS total'));
+    const countCall = mockQuery.mock.calls.find((c) => (c[0] as string).includes('total_matches'));
     const countSql = countCall?.[0] as string;
     const countParams = countCall?.[1] as unknown[];
     // Postgres rejects a bind carrying parameters the statement never uses
@@ -319,7 +325,7 @@ describe('searchContactByName', () => {
     await searchContactByName('42', 'Giorgi Basilaia');
 
     const countSql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('AS total'),
+      (c[0] as string).includes('total_matches'),
     )?.[0] as string;
     // "Giorgi Basilaia" reported 275 — everyone tagged giorgi — for one real
     // person, and the payload tells the assistant to say the number out loud.
@@ -332,7 +338,7 @@ describe('searchContactByName', () => {
     await searchContactByName('42', 'Basilaia');
 
     const countSql = mockQuery.mock.calls.find((c) =>
-      (c[0] as string).includes('AS total'),
+      (c[0] as string).includes('total_matches'),
     )?.[0] as string;
     expect(countSql).toContain('word_hits >= 1');
   });
@@ -408,7 +414,8 @@ describe('two rows under one name', () => {
       },
     ];
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '2' }]) as never);
+      if (sql.includes('AS total_matches'))
+        return Promise.resolve(rows(twins.map((t) => ({ ...t, total_matches: '2' }))) as never);
       if (sql.includes('AS old_ally_paid'))
         return Promise.resolve(
           rows(
@@ -609,5 +616,19 @@ describe('row 137 — a label naming somebody else is not that person', () => {
     };
 
     expect(out.results[0]?.phone).toBe(sparseExact.phone);
+  });
+});
+
+/** 4657 (box 54290): the founder's name search timed out twice running its label scan twice at once. */
+describe('the name search scans the labels once', () => {
+  it('reads its total from the same query, with no second count query', async () => {
+    setup({ main: [mockRow], count: 3 });
+    const result = (await searchContactByName('42', 'Eka Kopaliani')) as Record<string, unknown>;
+    const scans = mockQuery.mock.calls.filter((c) => (c[0] as string).includes('matched AS ('));
+    expect(scans).toHaveLength(1);
+    expect(mockQuery.mock.calls.some((c) => (c[0] as string).includes('AS total FROM'))).toBe(
+      false,
+    );
+    expect(result.total).toBe(3);
   });
 });
