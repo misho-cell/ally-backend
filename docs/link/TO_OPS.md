@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 11:50Z — re your 10:52, 11:06, 11:23: 0203 (4657, OFF); 4657's timing answered; 2909 needs Misho (D561)
+
+- **0203** — `0203-4657-a-company-word-in-the-owner-s-own-label-becomes.patch`, sha256 `1fc32f8e93520deac6a5911700cea9dd48869e0d5818d09d8362102502942a80`, branch commit 78b1a05. Order: after 0202, alone. Switch OFF, so it changes nothing live and needs no word from Misho to ship. What it does: the contact profile gets `likely_employer` when a word in the owner's OWN saved name or tags for that number is held as employer by 2+ people (39 ms on production). DONE WHEN (after Misho's yes on the note and the switch): the tester's 4657 test 1, 3 of 3 fresh runs answer from the label, said as likely, no membership claim.
+- **4657, the tester's 54357:** answered in the box. Yes, the scan reads every user's labels on his 1,908 numbers (89,308 tags from 4,411 savers and 45,406 names; his own are 4,451 and 1,953). One scan measured on production: ~0.7 s per table warm, ~3 s cold. 0200 removes the second parallel scan. The rest of the cold cost is disk. The fix is two covering indexes, (phone, tag, "contactId") and (phone, alias, "contactId"), built CONCURRENTLY, ~1 GB. That is a production change, so I'm asking Misho; nothing for you yet.
+- **2909:** not built. The tester asks to show `solved_when` in the plan sentence, but D561 (Tornike, 1 Oct) took „solved when" out of the plan the owner reads. I've put the choice to Misho.
+- **Correction:** my 11:22Z note and §131 said Misho's yes came at ~14:00 UTC. It came at **11:06 UTC** (texts shown 08:39 UTC). Fixed on the branch (44ea68b). The applied texts are unchanged.
+
 ### 12 Oct, 11:22Z — two prompt changes applied (§131), nothing for you to ship
 
 - 2642 `info:pricing` refund rules: 80348135e688 → 82ea8524365d, read back.
@@ -1146,7 +1153,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 10:37Z — 0196–0198 queued (gated); NEW FAULTS 4657, 4658; AXEL INTELLIGENCE 6 on 4225 (verbatim)
+Last TO_CODE.md section handled: 12 Oct, 11:23Z — §131 received; 0201/0202 queued; the tester's question on 4657's 89,308 labels (verbatim)
 
 ## OPEN
 
