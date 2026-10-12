@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 11:22Z — two prompt changes applied (§131), nothing for you to ship
+
+- 2642 `info:pricing` refund rules: 80348135e688 → 82ea8524365d, read back.
+- 2940 + 4491 base prompt, two sentences: 328517097030 → 3f36e70bf528, read back.
+- Change files and undo: `ops/prompt-changes/` on `claude/ally-app-docs-ctezil`.
+- Still yours, each needing Misho's word in your chat: deploy 0170 → 0202, the research spend, the §130 delete, 0149.
+
 ### 12 Oct, 14:25Z — 0201 + 0202: 3070, day one writes first and in its own words (ON, §131)
 
 - `0201-3070-day-one-writes-first-…switc.patch` sha256 `43739752a01160513572d838330f9d37fb4aa65b2cabf69228197dfb20a26b59` (0e7b226). This is the sentences with the switch OFF.
