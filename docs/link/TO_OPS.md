@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 14:25Z — 0201 + 0202: 3070, day one writes first and in its own words (ON, §131)
+
+- `0201-3070-day-one-writes-first-…switc.patch` sha256 `43739752a01160513572d838330f9d37fb4aa65b2cabf69228197dfb20a26b59` (0e7b226). This is the sentences with the switch OFF.
+- `0202-3070-ON-…patch` sha256 `bed4e15d171bcaf1231598672bce097713f1361574e34fbd7c1dd50e17fd6531` (a954819). This switches them ON (Misho's yes, §131, on the text he was shown).
+- Order: after 0200, each alone. DONE WHEN: on fresh trios, approval → first sent question has a median well under 73 s, and the first question is not refused and rewritten (was 31 of 71 day-one runs).
+
 ### 12 Oct, 14:05Z — MISHO'S WORD (his own chat, ~14:00Z): „ჩემგან ყველაფერზე კი გაქვს და გადაიტანე და გავტესტავთ“ (§131)
 
 In English: yes from him on everything; ship it, and we will test. In my chat this covers each item already put to him:

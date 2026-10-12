@@ -1,0 +1,70 @@
+From 47ecb323e52d299c795783b9e1dd9931a9438e3a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 11:12:29 +0000
+Subject: [PATCH] =?UTF-8?q?3070=20ON:=20day=20one=20writes=20first=20and?=
+ =?UTF-8?q?=20in=20its=20own=20words,=20on=20Misho's=20yes=20(=C2=A7131)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+DAY_ONE_FIRST_PASS_ON = true: the day-one event ends with the approved
+sentences in ka/en/ru/es (questions before searches, the owner's facts in
+the run's own words, nothing added, nothing copied). Undo: the switch back
+to false.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/dayOneWritesFirstAndInOwnWords.test.ts  | 11 ++++++-----
+ src/services/taskEngine.events.ts                     |  5 +++--
+ 2 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts b/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts
+index e1aa6aa..952f1b3 100644
+--- a/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts
++++ b/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts
+@@ -9,18 +9,19 @@ const LANGUAGES = ['ka', 'en', 'ru', 'es'] as const;
+ 
+ /** 3070: day one's first question is refused and rewritten in 31 of 71 runs. */
+ describe('day one writes first, in its own words (3070)', () => {
+-  it('is OFF until Misho’s yes on the exact text: day one reads as it did', () => {
+-    expect(DAY_ONE_FIRST_PASS_ON).toBe(false);
++  it('is ON since Misho’s yes (§131): day one carries the sentences in every language', () => {
++    expect(DAY_ONE_FIRST_PASS_ON).toBe(true);
+     for (const lang of LANGUAGES) {
+-      expect(DAY_ONE_EVENT[lang]).not.toContain(DAY_ONE_FIRST_PASS[lang]);
++      expect(DAY_ONE_EVENT[lang].endsWith(DAY_ONE_FIRST_PASS[lang])).toBe(true);
+     }
++    expect(dayOneEvent(false).ka).not.toContain(DAY_ONE_FIRST_PASS.ka);
+   });
+ 
+   it('when ON, ends every language’s event with its own sentences', () => {
+     const on = dayOneEvent(true);
++    const off = dayOneEvent(false);
+     for (const lang of LANGUAGES) {
+-      expect(on[lang].endsWith(` ${DAY_ONE_FIRST_PASS[lang]}`)).toBe(true);
+-      expect(on[lang].startsWith(DAY_ONE_EVENT[lang])).toBe(true);
++      expect(on[lang]).toBe(`${off[lang]} ${DAY_ONE_FIRST_PASS[lang]}`);
+     }
+   });
+ 
+diff --git a/src/services/taskEngine.events.ts b/src/services/taskEngine.events.ts
+index 848b29f..15d6b49 100644
+--- a/src/services/taskEngine.events.ts
++++ b/src/services/taskEngine.events.ts
+@@ -78,9 +78,10 @@ const DAY_ONE_EVENT_BASE: Readonly<Record<RunLanguage, string>> = {
+  * sent question had a median of 73 s. These sentences say up front what the
+  * guards check afterwards, and put the questions before the searches.
+  *
+- * MODEL-FACING (D44): OFF until Misho says yes to the exact text.
++ * MODEL-FACING (D44): ON since Misho's yes, 12 Oct (§131), to the text he was
++ * shown at ~08:10 UTC.
+  */
+-export const DAY_ONE_FIRST_PASS_ON = false;
++export const DAY_ONE_FIRST_PASS_ON = true;
+ 
+ export const DAY_ONE_FIRST_PASS: Readonly<Record<RunLanguage, string>> = {
+   ka:
+-- 
+2.43.0
+

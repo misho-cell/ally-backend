@@ -1,0 +1,123 @@
+From 4815b69ff22bcc36eee6d2ec053dad032c6ffe6f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 07:59:42 +0000
+Subject: [PATCH] 3070: day one writes first and in its own words (switch OFF,
+ for Misho's yes)
+
+Measured on 71 day-one runs over 4 days: 31 had a first question refused
+by the content guards and rewritten, 33 searched before writing to anyone;
+approval to the first sent question had a median of 73 s. DAY_ONE_FIRST_PASS
+says up front what the guards check afterwards and puts the questions
+before the searches, in ka/en/ru/es. MODEL-FACING (D44):
+DAY_ONE_FIRST_PASS_ON = false until Misho says yes to the exact text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../dayOneWritesFirstAndInOwnWords.test.ts    | 32 ++++++++++++++
+ src/services/taskEngine.events.ts             | 43 ++++++++++++++++++-
+ 2 files changed, 74 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts
+
+diff --git a/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts b/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts
+new file mode 100644
+index 0000000..e1aa6aa
+--- /dev/null
++++ b/src/services/__tests__/dayOneWritesFirstAndInOwnWords.test.ts
+@@ -0,0 +1,32 @@
++import {
++  DAY_ONE_EVENT,
++  DAY_ONE_FIRST_PASS,
++  DAY_ONE_FIRST_PASS_ON,
++  dayOneEvent,
++} from '../taskEngine.events';
++
++const LANGUAGES = ['ka', 'en', 'ru', 'es'] as const;
++
++/** 3070: day one's first question is refused and rewritten in 31 of 71 runs. */
++describe('day one writes first, in its own words (3070)', () => {
++  it('is OFF until Misho’s yes on the exact text: day one reads as it did', () => {
++    expect(DAY_ONE_FIRST_PASS_ON).toBe(false);
++    for (const lang of LANGUAGES) {
++      expect(DAY_ONE_EVENT[lang]).not.toContain(DAY_ONE_FIRST_PASS[lang]);
++    }
++  });
++
++  it('when ON, ends every language’s event with its own sentences', () => {
++    const on = dayOneEvent(true);
++    for (const lang of LANGUAGES) {
++      expect(on[lang].endsWith(` ${DAY_ONE_FIRST_PASS[lang]}`)).toBe(true);
++      expect(on[lang].startsWith(DAY_ONE_EVENT[lang])).toBe(true);
++    }
++  });
++
++  it('says questions before searches, nothing added, nothing copied', () => {
++    expect(DAY_ONE_FIRST_PASS.ka).toContain('ჯერ კითხვები გაგზავნე');
++    expect(DAY_ONE_FIRST_PASS.ka).toContain('არაფერი დაამატო');
++    expect(DAY_ONE_FIRST_PASS.ka).toContain('სიტყვასიტყვით არ გადაიტანო');
++  });
++});
+diff --git a/src/services/taskEngine.events.ts b/src/services/taskEngine.events.ts
+index 60096fb..848b29f 100644
+--- a/src/services/taskEngine.events.ts
++++ b/src/services/taskEngine.events.ts
+@@ -39,7 +39,7 @@ import { RunLanguage } from './runLanguage';
+  * 16 September when three goals had their first plan name people the owner had
+  * asked us not to contact.
+  */
+-export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
++const DAY_ONE_EVENT_BASE: Readonly<Record<RunLanguage, string>> = {
+   ka:
+     'გეგმა ახლახან დამტკიცდა — დღე პირველია. სტანდარტის პირველი წესი: ყველაფერი დღესვე. ' +
+     'გეგმის „ვის ვკითხავ" სიიდან მისწერე პირველ 3–5 ადამიანს ერთდროულად — ცალკე თანხმობა არ ' +
+@@ -71,6 +71,47 @@ export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = {
+     'menciones horas ni días (D563).',
+ };
+ 
++/**
++ * 3070 (measured 12 Oct, 4 days, 71 day-one runs): 31 had a first question
++ * refused by the content guards („სანდო" added, the owner's sentence copied)
++ * and rewritten, and 33 searched before writing to anybody. Approval → first
++ * sent question had a median of 73 s. These sentences say up front what the
++ * guards check afterwards, and put the questions before the searches.
++ *
++ * MODEL-FACING (D44): OFF until Misho says yes to the exact text.
++ */
++export const DAY_ONE_FIRST_PASS_ON = false;
++
++export const DAY_ONE_FIRST_PASS: Readonly<Record<RunLanguage, string>> = {
++  ka:
++    'ჯერ კითხვები გაგზავნე, ძებნა — მერე. კითხვაში მფლობელის ფაქტები შენი სიტყვებით დაწერე: ' +
++    'არაფერი დაამატო, რაც მას არ უთქვამს (მაგალითად „სანდო"), და მისი წინადადება სიტყვასიტყვით არ გადაიტანო.',
++  en:
++    'Send the questions first and search after. In each question, put the owner’s facts in your own ' +
++    'words: add nothing they did not say (such as "trusted"), and do not copy their sentence word for word.',
++  ru:
++    'Сначала отправь вопросы, поиск — потом. В каждом вопросе передай факты владельца своими словами: ' +
++    'не добавляй того, чего он не говорил (например, «надёжный»), и не переписывай его фразу дословно.',
++  es:
++    'Envía primero las preguntas y busca después. En cada pregunta, pon los datos del dueño con tus ' +
++    'palabras: no añadas nada que no haya dicho (como «de confianza») y no copies su frase palabra por palabra.',
++};
++
++/** Day one's event, with the 3070 sentences when they are switched on. */
++export function dayOneEvent(
++  on: boolean = DAY_ONE_FIRST_PASS_ON,
++): Readonly<Record<RunLanguage, string>> {
++  if (!on) return DAY_ONE_EVENT_BASE;
++  return {
++    ka: `${DAY_ONE_EVENT_BASE.ka} ${DAY_ONE_FIRST_PASS.ka}`,
++    en: `${DAY_ONE_EVENT_BASE.en} ${DAY_ONE_FIRST_PASS.en}`,
++    ru: `${DAY_ONE_EVENT_BASE.ru} ${DAY_ONE_FIRST_PASS.ru}`,
++    es: `${DAY_ONE_EVENT_BASE.es} ${DAY_ONE_FIRST_PASS.es}`,
++  };
++}
++
++export const DAY_ONE_EVENT: Readonly<Record<RunLanguage, string>> = dayOneEvent();
++
+ /**
+  * #2014 (tester 42341): day one ran searches, called no send tool, and closed
+  * on „I've already reached out to the one person on the plan" — nothing had
+-- 
+2.43.0
+
