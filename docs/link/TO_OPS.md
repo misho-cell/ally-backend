@@ -1246,7 +1246,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 19:21Z — the daily-check faults now have board rows (box 55441)
+Last TO_CODE.md section handled: 12 Oct, 19:37Z — re your 19:20Z: 0218 queued after 0217; 2806–2808 put to Misho
 
 ## OPEN
 
