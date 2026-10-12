@@ -87,6 +87,10 @@ D711's check (deliberate). I'm leaving it for a decision by day, not code.
 Live log sweep (03:50 UTC, build d6d907c): the two chorus-cron errors since the deploy are exactly what 0149 fixes, so 0149 is
 still needed. The errors: queueWarmTieQuestions at 19:11Z, „text = integer“ on pending_updates.user_id, and openDueCampaigns at 00:57Z, a statement timeout
 on the inviters read. CHORUS / 0149 stays on Misho's list. `rolesFromLabels` passing its 700 ms budget (6 times) is the designed degrade.
+4295 (two timers), from the same logs: the trial timer runs (`[subscription-cron] downgraded`, twice). The campaign opener ran once at 19:07Z
+and timed out at 00:57Z, so its half also waits on 0149. 4522 and the search budget were checked and are fine: one run's 12 parallel searches got
+8 and 4 refusals, exactly the cap. One plan over 8 routes in 3 days was refused with a bare „at most 8 routes“. The model re-proposed it 42 s later.
+Wording that error is model-facing (D44), so it is left alone.
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
