@@ -31,7 +31,7 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
       helperName: 'ნიკა საცდელი',
     });
     expect(recallLine('ka', recalled!)).toBe(
-      'გახსოვს, გია საცდელი-ს სჭირდება: „საწყობი სჭირდება". ნიკა საცდელი შეიძლება დაეხმაროს — დავაკავშირო ისინი?',
+      'გახსოვს, გია საცდელს სჭირდება: „საწყობი სჭირდება“. ნიკა საცდელი შეიძლება დაეხმაროს — დავაკავშირო ისინი?',
     );
     expect(recallChoices('ka')).toEqual(['კი, დააკავშირე', 'არა, ჯერ არა']);
   });
@@ -61,5 +61,11 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
       'if (!ownerAbsent && savedFact !== null && (choices === undefined || choices.length === 0)) {',
     );
     expect(chat).toContain('choices = recallChoices(runLang(runId));');
+  });
+
+  it('declines the name in Georgian and closes the quote the Georgian way', () => {
+    const line = recallLine('ka', { needName: 'გია საცდელი', need: 'საწყობი', helperName: 'ნიკა' });
+    expect(line).toContain('გახსოვს, გია საცდელს სჭირდება: „საწყობი“.');
+    expect(line).not.toContain('-ს ');
   });
 });

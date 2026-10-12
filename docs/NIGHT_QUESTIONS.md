@@ -114,12 +114,12 @@ while its questions are unanswered is a list that loses them.
   (needRecall.ts), when a saved fact about one contact speaks of another contact's saved need, the reply ends with one line and two
   buttons (only when it has no buttons of its own and does not already name that person). Nothing is sent; a yes is the next turn's
   instruction. The texts real people would read:
-  > ka: „გახსოვს, {name}-ს სჭირდება: „{need}". {helper} შეიძლება დაეხმაროს — დავაკავშირო ისინი?" — „კი, დააკავშირე" / „არა, ჯერ არა"
+  > ka: „გახსოვს, {name, dative} სჭირდება: „{need}“. {helper} შეიძლება დაეხმაროს — დავაკავშირო ისინი?" — „კი, დააკავშირე" / „არა, ჯერ არა"
+  > e.g. „გახსოვს, გია საცდელს სჭირდება: „საწყობი“. ნიკა საცდელი შეიძლება დაეხმაროს — დავაკავშირო ისინი?"
   > en: „You told me {name} needs: „{need}". {helper} may be able to help — shall I connect them?" — „Yes, connect them" / „Not now"
   > ru: „Ты говорил, что {name} нужно: «{need}». {helper} может помочь — связать их?" — „Да, свяжи их" / „Пока нет"
   > es: „Me dijiste que {name} necesita: «{need}». {helper} podría ayudar: ¿los pongo en contacto?" — „Sí, ponlos en contacto" / „Ahora no"
-  Note: the Georgian line attaches „-ს" with a hyphen („გია-ს") rather than declining the name; if he says yes I'd decline it with
-  geoName (dative) first. Undo: the switch back to false.
+  The name is declined (dative, „გია საცდელს"), not hyphenated, since 0175 (12 Oct, ~01:10 UTC). Undo: the switch back to false.
 
 - **BQ — 1454 (b), the server's plan sentence names whom it introduces. Built 11 Oct ~22:20 UTC with its switch OFF, for Misho's yes on
   the exact text.** 1454 passes 3 of 3 on 0169 (nothing before the plan). When the model's own sentence is not clean, the server's D663
