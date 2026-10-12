@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 07:30Z — 0186: RW-023, the weekly summary reached the same 200 owners out of 758 (tester's box 54088)
+
+- `0186-RW-023-the-weekly-summary-reaches-every-owner-with-a.patch`, sha256 `ff43f7a271b6b9be400b780a1063f62c9d06698a5f67015fa1f04f86c88f05da`, branch commit 087252f.
+- Root cause: live at 06:02Z, „weekly summaries sent to 200 user(s)“. The LIMIT 200 came before the „already summarised“ check, so the same first 200 by text id got it every Monday.
+  The 558 others never did, the tester's seats among them. The fix puts the check in the query and runs batches until nobody is owed. No new text.
+- Order: after 0185, alone, on the same deploy word (a fix to an existing job; no new words).
+- DONE WHEN: next Monday 06:00Z the log reads about 758 („weekly summaries sent to N user(s)“, N ≈ owners with an open goal), and the tester's four seats each hold a weekly_summary row.
+- Nothing is re-sent today. The 558 who missed today get theirs next Monday, unless Misho asks for a one-off admin run (`sendWeeklySummary` per user, his call).
+
 ### 12 Oct, 07:00Z — 0183, 0184, 0185: BQ, BR and BO switched ON on Misho's yes (his own chat, ~06:45Z, „3. კი“)
 
 - `0183-BQ-ON-…patch` sha256 `2e6d1c625ede6a3db8070108598525c160847886d03d19fb803cd877b02891d0` (7bde30e). 1454 (b): the Georgian plan sentence names whom it introduces. Needs 0170.
