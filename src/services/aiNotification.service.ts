@@ -7,6 +7,9 @@ import { sendPushNotification } from './notification.service';
 import { scrubMechanicalForStorage } from './privacyScrub';
 import anthropic from '../config/anthropic';
 
+/** #1816: where a tap on the engagement push lands — the owner's conversation. */
+export const AI_NOTIFICATION_PUSH_URL = '/chat';
+
 const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_RECENT_MESSAGES = 12;
 const MAX_TOP_CONTACTS = 10;
@@ -314,7 +317,12 @@ export async function sendAiNotification(userId: string): Promise<void> {
   );
 
   try {
-    await sendPushNotification(userId, { title: content.title, body: content.body });
+    // #1816: a tap opens the conversation, like every other push, not wherever the app defaults.
+    await sendPushNotification(userId, {
+      title: content.title,
+      body: content.body,
+      url: AI_NOTIFICATION_PUSH_URL,
+    });
     await query(`UPDATE ai_notification_log SET push_sent = true WHERE id = $1`, [
       logResult.rows[0].id,
     ]);
