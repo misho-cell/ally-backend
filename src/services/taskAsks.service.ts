@@ -1479,7 +1479,11 @@ async function createAskNow(
       sent: false,
       reason: 'duplicate_ask_in_flight',
       error:
-        `${toName}-ს ეს კითხვა ამ მიზანზე უკვე გაუგზავნე ${secondsSincePrevious} წამის წინ და ` +
+        // Ops' daily check (12 Oct): caught on another goal, there is no previous time —
+        // „undefined წამის წინ" reached the model. The time is said only when known.
+        `${toName}-ს ეს კითხვა ამ მიზანზე უკვე გაუგზავნე ` +
+        (secondsSincePrevious === undefined ? '' : `${secondsSincePrevious} წამის წინ `) +
+        'და ' +
         'პასუხი ჯერ არ მოსულა — მეორედ არ გაუგზავნო. სხვა სიტყვებით გადაკეთებაც იგივე ' +
         'კითხვის მეორედ მიღებაა მისთვის. დაელოდე პასუხს; სანამ ელოდები, ამავე გაშვებაში ' +
         'გააგრძელე სხვა ადამიანებით, მეორე წრით და ვებით.' +

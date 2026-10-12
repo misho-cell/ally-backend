@@ -23,6 +23,11 @@ describe('a plan whose JSON text has a slip', () => {
     });
   });
 
+  it('drops an escape cut in two together with its replacement character (daily check, 12 Oct)', () => {
+    const text = '{"solved_when": "\\u10d1\\u10d0\\u10\uFFFD\\u10d5", "routes": []}';
+    expect(repairedPlanJson(text)).toEqual({ solved_when: 'ბავ', routes: [] });
+  });
+
   it('stays unmended when it really was cut off', () => {
     expect(repairedPlanJson('{"solved_when": "ვაკეში ნოტარ')).toBeUndefined();
   });
