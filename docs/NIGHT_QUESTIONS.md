@@ -77,6 +77,13 @@ the app's service worker); 2346's server half holds (an upload never starts a ru
 test (speech was last used 29 Sep, no server errors since); 958 is 0177 (measured: the prompt build, not d59e722's chain).
 Later the same night: 3270 is 0178 (search half; the label-reading half is the model's), 2971 is 0179, and 3106 wants a re-test
 (the weather line was handled after it was filed: smallTalk.ts, the tester's chat 15, conv 49108).
+3070 (day one starts late), measured at ~05:10 UTC, read-only, on 79 approved plans in 4 days: approval → first sent ask has a
+median of 73 s. The approving run keeps going ~13–22 s after `approve_task_plan` (set_task_wake, set_task_brief, its reply).
+The day-one run's first tool call lands 33–53 s after approval. Its first questions are then refused by the content guards
+(an added word such as „სანდო", the owner's sentence copied) and rewritten, and the ask that goes out spends ~12 s in
+`createAsk` (D711's editor check). The 6 s busy-thread retry costs ~3 s on average. No change to the server's timing is worth
+its risk. What remains is either model-facing text (the guards' wording, so the first question passes; D44, needs Misho) or
+D711's check (deliberate). I'm leaving it for a decision by day, not code.
 
 Cleared 11 October ~06:15 UTC: Misho answered the whole morning list „ყველა კი" (§128). Switched ON at once: BK, BL, BN. To ship: 0113+0116
 (also closes BM), 0131, 0120 (in daylight), 0093. To build now, each alone: BJ, BB, BF, BH.
