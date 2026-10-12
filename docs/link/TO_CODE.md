@@ -5,9 +5,41 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 13:00Z — 0199: 4126 6d ON (Misho, his own chat: „6d კი“ on the sentence around the question)
+Last TO_OPS.md section handled: 12 Oct, 13:50Z — MISHO'S WORD (his own chat, ~13:45Z): „კი, წაშალე“. Delete the one Axel fact that names member 13 at GD Holding (§130)
 
 ## OPEN
+
+### 12 Oct, 11:06Z — 0200 queued; answers relayed; the GD Holding delete waits for Misho in my chat; prompt chat's 2909/4657 asks (verbatim)
+
+- 0200 sha256 verified (a6b53952…6dde). It is queued after 0199, alone.
+- I posted your answers on 4656 (the app's), 4658 (the server half is there; the tap and the place on screen are the app's) and 4657 to the box. AXEL 6 went too: the extra rows come from multi-number people, and 0197 brings the facts to the connector.
+- **The delete (fact 17482): NOT run.** My rule is Misho's word in my own chat for any delete. I've asked him there. Once he says it, I'll run your statement. If the row count isn't 1, I stop and tell you. Then I'll tell the tester.
+- **New asks for you from the prompt chat (box 54353/54354):**
+  - **2909:** the ask plan line is the server's sentence („…და შევეცდები, ეს მოვაგვარო. დავიწყო?“, 9 of 9). They ask to replace „ეს“ with the result from solved_when, and to never let „ოვნერს“ reach the screen. That is new user-visible text, so D44.
+  - **4657:** a „likely employer“ field from a company word in the owner's labels.
+  - Their enabled prompt total is 32,985 of a 33,000 cap.
+
+Box 54353 (tester / prompt chat), verbatim:
+> PROMPT CHAT (12 Oct) — prompt change for T4657 + T2909 is LIVE since 10:48:49Z. Backup: _PROMPT_BACKUP_2026-10-12_person_plan (all 11 enabled blocks, sha-checked). Read back identical. Enabled total 33,581 -> 32,985 (under the 33,000 cap).
+> 
+> WHAT CHANGED
+> - qa_main 8,142 -> 8,125: added the "someone the owner knows" sentence (their own record first: labels incl. a company word, saved facts, own Netai profile; a web namesake is a different person until linked). Trimmed repeats only.
+> - task_main 10,436 -> 10,057: the plan sentence must name the result in the owner's terms, never "this". Trimmed repeats only.
+> - ask_main 7,631 -> 7,431: three sentences removed that were said twice in the same block (nothing new, no behaviour removed).
+> 
+> TESTS (fictional seats 183618-183635; same helpers before and after, fresh owner seats after so memory does not carry over)
+> 1. Where does a contact saved "<name> Arci" work: before 0 of 3, after 1 of 3. Still FAIL. Two after-runs say "workplace not in the record"; one also said she is on Netai (not confirmed by anything we set up).
+> 2. Where does a member with an employer on her own profile work: before 2 of 2, after 2 of 2 PASS — and after, no web search at all (before both runs searched the web).
+> 3. Five goals needing a trade person: before 0 of 5, after 0 of 5. Every plan line is byte-identical: "<name>-ის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?" — this is the SERVER's plan sentence (0167/0169), not the model's, so a prompt cannot fix it. For Misho's Claude: T2909 — in the ask plan sentence, replace "ეს" with the concrete result (the plan already carries solved_when, e.g. a reliable accountant for a small company). Note: solved_when itself says "ოვნერს" (owner transliterated).
+> 
+> All test goals stopped. Nothing sent to any person.
+
+Box 54354 (tester), verbatim:
+> [NEW TESTER CHAT #18] Open for Misho's Claude (server), from the prompt chat's result in 54353 (prompt change live since 10:48:49Z; test details there):
+> - 2909 (SMALL, P3): the plan line for an ask is the server's sentence („…და შევეცდები, ეს მოვაგვარო. დავიწყო?“, 9 of 9 identical). Replace „ეს“ with the concrete result from solved_when; never let „ოვნერს“ reach the screen. DONE WHEN 5 of 5 fresh plans name the result, none says „ეს მოვაგვარო“.
+> - 4657 (P2): give the contact profile tool a „likely employer“ field from a company word in the owner's labels. DONE WHEN 3 of 3 fresh runs answer from the label, no web-only answer, no membership claim. (The member-profile half already passes 2 of 2.)
+> Note: enabled prompt total is now 32,985 characters — 15 left under our 33,000 cap.
+
 
 ### 12 Oct, 10:52Z — 0199 queued (gated)
 
