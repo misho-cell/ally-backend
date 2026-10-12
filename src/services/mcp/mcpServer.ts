@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { ANSWER_MEMBER_QUESTION_ON, mcpAnswerMemberQuestion } from './answerMemberQuestion';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import { SEARCH_OUTCOMES } from '../searchOutcome.service';
@@ -1110,6 +1111,25 @@ function promptMessage(text: string): {
 
 // Ready-made scenarios for claude.ai's "+" menu. They carry user-message
 // strength — stronger than any passive hint the connector can give.
+/** 1256: the user answers a question another member asked them (questions_for_me). */
+function registerMemberAnswerTool(server: McpServer, userId: string): void {
+  server.registerTool(
+    'answer_member_question',
+    {
+      title: TOOL_TEXTS.answer_member_question.title,
+      description: TOOL_TEXTS.answer_member_question.description,
+      inputSchema: {
+        ask_id: z.string().describe(PARAM_TEXTS.memberAskId),
+        answer: z.string().describe(PARAM_TEXTS.memberAnswer),
+        confirmed: z.boolean().describe(PARAM_TEXTS.memberAnswerConfirmed),
+      },
+      annotations: WRITE,
+    },
+    (args) =>
+      runTool(userId, 'answer_member_question', args, () => mcpAnswerMemberQuestion(userId, args)),
+  );
+}
+
 function registerPrompts(server: McpServer): void {
   server.registerPrompt(
     'find_in_network',
@@ -1176,6 +1196,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerMemoryAndBlockTools(server, userId);
   registerGraphTools(server, userId);
   registerGoalTools(server, userId);
+  if (ANSWER_MEMBER_QUESTION_ON) registerMemberAnswerTool(server, userId);
   registerPrompts(server);
   return server;
 }

@@ -550,6 +550,17 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'follow it. Pass include_seen=true only when the user asks for everything that is ' +
       'waiting or was shown before: the already_shown list is a read, not new news.',
   },
+  answer_member_question: {
+    title: 'Answer a question another member asked the user',
+    description:
+      'Sends the user’s answer to a question another Netai member asked them (questions_for_me ' +
+      'in check_my_inbox; ask_id comes from there). Nothing reaches the asker without this call. ' +
+      'Write the answer in your own words, with every name, number, price, time, date, address ' +
+      'and link exactly as the user gave it; never add a name or detail the user did not give. ' +
+      'Send it with confirmed=true once the user has told you what to answer. When the answer ' +
+      'shares a third person’s private details (health, family, money), show it to the user in ' +
+      'one line and send only on their yes. „Later" is not an answer: send nothing.',
+  },
   answer_goal_question: {
     title: "Deliver the user's answer to a blocked goal",
     description:
@@ -700,6 +711,9 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
 };
 
 export const PARAM_TEXTS = {
+  memberAskId: 'The ask_id from questions_for_me in check_my_inbox',
+  memberAnswer: 'The answer to send to the member who asked',
+  memberAnswerConfirmed: 'true only when these words are the user’s own answer',
   tag:
     'One tag word, Georgian or English (e.g. "იურისტი", "ceo"). One word, not a phrase or ' +
     'several words. Try both scripts across calls.',
