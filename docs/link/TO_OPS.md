@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 05:25Z — 0181 (tests only), after 0180
+
+- `0181-Unit-tests-for-targetTiers-doors-pluses-and-tiers.patch`, sha256 `e2f2ff7f1baac13804fff97cd7f8e6b2603ba19400e6f52bcf23ad3c1ea3107c`, branch commit 243a55b.
+- One new test file (14 tests on targetTiers). No runtime code. Verify is green on the chain 0170 → 0181.
+- DONE WHEN: it is applied after 0180. Like 0180, it changes nothing live.
+
 ### 12 Oct, 05:20Z — 0180 (tests only), after 0179 on the same deploy word
 
 - `0180-Unit-tests-for-four-service-helpers-that-had-none.patch`, sha256 `64a6a4d40b919bd3034b518338fe2cbb6892bbf3483e0a1bb5f614e694685fd1`, branch commit 7a1b38a.
