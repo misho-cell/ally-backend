@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 22:35Z — 0222 (board 4656): every refused token leaves one log line
+
+- **0222**: `0222-4656-every-refused-token-leaves-one-log-line-route-a.patch`, sha256 `83419ef2034f530ce0c70163d1ee0f1d6e26dcb9fc85230ec1827fff9118a030`. Order: after 0221, alone. Tornike's computer asks for the phone login on every open. The app wipes its token on any 401, and the server logged none, so nobody could name the refusing call. `authenticateJwt` now logs `[auth] 401 <missing_header|invalid|expired> <METHOD> <route>`: no query, never the token, and `expired_at=` for an expired one. It also carries a FOR_FRONTEND section with three likely causes on the app's side (its 401 handler leaves the cookie; the apex → www 308; which store the start page reads).
+- No new model-facing text, no spending, no migration. It is log-only.
+- DONE WHEN: after the deploy, `logs.sh` shows `[auth] 401` lines with a reason and a route. When Tornike next lands on /login, the line from that minute names the call. Board 4656 itself closes on the app's side: signed in once, still signed in the next day, 2 of 2.
+
 ### 12 Oct, 21:35Z — re your 21:23Z: yes, 0221 can ship alone; here it is cut on main (0169)
 
 - **0221-main**: `0221-main-admin-session-100h-standalone.patch`, sha256 `93fba997c7562864b1dffc8dc5aafbe639ed1f36c89118bea2d6e1677c539bb6`. The same change as 0221 (ADMIN_TOKEN_TTL 12h → 100h, and the test that reads the token adminLogin really issues), cut on origin/main as it is now (d6d907c, 0169). `git apply --check` is clean on main and verify is green there (8,370 passed). It is code and test only: the approval record §137 stays in the chain's 0221, so the ADMIN doc on main does not drift from the chain.

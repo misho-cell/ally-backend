@@ -1,0 +1,188 @@
+From 1b8199abcc6ce0f312b77de761fd3c2cc6de8943 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 22:09:06 +0000
+Subject: [PATCH] 4656: every refused token leaves one log line (route and
+ reason, never the token)
+
+Tornike's computer asks for the phone login on every open. The app wipes
+its token on any 401, and the server logged none, so the refusing call
+could not be named. authenticateJwt now logs missing_header, invalid or
+expired with the method and the route (no query), and expired_at for an
+expired token. FOR_FRONTEND: the server's side, and three things on the
+app's side (the 401 handler leaves the cookie; the apex to www redirect;
+the start page's store).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 10 +++
+ .../__tests__/auth.middleware.test.ts         | 67 ++++++++++++++++++-
+ src/api/middleware/auth.middleware.ts         | 33 ++++++++-
+ 3 files changed, 108 insertions(+), 2 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 52c1b69..e2678cd 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,16 @@ messages in their name.
+ 
+ ---
+ 
++## 12 October, 22:30Z — 4656 (Tornike's computer asks for the phone login every time): the server's side, and a log line so the next one is seen
++
++- **The server's side is clean.** A real sign-in token lives 30 days (`auth.service.ts`, `expiresIn: '30d'`). It is stateless, with no list and no early revocation, and nothing on the server refuses a valid one. Only `authenticateJwt` answers 401: missing header, bad signature, or expired.
++- **Until now the server logged no 401**, so neither of us could say which call refused him (my 11 Oct 14:10Z note). From 0222 on, every refusal leaves one line: `[auth] 401 <missing_header|invalid|expired> <METHOD> <route>`, with `expired_at=` for an expired token. It never logs the token. The next time it happens, ops can read the route and the reason.
++- **Three things on your side worth checking**, read from your code on main, not observed:
++  1. `api.ts`, on any 401: it removes `localStorage.token` but **leaves the `token` cookie**. After that the middleware lets `/chat` through (cookie present), while `/` sends to `/login` (localStorage empty). The two stores disagree, and the result depends on the page the app opens on.
++  2. `netai.guru` answers **308 → `https://www.netai.guru`**. Storage and cookies belong to one origin. If the desktop app was installed from the apex before that redirect, its window and the login live on different origins.
++  3. If the new design's start page reads a different key or store from the one `saveToken` writes, that alone would explain „every time". `/` reads `localStorage.token`; the middleware reads the `token` cookie.
++- **DONE WHEN (board 4656):** sign in once on a computer, close the browser, open the app the next day: still signed in, 2 of 2. If it fails, the `[auth] 401` line in the server log names the route and the reason.
++
+ ## 11 October, 17:38Z — re your 17:25Z: `allowancePerPeriod` is live; keep the footer on `grantedThisPeriod`
+ 
+ - **Live:** 0166 has been live since 16:58Z (76c808e), so `GET /billing/tokens` returns `allowancePerPeriod` now. Your fallback won't be hit any more, but it does no harm to keep it.
+diff --git a/src/api/middleware/__tests__/auth.middleware.test.ts b/src/api/middleware/__tests__/auth.middleware.test.ts
+index 621efd3..1ee9f62 100644
+--- a/src/api/middleware/__tests__/auth.middleware.test.ts
++++ b/src/api/middleware/__tests__/auth.middleware.test.ts
+@@ -1,7 +1,13 @@
+ jest.mock('../../../services/auth.service', () => ({ verifyToken: jest.fn(), __esModule: true }));
+ 
+ import { Request, Response } from 'express';
+-import { requireAdminRole, requireUserRole, AuthenticatedRequest } from '../auth.middleware';
++import { TokenExpiredError } from 'jsonwebtoken';
++import {
++  authenticateJwt,
++  requireAdminRole,
++  requireUserRole,
++  AuthenticatedRequest,
++} from '../auth.middleware';
+ 
+ function makeRes(): { res: Response; status: jest.Mock; json: jest.Mock } {
+   const json = jest.fn();
+@@ -50,3 +56,62 @@ describe('requireAdminRole', () => {
+     expect(status).toHaveBeenCalledWith(403);
+   });
+ });
++
++describe('a refused token leaves one line (4656)', () => {
++  const { verifyToken } = jest.requireMock('../../../services/auth.service') as {
++    verifyToken: jest.Mock;
++  };
++  const SECRET_LOOKING_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.e30.secret-part';
++
++  function refusedReq(authorization?: string): Request {
++    return {
++      method: 'GET',
++      baseUrl: '/chat',
++      path: '/threads',
++      headers: authorization === undefined ? {} : { authorization },
++    } as unknown as Request;
++  }
++
++  let warn: jest.SpyInstance;
++  beforeEach(() => {
++    warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++  });
++  afterEach(() => warn.mockRestore());
++
++  it('names an expired token, its route and when it expired', () => {
++    const expiredAt = new Date('2026-10-12T10:00:00.000Z');
++    verifyToken.mockImplementation(() => {
++      throw new TokenExpiredError('jwt expired', expiredAt);
++    });
++    const { res, status } = makeRes();
++    authenticateJwt(refusedReq(`Bearer ${SECRET_LOOKING_TOKEN}`), res, jest.fn());
++    expect(status).toHaveBeenCalledWith(401);
++    expect(warn).toHaveBeenCalledWith(
++      '[auth] 401 expired GET /chat/threads expired_at=2026-10-12T10:00:00.000Z',
++    );
++  });
++
++  it('names a token that does not verify, and never prints the token', () => {
++    verifyToken.mockImplementation(() => {
++      throw new Error('invalid signature');
++    });
++    const { res } = makeRes();
++    authenticateJwt(refusedReq(`Bearer ${SECRET_LOOKING_TOKEN}`), res, jest.fn());
++    expect(warn).toHaveBeenCalledWith('[auth] 401 invalid GET /chat/threads');
++    expect(String(warn.mock.calls[0][0])).not.toContain('secret-part');
++  });
++
++  it('names a missing header', () => {
++    const { res } = makeRes();
++    authenticateJwt(refusedReq(), res, jest.fn());
++    expect(warn).toHaveBeenCalledWith('[auth] 401 missing_header GET /chat/threads');
++  });
++
++  it('logs nothing for a token that verifies', () => {
++    verifyToken.mockReturnValue({ userId: '7', role: 'user' });
++    const next = jest.fn();
++    authenticateJwt(refusedReq('Bearer ok'), makeRes().res, next);
++    expect(next).toHaveBeenCalled();
++    expect(warn).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/api/middleware/auth.middleware.ts b/src/api/middleware/auth.middleware.ts
+index ab8a8d2..68a1b63 100644
+--- a/src/api/middleware/auth.middleware.ts
++++ b/src/api/middleware/auth.middleware.ts
+@@ -1,4 +1,5 @@
+ import { NextFunction, Request, Response } from 'express';
++import { TokenExpiredError } from 'jsonwebtoken';
+ import { verifyToken } from '../../services/auth.service';
+ import { AuthPayload } from '../../types';
+ 
+@@ -6,10 +7,38 @@ export interface AuthenticatedRequest extends Request {
+   user: AuthPayload;
+ }
+ 
++/**
++ * 4656 (Tornike, 12 Oct): the app on his computer asks for the phone login every
++ * time it opens. The app wipes its token on any 401, and the server logged no
++ * 401 at all, so nobody could say which call refused him or why (FOR_FRONTEND,
++ * 11 Oct 14:10Z). Every refusal now leaves one line: the reason, the method and
++ * the route without its query. Never the token, never anything decoded from it.
++ */
++export enum RefusedTokenReason {
++  MissingHeader = 'missing_header',
++  Expired = 'expired',
++  Invalid = 'invalid',
++}
++
++/** Why the token was refused, from the error verifyToken threw. */
++export function refusedTokenReason(err: unknown): RefusedTokenReason {
++  return err instanceof TokenExpiredError ? RefusedTokenReason.Expired : RefusedTokenReason.Invalid;
++}
++
++/** The one log line for a refused token; the expiry time only when it expired. */
++export function refusedTokenLine(req: Request, reason: RefusedTokenReason, err?: unknown): string {
++  const route = `${req.method} ${req.baseUrl}${req.path}`;
++  const expiredAt =
++    err instanceof TokenExpiredError ? ` expired_at=${err.expiredAt.toISOString()}` : '';
++  return `[auth] 401 ${reason} ${route}${expiredAt}`;
++}
++
+ export function authenticateJwt(req: Request, res: Response, next: NextFunction): void {
+   const authHeader = req.headers.authorization;
+ 
+   if (!authHeader || !authHeader.startsWith('Bearer ')) {
++    // eslint-disable-next-line no-console
++    console.warn(refusedTokenLine(req, RefusedTokenReason.MissingHeader));
+     res.status(401).json({ success: false, error: 'Authorization header is missing or invalid' });
+     return;
+   }
+@@ -20,7 +49,9 @@ export function authenticateJwt(req: Request, res: Response, next: NextFunction)
+     const payload = verifyToken(token);
+     (req as AuthenticatedRequest).user = payload;
+     next();
+-  } catch {
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(refusedTokenLine(req, refusedTokenReason(err), err));
+     res.status(401).json({ success: false, error: 'Invalid or expired authentication token' });
+   }
+ }
+-- 
+2.43.0
+
