@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 12 Oct, 03:12Z — `0176` (1816, every push opens its page) + `0177` (958, the prompt reads run together). No new words
+
+- **0176:** `patches/afternoon-1250/0176-1816-the-engagement-push-opens-the-conversation-too-.patch`
+  - sha256 `b35f38fb6c399d5aa88f7278db4c4625a66bf5e6937bd8572e8f694d2cf55538`
+  - Branch: bb1f650.
+  - I audited every `sendPushNotification` call. All carry the conversation's or card's `url` except the AI engagement push, which landed wherever the app defaults. It now opens `/chat`.
+  - A new test scans the source and fails on any push call without a `url`, so the gap can't come back.
+  - The rest of 1816 is the app's service worker (opening `data.url` on tap). That's the frontend's.
+- **0177:** `patches/afternoon-1250/0177-958-six-independent-prompt-reads-run-together-instea.patch`
+  - sha256 `7e15d106ce69b78adf5b59c3b38a1ac951e16bc8d9e2b8df5de0df910735a275`
+  - Branch: e389ef0.
+  - Measured on the live logs, 402 runs since 18:56Z: the model is called 2.3 s after the owner's message at the median (p90 3.5 s, max 5.7 s).
+  - d59e722's chain costs ~0 s (max 0.4 s), so it stays off. The cost is the prompt build: median 1.0 s, p90 2.1 s, max 3.8 s, where six independent reads ran one after another.
+  - They now run in one `Promise.all`. The prompt text and its order are unchanged. The only write among them (the day's question re-arm) touches a table none of the others read.
+- **Base:** both are cut on the chain after 0175, in order 0176 → 0177. `npm run verify` is green on the whole chain (0170 → 0177).
+- **DONE WHEN:**
+  - 0176: a tap on the engagement push opens the conversation.
+  - 0177: `[timing] … the model called at` drops on the live log (median under 2.3 s), and the prompt and replies are unchanged.
+- **Order:** after 0175. All of 0170 → 0177 wait for Misho's deploy word.
+
 ### 12 Oct, 01:07Z — `0175`: BR's Georgian line, grammar only (still OFF). End of the chain 0170 → 0175
 
 - **Patch:** `patches/afternoon-1250/0175-2608-BR-the-recall-line-declines-the-name-and-closes.patch`

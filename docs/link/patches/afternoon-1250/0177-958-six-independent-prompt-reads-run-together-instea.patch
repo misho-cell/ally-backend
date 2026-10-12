@@ -1,0 +1,125 @@
+From 8c327e8f0f2c62fb33ea7cb3117e569495529783 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 03:09:17 +0000
+Subject: [PATCH] 958: six independent prompt reads run together instead of one
+ after another
+
+Live timings (12 Oct, 402 runs since 18:56Z): the model is called at
+2.3 s median (p90 3.5 s, max 5.7 s) after the owner's message. The
+server's own-answers chain that d59e722 would skip costs ~0 (max 0.4 s).
+The cost is the prompt build after the parallel reads: median 1.0 s,
+p90 2.1 s, max 3.8 s. Six awaits there ran in sequence: held asks, ask
+states, wave note, first ask, the day's contact question, the
+no-phonebook note.
+
+They don't depend on each other, so they now run in one Promise.all. Only
+the daily question writes, and only to its own table, which none of the
+others read. The monthly contacts reminder still runs after the day's
+question it gives way to. The prompt text and its order are unchanged.
+Two source-wiring tests follow the new shape.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theDayHasOneContactQuestion.test.ts       |  5 +-
+ .../__tests__/theFirstAskIsPinned.test.ts     |  2 +-
+ src/services/chat.service.ts                  | 46 ++++++++-----------
+ 3 files changed, 22 insertions(+), 31 deletions(-)
+
+diff --git a/src/services/__tests__/theDayHasOneContactQuestion.test.ts b/src/services/__tests__/theDayHasOneContactQuestion.test.ts
+index 9d817e0..70fb74b 100644
+--- a/src/services/__tests__/theDayHasOneContactQuestion.test.ts
++++ b/src/services/__tests__/theDayHasOneContactQuestion.test.ts
+@@ -60,9 +60,8 @@ describe('the owner’s own run carries the day’s question (§98.1)', () => {
+     // eslint-disable-next-line @typescript-eslint/no-require-imports
+     const { join } = require('path') as typeof import('path');
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain(
+-      'const contactQuestion = await dailyContactQuestionSection(userId, threadId, {',
+-    );
++    // 958: read beside the other prompt sections, with the run's presence.
++    expect(chat).toContain('dailyContactQuestionSection(userId, threadId, presence),');
+     expect(chat).toContain('ownerPresent: !ownerAbsent,');
+     expect(chat).toMatch(/firstAsk \+\s+contactQuestion \+/u);
+   });
+diff --git a/src/services/__tests__/theFirstAskIsPinned.test.ts b/src/services/__tests__/theFirstAskIsPinned.test.ts
+index fbe8485..1e51b9b 100644
+--- a/src/services/__tests__/theFirstAskIsPinned.test.ts
++++ b/src/services/__tests__/theFirstAskIsPinned.test.ts
+@@ -40,7 +40,7 @@ describe("the goal's first ask", () => {
+ 
+   it('is in every goal run, beside the goal itself', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain('goalFirstAskSection(await goalFirstAsk(boundTask.id))');
++    expect(chat).toContain('goalFirstAsk(boundTask.id).then(goalFirstAskSection)');
+     expect(chat).toMatch(/waveNote \+\s+firstAsk \+/u);
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 02c452c..915dd54 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -5311,13 +5311,7 @@ async function buildAgentSystemPrompt(
+   //
+   // Nothing here changes content. Sections are grouped by how often they
+   // change: global, then per-account, then per-goal, then the clock.
+-  const heldNote = boundTask ? await heldAsksNoteOrNothing(boundTask.id, userId) : '';
+-  const askStates = boundTask ? await askStatusSectionOrNothing(boundTask, boundAsks) : '';
+-  const waveNote = boundTask ? await waveSectionOrNothing(boundTask) : '';
+-  // D713 (phase 1): the owner's first ask on this goal, on every turn.
+-  const firstAsk = boundTask ? goalFirstAskSection(await goalFirstAsk(boundTask.id)) : '';
+-  // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
+-  const contactQuestion = await dailyContactQuestionSection(userId, threadId, {
++  const presence = {
+     ownerPresent: !ownerAbsent,
+     regularThread: threadType === 'regular',
+     goalBound: boundTask !== null,
+@@ -5326,27 +5320,25 @@ async function buildAgentSystemPrompt(
+     ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+     ownerLine,
+-  });
+-  // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words.
+-  const contactsReminder = await contactsReminderSection(
+-    userId,
+-    {
+-      ownerPresent: !ownerAbsent,
+-      regularThread: threadType === 'regular',
+-      goalBound: boundTask !== null,
+-      preview: forcedMode !== undefined,
+-      ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
+-      ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+-      ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+-      ownerLine,
+-    },
+-    contactQuestion !== '',
+-  );
+-  // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
+-  const noContacts =
++  };
++  // 958: these six reads do not depend on each other, so they run together; one
++  // after another they were the slowest part of building the prompt.
++  const [heldNote, askStates, waveNote, firstAsk, contactQuestion, noContacts] = await Promise.all([
++    boundTask ? heldAsksNoteOrNothing(boundTask.id, userId) : Promise.resolve(''),
++    boundTask ? askStatusSectionOrNothing(boundTask, boundAsks) : Promise.resolve(''),
++    boundTask ? waveSectionOrNothing(boundTask) : Promise.resolve(''),
++    // D713 (phase 1): the owner's first ask on this goal, on every turn.
++    boundTask ? goalFirstAsk(boundTask.id).then(goalFirstAskSection) : Promise.resolve(''),
++    // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
++    dailyContactQuestionSection(userId, threadId, presence),
++    // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
+     !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
+-      ? await noContactsYetSection(userId, threadId)
+-      : '';
++      ? noContactsYetSection(userId, threadId)
++      : Promise.resolve(''),
++  ]);
++  // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words —
++  // after the day's question, which it gives way to.
++  const contactsReminder = await contactsReminderSection(userId, presence, contactQuestion !== '');
+   const stablePrompt = joinStablePrompt(
+     // Global — identical for every account, every run. Its own cache
+     // breakpoint follows it (systemPromptParts), so a change further down
+-- 
+2.43.0
+

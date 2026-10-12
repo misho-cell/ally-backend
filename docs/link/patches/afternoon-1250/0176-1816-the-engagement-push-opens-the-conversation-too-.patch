@@ -1,0 +1,122 @@
+From b3fdc7e2bd678c97a22c2eea6162e6cb5a81060e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 12 Oct 2026 03:04:19 +0000
+Subject: [PATCH] 1816: the engagement push opens the conversation too; every
+ push must carry its page
+
+Board 1816: a tap on a notification should open the app on what it is
+about. Audit of every sendPushNotification call: all carry a url except
+the AI engagement push, which landed wherever the app defaults. It now
+opens /chat. A new guard test scans the source and fails on any push
+call without a url, so the gap cannot come back. No new words.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aNotificationCarriesNoMarks.test.ts       |  2 +
+ .../__tests__/everyPushOpensItsPage.test.ts   | 44 +++++++++++++++++++
+ src/services/aiNotification.service.ts        | 10 ++++-
+ 3 files changed, 55 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/everyPushOpensItsPage.test.ts
+
+diff --git a/src/services/__tests__/aNotificationCarriesNoMarks.test.ts b/src/services/__tests__/aNotificationCarriesNoMarks.test.ts
+index eef62b5..cf46f71 100644
+--- a/src/services/__tests__/aNotificationCarriesNoMarks.test.ts
++++ b/src/services/__tests__/aNotificationCarriesNoMarks.test.ts
+@@ -50,6 +50,7 @@ describe('sendAiNotification', () => {
+     expect(mockPush).toHaveBeenCalledWith(USER_ID, {
+       title: 'ნინო გელოდება',
+       body: 'ახალი კონტაქტი, ნახე',
++      url: '/chat',
+     });
+   });
+ 
+@@ -61,6 +62,7 @@ describe('sendAiNotification', () => {
+     expect(mockPush).toHaveBeenCalledWith(USER_ID, {
+       title: 'ნინო გელოდება',
+       body: 'ახალი კონტაქტი შენს ქსელში',
++      url: '/chat',
+     });
+   });
+ });
+diff --git a/src/services/__tests__/everyPushOpensItsPage.test.ts b/src/services/__tests__/everyPushOpensItsPage.test.ts
+new file mode 100644
+index 0000000..3d34199
+--- /dev/null
++++ b/src/services/__tests__/everyPushOpensItsPage.test.ts
+@@ -0,0 +1,44 @@
++import { readdirSync, readFileSync, statSync } from 'fs';
++import { join } from 'path';
++import { AI_NOTIFICATION_PUSH_URL } from '../aiNotification.service';
++
++/**
++ * #1816: a tap on a notification opens the app on the conversation or card it
++ * is about. A push without `url` lands wherever the app defaults, and the AI
++ * engagement push was the one sender left without it. Every call must carry
++ * its page; a call that passes a helper's result names the helper here.
++ */
++const SRC = join(__dirname, '..', '..');
++/** Helpers that build a whole payload; each is tested where it lives. */
++const PAYLOAD_HELPERS = ['syncReminderPush('];
++/** How far into a call its object literal can reach. */
++const CALL_WINDOW_LINES = 14;
++const CALL_RE = /sendPushNotification\(/u;
++
++function sourceFiles(dir: string): string[] {
++  return readdirSync(dir).flatMap((name) => {
++    const path = join(dir, name);
++    if (statSync(path).isDirectory()) return name === '__tests__' ? [] : sourceFiles(path);
++    return path.endsWith('.ts') ? [path] : [];
++  });
++}
++
++function callsWithoutUrl(path: string): string[] {
++  const lines = readFileSync(path, 'utf8').split('\n');
++  return lines.flatMap((line, at) => {
++    if (!CALL_RE.test(line) || /function sendPushNotification/u.test(line)) return [];
++    const call = lines.slice(at, at + CALL_WINDOW_LINES).join('\n');
++    const carriesUrl = /\burl\b/u.test(call) || PAYLOAD_HELPERS.some((h) => call.includes(h));
++    return carriesUrl ? [] : [`${path}:${at + 1}`];
++  });
++}
++
++describe('every push opens its own page (#1816)', () => {
++  it('no call to sendPushNotification goes without a url', () => {
++    expect(sourceFiles(SRC).flatMap(callsWithoutUrl)).toEqual([]);
++  });
++
++  it('the engagement push lands on the conversation', () => {
++    expect(AI_NOTIFICATION_PUSH_URL).toBe('/chat');
++  });
++});
+diff --git a/src/services/aiNotification.service.ts b/src/services/aiNotification.service.ts
+index e6fd6c3..2a265b2 100644
+--- a/src/services/aiNotification.service.ts
++++ b/src/services/aiNotification.service.ts
+@@ -7,6 +7,9 @@ import { sendPushNotification } from './notification.service';
+ import { scrubMechanicalForStorage } from './privacyScrub';
+ import anthropic from '../config/anthropic';
+ 
++/** #1816: where a tap on the engagement push lands — the owner's conversation. */
++export const AI_NOTIFICATION_PUSH_URL = '/chat';
++
+ const NOTIFICATION_MODEL = 'claude-haiku-4-5-20251001';
+ const MAX_RECENT_MESSAGES = 12;
+ const MAX_TOP_CONTACTS = 10;
+@@ -314,7 +317,12 @@ export async function sendAiNotification(userId: string): Promise<void> {
+   );
+ 
+   try {
+-    await sendPushNotification(userId, { title: content.title, body: content.body });
++    // #1816: a tap opens the conversation, like every other push, not wherever the app defaults.
++    await sendPushNotification(userId, {
++      title: content.title,
++      body: content.body,
++      url: AI_NOTIFICATION_PUSH_URL,
++    });
+     await query(`UPDATE ai_notification_log SET push_sent = true WHERE id = $1`, [
+       logResult.rows[0].id,
+     ]);
+-- 
+2.43.0
+
