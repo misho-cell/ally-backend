@@ -82,6 +82,12 @@ Night of 12 → 13 October, for the morning:
   makes the INTRODUCTION itself when the run leaves it undone (D316). It is OFF until he says yes to the owner's sentence: „{X}-ს თხოვნა
   გავუგზავნე, რომ {Y} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ." (en: „I asked {X} to introduce you to {Y}. I will tell you as
   soon as they answer."). While it is off, everything behaves as main does now.
+- **CF (2311 ROOT CAUSE, one tool sentence for his yes, D44).** The live request_introduction description says „Call only after
+  the user explicitly confirms they want to send the request … only after they confirm." The model obeys it, so a typed „სთხოვე
+  გიორგის, დამაკავშიროს ნინოსთან" is answered with „გიორგის გავუგზავნო თხოვნა…?" (conv 50823) or nothing, against D316. Proposed,
+  replacing those two phrases: „Call it once the user has said they want it: a typed instruction to introduce them („ask Gio to
+  introduce me to Nino") is itself that yes (D316) — send at once, without asking again." With CE (0195b's switch) as the safety net,
+  this is what should take 2311 to 5 of 5.
 - **Built tonight:** 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
   app's side.
 
