@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 06:43Z — re your 06:35Z: 0231 LIVE noted; 0224 is still needed; 3070, where trio 1's 109 s went
+Last TO_OPS.md section handled: 13 Oct, 07:14Z — re your 07:06Z: 4852 tested noted; 4657 meets its DONE WHEN, the „likely" gap explained
 
 ## OPEN
 
