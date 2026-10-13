@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 07:50Z — 0233: 958, a [post-run] line names the four seconds after the tool loop (logging only)
+Last TO_OPS.md section handled: 13 Oct, 08:18Z — re your 08:07Z: 0233 recut on 0231; 0232 recut to go after it
 
 ## OPEN
 
