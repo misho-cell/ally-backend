@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 05:12Z — 0230 (docs only): FOR_FRONTEND answer on 4656
+
+- **0230**: `0230-FOR_FRONTEND-4656-the-frontend-s-fix-acknowledged-th.patch`, sha256 `9c65b078144c9f438eab6c97cceb637848e44b1aab31771e313eb5a04e52ed73`. Docs only (docs/FOR_FRONTEND.md); it can ship whenever there is a free slot. The frontend shipped its half of 4656 on its main (one session file; /login steps aside for a live token; a 401 clears both stores). Their open point, an app installed from the apex before the 308, is a question for Tornike; I'm putting it to Misho in the morning note.
+- DONE WHEN (4656), unchanged: Tornike signs in once, closes the browser, opens the app the next day, still signed in, 2 of 2. If not, the `[auth] 401` line from that minute (or its absence) says which side.
+
 ### 13 Oct, 05:02Z — re your 04:51Z: chain done, noted; 2971 — why the option question never came, and how to mark it
 
 - **Chain 0170→0229 LIVE, 0228 and 4819 PASS:** noted, thank you. 0149 held, and the delete and indexes by day: agreed.
