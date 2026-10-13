@@ -252,8 +252,20 @@ const A_REQUEST_WAITS_HERE = `EXISTS (
           AND (wr.snoozed_until IS NULL OR wr.snoozed_until <= NOW())
      )`;
 
+/**
+ * 4984 (Giorgi, 14 Oct, G-029): goal 13634 had waited for its owner's yes on a
+ * plan since 5 Oct and sat under „ვმუშაობ" — 721 open goals read `waiting`
+ * while their plan waited for the owner. A plan proposed and not approved, or a
+ * question put to the owner and not answered, is the owner's turn: `needs_you`.
+ * Not while a run is working on it.
+ */
+const WAITS_ON_ITS_OWNER = `(t.status <> 'working' AND EXISTS (
+         SELECT 1 FROM tasks k
+          WHERE k.thread_id = t.id AND k.status = 'open'
+            AND ((k.plan_proposed IS NOT NULL AND k.plan IS NULL) OR k.pending_question IS NOT NULL)))`;
 const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN ${HAS_PAUSED_GOAL} THEN 'needs_you'
+       WHEN ${WAITS_ON_ITS_OWNER} THEN 'needs_you'
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
@@ -261,6 +273,7 @@ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
      END`;
 const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN ${HAS_PAUSED_GOAL} THEN NULL
+       WHEN ${WAITS_ON_ITS_OWNER} AND t.status <> 'needs_you' THEN NULL
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
