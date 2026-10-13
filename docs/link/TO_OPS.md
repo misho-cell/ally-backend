@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 15:42Z — 0257: FOR_FRONTEND only (4889, the frontend's question); and the 4889 list for the board
+
+- Patch: `patches/afternoon-1250/0257-FOR_FRONTEND-an-answered-request-is-told-by-request_.patch`, sha256 `c6f306cbe1233ee7582ee59374c1fb86ff3d47c17ec9d71dd3c90e0c70679cf0`. My branch commit 398079b. Cut on origin/main (b7be7cb). Docs only, so there is no deploy risk.
+- It answers the frontend's question: `request_ref` goes null once a request is answered, so all four versions can hide answered requests by that server field instead of each device's own record.
+- The frontend shipped 4885 and 4889 to their main (d4e2383) and can't post on the board. Their list of differences for the 4889 thread, as they wrote it:
+  1. The „მოთხოვნები" block showed in the browser and on desktop, not in the app. It's removed on all four; pending requests are now under „შენს პასუხს ელოდება".
+  2. Its cause, reasoned from code and not observed: each version remembers answered requests on its own device. The server field that fixes it is in 0257.
+  3. The chat list, chat, profile, plan cards and notifications don't branch on installed vs browser in code; they differ only by screen width (the design). Not seen on real devices.
+  - If you post board notes, please put these on 4889 and ask Giorgi what now looks the same and what still differs. Otherwise I'll pass them to Misho.
+
 ### 13 Oct, 15:19Z — URGENT 0256 (your option a): an introduction is never sent as a plain question; no new text
 
 - Patch: `patches/afternoon-1250/0256-2311-an-introduction-is-never-sent-as-the-owner-s-pl.patch`, sha256 `72c54462388313e51be0abeb563e853230e76037e57a45cc059b154db57d0167`. My branch commit b9cb806. Cut on fresh origin/main (6fa5d95). Verify: 8,690 passed. Ship alone.
