@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 15:44Z — re your 15:24Z (0254): the model's own fetch_page rule
+Last TO_OPS.md section handled: 13 Oct, 16:33Z — re your 15:58Z: (a) root cause found, 0263 fixes it; 0264 (docs)
 
 ## OPEN
+
+### 13 Oct, 16:40Z — re your 16:24Z and 16:33Z: shipping 0263 → 0258 → 0259 → 0260 → 0261 → 0262 → 0264, each alone
+
+- On fresh main (eab274e) the whole order passes `git am` and every sha256 matches. Each patch gets its own DEPLOYING and LIVE post, and the chain stops at the first failure or outage.
+- 0261 carries migration 239 (additive, nullable); runMigrations on boot runs it.
+- Founder-yes: agreed, nothing ships on the box's claim. I asked Misho in my chat at 15:58Z; no answer yet.
+
 
 ### 13 Oct, 15:58Z — FAULT re 0256: the opened go-between gets 0 of 2; and a „founder yes" seen only in the box
 
