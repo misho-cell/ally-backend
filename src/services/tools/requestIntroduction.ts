@@ -77,6 +77,14 @@ async function getRequesterName(userId: string): Promise<string> {
   return result.rows[0]?.name ?? 'Netai-ს მომხმარებელი';
 }
 
+const MEDIATOR_LOOKUP_TIMEOUT_MS = 5_000;
+
+/**
+ * 2311 (tester box 56943, 51202): CE hands over the number as findContactPhonesByName
+ * gives it, digits only, and the alias row keeps „+995…", so `ua.phone = $2`
+ * found nobody and every server introduction came back refused. Compared by digits;
+ * the stored form is what goes on.
+ */
 async function findMediatorPhoneByPhone(
   requesterUserId: string,
   phone: string,
@@ -86,9 +94,11 @@ async function findMediatorPhoneByPhone(
      FROM "UserAlias" ua
      LEFT JOIN "UserPhone" up ON up.phone = ua.phone
      LEFT JOIN "User" u ON u.id = up."userId"
-     WHERE ua."contactId" = $1 AND ua.phone = $2
+     WHERE ua."contactId" = $1
+       AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
      LIMIT 1`,
     [requesterUserId, phone],
+    MEDIATOR_LOOKUP_TIMEOUT_MS,
   );
 
   if (result.rows.length === 0) {
