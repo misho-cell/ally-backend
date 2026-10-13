@@ -1,0 +1,98 @@
+From 6b3a18f1a698fa4f02d3cb3bcaf802c18f1de0aa Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 01:48:16 +0000
+Subject: [PATCH] 4655 (tester 55954): two requests in one sentence are judged
+ apart
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+"Gelas hkitkhe, khom ar icis kargi santeknikosi, da Levans stkhove,
+gamacnos Nino." is one sentence with two requests; 0195 judged each person
+by the sentence they are named in, so Gela sat in the introduction's
+sentence and every ask to him was refused. A comma followed by
+da/asevе/and/also, or a semicolon, now starts the next person's part; a
+bare "da" splits nothing, so "gamacani Nino da Giorgi" stays one
+introduction. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../eachPersonsPartIsJudgedOnItsOwn.test.ts   | 38 +++++++++++++++++++
+ src/services/introInstruction.ts              | 11 ++++++
+ 2 files changed, 49 insertions(+)
+
+diff --git a/src/services/__tests__/eachPersonsPartIsJudgedOnItsOwn.test.ts b/src/services/__tests__/eachPersonsPartIsJudgedOnItsOwn.test.ts
+index 97c83e9..8d3a003 100644
+--- a/src/services/__tests__/eachPersonsPartIsJudgedOnItsOwn.test.ts
++++ b/src/services/__tests__/eachPersonsPartIsJudgedOnItsOwn.test.ts
+@@ -32,3 +32,41 @@ describe('each person’s part of the owner’s message is judged on its own', (
+     );
+   });
+ });
++
++/**
++ * The tester's 55954 (0 of 2): the two requests joined by „, და" in ONE
++ * sentence — every ask to Gela was refused as an introduction.
++ */
++describe('two requests in one sentence (55954)', () => {
++  const ONE_SENTENCE = [
++    'გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო.',
++  ];
++
++  it('lets the question to Gela go as a question', () => {
++    expect(askIsTheIntroduction(ONE_SENTENCE, 'გელა გამოგონილი')).toBe(false);
++  });
++
++  it('keeps Levan’s part the introduction', () => {
++    expect(askIsTheIntroduction(ONE_SENTENCE, 'ლევან საცდელი')).toBe(true);
++  });
++
++  it('splits on „, ასევე" and on a semicolon too', () => {
++    expect(
++      askIsTheIntroduction(
++        ['ლევანს სთხოვე, გამაცნოს ნინო, ასევე გელას ჰკითხე სანტექნიკოსზე.'],
++        'გელა',
++      ),
++    ).toBe(false);
++    expect(
++      askIsTheIntroduction(['ლევანს სთხოვე, გამაცნოს ნინო; გელას ჰკითხე სანტექნიკოსზე.'], 'გელა'),
++    ).toBe(false);
++  });
++
++  it('keeps one introduction of two people whole: a bare „და" splits nothing', () => {
++    expect(askIsTheIntroduction(['გამაცანი ნინო და გიორგი.'], 'გიორგი ტესტაძე')).toBe(true);
++  });
++
++  it('keeps the go-between’s comma inside the introduction', () => {
++    expect(askIsTheIntroduction(['ლევანს სთხოვე, გამაცნოს ნინო.'], 'ლევან საცდელი')).toBe(true);
++  });
++});
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index e082fcf..619e5cc 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -42,9 +42,20 @@ function nameStem(name: string): string | null {
+   return stem.length >= MIN_STEM_CHARS ? stem : null;
+ }
+ 
++/**
++ * The tester's 55954 (4655, 0 of 2): „გელას ჰკითხე, ხომ არ იცის კარგი
++ * სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო." is one sentence holding two
++ * requests, so Gela sat in the introduction's sentence and every ask to him
++ * was refused. A comma followed by „და"/„ასევე"/„and"/„also", or a semicolon,
++ * starts the next person's part. A bare „და" does not: „გამაცანი ნინო და
++ * გიორგი" stays one introduction.
++ */
++const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
++
+ function sentencesOf(lines: readonly string[]): string[] {
+   return lines
+     .flatMap((line) => line.match(SENTENCE_RE) ?? [])
++    .flatMap((sentence) => sentence.split(PART_BREAK_RE))
+     .map((s) => s.trim())
+     .filter(Boolean);
+ }
+-- 
+2.43.0
+

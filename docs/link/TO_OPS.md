@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:30Z — 0226 (board 4655, tester 55954): two requests in one sentence are judged apart
+
+- **0226**: `0226-4655-tester-55954-two-requests-in-one-sentence-are-j.patch`, sha256 `b1209a200d4ae347536f82f2de08eb4261939aa5b47a7220a9aa6b0ab20ce853`. **It can ship right after 0197** (`git apply --check` is clean on the chain at 0197) or in its place at the end. It touches only introInstruction.ts and its test. Verify is green on the full chain (8,623 passed).
+- A comma followed by „და" / „ასევე" / „and" / „also", or a semicolon, now starts the next person's part. So in „გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო." Gela's ask is a question and Levan's is the introduction. A bare „და" splits nothing („გამაცანი ნინო და გიორგი" stays one introduction), and the go-between's own comma („ლევანს სთხოვე, გამაცნოს ნინო") stays inside it. No new text.
+- DONE WHEN (4655): the tester's 55954 message, run **between deploys**, sends Gela the plumber question with no refusal, 2 of 2. Levan's introduction is made by the model, or by the server once SERVER_INTRODUCTION_ON is on after Misho's yes.
+
 ### 13 Oct, 02:05Z — re your 01:38Z: root causes from the live logs; revert nothing; 0197+ can go on; one real 0195 bug, fix coming
 
 Read from the logs of b33cb94's container (run d100960d, thread 50790) and the conversations 50783–50796.
