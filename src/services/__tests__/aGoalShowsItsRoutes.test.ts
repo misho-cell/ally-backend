@@ -71,9 +71,13 @@ describe('the routes board', () => {
       .mockResolvedValueOnce({ rows: [ask(1, {})] } as never)
       .mockResolvedValueOnce({ rows: [] } as never);
     await expect(routesForThread(OWNER, THREAD)).resolves.toEqual([]);
-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    // 4927 (box 57263): with no goal of theirs, only their own goal-less introductions are read.
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
     await expect(routesForThread(OWNER, 1)).resolves.toEqual([]);
-    expect(mockQuery).toHaveBeenCalledTimes(4);
+    expect(mockQuery).toHaveBeenCalledTimes(5);
+    expect(String(mockQuery.mock.calls[4][0])).toContain('ir.requester_user_id = $2');
   });
 
   it('shows an answer the way the owner reads it, cut short', () => {
