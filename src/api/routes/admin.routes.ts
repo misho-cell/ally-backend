@@ -1,6 +1,7 @@
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
   authorForLogin,
+  countTeamTasks,
   createTeamTask,
   deleteTeamTask,
   isTeamTaskAuthor,
@@ -9,6 +10,7 @@ import {
   TEAM_TASK_PAGES,
   TeamTask,
   TeamTaskAuthor,
+  TeamTaskCounts,
   TeamTaskStatus,
   updateTeamTask,
 } from '../../services/teamTasks.service';
@@ -1866,21 +1868,25 @@ adminRouter.post(
 // M2 (plate v288; Misho, 1 October): the team's task board — every row says
 // who created it. The author comes from the login; only the shared login,
 // which AI seats write through, names one (`created_by`), from the fixed list.
-//   GET   /admin/team-tasks?page=1|2|3
+//   GET   /admin/team-tasks?page=1|2|3   → { tasks (by status first, 4885), counts }
 //   POST  /admin/team-tasks { problem, task, priority?, created_by? }
 //   PATCH /admin/team-tasks/:id { status?, priority?, page?, problem?, task? }
 //   DELETE /admin/team-tasks/:id   (hidden, not erased; migration 196)
 adminRouter.get(
   '/team-tasks',
   queryParam('page').optional().isIn(TEAM_TASK_PAGES.map(String)),
-  async (req: Request, res: Response<ApiResponse<{ tasks: TeamTask[] }>>) => {
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ tasks: TeamTask[]; counts: TeamTaskCounts }>>,
+  ) => {
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({ success: false, error: 'page is 1, 2 or 3' });
       return;
     }
     try {
       const page = req.query.page === undefined ? undefined : Number(req.query.page);
-      res.status(200).json({ success: true, data: { tasks: await listTeamTasks(page) } });
+      const [tasks, counts] = await Promise.all([listTeamTasks(page), countTeamTasks(page)]);
+      res.status(200).json({ success: true, data: { tasks, counts } });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[team-tasks] list failed:', (error as Error).message);
