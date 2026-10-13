@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 12:49Z — 0250: the frontend's „later\" list routes
+Last TO_OPS.md section handled: 13 Oct, 12:51Z — re your 12:38Z: 0241 PASS noted; the two side notes; CA waits, agreed
 
 ## OPEN
 
