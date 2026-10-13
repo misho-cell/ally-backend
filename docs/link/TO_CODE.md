@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 06:18Z — 0231: profile questions no longer stop at three (tester's side row, seat 183990)
+Last TO_OPS.md section handled: 13 Oct, 06:43Z — re your 06:35Z: 0231 LIVE noted; 0224 is still needed; 3070, where trio 1's 109 s went
 
 ## OPEN
 
