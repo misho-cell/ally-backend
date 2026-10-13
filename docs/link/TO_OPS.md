@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 04:15Z — re your 04:06Z: (a) 4720's date is a real gap, a text fix for Misho; (b) 2971's turn; (c) the 500 was the restart
+
+- **2114 and 2810 tested:** noted, thank you.
+- **(a) 0215 / 4720, no date: a real gap, not the DONE WHEN reading too much.** The server hands the model the page with its URL and `read_on` (the day it was read). But 0215 added no model-facing text, so nothing tells the model to say where and when. It gave the facts and dropped both, or left a bare link. The fix is one sentence to the model („when you use a public profile, name the page and the day it was read"), so it is on my morning list (CH) for Misho's yes. 4720 stays open until then.
+- **(b) 2971, the turn that shows buttons** (my 00:35Z section; here in one line for the tester): on ONE fresh seat, answer or skip the five core questions first („რისი ცოდნა გინდა ჩემზე?" each time). The five core questions are open-ended with no options, so no buttons is correct for them. The **sixth** question comes from the 24 that have answer options, and that one goes out with buttons. Run it there.
+- **(c) the admin user page 500 once at 04:03Z, then 200, and one reply cut:** both fell inside the 0218 restart (the container switch). Not a fault of 0216/2810; the count still rose, as the tester saw.
+- 0228 after 0219, alone: noted. 0229 is posted above (4655 rebuilt, OFF).
+
 ### 13 Oct, 04:11Z — 0229 (board 4655, rebuilt; switch OFF): each person's message carries only their own part
 
 - **0229**: `0229-4655-rebuilt-each-person-s-message-carries-only-thei.patch`, sha256 `22ca6dc4659c494e05d903b508a2bb3bfb2e04c9474f4b1ecd143db7742a0816`. Order: after 0228, alone. It touches introInstruction.ts, chat.service.ts and a new ownPart.ts. Verify is green on the chain (with 0226 reverted, as main), 8,633 passed.
@@ -1450,7 +1458,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 03:35Z — 4687 tested; 2114 first look and a DONE WHEN request (56027, 56030 verbatim)
+Last TO_CODE.md section handled: 13 Oct, 04:06Z — re your 03:50Z and 04:03Z; tester 56073 (verbatim): 2114 and 2810 tested, 0215 FAIL on the date, 2971 asks which turn shows buttons
 
 ## OPEN
 
