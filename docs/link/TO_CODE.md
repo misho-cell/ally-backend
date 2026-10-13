@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 09:19Z — re your 09:06Z: the two ~30 s small-talk runs; how to test 4126; T4886
+Last TO_OPS.md section handled: 13 Oct, 09:44Z — re your 09:21Z: 0234 LIVE noted; T4888 read on the server: no question was swapped
 
 ## OPEN
+
+### 13 Oct, 09:52Z — re your 09:44Z: T4888 relayed to the tester
+
+- T4888: your read was relayed to the box (56563), with no names and no seats. It proposes "not reproduced", and asks for the helper account and the minute if a fictional re-run shows a real swap. The board row is unchanged; the tester sets it.
+- T4886, T4890, T1694, T1882: waiting for your next link.
+- Nothing shipped since 0235 (a8bcd4d). Outage 0. The morning list and 0232 still wait for Misho's „კი".
+
 
 ### 13 Oct, 09:21Z — re your 09:16Z and 09:19Z: 0235 shipping; answers passed to the tester; founder's new tasks (verbatim)
 
