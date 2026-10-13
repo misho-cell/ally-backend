@@ -1,0 +1,103 @@
+From ff9775e3f536b08ab7d4a63b119f75db0a3276a7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 00:03:09 +0000
+Subject: [PATCH] 958 (tester 55870): an English thanks keeps its language
+
+The small-talk turn notes are Georgian, with a Georgian sample answer,
+and went with every thanks or goodbye line; an English "thanks!" came back
+"arafris! ..." in Georgian. A turn note now goes only with a line that has
+Georgian letters. Removes text for other languages, adds none.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aGoodbyeIsAnsweredAsOne.test.ts | 27 ++++++++++++++++++-
+ src/services/chat.service.ts                  |  3 +++
+ src/services/smallTalk.ts                     | 12 +++++++++
+ 3 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aGoodbyeIsAnsweredAsOne.test.ts b/src/services/__tests__/aGoodbyeIsAnsweredAsOne.test.ts
+index 4e18c76..97c8dfa 100644
+--- a/src/services/__tests__/aGoodbyeIsAnsweredAsOne.test.ts
++++ b/src/services/__tests__/aGoodbyeIsAnsweredAsOne.test.ts
+@@ -1,6 +1,6 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { isFarewell, isPlainThanks } from '../smallTalk';
++import { isFarewell, isGeorgianLine, isPlainThanks } from '../smallTalk';
+ 
+ /**
+  * The tester's 44126 (#2114, conversations 41970 and 41980): „კარგად იყავი" was
+@@ -48,3 +48,28 @@ describe('a thank-you', () => {
+     expect(chat).toContain('„მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"); „როგორ ხარ"-ს');
+   });
+ });
++
++/**
++ * The tester's 55870 (958 re-run): an English „thanks!" got „არაფრის! კიდევ
++ * რამეში დაგეხმარო?". The Georgian turn note and its sample go only with a
++ * Georgian line; another language's line gets no note and keeps its language.
++ */
++describe('a turn note goes only with a Georgian line', () => {
++  it.each(['მადლობა!', 'კარგად იყავი', 'ok, მადლობა'])('„%s" is Georgian', (line) => {
++    expect(isGeorgianLine(line)).toBe(true);
++  });
++
++  it.each(['thanks!', 'Thank you', 'Bye', 'спасибо', 'gracias'])('„%s" is not', (line) => {
++    expect(isGeorgianLine(line)).toBe(false);
++  });
++
++  it('is checked before any note is chosen', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const fn = chat.slice(chat.indexOf('function smallTalkTurnNote('));
++    const body = fn.slice(0, fn.indexOf('\n}\n'));
++    expect(body).toContain("if (!isGeorgianLine(userMessage)) return '';");
++    expect(body.indexOf('isGeorgianLine(userMessage)')).toBeLessThan(
++      body.indexOf('isFarewell(userMessage)'),
++    );
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 4d773ef..41980c6 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -72,6 +72,7 @@ import { heldAsksNote } from './heldAskNote.service';
+ import {
+   asksTheWeather,
+   isFarewell,
++  isGeorgianLine,
+   isPlainThanks,
+   isSmallTalk,
+   isToolFreeSmallTalk,
+@@ -5158,6 +5159,8 @@ const THANKS_TURN_NOTE =
+ 
+ /** What kind of line a small-talk turn answers, when the server knows it for sure. */
+ function smallTalkTurnNote(userMessage: string): string {
++  // 55870: the notes are Georgian; on another language's line they pull the reply into Georgian.
++  if (!isGeorgianLine(userMessage)) return '';
+   if (isFarewell(userMessage)) return FAREWELL_TURN_NOTE;
+   if (isPlainThanks(userMessage)) return THANKS_TURN_NOTE;
+   return '';
+diff --git a/src/services/smallTalk.ts b/src/services/smallTalk.ts
+index 9b94719..ff95581 100644
+--- a/src/services/smallTalk.ts
++++ b/src/services/smallTalk.ts
+@@ -90,3 +90,15 @@ export function asksTheWeather(message: string): boolean {
+     !statesANeed(text)
+   );
+ }
++
++const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
++
++/**
++ * The tester's 55870 (958 re-run, 12 Oct): an English „thanks!" was answered
++ * „არაფრის! კიდევ რამეში დაგეხმარო?". The turn notes are Georgian, with a
++ * Georgian sample answer, and the model copied the sample over the owner's own
++ * language. A turn note goes only with a line written in Georgian.
++ */
++export function isGeorgianLine(message: string): boolean {
++  return GEORGIAN_LETTER_RE.test(message);
++}
+-- 
+2.43.0
+

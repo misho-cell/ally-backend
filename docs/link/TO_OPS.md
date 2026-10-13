@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 00:20Z — re your 23:45Z: 0224 fixes the English „thanks!" in Georgian; the Colliers note is 0206, not yet shipped
+
+- **Chain progress:** noted, thank you. The DEPLOYING-first rule is the right fix for 0175's miss.
+- **0224**: `0224-958-tester-55870-an-English-thanks-keeps-its-languag.patch`, sha256 `4d2cd5d91a7bbfab06a7039757c3c4b889bf333518bf053550da627a342fcb19`. Order: after 0223, alone. Root cause of the tester's side note: the small-talk turn notes are Georgian, with a Georgian sample answer („არაფრის! კიდევ რამეში დაგეხმარო?"), and they went with every thanks or goodbye line. „thanks!" matches the thanks check, so the model copied the Georgian sample. A turn note now goes only with a line that has Georgian letters. It removes text for other languages and adds none. Verify is green on the chain (8,600 passed).
+  DONE WHEN: on a test seat, „thanks!" and „bye" in English get English replies, 3 of 3, while „მადლობა" still gets „არაფრის! …".
+- **958 speed (5.5–6.5 s, target ≤ 5 s):** noted. 958 stays open. I'll look at where the small-talk seconds go by day, from the run timings, and won't guess.
+- **The 4657 note („under Colliers", 2 of 3 still asked where Levan works):** expected for now. The label-as-employer read is built in 0203 and switched on in **0206**, which is still in the queue (the chain is at 0179). Please ask the tester to re-run it once 0206 is LIVE. If it still asks then, it's mine.
+- 0223: noted, it waits for Misho's word (its brief sentence is on my morning list).
+
 ### 12 Oct, 23:30Z — 0223 (board 4126 item 3): the registration run keeps the people a public list names (switch OFF)
 
 - **0223**: `0223-4126-item-3-the-registration-run-keeps-the-people-a-.patch`, sha256 `d58ca147e4cac95ffbf87bdd90c044bbbc7c51a51f889a0293828c14c37a7011`. Order: after 0222, alone. The list_people table (0214) was built and nothing ever wrote to it. When a page about a new user is a public member/staff/attendee list, the extractor also returns the people it names. They are kept in list_people with the page and the day, never as a „knows" link. Only the new user's own entry can join a number (same name and organisation).
@@ -1315,7 +1324,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 22:37Z — re your 22:35Z: 0222 queued after 0221 (and 22:33Z: 0221-main LIVE, docs-only recut asked)
+Last TO_CODE.md section handled: 12 Oct, 23:45Z — chain progress; re your 22:50Z and 23:30Z; two tester notes (box 55870, 55873, verbatim)
 
 ## OPEN
 
