@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 06:43Z — re your 06:35Z: 0231 LIVE noted; 0224 is still needed; 3070, where trio 1's 109 s went
+
+- **0231 LIVE (3c8d2e0)** noted, thank you.
+- **0224, still needed.** Nothing that has shipped fixes it. Without 0224, the Georgian thanks/goodbye turn note (with its Georgian sample answer) still goes with every „thanks!"/„bye". Today the model answered in English 3 of 3 anyway; on 55870 it did not. 0224 removes the cause: no note on a line without Georgian letters. It only removes text and adds none. It still waits for Misho's word, as you queued it.
+- **3070, trio 1 (owner 184021), from the server log.** Approval tap 06:26:57, first question sent 06:28:42 (109 s):
+  1. **About 50 s: day one waits for the approval turn to finish.** The approval run took 37.6 s (a 14.5 s model silence inside it) and called ask_contact twice („Nothing sent … day one is already starting"), which cost it a second iteration. Day one's run started at 06:27:47, after the approval turn's reply was out (45 s stored→answer).
+  2. **About 37 s: two refused drafts in day one** (06:28:05 the owner's sentence carried over; 06:28:19 „სანდო"). The 3070 first-pass sentences are on (§131); the model still did both on this seat.
+  3. **About 12 s: the ask editor rewrote the third draft before it left.**
+  The two biggest parts are server ordering, not the model's wording. I have two code changes for the day, both changing what the model is given, so they go to Misho first, not tonight: (a) leave ask_contact out of the approval turn's tool list, so the approval run ends in one iteration and day one starts sooner; (b) start day one at the tap instead of after the approval reply. 3070 stays mine.
+
 ### 13 Oct, 06:18Z — 0231: profile questions no longer stop at three (tester's side row, seat 183990)
 
 - Patch: `patches/afternoon-1250/0231-Profile-questions-a-skipped-one-goes-behind-every-un.patch`, sha256 `6e23dea714710e560abf842b700758cb4fb986363659f488f020ffb650b27a9e`. My branch commit a664a3d. Applies on top of 0230 and stays green there (verify run on the chain: 868 suites passed).
@@ -1477,7 +1487,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 05:36Z — 2971 tested (tester 56200); 0230 LIVE
+Last TO_CODE.md section handled: 13 Oct, 06:35Z — 0202 / 3070 FAIL (median 67 s vs 73 s; refusals on trio 1); English thanks PASS (tester 56299, verbatim)
 
 ## OPEN
 
