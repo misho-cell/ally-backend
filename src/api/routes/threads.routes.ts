@@ -1352,6 +1352,8 @@ export function runOwnerMessage(run: OwnerRun): void {
         // Ticket 17 Task 39: the share button reads this, not the prose.
         ...(result.shareText && { share_text: result.shareText }),
       });
+      // 958: the debit runs after the answer is on the screen, still inside the run's mark.
+      await result.afterReply;
       // Title from the FINAL, post-strip reply (task 20) — never from a draft.
       if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);
       // Engine T1: catches facts about named third parties the live
