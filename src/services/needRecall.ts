@@ -115,6 +115,29 @@ export function recallChoices(language: RunLanguage): string[] {
   return [...(RECALL_CHOICES[language] ?? RECALL_CHOICES.ka)];
 }
 
+/** The pending-item kind of a recall delivered as its own message. */
+export const NEED_RECALL_KIND = 'need_recall';
+
+/**
+ * T4890 (the founder, 13 Oct, thread 51037): the reply asked the owner its own
+ * question („…ვის მირჩევ…?") and the recall was put under it with its two
+ * buttons, so the message held two questions and the buttons answered the
+ * recall, not the reply. A reply that already asks something, and does not
+ * itself speak of the person in need, keeps its own question and its own
+ * buttons; the recall goes out as its own message right after it.
+ */
+export function recallGoesApart(reply: string, recalled: RecalledNeed): boolean {
+  return !reply.includes(recalled.needName) && lastQuestionIn(reply) !== null;
+}
+
+/** The recall as its own message: the same line and the same two buttons. */
+export function recallCard(
+  recalled: RecalledNeed,
+  language: RunLanguage,
+): { readonly text: string; readonly choices: string[] } {
+  return { text: recallLine(language, recalled), choices: recallChoices(language) };
+}
+
 export interface RecallOffer {
   readonly text: string;
   readonly choices: string[] | undefined;

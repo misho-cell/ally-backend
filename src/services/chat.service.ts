@@ -107,7 +107,15 @@ import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneEl
 import { settleMatchTap } from './matchFlow.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { asksToReopen } from './reopenIntent';
-import { needThisFactMeets, noteSavedFact, takeSavedFact, withRecallOffer } from './needRecall';
+import {
+  NEED_RECALL_KIND,
+  needThisFactMeets,
+  noteSavedFact,
+  recallCard,
+  recallGoesApart,
+  takeSavedFact,
+  withRecallOffer,
+} from './needRecall';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
 /**
@@ -12640,7 +12648,7 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
  * no goal, so it was held as „not asked about other goals" — and nothing notes
  * it again, so it was lost (0 of 2). It goes out with its reply.
  */
-const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND]);
+const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND]);
 
 export async function waitingItemsToDeliver(
   items: readonly PendingItemInput[],
@@ -14139,7 +14147,15 @@ async function runToolLoop(
     const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
       () => null,
     );
-    if (recalled !== null) {
+    if (recalled !== null && recallGoesApart(finalText, recalled)) {
+      notePendingItems(runId, [
+        {
+          kind: NEED_RECALL_KIND,
+          task_id: null,
+          payload: { ...recallCard(recalled, runLang(runId)) },
+        },
+      ]);
+    } else if (recalled !== null) {
       const offer = withRecallOffer(finalText, recalled, runLang(runId));
       finalText = offer.text;
       choices = offer.choices ?? choices;

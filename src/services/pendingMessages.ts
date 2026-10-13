@@ -640,8 +640,12 @@ export function renderPendingMessage(
         instruction,
       };
     }
-    /** 1690 (A7): the fact-confirm card; its text and buttons are the server's own. */
-    case 'fact_confirm': {
+    /**
+     * 1690 (A7): the fact-confirm card; its text and buttons are the server's own.
+     * T4890: so is a recall of another contact's need that went apart from its reply.
+     */
+    case 'fact_confirm':
+    case 'need_recall': {
       const text = str(p, 'text');
       const choices = Array.isArray(p.choices)
         ? (p.choices as unknown[]).filter((c): c is string => typeof c === 'string')
