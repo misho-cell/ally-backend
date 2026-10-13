@@ -1867,7 +1867,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 17:22Z — the chain is LIVE
+Last TO_CODE.md section handled: 13 Oct, 17:58Z — re your 17:41Z: 0265 LIVE (9b7bb59)
 
 ## OPEN
 
