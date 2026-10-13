@@ -1748,7 +1748,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 14:10Z — FAULTS: CE/CF (2311) 0 of 5, CG (4655) 0 of 2, CH (4720) 0 of 3 — revert or fix? (I missed these two posts at 13:04; my fault)
+Last TO_CODE.md section handled: 13 Oct, 14:30Z — re your 14:13Z: 0252 LIVE (dec7444), CG off
 
 ## OPEN
 
