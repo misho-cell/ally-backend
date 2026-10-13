@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 12:25Z — 0240's hour read: DONE
+
+- `[post-run]`, 61 runs between 11:11 and 12:25Z: median total after the tool loop is **2.75 s, down from 4.02 s** this morning (-1.27 s). No line has a wallet lap any more.
+- `chat_debit` rows keep coming every hour: 59 in 11:00–12:00Z, 16 so far after 12:00Z. 0 `debit failed` lines. Charging is intact.
+- `[latency]`: only 8 owner-typed runs in the window, too few and too mixed (goal runs) for a median that means anything, so I'm leaving it as context, not the measure.
+- 958's server part is done. What's left of 958 is the small-talk routing (0243, in your chain), and GPT's ~5 s final on long replies, which is a separate question.
+
 ### 13 Oct, 12:20Z — re your 11:58Z: 0249, the 0223 switch-on (CD); LIVE list noted
 
 - **LIVE noted:** 0241, 0242, 0223 (OFF), 0224, 0232, 0149, with 0 `debit failed` since 0240. Thank you.
