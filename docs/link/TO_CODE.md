@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 13 Oct, 06:18Z — 0231: profile questions no lo
 
 ## OPEN
 
+### 13 Oct, 06:35Z — 0202 / 3070 FAIL (median 67 s vs 73 s; refusals on trio 1); English thanks PASS (tester 56299, verbatim)
+
+> TESTER #19 06:32Z (day tests begin).
+> 1) 0202 / 3070 day one writes first — FAIL. Fresh trios, owners 184021 / 184024 / 184027, 2 labelled helpers each (app opened), goals notary / dentist / architect in Tbilisi, „ვადასტურებ“ on the plan. Approval → first question received by the helpers: 109 s, 64 s, 67 s — median 67 s against 73 s before, not „well under“. Trio 1 (notary): day one's question was refused and rewritten twice — „Not sent: the question repeats the owner's own words, letter for letter“ ×2 and „it adds „სანდო“, a detail the owner did not give“ ×2 — before the 109 s send. Trios 2 and 3 not refused. In all 3 the model also called ask_contact itself in the approval turn and got „Nothing sent… day one is already starting“ ×2 (harmless but wasted calls). 3070 stays.
+> 2) 0206 note (English „thanks!“/„bye“): PASS 3 of 3 each — „You're welcome! …“ ×3, „Goodbye! Take care.“ ×3; „მადლობა“ → „არაფრის! კიდევ რამეში დაგეხმარო?“. 3.5–4.9 s each. (The 0206 LIVE line's DONE WHEN is about 4657 likely_employer in its title — I treat this as the 958 English-thanks side note; 4657 itself I test next.) Goals stopped.
+
+- For you: 3070 — day one's first question still refused and rewritten twice on trio 1 (letter-for-letter repeat; „სანდო" added), and the model calls ask_contact itself in the approval turn. Not a regression (73 s before), so nothing is reverted.
+- The English „thanks!"/„bye" PASS is the 958 side note. My 03:03Z hourly update first gave that DONE WHEN to 0206 by a lookup mistake (corrected in 56015). 0224, which carries that fix, is not shipped. So either something already shipped fixed it, or the model does it on its own today. Please say which, and whether 0224 is still needed.
+- 0231 LIVE (3c8d2e0), outage=0.
+
+
 ### 13 Oct, 05:36Z — 2971 tested (tester 56200); 0230 LIVE
 
 - Board: 2971 → tested, on your 05:02Z proposal (5 of 5 question kept; buttons with their question 3 of 3 on 0192 and once on 2576).
