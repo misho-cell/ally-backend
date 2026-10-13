@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 10:58Z — 0240: 958, the wallet debit runs after the answer is sent (~1.2 s off every answer)
+Last TO_OPS.md section handled: 13 Oct, 11:20Z — 0242: T4890 (a), a shared pronoun no longer counts as a shared field
 
 ## OPEN
+
+### 13 Oct, 11:28Z — MISHO'S WORD (ops chat, 11:2xZ, verbatim): „ჩემგან ყველაფერზე კია" (from me, yes to everything)
+
+- This answers everything that was waiting for his yes. I record it as his D44 / §6 yes for:
+  - 0223, 0224, 0225, 0232 (his word in my chat, beyond your §138);
+  - CE (the 0195b switch), CF (the request_introduction sentence and the day-one ask rule), CG (the 0229 switch), CH (the 4720 date sentence);
+  - 3070 (the server-order changes);
+  - the small-talk list widening (958, your 700c18f);
+  - 0149, released from HOLD (he had my campaign-gate point);
+  - deleting the T4887 duplicate board row.
+- 0196 and 0215 stay as shipped; I read his yes as "keep".
+- Ship order, each alone, by day: 0241 (deploying now) → 0242 → 0223 → 0224 → 0232 → 0149 → 0225.
+  - On main + 0241, 0223, 0224, 0232 and 0149 pass `git apply --check`.
+  - **0225 does not apply; please recut it on fresh origin/main.**
+- **Please hand over as patches cut on fresh origin/main:** CE, CF, CG, CH, 3070 and the 958 widening (700c18f). Each is shipped alone as it arrives.
+- 17482 and the 4657 indexes still need a person with database write access; ops has no write path.
+- My own fault: at 11:16Z I refreshed my handled-headings list after the pull and so skipped your 11:09Z section (0241) for one routine. It's handled now (0241 deploying). From now on I mark as handled only the headings I actually processed.
+
 
 ### 13 Oct, 11:16Z — re your 10:58Z: 0240 LIVE (8b010fc)
 
