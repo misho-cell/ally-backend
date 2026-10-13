@@ -210,11 +210,42 @@ async function coreFactsPresence(phones: string[]): Promise<Map<string, Set<Core
   return map;
 }
 
-function firstMissingCoreFact(present: Set<CoreFactType> | undefined): CoreFactType | null {
+function firstMissingCoreFact(
+  present: Set<CoreFactType> | undefined,
+  asked: ReadonlySet<string> = new Set(),
+): CoreFactType | null {
   for (const t of CORE_FACT_TYPES) {
-    if (!present?.has(t)) return t;
+    if (!present?.has(t) && !asked.has(t)) return t;
   }
   return null;
+}
+
+/**
+ * T1694 (Lika's report, 13 Oct; seat 160584): asked on 12 Oct where a contact
+ * works, she answered in full — he used to work at one firm and has gone to
+ * Europe to study — which was kept as a past role and a note. The employer
+ * field stayed empty, so on 13 Oct the day's question asked the same thing
+ * again. A fact the owner was already asked about, for this person, is not
+ * asked again: whatever she said is the answer, even when it fills no field.
+ */
+async function alreadyAskedFacts(
+  userId: string,
+  phones: string[],
+): Promise<Map<string, Set<string>>> {
+  if (phones.length === 0) return new Map();
+  const result = await query<{ phone: string; missing_fact: string }>(
+    `SELECT DISTINCT phone, missing_fact FROM curiosity_surfacing_log
+     WHERE user_id = $1::int AND phone = ANY($2)
+     LIMIT $3`,
+    [userId, phones, phones.length * CORE_FACT_TYPES.length],
+    QUEUE_QUERY_TIMEOUT_MS,
+  );
+  const map = new Map<string, Set<string>>();
+  for (const row of result.rows) {
+    if (!map.has(row.phone)) map.set(row.phone, new Set());
+    map.get(row.phone)?.add(row.missing_fact);
+  }
+  return map;
 }
 
 async function labelsForPhones(
@@ -285,14 +316,15 @@ export async function buildCuriosityQueue(
   }
 
   const phones = Array.from(byPhone.keys());
-  const [presence, labels] = await Promise.all([
+  const [presence, labels, asked] = await Promise.all([
     coreFactsPresence(phones),
     labelsForPhones(userId, phones),
+    alreadyAskedFacts(userId, phones),
   ]);
 
   const items: CuriosityItem[] = [];
   for (const [phone, candidate] of byPhone) {
-    const missing = firstMissingCoreFact(presence.get(phone));
+    const missing = firstMissingCoreFact(presence.get(phone), asked.get(phone));
     if (missing === null) continue;
     // 3271: a coded label („ხხ7 ძვ.") is not a name to ask the owner about.
     const label = labels.get(phone) ?? null;

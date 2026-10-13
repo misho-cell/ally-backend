@@ -23,10 +23,13 @@ interface RouteOpts {
   presence?: { phone: string; field_type: string }[];
   labels?: { phone: string; label: string | null }[];
   recentSurfacing?: { id: number }[];
+  asked?: { phone: string; missing_fact: string }[];
 }
 
 function routeQueueQueries(opts: RouteOpts): void {
   mockQuery.mockImplementation((sql: string) => {
+    if (sql.includes('SELECT DISTINCT phone, missing_fact FROM curiosity_surfacing_log'))
+      return Promise.resolve(rows(opts.asked ?? []) as never);
     if (sql.includes('SELECT id FROM curiosity_surfacing_log'))
       return Promise.resolve(rows(opts.recentSurfacing ?? []) as never);
     if (sql.includes('normalize_search_token(tag)'))
@@ -47,6 +50,42 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockBuildTargetList.mockResolvedValue([]);
   mockGetTopConnectors.mockResolvedValue({ found: false });
+});
+
+describe('a fact already asked about is not asked again (T1694)', () => {
+  it('moves to the next missing fact once the employer was asked about this person', async () => {
+    mockBuildTargetList.mockResolvedValue([
+      { phone: '+995500999999', label: 'director', city: null, score: 0.5, parts: {} as never },
+    ]);
+    routeQueueQueries({
+      lookalike: [{ phone: '+995500000001' }],
+      presence: [{ phone: '+995500000001', field_type: 'occupation' }],
+      labels: [{ phone: '+995500000001', label: 'გია' }],
+      asked: [{ phone: '+995500000001', missing_fact: 'employer' }],
+    });
+
+    const out = await buildCuriosityQueue('42');
+
+    expect(out.map((i) => i.missing_fact)).toEqual(['city']);
+  });
+
+  it('drops the person once every missing fact was asked about', async () => {
+    mockBuildTargetList.mockResolvedValue([
+      { phone: '+995500999999', label: 'director', city: null, score: 0.5, parts: {} as never },
+    ]);
+    routeQueueQueries({
+      lookalike: [{ phone: '+995500000001' }],
+      presence: [
+        { phone: '+995500000001', field_type: 'occupation' },
+        { phone: '+995500000001', field_type: 'city' },
+        { phone: '+995500000001', field_type: 'industry' },
+      ],
+      labels: [{ phone: '+995500000001', label: 'გია' }],
+      asked: [{ phone: '+995500000001', missing_fact: 'employer' }],
+    });
+
+    expect(await buildCuriosityQueue('42')).toEqual([]);
+  });
 });
 
 describe('buildCuriosityQueue', () => {
