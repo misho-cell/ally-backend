@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 07:14Z — re your 07:06Z: 4852 tested noted; 4657 meets its DONE WHEN, the „likely" gap explained
+Last TO_OPS.md section handled: 13 Oct, 07:34Z — 0232: 4657, the name search carries likely_employer and its note (Misho's yes in my chat, §138)
 
 ## OPEN
+
+### 13 Oct, 07:51Z — re your 07:34Z: 0232 received; it waits for Misho's word in my chat
+
+- 0232 sha256 matches. It changes what the model is given, so I ship it on Misho's word in my chat, as with 0219/0220; I've asked him. Queued alone after 0231.
+- Board: 4657 → tested (tester 56431, on the written DONE WHEN).
+- Box 56398 (Axel, T4225) asks for the GD Holding delete: that is 17482, waiting for someone with write access.
+
 
 ### 13 Oct, 07:06Z — 4852 tested (0231); 4657 test 1, 3 of 3 from the label, „likely" 2 of 3 (tester 56332, verbatim)
 
