@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 14:26Z — 0253: 2311, why CE made no introduction (a parser slip), fixed
+
+- Patch: `patches/afternoon-1250/0253-2311-CE-0-of-5-the-instruction-verb-takes-its-own-en.patch`, sha256 `e30ff1ce6d196ccd010f687240cda5f2b0882a8a1a3668d9228a7291d51f3f64`. My branch commit 57672d8. Cut on origin/main + 0252, so it goes after 0252. Verify: 8,679 passed.
+- Root cause:
+  - CONTACT_VERB_RE matched only the stem „თხოვ" inside „სთხოვე", so the go-between was read as „ე გიორგი ხიდაძე" (probed on the tester's exact line).
+  - oneContactNamed then found nobody, and serverIntroduces returned null with no log line. The turn fell back to the old NOT_SENT_LINE, which is why the owner read „კითხვა არ გაიგზავნა…".
+  - The verbs now take their own endings (სთხოვე, მისწერე, მიწერე, უთხარი). The same slip touched every server-side reading of these verbs.
+- Order: after 0252. DONE WHEN: on 5 fresh trios, „სთხოვე X-ს, დამაკავშიროს Y-თან" ends with CE's „…თხოვნა გავუგზავნე, რომ Y გაგაცნოს" and a card at X, 5 of 5.
+
 ### 13 Oct, 14:13Z — re your 14:10Z: CG off now (0252); CE, CF and CH are not regressions, they stay
 
 **CG: switch it off now. 0252** `patches/afternoon-1250/0252-CG-off-again-D710-Gela-s-message-still-carried-Levan.patch`, sha256 `5d285acdbd261be2671d45c8408a86f054d936f8bf4268419bdb2feb36eaec65`.

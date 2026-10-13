@@ -1,0 +1,73 @@
+From 98ba9db1948a9b28d8abf272acb26276a14ff295 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 14:21:24 +0000
+Subject: [PATCH] 2311 (CE 0 of 5): the instruction verb takes its own ending,
+ so the go-between is found
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 56799: CE (SERVER_INTRODUCTION_ON) was live, and a typed
+„სთხოვე გიორგი ხიდაძეს, დამაკავშიროს ნინო მიზნაძესთან." was still never
+made. CONTACT_VERB_RE matched only the stem „თხოვ" inside „სთხოვე", so the
+name after it was read as „ე გიორგი ხიდაძე". oneContactNamed found nobody,
+serverIntroduces returned null without a word, and the turn fell back to
+NOT_SENT_LINE. The stems now take their endings: „სთხოვე/თხოვე", „მისწერე",
+„მიწერე", „უთხარი". The same slip affected every server-side reading of
+„სთხოვე/მისწერე/უთხარი X-ს" (instructionNamed, instructionAddressee). The
+full suite is green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theVerbTakesItsEnding.test.ts     | 17 +++++++++++++++++
+ src/services/goalIntent.ts                      |  8 +++++++-
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/theVerbTakesItsEnding.test.ts
+
+diff --git a/src/services/__tests__/theVerbTakesItsEnding.test.ts b/src/services/__tests__/theVerbTakesItsEnding.test.ts
+new file mode 100644
+index 0000000..8952fd0
+--- /dev/null
++++ b/src/services/__tests__/theVerbTakesItsEnding.test.ts
+@@ -0,0 +1,17 @@
++import { instructionAddressee, instructionNamed } from '../goalIntent';
++
++/**
++ * 2311 (the tester's 56799, CE 0 of 5): the verb's own ending was read as the
++ * first word of the name, so the go-between was never found.
++ */
++describe('the name after an instruction verb', () => {
++  it.each([
++    ['სთხოვე გიორგი ხიდაძეს, დამაკავშიროს ნინო მიზნაძესთან.', 'გიორგი ხიდაძე'],
++    ['თხოვე გიორგი ხიდაძეს, დამაკავშიროს ნინო მიზნაძესთან.', 'გიორგი ხიდაძე'],
++    ['მისწერე ლევან საცდელს, ხომ არ იცის სანტექნიკოსი.', 'ლევან საცდელ'],
++    ['უთხარი ნინო გამოგონილს, რომ ხვალ მოვალ.', 'ნინო გამოგონილ'],
++  ])('„%s" names „%s", with no letter of the verb', (line, name) => {
++    expect(instructionNamed(line)).toBe(name);
++    expect((instructionAddressee(line) ?? '').split(' ')[0]).toBe(name.split(' ')[0]);
++  });
++});
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index f367acf..26b5b0b 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -429,8 +429,14 @@ export function goalTitleFrom(message: string): string {
+  * consent wall, where the phonebook half is deliberately not paid for — so the
+  * verb has to carry the weight on its own.
+  */
++/**
++ * 2311 (the tester's 56799, CE 0 of 5): „სთხოვე გიორგი ხიდაძეს…" matched only
++ * „თხოვ", so the verb's own „ე" was read as the first word of the name („ე
++ * გიორგი ხიდაძე") and the go-between was never found. Each verb now takes its
++ * ending with it: „სთხოვე", „მისწერე", „უთხარი".
++ */
+ const CONTACT_VERB_RE =
+-  /(ჰკითხე|კითხე|მისწერ|მიწერ|უთხ|თხოვ|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
++  /(ჰკითხე|კითხე|მისწერ[ეო]?|მიწერ[ეო]?|უთხარი|უთხ|ს?თხოვ[ეო]?|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+ 
+ /**
+  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
+-- 
+2.43.0
+
