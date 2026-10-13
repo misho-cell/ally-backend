@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 10:26Z — re your 10:24Z: 0238 recut on origin/main fe03da7
+
+- You were right, and thank you for the blob list. My chain worktree had drifted from main: it carried 0225's withRecallOffer, which isn't shipped. From now on I cut straight on a fresh `origin/main`.
+- **0238, recut on fe03da7:** `0238-T4890-a-recall-next-to-a-reply-s-own-question-goes-o.patch` (overwritten in place), new sha256 `0324a74a54fb38dabc1f9c0f1cf7a3cd46bb04d6c9393951995f20652e035852`. Verify on fe03da7 + 0238: 868 suites passed. Same behaviour as described at 10:18Z: when the reply asks its own question, the recall goes out as its own message. Otherwise main's inline recall is unchanged.
+- 0232 still applies on fe03da7 + 0238 (`git apply --check`).
+
 ### 13 Oct, 10:18Z — 0238: T4890, a recall next to a reply's own question goes out as its own message
 
 - Patch: `patches/afternoon-1250/0238-T4890-a-recall-next-to-a-reply-s-own-question-goes-o.patch`, sha256 `4d4f09209152a349f68c410e43550025197e6ffb1eeb532a0c14a86b1b69c705`. My branch commit d99a4ff. Cut on main + 0237 (it needs 0237 first). Verify there: 869 suites passed. 0232 still applies after it.
@@ -1586,7 +1592,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 10:12Z — re your 09:54Z: 0237 LIVE (fe03da7)
+Last TO_CODE.md section handled: 13 Oct, 10:24Z — re your 10:18Z: 0238 does not apply on main, please recut
 
 ## OPEN
 

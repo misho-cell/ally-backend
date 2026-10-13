@@ -1,4 +1,4 @@
-From 52df4256be3e1c1fcb7262e89cce1826ac244fc7 Mon Sep 17 00:00:00 2001
+From dfdb065223102f48c3ccc17522b81a6613dbc7be Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Tue, 13 Oct 2026 10:13:30 +0000
 Subject: [PATCH] T4890: a recall next to a reply's own question goes out as
@@ -21,16 +21,16 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
 ---
  src/services/__tests__/needRecall.test.ts | 44 +++++++++++++++++++++++
- src/services/chat.service.ts              | 22 ++++++++++--
- src/services/needRecall.ts                | 23 ++++++++++++
+ src/services/chat.service.ts              | 15 ++++++--
+ src/services/needRecall.ts                | 24 +++++++++++++
  src/services/pendingMessages.ts           |  8 +++--
- 4 files changed, 92 insertions(+), 5 deletions(-)
+ 4 files changed, 87 insertions(+), 4 deletions(-)
 
 diff --git a/src/services/__tests__/needRecall.test.ts b/src/services/__tests__/needRecall.test.ts
-index 4b51af6..07f8ed5 100644
+index 2b6df71..5600db5 100644
 --- a/src/services/__tests__/needRecall.test.ts
 +++ b/src/services/__tests__/needRecall.test.ts
-@@ -5,7 +5,10 @@ import { join } from 'path';
+@@ -5,13 +5,17 @@ import { join } from 'path';
  import { query as _query } from '../../db/postgres/client';
  import {
    isNoteworthyFact,
@@ -41,7 +41,6 @@ index 4b51af6..07f8ed5 100644
    needThisFactMeets,
    noteSavedFact,
    recallChoices,
-@@ -13,6 +16,7 @@ import {
    recallLine,
    takeSavedFact,
  } from '../needRecall';
@@ -49,8 +48,8 @@ index 4b51af6..07f8ed5 100644
  
  /** 2608 (ME-027): a new fact about Nika meets Gia's saved need — the reply recalls it and offers. */
  const mockQuery = _query as jest.Mock;
-@@ -97,3 +101,43 @@ describe('the recall offer and its buttons', () => {
-     expect(offer.choices).toBeUndefined();
+@@ -69,3 +73,43 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
+     expect(line).not.toContain('-ს ');
    });
  });
 +
@@ -94,27 +93,21 @@ index 4b51af6..07f8ed5 100644
 +  });
 +});
 diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
-index 25f38c2..b23c287 100644
+index 9385a95..1fa3dee 100644
 --- a/src/services/chat.service.ts
 +++ b/src/services/chat.service.ts
-@@ -106,7 +106,15 @@ import { thanksTapOf } from './helperThanksCards';
- import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
- import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
- import { settleMatchTap } from './matchFlow.service';
--import { needThisFactMeets, noteSavedFact, takeSavedFact, withRecallOffer } from './needRecall';
-+import {
+@@ -108,7 +108,10 @@ import { settleMatchTap } from './matchFlow.service';
+ import {
+   needThisFactMeets,
+   noteSavedFact,
 +  NEED_RECALL_KIND,
-+  needThisFactMeets,
-+  noteSavedFact,
 +  recallCard,
+   recallChoices,
 +  recallGoesApart,
-+  takeSavedFact,
-+  withRecallOffer,
-+} from './needRecall';
- import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
- 
- import { safetyReplyFor } from './safetyWorry';
-@@ -12639,7 +12647,7 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
+   recallLine,
+   takeSavedFact,
+ } from './needRecall';
+@@ -12642,7 +12645,7 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
   * no goal, so it was held as „not asked about other goals" — and nothing notes
   * it again, so it was lost (0 of 2). It goes out with its reply.
   */
@@ -123,11 +116,11 @@ index 25f38c2..b23c287 100644
  
  export async function waitingItemsToDeliver(
    items: readonly PendingItemInput[],
-@@ -14134,7 +14142,15 @@ async function runToolLoop(
+@@ -14137,7 +14140,15 @@ async function runToolLoop(
      const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
        () => null,
      );
--    if (recalled !== null) {
+-    if (recalled !== null && !finalText.includes(recalled.needName)) {
 +    if (recalled !== null && recallGoesApart(finalText, recalled)) {
 +      notePendingItems(runId, [
 +        {
@@ -136,18 +129,27 @@ index 25f38c2..b23c287 100644
 +          payload: { ...recallCard(recalled, runLang(runId)) },
 +        },
 +      ]);
-+    } else if (recalled !== null) {
-       const offer = withRecallOffer(finalText, recalled, runLang(runId));
-       finalText = offer.text;
-       choices = offer.choices ?? choices;
++    } else if (recalled !== null && !finalText.includes(recalled.needName)) {
+       finalText = `${finalText.trimEnd()}\n\n${recallLine(runLang(runId), recalled)}`;
+       choices = recallChoices(runLang(runId));
+     }
 diff --git a/src/services/needRecall.ts b/src/services/needRecall.ts
-index e9cbacb..4c42690 100644
+index 9cc2119..f599ace 100644
 --- a/src/services/needRecall.ts
 +++ b/src/services/needRecall.ts
-@@ -115,6 +115,29 @@ export function recallChoices(language: RunLanguage): string[] {
+@@ -1,6 +1,7 @@
+ import { query } from '../db/postgres/client';
+ import { geoName } from './georgianCase';
+ import { fieldTerms, textSpeaksOf } from './prematch.service';
++import { lastQuestionIn } from './buttonsCarryTheQuestion';
+ import { RunLanguage } from './runLanguage';
+ 
+ /**
+@@ -113,3 +114,26 @@ export function recallLine(language: RunLanguage, recalled: RecalledNeed): strin
+ export function recallChoices(language: RunLanguage): string[] {
    return [...(RECALL_CHOICES[language] ?? RECALL_CHOICES.ka)];
  }
- 
++
 +/** The pending-item kind of a recall delivered as its own message. */
 +export const NEED_RECALL_KIND = 'need_recall';
 +
@@ -170,10 +172,6 @@ index e9cbacb..4c42690 100644
 +): { readonly text: string; readonly choices: string[] } {
 +  return { text: recallLine(language, recalled), choices: recallChoices(language) };
 +}
-+
- export interface RecallOffer {
-   readonly text: string;
-   readonly choices: string[] | undefined;
 diff --git a/src/services/pendingMessages.ts b/src/services/pendingMessages.ts
 index 930ec9b..f28c58d 100644
 --- a/src/services/pendingMessages.ts
