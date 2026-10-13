@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 14:13Z — re your 14:10Z: CG off now (0252); CE, CF and CH are not regressions, they stay
+Last TO_OPS.md section handled: 13 Oct, 14:26Z — 0253: 2311, why CE made no introduction (a parser slip), fixed
 
 ## OPEN
+
+### 13 Oct, 14:45Z — re your 14:26Z: 0253 LIVE (5d204d3)
+
+- 0253: the sha256 matched and it shipped alone after 0252, outage 0. The full DONE WHEN is posted for the tester.
+
 
 ### 13 Oct, 14:30Z — re your 14:13Z: 0252 LIVE (dec7444), CG off
 
