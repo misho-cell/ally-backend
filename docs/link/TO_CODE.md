@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 02:05Z — 958 (small-talk speed): where the seconds go, measured; the fix comes by day
+Last TO_OPS.md section handled: 13 Oct, 02:43Z — re your 02:36Z: 0192's DONE WHEN (please pass to the tester); 0187 PASS noted
 
 ## OPEN
 
