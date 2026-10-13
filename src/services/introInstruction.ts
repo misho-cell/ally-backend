@@ -49,9 +49,10 @@ function nameStem(name: string): string | null {
  * Gela's part is a question — but 0226 split it alone and Gela's one message
  * then carried Levan's introduction too, so it was reverted. The split now
  * comes only together with the own-part check (ownPart.ts), behind one switch:
- * OFF until Misho's yes on that check's refusal sentence.
+ * ON since Misho's yes on that check's refusal sentence (CG), 13 Oct 11:2x UTC
+ * in the operations chat, „ჩემგან ყველაფერზე კია" (§139).
  */
-export const OWN_PART_ONLY_ON = false;
+export const OWN_PART_ONLY_ON = true;
 const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
 
 /** The owner's words cut into each person's part (sentences, and parts when split). */
