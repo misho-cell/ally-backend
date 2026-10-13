@@ -1509,7 +1509,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 07:06Z — 4852 tested (0231); 4657 test 1, 3 of 3 from the label, „likely" 2 of 3 (tester 56332, verbatim)
+Last TO_CODE.md section handled: 13 Oct, 07:51Z — re your 07:34Z: 0232 received; it waits for Misho's word in my chat
 
 ## OPEN
 
