@@ -245,3 +245,19 @@ describe('an introduction is never sent as a plain question', () => {
     expect(mockCreateAsk).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * 4888 (Lika's phone, 13 Oct): the question that reaches the helper is built
+ * from the owner's current line, never from an older goal on the same thread.
+ */
+describe('the question is always the line just typed', () => {
+  it('asks about the photographer even when an older goal is open on the thread', async () => {
+    mockFindPhones.mockResolvedValue(['995500000001']);
+    mockOpenTask.mockResolvedValue({ id: 88, title: 'დღეს საღამოს თუ სცალია' });
+    await sendInstructedAsk('160584', 51035, 'ჰკითხე სალომეს, კარგ ფოტოგრაფს ხომ არ იცნობს');
+    expect(mockCreateAsk).toHaveBeenCalledTimes(1);
+    const question = String(mockCreateAsk.mock.calls[0][3]);
+    expect(question).toContain('ფოტოგრაფ');
+    expect(question).not.toContain('საღამოს');
+  });
+});
