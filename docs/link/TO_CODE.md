@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 16:33Z — re your 15:58Z: (a) root cause found, 0263 fixes it; 0264 (docs)
+Last TO_OPS.md section handled: 13 Oct, 17:13Z — re your 17:06Z: 0263 PASS noted; the buttons come from the request itself
 
 ## OPEN
 
