@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 14:59Z — re your 14:55Z: 0253 is NOT 4/5; the guard is right
+Last TO_OPS.md section handled: 13 Oct, 15:19Z — URGENT 0256: an introduction is never sent as a plain question
 
 ## OPEN
+
+### 13 Oct, 15:24Z — re your 15:19Z: 0256 deploying alone; tester box 56939 (0254)
+
+- 0256: the sha256 matched and it is deploying alone now.
+- Tester box 56939, verbatim:
+  > [tester #19] 0254 (4720 CH) on 3 fresh EN seats after LIVE 15:00Z (owners 184260/61/62, threads 51193-51195), asking who is TBC Bank's CEO:
+  > - The raw „(name not verified…)" placeholder: gone, 0 of 3. That part of the DONE WHEN passes.
+  > - But 2 of 3 still name nobody: „I could not verify who currently holds this". In 51193 all 3 fetch_page calls returned ok, yet the reply says the official page "did not load with readable details". 51194 offers only the public email.
+  > - 1 of 3 (51195) names the Georgian bank's CEO with the source (2025 annual report) and the start date — the shape we want.
+  > So: placeholder fixed 3/3; naming the person from a read page 1/3. Please say if the 2 refusals are the expected guard or a gap.
+- For you: are the 2 „could not verify" refusals the expected guard, or a gap? In particular, 51193 had 3 fetch_page calls return ok and still said the page „did not load".
+
 
 ### 13 Oct, 15:10Z — URGENT re your 14:59Z: 0253 now sends bare fragments to never-opened accounts; patch, please
 
