@@ -98,6 +98,7 @@ function immediateUseFor(row: BankRow, lang: string): string | null {
 /**
  * The next question for this user (C9.3, C9.5, C9.8 together):
  *  - never one they already hold a current answer to;
+ *  - one they skipped only after every question not yet asked;
  *  - rotation DERIVED from the last non-skipped answer: its category goes to
  *    the back of the queue, so ten questions cover many categories;
  *  - a goal_bound question is asked only with an open goal, its title
@@ -144,7 +145,15 @@ export async function getNextQuestion(
      -- what she looks for, what not to ask, how to reach her) come first.
      -- 48414: by their own number, not as text — „core_can_help_002" sorts before
      -- „core_what_where_001" alphabetically, and „what you do and where" came last.
-     ORDER BY (qb.category = 'core') DESC,
+     -- Seat 183990: a question the owner waved off goes behind every one not yet
+     -- asked — first, the skipped core question came straight back as the next one,
+     -- the run would not ask it again, and the core questions stopped at three.
+     ORDER BY EXISTS (
+                SELECT 1 FROM answer_events sk
+                WHERE sk.user_id = $1 AND sk.question_id = qb.question_id AND sk.is_current
+                  AND sk.skipped
+              ) ASC,
+              (qb.category = 'core') DESC,
               CASE WHEN qb.category = 'core'
                    THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,
               (qb.surface = $2) DESC, (qb.category = $3) ASC, qb.question_id

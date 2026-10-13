@@ -287,6 +287,21 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
     await getNextQuestion('7', 'weekly_review', 'ka');
   });
 
+  it('a skipped question goes behind every unasked one, core included — seat 183990 stopped at three', async () => {
+    let orderBy = '';
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('FROM question_bank qb')) orderBy = sql.slice(sql.indexOf('ORDER BY'));
+      return Promise.resolve(rows([]) as never);
+    });
+
+    await getNextQuestion('7', 'any', 'ka');
+
+    const skippedRank = orderBy.indexOf('AND sk.skipped');
+    expect(skippedRank).toBeGreaterThan(-1);
+    expect(skippedRank).toBeLessThan(orderBy.indexOf("(qb.category = 'core') DESC"));
+    expect(orderBy).toMatch(/AND sk\.skipped\s*\)\s*ASC/u);
+  });
+
   it('a language with no prompt text is excluded in SQL, not silently rendered in Georgian', async () => {
     // FLAT_SINGLE_ROW has prompt_es: null. Asking in Spanish must filter it
     // out at the query level — the founder's ruling: skip, never substitute.
