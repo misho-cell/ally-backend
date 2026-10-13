@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isFarewell, isPlainThanks } from '../smallTalk';
+import { isFarewell, isGeorgianLine, isPlainThanks } from '../smallTalk';
 
 /**
  * The tester's 44126 (#2114, conversations 41970 and 41980): „კარგად იყავი" was
@@ -46,5 +46,30 @@ describe('a thank-you', () => {
     );
     expect(body).toContain('return THANKS_TURN_NOTE;');
     expect(chat).toContain('„მადლობა" → „არაფრის! კიდევ რამეში დაგეხმარო?"); „როგორ ხარ"-ს');
+  });
+});
+
+/**
+ * The tester's 55870 (958 re-run): an English „thanks!" got „არაფრის! კიდევ
+ * რამეში დაგეხმარო?". The Georgian turn note and its sample go only with a
+ * Georgian line; another language's line gets no note and keeps its language.
+ */
+describe('a turn note goes only with a Georgian line', () => {
+  it.each(['მადლობა!', 'კარგად იყავი', 'ok, მადლობა'])('„%s" is Georgian', (line) => {
+    expect(isGeorgianLine(line)).toBe(true);
+  });
+
+  it.each(['thanks!', 'Thank you', 'Bye', 'спасибо', 'gracias'])('„%s" is not', (line) => {
+    expect(isGeorgianLine(line)).toBe(false);
+  });
+
+  it('is checked before any note is chosen', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const fn = chat.slice(chat.indexOf('function smallTalkTurnNote('));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
+    expect(body).toContain("if (!isGeorgianLine(userMessage)) return '';");
+    expect(body.indexOf('isGeorgianLine(userMessage)')).toBeLessThan(
+      body.indexOf('isFarewell(userMessage)'),
+    );
   });
 });
