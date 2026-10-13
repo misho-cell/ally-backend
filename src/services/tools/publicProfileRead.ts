@@ -60,6 +60,19 @@ export function profilePage(url: string, page: object, today: string): PublicPro
 }
 
 /**
+ * 4720 (the tester's 56073, EN seat): the page this server read is a fetched
+ * page, so under D151 it is evidence, as fetch_page is. Without it the
+ * officeholder gate cut the person's own name out of the reply. Only the page:
+ * the search snippets around it stay outside the evidence.
+ */
+export function profileEvidence(found: unknown): string | null {
+  if (!isRecord(found)) return null;
+  const page = found.public_profile;
+  if (!isRecord(page) || typeof page.content !== 'string') return null;
+  return page.content;
+}
+
+/**
  * The search result with its profile page read, when it has one. A failed or
  * empty read leaves the result exactly as it was; `beforeRead` runs only when a
  * page is actually read (the cost is recorded there).

@@ -134,7 +134,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
-import { withPublicProfile } from './tools/publicProfileRead';
+import { profileEvidence, withPublicProfile } from './tools/publicProfileRead';
 import { searchVerdictOf } from './searchVerdict';
 import { questionForButtons } from './buttonsCarryTheQuestion';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
@@ -11274,6 +11274,7 @@ async function runOneToolBlock(
   // an officeholder's name; a search snippet may not (stale, or a former
   // holder) — so everything but web_search becomes the run's evidence.
   if (block.name !== 'web_search') recordRunEvidence(runId, JSON.stringify(raw));
+  else recordRunEvidence(runId, profileEvidence(raw) ?? '');
   // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
   // be shown, with the page it came from. Registered here, at the one place a
   // web result arrives, so no later surface has to decide what is public.
