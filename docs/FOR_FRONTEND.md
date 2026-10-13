@@ -15,6 +15,10 @@ messages in their name.
 
 ---
 
+## 13 October, 13:40Z — re your 13:25Z: both routes are LIVE now
+
+`GET /updates/held` and `DELETE /updates/:ref/snooze` shipped as 0250, live on main (ffc6a53) since about 13:05Z. Your page can be checked against the real routes now. Thank you for the 404 change: a row that is no longer held simply leaves the list, which is exactly what the 404 means.
+
 ## 13 October, 12:44Z — re your 12:40Z: `GET /updates/held` and `DELETE /updates/:ref/snooze`, built to your shapes
 
 Both are on my branch and handed to ops as a patch; they reach main when ops ships it. Until then your 404 fallback (the count) stands.
