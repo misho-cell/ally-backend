@@ -47,6 +47,8 @@ export interface RouteRow {
 
 export interface AskRow {
   readonly id: number;
+  /** Who was asked; one route per person (4928). Absent on rows read elsewhere. */
+  readonly person_id?: number;
   readonly name: string | null;
   readonly status: string;
   readonly answer: string | null;
@@ -59,6 +61,7 @@ export interface AskRow {
 
 interface IntroRow {
   readonly id: number;
+  readonly person_id?: number;
   readonly name: string | null;
   readonly status: string;
   readonly target_name: string;
@@ -127,7 +130,8 @@ export function introRoute(row: IntroRow): RouteRow {
 
 async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
   const result = await query<AskRow>(
-    `SELECT ta.id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name, ta.status, ta.answer,
+    `SELECT ta.id, ta.to_user_id AS person_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name,
+            ta.status, ta.answer,
             ta.declined_at, ta.seen_at, ta.later_until, ta.expired_at,
             GREATEST(ta.created_at, ta.answered_at, ta.declined_at, ta.seen_at, ta.expired_at)
               AS updated_at
@@ -143,7 +147,8 @@ async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
 
 async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
   const result = await query<IntroRow>(
-    `SELECT ir.id, ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
+    `SELECT ir.id, ir.mediator_user_id AS person_id,
+            ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
             ir.status, ir.target_name, COALESCE(ir.responded_at, ir.created_at) AS updated_at
        FROM introduction_requests ir
       WHERE ir.requester_task_id = $1 AND ir.requester_user_id = $2
@@ -155,12 +160,50 @@ async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
   return result.rows;
 }
 
+interface PersonRoute {
+  readonly personId: number | undefined;
+  readonly route: RouteRow;
+}
+
+/**
+ * 4928 (Giorgi's retest, 13 Oct): one person showed three times — a follow-up,
+ * a re-ask and an introduction are each a row. The board is about people:
+ * each person once, in the place they first appeared, with their latest state.
+ */
+export function oncePerPerson(rows: readonly PersonRoute[]): RouteRow[] {
+  const latest = new Map<number, RouteRow>();
+  for (const { personId, route } of rows) {
+    if (personId === undefined) continue;
+    const held = latest.get(personId);
+    if (held === undefined || route.updated_at >= held.updated_at) latest.set(personId, route);
+  }
+  const placed = new Set<number>();
+  const out: RouteRow[] = [];
+  for (const { personId, route } of rows) {
+    if (personId === undefined) {
+      out.push(route);
+    } else if (!placed.has(personId)) {
+      placed.add(personId);
+      out.push(latest.get(personId) ?? route);
+    }
+  }
+  return out;
+}
+
 /** The board for this conversation; an empty list when there is no board to draw. */
 export async function routesForThread(userId: number, threadId: number): Promise<RouteRow[]> {
+  const people = await routesOfOwnGoal(userId, threadId);
+  return people.length >= MIN_ROUTES_FOR_A_BOARD ? people : [];
+}
+
+/** Every person the goal on this thread is talking to, once each; empty when no goal is the owner's. */
+export async function routesOfOwnGoal(userId: number, threadId: number): Promise<RouteRow[]> {
   const taskId = await goalOfOwnThread(userId, threadId);
   if (taskId === null) return [];
   const [asks, intros] = await Promise.all([asksOf(userId, taskId), introsOf(userId, taskId)]);
   const now = new Date();
-  const routes = [...asks.map((a) => askRoute(a, now)), ...intros.map(introRoute)];
-  return routes.length >= MIN_ROUTES_FOR_A_BOARD ? routes : [];
+  return oncePerPerson([
+    ...asks.map((a) => ({ personId: a.person_id, route: askRoute(a, now) })),
+    ...intros.map((i) => ({ personId: i.person_id, route: introRoute(i) })),
+  ]);
 }
