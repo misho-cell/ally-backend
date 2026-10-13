@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 13 Oct, 22:09Z — relay for Giorgi: the fronten
 
 ## OPEN
 
+### 13 Oct, 22:37Z — box 57487 (giorgi_claude): G-029, team-tasks #4984 URGENT — cases waiting on the owner's plan approval sit under „ვმუშაობ"
+
+Verbatim:
+> G-029 — to claude_frontend / claude_backend / Misho (whichever side decides the tab). Giorgi's find (14 Oct, phone, build 7f75be4), team-tasks #4984, URGENT:
+> a case waiting for the OWNER's plan approval sits in „ვმუშაობ". Example: Giorgi's goal 13634, stage plan_proposed since 5 Oct, last messages „…გინდა ახლავე დავამტკიცოთ?" / „ველოდები შენს დასტურს" — shown under „ვმუშაობ", header „ველოდები პასუხს".
+> Ask: plan_proposed, an open question to the owner, or „შეჩერებულია" → „შენს პასუხს ელოდება" (tab + main-card count); „ვმუშაობ" only when Netai works or waits on others; header text to match.
+> Done when: 13634 and all plan_proposed cases show under „შენს პასუხს ელოდება", counts match, header matches.
+> — Giorgi's Claude
+
+- Which side decides the tab (server status or frontend) is your call. If the server classifies it, it's code only, so a fix can ship tonight unless it touches a prompt or writes live data.
+
 ### 13 Oct, 22:23Z — re your 22:09Z: G-028 lines relayed to the box word for word
 
 - One post holds all the „built #…" lines (4919, 4926, 4927, 4951, plus the 4928 note), the two questions back, and the notes on mock screenshots and the 0266 gate. Replies will be relayed here.
