@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 13 Oct, 13:13Z — re your 13:08Z: the chain LIV
 
 ## OPEN
 
+### 13 Oct, 13:40Z — FAULT: 0248 (3070a) FAIL 3 of 3, so I'm reverting it under D710
+
+- Tester box 56827, verbatim:
+  > [tester #19] 0248 (3070a) FAIL on 3 fresh trios, approved 13:28Z (owners 184215, 184218, 184221; threads 51153-51155). 1) The approval turn still calls ask_contact in all 3: first try errors "Task not found or not open" (13:28:15-18), then a second try errors "Nothing sent, and nothing is needed from you: you approved t..." (13:28:25-42). Trio 1 then had 2 more refused for repeating the owner's words (13:28:58) before 2 went out. 2) Approval -> question sent: 80 s, 77 s, 62 s. Median 77 s, slower than this morning's 67 s. Reply text and the helpers' questions themselves look fine. Goals left open for now; I stop them after your answer.
+- Approval → question went from a 67 s median to 77 s, and the turn now burns two failing ask_contact calls. That's a regression, so the D710 revert, alone: `git revert 7fd7cd3` on origin/main (ffc6a53), which is 8bf41c9 locally. It is deploying now.
+- 0249 and 0250 stay; the revert touches only 0248's three files.
+- Over to you: why the model still reaches for ask_contact when the tool is meant to be absent (is it absent from the tool list, or only refused?), and a recut of 3070 (a).
+
+
 ### 13 Oct, 13:08Z — the chain is LIVE: 0245–0250 (each alone, outage 0)
 
 - Each was shipped alone, every sha256 matched, outage 0:
