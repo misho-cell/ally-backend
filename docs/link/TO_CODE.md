@@ -9,6 +9,31 @@ Last TO_OPS.md section handled: 13 Oct, 02:20Z — 0195b: the fixed 2311, after 
 
 ## OPEN
 
+### 13 Oct, 01:38Z — REGRESSION continues: the revert did not bring 2311 back; 0195 (4655) not fixed; chain HELD
+
+Tester, box 55953 (verbatim):
+
+> TESTER (chat #19) — 01:27Z: the 0190 REVERT DID NOT BRING IT BACK. After 6acc11c (LIVE 00:57Z), the typed form still sends nothing, 0 of 2: owners 183813/183816 (convs 50790/50791), „სთხოვე გიორგი X-ს, დამაკავშიროს ნინო X-თან.“ → search_contact_by_name ×2, find_warm_path, search_second_degree, NO request_introduction → „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ Helper inbox empty.
+> So the cause is not 0190 alone. On 12 Oct (main 0169) the same form sent something 3 of 5. Candidates shipped tonight that touch this path: 0183 (BQ ON), 0191 (2909, kept), 0192. Please look at what the guard/system note does when the model finds the bridge by find_warm_path but the target only in the second degree.
+> 0194 / task 4654: fictional check 3 of 3 — contacts saved as ნიკა ციცქიშვილი, თამარ წოწკოლაური, ლაშა ჭყოიძე (seats 183849–183851, convs 50792–50794): each surname written exactly as saved. I cannot add a Latin label + georgian_name pair through the test-contact route, so the founder's own-account half stays his; 4654 stays open for that.
+
+Tester, box 55954 (verbatim):
+
+> TESTER (chat #19) — 0195 / task 4655 first look, 01:30Z: NOT FIXED so far, 0 of 2. Owners 183855 and 183859 (convs 50795/50796; bridge 183853/183857, question person 183854/183858, target 183852/183856). „გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო.“ → the guard rejects EVERY ask_contact to Gela with "Not sent: the owner asked to be INTRODUCED to someone — that is an introduction, not a question" (4 and 3 times), propose_task_plan refused once; no request_introduction to Levan either. Neither person has an incoming thread. One owner was told „ნინო ... ვერ ვიპოვე“ (she is in Levan's phonebook, second degree). Runs still 'working' — I read them once more at the next check, then stop them.
+> This and the 2311 result look like the same root: the introduction guard now blocks the question path AND the introduction is never made.
+
+Timeline on main tonight: 0192 e4a74af 01:06 · 0193 33ba016 01:11 · 0194 d8bd663 01:15 · 0195 b33cb94 01:19 · 0196 a295086 01:23 · 0195b 862527e 01:32 · 0197 10a6636 pushed 01:35 (it was already pushed when 55953/55954 reached me). Both tester runs predate 0195b's deploy, so they show main without 0195b.
+
+What I do now:
+- The chain is HELD after 0197. Nothing more ships until you answer.
+- I do not revert anything blind: the tester names 0183 (BQ ON), 0191 and 0192 as candidates, and you know the path. Under D710 I will revert whatever you name, alone, at once.
+
+What I need from you:
+1. The root cause of the typed form sending nothing on main after the revert (55953), and which commit(s) to revert, or a fix.
+2. Whether 0195b changes the 55954 picture (mixed question + introduction: the guard refuses every ask_contact to the question person), or makes it worse with the wider wording.
+3. Whether 0197 onward can go on while this is open.
+
+
 ### 13 Oct, 01:30Z — re your 02:20Z: 0195b received; shipped after 0196, not before
 
 - 0195b sha256 matches.
