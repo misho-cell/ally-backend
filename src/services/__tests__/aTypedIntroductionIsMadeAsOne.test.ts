@@ -1,0 +1,164 @@
+jest.mock('../instructedAsk', () => ({
+  __esModule: true,
+  oneContactNamed: jest.fn(),
+  ownersLabel: jest.fn(),
+}));
+jest.mock('../tools/requestIntroduction', () => ({
+  __esModule: true,
+  requestIntroduction: jest.fn(),
+}));
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { oneContactNamed, ownersLabel } from '../instructedAsk';
+import {
+  introductionSentence,
+  introductionTarget,
+  introSentSentence,
+  nominativeBeforeTan,
+  SERVER_INTRODUCTION_ON,
+  serverIntroduces,
+} from '../introFallback';
+import { ownerAsksForIntroduction } from '../introInstruction';
+import { requestIntroduction } from '../tools/requestIntroduction';
+
+/**
+ * 2311 (box 55934, 0 of 6 after 0190): a typed introduction the run left undone
+ * went out as the owner's plain question, or not at all. The server makes the
+ * introduction itself; OFF until Misho's yes on the owner's sentence.
+ */
+const mockNamed = oneContactNamed as jest.MockedFunction<typeof oneContactNamed>;
+const mockLabel = ownersLabel as jest.MockedFunction<typeof ownersLabel>;
+const mockIntro = requestIntroduction as jest.MockedFunction<typeof requestIntroduction>;
+const OWNER = '183807';
+const GIORGI_PHONE = '+995500000901';
+
+describe('every wording of an introduction is an introduction (2311)', () => {
+  it.each([
+    'სთხოვე ლევან საცდელაძეს, დამაკავშიროს თამთა ნიმუშაძესთან.',
+    'მაია გამოგონილს თხოვე ბახვა ფიქტიურთან დაკავშირება.',
+    'სთხოვე ნანას, შემაერთოს გურამთან.',
+    'ნანა გამოგონილაძეს სთხოვე, გამაცნოს გურამ ფიქციაშვილი.',
+  ])('reads „%s" as an introduction', (line) => {
+    expect(ownerAsksForIntroduction([line])).toBe(true);
+  });
+
+  it.each([
+    'ჰკითხე ბექა ნიმუშაშვილს, შემაერთებს თუ არა ირმა გამოგონილთან.',
+    'ჰკითხე გიას, გამაცნობს თუ არა ნინოს.',
+    'დამაკავშირდი ხვალ.',
+    'ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.',
+  ])('keeps „%s" a question', (line) => {
+    expect(ownerAsksForIntroduction([line])).toBe(false);
+  });
+});
+
+describe('the person the owner wants to meet', () => {
+  it.each([
+    ['სთხოვე გიორგი ტესტაძეს, დამაკავშიროს ნინო ნიმუშაძე-თან.', 'ნინო ნიმუშაძე'],
+    ['სთხოვე გიორგი ტესტაძეს, დამაკავშიროს ნინო საცდელთან.', 'ნინო საცდელი'],
+    ['ნანა გამოგონილაძეს სთხოვე, გამაცნოს გურამ ფიქციაშვილი.', 'გურამ ფიქციაშვილი'],
+    ['მაია გამოგონილს თხოვე ბახვა ფიქტიურთან დაკავშირება.', 'ბახვა ფიქტიური'],
+    ['მაიას თხოვე ბახვასთან დაკავშირება.', 'ბახვა'],
+    ['სთხოვე ნანას, შემაერთოს გურამთან.', 'გურამი'],
+  ])('„%s" → „%s"', (line, target) => {
+    expect(introductionTarget(line)).toBe(target);
+  });
+
+  it('puts a name before -თან back in the nominative', () => {
+    expect(nominativeBeforeTan('X-')).toBe('X');
+    expect(nominativeBeforeTan('ნინოს')).toBe('ნინო');
+    expect(nominativeBeforeTan('ბოლქვაძეს')).toBe('ბოლქვაძე');
+    expect(nominativeBeforeTan('საცდელ')).toBe('საცდელი');
+  });
+
+  it('finds the introduction sentence among the owner’s other sentences', () => {
+    expect(introductionSentence('გამარჯობა. სთხოვე ნანას, გამაცნოს გურამი. მადლობა!')).toBe(
+      'სთხოვე ნანას, გამაცნოს გურამი.',
+    );
+    expect(introductionSentence('ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.')).toBeNull();
+  });
+});
+
+describe('the server makes the introduction', () => {
+  const LINE = 'სთხოვე გიორგი ტესტაძეს, დამაკავშიროს ნინო ნიმუშაძე-თან.';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockNamed.mockResolvedValue(GIORGI_PHONE);
+    mockLabel.mockResolvedValue('გიორგი ტესტაძე');
+    mockIntro.mockResolvedValue({ success: true });
+  });
+
+  it('ships OFF until Misho’s yes on the owner’s sentence', () => {
+    expect(SERVER_INTRODUCTION_ON).toBe(false);
+  });
+
+  it('sends one introduction request: the named go-between, the target, the goal and the thread', async () => {
+    const made = await serverIntroduces(OWNER, LINE, {
+      requesterTaskId: 25060,
+      originThreadId: 50783,
+    });
+    expect(made).toEqual({ mediator: 'გიორგი ტესტაძე', target: 'ნინო ნიმუშაძე' });
+    expect(mockIntro).toHaveBeenCalledTimes(1);
+    expect(mockIntro).toHaveBeenCalledWith(
+      OWNER,
+      'გიორგი ტესტაძე',
+      'ნინო ნიმუშაძე',
+      undefined,
+      GIORGI_PHONE,
+      undefined,
+      undefined,
+      'intro',
+      false,
+      { requesterTaskId: 25060, originThreadId: 50783 },
+    );
+  });
+
+  it('makes nothing when the go-between is not exactly one saved contact', async () => {
+    mockNamed.mockResolvedValue(null);
+    expect(await serverIntroduces(OWNER, LINE, {})).toBeNull();
+    expect(mockIntro).not.toHaveBeenCalled();
+  });
+
+  it('makes nothing for a line that is no introduction', async () => {
+    expect(
+      await serverIntroduces(OWNER, 'ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.', {}),
+    ).toBeNull();
+    expect(mockIntro).not.toHaveBeenCalled();
+  });
+
+  it('says nothing went when requestIntroduction refuses', async () => {
+    mockIntro.mockResolvedValue({ success: false, error: 'blocked' });
+    expect(await serverIntroduces(OWNER, LINE, {})).toBeNull();
+  });
+
+  it('tells the owner who was asked to introduce them to whom', () => {
+    const made = { mediator: 'გიორგი ტესტაძე', target: 'ნინო ნიმუშაძე' };
+    expect(introSentSentence(made, 'ka')).toBe(
+      'გიორგი ტესტაძეს თხოვნა გავუგზავნე, რომ ნინო ნიმუშაძე გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.',
+    );
+    expect(introSentSentence(made, 'en')).toBe(
+      'I asked გიორგი ტესტაძე to introduce you to ნინო ნიმუშაძე. I will tell you as soon as they answer.',
+    );
+  });
+});
+
+describe('the fallback, wired', () => {
+  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+  const fn = chat.slice(chat.indexOf('async function serverSendsOrSaysSo('));
+  const body = fn.slice(0, fn.indexOf('\n}\n'));
+
+  it('tries the introduction before the plain question, and never says „not sent" for it', () => {
+    expect(body.indexOf('serverIntroductionOrNull(userId, threadId, runId)')).toBeGreaterThan(-1);
+    expect(body.indexOf('serverIntroductionOrNull(userId, threadId, runId)')).toBeLessThan(
+      body.indexOf('await sendInstructedAsk(userId, threadId'),
+    );
+    expect(body).not.toContain('an introduction, not sent as a question');
+  });
+
+  it('is off by default, so the fallback is what main does today', () => {
+    expect(chat).toContain('on: boolean = SERVER_INTRODUCTION_ON,');
+    expect(chat).toContain('if (!on || !ownerAsksForIntroduction([ownerLine])) return null;');
+  });
+});

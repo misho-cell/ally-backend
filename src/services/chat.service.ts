@@ -460,6 +460,12 @@ import {
   ownerAsksForIntroduction,
   USE_INTRODUCTION_REFUSAL,
 } from './introInstruction';
+import {
+  introSentSentence,
+  SERVER_INTRODUCTION_ON,
+  ServerIntroduction,
+  serverIntroduces,
+} from './introFallback';
 import { askedNotAsking, claimsItCannotSend } from './askedVerb';
 import { withoutRepeatedParagraphs } from './repeatedParagraphs';
 import {
@@ -12328,6 +12334,39 @@ function personLineForOwner(person: PersonOutcome, language: RunLanguage): strin
 }
 
 /**
+ * 2311 (box 55934): an introduction the run left undone is made as an
+ * introduction, never sent as the owner's plain question. Null when the switch
+ * is off, the line is no introduction, or the request could not be made; the
+ * fallback below then does what it always did.
+ */
+async function serverIntroductionOrNull(
+  userId: string,
+  threadId: number,
+  runId: string,
+  on: boolean = SERVER_INTRODUCTION_ON,
+): Promise<ServerIntroduction | null> {
+  const ownerLine = runOwnerLine.get(runId) ?? '';
+  if (!on || !ownerAsksForIntroduction([ownerLine])) return null;
+  const goal = await getOpenTaskByThread(threadId).catch(() => null);
+  const made = await serverIntroduces(userId, ownerLine, introContextFor(threadId, goal?.id)).catch(
+    (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[instruction-unsent] run ${runId}: server introduction failed:`,
+        (err as Error).message,
+      );
+      return null;
+    },
+  );
+  if (made !== null) {
+    runIntroSent.add(runId);
+    // eslint-disable-next-line no-console
+    console.log(`[instruction-unsent] run ${runId}: the server made the introduction`);
+  }
+  return made;
+}
+
+/**
  * §97 item 1 (Misho's yes): the second chance sent nothing either. The server
  * asks the one contact the owner named and says so in the ordinary per-person
  * line; when it cannot (no single contact, a wall), the owner is told plainly
@@ -12339,6 +12378,8 @@ async function serverSendsOrSaysSo(
   runId: string,
 ): Promise<string> {
   const language = runLang(runId);
+  const introduced = await serverIntroductionOrNull(userId, threadId, runId);
+  if (introduced !== null) return introSentSentence(introduced, language);
   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
