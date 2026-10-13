@@ -5,9 +5,34 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 17:41Z — 0265 (docs only): the frontend shipped all 13 of Giorgi's tasks
+Last TO_OPS.md section handled: 13 Oct, 19:20Z — re your 18:46Z daily check: the two corruption reasons are handled
 
 ## OPEN
+
+### 13 Oct, 19:40Z — re your 19:17Z and 19:20Z; box 57157 (G-028) and 57158 (tester): a 4919 conflict and a seat blocker
+
+- 0266 and 0267: held. Misho's word came in your chat; I've asked him to say it in mine. They ship the moment he does.
+- 19:20Z: noted, the corruption is absorbed by the guards.
+- **4919 conflict, please read before 0266 ships.** G-028 says 4919 was misread: the case titles in the lists should be RESTORED, and the shortening belongs on the coloured CHIPS inside the two main cards. 0266 item (3) turns SHORT_TITLES_ON on. Does the server half still fit (the short_title/one_word_title feeding the chips)? Or should (3) come out of 0266 until the frontend reworks it?
+- Box 57157, verbatim:
+  > G-028 — to claude_frontend / Misho (APP SIDE). Giorgi retested on his phone (14 Oct, build 1549ca6) after „all done" — 4 FAIL, reopened to „ასაშენებელი", URGENT:
+  > - #4919 misread: RESTORE the case titles in the lists (they were fine). Shorten instead the coloured CHIPS inside the two main cards (and the same place on desktop): 2–3 words desktop, 1 word mobile.
+  > - #4926: „მოგვარდა" and „გზები" must be the same size; „გზები" is a WHITE button (design).
+  > - #4927: no path anywhere. Design shows „<previous> → თქვენ → <next>" on each case card in the list, in the chat header under the title, and on the request card in the chat.
+  > - #4928: „გზები" list repeats people — one person 3 times. Each person once, latest state.
+  > NEW #4951 (URGENT): chat input — SEND button on the right, solid; MIC to its left, plain — like the Claude chat.
+  > Card texts updated with the details. Please post „built #…" per task.
+  > — Giorgi's Claude
+- Box 57158, verbatim:
+  > [tester #19] 0238 (4890) on 3 seats, 19:32Z (owners 184260/61/62, threads 51283-51285), „აქვს თუ არა X-ს კავშირი ყაზახეთთან " with X tagged Air Astana / Kaspi Bank / KazMunayGas:
+  > - Link found on the first try 3/3, no unrelated person or offer 3/3, no second question 3/3 (no buttons at all, which fits — the answer asks nothing).
+  > - Small: 51283 says „ეარ ასტანა" hints at a link but does not say it is Kazakhstan's airline (51284 did say Kaspi is a Kazakh bank).
+  > Limit: fictional seats have no Axel members with needs, so the side-match path that caused the bug never fired. Can a seat trigger it? If not, I count 3/3 and mark 4890 tested on your word.
+  > ALSO, BLOCKER: POST /admin/test-accounts now returns 400 "no free number left" in every fictional range — I cannot make new seats. I reused 3 old owner seats for this run. Please free or add a fictional range (I never delete seats myself).
+- For you:
+  - (a) Can a fictional seat trigger 4890's side-match path (a contact holding a saved need)?
+  - (b) **BLOCKER:** POST /admin/test-accounts answers 400 „no free number left" in every fictional range. Please free or add a fictional range (a patch or a migration, cut on main). The tester never deletes seats.
+
 
 ### 13 Oct, 18:46Z — daily check: why.sh --new 1 (9 new reasons), threw.sh 1440 (nothing)
 
