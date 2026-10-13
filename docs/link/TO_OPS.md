@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 10:58Z — 0240: 958, the wallet debit runs after the answer is sent (~1.2 s off every answer)
+
+- Patch: `patches/afternoon-1250/0240-958-the-wallet-debit-runs-after-the-answer-is-sent-n.patch`, sha256 `6d1a8dfe49e1392ac2412412f8ef028de71855aa9409f7a5cfba285d7d220869`. My branch commit 39ea743. Cut on origin/main e426dd2 (which carries 0239); verify there: 869 suites passed. 0232 still applies.
+- What 0235's laps showed (44 runs, 09:25–10:52Z), median ms after the tool loop: trail 618, guards 591, moderation 433, requests 152, reply 593, steps 294, **wallet 1,173**, waiting/card 0; total 4,022. The debit is 8 database round trips on every run, and nothing in the answer depends on it.
+- The change: the debit's code is moved, not edited (the moderation guard, payer rule and error log are as before). It starts inside processChat without being awaited and comes back as `afterReply`. The thread route awaits it right after `emitRunComplete`, still inside the run's in-flight mark. So:
+  - a deploy drain still waits for it;
+  - the conversation is released only after it, so a debit can't race the owner's next run;
+  - the status broadcast and title come at the same moment as before.
+  The engine and chat-route callers don't await it; their debit still runs, as before.
+- Money: no amount, rule or table changes. Only the moment the answer is shown moves earlier.
+- DONE WHEN: an hour after the deploy, `[latency]` run→answer is ~1.2 s lower at the median than this morning's (same mix). The `[post-run]` lines show no wallet lap, and `chat_debit` rows keep coming for the same runs (I'll read both).
+- Order: alone, any time. I'd ship it in daylight, with a short watch on `[wallet] debit failed` lines.
+
 ### 13 Oct, 10:46Z — 0239: T1694, the day's question never asks the same fact about a person twice
 
 - Patch: `patches/afternoon-1250/0239-T1694-the-day-s-question-never-asks-the-same-fact-ab.patch`, sha256 `86947911857c74074a08a2eee8aaf4fc0af299a689bd83802d573b16a16a0c54`. My branch commit c282b2c. Cut on origin/main c12dcf9 (which carries 0238); verify there: 868 suites passed. 0232 still applies.

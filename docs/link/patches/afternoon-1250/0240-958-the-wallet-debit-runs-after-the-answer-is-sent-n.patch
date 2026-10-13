@@ -1,0 +1,219 @@
+From 09f36e2e9d56c351f45e87c6946cbd4cce10411f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 10:54:21 +0000
+Subject: [PATCH] 958: the wallet debit runs after the answer is sent, not
+ before
+
+0235's [post-run] laps (44 runs, 09:25-10:52Z): after the tool loop, a
+median 4.0 s, of which the wallet debit was 1.17 s on every run. That is
+eight database round trips, and nothing in the answer depends on them. The
+debit now starts inside processChat without being awaited, and comes back
+with the result as afterReply. The thread route awaits it right after
+emitRunComplete, still inside the run's in-flight mark, so a deploy drain
+still waits for it and the conversation is released only after it. Its code
+is unchanged (moved, not edited): the moderation guard, the payer rule and
+the error log are as before. The answer reaches the owner about 1.2 s sooner.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts              |   2 +
+ .../theDebitWaitsForTheAnswer.test.ts         |  33 ++++++
+ src/services/chat.service.ts                  | 112 ++++++++++--------
+ 3 files changed, 97 insertions(+), 50 deletions(-)
+ create mode 100644 src/services/__tests__/theDebitWaitsForTheAnswer.test.ts
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 382a60c..fb37c41 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -1348,6 +1348,8 @@ export function runOwnerMessage(run: OwnerRun): void {
+         // Ticket 17 Task 39: the share button reads this, not the prose.
+         ...(result.shareText && { share_text: result.shareText }),
+       });
++      // 958: the debit runs after the answer is on the screen, still inside the run's mark.
++      await result.afterReply;
+       // Title from the FINAL, post-strip reply (task 20) — never from a draft.
+       if (needsTitle) void generateThreadTitle(userId, threadId, message, result.reply);
+       // Engine T1: catches facts about named third parties the live
+diff --git a/src/services/__tests__/theDebitWaitsForTheAnswer.test.ts b/src/services/__tests__/theDebitWaitsForTheAnswer.test.ts
+new file mode 100644
+index 0000000..3887fc0
+--- /dev/null
++++ b/src/services/__tests__/theDebitWaitsForTheAnswer.test.ts
+@@ -0,0 +1,33 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 958 (13 Oct, the [post-run] lines of 0235): the wallet debit was 1.2 s of
++ * every answer — eight round trips the owner waited on for nothing the answer
++ * carries. It now starts inside processChat and is awaited by the route only
++ * after the answer is sent, still inside the run's in-flight mark.
++ */
++const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++const ROUTE = readFileSync(
++  join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
++  'utf8',
++);
++
++describe('the debit waits for the answer, not the answer for the debit', () => {
++  it('starts without being awaited and is handed back with the result', () => {
++    expect(CHAT).toContain('const afterReply: Promise<void> = (async (): Promise<void> => {');
++    expect(CHAT).toMatch(/shareText !== undefined && \{ shareText \}\),\s*afterReply,/u);
++    const debit = CHAT.indexOf('debitRun(payerId, runId)');
++    expect(debit).toBeGreaterThan(CHAT.indexOf('const afterReply: Promise<void>'));
++  });
++
++  it('is awaited by the route right after the answer is sent, before the run lets go', () => {
++    const emit = ROUTE.indexOf(
++      'emitRunComplete(userId, threadId, runId, {\n        reply: result.reply,',
++    );
++    const wait = ROUTE.indexOf('await result.afterReply;');
++    expect(emit).toBeGreaterThan(-1);
++    expect(wait).toBeGreaterThan(emit);
++    expect(wait).toBeLessThan(ROUTE.indexOf('endRun(runId);'));
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 1fa3dee..25054b4 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -12093,6 +12093,11 @@ export interface ChatResult {
+    * hunting for a link inside the model's prose.
+    */
+   shareText?: string;
++  /**
++   * 958: what the run still does once its answer is delivered (the wallet
++   * debit). Never rejects; a caller that sends the answer awaits it after.
++   */
++  afterReply?: Promise<void>;
+   /** The run could not produce an answer — reply carries the failure text; route must surface run_error. */
+   runFailed?: boolean;
+   /**
+@@ -16811,58 +16816,64 @@ export async function processChat(
+   // while the wallet flag is off) — the user, except on an incoming-ask
+   // thread, where the chain's origin pays and the helper is never charged
+   // (Ticket 10 Task 25 (a), D123). Never fails the reply.
+-  try {
+-    const payerId = await runPayerFor(userId, threadId, thread.type);
+-    // Row 150: null is „nobody asked for this conversation" — a campaign
+-    // invite. Charging the person we approached for the approach is the
+-    // charge D133 exists to forbid, so there is no debit and no event.
+-    /**
+-     * ROW 76 — „NOTHING WAS LOST" WAS NOT TRUE, AND WE WERE CHARGING FOR IT.
+-     *
+-     * When the reply moderation blocks an answer, the owner reads
+-     * `moderationBlocked`, which says in every language: „that is on us, not
+-     * on your wording. Nothing was lost; say „again" and I will rewrite it."
+-     *
+-     * They were charged for the answer they never saw. The three real blocks
+-     * in the fifteen days to 22 September, with what each cost its owner:
+-     *
+-     *   13 Sep  thread 14792   run f13787a8    6 tokens
+-     *   15 Sep  thread 15016   run 20711eb2   10 tokens
+-     *   21 Sep  thread 20857   run dad8bba4   20 tokens
+-     *
+-     * Thirty-six tokens in fifteen days. THE MONEY IS NOT THE POINT — the
+-     * product was telling somebody nothing was lost while keeping what they
+-     * had paid, and then charging them again for the retry that worked. The
+-     * seat's done-when says it plainly: „the person is not charged for the
+-     * lost answer and is told plainly." The second half was already true and
+-     * the first half made it a false sentence.
+-     *
+-     * NO DEBIT RATHER THAN A REFUND, deliberately. A refund means charging and
+-     * giving back, which dips the balance in between and can refuse the very
+-     * retry we are inviting; and it needs a second reason and a second unique
+-     * index to stop it paying twice. `usage_events` still records what the
+-     * provider cost us — the business's own books are untouched, and a run
+-     * with a cost and no `chat_debit` is exactly what happened.
+-     */
+-    if (payerId !== null && !replySafe) {
++  // 958 (13 Oct, the [post-run] lines): the debit was 1.2 s of every answer
++  // (eight round trips) and nothing in the answer depends on it — the owner
++  // already holds the reply. It starts here and is awaited by the route right
++  // after the answer is sent, inside the run's in-flight mark, so a drain still
++  // waits for it. Its code is unchanged.
++  const afterReply: Promise<void> = (async (): Promise<void> => {
++    try {
++      const payerId = await runPayerFor(userId, threadId, thread.type);
++      // Row 150: null is „nobody asked for this conversation" — a campaign
++      // invite. Charging the person we approached for the approach is the
++      // charge D133 exists to forbid, so there is no debit and no event.
++      /**
++       * ROW 76 — „NOTHING WAS LOST" WAS NOT TRUE, AND WE WERE CHARGING FOR IT.
++       *
++       * When the reply moderation blocks an answer, the owner reads
++       * `moderationBlocked`, which says in every language: „that is on us, not
++       * on your wording. Nothing was lost; say „again" and I will rewrite it."
++       *
++       * They were charged for the answer they never saw. The three real blocks
++       * in the fifteen days to 22 September, with what each cost its owner:
++       *
++       *   13 Sep  thread 14792   run f13787a8    6 tokens
++       *   15 Sep  thread 15016   run 20711eb2   10 tokens
++       *   21 Sep  thread 20857   run dad8bba4   20 tokens
++       *
++       * Thirty-six tokens in fifteen days. THE MONEY IS NOT THE POINT — the
++       * product was telling somebody nothing was lost while keeping what they
++       * had paid, and then charging them again for the retry that worked. The
++       * seat's done-when says it plainly: „the person is not charged for the
++       * lost answer and is told plainly." The second half was already true and
++       * the first half made it a false sentence.
++       *
++       * NO DEBIT RATHER THAN A REFUND, deliberately. A refund means charging and
++       * giving back, which dips the balance in between and can refuse the very
++       * retry we are inviting; and it needs a second reason and a second unique
++       * index to stop it paying twice. `usage_events` still records what the
++       * provider cost us — the business's own books are untouched, and a run
++       * with a cost and no `chat_debit` is exactly what happened.
++       */
++      if (payerId !== null && !replySafe) {
++        // eslint-disable-next-line no-console
++        console.warn(
++          `[wallet] run ${runId} thread ${threadId}: NOT charged — the reply was blocked by ` +
++            'moderation and the owner never saw it',
++        );
++      } else if (payerId !== null) {
++        // Row 271 (B): the person is told what THEY paid. `absorbed` is the
++        // house's number and belongs in the books and the log, not in a balance
++        // ticker on somebody's screen — a person who sees „0 debited" on a run
++        // that cost 29 has been told something about our accounts, not theirs.
++        const { charged } = await debitRun(payerId, runId);
++        if (charged > 0) emitTokensDebited(payerId, threadId, runId, charged);
++      }
++    } catch (err) {
+       // eslint-disable-next-line no-console
+-      console.warn(
+-        `[wallet] run ${runId} thread ${threadId}: NOT charged — the reply was blocked by ` +
+-          'moderation and the owner never saw it',
+-      );
+-    } else if (payerId !== null) {
+-      // Row 271 (B): the person is told what THEY paid. `absorbed` is the
+-      // house's number and belongs in the books and the log, not in a balance
+-      // ticker on somebody's screen — a person who sees „0 debited" on a run
+-      // that cost 29 has been told something about our accounts, not theirs.
+-      const { charged } = await debitRun(payerId, runId);
+-      if (charged > 0) emitTokensDebited(payerId, threadId, runId, charged);
++      console.error('[wallet] debit failed for run', runId, (err as Error).message);
+     }
+-  } catch (err) {
+-    // eslint-disable-next-line no-console
+-    console.error('[wallet] debit failed for run', runId, (err as Error).message);
+-  }
+-  lap(postRun, 'wallet');
++  })();
+   // eslint-disable-next-line no-console
+   console.log(postRunLine(runId, postRun));
+ 
+@@ -16874,6 +16885,7 @@ export async function processChat(
+     ...(requestCreated && { requestCreated: true }),
+     ...(taskResult && { taskResult }),
+     ...(shareText !== undefined && { shareText }),
++    afterReply,
+   };
+ }
+ 
+-- 
+2.43.0
+
