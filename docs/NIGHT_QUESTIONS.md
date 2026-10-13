@@ -62,47 +62,8 @@ and answering the tester are all ordinary night work and need nobody.
 
 ## Tonight's list
 
-Night of 12 → 13 October, for the morning:
-- **CA (2806, the last pricing line).** Put to Misho at ~21:27 UTC with the exact sentence; no answer before 22:00Z, so it waits for the
-  morning (a prompt change, D44). Change file `ops/prompt-changes/2806b-pricing-invite-only`: „Everyone who joins with an invitation gets 20
-  free days; joining without one, the trial is 5 days. after the trial, …" → „Netai is invite-only: everyone joins with an invitation and
-  gets 20 free days. After the trial, …". Live flags confirm invite-only. On his yes: apply, then ops asks the tester to re-run SK-002, MO-009.
-- **CB (admin session 100h, §137). DONE:** Misho gave ops his word in ops' chat and 0221-main has been LIVE since 22:27Z. A session
-  started before the deploy keeps its old expiry, which is signed into the token; a new login gets 100h. Back to 12h when he says so.
-- **CC (3671, 4297): prompt work, so not at night (D44).** 3671: a model-written owner answer mixed persons („თუ გინდა, თვითონ
-  გკითხავ შეგახსენო და დაელაპარაკო"). The fix is a writer rule or an editor check on owner answers, and its text needs Misho's yes. 4297:
-  „the new plan and search rules are live" means applying prompt texts. By day I'll find which texts are not live yet and put them to him.
-- **CD (4126 item 3, a new brief sentence for his yes, D44).** 0223 makes the registration run keep the people a public member list
-  names (list_people, never a knows link). It is OFF until he says yes to this sentence, added to the extractor's brief: „If one of the
-  texts is a public list of the people who belong to an organisation (members, staff, a board, attendees), also return the people it
-  lists, under "listed_people": [...]. Copy each name and role exactly as the list writes it. Being on the same list says nothing about
-  who knows whom: never turn it into a fact about this person."
-- **CE (2311, REGRESSION fixed; one owner sentence for his yes).** 0190 was reverted by ops at 00:55Z: a typed „სთხოვე X-ს,
-  დამაკავშიროს Y-თან" went 0 of 6 (the model called no tool, and 0190's fallback said „not sent"). 0195b replaces it: the server
-  makes the INTRODUCTION itself when the run leaves it undone (D316). It is OFF until he says yes to the owner's sentence: „{X}-ს თხოვნა
-  გავუგზავნე, რომ {Y} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ." (en: „I asked {X} to introduce you to {Y}. I will tell you as
-  soon as they answer."). While it is off, everything behaves as main does now.
-- **CF (2311 ROOT CAUSE, one tool sentence for his yes, D44).** The live request_introduction description says „Call only after
-  the user explicitly confirms they want to send the request … only after they confirm." The model obeys it, so a typed „სთხოვე
-  გიორგის, დამაკავშიროს ნინოსთან" is answered with „გიორგის გავუგზავნო თხოვნა…?" (conv 50823) or nothing, against D316. Proposed,
-  replacing those two phrases: „Call it once the user has said they want it: a typed instruction to introduce them („ask Gio to
-  introduce me to Nino") is itself that yes (D316) — send at once, without asking again." With CE (0195b's switch) as the safety net,
-  this is what should take 2311 to 5 of 5.
-  The same rule is needed for the day-one ask: the tester's 56014 run 3 sent an approved plan's introduction as a plain ask_contact
-  question („Can you introduce them?"). I'll show him that text with CF.
-- **CG (4655): 0226 reverted (03:15Z, D710).** It let Gela's question through, but the model put the introduction part into it too:
-  the owner's wish reached a third person. Rebuilt as 0229 (splits AND keeps each message to its own part), OFF until his yes on the
-  refusal sentence: „Not sent: this question also carries what the owner asked of someone else. Send this person only their own part
-  of the owner's message, in your own words. The other part goes to its own person — an introduction through request_introduction —
-  and is never mentioned to this one."
-- **CH (4720, one model-facing sentence for his yes).** The tester's 56073: public-profile facts given in own words 3 of 3, but no
-  date and once a bare link. The server hands over the URL and the day read; nothing tells the model to say them. Proposed note in the
-  search result: „When you use public_profile, say where it is from and the day it was read (e.g. „LinkedIn, read 13 Oct"); never a
-  bare link."
-- **Built tonight:** 0231 (tester's side row, seat 183990: a skipped core question came straight back, so the profile questions stopped
-  at three; it now ranks after every unasked one), 0227 (958 `[latency]` line), 0228 (greeting typo), 0229 (4655, OFF), 0230 (4656
-  FOR_FRONTEND), 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
-  app's side.
+Cleared 13 October ~07:10 UTC (morning handover): CB is done (live 22:27Z). CA, CC–CJ were put to Misho in Georgian and moved to
+**Waiting** below, unanswered. Built and shipped overnight: 0219–0222 and 0227–0231 LIVE. 0226 was reverted and rebuilt as 0229 (OFF).
 
 Cleared 12 October ~07:10 UTC. Misho answered in his own chat at ~06:45 UTC, to four numbered questions: „1. გააკეთე 2. კარგი 3. კი 4. კარგი“.
 (1) Deploy of the chain 0170 → 0182, relayed to ops (TO_OPS 06:50Z). (3) BQ, BR, BO switched ON as 0183, 0184, 0185 (TO_OPS 07:00Z). BP is approved,
@@ -147,6 +108,53 @@ waiting on a person is below, in **Waiting**, because a list that is emptied
 while its questions are unanswered is a list that loses them.
 
 ## Waiting on Misho or the founder
+
+**From the night of 12 → 13 October (put to Misho at the 07:06Z handover):**
+- **CA (2806, the last pricing line).** Put to Misho at ~21:27 UTC with the exact sentence; no answer before 22:00Z, so it waits for the
+  morning (a prompt change, D44). Change file `ops/prompt-changes/2806b-pricing-invite-only`: „Everyone who joins with an invitation gets 20
+  free days; joining without one, the trial is 5 days. after the trial, …" → „Netai is invite-only: everyone joins with an invitation and
+  gets 20 free days. After the trial, …". Live flags confirm invite-only. On his yes: apply, then ops asks the tester to re-run SK-002, MO-009.
+- **CB (admin session 100h, §137). DONE:** Misho gave ops his word in ops' chat and 0221-main has been LIVE since 22:27Z. A session
+  started before the deploy keeps its old expiry, which is signed into the token; a new login gets 100h. Back to 12h when he says so.
+- **CC (3671, 4297): prompt work, so not at night (D44).** 3671: a model-written owner answer mixed persons („თუ გინდა, თვითონ
+  გკითხავ შეგახსენო და დაელაპარაკო"). The fix is a writer rule or an editor check on owner answers, and its text needs Misho's yes. 4297:
+  „the new plan and search rules are live" means applying prompt texts. By day I'll find which texts are not live yet and put them to him.
+- **CD (4126 item 3, a new brief sentence for his yes, D44).** 0223 makes the registration run keep the people a public member list
+  names (list_people, never a knows link). It is OFF until he says yes to this sentence, added to the extractor's brief: „If one of the
+  texts is a public list of the people who belong to an organisation (members, staff, a board, attendees), also return the people it
+  lists, under "listed_people": [...]. Copy each name and role exactly as the list writes it. Being on the same list says nothing about
+  who knows whom: never turn it into a fact about this person."
+- **CE (2311, REGRESSION fixed; one owner sentence for his yes).** 0190 was reverted by ops at 00:55Z: a typed „სთხოვე X-ს,
+  დამაკავშიროს Y-თან" went 0 of 6 (the model called no tool, and 0190's fallback said „not sent"). 0195b replaces it: the server
+  makes the INTRODUCTION itself when the run leaves it undone (D316). It is OFF until he says yes to the owner's sentence: „{X}-ს თხოვნა
+  გავუგზავნე, რომ {Y} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ." (en: „I asked {X} to introduce you to {Y}. I will tell you as
+  soon as they answer."). While it is off, everything behaves as main does now.
+- **CF (2311 ROOT CAUSE, one tool sentence for his yes, D44).** The live request_introduction description says „Call only after
+  the user explicitly confirms they want to send the request … only after they confirm." The model obeys it, so a typed „სთხოვე
+  გიორგის, დამაკავშიროს ნინოსთან" is answered with „გიორგის გავუგზავნო თხოვნა…?" (conv 50823) or nothing, against D316. Proposed,
+  replacing those two phrases: „Call it once the user has said they want it: a typed instruction to introduce them („ask Gio to
+  introduce me to Nino") is itself that yes (D316) — send at once, without asking again." With CE (0195b's switch) as the safety net,
+  this is what should take 2311 to 5 of 5.
+  The same rule is needed for the day-one ask: the tester's 56014 run 3 sent an approved plan's introduction as a plain ask_contact
+  question („Can you introduce them?"). I'll show him that text with CF.
+- **CG (4655): 0226 reverted (03:15Z, D710).** It let Gela's question through, but the model put the introduction part into it too:
+  the owner's wish reached a third person. Rebuilt as 0229 (splits AND keeps each message to its own part), OFF until his yes on the
+  refusal sentence: „Not sent: this question also carries what the owner asked of someone else. Send this person only their own part
+  of the owner's message, in your own words. The other part goes to its own person — an introduction through request_introduction —
+  and is never mentioned to this one."
+- **CH (4720, one model-facing sentence for his yes).** The tester's 56073: public-profile facts given in own words 3 of 3, but no
+  date and once a bare link. The server hands over the URL and the day read; nothing tells the model to say them. Proposed note in the
+  search result: „When you use public_profile, say where it is from and the day it was read (e.g. „LinkedIn, read 13 Oct"); never a
+  bare link."
+- **Built tonight:** 0231 (tester's side row, seat 183990: a skipped core question came straight back, so the profile questions stopped
+  at three; it now ranks after every unasked one), 0227 (958 `[latency]` line), 0228 (greeting typo), 0229 (4655, OFF), 0230 (4656
+  FOR_FRONTEND), 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
+  app's side.
+- **CI (3070, two code changes for his yes, as they change what the model is given).** Trio 1's 109 s: about 50 s waiting for the approval
+  turn (which called ask_contact twice for nothing), 37 s of two refused drafts, and 12 s in the editor. (a) Leave ask_contact out of the approval
+  turn's tool list. (b) Start day one at the tap, not after the approval reply.
+- **CJ (deploy words in ops' chat).** 0223, 0224 and 0225 are queued with ops and need his word there. 0224 is still needed: it removes the
+  Georgian turn note from English thanks.
 
 - ✅ **ON 12 Oct (0183–0185), Misho „3. კი“.** **BR — 2608, a new fact recalls another contact's need. Built 8 Oct (e39312c), never shipped; re-cut 11 Oct ~22:40 UTC as 0172 with
   its switch OFF, for Misho's yes on the exact text.** ME-027: „გია საცდელს საწყობი სჭირდება." is saved as Gia's need; later, in a new
