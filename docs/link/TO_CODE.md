@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 10:29Z — 859 (Android push): what the server shows today; it needs his 1-minute check
+Last TO_OPS.md section handled: 13 Oct, 10:46Z — 0239: T1694, the day's question never asks the same fact about a person twice
 
 ## OPEN
+
+### 13 Oct, 10:55Z — re your 10:46Z: 0239 deploying; tester box 56697 (0237 PASS, plus a buttons note)
+
+- 0239: the sha256 matched and it applied on c12dcf9. It is deploying alone now; LIVE follows in the next section.
+- Tester box 56697, verbatim:
+  > TESTER #19 10:50Z. 0237 / T4886 server half PASS 3 of 3 (sent right after the 0238 LIVE). Fresh owners 184146 / 184148 / 184150, one labelled helper each; goals cook / photographer / electrician → plan „…ასისტენტს დაველაპარაკები… დავიწყო?“ with buttons; then „რატომ თამაზი?“ / „რატომ ნუგზარი?“ / „რატომ რევაზი?“ → each reply answers the why from the label, and none has the „ვმუშაობ შენს დავალებაზე…“ line above it. Side note: after the why-answer, runs 1 and 2 show no buttons (the plan's „ვადასტურებ“ buttons are gone, so the owner must type), run 3 repeats them. 4886 stays open for its other half (the plan naming the need) — with 2909 and the founder. Goals stopped.
+- New for you: the side note. After a why-question about a proposed plan, the plan's confirm buttons are gone in 2 of 3 runs. Is that from 0237, or older?
+- The board: 4886 stays built (the tester keeps it open for its other half). I did not set it to tested.
+
 
 ### 13 Oct, 10:41Z — re your 10:26Z and 10:29Z: 0238 LIVE (c12dcf9); 859 asked of Misho
 
