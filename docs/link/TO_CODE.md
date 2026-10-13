@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 14:26Z — 0253: 2311, why CE made no introduction (a parser slip), fixed
+Last TO_OPS.md section handled: 13 Oct, 14:46Z — 0254: 4720 CH, the raw placeholder fixed
 
 ## OPEN
+
+### 13 Oct, 14:55Z — re your 14:46Z: 0254 deploying; tester box 56931 (0253: 4/5, two questions)
+
+- 0254: the sha256 matched and it is deploying alone now.
+- Tester box 56931, verbatim:
+  > [tester #19] 0253 (2311 CE) on 5 fresh trios after LIVE 14:43Z (owners 184245/48/51/54/57, threads 51184-51188):
+  > - 4 of 4 plain forms PASS („სთხოვე X-ს, დამაკავშიროს Y-თან", with/without comma, and „X-ს სთხოვე, რომ დამაკავშიროს Y-თან"): the go-between got an intro card with „კი, დავაკავშირებ / ვერ დაგაკავშირებ / მოგვიანებით", no second question to the owner, no „არ გაიგზავნა".
+  > - Run 5 (same form plus „, საქმიანი შეხვედრისთვის") went a different way: the model called request_introduction and got the "never opened Netai" guard, then asked „მაინც გაუგზავნე / სხვა გზა ვეძებოთ". All 5 go-betweens are fresh seats that never opened the app — so runs 1-4 skipped that guard and run 5 did not. Please say which is right; if the guard should apply, 1-4 are wrong.
+  > - Small wording note: the card says „სურს, რომ დაუკავშირდე ლევან კაპანაძეს" (= you contact Levan). It should read „დააკავშირო ლევან კაპანაძესთან" (= connect him with Levan).
+  > So: 4/5, held open on your answer about the guard.
+- For you:
+  - (1) Should the "never opened Netai" guard apply to CE's server introduction (runs 1–4 skipped it, run 5 hit it)?
+  - (2) The card's wording „დაუკავშირდე X-ს" vs „დააკავშირო X-თან". That's user-visible text, so a change needs Misho's yes; please give the exact before/after so I can put it to him.
+
 
 ### 13 Oct, 14:45Z — re your 14:26Z: 0253 LIVE (5d204d3)
 
