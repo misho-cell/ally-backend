@@ -1,0 +1,97 @@
+From 78fc5f4ba249cc542ed8a51f2c40a7640faad259 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 11:16:02 +0000
+Subject: [PATCH] T4890 (a): a shared pronoun no longer counts as a shared
+ field
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder's thread 51037: „GEC (his firm) has an office in Almaty" recalled
+another contact's need, „Rebut (his startup) … looking for users and
+pilots". The only word the two shared was „his". 2608's recall now rests
+only on words of four letters or more. At three letters, a word is far more
+often a pronoun or a joining word (his, and, has) than a trade. The 2608
+case (საწყობი) still matches.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/needRecall.test.ts | 20 ++++++++++++++++++++
+ src/services/needRecall.ts                | 15 ++++++++++++++-
+ 2 files changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/needRecall.test.ts b/src/services/__tests__/needRecall.test.ts
+index 5600db5..866f0ce 100644
+--- a/src/services/__tests__/needRecall.test.ts
++++ b/src/services/__tests__/needRecall.test.ts
+@@ -9,6 +9,7 @@ import {
+   NEED_RECALL_ON,
+   recallCard,
+   recallGoesApart,
++  recallTerms,
+   needThisFactMeets,
+   noteSavedFact,
+   recallChoices,
+@@ -40,6 +41,25 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
+     expect(recallChoices('ka')).toEqual(['კი, დააკავშირე', 'არა, ჯერ არა']);
+   });
+ 
++  it('a shared pronoun is not a shared field (T4890: „his firm" did not meet „his startup")', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        {
++          phone: '+995555000001',
++          value: 'Rebut (his startup) is in beta - looking for users and pilots (company-level)',
++          name: 'Axel',
++        },
++      ],
++    });
++    const recalled = await needThisFactMeets(
++      '7',
++      '+995555000002',
++      'Kazakhstan: GEC (his firm) has its own representation office in Almaty',
++    );
++    expect(recalled).toBeNull();
++    expect(recallTerms('looking for his pilots')).not.toContain('his');
++  });
++
+   it('a fact of another field recalls nothing', async () => {
+     mockQuery.mockResolvedValueOnce({
+       rows: [{ phone: '+995555000001', value: 'საწყობი სჭირდება', name: 'გია' }],
+diff --git a/src/services/needRecall.ts b/src/services/needRecall.ts
+index f599ace..e6e08d2 100644
+--- a/src/services/needRecall.ts
++++ b/src/services/needRecall.ts
+@@ -60,6 +60,19 @@ interface NeedRow {
+   readonly name: string | null;
+ }
+ 
++/**
++ * T4890 (the founder's thread 51037, 13 Oct): „GEC (his firm) has an office in
++ * Almaty" recalled „Rebut (his startup) … looking for users and pilots" — the
++ * one word the two shared was „his". A recall rests on a word of the field
++ * itself: three letters is a pronoun or a joint („his", „and", „has") far more
++ * often than a trade, so only words of four letters or more can meet a need.
++ */
++const MIN_RECALL_TERM_CHARS = 4;
++
++export function recallTerms(need: string): string[] {
++  return fieldTerms(need).filter((t) => t.length >= MIN_RECALL_TERM_CHARS);
++}
++
+ /** The owner's saved need on ANOTHER contact that this new fact speaks of; null for none. */
+ export async function needThisFactMeets(
+   userId: string,
+@@ -77,7 +90,7 @@ export async function needThisFactMeets(
+     [userId, phone, NEEDS_READ],
+     QUERY_TIMEOUT_MS,
+   );
+-  const met = needs.rows.find((n) => n.name !== null && textSpeaksOf(value, fieldTerms(n.value)));
++  const met = needs.rows.find((n) => n.name !== null && textSpeaksOf(value, recallTerms(n.value)));
+   if (met === undefined || met.name === null) return null;
+   const helper = await query<{ alias: string }>(
+     `SELECT alias FROM "UserAlias" WHERE "contactId" = $1::int AND phone = $2 LIMIT 1`,
+-- 
+2.43.0
+

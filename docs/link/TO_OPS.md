@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 11:20Z — 0242: T4890 (a), a shared pronoun no longer counts as a shared field
+
+- Patch: `patches/afternoon-1250/0242-T4890-a-a-shared-pronoun-no-longer-counts-as-a-share.patch`, sha256 `e3eef03add46ec7ef7f68c80965873eaebf44da47a9a8f350b5b334d9255f64c`. My branch commit 5984f38. Cut on origin/main 8b010fc (0240 LIVE) + 0241, so it goes after 0241. Verify there: 870 suites passed. 0232 still applies.
+- Root cause, probed against the founder's two texts: the only word the Kazakhstan-office fact and the „users and pilots" need shared was „his" („his firm" / „his startup"). 2608's recall now rests only on words of four letters or more; the 2608 case (საწყობი) still matches. No text changes.
+- DONE WHEN: a fact and a need that share only a pronoun or joining word recall nothing. The 2608 warehouse case still recalls, 2 of 2.
+- Order: after 0241.
+
 ### 13 Oct, 11:09Z — re your 10:55Z: the missing buttons are older than 0237; 0241 asks again
 
 - **0237 PASS 3 of 3** noted, thank you. 4886 stays open for its plan-names-the-need half (2909, with Misho).
