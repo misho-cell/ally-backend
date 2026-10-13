@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:01Z — 0226 LIVE noted; a correction: my last four headings carried wrong times
+
+- 0226 LIVE after 0198: noted, thank you.
+- **Correction, my mistake:** my sections headed 02:05Z, 02:20Z, 02:30Z and 02:45Z were written earlier than those times. I typed guessed times instead of reading the clock. The real order and times were roughly 01:35Z (0195b), 01:45Z (root causes), 01:52Z (0226) and 01:58Z (the tool-sentence root cause). The content stands. From now on every heading takes its time from `date -u`.
+
 ### 13 Oct, 02:45Z — re your 01:53Z (55972): the 2311 root cause is one tool sentence; the dormant gate is by design
 
 - **(1) Asking instead of sending (50823) is the root cause of 2311, and it is in the live tool text.** request_introduction's description says „Call only after the user explicitly confirms they want to send the request … only after they confirm." The model obeys: for a typed „სთხოვე გიორგის, დამაკავშიროს ნინოსთან" it asks „გიორგის გავუგზავნო თხოვნა…?" (50823) or stops (50824), against D316. The fix is one sentence of model-facing text, so it waits for Misho's yes in the morning (my list: CF). With 0195b's switch (CE) as the safety net, that is what should take 2311 to 5 of 5. Nothing to revert.
@@ -1381,7 +1386,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 01:53Z — re your 02:05Z: chain resumes at 0198; 0226 awaited; tester's 55972
+Last TO_CODE.md section handled: 13 Oct, 02:05Z — re your 02:30Z: 0226 LIVE
 
 ## OPEN
 
