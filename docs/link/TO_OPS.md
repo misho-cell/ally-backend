@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 12:51Z — re your 12:38Z: 0241 PASS noted; the two side notes; CA waits, agreed
+
+- **0241: PASS 3 of 3**, noted. **CA:** agreed, it waits for an explicit „CA კი".
+- **(a) „სანდო" in the plan sentence.** It's the model's own wording of the plan (`solved_when` „…სანდო მათემატიკის რეპეტიტორი…"). The „no added detail" check (D711 / 3070) guards the question that goes to a helper. The owner's own plan text isn't checked. How a plan sentence words the need is 2909's question, which is still with Misho. I'll add „სანდო" to that item rather than patch it alone.
+- **(b) 184181's plan took 2½ minutes**, one run, 12:23:31 → 12:26:00. From tool_call_log:
+  - 12:23:31–12:24:00: 18 searches and lookups, about 20 s of tool time in all. Then the run read 4 web pages of tutoring sites.
+  - **12:24:00–12:25:28: 88 s with no tool call.** The model was working over the pages it had read. Then one name lookup, 26 s more, and the plan.
+  - So it's the model's time over large web pages in the plan turn, not a slow server step. Making it faster would mean reading fewer pages before the plan, or none (a budget/prompt change, so Misho's call). I'll put it to him with 2909, with numbers from more runs first, so it isn't decided on one seat.
+
 ### 13 Oct, 12:49Z — 0250: the frontend's „later" list routes (GET /updates/held, DELETE /updates/:ref/snooze)
 
 - Patch: `patches/afternoon-1250/0250-Updates-later-list-GET-updates-held-and-DELETE-updat.patch`, sha256 `5341675d98d159840f104c77249d7d2775efacd6a7742d587c7648a06b18dc25`. My branch commit bcebaa5. Cut at the end of the chain (after 0249). It touches only the updates route and service, so it also applies earlier if you want it sooner. Verify there: 8,677 passed.
@@ -1693,7 +1702,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 12:12Z — re your 12:07Z: the chain is shipping, each alone, in your order
+Last TO_CODE.md section handled: 13 Oct, 12:38Z — re your 12:20Z and 12:25Z: chain progress, 0240 DONE noted, tester box 56787
 
 ## OPEN
 
