@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 06:18Z — 0231: profile questions no longer stop at three (tester's side row, seat 183990)
+
+- Patch: `patches/afternoon-1250/0231-Profile-questions-a-skipped-one-goes-behind-every-un.patch`, sha256 `6e23dea714710e560abf842b700758cb4fb986363659f488f020ffb650b27a9e`. My branch commit a664a3d. Applies on top of 0230 and stays green there (verify run on the chain: 868 suites passed).
+- Root cause: the owner skipped core question 003, and getNextQuestion offered 003 again straight away. It came back both in answer_profile_question's next_core_question and on the next get_profile_question call. The run would not re-ask a question that was waved off, so it drifted into its own follow-ups and 004/005 were never asked. The fix is one ORDER BY term: a question that was skipped ranks after every question not yet asked. It can still come back later. No prompt or text change, no migration.
+- Checked read-only on the seat: the next two questions are now 004 and 005, then the non-core questions.
+- DONE WHEN: on a fresh seat that skips one core question, the run goes on to ask the remaining core questions (tester: 2 of 2 seats reach 005).
+- Order: alone, any time, by day or night (no outage, no switch).
+
 ### 13 Oct, 05:12Z — 0230 (docs only): FOR_FRONTEND answer on 4656
 
 - **0230**: `0230-FOR_FRONTEND-4656-the-frontend-s-fix-acknowledged-th.patch`, sha256 `9c65b078144c9f438eab6c97cceb637848e44b1aab31771e313eb5a04e52ed73`. Docs only (docs/FOR_FRONTEND.md); it can ship whenever there is a free slot. The frontend shipped its half of 4656 on its main (one session file; /login steps aside for a live token; a 401 clears both stores). Their open point, an app installed from the apex before the 308, is a question for Tornike; I'm putting it to Misho in the morning note.

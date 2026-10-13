@@ -1,0 +1,94 @@
+From f656b885abf1f137ad30fd20f914fa11387562df Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 06:13:55 +0000
+Subject: [PATCH] Profile questions: a skipped one goes behind every unasked
+ one
+
+Seat 183990 (tester's side row, 13 Oct): the owner skipped core question 003,
+and getNextQuestion handed 003 straight back, both as answer_profile_question's
+next_core_question and on the next get_profile_question. The run would not ask
+a waved-off question again, drifted into its own follow-ups, and the core
+questions stopped at three. A skipped question now ranks after every question
+not yet asked; it can still come back once those are done. Checked read-only
+on the seat: the next two are now 004 and 005.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/partH.service.test.ts      | 15 +++++++++++++++
+ .../__tests__/theQuestionsThatHelp.test.ts        |  3 ++-
+ src/services/partH.service.ts                     | 11 ++++++++++-
+ 3 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/partH.service.test.ts b/src/services/__tests__/partH.service.test.ts
+index 689555d..12a3555 100644
+--- a/src/services/__tests__/partH.service.test.ts
++++ b/src/services/__tests__/partH.service.test.ts
+@@ -287,6 +287,21 @@ describe('getNextQuestion (C9.1, C9.3)', () => {
+     await getNextQuestion('7', 'weekly_review', 'ka');
+   });
+ 
++  it('a skipped question goes behind every unasked one, core included — seat 183990 stopped at three', async () => {
++    let orderBy = '';
++    mockQuery.mockImplementation((sql: string) => {
++      if (sql.includes('FROM question_bank qb')) orderBy = sql.slice(sql.indexOf('ORDER BY'));
++      return Promise.resolve(rows([]) as never);
++    });
++
++    await getNextQuestion('7', 'any', 'ka');
++
++    const skippedRank = orderBy.indexOf('AND sk.skipped');
++    expect(skippedRank).toBeGreaterThan(-1);
++    expect(skippedRank).toBeLessThan(orderBy.indexOf("(qb.category = 'core') DESC"));
++    expect(orderBy).toMatch(/AND sk\.skipped\s*\)\s*ASC/u);
++  });
++
+   it('a language with no prompt text is excluded in SQL, not silently rendered in Georgian', async () => {
+     // FLAT_SINGLE_ROW has prompt_es: null. Asking in Spanish must filter it
+     // out at the query level — the founder's ruling: skip, never substitute.
+diff --git a/src/services/__tests__/theQuestionsThatHelp.test.ts b/src/services/__tests__/theQuestionsThatHelp.test.ts
+index 0f89065..513f235 100644
+--- a/src/services/__tests__/theQuestionsThatHelp.test.ts
++++ b/src/services/__tests__/theQuestionsThatHelp.test.ts
+@@ -42,7 +42,8 @@ describe('the five questions that help', () => {
+     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+     await getNextQuestion('180300', 'any', 'ka');
+     const [sql] = mockQuery.mock.calls[1] as [string];
+-    expect(sql).toContain("ORDER BY (qb.category = 'core') DESC,");
++    // Seat 183990: only a question she skipped ranks behind, core or not.
++    expect(sql).toMatch(/AND sk\.skipped\s*\)\s*ASC,\s*\(qb\.category = 'core'\) DESC,/u);
+     // 48414: by number, so „what you do and where" (001) is asked first, not „can help" (002).
+     expect(sql).toContain("THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,");
+   });
+diff --git a/src/services/partH.service.ts b/src/services/partH.service.ts
+index f835545..5d0338c 100644
+--- a/src/services/partH.service.ts
++++ b/src/services/partH.service.ts
+@@ -98,6 +98,7 @@ function immediateUseFor(row: BankRow, lang: string): string | null {
+ /**
+  * The next question for this user (C9.3, C9.5, C9.8 together):
+  *  - never one they already hold a current answer to;
++ *  - one they skipped only after every question not yet asked;
+  *  - rotation DERIVED from the last non-skipped answer: its category goes to
+  *    the back of the queue, so ten questions cover many categories;
+  *  - a goal_bound question is asked only with an open goal, its title
+@@ -144,7 +145,15 @@ export async function getNextQuestion(
+      -- what she looks for, what not to ask, how to reach her) come first.
+      -- 48414: by their own number, not as text — „core_can_help_002" sorts before
+      -- „core_what_where_001" alphabetically, and „what you do and where" came last.
+-     ORDER BY (qb.category = 'core') DESC,
++     -- Seat 183990: a question the owner waved off goes behind every one not yet
++     -- asked — first, the skipped core question came straight back as the next one,
++     -- the run would not ask it again, and the core questions stopped at three.
++     ORDER BY EXISTS (
++                SELECT 1 FROM answer_events sk
++                WHERE sk.user_id = $1 AND sk.question_id = qb.question_id AND sk.is_current
++                  AND sk.skipped
++              ) ASC,
++              (qb.category = 'core') DESC,
+               CASE WHEN qb.category = 'core'
+                    THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,
+               (qb.surface = $2) DESC, (qb.category = $3) ASC, qb.question_id
+-- 
+2.43.0
+
