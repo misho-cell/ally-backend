@@ -7017,12 +7017,13 @@ const APPROVED_BY_TAP_NOTE =
   'or will come back when someone answers — the line after the questions go out says who they ' +
   'went to and that, once.';
 
-export async function approvePlanOnTap(
+/** The plan approved by the owner's tap: whether day one is still on its way; null when nothing was approved. */
+async function approvedOnTap(
   userId: string,
   threadId: number,
   userMessage: string,
   runId: string,
-): Promise<string | null> {
+): Promise<{ readonly dayOneStillComing: boolean } | null> {
   if (!isApproveTap(userMessage)) return null;
   const goal = await getOpenTaskByThread(threadId);
   if (goal === null) return null;
@@ -7043,7 +7044,55 @@ export async function approvePlanOnTap(
   console.log(
     `[plan-consent] run ${runId} thread ${threadId}: plan v${outcome.value.version} of goal ${goal.id} approved by the owner's tap`,
   );
-  return APPROVED_BY_TAP_NOTE;
+  return { dayOneStillComing: said.dayOneStillComing };
+}
+
+export async function approvePlanOnTap(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+): Promise<string | null> {
+  return (await approvedOnTap(userId, threadId, userMessage, runId)) === null
+    ? null
+    : APPROVED_BY_TAP_NOTE;
+}
+
+/**
+ * 3070 (b), Misho's yes word for word (§140): the approve tap needs no model.
+ * Measured on 3070, the run after the tap only said „approved, starting" and
+ * held day one behind it; the server says that line itself and day one
+ * starts at once. Only while day one is still coming; otherwise the run reads
+ * where the goal stands, as before.
+ */
+export const APPROVE_LINE_ON = true;
+
+export const APPROVED_STARTING_LINE: Readonly<Record<RunLanguage, string>> = {
+  ka: 'დამტკიცდა. ვიწყებ ახლავე.',
+  en: "Approved. I'm starting now.",
+  ru: 'Принято. Начинаю.',
+  es: 'Aprobado. Empiezo ahora.',
+};
+
+export async function answerApproveTap(
+  userId: string,
+  threadId: number,
+  userMessage: string,
+  runId: string,
+  intent: RunIntent | undefined,
+): Promise<ChatResult | null> {
+  if (!APPROVE_LINE_ON || !isApproveTap(userMessage)) return null;
+  const approved = await approvedOnTap(userId, threadId, userMessage, runId);
+  if (approved === null || !approved.dayOneStillComing) return null;
+  if (intent?.alreadyStored !== true) {
+    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
+  }
+  const language = await threadLanguage(threadId).catch(() => 'ka' as RunLanguage);
+  const line = APPROVED_STARTING_LINE[language] ?? APPROVED_STARTING_LINE.ka;
+  await saveMessage(userId, threadId, 'assistant', line, 'message', runId);
+  // eslint-disable-next-line no-console
+  console.log(`[plan-consent] run ${runId}: the approve tap answered by the server`);
+  return { reply: line, language, requestCreated: false };
 }
 
 // Ticket 16 Task 98: what a run pulled out of the pending list. The items are
@@ -15747,6 +15796,15 @@ export async function processChat(
   if (!ownerAbsent && isBareGreeting(userMessage)) {
     return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
   }
+  // 3070 (b): the approve tap is answered by the server and day one starts at once.
+  const approvedLine = ownerAbsent
+    ? null
+    : await answerApproveTap(userId, threadId, userMessage, runId, intent).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[plan-consent] server approve line failed:', (err as Error).message);
+        return null;
+      });
+  if (approvedLine !== null) return approvedLine;
   // 2810: „that is what I needed" right after a search is that search's outcome.
   if (!ownerAbsent) void noteSearchVerdict(userId, userMessage);
   // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.

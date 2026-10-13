@@ -22,7 +22,13 @@ import { query } from '../../db/postgres/client';
 import { getOpenTaskByThread } from '../taskStore.service';
 import { approveTaskPlan } from '../taskPlans.service';
 import { startDayOne } from '../taskEngine.service';
-import { approvePlanOnTap, isApproveTap } from '../chat.service';
+import {
+  answerApproveTap,
+  APPROVE_LINE_ON,
+  APPROVED_STARTING_LINE,
+  approvePlanOnTap,
+  isApproveTap,
+} from '../chat.service';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockGoal = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
@@ -120,5 +126,61 @@ describe('the tap’s own line does not repeat day one’s', () => {
     expect(note.slice(0, 900)).toContain('you are starting now');
     expect(note.slice(0, 900)).toContain('Do NOT say you are waiting');
     expect(note.slice(0, 900)).not.toContain('will come back as soon as someone answers');
+  });
+});
+
+/** 3070 (b), Misho's yes word for word (§140): the tap is answered without a model run. */
+describe('the approve tap answers itself', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGoal.mockResolvedValue({ id: 11155 } as never);
+    mockApprove.mockResolvedValue({
+      ok: true,
+      value: { version: 2, summary: 'Plan v2', alreadyInForce: false },
+    } as never);
+  });
+
+  it('is on, with the four approved lines', () => {
+    expect(APPROVE_LINE_ON).toBe(true);
+    expect(APPROVED_STARTING_LINE).toEqual({
+      ka: 'დამტკიცდა. ვიწყებ ახლავე.',
+      en: "Approved. I'm starting now.",
+      ru: 'Принято. Начинаю.',
+      es: 'Aprobado. Empiezo ahora.',
+    });
+  });
+
+  it('approves, starts day one and replies with the line in the conversation’s language', async () => {
+    screen(['I approve', 'Change it'], 'I approve');
+    const out = await answerApproveTap('172732', 26700, 'I approve', 'run-2', undefined);
+    expect(mockDayOne).toHaveBeenCalledWith(11155);
+    expect(out).not.toBeNull();
+    expect(out?.reply).toBe(APPROVED_STARTING_LINE[out?.language ?? 'ka']);
+    expect(out?.requestCreated).toBe(false);
+  });
+
+  it('leaves everything to the run for a typed yes, or when nothing was approved', async () => {
+    screen(['I approve', 'Change it'], 'yes');
+    expect(await answerApproveTap('172732', 26700, 'yes', 'run-3', undefined)).toBeNull();
+    mockApprove.mockResolvedValue({
+      ok: true,
+      value: {
+        version: 2,
+        summary: 'Plan v2',
+        alreadyInForce: true,
+        approvedAt: '2026-01-01T00:00:00Z',
+      },
+    } as never);
+    screen(['I approve', 'Change it'], 'I approve');
+    expect(await answerApproveTap('172732', 26700, 'I approve', 'run-4', undefined)).toBeNull();
+  });
+
+  it('is tried before the prompt is built, so no model runs for the tap', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    const early = chat.indexOf(
+      'await answerApproveTap(userId, threadId, userMessage, runId, intent)',
+    );
+    expect(early).toBeGreaterThan(0);
+    expect(early).toBeLessThan(chat.indexOf('const systemPrompt = joinSystemPrompt('));
   });
 });
