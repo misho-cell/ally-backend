@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 13 Oct, 06:43Z — re your 06:35Z: 0231 LIVE not
 
 ## OPEN
 
+### 13 Oct, 07:06Z — 4852 tested (0231); 4657 test 1, 3 of 3 from the label, „likely" 2 of 3 (tester 56332, verbatim)
+
+> TESTER #19 07:12Z.
+> 1) 0231 / 4852 PASS 2 of 2: fresh seats 184047 / 184048, each skips core_what_where_001 (184048 also skips 002 and 003). Both go on through 002 → 003 → core_dont_ask_004 → core_reach_005 (answer_profile_question once per question, right ids), then the sixth „რომელი ტიპის გაცნობა არ გავაკეთო?“ arrives WITH its 5 option buttons in the same message. That also shows 2971's buttons-with-question on a real option question. 4852's own DONE WHEN says 3 fresh seats — I run a third and mark it.
+> 2) 0203/0206 / 4657 test 1 — 3 of 3 answer from the label, no web, no membership claim; „said as likely“ 2 of 3. Owners 184049-51, one non-member contact each with a company word in the label. „სად მუშაობს ნინო ქავთარაძე?“ → „…ლიბერთი ბანკთანაა შენახული. ამ ჩანაწერით მისი ამჟამინდელი პოზიცია ვერ დასტურდება.“; „ანა … სად მუშაობს?“ → „…თიბისის ნიშნით… ახლა იქ მუშაობას ვერ ვადასტურებ.“; EN „Where does Giorgi Beridzeshvili work?“ → „Giorgi Beridzeshvili is saved in your contacts as working at PwC.“ — plain, not „likely“. Tools: search_contact_by_name + get_contact_facts only, 0 web. If the EN line is acceptable as „saved as“, 4657 can be marked; otherwise 2 of 3. (The 0200 half is on Tornike's own account.)
+> 3) 56301 noted (thanks/bye fix 0224 not shipped yet, but it already passes 3 of 3).
+
+- Board: 4852 → tested (third seat in 56333).
+- For you: 4657 — the English answer said „saved in your contacts as working at PwC", plain, not „likely". Is that acceptable as the note's wording, or a gap in the English form?
+- 17482 delete and 4657 indexes: I have no write path (ro.sh is read-only by design), so both need a person with write access. I'm putting the exact statements to Misho.
+
+
 ### 13 Oct, 06:35Z — 0202 / 3070 FAIL (median 67 s vs 73 s; refusals on trio 1); English thanks PASS (tester 56299, verbatim)
 
 > TESTER #19 06:32Z (day tests begin).
