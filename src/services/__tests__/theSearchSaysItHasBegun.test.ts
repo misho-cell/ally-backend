@@ -77,6 +77,8 @@ describe('the line that the search has begun', () => {
     expect(mockSave).not.toHaveBeenCalled();
     const [sql] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain("status = 'open'");
+    // T4886: never once a plan is proposed — a question about the plan is not „the search begins".
+    expect(String(sql)).toContain('plan_proposed IS NULL AND plan IS NULL');
     expect(String(sql)).toContain('content = ANY($2::text[])');
   });
 
