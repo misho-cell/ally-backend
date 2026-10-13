@@ -1,0 +1,136 @@
+From 3d7edf87b1ec3c2706647e1b92cbeb142481196e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 21:19:23 +0000
+Subject: [PATCH] 4927: the owner's path shows introductions asked in a chat
+ with no goal
+
+Tester box 57263: on the two threads where CE made the introduction, the
+owner's path was empty. Those introductions carry only origin_thread_id
+(no goal), and the board read introductions by goal alone. It now also
+reads the requester's goal-less introductions from this conversation
+(live read-only check: 1 found on the tester's thread).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aGoalShowsItsRoutes.test.ts     |  8 +++--
+ .../theMiddleOfAChainSeesBothSides.test.ts    | 32 +++++++++++++++++++
+ src/services/routesBoard.service.ts           | 26 +++++++++++----
+ 3 files changed, 58 insertions(+), 8 deletions(-)
+
+diff --git a/src/services/__tests__/aGoalShowsItsRoutes.test.ts b/src/services/__tests__/aGoalShowsItsRoutes.test.ts
+index cf58e9a..30a6ffc 100644
+--- a/src/services/__tests__/aGoalShowsItsRoutes.test.ts
++++ b/src/services/__tests__/aGoalShowsItsRoutes.test.ts
+@@ -71,9 +71,13 @@ describe('the routes board', () => {
+       .mockResolvedValueOnce({ rows: [ask(1, {})] } as never)
+       .mockResolvedValueOnce({ rows: [] } as never);
+     await expect(routesForThread(OWNER, THREAD)).resolves.toEqual([]);
+-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    // 4927 (box 57263): with no goal of theirs, only their own goal-less introductions are read.
++    mockQuery
++      .mockResolvedValueOnce({ rows: [] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
+     await expect(routesForThread(OWNER, 1)).resolves.toEqual([]);
+-    expect(mockQuery).toHaveBeenCalledTimes(4);
++    expect(mockQuery).toHaveBeenCalledTimes(5);
++    expect(String(mockQuery.mock.calls[4][0])).toContain('ir.requester_user_id = $2');
+   });
+ 
+   it('shows an answer the way the owner reads it, cut short', () => {
+diff --git a/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts b/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts
+index 37a095a..3048ad8 100644
+--- a/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts
++++ b/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts
+@@ -106,3 +106,35 @@ it('GET /threads/:id/chain-position answers 200 with the position, and no databa
+   expect(route).toContain('chainPositionOf(userId, Number(req.params.id))');
+   expect(route).toContain("error: 'Could not read the chain'");
+ });
++
++/** 4927, tester box 57263: an introduction the server made from a chat with no goal. */
++it('is you → the go-between for an introduction asked in a conversation with no goal', async () => {
++  mockQuery
++    .mockResolvedValueOnce(rows([]))
++    .mockResolvedValueOnce(rows([]))
++    .mockResolvedValueOnce(rows([]))
++    .mockResolvedValueOnce(
++      rows([
++        {
++          id: 6075,
++          person_id: 184279,
++          name: 'ეკა ხუციშვილი',
++          status: 'pending',
++          target_name: 'ნიკა გელაშვილი',
++          updated_at: '2026-10-13T16:56:00.000Z',
++        },
++      ]),
++    );
++  const out = await chainPositionOf(184278, 51220);
++  expect(out.previous).toBeNull();
++  expect(out.next).toEqual([
++    expect.objectContaining({
++      kind: 'introduction',
++      person_name: 'ეკა ხუციშვილი',
++      state: RouteState.Waiting,
++    }),
++  ]);
++  const introSql = String(mockQuery.mock.calls[3][0]);
++  expect(introSql).toContain('ir.requester_task_id IS NULL AND ir.origin_thread_id = $4');
++  expect(mockQuery.mock.calls[3][1]).toEqual([null, 184278, 50, 51220]);
++});
+diff --git a/src/services/routesBoard.service.ts b/src/services/routesBoard.service.ts
+index 1c2b05e..5dfac16 100644
+--- a/src/services/routesBoard.service.ts
++++ b/src/services/routesBoard.service.ts
+@@ -145,16 +145,28 @@ async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
+   return result.rows;
+ }
+ 
+-async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
++/**
++ * The goal's introductions, and the goal-less ones asked for in this same
++ * conversation. 4927 (tester box 57263): the server's own introduction (CE)
++ * from a chat with no goal carries only origin_thread_id, so the owner's path
++ * stayed empty on every introduction made that way.
++ */
++async function introsOf(
++  userId: number,
++  taskId: number | null,
++  threadId: number,
++): Promise<IntroRow[]> {
+   const result = await query<IntroRow>(
+     `SELECT ir.id, ir.mediator_user_id AS person_id,
+             ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
+             ir.status, ir.target_name, COALESCE(ir.responded_at, ir.created_at) AS updated_at
+        FROM introduction_requests ir
+-      WHERE ir.requester_task_id = $1 AND ir.requester_user_id = $2
++      WHERE ir.requester_user_id = $2
++        AND (ir.requester_task_id = $1
++             OR (ir.requester_task_id IS NULL AND ir.origin_thread_id = $4))
+       ORDER BY ir.created_at ASC
+       LIMIT $3`,
+-    [taskId, userId, MAX_ROUTES],
++    [taskId, userId, MAX_ROUTES, threadId],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows;
+@@ -196,11 +208,13 @@ export async function routesForThread(userId: number, threadId: number): Promise
+   return people.length >= MIN_ROUTES_FOR_A_BOARD ? people : [];
+ }
+ 
+-/** Every person the goal on this thread is talking to, once each; empty when no goal is the owner's. */
++/** Every person this conversation's goal (or its goal-less introductions) is talking to, once each. */
+ export async function routesOfOwnGoal(userId: number, threadId: number): Promise<RouteRow[]> {
+   const taskId = await goalOfOwnThread(userId, threadId);
+-  if (taskId === null) return [];
+-  const [asks, intros] = await Promise.all([asksOf(userId, taskId), introsOf(userId, taskId)]);
++  const [asks, intros] = await Promise.all([
++    taskId === null ? Promise.resolve([]) : asksOf(userId, taskId),
++    introsOf(userId, taskId, threadId),
++  ]);
+   const now = new Date();
+   return oncePerPerson([
+     ...asks.map((a) => ({ personId: a.person_id, route: askRoute(a, now) })),
+-- 
+2.43.0
+

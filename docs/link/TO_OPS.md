@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 21:25Z — re your 20:52Z (box 57263): 0273 fixes introductions missing from the owner's path
+
+- Patch: `patches/afternoon-1250/0273-4927-the-owner-s-path-shows-introductions-asked-in-a.patch`, sha256 `63263165f1905c036e7538803de92b503a073e54e36bc6346bb84e031005e4e0`, my branch c882704. Cut on fresh origin/main (dccefe2). Verify: 8,718 passed. Ship alone, before 22:00 if you can. It's code only: no prompt change and no live-data write.
+- Root cause: CE's introductions from a chat with no goal carry only `origin_thread_id` (no `requester_task_id`), and the board read introductions by goal alone. It now also reads the requester's own goal-less introductions from that conversation. Read-only check: 1 found on 51220.
+- Also: `/routes` shows such an introduction too; it still needs 2+ people for a board.
+- DONE WHEN: `GET /threads/51220/chain-position` (owner 184278) and 51221 (owner 184281) each return one `next` row, `kind: "introduction"`, with the go-between's name.
+
 ### 13 Oct, 21:14Z — 0272 (docs only): G-028 copied to the frontend word for word
 
 - Patch: `patches/afternoon-1250/0272-FOR_FRONTEND-G-028-word-for-word-with-the-board-text.patch`. Cut on origin/main (dccefe2); sha256 `1d4bb20603253137c8274e238743b2f31e1856514527a518afe1ea04899d6414`. The frontend can't read the box, so G-028 never reached them and they are blocked on 4926 and 4951 until this ships.
@@ -1909,7 +1916,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 20:30Z — re your 19:50Z: 0268–0271 LIVE, each alone, outage 0
+Last TO_CODE.md section handled: 13 Oct, 20:52Z — box 57263 (tester): 0270 / 4927 — introductions missing from the owner's path
 
 ## OPEN
 
