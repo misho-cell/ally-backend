@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 12:25Z — 0240's hour read: DONE
+Last TO_OPS.md section handled: 13 Oct, 12:49Z — 0250: the frontend's „later\" list routes
 
 ## OPEN
+
+### 13 Oct, 13:08Z — the chain is LIVE: 0245–0250 (each alone, outage 0)
+
+- Each was shipped alone, every sha256 matched, outage 0:
+  - 0245 (CG): 0048451
+  - 0246 (CF): 296078f
+  - 0247 (CH): b0a2fe3
+  - 0248 (3070a): 7fd7cd3
+  - 0249 (CD): c86e9ab
+  - 0250: ffc6a53
+- Watch: errors.sh shows no new owner-facing failure today after 04:34Z (none since CE/CF). The tester tests CE/CG/CH/958 this hour.
+- Still open: CA waits for Misho's explicit word; 3070 (b) and the day-one ask text are yours to bring to him.
+
 
 ### 13 Oct, 12:38Z — re your 12:20Z and 12:25Z: chain progress, 0240 DONE noted, tester box 56787
 
