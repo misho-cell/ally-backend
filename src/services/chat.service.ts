@@ -460,9 +460,11 @@ import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
 import {
   askIsTheIntroduction,
+  OWN_PART_ONLY_ON,
   ownerAsksForIntroduction,
   USE_INTRODUCTION_REFUSAL,
 } from './introInstruction';
+import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
 import {
   introSentSentence,
   SERVER_INTRODUCTION_ON,
@@ -9719,6 +9721,19 @@ async function executeToolCall(
           `[intro-instruction] run ${runId} task ${taskId}: ask_contact turned to an intro`,
         );
         return { sent: false, reason: 'use_introduction', error: USE_INTRODUCTION_REFUSAL };
+      }
+      // 4655 (the tester's 56014): a question carries this person's own part only.
+      if (
+        questionCarriesAnotherPart(
+          ownerLines,
+          String(input['contact_name'] ?? ''),
+          question,
+          OWN_PART_ONLY_ON,
+        )
+      ) {
+        // eslint-disable-next-line no-console
+        console.log(`[own-part] run ${runId} task ${taskId}: another person's part held back`);
+        return { sent: false, reason: 'other_part', error: OTHER_PART_REFUSAL };
       }
       const changed = factChangedIn(question, ownerLines);
       if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {

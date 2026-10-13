@@ -42,11 +42,33 @@ function nameStem(name: string): string | null {
   return stem.length >= MIN_STEM_CHARS ? stem : null;
 }
 
-function sentencesOf(lines: readonly string[]): string[] {
+/**
+ * 4655 rebuilt (the tester's 55954 and 56014): „გელას ჰკითხე, ხომ არ იცის კარგი
+ * სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო." is one sentence holding two
+ * requests. Split on a comma with „და"/„ასევე"/„and"/„also", or a semicolon,
+ * Gela's part is a question — but 0226 split it alone and Gela's one message
+ * then carried Levan's introduction too, so it was reverted. The split now
+ * comes only together with the own-part check (ownPart.ts), behind one switch:
+ * OFF until Misho's yes on that check's refusal sentence.
+ */
+export const OWN_PART_ONLY_ON = false;
+const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
+
+/** The owner's words cut into each person's part (sentences, and parts when split). */
+export function partsOf(
+  lines: readonly string[],
+  splitParts: boolean = OWN_PART_ONLY_ON,
+): string[] {
   return lines
     .flatMap((line) => line.match(SENTENCE_RE) ?? [])
+    .flatMap((sentence) => (splitParts ? sentence.split(PART_BREAK_RE) : [sentence]))
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+/** The first name's stem, as askIsTheIntroduction reads it; null for a short or empty name. */
+export function nameStemOf(name: string): string | null {
+  return nameStem(name);
 }
 
 /**
@@ -57,11 +79,12 @@ function sentencesOf(lines: readonly string[]): string[] {
 export function askIsTheIntroduction(
   ownerLines: readonly string[],
   recipientName: string,
+  splitParts: boolean = OWN_PART_ONLY_ON,
 ): boolean {
   if (!ownerAsksForIntroduction(ownerLines)) return false;
   const stem = nameStem(recipientName);
   if (stem === null) return true;
-  const sentences = sentencesOf(ownerLines);
+  const sentences = partsOf(ownerLines, splitParts);
   const named = sentences.filter((s) => s.toLowerCase().includes(stem));
   if (named.length === 0) return true;
   return named.some((s) => OWNER_INTRO_RE.test(s));
