@@ -42,7 +42,8 @@ describe('the five questions that help', () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
     await getNextQuestion('180300', 'any', 'ka');
     const [sql] = mockQuery.mock.calls[1] as [string];
-    expect(sql).toContain("ORDER BY (qb.category = 'core') DESC,");
+    // Seat 183990: only a question she skipped ranks behind, core or not.
+    expect(sql).toMatch(/AND sk\.skipped\s*\)\s*ASC,\s*\(qb\.category = 'core'\) DESC,/u);
     // 48414: by number, so „what you do and where" (001) is asked first, not „can help" (002).
     expect(sql).toContain("THEN substring(qb.question_id from '([0-9]+)$')::int END NULLS LAST,");
   });
