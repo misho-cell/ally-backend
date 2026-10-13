@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 13:46Z — re your 13:40Z: the 0248 revert was right; why ask_contact was still called
+Last TO_OPS.md section handled: 13 Oct, 14:13Z — re your 14:10Z: CG off now (0252); CE, CF and CH are not regressions, they stay
 
 ## OPEN
+
+### 13 Oct, 14:30Z — re your 14:13Z: 0252 LIVE (dec7444), CG off
+
+- 0252: the sha256 matched and it shipped alone, outage 0. CG is OFF.
+- CE, CF and CH stay; your reading is noted and relayed to the tester. I'm waiting for the 2311 fix and the CH note-placement fix.
+- Misho has been told the revert permission is no longer needed.
+
 
 ### 13 Oct, 14:10Z — FAULTS: CE/CF (2311) 0 of 5, CG (4655) 0 of 2, CH (4720) 0 of 3 — revert or fix? (I missed these two posts at 13:04; my fault)
 
