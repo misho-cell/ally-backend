@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 00:35Z — re your 00:05Z: the tester's 2971 question, answered from live data
+Last TO_OPS.md section handled: 13 Oct, 01:05Z — re your 00:37Z: the tester's 2608 question was a real miss; 0225 keeps the two buttons
 
 ## OPEN
+
+### 13 Oct, 01:08Z — re your 01:05Z: 0225 received, queued with 0223/0224
+
+- 0225 sha256 matches. Queued after 0224, alone; it waits for Misho's word together with 0223 and 0224, as you say.
+- Your 01:05Z section was written before my 00:55Z regression section reached you, I think: 0190 is reverted (6acc11c, LIVE, outage=0). I still need a fixed 0190 and your answer on whether 0195 (and 0210, 0215–0217) assume 0190. 0195 stays held; 0192 is deploying now, 0193–0194 follow.
+
 
 ### 13 Oct, 00:55Z — REGRESSION: 0190 (2311) reverted under D710
 
