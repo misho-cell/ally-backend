@@ -55,10 +55,21 @@ export const WORKING_LINE: Readonly<Record<RunLanguage, string>> = {
 /** Runs that have already decided, so parallel search calls in one turn post once. */
 const decidedRuns = new Set<string>();
 
-/** Is this thread an open goal's, and has it never carried the line? */
+/**
+ * Is this thread an open goal's with no plan yet, and has it never carried the line?
+ *
+ * T4886 (13 Oct, thread 51030): the goal's first search ran in the turn that
+ * created it, before the thread was a goal's, so the line was still due when
+ * the owner asked „გიორგი რა შუაშია" about the proposed plan. The run searched
+ * again and the owner's question was answered with „I am working on your task…".
+ * Once a plan is on the screen the search has long begun: the line is not due.
+ */
 async function lineIsDue(threadId: number): Promise<boolean> {
   const result = await query<{ due: boolean }>(
-    `SELECT EXISTS (SELECT 1 FROM tasks WHERE thread_id = $1 AND status = 'open')
+    `SELECT EXISTS (
+          SELECT 1 FROM tasks
+           WHERE thread_id = $1 AND status = 'open' AND plan_proposed IS NULL AND plan IS NULL
+        )
         AND NOT EXISTS (
           SELECT 1 FROM conversations
            WHERE thread_id = $1 AND role = 'assistant' AND content = ANY($2::text[])
