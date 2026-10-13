@@ -12,6 +12,7 @@ import {
   isInstructionSentence,
 } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
+import { ownerAsksForIntroduction } from './introInstruction';
 import { createAsk } from './taskAsks.service';
 import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
 import { findContactPhonesByName } from './tools/nameMatch';
@@ -208,6 +209,14 @@ export async function sendInstructedAsk(
 ): Promise<InstructedAskOutcome> {
   const sentence = contactInstructionIn(ownerLine);
   if (sentence === null) return NOT_SENT;
+  /**
+   * 2311 (tester box 56931, after 0253): „სთხოვე X-ს, დამაკავშიროს Y-თან" to an
+   * X who never opened the app. The introduction was refused by the dormant
+   * guard (task 54), and this send then went out as the bare fragment
+   * „დამაკავშიროს Y-თან." to X, around that guard. An introduction is made as
+   * an introduction or not at all: never as the owner's plain question.
+   */
+  if (ownerAsksForIntroduction([sentence])) return NOT_SENT;
   const contacts = await contactsNamed(userId, sentence);
   if (contacts === null) return NOT_SENT;
   const excluded = await excludedAmong(userId, contacts);
