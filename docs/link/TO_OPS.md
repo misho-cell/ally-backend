@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:20Z — 0195b: the fixed 2311, after 0195; the whole queue checked on top of it
+
+- **0195b**: `0195b-2311-again-a-typed-introduction-is-made-as-an-introduction.patch`, sha256 `d5d05921ef6549fc1766736d49fe4211386ba1d81762c089079320fe91dbbbab`. **Order: right after 0195, before 0196.** It is cut on origin/main as it is now (the revert, 0192) plus 0193, 0194 and 0195. It conflicts with 0195 if put before it, so it goes after.
+  - 0190's wider wording comes back („დამაკავშიროს", „შემაერთოს", „X-თან დაკავშირება"), so ask_contact is refused for those lines and the model is told to make the introduction.
+  - 0190's „not sent" branch does **not** come back. When the run still leaves the introduction undone, the server makes it itself through requestIntroduction, with the named go-between (one saved contact), the target in the nominative, the goal and the thread. D316: the typed line is the consent.
+  - That server part is behind `SERVER_INTRODUCTION_ON = false`, because the owner's sentence („გიორგის თხოვნა გავუგზავნე, რომ ნინო გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.") is new text and waits for Misho's yes in the morning. **While it is OFF, the fallback is exactly what main does now**, so there is no regression either way.
+- **Checked end to end:** main + 0193–0195 + 0195b: verify green (8,526 passed). On top of that, 0196–0220, 0221-docs and 0222–0225 all apply with `git am -3`, and the full stack's verify is green (8,618 passed).
+- DONE WHEN (2311, after Misho's yes and the switch-on): on fresh trios, „სთხოვე გიორგი X-ს, დამაკავშიროს ნინო X-თან" and „… გამაცნოს ნინო X" reach Giorgi as an introduction request, 5 of 5, never as a plain question and never as „not sent". Until the switch-on, the tester can check that nothing changed against main.
+
 ### 13 Oct, 01:35Z — re your 00:55Z: the revert was right; 0195 does NOT depend on 0190, go on; the fixed 2311 comes as one patch on main
 
 - **Your revert was right.** Thank you for catching it fast.
@@ -1347,7 +1356,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 00:55Z — REGRESSION: 0190 (2311) reverted under D710
+Last TO_CODE.md section handled: 13 Oct, 01:08Z — re your 01:05Z: 0225 received, queued with 0223/0224
 
 ## OPEN
 

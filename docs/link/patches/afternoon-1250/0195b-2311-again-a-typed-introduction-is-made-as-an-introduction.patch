@@ -1,0 +1,410 @@
+From dd9a7a22fabfca5775e4ffa3dae238e387c3e249 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 01:12:52 +0000
+Subject: [PATCH] 2311 again: a typed introduction is made as an introduction
+ (server part OFF)
+
+0190 was reverted (box 55934, 0 of 6): for "ask Giorgi to connect me with
+Nino" the model called neither request_introduction nor ask_contact, and
+0190's fallback then said "not sent" instead of the plain question it sent
+before. Both were wrong; 2311 asks for the introduction itself.
+
+- The wider wording from 0190 is back ("damakavshiros", "shemaertos",
+  "X-tan dakavshireba"), so ask_contact is refused for them and the model
+  is told to make the introduction.
+- When the run still leaves it undone, the server makes the introduction
+  through requestIntroduction (the named go-between, the target in the
+  nominative, the goal and thread), D316: the typed line is the consent.
+- SERVER_INTRODUCTION_ON is false until Misho says yes to the owner's
+  sentence; while off, the fallback is exactly main's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aTypedIntroductionIsMadeAsOne.test.ts     | 164 ++++++++++++++++++
+ src/services/chat.service.ts                  |  41 +++++
+ src/services/introFallback.ts                 | 116 +++++++++++++
+ src/services/introInstruction.ts              |   5 +-
+ 4 files changed, 325 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+ create mode 100644 src/services/introFallback.ts
+
+diff --git a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+new file mode 100644
+index 0000000..1b448e9
+--- /dev/null
++++ b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+@@ -0,0 +1,164 @@
++jest.mock('../instructedAsk', () => ({
++  __esModule: true,
++  oneContactNamed: jest.fn(),
++  ownersLabel: jest.fn(),
++}));
++jest.mock('../tools/requestIntroduction', () => ({
++  __esModule: true,
++  requestIntroduction: jest.fn(),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { oneContactNamed, ownersLabel } from '../instructedAsk';
++import {
++  introductionSentence,
++  introductionTarget,
++  introSentSentence,
++  nominativeBeforeTan,
++  SERVER_INTRODUCTION_ON,
++  serverIntroduces,
++} from '../introFallback';
++import { ownerAsksForIntroduction } from '../introInstruction';
++import { requestIntroduction } from '../tools/requestIntroduction';
++
++/**
++ * 2311 (box 55934, 0 of 6 after 0190): a typed introduction the run left undone
++ * went out as the owner's plain question, or not at all. The server makes the
++ * introduction itself; OFF until Misho's yes on the owner's sentence.
++ */
++const mockNamed = oneContactNamed as jest.MockedFunction<typeof oneContactNamed>;
++const mockLabel = ownersLabel as jest.MockedFunction<typeof ownersLabel>;
++const mockIntro = requestIntroduction as jest.MockedFunction<typeof requestIntroduction>;
++const OWNER = '183807';
++const GIORGI_PHONE = '+995500000901';
++
++describe('every wording of an introduction is an introduction (2311)', () => {
++  it.each([
++    'სთხოვე ლევან საცდელაძეს, დამაკავშიროს თამთა ნიმუშაძესთან.',
++    'მაია გამოგონილს თხოვე ბახვა ფიქტიურთან დაკავშირება.',
++    'სთხოვე ნანას, შემაერთოს გურამთან.',
++    'ნანა გამოგონილაძეს სთხოვე, გამაცნოს გურამ ფიქციაშვილი.',
++  ])('reads „%s" as an introduction', (line) => {
++    expect(ownerAsksForIntroduction([line])).toBe(true);
++  });
++
++  it.each([
++    'ჰკითხე ბექა ნიმუშაშვილს, შემაერთებს თუ არა ირმა გამოგონილთან.',
++    'ჰკითხე გიას, გამაცნობს თუ არა ნინოს.',
++    'დამაკავშირდი ხვალ.',
++    'ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.',
++  ])('keeps „%s" a question', (line) => {
++    expect(ownerAsksForIntroduction([line])).toBe(false);
++  });
++});
++
++describe('the person the owner wants to meet', () => {
++  it.each([
++    ['სთხოვე გიორგი ტესტაძეს, დამაკავშიროს ნინო ნიმუშაძე-თან.', 'ნინო ნიმუშაძე'],
++    ['სთხოვე გიორგი ტესტაძეს, დამაკავშიროს ნინო საცდელთან.', 'ნინო საცდელი'],
++    ['ნანა გამოგონილაძეს სთხოვე, გამაცნოს გურამ ფიქციაშვილი.', 'გურამ ფიქციაშვილი'],
++    ['მაია გამოგონილს თხოვე ბახვა ფიქტიურთან დაკავშირება.', 'ბახვა ფიქტიური'],
++    ['მაიას თხოვე ბახვასთან დაკავშირება.', 'ბახვა'],
++    ['სთხოვე ნანას, შემაერთოს გურამთან.', 'გურამი'],
++  ])('„%s" → „%s"', (line, target) => {
++    expect(introductionTarget(line)).toBe(target);
++  });
++
++  it('puts a name before -თან back in the nominative', () => {
++    expect(nominativeBeforeTan('X-')).toBe('X');
++    expect(nominativeBeforeTan('ნინოს')).toBe('ნინო');
++    expect(nominativeBeforeTan('ბოლქვაძეს')).toBe('ბოლქვაძე');
++    expect(nominativeBeforeTan('საცდელ')).toBe('საცდელი');
++  });
++
++  it('finds the introduction sentence among the owner’s other sentences', () => {
++    expect(introductionSentence('გამარჯობა. სთხოვე ნანას, გამაცნოს გურამი. მადლობა!')).toBe(
++      'სთხოვე ნანას, გამაცნოს გურამი.',
++    );
++    expect(introductionSentence('ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.')).toBeNull();
++  });
++});
++
++describe('the server makes the introduction', () => {
++  const LINE = 'სთხოვე გიორგი ტესტაძეს, დამაკავშიროს ნინო ნიმუშაძე-თან.';
++
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockNamed.mockResolvedValue(GIORGI_PHONE);
++    mockLabel.mockResolvedValue('გიორგი ტესტაძე');
++    mockIntro.mockResolvedValue({ success: true });
++  });
++
++  it('ships OFF until Misho’s yes on the owner’s sentence', () => {
++    expect(SERVER_INTRODUCTION_ON).toBe(false);
++  });
++
++  it('sends one introduction request: the named go-between, the target, the goal and the thread', async () => {
++    const made = await serverIntroduces(OWNER, LINE, {
++      requesterTaskId: 25060,
++      originThreadId: 50783,
++    });
++    expect(made).toEqual({ mediator: 'გიორგი ტესტაძე', target: 'ნინო ნიმუშაძე' });
++    expect(mockIntro).toHaveBeenCalledTimes(1);
++    expect(mockIntro).toHaveBeenCalledWith(
++      OWNER,
++      'გიორგი ტესტაძე',
++      'ნინო ნიმუშაძე',
++      undefined,
++      GIORGI_PHONE,
++      undefined,
++      undefined,
++      'intro',
++      false,
++      { requesterTaskId: 25060, originThreadId: 50783 },
++    );
++  });
++
++  it('makes nothing when the go-between is not exactly one saved contact', async () => {
++    mockNamed.mockResolvedValue(null);
++    expect(await serverIntroduces(OWNER, LINE, {})).toBeNull();
++    expect(mockIntro).not.toHaveBeenCalled();
++  });
++
++  it('makes nothing for a line that is no introduction', async () => {
++    expect(
++      await serverIntroduces(OWNER, 'ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.', {}),
++    ).toBeNull();
++    expect(mockIntro).not.toHaveBeenCalled();
++  });
++
++  it('says nothing went when requestIntroduction refuses', async () => {
++    mockIntro.mockResolvedValue({ success: false, error: 'blocked' });
++    expect(await serverIntroduces(OWNER, LINE, {})).toBeNull();
++  });
++
++  it('tells the owner who was asked to introduce them to whom', () => {
++    const made = { mediator: 'გიორგი ტესტაძე', target: 'ნინო ნიმუშაძე' };
++    expect(introSentSentence(made, 'ka')).toBe(
++      'გიორგი ტესტაძეს თხოვნა გავუგზავნე, რომ ნინო ნიმუშაძე გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.',
++    );
++    expect(introSentSentence(made, 'en')).toBe(
++      'I asked გიორგი ტესტაძე to introduce you to ნინო ნიმუშაძე. I will tell you as soon as they answer.',
++    );
++  });
++});
++
++describe('the fallback, wired', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++  const fn = chat.slice(chat.indexOf('async function serverSendsOrSaysSo('));
++  const body = fn.slice(0, fn.indexOf('\n}\n'));
++
++  it('tries the introduction before the plain question, and never says „not sent" for it', () => {
++    expect(body.indexOf('serverIntroductionOrNull(userId, threadId, runId)')).toBeGreaterThan(-1);
++    expect(body.indexOf('serverIntroductionOrNull(userId, threadId, runId)')).toBeLessThan(
++      body.indexOf('await sendInstructedAsk(userId, threadId'),
++    );
++    expect(body).not.toContain('an introduction, not sent as a question');
++  });
++
++  it('is off by default, so the fallback is what main does today', () => {
++    expect(chat).toContain('on: boolean = SERVER_INTRODUCTION_ON,');
++    expect(chat).toContain('if (!on || !ownerAsksForIntroduction([ownerLine])) return null;');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index dd35575..4a2a767 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -460,6 +460,12 @@ import {
+   ownerAsksForIntroduction,
+   USE_INTRODUCTION_REFUSAL,
+ } from './introInstruction';
++import {
++  introSentSentence,
++  SERVER_INTRODUCTION_ON,
++  ServerIntroduction,
++  serverIntroduces,
++} from './introFallback';
+ import { askedNotAsking, claimsItCannotSend } from './askedVerb';
+ import { withoutRepeatedParagraphs } from './repeatedParagraphs';
+ import {
+@@ -12327,6 +12333,39 @@ function personLineForOwner(person: PersonOutcome, language: RunLanguage): strin
+   return (EXCLUDED_LINE[language] ?? EXCLUDED_LINE.ka)(person.toName);
+ }
+ 
++/**
++ * 2311 (box 55934): an introduction the run left undone is made as an
++ * introduction, never sent as the owner's plain question. Null when the switch
++ * is off, the line is no introduction, or the request could not be made; the
++ * fallback below then does what it always did.
++ */
++async function serverIntroductionOrNull(
++  userId: string,
++  threadId: number,
++  runId: string,
++  on: boolean = SERVER_INTRODUCTION_ON,
++): Promise<ServerIntroduction | null> {
++  const ownerLine = runOwnerLine.get(runId) ?? '';
++  if (!on || !ownerAsksForIntroduction([ownerLine])) return null;
++  const goal = await getOpenTaskByThread(threadId).catch(() => null);
++  const made = await serverIntroduces(userId, ownerLine, introContextFor(threadId, goal?.id)).catch(
++    (err: unknown) => {
++      // eslint-disable-next-line no-console
++      console.error(
++        `[instruction-unsent] run ${runId}: server introduction failed:`,
++        (err as Error).message,
++      );
++      return null;
++    },
++  );
++  if (made !== null) {
++    runIntroSent.add(runId);
++    // eslint-disable-next-line no-console
++    console.log(`[instruction-unsent] run ${runId}: the server made the introduction`);
++  }
++  return made;
++}
++
+ /**
+  * §97 item 1 (Misho's yes): the second chance sent nothing either. The server
+  * asks the one contact the owner named and says so in the ordinary per-person
+@@ -12339,6 +12378,8 @@ async function serverSendsOrSaysSo(
+   runId: string,
+ ): Promise<string> {
+   const language = runLang(runId);
++  const introduced = await serverIntroductionOrNull(userId, threadId, runId);
++  if (introduced !== null) return introSentSentence(introduced, language);
+   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+     (err: unknown) => {
+       // eslint-disable-next-line no-console
+diff --git a/src/services/introFallback.ts b/src/services/introFallback.ts
+new file mode 100644
+index 0000000..bbe13b4
+--- /dev/null
++++ b/src/services/introFallback.ts
+@@ -0,0 +1,116 @@
++import { geoName } from './georgianCase';
++import { instructionNamed } from './goalIntent';
++import { ownerAsksForIntroduction } from './introInstruction';
++import { oneContactNamed, ownersLabel } from './instructedAsk';
++import { RunLanguage } from './runLanguage';
++import { IntroRequestContext, requestIntroduction } from './tools/requestIntroduction';
++
++/**
++ * 2311 (box 55934, 13 Oct, 0 of 6 after 0190; 2 of 5 before it): the owner
++ * typed „სთხოვე გიორგი X-ს, დამაკავშიროს ნინო X-თან" and the model called
++ * neither request_introduction nor ask_contact, even after the guard's second
++ * chance. The server's fallback then sent the owner's line to the go-between
++ * as a plain question (before 0190), or nothing at all (with it). Neither is
++ * what was asked. The typed line is the consent (D316), so the server makes
++ * the introduction itself, through the same requestIntroduction the tool uses.
++ *
++ * OFF until Misho says yes to INTRO_SENT_SENTENCES (owner-facing text). While
++ * it is off the fallback is exactly what it was before.
++ */
++export const SERVER_INTRODUCTION_ON = false;
++
++const SENTENCE_RE = /[^.!?\n]+[.!?]?/gu;
++const MAX_TARGET_WORDS = 3;
++const NOMINATIVE_VERB_RE = /(?:გამაცნოს|გაგვაცნოს|გამაცანი)\s+([^.,!?;\n]+)/u;
++const TAN_AFTER_VERB_RE =
++  /(?:დამაკავშიროს|დაგვაკავშიროს|შემაერთოს|შეგვაერთოს|დამაკავშირე|შემაერთე)\s+((?:\S+\s+)?\S+)თან(?![\p{L}])/u;
++const TAN_BEFORE_NOUN_RE = /((?:\S+\s+)?\S+)თან\s+(?:დაკავშირება|გაცნობა)/u;
++const REQUEST_VERB_RE = /^(?:სთხოვე|თხოვე|ჰკითხე|კითხე|უთხარი|მისწერე)$/u;
++const EDGE_PUNCTUATION_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
++const GEORGIAN_VOWEL_RE = /[აეიოუ]$/u;
++
++/** The first sentence of the owner's line that asks to be introduced; null for none. */
++export function introductionSentence(ownerLine: string): string | null {
++  const sentences = (ownerLine.match(SENTENCE_RE) ?? []).map((s) => s.trim());
++  return sentences.find((s) => ownerAsksForIntroduction([s])) ?? null;
++}
++
++/** „საცდელთან" → „საცდელი", „ნინოსთან" → „ნინო", „X-თან" → „X": the name as the card writes it. */
++export function nominativeBeforeTan(stem: string): string {
++  if (stem.endsWith('-')) return stem.slice(0, -1);
++  if (stem.endsWith('ს') && GEORGIAN_VOWEL_RE.test(stem.slice(0, -1))) return stem.slice(0, -1);
++  return GEORGIAN_VOWEL_RE.test(stem) ? stem : `${stem}ი`;
++}
++
++function cleanWords(text: string): string[] {
++  return text
++    .split(/\s+/u)
++    .map((w) => w.replace(EDGE_PUNCTUATION_RE, ''))
++    .filter((w) => w !== '');
++}
++
++/** The person the owner wants to meet, in the nominative; null when it cannot be read for sure. */
++export function introductionTarget(sentence: string): string | null {
++  const nominative = NOMINATIVE_VERB_RE.exec(sentence);
++  if (nominative !== null) {
++    const words = cleanWords(nominative[1]).slice(0, MAX_TARGET_WORDS);
++    return words.length > 0 ? words.join(' ') : null;
++  }
++  const tan = TAN_AFTER_VERB_RE.exec(sentence) ?? TAN_BEFORE_NOUN_RE.exec(sentence);
++  if (tan === null) return null;
++  const words = tan[1].split(/\s+/u).filter((w) => w !== '');
++  const last = words.pop() ?? '';
++  const before = words.filter((w) => !REQUEST_VERB_RE.test(w.replace(EDGE_PUNCTUATION_RE, '')));
++  const name = [...cleanWords(before.join(' ')), nominativeBeforeTan(last)].filter((w) => w !== '');
++  return name.length > 0 && last !== '' ? name.join(' ') : null;
++}
++
++export interface ServerIntroduction {
++  readonly mediator: string;
++  readonly target: string;
++}
++
++/**
++ * The introduction made by the server for the owner's typed line; null when
++ * the line names no single saved go-between, no readable target, or the
++ * request was refused (requestIntroduction's own walls stand).
++ */
++export async function serverIntroduces(
++  userId: string,
++  ownerLine: string,
++  context: IntroRequestContext,
++): Promise<ServerIntroduction | null> {
++  const sentence = introductionSentence(ownerLine);
++  if (sentence === null) return null;
++  const target = introductionTarget(sentence);
++  const phone = await oneContactNamed(userId, sentence);
++  if (target === null || phone === null) return null;
++  const mediator = (await ownersLabel(userId, phone, instructionNamed(sentence) ?? '')).trim();
++  if (mediator === '') return null;
++  const outcome = (await requestIntroduction(
++    userId,
++    mediator,
++    target,
++    undefined,
++    phone,
++    undefined,
++    undefined,
++    'intro',
++    false,
++    context,
++  )) as { success?: unknown };
++  return outcome.success === true ? { mediator, target } : null;
++}
++
++/** MODEL-FREE, OWNER-FACING (needs Misho's yes): the introduction went, in the per-person line's shape. */
++const INTRO_SENT_SENTENCES: Readonly<Record<RunLanguage, (m: string, t: string) => string>> = {
++  ka: (m, t) =>
++    `${geoName(m, 'dat')} თხოვნა გავუგზავნე, რომ ${t} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.`,
++  en: (m, t) => `I asked ${m} to introduce you to ${t}. I will tell you as soon as they answer.`,
++  ru: (m, t) => `Я попросил ${m} познакомить вас: ${t}. Напишу, как только будет ответ.`,
++  es: (m, t) => `Le pedí a ${m} que te presente a ${t}. Te escribo en cuanto responda.`,
++};
++
++export function introSentSentence(made: ServerIntroduction, language: RunLanguage): string {
++  return (INTRO_SENT_SENTENCES[language] ?? INTRO_SENT_SENTENCES.ka)(made.mediator, made.target);
++}
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index 7a56930..e082fcf 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -9,9 +9,12 @@
+  * helper whether HE will introduce — that is a question, and stays one.
+  * 3697: „სთხოვე მაიას, გამაცნოს ბახვა" (ask Maia to introduce me) is the
+  * same request through a named go-between, and is one.
++ * 2311 (box 54162): „სთხოვე ლევანს, დამაკავშიროს თამთასთან", „შემაერთოს" and
++ * „მაიას თხოვე ბახვასთან დაკავშირება" are the same request; „შემაერთებს თუ არა"
++ * stays a question, like Case 1's „გამაცნობს თუ არა".
+  */
+ const OWNER_INTRO_RE =
+-  /(გამაცანი|დამაკავშირე|გამაცნოს|გაგვაცნოს|\bintroduce\s+(?:me|us)\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
++  /((?:გამაცანი|დამაკავშირე|გამაცნოს|გაგვაცნოს|დამაკავშიროს|დაგვაკავშიროს|შემაერთე|შემაერთოს|შეგვაერთოს)(?!\p{L})|\S+თან\s+(?:დაკავშირება|გაცნობა)|\bintroduce\s+(?:me|us)\s+to\b|\bconnect\s+me\s+(?:with|to)\b|познакомь\s+меня|preséntame)/iu;
+ 
+ /** True when one of the owner's lines on this goal tells Netai to introduce them. */
+ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean {
+-- 
+2.43.0
+
