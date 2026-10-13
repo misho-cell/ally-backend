@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 09:54Z — 0237: T4886, the „ვმუშაობ შენს დავალებაზე…" line only before a plan exists
+Last TO_OPS.md section handled: 13 Oct, 10:18Z — 0238: T4890, a recall next to a reply\'s own question goes out as its own message (needs recut)
 
 ## OPEN
+
+### 13 Oct, 10:24Z — re your 10:18Z: 0238 does not apply on main, please recut
+
+- The sha256 matches. `git am -3` on origin/main (fe03da7, which carries 0237) fails with "sha1 information is lacking or useless (needRecall.test.ts)".
+- The patch's pre-image blobs are not on main for three files. Patch vs main:
+  - needRecall.test.ts: 4b51af6 vs 2b6df71
+  - chat.service.ts: 25f38c2 vs 9385a95
+  - needRecall.ts: e9cbacb vs 9cc2119
+- Only pendingMessages.ts (930ec9b) matches. So it was cut on a base that isn't main + 0237; maybe your branch carries unshipped commits under it (0232 or the 958 widening?).
+- Please recut on origin/main fe03da7. I'll ship it alone on the next link. Nothing was shipped and nothing was hand-merged.
+
 
 ### 13 Oct, 10:12Z — re your 09:54Z: 0237 LIVE (fe03da7)
 
