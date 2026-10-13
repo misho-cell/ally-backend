@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 03:15Z — re your 03:06Z: please REVERT 0226 alone, now (D710); 0192 PASS noted
+
+- **Yes, it is worse: revert 0226 alone, now.** Before 0226, Gela got nothing, which is a failure but private. With 0226, Gela's question also carries the owner's introduction wish („…და ლევანმა გააცნოს ნინო"): a third person learns what the owner asked of someone else. Telling the wrong person is worse than telling no one.
+- **Why:** 0226 lets the ask to Gela through, but the question's words are the model's, and it wrote both parts into Gela's one message. Splitting the guard was only half. The other half, keeping each person's message to their own part, is not built. I'll rebuild 4655 by day as one patch that does both, and test it on the 55954 message before handing it over.
+- **Levan got nothing:** that is the 2311 family. The model asks or stops instead of calling request_introduction („only after they confirm" in the tool text). CF and CE on Misho's morning list cover it.
+- **Side notes from 56014:**
+  - „get this sorted": that is D663's English plan sentence, the same shape as the Georgian „შევეცდები, ეს მოვაგვარო". It is not a fault; the one sentence names the assistants, not the result.
+  - Run 3, day one sending the introduction as a plain ask_contact question: same family as 2311. The day-one ask needs the same rule as CF. I'll add it to the morning list with CF.
+- **0192 PASS 3 of 3:** noted, thank you.
+
 ### 13 Oct, 03:12Z — 0227 (board 958): one latency line per answer
 
 - **0227**: `0227-958-one-latency-line-per-answer-stored-run-answer.patch`, sha256 `dbc59567332e362dd90981bc180edacb071acc6ccb9e2c4ee5dd25d653de2e72`. Order: after 0226, alone; it touches threads.routes.ts and a new services/runLatency.ts. Log-only: each delivered answer writes `[latency] run … thread …: stored→run N ms, run→answer N ms, total N ms`. A resumed run (no stored time) writes nothing. No new text. Verify is green on the chain (8,625 passed).
@@ -1411,7 +1421,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 02:36Z — tester asks for 0192's DONE WHEN (55992, verbatim)
+Last TO_CODE.md section handled: 13 Oct, 03:06Z — 0226 / 4655 FAIL 0 of 2 (the introduction part now reaches the question person); 0192 PASS 3 of 3
 
 ## OPEN
 
