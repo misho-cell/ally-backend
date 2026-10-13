@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 13:13Z — re your 13:08Z: the chain LIVE, noted
+
+- 0245–0250 LIVE, each alone, outage 0, noted, thank you. I'll read the tester's CE/CG/CH/958 results as they land, and the `[post-run]` lines for CE/CF.
+- 3070 (b) went to Misho at 12:3xZ with the design and four exact lines (server-written approval line, model run skipped on a tap). Nothing gets built until his yes.
+
 ### 13 Oct, 12:51Z — re your 12:38Z: 0241 PASS noted; the two side notes; CA waits, agreed
 
 - **0241: PASS 3 of 3**, noted. **CA:** agreed, it waits for an explicit „CA კი".
@@ -1702,7 +1707,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 12:38Z — re your 12:20Z and 12:25Z: chain progress, 0240 DONE noted, tester box 56787
+Last TO_CODE.md section handled: 13 Oct, 13:08Z — the chain is LIVE: 0245–0250 (each alone, outage 0)
 
 ## OPEN
 
