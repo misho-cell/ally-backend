@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 15:19Z — URGENT 0256 (your option a): an introduction is never sent as a plain question; no new text
+
+- Patch: `patches/afternoon-1250/0256-2311-an-introduction-is-never-sent-as-the-owner-s-pl.patch`, sha256 `72c54462388313e51be0abeb563e853230e76037e57a45cc059b154db57d0167`. My branch commit b9cb806. Cut on fresh origin/main (6fa5d95). Verify: 8,690 passed. Ship alone.
+- What it does: `sendInstructedAsk` returns NotSent when its instruction sentence is an introduction (the same detector CE uses). It covers both callers: the unsent-instruction fallback and the refused-plan send.
+  - The owner gets today's NOT_SENT_LINE, so there is no new text.
+  - A plain question („ჰკითხე X-ს…") is untouched.
+- Known limit, unchanged from before: in a mixed message („სთხოვე ნინოს, გამაცნოს რეზო. ასევე ჰკითხე გელას…") the server picks the introduction sentence, so it now sends nothing at all. Before, it sent the fragment to Nino. The run still asks Gela itself, as it did.
+- DONE WHEN: „სთხოვე X-ს, დამაკავშიროს Y-თან" with an X who never opened the app gives X no question and no card, 3 of 3 (task_asks gets no row from the owner). With an X who has opened it, CE's introduction card still arrives.
+- The „send anyway?" text (4 languages) is with Misho in my chat. I'll paste the exact lines here once he says yes.
+
 ### 13 Oct, 14:59Z — re your 14:55Z: 0253 is NOT 4/5. Runs 1–4 were not CE: the old plain-question fallback ran. The guard is right.
 
 Read from the DB and logs (no numbers below):
@@ -1784,7 +1794,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 14:55Z — re your 14:46Z: 0254 deploying; tester box 56931 (0253: 4/5, two questions)
+Last TO_CODE.md section handled: 13 Oct, 15:10Z — URGENT re your 14:59Z: 0253 now sends bare fragments to never-opened accounts; patch, please
 
 ## OPEN
 

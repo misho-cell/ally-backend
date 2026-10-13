@@ -1,0 +1,93 @@
+From ed77a4dc84169f4e6553b09327022b71bc697070 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 15:16:50 +0000
+Subject: [PATCH] 2311: an introduction is never sent as the owner's plain
+ question
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Since 0253 the go-between is found, so when CE's introduction was refused
+by the dormant guard (task 54: the go-between never opened the app), the
+old instructed send ran next and delivered the bare fragment
+„დამაკავშიროს Y-თან." to that person, around the guard (tester box 56931,
+4 of 5 runs). sendInstructedAsk now sends nothing when its instruction
+sentence is an introduction; the owner keeps today's NOT_SENT_LINE. No
+new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theServerAsksTheOneNamedContact.test.ts   | 31 +++++++++++++++++++
+ src/services/instructedAsk.ts                 |  9 ++++++
+ 2 files changed, 40 insertions(+)
+
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index 74f3cce..c477db1 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -214,3 +214,34 @@ describe('the tester’s second line', () => {
+     ]);
+   });
+ });
++
++/**
++ * 2311 (tester box 56931, after 0253): the introduction was refused by the
++ * dormant guard and this send then carried „დამაკავშიროს ლევან კაპანაძესთან."
++ * to a go-between who never opened the app.
++ */
++describe('an introduction is never sent as a plain question', () => {
++  it.each([
++    'სთხოვე გელა ბერიძეს, დამაკავშიროს ლევან კაპანაძესთან.',
++    'გელა ბერიძეს სთხოვე, რომ დამაკავშიროს ლევან კაპანაძესთან.',
++    'სთხოვე გელა ბერიძეს, გამაცნოს ლევან კაპანაძე.',
++  ])('„%s" sends nothing and opens no goal', async (line) => {
++    mockFindPhones.mockResolvedValue(['995500000001']);
++    await expect(sendInstructedAsk('184245', 51184, line)).resolves.toEqual({
++      result: InstructedAskResult.NotSent,
++    });
++    expect(mockCreateAsk).not.toHaveBeenCalled();
++    expect(mockCreateTask).not.toHaveBeenCalled();
++  });
++
++  it('sends the introduction half of a mixed message to nobody as a question (box 54175)', async () => {
++    mockFindPhones.mockResolvedValue(['995500000001']);
++    const out = await sendInstructedAsk(
++      '178582',
++      42485,
++      'სთხოვე ნინოს, გამაცნოს რეზო. ასევე ჰკითხე გელას, ხომ არ იცნობს სხვა ინვესტორს.',
++    );
++    expect(out.result).toBe(InstructedAskResult.NotSent);
++    expect(mockCreateAsk).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index a03f5a1..631e241 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -12,6 +12,7 @@ import {
+   isInstructionSentence,
+ } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
++import { ownerAsksForIntroduction } from './introInstruction';
+ import { createAsk } from './taskAsks.service';
+ import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
+ import { findContactPhonesByName } from './tools/nameMatch';
+@@ -208,6 +209,14 @@ export async function sendInstructedAsk(
+ ): Promise<InstructedAskOutcome> {
+   const sentence = contactInstructionIn(ownerLine);
+   if (sentence === null) return NOT_SENT;
++  /**
++   * 2311 (tester box 56931, after 0253): „სთხოვე X-ს, დამაკავშიროს Y-თან" to an
++   * X who never opened the app. The introduction was refused by the dormant
++   * guard (task 54), and this send then went out as the bare fragment
++   * „დამაკავშიროს Y-თან." to X, around that guard. An introduction is made as
++   * an introduction or not at all: never as the owner's plain question.
++   */
++  if (ownerAsksForIntroduction([sentence])) return NOT_SENT;
+   const contacts = await contactsNamed(userId, sentence);
+   if (contacts === null) return NOT_SENT;
+   const excluded = await excludedAmong(userId, contacts);
+-- 
+2.43.0
+
