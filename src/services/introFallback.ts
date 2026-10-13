@@ -14,10 +14,11 @@ import { IntroRequestContext, requestIntroduction } from './tools/requestIntrodu
  * what was asked. The typed line is the consent (D316), so the server makes
  * the introduction itself, through the same requestIntroduction the tool uses.
  *
- * OFF until Misho says yes to INTRO_SENT_SENTENCES (owner-facing text). While
- * it is off the fallback is exactly what it was before.
+ * ON since Misho's yes (CE), 13 Oct 11:2x UTC in the operations chat: „ჩემგან
+ * ყველაფერზე კია" — to INTRO_SENT_SENTENCES as written below (§139). Back to
+ * false and the fallback is exactly what it was before.
  */
-export const SERVER_INTRODUCTION_ON = false;
+export const SERVER_INTRODUCTION_ON = true;
 
 const SENTENCE_RE = /[^.!?\n]+[.!?]?/gu;
 const MAX_TARGET_WORDS = 3;
