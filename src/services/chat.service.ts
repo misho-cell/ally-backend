@@ -64,6 +64,7 @@ import { createSaveContactInsightTool } from './tools/save_contact_insight';
 import { noteIntroductionSentAsAQuestion } from './introductionShaped';
 import { lookupContactByPhone } from './tools/lookupContactByPhone';
 import { searchContactByName } from './tools/searchContactByName';
+import { lap, postRunLine, startPostRunClock } from './postRunClock';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
 import { searchSecondDegree } from './tools/searchSecondDegree';
@@ -16210,6 +16211,7 @@ export async function processChat(
     // the server has already acted on goes to the faster model.
     approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,
   );
+  const postRun = startPostRunClock();
   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
   const planToNobody = takePlanWritesToNobody(runId);
   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
@@ -16235,6 +16237,7 @@ export async function processChat(
       (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content));
     await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
   }
+  lap(postRun, 'trail');
 
   // A run must NEVER end "successfully" with nothing to say: an empty final
   // used to be persisted as an empty (view-filtered) message with status done —
@@ -16438,7 +16441,9 @@ export async function processChat(
   // Ticket 12 Task 46 (D151): an officeholder's name the run never read on a
   // page (or got from the user's own data) does not reach the screen — the
   // scripted line stands in its place. Logged by count, never by name.
+  lap(postRun, 'guards');
   const gate = await applyOfficeholderGate(cleanedFinal, runId, language, userId);
+  lap(postRun, 'officeholder');
   if (gate.refused.length > 0) {
     // eslint-disable-next-line no-console
     console.warn(
@@ -16469,6 +16474,7 @@ export async function processChat(
     !ownerAbsent && isToolFreeSmallTalk(userMessage)
       ? { safe: true }
       : await moderateReply(cleanedFinal, userId);
+  lap(postRun, 'moderation');
   let replySafe = verdict.safe;
   if (!replySafe) {
     /**
@@ -16564,6 +16570,7 @@ export async function processChat(
       getPendingRequestsForMediator(userId),
     ),
   );
+  lap(postRun, 'requests');
   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
   // its plan proposed in an engine turn right behind this reply.
   const pendingItems = takePendingItems(runId, reply);
@@ -16840,6 +16847,9 @@ export async function processChat(
     // eslint-disable-next-line no-console
     console.error('[wallet] debit failed for run', runId, (err as Error).message);
   }
+  lap(postRun, 'stored');
+  // eslint-disable-next-line no-console
+  console.log(postRunLine(runId, postRun));
 
   return {
     reply: storedReply,
