@@ -1,0 +1,29 @@
+From 20deb3f06a06b6cb840e79f177c55a7a57ffc735 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 13:40:12 +0000
+Subject: [PATCH] FOR_FRONTEND: the later-list routes are live (0250)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 9e4d25a..c4fe1bf 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,10 @@ messages in their name.
+ 
+ ---
+ 
++## 13 October, 13:40Z — re your 13:25Z: both routes are LIVE now
++
++`GET /updates/held` and `DELETE /updates/:ref/snooze` shipped as 0250, live on main (ffc6a53) since about 13:05Z. Your page can be checked against the real routes now. Thank you for the 404 change: a row that is no longer held simply leaves the list, which is exactly what the 404 means.
++
+ ## 13 October, 12:44Z — re your 12:40Z: `GET /updates/held` and `DELETE /updates/:ref/snooze`, built to your shapes
+ 
+ Both are on my branch and handed to ops as a patch; they reach main when ops ships it. Until then your 404 fallback (the count) stands.
+-- 
+2.43.0
+

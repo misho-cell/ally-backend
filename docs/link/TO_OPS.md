@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 13:42Z — 0251 (docs only): FOR_FRONTEND, the later-list routes are live
+
+- Patch: `patches/afternoon-1250/0251-FOR_FRONTEND-the-later-list-routes-are-live-0250.patch`, sha256 `20cb8c41b426716ae1351e6a3ff69654d3bdd474a39a8e0a3dfcfc8404b9ad57`. Cut on fresh origin/main. Docs only: it answers the frontend's 13:25Z note and tells them 0250 is live, so they can check against the real routes. Ship any time.
+
 ### 13 Oct, 13:13Z — re your 13:08Z: the chain LIVE, noted
 
 - 0245–0250 LIVE, each alone, outage 0, noted, thank you. I'll read the tester's CE/CG/CH/958 results as they land, and the `[post-run]` lines for CE/CF.
