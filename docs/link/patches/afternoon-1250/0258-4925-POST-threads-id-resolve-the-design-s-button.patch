@@ -1,0 +1,293 @@
+From 76e79a517efb425b808e5d7777a73382138fa45b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 16:11:14 +0000
+Subject: [PATCH 258/262] =?UTF-8?q?4925:=20POST=20/threads/:id/resolve,=20?=
+ =?UTF-8?q?the=20design's=20=E2=80=9E=E1=83=9B=E1=83=9D=E1=83=92=E1=83=95?=
+ =?UTF-8?q?=E1=83=90=E1=83=A0=E1=83=93=E1=83=90"=20button?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi's 4925 and the frontend's 11 Oct ask: the owner's tap closes the
+goal on their own thread as finished (the owner's „solved", row 147),
+clears the plan's buttons, leaves questions still out to the existing
+keep-or-close card (row 311) and marks the conversation done. 404 for a
+thread not theirs, 409 no_open_goal when nothing is open or paused.
+Above the subscription gate with stop. No new owner-facing text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts              |  50 ++++++++
+ .../theSolvedButtonClosesTheGoal.test.ts      | 118 ++++++++++++++++++
+ src/services/goalResolve.service.ts           |  65 ++++++++++
+ 3 files changed, 233 insertions(+)
+ create mode 100644 src/services/__tests__/theSolvedButtonClosesTheGoal.test.ts
+ create mode 100644 src/services/goalResolve.service.ts
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index fb37c41..79514e9 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -3,6 +3,7 @@ import { choiceNotesFor } from '../../services/choiceNotes';
+ import { otherChoiceField } from '../../services/otherChoice';
+ import { exportConversation } from '../../services/conversationExport.service';
+ import { routesForThread } from '../../services/routesBoard.service';
++import { ResolveOutcome, resolveGoalOnThread } from '../../services/goalResolve.service';
+ import { Router, Request, Response, NextFunction } from 'express';
+ import { randomUUID } from 'crypto';
+ import { param, body, validationResult } from 'express-validator';
+@@ -463,6 +464,55 @@ threadsRouter.post(
+   },
+ );
+ 
++/** A code for the client, not a sentence for the owner: the button should not have been shown. */
++const NO_GOAL_TO_RESOLVE = 'no_open_goal';
++
++/**
++ * 4925 (Giorgi, 13 Oct; the frontend's 11 Oct 16:55Z ask): the „მოგვარდა"
++ * button. Above the subscription gate with stop, for the same reason: ending
++ * a goal must always work.
++ *
++ *   200 { resolved: true, goal_id, open_questions, thread }  closed as finished
++ *   409 { error: 'no_open_goal' }                             no open or paused goal here
++ *   404                                                       no such thread, or not theirs
++ */
++threadsRouter.post(
++  '/:id/resolve',
++  rateLimit({ windowMs: 60_000, max: 30 }),
++  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
++  async (req: Request, res: Response): Promise<void> => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({ success: false, error: 'id must be a positive integer' });
++      return;
++    }
++    try {
++      const userId = (req as AuthenticatedRequest).user.userId;
++      const result = await resolveGoalOnThread(userId, Number(req.params.id));
++      if (result.outcome !== ResolveOutcome.Resolved) {
++        if (result.outcome === ResolveOutcome.NotFound) {
++          res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
++        } else {
++          res.status(409).json({ success: false, error: NO_GOAL_TO_RESOLVE });
++        }
++        return;
++      }
++      res.status(200).json({
++        success: true,
++        data: {
++          resolved: true,
++          goal_id: result.goal_id,
++          open_questions: result.open_questions,
++          thread: result.thread,
++        },
++      });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[POST /threads/:id/resolve]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ // A lapsed account may still open and answer a thread in which somebody is
+ // asking THEM (Ticket 10 Task 25 (b), D123) — everything else meets the paywall.
+ threadsRouter.use(requireSubscriptionUnlessAnswering);
+diff --git a/src/services/__tests__/theSolvedButtonClosesTheGoal.test.ts b/src/services/__tests__/theSolvedButtonClosesTheGoal.test.ts
+new file mode 100644
+index 0000000..a43bd92
+--- /dev/null
++++ b/src/services/__tests__/theSolvedButtonClosesTheGoal.test.ts
+@@ -0,0 +1,118 @@
++const mockGetThread = jest.fn();
++const mockClearChoices = jest.fn();
++jest.mock('../threads.service', () => ({
++  getThread: (...a: unknown[]) => mockGetThread(...a),
++  clearStoredChoices: (...a: unknown[]) => mockClearChoices(...a),
++}));
++const mockGoal = jest.fn();
++const mockUpdateTask = jest.fn();
++jest.mock('../taskStore.service', () => ({
++  getGoalOnThread: (...a: unknown[]) => mockGoal(...a),
++  updateTask: (...a: unknown[]) => mockUpdateTask(...a),
++}));
++const mockOffer = jest.fn();
++jest.mock('../openAsksAfterSolved', () => ({
++  offerOpenAsksChoice: (...a: unknown[]) => mockOffer(...a),
++}));
++const mockSetStatus = jest.fn();
++jest.mock('../threadStatus.service', () => ({
++  setThreadStatus: (...a: unknown[]) => mockSetStatus(...a),
++}));
++const mockCleared = jest.fn();
++jest.mock('../sse.service', () => ({
++  emitChoicesCleared: (...a: unknown[]) => mockCleared(...a),
++}));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import {
++  RESOLVED_BY_OWNER_NOTE,
++  ResolveOutcome,
++  resolveGoalOnThread,
++} from '../goalResolve.service';
++
++/** 4925 (Giorgi, 13 Oct): the design's „მოგვარდა" button in every chat. */
++const THREAD = { id: 51300, status: 'waiting' };
++
++beforeEach(() => {
++  jest.resetAllMocks();
++  mockGetThread.mockResolvedValue(THREAD);
++  mockUpdateTask.mockResolvedValue(true);
++  mockOffer.mockResolvedValue(0);
++  mockClearChoices.mockResolvedValue(0);
++  mockSetStatus.mockResolvedValue(undefined);
++});
++
++describe('the owner taps „მოგვარდა"', () => {
++  it('closes their open goal as finished and marks the conversation done', async () => {
++    mockGoal.mockResolvedValue({ id: 900, status: 'open' });
++    const out = await resolveGoalOnThread('184300', 51300);
++    expect(mockUpdateTask).toHaveBeenCalledWith(
++      '184300',
++      900,
++      'closed',
++      RESOLVED_BY_OWNER_NOTE,
++      'finished',
++    );
++    expect(mockSetStatus).toHaveBeenCalledWith('184300', 51300, 'done');
++    expect(mockCleared).toHaveBeenCalledWith('184300', 51300);
++    expect(out).toEqual({
++      outcome: ResolveOutcome.Resolved,
++      goal_id: 900,
++      open_questions: 0,
++      thread: THREAD,
++    });
++  });
++
++  it('closes a paused goal too: the owner says it is solved', async () => {
++    mockGoal.mockResolvedValue({ id: 901, status: 'paused' });
++    expect((await resolveGoalOnThread('184300', 51300)).outcome).toBe(ResolveOutcome.Resolved);
++  });
++
++  it('leaves questions still out to the owner, with the keep-or-close card (row 311)', async () => {
++    mockGoal.mockResolvedValue({ id: 900, status: 'open' });
++    mockOffer.mockResolvedValue(2);
++    const out = await resolveGoalOnThread('184300', 51300);
++    expect(mockOffer).toHaveBeenCalledWith(900, 51300, 184300);
++    expect(out).toMatchObject({ open_questions: 2 });
++  });
++});
++
++describe('what it refuses', () => {
++  it('a thread that is not the caller’s', async () => {
++    mockGetThread.mockResolvedValue(null);
++    expect(await resolveGoalOnThread('184300', 51300)).toEqual({
++      outcome: ResolveOutcome.NotFound,
++    });
++    expect(mockUpdateTask).not.toHaveBeenCalled();
++  });
++
++  it('a conversation with no goal, or a goal already closed', async () => {
++    mockGoal.mockResolvedValue(null);
++    expect((await resolveGoalOnThread('184300', 51300)).outcome).toBe(ResolveOutcome.NoOpenGoal);
++    mockGoal.mockResolvedValue({ id: 902, status: 'closed' });
++    expect((await resolveGoalOnThread('184300', 51300)).outcome).toBe(ResolveOutcome.NoOpenGoal);
++    expect(mockUpdateTask).not.toHaveBeenCalled();
++  });
++});
++
++describe('POST /threads/:id/resolve', () => {
++  const route = readFileSync(
++    join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
++    'utf8',
++  );
++  const fn = route.slice(
++    route.indexOf("  '/:id/resolve',"),
++    route.indexOf('threadsRouter.use(requireSubscriptionUnlessAnswering)'),
++  );
++
++  it('sits above the subscription gate, like stop', () => {
++    expect(fn).toContain('resolveGoalOnThread(userId, Number(req.params.id))');
++  });
++
++  it('answers 404, 409 with a code, and never a database error', () => {
++    expect(fn).toContain('res.status(404)');
++    expect(fn).toContain('res.status(409).json({ success: false, error: NO_GOAL_TO_RESOLVE })');
++    expect(fn).toContain("error: 'სერვერის შეცდომა'");
++  });
++});
+diff --git a/src/services/goalResolve.service.ts b/src/services/goalResolve.service.ts
+new file mode 100644
+index 0000000..55b5eef
+--- /dev/null
++++ b/src/services/goalResolve.service.ts
+@@ -0,0 +1,65 @@
++import { offerOpenAsksChoice } from './openAsksAfterSolved';
++import { emitChoicesCleared } from './sse.service';
++import { getGoalOnThread, updateTask } from './taskStore.service';
++import { setThreadStatus } from './threadStatus.service';
++import { clearStoredChoices, getThread, Thread } from './threads.service';
++
++/**
++ * 4925 (Giorgi, 13 Oct; the frontend's 11 Oct 16:55Z ask): the design's
++ * „მოგვარდა" button. The owner's own tap is the owner's „solved" (row 147:
++ * only the owner closes a goal as done), so the goal closes as finished here,
++ * the same as finish_task after a confirmed yes, with no run and no new text.
++ */
++export enum ResolveOutcome {
++  Resolved = 'resolved',
++  /** The thread carries no goal, or its goal is already closed. */
++  NoOpenGoal = 'no_open_goal',
++  /** No such thread, or not the caller's. */
++  NotFound = 'not_found',
++}
++
++export interface GoalResolved {
++  readonly outcome: ResolveOutcome.Resolved;
++  readonly goal_id: number;
++  /** Questions still out; when above 0 the owner was shown the keep-or-close card (row 311). */
++  readonly open_questions: number;
++  readonly thread: Thread | null;
++}
++
++export type ResolveResult =
++  | GoalResolved
++  | { readonly outcome: ResolveOutcome.NoOpenGoal | ResolveOutcome.NotFound };
++
++/** Kept in tasks.closed_reason; never shown to anybody. */
++export const RESOLVED_BY_OWNER_NOTE = 'resolved_by_owner_button';
++
++/** A goal that is open or paused can be called solved; a closed one cannot. */
++function canBeResolved(status: string): boolean {
++  return status === 'open' || status === 'paused';
++}
++
++/** The owner's „მოგვარდა" on the goal of their own thread. */
++export async function resolveGoalOnThread(
++  userId: string,
++  threadId: number,
++): Promise<ResolveResult> {
++  if ((await getThread(threadId, userId)) === null) return { outcome: ResolveOutcome.NotFound };
++  const goal = await getGoalOnThread(threadId);
++  if (goal === null || !canBeResolved(goal.status)) {
++    return { outcome: ResolveOutcome.NoOpenGoal };
++  }
++  const closed = await updateTask(userId, goal.id, 'closed', RESOLVED_BY_OWNER_NOTE, 'finished');
++  if (!closed) return { outcome: ResolveOutcome.NoOpenGoal };
++  // A plan's approve button must not outlive its goal (row 113, the stop's same rule).
++  emitChoicesCleared(userId, threadId);
++  await clearStoredChoices(threadId);
++  // After the buttons are cleared, so the keep-or-close card it may write stays.
++  const openQuestions = await offerOpenAsksChoice(goal.id, threadId, Number(userId));
++  await setThreadStatus(userId, threadId, 'done');
++  return {
++    outcome: ResolveOutcome.Resolved,
++    goal_id: goal.id,
++    open_questions: openQuestions,
++    thread: await getThread(threadId, userId),
++  };
++}
+-- 
+2.43.0
+

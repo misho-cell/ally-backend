@@ -1,0 +1,126 @@
+From e404bb1d370c8a4ee6da27bc8246dda4cbb433d6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 16:12:44 +0000
+Subject: [PATCH 259/262] 4930: a paused goal waits on its owner, not with the
+ solved ones
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi (13 Oct): every „შეჩერებულია" case belongs in „შენს პასუხს
+ელოდება". A paused goal's thread read done (5 of the 6 paused in 30
+days) and sat in the solved list. The honest status now reads needs_you
+for a thread whose goal is paused and none open, with no stale status
+line, and the list row says goal_paused for the card's label.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aPausedGoalWaitsOnItsOwner.test.ts        | 27 +++++++++++++++++++
+ .../__tests__/threadList.service.test.ts      |  4 ++-
+ src/services/threads.service.ts               | 13 +++++++++
+ 3 files changed, 43 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aPausedGoalWaitsOnItsOwner.test.ts
+
+diff --git a/src/services/__tests__/aPausedGoalWaitsOnItsOwner.test.ts b/src/services/__tests__/aPausedGoalWaitsOnItsOwner.test.ts
+new file mode 100644
+index 0000000..80ca880
+--- /dev/null
++++ b/src/services/__tests__/aPausedGoalWaitsOnItsOwner.test.ts
+@@ -0,0 +1,27 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 4930 (Giorgi, 13 Oct): every „შეჩერებულია" case belongs in „შენს პასუხს
++ * ელოდება". A paused goal's thread read `done` and sat with the solved ones.
++ */
++const source = readFileSync(join(__dirname, '..', 'threads.service.ts'), 'utf8');
++
++describe('a paused goal', () => {
++  it('reads needs_you before any other rule, with no stale status line', () => {
++    expect(source).toMatch(
++      /STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE\s+WHEN \$\{HAS_PAUSED_GOAL\} THEN 'needs_you'/u,
++    );
++    expect(source).toMatch(
++      /STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE\s+WHEN \$\{HAS_PAUSED_GOAL\} THEN NULL/u,
++    );
++  });
++
++  it('is paused only while no goal on the thread is open', () => {
++    expect(source).toContain("k.status = 'paused')\n         AND NOT ${HAS_OPEN_GOAL})");
++  });
++
++  it('says so in the list row, for the card label', () => {
++    expect(source).toContain('${HAS_PAUSED_GOAL} AS goal_paused,');
++  });
++});
+diff --git a/src/services/__tests__/threadList.service.test.ts b/src/services/__tests__/threadList.service.test.ts
+index 69741a0..93ff3cf 100644
+--- a/src/services/__tests__/threadList.service.test.ts
++++ b/src/services/__tests__/threadList.service.test.ts
+@@ -155,7 +155,9 @@ describe('the sidebar puts open goals first (ticket 9 task 20 c)', () => {
+  * corrected and the other not — and it is what the test is for.
+  */
+ describe('neither reader shows a live goal as finished', () => {
+-  const REFUSES_FINISHED = /CASE\s+WHEN t\.status IN \('done', 'failed'\)/;
++  // 4930: a paused goal's needs_you is the one rule allowed ahead of it.
++  const REFUSES_FINISHED =
++    /CASE\s+(?:WHEN \(EXISTS \(SELECT 1 FROM tasks k WHERE k\.thread_id = t\.id AND k\.status = 'paused'\)[\s\S]*?THEN 'needs_you'\s+)?WHEN t\.status IN \('done', 'failed'\)/;
+ 
+   it('the sidebar derives the status rather than trusting the row', async () => {
+     firstPage([], [CONVERSATION], []);
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index 86fa300..eb1e4f1 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -97,6 +97,8 @@ interface ThreadRow extends Thread {
+   goal_stopped?: boolean;
+   /** #1919: stopped and not yet closed by its owner — show it with the current goals. */
+   goal_stopped_open?: boolean;
++  /** 4930: the goal is paused, waiting on its owner: „შეჩერებულია" in the waiting tab. */
++  goal_paused?: boolean;
+   /**
+    * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
+    * one, else its latest — so the download asks for the goal's own id and
+@@ -210,6 +212,14 @@ const GOAL_WAS_STOPPED = `EXISTS (
+         WHERE k.thread_id = t.id AND k.status = 'closed' AND k.closed_as = 'stopped'
+      )`;
+ const GOAL_IS_FINISHED = `(${HAS_A_GOAL} AND NOT ${HAS_OPEN_GOAL})`;
++/**
++ * 4930 (Giorgi, 13 Oct): a PAUSED goal was „finished": its thread read
++ * `done` (5 of the 6 paused goals of the last 30 days) and sat with the solved
++ * ones. It is waiting on its owner to resume it, so it reads `needs_you` and
++ * says so in `goal_paused`; the client writes „შეჩერებულია" on the card.
++ */
++const HAS_PAUSED_GOAL = `(EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AND k.status = 'paused')
++         AND NOT ${HAS_OPEN_GOAL})`;
+ /** #1919: stopped, and the owner has not closed it yet — it stays in the current list. */
+ const GOAL_STOPPED_STAYS = `EXISTS (
+        SELECT 1 FROM tasks k
+@@ -240,12 +250,14 @@ const A_REQUEST_WAITS_HERE = `EXISTS (
+      )`;
+ 
+ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
++       WHEN ${HAS_PAUSED_GOAL} THEN 'needs_you'
+        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
+        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
+        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
+        ELSE t.status
+      END`;
+ const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
++       WHEN ${HAS_PAUSED_GOAL} THEN NULL
+        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
+        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
+        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
+@@ -345,6 +357,7 @@ const THREAD_LIST_COLUMNS = `t.id,
+        t.seen_at,
+        ${GOAL_WAS_STOPPED} AS goal_stopped,
+        ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
++       ${HAS_PAUSED_GOAL} AS goal_paused,
+        goal.id AS goal_id,
+        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
+        t.followed_at IS NOT NULL AS followed,
+-- 
+2.43.0
+

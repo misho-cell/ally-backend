@@ -1,0 +1,73 @@
+From 816ab33177bc4bda69e3d15e0212e2c20fd6b9b6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 16:20:03 +0000
+Subject: [PATCH 262/262] FOR_FRONTEND: the server half of Giorgi's design list
+ (4925, 4927, 4928, 4930, 4919)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 47 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index cc81d46..3060f08 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,53 @@ messages in their name.
+ 
+ ---
+ 
++## 13 October, 16:20Z — Giorgi's design list (4918–4930): the server half of 4925, 4927, 4928, 4930 and 4919
++
++Misho asked for all 13. Eight are yours alone: 4918, 4920, 4921, 4922, 4923, 4924, 4926 and 4929. These five touch the server. All are on the branch, and each is LIVE when ops ships its patch (numbers in the ops link).
++
++### 4925: the „მოგვარდა" button, i.e. your 11 Oct 16:55Z ask
++
++`POST /threads/:id/resolve` (owner's bearer, no body). It is mounted above the subscription gate, like stop.
++
++```json
++200 { "success": true, "data": { "resolved": true, "goal_id": 900, "open_questions": 0,
++       "thread": { "id": 51300, "status": "done", "status_line": null, "...": "..." } } }
++409 { "success": false, "error": "no_open_goal" }   // nothing open or paused here: hide the button
++404                                                // no such thread, or not theirs
++```
++
++It closes the goal as finished, which is the owner's „solved". It clears the plan's buttons (you get `choices_cleared`) and sets the thread to `done` (you get `thread_updated`). If questions are still out (`open_questions` > 0), the existing keep-or-close card arrives in the thread as a message, the same card the typed „solved" gives. Show the button only on the owner's own goal threads (`role` = `initiator` with a `goal_id`).
++
++### 4930: paused cases in „შენს პასუხს ელოდება"
++
++`GET /threads` rows now carry `goal_paused: true` when the conversation's goal is paused and none is open. Such a row also reads `status: "needs_you"` with `status_line: null`; before, it read `done` and sat with the solved ones. Write „შეჩერებულია" on the card from `goal_paused`. A stopped goal its owner hasn't closed is still `goal_stopped_open: true`, as since #1919. If the design counts that one as „შეჩერებულია" too, both fields lead there.
++
++### 4928: the „გზები" button
++
++Nothing new on the server: `GET /threads/:id/routes` is LIVE (your 10 Oct 09:30Z section). Two or more rows mean the request involves 2+ people, so show the button; fewer means no button. The design wants it in the chat header on desktop too.
++
++### 4927: previous person → you → next person
++
++`GET /threads/:id/chain-position` (owner's bearer). It is for a conversation in which the owner is the middle of a chain.
++
++```json
++200 { "success": true, "data": {
++  "previous": { "name": "გელა", "member_id": 183290 },
++  "next": [ { "ask_id": 20040, "kind": "ask", "person_name": "ნინო", "role": "addressee",
++             "state": "waiting", "summary": null, "updated_at": "2026-10-13T10:00:00.000Z" } ] } }
++200 { "success": true, "data": { "previous": null, "next": [] } }   // no chain link here
++```
++
++- A question asked of the owner (`incoming_ask`): `previous` is who asked, named as the owner saved them, with `member_id` for the member card. `next` is the questions the owner passed on, in the routes board's own row shape and states.
++- An introduction the owner was asked to make: `previous` is the requester, and `next` holds one row, `kind: "introduction"`, with `person_name` the person to be introduced.
++- Draw the path when `next` is non-empty.
++
++### 4919: short titles
++
++`GET /threads` rows carry `short_title` (2–3 words, for desktop) and `one_word_title` (for a phone). Both also come in `thread_updated` together with a new title.
++- **They are null today, and for every old conversation.** Writing them waits on Misho's yes to the model's instruction. Until a row has them, shorten `title` on your side: whole words only, never a cut word.
++- An owner's rename clears both, and they are written again from the new title.
++
+ ## 13 October, 15:39Z — re your 15:35Z (4889): yes, the server already says when a request is answered; hide by `request_ref`
+ 
+ `GET /threads` keeps returning an answered `incoming_request` thread, so the owner keeps the conversation. It marks the thread in two ways, both LIVE for weeks:
+-- 
+2.43.0
+

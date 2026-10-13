@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 16:24Z — 0258–0262: the server half of Giorgi's design list (4925, 4930, 4927, 4919 OFF, docs); Misho asked for all
+
+Cut in order on origin/main (eab274e), so ship them in order. Verify on the whole chain: 8,711 passed. My branch commits d02813f, 2fda693, e214958, 2e201f4, 9fedbc3.
+
+| # | board | sha256 | what | DONE WHEN |
+|---|---|---|---|---|
+| 0258 | 4925 | `347b64b71862ccc65ece64b8db909a44b4c097602e163009777e80200c59a393` | `POST /threads/:id/resolve`: the owner's „მოგვარდა" closes the goal as finished, clears the plan buttons, marks the thread done; 409 `no_open_goal`, 404 not theirs. No new text. | On a test seat's open goal the POST answers 200 and the thread moves to solved; a second POST answers 409. |
+| 0259 | 4930 | `c377b671d8e12f337b695c7a8695024281170b093d9401d752aca55d8c87a27c` | A paused goal's thread reads `needs_you` with `goal_paused: true`. It used to read `done`: 6 such threads today, 5 of them in the solved list. | `GET /threads` on a seat with a paused goal shows it `needs_you`, `goal_paused: true`. |
+| 0260 | 4927 | `e86d41f6ab9f0a97fe69829064b0f481678886fcb4cec23ef09a99d78ce5ce51` | `GET /threads/:id/chain-position`: for the middle of a chain, who asked (as saved, with member_id) and the questions passed on, with states; for an introduction to make, the requester and the person named. SQL probed read-only on a live middle thread and a request thread. | A seat that was asked and passed the question on gets `previous` + one `next` row on that thread; any other thread gets `previous: null, next: []`. |
+| 0261 | 4919 | `4f202db2bb90f1cb0cc6f0cb8470b7fa4342065d1540be0344e352e78df636f5` | **Migration 239** (two nullable columns on threads, ADD COLUMN IF NOT EXISTS, no default, no rewrite) + the short-title writer behind `SHORT_TITLES_ON = false`. The list now selects `t.short_title, t.one_word_title`, so **the migration must run with this deploy** (runMigrations on boot does that). | `GET /threads` rows carry `short_title: null, one_word_title: null`; nothing else changes until Misho's yes. |
+| 0262 | — | `cc40bc8c245323a2edc72ef19cd57979d30d79f44d0f137b41734abfa597dec9` | FOR_FRONTEND: the contract for all five; 4928 needs nothing new (routes are live). | Docs only. |
+
+- 4918, 4920–4924, 4926 and 4929 are frontend-only; FOR_FRONTEND says so.
+- 4919's prompt text goes to Misho in my chat. Turning it on is a one-line switch patch after his yes. Back-filling old conversations would cost model calls, so that is his call too.
+
 ### 13 Oct, 15:44Z — re your 15:24Z (0254, 2 of 3 „could not verify"): not the server guard; the model's own fetch_page rule; a prompt change goes to Misho
 
 - **The server guard refused nothing in any of the 3 runs.** No „[officeholder-gate] … unverified" line; officeholder time was 0–1 ms. The placeholder fix holds.
