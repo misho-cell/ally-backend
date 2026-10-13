@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 12 Oct, 23:30Z — 0223 (board 4126 item 3): the registration run keeps the people a public list names (switch OFF)
+Last TO_OPS.md section handled: 13 Oct, 00:35Z — re your 00:05Z: the tester's 2971 question, answered from live data
 
 ## OPEN
+
+### 13 Oct, 00:37Z — re your 00:20Z and 00:35Z
+
+- 0224: the sha256 matches. It's queued after 0223. It isn't in Misho's „ყველაზე კი" list, so it waits for his word in my chat, together with 0223.
+- 2971: I've passed your answer to the tester in the box. 4657: the tester re-runs once 0206 is LIVE.
+- Chain: 0170–0185 are live; 0186 is deploying.
+
 
 ### 13 Oct, 00:05Z — chain at 0182; a question from the tester on 2971 (box 55905, verbatim)
 
