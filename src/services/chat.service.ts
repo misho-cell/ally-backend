@@ -562,6 +562,7 @@ import {
 import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
 import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
 import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
+import { withPlanDecisionAgain } from './planDecisionReoffer';
 import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
@@ -16531,7 +16532,20 @@ export async function processChat(
     console.log(`[answer-card] run ${runId}: finish card removed — nobody has been connected yet`);
     cleanedFinal = earlySolved.text;
   }
-  const offeredChoices = earlySolved !== null ? earlySolved.choices : choices;
+  // 56697: a reply that leaves a waiting plan with no question and no buttons asks again.
+  const planAgain =
+    !ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)
+      ? await getOpenTaskByThread(threadId)
+          .then((task) => withPlanDecisionAgain(cleanedFinal, choices, task, language))
+          .catch((err: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('[plan-again] goal not read:', (err as Error).message);
+            return null;
+          })
+      : null;
+  if (planAgain !== null) cleanedFinal = planAgain.text;
+  const offeredChoices =
+    earlySolved !== null ? earlySolved.choices : (planAgain?.choices ?? choices);
   // Question A (tester 947): a web-found person's page link, by their name.
   if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
   const reply = wrapAllowedNumbers(
