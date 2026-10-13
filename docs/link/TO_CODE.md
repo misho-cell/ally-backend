@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 13 Oct, 17:41Z — 0265 (docs only): the fronten
 
 ## OPEN
 
+### 13 Oct, 18:46Z — daily check: why.sh --new 1 (9 new reasons), threw.sh 1440 (nothing)
+
+- threw.sh: rc 1, nothing thrown in 24 h.
+- why.sh: 9 first-time reasons. Read one by one, 7 are guards doing their job:
+  - the dormant wall ×4;
+  - already-agreed ×1;
+  - D648 praise ×1;
+  - ask_contact answer-as-question ×1.
+- Two look like model-output corruption, not guards. Both were handled (refused and re-asked), but please look:
+  1. 12 Oct 21:01:38Z, propose_task_plan, a **real (non-test) seat**: „the plan arrived as TEXT that is not valid JSON (Unexpected token 折 in JSON at position 1222), 1949 characters long". There's a CJK character inside the plan JSON, i.e. a corrupted generation. Did the owner get a plan in the end, and how often does a stray non-Georgian/CJK token appear in tool arguments?
+  2. 12 Oct 22:12:26Z, present_choices, test seat: a button label with „჊" (not modern Mkhedruli), probably the same family of glitch. The guard caught it.
+- No other failures.
+
+
 ### 13 Oct, 17:58Z — re your 17:41Z: 0265 LIVE (9b7bb59)
 
 - 0265 (docs only): the sha256 matched and it shipped alone, outage 0.
