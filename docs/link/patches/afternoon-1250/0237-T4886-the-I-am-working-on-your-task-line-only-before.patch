@@ -1,0 +1,69 @@
+From 8f73ae22bf119ca477a05f126085df66de49e4d5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 09:49:28 +0000
+Subject: [PATCH] =?UTF-8?q?T4886:=20the=20=E2=80=9EI=20am=20working=20on?=
+ =?UTF-8?q?=20your=20task"=20line=20only=20before=20a=20plan=20exists?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Thread 51030 (13 Oct, 08:40-08:46Z): the goal's first search ran in the turn
+that created it, before the thread belonged to a goal, so #364's working line
+was still due. When the owner asked „გიორგი რა შუაშია" about the proposed
+plan, the run searched again, and the question was answered with „ვმუშაობ შენს
+დავალებაზე, მოვძებნი…" above the run's own reply. The line marks the moment
+the questions end and the search begins. Once a plan has been proposed, that
+moment has passed, so the line is no longer due. Checked read-only on the
+thread: due before, not due now.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/theSearchSaysItHasBegun.test.ts     |  2 ++
+ src/services/workingLine.service.ts               | 15 +++++++++++++--
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/theSearchSaysItHasBegun.test.ts b/src/services/__tests__/theSearchSaysItHasBegun.test.ts
+index 4bf826f..56074cc 100644
+--- a/src/services/__tests__/theSearchSaysItHasBegun.test.ts
++++ b/src/services/__tests__/theSearchSaysItHasBegun.test.ts
+@@ -77,6 +77,8 @@ describe('the line that the search has begun', () => {
+     expect(mockSave).not.toHaveBeenCalled();
+     const [sql] = mockQuery.mock.calls[0];
+     expect(String(sql)).toContain("status = 'open'");
++    // T4886: never once a plan is proposed — a question about the plan is not „the search begins".
++    expect(String(sql)).toContain('plan_proposed IS NULL AND plan IS NULL');
+     expect(String(sql)).toContain('content = ANY($2::text[])');
+   });
+ 
+diff --git a/src/services/workingLine.service.ts b/src/services/workingLine.service.ts
+index eda30d3..3c59801 100644
+--- a/src/services/workingLine.service.ts
++++ b/src/services/workingLine.service.ts
+@@ -55,10 +55,21 @@ export const WORKING_LINE: Readonly<Record<RunLanguage, string>> = {
+ /** Runs that have already decided, so parallel search calls in one turn post once. */
+ const decidedRuns = new Set<string>();
+ 
+-/** Is this thread an open goal's, and has it never carried the line? */
++/**
++ * Is this thread an open goal's with no plan yet, and has it never carried the line?
++ *
++ * T4886 (13 Oct, thread 51030): the goal's first search ran in the turn that
++ * created it, before the thread was a goal's, so the line was still due when
++ * the owner asked „გიორგი რა შუაშია" about the proposed plan. The run searched
++ * again and the owner's question was answered with „I am working on your task…".
++ * Once a plan is on the screen the search has long begun: the line is not due.
++ */
+ async function lineIsDue(threadId: number): Promise<boolean> {
+   const result = await query<{ due: boolean }>(
+-    `SELECT EXISTS (SELECT 1 FROM tasks WHERE thread_id = $1 AND status = 'open')
++    `SELECT EXISTS (
++          SELECT 1 FROM tasks
++           WHERE thread_id = $1 AND status = 'open' AND plan_proposed IS NULL AND plan IS NULL
++        )
+         AND NOT EXISTS (
+           SELECT 1 FROM conversations
+            WHERE thread_id = $1 AND role = 'assistant' AND content = ANY($2::text[])
+-- 
+2.43.0
+

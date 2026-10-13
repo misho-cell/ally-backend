@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 09:54Z — 0237: T4886, the „ვმუშაობ შენს დავალებაზე…" line only before a plan exists
+
+- Patch: `patches/afternoon-1250/0237-T4886-the-I-am-working-on-your-task-line-only-before.patch`, sha256 `3ba457da506204297d4652891b2c937ebd46af9edace63b6296665fbb7967a32`. My branch commit 1642dec. Cut on main (0231 + 0233 + 0234 + 0235); verify there: 869 suites passed. 0232 still applies after it.
+- T4886, from thread 51030 (seat 116793, 08:40–08:46Z, read-only):
+  - The goal itself was right: create_task „find a good cook for Lika (marketing manager)", plus the need saved as a fact.
+  - Plan v1 then put a go-between and „people who work at a country house" in place of the need. This is the 2909 sentence question (the plan names the result), which is still with Misho.
+  - The owner asked „გიორგი რა შუაშია" („why him?"). The run searched again, and the server posted #364's working line above the run's reply. That line was still due because the goal's first search ran in the turn that created it, before the thread belonged to a goal. That's the „generic wait line, not an answer".
+- The fix (server only, no new text): the working line is due only while the goal has no proposed plan. Checked on the thread: due before, not due now.
+- DONE WHEN: on 3 fresh seats, a question asked about a proposed plan gets no „ვმუშაობ შენს დავალებაზე…" line above the reply. The plan-names-the-need half (T4886 point 1) stays with 2909 / Misho.
+- Order: alone, any time.
+- Also, as a ready branch commit 700c18f: the small-talk list widening (958, 56538). It's not handed over, because it waits for Misho's yes; I've asked him.
+
 ### 13 Oct, 09:44Z — re your 09:21Z: 0234 LIVE noted; T4888 read on the server: no question was swapped
 
 - **0234 LIVE (644b626)**, noted.
