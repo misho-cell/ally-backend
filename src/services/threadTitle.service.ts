@@ -2,7 +2,8 @@ import { unquoted } from './greetingTurn';
 import { isSmallTalk } from './smallTalk';
 import { isPlaceholderThreadTitle } from './runLanguage';
 import { recordClaudeUsage } from './costLedger.service';
-import { updateThreadTitle } from './threads.service';
+import { updateThreadShortTitles, updateThreadTitle } from './threads.service';
+import { parseShortTitles, SHORT_TITLES_ON, shortTitlesPrompt } from './shortTitles';
 import { emitThreadUpdated } from './sse.service';
 
 // Cheap tier is plenty for a 2–4 word title; overridable without a deploy.
@@ -20,6 +21,8 @@ const TITLE_TIMEOUT_MS = 10_000;
 const TITLE_MAX_WORDS = 6;
 const TITLE_MAX_CHARS = 48;
 const TITLE_INPUT_MAX_CHARS = 500;
+/** Two short lines; a little room over the title's own budget. */
+const SHORT_TITLES_MAX_TOKENS = 40;
 // The language is DETECTED server-side and named explicitly — asking the
 // cheap model to infer "the same language" produced Georgian titles on 6 of
 // 10 English conversations (ticket 6 verify, N12.1).
@@ -200,8 +203,48 @@ export async function generateThreadTitle(
 
     await updateThreadTitle(threadId, title);
     emitThreadUpdated(userId, { id: threadId, title });
+    if (SHORT_TITLES_ON) await writeShortTitles(userId, threadId, title, firstMessage);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[title] generation failed for thread ${threadId}:`, (err as Error).message);
+  }
+}
+
+/**
+ * 4919: the two short titles made from the full one, written and broadcast.
+ * Best-effort like the title: on any failure the client shortens the full title.
+ */
+async function writeShortTitles(
+  userId: string,
+  threadId: number,
+  title: string,
+  firstMessage: string,
+): Promise<void> {
+  try {
+    const { default: anthropic } = await import('../config/anthropic');
+    const response = await anthropic.messages.create(
+      {
+        model: TITLE_MODEL,
+        max_tokens: SHORT_TITLES_MAX_TOKENS,
+        system: shortTitlesPrompt(detectTitleLanguage(firstMessage)),
+        messages: [{ role: 'user', content: title }],
+      },
+      { timeout: TITLE_TIMEOUT_MS },
+    );
+    await recordClaudeUsage({
+      userId,
+      kind: 'thread_title',
+      model: TITLE_MODEL,
+      usage: response.usage,
+      threadId,
+    }).catch(() => undefined);
+    const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
+    const short = parseShortTitles(raw);
+    if (short === null) return;
+    await updateThreadShortTitles(threadId, short.short_title, short.one_word_title);
+    emitThreadUpdated(userId, { id: threadId, ...short });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[title] short titles failed for thread ${threadId}:`, (err as Error).message);
   }
 }

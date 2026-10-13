@@ -99,6 +99,9 @@ interface ThreadRow extends Thread {
   goal_stopped_open?: boolean;
   /** 4930: the goal is paused, waiting on its owner: „შეჩერებულია" in the waiting tab. */
   goal_paused?: boolean;
+  /** 4919: two or three words for a desktop, one for a phone; null until written. */
+  short_title?: string | null;
+  one_word_title?: string | null;
   /**
    * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
    * one, else its latest — so the download asks for the goal's own id and
@@ -358,6 +361,8 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${GOAL_WAS_STOPPED} AS goal_stopped,
        ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
        ${HAS_PAUSED_GOAL} AS goal_paused,
+       t.short_title,
+       t.one_word_title,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
        t.followed_at IS NOT NULL AS followed,
@@ -776,8 +781,29 @@ export async function nameUntitledThreadFromFile(
   return result.rows[0]?.title ?? null;
 }
 
+const TITLE_QUERY_TIMEOUT_MS = 5_000;
+
+/** A new title drops the short ones made from the old (4919); they are written again after it. */
 export async function updateThreadTitle(threadId: number, title: string): Promise<void> {
-  await query(`UPDATE threads SET title = $1, updated_at = NOW() WHERE id = $2`, [title, threadId]);
+  await query(
+    `UPDATE threads SET title = $1, short_title = NULL, one_word_title = NULL, updated_at = NOW()
+      WHERE id = $2`,
+    [title, threadId],
+    TITLE_QUERY_TIMEOUT_MS,
+  );
+}
+
+/** 4919: the two short titles made from the thread's current title. */
+export async function updateThreadShortTitles(
+  threadId: number,
+  shortTitle: string,
+  oneWordTitle: string,
+): Promise<void> {
+  await query(
+    `UPDATE threads SET short_title = $2, one_word_title = $3 WHERE id = $1`,
+    [threadId, shortTitle, oneWordTitle],
+    TITLE_QUERY_TIMEOUT_MS,
+  );
 }
 
 /**
