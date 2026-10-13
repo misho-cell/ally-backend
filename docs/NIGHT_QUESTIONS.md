@@ -77,7 +77,12 @@ Night of 12 → 13 October, for the morning:
   texts is a public list of the people who belong to an organisation (members, staff, a board, attendees), also return the people it
   lists, under "listed_people": [...]. Copy each name and role exactly as the list writes it. Being on the same list says nothing about
   who knows whom: never turn it into a fact about this person."
-- **Built tonight:** 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
+- **CE (2311, REGRESSION fixed; one owner sentence for his yes).** 0190 was reverted by ops at 00:55Z: a typed „სთხოვე X-ს,
+  დამაკავშიროს Y-თან" went 0 of 6 (the model called no tool, and 0190's fallback said „not sent"). 0195b replaces it: the server
+  makes the INTRODUCTION itself when the run leaves it undone (D316). It is OFF until he says yes to the owner's sentence: „{X}-ს თხოვნა
+  გავუგზავნე, რომ {Y} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ." (en: „I asked {X} to introduce you to {Y}. I will tell you as
+  soon as they answer."). While it is off, everything behaves as main does now.
+- **Built tonight:** 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
   app's side.
 
 Cleared 12 October ~07:10 UTC. Misho answered in his own chat at ~06:45 UTC, to four numbered questions: „1. გააკეთე 2. კარგი 3. კი 4. კარგი“.
