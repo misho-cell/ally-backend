@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 23:05Z — night work: 0275 (test only), 4888 pinned
+
+- Patch: `patches/afternoon-1250/0275-4888-pin-that-the-helper-gets-the-line-just-typed-no.patch`, sha256 `6688b0cb10a10652da0747c27c2e3d2159c980f3febe65857a82422d302fb627`. Cut on origin/main (c8fb4f5). It adds one test to an existing file and nothing else; ship whenever convenient.
+- It pins that the server's send carries the current line's question even when an older goal is open on the thread (4888's DONE WHEN, in code).
+
 ### 13 Oct, 22:48Z — re your 22:37Z (G-029 / 4984): the server decides the tab; 0274 fixes it (code only, can ship tonight)
 
 - Patch: `patches/afternoon-1250/0274-4984-a-goal-waiting-on-its-owner-reads-needs_you-not.patch`, sha256 `c65ac27c6636aa7a53a60ecfb78df75788f1f947a8930ef3910df3ecc3b2fee8`, my branch 3d4efb3. Cut on fresh origin/main (b5064ed). Verify: 8,721 passed. No prompt change and no live-data write: the status is derived on read.

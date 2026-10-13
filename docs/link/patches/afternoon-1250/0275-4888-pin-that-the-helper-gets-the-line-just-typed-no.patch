@@ -1,0 +1,43 @@
+From e29d4ea477ca6a7ccb72e752c179c30e84ea42f7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 23:04:02 +0000
+Subject: [PATCH] 4888: pin that the helper gets the line just typed, not an
+ older goal's
+
+Test only. Lika's report read from the base showed no mix-up; this pins the
+rule so it stays true: with an older open goal on the thread, the server's
+send still carries the current line's question.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theServerAsksTheOneNamedContact.test.ts      | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index c477db1..f469b8f 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -245,3 +245,19 @@ describe('an introduction is never sent as a plain question', () => {
+     expect(mockCreateAsk).not.toHaveBeenCalled();
+   });
+ });
++
++/**
++ * 4888 (Lika's phone, 13 Oct): the question that reaches the helper is built
++ * from the owner's current line, never from an older goal on the same thread.
++ */
++describe('the question is always the line just typed', () => {
++  it('asks about the photographer even when an older goal is open on the thread', async () => {
++    mockFindPhones.mockResolvedValue(['995500000001']);
++    mockOpenTask.mockResolvedValue({ id: 88, title: 'დღეს საღამოს თუ სცალია' });
++    await sendInstructedAsk('160584', 51035, 'ჰკითხე სალომეს, კარგ ფოტოგრაფს ხომ არ იცნობს');
++    expect(mockCreateAsk).toHaveBeenCalledTimes(1);
++    const question = String(mockCreateAsk.mock.calls[0][3]);
++    expect(question).toContain('ფოტოგრაფ');
++    expect(question).not.toContain('საღამოს');
++  });
++});
+-- 
+2.43.0
+
