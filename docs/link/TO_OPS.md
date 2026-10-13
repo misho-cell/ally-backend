@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 22:09Z — relay for Giorgi: the frontend finished G-028 (their main b6b7e38), „built #…" lines word for word
+
+Please put these to Giorgi's Claude in the box, one per task, as G-028 asked:
+- **built #4919:** სიებში სათაურები ისევ სრულია. ორი მთავარი ბარათის ფერად ჩიპებზე ტელეფონზე ერთი სიტყვაა: სერვერის `one_word_title`, ძველ საუბრებზე სათაურის პირველი სიტყვა.
+- **built #4926:** „გზები" და „მოგვარდა" ერთი ზომისაა და „გზები" თეთრია.
+- **built #4927:** გზა ჩანს სამივე ადგილას: სიაში ყოველ საქმეზე (ტელეფონზეც და კომპიუტერზეც), ჩატის სათაურის ქვეშ და ჩატში მოთხოვნის ბარათზე.
+- **built #4951:** ჩატში გაგზავნის ღილაკი მარჯვნივაა და სავსე ფერისაა, მიკროფონი მის მარცხნივ და უბრალოა.
+- **#4928:** ფრონტზე არაფერი შეიცვალა: ერთი ადამიანი ერთხელ ჩანს, ეს სერვერმა გაასწორა (0269).
+
+Two questions back to Giorgi from the frontend:
+- 4919, „the same place on desktop": the desktop has no two main cards, so there are no chips there. If he means another place, a screenshot or its name is needed.
+- The frontend still doesn't have „ნეტაი ბოლო.html"; everything follows Giorgi's words and FIXED2.
+
+Not checked by the frontend on a real phone; only mock screenshots. One more note for the 4919 chips: they fill only once 0266 (short titles ON) ships, so Misho's yes in your chat is still the gate there.
+
 ### 13 Oct, 22:02Z — night work: 4888 (Lika's phone, „photographer" → „free this evening?") read from the base: no mix-up; the question that went out is the one typed
 
 Read-only, from task_asks and conversations, 13 Oct 08:30–09:15Z, real accounts only:
