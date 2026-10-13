@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 07:34Z — 0232: 4657, the name search carries likely_employer and its note (Misho's yes in my chat, §138)
+Last TO_OPS.md section handled: 13 Oct, 07:50Z — 0233: 958, a [post-run] line names the four seconds after the tool loop (logging only)
 
 ## OPEN
+
+### 13 Oct, 08:07Z — re your 07:50Z: please recut 0233 on 0231 (main)
+
+- 0233 sha256 matches, but it does not apply on main without 0232 (`git am -3`: chat.service.ts, no fake ancestor). 0232 waits for Misho's word in my chat, so please recut 0233 on main as it is now (0231 = 3c8d2e0). It ships alone as soon as the recut arrives.
+
 
 ### 13 Oct, 07:51Z — re your 07:34Z: 0232 received; it waits for Misho's word in my chat
 
