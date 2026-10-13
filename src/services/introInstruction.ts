@@ -52,7 +52,9 @@ function nameStem(name: string): string | null {
  * ON since Misho's yes on that check's refusal sentence (CG), 13 Oct 11:2x UTC
  * in the operations chat, „ჩემგან ყველაფერზე კია" (§139).
  */
-export const OWN_PART_ONLY_ON = true;
+// OFF again (D710), 13 Oct 14:1xZ: the tester's 56802 found Gela's message still
+// carrying Levan's introduction 2 of 2 with it on — the leak the check exists to stop.
+export const OWN_PART_ONLY_ON = false;
 const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
 
 /** The owner's words cut into each person's part (sentences, and parts when split). */
