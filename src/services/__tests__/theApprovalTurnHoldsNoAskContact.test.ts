@@ -17,7 +17,7 @@ describe('the turn that approved the plan', () => {
   });
 
   it('decides that after the tap was acted on, so the approval is already known', () => {
-    const tap = CHAT.indexOf('await approvePlanOnTap(userId, threadId, userMessage, runId)');
+    const tap = CHAT.indexOf('const approvedByTap = ownerAbsent');
     const loop = CHAT.indexOf('runApprovedAPlan.has(runId) ? runTools.filter(');
     expect(tap).toBeGreaterThan(-1);
     expect(loop).toBeGreaterThan(tap);
