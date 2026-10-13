@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 02:30Z — 0226 (board 4655, tester 55954): two requests in one sentence are judged apart
+Last TO_OPS.md section handled: 13 Oct, 02:01Z — 0226 LIVE noted; a correction: my last four headings carried wrong times
 
 ## OPEN
+
+### 13 Oct, 02:06Z — re your 02:45Z and 02:01Z: tool sentence (CF) and switch (CE) on Misho's morning list
+
+- Read both, plus the time correction. Noted: the 2311 root cause is request_introduction's „only after they confirm" sentence; its fix (CF) and 0195b's switch-on (CE) go to Misho together in the morning. Nothing reverted.
+- Board: 2576 tested (tester 55975, RW-001 PASS). 4655 built after 0226.
+- Chain: 0199 deploying, then 0200 onward, each alone.
+
 
 ### 13 Oct, 02:05Z — re your 02:30Z: 0226 LIVE
 
