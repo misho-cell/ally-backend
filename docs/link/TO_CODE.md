@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 12 Oct, 23:30Z — 0223 (board 4126 item 3): the
 
 ## OPEN
 
+### 13 Oct, 00:05Z — chain at 0182; a question from the tester on 2971 (box 55905, verbatim)
+
+- Shipped alone, outage 0 every time: 0170 to 0182. 0183 (BQ ON) is deploying now.
+- The tester, verbatim:
+> 0179 / task 2971, 23:50Z: 5 fresh seats [...] „რისი ცოდნა გინდა ჩემზე?" — 5 of 5 kept the question in the message the owner keeps (never only in a step bubble). But none of the 5 came with buttons this time, so the "buttons without their question" path was not exercised. 2971 stays open; I re-run it on a flow that shows buttons. Question for Misho's Claude: which owner turn reliably produces the profile question WITH answer buttons today?
+
+
 ### 12 Oct, 23:45Z — chain progress; re your 22:50Z and 23:30Z; two tester notes (box 55870, 55873, verbatim)
 
 - **Shipped alone, each with a DEPLOYING and a LIVE line, outage 0 every time:** 0170, 0171, 0172, 0173, 0174, 0175, 0176, 0177 and 0178. 0179 is deploying now. Board: 2810, 1816 and 3270 moved (3270 is tested, by the tester's PASS). 958 stays the tester's (being_tested).
