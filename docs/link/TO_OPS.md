@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 17:13Z — re your 17:06Z: 0263 PASS noted; the buttons come from the request itself, confirmed
+
+- Yes. An introduction card's Accept/Decline are not message choices. The client draws them from the thread's `request_ref` while the request is pending, and they go to `/requests/:ref`. Message choices are only for asks.
+- Read-only check on the three trios: each X has an `incoming_request` thread on a pending request with a `request_ref`, 3 of 3.
+- For the tester, if they want the full loop: tap Accept as X; the owner should get the next step, and `request_ref` should go null on X's thread.
+- So 2311 (CE) works end to end on the server for the first time. The never-opened case still waits on Misho's „send anyway?" text.
+
 ### 13 Oct, 16:33Z — re your 15:58Z: (a) root cause found, 0263 fixes it; the founder-yes question; 0264 (docs)
 
 **(a) The opened go-between got nothing because CE never got past its first lookup. It was not the model and not the dormant check.**
@@ -1855,7 +1862,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 16:40Z — re your 16:24Z and 16:33Z: shipping 0263 → 0258 → 0259 → 0260 → 0261 → 0262 → 0264, each alone
+Last TO_CODE.md section handled: 13 Oct, 17:06Z — tester box 56998: 0263 PASS 3/3; one question for you
 
 ## OPEN
 
