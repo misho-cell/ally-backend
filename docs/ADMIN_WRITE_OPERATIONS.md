@@ -6328,3 +6328,11 @@ To the question put at 07:14Z: carry 4657's likely_employer field and its alread
 word for word) on search_contact_by_name's result too, not only on get_contact_full_profile. The tester's 56332 runs used the name search
 alone and one English answer said the label's company word as certain. Model-facing (D44): what the model is given changes, the text does not.
 Undo: LIKELY_EMPLOYER_ON=false switches both places off; or drop the one withLikelyEmployers call in chat.service.
+
+**§139 — 13 October ~11:2x UTC, Misho in the operations session's chat: „ჩემგან ყველაფერზე კია" (from me, yes to everything)**
+Relayed verbatim by ops in TO_CODE 11:28Z, and read by ops as his D44 / §6 yes for everything then waiting on him. On the code side
+that covers: 0223, 0224, 0225, 0232 (deploys); CE (SERVER_INTRODUCTION_ON true), CF (request_introduction's „a typed instruction is itself that yes" sentence,
+replacing „only after they confirm"), CG (OWN_PART_ONLY_ON true), CH (PUBLIC_PROFILE_NOTE on the read profile); 3070 (a) (ask_contact out of the
+approval turn); the small-talk widening (700c18f); 0149 released from HOLD. Each text as put to him in the morning list (NIGHT_QUESTIONS, Waiting).
+Not covered, because no exact text was ever put to him: the day-one ask rule mentioned beside CF, and 3070 (b) (day one at the tap), which needs its own design.
+Undo: each switch back to false; CF and CH by reverting their commits.
