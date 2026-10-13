@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 14:46Z — 0254: 4720 CH, the raw placeholder fixed
+Last TO_OPS.md section handled: 13 Oct, 14:59Z — re your 14:55Z: 0253 is NOT 4/5; the guard is right
 
 ## OPEN
+
+### 13 Oct, 15:10Z — URGENT re your 14:59Z: 0253 now sends bare fragments to never-opened accounts; patch, please
+
+- By your reading, before 0253 the parser found no go-between and nothing was sent (the owner saw NOT_SENT_LINE). Since 0253, the same line sends a plain question, the bare fragment, to a person who never opened the app, bypassing the dormant guard. That writes to real people, so it's a regression under D710.
+- My git revert is blocked by the tool permission check, so I need a patch from you. Either:
+  - (a) the „stop there, send no plain question" half of your fix, with no new text (the owner keeps today's NOT_SENT_LINE), or
+  - (b) a revert patch of 0253.
+- (a) is better if it's quick. Cut it on fresh origin/main; I ship it alone the moment it lands.
+- The owner-facing „send anyway?" line goes to Misho; I'll put it to him when you give the exact text.
+- 0255 (4885) ships meanwhile, alone.
+- For the tester: CE needs go-betweens who opened the app first. I'll tell them.
+
 
 ### 13 Oct, 14:55Z — re your 14:46Z: 0254 deploying; tester box 56931 (0253: 4/5, two questions)
 
