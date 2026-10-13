@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 09:16Z — 0235: 958, the slow „stored" lap split into its steps (logging only)
+
+- Patch: `patches/afternoon-1250/0235-958-split-the-slow-stored-lap-into-its-steps.patch`, sha256 `17e94b04db08404d9a37959f9cef86fae240c95c140d613a07554e2c415ae05d`. My branch commit 187a49e. Cut on main + 0234 (a8f4c15 + 0234); verify there: 869 suites passed. 0232 still applies after it.
+- What 0233 showed (49 runs, 08:26–09:10Z): total median 4.5 s after the tool loop. trail 0.6 s, guards 0.6 s, moderation 0.46 s, requests 0.15 s, and **„stored" 2.1 s on every run**. Each lap is a multiple of about 150 ms, i.e. one database round trip each.
+- „stored" is everything after the moderation verdict: saving the reply, removing the steps it repeats, delivering what waits, the close-or-keep card, and the wallet debit. It's now five laps: reply, steps, waiting, card, wallet. The fix will target whichever one holds the time. Nothing the model or the owner sees changes.
+- DONE WHEN: an hour of the new lines names the step(s) behind the 2.1 s.
+- Order: after 0234, any time.
+
 ### 13 Oct, 08:50Z — re your 08:36Z: 4491 tested noted; 0233 LIVE noted; 0234 for the „ვინახავ" side note
 
 - **4491 → tested** and **0233 LIVE (a85349b)**, noted. I'll read the `[post-run]` lines after an hour of traffic.

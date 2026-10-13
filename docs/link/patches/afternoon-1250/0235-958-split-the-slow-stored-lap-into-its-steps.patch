@@ -1,0 +1,62 @@
+From c587b0269a906fac1132f59d58466ebbd88a603a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 09:12:26 +0000
+Subject: [PATCH] =?UTF-8?q?958:=20split=20the=20slow=20=E2=80=9Estored"=20?=
+ =?UTF-8?q?lap=20into=20its=20steps?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The first 49 [post-run] lines (0233, 08:26-09:10Z): total median 4.5 s,
+and one lap, „stored", median 2.1 s on every run, most of the rest. Each lap
+is a multiple of about 150 ms, one database round trip. „stored" covers
+everything after the moderation verdict: saving the reply, taking out the
+steps it repeats, delivering what waits, the close-or-keep card and the
+wallet debit. It is now five laps (reply, steps, waiting, card, wallet), so
+the fix goes to the step that holds the time. Logging only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/chat.service.ts | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index e24f3a5..25f38c2 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -16748,9 +16748,11 @@ export async function processChat(
+     // Row 132: the reply the user reads, stamped with who wrote it.
+     answeredBy,
+   );
++  lap(postRun, 'reply');
+   // The same answer must not be on the screen twice (item H).
+   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
+   await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);
++  lap(postRun, 'steps');
+   // D348: the free answer says it was free, immediately after it and before
+   // anything else the run has to deliver.
+   if (graceNote !== null) {
+@@ -16784,8 +16786,10 @@ export async function processChat(
+     );
+   }
+   await deliverPendingMessages(userId, threadId, runId, language, toDeliver);
++  lap(postRun, 'waiting');
+   // 2581: the close-or-keep card of a goal this run finished, under the reply.
+   await offerNotedOpenAsksCard(runId);
++  lap(postRun, 'card');
+   // The goal this thread carries was worked on now (Ticket 11 Task 7 (a):
+   // `last_activity_at` read 4 Sep on a goal whose thread held 6 Sep messages).
+   void touchTaskActivityForThread(threadId).catch(() => undefined);
+@@ -16845,7 +16849,7 @@ export async function processChat(
+     // eslint-disable-next-line no-console
+     console.error('[wallet] debit failed for run', runId, (err as Error).message);
+   }
+-  lap(postRun, 'stored');
++  lap(postRun, 'wallet');
+   // eslint-disable-next-line no-console
+   console.log(postRunLine(runId, postRun));
+ 
+-- 
+2.43.0
+
