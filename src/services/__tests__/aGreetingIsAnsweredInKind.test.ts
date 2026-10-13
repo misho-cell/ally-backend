@@ -1,3 +1,4 @@
+import { isBareGreeting } from '../greetingTurn';
 import { greetingText, MIRRORED_GREETING_ON, timeOfDayGreeting } from '../serverGreeting';
 
 /** 2114 (box 54162): „დილა მშვიდობისა" was answered „გამარჯობა". */
@@ -42,5 +43,30 @@ describe('a time-of-day greeting is answered in kind', () => {
   it('reads only a time-of-day greeting', () => {
     expect(timeOfDayGreeting('დილა   მშვიდობისა')).toBe('დილა მშვიდობისა');
     expect(timeOfDayGreeting('გამარჯობა')).toBeNull();
+  });
+});
+
+/**
+ * The tester's 56030: „დილამშვიდობის" (no space, final „ა" missing) was not
+ * recognized; the full model ran and copied the typo. It is a greeting, and
+ * the same words come back spelled right.
+ */
+describe('a time-of-day greeting typed without care', () => {
+  it.each(['დილამშვიდობის', 'დილა მშვიდობის!', 'საღამომშვიდობისა', 'დილა  მშვიდობისა'])(
+    '„%s" is a bare greeting',
+    (line) => {
+      expect(isBareGreeting(line)).toBe(true);
+    },
+  );
+
+  it('is echoed spelled right', () => {
+    expect(timeOfDayGreeting('დილამშვიდობის')).toBe('დილა მშვიდობისა');
+    expect(timeOfDayGreeting('საღამო მშვიდობის!')).toBe('საღამო მშვიდობისა');
+    expect(timeOfDayGreeting('დილა მშვიდობისა!')).toBe('დილა მშვიდობისა');
+  });
+
+  it('leaves other words alone', () => {
+    expect(isBareGreeting('დილამშვიდობის, ნოტარიუსი მომიძებნე')).toBe(false);
+    expect(timeOfDayGreeting('Good morning!')).toBe('Good morning');
   });
 });

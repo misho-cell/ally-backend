@@ -73,8 +73,10 @@ export const MIRRORED_GREETING_ON = true;
 
 const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
 
+const GEORGIAN_TIME_OF_DAY_RE = /^(დილა|საღამო)\s*მშვიდობისა?/u;
+
 const TIME_OF_DAY_GREETING_RE =
-  /^\s*((?:დილა|საღამო)\s+მშვიდობისა|good\s+(?:morning|afternoon|evening)|доброе\s+утро|добрый\s+(?:день|вечер)|buen(?:os|as)\s+(?:días|tardes|noches))/iu;
+  /^\s*((?:დილა|საღამო)\s*მშვიდობისა?|good\s+(?:morning|afternoon|evening)|доброе\s+утро|добрый\s+(?:день|вечер)|buen(?:os|as)\s+(?:días|tardes|noches))/iu;
 
 /** The person's own time-of-day greeting, as typed, or null for any other hello. */
 export function timeOfDayGreeting(greeting: string): string | null {
@@ -83,7 +85,11 @@ export function timeOfDayGreeting(greeting: string): string | null {
   const first = said.charAt(0);
   // Georgian has no capitals in running text; upper-casing it gives Mtavruli.
   const opening = GEORGIAN_LETTER_RE.test(first) ? first : first.toLocaleUpperCase();
-  return opening + said.slice(1).replace(/\s+/gu, ' ');
+  // The tester's 56030: „დილამშვიდობის" was not recognized, and the model copied the typo. The
+  // same words come back spelled right.
+  return (opening + said.slice(1))
+    .replace(GEORGIAN_TIME_OF_DAY_RE, '$1 მშვიდობისა')
+    .replace(/\s+/gu, ' ');
 }
 
 function openingHello(
