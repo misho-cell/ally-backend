@@ -16232,7 +16232,9 @@ export async function processChat(
     runId,
     messages,
     systemPrompt,
-    runTools,
+    // 3070 (a) (Misho's yes, §139): a turn that approved the plan has day one queued behind it;
+    // ask_contact there was only ever refused, and the refusal cost the turn a second round.
+    runApprovedAPlan.has(runId) ? runTools.filter((tool) => tool.name !== 'ask_contact') : runTools,
     ownerAbsent,
     lateSearch,
     // D631 (the founder, 4 October): a tap on a button with a fixed answer that

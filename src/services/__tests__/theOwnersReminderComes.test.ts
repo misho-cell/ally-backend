@@ -167,6 +167,7 @@ describe('a message that is only a reminder request starts nothing else (46334, 
     expect(chat).toContain('!ownerAbsent && isReminderRequestOnly(userMessage)');
     expect(chat).toContain('? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)');
     const loop = chat.slice(chat.indexOf('} = await runToolLoop('));
-    expect(loop.slice(0, 200)).toContain('runTools,');
+    // 3070 (a): the approval turn narrows the same list further; it is still runTools that reaches the loop.
+    expect(loop.slice(0, 500)).toContain(': runTools,');
   });
 });
