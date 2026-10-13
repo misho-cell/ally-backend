@@ -90,3 +90,15 @@ export function asksTheWeather(message: string): boolean {
     !statesANeed(text)
   );
 }
+
+const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+
+/**
+ * The tester's 55870 (958 re-run, 12 Oct): an English „thanks!" was answered
+ * „არაფრის! კიდევ რამეში დაგეხმარო?". The turn notes are Georgian, with a
+ * Georgian sample answer, and the model copied the sample over the owner's own
+ * language. A turn note goes only with a line written in Georgian.
+ */
+export function isGeorgianLine(message: string): boolean {
+  return GEORGIAN_LETTER_RE.test(message);
+}

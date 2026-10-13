@@ -73,6 +73,7 @@ import { heldAsksNote } from './heldAskNote.service';
 import {
   asksTheWeather,
   isFarewell,
+  isGeorgianLine,
   isPlainThanks,
   isSmallTalk,
   isToolFreeSmallTalk,
@@ -5171,6 +5172,8 @@ const THANKS_TURN_NOTE =
 
 /** What kind of line a small-talk turn answers, when the server knows it for sure. */
 function smallTalkTurnNote(userMessage: string): string {
+  // 55870: the notes are Georgian; on another language's line they pull the reply into Georgian.
+  if (!isGeorgianLine(userMessage)) return '';
   if (isFarewell(userMessage)) return FAREWELL_TURN_NOTE;
   if (isPlainThanks(userMessage)) return THANKS_TURN_NOTE;
   return '';
