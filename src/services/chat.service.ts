@@ -798,8 +798,12 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
     'or a piece of information is a question, and that is ask_contact. "Ask Gio whether he knows ' +
     'a plumber" is a question. "Ask Gio to introduce me to Nino" is an introduction, even though ' +
     'both sentences begin with "ask". ' +
-    "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list." +
-    ' WHEN: to ask a single mediator, only after they confirm. DIRECT case: when the person the ' +
+    // CF (2311 root cause; Misho's yes, 13 Oct 11:2x UTC, §139): the old wait-for-a-second-
+    // confirmation wording made the model ask again on a typed instruction, against D316.
+    'Send an introduction request to a mutual contact (mediator). Call it once the user has said ' +
+    'they want it: a typed instruction to introduce them („ask Gio to introduce me to Nino") is ' +
+    "itself that yes (D316) — send at once, without asking again. The mediator must be in the user's contact list." +
+    ' WHEN: to ask a single mediator. DIRECT case: when the person the ' +
     'user wants to meet is already their own contact AND a member, pass that person as BOTH ' +
     'mediator_name and target_name — the request goes to them directly ("X wants to meet you"), ' +
     'no third person involved.',
