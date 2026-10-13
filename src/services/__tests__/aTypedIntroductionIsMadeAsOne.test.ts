@@ -18,6 +18,7 @@ import {
   nominativeBeforeTan,
   SERVER_INTRODUCTION_ON,
   serverIntroduces,
+  dormantSentence,
 } from '../introFallback';
 import { ownerAsksForIntroduction } from '../introInstruction';
 import { requestIntroduction } from '../tools/requestIntroduction';
@@ -126,6 +127,18 @@ describe('the server makes the introduction', () => {
       await serverIntroduces(OWNER, 'ჰკითხე ნინოს, კარგ სტომატოლოგს თუ იცნობს.', {}),
     ).toBeNull();
     expect(mockIntro).not.toHaveBeenCalled();
+  });
+
+  it('names the go-between who never opened the app, so the owner can decide (§140)', async () => {
+    mockIntro.mockResolvedValue({ success: false, reason: 'dormant_account', error: 'x' });
+    const found = await serverIntroduces(OWNER, LINE, {});
+    expect(found).toEqual({ dormant: 'გიორგი ტესტაძე' });
+    expect(dormantSentence({ dormant: 'გიორგი ტესტაძე' }, 'ka')).toBe(
+      'გიორგი ტესტაძე Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია, ამიტომ თხოვნას ვერ ნახავს, სანამ არ შემოვა. მაინც გავუგზავნო?',
+    );
+    expect(dormantSentence({ dormant: 'Giorgi' }, 'en')).toBe(
+      "Giorgi is on Netai but hasn't opened the app yet, so they won't see the request until they do. Send it anyway?",
+    );
   });
 
   it('says nothing went when requestIntroduction refuses', async () => {

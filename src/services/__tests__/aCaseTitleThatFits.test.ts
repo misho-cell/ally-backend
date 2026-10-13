@@ -37,9 +37,9 @@ describe('the short titles', () => {
   });
 });
 
-describe('until Misho says yes to the prompt (D44)', () => {
-  it('nothing is written', () => {
-    expect(SHORT_TITLES_ON).toBe(false);
+describe("after Misho's yes (§140)", () => {
+  it('new titles get their short ones', () => {
+    expect(SHORT_TITLES_ON).toBe(true);
   });
 
   it('a new title clears the short ones made from the old, and the list returns both', () => {

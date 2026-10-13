@@ -470,6 +470,8 @@ import {
 } from './introInstruction';
 import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
 import {
+  dormantSentence,
+  DormantGoBetween,
   introSentSentence,
   SERVER_INTRODUCTION_ON,
   ServerIntroduction,
@@ -3807,6 +3809,8 @@ const FETCH_PAGE_TOOL: AnthropicTool = {
     "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page." +
     ' A long page comes back in parts: when the result carries `next_from_character`, you have NOT seen the whole page — call this again with the same url and `from_character` set to that number until you find the answer or the page ends.' +
     " WHEN: open an institution's own page whenever a current officeholder is involved." +
+    // 4720 (tester box 56939): an RNS notice named the CEO and was not counted. Misho's yes, §140.
+    " A company's own regulatory filing (a stock-exchange announcement such as an RNS) or its annual report counts as the institution's own page, even when hosted elsewhere." +
     // #1357 (Lika, 5 Oct): the facts were read off a page, then the owner was sent to the link.
     ' ABOUT A PERSON: once you have read the page, the answer IS the facts — their role, ' +
     'workplace, field, in your own words and in full. A link is an extra at the end, never ' +
@@ -12422,7 +12426,7 @@ async function serverIntroductionOrNull(
   threadId: number,
   runId: string,
   on: boolean = SERVER_INTRODUCTION_ON,
-): Promise<ServerIntroduction | null> {
+): Promise<ServerIntroduction | DormantGoBetween | null> {
   const ownerLine = runOwnerLine.get(runId) ?? '';
   if (!on || !ownerAsksForIntroduction([ownerLine])) return null;
   const goal = await getOpenTaskByThread(threadId).catch(() => null);
@@ -12436,7 +12440,7 @@ async function serverIntroductionOrNull(
       return null;
     },
   );
-  if (made !== null) {
+  if (made !== null && !('dormant' in made)) {
     runIntroSent.add(runId);
     // eslint-disable-next-line no-console
     console.log(`[instruction-unsent] run ${runId}: the server made the introduction`);
@@ -12457,6 +12461,8 @@ async function serverSendsOrSaysSo(
 ): Promise<string> {
   const language = runLang(runId);
   const introduced = await serverIntroductionOrNull(userId, threadId, runId);
+  // 2311 (§140): never opened the app — the owner decides, nothing goes as a plain question.
+  if (introduced !== null && 'dormant' in introduced) return dormantSentence(introduced, language);
   if (introduced !== null) return introSentSentence(introduced, language);
   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {

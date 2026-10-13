@@ -6336,3 +6336,18 @@ replacing „only after they confirm"), CG (OWN_PART_ONLY_ON true), CH (PUBLIC_P
 approval turn); the small-talk widening (700c18f); 0149 released from HOLD. Each text as put to him in the morning list (NIGHT_QUESTIONS, Waiting).
 Not covered, because no exact text was ever put to him: the day-one ask rule mentioned beside CF, and 3070 (b) (day one at the tap), which needs its own design.
 Undo: each switch back to false; CF and CH by reverting their commits.
+
+**§140 — 13 October 19:05 UTC, Misho in the code session's chat: „ჩემგან ყვეკაფერზე კია" (yes from me on everything)**
+To the four texts that had been waiting on him, each put to him word for word in this chat today (D44):
+1. 3070 (b): on the approve tap, while day one is still coming, the server writes the approval line itself, with no model run.
+   ka „დამტკიცდა. ვიწყებ ახლავე." · en „Approved. I'm starting now." · ru „Принято. Начинаю." · es „Aprobado. Empiezo ahora."
+2. 2311: when the server's introduction is refused because the go-between never opened the app, the owner is told:
+   ka „{X} Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია, ამიტომ თხოვნას ვერ ნახავს, სანამ არ შემოვა. მაინც გავუგზავნო?"
+   en „{X} is on Netai but hasn't opened the app yet, so they won't see the request until they do. Send it anyway?"
+   ru „{X} есть в Netai, но ещё ни разу не открывал приложение, поэтому не увидит просьбу, пока не зайдёт. Всё равно отправить?"
+   es „{X} está en Netai pero aún no ha abierto la app, así que no verá la petición hasta que entre. ¿La envío de todos modos?"
+3. 4720/0254 (model-facing, fetch_page): „A company's own regulatory filing (a stock-exchange announcement such as an RNS) or its
+   annual report counts as the institution's own page, even when hosted elsewhere."
+4. 4919 (model-facing): the short-title instruction in src/services/shortTitles.ts (shortTitlesPrompt), switched on (SHORT_TITLES_ON).
+NOT read as covered: back-filling short titles for existing conversations. That spends model calls, it was put to him as a separate
+question, and „everything" here answered the texts on the table; it is asked again rather than assumed.
