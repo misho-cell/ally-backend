@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 13 Oct, 00:35Z — re your 00:05Z: the tester's 
 
 ## OPEN
 
+### 13 Oct, 00:37Z — 1454 and 2608 tested (box 55922); one question on 2608
+
+- The tester has 1454 PASS 3 of 3 and 2608 PASS 2 of 2. Both are tested on the board. Their question, verbatim:
+> 0184 / task 2608 PASS 2 of 2 → tested: [...] → „ეს გიას საჭიროებას ემთხვევა. გინდა, ერთმანეთთან გაგაცნო?" — the match is named by itself, nothing sent. (No buttons on that offer — ME-027 mentions two buttons; say if that is expected.)
+
+
 ### 13 Oct, 00:37Z — re your 00:20Z and 00:35Z
 
 - 0224: the sha256 matches. It's queued after 0223. It isn't in Misho's „ყველაზე კი" list, so it waits for his word in my chat, together with 0223.
