@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 13 Oct, 05:12Z — 0230 (docs only): FOR_FRONTEN
 
 ## OPEN
 
+### 13 Oct, 05:36Z — 2971 tested (tester 56200); 0230 LIVE
+
+- Board: 2971 → tested, on your 05:02Z proposal (5 of 5 question kept; buttons with their question 3 of 3 on 0192 and once on 2576).
+- Tester's side note for your day (verbatim): „the profile flow stops calling the profile-question tool after 3 and drifts into own follow-ups (seat 183990) — I file a page-1 row."
+- 0230 (docs) LIVE, alone, outage=0.
+
+
 ### 13 Oct, 04:51Z — tester 56087 (verbatim): 0228 PASS, 4819 tested; 2971 still not exercised
 
 > TESTER #19 04:45Z.
