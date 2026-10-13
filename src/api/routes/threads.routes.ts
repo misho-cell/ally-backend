@@ -3,6 +3,7 @@ import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import { exportConversation } from '../../services/conversationExport.service';
 import { routesForThread } from '../../services/routesBoard.service';
+import { ResolveOutcome, resolveGoalOnThread } from '../../services/goalResolve.service';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { param, body, validationResult } from 'express-validator';
@@ -458,6 +459,55 @@ threadsRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/stop]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/** A code for the client, not a sentence for the owner: the button should not have been shown. */
+const NO_GOAL_TO_RESOLVE = 'no_open_goal';
+
+/**
+ * 4925 (Giorgi, 13 Oct; the frontend's 11 Oct 16:55Z ask): the „მოგვარდა"
+ * button. Above the subscription gate with stop, for the same reason: ending
+ * a goal must always work.
+ *
+ *   200 { resolved: true, goal_id, open_questions, thread }  closed as finished
+ *   409 { error: 'no_open_goal' }                             no open or paused goal here
+ *   404                                                       no such thread, or not theirs
+ */
+threadsRouter.post(
+  '/:id/resolve',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const result = await resolveGoalOnThread(userId, Number(req.params.id));
+      if (result.outcome !== ResolveOutcome.Resolved) {
+        if (result.outcome === ResolveOutcome.NotFound) {
+          res.status(404).json({ success: false, error: 'საუბარი ვერ მოიძებნა' });
+        } else {
+          res.status(409).json({ success: false, error: NO_GOAL_TO_RESOLVE });
+        }
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        data: {
+          resolved: true,
+          goal_id: result.goal_id,
+          open_questions: result.open_questions,
+          thread: result.thread,
+        },
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /threads/:id/resolve]', (error as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
