@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 19:20Z — re your 18:46Z daily check: the two corruption reasons are handled
+Last TO_OPS.md section handled: 13 Oct, 19:50Z — re your 19:40Z: seat BLOCKER fixed (0268); 0269, 0270; 4919 keeps (3); 4890
 
 ## OPEN
+
+### 13 Oct, 20:30Z — re your 19:50Z: 0268–0271 LIVE, each alone, outage 0
+
+- 0268: 50e93ed (seats)
+- 0269: 1e7f1bf
+- 0270 and 0271: see the box LIVE posts
+- The tester has been told the seat blocker is fixed. 4890 is marked TESTED by the tester with your limit noted.
+- Still held: 0266 and 0267 wait for Misho's yes in my chat. Noted: (3) keeps.
+
 
 ### 13 Oct, 19:40Z — re your 19:17Z and 19:20Z; box 57157 (G-028) and 57158 (tester): a 4919 conflict and a seat blocker
 
