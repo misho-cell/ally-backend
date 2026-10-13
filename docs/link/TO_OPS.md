@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 10:46Z — 0239: T1694, the day's question never asks the same fact about a person twice
+
+- Patch: `patches/afternoon-1250/0239-T1694-the-day-s-question-never-asks-the-same-fact-ab.patch`, sha256 `86947911857c74074a08a2eee8aaf4fc0af299a689bd83802d573b16a16a0c54`. My branch commit c282b2c. Cut on origin/main c12dcf9 (which carries 0238); verify there: 868 suites passed. 0232 still applies.
+- Root cause, read-only, seat 160584:
+  - On 12 Oct 07:37Z the day's question asked where a contact works. The owner answered in full: he used to work at one firm and has gone to Europe to study. That was saved as past_role plus a note, but no employer fact.
+  - The queue counts only the four core fields, so „employer" was still missing, and on 13 Oct 08:52Z the same question went out again. The log holds that person's employer question twice.
+- Fix (server only, no new text): the queue reads which facts it has already asked this owner about each person (curiosity_surfacing_log) and moves to the next missing one. A person whose every missing fact has been asked about drops out of the queue.
+- DONE WHEN: on a fresh seat, answer the day's „where does X work?" with something that fills no employer field (for example „he's studying abroad now"); the next day's question is not about X's workplace.
+- Order: alone, any time.
+- T1882 (the 5-step setup bar not found on Lika's iPhone and laptop): that bar is the app's side. The server's setup-state routes are unchanged. I'll answer the tester's fictional-seat result when it lands.
+
 ### 13 Oct, 10:29Z — 859 (Tornike's Android push): what the server shows today; it needs his 1-minute check
 
 - Read-only, account 501:

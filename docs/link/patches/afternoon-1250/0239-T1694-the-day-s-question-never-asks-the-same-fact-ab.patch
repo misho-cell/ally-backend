@@ -1,0 +1,155 @@
+From 9fb9b2a17312fef4d897f875203c4953d0105780 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 10:42:47 +0000
+Subject: [PATCH] T1694: the day's question never asks the same fact about a
+ person twice
+
+Lika's report, 13 Oct (seat 160584): on 12 Oct the day's question asked
+where a contact works. She answered in full: he used to work at one firm and
+has gone to Europe to study. That was kept as a past role and a note, so the
+employer field stayed empty, and on 13 Oct the same question was asked again.
+The queue now reads which facts it has already asked this owner about each
+person (curiosity_surfacing_log) and moves to the next missing one. A person
+whose every missing fact has been asked about drops out. Whatever the owner
+said is the answer, even when it fills no field. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/curiosityQueue.service.test.ts  | 39 ++++++++++++++++++
+ src/services/curiosityQueue.service.ts        | 40 +++++++++++++++++--
+ 2 files changed, 75 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/curiosityQueue.service.test.ts b/src/services/__tests__/curiosityQueue.service.test.ts
+index 001bdb5..b4f9ae2 100644
+--- a/src/services/__tests__/curiosityQueue.service.test.ts
++++ b/src/services/__tests__/curiosityQueue.service.test.ts
+@@ -23,10 +23,13 @@ interface RouteOpts {
+   presence?: { phone: string; field_type: string }[];
+   labels?: { phone: string; label: string | null }[];
+   recentSurfacing?: { id: number }[];
++  asked?: { phone: string; missing_fact: string }[];
+ }
+ 
+ function routeQueueQueries(opts: RouteOpts): void {
+   mockQuery.mockImplementation((sql: string) => {
++    if (sql.includes('SELECT DISTINCT phone, missing_fact FROM curiosity_surfacing_log'))
++      return Promise.resolve(rows(opts.asked ?? []) as never);
+     if (sql.includes('SELECT id FROM curiosity_surfacing_log'))
+       return Promise.resolve(rows(opts.recentSurfacing ?? []) as never);
+     if (sql.includes('normalize_search_token(tag)'))
+@@ -49,6 +52,42 @@ beforeEach(() => {
+   mockGetTopConnectors.mockResolvedValue({ found: false });
+ });
+ 
++describe('a fact already asked about is not asked again (T1694)', () => {
++  it('moves to the next missing fact once the employer was asked about this person', async () => {
++    mockBuildTargetList.mockResolvedValue([
++      { phone: '+995500999999', label: 'director', city: null, score: 0.5, parts: {} as never },
++    ]);
++    routeQueueQueries({
++      lookalike: [{ phone: '+995500000001' }],
++      presence: [{ phone: '+995500000001', field_type: 'occupation' }],
++      labels: [{ phone: '+995500000001', label: 'გია' }],
++      asked: [{ phone: '+995500000001', missing_fact: 'employer' }],
++    });
++
++    const out = await buildCuriosityQueue('42');
++
++    expect(out.map((i) => i.missing_fact)).toEqual(['city']);
++  });
++
++  it('drops the person once every missing fact was asked about', async () => {
++    mockBuildTargetList.mockResolvedValue([
++      { phone: '+995500999999', label: 'director', city: null, score: 0.5, parts: {} as never },
++    ]);
++    routeQueueQueries({
++      lookalike: [{ phone: '+995500000001' }],
++      presence: [
++        { phone: '+995500000001', field_type: 'occupation' },
++        { phone: '+995500000001', field_type: 'city' },
++        { phone: '+995500000001', field_type: 'industry' },
++      ],
++      labels: [{ phone: '+995500000001', label: 'გია' }],
++      asked: [{ phone: '+995500000001', missing_fact: 'employer' }],
++    });
++
++    expect(await buildCuriosityQueue('42')).toEqual([]);
++  });
++});
++
+ describe('buildCuriosityQueue', () => {
+   it('returns nothing when every tier is empty', async () => {
+     routeQueueQueries({});
+diff --git a/src/services/curiosityQueue.service.ts b/src/services/curiosityQueue.service.ts
+index 7495fea..71c7c49 100644
+--- a/src/services/curiosityQueue.service.ts
++++ b/src/services/curiosityQueue.service.ts
+@@ -210,13 +210,44 @@ async function coreFactsPresence(phones: string[]): Promise<Map<string, Set<Core
+   return map;
+ }
+ 
+-function firstMissingCoreFact(present: Set<CoreFactType> | undefined): CoreFactType | null {
++function firstMissingCoreFact(
++  present: Set<CoreFactType> | undefined,
++  asked: ReadonlySet<string> = new Set(),
++): CoreFactType | null {
+   for (const t of CORE_FACT_TYPES) {
+-    if (!present?.has(t)) return t;
++    if (!present?.has(t) && !asked.has(t)) return t;
+   }
+   return null;
+ }
+ 
++/**
++ * T1694 (Lika's report, 13 Oct; seat 160584): asked on 12 Oct where a contact
++ * works, she answered in full — he used to work at one firm and has gone to
++ * Europe to study — which was kept as a past role and a note. The employer
++ * field stayed empty, so on 13 Oct the day's question asked the same thing
++ * again. A fact the owner was already asked about, for this person, is not
++ * asked again: whatever she said is the answer, even when it fills no field.
++ */
++async function alreadyAskedFacts(
++  userId: string,
++  phones: string[],
++): Promise<Map<string, Set<string>>> {
++  if (phones.length === 0) return new Map();
++  const result = await query<{ phone: string; missing_fact: string }>(
++    `SELECT DISTINCT phone, missing_fact FROM curiosity_surfacing_log
++     WHERE user_id = $1::int AND phone = ANY($2)
++     LIMIT $3`,
++    [userId, phones, phones.length * CORE_FACT_TYPES.length],
++    QUEUE_QUERY_TIMEOUT_MS,
++  );
++  const map = new Map<string, Set<string>>();
++  for (const row of result.rows) {
++    if (!map.has(row.phone)) map.set(row.phone, new Set());
++    map.get(row.phone)?.add(row.missing_fact);
++  }
++  return map;
++}
++
+ async function labelsForPhones(
+   userId: string,
+   phones: string[],
+@@ -285,14 +316,15 @@ export async function buildCuriosityQueue(
+   }
+ 
+   const phones = Array.from(byPhone.keys());
+-  const [presence, labels] = await Promise.all([
++  const [presence, labels, asked] = await Promise.all([
+     coreFactsPresence(phones),
+     labelsForPhones(userId, phones),
++    alreadyAskedFacts(userId, phones),
+   ]);
+ 
+   const items: CuriosityItem[] = [];
+   for (const [phone, candidate] of byPhone) {
+-    const missing = firstMissingCoreFact(presence.get(phone));
++    const missing = firstMissingCoreFact(presence.get(phone), asked.get(phone));
+     if (missing === null) continue;
+     // 3271: a coded label („ხხ7 ძვ.") is not a name to ask the owner about.
+     const label = labels.get(phone) ?? null;
+-- 
+2.43.0
+
