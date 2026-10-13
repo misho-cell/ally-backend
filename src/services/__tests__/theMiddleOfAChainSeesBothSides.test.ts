@@ -106,3 +106,35 @@ it('GET /threads/:id/chain-position answers 200 with the position, and no databa
   expect(route).toContain('chainPositionOf(userId, Number(req.params.id))');
   expect(route).toContain("error: 'Could not read the chain'");
 });
+
+/** 4927, tester box 57263: an introduction the server made from a chat with no goal. */
+it('is you → the go-between for an introduction asked in a conversation with no goal', async () => {
+  mockQuery
+    .mockResolvedValueOnce(rows([]))
+    .mockResolvedValueOnce(rows([]))
+    .mockResolvedValueOnce(rows([]))
+    .mockResolvedValueOnce(
+      rows([
+        {
+          id: 6075,
+          person_id: 184279,
+          name: 'ეკა ხუციშვილი',
+          status: 'pending',
+          target_name: 'ნიკა გელაშვილი',
+          updated_at: '2026-10-13T16:56:00.000Z',
+        },
+      ]),
+    );
+  const out = await chainPositionOf(184278, 51220);
+  expect(out.previous).toBeNull();
+  expect(out.next).toEqual([
+    expect.objectContaining({
+      kind: 'introduction',
+      person_name: 'ეკა ხუციშვილი',
+      state: RouteState.Waiting,
+    }),
+  ]);
+  const introSql = String(mockQuery.mock.calls[3][0]);
+  expect(introSql).toContain('ir.requester_task_id IS NULL AND ir.origin_thread_id = $4');
+  expect(mockQuery.mock.calls[3][1]).toEqual([null, 184278, 50, 51220]);
+});

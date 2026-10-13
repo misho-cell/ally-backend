@@ -145,16 +145,28 @@ async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
   return result.rows;
 }
 
-async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
+/**
+ * The goal's introductions, and the goal-less ones asked for in this same
+ * conversation. 4927 (tester box 57263): the server's own introduction (CE)
+ * from a chat with no goal carries only origin_thread_id, so the owner's path
+ * stayed empty on every introduction made that way.
+ */
+async function introsOf(
+  userId: number,
+  taskId: number | null,
+  threadId: number,
+): Promise<IntroRow[]> {
   const result = await query<IntroRow>(
     `SELECT ir.id, ir.mediator_user_id AS person_id,
             ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
             ir.status, ir.target_name, COALESCE(ir.responded_at, ir.created_at) AS updated_at
        FROM introduction_requests ir
-      WHERE ir.requester_task_id = $1 AND ir.requester_user_id = $2
+      WHERE ir.requester_user_id = $2
+        AND (ir.requester_task_id = $1
+             OR (ir.requester_task_id IS NULL AND ir.origin_thread_id = $4))
       ORDER BY ir.created_at ASC
       LIMIT $3`,
-    [taskId, userId, MAX_ROUTES],
+    [taskId, userId, MAX_ROUTES, threadId],
     QUERY_TIMEOUT_MS,
   );
   return result.rows;
@@ -196,11 +208,13 @@ export async function routesForThread(userId: number, threadId: number): Promise
   return people.length >= MIN_ROUTES_FOR_A_BOARD ? people : [];
 }
 
-/** Every person the goal on this thread is talking to, once each; empty when no goal is the owner's. */
+/** Every person this conversation's goal (or its goal-less introductions) is talking to, once each. */
 export async function routesOfOwnGoal(userId: number, threadId: number): Promise<RouteRow[]> {
   const taskId = await goalOfOwnThread(userId, threadId);
-  if (taskId === null) return [];
-  const [asks, intros] = await Promise.all([asksOf(userId, taskId), introsOf(userId, taskId)]);
+  const [asks, intros] = await Promise.all([
+    taskId === null ? Promise.resolve([]) : asksOf(userId, taskId),
+    introsOf(userId, taskId, threadId),
+  ]);
   const now = new Date();
   return oncePerPerson([
     ...asks.map((a) => ({ personId: a.person_id, route: askRoute(a, now) })),
