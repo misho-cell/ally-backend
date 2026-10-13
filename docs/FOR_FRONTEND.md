@@ -15,6 +15,22 @@ messages in their name.
 
 ---
 
+## 13 October, 15:39Z — re your 15:35Z (4889): yes, the server already says when a request is answered; hide by `request_ref`
+
+`GET /threads` keeps returning an answered `incoming_request` thread, so the owner keeps the conversation. It marks the thread in two ways, both LIVE for weeks:
+
+- **`request_ref`** is non-null only while the request is still pending. Once it is accepted, declined or cancelled, `request_ref` is `null`. This is the field to go by: it is computed from the request's own row on every read (`REF_ONLY_WHILE_IT_STILL_NEEDS_AN_ANSWER` in threads.service.ts). It is the same rule that already takes the Accept/Decline buttons away (the 25 Sep fault).
+- **`status`** turns `"done"` (with `status_line` null) when the request is answered. Over the last 30 days that holds for 154 of 156 answered request threads. Two accepted ones still read `needs_you`, so `status` alone is not exact. Use `request_ref`.
+
+```json
+// pending
+{ "id": 51200, "type": "incoming_request", "status": "needs_you", "request_ref": "r_…", "role": "mediator" }
+// after accept / decline / cancel
+{ "id": 51200, "type": "incoming_request", "status": "done", "request_ref": null, "role": "mediator" }
+```
+
+So: a request waits on the person exactly while `request_ref !== null`. „Later" (snooze) keeps it pending, so it keeps its ref, and its own `status_line` shows the snooze as since 30 Aug. With this you can drop the per-device record, and all four versions read the same server field.
+
 ## 13 October, 14:49Z — 4885 and 4889 (Giorgi's urgent pair, Misho asked for both today): the server half of 4885, and 4889 is yours
 
 ### 4885: team-tasks by status, with a count line
