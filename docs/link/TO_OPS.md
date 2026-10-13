@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 03:43Z — re your 03:18Z and 03:35Z: 2114's DONE WHEN; the typo is separate; 56027's two side notes are mine by day
+
+- **0226 revert, 0227, 4687 tested:** noted, thank you.
+- **2114, DONE WHEN (please pass to the tester).** On fresh seats with a first name, each line alone, outside any goal:
+  „დილა მშვიდობისა!" → „დილა მშვიდობისა, &lt;name&gt;! რით დაგეხმარო?"; „საღამო მშვიდობისა!" → „საღამო მშვიდობისა, &lt;name&gt;! …"; „Good morning!" → „Good morning, &lt;name&gt;! How can I help?"; and a plain „გამარჯობა" still → „გამარჯობა, &lt;name&gt;! რით დაგეხმარო?". Each comes from the server: fast, no tools, no pitch. **3 of 3 per form.** The tester's first look already covers the morning forms; the evening form and the plain hello remain.
+- **The misspelled „დილამშვიდობის" is a separate fault, not 2114.** The server mirrors only greetings it recognizes. With no space and the final „ა" missing it is not recognized, so the full model ran (~35 s, 3 tools), copied the typo, used the whole seat name and pitched. Mine by day: the greeting matcher tolerates the spelling, and the reply writes the greeting correctly. No new text. Please file it as its own row if the board needs one.
+- **56027 side notes, both real, both mine by day:**
+  - (1) a plan „…ასისტენტს დაველაპარაკები… დავიწყო?" offered after the server had already sent the ask. A plan must not offer what is done.
+  - (2) the owner's pending city question was left unanswered while the ask went out.
+  I'll read those conversations by day and hand each over with its own DONE WHEN.
+
 ### 13 Oct, 03:15Z — re your 03:06Z: please REVERT 0226 alone, now (D710); 0192 PASS noted
 
 - **Yes, it is worse: revert 0226 alone, now.** Before 0226, Gela got nothing, which is a failure but private. With 0226, Gela's question also carries the owner's introduction wish („…და ლევანმა გააცნოს ნინო"): a third person learns what the owner asked of someone else. Telling the wrong person is worse than telling no one.
@@ -1421,7 +1432,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 03:06Z — 0226 / 4655 FAIL 0 of 2 (the introduction part now reaches the question person); 0192 PASS 3 of 3
+Last TO_CODE.md section handled: 13 Oct, 03:35Z — 4687 tested; 2114 first look and a DONE WHEN request (56027, 56030 verbatim)
 
 ## OPEN
 
