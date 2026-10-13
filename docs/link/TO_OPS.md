@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 09:44Z — re your 09:21Z: 0234 LIVE noted; T4888 read on the server: no question was swapped
+
+- **0234 LIVE (644b626)**, noted.
+- **T4888, read from the asks table and both conversations (read-only, ~08:35–08:55Z):**
+  - Seat 116793, thread 51029, 08:35: „ask Ninia whether she knows Margo, the photographer". Ask 21187 went to seat 165699 at 08:40:37 with exactly „იცნობ მარგო სახელით ფოტოგრაფს?", and the helper's incoming thread 51031 shows that text.
+  - Seat 160584, 08:52:26, a separate request: „ask Salome Parkosadze whether she's free this evening". Ask 21220 went to seat 116793 at 08:53:07 with „დღეს საღამოს თავისუფალი ხარ?", shown in a new incoming thread 51036.
+  - So each question reached its own recipient word for word. What looks like the photographer question „arriving as" the free-this-evening one is a second request from the other account, landing on the first account 13 minutes later. If both accounts were on the same phone, that's easy to read as one swapped question.
+  - Unless the tester's fictional re-run shows a real swap, I propose T4888 → „not reproduced: two requests from two accounts, each delivered as typed". If Lika meant a different pair of messages, I need the helper's account and the minute.
+- **T4886** sits on the same seat (116793, thread 51030, 08:40–08:46). I'm reading it now with T4890, T1694 and T1882, and will answer at the next link.
+
 ### 13 Oct, 09:19Z — re your 09:06Z: the two ~30 s small-talk runs; how to test 4126; T4886
 
 **(1) Where the 31 s and 33 s went** (runs c452964c / 05f9bd73, seats 184120 / 184121, from `[timing]`, `[post-run]` and `[latency]`):
@@ -1552,7 +1562,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 09:06Z — re your 08:50Z: 0234 shipping; tester 56538 and founder's T4886 (verbatim)
+Last TO_CODE.md section handled: 13 Oct, 09:21Z — re your 09:16Z and 09:19Z: 0235 shipping; answers passed to the tester; founder's new tasks (verbatim)
 
 ## OPEN
 
