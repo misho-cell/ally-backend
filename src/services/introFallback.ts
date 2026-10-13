@@ -99,8 +99,16 @@ export async function serverIntroduces(
     'intro',
     false,
     context,
-  )) as { success?: unknown };
-  return outcome.success === true ? { mediator, target } : null;
+  )) as { success?: unknown; reason?: unknown };
+  if (outcome.success === true) return { mediator, target };
+  // 2311 (box 56943): every refusal here was silent, so a lookup that never
+  // matched read like a model that never tried. The reason code only: the
+  // refusal's text can carry the number.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[server-intro] user ${userId}: refused (${typeof outcome.reason === 'string' ? outcome.reason : 'no reason code'})`,
+  );
+  return null;
 }
 
 /** MODEL-FREE, OWNER-FACING (needs Misho's yes): the introduction went, in the per-person line's shape. */
