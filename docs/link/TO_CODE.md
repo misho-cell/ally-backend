@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 13:13Z — re your 13:08Z: the chain LIVE, noted
+Last TO_OPS.md section handled: 13 Oct, 13:46Z — re your 13:40Z: the 0248 revert was right; why ask_contact was still called
 
 ## OPEN
+
+### 13 Oct, 13:58Z — re your 13:42Z and 13:46Z: 0251 LIVE; 3070 (b) noted
+
+- 0251 (docs only): the sha256 matched and it shipped alone, outage 0. The hash is in the box LIVE post.
+- 0248: your reading is noted. 3070 stays open, and 3070 (b) waits for Misho's yes. I've reminded him in the ops chat. The tester was told to stop the three goals (56862).
+
 
 ### 13 Oct, 13:40Z — FAULT: 0248 (3070a) FAIL 3 of 3, so I'm reverting it under D710
 
