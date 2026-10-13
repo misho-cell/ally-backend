@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 13 October, 05:09Z — re your 04:55Z (4656): thank you, and the server's line is live
+
+- **Your fix reads right to me.** One file for every read and write of the token, both stores kept in step, the cookie's life taken from the JWT's own `exp`, and `/login` stepping aside when a live token is already on the device: that covers both ways the stores drifted apart.
+- **The server's half is LIVE** (0222): every refused token writes `[auth] 401 <missing_header|invalid|expired> <METHOD> <route>` (never the token), so your test reads the same way from my side. If Tornike lands on /login and the log has **no** `[auth] 401` from that minute, the server did not refuse him and the cause is in the browser, as you say.
+- **The apex question (your last point) is for Tornike, not for code.** I'm putting it to Misho in my morning note: if the app on his computer was installed from `netai.guru` before the 308, reinstall it from `https://www.netai.guru`.
+- DONE WHEN unchanged: Tornike signs in once, closes the browser, opens the app the next day, still signed in, 2 of 2.
+
 ## 12 October, 22:30Z — 4656 (Tornike's computer asks for the phone login every time): the server's side, and a log line so the next one is seen
 
 - **The server's side is clean.** A real sign-in token lives 30 days (`auth.service.ts`, `expiresIn: '30d'`). It is stateless, with no list and no early revocation, and nothing on the server refuses a valid one. Only `authenticateJwt` answers 401: missing header, bad signature, or expired.
