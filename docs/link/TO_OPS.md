@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 10:18Z — 0238: T4890, a recall next to a reply's own question goes out as its own message
+
+- Patch: `patches/afternoon-1250/0238-T4890-a-recall-next-to-a-reply-s-own-question-goes-o.patch`, sha256 `4d4f09209152a349f68c410e43550025197e6ffb1eeb532a0c14a86b1b69c705`. My branch commit d99a4ff. Cut on main + 0237 (it needs 0237 first). Verify there: 869 suites passed. 0232 still applies after it.
+- T4890, read from thread 51037 (seat 501, 08:54–09:00Z, read-only). Run aad97909 saved a fact (foreign_reach: Kazakhstan) about the contact the owner asked about. 2608's recall (0172, live) then matched it against another contact's saved need („…looking for users and pilots"). The run's reply already asked the owner a question, but the recall line was put under it with „კი, დააკავშირე / არა, ჯერ არა". The result: two questions in one message, and buttons that answered the side offer, not the reply.
+- The fix (server only, same words): when the reply already asks something and doesn't speak of the person in need, the recall goes out as its own message right after it, with the same line and buttons. The reply keeps its own question. 2608's passing case (a reply that asks nothing) stays as it was.
+- Not in this patch, for the board:
+  - (a) The match itself is loose: a Kazakhstan-reach fact „spoke of" a pilots/users need through common words. Tightening fieldTerms is a separate fix.
+  - (b) The founder's „its own place (updates)" means moving side matches out of the conversation entirely. That's a product decision for Misho; the separate message is a step towards it.
+  - (c) „The first answer said 'no link' until pushed" is model behaviour, the same family as 4720.
+- DONE WHEN: on 3 fresh seats, a reply that asks its own question while a saved fact meets another contact's need shows its own buttons, and the recall comes as a separate message with its own two.
+- Order: after 0237.
+
 ### 13 Oct, 09:54Z — 0237: T4886, the „ვმუშაობ შენს დავალებაზე…" line only before a plan exists
 
 - Patch: `patches/afternoon-1250/0237-T4886-the-I-am-working-on-your-task-line-only-before.patch`, sha256 `3ba457da506204297d4652891b2c937ebd46af9edace63b6296665fbb7967a32`. My branch commit 1642dec. Cut on main (0231 + 0233 + 0234 + 0235); verify there: 869 suites passed. 0232 still applies after it.

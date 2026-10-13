@@ -1,0 +1,198 @@
+From 52df4256be3e1c1fcb7262e89cce1826ac244fc7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 10:13:30 +0000
+Subject: [PATCH] T4890: a recall next to a reply's own question goes out as
+ its own message
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The founder's thread 51037 (13 Oct, 09:00Z): a reply about one contact's
+Kazakhstan reach asked the owner its own question, and 2608's recall of
+another contact's need was added under it with its two buttons. The message
+held two questions, and „კი, დააკავშირე" answered the recall instead of the
+reply. When the reply already asks something and does not speak of the person
+in need, the recall now goes out as its own message right after it, with the
+same line and the same two buttons. The reply keeps its question and its own
+buttons. Otherwise nothing changes: 2608's passing case, a recall under a
+reply that asks nothing, stays inline. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/needRecall.test.ts | 44 +++++++++++++++++++++++
+ src/services/chat.service.ts              | 22 ++++++++++--
+ src/services/needRecall.ts                | 23 ++++++++++++
+ src/services/pendingMessages.ts           |  8 +++--
+ 4 files changed, 92 insertions(+), 5 deletions(-)
+
+diff --git a/src/services/__tests__/needRecall.test.ts b/src/services/__tests__/needRecall.test.ts
+index 4b51af6..07f8ed5 100644
+--- a/src/services/__tests__/needRecall.test.ts
++++ b/src/services/__tests__/needRecall.test.ts
+@@ -5,7 +5,10 @@ import { join } from 'path';
+ import { query as _query } from '../../db/postgres/client';
+ import {
+   isNoteworthyFact,
++  NEED_RECALL_KIND,
+   NEED_RECALL_ON,
++  recallCard,
++  recallGoesApart,
+   needThisFactMeets,
+   noteSavedFact,
+   recallChoices,
+@@ -13,6 +16,7 @@ import {
+   recallLine,
+   takeSavedFact,
+ } from '../needRecall';
++import { renderPendingMessage } from '../pendingMessages';
+ 
+ /** 2608 (ME-027): a new fact about Nika meets Gia's saved need — the reply recalls it and offers. */
+ const mockQuery = _query as jest.Mock;
+@@ -97,3 +101,43 @@ describe('the recall offer and its buttons', () => {
+     expect(offer.choices).toBeUndefined();
+   });
+ });
++
++/**
++ * T4890 (the founder, 13 Oct, thread 51037): the reply asked its own question and
++ * the recall was put under it with two buttons — two questions, and the buttons
++ * answered the recall. Such a recall goes out as its own message.
++ */
++describe('a recall next to a reply that asks its own question', () => {
++  const RECALLED = { needName: 'გია საცდელი', need: 'საწყობი', helperName: 'ნიკა საცდელი' };
++  const ASKS =
++    'ნიკას კომპანია ალმათიშია.\n\nჰკითხე: ალმათიში ვის მირჩევ იმ საკითხისთვის, რაც შენ გჭირდება?';
++
++  it('goes apart when the reply asks something and does not speak of the person in need', () => {
++    expect(recallGoesApart(ASKS, RECALLED)).toBe(true);
++  });
++
++  it('stays in the reply when the reply asks nothing, or already names the person in need', () => {
++    expect(recallGoesApart('ნიკას საწყობი აქვს გასაქირავებლად.', RECALLED)).toBe(false);
++    expect(recallGoesApart('ეს გია საცდელის საჭიროებას ემთხვევა. გინდა, გაგაცნო?', RECALLED)).toBe(
++      false,
++    );
++  });
++
++  it('is its own card: the same line and the same two buttons', () => {
++    const card = recallCard(RECALLED, 'ka');
++    expect(card.text).toBe(recallLine('ka', RECALLED));
++    expect(card.choices).toEqual(recallChoices('ka'));
++    const rendered = renderPendingMessage(
++      { kind: NEED_RECALL_KIND, task_id: null, payload: { ...card } },
++      'ka',
++    );
++    expect(rendered?.text).toBe(card.text);
++    expect(rendered?.choices).toEqual(card.choices);
++  });
++
++  it('is wired so the reply keeps its own question and buttons', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('recalled !== null && recallGoesApart(finalText, recalled)');
++    expect(chat).toContain('new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND])');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 25f38c2..b23c287 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -106,7 +106,15 @@ import { thanksTapOf } from './helperThanksCards';
+ import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
+ import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
+ import { settleMatchTap } from './matchFlow.service';
+-import { needThisFactMeets, noteSavedFact, takeSavedFact, withRecallOffer } from './needRecall';
++import {
++  NEED_RECALL_KIND,
++  needThisFactMeets,
++  noteSavedFact,
++  recallCard,
++  recallGoesApart,
++  takeSavedFact,
++  withRecallOffer,
++} from './needRecall';
+ import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
+ 
+ import { safetyReplyFor } from './safetyWorry';
+@@ -12639,7 +12647,7 @@ const WAITING_ASKED_TOOLS: ReadonlySet<string> = new Set([
+  * no goal, so it was held as „not asked about other goals" — and nothing notes
+  * it again, so it was lost (0 of 2). It goes out with its reply.
+  */
+-const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND]);
++const THIS_REPLYS_OWN: ReadonlySet<string> = new Set([FACT_CONFIRM_KIND, NEED_RECALL_KIND]);
+ 
+ export async function waitingItemsToDeliver(
+   items: readonly PendingItemInput[],
+@@ -14134,7 +14142,15 @@ async function runToolLoop(
+     const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
+       () => null,
+     );
+-    if (recalled !== null) {
++    if (recalled !== null && recallGoesApart(finalText, recalled)) {
++      notePendingItems(runId, [
++        {
++          kind: NEED_RECALL_KIND,
++          task_id: null,
++          payload: { ...recallCard(recalled, runLang(runId)) },
++        },
++      ]);
++    } else if (recalled !== null) {
+       const offer = withRecallOffer(finalText, recalled, runLang(runId));
+       finalText = offer.text;
+       choices = offer.choices ?? choices;
+diff --git a/src/services/needRecall.ts b/src/services/needRecall.ts
+index e9cbacb..4c42690 100644
+--- a/src/services/needRecall.ts
++++ b/src/services/needRecall.ts
+@@ -115,6 +115,29 @@ export function recallChoices(language: RunLanguage): string[] {
+   return [...(RECALL_CHOICES[language] ?? RECALL_CHOICES.ka)];
+ }
+ 
++/** The pending-item kind of a recall delivered as its own message. */
++export const NEED_RECALL_KIND = 'need_recall';
++
++/**
++ * T4890 (the founder, 13 Oct, thread 51037): the reply asked the owner its own
++ * question („…ვის მირჩევ…?") and the recall was put under it with its two
++ * buttons, so the message held two questions and the buttons answered the
++ * recall, not the reply. A reply that already asks something, and does not
++ * itself speak of the person in need, keeps its own question and its own
++ * buttons; the recall goes out as its own message right after it.
++ */
++export function recallGoesApart(reply: string, recalled: RecalledNeed): boolean {
++  return !reply.includes(recalled.needName) && lastQuestionIn(reply) !== null;
++}
++
++/** The recall as its own message: the same line and the same two buttons. */
++export function recallCard(
++  recalled: RecalledNeed,
++  language: RunLanguage,
++): { readonly text: string; readonly choices: string[] } {
++  return { text: recallLine(language, recalled), choices: recallChoices(language) };
++}
++
+ export interface RecallOffer {
+   readonly text: string;
+   readonly choices: string[] | undefined;
+diff --git a/src/services/pendingMessages.ts b/src/services/pendingMessages.ts
+index 930ec9b..f28c58d 100644
+--- a/src/services/pendingMessages.ts
++++ b/src/services/pendingMessages.ts
+@@ -640,8 +640,12 @@ export function renderPendingMessage(
+         instruction,
+       };
+     }
+-    /** 1690 (A7): the fact-confirm card; its text and buttons are the server's own. */
+-    case 'fact_confirm': {
++    /**
++     * 1690 (A7): the fact-confirm card; its text and buttons are the server's own.
++     * T4890: so is a recall of another contact's need that went apart from its reply.
++     */
++    case 'fact_confirm':
++    case 'need_recall': {
+       const text = str(p, 'text');
+       const choices = Array.isArray(p.choices)
+         ? (p.choices as unknown[]).filter((c): c is string => typeof c === 'string')
+-- 
+2.43.0
+
