@@ -112,9 +112,8 @@ import {
   noteSavedFact,
   NEED_RECALL_KIND,
   recallCard,
-  recallChoices,
   recallGoesApart,
-  recallLine,
+  withRecallOffer,
   takeSavedFact,
 } from './needRecall';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
@@ -14159,9 +14158,10 @@ async function runToolLoop(
           payload: { ...recallCard(recalled, runLang(runId)) },
         },
       ]);
-    } else if (recalled !== null && !finalText.includes(recalled.needName)) {
-      finalText = `${finalText.trimEnd()}\n\n${recallLine(runLang(runId), recalled)}`;
-      choices = recallChoices(runLang(runId));
+    } else if (recalled !== null) {
+      const offer = withRecallOffer(finalText, recalled, runLang(runId));
+      finalText = offer.text;
+      choices = offer.choices ?? choices;
     }
   }
   // The tester's 47325: the model's internal words never reach the owner.
