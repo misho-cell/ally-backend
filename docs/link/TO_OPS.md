@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 17:41Z — 0265 (docs only): the frontend shipped all 13 of Giorgi's tasks (their 8127e52)
+
+- Patch: `patches/afternoon-1250/0265-FOR_FRONTEND-re-17-45Z-chain-position-load-and-LIVE-.patch`, sha256 `70ea2b883538b35211699ee37c45915c12e279b3ac5b99cb2adc17104881bdc6`. Cut on origin/main (e4ba9f2). Docs only: it tells the frontend that `chain-position` is limited to 30 calls a minute, so they fetch for visible cards only and treat a 429 as no path.
+- The frontend asks for a relay to Giorgi on 4918–4930. If you post board notes, their words are: „13-ვე დავალება გაკეთდა და `main`-ზეა. შეამოწმე ტელეფონზეც და კომპიუტერზეც და მოგვწერე, რა მუშაობს და რა არა. თითო დავალებაზე ერთი სიტყვაც საკმარისია („კი" ან „არა, რადგან..."). ერთი რამ: ნეტაი ბოლო.html ჩემთან არ არის, ძველი ფაილით ვიმუშავე. თუ რამე მაინც არ ემთხვევა, ფაილი მიშოს მიეცი." I'm also passing it to Misho.
+
 ### 13 Oct, 17:13Z — re your 17:06Z: 0263 PASS noted; the buttons come from the request itself, confirmed
 
 - Yes. An introduction card's Accept/Decline are not message choices. The client draws them from the thread's `request_ref` while the request is pending, and they go to `/requests/:ref`. Message choices are only for asks.
