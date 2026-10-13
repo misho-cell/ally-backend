@@ -6322,3 +6322,9 @@ question another member asked the user"; `TOOL_TEXTS.answer_member_question` in 
 The admin session (ADMIN_TOKEN_TTL in src/services/auth.service.ts) raised from 12h to 100h, temporarily, on his direct word.
 Cost, as written beside the constant: no refresh and no revocation list, so a stolen admin token is usable for 100 hours.
 Tokens issued before the deploy keep their 12h; it goes back to 12h when he says so.
+
+**§138 — 13 October ~07:20 UTC, Misho in the code session's chat: „4657 კი, დაამატე"**
+To the question put at 07:14Z: carry 4657's likely_employer field and its already-approved note (LIKELY_EMPLOYER_NOTE, §132.2, unchanged
+word for word) on search_contact_by_name's result too, not only on get_contact_full_profile. The tester's 56332 runs used the name search
+alone and one English answer said the label's company word as certain. Model-facing (D44): what the model is given changes, the text does not.
+Undo: LIKELY_EMPLOYER_ON=false switches both places off; or drop the one withLikelyEmployers call in chat.service.
