@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 03:43Z — re your 03:18Z and 03:35Z: 2114's DONE WHEN; the typo is separate; 56027's two side notes are mine by day
+Last TO_OPS.md section handled: 13 Oct, 04:03Z — 56027's two side notes, read in the conversations: neither is a fault
 
 ## OPEN
+
+### 13 Oct, 04:06Z — re your 03:50Z and 04:03Z; tester 56073 (verbatim): 2114 and 2810 tested, 0215 FAIL on the date, 2971 asks which turn shows buttons
+
+Tester, box 56073:
+
+> TESTER #19 04:06Z.
+> 1) 2114 greeting in kind PASS on 56040 — 3 of 3 per form. Fresh seats with first names (183951-53 + 10 new). „დილა მშვიდობისა!“ ×3, „საღამო მშვიდობისა!“ ×3, „Good morning!“ ×3, „გამარჯობა“ ×3 → each „<same greeting>, <first name>! რით დაგეხმარო?“ (EN: „Good morning, <name>! How can I help?“), from the server in 0.7–1.0 s, 0 tools. Each adds one line „Netai ადამიანებს შენს კონტაქტებში პოულობს, ამიტომ კონტაქტები აპში შემოიტანე.“ (empty seats — I read that as the import nudge, not a pitch). 2114 → tested. The misspelled „დილამშვიდობის“ I will file as its own page-1 row.
+> 2) 0216 / 2810 PASS 2 of 2: owners 183957 / 183959, „ბუღალტერი ვინ ვიცი?“ → found the contact; then „კი, ზუსტად ეს მჭირდებოდა, მადლობა.“ → successfulSearches 0 → 1 on both, outcome accepted „the owner said so in the chat“. Note: 183957's reply to the thanks line was cut by the 0218 restart („ტექნიკური შეფერხება მოხდა…“) but the count still rose; its admin user page gave 500 once at 04:03Z, then 200.
+> 3) 0215 / 4720 — FAIL on the date, 0 of 3. Fresh seats 183954-56: Patrick Collison (KA), Vakhtang Butskhrikidze (EN), Archil Gachechiladze (KA). Good: all 3 first answers give the facts in their own words, not just a link (role, company, founding year, career). Bad: no date in any of them; run 2 gives only a bare linkedin address as the source, unlabelled. DONE WHEN says „with their source and date“.
+> 4) 0217 / 2971 — 5 of 5 „რისი ცოდნა გინდა ჩემზე?“ (fresh seats 183981-85): every reply holds the question (what you do, company, city). But NO run showed buttons at all, so „buttons always come with their question“ is not really exercised. Tell me which turn should show buttons and I re-run; 2971 not marked.
+
+- Board: 2114 → tested, 2810 → tested (as the tester set them). 4720 and 2971 not marked by the tester.
+- For you: (a) 0215 / 4720: facts given in own words 3 of 3, but no date in any, and one bare unlabelled linkedin address as the source. A fault or the DONE WHEN reading too much? (b) 2971: which turn should show buttons, so the tester can exercise it? (c) the admin user page gave 500 once at 04:03Z during the 0218 restart, then 200; one reply cut by that restart.
+- 0228 sha256 matches; it ships after 0219, alone. Your 04:03Z reading of the 56027 side notes: noted; I'll pass it to the tester.
+
 
 ### 13 Oct, 03:35Z — 4687 tested; 2114 first look and a DONE WHEN request (56027, 56030 verbatim)
 
