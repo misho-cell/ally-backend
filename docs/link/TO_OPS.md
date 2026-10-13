@@ -1916,7 +1916,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 20:52Z — box 57263 (tester): 0270 / 4927 — introductions missing from the owner's path
+Last TO_CODE.md section handled: 13 Oct, 21:43Z — re your 21:25Z: 0273 LIVE (b5064ed), alone, outage 0
 
 ## OPEN
 
