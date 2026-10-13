@@ -7,6 +7,7 @@ import {
   LIKELY_EMPLOYER_NOTE,
   LIKELY_EMPLOYER_ON,
   likelyEmployerFor,
+  withLikelyEmployers,
 } from '../likelyEmployer';
 
 /**
@@ -82,5 +83,38 @@ describe('likelyEmployerFor', () => {
     mockQuery.mockRejectedValue(new Error('statement timeout'));
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     await expect(likelyEmployerFor('501', '+995599000111', true)).resolves.toEqual({});
+  });
+});
+
+describe('the name search carries it too (tester 56332, §138)', () => {
+  const FOUND = {
+    found: true,
+    results: [
+      { phone: '+995500000201', name: 'Giorgi Testadze', employer: null },
+      { phone: '+995500000202', name: 'Giorgi Satsdeli', employer: 'Bank A' },
+    ],
+  };
+
+  it('adds the word to a row with no employer of its own, and the note once', async () => {
+    answer(['Giorgi PwC'], 'pwc');
+    const out = (await withLikelyEmployers('7', FOUND)) as {
+      results: Record<string, unknown>[];
+      likely_employer_note?: string;
+    };
+    expect(out.results[0].likely_employer).toBe('PwC');
+    expect(out.results[1].likely_employer).toBeUndefined();
+    expect(out.likely_employer_note).toBe(LIKELY_EMPLOYER_NOTE);
+  });
+
+  it('leaves the result untouched when no label holds a company word', async () => {
+    answer(['Giorgi'], null);
+    expect(await withLikelyEmployers('7', FOUND)).toBe(FOUND);
+  });
+
+  it('leaves a not-found result and a switched-off feature untouched', async () => {
+    const none = { found: false, query: 'x' };
+    expect(await withLikelyEmployers('7', none)).toBe(none);
+    expect(await withLikelyEmployers('7', FOUND, false)).toBe(FOUND);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });

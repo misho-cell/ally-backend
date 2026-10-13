@@ -64,6 +64,7 @@ import { createSaveContactInsightTool } from './tools/save_contact_insight';
 import { noteIntroductionSentAsAQuestion } from './introductionShaped';
 import { lookupContactByPhone } from './tools/lookupContactByPhone';
 import { searchContactByName } from './tools/searchContactByName';
+import { withLikelyEmployers } from './tools/likelyEmployer';
 import { lap, postRunLine, startPostRunClock } from './postRunClock';
 import { searchByTag } from './tools/searchByTag';
 import { searchByInsight } from './tools/searchByInsight';
@@ -9131,7 +9132,8 @@ async function executeToolCall(
       );
       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
       if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
-      return notInThePhonebook(byName) ? { ...byName, look_further: LOOK_ONE_RING_OUT } : byName;
+      if (notInThePhonebook(byName)) return { ...byName, look_further: LOOK_ONE_RING_OUT };
+      return withLikelyEmployers(userId, byName);
     }
     case 'search_by_tag': {
       const tagQuery = input['tag_query'] as string;

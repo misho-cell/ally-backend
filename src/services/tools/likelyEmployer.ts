@@ -116,3 +116,45 @@ export async function likelyEmployerFor(
     return {};
   }
 }
+
+/**
+ * 4657 (tester 56332, Misho's yes 13 Oct ~07:20 UTC, §138): the three runs
+ * asked „where does X work" through search_contact_by_name alone, so the note
+ * that rides with the full profile never reached them, and one answer said
+ * the label's company word as certain. The same field and the same note now
+ * ride with the name search: on each of the first rows that carries no
+ * employer of its own, and the note once for the whole result.
+ */
+const MAX_ROWS_READ = 3;
+
+interface SearchRow {
+  readonly phone?: unknown;
+  readonly employer?: unknown;
+}
+
+function needsLikelyEmployer(row: SearchRow): row is SearchRow & { phone: string } {
+  return typeof row.phone === 'string' && row.phone !== '' && !row.employer;
+}
+
+/** The name search's result with each row's likely employer added; unchanged when there is none. */
+export async function withLikelyEmployers(
+  userId: string,
+  found: object,
+  on: boolean = LIKELY_EMPLOYER_ON,
+): Promise<object> {
+  const results = (found as { results?: unknown }).results;
+  if (!on || !Array.isArray(results)) return found;
+  const rows = results as SearchRow[];
+  const read = rows.slice(0, MAX_ROWS_READ);
+  const likely: LikelyEmployer[] = await Promise.all(
+    read.map((row): Promise<LikelyEmployer> | LikelyEmployer =>
+      needsLikelyEmployer(row) ? likelyEmployerFor(userId, row.phone, on) : {},
+    ),
+  );
+  if (likely.every((l) => l.likely_employer === undefined)) return found;
+  const withWord = rows.map((row, i) => {
+    const word = likely[i]?.likely_employer;
+    return word === undefined ? row : { ...row, likely_employer: word };
+  });
+  return { ...found, results: withWord, likely_employer_note: LIKELY_EMPLOYER_NOTE };
+}
