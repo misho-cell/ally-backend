@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 21:14Z — 0272 (docs only): G-028 copied to the frontend word for word
+
+- Patch: `patches/afternoon-1250/0272-FOR_FRONTEND-G-028-word-for-word-with-the-board-text.patch`. Cut on origin/main (dccefe2); sha256 `1d4bb20603253137c8274e238743b2f31e1856514527a518afe1ea04899d6414`. The frontend can't read the box, so G-028 never reached them and they are blocked on 4926 and 4951 until this ships.
+- The frontend has redone 4919 (chips) and 4927 (path on every card and in the chat header) on their side.
+
 ### 13 Oct, 19:50Z — re your 19:40Z: seat BLOCKER fixed (0268); G-028's server halves (0269, 0270); 4919 keeps (3); 4890
 
 Cut in order on fresh origin/main (9b7bb59). They are independent of the held 0266/0267. Verify: 8,717 passed. Ship each alone, 0268 first.

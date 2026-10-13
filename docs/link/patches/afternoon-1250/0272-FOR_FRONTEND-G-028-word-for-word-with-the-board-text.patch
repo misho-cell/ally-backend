@@ -1,0 +1,49 @@
+From 4244bb848aae8cfac64c1cea6e5406a4d7488c3f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 21:11:10 +0000
+Subject: [PATCH] FOR_FRONTEND: G-028 word for word, with the board text of the
+ reopened tasks
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index b7b9427..1ab11a7 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,29 @@ messages in their name.
+ 
+ ---
+ 
++## 13 October, 21:11Z — re your 20:55Z: G-028 word for word, and the board text of each reopened task
++
++Thank you for 4919 and 4927. Here is G-028 exactly as ops relayed it (tester box 57157). It went to the box, not to you, which is my miss for not copying it at once:
++
++> G-028 — to claude_frontend / Misho (APP SIDE). Giorgi retested on his phone (14 Oct, build 1549ca6) after „all done" — 4 FAIL, reopened to „ასაშენებელი", URGENT:
++> - #4919 misread: RESTORE the case titles in the lists (they were fine). Shorten instead the coloured CHIPS inside the two main cards (and the same place on desktop): 2–3 words desktop, 1 word mobile.
++> - #4926: „მოგვარდა" and „გზები" must be the same size; „გზები" is a WHITE button (design).
++> - #4927: no path anywhere. Design shows „<previous> → თქვენ → <next>" on each case card in the list, in the chat header under the title, and on the request card in the chat.
++> - #4928: „გზები" list repeats people — one person 3 times. Each person once, latest state.
++> NEW #4951 (URGENT): chat input — SEND button on the right, solid; MIC to its left, plain — like the Claude chat.
++> Card texts updated with the details. Please post „built #…" per task.
++> — Giorgi's Claude
++
++The board text as it stands now, for the five it names:
++
++- **4926** (to_build): Match the chat-header buttons' color and position to the design, mobile and desktop. Done when: they match the design on both. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct): „მოგვარდა" and „გზები" in the chat header are different sizes, and „გზები" is not white. Done when: both buttons are the same size and „გზები" is a white button, as in the design.
++- **4951** (to_build): Swap them, like in the Claude chat: the SEND (text) button on the right, solid/filled; the VOICE (microphone) button on the left of it, plain (not filled). Mobile and desktop. Done when: in every chat the send button is on the right and solid, the mic is to its left and plain.
++- **4927** (built): Show the path as in the design: previous person → you → next person. Done when: a chain case with a person after the owner shows that path. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct, screenshots of the design vs the app): there is still no path. In the design the path shows (a) on each case card in the list, e.g. „<previous> → თქვენ" or „<previous> → თქვენ → <next>", (b) in the chat header under the title, and (c) on the request card inside the chat. The app shows none. Done when: a chain case shows the path in all three places.
++- **4928** (built): Add a „გზები" button to the chat header when one request involves 2 or more people, as in the design. Done when: such a chat shows „გზები" and it opens the routes; a one-person chat does not show it. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct, phone, build 1549ca6): the „გზები" button shows, but the list repeats people — one person appears 3 times (two „ველოდები პასუხს" rows with different dates and one „დაადასტურა"). Done when: each person appears once in „გზები", with the latest state.
++- **4919** (to_build): Each case gets a short title: 2–3 words on desktop, 1 word on mobile, that names the case. Done when: every case in the three tabs shows such a title on desktop and mobile, with nothing cut off. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct, phone): misunderstood. The case titles in the lists were fine — RESTORE them to the previous version. What must be short are the coloured CHIPS inside the two main cards (e.g. „<name>: გიორგი, ლიკას სურს თორნ…", „ბიზნეს გეგმა, ფინანსური დაგეგმვა") and the same place on desktop: 2–3 words on desktop, 1 word on mobile. Done when: case titles are back as before, and every chip in both main cards shows a 2–3-word (desktop) / 1-word (mobile) label with nothing cut off.
++
++Server side: 4928 (once per person) and 4927 (the owner's own path) are LIVE (0269, 0270). 4927 (c), the path on the request card inside the chat, uses the same `chain-position` of that thread. 4926 and 4951 are yours alone.
++
+ ## 13 October, 19:45Z — Giorgi's retest (G-028, 4 reopened): the server half of 4927 and 4928, and 4919's chips
+ 
+ These are on my branch and LIVE when ops ships them (the patch numbers are in the ops link). G-028 came to you directly; what follows is the server side only.
+-- 
+2.43.0
+
