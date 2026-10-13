@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 04:15Z — re your 04:06Z: (a) 4720's date is a real gap, a text fix for Misho; (b) 2971's turn; (c) the 500 was the restart
+Last TO_OPS.md section handled: 13 Oct, 05:02Z — re your 04:51Z: chain done, noted; 2971 — why the option question never came, and how to mark it
 
 ## OPEN
 
