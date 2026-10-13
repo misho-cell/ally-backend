@@ -1,0 +1,172 @@
+From 6245c49fb039a6ec21dd25624184b285739877e2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 11:05:49 +0000
+Subject: [PATCH] 56697: a reply that leaves a waiting plan without a question
+ asks again
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 56697 (T4886 follow-up, 13 Oct, 2 of 3 fresh seats): after
+„რატომ თამაზი?" about a proposed plan, the run answered the why and stopped,
+with no question and no buttons. The plan's „ვადასტურებ / შევცვალოთ" belonged
+to the reply that proposed it, so the owner had a decision still open and
+nothing to tap. Now, on an owner's turn in a goal's thread whose proposed
+plan is neither approved nor sent back for changes, a reply that asks nothing
+and offers no buttons ends with the plan's own closing question („დავიწყო?")
+and its two buttons. Existing words only. A reply with its own question or
+its own buttons is left as it is.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aWaitingPlanAsksAgain.test.ts   | 50 +++++++++++++++++++
+ src/services/chat.service.ts                  | 16 +++++-
+ src/services/planDecisionReoffer.ts           | 44 ++++++++++++++++
+ 3 files changed, 109 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aWaitingPlanAsksAgain.test.ts
+ create mode 100644 src/services/planDecisionReoffer.ts
+
+diff --git a/src/services/__tests__/aWaitingPlanAsksAgain.test.ts b/src/services/__tests__/aWaitingPlanAsksAgain.test.ts
+new file mode 100644
+index 0000000..059fee3
+--- /dev/null
++++ b/src/services/__tests__/aWaitingPlanAsksAgain.test.ts
+@@ -0,0 +1,50 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { planWaitsForTheOwner, withPlanDecisionAgain } from '../planDecisionReoffer';
++
++/**
++ * The tester's 56697 (13 Oct, 2 of 3): „რატომ თამაზი?" about a proposed plan was
++ * answered with no question and no buttons, and the plan's own buttons were gone.
++ */
++const WAITING = {
++  plan_proposed: { routes: [] },
++  plan_approved_at: null,
++  plan_change_requested_at: null,
++};
++const WHY =
++  'ამ ეტაპზე თამაზი ერთადერთი ადამიანია შენს კონტაქტებში, ვისზეც ჩანაწერი მზარეულებს უკავშირდება.';
++
++describe('a plan that still waits for the owner', () => {
++  it('asks again under a reply that asks and offers nothing', () => {
++    expect(withPlanDecisionAgain(WHY, undefined, WAITING, 'ka')).toEqual({
++      text: `${WHY}\n\nდავიწყო?`,
++      choices: ['ვადასტურებ', 'შევცვალოთ'],
++    });
++  });
++
++  it('leaves a reply that asks its own question, or offers its own buttons, as it is', () => {
++    expect(
++      withPlanDecisionAgain(`${WHY} გინდა სხვა ვინმე მოვძებნო?`, [], WAITING, 'ka'),
++    ).toBeNull();
++    expect(withPlanDecisionAgain(WHY, ['კი', 'არა'], WAITING, 'ka')).toBeNull();
++  });
++
++  it('is nothing once the plan is approved, asked to change, or never proposed', () => {
++    expect(planWaitsForTheOwner(null)).toBe(false);
++    expect(planWaitsForTheOwner({ ...WAITING, plan_approved_at: '2026-10-13T10:42:00Z' })).toBe(
++      false,
++    );
++    expect(
++      planWaitsForTheOwner({ ...WAITING, plan_change_requested_at: '2026-10-13T10:42:00Z' }),
++    ).toBe(false);
++    expect(planWaitsForTheOwner({ ...WAITING, plan_proposed: null })).toBe(false);
++  });
++
++  it('is wired for an owner’s turn that did not itself propose a plan', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      '!ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)',
++    );
++    expect(chat).toContain('withPlanDecisionAgain(cleanedFinal, choices, task, language)');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 25054b4..d80adbd 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -562,6 +562,7 @@ import {
+ import { asksToEndSomething, looksLikeStopRequest } from './stopIntent';
+ import { allDeclineChoices, allLaterChoices, allYesChoices, AskTap, askTapOf } from './askOpening';
+ import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
++import { withPlanDecisionAgain } from './planDecisionReoffer';
+ import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
+ import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
+ import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
+@@ -16531,7 +16532,20 @@ export async function processChat(
+     console.log(`[answer-card] run ${runId}: finish card removed — nobody has been connected yet`);
+     cleanedFinal = earlySolved.text;
+   }
+-  const offeredChoices = earlySolved !== null ? earlySolved.choices : choices;
++  // 56697: a reply that leaves a waiting plan with no question and no buttons asks again.
++  const planAgain =
++    !ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)
++      ? await getOpenTaskByThread(threadId)
++          .then((task) => withPlanDecisionAgain(cleanedFinal, choices, task, language))
++          .catch((err: unknown) => {
++            // eslint-disable-next-line no-console
++            console.error('[plan-again] goal not read:', (err as Error).message);
++            return null;
++          })
++      : null;
++  if (planAgain !== null) cleanedFinal = planAgain.text;
++  const offeredChoices =
++    earlySolved !== null ? earlySolved.choices : (planAgain?.choices ?? choices);
+   // Question A (tester 947): a web-found person's page link, by their name.
+   if (replySafe) cleanedFinal = withRunPageLinks(cleanedFinal, runId);
+   const reply = wrapAllowedNumbers(
+diff --git a/src/services/planDecisionReoffer.ts b/src/services/planDecisionReoffer.ts
+new file mode 100644
+index 0000000..05282d1
+--- /dev/null
++++ b/src/services/planDecisionReoffer.ts
+@@ -0,0 +1,44 @@
++import { lastQuestionIn } from './buttonsCarryTheQuestion';
++import { APPROVE_LABEL, CHANGE_LABEL } from './choiceNotes';
++import { RunLanguage } from './runLanguage';
++import { PLAN_CLOSING_QUESTION } from './taskPlans.service';
++
++/**
++ * The tester's 56697 (T4886 follow-up, 13 Oct, 2 of 3): after „რატომ თამაზი?"
++ * about a proposed plan, the run answered the why and stopped — no question,
++ * no buttons. The plan's „ვადასტურებ / შევცვალოთ" belonged to the reply that
++ * proposed it, so the owner was left with a decision still open and nothing
++ * to tap. While a goal's proposed plan waits for the owner, a reply in its
++ * thread that asks nothing and offers nothing asks again, with the plan's own
++ * closing question and its own two buttons.
++ */
++export interface PlanState {
++  readonly plan_proposed: unknown;
++  readonly plan_approved_at: string | null;
++  readonly plan_change_requested_at: string | null;
++}
++
++/** A proposed plan the owner has neither approved nor asked to change. */
++export function planWaitsForTheOwner(task: PlanState | null): boolean {
++  return (
++    task !== null &&
++    task.plan_proposed !== null &&
++    task.plan_approved_at === null &&
++    task.plan_change_requested_at === null
++  );
++}
++
++/** The reply with the plan's question and buttons again; null when it already asks or offers. */
++export function withPlanDecisionAgain(
++  reply: string,
++  offered: readonly string[] | undefined,
++  task: PlanState | null,
++  language: RunLanguage,
++): { readonly text: string; readonly choices: string[] } | null {
++  if ((offered ?? []).length > 0 || lastQuestionIn(reply) !== null) return null;
++  if (!planWaitsForTheOwner(task)) return null;
++  return {
++    text: `${reply.trimEnd()}\n\n${PLAN_CLOSING_QUESTION[language]}`,
++    choices: [APPROVE_LABEL[language], CHANGE_LABEL[language]],
++  };
++}
+-- 
+2.43.0
+

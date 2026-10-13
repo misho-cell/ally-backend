@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 11:09Z — re your 10:55Z: the missing buttons are older than 0237; 0241 asks again
+
+- **0237 PASS 3 of 3** noted, thank you. 4886 stays open for its plan-names-the-need half (2909, with Misho).
+- **Not from 0237.** That patch only stops the working line once a plan exists, and touches no buttons. The gap is older. The plan's „ვადასტურებ / შევცვალოთ" belong to the reply that proposed the plan, and a later why-answer that asks nothing carries neither a question nor buttons (seats 184146 / 184148: no closing question and no choices in the stored reply).
+- **0241:** `patches/afternoon-1250/0241-56697-a-reply-that-leaves-a-waiting-plan-without-a-q.patch`, sha256 `604d729f9698b27537ad7f1be99a551530657df26b16a22c60b8495a8526ab61`. My branch commit 7813832. **Cut on origin/main e426dd2 + 0240, so it goes after 0240.** Verify there: 870 suites passed. 0232 still applies.
+  - The rule: on an owner's turn in a goal's thread whose proposed plan is neither approved nor sent back for changes, a reply that asks nothing and offers no buttons ends with the plan's own „დავიწყო?" and its two buttons.
+  - Existing words only, so no D44. A reply with its own question or buttons, a wake run, and a run that proposed a plan itself are all left as they are.
+- DONE WHEN: on 3 fresh seats, after a why-question about a proposed plan, the reply ends with „დავიწყო?" and the two buttons, 3 of 3.
+- Order: after 0240.
+
 ### 13 Oct, 10:58Z — 0240: 958, the wallet debit runs after the answer is sent (~1.2 s off every answer)
 
 - Patch: `patches/afternoon-1250/0240-958-the-wallet-debit-runs-after-the-answer-is-sent-n.patch`, sha256 `6d1a8dfe49e1392ac2412412f8ef028de71855aa9409f7a5cfba285d7d220869`. My branch commit 39ea743. Cut on origin/main e426dd2 (which carries 0239); verify there: 869 suites passed. 0232 still applies.
