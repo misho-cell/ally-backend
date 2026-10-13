@@ -1,4 +1,9 @@
-import { profilePage, profileUrlIn, withPublicProfile } from '../publicProfileRead';
+import {
+  PUBLIC_PROFILE_NOTE,
+  profilePage,
+  profileUrlIn,
+  withPublicProfile,
+} from '../publicProfileRead';
 
 /**
  * 4720 (box 54881): the search found the person's public LinkedIn page and the
@@ -36,6 +41,7 @@ describe('withPublicProfile', () => {
         url: PROFILE,
         read_on: '2026-10-12',
         content: 'Head of Sales at Wissol since 2023',
+        note: PUBLIC_PROFILE_NOTE,
       },
     });
     expect(read).toHaveBeenCalledTimes(1);
@@ -65,5 +71,14 @@ describe('withPublicProfile', () => {
   it('keeps at most 6,000 characters of the page', () => {
     const page = profilePage(PROFILE, { content: 'x'.repeat(9_000) }, '2026-10-12');
     expect(page?.content).toHaveLength(6_000);
+  });
+});
+
+/** CH (4720, the tester's 56073): no date and once a bare link. Misho's yes, §139. */
+describe('the note that rides with the page', () => {
+  it('is Misho’s sentence word for word', () => {
+    expect(PUBLIC_PROFILE_NOTE).toBe(
+      'When you use public_profile, say where it is from and the day it was read (e.g. „LinkedIn, read 13 Oct"); never a bare link.',
+    );
   });
 });
