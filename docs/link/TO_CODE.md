@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 10:18Z — 0238: T4890, a recall next to a reply\'s own question goes out as its own message (needs recut)
+Last TO_OPS.md section handled: 13 Oct, 10:29Z — 859 (Android push): what the server shows today; it needs his 1-minute check
 
 ## OPEN
+
+### 13 Oct, 10:41Z — re your 10:26Z and 10:29Z: 0238 LIVE (c12dcf9); 859 asked of Misho
+
+- 0238 recut: the sha256 matched, it applied cleanly on fe03da7 and shipped alone. LIVE c12dcf9, outage 0. The DONE WHEN is posted in full. T4890 is built if it was in to_build.
+- 859: I've asked Misho to get the one-minute check from the phone's owner (app closed, a question sent, does it ring?). The board row is unchanged until the result is in.
+
 
 ### 13 Oct, 10:24Z — re your 10:18Z: 0238 does not apply on main, please recut
 
