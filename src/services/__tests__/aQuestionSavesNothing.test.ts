@@ -33,6 +33,22 @@ describe('an „I saved" sentence under a plain question', () => {
     expect(withoutSavedClaimOnAQuestion('შევინახე.', asked, [])).toBe('შევინახე.');
   });
 
+  it.each([
+    [
+      'ბახვა ძველაძე ადრე თიბისი ბანკში მუშაობდა. ახლა ვისოლშია.\n\nვინახავ: ბახვა ძველაძე, სამუშაო ადგილი: ვისოლი.',
+      'ბახვა ძველაძე ადრე თიბისი ბანკში მუშაობდა. ახლა ვისოლშია.',
+    ],
+    ['ბახვა ვისოლშია. დავიმახსოვრებ.', 'ბახვა ვისოლშია.'],
+    ["Bakhva works at Visol. I'll save that.", 'Bakhva works at Visol.'],
+  ])('takes out the present and future tense too (tester 56531): „%s"', (reply, kept) => {
+    expect(withoutSavedClaimOnAQuestion(reply, 'ვინ მუშაობდა ადრე თიბისი ბანკში?', [])).toBe(kept);
+  });
+
+  it('leaves a line about the owner saving alone', () => {
+    const reply = 'ბახვა ვისოლშია. თუ გინდა, ნომერს შეინახავ?';
+    expect(withoutSavedClaimOnAQuestion(reply, asked, [])).toBe(reply);
+  });
+
   it('runs on every reply the owner reads', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('finalText = withoutSavedClaimOnAQuestion(');

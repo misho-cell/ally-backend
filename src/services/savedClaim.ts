@@ -6,8 +6,13 @@
  * the answer itself stays. Only the first-person verbs: „შენახულია" (it is
  * saved) can be a true account of an earlier save.
  */
+/**
+ * 4491's side note (tester 56531): „ვინახავ: ბახვა, სამუშაო ადგილი: ვისოლი." under
+ * a plain question — the same false claim in the present tense, which the past
+ * forms let through. The present and future first person count too.
+ */
 const SAID_SAVED_RE =
-  /(?<![\p{L}\p{M}])(?:დავიმახსოვრე|შევინახე|ჩავიწერე|I(?:'ve| have)? saved|I(?:'ve| have)? noted|сохранил[аи]?|запомнил[аи]?|guardé)(?![\p{L}\p{M}])/iu;
+  /(?<![\p{L}\p{M}])(?:დავიმახსოვრე|შევინახე|ჩავიწერე|ვინახავ|შევინახავ|დავიმახსოვრებ|ვიმახსოვრებ|ჩავიწერ|I(?:'ve| have| am|'m|'ll| will)? (?:saved|saving|save|noted|noting|note)|сохранил[аи]?|сохраняю|запомнил[аи]?|запомню|guardé|guardo)(?![\p{L}\p{M}])/iu;
 const SAVING_TOOL_RE = /^(?:save_|correct_|remember_|add_|set_user_|update_profile)/u;
 const QUESTION_RE = /[?？]\s*$/u;
 /** A sentence ends at . ! ? or a line break; the mark stays with its sentence. */
