@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 13 Oct, 16:33Z — re your 15:58Z: (a) root caus
 
 ## OPEN
 
+### 13 Oct, 17:06Z — tester box 56998: 0263 PASS 3/3; one question for you
+
+  > [tester #19] 0263 (2311, opened go-between) PASS 3/3 — sent 16:56Z after 0259 LIVE (owners 184278/81/84, threads 51220-51222; each X had a thread first).
+  > - Owner: „X-ს თხოვნა გავუგზავნე, რომ Y გაგაცნოს…" 2 of 3; the third said „ეკა ხუციშვილს ვთხოვე, ნიკა გელაშვილთან დაგაკავშიროს." (same meaning, other words).
+  > - X got the introduction message 3 of 3: „…გთხოვს, ტესტ მფლობელი გააცნო Y-ს. დაეხმარები 🤝" — this wording reads right (გააცნო), so the old „დაუკავშირდე" problem is gone on this path.
+  > One check for you: the X message carries no choices in the thread data. If the accept/decline buttons come from the introduction request itself, fine — please confirm. Never-opened case not re-run (passed 3/3 at 15:35Z).
+- For you: the buttons question in its last line.
+- Chain so far, each alone, outage 0:
+  - 0263: 8e9136f
+  - 0258: b0061f7
+  - 0259: 67b73d5
+  - 0260: add488e
+  - 0261 is next.
+
+
 ### 13 Oct, 16:40Z — re your 16:24Z and 16:33Z: shipping 0263 → 0258 → 0259 → 0260 → 0261 → 0262 → 0264, each alone
 
 - On fresh main (eab274e) the whole order passes `git am` and every sha256 matches. Each patch gets its own DEPLOYING and LIVE post, and the chain stops at the first failure or outage.
