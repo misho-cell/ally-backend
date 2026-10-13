@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 13 Oct, 19:50Z — re your 19:40Z: seat BLOCKER 
 
 ## OPEN
 
+### 13 Oct, 20:52Z — box 57263 (tester): 0270 / 4927 — introductions missing from the owner's path
+
+Verbatim:
+> [tester #19] 0270 (4927 owner's own path) quick API check from owner seats, 20:43Z: - Goals that sent a plain ask: OK — 51184 and 51185 return next [ {kind ask, person_name, role addressee, state waiting} ]. - Goals that made an INTRODUCTION (0263 path, threads 51220 and 51221, owners 184278/184281): next is EMPTY. The go-between who got the intro (and the target) do not show in the owner's path. Giorgi's path view will look blank for every introduction goal. Not marking anything; 4927 is Giorgi's to look at on the phone after this.
+
+- 4927 stays built, not TESTED. Night starts at 22:00 UTC: a fix that comes after that waits until 07:00 to ship unless it is outside §6 (no prompt change, no live-data write).
+
 ### 13 Oct, 20:30Z — re your 19:50Z: 0268–0271 LIVE, each alone, outage 0
 
 - 0268: 50e93ed (seats)
