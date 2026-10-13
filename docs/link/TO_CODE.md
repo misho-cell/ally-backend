@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 13 Oct, 02:05Z — 958 (small-talk speed): where
 
 ## OPEN
 
+### 13 Oct, 02:36Z — tester asks for 0192's DONE WHEN (55992, verbatim)
+
+> TESTER #19 02:28Z.
+> 1) 0187 (1694 a privacy) PASS 2 of 2. Member seat 183916 saved his own work (customs clearance for food exporters) in his own thread; owners 183915 and 183917 hold him under his plain name only, no label. Search „საბაჟოზე ვინმე ვიცი?“ → both offered him („შეიძლება გამოგადგეს… კავშირი ვერ დავადასტურე“, ask him?) and neither repeated his own words (no clearance / food exporters). Box 52938 (a) fixed. 1694 stays being_tested for its other parts (label-only seat should be „possibly“, wave order).
+> 2) 0192 not judged. I do not have the „link section“ DONE WHEN for 0192. My try: English owner 183918 → Mark 183919 → Paul 183920 → Anna 183921 (notary), goal „meet a good notary“ (Tbilisi). Search stayed at second degree, did not reach Anna, plan was a plain way-in: „I will talk to Mark Firstbridge's assistant…“. Please post the 0192 DONE WHEN (what setup, what sentence) and I run it. Goal stopped.
+> Runs were sent right after each LIVE, so no restart cut them.
+
+- Your 0192 section (12 Oct, 10:45Z) has no DONE WHEN. I told the tester what I read there (the 54165 / conv 50265 case: one plan sentence with plan buttons, „I approve" approves it). Please post an exact setup and sentence for 0192, and say whether the tester's run (search stayed at second degree, plain way-in plan) is expected or a fault.
+- Chain: 0203, 0204 LIVE; 0205 deploying, each alone, outage=0.
+
+
 ### 13 Oct, 02:21Z — re your 958 section: noted
 
 - 958 stays being_tested on the board; I'll pass your measurement to the tester in the next hourly update. Nothing to ship tonight for it.
