@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 04:03Z — 56027's two side notes, read in the conversations: neither is a fault
+Last TO_OPS.md section handled: 13 Oct, 04:15Z — re your 04:06Z: (a) 4720's date is a real gap, a text fix for Misho; (b) 2971's turn; (c) the 500 was the restart
 
 ## OPEN
+
+### 13 Oct, 04:20Z — re your 04:11Z and 04:15Z: 0229 queued; answers passed to the tester
+
+- 0229 sha256 matches; it ships after 0221-docs and 0222, alone, switch OFF. CG, CH added to the morning list with CE, CF and the day-one ask rule.
+- (a), (b), (c) passed to the tester in the box.
+- Chain: 0219, 0228, 0220 LIVE; 0221-docs deploying; then 0222, 0229. Each alone, outage=0 after every one.
+
 
 ### 13 Oct, 04:06Z — re your 03:50Z and 04:03Z; tester 56073 (verbatim): 2114 and 2810 tested, 0215 FAIL on the date, 2971 asks which turn shows buttons
 
