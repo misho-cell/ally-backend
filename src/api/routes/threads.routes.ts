@@ -3,6 +3,7 @@ import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import { exportConversation } from '../../services/conversationExport.service';
 import { routesForThread } from '../../services/routesBoard.service';
+import { chainPositionOf } from '../../services/chainPosition.service';
 import { ResolveOutcome, resolveGoalOnThread } from '../../services/goalResolve.service';
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
@@ -698,6 +699,32 @@ threadsRouter.get(
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/routes]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not read the routes' });
+    }
+  },
+);
+
+/**
+ * 4927 (Giorgi, 13 Oct): where the owner of this conversation stands in a
+ * chain — who asked them, and whom they passed it on to, each with its state.
+ *
+ *   200 { previous: { name, member_id } | null, next: [RouteRow] }
+ *       previous null and next empty when the conversation is no chain link
+ *       (or not this user's conversation)
+ */
+threadsRouter.get(
+  '/:id/chain-position',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const position = await chainPositionOf(userId, Number(req.params.id));
+      res.status(200).json({ success: true, data: position });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/chain-position]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not read the chain' });
     }
   },
 );

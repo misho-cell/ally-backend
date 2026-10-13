@@ -45,7 +45,7 @@ export interface RouteRow {
   readonly updated_at: string;
 }
 
-interface AskRow {
+export interface AskRow {
   readonly id: number;
   readonly name: string | null;
   readonly status: string;
