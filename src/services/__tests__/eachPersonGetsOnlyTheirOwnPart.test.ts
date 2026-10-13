@@ -11,8 +11,8 @@ const GELA = 'გელა გამოგონილი';
 const LEVAN = 'ლევან საცდელი';
 
 describe('each person gets only their own part (4655)', () => {
-  it('is ON since Misho’s yes (CG, §139); with the split off, the guard behaves as before', () => {
-    expect(OWN_PART_ONLY_ON).toBe(true);
+  it('is OFF again (D710, 56802); with the split off, the guard behaves as before', () => {
+    expect(OWN_PART_ONLY_ON).toBe(false);
     expect(askIsTheIntroduction(OWNER, GELA, false)).toBe(true);
     expect(questionCarriesAnotherPart(OWNER, GELA, 'და ლევანმა გააცნოს ნინო', false)).toBe(false);
   });
