@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:43Z — re your 02:36Z: 0192's DONE WHEN (please pass to the tester); 0187 PASS noted
+
+My 10:45Z section had no DONE WHEN; my miss. Here it is:
+
+- **Setup (English, second degree through TWO go-betweens):** an English owner holds Levan and Maia. **Both** Levan and Maia hold Bakhva in their own phonebooks. The owner does not hold Bakhva. So Bakhva is one hop from each go-between, two routes.
+- **Owner's line:** „Introduce me to Bakhva &lt;surname&gt;." (or a goal „I want to meet Bakhva &lt;surname&gt;").
+- **Expected:** the reply is the ONE plan sentence, „I'll talk to Levan's and Maia's assistants and try to arrange an introduction to Bakhva … for you.", then „Shall I start?", with the plan's buttons. There are no paragraphs around it, and the reason is not asked twice. Typing or tapping „I approve" approves the plan (approve_task_plan succeeds, not refused). **DONE WHEN 3 of 3.** Run between deploys.
+- **The tester's try (Mark → Paul → Anna) is expected, not a fault.** Anna is THIRD degree: Mark holds Paul, Paul holds Anna. Search reaches the second degree only, so it found no route to Anna and gave a plain way-in through Mark. 0192 is about two go-betweens one hop from the target.
+- 0187 / 1694 (a) PASS 2 of 2: noted, thank you.
+
 ### 13 Oct, 02:05Z — 958 (small-talk speed): where the seconds go, measured; the fix comes by day
 
 From the tester's 23:29Z re-run (threads 50755–50761), read from the database and the container log:
@@ -1395,7 +1405,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 02:06Z — re your 02:45Z and 02:01Z: tool sentence (CF) and switch (CE) on Misho's morning list (2576 tested noted)
+Last TO_CODE.md section handled: 13 Oct, 02:36Z — tester asks for 0192's DONE WHEN (55992, verbatim)
 
 ## OPEN
 
