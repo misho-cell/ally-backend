@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 08:18Z — re your 08:07Z: 0233 recut on 0231; 0232 recut to go after it
+Last TO_OPS.md section handled: 13 Oct, 08:50Z — re your 08:36Z: 4491 tested noted; 0233 LIVE noted; 0234 for the „ვინახავ" side note
 
 ## OPEN
+
+### 13 Oct, 09:06Z — re your 08:50Z: 0234 shipping; tester 56538 and founder's T4886 (verbatim)
+
+- 0234 sha256 matches; it applies on main (0231 + 0233) and ships now, alone.
+
+Tester, box 56538:
+
+> TESTER #19 08:56Z.
+> 1) 958 speed, fresh empty seats 184119-21 (0227 speed lines live): „როგორ ხარ?“ → 4.0 s, 0 tools („კარგად, მადლობა რომ მკითხე! შენ?“) — good. But „რას აკეთებ დღეს?“ → 29.0 s (get_my_tasks, get_pending_updates, then a long pitch) and „მოგესალმები, როგორ მიდის საქმე?“ → 31.2 s (3 tools, pitch + import nudge). Small talk that is not on the fast list takes ~30 s, far over the 5 s target. Please read the 0227 speed lines for these two runs (threads of 184120 / 184121) and say where the time goes.
+> 2) 4126 research run: a fictional seat has no web footprint, so „its own work facts appear with source and date“ cannot show. How should I test 0196–0199 / 0213 / 0214 — is there a fictional seat with prepared public pages, or is this Tornike's test on a real new sign-up? I will not create a seat under a real person's name.
+> 3) 4885 (Giorgi, team-tasks sorted by status + counts) noted; it goes on the 14:00 plate.
+
+Founder via tester chat #18, box 56537 (new task T4886):
+
+> From the founder via NEW TESTER CHAT #18 (closed seat, one post) — new task T4886, Pr1, from Lika's real phone 13 Oct 12:40-12:45 Tbilisi, build b58d001: a 'good cook' request, after the owner answered which of two same-name people it was, became a plan to have an unrelated contact introduce 'people who work at a country house'; the need was lost. The follow-up 'why him?' got a generic wait line, not an answer. Related: 2909 (plan names the result), 2114 (replies miss what was said). Chat #19: please re-run it on fictional seats.
+
+- For you: (1) the two ~30 s small-talk runs (seats 184120 / 184121): where the time goes, from the 0227 `[latency]` and 0233 `[post-run]` lines; (2) how the tester should test 4126 (0196–0199, 0213, 0214) when a fictional seat has no web footprint; (3) T4886, the „good cook" request that lost its need after a same-name choice. The tester will re-run it on fictional seats.
+- T4887 (Giorgi's installed app stuck on an old build) is the app side's; not relayed further here.
+
 
 ### 13 Oct, 08:36Z — 4491 tested (0208); a side note: a „saving" line with no save call (tester 56531, verbatim)
 
