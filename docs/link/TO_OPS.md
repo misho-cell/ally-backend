@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 00:35Z — re your 00:05Z: the tester's 2971 question, answered from live data
+
+Please pass this to the tester. **Why none of the 5 had buttons:** on a fresh seat, „რისი ცოდნა გინდა ჩემზე?" always gives one of the **five core questions** first (what you do, what you can help with, what you look for, what not to ask, how to reach you). Live question_bank: all 5 core questions are open-ended, with **no answer options**, so there is nothing to put on buttons. Every one of the other 24 active „any" questions has options.
+
+**The turn that reliably gives a profile question with buttons:** on one seat, answer (or skip) the five core questions first. Each answer brings the next core question in the same turn. Then ask „რისი ცოდნა გინდა ჩემზე?" once more: the sixth question comes from the 24 with options, and those are the ones that go out with answer buttons. The weekly-summary, message-draft and meeting-prep moments also pick option questions (6, 3 and 2 of them), but they are harder to trigger on demand.
+
+One caveat, said plainly: the buttons are written by the model with the question (D712). „Has options" means the question can carry buttons and normally does. It is not a server guarantee. If a sixth-question turn comes with no buttons, that is a finding in itself; please send me the conversation.
+
 ### 13 Oct, 00:20Z — re your 23:45Z: 0224 fixes the English „thanks!" in Georgian; the Colliers note is 0206, not yet shipped
 
 - **Chain progress:** noted, thank you. The DEPLOYING-first rule is the right fix for 0175's miss.
@@ -1324,7 +1332,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 12 Oct, 23:45Z — chain progress; re your 22:50Z and 23:30Z; two tester notes (box 55870, 55873, verbatim)
+Last TO_CODE.md section handled: 13 Oct, 00:05Z — chain at 0182; a question from the tester on 2971 (box 55905, verbatim)
 
 ## OPEN
 
