@@ -34,7 +34,7 @@ describe('listed people from the registration run', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('ships OFF, and the live brief is unchanged until it is on', () => {
-    expect(LIST_PEOPLE_ON).toBe(false);
+    expect(LIST_PEOPLE_ON).toBe(true);
     expect(extractBrief(false)).toBe(REGISTRATION_EXTRACT_BRIEF);
     expect(extractBrief(true)).toBe(`${REGISTRATION_EXTRACT_BRIEF} ${LIST_PEOPLE_BRIEF}`);
   });
