@@ -1,0 +1,238 @@
+From 6193e5fd8d24ed19b82e92f6fb27857bcc90a983 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 04:07:31 +0000
+Subject: [PATCH] 4655 rebuilt: each person's message carries only their own
+ part (OFF)
+
+0226 split "ask Gela ..., and ask Levan to introduce me to Nino" into two
+parts, so the question to Gela went out, but the model wrote Levan's
+introduction into Gela's one message (tester 56014) and 0226 was
+reverted. The split now comes only together with an own-part check: a
+question that names the go-between or the target of another part's
+introduction is refused, and the model sends each part to its own person.
+
+Both sit behind OWN_PART_ONLY_ON, false until Misho says yes to the
+refusal sentence (OTHER_PART_REFUSAL); off, the guard is exactly main's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../eachPersonGetsOnlyTheirOwnPart.test.ts    | 53 +++++++++++++++++++
+ src/services/chat.service.ts                  | 15 ++++++
+ src/services/introInstruction.ts              | 27 +++++++++-
+ src/services/ownPart.ts                       | 52 ++++++++++++++++++
+ 4 files changed, 145 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+ create mode 100644 src/services/ownPart.ts
+
+diff --git a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+new file mode 100644
+index 0000000..0c27744
+--- /dev/null
++++ b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+@@ -0,0 +1,53 @@
++import { askIsTheIntroduction, OWN_PART_ONLY_ON } from '../introInstruction';
++import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from '../ownPart';
++
++/**
++ * 4655 rebuilt (the tester's 55954 and 56014). One sentence, two requests: the
++ * question to Gela goes, but carries only Gela's part — never Levan's
++ * introduction. OFF until Misho's yes on the refusal sentence.
++ */
++const OWNER = ['გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო.'];
++const GELA = 'გელა გამოგონილი';
++const LEVAN = 'ლევან საცდელი';
++
++describe('each person gets only their own part (4655)', () => {
++  it('ships OFF: with the split off, the guard behaves as main does now', () => {
++    expect(OWN_PART_ONLY_ON).toBe(false);
++    expect(askIsTheIntroduction(OWNER, GELA, false)).toBe(true);
++    expect(questionCarriesAnotherPart(OWNER, GELA, 'და ლევანმა გააცნოს ნინო', false)).toBe(false);
++  });
++
++  it('with the split on, the question to Gela is a question', () => {
++    expect(askIsTheIntroduction(OWNER, GELA, true)).toBe(false);
++    expect(askIsTheIntroduction(OWNER, LEVAN, true)).toBe(true);
++  });
++
++  it.each([
++    '…ხომ არ იცი ვინმე? და ლევანმა გააცნოს ნინო.',
++    'ხომ არ იცი კარგი სანტექნიკოსი და ხომ არ შეგიძლია ლევანთან ნინო გააცნო?',
++  ])('refuses Gela’s question that carries Levan’s part (56014): „%s"', (question) => {
++    expect(questionCarriesAnotherPart(OWNER, GELA, question, true)).toBe(true);
++  });
++
++  it('lets Gela’s own part through', () => {
++    expect(
++      questionCarriesAnotherPart(OWNER, GELA, 'ხომ არ იცი კარგი სანტექნიკოსი თბილისში?', true),
++    ).toBe(false);
++  });
++
++  it('never catches a message with one request only', () => {
++    expect(
++      questionCarriesAnotherPart(
++        ['ლევანს სთხოვე, გამაცნოს ნინო.'],
++        LEVAN,
++        'ნინოს გაცნობა უნდა, შეგიძლია?',
++        true,
++      ),
++    ).toBe(false);
++  });
++
++  it('tells the model to send each part to its own person', () => {
++    expect(OTHER_PART_REFUSAL).toContain('only their own part');
++    expect(OTHER_PART_REFUSAL).toContain('request_introduction');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 88eb1fa..98e8702 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -455,9 +455,11 @@ import { noContactsYetSection } from './noContactsYet';
+ import { withoutNoteTalk } from './noteTalk';
+ import {
+   askIsTheIntroduction,
++  OWN_PART_ONLY_ON,
+   ownerAsksForIntroduction,
+   USE_INTRODUCTION_REFUSAL,
+ } from './introInstruction';
++import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
+ import {
+   introSentSentence,
+   SERVER_INTRODUCTION_ON,
+@@ -9717,6 +9719,19 @@ async function executeToolCall(
+         );
+         return { sent: false, reason: 'use_introduction', error: USE_INTRODUCTION_REFUSAL };
+       }
++      // 4655 (the tester's 56014): a question carries this person's own part only.
++      if (
++        questionCarriesAnotherPart(
++          ownerLines,
++          String(input['contact_name'] ?? ''),
++          question,
++          OWN_PART_ONLY_ON,
++        )
++      ) {
++        // eslint-disable-next-line no-console
++        console.log(`[own-part] run ${runId} task ${taskId}: another person's part held back`);
++        return { sent: false, reason: 'other_part', error: OTHER_PART_REFUSAL };
++      }
+       const changed = factChangedIn(question, ownerLines);
+       if (changed === null && ownersLineQuoted(question, ownerLines) !== null) {
+         // eslint-disable-next-line no-console
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index e082fcf..f20f995 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -42,13 +42,35 @@ function nameStem(name: string): string | null {
+   return stem.length >= MIN_STEM_CHARS ? stem : null;
+ }
+ 
+-function sentencesOf(lines: readonly string[]): string[] {
++/**
++ * 4655 rebuilt (the tester's 55954 and 56014): „გელას ჰკითხე, ხომ არ იცის კარგი
++ * სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო." is one sentence holding two
++ * requests. Split on a comma with „და"/„ასევე"/„and"/„also", or a semicolon,
++ * Gela's part is a question — but 0226 split it alone and Gela's one message
++ * then carried Levan's introduction too, so it was reverted. The split now
++ * comes only together with the own-part check (ownPart.ts), behind one switch:
++ * OFF until Misho's yes on that check's refusal sentence.
++ */
++export const OWN_PART_ONLY_ON = false;
++const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
++
++/** The owner's words cut into each person's part (sentences, and parts when split). */
++export function partsOf(
++  lines: readonly string[],
++  splitParts: boolean = OWN_PART_ONLY_ON,
++): string[] {
+   return lines
+     .flatMap((line) => line.match(SENTENCE_RE) ?? [])
++    .flatMap((sentence) => (splitParts ? sentence.split(PART_BREAK_RE) : [sentence]))
+     .map((s) => s.trim())
+     .filter(Boolean);
+ }
+ 
++/** The first name's stem, as askIsTheIntroduction reads it; null for a short or empty name. */
++export function nameStemOf(name: string): string | null {
++  return nameStem(name);
++}
++
+ /**
+  * Is this ask the introduction the owner asked for? True unless the recipient is
+  * named in the owner's words only outside the introduction sentences — when that
+@@ -57,11 +79,12 @@ function sentencesOf(lines: readonly string[]): string[] {
+ export function askIsTheIntroduction(
+   ownerLines: readonly string[],
+   recipientName: string,
++  splitParts: boolean = OWN_PART_ONLY_ON,
+ ): boolean {
+   if (!ownerAsksForIntroduction(ownerLines)) return false;
+   const stem = nameStem(recipientName);
+   if (stem === null) return true;
+-  const sentences = sentencesOf(ownerLines);
++  const sentences = partsOf(ownerLines, splitParts);
+   const named = sentences.filter((s) => s.toLowerCase().includes(stem));
+   if (named.length === 0) return true;
+   return named.some((s) => OWNER_INTRO_RE.test(s));
+diff --git a/src/services/ownPart.ts b/src/services/ownPart.ts
+new file mode 100644
+index 0000000..8ccd5bc
+--- /dev/null
++++ b/src/services/ownPart.ts
+@@ -0,0 +1,52 @@
++import { instructionNamed } from './goalIntent';
++import { introductionTarget } from './introFallback';
++import { nameStemOf, ownerAsksForIntroduction, partsOf } from './introInstruction';
++
++/**
++ * 4655 rebuilt (the tester's 56014, 0 of 2 with 0226): once the guard let the
++ * question to Gela through, the model wrote the owner's introduction part into
++ * Gela's one message too („…და ლევანმა გააცნოს ნინო"), so the owner's wish
++ * reached a third person. Each person's message carries their own part only:
++ * a question that names a person from another part's introduction (its
++ * go-between or the one to be met) is refused, and the model sends that part
++ * where it belongs.
++ *
++ * MODEL-FACING (D44): OTHER_PART_REFUSAL needs Misho's yes word for word; it
++ * is used only while OWN_PART_ONLY_ON (introInstruction.ts) is on.
++ */
++export const OTHER_PART_REFUSAL =
++  'Not sent: this question also carries what the owner asked of someone else. Send this ' +
++  'person only their own part of the owner’s message, in your own words. The other part ' +
++  'goes to its own person — an introduction through request_introduction — and is never ' +
++  'mentioned to this one.';
++
++/** The people an introduction part names: its go-between and the one to be met. */
++function peopleOfIntroduction(part: string): string[] {
++  return [instructionNamed(part), introductionTarget(part)].filter(
++    (name): name is string => name !== null && name.trim() !== '',
++  );
++}
++
++/**
++ * True when the question to this recipient names someone from an introduction
++ * part that is not this recipient's own. Parts are split as the guard splits
++ * them; with the split off, nothing is ever caught.
++ */
++export function questionCarriesAnotherPart(
++  ownerLines: readonly string[],
++  recipientName: string,
++  question: string,
++  splitParts: boolean,
++): boolean {
++  if (!splitParts) return false;
++  const own = nameStemOf(recipientName);
++  if (own === null) return false;
++  const asked = question.toLowerCase();
++  const otherIntroductions = partsOf(ownerLines, true).filter(
++    (part) => ownerAsksForIntroduction([part]) && !part.toLowerCase().includes(own),
++  );
++  return otherIntroductions
++    .flatMap(peopleOfIntroduction)
++    .map(nameStemOf)
++    .some((stem) => stem !== null && stem !== own && asked.includes(stem));
++}
+-- 
+2.43.0
+

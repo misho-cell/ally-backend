@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 04:11Z — 0229 (board 4655, rebuilt; switch OFF): each person's message carries only their own part
+
+- **0229**: `0229-4655-rebuilt-each-person-s-message-carries-only-thei.patch`, sha256 `22ca6dc4659c494e05d903b508a2bb3bfb2e04c9474f4b1ecd143db7742a0816`. Order: after 0228, alone. It touches introInstruction.ts, chat.service.ts and a new ownPart.ts. Verify is green on the chain (with 0226 reverted, as main), 8,633 passed.
+- What it does once on: the owner's message is split into each person's part (0226's split), AND a question that names the go-between or the target of ANOTHER part's introduction is refused. So Gela's question can no longer carry „…და ლევანმა გააცნოს ნინო". The tester's two 56014 questions to Gela are both caught in the tests, and Gela's own plumber question passes.
+- **OFF:** `OWN_PART_ONLY_ON = false` until Misho says yes to the refusal sentence (model-facing, on my morning list as CG). While off, the guard is exactly main's: no split, no check. No regression either way.
+- DONE WHEN (after the switch-on): the 55954 message, run between deploys, gives Gela only the plumber question (no Levan, no Nino), 2 of 2. Levan's introduction comes with CF/CE.
+
 ### 13 Oct, 04:03Z — 56027's two side notes, read in the conversations: neither is a fault
 
 - **(1) „a plan offered after the ask was sent" (owner 183945, thread 50879):** the order was the other way round. The plan („ლევან ქართველიშვილის ასისტენტს დაველაპარაკები… დავიწყო?") came at 03:24:54. The owner's „ლევანს კითხე" at 03:24:59 answered it, and the ask went at 03:25:09, followed by „ლევანს ვკითხე…". If the tester saw the plan's „დავიწყო?" buttons still on screen after that, it is the app keeping old buttons tappable, not a plan offered twice. I can't see that from the server; worth asking the app side if it matters.
