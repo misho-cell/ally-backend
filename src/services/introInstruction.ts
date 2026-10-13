@@ -42,20 +42,9 @@ function nameStem(name: string): string | null {
   return stem.length >= MIN_STEM_CHARS ? stem : null;
 }
 
-/**
- * The tester's 55954 (4655, 0 of 2): „გელას ჰკითხე, ხომ არ იცის კარგი
- * სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო." is one sentence holding two
- * requests, so Gela sat in the introduction's sentence and every ask to him
- * was refused. A comma followed by „და"/„ასევე"/„and"/„also", or a semicolon,
- * starts the next person's part. A bare „და" does not: „გამაცანი ნინო და
- * გიორგი" stays one introduction.
- */
-const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
-
 function sentencesOf(lines: readonly string[]): string[] {
   return lines
     .flatMap((line) => line.match(SENTENCE_RE) ?? [])
-    .flatMap((sentence) => sentence.split(PART_BREAK_RE))
     .map((s) => s.trim())
     .filter(Boolean);
 }
