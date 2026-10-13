@@ -72,7 +72,7 @@ describe('registration research run', () => {
       { key: 'employer', value: 'Bank A', sources: [PAGE_URL], date: null },
     ]);
 
-    expect(await researchNextUser()).toBe(true);
+    expect(await researchNextUser(false)).toBe(true);
     expect(mockSearch).toHaveBeenCalledTimes(4);
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const insert = mockQuery.mock.calls.find((c) => sqlOf(c).includes('INSERT INTO contact_facts'));
@@ -98,7 +98,7 @@ describe('registration research run', () => {
       .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
       .mockResolvedValue({ rows: [], rowCount: 1 } as never);
     mockSearch.mockRejectedValueOnce(new Error('search down'));
-    expect(await researchNextUser()).toBe(true);
+    expect(await researchNextUser(false)).toBe(true);
     const failed = mockQuery.mock.calls.find((c) => sqlOf(c).includes('SET status = $2'));
     expect(failed?.[1]?.[1]).toBe('failed');
     expect(failed?.[1]?.[5]).toBe('search down');
@@ -109,7 +109,7 @@ describe('registration research run', () => {
       .mockResolvedValueOnce({ rows: [{ user_id: 7, name: null, city: null }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValue({ rows: [], rowCount: 1 } as never);
-    expect(await researchNextUser()).toBe(true);
+    expect(await researchNextUser(false)).toBe(true);
     expect(mockSearch).not.toHaveBeenCalled();
   });
 

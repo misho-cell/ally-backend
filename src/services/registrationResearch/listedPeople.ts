@@ -7,11 +7,11 @@ import { KnownPerson, ListPerson, sameNamePerson, storeListPerson } from '../lis
  * names are kept in list_people — who belongs to which organisation, by which
  * page, on which day — and never as a „knows" link (D757 point 2).
  *
- * OFF until Misho says yes to LIST_PEOPLE_BRIEF word for word (D44): it is
- * added to the extractor's brief only while this is on, so the live brief does
- * not change by one character until then.
+ * ON since Misho's yes to LIST_PEOPLE_BRIEF word for word (CD, D44), 13 Oct
+ * 11:2x UTC in the operations chat, „ჩემგან ყველაფერზე კია" (§139). It is added
+ * to the extractor's brief only while this is on; false restores the old brief.
  */
-export const LIST_PEOPLE_ON = false;
+export const LIST_PEOPLE_ON = true;
 
 /** MODEL-FACING (D44): appended to REGISTRATION_EXTRACT_BRIEF only while LIST_PEOPLE_ON. */
 export const LIST_PEOPLE_BRIEF =
