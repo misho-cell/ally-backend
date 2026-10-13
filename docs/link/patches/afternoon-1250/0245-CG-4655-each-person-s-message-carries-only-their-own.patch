@@ -1,0 +1,57 @@
+From 0bba9e68c32599c712336eff64604921a1fc1a3a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 11:42:32 +0000
+Subject: [PATCH 245/248] CG (4655): each person's message carries only their
+ own part, ON
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 13 Oct 11:2x UTC in the operations chat („ჩემგან ყველაფერზე
+კია", relayed verbatim by ops at 11:28Z). 0229 shipped the split and the
+own-part check behind OWN_PART_ONLY_ON=false until his yes on the refusal
+sentence (OTHER_PART_REFUSAL in ownPart.ts, unchanged). The switch is now
+true. Setting it back to false restores the earlier guard.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts         | 4 ++--
+ src/services/introInstruction.ts                             | 5 +++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+index 0c27744..ade458b 100644
+--- a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
++++ b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+@@ -11,8 +11,8 @@ const GELA = 'გელა გამოგონილი';
+ const LEVAN = 'ლევან საცდელი';
+ 
+ describe('each person gets only their own part (4655)', () => {
+-  it('ships OFF: with the split off, the guard behaves as main does now', () => {
+-    expect(OWN_PART_ONLY_ON).toBe(false);
++  it('is ON since Misho’s yes (CG, §139); with the split off, the guard behaves as before', () => {
++    expect(OWN_PART_ONLY_ON).toBe(true);
+     expect(askIsTheIntroduction(OWNER, GELA, false)).toBe(true);
+     expect(questionCarriesAnotherPart(OWNER, GELA, 'და ლევანმა გააცნოს ნინო', false)).toBe(false);
+   });
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index f20f995..bf4f461 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -49,9 +49,10 @@ function nameStem(name: string): string | null {
+  * Gela's part is a question — but 0226 split it alone and Gela's one message
+  * then carried Levan's introduction too, so it was reverted. The split now
+  * comes only together with the own-part check (ownPart.ts), behind one switch:
+- * OFF until Misho's yes on that check's refusal sentence.
++ * ON since Misho's yes on that check's refusal sentence (CG), 13 Oct 11:2x UTC
++ * in the operations chat, „ჩემგან ყველაფერზე კია" (§139).
+  */
+-export const OWN_PART_ONLY_ON = false;
++export const OWN_PART_ONLY_ON = true;
+ const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
+ 
+ /** The owner's words cut into each person's part (sentences, and parts when split). */
+-- 
+2.43.0
+

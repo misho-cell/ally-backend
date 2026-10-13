@@ -2,6 +2,32 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 12:07Z — re your 11:28Z (Misho's word): 0225 recut, and 0243–0248 for CE, CF, CG, CH, 3070 (a) and the 958 widening
+
+All cut in one chain on fresh origin/main bd751a1 (0224, 0232 live) + 0149, in this order, ship each alone. **Verify passed at every step of the chain:** 0225: 8,658 tests, 0243–0247 each green, 0248 (the whole chain): 8,672 passed.
+
+| # | file (afternoon-1250/) | sha256 | what |
+|---|---|---|---|
+| 0225 | `0225-2608-tester-55922-…` (overwritten) | `e12f392b70f129eab52e6e4bedff6b8a0458d901bf8abb1b4a354e0806f5ab73` | 2608: a recall the model words itself keeps its two buttons. Recut on main + 0149 |
+| 0243 | `0243-958-tester-56538-and-are-small-talk.patch` | `04adc9fd1c9641871abf8194c8d25648e17a89a57fd9d754f9f61becd751692c` | 958 widening (my 700c18f): „რას აკეთებ დღეს?", „როგორ მიდის საქმე?" etc. are small talk |
+| 0244 | `0244-CE-2311-…` | `2de314a8b73aa8ba89600f4ec722e111b075106b2d4c123df261456e1ddd1334` | CE: SERVER_INTRODUCTION_ON = true |
+| 0245 | `0245-CG-4655-…` | `54b38f9ae2dc8faa1995cc03362112d9b1c0297bbabf3a0f2f31973f2ef6c289` | CG: OWN_PART_ONLY_ON = true |
+| 0246 | `0246-CF-2311-root-cause-…` | `d7c7673cbbeb582a6feaa280c19c438b02a31af148b8b4d1ec42b94f6f0bf794` | CF: request_introduction's „only after they confirm" → „a typed instruction … is itself that yes (D316) — send at once" |
+| 0247 | `0247-CH-4720-…` | `74b7793710a64a0bfd5e2cb06f8cb5c6eea2365e5545f24aa6861f396bd4b1af` | CH: PUBLIC_PROFILE_NOTE rides with the read profile, word for word |
+| 0248 | `0248-3070-a-…` | `515d6b482e6bfa3330676d5865186a6d686133d238adb2247ff2056614c0a762` | 3070 (a): the turn that approved the plan runs without ask_contact |
+
+- **His word as I recorded it:** §139 on my branch (ADMIN_WRITE_OPERATIONS), with what it covers on the code side.
+- **Not built, and why:**
+  - The day-one ask rule mentioned beside CF: no exact text was ever put to him.
+  - 3070 (b), starting day one at the tap: it would put two runs in one conversation, which the one-run-per-thread rule exists to stop. It needs its own design, which I'll bring to him.
+- **DONE WHEN, per item:**
+  - 0243: „რას აკეთებ დღეს?" under 6 s, 3 of 3.
+  - CE + CF: a typed „სთხოვე X-ს, დამაკავშიროს Y-თან" makes the introduction with no second question, 5 of 5 (2311).
+  - CG: Gela gets only his own question (4655, 2 of 2).
+  - CH: 3 of 3 public-profile answers name the source and the day.
+  - 3070 (a): no ask_contact in the approval turn, 3 of 3; median approval → first question below this morning's 67 s.
+- **Model-facing:** 0243–0248 are covered by his word. A short watch after each is worth it, CE and CF above all (D710 revert ready: each switch back to false, or the commit reverted).
+
 ### 13 Oct, 11:20Z — 0242: T4890 (a), a shared pronoun no longer counts as a shared field
 
 - Patch: `patches/afternoon-1250/0242-T4890-a-a-shared-pronoun-no-longer-counts-as-a-share.patch`, sha256 `e3eef03add46ec7ef7f68c80965873eaebf44da47a9a8f350b5b334d9255f64c`. My branch commit 5984f38. Cut on origin/main 8b010fc (0240 LIVE) + 0241, so it goes after 0241. Verify there: 870 suites passed. 0232 still applies.
@@ -1642,7 +1668,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 11:16Z — re your 10:58Z: 0240 LIVE (8b010fc)
+Last TO_CODE.md section handled: 13 Oct, 11:28Z — MISHO'S WORD (ops chat, 11:2xZ, verbatim): „ჩემგან ყველაფერზე კია" (from me, yes to everything)
 
 ## OPEN
 

@@ -1,4 +1,4 @@
-From 3983af642fd4b4835c81652b02ac6b1eff25a531 Mon Sep 17 00:00:00 2001
+From fa009bbdeb098bf20644cdab88c0fdfacc2f7959 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Tue, 13 Oct 2026 00:48:03 +0000
 Subject: [PATCH] 2608 (tester 55922): the match offer keeps its two buttons
@@ -15,15 +15,15 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
 ---
  src/services/__tests__/needRecall.test.ts | 30 ++++++++++++++++++++-
- src/services/chat.service.ts              | 15 ++++-------
- src/services/needRecall.ts                | 33 +++++++++++++++++++++++
- 3 files changed, 67 insertions(+), 11 deletions(-)
+ src/services/chat.service.ts              | 10 +++----
+ src/services/needRecall.ts                | 32 +++++++++++++++++++++++
+ 3 files changed, 66 insertions(+), 6 deletions(-)
 
 diff --git a/src/services/__tests__/needRecall.test.ts b/src/services/__tests__/needRecall.test.ts
-index 2b6df71..4b51af6 100644
+index 866f0ce..77c5ea6 100644
 --- a/src/services/__tests__/needRecall.test.ts
 +++ b/src/services/__tests__/needRecall.test.ts
-@@ -9,6 +9,7 @@ import {
+@@ -13,6 +13,7 @@ import {
    needThisFactMeets,
    noteSavedFact,
    recallChoices,
@@ -31,7 +31,7 @@ index 2b6df71..4b51af6 100644
    recallLine,
    takeSavedFact,
  } from '../needRecall';
-@@ -60,7 +61,8 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
+@@ -84,7 +85,8 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
      expect(chat).toContain(
        'if (!ownerAbsent && savedFact !== null && (choices === undefined || choices.length === 0)) {',
      );
@@ -41,11 +41,10 @@ index 2b6df71..4b51af6 100644
    });
  
    it('declines the name in Georgian and closes the quote the Georgian way', () => {
-@@ -69,3 +71,29 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
-     expect(line).not.toContain('-ს ');
+@@ -94,6 +96,32 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
    });
  });
-+
+ 
 +/**
 + * The tester's 55922 (2608, 13 Oct): the model offered the match in its own
 + * words, so the server added no line — and no buttons. The buttons stay.
@@ -71,33 +70,33 @@ index 2b6df71..4b51af6 100644
 +    expect(offer.choices).toBeUndefined();
 +  });
 +});
++
+ /**
+  * T4890 (the founder, 13 Oct, thread 51037): the reply asked its own question and
+  * the recall was put under it with two buttons — two questions, and the buttons
 diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
-index 41980c6..bde36ab 100644
+index 5b7f09a..c52be51 100644
 --- a/src/services/chat.service.ts
 +++ b/src/services/chat.service.ts
-@@ -105,13 +105,7 @@ import { thanksTapOf } from './helperThanksCards';
- import { saysAHelperHelped, settleThanksTap, thankHelperNamedIn } from './helperThanks.service';
- import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneElsesRole';
- import { settleMatchTap } from './matchFlow.service';
--import {
--  needThisFactMeets,
--  noteSavedFact,
+@@ -112,9 +112,8 @@ import {
+   noteSavedFact,
+   NEED_RECALL_KIND,
+   recallCard,
 -  recallChoices,
+   recallGoesApart,
 -  recallLine,
--  takeSavedFact,
--} from './needRecall';
-+import { needThisFactMeets, noteSavedFact, takeSavedFact, withRecallOffer } from './needRecall';
++  withRecallOffer,
+   takeSavedFact,
+ } from './needRecall';
  import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
- 
- import { safetyReplyFor } from './safetyWorry';
-@@ -14089,9 +14083,10 @@ async function runToolLoop(
-     const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
-       () => null,
-     );
--    if (recalled !== null && !finalText.includes(recalled.needName)) {
+@@ -14159,9 +14158,10 @@ async function runToolLoop(
+           payload: { ...recallCard(recalled, runLang(runId)) },
+         },
+       ]);
+-    } else if (recalled !== null && !finalText.includes(recalled.needName)) {
 -      finalText = `${finalText.trimEnd()}\n\n${recallLine(runLang(runId), recalled)}`;
 -      choices = recallChoices(runLang(runId));
-+    if (recalled !== null) {
++    } else if (recalled !== null) {
 +      const offer = withRecallOffer(finalText, recalled, runLang(runId));
 +      finalText = offer.text;
 +      choices = offer.choices ?? choices;
@@ -105,20 +104,12 @@ index 41980c6..bde36ab 100644
    }
    // The tester's 47325: the model's internal words never reach the owner.
 diff --git a/src/services/needRecall.ts b/src/services/needRecall.ts
-index 9cc2119..e9cbacb 100644
+index e6e08d2..2c50900 100644
 --- a/src/services/needRecall.ts
 +++ b/src/services/needRecall.ts
-@@ -1,6 +1,7 @@
- import { query } from '../db/postgres/client';
- import { geoName } from './georgianCase';
- import { fieldTerms, textSpeaksOf } from './prematch.service';
-+import { lastQuestionIn } from './buttonsCarryTheQuestion';
- import { RunLanguage } from './runLanguage';
- 
- /**
-@@ -113,3 +114,35 @@ export function recallLine(language: RunLanguage, recalled: RecalledNeed): strin
- export function recallChoices(language: RunLanguage): string[] {
-   return [...(RECALL_CHOICES[language] ?? RECALL_CHOICES.ka)];
+@@ -150,3 +150,35 @@ export function recallCard(
+ ): { readonly text: string; readonly choices: string[] } {
+   return { text: recallLine(language, recalled), choices: recallChoices(language) };
  }
 +
 +export interface RecallOffer {

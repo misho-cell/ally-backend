@@ -1,0 +1,80 @@
+From 4823bfd82a3c78a66e28f85c713dad4f68c5a19a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 09:23:20 +0000
+Subject: [PATCH 243/248] =?UTF-8?q?958=20(tester=2056538):=20=E2=80=9E?=
+ =?UTF-8?q?=E1=83=A0=E1=83=90=E1=83=A1=20=E1=83=90=E1=83=99=E1=83=94?=
+ =?UTF-8?q?=E1=83=97=E1=83=94=E1=83=91=20=E1=83=93=E1=83=A6=E1=83=94?=
+ =?UTF-8?q?=E1=83=A1=3F"=20and=20=E2=80=9E=E1=83=A0=E1=83=9D=E1=83=92?=
+ =?UTF-8?q?=E1=83=9D=E1=83=A0=20=E1=83=9B=E1=83=98=E1=83=93=E1=83=98?=
+ =?UTF-8?q?=E1=83=A1=20=E1=83=A1=E1=83=90=E1=83=A5=E1=83=9B=E1=83=94=3F"?=
+ =?UTF-8?q?=20are=20small=20talk?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Seats 184120/184121: „რას აკეთებ დღეს?" took 31 s and „მოგესალმები, როგორ
+მიდის საქმე?" 33 s. Neither was on the small-talk list, so each took the goal
+path: three tools, two writers, and a pitch. „როგორ ხარ?", which is on it,
+took 4 s. Added: რას აკეთებ (დღეს), როგორ მიდის (საქმე/საქმეები), როგორა ხარ,
+როგორ ბრძანდები(თ), what are you doing / up to (today), how's it going,
+what's up, что делаешь, как ты. A greeting may open the line. Whole-line
+match only: a line that also names a need stays on the goal path. No new
+text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/smallTalkIsNeverAGoal.test.ts | 10 ++++++++++
+ src/services/smallTalk.ts                            |  7 ++++++-
+ 2 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/smallTalkIsNeverAGoal.test.ts b/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
+index f684ecb..3f56ca9 100644
+--- a/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
++++ b/src/services/__tests__/smallTalkIsNeverAGoal.test.ts
+@@ -26,6 +26,13 @@ describe('small talk', () => {
+     'ღამე მშვიდობისა',
+     'Bye',
+     'Goodbye!',
++    // 56538 (958): each took the goal path, 31 s and 33 s.
++    'რას აკეთებ დღეს?',
++    'მოგესალმები, როგორ მიდის საქმე?',
++    'როგორ მიდის?',
++    'გამარჯობა, რას აკეთებ?',
++    "How's it going?",
++    'What are you up to today?',
+   ])('„%s" is small talk', (line) => {
+     expect(isSmallTalk(line)).toBe(true);
+   });
+@@ -38,6 +45,9 @@ describe('small talk', () => {
+     'ფოტოგრაფი',
+     'კარგად',
+     'ნახვამდის, და ხვალ ნოტარიუსი მომიძებნე',
++    'რას აკეთებ დღეს ჩემი ბუღალტრის საქმეზე?',
++    'როგორ მიდის ნოტარიუსის ძებნა?',
++    'გამარჯობა, მჭირდება ბუღალტერი',
+   ])('„%s" is not', (line) => {
+     expect(isSmallTalk(line)).toBe(false);
+   });
+diff --git a/src/services/smallTalk.ts b/src/services/smallTalk.ts
+index ff95581..60f2a4f 100644
+--- a/src/services/smallTalk.ts
++++ b/src/services/smallTalk.ts
+@@ -13,8 +13,13 @@ import { statesANeed } from './goalIntent';
+  * NARROW ON PURPOSE: a short question about a need („ვინ იცნობს ვეტერინარს?")
+  * typed after that button is a goal, and must stay one.
+  */
++/**
++ * The tester's 56538 (958, seats 184120/184121): „რას აკეთებ დღეს?" took 31 s and
++ * „მოგესალმები, როგორ მიდის საქმე?" 33 s — neither was on the list, so each took
++ * the goal path with its tools and a pitch. A greeting may open the line.
++ */
+ const SMALL_TALK_RE =
+-  /^\s*(?:რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|(?:როგორ|კარგად)\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
++  /^\s*(?:(?:გამარჯობა|სალამი|მოგესალმები|ჰეი|hi|hello|hey|привет)[\s,!.]+)?(?:რას\s+აკეთებ(?:\s+დღეს)?|როგორ\s+მიდის(?:\s+საქმე(?:ები)?)?|როგორა\s+ხარ|როგორ\s+ბრძანდებით?|what\s+are\s+you\s+(?:doing|up\s+to)(?:\s+today)?|how(?:'s|\s+is)\s+it\s+going|what'?s\s+up|что\s+делаешь|как\s+ты|რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|(?:როგორ|კარგად)\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
+ 
+ /**
+  * The tester's 44026 (#2114, conversations 41918 and 41919): „კარგად ხარ?" and
+-- 
+2.43.0
+

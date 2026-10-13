@@ -1,0 +1,92 @@
+From 8d61cdc73db79116306183e87609f7dbeeefa843 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 11:52:55 +0000
+Subject: [PATCH 248/248] 3070 (a): the turn that approved the plan runs
+ without ask_contact
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 13 Oct 11:2x UTC in the operations chat („ჩემგან ყველაფერზე
+კია", relayed verbatim by ops at 11:28Z), to the 3070 server-order changes.
+The tester's 56299, trio 1: in the approval turn the model called ask_contact
+twice and was refused twice („day one is already starting"). The refusals
+cost the turn a second model round, and day one could not begin until 37.6 s
+had passed. A turn that approved the plan (runApprovedAPlan, set by the tap
+or the tool) is no longer given ask_contact at all.
+
+Part (b), starting day one at the tap instead of after the approval reply,
+is not in this commit. It would put two runs in one conversation at once,
+which the one-run-per-thread rule exists to prevent. It needs its own design.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theApprovalTurnHoldsNoAskContact.test.ts  | 25 +++++++++++++++++++
+ .../__tests__/theOwnersReminderComes.test.ts  |  3 ++-
+ src/services/chat.service.ts                  |  4 ++-
+ 3 files changed, 30 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/theApprovalTurnHoldsNoAskContact.test.ts
+
+diff --git a/src/services/__tests__/theApprovalTurnHoldsNoAskContact.test.ts b/src/services/__tests__/theApprovalTurnHoldsNoAskContact.test.ts
+new file mode 100644
+index 0000000..891607e
+--- /dev/null
++++ b/src/services/__tests__/theApprovalTurnHoldsNoAskContact.test.ts
+@@ -0,0 +1,25 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 3070 (a) (the tester's 56299, trio 1; Misho's yes, §139): in the approval turn
++ * the model called ask_contact twice and was refused twice („day one is already
++ * starting"), which cost the turn a second round — 37.6 s before day one could
++ * begin. A turn that approved the plan is not given ask_contact at all.
++ */
++const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++describe('the turn that approved the plan', () => {
++  it('runs without ask_contact', () => {
++    expect(CHAT).toContain(
++      "runApprovedAPlan.has(runId) ? runTools.filter((tool) => tool.name !== 'ask_contact') : runTools,",
++    );
++  });
++
++  it('decides that after the tap was acted on, so the approval is already known', () => {
++    const tap = CHAT.indexOf('const approvedByTap = ownerAbsent');
++    const loop = CHAT.indexOf('runApprovedAPlan.has(runId) ? runTools.filter(');
++    expect(tap).toBeGreaterThan(-1);
++    expect(loop).toBeGreaterThan(tap);
++  });
++});
+diff --git a/src/services/__tests__/theOwnersReminderComes.test.ts b/src/services/__tests__/theOwnersReminderComes.test.ts
+index 79ab294..2271ec6 100644
+--- a/src/services/__tests__/theOwnersReminderComes.test.ts
++++ b/src/services/__tests__/theOwnersReminderComes.test.ts
+@@ -167,6 +167,7 @@ describe('a message that is only a reminder request starts nothing else (46334,
+     expect(chat).toContain('!ownerAbsent && isReminderRequestOnly(userMessage)');
+     expect(chat).toContain('? tools.filter((tool) => tool.name === SET_REMINDER_TOOL.name)');
+     const loop = chat.slice(chat.indexOf('} = await runToolLoop('));
+-    expect(loop.slice(0, 200)).toContain('runTools,');
++    // 3070 (a): the approval turn narrows the same list further; it is still runTools that reaches the loop.
++    expect(loop.slice(0, 500)).toContain(': runTools,');
+   });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 11f510a..88365c4 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -16230,7 +16230,9 @@ export async function processChat(
+     runId,
+     messages,
+     systemPrompt,
+-    runTools,
++    // 3070 (a) (Misho's yes, §139): a turn that approved the plan has day one queued behind it;
++    // ask_contact there was only ever refused, and the refusal cost the turn a second round.
++    runApprovedAPlan.has(runId) ? runTools.filter((tool) => tool.name !== 'ask_contact') : runTools,
+     ownerAbsent,
+     lateSearch,
+     // D631 (the founder, 4 October): a tap on a button with a fixed answer that
+-- 
+2.43.0
+

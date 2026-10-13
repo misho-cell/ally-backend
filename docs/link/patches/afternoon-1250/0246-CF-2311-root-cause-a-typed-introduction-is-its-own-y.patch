@@ -1,0 +1,100 @@
+From e41232d99a6ee8bb2f8136318e96d347c61b568f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 11:47:28 +0000
+Subject: [PATCH 246/248] CF (2311 root cause): a typed introduction is its own
+ yes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 13 Oct 11:2x UTC in the operations chat („ჩემგან ყველაფერზე
+კია", relayed verbatim by ops at 11:28Z), to the sentence put to him in the
+morning list. request_introduction said „Call only after the user explicitly
+confirms … only after they confirm". The model obeyed: a typed „სთხოვე
+გიორგის, დამაკავშიროს ნინოსთან" got a second „shall I send it?" (conv 50823)
+or nothing, against D316. Both phrases are replaced by: „Call it once the
+user has said they want it: a typed instruction to introduce them („ask Gio
+to introduce me to Nino") is itself that yes (D316) — send at once, without
+asking again."
+
+The day-one ask rule mentioned with CF was never put to him as an exact
+text, so it is not in this commit.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aTypedIntroductionIsItsOwnYes.test.ts     | 27 +++++++++++++++++++
+ .../introductionIsNotAQuestion.test.ts        |  3 ++-
+ src/services/chat.service.ts                  |  8 ++++--
+ 3 files changed, 35 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+
+diff --git a/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts b/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+new file mode 100644
+index 0000000..34fdc58
+--- /dev/null
++++ b/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+@@ -0,0 +1,27 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * CF (2311's root cause; Misho's yes, 13 Oct, §139): request_introduction said
++ * „Call only after the user explicitly confirms … only after they confirm", so a
++ * typed „სთხოვე გიორგის, დამაკავშიროს ნინოსთან" was answered with a second
++ * „shall I send it?" (conv 50823) or nothing. The typed line is the yes (D316).
++ */
++const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++const TOOL = CHAT.slice(CHAT.indexOf("name: 'request_introduction',"));
++const DESCRIPTION = TOOL.slice(0, TOOL.indexOf('input_schema'));
++
++describe('a typed introduction is its own yes', () => {
++  it('says so, word for word as approved', () => {
++    expect(DESCRIPTION).toContain(
++      "'Send an introduction request to a mutual contact (mediator). Call it once the user has said ' +\n" +
++        "    'they want it: a typed instruction to introduce them („ask Gio to introduce me to Nino\") is ' +\n" +
++        '    "itself that yes (D316) — send at once, without asking again.',
++    );
++  });
++
++  it('no longer asks for a second confirmation', () => {
++    expect(DESCRIPTION).not.toContain('explicitly confirms');
++    expect(DESCRIPTION).not.toContain('only after they confirm');
++  });
++});
+diff --git a/src/services/__tests__/introductionIsNotAQuestion.test.ts b/src/services/__tests__/introductionIsNotAQuestion.test.ts
+index 9dd7814..052d281 100644
+--- a/src/services/__tests__/introductionIsNotAQuestion.test.ts
++++ b/src/services/__tests__/introductionIsNotAQuestion.test.ts
+@@ -101,7 +101,8 @@ describe('an introduction is not a question, and both tools say so', () => {
+ 
+   /** Nothing that was already there may be lost — this is an addition. */
+   it('keeps what each tool already said', () => {
+-    expect(REQUEST_INTRO).toContain('only after the user explicitly confirms');
++    // CF (Misho's yes, §139) replaced the wait for a second confirmation: a typed instruction is the yes.
++    expect(REQUEST_INTRO).toContain('itself that yes (D316)');
+     expect(REQUEST_INTRO).toContain('DIRECT case');
+     expect(ASK_CONTACT).toContain('the approved plan IS the consent');
+     expect(ASK_CONTACT).toContain('Never promise to pass something on before you have actually');
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c52be51..11f510a 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -798,8 +798,12 @@ const REQUEST_INTRODUCTION_TOOL: AnthropicTool = {
+     'or a piece of information is a question, and that is ask_contact. "Ask Gio whether he knows ' +
+     'a plumber" is a question. "Ask Gio to introduce me to Nino" is an introduction, even though ' +
+     'both sentences begin with "ask". ' +
+-    "Send an introduction request to a mutual contact (mediator). Call only after the user explicitly confirms they want to send the request. The mediator must be in the user's contact list." +
+-    ' WHEN: to ask a single mediator, only after they confirm. DIRECT case: when the person the ' +
++    // CF (2311 root cause; Misho's yes, 13 Oct 11:2x UTC, §139): the old wait-for-a-second-
++    // confirmation wording made the model ask again on a typed instruction, against D316.
++    'Send an introduction request to a mutual contact (mediator). Call it once the user has said ' +
++    'they want it: a typed instruction to introduce them („ask Gio to introduce me to Nino") is ' +
++    "itself that yes (D316) — send at once, without asking again. The mediator must be in the user's contact list." +
++    ' WHEN: to ask a single mediator. DIRECT case: when the person the ' +
+     'user wants to meet is already their own contact AND a member, pass that person as BOTH ' +
+     'mediator_name and target_name — the request goes to them directly ("X wants to meet you"), ' +
+     'no third person involved.',
+-- 
+2.43.0
+

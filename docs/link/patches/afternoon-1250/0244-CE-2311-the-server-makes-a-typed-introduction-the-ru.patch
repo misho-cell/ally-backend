@@ -1,0 +1,68 @@
+From d781516cc0bcfc56407a45ea3f9a4e24ec896aa2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 11:42:20 +0000
+Subject: [PATCH 244/248] CE (2311): the server makes a typed introduction the
+ run left undone, ON
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 13 Oct 11:2x UTC in the operations chat („ჩემგან ყველაფერზე
+კია", relayed verbatim by ops at 11:28Z). 0195b shipped this behind
+SERVER_INTRODUCTION_ON=false until his yes on the owner's sentence („{X}-ს
+თხოვნა გავუგზავნე, რომ {Y} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.").
+The switch is now true. Setting it back to false restores the earlier fallback.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aTypedIntroductionIsMadeAsOne.test.ts        | 6 +++---
+ src/services/introFallback.ts                              | 7 ++++---
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+index 1b448e9..56af78e 100644
+--- a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
++++ b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+@@ -90,8 +90,8 @@ describe('the server makes the introduction', () => {
+     mockIntro.mockResolvedValue({ success: true });
+   });
+ 
+-  it('ships OFF until Misho’s yes on the owner’s sentence', () => {
+-    expect(SERVER_INTRODUCTION_ON).toBe(false);
++  it('is ON since Misho’s yes on the owner’s sentence (CE, §139)', () => {
++    expect(SERVER_INTRODUCTION_ON).toBe(true);
+   });
+ 
+   it('sends one introduction request: the named go-between, the target, the goal and the thread', async () => {
+@@ -157,7 +157,7 @@ describe('the fallback, wired', () => {
+     expect(body).not.toContain('an introduction, not sent as a question');
+   });
+ 
+-  it('is off by default, so the fallback is what main does today', () => {
++  it('is behind one switch, so off is what main did before', () => {
+     expect(chat).toContain('on: boolean = SERVER_INTRODUCTION_ON,');
+     expect(chat).toContain('if (!on || !ownerAsksForIntroduction([ownerLine])) return null;');
+   });
+diff --git a/src/services/introFallback.ts b/src/services/introFallback.ts
+index bbe13b4..ce7492c 100644
+--- a/src/services/introFallback.ts
++++ b/src/services/introFallback.ts
+@@ -14,10 +14,11 @@ import { IntroRequestContext, requestIntroduction } from './tools/requestIntrodu
+  * what was asked. The typed line is the consent (D316), so the server makes
+  * the introduction itself, through the same requestIntroduction the tool uses.
+  *
+- * OFF until Misho says yes to INTRO_SENT_SENTENCES (owner-facing text). While
+- * it is off the fallback is exactly what it was before.
++ * ON since Misho's yes (CE), 13 Oct 11:2x UTC in the operations chat: „ჩემგან
++ * ყველაფერზე კია" — to INTRO_SENT_SENTENCES as written below (§139). Back to
++ * false and the fallback is exactly what it was before.
+  */
+-export const SERVER_INTRODUCTION_ON = false;
++export const SERVER_INTRODUCTION_ON = true;
+ 
+ const SENTENCE_RE = /[^.!?\n]+[.!?]?/gu;
+ const MAX_TARGET_WORDS = 3;
+-- 
+2.43.0
+
