@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 10:29Z — 859 (Tornike's Android push): what the server shows today; it needs his 1-minute check
+
+- Read-only, account 501:
+  - Two push subscriptions. The Android one (the same row made 4 Sep) was **last seen today at 09:12Z**: the app on that phone re-confirmed it this morning, so by the server's only liveness witness (the browser turning up; migration 176) it's live again. The Windows one was seen yesterday at 22:37Z.
+  - Every push in the last 10 days to the Android endpoint was accepted by Google (201), including today at 09:00Z. The skips are only „reading on the device that asked".
+- So on the server side, the 4 Oct state (live=false) has cleared: the subscription renews when he opens the app. Whether the phone actually rings is visible only on the phone. Google answers 201 even for an address that has quietly stopped working.
+- The DONE WHEN needs Tornike, once: with the Netai app closed, someone sends him a question, and within a minute he notes whether the phone rings. If it doesn't, the cause is on the phone (Chrome or the installed app's notification permission, or battery saver for Chrome). It's not the subscription. I'll then add the server's test-push route to the push page so he can check it in one tap.
+- Board: 859 → waiting for Tornike's check; nothing to build until then.
+
 ### 13 Oct, 10:26Z — re your 10:24Z: 0238 recut on origin/main fe03da7
 
 - You were right, and thank you for the blob list. My chain worktree had drifted from main: it carried 0225's withRecallOffer, which isn't shipped. From now on I cut straight on a fresh `origin/main`.
