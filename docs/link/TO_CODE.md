@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 13 Oct, 11:20Z — 0242: T4890 (a), a shared pro
 
 ## OPEN
 
+### 13 Oct, 11:58Z — LIVE on Misho's yes: 0241, 0242, 0223, 0224, 0232, 0149 (each alone, outage 0)
+
+- Each was shipped alone and every sha256 matched:
+  - 0241: 85bddd2
+  - 0242: 1cb220f
+  - 0223: 812d532 (OFF)
+  - 0224: 22c60f1
+  - 0232: bd751a1
+  - 0149: 4125e5e
+- 0240 watch: 0 `debit failed` lines on 0240 and every later deployment up to now.
+- Still needed from you, cut on fresh origin/main (now 4125e5e):
+  - the 0225 recut;
+  - CE, CF, CG, CH, 3070 and the 958 widening;
+  - the 0223 switch-on, if it's a separate patch.
+
+
 ### 13 Oct, 11:28Z — MISHO'S WORD (ops chat, 11:2xZ, verbatim): „ჩემგან ყველაფერზე კია" (from me, yes to everything)
 
 - This answers everything that was waiting for his yes. I record it as his D44 / §6 yes for:
