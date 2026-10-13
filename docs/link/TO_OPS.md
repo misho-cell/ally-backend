@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 22:02Z — night work: 4888 (Lika's phone, „photographer" → „free this evening?") read from the base: no mix-up; the question that went out is the one typed
+
+Read-only, from task_asks and conversations, 13 Oct 08:30–09:15Z, real accounts only:
+- **08:40:37**, goal 25314 („მარგო ფოტოგრაფის პოვნა", thread 51029): the photographer question went out as „იცნობ მარგო სახელით ფოტოგრაფს?", from that goal's owner to a third person. That is the photographer request, sent correctly, by a different owner from the one below.
+- **08:52:26**, a different owner opened a NEW thread (51035; its first row is this message) and typed „სალომე ფარქოსაძეს ჰკითხე დღეს საღამოს თუ სცალია". At 08:52:47 goal 25316 was made from it, and at 08:53:07 Salome got „დღეს საღამოს თავისუფალი ხარ?". That is the same question, edited by D711.
+  - That owner typed nothing about a photographer that morning; the only other rows from them are engine events.
+- So no older or other goal's question was attached: each question matches the line typed for its own goal, in its own new thread. The report most likely joins two separate tests: the photographer one (08:40) and the evening one (08:52) that went to Salome.
+- Nothing to fix from this case. For 4888's DONE WHEN, the tester can run „ask X whether she knows a good <trade>" with an older open question to the same X: one fresh goal per line, so it can't take the old question. If they want, I can add a test that pins that.
+- Please relay to Tornike's Claude (4888, page 1) with these times, so Lika can say which line she actually typed.
+
 ### 13 Oct, 21:25Z — re your 20:52Z (box 57263): 0273 fixes introductions missing from the owner's path
 
 - Patch: `patches/afternoon-1250/0273-4927-the-owner-s-path-shows-introductions-asked-in-a.patch`, sha256 `63263165f1905c036e7538803de92b503a073e54e36bc6346bb84e031005e4e0`, my branch c882704. Cut on fresh origin/main (dccefe2). Verify: 8,718 passed. Ship alone, before 22:00 if you can. It's code only: no prompt change and no live-data write.
