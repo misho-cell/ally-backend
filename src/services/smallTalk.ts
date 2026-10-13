@@ -13,8 +13,13 @@ import { statesANeed } from './goalIntent';
  * NARROW ON PURPOSE: a short question about a need („ვინ იცნობს ვეტერინარს?")
  * typed after that button is a goal, and must stay one.
  */
+/**
+ * The tester's 56538 (958, seats 184120/184121): „რას აკეთებ დღეს?" took 31 s and
+ * „მოგესალმები, როგორ მიდის საქმე?" 33 s — neither was on the list, so each took
+ * the goal path with its tools and a pitch. A greeting may open the line.
+ */
 const SMALL_TALK_RE =
-  /^\s*(?:რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|(?:როგორ|კარგად)\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
+  /^\s*(?:(?:გამარჯობა|სალამი|მოგესალმები|ჰეი|hi|hello|hey|привет)[\s,!.]+)?(?:რას\s+აკეთებ(?:\s+დღეს)?|როგორ\s+მიდის(?:\s+საქმე(?:ები)?)?|როგორა\s+ხარ|როგორ\s+ბრძანდებით?|what\s+are\s+you\s+(?:doing|up\s+to)(?:\s+today)?|how(?:'s|\s+is)\s+it\s+going|what'?s\s+up|что\s+делаешь|как\s+ты|რა\s+დღეა(?:\s+დღეს)?|დღეს\s+რა\s+დღეა|რომელი\s+საათია|რა\s+საათია|რა\s+ამინდია|(?:როგორ|კარგად)\s+ხარ|რას\s+შვრები|მადლობა|გმადლობ|ვინ\s+ხარ|what\s+day\s+is\s+(?:it|today|it\s+today)|what\s+(?:is\s+the\s+)?date|what\s+time\s+is\s+it|how\s+are\s+you|thanks?(?:\s+you)?|thank\s+you|who\s+are\s+you|какой\s+сегодня\s+день|как\s+дела|спасибо)[\s?!.,)😊🙂👋]*$/iu;
 
 /**
  * The tester's 44026 (#2114, conversations 41918 and 41919): „კარგად ხარ?" and
