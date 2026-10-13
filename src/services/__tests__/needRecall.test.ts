@@ -9,6 +9,7 @@ import {
   NEED_RECALL_ON,
   recallCard,
   recallGoesApart,
+  recallTerms,
   needThisFactMeets,
   noteSavedFact,
   recallChoices,
@@ -39,6 +40,25 @@ describe('a saved need is recalled when a new fact meets it (2608)', () => {
       'გახსოვს, გია საცდელს სჭირდება: „საწყობი სჭირდება“. ნიკა საცდელი შეიძლება დაეხმაროს — დავაკავშირო ისინი?',
     );
     expect(recallChoices('ka')).toEqual(['კი, დააკავშირე', 'არა, ჯერ არა']);
+  });
+
+  it('a shared pronoun is not a shared field (T4890: „his firm" did not meet „his startup")', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          phone: '+995555000001',
+          value: 'Rebut (his startup) is in beta - looking for users and pilots (company-level)',
+          name: 'Axel',
+        },
+      ],
+    });
+    const recalled = await needThisFactMeets(
+      '7',
+      '+995555000002',
+      'Kazakhstan: GEC (his firm) has its own representation office in Almaty',
+    );
+    expect(recalled).toBeNull();
+    expect(recallTerms('looking for his pilots')).not.toContain('his');
   });
 
   it('a fact of another field recalls nothing', async () => {

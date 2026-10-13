@@ -60,6 +60,19 @@ interface NeedRow {
   readonly name: string | null;
 }
 
+/**
+ * T4890 (the founder's thread 51037, 13 Oct): „GEC (his firm) has an office in
+ * Almaty" recalled „Rebut (his startup) … looking for users and pilots" — the
+ * one word the two shared was „his". A recall rests on a word of the field
+ * itself: three letters is a pronoun or a joint („his", „and", „has") far more
+ * often than a trade, so only words of four letters or more can meet a need.
+ */
+const MIN_RECALL_TERM_CHARS = 4;
+
+export function recallTerms(need: string): string[] {
+  return fieldTerms(need).filter((t) => t.length >= MIN_RECALL_TERM_CHARS);
+}
+
 /** The owner's saved need on ANOTHER contact that this new fact speaks of; null for none. */
 export async function needThisFactMeets(
   userId: string,
@@ -77,7 +90,7 @@ export async function needThisFactMeets(
     [userId, phone, NEEDS_READ],
     QUERY_TIMEOUT_MS,
   );
-  const met = needs.rows.find((n) => n.name !== null && textSpeaksOf(value, fieldTerms(n.value)));
+  const met = needs.rows.find((n) => n.name !== null && textSpeaksOf(value, recallTerms(n.value)));
   if (met === undefined || met.name === null) return null;
   const helper = await query<{ alias: string }>(
     `SELECT alias FROM "UserAlias" WHERE "contactId" = $1::int AND phone = $2 LIMIT 1`,
