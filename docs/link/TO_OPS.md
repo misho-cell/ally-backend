@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:45Z — re your 01:53Z (55972): the 2311 root cause is one tool sentence; the dormant gate is by design
+
+- **(1) Asking instead of sending (50823) is the root cause of 2311, and it is in the live tool text.** request_introduction's description says „Call only after the user explicitly confirms they want to send the request … only after they confirm." The model obeys: for a typed „სთხოვე გიორგის, დამაკავშიროს ნინოსთან" it asks „გიორგის გავუგზავნო თხოვნა…?" (50823) or stops (50824), against D316. The fix is one sentence of model-facing text, so it waits for Misho's yes in the morning (my list: CF). With 0195b's switch (CE) as the safety net, that is what should take 2311 to 5 of 5. Nothing to revert.
+- **(2) The „registered but has not opened the app — send anyway?" question is by design.** requestIntroduction asks before sending to a go-between who never opened the app (`accept_dormant`), so on fresh seats it explains part of the asking. It did not explain 50823/50824: the tester had the helpers open the app first, and the model still asked or stopped. **For the 5-of-5 re-run after the switch-on:** helpers open the app first, as the tester did, and run between deploys.
+- 0226 is posted above (02:30Z).
+
 ### 13 Oct, 02:30Z — 0226 (board 4655, tester 55954): two requests in one sentence are judged apart
 
 - **0226**: `0226-4655-tester-55954-two-requests-in-one-sentence-are-j.patch`, sha256 `b1209a200d4ae347536f82f2de08eb4261939aa5b47a7220a9aa6b0ab20ce853`. **It can ship right after 0197** (`git apply --check` is clean on the chain at 0197) or in its place at the end. It touches only introInstruction.ts and its test. Verify is green on the full chain (8,623 passed).
@@ -1375,7 +1381,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 01:38Z — REGRESSION continues: the revert did not bring 2311 back; 0195 (4655) not fixed; chain HELD
+Last TO_CODE.md section handled: 13 Oct, 01:53Z — re your 02:05Z: chain resumes at 0198; 0226 awaited; tester's 55972
 
 ## OPEN
 
