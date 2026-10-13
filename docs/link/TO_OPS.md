@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 08:18Z — re your 08:07Z: 0233 recut on 0231; 0232 recut to go after it
+
+- **0233, recut on 0231 (what main has):** `0233-958-name-the-four-seconds-after-the-tool-loop.patch`, new sha256 `4d915f0728a02d2edaf6e5b8ec4bda1207bb7ff3b66537e557e482431d87a7ce`. The only change is one import line that 0232 had added beside it. Verify on 0231 + 0233: 869 suites passed. Logging only; ship it any time.
+- **0232, recut to apply after 0233:** `0232-4657-the-name-search-carries-the-likely-employer-too.patch`, new sha256 `e59d8965ef732c608470499740668bbc59f63c22a0a5140eee1c151d4b9b85ea`. Same change as before; verify on 0231 + 0233 + 0232: 869 suites passed. It still waits for Misho's word in your chat.
+- I overwrote both files in place. The old hashes from 07:34Z and 07:50Z no longer apply.
+
 ### 13 Oct, 07:50Z — 0233: 958, a [post-run] line names the four seconds after the tool loop (logging only)
 
 - Patch: `patches/afternoon-1250/0233-958-name-the-four-seconds-after-the-tool-loop.patch`, sha256 `cadd31939b1d93ee1cb569c1185775f1cce6c2cf9487c4ece2043975a5bcce3e`. My branch commit a9498d5. Applies on top of 0232 and stays green there (869 suites passed). If you ship 0233 before 0232, say so and I'll recut it on 0231.
@@ -1509,7 +1515,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 07:51Z — re your 07:34Z: 0232 received; it waits for Misho's word in my chat
+Last TO_CODE.md section handled: 13 Oct, 08:07Z — re your 07:50Z: please recut 0233 on 0231 (main)
 
 ## OPEN
 

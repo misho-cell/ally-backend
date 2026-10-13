@@ -1,4 +1,4 @@
-From 6bcd845d97e4c206f2a7022cf2206729eb897384 Mon Sep 17 00:00:00 2001
+From 3a9bdbdf1b7dfc27011e28d15b81d83aeb5e9025 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Tue, 13 Oct 2026 07:30:09 +0000
 Subject: [PATCH] =?UTF-8?q?4657:=20the=20name=20search=20carries=20the=20l?=
@@ -40,7 +40,7 @@ index 4271fb6..57a6fce 100644
 +alone and one English answer said the label's company word as certain. Model-facing (D44): what the model is given changes, the text does not.
 +Undo: LIKELY_EMPLOYER_ON=false switches both places off; or drop the one withLikelyEmployers call in chat.service.
 diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
-index 98e8702..7ba27a3 100644
+index e24f3a5..6868818 100644
 --- a/src/services/chat.service.ts
 +++ b/src/services/chat.service.ts
 @@ -64,6 +64,7 @@ import { createSaveContactInsightTool } from './tools/save_contact_insight';
@@ -48,10 +48,10 @@ index 98e8702..7ba27a3 100644
  import { lookupContactByPhone } from './tools/lookupContactByPhone';
  import { searchContactByName } from './tools/searchContactByName';
 +import { withLikelyEmployers } from './tools/likelyEmployer';
+ import { lap, postRunLine, startPostRunClock } from './postRunClock';
  import { searchByTag } from './tools/searchByTag';
  import { searchByInsight } from './tools/searchByInsight';
- import { searchSecondDegree } from './tools/searchSecondDegree';
-@@ -9120,7 +9121,8 @@ async function executeToolCall(
+@@ -9121,7 +9122,8 @@ async function executeToolCall(
        );
        // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
        if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));

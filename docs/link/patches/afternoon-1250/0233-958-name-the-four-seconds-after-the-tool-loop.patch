@@ -1,4 +1,4 @@
-From e0fa20ff582604143c0dd573fdc0ae905f08b416 Mon Sep 17 00:00:00 2001
+From a8f4c157567e14212ad07b9b3afe5b55f742ade4 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Tue, 13 Oct 2026 07:46:29 +0000
 Subject: [PATCH] 958: name the four seconds after the tool loop
@@ -46,18 +46,18 @@ index 0000000..68cfe6f
 +  });
 +});
 diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
-index 7ba27a3..6868818 100644
+index 98e8702..e24f3a5 100644
 --- a/src/services/chat.service.ts
 +++ b/src/services/chat.service.ts
-@@ -65,6 +65,7 @@ import { noteIntroductionSentAsAQuestion } from './introductionShaped';
+@@ -64,6 +64,7 @@ import { createSaveContactInsightTool } from './tools/save_contact_insight';
+ import { noteIntroductionSentAsAQuestion } from './introductionShaped';
  import { lookupContactByPhone } from './tools/lookupContactByPhone';
  import { searchContactByName } from './tools/searchContactByName';
- import { withLikelyEmployers } from './tools/likelyEmployer';
 +import { lap, postRunLine, startPostRunClock } from './postRunClock';
  import { searchByTag } from './tools/searchByTag';
  import { searchByInsight } from './tools/searchByInsight';
  import { searchSecondDegree } from './tools/searchSecondDegree';
-@@ -16210,6 +16211,7 @@ export async function processChat(
+@@ -16208,6 +16209,7 @@ export async function processChat(
      // the server has already acted on goes to the faster model.
      approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,
    );
@@ -65,7 +65,7 @@ index 7ba27a3..6868818 100644
    // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
    const planToNobody = takePlanWritesToNobody(runId);
    // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
-@@ -16235,6 +16237,7 @@ export async function processChat(
+@@ -16233,6 +16235,7 @@ export async function processChat(
        (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content));
      await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
    }
@@ -73,7 +73,7 @@ index 7ba27a3..6868818 100644
  
    // A run must NEVER end "successfully" with nothing to say: an empty final
    // used to be persisted as an empty (view-filtered) message with status done —
-@@ -16438,7 +16441,9 @@ export async function processChat(
+@@ -16436,7 +16439,9 @@ export async function processChat(
    // Ticket 12 Task 46 (D151): an officeholder's name the run never read on a
    // page (or got from the user's own data) does not reach the screen — the
    // scripted line stands in its place. Logged by count, never by name.
@@ -83,7 +83,7 @@ index 7ba27a3..6868818 100644
    if (gate.refused.length > 0) {
      // eslint-disable-next-line no-console
      console.warn(
-@@ -16469,6 +16474,7 @@ export async function processChat(
+@@ -16467,6 +16472,7 @@ export async function processChat(
      !ownerAbsent && isToolFreeSmallTalk(userMessage)
        ? { safe: true }
        : await moderateReply(cleanedFinal, userId);
@@ -91,7 +91,7 @@ index 7ba27a3..6868818 100644
    let replySafe = verdict.safe;
    if (!replySafe) {
      /**
-@@ -16564,6 +16570,7 @@ export async function processChat(
+@@ -16562,6 +16568,7 @@ export async function processChat(
        getPendingRequestsForMediator(userId),
      ),
    );
@@ -99,7 +99,7 @@ index 7ba27a3..6868818 100644
    // Answers-12 item 11: a goal this run opened outside the goal prompt gets
    // its plan proposed in an engine turn right behind this reply.
    const pendingItems = takePendingItems(runId, reply);
-@@ -16840,6 +16847,9 @@ export async function processChat(
+@@ -16838,6 +16845,9 @@ export async function processChat(
      // eslint-disable-next-line no-console
      console.error('[wallet] debit failed for run', runId, (err as Error).message);
    }
