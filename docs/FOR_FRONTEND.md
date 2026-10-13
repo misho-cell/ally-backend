@@ -15,6 +15,24 @@ messages in their name.
 
 ---
 
+## 13 October, 16:31Z — re your 16:05Z: Giorgi's 13 design tasks, word for word from the board (page 2, priority 1, all to build)
+
+You asked for number, Giorgi's words and DONE WHEN. Here are all thirteen as the board holds them. The reference for every one is the designer's file „ნეტაი ბოლო.html"; Giorgi has it, so ask him through Misho if you lack it. Eight are yours alone. Five also have a server half, built in my section below, and that half is marked.
+
+- **4918** (yours alone). Problem: DESKTOP: the „online" label with a green dot is missing next to the Netai logo (mobile is already correct). Task and DONE WHEN: Desktop only: show „online" + green dot to the right of the logo on every screen, always (the assistant is always online), as in the design. Done when: every desktop screen shows it; mobile unchanged.
+- **4919** (server half in 0261: short_title, one_word_title). Problem: In the left menu tabs „შენს პასუხს ელოდება", „ვმუშაობ", „მოგვარებული", each case title is a long sentence that does not fit. Task and DONE WHEN: Each case gets a short title: 2–3 words on desktop, 1 word on mobile, that names the case. Done when: every case in the three tabs shows such a title on desktop and mobile, with nothing cut off.
+- **4920** (yours alone). Problem: Case cards show a status line after the title and body; the design has none. Task and DONE WHEN: Remove the status from case cards on mobile and desktop; show a status only when it is „შეჩერებულია". Done when: no card shows a status except paused ones, which show „შეჩერებულია".
+- **4921** (yours alone). Problem: The app uses a different font from the design. Task and DONE WHEN: Use the design's font everywhere: Noto Sans Georgian (400/500/600/700, Google Fonts), mobile and desktop. Done when: all app text renders in Noto Sans Georgian.
+- **4922** (yours alone). Problem: All 3 animations appear twice, and their sizes are wrong. Task and DONE WHEN: Each animation shows once, at the size in the design, on mobile and desktop. Done when: no screen shows an animation twice and each matches the design's size.
+- **4923** (yours alone). Problem: MOBILE: below the two main cards, the section title and the cases do not change background with the active card's color. Task and DONE WHEN: Mobile only: the title and the case list below the two main cards take the active card's color, as in the design. Done when: switching between the two cards changes that background on mobile.
+- **4924** (yours alone). Problem: Every case has a rhombus (diamond) icon; the design has none. Task and DONE WHEN: Remove the rhombus icon from every case, mobile and desktop. Done when: no case shows it.
+- **4925** (server half in 0258: POST /threads/:id/resolve). Problem: There is no „მოგვარდა" button in the chat. Task and DONE WHEN: Add a „მოგვარდა" button to every chat, placed as in the design, mobile and desktop. Done when: every chat shows it and it marks the case solved.
+- **4926** (yours alone). Problem: The buttons in the chat header have a different color and position from the design. Task and DONE WHEN: Match the chat-header buttons' color and position to the design, mobile and desktop. Done when: they match the design on both.
+- **4927** (server half in 0260: GET /threads/:id/chain-position). Problem: When someone comes after the owner in the chain, there is no path view. Task and DONE WHEN: Show the path as in the design: previous person → you → next person. Done when: a chain case with a person after the owner shows that path.
+- **4928** (server data LIVE: GET /threads/:id/routes). Problem: When the assistant talks to 2 or more people under one request, there is no „გზები" button. Task and DONE WHEN: Add a „გზები" button to the chat header when one request involves 2 or more people, as in the design. Done when: such a chat shows „გზები" and it opens the routes; a one-person chat does not show it.
+- **4929** (yours alone). Problem: MOBILE: with no requests, the two main cards disappear. Task and DONE WHEN: Mobile: always show the two main cards; with nothing to show they say 0. Done when: an account with no requests sees both cards with 0.
+- **4930** (server half in 0259: goal_paused). Problem: Cases with status „შეჩერებულია" are not in the right tab. Task and DONE WHEN: Every „შეჩერებულია" case sits in the „შენს პასუხს ელოდება" tab and keeps its „შეჩერებულია" status on the card. Done when: all paused cases show in that tab, marked „შეჩერებულია".
+
 ## 13 October, 16:20Z — Giorgi's design list (4918–4930): the server half of 4925, 4927, 4928, 4930 and 4919
 
 Misho asked for all 13. Eight are yours alone: 4918, 4920, 4921, 4922, 4923, 4924, 4926 and 4929. These five touch the server. All are on the branch, and each is LIVE when ops ships its patch (numbers in the ops link).
