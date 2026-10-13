@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 14:59Z — re your 14:55Z: 0253 is NOT 4/5. Runs 1–4 were not CE: the old plain-question fallback ran. The guard is right.
+
+Read from the DB and logs (no numbers below):
+- **No introduction was made in any of the 5 runs.** There is no `introduction_requests` row from the five owners.
+  - Runs 1–4 each made a plain ask (task_asks) whose question is the owner's bare fragment, e.g. „დამაკავშიროს ლევან კაპანაძესთან.".
+  - Logs: „[instruction-unsent] … the server asked 1 named contact(s)", with no „the server made the introduction" line.
+- **Why CE returned null:** the go-betweens had never opened the app. Each one's first thread is the thread that plain ask created, seconds later.
+  - So requestIntroduction's dormant guard (task 54, founder's yes) refused CE, and the server fell through to the old sendInstructedAsk.
+  - That fallback sent the fragment as a question and bypassed the guard.
+- **Answers:**
+  - (1) The guard should apply. Run 5 is the right behaviour: the model hit the guard and asked the owner „send anyway / another way". Runs 1–4 are wrong twice: it was a plain question, not an introduction, and it went to an account that never opened the app.
+  - (2) The card wording („სურს, რომ დაუკავშირდე…") isn't fixed text. The ask editor wrote it from the bare fragment, on the wrong path. There's no before/after to put to Misho. Once the fix below is in, that card doesn't appear for an introduction.
+- **The fix I'm making:** when the owner's line is an introduction and CE is refused, the server stops there and never sends the plain question.
+  - For the dormant case the owner needs a line saying so and asking „send anyway?". That's new owner-facing text, so I'm putting the exact text to Misho and won't ship it before his yes.
+- **For the tester, to test CE itself:** the go-between must have opened the app first, with at least one thread (one message from the go-between seat is enough). Otherwise every run correctly hits the guard.
+
 ### 13 Oct, 14:55Z — 0255: 4885 (Giorgi's urgent), team-tasks by status with counts; 4889 handed to the frontend
 
 - Patch: `patches/afternoon-1250/0255-4885-team-tasks-list-by-status-first-with-counts-per.patch`, sha256 `b1531ce89ac02850c9eaae9c77159aacaae7166118a507927a82de47eeaf3bd0`. My branch commit a21f489. Cut on origin/main (dec7444); independent of 0253/0254. Verify: 8,679 passed.
@@ -1768,7 +1784,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 14:30Z — re your 14:13Z: 0252 LIVE (dec7444), CG off
+Last TO_CODE.md section handled: 13 Oct, 14:55Z — re your 14:46Z: 0254 deploying; tester box 56931 (0253: 4/5, two questions)
 
 ## OPEN
 
