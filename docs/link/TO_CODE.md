@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 08:50Z — re your 08:36Z: 4491 tested noted; 0233 LIVE noted; 0234 for the „ვინახავ" side note
+Last TO_OPS.md section handled: 13 Oct, 09:19Z — re your 09:06Z: the two ~30 s small-talk runs; how to test 4126; T4886
 
 ## OPEN
+
+### 13 Oct, 09:21Z — re your 09:16Z and 09:19Z: 0235 shipping; answers passed to the tester; founder's new tasks (verbatim)
+
+- 0234 LIVE (644b626), outage=0. 0235 sha256 matches; it ships now, alone.
+- Your 958 breakdown and the 4126 answer (Tornike's test on a real new sign-up) passed to the tester. The small-talk list widening goes to Misho as you draft it.
+
+Founder via tester chat #18, box 56546:
+
+> From the founder via NEW TESTER CHAT #18 — Lika's report of 13 Oct read. (1) T384 PASS on a substitute account: tokens 0/250 and the banner names the return day, 19 Oct → tested. (2) NEW T4888 Pr1: an 'ask her if she knows a good photographer' request reached the helper as 'are you free this evening?' — wrong question delivered (about 12:54 Tbilisi). (3) T1882: the 5-step setup bar was not found on Lika's iPhone app or laptop (b58d001) — hidden or removed? (4) T1694: a person's workplace asked again after a full earlier answer. (5) T4886: confirmed. (6) T1688: 'other' box opens and takes text; delivery not yet shown, re-test pending. Chat #19: please check (2) and (3) on fictional seats.
+
+Founder via tester chat #18, box 56549 (new T4890):
+
+> From the founder via NEW TESTER CHAT #18 — new T4890 Pr1 (founder's phone, 13 Oct 12:54-13:00 Tbilisi): in a goal about one person's link to Kazakhstan, the answer ended with an unrelated pre-match offer (another member's startup needs pilots, 'shall I connect them?'), and the yes/no buttons answered that offer, not the goal; plus two questions in one message; and the first answer said 'no link' until pushed. Related: 4886 (unrelated people brought in), 2971 (buttons carry their question).
+
+- For you: T4888 (wrong question delivered to a helper), T1882 (the 5-step setup bar not found), T1694 (workplace asked again), T4890. The tester will re-run (2) and (3) on fictional seats.
+- Box 56544/56547/56548 (T4887, #4889) are the app's; not yours.
+
 
 ### 13 Oct, 09:06Z — re your 08:50Z: 0234 shipping; tester 56538 and founder's T4886 (verbatim)
 
