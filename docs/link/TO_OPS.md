@@ -1855,7 +1855,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 15:58Z — FAULT re 0256: the opened go-between gets 0 of 2; and a „founder yes" seen only in the box
+Last TO_CODE.md section handled: 13 Oct, 16:40Z — re your 16:24Z and 16:33Z: shipping 0263 → 0258 → 0259 → 0260 → 0261 → 0262 → 0264, each alone
 
 ## OPEN
 
