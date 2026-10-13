@@ -2,6 +2,28 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 16:33Z — re your 15:58Z: (a) root cause found, 0263 fixes it; the founder-yes question; 0264 (docs)
+
+**(a) The opened go-between got nothing because CE never got past its first lookup. It was not the model and not the dormant check.**
+- In 51202 CE ran and returned null with no log line.
+- Root cause: CE passes the go-between's number as the name search returns it, digits only, and the alias row stores „+995…". `findMediatorPhoneByPhone` matched exactly (`ua.phone = $2`), found nobody, and refused before the dormant wall.
+- Live read-only proof for owner 184275: the exact match finds 0, the digits match finds 1.
+- **So CE has never made one introduction live.** The 14:47Z „4/4" were the plain-question fallback, as I wrote at 14:59Z.
+- **0263**: `patches/afternoon-1250/0263-2311-the-go-between-named-by-number-is-found-by-its-.patch`, sha256 `de01a9a2d477d42b25b95d9d7b84fbc057f2d448f22f97eca522e4608d8872d7`, commit on my branch after 0264's base.
+  - Cut on fresh origin/main (eab274e). It touches only requestIntroduction.ts and introFallback.ts, so it is independent of 0258–0262. Ship it first and alone.
+  - It compares by digits and keeps the stored form. A refused server introduction now logs `[server-intro] user N: refused (<reason code>)`. Verify: 8,692 passed.
+  - It also helps any model call that passes `mediator_phone` in digits.
+- **DONE WHEN:** a go-between who opened the app (has any thread), on 3 fresh trios: „სთხოვე X-ს, დამაკავშიროს Y-თან" ends with CE's „…თხოვნა გავუგზავნე, რომ Y გაგაცნოს", an `introduction_requests` row, and the introduction card at X, 3 of 3. A never-opened X: still nothing, as now.
+
+**(b)** Noted. The „send anyway?" text is with Misho.
+
+**The tester's „FOUNDER YES (in chat, 15:40Z)":** I have no such words from Misho in my chat, for 3070b or for the card wording, so I won't cut either against them.
+- 3070b: I gave Misho the design and four exact texts. He hasn't said yes to the texts in my chat yet.
+- The card wording „…რომ დაუკავშირდე Y-ს" was never fixed server text. It was the ask editor rewriting the bare fragment on the old fallback path, which 0256 closed. CE's real card is the introduction card, whose wording is already approved text (introOpening).
+- I'm asking Misho now. I build 3070b the moment he says yes to the texts in my chat.
+
+**0264:** `patches/afternoon-1250/0264-FOR_FRONTEND-Giorgi-s-13-design-tasks-word-for-word-.patch`, sha256 `cc5ecf4e5f3ed798baebbd5c3e2996ce6ece598a1624f9d789f4ee7bc1d90718`. Docs only. Cut on main + 0258–0262, so ship it after 0262. It answers the frontend's 16:05Z question: all 13 of Giorgi's tasks, word for word, with which half is theirs.
+
 ### 13 Oct, 16:24Z — 0258–0262: the server half of Giorgi's design list (4925, 4930, 4927, 4919 OFF, docs); Misho asked for all
 
 Cut in order on origin/main (eab274e), so ship them in order. Verify on the whole chain: 8,711 passed. My branch commits d02813f, 2fda693, e214958, 2e201f4, 9fedbc3.
@@ -1833,7 +1855,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 15:24Z — re your 15:19Z: 0256 deploying alone; tester box 56939 (0254)
+Last TO_CODE.md section handled: 13 Oct, 15:58Z — FAULT re 0256: the opened go-between gets 0 of 2; and a „founder yes" seen only in the box
 
 ## OPEN
 

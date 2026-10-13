@@ -1,0 +1,114 @@
+From 5f8691126483f24c42e5e78fd98f213ef804ba6f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 16:30:54 +0000
+Subject: [PATCH] 2311: the go-between named by number is found by its digits
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester box 56943: with a go-between who had opened the app, CE still made
+no introduction (0 of 2), silently. CE passes the number as the name
+search returns it, digits only; the alias row keeps „+995…", so
+findMediatorPhoneByPhone's exact match found nobody and the request was
+refused before any other wall (live read-only check: exact 0, digits 1).
+The lookup now compares digits and keeps the stored form; a refused
+server introduction logs its reason code.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theGoBetweenIsFoundByDigits.test.ts       | 25 +++++++++++++++++++
+ src/services/introFallback.ts                 | 12 +++++++--
+ src/services/tools/requestIntroduction.ts     | 12 ++++++++-
+ 3 files changed, 46 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/theGoBetweenIsFoundByDigits.test.ts
+
+diff --git a/src/services/__tests__/theGoBetweenIsFoundByDigits.test.ts b/src/services/__tests__/theGoBetweenIsFoundByDigits.test.ts
+new file mode 100644
+index 0000000..c100bb3
+--- /dev/null
++++ b/src/services/__tests__/theGoBetweenIsFoundByDigits.test.ts
+@@ -0,0 +1,25 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 2311 (tester box 56943, threads 51201/51202): with a go-between who had
++ * opened the app, CE still made no introduction. CE passes the number as the
++ * name search gives it, digits only; the alias row keeps „+995…", so the exact
++ * match found nobody and every server introduction was refused, silently.
++ */
++const intro = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
++const fallback = readFileSync(join(__dirname, '..', 'introFallback.ts'), 'utf8');
++
++describe('the go-between named by number', () => {
++  it('is matched by digits, not by how the number was written', () => {
++    expect(intro).toContain(
++      "AND regexp_replace(ua.phone, '\\\\D', '', 'g') = regexp_replace($2, '\\\\D', '', 'g')",
++    );
++    expect(intro).not.toContain('ua."contactId" = $1 AND ua.phone = $2');
++  });
++
++  it('a refused server introduction says why in the log, by reason code only', () => {
++    expect(fallback).toContain('[server-intro] user ${userId}: refused (');
++    expect(fallback).not.toMatch(/console\.log\([^)]*outcome\.error/u);
++  });
++});
+diff --git a/src/services/introFallback.ts b/src/services/introFallback.ts
+index ce7492c..92b67b6 100644
+--- a/src/services/introFallback.ts
++++ b/src/services/introFallback.ts
+@@ -99,8 +99,16 @@ export async function serverIntroduces(
+     'intro',
+     false,
+     context,
+-  )) as { success?: unknown };
+-  return outcome.success === true ? { mediator, target } : null;
++  )) as { success?: unknown; reason?: unknown };
++  if (outcome.success === true) return { mediator, target };
++  // 2311 (box 56943): every refusal here was silent, so a lookup that never
++  // matched read like a model that never tried. The reason code only: the
++  // refusal's text can carry the number.
++  // eslint-disable-next-line no-console
++  console.log(
++    `[server-intro] user ${userId}: refused (${typeof outcome.reason === 'string' ? outcome.reason : 'no reason code'})`,
++  );
++  return null;
+ }
+ 
+ /** MODEL-FREE, OWNER-FACING (needs Misho's yes): the introduction went, in the per-person line's shape. */
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 8f46bee..26de88d 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -77,6 +77,14 @@ async function getRequesterName(userId: string): Promise<string> {
+   return result.rows[0]?.name ?? 'Netai-ს მომხმარებელი';
+ }
+ 
++const MEDIATOR_LOOKUP_TIMEOUT_MS = 5_000;
++
++/**
++ * 2311 (tester box 56943, 51202): CE hands over the number as findContactPhonesByName
++ * gives it, digits only, and the alias row keeps „+995…", so `ua.phone = $2`
++ * found nobody and every server introduction came back refused. Compared by digits;
++ * the stored form is what goes on.
++ */
+ async function findMediatorPhoneByPhone(
+   requesterUserId: string,
+   phone: string,
+@@ -86,9 +94,11 @@ async function findMediatorPhoneByPhone(
+      FROM "UserAlias" ua
+      LEFT JOIN "UserPhone" up ON up.phone = ua.phone
+      LEFT JOIN "User" u ON u.id = up."userId"
+-     WHERE ua."contactId" = $1 AND ua.phone = $2
++     WHERE ua."contactId" = $1
++       AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+      LIMIT 1`,
+     [requesterUserId, phone],
++    MEDIATOR_LOOKUP_TIMEOUT_MS,
+   );
+ 
+   if (result.rows.length === 0) {
+-- 
+2.43.0
+
