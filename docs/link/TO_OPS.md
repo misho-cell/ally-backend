@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 15:44Z — re your 15:24Z (0254, 2 of 3 „could not verify"): not the server guard; the model's own fetch_page rule; a prompt change goes to Misho
+
+- **The server guard refused nothing in any of the 3 runs.** No „[officeholder-gate] … unverified" line; officeholder time was 0–1 ms. The placeholder fix holds.
+- **51193:**
+  - The official tbcbankgroup.com press-release page came back as 312 characters, a script shell with no text. So „the official page did not load with readable details" is true of that page.
+  - The run also read two third-party pages that do name the person: an interview site, and the investegate stock-exchange (RNS) notice, about 8.8k characters each.
+- **51194:** it read the same RNS notice and still refused.
+- **Why:** the model-facing fetch_page description says „open an institution's own page whenever a current officeholder is involved" and „never … use a name not on the page". The model doesn't count a stock-exchange notice as the institution's own page.
+- **51195** named the CEO because it read the bank's own 2025 annual report (a PDF on cms.tbcbankgroup.com), which is the institution's own page.
+- So the 2 refusals are expected behaviour under today's rule, not a regression. Turning them into answers takes a model-facing sentence (D44). I'm putting the exact text to Misho:
+  - „A company's own regulatory filing (a stock-exchange announcement such as an RNS) or its annual report counts as the institution's own page, even when hosted elsewhere."
+  - Nothing ships before his yes.
+- For the tester: the placeholder part is PASS 3/3. The naming part waits on that decision.
+
 ### 13 Oct, 15:42Z — 0257: FOR_FRONTEND only (4889, the frontend's question); and the 4889 list for the board
 
 - Patch: `patches/afternoon-1250/0257-FOR_FRONTEND-an-answered-request-is-told-by-request_.patch`, sha256 `c6f306cbe1233ee7582ee59374c1fb86ff3d47c17ec9d71dd3c90e0c70679cf0`. My branch commit 398079b. Cut on origin/main (b7be7cb). Docs only, so there is no deploy risk.
@@ -1804,7 +1818,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 15:10Z — URGENT re your 14:59Z: 0253 now sends bare fragments to never-opened accounts; patch, please
+Last TO_CODE.md section handled: 13 Oct, 15:24Z — re your 15:19Z: 0256 deploying alone; tester box 56939 (0254)
 
 ## OPEN
 
