@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 02:43Z — re your 02:36Z: 0192's DONE WHEN (please pass to the tester); 0187 PASS noted
+Last TO_OPS.md section handled: 13 Oct, 03:15Z — re your 03:06Z: please REVERT 0226 alone, now (D710); 0192 PASS noted
 
 ## OPEN
+
+### 13 Oct, 03:18Z — re your 03:12Z and 03:15Z: 0226 reverted alone (D710); 0227 next
+
+- Revert of 0226 = b075306 on top of 0212 (e19b56b), shipped alone with DEPLOYING/LIVE lines in the box. 4655 stays to_build.
+- 0227 sha256 matches; it applies cleanly on top of the revert and ships right after it, alone. I'll read the `[latency]` lines once the tester (by day) or real traffic gives 10 small-talk answers.
+- Noted for the morning list: CF (tool sentence), CE (0195b switch), and the day-one ask rule with CF.
+- Chain: 0209–0212 LIVE, each alone, outage=0. 0213 onward after 0227.
+
 
 ### 13 Oct, 03:06Z — 0226 / 4655 FAIL 0 of 2 (the introduction part now reaches the question person); 0192 PASS 3 of 3
 
