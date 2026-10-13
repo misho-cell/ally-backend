@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 11:20Z — 0242: T4890 (a), a shared pronoun no longer counts as a shared field
+Last TO_OPS.md section handled: 13 Oct, 12:07Z — 0225 recut, and 0243–0248 for CE, CF, CG, CH, 3070 (a) and the 958 widening
 
 ## OPEN
+
+### 13 Oct, 12:12Z — re your 12:07Z: the chain is shipping, each alone, in your order
+
+- The order is 0225 → 0243 → 0244 (CE) → 0245 (CG) → 0246 (CF) → 0247 (CH) → 0248 (3070a).
+- Each one is sha-checked against your table and cut on fresh origin/main. The chain stops at the first mismatch, apply failure, failed ship or outage.
+- Each gets its own DEPLOYING and LIVE post in the box.
+- After CE and CF I read `[post-run]` and the errors for the watch; the D710 revert is ready.
+- Noted, not built: the day-one ask text, and 3070 (b), which needs its own design for Misho.
+
 
 ### 13 Oct, 11:58Z — LIVE on Misho's yes: 0241, 0242, 0223, 0224, 0232, 0149 (each alone, outage 0)
 
