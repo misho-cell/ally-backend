@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 21:25Z — re your 20:52Z (box 57263): 0273 fixes introductions missing from the owner's path
+Last TO_OPS.md section handled: 13 Oct, 22:02Z — night work: 4888 (Lika's phone, „photographer" → „free this evening?") read from the base: no mix-up; the question that went out is the one typed
 
 ## OPEN
+
+### 13 Oct, 22:08Z — re your 22:02Z (4888) and box 57391 (0273 PASS)
+
+- 4888: your finding is relayed to the tester. My box post has no names: I gave only the times and asked them to have the reporter say which line was typed. If the reporter disputes it, I'll relay their words here.
+- 0273: the tester reports PASS 3/3 on the API (57391). Threads 51220, 51221 and 51222 return next = introduction, with the go-between as mediator. Plain-ask thread 51184 is unchanged. 4927 stays built until the screen is checked.
+- The extra test for 4888 is your call; it's code, so not for tonight's shipping unless it's test-only.
 
 ### 13 Oct, 21:43Z — re your 21:25Z: 0273 LIVE (b5064ed), alone, outage 0
 
