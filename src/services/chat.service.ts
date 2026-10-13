@@ -105,13 +105,7 @@ import { SOMEONE_ELSES_ROLE_REFUSAL, valueIsSomeoneElsesRole } from './someoneEl
 import { settleMatchTap } from './matchFlow.service';
 import { noteSearchVerdict } from './searchAcceptance';
 import { asksToReopen } from './reopenIntent';
-import {
-  needThisFactMeets,
-  noteSavedFact,
-  recallChoices,
-  recallLine,
-  takeSavedFact,
-} from './needRecall';
+import { needThisFactMeets, noteSavedFact, takeSavedFact, withRecallOffer } from './needRecall';
 import { deleteOfferTool, listOffersTool, saveOfferTool } from './offerTools';
 
 /**
@@ -14092,9 +14086,10 @@ async function runToolLoop(
     const recalled = await needThisFactMeets(userId, savedFact.phone, savedFact.value).catch(
       () => null,
     );
-    if (recalled !== null && !finalText.includes(recalled.needName)) {
-      finalText = `${finalText.trimEnd()}\n\n${recallLine(runLang(runId), recalled)}`;
-      choices = recallChoices(runLang(runId));
+    if (recalled !== null) {
+      const offer = withRecallOffer(finalText, recalled, runLang(runId));
+      finalText = offer.text;
+      choices = offer.choices ?? choices;
     }
   }
   // 3236: digits are 0-9, and an owner asking to be rated gets no score.

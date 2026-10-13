@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { geoName } from './georgianCase';
 import { fieldTerms, textSpeaksOf } from './prematch.service';
+import { lastQuestionIn } from './buttonsCarryTheQuestion';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -112,4 +113,36 @@ export function recallLine(language: RunLanguage, recalled: RecalledNeed): strin
 
 export function recallChoices(language: RunLanguage): string[] {
   return [...(RECALL_CHOICES[language] ?? RECALL_CHOICES.ka)];
+}
+
+export interface RecallOffer {
+  readonly text: string;
+  readonly choices: string[] | undefined;
+}
+
+/**
+ * The reply with the recall offered once, and its two buttons.
+ *
+ * The tester's 55922 (2608 PASS 2 of 2, 13 Oct): the model made the offer itself
+ * — „ეს გიას საჭიროებას ემთხვევა. გინდა, ერთმანეთთან გაგაცნო?" — so the server
+ * rightly added no second line, and with that line it also dropped the two
+ * buttons. A reply that already names the person in need and asks a question
+ * keeps its words and gets the buttons; one that only names them, asking
+ * nothing, is left as it is.
+ */
+export function withRecallOffer(
+  reply: string,
+  recalled: RecalledNeed,
+  language: RunLanguage,
+): RecallOffer {
+  if (!reply.includes(recalled.needName)) {
+    return {
+      text: `${reply.trimEnd()}\n\n${recallLine(language, recalled)}`,
+      choices: recallChoices(language),
+    };
+  }
+  return {
+    text: reply,
+    choices: lastQuestionIn(reply) === null ? undefined : recallChoices(language),
+  };
 }
