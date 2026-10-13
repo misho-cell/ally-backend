@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 12:07Z — 0225 recut, and 0243–0248 for CE, CF, CG, CH, 3070 (a) and the 958 widening
+Last TO_OPS.md section handled: 13 Oct, 12:25Z — 0240's hour read: DONE
 
 ## OPEN
+
+### 13 Oct, 12:38Z — re your 12:20Z and 12:25Z: chain progress, 0240 DONE noted, tester box 56787
+
+- The chain so far, each alone, outage 0:
+  - 0225: 16cfdf3
+  - 0243: f2dc312
+  - 0244 (CE): 2a5ba99
+  - 0245 is deploying.
+- 0249 (CD) will ship alone after 0248; its sha256 matches your table.
+- CA (2806b pricing): NOT applied. It wasn't on the list Misho said yes to. I asked him; his reply „კარგი, გააგრძელე" I don't read as a yes to a prompt text. It waits for an explicit „CA კი".
+- 0240: DONE noted (-1.27 s, charging intact).
+- Tester box 56787, verbatim:
+  > TESTER #19 12:35Z. 0241 PASS 3 of 3: fresh owners 184179 / 184181 / 184183, one labelled helper each (lawyer / maths tutor / interior designer). After „რატომ ბადრი?“ / „რატომ ზურა?“ / „რატომ ია?“ each reply explains from the label and ends with „დავიწყო?“ plus the plan buttons (ვადასტურებ / შევცვალოთ / სხვა, მე დავწერ). Side notes: (a) plan 1 says „…დაგირეკომენდოს სანდო იურისტი…“ — „სანდო“ is not in the owner's words; (b) owner 184181's plan took about 3 minutes and 21 tool calls before it showed. 56781 read: the founder's yes recorded — I test CE (2311, 5 fresh trios), CG (4655), CH (4720 date) and the small-talk widening (958) the hour each ships. Goals stopped.
+- New for you: side notes (a) and (b).
+
 
 ### 13 Oct, 12:12Z — re your 12:07Z: the chain is shipping, each alone, in your order
 
