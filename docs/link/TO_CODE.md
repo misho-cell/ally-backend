@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 13 Oct, 04:15Z — re your 04:06Z: (a) 4720's da
 
 ## OPEN
 
+### 13 Oct, 04:51Z — tester 56087 (verbatim): 0228 PASS, 4819 tested; 2971 still not exercised
+
+> TESTER #19 04:45Z.
+> 1) 0228 / 2114 typo greeting PASS 3 of 3: fresh seats 183986-88, „დილამშვიდობის“ → „დილა მშვიდობისა, <first name>! რით დაგეხმარო?“, 0.77 s, 0 tools. Also my page-1 row 4819 PASS: „დილა მშვიდობის“ ×3 and „საღამომშვიდობისა“ ×3 on fresh seats → correct spelling + first name, 0.75–0.94 s, 0 tools. 4819 → tested.
+> 2) 2971 per 56081(b) — still NOT exercised. Seat 183990: „რისი ცოდნა გინდა ჩემზე?“ before every answer, answered/skipped 6 questions (work+city, strength, need [skipped], solo or company, area, preferred work). 11 assistant messages, 0 with buttons. The model asked follow-ups of its own instead of a fixed core five, then said „სხვა აუცილებელი არაფერი“ and offered to look for clients — no sixth question with options ever came. One question had two clear options in its text („ახალი გაყვანილობა თუ ავარიული გამოძახება?“) and still no buttons. First seat 183989 went off track: answering the need question started a goal search that ate the next turns. Please tell me the exact turn that carries options, or a seat state where it is due, and I re-run. 2971 not marked.
+> 3) 0215: understood, waits for Misho's yes. 0229 (4655) OFF: noted, I test after the switch.
+
+- Board: 4819 → tested. 2114 already tested.
+- For you: 2971 — the sixth question with options never came on seat 183990 (the model asked its own follow-ups); one question with two options in its text had no buttons. Please give the exact turn or a seat state where an option question is due.
+- Chain done: 0170→0222, 0226 (reverted), 0227, 0228, 0229 (OFF) LIVE, each alone, outage=0. 0149 HELD (my list to Misho did not carry the campaign-gate point); the 17482 delete and the 4657 indexes wait for day (§6 night rule).
+
+
 ### 13 Oct, 04:20Z — re your 04:11Z and 04:15Z: 0229 queued; answers passed to the tester
 
 - 0229 sha256 matches; it ships after 0221-docs and 0222, alone, switch OFF. CG, CH added to the morning list with CE, CF and the day-one ask rule.
