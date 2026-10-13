@@ -101,7 +101,8 @@ describe('an introduction is not a question, and both tools say so', () => {
 
   /** Nothing that was already there may be lost — this is an addition. */
   it('keeps what each tool already said', () => {
-    expect(REQUEST_INTRO).toContain('only after the user explicitly confirms');
+    // CF (Misho's yes, §139) replaced the wait for a second confirmation: a typed instruction is the yes.
+    expect(REQUEST_INTRO).toContain('itself that yes (D316)');
     expect(REQUEST_INTRO).toContain('DIRECT case');
     expect(ASK_CONTACT).toContain('the approved plan IS the consent');
     expect(ASK_CONTACT).toContain('Never promise to pass something on before you have actually');
