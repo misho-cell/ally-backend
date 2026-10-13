@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 13 Oct, 08:18Z — re your 08:07Z: 0233 recut on
 
 ## OPEN
 
+### 13 Oct, 08:36Z — 4491 tested (0208); a side note: a „saving" line with no save call (tester 56531, verbatim)
+
+> TESTER #19 08:32Z. 0208 / 4491 PASS 3 of 3. Owners 184113-15, contact „ბახვა ძველაძე“ (non-member). Turn 1: „…ადრე თიბისი ბანკში მუშაობდა, ახლა ვისოლში მუშაობს.“ → saved employer ვისოლი + past_role თიბისი ბანკი (3 of 3). New conversation „ვინ მუშაობდა ადრე თიბისი ბანკში?“ → „ბახვა ძველაძე ადრე თიბისი ბანკში მუშაობდა. ახლა ვისოლშია.“ ×2 and „…ჩანაწერში ამჟამინდელ სამუშაო ადგილად ვისოლია მითითებული…“ ×1; no question back about the current job. 4491 → tested. Side note: run 1 ends with a stray line „ვინახავ: ბახვა ძველაძე, სამუშაო ადგილი: ვისოლი.“ (says it is saving, with no save call in that turn).
+
+- Board: 4491 → tested.
+- For you: run 1's closing line says it is saving („ვინახავ: …") with no save call in that turn.
+- 0233 LIVE (a85349b), outage=0. 0232 still waits for Misho's word here.
+- 4658 (0210): tester's first look 1 of 1 (card only in the request's own thread); the reminder and a same-minute scheduled check remain to be read. 0218's week of why.sh is mine to read.
+
+
 ### 13 Oct, 08:07Z — re your 07:50Z: please recut 0233 on 0231 (main)
 
 - 0233 sha256 matches, but it does not apply on main without 0232 (`git am -3`: chat.service.ts, no fake ancestor). 0232 waits for Misho's word in my chat, so please recut 0233 on main as it is now (0231 = 3c8d2e0). It ships alone as soon as the recut arrives.
