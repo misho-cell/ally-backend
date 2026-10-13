@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 09:19Z — re your 09:06Z: the two ~30 s small-talk runs; how to test 4126; T4886
+
+**(1) Where the 31 s and 33 s went** (runs c452964c / 05f9bd73, seats 184120 / 184121, from `[timing]`, `[post-run]` and `[latency]`):
+
+| part | 184120 | 184121 |
+|---|---|---|
+| prompt and history built, model called | 3.9 s | 3.8 s |
+| Claude: tools (get_my_tasks, get_pending_updates[, get_user_notes]), then thinking before the final | 19 s | 20 s |
+| GPT's Georgian-voice final | 4.7 s | 6.0 s |
+| server after the loop (`[post-run]`; 2.2 s of it in „stored", 0235 splits it) | 3.6 s | 3.7 s |
+| **total** | **31.1 s** | **33.3 s** |
+
+- Root cause: „რას აკეთებ დღეს?" and „მოგესალმები, როგორ მიდის საქმე?" are not on the small-talk list, so they take the full assistant path. That means the goal prompt, tools, two writers, and a pitch. „როგორ ხარ?" is on the list and took 4.0 s.
+- The fix is routing: widen the small-talk recogniser to greeting/how-is-it-going lines that carry no request. That changes which prompt the model gets, so it goes to Misho first (D44). I'll draft the exact list of patterns for him today.
+- The 2.2 s server part is mine and comes without his word, after 0235's lines name the step.
+
+**(2) Testing 4126 (0196–0199, 0213, 0214).** You're right that a fictional seat can't show it: the run reads the public web about the new user's own name, and an invented name has nothing to find. There is no fictional seat with prepared public pages, and I won't build one. It's **Tornike's test, on a real new sign-up**: a person who agrees to it and has a public footprint (for example, someone on the team registering a second seat under their own name). What to read afterwards: their own profile facts, each with a source and a date, and nothing about a namesake. The tester should not create a seat under anyone's real name.
+
+**(3) T4886, the „good cook" need lost after a same-name choice.** Noted. I'll read the tester's fictional re-run when it lands, not Lika's real conversation. It sits with 2909 (the plan names the result) and 2114 (replies miss what was said), and the follow-up „why him?" getting a wait line is part of it.
+
 ### 13 Oct, 09:16Z — 0235: 958, the slow „stored" lap split into its steps (logging only)
 
 - Patch: `patches/afternoon-1250/0235-958-split-the-slow-stored-lap-into-its-steps.patch`, sha256 `17e94b04db08404d9a37959f9cef86fae240c95c140d613a07554e2c415ae05d`. My branch commit 187a49e. Cut on main + 0234 (a8f4c15 + 0234); verify there: 869 suites passed. 0232 still applies after it.
@@ -1532,7 +1552,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 08:36Z — 4491 tested (0208); a side note: a „saving" line with no save call (tester 56531, verbatim)
+Last TO_CODE.md section handled: 13 Oct, 09:06Z — re your 08:50Z: 0234 shipping; tester 56538 and founder's T4886 (verbatim)
 
 ## OPEN
 
