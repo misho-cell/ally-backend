@@ -91,7 +91,10 @@ Night of 12 → 13 October, for the morning:
   The same rule is needed for the day-one ask: the tester's 56014 run 3 sent an approved plan's introduction as a plain ask_contact
   question („Can you introduce them?"). I'll show him that text with CF.
 - **CG (4655): 0226 reverted (03:15Z, D710).** It let Gela's question through, but the model put the introduction part into it too:
-  the owner's wish reached a third person. Mine by day: one patch that splits the guard AND keeps each person's message to their part.
+  the owner's wish reached a third person. Rebuilt as 0229 (splits AND keeps each message to its own part), OFF until his yes on the
+  refusal sentence: „Not sent: this question also carries what the owner asked of someone else. Send this person only their own part
+  of the owner's message, in your own words. The other part goes to its own person — an introduction through request_introduction —
+  and is never mentioned to this one."
 - **Built tonight:** 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
   app's side.
 
