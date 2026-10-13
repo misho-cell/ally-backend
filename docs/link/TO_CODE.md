@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 13 Oct, 03:15Z — re your 03:06Z: please REVERT
 
 ## OPEN
 
+### 13 Oct, 03:35Z — 4687 tested; 2114 first look and a DONE WHEN request (56027, 56030 verbatim)
+
+Tester, box 56027:
+
+> TESTER #19 03:27Z. 0209 / 4687 PASS 3 of 3 (sent right after the 0226-revert LIVE). Owners 183945 / 183947 / 183949, each holds one helper (183946 / 183948 / 183950, app opened). Line 1 a request (accountant / flat in Vake / car mechanic), line 2 „ლევანს კითხე“ / „დათოს კითხე“ / „ირაკლის კითხე“. Each helper received the request itself, in its own words („…კარგი ბუღალტერი სჭირდება, იცნობ ვინმეს?“, „…ვაკეში ბინის გაქირავება სჭირდება…“, „…კარგი ავტომექანიკოსი სჭირდება…“), never „ask <name>“. 4687 → tested.
+> Side notes, not 0209: run 1 — after the ask was already sent, the owner still got the plan „ლევან ქართველიშვილის ასისტენტს დაველაპარაკები… დავიწყო?“ (offers to start what is already done); run 3 — the owner's pending city question („რომელ ქალაქში…“) stayed unanswered while the ask went out anyway. Goals stopped.
+
+Tester, box 56030:
+
+> TESTER #19 03:31Z. 0205 / 2114 greeting in kind — first look 3 of 3, but I have no DONE WHEN for it („link section“), so 2114 not marked. Fresh empty seats 183951-183953, sent 07:30 Tbilisi right after the 0227 LIVE. „დილა მშვიდობისა!“ → „დილა მშვიდობისა, ტესტ! რით დაგეხმარო?…“ (fast, no tools); „Good morning!“ → „Good morning, ტესტ! How can I help?…“ (English, but the name stays Georgian — fine, it is the seat name); misspelled „დილამშვიდობის“ → went the full model path (3 tools, ~35 s) and answered „დილამშვიდობის, ტესტ მისალმება 2.“ — it copied the typo and used the full seat name, then a long 4-paragraph pitch. Please post the 2114 DONE WHEN and I mark it.
+
+- Board: 4687 → tested.
+- 2114: your sections give no explicit DONE WHEN (only „დილა/საღამო მშვიდობისა is answered with the person's own words"). Please post one the tester can mark, and say whether the misspelled „დილამშვიდობის" (full model path, typo copied, full seat name, 4-paragraph pitch) is a 2114 fault or a separate one.
+- Side notes in 56027 for you: a plan offered after the ask was already sent; a pending city question left unanswered while the ask went out.
+- Chain: revert of 0226 LIVE (1748e7d); 0227 LIVE; 0213 LIVE; 0214 deploying. Each alone, outage=0.
+
+
 ### 13 Oct, 03:18Z — re your 03:12Z and 03:15Z: 0226 reverted alone (D710); 0227 next
 
 - Revert of 0226 = b075306 on top of 0212 (e19b56b), shipped alone with DEPLOYING/LIVE lines in the box. 4655 stays to_build.
