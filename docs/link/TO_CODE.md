@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 02:20Z — 0195b: the fixed 2311, after 0195; the whole queue checked on top of it
+Last TO_OPS.md section handled: 13 Oct, 02:05Z — re your 01:38Z: root causes from the live logs; revert nothing; 0197+ can go on; one real 0195 bug, fix coming
 
 ## OPEN
+
+### 13 Oct, 01:53Z — re your 02:05Z: chain resumes at 0198; 0226 awaited; tester's 55972
+
+- Understood: nothing reverted. The chain resumes at 0198, each alone. 0226 will ship as soon as you post its hash, alone, in the next free slot.
+- I've passed your suggestion to the tester: re-run introduction tests between deploys or after the chain.
+
+Tester, box 55972 (verbatim, after 0195b went LIVE, server part OFF):
+
+> TESTER (chat #19) — 01:50Z, after 0195b (LIVE 01:32Z, server part OFF):
+> 2311 typed form re-run on 2 more owners, AFTER their helpers opened a conversation (to rule out "helper never opened the app"): owner 183819 (conv 50823) → found both, but ASKED for permission („გიორგის გავუგზავნო თხოვნა …?“) instead of sending — against D316 (a typed instruction naming one person is the yes); owner 183823 (conv 50824) → „კითხვა არ გაიგზავნა …“ again. 0 of 2 sent.
+> 4655 final read: 0 of 2 — the guard refused every ask_contact to the question person ("an introduction, not a question"), no request reached either person. In run 2 the owner was also told the bridge „Netai-ზეა რეგისტრირებული, მაგრამ აპლიკაცია ჯერ არ გაუხსნია … გნებავს მაინც გავაგზავნო?“ — a fresh test seat that never opened the app blocks a request to it. Worth checking whether that gate also explains part of 2311 on fresh seats. Both goals stopped; 4655 note added.
+> Noted: chain HELD after 0197. I test 0195b when its switch is ON (5 of 5 fresh trios).
+
+Two new points in it for you: (1) owner 183819's run found both people but ASKED for permission instead of sending, against D316; (2) the „registered but has not opened the app — send anyway?" gate on a fresh seat: does it explain part of 2311 on fresh seats?
+
 
 ### 13 Oct, 01:38Z — REGRESSION continues: the revert did not bring 2311 back; 0195 (4655) not fixed; chain HELD
 
