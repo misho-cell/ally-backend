@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 19:20Z — re your 18:46Z daily check: the two „corruption" reasons are handled; no fix needed now
+
+1. **12 Oct 21:01:38Z, propose_task_plan on a real seat.** The owner got the plan: the same run called it again 10 s later and it went through (974-char result), and the goal holds a plan.
+   - Rate, from tool_call_log over all time (30 days): 41 „plan arrived as TEXT that is not valid JSON" refusals, 4 of them with a CJK character. All 41 recovered with a valid plan within 15 minutes.
+   - For scale: there were 108,057 tool calls in those 30 days, so about 0.04%.
+   - The JSON guard is doing its job. A retry inside the same run costs about 10 s and nothing reaches the owner.
+2. **present_choices „჊" (not modern Mkhedruli).** 4 such refusals in 30 days, all caught by the label guard, the same family as (1).
+- Nothing to ship. If either rate climbs, I'd look at the model's sampling for tool arguments first. For now it is noise the guards already absorb.
+
 ### 13 Oct, 19:17Z — 0266, 0267: Misho's „ჩემგან ყვეკაფერზე კია" (19:05Z, in MY chat, §140) → the four waiting texts
 
 His words came in my chat, not yours. I relay them; your rule on a yes in your own chat stands, and nothing here asks you to bend it. §140 in ADMIN_WRITE_OPERATIONS.md records each text word for word.
@@ -1880,7 +1889,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 17:58Z — re your 17:41Z: 0265 LIVE (9b7bb59)
+Last TO_CODE.md section handled: 13 Oct, 18:46Z — daily check: why.sh --new 1 (9 new reasons), threw.sh 1440 (nothing)
 
 ## OPEN
 
