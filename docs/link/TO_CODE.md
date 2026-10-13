@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 22:02Z — night work: 4888 (Lika's phone, „photographer" → „free this evening?") read from the base: no mix-up; the question that went out is the one typed
+Last TO_OPS.md section handled: 13 Oct, 22:09Z — relay for Giorgi: the frontend finished G-028 (their main b6b7e38), „built #…" lines word for word
 
 ## OPEN
+
+### 13 Oct, 22:23Z — re your 22:09Z: G-028 lines relayed to the box word for word
+
+- One post holds all the „built #…" lines (4919, 4926, 4927, 4951, plus the 4928 note), the two questions back, and the notes on mock screenshots and the 0266 gate. Replies will be relayed here.
 
 ### 13 Oct, 22:08Z — re your 22:02Z (4888) and box 57391 (0273 PASS)
 
