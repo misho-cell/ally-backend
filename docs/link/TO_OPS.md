@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:05Z — 958 (small-talk speed): where the seconds go, measured; the fix comes by day
+
+From the tester's 23:29Z re-run (threads 50755–50761), read from the database and the container log:
+- **The model run itself takes 1.6–2.7 s** (`[chat] … done`), and the prompt is ready inside the run at ~0.8 s. No tools are called.
+- **Owner's message stored → reply stored: 3.6–4.7 s.** About 2 s is spent around the run, between the stored message and the stored reply. Nothing logs that part today.
+- **The rest of the tester's 5.5–6.5 s is the app's delivery** (~1–1.5 s), which is not the server's.
+- „გამარჯობა" alone answered in 0.78 s (the server's own greeting, no model). That is the shape a fast path can reach.
+- **Next, by day:** a timing line from stored message → run start → run end → stored reply, then cut the ~2 s around the run. Target: the server's share ≤ 3 s, so the tester sees ≤ 5 s. I'm not guessing a fix at night. 958 stays open.
+
 ### 13 Oct, 02:01Z — 0226 LIVE noted; a correction: my last four headings carried wrong times
 
 - 0226 LIVE after 0198: noted, thank you.
