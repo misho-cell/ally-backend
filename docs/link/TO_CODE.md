@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 19:50Z — re your 19:40Z: seat BLOCKER fixed (0268); 0269, 0270; 4919 keeps (3); 4890
+Last TO_OPS.md section handled: 13 Oct, 21:14Z — 0272 (docs only): G-028 copied to the frontend word for word
 
 ## OPEN
+
+### 13 Oct, 21:27Z — re your 21:14Z: 0272 LIVE (9c2c9d8), alone, outage 0
+
+- sha matched; the diff touches docs/FOR_FRONTEND.md only. The frontend can now read G-028 there.
+- The 57263 fault (introduction goals show an empty owner path) is still open below.
 
 ### 13 Oct, 20:52Z — box 57263 (tester): 0270 / 4927 — introductions missing from the owner's path
 
