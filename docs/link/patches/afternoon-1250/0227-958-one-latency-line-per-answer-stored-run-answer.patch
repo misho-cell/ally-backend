@@ -1,0 +1,135 @@
+From f86b506ae30a1146661e66ff037373964a5f475e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 03:03:11 +0000
+Subject: [PATCH] 958: one latency line per answer, stored -> run -> answer
+
+The tester's small talk took 5.5-6.5 s while the model run took 1.6-2.7 s;
+stored message to stored reply was 3.6-4.7 s, and the ~2 s around the run
+was logged nowhere. Each answer now logs stored->run, run->answer and the
+total. Log only; resumed runs (no stored time) log nothing.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts          | 10 +++++++++
+ src/services/__tests__/runLatency.test.ts | 27 +++++++++++++++++++++++
+ src/services/runLatency.ts                | 20 +++++++++++++++++
+ 3 files changed, 57 insertions(+)
+ create mode 100644 src/services/__tests__/runLatency.test.ts
+ create mode 100644 src/services/runLatency.ts
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 38d2143..382a60c 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -1,3 +1,4 @@
++import { runLatencyLine } from '../../services/runLatency';
+ import { choiceNotesFor } from '../../services/choiceNotes';
+ import { otherChoiceField } from '../../services/otherChoice';
+ import { exportConversation } from '../../services/conversationExport.service';
+@@ -1040,6 +1041,7 @@ threadsRouter.post(
+        * message would be a worse bug than a late one.
+        */
+       const storedOnArrival = await keepUserMessage(userId, threadId, message);
++      const storedAt = Date.now();
+       const stopCannotWait = looksLikeStopRequest(message);
+       if (!stopCannotWait) {
+         /**
+@@ -1078,6 +1080,7 @@ threadsRouter.post(
+         runId,
+         asGoal: as_goal === true,
+         storedOnArrival,
++        storedAt,
+         lastFreeAnswer: graceNote !== null,
+         inReplyToMessageId:
+           typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
+@@ -1186,6 +1189,8 @@ export interface OwnerRun {
+   readonly lastFreeAnswer?: boolean;
+   /** #1321: the device the owner asked from; absent for a resumed run. */
+   readonly askedFrom?: string | null;
++  /** 958: when the owner's message was stored; absent for a resumed run. */
++  readonly storedAt?: number;
+ }
+ 
+ /**
+@@ -1207,6 +1212,7 @@ export function runOwnerMessage(run: OwnerRun): void {
+     needsTitle,
+     lastFreeAnswer = false,
+     askedFrom = null,
++    storedAt,
+   } = run;
+   const runStartedAt = new Date();
+ 
+@@ -1329,6 +1335,10 @@ export function runOwnerMessage(run: OwnerRun): void {
+         void markRunFailed(userId, threadId, result.language ?? 'ka');
+         return;
+       }
++      if (storedAt !== undefined) {
++        // eslint-disable-next-line no-console
++        console.log(runLatencyLine(runId, threadId, storedAt, runStartedAt.getTime(), Date.now()));
++      }
+       emitRunComplete(userId, threadId, runId, {
+         reply: result.reply,
+         ...(result.options && { options: result.options }),
+diff --git a/src/services/__tests__/runLatency.test.ts b/src/services/__tests__/runLatency.test.ts
+new file mode 100644
+index 0000000..ae4f040
+--- /dev/null
++++ b/src/services/__tests__/runLatency.test.ts
+@@ -0,0 +1,27 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { runLatencyLine } from '../runLatency';
++
++/** 958: the seconds around the run, split per answer, with no guessing. */
++describe('the latency line', () => {
++  it('splits stored→run and run→answer and gives the total', () => {
++    expect(runLatencyLine('r1', 50756, 1_000, 3_100, 4_380)).toBe(
++      '[latency] run r1 thread 50756: stored→run 2100 ms, run→answer 1280 ms, total 3380 ms',
++    );
++  });
++
++  it('is written when the answer is handed to the app, for runs that carry a stored time', () => {
++    const route = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
++      'utf8',
++    );
++    expect(route).toContain('const storedAt = Date.now();');
++    const line = route.indexOf('runLatencyLine(runId, threadId, storedAt');
++    const emit = route.indexOf(
++      'emitRunComplete(userId, threadId, runId, {\n        reply: result.reply,',
++    );
++    expect(line).toBeGreaterThan(-1);
++    expect(line).toBeLessThan(emit);
++    expect(route).toContain('if (storedAt !== undefined) {');
++  });
++});
+diff --git a/src/services/runLatency.ts b/src/services/runLatency.ts
+new file mode 100644
+index 0000000..24325d6
+--- /dev/null
++++ b/src/services/runLatency.ts
+@@ -0,0 +1,20 @@
++/**
++ * 958 (the tester's 55870 re-run, 12 Oct 23:29Z): small talk took 5.5–6.5 s
++ * end to end while the model run itself took 1.6–2.7 s. In the database the
++ * owner's stored message and the stored reply were 3.6–4.7 s apart, and the
++ * ~2 s around the run was logged nowhere. This line splits it, per answer:
++ * from the stored message to the run's start (the thread queue, the route),
++ * and from the run's start to the answer handed to the app.
++ */
++export function runLatencyLine(
++  runId: string,
++  threadId: number,
++  storedAt: number,
++  runStartedAt: number,
++  answeredAt: number,
++): string {
++  return (
++    `[latency] run ${runId} thread ${threadId}: stored→run ${runStartedAt - storedAt} ms, ` +
++    `run→answer ${answeredAt - runStartedAt} ms, total ${answeredAt - storedAt} ms`
++  );
++}
+-- 
+2.43.0
+

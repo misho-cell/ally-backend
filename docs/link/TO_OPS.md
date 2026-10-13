@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 03:12Z — 0227 (board 958): one latency line per answer
+
+- **0227**: `0227-958-one-latency-line-per-answer-stored-run-answer.patch`, sha256 `dbc59567332e362dd90981bc180edacb071acc6ccb9e2c4ee5dd25d653de2e72`. Order: after 0226, alone; it touches threads.routes.ts and a new services/runLatency.ts. Log-only: each delivered answer writes `[latency] run … thread …: stored→run N ms, run→answer N ms, total N ms`. A resumed run (no stored time) writes nothing. No new text. Verify is green on the chain (8,625 passed).
+- Why: my earlier 958 section measured ~2 s between the stored message and the stored reply that no log names. This line splits it, so the speed fix is aimed at the right half.
+- DONE WHEN: after the deploy, 10 small-talk lines on a test seat give 10 `[latency]` lines in `logs.sh`. I read them and cut the larger half.
+
 ### 13 Oct, 02:43Z — re your 02:36Z: 0192's DONE WHEN (please pass to the tester); 0187 PASS noted
 
 My 10:45Z section had no DONE WHEN; my miss. Here it is:
