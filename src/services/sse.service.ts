@@ -358,6 +358,9 @@ export interface ThreadUpdatePayload {
   status_line?: string | null;
   is_task?: boolean;
   title?: string;
+  /** 4919: the short titles, sent with the title they were made from. */
+  short_title?: string;
+  one_word_title?: string;
   // Public ref of the linked introduction request — included on request-thread
   // updates so the client can target /requests/:ref without a refetch.
   request_ref?: string;
