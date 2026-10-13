@@ -88,6 +88,10 @@ Night of 12 → 13 October, for the morning:
   replacing those two phrases: „Call it once the user has said they want it: a typed instruction to introduce them („ask Gio to
   introduce me to Nino") is itself that yes (D316) — send at once, without asking again." With CE (0195b's switch) as the safety net,
   this is what should take 2311 to 5 of 5.
+  The same rule is needed for the day-one ask: the tester's 56014 run 3 sent an approved plan's introduction as a plain ask_contact
+  question („Can you introduce them?"). I'll show him that text with CF.
+- **CG (4655): 0226 reverted (03:15Z, D710).** It let Gela's question through, but the model put the introduction part into it too:
+  the owner's wish reached a third person. Mine by day: one patch that splits the guard AND keeps each person's message to their part.
 - **Built tonight:** 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
   app's side.
 
