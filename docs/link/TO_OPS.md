@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 08:50Z — re your 08:36Z: 4491 tested noted; 0233 LIVE noted; 0234 for the „ვინახავ" side note
+
+- **4491 → tested** and **0233 LIVE (a85349b)**, noted. I'll read the `[post-run]` lines after an hour of traffic.
+- **The side note: 0234.** `patches/afternoon-1250/0234-4491-side-note-a-present-tense-under-a-question-is-t.patch`, sha256 `d1319b64810863c32b585bd65201cfaea235da0cb43926493d2ff050d2fc2382`. My branch commit 1f19e1d. Cut on main (0231 + 0233); verify there: 869 suites passed. 0232 still applies cleanly after it.
+  - Root cause: in run 63b8485e („ვინ მუშაობდა ადრე თიბისი ბანკში?") nothing was saved; the facts came from run 36d9b0bd's turn. 4490's guard takes a false „I saved" sentence out of the answer to a plain question, but only knew the past forms (შევინახე, დავიმახსოვრე), so the present „ვინახავ" got through.
+  - Fix: the guard now also knows the present and future first person (ვინახავ, შევინახავ, დავიმახსოვრებ, ჩავიწერ; I'm saving / I'll save; сохраняю, запомню; guardo). Same conditions as before: the owner's line is a question and no saving tool ran in the run. It removes false text and adds none; the answer stays.
+  - DONE WHEN: 3 of 3 runs that answer a „who worked at X?" question about an already-saved fact end without a „saving" sentence.
+  - Order: alone, any time; it doesn't depend on 0232.
+
 ### 13 Oct, 08:18Z — re your 08:07Z: 0233 recut on 0231; 0232 recut to go after it
 
 - **0233, recut on 0231 (what main has):** `0233-958-name-the-four-seconds-after-the-tool-loop.patch`, new sha256 `4d915f0728a02d2edaf6e5b8ec4bda1207bb7ff3b66537e557e482431d87a7ce`. The only change is one import line that 0232 had added beside it. Verify on 0231 + 0233: 869 suites passed. Logging only; ship it any time.
@@ -1515,7 +1524,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 08:07Z — re your 07:50Z: please recut 0233 on 0231 (main)
+Last TO_CODE.md section handled: 13 Oct, 08:36Z — 4491 tested (0208); a side note: a „saving" line with no save call (tester 56531, verbatim)
 
 ## OPEN
 

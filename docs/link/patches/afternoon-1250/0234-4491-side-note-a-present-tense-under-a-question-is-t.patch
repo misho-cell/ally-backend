@@ -1,0 +1,75 @@
+From 5a177838fa4b6b9c547013bcfed438613b63f39d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 08:46:07 +0000
+Subject: [PATCH] =?UTF-8?q?4491=20side=20note:=20a=20present-tense=20?=
+ =?UTF-8?q?=E2=80=9E=E1=83=95=E1=83=98=E1=83=9C=E1=83=90=E1=83=AE=E1=83=90?=
+ =?UTF-8?q?=E1=83=95"=20under=20a=20question=20is=20taken=20out=20too?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 56531: „ვინ მუშაობდა ადრე თიბისი ბანკში?" was answered and then
+„ვინახავ: ბახვა ძველაძე, სამუშაო ადგილი: ვისოლი." with no save in that run.
+4490's guard takes out a false „I saved" under a plain question, but knew only
+the past forms (შევინახე, დავიმახსოვრე). It now also knows the present and
+future first person (ვინახავ, შევინახავ, დავიმახსოვრებ, ჩავიწერ; I'm saving,
+I'll save; сохраняю, запомню; guardo). Same conditions as before: the
+owner's line is a question and no saving tool ran. The answer stays, and the
+guard adds no text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aQuestionSavesNothing.test.ts      | 16 ++++++++++++++++
+ src/services/savedClaim.ts                       |  7 ++++++-
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aQuestionSavesNothing.test.ts b/src/services/__tests__/aQuestionSavesNothing.test.ts
+index 1f5550a..a49fbae 100644
+--- a/src/services/__tests__/aQuestionSavesNothing.test.ts
++++ b/src/services/__tests__/aQuestionSavesNothing.test.ts
+@@ -33,6 +33,22 @@ describe('an „I saved" sentence under a plain question', () => {
+     expect(withoutSavedClaimOnAQuestion('შევინახე.', asked, [])).toBe('შევინახე.');
+   });
+ 
++  it.each([
++    [
++      'ბახვა ძველაძე ადრე თიბისი ბანკში მუშაობდა. ახლა ვისოლშია.\n\nვინახავ: ბახვა ძველაძე, სამუშაო ადგილი: ვისოლი.',
++      'ბახვა ძველაძე ადრე თიბისი ბანკში მუშაობდა. ახლა ვისოლშია.',
++    ],
++    ['ბახვა ვისოლშია. დავიმახსოვრებ.', 'ბახვა ვისოლშია.'],
++    ["Bakhva works at Visol. I'll save that.", 'Bakhva works at Visol.'],
++  ])('takes out the present and future tense too (tester 56531): „%s"', (reply, kept) => {
++    expect(withoutSavedClaimOnAQuestion(reply, 'ვინ მუშაობდა ადრე თიბისი ბანკში?', [])).toBe(kept);
++  });
++
++  it('leaves a line about the owner saving alone', () => {
++    const reply = 'ბახვა ვისოლშია. თუ გინდა, ნომერს შეინახავ?';
++    expect(withoutSavedClaimOnAQuestion(reply, asked, [])).toBe(reply);
++  });
++
+   it('runs on every reply the owner reads', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     expect(chat).toContain('finalText = withoutSavedClaimOnAQuestion(');
+diff --git a/src/services/savedClaim.ts b/src/services/savedClaim.ts
+index 1bcea3b..2b66665 100644
+--- a/src/services/savedClaim.ts
++++ b/src/services/savedClaim.ts
+@@ -6,8 +6,13 @@
+  * the answer itself stays. Only the first-person verbs: „შენახულია" (it is
+  * saved) can be a true account of an earlier save.
+  */
++/**
++ * 4491's side note (tester 56531): „ვინახავ: ბახვა, სამუშაო ადგილი: ვისოლი." under
++ * a plain question — the same false claim in the present tense, which the past
++ * forms let through. The present and future first person count too.
++ */
+ const SAID_SAVED_RE =
+-  /(?<![\p{L}\p{M}])(?:დავიმახსოვრე|შევინახე|ჩავიწერე|I(?:'ve| have)? saved|I(?:'ve| have)? noted|сохранил[аи]?|запомнил[аи]?|guardé)(?![\p{L}\p{M}])/iu;
++  /(?<![\p{L}\p{M}])(?:დავიმახსოვრე|შევინახე|ჩავიწერე|ვინახავ|შევინახავ|დავიმახსოვრებ|ვიმახსოვრებ|ჩავიწერ|I(?:'ve| have| am|'m|'ll| will)? (?:saved|saving|save|noted|noting|note)|сохранил[аи]?|сохраняю|запомнил[аи]?|запомню|guardé|guardo)(?![\p{L}\p{M}])/iu;
+ const SAVING_TOOL_RE = /^(?:save_|correct_|remember_|add_|set_user_|update_profile)/u;
+ const QUESTION_RE = /[?？]\s*$/u;
+ /** A sentence ends at . ! ? or a line break; the mark stays with its sentence. */
+-- 
+2.43.0
+
