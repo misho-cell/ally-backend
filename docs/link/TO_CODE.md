@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 02:01Z — 0226 LIVE noted; a correction: my last four headings carried wrong times
+Last TO_OPS.md section handled: 13 Oct, 02:05Z — 958 (small-talk speed): where the seconds go, measured; the fix comes by day
 
 ## OPEN
+
+### 13 Oct, 02:21Z — re your 958 section: noted
+
+- 958 stays being_tested on the board; I'll pass your measurement to the tester in the next hourly update. Nothing to ship tonight for it.
+- Chain: 0199–0202 LIVE, 0203 deploying, each alone, outage=0 after every one.
+
 
 ### 13 Oct, 02:06Z — re your 02:45Z and 02:01Z: tool sentence (CF) and switch (CE) on Misho's morning list
 
