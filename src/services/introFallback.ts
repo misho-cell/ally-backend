@@ -71,6 +71,13 @@ export interface ServerIntroduction {
   readonly target: string;
 }
 
+/** 2311 (§140): the go-between has never opened the app; the owner is asked whether to send anyway. */
+export interface DormantGoBetween {
+  readonly dormant: string;
+}
+
+const DORMANT_REASON = 'dormant_account';
+
 /**
  * The introduction made by the server for the owner's typed line; null when
  * the line names no single saved go-between, no readable target, or the
@@ -80,7 +87,7 @@ export async function serverIntroduces(
   userId: string,
   ownerLine: string,
   context: IntroRequestContext,
-): Promise<ServerIntroduction | null> {
+): Promise<ServerIntroduction | DormantGoBetween | null> {
   const sentence = introductionSentence(ownerLine);
   if (sentence === null) return null;
   const target = introductionTarget(sentence);
@@ -101,6 +108,7 @@ export async function serverIntroduces(
     context,
   )) as { success?: unknown; reason?: unknown };
   if (outcome.success === true) return { mediator, target };
+  if (outcome.reason === DORMANT_REASON) return { dormant: mediator };
   // 2311 (box 56943): every refusal here was silent, so a lookup that never
   // matched read like a model that never tried. The reason code only: the
   // refusal's text can carry the number.
@@ -122,4 +130,23 @@ const INTRO_SENT_SENTENCES: Readonly<Record<RunLanguage, (m: string, t: string) 
 
 export function introSentSentence(made: ServerIntroduction, language: RunLanguage): string {
   return (INTRO_SENT_SENTENCES[language] ?? INTRO_SENT_SENTENCES.ka)(made.mediator, made.target);
+}
+
+/**
+ * OWNER-FACING (D44): Misho's yes word for word, 13 Oct 19:05 UTC (§140). The
+ * owner's „yes" is read by the next run, which may then pass accept_dormant.
+ */
+const DORMANT_SENTENCES: Readonly<Record<RunLanguage, (m: string) => string>> = {
+  ka: (m) =>
+    `${m} Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია, ამიტომ თხოვნას ვერ ნახავს, სანამ არ შემოვა. მაინც გავუგზავნო?`,
+  en: (m) =>
+    `${m} is on Netai but hasn't opened the app yet, so they won't see the request until they do. Send it anyway?`,
+  ru: (m) =>
+    `${m} есть в Netai, но ещё ни разу не открывал приложение, поэтому не увидит просьбу, пока не зайдёт. Всё равно отправить?`,
+  es: (m) =>
+    `${m} está en Netai pero aún no ha abierto la app, así que no verá la petición hasta que entre. ¿La envío de todos modos?`,
+};
+
+export function dormantSentence(found: DormantGoBetween, language: RunLanguage): string {
+  return (DORMANT_SENTENCES[language] ?? DORMANT_SENTENCES.ka)(found.dormant);
 }

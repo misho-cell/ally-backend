@@ -5,10 +5,10 @@
  * case. Made from the full title (already in its language and already free of
  * names the user did not give), by the same cheap model, after it is set.
  *
- * MODEL-FACING (D44): SHORT_TITLES_PROMPT waits for Misho's yes word for word;
- * until then SHORT_TITLES_ON stays false and nothing is written.
+ * MODEL-FACING (D44): Misho's yes, 13 Oct 19:05 UTC in the code session's chat
+ * („ჩემგან ყვეკაფერზე კია", §140). New titles only; existing ones are not back-filled.
  */
-export const SHORT_TITLES_ON = false;
+export const SHORT_TITLES_ON = true;
 
 export const SHORT_TITLE_MAX_WORDS = 3;
 export const SHORT_TITLE_MAX_CHARS = 40;
