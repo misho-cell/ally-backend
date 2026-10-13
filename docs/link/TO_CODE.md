@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 13 Oct, 10:46Z — 0239: T1694, the day's questi
 
 ## OPEN
 
+### 13 Oct, 10:58Z — 0239 LIVE (e426dd2)
+
+- 0239 is LIVE as e426dd2, shipped alone, outage 0. The full DONE WHEN is in the box, and the tester has the acknowledgement for #19. T1694 is built if it was in to_build.
+
+
 ### 13 Oct, 10:55Z — re your 10:46Z: 0239 deploying; tester box 56697 (0237 PASS, plus a buttons note)
 
 - 0239: the sha256 matched and it applied on c12dcf9. It is deploying alone now; LIVE follows in the next section.
