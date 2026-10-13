@@ -1,0 +1,95 @@
+From d0be04f6d89a582751543b228ba7d2744fd06455 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 22:46:15 +0000
+Subject: [PATCH] 4984: a goal waiting on its owner reads needs_you, not
+ working
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi (G-029): goal 13634 had waited for its owner's yes on a plan since 5
+Oct and sat under „ვმუშაობ"; 721 open goals read waiting while their plan
+waited for the owner. A thread whose open goal has a proposed, unapproved
+plan or an unanswered question to the owner now reads needs_you (not while
+a run is working on it), with a stale status line dropped. Live read-only
+check on 13634: waiting → needs_you.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...nWaitingForItsOwnerIsTheOwnersTurn.test.ts | 29 +++++++++++++++++++
+ src/services/threads.service.ts               | 13 +++++++++
+ 2 files changed, 42 insertions(+)
+ create mode 100644 src/services/__tests__/aPlanWaitingForItsOwnerIsTheOwnersTurn.test.ts
+
+diff --git a/src/services/__tests__/aPlanWaitingForItsOwnerIsTheOwnersTurn.test.ts b/src/services/__tests__/aPlanWaitingForItsOwnerIsTheOwnersTurn.test.ts
+new file mode 100644
+index 0000000..8435e1c
+--- /dev/null
++++ b/src/services/__tests__/aPlanWaitingForItsOwnerIsTheOwnersTurn.test.ts
+@@ -0,0 +1,29 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 4984 (Giorgi, G-029): goal 13634 waited on its owner's yes since 5 Oct and
++ * sat under „ვმუშაობ". A plan proposed and not approved, or an unanswered
++ * question to the owner, is the owner's turn.
++ */
++const source = readFileSync(join(__dirname, '..', 'threads.service.ts'), 'utf8');
++
++describe('a goal waiting on its owner', () => {
++  it('reads needs_you when its plan waits for approval or a question to the owner is open', () => {
++    expect(source).toContain(
++      '(k.plan_proposed IS NOT NULL AND k.plan IS NULL) OR k.pending_question IS NOT NULL',
++    );
++    expect(source).toMatch(
++      /WHEN \$\{HAS_PAUSED_GOAL\} THEN 'needs_you'\s+WHEN \$\{WAITS_ON_ITS_OWNER\} THEN 'needs_you'/u,
++    );
++  });
++
++  it('only for an open goal, and never while a run is working on it', () => {
++    expect(source).toContain("t.status <> 'working' AND EXISTS (");
++    expect(source).toContain("WHERE k.thread_id = t.id AND k.status = 'open'");
++  });
++
++  it('keeps the owner-facing line a needs_you thread already had; drops a stale one', () => {
++    expect(source).toContain("WHEN ${WAITS_ON_ITS_OWNER} AND t.status <> 'needs_you' THEN NULL");
++  });
++});
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index be1c6b3..6717d80 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -252,8 +252,20 @@ const A_REQUEST_WAITS_HERE = `EXISTS (
+           AND (wr.snoozed_until IS NULL OR wr.snoozed_until <= NOW())
+      )`;
+ 
++/**
++ * 4984 (Giorgi, 14 Oct, G-029): goal 13634 had waited for its owner's yes on a
++ * plan since 5 Oct and sat under „ვმუშაობ" — 721 open goals read `waiting`
++ * while their plan waited for the owner. A plan proposed and not approved, or a
++ * question put to the owner and not answered, is the owner's turn: `needs_you`.
++ * Not while a run is working on it.
++ */
++const WAITS_ON_ITS_OWNER = `(t.status <> 'working' AND EXISTS (
++         SELECT 1 FROM tasks k
++          WHERE k.thread_id = t.id AND k.status = 'open'
++            AND ((k.plan_proposed IS NOT NULL AND k.plan IS NULL) OR k.pending_question IS NOT NULL)))`;
+ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
+        WHEN ${HAS_PAUSED_GOAL} THEN 'needs_you'
++       WHEN ${WAITS_ON_ITS_OWNER} THEN 'needs_you'
+        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
+        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
+        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
+@@ -261,6 +273,7 @@ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
+      END`;
+ const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
+        WHEN ${HAS_PAUSED_GOAL} THEN NULL
++       WHEN ${WAITS_ON_ITS_OWNER} AND t.status <> 'needs_you' THEN NULL
+        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
+        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
+        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
+-- 
+2.43.0
+
