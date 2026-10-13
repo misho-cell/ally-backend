@@ -1,3 +1,4 @@
+import { runLatencyLine } from '../../services/runLatency';
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import { exportConversation } from '../../services/conversationExport.service';
@@ -1040,6 +1041,7 @@ threadsRouter.post(
        * message would be a worse bug than a late one.
        */
       const storedOnArrival = await keepUserMessage(userId, threadId, message);
+      const storedAt = Date.now();
       const stopCannotWait = looksLikeStopRequest(message);
       if (!stopCannotWait) {
         /**
@@ -1078,6 +1080,7 @@ threadsRouter.post(
         runId,
         asGoal: as_goal === true,
         storedOnArrival,
+        storedAt,
         lastFreeAnswer: graceNote !== null,
         inReplyToMessageId:
           typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
@@ -1186,6 +1189,8 @@ export interface OwnerRun {
   readonly lastFreeAnswer?: boolean;
   /** #1321: the device the owner asked from; absent for a resumed run. */
   readonly askedFrom?: string | null;
+  /** 958: when the owner's message was stored; absent for a resumed run. */
+  readonly storedAt?: number;
 }
 
 /**
@@ -1207,6 +1212,7 @@ export function runOwnerMessage(run: OwnerRun): void {
     needsTitle,
     lastFreeAnswer = false,
     askedFrom = null,
+    storedAt,
   } = run;
   const runStartedAt = new Date();
 
@@ -1328,6 +1334,10 @@ export function runOwnerMessage(run: OwnerRun): void {
         emitRunError(userId, threadId, runId, result.reply);
         void markRunFailed(userId, threadId, result.language ?? 'ka');
         return;
+      }
+      if (storedAt !== undefined) {
+        // eslint-disable-next-line no-console
+        console.log(runLatencyLine(runId, threadId, storedAt, runStartedAt.getTime(), Date.now()));
       }
       emitRunComplete(userId, threadId, runId, {
         reply: result.reply,
