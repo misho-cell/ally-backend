@@ -513,6 +513,45 @@ export async function countHeldUpdates(userId: string): Promise<number> {
 }
 
 /**
+ * The frontend's 13 Oct ask (FIXED2 „later" list): every update that was put
+ * off, with the moment it comes back. Reads only, like the count beside it —
+ * opening the „later" list is not reading the due cards. The same WHERE as the
+ * count, so the list and the number never disagree; only rows still ahead.
+ */
+export const HELD_LIST_MAX = 50;
+
+export interface HeldUpdateRow extends PendingUpdate {
+  readonly release_at: string;
+}
+
+export async function listHeldUpdates(userId: string): Promise<HeldUpdateRow[]> {
+  const result = await query<HeldUpdateRow>(
+    `SELECT p.id, p.task_id, p.kind, p.payload, p.release_at
+       ${HELD_AND_STILL_REAL}
+       AND p.release_at > NOW()
+     ORDER BY p.release_at ASC, p.id ASC
+     LIMIT $3`,
+    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, HELD_LIST_MAX],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/**
+ * „Bring back now": a put-off update becomes due at once. Only the caller's own
+ * row, and only one still being held for later; false otherwise (the route's 404).
+ */
+export async function bringUpdateBackNow(userId: string, updateId: number): Promise<boolean> {
+  const result = await query(
+    `UPDATE pending_updates SET release_at = NOW()
+     WHERE id = $1 AND user_id = $2 AND status = 'held' AND release_at > NOW()`,
+    [updateId, userId],
+    QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
  * The frontend's ask for #387 (3 October): a count beside the sidebar link, so
  * „kept for later" can be found the next day without opening the screen.
  * getPendingUpdates cannot be asked, because asking it releases and marks what
