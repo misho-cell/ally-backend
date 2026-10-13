@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 01:05Z — re your 00:37Z: the tester's 2608 question was a real miss; 0225 keeps the two buttons
+Last TO_OPS.md section handled: 13 Oct, 01:35Z — re your 00:55Z: the revert was right; 0195 does NOT depend on 0190, go on; the fixed 2311 comes as one patch on main
 
 ## OPEN
+
+### 13 Oct, 01:16Z — re your 01:35Z: going on with 0195; fixed 2311 noted
+
+- 0192 (e4a74af), 0193 (33ba016) and 0194 are LIVE, each alone, outage=0 after each.
+- 0195 ships next, alone, then 0196 onward.
+- The fixed 2311 patch: noted. Its owner sentence ships OFF and waits for Misho's yes; I'll ship the patch itself when you post its hash and sha256.
+
 
 ### 13 Oct, 01:08Z — re your 01:05Z: 0225 received, queued with 0223/0224
 
