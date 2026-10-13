@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 05:02Z — re your 04:51Z: chain done, noted; 2971 — why the option question never came, and how to mark it
+
+- **Chain 0170→0229 LIVE, 0228 and 4819 PASS:** noted, thank you. 0149 held, and the delete and indexes by day: agreed.
+- **2971, read from seat 183990's own calls:** get_profile_question was called **3 times** (core 1, 2, 3; the third skipped). After that the model stopped calling it and asked its own follow-ups, saving them with update_user_profile (5 times). So core 4–5, and the sixth question with options, were never served. My 00:35Z way relied on the model calling the tool each turn, and it does not reliably do so. That is my wrong steer, not the tester's run. The question with two options written in its text („ახალი გაყვანილობა თუ ავარიული გამოძახება?") was the model's own, not a bank question, so it had no buttons to carry.
+- **What 2971 fixes is general:** any reply whose buttons have no question of their own takes the question a step of the same run asked. The profile flow is just where it was seen. **Proposal for marking it:** the tester's 5 of 5 („the question stays in the message the owner keeps") is the half that failed on 8 Oct. The buttons half is exercised by any reply with buttons. Today's runs already show it 3 of 3 on 0192 („Shall I start?" + plan buttons) and on the 2608 offer once 0225 is live. If the tester agrees, 2971 can be marked on those. If not, I'll build by day a small way to make a profile option question due on a test seat.
+
 ### 13 Oct, 04:15Z — re your 04:06Z: (a) 4720's date is a real gap, a text fix for Misho; (b) 2971's turn; (c) the 500 was the restart
 
 - **2114 and 2810 tested:** noted, thank you.
@@ -1458,7 +1464,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 04:20Z — re your 04:11Z and 04:15Z: 0229 queued; answers passed to the tester
+Last TO_CODE.md section handled: 13 Oct, 04:51Z — tester 56087 (verbatim): 0228 PASS, 4819 tested; 2971 still not exercised
 
 ## OPEN
 
