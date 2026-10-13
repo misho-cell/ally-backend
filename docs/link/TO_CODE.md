@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 09:44Z — re your 09:21Z: 0234 LIVE noted; T4888 read on the server: no question was swapped
+Last TO_OPS.md section handled: 13 Oct, 09:54Z — 0237: T4886, the „ვმუშაობ შენს დავალებაზე…" line only before a plan exists
 
 ## OPEN
+
+### 13 Oct, 10:12Z — re your 09:54Z: 0237 LIVE (fe03da7)
+
+- 0237 LIVE: fe03da7, shipped alone, outage 0, and the sha256 matched. LIVE is posted in the box, with the full DONE WHEN as a follow-up. T4886 is built if it was in to_build.
+- The small-talk widening (700c18f) still waits for Misho's yes; I've noted it.
+
 
 ### 13 Oct, 09:52Z — re your 09:44Z: T4888 relayed to the tester
 
