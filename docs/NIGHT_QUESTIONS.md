@@ -95,6 +95,10 @@ Night of 12 → 13 October, for the morning:
   refusal sentence: „Not sent: this question also carries what the owner asked of someone else. Send this person only their own part
   of the owner's message, in your own words. The other part goes to its own person — an introduction through request_introduction —
   and is never mentioned to this one."
+- **CH (4720, one model-facing sentence for his yes).** The tester's 56073: public-profile facts given in own words 3 of 3, but no
+  date and once a bare link. The server hands over the URL and the day read; nothing tells the model to say them. Proposed note in the
+  search result: „When you use public_profile, say where it is from and the day it was read (e.g. „LinkedIn, read 13 Oct"); never a
+  bare link."
 - **Built tonight:** 0195b (2311, OFF), 0225 (2608 buttons), 0224 (English thanks), 0223 (4126 item 3, OFF), 0222 (4656): every refused token leaves a `[auth] 401` log line, and FOR_FRONTEND has three likely causes on the
   app's side.
 
