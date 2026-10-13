@@ -1,0 +1,102 @@
+From d0834df7e2dd65fc1d6e547c281aacd06299bc04 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 03:46:20 +0000
+Subject: [PATCH] 2114 (tester 56030): a time-of-day greeting typed without
+ care is still one
+
+"dilamshvidobis" (no space, final "a" missing) was not recognized, so
+the full model ran (~35 s, 3 tools), copied the typo and pitched. Both
+greeting matchers now take the space and the final letter as optional,
+and the server's echo writes the same words spelled right. No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aGreetingIsAnsweredInKind.test.ts         | 26 +++++++++++++++++++
+ src/services/greetingTurn.ts                  |  2 +-
+ src/services/serverGreeting.ts                | 10 +++++--
+ 3 files changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts b/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts
+index 3339534..a68c074 100644
+--- a/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts
++++ b/src/services/__tests__/aGreetingIsAnsweredInKind.test.ts
+@@ -1,3 +1,4 @@
++import { isBareGreeting } from '../greetingTurn';
+ import { greetingText, MIRRORED_GREETING_ON, timeOfDayGreeting } from '../serverGreeting';
+ 
+ /** 2114 (box 54162): „დილა მშვიდობისა" was answered „გამარჯობა". */
+@@ -44,3 +45,28 @@ describe('a time-of-day greeting is answered in kind', () => {
+     expect(timeOfDayGreeting('გამარჯობა')).toBeNull();
+   });
+ });
++
++/**
++ * The tester's 56030: „დილამშვიდობის" (no space, final „ა" missing) was not
++ * recognized; the full model ran and copied the typo. It is a greeting, and
++ * the same words come back spelled right.
++ */
++describe('a time-of-day greeting typed without care', () => {
++  it.each(['დილამშვიდობის', 'დილა მშვიდობის!', 'საღამომშვიდობისა', 'დილა  მშვიდობისა'])(
++    '„%s" is a bare greeting',
++    (line) => {
++      expect(isBareGreeting(line)).toBe(true);
++    },
++  );
++
++  it('is echoed spelled right', () => {
++    expect(timeOfDayGreeting('დილამშვიდობის')).toBe('დილა მშვიდობისა');
++    expect(timeOfDayGreeting('საღამო მშვიდობის!')).toBe('საღამო მშვიდობისა');
++    expect(timeOfDayGreeting('დილა მშვიდობისა!')).toBe('დილა მშვიდობისა');
++  });
++
++  it('leaves other words alone', () => {
++    expect(isBareGreeting('დილამშვიდობის, ნოტარიუსი მომიძებნე')).toBe(false);
++    expect(timeOfDayGreeting('Good morning!')).toBe('Good morning');
++  });
++});
+diff --git a/src/services/greetingTurn.ts b/src/services/greetingTurn.ts
+index 751a5ea..682d4aa 100644
+--- a/src/services/greetingTurn.ts
++++ b/src/services/greetingTurn.ts
+@@ -17,7 +17,7 @@ export const GREETING_MAX_TOKENS = 350;
+ // 2410 (tester 49243): „gamarjoba" in Latin letters took 25–31 s on the full
+ // turn, „გამარჯობა" 3.3 s. Georgian typed in Latin letters is the same hello.
+ const GREETING_ONLY_RE =
+-  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s+მშვიდობისა|gamarjoba|gagimarjos|salami|(?:dila|saghamo|sagamo)\s+mshvidobisa|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
++  /^\s*(?:გამარჯობა|გაგიმარჯოს|სალამი|ჰეი|(?:დილა|საღამო)\s*მშვიდობისა?|gamarjoba|gagimarjos|salami|(?:dila|saghamo|sagamo)\s+mshvidobisa|hi|hello|hey|good (?:morning|afternoon|evening)|привет|здравствуй(?:те)?|доброе утро|hola|buenas)(?:[\s,!.]+(?:როგორ\s+ხარ|rogor\s+(?:khar|xar|har)|how\s+are\s+you|как\s+дела|qué\s+tal))?[\s!.,?)😊🙂👋]*$/iu;
+ 
+ /**
+  * 3202 (Ninia's phone, 8 Oct 07:58Z, thread 44629): she typed „გამარჯობა with a
+diff --git a/src/services/serverGreeting.ts b/src/services/serverGreeting.ts
+index ed16d7e..185565f 100644
+--- a/src/services/serverGreeting.ts
++++ b/src/services/serverGreeting.ts
+@@ -73,8 +73,10 @@ export const MIRRORED_GREETING_ON = true;
+ 
+ const GEORGIAN_LETTER_RE = /\p{Script=Georgian}/u;
+ 
++const GEORGIAN_TIME_OF_DAY_RE = /^(დილა|საღამო)\s*მშვიდობისა?/u;
++
+ const TIME_OF_DAY_GREETING_RE =
+-  /^\s*((?:დილა|საღამო)\s+მშვიდობისა|good\s+(?:morning|afternoon|evening)|доброе\s+утро|добрый\s+(?:день|вечер)|buen(?:os|as)\s+(?:días|tardes|noches))/iu;
++  /^\s*((?:დილა|საღამო)\s*მშვიდობისა?|good\s+(?:morning|afternoon|evening)|доброе\s+утро|добрый\s+(?:день|вечер)|buen(?:os|as)\s+(?:días|tardes|noches))/iu;
+ 
+ /** The person's own time-of-day greeting, as typed, or null for any other hello. */
+ export function timeOfDayGreeting(greeting: string): string | null {
+@@ -83,7 +85,11 @@ export function timeOfDayGreeting(greeting: string): string | null {
+   const first = said.charAt(0);
+   // Georgian has no capitals in running text; upper-casing it gives Mtavruli.
+   const opening = GEORGIAN_LETTER_RE.test(first) ? first : first.toLocaleUpperCase();
+-  return opening + said.slice(1).replace(/\s+/gu, ' ');
++  // The tester's 56030: „დილამშვიდობის" was not recognized, and the model copied the typo. The
++  // same words come back spelled right.
++  return (opening + said.slice(1))
++    .replace(GEORGIAN_TIME_OF_DAY_RE, '$1 მშვიდობისა')
++    .replace(/\s+/gu, ' ');
+ }
+ 
+ function openingHello(
+-- 
+2.43.0
+

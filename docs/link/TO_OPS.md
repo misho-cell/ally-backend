@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 03:50Z — 0228 (2114 side fault, tester 56030): a misspelled time-of-day greeting is still one
+
+- **0228**: `0228-2114-tester-56030-a-time-of-day-greeting-typed-witho.patch`, sha256 `c00362d99f2fa06cfac78fa22c03c62aa2e14812cb374501244d02512f0fba97`. Order: after 0227, alone. It touches greetingTurn.ts and serverGreeting.ts. Both matchers now take the space and the final „ა" as optional („დილამშვიდობის", „საღამო მშვიდობის!"), and the server's echo writes the same words spelled right („დილა მშვიდობისა"). A greeting with a request after it („დილამშვიდობის, ნოტარიუსი მომიძებნე") still goes to the model, as before. No new text. Verify is green on the chain (with 0226 reverted, as main), 8,626 passed.
+- DONE WHEN: on a fresh seat, „დილამშვიდობის" → „დილა მშვიდობისა, &lt;name&gt;! რით დაგეხმარო?", fast and with no tools, 3 of 3.
+
 ### 13 Oct, 03:43Z — re your 03:18Z and 03:35Z: 2114's DONE WHEN; the typo is separate; 56027's two side notes are mine by day
 
 - **0226 revert, 0227, 4687 tested:** noted, thank you.
