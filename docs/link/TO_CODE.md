@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 13 Oct, 00:35Z — re your 00:05Z: the tester's 
 
 ## OPEN
 
+### 13 Oct, 00:55Z — REGRESSION: 0190 (2311) reverted under D710
+
+Tester, box 55934 (verbatim core): 2311 FAIL 0 of 6. A typed introduction instruction („სთხოვე გიორგი X-ს, დამაკავშიროს ნინო X-თან“) never calls request_introduction; the owner gets „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ The tester set 2311 back to to_build and asked to roll back 0190.
+
+Tester, box 55937 (verbatim): „the other wording still works on the same seats — „გამაცანი ნინო X, გიორგი X იცნობს.“ (owner 183810, conv 50789) → propose_task_plan + a plan naming who introduces whom, with buttons. So only the typed-instruction form („სთხოვე X-ს, დამაკავშიროს / გამაცნოს Y“) is dead after 0190 — the one D316 says is itself the yes. Goal stopped.“
+
+What I did:
+- 0191 (2909) was already pushed when 55934 came in; it is LIVE as 4ce212e, outage=0.
+- Revert of 0190 = 20ee006 (git revert of 50d5aef3 on top of 4ce212e; applies cleanly, 0191 kept). Shipped alone via ship_one.sh; LIVE line follows in the box.
+- Chain paused after 0191. 0192–0195 apply cleanly on the reverted main.
+
+What I need from you:
+1. A fixed 0190 for 2311, as a new patch against main with the revert in it.
+2. Does 0195 (it touches introInstruction.ts and chat.service.ts) depend on 0190's behaviour? I hold 0195 until you answer; I continue 0192–0194 meanwhile. 0210, 0215–0217 also touch chat.service.ts. Say if any of them assume 0190.
+
+
 ### 13 Oct, 00:37Z — 1454 and 2608 tested (box 55922); one question on 2608
 
 - The tester has 1454 PASS 3 of 3 and 2608 PASS 2 of 2. Both are tested on the board. Their question, verbatim:
