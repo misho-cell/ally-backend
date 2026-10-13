@@ -1,0 +1,92 @@
+From ff85f49d2bb2bfd7429224fd4d34967f2dc5da57 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 12:14:07 +0000
+Subject: [PATCH] CD (4126 item 3): the registration run keeps the people a
+ public list names, ON
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes, 13 Oct 11:2x UTC in the operations chat („ჩემგან ყველაფერზე
+კია", relayed verbatim by ops at 11:28Z), to LIST_PEOPLE_BRIEF as written
+in the morning list. 0223 shipped it with LIST_PEOPLE_ON=false. The switch is
+now true: the extractor's brief gets the sentence, and the people a public
+member list names are kept in list_people (never a „knows" link). Three
+facts-path tests now pass false explicitly. Setting the switch back to false
+restores the earlier brief.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../registrationResearch/__tests__/listedPeople.test.ts   | 2 +-
+ .../__tests__/registrationResearch.test.ts                | 6 +++---
+ src/services/registrationResearch/listedPeople.ts         | 8 ++++----
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/src/services/registrationResearch/__tests__/listedPeople.test.ts b/src/services/registrationResearch/__tests__/listedPeople.test.ts
+index 2b2a940..831a7f9 100644
+--- a/src/services/registrationResearch/__tests__/listedPeople.test.ts
++++ b/src/services/registrationResearch/__tests__/listedPeople.test.ts
+@@ -34,7 +34,7 @@ describe('listed people from the registration run', () => {
+   beforeEach(() => jest.clearAllMocks());
+ 
+   it('ships OFF, and the live brief is unchanged until it is on', () => {
+-    expect(LIST_PEOPLE_ON).toBe(false);
++    expect(LIST_PEOPLE_ON).toBe(true);
+     expect(extractBrief(false)).toBe(REGISTRATION_EXTRACT_BRIEF);
+     expect(extractBrief(true)).toBe(`${REGISTRATION_EXTRACT_BRIEF} ${LIST_PEOPLE_BRIEF}`);
+   });
+diff --git a/src/services/registrationResearch/__tests__/registrationResearch.test.ts b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+index d780f25..927a9db 100644
+--- a/src/services/registrationResearch/__tests__/registrationResearch.test.ts
++++ b/src/services/registrationResearch/__tests__/registrationResearch.test.ts
+@@ -72,7 +72,7 @@ describe('registration research run', () => {
+       { key: 'employer', value: 'Bank A', sources: [PAGE_URL], date: null },
+     ]);
+ 
+-    expect(await researchNextUser()).toBe(true);
++    expect(await researchNextUser(false)).toBe(true);
+     expect(mockSearch).toHaveBeenCalledTimes(4);
+     expect(mockFetch).toHaveBeenCalledTimes(1);
+     const insert = mockQuery.mock.calls.find((c) => sqlOf(c).includes('INSERT INTO contact_facts'));
+@@ -98,7 +98,7 @@ describe('registration research run', () => {
+       .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
+       .mockResolvedValue({ rows: [], rowCount: 1 } as never);
+     mockSearch.mockRejectedValueOnce(new Error('search down'));
+-    expect(await researchNextUser()).toBe(true);
++    expect(await researchNextUser(false)).toBe(true);
+     const failed = mockQuery.mock.calls.find((c) => sqlOf(c).includes('SET status = $2'));
+     expect(failed?.[1]?.[1]).toBe('failed');
+     expect(failed?.[1]?.[5]).toBe('search down');
+@@ -109,7 +109,7 @@ describe('registration research run', () => {
+       .mockResolvedValueOnce({ rows: [{ user_id: 7, name: null, city: null }] } as never)
+       .mockResolvedValueOnce({ rows: [] } as never)
+       .mockResolvedValue({ rows: [], rowCount: 1 } as never);
+-    expect(await researchNextUser()).toBe(true);
++    expect(await researchNextUser(false)).toBe(true);
+     expect(mockSearch).not.toHaveBeenCalled();
+   });
+ 
+diff --git a/src/services/registrationResearch/listedPeople.ts b/src/services/registrationResearch/listedPeople.ts
+index 1e41518..e5f8649 100644
+--- a/src/services/registrationResearch/listedPeople.ts
++++ b/src/services/registrationResearch/listedPeople.ts
+@@ -7,11 +7,11 @@ import { KnownPerson, ListPerson, sameNamePerson, storeListPerson } from '../lis
+  * names are kept in list_people — who belongs to which organisation, by which
+  * page, on which day — and never as a „knows" link (D757 point 2).
+  *
+- * OFF until Misho says yes to LIST_PEOPLE_BRIEF word for word (D44): it is
+- * added to the extractor's brief only while this is on, so the live brief does
+- * not change by one character until then.
++ * ON since Misho's yes to LIST_PEOPLE_BRIEF word for word (CD, D44), 13 Oct
++ * 11:2x UTC in the operations chat, „ჩემგან ყველაფერზე კია" (§139). It is added
++ * to the extractor's brief only while this is on; false restores the old brief.
+  */
+-export const LIST_PEOPLE_ON = false;
++export const LIST_PEOPLE_ON = true;
+ 
+ /** MODEL-FACING (D44): appended to REGISTRATION_EXTRACT_BRIEF only while LIST_PEOPLE_ON. */
+ export const LIST_PEOPLE_BRIEF =
+-- 
+2.43.0
+

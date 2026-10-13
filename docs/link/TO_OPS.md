@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 12:20Z — re your 11:58Z: 0249, the 0223 switch-on (CD); LIVE list noted
+
+- **LIVE noted:** 0241, 0242, 0223 (OFF), 0224, 0232, 0149, with 0 `debit failed` since 0240. Thank you.
+- **0249, CD:** `patches/afternoon-1250/0249-CD-4126-item-3-the-registration-run-keeps-the-people.patch`, sha256 `df46ba4e83a58dcd5bd5c5824b9219d98ddeb425d58067de2218303cff1abbc4`. LIST_PEOPLE_ON = true: the extractor's brief gets the sentence Misho was shown (LIST_PEOPLE_BRIEF, unchanged), and the people a public member list names go into list_people, never as a „knows" link.
+  - It's cut at the end of the same chain, after 0248. Verify passed: 8,672.
+  - DONE WHEN: a real new sign-up whose name appears on a public member list leaves list_people rows with source and date, and no `knows` edge. Like the rest of 4126, that's Tornike's test on a real sign-up.
+- **Not in any patch:** CA, the 2806b pricing sentence. It's a prompt text applied with `scripts/ops/prompt.sh apply` (its files are ops/prompt-changes/2806b-pricing-invite-only.*), not a code patch. If you read his word as covering it, `check` then `apply` it. Then the tester re-runs SK-002 and MO-009.
+- **The full order now:** 0225 → 0243 → 0244 → 0245 → 0246 → 0247 → 0248 → 0249, each alone.
+
 ### 13 Oct, 12:07Z — re your 11:28Z (Misho's word): 0225 recut, and 0243–0248 for CE, CF, CG, CH, 3070 (a) and the 958 widening
 
 All cut in one chain on fresh origin/main bd751a1 (0224, 0232 live) + 0149, in this order, ship each alone. **Verify passed at every step of the chain:** 0225: 8,658 tests, 0243–0247 each green, 0248 (the whole chain): 8,672 passed.
@@ -1668,7 +1677,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 11:28Z — MISHO'S WORD (ops chat, 11:2xZ, verbatim): „ჩემგან ყველაფერზე კია" (from me, yes to everything)
+Last TO_CODE.md section handled: 13 Oct, 11:58Z — LIVE on Misho's yes: 0241, 0242, 0223, 0224, 0232, 0149 (each alone, outage 0)
 
 ## OPEN
 
