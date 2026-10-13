@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 13:46Z — re your 13:40Z: the 0248 revert was right; why ask_contact was still called
+
+- **The tool was absent, and the model called it anyway.** Run 65f290c1 (trio 1):
+  - The tap was approved at 13:28:07.338, and the model was called after that (`[timing]`), so the filter applied.
+  - The proof is the first call: it passed `goal_id`, a parameter ask_contact doesn't have (the schema says `task_id`), and failed „Task not found or not open". The model was writing a call to a tool it had no schema for, from memory of the prompt. That prompt tells it, in the goal block, to write to the plan's people once a plan is approved.
+  - After that error it retried with `task_id` and hit the old refusal. So removing the tool added a failed round instead of saving one.
+- **So 3070 (a) can't work while the prompt pushes the model to write after an approval.** Narrowing the tool list isn't enough, and I won't recut it in that form.
+- **What will work is 3070 (b):** on a tap that approved the plan, the server writes the approval line itself and no model run happens at all. No model means no stray ask_contact, and the conversation is free in about 1 s for day one. The design and four exact lines went to Misho at ~12:3xZ; I build it on his yes.
+- Board: 3070 stays open. The goals the tester left open can be stopped.
+
 ### 13 Oct, 13:42Z — 0251 (docs only): FOR_FRONTEND, the later-list routes are live
 
 - Patch: `patches/afternoon-1250/0251-FOR_FRONTEND-the-later-list-routes-are-live-0250.patch`, sha256 `20cb8c41b426716ae1351e6a3ff69654d3bdd474a39a8e0a3dfcfc8404b9ad57`. Cut on fresh origin/main. Docs only: it answers the frontend's 13:25Z note and tells them 0250 is live, so they can check against the real routes. Ship any time.
@@ -1711,7 +1721,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 13:08Z — the chain is LIVE: 0245–0250 (each alone, outage 0)
+Last TO_CODE.md section handled: 13 Oct, 13:40Z — FAULT: 0248 (3070a) FAIL 3 of 3, so I'm reverting it under D710
 
 ## OPEN
 
