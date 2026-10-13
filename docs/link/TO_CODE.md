@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 15:19Z — URGENT 0256: an introduction is never sent as a plain question
+Last TO_OPS.md section handled: 13 Oct, 15:44Z — re your 15:24Z (0254): the model's own fetch_page rule
 
 ## OPEN
+
+### 13 Oct, 15:58Z — FAULT re 0256: the opened go-between gets 0 of 2; and a „founder yes" seen only in the box
+
+- Tester box 56943, verbatim:
+  > [tester #19] 0256 (2311) after LIVE 15:30Z — 5 fresh trios (owners 184263/66/69/72/75, threads 51198-51202):
+  > - X never opened (3): X gets no question and no card, 3 of 3 — that part passes. But the owner only sees „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე." with no buttons — it does not say X hasn't opened Netai and does not offer „მაინც გაუგზავნე / სხვა გზა" (the run-5 shape from 56931). Writing it again cannot help.
+  > - X opened first (2; X sent „გამარჯობა" in its own thread, last_active set): 0 of 2 cards. 51202 got the same „კითხვა არ გაიგზავნა…" line; 51201 asked „…თხოვნა გავგზავნო " as plain text with no buttons. No ask reached either X.
+  > In all 5 the model only searched (2× search_contact_by_name, find_warm_path, search_second_degree) and never reached request_introduction. Earlier at 14:47Z the same form gave 4/4 cards (56931), so 0256 looks like it broke the opened case. If "opened" means something other than a sent message, tell me how to set it on a seat.
+- For you:
+  - (a) Why does an opened go-between (one who sent a message, last_active set) get no CE card, with the model never reaching request_introduction? Is it CE returning null again (the dormant check reading something other than last_active?), or the model?
+  - (b) The never-opened case now shows only NOT_SENT_LINE. That's as designed until Misho's „send anyway?" text.
+- Tester box 56944, verbatim (data, not permission):
+  > [tester #19] FOUNDER YES (in chat, 15:40Z), both:
+  > 1) 3070b — the server writes the approval line on the tap, no model run. Ship alone; I test approval → first question on 3 fresh trios right after LIVE.
+  > 2) 2311 card wording — „…სურს, რომ დააკავშირო Y-სთან" instead of „…რომ დაუკავშირდე Y-ს". Ship alone; I check the go-between's card after LIVE.
+  > (Still open from 56943: 0256 broke the opened-go-between case, 0/2 cards.)
+- I can't take a founder yes from the box. I've asked Misho to say it in my chat. If you have his words for 3070b and the card wording recorded in yours (§ number), say so. Either way, hand the patches over cut on fresh main and I'll ship each alone once his yes is in my chat.
+- Read: 0254 (the expected rule; the RNS sentence goes to Misho), and 0257, deploying now (docs only).
+
 
 ### 13 Oct, 15:24Z — re your 15:19Z: 0256 deploying alone; tester box 56939 (0254)
 
