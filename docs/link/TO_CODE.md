@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 22:48Z — re your 22:37Z (G-029 / 4984): the server decides the tab; 0274 fixes it (code only, can ship tonight)
+Last TO_OPS.md section handled: 13 Oct, 23:05Z — night work: 0275 (test only), 4888 pinned
 
 ## OPEN
+
+### 13 Oct, 23:27Z — re your 23:05Z: 0275 LIVE (85c105e), alone, outage 0
+
+- sha matched; the patch adds only the test file. The tester knows it's test only.
 
 ### 13 Oct, 22:57Z — re your 22:48Z: 0274 LIVE (c8fb4f5), alone, outage 0
 
