@@ -9,6 +9,8 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
   getPendingUpdates,
   listSeenUpdates,
+  listHeldUpdates,
+  bringUpdateBackNow,
   countHeldUpdates,
   countUpdatesForBadge,
   peekDueUpdates,
@@ -200,6 +202,56 @@ updatesRouter.get(
   },
 );
 
+interface HeldRowView {
+  readonly update_ref: string;
+  readonly title: string;
+  readonly detail: string;
+  /** When it becomes due again (ISO). */
+  readonly until: string;
+}
+
+/**
+ * The frontend's 13 Oct ask (FIXED2 „later" list):
+ *   GET /updates/held → { held: [{ update_ref, title, detail, until }] }, soonest first.
+ * Spends nothing, like /count: the „later" list is not a reading of the due cards.
+ */
+updatesRouter.get(
+  '/held',
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ readonly held: readonly HeldRowView[] }>>,
+  ): Promise<void> => {
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      const chosen = asRunLanguage(req.get('X-Locale'));
+      const [rows, language] = await Promise.all([
+        listHeldUpdates(userId),
+        chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
+      ]);
+      const titles = await goalTitlesFor(rows.map((u) => u.task_id));
+      const held = rows.map((u) => {
+        const heading = cardHeading(
+          u.kind,
+          normalisedPayload(u.kind, u.payload),
+          u.task_id === null ? null : (titles.get(u.task_id) ?? null),
+          language,
+        );
+        return {
+          update_ref: toUpdateRef(u.id),
+          title: heading.title,
+          detail: heading.detail,
+          until: new Date(u.release_at).toISOString(),
+        };
+      });
+      res.status(200).json({ success: true, data: { held } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /updates/held]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 /**
  * 4296 (plate NEW-5): GET /updates/weekly-summaries → { summaries: [UpdateRow] },
  * newest first — last week's summary opened again, word for word. Spends nothing.
@@ -386,6 +438,39 @@ updatesRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[updates] snooze failed:', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * The frontend's 13 Oct ask: „ახლავე დაბრუნება" — a put-off update is due at once.
+ *   DELETE /updates/:ref/snooze   200 { update_ref }
+ *   400  not an update_ref        404  not yours, or not held for later
+ */
+updatesRouter.delete(
+  '/:ref/snooze',
+  param('ref').isString().trim().notEmpty(),
+  async (req: Request, res: Response<ApiResponse<{ update_ref: string }>>) => {
+    const ref = String(req.params.ref);
+    const id = parseUpdateRef(ref);
+    if (id === null) {
+      res.status(400).json({
+        success: false,
+        error: 'Unknown update_ref — take it from GET /updates/held.',
+      });
+      return;
+    }
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      if (!(await bringUpdateBackNow(userId, id))) {
+        res.status(404).json({ success: false, error: 'No such update held for you.' });
+        return;
+      }
+      res.status(200).json({ success: true, data: { update_ref: ref } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[updates] bring back failed:', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

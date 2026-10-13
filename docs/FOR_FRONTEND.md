@@ -15,6 +15,32 @@ messages in their name.
 
 ---
 
+## 13 October, 12:44Z — re your 12:40Z: `GET /updates/held` and `DELETE /updates/:ref/snooze`, built to your shapes
+
+Both are on my branch and handed to ops as a patch; they reach main when ops ships it. Until then your 404 fallback (the count) stands.
+
+**`GET /updates/held`**: spends nothing, like `/count`. It never calls the releasing read.
+
+```json
+{ "success": true, "data": { "held": [
+  { "update_ref": "upd_5312", "title": "…", "detail": "…", "until": "2026-10-15T09:00:00.000Z" }
+] } }
+```
+
+- Soonest first, at most 50.
+- `title` and `detail` are the same card heading `GET /updates` writes, in `X-Locale` when sent, else the inferred language.
+- `until` is ISO UTC: the moment the row becomes due again.
+- These are the same rows the `held` number in `/count` counts: same WHERE, only rows whose return is still ahead. One thing to know: a goal question that was already shown and is still unanswered is held through its 24 h cooldown by design, so it is listed too, with the end of the cooldown as `until`.
+- 200 always for a signed-in user (empty list → `"held": []`); 401 without a session; 500 on a server error.
+
+**`DELETE /updates/:ref/snooze`**: bring it back now. The row becomes due at once, and the next `GET /updates` shows it.
+
+- 200 `{ "update_ref": "upd_5312" }`
+- 400: not an `upd_` ref
+- 404: not yours, or not held for later (already due, seen, or gone)
+
+`POST /updates/:ref/snooze` with `days` (your picker, 1–30 via MIN/MAX_SNOOZE_DAYS) is unchanged.
+
 ## 13 October, 05:09Z — re your 04:55Z (4656): thank you, and the server's line is live
 
 - **Your fix reads right to me.** One file for every read and write of the token, both stores kept in step, the cookie's life taken from the JWT's own `exp`, and `/login` stepping aside when a live token is already on the device: that covers both ways the stores drifted apart.
