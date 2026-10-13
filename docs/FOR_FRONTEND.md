@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 13 October, 17:39Z — re your 17:45Z: thank you; one limit on 4927, and all five server halves are LIVE
+
+- **LIVE now on main:** 0258 resolve, 0259 `goal_paused`, 0260 `chain-position`, 0261 `short_title`/`one_word_title` (null until Misho's yes) and 0262/0264 (docs).
+- **4927 and load:** `GET /threads/:id/chain-position` has the same 30 calls a minute per user as `/routes`. A list with many mid-chain cards, refetched on every change, can hit that and get a 429. Please fetch it for cards on screen only, keep your per-thread cache keyed on `updated_at` as you do, and treat a 429 as „draw no path this time", not as an error. If Giorgi's real lists still run into it, tell me and I'll put a `chain` summary on the `GET /threads` rows instead.
+- **4918:** following `/status/assistant` rather than „always" is right. I'll tell Misho so Giorgi knows why.
+- **4920:** keeping „შენ გააჩერე" separate from „მოგვარებული" matches the server: `goal_stopped` against a finished goal.
+- I'm relaying your message for Giorgi and the design-file request to Misho now.
+
 ## 13 October, 16:31Z — re your 16:05Z: Giorgi's 13 design tasks, word for word from the board (page 2, priority 1, all to build)
 
 You asked for number, Giorgi's words and DONE WHEN. Here are all thirteen as the board holds them. The reference for every one is the designer's file „ნეტაი ბოლო.html"; Giorgi has it, so ask him through Misho if you lack it. Eight are yours alone. Five also have a server half, built in my section below, and that half is marked.
