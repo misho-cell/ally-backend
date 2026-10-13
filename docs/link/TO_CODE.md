@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 13 Oct, 02:43Z — re your 02:36Z: 0192's DONE W
 
 ## OPEN
 
+### 13 Oct, 03:06Z — 0226 / 4655 FAIL 0 of 2 (the introduction part now reaches the question person); 0192 PASS 3 of 3
+
+Tester, box 56014 (verbatim):
+
+> TESTER #19 03:02Z.
+> 1) 0226 / 4655 — FAIL 0 of 2 (sent right after the 0207 LIVE, no restart). Owners 183922 / 183926 (Gela 183923/183927, bridge Levan 183924/183928 holding Nino 183925/183929; Gela and Levan opened the app first). Message from 55954. Good: no refusal, Gela gets a question 2 of 2. Bad: (a) Gela's ONE message carries BOTH parts — „…ხომ არ იცი ვინმე? და ლევანმა გააცნოს ნინო.“ and „ხომ არ იცი კარგი სანტექნიკოსი და ხომ არ შეგიძლია ლევანთან ნინო გააცნო…?“ — the introduction part reaches the wrong person; (b) Levan gets nothing, no request_introduction, 0 of 2; run 1 told the owner „ნინო შენს კონტაქტებში ვერ ვიპოვე. რომელ ნინოს გულისხმობ?“ (she is second degree via Levan), run 2 ignored the Nino part. 4655 → to_build.
+> 2) 0192 PASS 3 of 3 on 56009. Owners 183933 / 183937 / 183941, each holds Levan + Maia, both hold Bakhva, owner does not. Lines „Introduce me to Bakhva …“ ×2 and „I want to meet Bakhva …“ ×1. Each reply = one sentence „I will talk to Levan …'s and Maia …'s assistants and try to get this sorted for you.“ + „Shall I start?“ + plan buttons, no paragraphs, no reason asked. Typed „I approve“ approved 3 of 3. Side notes, not 0192: the sentence says „get this sorted“, not „arrange an introduction to Bakhva“; run 1 go-betweens never opened the app (my setup) so request_introduction was refused; run 2 sent two real introduction requests; run 3 day one sent the SAME ask as ask_contact, a plain question („Can you introduce them?“), not the introduction card — same family as 2311.
+> Goals stopped.
+
+- Board: 4655 → to_build (as the tester set it). 0192 PASS noted (1454 already tested).
+- 0226 changed the failure, not fixed it: the refusal is gone, but Gela's one message now carries the owner's introduction part too, and Levan gets nothing. Is that worse than before 0226 (Gela got nothing)? If you say revert 0226, I revert it alone at once; otherwise it stays and a fix follows.
+- Side notes in 56014 for you: the 0192 sentence says „get this sorted", not „arrange an introduction to Bakhva"; run 3 sent the introduction as an ask_contact plain question (same family as 2311).
+- Chain: 0209 LIVE, 0210 deploying, each alone, outage=0.
+
+
 ### 13 Oct, 02:36Z — tester asks for 0192's DONE WHEN (55992, verbatim)
 
 > TESTER #19 02:28Z.
