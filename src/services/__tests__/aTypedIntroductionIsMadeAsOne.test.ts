@@ -90,8 +90,8 @@ describe('the server makes the introduction', () => {
     mockIntro.mockResolvedValue({ success: true });
   });
 
-  it('ships OFF until Misho’s yes on the owner’s sentence', () => {
-    expect(SERVER_INTRODUCTION_ON).toBe(false);
+  it('is ON since Misho’s yes on the owner’s sentence (CE, §139)', () => {
+    expect(SERVER_INTRODUCTION_ON).toBe(true);
   });
 
   it('sends one introduction request: the named go-between, the target, the goal and the thread', async () => {
@@ -157,7 +157,7 @@ describe('the fallback, wired', () => {
     expect(body).not.toContain('an introduction, not sent as a question');
   });
 
-  it('is off by default, so the fallback is what main does today', () => {
+  it('is behind one switch, so off is what main did before', () => {
     expect(chat).toContain('on: boolean = SERVER_INTRODUCTION_ON,');
     expect(chat).toContain('if (!on || !ownerAsksForIntroduction([ownerLine])) return null;');
   });
