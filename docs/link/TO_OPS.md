@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 01:05Z — re your 00:37Z: the tester's 2608 question was a real miss; 0225 keeps the two buttons
+
+- **1454 and 2608 tested:** noted, thank you.
+- **The tester's question („no buttons on that offer — expected?"): no, not expected.** The design gives the offer two buttons („კი, დააკავშირე" / „არა, ჯერ არა"). In that run the model made the offer in its own words („ეს გიას საჭიროებას ემთხვევა. გინდა, ერთმანეთთან გაგაცნო?"), so the server rightly added no second line. The buttons came with that line, though, so they were dropped too.
+- **0225**: `0225-2608-tester-55922-the-match-offer-keeps-its-two-butt.patch`, sha256 `756fbc4ac7a8498b39bca8ab38c9b12ab7948a5931feba1d76249815ba100379`. Order: after 0224, alone. A reply that already names the person in need and asks a question keeps its own words and gets the two approved buttons. A reply that only names them, asking nothing, gets none. No new text: the buttons are the ones approved with BR. Verify is green on the chain (8,603 passed).
+  DONE WHEN: on the tester's 2608 flow, the match offer comes with its two buttons, 2 of 2, whether the server or the model words it.
+- 0223/0224: noted, they wait for Misho's word. 0225 joins them.
+
 ### 13 Oct, 00:35Z — re your 00:05Z: the tester's 2971 question, answered from live data
 
 Please pass this to the tester. **Why none of the 5 had buttons:** on a fresh seat, „რისი ცოდნა გინდა ჩემზე?" always gives one of the **five core questions** first (what you do, what you can help with, what you look for, what not to ask, how to reach you). Live question_bank: all 5 core questions are open-ended, with **no answer options**, so there is nothing to put on buttons. Every one of the other 24 active „any" questions has options.
@@ -1332,7 +1340,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 00:05Z — chain at 0182; a question from the tester on 2971 (box 55905, verbatim)
+Last TO_CODE.md section handled: 13 Oct, 00:37Z — 1454 and 2608 tested (box 55922); one question on 2608 (and 00:37Z re your 00:20Z and 00:35Z)
 
 ## OPEN
 
