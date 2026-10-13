@@ -1,0 +1,57 @@
+From 7e85b948e5b541cb9f43afb754e404106e5db2e7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 14:13:27 +0000
+Subject: [PATCH] CG off again (D710): Gela's message still carried Levan's
+ introduction
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 56802 (13 Oct 13:03Z, 0 of 2 with 0245 live): Gela's message
+read „…კარგ სანტექნიკოსს ხომ არ იცნობ? ასევე, ტესტ ორი თხოვნა-ს უნდა, რომ
+ლევანმა ნინოს გააცნოს.", so the owner's introduction wish reached a third
+person. That is the leak the own-part check exists to stop, and the one 0226
+was reverted for. OWN_PART_ONLY_ON goes back to false, and the guard behaves
+as it did before 0245. The check is to be fixed and tested before it comes
+back.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts | 4 ++--
+ src/services/introInstruction.ts                              | 4 +++-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+index ade458b..5161bee 100644
+--- a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
++++ b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+@@ -11,8 +11,8 @@ const GELA = 'გელა გამოგონილი';
+ const LEVAN = 'ლევან საცდელი';
+ 
+ describe('each person gets only their own part (4655)', () => {
+-  it('is ON since Misho’s yes (CG, §139); with the split off, the guard behaves as before', () => {
+-    expect(OWN_PART_ONLY_ON).toBe(true);
++  it('is OFF again (D710, 56802); with the split off, the guard behaves as before', () => {
++    expect(OWN_PART_ONLY_ON).toBe(false);
+     expect(askIsTheIntroduction(OWNER, GELA, false)).toBe(true);
+     expect(questionCarriesAnotherPart(OWNER, GELA, 'და ლევანმა გააცნოს ნინო', false)).toBe(false);
+   });
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index bf4f461..a1572c4 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -52,7 +52,9 @@ function nameStem(name: string): string | null {
+  * ON since Misho's yes on that check's refusal sentence (CG), 13 Oct 11:2x UTC
+  * in the operations chat, „ჩემგან ყველაფერზე კია" (§139).
+  */
+-export const OWN_PART_ONLY_ON = true;
++// OFF again (D710), 13 Oct 14:1xZ: the tester's 56802 found Gela's message still
++// carrying Levan's introduction 2 of 2 with it on — the leak the check exists to stop.
++export const OWN_PART_ONLY_ON = false;
+ const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
+ 
+ /** The owner's words cut into each person's part (sentences, and parts when split). */
+-- 
+2.43.0
+
