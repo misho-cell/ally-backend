@@ -1,0 +1,165 @@
+From 6bcd845d97e4c206f2a7022cf2206729eb897384 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 07:30:09 +0000
+Subject: [PATCH] =?UTF-8?q?4657:=20the=20name=20search=20carries=20the=20l?=
+ =?UTF-8?q?ikely=20employer=20too=20(Misho's=20yes,=20=C2=A7138)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 56332: three runs asked where a contact works through
+search_contact_by_name alone. likely_employer and its note ride only with
+get_contact_full_profile, so the note never reached them, and one English
+answer said the label's company word as certain („saved in your contacts as
+working at PwC"). The name search now adds likely_employer to each of its
+first three rows that have no employer of their own, and the same approved
+note once for the result. The note's text is unchanged word for word.
+LIKELY_EMPLOYER_ON=false switches both places off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                |  6 +++
+ src/services/chat.service.ts                  |  4 +-
+ ...anyWordInTheLabelIsALikelyEmployer.test.ts | 34 +++++++++++++++
+ src/services/tools/likelyEmployer.ts          | 42 +++++++++++++++++++
+ 4 files changed, 85 insertions(+), 1 deletion(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 4271fb6..57a6fce 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6322,3 +6322,9 @@ question another member asked the user"; `TOOL_TEXTS.answer_member_question` in
+ The admin session (ADMIN_TOKEN_TTL in src/services/auth.service.ts) raised from 12h to 100h, temporarily, on his direct word.
+ Cost, as written beside the constant: no refresh and no revocation list, so a stolen admin token is usable for 100 hours.
+ Tokens issued before the deploy keep their 12h; it goes back to 12h when he says so.
++
++**§138 — 13 October ~07:20 UTC, Misho in the code session's chat: „4657 კი, დაამატე"**
++To the question put at 07:14Z: carry 4657's likely_employer field and its already-approved note (LIKELY_EMPLOYER_NOTE, §132.2, unchanged
++word for word) on search_contact_by_name's result too, not only on get_contact_full_profile. The tester's 56332 runs used the name search
++alone and one English answer said the label's company word as certain. Model-facing (D44): what the model is given changes, the text does not.
++Undo: LIKELY_EMPLOYER_ON=false switches both places off; or drop the one withLikelyEmployers call in chat.service.
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 98e8702..7ba27a3 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -64,6 +64,7 @@ import { createSaveContactInsightTool } from './tools/save_contact_insight';
+ import { noteIntroductionSentAsAQuestion } from './introductionShaped';
+ import { lookupContactByPhone } from './tools/lookupContactByPhone';
+ import { searchContactByName } from './tools/searchContactByName';
++import { withLikelyEmployers } from './tools/likelyEmployer';
+ import { searchByTag } from './tools/searchByTag';
+ import { searchByInsight } from './tools/searchByInsight';
+ import { searchSecondDegree } from './tools/searchSecondDegree';
+@@ -9120,7 +9121,8 @@ async function executeToolCall(
+       );
+       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
+       if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
+-      return notInThePhonebook(byName) ? { ...byName, look_further: LOOK_ONE_RING_OUT } : byName;
++      if (notInThePhonebook(byName)) return { ...byName, look_further: LOOK_ONE_RING_OUT };
++      return withLikelyEmployers(userId, byName);
+     }
+     case 'search_by_tag': {
+       const tagQuery = input['tag_query'] as string;
+diff --git a/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts b/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts
+index 402969b..73ed817 100644
+--- a/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts
++++ b/src/services/tools/__tests__/aCompanyWordInTheLabelIsALikelyEmployer.test.ts
+@@ -7,6 +7,7 @@ import {
+   LIKELY_EMPLOYER_NOTE,
+   LIKELY_EMPLOYER_ON,
+   likelyEmployerFor,
++  withLikelyEmployers,
+ } from '../likelyEmployer';
+ 
+ /**
+@@ -84,3 +85,36 @@ describe('likelyEmployerFor', () => {
+     await expect(likelyEmployerFor('501', '+995599000111', true)).resolves.toEqual({});
+   });
+ });
++
++describe('the name search carries it too (tester 56332, §138)', () => {
++  const FOUND = {
++    found: true,
++    results: [
++      { phone: '+995500000201', name: 'Giorgi Testadze', employer: null },
++      { phone: '+995500000202', name: 'Giorgi Satsdeli', employer: 'Bank A' },
++    ],
++  };
++
++  it('adds the word to a row with no employer of its own, and the note once', async () => {
++    answer(['Giorgi PwC'], 'pwc');
++    const out = (await withLikelyEmployers('7', FOUND)) as {
++      results: Record<string, unknown>[];
++      likely_employer_note?: string;
++    };
++    expect(out.results[0].likely_employer).toBe('PwC');
++    expect(out.results[1].likely_employer).toBeUndefined();
++    expect(out.likely_employer_note).toBe(LIKELY_EMPLOYER_NOTE);
++  });
++
++  it('leaves the result untouched when no label holds a company word', async () => {
++    answer(['Giorgi'], null);
++    expect(await withLikelyEmployers('7', FOUND)).toBe(FOUND);
++  });
++
++  it('leaves a not-found result and a switched-off feature untouched', async () => {
++    const none = { found: false, query: 'x' };
++    expect(await withLikelyEmployers('7', none)).toBe(none);
++    expect(await withLikelyEmployers('7', FOUND, false)).toBe(FOUND);
++    expect(mockQuery).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/tools/likelyEmployer.ts b/src/services/tools/likelyEmployer.ts
+index 43a1de9..72bf2a3 100644
+--- a/src/services/tools/likelyEmployer.ts
++++ b/src/services/tools/likelyEmployer.ts
+@@ -116,3 +116,45 @@ export async function likelyEmployerFor(
+     return {};
+   }
+ }
++
++/**
++ * 4657 (tester 56332, Misho's yes 13 Oct ~07:20 UTC, §138): the three runs
++ * asked „where does X work" through search_contact_by_name alone, so the note
++ * that rides with the full profile never reached them, and one answer said
++ * the label's company word as certain. The same field and the same note now
++ * ride with the name search: on each of the first rows that carries no
++ * employer of its own, and the note once for the whole result.
++ */
++const MAX_ROWS_READ = 3;
++
++interface SearchRow {
++  readonly phone?: unknown;
++  readonly employer?: unknown;
++}
++
++function needsLikelyEmployer(row: SearchRow): row is SearchRow & { phone: string } {
++  return typeof row.phone === 'string' && row.phone !== '' && !row.employer;
++}
++
++/** The name search's result with each row's likely employer added; unchanged when there is none. */
++export async function withLikelyEmployers(
++  userId: string,
++  found: object,
++  on: boolean = LIKELY_EMPLOYER_ON,
++): Promise<object> {
++  const results = (found as { results?: unknown }).results;
++  if (!on || !Array.isArray(results)) return found;
++  const rows = results as SearchRow[];
++  const read = rows.slice(0, MAX_ROWS_READ);
++  const likely: LikelyEmployer[] = await Promise.all(
++    read.map((row): Promise<LikelyEmployer> | LikelyEmployer =>
++      needsLikelyEmployer(row) ? likelyEmployerFor(userId, row.phone, on) : {},
++    ),
++  );
++  if (likely.every((l) => l.likely_employer === undefined)) return found;
++  const withWord = rows.map((row, i) => {
++    const word = likely[i]?.likely_employer;
++    return word === undefined ? row : { ...row, likely_employer: word };
++  });
++  return { ...found, results: withWord, likely_employer_note: LIKELY_EMPLOYER_NOTE };
++}
+-- 
+2.43.0
+

@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 07:34Z — 0232: 4657, the name search carries likely_employer and its note (Misho's yes in my chat, §138)
+
+- Patch: `patches/afternoon-1250/0232-4657-the-name-search-carries-the-likely-employer-too.patch`, sha256 `8d3afd51b32b3b2c7febc8cccdb0b79eee9da8394df622c010144719a28f3ec0`. My branch commit a643812. Applies on top of 0231 and stays green there (verify on the chain: 868 suites passed).
+- What it does: search_contact_by_name now adds `likely_employer` to each of its first three rows that have no employer of their own, plus the already-approved LIKELY_EMPLOYER_NOTE once per result (§132.2, unchanged word for word). Before this, the field and the note came only with get_contact_full_profile, and the tester's three runs never called that tool. Up to three extra 4 s-capped reads per name search; a failed read adds nothing.
+- Misho's word: „4657 კი, დაამატე" in my chat, ~07:20Z, recorded as §138. It changes what the model is given (D44). If you need his word in your own chat before shipping, it's yours to ask; I've told him.
+- DONE WHEN: on 3 fresh seats, „Where does X work?" for a non-member contact whose label holds a company word comes back from the label, said as likely, 3 of 3, in English as well as Georgian.
+- Order: alone, after 0231. No outage, no migration. Undo: LIKELY_EMPLOYER_ON=false switches both places off.
+
 ### 13 Oct, 07:14Z — re your 07:06Z: 4852 tested noted; 4657 meets its DONE WHEN, the „likely" gap explained
 
 - **4852 → tested** (3 of 3), noted. Thanks.
