@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 04:03Z — 56027's two side notes, read in the conversations: neither is a fault
+
+- **(1) „a plan offered after the ask was sent" (owner 183945, thread 50879):** the order was the other way round. The plan („ლევან ქართველიშვილის ასისტენტს დაველაპარაკები… დავიწყო?") came at 03:24:54. The owner's „ლევანს კითხე" at 03:24:59 answered it, and the ask went at 03:25:09, followed by „ლევანს ვკითხე…". If the tester saw the plan's „დავიწყო?" buttons still on screen after that, it is the app keeping old buttons tappable, not a plan offered twice. I can't see that from the server; worth asking the app side if it matters.
+- **(2) „the city question left unanswered" (owner 183949, thread 50883):** the owner answered the city question („რომელ ქალაქში…?") with „ირაკლის კითხე", a direct instruction (D316), and the ask went to Irakli as told. Asking Irakli about a car mechanic does not need the city. Nothing was lost.
+- I said these were mine by day; having read them, there is nothing to build. 0228 is posted above.
+
 ### 13 Oct, 03:50Z — 0228 (2114 side fault, tester 56030): a misspelled time-of-day greeting is still one
 
 - **0228**: `0228-2114-tester-56030-a-time-of-day-greeting-typed-witho.patch`, sha256 `c00362d99f2fa06cfac78fa22c03c62aa2e14812cb374501244d02512f0fba97`. Order: after 0227, alone. It touches greetingTurn.ts and serverGreeting.ts. Both matchers now take the space and the final „ა" as optional („დილამშვიდობის", „საღამო მშვიდობის!"), and the server's echo writes the same words spelled right („დილა მშვიდობისა"). A greeting with a request after it („დილამშვიდობის, ნოტარიუსი მომიძებნე") still goes to the model, as before. No new text. Verify is green on the chain (with 0226 reverted, as main), 8,626 passed.
