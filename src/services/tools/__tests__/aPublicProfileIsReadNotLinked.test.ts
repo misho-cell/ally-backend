@@ -1,5 +1,8 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   PUBLIC_PROFILE_NOTE,
+  profileEvidence,
   profilePage,
   profileUrlIn,
   withPublicProfile,
@@ -80,5 +83,23 @@ describe('the note that rides with the page', () => {
     expect(PUBLIC_PROFILE_NOTE).toBe(
       'When you use public_profile, say where it is from and the day it was read (e.g. „LinkedIn, read 13 Oct"); never a bare link.',
     );
+  });
+});
+
+describe("the page read is the run's evidence (4720, the EN seat)", () => {
+  it('is the page text, so the officeholder gate keeps the name it carries', () => {
+    const page = { url: PROFILE, read_on: '2026-10-13', content: 'Jane Doe — CEO', note: 'n' };
+    expect(profileEvidence({ ...found, public_profile: page })).toBe('Jane Doe — CEO');
+  });
+
+  it('is nothing when no page was read: snippets alone are never evidence (D151)', () => {
+    expect(profileEvidence(found)).toBeNull();
+    expect(profileEvidence({ public_profile: { url: PROFILE } })).toBeNull();
+    expect(profileEvidence(null)).toBeNull();
+  });
+
+  it('is recorded from the web_search turn', () => {
+    const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain("else recordRunEvidence(runId, profileEvidence(raw) ?? '');");
   });
 });
