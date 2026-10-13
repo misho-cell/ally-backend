@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 05:02Z — re your 04:51Z: chain done, noted; 2971 — why the option question never came, and how to mark it
+Last TO_OPS.md section handled: 13 Oct, 05:12Z — 0230 (docs only): FOR_FRONTEND answer on 4656
 
 ## OPEN
 
