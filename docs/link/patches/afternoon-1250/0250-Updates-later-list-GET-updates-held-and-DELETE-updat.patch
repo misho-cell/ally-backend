@@ -1,0 +1,339 @@
+From 701c3cd34a01cf2d59b4861687dea408732cab13 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 12:44:59 +0000
+Subject: [PATCH] =?UTF-8?q?Updates=20=E2=80=9Elater"=20list:=20GET=20/upda?=
+ =?UTF-8?q?tes/held=20and=20DELETE=20/updates/:ref/snooze?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 13 Oct ask (FIXED2 „რა მოხდა" → „მოგვიანებით"):
+- GET /updates/held → { held: [{ update_ref, title, detail, until }] }:
+  the caller's held rows still ahead, soonest first, capped at 50. It uses
+  the same WHERE as the held count (HELD_AND_STILL_REAL), and spends nothing.
+- DELETE /updates/:ref/snooze: bring a held row back now (release_at = NOW()).
+  400 for a bad ref; 404 when the row is not the caller's or not held for
+  later.
+Parameterised, with a timeout, scoped to the caller. Service tests, route
+source tests, and the KINDS call-site count updated. FOR_FRONTEND has the
+contract.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 26 ++++++
+ .../theLaterListAndBringBack.test.ts          | 83 ++++++++++++++++++
+ src/api/routes/updates.routes.ts              | 85 +++++++++++++++++++
+ .../theQuestionsAfterItIsOver.test.ts         |  8 +-
+ src/services/pendingUpdates.service.ts        | 39 +++++++++
+ 5 files changed, 237 insertions(+), 4 deletions(-)
+ create mode 100644 src/api/routes/__tests__/theLaterListAndBringBack.test.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 3d5d231..9e4d25a 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,32 @@ messages in their name.
+ 
+ ---
+ 
++## 13 October, 12:44Z — re your 12:40Z: `GET /updates/held` and `DELETE /updates/:ref/snooze`, built to your shapes
++
++Both are on my branch and handed to ops as a patch; they reach main when ops ships it. Until then your 404 fallback (the count) stands.
++
++**`GET /updates/held`**: spends nothing, like `/count`. It never calls the releasing read.
++
++```json
++{ "success": true, "data": { "held": [
++  { "update_ref": "upd_5312", "title": "…", "detail": "…", "until": "2026-10-15T09:00:00.000Z" }
++] } }
++```
++
++- Soonest first, at most 50.
++- `title` and `detail` are the same card heading `GET /updates` writes, in `X-Locale` when sent, else the inferred language.
++- `until` is ISO UTC: the moment the row becomes due again.
++- These are the same rows the `held` number in `/count` counts: same WHERE, only rows whose return is still ahead. One thing to know: a goal question that was already shown and is still unanswered is held through its 24 h cooldown by design, so it is listed too, with the end of the cooldown as `until`.
++- 200 always for a signed-in user (empty list → `"held": []`); 401 without a session; 500 on a server error.
++
++**`DELETE /updates/:ref/snooze`**: bring it back now. The row becomes due at once, and the next `GET /updates` shows it.
++
++- 200 `{ "update_ref": "upd_5312" }`
++- 400: not an `upd_` ref
++- 404: not yours, or not held for later (already due, seen, or gone)
++
++`POST /updates/:ref/snooze` with `days` (your picker, 1–30 via MIN/MAX_SNOOZE_DAYS) is unchanged.
++
+ ## 13 October, 05:09Z — re your 04:55Z (4656): thank you, and the server's line is live
+ 
+ - **Your fix reads right to me.** One file for every read and write of the token, both stores kept in step, the cookie's life taken from the JWT's own `exp`, and `/login` stepping aside when a live token is already on the device: that covers both ways the stores drifted apart.
+diff --git a/src/api/routes/__tests__/theLaterListAndBringBack.test.ts b/src/api/routes/__tests__/theLaterListAndBringBack.test.ts
+new file mode 100644
+index 0000000..fad40be
+--- /dev/null
++++ b/src/api/routes/__tests__/theLaterListAndBringBack.test.ts
+@@ -0,0 +1,83 @@
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../../db/postgres/client';
++import {
++  bringUpdateBackNow,
++  HELD_LIST_MAX,
++  listHeldUpdates,
++} from '../../../services/pendingUpdates.service';
++
++/**
++ * The frontend's 13 Oct ask (FIXED2 „later" list): GET /updates/held lists what
++ * was put off and when it returns, spending nothing; DELETE /updates/:ref/snooze
++ * brings one back now.
++ */
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const ROUTES = readFileSync(join(__dirname, '..', 'updates.routes.ts'), 'utf8');
++
++beforeEach(() => mockQuery.mockReset());
++
++describe('the held list', () => {
++  it('reads the caller’s rows still ahead, soonest first, capped', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [
++        {
++          id: 5,
++          task_id: null,
++          kind: 'weekly_summary',
++          payload: {},
++          release_at: '2026-10-15T09:00:00Z',
++        },
++      ],
++      rowCount: 1,
++    } as never);
++    const rows = await listHeldUpdates('7');
++    expect(rows).toHaveLength(1);
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain("p.user_id = $1 AND p.status = 'held'");
++    expect(sql).toContain('AND p.release_at > NOW()');
++    expect(sql).toContain('ORDER BY p.release_at ASC, p.id ASC');
++    expect(sql).not.toMatch(/UPDATE|status = 'seen'/u);
++    expect(params[0]).toBe('7');
++    expect(params[2]).toBe(HELD_LIST_MAX);
++  });
++});
++
++describe('bring back now', () => {
++  it('makes the caller’s held row due at once', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
++    expect(await bringUpdateBackNow('7', 5)).toBe(true);
++    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
++    expect(sql).toContain('SET release_at = NOW()');
++    expect(sql).toContain(
++      "WHERE id = $1 AND user_id = $2 AND status = 'held' AND release_at > NOW()",
++    );
++    expect(params).toEqual([5, '7']);
++  });
++
++  it('is false for a row that is not the caller’s or not held for later', async () => {
++    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++    expect(await bringUpdateBackNow('7', 6)).toBe(false);
++  });
++});
++
++describe('the routes', () => {
++  it('GET /held answers { held: [{ update_ref, title, detail, until }] } and never spends', () => {
++    const route = ROUTES.slice(ROUTES.indexOf("'/held',"), ROUTES.indexOf("'/weekly-summaries'"));
++    expect(route).toContain('listHeldUpdates(userId)');
++    expect(route).toContain('update_ref: toUpdateRef(u.id)');
++    expect(route).toContain('until: new Date(u.release_at).toISOString()');
++    expect(route).toContain('data: { held }');
++    expect(route).not.toContain('getPendingUpdates');
++  });
++
++  it('DELETE /:ref/snooze refuses a bad ref with 400 and a ref not held for you with 404', () => {
++    const route = ROUTES.slice(ROUTES.indexOf("updatesRouter.delete(\n  '/:ref/snooze'"));
++    expect(route).toContain('if (id === null) {');
++    expect(route).toContain('res.status(400)');
++    expect(route).toContain('if (!(await bringUpdateBackNow(userId, id))) {');
++    expect(route).toContain('res.status(404)');
++  });
++});
+diff --git a/src/api/routes/updates.routes.ts b/src/api/routes/updates.routes.ts
+index 289c0c6..5741e80 100644
+--- a/src/api/routes/updates.routes.ts
++++ b/src/api/routes/updates.routes.ts
+@@ -9,6 +9,8 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import {
+   getPendingUpdates,
+   listSeenUpdates,
++  listHeldUpdates,
++  bringUpdateBackNow,
+   countHeldUpdates,
+   countUpdatesForBadge,
+   peekDueUpdates,
+@@ -200,6 +202,56 @@ updatesRouter.get(
+   },
+ );
+ 
++interface HeldRowView {
++  readonly update_ref: string;
++  readonly title: string;
++  readonly detail: string;
++  /** When it becomes due again (ISO). */
++  readonly until: string;
++}
++
++/**
++ * The frontend's 13 Oct ask (FIXED2 „later" list):
++ *   GET /updates/held → { held: [{ update_ref, title, detail, until }] }, soonest first.
++ * Spends nothing, like /count: the „later" list is not a reading of the due cards.
++ */
++updatesRouter.get(
++  '/held',
++  async (
++    req: Request,
++    res: Response<ApiResponse<{ readonly held: readonly HeldRowView[] }>>,
++  ): Promise<void> => {
++    const userId = String((req as AuthenticatedRequest).user.userId);
++    try {
++      const chosen = asRunLanguage(req.get('X-Locale'));
++      const [rows, language] = await Promise.all([
++        listHeldUpdates(userId),
++        chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
++      ]);
++      const titles = await goalTitlesFor(rows.map((u) => u.task_id));
++      const held = rows.map((u) => {
++        const heading = cardHeading(
++          u.kind,
++          normalisedPayload(u.kind, u.payload),
++          u.task_id === null ? null : (titles.get(u.task_id) ?? null),
++          language,
++        );
++        return {
++          update_ref: toUpdateRef(u.id),
++          title: heading.title,
++          detail: heading.detail,
++          until: new Date(u.release_at).toISOString(),
++        };
++      });
++      res.status(200).json({ success: true, data: { held } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /updates/held]', error);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ /**
+  * 4296 (plate NEW-5): GET /updates/weekly-summaries → { summaries: [UpdateRow] },
+  * newest first — last week's summary opened again, word for word. Spends nothing.
+@@ -391,6 +443,39 @@ updatesRouter.post(
+   },
+ );
+ 
++/**
++ * The frontend's 13 Oct ask: „ახლავე დაბრუნება" — a put-off update is due at once.
++ *   DELETE /updates/:ref/snooze   200 { update_ref }
++ *   400  not an update_ref        404  not yours, or not held for later
++ */
++updatesRouter.delete(
++  '/:ref/snooze',
++  param('ref').isString().trim().notEmpty(),
++  async (req: Request, res: Response<ApiResponse<{ update_ref: string }>>) => {
++    const ref = String(req.params.ref);
++    const id = parseUpdateRef(ref);
++    if (id === null) {
++      res.status(400).json({
++        success: false,
++        error: 'Unknown update_ref — take it from GET /updates/held.',
++      });
++      return;
++    }
++    const userId = String((req as AuthenticatedRequest).user.userId);
++    try {
++      if (!(await bringUpdateBackNow(userId, id))) {
++        res.status(404).json({ success: false, error: 'No such update held for you.' });
++        return;
++      }
++      res.status(200).json({ success: true, data: { update_ref: ref } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[updates] bring back failed:', error);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ /**
+  * #2080 (D703): flag a card to come back to, or clear the flag.
+  *
+diff --git a/src/services/__tests__/theQuestionsAfterItIsOver.test.ts b/src/services/__tests__/theQuestionsAfterItIsOver.test.ts
+index 184b20d..a029832 100644
+--- a/src/services/__tests__/theQuestionsAfterItIsOver.test.ts
++++ b/src/services/__tests__/theQuestionsAfterItIsOver.test.ts
+@@ -282,10 +282,10 @@ describe('a card queued by a close survives the close', () => {
+     const sql = updates.replace(/\/\*[\s\S]*?\*\//g, '');
+     const uses = sql.match(/KINDS_THAT_OUTLIVE_THEIR_GOAL/g) ?? [];
+ 
+-    // The declaration plus five call sites: release, count, the row list, the
+-    // badge count (#387, 3 October) and the home card's peek (frontend item 5,
+-    // 10 October), each a bound parameter.
+-    expect(uses).toHaveLength(6);
++    // The declaration plus six call sites: release, count, the row list, the
++    // badge count (#387, 3 October), the home card's peek (frontend item 5,
++    // 10 October) and the „later" list (13 October), each a bound parameter.
++    expect(uses).toHaveLength(7);
+     expect(sql).not.toMatch(/\$\{KINDS_THAT_OUTLIVE_THEIR_GOAL/);
+   });
+ 
+diff --git a/src/services/pendingUpdates.service.ts b/src/services/pendingUpdates.service.ts
+index 1b22d25..ea57f4a 100644
+--- a/src/services/pendingUpdates.service.ts
++++ b/src/services/pendingUpdates.service.ts
+@@ -512,6 +512,45 @@ export async function countHeldUpdates(userId: string): Promise<number> {
+   return Number(result.rows[0]?.count ?? 0);
+ }
+ 
++/**
++ * The frontend's 13 Oct ask (FIXED2 „later" list): every update that was put
++ * off, with the moment it comes back. Reads only, like the count beside it —
++ * opening the „later" list is not reading the due cards. The same WHERE as the
++ * count, so the list and the number never disagree; only rows still ahead.
++ */
++export const HELD_LIST_MAX = 50;
++
++export interface HeldUpdateRow extends PendingUpdate {
++  readonly release_at: string;
++}
++
++export async function listHeldUpdates(userId: string): Promise<HeldUpdateRow[]> {
++  const result = await query<HeldUpdateRow>(
++    `SELECT p.id, p.task_id, p.kind, p.payload, p.release_at
++       ${HELD_AND_STILL_REAL}
++       AND p.release_at > NOW()
++     ORDER BY p.release_at ASC, p.id ASC
++     LIMIT $3`,
++    [userId, KINDS_THAT_OUTLIVE_THEIR_GOAL, HELD_LIST_MAX],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/**
++ * „Bring back now": a put-off update becomes due at once. Only the caller's own
++ * row, and only one still being held for later; false otherwise (the route's 404).
++ */
++export async function bringUpdateBackNow(userId: string, updateId: number): Promise<boolean> {
++  const result = await query(
++    `UPDATE pending_updates SET release_at = NOW()
++     WHERE id = $1 AND user_id = $2 AND status = 'held' AND release_at > NOW()`,
++    [updateId, userId],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0;
++}
++
+ /**
+  * The frontend's ask for #387 (3 October): a count beside the sidebar link, so
+  * „kept for later" can be found the next day without opening the screen.
+-- 
+2.43.0
+

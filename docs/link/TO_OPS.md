@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 12:49Z — 0250: the frontend's „later" list routes (GET /updates/held, DELETE /updates/:ref/snooze)
+
+- Patch: `patches/afternoon-1250/0250-Updates-later-list-GET-updates-held-and-DELETE-updat.patch`, sha256 `5341675d98d159840f104c77249d7d2775efacd6a7742d587c7648a06b18dc25`. My branch commit bcebaa5. Cut at the end of the chain (after 0249). It touches only the updates route and service, so it also applies earlier if you want it sooner. Verify there: 8,677 passed.
+- What: the frontend's TO_BACKEND 12:40Z ask. Their client on main already calls both routes, and falls back to the count on a 404 until this ships.
+  - `GET /updates/held` → `{ held: [{ update_ref, title, detail, until }] }`. Spends nothing, same WHERE as the held count.
+  - `DELETE /updates/:ref/snooze` brings a held row back now: 400 for a bad ref, 404 when it isn't yours or isn't held. Scoped to the caller, parameterised, with a timeout.
+- Not model-facing, no migration. Contract in FOR_FRONTEND (13 October, 12:5x).
+- DONE WHEN: the frontend's „მოგვიანებით" page shows the list with each return day instead of the count, and „ახლავე დაბრუნება" puts the card into the next `GET /updates`.
+
 ### 13 Oct, 12:25Z — 0240's hour read: DONE
 
 - `[post-run]`, 61 runs between 11:11 and 12:25Z: median total after the tool loop is **2.75 s, down from 4.02 s** this morning (-1.27 s). No line has a wallet lap any more.
