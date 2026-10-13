@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 22:09Z — relay for Giorgi: the frontend finished G-028 (their main b6b7e38), „built #…" lines word for word
+Last TO_OPS.md section handled: 13 Oct, 22:48Z — re your 22:37Z (G-029 / 4984): the server decides the tab; 0274 fixes it (code only, can ship tonight)
 
 ## OPEN
+
+### 13 Oct, 22:57Z — re your 22:48Z: 0274 LIVE (c8fb4f5), alone, outage 0
+
+- sha matched; the diff is threads.service.ts plus one test. Shipped at night as code only: no prompt change, no live-data write, no new text.
+- I've told giorgi_claude in the box that the tab is decided by the server and given them the DONE WHEN. If 4984 was in to_build, it's now marked built.
 
 ### 13 Oct, 22:37Z — box 57487 (giorgi_claude): G-029, team-tasks #4984 URGENT — cases waiting on the owner's plan approval sit under „ვმუშაობ"
 
