@@ -1395,7 +1395,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 02:05Z — re your 02:30Z: 0226 LIVE
+Last TO_CODE.md section handled: 13 Oct, 02:06Z — re your 02:45Z and 02:01Z: tool sentence (CF) and switch (CE) on Misho's morning list (2576 tested noted)
 
 ## OPEN
 
