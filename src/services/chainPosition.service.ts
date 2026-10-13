@@ -1,5 +1,12 @@
 import { query } from '../db/postgres/client';
-import { AskRow, askRoute, introRoute, RouteRole, RouteRow } from './routesBoard.service';
+import {
+  AskRow,
+  askRoute,
+  introRoute,
+  RouteRole,
+  RouteRow,
+  routesOfOwnGoal,
+} from './routesBoard.service';
 import { nameAsSavedBySql } from './savedNameSql';
 
 /**
@@ -98,7 +105,7 @@ export async function chainPositionOf(userId: number, threadId: number): Promise
     return { previous: { name: asked.name, member_id: asked.asker_id }, next };
   }
   const intro = await introducedHere(userId, threadId);
-  if (intro === null) return NOT_IN_A_CHAIN;
+  if (intro === null) return ownersPath(userId, threadId);
   const toTarget = {
     ...introRoute(intro),
     person_name: intro.target_name,
@@ -109,4 +116,14 @@ export async function chainPositionOf(userId: number, threadId: number): Promise
     previous: { name: intro.requester_name, member_id: intro.requester_id },
     next: [toTarget],
   };
+}
+
+/**
+ * 4927, Giorgi's retest (13 Oct): the path belongs on every case card, the
+ * owner's own goals too, where it is you → the people the goal is talking to.
+ * The same people as the routes board, but one is already a path.
+ */
+async function ownersPath(userId: number, threadId: number): Promise<ChainPosition> {
+  const next = await routesOfOwnGoal(userId, threadId);
+  return next.length === 0 ? NOT_IN_A_CHAIN : { previous: null, next };
 }

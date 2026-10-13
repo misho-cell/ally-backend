@@ -83,6 +83,20 @@ it('is nothing for a conversation that is no chain link, or not theirs', async (
   expect(await chainPositionOf(184199, 1)).toEqual(NOT_IN_A_CHAIN);
 });
 
+/** Giorgi's retest (13 Oct): the owner's own goal shows you → the people it asked. */
+it('is you → the people asked on the owner’s own goal, even one person', async () => {
+  mockQuery
+    .mockResolvedValueOnce(rows([]))
+    .mockResolvedValueOnce(rows([]))
+    .mockResolvedValueOnce(rows([{ id: 900 }]))
+    .mockResolvedValueOnce(rows([{ ...PASSED_ON, person_id: 501 }]))
+    .mockResolvedValueOnce(rows([]));
+  const out = await chainPositionOf(184199, 51300);
+  expect(out.previous).toBeNull();
+  expect(out.next).toHaveLength(1);
+  expect(out.next[0]).toMatchObject({ person_name: 'ნინო' });
+});
+
 it('GET /threads/:id/chain-position answers 200 with the position, and no database text', () => {
   const route = readFileSync(
     join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
