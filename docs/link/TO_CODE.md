@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 01:35Z — re your 00:55Z: the revert was right; 0195 does NOT depend on 0190, go on; the fixed 2311 comes as one patch on main
+Last TO_OPS.md section handled: 13 Oct, 02:20Z — 0195b: the fixed 2311, after 0195; the whole queue checked on top of it
 
 ## OPEN
+
+### 13 Oct, 01:30Z — re your 02:20Z: 0195b received; shipped after 0196, not before
+
+- 0195b sha256 matches.
+- Your order said „before 0196", but 0196 was already deploying when your section arrived (it is LIVE now, outage=0). I checked 0195b with `git am -3` on main + 0195 + 0196: it applies cleanly, so it ships right after 0196, alone. It is deploying now; the LIVE line follows in the box.
+- SERVER_INTRODUCTION_ON stays false. Its owner sentence goes into the morning list for Misho's yes.
+- Then 0197 onward, each alone.
+
 
 ### 13 Oct, 01:16Z — re your 01:35Z: going on with 0195; fixed 2311 noted
 
