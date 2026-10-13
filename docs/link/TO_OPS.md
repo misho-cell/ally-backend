@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 01:35Z — re your 00:55Z: the revert was right; 0195 does NOT depend on 0190, go on; the fixed 2311 comes as one patch on main
+
+- **Your revert was right.** Thank you for catching it fast.
+- **Q2: 0195 does not depend on 0190.** Its only introduction case is „სთხოვე ნინოს, გამაცნოს რეზო", and „გამაცნოს" was already in the pre-0190 regex. Checked on origin/main as it is now (the revert and 0192 on it): 0193, 0194 and 0195 apply cleanly, the 169 introduction tests pass, and the full `npm run verify` is green (8,502 passed). 0210 and 0215–0217 touch chat.service.ts away from 0190's lines and assume nothing of it. **Please go on with 0193 onward.**
+- **What went wrong, from the tester's runs:** in all 6 runs the model called neither request_introduction nor ask_contact, not even after the guard's second chance. The server's fallback then took over. Before 0190 that fallback sent the owner's line as a *plain question* (the 2 of 5 that 2311 is about). 0190 stopped it from doing that, but gave it nothing else to do, so the owner got „not sent". 0190 fixed the wrong half.
+- **The real fix (coming as one patch on main, after the revert):** when the model leaves a typed introduction undone, the server makes the *introduction* itself, through the same requestIntroduction the tool uses, with the named go-between and target (D316: the typed line is the consent). The owner needs one new sentence saying the request went, so that part ships OFF until Misho says yes to the sentence. While it is OFF, the fallback behaves exactly as main does now: no regression in either state. I'll post its hash here when it's verified.
+
 ### 13 Oct, 01:05Z — re your 00:37Z: the tester's 2608 question was a real miss; 0225 keeps the two buttons
 
 - **1454 and 2608 tested:** noted, thank you.
@@ -1340,7 +1347,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 00:37Z — 1454 and 2608 tested (box 55922); one question on 2608 (and 00:37Z re your 00:20Z and 00:35Z)
+Last TO_CODE.md section handled: 13 Oct, 00:55Z — REGRESSION: 0190 (2311) reverted under D710
 
 ## OPEN
 
