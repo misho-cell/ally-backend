@@ -8,6 +8,8 @@ import {
   createTeamTask,
   deleteTeamTask,
   isTeamTaskAuthor,
+  countTeamTasks,
+  countsFrom,
   listTeamTasks,
   TEAM_TASK_PAGES,
   TeamTaskAuthor,
@@ -84,11 +86,15 @@ describe('the board', () => {
     await listTeamTasks(2);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toMatch(
-      /ORDER BY page,\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
+      /ORDER BY page,\s+COALESCE\(array_position\(\$3::text\[\], status\), cardinality\(\$3::text\[\]\) \+ 1\),\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
     );
     expect(String(sql)).toMatch(/priority, id DESC/);
     expect(String(sql)).toContain('LIMIT');
-    expect(params).toEqual([2, ['giorgi', 'tornike', 'lika', 'ninia', 'tornikes_claude']]);
+    expect(params).toEqual([
+      2,
+      ['giorgi', 'tornike', 'lika', 'ninia', 'tornikes_claude'],
+      ['to_build', 'built', 'being_tested', 'tested'],
+    ]);
   });
 
   /** #463: a third tab for Tornike's Claude. */
@@ -172,5 +178,33 @@ describe('where it is wired', () => {
     for (const column of ['created_by', 'problem', 'task', 'priority', 'status', 'page']) {
       expect(migration).toContain(column);
     }
+  });
+});
+
+/** 4885 (Giorgi, 13 Oct): one line of counts above each tab. */
+describe('the counts above a tab', () => {
+  it('are counted per status in the database for that tab, removed rows left out', async () => {
+    mockQuery.mockResolvedValue(
+      rows([
+        { status: 'to_build', n: 8 },
+        { status: 'tested', n: 40 },
+      ]),
+    );
+    const counts = await countTeamTasks(2);
+    const [sql, params, timeout] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain('GROUP BY status');
+    expect(String(sql)).toContain('deleted_at IS NULL');
+    expect(params).toEqual([2]);
+    expect(timeout).toBeGreaterThan(0);
+    expect(counts).toEqual({ to_build: 8, built: 0, being_tested: 0, tested: 40 });
+  });
+
+  it('name every status, 0 when a status has no rows, and ignore an unknown one', () => {
+    expect(countsFrom([{ status: 'odd', n: 3 }])).toEqual({
+      to_build: 0,
+      built: 0,
+      being_tested: 0,
+      tested: 0,
+    });
   });
 });

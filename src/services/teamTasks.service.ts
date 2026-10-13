@@ -125,20 +125,64 @@ const AUTHOR_ORDER: readonly TeamTaskAuthor[] = [
   TeamTaskAuthor.TornikesClaude,
 ];
 
-/** One page of the board, in the order #266 asks for. */
+/**
+ * 4885 (Giorgi, 13 Oct): status comes first — what is still to build at the
+ * top, what is tested at the bottom; #266's order holds inside each status.
+ */
+export const STATUS_ORDER: readonly TeamTaskStatus[] = [
+  TeamTaskStatus.ToBuild,
+  TeamTaskStatus.Built,
+  TeamTaskStatus.BeingTested,
+  TeamTaskStatus.Tested,
+];
+
+/** One page of the board: by status (4885), then in the order #266 asks for. */
 export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
   const result = await query<Record<string, unknown>>(
     `SELECT ${COLUMNS} FROM team_tasks
       WHERE ($1::smallint IS NULL OR page = $1::smallint)
         AND deleted_at IS NULL
       ORDER BY page,
+               COALESCE(array_position($3::text[], status), cardinality($3::text[]) + 1),
                COALESCE(array_position($2::text[], created_by), cardinality($2::text[]) + 1),
                priority, id DESC
       LIMIT ${MAX_TASKS_LISTED}`,
-    [page ?? null, AUTHOR_ORDER],
+    [page ?? null, AUTHOR_ORDER, STATUS_ORDER],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map(toTask);
+}
+
+export type TeamTaskCounts = Readonly<Record<TeamTaskStatus, number>>;
+
+/** The counts by status from the database rows, every status present (0 when none). */
+export function countsFrom(rows: readonly Record<string, unknown>[]): TeamTaskCounts {
+  const counts: Record<TeamTaskStatus, number> = {
+    [TeamTaskStatus.ToBuild]: 0,
+    [TeamTaskStatus.Built]: 0,
+    [TeamTaskStatus.BeingTested]: 0,
+    [TeamTaskStatus.Tested]: 0,
+  };
+  for (const row of rows) {
+    if (isTeamTaskStatus(row.status)) counts[row.status] = Number(row.n);
+  }
+  return counts;
+}
+
+/**
+ * 4885: the line above the tab — how many rows of each status it holds. Counted
+ * in the database, so a tab longer than the listing limit still counts right.
+ */
+export async function countTeamTasks(page?: number): Promise<TeamTaskCounts> {
+  const result = await query<Record<string, unknown>>(
+    `SELECT status, COUNT(*)::int AS n FROM team_tasks
+      WHERE ($1::smallint IS NULL OR page = $1::smallint)
+        AND deleted_at IS NULL
+      GROUP BY status`,
+    [page ?? null],
+    QUERY_TIMEOUT_MS,
+  );
+  return countsFrom(result.rows);
 }
 
 export interface TeamTaskChange {

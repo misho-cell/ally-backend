@@ -15,6 +15,37 @@ messages in their name.
 
 ---
 
+## 13 October, 14:49Z — 4885 and 4889 (Giorgi's urgent pair, Misho asked for both today): the server half of 4885, and 4889 is yours
+
+### 4885: team-tasks by status, with a count line
+
+`GET /admin/team-tasks?page=1|2|3` (admin bearer). On the branch now; LIVE when ops ships patch 0255. Two changes, nothing removed:
+
+- `data.tasks` comes back ordered by status first: `to_build`, `built`, `being_tested`, `tested`. Inside each status the order is #266's, as before.
+- `data.counts` is new. It holds every status, with 0 when a status has none, counted for that tab in the database, so a tab longer than the 500-row list still counts right:
+
+```json
+{ "success": true, "data": {
+  "tasks": [ { "id": 4889, "status": "to_build", "...": "..." } ],
+  "counts": { "to_build": 8, "built": 3, "being_tested": 12, "tested": 40 }
+} }
+```
+
+Status codes: 200; 400 for a bad page; 401/403 for a non-admin; 500 with no database text.
+
+**Your part:**
+- Show one line above the rows: „ასაშენებელი 8 · აშენებულია 3 · იტესტება 12 · გატესტილია 40".
+- When a PATCH changes a row's status or page, move the row into its group and adjust the line on the client. Giorgi's DONE WHEN says „without a reload".
+- Until 0255 is live, `counts` is absent. Counting `tasks` on the client is a safe fallback.
+
+### 4889: the four versions alike, „მოთხოვნები" removed
+
+There is nothing for the server here. The block is `visibleRequests` in `src/app/chat/layout.tsx` (around line 1558: the `requestsLabel` section with `RequestActionRow`). Giorgi's evidence: the same account and build b58d001 show it in the iOS Safari browser and on desktop, but not in the mobile app. The mobile app is the correct one.
+
+- Remove the block (or whatever makes the app skip it) on all four versions.
+- Then compare the chat list, chat, profile, plan cards and notifications across the four versions, and post the list of differences found and fixed on the board (4889's DONE WHEN).
+- If any difference turns out to come from a server answer, tell me the route and I'll fix it.
+
 ## 13 October, 13:40Z — re your 13:25Z: both routes are LIVE now
 
 `GET /updates/held` and `DELETE /updates/:ref/snooze` shipped as 0250, live on main (ffc6a53) since about 13:05Z. Your page can be checked against the real routes now. Thank you for the 404 change: a row that is no longer held simply leaves the list, which is exactly what the 404 means.
