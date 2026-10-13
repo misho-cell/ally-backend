@@ -1,0 +1,161 @@
+From fbd3d0d542e8521f8ca7fcee50a0cb4093ef2b1c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 19:45:22 +0000
+Subject: [PATCH 269/271] 4928: the routes board names each person once, with
+ their latest state
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi's retest (13 Oct): one person showed three times — a follow-up, a
+re-ask and an introduction are each a row. Rows now carry who they are
+about and fold to one per person, in the place they first appeared, with
+the newest state.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../eachPersonOnceOnTheBoard.test.ts          | 36 +++++++++++++
+ src/services/routesBoard.service.ts           | 51 +++++++++++++++++--
+ 2 files changed, 83 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/eachPersonOnceOnTheBoard.test.ts
+
+diff --git a/src/services/__tests__/eachPersonOnceOnTheBoard.test.ts b/src/services/__tests__/eachPersonOnceOnTheBoard.test.ts
+new file mode 100644
+index 0000000..303355e
+--- /dev/null
++++ b/src/services/__tests__/eachPersonOnceOnTheBoard.test.ts
+@@ -0,0 +1,36 @@
++import { oncePerPerson, RouteRole, RouteRow, RouteState } from '../routesBoard.service';
++
++/** 4928, Giorgi's retest (13 Oct): one person showed three times on the routes board. */
++const row = (askId: number, state: RouteState, at: string): RouteRow => ({
++  ask_id: askId,
++  kind: 'ask',
++  person_name: 'ნინო',
++  role: RouteRole.Addressee,
++  state,
++  summary: null,
++  updated_at: at,
++});
++
++describe('each person once, latest state', () => {
++  it('folds three rows for one person into one, where they first appeared, with the newest state', () => {
++    const out = oncePerPerson([
++      { personId: 7, route: row(1, RouteState.Declined, '2026-10-13T08:00:00.000Z') },
++      {
++        personId: 9,
++        route: { ...row(2, RouteState.Waiting, '2026-10-13T09:00:00.000Z'), person_name: 'გელა' },
++      },
++      { personId: 7, route: row(3, RouteState.Waiting, '2026-10-13T10:00:00.000Z') },
++      { personId: 7, route: row(4, RouteState.Answered, '2026-10-13T11:00:00.000Z') },
++    ]);
++    expect(out.map((r) => r.ask_id)).toEqual([4, 2]);
++    expect(out[0].state).toBe(RouteState.Answered);
++  });
++
++  it('keeps a row with no person as it is', () => {
++    const out = oncePerPerson([
++      { personId: undefined, route: row(1, RouteState.Waiting, '2026-10-13T08:00:00.000Z') },
++      { personId: undefined, route: row(2, RouteState.Waiting, '2026-10-13T08:00:00.000Z') },
++    ]);
++    expect(out).toHaveLength(2);
++  });
++});
+diff --git a/src/services/routesBoard.service.ts b/src/services/routesBoard.service.ts
+index 6f3efa4..1c2b05e 100644
+--- a/src/services/routesBoard.service.ts
++++ b/src/services/routesBoard.service.ts
+@@ -47,6 +47,8 @@ export interface RouteRow {
+ 
+ export interface AskRow {
+   readonly id: number;
++  /** Who was asked; one route per person (4928). Absent on rows read elsewhere. */
++  readonly person_id?: number;
+   readonly name: string | null;
+   readonly status: string;
+   readonly answer: string | null;
+@@ -59,6 +61,7 @@ export interface AskRow {
+ 
+ interface IntroRow {
+   readonly id: number;
++  readonly person_id?: number;
+   readonly name: string | null;
+   readonly status: string;
+   readonly target_name: string;
+@@ -127,7 +130,8 @@ export function introRoute(row: IntroRow): RouteRow {
+ 
+ async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
+   const result = await query<AskRow>(
+-    `SELECT ta.id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name, ta.status, ta.answer,
++    `SELECT ta.id, ta.to_user_id AS person_id, ${ASKED_AS_THE_ASKER_SAVED_THEM} AS name,
++            ta.status, ta.answer,
+             ta.declined_at, ta.seen_at, ta.later_until, ta.expired_at,
+             GREATEST(ta.created_at, ta.answered_at, ta.declined_at, ta.seen_at, ta.expired_at)
+               AS updated_at
+@@ -143,7 +147,8 @@ async function asksOf(userId: number, taskId: number): Promise<AskRow[]> {
+ 
+ async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
+   const result = await query<IntroRow>(
+-    `SELECT ir.id, ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
++    `SELECT ir.id, ir.mediator_user_id AS person_id,
++            ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS name,
+             ir.status, ir.target_name, COALESCE(ir.responded_at, ir.created_at) AS updated_at
+        FROM introduction_requests ir
+       WHERE ir.requester_task_id = $1 AND ir.requester_user_id = $2
+@@ -155,12 +160,50 @@ async function introsOf(userId: number, taskId: number): Promise<IntroRow[]> {
+   return result.rows;
+ }
+ 
++interface PersonRoute {
++  readonly personId: number | undefined;
++  readonly route: RouteRow;
++}
++
++/**
++ * 4928 (Giorgi's retest, 13 Oct): one person showed three times — a follow-up,
++ * a re-ask and an introduction are each a row. The board is about people:
++ * each person once, in the place they first appeared, with their latest state.
++ */
++export function oncePerPerson(rows: readonly PersonRoute[]): RouteRow[] {
++  const latest = new Map<number, RouteRow>();
++  for (const { personId, route } of rows) {
++    if (personId === undefined) continue;
++    const held = latest.get(personId);
++    if (held === undefined || route.updated_at >= held.updated_at) latest.set(personId, route);
++  }
++  const placed = new Set<number>();
++  const out: RouteRow[] = [];
++  for (const { personId, route } of rows) {
++    if (personId === undefined) {
++      out.push(route);
++    } else if (!placed.has(personId)) {
++      placed.add(personId);
++      out.push(latest.get(personId) ?? route);
++    }
++  }
++  return out;
++}
++
+ /** The board for this conversation; an empty list when there is no board to draw. */
+ export async function routesForThread(userId: number, threadId: number): Promise<RouteRow[]> {
++  const people = await routesOfOwnGoal(userId, threadId);
++  return people.length >= MIN_ROUTES_FOR_A_BOARD ? people : [];
++}
++
++/** Every person the goal on this thread is talking to, once each; empty when no goal is the owner's. */
++export async function routesOfOwnGoal(userId: number, threadId: number): Promise<RouteRow[]> {
+   const taskId = await goalOfOwnThread(userId, threadId);
+   if (taskId === null) return [];
+   const [asks, intros] = await Promise.all([asksOf(userId, taskId), introsOf(userId, taskId)]);
+   const now = new Date();
+-  const routes = [...asks.map((a) => askRoute(a, now)), ...intros.map(introRoute)];
+-  return routes.length >= MIN_ROUTES_FOR_A_BOARD ? routes : [];
++  return oncePerPerson([
++    ...asks.map((a) => ({ personId: a.person_id, route: askRoute(a, now) })),
++    ...intros.map((i) => ({ personId: i.person_id, route: introRoute(i) })),
++  ]);
+ }
+-- 
+2.43.0
+

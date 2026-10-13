@@ -1,0 +1,91 @@
+From cb72163c3e1f03c41b31f8454c442bd236de2be1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 19:45:22 +0000
+Subject: [PATCH 270/271] =?UTF-8?q?4927:=20chain-position=20shows=20the=20?=
+ =?UTF-8?q?owner's=20own=20path=20too=20(you=20=E2=86=92=20the=20people=20?=
+ =?UTF-8?q?asked)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi's retest (13 Oct): no path anywhere — the design draws it on every
+case card. A conversation that is no chain link but carries the owner's own
+goal now answers previous: null and next: the people that goal is talking
+to (one or more, each once), in the routes board's row shape.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theMiddleOfAChainSeesBothSides.test.ts    | 14 +++++++++++++
+ src/services/chainPosition.service.ts         | 21 +++++++++++++++++--
+ 2 files changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts b/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts
+index ed48b0b..37a095a 100644
+--- a/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts
++++ b/src/services/__tests__/theMiddleOfAChainSeesBothSides.test.ts
+@@ -83,6 +83,20 @@ it('is nothing for a conversation that is no chain link, or not theirs', async (
+   expect(await chainPositionOf(184199, 1)).toEqual(NOT_IN_A_CHAIN);
+ });
+ 
++/** Giorgi's retest (13 Oct): the owner's own goal shows you → the people it asked. */
++it('is you → the people asked on the owner’s own goal, even one person', async () => {
++  mockQuery
++    .mockResolvedValueOnce(rows([]))
++    .mockResolvedValueOnce(rows([]))
++    .mockResolvedValueOnce(rows([{ id: 900 }]))
++    .mockResolvedValueOnce(rows([{ ...PASSED_ON, person_id: 501 }]))
++    .mockResolvedValueOnce(rows([]));
++  const out = await chainPositionOf(184199, 51300);
++  expect(out.previous).toBeNull();
++  expect(out.next).toHaveLength(1);
++  expect(out.next[0]).toMatchObject({ person_name: 'ნინო' });
++});
++
+ it('GET /threads/:id/chain-position answers 200 with the position, and no database text', () => {
+   const route = readFileSync(
+     join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
+diff --git a/src/services/chainPosition.service.ts b/src/services/chainPosition.service.ts
+index a58fcf3..f9fd406 100644
+--- a/src/services/chainPosition.service.ts
++++ b/src/services/chainPosition.service.ts
+@@ -1,5 +1,12 @@
+ import { query } from '../db/postgres/client';
+-import { AskRow, askRoute, introRoute, RouteRole, RouteRow } from './routesBoard.service';
++import {
++  AskRow,
++  askRoute,
++  introRoute,
++  RouteRole,
++  RouteRow,
++  routesOfOwnGoal,
++} from './routesBoard.service';
+ import { nameAsSavedBySql } from './savedNameSql';
+ 
+ /**
+@@ -98,7 +105,7 @@ export async function chainPositionOf(userId: number, threadId: number): Promise
+     return { previous: { name: asked.name, member_id: asked.asker_id }, next };
+   }
+   const intro = await introducedHere(userId, threadId);
+-  if (intro === null) return NOT_IN_A_CHAIN;
++  if (intro === null) return ownersPath(userId, threadId);
+   const toTarget = {
+     ...introRoute(intro),
+     person_name: intro.target_name,
+@@ -110,3 +117,13 @@ export async function chainPositionOf(userId: number, threadId: number): Promise
+     next: [toTarget],
+   };
+ }
++
++/**
++ * 4927, Giorgi's retest (13 Oct): the path belongs on every case card, the
++ * owner's own goals too, where it is you → the people the goal is talking to.
++ * The same people as the routes board, but one is already a path.
++ */
++async function ownersPath(userId: number, threadId: number): Promise<ChainPosition> {
++  const next = await routesOfOwnGoal(userId, threadId);
++  return next.length === 0 ? NOT_IN_A_CHAIN : { previous: null, next };
++}
+-- 
+2.43.0
+

@@ -1,0 +1,39 @@
+From 3ebfa7fdd7a6978469a0a7e32c51193ec7f0b59f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 19:45:34 +0000
+Subject: [PATCH 271/271] =?UTF-8?q?FOR=5FFRONTEND:=20G-028=20retest=20?=
+ =?UTF-8?q?=E2=80=94=20routes=20once=20per=20person,=20the=20owner's=20pat?=
+ =?UTF-8?q?h,=204919=20chips?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 093ef2f..b7b9427 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,15 @@ messages in their name.
+ 
+ ---
+ 
++## 13 October, 19:45Z — Giorgi's retest (G-028, 4 reopened): the server half of 4927 and 4928, and 4919's chips
++
++These are on my branch and LIVE when ops ships them (the patch numbers are in the ops link). G-028 came to you directly; what follows is the server side only.
++
++- **4928, a person shown three times:** `GET /threads/:id/routes` now gives each person once, in the place they first appeared, with their **latest** state. A follow-up, a re-ask and an introduction to the same person fold into one row. Same shape; nothing to change on your side.
++- **4927, no path anywhere:** `GET /threads/:id/chain-position` now answers for the owner's **own** goals too: `previous: null`, and `next` holds the people that goal is talking to, one or more, each once, in the same row shape. Draw „თქვენ → <next>" whenever `next` is non-empty and „<previous> → თქვენ → <next>" when `previous` is set too. Giorgi wants it on the case card, in the chat header under the title, and on the request card. The 30-a-minute limit and your on-screen-only rule stand.
++- **4919, read again:** `short_title` / `one_word_title` are for the **coloured chips inside the two main cards**, not for the list titles; restore the full titles in the lists. The fields don't change, only where you draw them. New conversations get them once 0266 is live; old ones stay null, so cut by words for those.
++- 4926 and 4951 (the send/mic row) are yours alone.
++
+ ## 13 October, 17:39Z — re your 17:45Z: thank you; one limit on 4927, and all five server halves are LIVE
+ 
+ - **LIVE now on main:** 0258 resolve, 0259 `goal_paused`, 0260 `chain-position`, 0261 `short_title`/`one_word_title` (null until Misho's yes) and 0262/0264 (docs).
+-- 
+2.43.0
+

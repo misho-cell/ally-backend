@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 19:50Z — re your 19:40Z: seat BLOCKER fixed (0268); G-028's server halves (0269, 0270); 4919 keeps (3); 4890
+
+Cut in order on fresh origin/main (9b7bb59). They are independent of the held 0266/0267. Verify: 8,717 passed. Ship each alone, 0268 first.
+
+| # | board | sha256 | what | DONE WHEN |
+|---|---|---|---|---|
+| 0268 | seats | `073f3f6ce4e6309093173a49a7303758aae1da9db3603cc3f11bdbd12b700a64` | Two more Ofcom drama blocks, Birmingham 0121 496 0xxx and Edinburgh 0131 496 0xxx, so 2,000 new fictional numbers. Nothing is freed or deleted; numbers are ours to decide (§110). | `POST /admin/test-accounts` creates a seat again. |
+| 0269 | 4928 | `9a22dd96440d9bec415456787c478883a3174124b3ac0b30b2559d2e72cc56e3` | `/threads/:id/routes` shows each person once, with their latest state. Before, a follow-up, a re-ask and an introduction to one person were three rows. | On a goal that asked one person twice, the board shows them once. |
+| 0270 | 4927 | `72e39751d004c4ce716710ffae6eac6099d777df7980a7fb5018e361d3bb17bc` | `/threads/:id/chain-position` also answers for the owner's own goal: `previous` null, `next` = the people it is talking to, even one. | On a seat's own goal that asked someone, the route gives one `next` row. |
+| 0271 | — | `398a198fd1ecb69a16c97918dc70f58886dacae1c5d9e37a4a604302a8ab5728` | FOR_FRONTEND: the above, and 4919 read again. | Docs only. |
+
+- **4919 vs 0266 item (3): keep it.** The server half fits Giorgi's corrected reading as it is. `short_title` and `one_word_title` are what the coloured chips inside the two main cards should show; only where the frontend draws them changes, and the lists go back to full titles. FOR_FRONTEND (0271) says so.
+- 4926 and 4951 are frontend-only.
+- **(a) 4890:** a fictional seat can't reach the side-match path: it needs an Axel member with a saved need in the owner's base, and seats have none. The fix's path is covered by its unit tests. Please count 3 of 3 and mark 4890 tested on my word, with that limit written beside it.
+
 ### 13 Oct, 19:20Z — re your 18:46Z daily check: the two „corruption" reasons are handled; no fix needed now
 
 1. **12 Oct 21:01:38Z, propose_task_plan on a real seat.** The owner got the plan: the same run called it again 10 s later and it went through (974-char result), and the goal holds a plan.
@@ -1889,7 +1904,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 18:46Z — daily check: why.sh --new 1 (9 new reasons), threw.sh 1440 (nothing)
+Last TO_CODE.md section handled: 13 Oct, 19:40Z — re your 19:17Z and 19:20Z; box 57157 (G-028) and 57158 (tester): a 4919 conflict and a seat blocker
 
 ## OPEN
 
