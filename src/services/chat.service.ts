@@ -16750,9 +16750,11 @@ export async function processChat(
     // Row 132: the reply the user reads, stamped with who wrote it.
     answeredBy,
   );
+  lap(postRun, 'reply');
   // The same answer must not be on the screen twice (item H).
   await dropStepsTheReplyRepeats(threadId, runId, storedReply);
   await dropPlanStepsTheReplyCarries(threadId, runId, storedReply);
+  lap(postRun, 'steps');
   // D348: the free answer says it was free, immediately after it and before
   // anything else the run has to deliver.
   if (graceNote !== null) {
@@ -16786,8 +16788,10 @@ export async function processChat(
     );
   }
   await deliverPendingMessages(userId, threadId, runId, language, toDeliver);
+  lap(postRun, 'waiting');
   // 2581: the close-or-keep card of a goal this run finished, under the reply.
   await offerNotedOpenAsksCard(runId);
+  lap(postRun, 'card');
   // The goal this thread carries was worked on now (Ticket 11 Task 7 (a):
   // `last_activity_at` read 4 Sep on a goal whose thread held 6 Sep messages).
   void touchTaskActivityForThread(threadId).catch(() => undefined);
@@ -16847,7 +16851,7 @@ export async function processChat(
     // eslint-disable-next-line no-console
     console.error('[wallet] debit failed for run', runId, (err as Error).message);
   }
-  lap(postRun, 'stored');
+  lap(postRun, 'wallet');
   // eslint-disable-next-line no-console
   console.log(postRunLine(runId, postRun));
 
