@@ -26,6 +26,13 @@ describe('small talk', () => {
     'ღამე მშვიდობისა',
     'Bye',
     'Goodbye!',
+    // 56538 (958): each took the goal path, 31 s and 33 s.
+    'რას აკეთებ დღეს?',
+    'მოგესალმები, როგორ მიდის საქმე?',
+    'როგორ მიდის?',
+    'გამარჯობა, რას აკეთებ?',
+    "How's it going?",
+    'What are you up to today?',
   ])('„%s" is small talk', (line) => {
     expect(isSmallTalk(line)).toBe(true);
   });
@@ -38,6 +45,9 @@ describe('small talk', () => {
     'ფოტოგრაფი',
     'კარგად',
     'ნახვამდის, და ხვალ ნოტარიუსი მომიძებნე',
+    'რას აკეთებ დღეს ჩემი ბუღალტრის საქმეზე?',
+    'როგორ მიდის ნოტარიუსის ძებნა?',
+    'გამარჯობა, მჭირდება ბუღალტერი',
   ])('„%s" is not', (line) => {
     expect(isSmallTalk(line)).toBe(false);
   });
