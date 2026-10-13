@@ -214,3 +214,34 @@ describe('the tester’s second line', () => {
     ]);
   });
 });
+
+/**
+ * 2311 (tester box 56931, after 0253): the introduction was refused by the
+ * dormant guard and this send then carried „დამაკავშიროს ლევან კაპანაძესთან."
+ * to a go-between who never opened the app.
+ */
+describe('an introduction is never sent as a plain question', () => {
+  it.each([
+    'სთხოვე გელა ბერიძეს, დამაკავშიროს ლევან კაპანაძესთან.',
+    'გელა ბერიძეს სთხოვე, რომ დამაკავშიროს ლევან კაპანაძესთან.',
+    'სთხოვე გელა ბერიძეს, გამაცნოს ლევან კაპანაძე.',
+  ])('„%s" sends nothing and opens no goal', async (line) => {
+    mockFindPhones.mockResolvedValue(['995500000001']);
+    await expect(sendInstructedAsk('184245', 51184, line)).resolves.toEqual({
+      result: InstructedAskResult.NotSent,
+    });
+    expect(mockCreateAsk).not.toHaveBeenCalled();
+    expect(mockCreateTask).not.toHaveBeenCalled();
+  });
+
+  it('sends the introduction half of a mixed message to nobody as a question (box 54175)', async () => {
+    mockFindPhones.mockResolvedValue(['995500000001']);
+    const out = await sendInstructedAsk(
+      '178582',
+      42485,
+      'სთხოვე ნინოს, გამაცნოს რეზო. ასევე ჰკითხე გელას, ხომ არ იცნობს სხვა ინვესტორს.',
+    );
+    expect(out.result).toBe(InstructedAskResult.NotSent);
+    expect(mockCreateAsk).not.toHaveBeenCalled();
+  });
+});
