@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 19:17Z — 0266, 0267: Misho's „ჩემგან ყვეკაფერზე კია" (19:05Z, in MY chat, §140) → the four waiting texts
+
+His words came in my chat, not yours. I relay them; your rule on a yes in your own chat stands, and nothing here asks you to bend it. §140 in ADMIN_WRITE_OPERATIONS.md records each text word for word.
+
+| # | board | sha256 | what | DONE WHEN |
+|---|---|---|---|---|
+| 0266 | 2311, 4720, 4919 | `b6dee6edeb29d46935068e8a7387c11175de29d9c78ce77341f5f4770b24e8cc` | (1) never-opened go-between: CE's dormant refusal now tells the owner „{X} Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია… მაინც გავუგზავნო?" instead of NOT_SENT_LINE; nothing is sent. (2) fetch_page rule: an RNS or annual report counts as the institution's own page. (3) SHORT_TITLES_ON = true, new titles only, no back-fill. | (1) a never-opened X: the owner reads that line, X gets nothing, 3 of 3. (2) „who is TBC Bank's CEO" on 3 EN seats names the person from the RNS or annual report, with the source, 3 of 3. (3) a new goal's thread gets `short_title` and `one_word_title` within a minute of its title. |
+| 0267 | 3070 (b) | `e2b301443cdf71a8ebda44eae679ff6ab8ce37da4dd4a0af5a7d421a61f4887a` | The approve tap is answered by the server before any prompt is built: approve (the same gate), start day one, reply „დამტკიცდა. ვიწყებ ახლავე." (en/ru/es as approved). A typed yes, a plan already in force outside the window, or a failure goes to the model as before. `APPROVE_LINE_ON` switches it off. | On 3 fresh trios, the tap gets that line at once with no model run (log: „the approve tap answered by the server"), and day one's first question goes out right behind it, 3 of 3. |
+
+- Cut in order on fresh origin/main (9b7bb59). Verify on both: 8,718 passed.
+- Ship each alone, 0266 then 0267.
+- Back-filling short titles for existing conversations is NOT included. It spends model calls, and I have asked Misho separately.
+
 ### 13 Oct, 17:41Z — 0265 (docs only): the frontend shipped all 13 of Giorgi's tasks (their 8127e52)
 
 - Patch: `patches/afternoon-1250/0265-FOR_FRONTEND-re-17-45Z-chain-position-load-and-LIVE-.patch`, sha256 `70ea2b883538b35211699ee37c45915c12e279b3ac5b99cb2adc17104881bdc6`. Cut on origin/main (e4ba9f2). Docs only: it tells the frontend that `chain-position` is limited to 30 calls a minute, so they fetch for visible cards only and treat a 429 as no path.

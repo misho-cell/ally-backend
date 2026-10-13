@@ -1,0 +1,231 @@
+From 4c54d6fbb9b998972cbcc08d51bbb1967f1e0472 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 19:09:20 +0000
+Subject: [PATCH 266/267] =?UTF-8?q?=C2=A7140:=20Misho's=20yes=20on=20three?=
+ =?UTF-8?q?=20texts=20=E2=80=94=20never-opened=20go-between,=20RNS=20sourc?=
+ =?UTF-8?q?e,=20short=20titles=20ON?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 13 Oct 19:05 UTC in the code session's chat: „ჩემგან ყვეკაფერზე
+კია" (recorded as §140 with each text word for word).
+- 2311: when the server's introduction is refused because the go-between
+  never opened the app, the owner is told so and asked „მაინც
+  გავუგზავნო?" instead of the generic not-sent line; nothing goes as a
+  plain question.
+- 4720: fetch_page's rule counts a company's own regulatory filing (an
+  RNS) or annual report as the institution's own page.
+- 4919: SHORT_TITLES_ON = true for new titles; existing ones are not
+  back-filled (that spends model calls and is asked separately).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/ADMIN_WRITE_OPERATIONS.md                | 15 ++++++++++
+ .../__tests__/aCaseTitleThatFits.test.ts      |  6 ++--
+ .../aTypedIntroductionIsMadeAsOne.test.ts     | 13 +++++++++
+ src/services/chat.service.ts                  | 10 +++++--
+ src/services/introFallback.ts                 | 29 ++++++++++++++++++-
+ src/services/shortTitles.ts                   |  6 ++--
+ 6 files changed, 70 insertions(+), 9 deletions(-)
+
+diff --git a/docs/ADMIN_WRITE_OPERATIONS.md b/docs/ADMIN_WRITE_OPERATIONS.md
+index 57a6fce..edbdbb2 100644
+--- a/docs/ADMIN_WRITE_OPERATIONS.md
++++ b/docs/ADMIN_WRITE_OPERATIONS.md
+@@ -6328,3 +6328,18 @@ To the question put at 07:14Z: carry 4657's likely_employer field and its alread
+ word for word) on search_contact_by_name's result too, not only on get_contact_full_profile. The tester's 56332 runs used the name search
+ alone and one English answer said the label's company word as certain. Model-facing (D44): what the model is given changes, the text does not.
+ Undo: LIKELY_EMPLOYER_ON=false switches both places off; or drop the one withLikelyEmployers call in chat.service.
++
++**§140 — 13 October 19:05 UTC, Misho in the code session's chat: „ჩემგან ყვეკაფერზე კია" (yes from me on everything)**
++To the four texts that had been waiting on him, each put to him word for word in this chat today (D44):
++1. 3070 (b): on the approve tap, while day one is still coming, the server writes the approval line itself, with no model run.
++   ka „დამტკიცდა. ვიწყებ ახლავე." · en „Approved. I'm starting now." · ru „Принято. Начинаю." · es „Aprobado. Empiezo ahora."
++2. 2311: when the server's introduction is refused because the go-between never opened the app, the owner is told:
++   ka „{X} Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია, ამიტომ თხოვნას ვერ ნახავს, სანამ არ შემოვა. მაინც გავუგზავნო?"
++   en „{X} is on Netai but hasn't opened the app yet, so they won't see the request until they do. Send it anyway?"
++   ru „{X} есть в Netai, но ещё ни разу не открывал приложение, поэтому не увидит просьбу, пока не зайдёт. Всё равно отправить?"
++   es „{X} está en Netai pero aún no ha abierto la app, así que no verá la petición hasta que entre. ¿La envío de todos modos?"
++3. 4720/0254 (model-facing, fetch_page): „A company's own regulatory filing (a stock-exchange announcement such as an RNS) or its
++   annual report counts as the institution's own page, even when hosted elsewhere."
++4. 4919 (model-facing): the short-title instruction in src/services/shortTitles.ts (shortTitlesPrompt), switched on (SHORT_TITLES_ON).
++NOT read as covered: back-filling short titles for existing conversations. That spends model calls, it was put to him as a separate
++question, and „everything" here answered the texts on the table; it is asked again rather than assumed.
+diff --git a/src/services/__tests__/aCaseTitleThatFits.test.ts b/src/services/__tests__/aCaseTitleThatFits.test.ts
+index 989899d..5550b78 100644
+--- a/src/services/__tests__/aCaseTitleThatFits.test.ts
++++ b/src/services/__tests__/aCaseTitleThatFits.test.ts
+@@ -37,9 +37,9 @@ describe('the short titles', () => {
+   });
+ });
+ 
+-describe('until Misho says yes to the prompt (D44)', () => {
+-  it('nothing is written', () => {
+-    expect(SHORT_TITLES_ON).toBe(false);
++describe("after Misho's yes (§140)", () => {
++  it('new titles get their short ones', () => {
++    expect(SHORT_TITLES_ON).toBe(true);
+   });
+ 
+   it('a new title clears the short ones made from the old, and the list returns both', () => {
+diff --git a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+index 56af78e..9fd6476 100644
+--- a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
++++ b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+@@ -18,6 +18,7 @@ import {
+   nominativeBeforeTan,
+   SERVER_INTRODUCTION_ON,
+   serverIntroduces,
++  dormantSentence,
+ } from '../introFallback';
+ import { ownerAsksForIntroduction } from '../introInstruction';
+ import { requestIntroduction } from '../tools/requestIntroduction';
+@@ -128,6 +129,18 @@ describe('the server makes the introduction', () => {
+     expect(mockIntro).not.toHaveBeenCalled();
+   });
+ 
++  it('names the go-between who never opened the app, so the owner can decide (§140)', async () => {
++    mockIntro.mockResolvedValue({ success: false, reason: 'dormant_account', error: 'x' });
++    const found = await serverIntroduces(OWNER, LINE, {});
++    expect(found).toEqual({ dormant: 'გიორგი ტესტაძე' });
++    expect(dormantSentence({ dormant: 'გიორგი ტესტაძე' }, 'ka')).toBe(
++      'გიორგი ტესტაძე Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია, ამიტომ თხოვნას ვერ ნახავს, სანამ არ შემოვა. მაინც გავუგზავნო?',
++    );
++    expect(dormantSentence({ dormant: 'Giorgi' }, 'en')).toBe(
++      "Giorgi is on Netai but hasn't opened the app yet, so they won't see the request until they do. Send it anyway?",
++    );
++  });
++
+   it('says nothing went when requestIntroduction refuses', async () => {
+     mockIntro.mockResolvedValue({ success: false, error: 'blocked' });
+     expect(await serverIntroduces(OWNER, LINE, {})).toBeNull();
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index c7d3c5d..96158ad 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -471,6 +471,8 @@ import {
+ } from './introInstruction';
+ import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
+ import {
++  dormantSentence,
++  DormantGoBetween,
+   introSentSentence,
+   SERVER_INTRODUCTION_ON,
+   ServerIntroduction,
+@@ -3808,6 +3810,8 @@ const FETCH_PAGE_TOOL: AnthropicTool = {
+     "Fetch and read the actual text of one web page by URL — use after web_search when you need the real content of a specific page (e.g. an institution's own roster to verify a current officeholder), not just a snippet. Read the answer off the page verbatim; if the page does not state it, say so — never guess or use a name not on the page." +
+     ' A long page comes back in parts: when the result carries `next_from_character`, you have NOT seen the whole page — call this again with the same url and `from_character` set to that number until you find the answer or the page ends.' +
+     " WHEN: open an institution's own page whenever a current officeholder is involved." +
++    // 4720 (tester box 56939): an RNS notice named the CEO and was not counted. Misho's yes, §140.
++    " A company's own regulatory filing (a stock-exchange announcement such as an RNS) or its annual report counts as the institution's own page, even when hosted elsewhere." +
+     // #1357 (Lika, 5 Oct): the facts were read off a page, then the owner was sent to the link.
+     ' ABOUT A PERSON: once you have read the page, the answer IS the facts — their role, ' +
+     'workplace, field, in your own words and in full. A link is an extra at the end, never ' +
+@@ -12423,7 +12427,7 @@ async function serverIntroductionOrNull(
+   threadId: number,
+   runId: string,
+   on: boolean = SERVER_INTRODUCTION_ON,
+-): Promise<ServerIntroduction | null> {
++): Promise<ServerIntroduction | DormantGoBetween | null> {
+   const ownerLine = runOwnerLine.get(runId) ?? '';
+   if (!on || !ownerAsksForIntroduction([ownerLine])) return null;
+   const goal = await getOpenTaskByThread(threadId).catch(() => null);
+@@ -12437,7 +12441,7 @@ async function serverIntroductionOrNull(
+       return null;
+     },
+   );
+-  if (made !== null) {
++  if (made !== null && !('dormant' in made)) {
+     runIntroSent.add(runId);
+     // eslint-disable-next-line no-console
+     console.log(`[instruction-unsent] run ${runId}: the server made the introduction`);
+@@ -12458,6 +12462,8 @@ async function serverSendsOrSaysSo(
+ ): Promise<string> {
+   const language = runLang(runId);
+   const introduced = await serverIntroductionOrNull(userId, threadId, runId);
++  // 2311 (§140): never opened the app — the owner decides, nothing goes as a plain question.
++  if (introduced !== null && 'dormant' in introduced) return dormantSentence(introduced, language);
+   if (introduced !== null) return introSentSentence(introduced, language);
+   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+     (err: unknown) => {
+diff --git a/src/services/introFallback.ts b/src/services/introFallback.ts
+index 92b67b6..0a12c74 100644
+--- a/src/services/introFallback.ts
++++ b/src/services/introFallback.ts
+@@ -71,6 +71,13 @@ export interface ServerIntroduction {
+   readonly target: string;
+ }
+ 
++/** 2311 (§140): the go-between has never opened the app; the owner is asked whether to send anyway. */
++export interface DormantGoBetween {
++  readonly dormant: string;
++}
++
++const DORMANT_REASON = 'dormant_account';
++
+ /**
+  * The introduction made by the server for the owner's typed line; null when
+  * the line names no single saved go-between, no readable target, or the
+@@ -80,7 +87,7 @@ export async function serverIntroduces(
+   userId: string,
+   ownerLine: string,
+   context: IntroRequestContext,
+-): Promise<ServerIntroduction | null> {
++): Promise<ServerIntroduction | DormantGoBetween | null> {
+   const sentence = introductionSentence(ownerLine);
+   if (sentence === null) return null;
+   const target = introductionTarget(sentence);
+@@ -101,6 +108,7 @@ export async function serverIntroduces(
+     context,
+   )) as { success?: unknown; reason?: unknown };
+   if (outcome.success === true) return { mediator, target };
++  if (outcome.reason === DORMANT_REASON) return { dormant: mediator };
+   // 2311 (box 56943): every refusal here was silent, so a lookup that never
+   // matched read like a model that never tried. The reason code only: the
+   // refusal's text can carry the number.
+@@ -123,3 +131,22 @@ const INTRO_SENT_SENTENCES: Readonly<Record<RunLanguage, (m: string, t: string)
+ export function introSentSentence(made: ServerIntroduction, language: RunLanguage): string {
+   return (INTRO_SENT_SENTENCES[language] ?? INTRO_SENT_SENTENCES.ka)(made.mediator, made.target);
+ }
++
++/**
++ * OWNER-FACING (D44): Misho's yes word for word, 13 Oct 19:05 UTC (§140). The
++ * owner's „yes" is read by the next run, which may then pass accept_dormant.
++ */
++const DORMANT_SENTENCES: Readonly<Record<RunLanguage, (m: string) => string>> = {
++  ka: (m) =>
++    `${m} Netai-ზე რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია, ამიტომ თხოვნას ვერ ნახავს, სანამ არ შემოვა. მაინც გავუგზავნო?`,
++  en: (m) =>
++    `${m} is on Netai but hasn't opened the app yet, so they won't see the request until they do. Send it anyway?`,
++  ru: (m) =>
++    `${m} есть в Netai, но ещё ни разу не открывал приложение, поэтому не увидит просьбу, пока не зайдёт. Всё равно отправить?`,
++  es: (m) =>
++    `${m} está en Netai pero aún no ha abierto la app, así que no verá la petición hasta que entre. ¿La envío de todos modos?`,
++};
++
++export function dormantSentence(found: DormantGoBetween, language: RunLanguage): string {
++  return (DORMANT_SENTENCES[language] ?? DORMANT_SENTENCES.ka)(found.dormant);
++}
+diff --git a/src/services/shortTitles.ts b/src/services/shortTitles.ts
+index b1be86c..cf87371 100644
+--- a/src/services/shortTitles.ts
++++ b/src/services/shortTitles.ts
+@@ -5,10 +5,10 @@
+  * case. Made from the full title (already in its language and already free of
+  * names the user did not give), by the same cheap model, after it is set.
+  *
+- * MODEL-FACING (D44): SHORT_TITLES_PROMPT waits for Misho's yes word for word;
+- * until then SHORT_TITLES_ON stays false and nothing is written.
++ * MODEL-FACING (D44): Misho's yes, 13 Oct 19:05 UTC in the code session's chat
++ * („ჩემგან ყვეკაფერზე კია", §140). New titles only; existing ones are not back-filled.
+  */
+-export const SHORT_TITLES_ON = false;
++export const SHORT_TITLES_ON = true;
+ 
+ export const SHORT_TITLE_MAX_WORDS = 3;
+ export const SHORT_TITLE_MAX_CHARS = 40;
+-- 
+2.43.0
+

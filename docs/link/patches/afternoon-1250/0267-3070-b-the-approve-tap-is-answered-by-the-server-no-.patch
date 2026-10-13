@@ -1,0 +1,198 @@
+From 2cc60635b1736740565e7450147e4a30e06b46bd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 19:13:15 +0000
+Subject: [PATCH 267/267] 3070 (b): the approve tap is answered by the server,
+ no model run
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho's yes word for word (§140). On the plan card's approve tap, while day
+one is still coming, the server approves the plan (the same gate as before),
+starts day one, and writes „დამტკიცდა. ვიწყებ ახლავე." (en/ru/es as
+approved) as the run's reply, before any prompt is built. A typed yes, a
+plan already in force outside the day-one window, or any failure leaves it
+to the model as before. APPROVE_LINE_ON switches it off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theApproveButtonApproves.test.ts          | 64 ++++++++++++++++++-
+ src/services/chat.service.ts                  | 64 ++++++++++++++++++-
+ 2 files changed, 124 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/theApproveButtonApproves.test.ts b/src/services/__tests__/theApproveButtonApproves.test.ts
+index 198f93b..b97f91a 100644
+--- a/src/services/__tests__/theApproveButtonApproves.test.ts
++++ b/src/services/__tests__/theApproveButtonApproves.test.ts
+@@ -22,7 +22,13 @@ import { query } from '../../db/postgres/client';
+ import { getOpenTaskByThread } from '../taskStore.service';
+ import { approveTaskPlan } from '../taskPlans.service';
+ import { startDayOne } from '../taskEngine.service';
+-import { approvePlanOnTap, isApproveTap } from '../chat.service';
++import {
++  answerApproveTap,
++  APPROVE_LINE_ON,
++  APPROVED_STARTING_LINE,
++  approvePlanOnTap,
++  isApproveTap,
++} from '../chat.service';
+ 
+ const mockQuery = query as jest.MockedFunction<typeof query>;
+ const mockGoal = getOpenTaskByThread as jest.MockedFunction<typeof getOpenTaskByThread>;
+@@ -122,3 +128,59 @@ describe('the tap’s own line does not repeat day one’s', () => {
+     expect(note.slice(0, 900)).not.toContain('will come back as soon as someone answers');
+   });
+ });
++
++/** 3070 (b), Misho's yes word for word (§140): the tap is answered without a model run. */
++describe('the approve tap answers itself', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockGoal.mockResolvedValue({ id: 11155 } as never);
++    mockApprove.mockResolvedValue({
++      ok: true,
++      value: { version: 2, summary: 'Plan v2', alreadyInForce: false },
++    } as never);
++  });
++
++  it('is on, with the four approved lines', () => {
++    expect(APPROVE_LINE_ON).toBe(true);
++    expect(APPROVED_STARTING_LINE).toEqual({
++      ka: 'დამტკიცდა. ვიწყებ ახლავე.',
++      en: "Approved. I'm starting now.",
++      ru: 'Принято. Начинаю.',
++      es: 'Aprobado. Empiezo ahora.',
++    });
++  });
++
++  it('approves, starts day one and replies with the line in the conversation’s language', async () => {
++    screen(['I approve', 'Change it'], 'I approve');
++    const out = await answerApproveTap('172732', 26700, 'I approve', 'run-2', undefined);
++    expect(mockDayOne).toHaveBeenCalledWith(11155);
++    expect(out).not.toBeNull();
++    expect(out?.reply).toBe(APPROVED_STARTING_LINE[out?.language ?? 'ka']);
++    expect(out?.requestCreated).toBe(false);
++  });
++
++  it('leaves everything to the run for a typed yes, or when nothing was approved', async () => {
++    screen(['I approve', 'Change it'], 'yes');
++    expect(await answerApproveTap('172732', 26700, 'yes', 'run-3', undefined)).toBeNull();
++    mockApprove.mockResolvedValue({
++      ok: true,
++      value: {
++        version: 2,
++        summary: 'Plan v2',
++        alreadyInForce: true,
++        approvedAt: '2026-01-01T00:00:00Z',
++      },
++    } as never);
++    screen(['I approve', 'Change it'], 'I approve');
++    expect(await answerApproveTap('172732', 26700, 'I approve', 'run-4', undefined)).toBeNull();
++  });
++
++  it('is tried before the prompt is built, so no model runs for the tap', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const early = chat.indexOf(
++      'await answerApproveTap(userId, threadId, userMessage, runId, intent)',
++    );
++    expect(early).toBeGreaterThan(0);
++    expect(early).toBeLessThan(chat.indexOf('const systemPrompt = joinSystemPrompt('));
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 96158ad..3361456 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -7010,12 +7010,13 @@ const APPROVED_BY_TAP_NOTE =
+   'or will come back when someone answers — the line after the questions go out says who they ' +
+   'went to and that, once.';
+ 
+-export async function approvePlanOnTap(
++/** The plan approved by the owner's tap: whether day one is still on its way; null when nothing was approved. */
++async function approvedOnTap(
+   userId: string,
+   threadId: number,
+   userMessage: string,
+   runId: string,
+-): Promise<string | null> {
++): Promise<{ readonly dayOneStillComing: boolean } | null> {
+   if (!isApproveTap(userMessage)) return null;
+   const goal = await getOpenTaskByThread(threadId);
+   if (goal === null) return null;
+@@ -7036,7 +7037,55 @@ export async function approvePlanOnTap(
+   console.log(
+     `[plan-consent] run ${runId} thread ${threadId}: plan v${outcome.value.version} of goal ${goal.id} approved by the owner's tap`,
+   );
+-  return APPROVED_BY_TAP_NOTE;
++  return { dayOneStillComing: said.dayOneStillComing };
++}
++
++export async function approvePlanOnTap(
++  userId: string,
++  threadId: number,
++  userMessage: string,
++  runId: string,
++): Promise<string | null> {
++  return (await approvedOnTap(userId, threadId, userMessage, runId)) === null
++    ? null
++    : APPROVED_BY_TAP_NOTE;
++}
++
++/**
++ * 3070 (b), Misho's yes word for word (§140): the approve tap needs no model.
++ * Measured on 3070, the run after the tap only said „approved, starting" and
++ * held day one behind it; the server says that line itself and day one
++ * starts at once. Only while day one is still coming; otherwise the run reads
++ * where the goal stands, as before.
++ */
++export const APPROVE_LINE_ON = true;
++
++export const APPROVED_STARTING_LINE: Readonly<Record<RunLanguage, string>> = {
++  ka: 'დამტკიცდა. ვიწყებ ახლავე.',
++  en: "Approved. I'm starting now.",
++  ru: 'Принято. Начинаю.',
++  es: 'Aprobado. Empiezo ahora.',
++};
++
++export async function answerApproveTap(
++  userId: string,
++  threadId: number,
++  userMessage: string,
++  runId: string,
++  intent: RunIntent | undefined,
++): Promise<ChatResult | null> {
++  if (!APPROVE_LINE_ON || !isApproveTap(userMessage)) return null;
++  const approved = await approvedOnTap(userId, threadId, userMessage, runId);
++  if (approved === null || !approved.dayOneStillComing) return null;
++  if (intent?.alreadyStored !== true) {
++    await saveMessage(userId, threadId, 'user', userMessage, 'message', runId);
++  }
++  const language = await threadLanguage(threadId).catch(() => 'ka' as RunLanguage);
++  const line = APPROVED_STARTING_LINE[language] ?? APPROVED_STARTING_LINE.ka;
++  await saveMessage(userId, threadId, 'assistant', line, 'message', runId);
++  // eslint-disable-next-line no-console
++  console.log(`[plan-consent] run ${runId}: the approve tap answered by the server`);
++  return { reply: line, language, requestCreated: false };
+ }
+ 
+ // Ticket 16 Task 98: what a run pulled out of the pending list. The items are
+@@ -15735,6 +15784,15 @@ export async function processChat(
+   if (!ownerAbsent && isBareGreeting(userMessage)) {
+     return answerGreeting(userId, threadId, userMessage, runId, intent?.alreadyStored === true);
+   }
++  // 3070 (b): the approve tap is answered by the server and day one starts at once.
++  const approvedLine = ownerAbsent
++    ? null
++    : await answerApproveTap(userId, threadId, userMessage, runId, intent).catch((err: unknown) => {
++        // eslint-disable-next-line no-console
++        console.error('[plan-consent] server approve line failed:', (err as Error).message);
++        return null;
++      });
++  if (approvedLine !== null) return approvedLine;
+   // 2810: „that is what I needed" right after a search is that search's outcome.
+   if (!ownerAbsent) void noteSearchVerdict(userId, userMessage);
+   // 3203: „<one saved contact> იცნობს …" about a person who is not on Netai is answered at once.
+-- 
+2.43.0
+
