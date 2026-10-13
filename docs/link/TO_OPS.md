@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 07:50Z — 0233: 958, a [post-run] line names the four seconds after the tool loop (logging only)
+
+- Patch: `patches/afternoon-1250/0233-958-name-the-four-seconds-after-the-tool-loop.patch`, sha256 `cadd31939b1d93ee1cb569c1185775f1cce6c2cf9487c4ece2043975a5bcce3e`. My branch commit a9498d5. Applies on top of 0232 and stays green there (869 suites passed). If you ship 0233 before 0232, say so and I'll recut it on 0231.
+- Why: across the 32 `[latency]` lines between 06:31Z and 07:44Z, every run spent 4.0–4.7 s between the tool loop's „done" and the answer reaching the owner. That's server work after the model has finished, on a one-tool small-talk turn as much as on a goal. Nothing in the log says which step it is. One `[post-run] run <id>: trail …ms, guards …ms, officeholder …ms, moderation …ms, requests …ms, stored …ms; total …ms` line per run now names it.
+- Logging only: nothing the model or the owner sees changes. No D44, no switch, no migration.
+- DONE WHEN: an hour of `[post-run]` lines after the deploy names the step behind the four seconds. The fix to that step comes as its own patch.
+- Order: alone, any time.
+
 ### 13 Oct, 07:34Z — 0232: 4657, the name search carries likely_employer and its note (Misho's yes in my chat, §138)
 
 - Patch: `patches/afternoon-1250/0232-4657-the-name-search-carries-the-likely-employer-too.patch`, sha256 `8d3afd51b32b3b2c7febc8cccdb0b79eee9da8394df622c010144719a28f3ec0`. My branch commit a643812. Applies on top of 0231 and stays green there (verify on the chain: 868 suites passed).

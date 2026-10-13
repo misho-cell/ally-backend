@@ -1,0 +1,148 @@
+From e0fa20ff582604143c0dd573fdc0ae905f08b416 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 07:46:29 +0000
+Subject: [PATCH] 958: name the four seconds after the tool loop
+
+The [latency] lines (0227) show, on all 32 runs read this morning, 4.0-4.7 s
+between the tool loop's "done" and the answer reaching the owner: server
+work after the model has finished, on a one-tool small-talk turn as much as
+on a goal. One [post-run] line per run now gives each step's time (the
+saved trail, the reply guards, the officeholder gate, moderation, the
+requests to deliver, storing) and the total. Logging only; nothing the
+model or the owner sees changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/postRunClock.test.ts | 18 +++++++++++++
+ src/services/chat.service.ts                | 10 ++++++++
+ src/services/postRunClock.ts                | 28 +++++++++++++++++++++
+ 3 files changed, 56 insertions(+)
+ create mode 100644 src/services/__tests__/postRunClock.test.ts
+ create mode 100644 src/services/postRunClock.ts
+
+diff --git a/src/services/__tests__/postRunClock.test.ts b/src/services/__tests__/postRunClock.test.ts
+new file mode 100644
+index 0000000..68cfe6f
+--- /dev/null
++++ b/src/services/__tests__/postRunClock.test.ts
+@@ -0,0 +1,18 @@
++import { lap, postRunLine, startPostRunClock } from '../postRunClock';
++
++/** 958: the four seconds after the tool loop, named step by step. */
++describe('the post-run clock', () => {
++  it('gives each step its own time and the whole after the loop', () => {
++    const clock = startPostRunClock(1_000);
++    lap(clock, 'trail', 1_150);
++    lap(clock, 'moderation', 2_400);
++    lap(clock, 'stored', 2_500);
++    expect(postRunLine('r1', clock, 2_520)).toBe(
++      '[post-run] run r1: trail 150ms, moderation 1250ms, stored 100ms; total 1520ms',
++    );
++  });
++
++  it('says only the total when no step was marked', () => {
++    expect(postRunLine('r2', startPostRunClock(10), 40)).toBe('[post-run] run r2: ; total 30ms');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7ba27a3..6868818 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -65,6 +65,7 @@ import { noteIntroductionSentAsAQuestion } from './introductionShaped';
+ import { lookupContactByPhone } from './tools/lookupContactByPhone';
+ import { searchContactByName } from './tools/searchContactByName';
+ import { withLikelyEmployers } from './tools/likelyEmployer';
++import { lap, postRunLine, startPostRunClock } from './postRunClock';
+ import { searchByTag } from './tools/searchByTag';
+ import { searchByInsight } from './tools/searchByInsight';
+ import { searchSecondDegree } from './tools/searchSecondDegree';
+@@ -16210,6 +16211,7 @@ export async function processChat(
+     // the server has already acted on goes to the faster model.
+     approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,
+   );
++  const postRun = startPostRunClock();
+   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
+   const planToNobody = takePlanWritesToNobody(runId);
+   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
+@@ -16235,6 +16237,7 @@ export async function processChat(
+       (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content));
+     await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
+   }
++  lap(postRun, 'trail');
+ 
+   // A run must NEVER end "successfully" with nothing to say: an empty final
+   // used to be persisted as an empty (view-filtered) message with status done —
+@@ -16438,7 +16441,9 @@ export async function processChat(
+   // Ticket 12 Task 46 (D151): an officeholder's name the run never read on a
+   // page (or got from the user's own data) does not reach the screen — the
+   // scripted line stands in its place. Logged by count, never by name.
++  lap(postRun, 'guards');
+   const gate = await applyOfficeholderGate(cleanedFinal, runId, language, userId);
++  lap(postRun, 'officeholder');
+   if (gate.refused.length > 0) {
+     // eslint-disable-next-line no-console
+     console.warn(
+@@ -16469,6 +16474,7 @@ export async function processChat(
+     !ownerAbsent && isToolFreeSmallTalk(userMessage)
+       ? { safe: true }
+       : await moderateReply(cleanedFinal, userId);
++  lap(postRun, 'moderation');
+   let replySafe = verdict.safe;
+   if (!replySafe) {
+     /**
+@@ -16564,6 +16570,7 @@ export async function processChat(
+       getPendingRequestsForMediator(userId),
+     ),
+   );
++  lap(postRun, 'requests');
+   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
+   // its plan proposed in an engine turn right behind this reply.
+   const pendingItems = takePendingItems(runId, reply);
+@@ -16840,6 +16847,9 @@ export async function processChat(
+     // eslint-disable-next-line no-console
+     console.error('[wallet] debit failed for run', runId, (err as Error).message);
+   }
++  lap(postRun, 'stored');
++  // eslint-disable-next-line no-console
++  console.log(postRunLine(runId, postRun));
+ 
+   return {
+     reply: storedReply,
+diff --git a/src/services/postRunClock.ts b/src/services/postRunClock.ts
+new file mode 100644
+index 0000000..b6f0a98
+--- /dev/null
++++ b/src/services/postRunClock.ts
+@@ -0,0 +1,28 @@
++/**
++ * 958 (13 Oct, the `[latency]` lines 0227 added): on every run, about four
++ * seconds pass between the tool loop's „done" and the answer reaching the
++ * owner — 4.0–4.7 s on each of 32 runs read this morning, the same on a
++ * one-tool small-talk turn as on a goal. That is server work after the model
++ * has finished, and nothing said which step it was. The clock names it: each
++ * step's time since the one before, in one line per run.
++ */
++export interface PostRunClock {
++  readonly startedAt: number;
++  lastAt: number;
++  readonly laps: string[];
++}
++
++export function startPostRunClock(now: number = Date.now()): PostRunClock {
++  return { startedAt: now, lastAt: now, laps: [] };
++}
++
++/** Marks the end of a step: its name and the time since the previous mark. */
++export function lap(clock: PostRunClock, step: string, now: number = Date.now()): void {
++  clock.laps.push(`${step} ${now - clock.lastAt}ms`);
++  clock.lastAt = now;
++}
++
++/** One log line: every step in order and the whole time after the loop. */
++export function postRunLine(runId: string, clock: PostRunClock, now: number = Date.now()): string {
++  return `[post-run] run ${runId}: ${clock.laps.join(', ')}; total ${now - clock.startedAt}ms`;
++}
+-- 
+2.43.0
+
