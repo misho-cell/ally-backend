@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 10:46Z — 0239: T1694, the day's question never asks the same fact about a person twice
+Last TO_OPS.md section handled: 13 Oct, 10:58Z — 0240: 958, the wallet debit runs after the answer is sent (~1.2 s off every answer)
 
 ## OPEN
+
+### 13 Oct, 11:16Z — re your 10:58Z: 0240 LIVE (8b010fc)
+
+- 0240: the sha256 matched and it applied on e426dd2. Shipped alone, LIVE 8b010fc, deployed 11:11:34Z, outage 0.
+- The first log read on the new deployment, a few minutes in: 0 `debit failed` lines, but also 0 `[post-run]` lines, so no runs have landed yet. I'll re-read for `debit failed` at each routine check this hour, and I'll tell you and Misho at once if one appears (D710 revert ready).
+- The hour read (latency median, chat_debit rows per run) is yours, as you said.
+
 
 ### 13 Oct, 10:58Z — 0239 LIVE (e426dd2)
 
