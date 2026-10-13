@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 14:55Z — 0255: 4885 (Giorgi's urgent), team-tasks by status with counts; 4889 handed to the frontend
+
+- Patch: `patches/afternoon-1250/0255-4885-team-tasks-list-by-status-first-with-counts-per.patch`, sha256 `b1531ce89ac02850c9eaae9c77159aacaae7166118a507927a82de47eeaf3bd0`. My branch commit a21f489. Cut on origin/main (dec7444); independent of 0253/0254. Verify: 8,679 passed.
+- What it does:
+  - `GET /admin/team-tasks` lists by status first (to_build → built → being_tested → tested), then #266's order.
+  - It adds `data.counts` per status for the tab.
+  - Nothing is removed, so the current page keeps working.
+- The patch also carries docs/FOR_FRONTEND.md: the count line, plus 4889, which is client-only (the „მოთხოვნები" block in chat/layout.tsx). The frontend reads main, so they see it once this ships.
+- DONE WHEN (server half): `GET /admin/team-tasks?page=2` returns every to_build row before any tested row, and `counts` matches the rows by status. The visible line and the move without reload come with the frontend.
+
 ### 13 Oct, 14:46Z — 0254: 4720 CH, the raw placeholder „(name not verified on an official page)" fixed
 
 - Patch: `patches/afternoon-1250/0254-4720-CH-the-profile-page-the-server-read-counts-as-e.patch`, sha256 `c9a248f6abf968fa1d81bfc2572f066620798bd4d42dfde05e60fb4e53e4fa32`. My branch commit bd635c5. Cut on origin/main (dec7444) and independent of 0253, so it can go in either order. Verify: 8,678 passed.

@@ -1,0 +1,282 @@
+From d1bfe8febc8c92c7fb09dfb7ffef5b8c3d73c8d0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 14:53:04 +0000
+Subject: [PATCH] 4885: team-tasks list by status first, with counts per status
+
+Giorgi (13 Oct): on every tab the to-build rows should come first and the
+tested rows last, with one count line above. GET /admin/team-tasks now
+orders by status (to_build, built, being_tested, tested) ahead of #266's
+order and answers data.counts for the same tab, counted in the database.
+FOR_FRONTEND carries the contract and 4889, which is client-only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 31 ++++++++++++
+ .../__tests__/theBoardReadsByStatus.test.ts   | 24 ++++++++++
+ src/api/routes/admin.routes.ts                | 12 +++--
+ .../everyTaskSaysWhoCreatedIt.test.ts         | 38 ++++++++++++++-
+ src/services/teamTasks.service.ts             | 48 ++++++++++++++++++-
+ 5 files changed, 146 insertions(+), 7 deletions(-)
+ create mode 100644 src/api/routes/__tests__/theBoardReadsByStatus.test.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index c4fe1bf..b22603b 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,37 @@ messages in their name.
+ 
+ ---
+ 
++## 13 October, 14:49Z — 4885 and 4889 (Giorgi's urgent pair, Misho asked for both today): the server half of 4885, and 4889 is yours
++
++### 4885: team-tasks by status, with a count line
++
++`GET /admin/team-tasks?page=1|2|3` (admin bearer). On the branch now; LIVE when ops ships patch 0255. Two changes, nothing removed:
++
++- `data.tasks` comes back ordered by status first: `to_build`, `built`, `being_tested`, `tested`. Inside each status the order is #266's, as before.
++- `data.counts` is new. It holds every status, with 0 when a status has none, counted for that tab in the database, so a tab longer than the 500-row list still counts right:
++
++```json
++{ "success": true, "data": {
++  "tasks": [ { "id": 4889, "status": "to_build", "...": "..." } ],
++  "counts": { "to_build": 8, "built": 3, "being_tested": 12, "tested": 40 }
++} }
++```
++
++Status codes: 200; 400 for a bad page; 401/403 for a non-admin; 500 with no database text.
++
++**Your part:**
++- Show one line above the rows: „ასაშენებელი 8 · აშენებულია 3 · იტესტება 12 · გატესტილია 40".
++- When a PATCH changes a row's status or page, move the row into its group and adjust the line on the client. Giorgi's DONE WHEN says „without a reload".
++- Until 0255 is live, `counts` is absent. Counting `tasks` on the client is a safe fallback.
++
++### 4889: the four versions alike, „მოთხოვნები" removed
++
++There is nothing for the server here. The block is `visibleRequests` in `src/app/chat/layout.tsx` (around line 1558: the `requestsLabel` section with `RequestActionRow`). Giorgi's evidence: the same account and build b58d001 show it in the iOS Safari browser and on desktop, but not in the mobile app. The mobile app is the correct one.
++
++- Remove the block (or whatever makes the app skip it) on all four versions.
++- Then compare the chat list, chat, profile, plan cards and notifications across the four versions, and post the list of differences found and fixed on the board (4889's DONE WHEN).
++- If any difference turns out to come from a server answer, tell me the route and I'll fix it.
++
+ ## 13 October, 13:40Z — re your 13:25Z: both routes are LIVE now
+ 
+ `GET /updates/held` and `DELETE /updates/:ref/snooze` shipped as 0250, live on main (ffc6a53) since about 13:05Z. Your page can be checked against the real routes now. Thank you for the 404 change: a row that is no longer held simply leaves the list, which is exactly what the 404 means.
+diff --git a/src/api/routes/__tests__/theBoardReadsByStatus.test.ts b/src/api/routes/__tests__/theBoardReadsByStatus.test.ts
+new file mode 100644
+index 0000000..504cfa3
+--- /dev/null
++++ b/src/api/routes/__tests__/theBoardReadsByStatus.test.ts
+@@ -0,0 +1,24 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 4885 (Giorgi, 13 Oct): every team-tasks tab reads to-build first and tested
++ * last, with one line of counts per status above it. The list answers both.
++ */
++const route = readFileSync(join(__dirname, '..', 'admin.routes.ts'), 'utf8');
++const fn = route.slice(
++  route.indexOf("  '/team-tasks',\n  queryParam('page')"),
++  route.indexOf("adminRouter.post(\n  '/team-tasks'"),
++);
++
++describe('GET /admin/team-tasks', () => {
++  it('answers the rows and the counts for the same tab', () => {
++    expect(fn).toContain('Promise.all([listTeamTasks(page), countTeamTasks(page)])');
++    expect(fn).toContain('data: { tasks, counts }');
++  });
++
++  it('still refuses an unknown page and never shows a database error', () => {
++    expect(fn).toContain('res.status(400)');
++    expect(fn).toContain("error: 'სერვერის შეცდომა'");
++  });
++});
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 6bf47c7..147e903 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -1,6 +1,7 @@
+ import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
+ import {
+   authorForLogin,
++  countTeamTasks,
+   createTeamTask,
+   deleteTeamTask,
+   isTeamTaskAuthor,
+@@ -9,6 +10,7 @@ import {
+   TEAM_TASK_PAGES,
+   TeamTask,
+   TeamTaskAuthor,
++  TeamTaskCounts,
+   TeamTaskStatus,
+   updateTeamTask,
+ } from '../../services/teamTasks.service';
+@@ -1866,21 +1868,25 @@ adminRouter.post(
+ // M2 (plate v288; Misho, 1 October): the team's task board — every row says
+ // who created it. The author comes from the login; only the shared login,
+ // which AI seats write through, names one (`created_by`), from the fixed list.
+-//   GET   /admin/team-tasks?page=1|2|3
++//   GET   /admin/team-tasks?page=1|2|3   → { tasks (by status first, 4885), counts }
+ //   POST  /admin/team-tasks { problem, task, priority?, created_by? }
+ //   PATCH /admin/team-tasks/:id { status?, priority?, page?, problem?, task? }
+ //   DELETE /admin/team-tasks/:id   (hidden, not erased; migration 196)
+ adminRouter.get(
+   '/team-tasks',
+   queryParam('page').optional().isIn(TEAM_TASK_PAGES.map(String)),
+-  async (req: Request, res: Response<ApiResponse<{ tasks: TeamTask[] }>>) => {
++  async (
++    req: Request,
++    res: Response<ApiResponse<{ tasks: TeamTask[]; counts: TeamTaskCounts }>>,
++  ) => {
+     if (!validationResult(req).isEmpty()) {
+       res.status(400).json({ success: false, error: 'page is 1, 2 or 3' });
+       return;
+     }
+     try {
+       const page = req.query.page === undefined ? undefined : Number(req.query.page);
+-      res.status(200).json({ success: true, data: { tasks: await listTeamTasks(page) } });
++      const [tasks, counts] = await Promise.all([listTeamTasks(page), countTeamTasks(page)]);
++      res.status(200).json({ success: true, data: { tasks, counts } });
+     } catch (error) {
+       // eslint-disable-next-line no-console
+       console.error('[team-tasks] list failed:', (error as Error).message);
+diff --git a/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts b/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts
+index 1d69590..14f59ae 100644
+--- a/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts
++++ b/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts
+@@ -8,6 +8,8 @@ import {
+   createTeamTask,
+   deleteTeamTask,
+   isTeamTaskAuthor,
++  countTeamTasks,
++  countsFrom,
+   listTeamTasks,
+   TEAM_TASK_PAGES,
+   TeamTaskAuthor,
+@@ -84,11 +86,15 @@ describe('the board', () => {
+     await listTeamTasks(2);
+     const [sql, params] = mockQuery.mock.calls[0];
+     expect(String(sql)).toMatch(
+-      /ORDER BY page,\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
++      /ORDER BY page,\s+COALESCE\(array_position\(\$3::text\[\], status\), cardinality\(\$3::text\[\]\) \+ 1\),\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
+     );
+     expect(String(sql)).toMatch(/priority, id DESC/);
+     expect(String(sql)).toContain('LIMIT');
+-    expect(params).toEqual([2, ['giorgi', 'tornike', 'lika', 'ninia', 'tornikes_claude']]);
++    expect(params).toEqual([
++      2,
++      ['giorgi', 'tornike', 'lika', 'ninia', 'tornikes_claude'],
++      ['to_build', 'built', 'being_tested', 'tested'],
++    ]);
+   });
+ 
+   /** #463: a third tab for Tornike's Claude. */
+@@ -174,3 +180,31 @@ describe('where it is wired', () => {
+     }
+   });
+ });
++
++/** 4885 (Giorgi, 13 Oct): one line of counts above each tab. */
++describe('the counts above a tab', () => {
++  it('are counted per status in the database for that tab, removed rows left out', async () => {
++    mockQuery.mockResolvedValue(
++      rows([
++        { status: 'to_build', n: 8 },
++        { status: 'tested', n: 40 },
++      ]),
++    );
++    const counts = await countTeamTasks(2);
++    const [sql, params, timeout] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('GROUP BY status');
++    expect(String(sql)).toContain('deleted_at IS NULL');
++    expect(params).toEqual([2]);
++    expect(timeout).toBeGreaterThan(0);
++    expect(counts).toEqual({ to_build: 8, built: 0, being_tested: 0, tested: 40 });
++  });
++
++  it('name every status, 0 when a status has no rows, and ignore an unknown one', () => {
++    expect(countsFrom([{ status: 'odd', n: 3 }])).toEqual({
++      to_build: 0,
++      built: 0,
++      being_tested: 0,
++      tested: 0,
++    });
++  });
++});
+diff --git a/src/services/teamTasks.service.ts b/src/services/teamTasks.service.ts
+index 24c60c2..0293de8 100644
+--- a/src/services/teamTasks.service.ts
++++ b/src/services/teamTasks.service.ts
+@@ -125,22 +125,66 @@ const AUTHOR_ORDER: readonly TeamTaskAuthor[] = [
+   TeamTaskAuthor.TornikesClaude,
+ ];
+ 
+-/** One page of the board, in the order #266 asks for. */
++/**
++ * 4885 (Giorgi, 13 Oct): status comes first — what is still to build at the
++ * top, what is tested at the bottom; #266's order holds inside each status.
++ */
++export const STATUS_ORDER: readonly TeamTaskStatus[] = [
++  TeamTaskStatus.ToBuild,
++  TeamTaskStatus.Built,
++  TeamTaskStatus.BeingTested,
++  TeamTaskStatus.Tested,
++];
++
++/** One page of the board: by status (4885), then in the order #266 asks for. */
+ export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
+   const result = await query<Record<string, unknown>>(
+     `SELECT ${COLUMNS} FROM team_tasks
+       WHERE ($1::smallint IS NULL OR page = $1::smallint)
+         AND deleted_at IS NULL
+       ORDER BY page,
++               COALESCE(array_position($3::text[], status), cardinality($3::text[]) + 1),
+                COALESCE(array_position($2::text[], created_by), cardinality($2::text[]) + 1),
+                priority, id DESC
+       LIMIT ${MAX_TASKS_LISTED}`,
+-    [page ?? null, AUTHOR_ORDER],
++    [page ?? null, AUTHOR_ORDER, STATUS_ORDER],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows.map(toTask);
+ }
+ 
++export type TeamTaskCounts = Readonly<Record<TeamTaskStatus, number>>;
++
++/** The counts by status from the database rows, every status present (0 when none). */
++export function countsFrom(rows: readonly Record<string, unknown>[]): TeamTaskCounts {
++  const counts: Record<TeamTaskStatus, number> = {
++    [TeamTaskStatus.ToBuild]: 0,
++    [TeamTaskStatus.Built]: 0,
++    [TeamTaskStatus.BeingTested]: 0,
++    [TeamTaskStatus.Tested]: 0,
++  };
++  for (const row of rows) {
++    if (isTeamTaskStatus(row.status)) counts[row.status] = Number(row.n);
++  }
++  return counts;
++}
++
++/**
++ * 4885: the line above the tab — how many rows of each status it holds. Counted
++ * in the database, so a tab longer than the listing limit still counts right.
++ */
++export async function countTeamTasks(page?: number): Promise<TeamTaskCounts> {
++  const result = await query<Record<string, unknown>>(
++    `SELECT status, COUNT(*)::int AS n FROM team_tasks
++      WHERE ($1::smallint IS NULL OR page = $1::smallint)
++        AND deleted_at IS NULL
++      GROUP BY status`,
++    [page ?? null],
++    QUERY_TIMEOUT_MS,
++  );
++  return countsFrom(result.rows);
++}
++
+ export interface TeamTaskChange {
+   readonly status?: TeamTaskStatus;
+   readonly priority?: number;
+-- 
+2.43.0
+
