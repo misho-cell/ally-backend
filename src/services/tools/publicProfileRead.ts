@@ -14,10 +14,19 @@ const PROFILE_URL_RE = /^https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[^/?#\s]
 const TOP_RESULTS_LOOKED_AT = 3;
 const MAX_PROFILE_CHARS = 6_000;
 
+/**
+ * CH (4720, the tester's 56073: facts given 3 of 3, but no date and once a bare
+ * link). MODEL-FACING (D44): Misho's yes word for word, 13 Oct 11:2x UTC in the
+ * operations chat, „ჩემგან ყველაფერზე კია" (§139). It rides with the page.
+ */
+export const PUBLIC_PROFILE_NOTE =
+  'When you use public_profile, say where it is from and the day it was read (e.g. „LinkedIn, read 13 Oct"); never a bare link.';
+
 export interface PublicProfilePage {
   readonly url: string;
   readonly read_on: string;
   readonly content: string;
+  readonly note: string;
 }
 
 type PageReader = (url: string) => Promise<object>;
@@ -42,7 +51,12 @@ export function profileUrlIn(found: object): string | null {
 export function profilePage(url: string, page: object, today: string): PublicProfilePage | null {
   const content = (page as Record<string, unknown>).content;
   if (typeof content !== 'string' || content.trim() === '') return null;
-  return { url, read_on: today, content: content.slice(0, MAX_PROFILE_CHARS) };
+  return {
+    url,
+    read_on: today,
+    content: content.slice(0, MAX_PROFILE_CHARS),
+    note: PUBLIC_PROFILE_NOTE,
+  };
 }
 
 /**
