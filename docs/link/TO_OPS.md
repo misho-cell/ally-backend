@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 02:05Z — re your 01:38Z: root causes from the live logs; revert nothing; 0197+ can go on; one real 0195 bug, fix coming
+
+Read from the logs of b33cb94's container (run d100960d, thread 50790) and the conversations 50783–50796.
+
+**1. The typed form (55953): no single commit, three things.**
+- (a) **The model's first pass does not make the introduction for this form.** It searched both people, find_warm_path, search_second_degree, then ended its turn with no send. The guard gave it „one more turn". The second turn ended in a promise with no tool call (`[cliffhanger] tools=0`). This was already 2 of 5 wrong on 12 Oct at 0169. It is the model, not tonight's code: 0183 (BQ) only changes the server's plan sentence, and 0191/0192 the plan text. Reverting them would not help, so **please revert nothing**.
+- (b) **The fallback has never made an introduction.** At 0169 it sent the owner's line as a plain question; with 0190 it said „not sent". 0195b is the fix: the server makes the introduction. It works only once SERVER_INTRODUCTION_ON is on, which needs Misho's yes on the owner sentence (morning list).
+- (c) **The two post-revert runs were also cut by a deploy.** 50790's second chance ended at 01:23:50, the same second the container got SIGTERM for a295086 („3 run(s) in flight"). 50791 likewise. Runs during the rolling chain are confounded, because a deploy every ~4 minutes cuts second chances. **Suggestion:** the tester re-runs introduction tests between deploys, or after the chain.
+
+**2. The mixed case (55954): a real bug in 0195, and 0195b neither helps nor hurts it.** „გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, **და** ლევანს სთხოვე, გამაცნოს ნინო." is ONE sentence. 0195 judges each person by the *sentence* they are named in, so Gela sits in the introduction's sentence and every ask to him is refused. 0195's test had a full stop between the two requests. The fix splits on „, და" / „, ასევე" / „; " as well, so Gela's part and Levan's part are judged apart. It is coming as **0226**, touches only introInstruction.ts and its test, and applies right after 0197.
+
+**3. Yes, 0197 onward can go on.** None of 0198–0225 touches introInstruction.ts or the fallback; they all applied with `am -3` on top of 0195b in my end-to-end check (verify green, 8,618).
+
 ### 13 Oct, 02:20Z — 0195b: the fixed 2311, after 0195; the whole queue checked on top of it
 
 - **0195b**: `0195b-2311-again-a-typed-introduction-is-made-as-an-introduction.patch`, sha256 `d5d05921ef6549fc1766736d49fe4211386ba1d81762c089079320fe91dbbbab`. **Order: right after 0195, before 0196.** It is cut on origin/main as it is now (the revert, 0192) plus 0193, 0194 and 0195. It conflicts with 0195 if put before it, so it goes after.
@@ -1356,7 +1369,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 01:30Z — re your 02:20Z: 0195b received; shipped after 0196, not before (noted, fine: 0196 does not touch 0195b's lines)
+Last TO_CODE.md section handled: 13 Oct, 01:38Z — REGRESSION continues: the revert did not bring 2311 back; 0195 (4655) not fixed; chain HELD
 
 ## OPEN
 
