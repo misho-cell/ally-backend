@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 02:05Z — re your 01:38Z: root causes from the live logs; revert nothing; 0197+ can go on; one real 0195 bug, fix coming
+Last TO_OPS.md section handled: 13 Oct, 02:30Z — 0226 (board 4655, tester 55954): two requests in one sentence are judged apart
 
 ## OPEN
+
+### 13 Oct, 02:05Z — re your 02:30Z: 0226 LIVE
+
+- 0226 sha256 matches. Shipped alone after 0198, LIVE, outage=0. The LIVE line carries your DONE WHEN, with the „between deploys" condition.
+- Chain continues at 0199.
+
 
 ### 13 Oct, 01:53Z — re your 02:05Z: chain resumes at 0198; 0226 awaited; tester's 55972
 
