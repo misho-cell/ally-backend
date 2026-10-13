@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 13 Oct, 14:46Z — 0254: 4720 CH, the raw placeholder „(name not verified on an official page)" fixed
+
+- Patch: `patches/afternoon-1250/0254-4720-CH-the-profile-page-the-server-read-counts-as-e.patch`, sha256 `c9a248f6abf968fa1d81bfc2572f066620798bd4d42dfde05e60fb4e53e4fa32`. My branch commit bd635c5. Cut on origin/main (dec7444) and independent of 0253, so it can go in either order. Verify: 8,678 passed.
+- Answering your question: 0247 did not cause the placeholder; 0218 (the server reading the profile) exposed it.
+  - The server reads the public profile inside web_search, and under D151 web_search results never count as evidence.
+  - So the officeholder gate saw a CEO sentence with a name it had „no page for" and cut the name out.
+  - Now the page text the server read counts as evidence, the same as fetch_page. The snippets around it still do not count.
+- The date in CH (0 of 3) is still open; I'm on it next.
+- DONE WHEN: on 3 fresh seats asking about a named CEO (e.g. the EN Vakhtang Butskhrikidze case), no reply carries „(name not verified…)" while the profile page names the person, 3 of 3.
+
 ### 13 Oct, 14:26Z — 0253: 2311, why CE made no introduction (a parser slip), fixed
 
 - Patch: `patches/afternoon-1250/0253-2311-CE-0-of-5-the-instruction-verb-takes-its-own-en.patch`, sha256 `e30ff1ce6d196ccd010f687240cda5f2b0882a8a1a3668d9228a7291d51f3f64`. My branch commit 57672d8. Cut on origin/main + 0252, so it goes after 0252. Verify: 8,679 passed.

@@ -1,0 +1,106 @@
+From 008527f466f4abaed1575613ccdd00f600bb6425 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 14:43:39 +0000
+Subject: [PATCH] 4720 CH: the profile page the server read counts as evidence
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's EN seat got „TBC appointed (name not verified on an official
+page) as CEO…". The server reads the public profile inside web_search,
+and web_search results never become the run's evidence (D151: snippets
+are not evidence), so the officeholder gate cut the person's own name
+out of the reply. The page is a fetched page, as fetch_page is, so only
+its text now joins the evidence; the snippets around it stay outside.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/chat.service.ts                  |  3 ++-
+ .../aPublicProfileIsReadNotLinked.test.ts     | 21 +++++++++++++++++++
+ src/services/tools/publicProfileRead.ts       | 13 ++++++++++++
+ 3 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 11f510a..c7d3c5d 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -135,7 +135,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
+ import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
+ import { searchContactsByCountry } from './tools/searchContactsByCountry';
+ import { webSearch, fetchPage } from './tools/webSearch';
+-import { withPublicProfile } from './tools/publicProfileRead';
++import { profileEvidence, withPublicProfile } from './tools/publicProfileRead';
+ import { searchVerdictOf } from './searchVerdict';
+ import { questionForButtons } from './buttonsCarryTheQuestion';
+ import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
+@@ -11275,6 +11275,7 @@ async function runOneToolBlock(
+   // an officeholder's name; a search snippet may not (stale, or a former
+   // holder) — so everything but web_search becomes the run's evidence.
+   if (block.name !== 'web_search') recordRunEvidence(runId, JSON.stringify(raw));
++  else recordRunEvidence(runId, profileEvidence(raw) ?? '');
+   // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
+   // be shown, with the page it came from. Registered here, at the one place a
+   // web result arrives, so no later surface has to decide what is public.
+diff --git a/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts b/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+index a543501..f0cfd61 100644
+--- a/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
++++ b/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+@@ -1,5 +1,8 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
+ import {
+   PUBLIC_PROFILE_NOTE,
++  profileEvidence,
+   profilePage,
+   profileUrlIn,
+   withPublicProfile,
+@@ -82,3 +85,21 @@ describe('the note that rides with the page', () => {
+     );
+   });
+ });
++
++describe("the page read is the run's evidence (4720, the EN seat)", () => {
++  it('is the page text, so the officeholder gate keeps the name it carries', () => {
++    const page = { url: PROFILE, read_on: '2026-10-13', content: 'Jane Doe — CEO', note: 'n' };
++    expect(profileEvidence({ ...found, public_profile: page })).toBe('Jane Doe — CEO');
++  });
++
++  it('is nothing when no page was read: snippets alone are never evidence (D151)', () => {
++    expect(profileEvidence(found)).toBeNull();
++    expect(profileEvidence({ public_profile: { url: PROFILE } })).toBeNull();
++    expect(profileEvidence(null)).toBeNull();
++  });
++
++  it('is recorded from the web_search turn', () => {
++    const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain("else recordRunEvidence(runId, profileEvidence(raw) ?? '');");
++  });
++});
+diff --git a/src/services/tools/publicProfileRead.ts b/src/services/tools/publicProfileRead.ts
+index b393211..9aabf81 100644
+--- a/src/services/tools/publicProfileRead.ts
++++ b/src/services/tools/publicProfileRead.ts
+@@ -59,6 +59,19 @@ export function profilePage(url: string, page: object, today: string): PublicPro
+   };
+ }
+ 
++/**
++ * 4720 (the tester's 56073, EN seat): the page this server read is a fetched
++ * page, so under D151 it is evidence, as fetch_page is. Without it the
++ * officeholder gate cut the person's own name out of the reply. Only the page:
++ * the search snippets around it stay outside the evidence.
++ */
++export function profileEvidence(found: unknown): string | null {
++  if (!isRecord(found)) return null;
++  const page = found.public_profile;
++  if (!isRecord(page) || typeof page.content !== 'string') return null;
++  return page.content;
++}
++
+ /**
+  * The search result with its profile page read, when it has one. A failed or
+  * empty read leaves the result exactly as it was; `beforeRead` runs only when a
+-- 
+2.43.0
+
