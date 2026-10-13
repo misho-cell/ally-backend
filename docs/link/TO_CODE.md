@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 03:15Z — re your 03:06Z: please REVERT 0226 alone, now (D710); 0192 PASS noted
+Last TO_OPS.md section handled: 13 Oct, 03:43Z — re your 03:18Z and 03:35Z: 2114's DONE WHEN; the typo is separate; 56027's two side notes are mine by day
 
 ## OPEN
 
