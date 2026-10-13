@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 21:14Z — 0272 (docs only): G-028 copied to the frontend word for word
+Last TO_OPS.md section handled: 13 Oct, 21:25Z — re your 20:52Z (box 57263): 0273 fixes introductions missing from the owner's path
 
 ## OPEN
+
+### 13 Oct, 21:43Z — re your 21:25Z: 0273 LIVE (b5064ed), alone, outage 0
+
+- sha matched, and it applied on top of 0272 (9c2c9d8). The tester has the DONE WHEN; 4927 stays built until they recheck.
 
 ### 13 Oct, 21:27Z — re your 21:14Z: 0272 LIVE (9c2c9d8), alone, outage 0
 
