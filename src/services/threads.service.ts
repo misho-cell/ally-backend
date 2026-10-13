@@ -97,6 +97,8 @@ interface ThreadRow extends Thread {
   goal_stopped?: boolean;
   /** #1919: stopped and not yet closed by its owner — show it with the current goals. */
   goal_stopped_open?: boolean;
+  /** 4930: the goal is paused, waiting on its owner: „შეჩერებულია" in the waiting tab. */
+  goal_paused?: boolean;
   /**
    * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
    * one, else its latest — so the download asks for the goal's own id and
@@ -210,6 +212,14 @@ const GOAL_WAS_STOPPED = `EXISTS (
         WHERE k.thread_id = t.id AND k.status = 'closed' AND k.closed_as = 'stopped'
      )`;
 const GOAL_IS_FINISHED = `(${HAS_A_GOAL} AND NOT ${HAS_OPEN_GOAL})`;
+/**
+ * 4930 (Giorgi, 13 Oct): a PAUSED goal was „finished": its thread read
+ * `done` (5 of the 6 paused goals of the last 30 days) and sat with the solved
+ * ones. It is waiting on its owner to resume it, so it reads `needs_you` and
+ * says so in `goal_paused`; the client writes „შეჩერებულია" on the card.
+ */
+const HAS_PAUSED_GOAL = `(EXISTS (SELECT 1 FROM tasks k WHERE k.thread_id = t.id AND k.status = 'paused')
+         AND NOT ${HAS_OPEN_GOAL})`;
 /** #1919: stopped, and the owner has not closed it yet — it stays in the current list. */
 const GOAL_STOPPED_STAYS = `EXISTS (
        SELECT 1 FROM tasks k
@@ -240,12 +250,14 @@ const A_REQUEST_WAITS_HERE = `EXISTS (
      )`;
 
 const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
+       WHEN ${HAS_PAUSED_GOAL} THEN 'needs_you'
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
        ELSE t.status
      END`;
 const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
+       WHEN ${HAS_PAUSED_GOAL} THEN NULL
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
@@ -345,6 +357,7 @@ const THREAD_LIST_COLUMNS = `t.id,
        t.seen_at,
        ${GOAL_WAS_STOPPED} AS goal_stopped,
        ${GOAL_STOPPED_STAYS} AS goal_stopped_open,
+       ${HAS_PAUSED_GOAL} AS goal_paused,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
        t.followed_at IS NOT NULL AS followed,

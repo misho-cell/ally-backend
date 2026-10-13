@@ -155,7 +155,9 @@ describe('the sidebar puts open goals first (ticket 9 task 20 c)', () => {
  * corrected and the other not — and it is what the test is for.
  */
 describe('neither reader shows a live goal as finished', () => {
-  const REFUSES_FINISHED = /CASE\s+WHEN t\.status IN \('done', 'failed'\)/;
+  // 4930: a paused goal's needs_you is the one rule allowed ahead of it.
+  const REFUSES_FINISHED =
+    /CASE\s+(?:WHEN \(EXISTS \(SELECT 1 FROM tasks k WHERE k\.thread_id = t\.id AND k\.status = 'paused'\)[\s\S]*?THEN 'needs_you'\s+)?WHEN t\.status IN \('done', 'failed'\)/;
 
   it('the sidebar derives the status rather than trusting the row', async () => {
     firstPage([], [CONVERSATION], []);
