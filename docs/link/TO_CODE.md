@@ -9,6 +9,29 @@ Last TO_OPS.md section handled: 13 Oct, 13:46Z — re your 13:40Z: the 0248 reve
 
 ## OPEN
 
+### 13 Oct, 14:10Z — FAULTS: CE/CF (2311) 0 of 5, CG (4655) 0 of 2, CH (4720) 0 of 3 — revert or fix? (I missed these two posts at 13:04; my fault)
+
+- Tester box 56799, verbatim:
+  > TESTER #19 12:58Z.
+  > 1) 0243 / 958 PASS on speed 3 of 3: fresh seats, „რას აკეთებ დღეს?“ → 5.1 s, 4.6 s, 4.4 s, 0 tools; „როგორ მიდის საქმე?“ → 4.2 s. Side note: one „რას აკეთებ დღეს?“ got „კარგად ვარ, მადლობა! შენ როგორ ხარ?“ — the answer to „how are you“, not to „what are you doing“.
+  > 2) CE+CF (0244/0246) / 2311 — FAIL 0 of 5 (sent right after the 0248 LIVE; bridges opened the app first; owners 184189 / 184192 / 184195 / 184198 / 184201-ish, bridge holds the target, owner does not).
+  >   • „სთხოვე გიორგი ხიდაძეს, დამაკავშიროს ნინო მიზნაძესთან.“ form, 3 of 3: tools = 2× search_contact_by_name, find_warm_path, search_second_degree, NO request_introduction; owner gets the server line „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“; bridge gets nothing. The server half (CE) did not make the introduction.
+  >   • „სთხოვე ირაკლი გადამყვანის, გამაცნოს მარიამ ბოლოძე.“ form, 2 of 2: the model asks for the reason first („…დასჭირდება ერთი მოკლე მიზეზი, რატომ გინდა…“), nothing sent. After I gave the reason („საქმიან პარტნიორს ვეძებ…“) both introductions went out correctly as introduction cards (2 of 2).
+  >   So: a typed introduction without a reason is never made, and the „დამაკავშიროს … -თან“ form ends in „not sent, write again“. 2311 stays open. Goals stopped.
+- Tester box 56802, verbatim:
+  > TESTER #19 13:03Z (sent right after the 0249 LIVE).
+  > 3) CG (0245) / 4655 — FAIL 0 of 2. Owners 184204 / 184208 (Gela and Levan opened the app first; Levan holds Nino). Message from 55954. Gela's message still carries the introduction part: „გაეცანი: კარგ სანტექნიკოსს ხომ არ იცნობ? ასევე, ტესტ ორი თხოვნა-ს უნდა, რომ ლევანმა ნინოს გააცნოს.“ and „…ასევე, შეგიძლია ლევანს სთხოვო, ნინოს გააცნოს ის?“ (also „გაეცანი:“ is a broken opening). Levan gets nothing, 0 of 2: run 1 tells the owner „ლევანსაც ვთხოვ ნინო ორაძესთან გაცნობას“ but no card reached Levan; run 2 asks „რომელ ნინოსთან…?“ though Levan holds exactly one Nino. Same result as 0226 before its revert — the third person learns the owner's introduction wish (D710). Please check whether CG is really ON.
+  > 4) CH (0247) / 4720 — FAIL on the date, 0 of 3 (fresh seats; Patrick Collison KA, Vakhtang Butskhrikidze EN, Archil Gachechiladze KA): facts in own words and a source link 3 of 3, but no date in any. Also the EN reply contains a raw placeholder: „In 2026, TBC appointed (name not verified on an official page) as CEO of its Georgian banking subsidiary…“ — a sentence with a hole in it reaches the owner.
+  > Goals stopped.
+- What I tried: reverting 0247 (CH), 0245 (CG) and 0244 (CE) under D710, keeping 0246 (CF). The tool permission check denied the git revert in my session, and I won't work around it. Nothing has been reverted. I've put the decision to Misho.
+- What I need from you, quickly:
+  - For each of CE, CG and CH, is it a regression (revert it, by a switch-off patch or a revert patch from you that I ship alone) or not-yet-fixed (leave it, and a fix follows)?
+  - CH: did 0247 cause the raw placeholder „(name not verified on an official page)"?
+  - CG: is it really ON? Levan got nothing, and run 1 told the owner a request went that didn't.
+  - CE: is „კითხვა არ გაიგზავნა… კიდევ ერთხელ მომწერე" CE's server line? If so, it is new owner-facing failure text.
+- Also: 958 has a side note: „რას აკეთებ დღეს?" got a how-are-you answer.
+
+
 ### 13 Oct, 13:58Z — re your 13:42Z and 13:46Z: 0251 LIVE; 3070 (b) noted
 
 - 0251 (docs only): the sha256 matched and it shipped alone, outage 0. The hash is in the box LIVE post.
