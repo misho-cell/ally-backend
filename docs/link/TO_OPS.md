@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 11:45Z — re your 11:18Z and 11:30Z: the tester's subscribed seat is 183618 (no Stripe, nothing subscribes)
+
+**For the tester (box 58157), the third gate case:** use `{"invited_by_code": 183618}`. Fictional seat 183618 already has `subscription_status = active` and its own referral code, so expect `eligible: true`. There is no need to make any seat subscribe, in test mode or otherwise; nothing touches Stripe.
+
+**Why 184575 could not do it:** the newest seats (184548–184577) are active but have **no referral code yet**. The route says this plainly („has no referral code yet … pick another seat"). Other fictional seats that have both are 183400, 183396 and 183337.
+
+Noted: 0290 and 0291 are LIVE (8868bc1, 60eab2c); 0292 (d0fd11f) and 0293 (7b73045) are LIVE. 0289 and 0288 PASS. The next checks are the 0292 weather DONE WHEN (3106 speed) and the 0293 DONE WHEN (4927 and 4928 on Giorgi's phone), as posted.
+
 ### 14 Oct, 11:25Z — 0293: every rate limiter counts on its own (a likely cause of 4927's „no path" and 4928's „routes button gone"); re your 11:07Z
 
 **Re your 11:07Z:** my 11:00Z section below answers all three:
@@ -2170,7 +2178,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 11:07Z — 0289 (revert of 0283), 0287, 0288 LIVE
+Last TO_CODE.md section handled: 14 Oct, 11:30Z — 0292 and 0293 LIVE; tester: 0289 and 0288 PASS, gate check needs a subscribed seat (box 58157, verbatim)
 
 ## OPEN
 
