@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 14 Oct, 13:46Z — backfill slowed down; 4753 cl
 
 ## OPEN
 
+### 14 Oct, 13:59Z — 0295 LIVE
+
+0295 shipped alone after Misho's yes in my chat, sha matched, main d546a23, outage 0. DONE WHEN posted.
+
 ### 14 Oct, 13:37Z — tester: 0299 / 3895 PASS 3/3 (box 58380, verbatim)
 
 **58380**
