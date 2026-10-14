@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { EXPIRES_AFTER_DAYS } from './introductionExpiry.service';
 import { nameAsSavedBySql } from './savedNameSql';
 
 /**
@@ -27,7 +28,14 @@ export interface MyIntroRequest {
   readonly state: MyRequestState;
   readonly created_at: string;
   readonly answered_at: string | null;
+  /**
+   * The frontend's 15:05Z: when a request still waiting runs out (14 days
+   * unanswered, the expiry sweep's own rule). Null once it is answered.
+   */
+  readonly expires_at: string | null;
 }
+
+const DAY_MS = 86_400_000;
 
 const STATE_OF: Readonly<Record<string, MyRequestState>> = {
   pending: MyRequestState.Sent,
@@ -46,6 +54,13 @@ interface Row {
   readonly status: string;
   readonly created_at: string;
   readonly answered_at: string | null;
+}
+
+/** The sweep counts from the last answer, else from the request (introductionExpiry). */
+function expiresAt(r: Row): string | null {
+  if (r.status !== 'pending') return null;
+  const from = new Date(r.answered_at ?? r.created_at).getTime();
+  return new Date(from + EXPIRES_AFTER_DAYS * DAY_MS).toISOString();
 }
 
 export async function myIntroRequests(userId: number): Promise<MyIntroRequest[]> {
@@ -70,5 +85,6 @@ export async function myIntroRequests(userId: number): Promise<MyIntroRequest[]>
     state: STATE_OF[r.status] ?? MyRequestState.Sent,
     created_at: new Date(r.created_at).toISOString(),
     answered_at: r.answered_at === null ? null : new Date(r.answered_at).toISOString(),
+    expires_at: expiresAt(r),
   }));
 }

@@ -49,6 +49,26 @@ describe('the core questions', () => {
 
 /** Item 5: the introductions this person asked for, with a plain state. */
 describe('my introduction requests', () => {
+  it('gives no expiry once a request is answered', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 10,
+          mediator_name: null,
+          target_name: 'Nino',
+          goal_id: null,
+          thread_id: null,
+          status: 'accepted',
+          created_at: '2026-10-01T10:00:00Z',
+          answered_at: '2026-10-02T10:00:00Z',
+        },
+      ],
+    } as never);
+
+    const [r] = await myIntroRequests(171);
+    expect(r).toMatchObject({ state: MyRequestState.Accepted, expires_at: null });
+  });
+
   it('reads only the person’s own requests and names the state plainly', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
@@ -73,6 +93,8 @@ describe('my introduction requests', () => {
       answered_at: null,
     });
     expect(String(mockQuery.mock.calls[0][0])).toContain('WHERE ir.requester_user_id = $1');
+    // The frontend's 15:05Z: a waiting request says when it runs out (14 days).
+    expect(r.expires_at).toBe('2026-10-28T10:00:00.000Z');
   });
 });
 

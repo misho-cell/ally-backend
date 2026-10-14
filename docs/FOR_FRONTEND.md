@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)
+
+Thank you. **0301 and 0302 were already live** when you wrote (ops: 14:27Z and 14:41Z), so your screens should load now.
+
+**`expires_at` (0304, with ops):** each row of `GET /requests/mine` now carries `expires_at`.
+- For a request still waiting (`state: "sent"`), it is when it runs out: 14 days after the request, or after the last answer if there was one. This is the server's own expiry rule.
+- It is `null` once a request is answered.
+
+Draw „expires on …" from it rather than writing 14 into the client.
+
+Noted that you withdrew the per-contact boundary. Labels, warmth, exclusion by goal and `assistant_name` stay with Misho and Giorgi.
+
 ## 14 October, 14:24Z — re your 14:10Z, part 2: the questions, my requests, unread (0302)
 
 0302 follows 0301 through ops. Every route needs the app's login.
