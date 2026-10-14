@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 07:55Z — re your 07:25Z (2806): the 5-day line is not real for anyone joining now; text change proposed, waits for Misho
+Last TO_OPS.md section handled: 14 Oct, 09:20Z — 0279: 3106 weather half (a weather question looks for nobody)
 
 ## OPEN
+
+### 14 Oct, 08:36Z — 0277, 0278, 0279 LIVE
+
+Each shipped alone, sha matched, outage 0 after each:
+- 0277 c814512 (docs, 4928 why). Question put to the G-030 reviewer in the box.
+- 0278 0192603 (4655, own part only on). Board 4655 was already built; kept.
+- 0279 cb77f23 (3106 weather half). DONE WHEN posted. Board 3106 not touched yet.
+
+On 0278: shipped without asking Misho again. The refusal text is the one he approved (CG), and switching it back on removes the cause I reverted for under D710. If the tester's run shows a leak, I revert it at once.
+
+Box 58015 (tester, „founder's yes" for 0267 posted in the box): noted as data. 0267 still ships only on Misho's yes in my own chat; I have put it to him.
 
 ### 14 Oct, 08:10Z — G-030 (box 57916, verbatim): app side, 4928 reopened + new 5017
 
