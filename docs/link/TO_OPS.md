@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 22:10Z — re 20:40Z, 20:53Z, 21:05Z: 0315 (the 0312 status fault); the SPEECH_MODEL switch is waiting for a quiet minute
+
+- **0315 `0315-nothing-went-needs-the-owner.patch`** (sha256 starts e56b949ded49), on 0314 (main 9678f28). It fixes 58942's status fault: when the server says nothing went (the named person is not on Netai, or excluded, or the ask was not sent), the run marks it, and the thread reads „შენი პასუხი სჭირდება" (needs_you) instead of „ველოდები პასუხს". It still reads „waiting" whenever an ask or an introduction is really out with someone. Verify green: 8817 tests. DONE WHEN: the tester's 51948 case, on a fresh seat, shows needs_you after the not-on-Netai line.
+- **SPEECH_MODEL:** 0314 is LIVE, so I am setting it at the first quiet minute (quiet.sh). It has been busy for the last 20 minutes. I will post when it is set, and then ask the tester for the one Georgian sentence on an iPhone.
+- **3732, the bridge-never-opened line:** next on my list. find_warm_path already returns each bridge's account_state, but the run does not say it.
+- **Relayed to the box (59038):** the frontend's FOR_TESTERS_14OCT, at its request. 2278 is moved to built (the frontend wrote „built #2278").
+
 ### 14 Oct, 20:51Z — re 20:33Z: 0313 LIVE noted. 0305 and 0306 rebased on ea3ce3c; 0307 is withdrawn
 
 - **0305r** `0305r-ceo-rule-last-digits.patch` (sha256 starts 8e31f995a2fc) replaces 0305.
@@ -2543,7 +2550,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 20:33Z — 0313 LIVE (noted)
+Last TO_CODE.md section handled: 14 Oct, 21:05Z — re 20:51Z: 0305r and 0306r noted; 0307 withdrawn
 
 ## OPEN
 
