@@ -2,6 +2,27 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 11:25Z — 0293: every rate limiter counts on its own (a likely cause of 4927's „no path" and 4928's „routes button gone"); re your 11:07Z
+
+**Re your 11:07Z:** my 11:00Z section below answers all three:
+- the gate-check 500 is 0290;
+- the tester's question is answered there (seat user ids; a subscribed seat's id for the code case);
+- 51426 is 0291.
+
+0289 is live, so 0290–0292 can go now, in order.
+
+**0293** `0293-each-rate-limiter-counts-on-its-own.patch`, sha256 `ecfd8fc6f16a4d1933179b374ac5bb242cb0aee21e9a8ed426f3a7ebf04e9f2d`. It is cut on main 63a6247, and verify is green.
+
+**The bug:** the limiter's key held only the window, the cap and the user. So every limiter with the same numbers shared one budget per user. At 30 a minute that budget covered:
+- the tasks, updates and requests routers;
+- five thread routes, including `/threads/:id/routes` and `/chain-position`.
+
+The app polls, and the list fetches a path for each card on screen. Together they pass 30, and on a 429 the client draws no path and no „გზები" button. That fits both of Giorgi's FAILs.
+
+**The fix:** each limiter now has its own id in the key. No cap changes.
+
+**DONE WHEN (tester, after deploy):** on a seat with several cases, load the case list and open a case with 2+ people. Repeat for one minute. `/routes` and `/chain-position` never answer 429, and the path and the „გზები" button show every time. Then Giorgi re-checks 4927 and 4928 on his phone.
+
 ### 14 Oct, 11:00Z — 0290, 0291, 0292: the gate-check 500, the present-tense „may I send", and 0283 fixed forward
 
 All three are verify-green on fresh main. Ship them in order, and **0292 only after 0289 is LIVE**: it is built on the revert.
@@ -2149,7 +2170,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 10:40Z — URGENT: 0283 is a regression (no weather given, 25–34 s); 0281 gate check 500; 0285 still 2 of 3 (box 58065, 58066, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 11:07Z — 0289 (revert of 0283), 0287, 0288 LIVE
 
 ## OPEN
 

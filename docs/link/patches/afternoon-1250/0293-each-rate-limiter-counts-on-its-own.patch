@@ -1,0 +1,111 @@
+From 762087ac6128b289d47dddfda307ffabadb64fce Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 11:08:41 +0000
+Subject: [PATCH] 4927, 4928: each rate limiter counts on its own
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The limiter's bucket key was the window, the cap and the user, nothing
+else. So every limiter with the same numbers shared ONE budget per user:
+at 30 a minute that is the tasks, updates and requests routers plus five
+thread routes, among them /threads/:id/routes and /chain-position. The
+app polls, and the list fetches a path per card on screen; together they
+run past 30, and the client, as asked, draws no path and no „გზები"
+button on a 429. That fits both of Giorgi's FAILs („no path anywhere",
+„the routes button is gone").
+
+Now each rateLimit() has its own id in the key: one limiter used on
+several routes still counts them together, two limiters never do. No
+cap changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 10 ++++++++++
+ .../__tests__/rateLimit.middleware.test.ts    | 19 +++++++++++++++++++
+ src/api/middleware/rateLimit.middleware.ts    | 11 ++++++++++-
+ 3 files changed, 39 insertions(+), 1 deletion(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 06d87c1..49dd63c 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,16 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 11:25Z — 4927 and 4928: your 429s on /routes and /chain-position were the server's shared budget (0293)
++
++I found a server bug that fits both of Giorgi's FAILs. Every 30-a-minute limiter shared **one** budget per user:
++- `/tasks`, `/updates` and `/requests`;
++- five thread routes, including `/threads/:id/routes` and `/threads/:id/chain-position`.
++
++Your polling plus one path fetch per card on screen used it up within the minute. After that, `/routes` and `/chain-position` answered 429. As agreed, you then drew no path and no „გზები", so the button looked gone.
++
++0293 gives each limiter its own budget. The caps are the same. **Nothing changes on your side;** keep treating a 429 as „draw nothing this time". It will reach main through ops. If Giorgi still sees no path or no „გზები" after that deploy, tell me the thread and the time, and I will read the logs.
++
+ ## 14 October, 09:40Z — Misho: no 5-day trial on the pricing page; an invitation is a member's CODE only
+ 
+ Misho, 14 October ~09:30Z, in the code session's chat, verbatim: „ფასების გვერდიდან 5 დღე წაშალე, ნომრით მოწვევაც დახურე".
+diff --git a/src/api/middleware/__tests__/rateLimit.middleware.test.ts b/src/api/middleware/__tests__/rateLimit.middleware.test.ts
+index 4904269..fd014a4 100644
+--- a/src/api/middleware/__tests__/rateLimit.middleware.test.ts
++++ b/src/api/middleware/__tests__/rateLimit.middleware.test.ts
+@@ -82,3 +82,22 @@ describe('rateLimit keyBy: device', () => {
+     expect(hit(mw, sameIp, 3)).toBe(2);
+   });
+ });
++
++describe('rateLimit: each limiter has its own budget (4927, 4928)', () => {
++  it('two limiters with the same window and cap do not share one count', () => {
++    const routes = rateLimit({ windowMs: 60_000, max: 2 });
++    const chainPosition = rateLimit({ windowMs: 60_000, max: 2 });
++    const user = { headers: {}, ip: '10.0.0.7', user: { userId: '4927' } } as unknown as Request;
++
++    expect(hit(chainPosition, user, 3)).toBe(2);
++    expect(hit(routes, user, 2)).toBe(2);
++  });
++
++  it('one limiter used on several routes still counts them together', () => {
++    const shared = rateLimit({ windowMs: 60_000, max: 2 });
++    const user = { headers: {}, ip: '10.0.0.8', user: { userId: '4928' } } as unknown as Request;
++
++    expect(hit(shared, user, 1)).toBe(1);
++    expect(hit(shared, user, 2)).toBe(1);
++  });
++});
+diff --git a/src/api/middleware/rateLimit.middleware.ts b/src/api/middleware/rateLimit.middleware.ts
+index 28f5f21..9802d3b 100644
+--- a/src/api/middleware/rateLimit.middleware.ts
++++ b/src/api/middleware/rateLimit.middleware.ts
+@@ -9,6 +9,9 @@ interface Bucket {
+ // In-memory fixed-window counters. Keyed by user when authenticated, else by IP.
+ const buckets = new Map<string, Bucket>();
+ 
++// Tells one limiter's buckets from another's.
++let nextLimiterId = 0;
++
+ const CLEANUP_INTERVAL_MS = 60_000;
+ 
+ const cleanup = setInterval(() => {
+@@ -60,9 +63,15 @@ export interface RateLimitOptions {
+  * on unauthenticated routes it keys by client IP (or device with keyBy:'device').
+  */
+ export function rateLimit(options: RateLimitOptions) {
++  // Each limiter counts on its own. The key used to be the window and the cap
++  // only, so every 30-a-minute limiter (tasks, updates, requests, a thread's
++  // routes, its chain position, …) drew on ONE shared budget per user: the
++  // list's per-card path fetches and the polling starved the „გზები" button
++  // with 429s (4927, 4928).
++  const limiterId = nextLimiterId++;
+   return (req: Request, res: Response, next: NextFunction): void => {
+     const now = Date.now();
+-    const key = `${options.windowMs}:${options.max}:${keyFor(req, options.keyBy)}`;
++    const key = `${limiterId}:${keyFor(req, options.keyBy)}`;
+     const bucket = buckets.get(key);
+ 
+     if (!bucket || bucket.resetAt <= now) {
+-- 
+2.43.0
+
