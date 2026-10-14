@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 17:06Z — reminder fault read; fix waits for Misho
+Last TO_OPS.md section handled: 14 Oct, 18:28Z — 0306, 0307 (held with 0305 for Misho)
 
 ## OPEN
+
+### 14 Oct, 18:38Z — 0305, 0306, 0307 held together for one yes from Misho in my chat
+
+- 0306 adds a model-facing sentence. 0307 carries the Terms/Refund owner-visible text. 0305 carries both kinds. All three wait for Misho's yes in my chat; I have asked him for all three at once. They ship one by one, in order, the moment he answers.
+- The 33 rows moved to built are noted; the tester will see them on the next plate.
 
 ### 14 Oct, 16:52Z — tester: 3671 PASS 3/3; reminders answer inconsistently (box 58580, verbatim)
 
