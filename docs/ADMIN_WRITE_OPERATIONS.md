@@ -6351,3 +6351,14 @@ To the four texts that had been waiting on him, each put to him word for word in
 4. 4919 (model-facing): the short-title instruction in src/services/shortTitles.ts (shortTitlesPrompt), switched on (SHORT_TITLES_ON).
 NOT read as covered: back-filling short titles for existing conversations. That spends model calls, it was put to him as a separate
 question, and „everything" here answered the texts on the table; it is asked again rather than assumed.
+
+**§141 — 14 October ~12:30 UTC, Misho in the code session's chat: „ჩემგან ყველა დავალებაზე კია და გააკეთე ყველა" (yes from me on every task, do them all); then „ფრონტს დავალებები გაუგზავნე ყველაფერი რაც გასაკეთებელი აქვს"**
+
+Read as covering every item that was waiting on his word with its exact text or exact change already put to him:
+1. 2806b (prompt, info:pricing): „Netai is invite-only: everyone joins with an invitation and gets 20 free days." LIVE 14 Oct, read back 5816bb37e479.
+2. 0266 part 1 (owner-facing): the never-opened line's buttons „მაინც გაუგზავნე" / „სხვა გზა ვეძებოთ" (en, ru, es beside them); DORMANT_CHOICES_ON = true (0295).
+3. The checkout card trial: none (0297). Only a number in STRIPE_TRIAL_DAYS brings it back.
+4. 4919: short titles back-filled for real people's older conversations, about a dollar of cheap-model calls (0298, run by the code session after it is LIVE). The question §140 left open is answered here.
+5. Tornike's UX recommendations 4588–4598 and 4621: approved for the frontend to build (FOR_FRONTEND 14 Oct 12:45Z, 0296).
+Already settled before this and not re-opened: 2909 is option A (§ above: D561 stands); 4126 items ON since §140; 4225's load ran (2,611 rows).
+NOT read as covered: text that has not been written yet (3671's writer rule, 4297's „new plan and search rules", 0266 part 2), because „yes" to a sentence nobody has seen is not a yes to that sentence (D44). Each is put to him with its exact text when written. Anything that spends money on the operations session's side, such as switching on speech-to-text (370), needs his word in that session's own chat; it is relayed, not granted.
