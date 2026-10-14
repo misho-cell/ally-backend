@@ -1,0 +1,171 @@
+From 8b98099cc50899cfc8f8e691cbd6e3aaef19cadd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 16:19:38 +0000
+Subject: [PATCH] Misho's yes (14 Oct): the CEO rule, the day's question's last
+ digits, and the legal pages' text
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Three items Misho approved word for word in his own chat:
+
+- 0266 part 2 (the tester's 58043, run 51408): the search guidance now
+  says that two people holding two different offices (a group's CEO
+  and its subsidiary's) are not two names for one office; each is named
+  with their exact title and the page. TBC's group and bank CEOs had
+  been read as a conflict and answered with „could not verify".
+- The tester's 58416: the day's contact question names the contact as
+  the owner saved them, with the number's last two digits („…
+  (ნომერი მთავრდება 47-ზე)"), so the owner can tell who is meant.
+- FOR_FRONTEND: the exact text replacing the 5-day trial on the Terms
+  and Refund pages.
+
+(3671's sentence went live through the prompt route, not this patch.)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 11 ++++++++
+ .../__tests__/dailyContactQuestion.test.ts    | 25 ++++++++++++++++++-
+ .../noSideQuestionAboutASymbol.test.ts        |  7 +++++-
+ src/services/dailyContactQuestion.ts          | 17 ++++++++++++-
+ src/services/tools/webSearch.ts               |  5 ++++
+ 5 files changed, 62 insertions(+), 3 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 87b730e..55701c6 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,17 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 16:19Z — Misho's yes: the Terms and Refund pages lose the 5-day trial (exact text)
++
++Misho approved this exact text in his own chat today. It replaces the 5-day trial sentence on **both** `/terms` and `/refund`:
++
++> Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription.
++
++- **On `/terms`:** replace „Every new account begins with a 5-day full-feature trial. The trial begins on your first assistant conversation, not on registration." The sentence after it (sold by Ally, Inc.; Stripe) stays.
++- **On `/refund`:** replace „Every new Netai account begins with a 5-day full-feature trial at no cost. The trial begins on your first assistant conversation, not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary." There is no free tier, so that whole passage goes. If you translate it on a Georgian page, keep the meaning word for word.
++
++The server side matches already: `card_trial_days` is 0 live, and the invitation's 20 days are unchanged.
++
+ ## 14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)
+ 
+ Thank you. **0301 and 0302 were already live** when you wrote (ops: 14:27Z and 14:41Z), so your screens should load now.
+diff --git a/src/services/__tests__/dailyContactQuestion.test.ts b/src/services/__tests__/dailyContactQuestion.test.ts
+index 63ccb9a..f1f9b79 100644
+--- a/src/services/__tests__/dailyContactQuestion.test.ts
++++ b/src/services/__tests__/dailyContactQuestion.test.ts
+@@ -1,6 +1,12 @@
+ jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+ 
+-import { asksAQuestion, contactQuestionMayRun, RunPresence } from '../dailyContactQuestion';
++import {
++  asksAQuestion,
++  contactQuestionMayRun,
++  contactQuestionSection,
++  RunPresence,
++  whoWithLastDigits,
++} from '../dailyContactQuestion';
+ 
+ const OPEN: RunPresence = {
+   ownerPresent: true,
+@@ -33,3 +39,20 @@ describe('the day’s contact question waits when the owner came with a question
+     expect(contactQuestionMayRun({ ...OPEN, ownerAsksAQuestion: false })).toBe(true);
+   });
+ });
++
++/** The tester's 58416; Misho's yes, 14 Oct: the owner can tell who is meant. */
++describe('the day’s question names the contact with the number’s last two digits', () => {
++  it('adds the last two digits to the name the owner saved', () => {
++    expect(whoWithLastDigits('ნიკა', '+995 555 12 34 47')).toBe('ნიკა (ნომერი მთავრდება 47-ზე)');
++  });
++
++  it('carries them into the line the run is given', () => {
++    const section = contactQuestionSection({
++      kind: 'curiosity',
++      task_id: null,
++      phone: '+995555123447',
++      payload: { who: 'ნიკა', missing_fact: 'employer' },
++    });
++    expect(section).toContain('„სხვათა შორის, ნიკა (ნომერი მთავრდება 47-ზე) სად მუშაობს?');
++  });
++});
+diff --git a/src/services/__tests__/noSideQuestionAboutASymbol.test.ts b/src/services/__tests__/noSideQuestionAboutASymbol.test.ts
+index 794db93..8436b34 100644
+--- a/src/services/__tests__/noSideQuestionAboutASymbol.test.ts
++++ b/src/services/__tests__/noSideQuestionAboutASymbol.test.ts
+@@ -2,7 +2,12 @@ import { contactQuestionSection } from '../dailyContactQuestion';
+ 
+ /** 3500 (the tester's 47072): the day's question asked „💙 სად მუშაობს?". */
+ const update = (who: string): Parameters<typeof contactQuestionSection>[0] =>
+-  ({ kind: 'curiosity', task_id: null, payload: { who, missing_fact: 'employer' } }) as never;
++  ({
++    kind: 'curiosity',
++    task_id: null,
++    phone: '+995555000001',
++    payload: { who, missing_fact: 'employer' },
++  }) as never;
+ 
+ describe('the day’s question asks about a person by name', () => {
+   it('never about a label with no letter in it', () => {
+diff --git a/src/services/dailyContactQuestion.ts b/src/services/dailyContactQuestion.ts
+index e495422..70ff62a 100644
+--- a/src/services/dailyContactQuestion.ts
++++ b/src/services/dailyContactQuestion.ts
+@@ -110,6 +110,20 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
+ 
+ const HAS_A_LETTER = /\p{L}/u;
+ 
++/**
++ * The tester's 58416 (a real owner did not recognise an old synced contact):
++ * the name as the owner saved it, with the number's last two digits, so they
++ * can tell who is meant. Misho's yes, 14 Oct („კი, 2 ციფრი"). Only the owner
++ * reads it, about their own contact.
++ */
++const LAST_DIGITS = 2;
++
++export function whoWithLastDigits(who: string, phone: string): string {
++  const digits = phone.replace(/\D/gu, '');
++  if (digits.length < LAST_DIGITS) return who;
++  return `${who} (ნომერი მთავრდება ${digits.slice(-LAST_DIGITS)}-ზე)`;
++}
++
+ /** The prompt section for one due question; '' when it cannot be asked by name. */
+ export function contactQuestionSection(update: CuriosityUpdate | null): string {
+   if (update === null) return '';
+@@ -119,11 +133,12 @@ export function contactQuestionSection(update: CuriosityUpdate | null): string {
+   // 3500 (the tester's 47072): „სხვათა შორის, 💙 სად მუშაობს?" — a label with no
+   // letter is how the owner marks someone, not a name to ask about.
+   if (who === '' || !HAS_A_LETTER.test(who) || asked === undefined) return '';
++  const named = whoWithLastDigits(who, update.phone);
+   return (
+     '\n\n## დღის ერთი კითხვა მფლობელის კონტაქტზე (D708)\n' +
+     // 3202 (c), Misho's yes, 8 Oct (§103): a light side question, not a reason to answer it.
+     `ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, ბოლოს მსუბუქად, სხვათა შორის ჰკითხე: ` +
+-    `„სხვათა შორის, ${who} ${asked}? თუ არ იცი, არა უშავს." — ახსნის გარეშე.\n` +
++    `„სხვათა შორის, ${named} ${asked}? თუ არ იცი, არა უშავს." — ახსნის გარეშე.\n` +
+     'მხოლოდ ეს ერთი კითხვა, ფორმა ან რამდენიმე კითხვა ერთად — არა. პასუხს შემდეგ შეტყობინებაში ' +
+     `მოგწერს: მაშინ ${who} სახელით მოძებნე და შეინახე save_contact_fact-ით (field_type: ${fact}). ` +
+     'თუ თქვა „ახლა არა", ან არ უნდა, დაანებე თავი და დღეს ამ ადამიანზე აღარ ჰკითხო.'
+diff --git a/src/services/tools/webSearch.ts b/src/services/tools/webSearch.ts
+index 64ba134..24cc0c6 100644
+--- a/src/services/tools/webSearch.ts
++++ b/src/services/tools/webSearch.ts
+@@ -35,6 +35,11 @@ const RESULT_GUIDANCE =
+   'appear in fetched page text you actually received in this conversation, and you ' +
+   'must cite that page; two different names for one office is a failure — when in ' +
+   'doubt, the scripted line („I could not verify") is the right answer. ' +
++  // 0266 part 2 (the tester's 58043, run 51408; Misho's yes, 14 Oct): TBC's group
++  // CEO and its Georgian bank's CEO were read as two names for one office.
++  "Two people holding two different offices (for example a group's CEO and its " +
++  "subsidiary's CEO) is not two names for one office: name each with their exact " +
++  'title and the page that says it. ' +
+   NAMED_IN_FULL_OR_NOT_AT_ALL;
+ 
+ // The institution's own domain outranks any news article on "who currently
+-- 
+2.43.0
+

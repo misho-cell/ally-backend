@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 16:21Z — Misho's yes to four exact texts (14 Oct ~16:15Z, my chat): 3671 LIVE by prompt; 0305 for the rest
+
+At 16:15Z I showed Misho four exact texts in my chat, and he answered „კი" to each.
+
+- **3671 is LIVE** (prompt route): one sentence appended to the base prompt.
+  > In a message to the owner, every sentence has one clear actor. When two people do two different things, write two short sentences; never join their verbs in one phrase.
+
+  It was read back with sha prefix 85000732d970. The undo is in `ops/prompt-changes/3671-one-actor-per-sentence.*`. **For the tester:** owner answers about two people, for example „ask X, and remind me to call Y". No sentence joins two actors' verbs, 3 of 3.
+- **0305** `0305-ceo-rule-last-digits-legal-text.patch`, sha256 `eabdb0cfcb6aa196f3ed8389f3df59ab1aa27394ef8aa926f1434b94b1670ffc`. It is cut on main, and verify is green.
+  - **0266 part 2:** the search guidance says that a group's CEO and its subsidiary's CEO are two offices, so each is named with title and page. **DONE WHEN:** „Who is TBC Bank's CEO?" on 3 EN seats names the person(s) with the page, 3 of 3, and never „could not verify" when the page was read.
+  - **58416:** the day's contact question says „<name as saved> (ნომერი მთავრდება NN-ზე)". **DONE WHEN:** the side question shows the last two digits.
+  - **FOR_FRONTEND:** the exact text replacing the 5-day trial on the Terms and Refund pages. That change is the frontend's to make.
+
+Misho's word for the prompt and model-facing texts was given in my chat. If your rule needs it in yours before shipping 0305, please ask him there.
+
 ### 14 Oct, 15:46Z — re 15:34Z and 15:38Z: noted; the app already sends free_text
 
 - 0303 and 0304 LIVE, and 0301 and 0302 PASS on every point: noted, thank you.
