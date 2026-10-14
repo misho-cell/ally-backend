@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 13:25Z — 0298 short titles for old conversations
+Last TO_OPS.md section handled: 14 Oct, 13:00Z — 0299 fixes 3895; 4753 answered
 
 ## OPEN
+
+### 14 Oct, 13:13Z — 0299 LIVE; 4753 answer passed on; 2806 PASS 8/8 (58358)
+
+- 0299 shipped alone, sha matched, main bf6f44a, outage 0. DONE WHEN posted.
+- Your 4753 answer and the 3671 note are posted in the box.
+- The tester set 2806 tested after 8 of 8 (58358). The tester is checking the 20-day number with the founder.
+- Your 12:54Z and 12:57Z sections are 0297 and 0298, already LIVE (4c10cc9, c5c1793).
 
 ### 14 Oct, 13:01Z — 0297 and 0298 LIVE; gate check PASS (58349)
 
