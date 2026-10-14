@@ -126,7 +126,7 @@ describe('an old Ally number arriving with an invitation', () => {
     await expect(
       completeLogin('+995555000001', { referralCode: 'LAPSED1' }),
     ).rejects.toBeInstanceOf(InvitationRequiredError);
-    expect(inviterCheck).toHaveBeenCalledWith(undefined, 'LAPSED1');
+    expect(inviterCheck).toHaveBeenCalledWith('LAPSED1');
     expect(grant).not.toHaveBeenCalled();
     expect(deletes).toBe(0);
   });

@@ -92,8 +92,9 @@ describe('what stays open', () => {
    * the launch this exists for.
    */
   it('the launch cohort still grants its twenty days', () => {
-    expect(SOURCE).toContain('const launch = launchCohortFor(attribution);');
-    const at = SOURCE.indexOf('const launch = launchCohortFor(attribution);');
+    // §141: carried by the code's owner, the only invitation left.
+    expect(SOURCE).toContain('const launch = launchCohortFor(codeOwner?.userId);');
+    const at = SOURCE.indexOf('const launch = launchCohortFor(codeOwner?.userId);');
     expect(SOURCE.slice(at, at + 120)).not.toContain('personalCodeOnly');
   });
 

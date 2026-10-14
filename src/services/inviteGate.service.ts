@@ -149,22 +149,6 @@ async function passesSocialProof(variants: string[]): Promise<boolean> {
   return subscribed >= MIN_SUBSCRIBED_OWNERS || total >= MIN_TOTAL_OWNERS;
 }
 
-async function findSubscribedReferrer(referralPhone: string): Promise<number | null> {
-  const digits = phoneDigits(referralPhone);
-  if (!digits) return null;
-  const result = await query<{ id: number }>(
-    `SELECT u.id
-     FROM "UserPhone" up
-     JOIN "User" u ON u.id = up."userId"
-     WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1
-       AND u."deletedAt" IS NULL
-       AND u.subscription_status = ANY($2)
-     LIMIT 1`,
-    [digits, SUBSCRIBED_STATUSES],
-  );
-  return result.rows[0]?.id ?? null;
-}
-
 /**
  * Attribution lookup for the referral-earnings chain: any registered,
  * non-deleted user counts as an inviter. Intentionally more lenient than the
@@ -197,7 +181,7 @@ function hasReferralPhone(referralPhone?: string): referralPhone is string {
 
 /**
  * The member whose invitation this is, by registration's own rule: a code whose
- * owner is subscribed, or else a subscriber's number. Null for anything else.
+ * owner is subscribed. Null for anything else; a typed number is never one (§141).
  *
  * 58019 (the founder's check, 14 Oct): an old Ally account logging in with an
  * invitation was admitted on ANY account's code or number. The gate answers
@@ -205,13 +189,9 @@ function hasReferralPhone(referralPhone?: string): referralPhone is string {
  * lenient attribution lookup, which asks no subscription. The login now needs
  * the inviter this function finds, exactly as a new registration does.
  */
-export async function subscribedInviter(
-  referralPhone?: string,
-  referralCode?: string,
-): Promise<number | null> {
+export async function subscribedInviter(referralCode?: string): Promise<number | null> {
   const codeOwner = referralCode?.trim() ? await findUserByReferralCode(referralCode) : null;
-  if (codeOwner !== null) return codeOwner.subscribed ? codeOwner.userId : null;
-  return hasReferralPhone(referralPhone) ? findSubscribedReferrer(referralPhone) : null;
+  return codeOwner?.subscribed === true ? codeOwner.userId : null;
 }
 
 /**
@@ -331,7 +311,8 @@ export async function checkRegistrationEligibility(
    * lists": it is that a door and a reward can wear the same word, and the
    * only way to tell is to read what the thing actually does.
    */
-  const launch = launchCohortFor(attribution);
+  // §141: only a member's code invites, so only a code owner can carry the launch days.
+  const launch = launchCohortFor(codeOwner?.userId);
   if (launch) {
     return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
   }
@@ -402,13 +383,12 @@ export async function checkRegistrationEligibility(
     return { eligible: false, reason: 'referrer_not_subscribed' };
   }
 
-  if (hasReferralPhone(referralPhone)) {
-    const inviterUserId = await findSubscribedReferrer(referralPhone);
-    if (inviterUserId !== null) {
-      return { eligible: true, mode: 'referral', inviterUserId };
-    }
-    return { eligible: false, reason: 'referrer_not_subscribed' };
-  }
-
+  /**
+   * §141 — Misho, 14 Oct 2026, in the code session's chat: „ნომრით მოწვევაც დახურე".
+   * A subscriber's NUMBER typed as „invited by" no longer opens the door: anyone who
+   * knew a member's number got in without that member doing anything (58019). Only
+   * the member's own code invites. A typed number still credits its owner where the
+   * door is open for another reason (attribution above).
+   */
   return { eligible: false, reason: 'referral_required' };
 }

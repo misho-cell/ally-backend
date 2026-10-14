@@ -203,12 +203,13 @@ describe('checkRegistrationEligibility', () => {
     expect(result).toEqual({ eligible: false, reason: 'referral_required' });
   });
 
-  it('accepts a referral from a subscribed user and returns the inviter id', async () => {
+  // §141 (Misho, 14 Oct: „ნომრით მოწვევაც დახურე"): a subscriber's number is no invitation.
+  it('refuses a subscriber’s number typed as the inviter: only a code invites (§141)', async () => {
     setWorld({ ...CLOSED_WORLD, referrerId: 167712 });
 
     const result = await checkRegistrationEligibility('+995599000001', '599 44 44 20');
 
-    expect(result).toEqual({ eligible: true, mode: 'referral', inviterUserId: 167712 });
+    expect(result).toEqual({ eligible: false, reason: 'referral_required' });
   });
 
   it('matches phones by DIGITS, never by exact spelling (10 Aug: the door rejected real subscribers)', async () => {
@@ -216,18 +217,8 @@ describe('checkRegistrationEligibility', () => {
 
     await checkRegistrationEligibility('+995599000001', '+995 599 44 44 20');
 
-    // The referrer lookup must compare regexp-stripped digits on both sides —
-    // prod UserPhone spellings vary ('+995…', '995…', spaced), and exact
-    // matching locked out every real subscriber.
-    const referrerCall = mockQuery.mock.calls.find(
-      ([sql]) =>
-        (sql as string).includes('FROM "UserPhone" up') &&
-        (sql as string).includes('subscription_status = ANY'),
-    );
-    expect(referrerCall).toBeDefined();
-    expect(referrerCall?.[0]).toContain("regexp_replace(up.phone, '\\D', '', 'g') = $1");
-    expect(referrerCall?.[1]?.[0]).toBe('995599444420');
-
+    // prod UserPhone spellings vary ('+995…', '995…', spaced); exact matching
+    // once locked out every real subscriber.
     // The registered-phone check uses the same digits contract.
     const registeredCall = mockQuery.mock.calls.find(([sql]) =>
       (sql as string).includes('SELECT "userId" FROM "UserPhone"'),
@@ -269,12 +260,12 @@ describe('checkRegistrationEligibility', () => {
     expect(aliasCall?.[1]?.[2]).toBe(15000);
   });
 
-  it('rejects a referral that is not a subscribed user', async () => {
+  it('refuses a typed number that is nobody’s', async () => {
     setWorld(CLOSED_WORLD);
 
     const result = await checkRegistrationEligibility('+995599000001', '+995599999999');
 
-    expect(result).toEqual({ eligible: false, reason: 'referrer_not_subscribed' });
+    expect(result).toEqual({ eligible: false, reason: 'referral_required' });
   });
 
   it('treats a blank referral as absent', async () => {

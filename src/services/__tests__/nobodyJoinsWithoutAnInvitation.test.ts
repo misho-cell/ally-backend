@@ -104,18 +104,12 @@ describe('nobody joins without an invitation (live switches)', () => {
     });
   });
 
-  /**
-   * TODAY'S BEHAVIOUR, pinned so a change to it is a decision and not an accident:
-   * a subscriber's NUMBER typed as „invited by" still opens the door with
-   * personal-code-only on (the app's field asks for „a friend's code or number").
-   * Whether it should is put to Misho (58019).
-   */
-  it('still admits a subscriber’s number typed as the inviter (open question, 58019)', async () => {
+  // §141 (Misho, 14 Oct: „ნომრით მოწვევაც დახურე"): only the member's own code invites.
+  it('refuses a subscriber’s number typed as the inviter (§141)', async () => {
     live({ subscriberByPhone: 501 });
     expect(await checkRegistrationEligibility(NEW_PHONE, '+995555000501')).toEqual({
-      eligible: true,
-      mode: 'referral',
-      inviterUserId: 501,
+      eligible: false,
+      reason: 'referral_required',
     });
   });
 });
@@ -123,17 +117,16 @@ describe('nobody joins without an invitation (live switches)', () => {
 describe('the inviter an old account’s login needs (58019)', () => {
   it('is the subscribed owner of the code', async () => {
     live({ codeOwner: { id: 501, subscription_status: 'trialing' } });
-    expect(await subscribedInviter(undefined, 'TORNIKE20')).toBe(501);
+    expect(await subscribedInviter('TORNIKE20')).toBe(501);
   });
 
-  it('is nobody for a code whose owner is not subscribed, even with a subscriber’s number', async () => {
-    live({ codeOwner: { id: 7, subscription_status: 'canceled' }, subscriberByPhone: 501 });
-    expect(await subscribedInviter('+995555000501', 'LAPSED1')).toBeNull();
+  it('is nobody for a code whose owner is not subscribed', async () => {
+    live({ codeOwner: { id: 7, subscription_status: 'canceled' } });
+    expect(await subscribedInviter('LAPSED1')).toBeNull();
   });
 
-  it('is the subscriber behind a typed number, and nobody for nothing typed', async () => {
+  it('is nobody when no code is given (a typed number is no invitation, §141)', async () => {
     live({ subscriberByPhone: 501 });
-    expect(await subscribedInviter('+995555000501')).toBe(501);
     expect(await subscribedInviter()).toBeNull();
   });
 });
