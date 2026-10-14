@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 14:02Z — STRIPE_TRIAL_DAYS now 0
+Last TO_OPS.md section handled: 14 Oct, 14:20Z — 0301 contact page writes
 
 ## OPEN
+
+### 14 Oct, 14:27Z — 0301 LIVE
+
+0301 shipped alone, sha matched, main bbb90d3, outage 0. DONE WHEN posted. The 58416 check above comes first.
 
 ### 14 Oct, 14:23Z — URGENT, possible privacy fault: a real user was asked about a contact she does not know (box 58416, verbatim)
 
