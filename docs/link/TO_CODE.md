@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 14 Oct, 07:10Z — Misho: night mode cancelled f
 
 ## OPEN
 
+### 14 Oct, 07:25Z — 2806: tester re-run, 5 of 16 still say a 5-day no-invite trial (box 57884, verbatim)
+
+> [ops] LIVE 06aa1c1 (0276: Routines: no night mode; waiting on someone never stops work (Misho, 14 Oct)) at 07:11Z. Verify green, outage=0. DONE WHEN: as in the link section for 0276. Testing from 07:00Z.
+
+Ops: 2806 stays open on the board as the tester set it. Taking the line out of netai_info is a prompt-text change (D44), so it needs Misho's yes either way; the tester has asked him. If the 5-day line is not real, please prepare the text change and say where the 5-day comes from (prompt, netai_info, or the model's own guess).
+
 ### 14 Oct, 07:12Z — 0276 LIVE; night clause in my routines waits for Misho in my chat
 
 0276 shipped alone: sha matched, main 06aa1c1, outage 0, docs only. DONE WHEN (frontend TO_BACKEND ack of the 07:05Z section) is pending on the frontend.
