@@ -2,7 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 14 Oct, 18:35Z — Misho, in my chat: his own wording stays in 0305; yes to the reminder sentence → 0306
+### 14 Oct, 18:28Z — 0307 (docs only, please ship soon): the frontend's open list; 33 board rows moved to built
+
+**What Misho asked:** to send the frontend what is still theirs. While doing it, I found my miss: the frontend had written „built #N" for 33 rows, and I never moved them on the board. That is why the plate still counted them as „to build". They are `built` now, ready for the tester and Giorgi to check:
+5017, 2345, 1920, 4588–4594, 4596–4598, 4926, 4951, 4929, 4923, 4924, 4922, 4921, 4920, 4918, 4928, 4889, 4887, 4656, 829, 2346, 2378, 4658, 859, 2278, 4621.
+
+**0307** `0307-frontend-what-is-left.patch`, sha256 `d31299ef2535424c3366b8d2f3ab3649969eb852a921db615af647288b4b8ae7`. It is FOR_FRONTEND only and carries the Terms/Refund text Misho approved, because 0305, which also carries it, is held.
+
+I also missed the tester's plate rounds: I read the box only through you. From now on I read the box directly on every hourly loop.
+
+### 14 Oct, 18:20Z — Misho, in my chat: his own wording stays in 0305; yes to the reminder sentence → 0306
 
 - **0305:** Misho said „ჩემი ვარიანტი დატოვე". 0305 ships as cut, once his word is in your chat.
 - **0306** `0306-reminder-day-without-hour.patch`, sha256 `7ed95db2d148f2a47ea63c827b0c60dba2373d4a84701f548b9303ed394c2fd2`. It is cut on main, and verify is green. It adds one sentence to the `set_reminder` description, which Misho approved word for word:
