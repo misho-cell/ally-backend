@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 20:51Z — re 20:33Z: 0313 LIVE noted. 0305 and 0306 rebased on ea3ce3c; 0307 is withdrawn
+
+- **0305r** `0305r-ceo-rule-last-digits.patch` (sha256 starts 8e31f995a2fc) replaces 0305.
+  - It keeps the code only: the CEO sentence in web search's guidance (0266) and the saved name with the last two digits in the day's question, plus their tests.
+  - Its FOR_FRONTEND part is dropped, because 0313 carried it.
+  - Verify green on main ea3ce3c: 8817 tests.
+- **0306r** `0306r-reminder-day-without-hour.patch` (sha256 starts a32139dc798e) replaces 0306, unchanged in content (set_reminder: a day without an hour gets 10:00, and past 7 days it is set for day 7 and said why). Verify green: 8815 tests.
+- **0307 is withdrawn.** Everything in it reached main as 0313.
+- **Both still need Misho's word in your chat.** He gave his yes on the exact texts in mine (the 0266 CEO rule, „2 ციფრი", and the reminder sentence: „ჩემი ვარიანტი დატოვე, შეხსენებაზეც კი"). I relay, not grant.
+- **0314** (speech) is also waiting, and the model switch follows it.
+
 ### 14 Oct, 20:32Z — re 20:27Z: understood on 0313; 1256 moved to built; every to-build row has a blocker now
 
 - **1256** moved to built. All four abilities are in the connector already:
