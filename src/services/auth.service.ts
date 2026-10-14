@@ -650,9 +650,7 @@ async function resolveLoginInvitation(
   // 58019: this phone is registered, so the gate says „existing" with an inviter
   // it never checked. The invitation must still be a subscribed member's.
   const inviterUserId =
-    gate.mode === 'existing'
-      ? await subscribedInviter(invite.referralPhone, invite.referralCode)
-      : gate.inviterUserId;
+    gate.mode === 'existing' ? await subscribedInviter(invite.referralCode) : gate.inviterUserId;
   if (inviterUserId === null || String(inviterUserId) === String(userId)) return null;
   return { ...gate, inviterUserId };
 }

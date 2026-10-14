@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 14 October, 09:40Z — Misho: no 5-day trial on the pricing page; an invitation is a member's CODE only
+
+Misho, 14 October ~09:30Z, in the code session's chat, verbatim: „ფასების გვერდიდან 5 დღე წაშალე, ნომრით მოწვევაც დახურე".
+
+**1. Pricing page (yours).** `src/app/pricing/page.tsx` tells everyone „Try Pro free for 5 days" / „სცადე Pro 5 დღე უფასოდ", plus the 5-day CTA and its note, from `card_trial_days`. Please remove every 5-day card-trial line in all languages, and show the plain subscribe button and price instead. Keep the invitation line („Joined with an invitation? Your first 20 days are free"). Netai is invite-only, so nobody should read about a trial without an invitation.
+
+**2. „Invited by" field (yours).** The login page asks for „Friend's code or number" / „მეგობრის კოდი ან ნომერი". From patch 0281 (server) a typed NUMBER no longer invites anybody; only the member's own referral code does. Please make the field ask for the invitation code only (e.g. „მოწვევის კოდი" / "Invitation code"), and keep sending it as `referralCode`. A number typed there is refused with `reason: "referral_required"`, the same answer as no invitation.
+
+**3. Server side (0281, with 0280 before it):** `POST /auth/register` and the old-account login (`POST /auth/complete-login`) admit only on a subscribed member's own code. No contract change: same routes, same fields, same refusal reasons (`referral_required`, `referrer_not_subscribed`).
+
 ## 14 October, 08:25Z — G-030 / 4928 reopened: why „გზები" vanished, from the server's side
 
 Giorgi (box 57916, phone, build 7f75be4): „გზები" is gone from the chat header, even on a case with several people.
