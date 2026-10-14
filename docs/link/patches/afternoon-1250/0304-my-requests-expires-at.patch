@@ -1,0 +1,135 @@
+From 0b36c6ea2aac3fd22e76cfc00066fe99bbaa399a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 15:14:07 +0000
+Subject: [PATCH] /requests/mine: expires_at for a request still waiting
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 15:05Z: the design's „expires after 14 days" line was
+left out because no route gave the number. Each waiting request now
+carries expires_at, computed from the expiry sweep's own rule (14 days
+from the last answer, else from the request; EXPIRES_AFTER_DAYS, not a
+new number); null once answered.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 12 ++++++++++
+ ...AppReadsQuestionsRequestsAndUnread.test.ts | 22 +++++++++++++++++++
+ src/services/myIntroRequests.service.ts       | 16 ++++++++++++++
+ 3 files changed, 50 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 5aa8e75..87b730e 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,18 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)
++
++Thank you. **0301 and 0302 were already live** when you wrote (ops: 14:27Z and 14:41Z), so your screens should load now.
++
++**`expires_at` (0304, with ops):** each row of `GET /requests/mine` now carries `expires_at`.
++- For a request still waiting (`state: "sent"`), it is when it runs out: 14 days after the request, or after the last answer if there was one. This is the server's own expiry rule.
++- It is `null` once a request is answered.
++
++Draw „expires on …" from it rather than writing 14 into the client.
++
++Noted that you withdrew the per-contact boundary. Labels, warmth, exclusion by goal and `assistant_name` stay with Misho and Giorgi.
++
+ ## 14 October, 14:24Z — re your 14:10Z, part 2: the questions, my requests, unread (0302)
+ 
+ 0302 follows 0301 through ops. Every route needs the app's login.
+diff --git a/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts b/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts
+index 2db7e21..670b521 100644
+--- a/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts
++++ b/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts
+@@ -49,6 +49,26 @@ describe('the core questions', () => {
+ 
+ /** Item 5: the introductions this person asked for, with a plain state. */
+ describe('my introduction requests', () => {
++  it('gives no expiry once a request is answered', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        {
++          id: 10,
++          mediator_name: null,
++          target_name: 'Nino',
++          goal_id: null,
++          thread_id: null,
++          status: 'accepted',
++          created_at: '2026-10-01T10:00:00Z',
++          answered_at: '2026-10-02T10:00:00Z',
++        },
++      ],
++    } as never);
++
++    const [r] = await myIntroRequests(171);
++    expect(r).toMatchObject({ state: MyRequestState.Accepted, expires_at: null });
++  });
++
+   it('reads only the person’s own requests and names the state plainly', async () => {
+     mockQuery.mockResolvedValueOnce({
+       rows: [
+@@ -73,6 +93,8 @@ describe('my introduction requests', () => {
+       answered_at: null,
+     });
+     expect(String(mockQuery.mock.calls[0][0])).toContain('WHERE ir.requester_user_id = $1');
++    // The frontend's 15:05Z: a waiting request says when it runs out (14 days).
++    expect(r.expires_at).toBe('2026-10-28T10:00:00.000Z');
+   });
+ });
+ 
+diff --git a/src/services/myIntroRequests.service.ts b/src/services/myIntroRequests.service.ts
+index 6393a5f..1f42275 100644
+--- a/src/services/myIntroRequests.service.ts
++++ b/src/services/myIntroRequests.service.ts
+@@ -1,4 +1,5 @@
+ import { query } from '../db/postgres/client';
++import { EXPIRES_AFTER_DAYS } from './introductionExpiry.service';
+ import { nameAsSavedBySql } from './savedNameSql';
+ 
+ /**
+@@ -27,8 +28,15 @@ export interface MyIntroRequest {
+   readonly state: MyRequestState;
+   readonly created_at: string;
+   readonly answered_at: string | null;
++  /**
++   * The frontend's 15:05Z: when a request still waiting runs out (14 days
++   * unanswered, the expiry sweep's own rule). Null once it is answered.
++   */
++  readonly expires_at: string | null;
+ }
+ 
++const DAY_MS = 86_400_000;
++
+ const STATE_OF: Readonly<Record<string, MyRequestState>> = {
+   pending: MyRequestState.Sent,
+   accepted: MyRequestState.Accepted,
+@@ -48,6 +56,13 @@ interface Row {
+   readonly answered_at: string | null;
+ }
+ 
++/** The sweep counts from the last answer, else from the request (introductionExpiry). */
++function expiresAt(r: Row): string | null {
++  if (r.status !== 'pending') return null;
++  const from = new Date(r.answered_at ?? r.created_at).getTime();
++  return new Date(from + EXPIRES_AFTER_DAYS * DAY_MS).toISOString();
++}
++
+ export async function myIntroRequests(userId: number): Promise<MyIntroRequest[]> {
+   const result = await query<Row>(
+     `SELECT ir.id, ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS mediator_name,
+@@ -70,5 +85,6 @@ export async function myIntroRequests(userId: number): Promise<MyIntroRequest[]>
+     state: STATE_OF[r.status] ?? MyRequestState.Sent,
+     created_at: new Date(r.created_at).toISOString(),
+     answered_at: r.answered_at === null ? null : new Date(r.answered_at).toISOString(),
++    expires_at: expiresAt(r),
+   }));
+ }
+-- 
+2.43.0
+
