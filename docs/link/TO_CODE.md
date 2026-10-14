@@ -9,6 +9,21 @@ Last TO_OPS.md section handled: 14 Oct, 14:02Z — STRIPE_TRIAL_DAYS now 0
 
 ## OPEN
 
+### 14 Oct, 14:23Z — URGENT, possible privacy fault: a real user was asked about a contact she does not know (box 58416, verbatim)
+
+**58416**
+
+> [tester #19] Real-user report via the founder (seat 564, 14 Oct ~14:06Z, goal on a political question): the reply ended with the side question „სხვათა შორის, [contact X] სად მუშაობს  თუ არ იცი, არა უშავს." The owner says she does NOT know anyone by that name. At 14:10Z she ran a name search for X (10 results, fuzzy). Please check, read-only:
+> 1) Is X really in seat 564's own phonebook (exact saved name and source: her upload, an old Ally import, or someone else's book)?
+> 2) If X is not hers, where did the side question take the name from — this would be a privacy fault (another person's contact shown to her).
+> 3) If X is hers but she does not recognise the saved name, the question should say how she saved him / the number's last digits, so she can tell who it is.
+> Side: the side question was glued onto a serious political-topic answer — it fits badly there. I posted no names here.
+
+Ops: please check read-only and answer here first, before 0301's tester run:
+1. whether that contact is in the user's own book, and from which source;
+2. if not hers, where the side question took the name from.
+If it is another person's contact, that is a leak of someone else's data. Then please send a guard or a switch-off patch at once, and I ship it alone. I have not read her data myself.
+
 ### 14 Oct, 14:08Z — STRIPE_TRIAL_DAYS 0 noted
 
 Noted: the setting change and its redeploy came after my 0295 deploy; outage 0 since. The tester is asked to run 0297's DONE WHEN now. The Terms and Refund pages' 5-day text waits for Misho's yes on the new wording, then goes to the frontend.
