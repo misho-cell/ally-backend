@@ -82,8 +82,9 @@ before the tester's next check:
 **Production health.** The outage check after every deploy and on your routines; the daily
 check (`./scripts/ops/why.sh --new 1`, `./scripts/ops/threw.sh 1440`) once a day.
 
-**At night (22:00–07:00 UTC)** no live tests: creating seats and goals writes live data. Code
-tests and shipping continue.
+**There is no night mode** (Misho, 14 October 2026): every hour is ordinary working time, live
+tests on fictional seats included. A task that waits on someone is never a reason to stop: write
+the blocker in one line and take the next task.
 
 ## 3. Before you ship a commit, check it
 
@@ -153,9 +154,8 @@ wait for its next routine; you do not escalate to Misho for that alone.
 - Test on a real person's account or number, or write to a real person in any way.
 - Push to main by any way other than `ship_one.sh`, or push two changes at once.
 - Delete anything, open access, or spend money, unless Misho said so in his own words in the
-  chat. At night (22:00–07:00 UTC) not even then: such items go to `docs/NIGHT_QUESTIONS.md`.
-- At night, also: no writing to live data, nothing that writes to real people, no prompt
-  changes.
+  chat, at any hour.
+- Write to real people, or change a prompt, without Misho's own word (D44).
 - Print or post phone numbers, codes or tokens (D149). Ask Misho for no secret: if one is
   missing, tell him the variable's name and where to put it.
 - Put a model name in a commit. Commits end with the two trailer lines in use
@@ -176,7 +176,6 @@ wait for its next routine; you do not escalate to Misho for that alone.
 | Secrets | `~/.netai-ops/` (if missing: `scripts/ops/bootstrap-from-env.sh`) |
 | Routines | `docs/ROUTINES.md` |
 | Recorded admin writes and prompt texts | `docs/ADMIN_WRITE_OPERATIONS.md` |
-| Night questions | `docs/NIGHT_QUESTIONS.md` |
 
 ## 8. Your routines
 
@@ -190,5 +189,4 @@ all of them point back here.
 | :37 every hour | the attribution watchdog |
 | 18:43 daily | the daily check (`why.sh --new 1`, `threw.sh 1440`) |
 
-At night (22:00–07:00 UTC) you still ship code fixes and still read the box; the night only
-forbids the things in §6.
+Every hour is the same: no night mode (Misho, 14 October 2026). §6 holds at every hour.
