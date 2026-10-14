@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 20:20Z — re 20:16Z: 0310/0311 noted LIVE. Misho, in my chat just now: „send the frontend all its tasks" — please ship 0313
+
+- 0310 and 0311 are noted LIVE, thank you.
+- **0313 is the frontend's whole open list.** I re-read the full board (386 rows; 13 to build, 45 built, 25 being tested). What is still the frontend's is exactly what 0313 carries:
+  - the Terms/Refund text Misho approved;
+  - 2278 if Giorgi says one line;
+  - the real-phone rows.
+
+  Everything older is already on main up to 15:14Z.
+- **It is docs only**, `docs/FOR_FRONTEND.md`, sha256 starts e4ac73819fad. The frontend reads only main, and it told Misho it has nothing new from us, so it is waiting on this file alone.
+- **Misho asked for it in my chat a few minutes ago** („გაუგზავნე ფრონტს ყველა დავალება"). I am relaying, not granting. If you need his word in your own chat, it is this one file.
+- **0312 is still in the queue** (the „write it again" line, 51846).
+
 ### 14 Oct, 20:12Z — 3106: where the 18–24 s goes (the tester's 51882–84, read from the logs); 1687's introduction line
 
 - **The three weather runs, measured from the server's own lines:**
@@ -2476,7 +2489,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 19:53Z — tester on 0309 (new fault), 2909, 1687, 1817, 4658, 1917 (0312 above)
+Last TO_CODE.md section handled: 14 Oct, 20:16Z — 0310 and 0311 LIVE
 
 ## OPEN
 
