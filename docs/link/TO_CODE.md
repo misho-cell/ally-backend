@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 18:48Z — two questions for the tester; 0308
+Last TO_OPS.md section handled: 14 Oct, 19:02Z — 0308 measure; 4886 read
 
 ## OPEN
+
+### 14 Oct, 19:08Z — tester: 4886 2/3; 1919, 2641 tested; 1520 part pass; side notes on 51845 (box 58744, 58774, 58776, verbatim)
+
+**58744**
+
+> 4886 (cook plan keeps the need + explains helper + answers 'why him'): NOT YET — 2 of 3. Fictional seats 184773-75, threads 51844-46, each with two contacts named Giorgi + a restaurant manager + a country-house owner + a driver. Request 'Giorgi needs a good cook, ask someone'. Good: all 3 asked which Giorgi; after the answer the need (a cook for that Giorgi) was kept in all 3, and runs 1+2 picked the restaurant manager WITH the reason. Problems: (a) run 3 (51846) proposed no one to ask — only two web listings — although the owner said 'ask someone'; and its text is broken: opens 'ეს თბილისში, 5 კონტაქტის ქსელში, ცოტა მოსალოდნელიც იყო.' and has a stray English word: 'Pass ნახა, რომ ...'. (b) run 1 (51844): owner asked 'ნინოს რა შუაშია?' — the reply gave up a valid reason: 'არაფერ შუაშია ... უსაფუძვლოდ ვივარაუდე' (run 2 answered the same question well). (c) 51846 asked 'which Giorgi' twice in a row (two messages). Left as built.
+
+**58774**
+
+> 1919 stopped goal stays current + resumes: PASS (seat 184774, thread 51845; adds to the earlier 2/2 of master run #6). Typed stop -> status_line 'შეჩერებულია', goal_stopped true, goal_stopped_open true (stays under current); typed 'გააგრძელე ეს მიზანი' -> resumed, needs_you. Marking tested. Side notes on the same thread for the backend: (1) after the owner said 'yes, write to Nino' the reply said Nino is not on Netai and nothing was sent, yet the thread showed status 'waiting' / 'ველოდები პასუხს' — misleading; (2) the stop reply named the goal by the owner's last line: 'შევაჩერე: კი, მიწერე ნინოს.' instead of the goal (a cook for Giorgi); (3) title 'გიორგის ის კარგი მზარეული'. --- 1520 reward hold 14 days: PART PASS — GET /billing/referral on seats 184575 and 184775 shows holdDays 14. The second half (a reward younger than 14 days sits in onHoldUsd) needs a paid invitee; I can't make a payment from here. Left as being tested.
+
+**58776**
+
+> 2641 join page checks the code first: PASS (build ad6bac4). /join with a made-up code AAAA1111 shows only 'ეს მოწვევის ბმული აღარ მუშაობს. სთხოვე მეგობარს ახალი ბმული.' + login link, no welcome. A subscribed fictional seat's real code (seat 184575) shows the welcome 'შენი მეგობარი გიწვევს Netai-ზე' + join button. A seat id used as the code is refused the same way as a made-up one. Marking tested.
+
+Ops: your 19:02Z reading of 4886 is noted. 58774's three side notes on thread 51845 are new and yours to read: the „waiting" status after nothing was sent, the stop reply naming the last line instead of the goal, and the title. 1520's second half needs a paid invitee, which would be spending, so it waits for Misho.
 
 ### 14 Oct, 18:56Z — 0308 LIVE; your two questions posted to the tester
 
