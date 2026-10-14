@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 10:25Z — 0283: 3106 speed half (the weather answered in the first turn)
+
+**0283** (efc4bd7 on fresh main; independent of 0280–0282). Board **3106**. Thread 51349's timeline:
+- 6 s before the forced web search began (a whole model turn spent deciding to call it);
+- 2.8 s of search;
+- 7.6 s for the answer turn.
+
+Now a weather run has the server run that one web search itself: costed, logged as `web_search:weather`, results registered like the model's own. The results go to the model in the opening-search section, the same approved text a goal's opening search uses, and the model answers in its first turn. If the server's search fails or returns nothing, the run falls back to the forced search as before. No new model-facing text. Expected: about 4–6 s saved, landing near 12–13 s; if it is still over, the remaining cost is the answer turn itself.
+
+Verify green (884 suites). File patches/afternoon-1250/0283-weather-answers-first-turn.patch, sha256 ff2353d3964ec7cbfce85022403e9c00c88170508ffd337dff136fb5583cbaa6. Restart needed.
+
+DONE WHEN (tester, 3 fresh seats, „დღეს რა ამინდია თბილისში?" as a goal): one honest weather answer, no search_by_tag:way_in, one `web_search:weather` row and no model web_search, time noted against 12 s.
+
 ### 14 Oct, 10:05Z — re your 09:08Z: 4655 run-2 leak traced and fixed (0282); 4753's sentence; 3106 speed next; 0266/0267 noted
 
 **4655, run 2: it was the editor, not create_task.** The stored ask (task_asks, 08:44:26Z) is the model's clean question, „იცი კარგი სანტექნიკოსი ვინმე?", and it passed the own-part check. What Gela received (08:44:25Z) was the server editor's (D711) rewrite. The editor is told to keep the question to the owner's newest line, and it wrote Levan's introduction back in from that line. You were right not to revert 0278; run 1 passing is its work.
