@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 12:05Z — 0288: day one wastes fewer rounds (an added „სანდო" is dropped, not refused)
+
+**0288** (on fresh main; independent). Re 58044: 2 of 3 day-one sends reached 75 s only after refused tries. In three days, 9 of 14 fact-keeping refusals on ask_contact were a quality word the owner never wrote („სანდო"), each costing a model round. The server now drops that word itself before the checks, as it already does in the owner's reply (4456). The other fact checks are unchanged and stay refusals: beneficiary, time, bracketed detail, quoted line. No model-facing text. Verify green (886 suites, 8764 tests). File patches/afternoon-1250/0288-quality-word-dropped.patch, sha256 9519e3ad6e2bf9523d3def2d4b19c524e65d5e17f7d55cbe9be807a5469c520a. Restart needed.
+
+DONE WHEN: over a day of runs, tool_call_log shows no ask_contact refused „it adds „სანდო"…", and day-one sends on 3 fresh approvals land within 75 s without a quality-word refusal.
+
 ### 14 Oct, 11:40Z — 0287: the never-opened line's buttons, built with the switch OFF
 
 **0287** (eb0654d on fresh main; independent). 0266 part 1, the „no buttons" half (58043). The server's never-opened line can carry two buttons: „მაინც გაუგზავნე" / „სხვა გზა ვეძებოთ" (the founder's words relayed in 58017), plus en/ru/es. They pass the button editor untouched as approved labels. `DORMANT_CHOICES_ON = false` until Misho's yes on the exact labels; I have put it to him. **While off, nothing changes**, so it is safe to ship now, and the yes then becomes a one-line patch. Verify green (885 suites, 8760 tests). File patches/afternoon-1250/0287-dormant-buttons-off.patch, sha256 8236f55c6ce4ed21494d1e350fb5f1ca13866dd49c6f6b42b9df15c91e1f6e60. Restart needed. DONE WHEN (after the switch): the never-opened line shows the two buttons 3 of 3.

@@ -1,0 +1,117 @@
+From fc9611fc8a00002b7f58b62513dcfbf5389768b6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 10:34:21 +0000
+Subject: [PATCH] ask_contact drops a quality word the owner never wrote
+ instead of refusing
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58044 (0267, day one): 2 of 3 day-one sends reached the
+75 s mark only after refused tries. In three days, 9 of the 14
+fact-keeping refusals on ask_contact were a quality word the owner never
+wrote („სანდო"), each costing a whole model round before the same ask
+went again.
+
+The server now drops that one word itself before the checks, as it
+already does in the owner's reply (4456, withoutQualityNotSaid). Every
+other fact check (who it is for, a time, a bracketed detail, a quoted
+owner's line) stays a refusal. No model-facing text changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...ddedQualityWordIsDroppedNotRefused.test.ts | 40 +++++++++++++++++++
+ .../theRetryIsAtTheReopening.test.ts          |  2 +-
+ src/services/chat.service.ts                  | 13 +++++-
+ 3 files changed, 53 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/anAddedQualityWordIsDroppedNotRefused.test.ts
+
+diff --git a/src/services/__tests__/anAddedQualityWordIsDroppedNotRefused.test.ts b/src/services/__tests__/anAddedQualityWordIsDroppedNotRefused.test.ts
+new file mode 100644
+index 0000000..9b8bfcd
+--- /dev/null
++++ b/src/services/__tests__/anAddedQualityWordIsDroppedNotRefused.test.ts
+@@ -0,0 +1,40 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { factChangedIn, withoutQualityNotSaid } from '../factKeeping';
++
++/**
++ * 0267 day one (58044): „Not sent: it adds „სანდო", a detail the owner did not
++ * give" cost a model round each time. The word is dropped by the server and the
++ * ask goes on; every other fact check stays a refusal.
++ */
++const OWNER = ['კარგი სანტექნიკოსი მჭირდება თბილისში.'];
++
++describe('an added quality word is dropped, not refused', () => {
++  it('drops „სანდო" the owner never wrote, and the question then passes', () => {
++    const asked = 'სანდო სანტექნიკოსს ხომ არ იცნობ თბილისში?';
++    expect(factChangedIn(asked, OWNER)).not.toBeNull();
++    const question = withoutQualityNotSaid(asked, OWNER);
++    expect(question).toBe('სანტექნიკოსს ხომ არ იცნობ თბილისში?');
++    expect(factChangedIn(question, OWNER)).toBeNull();
++  });
++
++  it('keeps the word when the owner wrote it', () => {
++    const owner = ['სანდო სანტექნიკოსი მჭირდება.'];
++    expect(withoutQualityNotSaid('სანდო სანტექნიკოსს ხომ არ იცნობ?', owner)).toBe(
++      'სანდო სანტექნიკოსს ხომ არ იცნობ?',
++    );
++  });
++
++  it('still refuses a beneficiary the owner never named', () => {
++    const asked = 'ჩემს მეგობარს სანტექნიკოსი სჭირდება, ხომ არ იცნობ?';
++    expect(factChangedIn(withoutQualityNotSaid(asked, OWNER), OWNER)).not.toBeNull();
++  });
++
++  it('runs before the checks in ask_contact', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const ask = chat.slice(chat.indexOf("case 'ask_contact': {"));
++    const strip = ask.indexOf('const question = withoutQualityNotSaid(asked, ownerLines);');
++    expect(strip).toBeGreaterThan(-1);
++    expect(strip).toBeLessThan(ask.indexOf('const changed = factChangedIn(question, ownerLines);'));
++  });
++});
+diff --git a/src/services/__tests__/theRetryIsAtTheReopening.test.ts b/src/services/__tests__/theRetryIsAtTheReopening.test.ts
+index 894f07d..57da7fb 100644
+--- a/src/services/__tests__/theRetryIsAtTheReopening.test.ts
++++ b/src/services/__tests__/theRetryIsAtTheReopening.test.ts
+@@ -18,7 +18,7 @@ describe('the retry happens when the recipient can be asked again', () => {
+ 
+   it('ask_contact remembers it for the goal', () => {
+     const tool = chat.slice(chat.indexOf("case 'ask_contact': {"));
+-    expect(tool.slice(0, 6000)).toContain(
++    expect(tool.slice(0, tool.indexOf("case 'set_task_brief':"))).toContain(
+       'noteWakeNoLaterThan(runId, taskId, (askOutcome as { reopens_at?: unknown }).reopens_at);',
+     );
+   });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 0e56f48..b6cc097 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -9873,9 +9873,20 @@ async function executeToolCall(
+             'and Y now and I will come back as soon as somebody answers."',
+         };
+       }
+-      const question = String(input['question'] ?? '');
++      const asked = String(input['question'] ?? '');
+       // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
+       const ownerLines = await ownerLinesForGoal(task, threadId);
++      /**
++       * 0267 day one (the tester's 58044): 9 of 14 fact-keeping refusals in three days were a
++       * quality word the owner never wrote („სანდო"), each a whole model round before the same
++       * ask went again. The server drops that one word itself, as it already does in the owner's
++       * reply (4456), and the question goes on to the checks without it.
++       */
++      const question = withoutQualityNotSaid(asked, ownerLines);
++      if (question !== asked) {
++        // eslint-disable-next-line no-console
++        console.log(`[fact-keeping] run ${runId} task ${taskId}: a quality word not said dropped`);
++      }
+       // T2479 (§98.3): „გამაცანი X" is an introduction, never a plain question.
+       // Box 54175: unless this person's part of the owner's message is a plain question.
+       if (askIsTheIntroduction(ownerLines, String(input['contact_name'] ?? ''))) {
+-- 
+2.43.0
+
