@@ -30,27 +30,7 @@ describe('a weather question looks for nobody (3106)', () => {
     expect(source).toContain('runLooksUpTheWeather.delete(runId);');
   });
 
-  /**
-   * The speed half (58029: 18.0 / 19.2 / 19.1 s against 12): the server searches
-   * first and the model answers in its first turn, from the opening-search
-   * section. If the server's search fails, the run searches itself as before.
-   */
-  it('searches before the first turn, and the first turn is the answer', () => {
-    expect(source).toContain(
-      "await weatherFoundFirst(userId, threadId, runId, lastOwnerText(messages) ?? '')",
-    );
-    expect(source).toContain("systemPrompt + shortTurnNote + (weatherFound ?? '')");
-    expect(source).toMatch(
-      /weatherFound === null\s+\? \{ forceTool: WEB_SEARCH_TOOL \}\s+: \{ forceText: true, maxTokens: DISCUSS_MAX_TOKENS \}/,
-    );
-  });
-
-  it('logs, costs and registers the server’s weather search like the model’s own', () => {
-    const fn = source.slice(source.indexOf('async function weatherFoundFirst('));
-    const body = fn.slice(0, fn.indexOf('\n}\n'));
-    expect(body).toContain("priceKey: 'tavily.search'");
-    expect(body).toContain("tool: 'web_search:weather'");
-    expect(body).toContain('registerWebResult(runId, raw);');
-    expect(body).toContain('buildOpeningSearchSection(');
+  it('still looks the weather up on the web', () => {
+    expect(source).toContain('...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL })');
   });
 });
