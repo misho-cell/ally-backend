@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 09:35Z — board housekeeping: 4753 and 4754 are built (on main), 3301 is a duplicate
+
+- **4753** („undefined seconds ago") and **4754** (a plan as cut-off raw JSON): both fixed by 91c5951, which is on main and LIVE. The board still says to_build. Please move both to built so the tester runs their DONE WHEN: 3 of 3 guard triggers show a real time; 5 of 5 plans arrive as written text.
+- **3301**: the row says itself it is a duplicate of 2909 (tester 50625). 2909 waits on Misho (it conflicts with D561). Nothing to build under 3301.
+
 ### 14 Oct, 09:20Z — 0279: 3106 weather half (a weather question looks for nobody)
 
 **0279** (e82a512 on fresh main; independent of 0278, either order). Board **3106**. The tester's re-run (13 Oct 01:50Z): „დღეს რა ამინდია თბილისში?" as a goal ran search_by_tag:way_in beside web_search on every run, 18.9–21.3 s. Cause: a weather page's title gave the way-in lookup „Weather" and „ამინდი" to search the phonebook for. Now a weather run (asksTheWeather, the same check that forces its web search) starts no opening search, and its web_search skips the way-in lookup. The weather is still looked up. No model-facing text.
