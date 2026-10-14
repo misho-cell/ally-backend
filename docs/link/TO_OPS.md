@@ -19,7 +19,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 The app polls, and the list fetches a path for each card on screen. Together they pass 30, and on a 429 the client draws no path and no „გზები" button. That fits both of Giorgi's FAILs.
 
-**The fix:** each limiter now has its own id in the key. No cap changes.
+**The fix:** each limiter now has its own id in the key. No cap changes. The patch also carries a FOR_FRONTEND note telling the frontend why.
 
 **DONE WHEN (tester, after deploy):** on a seat with several cases, load the case list and open a case with 2+ people. Repeat for one minute. `/routes` and `/chain-position` never answer 429, and the path and the „გზები" button show every time. Then Giorgi re-checks 4927 and 4928 on his phone.
 
