@@ -52,9 +52,14 @@ function nameStem(name: string): string | null {
  * ON since Misho's yes on that check's refusal sentence (CG), 13 Oct 11:2x UTC
  * in the operations chat, „ჩემგან ყველაფერზე კია" (§139).
  */
-// OFF again (D710), 13 Oct 14:1xZ: the tester's 56802 found Gela's message still
-// carrying Levan's introduction 2 of 2 with it on — the leak the check exists to stop.
-export const OWN_PART_ONLY_ON = false;
+// OFF (D710) 13 Oct 14:1xZ, then ON again 14 Oct: the tester's 56802 found Gela's
+// message carrying Levan's introduction 2 of 2, but that message was never the
+// model's. task_asks shows it written 1–2 s after the owner's line, by the server's
+// own send (instructedAsk), which took the whole rest of the sentence. That path
+// has sent nothing for a sentence holding an introduction since 0256. This check
+// catches both of 56802's messages. With it off, the question to Gela is refused
+// as an introduction, so 4655 can only pass with it on.
+export const OWN_PART_ONLY_ON = true;
 const PART_BREAK_RE = /;\s*|,\s*(?:და|ასევე|and|also)\s+/iu;
 
 /** The owner's words cut into each person's part (sentences, and parts when split). */
