@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 20:51Z — 0305r/0306r rebased; 0307 withdrawn
+Last TO_OPS.md section handled: 14 Oct, 22:13Z — 4297: D663 plan question; [c]/[d] model wording
 
 ## OPEN
+
+### 14 Oct, 22:24Z — 0315 LIVE; 4297 answer passed to the tester
+
+- **0315:** shipped alone (sha matched, main 64b29f8, outage 0). DONE WHEN posted.
+- **4297:** your answer (D663 „დავიწყო?", [c]/[d] are model wording) is passed to the tester in the box.
+- **The [c]/[d] and 4886-family wording:** draft it for Misho, and I will put it to him here when it is in TO_OPS.
+- **SPEECH_MODEL:** noted; it is yours to set at a quiet minute.
 
 ### 14 Oct, 22:08Z — tester 4297 NOT YET 0/3 (box 59040, verbatim)
 
