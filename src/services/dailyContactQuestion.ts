@@ -33,6 +33,8 @@ export interface RunPresence {
   readonly ownerSpeaksOfADeath?: boolean;
   /** 3367: the owner's line asks what is waiting or what is new. */
   readonly ownerAsksWhatWaits?: boolean;
+  /** 58416: the owner's line is a question of their own. */
+  readonly ownerAsksAQuestion?: boolean;
   /** 3004: the owner's own line in this run. */
   readonly ownerLine?: string;
 }
@@ -75,6 +77,23 @@ export function asksWhatWaits(ownerLine: string): boolean {
   return ASKS_WHAT_WAITS_RE.test(ownerLine);
 }
 
+/**
+ * The tester's 58416 (a real owner, 14 Oct): her question about a political
+ * topic was answered, and then „სხვათა შორის, <contact> სად მუშაობს?" was
+ * tacked onto the answer. An owner who came with a question of their own gets
+ * the answer to it and nothing else; the day's light question waits for a
+ * moment of small talk.
+ */
+// A question mark, or a line that opens with a question word. „\b" does not
+// work for Georgian letters in JavaScript, so the word must be followed by a
+// space, punctuation or the end of the line.
+const OWNER_QUESTION_RE =
+  /[?？]|^\s*(?:ვინ|რა|სად|როდის|როგორ|რატომ|რომელ\S*|რამდენ\S*|who|what|where|when|why|how|which|is|are|can|does|do|кто|что|где|когда|почему|как|quién|qué|dónde|cuándo|por\s+qué|cómo)(?=[\s,.!:;]|$)/iu;
+
+export function asksAQuestion(ownerLine: string): boolean {
+  return OWNER_QUESTION_RE.test(ownerLine);
+}
+
 /** Only the owner's own conversation, with the owner there, outside a goal. */
 export function contactQuestionMayRun(presence: RunPresence): boolean {
   return (
@@ -84,7 +103,8 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
     !presence.preview &&
     presence.ownerAsksAboutSelf !== true &&
     presence.ownerSpeaksOfADeath !== true &&
-    presence.ownerAsksWhatWaits !== true
+    presence.ownerAsksWhatWaits !== true &&
+    presence.ownerAsksAQuestion !== true
   );
 }
 

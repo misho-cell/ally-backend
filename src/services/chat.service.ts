@@ -461,6 +461,7 @@ import {
   dailyContactQuestionSection,
   speaksOfADeath,
   asksWhatWaits,
+  asksAQuestion,
 } from './dailyContactQuestion';
 import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
@@ -5356,6 +5357,7 @@ async function buildAgentSystemPrompt(
     ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
     ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+    ownerAsksAQuestion: asksAQuestion(ownerLine),
     ownerLine,
   };
   // 958: these six reads do not depend on each other, so they run together; one
