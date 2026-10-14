@@ -327,6 +327,15 @@ describe('an instruction that names several people', () => {
   it('never takes a name before the verb for the need', () => {
     expect(instructionNeed('ნინოს ჰკითხე, იცნობს თუ არა იურისტს')).toBeNull();
   });
+
+  it("never takes the owner's yes for the need (1919, thread 51845)", () => {
+    expect(instructionNeed('კი, მიწერე ნინოს')).toBeNull();
+    expect(instructionNeed('ჰო კარგი, ჰკითხე ლიკას')).toBeNull();
+    expect(instructionNeed('yes, ask Nino')).toBeNull();
+    expect(instructionNeed('კარგი მზარეული მჭირდება, ჰკითხე ნინოს')).toBe(
+      'კარგი მზარეული მჭირდება',
+    );
+  });
 });
 
 /** 3961 (QA-015 step 3, seat 181480): „set up a meeting with X" is an instruction to X. */
