@@ -2,6 +2,33 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 09:25Z — re your 08:40Z: 58018/58019 answered with facts; patch 0280 (one gap closed); two questions for Misho
+
+**(a) Every way to create or admit an account (read from the code; production flags invite_only, netai_invite_only_login, invite_personal_code_only all ON):**
+1. `POST /auth/register`, public. Already-registered phones are refused, then the gate, then the SMS code. With the live flags a new phone gets in only by:
+   - a member's own referral code whose owner is subscribed (active or trialing);
+   - **or a subscriber's phone number typed as „invited by"** (the app's field asks for „a friend's code or number");
+   - or the launch cohort (an inviter listed in LAUNCH_TRIAL_REFERRER_IDS, inside the launch window).
+   No invitation, an unknown code, a lapsed member's code, a company cohort code and social proof are all refused.
+2. `POST /auth/complete-login`, public: old Ally accounts (62k phones). The login gate refuses an account that never used Netai unless it brings an invitation. **GAP, closed by 0280:** such an account got in on ANY non-deleted account's code or number, with no subscription check. Now it needs a subscribed member's code or number, as registration does.
+3. OTP request and verify: create no account.
+4. `POST /auth/eligibility`, public: read-only. It does reveal whether a phone is registered.
+5. MCP connector sign-in: needs an existing account plus SMS; creates none. It does not ask the login gate, but using it needs the MCP flag and an active paid subscription. So only old accounts that already pay.
+6. Admin-token routes only: test seats (fictional numbers only), staff email accounts (admin console, not the app), and the admin-access switch on a user.
+7. Review phones (app-store review): only numbers in the server's REVIEW_PHONE env with REVIEW_OTP set. They pass under every flag. Ops, please confirm what that env holds.
+
+Nothing else inserts a user: not Stripe or Paddle, not the Axel load, and there is no social sign-up and no backend /join.
+
+**(b) Tests.** None ran the real gate with personal-code-only on. 0280 adds `nobodyJoinsWithoutAnInvitation.test.ts`, which runs the real gate under the live switches. It refuses: no invitation, an unknown code, a lapsed member's code, a company cohort code, social proof. It admits a subscriber's own code. The typed subscriber's number is pinned as today's behaviour; see question 1. Two login tests were added for the gap.
+
+**(c) How the tester can try it on fictional seats:** `POST /admin/registration-gate-check` runs the real gate and creates nobody. Use a fictional number, plus `invited_by` / `invited_by_code` (a seat) or a free-text `referral_code`. It returns eligible, mode and reason. `POST /admin/test-accounts` does NOT run the gate, so a 201 there proves nothing. `POST /admin/login-gate-check` shows the login gate's verdict for one account.
+
+**Texts that mention joining (58018).** Fact sheet: the about, doors, earnings and limits sections all say invite-only. Only pricing contradicts it („joining without one, the trial is 5 days"); the fix is the 2806 sentence, waiting for Misho. The model's prompt blocks: none mention a trial or joining without an invitation. **The app's pricing page** (frontend) says to everyone „Try Pro free for 5 days" / „სცადე Pro 5 დღე უფასოდ" (the card trial, card_trial_days = 5 from the server). That contradicts the rule too. It is frontend text; it goes to the frontend after Misho's word.
+
+**0280** (918319a on fresh main): code plus tests. Verify green (884 suites). File patches/afternoon-1250/0280-login-needs-subscribed-inviter.patch, sha256 522a8e864e459443d02f8844668f27c20d09bfa8a77e0e0dfd0b33eacd71367d. It closes a door that old accounts used, so please ship it only on Misho's word; I am asking him now. DONE WHEN: on a fictional old account, a login with a lapsed member's code is refused and one with a subscriber's code is admitted.
+
+**Questions for Misho (asking him in my chat):** (1) Should a subscriber's PHONE NUMBER typed as „invited by" still count, or only the member's own code? (2) Should the pricing page's 5-day card trial go?
+
 ### 14 Oct, 08:55Z — 3070: your 13:40Z question answered; the fix is 0267 (held for Misho)
 
 **Why 0248 (3070a) still saw ask_contact, and why it was slower:**
@@ -2026,7 +2053,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 08:10Z — G-030 (box 57916, verbatim): app side, 4928 reopened + new 5017
+Last TO_CODE.md section handled: 14 Oct, 08:40Z — board 4753/4754 built; tester relays the founder on 0266, 0267, 2806 and invite-only (box 58017–58019, verbatim)
 
 ## OPEN
 
