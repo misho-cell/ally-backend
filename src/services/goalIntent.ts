@@ -668,7 +668,21 @@ export function instructionNeed(sentence: string): string | null {
   const beforeVerb = sentence.slice(0, match.index);
   if (datedNameBefore(beforeVerb) !== '') return null;
   const need = beforeVerb.replace(/[\s,;:—–-]+$/u, '').trim();
-  return need === '' ? null : need;
+  return need === '' || isOnlyAgreement(need) ? null : need;
+}
+
+/**
+ * 1919's side notes (tester box 58774, thread 51845): the owner answered the
+ * run's „ნინოს მივწერო…?" with „კი, მიწერე ნინოს". Before the verb stood only
+ * „კი", so „კი" was taken for the need: it would have been Nino's whole
+ * question, and it became the goal's title („შევაჩერე: კი, მიწერე ნინოს").
+ * A yes is the owner agreeing to a question asked earlier, not the question.
+ */
+const AGREEMENT_ONLY_RE =
+  /^(?:(?:კი|დიახ|ხო|ჰო|კარგი|კაი|კარგით|აბა|მაშინ|yes|yeah|yep|ok|okay|sure|then|да|ладно|хорошо|sí|vale)[\s,!.]*)+$/iu;
+
+function isOnlyAgreement(text: string): boolean {
+  return AGREEMENT_ONLY_RE.test(text);
 }
 
 /**
