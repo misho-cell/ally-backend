@@ -1,0 +1,117 @@
+From deac50d650b65065b4844a83af9bfcf8939219af Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 12:36:36 +0000
+Subject: [PATCH] Checkout: no 5-day card trial (Misho, 14 Oct)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 14 October, in his own chat: „ფასების გვერდიდან 5 დღე წაშალე",
+then yes to every item waiting on his word, the checkout trial among
+them. STRIPE_TRIAL_DAYS is not set in production, so the code's default
+of 5 granted a 5-day card trial on Stripe's own page, after the pricing
+page had stopped promising one.
+
+The default is now none: cardTrialDays() gives the env's number only
+when it names a positive whole number, and both the checkout and
+GET /billing/offer (card_trial_days) read it. The invitation's free
+days are untouched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../noCardTrialUnlessTheEnvNamesOne.test.ts   | 25 +++++++++++++++++++
+ src/services/inviteCohorts.service.ts         | 14 ++++++++++-
+ src/services/stripe.service.ts                | 10 +++++---
+ 3 files changed, 44 insertions(+), 5 deletions(-)
+ create mode 100644 src/services/__tests__/noCardTrialUnlessTheEnvNamesOne.test.ts
+
+diff --git a/src/services/__tests__/noCardTrialUnlessTheEnvNamesOne.test.ts b/src/services/__tests__/noCardTrialUnlessTheEnvNamesOne.test.ts
+new file mode 100644
+index 0000000..b80c17d
+--- /dev/null
++++ b/src/services/__tests__/noCardTrialUnlessTheEnvNamesOne.test.ts
+@@ -0,0 +1,25 @@
++import { cardTrialDays } from '../inviteCohorts.service';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++/**
++ * Misho, 14 October: no 5-day card trial at checkout. Netai is invite-only, and
++ * the invitation's free days are the only free period.
++ */
++describe('the card trial at checkout', () => {
++  it('is none when the env names no number', () => {
++    expect(cardTrialDays(undefined)).toBe(0);
++    expect(cardTrialDays('')).toBe(0);
++  });
++
++  it('is none for a value that is not a positive whole number', () => {
++    expect(cardTrialDays('0')).toBe(0);
++    expect(cardTrialDays('-3')).toBe(0);
++    expect(cardTrialDays('2.5')).toBe(0);
++    expect(cardTrialDays('five')).toBe(0);
++  });
++
++  it('is what the env names when it names one', () => {
++    expect(cardTrialDays('5')).toBe(5);
++  });
++});
+diff --git a/src/services/inviteCohorts.service.ts b/src/services/inviteCohorts.service.ts
+index 02d6a30..a41acfd 100644
+--- a/src/services/inviteCohorts.service.ts
++++ b/src/services/inviteCohorts.service.ts
+@@ -23,8 +23,20 @@ import { UserCohort } from '../types';
+  */
+ 
+ const COHORT_QUERY_TIMEOUT_MS = 8_000;
++/**
++ * The card trial at checkout. Misho, 14 October 2026: no 5-day trial (the
++ * pricing page dropped it, and Netai is invite-only: the invitation's free
++ * days are the only free period). None unless the env names a number.
++ */
++const NO_CARD_TRIAL_DAYS = 0;
++
++export function cardTrialDays(fromEnv: string | undefined): number {
++  const days = Number(fromEnv);
++  return fromEnv !== undefined && Number.isInteger(days) && days > 0 ? days : NO_CARD_TRIAL_DAYS;
++}
++
+ /** The default trial everyone else gets — the cohort's number is the exception. */
+-export const DEFAULT_TRIAL_DAYS = Number(process.env.STRIPE_TRIAL_DAYS ?? 5);
++export const DEFAULT_TRIAL_DAYS = cardTrialDays(process.env.STRIPE_TRIAL_DAYS);
+ const MAX_COHORT_TRIAL_DAYS = 90;
+ const MAX_CODE_CHARS = 32;
+ const MAX_NAME_CHARS = 120;
+diff --git a/src/services/stripe.service.ts b/src/services/stripe.service.ts
+index 0ab18cf..b4eaf4c 100644
+--- a/src/services/stripe.service.ts
++++ b/src/services/stripe.service.ts
+@@ -5,10 +5,12 @@ import { recordPayment } from './payments.service';
+ import { deliverTopupSession, isTopupSession } from './stripeTopup.service';
+ import { applyChargeRefund } from './stripeRefund.service';
+ import { distributeReferralEarnings, oneMonthOfUsd } from './referral.service';
++import { cardTrialDays } from './inviteCohorts.service';
+ 
+-// Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
+-// trial with the card collected up front, no charge during the trial, then
+-// automatic monthly renewal until cancelled. Access follows the subscription
++// Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, the card
++// collected up front, then automatic monthly renewal until cancelled. The
++// 5-day card trial is gone since 14 October (Misho): it comes back only if
++// STRIPE_TRIAL_DAYS names a number. Access follows the subscription
+ // status; the Customer Portal handles card changes and cancellation.
+ //
+ // Everything downstream in this codebase already reads User.subscription_status
+@@ -16,7 +18,7 @@ import { distributeReferralEarnings, oneMonthOfUsd } from './referral.service';
+ // columns true to Stripe — it changes no access rule anywhere else.
+ 
+ const STRIPE_TIMEOUT_MS = 20_000;
+-const TRIAL_DAYS = Number(process.env.STRIPE_TRIAL_DAYS ?? 5);
++const TRIAL_DAYS = cardTrialDays(process.env.STRIPE_TRIAL_DAYS);
+ const PRICE_ID = process.env.STRIPE_PRICE_ID ?? '';
+ // The founder's ruling: this price grants PREMIUM.
+ const TIER = process.env.STRIPE_TIER ?? 'premium';
+-- 
+2.43.0
+

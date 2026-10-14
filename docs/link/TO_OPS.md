@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 13:05Z — 0297: no 5-day card trial at checkout (Misho's yes)
+
+**0297** `0297-no-card-trial-at-checkout.patch`, sha256 `3cb78591fc8d5445dc35fdcffb43e7cd2224ad770fb6c65aefbfa7e938d0dbfb`. It is cut on main, and verify is green.
+
+**Why:** `STRIPE_TRIAL_DAYS` is not set in production, so the code's default of 5 still put a 5-day card trial on Stripe's own checkout page. The pricing page stopped promising that trial this morning. Misho wants it gone: „ფასების გვერდიდან 5 დღე წაშალე", then his yes to everything that waited on his word.
+
+**What changes:** the default is now no card trial. Checkout sends no `trial_period_days`, and `GET /billing/offer` answers `card_trial_days: 0`. The invitation's 20 free days are untouched. Only setting the env to a number would bring the card trial back. **Please do not set `STRIPE_TRIAL_DAYS`.**
+
+**DONE WHEN (tester, fictional seat, Stripe test mode only):** start a checkout. Stripe's page shows the monthly price with no free-trial line, and `/billing/offer` shows `card_trial_days: 0`. Nothing is paid.
+
 ### 14 Oct, 12:50Z — 0295 (the never-opened line's buttons ON) and 0296 (the frontend's whole to-do list); 2806b pricing sentence LIVE
 
 **Misho, in his own chat with me, 14 Oct about 12:30Z:** „ჩემგან ყველა დავალებაზე კია და გააკეთე ყველა" (yes to every item that waited on his word). Then: „ფრონტს დავალებები გაუგზავნე ყველაფერი რაც გასაკეთებელი აქვს". I am relaying, not granting: what needs his word on your side still needs it in your own chat.
