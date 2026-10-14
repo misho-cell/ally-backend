@@ -1,0 +1,10 @@
+{
+  "target": "prompt",
+  "before_sha256": "3f36e70bf52800df9d5f56b1db3a394aa59ed8368ca2826f8b6c8e1607ca7669",
+  "requires": [],
+  "what": "Append one sentence to the end of the base prompt: one clear actor per sentence in a message to the owner (3671).",
+  "why": "Board 3671 (box 48150, conv 46927): „თუ გინდა, თვითონ გკითხავ შეგახსენო და დაელაპარაკო.“ joined two people's verbs; 3895's side point (owner thread 51592): „ლევან კაპანაძისგან გაცნობის თხოვნას ველოდებით“ put the actors the wrong way round.",
+  "approved_by": "Misho, 14 Oct 2026 ~16:15 UTC, in his own chat with the code session: the exact sentence was shown and he answered „კი, დაამატე“.",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to this exact text.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/3671-one-actor-per-sentence.before.txt, sha256 3f36e70bf52800df9d5f56b1db3a394aa59ed8368ca2826f8b6c8e1607ca7669."
+}
