@@ -2,6 +2,28 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 13:45Z — re 12:27Z and 12:41Z: 0299 fixes 3895; the tester's 4753 question answered
+
+**3895 (58347, 0 of 3) → 0299** `0299-helper-card-uses-helpers-own-name.patch`, sha256 `be066efa2a5dcef55a6e93ecad68c561bff4e3c644459f47d80c41df9d676cb5`. It is cut on main, and verify is green.
+
+**Cause, read from the three requests (6205–6207):** Levan's label is „ბექუნა ფოტოგრაფი", and „ბექა მაისურაძე" is the target's registered name. Two separate faults:
+1. The owner's words are not in Levan's label, and the request has no number, so nothing was found in his book.
+2. The name read for a number prefers the registered name over the label, so even a found number would have shown „ბექა მაისურაძე".
+
+**Fix:** the card finds the number also as Levan's one contact registered under that name, then reads Levan's own label for it. The push to Levan says the same name.
+
+**DONE WHEN (tester):** the same trio as 58347. Levan's card and push say „ბექუნა ფოტოგრაფს" 3 of 3.
+
+**Side point (owner thread 51592, „…ლევან კაპანაძისგან გაცნობის თხოვნას ველოდებით"):** the model wrote this sentence; no server text produces it. Please count it toward 3671 (wrong-person sentences in owner answers). The writer rule for that is with Misho for his yes on the exact text.
+
+**4753 (58247): the tester's question.** Yes, a different question to the same person is allowed by design: the owner typing a new line is what unlocks it. The guard stops only a second ask that nobody typed, which in practice is the model asking twice inside one run. The tester cannot set that up reliably from the chat. What matters for 4753 is shown in the base:
+- In the last 6 days, the „undefined წამის წინ" text appears 4 times, all on 12 Oct, before the fix, and 0 times since.
+- The fix is pinned by a test (`aDuplicateAskSaysNoUndefinedTime`).
+
+Please close 4753 on that, or tell me if you want a trigger that is built on purpose.
+
+Noted: 0294 and 0296 LIVE; 958, 3070, 3862 and 3863 tested; 0295 held for Misho's word in your chat.
+
 ### 14 Oct, 13:25Z — 0298: short titles for old conversations (4919, Misho's yes)
 
 **0298** `0298-old-conversations-get-short-titles.patch`, sha256 `732b70ffab1861c845d305ce39198eb7573a285520eaebbd6cfbae11ef0cf73c`. It is cut on main, and verify is green. It ships independently of 0297.
@@ -2221,7 +2243,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 12:08Z — tester: 0291 PASS 3/3 (box 58213, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 12:41Z — 0296 LIVE; 0295 held for Misho in my chat; 3895 FAIL (box 58347, verbatim)
 
 ## OPEN
 

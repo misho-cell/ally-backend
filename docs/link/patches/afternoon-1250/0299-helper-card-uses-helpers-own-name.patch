@@ -1,0 +1,227 @@
+From 13a5af0c010a203fbf0fa78111f1483310891bf2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 12:53:59 +0000
+Subject: [PATCH] 3895: the helper's card names the person to meet as the
+ helper saved them
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58347, 0 of 3: Levan saved the target as „ბექუნა ფოტოგრაფი";
+the owner typed „ბექა მაისურაძე", the target's registered name. Levan's
+card said „ბექა მაისურაძეს" every time, for two reasons:
+
+- the owner's words are not in Levan's label, so the name match in his
+  book found nobody, and the request carries no number;
+- the name read for a number (nameInBridgeBook) prefers the REGISTERED
+  name to the label, so even a found number would have given the same.
+
+targetNameForMediator now finds the number also as exactly one of the
+mediator's contacts registered under that very name, and reads the
+mediator's OWN label for it. The push to the mediator names the target
+the same way. Anything unclear still keeps the asker's name.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aMediatorReadsHisOwnName.test.ts          | 46 +++++++++++---
+ src/services/mediatorTargetName.ts            | 61 ++++++++++++++++---
+ src/services/tools/requestIntroduction.ts     |  3 +-
+ 3 files changed, 93 insertions(+), 17 deletions(-)
+
+diff --git a/src/services/__tests__/aMediatorReadsHisOwnName.test.ts b/src/services/__tests__/aMediatorReadsHisOwnName.test.ts
+index db5d82a..7251c82 100644
+--- a/src/services/__tests__/aMediatorReadsHisOwnName.test.ts
++++ b/src/services/__tests__/aMediatorReadsHisOwnName.test.ts
+@@ -2,24 +2,28 @@
+  * The tester's 995 #5: an English mediator read „introduce them to სანდრო" —
+  * the asker's label. His side of the request uses his own name for the person.
+  */
+-jest.mock('../bridgePicker', () => ({ __esModule: true, nameInBridgeBook: jest.fn() }));
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
+ jest.mock('../tools/nameMatch', () => ({ __esModule: true, findContactPhonesByName: jest.fn() }));
+ 
+-import { nameInBridgeBook } from '../bridgePicker';
++import { query } from '../../db/postgres/client';
+ import { targetNameForMediator } from '../mediatorTargetName';
+ import { findContactPhonesByName } from '../tools/nameMatch';
+ 
+-const mockName = nameInBridgeBook as jest.MockedFunction<typeof nameInBridgeBook>;
++const mockQuery = query as jest.MockedFunction<typeof query>;
+ const mockMatches = findContactPhonesByName as jest.MockedFunction<typeof findContactPhonesByName>;
+ 
++function rows(...list: object[]): never {
++  return { rows: list } as never;
++}
++
+ beforeEach(() => {
+-  mockName.mockReset();
++  mockQuery.mockReset();
+   mockMatches.mockReset();
+ });
+ 
+ describe('targetNameForMediator', () => {
+-  it('uses his name for the number on the request', async () => {
+-    mockName.mockResolvedValueOnce('Sandro Beridze');
++  it('uses his label for the number on the request', async () => {
++    mockQuery.mockResolvedValueOnce(rows({ alias: 'Sandro Beridze' }));
+ 
+     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('Sandro Beridze');
+     expect(mockMatches).not.toHaveBeenCalled();
+@@ -27,22 +31,46 @@ describe('targetNameForMediator', () => {
+ 
+   it('finds the number by the asker’s name when it is exactly one of his contacts', async () => {
+     mockMatches.mockResolvedValueOnce(['p1']);
+-    mockName.mockResolvedValueOnce('Sandro Beridze');
++    mockQuery.mockResolvedValueOnce(rows({ alias: 'Sandro Beridze' }));
+ 
+     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('Sandro Beridze');
+-    expect(mockName).toHaveBeenCalledWith('551', 'p1');
++    expect(mockQuery.mock.calls[0][1]).toEqual([551, 'p1']);
++  });
++
++  /**
++   * 3895 (the tester's 58347, 0 of 3): Levan saved the target as „ბექუნა
++   * ფოტოგრაფი"; the owner typed the target's registered name. His card reads
++   * his own label, not the registered name and not the owner's words.
++   */
++  it('finds his contact by the name the person registered under, and reads his own label', async () => {
++    mockMatches.mockResolvedValueOnce([]);
++    mockQuery
++      .mockResolvedValueOnce(rows({ phone: '+995500000123' }))
++      .mockResolvedValueOnce(rows({ alias: 'ბექუნა ფოტოგრაფი' }));
++
++    expect(await targetNameForMediator(551, 'ბექა მაისურაძე', null)).toBe('ბექუნა ფოტოგრაფი');
++    expect(String(mockQuery.mock.calls[0][0])).toContain('LOWER(TRIM(u.name)) = LOWER(TRIM($2))');
++    expect(String(mockQuery.mock.calls[1][0])).not.toContain('u.name');
+   });
+ 
+   it('keeps the asker’s name on none or two matches', async () => {
+     mockMatches.mockResolvedValueOnce([]);
++    mockQuery.mockResolvedValueOnce(rows());
+     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('სანდრო');
+ 
+     mockMatches.mockResolvedValueOnce(['p1', 'p2']);
++    mockQuery.mockResolvedValueOnce(rows({ phone: 'a' }, { phone: 'b' }));
+     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('სანდრო');
+   });
+ 
++  it('keeps the asker’s name when he has no label for the number', async () => {
++    mockQuery.mockResolvedValueOnce(rows());
++
++    expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
++  });
++
+   it('keeps the asker’s name when the read fails', async () => {
+-    mockName.mockRejectedValueOnce(new Error('timeout'));
++    mockQuery.mockRejectedValueOnce(new Error('timeout'));
+ 
+     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
+   });
+diff --git a/src/services/mediatorTargetName.ts b/src/services/mediatorTargetName.ts
+index 4f70a45..3a75f2f 100644
+--- a/src/services/mediatorTargetName.ts
++++ b/src/services/mediatorTargetName.ts
+@@ -1,4 +1,4 @@
+-import { nameInBridgeBook } from './bridgePicker';
++import { query } from '../db/postgres/client';
+ import { findContactPhonesByName } from './tools/nameMatch';
+ 
+ /**
+@@ -7,19 +7,33 @@ import { findContactPhonesByName } from './tools/nameMatch';
+  * mediator knows that person under his own name for them; that is the name
+  * his side of the request uses, whenever it can be found exactly.
+  *
+- * The same reading the accept makes: the number on the request, else EXACTLY
+- * ONE match for the asker's name in the mediator's book. Anything else keeps
+- * the asker's name, which is what every request showed before.
++ * The number: the one on the request, else EXACTLY ONE match for the asker's
++ * name in the mediator's book, else exactly one of his contacts registered on
++ * Netai under that name. Anything else keeps the asker's name, which is what
++ * every request showed before.
++ *
++ * 3895 (the tester's 58347, 0 of 3): Levan saved the target as „ბექუნა
++ * ფოტოგრაფი"; the owner typed „ბექა მაისურაძე", the target's registered name.
++ * The card said „ბექა მაისურაძეს" 3 of 3, for two reasons: the owner's words
++ * are not in Levan's label, so the name match found nobody; and the name read
++ * for a number (nameInBridgeBook) prefers the REGISTERED name to the label.
++ * The card is the mediator's, so it reads his label.
+  */
++const MEDIATOR_NAME_TIMEOUT_MS = 3_000;
++const AT_MOST_TWO = 2;
++
+ export async function targetNameForMediator(
+   mediatorUserId: number,
+   askersName: string,
+   targetPhone: string | null,
+ ): Promise<string> {
+   try {
+-    const phone = targetPhone ?? (await onlyMatch(mediatorUserId, askersName));
++    const phone =
++      targetPhone ??
++      (await onlyMatch(mediatorUserId, askersName)) ??
++      (await onlyRegisteredContact(mediatorUserId, askersName));
+     if (phone === null) return askersName;
+-    return (await nameInBridgeBook(String(mediatorUserId), phone)) ?? askersName;
++    return (await mediatorsOwnLabel(mediatorUserId, phone)) ?? askersName;
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.error(
+@@ -31,6 +45,39 @@ export async function targetNameForMediator(
+ }
+ 
+ async function onlyMatch(mediatorUserId: number, name: string): Promise<string | null> {
+-  const matches = await findContactPhonesByName(String(mediatorUserId), name, 2);
++  const matches = await findContactPhonesByName(String(mediatorUserId), name, AT_MOST_TWO);
+   return matches.length === 1 ? (matches[0] ?? null) : null;
+ }
++
++/** Exactly one of the mediator's contacts is registered on Netai under this very name. */
++async function onlyRegisteredContact(mediatorUserId: number, name: string): Promise<string | null> {
++  const result = await query<{ phone: string }>(
++    `SELECT DISTINCT ua.phone
++       FROM "UserAlias" ua
++       JOIN "UserPhone" up ON up.phone = ua.phone
++       JOIN "User" u ON u.id = up."userId"
++      WHERE ua."contactId" = $1::int
++        AND u."deletedAt" IS NULL
++        AND LOWER(TRIM(u.name)) = LOWER(TRIM($2))
++      LIMIT $3`,
++    [mediatorUserId, name, AT_MOST_TWO],
++    MEDIATOR_NAME_TIMEOUT_MS,
++  );
++  return result.rows.length === 1 ? (result.rows[0]?.phone ?? null) : null;
++}
++
++/** The mediator's own label for the number, compared as digits; null when he has none. */
++async function mediatorsOwnLabel(mediatorUserId: number, phone: string): Promise<string | null> {
++  const result = await query<{ alias: string }>(
++    `SELECT TRIM(ua.alias) AS alias
++       FROM "UserAlias" ua
++      WHERE ua."contactId" = $1::int
++        AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
++        AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
++      ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
++      LIMIT 1`,
++    [mediatorUserId, phone],
++    MEDIATOR_NAME_TIMEOUT_MS,
++  );
++  return result.rows[0]?.alias || null;
++}
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 26de88d..6927eda 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -612,7 +612,8 @@ async function requestIntroductionInner(
+       body: isDirect
+         ? `${geoName(requesterName, 'gen')} ასისტენტი გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
+         : // #1420: the request is the assistant's, so the push says whose assistant asks.
+-          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(targetName, 'dat')}. გახსენი Netai.`,
++          // 3895: the push is the mediator's too, so it names the target as he saved him.
++          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
+       url: pushUrl,
+     });
+   }
+-- 
+2.43.0
+
