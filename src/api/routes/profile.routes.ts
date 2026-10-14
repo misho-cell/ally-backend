@@ -18,6 +18,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
 import { blockedListForScreen, unblockByRef } from '../../services/block.service';
 import { peopleSettings, removeOwnBoundary } from '../../services/peopleSettings.service';
+import { coreQuestions, questionLanguage } from '../../services/coreQuestions.service';
 import { MAX_LINK_CHARS, profileLinkRule } from '../validators/profileLinkRule';
 import { asRunLanguage } from '../../services/runLanguage';
 import {
@@ -680,6 +681,31 @@ profileRouter.get(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[GET /profile/dimensions]', err);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * The frontend's 14 Oct 14:10Z item 4 (task 1917): the core questions together,
+ * with which are answered. An answer goes through POST /profile/feedback
+ * { question_id, free_text }.
+ *
+ *   GET /profile/questions?lang=ka|en|es
+ *   200 { questions: [{ question_id, text, reason, answered, answer }] }
+ */
+profileRouter.get(
+  '/questions',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const questions = await coreQuestions(userId, questionLanguage(req.query.lang));
+      res.status(200).json({ success: true, data: { questions } });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/questions]', (err as Error).message);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

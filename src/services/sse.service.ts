@@ -364,8 +364,11 @@ export interface ThreadUpdatePayload {
   // Public ref of the linked introduction request — included on request-thread
   // updates so the client can target /requests/:ref without a refetch.
   request_ref?: string;
-  /** #1817: the owner opened it on one device; the others stop showing it as new. */
-  seen_at?: string;
+  /**
+   * #1817: the owner opened it on one device; the others stop showing it as new.
+   * Null: marked unread again (the frontend's 14 Oct 14:10Z item 7).
+   */
+  seen_at?: string | null;
   /** #1919: the goal was stopped / is stopped and not yet closed by its owner. */
   goal_stopped?: boolean;
   goal_stopped_open?: boolean;

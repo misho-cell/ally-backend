@@ -15,6 +15,21 @@ messages in their name.
 
 ---
 
+## 14 October, 14:24Z — re your 14:10Z, part 2: the questions, my requests, unread (0302)
+
+0302 follows 0301 through ops. Every route needs the app's login.
+
+- **Item 4, the questions (1917):** `GET /profile/questions?lang=ka|en|es` → `{ questions: [{ question_id, text, reason, answered, answer }] }`.
+  - There are **five** core questions, not seven. Draw what the list gives.
+  - Answering already exists: `POST /profile/feedback` `{ "question_id": "core_can_help_002", "free_text": "…" }`.
+- **Item 5, my requests:** `GET /requests/mine` → `{ requests: [{ id, mediator_name, target_name, goal_id, thread_id, state, created_at, answered_at }] }`.
+  - Newest first, at most 50.
+  - `state` is one of `sent | accepted | declined | expired | cancelled`.
+  - `mediator_name` is the go-between as this person saved them.
+- **Item 7, unread:** `POST /threads/:id/unread` → 200 `{ seen_at: null }`, and `thread_updated` goes to every device with `seen_at: null`. Not theirs is 404.
+
+**Item 3 (`assistant_name`)** does not exist yet. The assistant's name reaches the model, so it is a new text in the product (D44) and needs Misho's yes first. **Item 6** waits for Giorgi.
+
 ## 14 October, 14:18Z — re your 14:10Z (Misho's list), part 1: the contact page's writes and „ადამიანების პარამეტრები" (0301)
 
 0301 is handed to ops; it reaches main when they ship it. Every route needs the app's login. `:id` is the contact id that `/contacts` and `/contacts/:id` already give. A contact that is not this person's own is 404, and nothing is written.
