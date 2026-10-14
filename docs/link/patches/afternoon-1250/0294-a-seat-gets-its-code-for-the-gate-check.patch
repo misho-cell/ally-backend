@@ -1,0 +1,123 @@
+From 7de742296b976730e777aa22cc82740ad0a8bab0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 12:08:29 +0000
+Subject: [PATCH] Gate check: a seat with no referral code yet gets one, so the
+ code branch can be asked
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58157: the third gate case (a subscribed inviter's code
+admits) could not be run, because the newest fictional seats are
+subscribed but had never had their code read, and so had none. The
+route refused („has no referral code yet … pick another seat"), and the
+seat ids that do have a code could not be relayed to the tester.
+
+A member's code is minted on first read (getOrCreateReferralCode); a
+seat's is now minted the same way when the gate check asks for it. It
+still never leaves the server, and anybody who is not a test seat is
+still refused before anything is minted.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...bedSeatWithNoCodeYetCanStillInvite.test.ts | 50 +++++++++++++++++++
+ src/services/testSeatCreate.service.ts        | 18 +++----
+ 2 files changed, 56 insertions(+), 12 deletions(-)
+ create mode 100644 src/services/__tests__/aSubscribedSeatWithNoCodeYetCanStillInvite.test.ts
+
+diff --git a/src/services/__tests__/aSubscribedSeatWithNoCodeYetCanStillInvite.test.ts b/src/services/__tests__/aSubscribedSeatWithNoCodeYetCanStillInvite.test.ts
+new file mode 100644
+index 0000000..13c7159
+--- /dev/null
++++ b/src/services/__tests__/aSubscribedSeatWithNoCodeYetCanStillInvite.test.ts
+@@ -0,0 +1,50 @@
++import { query } from '../../db/postgres/client';
++import { getOrCreateReferralCode } from '../referralCode.service';
++import { inviterSeatReferralCode, SeatCreationRefused } from '../testSeatCreate.service';
++
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++  withTransaction: jest.fn(),
++}));
++jest.mock('../referralCode.service', () => ({
++  __esModule: true,
++  getOrCreateReferralCode: jest.fn(),
++}));
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockMint = getOrCreateReferralCode as jest.MockedFunction<typeof getOrCreateReferralCode>;
++const SEAT = '184575';
++
++/**
++ * The tester's 58157: the newest seats were subscribed but had never had their
++ * code read, so the gate's code branch could not be asked with them.
++ */
++describe('a seat with no referral code yet can still stand in for an inviter', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('mints the seat its code, the way a member gets one on first read', async () => {
++    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [{ referral_code: null }] } as never);
++    mockMint.mockResolvedValueOnce('MINTED23');
++
++    await expect(inviterSeatReferralCode(SEAT)).resolves.toBe('MINTED23');
++    expect(mockMint).toHaveBeenCalledWith(SEAT);
++  });
++
++  it('keeps a code the seat already has', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rowCount: 1,
++      rows: [{ referral_code: 'KEPT2345' }],
++    } as never);
++
++    await expect(inviterSeatReferralCode(SEAT)).resolves.toBe('KEPT2345');
++    expect(mockMint).not.toHaveBeenCalled();
++  });
++
++  it('still refuses anybody who is not a seat, and mints nothing for them', async () => {
++    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] } as never);
++
++    await expect(inviterSeatReferralCode('171873')).rejects.toBeInstanceOf(SeatCreationRefused);
++    expect(mockMint).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/testSeatCreate.service.ts b/src/services/testSeatCreate.service.ts
+index 6e23679..bc47b91 100644
+--- a/src/services/testSeatCreate.service.ts
++++ b/src/services/testSeatCreate.service.ts
+@@ -6,6 +6,7 @@ import { saveSeatGraph } from './seatGraph.service';
+ import { adjustTestAccountTokens } from './tokenWallet.service';
+ import { checkRegistrationEligibility } from './inviteGate.service';
+ import { grantWhateverFreePeriodIsOwed } from './auth.service';
++import { getOrCreateReferralCode } from './referralCode.service';
+ 
+ /**
+  * ROW 251 — CREATING A FICTIONAL SEAT, WITH THE ONE CHECK THAT IS NOT A
+@@ -305,18 +306,11 @@ export async function inviterSeatReferralCode(inviterSeatId: string): Promise<st
+       `${inviterSeatId} is not a test seat — only a fiction may stand in for an inviter`,
+     );
+   }
+-  const code = row.rows[0].referral_code;
+-  if (!code) {
+-    /**
+-     * Said out loud rather than falling through. A missing code would make the
+-     * gate answer „referral_required" — which looks exactly like the code
+-     * branch REFUSING, when in fact nothing was ever asked of it.
+-     */
+-    throw new SeatCreationRefused(
+-      `seat ${inviterSeatId} has no referral code yet, so the code branch cannot be tested with it — pick another seat`,
+-    );
+-  }
+-  return code;
++  // The tester's 58157: the newest seats are subscribed but had never had their
++  // code read, so they had none and the code branch could not be asked with
++  // them. A member's code is minted on first read; a seat's is minted here
++  // the same way, and still never leaves the server.
++  return row.rows[0].referral_code ?? getOrCreateReferralCode(inviterSeatId);
+ }
+ 
+ async function arriveByInvitation(
+-- 
+2.43.0
+

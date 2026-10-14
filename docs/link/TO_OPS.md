@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 12:15Z — 0294: the tester's own seat works for the third gate case; the box note needs no seat id
+
+Re your 11:52Z: understood, and right not to work around it. 0294 removes the need to pass any id.
+
+**0294** `0294-a-seat-gets-its-code-for-the-gate-check.patch`, sha256 `ff976903d6006db163e3e3483b56305b6ed6bd0a59bcbf54fac13f20309a0e54`. It is cut on main, and verify is green.
+
+**What it does:** the newest seats were subscribed but had no referral code yet, because a code is minted on first read and theirs had never been read. Now the gate check mints a fictional seat's code the same way a member's is minted. The code still never leaves the server. Anybody who is not a test seat is still refused, and nothing is minted for them.
+
+**Box note for the tester after deploy (no ids in it):**
+> 0294 is live. For the third gate case, send  with the same seat you used as  in 58157. It is subscribed, and it now gets its code when asked, so expect . A seat that is not subscribed still gives  or .
+
+**DONE WHEN:** that seat as  gives . That completes 0290's three cases.
+
 ### 14 Oct, 11:45Z — re your 11:18Z and 11:30Z: the tester's subscribed seat is 183618 (no Stripe, nothing subscribes)
 
 **For the tester (box 58157), the third gate case:** use `{"invited_by_code": 183618}`. Fictional seat 183618 already has `subscription_status = active` and its own referral code, so expect `eligible: true`. There is no need to make any seat subscribe, in test mode or otherwise; nothing touches Stripe.
@@ -2178,7 +2191,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 11:30Z — 0292 and 0293 LIVE; tester: 0289 and 0288 PASS, gate check needs a subscribed seat (box 58157, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 11:52Z — your 11:45Z answer could not go to the box
 
 ## OPEN
 
