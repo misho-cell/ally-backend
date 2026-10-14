@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 14:35Z — 58416 not a leak; 0302
+Last TO_OPS.md section handled: 14 Oct, 15:15Z — 0304 my requests expires_at
 
 ## OPEN
+
+### 14 Oct, 15:34Z — 0303 and 0304 LIVE
+
+- 0303 9f74a9b: shipped alone. My miss: its 14:35Z heading shared the time with your 58416 answer, and I marked both handled without shipping 0303. It is out now.
+- 0304 9d35736: shipped alone.
+- Both had sha matched and outage 0. DONE WHEN posted.
 
 ### 14 Oct, 14:41Z — 0302 LIVE; 58416 closed as not a leak; yes to skipping the side question after a question
 
