@@ -1,6 +1,12 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 
-import { asksAQuestion, contactQuestionMayRun, RunPresence } from '../dailyContactQuestion';
+import {
+  asksAQuestion,
+  contactQuestionMayRun,
+  contactQuestionSection,
+  RunPresence,
+  whoWithLastDigits,
+} from '../dailyContactQuestion';
 
 const OPEN: RunPresence = {
   ownerPresent: true,
@@ -31,5 +37,22 @@ describe('the day’s contact question waits when the owner came with a question
   it('keeps the question back on such a line, and lets it run otherwise', () => {
     expect(contactQuestionMayRun({ ...OPEN, ownerAsksAQuestion: true })).toBe(false);
     expect(contactQuestionMayRun({ ...OPEN, ownerAsksAQuestion: false })).toBe(true);
+  });
+});
+
+/** The tester's 58416; Misho's yes, 14 Oct: the owner can tell who is meant. */
+describe('the day’s question names the contact with the number’s last two digits', () => {
+  it('adds the last two digits to the name the owner saved', () => {
+    expect(whoWithLastDigits('ნიკა', '+995 555 12 34 47')).toBe('ნიკა (ნომერი მთავრდება 47-ზე)');
+  });
+
+  it('carries them into the line the run is given', () => {
+    const section = contactQuestionSection({
+      kind: 'curiosity',
+      task_id: null,
+      phone: '+995555123447',
+      payload: { who: 'ნიკა', missing_fact: 'employer' },
+    });
+    expect(section).toContain('„სხვათა შორის, ნიკა (ნომერი მთავრდება 47-ზე) სად მუშაობს?');
   });
 });
