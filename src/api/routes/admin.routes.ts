@@ -332,6 +332,8 @@ import {
   snoozeSeatEveningCard,
 } from '../../services/adminEveningCard.service';
 
+/** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
+const MAX_SEAT_USER_ID = 2_147_483_647;
 const adminRouter = Router();
 /** The Axel export is heavy and needed once: a few builds a minute at most. */
 const AXEL_EXPORTS_PER_MINUTE = 3;
@@ -3530,13 +3532,14 @@ adminRouter.post(
  */
 adminRouter.post(
   '/registration-gate-check',
-  body('invited_by').optional().isInt({ min: 1 }),
+  // 58065: a phone number passed here passed isInt and broke the INTEGER cast — a 500.
+  body('invited_by').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID }),
   body('referral_code').optional().isString().trim().isLength({ max: 32 }),
   // A seat id whose OWN referral code should be used. The code is resolved
   // server-side and never returned: a referral code is a credential (D149),
   // which is why no admin page prints one and why the tester could not
   // exercise this branch at all.
-  body('invited_by_code').optional().isInt({ min: 1 }),
+  body('invited_by_code').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID }),
   // A specific fictional number instead of the next free one — the ONLY way
   // the social-proof door can be reached, because that door is about a number
   // other people already have saved and every seat's number is registered.
@@ -3545,7 +3548,9 @@ adminRouter.post(
     if (!validationResult(req).isEmpty()) {
       res.status(400).json({
         success: false,
-        error: 'invited_by must be a seat user id; referral_code at most 32 characters.',
+        error:
+          'invited_by and invited_by_code must be a seat user id (not a phone number); ' +
+          'referral_code at most 32 characters.',
       });
       return;
     }

@@ -139,3 +139,21 @@ describe('the code branch, reachable without anybody seeing a code', () => {
     expect(HANDLER).toContain('? referral_code');
   });
 });
+
+/**
+ * 58065: the tester passed a seat's PHONE as invited_by. It passed isInt and broke
+ * the INTEGER cast — a 500. A seat id is bounded; a phone number gets a 400 saying so.
+ */
+describe('the gate check refuses a phone number where a seat id belongs (58065)', () => {
+  const route = readFileSync(join(__dirname, '..', 'admin.routes.ts'), 'utf8');
+
+  it('bounds both seat ids to a Postgres INTEGER', () => {
+    expect(route).toContain(
+      "body('invited_by').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID })",
+    );
+    expect(route).toContain(
+      "body('invited_by_code').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID })",
+    );
+    expect(route).toContain('const MAX_SEAT_USER_ID = 2_147_483_647;');
+  });
+});
