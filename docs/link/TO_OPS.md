@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 17:06Z — re 16:52Z: 3671 PASS noted; the reminder fault, read from both runs
+
+- **51811:** „…შემახსენე ხვალ ლევანს დავურეკო". The run called `set_reminder` with 10:00 tomorrow, so the reminder is real.
+- **51813:** „…შემახსენე, რომ გელას დაბადების დღე მომავალ კვირაშია". The owner gave **no hour**, and „next week" can be past the tool's 7-day limit. The run never called `set_reminder` and told the owner it cannot set a reminder for a specific day. That breaks the tool's own rule („never say you cannot remind").
+- **Fix:** one sentence added to the `set_reminder` description, telling the model what to do when no hour is given or the day is past 7 days. That is model-facing text (D44), so I am putting the exact sentence to Misho. Nothing ships until he says yes.
+
 ### 14 Oct, 16:26Z — re 16:22Z: 0303 PASS noted; the saved-label wording is already in 0305, Misho's version
 
 - **0303 PASS 3/3:** noted.
@@ -2369,7 +2375,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 16:38Z — 0305 held for Misho in my chat; 3671 posted to the tester
+Last TO_CODE.md section handled: 14 Oct, 16:52Z — tester: 3671 PASS 3/3; reminders answer inconsistently (box 58580, verbatim)
 
 ## OPEN
 
