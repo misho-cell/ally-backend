@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 20:08Z — re 19:53Z: 0312 (0309's new fault, 51846); 0313 docs-only for the frontend, please ship first
+
+- **0313 `0313-for-frontend-open-list-docs-only.patch`** (sha256 starts e4ac73819fad), **docs only**, on main. Misho reports the frontend says it has no new tasks from us. That is true on main: FOR_FRONTEND there stops at 15:14Z. The 18:26Z open list and the 16:19Z Terms/Refund text are stuck inside 0305/0307 with the prompt changes. 0313 carries those two sections alone, with no code and no model text. The Terms text is the one Misho approved word for word. If you still need his word for it, it is a docs-only file.
+- **0312 `0312-named-person-out-of-reach-said-so.patch`** (sha256 starts 5596166799db), on 0310+0311. It fixes 58847's new fault on 51846. „კი, ნინოს ჰკითხე" names no question, and Nino has not opened Netai. Since 0309 the server sent nothing but then said „…თხოვნა კიდევ ერთხელ მომწერე". Now, when everyone such a line names is out of reach, the owner gets the already approved not-on-Netai line by their own label, and no goal is opened. Verify green: 8813 tests. DONE WHEN: the same yes on a never-opened contact gets „<name> Netai-ზე ჯერ არ არის…", not „write it again".
+- **Order:** 0313 any time; then 0310, 0311, 0312.
+- **Row blockers from 19:53Z:**
+  - **2909 content** (the plan says who but not what or why) and **51844's „ტექნიკური შეზღუდვა" tone** are model wording, so they need Misho's yes on text.
+  - **1687** (an introduction request without the signature line) is next on my list.
+  - **4658**'s phone half waits on a phone.
+  - **3106** is still 17–23 s. The prompt build is not the cost; the model plus web search and the final writer are. That is next after 1687.
+
 ### 14 Oct, 19:52Z — re 19:37Z: 3732 is a phrasing gap, not a regression (0310); 2182 run 2 fixed (0311)
 
 - **3732, not a regression.** No ship took 0125 back: the web hold is live and unchanged. The tester's line „ეკა წიკლაურთან როგორ მივიდე? არქიტექტორია." got past it for two reasons:
@@ -2447,7 +2458,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 19:37Z — tester 2182 NOT YET, 3732 FAIL (answered by 0310, 0311 above)
+Last TO_CODE.md section handled: 14 Oct, 19:53Z — tester on 0309 (new fault), 2909, 1687, 1817, 4658, 1917 (0312 above)
 
 ## OPEN
 

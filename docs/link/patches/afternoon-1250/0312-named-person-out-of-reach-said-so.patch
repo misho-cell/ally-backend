@@ -1,0 +1,136 @@
+From e37eae8948385aed74842396e5fd78094636a385 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 20:05:47 +0000
+Subject: [PATCH] =?UTF-8?q?0309=20follow-up:=20a=20named=20person=20out=20?=
+ =?UTF-8?q?of=20reach=20is=20said=20so,=20not=20=E2=80=9Ewrite=20it=20agai?=
+ =?UTF-8?q?n=E2=80=9C?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester box 58847, thread 51846: „კი, ნინოს ჰკითხე“ names Nino and no question, and Nino has not opened Netai. The server sent nothing, then told the owner „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ When everyone such a line names is out of reach (canBeAsked), the owner gets the approved not-on-Netai line by their own label instead, and no goal is opened.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theOwnersFactsGoWithHisQuestion.test.ts   |  6 ++++-
+ .../theServerAsksTheOneNamedContact.test.ts   | 20 +++++++++++++-
+ src/services/instructedAsk.ts                 | 26 +++++++++++++++++--
+ 3 files changed, 48 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts b/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts
+index 2f38f7d..d556e3c 100644
+--- a/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts
++++ b/src/services/__tests__/theOwnersFactsGoWithHisQuestion.test.ts
+@@ -7,7 +7,11 @@ jest.mock('../tools/nameMatch', () => ({
+ jest.mock('../block.service', () => ({
+   isDeceasedOrBlockedFor: jest.fn().mockResolvedValue(false),
+ }));
+-jest.mock('../taskAsks.service', () => ({ createAsk: (...a: unknown[]) => mockCreateAsk(...a) }));
++const mockCanBeAsked = jest.fn();
++jest.mock('../taskAsks.service', () => ({
++  createAsk: (...a: unknown[]) => mockCreateAsk(...a),
++  canBeAsked: (...a: unknown[]) => mockCanBeAsked(...a),
++}));
+ jest.mock('../taskStore.service', () => ({
+   getOpenTaskByThread: jest.fn().mockResolvedValue(null),
+   createTask: jest.fn().mockResolvedValue({ id: 77 }),
+diff --git a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+index f469b8f..50d04fc 100644
+--- a/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
++++ b/src/services/__tests__/theServerAsksTheOneNamedContact.test.ts
+@@ -12,7 +12,11 @@ const mockExcluded = jest.fn().mockResolvedValue(false);
+ jest.mock('../block.service', () => ({
+   isDeceasedOrBlockedFor: (...a: unknown[]) => mockExcluded(...a),
+ }));
+-jest.mock('../taskAsks.service', () => ({ createAsk: (...a: unknown[]) => mockCreateAsk(...a) }));
++const mockCanBeAsked = jest.fn();
++jest.mock('../taskAsks.service', () => ({
++  createAsk: (...a: unknown[]) => mockCreateAsk(...a),
++  canBeAsked: (...a: unknown[]) => mockCanBeAsked(...a),
++}));
+ jest.mock('../taskStore.service', () => ({
+   getOpenTaskByThread: (...a: unknown[]) => mockOpenTask(...a),
+   createTask: (...a: unknown[]) => mockCreateTask(...a),
+@@ -75,6 +79,7 @@ describe('the server asks the one contact the owner named', () => {
+ 
+   it('sends nothing, and opens no goal, for a line that names whom to ask but not what (4687)', async () => {
+     mockFindPhones.mockResolvedValue(['995599000001']);
++    mockCanBeAsked.mockResolvedValue('ok');
+     await expect(sendInstructedAsk('165699', 24996, 'ლიკას კითხე')).resolves.toEqual({
+       result: InstructedAskResult.NotSent,
+     });
+@@ -84,6 +89,19 @@ describe('the server asks the one contact the owner named', () => {
+     expect(mockGrant).not.toHaveBeenCalled();
+   });
+ 
++  it('says the person is not on Netai, not „write it again", when the line names no question (58847)', async () => {
++    mockFindPhones.mockResolvedValue(['995599000002']);
++    mockCanBeAsked.mockResolvedValue('never_opened');
++    mockQuery.mockResolvedValue({ rows: [{ alias: 'ნინო ლომიძე' }] });
++
++    await expect(sendInstructedAsk('184775', 51846, 'კი, ნინოს ჰკითხე')).resolves.toMatchObject({
++      result: InstructedAskResult.NotOnNetai,
++      toName: 'ნინო ლომიძე',
++    });
++    expect(mockCreateAsk).not.toHaveBeenCalled();
++    expect(mockCreateTask).not.toHaveBeenCalled();
++  });
++
+   it('sends nothing for a line that is no instruction', async () => {
+     await expect(sendInstructedAsk('178582', 42485, 'მჭირდება ბუღალტერი')).resolves.toEqual({
+       result: InstructedAskResult.NotSent,
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index 01e237d..c17ba78 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -13,7 +13,7 @@ import {
+ } from './goalIntent';
+ import { contactInstructionIn } from './instructionUnsent';
+ import { ownerAsksForIntroduction } from './introInstruction';
+-import { createAsk } from './taskAsks.service';
++import { canBeAsked, createAsk } from './taskAsks.service';
+ import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
+ import { findContactPhonesByName } from './tools/nameMatch';
+ 
+@@ -207,6 +207,28 @@ async function excludedAmong(
+   return excluded;
+ }
+ 
++/**
++ * 0309's new fault (tester box 58847, thread 51846): „კი, ნინოს ჰკითხე" names
++ * Nino and no question, and Nino is not on Netai. The server sent nothing, which
++ * is right, but then told the owner „write the request again", as if the line
++ * had not been understood. When everyone the line names is out of reach, that
++ * is what the owner is told, and no goal is opened for it.
++ */
++async function namedButNotOnNetai(
++  userId: string,
++  askable: readonly NamedContact[],
++  people: PersonOutcome[],
++): Promise<InstructedAskOutcome> {
++  for (const c of askable) {
++    if ((await canBeAsked(c.phone)) === 'ok') return NOT_SENT;
++  }
++  for (const c of askable) {
++    const toName = await ownersLabel(userId, c.phone, c.typed);
++    people.push({ result: InstructedAskResult.NotOnNetai, toName });
++  }
++  return summed(people);
++}
++
+ export async function sendInstructedAsk(
+   userId: string,
+   threadId: number,
+@@ -239,7 +261,7 @@ export async function sendInstructedAsk(
+   // 4687 (box 54550, goal 24996): „ლიკას კითხე" alone — the question was the owner's
+   // earlier message — reached Lika as the whole question. A line that names whom to
+   // ask but not what is no question; the run, which read the earlier message, asks.
+-  if (asked === null) return NOT_SENT;
++  if (asked === null) return namedButNotOnNetai(userId, askable, people);
+   const taskId = await goalForInstruction(userId, threadId, ownerLine);
+   await grantTaskPermission(userId, taskId);
+   // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
+-- 
+2.43.0
+
