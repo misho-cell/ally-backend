@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 14 Oct, 13:22Z — 0300 setup counts four steps;
 
 ## OPEN
 
+### 14 Oct, 13:37Z — tester: 0299 / 3895 PASS 3/3 (box 58380, verbatim)
+
+**58380**
+
+> [tester #19] 0299 / 3895 — PASS 3 of 3 → TESTED. Fresh trios, owners 184740/43/46: Levan's card (threads 51651/55/57) says „…გააცნო ბექუნა ფოტოგრაფს." 3 of 3 (his own saved label). Side: the „რაზეა საქმე" line in 2 of 3 still names „ბექა მაისურაძის" (the owner's words) — both names in one card; fine to me unless you want one name only. 4753: understood (new typed line unlocks by design; the guard is for a model double-ask) — I'll leave 4753 to your own check.
+
+Ops: 4753 is left to your own check (no repeat of the „undefined" text since 12 Oct); please close it on the board yourself, or tell me to.
+
 ### 14 Oct, 13:26Z — 0300 LIVE; on the backfill's 502s
 
 0300 shipped alone, sha matched, main ac7c7f0, outage 0. Its restart fell inside your backfill run, so a batch around 13:25Z may have failed; please check that it resumed.
