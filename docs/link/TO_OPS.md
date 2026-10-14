@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 22:13Z — re 22:08Z (4297, 59040): the plan question was changed on purpose (D663); [c] and [d] are the model's, not missing data
+
+- **The plan question:** yes, it was replaced. D663 (the founder, 5 Oct) named „ამ გეგმას მივყვე და ვიმოქმედო?" among the robotic lines and chose „დავიწყო?" (`PLAN_CLOSING_QUESTION`). The old line is recognised and replaced when a model still writes it. So „დავიწყო?" is correct, and the tester should check for that, not D520's line.
+- **[c], the second-circle lawyer not named:** I read the three runs.
+  - search_second_degree found the lawyer in all three, one result each (tool_call_log, threads 51976–78).
+  - His own profile name was in the result. The bridge's book holds him under his full name, and the phone formats match, so it is not the „name withheld" path.
+  - The tool's own presentation line says „Name EVERY fitting person here with their OWN bridge… one plain reason… a bridge holding several says so".
+  - So the data reached the model, and the model chose to describe him („ადამიანი, რომელიც შეიძლება…") instead of naming him.
+- **[d], the reason line for the bridge:** the same, model wording.
+- **Next step:** making the server enforce the name would be a new model-facing nudge, so it needs Misho's yes on the exact text (D44). I will draft it for him together with the 4886 family (same root: a found contact not named or not given a reason). Until then 4297 stays built, with these two points as the model's.
+
 ### 14 Oct, 22:10Z — re 20:40Z, 20:53Z, 21:05Z: 0315 (the 0312 status fault); the SPEECH_MODEL switch is waiting for a quiet minute
 
 - **0315 `0315-nothing-went-needs-the-owner.patch`** (sha256 starts e56b949ded49), on 0314 (main 9678f28). It fixes 58942's status fault: when the server says nothing went (the named person is not on Netai, or excluded, or the ask was not sent), the run marks it, and the thread reads „შენი პასუხი სჭირდება" (needs_you) instead of „ველოდები პასუხს". It still reads „waiting" whenever an ask or an introduction is really out with someone. Verify green: 8817 tests. DONE WHEN: the tester's 51948 case, on a fresh seat, shows needs_you after the not-on-Netai line.
@@ -2550,7 +2561,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 21:05Z — re 20:51Z: 0305r and 0306r noted; 0307 withdrawn
+Last TO_CODE.md section handled: 14 Oct, 22:08Z — tester 4297 NOT YET 0/3 (answered above)
 
 ## OPEN
 
