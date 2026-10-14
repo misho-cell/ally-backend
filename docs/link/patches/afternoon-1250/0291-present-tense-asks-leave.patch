@@ -1,0 +1,56 @@
+From f47cc0721373759ecd3b14f00d8a8da292d65563 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 10:53:30 +0000
+Subject: [PATCH] 0285 follow-up: the present tense asks leave to send too
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58066, run 51426: the reply ended „ვუგზავნი ზურაბს გაცნობის
+თხოვნას, რომ დაგაკავშიროს თამარ ხუციშვილთან?" with a „კი, გაუგზავნე
+თხოვნა" button, and nothing went: the present tense („ვუგზავნი …?")
+was not read as asking leave, so the unsent-instruction guard stood
+aside. The pattern now covers ვუგზავნი, გავუგზავნი, ვუგზავნო, ვწერ and
+ვთხოვ beside the forms 0285 knew. No model-facing text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts | 2 ++
+ src/services/introInstruction.ts                             | 5 +++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts b/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+index a1b874b..3330b76 100644
+--- a/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
++++ b/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+@@ -13,6 +13,8 @@ describe('a question asking leave to send is not a real question (0266)', () =>
+   it.each([
+     'ზურაბ მელაძე თამარ ხუციშვილს იცნობს. მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?',
+     'გავუგზავნო თხოვნა ლევანს?',
++    // 58066, run 51426: the present tense.
++    'ზურაბ მელაძეს მასთან კავშირი აქვს. ვუგზავნი ზურაბს გაცნობის თხოვნას, რომ დაგაკავშიროს თამარ ხუციშვილთან?',
+     'Levan knows her. Shall I ask him to introduce you?',
+     'Do you want me to send him the request?',
+   ])('„%s" asks leave', (reply) => {
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index 499a36c..213a2c4 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -26,10 +26,11 @@ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean
+  * თამართან" was answered „…მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" and nothing
+  * went. A question back after an introduction instruction is let stand when it
+  * asks for the REASON (3697); one asking LEAVE to send is not a real question,
+- * because the typed instruction is itself that yes (CF, §139).
++ * because the typed instruction is itself that yes (CF, §139). 58066 (run 51426):
++ * the present tense asks it too — „ვუგზავნი ზურაბს გაცნობის თხოვნას …?".
+  */
+ const ASKS_LEAVE_TO_SEND_RE =
+-  /(?:მივწერო|მივწერ|გავუგზავნო|გავაგზავნო|ვთხოვო|ვკითხო|მივმართო|დავუკავშირდე)(?!\p{L})|\b(?:shall|should)\s+i\s+(?:send|write|ask|message|contact)\b|\b(?:want|like)\s+me\s+to\s+(?:send|write|ask|message|contact)\b|(?:написать|отправить|попросить)\s+(?:ему|ей|им)?\s*\?|(?:quieres|deseas)\s+que\s+(?:le\s+)?(?:escriba|envíe|pida)/iu;
++  /(?:მივწერო|მივწერ|გავუგზავნო|გავაგზავნო|ვუგზავნი|გავუგზავნი|ვუგზავნო|ვწერ|ვთხოვო|ვთხოვ|ვკითხო|მივმართო|დავუკავშირდე)(?!\p{L})|\b(?:shall|should)\s+i\s+(?:send|write|ask|message|contact)\b|\b(?:want|like)\s+me\s+to\s+(?:send|write|ask|message|contact)\b|(?:написать|отправить|попросить)\s+(?:ему|ей|им)?\s*\?|(?:quieres|deseas)\s+que\s+(?:le\s+)?(?:escriba|envíe|pida)/iu;
+ 
+ /** True when the reply's last question asks the owner for leave to send. */
+ export function asksLeaveToSend(reply: string): boolean {
+-- 
+2.43.0
+

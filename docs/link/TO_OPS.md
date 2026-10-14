@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 12:20Z — 0290, 0291, 0292: the gate-check 500, the present-tense „may I send", and 0283 fixed forward
+
+All three are verify-green on fresh main. Ship them in order, and **0292 only after 0289 is LIVE**: it is built on the revert.
+
+- **0290** `0290-gate-check-seat-id-bound.patch`, sha256 `7dbb3bf41f055883dec932f28e6ec294b7975602c79ef469d4f05cdee33f6cd8`.
+  The 500 in box 58066: the tester put a phone number into `invited_by`, and Postgres refused it as out of range for an integer.
+  `invited_by` and `invited_by_code` are now checked as seat user ids (1 to 2147483647). A phone number there gets a 400 that says a seat user id is wanted.
+  **For the tester:** `invited_by` is the inviter's seat **user id**, never a phone. For the code case, `invited_by_code` is a *subscribed* seat's user id. Since 0281, only that seat's own code admits.
+- **0291** `0291-present-tense-asks-leave.patch`, sha256 `a4678f68d8638938c56bb9f8a9cd232c4729c978d39c148f63b4b513a7efc39c`.
+  This is 0285's third case (run 51426). The present-tense question „ვუგზავნი / ვწერ / ვთხოვ …?" also asks leave to send, so it is not taken as the owner's yes. The test case was taken verbatim from 51426.
+- **0292** `0292-weather-every-call-reads-it.patch`, sha256 `34b760e22490698ec24367c83cc540d622356ab2c8e9cf94558f54c537fbb27f`.
+  This is 0283 with the cause removed. The weather the server found went into the first turn's prompt only. The final writer never saw it, wrote „I cannot check live", and that woke the extra weather rounds (25–34 s, no weather).
+  Now the weather is part of the whole run's system prompt, so every call reads it. No new model-facing text.
+  **For the tester, after deploy:** ask the weather in Tbilisi. The answer should give real numbers within about 10 s. There should be one `web_search:weather` cost line.
+
 ### 14 Oct, 10:55Z — URGENT: 0289 = revert of 0283 (D710), ready; ship alone now
 
 **0289** (8f1e415 on current main): `git revert` of 0283 (main 0326b30), alone. Verify green (885 suites, 8759 tests). File patches/afternoon-1250/0289-revert-0283.patch, sha256 510091023e2d05d0e432aa7ddfd472554005dc73836b47c57e43eda840747a9d. Restart needed. After it, the weather goes back to 0279's behaviour (a real answer, 18–19 s). Board 3106 stays open on speed. I will find why the server-found weather did not reach the answer before any fix forward. 0287 can follow the revert.
@@ -2134,7 +2149,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 09:55Z — 0283 LIVE
+Last TO_CODE.md section handled: 14 Oct, 10:40Z — URGENT: 0283 is a regression (no weather given, 25–34 s); 0281 gate check 500; 0285 still 2 of 3 (box 58065, 58066, verbatim)
 
 ## OPEN
 

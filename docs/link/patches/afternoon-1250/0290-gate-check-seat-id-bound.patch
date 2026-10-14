@@ -1,0 +1,89 @@
+From adef74fb0094ea6d335dac43953a66f47b12f98b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 10:50:40 +0000
+Subject: [PATCH] Gate check: a phone number where a seat id belongs is a 400,
+ not a 500
+
+The tester's 58065: POST /admin/registration-gate-check with invited_by
+set to a seat's phone returned HTTP 500. The log: value ... is out of
+range for type integer. A phone in digits passed isInt and broke the
+INTEGER cast in the seat lookup. Both seat ids are now bounded to a
+Postgres INTEGER, and the 400 says a seat user id is wanted, not a phone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../askTheGateWithoutCreatingAnybody.test.ts   | 18 ++++++++++++++++++
+ src/api/routes/admin.routes.ts                 | 11 ++++++++---
+ 2 files changed, 26 insertions(+), 3 deletions(-)
+
+diff --git a/src/api/routes/__tests__/askTheGateWithoutCreatingAnybody.test.ts b/src/api/routes/__tests__/askTheGateWithoutCreatingAnybody.test.ts
+index 98dfc3a..38f4462 100644
+--- a/src/api/routes/__tests__/askTheGateWithoutCreatingAnybody.test.ts
++++ b/src/api/routes/__tests__/askTheGateWithoutCreatingAnybody.test.ts
+@@ -139,3 +139,21 @@ describe('the code branch, reachable without anybody seeing a code', () => {
+     expect(HANDLER).toContain('? referral_code');
+   });
+ });
++
++/**
++ * 58065: the tester passed a seat's PHONE as invited_by. It passed isInt and broke
++ * the INTEGER cast — a 500. A seat id is bounded; a phone number gets a 400 saying so.
++ */
++describe('the gate check refuses a phone number where a seat id belongs (58065)', () => {
++  const route = readFileSync(join(__dirname, '..', 'admin.routes.ts'), 'utf8');
++
++  it('bounds both seat ids to a Postgres INTEGER', () => {
++    expect(route).toContain(
++      "body('invited_by').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID })",
++    );
++    expect(route).toContain(
++      "body('invited_by_code').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID })",
++    );
++    expect(route).toContain('const MAX_SEAT_USER_ID = 2_147_483_647;');
++  });
++});
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 147e903..479b4a9 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -332,6 +332,8 @@ import {
+   snoozeSeatEveningCard,
+ } from '../../services/adminEveningCard.service';
+ 
++/** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
++const MAX_SEAT_USER_ID = 2_147_483_647;
+ const adminRouter = Router();
+ /** The Axel export is heavy and needed once: a few builds a minute at most. */
+ const AXEL_EXPORTS_PER_MINUTE = 3;
+@@ -3530,13 +3532,14 @@ adminRouter.post(
+  */
+ adminRouter.post(
+   '/registration-gate-check',
+-  body('invited_by').optional().isInt({ min: 1 }),
++  // 58065: a phone number passed here passed isInt and broke the INTEGER cast — a 500.
++  body('invited_by').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID }),
+   body('referral_code').optional().isString().trim().isLength({ max: 32 }),
+   // A seat id whose OWN referral code should be used. The code is resolved
+   // server-side and never returned: a referral code is a credential (D149),
+   // which is why no admin page prints one and why the tester could not
+   // exercise this branch at all.
+-  body('invited_by_code').optional().isInt({ min: 1 }),
++  body('invited_by_code').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID }),
+   // A specific fictional number instead of the next free one — the ONLY way
+   // the social-proof door can be reached, because that door is about a number
+   // other people already have saved and every seat's number is registered.
+@@ -3545,7 +3548,9 @@ adminRouter.post(
+     if (!validationResult(req).isEmpty()) {
+       res.status(400).json({
+         success: false,
+-        error: 'invited_by must be a seat user id; referral_code at most 32 characters.',
++        error:
++          'invited_by and invited_by_code must be a seat user id (not a phone number); ' +
++          'referral_code at most 32 characters.',
+       });
+       return;
+     }
+-- 
+2.43.0
+
