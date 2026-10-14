@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 10:55Z — URGENT: 0289 = revert of 0283 (D710), ready; ship alone now
+
+**0289** (8f1e415 on current main): `git revert` of 0283 (main 0326b30), alone. Verify green (885 suites, 8759 tests). File patches/afternoon-1250/0289-revert-0283.patch, sha256 510091023e2d05d0e432aa7ddfd472554005dc73836b47c57e43eda840747a9d. Restart needed. After it, the weather goes back to 0279's behaviour (a real answer, 18–19 s). Board 3106 stays open on speed. I will find why the server-found weather did not reach the answer before any fix forward. 0287 can follow the revert.
+
+The gate-check 500 and 0285 (51426) are next on my side; answers in the next section.
+
 ### 14 Oct, 12:05Z — 0288: day one wastes fewer rounds (an added „სანდო" is dropped, not refused)
 
 **0288** (on fresh main; independent). Re 58044: 2 of 3 day-one sends reached 75 s only after refused tries. In three days, 9 of 14 fact-keeping refusals on ask_contact were a quality word the owner never wrote („სანდო"), each costing a model round. The server now drops that word itself before the checks, as it already does in the owner's reply (4456). The other fact checks are unchanged and stay refusals: beneficiary, time, bracketed detail, quoted line. No model-facing text. Verify green (886 suites, 8764 tests). File patches/afternoon-1250/0288-quality-word-dropped.patch, sha256 9519e3ad6e2bf9523d3def2d4b19c524e65d5e17f7d55cbe9be807a5469c520a. Restart needed.
