@@ -612,7 +612,8 @@ async function requestIntroductionInner(
       body: isDirect
         ? `${geoName(requesterName, 'gen')} ასისტენტი გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
         : // #1420: the request is the assistant's, so the push says whose assistant asks.
-          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(targetName, 'dat')}. გახსენი Netai.`,
+          // 3895: the push is the mediator's too, so it names the target as he saved him.
+          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
       url: pushUrl,
     });
   }

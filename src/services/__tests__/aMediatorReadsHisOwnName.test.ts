@@ -2,24 +2,28 @@
  * The tester's 995 #5: an English mediator read „introduce them to სანდრო" —
  * the asker's label. His side of the request uses his own name for the person.
  */
-jest.mock('../bridgePicker', () => ({ __esModule: true, nameInBridgeBook: jest.fn() }));
+jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
 jest.mock('../tools/nameMatch', () => ({ __esModule: true, findContactPhonesByName: jest.fn() }));
 
-import { nameInBridgeBook } from '../bridgePicker';
+import { query } from '../../db/postgres/client';
 import { targetNameForMediator } from '../mediatorTargetName';
 import { findContactPhonesByName } from '../tools/nameMatch';
 
-const mockName = nameInBridgeBook as jest.MockedFunction<typeof nameInBridgeBook>;
+const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockMatches = findContactPhonesByName as jest.MockedFunction<typeof findContactPhonesByName>;
 
+function rows(...list: object[]): never {
+  return { rows: list } as never;
+}
+
 beforeEach(() => {
-  mockName.mockReset();
+  mockQuery.mockReset();
   mockMatches.mockReset();
 });
 
 describe('targetNameForMediator', () => {
-  it('uses his name for the number on the request', async () => {
-    mockName.mockResolvedValueOnce('Sandro Beridze');
+  it('uses his label for the number on the request', async () => {
+    mockQuery.mockResolvedValueOnce(rows({ alias: 'Sandro Beridze' }));
 
     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('Sandro Beridze');
     expect(mockMatches).not.toHaveBeenCalled();
@@ -27,22 +31,46 @@ describe('targetNameForMediator', () => {
 
   it('finds the number by the asker’s name when it is exactly one of his contacts', async () => {
     mockMatches.mockResolvedValueOnce(['p1']);
-    mockName.mockResolvedValueOnce('Sandro Beridze');
+    mockQuery.mockResolvedValueOnce(rows({ alias: 'Sandro Beridze' }));
 
     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('Sandro Beridze');
-    expect(mockName).toHaveBeenCalledWith('551', 'p1');
+    expect(mockQuery.mock.calls[0][1]).toEqual([551, 'p1']);
+  });
+
+  /**
+   * 3895 (the tester's 58347, 0 of 3): Levan saved the target as „ბექუნა
+   * ფოტოგრაფი"; the owner typed the target's registered name. His card reads
+   * his own label, not the registered name and not the owner's words.
+   */
+  it('finds his contact by the name the person registered under, and reads his own label', async () => {
+    mockMatches.mockResolvedValueOnce([]);
+    mockQuery
+      .mockResolvedValueOnce(rows({ phone: '+995500000123' }))
+      .mockResolvedValueOnce(rows({ alias: 'ბექუნა ფოტოგრაფი' }));
+
+    expect(await targetNameForMediator(551, 'ბექა მაისურაძე', null)).toBe('ბექუნა ფოტოგრაფი');
+    expect(String(mockQuery.mock.calls[0][0])).toContain('LOWER(TRIM(u.name)) = LOWER(TRIM($2))');
+    expect(String(mockQuery.mock.calls[1][0])).not.toContain('u.name');
   });
 
   it('keeps the asker’s name on none or two matches', async () => {
     mockMatches.mockResolvedValueOnce([]);
+    mockQuery.mockResolvedValueOnce(rows());
     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('სანდრო');
 
     mockMatches.mockResolvedValueOnce(['p1', 'p2']);
+    mockQuery.mockResolvedValueOnce(rows({ phone: 'a' }, { phone: 'b' }));
     expect(await targetNameForMediator(551, 'სანდრო', null)).toBe('სანდრო');
   });
 
+  it('keeps the asker’s name when he has no label for the number', async () => {
+    mockQuery.mockResolvedValueOnce(rows());
+
+    expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
+  });
+
   it('keeps the asker’s name when the read fails', async () => {
-    mockName.mockRejectedValueOnce(new Error('timeout'));
+    mockQuery.mockRejectedValueOnce(new Error('timeout'));
 
     expect(await targetNameForMediator(551, 'სანდრო', '+995 599')).toBe('სანდრო');
   });
