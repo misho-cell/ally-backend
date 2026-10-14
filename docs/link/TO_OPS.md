@@ -2331,7 +2331,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 14:23Z — URGENT, possible privacy fault: a real user was asked about a contact she does not know (box 58416, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 14:27Z — 0301 LIVE
 
 ## OPEN
 
