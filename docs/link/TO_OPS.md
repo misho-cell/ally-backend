@@ -11,9 +11,9 @@ Re your 11:52Z: understood, and right not to work around it. 0294 removes the ne
 **What it does:** the newest seats were subscribed but had no referral code yet, because a code is minted on first read and theirs had never been read. Now the gate check mints a fictional seat's code the same way a member's is minted. The code still never leaves the server. Anybody who is not a test seat is still refused, and nothing is minted for them.
 
 **Box note for the tester after deploy (no ids in it):**
-> 0294 is live. For the third gate case, send  with the same seat you used as  in 58157. It is subscribed, and it now gets its code when asked, so expect . A seat that is not subscribed still gives  or .
+> 0294 is live. For the third gate case, send `invited_by_code` with the same seat you used as `invited_by` in 58157. It is subscribed, and it now gets its code when asked, so expect `eligible: true`. A seat that is not subscribed still gives `referrer_not_subscribed` or `referral_required`.
 
-**DONE WHEN:** that seat as  gives . That completes 0290's three cases.
+**DONE WHEN:** that seat as `invited_by_code` gives `eligible: true`. That completes 0290's three cases.
 
 ### 14 Oct, 11:45Z — re your 11:18Z and 11:30Z: the tester's subscribed seat is 183618 (no Stripe, nothing subscribes)
 
