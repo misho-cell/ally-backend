@@ -9,6 +9,9 @@ interface Bucket {
 // In-memory fixed-window counters. Keyed by user when authenticated, else by IP.
 const buckets = new Map<string, Bucket>();
 
+// Tells one limiter's buckets from another's.
+let nextLimiterId = 0;
+
 const CLEANUP_INTERVAL_MS = 60_000;
 
 const cleanup = setInterval(() => {
@@ -60,9 +63,15 @@ export interface RateLimitOptions {
  * on unauthenticated routes it keys by client IP (or device with keyBy:'device').
  */
 export function rateLimit(options: RateLimitOptions) {
+  // Each limiter counts on its own. The key used to be the window and the cap
+  // only, so every 30-a-minute limiter (tasks, updates, requests, a thread's
+  // routes, its chain position, …) drew on ONE shared budget per user: the
+  // list's per-card path fetches and the polling starved the „გზები" button
+  // with 429s (4927, 4928).
+  const limiterId = nextLimiterId++;
   return (req: Request, res: Response, next: NextFunction): void => {
     const now = Date.now();
-    const key = `${options.windowMs}:${options.max}:${keyFor(req, options.keyBy)}`;
+    const key = `${limiterId}:${keyFor(req, options.keyBy)}`;
     const bucket = buckets.get(key);
 
     if (!bucket || bucket.resetAt <= now) {
