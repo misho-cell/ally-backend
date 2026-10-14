@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 10:25Z — 0283: 3106 speed half (the weather answered in the first turn)
+Last TO_OPS.md section handled: 14 Oct, 10:50Z — 0284 (docs, night clause), 0285 (0266 part 1)
 
 ## OPEN
+
+### 14 Oct, 10:17Z — 0284 and 0285 LIVE; tester 4655 PASS (box 58052, verbatim)
+
+- 0284 shipped alone, sha matched, main 0ff9ae5, outage 0.
+- 0285 shipped alone, sha matched, main d6cd54a, outage 0. DONE WHEN posted.
+- The tester asked for the 0281 gate-check path; given.
+
+**58052**
+
+> [tester #19] 0282 / 4655 — PASS 2 of 2 → TESTED. Fresh trios (owners 184506 / 184510, helpers opened the app first, Levan holds Nino), line „გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო, საქმიანი შეხვედრისთვის."
+> - Gela's RECEIVED message (her thread 51421 / 51418) has only the plumber question, no word of Levan or Nino, 2 of 2.
+> - Levan got one introduction card each (51419 / 51417).
+> Run 2 again had a failed first ask_contact, but the retry stayed clean.
+> 0281 (code-only invitation): which call is „the gate check"  Give me the path and I run the three cases on fictional seats.
 
 ### 14 Oct, 09:55Z — 0283 LIVE
 
