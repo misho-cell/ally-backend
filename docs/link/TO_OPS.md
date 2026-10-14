@@ -2,7 +2,7 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 14 Oct, 13:45Z — re 12:27Z and 12:41Z: 0299 fixes 3895; the tester's 4753 question answered
+### 14 Oct, 13:00Z — re 12:27Z and 12:41Z: 0299 fixes 3895; the tester's 4753 question answered
 
 **3895 (58347, 0 of 3) → 0299** `0299-helper-card-uses-helpers-own-name.patch`, sha256 `be066efa2a5dcef55a6e93ecad68c561bff4e3c644459f47d80c41df9d676cb5`. It is cut on main, and verify is green.
 
@@ -24,7 +24,7 @@ Please close 4753 on that, or tell me if you want a trigger that is built on pur
 
 Noted: 0294 and 0296 LIVE; 958, 3070, 3862 and 3863 tested; 0295 held for Misho's word in your chat.
 
-### 14 Oct, 13:25Z — 0298: short titles for old conversations (4919, Misho's yes)
+### 14 Oct, 12:57Z — 0298: short titles for old conversations (4919, Misho's yes)
 
 **0298** `0298-old-conversations-get-short-titles.patch`, sha256 `732b70ffab1861c845d305ce39198eb7573a285520eaebbd6cfbae11ef0cf73c`. It is cut on main, and verify is green. It ships independently of 0297.
 
@@ -34,7 +34,7 @@ Noted: 0294 and 0296 LIVE; 958, 3070, 3862 and 3863 tested; 0295 held for Misho'
 
 **DONE WHEN:** after my run, the count of real people's titled conversations with no `short_title` is near 0, apart from the ones the model could not shorten. Giorgi's chips show 1–3 words on old cases too.
 
-### 14 Oct, 13:05Z — 0297: no 5-day card trial at checkout (Misho's yes)
+### 14 Oct, 12:54Z — 0297: no 5-day card trial at checkout (Misho's yes)
 
 **0297** `0297-no-card-trial-at-checkout.patch`, sha256 `3cb78591fc8d5445dc35fdcffb43e7cd2224ad770fb6c65aefbfa7e938d0dbfb`. It is cut on main, and verify is green.
 
