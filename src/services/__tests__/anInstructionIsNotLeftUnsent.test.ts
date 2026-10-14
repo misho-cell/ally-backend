@@ -87,8 +87,9 @@ describe('an owner instruction left unsent', () => {
   it('says plainly that nothing went when the second chance sent nothing either', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     // §97: the server first asks the one named contact; only then the plain line.
-    expect(chat).toContain('finalText = await serverSendsOrSaysSo(userId, threadId, runId);');
-    expect(chat).toContain('return NOT_SENT_LINE[language];');
+    expect(chat).toContain('const line = await serverSendsOrSaysSo(userId, threadId, runId);');
+    expect(chat).toContain('finalText = line.text;');
+    expect(chat).toContain('return { text: NOT_SENT_LINE[language] };');
     for (const line of Object.values(NOT_SENT_LINE)) {
       expect(line).not.toMatch(/[—–]/u);
       expect(line.length).toBeGreaterThan(0);

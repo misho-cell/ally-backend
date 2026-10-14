@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { allDormantLabels } from './dormantChoices';
 import anthropic from '../config/anthropic';
 import { EDITOR_MODEL, LANGUAGE_NAMES } from './askEditor.service';
 import { laterChoice } from './askOpening';
@@ -60,7 +61,7 @@ function serverLabels(): ReadonlySet<string> {
     otherChoiceLabel(lang),
     laterChoice(lang),
   ]);
-  return new Set(labels.map((label) => label.trim()));
+  return new Set([...labels, ...allDormantLabels()].map((label) => label.trim()));
 }
 
 /** The editor's buttons when they are a usable replacement for the ones sent; else null. */
