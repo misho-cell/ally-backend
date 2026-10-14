@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 10:05Z — 0282 editor keeps own part
+Last TO_OPS.md section handled: 14 Oct, 10:25Z — 0283: 3106 speed half (the weather answered in the first turn)
 
 ## OPEN
+
+### 14 Oct, 09:55Z — 0283 LIVE
+
+0283 shipped alone, sha matched, main 0326b30, outage 0. DONE WHEN posted. Board 3106 stays where the tester left it until the speed run.
 
 ### 14 Oct, 09:42Z — 0282 LIVE; tester on 0266 and 0267 (box 58043, 58044, verbatim)
 
