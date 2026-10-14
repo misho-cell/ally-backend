@@ -45,7 +45,9 @@ describe('recommendedRelayLine', () => {
     const settle = readFileSync(join(__dirname, '..', 'askReferralSettle.service.ts'), 'utf8');
     expect(settle).toContain('approvedLine !== null,');
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('approvedWording === true');
-    expect(asks).toContain('? { question: relayed.text, choices: draftChoices, edited: false }');
+    expect(asks).toContain(
+      'const draftAsk = { question: relayed.text, choices: draftChoices, edited: false };',
+    );
+    expect(asks).toMatch(/approvedWording === true\s+\? draftAsk/);
   });
 });

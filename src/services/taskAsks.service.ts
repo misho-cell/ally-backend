@@ -42,6 +42,8 @@ import {
   withoutPointingAnswers,
 } from './askChoices';
 import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
+import { OWN_PART_ONLY_ON } from './introInstruction';
+import { questionCarriesAnotherPart } from './ownPart';
 import {
   A2A_ROUND_CAP,
   isAssistantOnlyRound,
@@ -1653,19 +1655,32 @@ async function createAskNow(
         : ownButtons;
   // D711: the question and its buttons pass the editor before they leave — except text
   // approved word for word (BN, box 52869: the editor made the helper the one in need).
-  const editorsAsk =
+  const ownerWords = parentAskId === undefined ? await ownerWordsOn(taskId) : [];
+  const draftAsk = { question: relayed.text, choices: draftChoices, edited: false };
+  const editorsDraft =
     approvedWording === true
-      ? { question: relayed.text, choices: draftChoices, edited: false }
+      ? draftAsk
       : await editOutgoingAsk(
           { question: relayed.text, choices: draftChoices },
           {
-            ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
+            ownerWords,
             askerName: senderName,
             readerName: toName,
             language,
             draftIsOwnersWords: fromOwnersLine === true,
           },
         );
+  /**
+   * 4655 (the tester's 58029, run 2): the question to Gela passed the own-part
+   * check as „იცი კარგი სანტექნიკოსი ვინმე?", and the editor, keeping it to the
+   * owner's line, wrote Levan's introduction back in. The edit is held to the
+   * same check; when it carries another person's part, the checked draft goes.
+   */
+  const editorsAsk =
+    editorsDraft.edited &&
+    questionCarriesAnotherPart(ownerWords, toName, editorsDraft.question, OWN_PART_ONLY_ON)
+      ? draftAsk
+      : editorsDraft;
   // 3567: the need goes out, never somebody's condition — in the message and in its title.
   const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
   // A follow-up lands in the conversation it belongs to; only a first ask

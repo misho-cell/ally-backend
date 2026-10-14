@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { contactInstructionIn } from '../instructionUnsent';
 import {
   askIsTheIntroduction,
@@ -73,5 +75,32 @@ describe('each person gets only their own part (4655)', () => {
   it('tells the model to send each part to its own person', () => {
     expect(OTHER_PART_REFUSAL).toContain('only their own part');
     expect(OTHER_PART_REFUSAL).toContain('request_introduction');
+  });
+});
+
+/**
+ * 58029, run 2 (14 Oct 08:44Z): the model's question to Gela passed the check,
+ * and the server's editor, holding it to the owner's line, wrote Levan's part back
+ * in. The edit is held to the same check, and the checked draft goes instead.
+ */
+describe('the editor’s rewrite keeps to the person’s own part (58029)', () => {
+  const EDITED =
+    'იცი კარგი სანტექნიკოსი? და თუ შეგიძლია, ლევანს სთხოვე, Owner 4655-2 ნინოს გააცნოს.';
+  const ASKS = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+
+  it('catches the rewrite Gela received', () => {
+    expect(questionCarriesAnotherPart(OWNER, 'გელა ბერიძე', EDITED, true)).toBe(true);
+    expect(
+      questionCarriesAnotherPart(OWNER, 'გელა ბერიძე', 'იცი კარგი სანტექნიკოსი ვინმე?', true),
+    ).toBe(false);
+  });
+
+  it('sends the checked draft when the editor’s rewrite carries another part', () => {
+    expect(ASKS).toContain(
+      'questionCarriesAnotherPart(ownerWords, toName, editorsDraft.question, OWN_PART_ONLY_ON)',
+    );
+    const guard = ASKS.indexOf('questionCarriesAnotherPart(ownerWords, toName');
+    expect(ASKS.slice(guard, guard + 200)).toContain('? draftAsk');
+    expect(ASKS.indexOf('const edited = { ...editorsAsk')).toBeGreaterThan(guard);
   });
 });
