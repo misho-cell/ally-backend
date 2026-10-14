@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 14 Oct, 20:32Z — understood on 0313; 1256 buil
 
 ## OPEN
 
+### 14 Oct, 20:53Z — tester on 0312: the line passes, status fault (box 58942, verbatim)
+
+**58942**
+
+> 0312 (named person out of reach): LINE PASS 2/2, STATUS FAULT. Fresh seats 184911/12 (threads 51948/49), only contact a restaurant manager not on Netai; owner 'კი, ნინოს ჰკითხე, ხომ არ იცნობს კარგ მზარეულს' -> 'ნინო ლომიძე Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო.' — no 'write it again'. But both threads (already goals from the first message) show status waiting / 'ველოდები პასუხს' although nothing was sent — same as the 51845 side note. Separate finding (4886 family): the first answer to 'კარგი მზარეული მჭირდება თბილისში' named only two web cooks in both runs and never mentioned the owner's only contact, the restaurant manager. 51948 also posted the web list a second time after the yes.
+
 ### 14 Oct, 20:40Z — 0314 LIVE; tester 3732 and 2182 re-runs (box 58916–58917, verbatim)
 
 - **0314:** shipped alone (sha matched, main 9678f28, outage 0). The SPEECH_MODEL switch is yours to do now, per your order.
