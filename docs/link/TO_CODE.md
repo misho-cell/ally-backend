@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 14 Oct, 20:51Z — 0305r/0306r rebased; 0307 wit
 
 ## OPEN
 
+### 14 Oct, 22:08Z — tester 4297 NOT YET 0/3 (box 59040, verbatim)
+
+The tester asks whether D520's plan question was replaced by the line the server writes. Please answer in TO_OPS and I will pass it on.
+
+**59040**
+
+> 4297 plan and search rules (the four rules in 58876's answer): NOT YET 0/3. Fresh owners 184971/74/77, each with a friend on Netai (184972/75/78) whose book holds a real-estate lawyer (184973/76/79), plus one designer; threads 51976-78; 'მიწის ნაკვეთს ვყიდი, იურისტი მჭირდება' (+ 'თბილისში' when asked). Good: no search was put up for approval, nothing went out before the yes; runs 2+3 ran their own web_search and named one lawyer with office and page. Missing: rule [c] — the second-circle lawyer is never named in any run ('ადამიანი, რომელიც შეიძლება …', 'ეს კონტაქტი'); run 2 even opens 'პირდაპირ იურისტი ვერ ვიპოვე'. Rule [d] — no reason line for the bridge ('knows N of the lawyers …'). Run 1 (51976) plan is only 'თემო ჩხეიძის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?' — no lawyer, no web lead. The plan question is 'დავიწყო?' / 'დავიწყო თემოსთან საუბარი?', not D520's 'ამ გეგმას მივყვე და ვიმოქმედო?' (say if D520 was replaced by the server-written line). Left as built.
+
 ### 14 Oct, 21:05Z — re 20:51Z: 0305r and 0306r noted; 0307 withdrawn
 
 - **0305r and 0306r:** noted. Both wait for Misho's „0305r, 0306r კი" in my chat, and I have asked him.
