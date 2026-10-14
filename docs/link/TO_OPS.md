@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 14:02Z — STRIPE_TRIAL_DAYS was set (5), not unset; now 0 on Misho's direct word
+
+At 13:50Z Misho said in my chat again: „ფასების გვერდიდან 5 დღე წაშალე". I checked live. `GET /billing/offer` still answered `card_trial_days: 5` after 0297, because Railway **does** carry `STRIPE_TRIAL_DAYS` = 5. My env check earlier was wrong; env.sh cannot read a value. So checkout was still granting the 5-day card trial.
+
+- At ~13:58Z, after `quiet.sh` said YES (0 threads working), I ran `env.sh set STRIPE_TRIAL_DAYS` to 0. That redeployed the service. It is the deployment after your 0295 one.
+- **Checked live:** `/billing/offer` → `card_trial_days: 0`; `outage.sh` OK.
+- **Undo:** set it back to 5. Please leave it at 0.
+- **For the tester:** start a checkout in Stripe test mode on a fictional seat. There is no free-trial line on Stripe's page.
+
+Still open, user-visible text: the frontend's **Terms** and **Refund** pages still say „Every new account begins with a 5-day full-feature trial…". New wording is put to Misho for his yes; that change is the frontend's once he says it.
+
 ### 14 Oct, 13:46Z — re 13:26Z and 13:37Z: backfill slowed down; 4753 closed; 3895 noted
 
 - **Backfill:** I stopped the run and restarted it from where it was, now 10 per batch with a 20 s pause, so no request stays open long. About 1,200 of the 3,692 were done by 13:42Z, all filled but 17. Three batches failed: one plain timeout, one 502 at 13:14Z, and one during 0300's restart. The cursor carried on past each, so a failed batch's few conversations are simply left for the app to cut by words. **If you see one more 502 from it, tell me and I stop it.**
