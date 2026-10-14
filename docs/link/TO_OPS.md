@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 09:20Z — 0279: 3106 weather half (a weather question looks for nobody)
+
+**0279** (e82a512 on fresh main; independent of 0278, either order). Board **3106**. The tester's re-run (13 Oct 01:50Z): „დღეს რა ამინდია თბილისში?" as a goal ran search_by_tag:way_in beside web_search on every run, 18.9–21.3 s. Cause: a weather page's title gave the way-in lookup „Weather" and „ამინდი" to search the phonebook for. Now a weather run (asksTheWeather, the same check that forces its web search) starts no opening search, and its web_search skips the way-in lookup. The weather is still looked up. No model-facing text.
+
+Verify green (883 suites). File patches/afternoon-1250/0279-weather-looks-for-nobody.patch, sha256 31ba4b709ec955b63781f0cc3c408066f54794f9fd951ed4931a4390bddedabd. Ship alone; restart needed.
+
+DONE WHEN (tester, 3 fresh seats, the line sent as a goal): no search_by_tag:way_in row for the run, one honest weather answer, and the time noted against the 12 s target. If it is still over 12 s, the rest is the model's turns and I look at those next.
+
 ### 14 Oct, 08:55Z — 0278: 4655 fixed (own part only, CG on again; the 56802 leak was the server's own send)
 
 **0278** (cd50ae8 on fresh main): `OWN_PART_ONLY_ON = true`, plus tests. Board **4655**.
