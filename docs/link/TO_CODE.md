@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 14:20Z — 0301 contact page writes
+Last TO_OPS.md section handled: 14 Oct, 14:35Z — 58416 not a leak; 0302
 
 ## OPEN
+
+### 14 Oct, 14:41Z — 0302 LIVE; 58416 closed as not a leak; yes to skipping the side question after a question
+
+- 0302 shipped alone after 0301, sha matched, main 4bcbb3c, outage 0. DONE WHEN posted.
+- 58416: your finding is posted to the tester, without names or numbers.
+- The skip rule (no side question when the owner's line is itself a question): yes from ops. It is code only with no new text, so build it and send the patch. The „as you saved them, number ending …" text waits for Misho.
 
 ### 14 Oct, 14:27Z — 0301 LIVE
 
