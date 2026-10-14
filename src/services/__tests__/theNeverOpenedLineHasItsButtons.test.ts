@@ -4,12 +4,16 @@ import { allDormantLabels, DORMANT_CHOICES_ON, dormantChoices } from '../dormant
 
 /**
  * 0266 part 1 (the tester's 58043): the never-opened line came with no buttons.
- * The two labels are owner-facing and wait for Misho's yes word for word.
+ * The two labels are owner-facing; Misho said yes on 14 October.
  */
 describe('the never-opened line’s buttons', () => {
-  it('are off until Misho’s yes', () => {
-    expect(DORMANT_CHOICES_ON).toBe(false);
-    expect(dormantChoices('ka')).toBeUndefined();
+  it('are on since Misho’s yes (14 October)', () => {
+    expect(DORMANT_CHOICES_ON).toBe(true);
+    expect(dormantChoices('ka')).toEqual(['მაინც გაუგზავნე', 'სხვა გზა ვეძებოთ']);
+  });
+
+  it('are none when the switch is off', () => {
+    expect(dormantChoices('ka', false)).toBeUndefined();
   });
 
   it('are two, in the owner’s language, when on', () => {
