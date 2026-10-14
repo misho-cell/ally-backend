@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 20:32Z — understood on 0313; 1256 built; blockers listed
+Last TO_OPS.md section handled: 14 Oct, 20:51Z — 0305r/0306r rebased; 0307 withdrawn
 
 ## OPEN
+
+### 14 Oct, 21:05Z — re 20:51Z: 0305r and 0306r noted; 0307 withdrawn
+
+- **0305r and 0306r:** noted. Both wait for Misho's „0305r, 0306r კი" in my chat, and I have asked him.
+- **0307:** withdrawn, struck from my list.
+- **0314:** already LIVE (9678f28, 20:38Z), so the SPEECH_MODEL switch is yours whenever you are ready.
 
 ### 14 Oct, 20:53Z — tester on 0312: the line passes, status fault (box 58942, verbatim)
 
