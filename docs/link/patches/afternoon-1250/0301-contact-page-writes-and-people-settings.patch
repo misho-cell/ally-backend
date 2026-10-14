@@ -1,0 +1,821 @@
+From b0265a7a88c00f199de6f4cc3cf365da81de4c77 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 14:18:33 +0000
+Subject: [PATCH] Contact page writes and people settings (the frontend's 14
+ Oct 14:10Z, items 1 and 2)
+
+Misho asked the frontend to send the routes its remaining design pages
+need. Items 1 and 2, wrapping what the chat tools already do:
+
+- the contact page's own facts by id: list, add (a note), correct,
+  forget; an exclusion taken back by id; remove from the network; mark
+  as passed away. `:id` is the existing contact id; a contact that is not
+  the person's own is 404 and nothing is written. Facts and exclusions on
+  GET /contacts/:id now carry their ids.
+- GET /profile/people-settings: the person's exclusions (with a contact
+  id and name) and topic boundaries (by topic), each with an id;
+  DELETE /profile/boundaries/:id takes a topic back.
+
+Not built (FOR_FRONTEND says why): labels and warmth writes, an exclusion
+by goal id, and a per-contact boundary each need a product decision.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  27 +++
+ ...eContactPageCorrectsWhatNetaiKeeps.test.ts | 150 ++++++++++++++++
+ src/api/routes/contacts.routes.ts             | 164 +++++++++++++++++-
+ src/api/routes/profile.routes.ts              |  54 ++++++
+ .../contactEditsTouchOnlyTheirOwn.test.ts     |  74 ++++++++
+ src/services/contactEdits.service.ts          |  85 +++++++++
+ src/services/contactPage.service.ts           |  17 +-
+ src/services/peopleSettings.service.ts        |  95 ++++++++++
+ 8 files changed, 661 insertions(+), 5 deletions(-)
+ create mode 100644 src/api/routes/__tests__/theContactPageCorrectsWhatNetaiKeeps.test.ts
+ create mode 100644 src/services/__tests__/contactEditsTouchOnlyTheirOwn.test.ts
+ create mode 100644 src/services/contactEdits.service.ts
+ create mode 100644 src/services/peopleSettings.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 2fc92c9..f5af270 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,33 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 14:18Z — re your 14:10Z (Misho's list), part 1: the contact page's writes and „ადამიანების პარამეტრები" (0301)
++
++0301 is handed to ops; it reaches main when they ship it. Every route needs the app's login. `:id` is the contact id that `/contacts` and `/contacts/:id` already give. A contact that is not this person's own is 404, and nothing is written.
++
++**The page now carries ids.** `GET /contacts/:id` facts are `{ id, field, value, saved_at }`, and exclusions are `{ id, excluded_for, reason }`.
++
++| route | body | answer |
++|---|---|---|
++| `GET /contacts/:id/facts` | | 200 `{ facts: [...] }` (own facts only) |
++| `POST /contacts/:id/facts` | `{ "text": "plays chess" }` (1–500 chars) | 201 `{ facts }` |
++| `PATCH /contacts/:id/facts/:factId` | `{ "text": "…" }` | 200 `{ facts }`; 404 if not theirs |
++| `DELETE /contacts/:id/facts/:factId` | | 200 `{ facts }`; 404 |
++| `DELETE /contacts/:id/exclusions/:exclusionId` | | 200 `{ removed: true }`; 404 |
++| `POST /contacts/:id/remove` | | 200 `{ removed: true }` (leaves the network; the person stays reachable as a bridge through others) |
++| `POST /contacts/:id/deceased` | | 200 `{ marked: true }` |
++| `GET /profile/people-settings` | | 200 `{ exclusions: [{ id, contact_id, name, excluded_for, reason }], boundaries: [{ id, topic, terms }] }` |
++| `DELETE /profile/boundaries/:id` | | 200 `{ removed: true }` (the whole topic); 404 |
++
++A bad body or id is 400. A typed fact is kept as the person's own note. A forgotten fact is deleted, as „forget it" does in the chat.
++
++**Not built yet, and why.** Each needs a decision first, which I am taking to Misho or Giorgi:
++- **Labels and warmth (PATCH /contacts/:id):** there is no owner write for either today. Labels come from the phonebook import, and warmth is worked out from what the person said. „Neutral" and „distant" have no stored form, so setting them needs a product rule first.
++- **Exclude for a goal by goal id:** exclusions are stored as words („for the plumber search"), not as a goal id. Taking one back works now (above). Adding one from the page needs the goal-id form agreed.
++- **A topic boundary on a contact:** boundaries are the person's OWN „do not ask me about X". The contact page never shows anybody else's (D421). I have not found a per-contact boundary in the product; please point me to it if Misho's design means one.
++
++Part 2 (questions, my requests, unread) follows in the next note.
++
+ ## 14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)
+ 
+ Thank you for the whole list. Your two asks of the server are in 0300 (handed to ops; it reaches main when they ship it):
+diff --git a/src/api/routes/__tests__/theContactPageCorrectsWhatNetaiKeeps.test.ts b/src/api/routes/__tests__/theContactPageCorrectsWhatNetaiKeeps.test.ts
+new file mode 100644
+index 0000000..12418e4
+--- /dev/null
++++ b/src/api/routes/__tests__/theContactPageCorrectsWhatNetaiKeeps.test.ts
+@@ -0,0 +1,150 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '171' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/subscription.middleware', () => ({
++  __esModule: true,
++  requireSubscription: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../services/contactPage.service', () => ({
++  __esModule: true,
++  contactPageFor: jest.fn(),
++  ownContactPhone: jest.fn(),
++  ownFacts: jest.fn(),
++}));
++jest.mock('../../../services/contactEdits.service', () => ({
++  ...jest.requireActual('../../../services/contactEdits.service'),
++  addOwnFact: jest.fn(),
++  correctOwnFact: jest.fn(),
++  forgetOwnFact: jest.fn(),
++  removeOwnExclusion: jest.fn(),
++  removeFromNetwork: jest.fn(),
++  markDeceased: jest.fn(),
++}));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import contactsRouter from '../contacts.routes';
++import { ownContactPhone, ownFacts } from '../../../services/contactPage.service';
++import {
++  addOwnFact,
++  correctOwnFact,
++  EditOutcome,
++  forgetOwnFact,
++  markDeceased,
++  removeFromNetwork,
++  removeOwnExclusion,
++} from '../../../services/contactEdits.service';
++
++const mockPhone = ownContactPhone as jest.MockedFunction<typeof ownContactPhone>;
++const mockFacts = ownFacts as jest.MockedFunction<typeof ownFacts>;
++const mockAdd = addOwnFact as jest.MockedFunction<typeof addOwnFact>;
++const mockCorrect = correctOwnFact as jest.MockedFunction<typeof correctOwnFact>;
++const mockForget = forgetOwnFact as jest.MockedFunction<typeof forgetOwnFact>;
++const mockExclusion = removeOwnExclusion as jest.MockedFunction<typeof removeOwnExclusion>;
++const mockRemove = removeFromNetwork as jest.MockedFunction<typeof removeFromNetwork>;
++const mockDeceased = markDeceased as jest.MockedFunction<typeof markDeceased>;
++
++const FACTS = [{ id: 7, field: 'note', value: 'plays chess', saved_at: '2026-10-14' }];
++const PHONE = '+995500000001';
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  const app = express();
++  app.use(express.json());
++  app.use('/contacts', contactsRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/contacts`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(done);
++});
++beforeEach(() => {
++  jest.resetAllMocks();
++  mockPhone.mockResolvedValue(PHONE);
++  mockFacts.mockResolvedValue(FACTS);
++});
++
++async function call(
++  method: string,
++  path: string,
++  body?: object,
++): Promise<{ status: number; json: { success: boolean; data?: unknown } }> {
++  const res = await fetch(`${base}${path}`, {
++    method,
++    headers: { 'Content-Type': 'application/json' },
++    body: body === undefined ? undefined : JSON.stringify(body),
++  });
++  return { status: res.status, json: (await res.json()) as { success: boolean; data?: unknown } };
++}
++
++/** The frontend's 14 Oct 14:10Z item 1: the contact's page corrects what Netai keeps. */
++describe('the contact page’s writes', () => {
++  it('lists the person’s own facts with their ids', async () => {
++    const res = await call('GET', '/c_ref/facts');
++    expect(res.status).toBe(200);
++    expect(res.json.data).toEqual({ facts: FACTS });
++  });
++
++  it('adds a typed fact and answers 201 with the facts', async () => {
++    const res = await call('POST', '/c_ref/facts', { text: ' plays chess ' });
++    expect(res.status).toBe(201);
++    expect(mockAdd).toHaveBeenCalledWith(171, PHONE, 'plays chess');
++  });
++
++  it('refuses an empty or overlong text with 400 and writes nothing', async () => {
++    expect((await call('POST', '/c_ref/facts', { text: '' })).status).toBe(400);
++    expect((await call('POST', '/c_ref/facts', { text: 'x'.repeat(501) })).status).toBe(400);
++    expect(mockAdd).not.toHaveBeenCalled();
++  });
++
++  it('corrects and forgets by id, and says 404 for a fact that is not theirs', async () => {
++    mockCorrect.mockResolvedValueOnce(EditOutcome.Done);
++    expect((await call('PATCH', '/c_ref/facts/7', { text: 'plays go' })).status).toBe(200);
++    expect(mockCorrect).toHaveBeenCalledWith(171, PHONE, 7, 'plays go');
++
++    mockForget.mockResolvedValueOnce(EditOutcome.NotFound);
++    expect((await call('DELETE', '/c_ref/facts/8')).status).toBe(404);
++  });
++
++  it('takes an exclusion back by its id', async () => {
++    mockExclusion.mockResolvedValueOnce(EditOutcome.Done);
++    expect((await call('DELETE', '/c_ref/exclusions/3')).status).toBe(200);
++    expect(mockExclusion).toHaveBeenCalledWith(171, PHONE, 3);
++  });
++
++  it('removes from the network and marks as passed away', async () => {
++    mockRemove.mockResolvedValueOnce(true);
++    mockDeceased.mockResolvedValueOnce(true);
++    expect((await call('POST', '/c_ref/remove')).status).toBe(200);
++    expect((await call('POST', '/c_ref/deceased')).status).toBe(200);
++  });
++
++  it('is 404 for a contact that is not the person’s own, and writes nothing', async () => {
++    mockPhone.mockResolvedValue(null);
++    expect((await call('POST', '/c_other/facts', { text: 'x' })).status).toBe(404);
++    expect((await call('POST', '/c_other/remove')).status).toBe(404);
++    expect(mockAdd).not.toHaveBeenCalled();
++    expect(mockRemove).not.toHaveBeenCalled();
++  });
++
++  it('is 400 for an id that is not a number', async () => {
++    expect((await call('DELETE', '/c_ref/facts/abc')).status).toBe(400);
++  });
++});
+diff --git a/src/api/routes/contacts.routes.ts b/src/api/routes/contacts.routes.ts
+index 495c084..a558680 100644
+--- a/src/api/routes/contacts.routes.ts
++++ b/src/api/routes/contacts.routes.ts
+@@ -1,5 +1,5 @@
+ import { Router, Request, Response } from 'express';
+-import { body, validationResult } from 'express-validator';
++import { body, param, validationResult } from 'express-validator';
+ import {
+   authenticateJwt,
+   requireUserRole,
+@@ -13,7 +13,17 @@ import {
+ } from '../../services/contactImportState.service';
+ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { contactPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../services/contactBook.service';
+-import { contactPageFor } from '../../services/contactPage.service';
++import { contactPageFor, ownContactPhone, ownFacts } from '../../services/contactPage.service';
++import {
++  addOwnFact,
++  correctOwnFact,
++  EditOutcome,
++  forgetOwnFact,
++  markDeceased,
++  MAX_FACT_CHARS,
++  removeFromNetwork,
++  removeOwnExclusion,
++} from '../../services/contactEdits.service';
+ import { ApiResponse, ImportResult } from '../../types';
+ import { getSession } from '../../db/neo4j/client';
+ import pool from '../../db/postgres/client';
+@@ -314,4 +324,154 @@ contactsRouter.get('/:id', phonebookLimit, async (req: Request, res: Response) =
+   }
+ });
+ 
++/**
++ * The frontend's 14 Oct 14:10Z item 1 (Misho asked for it): the contact's page
++ * corrects what Netai keeps. `:id` is the contact id the list and the page
++ * give; a contact that is not this person's own is 404, and nothing is written.
++ *
++ *   GET    /contacts/:id/facts                    the person's own facts, with ids
++ *   POST   /contacts/:id/facts          { text }  201, the facts again
++ *   PATCH  /contacts/:id/facts/:factId  { text }  200, the facts again
++ *   DELETE /contacts/:id/facts/:factId            200, the facts again
++ *   DELETE /contacts/:id/exclusions/:exclusionId  200
++ *   POST   /contacts/:id/remove                   200 (leaves the network)
++ *   POST   /contacts/:id/deceased                 200
++ */
++type ContactHandler = (userId: number, phone: string, req: Request, res: Response) => Promise<void>;
++
++function withOwnContact(label: string, handler: ContactHandler) {
++  return async (req: Request, res: Response): Promise<void> => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({
++        success: false,
++        error: `text is 1 to ${MAX_FACT_CHARS} characters; ids are numbers`,
++      });
++      return;
++    }
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      const phone = await ownContactPhone(userId, String(req.params.id));
++      if (phone === null) {
++        res.status(404).json({ success: false, error: 'No such contact' });
++        return;
++      }
++      await handler(userId, phone, req, res);
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error(`[${label}]`, (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not change the contact' });
++    }
++  };
++}
++
++async function answerWithFacts(
++  res: Response,
++  status: number,
++  userId: number,
++  phone: string,
++): Promise<void> {
++  res.status(status).json({ success: true, data: { facts: await ownFacts(userId, phone) } });
++}
++
++function answerEdit(
++  outcome: EditOutcome,
++  res: Response,
++  onDone: () => Promise<void>,
++): Promise<void> {
++  if (outcome === EditOutcome.NotFound) {
++    res.status(404).json({ success: false, error: 'No such item on this contact' });
++    return Promise.resolve();
++  }
++  return onDone();
++}
++
++const factText = body('text').isString().trim().isLength({ min: 1, max: MAX_FACT_CHARS });
++const factId = param('factId').isInt({ min: 1 });
++
++contactsRouter.get(
++  '/:id/facts',
++  phonebookLimit,
++  withOwnContact('GET /contacts/:id/facts', (userId, phone, _req, res) =>
++    answerWithFacts(res, 200, userId, phone),
++  ),
++);
++
++contactsRouter.post(
++  '/:id/facts',
++  phonebookLimit,
++  factText,
++  withOwnContact('POST /contacts/:id/facts', async (userId, phone, req, res) => {
++    await addOwnFact(userId, phone, String(req.body.text));
++    await answerWithFacts(res, 201, userId, phone);
++  }),
++);
++
++contactsRouter.patch(
++  '/:id/facts/:factId',
++  phonebookLimit,
++  factId,
++  factText,
++  withOwnContact('PATCH /contacts/:id/facts/:factId', async (userId, phone, req, res) => {
++    const outcome = await correctOwnFact(
++      userId,
++      phone,
++      Number(req.params.factId),
++      String(req.body.text),
++    );
++    await answerEdit(outcome, res, () => answerWithFacts(res, 200, userId, phone));
++  }),
++);
++
++contactsRouter.delete(
++  '/:id/facts/:factId',
++  phonebookLimit,
++  factId,
++  withOwnContact('DELETE /contacts/:id/facts/:factId', async (userId, phone, req, res) => {
++    const outcome = await forgetOwnFact(userId, phone, Number(req.params.factId));
++    await answerEdit(outcome, res, () => answerWithFacts(res, 200, userId, phone));
++  }),
++);
++
++contactsRouter.delete(
++  '/:id/exclusions/:exclusionId',
++  phonebookLimit,
++  param('exclusionId').isInt({ min: 1 }),
++  withOwnContact('DELETE /contacts/:id/exclusions', async (userId, phone, req, res) => {
++    const outcome = await removeOwnExclusion(userId, phone, Number(req.params.exclusionId));
++    await answerEdit(outcome, res, async () => {
++      res.status(200).json({ success: true, data: { removed: true } });
++    });
++  }),
++);
++
++contactsRouter.post(
++  '/:id/remove',
++  phonebookLimit,
++  withOwnContact('POST /contacts/:id/remove', async (userId, phone, _req, res) => {
++    const removed = await removeFromNetwork(userId, phone);
++    res
++      .status(removed ? 200 : 500)
++      .json(
++        removed
++          ? { success: true, data: { removed } }
++          : { success: false, error: 'Could not remove the contact' },
++      );
++  }),
++);
++
++contactsRouter.post(
++  '/:id/deceased',
++  phonebookLimit,
++  withOwnContact('POST /contacts/:id/deceased', async (userId, phone, _req, res) => {
++    const marked = await markDeceased(userId, phone);
++    res
++      .status(marked ? 200 : 500)
++      .json(
++        marked
++          ? { success: true, data: { marked } }
++          : { success: false, error: 'Could not mark the contact' },
++      );
++  }),
++);
++
+ export default contactsRouter;
+diff --git a/src/api/routes/profile.routes.ts b/src/api/routes/profile.routes.ts
+index e741707..cbec72f 100644
+--- a/src/api/routes/profile.routes.ts
++++ b/src/api/routes/profile.routes.ts
+@@ -17,6 +17,7 @@ import { matchExistingContacts, ExistingContactMatch } from '../../services/cont
+ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { inviteLinkForScreen } from '../../services/referralLink.service';
+ import { blockedListForScreen, unblockByRef } from '../../services/block.service';
++import { peopleSettings, removeOwnBoundary } from '../../services/peopleSettings.service';
+ import { MAX_LINK_CHARS, profileLinkRule } from '../validators/profileLinkRule';
+ import { asRunLanguage } from '../../services/runLanguage';
+ import {
+@@ -199,6 +200,59 @@ profileRouter.delete(
+ //   DELETE /profile/blocked/:ref  → { unblocked: true } | 404
+ // Under /profile rather than /contacts on purpose: the contacts router requires
+ // a subscription, and seeing or undoing your own blocks must not.
++/**
++ * The frontend's 14 Oct 14:10Z item 2 („ადამიანების პარამეტრები"): the people
++ * kept out of a goal and the topics not to be asked about, each with its id.
++ *
++ *   GET    /profile/people-settings  { exclusions: [{ id, contact_id, name, excluded_for, reason }],
++ *                                       boundaries: [{ id, topic, terms }] }
++ *   DELETE /profile/boundaries/:id   the whole topic taken back; 404 if not theirs
++ * An exclusion is taken back on the contact: DELETE /contacts/:contact_id/exclusions/:id.
++ */
++profileRouter.get(
++  '/people-settings',
++  authenticateJwt,
++  requireUserRole,
++  async (req: Request, res: Response) => {
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      res.status(200).json({ success: true, data: await peopleSettings(userId) });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /profile/people-settings]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not read the settings' });
++    }
++  },
++);
++
++profileRouter.delete(
++  '/boundaries/:id',
++  authenticateJwt,
++  requireUserRole,
++  param('id').isInt({ min: 1 }),
++  async (req: Request, res: Response) => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({ success: false, error: 'id must be a positive integer' });
++      return;
++    }
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      const removed = await removeOwnBoundary(userId, Number(req.params.id));
++      res
++        .status(removed ? 200 : 404)
++        .json(
++          removed
++            ? { success: true, data: { removed } }
++            : { success: false, error: 'No such boundary' },
++        );
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[DELETE /profile/boundaries/:id]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not remove the boundary' });
++    }
++  },
++);
++
+ profileRouter.get(
+   '/blocked',
+   authenticateJwt,
+diff --git a/src/services/__tests__/contactEditsTouchOnlyTheirOwn.test.ts b/src/services/__tests__/contactEditsTouchOnlyTheirOwn.test.ts
+new file mode 100644
+index 0000000..f1c0223
+--- /dev/null
++++ b/src/services/__tests__/contactEditsTouchOnlyTheirOwn.test.ts
+@@ -0,0 +1,74 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import {
++  correctOwnFact,
++  EditOutcome,
++  forgetOwnFact,
++  removeOwnExclusion,
++} from '../contactEdits.service';
++import { peopleSettings, removeOwnBoundary } from '../peopleSettings.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** The frontend's 14 Oct 14:10Z items 1 and 2: every write is by id and only the person's own. */
++describe('the contact page’s writes', () => {
++  it('corrects a fact only when it is this person’s, on this contact', async () => {
++    mockQuery.mockResolvedValueOnce({ rowCount: 1 } as never);
++    await expect(correctOwnFact(171, '+995 500 000 001', 7, ' plays go ')).resolves.toBe(
++      EditOutcome.Done,
++    );
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('submitted_by_user_id = $2 AND neo4j_contact_id = $3');
++    expect(params).toEqual([7, '171', expect.any(String), 'plays go']);
++  });
++
++  it('says not found when nothing of theirs matched', async () => {
++    mockQuery.mockResolvedValueOnce({ rowCount: 0 } as never);
++    await expect(forgetOwnFact(171, '+995500000001', 8)).resolves.toBe(EditOutcome.NotFound);
++    mockQuery.mockResolvedValueOnce({ rowCount: 0 } as never);
++    await expect(removeOwnExclusion(171, '+995500000001', 3)).resolves.toBe(EditOutcome.NotFound);
++  });
++});
++
++describe('people settings', () => {
++  it('reads exclusions with a contact id and boundaries by topic, each with an id', async () => {
++    mockQuery
++      .mockResolvedValueOnce({
++        rows: [
++          {
++            id: 3,
++            contact_phone: '995500000001',
++            alias: 'Gela',
++            excluded_for: 'plumber',
++            reason: null,
++          },
++        ],
++      } as never)
++      .mockResolvedValueOnce({
++        rows: [{ id: 11, topic: 'electricians', terms: ['electrician'] }],
++      } as never);
++
++    const settings = await peopleSettings(171);
++    expect(settings.exclusions).toEqual([
++      {
++        id: 3,
++        contact_id: expect.stringMatching(/^c_/),
++        name: 'Gela',
++        excluded_for: 'plumber',
++        reason: null,
++      },
++    ]);
++    expect(settings.boundaries).toEqual([
++      { id: 11, topic: 'electricians', terms: ['electrician'] },
++    ]);
++  });
++
++  it('takes a whole topic back, only among the person’s own rows', async () => {
++    mockQuery.mockResolvedValueOnce({ rowCount: 2 } as never);
++    await expect(removeOwnBoundary(171, 11)).resolves.toBe(true);
++    expect(String(mockQuery.mock.calls[0][0])).toContain('WHERE id = $2 AND user_id = $1::int');
++  });
++});
+diff --git a/src/services/contactEdits.service.ts b/src/services/contactEdits.service.ts
+new file mode 100644
+index 0000000..349861f
+--- /dev/null
++++ b/src/services/contactEdits.service.ts
+@@ -0,0 +1,85 @@
++import { query } from '../db/postgres/client';
++import { submitContactFact } from './contactFacts.service';
++import { markContactDeceased } from './deceased.service';
++import { normalizePhone, phoneDigits } from './phone';
++import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
++
++/**
++ * The frontend's 14 Oct 14:10Z item 1 (Misho asked for it): the contact's own
++ * page lets the person correct what Netai keeps about one of their contacts —
++ * their OWN facts, by id; an exclusion taken back; the contact removed from
++ * their network or marked as passed away. Every write is by id or by the
++ * contact the page was opened for, never by matching text, and touches only
++ * what this person saved.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++export const MAX_FACT_CHARS = 500;
++/** A fact typed on the page is a note; the chat files typed facts the same way. */
++const PAGE_FACT_FIELD = 'note';
++
++export enum EditOutcome {
++  Done = 'done',
++  NotFound = 'not_found',
++}
++
++/** A fact the person types on the page, kept as their own note about the contact. */
++export async function addOwnFact(userId: number, phone: string, text: string): Promise<void> {
++  await submitContactFact(String(userId), phone, PAGE_FACT_FIELD, text.trim());
++}
++
++/** The person's own fact, corrected in place; another member's fact is never found. */
++export async function correctOwnFact(
++  userId: number,
++  phone: string,
++  factId: number,
++  text: string,
++): Promise<EditOutcome> {
++  const result = await query(
++    `UPDATE contact_facts
++        SET value = $4, canonical_value = NULL, updated_at = NOW()
++      WHERE id = $1 AND submitted_by_user_id = $2 AND neo4j_contact_id = $3
++        AND retracted_at IS NULL`,
++    [factId, String(userId), normalizePhone(phone), text.trim()],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0 ? EditOutcome.Done : EditOutcome.NotFound;
++}
++
++/** The person's own fact, forgotten: the row is deleted, as „forget it" in the chat does. */
++export async function forgetOwnFact(
++  userId: number,
++  phone: string,
++  factId: number,
++): Promise<EditOutcome> {
++  const result = await query(
++    `DELETE FROM contact_facts
++      WHERE id = $1 AND submitted_by_user_id = $2 AND neo4j_contact_id = $3`,
++    [factId, String(userId), normalizePhone(phone)],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0 ? EditOutcome.Done : EditOutcome.NotFound;
++}
++
++/** One of the person's exclusions of this contact, taken back. */
++export async function removeOwnExclusion(
++  userId: number,
++  phone: string,
++  exclusionId: number,
++): Promise<EditOutcome> {
++  const result = await query(
++    `DELETE FROM contact_exclusions WHERE id = $1 AND user_id = $2::int AND contact_phone = $3`,
++    [exclusionId, userId, phoneDigits(phone)],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0 ? EditOutcome.Done : EditOutcome.NotFound;
++}
++
++/** The contact leaves the person's network (the chat's remove_contact_from_network). */
++export async function removeFromNetwork(userId: number, phone: string): Promise<boolean> {
++  return (await removeContactFromNetwork(String(userId), phone)).removed;
++}
++
++/** The contact is marked as passed away; Netai never suggests or asks them again. */
++export async function markDeceased(userId: number, phone: string): Promise<boolean> {
++  return (await markContactDeceased(String(userId), phone)).marked;
++}
+diff --git a/src/services/contactPage.service.ts b/src/services/contactPage.service.ts
+index 12ad0b5..d2faf9d 100644
+--- a/src/services/contactPage.service.ts
++++ b/src/services/contactPage.service.ts
+@@ -29,6 +29,8 @@ export enum Warmth {
+ }
+ 
+ export interface ContactFact {
++  /** The fact's id, for correcting or forgetting it (the frontend's 14 Oct 14:10Z item 1). */
++  readonly id: number;
+   readonly field: string;
+   readonly value: string;
+   readonly saved_at: string;
+@@ -42,6 +44,8 @@ export interface PublicFact {
+ }
+ 
+ export interface ContactExclusionView {
++  /** For taking the exclusion back (DELETE /contacts/:id/exclusions/:exclusionId). */
++  readonly id: number;
+   readonly excluded_for: string;
+   readonly reason: string | null;
+ }
+@@ -102,9 +106,9 @@ async function warmthOf(userId: number, phone: string): Promise<Warmth> {
+   return row?.distant === true ? Warmth.Distant : Warmth.Neutral;
+ }
+ 
+-async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
++export async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
+   const result = await query<ContactFact>(
+-    `SELECT field_type AS field, COALESCE(canonical_value, value) AS value,
++    `SELECT id, field_type AS field, COALESCE(canonical_value, value) AS value,
+             TO_CHAR(created_at, 'YYYY-MM-DD') AS saved_at
+        FROM contact_facts
+       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
+@@ -135,7 +139,7 @@ async function publicFacts(phone: string): Promise<PublicFact[]> {
+ 
+ async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
+   const result = await query<ContactExclusionView>(
+-    `SELECT excluded_for, reason FROM contact_exclusions
++    `SELECT id, excluded_for, reason FROM contact_exclusions
+       WHERE user_id = $1::int AND contact_phone = $2
+       ORDER BY created_at DESC LIMIT $3`,
+     [userId, phoneDigits(phone), MAX_EXCLUSIONS],
+@@ -152,6 +156,13 @@ export function roleFrom(facts: readonly ContactFact[]): string | null {
+   return parts.length === 0 ? null : parts.join(' · ');
+ }
+ 
++/** The phone behind a contact id, when it is one of this person's own contacts; else null. */
++export async function ownContactPhone(userId: number, id: string): Promise<string | null> {
++  const phone = decodeContactRef(String(userId), id);
++  if (phone === null) return null;
++  return (await savedName(userId, phone)) === undefined ? null : phone;
++}
++
+ /** The page; null when the id is not one of this person's contacts. */
+ export async function contactPageFor(userId: number, id: string): Promise<ContactPageView | null> {
+   const phone = decodeContactRef(String(userId), id);
+diff --git a/src/services/peopleSettings.service.ts b/src/services/peopleSettings.service.ts
+new file mode 100644
+index 0000000..b5e59f2
+--- /dev/null
++++ b/src/services/peopleSettings.service.ts
+@@ -0,0 +1,95 @@
++import { query } from '../db/postgres/client';
++import { encodeContactRef } from './mcp/contactRef';
++import { shownName } from './contactBook.service';
++
++/**
++ * The frontend's 14 Oct 14:10Z item 2 („ადამიანების პარამეტრები", phone 37):
++ * in one read, the people this person kept out of a goal and the topics they
++ * do not want to be asked about, each with the id that takes it back. Only
++ * their own rows. Blocked people have their own read (/profile/blocked).
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const MAX_ROWS = 100;
++
++export interface ExclusionSetting {
++  readonly id: number;
++  /** The contact id the contact page takes (/contacts/:id). */
++  readonly contact_id: string;
++  readonly name: string | null;
++  readonly excluded_for: string;
++  readonly reason: string | null;
++}
++
++export interface BoundarySetting {
++  /** Takes the whole topic back: DELETE /profile/boundaries/:id. */
++  readonly id: number;
++  readonly topic: string;
++  readonly terms: readonly string[];
++}
++
++export interface PeopleSettings {
++  readonly exclusions: readonly ExclusionSetting[];
++  readonly boundaries: readonly BoundarySetting[];
++}
++
++interface ExclusionRow {
++  readonly id: number;
++  readonly contact_phone: string;
++  readonly alias: string | null;
++  readonly excluded_for: string;
++  readonly reason: string | null;
++}
++
++async function exclusionsOf(userId: number): Promise<ExclusionSetting[]> {
++  const result = await query<ExclusionRow>(
++    `SELECT e.id, e.contact_phone, e.excluded_for, e.reason,
++            (SELECT a.alias FROM "UserAlias" a
++              WHERE a."contactId" = e.user_id
++                AND regexp_replace(a.phone, '\\D', '', 'g') = e.contact_phone
++              ORDER BY LENGTH(COALESCE(a.alias, '')) DESC LIMIT 1) AS alias
++       FROM contact_exclusions e
++      WHERE e.user_id = $1::int
++      ORDER BY e.created_at DESC
++      LIMIT $2`,
++    [userId, MAX_ROWS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((r) => ({
++    id: r.id,
++    contact_id: encodeContactRef(String(userId), r.contact_phone),
++    name: shownName(r.alias),
++    excluded_for: r.excluded_for,
++    reason: r.reason,
++  }));
++}
++
++async function boundariesOf(userId: number): Promise<BoundarySetting[]> {
++  const result = await query<{ id: number; topic: string; terms: string[] }>(
++    `SELECT MIN(id)::int AS id, topic, ARRAY_AGG(term ORDER BY id) AS terms
++       FROM ask_boundaries
++      WHERE user_id = $1::int
++      GROUP BY topic
++      ORDER BY MIN(created_at)
++      LIMIT $2`,
++    [userId, MAX_ROWS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++export async function peopleSettings(userId: number): Promise<PeopleSettings> {
++  const [exclusions, boundaries] = await Promise.all([exclusionsOf(userId), boundariesOf(userId)]);
++  return { exclusions, boundaries };
++}
++
++/** One of the person's topic boundaries taken back, with every term it carries. */
++export async function removeOwnBoundary(userId: number, boundaryId: number): Promise<boolean> {
++  const result = await query(
++    `DELETE FROM ask_boundaries
++      WHERE user_id = $1::int
++        AND topic = (SELECT topic FROM ask_boundaries WHERE id = $2 AND user_id = $1::int)`,
++    [userId, boundaryId],
++    QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0;
++}
+-- 
+2.43.0
+

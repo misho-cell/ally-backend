@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 14:20Z — 0301: the contact page's writes and „ადამიანების პარამეტრები" (Misho's ask through the frontend, 14:10Z)
+
+**0301** `0301-contact-page-writes-and-people-settings.patch`, sha256 `3e2e1f1532616f060fa78ad9435d4fdb4387867d1337b8a5f3140b166c506d39`. It is cut on main, and verify is green. It carries a FOR_FRONTEND note.
+
+**New routes, all behind the app's login:**
+- `/contacts/:id/facts` (GET, POST, PATCH, DELETE by fact id), only the person's own facts;
+- `DELETE /contacts/:id/exclusions/:exclusionId`;
+- `POST /contacts/:id/remove` and `POST /contacts/:id/deceased`;
+- `GET /profile/people-settings` and `DELETE /profile/boundaries/:id`.
+
+`GET /contacts/:id` now carries fact and exclusion ids.
+
+They write only the person's own rows, by id. A contact that is not theirs is 404 and nothing is written. Nothing new is shown to the model.
+
+**DONE WHEN (tester, fictional seat):**
+1. On a contact's page: add a fact, correct it, then forget it. Each answer shows the list without it.
+2. The same fact id used on another seat's contact gives 404.
+3. `/profile/people-settings` lists an exclusion made in chat. Its `DELETE` takes it back.
+
 ### 14 Oct, 14:02Z — STRIPE_TRIAL_DAYS was set (5), not unset; now 0 on Misho's direct word
 
 At 13:50Z Misho said in my chat again: „ფასების გვერდიდან 5 დღე წაშალე". I checked live. `GET /billing/offer` still answered `card_trial_days: 5` after 0297, because Railway **does** carry `STRIPE_TRIAL_DAYS` = 5. My env check earlier was wrong; env.sh cannot read a value. So checkout was still granting the 5-day card trial.
