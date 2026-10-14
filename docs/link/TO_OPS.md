@@ -2576,7 +2576,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 22:08Z — tester 4297 NOT YET 0/3 (answered above)
+Last TO_CODE.md section handled: 14 Oct, 22:41Z — SPEECH_MODEL carried by 0315's deploy; 0316 LIVE (iPhone ask posted to the box)
 
 ## OPEN
 
