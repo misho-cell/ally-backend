@@ -853,6 +853,20 @@ export async function markThreadSeen(threadId: number, userId: string): Promise<
   return row === undefined ? null : new Date(row.seen_at).toISOString();
 }
 
+/**
+ * The frontend's 14 Oct 14:10Z item 7 („წაუკითხავად მონიშვნა"): the owner marks a
+ * conversation unread again, so it shows as new on every device. False when the
+ * thread is not theirs.
+ */
+export async function markThreadUnread(threadId: number, userId: string): Promise<boolean> {
+  const result = await query(
+    `UPDATE threads SET seen_at = NULL WHERE id = $1 AND user_id = $2`,
+    [threadId, userId],
+    SEEN_QUERY_TIMEOUT_MS,
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function touchThread(threadId: number): Promise<void> {
   await query(`UPDATE threads SET updated_at = NOW() WHERE id = $1`, [threadId]);
 }

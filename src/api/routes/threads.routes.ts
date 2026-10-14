@@ -26,6 +26,7 @@ import {
   saveThreadMessage,
   getLongestRunStep,
   markThreadSeen,
+  markThreadUnread,
 } from '../../services/threads.service';
 import { setThreadFollowed } from '../../services/followUp.service';
 import {
@@ -355,6 +356,36 @@ for (const [method, followed] of [
  *   200 { seen_at }   stamped now
  *   404               no such thread, or not theirs
  */
+/**
+ * The frontend's 14 Oct 14:10Z item 7: „წაუკითხავად მონიშვნა" in the thread menu.
+ *
+ *   POST /threads/:id/unread
+ *   200 { seen_at: null }   every device shows it as new again
+ *   404                     no such thread, or not theirs
+ */
+threadsRouter.post(
+  '/:id/unread',
+  rateLimit({ windowMs: 60_000, max: SEEN_PER_MINUTE }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      if (!(await markThreadUnread(threadId, userId))) {
+        res.status(404).json({ success: false, error: 'Thread not found' });
+        return;
+      }
+      emitThreadUpdated(userId, { id: threadId, seen_at: null });
+      res.status(200).json({ success: true, data: { seen_at: null } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /threads/:id/unread]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not mark the conversation unread' });
+    }
+  },
+);
+
 threadsRouter.post(
   '/:id/seen',
   rateLimit({ windowMs: 60_000, max: SEEN_PER_MINUTE }),

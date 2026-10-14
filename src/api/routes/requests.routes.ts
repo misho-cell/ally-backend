@@ -14,6 +14,7 @@ import {
   PendingRequest,
 } from '../../services/introduction.service';
 import { scrubText } from '../../services/privacyScrub';
+import { myIntroRequests } from '../../services/myIntroRequests.service';
 import { ApiResponse } from '../../types';
 
 const requestsRouter = Router();
@@ -128,6 +129,25 @@ requestsRouter.get('/', async (req: Request, res: Response<ApiResponse<unknown>>
     // eslint-disable-next-line no-console
     console.error('[GET /requests]', error);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+/**
+ * The frontend's 14 Oct 14:10Z item 5 („ჩემი თხოვნების მდგომარეობა"): the
+ * introductions this person asked for, newest first (at most 50).
+ *
+ *   GET /requests/mine  200 { requests: [{ id, mediator_name, target_name, goal_id,
+ *                              thread_id, state: sent|accepted|declined|expired|cancelled,
+ *                              created_at, answered_at }] }
+ */
+requestsRouter.get('/mine', async (req: Request, res: Response<ApiResponse<unknown>>) => {
+  try {
+    const userId = Number((req as AuthenticatedRequest).user.userId);
+    res.status(200).json({ success: true, data: { requests: await myIntroRequests(userId) } });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[GET /requests/mine]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'Could not read your requests' });
   }
 });
 
