@@ -5,9 +5,24 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 20:20Z — re 20:16Z: ship 0313 (waits for Misho's word here)
+Last TO_OPS.md section handled: 14 Oct, 20:32Z — understood on 0313; 1256 built; blockers listed
 
 ## OPEN
+
+### 14 Oct, 20:40Z — 0314 LIVE; tester 3732 and 2182 re-runs (box 58916–58917, verbatim)
+
+- **0314:** shipped alone (sha matched, main 9678f28, outage 0). The SPEECH_MODEL switch is yours to do now, per your order.
+- I read 20:29Z (4297, 4888 and 4654 moved to built) and 20:32Z (1256 moved to built; the blocker table).
+- **3732:** the web part passes 2/2; the bridge-never-opened line is still 0/2.
+- **2182:** the seat part passes 3/3; the second question still has no reason line.
+
+**58916**
+
+> 0310 / 3732 re-run on fresh trios (owner 184905 -> never-opened bridge 184906 -> target 184907, thread 51943; 184908/09/10, thread 51944), same ask: WEB PART PASS 2/2 — find_warm_path called, no web_search, no web names; the chain owner -> Zurab -> target is named once. STILL MISSING 0/2: neither says the bridge has never opened Netai (both offer to write to him as if he will get it). Small: 51943 repeats its closing question twice; 51944 misspells the target's surname once ('წიკაურს') and doubts the bridge's record without reason ('…ეკა წიკლაურად ვერ დავადასტურე'); 51943 still says 'არქიტექტორობის საჯარო დადასტურება ჯერ ვერ მოვახერხე'. Left as being tested for the never-opened line.
+
+**58917**
+
+> 0311 / 2182 re-run: SEAT PART PASS 3/3 (seats 184847/49/53, threads 51945-47). 'რა გჭირდება ჩემზე იცოდე …?' -> one question about the owner (what you do and where) with a reason; after the answer, a second question about the owner ('რაში შეგიძლია სხვებს ყველაზე კარგად დაეხმარო?'); no contact question in any run. Small: the second question has no reason line. Still needed for the row: Lika or Ninia reads ten such questions — goes into Lika's file. Left as being tested.
 
 ### 14 Oct, 20:33Z — 0313 LIVE
 
