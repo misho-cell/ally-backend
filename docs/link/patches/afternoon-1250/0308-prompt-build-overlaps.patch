@@ -1,0 +1,113 @@
+From d26334e2a296b7ff87d1b27f85f4308cc12e6321 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 18:42:48 +0000
+Subject: [PATCH] 3106 (speed): the day's question and the no-contacts note
+ start beside the first reads
+
+Measured on the tester's weather run 51448 (20.1 s): 3.4 s went on
+building the prompt, 2.3 s of it in buildAgentSystemPrompt, on every
+ordinary message, not only weather. That build ran in phases, and the
+second phase waited for the first although nothing in it uses the
+first's results: the day's contact question (a chain of its own
+lookups) and the no-contacts note need only the run's presence and the
+bound goal.
+
+Both now start as soon as those are known, run beside the 14 reads of
+the first phase, and are awaited where they were before, so the prompt
+is the same and an error still surfaces in the same place. No text
+changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theDayHasOneContactQuestion.test.ts       |  5 ++-
+ src/services/chat.service.ts                  | 42 ++++++++++++-------
+ 2 files changed, 31 insertions(+), 16 deletions(-)
+
+diff --git a/src/services/__tests__/theDayHasOneContactQuestion.test.ts b/src/services/__tests__/theDayHasOneContactQuestion.test.ts
+index 70fb74b..ac9a8b4 100644
+--- a/src/services/__tests__/theDayHasOneContactQuestion.test.ts
++++ b/src/services/__tests__/theDayHasOneContactQuestion.test.ts
+@@ -61,7 +61,10 @@ describe('the owner’s own run carries the day’s question (§98.1)', () => {
+     const { join } = require('path') as typeof import('path');
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     // 958: read beside the other prompt sections, with the run's presence.
+-    expect(chat).toContain('dailyContactQuestionSection(userId, threadId, presence),');
++    // 3106: started beside the first phase of reads, with the run's presence.
++    expect(chat).toContain(
++      'const contactQuestionEarly = dailyContactQuestionSection(userId, threadId, presence);',
++    );
+     expect(chat).toContain('ownerPresent: !ownerAbsent,');
+     expect(chat).toMatch(/firstAsk \+\s+contactQuestion \+/u);
+   });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 22e5082..306cbe2 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -5250,6 +5250,31 @@ async function buildAgentSystemPrompt(
+   const boundTask =
+     (threadId != null ? await getOpenTaskByThread(threadId) : null) ?? namedTask ?? null;
+   const runMode: RunMode = forcedMode ?? (await resolveRunMode(userId, threadType, boundTask));
++  const presence = {
++    ownerPresent: !ownerAbsent,
++    regularThread: threadType === 'regular',
++    goalBound: boundTask !== null,
++    preview: forcedMode !== undefined,
++    ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
++    ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
++    ownerAsksWhatWaits: asksWhatWaits(ownerLine),
++    ownerAsksAQuestion: asksAQuestion(ownerLine),
++    ownerLine,
++  };
++  /**
++   * 3106 (speed): these two read nothing the reads below produce, so they start
++   * now and run beside them. One after the other they were most of the second
++   * phase of this build (the day's question is a chain of its own lookups).
++   * Each is awaited where it was before, so an error still surfaces there; the
++   * no-op catch only stops it counting as unhandled while the first phase runs.
++   */
++  const contactQuestionEarly = dailyContactQuestionSection(userId, threadId, presence);
++  const noContactsEarly =
++    !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
++      ? noContactsYetSection(userId, threadId)
++      : Promise.resolve('');
++  contactQuestionEarly.catch(() => undefined);
++  noContactsEarly.catch(() => undefined);
+   const [
+     configResult,
+     modeBlocks,
+@@ -5349,17 +5374,6 @@ async function buildAgentSystemPrompt(
+   //
+   // Nothing here changes content. Sections are grouped by how often they
+   // change: global, then per-account, then per-goal, then the clock.
+-  const presence = {
+-    ownerPresent: !ownerAbsent,
+-    regularThread: threadType === 'regular',
+-    goalBound: boundTask !== null,
+-    preview: forcedMode !== undefined,
+-    ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
+-    ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+-    ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+-    ownerAsksAQuestion: asksAQuestion(ownerLine),
+-    ownerLine,
+-  };
+   // 958: these six reads do not depend on each other, so they run together; one
+   // after another they were the slowest part of building the prompt.
+   const [heldNote, askStates, waveNote, firstAsk, contactQuestion, noContacts] = await Promise.all([
+@@ -5369,11 +5383,9 @@ async function buildAgentSystemPrompt(
+     // D713 (phase 1): the owner's first ask on this goal, on every turn.
+     boundTask ? goalFirstAsk(boundTask.id).then(goalFirstAskSection) : Promise.resolve(''),
+     // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
+-    dailyContactQuestionSection(userId, threadId, presence),
++    contactQuestionEarly,
+     // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
+-    !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
+-      ? noContactsYetSection(userId, threadId)
+-      : Promise.resolve(''),
++    noContactsEarly,
+   ]);
+   // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words —
+   // after the day's question, which it gives way to.
+-- 
+2.43.0
+

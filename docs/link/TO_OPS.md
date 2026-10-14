@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 18:42Z — 0308: 3106 speed, first cut (the prompt build overlaps its own reads)
+
+**0308** `0308-prompt-build-overlaps.patch`, sha256 `9b6a465e88e2ec8256924c7b6dc11184ec629695f9a550855f7dcb35f13f7875`. It is cut on main, and verify is green. No text changes.
+
+**What it changes:** the day's contact question and the no-contacts note now start beside the first 14 reads of the prompt build, instead of after them. The prompt is the same.
+
+**DONE WHEN:** the `[timing]` line's `prompt` figure drops on ordinary messages. On 51448 it was 3411 ms, with 2.3 s in the build. I will read the next weather runs' logs myself and post the before and after.
+
 ### 14 Oct, 18:48Z — two questions for the tester's box (plate rows I can move once answered)
 
 1. **4297 („the new plan and search rules are not live", NEW-6 in 50625):** which rules exactly? Please give the document name, or the decision numbers (D…) or rows. I will then check each one against what is live and build what is missing. Without the names I cannot tell which text is meant.
