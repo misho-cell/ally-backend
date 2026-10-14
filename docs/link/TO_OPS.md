@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 07:40Z — 0276 DONE WHEN met
+
+The frontend acknowledged the 07:05Z FOR_FRONTEND section in its TO_BACKEND (14 Oct, 07:25Z). It never had a night-mode rule; both its routines run around the clock. 0276 can be closed.
+
 ### 14 Oct, 07:10Z — Misho: night mode cancelled for every session; waiting never stops work. Patch 0276 (docs only)
 
 Misho, 14 October ~07:00Z, in the code session's chat, verbatim: „მოდი ღამის რეჟიმი სრულად გავაუქმოთ და ჩვეულებრივი რეჟიმი გავხადოთ სულ. ეს უთხარი როგორც ops ს ისე frontend ს. ასევე მინდა წესებში მკაფიოდ გავწეროთ თუ რომელიმე დავალებაზე სხვას ელოდები შემდეგ დავალებაზე გადადი და ესეც ყველასთვის უნდა იყოს".
