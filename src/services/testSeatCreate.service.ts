@@ -6,6 +6,7 @@ import { saveSeatGraph } from './seatGraph.service';
 import { adjustTestAccountTokens } from './tokenWallet.service';
 import { checkRegistrationEligibility } from './inviteGate.service';
 import { grantWhateverFreePeriodIsOwed } from './auth.service';
+import { getOrCreateReferralCode } from './referralCode.service';
 
 /**
  * ROW 251 — CREATING A FICTIONAL SEAT, WITH THE ONE CHECK THAT IS NOT A
@@ -305,18 +306,11 @@ export async function inviterSeatReferralCode(inviterSeatId: string): Promise<st
       `${inviterSeatId} is not a test seat — only a fiction may stand in for an inviter`,
     );
   }
-  const code = row.rows[0].referral_code;
-  if (!code) {
-    /**
-     * Said out loud rather than falling through. A missing code would make the
-     * gate answer „referral_required" — which looks exactly like the code
-     * branch REFUSING, when in fact nothing was ever asked of it.
-     */
-    throw new SeatCreationRefused(
-      `seat ${inviterSeatId} has no referral code yet, so the code branch cannot be tested with it — pick another seat`,
-    );
-  }
-  return code;
+  // The tester's 58157: the newest seats are subscribed but had never had their
+  // code read, so they had none and the code branch could not be asked with
+  // them. A member's code is minted on first read; a seat's is minted here
+  // the same way, and still never leaves the server.
+  return row.rows[0].referral_code ?? getOrCreateReferralCode(inviterSeatId);
 }
 
 async function arriveByInvitation(
