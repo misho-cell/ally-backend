@@ -13,6 +13,8 @@ describe('a question asking leave to send is not a real question (0266)', () => 
   it.each([
     'ზურაბ მელაძე თამარ ხუციშვილს იცნობს. მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?',
     'გავუგზავნო თხოვნა ლევანს?',
+    // 58066, run 51426: the present tense.
+    'ზურაბ მელაძეს მასთან კავშირი აქვს. ვუგზავნი ზურაბს გაცნობის თხოვნას, რომ დაგაკავშიროს თამარ ხუციშვილთან?',
     'Levan knows her. Shall I ask him to introduce you?',
     'Do you want me to send him the request?',
   ])('„%s" asks leave', (reply) => {
