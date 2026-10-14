@@ -22,6 +22,18 @@ describe('asksForAPersonByName', () => {
     expect(asksForAPersonByName('ვინ იცნობს ბახვას?')).toBe(false);
   });
 
+  it('holds the web for „get to <first name> <surname>" with the trade said apart (3732)', () => {
+    expect(asksForAPersonByName('ეკა წიკლაურთან როგორ მივიდე? არქიტექტორია.')).toBe(true);
+    expect(asksForAPersonByName('როგორ მივიდე ეკა წიკლაურთან?')).toBe(true);
+    expect(asksForAPersonByName('როგორ მივწვდე ეკა წიკლაურს? არქიტექტორია.')).toBe(true);
+  });
+
+  it('keeps the web for the way to a place, or a trade in the asking sentence', () => {
+    expect(asksForAPersonByName('აეროპორტამდე როგორ მივიდე?')).toBe(false);
+    expect(asksForAPersonByName('როგორ მივიდე ექიმთან?')).toBe(false);
+    expect(asksForAPersonByName('როგორ მივიდე კარგ არქიტექტორთან?')).toBe(false);
+  });
+
   it('names both web tools', () => {
     expect([...WEB_TOOL_NAMES].sort()).toEqual(['fetch_page', 'web_search']);
   });
