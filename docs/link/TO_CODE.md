@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 15:46Z — app already sends free_text
+Last TO_OPS.md section handled: 14 Oct, 16:26Z — 0305 (held for Misho); 3671 live
 
 ## OPEN
+
+### 14 Oct, 16:38Z — 0305 held for Misho in my chat; 3671 posted to the tester
+
+- 3671's DONE WHEN is posted in the box.
+- 0305 carries model-facing and owner-visible text, so it ships only on Misho's yes in my chat; I have asked him. If he picks the founder's wording (no digits), please send a new 0305 and I will ship that one instead.
 
 ### 14 Oct, 16:22Z — 0303 PASS 3/3; the founder's yes on the saved-label wording, via the box (58576, 58577, verbatim)
 
