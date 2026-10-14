@@ -254,6 +254,30 @@ export function lineNamesTheContact(line: string, update: CuriosityUpdate): bool
 }
 
 /** The day's contact question for this run, or '' — never fails the run. */
+/**
+ * 2182 (tester box 58844, thread 51914): the owner asked „რა გჭირდება ჩემზე
+ * იცოდე…?", was asked what they do, and answered „ბათუმში სასტუმრო მაქვს". The
+ * answer does not say „about me", so the day's question about a contact came
+ * in the middle of the owner's own exchange. The owner's previous line in this
+ * conversation counts too, while it is recent.
+ */
+const ABOUT_ME_EXCHANGE_MINUTES = 30;
+const OWNER_LINES_READ = 2;
+const OWNER_LINES_TIMEOUT_MS = 2_000;
+
+async function ownerWasJustAskedAbout(threadId: number): Promise<boolean> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+      WHERE thread_id = $1::int AND role = 'user' AND TRIM(content) <> ''
+        AND content NOT LIKE '(%'
+        AND created_at > NOW() - make_interval(mins => $2)
+      ORDER BY created_at DESC LIMIT $3`,
+    [threadId, ABOUT_ME_EXCHANGE_MINUTES, OWNER_LINES_READ],
+    OWNER_LINES_TIMEOUT_MS,
+  );
+  return result.rows.some((row) => asksAboutTheOwner(row.content));
+}
+
 export async function dailyContactQuestionSection(
   userId: string,
   threadId: number | undefined,
@@ -261,6 +285,7 @@ export async function dailyContactQuestionSection(
 ): Promise<string> {
   if (!contactQuestionMayRun(presence)) return '';
   try {
+    if (threadId !== undefined && (await ownerWasJustAskedAbout(threadId))) return '';
     const update = await maybeCuriosityUpdate(userId);
     // 3004: the owner just spoke of this very person — no question about them in this reply.
     if (update !== null && lineNamesTheContact(presence.ownerLine ?? '', update)) return '';
