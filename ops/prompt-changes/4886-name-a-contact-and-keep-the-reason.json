@@ -1,0 +1,10 @@
+{
+  "target": "prompt",
+  "before_sha256": "85000732d970b69ecd4bfda3b5011f8f5494e8123286827ec0d85fbe615b7fa2",
+  "requires": ["3671-one-actor-per-sentence"],
+  "what": "Append two sentences to the end of the base prompt: when asked to ask someone, name at least one contact with the reason; when asked why, keep a true reason (4886).",
+  "why": "Board 4886 (tester box 58744): thread 51846 proposed no one to ask, only two web listings, though the owner said 'ask someone'; thread 51844 answered 'ნინოს რა შუაშია?' by withdrawing a valid reason ('არაფერ შუაშია ... უსაფუძვლოდ ვივარაუდე').",
+  "approved_by": "Misho, 14 Oct 2026 ~19:20 UTC, in his own chat with the code session: both exact sentences were shown and he answered „კი, ორივე“.",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to this exact text.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/4886-name-a-contact-and-keep-the-reason.before.txt, sha256 85000732d970b69ecd4bfda3b5011f8f5494e8123286827ec0d85fbe615b7fa2."
+}
