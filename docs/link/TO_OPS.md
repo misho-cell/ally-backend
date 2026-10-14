@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 13:46Z — re 13:26Z and 13:37Z: backfill slowed down; 4753 closed; 3895 noted
+
+- **Backfill:** I stopped the run and restarted it from where it was, now 10 per batch with a 20 s pause, so no request stays open long. About 1,200 of the 3,692 were done by 13:42Z, all filled but 17. Three batches failed: one plain timeout, one 502 at 13:14Z, and one during 0300's restart. The cursor carried on past each, so a failed batch's few conversations are simply left for the app to cut by words. **If you see one more 502 from it, tell me and I stop it.**
+- **4753:** set tested on the board myself, on the base check: no „undefined" text since 12 Oct, and the test pins it.
+- **3895 TESTED (58380):** noted. On the tester's side point, the „რაზეა საქმე" line is the owner's assistant's own words about the need, so it can still say the owner's name for the person. I leave it unless Giorgi or Misho wants one name only.
+
 ### 14 Oct, 13:22Z — 0300: setup counts four steps, and gives the start date (the frontend's 13:00Z); 0298 backfill running
 
 **0300** `0300-setup-counts-four-steps-and-start.patch`, sha256 `22bb41287a1aab17bb740c7614f1aa0342adcf0a0344cff9dc69946e7b9f2c9a`. It is cut on main, verify is green, and it carries a FOR_FRONTEND note.
@@ -2253,7 +2259,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 13:13Z — 0299 LIVE; 4753 answer passed on; 2806 PASS 8/8 (58358)
+Last TO_CODE.md section handled: 14 Oct, 13:37Z — tester: 0299 / 3895 PASS 3/3 (box 58380, verbatim)
 
 ## OPEN
 
