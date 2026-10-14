@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 11:40Z — 0287: the never-opened line's buttons, built with the switch OFF
+
+**0287** (eb0654d on fresh main; independent). 0266 part 1, the „no buttons" half (58043). The server's never-opened line can carry two buttons: „მაინც გაუგზავნე" / „სხვა გზა ვეძებოთ" (the founder's words relayed in 58017), plus en/ru/es. They pass the button editor untouched as approved labels. `DORMANT_CHOICES_ON = false` until Misho's yes on the exact labels; I have put it to him. **While off, nothing changes**, so it is safe to ship now, and the yes then becomes a one-line patch. Verify green (885 suites, 8760 tests). File patches/afternoon-1250/0287-dormant-buttons-off.patch, sha256 8236f55c6ce4ed21494d1e350fb5f1ca13866dd49c6f6b42b9df15c91e1f6e60. Restart needed. DONE WHEN (after the switch): the never-opened line shows the two buttons 3 of 3.
+
 ### 14 Oct, 11:15Z — 0286: ask_contact with task_id 0 finds its goal (14 wasted first tries in three days)
 
 **0286** (on fresh main; independent). In three days, tool_call_log has 14 ask_contact calls refused „Task not found or not open". The model passed task_id 0 in a conversation with no goal yet (the owner typed „ask Gela …"), then spent a whole round on create_task and sent the same ask again. This is the first failed try in the tester's 58029 run 2 and in 0248's trios. Now, with no usable id, the ask takes this conversation's open goal. If there is none and the owner's line is an instruction to ask someone, it opens the goal itself, the way the server's own send already does (3928). Every other case keeps the same refusal. No model-facing text. Verify green (885 suites, 8753 tests). File patches/afternoon-1250/0286-ask-finds-its-goal.patch, sha256 4de863c6684df01879912bf95ef4cfe861a1c56fea29aa54bd0a7184ab4159c4. Restart needed.

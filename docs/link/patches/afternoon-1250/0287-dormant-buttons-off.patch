@@ -1,0 +1,213 @@
+From eb0654dac27cff9ec4254f8b3a812270ad0078c6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 10:27:14 +0000
+Subject: [PATCH] 0266 part 1: the never-opened line can carry its two buttons
+ (switch off)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58043: the never-opened line („… აპი ჯერ არ გაუხსნია …
+მაინც გავუგზავნო?") came with no buttons, 2 of 2. The server's line now
+carries its buttons with it: „მაინც გაუგზავნე" / „სხვა გზა ვეძებოთ" (the
+founder's words relayed in box 58017), with en/ru/es beside them. They are
+listed as server labels, so the button editor leaves them alone.
+
+Owner-facing text (D44): DORMANT_CHOICES_ON is false until Misho's yes
+word for word. While off, nothing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anInstructionIsNotLeftUnsent.test.ts      |  5 +--
+ .../theNeverOpenedLineHasItsButtons.test.ts   | 33 +++++++++++++++++++
+ src/services/chat.service.ts                  | 25 ++++++++++----
+ src/services/dormantChoices.ts                | 31 +++++++++++++++++
+ src/services/ownerButtons.service.ts          |  3 +-
+ 5 files changed, 88 insertions(+), 9 deletions(-)
+ create mode 100644 src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts
+ create mode 100644 src/services/dormantChoices.ts
+
+diff --git a/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts b/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
+index 3b19e70..a7cde36 100644
+--- a/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
++++ b/src/services/__tests__/anInstructionIsNotLeftUnsent.test.ts
+@@ -87,8 +87,9 @@ describe('an owner instruction left unsent', () => {
+   it('says plainly that nothing went when the second chance sent nothing either', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     // §97: the server first asks the one named contact; only then the plain line.
+-    expect(chat).toContain('finalText = await serverSendsOrSaysSo(userId, threadId, runId);');
+-    expect(chat).toContain('return NOT_SENT_LINE[language];');
++    expect(chat).toContain('const line = await serverSendsOrSaysSo(userId, threadId, runId);');
++    expect(chat).toContain('finalText = line.text;');
++    expect(chat).toContain('return { text: NOT_SENT_LINE[language] };');
+     for (const line of Object.values(NOT_SENT_LINE)) {
+       expect(line).not.toMatch(/[—–]/u);
+       expect(line.length).toBeGreaterThan(0);
+diff --git a/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts b/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts
+new file mode 100644
+index 0000000..2273d7a
+--- /dev/null
++++ b/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts
+@@ -0,0 +1,33 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { allDormantLabels, DORMANT_CHOICES_ON, dormantChoices } from '../dormantChoices';
++
++/**
++ * 0266 part 1 (the tester's 58043): the never-opened line came with no buttons.
++ * The two labels are owner-facing and wait for Misho's yes word for word.
++ */
++describe('the never-opened line’s buttons', () => {
++  it('are off until Misho’s yes', () => {
++    expect(DORMANT_CHOICES_ON).toBe(false);
++    expect(dormantChoices('ka')).toBeUndefined();
++  });
++
++  it('are two, in the owner’s language, when on', () => {
++    expect(dormantChoices('ka', true)).toEqual(['მაინც გაუგზავნე', 'სხვა გზა ვეძებოთ']);
++    expect(dormantChoices('en', true)).toEqual(['Send it anyway', "Let's find another way"]);
++  });
++
++  it('pass the button editor untouched: they are approved text', () => {
++    const buttons = readFileSync(join(__dirname, '..', 'ownerButtons.service.ts'), 'utf8');
++    expect(buttons).toContain('...allDormantLabels()');
++    expect(allDormantLabels()).toHaveLength(8);
++  });
++
++  it('ride with the server’s never-opened line, and leave other buttons alone while off', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      'return { text: dormantSentence(introduced, language), choices: dormantChoices(language) };',
++    );
++    expect(chat).toContain('if (line.choices !== undefined) choices = line.choices;');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 97953c9..835ed2d 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -470,6 +470,7 @@ import {
+   ownerAsksForIntroduction,
+   USE_INTRODUCTION_REFUSAL,
+ } from './introInstruction';
++import { dormantChoices } from './dormantChoices';
+ import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
+ import {
+   dormantSentence,
+@@ -12571,16 +12572,24 @@ async function serverIntroductionOrNull(
+  * line; when it cannot (no single contact, a wall), the owner is told plainly
+  * that nothing went (the tester's 44367).
+  */
++interface ServerLine {
++  readonly text: string;
++  /** 0266 part 1: the never-opened line's buttons, while their switch is on. */
++  readonly choices?: string[];
++}
++
+ async function serverSendsOrSaysSo(
+   userId: string,
+   threadId: number,
+   runId: string,
+-): Promise<string> {
++): Promise<ServerLine> {
+   const language = runLang(runId);
+   const introduced = await serverIntroductionOrNull(userId, threadId, runId);
+   // 2311 (§140): never opened the app — the owner decides, nothing goes as a plain question.
+-  if (introduced !== null && 'dormant' in introduced) return dormantSentence(introduced, language);
+-  if (introduced !== null) return introSentSentence(introduced, language);
++  if (introduced !== null && 'dormant' in introduced) {
++    return { text: dormantSentence(introduced, language), choices: dormantChoices(language) };
++  }
++  if (introduced !== null) return { text: introSentSentence(introduced, language) };
+   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+     (err: unknown) => {
+       // eslint-disable-next-line no-console
+@@ -12593,13 +12602,15 @@ async function serverSendsOrSaysSo(
+   );
+   if (outcome !== null && outcome.result !== InstructedAskResult.NotSent) {
+     // 3928: one approved sentence per person named, in the owner's order.
+-    return outcome.people.map((person) => personLineForOwner(person, language)).join('\n');
++    return {
++      text: outcome.people.map((person) => personLineForOwner(person, language)).join('\n'),
++    };
+   }
+   // eslint-disable-next-line no-console
+   console.warn(
+     `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
+   );
+-  return NOT_SENT_LINE[language];
++  return { text: NOT_SENT_LINE[language] };
+ }
+ 
+ export function isHousekeepingRound(roundToolNames: readonly string[]): boolean {
+@@ -14260,7 +14271,9 @@ async function runToolLoop(
+     !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
+     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
+   ) {
+-    finalText = await serverSendsOrSaysSo(userId, threadId, runId);
++    const line = await serverSendsOrSaysSo(userId, threadId, runId);
++    finalText = line.text;
++    if (line.choices !== undefined) choices = line.choices;
+   }
+ 
+   // 1690 (A7): one old fact the search leaned on is confirmed with the owner, by the server.
+diff --git a/src/services/dormantChoices.ts b/src/services/dormantChoices.ts
+new file mode 100644
+index 0000000..8a7b797
+--- /dev/null
++++ b/src/services/dormantChoices.ts
+@@ -0,0 +1,31 @@
++import { RunLanguage } from './runLanguage';
++
++/**
++ * 0266 part 1 (the tester's 58043): the never-opened line („… აპი ჯერ არ
++ * გაუხსნია … მაინც გავუგზავნო?") came with no buttons, 2 of 2. These are the
++ * founder's words relayed through the box (58017), with the other languages
++ * offered beside them.
++ *
++ * OWNER-FACING (D44): needs Misho's yes word for word. OFF until then.
++ */
++export const DORMANT_CHOICES_ON = false;
++
++const DORMANT_CHOICES: Readonly<Record<RunLanguage, readonly [string, string]>> = {
++  ka: ['მაინც გაუგზავნე', 'სხვა გზა ვეძებოთ'],
++  en: ['Send it anyway', "Let's find another way"],
++  ru: ['Всё равно отправить', 'Поищем другой путь'],
++  es: ['Envíalo de todos modos', 'Busquemos otro camino'],
++};
++
++/** The never-opened line's two buttons; none while the switch is off. */
++export function dormantChoices(
++  language: RunLanguage,
++  on: boolean = DORMANT_CHOICES_ON,
++): string[] | undefined {
++  return on ? [...(DORMANT_CHOICES[language] ?? DORMANT_CHOICES.ka)] : undefined;
++}
++
++/** Every language's labels: approved text, so the button editor leaves them alone. */
++export function allDormantLabels(): string[] {
++  return Object.values(DORMANT_CHOICES).flat();
++}
+diff --git a/src/services/ownerButtons.service.ts b/src/services/ownerButtons.service.ts
+index cf32dfb..e77d16a 100644
+--- a/src/services/ownerButtons.service.ts
++++ b/src/services/ownerButtons.service.ts
+@@ -1,4 +1,5 @@
+ import Anthropic from '@anthropic-ai/sdk';
++import { allDormantLabels } from './dormantChoices';
+ import anthropic from '../config/anthropic';
+ import { EDITOR_MODEL, LANGUAGE_NAMES } from './askEditor.service';
+ import { laterChoice } from './askOpening';
+@@ -60,7 +61,7 @@ function serverLabels(): ReadonlySet<string> {
+     otherChoiceLabel(lang),
+     laterChoice(lang),
+   ]);
+-  return new Set(labels.map((label) => label.trim()));
++  return new Set([...labels, ...allDormantLabels()].map((label) => label.trim()));
+ }
+ 
+ /** The editor's buttons when they are a usable replacement for the ones sent; else null. */
+-- 
+2.43.0
+
