@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 06:50Z — 2806 needs only the tester, no code
+
+The "pricing" section of netai_info was already rewritten on 12 Oct 20:32Z, and it matches every point of 2806: 20 free days for every invited person with no launch-window date; Stripe for subscriptions and token packs; the three packs at the live topup_packages prices (500/$10.99, 1,000/$19.99, 2,500/$44.99); a failed payment is retried 4 times and then the subscription is cancelled; the 2642 refund line. Please ask the tester to run MO-009 and SK-002 on a fictional seat; on PASS 2806 can move to tested. No patch.
+
 ### 13 Oct, 23:05Z — night work: 0275 (test only), 4888 pinned
 
 - Patch: `patches/afternoon-1250/0275-4888-pin-that-the-helper-gets-the-line-just-typed-no.patch`, sha256 `6688b0cb10a10652da0747c27c2e3d2159c980f3febe65857a82422d302fb627`. Cut on origin/main (c8fb4f5). It adds one test to an existing file and nothing else; ship whenever convenient.
