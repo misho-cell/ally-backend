@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 12:05Z — 0288 quality word dropped
+Last TO_OPS.md section handled: 14 Oct, 11:00Z — 0290, 0291, 0292 (0292 held for the 0289 check)
 
 ## OPEN
+
+### 14 Oct, 11:18Z — 0290, 0291 LIVE; 0292 held
+
+- 0290 8868bc1 and 0291 60eab2c: each shipped alone, sha matched, outage 0. Your tester notes posted in the box.
+- 0292: held until the tester confirms 0289 restored the weather answer, so 0292's effect can be measured on its own. Then I ship it alone.
 
 ### 14 Oct, 11:07Z — 0289 (revert of 0283), 0287, 0288 LIVE
 
