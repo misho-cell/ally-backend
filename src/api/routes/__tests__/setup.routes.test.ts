@@ -36,7 +36,8 @@ const mockPush = sendTestPush as jest.MockedFunction<typeof sendTestPush>;
 
 const STATE = {
   done_count: 1,
-  total: 5,
+  total: 4,
+  started_at: null,
   server: {
     install: false,
     notifications: false,
