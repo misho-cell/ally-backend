@@ -7,7 +7,11 @@ import { sendSmsOtp, checkTwilioCode } from './twilio.service';
 import { createUserPhoneNode } from './contacts.service';
 import { runWelcomeStudy } from './welcomeStudy.service';
 import { queueRegistrationResearch } from './registrationResearch/registrationResearch.service';
-import { checkRegistrationEligibility, isLoginInviteOnlyEnabled } from './inviteGate.service';
+import {
+  checkRegistrationEligibility,
+  isLoginInviteOnlyEnabled,
+  subscribedInviter,
+} from './inviteGate.service';
 import { isReviewPhone } from './reviewAccess';
 import {
   findCohortByCode,
@@ -643,8 +647,14 @@ async function resolveLoginInvitation(
   if (!invite.referralCode?.trim() && !invite.referralPhone?.trim()) return null;
   const gate = await checkRegistrationEligibility(phone, invite.referralPhone, invite.referralCode);
   if (!gate.eligible || gate.inviterUserId === undefined) return null;
-  if (String(gate.inviterUserId) === String(userId)) return null;
-  return gate;
+  // 58019: this phone is registered, so the gate says „existing" with an inviter
+  // it never checked. The invitation must still be a subscribed member's.
+  const inviterUserId =
+    gate.mode === 'existing'
+      ? await subscribedInviter(invite.referralPhone, invite.referralCode)
+      : gate.inviterUserId;
+  if (inviterUserId === null || String(inviterUserId) === String(userId)) return null;
+  return { ...gate, inviterUserId };
 }
 
 /** Records the inviter once and grants the invitation's free days once. */

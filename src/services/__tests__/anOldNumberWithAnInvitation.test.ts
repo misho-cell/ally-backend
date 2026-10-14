@@ -1,5 +1,6 @@
 const dbQuery = jest.fn();
 const eligibility = jest.fn();
+const inviterCheck = jest.fn();
 const grant = jest.fn();
 
 jest.mock('../../db/postgres/client', () => ({
@@ -9,6 +10,7 @@ jest.mock('../../db/postgres/client', () => ({
 jest.mock('../inviteGate.service', () => ({
   __esModule: true,
   checkRegistrationEligibility: (...args: unknown[]) => eligibility(...args),
+  subscribedInviter: (...args: unknown[]) => inviterCheck(...args),
   isLoginInviteOnlyEnabled: () => Promise.resolve(true),
 }));
 jest.mock('../inviteCohorts.service', () => ({
@@ -111,6 +113,30 @@ describe('an old Ally number arriving with an invitation', () => {
       InvitationRequiredError,
     );
     expect(deletes).toBe(0);
+  });
+
+  /**
+   * 58019 (the founder's check, 14 Oct): the real gate answers „existing" for an
+   * old account's registered phone, with an inviter it never checked. The login
+   * must still find a subscribed member's code or number behind the invitation.
+   */
+  it('is refused on the code of a member who is not subscribed („existing", 58019)', async () => {
+    eligibility.mockResolvedValue({ eligible: true, mode: 'existing', inviterUserId: INVITER });
+    inviterCheck.mockResolvedValue(null);
+    await expect(
+      completeLogin('+995555000001', { referralCode: 'LAPSED1' }),
+    ).rejects.toBeInstanceOf(InvitationRequiredError);
+    expect(inviterCheck).toHaveBeenCalledWith(undefined, 'LAPSED1');
+    expect(grant).not.toHaveBeenCalled();
+    expect(deletes).toBe(0);
+  });
+
+  it('gets in on a subscribed member’s code under „existing", credited to that member', async () => {
+    eligibility.mockResolvedValue({ eligible: true, mode: 'existing', inviterUserId: 999 });
+    inviterCheck.mockResolvedValue(INVITER);
+    await completeLogin('+995555000001', { referralCode: 'TORNIKE20' });
+    const credit = dbQuery.mock.calls.find(([sql]) => String(sql).includes('COALESCE'));
+    expect(credit?.[1]).toEqual([OLD_ACCOUNT, INVITER]);
   });
 
   it('is refused on its own code', async () => {
