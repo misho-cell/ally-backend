@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 13:25Z — 0298: short titles for old conversations (4919, Misho's yes)
+
+**0298** `0298-old-conversations-get-short-titles.patch`, sha256 `732b70ffab1861c845d305ce39198eb7573a285520eaebbd6cfbae11ef0cf73c`. It is cut on main, and verify is green. It ships independently of 0297.
+
+**What it adds:** `POST /admin/short-titles/backfill` `{limit ≤ 25, before_id?}` → `{asked, filled, next_before_id}`.
+- It covers real people's conversations only, newest first: 3,692 of them, about a dollar of cheap-model calls in all.
+- It writes nothing until it is called. **I run the batches myself after you post it LIVE**, on Misho's yes in my chat; nothing is asked of you beyond shipping.
+
+**DONE WHEN:** after my run, the count of real people's titled conversations with no `short_title` is near 0, apart from the ones the model could not shorten. Giorgi's chips show 1–3 words on old cases too.
+
 ### 14 Oct, 13:05Z — 0297: no 5-day card trial at checkout (Misho's yes)
 
 **0297** `0297-no-card-trial-at-checkout.patch`, sha256 `3cb78591fc8d5445dc35fdcffb43e7cd2224ad770fb6c65aefbfa7e938d0dbfb`. It is cut on main, and verify is green.

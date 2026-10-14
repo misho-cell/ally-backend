@@ -1,0 +1,297 @@
+From 0c472bbcfb4e594a65f89e3e951c35890367743f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 12:42:14 +0000
+Subject: [PATCH] 4919: short titles for the conversations made before they
+ existed
+
+Misho, 14 October, in his own chat: yes to every item waiting on his
+word, filling the old conversations' short titles among them. Short
+titles were made for new conversations only (0261), so 3,692 of real
+people's conversations still showed a chip cut by words.
+
+POST /admin/short-titles/backfill fills them: up to 25 per call, newest
+first, real people's conversations only (no test seats), one cheap-model
+call per title, costed like any title. A cursor (before_id ->
+next_before_id) walks the table once, so a title the model cannot
+shorten is never asked again. writeShortTitles now says whether it
+wrote.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/admin.routes.ts                | 43 ++++++++++++
+ .../oldConversationsGetShortTitles.test.ts    | 70 +++++++++++++++++++
+ src/services/shortTitleBackfill.service.ts    | 69 ++++++++++++++++++
+ src/services/shortTitles.ts                   |  3 +-
+ src/services/threadTitle.service.ts           |  9 ++-
+ 5 files changed, 190 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/oldConversationsGetShortTitles.test.ts
+ create mode 100644 src/services/shortTitleBackfill.service.ts
+
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index 479b4a9..e8e5c3b 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -331,10 +331,13 @@ import {
+   eveningCardForAdmin,
+   snoozeSeatEveningCard,
+ } from '../../services/adminEveningCard.service';
++import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
+ 
+ /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
+ const MAX_SEAT_USER_ID = 2_147_483_647;
+ const adminRouter = Router();
++/** A short-title batch is up to 25 model calls, run one after another. */
++const SHORT_TITLE_BATCHES_PER_MINUTE = 6;
+ /** The Axel export is heavy and needed once: a few builds a minute at most. */
+ const AXEL_EXPORTS_PER_MINUTE = 3;
+ /** The longest team name a staff account carries. */
+@@ -7291,4 +7294,44 @@ adminRouter.get('/goals/:id/wave-ranking', async (req: Request, res: Response) =
+   }
+ });
+ 
++/**
++ * 4919 — short titles for conversations made before they existed (Misho's yes,
++ * 14 October). One bounded batch per call, newest first, real people's
++ * conversations only; call again with `before_id: next_before_id` until it is
++ * null. Each title is one cheap-model call, costed like any title.
++ *
++ *   POST /admin/short-titles/backfill   { "limit": 25, "before_id": 51200 }
++ *   200 { asked, filled, next_before_id }
++ *   400 limit or before_id out of range
++ */
++adminRouter.post(
++  '/short-titles/backfill',
++  rateLimit({ windowMs: 60_000, max: SHORT_TITLE_BATCHES_PER_MINUTE }),
++  body('limit').optional().isInt({ min: 1, max: BACKFILL_MAX_BATCH }),
++  body('before_id').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID }),
++  async (req: Request, res: Response) => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({
++        success: false,
++        error: `limit is 1-${BACKFILL_MAX_BATCH}; before_id is a thread id`,
++      });
++      return;
++    }
++    try {
++      const { limit, before_id } = req.body as { limit?: number; before_id?: number };
++      const batch = await backfillShortTitles(
++        Number(limit ?? BACKFILL_MAX_BATCH),
++        before_id === undefined ? null : Number(before_id),
++      );
++      // eslint-disable-next-line no-console
++      console.log(`[short-titles] backfill: asked ${batch.asked}, filled ${batch.filled}`);
++      res.status(200).json({ success: true, data: batch });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[POST /admin/short-titles/backfill]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not fill the short titles' });
++    }
++  },
++);
++
+ export default adminRouter;
+diff --git a/src/services/__tests__/oldConversationsGetShortTitles.test.ts b/src/services/__tests__/oldConversationsGetShortTitles.test.ts
+new file mode 100644
+index 0000000..87f6b83
+--- /dev/null
++++ b/src/services/__tests__/oldConversationsGetShortTitles.test.ts
+@@ -0,0 +1,70 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { writeShortTitles } from '../threadTitle.service';
++import { backfillShortTitles } from '../shortTitleBackfill.service';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../threadTitle.service', () => ({ __esModule: true, writeShortTitles: jest.fn() }));
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockWrite = writeShortTitles as jest.MockedFunction<typeof writeShortTitles>;
++
++function rows(...list: Array<{ id: number; user_id: number; title: string }>): never {
++  return { rows: list } as never;
++}
++
++/** 4919, Misho's yes of 14 October: the conversations made before short titles existed. */
++describe('short titles for old conversations', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('shortens each title of a batch and counts what was written', async () => {
++    mockQuery.mockResolvedValueOnce(
++      rows(
++        { id: 30, user_id: 7, title: 'ადვოკატი სააპელაციო საჩივრისთვის' },
++        { id: 20, user_id: 8, title: 'Photographer for a wedding in Batumi' },
++      ),
++    );
++    mockWrite.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
++
++    await expect(backfillShortTitles(2, null)).resolves.toEqual({
++      asked: 2,
++      filled: 1,
++      next_before_id: 20,
++    });
++    expect(mockWrite).toHaveBeenCalledWith(
++      '7',
++      30,
++      'ადვოკატი სააპელაციო საჩივრისთვის',
++      'ადვოკატი სააპელაციო საჩივრისთვის',
++    );
++  });
++
++  it('asks only real people’s untitled conversations, older than the cursor, newest first', async () => {
++    mockQuery.mockResolvedValueOnce(rows());
++
++    await backfillShortTitles(25, 51200);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('t.short_title IS NULL');
++    expect(String(sql)).toContain('NOT EXISTS (SELECT 1 FROM test_seats');
++    expect(String(sql)).toContain('ORDER BY t.id DESC');
++    expect(params).toEqual([25, 51200]);
++  });
++
++  it('ends the walk when a batch comes back short', async () => {
++    mockQuery.mockResolvedValueOnce(rows({ id: 5, user_id: 7, title: 'ექიმი კარდიოლოგი' }));
++    mockWrite.mockResolvedValueOnce(true);
++
++    await expect(backfillShortTitles(25, null)).resolves.toMatchObject({ next_before_id: null });
++  });
++});
++
++describe('POST /admin/short-titles/backfill', () => {
++  const ROUTES = readFileSync(join(__dirname, '../../api/routes/admin.routes.ts'), 'utf8');
++
++  it('takes a bounded batch and a cursor, and answers with the next cursor', () => {
++    expect(ROUTES).toContain("'/short-titles/backfill'");
++    expect(ROUTES).toContain("body('limit').optional().isInt({ min: 1, max: BACKFILL_MAX_BATCH })");
++    expect(ROUTES).toContain('await backfillShortTitles(');
++  });
++});
+diff --git a/src/services/shortTitleBackfill.service.ts b/src/services/shortTitleBackfill.service.ts
+new file mode 100644
+index 0000000..6d337d7
+--- /dev/null
++++ b/src/services/shortTitleBackfill.service.ts
+@@ -0,0 +1,69 @@
++import { query } from '../db/postgres/client';
++import { isPlaceholderThreadTitle } from './runLanguage';
++import { writeShortTitles } from './threadTitle.service';
++
++/**
++ * 4919, Misho's yes of 14 October („ჩემგან ყველა დავალებაზე კია და გააკეთე
++ * ყველა"): the short titles were made for new conversations only, so every
++ * older one showed a cut-off chip. This fills them, a bounded batch per call,
++ * newest first, for real people's conversations only — a fictional seat's are
++ * the tester's and new ones get theirs anyway.
++ *
++ * A cursor (`beforeId`) walks the table once: a title the model cannot shorten
++ * is left for the client to cut, never asked again by the next batch.
++ */
++// One call holds an HTTP request open while its titles are made one by one:
++// 25 at about a second each stays well inside a proxy timeout.
++export const BACKFILL_MAX_BATCH = 25;
++const BACKFILL_QUERY_TIMEOUT_MS = 8_000;
++
++export interface BackfillBatch {
++  readonly asked: number;
++  readonly filled: number;
++  /** Pass back as `before_id` for the next batch; null when nothing older is left. */
++  readonly next_before_id: number | null;
++}
++
++interface UntitledRow {
++  readonly id: number;
++  readonly user_id: number;
++  readonly title: string;
++}
++
++async function threadsWithoutShortTitles(
++  limit: number,
++  beforeId: number | null,
++): Promise<UntitledRow[]> {
++  const result = await query<UntitledRow>(
++    `SELECT t.id, t.user_id, t.title
++       FROM threads t
++      WHERE t.short_title IS NULL
++        AND t.title IS NOT NULL
++        AND ($2::int IS NULL OR t.id < $2::int)
++        AND NOT EXISTS (SELECT 1 FROM test_seats s WHERE s.user_id = t.user_id)
++      ORDER BY t.id DESC
++      LIMIT $1`,
++    [limit, beforeId],
++    BACKFILL_QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** One batch: each title shortened in turn, so a batch never bursts the model. */
++export async function backfillShortTitles(
++  limit: number,
++  beforeId: number | null,
++): Promise<BackfillBatch> {
++  const rows = await threadsWithoutShortTitles(limit, beforeId);
++  let filled = 0;
++  for (const row of rows) {
++    if (isPlaceholderThreadTitle(row.title)) continue;
++    if (await writeShortTitles(String(row.user_id), row.id, row.title, row.title)) filled += 1;
++  }
++  const last = rows[rows.length - 1];
++  return {
++    asked: rows.length,
++    filled,
++    next_before_id: rows.length < limit || last === undefined ? null : last.id,
++  };
++}
+diff --git a/src/services/shortTitles.ts b/src/services/shortTitles.ts
+index cf87371..d33fac7 100644
+--- a/src/services/shortTitles.ts
++++ b/src/services/shortTitles.ts
+@@ -6,7 +6,8 @@
+  * names the user did not give), by the same cheap model, after it is set.
+  *
+  * MODEL-FACING (D44): Misho's yes, 13 Oct 19:05 UTC in the code session's chat
+- * („ჩემგან ყვეკაფერზე კია", §140). New titles only; existing ones are not back-filled.
++ * („ჩემგან ყვეკაფერზე კია", §140). Older conversations are filled by
++ * POST /admin/short-titles/backfill (Misho's yes, 14 Oct).
+  */
+ export const SHORT_TITLES_ON = true;
+ 
+diff --git a/src/services/threadTitle.service.ts b/src/services/threadTitle.service.ts
+index 5968871..4d82b6b 100644
+--- a/src/services/threadTitle.service.ts
++++ b/src/services/threadTitle.service.ts
+@@ -213,13 +213,14 @@ export async function generateThreadTitle(
+ /**
+  * 4919: the two short titles made from the full one, written and broadcast.
+  * Best-effort like the title: on any failure the client shortens the full title.
++ * True when both were written.
+  */
+-async function writeShortTitles(
++export async function writeShortTitles(
+   userId: string,
+   threadId: number,
+   title: string,
+   firstMessage: string,
+-): Promise<void> {
++): Promise<boolean> {
+   try {
+     const { default: anthropic } = await import('../config/anthropic');
+     const response = await anthropic.messages.create(
+@@ -240,11 +241,13 @@ async function writeShortTitles(
+     }).catch(() => undefined);
+     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
+     const short = parseShortTitles(raw);
+-    if (short === null) return;
++    if (short === null) return false;
+     await updateThreadShortTitles(threadId, short.short_title, short.one_word_title);
+     emitThreadUpdated(userId, { id: threadId, ...short });
++    return true;
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.error(`[title] short titles failed for thread ${threadId}:`, (err as Error).message);
++    return false;
+   }
+ }
+-- 
+2.43.0
+
