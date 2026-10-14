@@ -470,6 +470,7 @@ import {
   ownerAsksForIntroduction,
   USE_INTRODUCTION_REFUSAL,
 } from './introInstruction';
+import { dormantChoices } from './dormantChoices';
 import { OTHER_PART_REFUSAL, questionCarriesAnotherPart } from './ownPart';
 import {
   dormantSentence,
@@ -12600,16 +12601,24 @@ async function serverIntroductionOrNull(
  * line; when it cannot (no single contact, a wall), the owner is told plainly
  * that nothing went (the tester's 44367).
  */
+interface ServerLine {
+  readonly text: string;
+  /** 0266 part 1: the never-opened line's buttons, while their switch is on. */
+  readonly choices?: string[];
+}
+
 async function serverSendsOrSaysSo(
   userId: string,
   threadId: number,
   runId: string,
-): Promise<string> {
+): Promise<ServerLine> {
   const language = runLang(runId);
   const introduced = await serverIntroductionOrNull(userId, threadId, runId);
   // 2311 (§140): never opened the app — the owner decides, nothing goes as a plain question.
-  if (introduced !== null && 'dormant' in introduced) return dormantSentence(introduced, language);
-  if (introduced !== null) return introSentSentence(introduced, language);
+  if (introduced !== null && 'dormant' in introduced) {
+    return { text: dormantSentence(introduced, language), choices: dormantChoices(language) };
+  }
+  if (introduced !== null) return { text: introSentSentence(introduced, language) };
   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
@@ -12622,13 +12631,15 @@ async function serverSendsOrSaysSo(
   );
   if (outcome !== null && outcome.result !== InstructedAskResult.NotSent) {
     // 3928: one approved sentence per person named, in the owner's order.
-    return outcome.people.map((person) => personLineForOwner(person, language)).join('\n');
+    return {
+      text: outcome.people.map((person) => personLineForOwner(person, language)).join('\n'),
+    };
   }
   // eslint-disable-next-line no-console
   console.warn(
     `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
   );
-  return NOT_SENT_LINE[language];
+  return { text: NOT_SENT_LINE[language] };
 }
 
 export function isHousekeepingRound(roundToolNames: readonly string[]): boolean {
@@ -14289,7 +14300,9 @@ async function runToolLoop(
     !toolNamesUsed.some((name) => ACTED_BY_NAME.has(name)) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''))
   ) {
-    finalText = await serverSendsOrSaysSo(userId, threadId, runId);
+    const line = await serverSendsOrSaysSo(userId, threadId, runId);
+    finalText = line.text;
+    if (line.choices !== undefined) choices = line.choices;
   }
 
   // 1690 (A7): one old fact the search leaned on is confirmed with the owner, by the server.
