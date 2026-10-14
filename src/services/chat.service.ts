@@ -1549,7 +1549,11 @@ const SET_REMINDER_TOOL: AnthropicTool = {
     "owner's phone; you are not woken. Works in any conversation, with or without a goal, " +
     'from 1 minute to 7 days. When the owner asks to be reminded, call this: never say you ' +
     'cannot remind, and never suggest a phone alarm instead. Then tell the owner in one short ' +
-    'line when the reminder will come.',
+    'line when the reminder will come. ' +
+    // The tester's 58580 (run 51813; Misho's yes, 14 Oct): „…next week", no hour, and the
+    // run said it could not set a reminder for a specific day.
+    'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 7 ' +
+    'days away, set it for 7 days from now and tell the owner it will come then and why.',
   input_schema: {
     type: 'object',
     properties: {
