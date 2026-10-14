@@ -16,7 +16,9 @@ const ROUTE = readFileSync(
 describe('the debit waits for the answer, not the answer for the debit', () => {
   it('starts without being awaited and is handed back with the result', () => {
     expect(CHAT).toContain('const afterReply: Promise<void> = (async (): Promise<void> => {');
-    expect(CHAT).toMatch(/shareText !== undefined && \{ shareText \}\),\s*afterReply,/u);
+    expect(CHAT).toMatch(
+      /shareText !== undefined && \{ shareText \}\),\s*\.\.\.\(ownerDecidesNext && \{ ownerDecidesNext: true \}\),\s*afterReply,/u,
+    );
     const debit = CHAT.indexOf('debitRun(payerId, runId)');
     expect(debit).toBeGreaterThan(CHAT.indexOf('const afterReply: Promise<void>'));
   });

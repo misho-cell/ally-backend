@@ -243,6 +243,8 @@ export function statusAfterRun(
   // nothing, however chatty the acknowledgement was (ticket 6 B2: thread 8556
   // stayed needs_you because its reply ended with a question).
   if (pendingAsk) return 'waiting';
+  // 0312's status fault (58942): the server said nothing went to anyone, so nobody else is awaited.
+  if (result.ownerDecidesNext === true) return 'needs_you';
   // Ticket 8 task 2(b): the badge means "this thread waits for the user",
   // nothing else — and only a WORK item can wait for the user. A plain
   // conversation whose last reply happens to end with a question is finished
