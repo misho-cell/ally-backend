@@ -82,3 +82,22 @@ describe('rateLimit keyBy: device', () => {
     expect(hit(mw, sameIp, 3)).toBe(2);
   });
 });
+
+describe('rateLimit: each limiter has its own budget (4927, 4928)', () => {
+  it('two limiters with the same window and cap do not share one count', () => {
+    const routes = rateLimit({ windowMs: 60_000, max: 2 });
+    const chainPosition = rateLimit({ windowMs: 60_000, max: 2 });
+    const user = { headers: {}, ip: '10.0.0.7', user: { userId: '4927' } } as unknown as Request;
+
+    expect(hit(chainPosition, user, 3)).toBe(2);
+    expect(hit(routes, user, 2)).toBe(2);
+  });
+
+  it('one limiter used on several routes still counts them together', () => {
+    const shared = rateLimit({ windowMs: 60_000, max: 2 });
+    const user = { headers: {}, ip: '10.0.0.8', user: { userId: '4928' } } as unknown as Request;
+
+    expect(hit(shared, user, 1)).toBe(1);
+    expect(hit(shared, user, 2)).toBe(1);
+  });
+});

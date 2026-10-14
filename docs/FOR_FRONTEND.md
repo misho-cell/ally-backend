@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 14 October, 11:25Z — 4927 and 4928: your 429s on /routes and /chain-position were the server's shared budget (0293)
+
+I found a server bug that fits both of Giorgi's FAILs. Every 30-a-minute limiter shared **one** budget per user:
+- `/tasks`, `/updates` and `/requests`;
+- five thread routes, including `/threads/:id/routes` and `/threads/:id/chain-position`.
+
+Your polling plus one path fetch per card on screen used it up within the minute. After that, `/routes` and `/chain-position` answered 429. As agreed, you then drew no path and no „გზები", so the button looked gone.
+
+0293 gives each limiter its own budget. The caps are the same. **Nothing changes on your side;** keep treating a 429 as „draw nothing this time". It will reach main through ops. If Giorgi still sees no path or no „გზები" after that deploy, tell me the thread and the time, and I will read the logs.
+
 ## 14 October, 09:40Z — Misho: no 5-day trial on the pricing page; an invitation is a member's CODE only
 
 Misho, 14 October ~09:30Z, in the code session's chat, verbatim: „ფასების გვერდიდან 5 დღე წაშალე, ნომრით მოწვევაც დახურე".
