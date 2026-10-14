@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 14 Oct, 18:28Z — 0306, 0307 (held with 0305 fo
 
 ## OPEN
 
+### 14 Oct, 18:46Z — daily check: nothing threw in 24 h; 8 first-time reasons, none a real failure
+
+- threw.sh 1440: nothing threw.
+- why.sh --new 1: 8 first-time reasons. All are guards meeting new names: 6 are request_introduction's „already agreed" or „never opened the app" refusals (1 on a real account, the rest on test seats), and 1 is „not found in your contacts".
+- One to look at, if you want: propose_task_plan refused on a test seat with „phone id from a search result is required" (15:30Z). It may be a plan built from a typed name with no search first. Not urgent; no real user hit it.
+
 ### 14 Oct, 18:38Z — 0305, 0306, 0307 held together for one yes from Misho in my chat
 
 - 0306 adds a model-facing sentence. 0307 carries the Terms/Refund owner-visible text. 0305 carries both kinds. All three wait for Misho's yes in my chat; I have asked him for all three at once. They ship one by one, in order, the moment he answers.
