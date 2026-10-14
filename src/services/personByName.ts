@@ -62,7 +62,26 @@ function namesATrade(line: string): boolean {
   return tradeNamedIn(line) !== null;
 }
 
+/**
+ * 3732 (tester box 58845, threads 51916-17): „ეკა წიკლაურთან როგორ მივიდე?
+ * არქიტექტორია." went to the web. „მივიდე" (get to) was not a reach verb, and
+ * the trade in the NEXT sentence, which only says what Eka does, read as the
+ * line asking for a trade. „მივიდე" alone also asks the way to a place, so it
+ * counts only beside a first name and surname in „-თან": two words, the person.
+ */
+const GET_TO_A_NAMED_PERSON_RE =
+  /(?<![\p{L}\p{M}])\p{L}+\s+\p{L}+თან\s+(?:როგორ\s+)?მივიდე(?![\p{L}\p{M}])|(?<![\p{L}\p{M}])მივიდე\s+\p{L}+\s+\p{L}+თან(?![\p{L}\p{M}])/u;
+
+const SENTENCE_END_RE = /(?<=[.!?…])\s+/u;
+
+function asksToMeetOrReach(sentence: string): boolean {
+  return MEET_OR_REACH_RE.test(sentence) || GET_TO_A_NAMED_PERSON_RE.test(sentence);
+}
+
 /** Does the owner's line ask to meet or reach somebody it names, not a trade? */
 export function asksForAPersonByName(ownerLine: string): boolean {
-  return MEET_OR_REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
+  // The trade is read only in the sentence that asks; another sentence describes the person.
+  return ownerLine
+    .split(SENTENCE_END_RE)
+    .some((sentence) => asksToMeetOrReach(sentence) && !namesATrade(sentence));
 }
