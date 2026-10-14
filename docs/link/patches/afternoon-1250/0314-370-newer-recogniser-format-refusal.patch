@@ -1,0 +1,79 @@
+From 437397516179cdea0771169cf7ef2cbf6889cbb1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 20:27:34 +0000
+Subject: [PATCH] =?UTF-8?q?370:=20the=20newer=20recogniser's=20=E2=80=9Eno?=
+ =?UTF-8?q?t=20compatible"=20refusal=20of=20verbose=5Fjson=20drops=20to=20?=
+ =?UTF-8?q?plain=20json?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho said yes to switching SPEECH_MODEL to gpt-4o-transcribe. That model refuses response_format=verbose_json with „… is not compatible with model …“, which refusedTheFormat did not read as a format refusal, so every voice message would have thrown (recognizer_failed) after the switch. It now reads „not compatible“/„incompatible“ too; the switch waits for this to be LIVE.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aVoiceIsNotAFailureToHearIt.test.ts        | 18 ++++++++++++++++++
+ src/services/speech.service.ts                 | 13 +++++++++++--
+ 2 files changed, 29 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/aVoiceIsNotAFailureToHearIt.test.ts b/src/services/__tests__/aVoiceIsNotAFailureToHearIt.test.ts
+index a6ff4d5..cf16b63 100644
+--- a/src/services/__tests__/aVoiceIsNotAFailureToHearIt.test.ts
++++ b/src/services/__tests__/aVoiceIsNotAFailureToHearIt.test.ts
+@@ -19,6 +19,7 @@ import {
+   languageHint,
+   MAX_AUDIO_BYTES,
+   MAX_SECONDS_PER_DAY,
++  refusedTheFormat,
+ } from '../speech.service';
+ 
+ const mockClient = openaiClient as jest.MockedFunction<typeof openaiClient>;
+@@ -796,3 +797,20 @@ describe('the Georgian primer', () => {
+     expect(await primerFor('en')).toBe('Hello. This is an ordinary sentence in English.');
+   });
+ });
++
++/** 370: the newer recogniser's own refusal of the verbose form drops to plain json. */
++describe('the verbose form refused by the newer recogniser', () => {
++  it('reads „not compatible" as a refusal of the format', () => {
++    expect(
++      refusedTheFormat(
++        "400 response_format 'verbose_json' is not compatible with model 'gpt-4o-transcribe'. Use 'json' or 'text' instead.",
++      ),
++    ).toBe(true);
++    expect(refusedTheFormat("400 Unsupported value: 'response_format'")).toBe(true);
++  });
++
++  it('does not read a refusal of something else as one', () => {
++    expect(refusedTheFormat("400 Language 'ka' is not supported.")).toBe(false);
++    expect(refusedTheFormat('429 Rate limit reached')).toBe(false);
++  });
++});
+diff --git a/src/services/speech.service.ts b/src/services/speech.service.ts
+index 793eaa8..3a52def 100644
+--- a/src/services/speech.service.ts
++++ b/src/services/speech.service.ts
+@@ -216,8 +216,17 @@ function refusedTheLanguage(message: string): boolean {
+  */
+ const formatsRefusedByModel = new Set<string>();
+ 
+-function refusedTheFormat(message: string): boolean {
+-  return /response_format/i.test(message) && /not supported|unsupported|invalid/i.test(message);
++/**
++ * 370 (Misho's yes to the newer recogniser, 14 Oct): gpt-4o-transcribe refuses
++ * the verbose form as „response_format 'verbose_json' is not compatible with
++ * model …". „not compatible" was missing here, so on that model every voice
++ * message would have thrown instead of dropping to plain json.
++ */
++export function refusedTheFormat(message: string): boolean {
++  return (
++    /response_format/i.test(message) &&
++    /not supported|unsupported|invalid|not compatible|incompatible/i.test(message)
++  );
+ }
+ 
+ /**
+-- 
+2.43.0
+

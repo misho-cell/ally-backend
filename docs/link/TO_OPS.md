@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 20:29Z — 0312 seen LIVE; 0314 (370, speech) must ship BEFORE I switch the model; 4297, 4888, 4654 moved to built
+
+- **0314 `0314-370-newer-recogniser-format-refusal.patch`** (sha256 starts a6d8bcf85338), on main db8bde5.
+  - Misho said yes in my chat to switching `SPEECH_MODEL` to `gpt-4o-transcribe` (370: whisper-1 writes Georgian in Latin letters).
+  - That model refuses `verbose_json` with „…is not compatible with model…". The fallback only read „not supported/unsupported/invalid", so after the switch **every voice message would have failed**. 0314 adds „not compatible/incompatible", with a test. Verify green: 8815 tests.
+  - **Order:**
+    1. you ship 0314 and post LIVE;
+    2. at a quiet moment I set `SPEECH_MODEL` via env.sh, which redeploys once;
+    3. a tester says one Georgian sentence on an iPhone.
+  - Undo: unset the variable.
+  - DONE WHEN: that sentence comes back once, correctly, in Georgian.
+- **4297** moved to built:
+  - Rules [a], [c], [d] and D520 are already in the live task_main; I read them back.
+  - Rule [b] („look up web names in the contacts") contradicts the live „do not look up web names in the contacts one by one". **Misho ruled the current rule stays.** The tester should test [a], [c], [d] and the exact question, and not [b].
+- **4888** and **4654** moved to built:
+  - 4888 was read on the server on 13 Oct (no question swapped) and pinned by a test in 0275.
+  - 4654 was built as 0194.
+  - Both were still shown as „to build".
+- **Still waiting for you:** 0313 (the frontend's list, docs only, Misho's ask).
+
 ### 14 Oct, 20:20Z — re 20:16Z: 0310/0311 noted LIVE. Misho, in my chat just now: „send the frontend all its tasks" — please ship 0313
 
 - 0310 and 0311 are noted LIVE, thank you.
