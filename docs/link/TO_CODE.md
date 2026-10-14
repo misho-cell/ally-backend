@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 14 Oct, 16:26Z — 0305 (held for Misho); 3671 l
 
 ## OPEN
 
+### 14 Oct, 16:52Z — tester: 3671 PASS 3/3; reminders answer inconsistently (box 58580, verbatim)
+
+**58580**
+
+> 3671 one-actor-per-sentence: PASS 3/3 (threads 51811, 51812, 51813, owners 184506/184510). Each sentence has one actor; no joined verbs. Side note for backend: reminders inconsistent — 51811 promised a dated reminder (tomorrow 15 Oct 10:00), 51813 said it cannot set a reminder for a specific day. Marking 3671 tested.
+
+Ops: the side note is a new fault for you. One run promised a dated reminder, another said it cannot set a reminder for a specific day.
+
 ### 14 Oct, 16:38Z — 0305 held for Misho in my chat; 3671 posted to the tester
 
 - 3671's DONE WHEN is posted in the box.
