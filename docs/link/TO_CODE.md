@@ -9,6 +9,34 @@ Last TO_OPS.md section handled: 14 Oct, 19:28Z — 4886 prompt rule LIVE; fronte
 
 ## OPEN
 
+### 14 Oct, 19:53Z — tester on 0309 (new fault), 2909, 1687, 1817, 4658, 1917 (box 58847–58852, verbatim)
+
+The tester marked 1817 and 1917 tested. 0309 passes on 2 threads with **one new fault** (51846: the owner is asked to repeat and the thread goes to done). 2909 passes on shape; the plan content is NOT YET. 1687 is PART: the introduction ask has no signature line. 4658 is API PART PASS; the phone part goes to the frontend.
+
+**58847**
+
+> 0309 (efb785f, owner's yes never taken for the question or the goal): PASS on 2 threads, 1 new fault. 51844 (seat 184773): owner 'კი, ჰკითხე ნინოს' when Nino is not on Netai -> status needs_you 'შენი პასუხი სჭირდება' (no longer 'waiting'); title now 'გიორგისთვის მზარეული'; typed stop -> 'შევაჩერე: გიორგისთვის კარგი მზარეულის პოვნა თბილისში.' (names the goal, not the yes). NEW FAULT 51846 (seat 184775), same situation: reply 'კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.' and the thread went to status done with no status line — the owner is told to repeat himself and the goal looks finished. Also on 51844 the reply calls it 'ტექნიკური შეზღუდვა, რომელიც არ იცვლება მეორედ ცდით' — internal tone.
+
+**58848**
+
+> 2909 one plan turn: SHAPE PASS 5/5, CONTENT NOT YET. Five fresh owners 184845/47/49/51/53, each with one fitting contact on Netai (lawyer, accountant, electrician, dentist, photographer); threads 51918-22. All five: one 'working…' line, then ONE plan message ending '…დავიწყო?' with the three buttons (ვადასტურებ / შევცვალოთ / სხვა, მე დავწერ); no step bubble repeats it. But 4 of 5 plans say only '<name>-ის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო.' — who, but not what will be asked or why that person (only 51920 says what). The dentist plan (51921) also puts a web clinic with its phone number inside the plan line. Left as built until the plan line says what and why.
+
+**58849**
+
+> 1687 signature line on every outgoing ask: PART. 3 asks sent from the 2909 plans (owners 184845/47/49 -> helpers 184846/48/50, incoming threads 51923-25): each ends with the server line '<name>-ის ასისტენტი, <name>-ის სახელით' (no leading dash). But the introduction request in 2185 (bridge thread 51879) has NO such line — it ends 'დაეხმარები? 🤝'. If introduction asks count as outgoing asks, they need the line too. Small wording note: 51925 asks the accountant 'დამეთანხმები, …-ის შპს-ში ბუღალტრად მუშაობას?' — owner asked 'whom should I ask', the ask jumps to a job offer.
+
+**58850**
+
+> 1817 unopened answer stays on top: PASS (seat 184845). Goal 51918 got the helper's answer at 19:45:54Z (relay good: 'ლაშა ცერცვაძე: ლევან გელაშვილს ურჩევს, … უძრავ ქონებაზე მუშაობს.'); the owner then wrote in another conversation (51926, last message 19:48:04Z, newer). GET /threads still lists 51918 first, seen_at null, status needs_you. Marking tested.
+
+**58851**
+
+> 4658 incoming request in its own conversation: API PART PASS 4/4 — the introduction request to 184807 came as its own thread 51879 (type incoming_request) although the seat had an open chat 51877; the three asks to 184846/48/50 came as threads 51923-25 (type incoming_ask); none landed inside an existing chat. The phone parts (tapping the notification opens the request; easy to find on phone) go into Lika's file. Left as built.
+
+**58852**
+
+> 1917 the 'seven questions': CONFIRMED + PASS. A fresh fictional seat (184854) has 5 profile questions in GET /profile/questions (what you do and where; what you can help with; what you look for now; topics not to ask about; when/how to be reached), each with a reason. Answered one with POST /profile/feedback free_text -> recorded, and the list shows it answered with the text. Registration asks only the name, by design (code session 9 Oct). So checklist point 8 should read: 5 profile questions, asked later, not at sign-up. Note: the answer does not fill the profile fields (job_position / city stay empty). Marking tested.
+
 ### 14 Oct, 19:37Z — tester 2182 NOT YET, 3732 FAIL (box 58844–58845, verbatim); 4886 re-run asked
 
 4720: PASS 3/3 (box 58840); the tester marked it tested. The gap they note: the source line has no date ("as of …", D759).
