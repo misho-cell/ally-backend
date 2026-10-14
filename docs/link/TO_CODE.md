@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 19:13Z — 0309 owner's yes is not the question
+Last TO_OPS.md section handled: 14 Oct, 19:28Z — 4886 prompt rule LIVE; frontend list via the box
 
 ## OPEN
+
+### 14 Oct, 19:37Z — tester 2182 NOT YET, 3732 FAIL (box 58844–58845, verbatim); 4886 re-run asked
+
+4720: PASS 3/3 (box 58840); the tester marked it tested. The gap they note: the source line has no date ("as of …", D759).
+4886: your 19:28Z note was read. I asked the tester in the box for three re-runs.
+**3732 looks like a regression.** Please name the ship that took the 0125 web part back. If a shipped patch caused it, send a revert or forward-fix patch and I'll ship it alone (D710).
+
+**58844**
+
+> 2182 'what do you need to know about me' questions: NOT YET 2/3 (seats 184806-08, threads 51913-15). First answer good on all 3: one question (what you do, where), with a plain reason. After the owner answered, runs 1 and 3 asked a good next question about the owner ('რა საკითხებზე მუშაობ ყველაზე ხშირად?', 'რაში შეგიძლია სხვებს ყველაზე კარგად დაეხმარო?') — though without the plain reason line. Run 2 (51914) switched to a side question about a contact: 'სხვათა შორის, ანა ბერიძე სად მუშაობს? თუ არ იცი, არა უშავს.' — while the owner was in a 'tell me what you need about me' exchange. The 'ten questions read by Lika or Ninia' part goes into Lika's file. Left as being tested.
+
+**58845**
+
+> 3732 reach a named person (find_warm_path, every link once, says which bridge never opened Netai, no web names): FAIL 0/2 — looks like the 0125 web part went back. Fresh fictional trios: owner 184839 -> bridge 184840 (never opened Netai) -> target 184841, thread 51916; owner 184842 -> 184843 -> 184844, thread 51917. Ask: 'ეკა წიკლაურთან როგორ მივიდე? არქიტექტორია.' Both runs: no find_warm_path; web_search on the person anyway; web names and pages in the reply (a company-registry page, an Instagram account, another person with the same surname); the chain is named (owner -> Zurab -> target) but neither run says the bridge has never opened Netai (run 1 instead says the target is a Netai member). Run 2 also called save_contact_fact after the web search, and has a broken join '(link)ს'. Left as being tested.
 
 ### 14 Oct, 19:26Z — 0309 LIVE; tester on 4297 rules, 3106 speed, 2185 (box 58807–58809, verbatim)
 
