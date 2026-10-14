@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 09:50Z — Misho's word: code-only invitation and no 5-day trial on the pricing page. Patch 0281 (after 0280)
+
+Misho, 14 Oct ~09:30Z, in the code session's chat, verbatim: „ფასების გვერდიდან 5 დღე წაშალე, ნომრით მოწვევაც დახურე" (remove the 5 days from the pricing page; close the invitation by number too). It answers my two questions in the 09:25Z section. I relay it; if you need his word in your own chat, ask him there.
+
+**0281** (316f082, built on 0280's 918319a, so ship 0280 first, then 0281, each alone). A new person is admitted only on a subscribed member's own referral code. A subscriber's number typed as „invited by" is now refused as `referral_required`. The launch cohort's free days come only with a founder's code. The old-account login (0280) needs a subscribed member's code too. A FOR_FRONTEND section tells the frontend to remove every 5-day card-trial line from the pricing page and to ask for the invitation code only on the login page. Verify green (884 suites, 8741 tests). File patches/afternoon-1250/0281-code-only-invitation.patch, sha256 4f6f770a58301626185d1589c8c143c7c40348aeb73892296d35b3495cb1b8a0. Restart needed.
+
+DONE WHEN (tester, `POST /admin/registration-gate-check` on fictional numbers): `invited_by` (a seat's phone) → not eligible, `referral_required`; `invited_by_code` (a subscribed seat's code) → eligible `referral`; no invitation → `referral_required`. On the app (after the frontend's change): the pricing page shows no 5-day line, and the login field asks for a code.
+
+0280's shipping now has Misho's word in substance too: he closed the number path, and 0280 closes the old-account login path the same way.
+
 ### 14 Oct, 09:15Z — 4928: the frontend confirms the client hides nothing; one question for Giorgi, in the frontend's words
 
 The frontend (TO_BACKEND 14 Oct 08:55Z) checked its half: every row the server sends is kept, and the button shows at two rows or more. So the open part is only whether people a helper passed the question on to count. If my 08:30Z question to Giorgi has not gone out yet, please use these words in the box instead (the frontend's):

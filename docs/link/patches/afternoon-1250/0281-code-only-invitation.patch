@@ -1,0 +1,294 @@
+From 316f082d4fb44dc4149a63bbc3899eaf93ecba1a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 09:16:39 +0000
+Subject: [PATCH] =?UTF-8?q?=C2=A7141:=20an=20invitation=20is=20a=20member'?=
+ =?UTF-8?q?s=20code;=20a=20typed=20number=20no=20longer=20invites?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 14 Oct ~09:30Z, in the code session's chat: „ფასების გვერდიდან
+5 დღე წაშალე, ნომრით მოწვევაც დახურე".
+
+Server: the gate admits a new person only on a subscribed member's own
+referral code. A subscriber's number typed as „invited by" is refused as
+referral_required (58019: anyone who knew a member's number got in
+without that member doing anything). The launch cohort's free days come
+only with a founder's code. The old-account login (0280) needs a
+subscribed member's code too. A typed number still credits its owner
+where the door is open for another reason.
+
+docs/FOR_FRONTEND.md: remove every 5-day card-trial line from the pricing
+page, and ask for the invitation code only on the login page.
+
+Ships after 0280 (built on it).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 10 +++++
+ .../anOldNumberWithAnInvitation.test.ts       |  2 +-
+ .../__tests__/inviteGate.service.test.ts      | 23 +++-------
+ .../nobodyJoinsWithoutAnInvitation.test.ts    | 25 ++++-------
+ .../__tests__/onlyAPersonsOwnCode.test.ts     |  5 ++-
+ src/services/auth.service.ts                  |  4 +-
+ src/services/inviteGate.service.ts            | 44 +++++--------------
+ 7 files changed, 43 insertions(+), 70 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index d93f504..06d87c1 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,16 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 09:40Z — Misho: no 5-day trial on the pricing page; an invitation is a member's CODE only
++
++Misho, 14 October ~09:30Z, in the code session's chat, verbatim: „ფასების გვერდიდან 5 დღე წაშალე, ნომრით მოწვევაც დახურე".
++
++**1. Pricing page (yours).** `src/app/pricing/page.tsx` tells everyone „Try Pro free for 5 days" / „სცადე Pro 5 დღე უფასოდ", plus the 5-day CTA and its note, from `card_trial_days`. Please remove every 5-day card-trial line in all languages, and show the plain subscribe button and price instead. Keep the invitation line („Joined with an invitation? Your first 20 days are free"). Netai is invite-only, so nobody should read about a trial without an invitation.
++
++**2. „Invited by" field (yours).** The login page asks for „Friend's code or number" / „მეგობრის კოდი ან ნომერი". From patch 0281 (server) a typed NUMBER no longer invites anybody; only the member's own referral code does. Please make the field ask for the invitation code only (e.g. „მოწვევის კოდი" / "Invitation code"), and keep sending it as `referralCode`. A number typed there is refused with `reason: "referral_required"`, the same answer as no invitation.
++
++**3. Server side (0281, with 0280 before it):** `POST /auth/register` and the old-account login (`POST /auth/complete-login`) admit only on a subscribed member's own code. No contract change: same routes, same fields, same refusal reasons (`referral_required`, `referrer_not_subscribed`).
++
+ ## 14 October, 08:25Z — G-030 / 4928 reopened: why „გზები" vanished, from the server's side
+ 
+ Giorgi (box 57916, phone, build 7f75be4): „გზები" is gone from the chat header, even on a case with several people.
+diff --git a/src/services/__tests__/anOldNumberWithAnInvitation.test.ts b/src/services/__tests__/anOldNumberWithAnInvitation.test.ts
+index 6931130..bff7eb0 100644
+--- a/src/services/__tests__/anOldNumberWithAnInvitation.test.ts
++++ b/src/services/__tests__/anOldNumberWithAnInvitation.test.ts
+@@ -126,7 +126,7 @@ describe('an old Ally number arriving with an invitation', () => {
+     await expect(
+       completeLogin('+995555000001', { referralCode: 'LAPSED1' }),
+     ).rejects.toBeInstanceOf(InvitationRequiredError);
+-    expect(inviterCheck).toHaveBeenCalledWith(undefined, 'LAPSED1');
++    expect(inviterCheck).toHaveBeenCalledWith('LAPSED1');
+     expect(grant).not.toHaveBeenCalled();
+     expect(deletes).toBe(0);
+   });
+diff --git a/src/services/__tests__/inviteGate.service.test.ts b/src/services/__tests__/inviteGate.service.test.ts
+index 8dcdd5b..9e4f381 100644
+--- a/src/services/__tests__/inviteGate.service.test.ts
++++ b/src/services/__tests__/inviteGate.service.test.ts
+@@ -203,12 +203,13 @@ describe('checkRegistrationEligibility', () => {
+     expect(result).toEqual({ eligible: false, reason: 'referral_required' });
+   });
+ 
+-  it('accepts a referral from a subscribed user and returns the inviter id', async () => {
++  // §141 (Misho, 14 Oct: „ნომრით მოწვევაც დახურე"): a subscriber's number is no invitation.
++  it('refuses a subscriber’s number typed as the inviter: only a code invites (§141)', async () => {
+     setWorld({ ...CLOSED_WORLD, referrerId: 167712 });
+ 
+     const result = await checkRegistrationEligibility('+995599000001', '599 44 44 20');
+ 
+-    expect(result).toEqual({ eligible: true, mode: 'referral', inviterUserId: 167712 });
++    expect(result).toEqual({ eligible: false, reason: 'referral_required' });
+   });
+ 
+   it('matches phones by DIGITS, never by exact spelling (10 Aug: the door rejected real subscribers)', async () => {
+@@ -216,18 +217,8 @@ describe('checkRegistrationEligibility', () => {
+ 
+     await checkRegistrationEligibility('+995599000001', '+995 599 44 44 20');
+ 
+-    // The referrer lookup must compare regexp-stripped digits on both sides —
+-    // prod UserPhone spellings vary ('+995…', '995…', spaced), and exact
+-    // matching locked out every real subscriber.
+-    const referrerCall = mockQuery.mock.calls.find(
+-      ([sql]) =>
+-        (sql as string).includes('FROM "UserPhone" up') &&
+-        (sql as string).includes('subscription_status = ANY'),
+-    );
+-    expect(referrerCall).toBeDefined();
+-    expect(referrerCall?.[0]).toContain("regexp_replace(up.phone, '\\D', '', 'g') = $1");
+-    expect(referrerCall?.[1]?.[0]).toBe('995599444420');
+-
++    // prod UserPhone spellings vary ('+995…', '995…', spaced); exact matching
++    // once locked out every real subscriber.
+     // The registered-phone check uses the same digits contract.
+     const registeredCall = mockQuery.mock.calls.find(([sql]) =>
+       (sql as string).includes('SELECT "userId" FROM "UserPhone"'),
+@@ -269,12 +260,12 @@ describe('checkRegistrationEligibility', () => {
+     expect(aliasCall?.[1]?.[2]).toBe(15000);
+   });
+ 
+-  it('rejects a referral that is not a subscribed user', async () => {
++  it('refuses a typed number that is nobody’s', async () => {
+     setWorld(CLOSED_WORLD);
+ 
+     const result = await checkRegistrationEligibility('+995599000001', '+995599999999');
+ 
+-    expect(result).toEqual({ eligible: false, reason: 'referrer_not_subscribed' });
++    expect(result).toEqual({ eligible: false, reason: 'referral_required' });
+   });
+ 
+   it('treats a blank referral as absent', async () => {
+diff --git a/src/services/__tests__/nobodyJoinsWithoutAnInvitation.test.ts b/src/services/__tests__/nobodyJoinsWithoutAnInvitation.test.ts
+index 04bfa7f..a83f61a 100644
+--- a/src/services/__tests__/nobodyJoinsWithoutAnInvitation.test.ts
++++ b/src/services/__tests__/nobodyJoinsWithoutAnInvitation.test.ts
+@@ -104,18 +104,12 @@ describe('nobody joins without an invitation (live switches)', () => {
+     });
+   });
+ 
+-  /**
+-   * TODAY'S BEHAVIOUR, pinned so a change to it is a decision and not an accident:
+-   * a subscriber's NUMBER typed as „invited by" still opens the door with
+-   * personal-code-only on (the app's field asks for „a friend's code or number").
+-   * Whether it should is put to Misho (58019).
+-   */
+-  it('still admits a subscriber’s number typed as the inviter (open question, 58019)', async () => {
++  // §141 (Misho, 14 Oct: „ნომრით მოწვევაც დახურე"): only the member's own code invites.
++  it('refuses a subscriber’s number typed as the inviter (§141)', async () => {
+     live({ subscriberByPhone: 501 });
+     expect(await checkRegistrationEligibility(NEW_PHONE, '+995555000501')).toEqual({
+-      eligible: true,
+-      mode: 'referral',
+-      inviterUserId: 501,
++      eligible: false,
++      reason: 'referral_required',
+     });
+   });
+ });
+@@ -123,17 +117,16 @@ describe('nobody joins without an invitation (live switches)', () => {
+ describe('the inviter an old account’s login needs (58019)', () => {
+   it('is the subscribed owner of the code', async () => {
+     live({ codeOwner: { id: 501, subscription_status: 'trialing' } });
+-    expect(await subscribedInviter(undefined, 'TORNIKE20')).toBe(501);
++    expect(await subscribedInviter('TORNIKE20')).toBe(501);
+   });
+ 
+-  it('is nobody for a code whose owner is not subscribed, even with a subscriber’s number', async () => {
+-    live({ codeOwner: { id: 7, subscription_status: 'canceled' }, subscriberByPhone: 501 });
+-    expect(await subscribedInviter('+995555000501', 'LAPSED1')).toBeNull();
++  it('is nobody for a code whose owner is not subscribed', async () => {
++    live({ codeOwner: { id: 7, subscription_status: 'canceled' } });
++    expect(await subscribedInviter('LAPSED1')).toBeNull();
+   });
+ 
+-  it('is the subscriber behind a typed number, and nobody for nothing typed', async () => {
++  it('is nobody when no code is given (a typed number is no invitation, §141)', async () => {
+     live({ subscriberByPhone: 501 });
+-    expect(await subscribedInviter('+995555000501')).toBe(501);
+     expect(await subscribedInviter()).toBeNull();
+   });
+ });
+diff --git a/src/services/__tests__/onlyAPersonsOwnCode.test.ts b/src/services/__tests__/onlyAPersonsOwnCode.test.ts
+index c0d80c5..14c77c1 100644
+--- a/src/services/__tests__/onlyAPersonsOwnCode.test.ts
++++ b/src/services/__tests__/onlyAPersonsOwnCode.test.ts
+@@ -92,8 +92,9 @@ describe('what stays open', () => {
+    * the launch this exists for.
+    */
+   it('the launch cohort still grants its twenty days', () => {
+-    expect(SOURCE).toContain('const launch = launchCohortFor(attribution);');
+-    const at = SOURCE.indexOf('const launch = launchCohortFor(attribution);');
++    // §141: carried by the code's owner, the only invitation left.
++    expect(SOURCE).toContain('const launch = launchCohortFor(codeOwner?.userId);');
++    const at = SOURCE.indexOf('const launch = launchCohortFor(codeOwner?.userId);');
+     expect(SOURCE.slice(at, at + 120)).not.toContain('personalCodeOnly');
+   });
+ 
+diff --git a/src/services/auth.service.ts b/src/services/auth.service.ts
+index 1ca5692..74bebcf 100644
+--- a/src/services/auth.service.ts
++++ b/src/services/auth.service.ts
+@@ -650,9 +650,7 @@ async function resolveLoginInvitation(
+   // 58019: this phone is registered, so the gate says „existing" with an inviter
+   // it never checked. The invitation must still be a subscribed member's.
+   const inviterUserId =
+-    gate.mode === 'existing'
+-      ? await subscribedInviter(invite.referralPhone, invite.referralCode)
+-      : gate.inviterUserId;
++    gate.mode === 'existing' ? await subscribedInviter(invite.referralCode) : gate.inviterUserId;
+   if (inviterUserId === null || String(inviterUserId) === String(userId)) return null;
+   return { ...gate, inviterUserId };
+ }
+diff --git a/src/services/inviteGate.service.ts b/src/services/inviteGate.service.ts
+index d1504cb..9e2189e 100644
+--- a/src/services/inviteGate.service.ts
++++ b/src/services/inviteGate.service.ts
+@@ -149,22 +149,6 @@ async function passesSocialProof(variants: string[]): Promise<boolean> {
+   return subscribed >= MIN_SUBSCRIBED_OWNERS || total >= MIN_TOTAL_OWNERS;
+ }
+ 
+-async function findSubscribedReferrer(referralPhone: string): Promise<number | null> {
+-  const digits = phoneDigits(referralPhone);
+-  if (!digits) return null;
+-  const result = await query<{ id: number }>(
+-    `SELECT u.id
+-     FROM "UserPhone" up
+-     JOIN "User" u ON u.id = up."userId"
+-     WHERE regexp_replace(up.phone, '\\D', '', 'g') = $1
+-       AND u."deletedAt" IS NULL
+-       AND u.subscription_status = ANY($2)
+-     LIMIT 1`,
+-    [digits, SUBSCRIBED_STATUSES],
+-  );
+-  return result.rows[0]?.id ?? null;
+-}
+-
+ /**
+  * Attribution lookup for the referral-earnings chain: any registered,
+  * non-deleted user counts as an inviter. Intentionally more lenient than the
+@@ -197,7 +181,7 @@ function hasReferralPhone(referralPhone?: string): referralPhone is string {
+ 
+ /**
+  * The member whose invitation this is, by registration's own rule: a code whose
+- * owner is subscribed, or else a subscriber's number. Null for anything else.
++ * owner is subscribed. Null for anything else; a typed number is never one (§141).
+  *
+  * 58019 (the founder's check, 14 Oct): an old Ally account logging in with an
+  * invitation was admitted on ANY account's code or number. The gate answers
+@@ -205,13 +189,9 @@ function hasReferralPhone(referralPhone?: string): referralPhone is string {
+  * lenient attribution lookup, which asks no subscription. The login now needs
+  * the inviter this function finds, exactly as a new registration does.
+  */
+-export async function subscribedInviter(
+-  referralPhone?: string,
+-  referralCode?: string,
+-): Promise<number | null> {
++export async function subscribedInviter(referralCode?: string): Promise<number | null> {
+   const codeOwner = referralCode?.trim() ? await findUserByReferralCode(referralCode) : null;
+-  if (codeOwner !== null) return codeOwner.subscribed ? codeOwner.userId : null;
+-  return hasReferralPhone(referralPhone) ? findSubscribedReferrer(referralPhone) : null;
++  return codeOwner?.subscribed === true ? codeOwner.userId : null;
+ }
+ 
+ /**
+@@ -331,7 +311,8 @@ export async function checkRegistrationEligibility(
+    * lists": it is that a door and a reward can wear the same word, and the
+    * only way to tell is to read what the thing actually does.
+    */
+-  const launch = launchCohortFor(attribution);
++  // §141: only a member's code invites, so only a code owner can carry the launch days.
++  const launch = launchCohortFor(codeOwner?.userId);
+   if (launch) {
+     return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
+   }
+@@ -402,13 +383,12 @@ export async function checkRegistrationEligibility(
+     return { eligible: false, reason: 'referrer_not_subscribed' };
+   }
+ 
+-  if (hasReferralPhone(referralPhone)) {
+-    const inviterUserId = await findSubscribedReferrer(referralPhone);
+-    if (inviterUserId !== null) {
+-      return { eligible: true, mode: 'referral', inviterUserId };
+-    }
+-    return { eligible: false, reason: 'referrer_not_subscribed' };
+-  }
+-
++  /**
++   * §141 — Misho, 14 Oct 2026, in the code session's chat: „ნომრით მოწვევაც დახურე".
++   * A subscriber's NUMBER typed as „invited by" no longer opens the door: anyone who
++   * knew a member's number got in without that member doing anything (58019). Only
++   * the member's own code invites. A typed number still credits its owner where the
++   * door is open for another reason (attribution above).
++   */
+   return { eligible: false, reason: 'referral_required' };
+ }
+-- 
+2.43.0
+
