@@ -5,9 +5,35 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 09:35Z — board housekeeping: 4753 and 4754 are built (on main), 3301 is a duplicate
+Last TO_OPS.md section handled: 14 Oct, 09:25Z — re your 08:40Z: 58018/58019 answered with facts; patch 0280 (one gap closed); two questions for Misho
 
 ## OPEN
+
+### 14 Oct, 09:08Z — tester on 0278 (leak again, 1 of 2), 0279 (behaviour PASS, speed FAIL), 4754 PASS 6/6, 4753 question (box 58029, 58031, verbatim)
+
+**58029**
+
+> [tester #19] Two LIVE fixes tested, 08:45–08:52Z:
+> 0278 / 4655 (own part only) — 1 of 2, NOT a pass. Trios: owners 184446 / 184476, helpers opened the app first (one message each), Levan holds Nino.
+> - Run 1 (thread 51386): Gela got one plain question only („ხომ არ იცი კარგი სანტექნიკოსი"), no word of the others. Owner was asked for a reason, I gave one, then Levan got one intro request (thread 51391). PASS.
+> - Run 2 (thread 51387): Gela got BOTH parts: „იცი კარგი სანტექნიკოსი  და თუ შეგიძლია, ლევანს სთხოვე, Owner 4655-2 ნინოს გააცნოს." (Gela thread 51389). In this run the first ask_contact failed (Task not found or not open), then create_task + ask_contact sent the full line. Levan's intro then arrived fine (51392). Leak again.
+> - Side: run 2 also asked the owner „which Nino" though only Levan's Nino fits.
+> 0279 / 3106 (weather) — no search_by_tag way_in row 3 of 3, one honest weather answer 3 of 3 (web_search only), seats 184443-45, threads 51349-51. Time 18.0 / 19.2 / 19.1 s, so the 12 s target is missed 3 of 3 (search shown first, answer after). Behaviour PASS, speed FAIL.
+> Not marking 4655 or 3106 tested. Goals left as they are.
+
+**58031**
+
+> [tester #19] 4754 (plan as written text, fix 91c5951) — PASS 6 of 6 → TESTED. Fresh owners 184480-88 + 184490/92 (threads 51395-51400): every propose_task_plan ok and the plan reached the owner as a written sentence; no raw JSON in any reply.
+> Side note (not this task): 4 of 6 plan lines say only „…ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო." — they do not say WHAT will be asked (51396 did: „…გაარკვიოს, იცნობს თუ არა ვინმეს ბანკში…"). The owner approves without knowing the question.
+> 4753 („undefined seconds ago"): which guard prints that time, and which line triggers it? Give me the sentence and I run it 3 times.
+
+Ops:
+- **0278 is not reverted, despite my 08:36Z line, and here is why.** The run-2 leak came through create_task + ask_contact after a failed ask_contact. That path is not the one 0278 switched on, and with CG off it was not checked either. Reverting would not stop this leak; it would only bring back the 01:30Z refusal of the plain question (run 1 passed with it on). So 0278 did not make this worse. Please close the create_task + ask_contact path, and tell me if you see it otherwise; on your word I revert. Misho is told.
+- 0279: no way_in lookup 3/3, honest answer 3/3; 18.0 / 19.2 / 19.1 s, so the 12 s target is missed. Your note said you look at the model's turns next.
+- 4754: tester PASS 6/6. The side note (plan lines that do not say WHAT will be asked) is a new one for you.
+- 4753: the tester asks which guard prints the time and which sentence triggers it. Please give me the sentence and I pass it on.
+- 0280 and your two questions: put to Misho in my chat. 0280 ships only on his yes. REVIEW_PHONE: I will not read or print it; if you need its count, say so.
+- 3070 (08:55Z): 0267 is LIVE (1877f4e) on Misho's yes.
 
 ### 14 Oct, 09:01Z — 0266 and 0267 LIVE on Misho's yes in my chat
 
