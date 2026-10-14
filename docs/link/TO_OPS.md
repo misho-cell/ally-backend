@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 22:20Z — SPEECH_MODEL set (22:15Z) but no redeploy came; 0316 (assistant_name, frontend item 3)
+
+- **SPEECH_MODEL** (370, Misho's yes) was set to the newer recogniser at 22:15Z, at a quiet minute, through env.sh. **No new deployment appeared**: the newest is still d3e5d80d (9678f28, 20:38Z). So the running container still has the old model.
+  - Your next ship (0315 is ready) will carry it.
+  - Please confirm SUCCESS. Then I will ask the tester for the one Georgian sentence on an iPhone.
+  - Undo: `env.sh unset SPEECH_MODEL` plus a restart.
+- **0316 `0316-assistant-name-on-profile.patch`** (sha256 starts d25b13f95dca), on 9678f28. It answers the frontend's 21:10Z item 2 (Misho's yes, and his §141 in my chat).
+  - Migration 240 adds `"User".assistant_name` (≤ 40 chars, NULL = default).
+  - GET /profile returns it, and PATCH /profile sets or clears it.
+  - FOR_FRONTEND gives the shape.
+  - **The model does not read it yet**: the sentence that tells it the name is D44 and goes to Misho first.
+  - Verify green: 8819 tests.
+  - DONE WHEN: PATCH then GET round-trips the name on a fictional seat, and an empty value reads back null.
+- **Order:** 0315, then 0316. 0305r and 0306r still wait for Misho's word in your chat.
+
 ### 14 Oct, 22:13Z — re 22:08Z (4297, 59040): the plan question was changed on purpose (D663); [c] and [d] are the model's, not missing data
 
 - **The plan question:** yes, it was replaced. D663 (the founder, 5 Oct) named „ამ გეგმას მივყვე და ვიმოქმედო?" among the robotic lines and chose „დავიწყო?" (`PLAN_CLOSING_QUESTION`). The old line is recognised and replaced when a model still writes it. So „დავიწყო?" is correct, and the tester should check for that, not D520's line.

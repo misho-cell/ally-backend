@@ -1,0 +1,196 @@
+From f474c7a90e079bdc125f008f2516b195e757ae04 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 22:18:23 +0000
+Subject: [PATCH] The owner names their own assistant: assistant_name on
+ GET/PATCH /profile (stored, not yet read by the model)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's item 3 (Misho's yes, 14 Oct): „ჩემი ასისტენტი“. Migration 240 adds "User".assistant_name (≤ 40 chars, NULL = default). GET /profile returns it; PATCH /profile sets it, and an empty value or null goes back to the default (profileFieldValue). The model is not told the name yet: that sentence is model-facing and waits for Misho's yes on the text (D44). FOR_FRONTEND carries the shape.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 22 +++++++++++
+ .../theOwnerNamesTheirAssistant.test.ts       | 39 +++++++++++++++++++
+ src/api/routes/profile.routes.ts              | 34 ++++++++++++++--
+ .../migrations/240_assistant_name.sql         |  6 +++
+ 4 files changed, 98 insertions(+), 3 deletions(-)
+ create mode 100644 src/api/routes/__tests__/theOwnerNamesTheirAssistant.test.ts
+ create mode 100644 src/db/postgres/migrations/240_assistant_name.sql
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 9824e7d..dd0d044 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,28 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 22:18Z — re your 21:10Z, item 2: `assistant_name` (0316, on a branch until ops ships it)
++
++**Shape:** the existing `/profile` routes, with one field added.
++
++- `GET /profile` now carries `"assistant_name": string | null`. `null` means the default name.
++- `PATCH /profile` with `{"assistant_name": "ნეტა"}` sets it, and `{"assistant_name": null}` or `""` goes back to the default.
++- The value is trimmed, with at most **40 characters**. Longer is a 400 („არასწორი ველები"), as for the other fields.
++- Success is `200 {"success": true, "data": {"updated": 1}}`, the same as today.
++
++```json
++PATCH /profile
++{ "assistant_name": "ნეტა" }
++→ 200 { "success": true, "data": { "updated": 1 } }
++
++GET /profile
++→ 200 { "success": true, "data": { "name": "…", "assistant_name": "ნეტა", … } }
++```
++
++**Your question, when the model uses it:** from the owner's next message, in every conversation. The name is read when each answer's prompt is built, so a new conversation is not needed.
++
++**But not yet.** Telling the model its name is a new model-facing sentence, and that needs Misho's yes on the exact text (D44). I am asking him now. Until then the field is stored and shown, and the model does not read it. Your screen can be built against it today.
++
+ ## 14 October, 18:26Z — Misho: what is still yours; and 33 of your rows are now „built" on the board
+ 
+ **My miss, fixed now.** You wrote „built #N" for these rows, and I had not moved them on the board. So the tester's plate kept showing them as still to build. They are all `built` now, and the tester and Giorgi will check them:
+diff --git a/src/api/routes/__tests__/theOwnerNamesTheirAssistant.test.ts b/src/api/routes/__tests__/theOwnerNamesTheirAssistant.test.ts
+new file mode 100644
+index 0000000..0e318dd
+--- /dev/null
++++ b/src/api/routes/__tests__/theOwnerNamesTheirAssistant.test.ts
+@@ -0,0 +1,39 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { ASSISTANT_NAME_MAX_CHARS, profileFieldValue } from '../profile.routes';
++
++const routes = readFileSync(join(__dirname, '..', 'profile.routes.ts'), 'utf8');
++const migration = readFileSync(
++  join(__dirname, '..', '..', '..', 'db', 'postgres', 'migrations', '240_assistant_name.sql'),
++  'utf8',
++);
++
++/** The frontend's item 3 (Misho's yes, 14 Oct): „ჩემი ასისტენტი" — the owner names their assistant. */
++describe('the owner names their own assistant', () => {
++  it('is read on GET /profile and written by PATCH /profile', () => {
++    expect(routes).toContain('u.assistant_name,');
++    expect(routes).toContain(
++      "{ key: 'assistant_name', column: 'assistant_name', maxLen: ASSISTANT_NAME_MAX_CHARS },",
++    );
++    expect(routes).toContain("body('assistant_name')");
++  });
++
++  it('keeps a name trimmed and within its limit', () => {
++    expect(profileFieldValue('assistant_name', '  ნეტა  ', ASSISTANT_NAME_MAX_CHARS)).toBe('ნეტა');
++    expect(
++      profileFieldValue('assistant_name', 'ა'.repeat(60), ASSISTANT_NAME_MAX_CHARS)?.length,
++    ).toBe(ASSISTANT_NAME_MAX_CHARS);
++    expect(migration).toContain(`length(assistant_name) <= ${ASSISTANT_NAME_MAX_CHARS}`);
++  });
++
++  it('goes back to the default on an empty name or null', () => {
++    expect(profileFieldValue('assistant_name', '   ', ASSISTANT_NAME_MAX_CHARS)).toBeNull();
++    expect(profileFieldValue('assistant_name', null, ASSISTANT_NAME_MAX_CHARS)).toBeNull();
++  });
++
++  it('still never clears the owner’s own name', () => {
++    expect(profileFieldValue('name', '', 80)).toBeUndefined();
++    expect(profileFieldValue('name', null, 80)).toBeUndefined();
++    expect(profileFieldValue('employer', '', 120)).toBe('');
++  });
++});
+diff --git a/src/api/routes/profile.routes.ts b/src/api/routes/profile.routes.ts
+index 7807236..36c8d8a 100644
+--- a/src/api/routes/profile.routes.ts
++++ b/src/api/routes/profile.routes.ts
+@@ -48,6 +48,8 @@ interface ProfileData {
+   readonly city: string | null;
+   /** #504: one link the person chose to show — LinkedIn, a website. */
+   readonly link: string | null;
++  /** The owner's own name for their assistant; null means the default. */
++  readonly assistant_name: string | null;
+   readonly subscription_tier: string;
+   readonly subscription_status: string;
+   readonly trial_ends_at: string | null;
+@@ -76,14 +78,35 @@ interface ProfileData {
+ // user can see and correct what the product knows about them" — a data-access
+ // right, not a nicety). Photo upload needs a storage decision and is not here.
+ 
++/** The frontend's item 3: the owner's own name for their assistant (migration 240). */
++export const ASSISTANT_NAME_MAX_CHARS = 40;
++
+ const EDITABLE_FIELDS = [
+   { key: 'name', column: 'name', maxLen: 80 },
+   { key: 'employer', column: 'employer', maxLen: 120 },
+   { key: 'job_position', column: '"jobPosition"', maxLen: 120 },
+   { key: 'city', column: 'city', maxLen: 80 },
+   { key: 'link', column: 'profile_link', maxLen: MAX_LINK_CHARS },
++  { key: 'assistant_name', column: 'assistant_name', maxLen: ASSISTANT_NAME_MAX_CHARS },
+ ] as const;
+ 
++/**
++ * The value a profile field is written as: trimmed and capped. The name cannot
++ * be cleared (undefined: the field is skipped), because asks introduce the
++ * sender by it. An empty assistant name means the default, so it is stored as
++ * null, never as an empty name the model would be told to answer to.
++ */
++export function profileFieldValue(
++  key: string,
++  raw: unknown,
++  maxLen: number,
++): string | null | undefined {
++  const value = raw === null ? null : String(raw).trim().slice(0, maxLen);
++  if (key === 'name') return value === null || value === '' ? undefined : value;
++  if (key === 'assistant_name' && value === '') return null;
++  return value;
++}
++
+ /** #505: unblocking is a person tidying their own list; a burst is a script. */
+ const UNBLOCKS_PER_MINUTE = 30;
+ 
+@@ -415,6 +438,7 @@ profileRouter.get(
+                 u."jobPosition" AS job_position,
+                 u.city,
+                 u.profile_link AS link,
++                u.assistant_name,
+                 u.subscription_tier,
+                 u.subscription_status,
+                 u.trial_ends_at,
+@@ -486,6 +510,11 @@ profileRouter.patch(
+   body('employer').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
+   body('job_position').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
+   body('city').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
++  body('assistant_name')
++    .optional({ nullable: true })
++    .isString()
++    .trim()
++    .isLength({ max: ASSISTANT_NAME_MAX_CHARS }),
+   profileLinkRule(),
+   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
+     if (!validationResult(req).isEmpty()) {
+@@ -499,9 +528,8 @@ profileRouter.patch(
+       const params: unknown[] = [userId];
+       for (const field of EDITABLE_FIELDS) {
+         if (!(field.key in bodyData)) continue;
+-        const raw = bodyData[field.key];
+-        const value = raw === null ? null : String(raw).trim().slice(0, field.maxLen);
+-        if (field.key === 'name' && (value === null || value === '')) continue;
++        const value = profileFieldValue(field.key, bodyData[field.key], field.maxLen);
++        if (value === undefined) continue;
+         params.push(value);
+         assignments.push(`${field.column} = $${params.length}`);
+       }
+diff --git a/src/db/postgres/migrations/240_assistant_name.sql b/src/db/postgres/migrations/240_assistant_name.sql
+new file mode 100644
+index 0000000..88ae52f
+--- /dev/null
++++ b/src/db/postgres/migrations/240_assistant_name.sql
+@@ -0,0 +1,6 @@
++-- The frontend's item 3 (Misho's yes, 14 Oct): the owner names their own
++-- assistant („ჩემი ასისტენტი"). NULL means the default name. The model does not
++-- read it yet: that is a new text in the prompt and waits for Misho's yes (D44).
++ALTER TABLE "User"
++  ADD COLUMN IF NOT EXISTS assistant_name TEXT
++  CHECK (assistant_name IS NULL OR length(assistant_name) <= 40);
+-- 
+2.43.0
+
