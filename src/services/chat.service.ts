@@ -5585,6 +5585,13 @@ async function offerNotedOpenAsksCard(runId: string): Promise<void> {
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
 const runWebFound = new Set<string>();
+/**
+ * 3106 (the weather half, re-run 13 Oct 01:50Z): runs that look up the weather. A
+ * weather page's title gave the way-in lookup „Weather" and „ამინდი" to search the
+ * owner's phonebook for, on every run, while the reply waited. Nobody is looked for
+ * in a weather question, so it searches the web and nothing else.
+ */
+const runLooksUpTheWeather = new Set<string>();
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
 const runListLabels = new Map<string, string[]>();
 /** The tool names this many rows to the model; a longer list is not checked row by row. */
@@ -8849,6 +8856,7 @@ function clearRunState(runId: string): void {
   runMembersFound.delete(runId);
   runIntroSent.delete(runId);
   runWebFound.delete(runId);
+  runLooksUpTheWeather.delete(runId);
   runListLabels.delete(runId);
   runAnswerSent.delete(runId);
   runAskSent.delete(runId);
@@ -9260,7 +9268,10 @@ async function executeToolCall(
        * the model has them at the moment it is deciding what to say about
        * each firm rather than in a section it read a minute ago.
        */
-      const waysIn = await findWaysIn(userId, webResultNames(found), { threadId, runId });
+      const waysIn =
+        runId !== undefined && runLooksUpTheWeather.has(runId)
+          ? new Map<string, WayIn>()
+          : await findWaysIn(userId, webResultNames(found), { threadId, runId });
       noteWaysIn(runId, withoutNamesakes(String(input['query'] ?? ''), waysIn));
       if (waysIn.size === 0) return found;
       return {
@@ -13184,6 +13195,7 @@ async function runToolLoop(
     !ownerAbsent &&
     asksTheWeather(lastOwnerText(messages) ?? '') &&
     tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
+  if (weatherLookUp) runLooksUpTheWeather.add(runId);
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   // 2971: every step bubble the owner saw, so a question said only there is not lost.
@@ -15850,7 +15862,7 @@ export async function processChat(
    * VIN.GE, and told the owner it had found them a contact there.
    */
   const lateSearch =
-    autoGoalId === null || needsNoOpeningSearch(userMessage)
+    autoGoalId === null || needsNoOpeningSearch(userMessage) || asksTheWeather(userMessage)
       ? null
       : startOpeningSearches(userId, userMessage, runId, threadId);
   // #397: the opening searches are the run's first search; the line says so.
