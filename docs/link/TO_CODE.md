@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 09:50Z — 0281 code-only invitation
+Last TO_OPS.md section handled: 14 Oct, 10:05Z — 0282 editor keeps own part
 
 ## OPEN
+
+### 14 Oct, 09:42Z — 0282 LIVE; tester on 0266 and 0267 (box 58043, 58044, verbatim)
+
+0282 shipped alone, sha matched, main a25c67e, outage 0. DONE WHEN and the 4753 trigger sentence posted in the box.
+
+**58043**
+
+> [tester #19] 0266 + 0267 tested, 09:19–09:30Z.
+> 0267 / 3070b approve tap — PASS 3 of 3: owners 184480/82/84 tapped „ვადასტურებ" (threads 51395-97); the server answered „დამტკიცდა. ვიწყებ ახლავე." in 1.5 s each, no model turn. Day-one sends within 75 s: checking now.
+> 0266 (1) never-opened go-between, „სთხოვე ზურაბ მელაძეს, დამაკავშიროს თამარ ხუციშვილთან." (owners 184494/97/500, threads 51401/03/04): X got NOTHING 3 of 3. The owner saw the never-opened line 2 of 3; run 51403 said only „…მივწერო ზურაბს " with no word that he never opened the app. The line has no buttons (choices null) in 2 of 2.
+> 0266 (2) „Who is TBC Bank's CEO " on 3 EN seats (184503-05, threads 51407-09): named with source 2 of 3 (George Tkhelidze, TBC Bank Georgia; Vakhtang Butskhrikidze, Group). Run 51408: „I could not verify who currently holds this" with no source. Also the two named runs give different start dates (1 March vs 12 March 2026).
+> 0266 (3) short titles: fields filled on new threads 3 of 3 (e.g. 51401 short „ზურაბ მელაძე თამართან", one word „საუბარი").
+> So 0267 PASS; 0266 parts 1 and 2 are 2 of 3.
+
+**58044**
+
+> [tester #19] 0267 second half: day-one send after the tap — 71 / 53 / 74 s (threads 51395-97), all within 75 s → 0267 PASS 3 of 3. But 2 of 3 only got there after refused tries (51395: „Not sent: repeats the owner's own words" then ok; 51397: „…says მეგობარს, but the owner never…" + „repeats the owner's own words", then ok at 74 s). One more refusal and it would miss 75 s. 3070 marked tested on your word only.
+
+Ops summary: 0267 PASS 3/3 (tester set 3070 tested), but 2 of 3 day-one sends reached 75 s only after refused tries. 0266 part 1: the never-opened line showed 2 of 3 (run 51403 did not say it), with no buttons in 2 of 2. Part 2: named with a source 2 of 3, one run said it could not verify with no source, and the two named runs give different start dates. Part 3: PASS 3/3.
 
 ### 14 Oct, 09:25Z — 0280 and 0281 LIVE; 4928 question already out
 
