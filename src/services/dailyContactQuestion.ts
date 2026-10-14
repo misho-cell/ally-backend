@@ -110,6 +110,20 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
 
 const HAS_A_LETTER = /\p{L}/u;
 
+/**
+ * The tester's 58416 (a real owner did not recognise an old synced contact):
+ * the name as the owner saved it, with the number's last two digits, so they
+ * can tell who is meant. Misho's yes, 14 Oct („კი, 2 ციფრი"). Only the owner
+ * reads it, about their own contact.
+ */
+const LAST_DIGITS = 2;
+
+export function whoWithLastDigits(who: string, phone: string): string {
+  const digits = phone.replace(/\D/gu, '');
+  if (digits.length < LAST_DIGITS) return who;
+  return `${who} (ნომერი მთავრდება ${digits.slice(-LAST_DIGITS)}-ზე)`;
+}
+
 /** The prompt section for one due question; '' when it cannot be asked by name. */
 export function contactQuestionSection(update: CuriosityUpdate | null): string {
   if (update === null) return '';
@@ -119,11 +133,12 @@ export function contactQuestionSection(update: CuriosityUpdate | null): string {
   // 3500 (the tester's 47072): „სხვათა შორის, 💙 სად მუშაობს?" — a label with no
   // letter is how the owner marks someone, not a name to ask about.
   if (who === '' || !HAS_A_LETTER.test(who) || asked === undefined) return '';
+  const named = whoWithLastDigits(who, update.phone);
   return (
     '\n\n## დღის ერთი კითხვა მფლობელის კონტაქტზე (D708)\n' +
     // 3202 (c), Misho's yes, 8 Oct (§103): a light side question, not a reason to answer it.
     `ამ პასუხში, მას შემდეგ რაც მფლობელის დაწერილს უპასუხებ, ბოლოს მსუბუქად, სხვათა შორის ჰკითხე: ` +
-    `„სხვათა შორის, ${who} ${asked}? თუ არ იცი, არა უშავს." — ახსნის გარეშე.\n` +
+    `„სხვათა შორის, ${named} ${asked}? თუ არ იცი, არა უშავს." — ახსნის გარეშე.\n` +
     'მხოლოდ ეს ერთი კითხვა, ფორმა ან რამდენიმე კითხვა ერთად — არა. პასუხს შემდეგ შეტყობინებაში ' +
     `მოგწერს: მაშინ ${who} სახელით მოძებნე და შეინახე save_contact_fact-ით (field_type: ${fact}). ` +
     'თუ თქვა „ახლა არა", ან არ უნდა, დაანებე თავი და დღეს ამ ადამიანზე აღარ ჰკითხო.'

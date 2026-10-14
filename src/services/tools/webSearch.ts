@@ -35,6 +35,11 @@ const RESULT_GUIDANCE =
   'appear in fetched page text you actually received in this conversation, and you ' +
   'must cite that page; two different names for one office is a failure — when in ' +
   'doubt, the scripted line („I could not verify") is the right answer. ' +
+  // 0266 part 2 (the tester's 58043, run 51408; Misho's yes, 14 Oct): TBC's group
+  // CEO and its Georgian bank's CEO were read as two names for one office.
+  "Two people holding two different offices (for example a group's CEO and its " +
+  "subsidiary's CEO) is not two names for one office: name each with their exact " +
+  'title and the page that says it. ' +
   NAMED_IN_FULL_OR_NOT_AT_ALL;
 
 // The institution's own domain outranks any news article on "who currently

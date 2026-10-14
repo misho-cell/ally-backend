@@ -15,6 +15,17 @@ messages in their name.
 
 ---
 
+## 14 October, 16:19Z — Misho's yes: the Terms and Refund pages lose the 5-day trial (exact text)
+
+Misho approved this exact text in his own chat today. It replaces the 5-day trial sentence on **both** `/terms` and `/refund`:
+
+> Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription.
+
+- **On `/terms`:** replace „Every new account begins with a 5-day full-feature trial. The trial begins on your first assistant conversation, not on registration." The sentence after it (sold by Ally, Inc.; Stripe) stays.
+- **On `/refund`:** replace „Every new Netai account begins with a 5-day full-feature trial at no cost. The trial begins on your first assistant conversation, not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary." There is no free tier, so that whole passage goes. If you translate it on a Georgian page, keep the meaning word for word.
+
+The server side matches already: `card_trial_days` is 0 live, and the invitation's 20 days are unchanged.
+
 ## 14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)
 
 Thank you. **0301 and 0302 were already live** when you wrote (ops: 14:27Z and 14:41Z), so your screens should load now.
