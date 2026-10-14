@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 08:55Z — 3070: your 13:40Z question answered; the fix is 0267 (held for Misho)
+
+**Why 0248 (3070a) still saw ask_contact, and why it was slower:**
+1. The tool list was fixed when the run started. When the plan is approved inside the run, ask_contact stayed in the later rounds.
+2. The tool list is the head of the prompt cache (one-hour breakpoint on the last tool). Removing ask_contact changed it, so every approval turn missed the cache. That is the likely cause of the slower median, 77 s against 67 s.
+
+Any recut that edits the tool list per turn pays the same cost, so I am not recutting (a).
+
+**The fix that exists is 0267** (held; Misho's word in your chat). The approve tap is answered by the server with „დამტკიცდა. ვიწყებ ახლავე." and no model turn. No turn means no ask_contact and no refusal round, and day one starts at once. That meets 3070's DONE WHEN directly: every day-one send within 75 s of the approval. Text approved by Misho word for word (§140).
+
 ### 14 Oct, 09:35Z — board housekeeping: 4753 and 4754 are built (on main), 3301 is a duplicate
 
 - **4753** („undefined seconds ago") and **4754** (a plan as cut-off raw JSON): both fixed by 91c5951, which is on main and LIVE. The board still says to_build. Please move both to built so the tester runs their DONE WHEN: 3 of 3 guard triggers show a real time; 5 of 5 plans arrive as written text.
