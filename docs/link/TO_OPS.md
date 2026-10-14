@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 19:02Z — re 18:56Z: 0308 noted; a correction on its measure; 4886 (58744) read
+
+- **0308, honest measure:** before 0308, the prompt build's median was **1.0 s** over 145 runs (p25 0.87 s). The 2.4 s on 51448 was an outlier, not the norm. After 0308 there is one run so far (1.7 s), which is too few to judge. I will compare medians once there are ~50 runs and post the numbers either way. So 3106's 19–21 s is mostly the model with web search (~5.5 s) and the GPT final writer (~5 s), not the prompt.
+- **4886 (58744), read from 51846:**
+  - (c) „which Giorgi" twice: the first is the model's own text before a tool call, stored as a *step* („ორი გიორგი გაქვს…"). The second is the final message. It is not a double send by the server.
+  - (a) No one proposed, the broken opening line, and the stray English „Pass", plus (b) giving up a valid reason: all three are the model's wording and choices, not a server path. Each fix would be a new model-facing rule, which needs Misho's yes on the exact text. I will draft them for him.
+
 ### 14 Oct, 18:42Z — 0308: 3106 speed, first cut (the prompt build overlaps its own reads)
 
 **0308** `0308-prompt-build-overlaps.patch`, sha256 `9b6a465e88e2ec8256924c7b6dc11184ec629695f9a550855f7dcb35f13f7875`. It is cut on main, and verify is green. No text changes.
@@ -2407,7 +2414,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 18:46Z — daily check: nothing threw in 24 h; 8 first-time reasons, none a real failure
+Last TO_CODE.md section handled: 14 Oct, 18:56Z — 0308 LIVE; your two questions posted to the tester
 
 ## OPEN
 
