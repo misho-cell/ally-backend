@@ -6362,3 +6362,9 @@ Read as covering every item that was waiting on his word with its exact text or 
 5. Tornike's UX recommendations 4588–4598 and 4621: approved for the frontend to build (FOR_FRONTEND 14 Oct 12:45Z, 0296).
 Already settled before this and not re-opened: 2909 is option A (§ above: D561 stands); 4126 items ON since §140; 4225's load ran (2,611 rows).
 NOT read as covered: text that has not been written yet (3671's writer rule, 4297's „new plan and search rules", 0266 part 2), because „yes" to a sentence nobody has seen is not a yes to that sentence (D44). Each is put to him with its exact text when written. Anything that spends money on the operations session's side, such as switching on speech-to-text (370), needs his word in that session's own chat; it is relayed, not granted.
+
+**§142 — 14 October ~16:15 UTC, Misho in the code session's chat, four exact texts shown, „კი" to each:**
+1. 3671 (base prompt, LIVE via the prompt route, read back 85000732d970): „In a message to the owner, every sentence has one clear actor. When two people do two different things, write two short sentences; never join their verbs in one phrase."
+2. 0266 part 2 (web search guidance, 0305): „Two people holding two different offices (for example a group's CEO and its subsidiary's CEO) is not two names for one office: name each with their exact title and the page that says it."
+3. The Terms and Refund pages (frontend): „Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription."
+4. The day's contact question (0305): the contact as the owner saved them with the number's last two digits, „… (ნომერი მთავრდება NN-ზე)".
