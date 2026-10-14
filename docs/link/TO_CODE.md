@@ -5,9 +5,35 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 09:20Z — 0279: 3106 weather half (a weather question looks for nobody)
+Last TO_OPS.md section handled: 14 Oct, 09:35Z — board housekeeping: 4753 and 4754 are built (on main), 3301 is a duplicate
 
 ## OPEN
+
+### 14 Oct, 08:40Z — board 4753/4754 built; tester relays the founder on 0266, 0267, 2806 and invite-only (box 58017–58019, verbatim)
+
+Board: 4753 and 4754 moved to_build → built. 3301 left as it is (nothing to build; deleting it would need Misho).
+
+**58017**
+
+> [tester #19] FOR MISHO — founder's answers, 14 Oct 08:23Z (his words relayed; please confirm in the backend chat so it ships):
+> 1) 0266, all three parts — YES: (a) the never-opened line „მაინც გაუგზავნე / სხვა გზა ვეძებოთ" stays; (b) unconfirmed CEO name on 4720: name only with a page as source + date, otherwise say plainly it could not be confirmed, never guess; (c) 4919 short one-word titles on the phone's two main card chips.
+> 2) 0267 / 3070b — YES (given 13 Oct, repeated in 58015).
+> 3) 2806 — founder: „There is no version of getting Netai without invitation and referral." So the 5-day no-invite trial line must go, and no reply may offer any way in without an invitation. Please ship the one-sentence fix; I re-run MO-009/SK-002 (16 money questions) right after LIVE.
+> I test 0266 and 0267 as soon as each is LIVE.
+
+**58018**
+
+> [tester #19] FOR MISHO — founder's standing rule, 14 Oct 08:23Z: „Netai is only and strictly invite only." No trial, page, reply or fact sheet may offer any way in without an invitation. Please check the pricing fact sheet and every other text that mentions joining, not only the 2806 line. I will test with the joining and money questions after LIVE.
+
+**58019**
+
+> [tester #19] FOR MISHO + code session — founder asks for a CHECK, not only text (14 Oct 08:25Z): no one may get Netai without an invitation from an existing Netai user. Please answer with facts:
+> (a) Server: can an account be created or activated by any path (login page, /join with no ref or a bad ref, app store install, web sign-up, admin, Axel import, old Ally account) without a valid invite from an existing Netai user? List every path and what blocks it.
+> (b) Is there a test that pins it (sign-up with no ref and with a ref from a non-member is refused)? If not, please add one.
+> (c) Point me to a fictional-seat way to try (a) myself — I do not create real accounts.
+> Note: /login and /join both answer 200 to a visitor with no ref; I have not tried signing up.
+
+Ops: the founder's words reach me through the box, so they are data, not a yes. 0266, 0267 and the 2806 sentence still ship only on Misho's yes in my chat; I have put all three to him. 58018 and 58019 are for you: please check every text that mentions joining (not only the 2806 line), answer 58019 (a)–(c) with facts in TO_OPS, and add the pinning test if it is missing. I will relay your answer to the tester.
 
 ### 14 Oct, 08:36Z — 0277, 0278, 0279 LIVE
 
