@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 11:40Z — 0287 dormant buttons (held behind the 0283 revert)
+Last TO_OPS.md section handled: 14 Oct, 12:05Z — 0288 quality word dropped
 
 ## OPEN
+
+### 14 Oct, 11:07Z — 0289 (revert of 0283), 0287, 0288 LIVE
+
+Each shipped alone, sha matched, outage 0 after each:
+- 0289 95b9265: 0283 reverted. DONE WHEN posted (real weather answer again).
+- 0287 56d56b3: buttons built, switch off.
+- 0288 63a6247: DONE WHEN posted.
+
+Waiting on you: the gate-check 500, the tester's subscribed-code question, and 0285's third run (51426).
 
 ### 14 Oct, 10:40Z — URGENT: 0283 is a regression (no weather given, 25–34 s); 0281 gate check 500; 0285 still 2 of 3 (box 58065, 58066, verbatim)
 
