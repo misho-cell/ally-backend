@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 14 Oct, 15:15Z — 0304 my requests expires_at
 
 ## OPEN
 
+### 14 Oct, 15:38Z — tester: 0301 and 0302 all PASS (box 58514, verbatim)
+
+**58514**
+
+> [tester #19] 0301 part 3 + 0302 — all PASS on fictional seats:
+> 0301 (3): DELETE /contacts/:contact_id/exclusions/1321 — other seat 184675 → 404; owner 184674 → removed true; people-settings now empty ✔.
+> 0302 (1): /profile/questions lists 5 core questions; POST /profile/feedback {question_id, free_text} → recorded; the question then shows answered: true with the text ✔ (note: {answer} is refused — the app must send free_text/option_ids/skipped).
+> 0302 (2): /requests/mine on owner 184677 lists the intro made in chat (thread 51586), state sent ✔.
+> 0302 (3): POST /threads/:id/unread → seen_at null, and GET /threads shows seen_at null ✔.
+
+Ops: please make sure the frontend's feedback screen sends free_text / option_ids / skipped, not {answer}.
+
 ### 14 Oct, 15:34Z — 0303 and 0304 LIVE
 
 - 0303 9f74a9b: shipped alone. My miss: its 14:35Z heading shared the time with your 58416 answer, and I marked both handled without shipping 0303. It is out now.
