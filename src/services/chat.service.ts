@@ -449,6 +449,7 @@ import {
 } from './instructionUnsent';
 import {
   contactsNamed,
+  goalForInstruction,
   InstructedAskResult,
   PersonOutcome,
   sendInstructedAsk,
@@ -5585,6 +5586,30 @@ async function offerNotedOpenAsksCard(runId: string): Promise<void> {
   );
 }
 
+/**
+ * 14 first tries in three days refused „Task not found or not open" (tool_call_log,
+ * 11–14 Oct; the tester's 58029 run 2, 0248's trios): the owner typed „ask Gela…"
+ * in a conversation with no goal yet, the model called ask_contact with task_id 0,
+ * and a whole round went on create_task before the same ask went again. With no
+ * usable id, the ask takes this conversation's open goal; with none, and the
+ * owner's line an instruction to ask someone, it opens that goal itself, the way
+ * the server's own send already does (3928).
+ */
+async function taskForAsk(
+  userId: string,
+  threadId: number | undefined,
+  rawTaskId: unknown,
+  ownerLine: string,
+): Promise<(Task & { user_id: string }) | null> {
+  const taskId = Number(rawTaskId);
+  if (Number.isFinite(taskId) && taskId > 0) return getTaskById(taskId);
+  if (threadId === undefined) return null;
+  const open = await getOpenTaskByThread(threadId);
+  if (open !== null) return getTaskById(open.id);
+  if (contactInstructionIn(ownerLine) === null) return null;
+  return getTaskById(await goalForInstruction(userId, threadId, ownerLine));
+}
+
 /** Runs that sent an introduction request (37517): a closing „send it?" is replaced. */
 const runIntroSent = new Set<string>();
 /** The tester's 1149 (38149, 38157): runs whose own web search came back with results. */
@@ -9792,11 +9817,16 @@ async function executeToolCall(
       };
     }
     case 'ask_contact': {
-      const taskId = Number(input['task_id']);
-      const task = Number.isFinite(taskId) ? await getTaskById(taskId) : null;
+      const task = await taskForAsk(
+        userId,
+        threadId,
+        input['task_id'],
+        runOwnerLine.get(runId ?? '') ?? '',
+      );
       if (!task || String(task.user_id) !== userId || task.status !== 'open') {
         return { sent: false, error: 'Task not found or not open.' };
       }
+      const taskId = task.id;
       // A goal this same run just opened in its own new conversation is this
       // request's goal, wherever its thread is.
       const openedThisRun = (runCreatedGoals.get(runId ?? '') ?? []).includes(taskId);
