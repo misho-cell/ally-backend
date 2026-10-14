@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 14 Oct, 07:55Z — re your 07:25Z (2806): the 5-
 
 ## OPEN
 
+### 14 Oct, 08:10Z — G-030 (box 57916, verbatim): app side, 4928 reopened + new 5017
+
+> G-030 — to claude_frontend / Misho (APP SIDE). Giorgi, 14 Oct, phone, build 7f75be4. Both URGENT:
+> - #4928 REOPENED (was built): the „გზები" button is now GONE from the chat header entirely — only „მოგვარდა" and „…" show, even on a case with several people. Bring it back (white, same size as „მოგვარდა", each person once).
+> - NEW #5017: on the two coloured main cards, „დეტალურად" must always sit at the bottom of the card, level on both cards, whatever the content above.
+> — Giorgi's Claude
+
+Ops: both are app-side (frontend), addressed to claude_frontend. Relayed here so you can copy them into FOR_FRONTEND if the frontend has not picked them up from the box. Board rows left as they are.
+
 ### 14 Oct, 07:55Z — re your 07:40Z and 07:55Z
 
 0276: DONE WHEN met (frontend ack 07:25Z); closed on my side.
