@@ -1,0 +1,77 @@
+From 5f94a94ea6054bad909b43f8279a4334b6896747 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 19:50:15 +0000
+Subject: [PATCH] =?UTF-8?q?3732:=20=E2=80=9Ehow=20do=20I=20get=20to=20<fir?=
+ =?UTF-8?q?st=20name>=20<surname>=E2=80=9C=20holds=20the=20web;=20a=20trad?=
+ =?UTF-8?q?e=20said=20in=20another=20sentence=20does=20not=20reopen=20it?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester box 58845 (threads 51916-17): „ეკა წიკლაურთან როგორ მივიდე? არქიტექტორია.“ went to web_search. „მივიდე“ was not a reach verb, and „არქიტექტორია“ in the next sentence read as the line asking for a trade. „მივიდე“ now counts beside a first name and surname in „-თან“, and the trade is read only in the sentence that asks. The walk after a search (warmPathAfterSearch) reads the same test.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/personByName.test.ts | 12 ++++++++++++
+ src/services/personByName.ts                | 21 ++++++++++++++++++++-
+ 2 files changed, 32 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/personByName.test.ts b/src/services/__tests__/personByName.test.ts
+index cd07e05..2677697 100644
+--- a/src/services/__tests__/personByName.test.ts
++++ b/src/services/__tests__/personByName.test.ts
+@@ -22,6 +22,18 @@ describe('asksForAPersonByName', () => {
+     expect(asksForAPersonByName('ვინ იცნობს ბახვას?')).toBe(false);
+   });
+ 
++  it('holds the web for „get to <first name> <surname>" with the trade said apart (3732)', () => {
++    expect(asksForAPersonByName('ეკა წიკლაურთან როგორ მივიდე? არქიტექტორია.')).toBe(true);
++    expect(asksForAPersonByName('როგორ მივიდე ეკა წიკლაურთან?')).toBe(true);
++    expect(asksForAPersonByName('როგორ მივწვდე ეკა წიკლაურს? არქიტექტორია.')).toBe(true);
++  });
++
++  it('keeps the web for the way to a place, or a trade in the asking sentence', () => {
++    expect(asksForAPersonByName('აეროპორტამდე როგორ მივიდე?')).toBe(false);
++    expect(asksForAPersonByName('როგორ მივიდე ექიმთან?')).toBe(false);
++    expect(asksForAPersonByName('როგორ მივიდე კარგ არქიტექტორთან?')).toBe(false);
++  });
++
+   it('names both web tools', () => {
+     expect([...WEB_TOOL_NAMES].sort()).toEqual(['fetch_page', 'web_search']);
+   });
+diff --git a/src/services/personByName.ts b/src/services/personByName.ts
+index d7e7271..71e054c 100644
+--- a/src/services/personByName.ts
++++ b/src/services/personByName.ts
+@@ -62,7 +62,26 @@ function namesATrade(line: string): boolean {
+   return tradeNamedIn(line) !== null;
+ }
+ 
++/**
++ * 3732 (tester box 58845, threads 51916-17): „ეკა წიკლაურთან როგორ მივიდე?
++ * არქიტექტორია." went to the web. „მივიდე" (get to) was not a reach verb, and
++ * the trade in the NEXT sentence, which only says what Eka does, read as the
++ * line asking for a trade. „მივიდე" alone also asks the way to a place, so it
++ * counts only beside a first name and surname in „-თან": two words, the person.
++ */
++const GET_TO_A_NAMED_PERSON_RE =
++  /(?<![\p{L}\p{M}])\p{L}+\s+\p{L}+თან\s+(?:როგორ\s+)?მივიდე(?![\p{L}\p{M}])|(?<![\p{L}\p{M}])მივიდე\s+\p{L}+\s+\p{L}+თან(?![\p{L}\p{M}])/u;
++
++const SENTENCE_END_RE = /(?<=[.!?…])\s+/u;
++
++function asksToMeetOrReach(sentence: string): boolean {
++  return MEET_OR_REACH_RE.test(sentence) || GET_TO_A_NAMED_PERSON_RE.test(sentence);
++}
++
+ /** Does the owner's line ask to meet or reach somebody it names, not a trade? */
+ export function asksForAPersonByName(ownerLine: string): boolean {
+-  return MEET_OR_REACH_RE.test(ownerLine) && !namesATrade(ownerLine);
++  // The trade is read only in the sentence that asks; another sentence describes the person.
++  return ownerLine
++    .split(SENTENCE_END_RE)
++    .some((sentence) => asksToMeetOrReach(sentence) && !namesATrade(sentence));
+ }
+-- 
+2.43.0
+

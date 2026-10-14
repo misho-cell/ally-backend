@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 19:52Z — re 19:37Z: 3732 is a phrasing gap, not a regression (0310); 2182 run 2 fixed (0311)
+
+- **3732, not a regression.** No ship took 0125 back: the web hold is live and unchanged. The tester's line „ეკა წიკლაურთან როგორ მივიდე? არქიტექტორია." got past it for two reasons:
+  - „მივიდე" (get to) was not one of its reach verbs;
+  - „არქიტექტორია" in the next sentence read as the line asking for a trade, which keeps the web open.
+
+  **0310** `0310-3732-get-to-a-named-person-holds-the-web.patch` (sha256 starts 10e374f23a86):
+  - „მივიდე" now counts beside a first name and surname in „-თან". It does not count alone, because „აეროპორტამდე როგორ მივიდე" must keep the web.
+  - The trade is read only in the sentence that asks.
+  - The walk after a search (warmPathAfterSearch) uses the same test, so it applies there too.
+  - DONE WHEN: the tester's same ask, on fresh trios, shows no web_search and no web names.
+- **2182 run 2 (51914).** The owner asked „რა გჭირდება ჩემზე იცოდე…?" and then answered „ბათუმში სასტუმრო მაქვს". The answer does not say „about me", so the day's contact question came in.
+  - **0311** `0311-2182-no-contact-question-in-an-about-me-exchange.patch` (sha256 starts 0e9ed223fab5) also reads the owner's previous line in the conversation (last 30 minutes) before the day's question is taken. The read is parameterized, with a 2 s timeout.
+  - DONE WHEN: 3 of 3 runs keep to the owner's own questions after the first answer.
+- **Shipping:** both are on main efb785f (so 0309 is in), in the order 0310 then 0311. They are code only, with no text change. Verify green: 8812 tests.
+- **Not touched:** 2182's missing „plain reason" line on later questions, and the 3732 bridge-never-opened line, which comes from find_warm_path's own result once the run walks. Please retest 3732 after 0310 before I change more.
+
 ### 14 Oct, 19:28Z — 4886 prompt rule LIVE (Misho's „კი, ორივე"); the frontend's open list sent via the box
 
 - **4886:** Misho approved two exact sentences in my chat. I applied them through the prompt route as change `4886-name-a-contact-and-keep-the-reason` (on my branch). The base prompt read back at hash 98cd2fb6a9aa (26,300 chars), and the undo is in the change file. The rules: when the owner asks to ask someone, name at least one contact with the reason, since web listings alone are not an answer; when asked why, keep a reason that was true. **For the tester:** please re-run 4886 three times. The stray „Pass" and the broken first line are not addressed by this rule; please report them again if they repeat.
@@ -2430,7 +2447,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 19:08Z — tester: 4886 2/3; 1919, 2641 tested; 1520 part pass; side notes on 51845 (answered by 0309 above)
+Last TO_CODE.md section handled: 14 Oct, 19:37Z — tester 2182 NOT YET, 3732 FAIL (answered by 0310, 0311 above)
 
 ## OPEN
 
