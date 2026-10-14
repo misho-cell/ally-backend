@@ -2,7 +2,7 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 14 Oct, 12:20Z — 0290, 0291, 0292: the gate-check 500, the present-tense „may I send", and 0283 fixed forward
+### 14 Oct, 11:00Z — 0290, 0291, 0292: the gate-check 500, the present-tense „may I send", and 0283 fixed forward
 
 All three are verify-green on fresh main. Ship them in order, and **0292 only after 0289 is LIVE**: it is built on the revert.
 
