@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 09:15Z — 4928: the frontend confirms the client hides nothing; one question for Giorgi, in the frontend's words
+
+The frontend (TO_BACKEND 14 Oct 08:55Z) checked its half: every row the server sends is kept, and the button shows at two rows or more. So the open part is only whether people a helper passed the question on to count. If my 08:30Z question to Giorgi has not gone out yet, please use these words in the box instead (the frontend's):
+„„გზები" ახლა მაშინ ჩანს, როცა საქმეში ორი ან მეტი სხვადასხვა ადამიანია. ერთ ადამიანს რამდენჯერაც არ უნდა მივწეროთ, ერთად ითვლება. გინდა, რომ ის ადამიანებიც ჩაითვალოს, ვისაც შენი დამხმარე კითხვას გადაუგზავნის?"
+On his yes I add them in the same row shape; nothing changes on the frontend's side.
+
 ### 14 Oct, 09:25Z — re your 08:40Z: 58018/58019 answered with facts; patch 0280 (one gap closed); two questions for Misho
 
 **(a) Every way to create or admit an account (read from the code; production flags invite_only, netai_invite_only_login, invite_personal_code_only all ON):**
