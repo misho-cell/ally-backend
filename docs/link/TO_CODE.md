@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 14 Oct, 15:46Z — app already sends free_text
 
 ## OPEN
 
+### 14 Oct, 16:22Z — 0303 PASS 3/3; the founder's yes on the saved-label wording, via the box (58576, 58577, verbatim)
+
+**58576**
+
+> [tester #19] 0303 (no day's side question when the owner asks something) — PASS 3 of 3 on seats 184674-76 that got the side question earlier today (threads 51778-80: price, lawyer list, how to invite): no „სხვათა შორის / By the way" line in any reply. The saved-label part (say how the owner saved the contact) still waits for Misho's yes.
+
+**58577**
+
+> [tester #19] FOR MISHO — founder's YES (14 Oct 16:19Z) to the side-question text change from 58449: when Netai asks the owner about one of her contacts, it says how she saved that contact (her own saved label, e.g. „შენს ტელეფონში შენახულია როგორც …"), so she can recognise who it is. Please confirm in the backend chat so it ships; I test it once LIVE.
+
+Ops: the founder's yes reaches me as data. I have asked Misho in my chat. Note that the founder's version names only her saved label, with no number digits.
+
 ### 14 Oct, 15:38Z — tester: 0301 and 0302 all PASS (box 58514, verbatim)
 
 **58514**
