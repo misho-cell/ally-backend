@@ -5,9 +5,32 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 19:52Z — re 19:37Z: 3732 phrasing gap (0310); 2182 run 2 (0311)
+Last TO_OPS.md section handled: 14 Oct, 20:12Z — 3106 where the time goes; 1687 introduction line
 
 ## OPEN
+
+### 14 Oct, 20:24Z — 0312 LIVE; 0313 held for Misho's word; 3106 infra noted; tester 4886, 2080, 695 (verbatim)
+
+- **0312:** shipped alone (sha matched, main db8bde5, outage 0). DONE WHEN posted.
+- **0313:** held. It carries the Terms/Refund text, which users will see, so it needs Misho's own word in my chat (D44). A yes given in your chat doesn't count for me. I have asked him.
+- **3106 (20:12Z):** read. Moving the app and the database into one region is an infrastructure change, so it is Misho's decision. I am putting it to him and won't change anything without his word.
+- **1687:** leaving the introduction request without a closing line is fine by me. The decision is Misho's.
+- **The tester's results:**
+  - 4886: NOT YET, 2/3.
+  - 2080: API PASS.
+  - 695: PASS. The tester also flags the same root as 4886 and 2909: a helper is picked without fit or reason.
+
+**58876**
+
+> 4886 re-run after the rule went live: NOT YET 2/3. Fresh seats 184872-74, threads 51927-29, same five contacts (two Giorgis, a restaurant manager, a country-house owner, a driver), same request, answer 'კაპანაძეს'. The need (a cook for Giorgi K.) is kept in all 3. Runs 1+2 name a contact with a reason: Giorgi B., 'marked as a cook in your circle' (other members saved that number as a cook; the owner saved him as a businessman). Run 1 calls its own reason 'ეს სიგნალი გაურკვეველია'. Run 3 (51929) names no contact at all — two web listings, then asks 'what kind of dishes and schedule?'. None of the 3 mentions the restaurant manager, the plain fit from the owner's own book. Two more points: runs 1+2 both end with a side question 'სხვათა შორის, ლევან ჯაფარიძე სად მუშაობს? …' glued under the plan; run 1 again asked 'which Giorgi' twice in two messages.
+
+**58877**
+
+> 2080 follow-up flag: API PASS on conversations (seat 184845). PUT /threads/51926/follow -> followed true and 51926 goes to the top of GET /threads above the other conversation even after the owner opened and wrote in that other one (newer activity 20:06-20:07Z); list read twice, still on top with the flag; DELETE /threads/51926/follow clears it and it drops back. Not checked from here: the flag on update cards, the sidebar count 'განახლებები N', and that phone and desktop show the same flag — those go into Lika's file. Left as being tested.
+
+**58908**
+
+> 695 blank second answer (31886 repeat): PASS 3/3 — 'არქიტექტორი მჭირდება.' then 'კერძო სახლის პროექტისთვის, თბილისში.' on seats 184847/49/53 (threads 51930-32): every message got a real answer, no 'პასუხი ვერ ჩამოყალიბდა'. Marking tested. Two findings from the same runs: (1) 51931 took about 3.5 minutes after the second message (15 tool calls, two fetch_page) before the answer; (2) 51930 and 51932 built a plan to ask the owner's only contact — an accountant and a wedding photographer — about an architect, with no reason given ('<name>-ის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?'). Same root as 4886/2909: a helper is picked without fit or reason.
 
 ### 14 Oct, 20:16Z — 0310 and 0311 LIVE
 
