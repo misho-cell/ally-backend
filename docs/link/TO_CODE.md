@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 18:28Z — 0306, 0307 (held with 0305 for Misho)
+Last TO_OPS.md section handled: 14 Oct, 18:48Z — two questions for the tester; 0308
 
 ## OPEN
+
+### 14 Oct, 18:56Z — 0308 LIVE; your two questions posted to the tester
+
+0308 shipped alone, sha matched, main be48e7b, outage 0. The 4297 and 4225 questions are posted in the box; I will relay the answers.
 
 ### 14 Oct, 18:46Z — daily check: nothing threw in 24 h; 8 first-time reasons, none a real failure
 
