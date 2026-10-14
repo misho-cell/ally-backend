@@ -1,27 +1,40 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { asksLeaveToSend } from '../introInstruction';
 
 /**
- * CF (2311's root cause; Misho's yes, 13 Oct, §139): request_introduction said
- * „Call only after the user explicitly confirms … only after they confirm", so a
- * typed „სთხოვე გიორგის, დამაკავშიროს ნინოსთან" was answered with a second
- * „shall I send it?" (conv 50823) or nothing. The typed line is the yes (D316).
+ * 0266 part 1 (the tester's 58043, run 51403): „სთხოვე ზურაბ მელაძეს,
+ * დამაკავშიროს თამარ ხუციშვილთან." was answered „ზურაბ მელაძე თამარ ხუციშვილს
+ * იცნობს. მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" — nothing went, and the
+ * owner never heard that Zurab had not opened the app. A question asking leave
+ * to send no longer excuses the run from the unsent-instruction guard.
  */
-const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-const TOOL = CHAT.slice(CHAT.indexOf("name: 'request_introduction',"));
-const DESCRIPTION = TOOL.slice(0, TOOL.indexOf('input_schema'));
-
-describe('a typed introduction is its own yes', () => {
-  it('says so, word for word as approved', () => {
-    expect(DESCRIPTION).toContain(
-      "'Send an introduction request to a mutual contact (mediator). Call it once the user has said ' +\n" +
-        "    'they want it: a typed instruction to introduce them („ask Gio to introduce me to Nino\") is ' +\n" +
-        '    "itself that yes (D316) — send at once, without asking again.',
-    );
+describe('a question asking leave to send is not a real question (0266)', () => {
+  it.each([
+    'ზურაბ მელაძე თამარ ხუციშვილს იცნობს. მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?',
+    'გავუგზავნო თხოვნა ლევანს?',
+    'Levan knows her. Shall I ask him to introduce you?',
+    'Do you want me to send him the request?',
+  ])('„%s" asks leave', (reply) => {
+    expect(asksLeaveToSend(reply)).toBe(true);
   });
 
-  it('no longer asks for a second confirmation', () => {
-    expect(DESCRIPTION).not.toContain('explicitly confirms');
-    expect(DESCRIPTION).not.toContain('only after they confirm');
+  it.each([
+    'რისთვის გჭირდება თამართან დაკავშირება? ერთი მოკლე მიზეზი დამიწერე.',
+    'Why would you like to meet her?',
+    'რომელ ნინოზეა საუბარი?',
+  ])('„%s" is a real question (the reason, or which one)', (reply) => {
+    expect(asksLeaveToSend(reply)).toBe(false);
+  });
+
+  it('reads only the last question', () => {
+    expect(asksLeaveToSend('მივწერო ზურაბს? რისთვის გჭირდება?')).toBe(false);
+  });
+
+  it('keeps the guard on when the run only asked leave', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toMatch(
+      /ownerAsksForIntroduction\(\[runOwnerLine\.get\(runId\) \?\? ''\]\) &&\s+endsWithQuestion\(finalText\) &&\s+!asksLeaveToSend\(finalText\);/,
+    );
   });
 });

@@ -33,8 +33,9 @@ describe('anIntroductionIsNotAPlainAsk', () => {
 
   it('lets the run’s question to the owner stand instead of „not sent" (3697)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain(
-      "ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);",
+    // 0266 part 1: unless that question only asks leave to send (aTypedIntroductionIsItsOwnYes).
+    expect(chat).toMatch(
+      /ownerAsksForIntroduction\(\[runOwnerLine\.get\(runId\) \?\? ''\]\) &&\s+endsWithQuestion\(finalText\)/u,
     );
     expect(chat).toMatch(/!claimedAnAskNobodyGot &&\s+!introductionQuestion &&/u);
   });
