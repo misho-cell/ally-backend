@@ -222,3 +222,20 @@ describe('a plan proposed and not yet approved is waiting on the OWNER', () => {
     ).toBe('needs_you');
   });
 });
+
+/** 0312's status fault (tester box 58942): the server said nothing went, so the owner is next. */
+describe('a goal where the server said nothing went', () => {
+  const nothingWent = {
+    reply: 'ნინო ლომიძე Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე.',
+    ownerDecidesNext: true,
+  } as Parameters<typeof statusAfterRun>[0];
+  const openGoal = { workItem: true, flagged: false, awaitingPlanApproval: false, openGoal: true };
+
+  it('needs the owner, not „waiting"', () => {
+    expect(statusAfterRun(nothingWent, false, openGoal)).toBe('needs_you');
+  });
+
+  it('still waits while somebody else has a question out', () => {
+    expect(statusAfterRun(nothingWent, true, openGoal)).toBe('waiting');
+  });
+});

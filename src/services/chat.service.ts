@@ -8970,6 +8970,14 @@ async function gptBlocksFor(runId: string, userId: string): Promise<string> {
 const runLastCaption = new Map<string, string>();
 /** The owner's own line this run answers; absent on a run the system started. */
 const runOwnerLine = new Map<string, string>();
+
+/**
+ * 0312's status fault (tester box 58942, threads 51948-49): the server told the
+ * owner that nothing went („<name> Netai-ზე ჯერ არ არის…"), and the thread read
+ * „ველოდები პასუხს" because the conversation was already a goal. Nobody else is
+ * being waited on; the next step is the owner's. Read once, when the result is built.
+ */
+const runsWhereNothingWent = new Set<string>();
 /** 4555: the value a save kept only as a mentioned note in this run. */
 const runMentionedNote = new Map<string, string>();
 /** The tester's 1119 (F3): the open goal this run's message repeats, by id. */
@@ -8983,6 +8991,7 @@ function clearRunState(runId: string): void {
   runModes.delete(runId);
   runLastCaption.delete(runId);
   runOwnerLine.delete(runId);
+  runsWhereNothingWent.delete(runId);
   runFoundPeople.delete(runId);
   runMentionedNote.delete(runId);
   runRepeatedGoal.delete(runId);
@@ -12301,6 +12310,8 @@ export interface ChatResult {
    * nothing to tell the owner. Nothing was stored; not a failure.
    */
   quiet?: boolean;
+  /** 0312's status fault: the server said nothing went to anyone; the next step is the owner's. */
+  ownerDecidesNext?: boolean;
   /**
    * The server's own stop line, when the stop was read from the owner's
    * message and answered before the run did anything.
@@ -12634,6 +12645,8 @@ interface ServerLine {
   readonly text: string;
   /** 0266 part 1: the never-opened line's buttons, while their switch is on. */
   readonly choices?: string[];
+  /** 0312's status fault: nothing went to anyone, so the next step is the owner's. */
+  readonly nothingWent?: boolean;
 }
 
 async function serverSendsOrSaysSo(
@@ -12662,13 +12675,14 @@ async function serverSendsOrSaysSo(
     // 3928: one approved sentence per person named, in the owner's order.
     return {
       text: outcome.people.map((person) => personLineForOwner(person, language)).join('\n'),
+      nothingWent: !outcome.people.some((person) => person.result === InstructedAskResult.Sent),
     };
   }
   // eslint-disable-next-line no-console
   console.warn(
     `[instruction-unsent] run ${runId} thread ${threadId}: still nothing sent — said so`,
   );
-  return { text: NOT_SENT_LINE[language] };
+  return { text: NOT_SENT_LINE[language], nothingWent: true };
 }
 
 export function isHousekeepingRound(roundToolNames: readonly string[]): boolean {
@@ -14330,6 +14344,7 @@ async function runToolLoop(
     const line = await serverSendsOrSaysSo(userId, threadId, runId);
     finalText = line.text;
     if (line.choices !== undefined) choices = line.choices;
+    if (line.nothingWent === true) runsWhereNothingWent.add(runId);
   }
 
   // 1690 (A7): one old fact the search leaned on is confirmed with the owner, by the server.
@@ -16886,6 +16901,7 @@ export async function processChat(
   // A goal opened from the message ran as a goal run; if that run still left
   // it without a plan, the proposal turn follows (it checks before waking).
   if (autoGoalId !== null) freshGoals.push(autoGoalId);
+  const ownerDecidesNext = runsWhereNothingWent.has(runId);
   clearRunState(runId);
   if (freshGoals.length > 0) {
     void import('./taskEngine.service').then(({ startPlanProposal }) => {
@@ -17129,6 +17145,7 @@ export async function processChat(
     ...(requestCreated && { requestCreated: true }),
     ...(taskResult && { taskResult }),
     ...(shareText !== undefined && { shareText }),
+    ...(ownerDecidesNext && { ownerDecidesNext: true }),
     afterReply,
   };
 }
