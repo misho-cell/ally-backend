@@ -22,6 +22,23 @@ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean
 }
 
 /**
+ * 0266 part 1 (the tester's 58043, run 51403): „სთხოვე ზურაბს, დამაკავშიროს
+ * თამართან" was answered „…მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" and nothing
+ * went. A question back after an introduction instruction is let stand when it
+ * asks for the REASON (3697); one asking LEAVE to send is not a real question,
+ * because the typed instruction is itself that yes (CF, §139).
+ */
+const ASKS_LEAVE_TO_SEND_RE =
+  /(?:მივწერო|მივწერ|გავუგზავნო|გავაგზავნო|ვთხოვო|ვკითხო|მივმართო|დავუკავშირდე)(?!\p{L})|\b(?:shall|should)\s+i\s+(?:send|write|ask|message|contact)\b|\b(?:want|like)\s+me\s+to\s+(?:send|write|ask|message|contact)\b|(?:написать|отправить|попросить)\s+(?:ему|ей|им)?\s*\?|(?:quieres|deseas)\s+que\s+(?:le\s+)?(?:escriba|envíe|pida)/iu;
+
+/** True when the reply's last question asks the owner for leave to send. */
+export function asksLeaveToSend(reply: string): boolean {
+  const questions = reply.match(/[^.!?？\n]*[?？]/gu) ?? [];
+  const last = questions[questions.length - 1] ?? '';
+  return ASKS_LEAVE_TO_SEND_RE.test(last);
+}
+
+/**
  * Box 54175 (4258's run, conv 50292): „სთხოვე ნინოს, გამაცნოს რეზო. ასევე
  * ჰკითხე გელას, ხომ არ იცნობს სხვა ინვესტორს." — one introduction AND one plain
  * question. The guard read the whole message, refused the question to Gela three

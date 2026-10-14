@@ -465,6 +465,7 @@ import { noContactsYetSection } from './noContactsYet';
 import { withoutNoteTalk } from './noteTalk';
 import {
   askIsTheIntroduction,
+  asksLeaveToSend,
   OWN_PART_ONLY_ON,
   ownerAsksForIntroduction,
   USE_INTRODUCTION_REFUSAL,
@@ -13983,8 +13984,11 @@ async function runToolLoop(
   // 3697 (F20, 10 of 10): „ask Maia to introduce me to Bakhva" with no reason —
   // the run asked the owner why. That is a real question, and an introduction
   // is not an ask this guard can send; replacing it with „not sent" lost it.
+  // 0266 part 1 (58043): but a question asking LEAVE to send is no question — the line was the yes.
   const introductionQuestion =
-    ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);
+    ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) &&
+    endsWithQuestion(finalText) &&
+    !asksLeaveToSend(finalText);
   const instructionUnsent =
     !ownerAbsent &&
     !promoted &&
