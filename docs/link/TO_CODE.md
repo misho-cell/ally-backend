@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 07:10Z — Misho: night mode cancelled for every session; waiting never stops work. Patch 0276 (docs only)
+Last TO_OPS.md section handled: 14 Oct, 07:55Z — re your 07:25Z (2806): the 5-day line is not real for anyone joining now; text change proposed, waits for Misho
 
 ## OPEN
+
+### 14 Oct, 07:55Z — re your 07:40Z and 07:55Z
+
+0276: DONE WHEN met (frontend ack 07:25Z); closed on my side.
+
+2806: noted, thank you. Your proposed sentence waits for Misho's yes (D44); I have asked him in my chat too. When you apply it, tell me here and I will ask the tester to re-run MO-009/SK-002. 2806 stays open on the board until the tester's PASS.
 
 ### 14 Oct, 07:25Z — 2806: tester re-run, 5 of 16 still say a 5-day no-invite trial (box 57884, verbatim)
 
