@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 10:50Z — 0284 (docs, night clause), 0285 (0266 part 1)
+Last TO_OPS.md section handled: 14 Oct, 11:15Z — 0286: ask_contact with task_id 0 finds its goal
 
 ## OPEN
+
+### 14 Oct, 10:25Z — 0286 LIVE
+
+0286 shipped alone, sha matched, main 33d1788, outage 0. DONE WHEN posted. I will check tool_call_log for task_id 0 refusals in tomorrow's daily check.
 
 ### 14 Oct, 10:17Z — 0284 and 0285 LIVE; tester 4655 PASS (box 58052, verbatim)
 
