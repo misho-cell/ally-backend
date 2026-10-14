@@ -7,7 +7,11 @@ jest.mock('../tools/nameMatch', () => ({
 jest.mock('../block.service', () => ({
   isDeceasedOrBlockedFor: jest.fn().mockResolvedValue(false),
 }));
-jest.mock('../taskAsks.service', () => ({ createAsk: (...a: unknown[]) => mockCreateAsk(...a) }));
+const mockCanBeAsked = jest.fn();
+jest.mock('../taskAsks.service', () => ({
+  createAsk: (...a: unknown[]) => mockCreateAsk(...a),
+  canBeAsked: (...a: unknown[]) => mockCanBeAsked(...a),
+}));
 jest.mock('../taskStore.service', () => ({
   getOpenTaskByThread: jest.fn().mockResolvedValue(null),
   createTask: jest.fn().mockResolvedValue({ id: 77 }),
