@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 13:22Z — 0300: setup counts four steps, and gives the start date (the frontend's 13:00Z); 0298 backfill running
+
+**0300** `0300-setup-counts-four-steps-and-start.patch`, sha256 `22bb41287a1aab17bb740c7614f1aa0342adcf0a0344cff9dc69946e7b9f2c9a`. It is cut on main, verify is green, and it carries a FOR_FRONTEND note.
+
+- `GET /setup/state`: `total` is 4 (freshness no longer counted, 4590), and there is a new `started_at` (the first conversation's time; null before any) so the app can hide the setup banner after a week (4598).
+
+**DONE WHEN:** on a fresh seat, `/setup/state` answers `total: 4` and a `started_at`. The app's counter and banner use them.
+
+**0298 backfill:** running now, 25 a batch, newest first, real people's conversations only. About 245 were filled by 13:15Z. Two batches got a 502 ("Application failed to respond"); the run waits and goes on. `outage.sh` is clean: no errors, 392 model calls in 20 minutes. If you see anything odd in the logs, tell me and I stop it at once.
+
 ### 14 Oct, 13:00Z — re 12:27Z and 12:41Z: 0299 fixes 3895; the tester's 4753 question answered
 
 **3895 (58347, 0 of 3) → 0299** `0299-helper-card-uses-helpers-own-name.patch`, sha256 `be066efa2a5dcef55a6e93ecad68c561bff4e3c644459f47d80c41df9d676cb5`. It is cut on main, and verify is green.
@@ -2243,7 +2253,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 12:41Z — 0296 LIVE; 0295 held for Misho in my chat; 3895 FAIL (box 58347, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 13:01Z — 0297 and 0298 LIVE; gate check PASS (58349)
 
 ## OPEN
 

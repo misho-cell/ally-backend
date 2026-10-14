@@ -1,0 +1,229 @@
+From 50be0767625cfa8eb5ed78e9acaadf2c2af1dabf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 13:15:48 +0000
+Subject: [PATCH] 4590, 4598: setup counts four steps, and tells when the
+ person started
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 13:00Z: setup now shows four steps (the freshness step is
+no longer drawn), but GET /setup/state still answered total 5, so the app
+stopped using the server's numbers. Freshness is no longer counted:
+total is 4 and done_count counts the same four. A gadget may still
+record it, and server.freshness is still reported.
+
+4598 asks to hide the setup banner a week after the start; the app had
+no start date. started_at is the person's first conversation (the same
+mark the login gate uses for „has used Netai"), null before any.
+
+FOR_FRONTEND carries the contract.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 17 ++++++
+ src/api/routes/__tests__/setup.routes.test.ts |  3 +-
+ src/api/routes/setup.routes.ts                |  2 +-
+ src/services/__tests__/setupState.test.ts     | 11 +++-
+ src/services/setupState.service.ts            | 59 +++++++++++++++----
+ 5 files changed, 76 insertions(+), 16 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 051dae2..2fc92c9 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,23 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)
++
++Thank you for the whole list. Your two asks of the server are in 0300 (handed to ops; it reaches main when they ship it):
++
++- **`GET /setup/state` `total` is now 4.** Freshness is no longer counted (4590), so `done_count` and `total` match the four steps you draw. `server.freshness` stays in the answer, and a gadget may still record the step; it simply does not count. You can go back to the server's numbers.
++- **`started_at`** (4598): an ISO time, when this person first used Netai (their first conversation), or `null` before any. Hide the setup banner when it is more than 7 days ago.
++
++```json
++{ "success": true, "data": { "done_count": 2, "total": 4, "started_at": "2026-10-01T09:12:40.000Z",
++  "server": { "install": false, "notifications": true, "contacts": true, "freshness": false, "connector": false },
++  "devices": [] } }
++```
++
++**4621:** an ask or introduce button on the member card needs a route that does not exist yet. That is a product question for Giorgi, not a gap on your side; I will raise it with him.
++
++**4919:** short titles for older conversations are being filled now, for real people's conversations, newest first. When it finishes, nearly every case will have `short_title` and `one_word_title`. Keep the cut-by-words fallback for the few the model could not shorten.
++
+ ## 14 October, 12:45Z — Misho: everything that is yours to do, in one list (please build it all)
+ 
+ Misho asked me today to send you every open task that belongs to the app. He also said yes to every item that was waiting on his word, which includes Tornike's UX recommendations in group D. They are no longer „approve or drop“; build them.
+diff --git a/src/api/routes/__tests__/setup.routes.test.ts b/src/api/routes/__tests__/setup.routes.test.ts
+index 9ecb8fc..98e786a 100644
+--- a/src/api/routes/__tests__/setup.routes.test.ts
++++ b/src/api/routes/__tests__/setup.routes.test.ts
+@@ -36,7 +36,8 @@ const mockPush = sendTestPush as jest.MockedFunction<typeof sendTestPush>;
+ 
+ const STATE = {
+   done_count: 1,
+-  total: 5,
++  total: 4,
++  started_at: null,
+   server: {
+     install: false,
+     notifications: false,
+diff --git a/src/api/routes/setup.routes.ts b/src/api/routes/setup.routes.ts
+index 9414e1e..eb5ab8b 100644
+--- a/src/api/routes/setup.routes.ts
++++ b/src/api/routes/setup.routes.ts
+@@ -17,7 +17,7 @@ import { sendTestPush, TestPushOutcome } from '../../services/setupTestPush.serv
+ 
+ /**
+  * 1882 / the frontend's 06:30Z item 10:
+- *   GET  /setup/state                              { done_count, total, server, devices }
++ *   GET  /setup/state                              { done_count, total, started_at, server, devices }
+  *   PUT  /setup/devices/:deviceId/steps/:step      { gadget, status } → the new state
+  *   POST /setup/test-push                          one test notification to this person
+  * No subscription needed: setup is what a new person does first.
+diff --git a/src/services/__tests__/setupState.test.ts b/src/services/__tests__/setupState.test.ts
+index 7560f5d..ff1470b 100644
+--- a/src/services/__tests__/setupState.test.ts
++++ b/src/services/__tests__/setupState.test.ts
+@@ -58,10 +58,14 @@ describe('the setup list', () => {
+     expect(doneCount(NONE, [])).toBe(0);
+   });
+ 
++  it('does not count freshness, which setup no longer shows (4590)', () => {
++    expect(doneCount({ ...NONE, [SetupStep.Freshness]: true }, [])).toBe(0);
++  });
++
+   it('reads the server’s own ticks and groups each gadget’s steps', async () => {
+     mockQuery
+       .mockResolvedValueOnce({
+-        rows: [{ contacts: true, freshness: false, notifications: true }],
++        rows: [{ contacts: true, freshness: false, notifications: true, started_at: '2026-10-01' }],
+       } as never)
+       .mockResolvedValueOnce({
+         rows: [
+@@ -94,7 +98,10 @@ describe('the setup list', () => {
+       },
+     ]);
+     expect(state.done_count).toBe(4);
+-    expect(state.total).toBe(5);
++    // 4590: four steps on every screen; freshness is no longer counted.
++    expect(state.total).toBe(4);
++    // 4598: the first conversation's time, for the banner's week.
++    expect(state.started_at).toBe('2026-10-01');
+   });
+ 
+   it('writes one row per person, gadget and step, as bound parameters', async () => {
+diff --git a/src/services/setupState.service.ts b/src/services/setupState.service.ts
+index b89567e..ed2875f 100644
+--- a/src/services/setupState.service.ts
++++ b/src/services/setupState.service.ts
+@@ -33,6 +33,16 @@ export enum Gadget {
+ }
+ 
+ export const SETUP_STEPS: readonly SetupStep[] = Object.values(SetupStep);
++
++/**
++ * 4590 (the frontend, 14 Oct 13:00Z): setup shows four steps — the freshness
++ * step is no longer drawn (it lives in the monthly reminder), so it is not
++ * counted either; otherwise „1 / 5" would never reach five on any screen.
++ * A gadget may still record it.
++ */
++export const COUNTED_SETUP_STEPS: readonly SetupStep[] = SETUP_STEPS.filter(
++  (step) => step !== SetupStep.Freshness,
++);
+ const DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+ 
+ export function isSetupStep(v: unknown): v is SetupStep {
+@@ -60,6 +70,11 @@ export interface DeviceSetup {
+ export interface SetupState {
+   readonly done_count: number;
+   readonly total: number;
++  /**
++   * 4598: when this person first used Netai (their first conversation), so the
++   * app can stop showing the setup banner a week later. Null before any.
++   */
++  readonly started_at: string | null;
+   readonly server: ServerTicks;
+   readonly devices: readonly DeviceSetup[];
+ }
+@@ -82,13 +97,24 @@ export async function recordStep(
+ }
+ 
+ /** What the server can see for itself; install is the gadget's own to say. */
+-async function serverTicks(userId: number): Promise<ServerTicks> {
++interface ServerSeen {
++  readonly ticks: ServerTicks;
++  readonly startedAt: string | null;
++}
++
++async function serverSeen(userId: number): Promise<ServerSeen> {
+   const [row, connector] = await Promise.all([
+-    query<{ contacts: boolean; freshness: boolean; notifications: boolean }>(
++    query<{
++      contacts: boolean;
++      freshness: boolean;
++      notifications: boolean;
++      started_at: string | null;
++    }>(
+       `SELECT EXISTS (SELECT 1 FROM import_attempts
+                        WHERE user_id = $1 AND imported > 0 AND NOT in_progress) AS contacts,
+               COALESCE((SELECT contact_import_reminder FROM "User" WHERE id = $1), FALSE) AS freshness,
+-              EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = $1) AS notifications`,
++              EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = $1) AS notifications,
++              (SELECT MIN(created_at) FROM threads WHERE user_id = $1) AS started_at`,
+       [userId],
+       QUERY_TIMEOUT_MS,
+     ),
+@@ -96,11 +122,14 @@ async function serverTicks(userId: number): Promise<ServerTicks> {
+   ]);
+   const r = row.rows[0];
+   return {
+-    [SetupStep.Install]: false,
+-    [SetupStep.Notifications]: r?.notifications === true,
+-    [SetupStep.Contacts]: r?.contacts === true,
+-    [SetupStep.Freshness]: r?.freshness === true,
+-    [SetupStep.Connector]: connector.connected,
++    ticks: {
++      [SetupStep.Install]: false,
++      [SetupStep.Notifications]: r?.notifications === true,
++      [SetupStep.Contacts]: r?.contacts === true,
++      [SetupStep.Freshness]: r?.freshness === true,
++      [SetupStep.Connector]: connector.connected,
++    },
++    startedAt: r?.started_at ?? null,
+   };
+ }
+ 
+@@ -130,16 +159,22 @@ async function devicesOf(userId: number): Promise<DeviceSetup[]> {
+   return [...byDevice.values()].slice(0, MAX_DEVICES);
+ }
+ 
+-/** A step is done when the server sees it, or when any gadget said Done. */
++/** A counted step is done when the server sees it, or when any gadget said Done. */
+ export function doneCount(server: ServerTicks, devices: readonly DeviceSetup[]): number {
+-  return SETUP_STEPS.filter(
++  return COUNTED_SETUP_STEPS.filter(
+     (step) => server[step] || devices.some((d) => d.steps[step] === StepStatus.Done),
+   ).length;
+ }
+ 
+ export async function setupState(userId: number): Promise<SetupState> {
+-  const [server, devices] = await Promise.all([serverTicks(userId), devicesOf(userId)]);
+-  return { done_count: doneCount(server, devices), total: SETUP_STEPS.length, server, devices };
++  const [seen, devices] = await Promise.all([serverSeen(userId), devicesOf(userId)]);
++  return {
++    done_count: doneCount(seen.ticks, devices),
++    total: COUNTED_SETUP_STEPS.length,
++    started_at: seen.startedAt,
++    server: seen.ticks,
++    devices,
++  };
+ }
+ 
+ export interface FunnelRow {
+-- 
+2.43.0
+
