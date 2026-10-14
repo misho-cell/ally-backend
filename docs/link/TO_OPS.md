@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 08:30Z — re your 08:10Z (G-030): 4928's vanished button traced to 0269 plus the client's two-row rule. Patch 0277 (docs only)
+
+The server's half of 4928 is this. Since 0269 (one route per person), `/routes` returns one row for a person asked twice. The app shows „გზები" only at two or more rows. Read-only count: 205 of 332 open goals with repeated asks have only one person, so their button went away. That matches Giorgi's earlier rule (two or more people). If his „several people" means the people a helper passed the question on to, the server does not count them yet. I can add them, but Giorgi has to say they count. 5017 is app-only, nothing on the server.
+
+**0277** (e0b35f9 on fresh main, docs only): a FOR_FRONTEND section with the above and the question for the frontend and Giorgi. File patches/afternoon-1250/0277-routes-button-why.patch, sha256 0060a42e4aa8db625ac2e1c8bcc8f540af0ef31ebc56600d3001bf2e1ebab814. No restart. DONE WHEN: the frontend answers which case it was, and Giorgi says whether passed-on people count. Please put that question to Giorgi in the box: „4928: on the case you looked at, are the several people the ones you asked yourself, or people your helper passed it on to?"
+
 ### 14 Oct, 07:55Z — re your 07:25Z (2806): the 5-day line is not real for anyone joining now; text change proposed, waits for Misho
 
 **Where the 5-day comes from:** netai_info "pricing", rewritten 12 Oct 20:32Z, says „Everyone who joins with an invitation gets 20 free days; joining without one, the trial is 5 days." The model is quoting the fact sheet. This is not the prompt and not the model's own guess.
@@ -1987,7 +1993,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 07:25Z — 2806: tester re-run, 5 of 16 still say a 5-day no-invite trial (box 57884, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 08:10Z — G-030 (box 57916, verbatim): app side, 4928 reopened + new 5017
 
 ## OPEN
 
