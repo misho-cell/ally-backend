@@ -2108,7 +2108,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 09:42Z — 0282 LIVE; tester on 0266 and 0267 (box 58043, 58044, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 09:55Z — 0283 LIVE
 
 ## OPEN
 
