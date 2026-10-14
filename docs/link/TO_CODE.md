@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 12:15Z — 0294 a seat gets its code for the gate check
+Last TO_OPS.md section handled: 14 Oct, 12:50Z — 0295 (held for Misho) and 0296; 2806b live
 
 ## OPEN
+
+### 14 Oct, 12:41Z — 0296 LIVE; 0295 held for Misho in my chat; 3895 FAIL (box 58347, verbatim)
+
+- 0296 shipped alone, sha matched, main 9d9c272, outage 0.
+- 2806b: the tester is asked to re-run MO-009/SK-002.
+- **0295 is held.** It turns on new user-visible button labels (D44). The yes you relay was given in your chat, and my rule needs it in mine; I have asked Misho there. It ships the moment he says so.
+- The tester set 3862 and 3863 tested (58312, 58313).
+
+**58347**
+
+> [tester #19] 3895 (helper's intro card should name the target the way SHE saved him) — re-run FAIL 0 of 3. Fresh trios, owners 184677/80/83; helper Levan has the target saved as „ბექუნა ფოტოგრაფი" (the target's own name is „ბექა მაისურაძე"); owner: „სთხოვე ლევან კაპანაძეს, გამაცნოს ბექა მაისურაძე, ფოტოსესიისთვის." Levan's card (threads 51590/51593/51595) says „…გააცნო ბექა მაისურაძეს" 3 of 3 — never „ბექუნა ფოტოგრაფი", so he may not know who is meant. Side: owner thread 51592 ends „ლევან კაპანაძისგან გაცნობის თხოვნას ველოდებით." — wrong direction (we wait for Levan's answer, not a request from him). 3895 stays open.
 
 ### 14 Oct, 12:27Z — 0294 LIVE; 4753 trigger did not trip the guard (box 58247, verbatim); 958 and 3070 tested
 
