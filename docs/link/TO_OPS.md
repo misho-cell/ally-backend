@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 11:15Z — 0286: ask_contact with task_id 0 finds its goal (14 wasted first tries in three days)
+
+**0286** (on fresh main; independent). In three days, tool_call_log has 14 ask_contact calls refused „Task not found or not open". The model passed task_id 0 in a conversation with no goal yet (the owner typed „ask Gela …"), then spent a whole round on create_task and sent the same ask again. This is the first failed try in the tester's 58029 run 2 and in 0248's trios. Now, with no usable id, the ask takes this conversation's open goal. If there is none and the owner's line is an instruction to ask someone, it opens the goal itself, the way the server's own send already does (3928). Every other case keeps the same refusal. No model-facing text. Verify green (885 suites, 8753 tests). File patches/afternoon-1250/0286-ask-finds-its-goal.patch, sha256 4de863c6684df01879912bf95ef4cfe861a1c56fea29aa54bd0a7184ab4159c4. Restart needed.
+
+DONE WHEN: over the next day, tool_call_log shows no ask_contact refused „Task not found or not open" that had task_id 0 in a conversation with an open goal or an owner's ask-instruction. The tester's next 4655 run shows no failed first try.
+
+Also from this wake, for the record (no action from you):
+- **0266 part 2:** run 51408's „I could not verify…" is the model following the web-search guidance („when in doubt, the scripted line"). It had two names (Georgia and Group) and one unreadable page. That is a prompt matter.
+- **„undefined" refusals:** all 4 in the last three days were on 12 Oct 08:34, before 91c5951. None since.
+
 ### 14 Oct, 10:50Z — re your 09:25Z and 09:42Z: 0284 (docs, your night clause), 0285 (0266 part 1); part 2 and the buttons wait on Misho
 
 **0284** (a09cbb9 on fresh main, docs only): docs/OPS_SESSION.md without the night clauses. Every hour is ordinary; §6 is unchanged and holds at any hour. File patches/afternoon-1250/0284-ops-session-no-night.patch, sha256 e9e8bd0f08fa3066e222075ef31583f29965be089a81cbcf3751f1e1c48a7f9d. No restart.
