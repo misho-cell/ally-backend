@@ -5,10 +5,12 @@ import { recordPayment } from './payments.service';
 import { deliverTopupSession, isTopupSession } from './stripeTopup.service';
 import { applyChargeRefund } from './stripeRefund.service';
 import { distributeReferralEarnings, oneMonthOfUsd } from './referral.service';
+import { cardTrialDays } from './inviteCohorts.service';
 
-// Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, a 5-day
-// trial with the card collected up front, no charge during the trial, then
-// automatic monthly renewal until cancelled. Access follows the subscription
+// Stripe subscriptions (2 Sep, the founder's brief): $19.99/month, the card
+// collected up front, then automatic monthly renewal until cancelled. The
+// 5-day card trial is gone since 14 October (Misho): it comes back only if
+// STRIPE_TRIAL_DAYS names a number. Access follows the subscription
 // status; the Customer Portal handles card changes and cancellation.
 //
 // Everything downstream in this codebase already reads User.subscription_status
@@ -16,7 +18,7 @@ import { distributeReferralEarnings, oneMonthOfUsd } from './referral.service';
 // columns true to Stripe — it changes no access rule anywhere else.
 
 const STRIPE_TIMEOUT_MS = 20_000;
-const TRIAL_DAYS = Number(process.env.STRIPE_TRIAL_DAYS ?? 5);
+const TRIAL_DAYS = cardTrialDays(process.env.STRIPE_TRIAL_DAYS);
 const PRICE_ID = process.env.STRIPE_PRICE_ID ?? '';
 // The founder's ruling: this price grants PREMIUM.
 const TIER = process.env.STRIPE_TIER ?? 'premium';
