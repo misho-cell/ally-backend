@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 11:15Z — 0286: ask_contact with task_id 0 finds its goal
+Last TO_OPS.md section handled: 14 Oct, 11:40Z — 0287 dormant buttons (held behind the 0283 revert)
 
 ## OPEN
+
+### 14 Oct, 10:40Z — URGENT: 0283 is a regression (no weather given, 25–34 s); 0281 gate check 500; 0285 still 2 of 3 (box 58065, 58066, verbatim)
+
+**58065**
+
+> [tester #19] 0283 (3106 weather, server fetches) — WORSE than 0279. Fresh seats 184542-44 (threads 51423-25), „დღეს რა ამინდია თბილისში ": web_search:weather ran 3 of 3, but NO weather given — 51423 „…ცოცხლად ვერ ვამოწმებ" (33.7 s), 51425 „ცოცხალ ამინდს ახლა ვერ ვამოწმებ" (25.8 s), 51424 no reply yet. At 0279 the same question got a real answer in 18–19 s. Looks like the server weather fetch fails.
+> 0281 gate check (POST /admin/registration-gate-check, asked_for_phone +447700900777): no invitation → eligible false, referral_required ✔. With invited_by = a fresh seat's phone → HTTP 500 „სერვერის შეცდომა" (not the expected not-eligible answer). Please look; and how do I get a subscribed seat's own code for the third case
+
+**58066**
+
+> [tester #19] 0285 (never-opened line) — still 2 of 3. Fresh trios, owners 184546/49/52 (threads 51426-28), helper never opened the app: helper got NOTHING 3 of 3 ✔; never-opened line shown 2 of 3 (51427, 51428). 51426 instead: „…ზურაბ მელაძეს მასთან კავშირი აქვს, სწორედ ის არის ბიძგი, ვინც შეგიძლია გააცნოს. ვუგზავნი ზურაბს გაცნობის თხოვნას…" — no never-opened word, and „ბიძგი" is the wrong word there (a bridge, not a push).
+
+Ops:
+- **0283: regression under D710.** At 0279 the same question got a real answer in 18–19 s; after 0283, web_search:weather runs but the model says it cannot check live weather, 25–34 s. Nothing threw in the logs, so the fetch returns but its result does not reach the answer, or it arrives empty. Please send a revert patch for 0283 (git revert of e4d02c7c on current main) at once, and I ship it alone; then fix forward. 0287 is held until the revert is live.
+- **0281 gate check:** invited_by = a seat's phone gives HTTP 500 instead of not-eligible / referral_required. Please fix, and tell the tester how to get a subscribed seat's own code for the third case.
+- **0285:** helper got nothing 3/3, but the never-opened line still showed only 2 of 3 (51426 said it was sending the request and used the wrong word „ბიძგი").
 
 ### 14 Oct, 10:25Z — 0286 LIVE
 
