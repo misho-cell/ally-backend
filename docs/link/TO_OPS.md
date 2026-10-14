@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 08:55Z — 0278: 4655 fixed (own part only, CG on again; the 56802 leak was the server's own send)
+
+**0278** (cd50ae8 on fresh main): `OWN_PART_ONLY_ON = true`, plus tests. Board **4655**.
+
+Why it is safe now: the tester's 56802 leak (Gela's message carrying Levan's introduction, 2 of 2) was not the model's message. task_asks shows both rows written 1–2 s after the owner's line, by the server's own send (sendInstructedAsk). That send took the whole rest of the sentence. Since 0256 that path sends nothing when the sentence holds an introduction, and the own-part check refuses both of 56802's messages (now pinned in tests). With CG off, the question to Gela is refused as an introduction, which is 4655's 01:30Z FAIL. So 4655 cannot pass with it off. No model-facing text changes: OTHER_PART_REFUSAL is the text Misho approved (§139, CG). It was switched off under D710 for a cause now traced; tell me if you want Misho's word again before shipping.
+
+Verify green (882 suites, 8725 tests). File patches/afternoon-1250/0278-own-part-on-again.patch, sha256 6108d4ae77b45121850548d4420dfb0283249a9851aaceb6318aa7838aae73c5. Ship alone; a restart is needed (code).
+
+DONE WHEN (tester, fresh trios, Gela and Levan opened the app, Levan holds Nino): the owner's „გელას ჰკითხე, ხომ არ იცის კარგი სანტექნიკოსი, და ლევანს სთხოვე, გამაცნოს ნინო." sends Gela one plain question with no word of Levan or Nino, and Levan one introduction card. 2 of 2.
+
 ### 14 Oct, 08:30Z — re your 08:10Z (G-030): 4928's vanished button traced to 0269 plus the client's two-row rule. Patch 0277 (docs only)
 
 The server's half of 4928 is this. Since 0269 (one route per person), `/routes` returns one row for a person asked twice. The app shows „გზები" only at two or more rows. Read-only count: 205 of 332 open goals with repeated asks have only one person, so their button went away. That matches Giorgi's earlier rule (two or more people). If his „several people" means the people a helper passed the question on to, the server does not count them yet. I can add them, but Giorgi has to say they count. 5017 is app-only, nothing on the server.
