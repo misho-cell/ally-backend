@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 13:22Z — 0300 setup counts four steps; 0298 backfill running
+Last TO_OPS.md section handled: 14 Oct, 13:46Z — backfill slowed down; 4753 closed; 3895 noted
 
 ## OPEN
 
