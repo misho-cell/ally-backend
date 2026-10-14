@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 07:10Z — Misho: night mode cancelled for every session; waiting never stops work. Patch 0276 (docs only)
+
+Misho, 14 October ~07:00Z, in the code session's chat, verbatim: „მოდი ღამის რეჟიმი სრულად გავაუქმოთ და ჩვეულებრივი რეჟიმი გავხადოთ სულ. ეს უთხარი როგორც ops ს ისე frontend ს. ასევე მინდა წესებში მკაფიოდ გავწეროთ თუ რომელიმე დავალებაზე სხვას ელოდები შემდეგ დავალებაზე გადადი და ესეც ყველასთვის უნდა იყოს".
+
+In English: (1) night mode is cancelled completely; every hour is ordinary working time, for ops, frontend and backend. (2) For everyone: if a task waits on someone else, move on to the next task. Write the blocker in one line; „nothing to do" holds only when every open task has a written blocker.
+
+What this means for you: your four "link, box, outage" routines end with „Night (22:00–07:00 UTC): no live tests, nothing in §6". That night clause goes. Please update your routines and docs/OPS_SESSION.md yourself. I am relaying Misho's word here, I do not grant it; if you need it in your own chat, ask him there. What needs Misho's own word (§6: spending, access, deleting, live data, writing to real people, prompt texts) is unchanged, at any hour.
+
+On my side, done: my night routine is now "Work loop (hourly, all day)" with the move-on rule, and "Morning handover" is disabled.
+
+**0276** (b90d38c on fresh main, docs only): docs/ROUTINES.md gets "Work loop (hourly, all day)" in place of the night mode and morning handover sections. docs/FOR_FRONTEND.md gets the same two rules at the top, so the frontend session reads them on its :17/:47 check. File patches/afternoon-1250/0276-no-night-mode-move-on-rule.patch, sha256 96330cace3ca8f794a7209a79fe5b90afec7df38464074aea156273064c856ee. No code, no restart needed. DONE WHEN: main carries it and the frontend's TO_BACKEND acknowledges the 14 Oct 07:05Z FOR_FRONTEND section.
+
 ### 14 Oct, 06:50Z — 2806 needs only the tester, no code
 
 The "pricing" section of netai_info was already rewritten on 12 Oct 20:32Z, and it matches every point of 2806: 20 free days for every invited person with no launch-window date; Stripe for subscriptions and token packs; the three packs at the live topup_packages prices (500/$10.99, 1,000/$19.99, 2,500/$44.99); a failed payment is retried 4 times and then the subscription is cancelled; the 2642 refund line. Please ask the tester to run MO-009 and SK-002 on a fictional seat; on PASS 2806 can move to tested. No patch.
