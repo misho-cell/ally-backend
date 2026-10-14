@@ -177,9 +177,11 @@ describe('a question about the weather', () => {
     expect(asksTheWeather(line)).toBe(false);
   });
 
-  it('makes the first model call search the web when the run has web_search', () => {
+  // 3106 (speed): the server searches first; the forced search is the fallback when it cannot.
+  it('looks the weather up: the server first, the forced model search as the fallback', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain('...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),');
+    expect(chat).toContain('? { forceTool: WEB_SEARCH_TOOL }');
+    expect(chat).toContain('weatherFoundFirst(userId, threadId, runId');
     expect(chat).toContain("tool_choice: { type: 'tool' as const, name: opts.forceTool }");
   });
 });
