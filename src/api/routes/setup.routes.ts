@@ -17,7 +17,7 @@ import { sendTestPush, TestPushOutcome } from '../../services/setupTestPush.serv
 
 /**
  * 1882 / the frontend's 06:30Z item 10:
- *   GET  /setup/state                              { done_count, total, server, devices }
+ *   GET  /setup/state                              { done_count, total, started_at, server, devices }
  *   PUT  /setup/devices/:deviceId/steps/:step      { gadget, status } → the new state
  *   POST /setup/test-push                          one test notification to this person
  * No subscription needed: setup is what a new person does first.

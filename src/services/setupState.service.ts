@@ -33,6 +33,16 @@ export enum Gadget {
 }
 
 export const SETUP_STEPS: readonly SetupStep[] = Object.values(SetupStep);
+
+/**
+ * 4590 (the frontend, 14 Oct 13:00Z): setup shows four steps — the freshness
+ * step is no longer drawn (it lives in the monthly reminder), so it is not
+ * counted either; otherwise „1 / 5" would never reach five on any screen.
+ * A gadget may still record it.
+ */
+export const COUNTED_SETUP_STEPS: readonly SetupStep[] = SETUP_STEPS.filter(
+  (step) => step !== SetupStep.Freshness,
+);
 const DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export function isSetupStep(v: unknown): v is SetupStep {
@@ -60,6 +70,11 @@ export interface DeviceSetup {
 export interface SetupState {
   readonly done_count: number;
   readonly total: number;
+  /**
+   * 4598: when this person first used Netai (their first conversation), so the
+   * app can stop showing the setup banner a week later. Null before any.
+   */
+  readonly started_at: string | null;
   readonly server: ServerTicks;
   readonly devices: readonly DeviceSetup[];
 }
@@ -82,13 +97,24 @@ export async function recordStep(
 }
 
 /** What the server can see for itself; install is the gadget's own to say. */
-async function serverTicks(userId: number): Promise<ServerTicks> {
+interface ServerSeen {
+  readonly ticks: ServerTicks;
+  readonly startedAt: string | null;
+}
+
+async function serverSeen(userId: number): Promise<ServerSeen> {
   const [row, connector] = await Promise.all([
-    query<{ contacts: boolean; freshness: boolean; notifications: boolean }>(
+    query<{
+      contacts: boolean;
+      freshness: boolean;
+      notifications: boolean;
+      started_at: string | null;
+    }>(
       `SELECT EXISTS (SELECT 1 FROM import_attempts
                        WHERE user_id = $1 AND imported > 0 AND NOT in_progress) AS contacts,
               COALESCE((SELECT contact_import_reminder FROM "User" WHERE id = $1), FALSE) AS freshness,
-              EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = $1) AS notifications`,
+              EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = $1) AS notifications,
+              (SELECT MIN(created_at) FROM threads WHERE user_id = $1) AS started_at`,
       [userId],
       QUERY_TIMEOUT_MS,
     ),
@@ -96,11 +122,14 @@ async function serverTicks(userId: number): Promise<ServerTicks> {
   ]);
   const r = row.rows[0];
   return {
-    [SetupStep.Install]: false,
-    [SetupStep.Notifications]: r?.notifications === true,
-    [SetupStep.Contacts]: r?.contacts === true,
-    [SetupStep.Freshness]: r?.freshness === true,
-    [SetupStep.Connector]: connector.connected,
+    ticks: {
+      [SetupStep.Install]: false,
+      [SetupStep.Notifications]: r?.notifications === true,
+      [SetupStep.Contacts]: r?.contacts === true,
+      [SetupStep.Freshness]: r?.freshness === true,
+      [SetupStep.Connector]: connector.connected,
+    },
+    startedAt: r?.started_at ?? null,
   };
 }
 
@@ -130,16 +159,22 @@ async function devicesOf(userId: number): Promise<DeviceSetup[]> {
   return [...byDevice.values()].slice(0, MAX_DEVICES);
 }
 
-/** A step is done when the server sees it, or when any gadget said Done. */
+/** A counted step is done when the server sees it, or when any gadget said Done. */
 export function doneCount(server: ServerTicks, devices: readonly DeviceSetup[]): number {
-  return SETUP_STEPS.filter(
+  return COUNTED_SETUP_STEPS.filter(
     (step) => server[step] || devices.some((d) => d.steps[step] === StepStatus.Done),
   ).length;
 }
 
 export async function setupState(userId: number): Promise<SetupState> {
-  const [server, devices] = await Promise.all([serverTicks(userId), devicesOf(userId)]);
-  return { done_count: doneCount(server, devices), total: SETUP_STEPS.length, server, devices };
+  const [seen, devices] = await Promise.all([serverSeen(userId), devicesOf(userId)]);
+  return {
+    done_count: doneCount(seen.ticks, devices),
+    total: COUNTED_SETUP_STEPS.length,
+    started_at: seen.startedAt,
+    server: seen.ticks,
+    devices,
+  };
 }
 
 export interface FunnelRow {

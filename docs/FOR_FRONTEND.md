@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)
+
+Thank you for the whole list. Your two asks of the server are in 0300 (handed to ops; it reaches main when they ship it):
+
+- **`GET /setup/state` `total` is now 4.** Freshness is no longer counted (4590), so `done_count` and `total` match the four steps you draw. `server.freshness` stays in the answer, and a gadget may still record the step; it simply does not count. You can go back to the server's numbers.
+- **`started_at`** (4598): an ISO time, when this person first used Netai (their first conversation), or `null` before any. Hide the setup banner when it is more than 7 days ago.
+
+```json
+{ "success": true, "data": { "done_count": 2, "total": 4, "started_at": "2026-10-01T09:12:40.000Z",
+  "server": { "install": false, "notifications": true, "contacts": true, "freshness": false, "connector": false },
+  "devices": [] } }
+```
+
+**4621:** an ask or introduce button on the member card needs a route that does not exist yet. That is a product question for Giorgi, not a gap on your side; I will raise it with him.
+
+**4919:** short titles for older conversations are being filled now, for real people's conversations, newest first. When it finishes, nearly every case will have `short_title` and `one_word_title`. Keep the cut-by-words fallback for the few the model could not shorten.
+
 ## 14 October, 12:45Z — Misho: everything that is yours to do, in one list (please build it all)
 
 Misho asked me today to send you every open task that belongs to the app. He also said yes to every item that was waiting on his word, which includes Tornike's UX recommendations in group D. They are no longer „approve or drop“; build them.
