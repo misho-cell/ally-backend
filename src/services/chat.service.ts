@@ -5253,6 +5253,31 @@ async function buildAgentSystemPrompt(
   const boundTask =
     (threadId != null ? await getOpenTaskByThread(threadId) : null) ?? namedTask ?? null;
   const runMode: RunMode = forcedMode ?? (await resolveRunMode(userId, threadType, boundTask));
+  const presence = {
+    ownerPresent: !ownerAbsent,
+    regularThread: threadType === 'regular',
+    goalBound: boundTask !== null,
+    preview: forcedMode !== undefined,
+    ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
+    ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+    ownerAsksWhatWaits: asksWhatWaits(ownerLine),
+    ownerAsksAQuestion: asksAQuestion(ownerLine),
+    ownerLine,
+  };
+  /**
+   * 3106 (speed): these two read nothing the reads below produce, so they start
+   * now and run beside them. One after the other they were most of the second
+   * phase of this build (the day's question is a chain of its own lookups).
+   * Each is awaited where it was before, so an error still surfaces there; the
+   * no-op catch only stops it counting as unhandled while the first phase runs.
+   */
+  const contactQuestionEarly = dailyContactQuestionSection(userId, threadId, presence);
+  const noContactsEarly =
+    !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
+      ? noContactsYetSection(userId, threadId)
+      : Promise.resolve('');
+  contactQuestionEarly.catch(() => undefined);
+  noContactsEarly.catch(() => undefined);
   const [
     configResult,
     modeBlocks,
@@ -5352,17 +5377,6 @@ async function buildAgentSystemPrompt(
   //
   // Nothing here changes content. Sections are grouped by how often they
   // change: global, then per-account, then per-goal, then the clock.
-  const presence = {
-    ownerPresent: !ownerAbsent,
-    regularThread: threadType === 'regular',
-    goalBound: boundTask !== null,
-    preview: forcedMode !== undefined,
-    ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
-    ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
-    ownerAsksWhatWaits: asksWhatWaits(ownerLine),
-    ownerAsksAQuestion: asksAQuestion(ownerLine),
-    ownerLine,
-  };
   // 958: these six reads do not depend on each other, so they run together; one
   // after another they were the slowest part of building the prompt.
   const [heldNote, askStates, waveNote, firstAsk, contactQuestion, noContacts] = await Promise.all([
@@ -5372,11 +5386,9 @@ async function buildAgentSystemPrompt(
     // D713 (phase 1): the owner's first ask on this goal, on every turn.
     boundTask ? goalFirstAsk(boundTask.id).then(goalFirstAskSection) : Promise.resolve(''),
     // #2181 (D708, §98.1): the day's one question about the owner's contacts, really asked.
-    dailyContactQuestionSection(userId, threadId, presence),
+    contactQuestionEarly,
     // 2707 (§99.3): a goal run for an owner with no phonebook says so once.
-    !ownerAbsent && boundTask !== null && threadId !== undefined && forcedMode === undefined
-      ? noContactsYetSection(userId, threadId)
-      : Promise.resolve(''),
+    noContactsEarly,
   ]);
   // BJ (D771, §128): once a month, the contacts reminder in the assistant's own words —
   // after the day's question, which it gives way to.

@@ -61,7 +61,10 @@ describe('the owner’s own run carries the day’s question (§98.1)', () => {
     const { join } = require('path') as typeof import('path');
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     // 958: read beside the other prompt sections, with the run's presence.
-    expect(chat).toContain('dailyContactQuestionSection(userId, threadId, presence),');
+    // 3106: started beside the first phase of reads, with the run's presence.
+    expect(chat).toContain(
+      'const contactQuestionEarly = dailyContactQuestionSection(userId, threadId, presence);',
+    );
     expect(chat).toContain('ownerPresent: !ownerAbsent,');
     expect(chat).toMatch(/firstAsk \+\s+contactQuestion \+/u);
   });
