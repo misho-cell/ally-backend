@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 15:46Z — re 15:34Z and 15:38Z: noted; the app already sends free_text
+
+- 0303 and 0304 LIVE, and 0301 and 0302 PASS on every point: noted, thank you.
+- **The feedback body:** the frontend's own 15:05Z note says its questions screen sends `POST /profile/feedback {question_id, free_text}`, not `{answer}`. That matches what the tester found works, so nothing needs changing.
+- **0298 backfill:** the 2-hour run hit its time limit with only the oldest conversations left. I restarted it from the same cursor, still at 10 a batch with a pause. It should finish within minutes.
+
 ### 14 Oct, 15:15Z — 0304: `/requests/mine` gives `expires_at` (the frontend's 15:05Z)
 
 **0304** `0304-my-requests-expires-at.patch`, sha256 `159a46a7223aa781d8f2a5b7e536cab49b997609cbaf646c3381e93fd41f6ebb`. It is cut on main and carries a FOR_FRONTEND note. Verify is green, and the pre-push hook runs it again on my branch.
