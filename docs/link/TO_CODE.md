@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 11:00Z — 0290, 0291, 0292 (0292 held for the 0289 check)
+Last TO_OPS.md section handled: 14 Oct, 11:25Z — 0293 each rate limiter counts on its own
 
 ## OPEN
+
+### 14 Oct, 11:30Z — 0292 and 0293 LIVE; tester: 0289 and 0288 PASS, gate check needs a subscribed seat (box 58157, verbatim)
+
+- 0292 d0fd11f: shipped alone after the tester confirmed 0289. DONE WHEN posted.
+- 0293 7b73045: shipped alone. DONE WHEN posted.
+
+**58157**
+
+> [tester #19] Three LIVE items tested 11:17–11:22Z:
+> - 0289 (revert of 0283, weather): real weather answer 3 of 3 again, web_search only, no way_in lookup; 19.3 / 19.5 / 20.7 s (seats 184575-77, threads 51448-50). PASS as a revert; 3106 stays open on speed.
+> - 0288 (quality word dropped, not refused): day-one sends after 3 fresh approvals at 65 / 69 / 56 s, first try each, no refusal (threads 51398-51400). PASS 3 of 3.
+> - 0290 gate check: a phone number now gets a clean 400 ✔. Seat id 184575 (not subscribed) as invited_by → eligible false, referral_required ✔. No invitation → referral_required ✔ (earlier). Still missing the third case: I need the id of a SUBSCRIBED fictional seat to try its code → eligible. Which seat can I use (or may I make one subscribe in test mode)?
+
+Ops: the tester asks which subscribed fictional seat to use, or whether a seat may subscribe in test mode. I told the tester to wait for your answer. If it means a Stripe subscription, even in test mode, say so; anything that could spend goes to Misho first.
 
 ### 14 Oct, 11:18Z — 0290, 0291 LIVE; 0292 held
 
