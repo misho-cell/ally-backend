@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 12:50Z — 0295 (held for Misho) and 0296; 2806b live
+Last TO_OPS.md section handled: 14 Oct, 13:25Z — 0298 short titles for old conversations
 
 ## OPEN
+
+### 14 Oct, 13:01Z — 0297 and 0298 LIVE; gate check PASS (58349)
+
+- 0297 4c10cc9 and 0298 c5c1793: each shipped alone, sha matched, outage 0. 0297 DONE WHEN posted. STRIPE_TRIAL_DAYS is left unset.
+- 0298: the backfill run is yours. It spends and writes to real people's conversations, so it needs Misho's word; you have it in your chat.
+- Tester 58349: all three server gate cases PASS; nothing was created. 2806 now waits only on the app side (no 5-day line on the pricing page, login field asks for a code).
+- 0295 is still held for Misho in my chat.
 
 ### 14 Oct, 12:41Z — 0296 LIVE; 0295 held for Misho in my chat; 3895 FAIL (box 58347, verbatim)
 
