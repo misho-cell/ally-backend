@@ -19,6 +19,7 @@ import {
   languageHint,
   MAX_AUDIO_BYTES,
   MAX_SECONDS_PER_DAY,
+  refusedTheFormat,
 } from '../speech.service';
 
 const mockClient = openaiClient as jest.MockedFunction<typeof openaiClient>;
@@ -794,5 +795,22 @@ describe('the Georgian primer', () => {
   /** Untouched, because they are not failing. */
   it('leaves the other languages as they were', async () => {
     expect(await primerFor('en')).toBe('Hello. This is an ordinary sentence in English.');
+  });
+});
+
+/** 370: the newer recogniser's own refusal of the verbose form drops to plain json. */
+describe('the verbose form refused by the newer recogniser', () => {
+  it('reads „not compatible" as a refusal of the format', () => {
+    expect(
+      refusedTheFormat(
+        "400 response_format 'verbose_json' is not compatible with model 'gpt-4o-transcribe'. Use 'json' or 'text' instead.",
+      ),
+    ).toBe(true);
+    expect(refusedTheFormat("400 Unsupported value: 'response_format'")).toBe(true);
+  });
+
+  it('does not read a refusal of something else as one', () => {
+    expect(refusedTheFormat("400 Language 'ka' is not supported.")).toBe(false);
+    expect(refusedTheFormat('429 Rate limit reached')).toBe(false);
   });
 });

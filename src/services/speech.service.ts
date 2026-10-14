@@ -216,8 +216,17 @@ function refusedTheLanguage(message: string): boolean {
  */
 const formatsRefusedByModel = new Set<string>();
 
-function refusedTheFormat(message: string): boolean {
-  return /response_format/i.test(message) && /not supported|unsupported|invalid/i.test(message);
+/**
+ * 370 (Misho's yes to the newer recogniser, 14 Oct): gpt-4o-transcribe refuses
+ * the verbose form as „response_format 'verbose_json' is not compatible with
+ * model …". „not compatible" was missing here, so on that model every voice
+ * message would have thrown instead of dropping to plain json.
+ */
+export function refusedTheFormat(message: string): boolean {
+  return (
+    /response_format/i.test(message) &&
+    /not supported|unsupported|invalid|not compatible|incompatible/i.test(message)
+  );
 }
 
 /**
