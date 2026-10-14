@@ -213,13 +213,14 @@ export async function generateThreadTitle(
 /**
  * 4919: the two short titles made from the full one, written and broadcast.
  * Best-effort like the title: on any failure the client shortens the full title.
+ * True when both were written.
  */
-async function writeShortTitles(
+export async function writeShortTitles(
   userId: string,
   threadId: number,
   title: string,
   firstMessage: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const { default: anthropic } = await import('../config/anthropic');
     const response = await anthropic.messages.create(
@@ -240,11 +241,13 @@ async function writeShortTitles(
     }).catch(() => undefined);
     const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
     const short = parseShortTitles(raw);
-    if (short === null) return;
+    if (short === null) return false;
     await updateThreadShortTitles(threadId, short.short_title, short.one_word_title);
     emitThreadUpdated(userId, { id: threadId, ...short });
+    return true;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(`[title] short titles failed for thread ${threadId}:`, (err as Error).message);
+    return false;
   }
 }

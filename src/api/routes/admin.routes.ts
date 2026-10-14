@@ -331,10 +331,13 @@ import {
   eveningCardForAdmin,
   snoozeSeatEveningCard,
 } from '../../services/adminEveningCard.service';
+import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
 const MAX_SEAT_USER_ID = 2_147_483_647;
 const adminRouter = Router();
+/** A short-title batch is up to 25 model calls, run one after another. */
+const SHORT_TITLE_BATCHES_PER_MINUTE = 6;
 /** The Axel export is heavy and needed once: a few builds a minute at most. */
 const AXEL_EXPORTS_PER_MINUTE = 3;
 /** The longest team name a staff account carries. */
@@ -7290,5 +7293,45 @@ adminRouter.get('/goals/:id/wave-ranking', async (req: Request, res: Response) =
     res.status(500).json({ success: false, error: 'The ranking could not be read' });
   }
 });
+
+/**
+ * 4919 — short titles for conversations made before they existed (Misho's yes,
+ * 14 October). One bounded batch per call, newest first, real people's
+ * conversations only; call again with `before_id: next_before_id` until it is
+ * null. Each title is one cheap-model call, costed like any title.
+ *
+ *   POST /admin/short-titles/backfill   { "limit": 25, "before_id": 51200 }
+ *   200 { asked, filled, next_before_id }
+ *   400 limit or before_id out of range
+ */
+adminRouter.post(
+  '/short-titles/backfill',
+  rateLimit({ windowMs: 60_000, max: SHORT_TITLE_BATCHES_PER_MINUTE }),
+  body('limit').optional().isInt({ min: 1, max: BACKFILL_MAX_BATCH }),
+  body('before_id').optional().isInt({ min: 1, max: MAX_SEAT_USER_ID }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `limit is 1-${BACKFILL_MAX_BATCH}; before_id is a thread id`,
+      });
+      return;
+    }
+    try {
+      const { limit, before_id } = req.body as { limit?: number; before_id?: number };
+      const batch = await backfillShortTitles(
+        Number(limit ?? BACKFILL_MAX_BATCH),
+        before_id === undefined ? null : Number(before_id),
+      );
+      // eslint-disable-next-line no-console
+      console.log(`[short-titles] backfill: asked ${batch.asked}, filled ${batch.filled}`);
+      res.status(200).json({ success: true, data: batch });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[POST /admin/short-titles/backfill]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not fill the short titles' });
+    }
+  },
+);
 
 export default adminRouter;
