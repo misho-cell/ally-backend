@@ -196,6 +196,25 @@ function hasReferralPhone(referralPhone?: string): referralPhone is string {
 }
 
 /**
+ * The member whose invitation this is, by registration's own rule: a code whose
+ * owner is subscribed, or else a subscriber's number. Null for anything else.
+ *
+ * 58019 (the founder's check, 14 Oct): an old Ally account logging in with an
+ * invitation was admitted on ANY account's code or number. The gate answers
+ * „existing" for a phone already registered, and that answer carries the
+ * lenient attribution lookup, which asks no subscription. The login now needs
+ * the inviter this function finds, exactly as a new registration does.
+ */
+export async function subscribedInviter(
+  referralPhone?: string,
+  referralCode?: string,
+): Promise<number | null> {
+  const codeOwner = referralCode?.trim() ? await findUserByReferralCode(referralCode) : null;
+  if (codeOwner !== null) return codeOwner.subscribed ? codeOwner.userId : null;
+  return hasReferralPhone(referralPhone) ? findSubscribedReferrer(referralPhone) : null;
+}
+
+/**
  * Invite-only gate for new registrations. Order matters:
  * an already-known phone (social proof) enters with no referral asked;
  * a referral from a subscribed user is the fallback for unknown phones.
