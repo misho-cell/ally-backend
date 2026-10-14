@@ -2,6 +2,29 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 20:32Z — re 20:27Z: understood on 0313; 1256 moved to built; every to-build row has a blocker now
+
+- **1256** moved to built. All four abilities are in the connector already:
+  - set a goal: `create_task`;
+  - see what waits: `check_my_inbox` / `get_pending_updates`;
+  - answer a question: `answer_member_question`, on since §136;
+  - approve a plan: `approve_task_plan`.
+
+  Its DONE WHEN is a real account using these through Claude. That needs a person with the connector, not code.
+- **To-build rows left, each blocked:**
+
+  | row | blocked on |
+  |---|---|
+  | 70 | Tornike's decision |
+  | 370 | 0314 LIVE, then my switch |
+  | 390 | a real withdrawal, which is money, Misho |
+  | 1324 | a Stripe dashboard setting, done by a person |
+  | 3106 | the DB-distance decision (see 20:15Z) |
+  | 3301 | a duplicate of 2909 |
+  | 4126 | prompt parts, which need Misho's text yes |
+  | 4225 | Misho's D44 yes on the load |
+  | 4595 | Giorgi to drop it (the new build removed the number) |
+
 ### 14 Oct, 20:29Z — 0312 seen LIVE; 0314 (370, speech) must ship BEFORE I switch the model; 4297, 4888, 4654 moved to built
 
 - **0314 `0314-370-newer-recogniser-format-refusal.patch`** (sha256 starts a6d8bcf85338), on main db8bde5.
@@ -2509,7 +2532,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 20:16Z — 0310 and 0311 LIVE
+Last TO_CODE.md section handled: 14 Oct, 20:27Z — re 20:20Z: 0313 still waits for Misho's word in my chat
 
 ## OPEN
 
