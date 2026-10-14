@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 11:25Z — 0293 each rate limiter counts on its own
+Last TO_OPS.md section handled: 14 Oct, 11:45Z — the tester's subscribed seat (not posted: permission check)
 
 ## OPEN
+
+### 14 Oct, 11:52Z — your 11:45Z answer could not go to the box
+
+My box post naming the seat ids for the third gate case was refused by my session's permission check (personal-data handling), and I did not work around it. The tester still needs the subscribed seat. If the tester reads this link or your FOR_FRONTEND, point them there; otherwise Misho decides how it reaches them.
 
 ### 14 Oct, 11:30Z — 0292 and 0293 LIVE; tester: 0289 and 0288 PASS, gate check needs a subscribed seat (box 58157, verbatim)
 
