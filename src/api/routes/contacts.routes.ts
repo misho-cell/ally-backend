@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import {
   authenticateJwt,
   requireUserRole,
@@ -13,7 +13,17 @@ import {
 } from '../../services/contactImportState.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { contactPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../services/contactBook.service';
-import { contactPageFor } from '../../services/contactPage.service';
+import { contactPageFor, ownContactPhone, ownFacts } from '../../services/contactPage.service';
+import {
+  addOwnFact,
+  correctOwnFact,
+  EditOutcome,
+  forgetOwnFact,
+  markDeceased,
+  MAX_FACT_CHARS,
+  removeFromNetwork,
+  removeOwnExclusion,
+} from '../../services/contactEdits.service';
 import { ApiResponse, ImportResult } from '../../types';
 import { getSession } from '../../db/neo4j/client';
 import pool from '../../db/postgres/client';
@@ -313,5 +323,155 @@ contactsRouter.get('/:id', phonebookLimit, async (req: Request, res: Response) =
     res.status(500).json({ success: false, error: 'Could not read the contact' });
   }
 });
+
+/**
+ * The frontend's 14 Oct 14:10Z item 1 (Misho asked for it): the contact's page
+ * corrects what Netai keeps. `:id` is the contact id the list and the page
+ * give; a contact that is not this person's own is 404, and nothing is written.
+ *
+ *   GET    /contacts/:id/facts                    the person's own facts, with ids
+ *   POST   /contacts/:id/facts          { text }  201, the facts again
+ *   PATCH  /contacts/:id/facts/:factId  { text }  200, the facts again
+ *   DELETE /contacts/:id/facts/:factId            200, the facts again
+ *   DELETE /contacts/:id/exclusions/:exclusionId  200
+ *   POST   /contacts/:id/remove                   200 (leaves the network)
+ *   POST   /contacts/:id/deceased                 200
+ */
+type ContactHandler = (userId: number, phone: string, req: Request, res: Response) => Promise<void>;
+
+function withOwnContact(label: string, handler: ContactHandler) {
+  return async (req: Request, res: Response): Promise<void> => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({
+        success: false,
+        error: `text is 1 to ${MAX_FACT_CHARS} characters; ids are numbers`,
+      });
+      return;
+    }
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const phone = await ownContactPhone(userId, String(req.params.id));
+      if (phone === null) {
+        res.status(404).json({ success: false, error: 'No such contact' });
+        return;
+      }
+      await handler(userId, phone, req, res);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(`[${label}]`, (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not change the contact' });
+    }
+  };
+}
+
+async function answerWithFacts(
+  res: Response,
+  status: number,
+  userId: number,
+  phone: string,
+): Promise<void> {
+  res.status(status).json({ success: true, data: { facts: await ownFacts(userId, phone) } });
+}
+
+function answerEdit(
+  outcome: EditOutcome,
+  res: Response,
+  onDone: () => Promise<void>,
+): Promise<void> {
+  if (outcome === EditOutcome.NotFound) {
+    res.status(404).json({ success: false, error: 'No such item on this contact' });
+    return Promise.resolve();
+  }
+  return onDone();
+}
+
+const factText = body('text').isString().trim().isLength({ min: 1, max: MAX_FACT_CHARS });
+const factId = param('factId').isInt({ min: 1 });
+
+contactsRouter.get(
+  '/:id/facts',
+  phonebookLimit,
+  withOwnContact('GET /contacts/:id/facts', (userId, phone, _req, res) =>
+    answerWithFacts(res, 200, userId, phone),
+  ),
+);
+
+contactsRouter.post(
+  '/:id/facts',
+  phonebookLimit,
+  factText,
+  withOwnContact('POST /contacts/:id/facts', async (userId, phone, req, res) => {
+    await addOwnFact(userId, phone, String(req.body.text));
+    await answerWithFacts(res, 201, userId, phone);
+  }),
+);
+
+contactsRouter.patch(
+  '/:id/facts/:factId',
+  phonebookLimit,
+  factId,
+  factText,
+  withOwnContact('PATCH /contacts/:id/facts/:factId', async (userId, phone, req, res) => {
+    const outcome = await correctOwnFact(
+      userId,
+      phone,
+      Number(req.params.factId),
+      String(req.body.text),
+    );
+    await answerEdit(outcome, res, () => answerWithFacts(res, 200, userId, phone));
+  }),
+);
+
+contactsRouter.delete(
+  '/:id/facts/:factId',
+  phonebookLimit,
+  factId,
+  withOwnContact('DELETE /contacts/:id/facts/:factId', async (userId, phone, req, res) => {
+    const outcome = await forgetOwnFact(userId, phone, Number(req.params.factId));
+    await answerEdit(outcome, res, () => answerWithFacts(res, 200, userId, phone));
+  }),
+);
+
+contactsRouter.delete(
+  '/:id/exclusions/:exclusionId',
+  phonebookLimit,
+  param('exclusionId').isInt({ min: 1 }),
+  withOwnContact('DELETE /contacts/:id/exclusions', async (userId, phone, req, res) => {
+    const outcome = await removeOwnExclusion(userId, phone, Number(req.params.exclusionId));
+    await answerEdit(outcome, res, async () => {
+      res.status(200).json({ success: true, data: { removed: true } });
+    });
+  }),
+);
+
+contactsRouter.post(
+  '/:id/remove',
+  phonebookLimit,
+  withOwnContact('POST /contacts/:id/remove', async (userId, phone, _req, res) => {
+    const removed = await removeFromNetwork(userId, phone);
+    res
+      .status(removed ? 200 : 500)
+      .json(
+        removed
+          ? { success: true, data: { removed } }
+          : { success: false, error: 'Could not remove the contact' },
+      );
+  }),
+);
+
+contactsRouter.post(
+  '/:id/deceased',
+  phonebookLimit,
+  withOwnContact('POST /contacts/:id/deceased', async (userId, phone, _req, res) => {
+    const marked = await markDeceased(userId, phone);
+    res
+      .status(marked ? 200 : 500)
+      .json(
+        marked
+          ? { success: true, data: { marked } }
+          : { success: false, error: 'Could not mark the contact' },
+      );
+  }),
+);
 
 export default contactsRouter;
