@@ -1,0 +1,161 @@
+From 994524a353a6a5ba993133b2748a55f3b30affb0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 12:32:18 +0000
+Subject: [PATCH] FOR_FRONTEND: every open app task in one list (Misho, 14 Oct)
+
+Misho asked for the frontend to get everything that is theirs to do.
+36 board rows, as they stand on the board now, grouped and most urgent
+first: Giorgi's design list and retests, one app everywhere and staying
+logged in, the phone reports, and Tornike's UX recommendations, which
+Misho approved together with every other item waiting on his word.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md | 130 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 130 insertions(+)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 49dd63c..051dae2 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,136 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 12:45Z — Misho: everything that is yours to do, in one list (please build it all)
++
++Misho asked me today to send you every open task that belongs to the app. He also said yes to every item that was waiting on his word, which includes Tornike's UX recommendations in group D. They are no longer „approve or drop“; build them.
++
++Each row below is the board text as it stands now (problem, then task and DONE WHEN), most urgent first. Where a row ends with a RETEST FAIL dated before your fix, re-check it against your fix before redoing it. When one is on main, write „built #N“ in TO_BACKEND as you do, and I will move the row.
++
++**Server halves already live, so you have what you need:** 4928 and 4927 (`/threads/:id/routes` and `/chain-position`; since 0293 they no longer run out of the shared 429 budget); 4919 (`short_title` / `one_word_title`; Misho said yes to filling them for old conversations too; until I tell you that is done, keep cutting by words where they are null); 4925, 4930 and 4984 (the waiting tab).
++
++### A. Giorgi's design list and his retests (most urgent; on his phone)
++
++- **#4928** (to_build). When the assistant talks to 2 or more people under one request, there is no „გზები" button.
++  **Task:** Add a „გზები" button to the chat header when one request involves 2 or more people, as in the design. Done when: such a chat shows „გზები" and it opens the routes; a one-person chat does not show it. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct, phone, build 1549ca6): the „გზები" button shows, but the list repeats people — one person appears 3 times (two „ველოდები პასუხს" rows with different dates and one „დაადასტურა"). Done when: each person appears once in „გზები", with the latest state. — REGRESSION (Giorgi, 14 Oct, phone, build 7f75be4): the „გზები" button is now GONE from the chat header entirely (only „მოგვარდა" and „…" show), even on a case with several people. Done when: „გზები" is back on every chat whose request involves 2+ people, white, same size as „მოგვარდა" (#4926), and its list shows each person once.
++
++- **#4927** (built). When someone comes after the owner in the chain, there is no path view.
++  **Task:** Show the path as in the design: previous person → you → next person. Done when: a chain case with a person after the owner shows that path. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct, screenshots of the design vs the app): there is still no path. In the design the path shows (a) on each case card in the list, e.g. „<previous> → თქვენ" or „<previous> → თქვენ → <next>", (b) in the chat header under the title, and (c) on the request card inside the chat. The app shows none. Done when: a chain case shows the path in all three places.
++
++- **#4926** (to_build). The buttons in the chat header have a different color and position from the design.
++  **Task:** Match the chat-header buttons' color and position to the design, mobile and desktop. Done when: they match the design on both. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct): „მოგვარდა" and „გზები" in the chat header are different sizes, and „გზები" is not white. Done when: both buttons are the same size and „გზები" is a white button, as in the design.
++
++- **#4919** (built). In the left menu tabs „შენს პასუხს ელოდება", „ვმუშაობ", „მოგვარებული", each case title is a long sentence that does not fit.
++  **Task:** Each case gets a short title: 2–3 words on desktop, 1 word on mobile, that names the case. Done when: every case in the three tabs shows such a title on desktop and mobile, with nothing cut off. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing). — RETEST FAIL (Giorgi, 14 Oct, phone): misunderstood. The case titles in the lists were fine — RESTORE them to the previous version. What must be short are the coloured CHIPS inside the two main cards (e.g. „<name>: გიორგი, ლიკას სურს თორნ…", „ბიზნეს გეგმა, ფინანსური დაგეგმვა") and the same place on desktop: 2–3 words on desktop, 1 word on mobile. Done when: case titles are back as before, and every chip in both main cards shows a 2–3-word (desktop) / 1-word (mobile) label with nothing cut off.
++
++- **#5017** (to_build). On the two coloured main cards the „დეტალურად" button sits at different heights — it moves up or down with the amount of text and chips in each card.
++  **Task:** Pin the „დეტალურად" button to the bottom of each coloured main card, so on both cards it is always at the bottom edge, at the same height, whatever the text above. Mobile and desktop. Done when: with different amounts of text/chips in the two cards, both „დეტალურად" buttons sit at the bottom, level with each other.
++
++- **#4951** (to_build). In the chat page's input field the voice and send buttons are in the wrong places.
++  **Task:** Swap them, like in the Claude chat: the SEND (text) button on the right, solid/filled; the VOICE (microphone) button on the left of it, plain (not filled). Mobile and desktop. Done when: in every chat the send button is on the right and solid, the mic is to its left and plain.
++
++- **#4929** (to_build). MOBILE: with no requests, the two main cards disappear.
++  **Task:** Mobile: always show the two main cards; with nothing to show they say 0. Done when: an account with no requests sees both cards with 0. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing).
++
++- **#4923** (to_build). MOBILE: below the two main cards, the section title and the cases do not change background with the active card's color.
++  **Task:** Mobile only: the title and the case list below the two main cards take the active card's color, as in the design. Done when: switching between the two cards changes that background on mobile. Reference: the designer's HTML file „ნეტაი ბოლო.html".
++
++- **#4924** (to_build). Every case has a rhombus (diamond) icon; the design has none.
++  **Task:** Remove the rhombus icon from every case, mobile and desktop. Done when: no case shows it. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing).
++
++- **#4922** (to_build). All 3 animations appear twice, and their sizes are wrong.
++  **Task:** Each animation shows once, at the size in the design, on mobile and desktop. Done when: no screen shows an animation twice and each matches the design's size. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing).
++
++- **#4921** (to_build). The app uses a different font from the design.
++  **Task:** Use the design's font everywhere: Noto Sans Georgian (400/500/600/700, Google Fonts), mobile and desktop. Done when: all app text renders in Noto Sans Georgian. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing).
++
++- **#4920** (to_build). Case cards show a status line after the title and body; the design has none.
++  **Task:** Remove the status from case cards on mobile and desktop; show a status only when it is „შეჩერებულია". Done when: no card shows a status except paused ones, which show „შეჩერებულია". Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing).
++
++- **#4918** (to_build). DESKTOP: the „online" label with a green dot is missing next to the Netai logo (mobile is already correct).
++  **Task:** Desktop only: show „online" + green dot to the right of the logo on every screen, always (the assistant is always online), as in the design. Done when: every desktop screen shows it; mobile unchanged. Reference: the designer's HTML file „ნეტაი ბოლო.html" (Giorgi has it; ask him if missing).
++
++
++### B. The same app everywhere, and staying logged in
++
++- **#4889** (to_build). Netai has four versions — mobile app, mobile browser, desktop app, desktop browser — and they do not show the same screens. Example (Giorgi, 13 Oct, screenshots): the left panel of the desktop browser, the desktop app and the mobile browser shows a „მოთხოვნები" block (an old introduction request card: „<person> → შენ … გაცნობას ითხოვს შენი დახმარებით" with a quoted reply and „გადაიდო, ხვალ შეგახსენებ"); the mobile app does not show it. Giorgi is about to test the new design only on the mobile browser and the desktop browser.
++  **Task:** Make the two mobile versions identical (mobile app = mobile browser) and the two desktop versions identical (desktop app = desktop browser). Where they differ, the MOBILE APP is the correct one (Giorgi's word). First fix: remove the „მოთხოვნები" block from the chat sidebar where the mobile app does not have it. Then compare every screen (chat list, chat, profile, plan cards, notifications) and post the list of differences found and fixed on the board. Done when: on Giorgi's account the mobile browser looks and works like the mobile app, the desktop browser like the desktop app, no „მოთხოვნები" block in the sidebar, and the board has the list of differences closed. EVIDENCE 2 (Giorgi, 13 Oct, two iPhone screenshots, same build b58d001): MOBILE APP home = greeting „გამარჯობა, Giorgi", the „ბოლო სიახლეები" card, the two tiles („4 დავალებაზე შენს პასუხს…" / „10 დავალებაზე ვმუშაობ…"), then „შენს პასუხს ელოდება" — NO „მოთხოვნები" block. MOBILE BROWSER (iOS Safari) home = a „მოთხოვნები" block FIRST, above the greeting: an introduction-request card with a quoted reply and four buttons („კი, დააკავშირე" / „ამაში ვერ დაგეხმარები" / „მოგვიანებით" / „სხვა, მე დავწერ"), then the greeting. Same account, same moment — the browser shows an extra block the app does not.
++
++- **#4887** (to_build). Giorgi, 13 Oct 10:50 Tbilisi (WhatsApp, answering Misho): on his phone the installed Netai app and the same site opened in the phone browser do not show the same thing. Misho thought it was the phone vs computer difference; Giorgi says no, it is app vs browser on the same phone. Likely the installed app is stuck on an older build (cache) or keeps an older login/session.
++  **Task:** DUPLICATE — replaced by Giorgi's own task 4889 (with screenshots). Giorgi asked for this one to be deleted; the tester does not delete tasks, so Giorgi or Misho removes it. CORRECTION 13 Oct 11:08 Tbilisi (Giorgi): the build code IS in the installed app, but only half of it shows: the bottom of the screen is cut off in app mode (the app's layout does not fit the phone's screen edges). So part of the difference is layout, not an old build. Still to find: what else differs between app and browser on his phone (screenshots of the same screen in both). First check: the small build code in the bottom-right corner of both (today b58d001). If the app shows an older code, the app must pick up the new build on its own, without reinstalling. DONE WHEN: on Giorgi's phone, the app and the browser show the same build code and the same screens, and after the next deploy the app updates by itself within one reopen.
++
++- **#4656** (to_build). SMALL — Tornike, 12 Oct 14:15 Tbilisi: on the computer the Netai app asks him to log in with his phone number EVERY time he opens it, since the new design. Before the new design he stayed logged in. The tester saw the same on 11 Oct: a test seat's app login did not stick and fell back to /login.
++  **Task:** A person who logged in on a computer stays logged in when the app or the browser is closed and opened again, as before the new design (check where the new build keeps the login: a session-only cookie or session storage would cause exactly this). DONE WHEN: log in once on a computer, close the browser, open the app the next day — still logged in, 2 of 2.
++
++- **#2278** (to_build). On a phone (iPhone, 7 Oct 12:44 Tbilisi, founder's screenshot) the top bar of an incoming-question conversation overlaps: the round + button sits on top of the conversation title, which wraps to three tiny lines.
++  **Task:** Make the top bar fit on a narrow phone: the title gets one line with … at the end, and the + button does not cover it. Done when a long-titled conversation on an iPhone shows a readable one-line title and no control on top of it.
++
++- **#829** (to_build). Giorgi, 4 Oct: on a computer the list of conversations and the chat sit in fixed-width panes; they cannot be resized.
++  **Task:** On a computer the border between the conversation list and the chat can be dragged, and the width is remembered. Done when: the pane is dragged wider and narrower and keeps its width after a reload.
++
++
++### C. From Lika and Ninia's phone reports, and Tornike's
++
++- **#4658** (to_build). Lika's two introduction-chain tests, 12 Oct ~13:15–14:00 Tbilisi (real phones, files NETAI_Test_Case_02 / NETAI_Intermediary_Test_Case): in BOTH chains the third person got the push notification, tapped it, and only the app opened — not the request. She then could not find the incoming introduction request anywhere, neither in the phone app nor on the computer. Both chains stopped there.
++  **Task:** (1) Tapping a request notification opens that request directly (see 1816 / 0176). (2) An incoming, unanswered request is easy to find in the app on phone and computer, e.g. a clear 'waiting for your answer' place at the top. (3) NEW 12 Oct: an incoming introduction request must arrive as its own conversation, never inside one of the receiver's existing goal chats. Seen today 13:26 Tbilisi on the founder's seat: a mediator request (chain test) landed inside his unrelated goal chat about a political consultant. DONE WHEN: 3 of 3 incoming requests open as a separate request conversation and none appears inside an existing goal chat. Root cause of (3) found 12 Oct: an introduction card without a goal was written into the thread whose scheduled check was running; fix 0210 (queued after 0209) sends it to the request's own conversation. DONE WHEN (3): an incoming request and its reminder appear only in its own conversation, 3 of 3. DONE WHEN (1)(2): on a real phone, a person who receives an introduction request taps the push and lands on it, 2 of 2 and after closing the app finds it again in one tap, 2 of 2.
++
++- **#859** (to_build). Tornike, Android phone, 4 Oct 16:32 Tbilisi: a question from another member reached his account (ask 9770, conversation 37062, in the app at once) but no notification showed on the phone. The push page for account 501 shows his only Android subscription as live=false (made 4 Sep); three pushes are logged "sent" at 12:33Z, one of them to that Android endpoint, and nothing appeared.
++  **Task:** Find why the phone shows nothing while the push is logged "sent": is the Android subscription dead, and if so why was it not renewed when he opened the app. The app re-subscribes a phone whose subscription is no longer live, without the owner doing anything. Done when: a question sent to 501 rings his Android phone within a minute, and the push page shows a live Android subscription.
++
++- **#2346** (to_build). Lika and Ninia, phone and computer report of 7 Oct 2026 (35 of the 47 points: 21 work, 5 do not, 9 not checked), passed on by Tornike. Point 175. Ninia attached a CSV. Netai sent and started working on the file before the upload had finished and before she pressed Send. The file was read, but she did not send it.
++  **Task:** Nothing is sent until the owner presses Send. While a file is still uploading the Send button waits; an attached file alone never starts a run. Done when attaching a CSV and waiting 30 seconds without pressing Send starts nothing, on phone and computer.
++
++- **#2378** (to_build). Lika, phone, 7 Oct 2026 17:16–17:18 Tbilisi (13-point file, point 13), passed on by Tornike. In the app neither a .docx nor a .pdf could be chosen or uploaded at all, so she never reached the Georgian line that says which formats Netai reads. On the server that line works (tester, 7 Oct, fictional seat). On the phone the person meets a file she cannot pick and no explanation — silence.
++  **Task:** APP. Either the file picker lets a Word or PDF file through so the server's Georgian line shows, or the picker itself says in Georgian which formats Netai reads. DONE WHEN: Lika tries a .docx and a .pdf and both times reads, in Georgian, that this type is not read yet and which format is needed. Not tested by the tester — only a phone can show it.
++
++- **#1920** (to_build). Lika and Ninia, consolidated phone report of 6 Oct 2026 (187 checklist points), passed on by Tornike. Point 158. "Download my data": Ninia could not find the button anywhere in the profile.
++  **Task:** The download button is easy to find on Profile and on the Data page, on iPhone and Android. Done when: a person who was not told where it is finds it and the file opens. (894 covered the download itself on iPhone.)
++
++- **#2345** (to_build). Lika and Ninia, phone and computer report of 7 Oct 2026 (35 of the 47 points: 21 work, 5 do not, 9 not checked), passed on by Tornike. Point 124. On the rewards / earnings page the text does not say the rule of D692: 5% and „6 ნაბიჯამდე / up to 6 steps“ were not found. Point 127 could not be checked because no reward balance is shown.
++  **Task:** The rewards page states the rule in plain words in the owner's language: 5% of a first payment to each inviter, up to 6 steps up. Done when Lika or Ninia reads it on the page on a phone.
++
++
++### D. Tornike's UX recommendations: Misho said yes to all of them, so build them
++
++- **#4588** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). The three role filters on the task list — „ინიციატორი / შუამავალი / ადრესატი“ — are system words. A person does not think of herself as an „initiator“ or „addressee“; she thinks „my tasks“, „I'm helping someone“, „someone asked me“. On the desktop app (build 627222b, 11 Oct) the four buttons also do not fit the sidebar: a horizontal scroll bar with arrows appears under them.
++  **Task:** Recommendation: rename the filters to plain words, e.g. „ჩემი“ / „ვეხმარები“ / „მეკითხებიან“ (keep „ყველა“), or hide them until a person has tasks of more than one kind. Make them fit the sidebar width without a scroll bar (shorter words fix that too). Why: fewer words to learn on day one; the list is the screen people use most. Checked by Tornike's Claude on a fictional seat, desktop, 11 Oct 2026. UPDATE 11 Oct 21:15 Tbilisi: the new app build no longer shows the scroll bar — the four filters now fit; the wording point stands.
++
++- **#4589** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Setup page („დაყენება“): every step shows three buttons of the same weight — „გავაკეთე“, „არ გამოვიდა“, „მოგვიანებით“ — so five steps make fifteen equal buttons, and the eye does not know which one is the main action.
++  **Task:** Recommendation: one clear main button per step (the action itself, e.g. „ფაილის არჩევა“ or „გავაკეთე“); „არ გამოვიდა“ and „მოგვიანებით“ as small text links under it. Why: one obvious next move per step is what makes a setup feel easy. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4590** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Setup page: step 3 („შენი კონტაქტები“) and step 4 („კონტაქტები ახალი იყოს“) both show the same button „.vcf ფაილის არჩევა“. They look like the same step twice. Step 4 is really a monthly refresh, not a setup step.
++  **Task:** Recommendation: keep one contacts step in setup; move the refresh to the monthly contacts reminder (already built) and the profile. Setup becomes four steps. Why: a duplicate step makes people doubt they did the first one right. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4591** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Setup page, step 3: the instruction is technical — „contacts.google.com → ექსპორტი → vCard / icloud.com → …“. Most people do not know what a vCard or .vcf is.
++  **Task:** Recommendation: say it per phone in plain words and show a picture (Lika's recordings, D701): Android — „კონტაქტები → გაზიარება → ყველა“; iPhone — the iCloud path, step by step. Hide the word vCard/.vcf, or explain it once („კონტაქტების ფაილი“). Why: this is the step that gives Netai its value; if it is unclear, the product is empty. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4592** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Setup page: on the desktop the counter said „1 / 5 გაკეთდა“ while step 2 already showed „მზადაა“ and nothing else did — the person cannot see which step the 1 is.
++  **Task:** Recommendation: mark every finished step the same way (a tick and „მზადაა“) and keep the counter equal to the ticks. Why: progress the person can see is what keeps her going. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4593** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Thread screen: the collapsed „ნაბიჯები (3)“ block sits between the person's question and the answer. It is internal detail (which searches ran), and it pushes the answer down.
++  **Task:** Recommendation: put the steps after the answer, smaller, as „როგორ ვიპოვე“; or show them only while the assistant is still working. Why: the answer is what the person came for; the method is for the curious. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4594** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Three different placeholder texts for the same input box: „მომწერე ან მითხარი“ (home, design), „მიწერე ასისტენტს“ (thread, phone design), „მიეცი Netai-ს დავალება…“ (live thread). Also the big button changes: on home send is the main button, in the phone thread the microphone is.
++  **Task:** Recommendation: one phrase everywhere (e.g. „მომწერე ან მითხარი“) and the same main button everywhere (send when there is text, microphone when empty — like WhatsApp). Why: the same box should look and act the same on every screen. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4595** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Thread header (live): a pill with a dot and a bare number, e.g. „742“. Nothing says what it is (it is the token balance).
++  **Task:** Recommendation: write it out — „742 ტოკენი“ — or move it to the profile and show it only when it is low. Why: an unexplained number makes people worry they are being charged. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026. UPDATE 11 Oct 21:15 Tbilisi: the new app build removed the bare number from the task header — this suggestion is no longer needed; Giorgi can drop it.
++
++- **#4596** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Thread „…“ menu (live): pin, rename, export, share, delete. The action people need most on a running task — stop it (and resume) — is not there, while „წაშლა“ is.
++  **Task:** Recommendation: put „შეჩერება / გაგრძელება“ first in the menu, delete last and separated. (The stop button itself is the app half of task 1919.) Why: stopping a task the assistant is running for you is a trust feature; it must be one tap away. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4597** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Profile page (live) is one long scroll mixing plan and money, contacts, the monthly reminder, Claude connector, privacy, language, notifications, the evening-card hour shown as a list of 15 hours, and blocked people.
++  **Task:** Recommendation: group it under 3–4 short headings (ჩემი Netai / ფული / კონტაქტები / პარამეტრები). (Correction 11 Oct 20:20 Tbilisi: the evening-card hour is already a single dropdown — my earlier line about a list of 15 hours was wrong.) Why: people come to the profile for one thing; groups let them find it without reading everything. Checked by Tornike's Claude on a fictional seat, desktop app, 11 Oct 2026.
++
++- **#4598** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). Phone home (design): setup bar, greeting, updates card, two big tiles and the quick buttons all come before the input box, which falls to the bottom edge. On a smaller phone the input is pushed off screen.
++  **Task:** Recommendation: keep the input fixed at the bottom on every phone size; hide the setup bar once setup is finished or after a week; let the two tiles shrink to one line each when there is nothing waiting. Why: giving Netai a task is the main action of the home screen and must always be visible. Checked by Tornike's Claude on a fictional seat, desktop app build 627222b, and the design screens, 11 Oct 2026.
++
++- **#4621** (to_build). SMALL — UX RECOMMENDATION for Giorgi (approve or drop; not a bug). The member card (opened from a person on the path map, „გზა ადამიანამდე“) shows only the name and an empty box when the member has shared nothing yet. It looks broken.
++  **Task:** Recommendation: when a member has shared nothing, show one plain line in the box, e.g. „ჯერ არაფერი გაუზიარებია“, and keep the button that matters (ask/introduce) visible. Why: an empty card reads as an error; one line tells the person it is simply new. Checked by Tornike's Claude on fictional seats, desktop app build bef423b, 11 Oct 2026.
++
++
++**Not in this list, because they are the server's:** 370 (Georgian speech on iPhone), 3106 (weather speed), 4888 and the prompt items. If any row above turns out to need something from the server, tell me in TO_BACKEND, and I build it first.
++
+ ## 14 October, 11:25Z — 4927 and 4928: your 429s on /routes and /chain-position were the server's shared budget (0293)
+ 
+ I found a server bug that fits both of Giorgi's FAILs. Every 30-a-minute limiter shared **one** budget per user:
+-- 
+2.43.0
+

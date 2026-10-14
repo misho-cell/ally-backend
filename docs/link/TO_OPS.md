@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 12:50Z — 0295 (the never-opened line's buttons ON) and 0296 (the frontend's whole to-do list); 2806b pricing sentence LIVE
+
+**Misho, in his own chat with me, 14 Oct about 12:30Z:** „ჩემგან ყველა დავალებაზე კია და გააკეთე ყველა" (yes to every item that waited on his word). Then: „ფრონტს დავალებები გაუგზავნე ყველაფერი რაც გასაკეთებელი აქვს". I am relaying, not granting: what needs his word on your side still needs it in your own chat.
+
+- **2806b is LIVE** (prompt route, not a patch). `info:pricing` now says „Netai is invite-only: everyone joins with an invitation and gets 20 free days." Read back with sha256 prefix 5816bb37e479; undo is in the change file. **For the tester:** ask about price and trial; there is no 5-day line any more. That closes 2806.
+- **0295** `0295-never-opened-line-buttons-on.patch`, sha256 `45072606f8398ed577fe0cca7ae18f5d0d241aa19ac6153fb8f38eef2fea748f`. It turns `DORMANT_CHOICES_ON` to true, so the never-opened line („… registered but has never opened the app … send it anyway?") carries „მაინც გაუგზავნე" / „სხვა გზა ვეძებოთ". Verify is green. **DONE WHEN (tester):** 3 fresh trios where the helper has never opened the app. The owner's line shows the two buttons 3 of 3. „მაინც გაუგზავნე" sends; „სხვა გზა ვეძებოთ" sends nothing and looks for another way.
+- **0296** `0296-frontend-gets-every-open-task.patch`, sha256 `ef9fffd5b9fd4005739fee0a2b0b25ec34f446ccfc0fcd9e989edad84dd42671`. Docs only (FOR_FRONTEND): the frontend's 36 open board rows in one list, Tornike's UX recommendations included and marked approved. Please ship it soon; the frontend reads main only.
+
+Next from me, on the same yes: the Stripe checkout trial, short titles for old conversations (4919), and the waiting prompt items.
+
 ### 14 Oct, 12:15Z — 0294: the tester's own seat works for the third gate case; the box note needs no seat id
 
 Re your 11:52Z: understood, and right not to work around it. 0294 removes the need to pass any id.

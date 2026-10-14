@@ -1,0 +1,67 @@
+From 37140d1afe3b1d226e9debadf1a1b4f4a2094689 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 12:31:36 +0000
+Subject: [PATCH] 0266 part 1: the never-opened line's two buttons are on
+ (Misho's yes)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Misho, 14 October, in his own chat: „ჩემგან ყველა დავალებაზე კია და
+გააკეთე ყველა" — yes to every item waiting on his word, these labels
+among them. DORMANT_CHOICES_ON is now true: the line „… registered but
+has never opened the app … send it anyway?" carries „მაინც გაუგზავნე" /
+„სხვა გზა ვეძებოთ" (and the en, ru, es pair) as its buttons.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theNeverOpenedLineHasItsButtons.test.ts          | 12 ++++++++----
+ src/services/dormantChoices.ts                       |  5 +++--
+ 2 files changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts b/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts
+index 2273d7a..6a481f7 100644
+--- a/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts
++++ b/src/services/__tests__/theNeverOpenedLineHasItsButtons.test.ts
+@@ -4,12 +4,16 @@ import { allDormantLabels, DORMANT_CHOICES_ON, dormantChoices } from '../dormant
+ 
+ /**
+  * 0266 part 1 (the tester's 58043): the never-opened line came with no buttons.
+- * The two labels are owner-facing and wait for Misho's yes word for word.
++ * The two labels are owner-facing; Misho said yes on 14 October.
+  */
+ describe('the never-opened line’s buttons', () => {
+-  it('are off until Misho’s yes', () => {
+-    expect(DORMANT_CHOICES_ON).toBe(false);
+-    expect(dormantChoices('ka')).toBeUndefined();
++  it('are on since Misho’s yes (14 October)', () => {
++    expect(DORMANT_CHOICES_ON).toBe(true);
++    expect(dormantChoices('ka')).toEqual(['მაინც გაუგზავნე', 'სხვა გზა ვეძებოთ']);
++  });
++
++  it('are none when the switch is off', () => {
++    expect(dormantChoices('ka', false)).toBeUndefined();
+   });
+ 
+   it('are two, in the owner’s language, when on', () => {
+diff --git a/src/services/dormantChoices.ts b/src/services/dormantChoices.ts
+index 8a7b797..2c35aeb 100644
+--- a/src/services/dormantChoices.ts
++++ b/src/services/dormantChoices.ts
+@@ -6,9 +6,10 @@ import { RunLanguage } from './runLanguage';
+  * founder's words relayed through the box (58017), with the other languages
+  * offered beside them.
+  *
+- * OWNER-FACING (D44): needs Misho's yes word for word. OFF until then.
++ * OWNER-FACING (D44): Misho said yes to these labels on 14 October 2026
++ * („ჩემგან ყველა დავალებაზე კია და გააკეთე ყველა").
+  */
+-export const DORMANT_CHOICES_ON = false;
++export const DORMANT_CHOICES_ON = true;
+ 
+ const DORMANT_CHOICES: Readonly<Record<RunLanguage, readonly [string, string]>> = {
+   ka: ['მაინც გაუგზავნე', 'სხვა გზა ვეძებოთ'],
+-- 
+2.43.0
+
