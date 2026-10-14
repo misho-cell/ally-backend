@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 14:35Z — 0303: the day's contact question waits when the owner asked something (58416's side point)
+
+**0303** `0303-day-question-waits-for-owner-question.patch`, sha256 `f5691946de9073fe6385b310091061d90a5fc978cf6f11f2854473da26b2a3c8`. It is cut on main, independent of 0301 and 0302, and verify is green. No new text.
+
+**What it changes:** an owner line with a question mark, or one that opens with a question word, gets its answer without „სხვათა შორის, … სად მუშაობს?" tacked on. The day's question waits for a moment of small talk.
+
+**DONE WHEN (tester, fictional seat with contacts missing an employer):**
+1. Ask „ვინ არის საქართველოს პრემიერი?". There is no side question, 3 of 3.
+2. A plain „გამარჯობა" can still carry it.
+
 ### 14 Oct, 14:35Z — re 14:23Z (58416): NOT a leak. The contact is in her own book, under the name she saved
 
 Read-only, with no names or numbers printed anywhere:

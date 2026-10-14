@@ -1,0 +1,141 @@
+From cceee0400c6d829ebcb8a739f4fda623ec657bc4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 14:35:48 +0000
+Subject: [PATCH] The day's contact question waits when the owner came with a
+ question
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58416 (a real owner, 14 Oct): her question on a political
+topic was answered, and „სხვათა შორის, <contact> სად მუშაობს? თუ არ
+იცი, არა უშავს." was tacked onto the answer. (Read-only check: the
+contact is in her own book, from the old phonebook sync, under the name
+she saved; nothing of anybody else's was shown.)
+
+An owner who came with a question of their own now gets the answer and
+nothing else: a line with a question mark, or one that opens with a
+question word (ka, en, ru, es), keeps the day's question back for a
+moment of small talk. Same place as the other skips (goals, deaths,
+„what waits", questions about the owner). No new text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/dailyContactQuestion.test.ts    | 35 +++++++++++++++++++
+ src/services/chat.service.ts                  |  2 ++
+ src/services/dailyContactQuestion.ts          | 22 +++++++++++-
+ 3 files changed, 58 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/dailyContactQuestion.test.ts
+
+diff --git a/src/services/__tests__/dailyContactQuestion.test.ts b/src/services/__tests__/dailyContactQuestion.test.ts
+new file mode 100644
+index 0000000..63ccb9a
+--- /dev/null
++++ b/src/services/__tests__/dailyContactQuestion.test.ts
+@@ -0,0 +1,35 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { asksAQuestion, contactQuestionMayRun, RunPresence } from '../dailyContactQuestion';
++
++const OPEN: RunPresence = {
++  ownerPresent: true,
++  regularThread: true,
++  goalBound: false,
++  preview: false,
++};
++
++/**
++ * The tester's 58416 (a real owner, 14 Oct): the day's „სხვათა შორის, … სად
++ * მუშაობს?" was tacked onto the answer to her question on a political topic.
++ */
++describe('the day’s contact question waits when the owner came with a question', () => {
++  it('reads a question mark or a question word as the owner’s own question', () => {
++    expect(asksAQuestion('ვინ არის საქართველოს პრემიერი?')).toBe(true);
++    expect(asksAQuestion('რა აზრის ხარ ამ კანონზე')).toBe(true);
++    expect(asksAQuestion('რამდენი ღირს')).toBe(true);
++    expect(asksAQuestion('Who runs the ministry')).toBe(true);
++  });
++
++  it('does not read a plain line as a question', () => {
++    expect(asksAQuestion('გამარჯობა')).toBe(false);
++    expect(asksAQuestion('მადლობა, კარგად ვარ')).toBe(false);
++    expect(asksAQuestion('რატი დღეს მოვიდა')).toBe(false);
++    expect(asksAQuestion('Thanks, that helps')).toBe(false);
++  });
++
++  it('keeps the question back on such a line, and lets it run otherwise', () => {
++    expect(contactQuestionMayRun({ ...OPEN, ownerAsksAQuestion: true })).toBe(false);
++    expect(contactQuestionMayRun({ ...OPEN, ownerAsksAQuestion: false })).toBe(true);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7a6451e..22e5082 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -461,6 +461,7 @@ import {
+   dailyContactQuestionSection,
+   speaksOfADeath,
+   asksWhatWaits,
++  asksAQuestion,
+ } from './dailyContactQuestion';
+ import { noContactsYetSection } from './noContactsYet';
+ import { withoutNoteTalk } from './noteTalk';
+@@ -5356,6 +5357,7 @@ async function buildAgentSystemPrompt(
+     ownerAsksAboutSelf: asksAboutTheOwner(ownerLine),
+     ownerSpeaksOfADeath: speaksOfADeath(ownerLine),
+     ownerAsksWhatWaits: asksWhatWaits(ownerLine),
++    ownerAsksAQuestion: asksAQuestion(ownerLine),
+     ownerLine,
+   };
+   // 958: these six reads do not depend on each other, so they run together; one
+diff --git a/src/services/dailyContactQuestion.ts b/src/services/dailyContactQuestion.ts
+index 88208e4..e495422 100644
+--- a/src/services/dailyContactQuestion.ts
++++ b/src/services/dailyContactQuestion.ts
+@@ -33,6 +33,8 @@ export interface RunPresence {
+   readonly ownerSpeaksOfADeath?: boolean;
+   /** 3367: the owner's line asks what is waiting or what is new. */
+   readonly ownerAsksWhatWaits?: boolean;
++  /** 58416: the owner's line is a question of their own. */
++  readonly ownerAsksAQuestion?: boolean;
+   /** 3004: the owner's own line in this run. */
+   readonly ownerLine?: string;
+ }
+@@ -75,6 +77,23 @@ export function asksWhatWaits(ownerLine: string): boolean {
+   return ASKS_WHAT_WAITS_RE.test(ownerLine);
+ }
+ 
++/**
++ * The tester's 58416 (a real owner, 14 Oct): her question about a political
++ * topic was answered, and then „სხვათა შორის, <contact> სად მუშაობს?" was
++ * tacked onto the answer. An owner who came with a question of their own gets
++ * the answer to it and nothing else; the day's light question waits for a
++ * moment of small talk.
++ */
++// A question mark, or a line that opens with a question word. „\b" does not
++// work for Georgian letters in JavaScript, so the word must be followed by a
++// space, punctuation or the end of the line.
++const OWNER_QUESTION_RE =
++  /[?？]|^\s*(?:ვინ|რა|სად|როდის|როგორ|რატომ|რომელ\S*|რამდენ\S*|who|what|where|when|why|how|which|is|are|can|does|do|кто|что|где|когда|почему|как|quién|qué|dónde|cuándo|por\s+qué|cómo)(?=[\s,.!:;]|$)/iu;
++
++export function asksAQuestion(ownerLine: string): boolean {
++  return OWNER_QUESTION_RE.test(ownerLine);
++}
++
+ /** Only the owner's own conversation, with the owner there, outside a goal. */
+ export function contactQuestionMayRun(presence: RunPresence): boolean {
+   return (
+@@ -84,7 +103,8 @@ export function contactQuestionMayRun(presence: RunPresence): boolean {
+     !presence.preview &&
+     presence.ownerAsksAboutSelf !== true &&
+     presence.ownerSpeaksOfADeath !== true &&
+-    presence.ownerAsksWhatWaits !== true
++    presence.ownerAsksWhatWaits !== true &&
++    presence.ownerAsksAQuestion !== true
+   );
+ }
+ 
+-- 
+2.43.0
+
