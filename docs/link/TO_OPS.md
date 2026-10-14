@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 14:26Z — 0302: the questions list, my introduction requests, unread (Misho's ask through the frontend); ship after 0301
+
+**0302** `0302-questions-my-requests-unread.patch`, sha256 `932fec0855c3567fd5796328ec53705bd49ad485bdbbeb688c11ca79f636fd23`. It is cut on top of 0301 (both touch profile.routes), and verify is green. **Ship it after 0301.** It carries a FOR_FRONTEND note.
+
+**New routes, all behind the app's login:**
+- `GET /profile/questions?lang`;
+- `GET /requests/mine`;
+- `POST /threads/:id/unread`.
+
+They are reads of the person's own rows, plus clearing `seen_at` on their own thread. Nothing new is shown to the model.
+
+**DONE WHEN (tester, fictional seat):**
+1. `/profile/questions` lists the five core questions, and one answered through `/profile/feedback` shows `answered: true` with its text.
+2. `/requests/mine` lists an introduction made in chat, with state `sent`.
+3. `POST /threads/:id/unread` on an opened conversation gives `seen_at: null` in `GET /threads`.
+
 ### 14 Oct, 14:20Z — 0301: the contact page's writes and „ადამიანების პარამეტრები" (Misho's ask through the frontend, 14:10Z)
 
 **0301** `0301-contact-page-writes-and-people-settings.patch`, sha256 `3e2e1f1532616f060fa78ad9435d4fdb4387867d1337b8a5f3140b166c506d39`. It is cut on main, and verify is green. It carries a FOR_FRONTEND note.

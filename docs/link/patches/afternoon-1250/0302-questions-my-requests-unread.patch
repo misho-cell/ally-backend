@@ -1,0 +1,513 @@
+From d45680704dfcfd7f20281ad128d8c89b85bc0ef0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 14:24:57 +0000
+Subject: [PATCH] Questions list, my introduction requests, unread (the
+ frontend's 14 Oct 14:10Z, items 4, 5, 7)
+
+- GET /profile/questions?lang: the core questions together, each with
+  its reason, whether it is answered and the person's own answer. The
+  answer itself already goes through POST /profile/feedback.
+- GET /requests/mine: the introductions this person asked for, newest
+  first, with the go-between as they saved them and a plain state.
+- POST /threads/:id/unread: clears seen_at on the person's own thread
+  and tells every device (thread_updated, seen_at null).
+
+Item 3 (assistant_name) waits for Misho's yes (the name reaches the
+model); item 6 waits for Giorgi. FOR_FRONTEND carries the contract.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 15 +++
+ src/api/routes/profile.routes.ts              | 26 +++++
+ src/api/routes/requests.routes.ts             | 20 ++++
+ src/api/routes/threads.routes.ts              | 31 ++++++
+ ...AppReadsQuestionsRequestsAndUnread.test.ts | 97 +++++++++++++++++++
+ src/services/coreQuestions.service.ts         | 87 +++++++++++++++++
+ src/services/myIntroRequests.service.ts       | 74 ++++++++++++++
+ src/services/sse.service.ts                   |  7 +-
+ src/services/threads.service.ts               | 14 +++
+ 9 files changed, 369 insertions(+), 2 deletions(-)
+ create mode 100644 src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts
+ create mode 100644 src/services/coreQuestions.service.ts
+ create mode 100644 src/services/myIntroRequests.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index f5af270..5aa8e75 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,21 @@ messages in their name.
+ 
+ ---
+ 
++## 14 October, 14:24Z — re your 14:10Z, part 2: the questions, my requests, unread (0302)
++
++0302 follows 0301 through ops. Every route needs the app's login.
++
++- **Item 4, the questions (1917):** `GET /profile/questions?lang=ka|en|es` → `{ questions: [{ question_id, text, reason, answered, answer }] }`.
++  - There are **five** core questions, not seven. Draw what the list gives.
++  - Answering already exists: `POST /profile/feedback` `{ "question_id": "core_can_help_002", "free_text": "…" }`.
++- **Item 5, my requests:** `GET /requests/mine` → `{ requests: [{ id, mediator_name, target_name, goal_id, thread_id, state, created_at, answered_at }] }`.
++  - Newest first, at most 50.
++  - `state` is one of `sent | accepted | declined | expired | cancelled`.
++  - `mediator_name` is the go-between as this person saved them.
++- **Item 7, unread:** `POST /threads/:id/unread` → 200 `{ seen_at: null }`, and `thread_updated` goes to every device with `seen_at: null`. Not theirs is 404.
++
++**Item 3 (`assistant_name`)** does not exist yet. The assistant's name reaches the model, so it is a new text in the product (D44) and needs Misho's yes first. **Item 6** waits for Giorgi.
++
+ ## 14 October, 14:18Z — re your 14:10Z (Misho's list), part 1: the contact page's writes and „ადამიანების პარამეტრები" (0301)
+ 
+ 0301 is handed to ops; it reaches main when they ship it. Every route needs the app's login. `:id` is the contact id that `/contacts` and `/contacts/:id` already give. A contact that is not this person's own is 404, and nothing is written.
+diff --git a/src/api/routes/profile.routes.ts b/src/api/routes/profile.routes.ts
+index cbec72f..7807236 100644
+--- a/src/api/routes/profile.routes.ts
++++ b/src/api/routes/profile.routes.ts
+@@ -18,6 +18,7 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { inviteLinkForScreen } from '../../services/referralLink.service';
+ import { blockedListForScreen, unblockByRef } from '../../services/block.service';
+ import { peopleSettings, removeOwnBoundary } from '../../services/peopleSettings.service';
++import { coreQuestions, questionLanguage } from '../../services/coreQuestions.service';
+ import { MAX_LINK_CHARS, profileLinkRule } from '../validators/profileLinkRule';
+ import { asRunLanguage } from '../../services/runLanguage';
+ import {
+@@ -685,6 +686,31 @@ profileRouter.get(
+   },
+ );
+ 
++/**
++ * The frontend's 14 Oct 14:10Z item 4 (task 1917): the core questions together,
++ * with which are answered. An answer goes through POST /profile/feedback
++ * { question_id, free_text }.
++ *
++ *   GET /profile/questions?lang=ka|en|es
++ *   200 { questions: [{ question_id, text, reason, answered, answer }] }
++ */
++profileRouter.get(
++  '/questions',
++  authenticateJwt,
++  requireUserRole,
++  async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      const questions = await coreQuestions(userId, questionLanguage(req.query.lang));
++      res.status(200).json({ success: true, data: { questions } });
++    } catch (err) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /profile/questions]', (err as Error).message);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ profileRouter.get(
+   '/next-question',
+   authenticateJwt,
+diff --git a/src/api/routes/requests.routes.ts b/src/api/routes/requests.routes.ts
+index e7496b3..bbd55dc 100644
+--- a/src/api/routes/requests.routes.ts
++++ b/src/api/routes/requests.routes.ts
+@@ -14,6 +14,7 @@ import {
+   PendingRequest,
+ } from '../../services/introduction.service';
+ import { scrubText } from '../../services/privacyScrub';
++import { myIntroRequests } from '../../services/myIntroRequests.service';
+ import { ApiResponse } from '../../types';
+ 
+ const requestsRouter = Router();
+@@ -131,6 +132,25 @@ requestsRouter.get('/', async (req: Request, res: Response<ApiResponse<unknown>>
+   }
+ });
+ 
++/**
++ * The frontend's 14 Oct 14:10Z item 5 („ჩემი თხოვნების მდგომარეობა"): the
++ * introductions this person asked for, newest first (at most 50).
++ *
++ *   GET /requests/mine  200 { requests: [{ id, mediator_name, target_name, goal_id,
++ *                              thread_id, state: sent|accepted|declined|expired|cancelled,
++ *                              created_at, answered_at }] }
++ */
++requestsRouter.get('/mine', async (req: Request, res: Response<ApiResponse<unknown>>) => {
++  try {
++    const userId = Number((req as AuthenticatedRequest).user.userId);
++    res.status(200).json({ success: true, data: { requests: await myIntroRequests(userId) } });
++  } catch (error) {
++    // eslint-disable-next-line no-console
++    console.error('[GET /requests/mine]', (error as Error).message);
++    res.status(500).json({ success: false, error: 'Could not read your requests' });
++  }
++});
++
+ requestsRouter.post(
+   '/:ref/:action',
+   param('ref').isUUID().withMessage('ref must be a valid request ref'),
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 1d073a7..27020f7 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -26,6 +26,7 @@ import {
+   saveThreadMessage,
+   getLongestRunStep,
+   markThreadSeen,
++  markThreadUnread,
+ } from '../../services/threads.service';
+ import { setThreadFollowed } from '../../services/followUp.service';
+ import {
+@@ -355,6 +356,36 @@ for (const [method, followed] of [
+  *   200 { seen_at }   stamped now
+  *   404               no such thread, or not theirs
+  */
++/**
++ * The frontend's 14 Oct 14:10Z item 7: „წაუკითხავად მონიშვნა" in the thread menu.
++ *
++ *   POST /threads/:id/unread
++ *   200 { seen_at: null }   every device shows it as new again
++ *   404                     no such thread, or not theirs
++ */
++threadsRouter.post(
++  '/:id/unread',
++  rateLimit({ windowMs: 60_000, max: SEEN_PER_MINUTE }),
++  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
++  handleValidationErrors,
++  async (req: Request, res: Response): Promise<void> => {
++    try {
++      const userId = (req as AuthenticatedRequest).user.userId;
++      const threadId = Number(req.params.id);
++      if (!(await markThreadUnread(threadId, userId))) {
++        res.status(404).json({ success: false, error: 'Thread not found' });
++        return;
++      }
++      emitThreadUpdated(userId, { id: threadId, seen_at: null });
++      res.status(200).json({ success: true, data: { seen_at: null } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[POST /threads/:id/unread]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not mark the conversation unread' });
++    }
++  },
++);
++
+ threadsRouter.post(
+   '/:id/seen',
+   rateLimit({ windowMs: 60_000, max: SEEN_PER_MINUTE }),
+diff --git a/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts b/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts
+new file mode 100644
+index 0000000..2db7e21
+--- /dev/null
++++ b/src/services/__tests__/theAppReadsQuestionsRequestsAndUnread.test.ts
+@@ -0,0 +1,97 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { coreQuestions, QuestionLanguage, questionLanguage } from '../coreQuestions.service';
++import { myIntroRequests, MyRequestState } from '../myIntroRequests.service';
++import { markThreadUnread } from '../threads.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** The frontend's 14 Oct 14:10Z item 4: the core questions together, answered or not. */
++describe('the core questions', () => {
++  it('gives each question in the asked language with its reason and the person’s answer', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        {
++          question_id: 'core_can_help_002',
++          prompt_ka: 'რაში შეგიძლია სხვებს დაეხმარო?',
++          prompt_en: 'What can you help other people with?',
++          prompt_es: null,
++          immediate_use_ka: 'პირველად შენზე ვიფიქრებ.',
++          immediate_use_en: 'I will think of you first.',
++          immediate_use_es: null,
++          answer: 'tax law',
++          answered: true,
++        },
++      ],
++    } as never);
++
++    const [q] = await coreQuestions(171, QuestionLanguage.En);
++    expect(q).toEqual({
++      question_id: 'core_can_help_002',
++      text: 'What can you help other people with?',
++      reason: 'I will think of you first.',
++      answered: true,
++      answer: 'tax law',
++    });
++    expect(mockQuery.mock.calls[0][1]).toEqual([171, 'core', expect.any(Number)]);
++  });
++
++  it('reads an unknown language as Georgian', () => {
++    expect(questionLanguage('fr')).toBe(QuestionLanguage.Ka);
++    expect(questionLanguage('es')).toBe(QuestionLanguage.Es);
++  });
++});
++
++/** Item 5: the introductions this person asked for, with a plain state. */
++describe('my introduction requests', () => {
++  it('reads only the person’s own requests and names the state plainly', async () => {
++    mockQuery.mockResolvedValueOnce({
++      rows: [
++        {
++          id: 9,
++          mediator_name: 'Levan',
++          target_name: 'Beka',
++          goal_id: 44,
++          thread_id: 51592,
++          status: 'pending',
++          created_at: '2026-10-14T10:00:00Z',
++          answered_at: null,
++        },
++      ],
++    } as never);
++
++    const [r] = await myIntroRequests(171);
++    expect(r).toMatchObject({
++      id: 9,
++      mediator_name: 'Levan',
++      state: MyRequestState.Sent,
++      answered_at: null,
++    });
++    expect(String(mockQuery.mock.calls[0][0])).toContain('WHERE ir.requester_user_id = $1');
++  });
++});
++
++/** Item 7: „წაუკითხავად მონიშვნა". */
++describe('marking a conversation unread', () => {
++  it('clears the seen stamp only on the person’s own thread', async () => {
++    mockQuery.mockResolvedValueOnce({ rowCount: 1 } as never);
++    await expect(markThreadUnread(51592, '171')).resolves.toBe(true);
++    expect(String(mockQuery.mock.calls[0][0])).toContain(
++      'SET seen_at = NULL WHERE id = $1 AND user_id = $2',
++    );
++
++    mockQuery.mockResolvedValueOnce({ rowCount: 0 } as never);
++    await expect(markThreadUnread(1, '171')).resolves.toBe(false);
++  });
++
++  it('has its route, behind the same checks as /seen', () => {
++    const routes = readFileSync(join(__dirname, '../../api/routes/threads.routes.ts'), 'utf8');
++    expect(routes).toContain("'/:id/unread'");
++    expect(routes).toContain('emitThreadUpdated(userId, { id: threadId, seen_at: null })');
++  });
++});
+diff --git a/src/services/coreQuestions.service.ts b/src/services/coreQuestions.service.ts
+new file mode 100644
+index 0000000..75afb7e
+--- /dev/null
++++ b/src/services/coreQuestions.service.ts
+@@ -0,0 +1,87 @@
++import { query } from '../db/postgres/client';
++
++/**
++ * The frontend's 14 Oct 14:10Z item 4 (task 1917, phone 54): the profile page
++ * shows the core questions together — which are answered and with what — and
++ * answers one through the existing POST /profile/feedback
++ * ({ question_id, free_text }). There are five core questions (migration 216),
++ * not seven; the page draws what this list gives.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++const CORE_CATEGORY = 'core';
++const MAX_CORE_QUESTIONS = 20;
++
++export enum QuestionLanguage {
++  Ka = 'ka',
++  En = 'en',
++  Es = 'es',
++}
++
++export interface CoreQuestion {
++  readonly question_id: string;
++  readonly text: string;
++  /** Why Netai asks, in the same language. */
++  readonly reason: string | null;
++  readonly answered: boolean;
++  /** The person's own current answer, when they typed one. */
++  readonly answer: string | null;
++}
++
++export function questionLanguage(raw: unknown): QuestionLanguage {
++  return Object.values(QuestionLanguage).includes(raw as QuestionLanguage)
++    ? (raw as QuestionLanguage)
++    : QuestionLanguage.Ka;
++}
++
++interface Row {
++  readonly question_id: string;
++  readonly prompt_ka: string;
++  readonly prompt_en: string | null;
++  readonly prompt_es: string | null;
++  readonly immediate_use_ka: string | null;
++  readonly immediate_use_en: string | null;
++  readonly immediate_use_es: string | null;
++  readonly answer: string | null;
++  readonly answered: boolean;
++}
++
++function inLanguage(
++  ka: string | null,
++  en: string | null,
++  es: string | null,
++  lang: QuestionLanguage,
++): string | null {
++  if (lang === QuestionLanguage.Es && es?.trim()) return es;
++  if (lang !== QuestionLanguage.Ka && en?.trim()) return en;
++  return ka;
++}
++
++export async function coreQuestions(
++  userId: number,
++  lang: QuestionLanguage,
++): Promise<CoreQuestion[]> {
++  const result = await query<Row>(
++    `SELECT qb.question_id, qb.prompt_ka, qb.prompt_en, qb.prompt_es,
++            qb.immediate_use_ka, qb.immediate_use_en, qb.immediate_use_es,
++            ae.free_text AS answer, (ae.id IS NOT NULL) AS answered
++       FROM question_bank qb
++       LEFT JOIN LATERAL (
++         SELECT a.id, a.free_text FROM answer_events a
++          WHERE a.user_id = $1 AND a.question_id = qb.question_id
++            AND a.is_current AND a.skipped = FALSE
++          ORDER BY a.answered_at DESC NULLS LAST LIMIT 1
++       ) ae ON TRUE
++      WHERE qb.active AND qb.category = $2
++      ORDER BY qb.question_id
++      LIMIT $3`,
++    [userId, CORE_CATEGORY, MAX_CORE_QUESTIONS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((r) => ({
++    question_id: r.question_id,
++    text: inLanguage(r.prompt_ka, r.prompt_en, r.prompt_es, lang) ?? r.prompt_ka,
++    reason: inLanguage(r.immediate_use_ka, r.immediate_use_en, r.immediate_use_es, lang),
++    answered: r.answered,
++    answer: r.answer,
++  }));
++}
+diff --git a/src/services/myIntroRequests.service.ts b/src/services/myIntroRequests.service.ts
+new file mode 100644
+index 0000000..6393a5f
+--- /dev/null
++++ b/src/services/myIntroRequests.service.ts
+@@ -0,0 +1,74 @@
++import { query } from '../db/postgres/client';
++import { nameAsSavedBySql } from './savedNameSql';
++
++/**
++ * The frontend's 14 Oct 14:10Z item 5 („ჩემი თხოვნების მდგომარეობა" on the
++ * path page): the introductions this person asked for, newest first, each with
++ * the go-between as THEY saved them, the person to meet, the goal and its state.
++ * Only their own requests; the go-between's answer text is not part of it.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++export const MAX_MY_REQUESTS = 50;
++
++export enum MyRequestState {
++  Sent = 'sent',
++  Accepted = 'accepted',
++  Declined = 'declined',
++  Expired = 'expired',
++  Cancelled = 'cancelled',
++}
++
++export interface MyIntroRequest {
++  readonly id: number;
++  readonly mediator_name: string | null;
++  readonly target_name: string;
++  readonly goal_id: number | null;
++  readonly thread_id: number | null;
++  readonly state: MyRequestState;
++  readonly created_at: string;
++  readonly answered_at: string | null;
++}
++
++const STATE_OF: Readonly<Record<string, MyRequestState>> = {
++  pending: MyRequestState.Sent,
++  accepted: MyRequestState.Accepted,
++  declined: MyRequestState.Declined,
++  expired: MyRequestState.Expired,
++  cancelled: MyRequestState.Cancelled,
++};
++
++interface Row {
++  readonly id: number;
++  readonly mediator_name: string | null;
++  readonly target_name: string;
++  readonly goal_id: number | null;
++  readonly thread_id: number | null;
++  readonly status: string;
++  readonly created_at: string;
++  readonly answered_at: string | null;
++}
++
++export async function myIntroRequests(userId: number): Promise<MyIntroRequest[]> {
++  const result = await query<Row>(
++    `SELECT ir.id, ${nameAsSavedBySql('ir.requester_user_id', 'ir.mediator_user_id')} AS mediator_name,
++            ir.target_name, ir.requester_task_id AS goal_id,
++            COALESCE(ir.requester_thread_id, ir.origin_thread_id) AS thread_id,
++            ir.status, ir.created_at, ir.responded_at AS answered_at
++       FROM introduction_requests ir
++      WHERE ir.requester_user_id = $1
++      ORDER BY ir.created_at DESC
++      LIMIT $2`,
++    [userId, MAX_MY_REQUESTS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((r) => ({
++    id: r.id,
++    mediator_name: r.mediator_name,
++    target_name: r.target_name,
++    goal_id: r.goal_id,
++    thread_id: r.thread_id,
++    state: STATE_OF[r.status] ?? MyRequestState.Sent,
++    created_at: new Date(r.created_at).toISOString(),
++    answered_at: r.answered_at === null ? null : new Date(r.answered_at).toISOString(),
++  }));
++}
+diff --git a/src/services/sse.service.ts b/src/services/sse.service.ts
+index 4cd4847..ddba6af 100644
+--- a/src/services/sse.service.ts
++++ b/src/services/sse.service.ts
+@@ -364,8 +364,11 @@ export interface ThreadUpdatePayload {
+   // Public ref of the linked introduction request — included on request-thread
+   // updates so the client can target /requests/:ref without a refetch.
+   request_ref?: string;
+-  /** #1817: the owner opened it on one device; the others stop showing it as new. */
+-  seen_at?: string;
++  /**
++   * #1817: the owner opened it on one device; the others stop showing it as new.
++   * Null: marked unread again (the frontend's 14 Oct 14:10Z item 7).
++   */
++  seen_at?: string | null;
+   /** #1919: the goal was stopped / is stopped and not yet closed by its owner. */
+   goal_stopped?: boolean;
+   goal_stopped_open?: boolean;
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index 6717d80..eb671c1 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -853,6 +853,20 @@ export async function markThreadSeen(threadId: number, userId: string): Promise<
+   return row === undefined ? null : new Date(row.seen_at).toISOString();
+ }
+ 
++/**
++ * The frontend's 14 Oct 14:10Z item 7 („წაუკითხავად მონიშვნა"): the owner marks a
++ * conversation unread again, so it shows as new on every device. False when the
++ * thread is not theirs.
++ */
++export async function markThreadUnread(threadId: number, userId: string): Promise<boolean> {
++  const result = await query(
++    `UPDATE threads SET seen_at = NULL WHERE id = $1 AND user_id = $2`,
++    [threadId, userId],
++    SEEN_QUERY_TIMEOUT_MS,
++  );
++  return (result.rowCount ?? 0) > 0;
++}
++
+ export async function touchThread(threadId: number): Promise<void> {
+   await query(`UPDATE threads SET updated_at = NOW() WHERE id = $1`, [threadId]);
+ }
+-- 
+2.43.0
+
