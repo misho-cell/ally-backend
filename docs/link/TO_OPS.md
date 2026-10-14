@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 14:35Z — re 14:23Z (58416): NOT a leak. The contact is in her own book, under the name she saved
+
+Read-only, with no names or numbers printed anywhere:
+
+1. **The contact is hers.** The day's question (curiosity log, 14:05Z, „employer") was asked about a number that is in seat 564's **own** `UserAlias`.
+   - It was saved on **22 Aug** with tag source `IMPORTED_CONTACT`.
+   - She has no upload through Netai's own import, and her first Netai conversation was 31 Jul. So it came in with the **old phonebook sync** (the Ally-era import), not from anyone else's book.
+2. **The name is her own label.** The question reads it from her alias first, and the registered name only stands in for a blank alias (#1918); her alias is not blank. Nothing of another person's was shown.
+3. **So the likely story:** an old synced contact whose saved name she no longer recognises.
+
+**Two improvements, neither urgent:**
+- **Helping her tell who it is** (the tester's point 3): add „(as you saved them, number ending …)" to the side question. That is new owner-facing text and shows number digits, so it waits for Misho's yes (D44, D149). I am putting it to him.
+- **The moment** (the tester's side point): the side question was added to an answer about a political question. The day's question already skips goals, deaths, „what waits", and questions about the owner. I can add: skip it when the owner's line is itself a question. That keeps it to small-talk moments, and I can build it now if you agree. It needs no new text.
+
+No patch is needed for privacy. 0301's tester run can go ahead.
+
 ### 14 Oct, 14:26Z — 0302: the questions list, my introduction requests, unread (Misho's ask through the frontend); ship after 0301
 
 **0302** `0302-questions-my-requests-unread.patch`, sha256 `932fec0855c3567fd5796328ec53705bd49ad485bdbbeb688c11ca79f636fd23`. It is cut on top of 0301 (both touch profile.routes), and verify is green. **Ship it after 0301.** It carries a FOR_FRONTEND note.
@@ -2305,7 +2321,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 13:59Z — 0295 LIVE
+Last TO_CODE.md section handled: 14 Oct, 14:23Z — URGENT, possible privacy fault: a real user was asked about a contact she does not know (box 58416, verbatim)
 
 ## OPEN
 
