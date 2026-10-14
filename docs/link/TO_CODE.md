@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 19:02Z — 0308 measure; 4886 read
+Last TO_OPS.md section handled: 14 Oct, 19:13Z — 0309 owner's yes is not the question
 
 ## OPEN
+
+### 14 Oct, 19:26Z — 0309 LIVE; tester on 4297 rules, 3106 speed, 2185 (box 58807–58809, verbatim)
+
+0309 shipped alone, sha matched, main efb785f, outage 0. DONE WHEN posted.
+
+**58807**
+
+> Re 58743 (1) 4297 — which rules: our document NETAI_PROMPT_CHANGE_2026-09-29_PLAN_SEARCH_APPROVAL (from goal 10990), founder decisions D520-D532. The plan/search part (task_rules, D521/D522) is four rules: [a] SEARCHING NEVER WAITS FOR A YES — contacts, second circle, web and ways in are searched before the plan and shown as found, never put up for approval; the yes is asked only for what goes out (message, introduction, question to a member, invitation). [b] WHEN THE WEB NAMES NOBODY — if the opening search brought only pages/listings/portals, run your own web_search for the professional needed before the plan, then check each name: own contacts, then search_second_degree on the name. [c] THE SECOND CIRCLE IS NAMED — a fitting second-circle person is named with the bridge and the fact that fits, never 'through X I reach several'; in the plan that person is an introduction asked of that bridge; never plan to invite someone the owner does not know. [d] EVERY CHOICE HAS ITS REASON — each person, bridge and web lead gets one plain line on why ('<bridge> — knows N of the lawyers I found, including <name>'). Plus D520: the plan question is exactly 'ამ გეგმას მივყვე და ვიმოქმედო?' with approve/change. Test: 'მიწის ნაკვეთს ვყიდი, იურისტი მჭირდება' on a fictional seat, 3 runs: own web_search when the opening names nobody; named lawyers each with a way in or 'გზა ჯერ არ ჩანს'; second-circle lawyers named with bridge; that exact question; no search offered for approval; nothing goes out before the yes. Other sections of the same document (24-hour wake D524, typed answer goes at once D527, question bank D528, relay as meaning D529, stage of an introduction D532, greeting is not a task) are separate rows. (2) 4225 noted.
+
+**58808**
+
+> 3106 speed after 0308 (be48e7b): NOT YET — weather question 'როგორი ამინდია დღეს თბილისში?' on three fictional seats (threads 51882-84), send to final answer: 23.0 s / 17.1 s / 21.7 s (before 0308: 19-21 s; target 12 s). Answers correct. No real change yet. Left open.
+
+**58809**
+
+> 2185 one question per ask: PART — 1 run (seats 184806 owner / 184807 bridge / 184808 target; threads 51878 owner, 51879 bridge). The bridge's incoming ask is ONE question ('... გააცნო თამარ ქავთარაძეს. რაზეა საქმე: ... ნოტარიუსი. დაეხმარები? 🤝'), nothing glued on. A typed 'კი, გავაცნობ' started the introduction (owner got the contact). The four buttons can't be seen through the API (message choices null) — needs a screen check; going into Lika's file. Wording faults in the same run for the backend: bridge reply 'თამარ ქავთარაძეს-აც ვაცნობე'; owner reply 'T2185_B-მ თამარ ქავთარაძეს გადმოგაბარა' (garbled, and uses the bridge's account name although the owner saved him as 'ბექა ...'); owner earlier 'ბექა გოგიჩაიშვილი-ს ვთხოვ' (hyphen case ending). Left as being tested.
 
 ### 14 Oct, 19:08Z — tester: 4886 2/3; 1919, 2641 tested; 1520 part pass; side notes on 51845 (box 58744, 58774, 58776, verbatim)
 
