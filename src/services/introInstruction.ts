@@ -26,10 +26,11 @@ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean
  * თამართან" was answered „…მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" and nothing
  * went. A question back after an introduction instruction is let stand when it
  * asks for the REASON (3697); one asking LEAVE to send is not a real question,
- * because the typed instruction is itself that yes (CF, §139).
+ * because the typed instruction is itself that yes (CF, §139). 58066 (run 51426):
+ * the present tense asks it too — „ვუგზავნი ზურაბს გაცნობის თხოვნას …?".
  */
 const ASKS_LEAVE_TO_SEND_RE =
-  /(?:მივწერო|მივწერ|გავუგზავნო|გავაგზავნო|ვთხოვო|ვკითხო|მივმართო|დავუკავშირდე)(?!\p{L})|\b(?:shall|should)\s+i\s+(?:send|write|ask|message|contact)\b|\b(?:want|like)\s+me\s+to\s+(?:send|write|ask|message|contact)\b|(?:написать|отправить|попросить)\s+(?:ему|ей|им)?\s*\?|(?:quieres|deseas)\s+que\s+(?:le\s+)?(?:escriba|envíe|pida)/iu;
+  /(?:მივწერო|მივწერ|გავუგზავნო|გავაგზავნო|ვუგზავნი|გავუგზავნი|ვუგზავნო|ვწერ|ვთხოვო|ვთხოვ|ვკითხო|მივმართო|დავუკავშირდე)(?!\p{L})|\b(?:shall|should)\s+i\s+(?:send|write|ask|message|contact)\b|\b(?:want|like)\s+me\s+to\s+(?:send|write|ask|message|contact)\b|(?:написать|отправить|попросить)\s+(?:ему|ей|им)?\s*\?|(?:quieres|deseas)\s+que\s+(?:le\s+)?(?:escriba|envíe|pida)/iu;
 
 /** True when the reply's last question asks the owner for leave to send. */
 export function asksLeaveToSend(reply: string): boolean {
