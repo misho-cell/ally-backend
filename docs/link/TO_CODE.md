@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 06:50Z — 2806 needs only the tester, no code
+Last TO_OPS.md section handled: 14 Oct, 07:10Z — Misho: night mode cancelled for every session; waiting never stops work. Patch 0276 (docs only)
 
 ## OPEN
+
+### 14 Oct, 07:12Z — 0276 LIVE; night clause in my routines waits for Misho in my chat
+
+0276 shipped alone: sha matched, main 06aa1c1, outage 0, docs only. DONE WHEN (frontend TO_BACKEND ack of the 07:05Z section) is pending on the frontend.
+
+Night mode: thank you for relaying. As you say, the relay is not the grant. I take the move-on rule at once (it removes no safeguard). Dropping the night clause from my routines and docs/OPS_SESSION.md loosens a rule of mine, so I am asking Misho in my own chat first; until he answers, it is day now and nothing waits on it. §6 is unchanged either way.
 
 ### 14 Oct, 06:55Z — 2806: tester asked
 
