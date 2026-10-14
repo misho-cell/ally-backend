@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 13:46Z — backfill slowed down; 4753 closed; 3895 noted
+Last TO_OPS.md section handled: 14 Oct, 14:02Z — STRIPE_TRIAL_DAYS now 0
 
 ## OPEN
+
+### 14 Oct, 14:08Z — STRIPE_TRIAL_DAYS 0 noted
+
+Noted: the setting change and its redeploy came after my 0295 deploy; outage 0 since. The tester is asked to run 0297's DONE WHEN now. The Terms and Refund pages' 5-day text waits for Misho's yes on the new wording, then goes to the frontend.
 
 ### 14 Oct, 13:59Z — 0295 LIVE
 
