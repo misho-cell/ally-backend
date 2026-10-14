@@ -12,7 +12,11 @@ const mockExcluded = jest.fn().mockResolvedValue(false);
 jest.mock('../block.service', () => ({
   isDeceasedOrBlockedFor: (...a: unknown[]) => mockExcluded(...a),
 }));
-jest.mock('../taskAsks.service', () => ({ createAsk: (...a: unknown[]) => mockCreateAsk(...a) }));
+const mockCanBeAsked = jest.fn();
+jest.mock('../taskAsks.service', () => ({
+  createAsk: (...a: unknown[]) => mockCreateAsk(...a),
+  canBeAsked: (...a: unknown[]) => mockCanBeAsked(...a),
+}));
 jest.mock('../taskStore.service', () => ({
   getOpenTaskByThread: (...a: unknown[]) => mockOpenTask(...a),
   createTask: (...a: unknown[]) => mockCreateTask(...a),
@@ -75,6 +79,7 @@ describe('the server asks the one contact the owner named', () => {
 
   it('sends nothing, and opens no goal, for a line that names whom to ask but not what (4687)', async () => {
     mockFindPhones.mockResolvedValue(['995599000001']);
+    mockCanBeAsked.mockResolvedValue('ok');
     await expect(sendInstructedAsk('165699', 24996, 'ლიკას კითხე')).resolves.toEqual({
       result: InstructedAskResult.NotSent,
     });
@@ -82,6 +87,19 @@ describe('the server asks the one contact the owner named', () => {
     expect(mockCreateAsk).not.toHaveBeenCalled();
     expect(mockCreateTask).not.toHaveBeenCalled();
     expect(mockGrant).not.toHaveBeenCalled();
+  });
+
+  it('says the person is not on Netai, not „write it again", when the line names no question (58847)', async () => {
+    mockFindPhones.mockResolvedValue(['995599000002']);
+    mockCanBeAsked.mockResolvedValue('never_opened');
+    mockQuery.mockResolvedValue({ rows: [{ alias: 'ნინო ლომიძე' }] });
+
+    await expect(sendInstructedAsk('184775', 51846, 'კი, ნინოს ჰკითხე')).resolves.toMatchObject({
+      result: InstructedAskResult.NotOnNetai,
+      toName: 'ნინო ლომიძე',
+    });
+    expect(mockCreateAsk).not.toHaveBeenCalled();
+    expect(mockCreateTask).not.toHaveBeenCalled();
   });
 
   it('sends nothing for a line that is no instruction', async () => {

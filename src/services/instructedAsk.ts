@@ -13,7 +13,7 @@ import {
 } from './goalIntent';
 import { contactInstructionIn } from './instructionUnsent';
 import { ownerAsksForIntroduction } from './introInstruction';
-import { createAsk } from './taskAsks.service';
+import { canBeAsked, createAsk } from './taskAsks.service';
 import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
 import { findContactPhonesByName } from './tools/nameMatch';
 
@@ -207,6 +207,28 @@ async function excludedAmong(
   return excluded;
 }
 
+/**
+ * 0309's new fault (tester box 58847, thread 51846): „კი, ნინოს ჰკითხე" names
+ * Nino and no question, and Nino is not on Netai. The server sent nothing, which
+ * is right, but then told the owner „write the request again", as if the line
+ * had not been understood. When everyone the line names is out of reach, that
+ * is what the owner is told, and no goal is opened for it.
+ */
+async function namedButNotOnNetai(
+  userId: string,
+  askable: readonly NamedContact[],
+  people: PersonOutcome[],
+): Promise<InstructedAskOutcome> {
+  for (const c of askable) {
+    if ((await canBeAsked(c.phone)) === 'ok') return NOT_SENT;
+  }
+  for (const c of askable) {
+    const toName = await ownersLabel(userId, c.phone, c.typed);
+    people.push({ result: InstructedAskResult.NotOnNetai, toName });
+  }
+  return summed(people);
+}
+
 export async function sendInstructedAsk(
   userId: string,
   threadId: number,
@@ -239,7 +261,7 @@ export async function sendInstructedAsk(
   // 4687 (box 54550, goal 24996): „ლიკას კითხე" alone — the question was the owner's
   // earlier message — reached Lika as the whole question. A line that names whom to
   // ask but not what is no question; the run, which read the earlier message, asks.
-  if (asked === null) return NOT_SENT;
+  if (asked === null) return namedButNotOnNetai(userId, askable, people);
   const taskId = await goalForInstruction(userId, threadId, ownerLine);
   await grantTaskPermission(userId, taskId);
   // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
