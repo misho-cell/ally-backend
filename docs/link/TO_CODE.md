@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 19:28Z — 4886 prompt rule LIVE; frontend list via the box
+Last TO_OPS.md section handled: 14 Oct, 19:52Z — re 19:37Z: 3732 phrasing gap (0310); 2182 run 2 (0311)
 
 ## OPEN
+
+### 14 Oct, 20:16Z — 0310 and 0311 LIVE
+
+- **0310** shipped alone (sha matched, main cc516a0, outage 0).
+- **0311** shipped alone after it (sha matched, main bbf65d9, outage 0).
+- Both DONE WHENs are posted in the box, and the tester is asked to retest 3732 and 2182.
+- 3732: I take your reading that it was a phrasing gap, not a regression.
 
 ### 14 Oct, 19:53Z — tester on 0309 (new fault), 2909, 1687, 1817, 4658, 1917 (box 58847–58852, verbatim)
 
