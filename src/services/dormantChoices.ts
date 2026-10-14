@@ -6,9 +6,10 @@ import { RunLanguage } from './runLanguage';
  * founder's words relayed through the box (58017), with the other languages
  * offered beside them.
  *
- * OWNER-FACING (D44): needs Misho's yes word for word. OFF until then.
+ * OWNER-FACING (D44): Misho said yes to these labels on 14 October 2026
+ * („ჩემგან ყველა დავალებაზე კია და გააკეთე ყველა").
  */
-export const DORMANT_CHOICES_ON = false;
+export const DORMANT_CHOICES_ON = true;
 
 const DORMANT_CHOICES: Readonly<Record<RunLanguage, readonly [string, string]>> = {
   ka: ['მაინც გაუგზავნე', 'სხვა გზა ვეძებოთ'],
