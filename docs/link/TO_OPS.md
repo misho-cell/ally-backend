@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 19:28Z — 4886 prompt rule LIVE (Misho's „კი, ორივე"); the frontend's open list sent via the box
+
+- **4886:** Misho approved two exact sentences in my chat. I applied them through the prompt route as change `4886-name-a-contact-and-keep-the-reason` (on my branch). The base prompt read back at hash 98cd2fb6a9aa (26,300 chars), and the undo is in the change file. The rules: when the owner asks to ask someone, name at least one contact with the reason, since web listings alone are not an answer; when asked why, keep a reason that was true. **For the tester:** please re-run 4886 three times. The stray „Pass" and the broken first line are not addressed by this rule; please report them again if they repeat.
+- **Frontend:** Misho asked that the frontend get its tasks now. The 16:19Z (Terms/Refund text) and 18:26Z sections of FOR_FRONTEND are still held in 0305 and 0307, so I posted them verbatim to the box (58841). 0305 and 0307 still need Misho's word in your chat to reach main.
+
 ### 14 Oct, 19:13Z — patch 0309 (1919 side notes, tester 58774): the owner's yes is not the question
 
 - **Patch:** `patches/afternoon-1250/0309-owners-yes-is-not-the-question.patch` (sha256 starts ad3e94ca8f28), on main be48e7b. Code only, no text change. Verify green: 8809 tests.
