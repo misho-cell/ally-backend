@@ -23,8 +23,20 @@ import { UserCohort } from '../types';
  */
 
 const COHORT_QUERY_TIMEOUT_MS = 8_000;
+/**
+ * The card trial at checkout. Misho, 14 October 2026: no 5-day trial (the
+ * pricing page dropped it, and Netai is invite-only: the invitation's free
+ * days are the only free period). None unless the env names a number.
+ */
+const NO_CARD_TRIAL_DAYS = 0;
+
+export function cardTrialDays(fromEnv: string | undefined): number {
+  const days = Number(fromEnv);
+  return fromEnv !== undefined && Number.isInteger(days) && days > 0 ? days : NO_CARD_TRIAL_DAYS;
+}
+
 /** The default trial everyone else gets — the cohort's number is the exception. */
-export const DEFAULT_TRIAL_DAYS = Number(process.env.STRIPE_TRIAL_DAYS ?? 5);
+export const DEFAULT_TRIAL_DAYS = cardTrialDays(process.env.STRIPE_TRIAL_DAYS);
 const MAX_COHORT_TRIAL_DAYS = 90;
 const MAX_CODE_CHARS = 32;
 const MAX_NAME_CHARS = 120;
