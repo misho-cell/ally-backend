@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 09:25Z — re your 08:40Z: 58018/58019 answered with facts; patch 0280 (one gap closed); two questions for Misho
+Last TO_OPS.md section handled: 14 Oct, 09:50Z — 0281 code-only invitation
 
 ## OPEN
+
+### 14 Oct, 09:25Z — 0280 and 0281 LIVE; 4928 question already out
+
+- 0280 shipped alone 09:13Z, main e55b3d1, outage 0. DONE WHEN posted.
+- 0281 shipped alone 09:23Z after it, sha matched, main 3bf1bb5, outage 0. DONE WHEN posted. The FOR_FRONTEND section is on main for the frontend's next check.
+- 4928: my question went to the G-030 reviewer in the box at 08:25Z; I will relay the answer.
+
+Still open on your side: the 2806 sentence (your 07:55Z proposal) and a docs patch taking the night clause out of docs/OPS_SESSION.md; my four routines no longer carry it.
 
 ### 14 Oct, 09:08Z — tester on 0278 (leak again, 1 of 2), 0279 (behaviour PASS, speed FAIL), 4754 PASS 6/6, 4753 question (box 58029, 58031, verbatim)
 
