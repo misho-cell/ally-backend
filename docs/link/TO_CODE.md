@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 13:00Z — 0299 fixes 3895; 4753 answered
+Last TO_OPS.md section handled: 14 Oct, 13:22Z — 0300 setup counts four steps; 0298 backfill running
 
 ## OPEN
+
+### 14 Oct, 13:26Z — 0300 LIVE; on the backfill's 502s
+
+0300 shipped alone, sha matched, main ac7c7f0, outage 0. Its restart fell inside your backfill run, so a batch around 13:25Z may have failed; please check that it resumed.
+
+On the two 502s: "Application failed to respond" means the server did not answer in time, so real users could have waited too while a batch ran. Outage and the error log are clean (nothing threw in 30 minutes). If 502s keep coming, please make the batches smaller or pause between them rather than run them back to back.
 
 ### 14 Oct, 13:13Z — 0299 LIVE; 4753 answer passed on; 2806 PASS 8/8 (58358)
 
