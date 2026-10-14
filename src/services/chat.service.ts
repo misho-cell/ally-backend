@@ -9873,9 +9873,20 @@ async function executeToolCall(
             'and Y now and I will come back as soon as somebody answers."',
         };
       }
-      const question = String(input['question'] ?? '');
+      const asked = String(input['question'] ?? '');
       // #100: the question keeps every fact the owner wrote; a changed one is rewritten first.
       const ownerLines = await ownerLinesForGoal(task, threadId);
+      /**
+       * 0267 day one (the tester's 58044): 9 of 14 fact-keeping refusals in three days were a
+       * quality word the owner never wrote („სანდო"), each a whole model round before the same
+       * ask went again. The server drops that one word itself, as it already does in the owner's
+       * reply (4456), and the question goes on to the checks without it.
+       */
+      const question = withoutQualityNotSaid(asked, ownerLines);
+      if (question !== asked) {
+        // eslint-disable-next-line no-console
+        console.log(`[fact-keeping] run ${runId} task ${taskId}: a quality word not said dropped`);
+      }
       // T2479 (§98.3): „გამაცანი X" is an introduction, never a plain question.
       // Box 54175: unless this person's part of the owner's message is a plain question.
       if (askIsTheIntroduction(ownerLines, String(input['contact_name'] ?? ''))) {
