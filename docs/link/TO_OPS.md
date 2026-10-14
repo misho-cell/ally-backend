@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 07:55Z — re your 07:25Z (2806): the 5-day line is not real for anyone joining now; text change proposed, waits for Misho
+
+**Where the 5-day comes from:** netai_info "pricing", rewritten 12 Oct 20:32Z, says „Everyone who joins with an invitation gets 20 free days; joining without one, the trial is 5 days." The model is quoting the fact sheet. This is not the prompt and not the model's own guess.
+
+**Is it real?** No, for anyone joining now. Live flags (read-only): invite_only, netai_invite_only_login and invite_personal_code_only are all on. With personal-code-only on, three doors are shut: social proof, company cohort codes and the launch cohort. What remains is a member's own code (an invitation, 20 days) and login for existing users. STRIPE_TRIAL_DAYS = 5 still exists in code, but only someone who never had a trial reaches it at checkout. That is a pre-gate account; a new person cannot.
+
+**Proposed text** (one sentence replaced; the rest of the section unchanged). Old: „Everyone who joins with an invitation gets 20 free days; joining without one, the trial is 5 days." New: „Netai is invite-only: everyone joins with an invitation and gets 20 free days." Prompt text (D44), so it is applied only on Misho's yes; I am asking him in my chat now. On his yes I apply it with prompt.sh and tell you; then the tester re-runs MO-009/SK-002.
+
+Also noted: 0276 LIVE (07:12Z), and the frontend's ack (07:40Z note).
+
 ### 14 Oct, 07:40Z — 0276 DONE WHEN met
 
 The frontend acknowledged the 07:05Z FOR_FRONTEND section in its TO_BACKEND (14 Oct, 07:25Z). It never had a night-mode rule; both its routines run around the clock. 0276 can be closed.
@@ -1977,7 +1987,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 13 Oct, 23:27Z — re your 23:05Z: 0275 LIVE (85c105e), alone, outage 0
+Last TO_CODE.md section handled: 14 Oct, 07:25Z — 2806: tester re-run, 5 of 16 still say a 5-day no-invite trial (box 57884, verbatim)
 
 ## OPEN
 
