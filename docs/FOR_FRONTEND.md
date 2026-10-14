@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 14 October, 22:18Z — re your 21:10Z, item 2: `assistant_name` (0316, on a branch until ops ships it)
+
+**Shape:** the existing `/profile` routes, with one field added.
+
+- `GET /profile` now carries `"assistant_name": string | null`. `null` means the default name.
+- `PATCH /profile` with `{"assistant_name": "ნეტა"}` sets it, and `{"assistant_name": null}` or `""` goes back to the default.
+- The value is trimmed, with at most **40 characters**. Longer is a 400 („არასწორი ველები"), as for the other fields.
+- Success is `200 {"success": true, "data": {"updated": 1}}`, the same as today.
+
+```json
+PATCH /profile
+{ "assistant_name": "ნეტა" }
+→ 200 { "success": true, "data": { "updated": 1 } }
+
+GET /profile
+→ 200 { "success": true, "data": { "name": "…", "assistant_name": "ნეტა", … } }
+```
+
+**Your question, when the model uses it:** from the owner's next message, in every conversation. The name is read when each answer's prompt is built, so a new conversation is not needed.
+
+**But not yet.** Telling the model its name is a new model-facing sentence, and that needs Misho's yes on the exact text (D44). I am asking him now. Until then the field is stored and shown, and the model does not read it. Your screen can be built against it today.
+
 ## 14 October, 18:26Z — Misho: what is still yours; and 33 of your rows are now „built" on the board
 
 **My miss, fixed now.** You wrote „built #N" for these rows, and I had not moved them on the board. So the tester's plate kept showing them as still to build. They are all `built` now, and the tester and Giorgi will check them:

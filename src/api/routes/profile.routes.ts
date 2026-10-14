@@ -48,6 +48,8 @@ interface ProfileData {
   readonly city: string | null;
   /** #504: one link the person chose to show — LinkedIn, a website. */
   readonly link: string | null;
+  /** The owner's own name for their assistant; null means the default. */
+  readonly assistant_name: string | null;
   readonly subscription_tier: string;
   readonly subscription_status: string;
   readonly trial_ends_at: string | null;
@@ -76,13 +78,34 @@ interface ProfileData {
 // user can see and correct what the product knows about them" — a data-access
 // right, not a nicety). Photo upload needs a storage decision and is not here.
 
+/** The frontend's item 3: the owner's own name for their assistant (migration 240). */
+export const ASSISTANT_NAME_MAX_CHARS = 40;
+
 const EDITABLE_FIELDS = [
   { key: 'name', column: 'name', maxLen: 80 },
   { key: 'employer', column: 'employer', maxLen: 120 },
   { key: 'job_position', column: '"jobPosition"', maxLen: 120 },
   { key: 'city', column: 'city', maxLen: 80 },
   { key: 'link', column: 'profile_link', maxLen: MAX_LINK_CHARS },
+  { key: 'assistant_name', column: 'assistant_name', maxLen: ASSISTANT_NAME_MAX_CHARS },
 ] as const;
+
+/**
+ * The value a profile field is written as: trimmed and capped. The name cannot
+ * be cleared (undefined: the field is skipped), because asks introduce the
+ * sender by it. An empty assistant name means the default, so it is stored as
+ * null, never as an empty name the model would be told to answer to.
+ */
+export function profileFieldValue(
+  key: string,
+  raw: unknown,
+  maxLen: number,
+): string | null | undefined {
+  const value = raw === null ? null : String(raw).trim().slice(0, maxLen);
+  if (key === 'name') return value === null || value === '' ? undefined : value;
+  if (key === 'assistant_name' && value === '') return null;
+  return value;
+}
 
 /** #505: unblocking is a person tidying their own list; a burst is a script. */
 const UNBLOCKS_PER_MINUTE = 30;
@@ -415,6 +438,7 @@ profileRouter.get(
                 u."jobPosition" AS job_position,
                 u.city,
                 u.profile_link AS link,
+                u.assistant_name,
                 u.subscription_tier,
                 u.subscription_status,
                 u.trial_ends_at,
@@ -486,6 +510,11 @@ profileRouter.patch(
   body('employer').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
   body('job_position').optional({ nullable: true }).isString().trim().isLength({ max: 120 }),
   body('city').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
+  body('assistant_name')
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ max: ASSISTANT_NAME_MAX_CHARS }),
   profileLinkRule(),
   async (req: Request, res: Response<ApiResponse<unknown>>): Promise<void> => {
     if (!validationResult(req).isEmpty()) {
@@ -499,9 +528,8 @@ profileRouter.patch(
       const params: unknown[] = [userId];
       for (const field of EDITABLE_FIELDS) {
         if (!(field.key in bodyData)) continue;
-        const raw = bodyData[field.key];
-        const value = raw === null ? null : String(raw).trim().slice(0, field.maxLen);
-        if (field.key === 'name' && (value === null || value === '')) continue;
+        const value = profileFieldValue(field.key, bodyData[field.key], field.maxLen);
+        if (value === undefined) continue;
         params.push(value);
         assignments.push(`${field.column} = $${params.length}`);
       }
