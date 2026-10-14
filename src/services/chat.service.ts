@@ -5622,61 +5622,6 @@ const runWebFound = new Set<string>();
  * in a weather question, so it searches the web and nothing else.
  */
 const runLooksUpTheWeather = new Set<string>();
-
-/**
- * 3106, the speed half (the tester's 58029, 14 Oct: 18.0 / 19.2 / 19.1 s against
- * 12). A weather run spent one whole model turn deciding to call the web search
- * it was forced to call (~6 s before the search began). The server now runs that
- * one search itself and hands the results over in the opening-search section, the
- * same text a goal's opening search uses, so the model answers in its first turn.
- * Null on any failure: the run then falls back to the forced search, as before.
- */
-async function weatherFoundFirst(
-  userId: string,
-  threadId: number,
-  runId: string,
-  ownerLine: string,
-): Promise<string | null> {
-  const startedAt = Date.now();
-  try {
-    const raw = await webSearch(ownerLine);
-    void recordFixedUsage({
-      userId,
-      kind: 'web_search',
-      provider: 'tavily',
-      priceKey: 'tavily.search',
-      runId,
-    }).catch(() => {});
-    void logToolCall({
-      threadId,
-      surface: 'chat',
-      runId,
-      userId,
-      tool: 'web_search:weather',
-      input: { query: ownerLine },
-      result: raw,
-      durationMs: Date.now() - startedAt,
-    });
-    if (!hasWebResults(raw)) return null;
-    registerWebResult(runId, raw);
-    runWebFound.add(runId);
-    const section = buildOpeningSearchSection({
-      web: JSON.stringify(raw),
-      secondDegree: null,
-      missing: [],
-      waysIn: new Map(),
-      webRaw: raw,
-    });
-    return section === '' ? null : section;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[weather] server search failed, the run searches itself:',
-      (err as Error).message,
-    );
-    return null;
-  }
-}
 /** #893: the labels of the list this run worked, for the check that the reply names every row. */
 const runListLabels = new Map<string, string[]>();
 /** The tool names this many rows to the model; a longer list is not checked row by row. */
@@ -13337,9 +13282,6 @@ async function runToolLoop(
     asksTheWeather(lastOwnerText(messages) ?? '') &&
     tools.some((tool) => tool.name === WEB_SEARCH_TOOL);
   if (weatherLookUp) runLooksUpTheWeather.add(runId);
-  const weatherFound = weatherLookUp
-    ? await weatherFoundFirst(userId, threadId, runId, lastOwnerText(messages) ?? '')
-    : null;
   let options: DisambiguationCandidate[] | undefined;
   let choices: string[] | undefined;
   // 2971: every step bubble the owner saw, so a question said only there is not lost.
@@ -13386,23 +13328,13 @@ async function runToolLoop(
   // meanwhile, so the two never mix on the screen.
   const earlyFinal = smallTalkOnly && writer !== '' ? writeWith(writer) : null;
   const firstTurnText = earlyFinal === null ? stream : undefined;
-  let response = await callClaude(
-    messages,
-    systemPrompt + shortTurnNote + (weatherFound ?? ''),
-    tools,
-    ctx,
-    {
-      onText: firstTurnText,
-      model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
-      ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
-      ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
-      // 3106: with the weather already found, the first turn is the answer.
-      ...(weatherLookUp &&
-        (weatherFound === null
-          ? { forceTool: WEB_SEARCH_TOOL }
-          : { forceText: true, maxTokens: DISCUSS_MAX_TOKENS })),
-    },
-  );
+  let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
+    onText: firstTurnText,
+    model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
+    ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+    ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+    ...(weatherLookUp && { forceTool: WEB_SEARCH_TOOL }),
+  });
   // The tester's 997 (29833, run 44e53e23): the first answer came back with no
   // text and no tool call, and the owner was told „try again" — the same words
   // sent again a minute later worked. A blank first answer is asked once more
