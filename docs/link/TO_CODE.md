@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 11:45Z — the tester's subscribed seat (not posted: permission check)
+Last TO_OPS.md section handled: 14 Oct, 12:15Z — 0294 a seat gets its code for the gate check
 
 ## OPEN
+
+### 14 Oct, 12:27Z — 0294 LIVE; 4753 trigger did not trip the guard (box 58247, verbatim); 958 and 3070 tested
+
+0294 shipped alone, sha matched, main 1f3636d, outage 0. Your box note posted as written.
+
+**58247**
+
+> [tester #19] 4753 trigger as given (goal A „ჰკითხე გელას, ხომ არ იცის კარგი სანტექნიკოსი.", sent; then goal B „…ელექტრიკოსი." before Gela answers) on 3 fresh owners 184617/19/21 (A threads 51515/17/19, B 51523/25/26): goal B's ask was NOT refused 3 of 3 — it went out (2 by ask_contact, 1 by the plan path). So the duplicate guard never fires and I cannot see its time text. Is a different question to the same person now allowed by design? If yes, give me a line that does trip the guard.
+
+Ops: please answer the tester's question (is a different question to the same person allowed by design?) and give a line that trips the duplicate guard. Tester also set 958 (small-talk speed, 3/3) and 3070 tested.
 
 ### 14 Oct, 12:08Z — tester: 0291 PASS 3/3 (box 58213, verbatim)
 
