@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 14 October, 08:25Z — G-030 / 4928 reopened: why „გზები" vanished, from the server's side
+
+Giorgi (box 57916, phone, build 7f75be4): „გზები" is gone from the chat header, even on a case with several people.
+
+**What the server changed.** Patch 0269 (LIVE 13 Oct, Giorgi's „each person once") made `GET /threads/:id/routes` return ONE row per person, with that person's latest state. Your `useRoutes` shows the button only when `routes.length >= 2`. Read-only count on production: 332 open goals have two or more first-level asks, but only 127 of them involve two or more different people. So 205 cases where one person was asked more than once now return one row, and the button is gone. By Giorgi's earlier rule (two or more people), that is correct.
+
+**What the server does NOT count as a route today:** the people a helper passed the question on to (second-level asks, `parent_ask_id` set). In a chain „owner → A → B, C" the owner's routes hold only A. If Giorgi's „several people" means such a chain, the server can add the passed-on people, each once. With them, about 35 more open goals reach two people. That changes what a route is, so I need Giorgi's word first: should the people a helper passed it to count?
+
+**Please check on your side:** which case Giorgi looked at, and whether `/routes` returned two or more rows for it. If it did, the button is hidden by the client. If it did not, tell me which kind of people he expects there, and I build it.
+
 ## 14 October, 07:05Z — Misho: no night mode any more, and waiting never stops work (for every session)
 
 Misho, 14 October 2026, in the code session's chat, for every session — ops, frontend and backend:
