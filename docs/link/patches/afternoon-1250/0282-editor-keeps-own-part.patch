@@ -1,0 +1,136 @@
+From 274149646347484f403400da80a03e3ffa8999ab Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 09:27:04 +0000
+Subject: [PATCH] 4655: the editor's rewrite keeps to the person's own part
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58029, run 2 (14 Oct 08:44Z): the model's question to Gela
+passed the own-part check as „იცი კარგი სანტექნიკოსი ვინმე?" (that is
+the stored ask), and Gela received „იცი კარგი სანტექნიკოსი? და თუ
+შეგიძლია, ლევანს სთხოვე, … ნინოს გააცნოს." The server's editor (D711),
+told to keep the question to the owner's newest line, wrote Levan's
+introduction back in from that line.
+
+The editor's rewrite is now held to the same own-part check. When it
+carries another person's part, the checked draft goes instead. No
+model-facing text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../eachPersonGetsOnlyTheirOwnPart.test.ts    | 29 +++++++++++++++++++
+ .../__tests__/recommendedRelay.test.ts        |  6 ++--
+ src/services/taskAsks.service.ts              | 21 ++++++++++++--
+ 3 files changed, 51 insertions(+), 5 deletions(-)
+
+diff --git a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+index 6410c71..b07694f 100644
+--- a/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
++++ b/src/services/__tests__/eachPersonGetsOnlyTheirOwnPart.test.ts
+@@ -1,3 +1,5 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
+ import { contactInstructionIn } from '../instructionUnsent';
+ import {
+   askIsTheIntroduction,
+@@ -75,3 +77,30 @@ describe('each person gets only their own part (4655)', () => {
+     expect(OTHER_PART_REFUSAL).toContain('request_introduction');
+   });
+ });
++
++/**
++ * 58029, run 2 (14 Oct 08:44Z): the model's question to Gela passed the check,
++ * and the server's editor, holding it to the owner's line, wrote Levan's part back
++ * in. The edit is held to the same check, and the checked draft goes instead.
++ */
++describe('the editor’s rewrite keeps to the person’s own part (58029)', () => {
++  const EDITED =
++    'იცი კარგი სანტექნიკოსი? და თუ შეგიძლია, ლევანს სთხოვე, Owner 4655-2 ნინოს გააცნოს.';
++  const ASKS = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++
++  it('catches the rewrite Gela received', () => {
++    expect(questionCarriesAnotherPart(OWNER, 'გელა ბერიძე', EDITED, true)).toBe(true);
++    expect(
++      questionCarriesAnotherPart(OWNER, 'გელა ბერიძე', 'იცი კარგი სანტექნიკოსი ვინმე?', true),
++    ).toBe(false);
++  });
++
++  it('sends the checked draft when the editor’s rewrite carries another part', () => {
++    expect(ASKS).toContain(
++      'questionCarriesAnotherPart(ownerWords, toName, editorsDraft.question, OWN_PART_ONLY_ON)',
++    );
++    const guard = ASKS.indexOf('questionCarriesAnotherPart(ownerWords, toName');
++    expect(ASKS.slice(guard, guard + 200)).toContain('? draftAsk');
++    expect(ASKS.indexOf('const edited = { ...editorsAsk')).toBeGreaterThan(guard);
++  });
++});
+diff --git a/src/services/__tests__/recommendedRelay.test.ts b/src/services/__tests__/recommendedRelay.test.ts
+index 2358a87..27eff29 100644
+--- a/src/services/__tests__/recommendedRelay.test.ts
++++ b/src/services/__tests__/recommendedRelay.test.ts
+@@ -45,7 +45,9 @@ describe('recommendedRelayLine', () => {
+     const settle = readFileSync(join(__dirname, '..', 'askReferralSettle.service.ts'), 'utf8');
+     expect(settle).toContain('approvedLine !== null,');
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+-    expect(asks).toContain('approvedWording === true');
+-    expect(asks).toContain('? { question: relayed.text, choices: draftChoices, edited: false }');
++    expect(asks).toContain(
++      'const draftAsk = { question: relayed.text, choices: draftChoices, edited: false };',
++    );
++    expect(asks).toMatch(/approvedWording === true\s+\? draftAsk/);
+   });
+ });
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 18e0dd7..c4b9123 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -42,6 +42,8 @@ import {
+   withoutPointingAnswers,
+ } from './askChoices';
+ import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
++import { OWN_PART_ONLY_ON } from './introInstruction';
++import { questionCarriesAnotherPart } from './ownPart';
+ import {
+   A2A_ROUND_CAP,
+   isAssistantOnlyRound,
+@@ -1653,19 +1655,32 @@ async function createAskNow(
+         : ownButtons;
+   // D711: the question and its buttons pass the editor before they leave — except text
+   // approved word for word (BN, box 52869: the editor made the helper the one in need).
+-  const editorsAsk =
++  const ownerWords = parentAskId === undefined ? await ownerWordsOn(taskId) : [];
++  const draftAsk = { question: relayed.text, choices: draftChoices, edited: false };
++  const editorsDraft =
+     approvedWording === true
+-      ? { question: relayed.text, choices: draftChoices, edited: false }
++      ? draftAsk
+       : await editOutgoingAsk(
+           { question: relayed.text, choices: draftChoices },
+           {
+-            ownerWords: parentAskId === undefined ? await ownerWordsOn(taskId) : [],
++            ownerWords,
+             askerName: senderName,
+             readerName: toName,
+             language,
+             draftIsOwnersWords: fromOwnersLine === true,
+           },
+         );
++  /**
++   * 4655 (the tester's 58029, run 2): the question to Gela passed the own-part
++   * check as „იცი კარგი სანტექნიკოსი ვინმე?", and the editor, keeping it to the
++   * owner's line, wrote Levan's introduction back in. The edit is held to the
++   * same check; when it carries another person's part, the checked draft goes.
++   */
++  const editorsAsk =
++    editorsDraft.edited &&
++    questionCarriesAnotherPart(ownerWords, toName, editorsDraft.question, OWN_PART_ONLY_ON)
++      ? draftAsk
++      : editorsDraft;
+   // 3567: the need goes out, never somebody's condition — in the message and in its title.
+   const edited = { ...editorsAsk, question: questionWithoutCondition(editorsAsk.question) };
+   // A follow-up lands in the conversation it belongs to; only a first ask
+-- 
+2.43.0
+

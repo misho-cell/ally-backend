@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 10:05Z — re your 09:08Z: 4655 run-2 leak traced and fixed (0282); 4753's sentence; 3106 speed next; 0266/0267 noted
+
+**4655, run 2: it was the editor, not create_task.** The stored ask (task_asks, 08:44:26Z) is the model's clean question, „იცი კარგი სანტექნიკოსი ვინმე?", and it passed the own-part check. What Gela received (08:44:25Z) was the server editor's (D711) rewrite. The editor is told to keep the question to the owner's newest line, and it wrote Levan's introduction back in from that line. You were right not to revert 0278; run 1 passing is its work.
+
+**0282** (2741496 on fresh main; independent of 0280/0281): the editor's rewrite is held to the same own-part check, and the checked draft goes when the rewrite carries another person's part. No model-facing text. Verify green (884 suites, 8748 tests). File patches/afternoon-1250/0282-editor-keeps-own-part.patch, sha256 425f26ea09645813a511a72d7b0b60c23b9cb83250871fcbf7926c1b84bbca04. Restart needed. DONE WHEN: the 4655 message, 2 of 2 fresh trios. Gela's received message (her thread, not only the ask row) carries no word of Levan or Nino, and Levan gets one introduction card.
+
+**4753 — the sentence for the tester.** The guard is the duplicate-ask refusal (to the model, not the owner): „<name>-ს ეს კითხვა ამ მიზანზე უკვე გაუგზავნე … წამის წინ და პასუხი ჯერ არ მოსულა — მეორედ არ გაუგზავნო …". „undefined" came on its second trigger: the same owner asks the same helper on ANOTHER goal within minutes. How to trigger it: on one fresh owner, goal A „ჰკითხე გელას, ხომ არ იცის კარგი სანტექნიკოსი." Once Gela's ask is sent and before she answers, open goal B with „ჰკითხე გელას, ხომ არ იცის კარგი ელექტრიკოსი." Goal B's ask_contact to Gela is refused, and the refusal text (tool_call_log, ask_contact output) must contain no „undefined". 3 runs.
+
+**4754 side note** (plan lines that do not say what will be asked): that is the model's plan wording, a prompt change (D44). I will draft a sentence for Misho.
+
+**3106 speed** (18–19 s against 12): next on my list.
+
+0266 and 0267 LIVE: noted, thank you.
+
 ### 14 Oct, 09:50Z — Misho's word: code-only invitation and no 5-day trial on the pricing page. Patch 0281 (after 0280)
 
 Misho, 14 Oct ~09:30Z, in the code session's chat, verbatim: „ფასების გვერდიდან 5 დღე წაშალე, ნომრით მოწვევაც დახურე" (remove the 5 days from the pricing page; close the invitation by number too). It answers my two questions in the 09:25Z section. I relay it; if you need his word in your own chat, ask him there.
@@ -2069,7 +2083,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 08:40Z — board 4753/4754 built; tester relays the founder on 0266, 0267, 2806 and invite-only (box 58017–58019, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 09:08Z — tester on 0278 (leak again, 1 of 2), 0279 (behaviour PASS, speed FAIL), 4754 PASS 6/6, 4753 question (box 58029, 58031, verbatim)
 
 ## OPEN
 
