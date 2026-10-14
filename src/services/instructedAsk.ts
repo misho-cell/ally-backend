@@ -140,7 +140,12 @@ export async function contactsNamed(
 }
 
 /** The goal on this conversation, opened from the owner's line when there is none. */
-async function goalFor(userId: string, threadId: number, ownerLine: string): Promise<number> {
+/** This conversation's open goal, or one opened for the owner's instruction (3928). */
+export async function goalForInstruction(
+  userId: string,
+  threadId: number,
+  ownerLine: string,
+): Promise<number> {
   const open = await getOpenTaskByThread(threadId);
   if (open !== null) return open.id;
   // 3928 run 2 (conv 48589): an order to ask named people is this conversation's
@@ -235,7 +240,7 @@ export async function sendInstructedAsk(
   // earlier message — reached Lika as the whole question. A line that names whom to
   // ask but not what is no question; the run, which read the earlier message, asks.
   if (asked === null) return NOT_SENT;
-  const taskId = await goalFor(userId, threadId, ownerLine);
+  const taskId = await goalForInstruction(userId, threadId, ownerLine);
   await grantTaskPermission(userId, taskId);
   // 1687: the facts the owner wrote around the instruction go with it, whole sentences only.
   const question = questionWithFacts(
