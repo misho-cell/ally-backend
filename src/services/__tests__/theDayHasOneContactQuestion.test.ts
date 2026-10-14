@@ -103,6 +103,7 @@ describe('a question handed out but never asked is handed out again', () => {
   it('re-arms the question when no reply since names the contact', async () => {
     mockDue.mockResolvedValueOnce(null).mockResolvedValueOnce(due('ზვიადი', 'occupation'));
     mockQuery
+      .mockResolvedValueOnce(rows())
       .mockResolvedValueOnce(rows(PENDING))
       .mockResolvedValueOnce(rows({ unasked: true }))
       .mockResolvedValueOnce(rows());
@@ -110,8 +111,8 @@ describe('a question handed out but never asked is handed out again', () => {
     const section = await dailyContactQuestionSection('179648', 44255, OWN_RUN);
 
     expect(section).toContain('სხვათა შორის, ზვიადი რას საქმიანობს?');
-    expect(mockQuery.mock.calls[1][1]).toEqual(['179648', 44255, 77, 'ზვიად']);
-    expect(mockQuery.mock.calls[2]).toEqual([
+    expect(mockQuery.mock.calls[2][1]).toEqual(['179648', 44255, 77, 'ზვიად']);
+    expect(mockQuery.mock.calls[3]).toEqual([
       'DELETE FROM curiosity_surfacing_log WHERE id = $1',
       [77],
       expect.any(Number),
@@ -120,21 +121,41 @@ describe('a question handed out but never asked is handed out again', () => {
 
   it('keeps the reminder when the question was asked', async () => {
     mockDue.mockResolvedValue(null);
-    mockQuery.mockResolvedValueOnce(rows(PENDING)).mockResolvedValueOnce(rows({ unasked: false }));
+    mockQuery
+      .mockResolvedValueOnce(rows())
+      .mockResolvedValueOnce(rows(PENDING))
+      .mockResolvedValueOnce(rows({ unasked: false }));
 
     const section = await dailyContactQuestionSection('179646', 44254, OWN_RUN);
 
     expect(section).toContain('დღეს ჰკითხე: ზვიადი გამოგონილი — რას საქმიანობს?');
-    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockQuery).toHaveBeenCalledTimes(3);
     expect(mockDue).toHaveBeenCalledTimes(1);
   });
 
   it('reads nothing more when a question is due anyway', async () => {
     mockDue.mockResolvedValue(due('ნინო', 'city'));
+    mockQuery.mockResolvedValueOnce(rows());
 
     await dailyContactQuestionSection('501', 44254, OWN_RUN);
 
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks nothing while the owner answers what Netai should know about them (2182)', async () => {
+    mockDue.mockResolvedValue(due('ანა', 'employer'));
+    mockQuery.mockResolvedValueOnce(
+      rows(
+        { content: 'ბათუმში სასტუმრო მაქვს' },
+        { content: 'რა გჭირდება ჩემზე იცოდე, რომ უკეთ დამეხმარო?' },
+      ),
+    );
+
+    const section = await dailyContactQuestionSection('184807', 51914, OWN_RUN);
+
+    expect(section).toBe('');
+    expect(mockDue).not.toHaveBeenCalled();
+    expect(mockQuery.mock.calls[0][1]).toEqual([51914, 30, 2]);
   });
 
   it('matches every case form of the first name', () => {
