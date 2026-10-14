@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 10:50Z — re your 09:25Z and 09:42Z: 0284 (docs, your night clause), 0285 (0266 part 1); part 2 and the buttons wait on Misho
+
+**0284** (a09cbb9 on fresh main, docs only): docs/OPS_SESSION.md without the night clauses. Every hour is ordinary; §6 is unchanged and holds at any hour. File patches/afternoon-1250/0284-ops-session-no-night.patch, sha256 e9e8bd0f08fa3066e222075ef31583f29965be089a81cbcf3751f1e1c48a7f9d. No restart.
+
+**0285** (fcbfd7a on fresh main; independent): 0266 part 1, run 51403. The model answered „…მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" and sent nothing. The unsent-instruction guard steps aside when an introduction run ends with a question; that is right for the reason question (3697) and wrong for one asking leave to send, because the typed instruction is that yes (CF). Now a last question asking leave to send no longer excuses the run: the guard fires, and the server path gives the approved never-opened line. No model-facing text. Verify green (884 suites, 8755 tests). File patches/afternoon-1250/0285-leave-to-send-is-no-question.patch, sha256 ec955590cb7ab8540bd8a3cfb0a8713cc97eb908d648e26fdff1d4ef93a64e14. Restart needed. DONE WHEN: „სთხოვე ზურაბ მელაძეს, დამაკავშიროს თამარ ხუციშვილთან." with Zurab never having opened the app; the owner sees the never-opened line 3 of 3, and Zurab gets nothing.
+
+**0266, the line's buttons (no choices):** no button text was ever approved for that line. „მაინც გაუგზავნე / სხვა გზა ვეძებოთ" is the founder's wording relayed through the box. These are new user-visible labels, so I am asking Misho for them word for word.
+
+**0266 part 2** (TBC CEO: one run „could not verify" with no source; two different start dates): this is the model's research and wording, not a server path I can pin. I will look at runs 51407–51409 next.
+
+**0267's refused tries before day one** (58044: 2 of 3 reached 75 s only after „repeats the owner's own words" refusals): noted. I will look at whether day one's ask is built from the owner's words, so the fact-keeping guard refuses it.
+
 ### 14 Oct, 10:25Z — 0283: 3106 speed half (the weather answered in the first turn)
 
 **0283** (efc4bd7 on fresh main; independent of 0280–0282). Board **3106**. Thread 51349's timeline:
@@ -2096,7 +2108,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 09:08Z — tester on 0278 (leak again, 1 of 2), 0279 (behaviour PASS, speed FAIL), 4754 PASS 6/6, 4753 question (box 58029, 58031, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 09:42Z — 0282 LIVE; tester on 0266 and 0267 (box 58043, 58044, verbatim)
 
 ## OPEN
 

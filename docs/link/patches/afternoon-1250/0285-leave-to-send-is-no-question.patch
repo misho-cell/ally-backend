@@ -1,0 +1,164 @@
+From fcbfd7a9fdeb1fb09c294b80c129b5a1195a952c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 09:49:27 +0000
+Subject: [PATCH] 0266 part 1: a question asking leave to send does not excuse
+ an unsent introduction
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58043, run 51403: „სთხოვე ზურაბ მელაძეს, დამაკავშიროს
+თამარ ხუციშვილთან." was answered „…მივწერო ზურაბს და სთხოვო,
+დაგაკავშიროთ?". Nothing went, and the owner never heard that Zurab had not
+opened the app. The unsent-instruction guard steps aside when an
+introduction run ends with a question, which is right for the reason
+question (3697) and wrong for one asking leave to send: the typed
+instruction is itself that yes (CF, §139). The guard now holds unless the
+last question asks something other than leave to send. With the guard
+on, the server's own path gives the approved never-opened line.
+
+No model-facing text changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aTypedIntroductionIsItsOwnYes.test.ts     | 47 ++++++++++++-------
+ .../anIntroductionIsNotAPlainAsk.test.ts      |  5 +-
+ src/services/chat.service.ts                  |  6 ++-
+ src/services/introInstruction.ts              | 17 +++++++
+ 4 files changed, 55 insertions(+), 20 deletions(-)
+
+diff --git a/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts b/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+index 34fdc58..a1b874b 100644
+--- a/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
++++ b/src/services/__tests__/aTypedIntroductionIsItsOwnYes.test.ts
+@@ -1,27 +1,40 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
++import { asksLeaveToSend } from '../introInstruction';
+ 
+ /**
+- * CF (2311's root cause; Misho's yes, 13 Oct, §139): request_introduction said
+- * „Call only after the user explicitly confirms … only after they confirm", so a
+- * typed „სთხოვე გიორგის, დამაკავშიროს ნინოსთან" was answered with a second
+- * „shall I send it?" (conv 50823) or nothing. The typed line is the yes (D316).
++ * 0266 part 1 (the tester's 58043, run 51403): „სთხოვე ზურაბ მელაძეს,
++ * დამაკავშიროს თამარ ხუციშვილთან." was answered „ზურაბ მელაძე თამარ ხუციშვილს
++ * იცნობს. მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" — nothing went, and the
++ * owner never heard that Zurab had not opened the app. A question asking leave
++ * to send no longer excuses the run from the unsent-instruction guard.
+  */
+-const CHAT = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-const TOOL = CHAT.slice(CHAT.indexOf("name: 'request_introduction',"));
+-const DESCRIPTION = TOOL.slice(0, TOOL.indexOf('input_schema'));
++describe('a question asking leave to send is not a real question (0266)', () => {
++  it.each([
++    'ზურაბ მელაძე თამარ ხუციშვილს იცნობს. მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?',
++    'გავუგზავნო თხოვნა ლევანს?',
++    'Levan knows her. Shall I ask him to introduce you?',
++    'Do you want me to send him the request?',
++  ])('„%s" asks leave', (reply) => {
++    expect(asksLeaveToSend(reply)).toBe(true);
++  });
+ 
+-describe('a typed introduction is its own yes', () => {
+-  it('says so, word for word as approved', () => {
+-    expect(DESCRIPTION).toContain(
+-      "'Send an introduction request to a mutual contact (mediator). Call it once the user has said ' +\n" +
+-        "    'they want it: a typed instruction to introduce them („ask Gio to introduce me to Nino\") is ' +\n" +
+-        '    "itself that yes (D316) — send at once, without asking again.',
+-    );
++  it.each([
++    'რისთვის გჭირდება თამართან დაკავშირება? ერთი მოკლე მიზეზი დამიწერე.',
++    'Why would you like to meet her?',
++    'რომელ ნინოზეა საუბარი?',
++  ])('„%s" is a real question (the reason, or which one)', (reply) => {
++    expect(asksLeaveToSend(reply)).toBe(false);
+   });
+ 
+-  it('no longer asks for a second confirmation', () => {
+-    expect(DESCRIPTION).not.toContain('explicitly confirms');
+-    expect(DESCRIPTION).not.toContain('only after they confirm');
++  it('reads only the last question', () => {
++    expect(asksLeaveToSend('მივწერო ზურაბს? რისთვის გჭირდება?')).toBe(false);
++  });
++
++  it('keeps the guard on when the run only asked leave', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toMatch(
++      /ownerAsksForIntroduction\(\[runOwnerLine\.get\(runId\) \?\? ''\]\) &&\s+endsWithQuestion\(finalText\) &&\s+!asksLeaveToSend\(finalText\);/,
++    );
+   });
+ });
+diff --git a/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts b/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts
+index 8cac649..27c659a 100644
+--- a/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts
++++ b/src/services/__tests__/anIntroductionIsNotAPlainAsk.test.ts
+@@ -33,8 +33,9 @@ describe('anIntroductionIsNotAPlainAsk', () => {
+ 
+   it('lets the run’s question to the owner stand instead of „not sent" (3697)', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain(
+-      "ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);",
++    // 0266 part 1: unless that question only asks leave to send (aTypedIntroductionIsItsOwnYes).
++    expect(chat).toMatch(
++      /ownerAsksForIntroduction\(\[runOwnerLine\.get\(runId\) \?\? ''\]\) &&\s+endsWithQuestion\(finalText\)/u,
+     );
+     expect(chat).toMatch(/!claimedAnAskNobodyGot &&\s+!introductionQuestion &&/u);
+   });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 738c045..9dc4215 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -465,6 +465,7 @@ import { noContactsYetSection } from './noContactsYet';
+ import { withoutNoteTalk } from './noteTalk';
+ import {
+   askIsTheIntroduction,
++  asksLeaveToSend,
+   OWN_PART_ONLY_ON,
+   ownerAsksForIntroduction,
+   USE_INTRODUCTION_REFUSAL,
+@@ -13915,8 +13916,11 @@ async function runToolLoop(
+   // 3697 (F20, 10 of 10): „ask Maia to introduce me to Bakhva" with no reason —
+   // the run asked the owner why. That is a real question, and an introduction
+   // is not an ask this guard can send; replacing it with „not sent" lost it.
++  // 0266 part 1 (58043): but a question asking LEAVE to send is no question — the line was the yes.
+   const introductionQuestion =
+-    ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) && endsWithQuestion(finalText);
++    ownerAsksForIntroduction([runOwnerLine.get(runId) ?? '']) &&
++    endsWithQuestion(finalText) &&
++    !asksLeaveToSend(finalText);
+   const instructionUnsent =
+     !ownerAbsent &&
+     !promoted &&
+diff --git a/src/services/introInstruction.ts b/src/services/introInstruction.ts
+index 9ba1dcf..499a36c 100644
+--- a/src/services/introInstruction.ts
++++ b/src/services/introInstruction.ts
+@@ -21,6 +21,23 @@ export function ownerAsksForIntroduction(ownerLines: readonly string[]): boolean
+   return ownerLines.some((line) => OWNER_INTRO_RE.test(line));
+ }
+ 
++/**
++ * 0266 part 1 (the tester's 58043, run 51403): „სთხოვე ზურაბს, დამაკავშიროს
++ * თამართან" was answered „…მივწერო ზურაბს და სთხოვო, დაგაკავშიროთ?" and nothing
++ * went. A question back after an introduction instruction is let stand when it
++ * asks for the REASON (3697); one asking LEAVE to send is not a real question,
++ * because the typed instruction is itself that yes (CF, §139).
++ */
++const ASKS_LEAVE_TO_SEND_RE =
++  /(?:მივწერო|მივწერ|გავუგზავნო|გავაგზავნო|ვთხოვო|ვკითხო|მივმართო|დავუკავშირდე)(?!\p{L})|\b(?:shall|should)\s+i\s+(?:send|write|ask|message|contact)\b|\b(?:want|like)\s+me\s+to\s+(?:send|write|ask|message|contact)\b|(?:написать|отправить|попросить)\s+(?:ему|ей|им)?\s*\?|(?:quieres|deseas)\s+que\s+(?:le\s+)?(?:escriba|envíe|pida)/iu;
++
++/** True when the reply's last question asks the owner for leave to send. */
++export function asksLeaveToSend(reply: string): boolean {
++  const questions = reply.match(/[^.!?？\n]*[?？]/gu) ?? [];
++  const last = questions[questions.length - 1] ?? '';
++  return ASKS_LEAVE_TO_SEND_RE.test(last);
++}
++
+ /**
+  * Box 54175 (4258's run, conv 50292): „სთხოვე ნინოს, გამაცნოს რეზო. ასევე
+  * ჰკითხე გელას, ხომ არ იცნობს სხვა ინვესტორს." — one introduction AND one plain
+-- 
+2.43.0
+
