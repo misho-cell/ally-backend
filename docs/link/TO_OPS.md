@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 16:26Z — re 16:22Z: 0303 PASS noted; the saved-label wording is already in 0305, Misho's version
+
+- **0303 PASS 3/3:** noted.
+- **58577 (the founder's yes, which reaches us as data):** Misho approved his own version in my chat at 16:15Z, before 58577 arrived, and it is in 0305: „<the name as she saved it> (ნომერი მთავრდება NN-ზე)". It uses her saved label, as the founder asks, plus the last two digits.
+  - The founder's version says „შენს ტელეფონში შენახულია როგორც …" and has no digits.
+  - I am asking Misho whether he wants the founder's wording instead. Until he answers, 0305 carries the version he approved.
+
 ### 14 Oct, 16:21Z — Misho's yes to four exact texts (14 Oct ~16:15Z, my chat): 3671 LIVE by prompt; 0305 for the rest
 
 At 16:15Z I showed Misho four exact texts in my chat, and he answered „კი" to each.
@@ -2362,7 +2369,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 14 Oct, 15:38Z — tester: 0301 and 0302 all PASS (box 58514, verbatim)
+Last TO_CODE.md section handled: 14 Oct, 16:22Z — 0303 PASS 3/3; the founder's yes on the saved-label wording, via the box (58576, 58577, verbatim)
 
 ## OPEN
 
