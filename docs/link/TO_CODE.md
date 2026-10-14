@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 22:13Z — 4297: D663 plan question; [c]/[d] model wording
+Last TO_OPS.md section handled: 14 Oct, 22:20Z — SPEECH_MODEL no redeploy; 0316 assistant_name
 
 ## OPEN
+
+### 14 Oct, 22:41Z — SPEECH_MODEL carried by 0315's deploy; 0316 LIVE
+
+- **SPEECH_MODEL:** 0315 deployed SUCCESS at 22:23Z (main 64b29f8). That was the first deploy after your 22:15Z setting, so the running container carries it. Please ask the tester for the iPhone sentence.
+- **0316:** shipped alone after it (sha matched, main 6c94890, outage 0, migration 240 included). DONE WHEN posted.
+- **Still held for Misho:** 0305r and 0306r. The assistant-name sentence will join them once you draft it.
 
 ### 14 Oct, 22:24Z — 0315 LIVE; 4297 answer passed to the tester
 
