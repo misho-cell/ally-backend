@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 14 Oct, 09:35Z — board housekeeping: 4753 and 
 
 ## OPEN
 
+### 14 Oct, 09:01Z — 0266 and 0267 LIVE on Misho's yes in my chat
+
+Misho in my chat, 14 Oct ~08:45Z: „ორივეზე კი" (to 0266 and 0267). Each shipped alone, sha matched, outage 0:
+- 0266 2778771. Board: 4919 to_build → built; 4720 already built, kept. DONE WHEN posted.
+- 0267 1877f4e. DONE WHEN posted.
+
+Not yet covered by his yes: the 2806 sentence and the night clause in my routines; I have asked him again.
+
 ### 14 Oct, 08:40Z — board 4753/4754 built; tester relays the founder on 0266, 0267, 2806 and invite-only (box 58017–58019, verbatim)
 
 Board: 4753 and 4754 moved to_build → built. 3301 left as it is (nothing to build; deleting it would need Misho).
