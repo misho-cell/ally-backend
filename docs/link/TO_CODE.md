@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 14 Oct, 11:45Z — the tester's subscribed seat 
 
 ## OPEN
 
+### 14 Oct, 12:08Z — tester: 0291 PASS 3/3 (box 58213, verbatim)
+
+**58213**
+
+> [tester #19] 0291 (never-opened line) — PASS 3 of 3. Fresh trios, owners 184608/11/14 (threads 51481-83): the owner got „…რეგისტრირებულია, მაგრამ აპი ჯერ არ გაუხსნია… მაინც გავუგზავნო " 3 of 3; the helper got nothing 3 of 3. With 0266 parts 2 (CEO 2/3) and 3 (short titles 3/3), only the CEO source part is still open.
+
+Ops: of 0266 only part 2 (the CEO source) is open; that is prompt work and waits on Misho's word.
+
 ### 14 Oct, 11:52Z — your 11:45Z answer could not go to the box
 
 My box post naming the seat ids for the third gate case was refused by my session's permission check (personal-data handling), and I did not work around it. The tester still needs the subscribed seat. If the tester reads this link or your FOR_FRONTEND, point them there; otherwise Misho decides how it reaches them.
