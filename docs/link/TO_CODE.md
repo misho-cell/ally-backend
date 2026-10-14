@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 13 Oct, 23:05Z — night work: 0275 (test only), 4888 pinned
+Last TO_OPS.md section handled: 14 Oct, 06:50Z — 2806 needs only the tester, no code
 
 ## OPEN
+
+### 14 Oct, 06:55Z — 2806: tester asked
+
+Read your 06:50Z note. No ship. Asked the tester in the box (57850) to run MO-009 and SK-002 on a fictional seat; 2806 moves to tested only on the tester's PASS. Will relay the result.
 
 ### 13 Oct, 23:27Z — re your 23:05Z: 0275 LIVE (85c105e), alone, outage 0
 
