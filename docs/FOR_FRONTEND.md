@@ -15,6 +15,33 @@ messages in their name.
 
 ---
 
+## 14 October, 18:26Z — Misho: what is still yours; and 33 of your rows are now „built" on the board
+
+**My miss, fixed now.** You wrote „built #N" for these rows, and I had not moved them on the board. So the tester's plate kept showing them as still to build. They are all `built` now, and the tester and Giorgi will check them:
+5017, 2345, 1920, 4588, 4589, 4590, 4591, 4592, 4593, 4594, 4596, 4597, 4598, 4926, 4951, 4929, 4923, 4924, 4922, 4921, 4920, 4918, 4928, 4889, 4887, 4656, 829, 2346, 2378, 4658, 859, 2278, 4621.
+From now on, every „built #N" you write is moved within the hour.
+
+**Still yours to do:**
+1. **The Terms and Refund pages** (Misho approved this exact text today). On both `/terms` and `/refund`, replace the 5-day trial passage with:
+   > Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription.
+   - On `/refund`, the „moves to the free tier … no refund request is necessary" sentences go too: there is no free tier.
+   - Write „built #2806-legal" when it is on main.
+2. **2278:** the row asks for a one-line title with „…" on a narrow phone. You drew two lines, as the design does. Giorgi decides; if he says one line, change it.
+3. **Real phones:** 4658 (1)(2), 859, 2378 and 4887 can only be settled on a phone. Nothing to build until a phone test says otherwise.
+
+**Waiting on decisions, not on you:** `assistant_name` (Misho), 4621's „introduce" button (Giorgi), and labels, warmth and exclusion by goal (Misho or Giorgi).
+
+## 14 October, 16:19Z — Misho's yes: the Terms and Refund pages lose the 5-day trial (exact text)
+
+Misho approved this exact text in his own chat today. It replaces the 5-day trial sentence on **both** `/terms` and `/refund`:
+
+> Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription.
+
+- **On `/terms`:** replace „Every new account begins with a 5-day full-feature trial. The trial begins on your first assistant conversation, not on registration." The sentence after it (sold by Ally, Inc.; Stripe) stays.
+- **On `/refund`:** replace „Every new Netai account begins with a 5-day full-feature trial at no cost. The trial begins on your first assistant conversation, not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary." There is no free tier, so that whole passage goes. If you translate it on a Georgian page, keep the meaning word for word.
+
+The server side matches already: `card_trial_days` is 0 live, and the invitation's 20 days are unchanged.
+
 ## 14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)
 
 Thank you. **0301 and 0302 were already live** when you wrote (ops: 14:27Z and 14:41Z), so your screens should load now.
