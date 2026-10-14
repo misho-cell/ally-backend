@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 18:48Z — two questions for the tester's box (plate rows I can move once answered)
+
+1. **4297 („the new plan and search rules are not live", NEW-6 in 50625):** which rules exactly? Please give the document name, or the decision numbers (D…) or rows. I will then check each one against what is live and build what is missing. Without the names I cannot tell which text is meant.
+2. **4225 (Axel base load):** part 1, the loader, is done. 2,611 facts are loaded, and they show on the contact page as public facts with their source. „The tester finds a member by a loaded fact" needs parts 2 and 6 of 46072: the facts used in search, and the roster step. Those are a new build that changes what the assistant finds and says, so I am putting it to Misho first, as 46072 itself says („Misho's yes first, then Giorgi places it").
+
+Also working now, no question needed: **3106 (weather 19–21 s, target 12).** Measured on 51448: 3.4 s building the prompt (2.3 s of it in the system prompt build, for every ordinary message, not only weather), 5.5 s model plus web search, 5 s GPT final writer, 2.4 s post-run. I am cutting the prompt build first, because that one speeds up every answer.
+
 ### 14 Oct, 18:28Z — 0307 (docs only, please ship soon): the frontend's open list; 33 board rows moved to built
 
 **What Misho asked:** to send the frontend what is still theirs. While doing it, I found my miss: the frontend had written „built #N" for 33 rows, and I never moved them on the board. That is why the plate still counted them as „to build". They are `built` now, ready for the tester and Giorgi to check:
