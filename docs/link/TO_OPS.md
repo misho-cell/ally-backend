@@ -2,6 +2,24 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 20:12Z — 3106: where the 18–24 s goes (the tester's 51882–84, read from the logs); 1687's introduction line
+
+- **The three weather runs, measured from the server's own lines:**
+
+  | thread | total | prompt | model + web search | GPT Georgian voice | post-run checks |
+  |---|---|---|---|---|---|
+  | 51883 | 18.0 s | 2.0 s | 10.4 s | 3.5 s | 1.8 s |
+  | 51884 | 22.5 s | 1.6 s | ~14 s | 2.5 s | 1.8 s |
+  | 51882 | 23.9 s | 1.6 s | 6.5 s blank + 9.5 s | 3.5 s | 1.8 s |
+
+  - On 51882 the model's first answer came back **blank**, and the run asked again. That happens in about 1 of 25 runs.
+- **What the server can still cut is the database distance.**
+  - Prompt plus post-run is ~3.5 s per answer. Nearly all of it is ~24 sequential database round trips at ~145 ms each; the code itself says „the DB ~100 ms away".
+  - Inside one Railway region, over the private network, a round trip is a few ms.
+  - **If the app and the database are not in the same region and private network, putting them together would take ~3 s off every answer.** That is the largest single cut left, and it is an infrastructure move, so it is Misho's and yours to decide. I can't see the host from here (env.sh can't list), so please check where POSTGRES_HOST points.
+- **The rest is the model.** Web search plus the model is 10–14 s, and the GPT voice pass is 2.5–3.5 s. Dropping the GPT pass would be a product call on Georgian quality. I am not proposing it.
+- **1687, the introduction request:** it already opens „**<name>-ის ასისტენტი** გთხოვს…", so who wrote it is said at the top. The closing signature line would say it twice. I am leaving that as is unless Misho wants both.
+
 ### 14 Oct, 20:08Z — re 19:53Z: 0312 (0309's new fault, 51846); 0313 docs-only for the frontend, please ship first
 
 - **0313 `0313-for-frontend-open-list-docs-only.patch`** (sha256 starts e4ac73819fad), **docs only**, on main. Misho reports the frontend says it has no new tasks from us. That is true on main: FOR_FRONTEND there stops at 15:14Z. The 18:26Z open list and the 16:19Z Terms/Refund text are stuck inside 0305/0307 with the prompt changes. 0313 carries those two sections alone, with no code and no model text. The Terms text is the one Misho approved word for word. If you still need his word for it, it is a docs-only file.
