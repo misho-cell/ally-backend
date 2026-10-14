@@ -29,6 +29,8 @@ export enum Warmth {
 }
 
 export interface ContactFact {
+  /** The fact's id, for correcting or forgetting it (the frontend's 14 Oct 14:10Z item 1). */
+  readonly id: number;
   readonly field: string;
   readonly value: string;
   readonly saved_at: string;
@@ -42,6 +44,8 @@ export interface PublicFact {
 }
 
 export interface ContactExclusionView {
+  /** For taking the exclusion back (DELETE /contacts/:id/exclusions/:exclusionId). */
+  readonly id: number;
   readonly excluded_for: string;
   readonly reason: string | null;
 }
@@ -102,9 +106,9 @@ async function warmthOf(userId: number, phone: string): Promise<Warmth> {
   return row?.distant === true ? Warmth.Distant : Warmth.Neutral;
 }
 
-async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
+export async function ownFacts(userId: number, phone: string): Promise<ContactFact[]> {
   const result = await query<ContactFact>(
-    `SELECT field_type AS field, COALESCE(canonical_value, value) AS value,
+    `SELECT id, field_type AS field, COALESCE(canonical_value, value) AS value,
             TO_CHAR(created_at, 'YYYY-MM-DD') AS saved_at
        FROM contact_facts
       WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND retracted_at IS NULL
@@ -135,7 +139,7 @@ async function publicFacts(phone: string): Promise<PublicFact[]> {
 
 async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
   const result = await query<ContactExclusionView>(
-    `SELECT excluded_for, reason FROM contact_exclusions
+    `SELECT id, excluded_for, reason FROM contact_exclusions
       WHERE user_id = $1::int AND contact_phone = $2
       ORDER BY created_at DESC LIMIT $3`,
     [userId, phoneDigits(phone), MAX_EXCLUSIONS],
@@ -150,6 +154,13 @@ export function roleFrom(facts: readonly ContactFact[]): string | null {
     (v): v is string => typeof v === 'string' && v.trim() !== '',
   );
   return parts.length === 0 ? null : parts.join(' · ');
+}
+
+/** The phone behind a contact id, when it is one of this person's own contacts; else null. */
+export async function ownContactPhone(userId: number, id: string): Promise<string | null> {
+  const phone = decodeContactRef(String(userId), id);
+  if (phone === null) return null;
+  return (await savedName(userId, phone)) === undefined ? null : phone;
 }
 
 /** The page; null when the id is not one of this person's contacts. */

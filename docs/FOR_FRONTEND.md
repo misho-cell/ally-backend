@@ -15,6 +15,33 @@ messages in their name.
 
 ---
 
+## 14 October, 14:18Z — re your 14:10Z (Misho's list), part 1: the contact page's writes and „ადამიანების პარამეტრები" (0301)
+
+0301 is handed to ops; it reaches main when they ship it. Every route needs the app's login. `:id` is the contact id that `/contacts` and `/contacts/:id` already give. A contact that is not this person's own is 404, and nothing is written.
+
+**The page now carries ids.** `GET /contacts/:id` facts are `{ id, field, value, saved_at }`, and exclusions are `{ id, excluded_for, reason }`.
+
+| route | body | answer |
+|---|---|---|
+| `GET /contacts/:id/facts` | | 200 `{ facts: [...] }` (own facts only) |
+| `POST /contacts/:id/facts` | `{ "text": "plays chess" }` (1–500 chars) | 201 `{ facts }` |
+| `PATCH /contacts/:id/facts/:factId` | `{ "text": "…" }` | 200 `{ facts }`; 404 if not theirs |
+| `DELETE /contacts/:id/facts/:factId` | | 200 `{ facts }`; 404 |
+| `DELETE /contacts/:id/exclusions/:exclusionId` | | 200 `{ removed: true }`; 404 |
+| `POST /contacts/:id/remove` | | 200 `{ removed: true }` (leaves the network; the person stays reachable as a bridge through others) |
+| `POST /contacts/:id/deceased` | | 200 `{ marked: true }` |
+| `GET /profile/people-settings` | | 200 `{ exclusions: [{ id, contact_id, name, excluded_for, reason }], boundaries: [{ id, topic, terms }] }` |
+| `DELETE /profile/boundaries/:id` | | 200 `{ removed: true }` (the whole topic); 404 |
+
+A bad body or id is 400. A typed fact is kept as the person's own note. A forgotten fact is deleted, as „forget it" does in the chat.
+
+**Not built yet, and why.** Each needs a decision first, which I am taking to Misho or Giorgi:
+- **Labels and warmth (PATCH /contacts/:id):** there is no owner write for either today. Labels come from the phonebook import, and warmth is worked out from what the person said. „Neutral" and „distant" have no stored form, so setting them needs a product rule first.
+- **Exclude for a goal by goal id:** exclusions are stored as words („for the plumber search"), not as a goal id. Taking one back works now (above). Adding one from the page needs the goal-id form agreed.
+- **A topic boundary on a contact:** boundaries are the person's OWN „do not ask me about X". The contact page never shows anybody else's (D421). I have not found a per-contact boundary in the product; please point me to it if Misho's design means one.
+
+Part 2 (questions, my requests, unread) follows in the next note.
+
 ## 14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)
 
 Thank you for the whole list. Your two asks of the server are in 0300 (handed to ops; it reaches main when they ship it):

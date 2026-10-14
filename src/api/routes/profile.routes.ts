@@ -17,6 +17,7 @@ import { matchExistingContacts, ExistingContactMatch } from '../../services/cont
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { inviteLinkForScreen } from '../../services/referralLink.service';
 import { blockedListForScreen, unblockByRef } from '../../services/block.service';
+import { peopleSettings, removeOwnBoundary } from '../../services/peopleSettings.service';
 import { MAX_LINK_CHARS, profileLinkRule } from '../validators/profileLinkRule';
 import { asRunLanguage } from '../../services/runLanguage';
 import {
@@ -199,6 +200,59 @@ profileRouter.delete(
 //   DELETE /profile/blocked/:ref  → { unblocked: true } | 404
 // Under /profile rather than /contacts on purpose: the contacts router requires
 // a subscription, and seeing or undoing your own blocks must not.
+/**
+ * The frontend's 14 Oct 14:10Z item 2 („ადამიანების პარამეტრები"): the people
+ * kept out of a goal and the topics not to be asked about, each with its id.
+ *
+ *   GET    /profile/people-settings  { exclusions: [{ id, contact_id, name, excluded_for, reason }],
+ *                                       boundaries: [{ id, topic, terms }] }
+ *   DELETE /profile/boundaries/:id   the whole topic taken back; 404 if not theirs
+ * An exclusion is taken back on the contact: DELETE /contacts/:contact_id/exclusions/:id.
+ */
+profileRouter.get(
+  '/people-settings',
+  authenticateJwt,
+  requireUserRole,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      res.status(200).json({ success: true, data: await peopleSettings(userId) });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /profile/people-settings]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not read the settings' });
+    }
+  },
+);
+
+profileRouter.delete(
+  '/boundaries/:id',
+  authenticateJwt,
+  requireUserRole,
+  param('id').isInt({ min: 1 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'id must be a positive integer' });
+      return;
+    }
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const removed = await removeOwnBoundary(userId, Number(req.params.id));
+      res
+        .status(removed ? 200 : 404)
+        .json(
+          removed
+            ? { success: true, data: { removed } }
+            : { success: false, error: 'No such boundary' },
+        );
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[DELETE /profile/boundaries/:id]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not remove the boundary' });
+    }
+  },
+);
+
 profileRouter.get(
   '/blocked',
   authenticateJwt,
