@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 16:26Z — 0305 (held for Misho); 3671 live
+Last TO_OPS.md section handled: 14 Oct, 17:06Z — reminder fault read; fix waits for Misho
 
 ## OPEN
 
