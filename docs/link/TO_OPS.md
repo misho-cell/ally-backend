@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 19:13Z — patch 0309 (1919 side notes, tester 58774): the owner's yes is not the question
+
+- **Patch:** `patches/afternoon-1250/0309-owners-yes-is-not-the-question.patch` (sha256 starts ad3e94ca8f28), on main be48e7b. Code only, no text change. Verify green: 8809 tests.
+- **What was wrong (thread 51845):** the owner answered the run's „ნინოს მივწერო…?" with „კი, მიწერე ნინოს". The server's own send took the words before the verb, „კი", as the need. So:
+  - it opened goal 25675 with the owner's line as its title, which is why the stop said „შევაჩერე: კი, მიწერე ნინოს" (note 2);
+  - had Nino been on Netai, she would have got „კი" as her whole question;
+  - the goal it opened kept the thread at „waiting" though nothing was sent (note 1).
+- **Fix:** a need made only of yes words (კი, ჰო, კარგი, yes, ok…) is no need. The server then sends nothing and opens no goal, and the run, which read its own proposal, does the asking.
+- **Not changed:** note 3 (the title „გიორგის ის კარგი მზარეული") is the model's title writer, not this path. One case is left open: a real need for a person not on Netai still opens a goal that reads „waiting" with nothing out. That needs a product call on whether such a goal should stay open.
+- **For the tester after it is LIVE:** in a fresh thread, let the run propose a contact, answer „კი, მიწერე <name>", then stop. The stop line should name the need, not „კი…", and no question reading „კი" should reach anyone.
+
 ### 14 Oct, 19:02Z — re 18:56Z: 0308 noted; a correction on its measure; 4886 (58744) read
 
 - **0308, honest measure:** before 0308, the prompt build's median was **1.0 s** over 145 runs (p25 0.87 s). The 2.4 s on 51448 was an outlier, not the norm. After 0308 there is one run so far (1.7 s), which is too few to judge. I will compare medians once there are ~50 runs and post the numbers either way. So 3106's 19–21 s is mostly the model with web search (~5.5 s) and the GPT final writer (~5 s), not the prompt.

@@ -1,0 +1,73 @@
+From a2a051fb853fdcba303eaf5dd4b0681940077c88 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 19:11:10 +0000
+Subject: [PATCH] 1919 side notes: the owner's yes is never taken for the
+ question or the goal
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Thread 51845: the owner answered the run's proposal with „კი, მიწერე ნინოს".
+instructionNeed took the words before the verb, „კი", as the need: the server
+opened a goal titled with the owner's line, would have sent Nino „კი" as the
+whole question, and the thread read „waiting" with nothing sent. A need made
+only of agreement words is no need now, so the server sends nothing and opens
+no goal; the run, which read the earlier proposal, asks.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/goalIntent.test.ts |  9 +++++++++
+ src/services/goalIntent.ts                | 16 +++++++++++++++-
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/goalIntent.test.ts b/src/services/__tests__/goalIntent.test.ts
+index 2124b53..9ffa3f4 100644
+--- a/src/services/__tests__/goalIntent.test.ts
++++ b/src/services/__tests__/goalIntent.test.ts
+@@ -327,6 +327,15 @@ describe('an instruction that names several people', () => {
+   it('never takes a name before the verb for the need', () => {
+     expect(instructionNeed('ნინოს ჰკითხე, იცნობს თუ არა იურისტს')).toBeNull();
+   });
++
++  it("never takes the owner's yes for the need (1919, thread 51845)", () => {
++    expect(instructionNeed('კი, მიწერე ნინოს')).toBeNull();
++    expect(instructionNeed('ჰო კარგი, ჰკითხე ლიკას')).toBeNull();
++    expect(instructionNeed('yes, ask Nino')).toBeNull();
++    expect(instructionNeed('კარგი მზარეული მჭირდება, ჰკითხე ნინოს')).toBe(
++      'კარგი მზარეული მჭირდება',
++    );
++  });
+ });
+ 
+ /** 3961 (QA-015 step 3, seat 181480): „set up a meeting with X" is an instruction to X. */
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index 26b5b0b..27f1af4 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -668,7 +668,21 @@ export function instructionNeed(sentence: string): string | null {
+   const beforeVerb = sentence.slice(0, match.index);
+   if (datedNameBefore(beforeVerb) !== '') return null;
+   const need = beforeVerb.replace(/[\s,;:—–-]+$/u, '').trim();
+-  return need === '' ? null : need;
++  return need === '' || isOnlyAgreement(need) ? null : need;
++}
++
++/**
++ * 1919's side notes (tester box 58774, thread 51845): the owner answered the
++ * run's „ნინოს მივწერო…?" with „კი, მიწერე ნინოს". Before the verb stood only
++ * „კი", so „კი" was taken for the need: it would have been Nino's whole
++ * question, and it became the goal's title („შევაჩერე: კი, მიწერე ნინოს").
++ * A yes is the owner agreeing to a question asked earlier, not the question.
++ */
++const AGREEMENT_ONLY_RE =
++  /^(?:(?:კი|დიახ|ხო|ჰო|კარგი|კაი|კარგით|აბა|მაშინ|yes|yeah|yep|ok|okay|sure|then|да|ладно|хорошо|sí|vale)[\s,!.]*)+$/iu;
++
++function isOnlyAgreement(text: string): boolean {
++  return AGREEMENT_ONLY_RE.test(text);
+ }
+ 
+ /**
+-- 
+2.43.0
+
