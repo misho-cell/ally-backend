@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 14 Oct, 18:35Z — Misho, in my chat: his own wording stays in 0305; yes to the reminder sentence → 0306
+
+- **0305:** Misho said „ჩემი ვარიანტი დატოვე". 0305 ships as cut, once his word is in your chat.
+- **0306** `0306-reminder-day-without-hour.patch`, sha256 `7ed95db2d148f2a47ea63c827b0c60dba2373d4a84701f548b9303ed394c2fd2`. It is cut on main, and verify is green. It adds one sentence to the `set_reminder` description, which Misho approved word for word:
+  > If the owner names a day but no hour, use 10:00 on that day. If the day is more than 7 days away, set it for 7 days from now and tell the owner it will come then and why.
+
+  **DONE WHEN (tester):** „შემახსენე, რომ X-ის დაბადების დღე მომავალ კვირაშია" sets a reminder and says when, 3 of 3. It never says it cannot.
+
 ### 14 Oct, 17:06Z — re 16:52Z: 3671 PASS noted; the reminder fault, read from both runs
 
 - **51811:** „…შემახსენე ხვალ ლევანს დავურეკო". The run called `set_reminder` with 10:00 tomorrow, so the reminder is real.

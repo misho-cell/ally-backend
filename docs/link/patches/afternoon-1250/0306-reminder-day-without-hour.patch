@@ -1,0 +1,40 @@
+From c4bfaf2caa94043cc47a9cd729a58faae189097b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 18:20:13 +0000
+Subject: [PATCH] set_reminder: a day with no hour, or past 7 days, still gets
+ a reminder
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 58580 (run 51813): „…next week", no hour, and the run told
+the owner it could not set a reminder for a specific day. Misho approved
+the exact sentence (14 Oct): with no hour, 10:00 on that day; past 7
+days, set it for 7 days from now and say so and why.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/chat.service.ts | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 22e5082..6ac2680 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -1537,7 +1537,11 @@ const SET_REMINDER_TOOL: AnthropicTool = {
+     "owner's phone; you are not woken. Works in any conversation, with or without a goal, " +
+     'from 1 minute to 7 days. When the owner asks to be reminded, call this: never say you ' +
+     'cannot remind, and never suggest a phone alarm instead. Then tell the owner in one short ' +
+-    'line when the reminder will come.',
++    'line when the reminder will come. ' +
++    // The tester's 58580 (run 51813; Misho's yes, 14 Oct): „…next week", no hour, and the
++    // run said it could not set a reminder for a specific day.
++    'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 7 ' +
++    'days away, set it for 7 days from now and tell the owner it will come then and why.',
+   input_schema: {
+     type: 'object',
+     properties: {
+-- 
+2.43.0
+
