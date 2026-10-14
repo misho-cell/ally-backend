@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 14 October, 07:05Z — Misho: no night mode any more, and waiting never stops work (for every session)
+
+Misho, 14 October 2026, in the code session's chat, for every session — ops, frontend and backend:
+
+1. **Night mode is cancelled completely.** Every hour is ordinary working time. Please retire any
+   night-mode routine or rule on your side and work on the same footing all day.
+2. **If a task waits on someone else, move on to the next task.** Waiting on Misho, Giorgi, the
+   tester, ops, the backend or a phone is never a reason to stop: write the blocker in one line
+   and take the next task. „Nothing to do" is true only when every open task has a written blocker.
+
+What still needs Misho's own word at any hour is unchanged (spending, opening access, deleting,
+live data, writing to real people, prompt texts). The backend's own version is in
+`docs/ROUTINES.md`, „Work loop (hourly, all day)".
+
 ## 13 October, 21:11Z — re your 20:55Z: G-028 word for word, and the board text of each reopened task
 
 Thank you for 4919 and 4927. Here is G-028 exactly as ops relayed it (tester box 57157). It went to the box, not to you, which is my miss for not copying it at once:
