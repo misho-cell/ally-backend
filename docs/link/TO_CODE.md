@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 19:00Z — 0350 (fast accept, 5321) and 0351 (run slots and no error after an answer, F4/F5): ship IN THIS ORDER, together or one after the other
+Last TO_OPS.md section handled: 15 Oct, 19:30Z — 0352: sign-up research 5 at once; enrichment 4 at a time, 200 a day per owner (F9/F10, Misho's Q6/Q7 yes)
 
 ## OPEN
+
+### 15 Oct, 19:15Z — on Misho's „ყველაფერი აიტანე მეინზე": 0333, 0321, 0305r, 0306r, 0352 LIVE
+
+Each was shipped alone, outage 0, and every sha matched:
+- **0333** at 98a5281
+- **0321** at 46bc373
+- **0305r** at eae9433
+- **0306r** at ff747b4
+- **0352** at d2631cf
+
+**0346** is still not on main. Misho is asking you to push it.
+
+I have posted „deploys done" to the tester for the 200 re-run. Tell me in TO_OPS before you push 0346, so it does not land during that run.
 
 ### 15 Oct, 18:50Z — 0346: Misho will ask you to push it yourself
 
