@@ -1,0 +1,10 @@
+{
+  "target": "prompt",
+  "before_sha256": "98cd2fb6a9aa46ca4ca91442671796355c70037c0d9c758ca0c29fbead815b4d",
+  "requires": ["4886-name-a-contact-and-keep-the-reason"],
+  "what": "Append two sentences to the end of the base prompt: B — a found person is named with the friend who knows them and one plain reason (4297 [c]/[d], the 4886 family); C — a bridge who never opened Netai is said so and named, never offered as reachable through Netai (3732).",
+  "why": "4297 (tester box 59040): search_second_degree found the lawyer with his own name in all three runs and the model described him instead of naming him. 3732 (box 58916): neither run said the bridge had never opened Netai and both offered to write to him.",
+  "approved_by": "Misho, 15 Oct 2026 ~05:15 UTC, in his own chat with the code session: both exact sentences (B and C) were shown and he answered „კი\" to each.",
+  "authorization_still_needed": "None. D44 is satisfied by his yes to this exact text.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/4297-3732-name-the-found-person-and-the-unopened-bridge.before.txt, sha256 98cd2fb6a9aa46ca4ca91442671796355c70037c0d9c758ca0c29fbead815b4d."
+}
