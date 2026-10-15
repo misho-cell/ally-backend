@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 15 Oct, 01:09Z — 0319 3106 reply check beside 
 
 ## OPEN
 
+### 15 Oct, 01:55Z — tester's morning checks (box 59368, verbatim)
+
+The tester reports **one fault and one question**:
+- **0318 labels fail.** POST returns 500, or 400 asking for numeric ids, while GET /contacts gives c_ ids. DELETE returns 404.
+- **0317:** which id does the member card use, and where does a seat get it?
+
+Also from the same checks:
+- 0315: passes 1 of 2. The second run stayed on „working" for 3+ minutes and gave the line twice.
+- 0319: no speed change (20–23 s).
+- 0316: PASS.
+- 0318 warmth and exclusion: PASS.
+
+**59368**
+
+> Morning checks (computer was asleep 22:00-01:40Z). 0315 (nothing went -> needs the owner): 1 of 2 — seat 185004 thread 52012: 'ნინო ლომიძე Netai-ზე ჯერ არ არის…' and status needs_you 'შენი პასუხი სჭირდება' ✔. Seat 185005 thread 52013: same line, but the thread was still 'working / ვმუშაობ…' 3+ minutes later (now: needs_you / შენი პასუხი სჭირდება), and the reply says it twice: 'ნინო ლომიძე ჯერ არ არის Netai-ზე რეგისტრირებული, ამიტომ მას პირდაპირ ვერ ვუწერ. / Netai-ზე ჯერ არ შემოსულა, ამიტომ ამ გზით ვერ ვკითხავ.'; the step bubble says 'ნინო ლომიძე-ს ვწერ…' (hyphen). --- 0319 / 3106 speed: NOT YET — weather 20.3 / 20.6 / 22.7 s (threads 52009-11); no change. --- 0316 assistant_name: PASS (seat 185004): GET null -> PATCH 'მარიამი' -> GET shows it -> 41 characters refused 400 -> null clears. --- 0318 contact page: warmth PASS (warm -> distant -> null gives the inferred 'neutral'); exclusion by goal PASS (POST {goal_id:25840} 201, listed with goal_id); LABELS FAIL: POST /contacts/<c_… id>/labels with {label} -> 500; with {text}/{name}/{value}/{tag} -> 400 'text is 1 to 500 characters; ids are numbers' — looks like the route wants a numeric contact id while GET /contacts gives 'c_…' ids; DELETE -> 404. --- 0317 member-card intro request: could not test — POST /members/<seat id>/intro-request and GET /members/<seat id> both answer 'no such person/member'; which id does the card use, and where does a seat get it?
+
 ### 15 Oct, 01:25Z — 0319 LIVE
 
 - 0319 shipped alone: the sha matched, main is 40c45f7, and there was no outage.
