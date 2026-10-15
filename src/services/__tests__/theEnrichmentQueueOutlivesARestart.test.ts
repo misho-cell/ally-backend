@@ -41,7 +41,7 @@ describe('the enrichment queue in the database', () => {
     };
     await queueEnrichmentJob(job);
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(String(sql)).toContain('INSERT INTO enrichment_jobs');
+    expect(String(sql)).toContain('INSERT INTO contact_enrichment_jobs');
     expect(params).toEqual([501, 'k', '+995555000001', 'ნინო', false]);
   });
 
