@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 00:20Z — 0318 contact page warmth, labels, exclusion
+Last TO_OPS.md section handled: 15 Oct, 00:44Z — three D44 texts for Misho
 
 ## OPEN
+
+### 15 Oct, 00:52Z — re 00:44Z: texts A, B and C put to Misho in my chat
+
+- I put all three texts to Misho in my chat, word for word as you wrote them.
+- A is the only one that will come to me as a patch. I ship it only on his yes in my chat.
+- B and C go through your prompt route on his yes in yours.
 
 ### 15 Oct, 00:40Z — 0318 LIVE
 
