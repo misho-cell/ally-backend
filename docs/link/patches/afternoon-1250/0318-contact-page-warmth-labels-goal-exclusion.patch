@@ -1,0 +1,519 @@
+From 535f13247f83485eb0de4b97e324808f60030d82 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 00:18:10 +0000
+Subject: [PATCH] Contact page item 3: the owner sets warmth, keeps their own
+ labels and excludes a contact from one goal
+
+The frontend's 21:10Z item 3 (Misho's yes). PUT /contacts/:id/warmth writes the owner's hand-set tier (human_relationship_tiers), keeping the tier it replaced so null restores it (migration 241). POST/DELETE /contacts/:id/labels keep the owner's own labels as UserTags source USER_CREATED, removing only those; the page carries own_labels. POST /contacts/:id/exclusions {goal_id} excludes from one of the owner's goals by its title, stored by digits as the page reads it, with goal_id on each exclusion. All behind withOwnContact. FOR_FRONTEND carries the contract.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  19 ++
+ src/api/routes/contacts.routes.ts             |  73 +++++++-
+ .../241_contact_page_owner_settings.sql       |  14 ++
+ src/services/__tests__/contactPage.test.ts    |  10 +-
+ ...heContactPageKeepsTheOwnersChoices.test.ts |  58 +++++++
+ src/services/contactOwnerSettings.service.ts  | 164 ++++++++++++++++++
+ src/services/contactPage.service.ts           |  25 ++-
+ 7 files changed, 358 insertions(+), 5 deletions(-)
+ create mode 100644 src/db/postgres/migrations/241_contact_page_owner_settings.sql
+ create mode 100644 src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts
+ create mode 100644 src/services/contactOwnerSettings.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 9a6fe4a..0fa5c8e 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,25 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 00:18Z — re your 21:10Z, item 3: warmth, your own labels, exclusion by goal (0318, on a branch until ops ships it)
++
++Your proposal, almost as written. Each choice is stored where the assistant already reads it, so it changes what Netai does, not only what the page shows. Every route sits behind the same contact-ownership check as the facts routes: another person's contact is a 404, and nothing is written.
++
++**Warmth.** `PUT /contacts/:id/warmth {"warmth": "warm" | "neutral" | "distant" | null}` → `200 {"success": true, "data": {"warmth": "warm"}}`.
++- It is stored as the owner's hand-set tier, which the searches and the page both read.
++- `null` goes back to what Netai infers. If an older hand-set tier existed (from old Ally), it comes back.
++- Any other value is 400.
++
++**Own labels.** These are kept apart from the phonebook import's labels.
++- `POST /contacts/:id/labels {"label": "…"}` → `201 {"success": true, "data": {"added": true}}`. The label is 1–40 characters, and the same label twice is kept once.
++- `DELETE /contacts/:id/labels/:label` → `200 {"success": true, "data": {"removed": true}}`. It removes only a label the owner wrote; an imported one is a 404.
++- The page (`GET /contacts/:id`, as today) now carries `"own_labels": ["…"]` beside `"labels"`.
++
++**Exclusion by goal.** `POST /contacts/:id/exclusions {"goal_id": 123}` → `201 {"success": true, "data": {"excluded": true}}`.
++- The words shown are the goal's title.
++- A goal that is not the owner's is 404, and a goal_id that is not a positive integer is 400.
++- Each exclusion on the page now carries `"goal_id": 123 | null`. Removal stays `DELETE /contacts/:id/exclusions/:exclusionId`.
++
+ ## 15 October, 00:06Z — re your 21:10Z, item 4: the member card's „გაცნობის თხოვნა" (4621, 0317, on a branch until ops ships it)
+ 
+ **Route:** `POST /members/:id/intro-request`, where `:id` is the same sealed id `GET /members/:id` and `GET /paths/:id` take. The body is optional: `{"goal_id": 123}`.
+diff --git a/src/api/routes/contacts.routes.ts b/src/api/routes/contacts.routes.ts
+index a558680..9fe1243 100644
+--- a/src/api/routes/contacts.routes.ts
++++ b/src/api/routes/contacts.routes.ts
+@@ -13,7 +13,19 @@ import {
+ } from '../../services/contactImportState.service';
+ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { contactPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../services/contactBook.service';
+-import { contactPageFor, ownContactPhone, ownFacts } from '../../services/contactPage.service';
++import {
++  contactPageFor,
++  ownContactPhone,
++  ownFacts,
++  Warmth,
++} from '../../services/contactPage.service';
++import {
++  addOwnLabel,
++  excludeFromGoal,
++  MAX_OWN_LABEL_CHARS,
++  removeOwnLabel,
++  setOwnWarmth,
++} from '../../services/contactOwnerSettings.service';
+ import {
+   addOwnFact,
+   correctOwnFact,
+@@ -336,6 +348,12 @@ contactsRouter.get('/:id', phonebookLimit, async (req: Request, res: Response) =
+  *   DELETE /contacts/:id/exclusions/:exclusionId  200
+  *   POST   /contacts/:id/remove                   200 (leaves the network)
+  *   POST   /contacts/:id/deceased                 200
++ *
++ * Item 3 of the frontend's 21:10Z note (Misho's yes):
++ *   PUT    /contacts/:id/warmth      { warmth: warm | neutral | distant | null }  200
++ *   POST   /contacts/:id/labels      { label }                                   201
++ *   DELETE /contacts/:id/labels/:label                                           200
++ *   POST   /contacts/:id/exclusions  { goal_id }                                 201
+  */
+ type ContactHandler = (userId: number, phone: string, req: Request, res: Response) => Promise<void>;
+ 
+@@ -475,3 +493,56 @@ contactsRouter.post(
+ );
+ 
+ export default contactsRouter;
++
++/** Read when a request is checked, not when the module loads (some tests stand the page module in). */
++function isWarmth(value: unknown): boolean {
++  return value === null || (Object.values(Warmth) as string[]).includes(String(value));
++}
++
++contactsRouter.put(
++  '/:id/warmth',
++  phonebookLimit,
++  body('warmth').custom(isWarmth),
++  withOwnContact('PUT /contacts/:id/warmth', async (userId, phone, req, res) => {
++    const raw = (req.body as { warmth: unknown }).warmth;
++    const warmth = raw === null ? null : (String(raw) as Warmth);
++    await setOwnWarmth(userId, phone, warmth);
++    res.status(200).json({ success: true, data: { warmth } });
++  }),
++);
++
++const ownLabel = body('label').isString().trim().isLength({ min: 1, max: MAX_OWN_LABEL_CHARS });
++
++contactsRouter.post(
++  '/:id/labels',
++  phonebookLimit,
++  ownLabel,
++  withOwnContact('POST /contacts/:id/labels', async (userId, phone, req, res) => {
++    await addOwnLabel(userId, phone, String(req.body.label));
++    res.status(201).json({ success: true, data: { added: true } });
++  }),
++);
++
++contactsRouter.delete(
++  '/:id/labels/:label',
++  phonebookLimit,
++  param('label').isString().trim().isLength({ min: 1, max: MAX_OWN_LABEL_CHARS }),
++  withOwnContact('DELETE /contacts/:id/labels', async (userId, phone, req, res) => {
++    const outcome = await removeOwnLabel(userId, phone, String(req.params.label));
++    await answerEdit(outcome, res, async () => {
++      res.status(200).json({ success: true, data: { removed: true } });
++    });
++  }),
++);
++
++contactsRouter.post(
++  '/:id/exclusions',
++  phonebookLimit,
++  body('goal_id').isInt({ min: 1 }),
++  withOwnContact('POST /contacts/:id/exclusions', async (userId, phone, req, res) => {
++    const outcome = await excludeFromGoal(userId, phone, Number(req.body.goal_id));
++    await answerEdit(outcome, res, async () => {
++      res.status(201).json({ success: true, data: { excluded: true } });
++    });
++  }),
++);
+diff --git a/src/db/postgres/migrations/241_contact_page_owner_settings.sql b/src/db/postgres/migrations/241_contact_page_owner_settings.sql
+new file mode 100644
+index 0000000..164e33a
+--- /dev/null
++++ b/src/db/postgres/migrations/241_contact_page_owner_settings.sql
+@@ -0,0 +1,14 @@
++-- The frontend's item 3 (Misho's yes, 14 Oct): on the contact page the owner
++-- sets warmth, keeps their own labels and excludes a contact from one goal.
++--
++-- Warmth is written as the owner's hand-set tier, the store the assistant
++-- already reads. The tier it replaced is kept, so „back to inferred" restores it
++-- instead of losing an older hand-made choice.
++ALTER TABLE human_relationship_tiers
++  ADD COLUMN IF NOT EXISTS replaced_tier TEXT
++    CHECK (replaced_tier IS NULL OR replaced_tier IN ('green', 'blue', 'yellow', 'red')),
++  ADD COLUMN IF NOT EXISTS replaced_source TEXT;
++
++-- An exclusion made from the page names the goal it is for.
++ALTER TABLE contact_exclusions
++  ADD COLUMN IF NOT EXISTS goal_id INTEGER;
+diff --git a/src/services/__tests__/contactPage.test.ts b/src/services/__tests__/contactPage.test.ts
+index a737765..70e3b3c 100644
+--- a/src/services/__tests__/contactPage.test.ts
++++ b/src/services/__tests__/contactPage.test.ts
+@@ -22,6 +22,9 @@ beforeEach(() => mockQuery.mockReset());
+ function pageReads(warm: boolean, distant: boolean, alias = 'ნინო'): void {
+   mockQuery.mockImplementation((sql: string) => {
+     if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias }] });
++    // Item 3: the labels the owner wrote on the page are read apart from the import's.
++    if (sql.includes('FROM "UserTags"') && sql.includes('source = $3'))
++      return Promise.resolve({ rows: [{ tag: 'ჩემი ბუღალტერი' }] });
+     if (sql.includes('FROM "UserTags"'))
+       return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
+     if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
+@@ -44,7 +47,9 @@ function pageReads(warm: boolean, distant: boolean, alias = 'ნინო'): voi
+         ],
+       });
+     if (sql.includes('FROM contact_exclusions'))
+-      return Promise.resolve({ rows: [{ excluded_for: 'office in Rustavi', reason: null }] });
++      return Promise.resolve({
++        rows: [{ excluded_for: 'office in Rustavi', reason: null, goal_id: null }],
++      });
+     return Promise.resolve({ rows: [] });
+   }) as never;
+ }
+@@ -61,6 +66,7 @@ describe('contactPageFor', () => {
+       role: 'ბუღალტერი · TBC',
+       on_netai: true,
+       labels: ['ბუღალტერი'],
++      own_labels: ['ჩემი ბუღალტერი'],
+       warmth: Warmth.Warm,
+       facts: expect.any(Array),
+       public_facts: [
+@@ -71,7 +77,7 @@ describe('contactPageFor', () => {
+           fact_date: '2026-05-01',
+         },
+       ],
+-      exclusions: [{ excluded_for: 'office in Rustavi', reason: null }],
++      exclusions: [{ excluded_for: 'office in Rustavi', reason: null, goal_id: null }],
+     });
+     const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
+     expect(sqls.some((sql) => sql.includes('ask_boundaries'))).toBe(false);
+diff --git a/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts b/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts
+new file mode 100644
+index 0000000..67cf8a7
+--- /dev/null
++++ b/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts
+@@ -0,0 +1,58 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { Warmth } from '../contactPage.service';
++import { tierForWarmth } from '../contactOwnerSettings.service';
++
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn(),
++  withTransaction: jest.fn(),
++}));
++
++const service = readFileSync(join(__dirname, '..', 'contactOwnerSettings.service.ts'), 'utf8');
++const page = readFileSync(join(__dirname, '..', 'contactPage.service.ts'), 'utf8');
++const routes = readFileSync(
++  join(__dirname, '..', '..', 'api', 'routes', 'contacts.routes.ts'),
++  'utf8',
++);
++
++/** The frontend's item 3 (Misho's yes, 14 Oct): warmth, own labels, exclusion by goal. */
++describe('the contact page keeps the owner’s own choices', () => {
++  it('writes warmth as the hand-set tier the page and the searches read back', () => {
++    expect(tierForWarmth(Warmth.Warm)).toBe('green');
++    expect(tierForWarmth(Warmth.Neutral)).toBe('yellow');
++    expect(tierForWarmth(Warmth.Distant)).toBe('red');
++  });
++
++  it('keeps the tier it replaced, so „back to inferred" restores it', () => {
++    expect(service).toContain('keepsOriginal ? existing.replaced_tier : existing.tier');
++    expect(service).toContain('SET tier = replaced_tier');
++    expect(service).toContain(
++      'if (existing === null || existing.source !== PAGE_TIER_SOURCE) return;',
++    );
++  });
++
++  it('keeps the owner’s labels apart from the import’s, and removes only those', () => {
++    expect(service).toContain("const OWN_LABEL_SOURCE = 'USER_CREATED';");
++    expect(service).toMatch(/DELETE FROM "UserTags"[\s\S]*AND tag = \$3 AND source = \$4/u);
++    expect(page).toContain('own_labels: ownWritten,');
++  });
++
++  it('excludes from one goal of the owner’s, by its id, stored by digits as the page reads it', () => {
++    expect(service).toContain("'SELECT title FROM tasks WHERE id = $1 AND user_id = $2 LIMIT 1'");
++    expect(service).toContain('[userId, phoneDigits(phone), title, goalId],');
++    expect(page).toContain('SELECT id, excluded_for, reason, goal_id FROM contact_exclusions');
++  });
++
++  it('is four routes behind the contact-ownership check', () => {
++    for (const route of [
++      "'/:id/warmth'",
++      "'/:id/labels'",
++      "'/:id/labels/:label'",
++      "'/:id/exclusions'",
++    ]) {
++      expect(routes).toContain(route);
++    }
++    expect(routes).toContain("withOwnContact('PUT /contacts/:id/warmth'");
++  });
++});
+diff --git a/src/services/contactOwnerSettings.service.ts b/src/services/contactOwnerSettings.service.ts
+new file mode 100644
+index 0000000..110ba29
+--- /dev/null
++++ b/src/services/contactOwnerSettings.service.ts
+@@ -0,0 +1,164 @@
++import { PoolClient } from 'pg';
++import { query, withTransaction } from '../db/postgres/client';
++import { EditOutcome } from './contactEdits.service';
++import { Warmth } from './contactPage.service';
++import { phoneDigits } from './phone';
++
++/**
++ * The frontend's item 3 (its 21:10Z note, Misho's yes): what the owner sets on
++ * a contact's page — warmth, their own labels, and an exclusion from one goal.
++ * Each is written where the assistant already reads it, so a choice made on
++ * the page changes what Netai does, not only what the page shows:
++ *   - warmth → the owner's hand-set tier (human_relationship_tiers);
++ *   - labels → "UserTags" with source USER_CREATED, which search reads;
++ *   - exclusion → contact_exclusions, now with the goal it is for.
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++export const MAX_OWN_LABEL_CHARS = 40;
++const OWN_LABEL_SOURCE = 'USER_CREATED';
++const PAGE_TIER_SOURCE = 'contact_page';
++
++export type HandTier = 'green' | 'yellow' | 'red';
++
++/** The hand-set tier that reads back as each warmth on the page and in the searches. */
++export function tierForWarmth(warmth: Warmth): HandTier {
++  if (warmth === Warmth.Warm) return 'green';
++  return warmth === Warmth.Distant ? 'red' : 'yellow';
++}
++
++interface TierRow {
++  readonly contact_phone: string;
++  readonly tier: string;
++  readonly source: string;
++  readonly replaced_tier: string | null;
++  readonly replaced_source: string | null;
++}
++
++async function tierRow(client: PoolClient, userId: number, phone: string): Promise<TierRow | null> {
++  const found = await client.query<TierRow>(
++    `SELECT contact_phone, tier, source, replaced_tier, replaced_source
++       FROM human_relationship_tiers
++      WHERE user_id = $1 AND regexp_replace(contact_phone, '\\D', '', 'g') = $2
++      LIMIT 1 FOR UPDATE`,
++    [userId, phoneDigits(phone)],
++  );
++  return found.rows[0] ?? null;
++}
++
++async function setPageTier(
++  client: PoolClient,
++  userId: number,
++  phone: string,
++  warmth: Warmth,
++): Promise<void> {
++  const existing = await tierRow(client, userId, phone);
++  const tier = tierForWarmth(warmth);
++  if (existing === null) {
++    await client.query(
++      `INSERT INTO human_relationship_tiers (user_id, contact_phone, tier, source, set_at)
++       VALUES ($1, $2, $3, $4, NOW())`,
++      [userId, phone, tier, PAGE_TIER_SOURCE],
++    );
++    return;
++  }
++  // The tier it replaces is kept once: a second change on the page keeps the original.
++  const keepsOriginal = existing.source === PAGE_TIER_SOURCE;
++  await client.query(
++    `UPDATE human_relationship_tiers
++        SET tier = $3, source = $4, set_at = NOW(), replaced_tier = $5, replaced_source = $6
++      WHERE user_id = $1 AND contact_phone = $2`,
++    [
++      userId,
++      existing.contact_phone,
++      tier,
++      PAGE_TIER_SOURCE,
++      keepsOriginal ? existing.replaced_tier : existing.tier,
++      keepsOriginal ? existing.replaced_source : existing.source,
++    ],
++  );
++}
++
++async function clearPageTier(client: PoolClient, userId: number, phone: string): Promise<void> {
++  const existing = await tierRow(client, userId, phone);
++  if (existing === null || existing.source !== PAGE_TIER_SOURCE) return;
++  if (existing.replaced_tier === null) {
++    await client.query(
++      'DELETE FROM human_relationship_tiers WHERE user_id = $1 AND contact_phone = $2',
++      [userId, existing.contact_phone],
++    );
++    return;
++  }
++  await client.query(
++    `UPDATE human_relationship_tiers
++        SET tier = replaced_tier, source = COALESCE(replaced_source, $3), set_at = NOW(),
++            replaced_tier = NULL, replaced_source = NULL
++      WHERE user_id = $1 AND contact_phone = $2`,
++    [userId, existing.contact_phone, PAGE_TIER_SOURCE],
++  );
++}
++
++/** The owner's warmth for this contact; null goes back to what Netai infers. */
++export async function setOwnWarmth(
++  userId: number,
++  phone: string,
++  warmth: Warmth | null,
++): Promise<void> {
++  await withTransaction((client) =>
++    warmth === null
++      ? clearPageTier(client, userId, phone)
++      : setPageTier(client, userId, phone, warmth),
++  );
++}
++
++/** One label of the owner's own; the same label twice is kept once. */
++export async function addOwnLabel(userId: number, phone: string, label: string): Promise<void> {
++  await query(
++    `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
++     SELECT $1, $2, $3, 1, $4
++      WHERE NOT EXISTS (
++        SELECT 1 FROM "UserTags"
++         WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $5
++           AND tag = $3 AND source = $4)`,
++    [userId, phone, label.trim(), OWN_LABEL_SOURCE, phoneDigits(phone)],
++    QUERY_TIMEOUT_MS,
++  );
++}
++
++/** Removes only a label the owner wrote; an imported one is never touched. */
++export async function removeOwnLabel(
++  userId: number,
++  phone: string,
++  label: string,
++): Promise<EditOutcome> {
++  const removed = await query(
++    `DELETE FROM "UserTags"
++      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2
++        AND tag = $3 AND source = $4`,
++    [userId, phoneDigits(phone), label.trim(), OWN_LABEL_SOURCE],
++    QUERY_TIMEOUT_MS,
++  );
++  return (removed.rowCount ?? 0) > 0 ? EditOutcome.Done : EditOutcome.NotFound;
++}
++
++/** The contact is left out of this one goal of the owner's; another person's goal is not found. */
++export async function excludeFromGoal(
++  userId: number,
++  phone: string,
++  goalId: number,
++): Promise<EditOutcome> {
++  const goal = await query<{ title: string }>(
++    'SELECT title FROM tasks WHERE id = $1 AND user_id = $2 LIMIT 1',
++    [goalId, userId],
++    QUERY_TIMEOUT_MS,
++  );
++  const title = goal.rows[0]?.title?.trim();
++  if (title === undefined || title === '') return EditOutcome.NotFound;
++  await query(
++    `INSERT INTO contact_exclusions (user_id, contact_phone, excluded_for, reason, goal_id)
++     VALUES ($1, $2, $3, '', $4)
++     ON CONFLICT (user_id, contact_phone, excluded_for) DO UPDATE SET goal_id = EXCLUDED.goal_id`,
++    [userId, phoneDigits(phone), title, goalId],
++    QUERY_TIMEOUT_MS,
++  );
++  return EditOutcome.Done;
++}
+diff --git a/src/services/contactPage.service.ts b/src/services/contactPage.service.ts
+index d2faf9d..240aadb 100644
+--- a/src/services/contactPage.service.ts
++++ b/src/services/contactPage.service.ts
+@@ -48,6 +48,8 @@ export interface ContactExclusionView {
+   readonly id: number;
+   readonly excluded_for: string;
+   readonly reason: string | null;
++  /** The goal it was made for, when it was made from the page (item 3); null otherwise. */
++  readonly goal_id: number | null;
+ }
+ 
+ export interface ContactPageView {
+@@ -58,6 +60,8 @@ export interface ContactPageView {
+   readonly role: string | null;
+   readonly on_netai: boolean;
+   readonly labels: readonly string[];
++  /** The labels the owner wrote themselves on this page, apart from the import's (item 3). */
++  readonly own_labels: readonly string[];
+   readonly warmth: Warmth;
+   readonly facts: readonly ContactFact[];
+   readonly public_facts: readonly PublicFact[];
+@@ -87,6 +91,21 @@ async function ownLabels(userId: number, phone: string): Promise<string[]> {
+   return result.rows.map((r) => r.tag).filter(isDisplayableTag);
+ }
+ 
++/** Item 3: the labels the owner wrote on the page („USER_CREATED"), apart from the import's. */
++const OWN_LABEL_SOURCE = 'USER_CREATED';
++const MAX_OWN_LABELS = 20;
++
++async function labelsWrittenByOwner(userId: number, phone: string): Promise<string[]> {
++  const result = await query<{ tag: string }>(
++    `SELECT tag FROM "UserTags"
++      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2 AND source = $3
++      ORDER BY id LIMIT $4`,
++    [userId, phoneDigits(phone), OWN_LABEL_SOURCE, MAX_OWN_LABELS],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows.map((row) => row.tag);
++}
++
+ /**
+  * Warm: a tie the person confirmed (green/blue tier, allies/loyal, „close").
+  * Distant: they marked the tie red. Everything else is neutral — a computed
+@@ -139,7 +158,7 @@ async function publicFacts(phone: string): Promise<PublicFact[]> {
+ 
+ async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
+   const result = await query<ContactExclusionView>(
+-    `SELECT id, excluded_for, reason FROM contact_exclusions
++    `SELECT id, excluded_for, reason, goal_id FROM contact_exclusions
+       WHERE user_id = $1::int AND contact_phone = $2
+       ORDER BY created_at DESC LIMIT $3`,
+     [userId, phoneDigits(phone), MAX_EXCLUSIONS],
+@@ -169,8 +188,9 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
+   if (phone === null) return null;
+   const name = await savedName(userId, phone);
+   if (name === undefined) return null;
+-  const [labels, warmth, facts, published, exclusions, accounts] = await Promise.all([
++  const [labels, ownWritten, warmth, facts, published, exclusions, accounts] = await Promise.all([
+     ownLabels(userId, phone),
++    labelsWrittenByOwner(userId, phone),
+     warmthOf(userId, phone),
+     ownFacts(userId, phone),
+     publicFacts(phone),
+@@ -184,6 +204,7 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
+     role: roleFrom(facts),
+     on_netai: isMemberPhone(accounts, phone),
+     labels,
++    own_labels: ownWritten,
+     warmth,
+     facts,
+     public_facts: published,
+-- 
+2.43.0
+

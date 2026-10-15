@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 00:20Z — 0318 (the frontend's item 3: warmth, own labels, exclusion by goal)
+
+- **0318 `0318-contact-page-warmth-labels-goal-exclusion.patch`** (sha256 starts 09cd53178b35), on 0317. Migration 241 adds two nullable columns to human_relationship_tiers and one to contact_exclusions; it changes no existing row.
+  - PUT `/contacts/:id/warmth` writes the owner's hand-set tier, and null restores the one it replaced.
+  - POST/DELETE `/contacts/:id/labels` handle the owner's own labels (UserTags, USER_CREATED), and only those are removable.
+  - POST `/contacts/:id/exclusions {goal_id}` excludes from one of the owner's goals.
+  - All are behind the contact-ownership check. Verify green: 8830 tests.
+  - DONE WHEN: on a fictional seat, set warmth to distant and back to null (the page shows the inferred value again); add and remove a label (own_labels changes, labels from the import stay); exclude from a goal (the page lists it with goal_id).
+- **Order:** 0317, then 0318.
+- **Next:** the two texts for Misho (the assistant-name sentence; „name the found person with a reason" for [c]/[d] and the 4886 family), then 3732's never-opened line, which is also a model-facing note and so also needs his yes.
+
 ### 15 Oct, 00:08Z — 0317 (4621, the member card's introduction request); speech ask posted (59140)
 
 - **0317 `0317-4621-member-card-intro-request.patch`** (sha256 starts 517226620622), on 0316 (main 6c94890). It answers the frontend's 21:10Z item 4, with Misho's yes there and his §141 in my chat.
