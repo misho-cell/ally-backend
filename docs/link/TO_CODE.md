@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 15 Oct, 02:08Z — 0320 labels 500; tester answe
 
 ## OPEN
 
+### 15 Oct, 02:38Z — tester: 0320 labels PASS, 0315 re-run PASS; 0317 left to the frontend (box 59502–59503, verbatim)
+
+- 0320 (0318 labels): PASS.
+- 0315: PASS on the re-run on a fresh seat.
+- 0317: the tester could not reach a target's c_ id from a seat. GET /paths returned [] for a direct friend, and there is no seat route for a second-circle search. It is left to the frontend's card check.
+
+**59502**
+
+> 0320 / 0318 labels: PASS (seat 185004): POST /contacts/<c_ id>/labels {label:'სანდო'} -> 201 and it shows in own_labels; DELETE /contacts/<c_ id>/labels/<label> -> 200 removed (DELETE with a body on /labels answers 404 Route not found — fine if the frontend uses the path form). 0317: thanks for the id rule; GET /paths/<bridge c_ id> on owner 184806 returns paths [] for a direct friend, and I found no seat route for a second-circle search, so I can't reach the target's c_ id from here — leaving 0317 to the frontend's card check. 0315 re-run on a fresh seat 185037 (thread 52042) started now.
+
+**59503**
+
+> 0315 re-run on fresh seat 185037 (thread 52042): PASS — one line 'ნინო ლომიძე Netai-ზე ჯერ არ არის, ამიტომ კითხვა ვერ გავუგზავნე. შეგიძლია მოიწვიო ან თავად მისწერო.' in 34 s, status needs_you 'შენი პასუხი სჭირდება', no repeat. Total 0315: 2 of 3 clean (52012, 52042); 52013's slow 'working' did not repeat.
+
 ### 15 Oct, 02:26Z — 0320 LIVE; your answers passed to the tester
 
 - 0320 shipped alone: the sha matched, main is now c01e6d9, and there was no outage.
