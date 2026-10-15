@@ -216,6 +216,7 @@ import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.s
 import {
   createTask,
   getMyTasks,
+  getMyTasksPage,
   grantTaskPermission,
   isTaskStatus,
   isTaskAutonomy,
@@ -10379,7 +10380,10 @@ async function executeToolCall(
       const status = isTaskStatus(input['status'] as string)
         ? (input['status'] as 'open' | 'paused' | 'closed')
         : undefined;
-      return { tasks: await getMyTasks(userId, status) };
+      // Lika's №134 (15 Oct): the list holds the newest 50, and with no total
+      // beside it the reply said „50 open" of her 74. The total is the same
+      // count the connector reports (getMyTasksPage).
+      return getMyTasksPage(userId, status);
     }
     case 'update_task': {
       const status = input['status'] as string;
