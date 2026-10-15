@@ -70,7 +70,7 @@ import {
 import { leaveIntakeLane, onIntakeLane, query } from '../../db/postgres/client';
 import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
 import { nextRenewalDay } from '../../services/renewalDay';
-import { thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
+import { asRunLanguage, thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
 import { budgetWindow } from '../../services/budgetWindow';
 import {
   subscribeUserEvents,
@@ -1267,6 +1267,7 @@ threadsRouter.post(
             typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
           needsTitle,
           askedFrom,
+          chosenLanguage: asRunLanguage(req.get('X-Locale')),
         }),
       );
     } catch (error) {
@@ -1373,6 +1374,8 @@ export interface OwnerRun {
   readonly askedFrom?: string | null;
   /** 958: when the owner's message was stored; absent for a resumed run. */
   readonly storedAt?: number;
+  /** 5285: the language the owner chose in the app (`X-Locale`); absent when none was chosen. */
+  readonly chosenLanguage?: RunLanguage | null;
 }
 
 /**
@@ -1457,6 +1460,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
     lastFreeAnswer = false,
     askedFrom = null,
     storedAt,
+    chosenLanguage = null,
   } = run;
   const runStartedAt = new Date();
 
@@ -1497,6 +1501,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
             // not write it a second time — unless that write failed, in
             // which case the ordinary one inside the run is the fallback.
             ...(storedOnArrival && { alreadyStored: true }),
+            chosenLanguage,
             ...(inReplyToMessageId !== undefined && { inReplyToMessageId }),
           }),
       hardTimeout,
