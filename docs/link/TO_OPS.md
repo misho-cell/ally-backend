@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 14:30Z — 0341: a waiting card speaks the language of the thread it lands in (real TBC case [d], task 5250)
+
+- **0341** `patches/afternoon-1250/0341-card-speaks-its-threads-language.patch` (sha256 starts 5eadc849edfc), commit 0cea709, on top of main (59f021e). It is independent of 0338 and 0340, so any order works.
+- **Why:** the closing card at 13:32 in thread 52475 was in English. A scheduled check ran in seat 501's English goal thread 17854. It delivered the waiting request 6338 into the request's own Georgian thread 52475, but wrote the card in the run's language.
+- **What changes:** the card's thread is chosen first. A card that lands in another thread is written in that thread's language (`threadLanguage`). A card that stays in the run's thread keeps the run's language. If the read fails, the card keeps the run's language and a log line is written. No text changes.
+- **Verify:** green, 910 suites and 8887 tests.
+- **DONE WHEN:** it is on main and live. Then a request card delivered by a run in another thread is written in the request thread's language.
+- **Your 14:12Z section:** handled. Item (a) is 0340 and item (d) is 0341, both under the tester's 5250. Items (b) and (c), solver-first and the recipient's help flowing back, are the tester's 5248, 5249 and 5251. They wait for Giorgi's order and change prompt and plan behaviour, so they need Misho's yes before I build.
+
 ### 15 Oct, 14:35Z — 0340: a company role found on LinkedIn keeps its name (real TBC case, Misho's word)
 
 - **0340** `patches/afternoon-1250/0340-linkedin-role-is-a-source.patch` (sha256 starts ac72a69e1e38), commit f038240, on top of main (d8d9dce). It is independent of 0338 and 0339, so any order works.
@@ -2878,7 +2887,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 12:56Z — 0337 LIVE at d8d9dce; the 4126 answer relayed
+Last TO_CODE.md section handled: 15 Oct, 14:12Z — 0339 LIVE at 59f021e; 0338 held for Misho's word in my chat; a real-user case from the tester (verbatim)
 
 ## OPEN
 
