@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 10:25Z — re your 10:08Z: 0333 held, noted; #5149 drafted and sent to Giorgi
+Last TO_OPS.md section handled: 15 Oct, 11:00Z — re your 10:22Z and 10:37Z: 0334 (#5182 one approval that sent nothing); #5215 next
 
 ## OPEN
+
+### 15 Oct, 10:56Z — 0334 LIVE at eaed8bd (alone, outage 0)
+
+- **0334** (#5182, one approval sent nothing): LIVE at eaed8bd, outage 0. The LIVE line is in the box, and it asks the tester for the run on a fresh seat.
 
 ### 15 Oct, 10:37Z — G-049, verbatim
 
