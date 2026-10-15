@@ -103,6 +103,7 @@ describe('the number is earned, not chosen', () => {
 describe('creating one', () => {
   function seatCreated(): void {
     mockQuery.mockResolvedValue(rows([]) as never);
+    mockQuery.mockResolvedValueOnce(rows([]) as never); // the slot lock
     mockQuery.mockResolvedValueOnce(rows([]) as never); // the free-number scan
     mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never); // the User insert
   }
@@ -112,9 +113,11 @@ describe('creating one', () => {
     const [first, second] = allFictionalNumbers();
     mockQuery.mockResolvedValue(rows([]) as never);
     mockQuery
+      .mockResolvedValueOnce(rows([]) as never) // the slot lock
       .mockResolvedValueOnce(rows([]) as never) // the scan: first looks free
       .mockResolvedValueOnce(rows([{ id: 200001 }]) as never) // the User insert
       .mockRejectedValueOnce(Object.assign(new Error('UserPhone_phone_key'), { code: '23505' }))
+      .mockResolvedValueOnce(rows([]) as never) // the slot lock, again
       .mockResolvedValueOnce(rows([{ phone: first }]) as never) // the rescan: now taken
       .mockResolvedValueOnce(rows([{ id: 200002 }]) as never); // the User insert, again
 
@@ -129,7 +132,21 @@ describe('creating one', () => {
     expect(src).toContain(
       'if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)',
     );
-    expect(src).toContain('await withTransaction((client) =>');
+    expect(src).toContain('return await withTransaction(async (client) => {');
+    expect(src).toContain('let phone = chosen;');
+  });
+
+  /** The tester's 60292: seats made in parallel all took the same „first free" number. */
+  it('picks a free number under a lock, inside the transaction that writes it', async () => {
+    seatCreated();
+    await createTestSeat('Netai Test 14', [], 0, 'admin:1', '60292');
+    const sqls = mockQuery.mock.calls.map(([q]) => String(q));
+    const lockAt = sqls.findIndex((q) => q.includes('pg_advisory_xact_lock'));
+    const scanAt = sqls.findIndex((q) => q.includes('FROM test_seats WHERE phone = ANY'));
+    const insertAt = sqls.findIndex((q) => q.includes('INSERT INTO "User"'));
+    expect(lockAt).toBe(0);
+    expect(scanAt).toBeGreaterThan(lockAt);
+    expect(insertAt).toBeGreaterThan(scanAt);
   });
 
   it('makes the account the same shape as the eleven that exist', async () => {
@@ -222,8 +239,6 @@ describe('creating one', () => {
    */
   it('will not put a stranger into a seat’s phonebook', async () => {
     mockQuery.mockResolvedValue(rows([]) as never);
-    mockQuery.mockResolvedValueOnce(rows([]) as never);
-    mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never);
 
     await expect(
       createTestSeat('Netai Test 12', ['+995599123456'], 0, 'admin:1', 'row 251'),

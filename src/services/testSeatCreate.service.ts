@@ -78,23 +78,25 @@ export function isFictionalSlot(phone: string): boolean {
   return isFictionalNumber(phone);
 }
 
-/**
- * The first slot in the fictional range that nobody is registered on and
- * nobody has saved. Both halves are asked of the live database in one
- * statement, so the answer cannot be stale between the two questions.
- */
-export async function firstFreeFictionalPhone(): Promise<string> {
-  const candidates = allFictionalNumbers();
-
-  const taken = await query<{ phone: string }>(
-    `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
+const TAKEN_FICTIONAL_SQL = `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
      UNION
      SELECT phone FROM "UserAlias" WHERE phone = ANY($1)
      UNION
-     SELECT phone FROM test_seats WHERE phone = ANY($1)`,
-    [candidates],
-    SEAT_QUERY_TIMEOUT_MS,
-  );
+     SELECT phone FROM test_seats WHERE phone = ANY($1)`;
+
+/**
+ * The first slot in the fictional range that nobody is registered on and
+ * nobody has saved. Both halves are asked of the live database in one
+ * statement, so the answer cannot be stale between the two questions. Given a
+ * transaction's client, it is asked inside that transaction.
+ */
+export async function firstFreeFictionalPhone(client?: PoolClient): Promise<string> {
+  const candidates = allFictionalNumbers();
+
+  const taken =
+    client === undefined
+      ? await query<{ phone: string }>(TAKEN_FICTIONAL_SQL, [candidates], SEAT_QUERY_TIMEOUT_MS)
+      : await client.query<{ phone: string }>(TAKEN_FICTIONAL_SQL, [candidates]);
   const used = new Set(taken.rows.map((r) => r.phone));
   const free = candidates.find((p) => !used.has(p));
   if (free === undefined) {
@@ -344,6 +346,14 @@ async function arriveByInvitation(
 const UNIQUE_VIOLATION = '23505';
 /** How many free slots an auto-picked seat tries before the clash is reported. */
 const FREE_SLOT_ATTEMPTS = 3;
+/**
+ * The tester's 60292 (15 Oct): seats made in parallel all picked the same
+ * „first free" number, and past three clashes the rest were 500s. Picking and
+ * writing an auto-picked seat now happen under one transaction-scoped lock, so
+ * the next caller picks after the last one's number is written. The key is
+ * this lock's own; nothing else in the code takes an advisory lock.
+ */
+const FREE_SLOT_LOCK_KEY = 4_126_292;
 
 interface SeatRows {
   readonly userId: string;
@@ -368,16 +378,25 @@ async function insertSeatRows(
   createdBy: string,
   shape: SeatShape,
 ): Promise<SeatRows> {
+  const chosen = shape.phone === undefined ? null : await chosenFictionalPhone(shape.phone);
   for (let attempt = 1; ; attempt += 1) {
-    const phone =
-      shape.phone === undefined
-        ? await firstFreeFictionalPhone()
-        : await chosenFictionalPhone(shape.phone);
     try {
-      const userId = await withTransaction((client) =>
-        writeSeatRows(client, seatName, why, createdBy, phone, shape.legacyAlly === true),
-      );
-      return { userId, phone };
+      return await withTransaction(async (client) => {
+        let phone = chosen;
+        if (phone === null) {
+          await client.query('SELECT pg_advisory_xact_lock($1)', [FREE_SLOT_LOCK_KEY]);
+          phone = await firstFreeFictionalPhone(client);
+        }
+        const userId = await writeSeatRows(
+          client,
+          seatName,
+          why,
+          createdBy,
+          phone,
+          shape.legacyAlly === true,
+        );
+        return { userId, phone };
+      });
     } catch (err) {
       if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)
         throw err;
