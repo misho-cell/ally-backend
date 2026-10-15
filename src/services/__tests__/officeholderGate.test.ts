@@ -11,7 +11,7 @@ import {
   clearRunEvidence,
   nameCandidates,
   recordRunEvidence,
-  replaceNameWithPlaceholder,
+  rewriteUnverified,
 } from '../officeholderGate';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -62,7 +62,7 @@ describe('applyOfficeholderGate', () => {
 
     expect(out.refused).toEqual(['გიორგი კობახიძე']);
     expect(out.reply).toBe(
-      'ფინანსთა მინისტრი არის (სახელი ვერ დავადასტურე ოფიციალურ გვერდზე). მას შეგიძლია მისწერო.',
+      'მას შეგიძლია მისწერო.\n\nერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
     );
   });
 
@@ -86,7 +86,7 @@ describe('applyOfficeholderGate', () => {
     expect(out.refused).toEqual([]);
   });
 
-  it('English: an unverified officeholder name is replaced', async () => {
+  it('English: a sentence with an unverified officeholder name is left out', async () => {
     recordRunEvidence(RUN, 'who runs the revenue service');
 
     const out = await applyOfficeholderGate(
@@ -95,9 +95,7 @@ describe('applyOfficeholderGate', () => {
       'en',
     );
 
-    expect(out.reply).toBe(
-      'The head of the Revenue Service is (name not verified on an official page).',
-    );
+    expect(out.reply).toBe('I could not confirm one name on an official page, so I left it out.');
   });
 
   it('a sentence without an office word is never touched', async () => {
@@ -223,40 +221,42 @@ describe('the gate cannot make the reply wait for ever', () => {
 });
 
 /**
- * Thread 15676, 16 September — the placeholder wore a Georgian case ending.
- *
- * The reply reached the person as „(სახელი ვერ დავადასტურე ოფიციალურ
- * გვერდზე)ა". The „ა" is the copula that was glued to the name („კალაძეა" =
- * „is Kaladze"); a plain split/join took the name out from underneath it and
- * left its grammar sitting on the bracket, so the placeholder reads as though
- * it were itself somebody's name with an ending on it.
+ * The tester's 60232 (15 Oct), Misho's choice: no placeholder inside a sentence.
+ * Thread 15676 (16 Sep) showed why cutting a name out fails in Georgian: its
+ * grammar („კალაძეა") stays behind. So the sentence goes whole.
  */
-describe('the placeholder does not inherit the name’s grammar', () => {
-  const PH = '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)';
+describe('a sentence with an unverified name', () => {
+  const LINES = { nameFromLinkedinOnly: '(LI)', unverifiedNameLeftOut: 'LEFT OUT.' };
 
-  it.each([
-    ['თბილისის მერი კახა კალაძეა.', 'თბილისის მერი (X).'],
-    ['კახა კალაძეს ვკითხე.', '(X) ვკითხე.'],
-    ['კახა კალაძემ თქვა.', '(X) თქვა.'],
-    ['მერია კახა კალაძე.', 'მერია (X).'],
-  ])('%s', (input, shape) => {
-    const out = replaceNameWithPlaceholder(input, 'კახა კალაძე', PH);
-    expect(out).toBe(shape.replace('(X)', PH));
-  });
-
-  it('leaves a Latin name alone apart from the swap', () => {
-    expect(replaceNameWithPlaceholder('John Smith is the mayor.', 'John Smith', PH)).toBe(
-      `${PH} is the mayor.`,
+  it('is left out whole, whatever ending the name wears, and said once at the end', () => {
+    const reply = 'თბილისის მერი კახა კალაძეა. კახა კალაძეს ვკითხე. შენ რას ფიქრობ?';
+    expect(rewriteUnverified(reply, new Set(), ['კახა კალაძე'], LINES)).toBe(
+      'შენ რას ფიქრობ?\n\nLEFT OUT.',
     );
   });
 
-  it('replaces every occurrence, each with its own ending', () => {
-    const out = replaceNameWithPlaceholder('კახა კალაძემ და კახა კალაძეს', 'კახა კალაძე', PH);
-    expect(out).toBe(`${PH} და ${PH}`);
+  it('keeps the lines around it as they stood', () => {
+    const reply = 'პირველი.\n- მერი John Smith.\n- მეორე პუნქტი.';
+    expect(rewriteUnverified(reply, new Set(), ['John Smith'], LINES)).toBe(
+      'პირველი.\n- მეორე პუნქტი.\n\nLEFT OUT.',
+    );
   });
 
-  it('a name with regex characters in it is not a pattern', () => {
-    expect(replaceNameWithPlaceholder('A.B Smith spoke.', 'A.B Smith', PH)).toBe(`${PH} spoke.`);
+  it('says only the line when nothing else was left', () => {
+    expect(rewriteUnverified('The mayor is A.B Smith.', new Set(), ['A.B Smith'], LINES)).toBe(
+      'LEFT OUT.',
+    );
+  });
+
+  it('keeps a LinkedIn-only name and says where it came from, before the closing mark', () => {
+    const reply = 'მინისტრი არის ნინო ბერიძე. სხვა რამე?';
+    expect(rewriteUnverified(reply, new Set([0]), [], LINES)).toBe(
+      'მინისტრი არის ნინო ბერიძე (LI). სხვა რამე?',
+    );
+  });
+
+  it('leaves a reply with nothing unverified untouched', () => {
+    expect(rewriteUnverified('  ასეა.  ', new Set(), [], LINES)).toBe('  ასეა.  ');
   });
 });
 
@@ -559,21 +559,5 @@ describe('words that only look like an office or a name', () => {
     expect(
       nameCandidates('ყველაზე ეფექტიანი იქნება მოიწვიო ბექა დირექტორი და სოფო ფოტოგრაფი.'),
     ).toEqual([]);
-  });
-});
-
-/** #2117 (tester 43066, conv 41581): a bracketed echo of a name is dropped, not double-bracketed. */
-describe('a name echoed in brackets', () => {
-  const replace = replaceNameWithPlaceholder;
-  const NOTE = '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)';
-
-  it('goes whole, so no bracket sits inside a bracket', () => {
-    expect(
-      replace('სატია ნადელა (Satya Nadella) მაიკროსოფტის დირექტორია.', 'Satya Nadella', NOTE),
-    ).toBe('სატია ნადელა მაიკროსოფტის დირექტორია.');
-  });
-
-  it('still annotates the name where it stands on its own', () => {
-    expect(replace('Satya Nadella is the CEO.', 'Satya Nadella', NOTE)).toBe(`${NOTE} is the CEO.`);
   });
 });
