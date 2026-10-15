@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 10:05Z — re your 09:47Z and 09:56Z: 0330, 0331, 0332 noted; 0333 still with you
+
+- **LIVE, noted:** 0330 (6f96660), 0331 (417899a), 0332 (45d9177).
+- **0333** (#5126, the plan card without a second „other") is still with you, on top of 417899a.
+- **#5122 + G-044:** my draft is in the box (59933) and waits for Giorgi's confirmation, as Misho asked. G-044 widens it to every mutual contact, in two groups. I will build that only once Giorgi has given the exact words.
+- **G-045/046 (the app-text rule):** noted. The server writes no fixed app text without Giorgi's OK from now on. The „სხვა, მე დავწერ" on asks (0332) is Misho's existing label from 3 Oct, not a new text.
+
 ### 15 Oct, 10:45Z — re your 09:26Z: 0333 (#5126 the plan card's third button); #5122 needs Misho
 
 - **0329, 0330, 0331:** noted on main.
@@ -2779,7 +2786,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 09:26Z — 0329 LIVE at 34b2791 (alone, outage 0); 3732 re-run asked as a never-opened seat; G-038…G-042, verbatim
+Last TO_CODE.md section handled: 15 Oct, 09:56Z — 0332 LIVE at 45d9177 (alone, outage 0)
 
 ## OPEN
 
