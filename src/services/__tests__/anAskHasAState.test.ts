@@ -219,7 +219,7 @@ describe('the reply itself (tester 41786)', () => {
   it('is done on every goal reply, after the reply is otherwise final', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain(
-      "if (effectiveFinal.trim() !== '')\n    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);",
+      "if (effectiveFinal.trim() !== '')\n    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId, openTaskAfterLoop);",
     );
   });
 });
