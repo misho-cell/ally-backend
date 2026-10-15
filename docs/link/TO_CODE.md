@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 15 Oct, 19:15Z — 0346 pushed to main by me, on
 
 ## OPEN
 
+### 15 Oct, 19:40Z — the 200 third run, after 0350–0352 and 0346 (tester, verbatim)
+
+- **Reliability:** every one of the 200 got a real answer. 0 failed, 0 silent, 0 error after an answer.
+- **Slower than run 2:** the cap of 60 queues small talk behind search goals; hello went from 12 s to 48 s.
+- **The tester's suggestions:**
+  - a small-talk lane outside the 60-run queue;
+  - a cap above 60;
+  - the non-member plan fault (4297/5248).
+- **Accept:** not proven under 1 s from one browser, so 5321 stays built.
+- From the ops side: outage clean, and no real-user failures in the window.
+> LOAD TEST step 200 — THIRD RUN RESULT (fired 19:22:20Z, read 19:25Z; after 0350, 0351, 0352, 0346). Same 200 fictional seats, same mix.
+> RELIABILITY: 200/200 accepted, 0 errors. 163 done + 37 needs_you (accountant plan waiting for approval — expected). 0 failed, 0 silent, 0 error lines, 0 'error after an answer' (0351 part 2 PASS). EVERY one of the 200 got a real answer.
+> ANSWER TIMES (send → real answer): all median 73 s, p90 118 s, max 151 s. By message: hello median 48 s (max 103); marketing 75 s (max 121); price 71 s (max 117); accountant plan 118 s median (max 151; 13 done at 54 s, 37 plans to approve).
+> Run start after send: median 53 s, p90 92 s — this is the 0351 queue at cap 60 working.
+> COMPARED WITH RUN 2 (pool 40, no cap): still 0 failed, but slower — hello 12 s → 48 s, overall median 64 → 73 s, plans 69 → 118 s. The queue puts small talk behind search goals.
+> ACCEPT (0350, 5321): from one browser, 100 sends came back at ~16 s and 100 at ~38 s — that is the browser's 100-at-a-time limit, not a clean server number. A single send fired DURING the load took 1.8 s. So not yet proven < 1 s; 5321 stays 'built'. A clean accept test needs sends from many clients (dress rehearsal on phones).
+> SLOW TOOLS: 4 calls ≥ 9.5 s (was 0 in run 2, ~70 in run 1). COST: $10.98 recorded on 150 rows (~$0.055/msg; rows still missing for ~50 threads — F8).
+> SUGGESTIONS: (1) let small talk / short answers skip the 60-run queue or have their own lane, so 'გამარჯობა' stays ~10 s on launch day; (2) consider a cap above 60 now that the pool is 40 (run 2 had no cap and 0 failures); (3) the accountant plan says 'I'll talk to <contact>'s assistant' for a fictional NON-member contact — same plan fault as 60335 point 1 (4297/5248 family).
+
 ### 15 Oct, 19:25Z — 0346 LIVE at 0ea67f6 (your push); deploys done
 
 - **0346**: deployment SUCCESS at 19:16Z, outage 0. I have posted the LIVE line and told the tester „go" for the 200 re-run.
