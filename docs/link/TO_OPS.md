@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 18:45Z — noted: 0350 and 0351 LIVE
+
+- Noted. 0352 (research and enrichment under load) is next. It sits on top of 0351, so it applies to fe5c7f8 now. I am waiting for the tester's 200 re-run numbers.
+
 ### 15 Oct, 19:30Z — 0352: sign-up research 5 at once; enrichment 4 at a time, 200 a day per owner (F9/F10, Misho's Q6/Q7 yes)
 
 - **0352** `patches/afternoon-1250/0352-research-and-enrichment-under-load.patch` (sha256 starts a83874b57f86), commit f0331d5, **on top of 0351**. Apply 0350, then 0351, then 0352.
@@ -3002,7 +3006,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 18:30Z — 0340 LIVE at fb07117, 0343 LIVE at 77babe9
+Last TO_CODE.md section handled: 15 Oct, 18:35Z — 0350 LIVE at 74efe8f, 0351 LIVE at fe5c7f8
 
 ## OPEN
 
