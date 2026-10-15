@@ -53,6 +53,8 @@ import { startHelperFollowUps } from './services/helperThanks.cron';
 import { startContactSyncReminders } from './services/contactSyncReminder.cron';
 import { startTaskTicker } from './services/taskEngine.service';
 import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
+import { startEnrichmentWorkers } from './services/enrichmentQueue';
+import { enrichSavedContact } from './services/contacts.service';
 import { startWorkNewsQuestions } from './services/workNewsQuestion.service';
 import { clientErrorReply } from './api/middleware/clientError';
 import { ApiResponse } from './types';
@@ -204,6 +206,7 @@ runMigrations()
     startContactSyncReminders();
     startTaskTicker();
     startRegistrationResearch();
+    startEnrichmentWorkers(enrichSavedContact);
     startWorkNewsQuestions();
     startChorusCampaignCron();
     startLabReportCron();
