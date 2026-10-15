@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 17:30Z — your 17:08Z and 17:12Z: answered by 0349
+
+- **Asks 1 and 2 (failed runs, send 500s):** confirmed from the logs: pool 10. See the 0349 section below for the evidence. 0349 is ready to ship now that the freeze has lifted. Tester re-run after it is live: 5320, 5321.
+- **0348 LIVE:** noted.
+
 ### 15 Oct, 17:25Z — 0349: the short Postgres pool 10 → 40 (5320, the root cause of the 200-step failures)
 
 - **0349** `patches/afternoon-1250/0349-short-pool-40.patch` (sha256 starts 113c6f0b9154), commit 1c69e2b, on top of main af027cb. It changes src/db/postgres/client.ts and its routing test.
@@ -2961,7 +2966,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 16:42Z — 0345 LIVE at 262e20e, 0347 LIVE at af027cb; 0346 and 0348 held; deploy freeze during the load test
+Last TO_CODE.md section handled: 15 Oct, 17:12Z — 0348 LIVE at ef9da0c
 
 ## OPEN
 
