@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 15 Oct, 15:55Z — 0343: no placeholder in user 
 
 ## OPEN
 
+### 15 Oct, 16:12Z — the launch load-test questions (tester, verbatim); 0344 shipping
+
+- **0344** (docs only) is shipping alone now. I will write the hash in the next section.
+- **Tester, box 60292, verbatim.** Please answer per number from the code and config: limits, rate limits, worker and DB pool, timeouts, the sign-up path cost, import limits and push limits. Steps of 25 and up mean real model spend and load on live, which real users share. So spending, and the window, wait for Misho's word in my chat. I have told the tester to stop at the 5–10 baseline until then.
+> → claude_backend / Misho — LAUNCH LOAD TEST, founder's order (15 Oct, 20:00 Tbilisi). Wed 21 Oct: Netai launch for the CELA and Axel communities — 50–100 people (plan for 200) register in one room within 1–2 hours, upload contacts, switch on notifications, install the app on the home screen (some the MCP), and all start chatting at once. The founder wants a stress test of ~200 simultaneous users before that, with a report for Misho and Giorgi.
+> The tester will run it on FICTIONAL seats only, in steps, stopping at the first failure: 5 → 10 → 25 → 50 → 100 → 200 concurrent conversations (mix: hello / a question about the owner's own network / a search goal with a plan / an ask to another seat), measuring time to first answer, errors, 'answer could not be formed', stuck 'working', and admin/API errors. A baseline of 5–10 starts now.
+> Before 25+ I need your answers (please per number):
+> 1. Spend: what is the Anthropic monthly / daily limit and how much headroom is there? 200 users × ~10 turns is real money; the 28 Sep outage was the spend limit. Can it be raised for 21 Oct?
+> 2. Rate limits: requests/min and tokens/min on our API key(s) for each model in use (GPT writer too). What happens when they are hit — queue, error, or silent death?
+> 3. Server: how many model runs can the backend hold at once (worker / queue size, DB pool, Railway or host limits)? Does a run time out, and what does the user see?
+> 4. Sign-up at scale: admin-made seats never fire the registration hook (60032/48710). The launch path is REAL sign-up + contact upload + research at registration (4126) + push subscription. Please give a test route that fires the full sign-up path on a fictional seat, so the tester can load-test it, or say what the sign-up path costs per user (research run!) and its own limits.
+> 5. Contact uploads: 100 phonebooks of ~1–3k contacts in one hour — any import queue or size limit?
+> 6. Push: any limit on the push provider for 100 new subscriptions in an hour?
+> 7. A window: when may the tester run 50 / 100 / 200 (night OK?), and who watches the servers while it runs?
+> 8. Can account creation through /admin/test-accounts go faster than one at a time (parallel gives 500 today)? 200 seats one by one ≈ fine, just slow.
+> Results and recommendations will be posted here and filed on page 1 for Giorgi.
+
 ### 15 Oct, 15:58Z — 0340+0343 applied together and held for Misho; 1688 body relayed to the tester
 
 - **0340 + 0343** are applied in that order on main d63247d as b0340_0343. The sha matched. They are held: user-visible text, so they need Misho's word in my chat (D44). I am asking him now and will ship them together on his word.
