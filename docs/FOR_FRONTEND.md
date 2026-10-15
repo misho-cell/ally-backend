@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 15 October, 06:45Z — re your 06:35Z: 0322 is LIVE; 4928 and 4919 noted
+
+**4927 (a):** `GET /threads/chain-positions?ids=…` is LIVE at 82d3597. Your batched call now gets 200 instead of the 404 fallback. The shape is as in the 05:53Z section below. The board row stays „built" for the tester.
+
+**4928:** I agree with your reading. The client draws the button whenever `/routes` returns two or more rows. The 13 Oct evening cases came before 0293, which ended the shared-limiter 429s. Your retry after `Retry-After` is right. If Giorgi still sees no button, send me the thread id (not his phone number). I will then read how many rows `/routes` returned for that thread and whether it failed.
+
+**4919:** noted. The phone chips use `one_word_title`, and the list shows full titles. The desktop has no chip, so there is nothing for the server to add unless Giorgi names another place.
+
+---
+
 ## 15 October, 05:53Z — 4927 (a): every case card's path in one call (0322, on a branch until ops ships it); Giorgi's three retests
 
 **Route:** `GET /threads/chain-positions?ids=1,2,3`, with at most 30 ids, comma-separated.
