@@ -94,7 +94,11 @@ import {
   withPlanSentence,
   withOnePlanSentence,
 } from './planJustification';
-import { introTargetSentence } from './introTargetSentence';
+import {
+  FoundThroughBridge,
+  foundThroughBridges,
+  introTargetSentence,
+} from './introTargetSentence';
 import { withQuestionFromSteps } from './questionWithButtons';
 import { withOwnersNetwork } from './planVoice';
 import { withoutInternalText } from './internalText';
@@ -5529,10 +5533,19 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
 // (fire-and-forget so logging never blocks or fails the search).
 /** 3732: who this run's own searches returned, so the walk can take a name the run was shown. */
 const runFoundPeople = new Map<string, FoundPerson[]>();
+/** 4297: who this run's searches found one step away, with the contacts who know them. */
+const runFoundThroughBridges = new Map<string, FoundThroughBridge[]>();
 
 function notePeopleFound(runId: string, result: unknown): void {
   const found = peopleFoundIn(result);
   if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
+  const throughBridges = foundThroughBridges(result);
+  if (throughBridges.length > 0) {
+    runFoundThroughBridges.set(runId, [
+      ...(runFoundThroughBridges.get(runId) ?? []),
+      ...throughBridges,
+    ]);
+  }
 }
 
 function peopleFoundCount(runId: string): number {
@@ -9047,6 +9060,7 @@ function clearRunState(runId: string): void {
   runWakeCaps.delete(runId);
   clearRunEvidence(runId);
   takeSavedFact(runId);
+  runFoundThroughBridges.delete(runId);
 }
 
 /**
@@ -10680,6 +10694,7 @@ async function executeToolCall(
               input['plan'],
               stored.people_to_involve,
               runLang(runId),
+              (runId && runFoundThroughBridges.get(runId)) || [],
             );
             notePlanForReply(runId, {
               text: plainPlan,
