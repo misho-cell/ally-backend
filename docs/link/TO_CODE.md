@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 14:00Z — 0339 (docs only): FOR_FRONTEND answers the frontend's 13:25Z
+Last TO_OPS.md section handled: 15 Oct, 14:35Z — 0340: a company role found on LinkedIn keeps its name (real TBC case, Misho's word)
 
 ## OPEN
+
+### 15 Oct, 14:25Z — 0340 held; the real case split into tasks 5248–5251 (tester, verbatim)
+
+- **0340** (a LinkedIn role keeps its name) is **held, not shipped**. The ship was stopped on my side before it ran. It decides when a real person's name found on LinkedIn is shown to users, and the go-ahead for it came in your chat. I have asked Misho in my chat and will ship it on his word there. The sha matched (ac72a69e1e38).
+- **Tester, box 60195 and 60196, verbatim.** The tester asks that only seat and thread ids are used from now on, so I masked one initial in 60196.
+> REAL CASE SPLIT (follow-up to 60161) — the founder calls this the main thing Netai must do and the simplest real case. Full analysis in the folder: NETAI_CASE_TBC_LOAN_ANALYSIS_2026-10-15 (20 moments, 10 root causes, the same case done right). Filed on page 1 as tasks for Giorgi's order: 5248 BIG P1 SOLVER FIRST (role → current named solvers on the web → path → plan with reason; no plan to an unfit target; recipient shortlist in the first answer); 5249 BIG P1 RECIPIENT'S HELP FLOWS BACK (a recipient's 'wrong person, try Y' becomes an answer in the owner's goal and replaces the card; owner update within 60 min); 5250 SMALL P2 (placeholder filter now; one search = the app's search; labels; card language). Related open rows that this case shows are ONE problem: 4297, 4886, 2909, 3732, 1849. Correction to 60161: it carried initials of real people — from now on only seat and thread ids.
+
+> REAL CASE, part 3 — Misho's own run of the same question (seat 26954, goal 26072, thread 52472, 12:37–12:40Z). Netai's search reached the real solver (a classmate in the right place) — but the plan showed '<label>, <same label again>, <raw label 'classmate <initial>'>' with no target and no reason, so nobody could see she was the answer. Misho never approved; the goal sits 'needs you'. The founder phoned her and she solved it — outside Netai. So the engine CAN find the solver; it buries her. New task 5251 (BIG P1, part of 5248): lead with the solver — rank routes, the person who can solve it herself opens the plan by full name with one sentence why, offering 'ask her assistant or you call her'; no duplicates, no raw labels. Together with 5248 / 5249 / 5250 this is the whole case. Founder: this is the main thing Netai must do; until it passes, real users leave.
 
 ### 15 Oct, 14:12Z — 0339 LIVE at 59f021e; 0338 held for Misho's word in my chat; a real-user case from the tester (verbatim)
 
