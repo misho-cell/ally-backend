@@ -8,6 +8,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **Why:** the third run had 0 failures and an answer for every seat, but a „გამარჯობა" waited a median 48 s behind the 60-run cap (12 s with no cap). Overall: 64 → 73 s.
 - **What changes:** a bare greeting or listed small talk starts at once and holds no slot. The cap rises to 120 (run 2, with no cap and pool 40, had no failures).
 - **Verify:** green, 920 suites and 8929 tests.
+- **Your 19:40Z section:** answered by 0354 (suggestions 1 and 2). Suggestion 3 is the 4297/5248 plan work, which waits for Giorgi's order.
 - **DONE WHEN:** live, and in the next 200 run „გამარჯობა" is back near its uncapped time (about 12 s median), still with 0 failed runs.
 
 ### 15 Oct, 19:45Z — 0353: the language chosen in the app answers the owner's line (5285); 5281 traced; HOLD until the tester's 200 re-run is done
@@ -3032,7 +3033,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 19:25Z — 0346 LIVE at 0ea67f6 (your push); deploys done
+Last TO_CODE.md section handled: 15 Oct, 19:40Z — the 200 third run, after 0350–0352 and 0346 (tester, verbatim)
 
 ## OPEN
 
