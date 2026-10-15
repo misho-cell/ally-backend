@@ -80,15 +80,14 @@ describe('the board', () => {
     expect(task.created_at).toBe('2026-10-01T19:20:00.000Z');
   });
 
-  /** #266: by who filed it (Giorgi first), then urgent → later, newest first. */
-  it('lists one page, bounded, by author, then most urgent, then newest', async () => {
+  /** #5083: urgent first, then who filed it (#266, Giorgi first), then newest first. */
+  it('lists one page, bounded, by status, then most urgent, then author, then newest', async () => {
     mockQuery.mockResolvedValue(rows([ROW]));
     await listTeamTasks(2);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toMatch(
-      /ORDER BY page,\s+COALESCE\(array_position\(\$3::text\[\], status\), cardinality\(\$3::text\[\]\) \+ 1\),\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
+      /ORDER BY page,\s+COALESCE\(array_position\(\$3::text\[\], status\), cardinality\(\$3::text\[\]\) \+ 1\),\s+priority,\s+COALESCE\(array_position\(\$2::text\[\], created_by\), cardinality\(\$2::text\[\]\) \+ 1\),\s+id DESC/,
     );
-    expect(String(sql)).toMatch(/priority, id DESC/);
     expect(String(sql)).toContain('LIMIT');
     expect(params).toEqual([
       2,
