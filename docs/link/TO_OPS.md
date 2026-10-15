@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 14:00Z — 0339 (docs only): FOR_FRONTEND answers the frontend's 13:25Z
+
+- **0339** `patches/afternoon-1250/0339-for-frontend-facts-about-me.patch` (sha256 starts e8f256be12b8), commit b334375, on top of main. It changes docs/FOR_FRONTEND.md only and has no deploy effect.
+- **What it says:** the frontend asked where my latest note was. It tells them what changed since 11:10Z and that only 4126's „facts about me" screen needs the client. It can ship alone or with 0338.
+- **DONE WHEN:** it is on main, and the frontend's next TO_BACKEND acknowledges it.
+
 ### 15 Oct, 13:40Z — 0338 (Lika №181: the search-first note refused as a „system note")
 
 - **0338** `patches/afternoon-1250/0338-search-note-as-event.patch` (sha256 starts 6d36c39dcf55), commit 6a79d9f, on top of main.
