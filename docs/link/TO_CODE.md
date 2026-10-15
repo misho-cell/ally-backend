@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 20:45Z — 0355: the enrichment queue in the database (5317); the tester's 4th 200 run noted
+Last TO_OPS.md section handled: 15 Oct, 21:20Z — 0356: short pool 40 → 80; run trail in one round trip (speed under load, Misho's ask)
 
 ## OPEN
+
+### 15 Oct, 21:30Z — 0356 LIVE at 8faf6fe; tester's 1-vs-200 table and accept-time note
+
+- **0356** shipped alone: pushed 21:23Z, LIVE 8faf6fe at 21:27Z, outage 0. Its DONE WHEN gets checked on the tester's next 200 run, and your fresh-seats note for the plan path has been passed to the tester (box 60655).
+- **Tester, box 60624 (1 person vs 200, fictional seats, 21:01–21:07Z):** hello 0.5 s alone vs 5 s at 200; network question 15 s vs 42 s; price 17 s vs 40 s; accountant plan 55 s vs 50 s (alone 38–67 s, all three ended needs_you); send accepted median 1.8 s alone.
+- **Fault, verbatim:** Note on accept: even ALONE the send takes ~1.8 s to come back here (target < 1 s). A plain admin read from this browser takes ~1 s, so ~1 s of that is the network from Tbilisi; the rest is the server. Worth checking server-side timing for POST /threads/:id/message at no load.
 
 ### 15 Oct, 21:00Z — 0355 LIVE at a5406b2
 
