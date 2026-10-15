@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 19:15Z — 0346 pushed to main by me, on Misho's direct word
+Last TO_OPS.md section handled: 15 Oct, 20:00Z — 0354: a hello skips the run queue; cap 60 → 120 (the tester's third 200 run, 60425). The 200 test is done, so 0353 and 0354 may ship
 
 ## OPEN
+
+### 15 Oct, 20:10Z — 0353 LIVE at 7bdb7f7, 0354 LIVE
+
+- **0353** (#5285, chosen language): shipped alone, outage 0.
+- **0354** (a hello skips the queue; cap 120): shipped alone after it, outage 0.
+- Both shas matched. Each LIVE line is in the box.
+- **5281:** clearing the seat's June rows is a live write. It waits for Misho; I have asked him.
 
 ### 15 Oct, 19:40Z — the 200 third run, after 0350–0352 and 0346 (tester, verbatim)
 
