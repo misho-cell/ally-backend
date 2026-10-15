@@ -1,0 +1,86 @@
+From 6c1e17d77a7a8a6dee882d8d827a7d796c10076d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 22:12:02 +0000
+Subject: [PATCH] Speed under load: the searches' pool to 24; a search waits 30
+ s for its turn
+
+The tester's 5th 200-seat run (box 60692): the short pool had gone to 80,
+but every search runs on the long-query pool, which read 10 / 0 idle / up
+to 629 waiting. 1,009 search_by_tag and country-channel queries gave up at
+exactly 10 s with "timeout exceeded when trying to connect" without reaching
+the database, and three marketing runs told their owner both searches had
+failed.
+
+- The long pool goes from 10 to 24 (LONG_POOL_MAX).
+- A search that finds it full waits up to 30 s instead of 10.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../postgres/__tests__/queryRouting.test.ts   |  4 ++-
+ src/db/postgres/client.ts                     | 27 ++++++++++++++++---
+ 2 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index 2a1aa27..c7c4010 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -82,7 +82,9 @@ describe('which pool answers a query', () => {
+     expect(intakePool.config.max).toBe(10);
+     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
+     expect(shortPool.config.max).toBe(80);
+-    expect(longPool.config.max).toBe(10);
++    // The 5th 200-seat run (box 60692): 629 searches waiting on ten, 1,009 gave up.
++    expect(longPool.config.max).toBe(24);
++    expect(longPool.config.connectionTimeoutMillis).toBe(30_000);
+     expect(backgroundPool.config.max).toBe(2);
+     expect(shortPool).toBeDefined();
+     expect(longPool).toBeDefined();
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index 2def06d..86c13ae 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -98,17 +98,36 @@ const pool = new Pool({
+  *
+  * DELIBERATELY NOT A BIGGER `max`. The searches themselves read gigabytes, so
+  * letting thirty of them run at once moves the queue into the disk and makes
+- * it somebody else's problem. Heavy work stays bounded at ten, exactly as it
+- * is today; what changes is that a 50 ms lookup no longer stands behind it.
++ * it somebody else's problem. Heavy work stayed bounded at ten, exactly as it
++ * was then; what changes is that a 50 ms lookup no longer stands behind it.
+  * If the searches need more room after this, that is a separate decision with
+  * its own measurement.
+  *
+  * The same argument, and nearly the same words, as the background pool below.
+  */
++/**
++ * THE MEASUREMENT THE NOTE ABOVE ASKED FOR — the tester's 5th 200-seat run, 15
++ * October 21:34–21:42Z (box 60692). The short pool had just gone to 80, and the
++ * searches did not get faster: every one of them still came through here. The
++ * `[db slow]` lines of that window read this pool at 10 / 0 idle / up to 629
++ * waiting. 1,009 country-channel and search_by_tag queries ended at exactly
++ * ten seconds with „timeout exceeded when trying to connect" — they never
++ * reached the database, which sat at 8% CPU between runs — and three
++ * marketing runs told their owner both searches had failed.
++ *
++ * Alone, one search_by_tag takes 2.2 s; ten slots pass about four and a half
++ * of them a second, against twelve hundred asked for in two minutes. The pool
++ * goes to 24, not to 80: the searches are the heavy readers the note warns
++ * about, and the next run reads the database's CPU beside it. A search that
++ * finds the pool full waits up to 30 s for its turn instead of 10, since a
++ * search that starts late still answers and one that gives up never does.
++ */
++const LONG_POOL_MAX = 24;
++const LONG_POOL_CONNECT_WAIT_MS = 30_000;
+ const longQueryPool = new Pool({
+   ...BASE_POOL_CONFIG,
+-  max: 10,
+-  connectionTimeoutMillis: 10_000,
++  max: LONG_POOL_MAX,
++  connectionTimeoutMillis: LONG_POOL_CONNECT_WAIT_MS,
+   options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
+ });
+ 
+-- 
+2.43.0
+

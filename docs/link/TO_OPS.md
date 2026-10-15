@@ -2,6 +2,34 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 22:15Z — URGENT 0359: contact enrichment broken in production since 0355 (my fault); hotfix, ship before 0360
+
+- **0359** `patches/afternoon-1250/0359-contact-enrichment-own-table.patch` (sha256 starts b3aa0d88a0a1, already in the repo since 7f2c922). Commit db73207, on top of main 7410652; it applies cleanly on 1038b57 too.
+- **Fault:** I found it in deployment a079aabf's logs. There are 1,390 lines of `UPDATE enrichment_j… >> column "user_id" does not exist`, from 21:27 to 21:55, and it is still live.
+  - `enrichment_jobs` was already the nightly enrichment job's table (migration 010: job_type, total, processed…). 0355's 242 used `CREATE TABLE IF NOT EXISTS`, so it was skipped.
+  - As a result, every queue INSERT and claim fails. **No contact saved since 0355 went live has been scored or enriched.** The ticker also starts four workers every 5 s into the same error, which is why the logs flood.
+- **What changes:**
+  - 243 creates `contact_enrichment_jobs`, and the queue uses only that table.
+  - 242 is recorded as run; its body is now a no-op with the reason.
+  - After a queue error, no worker starts for 60 s.
+- **Side effect on the nightly table:** 0355's startup requeue (`status='running'`, older than 10 min → `'queued'`) touched the old table. Its 17 stale `incremental` rows, 29 Jun to today's 01:00, now read `queued`. Nothing claims them. The only visible effect is the status the nightly job's admin view shows.
+  - Putting them back is a live write, so I am not doing it. It needs Misho's word.
+- **Contacts saved between 0355 going live and this fix** were never queued. Tonight's nightly incremental job should score them. I will check that in the morning.
+- **Verify:** green, 924 suites, 8940 tests.
+- **DONE WHEN:** live, the logs show no `column "user_id"` lines, and `SELECT status, count(*) FROM contact_enrichment_jobs GROUP BY 1` shows `done` rows after a contact save.
+- Note: the 0358 section below says 22:15Z, but it was written at about 21:58Z. The time was my mistake.
+
+### 15 Oct, 22:13Z — 0360: the searches' pool 10 → 24 (the slow tools in run 5)
+
+- **0360** `patches/afternoon-1250/0360-search-pool-24.patch` (sha256 starts 01548bf6c671), commit 6c1e17d, on top of main 1038b57. It is independent of 0359. **Ship 0359 first.**
+- **Why (your 22:00Z note, the 284 slow tools):** 0356's pool 80 never reached the searches. Every search has a timeout above the default, so it runs on the long-query pool, which has 10 connections.
+  - The `[db slow]` lines from 21:34–21:42 read that pool at **10 / 0 idle / up to 629 waiting**.
+  - **1,009** search_by_tag and country-channel queries ended at exactly 10 s with "timeout exceeded when trying to connect". They never reached the database, and those failures were the „ორივე ძებნამ ტექნიკური შეფერხება" lines.
+  - The searches are not slower in the database. They wait in line: one search_by_tag takes 2.2 s alone, so 10 slots pass about 4.5 per second.
+- **What changes:** the long pool goes to 24, and a search waits up to 30 s for a connection instead of 10. 24 rather than more because the searches are the heavy readers. The DB is Aurora with about 20 GB of memory and max_worker_processes 8; CPU was 8% at 22:05Z with no load.
+- **Verify:** green, 923 suites, 8938 tests.
+- **DONE WHEN:** live, and on the next 200 run, slow tools (≥ 9.5 s) fall well below 284, no "timeout exceeded when trying to connect" lines appear, and no search-failed line appears. During that run I will sample the database CPU myself, read-only, through `aurora_replica_status()`.
+
 ### 15 Oct, 22:15Z — 0358: seat creation under 10 lanes (your 21:37Z fault); 0357 waits for the 5th run to finish
 
 - **0358** `patches/afternoon-1250/0358-seat-lock-wait.patch` (sha256 starts d0edbea23d4e), commit 6f00469, on top of main 8faf6fe. It is independent of 0357, so either can go first.
@@ -3079,7 +3107,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 21:37Z — tester's 5th 200 run firing; fault in seat creation under 10 lanes
+Last TO_CODE.md section handled: 15 Oct, 22:10Z — 0358 LIVE at 1038b57
 
 ## OPEN
 
