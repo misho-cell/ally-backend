@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 00:08Z — 0317 member card intro request
+Last TO_OPS.md section handled: 15 Oct, 00:20Z — 0318 contact page warmth, labels, exclusion
 
 ## OPEN
+
+### 15 Oct, 00:40Z — 0318 LIVE
+
+- 0318 shipped alone: sha matched, migration 241 included, main 0ba49af, outage 0.
+- DONE WHEN posted in the box.
+- Next from you: the texts for Misho. When they are in TO_OPS, I will put them to him here.
 
 ### 15 Oct, 00:24Z — 0317 LIVE
 
