@@ -1,0 +1,134 @@
+From a12c5bb2916cc4e761d2dc1359aaddff3dcacde2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 12:47:29 +0000
+Subject: [PATCH] 4126: an admin route queues the registration research for one
+ fictional seat
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester (box 60032): seats made by the admin route never pass through
+sign-up, so the registration research run (D757 §5, ON since 12 Oct) could not
+be tested. POST /admin/test-accounts/:id/registration-research { note } queues
+that same run for one fictional seat, once; a real person's account is refused
+(403) before anything is written, as every seat route refuses.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...eatsRegistrationResearchCanBeFired.test.ts | 37 +++++++++++++++
+ src/api/routes/admin.routes.ts                | 47 +++++++++++++++++++
+ 2 files changed, 84 insertions(+)
+ create mode 100644 src/api/routes/__tests__/aSeatsRegistrationResearchCanBeFired.test.ts
+
+diff --git a/src/api/routes/__tests__/aSeatsRegistrationResearchCanBeFired.test.ts b/src/api/routes/__tests__/aSeatsRegistrationResearchCanBeFired.test.ts
+new file mode 100644
+index 0000000..30c11e7
+--- /dev/null
++++ b/src/api/routes/__tests__/aSeatsRegistrationResearchCanBeFired.test.ts
+@@ -0,0 +1,37 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 4126 (the tester's box 60032): a seat made by the admin route never passes
++ * through sign-up, so the registration research run could not be tested on a
++ * fictional seat. This route queues that same run for one fictional seat.
++ */
++const routes = readFileSync(join(__dirname, '..', 'admin.routes.ts'), 'utf8');
++const start = routes.indexOf("'/test-accounts/:id/registration-research'");
++const handler = routes.slice(start, routes.indexOf('adminRouter.', start + 1));
++
++describe('the registration research for a fictional seat', () => {
++  it('exists behind the admin router', () => {
++    expect(start).toBeGreaterThan(0);
++    expect(start).toBeGreaterThan(routes.indexOf('adminRouter.use('));
++  });
++
++  it('refuses a real person before queueing anything', () => {
++    const guard = handler.indexOf('await isOperableTestSeat(target, isFictionalTestAccount)');
++    const queue = handler.indexOf('await queueRegistrationResearch(Number(target))');
++    expect(guard).toBeGreaterThan(0);
++    expect(queue).toBeGreaterThan(guard);
++    expect(handler).toContain('res.status(403)');
++  });
++
++  it('uses the queue sign-up uses, and says why in the log', () => {
++    expect(handler).toContain("body('note').isString().trim().isLength({ min: 3, max: 500 })");
++    expect(handler).toContain('[test-research] admin ${admin} queued the registration research');
++  });
++
++  it('answers a failure plainly', () => {
++    expect(handler).toContain(
++      "res.status(500).json({ success: false, error: 'სერვერის შეცდომა' })",
++    );
++  });
++});
+diff --git a/src/api/routes/admin.routes.ts b/src/api/routes/admin.routes.ts
+index e8e5c3b..aa3a684 100644
+--- a/src/api/routes/admin.routes.ts
++++ b/src/api/routes/admin.routes.ts
+@@ -332,6 +332,7 @@ import {
+   snoozeSeatEveningCard,
+ } from '../../services/adminEveningCard.service';
+ import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
++import { queueRegistrationResearch } from '../../services/registrationResearch/registrationResearch.service';
+ 
+ /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
+ const MAX_SEAT_USER_ID = 2_147_483_647;
+@@ -3824,6 +3825,52 @@ adminRouter.post(
+   },
+ );
+ 
++/**
++ * 4126 (the tester's box 60032): a seat made here never passes through
++ * sign-up, so the registration research run (D757 §5) could not be tested on a
++ * fictional seat. This queues that same run for one fictional seat, once — the
++ * same queue sign-up writes to, so nothing about the run itself differs.
++ *   POST /admin/test-accounts/:id/registration-research { note }
++ *   200 { user_id, queued } — queued false when this seat was queued before.
++ * A real person's account is refused (403), as every seat route here refuses.
++ */
++adminRouter.post(
++  '/test-accounts/:id/registration-research',
++  param('id').isString().trim().notEmpty(),
++  body('note').isString().trim().isLength({ min: 3, max: 500 }),
++  async (req: Request, res: Response) => {
++    if (!validationResult(req).isEmpty()) {
++      res.status(400).json({ success: false, error: 'note must say why (3-500 chars).' });
++      return;
++    }
++    const target = String(req.params.id).trim();
++    const admin = (req as AuthenticatedRequest).user.userId;
++    if (!(await isOperableTestSeat(target, isFictionalTestAccount))) {
++      // eslint-disable-next-line no-console
++      console.warn(`[test-research] admin ${admin} asked for ${target} — REFUSED, not fictional`);
++      res.status(403).json({
++        success: false,
++        error: new NotATestAccountError(target).message,
++        available: fictionalTestAccountIds(),
++      });
++      return;
++    }
++    try {
++      const queued = await queueRegistrationResearch(Number(target));
++      // eslint-disable-next-line no-console
++      console.log(
++        `[test-research] admin ${admin} queued the registration research for seat ${target}: ` +
++          `${queued} — ${String((req.body as { note: string }).note).trim()}`,
++      );
++      res.status(200).json({ success: true, data: { user_id: target, queued } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[test-research]', error);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ /**
+  * §57 — TOP UP A REAL PERSON'S WALLET. Registered before it was written, as
+  * D44 requires, and authorised by Misho on 25 September: „ნინიას საფულე
+-- 
+2.43.0
+

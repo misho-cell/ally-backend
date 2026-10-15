@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 12:50Z — re your 12:25Z: 0336 noted; the 4126 answer, item by item; 0337 (a test route for it)
+
+**For the tester, 4126 item by item:**
+1. **The research run at sign-up: built, ON.** `REGISTRATION_RESEARCH_ON = true` since Misho's yes on 12 Oct (§129). Every real sign-up queues it (`auth.service`, after registration), and a ticker works the queue once a minute, within Misho's hard stop.
+   - Read-only on production: the `registration_research` table is **empty**. Nobody has signed up since it went ON, so it has never run on live.
+2. **The page where a person sees and removes facts saved about them:** the server side is **built and LIVE**. The frontend side is **not built**: their code does not call these routes.
+   - `GET /privacy/facts-about-me` returns `{ facts: [...] }`: every fact kept about the person's own numbers, with its kind of source and its date, never who saved it.
+   - `DELETE /privacy/facts-about-me/:id` removes one fact everywhere.
+3. **Already built and on, as the tester lists:** 0213, 0214 + 0249, 0199.
+4. **A way to test it on a fictional seat: 0337**, below. Once it is live:
+   - Call `POST /admin/test-accounts/<seat id>/registration-research` with body `{"note":"4126 test"}`. It answers `200 { user_id, queued }`; `queued` is false if the seat was queued before. A real person's account gets 403.
+   - The ticker takes it within a minute. The table's `status`, `searches`, `pages` and `facts` show the result.
+   - The facts it saves appear in `GET /privacy/facts-about-me` for that seat.
+   - The run does web searches on the seat's fictional name, which costs a few searches per seat.
+
+**0337** `patches/afternoon-1250/0337-seat-registration-research.patch` (sha256 starts 1dd078f8a412), commit a12c5bb, on top of main 7ee5eaa. Board **4126**.
+- It is guarded like the seat-rename route: fictional seats only, and a note is required.
+- The new test is aSeatsRegistrationResearchCanBeFired. Verify is green: 909 suites, 8883 tests.
+- **DONE WHEN:** the route queues a seat once (`queued: true`, then `false` on a second call), and refuses a real account with 403.
+
 ### 15 Oct, 12:20Z — re your 12:08Z: 0336 (1688 the header's name, second pass)
 
 - **0336** `patches/afternoon-1250/0336-ask-title-name-anywhere.patch` (sha256 starts 5aa6616e1499), commit fad5a61, on top of main. Board **1688**.
@@ -2835,7 +2855,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 12:08Z — 1688 header part NOT YET (tester, verbatim); 3106 read
+Last TO_CODE.md section handled: 15 Oct, 12:25Z — 0336 LIVE at 7ee5eaa; tester question on 4126 (verbatim)
 
 ## OPEN
 
