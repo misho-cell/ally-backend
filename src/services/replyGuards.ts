@@ -543,11 +543,20 @@ export function asksWhoTheyHave(ownerLine: string): boolean {
   return ASKS_WHO_THEY_HAVE_RE.test(ownerLine.trim());
 }
 
+/**
+ * Lika №181 (her phone, 15 Oct, thread 52116): the note opened „(სისტემური
+ * შენიშვნა:" and arrived as a user line, and the run answered „ეს ნაწილი
+ * სისტემური ფორმით არ მოსულა… ვერ ავყვები" — it searched nothing and asked her
+ * what she needed; 2 of 14 such notes in a week. It now opens like every other
+ * server turn, with the engine's event mark (RUN_EVENT_PREFIX in chat.service,
+ * spelled here because that module imports this one). Misho's yes on the exact
+ * change, 15 Oct: only the opening and the closing bracket; the words are the same.
+ */
 export const SEARCH_FIRST_NUDGE =
-  '(სისტემური შენიშვნა: ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
+  '[მოვლენა] ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
   'მფლობელის ქსელზე წვდომა გაქვს ხელსაწყოებით — ახლავე მოძებნე (search_by_tag ორივე დამწერლობით, ' +
   'search_by_insight, search_second_degree) და პასუხი ნაპოვნიდან დაწერე. არ თქვა, რომ ქსელს ვერ ხედავ, ' +
-  'და მფლობელს სახელები არ სთხოვო.)';
+  'და მფლობელს სახელები არ სთხოვო.';
 
 /**
  * #961 (the tester's 1137/1138, 37322): „გეგმის დასამტკიცებლად მითხარი: კი?" —
