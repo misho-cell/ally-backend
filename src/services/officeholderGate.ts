@@ -59,8 +59,36 @@ export function recordRunEvidence(runId: string | undefined, text: string): void
   evidenceByRun.set(runId, list);
 }
 
+/**
+ * Misho, 15 Oct (the real TBC case): a person's name and role on LinkedIn count
+ * as a source — for a role in a company. Kept apart from the rest, because a
+ * PUBLIC office (minister, mayor, ambassador …) is still checked only against
+ * the pages the run read.
+ */
+const linkedinByRun = new Map<string, string[]>();
+
+/** Add the LinkedIn results a web search returned. */
+export function recordRunLinkedinEvidence(runId: string | undefined, text: string): void {
+  if (!runId || !text) return;
+  const list = linkedinByRun.get(runId) ?? [];
+  const held = list.reduce((sum, t) => sum + t.length, 0);
+  if (held >= MAX_EVIDENCE_CHARS_PER_RUN) return;
+  list.push(text.toLowerCase());
+  linkedinByRun.set(runId, list);
+}
+
 export function clearRunEvidence(runId: string | undefined): void {
-  if (runId) evidenceByRun.delete(runId);
+  if (!runId) return;
+  evidenceByRun.delete(runId);
+  linkedinByRun.delete(runId);
+}
+
+/** A public office: never named from LinkedIn alone. */
+const PUBLIC_OFFICE_RE =
+  /((^|[^ა-ჰ])(მინისტრ|გუბერნატორ|დეპუტატ|ელჩ|მერი|მერია|მერის|მერმა|მერს|პრემიერ|პრეზიდენტ|რექტორ|გამგებელ|ომბუდსმენ|პროკურორ|მოსამართლ)|\b(minister|mayor|governor|ambassador|premier|president|rector|ombudsman|prosecutor|judge|senator|congressman|parliament)\b|министр|мэр|губернатор|посол|президент|\b(ministro|ministra|alcalde|alcaldesa|gobernador|gobernadora|embajador|embajadora|presidente|presidenta)\b)/iu;
+
+function namesAPublicOffice(sentence: string): boolean {
+  return PUBLIC_OFFICE_RE.test(sentence);
 }
 
 // Office words. Georgian is caseless and declines, so stems are matched at a
@@ -491,6 +519,7 @@ export async function applyOfficeholderGate(
   userId?: string,
 ): Promise<OfficeholderGateOutcome> {
   const evidence = (runId ? (evidenceByRun.get(runId) ?? []) : []).join('\n');
+  const linkedin = (runId ? (linkedinByRun.get(runId) ?? []) : []).join('\n');
   const refused: string[] = [];
   const sentences = reply.split(SENTENCE_SPLIT_RE);
   let out = reply;
@@ -531,6 +560,7 @@ export async function applyOfficeholderGate(
     if (!inView || FORMER_RE.test(sentence)) continue;
     for (const name of nameCandidates(sentence)) {
       if (namesAPlace(sentence, name) || nameInEvidence(name, evidence)) continue;
+      if (!namesAPublicOffice(sentence) && nameInEvidence(name, linkedin)) continue;
       let inPhonebook = known.get(name);
       if (inPhonebook === undefined) {
         if (Date.now() - startedAt > GATE_BUDGET_MS) {

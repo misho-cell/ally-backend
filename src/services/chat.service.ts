@@ -139,7 +139,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
 import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
 import { searchContactsByCountry } from './tools/searchContactsByCountry';
 import { webSearch, fetchPage } from './tools/webSearch';
-import { profileEvidence, withPublicProfile } from './tools/publicProfileRead';
+import { linkedinEvidence, profileEvidence, withPublicProfile } from './tools/publicProfileRead';
 import { searchVerdictOf } from './searchVerdict';
 import { questionForButtons } from './buttonsCarryTheQuestion';
 import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
@@ -369,7 +369,12 @@ import {
 } from './block.service';
 import { normalizePhone } from './phone';
 import { moderateReply } from './moderation.service';
-import { applyOfficeholderGate, clearRunEvidence, recordRunEvidence } from './officeholderGate';
+import {
+  applyOfficeholderGate,
+  clearRunEvidence,
+  recordRunEvidence,
+  recordRunLinkedinEvidence,
+} from './officeholderGate';
 import { stripProcessOpener } from './replyOpener';
 import { sanitizeToolResult } from './sanitization.service';
 import { dietToolResult } from './toolResultDiet';
@@ -11513,7 +11518,10 @@ async function runOneToolBlock(
   // an officeholder's name; a search snippet may not (stale, or a former
   // holder) — so everything but web_search becomes the run's evidence.
   if (block.name !== 'web_search') recordRunEvidence(runId, JSON.stringify(raw));
-  else recordRunEvidence(runId, profileEvidence(raw) ?? '');
+  else {
+    recordRunEvidence(runId, profileEvidence(raw) ?? '');
+    recordRunLinkedinEvidence(runId, linkedinEvidence(raw));
+  }
   // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
   // be shown, with the page it came from. Registered here, at the one place a
   // web result arrives, so no later surface has to decide what is public.

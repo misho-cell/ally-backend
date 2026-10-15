@@ -100,6 +100,6 @@ describe("the page read is the run's evidence (4720, the EN seat)", () => {
 
   it('is recorded from the web_search turn', () => {
     const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
-    expect(chat).toContain("else recordRunEvidence(runId, profileEvidence(raw) ?? '');");
+    expect(chat).toContain("recordRunEvidence(runId, profileEvidence(raw) ?? '');");
   });
 });
