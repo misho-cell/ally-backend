@@ -15,6 +15,8 @@ import {
   countUpdatesForBadge,
   peekDueUpdates,
   pastWeeklySummaries,
+  latestUpdates,
+  LatestUpdate,
   UpdateCounts,
   snoozeUpdate,
   markUpdateSeen,
@@ -197,6 +199,74 @@ updatesRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /updates/count]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+interface LatestRowView {
+  readonly update_ref: string;
+  readonly kind: string;
+  readonly task_id: number | null;
+  /** The case's conversation — the row opens it; null for an update with no goal. */
+  readonly thread_id: number | null;
+  readonly title: string;
+  readonly detail: string;
+  /** One short line: the case and what happened. */
+  readonly line: string;
+  /** When it came out (ISO). */
+  readonly released_at: string;
+}
+
+/** The newest updates as the home card's rows, in the reader's language. */
+async function latestRows(
+  userId: string,
+  chosen: RunLanguage | null,
+): Promise<readonly LatestRowView[]> {
+  const [rows, language] = await Promise.all([
+    latestUpdates(userId),
+    chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
+  ]);
+  const titles = await goalTitlesFor(rows.map((u) => u.task_id));
+  return rows.map((u: LatestUpdate) => {
+    const heading = cardHeading(
+      u.kind,
+      normalisedPayload(u.kind, u.payload),
+      u.task_id === null ? null : (titles.get(u.task_id) ?? null),
+      language,
+    );
+    return {
+      update_ref: toUpdateRef(u.id),
+      kind: u.kind,
+      task_id: u.task_id ?? null,
+      thread_id: u.thread_id ?? null,
+      title: heading.title,
+      detail: heading.detail,
+      line: storyLine(heading),
+      released_at: new Date(u.released_at).toISOString(),
+    };
+  });
+}
+
+/**
+ * #5121 (Giorgi, 15 Oct): the home card „ბოლო სიახლეები" — the three newest
+ * updates, newest first, one line each, each opening its case.
+ *   GET /updates/latest → { updates: [LatestRowView] }
+ * Read-only: nothing is released or marked seen.
+ */
+updatesRouter.get(
+  '/latest',
+  async (
+    req: Request,
+    res: Response<ApiResponse<{ readonly updates: readonly LatestRowView[] }>>,
+  ): Promise<void> => {
+    const userId = String((req as AuthenticatedRequest).user.userId);
+    try {
+      const updates = await latestRows(userId, asRunLanguage(req.get('X-Locale')));
+      res.status(200).json({ success: true, data: { updates } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /updates/latest]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },

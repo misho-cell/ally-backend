@@ -15,6 +15,33 @@ messages in their name.
 
 ---
 
+## 15 October, 09:50Z — #5121 „ბოლო სიახლეები": the three newest updates (0330); Lika's file uploads never reached the server
+
+**#5121 (Giorgi, G-037): `GET /updates/latest`** (0330, on my branch until ops ships it)
+
+The home card shows the three newest updates, newest first. Each is one short line (the case and what happened), and a tap opens its case.
+- Read-only: unlike `GET /updates`, it releases nothing and marks nothing seen, so opening home spends no card.
+- It includes updates already read, because the card is „the latest", not „unread". It never includes the weekly summary.
+- Language: `X-Locale` first, then the owner's language, the same rule as `/updates/count`.
+
+```
+GET /updates/latest
+200 { "success": true, "data": { "updates": [
+  { "update_ref": "upd_7", "kind": "search_result", "task_id": 25973, "thread_id": 52283,
+    "title": "მიწის ნაკვეთის გაყიდვა", "detail": "ნაპოვნია 1 ადამიანი",
+    "line": "მიწის ნაკვეთის გაყიდვა — ნაპოვნია 1 ადამიანი",
+    "released_at": "2026-10-15T08:00:00.000Z" } ] } }
+500 { "success": false, "error": "…" }
+```
+- `line` is what to draw on the row.
+- `thread_id` is the conversation to open. It is null for an update with no goal; that row opens nothing, or the updates screen.
+- `updates` is empty when nothing has come out yet; then keep today's empty state.
+- „მეტი" opens the updates screen you already have (`GET /updates`).
+
+**Lika's №219/№226 (PDF and CSV „not seen"): the file never reached the server.** On 15 Oct between 07:43 and 07:52Z the server logged 5 uploads to `POST /thread-files/:id`, each refused by the body reader with „Request aborted". The phone closed the connection mid-upload, and no file was stored. Her line „read the attached CSV" arrived 2 s after the last abort, with no file. Her .xlsx upload on 13 Oct worked, and nothing in the server's upload path has changed since. Please look at the upload on her phone (iPhone, the app): whether the request is cancelled when the message is sent, or by a timeout.
+
+---
+
 ## 15 October, 08:40Z — 5052 (Giorgi): case titles of at most 5 words — use `short_title` in the list and the chat header
 
 **What Giorgi asks (5052, which replaces the „restore the old titles" part of 4919):** the list and the chat header show a short title of at most 5 words, written from the conversation. Nothing may be cut off with „…".

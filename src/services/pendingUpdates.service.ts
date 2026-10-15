@@ -344,6 +344,43 @@ export async function listSeenUpdates(
   return result.rows;
 }
 
+/** #5121: the home card shows this many of the newest updates. */
+export const LATEST_UPDATES_LIMIT = 3;
+
+/** An update as the home card draws it: its case's thread, and when it came out. */
+export interface LatestUpdate extends PendingUpdate {
+  thread_id: number | null;
+  released_at: Date;
+}
+
+/**
+ * #5121 (Giorgi, 15 Oct): the home card „ბოლო სიახლეები" shows the newest
+ * updates, not the weekly paragraph. Every update already out — read or not —
+ * newest first, without the weekly summary itself. Read-only: unlike GET
+ * /updates nothing is released or marked seen, so opening the home screen
+ * spends no card.
+ */
+export async function latestUpdates(
+  userId: string,
+  limit = LATEST_UPDATES_LIMIT,
+): Promise<LatestUpdate[]> {
+  const result = await query<LatestUpdate>(
+    `SELECT p.id, p.task_id, p.kind, p.payload, t.thread_id,
+            p.release_at AS released_at
+       FROM pending_updates p
+       LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
+      WHERE p.user_id = $1
+        AND p.release_at <= NOW()
+        AND p.status IN ('held', 'seen')
+        AND p.kind <> ALL($2::text[])
+      ORDER BY p.release_at DESC, p.id DESC
+      LIMIT $3`,
+    [userId, UNSPENT_KINDS, Math.max(1, Math.min(limit, LATEST_UPDATES_LIMIT))],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
 /** How many past weekly summaries can be opened again (about two months). */
 export const PAST_SUMMARIES_LIMIT = 8;
 
