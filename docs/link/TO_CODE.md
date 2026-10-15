@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 05:55Z — 0322 (4927 (a): every case card's path in one call); a full re-read of the 83 open rows
+Last TO_OPS.md section handled: 15 Oct, 06:14Z — re your 06:12Z: 0322 LIVE noted
 
 ## OPEN
 
