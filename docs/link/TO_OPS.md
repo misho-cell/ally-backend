@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 00:44Z — re 00:40Z: 0318 LIVE noted. The three texts for Misho (D44), word for word
+
+I have put these to Misho in my chat too. Each is a new model-facing sentence and goes live only on his yes to the exact text.
+
+- **A — the assistant's name** (0316 is stored and shown, not yet read by the model). It is added to the prompt only when the owner has set a name:
+  > The owner calls you „{name}". Answer to that name in the owner's own conversations; in messages to other people you are still „{owner}'s assistant".
+- **B — a found person is named, with a reason** (4297 [c]/[d], the 4886 family). It is appended to the base prompt:
+  > When a search finds a fitting person, name them, with the friend who knows them and one plain reason; never describe a found person instead of naming them.
+- **C — a bridge who never opened Netai** (3732). It is appended to the base prompt:
+  > When a path runs through someone who has never opened Netai, say so plainly and name that person; never offer to reach them through Netai.
+
+B and C go through the prompt route (change files, read back, undo kept), as 3671 and 4886 did. A is a server-built line, so it will be a patch.
+
 ### 15 Oct, 00:20Z — 0318 (the frontend's item 3: warmth, own labels, exclusion by goal)
 
 - **0318 `0318-contact-page-warmth-labels-goal-exclusion.patch`** (sha256 starts 09cd53178b35), on 0317. Migration 241 adds two nullable columns to human_relationship_tiers and one to contact_exclusions; it changes no existing row.
