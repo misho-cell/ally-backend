@@ -1,5 +1,5 @@
 import { batchesWithoutSharedPhones } from '../importBatches';
-import { enqueueEnrichment, enrichmentQueueSize } from '../enrichmentQueue';
+import { ENRICHMENT_CONCURRENCY, enqueueEnrichment, enrichmentQueueSize } from '../enrichmentQueue';
 
 /** The tester's 47594: 0.7 cards a second, one after another, and a deploy cut the import. */
 describe('cards are saved a few at a time (47594)', () => {
@@ -36,12 +36,13 @@ describe('cards are saved a few at a time (47594)', () => {
   });
 });
 
-describe('enrichment runs two at a time (47594)', () => {
-  it('a third task waits until one of the first two ends, and a failure stops nothing', async () => {
+describe('enrichment runs a few at a time (47594; four since the launch load, F10)', () => {
+  it('the task past the limit waits until one ends, and a failure stops nothing', async () => {
     const releases: Array<() => void> = [];
     const started: number[] = [];
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    for (let i = 0; i < 3; i++) {
+    const total = ENRICHMENT_CONCURRENCY + 1;
+    for (let i = 0; i < total; i++) {
       enqueueEnrichment(
         () =>
           new Promise<void>((resolve, reject) => {
@@ -50,13 +51,12 @@ describe('enrichment runs two at a time (47594)', () => {
           }),
       );
     }
-    expect(started).toEqual([0, 1]);
-    expect(enrichmentQueueSize()).toEqual({ waiting: 1, running: 2 });
+    expect(started).toHaveLength(ENRICHMENT_CONCURRENCY);
+    expect(enrichmentQueueSize()).toEqual({ waiting: 1, running: ENRICHMENT_CONCURRENCY });
     releases[0]();
     await new Promise((r) => setImmediate(r));
-    expect(started).toEqual([0, 1, 2]);
-    releases[1]();
-    releases[2]();
+    expect(started).toHaveLength(total);
+    for (let i = 1; i < total; i++) releases[i]();
     await new Promise((r) => setImmediate(r));
     expect(enrichmentQueueSize()).toEqual({ waiting: 0, running: 0 });
   });

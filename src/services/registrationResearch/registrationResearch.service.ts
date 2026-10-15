@@ -26,7 +26,15 @@ const SYSTEM_SAVER_ID = '0';
 /** The Axel research's own source: facts about me, the republish passes and the reads all know it. */
 const RESEARCH_SOURCE = 'public_research';
 const QUERY_TIMEOUT_MS = 10_000;
-const TICK_INTERVAL_MS = 60_000;
+const TICK_INTERVAL_MS = 30_000;
+/**
+ * The 21 Oct launch (the tester's 60292 and 60358, F9; Misho's yes to Q6, 15
+ * Oct): one user a minute meant 200 sign-ups waited 200 minutes for their
+ * research. Up to this many users are researched at once, each worker taking
+ * the next queued user as soon as it finishes the last.
+ */
+export const RESEARCH_WORKERS = 5;
+let workersRunning = 0;
 const MAX_ERROR_CHARS = 300;
 
 /** Queue the new user once; a second call for the same user does nothing. */
@@ -211,14 +219,37 @@ export async function researchNextUser(
   return true;
 }
 
-/** The ticker: one user a minute, and only while the run is on. */
+/** One worker: researches queued users one after another until none is left. */
+async function researchUntilEmpty(research: () => Promise<boolean>): Promise<void> {
+  workersRunning += 1;
+  try {
+    while (await research()) {
+      // the next queued user, straight away
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[registration-research] worker stopped:', (err as Error).message);
+  } finally {
+    workersRunning -= 1;
+  }
+}
+
+/** Starts workers up to the limit; each one ends when the queue is empty. */
+export function fillResearchWorkers(
+  research: () => Promise<boolean> = researchNextUser,
+  workers: number = RESEARCH_WORKERS,
+): number {
+  let started = 0;
+  while (workersRunning < workers) {
+    void researchUntilEmpty(research);
+    started += 1;
+  }
+  return started;
+}
+
+/** The ticker: tops the workers up, and only while the run is on. */
 export function startRegistrationResearch(on: boolean = REGISTRATION_RESEARCH_ON): boolean {
   if (!on) return false;
-  setInterval(() => {
-    void researchNextUser().catch((err: unknown) =>
-      // eslint-disable-next-line no-console
-      console.error('[registration-research] tick failed:', (err as Error).message),
-    );
-  }, TICK_INTERVAL_MS).unref();
+  setInterval(() => fillResearchWorkers(), TICK_INTERVAL_MS).unref();
   return true;
 }
