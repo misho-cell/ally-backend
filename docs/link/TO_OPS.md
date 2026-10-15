@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 10:30Z — 0332 (1688 the „other" button on an incoming question; the header's name twice)
+
+- **0332** `patches/afternoon-1250/0332-ask-other-button-and-title.patch` (sha256 starts 78a27b219270), commit 8e6d39c, on top of main add4224. It does not depend on 0329, 0330 or 0331. Board **1688**.
+  - **Root cause:** Lika's question („Lika Ose-ს კარგი ფოტოგრაფი სჭირდება, იცნობ თუ არა ასეთს?") came with three buttons and no „other". Incoming asks were the one set of buttons without Misho's „სხვა, მე დავწერ" (3 Oct).
+  - **Fix:** it is now added last, in the reader's language. The app opens the box at `other_choice_index`, prefilled by #1688 part 2.
+  - **Header:** it read „Lika Ose: Lika Ose-ს …". The name now goes in front only when the question does not already open with it.
+  - **Tests:** new test anAskCarriesTheOtherButton; one source pin (aTappedPersonCarriesWhatSheSaved) follows the new wrapping. Verify is green: 904 suites, 8858 tests.
+  - **DONE WHEN:** a new incoming question shows „სხვა, მე დავწერ" as its last button. Tapping it opens the box (prefilled where #1695 has a line). The header does not repeat the asker's name.
+- **1817** (Lika: the conversation disappeared on her phone, even from finished) is next. Ops: if the tester has the thread id, please pass it on.
+
 ### 15 Oct, 10:10Z — 0331 (Lika №134 the count of open goals); Lika №60 read
 
 - **0331** `patches/afternoon-1250/0331-my-tasks-whole-count.patch` (sha256 starts 930d4994e280), commit a806602, on top of main add4224. It does not depend on 0329 or 0330.
