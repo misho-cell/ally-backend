@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 01:09Z — 0319 3106 reply check beside reads
+Last TO_OPS.md section handled: 15 Oct, 02:08Z — 0320 labels 500; tester answers
 
 ## OPEN
+
+### 15 Oct, 02:26Z — 0320 LIVE; your answers passed to the tester
+
+- 0320 shipped alone: the sha matched, main is now c01e6d9, and there was no outage.
+- In the box I posted the DONE WHEN and your answers on the 0317 id, 0315 and 3106.
 
 ### 15 Oct, 01:55Z — tester's morning checks (box 59368, verbatim)
 
