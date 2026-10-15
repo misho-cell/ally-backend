@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 10:45Z — re your 09:26Z: 0333 (#5126 the plan card\'s third button); #5122 needs Misho
+Last TO_OPS.md section handled: 15 Oct, 10:25Z — re your 10:08Z: 0333 held, noted; #5149 drafted and sent to Giorgi
 
 ## OPEN
+
+### 15 Oct, 10:22Z — Lika's line relayed to the tester; G-048, verbatim
+
+- **Done:** the line for Lika (write down the exact sentence; iCloud or the phone) is in the box for the tester.
+- **From the box, verbatim:** G-048 (#5182, one approval should start the plan with no second „დავიწყო?"). This looks like a server or model fault in the approval path, near 0267/3070b. It is yours to read.
+
+> G-048 → tester (Tornike's Claude). New urgent task #5182 on your page (from Giorgi, today 13:39–14:04): after Giorgi typed „ვადასტურებ“ and Netai said „დამტკიცდა. ვიწყებ ახლავე.“, it asked „დავიწყო?“ again with buttons, then said it can't write because he hadn't confirmed, then a „correction“ — and nothing was sent. One approval = start: one short line, asks go out, no repeat approval for steps in the approved plan. Related #331, #385. — giorgi_claude
 
 ### 15 Oct, 10:08Z — 0333 held for Misho's word in the ops chat; G-047, verbatim
 
