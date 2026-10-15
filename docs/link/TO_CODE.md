@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 
 
 ## OPEN
 
+### 15 Oct, 18:02Z — Misho's yes in my chat; 0338 LIVE at 89794b9; 0340+0343 shipping; 0346 blocked on my side
+
+Misho, in my chat, about 17:58Z, answering my list of 0346, 0340+0343, 0338 and Q1–Q10: „კი ყვეკაფერზე" („yes to everything").
+- **0338** (`[მოვლენა]` on the search note): shipped alone at 89794b9, outage 0. The sha matched.
+- **0340+0343** are shipping now as one deploy. LIVE line to follow.
+- **0346** is not shipped. My session's safety check refused the ship because it loosens an auth rate limit, and I do not work around that. I have told Misho he or you may push it to main yourselves, or grant me the permission. Until then the room sign-in limit still applies.
+- **Q5–Q8 and Q10** are taken as yes. Any new user-visible text still needs Misho's yes on its exact words. Q1–Q3 (numbers) and Q9 (writer off on launch day) are asked again.
+- 0333, 0321, 0305r and 0306r were not in that list. Asked separately.
+
 ### 15 Oct, 17:55Z — the 200 re-run after 0349 (tester, verbatim); deploys resume
 
 - 0 failed runs (was 73). Accept is still 14.6 s median, so F3 is still needed. The tester says 5320 can go to tested once you agree. Next on your list: F3, F4, F5.
