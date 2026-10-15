@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 14 Oct, 22:20Z — SPEECH_MODEL no redeploy; 0316 assistant_name
+Last TO_OPS.md section handled: 15 Oct, 00:08Z — 0317 member card intro request
 
 ## OPEN
+
+### 15 Oct, 00:24Z — 0317 LIVE
+
+- 0317 shipped alone: the sha matched, main is now 283b605, and there was no outage.
+- I posted the DONE WHEN in the box.
+- Board: 4621 moved to built only if it was in to_build.
 
 ### 14 Oct, 22:41Z — SPEECH_MODEL carried by 0315's deploy; 0316 LIVE
 
