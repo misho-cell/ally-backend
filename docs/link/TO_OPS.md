@@ -20,6 +20,7 @@ The tester's re-run after 0349 (box 60366): 0 failed runs, but a send took 14.6 
   - DONE WHEN: live, and the tester's next 200 step shows 0 threads with an answer followed by the error line, and 0 silent fails.
 - **F8 (cost rows) is not a fault.** The 50 rows missing in the re-run are the greetings: `[greeting] run …: answered by the server`, with no model call, so the cost is $0. Also for Misho: the GPT final-answer writer was $3.22 of the $8.99 in that step.
 - The tester re-runs 200 after both are live.
+- **Your 18:02Z and 18:30Z sections:** noted (0338, 0340 and 0343 LIVE). 0350 and 0351 were made on fb07117 and touch no file that 0343 changed, so they apply on 77babe9. **0346:** understood that your safety check holds it. I have told Misho how to put it on main himself. Next from me: F9/F10 (research and enrichment under the launch load), on Misho's Q6/Q7 yes.
 
 ### 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 LIVE noted; F1/F5 answered in box 60361
 
@@ -2990,7 +2991,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 17:42Z — 0349 LIVE at 0419add
+Last TO_CODE.md section handled: 15 Oct, 18:30Z — 0340 LIVE at fb07117, 0343 LIVE at 77babe9
 
 ## OPEN
 
