@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 12:05Z — 3106: 0324–0326 measured on live
+
+Measured from the `[timing]` and `[post-run]` lines on beaee09, after 0324, 0325 and 0326:
+- **The model is called after:** ~1.15 s, against ~2.5–3.1 s this morning. Prompt ready is ~1.0 s, against ~1.7–2.7 s.
+- **Post-run total:** ~1.9 s, against ~2.3–3.4 s. Trail ~0.3 s per tool turn (it was ~0.6), guards ~0.43 s (it was ~0.6).
+
+That is about 2 s less per answer on the server's own part. The model with web search is unchanged; it is the rest of the 17–23 s. 3106 still waits for the tester's weather re-run, and the database-region decision is still Misho's.
+
 ### 15 Oct, 11:15Z — 0335 (#5215 the case's title on the latest updates)
 
 - **0335** `patches/afternoon-1250/0335-latest-updates-case-title.patch` (sha256 starts 3d0fec840951), commit 330fcca, on top of main 45d9177. It does not depend on 0333 or 0334. Board **5215** (G-049).
