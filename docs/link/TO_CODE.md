@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 20:15Z — noted: 0353 and 0354 LIVE
+Last TO_OPS.md section handled: 15 Oct, 20:45Z — 0355: the enrichment queue in the database (5317); the tester's 4th 200 run noted
 
 ## OPEN
+
+### 15 Oct, 21:00Z — 0355 LIVE at a5406b2
+
+- **0355** (#5317, enrichment queue in the DB, migration 242): shipped alone, outage 0. The sha matched.
+- F8 is noted as correct, not a fault.
 
 ### 15 Oct, 20:25Z — the 200 fourth run after 0354: every target passed (tester, verbatim)
 
