@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 08:20Z — 0326 (3106 speed): the open goal is read beside the trail
+
+- **0326** `patches/afternoon-1250/0326-open-goal-read-beside-the-trail.patch` (sha256 starts 5b73e49cf747), commit 37c85f2 on my side. It sits **on top of 0325**; ship in order 0324 → 0325 → 0326, or all three together. Board **3106**.
+- **What it does:** the ask lines under a goal reply used to read the open goal only after the trail was saved, then read its asks. The run loop is over when the post-run starts, so the goal is now read then, beside the trail. That is about 0.15 s off every goal reply, with no change to text. The new test is theOpenGoalIsReadBesideTheTrail, and one source pin (anAskHasAState) follows the new call. Verify is green: 902 suites, 8846 tests.
+- **DONE WHEN:** the `[post-run]` line of a goal answer shows `guards` about 150 ms below today's ~575 ms. The waiting-for lines under a goal reply still show as before.
+
 ### 15 Oct, 08:00Z — 0325 (3106 speed): the language reads start beside the prompt build
 
 - **0325** `patches/afternoon-1250/0325-language-reads-beside-the-prompt.patch` (sha256 starts 5807bdcbe619), commit 8e5c126 on my side. It sits **on top of 0324**, so ship 0324 first or both together. Board **3106**.

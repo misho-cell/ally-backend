@@ -1,0 +1,118 @@
+From 37c85f2a00b206f6501df010cb8c62df36e552b8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 07:56:45 +0000
+Subject: [PATCH] 3106 (speed): the open goal is read beside the trail being
+ saved
+
+The goal's ask lines under a reply read the thread's open goal and then its
+asks, two round trips after the run's trail was saved. The run loop is over
+when the post-run starts, so the goal is read then, beside the trail, and
+handed to withGoalAskLines. A failed read is still handled there as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/anAskHasAState.test.ts |  2 +-
+ .../theOpenGoalIsReadBesideTheTrail.test.ts   | 32 +++++++++++++++++++
+ src/services/chat.service.ts                  | 18 +++++++++--
+ 3 files changed, 48 insertions(+), 4 deletions(-)
+ create mode 100644 src/services/__tests__/theOpenGoalIsReadBesideTheTrail.test.ts
+
+diff --git a/src/services/__tests__/anAskHasAState.test.ts b/src/services/__tests__/anAskHasAState.test.ts
+index 57347e7..35d3122 100644
+--- a/src/services/__tests__/anAskHasAState.test.ts
++++ b/src/services/__tests__/anAskHasAState.test.ts
+@@ -219,7 +219,7 @@ describe('the reply itself (tester 41786)', () => {
+   it('is done on every goal reply, after the reply is otherwise final', () => {
+     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+     expect(chat).toContain(
+-      "if (effectiveFinal.trim() !== '')\n    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);",
++      "if (effectiveFinal.trim() !== '')\n    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId, openTaskAfterLoop);",
+     );
+   });
+ });
+diff --git a/src/services/__tests__/theOpenGoalIsReadBesideTheTrail.test.ts b/src/services/__tests__/theOpenGoalIsReadBesideTheTrail.test.ts
+new file mode 100644
+index 0000000..052c2c2
+--- /dev/null
++++ b/src/services/__tests__/theOpenGoalIsReadBesideTheTrail.test.ts
+@@ -0,0 +1,32 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 3106 (speed). The goal's ask lines read the thread's open goal and then its
++ * asks, two round trips after the trail was saved. The run loop is over by
++ * then, so the goal is read as the post-run starts, beside the trail.
++ */
++describe('the open goal is read beside the trail being saved', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++  const clockAt = chat.indexOf('const postRun = startPostRunClock();');
++  const readAt = chat.indexOf('const openTaskAfterLoop = getOpenTaskByThread(threadId);');
++  const trailAt = chat.indexOf("lap(postRun, 'trail');");
++
++  it('starts the read after the loop and before the trail is saved', () => {
++    expect(clockAt).toBeGreaterThan(-1);
++    expect(readAt).toBeGreaterThan(clockAt);
++    expect(trailAt).toBeGreaterThan(readAt);
++  });
++
++  it('keeps a failed read from counting as unhandled while the trail saves', () => {
++    expect(chat.slice(readAt, trailAt)).toContain('openTaskAfterLoop.catch(() => undefined);');
++  });
++
++  it('gives the ask lines that read instead of reading the goal again', () => {
++    const fn = chat.slice(chat.indexOf('async function withGoalAskLines('));
++    const body = fn.slice(0, fn.indexOf('\n}\n'));
++    expect(body).toContain('const task = await openTask;');
++    expect(body).not.toContain('getOpenTaskByThread');
++    expect(chat).toContain('withGoalAskLines(effectiveFinal, threadId, openTaskAfterLoop)');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index e35f45f..d4683a2 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -4901,9 +4901,13 @@ async function withLaterLine(
+  * being waited on, and never says nobody answered while that is not true. The
+  * prompt asked for both and the reply did neither, so it is done here.
+  */
+-async function withGoalAskLines(reply: string, threadId: number): Promise<string> {
++async function withGoalAskLines(
++  reply: string,
++  threadId: number,
++  openTask: Promise<Task | null>,
++): Promise<string> {
+   try {
+-    const task = await getOpenTaskByThread(threadId);
++    const task = await openTask;
+     if (task === null) return reply;
+     const [asks, held, language] = await Promise.all([
+       getAsksForTask(task.id),
+@@ -16491,6 +16495,14 @@ export async function processChat(
+     approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,
+   );
+   const postRun = startPostRunClock();
++  /**
++   * 3106 (speed): the goal's ask lines need the thread's open goal, and the run
++   * loop is over, so it is read now, beside the trail being saved, instead of
++   * after it. It is awaited inside withGoalAskLines, which handles a failure
++   * as before; the no-op catch only stops it counting as unhandled meanwhile.
++   */
++  const openTaskAfterLoop = getOpenTaskByThread(threadId);
++  openTaskAfterLoop.catch(() => undefined);
+   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
+   const planToNobody = takePlanWritesToNobody(runId);
+   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
+@@ -16623,7 +16635,7 @@ export async function processChat(
+   if (!/[\p{L}\p{N}]/u.test(effectiveFinal)) effectiveFinal = '';
+   // #1684 (tester 41786): the per-person lines and the truth about answers, by the server.
+   if (effectiveFinal.trim() !== '')
+-    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);
++    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId, openTaskAfterLoop);
+   // #1686 (A3): the reader is told, by the server, the day the question comes back.
+   if (thread.type === 'incoming_ask' && (laterTapped || laterDaysOf(userMessage) !== null)) {
+     effectiveFinal = await withLaterLine(effectiveFinal, threadId, language, userMessage);
+-- 
+2.43.0
+
