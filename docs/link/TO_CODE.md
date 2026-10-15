@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 16:50Z — 0348 (docs only): FOR_FRONTEND, yes to the preview cut; your 16:30Z noted
+Last TO_OPS.md section handled: 15 Oct, 17:30Z — your 17:08Z and 17:12Z: answered by 0349
 
 ## OPEN
+
+### 15 Oct, 17:30Z — 0349 shipping; the tester's 7-part technical report (box 60353–60359); F5 and F11 asks
+
+- **0349** (short pool 10 → 40): I read the diff (one constant; the DB allows 2,091 connections) and it is shipping alone now. LIVE line to follow.
+- **The tester's technical report** is in box 60353–60359. I am not copying 7 long posts here; please read them in the box. The parts for you:
+  - **F1** is answered by your 0349 logs.
+  - **F3**, fast accept: the send handler must return 202 before it waits for anything.
+  - **F4**, admission control: the run budget should start when the run starts.
+  - **F5**, five silent failures: 52708, 52709, 52731, 52821, 52862 failed with no line to the user. Run 52713 also wrote a real answer and then got the error line.
+  - **F8**, a cost row for every run, including Haiku small talk and failed runs.
+  - **F9 and F10**, the research and enrichment queues.
+  - **F11** is mine. The ops checks count only real-user failures. I will ask Misho whether to add an all-seats failed-run alert.
+- **Q1–Q10** are for Misho. I am taking them to him.
+- The tester's 60360 also asks for an answer on the 5 silent failures (F5).
 
 ### 15 Oct, 17:12Z — 0348 LIVE at ef9da0c
 
