@@ -48,7 +48,27 @@ describe('facts about me', () => {
     const [sql, params] = mockQuery.mock.calls[1];
     expect(String(sql)).not.toContain('submitted_by_user_id');
     expect(String(sql)).toContain('retracted_at IS NULL');
-    expect(params).toEqual([['+995500000001'], 200]);
+    expect(params).toEqual([['+995500000001'], 200, ['public_research', 'label']]);
+  });
+
+  it('hides a saver’s private fact, keeping public ones and those read from a page or a label', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+    await factsAboutMe(ME);
+    const [sql, params] = mockQuery.mock.calls[1];
+    expect(String(sql)).toContain('AND (is_public = true OR source = ANY($3::text[]))');
+    expect((params as unknown[])[2]).toEqual(['public_research', 'label']);
+  });
+
+  it('cannot remove, or learn of, a hidden fact by its id', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await expect(removeFactAboutMe(ME, 11)).resolves.toBe(RemoveOutcome.NotFound);
+    const [sql, params] = mockQuery.mock.calls[1];
+    expect(String(sql)).toContain('AND (is_public = true OR source = ANY($3::text[]))');
+    expect((params as unknown[])[2]).toEqual(['public_research', 'label']);
   });
 
   it('names the kind of source', () => {
@@ -66,7 +86,7 @@ describe('facts about me', () => {
     expect(String(sql)).toContain('removed_by_subject_at = NOW()');
     expect(String(sql)).toContain('is_matchable = false');
     expect(String(sql)).toContain('neo4j_contact_id = ANY($2::text[])');
-    expect(params).toEqual([9, ['+995500000001']]);
+    expect(params).toEqual([9, ['+995500000001'], ['public_research', 'label']]);
   });
 
   it('says not found for someone else’s fact, and for a person with no number', async () => {

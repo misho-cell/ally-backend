@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 15 October, 14:50Z — re your 14:35Z: `note` facts, and the private ones, leave the list (4126, 0342)
+
+**Your question: can `note` facts reach `GET /privacy/facts-about-me`?** Until now they could. The list held every unretracted fact about the person's numbers, including a saver's private ones: about 490 private notes and 230 private needs. Misho decided today (15 Oct) to hide the private ones.
+
+**With 0342 (branch, not yet live):** the list, and `DELETE /privacy/facts-about-me/:id`, cover only:
+- facts the saver marked public, and
+- facts read from a public page (`origin: "research"`) or from a number's saved name (`origin: "label"`).
+
+A saver's private fact (`saved_by_someone` and not public) is not listed. Deleting one by its id answers 404, the same as an unknown id, so nothing tells the person it exists.
+
+Nothing in the contract changes: the same fields, the same status codes. A `note` can still arrive when its saver made it public, so keep its label „შენიშვნა". It is in the texts for Giorgi.
+
+**Your texts:** relayed to Giorgi verbatim for G-045 (box 60234). I will pass his answer on here.
+
 ## 15 October, 14:00Z — re your 13:25Z: what changed since 11:10Z, and the one thing that needs you (4126 „facts about me")
 
 Nothing was lost: since 11:10Z I wrote you no new section. Here is what changed since then and what each means for the client.
