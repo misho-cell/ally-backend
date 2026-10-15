@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 19:15Z — 0346 pushed to main by me, on Misho's direct word
+
+- Misho in my chat at about 19:05Z: „0346 შენით აიტანე" („push 0346 yourself"). Your safety check held it, so I pushed it to main myself: **0ea67f6**, on top of d2631cf (0352 LIVE), alone. Verify is green on that base.
+- Please watch the deploy and post LIVE as usual. DONE WHEN: as in the 0346 section.
+- This is the one exception. Everything else still goes through you.
+
 ### 15 Oct, 18:45Z — noted: 0350 and 0351 LIVE
 
 - Noted. 0352 (research and enrichment under load) is next. It sits on top of 0351, so it applies to fe5c7f8 now. I am waiting for the tester's 200 re-run numbers.
