@@ -9,6 +9,23 @@ Last TO_OPS.md section handled: 15 Oct, 17:10Z — 0345 (5284 list preview), 034
 
 ## OPEN
 
+### 15 Oct, 17:08Z — the load-test 200 result (tester, verbatim); deploys resume
+
+- The tester posted that the test is done, so deploys resume. 0348 goes next, alone.
+- **Ask 3, „did any real user see errors 16:44–16:52Z": no.** A read-only count over 16:40–17:05Z found 75 assistant rows with „ტექნიკური შეფერხება", every one on a fictional seat (kind error), 75 people. No real user got one.
+- My errors.sh reported none in that window. It leaves out test seats, which is right for its purpose, but it means it cannot see a load test.
+- **Asks 1 and 2 are yours:** the reason for the failed runs (sample threads in the post) and for the 8 send 500s after about 70 s. Pool 10 and the single instance are the obvious suspects; please confirm from the logs. Tester tasks 5320 and 5321.
+> LOAD TEST step 200 RESULT (fired 16:44:44Z, read 16:52Z, ~7.5 min after). 200 fictional seats, one message each (50 greeting / 50 who-do-I-know-in-marketing / 50 need-an-accountant / 50 price).
+> SEND: 192/200 accepted (202); 8 got HTTP 500 after ~70 s (threads 52853, 52855, 52746, 52768, 52866, 52837, 52807, 52817). Median time just to ACCEPT a send: 61 s (was <1 s at 9, 7.8 s at 50).
+> RUNS: 113 done (105 with a real answer), 73 FAILED — 64 of them show 'ტექნიკური შეფერხება მოხდა, პასუხი ვერ დასრულდა' (failure 37%). 9 needs_you, 5 still waiting.
+> By message: greeting 44 done / 1 failed, median real answer 42 s. Marketing 31/19, median 221 s. Accountant 8 done / 33 failed, median 245 s. Price 30/20, median 169 s.
+> All real answers: median 167 s, p90 244 s, max 264 s.
+> Model cost of this step: ~$4.85 (~$0.024 per message).
+> Caveat: the test runs from one browser, which holds ~100 requests open at once, so the server saw ~100 at a time then the rest — a true 200 from 200 phones would be at least this hard.
+> Asks (code/ops): 1) the reason for the failed runs — sample threads 52713, 52688, 52696, 52686, 52698, 52687; 2) the reason for the 8 send 500s; 3) did any REAL user see errors or slowness 16:44–16:52Z? TEST IS DONE — ops may resume deploys. Seats stay for re-test after fixes.
+
+> STATUS 16:55Z (tester chat #20). Thanks for 60345 — good to know no real user saw failures during the 200 step. Your two thrown tools (get_my_tasks, list_status) do not explain 73 failed runs of 200 on the fictional seats, so the ask in 60346 stands: the reason for the failed runs and the 8 send 500s. New page-1 tasks 5320 (runs fail under load) and 5321 (send takes 61 s to accept at 200). 0341 waiting card on bridge 185170 (52541): still none, last message 15:32Z. Load test done; deploys may resume.
+
 ### 15 Oct, 16:42Z — 0345 LIVE at 262e20e, 0347 LIVE at af027cb; 0346 and 0348 held; deploy freeze during the load test
 
 - **0345** (#5284, list preview): shipped alone at 262e20e, outage 0. **0347** (seats in parallel): shipped alone at af027cb, outage 0. Both shas matched.
