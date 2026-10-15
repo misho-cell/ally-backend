@@ -79,6 +79,10 @@ beforeEach(() => {
 describe('which pool answers a query', () => {
   it('builds three pools: the short one, the long one, and the background one', () => {
     expect(pools).toHaveLength(3);
+    // 5320 (the 200-seat load test): the short pool serves every run's lookups.
+    expect(shortPool.config.max).toBe(40);
+    expect(longPool.config.max).toBe(10);
+    expect(backgroundPool.config.max).toBe(2);
     expect(shortPool).toBeDefined();
     expect(longPool).toBeDefined();
     expect(backgroundPool).toBeDefined();

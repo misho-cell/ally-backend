@@ -36,9 +36,20 @@ const BASE_POOL_CONFIG = {
   keepAlive: true,
 };
 
+/**
+ * 5320 (the tester's 200-seat load test, 15 Oct 16:44Z): ten connections for
+ * every short query of every run. 73 of 200 runs failed and the send itself
+ * took 61 s to accept: 950 „timeout exceeded when trying to connect" in two
+ * minutes, the prompt's own lookups queued 73 s before the model was called.
+ * The database allows 2,091 connections and held 54 at the time. The short
+ * pool is the one that serves 50 ms lookups, so it is the one that grows; the
+ * long and background pools stay bounded for the reason given at each.
+ */
+const SHORT_POOL_MAX = 40;
+
 const pool = new Pool({
   ...BASE_POOL_CONFIG,
-  max: 10,
+  max: SHORT_POOL_MAX,
   // Fail fast instead of waiting forever when the pool is saturated, so a
   // stalled request surfaces an error rather than hanging until restart.
   connectionTimeoutMillis: 10_000,
