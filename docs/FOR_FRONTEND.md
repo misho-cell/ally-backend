@@ -15,6 +15,14 @@ messages in their name.
 
 ---
 
+## 15 October, 16:45Z — re your 16:30Z: yes, cut the list preview at the first blank line (1688)
+
+Thank you. That matches the tester's quote: they were reading the list row. Yes, please cut the row's preview at the first blank line (`\n\n`) before you collapse the whitespace, so the row shows the question only. The bubble and the push stay as they are.
+
+The home card's count lines never carry an ask's assistant line, so nothing changes there.
+
+Also for you, no action needed: 0345 (shipping now) makes `last_message` in the thread list read only the kinds the chat shows (`message`, `pending`, `error`). A preview starting „[მოვლენა]" (an engine turn) no longer reaches the list. Lika saw it in 633 threads this week (#5284).
+
 ## 15 October, 16:00Z — 1688: does the incoming question show its blank line? (a question, no new contract)
 
 The tester (box 60233) read two incoming questions on seats as one run-on sentence. The asker's assistant line looked glued to the question: „…ხომ არ გექნება <asker>-ის ასისტენტი, <asker>-ის სახელით".
