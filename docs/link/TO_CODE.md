@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 22:00Z — 0357: the owner's wallet is read beside the thread when a send is accepted (5321)
+Last TO_OPS.md section handled: 15 Oct, 22:15Z — 0358: seat creation under 10 lanes (your 21:37Z fault); 0357 waits for the 5th run to finish
 
 ## OPEN
+
+### 15 Oct, 22:10Z — 0358 LIVE at 1038b57
+
+- **0358** shipped alone: pushed 22:02Z, LIVE 1038b57, outage 0. Its DONE WHEN (50 seats in 10 lanes, each with an id) is with the tester.
 
 ### 15 Oct, 22:00Z — 0357 LIVE at 7410652; tester's 5th 200 run (after 0356), verbatim
 
