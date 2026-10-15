@@ -335,8 +335,14 @@ interface RunStrings {
    */
   serviceUnavailable: string;
   moderationBlocked: string;
-  /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
-  nameNotVerified: string;
+  /**
+   * The tester's 60232 (15 Oct; Misho's yes on the exact Georgian text): a
+   * placeholder never stands inside a sentence. An officeholder named only on
+   * LinkedIn keeps the name, and the sentence says where it came from…
+   */
+  nameFromLinkedinOnly: string;
+  /** …and a sentence naming one no page carried is left out, said once at the end. */
+  unverifiedNameLeftOut: string;
   /**
    * Row 157, the engine's half: the line written INTO the thread when a goal's
    * own wake finds the wallet empty. It lived in taskEngine as one hardcoded
@@ -429,7 +435,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       'სერვერი განახლდა და ეს პასუხი შუა გზაზე შეწყდა — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. გამომიგზავნე ხელახლა და მაშინვე ავიღებ.',
     moderationBlocked:
       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
-    nameNotVerified: '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)',
+    nameFromLinkedinOnly: '(LinkedIn-ის მიხედვით, ოფიციალურ გვერდზე ვერ დავადასტურე)',
+    unverifiedNameLeftOut: 'ერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
     goalPausedNoTokens:
       'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
     statusLines: {
@@ -463,7 +470,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       'The server restarted and this answer was cut off partway — that is on us, not on you. Send it again and I will pick it straight back up.',
     moderationBlocked:
       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
-    nameNotVerified: '(name not verified on an official page)',
+    nameFromLinkedinOnly: '(according to LinkedIn; I could not confirm it on an official page)',
+    unverifiedNameLeftOut: 'I could not confirm one name on an official page, so I left it out.',
     goalPausedNoTokens:
       'I have paused work on this goal — the tokens have run out. I will carry on once it is topped up.',
     statusLines: {
@@ -498,7 +506,9 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       'Сервис временно недоступен — это на нашей стороне, не на твоей. Повторять сейчас бесполезно. Когда он вернётся, отправь мне сообщение ещё раз, и я сразу его возьму.',
     moderationBlocked:
       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
-    nameNotVerified: '(имя не подтверждено на официальной странице)',
+    nameFromLinkedinOnly: '(по данным LinkedIn; на официальной странице подтвердить не удалось)',
+    unverifiedNameLeftOut:
+      'Одно имя не удалось подтвердить на официальной странице, поэтому я его не указал.',
     goalPausedNoTokens:
       'Я приостановил работу над этой целью — токены закончились. Продолжу после пополнения.',
     statusLines: {
@@ -533,7 +543,9 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
       'El servicio no está disponible ahora mismo — es cosa nuestra, no tuya. Reintentar ahora no ayudará. Cuando vuelva, envíamelo otra vez y lo retomo enseguida.',
     moderationBlocked:
       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
-    nameNotVerified: '(nombre no verificado en una página oficial)',
+    nameFromLinkedinOnly: '(según LinkedIn; no pude confirmarlo en una página oficial)',
+    unverifiedNameLeftOut:
+      'No pude confirmar un nombre en una página oficial, así que no lo incluí.',
     goalPausedNoTokens:
       'He pausado el trabajo en este objetivo: se acabaron los tokens. Continuaré tras la recarga.',
     statusLines: {

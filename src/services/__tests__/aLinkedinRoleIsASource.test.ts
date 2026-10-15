@@ -52,7 +52,7 @@ describe('the LinkedIn results of a web search', () => {
     expect(out.reply).toBe(reply);
   });
 
-  it('never name a public office holder from LinkedIn alone', async () => {
+  it('name a public office holder from LinkedIn alone only with its source said', async () => {
     recordRunLinkedinEvidence(
       RUN,
       'https://www.linkedin.com/in/levan-davitashvili\nLevan Davitashvili, Minister of Economy',
@@ -63,6 +63,10 @@ describe('the LinkedIn results of a web search', () => {
       'en',
     );
     expect(out.refused).toEqual(['Levan Davitashvili']);
+    expect(out.reply).toBe(
+      'The Minister of Economy is Levan Davitashvili ' +
+        '(according to LinkedIn; I could not confirm it on an official page).',
+    );
   });
 
   it('do not let another site’s snippet through', async () => {
@@ -73,5 +77,6 @@ describe('the LinkedIn results of a web search', () => {
       'en',
     );
     expect(out.refused).toEqual(['Levan Davitashvili']);
+    expect(out.reply).toBe('I could not confirm one name on an official page, so I left it out.');
   });
 });

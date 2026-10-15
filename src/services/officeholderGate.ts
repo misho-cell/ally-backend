@@ -327,6 +327,47 @@ const KA_TOKEN_RE = /[ა-ჰ]+/g;
 const MIN_KA_FIRST_NAME = 3;
 const MIN_STEM = 4;
 const SENTENCE_SPLIT_RE = /(?<=[.!?…\n])\s+|\n/;
+// The same split, keeping what stood between the sentences, so a reply can be
+// put back together with only the sentences the gate took out missing.
+const SENTENCE_SPLIT_KEEP_RE = /((?<=[.!?…\n])\s+|\n)/;
+const SENTENCE_END_RE = /([.!?…]*)$/u;
+
+interface UnverifiedLines {
+  readonly nameFromLinkedinOnly: string;
+  readonly unverifiedNameLeftOut: string;
+}
+
+/**
+ * The tester's 60232 (15 Oct), Misho's choice: a placeholder never stands
+ * inside a sentence, so the reply is rewritten in words instead.
+ *
+ * A sentence carrying a name no page carried is left out whole — cutting a
+ * name from Georgian leaves its grammar behind, which is what the placeholder
+ * kept showing (16 Sep, 2 Oct) — and one line at the end says so. A sentence
+ * whose officeholder was named only on LinkedIn keeps the name and says where
+ * it came from, before its closing mark.
+ */
+export function rewriteUnverified(
+  reply: string,
+  linkedinOnlyAt: ReadonlySet<number>,
+  leftOutNames: readonly string[],
+  lines: UnverifiedLines,
+): string {
+  if (linkedinOnlyAt.size === 0 && leftOutNames.length === 0) return reply;
+  const parts = reply.split(SENTENCE_SPLIT_KEEP_RE);
+  let kept = '';
+  for (let i = 0; i < parts.length; i += 2) {
+    const sentence = parts[i];
+    const between = parts[i + 1] ?? '';
+    if (leftOutNames.some((name) => sentence.includes(name))) continue;
+    kept += linkedinOnlyAt.has(i / 2)
+      ? sentence.trimEnd().replace(SENTENCE_END_RE, ` ${lines.nameFromLinkedinOnly}$1`) + between
+      : sentence + between;
+  }
+  const body = kept.trim();
+  if (leftOutNames.length === 0) return body;
+  return body === '' ? lines.unverifiedNameLeftOut : `${body}\n\n${lines.unverifiedNameLeftOut}`;
+}
 
 function namesOffice(sentence: string): boolean {
   return (
@@ -391,7 +432,7 @@ function nameInEvidence(name: string, evidence: string): boolean {
 
 export interface OfficeholderGateOutcome {
   reply: string;
-  /** Names replaced by the scripted line. */
+  /** Names the gate could not verify: left out, or kept with their LinkedIn source. */
   refused: string[];
 }
 
@@ -439,35 +480,6 @@ async function inUsersPhonebook(userId: string | undefined, name: string): Promi
     return false;
   }
 }
-/**
- * Georgian glues its grammar onto the end of a name, and a plain string swap
- * leaves that glue behind.
- *
- * Ticket 20, thread 15676 on 16 September: the reply read
- * „(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)ა" — the „ა" is the copula that
- * was attached to the name („კალაძეა" = „is Kaladze"), and split/join took the
- * name out from underneath it. The sentence then reads as though the
- * placeholder itself were somebody's name with an ending on it.
- *
- * So the ending goes with the name. Any Georgian letters running straight on
- * from the match with no space are that name's grammar, not the next word.
- */
-const GEORGIAN_LETTER = '[\\u10A0-\\u10FF]';
-
-export function replaceNameWithPlaceholder(
-  text: string,
-  name: string,
-  placeholder: string,
-): string {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // #2117 (tester 43066, conv 41581): „სატია ნადელა (Satya Nadella)" came out
-  // as „სატია ნადელა ((სახელი ვერ დავადასტურე…))" — the gate filled the echo's
-  // own brackets with its bracketed note. A name repeated in brackets beside
-  // itself adds nothing, so the whole echo goes rather than being annotated.
-  const withoutEcho = text.replace(new RegExp(`\\s*\\(\\s*${escaped}\\s*\\)`, 'gu'), '');
-  return withoutEcho.replace(new RegExp(`${escaped}${GEORGIAN_LETTER}*`, 'gu'), placeholder);
-}
-
 /**
  * The tester's 1046, thread 30757 (2 October): „მამუკა სვანიძე, კლინიკა Pet
  * Med-ის ხელმძღვანელი" reached the owner as „კლინიკა (სახელი ვერ დავადასტურე
@@ -522,7 +534,8 @@ export async function applyOfficeholderGate(
   const linkedin = (runId ? (linkedinByRun.get(runId) ?? []) : []).join('\n');
   const refused: string[] = [];
   const sentences = reply.split(SENTENCE_SPLIT_RE);
-  let out = reply;
+  const linkedinOnlyAt = new Set<number>();
+  const leftOutNames: string[] = [];
   const startedAt = Date.now();
   // One answer per distinct name, however many sentences carry it. The
   // replacement below already rewrites every occurrence, so the repeat lookups
@@ -551,7 +564,7 @@ export async function applyOfficeholderGate(
    * naming an office resets the window anyway, because it is checked itself.
    */
   let officeStillInView = false;
-  for (const sentence of sentences) {
+  for (const [index, sentence] of sentences.entries()) {
     const namesAnOffice = namesOffice(sentence);
     const inView = namesAnOffice || officeStillInView;
     // The carry-over lasts exactly one sentence: it is set by a sentence that
@@ -576,7 +589,8 @@ export async function applyOfficeholderGate(
       }
       if (inPhonebook) continue;
       refused.push(name);
-      out = replaceNameWithPlaceholder(out, name, RUN_STRINGS[language].nameNotVerified);
+      if (nameInEvidence(name, linkedin)) linkedinOnlyAt.add(index);
+      else leftOutNames.push(name);
     }
   }
   /**
@@ -608,5 +622,6 @@ export async function applyOfficeholderGate(
       `[officeholder-gate] run ${runId ?? '-'}: ${refused.length} name(s) unverified against ${evidence.length} chars of evidence`,
     );
   }
+  const out = rewriteUnverified(reply, linkedinOnlyAt, leftOutNames, RUN_STRINGS[language]);
   return { reply: out, refused };
 }
