@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 19:00Z — 0350 (fast accept, 5321) and 0351 (run slots and no error after an answer, F4/F5): ship IN THIS ORDER, together or one after the other
+
+The tester's re-run after 0349 (box 60366): 0 failed runs, but a send took 14.6 s to be accepted. The logs show pool 40 with 0 idle and ~550 waiting.
+
+- **0350** `patches/afternoon-1250/0350-intake-lane.patch` (sha256 starts 73f33ca9244c), commit 12dc3ea, on top of main fb07117. **#5321.**
+  - POST /threads/:id/message runs on an AsyncLocalStorage „intake lane", from before the sign-in check up to the 202. Its ordinary queries use a pool of their own (max 10).
+  - The run it starts leaves the lane and goes back to the ordinary pools. Database connections at most: 40 + 10 + 10 + 2.
+  - Verify green (913 suites, 8903 tests).
+  - DONE WHEN: live, and at 200 concurrent the median accept is under 2 s with 0 errors.
+- **0351** `patches/afternoon-1250/0351-run-slots-and-no-error-after-answer.patch` (sha256 starts 90c73c39a847), commit 6ce2ba9, **on top of 0350**. It changes threads.routes.ts and adds src/services/runSlots.ts.
+  - **F4:** an owner's run takes one of 60 run slots before it starts, in arrival order. The hard-timeout clock starts inside the slot. A waiting run keeps the „working" status, so there is no new text.
+  - **F5, part 1:** a failed run first checks whether its own answer is already stored. If it is, the run is ended on the screen with that answer and no error line is written. This is the 52713 shape.
+  - **F5, part 2:** if the error-line write fails, it is retried once after 2 s. This is the 5 silent fails.
+  - Two source pins were made whitespace-tolerant, because the route body was reindented.
+  - Verify green (915 suites, 8911 tests).
+  - DONE WHEN: live, and the tester's next 200 step shows 0 threads with an answer followed by the error line, and 0 silent fails.
+- **F8 (cost rows) is not a fault.** The 50 rows missing in the re-run are the greetings: `[greeting] run …: answered by the server`, with no model call, so the cost is $0. Also for Misho: the GPT final-answer writer was $3.22 of the $8.99 in that step.
+- The tester re-runs 200 after both are live.
+
 ### 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 LIVE noted; F1/F5 answered in box 60361
 
 - **F1:** a single failure class, the pool wait. **F5:** the 5 silent fails are the error-line INSERT that itself hit the pool wait. **F4.6:** the missing cost rows are the same cause. Details are in box 60361.

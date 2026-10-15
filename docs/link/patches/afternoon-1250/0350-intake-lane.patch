@@ -1,0 +1,262 @@
+From 12dc3ea21231a90b59a550c2114770e54eaa536d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 18:07:36 +0000
+Subject: [PATCH] 5321: accepting a message runs on its own database lane
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 200-seat re-run after 0349: every run answered, but a send still
+took 14.6 s to be accepted — its few lookups queued behind 200 runs' in the
+short pool (40, 0 idle, ~550 waiting). Requests to POST /threads/:id/message
+now enter an AsyncLocalStorage „intake lane" before the sign-in check, and
+ordinary-timeout queries made on it draw from a pool of their own (10). The
+run the send starts leaves the lane, back on the ordinary pools.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aSendIsAcceptedOnItsOwnLane.test.ts       | 27 ++++++++++++
+ src/api/routes/threads.routes.ts              | 44 ++++++++++++-------
+ .../postgres/__tests__/queryRouting.test.ts   | 42 +++++++++++++++---
+ src/db/postgres/client.ts                     | 37 +++++++++++++++-
+ 4 files changed, 125 insertions(+), 25 deletions(-)
+ create mode 100644 src/api/routes/__tests__/aSendIsAcceptedOnItsOwnLane.test.ts
+
+diff --git a/src/api/routes/__tests__/aSendIsAcceptedOnItsOwnLane.test.ts b/src/api/routes/__tests__/aSendIsAcceptedOnItsOwnLane.test.ts
+new file mode 100644
+index 0000000..7a6dc95
+--- /dev/null
++++ b/src/api/routes/__tests__/aSendIsAcceptedOnItsOwnLane.test.ts
+@@ -0,0 +1,27 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 5321 (the tester's 200-seat re-run, 15 Oct): every run answered, but a send
++ * took 14.6 s to be accepted — its lookups stood in the runs' queue.
++ */
++describe('accepting a message', () => {
++  const routes = readFileSync(join(__dirname, '..', 'threads.routes.ts'), 'utf8');
++
++  it('enters the intake lane before the sign-in check runs', () => {
++    const laneAt = routes.indexOf("threadsRouter.use('/:id/message'");
++    const authAt = routes.indexOf('threadsRouter.use(authenticateJwt, requireUserRole);');
++    expect(laneAt).toBeGreaterThan(-1);
++    expect(authAt).toBeGreaterThan(laneAt);
++    expect(routes.slice(laneAt, authAt)).toContain('onIntakeLane(next)');
++  });
++
++  it('starts the run off the lane, after the 202', () => {
++    const acceptedAt = routes.indexOf('res.status(202).json({ success: true, runId });');
++    const leaveAt = routes.indexOf('leaveIntakeLane(() =>', acceptedAt);
++    const runAt = routes.indexOf('runOwnerMessage({', acceptedAt);
++    expect(acceptedAt).toBeGreaterThan(-1);
++    expect(leaveAt).toBeGreaterThan(acceptedAt);
++    expect(runAt).toBeGreaterThan(leaveAt);
++  });
++});
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 8f48d81..e468d13 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -65,7 +65,7 @@ import {
+   threadLanguage,
+   userLanguage,
+ } from '../../services/threads.service';
+-import { query } from '../../db/postgres/client';
++import { leaveIntakeLane, onIntakeLane, query } from '../../db/postgres/client';
+ import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
+ import { nextRenewalDay } from '../../services/renewalDay';
+ import { thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
+@@ -274,6 +274,15 @@ export function statusAfterRun(
+   return 'done';
+ }
+ 
++/**
++ * 5321 (the tester's 200-seat re-run): a send waited 14.6 s to be accepted, its
++ * lookups queued behind 200 runs'. Accepting a message — from sign-in check to
++ * the 202 — runs on the database's intake lane; the run it starts leaves it.
++ */
++threadsRouter.use('/:id/message', (_req: Request, _res: Response, next: NextFunction): void =>
++  onIntakeLane(next),
++);
++
+ threadsRouter.use(authenticateJwt, requireUserRole);
+ 
+ // Mounted HERE, above the subscription gate, and the position is the point.
+@@ -1237,21 +1246,24 @@ threadsRouter.post(
+         }
+       }
+ 
+-      runOwnerMessage({
+-        userId,
+-        threadId,
+-        thread,
+-        message,
+-        runId,
+-        asGoal: as_goal === true,
+-        storedOnArrival,
+-        storedAt,
+-        lastFreeAnswer: graceNote !== null,
+-        inReplyToMessageId:
+-          typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
+-        needsTitle,
+-        askedFrom,
+-      });
++      // The run is not part of accepting the message: it goes back to the ordinary pools.
++      leaveIntakeLane(() =>
++        runOwnerMessage({
++          userId,
++          threadId,
++          thread,
++          message,
++          runId,
++          asGoal: as_goal === true,
++          storedOnArrival,
++          storedAt,
++          lastFreeAnswer: graceNote !== null,
++          inReplyToMessageId:
++            typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
++          needsTitle,
++          askedFrom,
++        }),
++      );
+     } catch (error) {
+       // eslint-disable-next-line no-console
+       console.error('[POST /threads/:id/message]', error);
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index 7eb46b6..a5a74b6 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -62,12 +62,12 @@ jest.mock('pg', () => ({
+   }),
+ }));
+ 
+-import { backgroundQuery, poolPressure, query } from '../client';
++import { backgroundQuery, leaveIntakeLane, onIntakeLane, poolPressure, query } from '../client';
+ 
+-// Construction order in client.ts: the short pool, then the long one, then the
+-// background one. Named here so a reordering breaks these tests loudly rather
+-// than silently testing the wrong pool.
+-const [shortPool, longPool, backgroundPool] = pools;
++// Construction order in client.ts: the short pool, the long one, the background
++// one, then the intake lane's. Named here so a reordering breaks these tests
++// loudly rather than silently testing the wrong pool.
++const [shortPool, longPool, backgroundPool, intakePool] = pools;
+ 
+ beforeEach(() => {
+   for (const p of pools) {
+@@ -77,8 +77,9 @@ beforeEach(() => {
+ });
+ 
+ describe('which pool answers a query', () => {
+-  it('builds three pools: the short one, the long one, and the background one', () => {
+-    expect(pools).toHaveLength(3);
++  it('builds four pools: the short one, the long one, the background one, and the intake lane', () => {
++    expect(pools).toHaveLength(4);
++    expect(intakePool.config.max).toBe(10);
+     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
+     expect(shortPool.config.max).toBe(40);
+     expect(longPool.config.max).toBe(10);
+@@ -151,6 +152,33 @@ describe('which pool answers a query', () => {
+     expect(shortPool.connect).not.toHaveBeenCalled();
+   });
+ 
++  /** 5321: a send waited 14.6 s to be accepted behind 200 runs' lookups. */
++  it('sends a query made while a send is accepted to the INTAKE pool', async () => {
++    await onIntakeLane(() => query('SELECT id FROM threads WHERE id = $1', [1]));
++
++    expect(intakePool.query).toHaveBeenCalledTimes(1);
++    expect(shortPool.query).not.toHaveBeenCalled();
++  });
++
++  it('keeps a long query on the long pool even on the intake lane', async () => {
++    await onIntakeLane(() => query('SELECT big FROM t WHERE x = $1', [1], 15_000));
++
++    expect(intakePool.query).not.toHaveBeenCalled();
++    expect(longPool.connect).toHaveBeenCalledTimes(1);
++  });
++
++  it('sends what the accepted send starts — the run — back to the ordinary pool', async () => {
++    await onIntakeLane(() =>
++      leaveIntakeLane(async () => {
++        await Promise.resolve();
++        await query('SELECT id FROM tasks WHERE id = $1', [1]);
++      }),
++    );
++
++    expect(shortPool.query).toHaveBeenCalledTimes(1);
++    expect(intakePool.query).not.toHaveBeenCalled();
++  });
++
+   it('leaves background jobs on their own pool, as they were', async () => {
+     await backgroundQuery('SELECT 1 FROM "UserTags"');
+ 
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index 1d3f693..a16694d 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -1,3 +1,4 @@
++import { AsyncLocalStorage } from 'async_hooks';
+ import dotenv from 'dotenv';
+ import { Pool, PoolClient, QueryConfig, QueryResult, QueryResultRow } from 'pg';
+ 
+@@ -120,12 +121,39 @@ const backgroundPool = new Pool({
+   options: `-c statement_timeout=${BACKGROUND_QUERY_TIMEOUT_MS}`,
+ });
+ 
++/**
++ * 5321 (the tester's 200-seat re-run, 15 Oct 17:38Z): with 0349 every run
++ * answered, but a send still took 14.6 s to be accepted — its five lookups
++ * stood in the same queue as 200 runs' (pool 40, 0 idle, ~550 waiting).
++ * Accepting a message is the one request a person stares at, so it gets its
++ * own small lane: queries made while a send is being accepted draw from this
++ * pool, and the run it starts leaves the lane (`leaveIntakeLane`).
++ */
++const INTAKE_POOL_MAX = 10;
++const intakePool = new Pool({
++  ...BASE_POOL_CONFIG,
++  max: INTAKE_POOL_MAX,
++  connectionTimeoutMillis: 10_000,
++  options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
++});
++const intakeLane = new AsyncLocalStorage<true>();
++
++/** Run `work` — and everything it starts — on the intake lane. */
++export function onIntakeLane<T>(work: () => T): T {
++  return intakeLane.run(true, work);
++}
++
++/** Run `work` — and everything it starts — off the intake lane, on the ordinary pools. */
++export function leaveIntakeLane<T>(work: () => T): T {
++  return intakeLane.exit(work);
++}
++
+ /**
+  * 958: an idle connection the database or the network drops is emitted as an
+  * `error` on its pool, and an `error` event with no listener ends the process.
+  * The pool has already discarded that connection; the next query opens another.
+  */
+-for (const eachPool of [pool, longQueryPool, backgroundPool]) {
++for (const eachPool of [pool, longQueryPool, backgroundPool, intakePool]) {
+   eachPool.on('error', (error: Error) => {
+     // eslint-disable-next-line no-console
+     console.warn(`[db] idle connection dropped: ${error.message}`);
+@@ -324,7 +352,12 @@ export async function query<T extends QueryResultRow>(
+    * codebase reads that way: 3s and 5s on small lookups, 10s to 15s on the
+    * searches and the analytics.
+    */
+-  const sourcePool = timeoutMs > DEFAULT_QUERY_TIMEOUT_MS ? longQueryPool : pool;
++  const sourcePool =
++    timeoutMs > DEFAULT_QUERY_TIMEOUT_MS
++      ? longQueryPool
++      : intakeLane.getStore() === true
++        ? intakePool
++        : pool;
+   return runOnPool<T>(sourcePool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
+ }
+ 
+-- 
+2.43.0
+
