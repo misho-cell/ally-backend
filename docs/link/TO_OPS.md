@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 20:00Z — 0354: a hello skips the run queue; cap 60 → 120 (the tester's third 200 run, 60425). The 200 test is done, so 0353 and 0354 may ship
+
+- **0354** `patches/afternoon-1250/0354-hello-skips-the-queue.patch` (sha256 starts 399cacf331e1), commit 2118418, **on top of 0353**. Apply 0353, then 0354.
+- **Why:** the third run had 0 failures and an answer for every seat, but a „გამარჯობა" waited a median 48 s behind the 60-run cap (12 s with no cap). Overall: 64 → 73 s.
+- **What changes:** a bare greeting or listed small talk starts at once and holds no slot. The cap rises to 120 (run 2, with no cap and pool 40, had no failures).
+- **Verify:** green, 920 suites and 8929 tests.
+- **DONE WHEN:** live, and in the next 200 run „გამარჯობა" is back near its uncapped time (about 12 s median), still with 0 failed runs.
+
 ### 15 Oct, 19:45Z — 0353: the language chosen in the app answers the owner's line (5285); 5281 traced; HOLD until the tester's 200 re-run is done
 
 - **0353** `patches/afternoon-1250/0353-chosen-language.patch` (sha256 starts b5675bbeb2b1), commit e08e74f, on top of main 0ea67f6. **#5285 (Lika №27).**

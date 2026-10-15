@@ -1,0 +1,102 @@
+From 21184185c977a76929bc57340acbcd333f6d2dc4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 19:48:02 +0000
+Subject: [PATCH] Launch load: a hello never waits for a run slot; the cap
+ rises to 120
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's third 200-seat run (60425): 0 failed, every seat answered, but
+behind the 60-run cap a „გამარჯობა" waited a median 48 s (12 s with no cap)
+and the overall median rose 64 → 73 s. A bare greeting or listed small talk
+now starts at once without a slot, and the cap is 120 — the run with no cap
+and pool 40 had no failures.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts                 |  9 +++++++++
+ .../__tests__/runsTakeTurnsAtTheCap.test.ts      | 16 ++++++++++++++--
+ src/services/runSlots.ts                         |  4 +++-
+ 3 files changed, 26 insertions(+), 3 deletions(-)
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index eb678ee..1a5d1ad 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -89,6 +89,8 @@ import {
+ import { claimRun, releaseRun } from '../../services/runDedupe';
+ import { enterThread, leaveThread } from '../../services/threadRunQueue';
+ import { releaseRunSlot, takeRunSlot } from '../../services/runSlots';
++import { isBareGreeting } from '../../services/greetingTurn';
++import { isToolFreeSmallTalk } from '../../services/smallTalk';
+ import { looksLikeStopRequest } from '../../services/stopIntent';
+ import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
+ import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
+@@ -1439,6 +1441,13 @@ function saveErrorLineOnce(threadId: number, userId: string, line: string, runId
+  * of run slots is free (runSlots.ts), and its budget clock starts then.
+  */
+ export function runOwnerMessage(run: OwnerRun): void {
++  // The tester's third 200 run (60425): behind the cap a „გამარჯობა" waited 48 s
++  // for searches to finish. A hello or listed small talk is seconds of work and
++  // holds no slot, so it never waits for one.
++  if (isBareGreeting(run.message) || isToolFreeSmallTalk(run.message)) {
++    void startOwnerRun(run);
++    return;
++  }
+   void takeRunSlot(run.runId).then(() => startOwnerRun(run).finally(releaseRunSlot));
+ }
+ 
+diff --git a/src/services/__tests__/runsTakeTurnsAtTheCap.test.ts b/src/services/__tests__/runsTakeTurnsAtTheCap.test.ts
+index ebdfdfa..80412fe 100644
+--- a/src/services/__tests__/runsTakeTurnsAtTheCap.test.ts
++++ b/src/services/__tests__/runsTakeTurnsAtTheCap.test.ts
+@@ -33,8 +33,8 @@ describe('run slots', () => {
+     expect(runSlotState()).toEqual({ inUse: 1, waiting: 0 });
+   });
+ 
+-  it('caps at sixty', () => {
+-    expect(RUN_SLOTS).toBe(60);
++  it('caps at a hundred and twenty', () => {
++    expect(RUN_SLOTS).toBe(120);
+   });
+ });
+ 
+@@ -44,6 +44,18 @@ describe("an owner's run", () => {
+     'utf8',
+   );
+ 
++  it('lets a hello or listed small talk start without waiting for a slot', () => {
++    const fn = routes.slice(
++      routes.indexOf('export function runOwnerMessage(run: OwnerRun): void {'),
++    );
++    const body = fn.slice(0, fn.indexOf('\n}\n'));
++    const quickAt = body.indexOf(
++      'if (isBareGreeting(run.message) || isToolFreeSmallTalk(run.message)) {',
++    );
++    expect(quickAt).toBeGreaterThan(-1);
++    expect(body.indexOf('void takeRunSlot(')).toBeGreaterThan(quickAt);
++  });
++
+   it('takes a slot before it starts, and gives it back however it ends', () => {
+     expect(routes).toContain(
+       'void takeRunSlot(run.runId).then(() => startOwnerRun(run).finally(releaseRunSlot));',
+diff --git a/src/services/runSlots.ts b/src/services/runSlots.ts
+index 39b5c5d..b386e35 100644
+--- a/src/services/runSlots.ts
++++ b/src/services/runSlots.ts
+@@ -8,7 +8,9 @@
+  *
+  * One process only, like the thread queue beside it (threadRunQueue.ts).
+  */
+-export const RUN_SLOTS = 60;
++// 60 at first; the tester's third 200 run (60425) showed it queueing more than
++// the pool needs — the second run, with no cap and pool 40, had no failures.
++export const RUN_SLOTS = 120;
+ /** A wait this long is logged, so the cap can be read against real days. */
+ const WAIT_WORTH_LOGGING_MS = 1_000;
+ 
+-- 
+2.43.0
+
