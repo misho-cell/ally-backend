@@ -71,6 +71,7 @@ describe('GET /updates/latest', () => {
         kind: 'search_result',
         payload: {},
         thread_id: THREAD_ID,
+        case_title: 'მიწის გაყიდვა',
         released_at: RELEASED,
       },
     ]);
@@ -84,6 +85,7 @@ describe('GET /updates/latest', () => {
     expect(body.data.updates).toHaveLength(1);
     const [row] = body.data.updates;
     expect(row.thread_id).toBe(THREAD_ID);
+    expect(row.case_title).toBe('მიწის გაყიდვა');
     expect(row.task_id).toBe(GOAL_ID);
     expect(row.released_at).toBe(RELEASED.toISOString());
     expect(typeof row.line).toBe('string');
@@ -110,6 +112,7 @@ describe('GET /updates/latest', () => {
     expect(sql).not.toMatch(/\bUPDATE\b/);
     expect(sql).toContain('ORDER BY p.release_at DESC');
     expect(sql).toContain('p.release_at <= NOW()');
+    expect(sql).toContain('th.short_title AS case_title');
     expect(params).toEqual([OWNER, ['weekly_summary'], LATEST_UPDATES_LIMIT]);
     expect(LATEST_UPDATES_LIMIT).toBe(3);
   });
