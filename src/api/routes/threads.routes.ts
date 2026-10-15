@@ -65,7 +65,7 @@ import {
   threadLanguage,
   userLanguage,
 } from '../../services/threads.service';
-import { query } from '../../db/postgres/client';
+import { leaveIntakeLane, onIntakeLane, query } from '../../db/postgres/client';
 import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
 import { nextRenewalDay } from '../../services/renewalDay';
 import { thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
@@ -273,6 +273,15 @@ export function statusAfterRun(
   if (opts.openGoal) return 'waiting';
   return 'done';
 }
+
+/**
+ * 5321 (the tester's 200-seat re-run): a send waited 14.6 s to be accepted, its
+ * lookups queued behind 200 runs'. Accepting a message — from sign-in check to
+ * the 202 — runs on the database's intake lane; the run it starts leaves it.
+ */
+threadsRouter.use('/:id/message', (_req: Request, _res: Response, next: NextFunction): void =>
+  onIntakeLane(next),
+);
 
 threadsRouter.use(authenticateJwt, requireUserRole);
 
@@ -1237,21 +1246,24 @@ threadsRouter.post(
         }
       }
 
-      runOwnerMessage({
-        userId,
-        threadId,
-        thread,
-        message,
-        runId,
-        asGoal: as_goal === true,
-        storedOnArrival,
-        storedAt,
-        lastFreeAnswer: graceNote !== null,
-        inReplyToMessageId:
-          typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
-        needsTitle,
-        askedFrom,
-      });
+      // The run is not part of accepting the message: it goes back to the ordinary pools.
+      leaveIntakeLane(() =>
+        runOwnerMessage({
+          userId,
+          threadId,
+          thread,
+          message,
+          runId,
+          asGoal: as_goal === true,
+          storedOnArrival,
+          storedAt,
+          lastFreeAnswer: graceNote !== null,
+          inReplyToMessageId:
+            typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
+          needsTitle,
+          askedFrom,
+        }),
+      );
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/message]', error);
