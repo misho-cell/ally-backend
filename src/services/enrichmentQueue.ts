@@ -50,7 +50,7 @@ export type EnrichmentWork = (job: EnrichmentJob) => Promise<void>;
 /**
  * 5317 (F10; Misho's yes to Q7): the queue used to live in this process's
  * memory, so a deploy dropped every saved contact still waiting. Jobs are rows
- * now (enrichment_jobs): queued here, claimed by the workers in arrival order,
+ * now (contact_enrichment_jobs): queued here, claimed by the workers in arrival order,
  * and a job a restart cut off is queued again when the workers start.
  */
 const QUEUE_TIMEOUT_MS = 10_000;
@@ -58,13 +58,21 @@ const MAX_ERROR_CHARS = 300;
 /** A job still „running" this long after it started was cut off by a restart. */
 const CUT_OFF_AFTER_MINUTES = 10;
 const TICK_INTERVAL_MS = 5_000;
+/**
+ * 0355's first night: the queue's statements failed on every claim, and the
+ * ticker started four fresh workers every five seconds into the same error —
+ * 1,390 log lines in half an hour. After a worker stops on a queue error, no
+ * worker starts again for this long.
+ */
+export const PAUSE_AFTER_QUEUE_ERROR_MS = 60_000;
 
 let workersRunning = 0;
+let pausedUntil = 0;
 
 /** Queues one saved contact. */
 export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
   await backgroundQuery(
-    `INSERT INTO enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
+    `INSERT INTO contact_enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
      VALUES ($1, $2, $3, $4, $5)`,
     [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
     QUEUE_TIMEOUT_MS,
@@ -83,8 +91,8 @@ interface JobRow {
 /** The oldest queued job, marked running in the same statement so no other worker takes it. */
 async function claimNextJob(): Promise<JobRow | null> {
   const result = await backgroundQuery<JobRow>(
-    `UPDATE enrichment_jobs SET status = 'running', started_at = NOW()
-      WHERE id = (SELECT id FROM enrichment_jobs WHERE status = 'queued'
+    `UPDATE contact_enrichment_jobs SET status = 'running', started_at = NOW()
+      WHERE id = (SELECT id FROM contact_enrichment_jobs WHERE status = 'queued'
                    ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
       RETURNING id, user_id, user_composite_key, contact_phone, alias, enrich`,
     [],
@@ -95,7 +103,7 @@ async function claimNextJob(): Promise<JobRow | null> {
 
 async function finishJob(id: string, error: string | null): Promise<void> {
   await backgroundQuery(
-    `UPDATE enrichment_jobs SET status = $2, error = $3, finished_at = NOW() WHERE id = $1`,
+    `UPDATE contact_enrichment_jobs SET status = $2, error = $3, finished_at = NOW() WHERE id = $1`,
     [id, error === null ? 'done' : 'failed', error],
     QUEUE_TIMEOUT_MS,
   );
@@ -130,6 +138,7 @@ async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
       // the next queued job, straight away
     }
   } catch (err) {
+    pausedUntil = Date.now() + PAUSE_AFTER_QUEUE_ERROR_MS;
     // eslint-disable-next-line no-console
     console.error('[enrichment] worker stopped:', (err as Error).message);
   } finally {
@@ -137,11 +146,13 @@ async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
   }
 }
 
-/** Starts workers up to the limit; each one ends when the queue is empty. */
+/** Starts workers up to the limit, unless a queue error paused them; each one ends when the queue is empty. */
 export function fillEnrichmentWorkers(
   work: EnrichmentWork,
   workers: number = ENRICHMENT_CONCURRENCY,
+  now: number = Date.now(),
 ): number {
+  if (now < pausedUntil) return 0;
   let started = 0;
   while (workersRunning < workers) {
     void workUntilEmpty(work);
@@ -153,7 +164,7 @@ export function fillEnrichmentWorkers(
 /** Queues again what a restart cut off mid-job. */
 export async function requeueCutOffJobs(): Promise<number> {
   const result = await backgroundQuery(
-    `UPDATE enrichment_jobs SET status = 'queued', started_at = NULL
+    `UPDATE contact_enrichment_jobs SET status = 'queued', started_at = NULL
       WHERE status = 'running' AND started_at < NOW() - ($1 || ' minutes')::interval`,
     [CUT_OFF_AFTER_MINUTES],
     QUEUE_TIMEOUT_MS,
