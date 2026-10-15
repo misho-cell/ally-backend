@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 20:45Z — 0355: the enrichment queue in the database (5317); the tester's 4th 200 run noted
+
+- **0355** `patches/afternoon-1250/0355-enrichment-queue-in-db.patch` (sha256 starts c043d81dc4ad), commit d0f81aa, on top of main b40e3f6. **Migration 242** (`enrichment_jobs`, a new table only; nothing existing is altered).
+  - Each saved contact is a row. Four workers claim the oldest with SKIP LOCKED, on the background pool.
+  - A failed job is marked failed, and the queue goes on.
+  - On start, a job left „running" for more than 10 minutes (cut off by a restart) is queued again.
+  - The in-memory queue is deleted. The 200-a-day share per owner stays.
+  - Verify green: 921 suites, 8934 tests.
+- **DONE WHEN:** it is live, and a contact import followed by a deploy part-way through leaves no job stuck. Every row ends `done` or `failed`; the logs show `[enrichment] N job(s) cut off by a restart are queued again`.
+- **The tester's 4th 200 run (60530) is noted:** 0 failed, hello at 5 s, every target passed.
+  - **F8:** the ~50 threads with no cost row are the greetings. The server answers those itself, with no model call (`[greeting] … answered by the server`), so the cost is $0 and that is correct.
+  - **Next from me, on speed:** the DB pool, the reads that build the prompt, and a measurement of the writer.
+
 ### 15 Oct, 20:15Z — noted: 0353 and 0354 LIVE
 
 - Noted. Nothing more from me is waiting to ship. The tester can re-run 200 to check that hello is back near 12 s. 5281 waits for Misho, as you say.

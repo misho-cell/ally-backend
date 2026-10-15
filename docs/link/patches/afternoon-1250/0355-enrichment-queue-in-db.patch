@@ -1,0 +1,447 @@
+From d0f81aa62767f0604e6f4244452208dbc736dae4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 20:38:42 +0000
+Subject: [PATCH] 5317: the contact enrichment queue lives in the database and
+ survives a restart
+
+The queue of saved contacts waiting for their score and enrichment lived in
+this process's memory, so every deploy dropped what was waiting (the tester's
+launch report F10; Misho's yes to Q7). Migration 242 adds enrichment_jobs;
+each saved contact is a row, four workers claim the oldest with SKIP LOCKED,
+a failed job is marked failed and never stops the queue, and on start a job a
+restart cut off mid-run is queued again. The daily per-owner share decides,
+at queue time, whether a job enriches or only scores.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/242_enrichment_jobs.sql        |  22 +++
+ src/index.ts                                  |   3 +
+ src/services/__tests__/importBatches.test.ts  |  27 ---
+ ...theEnrichmentQueueOutlivesARestart.test.ts |  88 ++++++++++
+ src/services/contacts.service.ts              |  28 ++-
+ src/services/enrichmentQueue.ts               | 163 +++++++++++++++---
+ 6 files changed, 270 insertions(+), 61 deletions(-)
+ create mode 100644 src/db/postgres/migrations/242_enrichment_jobs.sql
+ create mode 100644 src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+
+diff --git a/src/db/postgres/migrations/242_enrichment_jobs.sql b/src/db/postgres/migrations/242_enrichment_jobs.sql
+new file mode 100644
+index 0000000..bdcef95
+--- /dev/null
++++ b/src/db/postgres/migrations/242_enrichment_jobs.sql
+@@ -0,0 +1,22 @@
++-- 5317 (the tester's launch report, F10; Misho's yes to Q7, 15 Oct): the queue
++-- of saved contacts waiting for their score and enrichment lived in memory, so
++-- every deploy or restart dropped what was waiting. It is kept here instead,
++-- one row per saved contact, claimed by the workers in arrival order.
++CREATE TABLE IF NOT EXISTS enrichment_jobs (
++  id                 BIGSERIAL PRIMARY KEY,
++  user_id            INTEGER NOT NULL,
++  user_composite_key TEXT NOT NULL,
++  contact_phone      TEXT NOT NULL,
++  alias              TEXT NOT NULL,
++  -- false: score only — the owner's daily enrichment share was used up.
++  enrich             BOOLEAN NOT NULL,
++  status             TEXT NOT NULL DEFAULT 'queued'
++                       CHECK (status IN ('queued', 'running', 'done', 'failed')),
++  error              TEXT,
++  queued_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  started_at         TIMESTAMPTZ,
++  finished_at        TIMESTAMPTZ
++);
++
++CREATE INDEX IF NOT EXISTS enrichment_jobs_queued_idx
++  ON enrichment_jobs (id) WHERE status = 'queued';
+diff --git a/src/index.ts b/src/index.ts
+index dccf2d5..3217f07 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -53,6 +53,8 @@ import { startHelperFollowUps } from './services/helperThanks.cron';
+ import { startContactSyncReminders } from './services/contactSyncReminder.cron';
+ import { startTaskTicker } from './services/taskEngine.service';
+ import { startRegistrationResearch } from './services/registrationResearch/registrationResearch.service';
++import { startEnrichmentWorkers } from './services/enrichmentQueue';
++import { enrichSavedContact } from './services/contacts.service';
+ import { startWorkNewsQuestions } from './services/workNewsQuestion.service';
+ import { clientErrorReply } from './api/middleware/clientError';
+ import { ApiResponse } from './types';
+@@ -204,6 +206,7 @@ runMigrations()
+     startContactSyncReminders();
+     startTaskTicker();
+     startRegistrationResearch();
++    startEnrichmentWorkers(enrichSavedContact);
+     startWorkNewsQuestions();
+     startChorusCampaignCron();
+     startLabReportCron();
+diff --git a/src/services/__tests__/importBatches.test.ts b/src/services/__tests__/importBatches.test.ts
+index 8ff0c6b..3a0d6ca 100644
+--- a/src/services/__tests__/importBatches.test.ts
++++ b/src/services/__tests__/importBatches.test.ts
+@@ -1,5 +1,4 @@
+ import { batchesWithoutSharedPhones } from '../importBatches';
+-import { ENRICHMENT_CONCURRENCY, enqueueEnrichment, enrichmentQueueSize } from '../enrichmentQueue';
+ 
+ /** The tester's 47594: 0.7 cards a second, one after another, and a deploy cut the import. */
+ describe('cards are saved a few at a time (47594)', () => {
+@@ -35,29 +34,3 @@ describe('cards are saved a few at a time (47594)', () => {
+     expect(batchesWithoutSharedPhones([], 4)).toEqual([]);
+   });
+ });
+-
+-describe('enrichment runs a few at a time (47594; four since the launch load, F10)', () => {
+-  it('the task past the limit waits until one ends, and a failure stops nothing', async () => {
+-    const releases: Array<() => void> = [];
+-    const started: number[] = [];
+-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+-    const total = ENRICHMENT_CONCURRENCY + 1;
+-    for (let i = 0; i < total; i++) {
+-      enqueueEnrichment(
+-        () =>
+-          new Promise<void>((resolve, reject) => {
+-            started.push(i);
+-            releases.push(i === 0 ? () => reject(new Error('enrich failed')) : resolve);
+-          }),
+-      );
+-    }
+-    expect(started).toHaveLength(ENRICHMENT_CONCURRENCY);
+-    expect(enrichmentQueueSize()).toEqual({ waiting: 1, running: ENRICHMENT_CONCURRENCY });
+-    releases[0]();
+-    await new Promise((r) => setImmediate(r));
+-    expect(started).toHaveLength(total);
+-    for (let i = 1; i < total; i++) releases[i]();
+-    await new Promise((r) => setImmediate(r));
+-    expect(enrichmentQueueSize()).toEqual({ waiting: 0, running: 0 });
+-  });
+-});
+diff --git a/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts b/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+new file mode 100644
+index 0000000..54ba066
+--- /dev/null
++++ b/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+@@ -0,0 +1,88 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  backgroundQuery: jest.fn(),
++  query: jest.fn(),
++}));
++
++import { backgroundQuery } from '../../db/postgres/client';
++import {
++  ENRICHMENT_CONCURRENCY,
++  EnrichmentJob,
++  fillEnrichmentWorkers,
++  queueEnrichmentJob,
++  requeueCutOffJobs,
++  workOneJob,
++} from '../enrichmentQueue';
++
++const mockQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
++const rows = (r: unknown[], rowCount = r.length): never => ({ rows: r, rowCount }) as never;
++
++const JOB_ROW = {
++  id: '7',
++  user_id: 501,
++  user_composite_key: 'k',
++  contact_phone: '+995555000001',
++  alias: 'ნინო',
++  enrich: true,
++};
++
++/** 5317 (F10; Misho's yes to Q7): a deploy dropped every saved contact still waiting. */
++describe('the enrichment queue in the database', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('queues a saved contact as a row', async () => {
++    mockQuery.mockResolvedValueOnce(rows([]));
++    const job: EnrichmentJob = {
++      userId: 501,
++      userCompositeKey: 'k',
++      contactPhone: '+995555000001',
++      alias: 'ნინო',
++      enrich: false,
++    };
++    await queueEnrichmentJob(job);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain('INSERT INTO enrichment_jobs');
++    expect(params).toEqual([501, 'k', '+995555000001', 'ნინო', false]);
++  });
++
++  it('claims the oldest queued job once, does it, and marks it done', async () => {
++    mockQuery.mockResolvedValueOnce(rows([JOB_ROW])).mockResolvedValueOnce(rows([]));
++    const work = jest.fn().mockResolvedValue(undefined);
++    await expect(workOneJob(work)).resolves.toBe(true);
++    expect(String(mockQuery.mock.calls[0][0])).toContain('FOR UPDATE SKIP LOCKED');
++    expect(work).toHaveBeenCalledWith({
++      userId: 501,
++      userCompositeKey: 'k',
++      contactPhone: '+995555000001',
++      alias: 'ნინო',
++      enrich: true,
++    });
++    expect(mockQuery.mock.calls[1][1]).toEqual(['7', 'done', null]);
++  });
++
++  it('marks a failed job failed and keeps going', async () => {
++    jest.spyOn(console, 'error').mockImplementation(() => undefined);
++    mockQuery.mockResolvedValueOnce(rows([JOB_ROW])).mockResolvedValueOnce(rows([]));
++    await expect(workOneJob(() => Promise.reject(new Error('enrich failed')))).resolves.toBe(true);
++    expect(mockQuery.mock.calls[1][1]).toEqual(['7', 'failed', 'enrich failed']);
++  });
++
++  it('answers false when nothing is queued', async () => {
++    mockQuery.mockResolvedValueOnce(rows([]));
++    await expect(workOneJob(jest.fn())).resolves.toBe(false);
++  });
++
++  it('queues again what a restart cut off mid-job', async () => {
++    mockQuery.mockResolvedValueOnce(rows([], 3));
++    await expect(requeueCutOffJobs()).resolves.toBe(3);
++    expect(String(mockQuery.mock.calls[0][0])).toContain(
++      "SET status = 'queued', started_at = NULL",
++    );
++  });
++
++  it('runs four workers, and starts no more while they are busy', () => {
++    mockQuery.mockReturnValue(new Promise(() => undefined) as never);
++    expect(fillEnrichmentWorkers(jest.fn())).toBe(ENRICHMENT_CONCURRENCY);
++    expect(fillEnrichmentWorkers(jest.fn())).toBe(0);
++  });
++});
+diff --git a/src/services/contacts.service.ts b/src/services/contacts.service.ts
+index 0e47f44..53c3803 100644
+--- a/src/services/contacts.service.ts
++++ b/src/services/contacts.service.ts
+@@ -8,7 +8,7 @@ import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
+ import { hasGeorgian, georgianToLatin } from './tools/transliterate';
+ import { parsePhonebookLabelsForUser } from './labelParser.service';
+ import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
+-import { enqueueEnrichment, takeEnrichmentAllowance } from './enrichmentQueue';
++import { EnrichmentJob, queueEnrichmentJob, takeEnrichmentAllowance } from './enrichmentQueue';
+ // Aliased: this file already has its own, stricter local normalizePhone()
+ // (import-path only, rejects anything not already "+..."). UserPhone is
+ // written exclusively through registration's normalizePhone (services/phone,
+@@ -318,13 +318,25 @@ function triggerEnrichmentAsync(
+   alias: string,
+ ): void {
+   // F10: the score is always kept; the model-backed enrichment, within the owner's daily share.
+-  const enrich = takeEnrichmentAllowance(userId);
+-  enqueueEnrichment(async () => {
+-    await Promise.all([
+-      computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
+-      ...(enrich ? [enrichContact(contactPhone)] : []),
+-    ]);
+-  });
++  const job = {
++    userId,
++    userCompositeKey,
++    contactPhone,
++    alias,
++    enrich: takeEnrichmentAllowance(userId),
++  };
++  queueEnrichmentJob(job).catch((err: unknown) =>
++    // eslint-disable-next-line no-console
++    console.error('[enrichment] could not queue a saved contact:', (err as Error).message),
++  );
++}
++
++/** 5317: what an enrichment worker does with one saved contact. */
++export async function enrichSavedContact(job: EnrichmentJob): Promise<void> {
++  await Promise.all([
++    computeAndSaveSingleScore(job.userId, job.userCompositeKey, job.contactPhone, job.alias),
++    ...(job.enrich ? [enrichContact(job.contactPhone)] : []),
++  ]);
+ }
+ 
+ /** The number a card is saved under, so two cards for one number never share a batch. */
+diff --git a/src/services/enrichmentQueue.ts b/src/services/enrichmentQueue.ts
+index 93ae686..6e0813a 100644
+--- a/src/services/enrichmentQueue.ts
++++ b/src/services/enrichmentQueue.ts
+@@ -1,10 +1,12 @@
++import { backgroundQuery } from '../db/postgres/client';
++
+ /**
+  * The tester's 47594 (8 Oct): every saved card started its own score and
+  * enrichment in the background, with no limit, on the pool the owner's own
+  * requests use — a 500-card import queued hundreds of them behind each other
+  * and in front of everybody else. They now run a few at a time (two until the launch load, four since); the rest wait
+- * their turn in order. A failure is the task's own to log and never stops the
+- * queue.
++ * their turn in order, in the database since 5317. A failure is the job's own to
++ * log and never stops the queue.
+  */
+ export const ENRICHMENT_CONCURRENCY = 4;
+ 
+@@ -33,35 +35,144 @@ export function takeEnrichmentAllowance(
+   return true;
+ }
+ 
+-type Task = () => Promise<void>;
++/** One saved contact waiting for its score, and its enrichment when the owner's share allows. */
++export interface EnrichmentJob {
++  readonly userId: number;
++  readonly userCompositeKey: string;
++  readonly contactPhone: string;
++  readonly alias: string;
++  readonly enrich: boolean;
++}
+ 
+-const waiting: Task[] = [];
+-let running = 0;
++/** What a worker does with one job; the real one is in contacts.service. */
++export type EnrichmentWork = (job: EnrichmentJob) => Promise<void>;
+ 
+-function startNext(): void {
+-  while (running < ENRICHMENT_CONCURRENCY && waiting.length > 0) {
+-    const task = waiting.shift();
+-    if (task === undefined) return;
+-    running++;
+-    void task()
+-      .catch((err: unknown) => {
+-        // eslint-disable-next-line no-console
+-        console.error('[enrichment] queued task failed:', (err as Error).message);
+-      })
+-      .finally(() => {
+-        running--;
+-        startNext();
+-      });
++/**
++ * 5317 (F10; Misho's yes to Q7): the queue used to live in this process's
++ * memory, so a deploy dropped every saved contact still waiting. Jobs are rows
++ * now (enrichment_jobs): queued here, claimed by the workers in arrival order,
++ * and a job a restart cut off is queued again when the workers start.
++ */
++const QUEUE_TIMEOUT_MS = 10_000;
++const MAX_ERROR_CHARS = 300;
++/** A job still „running" this long after it started was cut off by a restart. */
++const CUT_OFF_AFTER_MINUTES = 10;
++const TICK_INTERVAL_MS = 5_000;
++
++let workersRunning = 0;
++
++/** Queues one saved contact. */
++export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
++  await backgroundQuery(
++    `INSERT INTO enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
++     VALUES ($1, $2, $3, $4, $5)`,
++    [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
++    QUEUE_TIMEOUT_MS,
++  );
++}
++
++interface JobRow {
++  readonly id: string;
++  readonly user_id: number;
++  readonly user_composite_key: string;
++  readonly contact_phone: string;
++  readonly alias: string;
++  readonly enrich: boolean;
++}
++
++/** The oldest queued job, marked running in the same statement so no other worker takes it. */
++async function claimNextJob(): Promise<JobRow | null> {
++  const result = await backgroundQuery<JobRow>(
++    `UPDATE enrichment_jobs SET status = 'running', started_at = NOW()
++      WHERE id = (SELECT id FROM enrichment_jobs WHERE status = 'queued'
++                   ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
++      RETURNING id, user_id, user_composite_key, contact_phone, alias, enrich`,
++    [],
++    QUEUE_TIMEOUT_MS,
++  );
++  return result.rows[0] ?? null;
++}
++
++async function finishJob(id: string, error: string | null): Promise<void> {
++  await backgroundQuery(
++    `UPDATE enrichment_jobs SET status = $2, error = $3, finished_at = NOW() WHERE id = $1`,
++    [id, error === null ? 'done' : 'failed', error],
++    QUEUE_TIMEOUT_MS,
++  );
++}
++
++/** Takes the next job and does it; false when nothing was queued. A failed job is the job's own. */
++export async function workOneJob(work: EnrichmentWork): Promise<boolean> {
++  const row = await claimNextJob();
++  if (row === null) return false;
++  try {
++    await work({
++      userId: row.user_id,
++      userCompositeKey: row.user_composite_key,
++      contactPhone: row.contact_phone,
++      alias: row.alias,
++      enrich: row.enrich,
++    });
++    await finishJob(row.id, null);
++  } catch (err) {
++    const message = (err as Error).message.slice(0, MAX_ERROR_CHARS);
++    // eslint-disable-next-line no-console
++    console.error('[enrichment] job failed:', message);
++    await finishJob(row.id, message);
+   }
++  return true;
+ }
+ 
+-/** Queues the task; it starts as soon as a running one leaves room. */
+-export function enqueueEnrichment(task: Task): void {
+-  waiting.push(task);
+-  startNext();
++async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
++  workersRunning += 1;
++  try {
++    while (await workOneJob(work)) {
++      // the next queued job, straight away
++    }
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error('[enrichment] worker stopped:', (err as Error).message);
++  } finally {
++    workersRunning -= 1;
++  }
+ }
+ 
+-/** How many tasks wait and run — for a test, or a log line. */
+-export function enrichmentQueueSize(): { readonly waiting: number; readonly running: number } {
+-  return { waiting: waiting.length, running };
++/** Starts workers up to the limit; each one ends when the queue is empty. */
++export function fillEnrichmentWorkers(
++  work: EnrichmentWork,
++  workers: number = ENRICHMENT_CONCURRENCY,
++): number {
++  let started = 0;
++  while (workersRunning < workers) {
++    void workUntilEmpty(work);
++    started += 1;
++  }
++  return started;
++}
++
++/** Queues again what a restart cut off mid-job. */
++export async function requeueCutOffJobs(): Promise<number> {
++  const result = await backgroundQuery(
++    `UPDATE enrichment_jobs SET status = 'queued', started_at = NULL
++      WHERE status = 'running' AND started_at < NOW() - ($1 || ' minutes')::interval`,
++    [CUT_OFF_AFTER_MINUTES],
++    QUEUE_TIMEOUT_MS,
++  );
++  return result.rowCount ?? 0;
++}
++
++/** At start: what a restart cut off goes back in the queue, and the ticker keeps the workers topped up. */
++export function startEnrichmentWorkers(work: EnrichmentWork): void {
++  void requeueCutOffJobs()
++    .then((requeued) => {
++      if (requeued > 0) {
++        // eslint-disable-next-line no-console
++        console.log(`[enrichment] ${requeued} job(s) cut off by a restart are queued again`);
++      }
++    })
++    .catch((err: unknown) =>
++      // eslint-disable-next-line no-console
++      console.error('[enrichment] could not requeue cut-off jobs:', (err as Error).message),
++    );
++  setInterval(() => fillEnrichmentWorkers(work), TICK_INTERVAL_MS).unref();
+ }
+-- 
+2.43.0
+
