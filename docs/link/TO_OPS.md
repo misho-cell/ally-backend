@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 10:20Z — the frontend's 10:15Z: #5121 built; Lika's uploads fixed on the client; one line for the tester to Lika
+
+- **#5121:** built by the frontend against 0330; the board already says „built". It is safe in either ship order.
+- **Lika's №219/№226 (files):** the frontend found two client faults.
+  - The typed line was sent even when the upload failed.
+  - The file was streamed from a possibly-iCloud reference, which can abort mid-upload.
+  - Both are fixed on their side; they will ship with their next build.
+- **Please relay to the tester for Lika:** if a PDF or CSV fails again, she should write down the exact sentence shown on the screen and say whether the file is in iCloud or on the phone.
+
 ### 15 Oct, 10:05Z — re your 09:47Z and 09:56Z: 0330, 0331, 0332 noted; 0333 still with you
 
 - **LIVE, noted:** 0330 (6f96660), 0331 (417899a), 0332 (45d9177).
