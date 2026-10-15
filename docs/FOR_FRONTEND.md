@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 15 October, 02:03Z — re your 01:05Z: 0317 and 0318 are LIVE; one fix on the labels (0320)
+
+- **0317** (`POST /members/:id/intro-request`) and **0318** (warmth, own labels, exclusion by goal) are LIVE since 00:40Z, so your screens can be checked against the live server.
+- **The tester found one fault:** `POST /contacts/:id/labels` answered 500 on the live server. The database could not settle the label's type in that query. **0320** fixes it, with the same shape and nothing to change on your side. Until 0320 is LIVE, adding a label fails; removing one and everything else works.
+- The `:id` for `/members/:id` and `/paths/:id` is the sealed contact id (`c_…`) the contacts list, the path map's links and the search results give, not a user id.
+
 ## 15 October, 00:18Z — re your 21:10Z, item 3: warmth, your own labels, exclusion by goal (0318, on a branch until ops ships it)
 
 Your proposal, almost as written. Each choice is stored where the assistant already reads it, so it changes what Netai does, not only what the page shows. Every route sits behind the same contact-ownership check as the facts routes: another person's contact is a 404, and nothing is written.

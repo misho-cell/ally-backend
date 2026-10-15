@@ -113,12 +113,14 @@ export async function setOwnWarmth(
 /** One label of the owner's own; the same label twice is kept once. */
 export async function addOwnLabel(userId: number, phone: string, label: string): Promise<void> {
   await query(
+    // Typed once each: $3 sits in the select list and in a comparison, and the
+    // driver could not settle on one type for it (tester box 59368: a 500).
     `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
-     SELECT $1, $2, $3, 1, $4
+     SELECT $1::int, $2::varchar, $3::varchar, 1, $4::"TagSource"
       WHERE NOT EXISTS (
         SELECT 1 FROM "UserTags"
-         WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $5
-           AND tag = $3 AND source = $4)`,
+         WHERE "contactId" = $1::int AND regexp_replace(phone, '\\D', '', 'g') = $5
+           AND tag = $3::varchar AND source = $4::"TagSource")`,
     [userId, phone, label.trim(), OWN_LABEL_SOURCE, phoneDigits(phone)],
     QUERY_TIMEOUT_MS,
   );
