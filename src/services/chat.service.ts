@@ -15373,6 +15373,29 @@ async function threadForPendingItem(
   }
 }
 
+/**
+ * The real TBC case (the tester's 60161 [d], 15 Oct). A wake-up in an English
+ * goal thread delivered a waiting introduction request into its own,
+ * Georgian, request thread — and wrote the card in the run's English. A card
+ * that lands in another thread speaks that thread's language; one that stays
+ * here speaks the run's, as before.
+ */
+async function languageOfPendingTarget(
+  target: number,
+  runThreadId: number,
+  runLanguage: RunLanguage,
+): Promise<RunLanguage> {
+  if (target === runThreadId) return runLanguage;
+  return threadLanguage(target).catch((error: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error(
+      '[pending] could not read the target thread’s language:',
+      (error as Error).message,
+    );
+    return runLanguage;
+  });
+}
+
 async function deliverPendingMessages(
   userId: string,
   threadId: number,
@@ -15382,10 +15405,13 @@ async function deliverPendingMessages(
 ): Promise<void> {
   for (const item of items) {
     try {
-      const rendered = renderPendingMessage(item, language);
-      if (rendered === null) continue;
       // Row 250.1: its own goal's thread, not whichever one the run was in.
       const target = await threadForPendingItem(userId, item, threadId);
+      const rendered = renderPendingMessage(
+        item,
+        await languageOfPendingTarget(target, threadId, language),
+      );
+      if (rendered === null) continue;
       if (rendered.instruction !== '') {
         await saveMessage(
           userId,
