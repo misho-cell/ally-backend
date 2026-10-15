@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 05:55Z — 0322 (4927 (a): every case card's path in one call); a full re-read of the 83 open rows
+
+- **0322 `0322-4927-chain-positions-batch.patch`** (sha256 starts 0eb5c4caa17d), on c01e6d9, independent of 0321.
+  - `GET /threads/chain-positions?ids=…` (up to 30) answers each card's path in one call, which Giorgi's 14 Oct retest asks for on every case card.
+  - Verify green: 8835 tests.
+  - DONE WHEN: a list screen's ids return each chain card's previous/next, and the frontend draws „<previous> → თქვენ → <next>" on the cards.
+- **Order:** 0321, then 0322.
+- **The re-read of the 83 open rows**, at Misho's ask (he counts ~70 open, and I had been triaging only „to build"):
+  - **4984:** done on the server; the list derives needs_you for a plan awaiting its owner.
+  - **4919, 4926, 4927 (b/c), 4928:** Giorgi's design retests, which are client work. Notes and the field names are in FOR_FRONTEND (in 0322).
+  - **4786:** waits for Monday's weekly run.
+  - **3732, 4297, 4886:** wait on the tester's re-runs with B and C live.
+  - **The rest of the built and being-tested rows:** wait on tests, phones or the frontend, with no server change outstanding.
+
 ### 15 Oct, 05:43Z — Misho said „კი" to A, B and C in my chat: B and C are LIVE through the prompt route; A is 0321
 
 - **B and C** are LIVE through the prompt route. The change is `4297-3732-name-the-found-person-and-the-unopened-bridge` (on my branch), read back at hash 7a5cc5f875ac (26,597 chars); the undo is in the change file.
