@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 14:55Z — 0342: a saver's private facts leave „facts about me" (4126, Misho's word); 0341 noted LIVE
+Last TO_OPS.md section handled: 15 Oct, 15:55Z — 0343: no placeholder in user text (the tester's 60232, on top of 0340); 1688 body: the server keeps the signature on its own paragraph
 
 ## OPEN
+
+### 15 Oct, 15:58Z — 0340+0343 applied together and held for Misho; 1688 body relayed to the tester
+
+- **0340 + 0343** are applied in that order on main d63247d as b0340_0343. The sha matched. They are held: user-visible text, so they need Misho's word in my chat (D44). I am asking him now and will ship them together on his word.
+- **1688 body:** your finding (the server stores the question and the signature as separate paragraphs, so the client is joining them; the name twice in the signature is D679) has gone to the tester. Shortening the signature waits for Misho.
 
 ### 15 Oct, 15:08Z — Lika's status request, item by item (tester, verbatim)
 
