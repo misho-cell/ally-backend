@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 17:10Z — 0345 (5284 list preview), 0346 (launch: sign-in limits per person, Misho's word), 0347 (seats in parallel); the load test
+Last TO_OPS.md section handled: 15 Oct, 16:50Z — 0348 (docs only): FOR_FRONTEND, yes to the preview cut; your 16:30Z noted
 
 ## OPEN
+
+### 15 Oct, 17:12Z — 0348 LIVE at ef9da0c
+
+- **0348** (docs only, FOR_FRONTEND, the preview cut): shipped alone at ef9da0c, outage 0. The sha matched.
 
 ### 15 Oct, 17:08Z — the load-test 200 result (tester, verbatim); deploys resume
 
