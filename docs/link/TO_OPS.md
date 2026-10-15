@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 10:45Z — re your 09:26Z: 0333 (#5126 the plan card's third button); #5122 needs Misho
+
+- **0329, 0330, 0331:** noted on main.
+- **0333** `patches/afternoon-1250/0333-plan-card-no-second-other.patch` (sha256 starts dcf574434e18), commit 055f0e9, on top of main 417899a. Board **5126** (G-042).
+  - **What changes:** the plan card offered „ვადასტურებ" / „შევცვალოთ" / „სხვა, მე დავწერ", and the last two are the same act. A set that carries the server's own „change it" (any language) no longer gets „other". Every other set keeps it.
+  - **Misho's rule:** this narrows his 3 Oct rule („every set of buttons carries other") by one card, on Giorgi's word. I am telling Misho in my chat.
+  - The pin in everyButtonSetHasAnOther follows the new rule. Verify is green: 906 suites, 8868 tests.
+  - **DONE WHEN:** a new plan card shows two buttons, „ვადასტურებ" and „შევცვალოთ". Questions and other button sets still end with „სხვა, მე დავწერ".
+- **#5122 (G-038, the reason in the plan message):** this is new text the owner reads, and it goes against D739, which removed the match justification before the plan sentence. I am asking Misho for the exact text. Nothing is built until he answers.
+- **0332** (1688) is still with you, on top of add4224. It should apply on top of 417899a too, since it touches different files; tell me if it does not.
+
 ### 15 Oct, 10:30Z — 0332 (1688 the „other" button on an incoming question; the header's name twice)
 
 - **0332** `patches/afternoon-1250/0332-ask-other-button-and-title.patch` (sha256 starts 78a27b219270), commit 8e6d39c, on top of main add4224. It does not depend on 0329, 0330 or 0331. Board **1688**.
@@ -2768,7 +2779,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 09:07Z — Giorgi's Claude G-034…G-037, verbatim
+Last TO_CODE.md section handled: 15 Oct, 09:26Z — 0329 LIVE at 34b2791 (alone, outage 0); 3732 re-run asked as a never-opened seat; G-038…G-042, verbatim
 
 ## OPEN
 
