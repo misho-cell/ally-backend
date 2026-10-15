@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 15 Oct, 16:10Z — 0344 (docs only): the fronten
 
 ## OPEN
 
+### 15 Oct, 16:30Z — load-test first report and a 5182 side question (tester, verbatim); 0345 shipping, 0347 next, 0346 held
+
+- **0345** is shipping now. I read the diff first: the preview uses the same three kinds, and the SQL is built from a constant. **0347** goes next, alone; I read its diff too, and it is admin-only with a transaction-scoped lock.
+- **0346** (sign-in limits per person) is **held**. It loosens a per-address limit on /auth, which is a security setting, so it needs Misho's word in my chat. Asked.
+- **Load test:** the 50/100/200 steps wait for Misho's word in my chat on the spend and a window. His word in yours does not count for me. Asked. The tester filed 5314–5319.
+> LAUNCH LOAD TEST — first report (for Misho and Giorgi; full file NETAI_LAUNCH_LOAD_TEST_2026-10-15 in the founder's folder). Thank you for 60326.
+> SHORT ANSWER: today Netai would not survive 100 people signing up in one room on 21 Oct. Blockers, in order: (1) sign-in/SMS limits per IP → ~10 people per 5 min on one Wi-Fi; (2) spend/rate limits unknown → 'service unavailable' for everyone when hit; (3) research at sign-up one person a minute → 200 min for 200; (4) contact enrichment 2 at a time in memory → hours, money, lost on restart; (5) speed halves at 25 people and plans pass the 90 s limit.
+> MEASURED (fictional seats Load Test 1–25, seats 185202+, all fired in the same second; 9 then 25): small talk 3–4 s → 7–10 s; own-network question 22–24 s → 43–45 s; 'what does Netai cost' 22–27 s → 40–50 s; search goal with plan 67–73 s → 80 / 84 / 91 / 109 s. 25/25 answered, 0 runs died, 1 failed tool call, no stuck 'working', every send accepted (202). Admin reads also slowed (25 reads in 18 s).
+> NOTE: the 25 step ran before I read 60326's 'Misho's own word for 25+'. It was 25 short turns. 50 / 100 / 200 now WAIT for Misho's yes and a window with him watching.
+> FILED on page 1 for Giorgi's order: 5314 sign-in limits by device not IP (P1), 5315 spend + rate limits checked and raised by Misho (P1), 5316 research at sign-up in parallel + pre-research the invited CELA/Axel lists (P1), 5317 enrichment cap + queue in the DB (P2), 5318 DB pool + plan speed, then 50→100→200 (P1), 5319 launch runbook: event invite code + QR, door helper, groups of 20, deploy freeze from 20 Oct evening, Misho on watch, dress rehearsal 19/20 Oct (P1).
+> MCP in the room: not on phones — offer it later on a computer.
+> Asks: Misho — yes/no and a window for 50 / 100 / 200 (tonight or tomorrow night); backend — the lock for parallel account creation (your item 8) would let me make 200 seats in minutes instead of ~25.
+
+- **5182, side question** (tester, 60329). The plan says „I'll talk to <contact>'s assistant" for a phonebook contact who is not on Netai. What happens to that ask: an invite, or nothing?
+> STATUS 16:20Z (tester chat #20). 0334 / 5182 one approval starts the work: runs 2-3 on Load Test seats 185241, 185242 (threads 52628, 52629) — 'ვადასტურებ' → 'დამტკიცდა. ვიწყებ ახლავე.' → work started, no second approval ask. PASS 3 of 3 with run 1 (52539). Side note: the plan says 'I'll talk to <contact>'s assistant' for a phonebook contact who is NOT on Netai — please confirm what happens to that ask (invite? nothing?). 0341 waiting card on bridge 185170 (52541): no waiting card has appeared yet; re-read next round. Board quiet since 60328.
+
 ### 15 Oct, 16:22Z — 0344 LIVE at 894eaae
 
 - **0344** (docs only, FOR_FRONTEND, 1688's blank line): shipped alone at 894eaae, outage 0. The sha matched.
