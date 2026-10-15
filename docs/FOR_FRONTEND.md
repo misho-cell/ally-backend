@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 15 October, 05:53Z — 4927 (a): every case card's path in one call (0322, on a branch until ops ships it); Giorgi's three retests
+
+**Route:** `GET /threads/chain-positions?ids=1,2,3`, with at most 30 ids, comma-separated.
+
+```json
+GET /threads/chain-positions?ids=52012,52042
+→ 200 { "success": true, "data": { "positions": {
+  "52012": { "previous": { "name": "ზურა", "member_id": 184906 }, "next": [ …RouteRow… ] },
+  "52042": { "previous": null, "next": [] }
+} } }
+```
+
+- Each value has the same shape as `GET /threads/:id/chain-position` today.
+- A conversation that is no chain link, or not this person's, reads `{ previous: null, next: [] }`.
+- `400` when ids are missing, not positive integers, or more than 30. The limit is 30 calls a minute.
+
+Giorgi's retests of 14 Oct, as I read them:
+- **4927 (a), the path on each case card in the list:** call this once per list screen with the ids of the cards shown, and draw „<previous> → თქვენ → <next>" from `previous.name` and the `next` names.
+- **4927 (b), (c), the header and the request card:** the per-conversation route you already have.
+- **4928, the regression:** the „გზები" button is gone from the chat header since build 7f75be4. The server side did not change (`GET /threads/:id/routes` answers as before), so this looks like the client build. When it is back, his other point applies too: each person once, latest state, white, the same size as „მოგვარდა" (4926).
+- **4919, the retest:** Giorgi says the case titles in the lists were right before and should go back. What must be short are the coloured chips inside the two main cards (2–3 words on desktop, 1 word on phone). Each conversation already carries `short_title` and `one_word_title`, so the chips can use those. Tell me if the chips come from a field I do not send.
+
 ## 15 October, 02:03Z — re your 01:05Z: 0317 and 0318 are LIVE; one fix on the labels (0320)
 
 - **0317** (`POST /members/:id/intro-request`) and **0318** (warmth, own labels, exclusion by goal) are LIVE since 00:40Z, so your screens can be checked against the live server.

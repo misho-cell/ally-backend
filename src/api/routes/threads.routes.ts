@@ -622,6 +622,61 @@ threadsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+/** 4927 (a): the cards one list screen shows at once, read in one call. */
+export const MAX_CHAIN_POSITIONS_PER_CALL = 30;
+/** Read a few at a time, so one screen of cards never takes the whole pool. */
+const CHAIN_POSITIONS_IN_PARALLEL = 5;
+
+/** The ids of `?ids=1,2,3`: positive integers, each once, at most the cap; null when malformed. */
+export function threadIdsFrom(raw: unknown): number[] | null {
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  const ids = raw.split(',').map((part) => Number(part.trim()));
+  if (ids.some((id) => !Number.isInteger(id) || id <= 0)) return null;
+  const unique = [...new Set(ids)];
+  return unique.length > MAX_CHAIN_POSITIONS_PER_CALL ? null : unique;
+}
+
+/**
+ * 4927 (a), Giorgi's retest of 14 Oct: the path belongs on EVERY case card in
+ * the list („<previous> → თქვენ → <next>"), and the per-conversation route is
+ * one call per card, rate-limited. This answers a whole screen in one call:
+ *
+ *   GET /threads/chain-positions?ids=1,2,3   (at most 30)
+ *   200 { positions: { "1": { previous, next }, ... } }   the same shape as /:id/chain-position;
+ *       a conversation that is not this user's, or no chain link, reads { previous: null, next: [] }
+ *   400 ids missing, not positive integers, or more than 30
+ */
+threadsRouter.get(
+  '/chain-positions',
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  async (req: Request, res: Response): Promise<void> => {
+    const ids = threadIdsFrom(req.query.ids);
+    if (ids === null) {
+      res.status(400).json({
+        success: false,
+        error: `ids must be 1 to ${MAX_CHAIN_POSITIONS_PER_CALL} positive integers, comma-separated`,
+      });
+      return;
+    }
+    try {
+      const userId = Number((req as AuthenticatedRequest).user.userId);
+      const positions: Record<string, unknown> = {};
+      for (let i = 0; i < ids.length; i += CHAIN_POSITIONS_IN_PARALLEL) {
+        const batch = ids.slice(i, i + CHAIN_POSITIONS_IN_PARALLEL);
+        const read = await Promise.all(batch.map((id) => chainPositionOf(userId, id)));
+        batch.forEach((id, index) => {
+          positions[String(id)] = read[index];
+        });
+      }
+      res.status(200).json({ success: true, data: { positions } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/chain-positions]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not read the chains' });
+    }
+  },
+);
+
 threadsRouter.get('/stream', (req: Request, res: Response): void => {
   const userId = (req as AuthenticatedRequest).user.userId;
   // Which device is watching, so the push can be withheld from THIS screen and
