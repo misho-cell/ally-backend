@@ -86,7 +86,7 @@ import { hoursUntilClock, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
-import { askedLanguage, languagePreference } from './languagePreference';
+import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
 import { safetyReplyFor } from './safetyWorry';
 import {
   carriesPlanSentence,
@@ -16119,6 +16119,14 @@ export async function processChat(
   }
 
   steps.mark('named');
+  // 3106 (speed): the two reads the run's language needs depend on nothing the
+  // prompt build does, so they start beside it instead of after it.
+  const spokenBeforeRead = ownerMessages(threadId).catch(() => [] as string[]);
+  const savedLanguageRead = languagePreference(userId).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn(`[language-preference] user ${userId}:`, (err as Error).message);
+    return null;
+  });
   const [agentPrompt, tools, history] = await Promise.all([
     steps.timed(
       'prompt',
@@ -16258,7 +16266,7 @@ export async function processChat(
    * row. It is the same query `threadLanguage` has always used, which is the
    * function this code was quietly re-implementing.
    */
-  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
+  const spokenBefore = await spokenBeforeRead;
   /**
    * An ENGINE EVENT never decides the language, and a split goal is why.
    *
@@ -16305,9 +16313,10 @@ export async function processChat(
     runLanguages.set(runId, language);
   }
   // D752: the owner's own request for a language wins over everything read above.
-  const asked = ownerAbsent
-    ? await languagePreference(userId).catch(() => null)
-    : await askedLanguage(userId, userMessage);
+  const asked =
+    ownerAbsent || requestedLanguage(userMessage) === null
+      ? await savedLanguageRead
+      : await askedLanguage(userId, userMessage);
   if (asked !== null && asked !== language) {
     // eslint-disable-next-line no-console
     console.log(`[run-language] run ${runId}: the owner asked for ${asked} — using it (D752)`);
