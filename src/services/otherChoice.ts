@@ -1,3 +1,4 @@
+import { CHANGE_LABEL } from './choiceNotes';
 import type { RunLanguage } from './runLanguage';
 
 /**
@@ -30,13 +31,26 @@ export function otherChoiceLabel(language: RunLanguage): string {
   return OTHER_LABELS[language];
 }
 
+/** The plan card's „change it" in every language: it already opens the owner's own words. */
+const CHANGE_LABELS: ReadonlySet<string> = new Set(Object.values(CHANGE_LABEL));
+
+/**
+ * #5126 (Giorgi, 15 Oct): the plan card offered „ვადასტურებ", „შევცვალოთ" and
+ * „სხვა, მე დავწერ" — and the last two are the same act, since „change it"
+ * lets the owner type. A set that carries the server's own „change it" gets no
+ * „other".
+ */
+function offersItsOwnWords(choices: readonly string[]): boolean {
+  return choices.some((choice) => isAnOtherOption(choice) || CHANGE_LABELS.has(choice.trim()));
+}
+
 /** The buttons with „other, I'll write it" after them; none stays none. */
 export function withOtherChoice(
   choices: readonly string[] | null,
   language: RunLanguage,
 ): string[] | null {
   if (choices === null || choices.length === 0) return choices === null ? null : [];
-  if (choices.some(isAnOtherOption)) return [...choices];
+  if (offersItsOwnWords(choices)) return [...choices];
   return [...choices, otherChoiceLabel(language)];
 }
 

@@ -15,11 +15,17 @@ import {
  */
 describe('withOtherChoice', () => {
   it('adds the other option after the model’s own buttons', () => {
-    expect(withOtherChoice(['ვამტკიცებ', 'შევცვალოთ'], 'ka')).toEqual([
+    expect(withOtherChoice(['ვამტკიცებ', 'ვიფიქრებ'], 'ka')).toEqual([
       'ვამტკიცებ',
-      'შევცვალოთ',
+      'ვიფიქრებ',
       'სხვა, მე დავწერ',
     ]);
+  });
+
+  /** #5126 (Giorgi, 15 Oct): „change it" already lets the owner type. */
+  it('adds none beside the plan card’s own „change it", in any language', () => {
+    expect(withOtherChoice(['ვადასტურებ', 'შევცვალოთ'], 'ka')).toEqual(['ვადასტურებ', 'შევცვალოთ']);
+    expect(withOtherChoice(['I approve', 'Change it'], 'en')).toEqual(['I approve', 'Change it']);
   });
 
   it('speaks the conversation’s language', () => {
