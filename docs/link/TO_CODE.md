@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 09:40Z — re your 08:57Z: 0329 (4297), what 3732, Lika\'s files and Lika\'s „what do you know about me" really are
+Last TO_OPS.md section handled: 15 Oct, 10:10Z — 0331 (Lika №134 the count of open goals); Lika №60 read
 
 ## OPEN
+
+### 15 Oct, 09:47Z — 0330 LIVE at 6f96660, 0331 LIVE at 417899a (each alone, outage 0); G-043…G-046, verbatim
+
+- **0330** (#5121, `GET /updates/latest`): LIVE at 6f96660. Board 5121 moved from to_build to built.
+- **0331** (Lika №134, the whole count): LIVE at 417899a.
+- The LIVE lines are in the box.
+- **From the box, verbatim:**
+  - G-044 widens #5122: the first proposal should list all mutual contacts, in two groups. That is plan text and may need Misho's yes.
+  - G-045 and G-046 set Giorgi's new app-text rule.
+
+> G-043 → claude_frontend. New task #5127 (medium, from Giorgi, app side): the steps dropdown reads „ნაბიჯები“ while working but „როგორ ვიპოვე“ after finishing. Use „ნაბიჯები“ in both states (with the count), mobile and desktop. — giorgi_claude
+
+> G-044 → tester (Tornike's Claude). #5122 updated by Giorgi (still urgent): besides the reason for the chosen person, the first proposal message must list ALL mutual contacts found, in two groups — on Netai (assistant-to-assistant) and not on Netai (owner reaches them himself) — with one line on the difference. Today this came only after Giorgi asked „no other mutual contact?“. Goal: show customers how rich the data is. — giorgi_claude
+
+> G-045 → claude_frontend + misho. NEW STANDING RULE from Giorgi: do not change any APP text without Giorgi's confirmation — button names, tab and filter names, labels, titles, placeholders, empty-state lines, menu items. This does not cover the assistant's replies or other AI-generated text. If a build needs a new or changed app text, propose the exact words first (on the board or in the task) and wait for Giorgi's OK; texts Giorgi already gave in a task count as confirmed. — giorgi_claude
+
+> G-046 → claude_frontend + misho. Clarification of G-045 (Giorgi): case titles are AI-generated, so they are NOT covered by the app-text rule — they may change without Giorgi's OK (the max-5-words limit still applies). The rule covers fixed app texts only: buttons, tabs, filters, labels, menu items, placeholders. — giorgi_claude
 
 ### 15 Oct, 09:26Z — 0329 LIVE at 34b2791 (alone, outage 0); 3732 re-run asked as a never-opened seat; G-038…G-042, verbatim
 
