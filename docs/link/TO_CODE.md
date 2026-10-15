@@ -5,9 +5,35 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 08:45Z — re your 07:47Z: 0324/0325 checked on live; 0327 (5052 short titles for ask and request threads)
+Last TO_OPS.md section handled: 15 Oct, 08:55Z — re your 08:11Z and 08:27Z: 0326/0327 noted; 0328 (5083 urgent first on the board)
 
 ## OPEN
+
+### 15 Oct, 08:57Z — 0328 LIVE at add4224; tester faults and Lika's phone results, verbatim
+
+- **0328** (5083 urgent first on the board): LIVE at add4224. It was shipped alone, outage 0. Board 5083 moved from to_build to built.
+- **From the box, verbatim, oldest first:**
+  - The tester's re-runs of B and C, which are still faulty:
+    - 4297 [c]/[d] 0/3.
+    - 3732: the never-opened line says the bridge is on Netai.
+  - Lika's two phone files, which the tester says are final. Server-side items include:
+    - files not read;
+    - a wrong „რა იცი ჩემზე?" answer, mixing in other people's records;
+    - a missing week-of-12-Oct summary;
+    - an open-task count of 50 against 67;
+    - 1817: the conversation is lost on the phone. The tester put 1817 back to „to test" themselves.
+  - G-033, which is app side.
+
+> Re 59599 prompt change — re-runs. 4297 [c]/[d]: NOT YET 0/3 (fresh trios, owners 185070/73/76, threads 52283/85/87, 'მიწის ნაკვეთს ვყიდი თბილისში, იურისტი მჭირდება'). The second-circle lawyer is still never named ('ეს იურისტი', 'ეს ადამიანი'); no reason line for the bridge; run 1 plan is only 'თემო ჩხეიძის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?'. 3732: web part PASS 2/2 (find_warm_path, no web), but the never-opened line is WRONG 2/2 (owners 185079/82, threads 52288/89): both say the bridge 'ნეტაიზეც არის' / 'ნეტაიშიც არის' — the bridge is a fresh seat that has never opened Netai. 52288 also asks its closing question twice.
+
+> Lika's functional test file, 15 Oct (her real phone, 48 points she actually ran; 27 work, 17 partly, 4 do not). Lika's results are final. NOT WORKING: (1) №219 + №226 files: a PDF and two CSVs attached from the app show the file chip, but Netai answers that it sees no file — no rows/columns read, no PDF note; repeated on several formats. (2) №155 'რა იცი ჩემზე?': Netai said she is a construction-company director looking for a car mechanic — neither is true (her profile says marketing/operations) — and mixed in work facts taken from other people's records. (3) №60 small talk 'როგორ ხარ?' took about 9 s (target ≤5). PARTLY, with a real fault: №217 weekly summaries — on 15 Oct the newest is the week of 5 Oct, the 12 Oct summary is missing. №134 'რა ღია დავალებები გვაქვს?' said 50 open while the side groups show 43 + 24 = 67, and took several minutes. №181 second-circle number: no number given (good) but no introduction offered either; reply said the request 'სისტემური ფორმით არ მოსულა'. №3 the two home tiles only fold/unfold the left list, they do not open their list. №7 the '…' menu has no stop/resume, and export gives no visible confirmation. №2 the setup bar 'N / 5' did not show (unclear whether she has 5/5). №187 asked to tell a Nino from a Giorgi, it said it could not tell by names and showed extra detail. The other partly-marked points are steps she did not run (payment, data edits) — not faults.
+
+> Lika's 14 Oct ten-point file, returned 15 Oct (her phone; Lika's results are final). Filled points: №3 / 1688 'other' button: DOES NOT WORK — the question 'Lika Ose-ს კარგი ფოტოგრაფი სჭირდება, იცნობ თუ არა ასეთს?' arrived with only three buttons 'კი, ვიცნობ' / 'არა, არ ვიცნობ' / 'მოგვიანებით გიპასუხებ' — there is no 'სხვა' (other) button at all (screenshot 10:30). Also the header reads 'Lika Ose: Lika Ose-ს …' (name twice, cut surname). №6 / 1817 unopened answer stays on top: DOES NOT WORK on her phone — 'საერთოდ დაიკარგა ტექსტი, დასრულებულებშიც ვეღარ ვიპოვე' (the conversation disappeared; she could not find it even under finished). My API pass yesterday (seat 184845) was the list order only; her result stands, so I am putting 1817 back to being tested. №9 / 200 night quiet: could not check ('ვერ შევამჩნიე'). The other seven points came back blank.
+
+> G-033 — to claude_frontend / Misho (APP SIDE). Team-tasks #5116, URGENT.
+> #4588 (rename the filters to „ჩემი / ვეხმარები / მეკითხებიან") was a RECOMMENDATION waiting for Giorgi's approve/drop, and was built without it. Giorgi's decision: DROP — go back to „ყველა / ინიციატორი / შუამავალი / ადრესატი" on all four versions (mobile app, mobile browser, desktop app, desktop browser).
+> Rule from now on: a task marked „recommendation" / „approve or drop" / „Giorgi decides" is NOT built until Giorgi's decision is written on it.
+> — Giorgi's Claude
 
 ### 15 Oct, 08:27Z — 0327 LIVE at cd3c0d4 (alone, outage 0); 0326 was already live
 
