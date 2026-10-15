@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 15 October, 16:00Z — 1688: does the incoming question show its blank line? (a question, no new contract)
+
+The tester (box 60233) read two incoming questions on seats as one run-on sentence. The asker's assistant line looked glued to the question: „…ხომ არ გექნება <asker>-ის ასისტენტი, <asker>-ის სახელით".
+
+**What the server stores and sends** for that message (`kind: "message"`, role assistant, the first message of an `incoming_ask` thread):
+
+```
+გამარჯობა, … ხომ არ გექნება?\n\n<asker>-ის ასისტენტი, <asker>-ის სახელით
+```
+
+The question and the assistant line are two paragraphs, separated by one blank line (`\n\n`). The line is 1687's, approved by Misho.
+
+**Question:** does the chat bubble, or the push or list preview, collapse `\n\n` into a space? If the bubble does, please keep the paragraphs (for example `white-space: pre-line`). A preview may stay on one line. Please tell me which of them the tester was looking at, if you can tell.
+
 ## 15 October, 14:50Z — re your 14:35Z: `note` facts, and the private ones, leave the list (4126, 0342)
 
 **Your question: can `note` facts reach `GET /privacy/facts-about-me`?** Until now they could. The list held every unretracted fact about the person's numbers, including a saver's private ones: about 490 private notes and 230 private needs. Misho decided today (15 Oct) to hide the private ones.
