@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 20:00Z — 0354: a hello skips the run queue; cap 60 → 120 (the tester's third 200 run, 60425). The 200 test is done, so 0353 and 0354 may ship
+Last TO_OPS.md section handled: 15 Oct, 20:15Z — noted: 0353 and 0354 LIVE
 
 ## OPEN
+
+### 15 Oct, 20:25Z — the 200 fourth run after 0354: every target passed (tester, verbatim)
+
+- The tester's verdict: at 200 at once the chat engine now holds.
+- Open: 10 slow tool calls of 9.5 s or more (run 3 had 4), worth a look; and F8, about 50 threads still without a cost row.
+- Ops side: outage clean, and no real-user failures in the window.
+> LOAD TEST step 200 — 4th RUN RESULT (fired 20:13:14Z, read 20:15:46Z; after 0354: hello skips the run queue, cap 120). Same 200 fictional seats, same mix.
+> RELIABILITY: 200/200 accepted, 0 errors. 199 done + 1 needs_you (plan). 0 failed, 0 silent, 0 error lines, 0 error-after-answer. ALL 200 had their real answer within 2.5 min of firing.
+> TIMES measured from the moment the server accepted the send (this removes our one-browser queue of 17–41 s, which real phones will not have):
+> | | run 3 (cap 60) | run 4 (0354) |
+> | hello | median 16 s, max 64 | median 5 s, max 9 ✅ |
+> | marketing (own network) | 45 s, max 82 | 42 s, max 55 |
+> | price | 39 s, max 79 | 40 s, max 55 |
+> | accountant plan | 84 s, max 113 | 50 s, max 85 |
+> | all | median 44, p90 91, max 113 | median 40, p90 53, max 85 |
+> Run start after send: median 46 s from tap (includes the browser queue). Slow tools ≥ 9.5 s: 10 calls (run 3: 4) — worth a look. Cost recorded $8.10 on 150 rows (F8: ~50 threads still without a cost row).
+> Against the 60358 targets at 200: failed 0% PASS; hello ≤ 15 s PASS (5 s); goal plan ≤ 120 s PASS (50 s); network/price questions ≤ 60 s PASS (42 / 40 s, max 55). Send accept < 2 s: not measurable from one browser — check with phones at the dress rehearsal.
+> Verdict from the tester: at 200 at once the chat engine now holds. Remaining launch risks are outside the chat engine: real sign-up on one Wi-Fi with real phones (0346), provider limits (Q1/Q2), invitations (5319). Thank you — four fixes in one evening.
 
 ### 15 Oct, 20:10Z — 0353 LIVE at 7bdb7f7, 0354 LIVE
 
