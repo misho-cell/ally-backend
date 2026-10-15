@@ -1,0 +1,105 @@
+From a806602f4965596d1271134afdd2379f0722e539 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 09:29:38 +0000
+Subject: [PATCH] =?UTF-8?q?Lika=20=E2=84=96134:=20get=5Fmy=5Ftasks=20answe?=
+ =?UTF-8?q?rs=20the=20whole=20count=20beside=20the=20newest=2050?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+„რა ღია დავალებები გვაქვს?" was answered „50 open" of her 74: the in-app tool
+lists the newest 50 goals and gave no total. It now answers the same
+{ tasks, total } the connector already does (getMyTasksPage), the count taken
+with the list's own exclusion.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theOpenGoalCountIsTheWholeCount.test.ts   | 50 +++++++++++++++++++
+ src/services/chat.service.ts                  |  6 ++-
+ 2 files changed, 55 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/theOpenGoalCountIsTheWholeCount.test.ts
+
+diff --git a/src/services/__tests__/theOpenGoalCountIsTheWholeCount.test.ts b/src/services/__tests__/theOpenGoalCountIsTheWholeCount.test.ts
+new file mode 100644
+index 0000000..dd89494
+--- /dev/null
++++ b/src/services/__tests__/theOpenGoalCountIsTheWholeCount.test.ts
+@@ -0,0 +1,50 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { getMyTasksPage } from '../taskStore.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++const OWNER = '501';
++const LISTED = 50;
++const OPEN = 74;
++
++/**
++ * Lika's №134 (15 Oct): „რა ღია დავალებები გვაქვს?" was answered „50 open" of
++ * her 74 — the tool lists the newest 50 and gave no total beside them.
++ */
++describe('the open goals the in-app tool reads', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('come with the whole count, not the size of the page', async () => {
++    const page = Array.from({ length: LISTED }, (_, i) => ({ id: i + 1, title: `goal ${i + 1}` }));
++    mockQuery.mockImplementation((sql: unknown) =>
++      Promise.resolve({
++        rows: String(sql).includes('COUNT(*)') ? [{ count: String(OPEN) }] : page,
++        rowCount: 0,
++      } as never),
++    );
++    const result = await getMyTasksPage(OWNER, 'open');
++    expect(result.tasks).toHaveLength(LISTED);
++    expect(result.total).toBe(OPEN);
++  });
++
++  it('count with the same exclusion as the list', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ count: '0' }], rowCount: 0 } as never);
++    await getMyTasksPage(OWNER, 'open');
++    const count = mockQuery.mock.calls
++      .map(([sql]) => String(sql))
++      .find((sql) => sql.includes('COUNT(*)'));
++    expect(count).toContain('hidden_goals');
++  });
++
++  it('is what get_my_tasks answers in the app', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const tool = chat.slice(chat.indexOf("case 'get_my_tasks': {"));
++    expect(tool.slice(0, tool.indexOf("case 'update_task'"))).toContain(
++      'return getMyTasksPage(userId, status);',
++    );
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index d4683a2..4ce2816 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -212,6 +212,7 @@ import { getLabelQueueForUser, getLabelQueueTotalForUser } from './labelParser.s
+ import {
+   createTask,
+   getMyTasks,
++  getMyTasksPage,
+   grantTaskPermission,
+   isTaskStatus,
+   isTaskAutonomy,
+@@ -10352,7 +10353,10 @@ async function executeToolCall(
+       const status = isTaskStatus(input['status'] as string)
+         ? (input['status'] as 'open' | 'paused' | 'closed')
+         : undefined;
+-      return { tasks: await getMyTasks(userId, status) };
++      // Lika's №134 (15 Oct): the list holds the newest 50, and with no total
++      // beside it the reply said „50 open" of her 74. The total is the same
++      // count the connector reports (getMyTasksPage).
++      return getMyTasksPage(userId, status);
+     }
+     case 'update_task': {
+       const status = input['status'] as string;
+-- 
+2.43.0
+

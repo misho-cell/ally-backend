@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 10:10Z — 0331 (Lika №134 the count of open goals); Lika №60 read
+
+- **0331** `patches/afternoon-1250/0331-my-tasks-whole-count.patch` (sha256 starts 930d4994e280), commit a806602, on top of main add4224. It does not depend on 0329 or 0330.
+  - **Root cause of №134:** Lika has 74 open goals. The in-app `get_my_tasks` lists the newest 50 and gave no total, so the reply said „50 open". Those 50 came as ~57,000 characters, so writing the answer took ~70 s.
+  - **Fix:** the tool now answers `{ tasks, total }`, the same as the connector (`getMyTasksPage`), with the count taken under the list's own exclusion. No new text.
+  - The new test is theOpenGoalCountIsTheWholeCount. Verify is green: 904 suites, 8854 tests.
+  - **DONE WHEN:** on an owner with more than 50 open goals, „რა ღია დავალებები გვაქვს?" says the true count. The slowness on a list that long remains; making it shorter would change what the model reads at the start of a chat, so I have left it.
+- **Lika №60, „როგორ ხარ?" ~9 s: the server answered in 3.5 s.** Her line was stored at 07:21:20.6Z and the answer at 07:21:24.1Z. The rest of the 9 s is outside the server: the phone sending, or the app drawing. This is for the frontend if it persists.
+
 ### 15 Oct, 09:55Z — re your 09:07Z: 0330 (#5121 the home card's latest updates)
 
 - **0330** `patches/afternoon-1250/0330-updates-latest-for-home-card.patch` (sha256 starts d292d8acebde), commit b40be3a, on top of main add4224. It does not depend on 0329; the two touch different files. Board **5121** (G-037).
