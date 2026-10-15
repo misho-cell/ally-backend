@@ -4905,9 +4905,13 @@ async function withLaterLine(
  * being waited on, and never says nobody answered while that is not true. The
  * prompt asked for both and the reply did neither, so it is done here.
  */
-async function withGoalAskLines(reply: string, threadId: number): Promise<string> {
+async function withGoalAskLines(
+  reply: string,
+  threadId: number,
+  openTask: Promise<Task | null>,
+): Promise<string> {
   try {
-    const task = await getOpenTaskByThread(threadId);
+    const task = await openTask;
     if (task === null) return reply;
     const [asks, held, language] = await Promise.all([
       getAsksForTask(task.id),
@@ -16507,6 +16511,14 @@ export async function processChat(
     approvedByTap !== null || openAsksSettled !== null || introAccepted !== null,
   );
   const postRun = startPostRunClock();
+  /**
+   * 3106 (speed): the goal's ask lines need the thread's open goal, and the run
+   * loop is over, so it is read now, beside the trail being saved, instead of
+   * after it. It is awaited inside withGoalAskLines, which handles a failure
+   * as before; the no-op catch only stops it counting as unhandled meanwhile.
+   */
+  const openTaskAfterLoop = getOpenTaskByThread(threadId);
+  openTaskAfterLoop.catch(() => undefined);
   // The tester's 1100: a plan reply carries the plan's own buttons; see planButtonsWhenMissing.
   const planToNobody = takePlanWritesToNobody(runId);
   // #1686 (A3): a „later" on an incoming ask is answered with three days to pick from.
@@ -16639,7 +16651,7 @@ export async function processChat(
   if (!/[\p{L}\p{N}]/u.test(effectiveFinal)) effectiveFinal = '';
   // #1684 (tester 41786): the per-person lines and the truth about answers, by the server.
   if (effectiveFinal.trim() !== '')
-    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId);
+    effectiveFinal = await withGoalAskLines(effectiveFinal, threadId, openTaskAfterLoop);
   // #1686 (A3): the reader is told, by the server, the day the question comes back.
   if (thread.type === 'incoming_ask' && (laterTapped || laterDaysOf(userMessage) !== null)) {
     effectiveFinal = await withLaterLine(effectiveFinal, threadId, language, userMessage);
