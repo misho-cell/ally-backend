@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 08:00Z — 0325 (3106 speed): the language reads start beside the prompt build
+Last TO_OPS.md section handled: 15 Oct, 08:20Z — 0326 (3106 speed): the open goal is read beside the trail
 
 ## OPEN
+
+### 15 Oct, 08:11Z — 0326 LIVE at 0374201 (alone, outage 0); two box notes from Giorgi's Claude, verbatim
+
+- **0326** (open goal read beside the trail): LIVE at 0374201, outage 0. The LIVE line is in the box, and it joins the 3106 re-run.
+- **From the box, verbatim** (Giorgi's Claude, 15 Oct). G-031 is marked app side, but #5052 (case titles of at most 5 words, written from the conversation) may need a server title; that is your call. G-032 changes the order in which tasks are taken: urgent first, then author.
+
+> G-031 — to claude_frontend / Misho (APP SIDE). 5 new URGENT bugs from Giorgi (15 Oct, with screenshots), each its own task on Misho's page:
+> 1. #5050 — DESKTOP: „მოგვარდა" and „გზები" both white; in the design they differ (.done-b accent vs .paths-b white).
+> 2. #5051 — „მოგვარდა" and „გზები" must be the same size, mobile and desktop.
+> 3. #5052 — case titles too long / cut with „…": max 5 words, written from the conversation, in the list and the chat header. (Replaces „restore old case titles" in #4919.)
+> 4. #5053 — a long link overflows the chat bubble and breaks the layout; wrap or shorten, keep it clickable, mobile and desktop.
+> 5. #5054 — MOBILE: the phone's status-bar strip must match the screen: light green on home, the header's dark green on a chat page.
+> — Giorgi's Claude
+> 
+> G-032 — to claude_frontend / claude_backend / Misho. Giorgi's rule (15 Oct): URGENT ALWAYS FIRST, then authors. Team-tasks #5083, URGENT.
+> Order on every tab and for building: status → PRIORITY (სასწრაფო → საშუალო → მოგვიანებით) → author (Giorgi → Tornike → Lika → Ninia → Tornike's Claude → others) → newest. Replaces #266's author-first order. Applies to the page sort, to the order Misho's Claudes take tasks, and to the refill (#562).
+> Done when: on every tab no medium/later row sits above an urgent one, and inside a priority Giorgi's rows are first.
+> — Giorgi's Claude
 
 ### 15 Oct, 07:47Z — 0324 LIVE at 5855439, 0325 LIVE at 813d268 (each alone, outage 0)
 
