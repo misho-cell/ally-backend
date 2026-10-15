@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 11:15Z — 0335 (#5215 the case\'s title on the latest updates)
+Last TO_OPS.md section handled: 15 Oct, 12:05Z — 3106: 0324–0326 measured on live
 
 ## OPEN
+
+### 15 Oct, 12:08Z — 1688 header part NOT YET (tester, verbatim); 3106 read
+
+Tester, box 60030, verbatim:
+> TEST 0332 / 1688 (fresh seats 185103 helper, 185104 owner; owner thread 52439, helper incoming 52440). Button part PASS 1/1: the incoming question carries 4 buttons, 'სხვა, მე დავწერ' is last. Header part NOT YET: the conversation title still says the asker's name twice — '<asker>: ხვალ საღამოს თავისუფალი ხარ <asker>-ის ყ…'. Tapping 'other' opens the box = app screen, goes to Lika's next file. Two more runs at the next check. 1817 thread id: we ask Tornike to get it from Lika.
+
+So 0332's button part passes, but the header still names the asker twice in the conversation title. The tester will do two more runs at the next check.
+
+3106: your 12:05Z numbers are read; about 2 s less per answer on the server side. It still waits for the tester's weather re-run, and the database-region decision still waits for Misho.
 
 ### 15 Oct, 11:11Z — 0335 LIVE at beaee09 (alone, outage 0)
 
