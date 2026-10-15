@@ -78,17 +78,30 @@ export function referralCodeFrom(body: unknown): ReferralCodeIn {
   return {};
 }
 
-// Unauthenticated endpoints — limit by IP to curb OTP/login abuse.
-authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));
+/**
+ * Unauthenticated endpoints, counted twice (Misho, 15 Oct, for the 21 Oct
+ * launch: a hundred people signing up on one room's Wi-Fi).
+ *
+ * Per PERSON — the device, else the phone the step is about — the old cap of
+ * 30 in five minutes, which is the abuse control. Per ADDRESS a cap ten times
+ * that, so a shared Wi-Fi lets a room in while one address still cannot
+ * hammer the login without end.
+ */
+const AUTH_WINDOW_MS = 5 * 60_000;
+const AUTH_MAX_PER_PERSON = 30;
+const AUTH_MAX_PER_ADDRESS = 300;
+authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_ADDRESS, keyBy: 'ip' }));
+authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_PERSON, keyBy: 'person' }));
 
-// Tighter, per-device limit on the SMS-sending endpoints specifically, so a
-// single device can't burn the SMS budget behind a shared/NAT'd IP (F4).
+// Tighter limit on the SMS-sending endpoints specifically, so one device —
+// or, from an app that sends no device id, one phone — can't burn the SMS
+// budget (F4). Keyed by the person, not the address, for the same room.
 const OTP_SEND_WINDOW_MS = 10 * 60_000;
-const OTP_SEND_MAX_PER_DEVICE = 5;
+const OTP_SEND_MAX_PER_PERSON = 5;
 const limitOtpSends = rateLimit({
   windowMs: OTP_SEND_WINDOW_MS,
-  max: OTP_SEND_MAX_PER_DEVICE,
-  keyBy: 'device',
+  max: OTP_SEND_MAX_PER_PERSON,
+  keyBy: 'person',
 });
 
 authRouter.post(

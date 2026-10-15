@@ -39,8 +39,34 @@ function deviceKey(req: Request): string {
   return `ip:${clientIp(req)}`;
 }
 
+// The phone number a sign-in step is about, digits only, from the parsed body.
+function phoneInBody(req: Request): string | null {
+  const body: unknown = req.body;
+  if (typeof body !== 'object' || body === null) return null;
+  const phone = (body as Record<string, unknown>).phone;
+  if (typeof phone !== 'string') return null;
+  const digits = phone.replace(/\D/g, '');
+  return digits === '' ? null : digits;
+}
+
+/**
+ * The launch of 21 Oct (the tester's 60292; Misho, 15 Oct): a hundred people
+ * signing up in one room share one Wi-Fi address, and an IP-keyed limit let
+ * about ten of them through. A sign-in step is counted for the PERSON: the
+ * app's device id when it sends one, else the phone number the step is about,
+ * else, with neither, the address.
+ */
+function personKey(req: Request): string {
+  const id = req.headers['x-device-id'];
+  if (typeof id === 'string' && id.trim().length > 0) return `dev:${id.trim()}`;
+  const phone = phoneInBody(req);
+  return phone === null ? `ip:${clientIp(req)}` : `ph:${phone}`;
+}
+
 function keyFor(req: Request, keyBy: RateLimitOptions['keyBy']): string {
   if (keyBy === 'device') return deviceKey(req);
+  if (keyBy === 'person') return personKey(req);
+  if (keyBy === 'ip') return `ip:${clientIp(req)}`;
   const user = (req as AuthenticatedRequest).user;
   if (user?.userId) return `u:${user.userId}`;
   return `ip:${clientIp(req)}`;
@@ -50,8 +76,9 @@ export interface RateLimitOptions {
   windowMs: number;
   max: number;
   // 'device' keys by X-Device-Id (then IP) — for unauthenticated abuse control.
-  // Default 'auto' keys by user when authenticated, else IP.
-  keyBy?: 'auto' | 'device';
+  // 'person' keys by X-Device-Id, then the body's phone, then IP — sign-in steps.
+  // 'ip' keys by the address alone. Default 'auto': by user when authenticated, else IP.
+  keyBy?: 'auto' | 'device' | 'person' | 'ip';
   // Fired (best-effort, after the 429 is sent) so a route can leave a visible
   // trace — a rejected chat send used to leave the thread silently empty
   // forever (ticket 6 protocol run, task 38 / thread 9873).

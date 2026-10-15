@@ -101,3 +101,37 @@ describe('rateLimit: each limiter has its own budget (4927, 4928)', () => {
     expect(hit(shared, user, 2)).toBe(1);
   });
 });
+
+/** The 21 Oct launch (60292; Misho, 15 Oct): a room on one Wi-Fi signs up together. */
+describe('rateLimit keyBy: person', () => {
+  const PERSON: RateLimitOptions = { windowMs: 60_000, max: 2, keyBy: 'person' };
+  const withPhone = (phone: string, headers: Record<string, string> = {}): Request =>
+    ({ headers, ip: '10.0.0.9', body: { phone } }) as unknown as Request;
+
+  it('counts each phone on one address on its own', () => {
+    const mw = rateLimit(PERSON);
+    expect(hit(mw, withPhone('+995 555 00 00 01'), 3)).toBe(2);
+    expect(hit(mw, withPhone('+995 555 00 00 02'), 2)).toBe(2);
+  });
+
+  it('reads one phone however it is spaced', () => {
+    const mw = rateLimit(PERSON);
+    expect(hit(mw, withPhone('+995 555 00 00 03'), 2)).toBe(2);
+    expect(hit(mw, withPhone('995555000003'), 1)).toBe(0);
+  });
+
+  it('prefers the device id, then falls back to the address with neither', () => {
+    const mw = rateLimit(PERSON);
+    expect(hit(mw, withPhone('+995 555 00 00 04', { 'x-device-id': 'dev-P' }), 2)).toBe(2);
+    expect(hit(mw, withPhone('+995 555 00 00 05', { 'x-device-id': 'dev-P' }), 1)).toBe(0);
+    expect(hit(mw, makeReq({}, '10.0.0.7'), 3)).toBe(2);
+  });
+});
+
+describe('rateLimit keyBy: ip', () => {
+  it('counts the address even for a signed-in user', () => {
+    const mw = rateLimit({ windowMs: 60_000, max: 2, keyBy: 'ip' });
+    const req = { headers: {}, ip: '10.0.0.8', user: { userId: '7' } } as unknown as Request;
+    expect(hit(mw, req, 3)).toBe(2);
+  });
+});
