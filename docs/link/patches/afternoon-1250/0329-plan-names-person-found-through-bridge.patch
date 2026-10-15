@@ -1,0 +1,274 @@
+From 70d42395d5c9de5d48cba4244d6161197c1f7b42 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 09:12:57 +0000
+Subject: [PATCH] 4297: the plan sentence names the person found through the
+ go-between
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's re-run (59902, threads 52283/85/87): the search found the
+second-circle lawyer through Temo, the model's plan named Temo and no
+introduction, and the server's D663 sentence said only „თემო ჩხეიძის
+ასისტენტს დაველაპარაკები…" — the lawyer was never named. When the plan has one
+reachable go-between and names no introduction, and this run's searches found
+exactly one named person through that same go-between, the server's D739
+sentence (already approved, INTRO_TARGET_SENTENCE_ON) now names them. The
+plan's own introduction still wins; two people found keeps the D663 sentence.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...amesThePersonFoundThroughTheBridge.test.ts | 105 ++++++++++++++++++
+ src/services/chat.service.ts                  |  17 ++-
+ src/services/introTargetSentence.ts           |  56 +++++++++-
+ 3 files changed, 173 insertions(+), 5 deletions(-)
+ create mode 100644 src/services/__tests__/thePlanNamesThePersonFoundThroughTheBridge.test.ts
+
+diff --git a/src/services/__tests__/thePlanNamesThePersonFoundThroughTheBridge.test.ts b/src/services/__tests__/thePlanNamesThePersonFoundThroughTheBridge.test.ts
+new file mode 100644
+index 0000000..69eb9c6
+--- /dev/null
++++ b/src/services/__tests__/thePlanNamesThePersonFoundThroughTheBridge.test.ts
+@@ -0,0 +1,105 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++import {
++  foundThroughBridges,
++  introductionFromFound,
++  introTargetSentence,
++} from '../introTargetSentence';
++
++/**
++ * 4297 [c]/[d] (the tester's 59902, threads 52283/85/87): the second-circle
++ * lawyer was found through Temo, the plan named Temo and no introduction, and
++ * the server's sentence said only „თემო ჩხეიძის ასისტენტს დაველაპარაკები…".
++ */
++const TEMO_PHONE = '+995 555 00 00 01';
++const TEMO = { name: 'თემო ჩხეიძე', phone: TEMO_PHONE };
++const PLAN_WITHOUT_INTRODUCTION = { routes: [{ name: 'თემოს კავშირი', status: 'waiting' }] };
++
++function lawyerRow(name: string, viaPhone: string): Record<string, unknown> {
++  return {
++    phone: '+995 555 00 00 99',
++    name,
++    ownership: 'second_degree',
++    via_contacts: [{ name: 'თემო ჩხეიძე', phone: viaPhone }],
++  };
++}
++
++describe('the people a search found through a bridge', () => {
++  it('reads each named second-circle row with its bridges’ phones', () => {
++    const result = { results: [lawyerRow('ნინო იურისტი', TEMO_PHONE)] };
++    expect(foundThroughBridges(result)).toEqual([
++      { name: 'ნინო იურისტი', viaPhones: [TEMO_PHONE] },
++    ]);
++  });
++
++  it('skips own contacts, nameless rows, rows with no bridge, and non-results', () => {
++    const result = {
++      results: [
++        { ...lawyerRow('ნინო', TEMO_PHONE), ownership: 'own' },
++        lawyerRow('', TEMO_PHONE),
++        { ...lawyerRow('ლევანი', TEMO_PHONE), via_contacts: [] },
++      ],
++    };
++    expect(foundThroughBridges(result)).toEqual([]);
++    expect(foundThroughBridges(null)).toEqual([]);
++    expect(foundThroughBridges({ results: 'none' })).toEqual([]);
++  });
++});
++
++describe('the introduction taken from what the run found', () => {
++  const found = [{ name: 'ნინო იურისტი', viaPhones: ['995555000001'] }];
++
++  it('names the one person found through the plan’s one go-between', () => {
++    expect(introductionFromFound([TEMO], found)).toEqual({
++      via: 'თემო ჩხეიძე',
++      to: 'ნინო იურისტი',
++    });
++  });
++
++  it('names nobody when two people were found through that go-between', () => {
++    const two = [...found, { name: 'ლევან იურისტი', viaPhones: [TEMO_PHONE] }];
++    expect(introductionFromFound([TEMO], two)).toBeNull();
++  });
++
++  it('names nobody found through someone else, or for two go-betweens or an unreachable one', () => {
++    const elsewhere = [{ name: 'ნინო იურისტი', viaPhones: ['+995 555 00 00 02'] }];
++    expect(introductionFromFound([TEMO], elsewhere)).toBeNull();
++    expect(introductionFromFound([TEMO, { name: 'გია', phone: '+1' }], found)).toBeNull();
++    expect(introductionFromFound([{ ...TEMO, reach: 'never_opened' }], found)).toBeNull();
++  });
++});
++
++describe('the server’s plan sentence', () => {
++  const found = [{ name: 'ნინო იურისტი', viaPhones: [TEMO_PHONE] }];
++
++  it('names whom the go-between introduces when only the search says it', () => {
++    const sentence = introTargetSentence(PLAN_WITHOUT_INTRODUCTION, [TEMO], 'ka', found);
++    expect(sentence).toContain('ნინო იურისტი');
++    expect(sentence).toContain('ასისტენტს დაველაპარაკები');
++  });
++
++  it('keeps the plan’s own introduction ahead of the search', () => {
++    const planned = {
++      routes: [
++        {
++          name: 'გაცნობა',
++          status: 'waiting',
++          introduction: { via_phone: TEMO_PHONE, to_name: 'სოფო' },
++        },
++      ],
++    };
++    expect(introTargetSentence(planned, [TEMO], 'ka', found)).toContain('სოფო');
++  });
++
++  it('stays the D663 sentence with nothing found, and outside Georgian', () => {
++    expect(introTargetSentence(PLAN_WITHOUT_INTRODUCTION, [TEMO], 'ka')).toBeNull();
++    expect(introTargetSentence(PLAN_WITHOUT_INTRODUCTION, [TEMO], 'en', found)).toBeNull();
++  });
++
++  it('is given the run’s finds where the plan is noted for the reply', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain('(runId && runFoundThroughBridges.get(runId)) || [],');
++    expect(chat).toContain('runFoundThroughBridges.delete(runId);');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index d4683a2..e263c8a 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -94,7 +94,11 @@ import {
+   withPlanSentence,
+   withOnePlanSentence,
+ } from './planJustification';
+-import { introTargetSentence } from './introTargetSentence';
++import {
++  FoundThroughBridge,
++  foundThroughBridges,
++  introTargetSentence,
++} from './introTargetSentence';
+ import { withQuestionFromSteps } from './questionWithButtons';
+ import { withOwnersNetwork } from './planVoice';
+ import { withoutInternalText } from './internalText';
+@@ -5529,10 +5533,19 @@ const PHONE_KEYED_TOOL_FIELD: Record<string, string> = {
+ // (fire-and-forget so logging never blocks or fails the search).
+ /** 3732: who this run's own searches returned, so the walk can take a name the run was shown. */
+ const runFoundPeople = new Map<string, FoundPerson[]>();
++/** 4297: who this run's searches found one step away, with the contacts who know them. */
++const runFoundThroughBridges = new Map<string, FoundThroughBridge[]>();
+ 
+ function notePeopleFound(runId: string, result: unknown): void {
+   const found = peopleFoundIn(result);
+   if (found.length > 0) runFoundPeople.set(runId, [...(runFoundPeople.get(runId) ?? []), ...found]);
++  const throughBridges = foundThroughBridges(result);
++  if (throughBridges.length > 0) {
++    runFoundThroughBridges.set(runId, [
++      ...(runFoundThroughBridges.get(runId) ?? []),
++      ...throughBridges,
++    ]);
++  }
+ }
+ 
+ function peopleFoundCount(runId: string): number {
+@@ -9047,6 +9060,7 @@ function clearRunState(runId: string): void {
+   runWakeCaps.delete(runId);
+   clearRunEvidence(runId);
+   takeSavedFact(runId);
++  runFoundThroughBridges.delete(runId);
+ }
+ 
+ /**
+@@ -10680,6 +10694,7 @@ async function executeToolCall(
+               input['plan'],
+               stored.people_to_involve,
+               runLang(runId),
++              (runId && runFoundThroughBridges.get(runId)) || [],
+             );
+             notePlanForReply(runId, {
+               text: plainPlan,
+diff --git a/src/services/introTargetSentence.ts b/src/services/introTargetSentence.ts
+index 764b22c..812efe7 100644
+--- a/src/services/introTargetSentence.ts
++++ b/src/services/introTargetSentence.ts
+@@ -1,4 +1,5 @@
+ import { geoName } from './georgianCase';
++import { phoneDigits } from './phone';
+ import { routeIntroductions } from './planClosedRoute';
+ import { RunLanguage } from './runLanguage';
+ 
+@@ -58,18 +59,65 @@ export function georgianSentence(intro: PlannedIntroduction): string {
+   );
+ }
+ 
++/** A person this run's search found one step away, and the contacts who know them. */
++export interface FoundThroughBridge {
++  readonly name: string;
++  readonly viaPhones: readonly string[];
++}
++
++const SECOND_DEGREE = 'second_degree';
++
++/** The named second-circle rows of a person-search result, each with its bridges' phones. */
++export function foundThroughBridges(result: unknown): FoundThroughBridge[] {
++  const rows = (result as { results?: unknown } | null)?.results;
++  if (!Array.isArray(rows)) return [];
++  return rows.flatMap((row: unknown) => {
++    const r = (row ?? {}) as { name?: unknown; ownership?: unknown; via_contacts?: unknown };
++    const name = typeof r.name === 'string' ? r.name.trim() : '';
++    if (r.ownership !== SECOND_DEGREE || name === '' || !Array.isArray(r.via_contacts)) return [];
++    const viaPhones = r.via_contacts
++      .map((via: unknown) => (via as { phone?: unknown } | null)?.phone)
++      .filter((phone): phone is string => typeof phone === 'string' && phone !== '');
++    return viaPhones.length === 0 ? [] : [{ name, viaPhones }];
++  });
++}
++
++/**
++ * 4297 [c]/[d] (the tester's 59902): the plan named one go-between and no
++ * introduction, so the D663 sentence named only the go-between and never the
++ * lawyer the search had found through them. When this run's search found
++ * exactly one named person through that same go-between, that person is whom
++ * the go-between is asked to introduce.
++ */
++export function introductionFromFound(
++  people: readonly GoBetween[],
++  found: readonly FoundThroughBridge[],
++): PlannedIntroduction | null {
++  if (people.length !== 1 || !reachable(people[0])) return null;
++  const via = people[0];
++  const viaDigits = phoneDigits(via.phone);
++  if (viaDigits === '') return null;
++  const names = new Set(
++    found
++      .filter((person) => person.viaPhones.some((phone) => phoneDigits(phone) === viaDigits))
++      .map((person) => person.name),
++  );
++  return names.size === 1 ? { via: via.name, to: [...names][0] } : null;
++}
++
+ /**
+  * The server's plan sentence naming whom the introduction is to, or null to
+- * keep the D663 sentence: the switch is off, the plan names no single
+- * introduction, or the run is not in Georgian (only the Georgian text was
+- * drafted).
++ * keep the D663 sentence: the switch is off, neither the plan nor this run's
++ * search names a single introduction, or the run is not in Georgian (only the
++ * Georgian text was drafted).
+  */
+ export function introTargetSentence(
+   planInput: unknown,
+   people: readonly GoBetween[],
+   language: RunLanguage,
++  found: readonly FoundThroughBridge[] = [],
+ ): string | null {
+   if (!INTRO_TARGET_SENTENCE_ON || language !== 'ka') return null;
+-  const intro = plannedIntroduction(planInput, people);
++  const intro = plannedIntroduction(planInput, people) ?? introductionFromFound(people, found);
+   return intro === null ? null : georgianSentence(intro);
+ }
+-- 
+2.43.0
+

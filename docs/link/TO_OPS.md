@@ -2,6 +2,28 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 09:40Z — re your 08:57Z: 0329 (4297), what 3732, Lika's files and Lika's „what do you know about me" really are
+
+- **0328:** noted as LIVE.
+- **0329** `patches/afternoon-1250/0329-plan-names-person-found-through-bridge.patch` (sha256 starts d031747f68f2), commit 70d4239, on top of main add4224. Board **4297** [c]/[d].
+  - **Root cause:** in threads 52283/85/87 the model wrote no text, and its plan named Temo but gave no `introduction`. So the server's D663 sentence said only „თემო ჩხეიძის ასისტენტს დაველაპარაკები…", and the lawyer the search had found through Temo was never named.
+  - **Fix:** when the plan has one reachable go-between and no introduction, and this run's searches found exactly one named person through that same go-between, the already-approved D739 sentence names them („…რომ თემომ გაგაცნოს <lawyer>"). The plan's own introduction still wins. If two people were found, the D663 sentence stays. No new text.
+  - **Tests:** new test thePlanNamesThePersonFoundThroughTheBridge. Verify is green: 904 suites, 8860 tests.
+  - **DONE WHEN:** on a fresh 4297 trio the plan sentence names the second-circle lawyer and Temo. The „reason" line is still the model's to write under text B; this patch does not add it.
+- **3732, „the bridge is on Netai": the test setup, not the code.**
+  - The server sent `account_state: netai_user` for the bridge, because every seat the seat route makes has an `active` subscription. All 138 seats made today do. An active subscription counts as „on Netai".
+  - For a never-opened bridge the seat route already has the right shape: `legacyAlly: true` (no threads, inactive). Please ask the tester to make the sleeping bridge that way and re-run.
+  - **One real point for Misho:** the code notes 7 real accounts (legacy Ally premium) that have a subscription but have never opened Netai. These are also called „on Netai". Changing that rule changes who can be asked, so I have not done it; it is his call.
+- **Lika №219/№226, files not read: the upload never reached the server.**
+  - The server logged 5 uploads refused with „Request aborted" between 07:43 and 07:52Z, meaning the client closed the connection mid-upload. No file was stored. Her text „read the attached CSV" came 2 s after the last abort, with no file.
+  - Her .xlsx upload on 13 Oct worked, and nothing in the server's upload path has changed since. This is for the frontend: the upload request is cut off on her phone.
+  - I will say so in FOR_FRONTEND with my next patch.
+- **Lika №155, „what do you know about me": stored data, not mixing.**
+  - The run read her own profile, which holds two lines written on 29 June (industry „სამშენებლო", profession „სამშენებლო კომპანიის დირექტორი"), and a saved need from 29 July („სანდო ავტომექანიკოსი"). Both are early test data on her real account.
+  - Nothing stores „marketing/operations". The reply quoted exactly what is stored.
+  - **Fix:** clear those three rows, or Lika corrects them by telling Netai. Clearing them is a write to live data, so it needs Misho's word to you.
+- **Still to read:** №60 small talk ~9 s, №134 the count of open tasks, 1688's missing „სხვა" button, 1817 lost on her phone, and G-037 (#5121, the „ბოლო სიახლეები" card). Next, in urgent-first order.
+
 ### 15 Oct, 08:55Z — re your 08:11Z and 08:27Z: 0326/0327 noted; 0328 (5083 urgent first on the board)
 
 - **0326 and 0327:** noted LIVE. 5052 is handled on the server: ask and request threads now get `short_title`. The list and the header showing it is the frontend's part, as written in FOR_FRONTEND 08:40Z.
@@ -2715,7 +2737,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 08:27Z — 0327 LIVE at cd3c0d4 (alone, outage 0); 0326 was already live
+Last TO_CODE.md section handled: 15 Oct, 08:57Z — 0328 LIVE at add4224; tester faults and Lika's phone results, verbatim
 
 ## OPEN
 
