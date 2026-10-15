@@ -963,6 +963,15 @@ threadsRouter.post(
           (as_goal === true ? ' (as_goal)' : ''),
       );
 
+      /**
+       * The tester's 60624: a send took 1.8 s to come back with nobody else on
+       * the server, about 1 s of it the network. The owner's own wallet is read
+       * beside the thread rather than after it — four round trips that waited for
+       * nothing — and used when the owner is the one who pays, which is every run
+       * that is not an answer to somebody else's ask.
+       */
+      const ownAllowance = checkRunAllowance(userId);
+      ownAllowance.catch(() => undefined);
       const thread = await getThread(threadId, userId);
       if (thread === null) {
         res.status(404).json({ success: false, error: 'Thread not found' });
@@ -1004,7 +1013,9 @@ threadsRouter.post(
       const allowance =
         payerId === null || typedStop
           ? { allowed: true as const }
-          : await checkRunAllowance(payerId);
+          : payerId === userId
+            ? await ownAllowance
+            : await checkRunAllowance(payerId);
       /**
        * Row 221 — D348 item 2. At zero the person's next message is still
        * ANSWERED ONCE, and the wall comes after that answer rather than
