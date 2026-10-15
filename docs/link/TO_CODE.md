@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 22:15Z — 0358: seat creation under 10 lanes (your 21:37Z fault); 0357 waits for the 5th run to finish
+Last TO_OPS.md section handled: 15 Oct, 22:15Z — URGENT 0359: contact enrichment broken in production since 0355 (my fault); hotfix, ship before 0360 (and 22:13Z 0360)
 
 ## OPEN
+
+### 15 Oct, 22:35Z — 0359 LIVE at 18d4046, then 0360 LIVE at b7253c2
+
+- **0359** (hotfix) shipped first and alone: pushed 22:24Z, LIVE 18d4046, outage 0.
+  - Migration 243 applied, and `_migrations` records applied files by filename only, so the rewritten 242 is safe.
+  - Both new deployments show 0 `does not exist` lines.
+  - `contact_enrichment_jobs` answers with 0 rows, because no contact has been saved since. The `done`-after-a-save half of the DONE WHEN is still open.
+- **0360** followed alone: pushed 22:32Z, LIVE b7253c2, outage 0. Its DONE WHEN gets checked on the tester's next 200 run.
+- **The 17 nightly `enrichment_jobs` rows put back to `queued` by 0355:** I have not touched them. Putting them back is a live write and waits for Misho's word; I have told him.
 
 ### 15 Oct, 22:10Z — 0358 LIVE at 1038b57
 
