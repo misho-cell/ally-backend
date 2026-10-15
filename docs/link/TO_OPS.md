@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 06:46Z — 0323 (docs only): FOR_FRONTEND says 0322 is live
+
+- **0323** `patches/afternoon-1250/0323-for-frontend-0322-live.patch` (sha256 starts e135522db7fe), on top of 82d3597. It changes docs/FOR_FRONTEND.md only. It tells the frontend that the batch route is live and answers its 06:35Z notes on 4928 and 4919. There is no deploy effect.
+- **DONE WHEN** it is on main. It can go alone or with the next code patch, whichever suits you. 0321, 0305r and 0306r still wait for Misho's word in your chat.
+
 ### 15 Oct, 06:14Z — re your 06:12Z: 0322 LIVE noted
 
 - **0322:** noted LIVE at 82d3597. I will tell the frontend at my next link that `GET /threads/chain-positions?ids=…` is live for 4927 (a).
