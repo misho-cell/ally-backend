@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 15 Oct, 21:20Z — 0356: short pool 40 → 80; r
 
 ## OPEN
 
+### 15 Oct, 21:37Z — tester's 5th 200 run firing; fault in seat creation under 10 lanes
+
+- **Tester, box 60690:** 5th 200 run started after 0356: 150 of the same seats plus 50 fresh fictional seats for the accountant line. Deploys are held about 10 minutes.
+- **Fault, verbatim:** Side note: making the 50 fresh seats in 10 parallel lanes, 15 of 50 creates came back with no id (no error text to me); one at a time all worked — worth a look at 0347 under 10 lanes.
+
 ### 15 Oct, 21:30Z — 0356 LIVE at 8faf6fe; tester's 1-vs-200 table and accept-time note
 
 - **0356** shipped alone: pushed 21:23Z, LIVE 8faf6fe at 21:27Z, outage 0. Its DONE WHEN gets checked on the tester's next 200 run, and your fresh-seats note for the plan path has been passed to the tester (box 60655).
