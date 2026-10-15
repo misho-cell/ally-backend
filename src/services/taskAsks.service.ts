@@ -682,13 +682,17 @@ async function pickerFor(
   }
 }
 
+/** One of the owner's contacts: whose phonebook, and which phone. */
+interface NamedContact {
+  readonly fromUserId: string;
+  readonly contactPhone: string;
+}
+
 /** Who an owner's typed instruction is about — see the row 251 note in createAsk. */
-interface NamedPerson {
+interface NamedPerson extends NamedContact {
   readonly threadId: number | undefined;
   readonly taskId: number;
   readonly taskCreatedAt: string;
-  readonly fromUserId: string;
-  readonly contactPhone: string;
 }
 
 /**
@@ -756,7 +760,7 @@ async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
  * of the owner's contacts has a label starting with it, and that is this
  * person — two Nikas still name nobody.
  */
-async function onlyContactByFirstName(line: string, person: NamedPerson): Promise<boolean> {
+async function onlyContactByFirstName(line: string, person: NamedContact): Promise<boolean> {
   const names = firstNamesIn(line);
   if (names.length === 0) return false;
   const phones = await query<{ phone: string }>(
@@ -773,7 +777,7 @@ async function onlyContactByFirstName(line: string, person: NamedPerson): Promis
 }
 
 /** Is this line an instruction that names exactly this person, by the owner's own label? */
-async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<boolean> {
+async function lineNamesThisPerson(line: string, person: NamedContact): Promise<boolean> {
   if (!looksLikeContactInstruction(line)) return false;
 
   // The owner's own phonebook decides which person that sentence names,
@@ -802,6 +806,29 @@ async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<b
     return false;
   }
   return phoneDigits(best.phone) === phoneDigits(person.contactPhone);
+}
+
+/**
+ * #5182 (Giorgi, 15 Oct, thread 52292): „ჯობია თორნიკეს დავუკავშირდეთ…" — the
+ * plan wall refused his new plan as „your own instruction is the permission",
+ * because the line named SOME contact of his; and the ask wall refused the ask
+ * to Tornike, because the line did not name THIS contact by his own label.
+ * Neither door opened, his „ვადასტურებ" approved the old plan, and nothing
+ * was sent. The plan wall now asks this same question, so it refuses a plan
+ * only when the ask it points to will pass.
+ */
+export async function ownerLineNamesThisContact(
+  line: string,
+  contact: { readonly fromUserId: string; readonly contactPhone: string },
+): Promise<boolean> {
+  try {
+    return await lineNamesThisPerson(line, contact);
+  } catch (error) {
+    // Fails towards the plan, which asks the owner rather than writing to anyone.
+    // eslint-disable-next-line no-console
+    console.error('[ask] could not read whom the owner named:', error);
+    return false;
+  }
 }
 
 /**

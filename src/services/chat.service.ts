@@ -251,6 +251,7 @@ import {
   noteDeclineIfButtonPressed,
   setLaterDays,
   tappedPersonOnThread,
+  ownerLineNamesThisContact,
 } from './taskAsks.service';
 import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
 import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
@@ -2732,6 +2733,21 @@ function phoneDigits(phone: unknown): string {
 }
 
 /**
+ * #5182: the one person a plan adds counts as instructed only when the owner's
+ * line names exactly them by the owner's own label — the test the ask wall
+ * applies, so a refused plan always means an ask that will go.
+ */
+async function lineNamesTheAddedPerson(
+  userId: string,
+  said: string,
+  added: unknown,
+): Promise<boolean> {
+  const phone = (added as { phone?: unknown } | null)?.phone;
+  if (typeof phone !== 'string' || phone.trim() === '') return false;
+  return ownerLineNamesThisContact(said, { fromUserId: userId, contactPhone: phone });
+}
+
+/**
  * 3928 (box 49146, conv 48289): „ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს" named
  * TWO people, the plan named the same two, and this check — „exactly one
  * person added" — let the plan and its „დავიწყო?" through. The owner's line is
@@ -2764,7 +2780,7 @@ async function ownerJustInstructedThePlansPeople(
     if (asksForAPreview(said)) return false;
     const sentence = instructionSentence(said.trim());
     if (!looksLikeContactInstruction(sentence)) return false;
-    if (added.length === 1) return await messageNamesOwnContact(userId, said);
+    if (added.length === 1) return await lineNamesTheAddedPerson(userId, said, added[0]);
     return await planAddsOnlyThePeopleNamed(userId, sentence, added);
   } catch (error) {
     // Fails towards the plan, which asks the owner rather than writing to anyone.
