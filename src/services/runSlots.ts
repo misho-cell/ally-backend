@@ -8,7 +8,9 @@
  *
  * One process only, like the thread queue beside it (threadRunQueue.ts).
  */
-export const RUN_SLOTS = 60;
+// 60 at first; the tester's third 200 run (60425) showed it queueing more than
+// the pool needs — the second run, with no cap and pool 40, had no failures.
+export const RUN_SLOTS = 120;
 /** A wait this long is logged, so the cap can be read against real days. */
 const WAIT_WORTH_LOGGING_MS = 1_000;
 
