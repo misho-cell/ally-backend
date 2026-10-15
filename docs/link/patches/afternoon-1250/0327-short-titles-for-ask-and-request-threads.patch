@@ -1,0 +1,206 @@
+From 2755114f53dbbb8a71cf634a1560cf1d158fa52f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 08:08:20 +0000
+Subject: [PATCH] 5052: ask and request threads get their short titles when
+ they are created
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Short titles were written only where the model names a conversation. Ask and
+request threads are titled by code when they are created, so they never got
+one, and the one-off backfill could not reach threads opened after it. Their
+title showed cut off with „…" in the list and the chat header (Giorgi's
+example is an ask thread). shortTitlesForNewThread asks for them as each such
+thread is created; same text and model as every other short title (4919).
+FOR_FRONTEND: show short_title in the list and the header.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 20 ++++++
+ .../aNewAskThreadGetsShortTitles.test.ts      | 63 +++++++++++++++++++
+ src/services/newThreadShortTitles.ts          | 26 ++++++++
+ src/services/taskAsks.service.ts              |  2 +
+ src/services/tools/requestIntroduction.ts     |  4 ++
+ 5 files changed, 115 insertions(+)
+ create mode 100644 src/services/__tests__/aNewAskThreadGetsShortTitles.test.ts
+ create mode 100644 src/services/newThreadShortTitles.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index e047554..a369e31 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,26 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 08:40Z — 5052 (Giorgi): case titles of at most 5 words — use `short_title` in the list and the chat header
++
++**What Giorgi asks (5052, which replaces the „restore the old titles" part of 4919):** the list and the chat header show a short title of at most 5 words, written from the conversation. Nothing may be cut off with „…".
++
++**What the server already gives:** every thread in `GET /threads` and every `thread_updated` SSE event carries two fields:
++- `short_title`: two or three words, at most 40 characters, made by the model from the full title;
++- `one_word_title`: one word.
++
++Example: `{ "id": 61234, "title": "ლიკა: გიორგი, ლიკას სურს თორნიკე აბულაძეს გაეცნოს. შე…", "short_title": "გაცნობა თორნიკესთან", "one_word_title": "გაცნობა" }`
++
++**The gap this patch (0327) closes:** ask and request threads (`incoming_ask`, `incoming_request`, `outgoing_request`) are titled by code when they are created, so they never got a `short_title`. Giorgi's example is one of them. From 0327 they get one a few seconds after they are created, and it arrives as a `thread_updated` event.
++
++**Please:**
++- In the case list and the chat header, show `short_title`. When it is null (older test-seat threads, or the seconds before it lands), fall back to the full `title` cut to its first 5 words, with no „…".
++- Keep `one_word_title` for the chips, as now.
++
++Status: 0327 is on my branch until ops ships it. `short_title` is already LIVE for goal threads.
++
++---
++
+ ## 15 October, 06:45Z — re your 06:35Z: 0322 is LIVE; 4928 and 4919 noted
+ 
+ **4927 (a):** `GET /threads/chain-positions?ids=…` is LIVE at 82d3597. Your batched call now gets 200 instead of the 404 fallback. The shape is as in the 05:53Z section below. The board row stays „built" for the tester.
+diff --git a/src/services/__tests__/aNewAskThreadGetsShortTitles.test.ts b/src/services/__tests__/aNewAskThreadGetsShortTitles.test.ts
+new file mode 100644
+index 0000000..33ba4ea
+--- /dev/null
++++ b/src/services/__tests__/aNewAskThreadGetsShortTitles.test.ts
+@@ -0,0 +1,63 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++const mockWrite = jest.fn();
++jest.mock('../threadTitle.service', () => ({
++  __esModule: true,
++  writeShortTitles: (...args: unknown[]) => mockWrite(...args),
++}));
++
++import { shortTitlesForNewThread } from '../newThreadShortTitles';
++
++const OWNER = '501';
++const THREAD_ID = 61234;
++const ASK_TITLE = 'ლიკა: გიორგი, ლიკას სურს თორნიკე აბულაძეს გაეცნოს. შეგიძლია დაეხმარო?';
++
++/**
++ * 5052 (Giorgi, 15 Oct): an ask or request thread is titled by code when it is
++ * created, so it never got the short titles the list and the header show, and
++ * its title was cut off with „…".
++ */
++describe('a thread titled by code gets its short titles too', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockWrite.mockResolvedValue(true);
++  });
++
++  it('asks for the short titles from the thread’s own title', () => {
++    shortTitlesForNewThread(OWNER, { id: THREAD_ID, title: ASK_TITLE });
++    expect(mockWrite).toHaveBeenCalledWith(OWNER, THREAD_ID, ASK_TITLE, ASK_TITLE);
++  });
++
++  it('asks nothing for a thread with no title', () => {
++    shortTitlesForNewThread(OWNER, { id: THREAD_ID, title: null });
++    shortTitlesForNewThread(OWNER, { id: THREAD_ID, title: '   ' });
++    expect(mockWrite).not.toHaveBeenCalled();
++  });
++
++  it('does not make the caller wait for the model', () => {
++    mockWrite.mockReturnValue(new Promise(() => undefined));
++    expect(shortTitlesForNewThread(OWNER, { id: THREAD_ID, title: ASK_TITLE })).toBeUndefined();
++  });
++
++  const source = (path: string): string => readFileSync(join(__dirname, '..', path), 'utf8');
++
++  it('is asked for when an ask thread is opened', () => {
++    const asks = source('taskAsks.service.ts');
++    const fn = asks.slice(asks.indexOf('async function openAskThread('));
++    const body = fn.slice(0, fn.indexOf('\n}\n'));
++    expect(body).toContain('shortTitlesForNewThread(String(toUserId), thread);');
++  });
++
++  it('is asked for on both threads of a new request', () => {
++    const intro = source('tools/requestIntroduction.ts');
++    const fn = intro.slice(intro.indexOf('async function deliverIntoNewThreads('));
++    const body = fn.slice(0, fn.indexOf('\n}\n'));
++    expect(body).toContain(
++      'shortTitlesForNewThread(String(stored.mediatorUserId), incomingThread);',
++    );
++    expect(body).toContain(
++      'shortTitlesForNewThread(String(stored.requesterUserId), outgoingThread);',
++    );
++  });
++});
+diff --git a/src/services/newThreadShortTitles.ts b/src/services/newThreadShortTitles.ts
+new file mode 100644
+index 0000000..b3eb153
+--- /dev/null
++++ b/src/services/newThreadShortTitles.ts
+@@ -0,0 +1,26 @@
++import { SHORT_TITLES_ON } from './shortTitles';
++import { writeShortTitles } from './threadTitle.service';
++
++/** The part of a just-created thread the short titles are made from. */
++export interface TitledThread {
++  readonly id: number;
++  readonly title: string | null;
++}
++
++/**
++ * 5052 (Giorgi, 15 Oct): a case title cut off with „…" in the list and the
++ * chat header — „<name>: გიორგი, ლიკას სურს …", an ask thread's title.
++ *
++ * Short titles were written only where the model names a conversation. An ask
++ * or request thread is titled by code when it is created, so it never got one,
++ * and the one-off backfill (14 Oct) could not reach threads opened after it.
++ * Same text and model as every other short title (4919, Misho's yes).
++ *
++ * Fire-and-forget: writeShortTitles never throws, and a thread must not wait
++ * on its short title — until it lands the client shortens the full one.
++ */
++export function shortTitlesForNewThread(userId: string, thread: TitledThread): void {
++  const title = thread.title?.trim() ?? '';
++  if (!SHORT_TITLES_ON || title === '') return;
++  void writeShortTitles(userId, thread.id, title, title);
++}
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index c4b9123..61e0b81 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -110,6 +110,7 @@ import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
+ import { oneAtATimeFor } from './recipientLock';
+ import { noteWaveAsk, waveRoomFor } from './askWaves.service';
+ import { eveningCardFor } from './eveningCard.service';
++import { shortTitlesForNewThread } from './newThreadShortTitles';
+ import { heldForEveningCardNote } from './eveningCard';
+ import {
+   ASKED_AS_THE_ASKER_SAVED_THEM,
+@@ -460,6 +461,7 @@ async function openAskThread(
+     status: thread.status,
+     status_line: thread.status_line,
+   });
++  shortTitlesForNewThread(String(toUserId), thread);
+   return thread.id;
+ }
+ 
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 6927eda..3f1871d 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -12,6 +12,7 @@ import { createIncomingRequestThread, createOutgoingRequestThread } from '../thr
+ import { emitThreadCreated } from '../sse.service';
+ import { isOptedOutFromAsks } from '../askOptOut.service';
+ import { isPhoneOptedOut } from '../privacyRights.service';
++import { shortTitlesForNewThread } from '../newThreadShortTitles';
+ import { linkRequestToEarlierAsk, RequestPointerInput } from '../threadBackPointer.service';
+ import {
+   findSharedConversation,
+@@ -236,6 +237,9 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
+       stored.isDirect,
+     ),
+   ]);
++  // 5052: a request thread is titled here, so its short titles are asked for here.
++  shortTitlesForNewThread(String(stored.mediatorUserId), incomingThread);
++  shortTitlesForNewThread(String(stored.requesterUserId), outgoingThread);
+ 
+   await pointBackToTheEarlierAsk(stored.requesterTaskId, {
+     requesterUserId: Number(stored.requesterUserId),
+-- 
+2.43.0
+

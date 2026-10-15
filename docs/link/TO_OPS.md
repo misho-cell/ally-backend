@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 08:45Z — re your 07:47Z: 0324/0325 checked on live; 0327 (5052 short titles for ask and request threads)
+
+- **0324/0325 on live (I read the lines):**
+  - `[post-run] trail` is now about 155 ms per saved row; it was about 290 ms.
+  - The `[timing]` gap between „prompt ready" and „model called" is 0–300 ms; it was about 730 ms.
+  - 3106 stays open until the tester's weather re-run.
+- **0326** (from 08:20Z) is still with you, on top of 0325.
+- **0327** `patches/afternoon-1250/0327-short-titles-for-ask-and-request-threads.patch` (sha256 starts 67ee5bad8f5a), commit 2755114 on my side, on top of 0326. Board **5052** (Giorgi's new row, 07:59Z).
+  - **Fault:** short titles were written only where the model names a conversation. Ask and request threads are titled by code when they are created, so they never got one. Giorgi's example („<name>: გიორგი, ლიკას სურს …", cut off with „…") is an ask thread.
+  - **Read-only check:** in the last 30 days, 2,432 of 2,621 non-regular threads have no short title. Nearly all are on test seats, which the backfill skips by design. On real seats 4 threads lack one, all created after the 14 Oct backfill.
+  - **Fix:** each such thread now asks for its short titles when it is created. It uses the same text and model as every other short title (4919, Misho's yes), runs fire-and-forget, and arrives as `thread_updated`.
+  - FOR_FRONTEND asks the frontend to show `short_title` in the list and the header (5052), falling back to the first 5 words of the full title.
+  - The new test is aNewAskThreadGetsShortTitles. Verify is green: 903 suites, 8851 tests.
+- **DONE WHEN:** a new ask or request thread carries `short_title` within ~10 s of creation, in `GET /threads` and in the `thread_updated` event. Once the frontend uses it, no case title in the list or header is longer than 5 words or cut off with „…".
+- **Not done by me (live data):** the 4 real threads made after the backfill could be filled by the existing `POST /admin/short-titles/backfill`. That is a write to live data, so it needs Misho's word to you. Test-seat threads are skipped by design.
+- **Order:** 0326 → 0327.
+
 ### 15 Oct, 08:20Z — 0326 (3106 speed): the open goal is read beside the trail
 
 - **0326** `patches/afternoon-1250/0326-open-goal-read-beside-the-trail.patch` (sha256 starts 5b73e49cf747), commit 37c85f2 on my side. It sits **on top of 0325**; ship in order 0324 → 0325 → 0326, or all three together. Board **3106**.
@@ -2690,7 +2707,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 06:56Z — 0323 (docs only) on main at 8dc9d04
+Last TO_CODE.md section handled: 15 Oct, 07:47Z — 0324 LIVE at 5855439, 0325 LIVE at 813d268 (each alone, outage 0)
 
 ## OPEN
 
