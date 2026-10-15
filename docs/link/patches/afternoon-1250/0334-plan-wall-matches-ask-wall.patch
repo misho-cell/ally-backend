@@ -1,0 +1,234 @@
+From 9549e52703f16f0a71fcdfe07195d0da0213dcb8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 10:49:40 +0000
+Subject: [PATCH] 5182: the plan wall refuses a plan only when the ask it
+ points to will go
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi (thread 52292): „ჯობია თორნიკეს დავუკავშირდეთ…". The plan wall
+refused his new plan as „your own instruction is the permission", because the
+line named SOME contact of his (messageNamesOwnContact); the ask wall refused
+the ask to Tornike, because the line did not name THIS contact by his own
+label. Neither door opened, the model asked for a yes in text, his
+„ვადასტურებ" approved the old plan, and nothing was sent. For the one person a
+plan adds, the plan wall now asks the ask wall's own question
+(ownerLineNamesThisContact), so a refused plan always means an ask that goes,
+and otherwise the plan is proposed and one approval starts it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aMaskedNumberShowsItsShape.test.ts        |  2 +-
+ ...aPlanIsRefusedOnlyWhenTheAskWillGo.test.ts | 67 +++++++++++++++++++
+ src/services/chat.service.ts                  | 18 ++++-
+ src/services/taskAsks.service.ts              | 37 ++++++++--
+ 4 files changed, 117 insertions(+), 7 deletions(-)
+ create mode 100644 src/services/__tests__/aPlanIsRefusedOnlyWhenTheAskWillGo.test.ts
+
+diff --git a/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts b/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts
+index b94996c..515fe31 100644
+--- a/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts
++++ b/src/services/__tests__/aMaskedNumberShowsItsShape.test.ts
+@@ -47,7 +47,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
+     expect(body).toContain('if (added.length === 0) return false;');
+     expect(body).toContain('if (!looksLikeContactInstruction(sentence)) return false;');
+     expect(body).toContain(
+-      'if (added.length === 1) return await messageNamesOwnContact(userId, said);',
++      'if (added.length === 1) return await lineNamesTheAddedPerson(userId, said, added[0]);',
+     );
+     expect(body).toContain('return await planAddsOnlyThePeopleNamed(userId, sentence, added);');
+   });
+diff --git a/src/services/__tests__/aPlanIsRefusedOnlyWhenTheAskWillGo.test.ts b/src/services/__tests__/aPlanIsRefusedOnlyWhenTheAskWillGo.test.ts
+new file mode 100644
+index 0000000..e5d12bc
+--- /dev/null
++++ b/src/services/__tests__/aPlanIsRefusedOnlyWhenTheAskWillGo.test.ts
+@@ -0,0 +1,67 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { ownerLineNamesThisContact } from '../taskAsks.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++const OWNER = '118509';
++const TORNIKE = '+995 599 00 00 01';
++const OTHER = '+995 599 00 00 02';
++
++/**
++ * #5182 (Giorgi, 15 Oct, thread 52292): the plan wall refused his new plan as
++ * „your own instruction is the permission" while the ask wall refused the ask,
++ * so nothing went. Both walls now ask the same question.
++ */
++describe('does the owner’s line name exactly this contact', () => {
++  beforeEach(() => jest.clearAllMocks());
++
++  it('yes, when the owner’s own label for this phone is in the instruction', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ phone: TORNIKE, alias: 'Tornike Abuladze' }],
++      rowCount: 1,
++    } as never);
++    await expect(
++      ownerLineNamesThisContact('ჰკითხე Tornike Abuladze-ს, იცნობს თუ არა ერეკლეს', {
++        fromUserId: OWNER,
++        contactPhone: TORNIKE,
++      }),
++    ).resolves.toBe(true);
++  });
++
++  it('no, when the label in the line is somebody else’s', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ phone: OTHER, alias: 'Tornike Abuladze' }],
++      rowCount: 1,
++    } as never);
++    await expect(
++      ownerLineNamesThisContact('ჰკითხე Tornike Abuladze-ს', {
++        fromUserId: OWNER,
++        contactPhone: TORNIKE,
++      }),
++    ).resolves.toBe(false);
++  });
++
++  it('no, and no throw, when the phonebook cannot be read', async () => {
++    mockQuery.mockRejectedValue(new Error('timeout'));
++    await expect(
++      ownerLineNamesThisContact('ჰკითხე Tornike Abuladze-ს', {
++        fromUserId: OWNER,
++        contactPhone: TORNIKE,
++      }),
++    ).resolves.toBe(false);
++  });
++
++  it('is the test the plan wall uses for the one person a plan adds', () => {
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    expect(chat).toContain(
++      'if (added.length === 1) return await lineNamesTheAddedPerson(userId, said, added[0]);',
++    );
++    expect(chat).toContain(
++      'return ownerLineNamesThisContact(said, { fromUserId: userId, contactPhone: phone });',
++    );
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 949abb5..6da4789 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -251,6 +251,7 @@ import {
+   noteDeclineIfButtonPressed,
+   setLaterDays,
+   tappedPersonOnThread,
++  ownerLineNamesThisContact,
+ } from './taskAsks.service';
+ import { isTypedLater, laterConfirmLine, laterDayChoices, laterDaysOf } from './laterChoices';
+ import { mediatorsOwnWords, ownersRecentLines } from './introResponse';
+@@ -2726,6 +2727,21 @@ function phoneDigits(phone: unknown): string {
+   return typeof phone === 'string' ? phone.replace(/\D/gu, '') : '';
+ }
+ 
++/**
++ * #5182: the one person a plan adds counts as instructed only when the owner's
++ * line names exactly them by the owner's own label — the test the ask wall
++ * applies, so a refused plan always means an ask that will go.
++ */
++async function lineNamesTheAddedPerson(
++  userId: string,
++  said: string,
++  added: unknown,
++): Promise<boolean> {
++  const phone = (added as { phone?: unknown } | null)?.phone;
++  if (typeof phone !== 'string' || phone.trim() === '') return false;
++  return ownerLineNamesThisContact(said, { fromUserId: userId, contactPhone: phone });
++}
++
+ /**
+  * 3928 (box 49146, conv 48289): „ჰკითხე ლაშა მილიძეს და დათო ტრუბაძეს" named
+  * TWO people, the plan named the same two, and this check — „exactly one
+@@ -2759,7 +2775,7 @@ async function ownerJustInstructedThePlansPeople(
+     if (asksForAPreview(said)) return false;
+     const sentence = instructionSentence(said.trim());
+     if (!looksLikeContactInstruction(sentence)) return false;
+-    if (added.length === 1) return await messageNamesOwnContact(userId, said);
++    if (added.length === 1) return await lineNamesTheAddedPerson(userId, said, added[0]);
+     return await planAddsOnlyThePeopleNamed(userId, sentence, added);
+   } catch (error) {
+     // Fails towards the plan, which asks the owner rather than writing to anyone.
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 28e7b39..b11999a 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -682,13 +682,17 @@ async function pickerFor(
+   }
+ }
+ 
++/** One of the owner's contacts: whose phonebook, and which phone. */
++interface NamedContact {
++  readonly fromUserId: string;
++  readonly contactPhone: string;
++}
++
+ /** Who an owner's typed instruction is about — see the row 251 note in createAsk. */
+-interface NamedPerson {
++interface NamedPerson extends NamedContact {
+   readonly threadId: number | undefined;
+   readonly taskId: number;
+   readonly taskCreatedAt: string;
+-  readonly fromUserId: string;
+-  readonly contactPhone: string;
+ }
+ 
+ /**
+@@ -756,7 +760,7 @@ async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
+  * of the owner's contacts has a label starting with it, and that is this
+  * person — two Nikas still name nobody.
+  */
+-async function onlyContactByFirstName(line: string, person: NamedPerson): Promise<boolean> {
++async function onlyContactByFirstName(line: string, person: NamedContact): Promise<boolean> {
+   const names = firstNamesIn(line);
+   if (names.length === 0) return false;
+   const phones = await query<{ phone: string }>(
+@@ -773,7 +777,7 @@ async function onlyContactByFirstName(line: string, person: NamedPerson): Promis
+ }
+ 
+ /** Is this line an instruction that names exactly this person, by the owner's own label? */
+-async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<boolean> {
++async function lineNamesThisPerson(line: string, person: NamedContact): Promise<boolean> {
+   if (!looksLikeContactInstruction(line)) return false;
+ 
+   // The owner's own phonebook decides which person that sentence names,
+@@ -804,6 +808,29 @@ async function lineNamesThisPerson(line: string, person: NamedPerson): Promise<b
+   return phoneDigits(best.phone) === phoneDigits(person.contactPhone);
+ }
+ 
++/**
++ * #5182 (Giorgi, 15 Oct, thread 52292): „ჯობია თორნიკეს დავუკავშირდეთ…" — the
++ * plan wall refused his new plan as „your own instruction is the permission",
++ * because the line named SOME contact of his; and the ask wall refused the ask
++ * to Tornike, because the line did not name THIS contact by his own label.
++ * Neither door opened, his „ვადასტურებ" approved the old plan, and nothing
++ * was sent. The plan wall now asks this same question, so it refuses a plan
++ * only when the ask it points to will pass.
++ */
++export async function ownerLineNamesThisContact(
++  line: string,
++  contact: { readonly fromUserId: string; readonly contactPhone: string },
++): Promise<boolean> {
++  try {
++    return await lineNamesThisPerson(line, contact);
++  } catch (error) {
++    // Fails towards the plan, which asks the owner rather than writing to anyone.
++    // eslint-disable-next-line no-console
++    console.error('[ask] could not read whom the owner named:', error);
++    return false;
++  }
++}
++
+ /**
+  * 2582: asks to one number go one at a time (recipientLock.ts), so the
+  * receiving cap counts the ask before this one. Same arguments as always.
+-- 
+2.43.0
+

@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 11:00Z — re your 10:22Z and 10:37Z: 0334 (#5182 one approval that sent nothing); #5215 next
+
+- **0334** `patches/afternoon-1250/0334-plan-wall-matches-ask-wall.patch` (sha256 starts bb6def009d4e), commit 9549e52, on top of main 45d9177. It does not depend on 0333. Board **5182** (G-048).
+  - **Read on live, thread 52292.** Giorgi wrote „ჯობია თორნიკეს დავუკავშირდეთ…".
+    - `propose_task_plan` was refused twice („your own instruction is the permission"), because the line named *some* contact of his. That test is loose.
+    - `ask_contact` to Tornike was refused three times, because the line did not name *this* contact by his own label: Georgian „თორნიკე" against the Latin label. That test is strict.
+    - `approve_task_plan` was refused because his words were not a yes.
+    - The model asked for a yes in text. His „ვადასტურებ" approved the old stored plan (via Erekle), so the day-one run was refused for Tornike, re-proposed, asked again („დავიწყო?"), and wrote a „correction".
+  - **Fix:** for the one person a plan adds, the plan wall now asks the ask wall's own question (`ownerLineNamesThisContact`). A refused plan therefore always means an ask that goes. Otherwise the plan is proposed, and one „ვადასტურებ" starts it.
+  - **Tests:** new test aPlanIsRefusedOnlyWhenTheAskWillGo; one source pin (aMaskedNumberShowsItsShape) follows the new call. Verify is green: 908 suites, 8878 tests.
+  - **DONE WHEN:** on a fresh seat, after a plan is offered, the owner writes „ჯობია <first name in Georgian, label in Latin>-ს დავუკავშირდეთ". The run proposes the changed plan, and one „ვადასტურებ" sends the ask with no second „დავიწყო?". „ჰკითხე <exact label>" still sends at once with no plan (694/964).
+- **#5215 (G-049):** next. I will look at whether `/updates/latest` should carry the case's `short_title` for the grouping.
+
 ### 15 Oct, 10:25Z — re your 10:08Z: 0333 held, noted; #5149 drafted and sent to Giorgi
 
 - **0333:** noted as held for Misho's word in your chat.
@@ -2800,7 +2813,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 10:08Z — 0333 held for Misho's word in the ops chat; G-047, verbatim
+Last TO_CODE.md section handled: 15 Oct, 10:37Z — G-049, verbatim
 
 ## OPEN
 
