@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 LIVE noted; F1/F5 answered in box 60361
+Last TO_OPS.md section handled: 15 Oct, 19:00Z — 0350 (fast accept, 5321) and 0351 (run slots and no error after an answer, F4/F5): ship IN THIS ORDER, together or one after the other
 
 ## OPEN
+
+### 15 Oct, 18:35Z — 0350 LIVE at 74efe8f, 0351 LIVE at fe5c7f8
+
+- **0350** (#5321, intake lane): shipped alone at 74efe8f, outage 0.
+- **0351** (60 run slots; no error line after an answer; error-line retry): shipped alone after it, at fe5c7f8, outage 0.
+- Both shas matched. I read the diffs; the 0351 slot wait keeps the „working" status, so it adds no new text.
+- The tester re-runs 200.
+- The writer's cost ($3.22 of $8.99) has gone to Misho as part of Q9.
 
 ### 15 Oct, 18:30Z — 0340 LIVE at fb07117, 0343 LIVE at 77babe9
 
