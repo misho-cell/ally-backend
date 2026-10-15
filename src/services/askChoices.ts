@@ -1,4 +1,5 @@
 import { AskTap, askTapOf, laterChoice } from './askOpening';
+import { otherChoiceLabel } from './otherChoice';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -109,6 +110,20 @@ export function withServerLater(choices: readonly AskChoice[], language: RunLang
   return choices.map((choice) =>
     choice.means === ChoiceMeaning.Later ? { ...choice, label: laterChoice(language) } : choice,
   );
+}
+
+/**
+ * 1688 (Lika's phone, 15 Oct): the question arrived with „კი, ვიცნობ" / „არა" /
+ * „მოგვიანებით" and no „other". Misho, 3 October: every set of buttons also
+ * carries „other — I'll write it"; the asks were the one set without it. It
+ * goes last, in the reader's language, so the app opens the box (prefilled by
+ * #1688 part 2) instead of sending a word. A set with no buttons gets none.
+ */
+export function withServerOther(choices: readonly AskChoice[], language: RunLanguage): AskChoice[] {
+  if (choices.length === 0) return [];
+  const label = otherChoiceLabel(language);
+  if (choices.some((choice) => choice.label === label)) return [...choices];
+  return [...choices, { label, means: ChoiceMeaning.Answer }];
 }
 
 /** The fixed labels of an older ask, read as meanings — so every ask carries them. */

@@ -39,6 +39,7 @@ import {
   allPeopleText,
   withPeopleDetails,
   withServerLater,
+  withServerOther,
   withoutPointingAnswers,
 } from './askChoices';
 import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
@@ -168,6 +169,18 @@ function titleSnippetFrom(question: string): string {
   return body.length > ASK_TITLE_SNIPPET_CHARS
     ? `${body.slice(0, ASK_TITLE_SNIPPET_CHARS - 1)}…`
     : body;
+}
+/**
+ * 1688 (Lika's phone, 15 Oct): the header read „Lika Ose: Lika Ose-ს კარგი
+ * ფოტოგრაფი…" — the question already opens with the asker's name, so the name
+ * in front said it twice. It goes in front only when the question does not.
+ */
+export function askThreadTitle(senderName: string, snippet: string): string {
+  const name = senderName.trim();
+  if (name === '' || snippet.trimStart().toLowerCase().startsWith(name.toLowerCase())) {
+    return snippet;
+  }
+  return `${name}: ${snippet}`;
 }
 // Anti-runaway ceiling, not a product limit (the product decision is "no
 // limits, the user pays tokens") — one account still must not be able to
@@ -442,7 +455,7 @@ async function openAskThread(
   const thread = await createThread(
     String(toUserId),
     'incoming_ask',
-    `${senderName}: ${titleSnippetFrom(safeQuestion)}`,
+    askThreadTitle(senderName, titleSnippetFrom(safeQuestion)),
     undefined,
     {
       isTask: true,
@@ -1709,12 +1722,15 @@ async function createAskNow(
     : pickerFits
       ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
       : edited.choices;
-  const choices = withPeopleDetails(
-    withServerLater(
-      withoutPointingAnswers(await choicesInLanguage(editedChoices, said, edited.question)),
-      said,
+  const choices = withServerOther(
+    withPeopleDetails(
+      withServerLater(
+        withoutPointingAnswers(await choicesInLanguage(editedChoices, said, edited.question)),
+        said,
+      ),
+      picker && said === language ? picker.details : {},
     ),
-    picker && said === language ? picker.details : {},
+    said,
   );
   // AU: the closing line names the asker whenever the profile has a name.
   const namedBelow = (fromName.rows[0]?.name?.trim() ?? '') !== '';
