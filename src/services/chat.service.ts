@@ -4375,6 +4375,51 @@ const SAVE_AND_TOUCH_SQL = `WITH saved AS (
   )
   SELECT id FROM saved`;
 
+/**
+ * The tester's fourth 200 run (60530; Misho, 15 Oct: „find why"): the trail —
+ * the run's tool turns, kept for the model's history — was written one row
+ * per round trip, after the answer and before the owner saw it: 2 s alone,
+ * 3 s under load. One statement now, the order kept by a microsecond apart
+ * per row, so history reads back exactly as it was written.
+ */
+const SAVE_TRAIL_SQL = `WITH saved AS (
+    INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, created_at)
+    SELECT $1, $2, t.role, t.content, t.json::jsonb, t.kind,
+           NOW() + (t.ord * INTERVAL '1 microsecond')
+      FROM unnest($3::text[], $4::text[], $5::text[], $6::text[])
+           WITH ORDINALITY AS t(role, content, json, kind, ord)
+    RETURNING id
+  ), touched AS (
+    UPDATE threads SET updated_at = NOW() WHERE id = $2
+  )
+  SELECT count(*) AS saved FROM saved`;
+
+/** Whether a trail turn is addressed to the model rather than said by anyone. */
+function isSystemTurnOf(msg: PendingMessage): boolean {
+  return (
+    msg.role === 'user' &&
+    typeof msg.content === 'string' &&
+    (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content))
+  );
+}
+
+/** Saves the run's trail in one round trip, in order. */
+async function saveRunTrail(
+  userId: string,
+  threadId: number,
+  pending: readonly PendingMessage[],
+): Promise<void> {
+  if (pending.length === 0) return;
+  await query(SAVE_TRAIL_SQL, [
+    userId,
+    threadId,
+    pending.map((msg) => msg.role),
+    pending.map((msg) => (typeof msg.content === 'string' ? msg.content : '')),
+    pending.map((msg) => JSON.stringify(msg.content)),
+    pending.map((msg) => (isSystemTurnOf(msg) ? 'event' : 'message')),
+  ]);
+}
+
 async function saveMessage(
   userId: string,
   threadId: number,
@@ -16617,13 +16662,7 @@ export async function processChat(
   // events and the cliffhanger nudge — persist as kind 'event' so they never
   // render as words the user wrote (ticket 5 item B1: the nudge appeared in the
   // DOM as the user's own message and the assistant answered IT).
-  for (const msg of pending) {
-    const isSystemTurn =
-      msg.role === 'user' &&
-      typeof msg.content === 'string' &&
-      (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content));
-    await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
-  }
+  await saveRunTrail(userId, threadId, pending);
   lap(postRun, 'trail');
 
   // A run must NEVER end "successfully" with nothing to say: an empty final

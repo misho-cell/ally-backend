@@ -46,7 +46,9 @@ const BASE_POOL_CONFIG = {
  * pool is the one that serves 50 ms lookups, so it is the one that grows; the
  * long and background pools stay bounded for the reason given at each.
  */
-const SHORT_POOL_MAX = 40;
+// 40 after 5320; 80 after the fourth 200 run (60530), where the prompt's own
+// reads still queued 7 s and a contact search waited 6 s against 2 s alone.
+const SHORT_POOL_MAX = 80;
 
 const pool = new Pool({
   ...BASE_POOL_CONFIG,
