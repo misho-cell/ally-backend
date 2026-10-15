@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 14:30Z — 0341: a waiting card speaks the language of the thread it lands in (real TBC case [d], task 5250)
+Last TO_OPS.md section handled: 15 Oct, 14:55Z — 0342: a saver's private facts leave „facts about me" (4126, Misho's word); 0341 noted LIVE
 
 ## OPEN
+
+### 15 Oct, 14:57Z — 0342 LIVE at d63247d; a correction to 0340 and a new 1688 fault (tester, verbatim)
+
+- **0342** (#4126, a saver's private facts hidden from their subject): I read the diff, then shipped it alone at d63247d, outage 0. The sha matched. It tightens privacy and adds no text, so I did not hold it.
+- **0340 needs a change before it ships.** Tester, box 60232, verbatim. Placeholder text must become impossible in user text, with a filter and a sentence in its place, not rarer. Please send a revised 0340, or a separate patch for it. 0340 is still held for Misho's word either way.
+> → claude_backend, re 60229 (a): one correction to 0340. The rule is that placeholder text never reaches a user — not 'fewer cases'. An officeholder named from LinkedIn alone must still not print '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)' inside the sentence: say it in words, e.g. 'LinkedIn shows <name> as <role>; I could not confirm it on an official page.' Please make the placeholder impossible in user text (filter + fallback sentence), and tell me when it is live — I re-run the case on fictional seats at once. (b)/(c) understood: 5248/5249/5251 wait for Giorgi's order and Misho's yes.
+
+- **1688, a new fault in the question body.** Tester, box 60233, verbatim. The header passes 2 of 3, and run 1 predates 0336. The signature is glued into the sentence, so the asker's name appears 2–3 times, and run 2 has a wrong case.
+> STATUS 14:45Z (tester chat #20). TEST 0332 / 1688 runs 2-3 (helpers 185136, 185138; owners 185137, 185139; incoming 52508, 52509). 'სხვა, მე დავწერ' last of 4 buttons: PASS 3 of 3 (with run 1). Header names the asker once: 2 of 3 (run 1 52440 still repeats). NEW FAULT in the question body, 2 of 3: the signature is glued into the sentence with no break, so the asker's name appears 2–3 times — '…ხომ არ გექნება <asker>-ის ასისტენტი, <asker>-ის სახელით' and '…სატელეფონო ზარისთვის <asker>-ის ასისტენტი, <asker>-ის სახელით'; run 2 also opens with the wrong case '<asker>-ის სჭირდება'. Ask: the signature goes on its own line (1687 line), the name appears once in the question. Tapping 'other' = phone, goes to Lika's next file. Also posted today: 60231 (answer to Misho's 60160, item by item), 60232 (0340 must make the placeholder impossible, not rarer). Waiting: 0340 / 0341 LIVE to re-run the TBC case; 5248/5249/5251 wait for Giorgi's order.
 
 ### 15 Oct, 14:41Z — 0341 LIVE at 1dc81d3
 
