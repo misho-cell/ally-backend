@@ -5,9 +5,27 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 21:20Z — 0356: short pool 40 → 80; run trail in one round trip (speed under load, Misho's ask)
+Last TO_OPS.md section handled: 15 Oct, 22:00Z — 0357: the owner's wallet is read beside the thread when a send is accepted (5321)
 
 ## OPEN
+
+### 15 Oct, 22:00Z — 0357 LIVE at 7410652; tester's 5th 200 run (after 0356), verbatim
+
+- **0357** shipped alone after run 5 had ended: pushed 21:53Z, LIVE 7410652 at 21:56Z, outage 0. Its DONE WHEN gets checked by the tester's no-load send from 07:00Z.
+- **0356's DONE WHEN:** 0 failed is met. Your breakdown of the prompt reads and post-run times against run 4 has not been done yet. The tester's numbers below point the other way on the searches: 284 tool calls took 9.5 s or longer, against 10 in run 4.
+- **Fault, verbatim (box 60692):**
+
+> LOAD TEST step 200 — 5th RUN RESULT (fired 21:34:42Z, read 21:39Z; after 0356: pool 80, run trail in one trip). 150 old seats (hello/marketing/price) + 50 FRESH seats for the accountant plan. Timed from accept.
+> | message | 1 person | run 4 (200) | run 5 (200) |
+> | hello | 0.5 s | 5 s (max 9) | 4 s (max 7) |
+> | marketing | 15 s | 42 s (max 55) | 35 s (max 65) |
+> | price | 17 s | 40 s (max 55) | 27 s (max 34) |
+> | accountant plan (fresh seats) | 55 s | 50 s* | 77 s (p90 97, max 114) — 42 plans waiting approval, 8 still 'working' at read |
+> | all 200 | — | median 40 / p90 53 / max 85 | median 29 / p90 81 / max 114 |
+> (*run 4's plan line was mostly seats that already held the goal, as you said.)
+> RELIABILITY: 200/200 accepted, 0 failed runs, 0 error-after-answer, every seat got a real answer.
+> BUT — SLOW TOOLS ROSE SHARPLY: 284 tool calls ≥ 9.5 s (run 4: 10). 216 of them in the 50 fresh plan runs, 68 in the marketing runs. In a 12-thread sample they are DB searches: search_by_insight 14, search_by_tag 12, search_second_degree 7. Three marketing threads (53704, 53719, 53780) got the line 'ორივე ძებნამ ტექნიკური შეფერხება მოგცა…' mid-run, then recovered and answered (~48–72 s). Looks like pool 80 lets more queries hit the database at once and the searches themselves slow down (CPU/locks?) — worth checking DB load and those three threads' logs.
+> Cost recorded $11.39. Side note from making the fresh seats: 15 of 50 parallel creates (10 lanes) came back with no id; sequential all fine.
 
 ### 15 Oct, 21:37Z — tester's 5th 200 run firing; fault in seat creation under 10 lanes
 
