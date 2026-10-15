@@ -1,0 +1,336 @@
+From b40be3a862348dbee9733dfb4f5ee6b807c2093b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 09:21:55 +0000
+Subject: [PATCH] =?UTF-8?q?5121:=20GET=20/updates/latest=20=E2=80=94=20the?=
+ =?UTF-8?q?=20three=20newest=20updates=20for=20the=20home=20card?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi (G-037): the home card „ბოლო სიახლეები" shows the three newest
+updates, newest first, one line each, each opening its case — not the weekly
+paragraph. GET /updates releases and marks what it returns, and
+/updates/count's lines are only the unread ones with no case to open. This
+route reads every update already out, newest first, without the weekly
+summary, and answers each with its line and its goal's thread. Read-only.
+FOR_FRONTEND: the contract, and Lika's aborted uploads (no file reached the
+server).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  27 ++++
+ .../theHomeCardShowsTheLatestUpdates.test.ts  | 125 ++++++++++++++++++
+ src/api/routes/updates.routes.ts              |  70 ++++++++++
+ src/services/pendingUpdates.service.ts        |  37 ++++++
+ 4 files changed, 259 insertions(+)
+ create mode 100644 src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index a369e31..67b3801 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,33 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 09:50Z — #5121 „ბოლო სიახლეები": the three newest updates (0330); Lika's file uploads never reached the server
++
++**#5121 (Giorgi, G-037): `GET /updates/latest`** (0330, on my branch until ops ships it)
++
++The home card shows the three newest updates, newest first. Each is one short line (the case and what happened), and a tap opens its case.
++- Read-only: unlike `GET /updates`, it releases nothing and marks nothing seen, so opening home spends no card.
++- It includes updates already read, because the card is „the latest", not „unread". It never includes the weekly summary.
++- Language: `X-Locale` first, then the owner's language, the same rule as `/updates/count`.
++
++```
++GET /updates/latest
++200 { "success": true, "data": { "updates": [
++  { "update_ref": "upd_7", "kind": "search_result", "task_id": 25973, "thread_id": 52283,
++    "title": "მიწის ნაკვეთის გაყიდვა", "detail": "ნაპოვნია 1 ადამიანი",
++    "line": "მიწის ნაკვეთის გაყიდვა — ნაპოვნია 1 ადამიანი",
++    "released_at": "2026-10-15T08:00:00.000Z" } ] } }
++500 { "success": false, "error": "…" }
++```
++- `line` is what to draw on the row.
++- `thread_id` is the conversation to open. It is null for an update with no goal; that row opens nothing, or the updates screen.
++- `updates` is empty when nothing has come out yet; then keep today's empty state.
++- „მეტი" opens the updates screen you already have (`GET /updates`).
++
++**Lika's №219/№226 (PDF and CSV „not seen"): the file never reached the server.** On 15 Oct between 07:43 and 07:52Z the server logged 5 uploads to `POST /thread-files/:id`, each refused by the body reader with „Request aborted". The phone closed the connection mid-upload, and no file was stored. Her line „read the attached CSV" arrived 2 s after the last abort, with no file. Her .xlsx upload on 13 Oct worked, and nothing in the server's upload path has changed since. Please look at the upload on her phone (iPhone, the app): whether the request is cancelled when the message is sent, or by a timeout.
++
++---
++
+ ## 15 October, 08:40Z — 5052 (Giorgi): case titles of at most 5 words — use `short_title` in the list and the chat header
+ 
+ **What Giorgi asks (5052, which replaces the „restore the old titles" part of 4919):** the list and the chat header show a short title of at most 5 words, written from the conversation. Nothing may be cut off with „…".
+diff --git a/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts b/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts
+new file mode 100644
+index 0000000..5804260
+--- /dev/null
++++ b/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts
+@@ -0,0 +1,125 @@
++jest.mock('../../middleware/auth.middleware', () => ({
++  __esModule: true,
++  authenticateJwt: (req: { user?: unknown }, _res: unknown, next: () => void): void => {
++    req.user = { userId: '501' };
++    next();
++  },
++  requireUserRole: (_req: unknown, _res: unknown, next: () => void): void => next(),
++}));
++jest.mock('../../middleware/rateLimit.middleware', () => ({
++  __esModule: true,
++  rateLimit:
++    () =>
++    (_req: unknown, _res: unknown, next: () => void): void =>
++      next(),
++}));
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import express from 'express';
++import type { AddressInfo } from 'net';
++import type { Server } from 'http';
++import updatesRouter from '../updates.routes';
++import { query } from '../../../db/postgres/client';
++import * as threads from '../../../services/threads.service';
++import { LATEST_UPDATES_LIMIT } from '../../../services/pendingUpdates.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++const OWNER = '501';
++const GOAL_ID = 25973;
++const THREAD_ID = 52283;
++const RELEASED = new Date('2026-10-15T08:00:00.000Z');
++
++let server: Server;
++let base: string;
++
++beforeAll((done) => {
++  jest.spyOn(threads, 'userLanguage').mockResolvedValue('ka');
++  const app = express();
++  app.use(express.json());
++  app.use('/updates', updatesRouter);
++  server = app.listen(0, () => {
++    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/updates`;
++    done();
++  });
++});
++afterAll((done) => {
++  server.close(() => done());
++});
++beforeEach(() => jest.clearAllMocks());
++
++function answerQueries(latestRows: unknown[]): void {
++  mockQuery.mockImplementation((sql: unknown) =>
++    Promise.resolve({
++      rows: String(sql).includes('FROM pending_updates p')
++        ? latestRows
++        : String(sql).includes('FROM tasks')
++          ? [{ id: GOAL_ID, title: 'მიწის ნაკვეთის გაყიდვა' }]
++          : [],
++      rowCount: 0,
++    } as never),
++  );
++}
++
++/** #5121 (Giorgi, 15 Oct): the home card „ბოლო სიახლეები" shows the newest updates. */
++describe('GET /updates/latest', () => {
++  it('answers each update with its case thread, a line, and when it came out', async () => {
++    answerQueries([
++      {
++        id: 7,
++        task_id: GOAL_ID,
++        kind: 'search_result',
++        payload: {},
++        thread_id: THREAD_ID,
++        released_at: RELEASED,
++      },
++    ]);
++    const res = await fetch(`${base}/latest`);
++    expect(res.status).toBe(200);
++    const body = (await res.json()) as {
++      success: boolean;
++      data: { updates: Array<Record<string, unknown>> };
++    };
++    expect(body.success).toBe(true);
++    expect(body.data.updates).toHaveLength(1);
++    const [row] = body.data.updates;
++    expect(row.thread_id).toBe(THREAD_ID);
++    expect(row.task_id).toBe(GOAL_ID);
++    expect(row.released_at).toBe(RELEASED.toISOString());
++    expect(typeof row.line).toBe('string');
++    expect(String(row.line).length).toBeGreaterThan(0);
++    expect(typeof row.update_ref).toBe('string');
++  });
++
++  it('answers an empty list when nothing came out yet', async () => {
++    answerQueries([]);
++    const res = await fetch(`${base}/latest`);
++    expect(res.status).toBe(200);
++    expect(await res.json()).toEqual({ success: true, data: { updates: [] } });
++  });
++
++  it('only reads: no UPDATE, newest first, at most three, never the weekly summary', async () => {
++    answerQueries([]);
++    await fetch(`${base}/latest`);
++    const call = mockQuery.mock.calls.find(([sql]) =>
++      String(sql).includes('FROM pending_updates p'),
++    );
++    expect(call).toBeDefined();
++    const [sql, params] = call as unknown as [string, unknown[]];
++    expect(sql.trim().startsWith('SELECT')).toBe(true);
++    expect(sql).not.toMatch(/\bUPDATE\b/);
++    expect(sql).toContain('ORDER BY p.release_at DESC');
++    expect(sql).toContain('p.release_at <= NOW()');
++    expect(params).toEqual([OWNER, ['weekly_summary'], LATEST_UPDATES_LIMIT]);
++    expect(LATEST_UPDATES_LIMIT).toBe(3);
++  });
++
++  it('is 500 with a plain message when the read fails', async () => {
++    mockQuery.mockRejectedValue(new Error('connection terminated'));
++    const res = await fetch(`${base}/latest`);
++    expect(res.status).toBe(500);
++    const body = (await res.json()) as { success: boolean; error: string };
++    expect(body.success).toBe(false);
++    expect(body.error).not.toContain('connection');
++  });
++});
+diff --git a/src/api/routes/updates.routes.ts b/src/api/routes/updates.routes.ts
+index 5741e80..1094d5b 100644
+--- a/src/api/routes/updates.routes.ts
++++ b/src/api/routes/updates.routes.ts
+@@ -15,6 +15,8 @@ import {
+   countUpdatesForBadge,
+   peekDueUpdates,
+   pastWeeklySummaries,
++  latestUpdates,
++  LatestUpdate,
+   UpdateCounts,
+   snoozeUpdate,
+   markUpdateSeen,
+@@ -202,6 +204,74 @@ updatesRouter.get(
+   },
+ );
+ 
++interface LatestRowView {
++  readonly update_ref: string;
++  readonly kind: string;
++  readonly task_id: number | null;
++  /** The case's conversation — the row opens it; null for an update with no goal. */
++  readonly thread_id: number | null;
++  readonly title: string;
++  readonly detail: string;
++  /** One short line: the case and what happened. */
++  readonly line: string;
++  /** When it came out (ISO). */
++  readonly released_at: string;
++}
++
++/** The newest updates as the home card's rows, in the reader's language. */
++async function latestRows(
++  userId: string,
++  chosen: RunLanguage | null,
++): Promise<readonly LatestRowView[]> {
++  const [rows, language] = await Promise.all([
++    latestUpdates(userId),
++    chosen !== null ? Promise.resolve(chosen) : userLanguage(userId),
++  ]);
++  const titles = await goalTitlesFor(rows.map((u) => u.task_id));
++  return rows.map((u: LatestUpdate) => {
++    const heading = cardHeading(
++      u.kind,
++      normalisedPayload(u.kind, u.payload),
++      u.task_id === null ? null : (titles.get(u.task_id) ?? null),
++      language,
++    );
++    return {
++      update_ref: toUpdateRef(u.id),
++      kind: u.kind,
++      task_id: u.task_id ?? null,
++      thread_id: u.thread_id ?? null,
++      title: heading.title,
++      detail: heading.detail,
++      line: storyLine(heading),
++      released_at: new Date(u.released_at).toISOString(),
++    };
++  });
++}
++
++/**
++ * #5121 (Giorgi, 15 Oct): the home card „ბოლო სიახლეები" — the three newest
++ * updates, newest first, one line each, each opening its case.
++ *   GET /updates/latest → { updates: [LatestRowView] }
++ * Read-only: nothing is released or marked seen.
++ */
++updatesRouter.get(
++  '/latest',
++  async (
++    req: Request,
++    res: Response<ApiResponse<{ readonly updates: readonly LatestRowView[] }>>,
++  ): Promise<void> => {
++    const userId = String((req as AuthenticatedRequest).user.userId);
++    try {
++      const updates = await latestRows(userId, asRunLanguage(req.get('X-Locale')));
++      res.status(200).json({ success: true, data: { updates } });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /updates/latest]', error);
++      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
++    }
++  },
++);
++
+ interface HeldRowView {
+   readonly update_ref: string;
+   readonly title: string;
+diff --git a/src/services/pendingUpdates.service.ts b/src/services/pendingUpdates.service.ts
+index ea57f4a..75d1345 100644
+--- a/src/services/pendingUpdates.service.ts
++++ b/src/services/pendingUpdates.service.ts
+@@ -344,6 +344,43 @@ export async function listSeenUpdates(
+   return result.rows;
+ }
+ 
++/** #5121: the home card shows this many of the newest updates. */
++export const LATEST_UPDATES_LIMIT = 3;
++
++/** An update as the home card draws it: its case's thread, and when it came out. */
++export interface LatestUpdate extends PendingUpdate {
++  thread_id: number | null;
++  released_at: Date;
++}
++
++/**
++ * #5121 (Giorgi, 15 Oct): the home card „ბოლო სიახლეები" shows the newest
++ * updates, not the weekly paragraph. Every update already out — read or not —
++ * newest first, without the weekly summary itself. Read-only: unlike GET
++ * /updates nothing is released or marked seen, so opening the home screen
++ * spends no card.
++ */
++export async function latestUpdates(
++  userId: string,
++  limit = LATEST_UPDATES_LIMIT,
++): Promise<LatestUpdate[]> {
++  const result = await query<LatestUpdate>(
++    `SELECT p.id, p.task_id, p.kind, p.payload, t.thread_id,
++            p.release_at AS released_at
++       FROM pending_updates p
++       LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
++      WHERE p.user_id = $1
++        AND p.release_at <= NOW()
++        AND p.status IN ('held', 'seen')
++        AND p.kind <> ALL($2::text[])
++      ORDER BY p.release_at DESC, p.id DESC
++      LIMIT $3`,
++    [userId, UNSPENT_KINDS, Math.max(1, Math.min(limit, LATEST_UPDATES_LIMIT))],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
+ /** How many past weekly summaries can be opened again (about two months). */
+ export const PAST_SUMMARIES_LIMIT = 8;
+ 
+-- 
+2.43.0
+

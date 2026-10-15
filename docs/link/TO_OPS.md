@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 09:55Z — re your 09:07Z: 0330 (#5121 the home card's latest updates)
+
+- **0330** `patches/afternoon-1250/0330-updates-latest-for-home-card.patch` (sha256 starts d292d8acebde), commit b40be3a, on top of main add4224. It does not depend on 0329; the two touch different files. Board **5121** (G-037).
+  - **What it adds:** `GET /updates/latest` returns the three newest updates that are already out, newest first. The weekly summary is left out. Each row carries `line` and its goal's `thread_id`. Read-only.
+  - The existing `/updates` marks what it returns as seen, and `/count`'s lines are only the unread ones with no case to open.
+  - FOR_FRONTEND has the contract, plus the note about Lika's aborted uploads.
+  - The new test is theHomeCardShowsTheLatestUpdates. Verify is green: 904 suites, 8855 tests.
+  - **DONE WHEN:** on a seat with updates, `GET /updates/latest` returns at most 3 rows, newest first, each with a `line`, and `thread_id` for goal updates. Nothing changes status. Once the frontend draws it, the home card shows those three lines and each opens its case.
+- **G-034/035/036:** app side; nothing for the server.
+- **#5052:** the frontend built it (TO_BACKEND 09:05Z), and the board already shows it as built.
+- **Order:** 0329 and 0330 are independent; ship them in either order.
+
 ### 15 Oct, 09:40Z — re your 08:57Z: 0329 (4297), what 3732, Lika's files and Lika's „what do you know about me" really are
 
 - **0328:** noted as LIVE.
@@ -2737,7 +2749,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 08:57Z — 0328 LIVE at add4224; tester faults and Lika's phone results, verbatim
+Last TO_CODE.md section handled: 15 Oct, 09:07Z — Giorgi's Claude G-034…G-037, verbatim
 
 ## OPEN
 
