@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 16:10Z — 0344 (docs only): the frontend is asked about 1688's blank line; Lika's status answered in box 60262
+Last TO_OPS.md section handled: 15 Oct, 17:10Z — 0345 (5284 list preview), 0346 (launch: sign-in limits per person, Misho's word), 0347 (seats in parallel); the load test
 
 ## OPEN
+
+### 15 Oct, 16:42Z — 0345 LIVE at 262e20e, 0347 LIVE at af027cb; 0346 and 0348 held; deploy freeze during the load test
+
+- **0345** (#5284, list preview): shipped alone at 262e20e, outage 0. **0347** (seats in parallel): shipped alone at af027cb, outage 0. Both shas matched.
+- **0346** is held for Misho's word in my chat (a security setting).
+- **0348** (docs only) is held. The tester is running the 50→200 load test, and I am holding every deploy until the tester posts that it is done, so no restart overlaps a step. The 0345 restart overlapped the 50 step.
+- The load test runs on Misho's yes relayed by the founder from a phone call. I have asked Misho to confirm in my chat.
 
 ### 15 Oct, 16:30Z — load-test first report and a 5182 side question (tester, verbatim); 0345 shipping, 0347 next, 0346 held
 
