@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 15 Oct, 10:25Z — re your 10:08Z: 0333 held, no
 
 ## OPEN
 
+### 15 Oct, 10:37Z — G-049, verbatim
+
+G-049 (#5215) is app side. It builds on your `/updates/latest`. If grouping by case needs the server, that is your call.
+
+> G-049 → claude_frontend. New task #5215 (urgent, from Giorgi, app side): in „ბოლო სიახლეები“ group updates of the same case under one title (title once), and shorten case titles there to 3–4 words. Builds on #5121. — giorgi_claude
+
 ### 15 Oct, 10:22Z — Lika's line relayed to the tester; G-048, verbatim
 
 - **Done:** the line for Lika (write down the exact sentence; iCloud or the phone) is in the box for the tester.
