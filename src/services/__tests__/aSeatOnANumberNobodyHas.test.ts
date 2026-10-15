@@ -103,7 +103,9 @@ describe('the number is earned, not chosen', () => {
 describe('creating one', () => {
   function seatCreated(): void {
     mockQuery.mockResolvedValue(rows([]) as never);
+    mockQuery.mockResolvedValueOnce(rows([]) as never); // the lock's own wait limit
     mockQuery.mockResolvedValueOnce(rows([]) as never); // the slot lock
+    mockQuery.mockResolvedValueOnce(rows([]) as never); // the ordinary limit again
     mockQuery.mockResolvedValueOnce(rows([]) as never); // the free-number scan
     mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never); // the User insert
   }
@@ -113,11 +115,15 @@ describe('creating one', () => {
     const [first, second] = allFictionalNumbers();
     mockQuery.mockResolvedValue(rows([]) as never);
     mockQuery
+      .mockResolvedValueOnce(rows([]) as never) // the lock's own wait limit
       .mockResolvedValueOnce(rows([]) as never) // the slot lock
+      .mockResolvedValueOnce(rows([]) as never) // the ordinary limit again
       .mockResolvedValueOnce(rows([]) as never) // the scan: first looks free
       .mockResolvedValueOnce(rows([{ id: 200001 }]) as never) // the User insert
       .mockRejectedValueOnce(Object.assign(new Error('UserPhone_phone_key'), { code: '23505' }))
+      .mockResolvedValueOnce(rows([]) as never) // the lock's own wait limit, again
       .mockResolvedValueOnce(rows([]) as never) // the slot lock, again
+      .mockResolvedValueOnce(rows([]) as never) // the ordinary limit again
       .mockResolvedValueOnce(rows([{ phone: first }]) as never) // the rescan: now taken
       .mockResolvedValueOnce(rows([{ id: 200002 }]) as never); // the User insert, again
 
@@ -144,7 +150,9 @@ describe('creating one', () => {
     const lockAt = sqls.findIndex((q) => q.includes('pg_advisory_xact_lock'));
     const scanAt = sqls.findIndex((q) => q.includes('FROM test_seats WHERE phone = ANY'));
     const insertAt = sqls.findIndex((q) => q.includes('INSERT INTO "User"'));
-    expect(lockAt).toBe(0);
+    expect(lockAt).toBe(1);
+    expect(sqls[0]).toBe('SET LOCAL statement_timeout = 60000');
+    expect(sqls[2]).toBe('RESET statement_timeout');
     expect(scanAt).toBeGreaterThan(lockAt);
     expect(insertAt).toBeGreaterThan(scanAt);
   });
