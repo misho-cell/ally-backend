@@ -13,12 +13,23 @@ import { normalizePhone } from './phone';
  * A removal holds: the row is retracted, made private and unmatchable, and
  * marked removed_by_subject_at, which the savers' upsert and the research
  * reload both respect.
+ *
+ * A SAVER'S PRIVATE FACT IS NOT SHOWN (Misho, 15 Oct, the frontend's 14:35Z
+ * question). About 490 private notes and 230 private needs were kept about
+ * people's numbers — „he owes me money" read by its subject is the saver's own
+ * words. The list shows what is public, and what was read from a public page
+ * or a number's saved name. A hidden fact cannot be removed by its id either,
+ * or the answer would tell the person it exists.
  */
 const QUERY_TIMEOUT_MS = 5_000;
 const OWN_NUMBERS_READ = 20;
 export const FACTS_ABOUT_ME_MAX = 200;
 const RESEARCH_SOURCE = 'public_research';
 const LABEL_SOURCE = 'label';
+/** Sources shown even when the row is private: neither is one saver's words. */
+const ALWAYS_SHOWN_SOURCES: readonly string[] = [RESEARCH_SOURCE, LABEL_SOURCE];
+/** The SQL condition, over contact_facts, for a fact its subject may see. */
+const SHOWN_TO_SUBJECT = 'is_public = true OR source = ANY($3::text[])';
 
 export enum FactOrigin {
   Research = 'research',
@@ -88,9 +99,10 @@ export async function factsAboutMe(userId: number): Promise<FactAboutMe[]> {
             research_status
        FROM contact_facts
       WHERE neo4j_contact_id = ANY($1::text[]) AND retracted_at IS NULL
+        AND (${SHOWN_TO_SUBJECT})
       ORDER BY COALESCE(updated_at, created_at) DESC
       LIMIT $2`,
-    [numbers, FACTS_ABOUT_ME_MAX],
+    [numbers, FACTS_ABOUT_ME_MAX, ALWAYS_SHOWN_SOURCES],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map(toFactAboutMe);
@@ -109,8 +121,9 @@ export async function removeFactAboutMe(userId: number, factId: number): Promise
     `UPDATE contact_facts
         SET retracted_at = NOW(), removed_by_subject_at = NOW(), is_public = false,
             is_matchable = false, updated_at = NOW()
-      WHERE id = $1 AND neo4j_contact_id = ANY($2::text[]) AND retracted_at IS NULL`,
-    [factId, numbers],
+      WHERE id = $1 AND neo4j_contact_id = ANY($2::text[]) AND retracted_at IS NULL
+        AND (${SHOWN_TO_SUBJECT})`,
+    [factId, numbers, ALWAYS_SHOWN_SOURCES],
     QUERY_TIMEOUT_MS,
   );
   return (result.rowCount ?? 0) > 0 ? RemoveOutcome.Removed : RemoveOutcome.NotFound;
