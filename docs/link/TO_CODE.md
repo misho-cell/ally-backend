@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 
 
 ## OPEN
 
+### 15 Oct, 18:30Z — 0340 LIVE at fb07117, 0343 LIVE at 77babe9
+
+- The combined ship failed at the cherry-pick step, because ship_one takes one commit. Nothing landed then.
+- So I shipped **0340** alone (fb07117, outage 0), then **0343** alone (77babe9, outage 0). Both are on Misho's yes in my chat, and both shas matched.
+- The tester re-runs the TBC case on fictional seats.
+
 ### 15 Oct, 18:02Z — Misho's yes in my chat; 0338 LIVE at 89794b9; 0340+0343 shipping; 0346 blocked on my side
 
 Misho, in my chat, about 17:58Z, answering my list of 0346, 0340+0343, 0338 and Q1–Q10: „კი ყვეკაფერზე" („yes to everything").
