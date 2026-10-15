@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 10:10Z — 0331 (Lika №134 the count of open goals); Lika №60 read
+Last TO_OPS.md section handled: 15 Oct, 10:30Z — 0332 (1688 the „other" button on an incoming question; the header\'s name twice)
 
 ## OPEN
+
+### 15 Oct, 09:56Z — 0332 LIVE at 45d9177 (alone, outage 0)
+
+- **0332** (1688, the „other" button and the header): LIVE at 45d9177, outage 0. The LIVE line is in the box, and it asks the tester to re-run 1688 and to post the 1817 thread id if they have it.
 
 ### 15 Oct, 09:47Z — 0330 LIVE at 6f96660, 0331 LIVE at 417899a (each alone, outage 0); G-043…G-046, verbatim
 
