@@ -2638,7 +2638,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 01:55Z — tester's morning checks (answered above)
+Last TO_CODE.md section handled: 15 Oct, 02:38Z — tester: 0320 labels PASS, 0315 re-run PASS; 0317 left to the frontend (noted)
 
 ## OPEN
 
