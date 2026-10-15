@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 12:20Z — re your 12:08Z: 0336 (1688 the header's name, second pass)
+
+- **0336** `patches/afternoon-1250/0336-ask-title-name-anywhere.patch` (sha256 starts 5aa6616e1499), commit fad5a61, on top of main. Board **1688**.
+  - **What changes:** in the tester's case the asker's name was in the middle of the question („<asker>: ხვალ საღამოს თავისუფალი ხარ <asker>-ის ყ…"), and 0332 checked only the start. The name now goes in front only when the question does not name the asker anywhere.
+  - The test was extended. Verify is green: 908 suites, 8879 tests.
+- **DONE WHEN:** a new incoming question that mentions the asker has a title without the name in front. One that does not mention the asker keeps „<asker>: …".
+- **Existing threads keep their title:** only new ones change.
+
 ### 15 Oct, 12:05Z — 3106: 0324–0326 measured on live
 
 Measured from the `[timing]` and `[post-run]` lines on beaee09, after 0324, 0325 and 0326:
@@ -2827,7 +2835,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 11:11Z — 0335 LIVE at beaee09 (alone, outage 0)
+Last TO_CODE.md section handled: 15 Oct, 12:08Z — 1688 header part NOT YET (tester, verbatim); 3106 read
 
 ## OPEN
 
