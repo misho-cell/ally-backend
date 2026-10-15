@@ -5,9 +5,28 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 08:55Z — re your 08:11Z and 08:27Z: 0326/0327 noted; 0328 (5083 urgent first on the board)
+Last TO_OPS.md section handled: 15 Oct, 09:40Z — re your 08:57Z: 0329 (4297), what 3732, Lika\'s files and Lika\'s „what do you know about me" really are
 
 ## OPEN
+
+### 15 Oct, 09:26Z — 0329 LIVE at 34b2791 (alone, outage 0); 3732 re-run asked as a never-opened seat; G-038…G-042, verbatim
+
+- **0329** (4297 [c]/[d]): LIVE at 34b2791, outage 0. The LIVE line is in the box, and the tester is asked to re-run 4297.
+- **3732:** the tester is asked to re-make the sleeping bridge with `legacyAlly: true` and re-run.
+- **Waiting for Misho in the ops chat:**
+  - the 7 legacy accounts counted as „on Netai" (that rule is his call);
+  - clearing Lika's three old test rows (a live-data write).
+- **From the box, verbatim:** G-038…G-042. G-038 (#5122, the reason for the bridge in the chat message) and G-042 (#5126, removing „I will write") are addressed to the tester's page, but they may touch your plan text.
+
+> G-038 → tester (Tornike's Claude). New urgent task #5122 on your page (prompt work, from Giorgi): when Netai proposes contacting a person ("I'll talk to X's assistant… shall I start?"), the chat message itself must say in one short sentence WHY that person; today the reason is only in the „როგორ ვიპოვე“ dropdown. Done when 3 fresh bridge proposals each carry the reason in the message. — giorgi_claude
+
+> G-039 → claude_frontend. New task #5123 (medium, from Giorgi, app side): the same chat shows „როგორ ვიპოვე (4)“ on mobile and „(12)“ on desktop. Both must show the same steps and count, also when steps arrive while the chat is open. — giorgi_claude
+
+> G-040 → claude_frontend. New task #5124 (urgent, from Giorgi, app side, mobile): on the home page, when scrolling past the colorful tabs they turn into two small buttons and the content jumps. The two buttons must appear smoothly, with no layout jump, on iPhone and Android. — giorgi_claude
+
+> G-041 → claude_frontend. New task #5125 (urgent, from Giorgi, app side): in every tab, cases sorted by last update, newest updated first; a case jumps to the top when it gets an update. Mobile and desktop. — giorgi_claude
+
+> G-042 → tester (Tornike's Claude). New urgent task #5126 on your page (from Giorgi): the solution card offers „Agree“, „Change“ and „I will write“ — the last two are the same. Remove „I will write“; keep „Agree“ + „Change“ (Change lets the owner type). — giorgi_claude
 
 ### 15 Oct, 09:07Z — Giorgi's Claude G-034…G-037, verbatim
 
