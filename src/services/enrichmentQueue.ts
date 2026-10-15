@@ -1,10 +1,12 @@
+import { backgroundQuery } from '../db/postgres/client';
+
 /**
  * The tester's 47594 (8 Oct): every saved card started its own score and
  * enrichment in the background, with no limit, on the pool the owner's own
  * requests use — a 500-card import queued hundreds of them behind each other
  * and in front of everybody else. They now run a few at a time (two until the launch load, four since); the rest wait
- * their turn in order. A failure is the task's own to log and never stops the
- * queue.
+ * their turn in order, in the database since 5317. A failure is the job's own to
+ * log and never stops the queue.
  */
 export const ENRICHMENT_CONCURRENCY = 4;
 
@@ -33,35 +35,144 @@ export function takeEnrichmentAllowance(
   return true;
 }
 
-type Task = () => Promise<void>;
+/** One saved contact waiting for its score, and its enrichment when the owner's share allows. */
+export interface EnrichmentJob {
+  readonly userId: number;
+  readonly userCompositeKey: string;
+  readonly contactPhone: string;
+  readonly alias: string;
+  readonly enrich: boolean;
+}
 
-const waiting: Task[] = [];
-let running = 0;
+/** What a worker does with one job; the real one is in contacts.service. */
+export type EnrichmentWork = (job: EnrichmentJob) => Promise<void>;
 
-function startNext(): void {
-  while (running < ENRICHMENT_CONCURRENCY && waiting.length > 0) {
-    const task = waiting.shift();
-    if (task === undefined) return;
-    running++;
-    void task()
-      .catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error('[enrichment] queued task failed:', (err as Error).message);
-      })
-      .finally(() => {
-        running--;
-        startNext();
-      });
+/**
+ * 5317 (F10; Misho's yes to Q7): the queue used to live in this process's
+ * memory, so a deploy dropped every saved contact still waiting. Jobs are rows
+ * now (enrichment_jobs): queued here, claimed by the workers in arrival order,
+ * and a job a restart cut off is queued again when the workers start.
+ */
+const QUEUE_TIMEOUT_MS = 10_000;
+const MAX_ERROR_CHARS = 300;
+/** A job still „running" this long after it started was cut off by a restart. */
+const CUT_OFF_AFTER_MINUTES = 10;
+const TICK_INTERVAL_MS = 5_000;
+
+let workersRunning = 0;
+
+/** Queues one saved contact. */
+export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
+  await backgroundQuery(
+    `INSERT INTO enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
+    QUEUE_TIMEOUT_MS,
+  );
+}
+
+interface JobRow {
+  readonly id: string;
+  readonly user_id: number;
+  readonly user_composite_key: string;
+  readonly contact_phone: string;
+  readonly alias: string;
+  readonly enrich: boolean;
+}
+
+/** The oldest queued job, marked running in the same statement so no other worker takes it. */
+async function claimNextJob(): Promise<JobRow | null> {
+  const result = await backgroundQuery<JobRow>(
+    `UPDATE enrichment_jobs SET status = 'running', started_at = NOW()
+      WHERE id = (SELECT id FROM enrichment_jobs WHERE status = 'queued'
+                   ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
+      RETURNING id, user_id, user_composite_key, contact_phone, alias, enrich`,
+    [],
+    QUEUE_TIMEOUT_MS,
+  );
+  return result.rows[0] ?? null;
+}
+
+async function finishJob(id: string, error: string | null): Promise<void> {
+  await backgroundQuery(
+    `UPDATE enrichment_jobs SET status = $2, error = $3, finished_at = NOW() WHERE id = $1`,
+    [id, error === null ? 'done' : 'failed', error],
+    QUEUE_TIMEOUT_MS,
+  );
+}
+
+/** Takes the next job and does it; false when nothing was queued. A failed job is the job's own. */
+export async function workOneJob(work: EnrichmentWork): Promise<boolean> {
+  const row = await claimNextJob();
+  if (row === null) return false;
+  try {
+    await work({
+      userId: row.user_id,
+      userCompositeKey: row.user_composite_key,
+      contactPhone: row.contact_phone,
+      alias: row.alias,
+      enrich: row.enrich,
+    });
+    await finishJob(row.id, null);
+  } catch (err) {
+    const message = (err as Error).message.slice(0, MAX_ERROR_CHARS);
+    // eslint-disable-next-line no-console
+    console.error('[enrichment] job failed:', message);
+    await finishJob(row.id, message);
+  }
+  return true;
+}
+
+async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
+  workersRunning += 1;
+  try {
+    while (await workOneJob(work)) {
+      // the next queued job, straight away
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[enrichment] worker stopped:', (err as Error).message);
+  } finally {
+    workersRunning -= 1;
   }
 }
 
-/** Queues the task; it starts as soon as a running one leaves room. */
-export function enqueueEnrichment(task: Task): void {
-  waiting.push(task);
-  startNext();
+/** Starts workers up to the limit; each one ends when the queue is empty. */
+export function fillEnrichmentWorkers(
+  work: EnrichmentWork,
+  workers: number = ENRICHMENT_CONCURRENCY,
+): number {
+  let started = 0;
+  while (workersRunning < workers) {
+    void workUntilEmpty(work);
+    started += 1;
+  }
+  return started;
 }
 
-/** How many tasks wait and run — for a test, or a log line. */
-export function enrichmentQueueSize(): { readonly waiting: number; readonly running: number } {
-  return { waiting: waiting.length, running };
+/** Queues again what a restart cut off mid-job. */
+export async function requeueCutOffJobs(): Promise<number> {
+  const result = await backgroundQuery(
+    `UPDATE enrichment_jobs SET status = 'queued', started_at = NULL
+      WHERE status = 'running' AND started_at < NOW() - ($1 || ' minutes')::interval`,
+    [CUT_OFF_AFTER_MINUTES],
+    QUEUE_TIMEOUT_MS,
+  );
+  return result.rowCount ?? 0;
+}
+
+/** At start: what a restart cut off goes back in the queue, and the ticker keeps the workers topped up. */
+export function startEnrichmentWorkers(work: EnrichmentWork): void {
+  void requeueCutOffJobs()
+    .then((requeued) => {
+      if (requeued > 0) {
+        // eslint-disable-next-line no-console
+        console.log(`[enrichment] ${requeued} job(s) cut off by a restart are queued again`);
+      }
+    })
+    .catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error('[enrichment] could not requeue cut-off jobs:', (err as Error).message),
+    );
+  setInterval(() => fillEnrichmentWorkers(work), TICK_INTERVAL_MS).unref();
 }

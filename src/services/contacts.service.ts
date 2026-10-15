@@ -8,7 +8,7 @@ import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 import { parsePhonebookLabelsForUser } from './labelParser.service';
 import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
-import { enqueueEnrichment, takeEnrichmentAllowance } from './enrichmentQueue';
+import { EnrichmentJob, queueEnrichmentJob, takeEnrichmentAllowance } from './enrichmentQueue';
 // Aliased: this file already has its own, stricter local normalizePhone()
 // (import-path only, rejects anything not already "+..."). UserPhone is
 // written exclusively through registration's normalizePhone (services/phone,
@@ -318,13 +318,25 @@ function triggerEnrichmentAsync(
   alias: string,
 ): void {
   // F10: the score is always kept; the model-backed enrichment, within the owner's daily share.
-  const enrich = takeEnrichmentAllowance(userId);
-  enqueueEnrichment(async () => {
-    await Promise.all([
-      computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
-      ...(enrich ? [enrichContact(contactPhone)] : []),
-    ]);
-  });
+  const job = {
+    userId,
+    userCompositeKey,
+    contactPhone,
+    alias,
+    enrich: takeEnrichmentAllowance(userId),
+  };
+  queueEnrichmentJob(job).catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[enrichment] could not queue a saved contact:', (err as Error).message),
+  );
+}
+
+/** 5317: what an enrichment worker does with one saved contact. */
+export async function enrichSavedContact(job: EnrichmentJob): Promise<void> {
+  await Promise.all([
+    computeAndSaveSingleScore(job.userId, job.userCompositeKey, job.contactPhone, job.alias),
+    ...(job.enrich ? [enrichContact(job.contactPhone)] : []),
+  ]);
 }
 
 /** The number a card is saved under, so two cards for one number never share a batch. */
