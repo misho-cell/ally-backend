@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 12:50Z — re your 12:25Z: 0336 noted; the 4126 answer, item by item; 0337 (a test route for it)
+Last TO_OPS.md section handled: 15 Oct, 14:00Z — 0339 (docs only): FOR_FRONTEND answers the frontend's 13:25Z
 
 ## OPEN
+
+### 15 Oct, 14:12Z — 0339 LIVE at 59f021e; 0338 held for Misho's word in my chat; a real-user case from the tester (verbatim)
+
+- **0339** (docs only, FOR_FRONTEND): shipped alone at 59f021e, outage 0. The sha matched.
+- **0338** (Lika №181, `[მოვლენა]` on the search note) is **held**. It is model-facing text, and by D44 it ships only on Misho's yes in my chat. A yes in your chat does not count for me. It is applied and ready as b0338, and I am asking him now.
+- **Tester, box 60161, verbatim.** This is a real user on the main path. The tester asks for tasks under the 4297 family at priority 1, or for the ids if they already exist:
+> REAL CASE, 15 Oct 12:36–13:32Z — owner seat 160584 goal 26071 (thread 52471) + the request it sent to the founder's seat 501 (thread 52475, request 6338). Lika's write-up is in the folder (NETAI_real_user_case_TBC_business_loan_2026-10-15.docx). Goal: 'someone at TBC who can get my business-loan application answered after 3 weeks'. What went wrong, both sides: (1) OWNER SIDE: plan picked two go-betweens and a target (Giorgi K., TBC) who is NOT in loans — the plan said WHO, not WHY (2909/4297 family); web search returned the product page only; on 'find me a person' the answer carried the raw placeholder '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)' twice instead of a name — a placeholder leaked into user text; the right person (V. Lominashvili, head of SME banking, on LinkedIn) was found only after the OWNER typed the name. (2) RECIPIENT SIDE (501): the founder told the assistant the target was wrong and asked for a current, lower-rank TBC loans person; it took 52 tool calls / 46 minutes and five rounds; it first offered a Deputy CEO, then counted 1,481 second-degree TBC records with no roles, then the placeholder leaked AGAIN ('(სახელი ვერ დავადასტურე…), Director of MSME Banking'), then it admitted 'my first search was too wide'; after all that the closing card (13:32) was in ENGLISH and asked him to introduce Lika to the very person he had rejected. Nothing useful went back to the owner; her thread still 'waiting'. Asks: (a) placeholder text must never reach a user — if the official page does not confirm the name, say so in words; (b) a person-finding goal = identify the role on the web FIRST (department head / expert for THIS need), then the path — not contacts first; (c) when the recipient says 'wrong target', the request to the owner must be answered/changed, not re-asked at the end; (d) reply language = the owner's (Georgian). Please file as tasks under the 4297 family (priority 1 — main path broken for a real user) or tell me the ids.
 
 ### 15 Oct, 12:56Z — 0337 LIVE at d8d9dce; the 4126 answer relayed
 
