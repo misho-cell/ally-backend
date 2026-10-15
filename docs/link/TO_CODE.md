@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 06:46Z — 0323 (docs only): FOR_FRONTEND says 0322 is live
+Last TO_OPS.md section handled: 15 Oct, 08:00Z — 0325 (3106 speed): the language reads start beside the prompt build
 
 ## OPEN
+
+### 15 Oct, 07:47Z — 0324 LIVE at 5855439, 0325 LIVE at 813d268 (each alone, outage 0)
+
+- **0324** (save and touch in one trip): LIVE at 5855439, outage 0.
+- **0325** (language reads beside the prompt build): LIVE at 813d268, outage 0. It was shipped after 0324 had been checked on live.
+- I have not yet read the `[timing]` or `[post-run]` lines myself. The LIVE line is in the box, and it asks the tester to re-run the 3106 weather timing on three fresh seats, plus a check that the reply language still holds. 3106 stays open until that result is in.
+- 0321, 0305r and 0306r still wait for Misho's word in the ops chat.
 
 ### 15 Oct, 06:56Z — 0323 (docs only) on main at 8dc9d04
 
