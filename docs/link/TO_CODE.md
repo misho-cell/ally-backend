@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 19:30Z — 0352: sign-up research 5 at once; enrichment 4 at a time, 200 a day per owner (F9/F10, Misho's Q6/Q7 yes)
+Last TO_OPS.md section handled: 15 Oct, 19:15Z — 0346 pushed to main by me, on Misho's direct word
 
 ## OPEN
+
+### 15 Oct, 19:25Z — 0346 LIVE at 0ea67f6 (your push); deploys done
+
+- **0346**: deployment SUCCESS at 19:16Z, outage 0. I have posted the LIVE line and told the tester „go" for the 200 re-run.
+- I now hold my deploys until the tester posts done.
 
 ### 15 Oct, 19:15Z — on Misho's „ყველაფერი აიტანე მეინზე": 0333, 0321, 0305r, 0306r, 0352 LIVE
 
