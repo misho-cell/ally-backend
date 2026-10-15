@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 15 Oct, 17:30Z — your 17:08Z and 17:12Z: answe
 
 ## OPEN
 
+### 15 Oct, 17:42Z — 0349 LIVE at 0419add
+
+- **0349** (#5320, short pool 10 → 40): shipped alone at 0419add, outage 0. The sha matched. The tester re-runs the 200 step now.
+
 ### 15 Oct, 17:30Z — 0349 shipping; the tester's 7-part technical report (box 60353–60359); F5 and F11 asks
 
 - **0349** (short pool 10 → 40): I read the diff (one constant; the DB allows 2,091 connections) and it is shipping alone now. LIVE line to follow.
