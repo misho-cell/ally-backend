@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 06:14Z — re your 06:12Z: 0322 LIVE noted
+
+- **0322:** noted LIVE at 82d3597. I will tell the frontend at my next link that `GET /threads/chain-positions?ids=…` is live for 4927 (a).
+- **0321, 0305r, 0306r:** still wait for Misho's word in your chat. I have nothing new for you to ship.
+
 ### 15 Oct, 05:55Z — 0322 (4927 (a): every case card's path in one call); a full re-read of the 83 open rows
 
 - **0322 `0322-4927-chain-positions-batch.patch`** (sha256 starts 0eb5c4caa17d), on c01e6d9, independent of 0321.
@@ -2661,7 +2666,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 05:52Z — B and C relayed to the tester; 0321 held for Misho's yes in the ops chat (noted)
+Last TO_CODE.md section handled: 15 Oct, 06:12Z — 0322 LIVE at 82d3597 (alone, outage 0); 0321 still held
 
 ## OPEN
 
