@@ -9,6 +9,43 @@ Last TO_OPS.md section handled: 15 Oct, 14:55Z — 0342: a saver's private facts
 
 ## OPEN
 
+### 15 Oct, 15:08Z — Lika's status request, item by item (tester, verbatim)
+
+Tester, box 60240, verbatim. Please answer per numbered line: status, who, blocker, build or date, and a re-test recipe. It also lists the new tasks 5281–5288.
+> LIKA'S STATUS REQUEST (15 Oct), item by item — she asks the builders for: status (not started / in progress / blocked / ready to test / fixed and proved), who, blocker, build/date, and a re-test recipe for each. The founder holds her file (NETAI_ბაგები_და_პროგრესის_მოთხოვნა_2026-10-15.docx). What the tester already knows is filled in; please answer the rest per line, numbered as here.
+> NEW TASKS filed today from her file: 5281 (№155 'what do you know about me' invents/mixes facts, P1), 5282 (reading an answer moves an unfinished goal to Resolved, P1, tie to 1817), 5283 (Pause→Close = Resolved, no Resume button, re 1919), 5284 ('[მოვლენა]'/system text in user views + chat stuck 'working', P1, family of 5250), 5285 (№27 English interface → Georgian reply), 5286 (№181 no intro offered when a number is refused), 5287 (№30/107 ask delivered to someone other than the named person), 5288 (iPhone home cards cut text, app side).
+> EXISTING TASKS — please give status + build:
+> 1 Files №219/226 (upload seen but not read; XLSX partly) → 2346/2377/2378; your 59941 says the client fix is in the next frontend build — which build, which formats/sizes?
+> 2 №134 count 50 vs 67 → 0331 LIVE 09:49Z; tester re-runs.
+> 3 №60 small talk 9 s (target ≤5 s) → 3106 / speed; status?
+> 4 №374 new phone contact not found without VCF → 374; what must Lika do to repeat (permissions, sync log)?
+> 5 №894/2347 and №221/223 Excel not produced (iPhone + a 30-row text list) → 2347; can Netai make .xlsx today, row limit?
+> 6 №1688 a photographer question reached the helper as 'are you free tonight?' — the question was CHANGED → 1688; the 'other' button part passed 3/3 today (0332), the wording change is new.
+> 7 Requests hard to find on phone and desktop; notification does not open the request → 2185 / 4658 / 859 deep link.
+> 8 Netai re-asked a contact's workplace already answered in detail → 2182 / 1694.
+> 9 'Other' full round trip sender→recipient→sender → 1688; tester can run it on seats — will do.
+> 10 №217 the 12 Oct weekly summary missing in the archive → 4786 / 1693 (Monday read 19 Oct).
+> 11 Setup strip not found on iPhone/laptop; home tiles open the left list → 1882 / 2047; is the setup strip live?
+> 12 Role filters, Pause/Resume in menu, export confirmation → 2080 / 2047 / 1920.
+> 13 Push delivery vs deep link vs setup test notification → 859 / 1882 — status of each separately.
+> 14 TBC business-loan case → 5248 / 5249 / 5250 / 5251 (filed today; wait for Giorgi's order).
+> 15 №225 command inside an uploaded file must not be obeyed → blocked by the file-reading fix; re-run after it.
+> 16 №207 Claude connector — needs a paid Claude plan to test → 1256; is there a test path?
+> 17 №203 / №22 export file + delete-account preview → 1920; safe test path?
+> 18 №21 billing: cancel, 14-day refund → 232 / 233; tester can run test-mode payments on fictional seats (D776) — will do.
+> 19 №17 contact facts add/correct/forget/exclude → tester PASS on fictional seats 14 Oct (0301); Lika need not touch real contacts.
+> 20 №176 a blocked contact excluded from search, recommendations, paths, intros → tester runs on seats.
+> 21 №184/187 sources/confidence shown; ambiguous names (two Ninos/Giorgis) → clarifying question (D746).
+> 22 №10 updates card 'later'/'remove' → tester runs on seats.
+> 23 №220 name search: 'Lika' ambiguous (3 of 4 found) → which matching rules for Georgian/partial names?
+> 24 Two numbers with the same name merged into one record → identity rule; keep two numbers apart unless the owner says one person.
+> 25 №127 referral reward not shown → 1916 / 1520 (needs a paid invitee).
+> 26 iPhone app suddenly asked for an invitation; the ask was lost in chats → expected timing/where under invite-only?
+> 27 №74/206 automatic answers section gone from the profile → INTENTIONAL: switched off by the founder (D665–D669). Closed.
+> 28 Communication set (99 points: multi-user requests №87–106, №18; one-user ask flow №107–116, №30–31; notification→right chat №12–13; Lika→Tornike→Salome and Lika→Ninia→Salome request scenarios lost in chats) → needs two real users; please name the build from which the end-to-end run is worth doing.
+> 29 Research of a user and contacts at sign-up (her section 5) → 4126 now 'built' — what exists / partial / not built, and how to run a real sign-up.
+> When a line is ready, post the build and the steps; the tester tests first (D720), then the line goes into Lika's or Ninia's next file.
+
 ### 15 Oct, 14:57Z — 0342 LIVE at d63247d; a correction to 0340 and a new 1688 fault (tester, verbatim)
 
 - **0342** (#4126, a saver's private facts hidden from their subject): I read the diff, then shipped it alone at d63247d, outage 0. The sha matched. It tightens privacy and adds no text, so I did not hold it.
