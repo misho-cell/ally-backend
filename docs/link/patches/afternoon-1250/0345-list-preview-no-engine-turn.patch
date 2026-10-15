@@ -1,0 +1,121 @@
+From 52872bedb5181e08efb96814d207a537a70a25da Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 16:14:55 +0000
+Subject: [PATCH] 5284: the conversation list's preview shows only what the
+ chat shows a person
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The list's last_message read the newest row of any kind, so a thread whose
+newest row was an engine turn showed „[მოვლენა] …" — 633 threads in the 7 days
+to 15 Oct (Lika's report). The preview now reads the same kinds the chat itself
+shows (message, pending, error), one constant for both.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../chatShowsOnlyWhatIsForAPerson.test.ts     |  5 +--
+ .../theListPreviewShowsNoEngineTurn.test.ts   | 32 +++++++++++++++++++
+ src/services/threads.service.ts               | 14 +++++---
+ 3 files changed, 44 insertions(+), 7 deletions(-)
+ create mode 100644 src/services/__tests__/theListPreviewShowsNoEngineTurn.test.ts
+
+diff --git a/src/services/__tests__/chatShowsOnlyWhatIsForAPerson.test.ts b/src/services/__tests__/chatShowsOnlyWhatIsForAPerson.test.ts
+index a701453..931ed21 100644
+--- a/src/services/__tests__/chatShowsOnlyWhatIsForAPerson.test.ts
++++ b/src/services/__tests__/chatShowsOnlyWhatIsForAPerson.test.ts
+@@ -37,8 +37,9 @@ describe('the chat shows only what was written for a person', () => {
+    * should be because somebody decided a person should read it.
+    */
+   it('names message, pending and error, and nothing else', () => {
+-    const at = code.indexOf('SHOWN_TO_A_PERSON');
+-    const list = code.slice(at, code.indexOf(']', at));
++    const at = code.indexOf('SHOWN_TO_A_PERSON: readonly string[] = [');
++    expect(at).toBeGreaterThan(-1);
++    const list = code.slice(at, code.indexOf('];', at));
+     for (const kind of ['message', 'pending', 'error']) expect(list).toContain(`'${kind}'`);
+     for (const kind of ['step', 'event']) expect(list).not.toContain(`'${kind}'`);
+   });
+diff --git a/src/services/__tests__/theListPreviewShowsNoEngineTurn.test.ts b/src/services/__tests__/theListPreviewShowsNoEngineTurn.test.ts
+new file mode 100644
+index 0000000..370e158
+--- /dev/null
++++ b/src/services/__tests__/theListPreviewShowsNoEngineTurn.test.ts
+@@ -0,0 +1,32 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
++}));
++
++import { query } from '../../db/postgres/client';
++import { getThreadsForUser, SHOWN_TO_A_PERSON } from '../threads.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/**
++ * 5284 (Lika, 15 Oct): „[მოვლენა]" in the conversation list. The preview of a
++ * thread was its newest row of any kind, and an engine turn is a row.
++ */
++describe('the conversation list preview', () => {
++  it('is read only from rows written for a person', async () => {
++    await getThreadsForUser('501');
++    const sql = mockQuery.mock.calls
++      .map(([q]) => String(q))
++      .find((q) => q.includes(') lm ON true'));
++    expect(sql).toBeDefined();
++    const preview = String(sql).slice(0, String(sql).indexOf(') lm ON true'));
++    expect(preview.slice(preview.lastIndexOf('LEFT JOIN LATERAL'))).toContain(
++      "kind IN ('message', 'pending', 'error')",
++    );
++  });
++
++  it('shares its kinds with the chat itself, and an engine turn is not one', () => {
++    expect(SHOWN_TO_A_PERSON).toEqual(['message', 'pending', 'error']);
++    expect(SHOWN_TO_A_PERSON).not.toContain('event');
++  });
++});
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index eb671c1..349a587 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -357,6 +357,10 @@ const THREAD_ROLE_SQL = `CASE
+          ELSE NULL
+        END`;
+ 
++/** The kinds of row written for a person to read; see `getThreadMessages` for how they were counted. */
++export const SHOWN_TO_A_PERSON: readonly string[] = ['message', 'pending', 'error'];
++const SHOWN_KINDS_SQL = SHOWN_TO_A_PERSON.map((k) => `'${k}'`).join(', ');
++
+ const THREAD_LIST_COLUMNS = `t.id,
+        t.user_id,
+        t.type,
+@@ -394,9 +398,12 @@ const THREAD_LIST_JOINS = `FROM threads t
+        LIMIT 1
+      ) shared_ir ON true
+      LEFT JOIN LATERAL (
++       -- 5284 (Lika, 15 Oct): the list's preview read any row, so a thread whose
++       -- newest row was an engine turn showed „[მოვლენა] …" — 633 threads in the
++       -- 7 days to 15 Oct. It shows what the chat itself shows a person.
+        SELECT content, created_at
+        FROM conversations
+-       WHERE thread_id = t.id AND content != ''
++       WHERE thread_id = t.id AND content != '' AND kind IN (${SHOWN_KINDS_SQL})
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) lm ON true
+@@ -1003,10 +1010,7 @@ export async function getThreadMessages(
+    * written FOR A PERSON — `pending` is the updates card („6 more are waiting")
+    * and `error` is a failure the owner is owed. Nothing existing disappears.
+    */
+-  const SHOWN_TO_A_PERSON = ['message', 'pending', 'error'];
+-  const kindFilter = opts.includeSteps
+-    ? ''
+-    : ` AND kind IN (${SHOWN_TO_A_PERSON.map((k) => `'${k}'`).join(', ')})`;
++  const kindFilter = opts.includeSteps ? '' : ` AND kind IN (${SHOWN_KINDS_SQL})`;
+   const limit =
+     opts.limit === undefined ? null : Math.min(Math.max(1, opts.limit), MAX_MESSAGE_PAGE);
+   // The cursor clause is BUILT, not NULL-tricked: conversations.id is a UUID
+-- 
+2.43.0
+

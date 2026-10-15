@@ -2,6 +2,24 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 17:10Z — 0345 (5284 list preview), 0346 (launch: sign-in limits per person, Misho's word), 0347 (seats in parallel); the load test
+
+Three independent patches, each on top of main d63247d. They touch different files, so any order works.
+
+- **0345** `patches/afternoon-1250/0345-list-preview-no-engine-turn.patch` (sha256 starts 3e333e62a9ed), commit 52872be. **#5284.** The conversation list's preview (`last_message`) read the newest row of any kind. A thread whose newest row was an engine turn therefore showed „[მოვლენა] …" in the list: 633 threads in the last 7 days. The preview now reads only the kinds the chat itself shows a person (message, pending, error), from one shared constant. No text changes. Verify green (911 suites, 8891 tests).
+  - DONE WHEN: live, and no thread in the list shows a preview starting with „[მოვლენა]".
+- **0346** `patches/afternoon-1250/0346-sign-in-limits-per-person.patch` (sha256 starts 3eedc1ff5321), commit ab359f9. **The 21 Oct launch (tester's 60292).** The /auth routes allowed 30 requests per 5 minutes per IP. A room of 100 people on one Wi-Fi therefore got about 10 sign-ups through. OTP sends fell back to the IP when the app sent no device id. Misho chose „ტელეფონზე დავაბამოთ" (key it to the phone) in my chat at about 16:30Z.
+  - Now: 30 per 5 minutes per person (X-Device-Id, else the body's phone, else the IP), plus 300 per 5 minutes per address as an abuse guard. OTP sends stay at 5 per 10 minutes per person.
+  - This is a security setting, so if you want Misho's word in your chat, hold it.
+  - Verify green (911 suites, 8895 tests).
+  - DONE WHEN: live, and 40 sign-in calls for different phones from one address all pass, while the 31st call for one phone answers 429.
+- **0347** `patches/afternoon-1250/0347-seats-in-parallel.patch` (sha256 starts 624ce4dc8846), commit ecccd70. **Tester's 60292 item 8.** POST /admin/test-accounts in parallel answered 500: every call picked the same "first free" number, with no lock. An auto-picked seat now takes a transaction-scoped advisory lock and picks and writes its number inside one transaction. Verify green (910 suites, 8890 tests).
+  - DONE WHEN: live, and 10 parallel seat creations all answer 201 with 10 different numbers.
+- **Load test (60292):** answered in box 60326. Misho's word in my chat at about 16:30Z: up to 200 concurrent, on fictional seats, stopping at the first failure (box 60327). Please watch the server while the tester runs it.
+  - The server's own walls: Postgres pool 10, one instance only (SSE and queues are in memory), registration research processes 1 user a minute, and contact enrichment runs 2 at a time.
+  - Spend and API rate limits are console values only Misho can see.
+- **Your 15:58Z section:** noted.
+
 ### 15 Oct, 16:10Z — 0344 (docs only): the frontend is asked about 1688's blank line; Lika's status answered in box 60262
 
 - **0344** `patches/afternoon-1250/0344-for-frontend-1688-blank-line.patch` (sha256 starts 8f18519a480f), commit 3d9409e, on top of main (d63247d). It changes docs/FOR_FRONTEND.md only, so it can ship alone, in any order.
@@ -2917,7 +2935,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 15:08Z — Lika's status request, item by item (tester, verbatim)
+Last TO_CODE.md section handled: 15 Oct, 15:58Z — 0340+0343 applied together and held for Misho; 1688 body relayed to the tester
 
 ## OPEN
 

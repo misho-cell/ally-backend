@@ -1,0 +1,169 @@
+From ecccd70d80d99e9efbb5c0901359db35edb86e4a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 16:17:47 +0000
+Subject: [PATCH] Seats made in parallel no longer collide on the first free
+ number
+
+POST /admin/test-accounts took the first free fictional number without a lock,
+so parallel calls all picked the same one, clashed on the unique phone key,
+and past three retries answered 500 (the tester's 60292). An auto-picked seat
+now takes a transaction-scoped advisory lock, picks its number and writes it
+inside one transaction, so the next caller picks after it. A number the caller
+chose is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aSeatOnANumberNobodyHas.test.ts | 21 ++++++-
+ src/services/testSeatCreate.service.ts        | 57 ++++++++++++-------
+ 2 files changed, 56 insertions(+), 22 deletions(-)
+
+diff --git a/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts b/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
+index a83bd48..82b7e38 100644
+--- a/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
++++ b/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
+@@ -103,6 +103,7 @@ describe('the number is earned, not chosen', () => {
+ describe('creating one', () => {
+   function seatCreated(): void {
+     mockQuery.mockResolvedValue(rows([]) as never);
++    mockQuery.mockResolvedValueOnce(rows([]) as never); // the slot lock
+     mockQuery.mockResolvedValueOnce(rows([]) as never); // the free-number scan
+     mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never); // the User insert
+   }
+@@ -112,9 +113,11 @@ describe('creating one', () => {
+     const [first, second] = allFictionalNumbers();
+     mockQuery.mockResolvedValue(rows([]) as never);
+     mockQuery
++      .mockResolvedValueOnce(rows([]) as never) // the slot lock
+       .mockResolvedValueOnce(rows([]) as never) // the scan: first looks free
+       .mockResolvedValueOnce(rows([{ id: 200001 }]) as never) // the User insert
+       .mockRejectedValueOnce(Object.assign(new Error('UserPhone_phone_key'), { code: '23505' }))
++      .mockResolvedValueOnce(rows([]) as never) // the slot lock, again
+       .mockResolvedValueOnce(rows([{ phone: first }]) as never) // the rescan: now taken
+       .mockResolvedValueOnce(rows([{ id: 200002 }]) as never); // the User insert, again
+ 
+@@ -129,7 +132,21 @@ describe('creating one', () => {
+     expect(src).toContain(
+       'if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)',
+     );
+-    expect(src).toContain('await withTransaction((client) =>');
++    expect(src).toContain('return await withTransaction(async (client) => {');
++    expect(src).toContain('let phone = chosen;');
++  });
++
++  /** The tester's 60292: seats made in parallel all took the same „first free" number. */
++  it('picks a free number under a lock, inside the transaction that writes it', async () => {
++    seatCreated();
++    await createTestSeat('Netai Test 14', [], 0, 'admin:1', '60292');
++    const sqls = mockQuery.mock.calls.map(([q]) => String(q));
++    const lockAt = sqls.findIndex((q) => q.includes('pg_advisory_xact_lock'));
++    const scanAt = sqls.findIndex((q) => q.includes('FROM test_seats WHERE phone = ANY'));
++    const insertAt = sqls.findIndex((q) => q.includes('INSERT INTO "User"'));
++    expect(lockAt).toBe(0);
++    expect(scanAt).toBeGreaterThan(lockAt);
++    expect(insertAt).toBeGreaterThan(scanAt);
+   });
+ 
+   it('makes the account the same shape as the eleven that exist', async () => {
+@@ -222,8 +239,6 @@ describe('creating one', () => {
+    */
+   it('will not put a stranger into a seat’s phonebook', async () => {
+     mockQuery.mockResolvedValue(rows([]) as never);
+-    mockQuery.mockResolvedValueOnce(rows([]) as never);
+-    mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never);
+ 
+     await expect(
+       createTestSeat('Netai Test 12', ['+995599123456'], 0, 'admin:1', 'row 251'),
+diff --git a/src/services/testSeatCreate.service.ts b/src/services/testSeatCreate.service.ts
+index bc47b91..711b2fe 100644
+--- a/src/services/testSeatCreate.service.ts
++++ b/src/services/testSeatCreate.service.ts
+@@ -78,23 +78,25 @@ export function isFictionalSlot(phone: string): boolean {
+   return isFictionalNumber(phone);
+ }
+ 
++const TAKEN_FICTIONAL_SQL = `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
++     UNION
++     SELECT phone FROM "UserAlias" WHERE phone = ANY($1)
++     UNION
++     SELECT phone FROM test_seats WHERE phone = ANY($1)`;
++
+ /**
+  * The first slot in the fictional range that nobody is registered on and
+  * nobody has saved. Both halves are asked of the live database in one
+- * statement, so the answer cannot be stale between the two questions.
++ * statement, so the answer cannot be stale between the two questions. Given a
++ * transaction's client, it is asked inside that transaction.
+  */
+-export async function firstFreeFictionalPhone(): Promise<string> {
++export async function firstFreeFictionalPhone(client?: PoolClient): Promise<string> {
+   const candidates = allFictionalNumbers();
+ 
+-  const taken = await query<{ phone: string }>(
+-    `SELECT phone FROM "UserPhone" WHERE phone = ANY($1)
+-     UNION
+-     SELECT phone FROM "UserAlias" WHERE phone = ANY($1)
+-     UNION
+-     SELECT phone FROM test_seats WHERE phone = ANY($1)`,
+-    [candidates],
+-    SEAT_QUERY_TIMEOUT_MS,
+-  );
++  const taken =
++    client === undefined
++      ? await query<{ phone: string }>(TAKEN_FICTIONAL_SQL, [candidates], SEAT_QUERY_TIMEOUT_MS)
++      : await client.query<{ phone: string }>(TAKEN_FICTIONAL_SQL, [candidates]);
+   const used = new Set(taken.rows.map((r) => r.phone));
+   const free = candidates.find((p) => !used.has(p));
+   if (free === undefined) {
+@@ -344,6 +346,14 @@ async function arriveByInvitation(
+ const UNIQUE_VIOLATION = '23505';
+ /** How many free slots an auto-picked seat tries before the clash is reported. */
+ const FREE_SLOT_ATTEMPTS = 3;
++/**
++ * The tester's 60292 (15 Oct): seats made in parallel all picked the same
++ * „first free" number, and past three clashes the rest were 500s. Picking and
++ * writing an auto-picked seat now happen under one transaction-scoped lock, so
++ * the next caller picks after the last one's number is written. The key is
++ * this lock's own; nothing else in the code takes an advisory lock.
++ */
++const FREE_SLOT_LOCK_KEY = 4_126_292;
+ 
+ interface SeatRows {
+   readonly userId: string;
+@@ -368,16 +378,25 @@ async function insertSeatRows(
+   createdBy: string,
+   shape: SeatShape,
+ ): Promise<SeatRows> {
++  const chosen = shape.phone === undefined ? null : await chosenFictionalPhone(shape.phone);
+   for (let attempt = 1; ; attempt += 1) {
+-    const phone =
+-      shape.phone === undefined
+-        ? await firstFreeFictionalPhone()
+-        : await chosenFictionalPhone(shape.phone);
+     try {
+-      const userId = await withTransaction((client) =>
+-        writeSeatRows(client, seatName, why, createdBy, phone, shape.legacyAlly === true),
+-      );
+-      return { userId, phone };
++      return await withTransaction(async (client) => {
++        let phone = chosen;
++        if (phone === null) {
++          await client.query('SELECT pg_advisory_xact_lock($1)', [FREE_SLOT_LOCK_KEY]);
++          phone = await firstFreeFictionalPhone(client);
++        }
++        const userId = await writeSeatRows(
++          client,
++          seatName,
++          why,
++          createdBy,
++          phone,
++          shape.legacyAlly === true,
++        );
++        return { userId, phone };
++      });
+     } catch (err) {
+       if (!isUniqueViolation(err) || shape.phone !== undefined || attempt >= FREE_SLOT_ATTEMPTS)
+         throw err;
+-- 
+2.43.0
+
