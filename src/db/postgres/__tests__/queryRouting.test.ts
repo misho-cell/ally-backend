@@ -62,12 +62,12 @@ jest.mock('pg', () => ({
   }),
 }));
 
-import { backgroundQuery, poolPressure, query } from '../client';
+import { backgroundQuery, leaveIntakeLane, onIntakeLane, poolPressure, query } from '../client';
 
-// Construction order in client.ts: the short pool, then the long one, then the
-// background one. Named here so a reordering breaks these tests loudly rather
-// than silently testing the wrong pool.
-const [shortPool, longPool, backgroundPool] = pools;
+// Construction order in client.ts: the short pool, the long one, the background
+// one, then the intake lane's. Named here so a reordering breaks these tests
+// loudly rather than silently testing the wrong pool.
+const [shortPool, longPool, backgroundPool, intakePool] = pools;
 
 beforeEach(() => {
   for (const p of pools) {
@@ -77,8 +77,9 @@ beforeEach(() => {
 });
 
 describe('which pool answers a query', () => {
-  it('builds three pools: the short one, the long one, and the background one', () => {
-    expect(pools).toHaveLength(3);
+  it('builds four pools: the short one, the long one, the background one, and the intake lane', () => {
+    expect(pools).toHaveLength(4);
+    expect(intakePool.config.max).toBe(10);
     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
     expect(shortPool.config.max).toBe(40);
     expect(longPool.config.max).toBe(10);
@@ -149,6 +150,33 @@ describe('which pool answers a query', () => {
 
     expect(longPool.connect).toHaveBeenCalledTimes(3);
     expect(shortPool.connect).not.toHaveBeenCalled();
+  });
+
+  /** 5321: a send waited 14.6 s to be accepted behind 200 runs' lookups. */
+  it('sends a query made while a send is accepted to the INTAKE pool', async () => {
+    await onIntakeLane(() => query('SELECT id FROM threads WHERE id = $1', [1]));
+
+    expect(intakePool.query).toHaveBeenCalledTimes(1);
+    expect(shortPool.query).not.toHaveBeenCalled();
+  });
+
+  it('keeps a long query on the long pool even on the intake lane', async () => {
+    await onIntakeLane(() => query('SELECT big FROM t WHERE x = $1', [1], 15_000));
+
+    expect(intakePool.query).not.toHaveBeenCalled();
+    expect(longPool.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends what the accepted send starts — the run — back to the ordinary pool', async () => {
+    await onIntakeLane(() =>
+      leaveIntakeLane(async () => {
+        await Promise.resolve();
+        await query('SELECT id FROM tasks WHERE id = $1', [1]);
+      }),
+    );
+
+    expect(shortPool.query).toHaveBeenCalledTimes(1);
+    expect(intakePool.query).not.toHaveBeenCalled();
   });
 
   it('leaves background jobs on their own pool, as they were', async () => {

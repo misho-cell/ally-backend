@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'async_hooks';
 import dotenv from 'dotenv';
 import { Pool, PoolClient, QueryConfig, QueryResult, QueryResultRow } from 'pg';
 
@@ -121,11 +122,38 @@ const backgroundPool = new Pool({
 });
 
 /**
+ * 5321 (the tester's 200-seat re-run, 15 Oct 17:38Z): with 0349 every run
+ * answered, but a send still took 14.6 s to be accepted — its five lookups
+ * stood in the same queue as 200 runs' (pool 40, 0 idle, ~550 waiting).
+ * Accepting a message is the one request a person stares at, so it gets its
+ * own small lane: queries made while a send is being accepted draw from this
+ * pool, and the run it starts leaves the lane (`leaveIntakeLane`).
+ */
+const INTAKE_POOL_MAX = 10;
+const intakePool = new Pool({
+  ...BASE_POOL_CONFIG,
+  max: INTAKE_POOL_MAX,
+  connectionTimeoutMillis: 10_000,
+  options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
+});
+const intakeLane = new AsyncLocalStorage<true>();
+
+/** Run `work` — and everything it starts — on the intake lane. */
+export function onIntakeLane<T>(work: () => T): T {
+  return intakeLane.run(true, work);
+}
+
+/** Run `work` — and everything it starts — off the intake lane, on the ordinary pools. */
+export function leaveIntakeLane<T>(work: () => T): T {
+  return intakeLane.exit(work);
+}
+
+/**
  * 958: an idle connection the database or the network drops is emitted as an
  * `error` on its pool, and an `error` event with no listener ends the process.
  * The pool has already discarded that connection; the next query opens another.
  */
-for (const eachPool of [pool, longQueryPool, backgroundPool]) {
+for (const eachPool of [pool, longQueryPool, backgroundPool, intakePool]) {
   eachPool.on('error', (error: Error) => {
     // eslint-disable-next-line no-console
     console.warn(`[db] idle connection dropped: ${error.message}`);
@@ -324,7 +352,12 @@ export async function query<T extends QueryResultRow>(
    * codebase reads that way: 3s and 5s on small lookups, 10s to 15s on the
    * searches and the analytics.
    */
-  const sourcePool = timeoutMs > DEFAULT_QUERY_TIMEOUT_MS ? longQueryPool : pool;
+  const sourcePool =
+    timeoutMs > DEFAULT_QUERY_TIMEOUT_MS
+      ? longQueryPool
+      : intakeLane.getStore() === true
+        ? intakePool
+        : pool;
   return runOnPool<T>(sourcePool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
 }
 
