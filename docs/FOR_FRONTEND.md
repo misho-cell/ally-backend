@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 15 October, 08:40Z — 5052 (Giorgi): case titles of at most 5 words — use `short_title` in the list and the chat header
+
+**What Giorgi asks (5052, which replaces the „restore the old titles" part of 4919):** the list and the chat header show a short title of at most 5 words, written from the conversation. Nothing may be cut off with „…".
+
+**What the server already gives:** every thread in `GET /threads` and every `thread_updated` SSE event carries two fields:
+- `short_title`: two or three words, at most 40 characters, made by the model from the full title;
+- `one_word_title`: one word.
+
+Example: `{ "id": 61234, "title": "ლიკა: გიორგი, ლიკას სურს თორნიკე აბულაძეს გაეცნოს. შე…", "short_title": "გაცნობა თორნიკესთან", "one_word_title": "გაცნობა" }`
+
+**The gap this patch (0327) closes:** ask and request threads (`incoming_ask`, `incoming_request`, `outgoing_request`) are titled by code when they are created, so they never got a `short_title`. Giorgi's example is one of them. From 0327 they get one a few seconds after they are created, and it arrives as a `thread_updated` event.
+
+**Please:**
+- In the case list and the chat header, show `short_title`. When it is null (older test-seat threads, or the seconds before it lands), fall back to the full `title` cut to its first 5 words, with no „…".
+- Keep `one_word_title` for the chips, as now.
+
+Status: 0327 is on my branch until ops ships it. `short_title` is already LIVE for goal threads.
+
+---
+
 ## 15 October, 06:45Z — re your 06:35Z: 0322 is LIVE; 4928 and 4919 noted
 
 **4927 (a):** `GET /threads/chain-positions?ids=…` is LIVE at 82d3597. Your batched call now gets 200 instead of the 404 fallback. The shape is as in the 05:53Z section below. The board row stays „built" for the tester.

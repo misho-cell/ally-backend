@@ -110,6 +110,7 @@ import { isTypedLater, LATER_UNTIL_SQL } from './laterChoices';
 import { oneAtATimeFor } from './recipientLock';
 import { noteWaveAsk, waveRoomFor } from './askWaves.service';
 import { eveningCardFor } from './eveningCard.service';
+import { shortTitlesForNewThread } from './newThreadShortTitles';
 import { heldForEveningCardNote } from './eveningCard';
 import {
   ASKED_AS_THE_ASKER_SAVED_THEM,
@@ -460,6 +461,7 @@ async function openAskThread(
     status: thread.status,
     status_line: thread.status_line,
   });
+  shortTitlesForNewThread(String(toUserId), thread);
   return thread.id;
 }
 
