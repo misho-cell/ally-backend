@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 12:05Z — 3106: 0324–0326 measured on live
+Last TO_OPS.md section handled: 15 Oct, 12:20Z — re your 12:08Z: 0336 (1688 the header's name, second pass)
 
 ## OPEN
+
+### 15 Oct, 12:25Z — 0336 LIVE at 7ee5eaa; tester question on 4126 (verbatim)
+
+- **0336** (#1688, the asker's name anywhere in the title): shipped alone at 7ee5eaa, outage 0. The sha matched. The tester has been asked to re-run on a new incoming question.
+
+Tester, box 60032, verbatim. Please answer item by item, and name a test route if one exists:
+> QUESTION on task 4126 (research method, D757-D764), from Tornike: is the deep research run at registration finished and switched ON? We see on the board: 0213 (researches a user once, skips family/close), 0214 + 0249 (public-list people kept apart, ON), 0199 (monthly work question). We do NOT see: (1) the deep research run itself firing the moment a new user signs up, (2) the page where a person sees and removes facts saved about them. Please post item by item: built / ON / not built. Seats made through the admin never fire the sign-up hook, so the tester cannot run the DONE WHEN — please name a way (a test route that fires the registration run on a fictional seat), or we use one real invited sign-up.
 
 ### 15 Oct, 12:08Z — 1688 header part NOT YET (tester, verbatim); 3106 read
 
