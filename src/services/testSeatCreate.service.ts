@@ -354,6 +354,14 @@ const FREE_SLOT_ATTEMPTS = 3;
  * this lock's own; nothing else in the code takes an advisory lock.
  */
 const FREE_SLOT_LOCK_KEY = 4_126_292;
+/**
+ * The tester's 60690: seats made in 10 lanes — 15 of 50 came back with
+ * nothing, „canceling statement due to statement timeout". The wait for the
+ * lock counted against the transaction's 8 s statement limit while nine other
+ * seats were written ahead of it. The wait gets a limit of its own; the
+ * statements after it go back to the connection's ordinary one.
+ */
+const FREE_SLOT_LOCK_WAIT_MS = 60_000;
 
 interface SeatRows {
   readonly userId: string;
@@ -384,7 +392,9 @@ async function insertSeatRows(
       return await withTransaction(async (client) => {
         let phone = chosen;
         if (phone === null) {
+          await client.query(`SET LOCAL statement_timeout = ${FREE_SLOT_LOCK_WAIT_MS}`);
           await client.query('SELECT pg_advisory_xact_lock($1)', [FREE_SLOT_LOCK_KEY]);
+          await client.query('RESET statement_timeout');
           phone = await firstFreeFictionalPhone(client);
         }
         const userId = await writeSeatRows(
