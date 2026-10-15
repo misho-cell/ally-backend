@@ -12,6 +12,7 @@ import { createIncomingRequestThread, createOutgoingRequestThread } from '../thr
 import { emitThreadCreated } from '../sse.service';
 import { isOptedOutFromAsks } from '../askOptOut.service';
 import { isPhoneOptedOut } from '../privacyRights.service';
+import { shortTitlesForNewThread } from '../newThreadShortTitles';
 import { linkRequestToEarlierAsk, RequestPointerInput } from '../threadBackPointer.service';
 import {
   findSharedConversation,
@@ -236,6 +237,9 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
       stored.isDirect,
     ),
   ]);
+  // 5052: a request thread is titled here, so its short titles are asked for here.
+  shortTitlesForNewThread(String(stored.mediatorUserId), incomingThread);
+  shortTitlesForNewThread(String(stored.requesterUserId), outgoingThread);
 
   await pointBackToTheEarlierAsk(stored.requesterTaskId, {
     requesterUserId: Number(stored.requesterUserId),
