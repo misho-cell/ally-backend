@@ -47,7 +47,7 @@ describe('a plan for the one person the owner just instructed is refused', () =>
     expect(body).toContain('if (added.length === 0) return false;');
     expect(body).toContain('if (!looksLikeContactInstruction(sentence)) return false;');
     expect(body).toContain(
-      'if (added.length === 1) return await messageNamesOwnContact(userId, said);',
+      'if (added.length === 1) return await lineNamesTheAddedPerson(userId, said, added[0]);',
     );
     expect(body).toContain('return await planAddsOnlyThePeopleNamed(userId, sentence, added);');
   });
