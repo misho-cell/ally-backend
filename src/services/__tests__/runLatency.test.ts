@@ -17,8 +17,8 @@ describe('the latency line', () => {
     );
     expect(route).toContain('const storedAt = Date.now();');
     const line = route.indexOf('runLatencyLine(runId, threadId, storedAt');
-    const emit = route.indexOf(
-      'emitRunComplete(userId, threadId, runId, {\n        reply: result.reply,',
+    const emit = route.search(
+      /emitRunComplete\(userId, threadId, runId, \{\s*reply: result\.reply,/,
     );
     expect(line).toBeGreaterThan(-1);
     expect(line).toBeLessThan(emit);

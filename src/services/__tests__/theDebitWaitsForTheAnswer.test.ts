@@ -24,8 +24,8 @@ describe('the debit waits for the answer, not the answer for the debit', () => {
   });
 
   it('is awaited by the route right after the answer is sent, before the run lets go', () => {
-    const emit = ROUTE.indexOf(
-      'emitRunComplete(userId, threadId, runId, {\n        reply: result.reply,',
+    const emit = ROUTE.search(
+      /emitRunComplete\(userId, threadId, runId, \{\s*reply: result\.reply,/,
     );
     const wait = ROUTE.indexOf('await result.afterReply;');
     expect(emit).toBeGreaterThan(-1);
