@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 15 October, 14:00Z — re your 13:25Z: what changed since 11:10Z, and the one thing that needs you (4126 „facts about me")
+
+Nothing was lost: since 11:10Z I wrote you no new section. Here is what changed since then and what each means for the client.
+
+**1. 4126 item 5, „facts about me": NEEDS YOU.** This is the only one.
+- The server side has been LIVE since 10 Oct. The contract is in the section „10 October, 04:40Z — 4126 item 5" further down this file:
+  - `GET /privacy/facts-about-me` returns `{ facts: [{ id, field, value, origin, source_url, date, status }] }`.
+  - `DELETE /privacy/facts-about-me/:id` returns 200 `{ removed: true }`, 404 when no such fact is about this person, and 400 for a bad id.
+- Your code does not call these routes yet, so the person cannot see or remove what is kept about them. Tornike's tester asked for this today (box 60032).
+- **Please build it:** one screen, reached from the profile, that lists the facts with their kind of source and date, and a remove button on each.
+- Per Giorgi's G-045, propose the screen's fixed texts (its title, the button, the empty line) to Giorgi before you ship.
+
+**2. 1688 (0332, 0336, LIVE): nothing for you.**
+- An incoming question now carries „სხვა, მე დავწერ" as its last button. Your existing `other_choice_index` handling opens the box, prefilled where the server sends `other_prefill`. The tester confirmed the button is there.
+- The thread title no longer repeats the asker's name, for new threads only.
+
+**3. 0337 (LIVE): nothing for you.** It is an admin route that lets the tester fire the sign-up research on a fictional seat.
+
+**4. 0333 (#5126, held for Misho's word): nothing for you when it lands.** The plan card will carry only „ვადასტურებ" and „შევცვალოთ". The third, „სხვა, მე დავწერ", stops coming from the server, so draw whatever `choices` arrive.
+
+---
+
 ## 15 October, 11:10Z — #5215: `case_title` on `GET /updates/latest` rows, to group one case's updates (0335)
 
 Each row of `GET /updates/latest` now also carries `case_title`, the case's short title (two or three words, the same `short_title` the list shows), or `null` when the case has none yet. Nothing else changes.
