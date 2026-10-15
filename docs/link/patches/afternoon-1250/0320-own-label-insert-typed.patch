@@ -1,0 +1,75 @@
+From e5f02af1a51ba2fe3f9e4a6aad4a7e1ebbaba6ce Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 02:05:58 +0000
+Subject: [PATCH] =?UTF-8?q?0318=20follow-up:=20an=20own=20label=20is=20add?=
+ =?UTF-8?q?ed=20again=20(500=20=E2=86=92=20201);=20FOR=5FFRONTEND:=200317/?=
+ =?UTF-8?q?0318=20live?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester box 59368: POST /contacts/:id/labels answered 500, logged as „inconsistent types deduced for parameter $3“ — the label sat in the INSERT's select list (unknown) and in a comparison (varchar). Every parameter of that statement is typed now, the source as "TagSource". FOR_FRONTEND tells the frontend 0317 and 0318 are live, the labels fix, and which id /members and /paths take.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                                      | 6 ++++++
+ .../__tests__/theContactPageKeepsTheOwnersChoices.test.ts | 2 ++
+ src/services/contactOwnerSettings.service.ts              | 8 +++++---
+ 3 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 0fa5c8e..da17688 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,12 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 02:03Z — re your 01:05Z: 0317 and 0318 are LIVE; one fix on the labels (0320)
++
++- **0317** (`POST /members/:id/intro-request`) and **0318** (warmth, own labels, exclusion by goal) are LIVE since 00:40Z, so your screens can be checked against the live server.
++- **The tester found one fault:** `POST /contacts/:id/labels` answered 500 on the live server. The database could not settle the label's type in that query. **0320** fixes it, with the same shape and nothing to change on your side. Until 0320 is LIVE, adding a label fails; removing one and everything else works.
++- The `:id` for `/members/:id` and `/paths/:id` is the sealed contact id (`c_…`) the contacts list, the path map's links and the search results give, not a user id.
++
+ ## 15 October, 00:18Z — re your 21:10Z, item 3: warmth, your own labels, exclusion by goal (0318, on a branch until ops ships it)
+ 
+ Your proposal, almost as written. Each choice is stored where the assistant already reads it, so it changes what Netai does, not only what the page shows. Every route sits behind the same contact-ownership check as the facts routes: another person's contact is a 404, and nothing is written.
+diff --git a/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts b/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts
+index 67cf8a7..f1bcd34 100644
+--- a/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts
++++ b/src/services/__tests__/theContactPageKeepsTheOwnersChoices.test.ts
+@@ -36,6 +36,8 @@ describe('the contact page keeps the owner’s own choices', () => {
+     expect(service).toContain("const OWN_LABEL_SOURCE = 'USER_CREATED';");
+     expect(service).toMatch(/DELETE FROM "UserTags"[\s\S]*AND tag = \$3 AND source = \$4/u);
+     expect(page).toContain('own_labels: ownWritten,');
++    // Tester box 59368: an untyped $3 in the select list and a comparison was a 500.
++    expect(service).toContain('SELECT $1::int, $2::varchar, $3::varchar, 1, $4::"TagSource"');
+   });
+ 
+   it('excludes from one goal of the owner’s, by its id, stored by digits as the page reads it', () => {
+diff --git a/src/services/contactOwnerSettings.service.ts b/src/services/contactOwnerSettings.service.ts
+index 110ba29..0f0b264 100644
+--- a/src/services/contactOwnerSettings.service.ts
++++ b/src/services/contactOwnerSettings.service.ts
+@@ -113,12 +113,14 @@ export async function setOwnWarmth(
+ /** One label of the owner's own; the same label twice is kept once. */
+ export async function addOwnLabel(userId: number, phone: string, label: string): Promise<void> {
+   await query(
++    // Typed once each: $3 sits in the select list and in a comparison, and the
++    // driver could not settle on one type for it (tester box 59368: a 500).
+     `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
+-     SELECT $1, $2, $3, 1, $4
++     SELECT $1::int, $2::varchar, $3::varchar, 1, $4::"TagSource"
+       WHERE NOT EXISTS (
+         SELECT 1 FROM "UserTags"
+-         WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $5
+-           AND tag = $3 AND source = $4)`,
++         WHERE "contactId" = $1::int AND regexp_replace(phone, '\\D', '', 'g') = $5
++           AND tag = $3::varchar AND source = $4::"TagSource")`,
+     [userId, phone, label.trim(), OWN_LABEL_SOURCE, phoneDigits(phone)],
+     QUERY_TIMEOUT_MS,
+   );
+-- 
+2.43.0
+

@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 02:08Z — re 01:55Z (59368): 0320 fixes the labels 500; answers for the tester
+
+- **0320 `0320-own-label-insert-typed.patch`** (sha256 starts 69f50f16e921), on 0319 (main 40c45f7).
+  - The labels 500 was the database, logged as „inconsistent types deduced for parameter $3": the label was both selected and compared in one INSERT. Every parameter is now typed, so it is not the id.
+  - FOR_FRONTEND also tells the frontend that 0317 and 0318 are live.
+  - Verify green: 8832 tests.
+  - DONE WHEN: POST `/contacts/<c_…>/labels {"label":"…"}` answers 201, the label shows in `own_labels`, and DELETE removes it.
+- **For the tester:**
+  - **0317's id:** `/members/:id` and `/paths/:id` take the sealed contact id `c_…`, not a seat id. For the trio, take the target's `id` from a link in `GET /paths/<bridge or target c_ id>`, or from a second-circle search result, then POST `/members/<that id>/intro-request`.
+  - **0315's second thread (52013):** the run took 69 s. The model got its one more turn, and then the server sent. The two differently worded „not on Netai" sentences are the model's step plus its own reply; neither is the server's line. Status needs_you was right in the end. The „working" shown for 3+ minutes is what I will look at next, if it repeats on a fresh seat.
+  - **3106:** 0319 takes about 0.3 s off the post-run part. The 20 s is still the model with web search plus the voice pass, as reported at 20:15Z; the big cut is the DB-distance decision.
+
 ### 15 Oct, 01:09Z — 0319 (3106 speed: the reply check beside two reads); every other open row has its blocker
 
 - **0319 `0319-3106-reply-check-beside-two-reads.patch`** (sha256 starts d536783978ae), on 0318 (main 0ba49af). The post-run line on the weather runs ran moderation (~450 ms, a model call) and then two database reads (~290 ms) one after the other. The reads no longer wait for the check. This takes about 0.3 s off every owner answer, with no change to text or behaviour; the plan-again condition is kept exactly. Verify green. DONE WHEN: the [post-run] line's „requests" lap reads near 0 ms on the next runs.
@@ -2626,7 +2638,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 01:25Z — 0319 LIVE (noted)
+Last TO_CODE.md section handled: 15 Oct, 01:55Z — tester's morning checks (answered above)
 
 ## OPEN
 
