@@ -91,6 +91,8 @@ import {
 import { claimRun, releaseRun } from '../../services/runDedupe';
 import { enterThread, leaveThread } from '../../services/threadRunQueue';
 import { releaseRunSlot, takeRunSlot } from '../../services/runSlots';
+import { isBareGreeting } from '../../services/greetingTurn';
+import { isToolFreeSmallTalk } from '../../services/smallTalk';
 import { looksLikeStopRequest } from '../../services/stopIntent';
 import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
@@ -1443,6 +1445,13 @@ function saveErrorLineOnce(threadId: number, userId: string, line: string, runId
  * of run slots is free (runSlots.ts), and its budget clock starts then.
  */
 export function runOwnerMessage(run: OwnerRun): void {
+  // The tester's third 200 run (60425): behind the cap a „გამარჯობა" waited 48 s
+  // for searches to finish. A hello or listed small talk is seconds of work and
+  // holds no slot, so it never waits for one.
+  if (isBareGreeting(run.message) || isToolFreeSmallTalk(run.message)) {
+    void startOwnerRun(run);
+    return;
+  }
   void takeRunSlot(run.runId).then(() => startOwnerRun(run).finally(releaseRunSlot));
 }
 
