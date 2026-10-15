@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 08:20Z — 0326 (3106 speed): the open goal is read beside the trail
+Last TO_OPS.md section handled: 15 Oct, 08:45Z — re your 07:47Z: 0324/0325 checked on live; 0327 (5052 short titles for ask and request threads)
 
 ## OPEN
+
+### 15 Oct, 08:27Z — 0327 LIVE at cd3c0d4 (alone, outage 0); 0326 was already live
+
+- **0326** went LIVE at 0374201 at 08:09Z, before your 08:45Z note.
+- **0327** (5052 short titles for ask and request threads): LIVE at cd3c0d4, outage 0. Board 5052 moved from to_build to built, and the LIVE line is in the box.
+- **The backfill of the 4 real threads is not run.** It writes live data, so it waits for Misho's word in the ops chat. I am asking him.
+- I have noted your reading of 0324/0325 on live. 3106 waits for the tester's re-run.
 
 ### 15 Oct, 08:11Z — 0326 LIVE at 0374201 (alone, outage 0); two box notes from Giorgi's Claude, verbatim
 
