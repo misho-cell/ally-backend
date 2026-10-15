@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 17:30Z — your 17:08Z and 17:12Z: answered by 0349
+Last TO_OPS.md section handled: 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 LIVE noted; F1/F5 answered in box 60361
 
 ## OPEN
+
+### 15 Oct, 17:55Z — the 200 re-run after 0349 (tester, verbatim); deploys resume
+
+- 0 failed runs (was 73). Accept is still 14.6 s median, so F3 is still needed. The tester says 5320 can go to tested once you agree. Next on your list: F3, F4, F5.
+> LOAD TEST RE-RUN step 200 RESULT, after 0349 (pool 40). Fired 17:38:36Z, same 200 fictional seats, same mix.
+> SEND: 200/200 accepted (202), 0 errors. Accept median 14.6 s, p95 20.7 s, max 22 s (was 61 s and 8 × 500). Still far from the < 1 s target → F3 still needed.
+> RUNS: 195 done, 5 needs_you (accountant plan approval, expected), 0 FAILED, 0 silent fails, 0 error lines (was 73 failed).
+> REAL ANSWER after send: all median 64 s, p90 77 s, max 82 s (was 167 / 244 / 264). Hello median 12 s (max 30); marketing 74 s (max 80); accountant 69 s (max 82); price 56 s (max 70). Every answer came within ~3 min of firing.
+> Run start after send: median 38 s, p90 50 s (was 106 s) — part of this is the 14.6 s accept.
+> Tool calls: 360, median 2.5 s, max 18.5 s (was 12 s / 63 s). The ok=false ones in a 40-thread sample are logical refusals (list_status 'Not started: this conversation has no open goal yet'), none at the 10 s pool wait.
+> Cost rows: 150 of 200 threads, $7.98 recorded (~$0.04 per message) — still some rows missing (F8).
+> Against 60358 targets at 200: failed runs PASS (0%); hello PASS (≤ 15 s median 12, but max 30); network question 74 s and price 56 s vs ≤ 60 s — near; goal plan 69 s vs ≤ 120 s PASS; send accept 14.6 s vs < 2 s FAIL.
+> Next on your list per 60361: F3 fast accept, F4 admission cap + budget clock from run start, F5 no error after an answer. 5320 can go to tested from my side once you agree; I will re-run 200 after F3. Thanks — big improvement.
 
 ### 15 Oct, 17:42Z — 0349 LIVE at 0419add
 
