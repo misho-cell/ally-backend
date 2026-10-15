@@ -357,6 +357,10 @@ const THREAD_ROLE_SQL = `CASE
          ELSE NULL
        END`;
 
+/** The kinds of row written for a person to read; see `getThreadMessages` for how they were counted. */
+export const SHOWN_TO_A_PERSON: readonly string[] = ['message', 'pending', 'error'];
+const SHOWN_KINDS_SQL = SHOWN_TO_A_PERSON.map((k) => `'${k}'`).join(', ');
+
 const THREAD_LIST_COLUMNS = `t.id,
        t.user_id,
        t.type,
@@ -394,9 +398,12 @@ const THREAD_LIST_JOINS = `FROM threads t
        LIMIT 1
      ) shared_ir ON true
      LEFT JOIN LATERAL (
+       -- 5284 (Lika, 15 Oct): the list's preview read any row, so a thread whose
+       -- newest row was an engine turn showed „[მოვლენა] …" — 633 threads in the
+       -- 7 days to 15 Oct. It shows what the chat itself shows a person.
        SELECT content, created_at
        FROM conversations
-       WHERE thread_id = t.id AND content != ''
+       WHERE thread_id = t.id AND content != '' AND kind IN (${SHOWN_KINDS_SQL})
        ORDER BY created_at DESC
        LIMIT 1
      ) lm ON true
@@ -1003,10 +1010,7 @@ export async function getThreadMessages(
    * written FOR A PERSON — `pending` is the updates card („6 more are waiting")
    * and `error` is a failure the owner is owed. Nothing existing disappears.
    */
-  const SHOWN_TO_A_PERSON = ['message', 'pending', 'error'];
-  const kindFilter = opts.includeSteps
-    ? ''
-    : ` AND kind IN (${SHOWN_TO_A_PERSON.map((k) => `'${k}'`).join(', ')})`;
+  const kindFilter = opts.includeSteps ? '' : ` AND kind IN (${SHOWN_KINDS_SQL})`;
   const limit =
     opts.limit === undefined ? null : Math.min(Math.max(1, opts.limit), MAX_MESSAGE_PAGE);
   // The cursor clause is BUILT, not NULL-tricked: conversations.id is a UUID

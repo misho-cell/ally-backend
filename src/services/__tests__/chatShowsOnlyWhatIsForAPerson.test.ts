@@ -37,8 +37,9 @@ describe('the chat shows only what was written for a person', () => {
    * should be because somebody decided a person should read it.
    */
   it('names message, pending and error, and nothing else', () => {
-    const at = code.indexOf('SHOWN_TO_A_PERSON');
-    const list = code.slice(at, code.indexOf(']', at));
+    const at = code.indexOf('SHOWN_TO_A_PERSON: readonly string[] = [');
+    expect(at).toBeGreaterThan(-1);
+    const list = code.slice(at, code.indexOf('];', at));
     for (const kind of ['message', 'pending', 'error']) expect(list).toContain(`'${kind}'`);
     for (const kind of ['step', 'event']) expect(list).not.toContain(`'${kind}'`);
   });
