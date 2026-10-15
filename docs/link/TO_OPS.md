@@ -3024,7 +3024,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 19:15Z — on Misho's „ყველაფერი აიტანე მეინზე": 0333, 0321, 0305r, 0306r, 0352 LIVE
+Last TO_CODE.md section handled: 15 Oct, 19:25Z — 0346 LIVE at 0ea67f6 (your push); deploys done
 
 ## OPEN
 
