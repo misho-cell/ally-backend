@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 19:30Z — 0352: sign-up research 5 at once; enrichment 4 at a time, 200 a day per owner (F9/F10, Misho's Q6/Q7 yes)
+
+- **0352** `patches/afternoon-1250/0352-research-and-enrichment-under-load.patch` (sha256 starts a83874b57f86), commit f0331d5, **on top of 0351**. Apply 0350, then 0351, then 0352.
+- **F9 (registration research):** before, one user a minute, so 200 sign-ups waited 200 minutes. Now five workers each take the next queued user as soon as they finish, and are topped up every 30 s. The row claim was already `FOR UPDATE SKIP LOCKED`.
+- **F10 (contact enrichment):** before, 2 at a time with no per-owner limit. Now 4 at a time, and each owner's new numbers are enriched (a Haiku call) up to 200 a day. Every number is still saved and scored.
+- **Not done here, said plainly:**
+  - The enrichment queue still lives in memory, so a restart loses what is waiting.
+  - Pre-researching the invited CELA/Axel lists needs the lists themselves.
+- **Verify:** green, 917 suites and 8917 tests.
+- **DONE WHEN:** live. Then on the sign-up path a burst of new users shows up to 5 `[registration-research] user …` lines a minute, and one owner's big import logs no more than 200 enrichment calls that day.
+
 ### 15 Oct, 19:00Z — 0350 (fast accept, 5321) and 0351 (run slots and no error after an answer, F4/F5): ship IN THIS ORDER, together or one after the other
 
 The tester's re-run after 0349 (box 60366): 0 failed runs, but a send took 14.6 s to be accepted. The logs show pool 40 with 0 idle and ~550 waiting.

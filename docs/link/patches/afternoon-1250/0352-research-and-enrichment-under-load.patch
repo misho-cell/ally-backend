@@ -1,0 +1,307 @@
+From f0331d507a968b7d986f9977d65c92967e37ca80 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 18:29:14 +0000
+Subject: [PATCH] Launch load: five sign-ups researched at once; enrichment
+ four at a time, 200 a day per owner
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+From the tester's launch report (60358, F9 and F10), on Misho's yes to Q6 and
+Q7 (15 Oct). Registration research took one user a minute, so 200 sign-ups
+waited 200 minutes: five workers now each take the next queued user as soon
+as they finish, topped up every 30 s. Contact enrichment ran two at a time
+with no limit per owner, so a hundred phonebooks meant hours of model calls:
+it now runs four at a time, and one owner's new numbers are enriched up to 200
+a day — every number is still saved and scored.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../anOwnersEnrichmentHasADailyShare.test.ts  | 30 ++++++++++++
+ src/services/__tests__/importBatches.test.ts  | 18 +++----
+ src/services/contacts.service.ts              |  6 ++-
+ src/services/enrichmentQueue.ts               | 31 ++++++++++--
+ .../manySignUpsAreResearchedTogether.test.ts  | 41 ++++++++++++++++
+ .../registrationResearch.service.ts           | 47 +++++++++++++++----
+ 6 files changed, 151 insertions(+), 22 deletions(-)
+ create mode 100644 src/services/__tests__/anOwnersEnrichmentHasADailyShare.test.ts
+ create mode 100644 src/services/registrationResearch/__tests__/manySignUpsAreResearchedTogether.test.ts
+
+diff --git a/src/services/__tests__/anOwnersEnrichmentHasADailyShare.test.ts b/src/services/__tests__/anOwnersEnrichmentHasADailyShare.test.ts
+new file mode 100644
+index 0000000..dba913c
+--- /dev/null
++++ b/src/services/__tests__/anOwnersEnrichmentHasADailyShare.test.ts
+@@ -0,0 +1,30 @@
++import {
++  ENRICHMENT_CONCURRENCY,
++  ENRICHMENTS_PER_OWNER_PER_DAY,
++  takeEnrichmentAllowance,
++} from '../enrichmentQueue';
++
++/** F10 (the tester's 60358; Misho's yes to Q7): a hundred phonebooks in one launch hour. */
++describe("an owner's daily enrichment share", () => {
++  it('lets the first two hundred new numbers of a day be enriched, and no more', () => {
++    const day = '2026-10-21';
++    let allowed = 0;
++    for (let i = 0; i < ENRICHMENTS_PER_OWNER_PER_DAY + 50; i += 1) {
++      if (takeEnrichmentAllowance(501, day)) allowed += 1;
++    }
++    expect(ENRICHMENTS_PER_OWNER_PER_DAY).toBe(200);
++    expect(allowed).toBe(200);
++  });
++
++  it('counts each owner on their own, and starts again the next day', () => {
++    const day = '2026-10-22';
++    for (let i = 0; i < ENRICHMENTS_PER_OWNER_PER_DAY; i += 1) takeEnrichmentAllowance(502, day);
++    expect(takeEnrichmentAllowance(502, day)).toBe(false);
++    expect(takeEnrichmentAllowance(503, day)).toBe(true);
++    expect(takeEnrichmentAllowance(502, '2026-10-23')).toBe(true);
++  });
++
++  it('runs four at a time', () => {
++    expect(ENRICHMENT_CONCURRENCY).toBe(4);
++  });
++});
+diff --git a/src/services/__tests__/importBatches.test.ts b/src/services/__tests__/importBatches.test.ts
+index 6ddcd09..8ff0c6b 100644
+--- a/src/services/__tests__/importBatches.test.ts
++++ b/src/services/__tests__/importBatches.test.ts
+@@ -1,5 +1,5 @@
+ import { batchesWithoutSharedPhones } from '../importBatches';
+-import { enqueueEnrichment, enrichmentQueueSize } from '../enrichmentQueue';
++import { ENRICHMENT_CONCURRENCY, enqueueEnrichment, enrichmentQueueSize } from '../enrichmentQueue';
+ 
+ /** The tester's 47594: 0.7 cards a second, one after another, and a deploy cut the import. */
+ describe('cards are saved a few at a time (47594)', () => {
+@@ -36,12 +36,13 @@ describe('cards are saved a few at a time (47594)', () => {
+   });
+ });
+ 
+-describe('enrichment runs two at a time (47594)', () => {
+-  it('a third task waits until one of the first two ends, and a failure stops nothing', async () => {
++describe('enrichment runs a few at a time (47594; four since the launch load, F10)', () => {
++  it('the task past the limit waits until one ends, and a failure stops nothing', async () => {
+     const releases: Array<() => void> = [];
+     const started: number[] = [];
+     jest.spyOn(console, 'error').mockImplementation(() => undefined);
+-    for (let i = 0; i < 3; i++) {
++    const total = ENRICHMENT_CONCURRENCY + 1;
++    for (let i = 0; i < total; i++) {
+       enqueueEnrichment(
+         () =>
+           new Promise<void>((resolve, reject) => {
+@@ -50,13 +51,12 @@ describe('enrichment runs two at a time (47594)', () => {
+           }),
+       );
+     }
+-    expect(started).toEqual([0, 1]);
+-    expect(enrichmentQueueSize()).toEqual({ waiting: 1, running: 2 });
++    expect(started).toHaveLength(ENRICHMENT_CONCURRENCY);
++    expect(enrichmentQueueSize()).toEqual({ waiting: 1, running: ENRICHMENT_CONCURRENCY });
+     releases[0]();
+     await new Promise((r) => setImmediate(r));
+-    expect(started).toEqual([0, 1, 2]);
+-    releases[1]();
+-    releases[2]();
++    expect(started).toHaveLength(total);
++    for (let i = 1; i < total; i++) releases[i]();
+     await new Promise((r) => setImmediate(r));
+     expect(enrichmentQueueSize()).toEqual({ waiting: 0, running: 0 });
+   });
+diff --git a/src/services/contacts.service.ts b/src/services/contacts.service.ts
+index 4101bee..0e47f44 100644
+--- a/src/services/contacts.service.ts
++++ b/src/services/contacts.service.ts
+@@ -8,7 +8,7 @@ import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
+ import { hasGeorgian, georgianToLatin } from './tools/transliterate';
+ import { parsePhonebookLabelsForUser } from './labelParser.service';
+ import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
+-import { enqueueEnrichment } from './enrichmentQueue';
++import { enqueueEnrichment, takeEnrichmentAllowance } from './enrichmentQueue';
+ // Aliased: this file already has its own, stricter local normalizePhone()
+ // (import-path only, rejects anything not already "+..."). UserPhone is
+ // written exclusively through registration's normalizePhone (services/phone,
+@@ -317,10 +317,12 @@ function triggerEnrichmentAsync(
+   contactPhone: string,
+   alias: string,
+ ): void {
++  // F10: the score is always kept; the model-backed enrichment, within the owner's daily share.
++  const enrich = takeEnrichmentAllowance(userId);
+   enqueueEnrichment(async () => {
+     await Promise.all([
+       computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
+-      enrichContact(contactPhone),
++      ...(enrich ? [enrichContact(contactPhone)] : []),
+     ]);
+   });
+ }
+diff --git a/src/services/enrichmentQueue.ts b/src/services/enrichmentQueue.ts
+index 2517a0e..93ae686 100644
+--- a/src/services/enrichmentQueue.ts
++++ b/src/services/enrichmentQueue.ts
+@@ -2,11 +2,36 @@
+  * The tester's 47594 (8 Oct): every saved card started its own score and
+  * enrichment in the background, with no limit, on the pool the owner's own
+  * requests use — a 500-card import queued hundreds of them behind each other
+- * and in front of everybody else. They now run two at a time; the rest wait
++ * and in front of everybody else. They now run a few at a time (two until the launch load, four since); the rest wait
+  * their turn in order. A failure is the task's own to log and never stops the
+  * queue.
+  */
+-export const ENRICHMENT_CONCURRENCY = 2;
++export const ENRICHMENT_CONCURRENCY = 4;
++
++/**
++ * The 21 Oct launch (the tester's 60358, F10; Misho's yes to Q7, 15 Oct): a
++ * hundred phonebooks of one to three thousand numbers each would queue a model
++ * call per new number for hours. One owner's new numbers are enriched up to
++ * this many a day; the rest are still saved and scored, and are enriched when
++ * someone else saves them or on a later day's import.
++ */
++export const ENRICHMENTS_PER_OWNER_PER_DAY = 200;
++const enrichedToday = new Map<number, { readonly day: string; count: number }>();
++
++/** Whether this owner's next new number may be enriched today; counts it when yes. */
++export function takeEnrichmentAllowance(
++  ownerId: number,
++  today: string = new Date().toISOString().slice(0, 10),
++): boolean {
++  const seen = enrichedToday.get(ownerId);
++  if (seen === undefined || seen.day !== today) {
++    enrichedToday.set(ownerId, { day: today, count: 1 });
++    return true;
++  }
++  if (seen.count >= ENRICHMENTS_PER_OWNER_PER_DAY) return false;
++  seen.count += 1;
++  return true;
++}
+ 
+ type Task = () => Promise<void>;
+ 
+@@ -30,7 +55,7 @@ function startNext(): void {
+   }
+ }
+ 
+-/** Queues the task; it starts as soon as fewer than two are running. */
++/** Queues the task; it starts as soon as a running one leaves room. */
+ export function enqueueEnrichment(task: Task): void {
+   waiting.push(task);
+   startNext();
+diff --git a/src/services/registrationResearch/__tests__/manySignUpsAreResearchedTogether.test.ts b/src/services/registrationResearch/__tests__/manySignUpsAreResearchedTogether.test.ts
+new file mode 100644
+index 0000000..547aed5
+--- /dev/null
++++ b/src/services/registrationResearch/__tests__/manySignUpsAreResearchedTogether.test.ts
+@@ -0,0 +1,41 @@
++jest.mock('../../../db/postgres/client', () => ({
++  __esModule: true,
++  query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
++}));
++
++import { fillResearchWorkers, RESEARCH_WORKERS } from '../registrationResearch.service';
++
++/** F9 (the tester's 60358; Misho's yes to Q6): 200 sign-ups waited 200 minutes. */
++describe('the registration research workers', () => {
++  it('research several users at once, each taking the next as soon as it is done', async () => {
++    let queued = 7;
++    let atOnce = 0;
++    let most = 0;
++    const research = async (): Promise<boolean> => {
++      if (queued === 0) return false;
++      queued -= 1;
++      atOnce += 1;
++      most = Math.max(most, atOnce);
++      await new Promise((resolve) => setImmediate(resolve));
++      atOnce -= 1;
++      return true;
++    };
++
++    expect(fillResearchWorkers(research, 3)).toBe(3);
++    for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setImmediate(resolve));
++
++    expect(queued).toBe(0);
++    expect(most).toBe(3);
++    expect(fillResearchWorkers(async () => false, 3)).toBe(3);
++  });
++
++  it('starts no more than the limit while workers are busy', () => {
++    const never = (): Promise<boolean> => new Promise<boolean>(() => undefined);
++    expect(fillResearchWorkers(never, 2)).toBe(2);
++    expect(fillResearchWorkers(never, 2)).toBe(0);
++  });
++
++  it('runs five at launch', () => {
++    expect(RESEARCH_WORKERS).toBe(5);
++  });
++});
+diff --git a/src/services/registrationResearch/registrationResearch.service.ts b/src/services/registrationResearch/registrationResearch.service.ts
+index 2f584a2..3ef2cde 100644
+--- a/src/services/registrationResearch/registrationResearch.service.ts
++++ b/src/services/registrationResearch/registrationResearch.service.ts
+@@ -26,7 +26,15 @@ const SYSTEM_SAVER_ID = '0';
+ /** The Axel research's own source: facts about me, the republish passes and the reads all know it. */
+ const RESEARCH_SOURCE = 'public_research';
+ const QUERY_TIMEOUT_MS = 10_000;
+-const TICK_INTERVAL_MS = 60_000;
++const TICK_INTERVAL_MS = 30_000;
++/**
++ * The 21 Oct launch (the tester's 60292 and 60358, F9; Misho's yes to Q6, 15
++ * Oct): one user a minute meant 200 sign-ups waited 200 minutes for their
++ * research. Up to this many users are researched at once, each worker taking
++ * the next queued user as soon as it finishes the last.
++ */
++export const RESEARCH_WORKERS = 5;
++let workersRunning = 0;
+ const MAX_ERROR_CHARS = 300;
+ 
+ /** Queue the new user once; a second call for the same user does nothing. */
+@@ -211,14 +219,37 @@ export async function researchNextUser(
+   return true;
+ }
+ 
+-/** The ticker: one user a minute, and only while the run is on. */
++/** One worker: researches queued users one after another until none is left. */
++async function researchUntilEmpty(research: () => Promise<boolean>): Promise<void> {
++  workersRunning += 1;
++  try {
++    while (await research()) {
++      // the next queued user, straight away
++    }
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.error('[registration-research] worker stopped:', (err as Error).message);
++  } finally {
++    workersRunning -= 1;
++  }
++}
++
++/** Starts workers up to the limit; each one ends when the queue is empty. */
++export function fillResearchWorkers(
++  research: () => Promise<boolean> = researchNextUser,
++  workers: number = RESEARCH_WORKERS,
++): number {
++  let started = 0;
++  while (workersRunning < workers) {
++    void researchUntilEmpty(research);
++    started += 1;
++  }
++  return started;
++}
++
++/** The ticker: tops the workers up, and only while the run is on. */
+ export function startRegistrationResearch(on: boolean = REGISTRATION_RESEARCH_ON): boolean {
+   if (!on) return false;
+-  setInterval(() => {
+-    void researchNextUser().catch((err: unknown) =>
+-      // eslint-disable-next-line no-console
+-      console.error('[registration-research] tick failed:', (err as Error).message),
+-    );
+-  }, TICK_INTERVAL_MS).unref();
++  setInterval(() => fillResearchWorkers(), TICK_INTERVAL_MS).unref();
+   return true;
+ }
+-- 
+2.43.0
+
