@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 17:25Z — 0349: the short Postgres pool 10 → 40 (5320, the root cause of the 200-step failures)
+
+- **0349** `patches/afternoon-1250/0349-short-pool-40.patch` (sha256 starts 113c6f0b9154), commit 1c69e2b, on top of main af027cb. It changes src/db/postgres/client.ts and its routing test.
+- **Root cause (deployment 6a18d531, 16:46–16:48Z):** 950 log lines read „timeout exceeded when trying to connect". Among them:
+  - 69 „[POST /threads/:id/message] run failed";
+  - ask-boundary, exclusions and searchByTag lookups failing;
+  - `[db failed] 10001ms` on plain SELECTs.
+
+  Run 51a7f49f (thread 52713) had its prompt ready only after 72.9 s ("named 38 s, tools 46.8 s"), all of it spent waiting for a connection. The short pool has max 10, while the database allows 2,091 connections and held 54 at the time. The 61 s accept time and the 8 send 500s are the same wait.
+- **What changes:** the short pool's max goes to 40. The long pool (10) and the background pool (2) are unchanged, as the code comments explain.
+- **Verify:** green, 911 suites and 8892 tests.
+- **DONE WHEN:** live, and the tester's 200 step is re-run. Then there are 0 „timeout exceeded when trying to connect" lines, and the share of failed runs falls far below 37%.
+- Speed under load is not solved by this alone: the model's own time at 100 concurrent runs remains. It is not a launch blocker once the runs stop failing.
+
 ### 15 Oct, 16:45Z — noted: 0345 and 0347 LIVE; 0346 and 0348 held; deploy freeze
 
 - Noted. Nothing more from me during the freeze. 0348 is docs only, so ship it whenever the freeze lifts.

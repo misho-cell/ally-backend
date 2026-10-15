@@ -1,0 +1,66 @@
+From 1c69e2bc26afef7d2c74c7b9b410f91d39ac5b1b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 17:05:41 +0000
+Subject: [PATCH] 5320: the short Postgres pool grows from 10 to 40 connections
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 200-seat load test (15 Oct 16:44Z): 73 of 200 runs failed and a
+send took 61 s to accept. The logs show 950 „timeout exceeded when trying to
+connect" in two minutes; a run's prompt lookups queued 73 s before the model
+was called. The database allows 2,091 connections and held 54. The short pool,
+which serves the 50 ms lookups, now has 40; the long and background pools stay
+at 10 and 2.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/db/postgres/__tests__/queryRouting.test.ts |  4 ++++
+ src/db/postgres/client.ts                      | 13 ++++++++++++-
+ 2 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index 36fec00..7eb46b6 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -79,6 +79,10 @@ beforeEach(() => {
+ describe('which pool answers a query', () => {
+   it('builds three pools: the short one, the long one, and the background one', () => {
+     expect(pools).toHaveLength(3);
++    // 5320 (the 200-seat load test): the short pool serves every run's lookups.
++    expect(shortPool.config.max).toBe(40);
++    expect(longPool.config.max).toBe(10);
++    expect(backgroundPool.config.max).toBe(2);
+     expect(shortPool).toBeDefined();
+     expect(longPool).toBeDefined();
+     expect(backgroundPool).toBeDefined();
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index 953b8c7..1d3f693 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -36,9 +36,20 @@ const BASE_POOL_CONFIG = {
+   keepAlive: true,
+ };
+ 
++/**
++ * 5320 (the tester's 200-seat load test, 15 Oct 16:44Z): ten connections for
++ * every short query of every run. 73 of 200 runs failed and the send itself
++ * took 61 s to accept: 950 „timeout exceeded when trying to connect" in two
++ * minutes, the prompt's own lookups queued 73 s before the model was called.
++ * The database allows 2,091 connections and held 54 at the time. The short
++ * pool is the one that serves 50 ms lookups, so it is the one that grows; the
++ * long and background pools stay bounded for the reason given at each.
++ */
++const SHORT_POOL_MAX = 40;
++
+ const pool = new Pool({
+   ...BASE_POOL_CONFIG,
+-  max: 10,
++  max: SHORT_POOL_MAX,
+   // Fail fast instead of waiting forever when the pool is saturated, so a
+   // stalled request surfaces an error rather than hanging until restart.
+   connectionTimeoutMillis: 10_000,
+-- 
+2.43.0
+
