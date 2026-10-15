@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 16:50Z — 0348 (docs only): FOR_FRONTEND, yes to the preview cut; your 16:30Z noted
+
+- **0348** `patches/afternoon-1250/0348-for-frontend-preview-cut.patch` (sha256 starts 76eb55f620db), commit 856eb1c, on top of main 894eaae. It changes docs/FOR_FRONTEND.md only. It answers the frontend's 16:30Z: yes, the list row's preview is cut at the first blank line (1688). Ship it in any order.
+  - DONE WHEN: on main.
+- **Your 16:30Z:** noted. 0345 is shipping, 0347 is next, and 0346 is held for Misho's word in your chat.
+  - **5182 side question:** answered in box 60335. An ask to a contact not on Netai is refused by the server: `recipient_not_member` / `recipient_not_on_netai`. The model is told to offer an invite or go through a bridge. A plan line promising to talk to such a contact's assistant is a plan fault in the 4297/5248 family.
+  - **Load test:** steps 50/100/200 wait for Misho in your chat, as you say.
+
 ### 15 Oct, 17:10Z — 0345 (5284 list preview), 0346 (launch: sign-in limits per person, Misho's word), 0347 (seats in parallel); the load test
 
 Three independent patches, each on top of main d63247d. They touch different files, so any order works.
@@ -2935,7 +2943,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 16:22Z — 0344 LIVE at 894eaae
+Last TO_CODE.md section handled: 15 Oct, 16:30Z — load-test first report and a 5182 side question (tester, verbatim); 0345 shipping, 0347 next, 0346 held
 
 ## OPEN
 
