@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 01:09Z — 0319 (3106 speed: the reply check beside two reads); every other open row has its blocker
+
+- **0319 `0319-3106-reply-check-beside-two-reads.patch`** (sha256 starts d536783978ae), on 0318 (main 0ba49af). The post-run line on the weather runs ran moderation (~450 ms, a model call) and then two database reads (~290 ms) one after the other. The reads no longer wait for the check. This takes about 0.3 s off every owner answer, with no change to text or behaviour; the plan-again condition is kept exactly. Verify green. DONE WHEN: the [post-run] line's „requests" lap reads near 0 ms on the next runs.
+- **Blockers this wake, one line each:**
+  - 370: the tester's iPhone sentence (59140);
+  - A, B, C (and 3732, 4297 [c]/[d], the 4886 family): Misho's yes on the texts;
+  - 0305r, 0306r: Misho's word in your chat;
+  - 390: a real withdrawal, which is money;
+  - 1324: a Stripe dashboard setting, done by a person;
+  - 70: Tornike;
+  - 4595: Giorgi to drop it;
+  - 4126, 4225: Misho;
+  - 3106's larger part: the DB-distance decision;
+  - the built and being-tested rows: the tester.
+
 ### 15 Oct, 00:44Z — re 00:40Z: 0318 LIVE noted. The three texts for Misho (D44), word for word
 
 I have put these to Misho in my chat too. Each is a new model-facing sentence and goes live only on his yes to the exact text.

@@ -1,0 +1,99 @@
+From 539c337dfcc9dffcbdc735052283a82eaece3d35 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 01:07:21 +0000
+Subject: [PATCH] 3106 (speed): the reply check's model call runs beside two
+ reads that do not need it
+
+The post-run line on the tester's weather runs: moderation 450-500 ms, then requests ~290 ms (the open goal for plan-again, the mediator's waiting requests), one after the other. Neither read depends on the check, so both start before it and are awaited where they were awaited before; the plan-again condition is unchanged and reads the goal late when it was not read early (a blocked reply's plan text clears the run's plan). About 0.3 s off every owner answer; no text or behaviour changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theReplyCheckRunsBesideTwoReads.test.ts   | 25 +++++++++++++++++++
+ src/services/chat.service.ts                  | 24 ++++++++++++------
+ 2 files changed, 42 insertions(+), 7 deletions(-)
+ create mode 100644 src/services/__tests__/theReplyCheckRunsBesideTwoReads.test.ts
+
+diff --git a/src/services/__tests__/theReplyCheckRunsBesideTwoReads.test.ts b/src/services/__tests__/theReplyCheckRunsBesideTwoReads.test.ts
+new file mode 100644
+index 0000000..2611e44
+--- /dev/null
++++ b/src/services/__tests__/theReplyCheckRunsBesideTwoReads.test.ts
+@@ -0,0 +1,25 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++/** 3106 (speed): the reply check's model call no longer waits in line with two database reads. */
++describe('the reply check runs beside the two reads that do not need it', () => {
++  it('starts the waiting-requests read and the goal read before the check', () => {
++    const early = chat.indexOf('const requestsEarly = requestsToDeliver(');
++    const goal = chat.indexOf('const openTaskForPlanAgain =');
++    const check = chat.indexOf(': await moderateReply(cleanedFinal, userId);');
++    expect(early).toBeGreaterThan(-1);
++    expect(goal).toBeGreaterThan(-1);
++    expect(early).toBeLessThan(check);
++    expect(goal).toBeLessThan(check);
++  });
++
++  it('keeps the plan-again condition as it was, and reads the goal late when it was not read early', () => {
++    expect(chat).toContain(
++      '!ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)',
++    );
++    expect(chat).toContain('await (openTaskForPlanAgain ?? getOpenTaskByThread(threadId))');
++    expect(chat).toContain('notePendingItems(runId, await requestsEarly);');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index de14cf7..4eae4a6 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -16726,6 +16726,20 @@ export async function processChat(
+   // small-talk line („მადლობა", „როგორ ხარ") was still 6–8 s, about a second of it
+   // this check. Its reply was one short text-only turn to a line from a fixed
+   // handful of words, so it skips the check like the greeting.
++  /**
++   * 3106 (speed): two reads that do not depend on the reply check start before
++   * it, beside its model call, and are awaited where they were awaited before.
++   * The goal is read only when the plan-again check could need it; the no-op
++   * catches only stop a failure counting as unhandled while the check runs —
++   * each is still handled where it is awaited, exactly as before.
++   */
++  const openTaskForPlanAgain =
++    !ownerAbsent && !runPlanForReply.has(runId) ? getOpenTaskByThread(threadId) : null;
++  openTaskForPlanAgain?.catch(() => undefined);
++  const requestsEarly = requestsToDeliver(userId, agentPrompt.deliverRequestsSeparately, () =>
++    getPendingRequestsForMediator(userId),
++  );
++  requestsEarly.catch(() => undefined);
+   const verdict =
+     !ownerAbsent && isToolFreeSmallTalk(userMessage)
+       ? { safe: true }
+@@ -16774,7 +16788,8 @@ export async function processChat(
+   // 56697: a reply that leaves a waiting plan with no question and no buttons asks again.
+   const planAgain =
+     !ownerAbsent && replySafe && earlySolved === null && !runPlanForReply.has(runId)
+-      ? await getOpenTaskByThread(threadId)
++      ? // A blocked reply's plan text clears the run's plan, so the goal may not have been read early.
++        await (openTaskForPlanAgain ?? getOpenTaskByThread(threadId))
+           .then((task) => withPlanDecisionAgain(cleanedFinal, choices, task, language))
+           .catch((err: unknown) => {
+             // eslint-disable-next-line no-console
+@@ -16833,12 +16848,7 @@ export async function processChat(
+   // time so they land LAST — after whatever the run itself surfaced. Another
+   // person's request is the one item on the screen that is not about what the
+   // user came here to do.
+-  notePendingItems(
+-    runId,
+-    await requestsToDeliver(userId, agentPrompt.deliverRequestsSeparately, () =>
+-      getPendingRequestsForMediator(userId),
+-    ),
+-  );
++  notePendingItems(runId, await requestsEarly);
+   lap(postRun, 'requests');
+   // Answers-12 item 11: a goal this run opened outside the goal prompt gets
+   // its plan proposed in an engine turn right behind this reply.
+-- 
+2.43.0
+
