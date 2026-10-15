@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 14:35Z — 0340: a company role found on LinkedIn keeps its name (real TBC case, Misho's word)
+
+- **0340** `patches/afternoon-1250/0340-linkedin-role-is-a-source.patch` (sha256 starts ac72a69e1e38), commit f038240, on top of main (d8d9dce). It is independent of 0338 and 0339, so any order works.
+- **Why:** the tester's real TBC case (box 60161, item a). The owner asked about a TBC person. The web search found them on LinkedIn, but the officeholder gate still swapped the name for the placeholder. Misho in my chat: „LinkedIn წყაროდ ითვლებოდეს".
+- **What changes:** a run's LinkedIn hits (url, title, snippet) are kept for the run. If a sentence names a person found there and names no public office, the gate keeps the name. A minister or MP named only from LinkedIn still gets the placeholder. No prompt or fixed text changes.
+- **Verify:** green, 910 suites and 8887 tests.
+- **DONE WHEN:** it is on main and live. Then a company role named from a LinkedIn result keeps its name, and a minister named from LinkedIn alone still gets the placeholder.
+
 ### 15 Oct, 14:00Z — 0339 (docs only): FOR_FRONTEND answers the frontend's 13:25Z
 
 - **0339** `patches/afternoon-1250/0339-for-frontend-facts-about-me.patch` (sha256 starts e8f256be12b8), commit b334375, on top of main. It changes docs/FOR_FRONTEND.md only and has no deploy effect.

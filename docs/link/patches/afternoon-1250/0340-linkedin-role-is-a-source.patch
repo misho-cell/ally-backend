@@ -1,0 +1,259 @@
+From f038240442252244de3baa26f963ad68d7efd3ed Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 14:10:48 +0000
+Subject: [PATCH] Real TBC case: a company role's name on LinkedIn is a source
+ for the officeholder gate
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's box 60161 (Lika's goal, threads 52471 and 52475): „ნათია
+ფაჩიკაშვილი — Director of MSME Banking" came from a LinkedIn post in the
+search results, and the gate replaced the name with „(სახელი ვერ დავადასტურე
+ოფიციალურ გვერდზე)", twice in one answer — a search snippet was never
+evidence. Misho, 15 Oct: LinkedIn counts as a source. The LinkedIn hits of a
+web search are kept as their own evidence and pass a name in a sentence about
+a company role; a public office (minister, mayor, ambassador …) is still
+checked only against pages the run read, and other sites' snippets still are
+not evidence.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aLinkedinRoleIsASource.test.ts  | 77 +++++++++++++++++++
+ src/services/chat.service.ts                  | 14 +++-
+ src/services/officeholderGate.ts              | 32 +++++++-
+ .../aPublicProfileIsReadNotLinked.test.ts     |  2 +-
+ src/services/tools/publicProfileRead.ts       | 23 ++++++
+ 5 files changed, 143 insertions(+), 5 deletions(-)
+ create mode 100644 src/services/__tests__/aLinkedinRoleIsASource.test.ts
+
+diff --git a/src/services/__tests__/aLinkedinRoleIsASource.test.ts b/src/services/__tests__/aLinkedinRoleIsASource.test.ts
+new file mode 100644
+index 0000000..2e9fab5
+--- /dev/null
++++ b/src/services/__tests__/aLinkedinRoleIsASource.test.ts
+@@ -0,0 +1,77 @@
++jest.mock('../../db/postgres/client', () => ({
++  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
++  __esModule: true,
++  query: jest.fn().mockResolvedValue({ rows: [{ found: false }], rowCount: 1 }),
++}));
++
++import {
++  applyOfficeholderGate,
++  clearRunEvidence,
++  recordRunLinkedinEvidence,
++} from '../officeholderGate';
++import { linkedinEvidence } from '../tools/publicProfileRead';
++
++/**
++ * Misho, 15 Oct (the real TBC case, tester's box 60161): „ნათია ფაჩიკაშვილი —
++ * Director of MSME Banking" came from a LinkedIn post in the search results,
++ * and the gate put its placeholder in place of the name, twice in one answer.
++ * LinkedIn is a source for a role in a company; a public office is not.
++ */
++const RUN = 'run-linkedin';
++const SEARCH = {
++  results: [
++    {
++      url: 'https://www.linkedin.com/posts/natia-pachikashvili-cfa_msmebanking-activity',
++      title: 'Natia Pachikashvili — Director of MSME Banking at TBC Bank',
++      content: 'Natia Pachikashvili, Director of MSME Banking, TBC Bank.',
++    },
++    {
++      url: 'https://news.example.ge/minister',
++      title: 'Minister Levan Davitashvili visits',
++      content: 'Levan Davitashvili, minister of economy.',
++    },
++  ],
++};
++
++afterEach(() => clearRunEvidence(RUN));
++
++describe('the LinkedIn results of a web search', () => {
++  it('are read from LinkedIn hits only', () => {
++    const text = linkedinEvidence(SEARCH);
++    expect(text).toContain('Natia Pachikashvili');
++    expect(text).not.toContain('Davitashvili');
++    expect(linkedinEvidence({ results: 'none' })).toBe('');
++    expect(linkedinEvidence(null)).toBe('');
++  });
++
++  it('let a company role keep the name LinkedIn gave', async () => {
++    recordRunLinkedinEvidence(RUN, linkedinEvidence(SEARCH));
++    const reply = 'Natia Pachikashvili, Director of MSME Banking თიბისი ბანკში.';
++    const out = await applyOfficeholderGate(reply, RUN, 'ka');
++    expect(out.refused).toEqual([]);
++    expect(out.reply).toBe(reply);
++  });
++
++  it('never name a public office holder from LinkedIn alone', async () => {
++    recordRunLinkedinEvidence(
++      RUN,
++      'https://www.linkedin.com/in/levan-davitashvili\nLevan Davitashvili, Minister of Economy',
++    );
++    const out = await applyOfficeholderGate(
++      'The Minister of Economy is Levan Davitashvili.',
++      RUN,
++      'en',
++    );
++    expect(out.refused).toEqual(['Levan Davitashvili']);
++  });
++
++  it('do not let another site’s snippet through', async () => {
++    recordRunLinkedinEvidence(RUN, linkedinEvidence(SEARCH));
++    const out = await applyOfficeholderGate(
++      'The head of the agency is Levan Davitashvili.',
++      RUN,
++      'en',
++    );
++    expect(out.refused).toEqual(['Levan Davitashvili']);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 6da4789..5c5c569 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -139,7 +139,7 @@ import { DEFAULT_PUSH_TIME_ZONE } from './pushQuietHours';
+ import { acceptShortened, LONG_DRAFT_CHARS, SHORTEN_DRAFT_PROMPT } from './shortenDraft';
+ import { searchContactsByCountry } from './tools/searchContactsByCountry';
+ import { webSearch, fetchPage } from './tools/webSearch';
+-import { profileEvidence, withPublicProfile } from './tools/publicProfileRead';
++import { linkedinEvidence, profileEvidence, withPublicProfile } from './tools/publicProfileRead';
+ import { searchVerdictOf } from './searchVerdict';
+ import { questionForButtons } from './buttonsCarryTheQuestion';
+ import { removeContactFromNetwork } from './tools/removeContactFromNetwork';
+@@ -369,7 +369,12 @@ import {
+ } from './block.service';
+ import { normalizePhone } from './phone';
+ import { moderateReply } from './moderation.service';
+-import { applyOfficeholderGate, clearRunEvidence, recordRunEvidence } from './officeholderGate';
++import {
++  applyOfficeholderGate,
++  clearRunEvidence,
++  recordRunEvidence,
++  recordRunLinkedinEvidence,
++} from './officeholderGate';
+ import { stripProcessOpener } from './replyOpener';
+ import { sanitizeToolResult } from './sanitization.service';
+ import { dietToolResult } from './toolResultDiet';
+@@ -11513,7 +11518,10 @@ async function runOneToolBlock(
+   // an officeholder's name; a search snippet may not (stale, or a former
+   // holder) — so everything but web_search becomes the run's evidence.
+   if (block.name !== 'web_search') recordRunEvidence(runId, JSON.stringify(raw));
+-  else recordRunEvidence(runId, profileEvidence(raw) ?? '');
++  else {
++    recordRunEvidence(runId, profileEvidence(raw) ?? '');
++    recordRunLinkedinEvidence(runId, linkedinEvidence(raw));
++  }
+   // Ticket 20 row 139, Tornike's rule: a number found on a public web page may
+   // be shown, with the page it came from. Registered here, at the one place a
+   // web result arrives, so no later surface has to decide what is public.
+diff --git a/src/services/officeholderGate.ts b/src/services/officeholderGate.ts
+index 4667c05..24865cf 100644
+--- a/src/services/officeholderGate.ts
++++ b/src/services/officeholderGate.ts
+@@ -59,8 +59,36 @@ export function recordRunEvidence(runId: string | undefined, text: string): void
+   evidenceByRun.set(runId, list);
+ }
+ 
++/**
++ * Misho, 15 Oct (the real TBC case): a person's name and role on LinkedIn count
++ * as a source — for a role in a company. Kept apart from the rest, because a
++ * PUBLIC office (minister, mayor, ambassador …) is still checked only against
++ * the pages the run read.
++ */
++const linkedinByRun = new Map<string, string[]>();
++
++/** Add the LinkedIn results a web search returned. */
++export function recordRunLinkedinEvidence(runId: string | undefined, text: string): void {
++  if (!runId || !text) return;
++  const list = linkedinByRun.get(runId) ?? [];
++  const held = list.reduce((sum, t) => sum + t.length, 0);
++  if (held >= MAX_EVIDENCE_CHARS_PER_RUN) return;
++  list.push(text.toLowerCase());
++  linkedinByRun.set(runId, list);
++}
++
+ export function clearRunEvidence(runId: string | undefined): void {
+-  if (runId) evidenceByRun.delete(runId);
++  if (!runId) return;
++  evidenceByRun.delete(runId);
++  linkedinByRun.delete(runId);
++}
++
++/** A public office: never named from LinkedIn alone. */
++const PUBLIC_OFFICE_RE =
++  /((^|[^ა-ჰ])(მინისტრ|გუბერნატორ|დეპუტატ|ელჩ|მერი|მერია|მერის|მერმა|მერს|პრემიერ|პრეზიდენტ|რექტორ|გამგებელ|ომბუდსმენ|პროკურორ|მოსამართლ)|\b(minister|mayor|governor|ambassador|premier|president|rector|ombudsman|prosecutor|judge|senator|congressman|parliament)\b|министр|мэр|губернатор|посол|президент|\b(ministro|ministra|alcalde|alcaldesa|gobernador|gobernadora|embajador|embajadora|presidente|presidenta)\b)/iu;
++
++function namesAPublicOffice(sentence: string): boolean {
++  return PUBLIC_OFFICE_RE.test(sentence);
+ }
+ 
+ // Office words. Georgian is caseless and declines, so stems are matched at a
+@@ -491,6 +519,7 @@ export async function applyOfficeholderGate(
+   userId?: string,
+ ): Promise<OfficeholderGateOutcome> {
+   const evidence = (runId ? (evidenceByRun.get(runId) ?? []) : []).join('\n');
++  const linkedin = (runId ? (linkedinByRun.get(runId) ?? []) : []).join('\n');
+   const refused: string[] = [];
+   const sentences = reply.split(SENTENCE_SPLIT_RE);
+   let out = reply;
+@@ -531,6 +560,7 @@ export async function applyOfficeholderGate(
+     if (!inView || FORMER_RE.test(sentence)) continue;
+     for (const name of nameCandidates(sentence)) {
+       if (namesAPlace(sentence, name) || nameInEvidence(name, evidence)) continue;
++      if (!namesAPublicOffice(sentence) && nameInEvidence(name, linkedin)) continue;
+       let inPhonebook = known.get(name);
+       if (inPhonebook === undefined) {
+         if (Date.now() - startedAt > GATE_BUDGET_MS) {
+diff --git a/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts b/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+index f0cfd61..53afbdf 100644
+--- a/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
++++ b/src/services/tools/__tests__/aPublicProfileIsReadNotLinked.test.ts
+@@ -100,6 +100,6 @@ describe("the page read is the run's evidence (4720, the EN seat)", () => {
+ 
+   it('is recorded from the web_search turn', () => {
+     const chat = readFileSync(join(__dirname, '..', '..', 'chat.service.ts'), 'utf8');
+-    expect(chat).toContain("else recordRunEvidence(runId, profileEvidence(raw) ?? '');");
++    expect(chat).toContain("recordRunEvidence(runId, profileEvidence(raw) ?? '');");
+   });
+ });
+diff --git a/src/services/tools/publicProfileRead.ts b/src/services/tools/publicProfileRead.ts
+index 9aabf81..6402d26 100644
+--- a/src/services/tools/publicProfileRead.ts
++++ b/src/services/tools/publicProfileRead.ts
+@@ -72,6 +72,29 @@ export function profileEvidence(found: unknown): string | null {
+   return page.content;
+ }
+ 
++/** Any LinkedIn page: a profile, a post, a company page. */
++const LINKEDIN_URL_RE = /^https?:\/\/(?:[a-z0-9-]+\.)?linkedin\.com\//iu;
++
++/**
++ * Misho, 15 Oct (the real TBC case, tester's box 60161): the person's own name
++ * and role on LinkedIn count as a source. The run named „ნათია ფაჩიკაშვილი —
++ * Director of MSME Banking" from a LinkedIn post in the search results, and
++ * the officeholder gate replaced the name twice with its placeholder, because
++ * a snippet was never evidence. LinkedIn results now are; every other site's
++ * snippet still is not, and a public office (minister, mayor) is still checked
++ * against the pages the run read.
++ */
++export function linkedinEvidence(found: unknown): string {
++  if (!isRecord(found) || !Array.isArray(found.results)) return '';
++  return found.results
++    .filter((hit): hit is Record<string, unknown> => isRecord(hit))
++    .filter((hit) => typeof hit.url === 'string' && LINKEDIN_URL_RE.test(hit.url))
++    .map((hit) =>
++      [hit.url, hit.title, hit.content].filter((part) => typeof part === 'string').join('\n'),
++    )
++    .join('\n');
++}
++
+ /**
+  * The search result with its profile page read, when it has one. A failed or
+  * empty read leaves the result exactly as it was; `beforeRead` runs only when a
+-- 
+2.43.0
+
