@@ -1,0 +1,303 @@
+From 55957888fdc793bf4632c812059640089b78acc5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 00:06:19 +0000
+Subject: [PATCH] 4621: POST /members/:id/intro-request asks the first friend
+ on the path for the introduction
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The frontend's 21:10Z item 4 (Misho's yes): the member card's „გაცნობის თხოვნა“. The route reads the owner's paths to that person (chainMapsFor), takes the first friend on the best path who uses Netai (firstAskableBridge), and makes the same request as request_introduction, optionally under the owner's goal. It answers 201 with the request id and the owner's thread for it; refusals are codes (404 no_such_person / no_such_goal, 409 no_bridge_on_netai / not_sent). Rate-limited to 5 a minute. FOR_FRONTEND carries the contract.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  22 ++++
+ src/api/routes/people.routes.ts               |  46 ++++++++
+ .../theMemberCardAsksTheFirstFriend.test.ts   |  57 ++++++++++
+ src/services/memberIntroRequest.service.ts    | 103 ++++++++++++++++++
+ 4 files changed, 228 insertions(+)
+ create mode 100644 src/services/__tests__/theMemberCardAsksTheFirstFriend.test.ts
+ create mode 100644 src/services/memberIntroRequest.service.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index dd0d044..9a6fe4a 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,28 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 00:06Z — re your 21:10Z, item 4: the member card's „გაცნობის თხოვნა" (4621, 0317, on a branch until ops ships it)
++
++**Route:** `POST /members/:id/intro-request`, where `:id` is the same sealed id `GET /members/:id` and `GET /paths/:id` take. The body is optional: `{"goal_id": 123}`.
++
++The server reads the owner's paths to that person and asks the **first friend on the best path who uses Netai**. This is the same introduction request the assistant makes, so the friend sees it, answers it and is let off it exactly as today.
++
++```json
++POST /members/m_…/intro-request
++{ "goal_id": 123 }
++→ 201 { "success": true, "data": { "request_id": 4567, "thread_id": 51990 } }
++```
++
++- `thread_id` is the owner's own thread for the request (type `outgoing_request`). When the request was filed into an open conversation instead, it is that conversation. It can be `null` if neither exists; then open the list.
++- **Refusals,** whose `error` is a code for you to word:
++  - `404 no_such_person`: the id does not decode for this owner.
++  - `404 no_such_goal`: `goal_id` is not the owner's.
++  - `409 no_bridge_on_netai`: no path starts with a friend who uses Netai. Suggest an invitation instead.
++  - `409 not_sent`: the request was refused, for example the same request is already waiting, or the friend asked not to be contacted.
++  - `400`: `goal_id` is not a positive integer.
++- **Limit:** 5 requests a minute per person (429 beyond).
++- Your item 3 (warmth, labels, exclusion by goal) is next on my side.
++
+ ## 14 October, 22:18Z — re your 21:10Z, item 2: `assistant_name` (0316, on a branch until ops ships it)
+ 
+ **Shape:** the existing `/profile` routes, with one field added.
+diff --git a/src/api/routes/people.routes.ts b/src/api/routes/people.routes.ts
+index 3929b93..175becc 100644
+--- a/src/api/routes/people.routes.ts
++++ b/src/api/routes/people.routes.ts
+@@ -8,15 +8,30 @@ import { rateLimit } from '../middleware/rateLimit.middleware';
+ import { requireSubscription } from '../middleware/subscription.middleware';
+ import { memberCardFor } from '../../services/memberCard.service';
+ import { chainMapsFor } from '../../services/chainMap.service';
++import {
++  MemberIntroRefusal,
++  requestIntroToMember,
++} from '../../services/memberIntroRequest.service';
+ 
+ /**
+  * The frontend's 06:30Z item 9 (§127), keyed by the sealed id the contacts list
+  * already carries:
+  *   GET /members/:id   the member card — name, role · company, city, areas, open_to
+  *   GET /paths/:id     the maps from the owner to that person (task 1849, stage one; sends nothing)
++ *   POST /members/:id/intro-request {goal_id?}   4621: asks the first friend on the path for the introduction
+  */
+ const CARDS_PER_MINUTE = 60;
+ const PATHS_PER_MINUTE = 10;
++/** An introduction request reaches a real person; a burst of taps is not an owner deciding. */
++const INTRO_REQUESTS_PER_MINUTE = 5;
++
++/** The status each refusal answers with; the frontend words it. */
++const REFUSAL_STATUS: Readonly<Record<MemberIntroRefusal, number>> = {
++  [MemberIntroRefusal.NoSuchPerson]: 404,
++  [MemberIntroRefusal.NoSuchGoal]: 404,
++  [MemberIntroRefusal.NoBridgeOnNetai]: 409,
++  [MemberIntroRefusal.NotSent]: 409,
++};
+ 
+ export const membersRouter = Router();
+ membersRouter.use(authenticateJwt, requireUserRole, requireSubscription);
+@@ -38,6 +53,37 @@ membersRouter.get('/:id', async (req: Request, res: Response): Promise<void> =>
+   }
+ });
+ 
++membersRouter.post(
++  '/:id/intro-request',
++  rateLimit({ windowMs: 60_000, max: INTRO_REQUESTS_PER_MINUTE }),
++  async (req: Request, res: Response): Promise<void> => {
++    const rawGoal = (req.body as { goal_id?: unknown } | undefined)?.goal_id;
++    const goalId = rawGoal === undefined || rawGoal === null ? undefined : Number(rawGoal);
++    if (goalId !== undefined && (!Number.isInteger(goalId) || goalId <= 0)) {
++      res.status(400).json({ success: false, error: 'goal_id must be a positive integer' });
++      return;
++    }
++    try {
++      const userId = Number((req as AuthenticatedRequest).user.userId);
++      const outcome = await requestIntroToMember(userId, String(req.params.id), goalId);
++      if (!outcome.ok) {
++        res
++          .status(REFUSAL_STATUS[outcome.refusal])
++          .json({ success: false, error: outcome.refusal });
++        return;
++      }
++      res.status(201).json({
++        success: true,
++        data: { request_id: outcome.requestId, thread_id: outcome.threadId },
++      });
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[POST /members/:id/intro-request]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not send the request' });
++    }
++  },
++);
++
+ export const pathsRouter = Router();
+ pathsRouter.use(authenticateJwt, requireUserRole, requireSubscription);
+ pathsRouter.use(rateLimit({ windowMs: 60_000, max: PATHS_PER_MINUTE }));
+diff --git a/src/services/__tests__/theMemberCardAsksTheFirstFriend.test.ts b/src/services/__tests__/theMemberCardAsksTheFirstFriend.test.ts
+new file mode 100644
+index 0000000..eec5b03
+--- /dev/null
++++ b/src/services/__tests__/theMemberCardAsksTheFirstFriend.test.ts
+@@ -0,0 +1,57 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { ChainLinkRole, ChainLinkState, ChainMap } from '../chainMap';
++import { firstAskableBridge } from '../memberIntroRequest.service';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../chainMap.service', () => ({ chainMapsFor: jest.fn() }));
++jest.mock('../tools/requestIntroduction', () => ({ requestIntroduction: jest.fn() }));
++
++const you = { id: null, name: null, role: ChainLinkRole.You, state: null, is_member: true };
++const target = {
++  id: 'ref-target',
++  name: 'ეკა',
++  role: ChainLinkRole.Target,
++  state: ChainLinkState.NotContacted,
++  is_member: true,
++};
++const bridge = (id: string, name: string | null, member: boolean): ChainMap['links'][number] => ({
++  id,
++  name,
++  role: ChainLinkRole.Bridge,
++  state: ChainLinkState.Next,
++  is_member: member,
++});
++const map = (...middle: ChainMap['links'][number][]): ChainMap => ({
++  hops: middle.length + 1,
++  warm_steps: 0,
++  links: [you, ...middle, target],
++});
++
++/** 4621 (Misho's yes, 14 Oct): the member card's „გაცნობის თხოვნა" asks the first friend on the path. */
++describe('the member card asks the first friend on the path', () => {
++  it('takes the first friend of the best path who uses Netai', () => {
++    expect(firstAskableBridge([map(bridge('ref-zura', 'ზურა', true))])?.id).toBe('ref-zura');
++  });
++
++  it('passes over a path whose first friend has never opened Netai', () => {
++    const maps = [map(bridge('ref-a', 'ანა', false)), map(bridge('ref-b', 'ბექა', true))];
++    expect(firstAskableBridge(maps)?.id).toBe('ref-b');
++  });
++
++  it('asks nobody when no path starts with a friend on Netai, or the friend has no name', () => {
++    expect(firstAskableBridge([map(bridge('ref-a', 'ანა', false))])).toBeNull();
++    expect(firstAskableBridge([map(bridge('ref-a', null, true))])).toBeNull();
++    expect(firstAskableBridge([map()])).toBeNull();
++  });
++
++  it('is a POST on the members router, limited and checked', () => {
++    const routes = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'people.routes.ts'),
++      'utf8',
++    );
++    expect(routes).toContain("'/:id/intro-request',");
++    expect(routes).toContain('rateLimit({ windowMs: 60_000, max: INTRO_REQUESTS_PER_MINUTE })');
++    expect(routes).toContain("error: 'goal_id must be a positive integer'");
++  });
++});
+diff --git a/src/services/memberIntroRequest.service.ts b/src/services/memberIntroRequest.service.ts
+new file mode 100644
+index 0000000..aec8e99
+--- /dev/null
++++ b/src/services/memberIntroRequest.service.ts
+@@ -0,0 +1,103 @@
++import { query } from '../db/postgres/client';
++import { chainMapsFor } from './chainMap.service';
++import { ChainLink, ChainLinkRole, ChainMap } from './chainMap';
++import { decodeContactRef } from './mcp/contactRef';
++import { normalizePhone } from './phone';
++import { requestIntroduction } from './tools/requestIntroduction';
++
++/**
++ * 4621 (the frontend's 21:10Z item 4, Misho's yes): the member card's
++ * „გაცნობის თხოვნა". The owner taps it on a person reached through the path
++ * map, and the introduction is asked of the first friend on the best path —
++ * the same request the assistant makes with request_introduction, so the
++ * bridge sees it, answers it and is let off it in exactly the same way.
++ */
++export enum MemberIntroRefusal {
++  NoSuchPerson = 'no_such_person',
++  NoBridgeOnNetai = 'no_bridge_on_netai',
++  NoSuchGoal = 'no_such_goal',
++  NotSent = 'not_sent',
++}
++
++export type MemberIntroOutcome =
++  | { readonly ok: true; readonly requestId: number; readonly threadId: number | null }
++  | { readonly ok: false; readonly refusal: MemberIntroRefusal };
++
++const LOOKUP_TIMEOUT_MS = 3_000;
++
++/** The owner's own contact who takes the first step, on the first path where they use Netai. */
++export function firstAskableBridge(maps: readonly ChainMap[]): ChainLink | null {
++  for (const map of maps) {
++    const first = map.links.find((link) => link.role === ChainLinkRole.Bridge);
++    if (first !== undefined && first.is_member && first.id !== null && first.name !== null) {
++      return first;
++    }
++  }
++  return null;
++}
++
++async function ownGoal(ownerId: number, goalId: number): Promise<boolean> {
++  const found = await query<{ id: number }>(
++    'SELECT id FROM tasks WHERE id = $1 AND user_id = $2 LIMIT 1',
++    [goalId, ownerId],
++    LOOKUP_TIMEOUT_MS,
++  );
++  return found.rows.length > 0;
++}
++
++/** The owner's side of the request: its own thread, or the conversation it was filed in. */
++async function requesterThreadOf(ownerId: number, requestId: number): Promise<number | null> {
++  const found = await query<{ id: number }>(
++    `SELECT id FROM threads
++      WHERE user_id = $1 AND introduction_request_id = $2 AND type = 'outgoing_request'
++      ORDER BY id LIMIT 1`,
++    [ownerId, requestId],
++    LOOKUP_TIMEOUT_MS,
++  );
++  return found.rows[0]?.id ?? null;
++}
++
++interface IntroduceResult {
++  readonly success?: unknown;
++  readonly request_id?: unknown;
++  readonly shown_in_thread?: unknown;
++}
++
++export async function requestIntroToMember(
++  ownerId: number,
++  ref: string,
++  goalId?: number,
++): Promise<MemberIntroOutcome> {
++  const targetPhone = decodeContactRef(String(ownerId), ref);
++  const maps = targetPhone === null ? null : await chainMapsFor(ownerId, ref);
++  if (targetPhone === null || maps === null) {
++    return { ok: false, refusal: MemberIntroRefusal.NoSuchPerson };
++  }
++  if (goalId !== undefined && !(await ownGoal(ownerId, goalId))) {
++    return { ok: false, refusal: MemberIntroRefusal.NoSuchGoal };
++  }
++  const bridge = firstAskableBridge(maps);
++  const bridgePhone = bridge?.id ? decodeContactRef(String(ownerId), bridge.id) : null;
++  const target = maps[0]?.links.find((link) => link.role === ChainLinkRole.Target);
++  if (bridge === null || bridge.name === null || bridgePhone === null) {
++    return { ok: false, refusal: MemberIntroRefusal.NoBridgeOnNetai };
++  }
++  const result = (await requestIntroduction(
++    String(ownerId),
++    bridge.name,
++    target?.name ?? '',
++    undefined,
++    normalizePhone(bridgePhone),
++    undefined,
++    normalizePhone(targetPhone),
++    'intro',
++    false,
++    goalId !== undefined ? { requesterTaskId: goalId } : {},
++  )) as IntroduceResult;
++  if (result.success !== true || typeof result.request_id !== 'number') {
++    return { ok: false, refusal: MemberIntroRefusal.NotSent };
++  }
++  const own = await requesterThreadOf(ownerId, result.request_id);
++  const shown = typeof result.shown_in_thread === 'number' ? result.shown_in_thread : null;
++  return { ok: true, requestId: result.request_id, threadId: own ?? shown };
++}
+-- 
+2.43.0
+

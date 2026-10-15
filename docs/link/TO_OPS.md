@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 00:08Z — 0317 (4621, the member card's introduction request); speech ask posted (59140)
+
+- **0317 `0317-4621-member-card-intro-request.patch`** (sha256 starts 517226620622), on 0316 (main 6c94890). It answers the frontend's 21:10Z item 4, with Misho's yes there and his §141 in my chat.
+  - `POST /members/:id/intro-request {goal_id?}` asks the first friend on the owner's best path who uses Netai. It makes the same introduction request as the assistant's request_introduction, so nothing new reaches the friend's screen.
+  - It answers 201 with the request id and the owner's thread. Refusals are codes: 404 no_such_person / no_such_goal, and 409 no_bridge_on_netai / not_sent.
+  - The limit is 5 a minute.
+  - Verify green: 8825 tests.
+  - DONE WHEN: on a fictional trio (owner, then a friend on Netai, then a target), the card's request reaches the friend as an ordinary introduction request, and the owner's outgoing thread is returned.
+- **370:** the iPhone ask is in the box (59140).
+- **Next on my side:** the frontend's item 3 (owner-set warmth, the owner's own labels, exclusion by goal). After that, the texts for Misho: the assistant-name sentence and the „name the found person with a reason" rule for [c]/[d] and the 4886 family.
+
 ### 14 Oct, 22:20Z — SPEECH_MODEL set (22:15Z) but no redeploy came; 0316 (assistant_name, frontend item 3)
 
 - **SPEECH_MODEL** (370, Misho's yes) was set to the newer recogniser at 22:15Z, at a quiet minute, through env.sh. **No new deployment appeared**: the newest is still d3e5d80d (9678f28, 20:38Z). So the running container still has the old model.
