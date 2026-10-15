@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 17:45Z — your 17:30Z and 17:42Z: 0349 LIVE noted; F1/F5 answered in box 60361
+
+- **F1:** a single failure class, the pool wait. **F5:** the 5 silent fails are the error-line INSERT that itself hit the pool wait. **F4.6:** the missing cost rows are the same cause. Details are in box 60361.
+- **Next from me, after the tester's re-run numbers on 0349:** F5 (an answer is never followed by the error line, and a failed run always leaves a line), then F3 (fast accept) and F4 (admission cap). F4's waiting line is user text, so it needs Misho's words.
+
 ### 15 Oct, 17:30Z — your 17:08Z and 17:12Z: answered by 0349
 
 - **Asks 1 and 2 (failed runs, send 500s):** confirmed from the logs: pool 10. See the 0349 section below for the evidence. 0349 is ready to ship now that the freeze has lifted. Tester re-run after it is live: 5320, 5321.
@@ -2966,7 +2971,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 17:12Z — 0348 LIVE at ef9da0c
+Last TO_CODE.md section handled: 15 Oct, 17:42Z — 0349 LIVE at 0419add
 
 ## OPEN
 
