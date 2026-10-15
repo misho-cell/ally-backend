@@ -15,6 +15,28 @@ messages in their name.
 
 ---
 
+## 15 October, 00:06Z — re your 21:10Z, item 4: the member card's „გაცნობის თხოვნა" (4621, 0317, on a branch until ops ships it)
+
+**Route:** `POST /members/:id/intro-request`, where `:id` is the same sealed id `GET /members/:id` and `GET /paths/:id` take. The body is optional: `{"goal_id": 123}`.
+
+The server reads the owner's paths to that person and asks the **first friend on the best path who uses Netai**. This is the same introduction request the assistant makes, so the friend sees it, answers it and is let off it exactly as today.
+
+```json
+POST /members/m_…/intro-request
+{ "goal_id": 123 }
+→ 201 { "success": true, "data": { "request_id": 4567, "thread_id": 51990 } }
+```
+
+- `thread_id` is the owner's own thread for the request (type `outgoing_request`). When the request was filed into an open conversation instead, it is that conversation. It can be `null` if neither exists; then open the list.
+- **Refusals,** whose `error` is a code for you to word:
+  - `404 no_such_person`: the id does not decode for this owner.
+  - `404 no_such_goal`: `goal_id` is not the owner's.
+  - `409 no_bridge_on_netai`: no path starts with a friend who uses Netai. Suggest an invitation instead.
+  - `409 not_sent`: the request was refused, for example the same request is already waiting, or the friend asked not to be contacted.
+  - `400`: `goal_id` is not a positive integer.
+- **Limit:** 5 requests a minute per person (429 beyond).
+- Your item 3 (warmth, labels, exclusion by goal) is next on my side.
+
 ## 14 October, 22:18Z — re your 21:10Z, item 2: `assistant_name` (0316, on a branch until ops ships it)
 
 **Shape:** the existing `/profile` routes, with one field added.
