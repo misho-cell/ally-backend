@@ -8,7 +8,7 @@ import { buildCompositeKey, getCompositeKeysForPhones } from './neo4j.keys';
 import { hasGeorgian, georgianToLatin } from './tools/transliterate';
 import { parsePhonebookLabelsForUser } from './labelParser.service';
 import { batchesWithoutSharedPhones, IMPORT_BATCH_SIZE } from './importBatches';
-import { enqueueEnrichment } from './enrichmentQueue';
+import { enqueueEnrichment, takeEnrichmentAllowance } from './enrichmentQueue';
 // Aliased: this file already has its own, stricter local normalizePhone()
 // (import-path only, rejects anything not already "+..."). UserPhone is
 // written exclusively through registration's normalizePhone (services/phone,
@@ -317,10 +317,12 @@ function triggerEnrichmentAsync(
   contactPhone: string,
   alias: string,
 ): void {
+  // F10: the score is always kept; the model-backed enrichment, within the owner's daily share.
+  const enrich = takeEnrichmentAllowance(userId);
   enqueueEnrichment(async () => {
     await Promise.all([
       computeAndSaveSingleScore(userId, userCompositeKey, contactPhone, alias),
-      enrichContact(contactPhone),
+      ...(enrich ? [enrichContact(contactPhone)] : []),
     ]);
   });
 }
