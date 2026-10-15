@@ -1,0 +1,120 @@
+From 23cd731f791649cf29542fc44784aa676c21b3d1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 05:41:20 +0000
+Subject: [PATCH] The assistant answers to the name the owner gave it (Misho's
+ sentence, 15 Oct)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0316 stored assistant_name; Misho approved the exact sentence (D44) in the code session's chat. It is read in the same query as the owner's name and added beside the name section only when a name is set: „The owner calls you „{name}". Answer to that name in the owner's own conversations; in messages to other people you are still „{owner}'s assistant".“
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theAssistantAnswersToItsName.test.ts      | 25 +++++++++++++++++++
+ src/services/assistantName.ts                 | 15 +++++++++++
+ src/services/chat.service.ts                  | 12 ++++++++-
+ 3 files changed, 51 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/theAssistantAnswersToItsName.test.ts
+ create mode 100644 src/services/assistantName.ts
+
+diff --git a/src/services/__tests__/theAssistantAnswersToItsName.test.ts b/src/services/__tests__/theAssistantAnswersToItsName.test.ts
+new file mode 100644
+index 0000000..e1b7480
+--- /dev/null
++++ b/src/services/__tests__/theAssistantAnswersToItsName.test.ts
+@@ -0,0 +1,25 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { assistantNameSection } from '../assistantName';
++
++const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++/** 0316 + Misho's yes (15 Oct): the owner's own name for the assistant reaches the model. */
++describe('the assistant answers to the name the owner gave it', () => {
++  it('says Misho’s sentence word for word when a name is set', () => {
++    expect(assistantNameSection('მარიამი', 'ნინო')).toBe(
++      '\n\nThe owner calls you „მარიამი". Answer to that name in the owner\'s own conversations; ' +
++        'in messages to other people you are still „ნინო\'s assistant".',
++    );
++  });
++
++  it('adds nothing when no name is set', () => {
++    expect(assistantNameSection(null, 'ნინო')).toBe('');
++    expect(assistantNameSection('   ', 'ნინო')).toBe('');
++  });
++
++  it('is read with the owner’s name, in the same query, and sits beside it', () => {
++    expect(chat).toContain('\'SELECT name, assistant_name FROM "User" WHERE id = $1 LIMIT 1\'');
++    expect(chat).toContain('nameSection +\n      assistantNameNote +');
++  });
++});
+diff --git a/src/services/assistantName.ts b/src/services/assistantName.ts
+new file mode 100644
+index 0000000..153516a
+--- /dev/null
++++ b/src/services/assistantName.ts
+@@ -0,0 +1,15 @@
++/**
++ * The frontend's item 3 (0316): the owner names their own assistant, and the
++ * model reads the name from the next answer on. The sentence is Misho's, word
++ * for word (D44, his „კი" in the code session's chat, 15 Oct ~05:15 UTC); it is
++ * added only when a name is set, so an owner without one sees no change.
++ */
++export function assistantNameSection(assistantName: string | null, ownerName: string): string {
++  const name = assistantName?.trim() ?? '';
++  if (name === '') return '';
++  const owner = ownerName.trim() === '' ? 'the owner' : ownerName.trim();
++  return (
++    `\n\nThe owner calls you „${name}". Answer to that name in the owner's own conversations; ` +
++    `in messages to other people you are still „${owner}'s assistant".`
++  );
++}
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 4eae4a6..ec5306e 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -18,6 +18,7 @@ import { withNothingFoundLast } from './nothingFoundLast';
+ import { withNameGenders } from './nameGender';
+ import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
+ import { greetingName, greetingText, registeredName } from './serverGreeting';
++import { assistantNameSection } from './assistantName';
+ import { goalsForRun } from './wakeGoalScope';
+ import {
+   aLookedAgainLineTellsSomething,
+@@ -5314,7 +5315,10 @@ async function buildAgentSystemPrompt(
+     // The registered name never reached the model before — with no name key in
+     // the profile KV it would sometimes invent one, or guess a gendered
+     // address (second-account battery: a female tester greeted as a man).
+-    query<{ name: string | null }>('SELECT name FROM "User" WHERE id = $1 LIMIT 1', [userId]),
++    query<{ name: string | null; assistant_name: string | null }>(
++      'SELECT name, assistant_name FROM "User" WHERE id = $1 LIMIT 1',
++      [userId],
++    ),
+     query<{ field_label: string; field_description: string }>(
+       'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
+     ),
+@@ -5357,6 +5361,11 @@ async function buildAgentSystemPrompt(
+       // and „t" is two Georgian letters. One goal carried both.
+       georgianSpellingNote(registeredName)
+     : '';
++  // 0316 + Misho's yes on the sentence: the owner's own name for their assistant.
++  const assistantNameNote = assistantNameSection(
++    nameResult.rows[0]?.assistant_name ?? null,
++    registeredName,
++  );
+   // Ticket 20 row 130 — STABLE FIRST, VOLATILE LAST, and the order is the
+   // whole point of this expression.
+   //
+@@ -5397,6 +5406,7 @@ async function buildAgentSystemPrompt(
+     base + INJECTION_DEFENSE_PROMPT + modeBlocks.text,
+     // Per-account — the same across this person's runs until they edit it.
+     nameSection +
++      assistantNameNote +
+       buildProfileSection(profile) +
+       buildMissingUserProfileSection(profile) +
+       buildUserNotesSection(userNotes) +
+-- 
+2.43.0
+

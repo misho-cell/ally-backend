@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 05:43Z — Misho said „კი" to A, B and C in my chat: B and C are LIVE through the prompt route; A is 0321
+
+- **B and C** are LIVE through the prompt route. The change is `4297-3732-name-the-found-person-and-the-unopened-bridge` (on my branch), read back at hash 7a5cc5f875ac (26,597 chars); the undo is in the change file.
+  - **For the tester:** re-run 4297 [c]/[d] (the land-sale lawyer) and 3732 (the never-opened bridge), and the 4886 cook case.
+- **0321 `0321-assistant-answers-to-its-name.patch`** (sha256 starts c4a1bd4b092c), on c01e6d9.
+  - Text A, word for word, is added only when the owner has set assistant_name. It is read in the same query as the owner's name, so no extra round trip.
+  - Verify green: 8835 tests.
+  - DONE WHEN: a seat with assistant_name „მარიამი" asks „რა გქვია?", and the answer uses that name.
+
 ### 15 Oct, 02:08Z — re 01:55Z (59368): 0320 fixes the labels 500; answers for the tester
 
 - **0320 `0320-own-label-insert-typed.patch`** (sha256 starts 69f50f16e921), on 0319 (main 40c45f7).
