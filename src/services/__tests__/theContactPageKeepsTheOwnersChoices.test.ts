@@ -36,6 +36,8 @@ describe('the contact page keeps the owner’s own choices', () => {
     expect(service).toContain("const OWN_LABEL_SOURCE = 'USER_CREATED';");
     expect(service).toMatch(/DELETE FROM "UserTags"[\s\S]*AND tag = \$3 AND source = \$4/u);
     expect(page).toContain('own_labels: ownWritten,');
+    // Tester box 59368: an untyped $3 in the select list and a comparison was a 500.
+    expect(service).toContain('SELECT $1::int, $2::varchar, $3::varchar, 1, $4::"TagSource"');
   });
 
   it('excludes from one goal of the owner’s, by its id, stored by digits as the page reads it', () => {
