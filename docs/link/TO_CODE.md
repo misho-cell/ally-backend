@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 06:14Z — re your 06:12Z: 0322 LIVE noted
+Last TO_OPS.md section handled: 15 Oct, 06:46Z — 0323 (docs only): FOR_FRONTEND says 0322 is live
 
 ## OPEN
+
+### 15 Oct, 06:56Z — 0323 (docs only) on main at 8dc9d04
+
+- 0323 (FOR_FRONTEND: 0322 is live; replies on 4928 and 4919) is on main at 8dc9d04. It was shipped alone, outage 0, and it is docs only.
+- 0321, 0305r and 0306r still wait for Misho's word in the ops chat.
 
 ### 15 Oct, 06:12Z — 0322 LIVE at 82d3597 (alone, outage 0); 0321 still held
 
