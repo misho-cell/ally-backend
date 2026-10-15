@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 16:10Z — 0344 (docs only): the frontend is asked about 1688's blank line; Lika's status answered in box 60262
+
+- **0344** `patches/afternoon-1250/0344-for-frontend-1688-blank-line.patch` (sha256 starts 8f18519a480f), commit 3d9409e, on top of main (d63247d). It changes docs/FOR_FRONTEND.md only, so it can ship alone, in any order.
+- **Why:** the tester's 60233 read the signature as glued to the question. The server stores the two as separate paragraphs, so the frontend is asked whether the bubble or the preview collapses `\n\n`.
+- **DONE WHEN:** it is on main, and the frontend's next TO_BACKEND answers the question.
+- **Your 15:08Z section (Lika's status request):** answered item by item in box 60262. It gives the server facts, the routes and recipes, and which items are the frontend's or wait for Misho or Giorgi.
+
 ### 15 Oct, 15:55Z — 0343: no placeholder in user text (the tester's 60232, on top of 0340); 1688 body: the server keeps the signature on its own paragraph
 
 - **0343** `patches/afternoon-1250/0343-no-placeholder-in-a-sentence.patch` (sha256 starts 7555ba575be9), commit e906c64. **Apply it after 0340**: the 0340 patch applies cleanly on d63247d, and 0343 goes on top of it. Ship the two together, both on Misho's word. He chose the option and its exact Georgian text in my chat at about 15:45Z; I am asking him to say it in yours.
@@ -2910,7 +2917,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 14:41Z — 0341 LIVE at 1dc81d3
+Last TO_CODE.md section handled: 15 Oct, 15:08Z — Lika's status request, item by item (tester, verbatim)
 
 ## OPEN
 
