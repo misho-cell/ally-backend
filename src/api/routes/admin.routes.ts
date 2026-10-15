@@ -332,6 +332,7 @@ import {
   snoozeSeatEveningCard,
 } from '../../services/adminEveningCard.service';
 import { BACKFILL_MAX_BATCH, backfillShortTitles } from '../../services/shortTitleBackfill.service';
+import { queueRegistrationResearch } from '../../services/registrationResearch/registrationResearch.service';
 
 /** A user id is a Postgres INTEGER; anything larger is not a seat (a phone number, 58065). */
 const MAX_SEAT_USER_ID = 2_147_483_647;
@@ -3819,6 +3820,52 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[test-rename]', error);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
+/**
+ * 4126 (the tester's box 60032): a seat made here never passes through
+ * sign-up, so the registration research run (D757 §5) could not be tested on a
+ * fictional seat. This queues that same run for one fictional seat, once — the
+ * same queue sign-up writes to, so nothing about the run itself differs.
+ *   POST /admin/test-accounts/:id/registration-research { note }
+ *   200 { user_id, queued } — queued false when this seat was queued before.
+ * A real person's account is refused (403), as every seat route here refuses.
+ */
+adminRouter.post(
+  '/test-accounts/:id/registration-research',
+  param('id').isString().trim().notEmpty(),
+  body('note').isString().trim().isLength({ min: 3, max: 500 }),
+  async (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      res.status(400).json({ success: false, error: 'note must say why (3-500 chars).' });
+      return;
+    }
+    const target = String(req.params.id).trim();
+    const admin = (req as AuthenticatedRequest).user.userId;
+    if (!(await isOperableTestSeat(target, isFictionalTestAccount))) {
+      // eslint-disable-next-line no-console
+      console.warn(`[test-research] admin ${admin} asked for ${target} — REFUSED, not fictional`);
+      res.status(403).json({
+        success: false,
+        error: new NotATestAccountError(target).message,
+        available: fictionalTestAccountIds(),
+      });
+      return;
+    }
+    try {
+      const queued = await queueRegistrationResearch(Number(target));
+      // eslint-disable-next-line no-console
+      console.log(
+        `[test-research] admin ${admin} queued the registration research for seat ${target}: ` +
+          `${queued} — ${String((req.body as { note: string }).note).trim()}`,
+      );
+      res.status(200).json({ success: true, data: { user_id: target, queued } });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[test-research]', error);
       res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
     }
   },
