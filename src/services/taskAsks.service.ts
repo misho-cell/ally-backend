@@ -172,14 +172,14 @@ function titleSnippetFrom(question: string): string {
 }
 /**
  * 1688 (Lika's phone, 15 Oct): the header read „Lika Ose: Lika Ose-ს კარგი
- * ფოტოგრაფი…" — the question already opens with the asker's name, so the name
- * in front said it twice. It goes in front only when the question does not.
+ * ფოტოგრაფი…" — the question already names the asker, so the name in front
+ * said it twice. The tester's re-run (box 60030) had it mid-question: „<asker>:
+ * ხვალ საღამოს თავისუფალი ხარ <asker>-ის ყ…". The name goes in front only when
+ * the question does not name the asker anywhere.
  */
 export function askThreadTitle(senderName: string, snippet: string): string {
   const name = senderName.trim();
-  if (name === '' || snippet.trimStart().toLowerCase().startsWith(name.toLowerCase())) {
-    return snippet;
-  }
+  if (name === '' || snippet.toLowerCase().includes(name.toLowerCase())) return snippet;
   return `${name}: ${snippet}`;
 }
 // Anti-runaway ceiling, not a product limit (the product decision is "no

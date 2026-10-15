@@ -50,6 +50,12 @@ describe('the title of an incoming question’s thread', () => {
     );
   });
 
+  it('does not say it twice when the question names the asker mid-sentence', () => {
+    expect(
+      askThreadTitle('Netai Test 7', 'ხვალ საღამოს თავისუფალი ხარ Netai Test 7-ის ყავაზე?'),
+    ).toBe('ხვალ საღამოს თავისუფალი ხარ Netai Test 7-ის ყავაზე?');
+  });
+
   it('puts the name in front when the question does not open with it', () => {
     expect(askThreadTitle('Lika Ose', 'კარგ ფოტოგრაფს იცნობ?')).toBe(
       'Lika Ose: კარგ ფოტოგრაფს იცნობ?',
