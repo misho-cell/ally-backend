@@ -82,7 +82,9 @@ describe('which pool answers a query', () => {
     expect(intakePool.config.max).toBe(10);
     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
     expect(shortPool.config.max).toBe(80);
-    expect(longPool.config.max).toBe(10);
+    // The 5th 200-seat run (box 60692): 629 searches waiting on ten, 1,009 gave up.
+    expect(longPool.config.max).toBe(24);
+    expect(longPool.config.connectionTimeoutMillis).toBe(30_000);
     expect(backgroundPool.config.max).toBe(2);
     expect(shortPool).toBeDefined();
     expect(longPool).toBeDefined();
