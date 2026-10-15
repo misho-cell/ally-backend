@@ -1,0 +1,158 @@
+From 788f1cf7bb72a6784a78f8e0306c635d71fd5a06 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 21:06:02 +0000
+Subject: [PATCH] Speed under load: the short pool to 80; the run trail saved
+ in one round trip
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's fourth 200 run (60530) read per run: the prompt's own reads
+queued ~7.6 s (1 s alone), a contact search 6.4 s (2.2 s alone), and the
+post-run 5–7 s (2 s alone) — all waiting on database connections, the model
+itself unchanged at ~19 s. The short pool goes 40 → 80 (the database allows
+2,091). The run's trail, written one row per round trip before the owner saw
+the answer, is now one statement with the order kept a microsecond apart.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../postgres/__tests__/queryRouting.test.ts   |  2 +-
+ src/db/postgres/client.ts                     |  4 +-
+ .../theTrailIsSavedInOneTrip.test.ts          | 24 +++++++++
+ src/services/chat.service.ts                  | 53 ++++++++++++++++---
+ 4 files changed, 74 insertions(+), 9 deletions(-)
+ create mode 100644 src/services/__tests__/theTrailIsSavedInOneTrip.test.ts
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index a5a74b6..2a1aa27 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -81,7 +81,7 @@ describe('which pool answers a query', () => {
+     expect(pools).toHaveLength(4);
+     expect(intakePool.config.max).toBe(10);
+     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
+-    expect(shortPool.config.max).toBe(40);
++    expect(shortPool.config.max).toBe(80);
+     expect(longPool.config.max).toBe(10);
+     expect(backgroundPool.config.max).toBe(2);
+     expect(shortPool).toBeDefined();
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index a16694d..2def06d 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -46,7 +46,9 @@ const BASE_POOL_CONFIG = {
+  * pool is the one that serves 50 ms lookups, so it is the one that grows; the
+  * long and background pools stay bounded for the reason given at each.
+  */
+-const SHORT_POOL_MAX = 40;
++// 40 after 5320; 80 after the fourth 200 run (60530), where the prompt's own
++// reads still queued 7 s and a contact search waited 6 s against 2 s alone.
++const SHORT_POOL_MAX = 80;
+ 
+ const pool = new Pool({
+   ...BASE_POOL_CONFIG,
+diff --git a/src/services/__tests__/theTrailIsSavedInOneTrip.test.ts b/src/services/__tests__/theTrailIsSavedInOneTrip.test.ts
+new file mode 100644
+index 0000000..5801f16
+--- /dev/null
++++ b/src/services/__tests__/theTrailIsSavedInOneTrip.test.ts
+@@ -0,0 +1,24 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * The tester's fourth 200 run (60530; Misho, 15 Oct): the run's trail was
++ * written one row per round trip before the owner saw the answer.
++ */
++describe("the run's trail", () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++  it('is saved in one statement, before the trail lap', () => {
++    const saveAt = chat.indexOf('await saveRunTrail(userId, threadId, pending);');
++    expect(saveAt).toBeGreaterThan(-1);
++    expect(chat.indexOf("lap(postRun, 'trail');")).toBeGreaterThan(saveAt);
++    expect(chat).not.toContain('for (const msg of pending) {');
++  });
++
++  it('keeps the written order, a microsecond apart per row, and still marks model-only turns as events', () => {
++    const sql = chat.slice(chat.indexOf('const SAVE_TRAIL_SQL'));
++    expect(sql).toContain('WITH ORDINALITY AS t(role, content, json, kind, ord)');
++    expect(sql).toContain("NOW() + (t.ord * INTERVAL '1 microsecond')");
++    expect(chat).toContain("pending.map((msg) => (isSystemTurnOf(msg) ? 'event' : 'message'))");
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 97397b8..572e870 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -4376,6 +4376,51 @@ const SAVE_AND_TOUCH_SQL = `WITH saved AS (
+   )
+   SELECT id FROM saved`;
+ 
++/**
++ * The tester's fourth 200 run (60530; Misho, 15 Oct: „find why"): the trail —
++ * the run's tool turns, kept for the model's history — was written one row
++ * per round trip, after the answer and before the owner saw it: 2 s alone,
++ * 3 s under load. One statement now, the order kept by a microsecond apart
++ * per row, so history reads back exactly as it was written.
++ */
++const SAVE_TRAIL_SQL = `WITH saved AS (
++    INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, created_at)
++    SELECT $1, $2, t.role, t.content, t.json::jsonb, t.kind,
++           NOW() + (t.ord * INTERVAL '1 microsecond')
++      FROM unnest($3::text[], $4::text[], $5::text[], $6::text[])
++           WITH ORDINALITY AS t(role, content, json, kind, ord)
++    RETURNING id
++  ), touched AS (
++    UPDATE threads SET updated_at = NOW() WHERE id = $2
++  )
++  SELECT count(*) AS saved FROM saved`;
++
++/** Whether a trail turn is addressed to the model rather than said by anyone. */
++function isSystemTurnOf(msg: PendingMessage): boolean {
++  return (
++    msg.role === 'user' &&
++    typeof msg.content === 'string' &&
++    (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content))
++  );
++}
++
++/** Saves the run's trail in one round trip, in order. */
++async function saveRunTrail(
++  userId: string,
++  threadId: number,
++  pending: readonly PendingMessage[],
++): Promise<void> {
++  if (pending.length === 0) return;
++  await query(SAVE_TRAIL_SQL, [
++    userId,
++    threadId,
++    pending.map((msg) => msg.role),
++    pending.map((msg) => (typeof msg.content === 'string' ? msg.content : '')),
++    pending.map((msg) => JSON.stringify(msg.content)),
++    pending.map((msg) => (isSystemTurnOf(msg) ? 'event' : 'message')),
++  ]);
++}
++
+ async function saveMessage(
+   userId: string,
+   threadId: number,
+@@ -16615,13 +16660,7 @@ export async function processChat(
+   // events and the cliffhanger nudge — persist as kind 'event' so they never
+   // render as words the user wrote (ticket 5 item B1: the nudge appeared in the
+   // DOM as the user's own message and the assistant answered IT).
+-  for (const msg of pending) {
+-    const isSystemTurn =
+-      msg.role === 'user' &&
+-      typeof msg.content === 'string' &&
+-      (msg.content.startsWith(RUN_EVENT_PREFIX) || isModelOnlyNudge(msg.content));
+-    await saveMessage(userId, threadId, msg.role, msg.content, isSystemTurn ? 'event' : 'message');
+-  }
++  await saveRunTrail(userId, threadId, pending);
+   lap(postRun, 'trail');
+ 
+   // A run must NEVER end "successfully" with nothing to say: an empty final
+-- 
+2.43.0
+

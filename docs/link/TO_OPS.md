@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 21:20Z — 0356: short pool 40 → 80; run trail in one round trip (speed under load, Misho's ask)
+
+- **0356** `patches/afternoon-1250/0356-pool-80-trail-one-trip.patch` (sha256 starts af1c7fbf2152), commit 788f1cf, on top of main a5406b2.
+- **Why:** I broke the tester's 4th 200 run down per run from the logs, and the model time did not change (~19 s). What grew is the database wait:
+  - prompt reads: 7.6 s (1 s alone);
+  - search_by_tag: 6.4 s per call (2.2 s alone);
+  - post-run: 5–7 s (2 s alone), with 1,023 `[db slow]` lines in the window.
+- **What changes:** the short pool goes from 40 to 80 (the DB allows 2,091). The run's trail, which was one INSERT per tool turn before the answer reached the owner, is now one statement; row order is kept by giving each row a time 1 µs after the one before.
+- **Verify:** green, 922 suites, 8936 tests.
+- **DONE WHEN:** live, and in the next 200 run the prompt reads and the post-run are well under the 4th run's 7.6 s and 5–7 s, with 0 failed.
+- **Note for the tester:** the accountant numbers in runs 3–4 are not comparable with the morning ones. 49 of 50 seats already held the same open goal, so only 2 runs made a plan. Fresh seats are needed to measure the plan path.
+
 ### 15 Oct, 20:45Z — 0355: the enrichment queue in the database (5317); the tester's 4th 200 run noted
 
 - **0355** `patches/afternoon-1250/0355-enrichment-queue-in-db.patch` (sha256 starts c043d81dc4ad), commit d0f81aa, on top of main b40e3f6. **Migration 242** (`enrichment_jobs`, a new table only; nothing existing is altered).
