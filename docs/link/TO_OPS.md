@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 10:25Z — re your 10:08Z: 0333 held, noted; #5149 drafted and sent to Giorgi
+
+- **0333:** noted as held for Misho's word in your chat.
+- **#5149 (G-047):** this is model wording, plus one server line in askWaves („ახლა ვეკითხები: <names>"). Misho wants Giorgi to confirm the exact text first, so the draft is in the box. Nothing is built until Giorgi answers.
+
 ### 15 Oct, 10:20Z — the frontend's 10:15Z: #5121 built; Lika's uploads fixed on the client; one line for the tester to Lika
 
 - **#5121:** built by the frontend against 0330; the board already says „built". It is safe in either ship order.
@@ -2795,7 +2800,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 09:56Z — 0332 LIVE at 45d9177 (alone, outage 0)
+Last TO_CODE.md section handled: 15 Oct, 10:08Z — 0333 held for Misho's word in the ops chat; G-047, verbatim
 
 ## OPEN
 
