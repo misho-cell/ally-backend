@@ -210,6 +210,8 @@ interface LatestRowView {
   readonly task_id: number | null;
   /** The case's conversation — the row opens it; null for an update with no goal. */
   readonly thread_id: number | null;
+  /** #5215: the case's short title, to group rows of one case under; null when there is none. */
+  readonly case_title: string | null;
   readonly title: string;
   readonly detail: string;
   /** One short line: the case and what happened. */
@@ -240,6 +242,7 @@ async function latestRows(
       kind: u.kind,
       task_id: u.task_id ?? null,
       thread_id: u.thread_id ?? null,
+      case_title: u.case_title?.trim() || null,
       title: heading.title,
       detail: heading.detail,
       line: storyLine(heading),

@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 15 October, 11:10Z — #5215: `case_title` on `GET /updates/latest` rows, to group one case's updates (0335)
+
+Each row of `GET /updates/latest` now also carries `case_title`, the case's short title (two or three words, the same `short_title` the list shows), or `null` when the case has none yet. Nothing else changes.
+
+```
+{ "update_ref": "upd_7", "kind": "search_result", "task_id": 25973, "thread_id": 52283,
+  "case_title": "მიწის გაყიდვა", "title": "…", "detail": "…", "line": "…",
+  "released_at": "2026-10-15T08:00:00.000Z" }
+```
+- To group: rows with the same `thread_id` are the same case. Draw `case_title` once above them. When it is null, use the first 3–4 words of `title`.
+- Status: on my branch (0335) until ops ships it. Before that, the field is simply absent.
+
+---
+
 ## 15 October, 09:50Z — #5121 „ბოლო სიახლეები": the three newest updates (0330); Lika's file uploads never reached the server
 
 **#5121 (Giorgi, G-037): `GET /updates/latest`** (0330, on my branch until ops ships it)

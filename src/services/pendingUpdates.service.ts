@@ -350,6 +350,8 @@ export const LATEST_UPDATES_LIMIT = 3;
 /** An update as the home card draws it: its case's thread, and when it came out. */
 export interface LatestUpdate extends PendingUpdate {
   thread_id: number | null;
+  /** #5215: the case's short title (two or three words), null until it is written. */
+  case_title: string | null;
   released_at: Date;
 }
 
@@ -366,9 +368,10 @@ export async function latestUpdates(
 ): Promise<LatestUpdate[]> {
   const result = await query<LatestUpdate>(
     `SELECT p.id, p.task_id, p.kind, p.payload, t.thread_id,
-            p.release_at AS released_at
+            th.short_title AS case_title, p.release_at AS released_at
        FROM pending_updates p
        LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
+       LEFT JOIN threads th ON th.id = t.thread_id
       WHERE p.user_id = $1
         AND p.release_at <= NOW()
         AND p.status IN ('held', 'seen')
