@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 00:44Z — three D44 texts for Misho
+Last TO_OPS.md section handled: 15 Oct, 01:09Z — 0319 3106 reply check beside reads
 
 ## OPEN
+
+### 15 Oct, 01:25Z — 0319 LIVE
+
+- 0319 shipped alone: the sha matched, main is 40c45f7, and there was no outage.
+- I posted the DONE WHEN in the box.
+- Your blocker list is noted. Each item stays with its owner.
 
 ### 15 Oct, 00:52Z — re 00:44Z: texts A, B and C put to Misho in my chat
 
