@@ -1,0 +1,123 @@
+From 8e5c126796f8a4b9623ef6bd903cd7da256b3155 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 07:30:29 +0000
+Subject: [PATCH] 3106 (speed): the run language reads start beside the prompt
+ build
+
+The owner's earlier lines and the saved language preference were read one
+after the other after the prompt was built, each a ~145 ms round trip before
+the model was called. They depend on nothing the build does, so they now
+start beside it and are awaited where they were awaited before. A language
+the owner asks for in this line is still saved through askedLanguage; a
+failed preference read is still logged and read as none.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...theLanguageReadsRunBesideThePrompt.test.ts | 42 +++++++++++++++++++
+ src/services/chat.service.ts                  | 19 ++++++---
+ 2 files changed, 56 insertions(+), 5 deletions(-)
+ create mode 100644 src/services/__tests__/theLanguageReadsRunBesideThePrompt.test.ts
+
+diff --git a/src/services/__tests__/theLanguageReadsRunBesideThePrompt.test.ts b/src/services/__tests__/theLanguageReadsRunBesideThePrompt.test.ts
+new file mode 100644
+index 0000000..a78ea87
+--- /dev/null
++++ b/src/services/__tests__/theLanguageReadsRunBesideThePrompt.test.ts
+@@ -0,0 +1,42 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 3106 (speed). The owner's earlier lines and the saved language preference
++ * were read one after the other, after the prompt was built, each a ~145 ms
++ * round trip before the model was called. They depend on nothing the build
++ * does, so they start beside it and are awaited where they were awaited.
++ */
++describe('the run language reads start beside the prompt build', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++  const namedAt = chat.indexOf("steps.mark('named');");
++  const buildAt = chat.indexOf("'prompt',", namedAt);
++  const run = chat.slice(namedAt);
++
++  it('starts both reads before the prompt build', () => {
++    const spokenAt = chat.indexOf('const spokenBeforeRead = ownerMessages(threadId)', namedAt);
++    const savedAt = chat.indexOf('const savedLanguageRead = languagePreference(userId)', namedAt);
++    expect(namedAt).toBeGreaterThan(-1);
++    expect(spokenAt).toBeGreaterThan(namedAt);
++    expect(savedAt).toBeGreaterThan(namedAt);
++    expect(buildAt).toBeGreaterThan(spokenAt);
++    expect(buildAt).toBeGreaterThan(savedAt);
++  });
++
++  it('reads the owner lines only through the early read', () => {
++    expect(run).toContain('const spokenBefore = await spokenBeforeRead;');
++    expect(run).not.toContain('const spokenBefore = await ownerMessages(threadId)');
++  });
++
++  it('still saves a language the owner asks for in this line', () => {
++    expect(run).toContain('ownerAbsent || requestedLanguage(userMessage) === null');
++    expect(run).toContain(': await askedLanguage(userId, userMessage);');
++  });
++
++  it('logs a failed preference read instead of dropping it', () => {
++    const read = run.slice(run.indexOf('const savedLanguageRead'));
++    const body = read.slice(0, read.indexOf('});'));
++    expect(body).toContain('[language-preference]');
++    expect(body).toContain('return null;');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 07b3fe8..e35f45f 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -86,7 +86,7 @@ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+ import { asksToReopen } from './reopenIntent';
+ import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
+ import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
+-import { askedLanguage, languagePreference } from './languagePreference';
++import { askedLanguage, languagePreference, requestedLanguage } from './languagePreference';
+ import {
+   carriesPlanSentence,
+   introPlanOnly,
+@@ -16103,6 +16103,14 @@ export async function processChat(
+ 
+   const listedSmallTalk = !ownerAbsent && isToolFreeSmallTalk(userMessage);
+   steps.mark('named');
++  // 3106 (speed): the two reads the run's language needs depend on nothing the
++  // prompt build does, so they start beside it instead of after it.
++  const spokenBeforeRead = ownerMessages(threadId).catch(() => [] as string[]);
++  const savedLanguageRead = languagePreference(userId).catch((err: unknown) => {
++    // eslint-disable-next-line no-console
++    console.warn(`[language-preference] user ${userId}:`, (err as Error).message);
++    return null;
++  });
+   const [agentPrompt, tools, history] = await Promise.all([
+     steps.timed(
+       'prompt',
+@@ -16242,7 +16250,7 @@ export async function processChat(
+    * row. It is the same query `threadLanguage` has always used, which is the
+    * function this code was quietly re-implementing.
+    */
+-  const spokenBefore = await ownerMessages(threadId).catch(() => [] as string[]);
++  const spokenBefore = await spokenBeforeRead;
+   /**
+    * An ENGINE EVENT never decides the language, and a split goal is why.
+    *
+@@ -16289,9 +16297,10 @@ export async function processChat(
+     runLanguages.set(runId, language);
+   }
+   // D752: the owner's own request for a language wins over everything read above.
+-  const asked = ownerAbsent
+-    ? await languagePreference(userId).catch(() => null)
+-    : await askedLanguage(userId, userMessage);
++  const asked =
++    ownerAbsent || requestedLanguage(userMessage) === null
++      ? await savedLanguageRead
++      : await askedLanguage(userId, userMessage);
+   if (asked !== null && asked !== language) {
+     // eslint-disable-next-line no-console
+     console.log(`[run-language] run ${runId}: the owner asked for ${asked} — using it (D752)`);
+-- 
+2.43.0
+

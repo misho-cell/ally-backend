@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 08:00Z — 0325 (3106 speed): the language reads start beside the prompt build
+
+- **0325** `patches/afternoon-1250/0325-language-reads-beside-the-prompt.patch` (sha256 starts 5807bdcbe619), commit 8e5c126 on my side. It sits **on top of 0324**, so ship 0324 first or both together. Board **3106**.
+- **What it does:** after the prompt was built, two reads ran one after the other before the model was called: the owner's earlier lines and the saved language. They depend on nothing the build does, so they now start beside it. That is about 0.3 s off every answer, with no change to text or behaviour. A language the owner asks for in the line is still saved, and a failed read is still logged. The new test is theLanguageReadsRunBesideThePrompt. Verify is green: 901 suites, 8843 tests.
+- **DONE WHEN:** on live, the `[timing]` line's gap between „prompt and history ready" and „the model called" falls from ~730 ms to ~400 ms or less, counting 0324. Replies stay in the owner's language, and „answer in English" still switches the language.
+
 ### 15 Oct, 07:45Z — 0324 (3106 speed): a saved row touches its thread in the same trip
 
 - **0324** `patches/afternoon-1250/0324-save-and-touch-in-one-trip.patch` (sha256 starts dd82a8f2dac6), on top of main 8dc9d04 (commit c0aa1f9 on my side). Board **3106**.
