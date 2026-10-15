@@ -4326,6 +4326,24 @@ export async function keepUserMessage(
   }
 }
 
+/**
+ * 3106 (speed): the row and the thread's „last touched" in ONE round trip.
+ *
+ * They were two statements, one after the other, and every answer saves four
+ * or more rows (the owner's line, each tool call and its result, the reply).
+ * The [post-run] lines put each round trip at ~145 ms, so the second statement
+ * cost ~0.6 s of every answer with one tool turn. A data-modifying CTE always
+ * runs, referenced or not, so the thread is touched exactly as before.
+ */
+const SAVE_AND_TOUCH_SQL = `WITH saved AS (
+    INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by)
+    VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10)
+    RETURNING id
+  ), touched AS (
+    UPDATE threads SET updated_at = NOW() WHERE id = $2
+  )
+  SELECT id FROM saved`;
+
 async function saveMessage(
   userId: string,
   threadId: number,
@@ -4347,22 +4365,18 @@ async function saveMessage(
   answeredBy: string | null = null,
 ): Promise<number> {
   const textContent = typeof content === 'string' ? content : '';
-  const result = await query<{ id: number }>(
-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10) RETURNING id',
-    [
-      userId,
-      threadId,
-      role,
-      textContent,
-      JSON.stringify(content),
-      kind,
-      runId,
-      choices === null ? null : JSON.stringify(choices),
-      shareText,
-      answeredBy,
-    ],
-  );
-  await touchThread(threadId);
+  const result = await query<{ id: number }>(SAVE_AND_TOUCH_SQL, [
+    userId,
+    threadId,
+    role,
+    textContent,
+    JSON.stringify(content),
+    kind,
+    runId,
+    choices === null ? null : JSON.stringify(choices),
+    shareText,
+    answeredBy,
+  ]);
   // The tester's 45147: a run's own answer takes back its own cut-off notice.
   if (role === 'assistant' && kind === 'message' && runId !== null) {
     await withdrawOwnCutNotice(threadId, runId).catch((err: unknown) => {
