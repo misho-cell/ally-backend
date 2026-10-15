@@ -1,0 +1,75 @@
+From 6a79d9f4ffddff29699e6ab17e8edf4dadad5992 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 13:49:18 +0000
+Subject: [PATCH] =?UTF-8?q?Lika=20=E2=84=96181:=20the=20search-first=20not?=
+ =?UTF-8?q?e=20opens=20like=20every=20other=20server=20turn?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Lika's phone (thread 52116): the note to search arrived as a user line opening
+„(სისტემური შენიშვნა:", and the run answered „ეს ნაწილი სისტემური ფორმით არ
+მოსულა… ვერ ავყვები" — it searched nothing and asked her what she needed (2 of
+14 such notes in a week). It now opens with the engine's event mark, as every
+other server turn does. Misho's yes on the exact change (15 Oct): only the
+opening and the closing bracket; the words are the same.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aNewGoalSearchesBeforeItAnswers.test.ts         |  4 ++++
+ src/services/replyGuards.ts                         | 13 +++++++++++--
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/src/services/__tests__/aNewGoalSearchesBeforeItAnswers.test.ts b/src/services/__tests__/aNewGoalSearchesBeforeItAnswers.test.ts
+index c9491c5..dc23fe9 100644
+--- a/src/services/__tests__/aNewGoalSearchesBeforeItAnswers.test.ts
++++ b/src/services/__tests__/aNewGoalSearchesBeforeItAnswers.test.ts
+@@ -1,6 +1,7 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+ import { SEARCH_FIRST_NUDGE, asksAboutOwnPeople } from '../replyGuards';
++import { RUN_EVENT_PREFIX } from '../chat.service';
+ 
+ /**
+  * The tester's 1137 (37036): a goal opened from „იურისტი მჭირდება… ვინ მყავს?",
+@@ -11,6 +12,9 @@ const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+ describe('a run that opened a goal and searched nothing', () => {
+   it('is asked once to search, never to claim it cannot see the network', () => {
+     expect(SEARCH_FIRST_NUDGE).toContain('search_by_tag');
++    // Lika №181: it opens like every other server turn, never as a self-styled „system note".
++    expect(SEARCH_FIRST_NUDGE.startsWith(`${RUN_EVENT_PREFIX} `)).toBe(true);
++    expect(SEARCH_FIRST_NUDGE).not.toContain('სისტემური შენიშვნა');
+     expect(SEARCH_FIRST_NUDGE).toContain('არ თქვა, რომ ქსელს ვერ ხედავ');
+   });
+ 
+diff --git a/src/services/replyGuards.ts b/src/services/replyGuards.ts
+index 58c81a3..cc170ab 100644
+--- a/src/services/replyGuards.ts
++++ b/src/services/replyGuards.ts
+@@ -543,11 +543,20 @@ export function asksWhoTheyHave(ownerLine: string): boolean {
+   return ASKS_WHO_THEY_HAVE_RE.test(ownerLine.trim());
+ }
+ 
++/**
++ * Lika №181 (her phone, 15 Oct, thread 52116): the note opened „(სისტემური
++ * შენიშვნა:" and arrived as a user line, and the run answered „ეს ნაწილი
++ * სისტემური ფორმით არ მოსულა… ვერ ავყვები" — it searched nothing and asked her
++ * what she needed; 2 of 14 such notes in a week. It now opens like every other
++ * server turn, with the engine's event mark (RUN_EVENT_PREFIX in chat.service,
++ * spelled here because that module imports this one). Misho's yes on the exact
++ * change, 15 Oct: only the opening and the closing bracket; the words are the same.
++ */
+ export const SEARCH_FIRST_NUDGE =
+-  '(სისტემური შენიშვნა: ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
++  '[მოვლენა] ეს ახლახან გახსნილი მიზანია და ამ გაშვებაში არცერთი ძებნა არ გაგიკეთებია. ' +
+   'მფლობელის ქსელზე წვდომა გაქვს ხელსაწყოებით — ახლავე მოძებნე (search_by_tag ორივე დამწერლობით, ' +
+   'search_by_insight, search_second_degree) და პასუხი ნაპოვნიდან დაწერე. არ თქვა, რომ ქსელს ვერ ხედავ, ' +
+-  'და მფლობელს სახელები არ სთხოვო.)';
++  'და მფლობელს სახელები არ სთხოვო.';
+ 
+ /**
+  * #961 (the tester's 1137/1138, 37322): „გეგმის დასამტკიცებლად მითხარი: კი?" —
+-- 
+2.43.0
+

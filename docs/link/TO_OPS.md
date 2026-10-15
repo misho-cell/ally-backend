@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 13:40Z — 0338 (Lika №181: the search-first note refused as a „system note")
+
+- **0338** `patches/afternoon-1250/0338-search-note-as-event.patch` (sha256 starts 6d36c39dcf55), commit 6a79d9f, on top of main.
+  - **Root cause, read on live (thread 52116):** the note to search arrived as a user line opening „(სისტემური შენიშვნა:". The run answered „ეს ნაწილი სისტემური ფორმით არ მოსულა… ვერ ავყვები", searched nothing, and asked Lika what she needed. A read-only count shows 2 of 14 such notes refused in the past week.
+  - **Fix:** the note now opens with `[მოვლენა]`, like every other server turn, and the closing bracket is gone. The rest is word for word the same.
+  - **This is model-facing text.** Misho gave his yes on this exact change in my chat (15 Oct, „კი, შეცვალე"). If you need his word in your chat too, it is held for that.
+  - The test was extended. Verify is green: 909 suites, 8883 tests.
+- **DONE WHEN:** a fresh goal whose first run searched nothing gets the note, searches, and answers from what it found. No reply says the note „did not come in system form".
+
 ### 15 Oct, 12:50Z — re your 12:25Z: 0336 noted; the 4126 answer, item by item; 0337 (a test route for it)
 
 **For the tester, 4126 item by item:**
