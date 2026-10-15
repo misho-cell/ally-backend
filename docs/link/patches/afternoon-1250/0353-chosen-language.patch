@@ -1,0 +1,175 @@
+From e08e74f861251b63a94926c07356b824c140b8ce Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 19:34:50 +0000
+Subject: [PATCH] 5285: the language the owner chose in the app answers their
+ own line
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Lika №27: English chosen on her profile, an English question, a Georgian reply
+— her other conversations outvoted the line in front of the run. The app sends
+the chosen language as X-Locale on every request; the send route now passes it
+to the run, and it decides when the owner's line carries no language or the
+same one. A line written in another language still decides for itself, and a
+language asked for in words (D752) still wins. Engine wakes are unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts              |  7 +++-
+ .../theChosenLanguageAnswers.test.ts          | 34 +++++++++++++++++++
+ src/services/chat.service.ts                  | 11 ++++++
+ src/services/runLanguage.ts                   | 13 +++++++
+ 4 files changed, 64 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/theChosenLanguageAnswers.test.ts
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index f32f759..eb678ee 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -68,7 +68,7 @@ import {
+ import { leaveIntakeLane, onIntakeLane, query } from '../../db/postgres/client';
+ import { checkRunAllowance, takeGraceAnswer } from '../../services/tokenWallet.service';
+ import { nextRenewalDay } from '../../services/renewalDay';
+-import { thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
++import { asRunLanguage, thisOneWasOnUs, walledOutOfTokens } from '../../services/runLanguage';
+ import { budgetWindow } from '../../services/budgetWindow';
+ import {
+   subscribeUserEvents,
+@@ -1263,6 +1263,7 @@ threadsRouter.post(
+             typeof in_reply_to_message_id === 'string' ? in_reply_to_message_id : undefined,
+           needsTitle,
+           askedFrom,
++          chosenLanguage: asRunLanguage(req.get('X-Locale')),
+         }),
+       );
+     } catch (error) {
+@@ -1369,6 +1370,8 @@ export interface OwnerRun {
+   readonly askedFrom?: string | null;
+   /** 958: when the owner's message was stored; absent for a resumed run. */
+   readonly storedAt?: number;
++  /** 5285: the language the owner chose in the app (`X-Locale`); absent when none was chosen. */
++  readonly chosenLanguage?: RunLanguage | null;
+ }
+ 
+ /**
+@@ -1453,6 +1456,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
+     lastFreeAnswer = false,
+     askedFrom = null,
+     storedAt,
++    chosenLanguage = null,
+   } = run;
+   const runStartedAt = new Date();
+ 
+@@ -1493,6 +1497,7 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
+             // not write it a second time — unless that write failed, in
+             // which case the ordinary one inside the run is the fallback.
+             ...(storedOnArrival && { alreadyStored: true }),
++            chosenLanguage,
+             ...(inReplyToMessageId !== undefined && { inReplyToMessageId }),
+           }),
+       hardTimeout,
+diff --git a/src/services/__tests__/theChosenLanguageAnswers.test.ts b/src/services/__tests__/theChosenLanguageAnswers.test.ts
+new file mode 100644
+index 0000000..554c287
+--- /dev/null
++++ b/src/services/__tests__/theChosenLanguageAnswers.test.ts
+@@ -0,0 +1,34 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++import { chosenLanguageDecides } from '../runLanguage';
++
++/** 5285 (Lika №27): English chosen in the app, an English question, a Georgian answer. */
++describe('the language chosen in the app', () => {
++  it('decides when the line says the same, or nothing about language', () => {
++    expect(chosenLanguageDecides('en', 'Who do I know in marketing?')).toBe(true);
++    expect(chosenLanguageDecides('en', '👍')).toBe(true);
++  });
++
++  it('gives way to a line written in another language, and to no choice at all', () => {
++    expect(chosenLanguageDecides('en', 'ვინ ვიცნობ მარკეტინგში?')).toBe(false);
++    expect(chosenLanguageDecides(null, 'Who do I know in marketing?')).toBe(false);
++  });
++
++  it('is read from the app header for an owner run, and asked before D752', () => {
++    const route = readFileSync(
++      join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
++      'utf8',
++    );
++    expect(route).toContain("chosenLanguage: asRunLanguage(req.get('X-Locale')),");
++    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++    const chosenAt = chat.indexOf(
++      'const chosen = ownerAbsent ? null : (intent?.chosenLanguage ?? null);',
++    );
++    const askedAt = chat.indexOf(
++      "// D752: the owner's own request for a language wins over everything read above.",
++    );
++    expect(chosenAt).toBeGreaterThan(-1);
++    expect(askedAt).toBeGreaterThan(chosenAt);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 062b524..97397b8 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -149,6 +149,7 @@ import { getInviteLink } from './referralLink.service';
+ import { getNextQuestion, recordAnswer } from './partH.service';
+ import {
+   carriesLanguage,
++  chosenLanguageDecides,
+   detectRunLanguage,
+   languageOfConversation,
+   genericStepCaption,
+@@ -15550,6 +15551,8 @@ export interface RunIntent {
+    * it must not be appended to the prompt a second time.
+    */
+   alreadyStored?: boolean;
++  /** 5285: the language the owner chose on their profile (`X-Locale`), when they chose one. */
++  chosenLanguage?: RunLanguage | null;
+ }
+ 
+ /**
+@@ -16383,6 +16386,14 @@ export async function processChat(
+     language = conversationLanguage;
+     runLanguages.set(runId, language);
+   }
++  // 5285: the language the owner chose in the app, over their other conversations.
++  const chosen = ownerAbsent ? null : (intent?.chosenLanguage ?? null);
++  if (chosen !== null && chosen !== language && chosenLanguageDecides(chosen, userMessage)) {
++    // eslint-disable-next-line no-console
++    console.log(`[run-language] run ${runId}: the owner chose ${chosen} in the app — using it`);
++    language = chosen;
++    runLanguages.set(runId, language);
++  }
+   // D752: the owner's own request for a language wins over everything read above.
+   const asked =
+     ownerAbsent || requestedLanguage(userMessage) === null
+diff --git a/src/services/runLanguage.ts b/src/services/runLanguage.ts
+index c0822ab..9ccc1e8 100644
+--- a/src/services/runLanguage.ts
++++ b/src/services/runLanguage.ts
+@@ -1165,6 +1165,19 @@ export function messageHeldNoTokens(language: RunLanguage, renewal: string): str
+  * Both answers were correct, which is why nobody would ever have filed it as a
+  * bug. It would just have looked strange, permanently. One fact, one source.
+  */
++/**
++ * 5285 (Lika №27): with English chosen on her profile she wrote in English and
++ * was answered in Georgian — her other conversations, all Georgian, outvoted
++ * the line in front of the run. The language she chose decides when her line
++ * says nothing about language, or says the same; a line written in another
++ * language still decides for itself, and a language she asks for in words
++ * (D752) still wins over both.
++ */
++export function chosenLanguageDecides(chosen: RunLanguage | null, message: string): boolean {
++  if (chosen === null) return false;
++  return !carriesLanguage(message) || detectRunLanguage(message) === chosen;
++}
++
+ export function asRunLanguage(value: unknown): RunLanguage | null {
+   const code = typeof value === 'string' ? value.trim().slice(0, 2).toLowerCase() : '';
+   return code === 'ka' || code === 'en' || code === 'ru' || code === 'es' ? code : null;
+-- 
+2.43.0
+

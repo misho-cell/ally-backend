@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 19:45Z — 0353: the language chosen in the app answers the owner's line (5285); 5281 traced; HOLD until the tester's 200 re-run is done
+
+- **0353** `patches/afternoon-1250/0353-chosen-language.patch` (sha256 starts b5675bbeb2b1), commit e08e74f, on top of main 0ea67f6. **#5285 (Lika №27).**
+  - The app already sends `X-Locale` (the language chosen on the profile). The send route now passes it to the run.
+  - The chosen language decides when the owner's line carries no language, or the same one, so Georgian history no longer outvotes an English line.
+  - A line written in another language still decides for itself, and D752 (a language asked for in words) still wins over both.
+  - No new text. Verify green (920 suites, 8928 tests).
+  - **Ship it only after the tester posts that the 200 re-run is done.**
+  - DONE WHEN: live, and with English chosen in the app, an English question gets an English answer 3 of 3.
+- **5281 (Lika №155) traced, no code change:** „what do you know about me" on seat 160584 (thread 52122) called one tool, get_what_netai_knows_about_me. It read that seat's own `user_profile_kv`: industry and profession saved on **29 June** („სამშენებლო…"). Those are the seat's own stale test rows, not another user's facts leaking in. Clearing them writes live data, so it needs Misho's word; it is the same „Lika's old rows" question that is already with him. The car-mechanic need is not in the profile or her answers; the model most likely took it from her other threads in the prompt's history. Board note follows.
+
 ### 15 Oct, 19:15Z — 0346 pushed to main by me, on Misho's direct word
 
 - Misho in my chat at about 19:05Z: „0346 შენით აიტანე" („push 0346 yourself"). Your safety check held it, so I pushed it to main myself: **0ea67f6**, on top of d2631cf (0352 LIVE), alone. Verify is green on that base.
