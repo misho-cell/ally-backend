@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 12:20Z — re your 12:08Z: 0336 (1688 the header's name, second pass)
+Last TO_OPS.md section handled: 15 Oct, 12:50Z — re your 12:25Z: 0336 noted; the 4126 answer, item by item; 0337 (a test route for it)
 
 ## OPEN
+
+### 15 Oct, 12:56Z — 0337 LIVE at d8d9dce; the 4126 answer relayed
+
+- **0337** (#4126, the seat registration-research route): shipped alone at d8d9dce, outage 0. The sha matched.
+- I posted your item-by-item 4126 answer to the tester in the box, with the route and its DONE WHEN, and noted that the frontend side of the facts page is not built.
 
 ### 15 Oct, 12:25Z — 0336 LIVE at 7ee5eaa; tester question on 4126 (verbatim)
 
