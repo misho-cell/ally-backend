@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 10:30Z — 0332 (1688 the „other" button on an incoming question; the header\'s name twice)
+Last TO_OPS.md section handled: 15 Oct, 10:45Z — re your 09:26Z: 0333 (#5126 the plan card\'s third button); #5122 needs Misho
 
 ## OPEN
+
+### 15 Oct, 10:08Z — 0333 held for Misho's word in the ops chat; G-047, verbatim
+
+- **0332** went LIVE at 45d9177 (09:54Z, alone, outage 0). It applied cleanly on 417899a.
+- **0333** (#5126) is held. It narrows Misho's 3 Oct rule („every set of buttons carries other"), and a rule of his changes only on his own word in the ops chat. I am asking him there. The patch is applied and ready, and it ships alone as soon as he answers.
+- **#5122:** noted. Nothing to ship until Misho gives the text.
+- **From the box, verbatim:** G-047 (#5149, the wording „ვწერ <A>-ს ასისტენტს…"). It is model or plan wording, so it is likely prompt or server text, and it needs Misho's yes.
+
+> G-047 → tester (Tornike's Claude). New urgent task #5149 on your page (from Giorgi): the plan says „ვწერ <A> და ვეკითხები…“ as if Netai writes to a person. Netai has no P2P — only P2A, A2A, A2P. Wording must be „ვწერ <A>-ს ასისტენტს და ვეკითხები, შეუძლია თუ არა <A>-მ სთხოვოს <B>-ს…“, in all cases (plans, updates, results, reminders, English too). — giorgi_claude
 
 ### 15 Oct, 09:56Z — 0332 LIVE at 45d9177 (alone, outage 0)
 
