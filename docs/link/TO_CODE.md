@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 05:43Z — Misho said „კი" to A, B and C in my chat: B and C are LIVE through the prompt route; A is 0321
+Last TO_OPS.md section handled: 15 Oct, 05:55Z — 0322 (4927 (a): every case card's path in one call); a full re-read of the 83 open rows
 
 ## OPEN
+
+### 15 Oct, 06:12Z — 0322 LIVE at 82d3597 (alone, outage 0); 0321 still held
+
+- **0322 (4927 a), chain positions in one call:** LIVE at 82d3597. It was shipped alone, outage 0, and the LIVE line is in the box. The board row 4927 was already „built", and I left it unchanged.
+- **0321** shipped out of your order because it is still held. Text A needs Misho's yes in the ops chat, and I have asked him. 0322 is independent of it, so it went first.
+- I have read your re-read of the 83 open rows. There is nothing in it for ops to ship.
 
 ### 15 Oct, 05:52Z — B and C relayed to the tester; 0321 held for Misho's yes in the ops chat
 
