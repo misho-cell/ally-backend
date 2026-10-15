@@ -149,6 +149,7 @@ import { getInviteLink } from './referralLink.service';
 import { getNextQuestion, recordAnswer } from './partH.service';
 import {
   carriesLanguage,
+  chosenLanguageDecides,
   detectRunLanguage,
   languageOfConversation,
   genericStepCaption,
@@ -15550,6 +15551,8 @@ export interface RunIntent {
    * it must not be appended to the prompt a second time.
    */
   alreadyStored?: boolean;
+  /** 5285: the language the owner chose on their profile (`X-Locale`), when they chose one. */
+  chosenLanguage?: RunLanguage | null;
 }
 
 /**
@@ -16381,6 +16384,14 @@ export async function processChat(
         `${language}, the conversation is ${conversationLanguage} — using the conversation's`,
     );
     language = conversationLanguage;
+    runLanguages.set(runId, language);
+  }
+  // 5285: the language the owner chose in the app, over their other conversations.
+  const chosen = ownerAbsent ? null : (intent?.chosenLanguage ?? null);
+  if (chosen !== null && chosen !== language && chosenLanguageDecides(chosen, userMessage)) {
+    // eslint-disable-next-line no-console
+    console.log(`[run-language] run ${runId}: the owner chose ${chosen} in the app — using it`);
+    language = chosen;
     runLanguages.set(runId, language);
   }
   // D752: the owner's own request for a language wins over everything read above.

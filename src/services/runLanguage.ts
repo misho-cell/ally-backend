@@ -1165,6 +1165,19 @@ export function messageHeldNoTokens(language: RunLanguage, renewal: string): str
  * Both answers were correct, which is why nobody would ever have filed it as a
  * bug. It would just have looked strange, permanently. One fact, one source.
  */
+/**
+ * 5285 (Lika №27): with English chosen on her profile she wrote in English and
+ * was answered in Georgian — her other conversations, all Georgian, outvoted
+ * the line in front of the run. The language she chose decides when her line
+ * says nothing about language, or says the same; a line written in another
+ * language still decides for itself, and a language she asks for in words
+ * (D752) still wins over both.
+ */
+export function chosenLanguageDecides(chosen: RunLanguage | null, message: string): boolean {
+  if (chosen === null) return false;
+  return !carriesLanguage(message) || detectRunLanguage(message) === chosen;
+}
+
 export function asRunLanguage(value: unknown): RunLanguage | null {
   const code = typeof value === 'string' ? value.trim().slice(0, 2).toLowerCase() : '';
   return code === 'ka' || code === 'en' || code === 'ru' || code === 'es' ? code : null;
