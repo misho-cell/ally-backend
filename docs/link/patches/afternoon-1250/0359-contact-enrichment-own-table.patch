@@ -1,0 +1,249 @@
+From db73207ec2e4e5bbea68af0dc6a51186f6790f3f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 22:01:35 +0000
+Subject: [PATCH] 5317 hotfix: the contact enrichment queue gets its own table
+
+enrichment_jobs was already the nightly enrichment job's table (010), so
+242's CREATE TABLE IF NOT EXISTS was skipped and every queue statement
+failed on "column user_id does not exist": no saved contact has been
+scored or enriched since 0355 went live, and the ticker started four
+workers every five seconds into the same error (1,390 log lines in half
+an hour).
+
+- 243 creates contact_enrichment_jobs; the queue reads and writes only it.
+- 242 is recorded as run; its body is now a no-op with the reason.
+- After a worker stops on a queue error, no worker starts for 60 s.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/242_enrichment_jobs.sql        | 28 +++--------
+ .../243_contact_enrichment_jobs.sql           | 22 ++++++++
+ ...eueErrorPausesTheEnrichmentWorkers.test.ts | 50 +++++++++++++++++++
+ ...theEnrichmentQueueOutlivesARestart.test.ts |  2 +-
+ src/services/enrichmentQueue.ts               | 25 +++++++---
+ 5 files changed, 97 insertions(+), 30 deletions(-)
+ create mode 100644 src/db/postgres/migrations/243_contact_enrichment_jobs.sql
+ create mode 100644 src/services/__tests__/aQueueErrorPausesTheEnrichmentWorkers.test.ts
+
+diff --git a/src/db/postgres/migrations/242_enrichment_jobs.sql b/src/db/postgres/migrations/242_enrichment_jobs.sql
+index bdcef95..c2f4e1b 100644
+--- a/src/db/postgres/migrations/242_enrichment_jobs.sql
++++ b/src/db/postgres/migrations/242_enrichment_jobs.sql
+@@ -1,22 +1,6 @@
+--- 5317 (the tester's launch report, F10; Misho's yes to Q7, 15 Oct): the queue
+--- of saved contacts waiting for their score and enrichment lived in memory, so
+--- every deploy or restart dropped what was waiting. It is kept here instead,
+--- one row per saved contact, claimed by the workers in arrival order.
+-CREATE TABLE IF NOT EXISTS enrichment_jobs (
+-  id                 BIGSERIAL PRIMARY KEY,
+-  user_id            INTEGER NOT NULL,
+-  user_composite_key TEXT NOT NULL,
+-  contact_phone      TEXT NOT NULL,
+-  alias              TEXT NOT NULL,
+-  -- false: score only — the owner's daily enrichment share was used up.
+-  enrich             BOOLEAN NOT NULL,
+-  status             TEXT NOT NULL DEFAULT 'queued'
+-                       CHECK (status IN ('queued', 'running', 'done', 'failed')),
+-  error              TEXT,
+-  queued_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+-  started_at         TIMESTAMPTZ,
+-  finished_at        TIMESTAMPTZ
+-);
+-
+-CREATE INDEX IF NOT EXISTS enrichment_jobs_queued_idx
+-  ON enrichment_jobs (id) WHERE status = 'queued';
++-- 5317 (15 Oct): this file once created the contact enrichment queue under the
++-- name enrichment_jobs. That name was already the nightly job's table (010), so
++-- IF NOT EXISTS skipped it and every queue statement failed. The queue is
++-- created in 243 as contact_enrichment_jobs; this file is recorded as run and
++-- does nothing.
++SELECT 1;
+diff --git a/src/db/postgres/migrations/243_contact_enrichment_jobs.sql b/src/db/postgres/migrations/243_contact_enrichment_jobs.sql
+new file mode 100644
+index 0000000..f878406
+--- /dev/null
++++ b/src/db/postgres/migrations/243_contact_enrichment_jobs.sql
+@@ -0,0 +1,22 @@
++-- 5317 (the tester's launch report, F10; Misho's yes to Q7, 15 Oct): the queue
++-- of saved contacts waiting for their score and enrichment, one row per saved
++-- contact, claimed by the workers in arrival order. Its own name: enrichment_jobs
++-- is the nightly job's table (010), which 242 collided with.
++CREATE TABLE IF NOT EXISTS contact_enrichment_jobs (
++  id                 BIGSERIAL PRIMARY KEY,
++  user_id            INTEGER NOT NULL,
++  user_composite_key TEXT NOT NULL,
++  contact_phone      TEXT NOT NULL,
++  alias              TEXT NOT NULL,
++  -- false: score only — the owner's daily enrichment share was used up.
++  enrich             BOOLEAN NOT NULL,
++  status             TEXT NOT NULL DEFAULT 'queued'
++                       CHECK (status IN ('queued', 'running', 'done', 'failed')),
++  error              TEXT,
++  queued_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  started_at         TIMESTAMPTZ,
++  finished_at        TIMESTAMPTZ
++);
++
++CREATE INDEX IF NOT EXISTS contact_enrichment_jobs_queued_idx
++  ON contact_enrichment_jobs (id) WHERE status = 'queued';
+diff --git a/src/services/__tests__/aQueueErrorPausesTheEnrichmentWorkers.test.ts b/src/services/__tests__/aQueueErrorPausesTheEnrichmentWorkers.test.ts
+new file mode 100644
+index 0000000..4e05203
+--- /dev/null
++++ b/src/services/__tests__/aQueueErrorPausesTheEnrichmentWorkers.test.ts
+@@ -0,0 +1,50 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  backgroundQuery: jest.fn(),
++  query: jest.fn(),
++}));
++
++import { readdirSync, readFileSync } from 'fs';
++import { join } from 'path';
++
++import { backgroundQuery } from '../../db/postgres/client';
++import {
++  ENRICHMENT_CONCURRENCY,
++  fillEnrichmentWorkers,
++  PAUSE_AFTER_QUEUE_ERROR_MS,
++} from '../enrichmentQueue';
++
++const mockQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
++const MIGRATIONS = join(__dirname, '..', '..', 'db', 'postgres', 'migrations');
++const QUEUE = readFileSync(join(__dirname, '..', 'enrichmentQueue.ts'), 'utf8');
++
++/**
++ * 0355's first night (15 Oct, 21:27–21:55): enrichment_jobs was already the
++ * nightly job's table, the queue's own was never made, and the ticker started
++ * four workers every five seconds into „column "user_id" does not exist".
++ */
++describe('the enrichment queue after a queue error', () => {
++  it('starts no worker until the pause is over', async () => {
++    jest.spyOn(console, 'error').mockImplementation(() => undefined);
++    mockQuery.mockRejectedValue(new Error('column "user_id" does not exist'));
++    const now = Date.now();
++    expect(fillEnrichmentWorkers(jest.fn(), ENRICHMENT_CONCURRENCY, now)).toBe(
++      ENRICHMENT_CONCURRENCY,
++    );
++    await new Promise((resolve) => setImmediate(resolve));
++    expect(fillEnrichmentWorkers(jest.fn(), ENRICHMENT_CONCURRENCY, now)).toBe(0);
++    const later = Date.now() + PAUSE_AFTER_QUEUE_ERROR_MS + 1;
++    expect(fillEnrichmentWorkers(jest.fn(), ENRICHMENT_CONCURRENCY, later)).toBe(
++      ENRICHMENT_CONCURRENCY,
++    );
++  });
++
++  it('uses its own table, never the nightly job’s', () => {
++    expect(QUEUE).not.toMatch(/(INTO|UPDATE|FROM) enrichment_jobs\b/);
++    const own = readdirSync(MIGRATIONS).find((f) => f.startsWith('243_'));
++    expect(own).toBe('243_contact_enrichment_jobs.sql');
++    expect(readFileSync(join(MIGRATIONS, String(own)), 'utf8')).toContain(
++      'CREATE TABLE IF NOT EXISTS contact_enrichment_jobs',
++    );
++  });
++});
+diff --git a/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts b/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+index 54ba066..7861246 100644
+--- a/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
++++ b/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+@@ -41,7 +41,7 @@ describe('the enrichment queue in the database', () => {
+     };
+     await queueEnrichmentJob(job);
+     const [sql, params] = mockQuery.mock.calls[0];
+-    expect(String(sql)).toContain('INSERT INTO enrichment_jobs');
++    expect(String(sql)).toContain('INSERT INTO contact_enrichment_jobs');
+     expect(params).toEqual([501, 'k', '+995555000001', 'ნინო', false]);
+   });
+ 
+diff --git a/src/services/enrichmentQueue.ts b/src/services/enrichmentQueue.ts
+index 6e0813a..66b8ce4 100644
+--- a/src/services/enrichmentQueue.ts
++++ b/src/services/enrichmentQueue.ts
+@@ -50,7 +50,7 @@ export type EnrichmentWork = (job: EnrichmentJob) => Promise<void>;
+ /**
+  * 5317 (F10; Misho's yes to Q7): the queue used to live in this process's
+  * memory, so a deploy dropped every saved contact still waiting. Jobs are rows
+- * now (enrichment_jobs): queued here, claimed by the workers in arrival order,
++ * now (contact_enrichment_jobs): queued here, claimed by the workers in arrival order,
+  * and a job a restart cut off is queued again when the workers start.
+  */
+ const QUEUE_TIMEOUT_MS = 10_000;
+@@ -58,13 +58,21 @@ const MAX_ERROR_CHARS = 300;
+ /** A job still „running" this long after it started was cut off by a restart. */
+ const CUT_OFF_AFTER_MINUTES = 10;
+ const TICK_INTERVAL_MS = 5_000;
++/**
++ * 0355's first night: the queue's statements failed on every claim, and the
++ * ticker started four fresh workers every five seconds into the same error —
++ * 1,390 log lines in half an hour. After a worker stops on a queue error, no
++ * worker starts again for this long.
++ */
++export const PAUSE_AFTER_QUEUE_ERROR_MS = 60_000;
+ 
+ let workersRunning = 0;
++let pausedUntil = 0;
+ 
+ /** Queues one saved contact. */
+ export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
+   await backgroundQuery(
+-    `INSERT INTO enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
++    `INSERT INTO contact_enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
+      VALUES ($1, $2, $3, $4, $5)`,
+     [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
+     QUEUE_TIMEOUT_MS,
+@@ -83,8 +91,8 @@ interface JobRow {
+ /** The oldest queued job, marked running in the same statement so no other worker takes it. */
+ async function claimNextJob(): Promise<JobRow | null> {
+   const result = await backgroundQuery<JobRow>(
+-    `UPDATE enrichment_jobs SET status = 'running', started_at = NOW()
+-      WHERE id = (SELECT id FROM enrichment_jobs WHERE status = 'queued'
++    `UPDATE contact_enrichment_jobs SET status = 'running', started_at = NOW()
++      WHERE id = (SELECT id FROM contact_enrichment_jobs WHERE status = 'queued'
+                    ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
+       RETURNING id, user_id, user_composite_key, contact_phone, alias, enrich`,
+     [],
+@@ -95,7 +103,7 @@ async function claimNextJob(): Promise<JobRow | null> {
+ 
+ async function finishJob(id: string, error: string | null): Promise<void> {
+   await backgroundQuery(
+-    `UPDATE enrichment_jobs SET status = $2, error = $3, finished_at = NOW() WHERE id = $1`,
++    `UPDATE contact_enrichment_jobs SET status = $2, error = $3, finished_at = NOW() WHERE id = $1`,
+     [id, error === null ? 'done' : 'failed', error],
+     QUEUE_TIMEOUT_MS,
+   );
+@@ -130,6 +138,7 @@ async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
+       // the next queued job, straight away
+     }
+   } catch (err) {
++    pausedUntil = Date.now() + PAUSE_AFTER_QUEUE_ERROR_MS;
+     // eslint-disable-next-line no-console
+     console.error('[enrichment] worker stopped:', (err as Error).message);
+   } finally {
+@@ -137,11 +146,13 @@ async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
+   }
+ }
+ 
+-/** Starts workers up to the limit; each one ends when the queue is empty. */
++/** Starts workers up to the limit, unless a queue error paused them; each one ends when the queue is empty. */
+ export function fillEnrichmentWorkers(
+   work: EnrichmentWork,
+   workers: number = ENRICHMENT_CONCURRENCY,
++  now: number = Date.now(),
+ ): number {
++  if (now < pausedUntil) return 0;
+   let started = 0;
+   while (workersRunning < workers) {
+     void workUntilEmpty(work);
+@@ -153,7 +164,7 @@ export function fillEnrichmentWorkers(
+ /** Queues again what a restart cut off mid-job. */
+ export async function requeueCutOffJobs(): Promise<number> {
+   const result = await backgroundQuery(
+-    `UPDATE enrichment_jobs SET status = 'queued', started_at = NULL
++    `UPDATE contact_enrichment_jobs SET status = 'queued', started_at = NULL
+       WHERE status = 'running' AND started_at < NOW() - ($1 || ' minutes')::interval`,
+     [CUT_OFF_AFTER_MINUTES],
+     QUEUE_TIMEOUT_MS,
+-- 
+2.43.0
+
