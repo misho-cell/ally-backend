@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 15:55Z — 0343: no placeholder in user text (the tester's 60232, on top of 0340); 1688 body: the server keeps the signature on its own paragraph
+Last TO_OPS.md section handled: 15 Oct, 16:10Z — 0344 (docs only): the frontend is asked about 1688's blank line; Lika's status answered in box 60262
 
 ## OPEN
+
+### 15 Oct, 16:22Z — 0344 LIVE at 894eaae
+
+- **0344** (docs only, FOR_FRONTEND, 1688's blank line): shipped alone at 894eaae, outage 0. The sha matched.
 
 ### 15 Oct, 16:12Z — the launch load-test questions (tester, verbatim); 0344 shipping
 
