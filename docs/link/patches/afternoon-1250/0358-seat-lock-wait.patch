@@ -1,0 +1,95 @@
+From 6f00469996669d46d9162bc24c0e53f0df8e88f2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 21:51:39 +0000
+Subject: [PATCH] Seats in parallel: the wait for the slot lock has its own
+ time limit
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 60690: 50 seats made in 10 parallel lanes, 15 came back with no
+id — „canceling statement due to statement timeout". Waiting for the slot
+lock counted against the transaction's 8 s statement limit while the other
+lanes' seats were written ahead. The lock wait now has a 60 s limit of its
+own, and the statements after it go back to the connection's ordinary one.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/aSeatOnANumberNobodyHas.test.ts | 10 +++++++++-
+ src/services/testSeatCreate.service.ts                 | 10 ++++++++++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts b/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
+index 82b7e38..b4d30d2 100644
+--- a/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
++++ b/src/services/__tests__/aSeatOnANumberNobodyHas.test.ts
+@@ -103,7 +103,9 @@ describe('the number is earned, not chosen', () => {
+ describe('creating one', () => {
+   function seatCreated(): void {
+     mockQuery.mockResolvedValue(rows([]) as never);
++    mockQuery.mockResolvedValueOnce(rows([]) as never); // the lock's own wait limit
+     mockQuery.mockResolvedValueOnce(rows([]) as never); // the slot lock
++    mockQuery.mockResolvedValueOnce(rows([]) as never); // the ordinary limit again
+     mockQuery.mockResolvedValueOnce(rows([]) as never); // the free-number scan
+     mockQuery.mockResolvedValueOnce(rows([{ id: 200001 }]) as never); // the User insert
+   }
+@@ -113,11 +115,15 @@ describe('creating one', () => {
+     const [first, second] = allFictionalNumbers();
+     mockQuery.mockResolvedValue(rows([]) as never);
+     mockQuery
++      .mockResolvedValueOnce(rows([]) as never) // the lock's own wait limit
+       .mockResolvedValueOnce(rows([]) as never) // the slot lock
++      .mockResolvedValueOnce(rows([]) as never) // the ordinary limit again
+       .mockResolvedValueOnce(rows([]) as never) // the scan: first looks free
+       .mockResolvedValueOnce(rows([{ id: 200001 }]) as never) // the User insert
+       .mockRejectedValueOnce(Object.assign(new Error('UserPhone_phone_key'), { code: '23505' }))
++      .mockResolvedValueOnce(rows([]) as never) // the lock's own wait limit, again
+       .mockResolvedValueOnce(rows([]) as never) // the slot lock, again
++      .mockResolvedValueOnce(rows([]) as never) // the ordinary limit again
+       .mockResolvedValueOnce(rows([{ phone: first }]) as never) // the rescan: now taken
+       .mockResolvedValueOnce(rows([{ id: 200002 }]) as never); // the User insert, again
+ 
+@@ -144,7 +150,9 @@ describe('creating one', () => {
+     const lockAt = sqls.findIndex((q) => q.includes('pg_advisory_xact_lock'));
+     const scanAt = sqls.findIndex((q) => q.includes('FROM test_seats WHERE phone = ANY'));
+     const insertAt = sqls.findIndex((q) => q.includes('INSERT INTO "User"'));
+-    expect(lockAt).toBe(0);
++    expect(lockAt).toBe(1);
++    expect(sqls[0]).toBe('SET LOCAL statement_timeout = 60000');
++    expect(sqls[2]).toBe('RESET statement_timeout');
+     expect(scanAt).toBeGreaterThan(lockAt);
+     expect(insertAt).toBeGreaterThan(scanAt);
+   });
+diff --git a/src/services/testSeatCreate.service.ts b/src/services/testSeatCreate.service.ts
+index 711b2fe..e0c6734 100644
+--- a/src/services/testSeatCreate.service.ts
++++ b/src/services/testSeatCreate.service.ts
+@@ -354,6 +354,14 @@ const FREE_SLOT_ATTEMPTS = 3;
+  * this lock's own; nothing else in the code takes an advisory lock.
+  */
+ const FREE_SLOT_LOCK_KEY = 4_126_292;
++/**
++ * The tester's 60690: seats made in 10 lanes — 15 of 50 came back with
++ * nothing, „canceling statement due to statement timeout". The wait for the
++ * lock counted against the transaction's 8 s statement limit while nine other
++ * seats were written ahead of it. The wait gets a limit of its own; the
++ * statements after it go back to the connection's ordinary one.
++ */
++const FREE_SLOT_LOCK_WAIT_MS = 60_000;
+ 
+ interface SeatRows {
+   readonly userId: string;
+@@ -384,7 +392,9 @@ async function insertSeatRows(
+       return await withTransaction(async (client) => {
+         let phone = chosen;
+         if (phone === null) {
++          await client.query(`SET LOCAL statement_timeout = ${FREE_SLOT_LOCK_WAIT_MS}`);
+           await client.query('SELECT pg_advisory_xact_lock($1)', [FREE_SLOT_LOCK_KEY]);
++          await client.query('RESET statement_timeout');
+           phone = await firstFreeFictionalPhone(client);
+         }
+         const userId = await writeSeatRows(
+-- 
+2.43.0
+

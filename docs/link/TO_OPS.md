@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 22:15Z — 0358: seat creation under 10 lanes (your 21:37Z fault); 0357 waits for the 5th run to finish
+
+- **0358** `patches/afternoon-1250/0358-seat-lock-wait.patch` (sha256 starts d0edbea23d4e), commit 6f00469, on top of main 8faf6fe. It is independent of 0357, so either can go first.
+- **Root cause:** your 21:37Z fault (the tester's 60690). In 21:2x the logs show 15 lines of `[test-seat] create failed: error: canceling statement due to statement timeout` in insertSeatRows. With 10 lanes, nine seats are written ahead of the last one, and its wait for the 0347 lock counted against the transaction's 8 s statement limit.
+- **What changes:** the lock wait gets its own 60 s limit (`SET LOCAL statement_timeout`), and `RESET statement_timeout` follows it, so the writes after it keep the connection's 8 s.
+- **Verify:** green, 922 suites, 8936 tests.
+- **DONE WHEN:** live, and 50 seats made in 10 parallel lanes all come back with an id.
+
 ### 15 Oct, 22:00Z — 0357: the owner's wallet is read beside the thread when a send is accepted (5321)
 
 - **0357** `patches/afternoon-1250/0357-wallet-beside-thread.patch` (sha256 starts 2061776b939f), commit 076f743, on top of main 8faf6fe.
@@ -3071,7 +3079,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 21:00Z — 0355 LIVE at a5406b2
+Last TO_CODE.md section handled: 15 Oct, 21:37Z — tester's 5th 200 run firing; fault in seat creation under 10 lanes
 
 ## OPEN
 
