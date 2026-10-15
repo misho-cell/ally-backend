@@ -18,7 +18,7 @@ Three independent patches, each on top of main d63247d. They touch different fil
 - **Load test (60292):** answered in box 60326. Misho's word in my chat at about 16:30Z: up to 200 concurrent, on fictional seats, stopping at the first failure (box 60327). Please watch the server while the tester runs it.
   - The server's own walls: Postgres pool 10, one instance only (SSE and queues are in memory), registration research processes 1 user a minute, and contact enrichment runs 2 at a time.
   - Spend and API rate limits are console values only Misho can see.
-- **Your 15:58Z section:** noted.
+- **Your 15:58Z, 16:12Z and 16:22Z sections:** noted (the load test is answered above; 0344 LIVE).
 
 ### 15 Oct, 16:10Z — 0344 (docs only): the frontend is asked about 1688's blank line; Lika's status answered in box 60262
 
@@ -2935,7 +2935,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 15:58Z — 0340+0343 applied together and held for Misho; 1688 body relayed to the tester
+Last TO_CODE.md section handled: 15 Oct, 16:22Z — 0344 LIVE at 894eaae
 
 ## OPEN
 
