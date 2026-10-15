@@ -18,6 +18,7 @@ import { withNothingFoundLast } from './nothingFoundLast';
 import { withNameGenders } from './nameGender';
 import { BLANK_RETRY_NOTE, GREETING_MAX_TOKENS, isBareGreeting } from './greetingTurn';
 import { greetingName, greetingText, registeredName } from './serverGreeting';
+import { assistantNameSection } from './assistantName';
 import { goalsForRun } from './wakeGoalScope';
 import {
   aLookedAgainLineTellsSomething,
@@ -5317,7 +5318,10 @@ async function buildAgentSystemPrompt(
     // The registered name never reached the model before — with no name key in
     // the profile KV it would sometimes invent one, or guess a gendered
     // address (second-account battery: a female tester greeted as a man).
-    query<{ name: string | null }>('SELECT name FROM "User" WHERE id = $1 LIMIT 1', [userId]),
+    query<{ name: string | null; assistant_name: string | null }>(
+      'SELECT name, assistant_name FROM "User" WHERE id = $1 LIMIT 1',
+      [userId],
+    ),
     query<{ field_label: string; field_description: string }>(
       'SELECT field_label, field_description FROM insight_fields WHERE is_active = true ORDER BY created_at ASC',
     ),
@@ -5360,6 +5364,11 @@ async function buildAgentSystemPrompt(
       // and „t" is two Georgian letters. One goal carried both.
       georgianSpellingNote(registeredName)
     : '';
+  // 0316 + Misho's yes on the sentence: the owner's own name for their assistant.
+  const assistantNameNote = assistantNameSection(
+    nameResult.rows[0]?.assistant_name ?? null,
+    registeredName,
+  );
   // Ticket 20 row 130 — STABLE FIRST, VOLATILE LAST, and the order is the
   // whole point of this expression.
   //
@@ -5400,6 +5409,7 @@ async function buildAgentSystemPrompt(
     base + INJECTION_DEFENSE_PROMPT + modeBlocks.text,
     // Per-account — the same across this person's runs until they edit it.
     nameSection +
+      assistantNameNote +
       buildProfileSection(profile) +
       buildMissingUserProfileSection(profile) +
       buildUserNotesSection(userNotes) +
