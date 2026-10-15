@@ -72,6 +72,29 @@ export function profileEvidence(found: unknown): string | null {
   return page.content;
 }
 
+/** Any LinkedIn page: a profile, a post, a company page. */
+const LINKEDIN_URL_RE = /^https?:\/\/(?:[a-z0-9-]+\.)?linkedin\.com\//iu;
+
+/**
+ * Misho, 15 Oct (the real TBC case, tester's box 60161): the person's own name
+ * and role on LinkedIn count as a source. The run named „ნათია ფაჩიკაშვილი —
+ * Director of MSME Banking" from a LinkedIn post in the search results, and
+ * the officeholder gate replaced the name twice with its placeholder, because
+ * a snippet was never evidence. LinkedIn results now are; every other site's
+ * snippet still is not, and a public office (minister, mayor) is still checked
+ * against the pages the run read.
+ */
+export function linkedinEvidence(found: unknown): string {
+  if (!isRecord(found) || !Array.isArray(found.results)) return '';
+  return found.results
+    .filter((hit): hit is Record<string, unknown> => isRecord(hit))
+    .filter((hit) => typeof hit.url === 'string' && LINKEDIN_URL_RE.test(hit.url))
+    .map((hit) =>
+      [hit.url, hit.title, hit.content].filter((part) => typeof part === 'string').join('\n'),
+    )
+    .join('\n');
+}
+
 /**
  * The search result with its profile page read, when it has one. A failed or
  * empty read leaves the result exactly as it was; `beforeRead` runs only when a
