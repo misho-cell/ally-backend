@@ -113,9 +113,9 @@ export async function createTeamTask(input: NewTeamTask): Promise<TeamTask> {
 }
 
 /**
- * #266 (Giorgi, 2 October): the order the board reads in — by who filed the
- * row (Giorgi first, then Tornike, Lika, Ninia, Tornike's Claude, then any
- * other author), then urgent → later, newest first as the last tie-break.
+ * #266 (Giorgi, 2 October): who filed the row — Giorgi first, then Tornike,
+ * Lika, Ninia, Tornike's Claude, then any other author. Since #5083 (Giorgi,
+ * 15 Oct) it comes after the priority, never before it.
  */
 const AUTHOR_ORDER: readonly TeamTaskAuthor[] = [
   TeamTaskAuthor.Giorgi,
@@ -136,7 +136,11 @@ export const STATUS_ORDER: readonly TeamTaskStatus[] = [
   TeamTaskStatus.Tested,
 ];
 
-/** One page of the board: by status (4885), then in the order #266 asks for. */
+/**
+ * One page of the board: by status (4885), then urgent first (#5083, Giorgi,
+ * 15 Oct: „urgent always first, then authors"), then by author (#266), newest
+ * first as the last tie-break. Priority 1 is urgent.
+ */
 export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
   const result = await query<Record<string, unknown>>(
     `SELECT ${COLUMNS} FROM team_tasks
@@ -144,8 +148,9 @@ export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
         AND deleted_at IS NULL
       ORDER BY page,
                COALESCE(array_position($3::text[], status), cardinality($3::text[]) + 1),
+               priority,
                COALESCE(array_position($2::text[], created_by), cardinality($2::text[]) + 1),
-               priority, id DESC
+               id DESC
       LIMIT ${MAX_TASKS_LISTED}`,
     [page ?? null, AUTHOR_ORDER, STATUS_ORDER],
     QUERY_TIMEOUT_MS,
