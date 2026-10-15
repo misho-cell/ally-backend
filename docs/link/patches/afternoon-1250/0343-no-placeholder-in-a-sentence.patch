@@ -1,0 +1,389 @@
+From e906c64253f597a39394f6ca6baa2cb10df93478 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 15:44:40 +0000
+Subject: [PATCH] Real TBC case: no placeholder inside a sentence; an
+ unverified name's sentence is left out
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 60232: „(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)" must never
+reach user text. Misho chose: a sentence carrying an officeholder name no page
+carried is left out whole and one line at the end says so („ერთი სახელი
+ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე."); a name found only
+on LinkedIn keeps its place and the sentence says „(LinkedIn-ის მიხედვით,
+ოფიციალურ გვერდზე ვერ დავადასტურე)" before its closing mark. The in-place
+name swap and its placeholder strings are removed. Applies on top of 0340.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aLinkedinRoleIsASource.test.ts  |  7 +-
+ .../__tests__/officeholderGate.test.ts        | 84 ++++++++-----------
+ src/services/officeholderGate.ts              | 81 ++++++++++--------
+ src/services/runLanguage.ts                   | 24 ++++--
+ 4 files changed, 106 insertions(+), 90 deletions(-)
+
+diff --git a/src/services/__tests__/aLinkedinRoleIsASource.test.ts b/src/services/__tests__/aLinkedinRoleIsASource.test.ts
+index 2e9fab5..2e5d77f 100644
+--- a/src/services/__tests__/aLinkedinRoleIsASource.test.ts
++++ b/src/services/__tests__/aLinkedinRoleIsASource.test.ts
+@@ -52,7 +52,7 @@ describe('the LinkedIn results of a web search', () => {
+     expect(out.reply).toBe(reply);
+   });
+ 
+-  it('never name a public office holder from LinkedIn alone', async () => {
++  it('name a public office holder from LinkedIn alone only with its source said', async () => {
+     recordRunLinkedinEvidence(
+       RUN,
+       'https://www.linkedin.com/in/levan-davitashvili\nLevan Davitashvili, Minister of Economy',
+@@ -63,6 +63,10 @@ describe('the LinkedIn results of a web search', () => {
+       'en',
+     );
+     expect(out.refused).toEqual(['Levan Davitashvili']);
++    expect(out.reply).toBe(
++      'The Minister of Economy is Levan Davitashvili ' +
++        '(according to LinkedIn; I could not confirm it on an official page).',
++    );
+   });
+ 
+   it('do not let another site’s snippet through', async () => {
+@@ -73,5 +77,6 @@ describe('the LinkedIn results of a web search', () => {
+       'en',
+     );
+     expect(out.refused).toEqual(['Levan Davitashvili']);
++    expect(out.reply).toBe('I could not confirm one name on an official page, so I left it out.');
+   });
+ });
+diff --git a/src/services/__tests__/officeholderGate.test.ts b/src/services/__tests__/officeholderGate.test.ts
+index 32aca20..69725a2 100644
+--- a/src/services/__tests__/officeholderGate.test.ts
++++ b/src/services/__tests__/officeholderGate.test.ts
+@@ -11,7 +11,7 @@ import {
+   clearRunEvidence,
+   nameCandidates,
+   recordRunEvidence,
+-  replaceNameWithPlaceholder,
++  rewriteUnverified,
+ } from '../officeholderGate';
+ 
+ const mockQuery = query as jest.MockedFunction<typeof query>;
+@@ -62,7 +62,7 @@ describe('applyOfficeholderGate', () => {
+ 
+     expect(out.refused).toEqual(['გიორგი კობახიძე']);
+     expect(out.reply).toBe(
+-      'ფინანსთა მინისტრი არის (სახელი ვერ დავადასტურე ოფიციალურ გვერდზე). მას შეგიძლია მისწერო.',
++      'მას შეგიძლია მისწერო.\n\nერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
+     );
+   });
+ 
+@@ -86,7 +86,7 @@ describe('applyOfficeholderGate', () => {
+     expect(out.refused).toEqual([]);
+   });
+ 
+-  it('English: an unverified officeholder name is replaced', async () => {
++  it('English: a sentence with an unverified officeholder name is left out', async () => {
+     recordRunEvidence(RUN, 'who runs the revenue service');
+ 
+     const out = await applyOfficeholderGate(
+@@ -95,9 +95,7 @@ describe('applyOfficeholderGate', () => {
+       'en',
+     );
+ 
+-    expect(out.reply).toBe(
+-      'The head of the Revenue Service is (name not verified on an official page).',
+-    );
++    expect(out.reply).toBe('I could not confirm one name on an official page, so I left it out.');
+   });
+ 
+   it('a sentence without an office word is never touched', async () => {
+@@ -223,40 +221,42 @@ describe('the gate cannot make the reply wait for ever', () => {
+ });
+ 
+ /**
+- * Thread 15676, 16 September — the placeholder wore a Georgian case ending.
+- *
+- * The reply reached the person as „(სახელი ვერ დავადასტურე ოფიციალურ
+- * გვერდზე)ა". The „ა" is the copula that was glued to the name („კალაძეა" =
+- * „is Kaladze"); a plain split/join took the name out from underneath it and
+- * left its grammar sitting on the bracket, so the placeholder reads as though
+- * it were itself somebody's name with an ending on it.
++ * The tester's 60232 (15 Oct), Misho's choice: no placeholder inside a sentence.
++ * Thread 15676 (16 Sep) showed why cutting a name out fails in Georgian: its
++ * grammar („კალაძეა") stays behind. So the sentence goes whole.
+  */
+-describe('the placeholder does not inherit the name’s grammar', () => {
+-  const PH = '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)';
+-
+-  it.each([
+-    ['თბილისის მერი კახა კალაძეა.', 'თბილისის მერი (X).'],
+-    ['კახა კალაძეს ვკითხე.', '(X) ვკითხე.'],
+-    ['კახა კალაძემ თქვა.', '(X) თქვა.'],
+-    ['მერია კახა კალაძე.', 'მერია (X).'],
+-  ])('%s', (input, shape) => {
+-    const out = replaceNameWithPlaceholder(input, 'კახა კალაძე', PH);
+-    expect(out).toBe(shape.replace('(X)', PH));
+-  });
+-
+-  it('leaves a Latin name alone apart from the swap', () => {
+-    expect(replaceNameWithPlaceholder('John Smith is the mayor.', 'John Smith', PH)).toBe(
+-      `${PH} is the mayor.`,
++describe('a sentence with an unverified name', () => {
++  const LINES = { nameFromLinkedinOnly: '(LI)', unverifiedNameLeftOut: 'LEFT OUT.' };
++
++  it('is left out whole, whatever ending the name wears, and said once at the end', () => {
++    const reply = 'თბილისის მერი კახა კალაძეა. კახა კალაძეს ვკითხე. შენ რას ფიქრობ?';
++    expect(rewriteUnverified(reply, new Set(), ['კახა კალაძე'], LINES)).toBe(
++      'შენ რას ფიქრობ?\n\nLEFT OUT.',
++    );
++  });
++
++  it('keeps the lines around it as they stood', () => {
++    const reply = 'პირველი.\n- მერი John Smith.\n- მეორე პუნქტი.';
++    expect(rewriteUnverified(reply, new Set(), ['John Smith'], LINES)).toBe(
++      'პირველი.\n- მეორე პუნქტი.\n\nLEFT OUT.',
++    );
++  });
++
++  it('says only the line when nothing else was left', () => {
++    expect(rewriteUnverified('The mayor is A.B Smith.', new Set(), ['A.B Smith'], LINES)).toBe(
++      'LEFT OUT.',
+     );
+   });
+ 
+-  it('replaces every occurrence, each with its own ending', () => {
+-    const out = replaceNameWithPlaceholder('კახა კალაძემ და კახა კალაძეს', 'კახა კალაძე', PH);
+-    expect(out).toBe(`${PH} და ${PH}`);
++  it('keeps a LinkedIn-only name and says where it came from, before the closing mark', () => {
++    const reply = 'მინისტრი არის ნინო ბერიძე. სხვა რამე?';
++    expect(rewriteUnverified(reply, new Set([0]), [], LINES)).toBe(
++      'მინისტრი არის ნინო ბერიძე (LI). სხვა რამე?',
++    );
+   });
+ 
+-  it('a name with regex characters in it is not a pattern', () => {
+-    expect(replaceNameWithPlaceholder('A.B Smith spoke.', 'A.B Smith', PH)).toBe(`${PH} spoke.`);
++  it('leaves a reply with nothing unverified untouched', () => {
++    expect(rewriteUnverified('  ასეა.  ', new Set(), [], LINES)).toBe('  ასეა.  ');
+   });
+ });
+ 
+@@ -561,19 +561,3 @@ describe('words that only look like an office or a name', () => {
+     ).toEqual([]);
+   });
+ });
+-
+-/** #2117 (tester 43066, conv 41581): a bracketed echo of a name is dropped, not double-bracketed. */
+-describe('a name echoed in brackets', () => {
+-  const replace = replaceNameWithPlaceholder;
+-  const NOTE = '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)';
+-
+-  it('goes whole, so no bracket sits inside a bracket', () => {
+-    expect(
+-      replace('სატია ნადელა (Satya Nadella) მაიკროსოფტის დირექტორია.', 'Satya Nadella', NOTE),
+-    ).toBe('სატია ნადელა მაიკროსოფტის დირექტორია.');
+-  });
+-
+-  it('still annotates the name where it stands on its own', () => {
+-    expect(replace('Satya Nadella is the CEO.', 'Satya Nadella', NOTE)).toBe(`${NOTE} is the CEO.`);
+-  });
+-});
+diff --git a/src/services/officeholderGate.ts b/src/services/officeholderGate.ts
+index 24865cf..84d2855 100644
+--- a/src/services/officeholderGate.ts
++++ b/src/services/officeholderGate.ts
+@@ -327,6 +327,47 @@ const KA_TOKEN_RE = /[ა-ჰ]+/g;
+ const MIN_KA_FIRST_NAME = 3;
+ const MIN_STEM = 4;
+ const SENTENCE_SPLIT_RE = /(?<=[.!?…\n])\s+|\n/;
++// The same split, keeping what stood between the sentences, so a reply can be
++// put back together with only the sentences the gate took out missing.
++const SENTENCE_SPLIT_KEEP_RE = /((?<=[.!?…\n])\s+|\n)/;
++const SENTENCE_END_RE = /([.!?…]*)$/u;
++
++interface UnverifiedLines {
++  readonly nameFromLinkedinOnly: string;
++  readonly unverifiedNameLeftOut: string;
++}
++
++/**
++ * The tester's 60232 (15 Oct), Misho's choice: a placeholder never stands
++ * inside a sentence, so the reply is rewritten in words instead.
++ *
++ * A sentence carrying a name no page carried is left out whole — cutting a
++ * name from Georgian leaves its grammar behind, which is what the placeholder
++ * kept showing (16 Sep, 2 Oct) — and one line at the end says so. A sentence
++ * whose officeholder was named only on LinkedIn keeps the name and says where
++ * it came from, before its closing mark.
++ */
++export function rewriteUnverified(
++  reply: string,
++  linkedinOnlyAt: ReadonlySet<number>,
++  leftOutNames: readonly string[],
++  lines: UnverifiedLines,
++): string {
++  if (linkedinOnlyAt.size === 0 && leftOutNames.length === 0) return reply;
++  const parts = reply.split(SENTENCE_SPLIT_KEEP_RE);
++  let kept = '';
++  for (let i = 0; i < parts.length; i += 2) {
++    const sentence = parts[i];
++    const between = parts[i + 1] ?? '';
++    if (leftOutNames.some((name) => sentence.includes(name))) continue;
++    kept += linkedinOnlyAt.has(i / 2)
++      ? sentence.trimEnd().replace(SENTENCE_END_RE, ` ${lines.nameFromLinkedinOnly}$1`) + between
++      : sentence + between;
++  }
++  const body = kept.trim();
++  if (leftOutNames.length === 0) return body;
++  return body === '' ? lines.unverifiedNameLeftOut : `${body}\n\n${lines.unverifiedNameLeftOut}`;
++}
+ 
+ function namesOffice(sentence: string): boolean {
+   return (
+@@ -391,7 +432,7 @@ function nameInEvidence(name: string, evidence: string): boolean {
+ 
+ export interface OfficeholderGateOutcome {
+   reply: string;
+-  /** Names replaced by the scripted line. */
++  /** Names the gate could not verify: left out, or kept with their LinkedIn source. */
+   refused: string[];
+ }
+ 
+@@ -439,35 +480,6 @@ async function inUsersPhonebook(userId: string | undefined, name: string): Promi
+     return false;
+   }
+ }
+-/**
+- * Georgian glues its grammar onto the end of a name, and a plain string swap
+- * leaves that glue behind.
+- *
+- * Ticket 20, thread 15676 on 16 September: the reply read
+- * „(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)ა" — the „ა" is the copula that
+- * was attached to the name („კალაძეა" = „is Kaladze"), and split/join took the
+- * name out from underneath it. The sentence then reads as though the
+- * placeholder itself were somebody's name with an ending on it.
+- *
+- * So the ending goes with the name. Any Georgian letters running straight on
+- * from the match with no space are that name's grammar, not the next word.
+- */
+-const GEORGIAN_LETTER = '[\\u10A0-\\u10FF]';
+-
+-export function replaceNameWithPlaceholder(
+-  text: string,
+-  name: string,
+-  placeholder: string,
+-): string {
+-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+-  // #2117 (tester 43066, conv 41581): „სატია ნადელა (Satya Nadella)" came out
+-  // as „სატია ნადელა ((სახელი ვერ დავადასტურე…))" — the gate filled the echo's
+-  // own brackets with its bracketed note. A name repeated in brackets beside
+-  // itself adds nothing, so the whole echo goes rather than being annotated.
+-  const withoutEcho = text.replace(new RegExp(`\\s*\\(\\s*${escaped}\\s*\\)`, 'gu'), '');
+-  return withoutEcho.replace(new RegExp(`${escaped}${GEORGIAN_LETTER}*`, 'gu'), placeholder);
+-}
+-
+ /**
+  * The tester's 1046, thread 30757 (2 October): „მამუკა სვანიძე, კლინიკა Pet
+  * Med-ის ხელმძღვანელი" reached the owner as „კლინიკა (სახელი ვერ დავადასტურე
+@@ -522,7 +534,8 @@ export async function applyOfficeholderGate(
+   const linkedin = (runId ? (linkedinByRun.get(runId) ?? []) : []).join('\n');
+   const refused: string[] = [];
+   const sentences = reply.split(SENTENCE_SPLIT_RE);
+-  let out = reply;
++  const linkedinOnlyAt = new Set<number>();
++  const leftOutNames: string[] = [];
+   const startedAt = Date.now();
+   // One answer per distinct name, however many sentences carry it. The
+   // replacement below already rewrites every occurrence, so the repeat lookups
+@@ -551,7 +564,7 @@ export async function applyOfficeholderGate(
+    * naming an office resets the window anyway, because it is checked itself.
+    */
+   let officeStillInView = false;
+-  for (const sentence of sentences) {
++  for (const [index, sentence] of sentences.entries()) {
+     const namesAnOffice = namesOffice(sentence);
+     const inView = namesAnOffice || officeStillInView;
+     // The carry-over lasts exactly one sentence: it is set by a sentence that
+@@ -576,7 +589,8 @@ export async function applyOfficeholderGate(
+       }
+       if (inPhonebook) continue;
+       refused.push(name);
+-      out = replaceNameWithPlaceholder(out, name, RUN_STRINGS[language].nameNotVerified);
++      if (nameInEvidence(name, linkedin)) linkedinOnlyAt.add(index);
++      else leftOutNames.push(name);
+     }
+   }
+   /**
+@@ -608,5 +622,6 @@ export async function applyOfficeholderGate(
+       `[officeholder-gate] run ${runId ?? '-'}: ${refused.length} name(s) unverified against ${evidence.length} chars of evidence`,
+     );
+   }
++  const out = rewriteUnverified(reply, linkedinOnlyAt, leftOutNames, RUN_STRINGS[language]);
+   return { reply: out, refused };
+ }
+diff --git a/src/services/runLanguage.ts b/src/services/runLanguage.ts
+index a8b5e1c..c0822ab 100644
+--- a/src/services/runLanguage.ts
++++ b/src/services/runLanguage.ts
+@@ -335,8 +335,14 @@ interface RunStrings {
+    */
+   serviceUnavailable: string;
+   moderationBlocked: string;
+-  /** Ticket 12 Task 46 (D151): stands in for an officeholder's name no read page carried. */
+-  nameNotVerified: string;
++  /**
++   * The tester's 60232 (15 Oct; Misho's yes on the exact Georgian text): a
++   * placeholder never stands inside a sentence. An officeholder named only on
++   * LinkedIn keeps the name, and the sentence says where it came from…
++   */
++  nameFromLinkedinOnly: string;
++  /** …and a sentence naming one no page carried is left out, said once at the end. */
++  unverifiedNameLeftOut: string;
+   /**
+    * Row 157, the engine's half: the line written INTO the thread when a goal's
+    * own wake finds the wallet empty. It lived in taskEngine as one hardcoded
+@@ -429,7 +435,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
+       'სერვერი განახლდა და ეს პასუხი შუა გზაზე შეწყდა — ეს ჩვენი მხრიდანაა და შენი ბრალი არ არის. გამომიგზავნე ხელახლა და მაშინვე ავიღებ.',
+     moderationBlocked:
+       'პასუხის ტექსტი შიდა შემოწმებამ შეაჩერა — ეს ჩვენი მხრიდანაა და შენი ფორმულირების ბრალი არ არის. შესრულებული სამუშაო არ დაკარგულა; მომწერე „გაიმეორე" და თავიდან ჩამოგიყალიბებ.',
+-    nameNotVerified: '(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)',
++    nameFromLinkedinOnly: '(LinkedIn-ის მიხედვით, ოფიციალურ გვერდზე ვერ დავადასტურე)',
++    unverifiedNameLeftOut: 'ერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე.',
+     goalPausedNoTokens:
+       'დავალებაზე მუშაობა შევაჩერე — ტოკენები ამოიწურა. შევსების შემდეგ გავაგრძელებ.',
+     statusLines: {
+@@ -463,7 +470,8 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
+       'The server restarted and this answer was cut off partway — that is on us, not on you. Send it again and I will pick it straight back up.',
+     moderationBlocked:
+       'An internal check held this reply back — that is on us, not on your wording. Nothing was lost; say "again" and I will rewrite it.',
+-    nameNotVerified: '(name not verified on an official page)',
++    nameFromLinkedinOnly: '(according to LinkedIn; I could not confirm it on an official page)',
++    unverifiedNameLeftOut: 'I could not confirm one name on an official page, so I left it out.',
+     goalPausedNoTokens:
+       'I have paused work on this goal — the tokens have run out. I will carry on once it is topped up.',
+     statusLines: {
+@@ -498,7 +506,9 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
+       'Сервис временно недоступен — это на нашей стороне, не на твоей. Повторять сейчас бесполезно. Когда он вернётся, отправь мне сообщение ещё раз, и я сразу его возьму.',
+     moderationBlocked:
+       'Внутренняя проверка остановила этот ответ — это наша сторона, не твоя формулировка. Ничего не потеряно; напиши «повтори», и я перепишу.',
+-    nameNotVerified: '(имя не подтверждено на официальной странице)',
++    nameFromLinkedinOnly: '(по данным LinkedIn; на официальной странице подтвердить не удалось)',
++    unverifiedNameLeftOut:
++      'Одно имя не удалось подтвердить на официальной странице, поэтому я его не указал.',
+     goalPausedNoTokens:
+       'Я приостановил работу над этой целью — токены закончились. Продолжу после пополнения.',
+     statusLines: {
+@@ -533,7 +543,9 @@ export const RUN_STRINGS: Readonly<Record<RunLanguage, RunStrings>> = {
+       'El servicio no está disponible ahora mismo — es cosa nuestra, no tuya. Reintentar ahora no ayudará. Cuando vuelva, envíamelo otra vez y lo retomo enseguida.',
+     moderationBlocked:
+       'Una revisión interna detuvo esta respuesta — es cosa nuestra, no de tu redacción. No se perdió nada; escribe «repite» y la reescribo.',
+-    nameNotVerified: '(nombre no verificado en una página oficial)',
++    nameFromLinkedinOnly: '(según LinkedIn; no pude confirmarlo en una página oficial)',
++    unverifiedNameLeftOut:
++      'No pude confirmar un nombre en una página oficial, así que no lo incluí.',
+     goalPausedNoTokens:
+       'He pausado el trabajo en este objetivo: se acabaron los tokens. Continuaré tras la recarga.',
+     statusLines: {
+-- 
+2.43.0
+

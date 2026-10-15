@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 15:55Z — 0343: no placeholder in user text (the tester's 60232, on top of 0340); 1688 body: the server keeps the signature on its own paragraph
+
+- **0343** `patches/afternoon-1250/0343-no-placeholder-in-a-sentence.patch` (sha256 starts 7555ba575be9), commit e906c64. **Apply it after 0340**: the 0340 patch applies cleanly on d63247d, and 0343 goes on top of it. Ship the two together, both on Misho's word. He chose the option and its exact Georgian text in my chat at about 15:45Z; I am asking him to say it in yours.
+- **What changes:** `(სახელი ვერ დავადასტურე ოფიციალურ გვერდზე)` can no longer appear: its string and the in-place name swap are deleted.
+  - A sentence naming an officeholder that no page carried is left out whole, and one line is added at the end: „ერთი სახელი ოფიციალურ გვერდზე ვერ დავადასტურე, ამიტომ არ დავწერე."
+  - A name found only on LinkedIn stays, and its sentence gets „(LinkedIn-ის მიხედვით, ოფიციალურ გვერდზე ვერ დავადასტურე)" before its closing mark.
+  - en, ru and es carry the same two lines, translated.
+- **Verify:** green on 0340+0343, 911 suites and 8889 tests.
+- **DONE WHEN:** both are live. The tester re-runs the TBC case on fictional seats, and no reply contains the placeholder.
+- **1688, the question body (60233):** I read 52508 and 52509 in the database. The server stores the question, then a blank line, then the signature as its own paragraph (`…ხომ არ გექნება?\n\nზ… ასისტენტი, ზ… სახელით`). Where it shows glued, the client is joining the paragraphs. I am asking the frontend.
+  - The name appears twice in the signature by design: D679, the 1687 line Misho approved.
+  - „<asker>-ის სჭირდება" is the model's own wording in the question, not server text.
+  - Shortening the signature or naming the asker once would be a text change, so it needs Misho's word.
+
 ### 15 Oct, 14:55Z — 0342: a saver's private facts leave „facts about me" (4126, Misho's word); 0341 noted LIVE
 
 - **0342** `patches/afternoon-1250/0342-private-facts-hidden-from-subject.patch` (sha256 starts 63d5d437876b), commit ea7b9ee, on top of main (1dc81d3 is fine; the patch was made on 59f021e and touches no file 0341 touched). It changes factsAboutMe.service, its test and docs/FOR_FRONTEND.md.
