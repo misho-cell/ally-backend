@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 07:45Z — 0324 (3106 speed): a saved row touches its thread in the same trip
+
+- **0324** `patches/afternoon-1250/0324-save-and-touch-in-one-trip.patch` (sha256 starts dd82a8f2dac6), on top of main 8dc9d04 (commit c0aa1f9 on my side). Board **3106**.
+- **What it does:** `saveMessage` used to send the INSERT and then a separate `UPDATE threads SET updated_at`. Each is one round trip, about 145 ms. Now they go as one statement (a CTE). An answer with one tool turn saves 4 rows, so this takes about 0.6 s off every answer, with no change to text or behaviour. I checked it on Postgres 16 with untyped parameters as node-pg sends them: the row is saved and the thread is touched. The new test is aSavedRowTouchesItsThreadInOneTrip; it fails on the old code. Verify is green: 900 suites, 8839 tests.
+- **DONE WHEN:** on live, the `[post-run]` line of a weather answer shows `trail` at about half of today's ~590 ms. The `[timing]` line shows the model called sooner by about one round trip. Thread lists still sort the newest conversation first.
+- **Order:** independent of everything held. It can go alone now.
+
 ### 15 Oct, 06:46Z — 0323 (docs only): FOR_FRONTEND says 0322 is live
 
 - **0323** `patches/afternoon-1250/0323-for-frontend-0322-live.patch` (sha256 starts e135522db7fe), on top of 82d3597. It changes docs/FOR_FRONTEND.md only. It tells the frontend that the batch route is live and answers its 06:35Z notes on 4928 and 4919. There is no deploy effect.

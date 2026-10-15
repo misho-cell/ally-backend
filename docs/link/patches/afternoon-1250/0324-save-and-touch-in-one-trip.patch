@@ -1,0 +1,161 @@
+From c0aa1f9ba68085b54fdb832c4485c240f16ca53b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 07:23:05 +0000
+Subject: [PATCH] 3106 (speed): a saved row touches its thread in the same
+ round trip
+
+Every saved row used to send a second statement to mark its thread as
+touched. The [post-run] lines put each round trip at ~145 ms, and an answer
+with one tool turn saves four rows, so that second statement cost ~0.6 s of
+every answer. The INSERT and the UPDATE now go as one statement (a
+data-modifying CTE always runs), so the thread is touched exactly as before.
+Checked against Postgres 16 with untyped parameters, as node-pg sends them.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...aSavedRowTouchesItsThreadInOneTrip.test.ts | 67 +++++++++++++++++++
+ src/services/chat.service.ts                  | 46 ++++++++-----
+ 2 files changed, 97 insertions(+), 16 deletions(-)
+ create mode 100644 src/services/__tests__/aSavedRowTouchesItsThreadInOneTrip.test.ts
+
+diff --git a/src/services/__tests__/aSavedRowTouchesItsThreadInOneTrip.test.ts b/src/services/__tests__/aSavedRowTouchesItsThreadInOneTrip.test.ts
+new file mode 100644
+index 0000000..ee0d6f5
+--- /dev/null
++++ b/src/services/__tests__/aSavedRowTouchesItsThreadInOneTrip.test.ts
+@@ -0,0 +1,67 @@
++const mockQuery = jest.fn();
++jest.mock('../../db/postgres/client', () => ({
++  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
++  __esModule: true,
++  query: mockQuery,
++  default: {},
++}));
++jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
++
++import { keepUserMessage } from '../chat.service';
++
++const THREAD_ID = 50825;
++const ROW_ID = 9001;
++
++function sqlOf(call: readonly unknown[]): string {
++  return String(call[0]);
++}
++
++function writesTheRow(sql: string): boolean {
++  return sql.includes('INSERT INTO conversations');
++}
++
++function touchesTheThread(sql: string): boolean {
++  return sql.includes('UPDATE threads SET updated_at = NOW()');
++}
++
++/**
++ * 3106 (speed). Every saved row also marks its thread as touched, and that was
++ * a second statement right after the INSERT: ~145 ms more per row, and an
++ * answer with one tool turn saves four rows. The two now travel together.
++ */
++describe('a saved row touches its thread in the same round trip', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockQuery.mockResolvedValue({ rows: [{ id: ROW_ID }], rowCount: 1 });
++  });
++
++  it('writes the row and touches the thread in one statement', async () => {
++    await expect(keepUserMessage('501', THREAD_ID, 'რა ამინდია?')).resolves.toBe(true);
++    const writes = mockQuery.mock.calls.map(sqlOf).filter(writesTheRow);
++    expect(writes).toHaveLength(1);
++    expect(touchesTheThread(writes[0])).toBe(true);
++  });
++
++  it('sends no separate statement to touch the thread', async () => {
++    await keepUserMessage('501', THREAD_ID, 'რა ამინდია?');
++    const touchesAlone = mockQuery.mock.calls
++      .map(sqlOf)
++      .filter((sql) => touchesTheThread(sql) && !writesTheRow(sql));
++    expect(touchesAlone).toHaveLength(0);
++  });
++
++  it('touches the thread the row was written to', async () => {
++    await keepUserMessage('501', THREAD_ID, 'რა ამინდია?');
++    const call = mockQuery.mock.calls.find((c) => writesTheRow(sqlOf(c)));
++    expect(call).toBeDefined();
++    const sql = sqlOf(call as unknown[]);
++    const params = (call as [string, unknown[]])[1];
++    expect(sql).toContain('WHERE id = $2');
++    expect(params[1]).toBe(THREAD_ID);
++  });
++
++  it('still reports a failed write as false', async () => {
++    mockQuery.mockRejectedValueOnce(new Error('connection terminated'));
++    await expect(keepUserMessage('501', THREAD_ID, 'რა ამინდია?')).resolves.toBe(false);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 4eae4a6..07b3fe8 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -4326,6 +4326,24 @@ export async function keepUserMessage(
+   }
+ }
+ 
++/**
++ * 3106 (speed): the row and the thread's „last touched" in ONE round trip.
++ *
++ * They were two statements, one after the other, and every answer saves four
++ * or more rows (the owner's line, each tool call and its result, the reply).
++ * The [post-run] lines put each round trip at ~145 ms, so the second statement
++ * cost ~0.6 s of every answer with one tool turn. A data-modifying CTE always
++ * runs, referenced or not, so the thread is touched exactly as before.
++ */
++const SAVE_AND_TOUCH_SQL = `WITH saved AS (
++    INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by)
++    VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10)
++    RETURNING id
++  ), touched AS (
++    UPDATE threads SET updated_at = NOW() WHERE id = $2
++  )
++  SELECT id FROM saved`;
++
+ async function saveMessage(
+   userId: string,
+   threadId: number,
+@@ -4347,22 +4365,18 @@ async function saveMessage(
+   answeredBy: string | null = null,
+ ): Promise<number> {
+   const textContent = typeof content === 'string' ? content : '';
+-  const result = await query<{ id: number }>(
+-    'INSERT INTO conversations (user_id, thread_id, role, content, content_json, kind, run_id, choices, share_text, answered_by) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9, $10) RETURNING id',
+-    [
+-      userId,
+-      threadId,
+-      role,
+-      textContent,
+-      JSON.stringify(content),
+-      kind,
+-      runId,
+-      choices === null ? null : JSON.stringify(choices),
+-      shareText,
+-      answeredBy,
+-    ],
+-  );
+-  await touchThread(threadId);
++  const result = await query<{ id: number }>(SAVE_AND_TOUCH_SQL, [
++    userId,
++    threadId,
++    role,
++    textContent,
++    JSON.stringify(content),
++    kind,
++    runId,
++    choices === null ? null : JSON.stringify(choices),
++    shareText,
++    answeredBy,
++  ]);
+   // The tester's 45147: a run's own answer takes back its own cut-off notice.
+   if (role === 'assistant' && kind === 'message' && runId !== null) {
+     await withdrawOwnCutNotice(threadId, runId).catch((err: unknown) => {
+-- 
+2.43.0
+
