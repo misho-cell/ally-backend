@@ -48,6 +48,8 @@ export interface ContactExclusionView {
   readonly id: number;
   readonly excluded_for: string;
   readonly reason: string | null;
+  /** The goal it was made for, when it was made from the page (item 3); null otherwise. */
+  readonly goal_id: number | null;
 }
 
 export interface ContactPageView {
@@ -58,6 +60,8 @@ export interface ContactPageView {
   readonly role: string | null;
   readonly on_netai: boolean;
   readonly labels: readonly string[];
+  /** The labels the owner wrote themselves on this page, apart from the import's (item 3). */
+  readonly own_labels: readonly string[];
   readonly warmth: Warmth;
   readonly facts: readonly ContactFact[];
   readonly public_facts: readonly PublicFact[];
@@ -85,6 +89,21 @@ async function ownLabels(userId: number, phone: string): Promise<string[]> {
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map((r) => r.tag).filter(isDisplayableTag);
+}
+
+/** Item 3: the labels the owner wrote on the page („USER_CREATED"), apart from the import's. */
+const OWN_LABEL_SOURCE = 'USER_CREATED';
+const MAX_OWN_LABELS = 20;
+
+async function labelsWrittenByOwner(userId: number, phone: string): Promise<string[]> {
+  const result = await query<{ tag: string }>(
+    `SELECT tag FROM "UserTags"
+      WHERE "contactId" = $1 AND regexp_replace(phone, '\\D', '', 'g') = $2 AND source = $3
+      ORDER BY id LIMIT $4`,
+    [userId, phoneDigits(phone), OWN_LABEL_SOURCE, MAX_OWN_LABELS],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows.map((row) => row.tag);
 }
 
 /**
@@ -139,7 +158,7 @@ async function publicFacts(phone: string): Promise<PublicFact[]> {
 
 async function exclusionsOf(userId: number, phone: string): Promise<ContactExclusionView[]> {
   const result = await query<ContactExclusionView>(
-    `SELECT id, excluded_for, reason FROM contact_exclusions
+    `SELECT id, excluded_for, reason, goal_id FROM contact_exclusions
       WHERE user_id = $1::int AND contact_phone = $2
       ORDER BY created_at DESC LIMIT $3`,
     [userId, phoneDigits(phone), MAX_EXCLUSIONS],
@@ -169,8 +188,9 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
   if (phone === null) return null;
   const name = await savedName(userId, phone);
   if (name === undefined) return null;
-  const [labels, warmth, facts, published, exclusions, accounts] = await Promise.all([
+  const [labels, ownWritten, warmth, facts, published, exclusions, accounts] = await Promise.all([
     ownLabels(userId, phone),
+    labelsWrittenByOwner(userId, phone),
     warmthOf(userId, phone),
     ownFacts(userId, phone),
     publicFacts(phone),
@@ -184,6 +204,7 @@ export async function contactPageFor(userId: number, id: string): Promise<Contac
     role: roleFrom(facts),
     on_netai: isMemberPhone(accounts, phone),
     labels,
+    own_labels: ownWritten,
     warmth,
     facts,
     public_facts: published,

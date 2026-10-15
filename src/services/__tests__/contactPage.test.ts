@@ -22,6 +22,9 @@ beforeEach(() => mockQuery.mockReset());
 function pageReads(warm: boolean, distant: boolean, alias = 'ნინო'): void {
   mockQuery.mockImplementation((sql: string) => {
     if (sql.includes('FROM "UserAlias"')) return Promise.resolve({ rows: [{ alias }] });
+    // Item 3: the labels the owner wrote on the page are read apart from the import's.
+    if (sql.includes('FROM "UserTags"') && sql.includes('source = $3'))
+      return Promise.resolve({ rows: [{ tag: 'ჩემი ბუღალტერი' }] });
     if (sql.includes('FROM "UserTags"'))
       return Promise.resolve({ rows: [{ tag: 'ბუღალტერი' }, { tag: '12345' }] });
     if (sql.includes('AS warm')) return Promise.resolve({ rows: [{ warm, distant }] });
@@ -44,7 +47,9 @@ function pageReads(warm: boolean, distant: boolean, alias = 'ნინო'): voi
         ],
       });
     if (sql.includes('FROM contact_exclusions'))
-      return Promise.resolve({ rows: [{ excluded_for: 'office in Rustavi', reason: null }] });
+      return Promise.resolve({
+        rows: [{ excluded_for: 'office in Rustavi', reason: null, goal_id: null }],
+      });
     return Promise.resolve({ rows: [] });
   }) as never;
 }
@@ -61,6 +66,7 @@ describe('contactPageFor', () => {
       role: 'ბუღალტერი · TBC',
       on_netai: true,
       labels: ['ბუღალტერი'],
+      own_labels: ['ჩემი ბუღალტერი'],
       warmth: Warmth.Warm,
       facts: expect.any(Array),
       public_facts: [
@@ -71,7 +77,7 @@ describe('contactPageFor', () => {
           fact_date: '2026-05-01',
         },
       ],
-      exclusions: [{ excluded_for: 'office in Rustavi', reason: null }],
+      exclusions: [{ excluded_for: 'office in Rustavi', reason: null, goal_id: null }],
     });
     const sqls = mockQuery.mock.calls.map(([sql]) => String(sql));
     expect(sqls.some((sql) => sql.includes('ask_boundaries'))).toBe(false);

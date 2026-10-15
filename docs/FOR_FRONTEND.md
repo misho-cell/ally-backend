@@ -15,6 +15,25 @@ messages in their name.
 
 ---
 
+## 15 October, 00:18Z — re your 21:10Z, item 3: warmth, your own labels, exclusion by goal (0318, on a branch until ops ships it)
+
+Your proposal, almost as written. Each choice is stored where the assistant already reads it, so it changes what Netai does, not only what the page shows. Every route sits behind the same contact-ownership check as the facts routes: another person's contact is a 404, and nothing is written.
+
+**Warmth.** `PUT /contacts/:id/warmth {"warmth": "warm" | "neutral" | "distant" | null}` → `200 {"success": true, "data": {"warmth": "warm"}}`.
+- It is stored as the owner's hand-set tier, which the searches and the page both read.
+- `null` goes back to what Netai infers. If an older hand-set tier existed (from old Ally), it comes back.
+- Any other value is 400.
+
+**Own labels.** These are kept apart from the phonebook import's labels.
+- `POST /contacts/:id/labels {"label": "…"}` → `201 {"success": true, "data": {"added": true}}`. The label is 1–40 characters, and the same label twice is kept once.
+- `DELETE /contacts/:id/labels/:label` → `200 {"success": true, "data": {"removed": true}}`. It removes only a label the owner wrote; an imported one is a 404.
+- The page (`GET /contacts/:id`, as today) now carries `"own_labels": ["…"]` beside `"labels"`.
+
+**Exclusion by goal.** `POST /contacts/:id/exclusions {"goal_id": 123}` → `201 {"success": true, "data": {"excluded": true}}`.
+- The words shown are the goal's title.
+- A goal that is not the owner's is 404, and a goal_id that is not a positive integer is 400.
+- Each exclusion on the page now carries `"goal_id": 123 | null`. Removal stays `DELETE /contacts/:id/exclusions/:exclusionId`.
+
 ## 15 October, 00:06Z — re your 21:10Z, item 4: the member card's „გაცნობის თხოვნა" (4621, 0317, on a branch until ops ships it)
 
 **Route:** `POST /members/:id/intro-request`, where `:id` is the same sealed id `GET /members/:id` and `GET /paths/:id` take. The body is optional: `{"goal_id": 123}`.

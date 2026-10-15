@@ -13,7 +13,19 @@ import {
 } from '../../services/contactImportState.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { contactPage, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../services/contactBook.service';
-import { contactPageFor, ownContactPhone, ownFacts } from '../../services/contactPage.service';
+import {
+  contactPageFor,
+  ownContactPhone,
+  ownFacts,
+  Warmth,
+} from '../../services/contactPage.service';
+import {
+  addOwnLabel,
+  excludeFromGoal,
+  MAX_OWN_LABEL_CHARS,
+  removeOwnLabel,
+  setOwnWarmth,
+} from '../../services/contactOwnerSettings.service';
 import {
   addOwnFact,
   correctOwnFact,
@@ -336,6 +348,12 @@ contactsRouter.get('/:id', phonebookLimit, async (req: Request, res: Response) =
  *   DELETE /contacts/:id/exclusions/:exclusionId  200
  *   POST   /contacts/:id/remove                   200 (leaves the network)
  *   POST   /contacts/:id/deceased                 200
+ *
+ * Item 3 of the frontend's 21:10Z note (Misho's yes):
+ *   PUT    /contacts/:id/warmth      { warmth: warm | neutral | distant | null }  200
+ *   POST   /contacts/:id/labels      { label }                                   201
+ *   DELETE /contacts/:id/labels/:label                                           200
+ *   POST   /contacts/:id/exclusions  { goal_id }                                 201
  */
 type ContactHandler = (userId: number, phone: string, req: Request, res: Response) => Promise<void>;
 
@@ -475,3 +493,56 @@ contactsRouter.post(
 );
 
 export default contactsRouter;
+
+/** Read when a request is checked, not when the module loads (some tests stand the page module in). */
+function isWarmth(value: unknown): boolean {
+  return value === null || (Object.values(Warmth) as string[]).includes(String(value));
+}
+
+contactsRouter.put(
+  '/:id/warmth',
+  phonebookLimit,
+  body('warmth').custom(isWarmth),
+  withOwnContact('PUT /contacts/:id/warmth', async (userId, phone, req, res) => {
+    const raw = (req.body as { warmth: unknown }).warmth;
+    const warmth = raw === null ? null : (String(raw) as Warmth);
+    await setOwnWarmth(userId, phone, warmth);
+    res.status(200).json({ success: true, data: { warmth } });
+  }),
+);
+
+const ownLabel = body('label').isString().trim().isLength({ min: 1, max: MAX_OWN_LABEL_CHARS });
+
+contactsRouter.post(
+  '/:id/labels',
+  phonebookLimit,
+  ownLabel,
+  withOwnContact('POST /contacts/:id/labels', async (userId, phone, req, res) => {
+    await addOwnLabel(userId, phone, String(req.body.label));
+    res.status(201).json({ success: true, data: { added: true } });
+  }),
+);
+
+contactsRouter.delete(
+  '/:id/labels/:label',
+  phonebookLimit,
+  param('label').isString().trim().isLength({ min: 1, max: MAX_OWN_LABEL_CHARS }),
+  withOwnContact('DELETE /contacts/:id/labels', async (userId, phone, req, res) => {
+    const outcome = await removeOwnLabel(userId, phone, String(req.params.label));
+    await answerEdit(outcome, res, async () => {
+      res.status(200).json({ success: true, data: { removed: true } });
+    });
+  }),
+);
+
+contactsRouter.post(
+  '/:id/exclusions',
+  phonebookLimit,
+  body('goal_id').isInt({ min: 1 }),
+  withOwnContact('POST /contacts/:id/exclusions', async (userId, phone, req, res) => {
+    const outcome = await excludeFromGoal(userId, phone, Number(req.body.goal_id));
+    await answerEdit(outcome, res, async () => {
+      res.status(201).json({ success: true, data: { excluded: true } });
+    });
+  }),
+);
