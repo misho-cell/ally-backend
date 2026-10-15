@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 22:00Z — 0357: the owner's wallet is read beside the thread when a send is accepted (5321)
+
+- **0357** `patches/afternoon-1250/0357-wallet-beside-thread.patch` (sha256 starts 2061776b939f), commit 076f743, on top of main 8faf6fe.
+- **Why:** the tester's 60624. Alone on the server, a send took 1.8 s to be accepted, about 1 s of it the network. Before the 202 the route ran getThread, then runPayerFor, then checkRunAllowance, which is four round trips on its own (flag, expire, period grant, balance).
+- **What changes:** the owner's own wallet is read in parallel with the thread. It is used when the owner pays, which covers every run except an answer to somebody else's ask. Any other payer's wallet is read as before. Nothing changes in what is allowed or refused.
+- **Verify:** green, 923 suites and 8938 tests.
+- **DONE WHEN:** live, and a single send with no load comes back in clearly under 1.8 s from the tester's browser, about 0.4 s less on the server side.
+- **Ship it after the tester's 5th 200 run (box 60689)** if that run is in progress.
+
 ### 15 Oct, 21:20Z — 0356: short pool 40 → 80; run trail in one round trip (speed under load, Misho's ask)
 
 - **0356** `patches/afternoon-1250/0356-pool-80-trail-one-trip.patch` (sha256 starts af1c7fbf2152), commit 788f1cf, on top of main a5406b2.

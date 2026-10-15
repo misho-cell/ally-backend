@@ -1,0 +1,85 @@
+From 076f743a76f4291f4f64a1ac31219d07165e1543 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 21:43:38 +0000
+Subject: [PATCH] 5321: the owner's wallet is read beside the thread when a
+ message is accepted
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 60624: alone on the server, a send took 1.8 s to be accepted,
+about 1 s of it the network. Before the 202 the route read the thread, then
+who pays, then the payer's wallet — the wallet alone four round trips. The
+owner's own wallet is now read beside the thread and used whenever the owner
+is the payer, which is every run that is not an answer to somebody else's
+ask; another payer's wallet is read as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../theWalletIsReadBesideTheThread.test.ts    | 21 +++++++++++++++++++
+ src/api/routes/threads.routes.ts              | 13 +++++++++++-
+ 2 files changed, 33 insertions(+), 1 deletion(-)
+ create mode 100644 src/api/routes/__tests__/theWalletIsReadBesideTheThread.test.ts
+
+diff --git a/src/api/routes/__tests__/theWalletIsReadBesideTheThread.test.ts b/src/api/routes/__tests__/theWalletIsReadBesideTheThread.test.ts
+new file mode 100644
+index 0000000..5105d49
+--- /dev/null
++++ b/src/api/routes/__tests__/theWalletIsReadBesideTheThread.test.ts
+@@ -0,0 +1,21 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/** The tester's 60624: a send took 1.8 s to be accepted with nobody else on the server. */
++describe('accepting a message', () => {
++  const routes = readFileSync(join(__dirname, '..', 'threads.routes.ts'), 'utf8');
++  const send = routes.slice(routes.indexOf('console.log(\n        `[msg-in] user'));
++
++  it("starts reading the owner's wallet before the thread is read", () => {
++    const walletAt = send.indexOf('const ownAllowance = checkRunAllowance(userId);');
++    const threadAt = send.indexOf('const thread = await getThread(threadId, userId);');
++    expect(walletAt).toBeGreaterThan(-1);
++    expect(threadAt).toBeGreaterThan(walletAt);
++    expect(send.slice(walletAt, threadAt)).toContain('ownAllowance.catch(() => undefined);');
++  });
++
++  it('uses it only when the owner pays, and reads the payer’s own wallet otherwise', () => {
++    expect(send).toContain('? await ownAllowance');
++    expect(send).toContain(': await checkRunAllowance(payerId);');
++  });
++});
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 1a5d1ad..22861e1 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -963,6 +963,15 @@ threadsRouter.post(
+           (as_goal === true ? ' (as_goal)' : ''),
+       );
+ 
++      /**
++       * The tester's 60624: a send took 1.8 s to come back with nobody else on
++       * the server, about 1 s of it the network. The owner's own wallet is read
++       * beside the thread rather than after it — four round trips that waited for
++       * nothing — and used when the owner is the one who pays, which is every run
++       * that is not an answer to somebody else's ask.
++       */
++      const ownAllowance = checkRunAllowance(userId);
++      ownAllowance.catch(() => undefined);
+       const thread = await getThread(threadId, userId);
+       if (thread === null) {
+         res.status(404).json({ success: false, error: 'Thread not found' });
+@@ -1004,7 +1013,9 @@ threadsRouter.post(
+       const allowance =
+         payerId === null || typedStop
+           ? { allowed: true as const }
+-          : await checkRunAllowance(payerId);
++          : payerId === userId
++            ? await ownAllowance
++            : await checkRunAllowance(payerId);
+       /**
+        * Row 221 — D348 item 2. At zero the person's next message is still
+        * ANSWERED ONCE, and the wall comes after that answer rather than
+-- 
+2.43.0
+
