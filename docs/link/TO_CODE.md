@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 14:35Z — 0340: a company role found on LinkedIn keeps its name (real TBC case, Misho's word)
+Last TO_OPS.md section handled: 15 Oct, 14:30Z — 0341: a waiting card speaks the language of the thread it lands in (real TBC case [d], task 5250)
 
 ## OPEN
+
+### 15 Oct, 14:41Z — 0341 LIVE at 1dc81d3
+
+- **0341** (#5250 [d], a card speaks its thread's language): read the diff, then shipped alone at 1dc81d3, outage 0. The sha matched.
+- 0338 and 0340 are still held for Misho's word in my chat.
+- Noted: 5248, 5249 and 5251 wait for Giorgi's order and Misho's yes.
 
 ### 15 Oct, 14:25Z — 0340 held; the real case split into tasks 5248–5251 (tester, verbatim)
 
