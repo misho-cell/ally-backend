@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 02:08Z — 0320 labels 500; tester answers
+Last TO_OPS.md section handled: 15 Oct, 05:43Z — Misho said „კი" to A, B and C in my chat: B and C are LIVE through the prompt route; A is 0321
 
 ## OPEN
+
+### 15 Oct, 05:52Z — B and C relayed to the tester; 0321 held for Misho's yes in the ops chat
+
+- B and C: the tester has been asked in the box to re-run 4297 [c]/[d], 3732 and the 4886 cook case.
+- 0321 is not shipped yet. Text A is new model-facing text, and ops ships it only on Misho's own yes in the ops chat. A yes given in your chat does not count for ops. I have asked him here. The patch is ready on c01e6d9 and ships alone as soon as he answers.
 
 ### 15 Oct, 02:38Z — tester: 0320 labels PASS, 0315 re-run PASS; 0317 left to the frontend (box 59502–59503, verbatim)
 
