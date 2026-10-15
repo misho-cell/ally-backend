@@ -1,0 +1,143 @@
+From ea7b9ee5f54f682cd180ec6eb83262a2ad04076e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 14:46:37 +0000
+Subject: [PATCH] 4126: a saver's private fact is not shown to its subject, nor
+ removable by id
+
+The facts-about-me list held every unretracted fact about a person's numbers,
+including a saver's private notes and needs, which are that saver's own words
+(the frontend's 14:35Z question). Misho, 15 Oct: hide the private ones. The
+list and the removal now cover facts marked public, and facts read from a
+public page or a number's saved name; a hidden fact answers not-found, so its
+existence is not disclosed. FOR_FRONTEND answers the frontend.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          | 14 +++++++++++
+ ...aPersonRemovesFactsAboutThemselves.test.ts | 24 +++++++++++++++++--
+ src/services/factsAboutMe.service.ts          | 19 ++++++++++++---
+ 3 files changed, 52 insertions(+), 5 deletions(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 6354292..303a716 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,20 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 14:50Z — re your 14:35Z: `note` facts, and the private ones, leave the list (4126, 0342)
++
++**Your question: can `note` facts reach `GET /privacy/facts-about-me`?** Until now they could. The list held every unretracted fact about the person's numbers, including a saver's private ones: about 490 private notes and 230 private needs. Misho decided today (15 Oct) to hide the private ones.
++
++**With 0342 (branch, not yet live):** the list, and `DELETE /privacy/facts-about-me/:id`, cover only:
++- facts the saver marked public, and
++- facts read from a public page (`origin: "research"`) or from a number's saved name (`origin: "label"`).
++
++A saver's private fact (`saved_by_someone` and not public) is not listed. Deleting one by its id answers 404, the same as an unknown id, so nothing tells the person it exists.
++
++Nothing in the contract changes: the same fields, the same status codes. A `note` can still arrive when its saver made it public, so keep its label „შენიშვნა". It is in the texts for Giorgi.
++
++**Your texts:** relayed to Giorgi verbatim for G-045 (box 60234). I will pass his answer on here.
++
+ ## 15 October, 14:00Z — re your 13:25Z: what changed since 11:10Z, and the one thing that needs you (4126 „facts about me")
+ 
+ Nothing was lost: since 11:10Z I wrote you no new section. Here is what changed since then and what each means for the client.
+diff --git a/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts b/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts
+index 2d671f2..cb23b6c 100644
+--- a/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts
++++ b/src/services/__tests__/aPersonRemovesFactsAboutThemselves.test.ts
+@@ -48,7 +48,27 @@ describe('facts about me', () => {
+     const [sql, params] = mockQuery.mock.calls[1];
+     expect(String(sql)).not.toContain('submitted_by_user_id');
+     expect(String(sql)).toContain('retracted_at IS NULL');
+-    expect(params).toEqual([['+995500000001'], 200]);
++    expect(params).toEqual([['+995500000001'], 200, ['public_research', 'label']]);
++  });
++
++  it('hides a saver’s private fact, keeping public ones and those read from a page or a label', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValueOnce({ rows: [] } as never);
++    await factsAboutMe(ME);
++    const [sql, params] = mockQuery.mock.calls[1];
++    expect(String(sql)).toContain('AND (is_public = true OR source = ANY($3::text[]))');
++    expect((params as unknown[])[2]).toEqual(['public_research', 'label']);
++  });
++
++  it('cannot remove, or learn of, a hidden fact by its id', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ phone: '+995500000001' }] } as never)
++      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
++    await expect(removeFactAboutMe(ME, 11)).resolves.toBe(RemoveOutcome.NotFound);
++    const [sql, params] = mockQuery.mock.calls[1];
++    expect(String(sql)).toContain('AND (is_public = true OR source = ANY($3::text[]))');
++    expect((params as unknown[])[2]).toEqual(['public_research', 'label']);
+   });
+ 
+   it('names the kind of source', () => {
+@@ -66,7 +86,7 @@ describe('facts about me', () => {
+     expect(String(sql)).toContain('removed_by_subject_at = NOW()');
+     expect(String(sql)).toContain('is_matchable = false');
+     expect(String(sql)).toContain('neo4j_contact_id = ANY($2::text[])');
+-    expect(params).toEqual([9, ['+995500000001']]);
++    expect(params).toEqual([9, ['+995500000001'], ['public_research', 'label']]);
+   });
+ 
+   it('says not found for someone else’s fact, and for a person with no number', async () => {
+diff --git a/src/services/factsAboutMe.service.ts b/src/services/factsAboutMe.service.ts
+index e3c83fc..a1e9a4e 100644
+--- a/src/services/factsAboutMe.service.ts
++++ b/src/services/factsAboutMe.service.ts
+@@ -13,12 +13,23 @@ import { normalizePhone } from './phone';
+  * A removal holds: the row is retracted, made private and unmatchable, and
+  * marked removed_by_subject_at, which the savers' upsert and the research
+  * reload both respect.
++ *
++ * A SAVER'S PRIVATE FACT IS NOT SHOWN (Misho, 15 Oct, the frontend's 14:35Z
++ * question). About 490 private notes and 230 private needs were kept about
++ * people's numbers — „he owes me money" read by its subject is the saver's own
++ * words. The list shows what is public, and what was read from a public page
++ * or a number's saved name. A hidden fact cannot be removed by its id either,
++ * or the answer would tell the person it exists.
+  */
+ const QUERY_TIMEOUT_MS = 5_000;
+ const OWN_NUMBERS_READ = 20;
+ export const FACTS_ABOUT_ME_MAX = 200;
+ const RESEARCH_SOURCE = 'public_research';
+ const LABEL_SOURCE = 'label';
++/** Sources shown even when the row is private: neither is one saver's words. */
++const ALWAYS_SHOWN_SOURCES: readonly string[] = [RESEARCH_SOURCE, LABEL_SOURCE];
++/** The SQL condition, over contact_facts, for a fact its subject may see. */
++const SHOWN_TO_SUBJECT = 'is_public = true OR source = ANY($3::text[])';
+ 
+ export enum FactOrigin {
+   Research = 'research',
+@@ -88,9 +99,10 @@ export async function factsAboutMe(userId: number): Promise<FactAboutMe[]> {
+             research_status
+        FROM contact_facts
+       WHERE neo4j_contact_id = ANY($1::text[]) AND retracted_at IS NULL
++        AND (${SHOWN_TO_SUBJECT})
+       ORDER BY COALESCE(updated_at, created_at) DESC
+       LIMIT $2`,
+-    [numbers, FACTS_ABOUT_ME_MAX],
++    [numbers, FACTS_ABOUT_ME_MAX, ALWAYS_SHOWN_SOURCES],
+     QUERY_TIMEOUT_MS,
+   );
+   return result.rows.map(toFactAboutMe);
+@@ -109,8 +121,9 @@ export async function removeFactAboutMe(userId: number, factId: number): Promise
+     `UPDATE contact_facts
+         SET retracted_at = NOW(), removed_by_subject_at = NOW(), is_public = false,
+             is_matchable = false, updated_at = NOW()
+-      WHERE id = $1 AND neo4j_contact_id = ANY($2::text[]) AND retracted_at IS NULL`,
+-    [factId, numbers],
++      WHERE id = $1 AND neo4j_contact_id = ANY($2::text[]) AND retracted_at IS NULL
++        AND (${SHOWN_TO_SUBJECT})`,
++    [factId, numbers, ALWAYS_SHOWN_SOURCES],
+     QUERY_TIMEOUT_MS,
+   );
+   return (result.rowCount ?? 0) > 0 ? RemoveOutcome.Removed : RemoveOutcome.NotFound;
+-- 
+2.43.0
+

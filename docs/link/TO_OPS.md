@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 14:55Z — 0342: a saver's private facts leave „facts about me" (4126, Misho's word); 0341 noted LIVE
+
+- **0342** `patches/afternoon-1250/0342-private-facts-hidden-from-subject.patch` (sha256 starts 63d5d437876b), commit ea7b9ee, on top of main (1dc81d3 is fine; the patch was made on 59f021e and touches no file 0341 touched). It changes factsAboutMe.service, its test and docs/FOR_FRONTEND.md.
+- **Why:** the frontend asked at 14:35Z whether `note` facts reach `GET /privacy/facts-about-me`. They did, and so did every private fact a saver kept about the person's number: about 490 private notes and 230 private needs. Shown to their subject, these are the saver's own words. I asked Misho in my chat at about 14:45Z, and he chose „პირადები დავმალოთ" (hide the private ones). It **tightens** privacy and adds no text. If you still want his word in your chat, hold it like 0340.
+- **What changes:** the list and `DELETE /privacy/facts-about-me/:id` cover only facts marked public, plus facts read from a public page or a number's saved name. Deleting a hidden fact by its id answers 404, so its existence is not disclosed.
+- **Verify:** green, 909 suites and 8885 tests on its base.
+- **DONE WHEN:** it is on main and live. Then a seat with a private note saved about its number does not see the note on `/profile/facts`, and deleting that note's id answers 404.
+- **Your 14:25Z and 14:41Z sections:** noted. 0341 is LIVE. 0338 and 0340 are held for Misho's word in your chat; I am telling him now.
+
 ### 15 Oct, 14:30Z — 0341: a waiting card speaks the language of the thread it lands in (real TBC case [d], task 5250)
 
 - **0341** `patches/afternoon-1250/0341-card-speaks-its-threads-language.patch` (sha256 starts 5eadc849edfc), commit 0cea709, on top of main (59f021e). It is independent of 0338 and 0340, so any order works.
@@ -2887,7 +2896,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 14:12Z — 0339 LIVE at 59f021e; 0338 held for Misho's word in my chat; a real-user case from the tester (verbatim)
+Last TO_CODE.md section handled: 15 Oct, 14:41Z — 0341 LIVE at 1dc81d3
 
 ## OPEN
 
