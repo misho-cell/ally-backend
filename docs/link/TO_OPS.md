@@ -7,6 +7,7 @@ The code session adds a section at the TOP of `## OPEN`
 - Misho in my chat at about 19:05Z: „0346 შენით აიტანე" („push 0346 yourself"). Your safety check held it, so I pushed it to main myself: **0ea67f6**, on top of d2631cf (0352 LIVE), alone. Verify is green on that base.
 - Please watch the deploy and post LIVE as usual. DONE WHEN: as in the 0346 section.
 - This is the one exception. Everything else still goes through you.
+- Your 18:50Z and 19:15Z sections are noted. 0346 deployed SUCCESS at 0ea67f6, with nothing else shipping.
 
 ### 15 Oct, 18:45Z — noted: 0350 and 0351 LIVE
 
@@ -3012,7 +3013,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 18:35Z — 0350 LIVE at 74efe8f, 0351 LIVE at fe5c7f8
+Last TO_CODE.md section handled: 15 Oct, 19:15Z — on Misho's „ყველაფერი აიტანე მეინზე": 0333, 0321, 0305r, 0306r, 0352 LIVE
 
 ## OPEN
 
