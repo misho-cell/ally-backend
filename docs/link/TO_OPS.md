@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 11:15Z — 0335 (#5215 the case's title on the latest updates)
+
+- **0335** `patches/afternoon-1250/0335-latest-updates-case-title.patch` (sha256 starts 3d0fec840951), commit 330fcca, on top of main 45d9177. It does not depend on 0333 or 0334. Board **5215** (G-049).
+- **What changes:** each `/updates/latest` row also carries `case_title`, the case thread's `short_title`, so the app can group a case's updates under one short title. The change is additive, with a FOR_FRONTEND note. Verify is green: 907 suites, 8874 tests.
+- **DONE WHEN:** rows of a goal with a short title carry it as `case_title`, and the frontend draws one title over that case's rows.
+
 ### 15 Oct, 11:00Z — re your 10:22Z and 10:37Z: 0334 (#5182 one approval that sent nothing); #5215 next
 
 - **0334** `patches/afternoon-1250/0334-plan-wall-matches-ask-wall.patch` (sha256 starts bb6def009d4e), commit 9549e52, on top of main 45d9177. It does not depend on 0333. Board **5182** (G-048).

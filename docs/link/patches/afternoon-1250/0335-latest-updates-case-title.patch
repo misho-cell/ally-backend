@@ -1,0 +1,124 @@
+From 330fcca87ef0254933eabfb6199b69e2a9a3d18e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 10:56:12 +0000
+Subject: [PATCH] 5215: GET /updates/latest rows carry the case's short title
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi (G-049): in „ბოლო სიახლეები" updates of the same case go under one
+title of 3–4 words. Each row now carries case_title, the case thread's
+short_title (null until written), so the app groups by thread_id and draws
+the title once. Additive; nothing else changes. FOR_FRONTEND has the field.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                               | 14 ++++++++++++++
+ .../theHomeCardShowsTheLatestUpdates.test.ts       |  3 +++
+ src/api/routes/updates.routes.ts                   |  3 +++
+ src/services/pendingUpdates.service.ts             |  5 ++++-
+ 4 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 67b3801..28393c3 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,20 @@ messages in their name.
+ 
+ ---
+ 
++## 15 October, 11:10Z — #5215: `case_title` on `GET /updates/latest` rows, to group one case's updates (0335)
++
++Each row of `GET /updates/latest` now also carries `case_title`, the case's short title (two or three words, the same `short_title` the list shows), or `null` when the case has none yet. Nothing else changes.
++
++```
++{ "update_ref": "upd_7", "kind": "search_result", "task_id": 25973, "thread_id": 52283,
++  "case_title": "მიწის გაყიდვა", "title": "…", "detail": "…", "line": "…",
++  "released_at": "2026-10-15T08:00:00.000Z" }
++```
++- To group: rows with the same `thread_id` are the same case. Draw `case_title` once above them. When it is null, use the first 3–4 words of `title`.
++- Status: on my branch (0335) until ops ships it. Before that, the field is simply absent.
++
++---
++
+ ## 15 October, 09:50Z — #5121 „ბოლო სიახლეები": the three newest updates (0330); Lika's file uploads never reached the server
+ 
+ **#5121 (Giorgi, G-037): `GET /updates/latest`** (0330, on my branch until ops ships it)
+diff --git a/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts b/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts
+index 5804260..b5c7460 100644
+--- a/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts
++++ b/src/api/routes/__tests__/theHomeCardShowsTheLatestUpdates.test.ts
+@@ -71,6 +71,7 @@ describe('GET /updates/latest', () => {
+         kind: 'search_result',
+         payload: {},
+         thread_id: THREAD_ID,
++        case_title: 'მიწის გაყიდვა',
+         released_at: RELEASED,
+       },
+     ]);
+@@ -84,6 +85,7 @@ describe('GET /updates/latest', () => {
+     expect(body.data.updates).toHaveLength(1);
+     const [row] = body.data.updates;
+     expect(row.thread_id).toBe(THREAD_ID);
++    expect(row.case_title).toBe('მიწის გაყიდვა');
+     expect(row.task_id).toBe(GOAL_ID);
+     expect(row.released_at).toBe(RELEASED.toISOString());
+     expect(typeof row.line).toBe('string');
+@@ -110,6 +112,7 @@ describe('GET /updates/latest', () => {
+     expect(sql).not.toMatch(/\bUPDATE\b/);
+     expect(sql).toContain('ORDER BY p.release_at DESC');
+     expect(sql).toContain('p.release_at <= NOW()');
++    expect(sql).toContain('th.short_title AS case_title');
+     expect(params).toEqual([OWNER, ['weekly_summary'], LATEST_UPDATES_LIMIT]);
+     expect(LATEST_UPDATES_LIMIT).toBe(3);
+   });
+diff --git a/src/api/routes/updates.routes.ts b/src/api/routes/updates.routes.ts
+index 1094d5b..fcbd399 100644
+--- a/src/api/routes/updates.routes.ts
++++ b/src/api/routes/updates.routes.ts
+@@ -210,6 +210,8 @@ interface LatestRowView {
+   readonly task_id: number | null;
+   /** The case's conversation — the row opens it; null for an update with no goal. */
+   readonly thread_id: number | null;
++  /** #5215: the case's short title, to group rows of one case under; null when there is none. */
++  readonly case_title: string | null;
+   readonly title: string;
+   readonly detail: string;
+   /** One short line: the case and what happened. */
+@@ -240,6 +242,7 @@ async function latestRows(
+       kind: u.kind,
+       task_id: u.task_id ?? null,
+       thread_id: u.thread_id ?? null,
++      case_title: u.case_title?.trim() || null,
+       title: heading.title,
+       detail: heading.detail,
+       line: storyLine(heading),
+diff --git a/src/services/pendingUpdates.service.ts b/src/services/pendingUpdates.service.ts
+index 75d1345..2f083f7 100644
+--- a/src/services/pendingUpdates.service.ts
++++ b/src/services/pendingUpdates.service.ts
+@@ -350,6 +350,8 @@ export const LATEST_UPDATES_LIMIT = 3;
+ /** An update as the home card draws it: its case's thread, and when it came out. */
+ export interface LatestUpdate extends PendingUpdate {
+   thread_id: number | null;
++  /** #5215: the case's short title (two or three words), null until it is written. */
++  case_title: string | null;
+   released_at: Date;
+ }
+ 
+@@ -366,9 +368,10 @@ export async function latestUpdates(
+ ): Promise<LatestUpdate[]> {
+   const result = await query<LatestUpdate>(
+     `SELECT p.id, p.task_id, p.kind, p.payload, t.thread_id,
+-            p.release_at AS released_at
++            th.short_title AS case_title, p.release_at AS released_at
+        FROM pending_updates p
+        LEFT JOIN tasks t ON t.id = p.task_id AND t.user_id = $1
++       LEFT JOIN threads th ON th.id = t.thread_id
+       WHERE p.user_id = $1
+         AND p.release_at <= NOW()
+         AND p.status IN ('held', 'seen')
+-- 
+2.43.0
+
