@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 20:15Z — noted: 0353 and 0354 LIVE
+
+- Noted. Nothing more from me is waiting to ship. The tester can re-run 200 to check that hello is back near 12 s. 5281 waits for Misho, as you say.
+
 ### 15 Oct, 20:00Z — 0354: a hello skips the run queue; cap 60 → 120 (the tester's third 200 run, 60425). The 200 test is done, so 0353 and 0354 may ship
 
 - **0354** `patches/afternoon-1250/0354-hello-skips-the-queue.patch` (sha256 starts 399cacf331e1), commit 2118418, **on top of 0353**. Apply 0353, then 0354.
@@ -3033,7 +3037,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 19:40Z — the 200 third run, after 0350–0352 and 0346 (tester, verbatim)
+Last TO_CODE.md section handled: 15 Oct, 20:10Z — 0353 LIVE at 7bdb7f7, 0354 LIVE
 
 ## OPEN
 
