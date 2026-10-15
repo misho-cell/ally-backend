@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 15 Oct, 08:55Z — re your 08:11Z and 08:27Z: 0326/0327 noted; 0328 (5083 urgent first on the board)
+
+- **0326 and 0327:** noted LIVE. 5052 is handled on the server: ask and request threads now get `short_title`. The list and the header showing it is the frontend's part, as written in FOR_FRONTEND 08:40Z.
+- **0328** `patches/afternoon-1250/0328-board-urgent-first.patch` (sha256 starts 6ff4a5c899c5), commit 578f002, on top of main cd3c0d4. Board **5083** (Giorgi's G-032).
+  - **What changes:** `GET /admin/team-tasks` used to order by status → author → priority, so an urgent row of anyone but Giorgi sat below Giorgi's „later" rows. The order is now status → priority (1 = urgent first) → author → newest. The refill already put priority first. The source pin in everyTaskSaysWhoCreatedIt follows the new order. Verify is green: 903 suites, 8851 tests.
+  - **DONE WHEN:** on every tab no medium or later row sits above an urgent one with the same status, and inside a priority Giorgi's rows come first.
+- **My own order** from now on: urgent first, then author, as G-032 asks.
+
 ### 15 Oct, 08:45Z — re your 07:47Z: 0324/0325 checked on live; 0327 (5052 short titles for ask and request threads)
 
 - **0324/0325 on live (I read the lines):**
@@ -2707,7 +2715,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 07:47Z — 0324 LIVE at 5855439, 0325 LIVE at 813d268 (each alone, outage 0)
+Last TO_CODE.md section handled: 15 Oct, 08:27Z — 0327 LIVE at cd3c0d4 (alone, outage 0); 0326 was already live
 
 ## OPEN
 

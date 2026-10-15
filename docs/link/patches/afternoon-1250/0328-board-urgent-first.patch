@@ -1,0 +1,87 @@
+From 578f002ca81cd06f2961a8b08bf733679f3ea81c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 15 Oct 2026 08:45:25 +0000
+Subject: [PATCH] 5083: the board lists urgent rows first, then by author
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi's rule (15 Oct): urgent always first, then authors. The page read by
+status, then author (#266), then priority, so a „later" row of Giorgi's sat
+above an urgent row of anybody else's. The order is now status, priority
+(1 urgent first), author, newest. The refill already took priority first.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/everyTaskSaysWhoCreatedIt.test.ts   |  7 +++----
+ src/services/teamTasks.service.ts                 | 15 ++++++++++-----
+ 2 files changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts b/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts
+index 14f59ae..c3bb07e 100644
+--- a/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts
++++ b/src/services/__tests__/everyTaskSaysWhoCreatedIt.test.ts
+@@ -80,15 +80,14 @@ describe('the board', () => {
+     expect(task.created_at).toBe('2026-10-01T19:20:00.000Z');
+   });
+ 
+-  /** #266: by who filed it (Giorgi first), then urgent → later, newest first. */
+-  it('lists one page, bounded, by author, then most urgent, then newest', async () => {
++  /** #5083: urgent first, then who filed it (#266, Giorgi first), then newest first. */
++  it('lists one page, bounded, by status, then most urgent, then author, then newest', async () => {
+     mockQuery.mockResolvedValue(rows([ROW]));
+     await listTeamTasks(2);
+     const [sql, params] = mockQuery.mock.calls[0];
+     expect(String(sql)).toMatch(
+-      /ORDER BY page,\s+COALESCE\(array_position\(\$3::text\[\], status\), cardinality\(\$3::text\[\]\) \+ 1\),\s+COALESCE\(array_position\(\$2::text\[\], created_by\)/,
++      /ORDER BY page,\s+COALESCE\(array_position\(\$3::text\[\], status\), cardinality\(\$3::text\[\]\) \+ 1\),\s+priority,\s+COALESCE\(array_position\(\$2::text\[\], created_by\), cardinality\(\$2::text\[\]\) \+ 1\),\s+id DESC/,
+     );
+-    expect(String(sql)).toMatch(/priority, id DESC/);
+     expect(String(sql)).toContain('LIMIT');
+     expect(params).toEqual([
+       2,
+diff --git a/src/services/teamTasks.service.ts b/src/services/teamTasks.service.ts
+index 0293de8..731d00b 100644
+--- a/src/services/teamTasks.service.ts
++++ b/src/services/teamTasks.service.ts
+@@ -113,9 +113,9 @@ export async function createTeamTask(input: NewTeamTask): Promise<TeamTask> {
+ }
+ 
+ /**
+- * #266 (Giorgi, 2 October): the order the board reads in — by who filed the
+- * row (Giorgi first, then Tornike, Lika, Ninia, Tornike's Claude, then any
+- * other author), then urgent → later, newest first as the last tie-break.
++ * #266 (Giorgi, 2 October): who filed the row — Giorgi first, then Tornike,
++ * Lika, Ninia, Tornike's Claude, then any other author. Since #5083 (Giorgi,
++ * 15 Oct) it comes after the priority, never before it.
+  */
+ const AUTHOR_ORDER: readonly TeamTaskAuthor[] = [
+   TeamTaskAuthor.Giorgi,
+@@ -136,7 +136,11 @@ export const STATUS_ORDER: readonly TeamTaskStatus[] = [
+   TeamTaskStatus.Tested,
+ ];
+ 
+-/** One page of the board: by status (4885), then in the order #266 asks for. */
++/**
++ * One page of the board: by status (4885), then urgent first (#5083, Giorgi,
++ * 15 Oct: „urgent always first, then authors"), then by author (#266), newest
++ * first as the last tie-break. Priority 1 is urgent.
++ */
+ export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
+   const result = await query<Record<string, unknown>>(
+     `SELECT ${COLUMNS} FROM team_tasks
+@@ -144,8 +148,9 @@ export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
+         AND deleted_at IS NULL
+       ORDER BY page,
+                COALESCE(array_position($3::text[], status), cardinality($3::text[]) + 1),
++               priority,
+                COALESCE(array_position($2::text[], created_by), cardinality($2::text[]) + 1),
+-               priority, id DESC
++               id DESC
+       LIMIT ${MAX_TASKS_LISTED}`,
+     [page ?? null, AUTHOR_ORDER, STATUS_ORDER],
+     QUERY_TIMEOUT_MS,
+-- 
+2.43.0
+
