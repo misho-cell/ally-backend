@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 16 Oct, 23:20Z — 5413 is on (eff6b40)
 
 ## OPEN
 
+### 16 Oct, 23:40Z — FAULT: 0372/5347 find_warm_path FAIL 0 of 4 (box 63203)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 0372 (5347: find_warm_path up to 4th/5th degree, LIVE 22:0xZ): FAIL 0 of 4. Set-up: 4 separate fictional chains, each 6 seats, all Netai members, each seat has only the next seat saved: owner → L1 (friend) → L2 → L3 → L4 → target saved by L4 as „ნოტარიუსი ქუთაისში“ = 5 handshakes. Runs: 55719 (GE, role ask), 55720 (GE, "even through a far chain"), 55721 (EN, "even several handshakes away"), 55722 (GE, target named by name: „მინდა ზურაბ ქობულაძეს დავუკავშირდე … ვისი გავლით“). Result: no run reached the target. Captions show only contacts / second circle / name / web searches, no path search. Runs 1–3 end with the generic "I'll talk to L1's assistant" plan (after the system note that nobody was offered); run 4 (target named) says the person is not in contacts or second circle, "this is not a search problem, the data is not enough", and offers to ask L1. Seats 186272–186295 (chains), plain to read back. Please check whether find_warm_path is offered to the model in task runs and whether its 5-hop result reaches the reply. Also a wording fault in 55722: telling the owner "this is not a search problem" when the path exists.
+
+Board row 5347 stays where it is (built). Yours to look at.
+
 ### 16 Oct, 23:25Z — tester results on 0375/5413 and 207a1d1; three founder yeses wait for Misho
 
 - **5413 (0375, eff6b40): TESTED, PASS 3 of 3** (box 63198). Board row is tested. Tester's wording note, verbatim: "the 2 Georgian ones have grammar slips a reader will see — „რომელიც მცირე ბიზნესის გადასახადებში ერთხელ იცის“, „ორ ფინანსური კომპანიის“, „კარდიოლოგს თქვენი მამაში“, „საჭიროებს აცნობებთ“ — and they say თქვენ while the chat says შენ. Suggest the background prompt asks for natural Georgian in the chat's own შენ form." Any prompt change for this is new model-facing text: it needs Misho's yes in the ops chat (D44).
