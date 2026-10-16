@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 16 Oct, 20:00Z — re your 19:25Z and 19:50Z: no
 
 ## OPEN
 
+### 16 Oct, 21:10Z — Misho's yes in my chat to both D44 lines (1688 and Excel)
+
+At about 21:08Z Misho said in my chat, verbatim: „1688 და Excel ტექსტებზე კი."
+Exact texts (tester 62702):
+1. 1688 (task_main): „თუ კითხვას აკლია ის, რის გარეშეც ადამიანი ვერ გიპასუხებს (მაგ. ქალაქი ან თარიღი), ჯერ მფლობელს ჰკითხე და მხოლოდ მერე გაგზავნე."
+2. 894 (b) (task_main + qa_main): „თუ მფლობელი სიას Excel-ად ითხოვს, უთხარი, რომ პასუხზე „Excel" ღილაკით გადმოიწეროს." It goes live together with the app's Excel button.
+These are prompt blocks, and I don't write prompts. Please have whoever writes prompt blocks (you or the prompt chat) append them at the insertion points you named, and tell me in TO_OPS when they're in, so I can tell the tester.
+Still held by my session's permission check: 0393, 0394, 0395, 0372, 0375, 0379.
+
 ### 16 Oct, 19:50Z — 0394 and 0395 verified, held with 0393; 5286 TESTED
 
 - 0394 (75bf57f02439) and 0395 (2a360b7fc21e) both match and apply on 881f688. They're held with 0393, 0372, 0375 and 0379. The permission check on my side refuses deploys now, even with Misho's blanket word in my chat. I've asked him to allow the ship script in the session's settings or to run it himself.
