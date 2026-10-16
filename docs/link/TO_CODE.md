@@ -9,6 +9,39 @@ Last TO_OPS.md section handled: 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), t
 
 ## OPEN
 
+### 16 Oct, 09:55Z — 1 person vs 200; prompt chat round 2 (no test moved, so they ask for engine work); fixed server lines for 5149
+
+Tester, box 61832, verbatim:
+> 1 PERSON vs 200 — the 1-person side (Misho's ask 61825). ONE fresh fictional seat (3 fictional contacts), nothing else running, 09:29–09:41Z, one message at a time, 3 runs each; live build after 0370 (0371 not yet live). Medians (runs in brackets), seconds:
+> • hello: accept 1.39 · accept→answer 0.8 · send→answer 2.2 (2.1 / 2.2 / 2.3)
+> • marketing: accept 1.35 · accept→answer 24.7 · send→answer 26.1 (25.9 / 26.1 / 34.0)
+> • price: accept 1.35 · accept→answer 20.1 · send→answer 21.5 (21.5 / 19.1 / 22.8)
+> • accountant plan: accept 1.38 · accept→answer 30.4 · send→answer 31.8 (65.3 / 29.8 / 31.8). Note: only run 1 ended in a plan waiting for approval; runs 2–3 ended 'done' (same seat, the earlier goal may have been reused).
+> Against run 6 (200 at once, accept 31.8 s): hello 2.3, marketing 36.5, price 27.6, plan 102.1 from accept. So alone vs 200: accept 1.4 vs 31.8; marketing 25 vs 37; price 20 vs 28; plan 30 vs 102. Run 7 (after 0367) still to come from a separate one-job chat.
+
+Prompt chat round 2, box 61833, verbatim:
+> PROMPT CHAT — 16 Oct, TBC solver-first change, round 2 (Edits 1–11 + task 5149).
+> WRITTEN 09:34Z: task_main 11,497 chars (sha 1b48a7801ebe), request_main 3,083 (sha 2b49cad56789). Read back identical; no other block changed. Enabled total 34,988 (cap 35,000). Backup of every block first (sha-checked).
+> TESTS on fresh fictional seats, before → after, 2 runs each:
+> 1. TBC owner case: 0/2 → 0/2. Plans still go to the unfit "TBC" phonebook people; no SME-banking role, no current person; only the server's opening web search runs.
+> 2. Solver lead (Misho's case): 2/2 → 2/2 — answered in quick-answer mode; one after-run still quotes a raw label.
+> 3. Recipient "wrong person, lower level": shortlist of 2–3 in the first answer 1/2 → 1/2; web check 0/2 → 0/2.
+> 4. Path test (task 5347), 3rd + 5th degree: whole chain in the plan 0/4 → 0/4; find_warm_path called 0/4 → 0/4; "ask X instead" reaches X with the full request 0/4 → 0/4 (it asks link 1 to introduce X instead).
+> 5. Task 5149 wording: status lines still person-to-person in every run ("I asked <A>"); "Ally" 0; Georgian-script names yes.
+> 6. Task 5286: no number 4/4; intro offer naming the friend 1/2 → 1/2.
+> 7. Task 5126 "Change" lets the owner type: 1/1 → 1/1. Guards (hello, trade goal): unchanged, pass.
+> RESULT: no test moved, nothing got worse, so both blocks stay live. Same cause as round 1 (61796): the first goal turn follows the server's opening searches; the model does not run a role web search or find_warm_path even when told to; plan and status lines are fixed text. T1/T3/T11, 5347 and 5149 B need the engine — Misho's Claude.
+> All 30 test goals stopped. Seats 185796–185902. Details: NETAI_PROMPT_CHANGE_2026-10-16_TBC_SOLVER.md, RESULT — PROMPT CHAT 2.
+
+Prompt chat, fixed server lines (5149, change only after Giorgi's OK of the exact text, D582), box 61834, verbatim:
+> PROMPT CHAT — fixed server lines for Misho's Claude (task 5149), to change ONLY after Giorgi OKs the exact text (D582). Seen on every run today:
+> 1. Plan line: "<A>-ის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?" — no target, no why, sometimes first name only. Needs who-for-what + why (5149 A/D, 2909).
+> 2. Status after send: "ვკითხე <A>-ს. როგორც კი ვინმე გიპასუხებს, მაშინვე გეტყვი." and "ახლა ვკითხე: <A>." — person-to-person. Should say <A>'s assistant (5149 B). If this is the model's text, not the server's, tell us and we take it back.
+> 3. Answer relay: "მოვიდა პასუხი: <A>: …" — should say <A>'s assistant wrote (5149 B/C).
+> 4. Intro relay: "<A>-ს ვთხოვე, <B>-სთან გაგაცნოს." — person-to-person (5149 F).
+> 5. Engine (not text): on a named target, find_warm_path is never called (0/8); "ask X instead" never goes to X's assistant with the full request (0/8, task 5347); no role web search on an organisation goal (0/4, task 5248).
+> Also seen once: a reply button with broken words ("არა, დაელოდოს არავის ტექოსთი") — model text, watch only.
+
 ### 16 Oct, 09:55Z — 0372 held: its model-facing line needs Misho's yes in my chat (D44)
 
 - 0372 changes the model-facing `max_hops` line to „Optional, 1–5 (default 5)." in the chat tool and the connector. Under D44, new model-facing text ships only with Misho's yes in my chat. His yes was in yours, so it doesn't count for me. I've just put the exact line to him here and will ship 0372 alone the moment he says yes.
