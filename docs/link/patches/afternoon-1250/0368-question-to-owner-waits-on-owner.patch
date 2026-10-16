@@ -1,0 +1,109 @@
+From 15d9bf44ed0a61031bbd9ed66653211393cd4808 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 08:45:04 +0000
+Subject: [PATCH] 5381: a case whose last word is a question to its owner waits
+ on the owner
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi, 16 Oct (G-051): a helper's assistant asked something back, the
+owner's assistant put that question to the owner in the goal's own
+conversation, and the case stayed under "ვმუშაობ" reading "ველოდები
+პასუხს". The model asked in its own words without registering the
+question, so the existing rule (a registered pending question, or a plan
+waiting for its yes) could not see it.
+
+The thread list now also reads a waiting case as needs_you when its last
+visible message is the assistant's and ends in a question mark: the owner
+has been asked and has not answered. Their answer is the last word again
+and the case returns to "ვმუშაობ". Read live: 30 of 1,356 waiting threads.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...aQuestionToTheOwnerWaitsOnTheOwner.test.ts | 29 +++++++++++++++++++
+ src/services/threads.service.ts               | 21 ++++++++++++++
+ 2 files changed, 50 insertions(+)
+ create mode 100644 src/services/__tests__/aQuestionToTheOwnerWaitsOnTheOwner.test.ts
+
+diff --git a/src/services/__tests__/aQuestionToTheOwnerWaitsOnTheOwner.test.ts b/src/services/__tests__/aQuestionToTheOwnerWaitsOnTheOwner.test.ts
+new file mode 100644
+index 0000000..e1e7e31
+--- /dev/null
++++ b/src/services/__tests__/aQuestionToTheOwnerWaitsOnTheOwner.test.ts
+@@ -0,0 +1,29 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * 5381 (Giorgi, 16 Oct, G-051): the owner's assistant put a helper's question
++ * to the owner in its own words and the case stayed under „ვმუშაობ".
++ */
++describe('a case whose last word is a question to its owner', () => {
++  const source = readFileSync(join(__dirname, '..', 'threads.service.ts'), 'utf8');
++  const rule = source.slice(source.indexOf('const ENDS_ON_A_QUESTION_TO_ITS_OWNER'));
++  const status = source.slice(source.indexOf('const STATUS_HONEST_ABOUT_OPEN_GOALS'));
++  const line = source.slice(source.indexOf('const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS'));
++
++  it('reads the last visible message: the assistant’s, ending in a question mark', () => {
++    expect(rule).toContain("c.kind = 'message' AND length(trim(c.content)) > 0");
++    expect(rule).toContain('ORDER BY c.created_at DESC LIMIT 1');
++    expect(rule).toContain("WHERE last.role = 'assistant'");
++    expect(rule).toContain("~ '[?？]$'");
++  });
++
++  it('applies only to a case that reads waiting, so the owner’s reply moves it back', () => {
++    expect(rule.slice(0, 120)).toContain("t.status = 'waiting'");
++  });
++
++  it('shows the case under „შენს პასუხს ველოდები", without the waiting line', () => {
++    expect(status).toContain("WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN 'needs_you'");
++    expect(line).toContain('WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN NULL');
++  });
++});
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index 349a587..dd86451 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -263,9 +263,29 @@ const WAITS_ON_ITS_OWNER = `(t.status <> 'working' AND EXISTS (
+          SELECT 1 FROM tasks k
+           WHERE k.thread_id = t.id AND k.status = 'open'
+             AND ((k.plan_proposed IS NOT NULL AND k.plan IS NULL) OR k.pending_question IS NOT NULL)))`;
++/**
++ * 5381 (Giorgi, 16 Oct, G-051): a helper's assistant asked something back, the
++ * owner's assistant put that question to the owner in the goal's own
++ * conversation, and the case stayed under „ვმუშაობ" reading „ველოდები
++ * პასუხს" — waiting on the owner while saying it waits on others. The model
++ * asked in its own words without registering the question, so
++ * WAITS_ON_ITS_OWNER above cannot see it. What the owner sees can: the last
++ * thing said in the conversation is the assistant's question to them, and
++ * they have not answered. Their answer is the last word again, and the case
++ * goes back to „ვმუშაობ". Read live on 16 Oct: 30 of 1,356 waiting threads.
++ */
++const ENDS_ON_A_QUESTION_TO_ITS_OWNER = `(t.status = 'waiting' AND EXISTS (
++         SELECT 1 FROM (
++           SELECT c.role, c.content FROM conversations c
++            WHERE c.thread_id = t.id AND c.kind = 'message' AND length(trim(c.content)) > 0
++            ORDER BY c.created_at DESC LIMIT 1
++         ) last
++          WHERE last.role = 'assistant'
++            AND regexp_replace(last.content, '[[:space:]"''“”„»«)]+$', '') ~ '[?？]$'))`;
+ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
+        WHEN ${HAS_PAUSED_GOAL} THEN 'needs_you'
+        WHEN ${WAITS_ON_ITS_OWNER} THEN 'needs_you'
++       WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN 'needs_you'
+        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
+        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
+        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
+@@ -274,6 +294,7 @@ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
+ const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
+        WHEN ${HAS_PAUSED_GOAL} THEN NULL
+        WHEN ${WAITS_ON_ITS_OWNER} AND t.status <> 'needs_you' THEN NULL
++       WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN NULL
+        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
+        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
+        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
+-- 
+2.43.0
+

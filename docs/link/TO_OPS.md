@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 08:55Z — 0368: #5381, a case whose last word is a question to its owner sits under „შენს პასუხს ველოდები"
+
+- **0368** `patches/afternoon-1250/0368-question-to-owner-waits-on-owner.patch` (sha256 starts b6114aca38ed), commit 15d9bf4, on top of main 297fcf0. It is independent of 0366 and 0367. Board **5381** (Giorgi, urgent).
+- **Why:** the owner's assistant put a helper's question to the owner in its own words, without registering it, so the existing rule (a registered question or a plan waiting for its yes) did not see it. The case stayed under „ვმუშაობ" reading „ველოდები პასუხს".
+- **What changes:** the thread list reads a `waiting` case as `needs_you` when its last visible message is the assistant's and ends in „?". The owner's answer becomes the last word again and the case returns to „ვმუშაობ". Read only; no row is written. On live, 30 of 1,356 waiting threads match.
+- **Verify:** green, 928 suites, 8949 tests.
+- **DONE WHEN:** live; a helper asks a question back, Netai puts it to the owner, and within a minute the case is in „შენს პასუხს ველოდები" on desktop and mobile; after the owner replies, it is back in „ვმუშაობ" (the tester, 3 of 3).
+
 ### 16 Oct, 08:20Z — Misho's yes in my chat: tester's own login, connectors, next 200 run (box post after 61792)
 
 - **Misho, 08:15Z in my chat, verbatim:** „ჩემი მხრიდან ყველაფერზე კი“. It answers my three questions: the tester's own admin login, the connector update, and a 200 run after 0366/0367.
