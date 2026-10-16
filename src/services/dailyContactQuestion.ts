@@ -167,7 +167,7 @@ async function questionAwaitingAnswer(userId: string): Promise<PendingQuestion |
                WHERE ua."contactId" = l.user_id
                  AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace(l.phone, '\\D', '', 'g')
                  AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
-               ORDER BY LENGTH(TRIM(ua.alias)) DESC LIMIT 1) AS label,
+               ORDER BY ua.id DESC LIMIT 1) AS label,
             l.missing_fact
        FROM curiosity_surfacing_log l
       WHERE l.user_id = $1::int AND l.surfaced_at > NOW() - make_interval(hours => $2)

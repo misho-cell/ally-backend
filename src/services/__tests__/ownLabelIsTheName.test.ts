@@ -33,8 +33,10 @@ describe('the name a viewer sees for a member', () => {
     expect(sql.lastIndexOf('"UserAlias"')).toBeGreaterThan(sql.indexOf('"User" sv_u'));
   });
 
-  it('picks the same spelling every time', () => {
-    expect(sql).toContain('ORDER BY LENGTH(TRIM(sv_ua.alias)) DESC, sv_ua.alias');
+  // 62340: the label saved last wins, not the longest (Helper C over Levani).
+  it('picks the label the viewer saved last', () => {
+    expect(sql).toContain('ORDER BY sv_ua.id DESC');
+    expect(sql).not.toContain('LENGTH(TRIM(sv_ua.alias)) DESC');
   });
 
   it('looks from the asker at the asked, and from the reader at the asker', () => {

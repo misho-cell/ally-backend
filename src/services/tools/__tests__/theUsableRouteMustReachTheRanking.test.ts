@@ -238,13 +238,13 @@ describe('one bridge is named once', () => {
 
   /**
    * Deterministic, because a search run twice that names the bridge two
-   * different ways is its own bug. Longest spelling wins — the fullest form of
-   * the name is the one worth showing — and the alias itself breaks a tie.
+   * different ways is its own bug. The label the owner saved last wins (62340),
+   * the same rule as every other line she reads.
    */
   it('chooses the same spelling every time', () => {
     const lateral = sql.slice(sql.indexOf('LEFT JOIN LATERAL ('), sql.indexOf(') ua_via ON TRUE'));
 
-    expect(lateral).toContain('ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias');
+    expect(lateral).toContain('ORDER BY ua.id DESC');
     expect(lateral).toContain('LIMIT 1');
   });
 
