@@ -86,8 +86,8 @@ describe('the second-circle query looks in the facts', () => {
     expect(sql).toContain('fact_hits AS (');
     // In the union, or it decorates and finds nobody — which was the bug.
     const matchesAt = sql.indexOf('matches AS (');
-    const union = sql.slice(matchesAt, matchesAt + 400);
-    expect(union).toContain('SELECT phone, "contactId", label FROM fact_hits');
+    const union = sql.slice(matchesAt, matchesAt + 500);
+    expect(union).toContain('SELECT phone, "contactId", label, FALSE AS from_case FROM fact_hits');
   });
 
   /**

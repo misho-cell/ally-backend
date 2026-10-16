@@ -13,6 +13,7 @@ import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
 import { nameOnlyFromLabel } from '../labelReader.service';
 import { foldedLower, toMtavruli } from './georgianCase';
+import { FOUND_BY_OWN_WORK_NOTE } from './searchByTag';
 
 /**
  * ⚠️ ROWS 285 AND 286 — THE SECOND CIRCLE WAS FOUND AND THEN NOT SAID.
@@ -1002,6 +1003,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
       jobPositionSources: string | number | null;
       warmth: number | null;
       total_matches: string | number | null;
+      case_only: boolean | null;
     }>(
       `WITH friend_users AS (
          SELECT up."userId", up.phone AS via_phone
@@ -1169,12 +1171,26 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
        -- this CTE: the outer select aggregates phones and joins names, so the
        -- text somebody wrote in their phonebook reaches the ranking and never
        -- the reply — the same containment wordMatch.ts relies on.
+       -- 5446 (D792): a goal a bridge's contact helped solve finds them by the
+       -- goal's words, silently. from_case marks the row so a person found only
+       -- this way is offered without a reason (BP) and without a role.
+       case_hits AS (
+         SELECT up_h.phone, ua_b."contactId", ${foldedLower('hs.case_text')} AS label
+         FROM helper_solved_cases hs
+         JOIN "UserPhone" up_h ON up_h."userId" = hs.helper_user_id
+         JOIN "UserAlias" ua_b ON ua_b.phone = up_h.phone,
+              bridges b
+         WHERE ua_b."contactId" = ANY(b.ids)
+           AND ${foldedLower('hs.case_text')} ~ $${filterIdx}
+       ),
        matches AS (
-         SELECT phone, "contactId", label FROM tag_hits
+         SELECT phone, "contactId", label, FALSE AS from_case FROM tag_hits
          UNION
-         SELECT phone, "contactId", label FROM alias_hits
+         SELECT phone, "contactId", label, FALSE AS from_case FROM alias_hits
          UNION
-         SELECT phone, "contactId", label FROM fact_hits
+         SELECT phone, "contactId", label, FALSE AS from_case FROM fact_hits
+         UNION
+         SELECT phone, "contactId", label, TRUE AS from_case FROM case_hits
        ),
        ranked AS (
          SELECT m.phone,
@@ -1183,7 +1199,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                 MAX(crs.strength_score)                                   AS warmth,
                 -- Row 298: how many matched before the LIMIT, so a capped
                 -- page can say „30 of 36" as the direct search does.
-                COUNT(*) OVER ()                                          AS total_matches
+                COUNT(*) OVER ()                                          AS total_matches,
+                BOOL_AND(m.from_case)                                     AS case_only
          FROM matches m
          JOIN friend_users fu         ON fu."userId" = m."contactId"
          LEFT JOIN "UserAlias" ua_own ON ua_own.phone = m.phone AND ua_own."contactId" = $1
@@ -1248,7 +1265,8 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
                             OR (ta.from_user_id = up_t."userId" AND ta.to_user_id = fu."userId")))
                        THEN 0.2 ELSE 0 END
               )))                                                              AS warmth,
-              r.total_matches                                                  AS total_matches
+              r.total_matches                                                  AS total_matches,
+              BOOL_AND(r.case_only)                                            AS case_only
        FROM ranked r
        JOIN matches m               ON m.phone     = r.phone
        JOIN friend_users fu         ON fu."userId" = m."contactId"
@@ -1442,8 +1460,10 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
 
     const shaped = rows.map((row) => {
       const fromLabel = (row.name !== null ? labelRoles.get(row.name) : undefined) ?? {};
-      const employer = row.employer ?? fromLabel.employer ?? null;
-      const jobPosition = row.jobPosition ?? fromLabel.title ?? null;
+      // 5446 (D792): found only by a goal they helped solve — offered, never described.
+      const caseOnly = row.case_only === true;
+      const employer = caseOnly ? null : (row.employer ?? fromLabel.employer ?? null);
+      const jobPosition = caseOnly ? null : (row.jobPosition ?? fromLabel.title ?? null);
       // The weaker of the two, because one uncorroborated half is enough to
       // make the pair something to say carefully. Counts arrive as strings
       // from pg's bigint mapping.
@@ -1488,6 +1508,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
          * means the name is given without the fact.
          */
         ...(sources !== null ? { role_sources: sources } : {}),
+        ...(caseOnly ? { found_by_their_own_work: FOUND_BY_OWN_WORK_NOTE } : {}),
         ownership: OWNERSHIP.SECOND_DEGREE,
         // By construction: the ranking drops every number the owner holds.
         in_your_contacts: false,
