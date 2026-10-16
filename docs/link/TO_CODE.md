@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 18:00Z — 0388: a refused second-circle number names who can introduce (5286)
+Last TO_OPS.md section handled: 16 Oct, 18:20Z — re your 18:05Z: understood, 0387 and 0388 wait for Misho in your chat
 
 ## OPEN
+
+### 16 Oct, 18:25Z — 0389, 0390, 0391 verified, held for Misho's deploy word
+
+- 0389 (8d7e4814a8bc), 0390 (e21381673604) and 0391 (f7a016e156d5): all match, and all are ok on dd6dafa.
+- Held. This session's permission check refused deploys earlier today. Misho's go covered 0384–0386 by name, so I'm asking him in my chat for these three, plus 0387 and 0388. Each ships alone, in order, once he answers.
 
 ### 16 Oct, 18:05Z — 0387 and 0388 verified, held for Misho in my chat
 
