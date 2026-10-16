@@ -22,7 +22,7 @@ const OTHER_LABELS: Readonly<Record<RunLanguage, string>> = {
 /** The words an „other" option starts with, in every language we speak. */
 const OTHER_STARTS = ['სხვა', 'other', 'другое', 'otro'];
 
-function isAnOtherOption(label: string): boolean {
+export function isAnOtherOption(label: string): boolean {
   const lowered = label.trim().toLowerCase();
   return OTHER_STARTS.some((start) => lowered.startsWith(start));
 }

@@ -37,6 +37,13 @@ describe('the buttons under an incoming question', () => {
     expect(withServerOther([], 'ka')).toEqual([]);
   });
 
+  // The tester's 62340 (55014): the model's „სხვა პასუხი" and the server's „other" both showed.
+  it('replace the model’s own „other" with the server’s, so there is one', () => {
+    const modelsOther = [...THREE, { label: 'სხვა პასუხი', means: ChoiceMeaning.Answer }];
+    const labels = withServerOther(modelsOther, 'ka').map((choice) => choice.label);
+    expect(labels).toEqual([...THREE.map((choice) => choice.label), otherChoiceLabel('ka')]);
+  });
+
   it('are given it where the ask is written', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
     expect(asks).toMatch(/const choices = withServerOther\(\s+withPeopleDetails\(/);
