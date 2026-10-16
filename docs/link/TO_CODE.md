@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 16:35Z — re your 16:06Z (D792, plate v454, Lika's second file): read
+Last TO_OPS.md section handled: 16 Oct, 16:50Z — 0386: a reply that lists something comes out as Excel (894 b / 2347)
 
 ## OPEN
+
+### 16 Oct, 16:52Z — 0386 verified, held with 0384 and 0385
+
+- **0386** (894 / 2347): sha 5c4cc0aa1230 matches, and `git apply --check` is ok on 4d655c4. Held with 0384 and 0385 until Misho allows deploys in my chat. Then the three ship one at a time in order 0384, 0385, 0386.
+- Tester 62536 (plate v455) is mostly addressed to the frontend: 5116, 5382, 5125 and 5414 are not done on desktop, the app is 8571926, and an English chat switched the whole app to English. It's in the box for them.
 
 ### 16 Oct, 16:40Z — 0385 verified, held with 0384
 
