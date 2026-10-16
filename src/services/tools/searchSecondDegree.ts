@@ -1280,7 +1280,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
           WHERE ua.phone = fu.via_phone
             AND ua."contactId" = $1
             AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
-          ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
+          ORDER BY ua.id DESC
           LIMIT 1
        ) ua_via ON TRUE
        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"

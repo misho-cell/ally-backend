@@ -249,7 +249,7 @@ function detailsByName(
   return details;
 }
 
-/** The bridge's own name for one phone: registered name, else their fullest label. */
+/** The bridge's own name for one phone: registered name, else the label they saved last. */
 export async function nameInBridgeBook(
   bridgeUserId: string,
   phone: string,
@@ -265,7 +265,7 @@ export async function nameInBridgeBook(
         -- compared as digits, so the bridge's own name is found either way.
         AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
         AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
-      ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
+      ORDER BY ua.id DESC
       LIMIT 1`,
     [bridgeUserId, phone],
     PICKED_NAME_TIMEOUT_MS,

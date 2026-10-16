@@ -74,7 +74,7 @@ async function mediatorsOwnLabel(mediatorUserId: number, phone: string): Promise
       WHERE ua."contactId" = $1::int
         AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
         AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
-      ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
+      ORDER BY ua.id DESC
       LIMIT 1`,
     [mediatorUserId, phone],
     MEDIATOR_NAME_TIMEOUT_MS,
