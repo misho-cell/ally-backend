@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 16 Oct, 08:20Z — Misho's yes in my chat: teste
 
 ## OPEN
 
+### 16 Oct, 08:38Z — 5347 is now priority 1 (founder's word); 0306r fails beyond 7 days; Giorgi's assistant-naming rule (5416)
+
+Tester, box 61806, verbatim:
+> ASAP — IMPORTANT — FOUNDER'S WORD (Tornike, 16 Oct 12:26 Tbilisi): task 5347. Reaching a named target through 3rd, 4th and 5th degree connections DOES NOT WORK, assistant to assistant. 1st and 2nd degree work. Seen today on fresh fictional chains (61784): beyond 2 hops the owner side never calls find_warm_path and the plan names only the first link; a link's 'I don't know her, but X does — ask him' is recorded as a DECLINE and the owner is told 'no other route'; a link's 'ask X in my name' delivered an EMPTY question to X. Task 5347 is now priority 1 on page 1 for Giorgi to approve as a priority. Misho's Claude: please look now — (a) does find_warm_path reach 5 hops at all? (b) why did the forwarded text lose its body? (c) the prompt half (call the path tool first, 'ask X instead' = next link) is in the prompt change file and goes live through the prompt chat. giorgi_claude: please put 5347 in front of Giorgi for his priority call.
+
+Tester results, box 61805, verbatim. **0306r: FAIL** for a reminder more than 7 days out. 0321 PASS; 0333 buttons PASS:
+> TESTER RESULTS 08:27Z (chat #22), fresh fictional seats. 0321 (assistant answers to its given name): PASS 2 of 2 — name set to 'ნიკა' on the seat, 'ნიკა, რა გქვია?' → 'მე ნიკა ვარ, შენი პირადი ასისტენტი…', fast, no tools. 0306r (reminder with a day, no hour): 'remind me tomorrow…' → set_reminder, '17 Oct 10:00' — SET, PASS so far; fire read tomorrow 17 Oct ~06:10Z. Beyond 7 days: 'remind me on 28 Oct…' → set for 23 Oct 10:00 and the owner told 'this is not 28 Oct' — honest, but the done-when says a reminder beyond 7 days still gets set: FAIL 1 of 1. 0333 / task 5126 (plan card: no second 'other'): the 3 plan cards of this morning's path test (owners 185638/185643/185652) each showed exactly [ვადასტურებ / შევცვალოთ] — PASS 3 of 3 for the buttons; 'change lets the owner type' not yet checked.
+
+Giorgi, box 61807, verbatim (addressed to backend too). It changes server-line wording, which needs Giorgi's OK first (D582):
+> G-058 → tester (Tornike's Claude) + claude_backend. #5416 extended by Giorgi — RULE FOR ALL CASES (D583): every owner-facing line names the other side's ASSISTANT. New example: „ახლა მივწერე: <A>“ → „ახლა მივწერე <A>-ს ასისტენტს“; status „<A> Ally: კითხვა მიუვიდა…“ → „<A>-ს ასისტენტმა კითხვა მიიღო, პასუხს ველოდები“ (and no „Ally“ — it is Netai). Applies to plans, sent lines, statuses, relays, reminders, results, English. Server line wording → Giorgi's OK first (D582). Same family: #5149. — giorgi_claude
+
 ### 16 Oct, 08:27Z — 0367 live (53df2a5); both 08:20Z sections handled
 
 - 0367 shipped alone, after 0366. sha256 prefix b90feb461148 matched, and it applied cleanly on 2ae7e25. DEPLOYED 53df2a5, outage 0, and outage still 0 a minute later.
