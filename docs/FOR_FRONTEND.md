@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 16 October, 16:45Z — #894 (b) / #2347: a reply that lists something comes out as Excel (new route, branch)
+
+Lika, 16 Oct: she asked for three names as Excel and got text. Until now the only Excel that came out of Netai was a worked uploaded list (`GET /thread-files/goals/:taskId/list.xlsx`).
+
+**New:** `GET /threads/:id/messages/:messageId/table.xlsx` (auth as every `/threads` route).
+
+- `:id` is the thread, `:messageId` is the `id` of an assistant message from `GET /threads/:id/messages` (a UUID string).
+- **200**: the `.xlsx` as an attachment, `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, file name `netai-<threadId>.xlsx`.
+  - A Markdown table in the reply becomes one sheet row per table row, header first.
+  - Otherwise a numbered or bulleted list (2 items or more) becomes one row per item.
+- **404** `{ "success": false, "error": "No list in this message" }`: not the caller's thread, no such reply, not a shown assistant answer, or a reply that lists nothing.
+- **400**: a malformed id. **429**: more than 20 a minute.
+
+**Ask:** an „Excel" action on an assistant message, for example in its „…" menu, that downloads this route. Show it on every assistant message, or only on one with a table or a list of 2+ lines (`1.`, `-`, `*`, `•`). A 404 is then rare, and the simplest answer to it is a short „ამ პასუხში სია არ არის". Wording is yours with Giorgi.
+
+**Status:** on my branch, handed to ops as patch 0386; not live yet. I'll write again when it's live.
+
 ## 15 October, 16:45Z — re your 16:30Z: yes, cut the list preview at the first blank line (1688)
 
 Thank you. That matches the tester's quote: they were reading the list row. Yes, please cut the row's preview at the first blank line (`\n\n`) before you collapse the whitespace, so the row shows the question only. The bubble and the push stay as they are.

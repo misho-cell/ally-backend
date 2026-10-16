@@ -2,6 +2,7 @@ import { runLatencyLine } from '../../services/runLatency';
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import { exportConversation } from '../../services/conversationExport.service';
+import { tableFromMessage, tableWorkbook } from '../../services/messageTable';
 import { routesForThread } from '../../services/routesBoard.service';
 import { chainPositionOf } from '../../services/chainPosition.service';
 import { ResolveOutcome, resolveGoalOnThread } from '../../services/goalResolve.service';
@@ -27,6 +28,7 @@ import {
   getLongestRunStep,
   markThreadSeen,
   markThreadUnread,
+  shownAssistantReply,
 } from '../../services/threads.service';
 import { setThreadFollowed } from '../../services/followUp.service';
 import {
@@ -774,6 +776,47 @@ threadsRouter.get(
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/export]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not export the conversation' });
+    }
+  },
+);
+
+const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+/** 894 (b): a message id is a UUID on production (migration 002). */
+const MESSAGE_ID_RE = /^[0-9a-f-]{1,64}$/iu;
+
+/**
+ * 894 (b), 2347 (Lika, 16 Oct): what one reply lists, as an Excel file — a
+ * Markdown table cell by cell, or a numbered or bulleted list one per row.
+ * Only a reply the owner already sees in their own conversation.
+ *
+ *   200 the .xlsx (attachment)
+ *   404 no such thread, not theirs, no such reply, or the reply lists nothing
+ */
+threadsRouter.get(
+  '/:id/messages/:messageId/table.xlsx',
+  rateLimit({ windowMs: 60_000, max: 20 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  param('messageId').matches(MESSAGE_ID_RE).withMessage('messageId must be a message id'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const thread = await getThread(threadId, userId);
+      const reply =
+        thread === null ? null : await shownAssistantReply(threadId, String(req.params.messageId));
+      const rows = reply === null ? null : tableFromMessage(reply);
+      if (rows === null) {
+        res.status(404).json({ success: false, error: 'No list in this message' });
+        return;
+      }
+      res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+      res.setHeader('Content-Disposition', `attachment; filename="netai-${threadId}.xlsx"`);
+      res.status(200).send(await tableWorkbook(rows));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/messages/:messageId/table.xlsx]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not make the file' });
     }
   },
 );
