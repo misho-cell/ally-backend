@@ -1,0 +1,93 @@
+From 47373dec1d81e21cf03638b295316cebf9f08e0d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 19:08:53 +0000
+Subject: [PATCH] A plan's never-contact entry is read as given: a name, an
+ object, or its JSON
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The daily check of 16 Oct (08:23:53Z, a real account): propose_task_plan
+was refused on „never_contact.name is required", and the owner's plan was
+lost for it. people_to_involve already accepted an entry sent as the JSON
+text of an object; never_contact read only objects. A person to avoid is,
+first of all, a name.
+
+never_contact entries now take a bare name, an object, or an object's JSON
+text. An entry with no name at all is still refused, never dropped: a
+never-contact rule must not disappear without the model being told.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aNeverContactIsReadAsGiven.test.ts        | 37 +++++++++++++++++++
+ src/services/taskPlans.service.ts             |  9 ++++-
+ 2 files changed, 45 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aNeverContactIsReadAsGiven.test.ts
+
+diff --git a/src/services/__tests__/aNeverContactIsReadAsGiven.test.ts b/src/services/__tests__/aNeverContactIsReadAsGiven.test.ts
+new file mode 100644
+index 0000000..85a0324
+--- /dev/null
++++ b/src/services/__tests__/aNeverContactIsReadAsGiven.test.ts
+@@ -0,0 +1,37 @@
++import { parsePlan } from '../taskPlans.service';
++
++/**
++ * The daily check of 16 Oct (08:23:53Z, a real account): a plan was refused
++ * on „never_contact.name is required". A person to avoid now arrives as people
++ * do: an object, the JSON text of one, or just a name.
++ */
++const base = {
++  solved_when: 'ბუღალტერი მოიძებნა',
++  routes: [{ name: 'პირადი კონტაქტი', status: 'waiting' }],
++  people_to_involve: [{ name: 'გია', phone: '+995599000370', route: 'პირადი კონტაქტი' }],
++};
++
++function neverOf(neverContact: unknown[]): unknown {
++  const outcome = parsePlan({ ...base, never_contact: neverContact });
++  return outcome.ok ? outcome.value.never_contact : outcome.error;
++}
++
++describe('a never-contact entry', () => {
++  it('is read from a bare name', () => {
++    expect(neverOf(['ნინო'])).toEqual([{ name: 'ნინო' }]);
++  });
++
++  it('is read from the JSON text of an entry', () => {
++    expect(neverOf(['{"name": "ნინო", "phone": "+995599000371"}'])).toEqual([
++      { name: 'ნინო', phone: '+995599000371' },
++    ]);
++  });
++
++  it('is read from an object, as before', () => {
++    expect(neverOf([{ name: 'ნინო' }])).toEqual([{ name: 'ნინო' }]);
++  });
++
++  it('is still refused with no name at all, never dropped in silence', () => {
++    expect(neverOf([{ phone: '+995599000371' }])).toBe('never_contact.name is required');
++  });
++});
+diff --git a/src/services/taskPlans.service.ts b/src/services/taskPlans.service.ts
+index ad9ce2a..e12552f 100644
+--- a/src/services/taskPlans.service.ts
++++ b/src/services/taskPlans.service.ts
+@@ -358,7 +358,14 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
+   const neverRaw = Array.isArray(input.never_contact) ? input.never_contact : [];
+   const never: PlanExclusion[] = [];
+   for (const n of neverRaw) {
+-    const item = (n ?? {}) as Record<string, unknown>;
++    // The daily check of 16 Oct (08:23:53Z, a real account): a plan was refused on
++    // „never_contact.name is required". The entries take the shapes people's do —
++    // an object, its JSON text — and a bare name, which is all a person to avoid is.
++    const decoded = decodeIfJsonText(n);
++    const item = (typeof decoded === 'string' ? { name: decoded } : (decoded ?? {})) as Record<
++      string,
++      unknown
++    >;
+     const name = cleanText(item.name, 'never_contact.name');
+     if (!name.ok) return name;
+     const phone =
+-- 
+2.43.0
+

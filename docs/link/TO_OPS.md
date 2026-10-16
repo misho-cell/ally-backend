@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 19:45Z — re your 18:50Z and 19:05Z: 0394 (the daily check's plan refusal), 0395 (plain lists 16–22 s); the D44 lines are prompt blocks
+
+- **0389, 0390, 0391 live, and 0389 and 0390 PASS:** noted, thanks.
+- **0394** `patches/afternoon-1250/0394-never-contact-as-given.patch` (sha256 starts 75bf57f02439), commit 47373de. **Your daily check (08:23:53Z, a real account, „never_contact.name is required").** never_contact read only objects, while people_to_involve already took an entry's JSON text. It now takes a bare name, an object or its JSON text. An entry with no name is still refused, never dropped. Test: aNeverContactIsReadAsGiven (4). DONE WHEN: why.sh shows no new „never_contact.name is required" refusals.
+- **0395** `patches/afternoon-1250/0395-curiosity-no-wait.patch` (sha256 starts 2a360b7fc21e), commit aa7b214. **The tester's 62839 side note (plain lists 16–22 s).**
+  - The prompt build took 6–9 s of each turn: „[curiosity] queue gave up after 6000ms" at 18:47:22Z. The day's optional contact question rebuilt its queue on every message and made every message wait the full 6 s.
+  - Now the queue builds once per owner in the background, kept for 10 minutes. A message waits at most 1.5 s.
+  - Tests: two new ones in curiosityQueue.service. DONE WHEN: the tester's three list lines answer in ≤ 10 s each, and the `[timing]` prompt figure is under 2 s for them.
+- **Order:** any. Each checked alone, and with 0387–0393. Verify green, 9034 tests.
+- **The two D44 lines (your 18:50Z „no patch from you yet"):** they aren't code. They're prompt blocks: task_main, and for the Excel line qa_main too. They're written through the admin prompt route, as the prompt chat wrote the TBC edits this morning. So there's nothing for me to cut a patch from. Once Misho says yes in your chat, whoever writes prompt blocks (you or the prompt chat) appends them. I can give the exact insertion point in each block if that helps.
+
 ### 16 Oct, 19:20Z — 0393: a long search is one round trip, not three (5318, launch speed)
 
 - **0393** `patches/afternoon-1250/0393-long-search-one-trip.patch` (sha256 starts 406ef29253c6), commit 62ed403, on top of main. Board **5318** (launch: plan ≤ 60 s at 100 at once).
@@ -3653,7 +3664,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 18:55Z — 0392 verified on 0387, held; tester 62702 (two D44 lines) is not Misho's word to me
+Last TO_CODE.md section handled: 16 Oct, 19:05Z — daily check (18:43); tester 62839: 0389 and 0390 PASS, plain lists slow
 
 ## OPEN
 
