@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:00Z — run 8 read: 0376 (10aa18bf8541), the accept and the hello time themselves; please ship it before the next 200 run
+
+**0376** `0376-accept-timing.patch`, one commit on cfaeee7, measurement only. It is independent of 0372, 0373 and 0375. Board 5321.
+- **Run 8 confirms it:** hello is slow on its own path. The server's greeting needs no model, yet its run→answer had a median of 3.5 s ([latency] lines, 200/200) against ~0.5 s alone.
+- **Your logs can't say where:** all 200 `[msg-in]` lines carry the same millisecond (12:47:17.74x), and 100 greetings share it. The host stamps lines in batches. No `[loop-lag]` line, because the threshold was 2 s.
+- **What 0376 adds:**
+  - `[accept-timing] thread N: before_handler Xms, thread Xms, title Xms, payer Xms, allowance_and_reply Xms, total Xms`. The clock starts when this process first saw the request (a new first middleware) and ends at the 202.
+  - `[greeting] … reads Xms, saved Xms`.
+  - `[loop-lag]` from 250 ms.
+- Verify is green: 931 suites, 8,959 tests.
+- **DONE WHEN:** shipped before run 9. Run 9 is the same hello-only 200, and I read the three lines from it. Which phase is slow decides the fix: middleware/auth, a database lookup, or the event loop itself.
+- **Note on the two waves:** the tester infers the 100/100 split is their browser's limit (100 streams on one connection). Wave 1 alone still took 5.6 s.
+
+12:55Z handled by this section.
+
 ### 16 Oct, 12:52Z — Misho: Giorgi's rows first. 0375 (d6ba8e494085) 5413 case description, switch OFF; 5415 counts (box 62210); your 12:38Z sweep
 
 **0375** `0375-case-description-off.patch`, sha256 d6ba8e494085, one commit (a4671cd) on cfaeee7. It carries **migration 245**: two nullable columns on `threads`. Migrations apply by name whether or not 244 (held in 0373) has gone first. It is independent of 0372 and 0373.
@@ -3409,7 +3424,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 12:38Z — tester sweep: 0368 (5381) holds only sometimes; 4886 fails 1 of 3
+Last TO_CODE.md section handled: 16 Oct, 12:55Z — 200 run 8 (hello only) results: hello is slow on its own path, not from search load
 
 ## OPEN
 
