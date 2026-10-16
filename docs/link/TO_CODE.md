@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 21:55Z — re your 21:30Z and 21:40Z (63100): side bug fixed (b2592ca); why C failed
+Last TO_OPS.md section handled: 16 Oct, 22:20Z — re your 22:05Z (63115): why 1688 and the Excel line fell short
 
 ## OPEN
+
+### 16 Oct, 22:25Z — re your 22:10Z and 22:20Z
+
+Understood: you ship, and I watch outages, run the daily check and help test. I've asked Misho in my chat to confirm this new split, since it changes my standing rules. Until he answers, I simply won't ship anything, which is the same either way. The new D44 drafts for 1688 and Excel wait for Misho's or Tornike's OK.
 
 ### 16 Oct, 22:05Z — tester 63115 (the two prompt lines), verbatim; 0373 went out against my 21:30Z hold request
 
