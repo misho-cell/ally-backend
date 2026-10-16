@@ -1,0 +1,118 @@
+From 938c55b6577751e6613177a4962157a0bf455d4b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 08:55:13 +0000
+Subject: [PATCH] A request thread passes the request on, never the line's tail
+ (5347)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In threads 54282 and 54284 the person asked wrote "ask Sandro in my name"
+and "you could ask Lasha to introduce". The server's own send cut the words
+after the name and sent them as the whole question: asks 22447 ("ჩემი
+სახელით.") and 22448 ("გააცნოს."), each under a new goal titled from the
+line. In a request thread the server no longer writes that question: the
+refused plan stays refused for the run to ask with the request, and the
+last-chance send says plainly that nothing went.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aRequestIsPassedOnWhole.test.ts    | 16 ++++++++++++++++
+ src/services/chat.service.ts                     | 10 +++++++++-
+ src/services/instructedAsk.ts                    | 14 ++++++++++++++
+ 3 files changed, 39 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aRequestIsPassedOnWhole.test.ts
+
+diff --git a/src/services/__tests__/aRequestIsPassedOnWhole.test.ts b/src/services/__tests__/aRequestIsPassedOnWhole.test.ts
+new file mode 100644
+index 0000000..1fb2fc3
+--- /dev/null
++++ b/src/services/__tests__/aRequestIsPassedOnWhole.test.ts
+@@ -0,0 +1,16 @@
++import { serverMayWriteTheAsk } from '../instructedAsk';
++import { RUN_MODES } from '../promptBlocks.service';
++
++/** 5347: „სანდროს ჰკითხე ჩემი სახელით." in a request thread reached Sandro as „ჩემი სახელით.". */
++describe('the server never writes the question in a request thread', () => {
++  it('stands down in a request thread, where the request is what goes on', () => {
++    expect(serverMayWriteTheAsk('request_thread')).toBe(false);
++  });
++
++  it('still asks for the owner in every other mode, and when the mode is unknown', () => {
++    for (const mode of RUN_MODES.filter((m) => m !== 'request_thread')) {
++      expect(serverMayWriteTheAsk(mode)).toBe(true);
++    }
++    expect(serverMayWriteTheAsk(undefined)).toBe(true);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 572e870..7a5ad33 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -467,6 +467,7 @@ import {
+   InstructedAskResult,
+   PersonOutcome,
+   sendInstructedAsk,
++  serverMayWriteTheAsk,
+ } from './instructedAsk';
+ import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
+ import {
+@@ -2689,7 +2690,7 @@ async function refusedPlanOrSentAsk(
+     reason: 'owner_instruction',
+     error: NO_PLAN_FOR_AN_INSTRUCTION,
+   };
+-  if (runId === undefined) return refused;
++  if (runId === undefined || !serverMayWriteTheAsk(runModes.get(runId))) return refused;
+   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
+     (err: unknown) => {
+       // eslint-disable-next-line no-console
+@@ -12773,6 +12774,13 @@ async function serverSendsOrSaysSo(
+   runId: string,
+ ): Promise<ServerLine> {
+   const language = runLang(runId);
++  if (!serverMayWriteTheAsk(runModes.get(runId))) {
++    // eslint-disable-next-line no-console
++    console.warn(
++      `[instruction-unsent] run ${runId} thread ${threadId}: a request thread — not sent`,
++    );
++    return { text: NOT_SENT_LINE[language], nothingWent: true };
++  }
+   const introduced = await serverIntroductionOrNull(userId, threadId, runId);
+   // 2311 (§140): never opened the app — the owner decides, nothing goes as a plain question.
+   if (introduced !== null && 'dormant' in introduced) {
+diff --git a/src/services/instructedAsk.ts b/src/services/instructedAsk.ts
+index c17ba78..683cbf1 100644
+--- a/src/services/instructedAsk.ts
++++ b/src/services/instructedAsk.ts
+@@ -15,6 +15,7 @@ import { contactInstructionIn } from './instructionUnsent';
+ import { ownerAsksForIntroduction } from './introInstruction';
+ import { canBeAsked, createAsk } from './taskAsks.service';
+ import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
++import type { RunMode } from './promptBlocks.service';
+ import { findContactPhonesByName } from './tools/nameMatch';
+ 
+ /**
+@@ -162,6 +163,19 @@ export async function goalForInstruction(
+   return id;
+ }
+ 
++/**
++ * 5347 (asks 22447 and 22448, threads 54282 and 54284): in a thread that carries
++ * someone else's request, the person asked wrote „სანდროს ჰკითხე ჩემი სახელით."
++ * and „შეგიძლია ლაშას სთხოვო, რომ გააცნოს." — pass the request on. The server
++ * cut the words after the name and sent them as the whole question: Sandro got
++ * „ჩემი სახელით." and Lasha „გააცნოს.", under a new goal titled from the line.
++ * What goes on from a request thread is the request, which only the run has
++ * read; the server never writes that question from the line's tail.
++ */
++export function serverMayWriteTheAsk(mode: RunMode | undefined): boolean {
++  return mode !== 'request_thread';
++}
++
+ /** One named person asked; null when the ask could not go for another reason. */
+ async function askOne(
+   userId: string,
+-- 
+2.43.0
+

@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 08:55Z — 5347: (b) fixed in 0369 (2352c18f4008); (a) answered, the 5-hop change waits on one text
+
+**(b) Why the passed-on question lost its body.** Threads 54282 and 54284 are the link's incoming_request threads. The link wrote „სანდროს ჰკითხე ჩემი სახელით." and „შეგიძლია ლაშას სთხოვო, რომ გააცნოს.". The server's own instructed-ask send (`sendInstructedAsk`, made for an owner's own „ask X <question>") took the words after the name as the whole question. That produced asks 22447 „ჩემი სახელით." and 22448 „გააცნოს.", each under a new goal titled from the line (26612, 26613). In a request thread the thing to pass on is the request, which only the run has read.
+
+**0369** `0369-request-thread-relay.patch`, sha256 2352c18f4008, one commit (938c55b) on 53df2a5. It is independent of 0368. In a request thread (mode request_thread) the server never writes the question:
+- A refused plan stays refused, so the run asks with the request's content.
+- The last-chance send gives the existing approved „კითხვა არ გაიგზავნა…" line instead of sending a tail.
+- No new text. Verify is green: 928 suites, 8,948 tests.
+
+**(a) Does find_warm_path reach 5 hops?** No. `find_warm_path` caps at 3 hops (`MAX_HOPS = 3`), and member chains (`memberMiddles`) stop at 3 middles, which is 4 hops. A 5th-degree person is unreachable today. The change has two parts:
+- Code: raise the cap to 5 and add 4-middle member chains. Before handing it over I will time a 5-hop shortest-path search on the live graph read-only, because the cost grows steeply with every hop.
+- Text: the tool's model-facing line „Optional, 1–3 (default 3)." becomes „Optional, 1–5 (default 5).". That is D44, so it waits on Misho's yes, which I am asking for now.
+
 ### 16 Oct, 08:55Z — 0368: #5381, a case whose last word is a question to its owner sits under „შენს პასუხს ველოდები"
 
 - **0368** `patches/afternoon-1250/0368-question-to-owner-waits-on-owner.patch` (sha256 starts b6114aca38ed), commit 15d9bf4, on top of main 297fcf0. It is independent of 0366 and 0367. Board **5381** (Giorgi, urgent).
@@ -3233,7 +3246,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 07:55Z — new 0365 (e4b9e6b2f827) does not apply: the 07:35Z version is already live; plus five tester posts
+Last TO_CODE.md section handled: 16 Oct, 08:38Z — 5347 priority 1: (b) fixed in 0369, (a) answered
 
 ## OPEN
 
