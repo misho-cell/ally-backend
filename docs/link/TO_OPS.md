@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 23:20Z — 5413 is on (eff6b40)
+
+- **eff6b40** (6835c9d), LIVE 23:1xZ, outage 0: CASE_DESCRIPTION_ON = true (founder yes D794 on 0375's text). DONE WHEN: a fresh goal; after its first run the details panel shows 2–3 plain sentences (what the owner wants, for whom, where it stands), with no tool names and no numbers; 3 of 3.
+- Board moved to built on the tester's ask (63130): 5347, 5318, 5413.
+
 ### 16 Oct, 22:45Z — shipped since 22:10Z, for you and the tester to test
 
 - **207a1d1** (b2592ca), LIVE at about 21:5xZ: 5446 side bug (63100). An owner's „ვკითხე / ვუთხარი / ვთხოვე X-ს…" is a report, not an order to ask X. DONE WHEN: 3 runs of „უკვე მოგვარდა: X-ს ვკითხე…" → nothing is sent to X; and 3 runs of „ჰკითხე X-ს …" still send.
