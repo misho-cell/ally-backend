@@ -1,0 +1,59 @@
+From 162c599201f31708a6d4bf793f255fa0fcae640a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 10:41:16 +0000
+Subject: [PATCH] Speed under load: the search pool back to 24, so short work
+ is not starved
+
+Run 6 (24 search connections): a search spent 0.8 s in the database and
+waited 16.7 s; hello answered 2.3 s after acceptance. Run 7 (64): 2.1 s in
+the database and 10.9 s waiting; hello 4.2 s. 24/0.8 s and 64/2.1 s are the
+same thirty searches a second: the database was the ceiling, and the forty
+extra connections only took CPU from the short queries beside them (a hello,
+an accept, a run's first reads). The accept gain of run 7 came from the
+intake lane (10 -> 40), which stays.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/db/postgres/__tests__/queryRouting.test.ts |  2 +-
+ src/db/postgres/client.ts                      | 11 ++++++++++-
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index 0d89567..4140c8c 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -83,7 +83,7 @@ describe('which pool answers a query', () => {
+     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
+     expect(shortPool.config.max).toBe(80);
+     // The 5th 200-seat run (box 60692): 629 searches waiting on ten, 1,009 gave up.
+-    expect(longPool.config.max).toBe(64);
++    expect(longPool.config.max).toBe(24);
+     expect(longPool.config.connectionTimeoutMillis).toBe(30_000);
+     expect(backgroundPool.config.max).toBe(2);
+     expect(shortPool).toBeDefined();
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index 0be0292..dee84ec 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -128,7 +128,16 @@ const pool = new Pool({
+  * the database and a median 16.7 s waiting for one (up to 629 queued): the
+  * database has room, the pool did not. 285 slow tools against 284 before.
+  */
+-const LONG_POOL_MAX = 64;
++/**
++ * And the 7th (16 Oct 09:00Z, box 61821) answered the 6th. At 64 a search spent
++ * 2.1 s in the database and waited 10.9 s for a connection: 64 / 2.1 s and
++ * 24 / 0.8 s are the same thirty searches a second. The database was already the
++ * ceiling, so the extra forty connections bought no searches — they took the CPU
++ * from everything short beside them. „Hello" went from 2.3 s after acceptance at
++ * 24 to 4.2 s at 64. Back to 24: the same search throughput, and the short work
++ * (a hello, an accept, a run's first reads) is not starved by it.
++ */
++const LONG_POOL_MAX = 24;
+ const LONG_POOL_CONNECT_WAIT_MS = 30_000;
+ const longQueryPool = new Pool({
+   ...BASE_POOL_CONFIG,
+-- 
+2.43.0
+

@@ -2,6 +2,27 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 10:41Z — Misho's „hello is 12.8 s under 200": 0374 (47d442b58acd), the search pool back to 24; one question for you
+
+**0374** `0374-search-pool-24.patch`, sha256 47d442b58acd, one commit (162c599) on fd9a6b4. It is independent of 0372 and 0373. Board 5321 / 5318.
+- **What 0374 changes:** the long pool goes 64 → 24.
+- **Why, from runs 6 and 7:**
+  - At 24, a search spent 0.8 s in the database. At 64, it spent 2.1 s. That's the same ~30 searches a second either way: the database is the ceiling, and the extra connections only took CPU from the short work.
+  - Hello from accept was 2.3 s at 24 and 4.2 s at 64.
+  - The accept gain in run 7 came from the intake lane (10 → 40), which stays.
+- **Where hello's 12.8 s went in run 7** (your logs, deployment 75873c87):
+  - The sends reached the handler in two waves: 100 at +2.4 s and 98 at +6 s.
+  - About 3.5–4 s passed between `[msg-in]` and the run start.
+  - The run itself took 2.7–5.3 s, against 0.8 s alone.
+  - No `[loop-lag]` lines over 2 s, so the event loop was not the cause.
+- Verify is green: 930 suites, 8,956 tests.
+- **DONE WHEN:** on the next 200 run, hello's median from accept is ≤ 2.5 s and overall slow tools don't go up. If Misho says yes, I've also proposed a hello-only 200 run to him to isolate the cause.
+
+**Question for you (no action yet):** the database runs on default settings.
+- Read-only values: `shared_buffers` 256MB on a 23 GB database (`effective_cache_size` says about 12 GB), `work_mem` 4MB with 724 GB of temp files since start, `random_page_cost` 4, `max_worker_processes` 8.
+- What is the database machine's RAM and CPU on Railway?
+- I'll propose exact values to Misho (shared_buffers ≈ 25% of RAM, work_mem ≈ 16–32MB, random_page_cost 1.1). That change needs his word and a database restart. Nothing changes before both.
+
 ### 16 Oct, 10:27Z — work loop: server rows, one blocker each; box posts 61876 (5149 texts to Giorgi) and 61877 (0370 test steps)
 
 Nothing new to ship this hour; 0372 and 0373 are both held for text approvals.
