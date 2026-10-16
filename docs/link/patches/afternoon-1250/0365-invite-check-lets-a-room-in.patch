@@ -1,76 +1,26 @@
-From 91e0db265ddedb49a91c81157663b6d68aa3989c Mon Sep 17 00:00:00 2001
+From d8af244c59fda48e6331dab4fae86c647ef45ac4 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 16 Oct 2026 07:24:26 +0000
-Subject: [PATCH] 21 Oct launch: one address lets a hundred people sign up at
- once
+Subject: [PATCH] 21 Oct launch: the invite-code check lets a room in
 
-The tester's 61646 (D787) and Misho, 16 Oct: about a hundred people join
-through one invitation link, most on mobile data, where a carrier puts many
-phones behind one address, the rest on one room's Wi-Fi.
+The tester's 61646 (D787): about a hundred people open one invitation link
+within an hour, most on mobile data, where a carrier puts many phones behind
+one address, the rest on one room's Wi-Fi. GET /invite-codes/:code allowed
+20 checks a minute per address, so the twenty-first person in the same
+minute was turned away at the join page.
 
-- GET /invite-codes/:code allowed 20 checks a minute per address, so the
-  twenty-first person in the same minute was turned away at the join page.
-- /auth/* allowed 300 calls per address in five minutes. One sign-up is six
-  or seven calls (referral opened, eligibility, OTP, verify, register,
-  complete), so a hundred at once is about 700.
-
-Both now allow 1,500 per address in five minutes. The per-person caps (30
-auth calls, 5 SMS) are unchanged, and codes are 8 random characters.
+The address now gets the sign-in routes' allowance: 300 in five minutes.
+Codes are 8 random characters, so this is no help to a guesser.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
 ---
- .../__tests__/aRoomCanSignUpTogether.test.ts   |  4 ++--
- src/api/routes/auth.routes.ts                  | 12 +++++++++---
  src/api/routes/inviteCodes.routes.ts           | 18 +++++++++++++++---
  src/services/__tests__/inviteCodeCheck.test.ts |  2 +-
- 4 files changed, 27 insertions(+), 9 deletions(-)
+ 2 files changed, 16 insertions(+), 4 deletions(-)
 
-diff --git a/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts b/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts
-index 9303e59..8a2ee06 100644
---- a/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts
-+++ b/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts
-@@ -9,9 +9,9 @@ import { join } from 'path';
- describe('the sign-in limits', () => {
-   const routes = readFileSync(join(__dirname, '..', 'auth.routes.ts'), 'utf8');
- 
--  it('count the person at the old cap, and the address at ten times it', () => {
-+  it('count the person at the old cap, and the address at fifty times it, a hundred people at once', () => {
-     expect(routes).toContain('const AUTH_MAX_PER_PERSON = 30;');
--    expect(routes).toContain('const AUTH_MAX_PER_ADDRESS = 300;');
-+    expect(routes).toContain('const AUTH_MAX_PER_ADDRESS = 1_500;');
-     expect(routes).toContain("max: AUTH_MAX_PER_ADDRESS, keyBy: 'ip'");
-     expect(routes).toContain("max: AUTH_MAX_PER_PERSON, keyBy: 'person'");
-     expect(routes).not.toContain('authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));');
-diff --git a/src/api/routes/auth.routes.ts b/src/api/routes/auth.routes.ts
-index df91b01..91913bf 100644
---- a/src/api/routes/auth.routes.ts
-+++ b/src/api/routes/auth.routes.ts
-@@ -83,13 +83,19 @@ export function referralCodeFrom(body: unknown): ReferralCodeIn {
-  * launch: a hundred people signing up on one room's Wi-Fi).
-  *
-  * Per PERSON — the device, else the phone the step is about — the old cap of
-- * 30 in five minutes, which is the abuse control. Per ADDRESS a cap ten times
-- * that, so a shared Wi-Fi lets a room in while one address still cannot
-+ * 30 in five minutes, which is the abuse control. Per ADDRESS a cap fifty
-+ * times that, so a shared Wi-Fi lets a room in while one address still cannot
-  * hammer the login without end.
-  */
- const AUTH_WINDOW_MS = 5 * 60_000;
- const AUTH_MAX_PER_PERSON = 30;
--const AUTH_MAX_PER_ADDRESS = 300;
-+/**
-+ * Misho, 16 Oct: a hundred people at once behind ONE address — a carrier's
-+ * shared address on mobile data, or the room's Wi-Fi. One sign-up is six or
-+ * seven of these calls (referral opened, eligibility, OTP, verify, register,
-+ * complete), so a hundred is about 700; 1,500 leaves room for retries.
-+ */
-+const AUTH_MAX_PER_ADDRESS = 1_500;
- authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_ADDRESS, keyBy: 'ip' }));
- authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_PERSON, keyBy: 'person' }));
- 
 diff --git a/src/api/routes/inviteCodes.routes.ts b/src/api/routes/inviteCodes.routes.ts
-index 0576203..6ef995d 100644
+index 0576203..5c11d51 100644
 --- a/src/api/routes/inviteCodes.routes.ts
 +++ b/src/api/routes/inviteCodes.routes.ts
 @@ -6,14 +6,26 @@ import { inviteCodeExists } from '../../services/inviteCodeCheck.service';
@@ -87,11 +37,11 @@ index 0576203..6ef995d 100644
 + * puts many phones behind one address, the rest on one room's Wi-Fi. Twenty
 + * checks a minute per address turned the twenty-first person in the same
 + * minute away at the door. The address now gets the sign-in routes' allowance
-+ * (auth.routes: 1,500 in five minutes, a hundred people at once); a code is
-+ * long and random, so this is still no help to anyone guessing codes.
++ * (auth.routes: 300 in five minutes); a code is long and random, so this is
++ * still no help to anyone guessing codes.
 + */
 +const CHECK_WINDOW_MS = 5 * 60_000;
-+const CHECKS_PER_ADDRESS = 1_500;
++const CHECKS_PER_ADDRESS = 300;
  const MAX_CODE_CHARS = 32;
  const CODE_RE = /^[A-Za-z0-9_-]+$/;
  

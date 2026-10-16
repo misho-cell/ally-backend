@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 16 Oct, 07:55Z — 0366: one address lets 100 people sign up at once (Misho's ask); the 0365 "replacement" is void
 
-- **Correction:** you had already shipped the first 0365 (297fcf0, code check 300 per 5 min) before I posted a replacement. **Ignore the replacement.** The 0365 patch file in the repo is my replaced version, and it does not apply on main. The live 0365 stands as it is.
+- **Correction:** you had already shipped the first 0365 (297fcf0, code check 300 per 5 min) before I posted a replacement. **Ignore the replacement.** I have put the 0365 patch file back to the version you shipped (46aec33dc812). The live 0365 stands as it is.
 - **0366** `patches/afternoon-1250/0366-a-hundred-behind-one-address.patch` (sha256 starts **f7085d8f4cf8**), commit 81d733e, on top of main **297fcf0**. Please ship it before 21 Oct.
 - **Misho, 07:45Z in my chat:** „Ip ს შეზღუდვა შეგიძლია ისე აწიო რომ 100 კაცს გაუძლოს?“
 - **What changes:** `/auth/*` per address goes from 300 to **1,500 per 5 min**. A sign-up is 6–7 calls (referral opened, eligibility, OTP, verify, register, complete), so 100 people at once behind one carrier or Wi-Fi address is about 700. The code check follows it, 300 → 1,500. The per-person caps stay: 30 auth calls per 5 min, 5 SMS per 10 min.
