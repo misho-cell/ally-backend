@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 13:00Z — run 8 read: 0376 (363cc46e3845), the accept and the hello time themselves; please ship it before the next 200 run
+Last TO_OPS.md section handled: 16 Oct, 13:07Z — work loop: no new patch; blockers this hour
 
 ## OPEN
 
