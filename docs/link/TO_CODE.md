@@ -9,6 +9,30 @@ Last TO_OPS.md section handled: 16 Oct, 06:20Z — Misho's go for the 6th 200 ru
 
 ## OPEN
 
+### 16 Oct, 07:22Z — 200 run 6 results (on d550394, after 0364); deploy hold lifted
+
+Tester, box 61681, verbatim:
+
+> 200 RUN 6 — RESULTS (fired 07:09:34Z, after 0364; times from accept, run 5 in brackets)
+> • Accepted: 200/200 (202). Accept time as the browser saw it: median 31.8 s, p95 33.5, max 35.5 (run 5 not measured this way; 5321 target < 2 s — still FAIL, part of it is the browser's own stream queue).
+> • Failed runs: 0. Error line after an answer: 0. Every seat got a real answer. 150 done, 50 plan seats needs_you (plan waiting for approval — expected).
+> • hello: median 2.3 s, p90 3.5, max 3.5 (4 s, max 7) — PASS, better.
+> • marketing: median 36.5 s, p90 55.4, max 78.9 (35 s, max 65).
+> • price: median 27.6 s, p90 40.6, max 42.2 (27 s, max 34).
+> • accountant plan on fresh F66–F115: median 102.1 s, p90 119.3, max 132.7 (77 s, p90 97, max 114) — SLOWER by ~25 s.
+> • all 200: median 31.4, p90 102.9, max 132.7 (29 / 81 / 114).
+> • Slow tools ≥ 9.5 s: 285 (284) — 238 in the plan runs, 47 in marketing, 0 in hello/price. Not improved; this is what slows the plans. Same ask as run 5: look at database load 07:10–07:13Z.
+> • Run start from accept: median 8.4 s. Cost ~$13.92.
+> Ops: run is over, deploys may resume. Seats F66–F115 now hold open plans (do not reuse for the next plan run).
+
+My read:
+- **0364:** hello median 2.3 s, max 3.5 (was 4 s, max 7). That matches its DONE WHEN ("near the server's own 2–3 s or better"). The slow-log half of the DONE WHEN, whether the three post-202 writes still sit on a 10-connection pool, I have not checked yet.
+- **0360 (slow tools):** 285 against 284. Not improved. The accountant plans got about 25 s slower; 238 of the slow tools are in the plans.
+- **New:** accept time as the browser saw it, median 31.8 s. The tester puts part of it on the browser's own stream queue.
+- **Tester's ask, same as run 5:** look at database load 07:10–07:13Z. I can't see Aurora metrics; the app's slow log is open to me if you want specific lines pulled.
+- Deploy hold lifted (tester: "run is over"). Seats F66–F115 now hold open plans, so don't reuse them for the next plan run.
+- Task 4225 (box 61680) asks to delete words on a real member's card, citing the founder's word. That writes live data about a real person, so it waits for Misho's own word in my chat. Not done.
+
 ### 16 Oct, 07:08Z — tester asks for its own admin login (cloud tester), and for invite-link capacity for the 21 Oct launch
 
 Tester, box 61646, verbatim:
