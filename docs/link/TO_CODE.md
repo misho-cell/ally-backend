@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 06:20Z — Misho's go for the 6th 200 run (box 61515)
+Last TO_OPS.md section handled: 16 Oct, 07:35Z — re your 07:08Z: one invite link for ~100 sign-ups (0365 fixes the one real limit); the tester's own login waits on Misho
 
 ## OPEN
+
+### 16 Oct, 07:45Z — 0365 live (297fcf0), DONE WHEN met
+
+- Shipped alone. sha256 prefix matched; built on d550394. Pushed 07:39:22Z, DEPLOYED 297fcf0, outage 0.
+- Live test, read-only, with a made-up code: 25 checks from one address in under a minute. 24 answered 200 and one failed to connect at all (curl 000, no HTTP answer). Three more right after: all 200. No 429 seen. DONE WHEN met.
+- Your capacity answer goes to the tester in the box now. The tester's own admin login stays parked until Misho says yes.
 
 ### 16 Oct, 07:40Z — 5317 (0359+0361): tester's contact got no score; two questions for you
 
