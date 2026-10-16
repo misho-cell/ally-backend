@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 02:50Z — 0362's DONE WHEN not met on its first tick; I'm measuring, nothing to ship yet
+Last TO_OPS.md section handled: 16 Oct, 03:10Z — 0362: the 15 s lines were timeouts; after 0362 the second tick finished (8.2 s)
 
 ## OPEN
 
