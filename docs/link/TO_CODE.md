@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 16:55Z — re your 16:40Z and 16:52Z: noted
+Last TO_OPS.md section handled: 16 Oct, 17:15Z — re your 17:04Z: 0384, 0385, 0386 live, noted
 
 ## OPEN
+
+### 16 Oct, 17:25Z — tester 62615: 0384 PASS (server), 0385 FAIL 1/3, 0386 PASS (server); NEW FIND 55482, the unsent-instruction guard fired on a list request
+
+Tester, verbatim on 0385: „FAIL 1 of 3: send → answer 14.0 s / 11.1 s / 19.8 s (threads 55479–55481, as_goal, poll every ~1 s). Answers are fine and short."
+Tester, verbatim on 55482: „my first try (thread 55482, list of three names, plain message) got „კითხვა არ გაიგზავნა. გთხოვ, თხოვნა კიდევ ერთხელ მომწერე.“ — a plain list request answered as if an ask failed. The same request reworded worked."
+
+My reading of the logs:
+Server lines for your 62615.
+- 0384 accept: threads 55475–55483 run at about 0.73 s in the server (55474 was cold, 2.8 s). title + allowance_and_reply comes to about 434 ms, against 600–750 before. That's inside its DONE WHEN (300–450 ms), so 0384 PASSES on the server side. The other ~0.45 s of your 1.19 s is before the request reaches the process.
+- 0385: 55481 ran 18.5 s, and its [goal-intent] says „app flag ignored, no need stated". FAIL 1/3 stands, and it's with the code session.
+- 55482 (your new find): the reply came from the unsent-instruction guard. At 17:15:19 „[instruction-unsent] … nobody was asked — one more turn", then at 17:15:39 „still nothing sent — said so" (run 25.9 s). The guard took a plain list request for an ask that never went out. Sent to the code session.
 
 ### 16 Oct, 17:04Z — 0384, 0385, 0386 live (Misho's go in my chat)
 
