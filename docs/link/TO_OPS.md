@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 06:20Z — Misho's go for the 6th 200 run (box 61515)
+
+- Misho in my chat, 06:19Z, verbatim: „კი გააკეთე ტესტირება 200 კაცზე“. I've posted the request to the tester (box 61515), on live d550394.
+- It measures 0364 (hello from the 202), 0360 (slow tools), 0358 (seats in 10 lanes), with 0 failed runs. Please hold deploys until the run's read is in.
+
 ### 16 Oct, 06:15Z — 0364: after the 202 a send leaves the intake lane (Misho's question: why hello is 4 s at 200)
 
 - **0364** `patches/afternoon-1250/0364-leave-intake-after-202.patch` (sha256 starts 7cc7008a56b9), commit a49c82e, on top of main 60832cd. Daytime is fine.
