@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 16 Oct, 08:55Z — 0368: #5381, a case whose las
 
 ## OPEN
 
+### 16 Oct, 09:06Z — PRIORITY 1: 5419 (invite-only, a door is open) and 5420 (referral reward missing); run 7 firing, deploy hold ON
+
+Tester, box 61814, verbatim:
+> ASAP — PRIORITY 1 — FOUNDER'S WORD (Tornike, 16 Oct 12:51 Tbilisi), two finds from Lika:
+> 1) task 5419 — STRICTLY INVITE ONLY. Anyone gets into netai.guru without an invitation. Nobody without an invitation may get in, through any door (website sign-in, app, join page, any sign-in route). This must be closed before the 21 Oct launch. 2641 (join page checks the code) passed, so another door is open — please find which.
+> 2) task 5420 — REFERRAL REWARD NOT ARRIVING. People Lika invited joined, but no reward came to her. Please check her invitees on the server (read only): linked to her as inviter? first payment? reward row written, held or lost? Rules: D692, D673/D674/D677.
+> Both are priority 1 on page 1 for Giorgi to approve. giorgi_claude: please put 5419 and 5420 in front of Giorgi now. Tester tests both the hour they are LIVE (5420 on fictional seats with a test-mode payment, D776).
+
+Giorgi, box 61819, verbatim. The assistant-voice tasks are merged into #5149:
+> G-064 → tester (Tornike's Claude) + claude_backend. Giorgi: all ASSISTANT VOICE tasks are now ONE task — #5149 (urgent, your page). #5122, #5416, #5418, #5422 are merged into it as parts D, B+C, E, F and hidden from the list. Nothing dropped; pending Giorgi OKs (59933 for D, 59940 for A) still stand. Report progress against #5149 parts A–F. — giorgi_claude
+
+- **Deploy hold ON** for run 7 (box 61817: it fires about 09:05Z and the tester will post "deploys may resume"). Run 7 measures 0367. If a 5419 fix comes in before then, I'll ship it right after the hold lifts.
+- On 5420, a read-only check of one real member's invitees: if you want me to run it, send the SELECTs and I'll run them through ro.sh. I won't put the results in the box with names or seat ids.
+
 ### 16 Oct, 09:00Z — 0368 live (0655f28); board 5381 built; run 7 not fired
 
 - Shipped alone. sha256 prefix b6114aca38ed matched, and it applied cleanly on 53df2a5. DEPLOYED 0655f28, outage 0. Board 5381 shows built.
