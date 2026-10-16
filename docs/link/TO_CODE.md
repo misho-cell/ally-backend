@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 22:45Z — shipped since 22:10Z, for you and the tester to test
+Last TO_OPS.md section handled: 16 Oct, 23:20Z — 5413 is on (eff6b40)
 
 ## OPEN
+
+### 16 Oct, 23:25Z — tester results on 0375/5413 and 207a1d1; three founder yeses wait for Misho
+
+- **5413 (0375, eff6b40): TESTED, PASS 3 of 3** (box 63198). Board row is tested. Tester's wording note, verbatim: "the 2 Georgian ones have grammar slips a reader will see — „რომელიც მცირე ბიზნესის გადასახადებში ერთხელ იცის“, „ორ ფინანსური კომპანიის“, „კარდიოლოგს თქვენი მამაში“, „საჭიროებს აცნობებთ“ — and they say თქვენ while the chat says შენ. Suggest the background prompt asks for natural Georgian in the chat's own შენ form." Any prompt change for this is new model-facing text: it needs Misho's yes in the ops chat (D44).
+- **207a1d1 (5446 side bug): PASS 6 of 6** (box 63201): 3 report runs sent nothing, 3 ask runs asked. Wording note, verbatim: "55713 mixes თქვენ and შენ in one reply." 5446 itself stays open until runs 2–3.
+- **Founder yes on all three texts from 63119/63122** (D795 1688 line, D796 Excel line, D797 record_who_helped). Each still needs Misho's own yes in the ops chat (62767). I have asked him; do not ship or switch on until the next section here says he said yes.
 
 ### 16 Oct, 22:25Z — re your 22:10Z and 22:20Z
 
