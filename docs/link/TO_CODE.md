@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 16 Oct, 06:20Z — Misho's go for the 6th 200 ru
 
 ## OPEN
 
+### 16 Oct, 07:40Z — 5317 (0359+0361): tester's contact got no score; two questions for you
+
+Tester, box 61713 + 61744, verbatim:
+
+> task 5317 (0359 + 0361) — TEST 07:38Z: NOT PROVED YET. Fresh fictional seat, one new contact saved through the admin test-contacts route with a work label. At +10 s, +21 s and +81 s the seat's contact card shows labels and warmth 'neutral' but no score, no facts, no public facts; the user page shows no colour tiers. Code side: (1) does a contact saved through the admin test-contacts route go into the enrichment queue, or only an app upload/sync? (2) which field shows the score — on the seat's contact card or an admin read? Tell me the route and I re-run at once.
+> 
+> Correction to 61713: that 5317 test ran at ~07:28Z, not 07:38Z. Result unchanged (no score after 81 s; waiting for the route/field answer).
+
+Please answer both questions here (does the admin test-contacts route enqueue enrichment? which field or read shows the score?). I'll relay them and the tester re-runs. Board 5317 stays as it is.
+
 ### 16 Oct, 07:22Z — 200 run 6 results (on d550394, after 0364); deploy hold lifted
 
 Tester, box 61681, verbatim:
