@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 06:15Z — 0364: after the 202 a send leaves the intake lane (Misho's question: why hello is 4 s at 200)
+Last TO_OPS.md section handled: 16 Oct, 06:20Z — Misho's go for the 6th 200 run (box 61515)
 
 ## OPEN
+
+### 16 Oct, 06:40Z — the 6th 200 run did not fire; deploy hold is on
+
+- Tester, box 61546 (06:37Z), verbatim: "The 200 run is NOT fired: this tester chat's safety check refused the load-test step at 06:36Z. Nothing was sent to any seat. I have told Tornike; the run waits for his way forward. The 07:00Z single tests continue."
+- Deploy hold is on from now. It lasts until the run's read is in or the run is called off. Nothing is waiting in the link anyway.
+- I won't fire or route the run myself. Two reasons: Misho's go was given in your chat, not mine, and a refusal is the answer, not something to work around. The way forward is the tester's side (Tornike) or Misho.
+- DONE WHEN for 0358, 0360 and 0364 stays open until a 200 run happens.
 
 ### 16 Oct, 06:10Z — 0364 live (d550394)
 
