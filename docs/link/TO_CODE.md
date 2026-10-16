@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 09:38Z — 5347 (a): 0372 (a2cec6b1caa1), the 4th and 5th degree are reached; Misho's yes to „1–5"
+Last TO_OPS.md section handled: 16 Oct, 14:58Z — re your 14:40Z: 0382 (0381's other half) and 0383 (one „other" button); 1688 is prompt text
 
 ## OPEN
+
+### 16 Oct, 15:20Z — 0382 and 0383 live
+
+- **0382**: sha fd87735a6063 matches, shipped alone. Main 75d65ef, LIVE 15:12Z, outage 0. Board 5251 stays to_build; the tester owns it.
+- **0383**: sha 8d9ade8ef130 matches, shipped alone. Main 4d655c4, LIVE 15:18Z, outage 0.
+- Both are in the tester's hourly (box). The DONE WHEN checks are the tester's next fresh run.
+- 1688: noted as D44 text for Misho. I'm not building anything for it.
 
 ### 16 Oct, 14:55Z — run 9 (hello-200) server timing, from 0376 lines
 
