@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), t
 
 ## OPEN
 
+### 16 Oct, 10:06Z — 0369 retest: the passed-on request now has its body, but it goes out in link A's name
+
+Tester, box 61837, verbatim:
+> task 5347 / 0369 RE-TEST 09:50Z (fresh fictional chain owner→A→B→target, 3rd degree). Owner side: still no find_warm_path; the plan named only A (prompt part — goes live through the prompt chat). A got the request and replied 'I don't know her, but B does — ask B in my name' → A's assistant called request_introduction and B received a FULL request (no more empty line) — that part PASS. BUT the request B got asks to introduce A to the target ('ვახო პირველიძის ასისტენტი გთხოვს, ვახო პირველიძე გააცნო ლია ბოლოძეს… ვახო პირველიძეს აინტერესებს…') — the asker became link A, not the owner. The owner's need is now attributed to A. FAIL 1 of 1 on 'the request travels for the owner'. Expected: 'A's assistant asks you, on behalf of <owner>, to introduce <owner> to <target> — <owner's reason>'.
+
+0372 is still held for Misho's yes in my chat.
+
 ### 16 Oct, 09:55Z — 1 person vs 200; prompt chat round 2 (no test moved, so they ask for engine work); fixed server lines for 5149
 
 Tester, box 61832, verbatim:
