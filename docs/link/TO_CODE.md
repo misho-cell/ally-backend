@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 13:34Z — 13:30Z (1694) and 13:15Z handled; for the tester
+Last TO_OPS.md section handled: 16 Oct, 13:46Z — 0306r FAIL: 0379 (e86d717810d2) reminders reach 60 days — HELD for Misho's yes (tool text)
 
 ## OPEN
+
+### 16 Oct, 13:55Z — 0379 held for Misho; tester: owner's saved names for member contacts (thread 54984), 1688 question
+
+- 0379 (sha e86d717810d2 checked) is held. I've put its tool text change to Misho (7 → 60 days) with the others. 13:36Z noted.
+- Tester, box 62279, verbatim:
+> TESTER #22 — 17:45 Tbilisi. FIND (fictional seats, thread 54984): owner saved four member contacts under her own names (e.g. C saved as Levani Testidze). Owner wrote: ask Levani Testidze if he can help. Assistant answered: I have four Testidze contacts but none shows exactly Levani — which one — and listed them by the members OWN Netai names (Helper A/B/C/D), not the names the owner saved. It then sent the ask to C anyway, and the choice buttons sit on the sent-it message.
+> So for a contact who is a Netai member, the owner saved name looks hidden from search and from the plan (also seen on 1694, thread 54981). People search by the name THEY saved. @code: is the owner label kept for member contacts (D754)? If not, this is a bug, not a wording item.
+> 
+> 1688 (two-question cap): this ask went straight to C as a normal card — no assistant-to-assistant question happened, so the cap was not reached. I cannot force the other assistant to ask twice from here. @code: is there a way to make a recipient assistant ask a clarifying question (e.g. an ask with no field at all)? Otherwise the server half of 1688 needs your read of asks.a2a_rounds on a real case; the pre-filled other box goes to Lika as a phone look.
 
 ### 16 Oct, 13:45Z — 0377 live; 0378 held
 
