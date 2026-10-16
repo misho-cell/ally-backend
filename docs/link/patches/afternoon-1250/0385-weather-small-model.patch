@@ -1,0 +1,75 @@
+From 38a1bbc0d0fb607dfcc87bc80a0ead367d4d852f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 16:06:39 +0000
+Subject: [PATCH] 3106: a weather question the server already looked up is read
+ back on the small model
+
+Plate v454 sent 3106 back. The way-in half holds: no weather run since 14
+Oct called search_by_tag:way_in. The speed half does not. Three weather
+runs at 07:35 on 16 Oct took 21, 32 and 42 s against 12. In the best one
+the model was called at 2.6 s and the main turn took about 10 s with no
+tool, because it only read back results the server had already fetched.
+
+That first turn now goes to the small model, as small talk and a settled tap
+already do. The blank-answer retry keeps the big model, and so does a
+weather run whose server search found nothing.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/smallTalkRunsOnASmallModel.test.ts      | 11 +++++++++--
+ src/services/chat.service.ts                          |  9 ++++++++-
+ 2 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/src/services/__tests__/smallTalkRunsOnASmallModel.test.ts b/src/services/__tests__/smallTalkRunsOnASmallModel.test.ts
+index 915660b..e59148b 100644
+--- a/src/services/__tests__/smallTalkRunsOnASmallModel.test.ts
++++ b/src/services/__tests__/smallTalkRunsOnASmallModel.test.ts
+@@ -36,8 +36,8 @@ async function smallTalkFinalModelWith(
+ describe('the small-talk turn', () => {
+   it('asks the small Claude model, and only on listed small talk', () => {
+     expect(chat).toContain("|| 'claude-haiku-4-5-20251001';");
+-    expect(chat).toContain(
+-      'model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,',
++    expect(chat).toMatch(
++      /model:\s+smallTalkOnly \|\| tapSettledByServer \|\| weatherAnsweredFromFound\s+\? SMALL_TALK_MODEL\s+: TOOL_TURN_MODEL,/u,
+     );
+     // D631: a tap the server already acted on goes to the same faster model.
+     expect(chat).toContain(
+@@ -65,4 +65,11 @@ describe('the small-talk turn', () => {
+   it('writes nothing through GPT when the final writer is off', async () => {
+     await expect(smallTalkFinalModelWith(undefined, 'small-writer')).resolves.toBe('');
+   });
++
++  // 3106 (16 Oct 07:35): the weather, once found by the server, is read back by the small model.
++  it('answers a weather question the server already looked up on the small model', () => {
++    expect(chat).toContain(
++      'const weatherAnsweredFromFound = weatherLookUp && weatherFound !== null;',
++    );
++  });
+ });
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index d30db82..cf776c7 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -13575,9 +13575,16 @@ async function runToolLoop(
+   // meanwhile, so the two never mix on the screen.
+   const earlyFinal = smallTalkOnly && writer !== '' ? writeWith(writer) : null;
+   const firstTurnText = earlyFinal === null ? stream : undefined;
++  // 3106, the speed half again (16 Oct 07:35, 3 runs: 21-42 s against 12). With
++  // the weather already found, the first turn only reads it back — the small
++  // model's job, as small talk's is. The blank-answer retry below keeps the big one.
++  const weatherAnsweredFromFound = weatherLookUp && weatherFound !== null;
+   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
+     onText: firstTurnText,
+-    model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
++    model:
++      smallTalkOnly || tapSettledByServer || weatherAnsweredFromFound
++        ? SMALL_TALK_MODEL
++        : TOOL_TURN_MODEL,
+     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
+     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
+     // 3106: with the weather already found, the first turn is the answer.
+-- 
+2.43.0
+

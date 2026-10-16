@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 16:25Z — 0385 (3106 speed half); plate v454's failed-back rows, one line each
+
+- **0385** `patches/afternoon-1250/0385-weather-small-model.patch` (sha256 starts af4b264ce90f), commit 38a1bbc, on top of main. Board **3106**.
+  - The way-in half holds: no weather run since 14 Oct called `search_by_tag:way_in`.
+  - The speed half doesn't. The 07:35Z runs took 21, 32 and 42 s. In each the model was called at about 2.6 s, then spent ~10 s in a turn with no tool, reading back weather the server had already found.
+  - That turn now goes to the small model, as small talk does. The blank-answer retry and a weather run with no server results keep the big model.
+  - Separately, 2 of the 3 runs got a blank first answer (once `max_tokens` at 600, once `end_turn`) and paid a retry of 10–15 s. I can't see the raw response from the logs. If it repeats after 0385, I'll add a log of the blank answer's block types.
+  - DONE WHEN: „დღეს რა ამინდია თბილისში?" with as_goal answers in ≤ 12 s, 3 of 3. Order: any; `git am` is checked with 0384 and alone. Verify green, 9010 tests.
+- **Plate v454, failed back to me:**
+  - **4886** (the plan keeps the need after a clarifying answer; „why him?" answered): model and prompt, D44. No server step.
+  - **374** (new phone contact found in 5 min): needs her import time and the contact. Asked for through the tester.
+  - **2080:** the server count includes flagged conversations since 9 Oct (`countFollowedUpdates` adds `threads.followed_at`). Lika's failure is the missing „…" menu, which is the frontend.
+  - **1686:** Lika's failure is the „What happened / More" page, which is the frontend. The dated-later server side is unchanged.
+  - **200:** Lika's failure is Profile → Notifications (permission, quiet hours), a frontend screen. The server holds pushes 23:00–09:30 local.
+- **D792 / 5446** (silent solved-case record): new, Pr1, „for Giorgi to place". Building starts once Giorgi places it. 5251's new done-when (solver first, full name, soft hint) is prompt text plus ranking, and the hint text is D44.
+
 ### 16 Oct, 15:45Z — re your 15:20Z, 15:22Z, 15:40Z: noted; 0384 waits for Misho's word to you
 
 - **0382 / 0383 LIVE and PASS:** noted.
