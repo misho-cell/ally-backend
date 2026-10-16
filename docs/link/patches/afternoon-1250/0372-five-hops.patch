@@ -1,0 +1,381 @@
+From 44a09b1fe331f722ce05fe6d4a1f8cc337afbc69 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 09:38:21 +0000
+Subject: [PATCH] 5347: a named target is reached at the 4th and 5th degree
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+find_warm_path stopped at 3 hops and the members' own chains at three
+people in the middle, so a 5th-degree target was unreachable. The graph
+walk now goes to 5 hops in two steps: up to 3 as before, and only when
+nothing is that close, on to 5. A long walk that runs out of time keeps
+the near answer rather than reading as an outage. Member chains add four
+in the middle (owner's member -> member -> member -> member holding the
+target); a chain that comes back through one of its own people is dropped.
+
+The max_hops line reads "Optional, 1–5 (default 5)." in the chat tool and
+the connector (Misho's yes to the exact text, 16 Oct).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aPathRunsThroughMembersOnly.test.ts       | 31 +++++-
+ src/services/chat.service.ts                  |  2 +-
+ src/services/mcp/mcpServer.ts                 |  2 +-
+ src/services/memberPaths.service.ts           | 74 +++++++++++++--
+ .../__tests__/theFifthDegreeIsReached.test.ts | 94 +++++++++++++++++++
+ src/services/tools/findWarmPath.ts            | 28 +++++-
+ 6 files changed, 219 insertions(+), 12 deletions(-)
+ create mode 100644 src/services/tools/__tests__/theFifthDegreeIsReached.test.ts
+
+diff --git a/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts b/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts
+index 73487fd..6727ac5 100644
+--- a/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts
++++ b/src/services/__tests__/aPathRunsThroughMembersOnly.test.ts
+@@ -14,7 +14,7 @@ import { memberMiddles } from '../memberPaths.service';
+ 
+ const mockQuery = query as jest.MockedFunction<typeof query>;
+ 
+-/** Task 1849 (§127): every person in the middle is a member, up to three of them. */
++/** Task 1849 (§127): every person in the middle is a member, up to four of them (5347). */
+ describe('the all-member middles of a path', () => {
+   beforeEach(() => mockQuery.mockReset());
+ 
+@@ -51,6 +51,35 @@ describe('the all-member middles of a path', () => {
+     expect(middles).toEqual([['+1'], ['+2', '+3'], ['+2', '+4', '+3'], ['+2', '+8', '+3']]);
+   });
+ 
++  // 5347: the 5th degree — four members in the middle.
++  it('finds four in the middle, and drops a chain that comes back through its own people', async () => {
++    mockQuery.mockImplementation(((sql: string, params: unknown[]) => {
++      if (sql.includes('ua."contactId" = $1::int'))
++        return Promise.resolve({ rows: [{ phone: '+2', user_id: 12 }] });
++      if (sql.includes('WHERE ua.phone = $1'))
++        return Promise.resolve({ rows: [{ phone: '+5', user_id: 15 }] });
++      if (sql.includes('holder_id'))
++        return Promise.resolve({
++          rows: [
++            { user_id: 14, phone: '+5', holder_id: 15 },
++            { user_id: 16, phone: '+2', holder_id: 12 },
++          ],
++        });
++      if (sql.includes('JOIN "UserAlias" ub') && (params[1] as number[]).includes(14))
++        return Promise.resolve({
++          rows: [
++            { from_id: 12, mid_id: 13, mid_phone: '+3', last_phone: '+4', last_id: 14 },
++            { from_id: 12, mid_id: 13, mid_phone: '+3', last_phone: '+6', last_id: 16 },
++          ],
++        });
++      return Promise.resolve({ rows: [] });
++    }) as never);
++
++    const middles = await memberMiddles(171, '+995599000000');
++
++    expect(middles).toEqual([['+2', '+3', '+4', '+5']]);
++  });
++
+   it('is empty when nobody of the owner’s is a member', async () => {
+     mockQuery.mockResolvedValue({ rows: [] } as never);
+     await expect(memberMiddles(171, '+995599000000')).resolves.toEqual([]);
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 572e870..87c5275 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -3792,7 +3792,7 @@ const FIND_WARM_PATH_TOOL: AnthropicTool = {
+         description:
+           "The target's phone id from a search result. Reuse it exactly; never show it to the user.",
+       },
+-      max_hops: { type: 'number', description: 'Optional, 1–3 (default 3).' },
++      max_hops: { type: 'number', description: 'Optional, 1–5 (default 5).' },
+     },
+     required: ['target_phone'],
+   },
+diff --git a/src/services/mcp/mcpServer.ts b/src/services/mcp/mcpServer.ts
+index efa0c86..98999ab 100644
+--- a/src/services/mcp/mcpServer.ts
++++ b/src/services/mcp/mcpServer.ts
+@@ -1018,7 +1018,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
+       description: TOOL_TEXTS.find_warm_path.description,
+       inputSchema: {
+         target_ref: z.string().describe("The target's contact_ref from a search result."),
+-        max_hops: z.number().optional().describe('Optional, 1–3 (default 3).'),
++        max_hops: z.number().optional().describe('Optional, 1–5 (default 5).'),
+       },
+       annotations: READ_ONLY,
+     },
+diff --git a/src/services/memberPaths.service.ts b/src/services/memberPaths.service.ts
+index 19acdbb..25b69b4 100644
+--- a/src/services/memberPaths.service.ts
++++ b/src/services/memberPaths.service.ts
+@@ -98,6 +98,18 @@ interface ThreeStepRow {
+   readonly mid_id: number;
+   readonly mid_phone: string;
+   readonly last_phone: string;
++  readonly last_id: number;
++}
++
++interface MemberChain {
++  readonly phones: string[];
++  /** Each person's account, in the chain's order, so a longer chain can be built on it. */
++  readonly ids: number[];
++}
++
++interface Holder {
++  readonly userId: number;
++  readonly phone: string;
+ }
+ 
+ /** Three in the middle: owner's member → a member they saved → a member holding the target. */
+@@ -105,11 +117,11 @@ async function threeStepMiddles(
+   first: readonly SavedMember[],
+   last: Set<number>,
+   ownerId: number,
+-): Promise<string[][]> {
++): Promise<MemberChain[]> {
+   if (first.length === 0 || last.size === 0) return [];
+   const result = await query<ThreeStepRow>(
+     `SELECT DISTINCT ua."contactId" AS from_id, up."userId" AS mid_id,
+-            ua.phone AS mid_phone, ub.phone AS last_phone
++            ua.phone AS mid_phone, ub.phone AS last_phone, upb."userId" AS last_id
+        FROM "UserAlias" ua
+        JOIN "UserPhone" up ON up.phone = ua.phone
+        JOIN "UserAlias" ub ON ub."contactId" = up."userId"
+@@ -135,20 +147,70 @@ async function threeStepMiddles(
+   return result.rows.flatMap((r) => {
+     const firstPhone = phoneOf.get(Number(r.from_id));
+     if (firstPhone === undefined || !memberMid.has(Number(r.mid_id))) return [];
+-    return [[firstPhone, r.mid_phone, r.last_phone]];
++    return [
++      {
++        phones: [firstPhone, r.mid_phone, r.last_phone],
++        ids: [Number(r.from_id), Number(r.mid_id), Number(r.last_id)],
++      },
++    ];
++  });
++}
++
++/**
++ * 5347 (the founder's word, 16 Oct; Misho's yes to „1–5"): the 5th degree was out
++ * of reach — three in the middle was the most. The members who saved a member
++ * holding the target, each with the phone they saved that member under.
++ */
++async function membersSavingHolders(
++  last: Set<number>,
++  ownerId: number,
++): Promise<Map<number, Holder>> {
++  if (last.size === 0) return new Map();
++  const result = await query<{ user_id: number; phone: string; holder_id: number }>(
++    `SELECT DISTINCT ON (ua."contactId") ua."contactId" AS user_id, ua.phone,
++            up."userId" AS holder_id
++       FROM "UserAlias" ua JOIN "UserPhone" up ON up.phone = ua.phone
++      WHERE up."userId" = ANY($1::int[]) AND ua."contactId" <> up."userId"
++        AND ua."contactId" <> $2::int AND NOT (ua."contactId" = ANY($1::int[]))
++        AND ${IS_MEMBER_SQL('ua."contactId"', '$4')}
++      LIMIT $3`,
++    [[...last], ownerId, PEOPLE_READ, NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
++    PATH_QUERY_TIMEOUT_MS,
++  );
++  return new Map(
++    result.rows.map((r) => [Number(r.user_id), { userId: Number(r.holder_id), phone: r.phone }]),
++  );
++}
++
++/** Four in the middle: a three-member chain to someone who saved a member holding the target. */
++async function fourStepMiddles(
++  first: readonly SavedMember[],
++  last: Set<number>,
++  ownerId: number,
++): Promise<string[][]> {
++  const savers = await membersSavingHolders(last, ownerId);
++  if (savers.size === 0) return [];
++  const chains = await threeStepMiddles(first, new Set(savers.keys()), ownerId);
++  return chains.flatMap((chain) => {
++    const holder = savers.get(chain.ids[chain.ids.length - 1]);
++    // Nobody twice: a chain that comes back through one of its own people is no route.
++    if (holder === undefined || chain.ids.includes(holder.userId)) return [];
++    if (new Set(chain.ids).size < chain.ids.length) return [];
++    return [[...chain.phones, holder.phone]];
+   });
+ }
+ 
+-/** Every all-member middle of up to three people, shortest first. */
++/** Every all-member middle of up to four people (five hops), shortest first. */
+ export async function memberMiddles(ownerId: number, targetPhone: string): Promise<string[][]> {
+   const [first, last] = await Promise.all([
+     ownersMembers(ownerId),
+     membersHolding(targetPhone, ownerId),
+   ]);
+   const oneStep = first.filter((m) => last.has(m.userId)).map((m) => [m.phone]);
+-  const [twoStep, threeStep] = await Promise.all([
++  const [twoStep, threeStep, fourStep] = await Promise.all([
+     twoStepMiddles(first, last),
+     threeStepMiddles(first, last, ownerId),
++    fourStepMiddles(first, last, ownerId),
+   ]);
+-  return [...oneStep, ...twoStep, ...threeStep];
++  return [...oneStep, ...twoStep, ...threeStep.map((chain) => chain.phones), ...fourStep];
+ }
+diff --git a/src/services/tools/__tests__/theFifthDegreeIsReached.test.ts b/src/services/tools/__tests__/theFifthDegreeIsReached.test.ts
+new file mode 100644
+index 0000000..b56cd8f
+--- /dev/null
++++ b/src/services/tools/__tests__/theFifthDegreeIsReached.test.ts
+@@ -0,0 +1,94 @@
++jest.mock('../../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
++jest.mock('../../../db/neo4j/client', () => ({ getSession: jest.fn(), __esModule: true }));
++jest.mock('../../neo4j.keys', () => ({
++  __esModule: true,
++  getCompositeKeyForUser: jest.fn().mockResolvedValue('+995500000001'),
++  getCompositeKeyForPhone: jest.fn().mockResolvedValue('+995500000009'),
++}));
++jest.mock('../../block.service', () => ({
++  __esModule: true,
++  getExcludedPhones: jest.fn().mockResolvedValue([]),
++}));
++jest.mock('../../memberPaths.service', () => ({
++  __esModule: true,
++  memberMiddles: jest.fn().mockResolvedValue([]),
++}));
++jest.mock('../membership', () => ({
++  __esModule: true,
++  fetchAccountStates: jest.fn().mockResolvedValue(new Map()),
++  isMemberPhone: jest.fn(() => true),
++  accountStateFor: jest.fn(() => 'netai_user'),
++}));
++
++import { query } from '../../../db/postgres/client';
++import { getSession } from '../../../db/neo4j/client';
++import { findWarmPath } from '../findWarmPath';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockSession = getSession as jest.MockedFunction<typeof getSession>;
++
++const ME = '+995500000001';
++const TARGET = '+995500000009';
++const FIVE_HOPS = [ME, '+995500000002', '+995500000003', '+995500000004', '+995500000005', TARGET];
++
++/** One answer per walk, in order; an Error rejects that walk. */
++function graphAnswering(...walks: (string[][] | Error)[]): jest.Mock {
++  const run = jest.fn();
++  for (const walk of walks) {
++    if (walk instanceof Error) run.mockRejectedValueOnce(walk);
++    else
++      run.mockResolvedValueOnce({ records: walk.map((keys) => ({ get: (): string[] => keys })) });
++  }
++  mockSession.mockReturnValue({ run, close: jest.fn().mockResolvedValue(undefined) } as never);
++  return run;
++}
++
++function depthOf(run: jest.Mock, call: number): number {
++  const cypher = run.mock.calls[call][0] as string;
++  return Number(/CONTACT\*1\.\.(\d+)/.exec(cypher)?.[1]);
++}
++
++beforeEach(() => {
++  jest.clearAllMocks();
++  mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
++});
++
++/** 5347 (the founder's word, 16 Oct): 3rd, 4th and 5th degree, assistant to assistant. */
++describe('the walk reaches the fifth degree', () => {
++  it('walks on to 5 hops when nothing is within 3, and returns that route', async () => {
++    const run = graphAnswering([], [FIVE_HOPS]);
++
++    const out = await findWarmPath('1', TARGET);
++
++    expect(out.found).toBe(true);
++    expect((out as { paths: { hops: number }[] }).paths[0].hops).toBe(5);
++    expect([depthOf(run, 0), depthOf(run, 1)]).toEqual([3, 5]);
++  });
++
++  it('does not walk further when a route within 3 hops exists', async () => {
++    const run = graphAnswering([[ME, '+995500000002', TARGET]]);
++
++    await findWarmPath('1', TARGET);
++
++    expect(run).toHaveBeenCalledTimes(1);
++    expect(depthOf(run, 0)).toBe(3);
++  });
++
++  it('keeps the near answer, not an outage, when the long walk runs out of time', async () => {
++    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++    graphAnswering([], new Error('transaction timed out'));
++
++    const out = await findWarmPath('1', TARGET);
++
++    expect(out.found).toBe(false);
++    expect((out as { reason: string }).reason).toBe('no_path_within_hops');
++  });
++
++  it('never walks deeper than 5, whatever is asked', async () => {
++    const run = graphAnswering([], []);
++
++    await findWarmPath('1', TARGET, 9);
++
++    expect(depthOf(run, 1)).toBe(5);
++  });
++});
+diff --git a/src/services/tools/findWarmPath.ts b/src/services/tools/findWarmPath.ts
+index 1429329..0600802 100644
+--- a/src/services/tools/findWarmPath.ts
++++ b/src/services/tools/findWarmPath.ts
+@@ -9,7 +9,7 @@ import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from
+ 
+ /**
+  * The warm-path walk to an IDENTIFIED target (Ticket 11 Task 10; D132, the
+- * founder, 8 Sep): 2–3 hops, point-to-point.
++ * founder, 8 Sep): up to 5 hops (5347), point-to-point.
+  *
+  * Why this is not the fan-out that was capped at one hop: the target is a
+  * specific, known person, so the map is not discovering anyone — it is finding
+@@ -24,7 +24,8 @@ import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from
+  * that bridge before passing the request on (`relay_ask`), one hop at a time.
+  */
+ 
+-const MAX_HOPS = 3;
++/** 5347 (the founder's word, 16 Oct; Misho's yes to „1–5"): the 5th degree is reached. */
++const MAX_HOPS = 5;
+ /** How many routes the user is shown. */
+ const MAX_PATHS = 5;
+ /**
+@@ -157,6 +158,27 @@ async function shortestPaths(
+   }
+ }
+ 
++/**
++ * 5347: the walk to 5 hops goes in two steps. The graph answers up to 3 hops as it
++ * always has; only when nothing is that close does it walk on to the full depth,
++ * because a search to depth 5 over the whole phonebook graph is the expensive
++ * one. If that longer walk runs out of time, the answer is what the first step
++ * found — the graph did answer — never an outage.
++ */
++const QUICK_HOPS = 3;
++
++async function pathsUpTo(userKey: string, targetKey: string, maxHops: number): Promise<PathRow[]> {
++  const near = await shortestPaths(userKey, targetKey, Math.min(maxHops, QUICK_HOPS));
++  if (near.length > 0 || maxHops <= QUICK_HOPS) return near;
++  try {
++    return await shortestPaths(userKey, targetKey, maxHops);
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(`findWarmPath: the walk past ${QUICK_HOPS} hops gave up:`, (err as Error).message);
++    return near;
++  }
++}
++
+ /**
+  * Names for the bridges: the user's own label for a direct contact, the
+  * account name for a Netai user, any phonebook's label for a stranger — the
+@@ -260,7 +282,7 @@ export async function findWarmPath(
+ 
+   let rows: PathRow[];
+   try {
+-    rows = await shortestPaths(userKey, targetKey, maxHops);
++    rows = await pathsUpTo(userKey, targetKey, maxHops);
+   } catch (err) {
+     // eslint-disable-next-line no-console
+     console.error('findWarmPath neo4j error:', (err as Error).message);
+-- 
+2.43.0
+

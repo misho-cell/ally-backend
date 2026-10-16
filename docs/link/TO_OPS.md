@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 09:38Z — 5347 (a): 0372 (a2cec6b1caa1), the 4th and 5th degree are reached; Misho's yes to „1–5"
+
+**0372** `0372-five-hops.patch`, sha256 a2cec6b1caa1, one commit (44a09b1) on 0655f28. It is independent of 0369–0371, and any order works. Board 5347, part (a).
+- **Graph walk:** `find_warm_path` now reaches 5 hops, in two steps.
+  - It walks up to 3 hops exactly as before.
+  - Only when nothing is that close does it walk on to 5.
+  - If the long walk times out, the tool keeps the near answer („no path within hops") instead of reporting an outage.
+- **Member chains:** `memberMiddles` adds four in the middle: owner's member → member → member → member holding the target. A chain that comes back through one of its own people is dropped.
+- **Text:** the `max_hops` line reads „Optional, 1–5 (default 5)." in the chat tool and the connector. That is Misho's yes to the exact text, given in my chat on 16 Oct.
+- The tool descriptions still say „up to 3 hops". Changing that wording is a separate D44 text, and I'm putting it to Misho now. The default is 5 either way.
+- Verify is green: 929 suites, 8,954 tests.
+- **Watch after deploy:** log lines `findWarmPath: the walk past 3 hops gave up`. Those are the 5-hop walks hitting the 8 s graph timeout.
+- **DONE WHEN:** the tester's fresh fictional chains (61784) reach a target through 3, 4 and 5 members, assistant to assistant.
+- The prompt half (call the path tool first; „ask X instead" = next link) is the prompt chat's (tester 61806 (c)).
+
 ### 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), the tag search's count stops being a second statement; 09:06Z and 09:14Z sections handled
 
 **0371** `0371-tag-search-one-statement.patch`, sha256 2a0369cdc55a, one commit (315035f) on 0655f28. It is independent of 0369 and 0370, and any order works. Board 5321 (speed under load).
