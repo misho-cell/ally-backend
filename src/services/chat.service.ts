@@ -13608,9 +13608,16 @@ async function runToolLoop(
   // meanwhile, so the two never mix on the screen.
   const earlyFinal = smallTalkOnly && writer !== '' ? writeWith(writer) : null;
   const firstTurnText = earlyFinal === null ? stream : undefined;
+  // 3106, the speed half again (16 Oct 07:35, 3 runs: 21-42 s against 12). With
+  // the weather already found, the first turn only reads it back — the small
+  // model's job, as small talk's is. The blank-answer retry below keeps the big one.
+  const weatherAnsweredFromFound = weatherLookUp && weatherFound !== null;
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: firstTurnText,
-    model: smallTalkOnly || tapSettledByServer ? SMALL_TALK_MODEL : TOOL_TURN_MODEL,
+    model:
+      smallTalkOnly || tapSettledByServer || weatherAnsweredFromFound
+        ? SMALL_TALK_MODEL
+        : TOOL_TURN_MODEL,
     ...((otherTap || smallTalkOnly) && { forceText: true, maxTokens: GREETING_MAX_TOKENS }),
     ...(discussing && { forceText: true, maxTokens: DISCUSS_MAX_TOKENS }),
     // 3106: with the weather already found, the first turn is the answer.
