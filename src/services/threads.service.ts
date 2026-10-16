@@ -263,9 +263,29 @@ const WAITS_ON_ITS_OWNER = `(t.status <> 'working' AND EXISTS (
          SELECT 1 FROM tasks k
           WHERE k.thread_id = t.id AND k.status = 'open'
             AND ((k.plan_proposed IS NOT NULL AND k.plan IS NULL) OR k.pending_question IS NOT NULL)))`;
+/**
+ * 5381 (Giorgi, 16 Oct, G-051): a helper's assistant asked something back, the
+ * owner's assistant put that question to the owner in the goal's own
+ * conversation, and the case stayed under „ვმუშაობ" reading „ველოდები
+ * პასუხს" — waiting on the owner while saying it waits on others. The model
+ * asked in its own words without registering the question, so
+ * WAITS_ON_ITS_OWNER above cannot see it. What the owner sees can: the last
+ * thing said in the conversation is the assistant's question to them, and
+ * they have not answered. Their answer is the last word again, and the case
+ * goes back to „ვმუშაობ". Read live on 16 Oct: 30 of 1,356 waiting threads.
+ */
+const ENDS_ON_A_QUESTION_TO_ITS_OWNER = `(t.status = 'waiting' AND EXISTS (
+         SELECT 1 FROM (
+           SELECT c.role, c.content FROM conversations c
+            WHERE c.thread_id = t.id AND c.kind = 'message' AND length(trim(c.content)) > 0
+            ORDER BY c.created_at DESC LIMIT 1
+         ) last
+          WHERE last.role = 'assistant'
+            AND regexp_replace(last.content, '[[:space:]"''“”„»«)]+$', '') ~ '[?？]$'))`;
 const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN ${HAS_PAUSED_GOAL} THEN 'needs_you'
        WHEN ${WAITS_ON_ITS_OWNER} THEN 'needs_you'
+       WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN 'needs_you'
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN 'waiting'
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN 'done'
        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN 'needs_you'
@@ -274,6 +294,7 @@ const STATUS_HONEST_ABOUT_OPEN_GOALS = `CASE
 const STATUS_LINE_HONEST_ABOUT_OPEN_GOALS = `CASE
        WHEN ${HAS_PAUSED_GOAL} THEN NULL
        WHEN ${WAITS_ON_ITS_OWNER} AND t.status <> 'needs_you' THEN NULL
+       WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN NULL
        WHEN t.status IN ('done', 'failed') AND ${HAS_OPEN_GOAL} THEN NULL
        WHEN t.status IN ('waiting', 'needs_you', 'failed') AND ${GOAL_IS_FINISHED} THEN NULL
        WHEN t.status = 'done' AND ${A_REQUEST_WAITS_HERE} THEN NULL
