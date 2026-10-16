@@ -1160,112 +1160,120 @@ threadsRouter.post(
 
       res.status(202).json({ success: true, runId });
 
-      // Ticket 7 Task 1(c), founder's ruling D48: an incoming_ask thread is a
-      // PRIVATE conversation between the recipient and their own assistant.
-      // The auto-capture that lived here — the recipient's first raw message
-      // becoming the asker's answer before the assistant even ran (asks
-      // 892/925: answered_at preceded the message row) — is removed. The only
-      // path to the asker is now send_answer_to_asker, called by the
-      // assistant with the exact text the recipient approved.
-
-      // The run is in flight — every device's chat list shows "working" from
-      // the server-held state (no more client-local status guessing). The
-      // caption follows the message's language (22(h)'s in-progress half: an
-      // English thread read „ვმუშაობ…" for the whole run, tester 22 Aug).
-      void setThreadStatus(userId, threadId, 'working', {
-        statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.working,
-      });
-
-      // The owner showed up in the goal's own thread — whatever question was
-      // pending for them is being engaged right now; the model re-flags with
-      // ask_owner_decision if it is still blocked after this exchange.
-      void clearGoalQuestionForThread(userId, threadId).catch(() => undefined);
-
       /**
-       * Ticket 20 row 209 — one conversation answers one run at a time.
-       *
-       * Row 115 collapses an IDENTICAL message repeated while its own run is
-       * going: one intention, several deliveries. This is the other case —
-       * two DIFFERENT things the owner said seconds apart, both of which
-       * deserve an answer, which until now started two runs side by side that
-       * could not see each other. Goal 5580 („ვამტკიცებ" then „ok", 3.2 s)
-       * approved one plan twice and asked two real people twice. Thread 16765
-       * („გიორგი ხატიაშვილის" then „მოწვევა მინდა", 6.2 s) split one sentence
-       * across two runs, neither of which held the request.
-       *
-       * The engine has had this rule since Ticket 19 G1/G5 and says in its own
-       * comment that it is one-directional: a wake waits for the owner, and
-       * nothing ever stopped the owner starting a run on top of a wake. This
-       * is the other direction, and it holds owner against owner too.
-       *
-       * A TYPED STOP DOES NOT WAIT. It exists to interrupt the run it would
-       * otherwise be queued behind, and processChat answers it before doing
-       * anything else. Making it wait would be the one case where this rule
-       * does harm.
+       * Misho, 16 Oct (the tester's 5th 200 run): a „გამარჯობა" took 4 s from
+       * the 202 against 0.5 s alone, and the server's own part of it was 2.3 s.
+       * The rest was here. Everything below ran on the intake lane — its ten
+       * connections exist for the 202, not after it — so the thread status,
+       * the cleared question and the owner's own message waited behind every
+       * other send in the room: up to 373 queued, ten-second waits. The
+       * message is accepted by now; what follows goes to the ordinary pools.
        */
-      /**
-       * Ticket 20 row 212 — the owner's words are stored WHEN THEY ARRIVE.
-       *
-       * The seat caught this within an hour of row 209 shipping, and it is row
-       * 209's own fix one layer short. Storing only the QUEUED message early
-       * and leaving the first one to the ordinary write inside processChat —
-       * which happens after the prompt is built, about three seconds later —
-       * put the two in the wrong ORDER:
-       *
-       *   18021  second 17:49:07.043, first 17:49:07.198   inverted by 155 ms
-       *   18052  second 17:51:06.041, first 17:51:06.932   inverted by 891 ms
-       *   18085  second 17:53:04.298, first 17:53:04.678   inverted by 380 ms
-       *
-       * Both members of each pair land inside one second although they were
-       * typed three apart, which is the tell. On 18052 the thread ends up
-       * reading „Now double the number you just gave me" ABOVE „Give me one
-       * number between 10 and 99" — and everything that re-reads the thread
-       * afterwards, the model included, sees the questions backwards. The
-       * screen looks right only while the run is live, because the client
-       * draws its own copy until the server's order arrives.
-       *
-       * So every message is written here, at the moment it is accepted, and
-       * the run is told not to write it again. There is no longer a fast path
-       * and a slow path to get out of step.
-       *
-       * The flag follows the WRITE, not the intention: if this one fails, the
-       * ordinary write inside the run is still the fallback, and a lost
-       * message would be a worse bug than a late one.
-       */
-      const storedOnArrival = await keepUserMessage(userId, threadId, message);
-      const storedAt = Date.now();
-      const stopCannotWait = looksLikeStopRequest(message);
-      if (!stopCannotWait) {
+      await leaveIntakeLane(async () => {
+        // Ticket 7 Task 1(c), founder's ruling D48: an incoming_ask thread is a
+        // PRIVATE conversation between the recipient and their own assistant.
+        // The auto-capture that lived here — the recipient's first raw message
+        // becoming the asker's answer before the assistant even ran (asks
+        // 892/925: answered_at preceded the message row) — is removed. The only
+        // path to the asker is now send_answer_to_asker, called by the
+        // assistant with the exact text the recipient approved.
+
+        // The run is in flight — every device's chat list shows "working" from
+        // the server-held state (no more client-local status guessing). The
+        // caption follows the message's language (22(h)'s in-progress half: an
+        // English thread read „ვმუშაობ…" for the whole run, tester 22 Aug).
+        void setThreadStatus(userId, threadId, 'working', {
+          statusLine: RUN_STRINGS[detectRunLanguage(message)].statusLines.working,
+        });
+
+        // The owner showed up in the goal's own thread — whatever question was
+        // pending for them is being engaged right now; the model re-flags with
+        // ask_owner_decision if it is still blocked after this exchange.
+        void clearGoalQuestionForThread(userId, threadId).catch(() => undefined);
+
         /**
-         * The wait is logged with its length because I do not know what it
-         * costs yet.
+         * Ticket 20 row 209 — one conversation answers one run at a time.
          *
-         * What is bounded: the run's own ceiling starts when the run does, so
-         * a queued message's total time from typing to answer can reach twice
-         * that. Whether the app tolerates a spinner that long is a question
-         * about the client, and guessing at it in here would be the wrong way
-         * to find out — so the number is written down on every queued run and
-         * read back tomorrow.
+         * Row 115 collapses an IDENTICAL message repeated while its own run is
+         * going: one intention, several deliveries. This is the other case —
+         * two DIFFERENT things the owner said seconds apart, both of which
+         * deserve an answer, which until now started two runs side by side that
+         * could not see each other. Goal 5580 („ვამტკიცებ" then „ok", 3.2 s)
+         * approved one plan twice and asked two real people twice. Thread 16765
+         * („გიორგი ხატიაშვილის" then „მოწვევა მინდა", 6.2 s) split one sentence
+         * across two runs, neither of which held the request.
+         *
+         * The engine has had this rule since Ticket 19 G1/G5 and says in its own
+         * comment that it is one-directional: a wake waits for the owner, and
+         * nothing ever stopped the owner starting a run on top of a wake. This
+         * is the other direction, and it holds owner against owner too.
+         *
+         * A TYPED STOP DOES NOT WAIT. It exists to interrupt the run it would
+         * otherwise be queued behind, and processChat answers it before doing
+         * anything else. Making it wait would be the one case where this rule
+         * does harm.
          */
-        const waitedFrom = Date.now();
-        const entry = await enterThread(
-          threadId,
-          runId,
-          THREAD_QUEUE_BUDGET_MS,
-          THREAD_QUEUE_POLL_MS,
-        );
-        if (entry !== 'free') {
-          // eslint-disable-next-line no-console
-          console.log(
-            `[thread-queue] run ${runId} thread ${threadId}: ${entry} after ${
-              Date.now() - waitedFrom
-            } ms`,
+        /**
+         * Ticket 20 row 212 — the owner's words are stored WHEN THEY ARRIVE.
+         *
+         * The seat caught this within an hour of row 209 shipping, and it is row
+         * 209's own fix one layer short. Storing only the QUEUED message early
+         * and leaving the first one to the ordinary write inside processChat —
+         * which happens after the prompt is built, about three seconds later —
+         * put the two in the wrong ORDER:
+         *
+         *   18021  second 17:49:07.043, first 17:49:07.198   inverted by 155 ms
+         *   18052  second 17:51:06.041, first 17:51:06.932   inverted by 891 ms
+         *   18085  second 17:53:04.298, first 17:53:04.678   inverted by 380 ms
+         *
+         * Both members of each pair land inside one second although they were
+         * typed three apart, which is the tell. On 18052 the thread ends up
+         * reading „Now double the number you just gave me" ABOVE „Give me one
+         * number between 10 and 99" — and everything that re-reads the thread
+         * afterwards, the model included, sees the questions backwards. The
+         * screen looks right only while the run is live, because the client
+         * draws its own copy until the server's order arrives.
+         *
+         * So every message is written here, at the moment it is accepted, and
+         * the run is told not to write it again. There is no longer a fast path
+         * and a slow path to get out of step.
+         *
+         * The flag follows the WRITE, not the intention: if this one fails, the
+         * ordinary write inside the run is still the fallback, and a lost
+         * message would be a worse bug than a late one.
+         */
+        const storedOnArrival = await keepUserMessage(userId, threadId, message);
+        const storedAt = Date.now();
+        const stopCannotWait = looksLikeStopRequest(message);
+        if (!stopCannotWait) {
+          /**
+           * The wait is logged with its length because I do not know what it
+           * costs yet.
+           *
+           * What is bounded: the run's own ceiling starts when the run does, so
+           * a queued message's total time from typing to answer can reach twice
+           * that. Whether the app tolerates a spinner that long is a question
+           * about the client, and guessing at it in here would be the wrong way
+           * to find out — so the number is written down on every queued run and
+           * read back tomorrow.
+           */
+          const waitedFrom = Date.now();
+          const entry = await enterThread(
+            threadId,
+            runId,
+            THREAD_QUEUE_BUDGET_MS,
+            THREAD_QUEUE_POLL_MS,
           );
+          if (entry !== 'free') {
+            // eslint-disable-next-line no-console
+            console.log(
+              `[thread-queue] run ${runId} thread ${threadId}: ${entry} after ${
+                Date.now() - waitedFrom
+              } ms`,
+            );
+          }
         }
-      }
 
-      // The run is not part of accepting the message: it goes back to the ordinary pools.
-      leaveIntakeLane(() =>
         runOwnerMessage({
           userId,
           threadId,
@@ -1281,8 +1289,8 @@ threadsRouter.post(
           needsTitle,
           askedFrom,
           chosenLanguage: asRunLanguage(req.get('X-Locale')),
-        }),
-      );
+        });
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[POST /threads/:id/message]', error);

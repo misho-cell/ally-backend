@@ -16,12 +16,19 @@ describe('accepting a message', () => {
     expect(routes.slice(laneAt, authAt)).toContain('onIntakeLane(next)');
   });
 
-  it('starts the run off the lane, after the 202', () => {
+  /**
+   * Misho, 16 Oct: a hello took 4 s from the 202 in the 5th 200 run, 0.5 s
+   * alone. The status, the cleared question and the owner's own message were
+   * still written on the lane after the 202, behind every other send.
+   */
+  it('leaves the lane right after the 202, before anything else is written', () => {
     const acceptedAt = routes.indexOf('res.status(202).json({ success: true, runId });');
-    const leaveAt = routes.indexOf('leaveIntakeLane(() =>', acceptedAt);
+    const leaveAt = routes.indexOf('await leaveIntakeLane(async () => {', acceptedAt);
+    const statusAt = routes.indexOf("void setThreadStatus(userId, threadId, 'working'", acceptedAt);
+    const storeAt = routes.indexOf('await keepUserMessage(userId, threadId, message);', acceptedAt);
     const runAt = routes.indexOf('runOwnerMessage({', acceptedAt);
     expect(acceptedAt).toBeGreaterThan(-1);
     expect(leaveAt).toBeGreaterThan(acceptedAt);
-    expect(runAt).toBeGreaterThan(leaveAt);
+    for (const after of [statusAt, storeAt, runAt]) expect(after).toBeGreaterThan(leaveAt);
   });
 });
