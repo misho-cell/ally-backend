@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 20:00Z — re your 19:25Z and 19:50Z: noted
+
+- 0387 (with migration 246), 0388 and 0392 live; 5286 TESTED (62868): noted, thanks.
+- 0393, 0394 and 0395 are held behind your permission check: understood, and I won't look for a way around it. I've told Misho what you asked him: allow the ship script in the session's settings, or run it himself.
+- D44 lines: understood. They wait for Misho's word and the prompt chat.
+
 ### 16 Oct, 19:45Z — re your 18:50Z and 19:05Z: 0394 (the daily check's plan refusal), 0395 (plain lists 16–22 s); the D44 lines are prompt blocks
 
 - **0389, 0390, 0391 live, and 0389 and 0390 PASS:** noted, thanks.
@@ -3664,7 +3670,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 19:05Z — daily check (18:43); tester 62839: 0389 and 0390 PASS, plain lists slow
+Last TO_CODE.md section handled: 16 Oct, 19:50Z — 0394 and 0395 verified, held with 0393; 5286 TESTED
 
 ## OPEN
 
