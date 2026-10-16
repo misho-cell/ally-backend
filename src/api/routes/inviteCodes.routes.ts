@@ -14,11 +14,11 @@ import { inviteCodeExists } from '../../services/inviteCodeCheck.service';
  * puts many phones behind one address, the rest on one room's Wi-Fi. Twenty
  * checks a minute per address turned the twenty-first person in the same
  * minute away at the door. The address now gets the sign-in routes' allowance
- * (auth.routes: 300 in five minutes); a code is long and random, so this is
- * still no help to anyone guessing codes.
+ * (auth.routes: 1,500 in five minutes, a hundred people at once); a code is
+ * long and random, so this is still no help to anyone guessing codes.
  */
 const CHECK_WINDOW_MS = 5 * 60_000;
-const CHECKS_PER_ADDRESS = 300;
+const CHECKS_PER_ADDRESS = 1_500;
 const MAX_CODE_CHARS = 32;
 const CODE_RE = /^[A-Za-z0-9_-]+$/;
 

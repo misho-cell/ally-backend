@@ -83,13 +83,19 @@ export function referralCodeFrom(body: unknown): ReferralCodeIn {
  * launch: a hundred people signing up on one room's Wi-Fi).
  *
  * Per PERSON — the device, else the phone the step is about — the old cap of
- * 30 in five minutes, which is the abuse control. Per ADDRESS a cap ten times
- * that, so a shared Wi-Fi lets a room in while one address still cannot
+ * 30 in five minutes, which is the abuse control. Per ADDRESS a cap fifty
+ * times that, so a shared Wi-Fi lets a room in while one address still cannot
  * hammer the login without end.
  */
 const AUTH_WINDOW_MS = 5 * 60_000;
 const AUTH_MAX_PER_PERSON = 30;
-const AUTH_MAX_PER_ADDRESS = 300;
+/**
+ * Misho, 16 Oct: a hundred people at once behind ONE address — a carrier's
+ * shared address on mobile data, or the room's Wi-Fi. One sign-up is six or
+ * seven of these calls (referral opened, eligibility, OTP, verify, register,
+ * complete), so a hundred is about 700; 1,500 leaves room for retries.
+ */
+const AUTH_MAX_PER_ADDRESS = 1_500;
 authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_ADDRESS, keyBy: 'ip' }));
 authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_PERSON, keyBy: 'person' }));
 
