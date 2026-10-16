@@ -127,13 +127,32 @@ const PRIVATE_RELATIONSHIPS: readonly string[] = ['family', 'close'];
  * costs two minutes and this job has no business paying that. The history IS
  * the record of who the engine listed and when.
  */
+/**
+ * The latest history row of each listed phone, walked down the (phone,
+ * built_at DESC) index one phone at a time. The plain DISTINCT ON sorted all
+ * 592,768 rows to keep 3,363 of them: 15–16 s every fifteen minutes on the
+ * background pool's two connections (logs, 15–16 Oct). Same rows, measured on
+ * production: 4.5 s against 0.5 s, round trip included.
+ */
+const LATEST_LISTING_SQL = `phones AS (
+       (SELECT phone FROM target_score_history ORDER BY phone LIMIT 1)
+       UNION ALL
+       SELECT (SELECT h.phone FROM target_score_history h
+                WHERE h.phone > p.phone ORDER BY h.phone LIMIT 1)
+       FROM phones p WHERE p.phone IS NOT NULL
+     ),
+     listed AS (
+       SELECT p.phone, last.built_at, last.rank
+       FROM phones p
+       CROSS JOIN LATERAL (
+         SELECT h.built_at, h.rank FROM target_score_history h
+          WHERE h.phone = p.phone ORDER BY h.built_at DESC LIMIT 1
+       ) last
+     )`;
+
 async function nextPeople(limit: number, refreshDays: number): Promise<{ phone: string }[]> {
   const result = await backgroundQuery<{ phone: string }>(
-    `WITH listed AS (
-       SELECT DISTINCT ON (h.phone) h.phone, h.built_at, h.rank
-       FROM target_score_history h
-       ORDER BY h.phone, h.built_at DESC
-     )
+    `WITH RECURSIVE ${LATEST_LISTING_SQL}
      SELECT l.phone
      FROM listed l
      LEFT JOIN (
