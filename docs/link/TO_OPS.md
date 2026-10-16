@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 18:15Z — re your 17:25Z: 0384 PASS noted; 0389 (55482), 0390 (0385's FAIL), 0391 (docs)
+
+- **0384:** PASS on the server, noted (title + allowance ≈ 434 ms).
+- **0389** `patches/afternoon-1250/0389-write-down-is-not-write-to.patch` (sha256 starts 8d7e4814a8bc), commit 8ccb022. **55482**: „ჩამომიწერე სამი სახელი სიად…" was read as „write to someone", because „ჩამომიწერე" holds „მიწერე". The unsent-instruction guard then answered „კითხვა არ გაიგზავნა". „მიწერე"/„მისწერე" now count only as their own word. The real „მიწერე ნინოს…" is unchanged. DONE WHEN: the tester's exact line gives the list, 3 of 3. New test: aWriteDownIsNotAWriteTo.
+- **0390** `patches/afternoon-1250/0390-weather-writer-early.patch` (sha256 starts e21381673604), commit 4552d8d. **3106, 0385's FAIL 1/3.** In the slow run the small model took ~9 s and only then did the Georgian writer take 5 s more. The weather is already in the writer's prompt, so the writer now starts beside Claude (small talk's early path). DONE WHEN: the same weather line with as_goal ≤ 12 s, 3 of 3.
+- **0391** `patches/afternoon-1250/0391-for-frontend-excel-live.patch` (sha256 starts f732c7578e8f), commit 9f2ac36, docs only. It answers the frontend's 17:30Z: an unknown route answers 404 „Route not found", the same shape, so they match on the error text.
+- **Order:** any. All of 0387–0390 were checked together and each alone on origin/main. Verify green, 9028 tests.
+
 ### 16 Oct, 18:00Z — 0388: a refused second-circle number names who can introduce (5286)
 
 - **0388** `patches/afternoon-1250/0388-refused-number-names-bridge.patch` (sha256 starts 28c9312fd90b), commit db8c8ed, on top of main. Board **5286**.
@@ -3606,7 +3614,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 17:04Z — 0384, 0385, 0386 live (Misho's go in my chat)
+Last TO_CODE.md section handled: 16 Oct, 17:25Z — tester 62615: 0384 PASS (server), 0385 FAIL 1/3, 0386 PASS (server); NEW FIND 55482, the unsent-instruction guard fired on a list request
 
 ## OPEN
 

@@ -1,0 +1,78 @@
+From 8ccb022ad841893169f9bd841037b4aa2ff0cc99 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 17:51:55 +0000
+Subject: [PATCH] A request to write something down is not an order to write to
+ someone
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 62615 (thread 55482): „ჩამომიწერე სამი სახელი სიად: ნინო,
+გიორგი, ანა. მხოლოდ სია." was read as an instruction to ask a contact,
+because „ჩამომიწერე" holds „მიწერე". Nobody was asked, so the unsent-
+instruction guard answered „კითხვა არ გაიგზავნა" to a plain list request.
+
+„მიწერე" and „მისწერე" now count only as their own word. A prefixed form
+(ჩა-, ჩამო-, გადა-, ამო-…) writes something down for the owner. The real
+„მიწერე ნინოს…", „მისწერე…" and „ჰკითხე…" are read as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aWriteDownIsNotAWriteTo.test.ts | 23 +++++++++++++++++++
+ src/services/goalIntent.ts                    |  8 ++++++-
+ 2 files changed, 30 insertions(+), 1 deletion(-)
+ create mode 100644 src/services/__tests__/aWriteDownIsNotAWriteTo.test.ts
+
+diff --git a/src/services/__tests__/aWriteDownIsNotAWriteTo.test.ts b/src/services/__tests__/aWriteDownIsNotAWriteTo.test.ts
+new file mode 100644
+index 0000000..9c1f409
+--- /dev/null
++++ b/src/services/__tests__/aWriteDownIsNotAWriteTo.test.ts
+@@ -0,0 +1,23 @@
++import { contactInstructionIn } from '../instructionUnsent';
++
++/**
++ * The tester's 62615 (thread 55482): „ჩამომიწერე სამი სახელი სიად: ნინო, გიორგი,
++ * ანა. მხოლოდ სია." was read as an order to write to someone, and the owner got
++ * „კითხვა არ გაიგზავნა". „ჩამომიწერე" holds „მიწერე"; it writes something down
++ * for the owner and reaches nobody.
++ */
++describe('a request to write something down', () => {
++  it('is not an instruction to write to a contact', () => {
++    expect(
++      contactInstructionIn('ჩამომიწერე სამი სახელი სიად: ნინო, გიორგი, ანა. მხოლოდ სია.'),
++    ).toBeNull();
++    expect(contactInstructionIn('ჩამიწერე ეს სამი სახელი')).toBeNull();
++    expect(contactInstructionIn('გადამიწერე ეს ტექსტი ნინოსთვის')).toBeNull();
++  });
++
++  it('leaves the real „write to" instructions as they were', () => {
++    expect(contactInstructionIn('მიწერე ნინოს, იცნობს თუ არა ფოტოგრაფს')).not.toBeNull();
++    expect(contactInstructionIn('მისწერე გიორგის და ჰკითხე')).not.toBeNull();
++    expect(contactInstructionIn('ჰკითხე ანას, ხვალ თავისუფალია თუ არა')).not.toBeNull();
++  });
++});
+diff --git a/src/services/goalIntent.ts b/src/services/goalIntent.ts
+index 27f1af4..e7ef661 100644
+--- a/src/services/goalIntent.ts
++++ b/src/services/goalIntent.ts
+@@ -435,8 +435,14 @@ export function goalTitleFrom(message: string): string {
+  * გიორგი ხიდაძე") and the go-between was never found. Each verb now takes its
+  * ending with it: „სთხოვე", „მისწერე", „უთხარი".
+  */
++/*
++ * The tester's 62615 (thread 55482): „ჩამომიწერე სამი სახელი სიად: ნინო, გიორგი,
++ * ანა" (write me down a list) read as an order to write to someone, because
++ * „ჩამომიწერე" holds „მიწერე". „write to" is its own word; a prefixed one (ჩა-,
++ * გადა-, ამო-…) writes something down for the owner.
++ */
+ const CONTACT_VERB_RE =
+-  /(ჰკითხე|კითხე|მისწერ[ეო]?|მიწერ[ეო]?|უთხარი|უთხ|ს?თხოვ[ეო]?|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
++  /(ჰკითხე|კითხე|(?<!\p{L})მისწერ[ეო]?|(?<!\p{L})მიწერ[ეო]?|უთხარი|უთხ|ს?თხოვ[ეო]?|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+ 
+ /**
+  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
+-- 
+2.43.0
+
