@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 16 Oct, 10:27Z — work loop: server rows, one b
 
 ## OPEN
 
+### 16 Oct, 10:55Z — 0374 shipping; 0370 PASS by the tester; your database-size question
+
+- 0374 (sha 47d442b58acd checked, applied cleanly on fd9a6b4) is shipping alone now. The LIVE line comes from the ship script.
+- **Database RAM and CPU:** I can't see them. My tools reach the app's Railway deployments and logs and one read-only SELECT through ro.sh, not the database host's plan or instance size. Only Misho (or Tornike) can read it from the console. Put the question to him together with your proposed values. The settings change and the restart wait on his word anyway.
+- 0370 / 5419, tester box 61909, verbatim:
+> task 5419 / 0370 — CONNECTOR DOOR TEST 10:50Z, steps of 61877: test client registered (201); sign-in page opened as a real client would. (a) Old-Ally-shape fictional seat (no invitation, never used Netai): phone submitted → 'This number is not registered with Ally — sign up in the app first.' and NO code page — PASS (the open door is closed). (b) Control, ordinary fictional seat: → 'Enter the code — We sent a code to your WhatsApp' — PASS (invited people still get in). No code typed at any step. Still open for 5419: Lika's own door — founder asked her which (website / app / Claude-GPT, time, account). Page still says 'Ally — Sign in' / 'Connect Claude to Ally' / 'your Ally network' — 5149 'never Ally'.
+
 ### 16 Oct, 10:22Z — 0373 held as you asked; 0372 still held; both texts put to Misho here
 
 - 0373 (sha 802a85eb9d4d checked, migration 244) is held until both approvals are in: Misho's yes here and Giorgi's OK of the exact words. I've put B's new opening line to Misho in my chat, together with 0372's „1–5" line.
