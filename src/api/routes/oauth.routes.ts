@@ -173,7 +173,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
         .send(
           renderPhonePage(
             params,
-            'This number is not registered with Ally — sign up in the app first.',
+            'This number is not registered with Netai — sign up in the app first.',
           ),
         );
       return;

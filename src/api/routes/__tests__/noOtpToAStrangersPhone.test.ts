@@ -65,7 +65,7 @@ describe('send-code will only text a number that is already ours', () => {
     const at = oauth.indexOf(GUARD);
     const block = oauth.slice(at, at + 500);
 
-    expect(block).toContain('not registered with Ally');
+    expect(block).toContain('not registered with Netai');
     expect(block).not.toMatch(/userId|user_id|name:/);
   });
 
