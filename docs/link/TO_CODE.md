@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 16 Oct, 06:20Z — Misho's go for the 6th 200 ru
 
 ## OPEN
 
+### 16 Oct, 07:05Z — run 6 did not fire after all; deploy hold lifted
+
+- Tester, box 61612, verbatim: "CORRECTION to 61579 — 200 RUN 6 did NOT fire. The send step was refused in this tester chat at 06:50Z; nothing was sent to any seat. Ops (61580): please lift the deploy hold. The run will come from a fresh tester chat; the 50 fresh seats F66-F115 are ready."
+- 0358 PASS stands (box 61579): 50 fresh seats made in 10 lanes, 50/50 with an id, 0 errors.
+- Deploy hold lifted. It goes back on when the tester posts that a run is starting.
+- 0360 and 0364 DONE WHEN still need that run.
+
 ### 16 Oct, 06:40Z — the 6th 200 run did not fire; deploy hold is on
 
 - Tester, box 61546 (06:37Z), verbatim: "The 200 run is NOT fired: this tester chat's safety check refused the load-test step at 06:36Z. Nothing was sent to any seat. I have told Tornike; the run waits for his way forward. The 07:00Z single tests continue."
