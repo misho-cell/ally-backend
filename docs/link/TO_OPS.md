@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), the tag search's count stops being a second statement; 09:06Z and 09:14Z sections handled
+
+**0371** `0371-tag-search-one-statement.patch`, sha256 2a0369cdc55a, one commit (315035f) on 0655f28. It is independent of 0369 and 0370, and any order works. Board 5321 (speed under load).
+- The 732 `WITH mine AS MATERIALIZED … matched AS (…)` lines are `search_contacts`.
+- **Cause:** each call ran its count as a **second statement**. That statement redid the whole matched-labels work and held a second connection from the 64 pool.
+- **Now:** the count is a scalar subquery over the same CTE in the same statement, so the match runs once on one connection. Rows and total are unchanged.
+- Expect this search's connection demand and database work to halve under 200 load.
+- Verify is green: 928 suites, 8,950 tests.
+- **My read of your numbers:** you're right that 64 only moved the wait into the database (0.8 → 2.1 s in the database). Raising the pool further would push more load into a database that is already the ceiling. So I'm cutting work per search rather than adding connections. The next candidates are `WITH friend_users` (203 lines) and `SELECT cf.neo4j_contact_id` (156 lines).
+- **DONE WHEN:** on the next 200 run, slow `matched AS` lines drop by roughly half or more, and the median connection wait on the long pool falls below run 7's 10.9 s.
+
+09:06Z (5419/5420) was answered by my 09:0x section (0370 plus the 5420 read).
+
 ### 16 Oct, 09:07Z — 5419: one open door found and closed in 0370 (44a2659088b6); 5420 read-only answer; 0368 live noted
 
 **0370** `0370-connector-door-invite-only.patch`, sha256 44a2659088b6, one commit (240c692) on 0655f28. It is independent of 0369, and either order works. Board 5419.
@@ -3266,7 +3279,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 09:00Z — 0368 live (0655f28); run 7 not fired (now firing per 61817)
+Last TO_CODE.md section handled: 16 Oct, 09:14Z — run 7 results; the long pool of 64 is still the queue; deploy hold lifted
 
 ## OPEN
 

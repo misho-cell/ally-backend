@@ -1,0 +1,227 @@
+From 315035fdef35b20f2833775b814b31fac983c261 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 09:17:40 +0000
+Subject: [PATCH] Run 7: the tag search counts in the same statement, not a
+ second one
+
+search_contacts ran its count as a second statement that repeated the whole
+matched-labels work and held a second long-pool connection. In run 7 (200 at
+once) this search was 732 of the 1,203 slow lines, waiting a median 10.9 s
+for a connection against 2.1 s in the database. The count is now a scalar
+subquery over the same CTE in the same statement: the match runs once, on
+one connection. Same rows, same total.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aTimeoutIsNotAnEmptyNetwork.test.ts       |  6 +-
+ .../aBridgeRecommendsOnlyHisOwn.test.ts       | 11 ++--
+ .../tools/__tests__/searchByTag.test.ts       | 39 +++++++++----
+ src/services/tools/searchByTag.ts             | 57 ++++++++++---------
+ 4 files changed, 69 insertions(+), 44 deletions(-)
+
+diff --git a/src/services/__tests__/aTimeoutIsNotAnEmptyNetwork.test.ts b/src/services/__tests__/aTimeoutIsNotAnEmptyNetwork.test.ts
+index 5cb8098..b7d9a1c 100644
+--- a/src/services/__tests__/aTimeoutIsNotAnEmptyNetwork.test.ts
++++ b/src/services/__tests__/aTimeoutIsNotAnEmptyNetwork.test.ts
+@@ -46,10 +46,10 @@ describe('a search that timed out is never an empty network', () => {
+     expect(out).toHaveProperty('empty_searches_so_far');
+   });
+ 
+-  it('gives the exact tag search more than the pool default, on its two queries and the way-in pass', () => {
++  it('gives the exact tag search more than the pool default, on its one query and the way-in pass', () => {
+     const src = readFileSync(join(__dirname, '..', 'tools', 'searchByTag.ts'), 'utf8');
+     expect(src).toContain('const EXACT_SEARCH_TIMEOUT_MS = 20_000;');
+-    // The page and its COUNT, and #959's one pass for many way-in names.
+-    expect(src.match(/EXACT_SEARCH_TIMEOUT_MS,\n/g)?.length).toBe(3);
++    // The page with its COUNT in one statement (run 7), and #959's one pass for many way-in names.
++    expect(src.match(/EXACT_SEARCH_TIMEOUT_MS,\n/g)?.length).toBe(2);
+   });
+ });
+diff --git a/src/services/tools/__tests__/aBridgeRecommendsOnlyHisOwn.test.ts b/src/services/tools/__tests__/aBridgeRecommendsOnlyHisOwn.test.ts
+index 019f7f9..315c68e 100644
+--- a/src/services/tools/__tests__/aBridgeRecommendsOnlyHisOwn.test.ts
++++ b/src/services/tools/__tests__/aBridgeRecommendsOnlyHisOwn.test.ts
+@@ -23,11 +23,14 @@ interface Row {
+ }
+ 
+ function found(rows: readonly Row[]): void {
+-  mockQuery.mockImplementation((sql: string) => {
+-    if (String(sql).includes('COUNT'))
+-      return Promise.resolve({ rows: [{ total: String(rows.length) }], rowCount: 1 } as never);
++  mockQuery.mockImplementation(() => {
+     return Promise.resolve({
+-      rows: rows.map((r) => ({ all_tags: [], saved_as: null, ...r })),
++      rows: rows.map((r) => ({
++        all_tags: [],
++        saved_as: null,
++        ...r,
++        total_matches: String(rows.length),
++      })),
+       rowCount: rows.length,
+     } as never);
+   });
+diff --git a/src/services/tools/__tests__/searchByTag.test.ts b/src/services/tools/__tests__/searchByTag.test.ts
+index 4f1da00..d203c0d 100644
+--- a/src/services/tools/__tests__/searchByTag.test.ts
++++ b/src/services/tools/__tests__/searchByTag.test.ts
+@@ -46,7 +46,10 @@ function setup(opts: {
+   const relationships = opts.relationships ?? [];
+   const humanTiers = opts.humanTiers ?? [];
+   mockQuery.mockImplementation((sql: string) => {
+-    if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
++    if (sql.includes('AS total_matches'))
++      return Promise.resolve(
++        rows(main.map((r) => ({ ...(r as object), total_matches: String(count) }))) as never,
++      );
+     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
+     if (sql.includes('human_relationship_tiers')) return Promise.resolve(rows(humanTiers) as never);
+     if (sql.includes('contact_relationship_scores'))
+@@ -188,6 +191,19 @@ describe('searchByTag', () => {
+     expect(params.some((p) => typeof p === 'string' && p.startsWith('%'))).toBe(false);
+   });
+ 
++  // Run 7 (200 at once): the count rode a second statement that redid the whole match.
++  it('runs the exact match once, with its count in the same statement', async () => {
++    setup({ main: [mockRow], count: 52 });
++
++    await searchByTag('42', 'engineer');
++
++    const exactCalls = mockQuery.mock.calls.filter((c) =>
++      (c[0] as string).includes('matched AS ('),
++    );
++    expect(exactCalls).toHaveLength(1);
++    expect(exactCalls[0][0] as string).toContain('COUNT(*) AS total');
++  });
++
+   it('reports the real total even when the page is capped', async () => {
+     setup({ main: [mockRow], count: 52 });
+ 
+@@ -263,8 +279,8 @@ describe('searchByTag', () => {
+ 
+     await searchByTag('42', 'asriyants');
+ 
+-    const mainSql = mockQuery.mock.calls.find(
+-      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
++    const mainSql = mockQuery.mock.calls.find((c) =>
++      (c[0] as string).includes('AS total_matches'),
+     )?.[0] as string;
+     // Recall is scoped to the user's own contact phones (the materialized
+     // "mine" set — every branch joins FROM it, so the plan can't flip to
+@@ -305,11 +321,11 @@ describe('searchByTag', () => {
+ 
+     await searchByTag('42', 'dachi axel');
+ 
+-    const mainSql = mockQuery.mock.calls.find(
+-      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
++    const mainSql = mockQuery.mock.calls.find((c) =>
++      (c[0] as string).includes('AS total_matches'),
+     )?.[0] as string;
+-    const mainParams = mockQuery.mock.calls.find(
+-      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
++    const mainParams = mockQuery.mock.calls.find((c) =>
++      (c[0] as string).includes('AS total_matches'),
+     )?.[1] as unknown[];
+     // Each word becomes a bool_or group; word_hits sums them and drives the order.
+     expect(mainSql).toContain('bool_or(');
+@@ -332,7 +348,8 @@ describe('searchByTag', () => {
+ 
+   it('marks is_member true for a contact who has actually used Netai', async () => {
+     mockQuery.mockImplementation((sql: string) => {
+-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
++      if (sql.includes('AS total_matches'))
++        return Promise.resolve(rows([{ ...mockRow, total_matches: '1' }]) as never);
+       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
+       if (sql.includes('FROM "UserPhone"'))
+         return Promise.resolve(rows([{ phone: mockRow.phone, netai_user: true }]) as never);
+@@ -350,7 +367,8 @@ describe('searchByTag', () => {
+   // is the commonest one in the base — 62,146 of 62,184 accounts.
+   it('an old-Ally account that never opened Netai is NOT a member', async () => {
+     mockQuery.mockImplementation((sql: string) => {
+-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
++      if (sql.includes('AS total_matches'))
++        return Promise.resolve(rows([{ ...mockRow, total_matches: '1' }]) as never);
+       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
+       if (sql.includes('FROM "UserPhone"'))
+         return Promise.resolve(rows([{ phone: mockRow.phone, netai_user: false }]) as never);
+@@ -419,7 +437,8 @@ describe('searchByTag', () => {
+   it('still returns exact rows when the fuzzy pass errors', async () => {
+     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+     mockQuery.mockImplementation((sql: string) => {
+-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
++      if (sql.includes('AS total_matches'))
++        return Promise.resolve(rows([{ ...mockRow, total_matches: '1' }]) as never);
+       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
+       if (sql.includes('similarity(')) return Promise.reject(new Error('index missing'));
+       return Promise.resolve(rows([mockRow]) as never);
+diff --git a/src/services/tools/searchByTag.ts b/src/services/tools/searchByTag.ts
+index 0da6d29..ce2a645 100644
+--- a/src/services/tools/searchByTag.ts
++++ b/src/services/tools/searchByTag.ts
+@@ -180,33 +180,36 @@ async function runExactSearch(
+   blockedPhones: string[],
+ ): Promise<{ rows: TagRow[]; total: number }> {
+   const m = buildExactMatchSql(userId, rawGroups, blockedPhones, true);
+-  const [result, countResult] = await Promise.all([
+-    query<TagRow>(
+-      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
+-       hits AS (
+-         SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
+-                bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
+-         FROM matched
+-         WHERE phone != ALL($${m.blockIdx})
+-         GROUP BY phone
+-       )
+-       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
+-              BOOL_AND(h.self_work_only) AS self_work_only
+-       ${AGG_JOINS}
+-       GROUP BY h.phone
+-       ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
+-                MAX(ut."weightCount") DESC NULLS LAST
+-       LIMIT ${RESULT_LIMIT}`,
+-      m.params,
+-      EXACT_SEARCH_TIMEOUT_MS,
+-    ),
+-    query<{ total: string }>(
+-      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte} ${m.totalSql}`,
+-      m.params,
+-      EXACT_SEARCH_TIMEOUT_MS,
+-    ),
+-  ]);
+-  return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };
++  /**
++   * Run 7 (200 at once, 16 Oct): this search was 732 of the 1,203 slow lines,
++   * because the count was a second statement. It repeated the whole matched-labels
++   * work and held a second connection from the long pool. The count is now a
++   * scalar subquery over the same CTE in the same statement: matched is computed
++   * once, on one connection.
++   */
++  const result = await query<TagRow & { total_matches: string }>(
++    `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
++     hits AS (
++       SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
++              bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
++       FROM matched
++       WHERE phone != ALL($${m.blockIdx})
++       GROUP BY phone
++     )
++     SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
++            BOOL_AND(h.self_work_only) AS self_work_only,
++            (${m.totalSql}) AS total_matches
++     ${AGG_JOINS}
++     GROUP BY h.phone
++     ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
++              MAX(ut."weightCount") DESC NULLS LAST
++     LIMIT ${RESULT_LIMIT}`,
++    m.params,
++    EXACT_SEARCH_TIMEOUT_MS,
++  );
++  const rows: TagRow[] = result.rows.map(({ total_matches: _total, ...row }) => row);
++  const total = result.rows[0]?.total_matches;
++  return { rows, total: total === undefined ? 0 : Number(total) };
+ }
+ 
+ /**
+-- 
+2.43.0
+
