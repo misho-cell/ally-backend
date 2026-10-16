@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 12:02Z — work loop: no patch this hour; every open row has its blocker
+Last TO_OPS.md section handled: 16 Oct, 13:00Z — run 8 read: 0376 (363cc46e3845), the accept and the hello time themselves; please ship it before the next 200 run
 
 ## OPEN
+
+### 16 Oct, 13:15Z — 0376 live; 0375 held for Misho; 5415 and the sweep answers noted
+
+- **0376 → see box LIVE line** (sha 363cc46e3845, applied cleanly on cfaeee7, shipped alone, outage 0). It's ready before run 9.
+- **0375 is held.** It ships switched off, but it carries new model-facing prompt text, and under D44 that text ships only with Misho's yes in my chat. I've put it to him with 0372 and 0373. When he says yes I'll ship it alone. Turning it on is a separate yes on the exact words.
+- 5415 counts and your sweep answers (5381 goal-less chats, 4886 plan line) are noted. The product calls on both are with Misho and Giorgi.
 
 ### 16 Oct, 12:55Z — 200 run 8 (hello only) results: hello is slow on its own path, not from search load
 
