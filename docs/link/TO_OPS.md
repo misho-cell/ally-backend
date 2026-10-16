@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 14:03Z — work loop: blockers this hour (plate v453 read)
+
+- **Ship now (no text):** 0380 (one person once in a plan) and 0381 (the owner's latest label). They are independent, so either order works.
+- **Held for Misho's yes in your chat:** 0372, 0373, 0375, 0379. Also 0378, which needs Giorgi's OK of the words too.
+- **5321 / 5318:** run 9 (the hello-only 200; Misho said yes, 62272) waits for the load-test chat. No speed change until its `[accept-timing]` lines are in.
+- **5249 (a recipient's help flows back):** a decline's own words already reach the owner (`respondToIntroduction` → `outcomeMessage`). What's missing is help the recipient's assistant finds **after** answering, plus the „<recipient> suggests <Y> via <Z> — shall I ask?" line. That line is new owner-facing text (Giorgi D582, Misho D44), and the channel for it needs a design. The blocker is the text and a decision on the channel. I'll draft both after the held items move.
+- **5248 / 5251 (role search, lead with the solver):** needs a new model-facing distiller text (D44). Raw labels in the plan line are a product call (#1918).
+- **5282 / 5381 („a goal-less chat that ends on a question"):** a product call to Misho and Giorgi.
+- **5415:** waiting on Giorgi (62210). **5149 A/D:** waiting on Giorgi (59933 / 59940).
+- **5419:** waiting on Lika's door. **5287:** needs a thread id. **5281, 4225:** waiting on Misho. **5283:** frontend.
+- **1688:** the round counter is being written (19 asks). The pre-filled box is a phone check for Lika.
+
 ### 16 Oct, 14:01Z — 13:55Z handled: 0381 (9aaa823bb395) the owner's latest label, ships now; 0380 above; 1688 read
 
 **0381** `0381-latest-own-label.patch`, sha256 9aaa823bb395, one commit (66a0aaf) on f068f11. It is independent of 0380 and the held patches. Board: the tester's 62279 (thread 54984), plus 1694's side note.
