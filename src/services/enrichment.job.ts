@@ -23,6 +23,25 @@ const MAX_NOTE_MODERATION_PER_RUN = 500;
 // UTC notification cron). Never runs at boot — the boot-run variant is what
 // lit the backlog during live testing hours.
 const CRON_HOUR_UTC = 1;
+/**
+ * 16 Oct: the 01:00 run was killed by the 01:24 deploy, and its row read
+ * „running" with nothing processed until morning — the same way 17 older
+ * rows had been left behind. A restart now closes such a row as cut off, and
+ * a run cut off early in its own night starts again; never later than this
+ * hour, so a resumed run (about three hours, capped) still ends before the
+ * day's testing.
+ */
+const RESUME_DEADLINE_HOUR_UTC = 3;
+const CUT_OFF_ERROR = 'cut off by a restart';
+
+/** Whether a run cut off by a restart may start again now: same UTC night, before the deadline. */
+export function mayResumeCutOffRun(startedAt: Date, now: Date): boolean {
+  return (
+    startedAt.toISOString().slice(0, 10) === now.toISOString().slice(0, 10) &&
+    startedAt.getUTCHours() >= CRON_HOUR_UTC &&
+    now.getUTCHours() < RESUME_DEADLINE_HOUR_UTC
+  );
+}
 
 interface UserRow {
   user_id: number;
@@ -438,6 +457,28 @@ export class EnrichmentJob {
     return next.getTime() - now.getTime();
   }
 
+  /**
+   * At boot nothing of this process is running yet, so a „running" row was
+   * left by the process before it. It is closed as cut off, and an incremental
+   * run cut off early tonight starts again (see RESUME_DEADLINE_HOUR_UTC).
+   */
+  static async settleCutOffRun(now: Date = new Date()): Promise<boolean> {
+    const cutOff = await query<{ job_type: string; started_at: Date | null }>(
+      `UPDATE enrichment_jobs SET status = 'failed', completed_at = NOW(), error = $1
+        WHERE status = 'running'
+        RETURNING job_type, started_at`,
+      [CUT_OFF_ERROR],
+    );
+    const resumable = cutOff.rows.some(
+      (row) =>
+        row.job_type === 'incremental' &&
+        row.started_at !== null &&
+        mayResumeCutOffRun(new Date(row.started_at), now),
+    );
+    if (resumable) this.runIncremental();
+    return resumable;
+  }
+
   static startCron(): void {
     if (this.cronTimer !== null) return;
     if (process.env.ENRICHMENT_CRON_ENABLED === 'false') {
@@ -445,6 +486,16 @@ export class EnrichmentJob {
       console.log('[enrichment] Cron disabled via ENRICHMENT_CRON_ENABLED=false');
       return;
     }
+    void this.settleCutOffRun()
+      .then((resumed) => {
+        // eslint-disable-next-line no-console
+        if (resumed)
+          console.log("[enrichment] tonight's run was cut off by a restart; started again");
+      })
+      .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
+        console.error('[enrichment] could not settle a cut-off run:', (err as Error).message),
+      );
     // Fixed nightly window, never at boot: wall-clock alignment kills the
     // deploy-drift problem, and the low-traffic hour keeps the (isolated,
     // throttled) run away from live users entirely.
