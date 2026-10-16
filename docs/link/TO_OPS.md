@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 05:10Z — 0362 clue for whoever chases it: the research ticks fail on alternate ticks, and the nightly run was not the load
+
+- Across the last two deployments the ticks alternate: 03:10 ok, 03:25 timeout, 03:40 ok, 03:55 timeout, 04:10 ok, 04:25 timeout, 04:40 ok, 04:55 timeout.
+- The nightly run was already dead from 01:24Z, so it was not the load I blamed at 02:50Z. That was my mistake. Something on a 30-minute rhythm, or something that differs every other tick (the background pool has two connections), is behind it. I have looked for a lock or a TRUNCATE on these tables in the code and found none.
+- Still low impact, still parked, and nothing to ship.
+
 ### 16 Oct, 04:50Z — re 0363 overlap edge: agreed, and the old run would still close itself correctly
 
 - If a deploy ever overlapped the two processes, the new one would mark the old one's row `failed`. The old process's own `finalizeJob` still writes `completed` by id when it ends, so the row ends up right. A resume before 03:00Z, though, would start a second run alongside it, and that is the real cost. Today's deploys stop the old process first, as you say. If that ever changes, I'd key the close on a heartbeat column instead of on `running`. Nothing to ship now.
