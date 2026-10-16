@@ -435,8 +435,14 @@ export function goalTitleFrom(message: string): string {
  * გიორგი ხიდაძე") and the go-between was never found. Each verb now takes its
  * ending with it: „სთხოვე", „მისწერე", „უთხარი".
  */
+/*
+ * The tester's 62615 (thread 55482): „ჩამომიწერე სამი სახელი სიად: ნინო, გიორგი,
+ * ანა" (write me down a list) read as an order to write to someone, because
+ * „ჩამომიწერე" holds „მიწერე". „write to" is its own word; a prefixed one (ჩა-,
+ * გადა-, ამო-…) writes something down for the owner.
+ */
 const CONTACT_VERB_RE =
-  /(ჰკითხე|კითხე|მისწერ[ეო]?|მიწერ[ეო]?|უთხარი|უთხ|ს?თხოვ[ეო]?|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+  /(ჰკითხე|კითხე|(?<!\p{L})მისწერ[ეო]?|(?<!\p{L})მიწერ[ეო]?|უთხარი|უთხ|ს?თხოვ[ეო]?|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
 
 /**
  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
