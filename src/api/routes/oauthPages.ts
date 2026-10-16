@@ -35,7 +35,7 @@ function page(body: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ally — Sign in</title>
+<title>Netai — Sign in</title>
 <style>
   body { font-family: system-ui, -apple-system, sans-serif; background: #FAF9F5; margin: 0;
          display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -58,7 +58,7 @@ function page(body: string): string {
 </style>
 </head>
 <body>
-<div class="logo">${LOGO_SVG}<span>Ally</span></div>
+<div class="logo">${LOGO_SVG}<span>Netai</span></div>
 <div class="card">${body}</div>
 </body>
 </html>`;
@@ -79,8 +79,8 @@ function hiddenFields(params: AuthorizePageParams): string {
 
 export function renderPhonePage(params: AuthorizePageParams, error?: string): string {
   return page(`
-<h1>Connect Claude to Ally</h1>
-<p>Claude is requesting access to your Ally network. Enter your phone number — we'll send a code to your WhatsApp.</p>
+<h1>Connect Claude to Netai</h1>
+<p>Claude is requesting access to your Netai network. Enter your phone number — we'll send a code to your WhatsApp.</p>
 ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
 <form method="post" action="/oauth/authorize/send-code">
 ${hiddenFields(params)}

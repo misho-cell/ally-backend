@@ -236,11 +236,14 @@ export function laterSentenceForAsker(
  * „<name>: კითხვა მიუვიდა, პასუხს ველოდები". D714 / D722: one person asked is
  * told in a plain sentence, not a status line.
  */
+// 5149 B (D583, Giorgi): between people there are always assistants — the line names hers.
 const SENT_SENTENCES: Readonly<Record<RunLanguage, (name: string) => string>> = {
-  ka: (n) => `${geoName(n, 'dat')} კითხვა გავუგზავნე. როგორც კი გიპასუხებს, მაშინვე მოგწერ.`,
-  en: (n) => `I sent your question to ${n}. I will tell you as soon as they answer.`,
-  ru: (n) => `Я отправил вопрос: ${n}. Напишу, как только будет ответ.`,
-  es: (n) => `Envié tu pregunta a ${n}. Te escribo en cuanto responda.`,
+  ka: (n) =>
+    `${geoName(n, 'gen')} ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.`,
+  en: (n) =>
+    `I sent your question to ${n}'s assistant. I will tell you as soon as the answer comes.`,
+  ru: (n) => `Я отправил вопрос ассистенту ${n}. Напишу, как только придёт ответ.`,
+  es: (n) => `Envié tu pregunta al asistente de ${n}. Te escribo en cuanto llegue la respuesta.`,
 };
 
 export function sentSentenceForOwner(name: string, language: RunLanguage): string {

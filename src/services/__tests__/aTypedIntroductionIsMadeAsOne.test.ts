@@ -149,10 +149,10 @@ describe('the server makes the introduction', () => {
   it('tells the owner who was asked to introduce them to whom', () => {
     const made = { mediator: 'გიორგი ტესტაძე', target: 'ნინო ნიმუშაძე' };
     expect(introSentSentence(made, 'ka')).toBe(
-      'გიორგი ტესტაძეს თხოვნა გავუგზავნე, რომ ნინო ნიმუშაძე გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.',
+      'გიორგი ტესტაძის ასისტენტს თხოვნა გავუგზავნე, რომ გიორგი ტესტაძემ ნინო ნიმუშაძე გაგაცნოს. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.',
     );
     expect(introSentSentence(made, 'en')).toBe(
-      'I asked გიორგი ტესტაძე to introduce you to ნინო ნიმუშაძე. I will tell you as soon as they answer.',
+      "I sent გიორგი ტესტაძე's assistant a request for გიორგი ტესტაძე to introduce you to ნინო ნიმუშაძე. I will tell you as soon as the answer comes.",
     );
   });
 });

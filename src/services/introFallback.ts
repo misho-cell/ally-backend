@@ -120,12 +120,19 @@ export async function serverIntroduces(
 }
 
 /** MODEL-FREE, OWNER-FACING (needs Misho's yes): the introduction went, in the per-person line's shape. */
+// 5149 F (D583, Giorgi): the request went to the mediator's assistant, and the line says so.
 const INTRO_SENT_SENTENCES: Readonly<Record<RunLanguage, (m: string, t: string) => string>> = {
   ka: (m, t) =>
-    `${geoName(m, 'dat')} თხოვნა გავუგზავნე, რომ ${t} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.`,
-  en: (m, t) => `I asked ${m} to introduce you to ${t}. I will tell you as soon as they answer.`,
-  ru: (m, t) => `Я попросил ${m} познакомить вас: ${t}. Напишу, как только будет ответ.`,
-  es: (m, t) => `Le pedí a ${m} que te presente a ${t}. Te escribo en cuanto responda.`,
+    `${geoName(m, 'gen')} ასისტენტს თხოვნა გავუგზავნე, რომ ${geoName(m, 'erg')} ${t} გაგაცნოს. ` +
+    'როგორც კი პასუხი მოვა, მაშინვე მოგწერ.',
+  en: (m, t) =>
+    `I sent ${m}'s assistant a request for ${m} to introduce you to ${t}. I will tell you as ` +
+    'soon as the answer comes.',
+  ru: (m, t) =>
+    `Я отправил ассистенту ${m} просьбу познакомить вас: ${t}. Напишу, как только придёт ответ.`,
+  es: (m, t) =>
+    `Envié al asistente de ${m} la petición de que ${m} te presente a ${t}. Te escribo en ` +
+    'cuanto llegue la respuesta.',
 };
 
 export function introSentSentence(made: ServerIntroduction, language: RunLanguage): string {

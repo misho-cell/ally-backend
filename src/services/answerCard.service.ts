@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
 import { relayedForReader } from './askTranslation.service';
+import { geoName } from './georgianCase';
 import { RunLanguage } from './runLanguage';
 import { emitMessageAppended } from './sse.service';
 import { saveServerLine, threadLanguage } from './threads.service';
@@ -61,10 +62,20 @@ const SOMEBODY: Readonly<Record<RunLanguage, string>> = {
   ka: 'ადამიანი, ვისაც ჰკითხე',
 };
 
+/** 5149 C (D583, Giorgi): an answer is brought by the person's assistant, and the line says so. */
+const ASSISTANT_OF: Readonly<Record<RunLanguage, (name: string) => string>> = {
+  ka: (name) => `${geoName(name, 'gen')} ასისტენტი`,
+  en: (name) => `${name}'s assistant`,
+  ru: (name) => `Ассистент ${name}`,
+  es: (name) => `El asistente de ${name}`,
+};
+
 /** One answer's line: their own words in quotes, anything else without. */
 async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<string> {
   const via = answer.viaName?.trim();
-  const who = `${answer.fromName?.trim() || SOMEBODY[language]}${via ? ` (${VIA[language]} ${via})` : ''}`;
+  const from = answer.fromName?.trim();
+  const sender = from ? ASSISTANT_OF[language](from) : SOMEBODY[language];
+  const who = `${sender}${via ? ` (${VIA[language]} ${via})` : ''}`;
   const relayed = await relayedForReader(answer.answer, language, 'answer');
   if (relayed.original === undefined) {
     return answer.verbatim

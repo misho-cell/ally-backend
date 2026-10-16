@@ -52,8 +52,8 @@ describe('the card', () => {
   it('puts a person’s own words in quotes and a reworded answer without', async () => {
     const card = await buildAnswerCard([OWN_WORDS, REWORDED], 'ka');
     expect(card).toContain('მოვიდა პასუხები:');
-    expect(card).toContain(`Netai Test 50: „${OWN_WORDS.answer}"`);
-    expect(card).toContain(`Netai Test 54: ${REWORDED.answer}`);
+    expect(card).toContain(`Netai Test 50-ის ასისტენტი: „${OWN_WORDS.answer}"`);
+    expect(card).toContain(`Netai Test 54-ის ასისტენტი: ${REWORDED.answer}`);
     expect(card).not.toContain(`„${REWORDED.answer}"`);
   });
 
@@ -61,7 +61,7 @@ describe('the card', () => {
     mockRelay.mockResolvedValue({ text: 'Yes, I know one.', original: OWN_WORDS.answer });
     const card = await buildAnswerCard([OWN_WORDS], 'en');
     expect(card).toContain('An answer came in:');
-    expect(card).toContain('Netai Test 50: Yes, I know one.');
+    expect(card).toContain("Netai Test 50's assistant: Yes, I know one.");
     expect(card).toContain(`(„${OWN_WORDS.answer}")`);
     expect(card).not.toContain('„Yes, I know one."');
   });
@@ -69,9 +69,9 @@ describe('the card', () => {
   /** A relayed answer (D254) names the bridge on the card, without inflecting either name. */
   it('names the bridge when the answer came through one', async () => {
     const card = await buildAnswerCard([{ ...OWN_WORDS, viaName: 'Levan' }], 'ka');
-    expect(card).toContain(`Netai Test 50 (შუამავალი: Levan): „${OWN_WORDS.answer}"`);
+    expect(card).toContain(`Netai Test 50-ის ასისტენტი (შუამავალი: Levan): „${OWN_WORDS.answer}"`);
     const english = await buildAnswerCard([{ ...REWORDED, viaName: 'Levan' }], 'en');
-    expect(english).toContain('Netai Test 54 (via Levan):');
+    expect(english).toContain("Netai Test 54's assistant (via Levan):");
   });
 
   it('names an unnamed answerer in the owner’s language', async () => {
