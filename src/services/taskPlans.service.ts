@@ -358,7 +358,14 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
   const neverRaw = Array.isArray(input.never_contact) ? input.never_contact : [];
   const never: PlanExclusion[] = [];
   for (const n of neverRaw) {
-    const item = (n ?? {}) as Record<string, unknown>;
+    // The daily check of 16 Oct (08:23:53Z, a real account): a plan was refused on
+    // „never_contact.name is required". The entries take the shapes people's do —
+    // an object, its JSON text — and a bare name, which is all a person to avoid is.
+    const decoded = decodeIfJsonText(n);
+    const item = (typeof decoded === 'string' ? { name: decoded } : (decoded ?? {})) as Record<
+      string,
+      unknown
+    >;
     const name = cleanText(item.name, 'never_contact.name');
     if (!name.ok) return name;
     const phone =
