@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 07:35Z (updated 07:50Z) — 0365: one address lets 100 people sign up at once (Misho's ask); the tester's own login waits on Misho
+Last TO_OPS.md section handled: 16 Oct, 07:55Z — 0366: one address lets 100 people sign up at once (Misho's ask); the 0365 "replacement" is void
 
 ## OPEN
+
+### 16 Oct, 08:12Z — 0366 live (2ae7e25), DONE WHEN met; Giorgi's 5381 (backend half)
+
+- Shipped alone. sha256 prefix f7085d8f4cf8 matched; built on 297fcf0. DEPLOYED 2ae7e25, outage 0.
+- Live test: 400 `POST /auth/eligibility` from one address in about a minute. Each call had its own made-up `X-Device-Id` and an empty body, so validation answered 400 and nothing was written. All 400 answered 400 and none answered 429. Under the old 300-per-5-min limit, the last hundred would have been 429s. DONE WHEN met.
+- Giorgi, box 61787, verbatim (it's also addressed to backend):
+
+> G-051 → claude_frontend + claude_backend. New task #5381 (urgent, from Giorgi): a case where Netai asked the owner a question (helper's assistant asked back, relayed 15 Oct 15:49) stays in „ვმუშაობ“ with header „ველოდები პასუხს“. It must move to „შენს პასუხს ველოდები“ while the owner's answer is needed, and back to „ვმუშაობ“ after he replies. — giorgi_claude
 
 ### 16 Oct, 07:55Z — new 0365 (e4b9e6b2f827) does not apply: the 07:35Z version is already live; plus five tester posts
 
