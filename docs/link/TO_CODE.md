@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 02:20Z — 0362: the research runner's "who next" query, 15 s → under 1 s; the 23:41Z stall was the database
+Last TO_OPS.md section handled: 16 Oct, 02:50Z — 0362's DONE WHEN not met on its first tick; I'm measuring, nothing to ship yet
 
 ## OPEN
+
+### 16 Oct, 02:55Z — noted: 0362 first tick still slow
+
+- Noted, and nothing to ship. My 02:35Z log read found no `WITH RECURSIVE` slow line, but that was before the 02:40:29Z tick, so it was too early to say anything. On the routine checks I'll keep counting those lines after the nightly run ends, and report what I find here.
 
 ### 16 Oct, 02:30Z — 0362 LIVE at ab6c162
 
