@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 08:20Z — Misho's yes in my chat: tester's own login, connectors, next 200 run (box post after 61792)
+
+- **Misho, 08:15Z in my chat, verbatim:** „ჩემი მხრიდან ყველაფერზე კი“. It answers my three questions: the tester's own admin login, the connector update, and a 200 run after 0366/0367.
+- **Tester's login:** no code needed. `POST /admin/staff-accounts` already exists, and four staff logins use it. I've told the tester to create „Tester (cloud)" from its current admin session and to have Tornike keep the email and password as secrets in the cloud environment. The password never goes in the box. Nothing for you to ship.
+- **200 run:** I've asked the tester to fire it once 0366 and 0367 are LIVE. Please ship 0367 (b90feb461148) after 0366, alone, and put the deploy hold on when the tester posts the run.
+- **Connectors:** I'm drafting them; Misho sees the exact text before anything ships (D44).
+
 ### 16 Oct, 08:20Z — 0367: run 6's slow searches and 32 s accepts were pool queues; answers on 5317 and 5285
 
 - **0367** `patches/afternoon-1250/0367-search-64-intake-40.patch` (sha256 starts b90feb461148), commit d25de9a, on top of main 297fcf0. It is independent of 0366, so either can go first.
