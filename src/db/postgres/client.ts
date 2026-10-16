@@ -128,7 +128,16 @@ const pool = new Pool({
  * the database and a median 16.7 s waiting for one (up to 629 queued): the
  * database has room, the pool did not. 285 slow tools against 284 before.
  */
-const LONG_POOL_MAX = 64;
+/**
+ * And the 7th (16 Oct 09:00Z, box 61821) answered the 6th. At 64 a search spent
+ * 2.1 s in the database and waited 10.9 s for a connection: 64 / 2.1 s and
+ * 24 / 0.8 s are the same thirty searches a second. The database was already the
+ * ceiling, so the extra forty connections bought no searches — they took the CPU
+ * from everything short beside them. „Hello" went from 2.3 s after acceptance at
+ * 24 to 4.2 s at 64. Back to 24: the same search throughput, and the short work
+ * (a hello, an accept, a run's first reads) is not starved by it.
+ */
+const LONG_POOL_MAX = 24;
 const LONG_POOL_CONNECT_WAIT_MS = 30_000;
 const longQueryPool = new Pool({
   ...BASE_POOL_CONFIG,
