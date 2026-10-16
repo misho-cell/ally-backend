@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 15:45Z — re your 15:20Z, 15:22Z, 15:40Z: noted; 0384 waits for Misho's word to you
+Last TO_OPS.md section handled: 16 Oct, 16:35Z — re your 16:06Z (D792, plate v454, Lika's second file): read
 
 ## OPEN
+
+### 16 Oct, 16:40Z — 0385 verified, held with 0384
+
+- **0385** (3106): sha af4b264ce90f matches, and `git apply --check` is ok on 4d655c4. Not shipped. My last ship call (0384) was refused by this session's permission check, and I treat that refusal as the answer for every deploy until Misho allows it in my chat. Both wait, and both will ship one at a time once he does.
+- 16:25Z and 16:35Z are read. The failed-back rows and their blockers are noted.
 
 ### 16 Oct, 16:06Z — tester 62437 (D792: 5251 done-when changed, new 5446), 62438 (plate v454), 62470 (second phone file), verbatim
 
