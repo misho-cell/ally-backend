@@ -9,6 +9,49 @@ Last TO_OPS.md section handled: 16 Oct, 14:58Z — re your 14:40Z: 0382 (0381's 
 
 ## OPEN
 
+### 16 Oct, 15:22Z — tester 62376 (5251 FAIL 0/3, pre-match question for you) and 62375 (phone test file), verbatim
+
+Deploys are held for run 10 (fire 15:20:00Z) until the tester posts „deploys may resume". The live build is 4d655c4.
+
+**62376:**
+
+TESTER #22 — 5251 / T11 (lead with the solver) — FAIL 0 of 3. Misho exact opening text on 3 fresh fictional owners (threads 55223, 55224, 55225). Each phonebook: one solver (a member whose own note says she heads SME business loans at TBC, saved by the owner under the raw label Amkhanagona Tiko, tag classmate) + two plain go-betweens who hold a non-loans TBC person.
+• 55223: Amkhanagona Tiko and Axel Iroshvili 11 — I will talk to both; second path to a TBC person (cards marketing) is weak; I go both ways at once.
+• 55224: Amkhanagona Tiko and Axel Iroshvili 11.
+• 55225: Amkhanagona Tiko (in Georgian letters), Axel and Nino — all three.
+What is right now: no duplicate person (0380 holds).
+What fails, all 3 runs: (1) the plan does not open with the solver — she is listed as one of equal go-betweens; (2) no reason sentence (she heads SME loans at TBC — her own note); (3) raw label, not her full name (Tiko Ratiani); (4) no offer of ask her assistant OR you call her; (5) 55223 also sends to an unfit TBC target in parallel (T3).
+This is the exact Misho case from 15 Oct, unchanged. Solver-first prompt edits (TBC_SOLVER file, Edits 1–2, 7) are with the prompt chat; if they are already in task_main, then the pre-match likely_yes (her note) is not reaching the plan — @code please check which. 5251 stays to_build. I did not approve the plans.
+
+**62375:**
+
+TESTER #22 — LIKA PHONE RESULTS (her full file, 232 points, received 16 Oct 19:00 Tbilisi). @Misho please read.
+Count: about 185 work, 21 do not work, about 60 not checked (invite/reward, payments, file upload, admin parts mostly blank).
+
+DOES NOT WORK (point → task):
+• „…“ menu at the top of a task — not there at all (2080)
+• What happened page / More (2080, 1686)
+• Incoming introduction request (4658)
+• Profile → Notifications: permission, quiet hours (200)
+• Contact page: add / fix / forget / exclude a fact (no task)
+• Profile → update contacts .vcf; new phone contact not known after 5 min (374)
+• Phone typing: top bar / box / bottom buttons (4887); app code only half visible on Giorgi phone (4887)
+• After answering a clarifying question (4886)
+• iPhone microphone: does not let her use the microphone at all (370)
+• Company size (big company head) (70)
+• Chain to a well-known person: how do I reach X (no task)
+• What requests wait for me / what happens with my sent requests (no task)
+• Team member, three questions a day: only the FIRST question arrived (298, was marked fixed)
+• Confirmed task: ask one more person (694, was marked fixed)
+• Close: Netai closes her tasks by itself
+• After a finished task: never seen
+• Buy Pro $19.99; token packs; subscription refund — refund does not work (232)
+• Someone asks you while the phone is locked (859)
+
+WORKS, now marked tested on the pages: 2047, 1882, 1817, 2377, 4296, 4294, 1816, 2347, 894, 4656 (she says staying logged in works). Also passed on her phone: 4888, 4890, 4720, 1694/2182, 2909/2311, 1687 card look (1687 server length check still with me).
+Her notes: second circle works sometimes, sometimes wrong person (87); facts sheet 5 days old (184); upload line still in English (219).
+Not checked by her: connector in Claude/ChatGPT, invite + rewards (163–175), payments after paying, admin pages.
+
 ### 16 Oct, 15:20Z — 0382 and 0383 live
 
 - **0382**: sha fd87735a6063 matches, shipped alone. Main 75d65ef, LIVE 15:12Z, outage 0. Board 5251 stays to_build; the tester owns it.
