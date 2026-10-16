@@ -478,3 +478,60 @@ describe('the curiosity queue must not cost a conversation its first breath', ()
     delete process.env.CURIOSITY_BUDGET_MS;
   });
 });
+
+/**
+ * The tester's 62839 (16 Oct): plain list requests took 16–22 s, 6 s of each the
+ * queue's budget running out — because every message started the build over.
+ */
+describe('maybeCuriosityUpdate — one build per owner, kept for the next messages', () => {
+  function tierCalls(): number {
+    return mockQuery.mock.calls.filter(([sql]) => (sql as string).includes('mine_sample')).length;
+  }
+
+  it('builds once, and the next message reads the kept queue', async () => {
+    routeQueueQueries({
+      close: [{ contact_phone: '+995500000031' }],
+      presence: [],
+      labels: [{ phone: '+995500000031', label: 'ნინო' }],
+    });
+    const first = await maybeCuriosityUpdate('201');
+    const afterFirst = tierCalls();
+    const second = await maybeCuriosityUpdate('201');
+
+    expect(first?.phone).toBe('+995500000031');
+    expect(second?.phone).toBe('+995500000031');
+    expect(afterFirst).toBeGreaterThan(0);
+    expect(tierCalls()).toBe(afterFirst);
+  });
+
+  it('waits at most 1.5 s, and a later message gets the build that was still running', async () => {
+    jest.useFakeTimers();
+    try {
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      routeQueueQueries({
+        close: [{ contact_phone: '+995500000032' }],
+        presence: [],
+        labels: [{ phone: '+995500000032', label: 'გიორგი' }],
+      });
+      const route = mockQuery.getMockImplementation();
+      mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (sql.includes('mine_sample')) await held;
+        return route!(sql, params) as never;
+      });
+
+      const waiting = maybeCuriosityUpdate('202');
+      await jest.advanceTimersByTimeAsync(1_500);
+      expect(await waiting).toBeNull();
+
+      release();
+      await jest.runAllTimersAsync();
+      const next = await maybeCuriosityUpdate('202');
+      expect(next?.phone).toBe('+995500000032');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
