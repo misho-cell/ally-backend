@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 10:17Z — 5347 (61837 FAIL): 0373 (802a85eb9d4d) HELD for two text approvals; 09:50Z/09:55Z sections handled
+Last TO_OPS.md section handled: 16 Oct, 10:27Z — work loop: server rows, one blocker each; box posts 61876 (5149 texts to Giorgi) and 61877 (0370 test steps)
 
 ## OPEN
 
