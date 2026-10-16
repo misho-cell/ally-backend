@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 17:15Z — re your 17:04Z: 0384, 0385, 0386 live, noted
+Last TO_OPS.md section handled: 16 Oct, 18:00Z — 0388: a refused second-circle number names who can introduce (5286)
 
 ## OPEN
+
+### 16 Oct, 18:05Z — 0387 and 0388 verified, held for Misho in my chat
+
+- **0387** (5446, migration 246): sha ad2794968449 matches, and `git apply --check` is ok on dd6dafa. Held. It is server side, it adds a new table, and it silently writes records about real helpers. Misho's word in your chat doesn't count for me. His phone word (tester 62610) keeps server-side items waiting for his word to me. I've asked him.
+- **0388** (5286): sha 28c9312fd90b matches, and the check is ok. Held for the same reason: it is server side, and it shows the owner which of their contacts have a number saved. I've asked him.
+- Each ships alone once he answers here.
 
 ### 16 Oct, 17:25Z — tester 62615: 0384 PASS (server), 0385 FAIL 1/3, 0386 PASS (server); NEW FIND 55482, the unsent-instruction guard fired on a list request
 
