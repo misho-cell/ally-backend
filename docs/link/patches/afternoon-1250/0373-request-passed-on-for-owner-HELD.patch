@@ -1,0 +1,714 @@
+From b13176347d1df6771e22d2b4216c3f7ed1d8e9f5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 10:16:58 +0000
+Subject: [PATCH] 5347: a request passed on by a link travels for the owner
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tester 61837: link A, asked to introduce the owner to T, said "I don't know
+her, but B does — ask B in my name". A's assistant opened a request of A's
+own, so B read "A's assistant asks you to introduce A to T" and the owner's
+need became A's. There was no request that is passed on.
+
+In A's own request thread, request_introduction now passes the owner's
+request on: the requester stays the owner (with the owner's target, reason
+and goal), B is found in A's phonebook, and the request records A in a new
+column, introduction_requests.forwarded_by_user_id (migration 244). B's
+opening line and push name whose assistant passed it on, for whom. The
+owner's outgoing thread opens as for any request, so the owner sees it.
+
+New person-facing text (B's opening in four languages and the push):
+held until Misho's yes and Giorgi's OK of the exact words (D44, D582).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/244_intro_forwarded_by.sql     |   6 +
+ .../aReasonIsToldAboutTheAsker.test.ts        |   5 +-
+ .../theLinkPassesTheOwnersRequestOn.test.ts   |  52 ++++++
+ src/services/chat.service.ts                  |  57 +++++--
+ src/services/forwardedIntro.ts                |  51 ++++++
+ src/services/introOpening.ts                  |  58 +++++++
+ src/services/threads.service.ts               |  28 +++-
+ .../aRequestTravelsForTheOwner.test.ts        | 155 ++++++++++++++++++
+ src/services/tools/requestIntroduction.ts     |  56 +++++--
+ 9 files changed, 432 insertions(+), 36 deletions(-)
+ create mode 100644 src/db/postgres/migrations/244_intro_forwarded_by.sql
+ create mode 100644 src/services/__tests__/theLinkPassesTheOwnersRequestOn.test.ts
+ create mode 100644 src/services/forwardedIntro.ts
+ create mode 100644 src/services/tools/__tests__/aRequestTravelsForTheOwner.test.ts
+
+diff --git a/src/db/postgres/migrations/244_intro_forwarded_by.sql b/src/db/postgres/migrations/244_intro_forwarded_by.sql
+new file mode 100644
+index 0000000..6a2671c
+--- /dev/null
++++ b/src/db/postgres/migrations/244_intro_forwarded_by.sql
+@@ -0,0 +1,6 @@
++-- 5347 (the founder's word, 16 Oct; tester 61837): a link who does not know the
++-- target passes the owner's request on to someone who does. The request stays
++-- the owner's; this is the link whose assistant passed it on, so the next person
++-- reads who it came through. NULL for every request asked first-hand.
++ALTER TABLE introduction_requests
++  ADD COLUMN IF NOT EXISTS forwarded_by_user_id INTEGER REFERENCES "User"(id);
+diff --git a/src/services/__tests__/aReasonIsToldAboutTheAsker.test.ts b/src/services/__tests__/aReasonIsToldAboutTheAsker.test.ts
+index 31d0318..182a3ac 100644
+--- a/src/services/__tests__/aReasonIsToldAboutTheAsker.test.ts
++++ b/src/services/__tests__/aReasonIsToldAboutTheAsker.test.ts
+@@ -46,9 +46,8 @@ describe('the reason for an introduction', () => {
+ 
+   it('is stored that way, so every reader gets it', () => {
+     const src = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
+-    expect(src).toContain(
+-      'const reason = message ? await reasonAboutAsker(message, requesterName) : null;',
+-    );
++    // 5347: a request passed on keeps the owner's reason as it was stored the first time.
++    expect(src).toContain('? await reasonAboutAsker(message, requesterName)');
+     expect(src).toContain('    message: reason,');
+   });
+ });
+diff --git a/src/services/__tests__/theLinkPassesTheOwnersRequestOn.test.ts b/src/services/__tests__/theLinkPassesTheOwnersRequestOn.test.ts
+new file mode 100644
+index 0000000..0a7cc60
+--- /dev/null
++++ b/src/services/__tests__/theLinkPassesTheOwnersRequestOn.test.ts
+@@ -0,0 +1,52 @@
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { requestThisThreadPassesOn } from '../forwardedIntro';
++import { forwardedRequestOpening, forwardedRequestPush } from '../introOpening';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++beforeEach(() => mockQuery.mockReset());
++
++/** 5347 (tester 61837): in the link's request thread, the request that goes on is the owner's. */
++describe('the owner’s request a link passes on', () => {
++  it('is read from the link’s own request thread, with the owner’s target, reason and goal', async () => {
++    mockQuery.mockResolvedValue({
++      rows: [{ requester_user_id: 500, target_name: 'T', message: 'why', requester_task_id: 41 }],
++    } as never);
++
++    await expect(requestThisThreadPassesOn('600', 54282)).resolves.toEqual({
++      ownerUserId: '500',
++      targetName: 'T',
++      reason: 'why',
++      ownerTaskId: 41,
++    });
++    const [sql, params, timeout] = mockQuery.mock.calls[0] as [string, unknown[], number];
++    expect(sql).toContain("t.type = 'incoming_request'");
++    expect(sql).toContain("ir.ask_type <> 'direct'");
++    expect(params).toEqual([54282, '600']);
++    expect(timeout).toBeGreaterThan(0);
++  });
++
++  it('is nothing in any other thread', async () => {
++    mockQuery.mockResolvedValue({ rows: [] } as never);
++    await expect(requestThisThreadPassesOn('600', 1)).resolves.toBeNull();
++  });
++
++  it('opens by naming whose assistant passed it on, for whom, and the owner’s reason', () => {
++    const ka = forwardedRequestOpening('ka', 'ლაშა', 'ანა', 'ეკა', 'ბუღალტერი სჭირდება');
++    expect(ka).toContain('სახელით გთხოვს');
++    expect(ka).toContain('რაზეა საქმე: ბუღალტერი სჭირდება');
++    expect(ka).toContain('დაეხმარები? 🤝');
++
++    const en = forwardedRequestOpening('en', 'Lasha', 'Ana', 'Eka', null);
++    expect(en).toBe(
++      "Hello! **Lasha's assistant** is asking you, on behalf of Ana, to introduce Ana to " +
++        '**Eka**.\n\nWill you help? 🤝',
++    );
++  });
++
++  it('says the same in the push', () => {
++    expect(forwardedRequestPush('ლაშა', 'ანა', 'ეკა')).toContain('სახელით გთხოვს');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index 7a5ad33..26d26de 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -525,6 +525,7 @@ import {
+ } from './campaignInvite.service';
+ import { searchWithRetry } from './tools/searchRetry';
+ import { getCountryChannels } from './tools/countryChannels';
++import { RequestPassedOn, requestThisThreadPassesOn } from './forwardedIntro';
+ import { getNetaiInfo } from './tools/netaiInfo';
+ import { myTokenBalance } from './tools/tokenBalance';
+ import { isOnboardingUser } from './onboarding.service';
+@@ -9625,18 +9626,23 @@ async function executeToolCall(
+        * resolve writes into it when there is no goal (request 1156).
+        */
+       const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
+-      const introOutcome = await requestIntroduction(
+-        userId,
+-        input['mediator_name'] as string,
+-        input['target_name'] as string,
+-        input['message'] as string | undefined,
+-        input['mediator_phone'] as string | undefined,
+-        input['target_user_id'] as number | undefined,
+-        input['target_phone'] as string | undefined,
+-        input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
+-        input['accept_dormant'] === true,
+-        introContextFor(threadId, goalForIntro?.id),
+-      );
++      // 5347: in a link's own request thread, the request that goes on is the owner's.
++      const passedOn = threadId == null ? null : await requestThisThreadPassesOn(userId, threadId);
++      const introOutcome =
++        passedOn === null
++          ? await requestIntroduction(
++              userId,
++              input['mediator_name'] as string,
++              input['target_name'] as string,
++              input['message'] as string | undefined,
++              input['mediator_phone'] as string | undefined,
++              input['target_user_id'] as number | undefined,
++              input['target_phone'] as string | undefined,
++              input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
++              input['accept_dormant'] === true,
++              introContextFor(threadId, goalForIntro?.id),
++            )
++          : await passOwnersRequestOn(userId, passedOn, input);
+       if ((introOutcome as { success?: unknown }).success === true) {
+         if (runId) runIntroSent.add(runId);
+         await markSearchSent(
+@@ -12020,6 +12026,33 @@ export function narrationIsSafeToPublish(roundToolNames: readonly string[]): boo
+  * Absent keys rather than undefined values: the connector genuinely has no
+  * conversation and no goal, and „this request never had one" is the meaning.
+  */
++/**
++ * 5347 (tester 61837): the owner's request, passed on by this link to someone in
++ * the link's own phonebook. The owner stays the requester, with the owner's
++ * target, reason and goal; the link is recorded as the one who passed it on.
++ */
++async function passOwnersRequestOn(
++  linkUserId: string,
++  passedOn: RequestPassedOn,
++  input: Record<string, unknown>,
++): Promise<object> {
++  return requestIntroduction(
++    passedOn.ownerUserId,
++    input['mediator_name'] as string,
++    passedOn.targetName,
++    passedOn.reason ?? undefined,
++    input['mediator_phone'] as string | undefined,
++    undefined,
++    undefined,
++    'intro',
++    input['accept_dormant'] === true,
++    {
++      ...(passedOn.ownerTaskId === null ? {} : { requesterTaskId: passedOn.ownerTaskId }),
++      forwardedBy: linkUserId,
++    },
++  );
++}
++
+ export function introContextFor(
+   threadId: number | null | undefined,
+   goalId: number | null | undefined,
+diff --git a/src/services/forwardedIntro.ts b/src/services/forwardedIntro.ts
+new file mode 100644
+index 0000000..600d63f
+--- /dev/null
++++ b/src/services/forwardedIntro.ts
+@@ -0,0 +1,51 @@
++import { query } from '../db/postgres/client';
++
++const LOOKUP_TIMEOUT_MS = 3_000;
++
++/** The owner's request a link is answering in their own request thread. */
++export interface RequestPassedOn {
++  readonly ownerUserId: string;
++  readonly targetName: string;
++  /** The owner's reason, already worded about the owner when it was first stored. */
++  readonly reason: string | null;
++  readonly ownerTaskId: number | null;
++}
++
++interface ParentRow {
++  readonly requester_user_id: number;
++  readonly target_name: string;
++  readonly message: string | null;
++  readonly requester_task_id: number | null;
++}
++
++/**
++ * 5347 (tester 61837): link A, asked to introduce the owner to T, wrote „I don't
++ * know her, but B does — ask B in my name". A's assistant opened a request of
++ * A's own, so B read „A's assistant asks you to introduce A to T" and the
++ * owner's need became A's. In A's own request thread the request that goes on
++ * is the owner's: this is it, or null anywhere else (a direct request has no
++ * one further to pass it to).
++ */
++export async function requestThisThreadPassesOn(
++  userId: string,
++  threadId: number,
++): Promise<RequestPassedOn | null> {
++  const result = await query<ParentRow>(
++    `SELECT ir.requester_user_id, ir.target_name, ir.message, ir.requester_task_id
++       FROM threads t
++       JOIN introduction_requests ir ON ir.id = t.introduction_request_id
++      WHERE t.id = $1 AND t.user_id = $2 AND t.type = 'incoming_request'
++        AND ir.mediator_user_id = $2::int AND ir.ask_type <> 'direct'
++      LIMIT 1`,
++    [threadId, userId],
++    LOOKUP_TIMEOUT_MS,
++  );
++  const row = result.rows[0];
++  if (row === undefined) return null;
++  return {
++    ownerUserId: String(row.requester_user_id),
++    targetName: row.target_name,
++    reason: row.message,
++    ownerTaskId: row.requester_task_id,
++  };
++}
+diff --git a/src/services/introOpening.ts b/src/services/introOpening.ts
+index df94b45..026b498 100644
+--- a/src/services/introOpening.ts
++++ b/src/services/introOpening.ts
+@@ -104,6 +104,64 @@ export function incomingRequestOpening(
+   }
+ }
+ 
++/**
++ * 5347 (tester 61837): the owner's request, passed on by a link who does not know
++ * the target. The reader is asked for the OWNER, and told whose assistant passed
++ * it on; the reason is the owner's. Text pending Misho's yes and Giorgi's OK of
++ * these exact words (D44, D582; box 61839).
++ */
++export function forwardedRequestOpening(
++  language: RunLanguage,
++  forwarderName: string,
++  requesterName: string,
++  targetName: string,
++  message: string | null,
++): string {
++  const about = (label: string): string => (message ? `\n\n${label} ${message}` : '');
++  switch (language) {
++    case 'en':
++      return (
++        `Hello! **${forwarderName}'s assistant** is asking you, on behalf of ${requesterName}, ` +
++        `to introduce ${requesterName} to **${targetName}**.` +
++        about('What it is about:') +
++        `\n\nWill you help? 🤝`
++      );
++    case 'ru':
++      return (
++        `Привет! **Ассистент ${forwarderName}** от имени ${requesterName} просит познакомить ` +
++        `${requesterName} с **${targetName}**.` +
++        about('О чём речь:') +
++        `\n\nПоможешь? 🤝`
++      );
++    case 'es':
++      return (
++        `¡Hola! **El asistente de ${forwarderName}** te pide, en nombre de ${requesterName}, ` +
++        `que presentes a ${requesterName} a **${targetName}**.` +
++        about('De qué se trata:') +
++        `\n\n¿Le ayudas? 🤝`
++      );
++    default:
++      return (
++        `გამარჯობა! **${geoName(forwarderName, 'gen')} ასისტენტი** ${geoName(requesterName, 'gen')} ` +
++        `სახელით გთხოვს, ${requesterName} გააცნო **${geoName(targetName, 'dat')}**.` +
++        about('რაზეა საქმე:') +
++        `\n\nდაეხმარები? 🤝`
++      );
++  }
++}
++
++/** The push for a request passed on: whose assistant, for whom, to whom (same approval). */
++export function forwardedRequestPush(
++  forwarderName: string,
++  requesterName: string,
++  targetName: string,
++): string {
++  return (
++    `${geoName(forwarderName, 'gen')} ასისტენტი ${geoName(requesterName, 'gen')} სახელით გთხოვს, ` +
++    `${requesterName} გააცნო ${geoName(targetName, 'dat')}. გახსენი Netai.`
++  );
++}
++
+ /**
+  * Plate v301 G7: a request that CONTINUES a conversation — written into the
+  * mediator's ask thread, where the need is already on the screen — opened
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index dd86451..f063300 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -10,6 +10,7 @@ import {
+ } from './runLanguage';
+ import {
+   incomingRequestOpening,
++  forwardedRequestOpening,
+   incomingRequestTitle,
+   outgoingRequestOpening,
+   outgoingRequestTitle,
+@@ -1534,6 +1535,8 @@ export async function incomingRequestLine(
+   // Direct case (task 18): the reader IS the target — "X wants to meet you",
+   // never "X wants you to introduce them to yourself" (live row #793).
+   direct: boolean,
++  /** 5347: the link whose assistant passed the owner's request on; null when asked first-hand. */
++  forwarderName: string | null = null,
+ ): Promise<RequestOpening> {
+   // The MEDIATOR's own language — their sidebar, their message. Georgian for
+   // somebody who has never written anything here, which is what this always
+@@ -1549,13 +1552,22 @@ export async function incomingRequestLine(
+    * here is exactly the behaviour before this line.
+    */
+   const relayed = message === null ? null : await relayedForReader(message, language, 'request');
+-  const text = incomingRequestOpening(
+-    language,
+-    requesterName,
+-    targetName,
+-    relayed?.text ?? message,
+-    direct,
+-  );
++  const text =
++    forwarderName === null
++      ? incomingRequestOpening(
++          language,
++          requesterName,
++          targetName,
++          relayed?.text ?? message,
++          direct,
++        )
++      : forwardedRequestOpening(
++          language,
++          forwarderName,
++          requesterName,
++          targetName,
++          relayed?.text ?? message,
++        );
+   return { language, text };
+ }
+ 
+@@ -1579,6 +1591,7 @@ export async function createIncomingRequestThread(
+   targetName: string,
+   message: string | null,
+   direct = false,
++  forwarderName: string | null = null,
+ ): Promise<Thread> {
+   const opening = await incomingRequestLine(
+     mediatorUserId,
+@@ -1586,6 +1599,7 @@ export async function createIncomingRequestThread(
+     targetName,
+     message,
+     direct,
++    forwarderName,
+   );
+   const title = incomingRequestTitle(opening.language, requesterName, targetName, direct);
+   // The mediator must answer this request — the thread is born a task awaiting them.
+diff --git a/src/services/tools/__tests__/aRequestTravelsForTheOwner.test.ts b/src/services/tools/__tests__/aRequestTravelsForTheOwner.test.ts
+new file mode 100644
+index 0000000..95a1e1c
+--- /dev/null
++++ b/src/services/tools/__tests__/aRequestTravelsForTheOwner.test.ts
+@@ -0,0 +1,155 @@
++jest.mock('../../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++jest.mock('../../notification.service', () => ({
++  __esModule: true,
++  sendPushNotification: jest.fn().mockResolvedValue(undefined),
++}));
++jest.mock('../../threads.service', () => ({
++  __esModule: true,
++  createIncomingRequestThread: jest.fn().mockResolvedValue({ id: 301, title: 'O → T' }),
++  createOutgoingRequestThread: jest.fn().mockResolvedValue({ id: 302, title: 'B → T' }),
++}));
++jest.mock('../../sse.service', () => ({ __esModule: true, emitThreadCreated: jest.fn() }));
++jest.mock('../../askOptOut.service', () => ({
++  __esModule: true,
++  isOptedOutFromAsks: jest.fn().mockResolvedValue(false),
++}));
++jest.mock('../../privacyRights.service', () => ({
++  __esModule: true,
++  isPhoneOptedOut: jest.fn().mockResolvedValue(false),
++}));
++jest.mock('../../threadBackPointer.service', () => ({
++  __esModule: true,
++  linkRequestToEarlierAsk: jest.fn().mockResolvedValue(true),
++}));
++jest.mock('../../sharedRequestThread.service', () => ({
++  __esModule: true,
++  findSharedConversation: jest.fn().mockResolvedValue(null),
++  writeRequestIntoConversation: jest.fn().mockResolvedValue(undefined),
++}));
++jest.mock('../../askEditor.service', () => ({
++  __esModule: true,
++  reasonAboutAsker: jest.fn().mockResolvedValue('rewritten'),
++}));
++
++import { query } from '../../../db/postgres/client';
++import { reasonAboutAsker } from '../../askEditor.service';
++import { sendPushNotification } from '../../notification.service';
++import { findSharedConversation } from '../../sharedRequestThread.service';
++import { createIncomingRequestThread } from '../../threads.service';
++import { requestIntroduction } from '../requestIntroduction';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++const OWNER = '500';
++const LINK = '600';
++const B_ID = 700;
++const B_PHONE = '+995500000007';
++const OWNERS_REASON = 'needs an accountant for the company';
++
++function aFreshRequest(): void {
++  mockQuery.mockImplementation((sql: string) => {
++    const text = String(sql);
++    if (text.includes('"UserAlias"'))
++      return Promise.resolve({
++        rows: [{ phone: B_PHONE, display_name: 'B' }],
++        rowCount: 1,
++      } as never);
++    if (text.includes('FROM "UserPhone"'))
++      return Promise.resolve({ rows: [{ userId: B_ID }], rowCount: 1 } as never);
++    if (text.includes('FROM threads'))
++      return Promise.resolve({ rows: [{ threads: '4' }], rowCount: 1 } as never);
++    if (text.includes('INSERT INTO introduction_requests'))
++      return Promise.resolve({ rows: [{ id: 9, request_ref: 'req_9' }], rowCount: 1 } as never);
++    if (text.includes('FROM introduction_requests'))
++      return Promise.resolve({ rows: [], rowCount: 0 } as never);
++    if (text.includes('push_subscriptions'))
++      return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 } as never);
++    return Promise.resolve({ rows: [{ id: 1, name: 'Owner Name' }], rowCount: 1 } as never);
++  });
++}
++
++async function passOn(): Promise<{ success?: boolean }> {
++  return (await requestIntroduction(
++    OWNER,
++    'B',
++    'Target',
++    OWNERS_REASON,
++    B_PHONE,
++    undefined,
++    undefined,
++    'intro',
++    false,
++    { requesterTaskId: 41, forwardedBy: LINK },
++  )) as { success?: boolean };
++}
++
++beforeEach(() => {
++  jest.clearAllMocks();
++  aFreshRequest();
++});
++
++/** 5347 (tester 61837): „ask B in my name" — B is asked for the OWNER, through the link. */
++describe('a request passed on travels for the owner', () => {
++  it('stays the owner’s request and records the link who passed it on', async () => {
++    const result = await passOn();
++
++    expect(result.success).toBe(true);
++    const insert = mockQuery.mock.calls.find((c) =>
++      String(c[0]).includes('INSERT INTO introduction_requests'),
++    );
++    const params = insert?.[1] as unknown[];
++    expect(params[0]).toBe(OWNER);
++    expect(params[1]).toBe(B_ID);
++    expect(params[3]).toBe(OWNERS_REASON);
++    expect(params[7]).toBe(41);
++    expect(params[params.length - 1]).toBe(Number(LINK));
++  });
++
++  it('finds B in the link’s phonebook, not the owner’s', async () => {
++    await passOn();
++
++    const lookup = mockQuery.mock.calls.find((c) => String(c[0]).includes('"UserAlias"'));
++    expect((lookup?.[1] as unknown[]).map(String)).toContain(LINK);
++    expect((lookup?.[1] as unknown[]).map(String)).not.toContain(OWNER);
++  });
++
++  it('keeps the owner’s reason as stored, opens new threads and names the link to B', async () => {
++    await passOn();
++
++    expect(reasonAboutAsker).not.toHaveBeenCalled();
++    expect(findSharedConversation).not.toHaveBeenCalled();
++    const call = (createIncomingRequestThread as jest.Mock).mock.calls[0] as unknown[];
++    expect(call[call.length - 1]).toBe('Owner Name');
++    const push = (sendPushNotification as jest.Mock).mock.calls[0][1] as { body: string };
++    expect(push.body).toContain('სახელით');
++  });
++
++  it('a first-hand request names no one who passed it on', async () => {
++    await requestIntroduction(OWNER, 'B', 'Target', 'why', B_PHONE, undefined, undefined, 'intro');
++
++    const call = (createIncomingRequestThread as jest.Mock).mock.calls[0] as unknown[];
++    expect(call[call.length - 1]).toBeNull();
++    const insert = mockQuery.mock.calls.find((c) =>
++      String(c[0]).includes('INSERT INTO introduction_requests'),
++    );
++    expect((insert?.[1] as unknown[]).at(-1)).toBeNull();
++  });
++
++  it('refuses to pass it back to the link themself', async () => {
++    mockQuery.mockImplementation((sql: string) => {
++      const text = String(sql);
++      if (text.includes('"UserAlias"'))
++        return Promise.resolve({
++          rows: [{ phone: B_PHONE, display_name: 'A' }],
++          rowCount: 1,
++        } as never);
++      if (text.includes('FROM "UserPhone"'))
++        return Promise.resolve({ rows: [{ userId: Number(LINK) }], rowCount: 1 } as never);
++      return Promise.resolve({ rows: [], rowCount: 0 } as never);
++    });
++
++    const result = await passOn();
++
++    expect(result.success).toBe(false);
++  });
++});
+diff --git a/src/services/tools/requestIntroduction.ts b/src/services/tools/requestIntroduction.ts
+index 3f1871d..f266114 100644
+--- a/src/services/tools/requestIntroduction.ts
++++ b/src/services/tools/requestIntroduction.ts
+@@ -4,6 +4,7 @@ import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRou
+ import { reasonAboutAsker } from '../askEditor.service';
+ import { geoName } from '../georgianCase';
+ import { targetNameForMediator } from '../mediatorTargetName';
++import { forwardedRequestPush } from '../introOpening';
+ import { query } from '../../db/postgres/client';
+ import { foldedLower } from './georgianCase';
+ import { buildSearchTerms } from './transliterate';
+@@ -147,6 +148,12 @@ export interface IntroRequestContext {
+    * go to. Absent over the connector, which has no conversation.
+    */
+   originThreadId?: number;
++  /**
++   * 5347: the link who passes the owner's request on, from their own request
++   * thread. The requester stays the owner; the mediator is found in THIS
++   * person's phonebook, and the reader is told whose assistant passed it on.
++   */
++  forwardedBy?: string;
+ }
+ 
+ /**
+@@ -212,6 +219,8 @@ interface StoredRequest {
+   readonly message: string | null;
+   readonly isDirect: boolean;
+   readonly requesterTaskId: number | undefined;
++  /** 5347: whose assistant passed the owner's request on; null when asked first-hand. */
++  readonly forwarderName: string | null;
+ }
+ 
+ /**
+@@ -228,6 +237,7 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
+       stored.mediatorTargetName,
+       stored.message,
+       stored.isDirect,
++      stored.forwarderName,
+     ),
+     createOutgoingRequestThread(
+       Number(stored.requesterUserId),
+@@ -340,9 +350,11 @@ async function requestIntroductionInner(
+   acceptDormant = false,
+   context: IntroRequestContext = {},
+ ): Promise<object> {
++  // 5347: a request passed on is sent to someone in the passer's own phonebook.
++  const bookOwner = context.forwardedBy ?? requesterUserId;
+   const phoneResult = mediatorPhone
+-    ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
+-    : await findMediatorPhone(requesterUserId, mediatorName);
++    ? await findMediatorPhoneByPhone(bookOwner, mediatorPhone)
++    : await findMediatorPhone(bookOwner, mediatorName);
+ 
+   if ('error' in phoneResult) return { success: false, error: phoneResult.error };
+   if ('needs_disambiguation' in phoneResult) return phoneResult;
+@@ -364,7 +376,7 @@ async function requestIntroductionInner(
+ 
+   const mediatorUserId = mediatorUserResult.rows[0].userId;
+ 
+-  if (String(mediatorUserId) === requesterUserId) {
++  if (String(mediatorUserId) === requesterUserId || String(mediatorUserId) === bookOwner) {
+     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
+   }
+ 
+@@ -537,15 +549,26 @@ async function requestIntroductionInner(
+     };
+   }
+ 
+-  const conversation = await conversationToContinue(
+-    context.requesterTaskId,
+-    Number(requesterUserId),
+-    mediatorUserId,
+-  );
++  // 5347: a request passed on opens its own threads; there is no conversation of
++  // the owner's with this person to continue.
++  const forwarded = context.forwardedBy !== undefined && !isDirect;
++  const conversation = forwarded
++    ? null
++    : await conversationToContinue(
++        context.requesterTaskId,
++        Number(requesterUserId),
++        mediatorUserId,
++      );
+ 
+   // D711: the reason is stored as told about the asker, so every reader gets that version.
++  // A request passed on carries the owner's reason as it was stored the first time.
+   const requesterName = await getRequesterName(requesterUserId);
+-  const reason = message ? await reasonAboutAsker(message, requesterName) : null;
++  const forwarderName = forwarded ? await getRequesterName(bookOwner) : null;
++  const reason = forwarded
++    ? (message ?? null)
++    : message
++      ? await reasonAboutAsker(message, requesterName)
++      : null;
+   const [insertResult] = await Promise.all([
+     query<{ id: number; request_ref: string }>(
+       // Row 210: `requester_task_id` is the goal this was raised for, so the
+@@ -553,8 +576,8 @@ async function requestIntroductionInner(
+       // Row 305 (b): the two threads it continues, when it continues any.
+       `INSERT INTO introduction_requests
+          (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id, origin_thread_id,
+-          mediator_thread_id, requester_thread_id)
+-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
++          mediator_thread_id, requester_thread_id, forwarded_by_user_id)
++       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING id, request_ref`,
+       isDirect
+         ? [
+@@ -569,6 +592,7 @@ async function requestIntroductionInner(
+             context.originThreadId ?? null,
+             conversation?.askThreadId ?? null,
+             conversation?.goalThreadId ?? null,
++            null,
+           ]
+         : [
+             requesterUserId,
+@@ -582,6 +606,7 @@ async function requestIntroductionInner(
+             context.originThreadId ?? null,
+             conversation?.askThreadId ?? null,
+             conversation?.goalThreadId ?? null,
++            forwarded ? Number(bookOwner) : null,
+           ],
+     ),
+   ]);
+@@ -602,6 +627,7 @@ async function requestIntroductionInner(
+     message: reason,
+     isDirect,
+     requesterTaskId: context.requesterTaskId,
++    forwarderName,
+   };
+   const requestId = stored.requestId;
+ 
+@@ -615,9 +641,11 @@ async function requestIntroductionInner(
+       title: 'Netai — გაცნობის მოთხოვნა',
+       body: isDirect
+         ? `${geoName(requesterName, 'gen')} ასისტენტი გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
+-        : // #1420: the request is the assistant's, so the push says whose assistant asks.
+-          // 3895: the push is the mediator's too, so it names the target as he saved him.
+-          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
++        : forwarderName !== null
++          ? forwardedRequestPush(forwarderName, requesterName, stored.mediatorTargetName)
++          : // #1420: the request is the assistant's, so the push says whose assistant asks.
++            // 3895: the push is the mediator's too, so it names the target as he saved him.
++            `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
+       url: pushUrl,
+     });
+   }
+-- 
+2.43.0
+

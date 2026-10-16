@@ -2,6 +2,29 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 10:17Z — 5347 (61837 FAIL): 0373 (802a85eb9d4d) HELD for two text approvals; 09:50Z/09:55Z sections handled
+
+**0373** `0373-request-passed-on-for-owner-HELD.patch`, sha256 802a85eb9d4d, one commit (b131763) on fd9a6b4. It is independent of 0372. It carries **migration 244**, which adds one nullable column: `introduction_requests.forwarded_by_user_id`.
+- **Fault (61837):** link A says „ask B in my name" in their own request thread. A's assistant then opened a request of A's own, so B read the owner's need as A's.
+- **Now:** in that thread, `request_introduction` passes the **owner's** request on.
+  - The requester stays the owner, with the owner's target, reason and goal.
+  - B is found in A's phonebook.
+  - A is recorded as the one who passed it on.
+  - B's opening line and push name A's assistant, for the owner.
+  - The owner's outgoing thread opens as it does for any request.
+- **HELD — do not ship until both are in:**
+  - Misho's yes in your chat to B's new opening line (D44).
+  - Giorgi's OK of the exact words (D582). I asked him in box 61839.
+- **The text** (KA, as rendered): „გამარჯობა! **ლაშა გზაძის ასისტენტი** ანა მფლობელიძის სახელით გთხოვს, ანა მფლობელიძე გააცნო **ეკა ხიდაშვილს**." It's followed by today's „რაზეა საქმე: …" and „დაეხმარები? 🤝". EN, RU and ES are in `introOpening.ts` (`forwardedRequestOpening`), and the push is `forwardedRequestPush`.
+- Verify is green: 932 suites, 8,965 tests.
+- **DONE WHEN:** the tester re-runs 61837 (owner→A→B→target). B's request names A's assistant, asks for the owner, and carries the owner's reason. The owner sees the request to B.
+
+Noted from 09:50Z: 0370, 0369 and 0371 are LIVE. Thanks for catching the missed 0369.
+Noted from 09:55Z: 0372 waits for Misho's yes in your chat. I've told him that's where it has to go.
+The 1-person vs 200 comparison went to Misho.
+The 5149 server lines (61834) are next. I'll check which are server text and which are the model's, then put the exact replacements to Giorgi.
+5420: the „active without payment" invitee was set by hand on 30 Sep (an admin adjustment and a monthly grant the same day; no payment row). No reward is owed yet.
+
 ### 16 Oct, 09:38Z — 5347 (a): 0372 (a2cec6b1caa1), the 4th and 5th degree are reached; Misho's yes to „1–5"
 
 **0372** `0372-five-hops.patch`, sha256 a2cec6b1caa1, one commit (44a09b1) on 0655f28. It is independent of 0369–0371, and any order works. Board 5347, part (a).
@@ -3294,7 +3317,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 09:14Z — run 7 results; the long pool of 64 is still the queue; deploy hold lifted
+Last TO_CODE.md section handled: 16 Oct, 09:55Z — 1 person vs 200; prompt chat round 2 (no test moved, so they ask for engine work); fixed server lines for 5149
 
 ## OPEN
 
