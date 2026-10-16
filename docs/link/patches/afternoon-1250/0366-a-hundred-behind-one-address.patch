@@ -1,0 +1,91 @@
+From 81d733e08b3767a5f8b1cbb13835840f1338a21d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 07:50:53 +0000
+Subject: [PATCH] 21 Oct launch: one address lets a hundred people sign up at
+ once
+
+Misho, 16 Oct: "can you raise the IP limit so it holds 100 people?" On
+mobile data a carrier puts many phones behind one address; the room's
+Wi-Fi does the same.
+
+- /auth/* allowed 300 calls per address in five minutes. One sign-up is six
+  or seven calls (referral opened, eligibility, OTP, verify, register,
+  complete), so a hundred at once is about 700.
+- GET /invite-codes/:code, raised to 300 in five minutes by 0365, follows.
+
+Both now allow 1,500 per address in five minutes. The per-person caps (30
+auth calls, 5 SMS) are unchanged, and codes are 8 random characters.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../routes/__tests__/aRoomCanSignUpTogether.test.ts  |  4 ++--
+ src/api/routes/auth.routes.ts                        | 12 +++++++++---
+ src/api/routes/inviteCodes.routes.ts                 |  6 +++---
+ 3 files changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts b/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts
+index 9303e59..8a2ee06 100644
+--- a/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts
++++ b/src/api/routes/__tests__/aRoomCanSignUpTogether.test.ts
+@@ -9,9 +9,9 @@ import { join } from 'path';
+ describe('the sign-in limits', () => {
+   const routes = readFileSync(join(__dirname, '..', 'auth.routes.ts'), 'utf8');
+ 
+-  it('count the person at the old cap, and the address at ten times it', () => {
++  it('count the person at the old cap, and the address at fifty times it, a hundred people at once', () => {
+     expect(routes).toContain('const AUTH_MAX_PER_PERSON = 30;');
+-    expect(routes).toContain('const AUTH_MAX_PER_ADDRESS = 300;');
++    expect(routes).toContain('const AUTH_MAX_PER_ADDRESS = 1_500;');
+     expect(routes).toContain("max: AUTH_MAX_PER_ADDRESS, keyBy: 'ip'");
+     expect(routes).toContain("max: AUTH_MAX_PER_PERSON, keyBy: 'person'");
+     expect(routes).not.toContain('authRouter.use(rateLimit({ windowMs: 5 * 60_000, max: 30 }));');
+diff --git a/src/api/routes/auth.routes.ts b/src/api/routes/auth.routes.ts
+index df91b01..91913bf 100644
+--- a/src/api/routes/auth.routes.ts
++++ b/src/api/routes/auth.routes.ts
+@@ -83,13 +83,19 @@ export function referralCodeFrom(body: unknown): ReferralCodeIn {
+  * launch: a hundred people signing up on one room's Wi-Fi).
+  *
+  * Per PERSON — the device, else the phone the step is about — the old cap of
+- * 30 in five minutes, which is the abuse control. Per ADDRESS a cap ten times
+- * that, so a shared Wi-Fi lets a room in while one address still cannot
++ * 30 in five minutes, which is the abuse control. Per ADDRESS a cap fifty
++ * times that, so a shared Wi-Fi lets a room in while one address still cannot
+  * hammer the login without end.
+  */
+ const AUTH_WINDOW_MS = 5 * 60_000;
+ const AUTH_MAX_PER_PERSON = 30;
+-const AUTH_MAX_PER_ADDRESS = 300;
++/**
++ * Misho, 16 Oct: a hundred people at once behind ONE address — a carrier's
++ * shared address on mobile data, or the room's Wi-Fi. One sign-up is six or
++ * seven of these calls (referral opened, eligibility, OTP, verify, register,
++ * complete), so a hundred is about 700; 1,500 leaves room for retries.
++ */
++const AUTH_MAX_PER_ADDRESS = 1_500;
+ authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_ADDRESS, keyBy: 'ip' }));
+ authRouter.use(rateLimit({ windowMs: AUTH_WINDOW_MS, max: AUTH_MAX_PER_PERSON, keyBy: 'person' }));
+ 
+diff --git a/src/api/routes/inviteCodes.routes.ts b/src/api/routes/inviteCodes.routes.ts
+index 5c11d51..6ef995d 100644
+--- a/src/api/routes/inviteCodes.routes.ts
++++ b/src/api/routes/inviteCodes.routes.ts
+@@ -14,11 +14,11 @@ import { inviteCodeExists } from '../../services/inviteCodeCheck.service';
+  * puts many phones behind one address, the rest on one room's Wi-Fi. Twenty
+  * checks a minute per address turned the twenty-first person in the same
+  * minute away at the door. The address now gets the sign-in routes' allowance
+- * (auth.routes: 300 in five minutes); a code is long and random, so this is
+- * still no help to anyone guessing codes.
++ * (auth.routes: 1,500 in five minutes, a hundred people at once); a code is
++ * long and random, so this is still no help to anyone guessing codes.
+  */
+ const CHECK_WINDOW_MS = 5 * 60_000;
+-const CHECKS_PER_ADDRESS = 300;
++const CHECKS_PER_ADDRESS = 1_500;
+ const MAX_CODE_CHARS = 32;
+ const CODE_RE = /^[A-Za-z0-9_-]+$/;
+ 
+-- 
+2.43.0
+

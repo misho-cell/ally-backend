@@ -2,20 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 16 Oct, 07:35Z (updated 07:50Z) — 0365: one address lets 100 people sign up at once (Misho's ask); the tester's own login waits on Misho
+### 16 Oct, 07:55Z — 0366: one address lets 100 people sign up at once (Misho's ask); the 0365 "replacement" is void
 
-- **0365** `patches/afternoon-1250/0365-invite-check-lets-a-room-in.patch` (sha256 starts **e4b9e6b2f827**), commit 91e0db2, on top of main d550394. **This replaces the 07:35Z version (46aec33dc812, d8af244). Ship this one only.** Please ship it before 21 Oct.
+- **Correction:** you had already shipped the first 0365 (297fcf0, code check 300 per 5 min) before I posted a replacement. **Ignore the replacement.** The 0365 patch file in the repo is my replaced version, and it does not apply on main. The live 0365 stands as it is.
+- **0366** `patches/afternoon-1250/0366-a-hundred-behind-one-address.patch` (sha256 starts **f7085d8f4cf8**), commit 81d733e, on top of main **297fcf0**. Please ship it before 21 Oct.
 - **Misho, 07:45Z in my chat:** „Ip ს შეზღუდვა შეგიძლია ისე აწიო რომ 100 კაცს გაუძლოს?“
-- **The answer for the tester (one link, about 100 sign-ups, mostly mobile data):**
-  - **The link itself has no cap:** a member's personal invite link has unlimited uses.
-  - **Before 0365, two per-address limits could stop a crowd behind one carrier or Wi-Fi address:**
-    - the join page's code check, `GET /invite-codes/:code`, allowed **20 per minute**, so the 21st person in the same minute got a 429;
-    - `/auth/*` allowed **300 per 5 min**. One sign-up is 6–7 calls (referral opened, eligibility, OTP, verify, register, complete), so 100 people at once is about 700 calls.
-  - **0365 sets both to 1,500 per address per 5 min.** The per-person caps stay as they were (30 auth calls per 5 min, 5 SMS per 10 min). Codes are 8 random characters.
-  - Not covered by me: the SMS provider's own send rate and the frontend's join page. The rehearsal (5319) is where to check those.
+- **What changes:** `/auth/*` per address goes from 300 to **1,500 per 5 min**. A sign-up is 6–7 calls (referral opened, eligibility, OTP, verify, register, complete), so 100 people at once behind one carrier or Wi-Fi address is about 700. The code check follows it, 300 → 1,500. The per-person caps stay: 30 auth calls per 5 min, 5 SMS per 10 min.
+- **The answer for the tester:** the invite link itself has no cap. With 0365 and 0366 live, about 100 sign-ups through one link, even all behind one address, stay under every server limit. Not covered by me: the SMS provider's own rate and the frontend join page. The rehearsal (5319) is where to check those.
 - **Verify:** green, 927 suites, 8946 tests.
-- **DONE WHEN:** live; 25 code checks from one address in a minute all answer 200; 400 `/auth/eligibility` calls from one address in 5 minutes are not refused.
-- **The tester's own admin login (D548):** it opens access, so nothing gets built or handed out until Misho says yes in my chat. I've asked him.
+- **DONE WHEN:** live; 400 `/auth/eligibility` calls from one address within 5 minutes are not refused.
+- **The tester's own admin login (D548):** it waits on Misho's yes in my chat. I've asked him.
 
 ### 16 Oct, 06:20Z — Misho's go for the 6th 200 run (box 61515)
 
