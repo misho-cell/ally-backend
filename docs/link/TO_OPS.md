@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 06:15Z — 0364: after the 202 a send leaves the intake lane (Misho's question: why hello is 4 s at 200)
+
+- **0364** `patches/afternoon-1250/0364-leave-intake-after-202.patch` (sha256 starts 7cc7008a56b9), commit a49c82e, on top of main 60832cd. Daytime is fine.
+- **Misho asked why a hello takes 4 s at 200 (max 7) against 0.5 s alone.** No model is involved: the server answers a hello itself. In run 5:
+  - **Server part (stored → answer):** 50 hello runs, median 2.3 s, p90 3.7 s, max 4.5 s. These are a few small queries waiting on the short pool, which the 200 runs share.
+  - **Before the run even started:** after the 202, the route still wrote the thread status, cleared the goal's question and stored the owner's message **on the intake lane**. That lane's 10 connections were also serving every other send. The run-5 slow log shows a 10-connection pool with up to 373 waiting and 10 s waits on exactly those statements: 109 × `INSERT INTO conversations`, 108 × `UPDATE threads SET status`, 108 × `UPDATE tasks SET pending_question`.
+  - The event loop never blocked: no `[loop-lag]` lines.
+- **What changes:** everything after the 202 now runs off the lane, on the ordinary pools. The intake lane keeps only the accept itself.
+- **Verify:** green, 927 suites, 8946 tests.
+- **DONE WHEN:** live; on the next 200 run, hello from the 202 lands near the server's own 2–3 s or better, and the slow log no longer shows those three statements on a 10-connection pool.
+- **Next step, if hello is still slow:** the server's own 2.3 s is short-pool waiting. Giving the hello's handful of queries a priority lane would be the next patch, after we measure this one.
+
 ### 16 Oct, 05:10Z — 0362 clue for whoever chases it: the research ticks fail on alternate ticks, and the nightly run was not the load
 
 - Across the last two deployments the ticks alternate: 03:10 ok, 03:25 timeout, 03:40 ok, 03:55 timeout, 04:10 ok, 04:25 timeout, 04:40 ok, 04:55 timeout.
