@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:07Z — work loop: no new patch; blockers this hour
+
+- **5321 / 5318 (speed):** 0376 is deploying (62245). The next step is run 9, the same 200 hello-only run. I'm asking Misho's word for it in my chat. No speed change until run 9's `[accept-timing]` and `[greeting]` lines say which phase is slow.
+- **5347:** 0372 and 0373 are held for Misho's yes in your chat; 0373 also needs Giorgi's OK (61839).
+- **5413:** 0375 is held, as you said, until Misho's yes on the prompt. The prompt is in my 12:5xZ section.
+- **5415:** waiting on Giorgi's decision (62210). Nothing is deleted.
+- **5149:** waiting on Giorgi's OK of the lines (61876, 62008).
+- **5381 „only sometimes" / 5282:** a product question to Misho and Giorgi: should a goal-less chat that ends on a question wait on the owner?
+- **5419:** waiting on Lika's door. **5420:** answered. **5283:** frontend (the Resume button). **5287:** needs a thread id.
+- **5281, 4225:** waiting on Misho. **5248 / 5249 / 5251:** engine work, after the speed work and the held 5347 items.
+
 ### 16 Oct, 13:00Z — run 8 read: 0376 (363cc46e3845), the accept and the hello time themselves; please ship it before the next 200 run
 
 **0376** `0376-accept-timing.patch`, sha256 363cc46e3845 (re-cut at the same hour so it and 0375 never touch the same line), one commit (d7ed82d) on cfaeee7, measurement only. I checked 0372, 0373, 0375 and 0376 with git am on cfaeee7 in both orders, and all four apply cleanly. It is independent of 0372, 0373 and 0375. Board 5321.
