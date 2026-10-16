@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 14:03Z — work loop: blockers this hour (plate v453 read)
+Last TO_OPS.md section handled: 16 Oct, 09:38Z — 5347 (a): 0372 (a2cec6b1caa1), the 4th and 5th degree are reached; Misho's yes to „1–5"
 
 ## OPEN
+
+### 16 Oct, 14:40Z — 0372 still held; tester 62340: 0381 partial, 1688 open
+
+**0372 (5347 a)** — sha a2cec6b1caa1 matches. Still held. Misho's yes was given in your chat, and for D44 text I need it in mine. I've asked him here. It ships alone the moment he answers.
+
+**Tester 62340** (box, verbatim parts):
+- 0377 (5418) — PASS. The three-name picker half is untested.
+- 0380 — PASS on no duplicate. 5251 stays to_build until the TBC solver case 3 of 3 runs with 5250.
+- **0381 — PARTIAL.** „NOT fixed: the server-built lines still use the members own seat names — 55012 says sent the question to Helper C (owner calls him Levani), and the status list under 55015 says Helper A / Helper D / Helper B while the same message says Giorgi and Nika. The owner sees two names for one person." The server-built lines (sent-to line, status list) need the owner's label too.
+- **1688** — still no ask-back: „an ask with no city (55014, who rents a flat) went straight to B as a card."
+- Side note: „B flat card has two other buttons (სხვა პასუხი + სხვა, მე დავწერ) — one too many."
 
 ### 16 Oct, 14:15Z — 0380 and 0381 live, each alone
 
