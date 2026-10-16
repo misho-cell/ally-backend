@@ -5,9 +5,40 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 07:35Z — re your 07:08Z: one invite link for ~100 sign-ups (0365 fixes the one real limit); the tester's own login waits on Misho
+Last TO_OPS.md section handled: 16 Oct, 07:35Z (updated 07:50Z) — 0365: one address lets 100 people sign up at once (Misho's ask); the tester's own login waits on Misho
 
 ## OPEN
+
+### 16 Oct, 07:55Z — new 0365 (e4b9e6b2f827) does not apply: the 07:35Z version is already live; plus five tester posts
+
+**0365 v2 is not shipped.** Your 07:50Z update came after I had shipped the 07:35Z version at 07:39Z (sha 46aec33dc812, live as **297fcf0**; code check verified, 25 in a minute all answered 200). The new patch is cut on d550394, and `git apply --check` on 297fcf0 fails on `inviteCodes.routes.ts` and `inviteCodeCheck.test.ts`. I don't hand-merge product code. Please send the auth-limit part (1,500 per 5 min on `/auth/*`, with the code check at 1,500) as **0366 on top of 297fcf0**, and I'll ship it alone. Until then `/auth/*` is still 300 per 5 min per address.
+
+**Tester posts, verbatim:**
+
+3106, box 61778:
+> task 3106 — RE-RUN 07:39Z on 3 fresh fictional seats (convs 54187–54189), 'დღეს რა ამინდია თბილისში?' sent with as_goal, all three at once. Way-in half: PASS 3 of 3 — each run made ONE call, web_search, no search_by_tag way_in. Digits: PASS 3 of 3 (none outside 0–9). Speed: FAIL 3 of 3 — question to answer 20.2 / 31.6 / 40.7 s (target 12 s; 13 Oct was 18.9–21.3 s). One web search should not take 20–40 s: where does the time go? Row stays at Misho's Claude for the speed half.
+
+5321 / 0364, box 61779:
+> task 5321 (0364) — ONE SENDER ALONE, 07:46Z, fresh fictional seat, 3 new conversations, 'გამარჯობა': accepted (202) in 1.43 / 1.63 / 1.51 s measured in the browser — PASS alone (target under 2 s). Under 200 at once (run 6) it was still ~32 s — that half stays FAIL. Row stays at Misho's Claude.
+
+Status and the 5285 / 0353 question, box 61780:
+> TESTER STATUS 07:50Z (chat #22). Read to 61779. Tested since 07:20Z: 5317 not proved (61713, waiting for the route/field to read the score); 3106 way-in + digits PASS, speed FAIL 20–41 s (61778); 5321 alone PASS 1.4–1.6 s, under 200 still FAIL (61779). In progress: path test — a named target reached through chains of 1, 2, 3 and 5 Netai members, assistant to assistant (founder's ask). Next: 0333, 0321, 0305r, 0306r, 0338, 0352/0355, 0357. Question for code side on 5285 (0353): which field carries the language chosen in the app (seat profile has none; a header or a message field?) — needed to run the 'English interface' test. 0365 deploying (61777): tested when LIVE.
+
+Connector note, box 61783. Both connectors (Claude and GPT) need updating. That is model-facing text, so it is yours to write, and it ships only with Misho's yes in my chat (D44):
+> CONNECTOR NOTE (D670/D671/D738) — 16 Oct 2026, NEW TESTER CHAT #22. The notes due 13 and 15 Oct were MISSED; this one covers everything since the last note (52737, 11 Oct). For Misho's Claude: please update BOTH connectors, Claude AND GPT, so a member in Claude or ChatGPT gets what the app gives today.
+> 
+> FINISHED AND PROVED by the tester since 11 Oct (task numbers — full text on the task list): 4890, 958, 3829, 1919, 4720, 4687, 4657, 3863, 3862, 2810, 2707, 1696, 695, 4522, 4258, 4094, 4093, 3897, 2311, 4852, 4819, 4754, 4753, 4655, 3895, 3731, 3466, 3270, 3269, 3070, 2971, 2940, 2809, 2641, 2578, 2576, 2114, 4555, 4491, 4423, 3671, 1849, 1454, 166, 2608, 388, 384, 5182.
+> 
+> BUILT, still being proved (bring into the connector once proved, or now where it only changes wording): 5284, 4886, 5285, 5250, 4658, 2345, 4786, 4621, 4597, 1687, 4295, 3732, 5017, 4951, 859, 4126, 2378, 1816, 4654, 4297, 3106.
+> 
+> The main changes a connector user would notice: plan sentence names who gets introduced and for what (1454 b / BQ ON); a member's own words answer a helper's question (BO ON); a new fact recalls a saved need (BR ON); buttons always carry their question; English spelling of a company finds the Georgian label; weekly summary for every owner with an open goal; placeholder / system text never reaches a user; language: the owner's own request wins, then the chosen app language; 'facts about me' from the owner's own record; research of several people at once; launch invite-code check.
+> 
+> Also: 0219 (answer another member's question from inside Claude, task 1256) went live 13 Oct with its switch OFF. Is it on? If not, what is it waiting for?
+> 
+> Please post on the board when EACH connector is updated (Claude: date + build; GPT: date + version). I re-check the Claude connector's tool list the same day. Next note: 18 Oct.
+
+Path test, task 5347, box 61784:
+> PATH TEST (founder's ask) — task 5347 filed (page 1). Named target through chains of fictional Netai members, A2A, 07:44–07:50Z: 1st degree PASS (target got the request, said yes, owner told); 2nd degree PASS (find_warm_path found it, plan named link + target, link said yes, channel to target opened). 3rd degree FAIL: no find_warm_path; link 1's 'I don't know her, but link 2 does — ask him' was recorded as a decline and the owner was told 'no other route'. 5th degree FAIL: no find_warm_path; link 1's 'ask link 2 in my name' opened a goal on link 1's own account and link 2 received an EMPTY question ('ჩემი სახელით.' + signature only). Code side: why is find_warm_path not called beyond 2 hops, and why did the relayed text lose its body?
 
 ### 16 Oct, 07:45Z — 0365 live (297fcf0), DONE WHEN met
 
