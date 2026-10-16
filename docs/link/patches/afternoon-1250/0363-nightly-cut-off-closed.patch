@@ -1,0 +1,182 @@
+From 6347bff8a74112996ff1d0997cb7aed01127c7af Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 04:07:13 +0000
+Subject: [PATCH] Nightly enrichment: a run cut off by a restart is closed, and
+ resumed early in its night
+
+16 Oct: the 01:00 incremental run was killed by the 01:24 deploy. Its row
+read "running" with nothing processed until morning, and nothing ran
+again until the next night; 17 older rows were left behind the same way.
+
+At boot a "running" row can only belong to the process before, so it is
+closed as failed with "cut off by a restart". An incremental run cut off
+the same UTC night before 03:00 starts again; later than that, a resumed
+run (about three hours, capped) would reach the day's testing, so it
+waits for the next night.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...aNightlyRunCutOffByADeployIsClosed.test.ts | 73 +++++++++++++++++++
+ src/services/enrichment.job.ts                | 51 +++++++++++++
+ 2 files changed, 124 insertions(+)
+ create mode 100644 src/services/__tests__/aNightlyRunCutOffByADeployIsClosed.test.ts
+
+diff --git a/src/services/__tests__/aNightlyRunCutOffByADeployIsClosed.test.ts b/src/services/__tests__/aNightlyRunCutOffByADeployIsClosed.test.ts
+new file mode 100644
+index 0000000..7560195
+--- /dev/null
++++ b/src/services/__tests__/aNightlyRunCutOffByADeployIsClosed.test.ts
+@@ -0,0 +1,73 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  backgroundQuery: jest.fn(),
++  query: jest.fn(),
++}));
++jest.mock('../../db/neo4j/client', () => ({ __esModule: true, getSession: jest.fn() }));
++jest.mock('../enrichment.service', () => ({
++  __esModule: true,
++  computeAndSaveUserScores: jest.fn(),
++  enrichContact: jest.fn(),
++}));
++jest.mock('../contactFacts.service', () => ({
++  __esModule: true,
++  reclassifyPrivateNotes: jest
++    .fn()
++    .mockResolvedValue({ scanned: 0, published: 0, remaining: false }),
++}));
++
++import { backgroundQuery } from '../../db/postgres/client';
++import { EnrichmentJob, mayResumeCutOffRun } from '../enrichment.job';
++
++const mockQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
++const rows = (r: unknown[]): never => ({ rows: r, rowCount: r.length }) as never;
++const at = (iso: string): Date => new Date(iso);
++
++/** 16 Oct: the 01:00 run was killed by the 01:24 deploy and read „running" until morning. */
++describe('a nightly run cut off by a restart', () => {
++  beforeAll(() => {
++    jest.spyOn(console, 'log').mockImplementation(() => undefined);
++    jest.spyOn(console, 'error').mockImplementation(() => undefined);
++  });
++  beforeEach(() => mockQuery.mockReset());
++
++  it('may start again only the same night, before 03:00 UTC', () => {
++    const started = at('2026-10-16T01:00:00Z');
++    expect(mayResumeCutOffRun(started, at('2026-10-16T01:24:00Z'))).toBe(true);
++    expect(mayResumeCutOffRun(started, at('2026-10-16T02:59:00Z'))).toBe(true);
++    expect(mayResumeCutOffRun(started, at('2026-10-16T03:00:00Z'))).toBe(false);
++    expect(mayResumeCutOffRun(started, at('2026-10-17T01:24:00Z'))).toBe(false);
++    expect(mayResumeCutOffRun(at('2026-10-16T00:30:00Z'), at('2026-10-16T01:24:00Z'))).toBe(false);
++  });
++
++  it('is closed as cut off, and left alone when it is too late to start again', async () => {
++    mockQuery.mockResolvedValueOnce(
++      rows([{ job_type: 'incremental', started_at: '2026-10-16T01:00:00Z' }]),
++    );
++    await expect(EnrichmentJob.settleCutOffRun(at('2026-10-16T04:30:00Z'))).resolves.toBe(false);
++    const [sql, params] = mockQuery.mock.calls[0];
++    expect(String(sql)).toContain("SET status = 'failed'");
++    expect(String(sql)).toContain("WHERE status = 'running'");
++    expect(params).toEqual(['cut off by a restart']);
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++  });
++
++  it('starts again when the restart came early in its night', async () => {
++    mockQuery
++      .mockResolvedValueOnce(
++        rows([{ job_type: 'incremental', started_at: '2026-10-16T01:00:00Z' }]),
++      )
++      .mockResolvedValueOnce(rows([{ id: 'job-1' }]))
++      .mockResolvedValue(rows([]));
++    await expect(EnrichmentJob.settleCutOffRun(at('2026-10-16T01:24:00Z'))).resolves.toBe(true);
++    await new Promise((resolve) => setTimeout(resolve, 50));
++    expect(String(mockQuery.mock.calls[1][0])).toContain('INSERT INTO enrichment_jobs');
++    expect((await EnrichmentJob.getStatus()).running).toBe(false);
++  });
++
++  it('starts nothing when no run was left behind', async () => {
++    mockQuery.mockResolvedValueOnce(rows([]));
++    await expect(EnrichmentJob.settleCutOffRun(at('2026-10-16T01:24:00Z'))).resolves.toBe(false);
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++  });
++});
+diff --git a/src/services/enrichment.job.ts b/src/services/enrichment.job.ts
+index 65c9177..f88bff9 100644
+--- a/src/services/enrichment.job.ts
++++ b/src/services/enrichment.job.ts
+@@ -23,6 +23,25 @@ const MAX_NOTE_MODERATION_PER_RUN = 500;
+ // UTC notification cron). Never runs at boot — the boot-run variant is what
+ // lit the backlog during live testing hours.
+ const CRON_HOUR_UTC = 1;
++/**
++ * 16 Oct: the 01:00 run was killed by the 01:24 deploy, and its row read
++ * „running" with nothing processed until morning — the same way 17 older
++ * rows had been left behind. A restart now closes such a row as cut off, and
++ * a run cut off early in its own night starts again; never later than this
++ * hour, so a resumed run (about three hours, capped) still ends before the
++ * day's testing.
++ */
++const RESUME_DEADLINE_HOUR_UTC = 3;
++const CUT_OFF_ERROR = 'cut off by a restart';
++
++/** Whether a run cut off by a restart may start again now: same UTC night, before the deadline. */
++export function mayResumeCutOffRun(startedAt: Date, now: Date): boolean {
++  return (
++    startedAt.toISOString().slice(0, 10) === now.toISOString().slice(0, 10) &&
++    startedAt.getUTCHours() >= CRON_HOUR_UTC &&
++    now.getUTCHours() < RESUME_DEADLINE_HOUR_UTC
++  );
++}
+ 
+ interface UserRow {
+   user_id: number;
+@@ -438,6 +457,28 @@ export class EnrichmentJob {
+     return next.getTime() - now.getTime();
+   }
+ 
++  /**
++   * At boot nothing of this process is running yet, so a „running" row was
++   * left by the process before it. It is closed as cut off, and an incremental
++   * run cut off early tonight starts again (see RESUME_DEADLINE_HOUR_UTC).
++   */
++  static async settleCutOffRun(now: Date = new Date()): Promise<boolean> {
++    const cutOff = await query<{ job_type: string; started_at: Date | null }>(
++      `UPDATE enrichment_jobs SET status = 'failed', completed_at = NOW(), error = $1
++        WHERE status = 'running'
++        RETURNING job_type, started_at`,
++      [CUT_OFF_ERROR],
++    );
++    const resumable = cutOff.rows.some(
++      (row) =>
++        row.job_type === 'incremental' &&
++        row.started_at !== null &&
++        mayResumeCutOffRun(new Date(row.started_at), now),
++    );
++    if (resumable) this.runIncremental();
++    return resumable;
++  }
++
+   static startCron(): void {
+     if (this.cronTimer !== null) return;
+     if (process.env.ENRICHMENT_CRON_ENABLED === 'false') {
+@@ -445,6 +486,16 @@ export class EnrichmentJob {
+       console.log('[enrichment] Cron disabled via ENRICHMENT_CRON_ENABLED=false');
+       return;
+     }
++    void this.settleCutOffRun()
++      .then((resumed) => {
++        // eslint-disable-next-line no-console
++        if (resumed)
++          console.log("[enrichment] tonight's run was cut off by a restart; started again");
++      })
++      .catch((err: unknown) =>
++        // eslint-disable-next-line no-console
++        console.error('[enrichment] could not settle a cut-off run:', (err as Error).message),
++      );
+     // Fixed nightly window, never at boot: wall-clock alignment kills the
+     // deploy-drift problem, and the low-traffic hour keeps the (isolated,
+     // throttled) run away from live users entirely.
+-- 
+2.43.0
+

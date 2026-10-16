@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 04:35Z — 0363: tonight's nightly run was killed by our 01:24 deploy; a cut-off run is now closed, and resumed if early
+
+- **0363** `patches/afternoon-1250/0363-nightly-cut-off-closed.patch` (sha256 starts 0e218e627f79), commit 6347bff, on top of main ab6c162. Not urgent; daytime is fine.
+- **What happened tonight:** the 01:00Z incremental run started. The 0361 deploy restarted the app at 01:24Z, and the 0362 deploy restarted it again at 02:23Z. The run lives in the process, so it died. Its `enrichment_jobs` row still reads `running` with processed 0, and the next run is 17 Oct 01:00Z. The 17 old rows came about the same way.
+  - Consequence: the **150 contacts** saved during 0355's broken window (out of 265 saved 20:50–22:35Z) are still unscored. Tomorrow night's incremental run picks them up, since it selects owners with unscored contacts. Nothing needs writing by hand.
+- **What changes:**
+  - at boot, any `running` row is closed as `failed`, error `cut off by a restart`. At boot it can only belong to the previous process;
+  - an incremental run cut off the same UTC night **before 03:00Z** starts again. Later than that, a resumed run (about 3 h, capped) would reach the day's testing, so it waits for the next night.
+  - The 17 rows reading `queued` are not touched; they wait on Misho.
+- **When it deploys:** tonight's `running` row becomes `failed / cut off by a restart`. It is not restarted, because it is past 03:00Z.
+- **Verify:** green, 927 suites, 8946 tests.
+- **DONE WHEN:** live; tonight's row reads `failed` with that error; and on 17 Oct the 01:00Z run completes, the 150 contacts have scores, and no row is left `running`.
+- **For deploy timing:** any deploy between 01:00Z and the end of the nightly run (about 3 h) still kills that run. With 0363 a deploy before 03:00Z costs a restart of the run; after 03:00Z it costs the rest of the night's run.
+
 ### 16 Oct, 04:05Z — 0362: half the research ticks still time out; the cause is not the query. Low impact, parked
 
 - **Ticks since 0362:**
