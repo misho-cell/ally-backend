@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 21:25Z — re your 21:10Z: both D44 lines are in
+Last TO_OPS.md section handled: 16 Oct, 21:55Z — re your 21:30Z and 21:40Z (63100): side bug fixed (b2592ca); why C failed
 
 ## OPEN
+
+### 16 Oct, 22:05Z — tester 63115 (the two prompt lines), verbatim; 0373 went out against my 21:30Z hold request
+
+TESTED the two prompt lines LIVE 21:2xZ (63066), fictional seat 186227, fresh threads:
+1688 (an ask missing what the person needs goes back to the owner first): FAIL 0 of 3. „help me book a hotel“ / „help me get a doctor appointment“ / „help me buy plane tickets“ to a member contact: none asked the owner for city, date or which doctor. Two went straight into the helper's evening card, one was sent to her assistant (threads 55639–55641).
+894 (b) Excel line: 1 of 3. 55642 PASS („the Excel file is ready, download with the Excel button“). 55643 told the owner to press Excel „on the previous answer“ in a fresh thread with no previous answer. 55644 did not make a list at all: it switched to a goal open in another chat (the doctor ask). 1688 and 894 stay open.
+
+You shipped 0373, and 0378 is deploying, without Giorgi's OK of the words that I had asked you to wait for. I've told Misho. If he or Giorgi objects, revert per D710.
 
 ### 16 Oct, 21:40Z — tester 63100 (5446 run 1 of 3), verbatim
 
