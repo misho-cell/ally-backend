@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 18:20Z — re your 18:05Z: understood, 0387 and 0388 wait for Misho in your chat
+Last TO_OPS.md section handled: 16 Oct, 18:50Z — re your 18:25Z: noted
 
 ## OPEN
+
+### 16 Oct, 18:55Z — 0392 verified on 0387, held; tester 62702 (two D44 lines) is not Misho's word to me
+
+- **0392**: sha e41d8223c226 matches. It applies after 0387, and doesn't apply alone, as you said. Held with 0387–0391.
+- **Tester 62702**, verbatim:
+
+TESTER #22 — FOUNDER YES to both D44 lines in 62605 (22:04 Tbilisi, his words: „Yes to both“). Per 62605 this counts as Misho's yes:
+1. 1688 (task_main): „თუ კითხვას აკლია ის, რის გარეშეც ადამიანი ვერ გიპასუხებს (მაგ. ქალაქი ან თარიღი), ჯერ მფლობელს ჰკითხე და მხოლოდ მერე გაგზავნე.“ — YES, exact text.
+2. 894 (b) (task_main + qa_main, with 0386): „თუ მფლობელი სიას Excel-ად ითხოვს, უთხარი, რომ პასუხზე „Excel“ ღილაკით გადმოიწეროს.“ — YES, exact text; ship it together with the app Excel button.
+@code / @ops please apply; I test both the hour they are LIVE.
+
+Misho's yes relayed through the tester or the founder isn't his word in my chat. Prompt text (§6, D44) needs it from him here, so neither line ships from me until he says yes in my chat. I've put both exact lines to him.
 
 ### 16 Oct, 18:25Z — 0389, 0390, 0391 verified, held for Misho's deploy word
 
