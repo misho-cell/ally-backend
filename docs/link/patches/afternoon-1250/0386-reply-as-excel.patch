@@ -1,0 +1,371 @@
+From 5b50d780e3a7597a2ab748195306185fbc47a075 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 16:31:34 +0000
+Subject: [PATCH] 894 (b), 2347: a reply that lists something comes out as
+ Excel
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Lika's second phone file (16 Oct): „give me these three names as Excel"
+got the names as text and no file. The only Excel that could leave Netai
+was a worked uploaded list; a list Netai itself wrote had no way out.
+
+GET /threads/:id/messages/:messageId/table.xlsx turns one shown assistant
+reply into a one-sheet workbook: a Markdown table cell by cell, header
+first, or a numbered or bulleted list of two or more items one per row. It
+reads only a `kind = 'message'` assistant row of the caller's own thread,
+so no step or engine turn leaves as a file. 404 when the reply lists
+nothing. No model-facing text changes; the frontend contract is in
+docs/FOR_FRONTEND.md.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ docs/FOR_FRONTEND.md                          |  17 +++
+ src/api/routes/threads.routes.ts              |  43 ++++++
+ .../aListedReplyComesOutAsExcel.test.ts       | 122 ++++++++++++++++++
+ src/services/messageTable.ts                  |  74 +++++++++++
+ src/services/threads.service.ts               |  20 +++
+ 5 files changed, 276 insertions(+)
+ create mode 100644 src/services/__tests__/aListedReplyComesOutAsExcel.test.ts
+ create mode 100644 src/services/messageTable.ts
+
+diff --git a/docs/FOR_FRONTEND.md b/docs/FOR_FRONTEND.md
+index 17f0ecd..e0b094b 100644
+--- a/docs/FOR_FRONTEND.md
++++ b/docs/FOR_FRONTEND.md
+@@ -15,6 +15,23 @@ messages in their name.
+ 
+ ---
+ 
++## 16 October, 16:45Z — #894 (b) / #2347: a reply that lists something comes out as Excel (new route, branch)
++
++Lika, 16 Oct: she asked for three names as Excel and got text. Until now the only Excel that came out of Netai was a worked uploaded list (`GET /thread-files/goals/:taskId/list.xlsx`).
++
++**New:** `GET /threads/:id/messages/:messageId/table.xlsx` (auth as every `/threads` route).
++
++- `:id` is the thread, `:messageId` is the `id` of an assistant message from `GET /threads/:id/messages` (a UUID string).
++- **200**: the `.xlsx` as an attachment, `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, file name `netai-<threadId>.xlsx`.
++  - A Markdown table in the reply becomes one sheet row per table row, header first.
++  - Otherwise a numbered or bulleted list (2 items or more) becomes one row per item.
++- **404** `{ "success": false, "error": "No list in this message" }`: not the caller's thread, no such reply, not a shown assistant answer, or a reply that lists nothing.
++- **400**: a malformed id. **429**: more than 20 a minute.
++
++**Ask:** an „Excel" action on an assistant message, for example in its „…" menu, that downloads this route. Show it on every assistant message, or only on one with a table or a list of 2+ lines (`1.`, `-`, `*`, `•`). A 404 is then rare, and the simplest answer to it is a short „ამ პასუხში სია არ არის". Wording is yours with Giorgi.
++
++**Status:** on my branch, handed to ops as patch 0386; not live yet. I'll write again when it's live.
++
+ ## 15 October, 16:45Z — re your 16:30Z: yes, cut the list preview at the first blank line (1688)
+ 
+ Thank you. That matches the tester's quote: they were reading the list row. Yes, please cut the row's preview at the first blank line (`\n\n`) before you collapse the whitespace, so the row shows the question only. The bubble and the push stay as they are.
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 6a69987..3916cec 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -2,6 +2,7 @@ import { runLatencyLine } from '../../services/runLatency';
+ import { choiceNotesFor } from '../../services/choiceNotes';
+ import { otherChoiceField } from '../../services/otherChoice';
+ import { exportConversation } from '../../services/conversationExport.service';
++import { tableFromMessage, tableWorkbook } from '../../services/messageTable';
+ import { routesForThread } from '../../services/routesBoard.service';
+ import { chainPositionOf } from '../../services/chainPosition.service';
+ import { ResolveOutcome, resolveGoalOnThread } from '../../services/goalResolve.service';
+@@ -27,6 +28,7 @@ import {
+   getLongestRunStep,
+   markThreadSeen,
+   markThreadUnread,
++  shownAssistantReply,
+ } from '../../services/threads.service';
+ import { setThreadFollowed } from '../../services/followUp.service';
+ import {
+@@ -778,6 +780,47 @@ threadsRouter.get(
+   },
+ );
+ 
++const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
++/** 894 (b): a message id is a UUID on production (migration 002). */
++const MESSAGE_ID_RE = /^[0-9a-f-]{1,64}$/iu;
++
++/**
++ * 894 (b), 2347 (Lika, 16 Oct): what one reply lists, as an Excel file — a
++ * Markdown table cell by cell, or a numbered or bulleted list one per row.
++ * Only a reply the owner already sees in their own conversation.
++ *
++ *   200 the .xlsx (attachment)
++ *   404 no such thread, not theirs, no such reply, or the reply lists nothing
++ */
++threadsRouter.get(
++  '/:id/messages/:messageId/table.xlsx',
++  rateLimit({ windowMs: 60_000, max: 20 }),
++  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
++  param('messageId').matches(MESSAGE_ID_RE).withMessage('messageId must be a message id'),
++  handleValidationErrors,
++  async (req: Request, res: Response): Promise<void> => {
++    try {
++      const userId = (req as AuthenticatedRequest).user.userId;
++      const threadId = Number(req.params.id);
++      const thread = await getThread(threadId, userId);
++      const reply =
++        thread === null ? null : await shownAssistantReply(threadId, String(req.params.messageId));
++      const rows = reply === null ? null : tableFromMessage(reply);
++      if (rows === null) {
++        res.status(404).json({ success: false, error: 'No list in this message' });
++        return;
++      }
++      res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
++      res.setHeader('Content-Disposition', `attachment; filename="netai-${threadId}.xlsx"`);
++      res.status(200).send(await tableWorkbook(rows));
++    } catch (error) {
++      // eslint-disable-next-line no-console
++      console.error('[GET /threads/:id/messages/:messageId/table.xlsx]', (error as Error).message);
++      res.status(500).json({ success: false, error: 'Could not make the file' });
++    }
++  },
++);
++
+ /**
+  * D722, the frontend's 06:30Z item 2: the goal's routes board — one row per
+  * person this goal is talking to, while it talks to two or more.
+diff --git a/src/services/__tests__/aListedReplyComesOutAsExcel.test.ts b/src/services/__tests__/aListedReplyComesOutAsExcel.test.ts
+new file mode 100644
+index 0000000..968e6ee
+--- /dev/null
++++ b/src/services/__tests__/aListedReplyComesOutAsExcel.test.ts
+@@ -0,0 +1,122 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import ExcelJS from 'exceljs';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { MAX_TABLE_ROWS, tableFromMessage, tableWorkbook } from '../messageTable';
++import { shownAssistantReply } from '../threads.service';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/**
++ * 894 (b), 2347 (Lika's second phone file, 16 Oct): „give me these three names
++ * as Excel" got text and no file. One reply's list or table now comes out as
++ * an .xlsx.
++ */
++describe('what a reply lists', () => {
++  it('reads a numbered list one item per row, emphasis dropped', () => {
++    const reply = 'აი სია:\n\n1. **ნინო ბერიძე**\n2. გიორგი კაპანაძე\n3. ლევან ჯაში\n\nსხვა რამე?';
++    expect(tableFromMessage(reply)).toEqual([['ნინო ბერიძე'], ['გიორგი კაპანაძე'], ['ლევან ჯაში']]);
++  });
++
++  it('reads a bulleted list the same way', () => {
++    expect(tableFromMessage('- Ana\n* Beka\n• Dato')).toEqual([['Ana'], ['Beka'], ['Dato']]);
++  });
++
++  it('reads a Markdown table header first, cell by cell, without its separator line', () => {
++    const reply = '| სახელი | კომპანია |\n|---|:--:|\n| ნინო | TBC |\n| გიორგი | BoG |';
++    expect(tableFromMessage(reply)).toEqual([
++      ['სახელი', 'კომპანია'],
++      ['ნინო', 'TBC'],
++      ['გიორგი', 'BoG'],
++    ]);
++  });
++
++  it('prefers the table when a reply has both', () => {
++    const reply = '1. intro\n2. more\n\n| a | b |\n|---|---|\n| 1 | 2 |';
++    expect(tableFromMessage(reply)).toEqual([
++      ['a', 'b'],
++      ['1', '2'],
++    ]);
++  });
++
++  it('finds nothing in a reply that lists nothing, or only one line', () => {
++    expect(tableFromMessage('თბილისში დღეს მზიანი ამინდია.')).toBeNull();
++    expect(tableFromMessage('1. მხოლოდ ერთი')).toBeNull();
++    expect(tableFromMessage('')).toBeNull();
++  });
++
++  it('keeps at most the row limit', () => {
++    const long = Array.from({ length: MAX_TABLE_ROWS + 5 }, (_, i) => `${i + 1}. row`).join('\n');
++    expect(tableFromMessage(long)).toHaveLength(MAX_TABLE_ROWS);
++  });
++});
++
++describe('the workbook', () => {
++  it('opens with every row and the Georgian text intact', async () => {
++    const rows = [
++      ['სახელი', 'კომპანია'],
++      ['ნინო', 'TBC'],
++    ];
++    const book = new ExcelJS.Workbook();
++    await book.xlsx.load((await tableWorkbook(rows)) as unknown as ArrayBuffer);
++    const sheet = book.worksheets[0];
++    expect(sheet.rowCount).toBe(2);
++    expect(sheet.getRow(1).getCell(1).text).toBe('სახელი');
++    expect(sheet.getRow(2).getCell(2).text).toBe('TBC');
++  });
++});
++
++describe('the reply a file is made from', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('is only a shown answer of that same thread', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ content: '1. a\n2. b' }] } as never);
++    expect(await shownAssistantReply(7, 'abc-1')).toBe('1. a\n2. b');
++    const [sql, params, timeout] = mockQuery.mock.calls[0];
++    expect(sql).toContain('thread_id = $1');
++    expect(sql).toContain('id::text = $2');
++    expect(sql).toContain("role = 'assistant'");
++    expect(sql).toContain("kind = 'message'");
++    expect(params).toEqual([7, 'abc-1']);
++    expect(timeout).toBeGreaterThan(0);
++  });
++
++  it('is null when there is no such reply', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    expect(await shownAssistantReply(7, 'missing')).toBeNull();
++  });
++});
++
++/**
++ * The route is a closure in threadsRouter and this repository has no
++ * supertest, so its guards are held by their text (the house precedent:
++ * theStopDoesNotQueueBehindTheRun.test.ts).
++ */
++describe('GET /threads/:id/messages/:messageId/table.xlsx', () => {
++  const routes = readFileSync(
++    join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
++    'utf8',
++  );
++  const at = routes.indexOf("'/:id/messages/:messageId/table.xlsx'");
++  const handler = routes.slice(at, at + 1_800);
++
++  it('exists, rate-limited and validated', () => {
++    expect(at).toBeGreaterThan(-1);
++    expect(handler).toContain('rateLimit(');
++    expect(handler).toContain("param('id').isInt({ min: 1 })");
++    expect(handler).toContain("param('messageId').matches(MESSAGE_ID_RE)");
++  });
++
++  it('reads the reply only after the thread is the caller’s own', () => {
++    expect(handler).toContain('const thread = await getThread(threadId, userId);');
++    expect(handler).toMatch(/thread === null \? null : await shownAssistantReply\(/u);
++  });
++
++  it('answers 404 when there is nothing to put in a file', () => {
++    expect(handler).toContain('if (rows === null) {');
++    expect(handler).toContain('res.status(404)');
++  });
++});
+diff --git a/src/services/messageTable.ts b/src/services/messageTable.ts
+new file mode 100644
+index 0000000..19830b0
+--- /dev/null
++++ b/src/services/messageTable.ts
+@@ -0,0 +1,74 @@
++import ExcelJS from 'exceljs';
++import { fitsACell } from './listItems.service';
++
++/**
++ * 894 (b) and 2347, Lika's second phone file (16 Oct): „give me these three
++ * names as Excel" got the names as text and no file. The only Excel that
++ * could come out of Netai was a worked UPLOADED list (GET
++ * /thread-files/goals/:taskId/list.xlsx); a list Netai itself wrote in a
++ * reply had no way out but copying.
++ *
++ * This reads one reply the owner already sees and turns what it lists into
++ * rows: a Markdown table cell by cell, or a numbered or bulleted list one item
++ * per row. A reply with neither has no table, and nothing is made up for it.
++ */
++export const MAX_TABLE_ROWS = 500;
++/** A list of one line is a sentence, not a list. */
++const MIN_LIST_ITEMS = 2;
++const SHEET_NAME = 'Netai';
++
++const TABLE_LINE_RE = /^\s*\|(.*)\|\s*$/u;
++/** `|---|:--:|` — the line under a Markdown table's header. */
++const SEPARATOR_CELL_RE = /^\s*:?-+:?\s*$/u;
++const LIST_ITEM_RE = /^\s*(?:\d{1,3}[.)]|[-*•])\s+(.+?)\s*$/u;
++const EMPHASIS_RE = /(\*\*|__|`)/gu;
++
++function cleanCell(cell: string): string {
++  return cell.replace(EMPHASIS_RE, '').replace(/\s+/gu, ' ').trim();
++}
++
++function tableCells(line: string): string[] | null {
++  const match = TABLE_LINE_RE.exec(line);
++  return match === null ? null : match[1].split('|').map(cleanCell);
++}
++
++function isSeparator(cells: readonly string[]): boolean {
++  return cells.length > 0 && cells.every((cell) => SEPARATOR_CELL_RE.test(cell));
++}
++
++/** The first Markdown table in the text, header first; null when there is none. */
++function markdownTable(lines: readonly string[]): string[][] | null {
++  const start = lines.findIndex((line) => tableCells(line) !== null);
++  if (start === -1) return null;
++  const rows: string[][] = [];
++  for (const line of lines.slice(start)) {
++    const cells = tableCells(line);
++    if (cells === null) break;
++    if (!isSeparator(cells)) rows.push(cells);
++  }
++  return rows.length >= MIN_LIST_ITEMS ? rows : null;
++}
++
++/** The numbered or bulleted items of the text, one per row; null under two. */
++function listItems(lines: readonly string[]): string[][] | null {
++  const items = lines
++    .map((line) => LIST_ITEM_RE.exec(line))
++    .filter((match): match is RegExpExecArray => match !== null)
++    .map((match) => [cleanCell(match[1])]);
++  return items.length >= MIN_LIST_ITEMS ? items : null;
++}
++
++/** What one reply lists, as rows of cells; null when it lists nothing. */
++export function tableFromMessage(text: string): string[][] | null {
++  const lines = text.split(/\r?\n/u);
++  const rows = markdownTable(lines) ?? listItems(lines);
++  return rows === null ? null : rows.slice(0, MAX_TABLE_ROWS);
++}
++
++/** The rows as a one-sheet workbook, every cell within Excel's limit. */
++export async function tableWorkbook(rows: readonly (readonly string[])[]): Promise<Buffer> {
++  const book = new ExcelJS.Workbook();
++  const sheet = book.addWorksheet(SHEET_NAME);
++  for (const row of rows) sheet.addRow(row.map(fitsACell));
++  return Buffer.from(await book.xlsx.writeBuffer());
++}
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index dd86451..acab505 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -1396,6 +1396,26 @@ export async function getLongestRunStep(threadId: number, runId: string): Promis
+  */
+ const LAST_MESSAGE_QUERY_TIMEOUT_MS = 5_000;
+ 
++/**
++ * 894 (b): one reply of the assistant as the owner reads it, for a file made
++ * from it. Only a shown answer (`kind = 'message'`) of this thread; null for
++ * anything else, so a step or an engine turn never leaves as a file.
++ */
++export async function shownAssistantReply(
++  threadId: number,
++  messageId: string,
++): Promise<string | null> {
++  const result = await query<{ content: string }>(
++    `SELECT content FROM conversations
++     WHERE thread_id = $1 AND id::text = $2 AND role = 'assistant' AND kind = 'message'
++     LIMIT 1`,
++    [threadId, messageId],
++    LAST_MESSAGE_QUERY_TIMEOUT_MS,
++  );
++  const content = result.rows[0]?.content;
++  return content === undefined ? null : contentForDisplay('assistant', content);
++}
++
+ /**
+  * `alsoTold`: another line that already says the same thing (37621 — the free
+  * answer's „tokens are at zero" makes the engine's „work is paused" a repeat).
+-- 
+2.43.0
+

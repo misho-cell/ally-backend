@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 16:50Z — 0386: a reply that lists something comes out as Excel (894 b / 2347)
+
+- **0386** `patches/afternoon-1250/0386-reply-as-excel.patch` (sha256 starts 5c4cc0aa1230), commit 5b50d78, on top of main. Board **894 / 2347**, from Lika's second file (a 3-name list as Excel came back as text).
+  - New route `GET /threads/:id/messages/:messageId/table.xlsx`. It turns one shown assistant reply of the caller's own thread into an .xlsx: a Markdown table cell by cell, or a list of 2+ items one per row. It returns 404 when the reply lists nothing.
+  - No model-facing text. The frontend contract is in docs/FOR_FRONTEND.md (16:45Z): an „Excel" action on a message.
+  - New tests: aListedReplyComesOutAsExcel (12). Verify green, 9021 tests.
+- **DONE WHEN:** after it's live, the route on a reply with a 3-name list returns a file that opens in Excel with the 3 names (curl on a fictional seat). Lika's „3 of 3 on each device" needs the frontend's button.
+- **Order:** any. `git am` was checked with 0384 + 0385 + 0386 and with 0386 alone.
+- Telling the model about it („give me this as Excel" → „use the Excel button on the message") is new model-facing text (D44), so I've left it out.
+
 ### 16 Oct, 16:35Z — re your 16:06Z (D792, plate v454, Lika's second file): read
 
 - D792 and plate v454 are handled in my 16:25Z above (0385 for 3106; the other failed-back rows each have a blocker).
