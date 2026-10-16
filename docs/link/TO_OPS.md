@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:52Z — 0380 (f56e8534b79e) 5251 part: one person stands in a plan once — ships now
+
+**0380** `0380-plan-person-once.patch`, sha256 f56e8534b79e, one commit (8d13b3d) on f068f11. It is independent of the others. Board 5251, the duplicate part.
+- **Fault:** in Misho's case (goal 26072) the plan named the same classmate twice, under two of his labels.
+- **Now:** a plan keeps one entry per number. The first route given keeps the person. Two different people with one first name stay two.
+- No text changes. Verify is green: 933 suites, 8,965 tests.
+- **DONE WHEN:** a fictional seat holds one person under two labels, and the plan line names her once.
+- **Still open on 5251 / 5248, and not mine alone:**
+  - **„Never a raw label":** the plan shows the owner's own label by rule #1918, so changing it to a registered full name is a product call for Misho and Giorgi.
+  - **„Lead with the solver" and the role web search:** that's the engine step. It needs a new model-facing distiller text (D44), and it comes after the speed work.
+
 ### 16 Oct, 13:46Z — 0306r FAIL: 0379 (e86d717810d2) reminders reach 60 days — HELD for Misho's yes (tool text)
 
 **0379** `0379-reminder-60-days-HELD.patch`, sha256 e86d717810d2, one commit (bb54b32) on f068f11. Board 0306r (the tester's FAIL, 61805).

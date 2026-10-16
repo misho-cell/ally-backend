@@ -1,0 +1,86 @@
+From 8d13b3d6b91ba9c6bbcc6f0746af2a44e1cc5e4c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 13:51:01 +0000
+Subject: [PATCH] 5251: one person stands in a plan once
+
+Misho's own case (goal 26072): the plan the owner read named the same
+classmate twice, under two of his labels. The plan now keeps one entry per
+number: the first route given keeps the person, a second entry for the same
+number is dropped. Two different people with one first name stay two.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../onePersonStandsInThePlanOnce.test.ts      | 44 +++++++++++++++++++
+ src/services/taskPlans.service.ts             |  4 ++
+ 2 files changed, 48 insertions(+)
+ create mode 100644 src/services/__tests__/onePersonStandsInThePlanOnce.test.ts
+
+diff --git a/src/services/__tests__/onePersonStandsInThePlanOnce.test.ts b/src/services/__tests__/onePersonStandsInThePlanOnce.test.ts
+new file mode 100644
+index 0000000..e67c9d7
+--- /dev/null
++++ b/src/services/__tests__/onePersonStandsInThePlanOnce.test.ts
+@@ -0,0 +1,44 @@
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn() }));
++
++import { parsePlan, planInSentences } from '../taskPlans.service';
++
++const ROUTE = { name: 'ჩემი კონტაქტები', status: 'waiting' };
++
++function planWith(people: { name: string; phone: string }[]): unknown {
++  return {
++    solved_when: 'სესხის განაცხადს პასუხი გაეცა',
++    routes: [ROUTE],
++    people_to_involve: people.map((p) => ({ ...p, route: ROUTE.name })),
++  };
++}
++
++/** 5251 (Misho's own case, goal 26072): the same classmate stood in the plan twice. */
++describe('one person stands in the plan once', () => {
++  it('keeps the first of two entries for one number, whatever the label', () => {
++    const parsed = parsePlan(
++      planWith([
++        { name: 'თიკო ბერიძე', phone: '+995599000001' },
++        { name: 'კლასელი თიკო', phone: '995599000001' },
++        { name: 'ლევან ტესტაძე', phone: '+995599000002' },
++      ]),
++    );
++
++    expect(parsed.ok).toBe(true);
++    if (!parsed.ok) return;
++    expect(parsed.value.people_to_involve.map((p) => p.name)).toEqual([
++      'თიკო ბერიძე',
++      'ლევან ტესტაძე',
++    ]);
++    expect(planInSentences(parsed.value, 'ka')).not.toContain('კლასელი თიკო');
++  });
++
++  it('keeps two different people with the same first name', () => {
++    const parsed = parsePlan(
++      planWith([
++        { name: 'ნინო ბერიძე', phone: '+995599000003' },
++        { name: 'ნინო კაპანაძე', phone: '+995599000004' },
++      ]),
++    );
++    expect(parsed.ok && parsed.value.people_to_involve).toHaveLength(2);
++  });
++});
+diff --git a/src/services/taskPlans.service.ts b/src/services/taskPlans.service.ts
+index 4154695..ad9ce2a 100644
+--- a/src/services/taskPlans.service.ts
++++ b/src/services/taskPlans.service.ts
+@@ -346,6 +346,10 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
+           routes.map((r) => `"${r.name}"`).join(', '),
+       };
+     }
++    // 5251 (Misho's own case, goal 26072): one person stood in the plan twice, under two
++    // labels, and the owner read the same classmate named twice. One person, one place:
++    // the first route given keeps her.
++    if (people.some((known) => phoneDigits(known.phone) === phoneDigits(phone))) continue;
+     // Stored as the route's OWN spelling, never the person's, so the plan
+     // stays internally consistent whatever case the model used.
+     people.push({ name: name.value, phone, route });
+-- 
+2.43.0
+
