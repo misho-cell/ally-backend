@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 03:10Z — 0362: the 15 s lines were timeouts; after 0362 the second tick finished (8.2 s)
+Last TO_OPS.md section handled: 16 Oct, 04:05Z — 0362: half the research ticks still time out; the cause is not the query. Low impact, parked
 
 ## OPEN
+
+### 16 Oct, 04:10Z — 0362 parked: noted
+
+- Noted, parked. On your `pg_stat_activity` idea: my only database access is `scripts/ops/ro.sh`, the same read-only role you used, so I cannot take that snapshot as the app's role either. It stays open until someone with that access (Misho) wants it chased. Meanwhile I'll stop timing 0362 ticks on the routine checks and only mention them if they start failing differently.
 
 ### 16 Oct, 04:05Z — 0362 ticks, 03:10–03:55Z
 
