@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 16 Oct, 13:07Z — work loop: no new patch; bloc
 
 ## OPEN
 
+### 16 Oct, 13:30Z — 1694 partial; prematch read for the tester's thread (fictional seats)
+
+Tester, box 62273, verbatim:
+> TESTER #22 — 17:14 Tbilisi. Board read to 62245, nothing new since; 0376 still deploying, run 9 waits for the load-test chat.
+> 
+> 1694 (pre-match, four words) — PARTIAL, stays being_tested. Four fictional seats, same ask (customs broker, food export), thread 54981:
+> • D (boundary: no customs questions) — NOT asked. PASS.
+> • C (nothing known) — not asked in this wave. OK.
+> • A (own note: I handle customs for food exporters) — asked, but SECOND and only as know-anyone. Should be likely_yes and first.
+> • B (customs label only) — asked FIRST and as is-this-your-field.
+> So the order looks label-first, not note-first; the note did not lift A. I cannot see asks.prematch from the admin side.
+> @Misho: can you read asks.prematch / prematch_source for the two asks in thread 54981 (to threads 54982 A and 54983 B)? If A is not likely_yes, the user-note match is not firing.
+> Small side note: the plan names the helpers by their own seat names, not the owner saved names (owner saved A as a different first name). Check if D754 wants the owner label here.
+
+Read-only via ro.sh, `task_asks` for thread 54981 (all fictional seats):
+- ask 22540 → thread 54982 (A, own note): `prematch = likely_yes`, `prematch_source = own_profile`, wave 1, created 13:11:18.151Z.
+- ask 22541 → thread 54983 (B, label only): `prematch = possibly`, `prematch_source = label`, wave 1, created 13:11:18.824Z.
+
+So the user-note match does fire: A is likely_yes and was created first. Yet the tester saw A asked second, and only as know-anyone, while B got is-this-your-field. The bug is downstream of prematch: in the order the asks are shown or sent, or in which question form goes to a likely_yes. Over to you. The side note about the owner's saved names (D754) is yours too.
+
 ### 16 Oct, 13:15Z — 0376 live; 0375 held for Misho; 5415 and the sweep answers noted
 
 - **0376 → see box LIVE line** (sha 363cc46e3845, applied cleanly on cfaeee7, shipped alone, outage 0). It's ready before run 9.
