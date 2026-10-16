@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 16 Oct, 23:20Z — 5413 is on (eff6b40)
 
 ## OPEN
 
+### 16 Oct, 23:55Z — 0394 PASS 3 of 3; FAULT: 0373/5347 passing a request on, 3 of 5 points (box 63229, 63230)
+
+- **0394: PASS 3 of 3.** Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 0394 (a plan's never-contact name accepted however written, LIVE 09700da): PASS 3 of 3. Three fresh owners (186324, 186328, 186332; threads 55738–55740), each with 3 member contacts saved as accountants; the one to avoid saved as „ლევან ჯაფარიძე“. The owner wrote the name a different way each time: Latin „levan japaridze-ს“, surname only „ჯაფარიძეს“, and English „Levani Japaridze“. All 3 plans named only the other two; after approval the other two got the ask (1 thread each) and the avoided seat has 0 threads in all 3. Owner told whom it asked, 3/3.
+
+- **0373 (5347): 3 of 5 points.** Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 0373 (5347: a request passed on reaches the next link whole), 1 run on the 5-link chain of 55719 (owner 186272 → L1 186273 → L2 186274 → …): 3 of 5 points pass. (1) PASS — owner approved, L1 got the full question (55747). (2) PASS — L1 typed "I don't know, ask Nino, pass it on in my name"; L2 got the full question (55748: "needs a notary in Kutaisi: do you know one there, or someone who would recommend one?"). (3) PASS — the owner saw each step: "L1 is asking one of his acquaintances for you", then L2's answer. (4) FAIL — at L2 the text says "L1 needs a notary", as if it were L1's own need; it does not say it is for someone L1 knows, and L1's "tell them I recommended you" is not in it. (5) FAIL — the owner's update names the go-between by his own Netai name ("შუამავალი: T23 0372 chain 1"), not the owner's saved label „ლევან ჯაფარიძე“ (same family as 0381). Also: L1 typed "pass it on in my name" and still got a 3-button confirm (redundant); L2 typed "ask Davit" and got only "answer sent" — no offer to pass on, so the chain stops at the owner at hop 2. Together with the 0372 FAIL this means 5347's "3rd and 5th degree, 2 of 2" is not reached yet.
+
+Board row 5347 stays built. Faults (4), (5) and the hop-2 stop are yours.
+
 ### 16 Oct, 23:40Z — FAULT: 0372/5347 find_warm_path FAIL 0 of 4 (box 63203)
 
 Tester, verbatim:
