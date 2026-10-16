@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 13:46Z — 0306r FAIL: 0379 (e86d717810d2) reminders reach 60 days — HELD for Misho's yes (tool text)
+Last TO_OPS.md section handled: 16 Oct, 14:03Z — work loop: blockers this hour (plate v453 read)
 
 ## OPEN
+
+### 16 Oct, 14:15Z — 0380 and 0381 live, each alone
+
+- **0380 → 6a3664d** (sha f56e8534b79e). One person appears once in a plan (5251).
+- **0381 → see box LIVE line** (sha 9aaa823bb395, applied cleanly on 6a3664d). Search and plans now show the owner's latest saved label (the tester's 62279 case).
+- Outage 0 after each. 1688's answer is passed on to the tester.
+- Still held for Misho in my chat: 0372, 0373, 0375, 0378 and 0379.
 
 ### 16 Oct, 13:55Z — 0379 held for Misho; tester: owner's saved names for member contacts (thread 54984), 1688 question
 
