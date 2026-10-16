@@ -1,0 +1,177 @@
+From 1194f83ada6b5e0feb1b4a281973c4cb687b8391 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 14:48:41 +0000
+Subject: [PATCH] The owner's latest saved label names a person in the server's
+ own lines
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 62340 (55012, 55015): after 0381, search showed the owner's
+latest label, but the sent-to sentence and the status list still said
+„Helper C" for the person the owner had renamed „Levani". Those lines read
+the name through nameAsSavedBySql, which kept the longest clean label, and
+the old seat label was the longer one.
+
+The label the owner saved last now wins there, and in the five other
+places that show the owner (or a bridge) one saved label: the bridge's own
+name for a number, the search via-name, the mediator's label, the daily
+contact question and the new-member note. The name matcher in createAsk
+keeps the longest match, which is about matching text, not showing it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/services/__tests__/ownLabelIsTheName.test.ts       |  6 ++++--
+ src/services/bridgePicker.ts                           |  4 ++--
+ src/services/dailyContactQuestion.ts                   |  2 +-
+ src/services/mediatorTargetName.ts                     |  2 +-
+ src/services/newMemberForGoal.service.ts               |  2 +-
+ src/services/savedNameSql.ts                           | 10 +++++++---
+ .../theUsableRouteMustReachTheRanking.test.ts          |  6 +++---
+ src/services/tools/searchSecondDegree.ts               |  2 +-
+ 8 files changed, 20 insertions(+), 14 deletions(-)
+
+diff --git a/src/services/__tests__/ownLabelIsTheName.test.ts b/src/services/__tests__/ownLabelIsTheName.test.ts
+index 892f72a..2dfbfbc 100644
+--- a/src/services/__tests__/ownLabelIsTheName.test.ts
++++ b/src/services/__tests__/ownLabelIsTheName.test.ts
+@@ -33,8 +33,10 @@ describe('the name a viewer sees for a member', () => {
+     expect(sql.lastIndexOf('"UserAlias"')).toBeGreaterThan(sql.indexOf('"User" sv_u'));
+   });
+ 
+-  it('picks the same spelling every time', () => {
+-    expect(sql).toContain('ORDER BY LENGTH(TRIM(sv_ua.alias)) DESC, sv_ua.alias');
++  // 62340: the label saved last wins, not the longest (Helper C over Levani).
++  it('picks the label the viewer saved last', () => {
++    expect(sql).toContain('ORDER BY sv_ua.id DESC');
++    expect(sql).not.toContain('LENGTH(TRIM(sv_ua.alias)) DESC');
+   });
+ 
+   it('looks from the asker at the asked, and from the reader at the asker', () => {
+diff --git a/src/services/bridgePicker.ts b/src/services/bridgePicker.ts
+index 48422c4..e4940dc 100644
+--- a/src/services/bridgePicker.ts
++++ b/src/services/bridgePicker.ts
+@@ -249,7 +249,7 @@ function detailsByName(
+   return details;
+ }
+ 
+-/** The bridge's own name for one phone: registered name, else their fullest label. */
++/** The bridge's own name for one phone: registered name, else the label they saved last. */
+ export async function nameInBridgeBook(
+   bridgeUserId: string,
+   phone: string,
+@@ -265,7 +265,7 @@ export async function nameInBridgeBook(
+         -- compared as digits, so the bridge's own name is found either way.
+         AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+         AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+-      ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
++      ORDER BY ua.id DESC
+       LIMIT 1`,
+     [bridgeUserId, phone],
+     PICKED_NAME_TIMEOUT_MS,
+diff --git a/src/services/dailyContactQuestion.ts b/src/services/dailyContactQuestion.ts
+index 2f179b1..87344dc 100644
+--- a/src/services/dailyContactQuestion.ts
++++ b/src/services/dailyContactQuestion.ts
+@@ -167,7 +167,7 @@ async function questionAwaitingAnswer(userId: string): Promise<PendingQuestion |
+                WHERE ua."contactId" = l.user_id
+                  AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace(l.phone, '\\D', '', 'g')
+                  AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+-               ORDER BY LENGTH(TRIM(ua.alias)) DESC LIMIT 1) AS label,
++               ORDER BY ua.id DESC LIMIT 1) AS label,
+             l.missing_fact
+        FROM curiosity_surfacing_log l
+       WHERE l.user_id = $1::int AND l.surfaced_at > NOW() - make_interval(hours => $2)
+diff --git a/src/services/mediatorTargetName.ts b/src/services/mediatorTargetName.ts
+index 3a75f2f..c22a9bb 100644
+--- a/src/services/mediatorTargetName.ts
++++ b/src/services/mediatorTargetName.ts
+@@ -74,7 +74,7 @@ async function mediatorsOwnLabel(mediatorUserId: number, phone: string): Promise
+       WHERE ua."contactId" = $1::int
+         AND regexp_replace(ua.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+         AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+-      ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
++      ORDER BY ua.id DESC
+       LIMIT 1`,
+     [mediatorUserId, phone],
+     MEDIATOR_NAME_TIMEOUT_MS,
+diff --git a/src/services/newMemberForGoal.service.ts b/src/services/newMemberForGoal.service.ts
+index 8292082..e3e00ec 100644
+--- a/src/services/newMemberForGoal.service.ts
++++ b/src/services/newMemberForGoal.service.ts
+@@ -175,7 +175,7 @@ export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTh
+          SELECT ua.alias
+            FROM "UserAlias" ua
+           WHERE ua."contactId"::text = tg.user_id AND ua.phone = $1
+-          ORDER BY LENGTH(TRIM(ua.alias)) DESC
++          ORDER BY ua.id DESC
+           LIMIT 1
+        ) own_label ON TRUE
+       -- ⚠️ NOT THE OWNER ABOUT THEMSELVES, and this guard only started doing
+diff --git a/src/services/savedNameSql.ts b/src/services/savedNameSql.ts
+index 691ba32..174034d 100644
+--- a/src/services/savedNameSql.ts
++++ b/src/services/savedNameSql.ts
+@@ -5,8 +5,12 @@
+  * another owner's label is never shown to her.
+  *
+  * The name the VIEWER sees for MEMBER: the viewer's own label for any of the
+- * member's numbers (the fullest clean spelling, ties broken alphabetically so
+- * it never changes between two replies), else the member's registered name.
++ * member's numbers (the one she saved last, so a rename shows at once and the
++ * same name comes back every reply), else the member's registered name.
++ *
++ * The tester's 62340 (55012, 55015): a seat saved as „Helper C …" and later as
++ * „Levani …" was still told as Helper C, because the longer label won. The
++ * latest label wins here as it does in search (0381).
+  * Both arguments are SQL expressions for integer user ids — column
+  * references, never text from a request.
+  *
+@@ -30,7 +34,7 @@ function labelOf(viewerIdSql: string, memberIdSql: string, cleanOnly: boolean):
+         AND sv_up."userId" = ${memberIdSql}
+         AND NULLIF(TRIM(sv_ua.alias), '') IS NOT NULL
+         ${clean}
+-      ORDER BY LENGTH(TRIM(sv_ua.alias)) DESC, sv_ua.alias
++      ORDER BY sv_ua.id DESC
+       LIMIT 1)`;
+ }
+ 
+diff --git a/src/services/tools/__tests__/theUsableRouteMustReachTheRanking.test.ts b/src/services/tools/__tests__/theUsableRouteMustReachTheRanking.test.ts
+index 6b8647a..df3a154 100644
+--- a/src/services/tools/__tests__/theUsableRouteMustReachTheRanking.test.ts
++++ b/src/services/tools/__tests__/theUsableRouteMustReachTheRanking.test.ts
+@@ -238,13 +238,13 @@ describe('one bridge is named once', () => {
+ 
+   /**
+    * Deterministic, because a search run twice that names the bridge two
+-   * different ways is its own bug. Longest spelling wins — the fullest form of
+-   * the name is the one worth showing — and the alias itself breaks a tie.
++   * different ways is its own bug. The label the owner saved last wins (62340),
++   * the same rule as every other line she reads.
+    */
+   it('chooses the same spelling every time', () => {
+     const lateral = sql.slice(sql.indexOf('LEFT JOIN LATERAL ('), sql.indexOf(') ua_via ON TRUE'));
+ 
+-    expect(lateral).toContain('ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias');
++    expect(lateral).toContain('ORDER BY ua.id DESC');
+     expect(lateral).toContain('LIMIT 1');
+   });
+ 
+diff --git a/src/services/tools/searchSecondDegree.ts b/src/services/tools/searchSecondDegree.ts
+index 972b032..7abefcc 100644
+--- a/src/services/tools/searchSecondDegree.ts
++++ b/src/services/tools/searchSecondDegree.ts
+@@ -1280,7 +1280,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
+           WHERE ua.phone = fu.via_phone
+             AND ua."contactId" = $1
+             AND NULLIF(TRIM(ua.alias), '') IS NOT NULL
+-          ORDER BY LENGTH(TRIM(ua.alias)) DESC, ua.alias
++          ORDER BY ua.id DESC
+           LIMIT 1
+        ) ua_via ON TRUE
+        LEFT JOIN "User"      u_via  ON u_via.id     = fu."userId"
+-- 
+2.43.0
+

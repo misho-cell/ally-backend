@@ -1,0 +1,88 @@
+From be66ae878c958aca73b926c30677136255dcf4a0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 14:53:21 +0000
+Subject: [PATCH] =?UTF-8?q?One=20=E2=80=9Eother"=20button=20under=20an=20i?=
+ =?UTF-8?q?ncoming=20question?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 62340 (55014): B's card carried the model's own „სხვა პასუხი"
+and the server's „სხვა, მე დავწერ" after it, two buttons for one act.
+withServerOther checked only for its own exact label. A model-written
+„other" (the same starts withOtherChoice already recognises) is now
+dropped and the server's goes last, since only the server's opens the box
+instead of sending a word.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/anAskCarriesTheOtherButton.test.ts       |  7 +++++++
+ src/services/askChoices.ts                             | 10 +++++++---
+ src/services/otherChoice.ts                            |  2 +-
+ 3 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/src/services/__tests__/anAskCarriesTheOtherButton.test.ts b/src/services/__tests__/anAskCarriesTheOtherButton.test.ts
+index 335a5c5..9e0d847 100644
+--- a/src/services/__tests__/anAskCarriesTheOtherButton.test.ts
++++ b/src/services/__tests__/anAskCarriesTheOtherButton.test.ts
+@@ -37,6 +37,13 @@ describe('the buttons under an incoming question', () => {
+     expect(withServerOther([], 'ka')).toEqual([]);
+   });
+ 
++  // The tester's 62340 (55014): the model's „სხვა პასუხი" and the server's „other" both showed.
++  it('replace the model’s own „other" with the server’s, so there is one', () => {
++    const modelsOther = [...THREE, { label: 'სხვა პასუხი', means: ChoiceMeaning.Answer }];
++    const labels = withServerOther(modelsOther, 'ka').map((choice) => choice.label);
++    expect(labels).toEqual([...THREE.map((choice) => choice.label), otherChoiceLabel('ka')]);
++  });
++
+   it('are given it where the ask is written', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+     expect(asks).toMatch(/const choices = withServerOther\(\s+withPeopleDetails\(/);
+diff --git a/src/services/askChoices.ts b/src/services/askChoices.ts
+index 6a43a50..f8d6bd5 100644
+--- a/src/services/askChoices.ts
++++ b/src/services/askChoices.ts
+@@ -1,5 +1,5 @@
+ import { AskTap, askTapOf, laterChoice } from './askOpening';
+-import { otherChoiceLabel } from './otherChoice';
++import { isAnOtherOption, otherChoiceLabel } from './otherChoice';
+ import { RunLanguage } from './runLanguage';
+ 
+ /**
+@@ -118,12 +118,16 @@ export function withServerLater(choices: readonly AskChoice[], language: RunLang
+  * carries „other — I'll write it"; the asks were the one set without it. It
+  * goes last, in the reader's language, so the app opens the box (prefilled by
+  * #1688 part 2) instead of sending a word. A set with no buttons gets none.
++ *
++ * The tester's 62340 (55014): the model wrote its own „სხვა პასუხი" and the
++ * server's went after it, two buttons for one act. The model's „other" sends
++ * a word; the server's opens the box. So the server's replaces it.
+  */
+ export function withServerOther(choices: readonly AskChoice[], language: RunLanguage): AskChoice[] {
+   if (choices.length === 0) return [];
+   const label = otherChoiceLabel(language);
+-  if (choices.some((choice) => choice.label === label)) return [...choices];
+-  return [...choices, { label, means: ChoiceMeaning.Answer }];
++  const answers = choices.filter((choice) => !isAnOtherOption(choice.label));
++  return [...answers, { label, means: ChoiceMeaning.Answer }];
+ }
+ 
+ /** The fixed labels of an older ask, read as meanings — so every ask carries them. */
+diff --git a/src/services/otherChoice.ts b/src/services/otherChoice.ts
+index 15fbb83..4303120 100644
+--- a/src/services/otherChoice.ts
++++ b/src/services/otherChoice.ts
+@@ -22,7 +22,7 @@ const OTHER_LABELS: Readonly<Record<RunLanguage, string>> = {
+ /** The words an „other" option starts with, in every language we speak. */
+ const OTHER_STARTS = ['სხვა', 'other', 'другое', 'otro'];
+ 
+-function isAnOtherOption(label: string): boolean {
++export function isAnOtherOption(label: string): boolean {
+   const lowered = label.trim().toLowerCase();
+   return OTHER_STARTS.some((start) => lowered.startsWith(start));
+ }
+-- 
+2.43.0
+

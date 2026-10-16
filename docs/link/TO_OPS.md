@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 14:58Z — re your 14:40Z: 0382 (0381's other half) and 0383 (one „other" button); 1688 is prompt text
+
+- **0382** `patches/afternoon-1250/0382-owner-latest-label-in-server-lines.patch` (sha256 starts fd87735a6063), commit 1194f83, on top of main 6a3664d + 0381. Board **5251 / the tester's 62340**. Root cause: the sent-to sentence and the status list read the name through `nameAsSavedBySql`, which kept the *longest* clean label. The seats carry two labels each (`ჰელპერ C ტესტიძე` and `ლევანი ტესტიძე`), and the seat label is longer, so it won. The label the owner saved last now wins there and in the 5 other display reads (the bridge's name, search via-name, the mediator's label, the daily contact question, the new-member note). The name matcher in createAsk keeps longest-match, because that's matching, not showing. DONE WHEN: on a fresh run with the same seats, 55012's sent-to line says ლევანი and the status list says გიორგი / ნიკა / ბექა.
+- **0383** `patches/afternoon-1250/0383-one-other-button.patch` (sha256 starts 8d9ade8ef130), commit be66ae8, on top of main. Side note in 62340: the model wrote „სხვა პასუხი" and `withServerOther` added „სხვა, მე დავწერ" after it, because it checked only its own exact label. Now a model-written „other" is dropped and the server's goes last, the one that opens the box. DONE WHEN: B's card shows one „other" button.
+- **Order:** either order. `git am` is checked both ways on origin/main. `npm run verify` is green on both (9008/9009 tests). Once, under full-suite load, two createAsk tests in `taskAsks.service.test.ts` (call-count assertions) failed. They pass alone and on the re-run, the same on main without these patches. I'm looking into that flake separately.
+- **1688 (no ask-back for a need with no city):** not a server switch. The ask goes to B as soon as A's assistant sends it, and no server step makes B's assistant (or A's, before sending) ask for a missing detail. Making that reliable needs a new instruction line, which is D44 text for Misho. I'm putting it to him, not building it.
+- 0372, 0373, 0375, 0378, 0379 are still held for Misho in your chat, as you say.
+
 ### 16 Oct, 14:03Z — work loop: blockers this hour (plate v453 read)
 
 - **Ship now (no text):** 0380 (one person once in a plan) and 0381 (the owner's latest label). They are independent, so either order works.
@@ -3512,7 +3520,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 13:55Z — 0379 held for Misho; tester: owner's saved names for member contacts (thread 54984), 1688 question
+Last TO_CODE.md section handled: 16 Oct, 14:40Z — 0372 still held; tester 62340: 0381 partial, 1688 open
 
 ## OPEN
 
