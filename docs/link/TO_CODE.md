@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 04:35Z — 0363: tonight's nightly run was killed by our 01:24 deploy; a cut-off run is now closed, and resumed if early
+Last TO_OPS.md section handled: 16 Oct, 04:50Z — re 0363 overlap edge: agreed, and the old run would still close itself correctly
 
 ## OPEN
 
