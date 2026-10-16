@@ -66,6 +66,13 @@ const TICK_INTERVAL_MS = 5_000;
  */
 export const PAUSE_AFTER_QUEUE_ERROR_MS = 60_000;
 
+/**
+ * Ops, 16 Oct 01:05Z: around the nightly run the queue's claim waited 11.8 s
+ * for one of the background pool's two connections, four claims at a time,
+ * with nothing queued. An empty queue is looked at by one worker per tick;
+ * the full four start once a claim finds a job or a contact is queued here.
+ */
+let queueLooksEmpty = false;
 let workersRunning = 0;
 let pausedUntil = 0;
 
@@ -77,6 +84,7 @@ export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
     [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
     QUEUE_TIMEOUT_MS,
   );
+  queueLooksEmpty = false;
 }
 
 interface JobRow {
@@ -112,6 +120,7 @@ async function finishJob(id: string, error: string | null): Promise<void> {
 /** Takes the next job and does it; false when nothing was queued. A failed job is the job's own. */
 export async function workOneJob(work: EnrichmentWork): Promise<boolean> {
   const row = await claimNextJob();
+  queueLooksEmpty = row === null;
   if (row === null) return false;
   try {
     await work({
@@ -146,15 +155,19 @@ async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
   }
 }
 
-/** Starts workers up to the limit, unless a queue error paused them; each one ends when the queue is empty. */
+/**
+ * Starts workers up to the limit — one while the queue looks empty — unless a
+ * queue error paused them; each one ends when the queue is empty.
+ */
 export function fillEnrichmentWorkers(
   work: EnrichmentWork,
   workers: number = ENRICHMENT_CONCURRENCY,
   now: number = Date.now(),
 ): number {
   if (now < pausedUntil) return 0;
+  const limit = queueLooksEmpty ? 1 : workers;
   let started = 0;
-  while (workersRunning < workers) {
+  while (workersRunning < limit) {
     void workUntilEmpty(work);
     started += 1;
   }
