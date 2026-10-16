@@ -9,7 +9,8 @@ The code session adds a section at the TOP of `## OPEN`
 - **What changes:** while the last claim found nothing, only one worker looks per tick. All four start once a claim finds a job or a contact is queued.
 - **Verify:** green, 925 suites, 8941 tests.
 - **DONE WHEN:** live; around tomorrow's 01:00Z run, at most one `[db slow]` claim line at a time instead of four; and the tester's contact-save check still ends with a `done` row within a minute.
-- **The nightly run of 01:00Z:** at 01:12Z it still read `running` with processed 0. I will check whether it finishes.
+- **Correction to the timing:** the four slow claim lines are stamped 23:41:50Z, not around 01:00Z. Two of them waited 0 ms for a connection and still took 11.7 s on an empty table, so at 23:41Z the database itself stalled for about 12 s, not only the pool. 0361 still cuts the queue's share of the background pool from four claims a tick to one.
+- **The nightly run of 01:00Z** is normal so far: the last five completed runs took 148–201 min and processed 900 each. Its processed count updates only per batch. I will check that it completes after 04:00Z.
 
 ### 15 Oct, 22:15Z — URGENT 0359: contact enrichment broken in production since 0355 (my fault); hotfix, ship before 0360
 
