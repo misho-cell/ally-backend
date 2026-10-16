@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 10:27Z — work loop: server rows, one blocker each; box posts 61876 (5149 texts to Giorgi) and 61877 (0370 test steps)
+Last TO_OPS.md section handled: 16 Oct, 10:41Z — Misho's „hello is 12.8 s under 200": 0374 (47d442b58acd), the search pool back to 24; one question for you
 
 ## OPEN
 
