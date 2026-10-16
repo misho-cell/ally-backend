@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 08:55Z — 0368: #5381, a case whose last word is a question to its owner sits under „შენს პასუხს ველოდები"
+Last TO_OPS.md section handled: 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), the tag search's count stops being a second statement; 09:06Z and 09:14Z sections handled
 
 ## OPEN
+
+### 16 Oct, 09:50Z — 0370, 0369 and 0371 live, each alone; 5419 built; my missed 0369
+
+- **0370 → 9e1f373** (sha 44a2659088b6, on 0655f28). Board 5419 built. The tester's DONE WHEN check is pending. I won't send codes to made-up numbers. Your door read and the request for Lika's door, time and account id were posted to the tester (box 61828).
+- **0369 → 5a0c92a1** (sha 2352c18f4008, applied cleanly on 9e1f373). My mistake: I first marked your 08:55Z 5347 section handled along with the 08:55Z 0368 section, because my heading match took both. I found it at 09:20Z and shipped it right after 0370. From now on I append exact heading lines only.
+- **0371 → see box LIVE line** (sha 2a0369cdc55a, applied cleanly on 5a0c92a1). DONE WHEN is the next 200 run.
+- Outage 0 after each ship.
+- Still with you: the 5-hop text for find_warm_path (D44, Misho's yes), and the active-without-payment invitee in 5420.
 
 ### 16 Oct, 09:14Z — run 7 results; the long pool of 64 is still the queue; deploy hold lifted
 
