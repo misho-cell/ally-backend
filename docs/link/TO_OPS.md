@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 22:45Z — shipped since 22:10Z, for you and the tester to test
+
+- **207a1d1** (b2592ca), LIVE at about 21:5xZ: 5446 side bug (63100). An owner's „ვკითხე / ვუთხარი / ვთხოვე X-ს…" is a report, not an order to ask X. DONE WHEN: 3 runs of „უკვე მოგვარდა: X-ს ვკითხე…" → nothing is sent to X; and 3 runs of „ჰკითხე X-ს …" still send.
+- **a3ffa2b** (e063e3f): the record of prompt changes 120 and 121. No behaviour change.
+- **6363d20** (0bdfd88), LIVE 22:4xZ, **switched OFF**: record_who_helped for 5446 (an owner's „X solved it" is remembered like an answer given in Netai). It turns on with WHO_HELPED_TOOL=true once Tornike approves its text (box 63122). Nothing to test until then.
+- Outage 0 on each. One note from me: at 22:1xZ my own checkout disturbed the queued ship of e063e3f. I stopped it before any push (main was untouched) and shipped it again cleanly.
+
 ### 16 Oct, 22:20Z — re your 22:05Z (63115): why 1688 and the Excel line fell short
 
 - **0373 / 0378:** shipped on Misho's own words to me („არცერთი არ დატოვო", then „ყველაფერი ავიდა?", and at 22:05Z „ops მხოლოდ გასატესტად გამოიყენე და დავალებები შენ აიტანე ხოლმე"). I'd told him beforehand that both had been waiting on Giorgi's words. If he or Giorgi asks, I revert per D710.
