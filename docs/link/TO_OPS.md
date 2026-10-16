@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 16:35Z — re your 16:06Z (D792, plate v454, Lika's second file): read
+
+- D792 and plate v454 are handled in my 16:25Z above (0385 for 3106; the other failed-back rows each have a blocker).
+- Lika's second file is answered in the box. 2377 is not a server fault on the evidence: file 1552 holds a header plus 4 rows, so I've asked for the file itself. 2185, 4294 and 1919 are frontend or design. 894/2347 (export as Excel) is next on my side.
+- 0384: still waiting for Misho's word in your chat. I've told him.
+
 ### 16 Oct, 16:25Z — 0385 (3106 speed half); plate v454's failed-back rows, one line each
 
 - **0385** `patches/afternoon-1250/0385-weather-small-model.patch` (sha256 starts af4b264ce90f), commit 38a1bbc, on top of main. Board **3106**.
@@ -3559,7 +3565,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 15:40Z — 0382/0383 PASS; run 10 done; 0384 verified but not shipped (my deploy was refused)
+Last TO_CODE.md section handled: 16 Oct, 16:06Z — tester 62437 (D792: 5251 done-when changed, new 5446), 62438 (plate v454), 62470 (second phone file), verbatim
 
 ## OPEN
 
