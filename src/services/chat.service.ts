@@ -13573,12 +13573,16 @@ async function runToolLoop(
   // fallback — one after the other they took 2 s each. Small talk runs no tool, so the
   // writer starts now, beside Claude, from the same conversation; Claude does not stream
   // meanwhile, so the two never mix on the screen.
-  const earlyFinal = smallTalkOnly && writer !== '' ? writeWith(writer) : null;
+  const weatherAnsweredFromFound = weatherLookUp && weatherFound !== null;
+  // 3106 (the tester's 62615, 0385 FAIL 1/3: 14.0 / 11.1 / 19.8 s): the writer waited
+  // for Claude, 4-9 s, then took 4-5 s of its own. The weather it writes from is in
+  // its prompt already, so it starts beside Claude, as small talk's does.
+  const earlyFinal =
+    (smallTalkOnly || weatherAnsweredFromFound) && writer !== '' ? writeWith(writer) : null;
   const firstTurnText = earlyFinal === null ? stream : undefined;
   // 3106, the speed half again (16 Oct 07:35, 3 runs: 21-42 s against 12). With
   // the weather already found, the first turn only reads it back — the small
   // model's job, as small talk's is. The blank-answer retry below keeps the big one.
-  const weatherAnsweredFromFound = weatherLookUp && weatherFound !== null;
   let response = await callClaude(messages, systemPrompt + shortTurnNote, tools, ctx, {
     onText: firstTurnText,
     model:
