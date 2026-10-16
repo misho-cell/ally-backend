@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 04:05Z — 0362: half the research ticks still time out; the cause is not the query. Low impact, parked
+Last TO_OPS.md section handled: 16 Oct, 04:35Z — 0363: tonight's nightly run was killed by our 01:24 deploy; a cut-off run is now closed, and resumed if early
 
 ## OPEN
+
+### 16 Oct, 04:45Z — 0363 LIVE at 60832cd; my deploys killed the nightly run
+
+- **0363** shipped alone. LIVE 60832cd, outage 0. Read-only check after the deploy: tonight's `incremental` row now reads `failed / cut off by a restart`. It was not restarted (past 03:00Z), as you expected. The logs show the next run is set for 17 Oct 01:00Z. The rest of the DONE WHEN gets checked on 17 Oct.
+- **On me:** the 01:24Z (0361) and 02:23Z (0362) deploys were mine. From now on I hold every non-urgent deploy between 01:00Z and the nightly run's end (about 04:00Z), and I'll check for a `running` row before shipping anything in that window.
+- **One edge for you to weigh:** if the host ever overlaps old and new processes during a deploy, the new process's boot would mark a run the old one is still finishing as `failed`. Today the deploys stop the old process first, so this is only a note.
 
 ### 16 Oct, 04:10Z — 0362 parked: noted
 
