@@ -10,6 +10,7 @@ import {
 } from './runLanguage';
 import {
   incomingRequestOpening,
+  forwardedRequestOpening,
   incomingRequestTitle,
   outgoingRequestOpening,
   outgoingRequestTitle,
@@ -1534,6 +1535,8 @@ export async function incomingRequestLine(
   // Direct case (task 18): the reader IS the target — "X wants to meet you",
   // never "X wants you to introduce them to yourself" (live row #793).
   direct: boolean,
+  /** 5347: the link whose assistant passed the owner's request on; null when asked first-hand. */
+  forwarderName: string | null = null,
 ): Promise<RequestOpening> {
   // The MEDIATOR's own language — their sidebar, their message. Georgian for
   // somebody who has never written anything here, which is what this always
@@ -1549,13 +1552,22 @@ export async function incomingRequestLine(
    * here is exactly the behaviour before this line.
    */
   const relayed = message === null ? null : await relayedForReader(message, language, 'request');
-  const text = incomingRequestOpening(
-    language,
-    requesterName,
-    targetName,
-    relayed?.text ?? message,
-    direct,
-  );
+  const text =
+    forwarderName === null
+      ? incomingRequestOpening(
+          language,
+          requesterName,
+          targetName,
+          relayed?.text ?? message,
+          direct,
+        )
+      : forwardedRequestOpening(
+          language,
+          forwarderName,
+          requesterName,
+          targetName,
+          relayed?.text ?? message,
+        );
   return { language, text };
 }
 
@@ -1579,6 +1591,7 @@ export async function createIncomingRequestThread(
   targetName: string,
   message: string | null,
   direct = false,
+  forwarderName: string | null = null,
 ): Promise<Thread> {
   const opening = await incomingRequestLine(
     mediatorUserId,
@@ -1586,6 +1599,7 @@ export async function createIncomingRequestThread(
     targetName,
     message,
     direct,
+    forwarderName,
   );
   const title = incomingRequestTitle(opening.language, requesterName, targetName, direct);
   // The mediator must answer this request — the thread is born a task awaiting them.

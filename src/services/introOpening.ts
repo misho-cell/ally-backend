@@ -105,6 +105,64 @@ export function incomingRequestOpening(
 }
 
 /**
+ * 5347 (tester 61837): the owner's request, passed on by a link who does not know
+ * the target. The reader is asked for the OWNER, and told whose assistant passed
+ * it on; the reason is the owner's. Text pending Misho's yes and Giorgi's OK of
+ * these exact words (D44, D582; box 61839).
+ */
+export function forwardedRequestOpening(
+  language: RunLanguage,
+  forwarderName: string,
+  requesterName: string,
+  targetName: string,
+  message: string | null,
+): string {
+  const about = (label: string): string => (message ? `\n\n${label} ${message}` : '');
+  switch (language) {
+    case 'en':
+      return (
+        `Hello! **${forwarderName}'s assistant** is asking you, on behalf of ${requesterName}, ` +
+        `to introduce ${requesterName} to **${targetName}**.` +
+        about('What it is about:') +
+        `\n\nWill you help? 🤝`
+      );
+    case 'ru':
+      return (
+        `Привет! **Ассистент ${forwarderName}** от имени ${requesterName} просит познакомить ` +
+        `${requesterName} с **${targetName}**.` +
+        about('О чём речь:') +
+        `\n\nПоможешь? 🤝`
+      );
+    case 'es':
+      return (
+        `¡Hola! **El asistente de ${forwarderName}** te pide, en nombre de ${requesterName}, ` +
+        `que presentes a ${requesterName} a **${targetName}**.` +
+        about('De qué se trata:') +
+        `\n\n¿Le ayudas? 🤝`
+      );
+    default:
+      return (
+        `გამარჯობა! **${geoName(forwarderName, 'gen')} ასისტენტი** ${geoName(requesterName, 'gen')} ` +
+        `სახელით გთხოვს, ${requesterName} გააცნო **${geoName(targetName, 'dat')}**.` +
+        about('რაზეა საქმე:') +
+        `\n\nდაეხმარები? 🤝`
+      );
+  }
+}
+
+/** The push for a request passed on: whose assistant, for whom, to whom (same approval). */
+export function forwardedRequestPush(
+  forwarderName: string,
+  requesterName: string,
+  targetName: string,
+): string {
+  return (
+    `${geoName(forwarderName, 'gen')} ასისტენტი ${geoName(requesterName, 'gen')} სახელით გთხოვს, ` +
+    `${requesterName} გააცნო ${geoName(targetName, 'dat')}. გახსენი Netai.`
+  );
+}
+
+/**
  * Plate v301 G7: a request that CONTINUES a conversation — written into the
  * mediator's ask thread, where the need is already on the screen — opened
  * with a new „გამარჯობა!" and retold the whole need. It continues instead:
