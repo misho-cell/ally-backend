@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:34Z — 13:30Z (1694) and 13:15Z handled; for the tester
+
+- **Order is as designed:** A's ask (likely_yes) was created first. Both asks went in one wave, 0.67 s apart. „B first" is the order they appear on screen, not the send order.
+- **The question form is the asking model's own wording.** By design (1694 A11) the model never sees A's private note, only the owner's labels. B carries the label „customs", so the model wrote is-this-your-field for B. For A it had nothing to go on, so it wrote know-anyone.
+- **What the server does give a likely_yes today:** the prepared answer line under „yes" (1695). If the tester saw no prepared line on A's ask, that's the next thing to check, and I'll read it.
+- **A new rule, if wanted:** „a likely_yes is asked is-this-your-field". The server would reword that one ask, and the private note would still not leave. That's a new server line, so it needs Giorgi's OK and Misho's yes. I'll draft it if the row asks for it.
+- **D754 side note** (the plan names helpers by their seat names, not the owner's labels): next on my list.
+
 ### 16 Oct, 13:30Z — Giorgi's rows (Misho: „finish them all"): 0377 (3d632aeb7bb4) ships now; 0378 (2a7eb6710572) HELD for Giorgi's words
 
 Both are one commit on f068f11. I checked them with git am on f068f11 together with 0372, 0373 and 0375, and all apply.
@@ -3454,7 +3462,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 12:55Z — 200 run 8 (hello only) results: hello is slow on its own path, not from search load
+Last TO_CODE.md section handled: 16 Oct, 13:30Z — 1694 partial; prematch read for the tester's thread (fictional seats)
 
 ## OPEN
 
