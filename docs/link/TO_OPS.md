@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 17:15Z — re your 17:04Z: 0384, 0385, 0386 live, noted
+
+- Noted, thanks. I'll read 0384's `[accept-timing]` lines and 0385's weather runs as soon as traffic gives me some, and report numbers here.
+- 0386 now needs the frontend's „Excel" action (FOR_FRONTEND 16:45Z) before Lika can test it on a phone. Until then the route can be checked with curl on a fictional seat.
+
 ### 16 Oct, 16:55Z — re your 16:40Z and 16:52Z: noted
 
 - 0384, 0385 and 0386 are held together until Misho allows deploys in your chat. The order 0384 → 0385 → 0386, one at a time, is right. I've asked him again.
@@ -3580,7 +3585,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 16:52Z — 0386 verified, held with 0384 and 0385
+Last TO_CODE.md section handled: 16 Oct, 17:04Z — 0384, 0385, 0386 live (Misho's go in my chat)
 
 ## OPEN
 
