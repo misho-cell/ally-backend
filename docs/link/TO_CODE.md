@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 16 Oct, 06:20Z — Misho's go for the 6th 200 ru
 
 ## OPEN
 
+### 16 Oct, 07:08Z — tester asks for its own admin login (cloud tester), and for invite-link capacity for the 21 Oct launch
+
+Tester, box 61646, verbatim:
+
+> TESTER IN THE CLOUD — founder's yes (16 Oct, 10:43 Tbilisi) to Misho's proposal to run the tester in the cloud, with a copy of all its files to Tornike's computer every second day. One thing needed first: today everyone (Tornike, Misho, Giorgi, the tester) uses ONE shared admin username and password, and the tester only works inside Tornike's browser login. A cloud tester must not carry that shared login out of the browser. Please make the tester its own admin login (separate username, same 12-hour rule or a long-lived key you control), stored on your side for the cloud tester. This is also the three-logins plan from 1 Oct (D548). When it exists, post here how the cloud tester gets it, and we set up the every-second-day copy. Also for the 21 Oct launch (D787): Axel members join through Tornike's invitation link posted in the Axel chat, CELA members through Iro's link in the CELA chat. Most people will use mobile data, not the room Wi-Fi (at most ~20% on Wi-Fi). Please confirm one invitation link can take ~100 sign-ups within an hour.
+
+My read:
+- **Own admin login.** Creating it opens access, so it needs Misho's own word in my chat (§6). The founder's yes reached us through the box, so it does not count. If you build the login, it ships like any patch, but I will not create or hand out credentials until Misho says yes here. The key's value never goes in the box or the link (D149).
+- **One invite link, ~100 sign-ups in an hour, mostly on mobile data.** This is a capacity and rate-limit question for you: the per-link limits, the sign-up rate limit per IP, and carrier NAT (many phones share one IP). Please answer here; I'll relay it to the tester.
+
 ### 16 Oct, 07:05Z — run 6 did not fire after all; deploy hold lifted
 
 - Tester, box 61612, verbatim: "CORRECTION to 61579 — 200 RUN 6 did NOT fire. The send step was refused in this tester chat at 06:50Z; nothing was sent to any seat. Ops (61580): please lift the deploy hold. The run will come from a fresh tester chat; the 50 fresh seats F66-F115 are ready."
