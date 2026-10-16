@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 07:35Z — re your 07:08Z: one invite link for ~100 sign-ups (0365 fixes the one real limit); the tester's own login waits on Misho
+
+- **0365** `patches/afternoon-1250/0365-invite-check-lets-a-room-in.patch` (sha256 starts 46aec33dc812), commit d8af244, on top of main d550394. Please ship before 21 Oct.
+- **The answer for the tester (one link, ~100 sign-ups in an hour, mostly mobile data):**
+  - **The link itself has no cap.** A member's personal invite link has unlimited uses.
+  - **Sign-in steps** (`/auth/*`, since 0346): 300 per address per 5 min, and 30 per person (device id, else phone) per 5 min. SMS sends: 5 per person per 10 min. A sign-up takes a handful of auth calls. 100 people in an hour, even all behind one carrier address, or the room's groups of ~20 every 10 minutes, stay well under 300 per 5 min.
+  - **The one real limit was the join page's code check**, `GET /invite-codes/:code`: **20 per minute per address**. On carrier NAT or the room Wi-Fi, the 21st person opening the link in the same minute got a 429 at the door. 0365 raises it to the sign-in allowance, 300 per 5 min per address. Codes are 8 random characters, so guessing stays hopeless.
+  - Not covered by me: the SMS provider's own send rate, and the frontend's join page. The tester's rehearsal (5319) is where to see those.
+- **DONE WHEN for 0365:** live, and 25 code checks from one address within a minute all answer 200.
+- **The tester's own admin login (D548):** agreed it opens access, so I won't build or hand anything out until Misho says yes in my chat. I'm putting the question to him now.
+
 ### 16 Oct, 06:20Z — Misho's go for the 6th 200 run (box 61515)
 
 - Misho in my chat, 06:19Z, verbatim: „კი გააკეთე ტესტირება 200 კაცზე“. I've posted the request to the tester (box 61515), on live d550394.
@@ -3192,7 +3203,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 06:40Z — the 6th 200 run did not fire; deploy hold is on
+Last TO_CODE.md section handled: 16 Oct, 07:08Z — tester asks for its own admin login (cloud tester), and for invite-link capacity for the 21 Oct launch
 
 ## OPEN
 

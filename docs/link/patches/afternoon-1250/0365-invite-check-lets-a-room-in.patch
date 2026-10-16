@@ -1,0 +1,71 @@
+From d8af244c59fda48e6331dab4fae86c647ef45ac4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 07:24:26 +0000
+Subject: [PATCH] 21 Oct launch: the invite-code check lets a room in
+
+The tester's 61646 (D787): about a hundred people open one invitation link
+within an hour, most on mobile data, where a carrier puts many phones behind
+one address, the rest on one room's Wi-Fi. GET /invite-codes/:code allowed
+20 checks a minute per address, so the twenty-first person in the same
+minute was turned away at the join page.
+
+The address now gets the sign-in routes' allowance: 300 in five minutes.
+Codes are 8 random characters, so this is no help to a guesser.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/inviteCodes.routes.ts           | 18 +++++++++++++++---
+ src/services/__tests__/inviteCodeCheck.test.ts |  2 +-
+ 2 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/src/api/routes/inviteCodes.routes.ts b/src/api/routes/inviteCodes.routes.ts
+index 0576203..5c11d51 100644
+--- a/src/api/routes/inviteCodes.routes.ts
++++ b/src/api/routes/inviteCodes.routes.ts
+@@ -6,14 +6,26 @@ import { inviteCodeExists } from '../../services/inviteCodeCheck.service';
+ /**
+  * 2641 (§99.11): GET /invite-codes/:code → { exists: boolean }, before the
+  * join page draws its welcome. Public (the person has no account yet), so it
+- * is rate-limited by IP and answers one bit only.
++ * is rate-limited by address and answers one bit only.
+  */
+-const CHECKS_PER_MINUTE = 20;
++/**
++ * The 21 Oct launch (D787, the tester's 61646): about a hundred people open
++ * one invitation link within an hour, most on mobile data, where a carrier
++ * puts many phones behind one address, the rest on one room's Wi-Fi. Twenty
++ * checks a minute per address turned the twenty-first person in the same
++ * minute away at the door. The address now gets the sign-in routes' allowance
++ * (auth.routes: 300 in five minutes); a code is long and random, so this is
++ * still no help to anyone guessing codes.
++ */
++const CHECK_WINDOW_MS = 5 * 60_000;
++const CHECKS_PER_ADDRESS = 300;
+ const MAX_CODE_CHARS = 32;
+ const CODE_RE = /^[A-Za-z0-9_-]+$/;
+ 
+ const inviteCodesRouter = Router();
+-inviteCodesRouter.use(rateLimit({ windowMs: 60_000, max: CHECKS_PER_MINUTE }));
++inviteCodesRouter.use(
++  rateLimit({ windowMs: CHECK_WINDOW_MS, max: CHECKS_PER_ADDRESS, keyBy: 'ip' }),
++);
+ 
+ inviteCodesRouter.get(
+   '/:code',
+diff --git a/src/services/__tests__/inviteCodeCheck.test.ts b/src/services/__tests__/inviteCodeCheck.test.ts
+index 1e833d7..296edf0 100644
+--- a/src/services/__tests__/inviteCodeCheck.test.ts
++++ b/src/services/__tests__/inviteCodeCheck.test.ts
+@@ -58,7 +58,7 @@ describe('GET /invite-codes/:code', () => {
+   it('is public, rate-limited by IP, and mounted', () => {
+     expect(route).not.toContain('authenticateJwt');
+     expect(route).toContain(
+-      'inviteCodesRouter.use(rateLimit({ windowMs: 60_000, max: CHECKS_PER_MINUTE }));',
++      "rateLimit({ windowMs: CHECK_WINDOW_MS, max: CHECKS_PER_ADDRESS, keyBy: 'ip' })",
+     );
+     expect(index).toContain("app.use('/invite-codes', inviteCodesRouter);");
+   });
+-- 
+2.43.0
+
