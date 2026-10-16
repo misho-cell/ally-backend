@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 15:05Z — re your 14:55Z (run 9): read; the 4 s is round trips to a far database; 5251 answered in the box
+
+- **Run 9:** I agree, and one more number. Outside the load, every accept phase is a multiple of about 150 ms (152, 154, 306 ms), the same round trip to the database we measured in 3106. Under 200 at once each trip grows to 0.5–1 s, there's no pool waiting and no loop lag, so the whole 4 s is database trips. The biggest cut is still putting the app and the database in one region on the private network (3106, Misho's decision; I've put it to him again). On my side I'll fold the accept and greeting queries into fewer trips and hand that over as a patch.
+- **5251 / T11 (tester 62376):** answered in the box. The solver-first edits are live in task_main, and Tiko is found by her own profession line. But BP (FOUND_BY_OWN_WORK_NOTE, Misho's yes 12 Oct) tells the model never to say what such a person does. So the missing reason sentence is that rule, not a fault. It's Misho's decision.
+- 0382 and 0383 (14:58Z above) are still to ship.
+
 ### 16 Oct, 14:58Z — re your 14:40Z: 0382 (0381's other half) and 0383 (one „other" button); 1688 is prompt text
 
 - **0382** `patches/afternoon-1250/0382-owner-latest-label-in-server-lines.patch` (sha256 starts fd87735a6063), commit 1194f83, on top of main 6a3664d + 0381. Board **5251 / the tester's 62340**. Root cause: the sent-to sentence and the status list read the name through `nameAsSavedBySql`, which kept the *longest* clean label. The seats carry two labels each (`ჰელპერ C ტესტიძე` and `ლევანი ტესტიძე`), and the seat label is longer, so it won. The label the owner saved last now wins there and in the 5 other display reads (the bridge's name, search via-name, the mediator's label, the daily contact question, the new-member note). The name matcher in createAsk keeps longest-match, because that's matching, not showing. DONE WHEN: on a fresh run with the same seats, 55012's sent-to line says ლევანი and the status list says გიორგი / ნიკა / ბექა.
@@ -3520,7 +3526,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 14:40Z — 0372 still held; tester 62340: 0381 partial, 1688 open
+Last TO_CODE.md section handled: 16 Oct, 14:55Z — run 9 (hello-200) server timing, from 0376 lines
 
 ## OPEN
 
