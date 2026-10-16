@@ -129,6 +129,7 @@ import { safetyReplyFor } from './safetyWorry';
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
 const OFFER_TOOLS_ON = true;
+import { FarHit, farMembersHolding } from './farCircles.service';
 import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
@@ -1117,6 +1118,44 @@ const LOOK_ONE_RING_OUT =
   'look one ring out: search_second_degree with the full name, and web_search the full name ' +
   'for the public record. Then answer with what is public and the way to the person through ' +
   'whoever has them saved. Never answer „not found" from the phonebook alone.';
+
+/**
+ * 5347 (the tester's 63203): a person beyond the second circle — a notary saved
+ * only by the fourth friend in a chain — was out of every search, so no path was
+ * ever asked for. When the phonebook and the second circle have nothing, the
+ * server looks further through people who use Netai and hands back who it found
+ * with the chain that reaches them.
+ */
+const FURTHER_OUT_NOTE =
+  'Found further out, through a chain of people who use Netai: each one knows only the next. ' +
+  'Put the whole chain in the plan — the first link, each one after, then the person — and ' +
+  'call find_warm_path with this phone id for the route. The request travels assistant to ' +
+  'assistant from the first link on.';
+
+/** Further-out people for an empty search; the search unchanged when there are none or the walk fails. */
+export async function withFurtherOut<T extends object>(
+  userId: string,
+  words: unknown,
+  found: T,
+): Promise<T | (T & { further_out: FarHit[]; further_out_note: string })> {
+  if (typeof words !== 'string') return found;
+  try {
+    const further = await farMembersHolding(Number(userId), words);
+    return further.length === 0
+      ? found
+      : { ...found, further_out: further, further_out_note: FURTHER_OUT_NOTE };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[far-circles] the walk past the second circle failed:', (err as Error).message);
+    return found;
+  }
+}
+
+/** The second circle answered with nobody for these words. */
+export function secondCircleEmpty(result: object): boolean {
+  const found = result as { found?: unknown; reason?: unknown };
+  return found.found === false && found.reason === 'no_matches';
+}
 
 export function notInThePhonebook(result: object): boolean {
   const found = result as { found?: unknown; results?: unknown };
@@ -9447,7 +9486,12 @@ async function executeToolCall(
       );
       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
       if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
-      if (notInThePhonebook(byName)) return { ...byName, look_further: LOOK_ONE_RING_OUT };
+      if (notInThePhonebook(byName)) {
+        return withFurtherOut(userId, input['name_query'], {
+          ...byName,
+          look_further: LOOK_ONE_RING_OUT,
+        });
+      }
       return withLikelyEmployers(userId, byName);
     }
     case 'search_by_tag': {
@@ -9485,7 +9529,7 @@ async function executeToolCall(
         if (threadId !== undefined && typeof input['tag_query'] === 'string') {
           noteSecondDegreeResult(threadId, input['tag_query'], found);
         }
-        return found;
+        return secondCircleEmpty(found) ? withFurtherOut(userId, input['tag_query'], found) : found;
       });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
       // vet saved as „ვეტექიმი" by one friend was never found when another friend's
