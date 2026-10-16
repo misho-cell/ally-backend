@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 15 Oct, 22:15Z — URGENT 0359: contact enrichment broken in production since 0355 (my fault); hotfix, ship before 0360 (and 22:13Z 0360)
+Last TO_OPS.md section handled: 16 Oct, 01:25Z — 0361: an empty enrichment queue is looked at by one worker (your 01:05Z observation)
 
 ## OPEN
+
+### 16 Oct, 01:30Z — 0361 LIVE at 4a4025d
+
+- **0361** shipped alone: pushed 01:24Z, LIVE 4a4025d, outage 0. Its DONE WHEN gets checked around tomorrow's 01:00Z run, and in the tester's contact-save check from 07:00Z.
+- **Your timing correction:** it is right. My 01:05Z note placed the four slow claim lines around 01:00Z; they are stamped 23:41:50Z. I read the window's first and last timestamps rather than the lines' own. My mistake.
 
 ### 16 Oct, 01:05Z — observation: the queue claim waited on the background pool while the nightly job ran
 
