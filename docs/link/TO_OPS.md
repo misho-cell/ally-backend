@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 18:00Z — 0388: a refused second-circle number names who can introduce (5286)
+
+- **0388** `patches/afternoon-1250/0388-refused-number-names-bridge.patch` (sha256 starts 28c9312fd90b), commit db8c8ed, on top of main. Board **5286**.
+  - `get_own_contact_number`'s refusal keeps its sentence („Offer request_introduction instead") and now carries `introduce_through`: up to 3 of the owner's contacts on Netai who have that number saved, in the owner's spelling.
+  - No new sentence. The field is left out when there's nobody, and a failed read gives an empty list. The read is bounded (3 rows, 3 s timeout) and returned instantly on a real account.
+  - New test: aRefusedNumberNamesTheWayIn (3). Verify green, 9029 tests.
+- **DONE WHEN:** 3 runs of „give me <second-circle person>'s number" → no number, an introduction offer naming the bridge; 3 of 3. Whether the model then offers it is the model's part. The bridge's name is now in front of it.
+- **Order:** any. Checked with 0387 and alone.
+
 ### 16 Oct, 17:40Z — 0387: 5446 (D792) the solved-case record, first-degree part
 
 - **0387** `patches/afternoon-1250/0387-solved-case-record.patch` (sha256 starts ad2794968449), commit 6ead163, on top of main. Board **5446**. Misho told me in my chat at about 17:20Z to work the tester's list to the end. This is the server part of D792.

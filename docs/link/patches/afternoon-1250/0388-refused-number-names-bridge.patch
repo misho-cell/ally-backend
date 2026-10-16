@@ -1,0 +1,151 @@
+From db8c8ed8d4ae63f0dc3913e4f5857001ff7106a2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 17:42:49 +0000
+Subject: [PATCH] 5286: a refused second-circle number names who can introduce
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Lika №181: Netai rightly kept a second-circle person's number back, but
+offered no introduction. The refusal already said „Offer
+request_introduction instead" and named nobody to go through.
+
+get_own_contact_number's refusal now carries introduce_through: up to three
+of the owner's own contacts on Netai who have that number saved, in the
+owner's spelling. The sentence is unchanged; the field is left out when
+there is nobody. A failed read gives an empty list, never an error.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aRefusedNumberNamesTheWayIn.test.ts       | 48 +++++++++++++++++++
+ src/services/chat.service.ts                  |  3 ++
+ src/services/numberBridges.ts                 | 36 ++++++++++++++
+ 3 files changed, 87 insertions(+)
+ create mode 100644 src/services/__tests__/aRefusedNumberNamesTheWayIn.test.ts
+ create mode 100644 src/services/numberBridges.ts
+
+diff --git a/src/services/__tests__/aRefusedNumberNamesTheWayIn.test.ts b/src/services/__tests__/aRefusedNumberNamesTheWayIn.test.ts
+new file mode 100644
+index 0000000..41c71a0
+--- /dev/null
++++ b/src/services/__tests__/aRefusedNumberNamesTheWayIn.test.ts
+@@ -0,0 +1,48 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { bridgesHolding } from '../numberBridges';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/**
++ * 5286 (Lika №181): a second-circle number was rightly kept back, and no
++ * introduction was offered. The refusal now names the owner's own contacts on
++ * Netai who hold that number.
++ */
++describe('who holds a number the owner may not see', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('reads the owner’s contacts on Netai who saved that number, in the owner’s spelling', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [{ name: 'ბესო' }, { name: '  ' }] } as never);
++    expect(await bridgesHolding('7', '+995 5')).toEqual(['ბესო']);
++    const [sql, params, timeout] = mockQuery.mock.calls[0];
++    expect(sql).toContain('WHERE mine."contactId" = $1::int');
++    expect(sql).toContain('ON theirs."contactId" = bu.id');
++    expect(sql).toContain('bu."deletedAt" IS NULL');
++    expect(sql).toContain('sv_ua."contactId" = $1::int');
++    expect(sql).toMatch(/LIMIT \d+/u);
++    expect(params).toEqual(['7', '+995 5']);
++    expect(timeout).toBeGreaterThan(0);
++  });
++
++  it('is empty, never an error, when the read fails', async () => {
++    mockQuery.mockRejectedValueOnce(new Error('timeout'));
++    expect(await bridgesHolding('7', '1')).toEqual([]);
++  });
++});
++
++describe('the refusal', () => {
++  const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
++
++  it('carries the names beside the same sentence, only when there are some', () => {
++    const at = chat.indexOf('if (ownRow.rows.length === 0) {');
++    const branch = chat.slice(at, at + 500);
++    expect(branch).toContain('const through = await bridgesHolding(userId, phone);');
++    expect(branch).toContain("'Offer request_introduction instead.'");
++    expect(branch).toContain('...(through.length > 0 && { introduce_through: through })');
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index cf776c7..9858bec 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -211,6 +211,7 @@ import {
+   withoutNobodyAnswered,
+ } from './askStatusSection';
+ import { askStateOf, sentSentenceForOwner } from './askState';
++import { bridgesHolding } from './numberBridges';
+ import { advanceWaveIfDone, nextWaveNote, readWave } from './askWaves.service';
+ import { openHeldAsksForTask } from './heldAsks.service';
+ import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
+@@ -4633,10 +4634,12 @@ async function getOwnContactNumber(userId: string, phoneRaw: string): Promise<ob
+     return { error: 'This contact is unavailable.' };
+   }
+   if (ownRow.rows.length === 0) {
++    const through = await bridgesHolding(userId, phone);
+     return {
+       error:
+         "Not the user's own direct contact — network numbers are never shown. " +
+         'Offer request_introduction instead.',
++      ...(through.length > 0 && { introduce_through: through }),
+     };
+   }
+   return {
+diff --git a/src/services/numberBridges.ts b/src/services/numberBridges.ts
+new file mode 100644
+index 0000000..1a75da6
+--- /dev/null
++++ b/src/services/numberBridges.ts
+@@ -0,0 +1,36 @@
++import { query } from '../db/postgres/client';
++import { nameAsSavedBySql } from './savedNameSql';
++
++/**
++ * 5286 (Lika №181): Netai rightly kept a second-circle person's number back,
++ * but offered no introduction — the refusal named nobody to go through. The
++ * owner's own contacts on Netai who have that number saved are the way in, so
++ * the refusal now names them, in the owner's own spelling.
++ */
++const QUERY_TIMEOUT_MS = 3_000;
++const MAX_BRIDGES = 3;
++
++/** The owner's contacts on Netai who hold this phone; empty when none, or on any failure. */
++export async function bridgesHolding(ownerId: string, phone: string): Promise<string[]> {
++  try {
++    const result = await query<{ name: string | null }>(
++      `SELECT DISTINCT ON (bu.id) ${nameAsSavedBySql('$1::int', 'bu.id')} AS name
++         FROM "UserAlias" mine
++         JOIN "UserPhone" bp ON bp.phone = mine.phone
++         JOIN "User" bu ON bu.id = bp."userId" AND bu."deletedAt" IS NULL
++         JOIN "UserAlias" theirs
++           ON theirs."contactId" = bu.id
++          AND regexp_replace(theirs.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
++        WHERE mine."contactId" = $1::int
++          AND bu.id <> $1::int
++        LIMIT ${MAX_BRIDGES}`,
++      [ownerId, phone],
++      QUERY_TIMEOUT_MS,
++    );
++    return result.rows.map((row) => row.name?.trim() ?? '').filter((name) => name !== '');
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn('[number-bridges] not read:', (err as Error).message);
++    return [];
++  }
++}
+-- 
+2.43.0
+
