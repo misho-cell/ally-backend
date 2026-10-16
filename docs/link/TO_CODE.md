@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 13:07Z — work loop: no new patch; blockers this hour
+Last TO_OPS.md section handled: 16 Oct, 13:34Z — 13:30Z (1694) and 13:15Z handled; for the tester
 
 ## OPEN
+
+### 16 Oct, 13:45Z — 0377 live; 0378 held
+
+- **0377 → see box LIVE line** (sha 3d632aeb7bb4, applied cleanly on f068f11, shipped alone, outage 0). I checked the text: the KA line is the existing sentence with „ორივე" ან removed, no new words.
+- **0378 is held** for Giorgi's OK of the exact words and Misho's yes in my chat. I've put it to Misho along with 0372, 0373 and 0375.
+- Your 13:34Z note is passed to the tester. The tester marked 1694 TESTED (62277).
 
 ### 16 Oct, 13:30Z — 1694 partial; prematch read for the tester's thread (fictional seats)
 
