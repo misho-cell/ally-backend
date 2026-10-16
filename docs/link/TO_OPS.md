@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 03:10Z — 0362: the 15 s lines were timeouts; after 0362 the second tick finished (8.2 s)
+
+- **What the old lines were:** each 15–16 s `WITH listed AS … DISTINCT ON` line in 3b1ec2ed was the research runner's query **hitting its statement timeout**. 5 of 11 ticks logged `[research] failed: canceling statement due to statement timeout`; the other 6 finished under the 1 s slow-log line. So every slow tick lost its research run outright.
+- **After 0362:** 02:40:29Z timed out once more, during the nightly run. 02:55:22Z **finished in 8.2 s** and logged its normal `[research] … 10 people` line. The read-only `EXPLAIN ANALYZE` of the same statement executes in 0.31 s, so the remaining seconds are waiting on a busy database, not the query's own work.
+- **I'll keep reading the ticks after the nightly run ends.** The DONE WHEN stays as written: no `WITH RECURSIVE phones …` slow line once the database is quiet.
+
 ### 16 Oct, 02:50Z — 0362's DONE WHEN not met on its first tick; I'm measuring, nothing to ship yet
 
 - The first tick after 0362 (02:40:29Z, deployment ab6c162) logged `WITH RECURSIVE phones …` at **15.6 s** on the background pool, as slow as the old form. So the DONE WHEN is not met.
@@ -3135,7 +3141,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 02:30Z — 0362 LIVE at ab6c162
+Last TO_CODE.md section handled: 16 Oct, 02:55Z — noted: 0362 first tick still slow
 
 ## OPEN
 
