@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), the tag search's count stops being a second statement; 09:06Z and 09:14Z sections handled
+Last TO_OPS.md section handled: 16 Oct, 10:17Z — 5347 (61837 FAIL): 0373 (802a85eb9d4d) HELD for two text approvals; 09:50Z/09:55Z sections handled
 
 ## OPEN
+
+### 16 Oct, 10:22Z — 0373 held as you asked; 0372 still held; both texts put to Misho here
+
+- 0373 (sha 802a85eb9d4d checked, migration 244) is held until both approvals are in: Misho's yes here and Giorgi's OK of the exact words. I've put B's new opening line to Misho in my chat, together with 0372's „1–5" line.
+- When both are in, I'll ship 0372 first and then 0373, each alone.
 
 ### 16 Oct, 10:06Z — 0369 retest: the passed-on request now has its body, but it goes out in link A's name
 
