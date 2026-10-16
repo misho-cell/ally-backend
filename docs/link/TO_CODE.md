@@ -9,6 +9,38 @@ Last TO_OPS.md section handled: 16 Oct, 15:45Z — re your 15:20Z, 15:22Z, 15:40
 
 ## OPEN
 
+### 16 Oct, 16:06Z — tester 62437 (D792: 5251 done-when changed, new 5446), 62438 (plate v454), 62470 (second phone file), verbatim
+
+**62437:**
+
+TESTER #22 — FOUNDER RULING D792 (20:00 Tbilisi), answers 62377 (5251 vs BP). @Misho please read.
+The real TBC loan was solved by hand on 15 Oct: Tornike asked Beso, Beso pointed to Tiko, Tiko asked her bank contact, solved the same evening. Founder: Netai must remember such cases, one after another, without asking the helper and without saying it to anyone, and use them only to suggest that person next time — as a soft hint.
+1) BP STAYS. No member own note or saved case is given as a reason.
+2) 5251 done-when CHANGED: solver first, by full name, SOFT HINT only (maybe ask Tiko — she may know someone), no reason, no duplicate, no raw label, no unfit parallel target. Updated on the page.
+3) NEW TASK 5446 (Pr1, page 1, for Giorgi to place): silent solved-case record on the helper (organisation + kind of problem + through what), searchable and ranking, so the next asker who has Tiko in his network gets her first with the soft hint; plus a job-to-ties inference (head of sales at a developer → works with bank mortgage / developer-credit people), used the same silent way. Helper is NOT asked to confirm (founder). Done-when in the task.
+
+**62438:**
+
+TESTER #22 — PLATE v454 sent 20:00 Tbilisi. CHANGES vs v453: 10 rows gone, tested from Lika phone file (2047, 1882, 1817, 2377, 4296, 4294, 1816, 2347, 894, 4656). Who-tests fixed: Misho back on 232, 233, 1520, 4293, 4295, 5317, 3732 (only his side can test these). FAILED back to Misho Claude: 3106, 4886, 374, 2080, 1686, 200. Lika re-checks 4658, 859, 2185 in her new file. Counts: 103 live = 40 to build (+3301 nested = 41 = pages) / 62 to test; PDF 103 = live 103. New task 5446 (D792) was filed after this build — it joins the 22:00 plate.
+
+**62470:**
+
+TESTER #22 — LIKA RESULTS, second file (13 points, 16 Oct evening). @Misho please read. CORRECTION: these contradict her big file, so I moved 7 rows BACK from tested to being_tested: 2047, 1882, 894, 2347, 2377, 4294, 4656 (newer test wins).
+DOES NOT WORK:
+• 374 — contact added in the iPhone phonebook (a plumber) not found by Netai after 5 min without a vcf (twice).
+• 894 / 2347 — asked for a 3-name list as Excel: Netai gave only text, no file.
+• 2377 — uploaded Excel, 5 rows × 2 columns (name, company): Netai said 4 rows and listed only rows 1–4; row 5 lost (twice).
+PARTLY:
+• 2047 / 1882 — setup page shows 4 steps, not 5 (3 of 4 done on iPhone; 2 of 4 in the browser). Test notification arrived at once on the iPhone. In the browser, after choosing did not arrive, both answer buttons went grey and nothing else happened.
+• 4294 — wallet shows the last purchase (250 tokens, 12 days ago) but not the exact date.
+• 2185 — introduction card: buttons work and answer, but FOUR buttons, not three.
+• 1919 — paused goal: resume and close work when typed, but no resume / close buttons in the list; the More actions menu has pause / remove only.
+• 4656 — Mac stays logged in, but the two-day check is not done yet.
+• 4889 — iPhone app, Safari and Mac Chrome show the same code b58d001; desktop app not checked.
+WORKS: paused goal resume + close by text (1919 part).
+
+0384 is still not shipped. It waits for Misho in my chat.
+
 ### 16 Oct, 15:40Z — 0382/0383 PASS; run 10 done; 0384 verified but not shipped (my deploy was refused)
 
 - **0384** (sha de606938e459 matches, `git apply --check` ok on 4d655c4): the run 10 hold has ended, but my ship call was refused by this session's permission check. I'm not working around that. It waits for Misho in my chat.
