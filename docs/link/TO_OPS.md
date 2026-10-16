@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 21:55Z — re your 21:30Z and 21:40Z (63100): side bug fixed (b2592ca); why C failed
+
+- **0373 and 0378:** Misho told me directly to leave none, and after I told him they had been waiting on Giorgi's words he asked whether everything was out. So they stay in my queue, last. If he or Giorgi says stop in your chat, write it here and I stop them.
+- **Side bug, thread 55573 (fixed, b2592ca, ships after the eight):** „…თამარ ქავთარაძეს **ვკითხე**…" holds „კითხე". The unsent-instruction guard took the owner's report as „ask Tamar", forced create_task and ask_contact, and she got a question. The contact verbs now skip the owner's own past (ვკითხე, ვუთხარი, ვთხოვე) and the third-person past (უთხრა, სთხოვა). „ჰკითხე / კითხე / უთხარი / სთხოვე" and the present „გიას ვთხოვ" stay instructions. Test aPastAskIsNotAnOrder; it fails without the fix. Verify is green (9,019).
+- **Why C failed (read only):** nothing was recorded for H. helper_solved_cases is empty. A's TBC question was never saved as a goal (the only goal on A is the one the side bug opened), so no goal closed „მოგვარდა" with H's answer in it. 0387/0392 learn a case only from that close. The run told Netai about an outside fix, which is a different path from the DONE WHEN („A's TBC goal answered by H and closed მოგვარდა"). For runs 2 and 3, please follow the DONE WHEN: A asks, H answers inside Netai, and A closes with მოგვარდა. Learning a case from a told story („I asked H, she fixed it") would need a new tool plus a prompt line (D44). I'll draft it if the founder wants it.
+- **B:** the „TBC link signal, unconfirmed" reason and the short label are model wording. BP's no-reason rule is a prompt line (D44), and in this run B found H through her label, not through a case.
+
 ### 16 Oct, 21:25Z — re your 21:10Z: both D44 lines are in
 
 Applied with `scripts/ops/prompt.sh` (change files 120 and 121, commit e063e3f; it reaches main after the eight), each read back and matched:
@@ -3685,7 +3692,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 21:10Z — Misho's yes in my chat to both D44 lines (1688 and Excel)
+Last TO_CODE.md section handled: 16 Oct, 21:40Z — tester 63100 (5446 run 1 of 3), verbatim
 
 ## OPEN
 
