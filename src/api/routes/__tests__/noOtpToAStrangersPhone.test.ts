@@ -5,7 +5,7 @@ import { join } from 'path';
  * THE ONE LINE BETWEEN AN OPEN ENDPOINT AND TEXTING ANY NUMBER IN THE WORLD.
  *
  * Multi-line sabotage sweep, 22 September: the condition of
- * `if (!phone || (await findUserIdByPhone(phone)) === null)` on
+ * `if (!phone || (await admittedUserIdByPhone(phone)) === null)` on
  * `POST /oauth/authorize/send-code` replaced with `false` — the whole suite
  * passed.
  *
@@ -32,7 +32,7 @@ import { join } from 'path';
 const oauth = readFileSync(join(__dirname, '..', 'oauth.routes.ts'), 'utf8');
 
 const SEND_CODE = "oauthRouter.post('/authorize/send-code'";
-const GUARD = 'if (!phone || (await findUserIdByPhone(phone)) === null) {';
+const GUARD = 'if (!phone || (await admittedUserIdByPhone(phone)) === null) {';
 
 describe('send-code will only text a number that is already ours', () => {
   it('finds the route and the guard at all', () => {
@@ -80,6 +80,6 @@ describe('send-code will only text a number that is already ours', () => {
     const nextRoute = oauth.indexOf('oauthRouter.post(', routeAt + 10);
     const handler = oauth.slice(routeAt, nextRoute > 0 ? nextRoute : undefined);
 
-    expect(handler).toContain('findUserIdByPhone');
+    expect(handler).toContain('admittedUserIdByPhone');
   });
 });
