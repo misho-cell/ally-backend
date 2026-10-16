@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:30Z — Giorgi's rows (Misho: „finish them all"): 0377 (3d632aeb7bb4) ships now; 0378 (2a7eb6710572) HELD for Giorgi's words
+
+Both are one commit on f068f11. I checked them with git am on f068f11 together with 0372, 0373 and 0375, and all apply.
+
+**0377** `0377-helper-true-reason.patch`, sha256 3d632aeb7bb4. Board 5418, now 5149 part E.
+- **Fault (Giorgi, G-060 / G-061):** a helper the owner named himself was told she was asked „because <an unrelated contact of hers> is in your contacts", then shown three names with „write both".
+- **Now, when the owner named the helper himself:** she is no longer told a search reason. Her own fitting people may still be offered.
+- **„both":** said only under exactly two names. Under three or more, the hint is the existing sentence without „both" („… დაწერე მათი სახელები.").
+- **Text:** no new sentence. One existing sentence is shortened (its RU/EN/ES the same way). Giorgi asked for exactly that in G-060 („hint matching the count"), so I'm not holding it.
+- Verify is green: 932 suites, 8,963 tests.
+- **DONE WHEN:** an owner names a helper himself, and the helper's ask has no „შენ იმიტომ გკითხეს…" line. A picker with three names never says „ორივე".
+
+**0378** `0378-assistant-wording-HELD.patch`, sha256 2a7eb6710572. Board 5149 B/C/F, plus the connector page's „never Ally".
+- The server's owner-facing lines name the other side's assistant: the one-person send, the server's introduction, and each answer-card line „<A>-ს ასისტენტი: …".
+- The connector sign-in page reads „Netai" everywhere „Ally" stood.
+- **HELD:** it ships only with Giorgi's OK of the exact words (box 61876, 62008; RU/ES are in the patch) plus Misho's yes in your chat.
+- Verify is green: 931 suites, 8,959 tests.
+- **DONE WHEN:** after it ships, the tester sees „<A>-ს ასისტენტს…" in the sent line, the intro line and the answer card, and „Netai" on the connector page.
+
 ### 16 Oct, 13:07Z — work loop: no new patch; blockers this hour
 
 - **5321 / 5318 (speed):** 0376 is deploying (62245). The next step is run 9, the same 200 hello-only run. I'm asking Misho's word for it in my chat. No speed change until run 9's `[accept-timing]` and `[greeting]` lines say which phase is slow.

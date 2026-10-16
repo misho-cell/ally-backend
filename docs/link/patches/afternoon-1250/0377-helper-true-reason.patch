@@ -1,0 +1,187 @@
+From 058706bb62a43d6a351e798db6dd20a4873c1e0b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 13:26:00 +0000
+Subject: [PATCH] 5418 (5149 part E): a helper hears only the true reason she
+ was asked
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi (G-060 / G-061): his own helper was told „შენ იმიტომ გკითხეს, რომ
+შენს კონტაქტებშია <an unrelated contact of hers>" and then three of her
+contacts with „write both". He had named her himself: the only true reason
+is that he asked.
+
+- When the owner named the helper himself (his typed line or tapped
+  button names her, or the server sent his own words), the search reason is
+  no longer told her: the bridge need goes without the person a search found
+  through her. Her own fitting people may still be offered.
+- „both" is said only under exactly two names; under three or more the hint
+  is the same sentence without it („… დაწერე მათი სახელები.").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../aHelperIsToldOnlyTheTrueReason.test.ts    | 58 +++++++++++++++++++
+ .../theHelpersOwnPeopleAreOffered.test.ts     |  2 +-
+ src/services/bridgePicker.ts                  | 13 ++++-
+ src/services/taskAsks.service.ts              | 20 ++++++-
+ 4 files changed, 90 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/aHelperIsToldOnlyTheTrueReason.test.ts
+
+diff --git a/src/services/__tests__/aHelperIsToldOnlyTheTrueReason.test.ts b/src/services/__tests__/aHelperIsToldOnlyTheTrueReason.test.ts
+new file mode 100644
+index 0000000..bb368c4
+--- /dev/null
++++ b/src/services/__tests__/aHelperIsToldOnlyTheTrueReason.test.ts
+@@ -0,0 +1,58 @@
++jest.mock('../../db/postgres/client', () => ({
++  poolPressure: () => ({ total: 0, idle: 0, waiting: 0 }),
++  query: jest.fn(),
++  __esModule: true,
++}));
++jest.mock('../tools/searchByTag', () => ({ __esModule: true, ownMatchesFor: jest.fn() }));
++
++import { readFileSync } from 'fs';
++import { join } from 'path';
++import { query } from '../../db/postgres/client';
++import { ownMatchesFor } from '../tools/searchByTag';
++import { bridgePicker } from '../bridgePicker';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++const mockMatches = ownMatchesFor as jest.MockedFunction<typeof ownMatchesFor>;
++
++const NINO = { phone: 'p-nino', name: 'Nino Kapanadze' };
++const DATO = { phone: 'p-dato', name: 'Dato Lomidze' };
++const ILIA = { phone: 'p-ilia', name: 'Ilia Beridze' };
++
++beforeEach(() => {
++  mockQuery.mockReset();
++  mockQuery.mockResolvedValue({ rows: [] } as never);
++  mockMatches.mockReset();
++});
++
++/** 5418 (Giorgi, G-060 / G-061): the helper hears the true reason, and a hint that fits the count. */
++describe('a helper is told only the true reason', () => {
++  it('without a search behind the ask, gives no reason, only her fitting people', async () => {
++    mockMatches.mockResolvedValueOnce([NINO, DATO]);
++
++    const picker = await bridgePicker('551', { need: 'იურისტი' }, 'ka');
++
++    expect(picker?.line).not.toContain('იმიტომ გკითხეს');
++    expect(picker?.names).toEqual(['Nino Kapanadze', 'Dato Lomidze']);
++  });
++
++  it('says „both" under exactly two names', async () => {
++    mockMatches.mockResolvedValueOnce([NINO, DATO]);
++    const picker = await bridgePicker('551', { need: 'იურისტი' }, 'ka');
++    expect(picker?.line).toContain('„ორივე"');
++  });
++
++  it('under three names asks for their names, never „both"', async () => {
++    mockMatches.mockResolvedValueOnce([NINO, DATO, ILIA]);
++    const picker = await bridgePicker('551', { need: 'იურისტი' }, 'ka');
++    expect(picker?.line).not.toContain('ორივე');
++    expect(picker?.line).toContain('დაწერე მათი სახელები.');
++  });
++
++  it('drops the search reason when the owner named the helper himself', () => {
++    const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
++    expect(asks).toContain(
++      'ownerNamedHelper && searchedNeed !== undefined ? { need: searchedNeed.need }',
++    );
++    expect(asks).toContain('fromOwnersLine === true ||');
++  });
++});
+diff --git a/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts b/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts
+index 8b6a451..c937d9f 100644
+--- a/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts
++++ b/src/services/__tests__/theHelpersOwnPeopleAreOffered.test.ts
+@@ -83,7 +83,7 @@ describe('the need an instructed ask carries (46036)', () => {
+ 
+   it('is used when no search gave one', () => {
+     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
+-    expect(asks).toContain('const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);');
++    expect(asks).toContain('const searchedNeed = bridgeNeed ?? needFromQuestion(safeQuestion);');
+   });
+ });
+ 
+diff --git a/src/services/bridgePicker.ts b/src/services/bridgePicker.ts
+index 0b23517..48422c4 100644
+--- a/src/services/bridgePicker.ts
++++ b/src/services/bridgePicker.ts
+@@ -121,7 +121,10 @@ function pickerLine(
+   const offered = others.length + (pickedOne === null ? 0 : 1);
+   const line = pickerSentences(language, picked, rest);
+   // 2186: more than one may be recommended — said once, under the names.
+-  return offered >= 2 ? `${line} ${MORE_THAN_ONE_HINT[language] ?? MORE_THAN_ONE_HINT.ka}` : line;
++  // 5418 (Giorgi): „both" only under exactly two names; under three or more, their names.
++  if (offered < 2) return line;
++  const hint = offered === 2 ? MORE_THAN_ONE_HINT : MANY_HINT;
++  return `${line} ${hint[language] ?? hint.ka}`;
+ }
+ 
+ const MORE_THAN_ONE_HINT: Readonly<Record<RunLanguage, string>> = {
+@@ -131,6 +134,14 @@ const MORE_THAN_ONE_HINT: Readonly<Record<RunLanguage, string>> = {
+   es: 'Si encajan varios, escribe «ambos» o sus nombres.',
+ };
+ 
++/** The same sentence without „both", for three names or more. */
++const MANY_HINT: Readonly<Record<RunLanguage, string>> = {
++  ka: 'თუ რამდენიმეს ურჩევდი, დაწერე მათი სახელები.',
++  en: 'If more than one fits, write their names.',
++  ru: 'Если подходят несколько, напиши их имена.',
++  es: 'Si encajan varios, escribe sus nombres.',
++};
++
+ function pickerSentences(language: RunLanguage, picked: string | null, rest: string): string {
+   switch (language) {
+     case 'en':
+diff --git a/src/services/taskAsks.service.ts b/src/services/taskAsks.service.ts
+index 98f59b0..5fa2281 100644
+--- a/src/services/taskAsks.service.ts
++++ b/src/services/taskAsks.service.ts
+@@ -896,6 +896,8 @@ async function createAskNow(
+   let waveNo: number | null = null;
+   // 1694 (A11): the goal's words, for the recipient's own pre-match.
+   let goalText: string | null = null;
++  /** 5418: when the goal was opened, for reading whether the owner named this helper himself. */
++  let goalOpenedAt: string | null = null;
+ 
+   // SERVER-SIDE permission gate (ticket-2 P0, thread 7723): a message that
+   // reaches a real person's phone must never depend on prompt text alone —
+@@ -911,6 +913,7 @@ async function createAskNow(
+       return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
+     }
+     goalText = task.title;
++    goalOpenedAt = task.created_at;
+     /**
+      * ROW 251, FOURTH GATE — AND IT IS THE FIRST ONE, WHICH IS WHY IT WAS MISSED.
+      *
+@@ -1675,7 +1678,22 @@ async function createAskNow(
+   // 2907 (46036): an instructed ask has no search behind it — its own question names the need.
+   // And (07:11Z, asks 16072/16073) the need a thread remembers can be the name search for
+   // the helper herself, which finds nobody in her book: then the question's trade is tried.
+-  const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
++  // 5418 (Giorgi, G-060 / G-061): when the owner named this helper himself, the only true
++  // reason she was asked is that he asked. No search reason is told her („you were asked
++  // because <someone> is in your contacts"); her own fitting people may still be offered.
++  const ownerNamedHelper =
++    fromOwnersLine === true ||
++    (goalOpenedAt !== null &&
++      (await ownerJustNamedPerson({
++        threadId,
++        taskId,
++        taskCreatedAt: goalOpenedAt,
++        fromUserId,
++        contactPhone,
++      }).catch(() => false)));
++  const searchedNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
++  const pickerNeed =
++    ownerNamedHelper && searchedNeed !== undefined ? { need: searchedNeed.need } : searchedNeed;
+   const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;
+   const questionNeed = needFromQuestion(safeQuestion);
+   const picker = !pickerAllowed
+-- 
+2.43.0
+

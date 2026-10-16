@@ -1,0 +1,253 @@
+From aa6b329bc066ece1cdb45959b0faba8e34d20a12 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 13:30:13 +0000
+Subject: [PATCH] 5149 B/C/F + "never Ally": server lines name the other side's
+ assistant
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+D583 (Giorgi): between people there are always assistants. The server's
+own owner-facing lines now say so, as proposed to Giorgi in box 61876 and
+62008, with Russian and Spanish written the same way:
+- the server's one-person send: „<A>-ს ასისტენტს კითხვა გავუგზავნე. როგორც
+  კი პასუხი მოვა, მაშინვე მოგწერ." (5149 B)
+- the server's introduction: „<A>-ს ასისტენტს თხოვნა გავუგზავნე, რომ <A>-მ
+  <T> გაგაცნოს. როგორც კი პასუხი მოვა, მაშინვე მოგწერ." (5149 F)
+- the answer card: each line „<A>-ს ასისტენტი: <answer>" (5149 C)
+- the connector sign-in page: every „Ally" reads „Netai".
+
+HELD: ships only after Giorgi's OK of these exact words (D582) and Misho's
+yes (D44).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/noOtpToAStrangersPhone.test.ts      |  2 +-
+ src/api/routes/oauth.routes.ts                    |  2 +-
+ src/api/routes/oauthPages.ts                      |  8 ++++----
+ .../aTypedIntroductionIsMadeAsOne.test.ts         |  4 ++--
+ .../__tests__/theAnswersAreOnScreenFirst.test.ts  | 10 +++++-----
+ .../theServerSendIsToldInASentence.test.ts        |  4 ++--
+ src/services/answerCard.service.ts                | 13 ++++++++++++-
+ src/services/askState.ts                          | 11 +++++++----
+ src/services/introFallback.ts                     | 15 +++++++++++----
+ 9 files changed, 45 insertions(+), 24 deletions(-)
+
+diff --git a/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts b/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts
+index 202dd05..b52c99f 100644
+--- a/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts
++++ b/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts
+@@ -65,7 +65,7 @@ describe('send-code will only text a number that is already ours', () => {
+     const at = oauth.indexOf(GUARD);
+     const block = oauth.slice(at, at + 500);
+ 
+-    expect(block).toContain('not registered with Ally');
++    expect(block).toContain('not registered with Netai');
+     expect(block).not.toMatch(/userId|user_id|name:/);
+   });
+ 
+diff --git a/src/api/routes/oauth.routes.ts b/src/api/routes/oauth.routes.ts
+index 3015321..f877335 100644
+--- a/src/api/routes/oauth.routes.ts
++++ b/src/api/routes/oauth.routes.ts
+@@ -173,7 +173,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
+         .send(
+           renderPhonePage(
+             params,
+-            'This number is not registered with Ally — sign up in the app first.',
++            'This number is not registered with Netai — sign up in the app first.',
+           ),
+         );
+       return;
+diff --git a/src/api/routes/oauthPages.ts b/src/api/routes/oauthPages.ts
+index 1d1345f..3397ff6 100644
+--- a/src/api/routes/oauthPages.ts
++++ b/src/api/routes/oauthPages.ts
+@@ -35,7 +35,7 @@ function page(body: string): string {
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+-<title>Ally — Sign in</title>
++<title>Netai — Sign in</title>
+ <style>
+   body { font-family: system-ui, -apple-system, sans-serif; background: #FAF9F5; margin: 0;
+          display: flex; flex-direction: column; justify-content: center; align-items: center;
+@@ -58,7 +58,7 @@ function page(body: string): string {
+ </style>
+ </head>
+ <body>
+-<div class="logo">${LOGO_SVG}<span>Ally</span></div>
++<div class="logo">${LOGO_SVG}<span>Netai</span></div>
+ <div class="card">${body}</div>
+ </body>
+ </html>`;
+@@ -79,8 +79,8 @@ function hiddenFields(params: AuthorizePageParams): string {
+ 
+ export function renderPhonePage(params: AuthorizePageParams, error?: string): string {
+   return page(`
+-<h1>Connect Claude to Ally</h1>
+-<p>Claude is requesting access to your Ally network. Enter your phone number — we'll send a code to your WhatsApp.</p>
++<h1>Connect Claude to Netai</h1>
++<p>Claude is requesting access to your Netai network. Enter your phone number — we'll send a code to your WhatsApp.</p>
+ ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
+ <form method="post" action="/oauth/authorize/send-code">
+ ${hiddenFields(params)}
+diff --git a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+index 9fd6476..f6e0ae0 100644
+--- a/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
++++ b/src/services/__tests__/aTypedIntroductionIsMadeAsOne.test.ts
+@@ -149,10 +149,10 @@ describe('the server makes the introduction', () => {
+   it('tells the owner who was asked to introduce them to whom', () => {
+     const made = { mediator: 'გიორგი ტესტაძე', target: 'ნინო ნიმუშაძე' };
+     expect(introSentSentence(made, 'ka')).toBe(
+-      'გიორგი ტესტაძეს თხოვნა გავუგზავნე, რომ ნინო ნიმუშაძე გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.',
++      'გიორგი ტესტაძის ასისტენტს თხოვნა გავუგზავნე, რომ გიორგი ტესტაძემ ნინო ნიმუშაძე გაგაცნოს. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.',
+     );
+     expect(introSentSentence(made, 'en')).toBe(
+-      'I asked გიორგი ტესტაძე to introduce you to ნინო ნიმუშაძე. I will tell you as soon as they answer.',
++      "I sent გიორგი ტესტაძე's assistant a request for გიორგი ტესტაძე to introduce you to ნინო ნიმუშაძე. I will tell you as soon as the answer comes.",
+     );
+   });
+ });
+diff --git a/src/services/__tests__/theAnswersAreOnScreenFirst.test.ts b/src/services/__tests__/theAnswersAreOnScreenFirst.test.ts
+index 8c68d65..2fc37c7 100644
+--- a/src/services/__tests__/theAnswersAreOnScreenFirst.test.ts
++++ b/src/services/__tests__/theAnswersAreOnScreenFirst.test.ts
+@@ -52,8 +52,8 @@ describe('the card', () => {
+   it('puts a person’s own words in quotes and a reworded answer without', async () => {
+     const card = await buildAnswerCard([OWN_WORDS, REWORDED], 'ka');
+     expect(card).toContain('მოვიდა პასუხები:');
+-    expect(card).toContain(`Netai Test 50: „${OWN_WORDS.answer}"`);
+-    expect(card).toContain(`Netai Test 54: ${REWORDED.answer}`);
++    expect(card).toContain(`Netai Test 50-ის ასისტენტი: „${OWN_WORDS.answer}"`);
++    expect(card).toContain(`Netai Test 54-ის ასისტენტი: ${REWORDED.answer}`);
+     expect(card).not.toContain(`„${REWORDED.answer}"`);
+   });
+ 
+@@ -61,7 +61,7 @@ describe('the card', () => {
+     mockRelay.mockResolvedValue({ text: 'Yes, I know one.', original: OWN_WORDS.answer });
+     const card = await buildAnswerCard([OWN_WORDS], 'en');
+     expect(card).toContain('An answer came in:');
+-    expect(card).toContain('Netai Test 50: Yes, I know one.');
++    expect(card).toContain("Netai Test 50's assistant: Yes, I know one.");
+     expect(card).toContain(`(„${OWN_WORDS.answer}")`);
+     expect(card).not.toContain('„Yes, I know one."');
+   });
+@@ -69,9 +69,9 @@ describe('the card', () => {
+   /** A relayed answer (D254) names the bridge on the card, without inflecting either name. */
+   it('names the bridge when the answer came through one', async () => {
+     const card = await buildAnswerCard([{ ...OWN_WORDS, viaName: 'Levan' }], 'ka');
+-    expect(card).toContain(`Netai Test 50 (შუამავალი: Levan): „${OWN_WORDS.answer}"`);
++    expect(card).toContain(`Netai Test 50-ის ასისტენტი (შუამავალი: Levan): „${OWN_WORDS.answer}"`);
+     const english = await buildAnswerCard([{ ...REWORDED, viaName: 'Levan' }], 'en');
+-    expect(english).toContain('Netai Test 54 (via Levan):');
++    expect(english).toContain("Netai Test 54's assistant (via Levan):");
+   });
+ 
+   it('names an unnamed answerer in the owner’s language', async () => {
+diff --git a/src/services/__tests__/theServerSendIsToldInASentence.test.ts b/src/services/__tests__/theServerSendIsToldInASentence.test.ts
+index 36435f7..fe4ce63 100644
+--- a/src/services/__tests__/theServerSendIsToldInASentence.test.ts
++++ b/src/services/__tests__/theServerSendIsToldInASentence.test.ts
+@@ -6,10 +6,10 @@ import { sentSentenceForOwner } from '../askState';
+ describe('theServerSendIsToldInASentence', () => {
+   it('tells one person asked in a plain sentence, the name in its case', () => {
+     expect(sentSentenceForOwner('ნინო ტესტაძე', 'ka')).toBe(
+-      'ნინო ტესტაძეს კითხვა გავუგზავნე. როგორც კი გიპასუხებს, მაშინვე მოგწერ.',
++      'ნინო ტესტაძის ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.',
+     );
+     expect(sentSentenceForOwner('Nino', 'en')).toBe(
+-      'I sent your question to Nino. I will tell you as soon as they answer.',
++      "I sent your question to Nino's assistant. I will tell you as soon as the answer comes.",
+     );
+   });
+ 
+diff --git a/src/services/answerCard.service.ts b/src/services/answerCard.service.ts
+index 4561b6b..c7c6990 100644
+--- a/src/services/answerCard.service.ts
++++ b/src/services/answerCard.service.ts
+@@ -1,6 +1,7 @@
+ import { randomUUID } from 'crypto';
+ import { query } from '../db/postgres/client';
+ import { relayedForReader } from './askTranslation.service';
++import { geoName } from './georgianCase';
+ import { RunLanguage } from './runLanguage';
+ import { emitMessageAppended } from './sse.service';
+ import { saveServerLine, threadLanguage } from './threads.service';
+@@ -61,10 +62,20 @@ const SOMEBODY: Readonly<Record<RunLanguage, string>> = {
+   ka: 'ადამიანი, ვისაც ჰკითხე',
+ };
+ 
++/** 5149 C (D583, Giorgi): an answer is brought by the person's assistant, and the line says so. */
++const ASSISTANT_OF: Readonly<Record<RunLanguage, (name: string) => string>> = {
++  ka: (name) => `${geoName(name, 'gen')} ასისტენტი`,
++  en: (name) => `${name}'s assistant`,
++  ru: (name) => `Ассистент ${name}`,
++  es: (name) => `El asistente de ${name}`,
++};
++
+ /** One answer's line: their own words in quotes, anything else without. */
+ async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<string> {
+   const via = answer.viaName?.trim();
+-  const who = `${answer.fromName?.trim() || SOMEBODY[language]}${via ? ` (${VIA[language]} ${via})` : ''}`;
++  const from = answer.fromName?.trim();
++  const sender = from ? ASSISTANT_OF[language](from) : SOMEBODY[language];
++  const who = `${sender}${via ? ` (${VIA[language]} ${via})` : ''}`;
+   const relayed = await relayedForReader(answer.answer, language, 'answer');
+   if (relayed.original === undefined) {
+     return answer.verbatim
+diff --git a/src/services/askState.ts b/src/services/askState.ts
+index 0448082..6def2f8 100644
+--- a/src/services/askState.ts
++++ b/src/services/askState.ts
+@@ -236,11 +236,14 @@ export function laterSentenceForAsker(
+  * „<name>: კითხვა მიუვიდა, პასუხს ველოდები". D714 / D722: one person asked is
+  * told in a plain sentence, not a status line.
+  */
++// 5149 B (D583, Giorgi): between people there are always assistants — the line names hers.
+ const SENT_SENTENCES: Readonly<Record<RunLanguage, (name: string) => string>> = {
+-  ka: (n) => `${geoName(n, 'dat')} კითხვა გავუგზავნე. როგორც კი გიპასუხებს, მაშინვე მოგწერ.`,
+-  en: (n) => `I sent your question to ${n}. I will tell you as soon as they answer.`,
+-  ru: (n) => `Я отправил вопрос: ${n}. Напишу, как только будет ответ.`,
+-  es: (n) => `Envié tu pregunta a ${n}. Te escribo en cuanto responda.`,
++  ka: (n) =>
++    `${geoName(n, 'gen')} ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.`,
++  en: (n) =>
++    `I sent your question to ${n}'s assistant. I will tell you as soon as the answer comes.`,
++  ru: (n) => `Я отправил вопрос ассистенту ${n}. Напишу, как только придёт ответ.`,
++  es: (n) => `Envié tu pregunta al asistente de ${n}. Te escribo en cuanto llegue la respuesta.`,
+ };
+ 
+ export function sentSentenceForOwner(name: string, language: RunLanguage): string {
+diff --git a/src/services/introFallback.ts b/src/services/introFallback.ts
+index 0a12c74..d44b639 100644
+--- a/src/services/introFallback.ts
++++ b/src/services/introFallback.ts
+@@ -120,12 +120,19 @@ export async function serverIntroduces(
+ }
+ 
+ /** MODEL-FREE, OWNER-FACING (needs Misho's yes): the introduction went, in the per-person line's shape. */
++// 5149 F (D583, Giorgi): the request went to the mediator's assistant, and the line says so.
+ const INTRO_SENT_SENTENCES: Readonly<Record<RunLanguage, (m: string, t: string) => string>> = {
+   ka: (m, t) =>
+-    `${geoName(m, 'dat')} თხოვნა გავუგზავნე, რომ ${t} გაგაცნოს. როგორც კი გიპასუხებს, მაშინვე მოგწერ.`,
+-  en: (m, t) => `I asked ${m} to introduce you to ${t}. I will tell you as soon as they answer.`,
+-  ru: (m, t) => `Я попросил ${m} познакомить вас: ${t}. Напишу, как только будет ответ.`,
+-  es: (m, t) => `Le pedí a ${m} que te presente a ${t}. Te escribo en cuanto responda.`,
++    `${geoName(m, 'gen')} ასისტენტს თხოვნა გავუგზავნე, რომ ${geoName(m, 'erg')} ${t} გაგაცნოს. ` +
++    'როგორც კი პასუხი მოვა, მაშინვე მოგწერ.',
++  en: (m, t) =>
++    `I sent ${m}'s assistant a request for ${m} to introduce you to ${t}. I will tell you as ` +
++    'soon as the answer comes.',
++  ru: (m, t) =>
++    `Я отправил ассистенту ${m} просьбу познакомить вас: ${t}. Напишу, как только придёт ответ.`,
++  es: (m, t) =>
++    `Envié al asistente de ${m} la petición de que ${m} te presente a ${t}. Te escribo en ` +
++    'cuanto llegue la respuesta.',
+ };
+ 
+ export function introSentSentence(made: ServerIntroduction, language: RunLanguage): string {
+-- 
+2.43.0
+
