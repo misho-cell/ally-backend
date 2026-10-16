@@ -122,7 +122,13 @@ const pool = new Pool({
  * finds the pool full waits up to 30 s for its turn instead of 10, since a
  * search that starts late still answers and one that gives up never does.
  */
-const LONG_POOL_MAX = 24;
+/**
+ * The 6th 200-seat run (16 Oct 07:09–07:13Z, box 61681) answered the question
+ * the note above left open. With 24 connections a search spent about 0.8 s in
+ * the database and a median 16.7 s waiting for one (up to 629 queued): the
+ * database has room, the pool did not. 285 slow tools against 284 before.
+ */
+const LONG_POOL_MAX = 64;
 const LONG_POOL_CONNECT_WAIT_MS = 30_000;
 const longQueryPool = new Pool({
   ...BASE_POOL_CONFIG,
@@ -150,7 +156,11 @@ const backgroundPool = new Pool({
  * own small lane: queries made while a send is being accepted draw from this
  * pool, and the run it starts leaves the lane (`leaveIntakeLane`).
  */
-const INTAKE_POOL_MAX = 10;
+/**
+ * Run 6: 200 sends at once queued up to 190 deep on ten connections, and the
+ * browser saw a median 31.8 s to the 202 (1.4–1.6 s for one sender alone).
+ */
+const INTAKE_POOL_MAX = 40;
 const intakePool = new Pool({
   ...BASE_POOL_CONFIG,
   max: INTAKE_POOL_MAX,
