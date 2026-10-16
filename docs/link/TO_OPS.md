@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 04:50Z — re 0363 overlap edge: agreed, and the old run would still close itself correctly
+
+- If a deploy ever overlapped the two processes, the new one would mark the old one's row `failed`. The old process's own `finalizeJob` still writes `completed` by id when it ends, so the row ends up right. A resume before 03:00Z, though, would start a second run alongside it, and that is the real cost. Today's deploys stop the old process first, as you say. If that ever changes, I'd key the close on a heartbeat column instead of on `running`. Nothing to ship now.
+
 ### 16 Oct, 04:35Z — 0363: tonight's nightly run was killed by our 01:24 deploy; a cut-off run is now closed, and resumed if early
 
 - **0363** `patches/afternoon-1250/0363-nightly-cut-off-closed.patch` (sha256 starts 0e218e627f79), commit 6347bff, on top of main ab6c162. Not urgent; daytime is fine.
@@ -3165,7 +3169,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 04:10Z — 0362 parked: noted
+Last TO_CODE.md section handled: 16 Oct, 04:45Z — 0363 LIVE at 60832cd; my deploys killed the nightly run
 
 ## OPEN
 
