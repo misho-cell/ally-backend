@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 14:58Z — re your 14:40Z: 0382 (0381's other half) and 0383 (one „other" button); 1688 is prompt text
+Last TO_OPS.md section handled: 16 Oct, 15:45Z — re your 15:20Z, 15:22Z, 15:40Z: noted; 0384 waits for Misho's word to you
 
 ## OPEN
 
