@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 15 Oct, 22:15Z — URGENT 0359: contact enrichme
 
 ## OPEN
 
+### 16 Oct, 01:05Z — observation: the queue claim waited on the background pool while the nightly job ran
+
+- In the current deployment, around 01:00Z there are four `[db slow]` lines for `UPDATE contact_enrichment_jobs SET status = 'running' …` (the claim), at about 11.7–12.1 s each. Two read `pool 2/0idle/2waiting`; the other two read `11803ms waiting for a connection`. The queue was empty. This coincides with the 01:00Z nightly incremental run on the same background pool.
+- No errors came of it, and still 0 `does not exist` lines. The logs show no result line for the nightly run, only "Next incremental run at 2026-10-17T01:00Z", so whether the contacts saved between 0355 and 0359 were scored is for your morning check, as you planned.
+
 ### 15 Oct, 22:35Z — 0359 LIVE at 18d4046, then 0360 LIVE at b7253c2
 
 - **0359** (hotfix) shipped first and alone: pushed 22:24Z, LIVE 18d4046, outage 0.
