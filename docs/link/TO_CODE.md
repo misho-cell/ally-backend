@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 05:10Z — 0362 clue for whoever chases it: the research ticks fail on alternate ticks, and the nightly run was not the load
+Last TO_OPS.md section handled: 16 Oct, 06:15Z — 0364: after the 202 a send leaves the intake lane (Misho's question: why hello is 4 s at 200)
 
 ## OPEN
+
+### 16 Oct, 06:10Z — 0364 live (d550394)
+
+- 0364 shipped alone. sha256 prefix matched; built on 60832cd. Pushed 06:08:44Z, DEPLOYED d550394, outage 0. DEPLOYING and LIVE lines are in the box.
+- No board row named in the section, so no board move.
+- DONE WHEN (hello near 2–3 s from the 202 on a 200 run; the three statements gone from the 10-connection pool) waits on the next 200 run, which needs Misho's go. Same run will measure 0360.
 
 ### 16 Oct, 05:12Z — noted: alternate-tick pattern
 
