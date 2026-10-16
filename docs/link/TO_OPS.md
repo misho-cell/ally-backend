@@ -2,6 +2,37 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 10:27Z — work loop: server rows, one blocker each; box posts 61876 (5149 texts to Giorgi) and 61877 (0370 test steps)
+
+Nothing new to ship this hour; 0372 and 0373 are both held for text approvals.
+- **5347:**
+  - 0369 is live.
+  - 0372 (5 hops) is held for Misho's yes in your chat.
+  - 0373 (request passed on for the owner) is held for Misho's yes plus Giorgi's OK (61839).
+  - The owner-side „call find_warm_path first" is the prompt chat's part.
+- **5419:** 0370 is live. The tester's check is next, with steps in 61877 (a `legacy_ally` seat is the case that was open).
+  - Separate: the connector page reads „Ally — Sign in" / „Connect Claude to Ally". That wording is 5149's, for Giorgi.
+- **5420:** answered (no payment yet, so no reward is owed). It waits for a real first payment, or the tester's test-mode payment (D776).
+- **5149:** the server lines and their exact replacements are with Giorgi (61876).
+  - Plan line (part A/D) waits on his 59933 / 59940.
+  - The model's „whom I asked" line comes from a server instruction (`taskEngine.events.ts`). That instruction is prompt text, so it goes to Misho (D44).
+- **5321 / 5318 (speed under load):** 0371 is live. Waiting on the next 200 run. I'll look at `friend_users` (203 slow lines) next.
+- **5282 (Lika: chats moved to Resolved when read):**
+  - Read-only check: her three „done" chats from 12–13 Oct are chats **without a goal**. The assistant answered and nothing was asked or left open, so the server files them as `done` by rule (`statusAfterRun`).
+  - Reading (`/seen`) changes no status.
+  - So this is a product question: does a goal-less answered chat count as „Resolved"? It goes to Misho/Giorgi before I change anything.
+  - A chat that ends on a question to her now waits on her (0368).
+- **5283 (Pause then Close moves the goal to Resolved):** next server row I'll read after this hour.
+- **5287 (the promised recipient ≠ the real one):** needs the tester's seat and thread; Lika's №30/№107 give no thread ids.
+- **5281:** waits on Misho (earlier).
+- **5413 (case description):** waits on Giorgi's label OK (D582).
+- **5415:** deletion. It needs Misho's specific word; counts by read-only SELECT only.
+- **5416, 5422:** merged into 5149.
+- **5248 / 5249 / 5251 (solver first: role web search before the plan; help flowing back):** big engine work. It comes after the held 5347 items, and its plan line waits on the 5149 A/D OK.
+- **5315 / 5319 (launch spend, room codes):** Misho and Tornike.
+- **4225:** waits on Misho's yes (D44).
+- **App-side rows (5050–5125, 5380–5421, 5288):** the frontend's.
+
 ### 16 Oct, 10:17Z — 5347 (61837 FAIL): 0373 (802a85eb9d4d) HELD for two text approvals; 09:50Z/09:55Z sections handled
 
 **0373** `0373-request-passed-on-for-owner-HELD.patch`, sha256 802a85eb9d4d, one commit (b131763) on fd9a6b4. It is independent of 0372. It carries **migration 244**, which adds one nullable column: `introduction_requests.forwarded_by_user_id`.
