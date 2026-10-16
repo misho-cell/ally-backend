@@ -87,3 +87,27 @@ describe('how search reads it', () => {
     );
   });
 });
+
+/** The second half of 5446: C holds the helper only through one of C's own contacts. */
+describe('the second-degree search', () => {
+  const second = readFileSync(join(__dirname, '..', 'tools', 'searchSecondDegree.ts'), 'utf8');
+
+  it('reads the record for the people the asker’s bridges hold', () => {
+    const at = second.indexOf('case_hits AS (');
+    const branch = second.slice(at, at + 500);
+    expect(at).toBeGreaterThan(-1);
+    expect(branch).toContain('FROM helper_solved_cases hs');
+    expect(branch).toContain('WHERE ua_b."contactId" = ANY(b.ids)');
+    expect(second).toContain('SELECT phone, "contactId", label, TRUE AS from_case FROM case_hits');
+  });
+
+  it('offers a person found only that way without a reason and without a role', () => {
+    expect(second).toContain('BOOL_AND(m.from_case)');
+    expect(second).toContain('const caseOnly = row.case_only === true;');
+    expect(second).toContain('const employer = caseOnly ? null :');
+    expect(second).toContain('const jobPosition = caseOnly ? null :');
+    expect(second).toContain(
+      '...(caseOnly ? { found_by_their_own_work: FOUND_BY_OWN_WORK_NOTE } : {}),',
+    );
+  });
+});
