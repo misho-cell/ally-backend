@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 19:20Z — 0393: a long search is one round trip, not three (5318, launch speed)
+
+- **0393** `patches/afternoon-1250/0393-long-search-one-trip.patch` (sha256 starts 406ef29253c6), commit 62ed403, on top of main. Board **5318** (launch: plan ≤ 60 s at 100 at once).
+  - **What run 10 showed.** In your 15:20–15:24Z logs there were 854 `[db slow]` lines on the long pool: median 10.4 s, of which 9.6 s waiting for a connection and ~0.8 s holding one. The short pool sat at 79 idle the whole time.
+  - **Why.** A query with its own timeout held its connection for three round trips of ~150 ms (`SET statement_timeout`, the query, the restoring `SET`). The small searches of the 3-contact seats spent their 0.3–0.8 s mostly on that road, not in the database.
+  - **The fix.** The long pool's connections now start with `statement_timeout=20000` (the searches' longest). Any long query up to 20 s goes as one round trip on the pool; longer ones still set and restore their own.
+  - **Expected:** the same 24 connections pass about half again as many searches, with no extra database CPU (0374's finding that more connections only add CPU still holds).
+  - **The stated cost:** a search asked to stop at 12 or 15 s may run up to 20 s in the database.
+  - Tests: queryRouting updated plus one new test. Verify green, 9027 tests.
+- **DONE WHEN:** on the next 200 run, the plan run's median from accept falls clearly below run 10's 101.7 s, and the `[db slow]` count on the long pool goes down. The board's real target (plan ≤ 60 s at 100) may need more than this; I'll read the next run's lines.
+- **Order:** any. Checked alone and after 0387–0392.
+- **One thing changes in your reading of the logs:** long-pool queries now go through `pool.query`, so a `[db slow]` line no longer carries „(N ms waiting for a connection)". The `pool 24/0idle/N waiting` part still shows the queue.
+
 ### 16 Oct, 19:00Z — re your 18:55Z: understood; for the record, Misho's words to me on the D44 lines
 
 - 0392 is held with 0387–0391, noted.

@@ -1,0 +1,133 @@
+From 62ed403fda660b6b04c69d80f97d081966262571 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 19:02:33 +0000
+Subject: [PATCH] 5318: a long search is one round trip to the database, not
+ three
+
+Run 10 (16 Oct 15:20Z, 200 at once): 854 slow queries on the long pool, a
+median 10.4 s, of which 9.6 s waiting for a connection and about 0.8 s
+holding one, while the short pool sat at 79 idle. A query with its own
+timeout borrowed a client and held it for three round trips of ~150 ms
+each: SET statement_timeout, the query, and the SET that restores the
+default before the client goes back. Most of each connection's time went
+to the road to the database, not to the database.
+
+The long pool's connections now start with the searches' longest timeout
+(20 s), so any long query up to it goes as one round trip on the pool. A
+query asking for longer still sets and restores its own. The cost: a search
+asked to stop at 12 or 15 s may run up to 20 s inside the database.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../postgres/__tests__/queryRouting.test.ts   | 19 ++++++++---
+ src/db/postgres/client.ts                     | 33 +++++++++++++++----
+ 2 files changed, 41 insertions(+), 11 deletions(-)
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index 4140c8c..3d4e0e5 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -105,8 +105,10 @@ describe('which pool answers a query', () => {
+   it('sends a query that asked for its own timeout to the LONG pool', async () => {
+     await query('WITH mine AS MATERIALIZED (SELECT phone FROM "UserTags")', [1], 15_000);
+ 
+-    // It borrows a client, because the timeout rides on the connection.
+-    expect(longPool.connect).toHaveBeenCalledTimes(1);
++    // Run 10: the long pool's connections carry the searches' timeout already,
++    // so the query is one round trip on that pool, with no client borrowed.
++    expect(longPool.query).toHaveBeenCalledTimes(1);
++    expect(longPool.connect).not.toHaveBeenCalled();
+     // And the short pool is untouched, which is the entire point: a 50 ms
+     // lookup no longer stands behind a fifteen-second search.
+     expect(shortPool.query).not.toHaveBeenCalled();
+@@ -150,10 +152,19 @@ describe('which pool answers a query', () => {
+     await query('SELECT ... FROM "UserTags" WHERE tag ILIKE $1', [1], 12_000);
+     await query('SELECT ... FROM "UserConnection"', [1], 10_000);
+ 
+-    expect(longPool.connect).toHaveBeenCalledTimes(3);
++    expect(longPool.query).toHaveBeenCalledTimes(3);
+     expect(shortPool.connect).not.toHaveBeenCalled();
+   });
+ 
++  // Run 10 (16 Oct): one round trip up to the long pool's own 20 s; a longer ask
++  // still sets its own timeout on a borrowed client, and restores it after.
++  it('gives the long pool a 20 s timeout and sets a longer one per query', async () => {
++    expect(String(longPool.config.options)).toContain('statement_timeout=20000');
++    await query('SELECT slow FROM t', [1], 30_000);
++    expect(longPool.connect).toHaveBeenCalledTimes(1);
++    expect(longPool.query).not.toHaveBeenCalled();
++  });
++
+   /** 5321: a send waited 14.6 s to be accepted behind 200 runs' lookups. */
+   it('sends a query made while a send is accepted to the INTAKE pool', async () => {
+     await onIntakeLane(() => query('SELECT id FROM threads WHERE id = $1', [1]));
+@@ -166,7 +177,7 @@ describe('which pool answers a query', () => {
+     await onIntakeLane(() => query('SELECT big FROM t WHERE x = $1', [1], 15_000));
+ 
+     expect(intakePool.query).not.toHaveBeenCalled();
+-    expect(longPool.connect).toHaveBeenCalledTimes(1);
++    expect(longPool.query).toHaveBeenCalledTimes(1);
+   });
+ 
+   it('sends what the accepted send starts — the run — back to the ordinary pool', async () => {
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index dee84ec..decec21 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -137,13 +137,27 @@ const pool = new Pool({
+  * 24 to 4.2 s at 64. Back to 24: the same search throughput, and the short work
+  * (a hello, an accept, a run's first reads) is not starved by it.
+  */
++/**
++ * And run 10 (16 Oct 15:20Z, 200 at once) named the ceiling. 854 slow queries on
++ * this pool: a median 10.4 s, 9.6 s of it waiting for a connection, ~0.8 s
++ * holding one — and the short pool sat at 79 idle. A search with its own timeout
++ * held its connection for three round trips of ~150 ms (SET, the query, the SET
++ * that restores the default before release), so most of the 0.8 s was the road
++ * to the database, not the database. This pool's connections now carry the
++ * searches' longest timeout from the start: a long query up to it is one round
++ * trip, and the 24 connections pass about half again as many searches.
++ *
++ * The price, stated: a search asked to stop at 12 or 15 s may run to 20 s inside
++ * the database. A search that answers late still answers; one cut off does not.
++ */
++const LONG_POOL_STATEMENT_TIMEOUT_MS = 20_000;
+ const LONG_POOL_MAX = 24;
+ const LONG_POOL_CONNECT_WAIT_MS = 30_000;
+ const longQueryPool = new Pool({
+   ...BASE_POOL_CONFIG,
+   max: LONG_POOL_MAX,
+   connectionTimeoutMillis: LONG_POOL_CONNECT_WAIT_MS,
+-  options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
++  options: `-c statement_timeout=${LONG_POOL_STATEMENT_TIMEOUT_MS}`,
+ });
+ 
+ // Background jobs (enrichment, backfills) draw from their OWN tiny pool so a
+@@ -392,12 +406,17 @@ export async function query<T extends QueryResultRow>(
+    * codebase reads that way: 3s and 5s on small lookups, 10s to 15s on the
+    * searches and the analytics.
+    */
+-  const sourcePool =
+-    timeoutMs > DEFAULT_QUERY_TIMEOUT_MS
+-      ? longQueryPool
+-      : intakeLane.getStore() === true
+-        ? intakePool
+-        : pool;
++  if (timeoutMs > DEFAULT_QUERY_TIMEOUT_MS) {
++    // Run 10: up to the long pool's own timeout the query is one round trip.
++    return runOnPool<T>(
++      longQueryPool,
++      LONG_POOL_STATEMENT_TIMEOUT_MS,
++      queryText,
++      params,
++      Math.max(timeoutMs, LONG_POOL_STATEMENT_TIMEOUT_MS),
++    );
++  }
++  const sourcePool = intakeLane.getStore() === true ? intakePool : pool;
+   return runOnPool<T>(sourcePool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
+ }
+ 
+-- 
+2.43.0
+
