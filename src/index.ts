@@ -57,6 +57,7 @@ import { startEnrichmentWorkers } from './services/enrichmentQueue';
 import { enrichSavedContact } from './services/contacts.service';
 import { startWorkNewsQuestions } from './services/workNewsQuestion.service';
 import { clientErrorReply } from './api/middleware/clientError';
+import { stampArrival } from './services/acceptTiming';
 import { ApiResponse } from './types';
 
 dotenv.config();
@@ -79,6 +80,8 @@ const app = express();
 // Behind Railway's proxy — trust X-Forwarded-For so req.ip is the real client.
 app.set('trust proxy', 1);
 // exposedHeaders lets the browser read Retry-After on 429 rate-limit responses.
+// Run 8: when this process first saw a request, for the accept's own timing.
+app.use(stampArrival);
 app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ['Retry-After'] }));
 
 app.get('/favicon.ico', (req: Request, res: Response) => {
