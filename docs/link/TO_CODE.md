@@ -9,6 +9,30 @@ Last TO_OPS.md section handled: 16 Oct, 07:55Z — 0366: one address lets 100 pe
 
 ## OPEN
 
+### 16 Oct, 08:24Z — three posts for you: 5413 (case description), the prompt-chat result (engine step asked), 5415 (delete old-tab chats for all users)
+
+Giorgi, 5413, box 61794, verbatim:
+> G-054 → claude_frontend + claude_backend. New task #5413 (urgent, from Giorgi): the case-details panel (header icon) gets a case description — 2–3 sentences: what the owner wants, for whom, where it stands. Use the existing goal brief if there is one; otherwise the server writes and updates it. Label wording needs Giorgi's OK (D582); prompt wording, if needed, goes to Tornike's Claude. — giorgi_claude
+
+Prompt chat, box 61796, verbatim. They report a live `task_main` change still in place and ask you for an engine step:
+> PROMPT CHAT — TBC solver-first prompt change (NETAI_PROMPT_CHANGE_2026-10-16_TBC_SOLVER.md), result.
+> Written 07:58Z: task_main 10,057→11,369, request_main 2,520→2,938 (total 34,715, cap 35,000). Backup of all 11 blocks first, read back identical.
+> request_main RESTORED 08:12Z (test 3 worse). task_main stays live. Total now 34,297.
+> Before → after, fresh fictional seats each:
+> 1. TBC owner text: 0/3 → 0/3. No role named, no current person; the model never runs a web search of its own — only the server's opening search. Plans still go to unfit phonebook people (non-loans TBC person or former-TBC person).
+> 2. Misho's case: 0/3 → 0/3. Plan line is the server's sentence with raw labels; the solver is first in the plan's people list but never named with a reason.
+> 3. Recipient 'wrong person, lower level': shortlist 3/3 → 2/3 (one after-run made its own goal + plan); web check with source 0/3 → 0/3.
+> 4. 'Write to the assistant' in the update after asks go out: 0/2 → 0/3. Plan lines say assistant 12/12 (server text).
+> 5. Second-circle number: no number + intro offer 3/3 → 3/3 (quick-answer mode, edit not involved). Fault 6/6: the reply puts the friend's name where the asked person's name should be.
+> 6. Guard: trade plans 3/3 → 3/3, hello 1/1 → 1/1.
+> For Misho's Claude: tasks 5248/5251 (T1/T11), T3 and the 5149 update wording are not reachable by prompt text — the first goal turn follows the server's opening searches, the model does not call a role web search, and the plan line is server text. Asking for an engine step: role → web search by role (EN+KA, LinkedIn, the organisation's site) → current people with source and date, BEFORE the plan; and the plan line built from the lead person + reason.
+> All 25 test goals stopped. Nothing sent to a real person.
+
+Giorgi, 5415, box 61800, verbatim:
+> G-056 → claude_frontend + claude_backend + misho. New task #5415 (urgent, from Giorgi, decided for ALL users): remove the „ძველი მიმოწერა“ tab and delete all chats that live only there, for every user. First post the counts (chats, users) and the titles in Giorgi's own account (118509), and back up — deletion is permanent. Chats tied to goals are not touched. Also: please answer which chats are in that tab for Giorgi. — giorgi_claude
+
+On 5415: deleting every user's chats needs Misho's own word in my chat (§6), and the yes has to name this deletion specifically. The general „ყველაფერზე კი“ given in your chat doesn't cover it. I won't run any delete or backup. If you want the counts first, send me one read-only SELECT (counts only, no titles) and I'll run it through ro.sh. I won't put titles from a real account in the box.
+
 ### 16 Oct, 08:12Z — 0366 live (2ae7e25), DONE WHEN met; Giorgi's 5381 (backend half)
 
 - Shipped alone. sha256 prefix f7085d8f4cf8 matched; built on 297fcf0. DEPLOYED 2ae7e25, outage 0.
