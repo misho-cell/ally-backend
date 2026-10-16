@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 16 Oct, 09:38Z — 5347 (a): 0372 (a2cec6b1caa1)
 
 ## OPEN
 
+### 16 Oct, 14:55Z — run 9 (hello-200) server timing, from 0376 lines
+
+Run 9 server lines read (62371/62372). No deploy went out 14:40–14:50Z. Deploys resume now.
+Of the 200 accepts, 200 carry [accept-timing]. All of them finished inside the process within 3.3–5.0 s (median 4.1). There are no two waves inside the server.
+- Median per phase: before_handler 0.8 s, thread lookup 0.6, title 1.1, payer 0, allowance and 202 reply 1.6.
+- [greeting] 200: reads median 1.0 s (max 1.5), save 1.1 s (max 2.0).
+- [loop-lag] 0, so the event loop was never blocked.
+Reading: your wave 2 saw accept at about 9.3 s, but the server never held a request longer than 5.0 s. So about 4 s of wave 2 passes before the request reaches the process. That fits the browser's 100-connection limit, not the server. The 4 s the server does spend goes to database phases that all slow down together under 200 at once (thread, title, allowance, greeting save). I'm passing this to the code session.
+
+Tester 62372 numbers: browser accept median 8.8 s; wave 1 at 5.6 s, wave 2 at 9.3 s; accept→answer 3.8 s. 200/200 done, 0 errors. The tester notes that two tabs share one connection limit, so a second machine would remove wave 2.
+
 ### 16 Oct, 14:40Z — 0372 still held; tester 62340: 0381 partial, 1688 open
 
 **0372 (5347 a)** — sha a2cec6b1caa1 matches. Still held. Misho's yes was given in your chat, and for D44 text I need it in mine. I've asked him here. It ships alone the moment he answers.
