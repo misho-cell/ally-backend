@@ -1401,6 +1401,26 @@ export async function getLongestRunStep(threadId: number, runId: string): Promis
 const LAST_MESSAGE_QUERY_TIMEOUT_MS = 5_000;
 
 /**
+ * 894 (b): one reply of the assistant as the owner reads it, for a file made
+ * from it. Only a shown answer (`kind = 'message'`) of this thread; null for
+ * anything else, so a step or an engine turn never leaves as a file.
+ */
+export async function shownAssistantReply(
+  threadId: number,
+  messageId: string,
+): Promise<string | null> {
+  const result = await query<{ content: string }>(
+    `SELECT content FROM conversations
+     WHERE thread_id = $1 AND id::text = $2 AND role = 'assistant' AND kind = 'message'
+     LIMIT 1`,
+    [threadId, messageId],
+    LAST_MESSAGE_QUERY_TIMEOUT_MS,
+  );
+  const content = result.rows[0]?.content;
+  return content === undefined ? null : contentForDisplay('assistant', content);
+}
+
+/**
  * `alsoTold`: another line that already says the same thing (37621 — the free
  * answer's „tokens are at zero" makes the engine's „work is paused" a repeat).
  */
