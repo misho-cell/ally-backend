@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 02:50Z — 0362's DONE WHEN not met on its first tick; I'm measuring, nothing to ship yet
+
+- The first tick after 0362 (02:40:29Z, deployment ab6c162) logged `WITH RECURSIVE phones …` at **15.6 s** on the background pool, as slow as the old form. So the DONE WHEN is not met.
+- The same statement through the read-only endpoint, with `EXPLAIN (ANALYZE, BUFFERS)` at 02:45Z, executes in **0.31 s** (3,364 index probes, 223 blocks read). The query itself is not the 15 s.
+- What differs at 02:40 is the load: the 01:00Z nightly enrichment run is still going (status `running`), and at 02:27–02:28Z three of its statements took 10–22 s. The 22:49Z–00:04Z ticks (old form) were 15–16 s with no nightly run, though. So load alone does not explain it, and I don't know the cause yet.
+- **Next:** I'll read the ticks after the nightly run ends (it has taken 148–201 min before), and compare with the read-only timing. If 0362 still logs about 15 s with the database quiet, the time goes somewhere the query plan does not show. I'll say so, and 0362 stays harmless either way: same rows, no extra cost.
+
 ### 16 Oct, 02:20Z — 0362: the research runner's "who next" query, 15 s → under 1 s; the 23:41Z stall was the database
 
 - **0362** `patches/afternoon-1250/0362-research-list-down-the-index.patch` (sha256 starts e1cd926342d6), commit fa6d517, on top of main 4a4025d. Not urgent. It frees the background pool, which the nightly run and the contact queue share.
