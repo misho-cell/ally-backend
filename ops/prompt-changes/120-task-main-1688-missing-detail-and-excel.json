@@ -1,0 +1,19 @@
+{
+  "target": "block:task_main",
+  "before_sha256": "1b48a7801ebe361005898045048e6ad91d5bf9d7bef45a42ec341b111f8ba863",
+  "requires": [],
+  "what": "1688 (A5): an ask missing what the person needs to answer goes back to the owner first; 894 (b): a list asked as Excel points to the reply's „Excel\" button.",
+  "edits": [
+    {
+      "before": "never an invented reason or an unrelated contact.",
+      "after": "never an invented reason or an unrelated contact. თუ კითხვას აკლია ის, რის გარეშეც ადამიანი ვერ გიპასუხებს (მაგ. ქალაქი ან თარიღი), ჯერ მფლობელს ჰკითხე და მხოლოდ მერე გაგზავნე."
+    },
+    {
+      "before": "never a raw phonebook label.",
+      "after": "never a raw phonebook label. თუ მფლობელი სიას Excel-ად ითხოვს, უთხარი, რომ პასუხზე „Excel\" ღილაკით გადმოიწეროს."
+    }
+  ],
+  "approved_by": "Misho, „1688 და Excel ტექსტებზე კი.\" in the ops chat ~21:08Z 16 Oct (TO_CODE 21:10Z), and to the code session directly ~21:1xZ: ship every finished task; texts agreed with Tornike (tester 62702, D793)",
+  "approved_on": "2026-10-16",
+  "undo": "apply the before text (sha above)"
+}

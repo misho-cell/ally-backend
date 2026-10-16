@@ -1,0 +1,15 @@
+{
+  "target": "block:qa_main",
+  "before_sha256": "d943caa29665ac1c722041eb3f44bbc2284f4915a6fe207138ddebb9f758f263",
+  "requires": [],
+  "what": "894 (b): a list asked as Excel points to the reply's „Excel\" button (goes with the app's button, built 17:30Z).",
+  "edits": [
+    {
+      "before": "the question itself stays in the message. Never write a button as words in brackets.",
+      "after": "the question itself stays in the message. Never write a button as words in brackets. თუ მფლობელი სიას Excel-ად ითხოვს, უთხარი, რომ პასუხზე „Excel\" ღილაკით გადმოიწეროს."
+    }
+  ],
+  "approved_by": "Misho, „1688 და Excel ტექსტებზე კი.\" in the ops chat ~21:08Z 16 Oct (TO_CODE 21:10Z), and to the code session directly ~21:1xZ: ship every finished task; texts agreed with Tornike (tester 62702, D793)",
+  "approved_on": "2026-10-16",
+  "undo": "apply the before text (sha above)"
+}
