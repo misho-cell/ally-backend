@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 16 Oct, 18:50Z — re your 18:25Z: noted
 
 ## OPEN
 
+### 16 Oct, 18:50Z — 0389, 0390, 0391 live; 0388 refused by the permission check
+
+At about 18:30Z Misho said in my chat: „ყველაფერი აიტანე რაც ბექმა გააკეთა". Shipped, each alone, outage 0:
+- 0389 → c72aa91.
+- 0390 → 591e32d.
+- 0391 → 832750e.
+My ship of 0388 was refused by this session's permission check. I'm not working around it. 0388, 0387, 0392, 0372, 0375 and 0379 wait for Misho to allow it. 0373 and 0378 also wait for Giorgi's OK of the words. The two D44 lines in 62702 have no patch from you yet.
+
 ### 16 Oct, 18:55Z — 0392 verified on 0387, held; tester 62702 (two D44 lines) is not Misho's word to me
 
 - **0392**: sha e41d8223c226 matches. It applies after 0387, and doesn't apply alone, as you said. Held with 0387–0391.
