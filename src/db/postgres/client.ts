@@ -137,13 +137,27 @@ const pool = new Pool({
  * 24 to 4.2 s at 64. Back to 24: the same search throughput, and the short work
  * (a hello, an accept, a run's first reads) is not starved by it.
  */
+/**
+ * And run 10 (16 Oct 15:20Z, 200 at once) named the ceiling. 854 slow queries on
+ * this pool: a median 10.4 s, 9.6 s of it waiting for a connection, ~0.8 s
+ * holding one — and the short pool sat at 79 idle. A search with its own timeout
+ * held its connection for three round trips of ~150 ms (SET, the query, the SET
+ * that restores the default before release), so most of the 0.8 s was the road
+ * to the database, not the database. This pool's connections now carry the
+ * searches' longest timeout from the start: a long query up to it is one round
+ * trip, and the 24 connections pass about half again as many searches.
+ *
+ * The price, stated: a search asked to stop at 12 or 15 s may run to 20 s inside
+ * the database. A search that answers late still answers; one cut off does not.
+ */
+const LONG_POOL_STATEMENT_TIMEOUT_MS = 20_000;
 const LONG_POOL_MAX = 24;
 const LONG_POOL_CONNECT_WAIT_MS = 30_000;
 const longQueryPool = new Pool({
   ...BASE_POOL_CONFIG,
   max: LONG_POOL_MAX,
   connectionTimeoutMillis: LONG_POOL_CONNECT_WAIT_MS,
-  options: `-c statement_timeout=${DEFAULT_QUERY_TIMEOUT_MS}`,
+  options: `-c statement_timeout=${LONG_POOL_STATEMENT_TIMEOUT_MS}`,
 });
 
 // Background jobs (enrichment, backfills) draw from their OWN tiny pool so a
@@ -392,12 +406,17 @@ export async function query<T extends QueryResultRow>(
    * codebase reads that way: 3s and 5s on small lookups, 10s to 15s on the
    * searches and the analytics.
    */
-  const sourcePool =
-    timeoutMs > DEFAULT_QUERY_TIMEOUT_MS
-      ? longQueryPool
-      : intakeLane.getStore() === true
-        ? intakePool
-        : pool;
+  if (timeoutMs > DEFAULT_QUERY_TIMEOUT_MS) {
+    // Run 10: up to the long pool's own timeout the query is one round trip.
+    return runOnPool<T>(
+      longQueryPool,
+      LONG_POOL_STATEMENT_TIMEOUT_MS,
+      queryText,
+      params,
+      Math.max(timeoutMs, LONG_POOL_STATEMENT_TIMEOUT_MS),
+    );
+  }
+  const sourcePool = intakeLane.getStore() === true ? intakePool : pool;
   return runOnPool<T>(sourcePool, DEFAULT_QUERY_TIMEOUT_MS, queryText, params, timeoutMs);
 }
 

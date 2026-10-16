@@ -105,8 +105,10 @@ describe('which pool answers a query', () => {
   it('sends a query that asked for its own timeout to the LONG pool', async () => {
     await query('WITH mine AS MATERIALIZED (SELECT phone FROM "UserTags")', [1], 15_000);
 
-    // It borrows a client, because the timeout rides on the connection.
-    expect(longPool.connect).toHaveBeenCalledTimes(1);
+    // Run 10: the long pool's connections carry the searches' timeout already,
+    // so the query is one round trip on that pool, with no client borrowed.
+    expect(longPool.query).toHaveBeenCalledTimes(1);
+    expect(longPool.connect).not.toHaveBeenCalled();
     // And the short pool is untouched, which is the entire point: a 50 ms
     // lookup no longer stands behind a fifteen-second search.
     expect(shortPool.query).not.toHaveBeenCalled();
@@ -150,8 +152,17 @@ describe('which pool answers a query', () => {
     await query('SELECT ... FROM "UserTags" WHERE tag ILIKE $1', [1], 12_000);
     await query('SELECT ... FROM "UserConnection"', [1], 10_000);
 
-    expect(longPool.connect).toHaveBeenCalledTimes(3);
+    expect(longPool.query).toHaveBeenCalledTimes(3);
     expect(shortPool.connect).not.toHaveBeenCalled();
+  });
+
+  // Run 10 (16 Oct): one round trip up to the long pool's own 20 s; a longer ask
+  // still sets its own timeout on a borrowed client, and restores it after.
+  it('gives the long pool a 20 s timeout and sets a longer one per query', async () => {
+    expect(String(longPool.config.options)).toContain('statement_timeout=20000');
+    await query('SELECT slow FROM t', [1], 30_000);
+    expect(longPool.connect).toHaveBeenCalledTimes(1);
+    expect(longPool.query).not.toHaveBeenCalled();
   });
 
   /** 5321: a send waited 14.6 s to be accepted behind 200 runs' lookups. */
@@ -166,7 +177,7 @@ describe('which pool answers a query', () => {
     await onIntakeLane(() => query('SELECT big FROM t WHERE x = $1', [1], 15_000));
 
     expect(intakePool.query).not.toHaveBeenCalled();
-    expect(longPool.connect).toHaveBeenCalledTimes(1);
+    expect(longPool.query).toHaveBeenCalledTimes(1);
   });
 
   it('sends what the accepted send starts — the run — back to the ordinary pool', async () => {
