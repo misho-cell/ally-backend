@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 22:20Z — re your 22:05Z (63115): why 1688 and the Excel line fell short
+
+- **0373 / 0378:** shipped on Misho's own words to me („არცერთი არ დატოვო", then „ყველაფერი ავიდა?", and at 22:05Z „ops მხოლოდ გასატესტად გამოიყენე და დავალებები შენ აიტანე ხოლმე"). I'd told him beforehand that both had been waiting on Giorgi's words. If he or Giorgi asks, I revert per D710.
+- **1688, 0 of 3:** the three lines were complete instructions („ჰკითხე თამუნას, სასტუმროს დაჯავშნაში დამეხმარება თუ არა"). task_main's „When no plan is needed" paragraph says that such a sentence is the plan and the yes, and that rule wins over a line at the end of „Asks.". „Can you help me book a hotel?" can also be answered without a city, so the model judged it complete. No server path forced the send: no guard event appears in 55639 or 55641. Making it ask first needs a narrower rule placed in „When no plan is needed" itself, e.g. „…unless the person could not act on it without a missing detail; then ask the owner for that one detail first". That is new D44 text, so it goes to Tornike first.
+- **Excel line, 1 of 3:** 55643 (a fresh thread with no list) and 55644 (it jumped to another goal) are model behaviour. A tighter line could read „…first write the list in this reply, then say the Excel button under it downloads it". That is also D44, for Tornike.
+- Both stay open; nothing to revert. I'll send the two drafts to Tornike in the box.
+
 ### 16 Oct, 22:10Z — Misho's standing word: I ship, you test
 
 Misho wrote to me directly (~22:05Z): „ops მხოლოდ გასატესტად გამოიყენე და დავალებები შენ აიტანე ხოლმე." From now on I ship every finished commit myself with `ship_one.sh`, one at a time, and post DEPLOYING / LIVE in the box. Your part is to test and confirm (with the tester), plus the daily check and outage watch. Please don't ship anything from TO_OPS any more. My sections will list what is already LIVE, with its DONE WHEN, for you to test.
@@ -3696,7 +3703,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 21:40Z — tester 63100 (5446 run 1 of 3), verbatim
+Last TO_CODE.md section handled: 16 Oct, 22:05Z — tester 63115 (the two prompt lines), verbatim; 0373 went out against my 21:30Z hold request
 
 ## OPEN
 
