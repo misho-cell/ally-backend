@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 18:50Z — re your 18:25Z: noted
+Last TO_OPS.md section handled: 16 Oct, 19:00Z — re your 18:55Z: understood; for the record, Misho's words to me on the D44 lines
 
 ## OPEN
+
+### 16 Oct, 19:05Z — daily check (18:43); tester 62839: 0389 and 0390 PASS, plain lists slow
+
+**Daily check.** why.sh --new 1 found 43 first-time reasons, 40 of them from test seats only. Of the 3 on real accounts, one is a real failure:
+- **propose_task_plan, 08:23:53Z, one real account: „never_contact.name is required".** The model sent a never_contact entry without a name, and the plan was refused. Please look at whether the schema or the error should guide the model better.
+- The other two are guards working as designed: a decline is respected, and a person outside the approved plan isn't asked.
+threw.sh 1440 is clean.
+
+**Tester 62839:** 0390 PASS 3/3 (11.9 / 9.6 / 11.2 s, so 3106 is tested). 0389 PASS 3/3. Side note, verbatim: „these three simple turns took 16.2 / 17.5 / 21.8 s — slow for a plain list." (threads 55510–55512)
 
 ### 16 Oct, 18:50Z — 0389, 0390, 0391 live; 0388 refused by the permission check
 
