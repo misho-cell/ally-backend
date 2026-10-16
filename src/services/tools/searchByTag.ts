@@ -127,14 +127,23 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
  * words; the registered name is the fallback for a number she saved without
  * a label, and still rides apart as `registered_name` where a reader needs it.
  */
+/**
+ * The tester's 62279 (thread 54984): one number carried two of the owner's labels — the
+ * seat's own name, saved first, and „ლევანი ტესტიძე", saved after. MAX picked the first by
+ * alphabet, so the owner searched for Levani and was shown a name she never typed. Her
+ * LATEST label is the one she knows the person by.
+ */
+export const LATEST_OWN_LABEL = `(array_agg(NULLIF(TRIM(ua.alias), '') ORDER BY ua.id DESC)
+            FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL))[1]`;
+
 export const DISPLAY_NAME = `COALESCE(
-          MAX(NULLIF(TRIM(ua.alias), '')),
+          ${LATEST_OWN_LABEL},
           CASE WHEN TRIM(MAX(u.name)) LIKE '%@%' THEN NULL
                ELSE NULLIF(TRIM(MAX(u.name)), '') END)`;
 
 const AGG_SELECT = `h.phone,
         ${DISPLAY_NAME} AS name,
-        MAX(ua.alias)                        AS saved_as,
+        ${LATEST_OWN_LABEL} AS saved_as,
         array_agg(DISTINCT ut.tag)           AS all_tags,
         array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
         MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
@@ -630,7 +639,7 @@ export async function exactMatchesForMany(
        WHERE phone != ALL($${m.blockIdx})
        GROUP BY phone
      )
-     SELECT h.phone, ${DISPLAY_NAME} AS name, MAX(ua.alias) AS saved_as,
+     SELECT h.phone, ${DISPLAY_NAME} AS name, ${LATEST_OWN_LABEL} AS saved_as,
             BOOL_OR(h.own_hit) AS own_hit, MAX(h.src_priority) AS src_priority,
             MAX(ut."weightCount") AS weight,
             ${searchable.map((_, i) => `MAX(h.h${i}) AS h${i}`).join(', ')}

@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { DISPLAY_NAME } from '../searchByTag';
+import { DISPLAY_NAME, LATEST_OWN_LABEL } from '../searchByTag';
 import { isDisplayableTag } from '../getContactFullProfile';
 
 /**
@@ -29,7 +29,9 @@ describe('an email is not a name', () => {
 
   /** #1918: the owner's own label first, the registered name only after it. */
   it('prefers the owner’s own label over the registered name', () => {
-    const chosenFirst = DISPLAY_NAME.indexOf("MAX(NULLIF(TRIM(ua.alias), ''))");
+    const chosenFirst = DISPLAY_NAME.indexOf(
+      "array_agg(NULLIF(TRIM(ua.alias), '') ORDER BY ua.id DESC)",
+    );
     const fallback = DISPLAY_NAME.indexOf("NULLIF(TRIM(MAX(u.name)), '')");
 
     expect(chosenFirst).toBeGreaterThan(0);
@@ -46,7 +48,7 @@ describe('an email is not a name', () => {
     const byName = readFileSync(join(__dirname, '..', 'searchContactByName.ts'), 'utf8');
     const byTag = readFileSync(join(__dirname, '..', 'searchByTag.ts'), 'utf8');
 
-    expect(byName).toMatch(/import \{ DISPLAY_NAME[^}]*\} from '.\/searchByTag'/);
+    expect(byName).toMatch(/import \{\s*DISPLAY_NAME[^}]*\} from '.\/searchByTag'/);
     expect(byName.match(/\$\{DISPLAY_NAME\} AS name/g) ?? []).toHaveLength(2);
     expect(byTag).toContain('${DISPLAY_NAME} AS name');
     // Nobody left a copy behind.
@@ -94,5 +96,14 @@ describe('an email is not a label either', () => {
 
     expect(byTag).toContain("import { isDisplayableTag } from './getContactFullProfile'");
     expect(byTag).toContain('isDisplayableTag(t)');
+  });
+});
+
+/** The tester's 62279 (thread 54984): of two labels for one number, the owner's latest. */
+describe('the owner’s latest label', () => {
+  it('is read newest first, empty labels skipped', () => {
+    expect(LATEST_OWN_LABEL).toContain('ORDER BY ua.id DESC');
+    expect(LATEST_OWN_LABEL).toContain("FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL)");
+    expect(DISPLAY_NAME).toContain(LATEST_OWN_LABEL);
   });
 });

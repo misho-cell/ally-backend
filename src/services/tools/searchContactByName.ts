@@ -24,7 +24,12 @@ import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { collapseMergedPhones } from './mergedIdentities';
 import { searchDidNotFinish } from './searchDidNotFinish';
-import { DISPLAY_NAME, othersLabelsMatched, ownDisplayableTags } from './searchByTag';
+import {
+  DISPLAY_NAME,
+  LATEST_OWN_LABEL,
+  othersLabelsMatched,
+  ownDisplayableTags,
+} from './searchByTag';
 
 const FUZZY_THRESHOLD = 0.45;
 // The first letters a fuzzy neighbour must share with the term (see the
@@ -173,7 +178,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
               (${nameHits})                        AS name_hits,
               MAX(NULLIF(TRIM(u.name), ''))        AS registered_name,
               ${DISPLAY_NAME} AS name,
-              MAX(ua.alias)                        AS saved_as,
+              ${LATEST_OWN_LABEL} AS saved_as,
               array_agg(DISTINCT ut.tag)           AS all_tags,
               array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
               MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
@@ -252,7 +257,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
            )
            SELECT h.phone,
                   ${DISPLAY_NAME} AS name,
-                  MAX(ua.alias)                        AS saved_as,
+                  ${LATEST_OWN_LABEL} AS saved_as,
                   array_agg(DISTINCT ut.tag)           AS all_tags,
                   array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
                   MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
