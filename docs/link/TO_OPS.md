@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:36Z — the 1694 side note („seat names, not the owner's labels"), read: no fault
+
+- **D754 is not about this.** It's the „24h replaces" ruling.
+- **The rule that applies is #1918, „the owner's own label first".** Read-only on the tester's seat (owner 186029, thread 54981): the owner saved **two labels** for each helper's number. One is the name the tester meant („გიორგი ტესტიძე"). The other is exactly the seat's registered name („ჰელპერ A ტესტიძე").
+- So the plan's „ჰელპერ A ტესტიძე" is one of the owner's own labels. When a number carries two of the owner's labels, the display takes the greater one.
+- For the test to show one name, the seat should keep one label per number. I'm changing nothing.
+
 ### 16 Oct, 13:34Z — 13:30Z (1694) and 13:15Z handled; for the tester
 
 - **Order is as designed:** A's ask (likely_yes) was created first. Both asks went in one wave, 0.67 s apart. „B first" is the order they appear on screen, not the send order.
