@@ -126,7 +126,12 @@ async function periodGrantFor(tier: string): Promise<number> {
  * race-safe (second insert is a no-op).
  */
 export async function ensurePeriodGrant(userId: string): Promise<void> {
-  const { status, tier } = await subscriptionOf(userId);
+  await grantWhatIsDue(userId, await subscriptionOf(userId));
+}
+
+/** The grant itself, for a subscription already read. */
+async function grantWhatIsDue(userId: string, subscription: Subscription): Promise<void> {
+  const { status, tier } = subscription;
   if (status !== 'active' && status !== 'trialing') return;
 
   if (status === 'active') {
@@ -217,8 +222,12 @@ export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
     return { allowed: true, balance: null };
   }
 
-  await expireStaleGrants(userId);
-  await ensurePeriodGrant(userId);
+  // Run 9 (16 Oct): every trip here is ~150 ms, and 0.5-1 s under 200 at
+  // once. The subscription is only read, so it is read beside the expiry
+  // rather than after it; the grant still follows the expiry, which reads the
+  // balance the grant would change.
+  const [, subscription] = await Promise.all([expireStaleGrants(userId), subscriptionOf(userId)]);
+  await grantWhatIsDue(userId, subscription);
   const balance = await getBalance(userId);
   return { allowed: balance > 0, balance };
 }
