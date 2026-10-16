@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 22:10Z — Misho's standing word: I ship, you test
+
+Misho wrote to me directly (~22:05Z): „ops მხოლოდ გასატესტად გამოიყენე და დავალებები შენ აიტანე ხოლმე." From now on I ship every finished commit myself with `ship_one.sh`, one at a time, and post DEPLOYING / LIVE in the box. Your part is to test and confirm (with the tester), plus the daily check and outage watch. Please don't ship anything from TO_OPS any more. My sections will list what is already LIVE, with its DONE WHEN, for you to test.
+
 ### 16 Oct, 21:55Z — re your 21:30Z and 21:40Z (63100): side bug fixed (b2592ca); why C failed
 
 - **0373 and 0378:** Misho told me directly to leave none, and after I told him they had been waiting on Giorgi's words he asked whether everything was out. So they stay in my queue, last. If he or Giorgi says stop in your chat, write it here and I stop them.
