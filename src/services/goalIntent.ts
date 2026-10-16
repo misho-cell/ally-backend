@@ -441,8 +441,17 @@ export function goalTitleFrom(message: string): string {
  * „ჩამომიწერე" holds „მიწერე". „write to" is its own word; a prefixed one (ჩა-,
  * გადა-, ამო-…) writes something down for the owner.
  */
+/*
+ * The tester's 63100 (thread 55573): „უკვე მოგვარდა: თამარ ქავთარაძეს ვკითხე, მან
+ * … დაურეკა" — a report of what the owner HAD done — was read as an order to ask
+ * her, and she was sent a question. „ვკითხე" (I asked), „ვუთხარი" (I told) and
+ * „ვთხოვე" (I asked her to) hold „კითხე", „უთხ" and „თხოვ"; the „ვ" before them
+ * is the owner speaking of themselves. The present „გიას ვთხოვ …" (I'm asking Gia,
+ * through you) stays an instruction. „უთხრა" and „სთხოვა" tell what somebody
+ * else did. None of them is an instruction.
+ */
 const CONTACT_VERB_RE =
-  /(ჰკითხე|კითხე|(?<!\p{L})მისწერ[ეო]?|(?<!\p{L})მიწერ[ეო]?|უთხარი|უთხ|ს?თხოვ[ეო]?|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
+  /(ჰკითხე|(?<!ვ)კითხე|(?<!\p{L})მისწერ[ეო]?|(?<!\p{L})მიწერ[ეო]?|(?<!ვ)უთხარი|(?<!ვ)უთხ(?!რა(?!\p{L}))|(?<!ვ)ს?თხოვ(?:[ეო]|(?!ა))|(?<=ვ)თხოვ(?![ეოა]|\p{L})|დაუკავშირდ|გაუგზავნ|დამინიშნე|დამიგეგმე|შემახვედრე)|(\b(?:set up|arrange|schedule|book) a meeting with\b|\bask\b|\btell\b|\bwrite to\b|\bmessage\b|\bsend\b[^.!?]*\b(?:to|through|via)\b)|((?<!\p{L})(?:preg[uú]nta(?:le|les)?|escr[ií]be(?:le|les)|d[ií]le|m[aá]ndale|env[ií]ale|спроси|напиши|свяжись)(?!\p{L}))/iu;
 
 /**
  * „write to nobody", „არავის არ მისწერო" — the verb is present and the
