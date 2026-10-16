@@ -1,0 +1,202 @@
+From 240c6929350f2892903e9f1b85c1b123fbbb0118 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 09:06:20 +0000
+Subject: [PATCH] Invite only through every door: the connector sign-in asks
+ the gate (5419)
+
+The connector's sign-in (/oauth/authorize, used by ChatGPT and Claude)
+admitted any number in "UserPhone", the legacy Ally accounts among them,
+with no invitation. It never asked the login gate the app's own sign-in
+asks, and a thread made through the connector then made the account
+"belong to Netai", so the app's gate opened for it too.
+
+Both connector steps (send-code and verify) now take the account only when
+loginGateVerdict would admit it, the same verdict completeLogin applies.
+A refused number gets the page's existing "not registered" line; no new
+text.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/noOtpToAStrangersPhone.test.ts  |  6 +--
+ src/api/routes/oauth.routes.ts                | 18 ++-------
+ .../theConnectorDoorAsksTheInvitation.test.ts | 40 +++++++++++++++++++
+ src/services/connectorAdmission.service.ts    | 32 +++++++++++++++
+ 4 files changed, 78 insertions(+), 18 deletions(-)
+ create mode 100644 src/services/__tests__/theConnectorDoorAsksTheInvitation.test.ts
+ create mode 100644 src/services/connectorAdmission.service.ts
+
+diff --git a/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts b/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts
+index da309c7..202dd05 100644
+--- a/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts
++++ b/src/api/routes/__tests__/noOtpToAStrangersPhone.test.ts
+@@ -5,7 +5,7 @@ import { join } from 'path';
+  * THE ONE LINE BETWEEN AN OPEN ENDPOINT AND TEXTING ANY NUMBER IN THE WORLD.
+  *
+  * Multi-line sabotage sweep, 22 September: the condition of
+- * `if (!phone || (await findUserIdByPhone(phone)) === null)` on
++ * `if (!phone || (await admittedUserIdByPhone(phone)) === null)` on
+  * `POST /oauth/authorize/send-code` replaced with `false` — the whole suite
+  * passed.
+  *
+@@ -32,7 +32,7 @@ import { join } from 'path';
+ const oauth = readFileSync(join(__dirname, '..', 'oauth.routes.ts'), 'utf8');
+ 
+ const SEND_CODE = "oauthRouter.post('/authorize/send-code'";
+-const GUARD = 'if (!phone || (await findUserIdByPhone(phone)) === null) {';
++const GUARD = 'if (!phone || (await admittedUserIdByPhone(phone)) === null) {';
+ 
+ describe('send-code will only text a number that is already ours', () => {
+   it('finds the route and the guard at all', () => {
+@@ -80,6 +80,6 @@ describe('send-code will only text a number that is already ours', () => {
+     const nextRoute = oauth.indexOf('oauthRouter.post(', routeAt + 10);
+     const handler = oauth.slice(routeAt, nextRoute > 0 ? nextRoute : undefined);
+ 
+-    expect(handler).toContain('findUserIdByPhone');
++    expect(handler).toContain('admittedUserIdByPhone');
+   });
+ });
+diff --git a/src/api/routes/oauth.routes.ts b/src/api/routes/oauth.routes.ts
+index cc08bb5..3015321 100644
+--- a/src/api/routes/oauth.routes.ts
++++ b/src/api/routes/oauth.routes.ts
+@@ -1,7 +1,7 @@
+ import express, { Request, Response, Router } from 'express';
+ import { PUBLIC_BASE_URL } from '../../config/publicUrl';
+-import { query } from '../../db/postgres/client';
+ import { requestOTP, verifyOTP } from '../../services/auth.service';
++import { admittedUserIdByPhone } from '../../services/connectorAdmission.service';
+ import {
+   createAuthorizationCode,
+   exchangeAuthorizationCode,
+@@ -23,7 +23,6 @@ import {
+ const OAUTH_RATE_WINDOW_MS = 5 * 60_000;
+ const OAUTH_RATE_MAX = 60;
+ const MAX_REDIRECT_URIS = 5;
+-const PHONE_LOOKUP_TIMEOUT_MS = 5_000;
+ const SUPPORTED_CHALLENGE_METHOD = 'S256';
+ 
+ export const wellKnownRouter = Router();
+@@ -159,17 +158,6 @@ oauthRouter.get('/authorize', async (req: Request, res: Response): Promise<void>
+   }
+ });
+ 
+-async function findUserIdByPhone(phone: string): Promise<string | null> {
+-  const variants = [phone, phone.startsWith('+') ? phone.slice(1) : `+${phone}`];
+-  const result = await query<{ userId: number }>(
+-    'SELECT "userId" FROM "UserPhone" WHERE phone = ANY($1) LIMIT 1',
+-    [variants],
+-    PHONE_LOOKUP_TIMEOUT_MS,
+-  );
+-  const userId = result.rows[0]?.userId;
+-  return userId === undefined ? null : String(userId);
+-}
+-
+ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Promise<void> => {
+   try {
+     const source = req.body as Record<string, unknown>;
+@@ -179,7 +167,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
+       return;
+     }
+     const phone = typeof source.phone === 'string' ? source.phone.replace(/\s+/g, '') : '';
+-    if (!phone || (await findUserIdByPhone(phone)) === null) {
++    if (!phone || (await admittedUserIdByPhone(phone)) === null) {
+       res
+         .status(200)
+         .send(
+@@ -218,7 +206,7 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
+     return;
+   }
+   try {
+-    const userId = await findUserIdByPhone(phone);
++    const userId = await admittedUserIdByPhone(phone);
+     if (userId === null) {
+       res.status(400).send(renderErrorPage('User not found.'));
+       return;
+diff --git a/src/services/__tests__/theConnectorDoorAsksTheInvitation.test.ts b/src/services/__tests__/theConnectorDoorAsksTheInvitation.test.ts
+new file mode 100644
+index 0000000..0234b5d
+--- /dev/null
++++ b/src/services/__tests__/theConnectorDoorAsksTheInvitation.test.ts
+@@ -0,0 +1,40 @@
++const mockQuery = jest.fn();
++jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
++const mockVerdict = jest.fn();
++jest.mock('../auth.service', () => ({ loginGateVerdict: (...a: unknown[]) => mockVerdict(...a) }));
++
++import { admittedUserIdByPhone } from '../connectorAdmission.service';
++
++const PHONE = '+995500000001';
++
++/** 5419: the connector's sign-in asks the same invitation gate as the app's. */
++describe('the connector door asks the invitation', () => {
++  beforeEach(() => jest.resetAllMocks());
++
++  it('admits an account the app sign-in admits', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ userId: 42 }] });
++    mockVerdict.mockResolvedValue({ would_be_admitted: true });
++    await expect(admittedUserIdByPhone(PHONE)).resolves.toBe('42');
++    expect(mockVerdict).toHaveBeenCalledWith(42);
++  });
++
++  it('refuses a legacy account nobody invited while the gate is on', async () => {
++    mockQuery.mockResolvedValue({ rows: [{ userId: 42 }] });
++    mockVerdict.mockResolvedValue({ would_be_admitted: false });
++    await expect(admittedUserIdByPhone(PHONE)).resolves.toBeNull();
++  });
++
++  it('refuses a number that is no account, without asking the gate', async () => {
++    mockQuery.mockResolvedValue({ rows: [] });
++    await expect(admittedUserIdByPhone(PHONE)).resolves.toBeNull();
++    expect(mockVerdict).not.toHaveBeenCalled();
++  });
++
++  it('looks the number up with and without its plus, under a timeout', async () => {
++    mockQuery.mockResolvedValue({ rows: [] });
++    await admittedUserIdByPhone(PHONE);
++    const [, params, timeout] = mockQuery.mock.calls[0] as [string, unknown[], number];
++    expect(params).toEqual([[PHONE, PHONE.slice(1)]]);
++    expect(timeout).toBeGreaterThan(0);
++  });
++});
+diff --git a/src/services/connectorAdmission.service.ts b/src/services/connectorAdmission.service.ts
+new file mode 100644
+index 0000000..ee6d405
+--- /dev/null
++++ b/src/services/connectorAdmission.service.ts
+@@ -0,0 +1,32 @@
++import { query } from '../db/postgres/client';
++import { loginGateVerdict } from './auth.service';
++
++const PHONE_LOOKUP_TIMEOUT_MS = 5_000;
++
++async function findUserIdByPhone(phone: string): Promise<number | null> {
++  const variants = [phone, phone.startsWith('+') ? phone.slice(1) : `+${phone}`];
++  const result = await query<{ userId: number }>(
++    'SELECT "userId" FROM "UserPhone" WHERE phone = ANY($1) LIMIT 1',
++    [variants],
++    PHONE_LOOKUP_TIMEOUT_MS,
++  );
++  return result.rows[0]?.userId ?? null;
++}
++
++/**
++ * 5419 (founder's word, 16 Oct: strictly invite only, through every door). The
++ * connector's sign-in (ChatGPT / Claude, /oauth/authorize) admitted any number
++ * in "UserPhone" — the 62,000 legacy Ally accounts among them — with no
++ * invitation, around the login gate the app's own sign-in asks
++ * (`completeLogin`). And a thread made through the connector then makes the
++ * account "belong to Netai", so the app's gate opened for it too.
++ *
++ * The connector now asks the same gate, through the same verdict: the account
++ * whose number this is, only when the app's sign-in would admit it; else null.
++ */
++export async function admittedUserIdByPhone(phone: string): Promise<string | null> {
++  const userId = await findUserIdByPhone(phone);
++  if (userId === null) return null;
++  const verdict = await loginGateVerdict(userId);
++  return verdict.would_be_admitted ? String(userId) : null;
++}
+-- 
+2.43.0
+

@@ -2,6 +2,26 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 09:07Z — 5419: one open door found and closed in 0370 (44a2659088b6); 5420 read-only answer; 0368 live noted
+
+**0370** `0370-connector-door-invite-only.patch`, sha256 44a2659088b6, one commit (240c692) on 0655f28. It is independent of 0369, and either order works. Board 5419.
+- **The door:** the connector sign-in (`/oauth/authorize/send-code` and `/verify`, used by ChatGPT and Claude) admitted any number in "UserPhone" with no invitation, including the ~62,000 legacy Ally accounts. It never asked the login gate that the app's own sign-in asks (`completeLogin`). A thread made through the connector then counts the account as „belonging to Netai", so after that the app's own gate opened for it too.
+- **Now:** both connector steps take the account only when `loginGateVerdict` would admit it, which is the same verdict the app applies. A refused number gets the page's existing „not registered" line. No new text. Verify is green: 929 suites, 8,953 tests.
+- **The other doors, read today:**
+  - All three live flags are on: `invite_only`, `invite_personal_code_only`, `netai_invite_only_login`.
+  - Sign-up (`/register`, `/eligibility`) and app login (`/complete-login`) both pass the gate.
+  - Server-side, no non-test account has been created since 8 Oct.
+- **I can't tell from the server which door Lika saw.** It could have been this one, or something on the website side. Please ask the tester for the door, the time and the account id (no phone number). If it was the website or the app showing pages without a sign-in, that is a frontend door.
+- **DONE WHEN:** on the connector sign-in page, a fictional number with no invitation and no Netai use is refused at the phone step, and an invited seat still signs in.
+
+**5420 (read-only, no change):** Lika's account has 4 invitees. All 4 are linked to her as inviter, so the link works.
+- All 4 are in the LAUNCH2026 free period. None has a Stripe customer or a Paddle subscription, so no first payment has happened yet.
+- Under D692 the reward is written on the invitee's first kept payment, so 0 reward rows is expected. Nothing is held or lost.
+- Their free periods end 19, 21, 22 and 25 Oct. The first card payment after that pays her share.
+- One thing to look at: one invitee reads `active` with a period end of 30 Oct but has no payment-provider link. I'll find out what set it next. It made no payment row either way.
+
+Noted: 0368 is LIVE at 0655f28. Run 7 is underway (tester 61817), so deploy hold applies until the tester says otherwise.
+
 ### 16 Oct, 08:55Z — 5347: (b) fixed in 0369 (2352c18f4008); (a) answered, the 5-hop change waits on one text
 
 **(b) Why the passed-on question lost its body.** Threads 54282 and 54284 are the link's incoming_request threads. The link wrote „სანდროს ჰკითხე ჩემი სახელით." and „შეგიძლია ლაშას სთხოვო, რომ გააცნოს.". The server's own instructed-ask send (`sendInstructedAsk`, made for an owner's own „ask X <question>") took the words after the name as the whole question. That produced asks 22447 „ჩემი სახელით." and 22448 „გააცნოს.", each under a new goal titled from the line (26612, 26613). In a request thread the thing to pass on is the request, which only the run has read.
@@ -3246,7 +3266,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 08:38Z — 5347 priority 1: (b) fixed in 0369, (a) answered
+Last TO_CODE.md section handled: 16 Oct, 09:00Z — 0368 live (0655f28); run 7 not fired (now firing per 61817)
 
 ## OPEN
 
