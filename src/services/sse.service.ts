@@ -374,6 +374,8 @@ export interface ThreadUpdatePayload {
   goal_stopped_open?: boolean;
   /** #2080: flagged / cleared by its owner on one device. */
   followed?: boolean;
+  /** 5413: the case description for the details panel, rewritten after a run. */
+  case_description?: string;
 }
 
 /**

@@ -103,6 +103,8 @@ interface ThreadRow extends Thread {
   /** 4919: two or three words for a desktop, one for a phone; null until written. */
   short_title?: string | null;
   one_word_title?: string | null;
+  /** 5413: two or three sentences for the case-details panel; null until written. */
+  case_description?: string | null;
   /**
    * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
    * one, else its latest — so the download asks for the goal's own id and
@@ -402,6 +404,7 @@ const THREAD_LIST_COLUMNS = `t.id,
        ${HAS_PAUSED_GOAL} AS goal_paused,
        t.short_title,
        t.one_word_title,
+       t.case_description,
        goal.id AS goal_id,
        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
        t.followed_at IS NOT NULL AS followed,
