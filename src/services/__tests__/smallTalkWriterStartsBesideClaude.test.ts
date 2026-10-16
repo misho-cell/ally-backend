@@ -11,8 +11,9 @@ import { join } from 'path';
 const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
 
 describe('the small-talk writer', () => {
+  // 3106 (0385 FAIL 1/3): a weather answer already found starts its writer the same way.
   const early = chat.indexOf(
-    "const earlyFinal = smallTalkOnly && writer !== '' ? writeWith(writer) : null;",
+    "(smallTalkOnly || weatherAnsweredFromFound) && writer !== '' ? writeWith(writer) : null;",
   );
   const firstCall = chat.indexOf('let response = await callClaude(');
 
