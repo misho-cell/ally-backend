@@ -83,7 +83,7 @@ describe('the need an instructed ask carries (46036)', () => {
 
   it('is used when no search gave one', () => {
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);');
+    expect(asks).toContain('const searchedNeed = bridgeNeed ?? needFromQuestion(safeQuestion);');
   });
 });
 
