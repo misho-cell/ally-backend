@@ -129,6 +129,7 @@ import { safetyReplyFor } from './safetyWorry';
  * (§109, D44, 9 Oct 06:25 UTC — ADMIN_WRITE_OPERATIONS §110).
  */
 const OFFER_TOOLS_ON = true;
+import { recordWhoHelped, WHO_HELPED_TOOL_ON } from './whoHelped.service';
 import { namedKnower, nonMemberAnswer, savedNonMember } from './namedNonMember';
 import {
   clampReminderMinutes,
@@ -1869,6 +1870,31 @@ async function ownerHasSaidSolved(
   if (screen === null) return null;
   return ownerSaysSolved(screen.lastOwnerMessage, screen.newestOfferedChoices);
 }
+
+/**
+ * 5446 (D792): the owner says who solved it. Off until its text is approved
+ * (D44); see whoHelped.service.ts.
+ */
+const RECORD_WHO_HELPED_TOOL: AnthropicTool = {
+  name: 'record_who_helped',
+  description:
+    "Remember who solved the owner's problem, so the next member with the same problem is " +
+    'pointed to them. WHEN: the owner says a person from their contacts helped or solved it ' +
+    '(also when it was solved outside Netai). Silent: never tell the helper, never mention it ' +
+    'to anyone. If there is no goal in this conversation yet, save it with create_task first.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      phone: { type: 'string', description: "The helper's phone id from a search result." },
+      what_was_solved: {
+        type: 'string',
+        description: "How it was solved, in the owner's own words.",
+      },
+      task_id: { type: 'number', description: 'The goal it solved; omit for this conversation.' },
+    },
+    required: ['phone', 'what_was_solved'],
+  },
+};
 
 const FINISH_TASK_TOOL: AnthropicTool = {
   name: 'finish_task',
@@ -9794,6 +9820,17 @@ async function executeToolCall(
           : 'Receiving questions is ON (no global opt-out).',
       };
     }
+    case 'record_who_helped': {
+      if (ownerAbsent) return { recorded: false, error: 'Only the owner can say who helped.' };
+      const rawTask = Number(input['task_id']);
+      return recordWhoHelped({
+        ownerId: userId,
+        phone: String(input['phone'] ?? ''),
+        whatWasSolved: String(input['what_was_solved'] ?? ''),
+        taskId: Number.isInteger(rawTask) && rawTask > 0 ? rawTask : null,
+        threadId: threadId ?? null,
+      });
+    }
     case 'get_own_contact_number': {
       // 3466: on a question's thread, on the owner's word, the number goes to the asker.
       if (threadId !== undefined && !ownerAbsent) {
@@ -15067,6 +15104,7 @@ export const ALWAYS_ON_TOOLS: readonly AnthropicTool[] = [
   SET_REMINDER_TOOL,
   ...(OFFER_TOOLS_ON ? [SAVE_OFFER_TOOL, LIST_OFFERS_TOOL, DELETE_OFFER_TOOL] : []),
   FINISH_TASK_TOOL,
+  ...(WHO_HELPED_TOOL_ON ? [RECORD_WHO_HELPED_TOOL] : []),
   RELAY_ASK_TOOL,
   RESPOND_TO_INVITE_CAMPAIGN_TOOL,
   GET_CURIOSITY_QUEUE_TOOL,
