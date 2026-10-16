@@ -1,0 +1,182 @@
+From 852d68b78e2c62b1e1554afa489fbae68552e69c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 15:08:51 +0000
+Subject: [PATCH] Accept a message in fewer database round trips
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Run 9 (16 Oct, 200 „გამარჯობა" at once): outside the load every accept
+phase was a multiple of ~150 ms, one round trip to the database each, and
+under the load each trip grew to 0.5-1 s with no pool waiting and no loop
+lag. Two waits depended on nothing:
+
+- the provisional title waited for the thread and the wallet check waited
+  for the title; the title is now written beside the wallet check and
+  awaited before the 402 or the 202, so a reply never goes before it;
+- the wallet check read the subscription only after the grant expiry; it is
+  now read beside it. The grant still comes after the expiry, which reads
+  the balance the grant would change.
+
+About 0.45 s off every accepted message with nobody else on the server, and
+the same two trips' share under load. No text or behaviour changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts              | 13 ++++---
+ .../theTitleIsWrittenBesideTheWallet.test.ts  | 28 +++++++++++++++
+ .../__tests__/tokenWallet.service.test.ts     | 36 +++++++++++++++++++
+ src/services/tokenWallet.service.ts           | 15 ++++++--
+ 4 files changed, 85 insertions(+), 7 deletions(-)
+ create mode 100644 src/services/__tests__/theTitleIsWrittenBesideTheWallet.test.ts
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 6a69987..e4637a2 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -988,11 +988,14 @@ threadsRouter.post(
+       // The placeholder has four languages now, and a thread created before it
+       // did carries the Georgian one — which is why this asks „is it still the
+       // placeholder" rather than comparing against a single string.
++      // Run 9 (16 Oct): the title waited for the thread and the wallet waited
++      // for the title, two round trips of ~150 ms each that depend on nothing
++      // between them. It is written beside the wallet check and awaited with it.
+       const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title, message);
+-      if (needsTitle) {
+-        await updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS));
+-        clock.mark('title');
+-      }
++      const titled = needsTitle
++        ? updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS))
++        : Promise.resolve();
++      titled.catch(() => undefined);
+ 
+       // Token wallet gate: when enabled, an exhausted balance blocks new runs
+       // (the in-flight one always completes). 402 carries a machine reason so
+@@ -1021,6 +1024,8 @@ threadsRouter.post(
+           : payerId === userId
+             ? await ownAllowance
+             : await checkRunAllowance(payerId);
++      await titled;
++      if (needsTitle) clock.mark('title');
+       /**
+        * Row 221 — D348 item 2. At zero the person's next message is still
+        * ANSWERED ONCE, and the wall comes after that answer rather than
+diff --git a/src/services/__tests__/theTitleIsWrittenBesideTheWallet.test.ts b/src/services/__tests__/theTitleIsWrittenBesideTheWallet.test.ts
+new file mode 100644
+index 0000000..ba29cf2
+--- /dev/null
++++ b/src/services/__tests__/theTitleIsWrittenBesideTheWallet.test.ts
+@@ -0,0 +1,28 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++/**
++ * Run 9 (16 Oct, 200 „გამარჯობა" at once): outside the load every accept phase
++ * was a multiple of ~150 ms, one round trip each, and the provisional title
++ * waited for the thread while the wallet waited for the title. The title now
++ * goes beside the wallet check and is awaited before any reply is sent.
++ */
++describe('the provisional title on an arriving message', () => {
++  const route = readFileSync(
++    join(__dirname, '..', '..', 'api', 'routes', 'threads.routes.ts'),
++    'utf8',
++  );
++
++  it('is started without waiting for it', () => {
++    expect(route).not.toMatch(/await updateThreadTitle\(threadId, provisionalTitle/u);
++    expect(route).toMatch(/const titled = needsTitle\s+\? updateThreadTitle\(/u);
++    expect(route).toContain('titled.catch(() => undefined);');
++  });
++
++  it('is awaited after the wallet check and before the 402 or the 202', () => {
++    const awaited = route.indexOf('await titled;');
++    expect(awaited).toBeGreaterThan(route.indexOf('checkRunAllowance(payerId)'));
++    expect(awaited).toBeLessThan(route.indexOf('res.status(402)'));
++    expect(awaited).toBeLessThan(route.indexOf('res.status(202).json({ success: true, runId })'));
++  });
++});
+diff --git a/src/services/__tests__/tokenWallet.service.test.ts b/src/services/__tests__/tokenWallet.service.test.ts
+index 0ac6ce1..a466900 100644
+--- a/src/services/__tests__/tokenWallet.service.test.ts
++++ b/src/services/__tests__/tokenWallet.service.test.ts
+@@ -188,6 +188,42 @@ describe('checkRunAllowance', () => {
+     setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 0, runCostUsd: 0 });
+     expect(await checkRunAllowance('7')).toEqual({ allowed: false, balance: 0 });
+   });
++
++  // Run 9 (16 Oct): each trip is ~150 ms; the subscription read waits for nothing.
++  it('reads the subscription while the expiry is still being read', async () => {
++    setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
++    const world = mockQuery.getMockImplementation();
++    let releaseExpiry: () => void = () => undefined;
++    const expiryHeld = new Promise<void>((resolve) => {
++      releaseExpiry = resolve;
++    });
++    let subscriptionReadEarly = false;
++    let expiryOpen = false;
++    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
++      if (sql.includes('NOT EXISTS')) {
++        expiryOpen = true;
++        await expiryHeld;
++        expiryOpen = false;
++        return rows([]) as never;
++      }
++      if (sql.includes('subscription_status') && expiryOpen) subscriptionReadEarly = true;
++      if (sql.includes('subscription_status')) releaseExpiry();
++      return world!(sql, params) as never;
++    });
++
++    expect(await checkRunAllowance('7')).toEqual({ allowed: true, balance: 5 });
++    expect(subscriptionReadEarly).toBe(true);
++  });
++
++  it('still grants only after the expiry has been settled', async () => {
++    setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
++    await checkRunAllowance('7');
++    const sqls = mockQuery.mock.calls.map(([sql]) => sql as string);
++    const expiry = sqls.findIndex((sql) => sql.includes('NOT EXISTS'));
++    const grant = sqls.findIndex((sql) => sql.includes('INSERT INTO token_transactions'));
++    expect(expiry).toBeGreaterThan(-1);
++    expect(grant).toBeGreaterThan(expiry);
++  });
+ });
+ 
+ describe('debitRun', () => {
+diff --git a/src/services/tokenWallet.service.ts b/src/services/tokenWallet.service.ts
+index c460b39..93c9000 100644
+--- a/src/services/tokenWallet.service.ts
++++ b/src/services/tokenWallet.service.ts
+@@ -126,7 +126,12 @@ async function periodGrantFor(tier: string): Promise<number> {
+  * race-safe (second insert is a no-op).
+  */
+ export async function ensurePeriodGrant(userId: string): Promise<void> {
+-  const { status, tier } = await subscriptionOf(userId);
++  await grantWhatIsDue(userId, await subscriptionOf(userId));
++}
++
++/** The grant itself, for a subscription already read. */
++async function grantWhatIsDue(userId: string, subscription: Subscription): Promise<void> {
++  const { status, tier } = subscription;
+   if (status !== 'active' && status !== 'trialing') return;
+ 
+   if (status === 'active') {
+@@ -217,8 +222,12 @@ export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
+     return { allowed: true, balance: null };
+   }
+ 
+-  await expireStaleGrants(userId);
+-  await ensurePeriodGrant(userId);
++  // Run 9 (16 Oct): every trip here is ~150 ms, and 0.5-1 s under 200 at
++  // once. The subscription is only read, so it is read beside the expiry
++  // rather than after it; the grant still follows the expiry, which reads the
++  // balance the grant would change.
++  const [, subscription] = await Promise.all([expireStaleGrants(userId), subscriptionOf(userId)]);
++  await grantWhatIsDue(userId, subscription);
+   const balance = await getBalance(userId);
+   return { allowed: balance > 0, balance };
+ }
+-- 
+2.43.0
+

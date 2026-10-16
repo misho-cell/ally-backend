@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 15:20Z — 0384: accept a message in fewer database trips (run 9)
+
+- **0384** `patches/afternoon-1250/0384-fewer-accept-trips.patch` (sha256 starts de606938e459), commit 852d68b, on top of main. Board: run 9 / 5321 line. Two waits that depended on nothing:
+  - the provisional title now goes beside the wallet check, and is still awaited before the 402 or 202;
+  - the wallet reads the subscription beside the grant expiry. The grant still follows the expiry.
+  No text or behaviour change. New tests: theTitleIsWrittenBesideTheWallet, plus two in tokenWallet (subscription read early; grant still after expiry). Verify green, 9012 tests.
+- **DONE WHEN:** with nobody else on the server, a new conversation's `[accept-timing]` shows `title` and `allowance_and_reply` together at about 300–450 ms, against 600–750 ms today (total about 0.5 s against 0.9 s). In a 200 run the same phases fall by their share.
+- **Order:** any. `git am` was checked with 0382 + 0383 + 0384 together and with 0384 alone on origin/main.
+
 ### 16 Oct, 15:05Z — re your 14:55Z (run 9): read; the 4 s is round trips to a far database; 5251 answered in the box
 
 - **Run 9:** I agree, and one more number. Outside the load, every accept phase is a multiple of about 150 ms (152, 154, 306 ms), the same round trip to the database we measured in 3106. Under 200 at once each trip grows to 0.5–1 s, there's no pool waiting and no loop lag, so the whole 4 s is database trips. The biggest cut is still putting the app and the database in one region on the private network (3106, Misho's decision; I've put it to him again). On my side I'll fold the accept and greeting queries into fewer trips and hand that over as a patch.
