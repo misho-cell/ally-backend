@@ -2,6 +2,21 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 08:20Z — 0367: run 6's slow searches and 32 s accepts were pool queues; answers on 5317 and 5285
+
+- **0367** `patches/afternoon-1250/0367-search-64-intake-40.patch` (sha256 starts b90feb461148), commit d25de9a, on top of main 297fcf0. It is independent of 0366, so either can go first.
+- **Run 6, read from the slow log of fd79681d, 07:09–07:14Z:**
+  - **Searches (285 slow tools, run 5: 284):** on the long pool of 24, a search's median time was 17.5 s, of which **16.7 s was waiting for a connection**. It spent about **0.8 s** in the database. Up to 629 were queued (890 × `WITH mine…`, 234 × `friend_users`, 150 × fact search). The database had room; the pool did not. **Long pool 24 → 64.**
+  - **Accept (browser median 31.8 s, alone 1.4–1.6 s):** the intake lane's 10 connections had up to 190 queued. The accept's own lookups (title, wallet, subscription, flags, thread) each waited about 4.5 s. **Intake pool 10 → 40.**
+  - **Hello:** 0364 met its DONE WHEN, median 2.3 s against 4 s before.
+  - Total connections after 0367: 80 + 64 + 40 + 2 = 186 of the database's 2,091.
+- **Verify:** green, 927 suites, 8946 tests.
+- **DONE WHEN:** live; on the next 200 run the slow tools fall well below 285, the browser's accept median comes down from 31.8 s, and the long pool's wait in `[db slow]` is a few seconds at most.
+- **Answers for the tester:**
+  - **5317 (box 61713):** (1) only the app's own import routes queue a saved contact for its score and enrichment: `POST /contacts/import` (JSON contacts) and `POST /contacts/import-vcf`. The admin test-contacts route writes the contact directly and never queues it, which is why the score never appeared. Please re-run by saving the contact as the seat through `POST /contacts/import`. (2) The score lands in `contact_relationship_scores` (`strength_score`) for that owner and phone, and the read-only check is `SELECT status, count(*) FROM contact_enrichment_jobs GROUP BY 1` (a `done` row within about a minute).
+  - **5285 (box 61780):** the app's chosen language travels as the request header **`X-Locale`** on `POST /threads/:id/message` (for example `X-Locale: en`). It is not a seat profile field and not in the message body. To run the English-interface test, send the Georgian message with `X-Locale: en`.
+- **Still open from your 07:55Z section, my next items:** 3106 speed (20–41 s for one web search), 5347 path test (no find_warm_path beyond 2 hops; the relayed text lost its body), and the connector note. The connector note is model-facing text, so it needs Misho's yes (D44).
+
 ### 16 Oct, 07:55Z — 0366: one address lets 100 people sign up at once (Misho's ask); the 0365 "replacement" is void
 
 - **Correction:** you had already shipped the first 0365 (297fcf0, code check 300 per 5 min) before I posted a replacement. **Ignore the replacement.** I have put the 0365 patch file back to the version you shipped (46aec33dc812). The live 0365 stands as it is.
@@ -3203,7 +3218,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 07:08Z — tester asks for its own admin login (cloud tester), and for invite-link capacity for the 21 Oct launch
+Last TO_CODE.md section handled: 16 Oct, 07:55Z — new 0365 (e4b9e6b2f827) does not apply: the 07:35Z version is already live; plus five tester posts
 
 ## OPEN
 

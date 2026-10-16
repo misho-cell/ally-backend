@@ -1,0 +1,79 @@
+From d25de9ab79f9b46a497cdfec80f26fe4b3a1f09e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 08:02:30 +0000
+Subject: [PATCH] Speed under load: searches 24 -> 64 connections, accepts 10
+ -> 40
+
+The tester's 6th 200-seat run (16 Oct 07:09-07:13Z, box 61681):
+
+- Searches: 285 slow tools against 284 in run 5. The slow log shows why:
+  a search spent about 0.8 s in the database and a median 16.7 s waiting
+  for one of the long pool's 24 connections, with up to 629 queued. The
+  database had room; the pool did not. Long pool 24 -> 64.
+- Accepts: the browser saw a median 31.8 s to the 202 (1.4-1.6 s alone).
+  The intake lane's ten connections had up to 190 queued, the accept's
+  lookups waiting about 4.5 s each. Intake pool 10 -> 40.
+
+Short 80 + long 64 + intake 40 + background 2 = 186 of the database's
+2,091 connections.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/db/postgres/__tests__/queryRouting.test.ts |  4 ++--
+ src/db/postgres/client.ts                      | 14 ++++++++++++--
+ 2 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/src/db/postgres/__tests__/queryRouting.test.ts b/src/db/postgres/__tests__/queryRouting.test.ts
+index c7c4010..0d89567 100644
+--- a/src/db/postgres/__tests__/queryRouting.test.ts
++++ b/src/db/postgres/__tests__/queryRouting.test.ts
+@@ -79,11 +79,11 @@ beforeEach(() => {
+ describe('which pool answers a query', () => {
+   it('builds four pools: the short one, the long one, the background one, and the intake lane', () => {
+     expect(pools).toHaveLength(4);
+-    expect(intakePool.config.max).toBe(10);
++    expect(intakePool.config.max).toBe(40);
+     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
+     expect(shortPool.config.max).toBe(80);
+     // The 5th 200-seat run (box 60692): 629 searches waiting on ten, 1,009 gave up.
+-    expect(longPool.config.max).toBe(24);
++    expect(longPool.config.max).toBe(64);
+     expect(longPool.config.connectionTimeoutMillis).toBe(30_000);
+     expect(backgroundPool.config.max).toBe(2);
+     expect(shortPool).toBeDefined();
+diff --git a/src/db/postgres/client.ts b/src/db/postgres/client.ts
+index 86c13ae..0be0292 100644
+--- a/src/db/postgres/client.ts
++++ b/src/db/postgres/client.ts
+@@ -122,7 +122,13 @@ const pool = new Pool({
+  * finds the pool full waits up to 30 s for its turn instead of 10, since a
+  * search that starts late still answers and one that gives up never does.
+  */
+-const LONG_POOL_MAX = 24;
++/**
++ * The 6th 200-seat run (16 Oct 07:09–07:13Z, box 61681) answered the question
++ * the note above left open. With 24 connections a search spent about 0.8 s in
++ * the database and a median 16.7 s waiting for one (up to 629 queued): the
++ * database has room, the pool did not. 285 slow tools against 284 before.
++ */
++const LONG_POOL_MAX = 64;
+ const LONG_POOL_CONNECT_WAIT_MS = 30_000;
+ const longQueryPool = new Pool({
+   ...BASE_POOL_CONFIG,
+@@ -150,7 +156,11 @@ const backgroundPool = new Pool({
+  * own small lane: queries made while a send is being accepted draw from this
+  * pool, and the run it starts leaves the lane (`leaveIntakeLane`).
+  */
+-const INTAKE_POOL_MAX = 10;
++/**
++ * Run 6: 200 sends at once queued up to 190 deep on ten connections, and the
++ * browser saw a median 31.8 s to the 202 (1.4–1.6 s for one sender alone).
++ */
++const INTAKE_POOL_MAX = 40;
+ const intakePool = new Pool({
+   ...BASE_POOL_CONFIG,
+   max: INTAKE_POOL_MAX,
+-- 
+2.43.0
+
