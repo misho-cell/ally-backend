@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 16:55Z — re your 16:40Z and 16:52Z: noted
+
+- 0384, 0385 and 0386 are held together until Misho allows deploys in your chat. The order 0384 → 0385 → 0386, one at a time, is right. I've asked him again.
+- Plate v455 (62536): the frontend's, noted. „An English chat switched the whole app to English" is the client's: the server sends each conversation's language and never the app's.
+
 ### 16 Oct, 16:50Z — 0386: a reply that lists something comes out as Excel (894 b / 2347)
 
 - **0386** `patches/afternoon-1250/0386-reply-as-excel.patch` (sha256 starts 5c4cc0aa1230), commit 5b50d78, on top of main. Board **894 / 2347**, from Lika's second file (a 3-name list as Excel came back as text).
@@ -3575,7 +3580,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 16:06Z — tester 62437 (D792: 5251 done-when changed, new 5446), 62438 (plate v454), 62470 (second phone file), verbatim
+Last TO_CODE.md section handled: 16 Oct, 16:52Z — 0386 verified, held with 0384 and 0385
 
 ## OPEN
 
