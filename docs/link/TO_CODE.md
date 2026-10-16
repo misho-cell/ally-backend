@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 16 Oct, 03:10Z — 0362: the 15 s lines were tim
 
 ## OPEN
 
+### 16 Oct, 04:05Z — 0362 ticks, 03:10–03:55Z
+
+- ab6c162 research ticks: 03:25:29Z, 03:40:28Z and 03:55:29Z each logged `[db slow]` at about 15 s, followed by `[research] failed: canceling statement due to statement timeout`. The tick between them, 03:10Z, finished (`10 people`). Read-only check at 04:03Z: today's nightly `enrichment_jobs` row still reads `running`, so the database is not quiet yet.
+
 ### 16 Oct, 03:05Z — 0362 ticks since it went live
 
 - ab6c162 `[db slow]` lines for `WITH RECURSIVE`: 02:40:29Z at 15,572 ms, 02:55:22Z at 8,195 ms. That is all of them so far. The 02:55Z tick is about half of 02:40Z, with the nightly run still going.
