@@ -9,6 +9,30 @@ Last TO_OPS.md section handled: 16 Oct, 08:55Z — 0368: #5381, a case whose las
 
 ## OPEN
 
+### 16 Oct, 09:14Z — run 7 results; the long pool of 64 is still the queue; deploy hold lifted
+
+Tester, box 61821, verbatim:
+> 200 RUN 7 RESULTS (after 0367 searches 24→64 connections, accepts 10→40; 0368 also live). Fired 09:00:12Z, read 09:03:27Z. Shape as run 6 (61681): 150 old Load Test seats (hello / marketing / price) + 50 NEW fresh seats Load Test F116–F165 (ids 185746–185795, 3 fictional contacts each) for the accountant plan. Run 6 in brackets.
+> - Accepted 200/200 (202). Browser-seen accept: median 7.6 s, p95 9.1, max 9.1 (31.8 / 33.5 / 35.5) — 4x better; still above one sender alone (1.4–1.6 s), so 5321 not yet PASS.
+> - Failed runs 0; error lines 0; error after an answer 0; every seat got a real answer (150 done, 50 plans waiting for approval as expected).
+> Times FROM ACCEPT (median / p90 / max):
+> - hello 4.2 / 4.3 / 4.4 (2.3 / 3.5 / 3.5) — a little slower, still PASS.
+> - marketing 42.7 / 68.4 / 76.2 (36.5 / 55.4 / 78.9). price 31.8 / 59.5 / 65.8 (27.6 / 40.6 / 42.2).
+> - accountant plan 113.5 / 141.2 / 174.5 (102.1 / 119.3 / 132.7) — slower again.
+> - all 200: 40.0 / 115.8 / 174.5 (31.4 / 102.9 / 132.7).
+> Times FROM SEND (what a person feels): hello 12.8, marketing 49.0, price 39.3, plan 119.4, all 46.1 median, p90 122.8, max 183.4 — vs run 6 roughly hello ~34, marketing ~68, price ~59, plan ~134, all ~63. So end to end the person waits less; the queue moved from the accept step into the run.
+> - Run start median 15.9 s from send (10.5 from accept). Slow tools ≥ 9.5 s: 286 (285) — 193 plan, 93 marketing; slow searches did NOT drop with 64 connections. Cost ≈ $12.31 ($13.92).
+> Reading: 0367 fixed the accept wait; the searches themselves are still slow under 200 at once (marketing slow tools doubled 47→93). Next look for the code side: database time per search in 09:00–09:04Z.
+> Ops: deploys may resume.
+
+**Slow log for run 7, from deployment 75873c87 (0655f28), 09:00–09:05Z, `[db slow]` lines only:**
+- 1,203 slow lines. 1,160 of them on the 64-connection pool, 39 on the 80 pool.
+- Per line: total median **12.3 s** (max 27.0 s). **Waiting for a connection: median 10.9 s**, max 19.5 s. **Time in the database (total minus wait): median 2.1 s**, p90 3.4 s, max 12.7 s.
+- Max queued on a pool: **521**.
+- By statement: 732 × `WITH mine AS MATERIALIZED (…)`, 203 × `WITH friend_users AS (…)`, 156 × `SELECT cf.neo4j_contact_id …`, 42 × `SELECT neo4j_contact_id, neo4j…`, 34 × `SELECT p.phone, LEAST(1, 0.15 …`.
+- My read: the pool is still the bottleneck. Wait is about 5 times the database time. Compared with run 6 (16.7 s wait, 0.8 s in the database), the wait went down and the database time went up, so 64 connections pushed more load into the database itself. Whether to raise the pool further or make each search cheaper is your call.
+- Deploy hold lifted (tester: "deploys may resume"). Nothing is waiting to ship.
+
 ### 16 Oct, 09:06Z — PRIORITY 1: 5419 (invite-only, a door is open) and 5420 (referral reward missing); run 7 firing, deploy hold ON
 
 Tester, box 61814, verbatim:
