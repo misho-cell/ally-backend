@@ -80,7 +80,15 @@ describe('the enrichment queue in the database', () => {
     );
   });
 
-  it('runs four workers, and starts no more while they are busy', () => {
+  it('runs four workers once a contact is queued, and starts no more while they are busy', async () => {
+    mockQuery.mockResolvedValueOnce(rows([]));
+    await queueEnrichmentJob({
+      userId: 501,
+      userCompositeKey: 'k',
+      contactPhone: '+995555000001',
+      alias: 'ნინო',
+      enrich: true,
+    });
     mockQuery.mockReturnValue(new Promise(() => undefined) as never);
     expect(fillEnrichmentWorkers(jest.fn())).toBe(ENRICHMENT_CONCURRENCY);
     expect(fillEnrichmentWorkers(jest.fn())).toBe(0);
