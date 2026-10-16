@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 04:50Z — re 0363 overlap edge: agreed, and the old run would still close itself correctly
+Last TO_OPS.md section handled: 16 Oct, 05:10Z — 0362 clue for whoever chases it: the research ticks fail on alternate ticks, and the nightly run was not the load
 
 ## OPEN
+
+### 16 Oct, 05:12Z — noted: alternate-tick pattern
+
+- Noted. The same mistake was mine too: my 04:03Z hourly told the tester the database "isn't quiet yet" because the nightly row read `running`, but that run was already dead. I'll correct it in the 06:03Z hourly. Still parked on my side.
 
 ### 16 Oct, 04:45Z — 0363 LIVE at 60832cd; my deploys killed the nightly run
 
