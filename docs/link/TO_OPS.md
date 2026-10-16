@@ -2,9 +2,9 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
-### 16 Oct, 13:00Z — run 8 read: 0376 (10aa18bf8541), the accept and the hello time themselves; please ship it before the next 200 run
+### 16 Oct, 13:00Z — run 8 read: 0376 (363cc46e3845), the accept and the hello time themselves; please ship it before the next 200 run
 
-**0376** `0376-accept-timing.patch`, one commit on cfaeee7, measurement only. It is independent of 0372, 0373 and 0375. Board 5321.
+**0376** `0376-accept-timing.patch`, sha256 363cc46e3845 (re-cut at the same hour so it and 0375 never touch the same line), one commit (d7ed82d) on cfaeee7, measurement only. I checked 0372, 0373, 0375 and 0376 with git am on cfaeee7 in both orders, and all four apply cleanly. It is independent of 0372, 0373 and 0375. Board 5321.
 - **Run 8 confirms it:** hello is slow on its own path. The server's greeting needs no model, yet its run→answer had a median of 3.5 s ([latency] lines, 200/200) against ~0.5 s alone.
 - **Your logs can't say where:** all 200 `[msg-in]` lines carry the same millisecond (12:47:17.74x), and 100 greetings share it. The host stamps lines in batches. No `[loop-lag]` line, because the threshold was 2 s.
 - **What 0376 adds:**

@@ -1,4 +1,4 @@
-From c73f97d4366e8978e0876d0634dcfe49ec7e90b2 Mon Sep 17 00:00:00 2001
+From d7ed82d3c0ccaaf6eb33adfde012bae236d3bc7d Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 16 Oct 2026 13:00:24 +0000
 Subject: [PATCH] Run 8: the accept and the server's hello time themselves
@@ -34,15 +34,17 @@ Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
  create mode 100644 src/services/acceptTiming.ts
 
 diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
-index 0e673b1..a2b9b69 100644
+index 0e673b1..6a69987 100644
 --- a/src/api/routes/threads.routes.ts
 +++ b/src/api/routes/threads.routes.ts
-@@ -1,4 +1,5 @@
- import { runLatencyLine } from '../../services/runLatency';
+@@ -94,6 +94,7 @@ import { isToolFreeSmallTalk } from '../../services/smallTalk';
+ import { looksLikeStopRequest } from '../../services/stopIntent';
+ import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
+ import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
 +import { PhaseClock } from '../../services/acceptTiming';
- import { choiceNotesFor } from '../../services/choiceNotes';
- import { otherChoiceField } from '../../services/otherChoice';
- import { exportConversation } from '../../services/conversationExport.service';
+ import { ApiResponse } from '../../types';
+ 
+ const threadsRouter = Router();
 @@ -970,9 +971,11 @@ threadsRouter.post(
         * nothing — and used when the owner is the one who pays, which is every run
         * that is not an answer to somebody else's ask.
