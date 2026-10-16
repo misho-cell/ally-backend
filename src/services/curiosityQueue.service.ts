@@ -405,7 +405,52 @@ export interface CuriosityUpdate {
  * top of the per-query timeouts — because the per-query timeouts are exactly
  * what failed here: five of them in series, all honoured, 75 seconds total.
  */
-const CURIOSITY_BUDGET_MS = Number(process.env.CURIOSITY_BUDGET_MS ?? 6_000);
+/*
+ * The tester's 62839 (16 Oct, threads 55510–55512): three plain list requests took
+ * 16–22 s, and 6 s of each was this budget running out — `[curiosity] queue gave
+ * up after 6000ms` — on every message, because every message started the build
+ * over. The build now runs once per owner in the background and its result is
+ * kept for a while; a message waits for it only briefly, and one that cannot wait
+ * goes without the question while the next one gets it.
+ */
+const CURIOSITY_BUDGET_MS = Number(process.env.CURIOSITY_BUDGET_MS ?? 1_500);
+/** How long a built queue stays good for the next messages. */
+const QUEUE_RESULT_TTL_MS = 10 * 60 * 1000;
+
+interface BuiltQueue {
+  readonly items: CuriosityItem[];
+  readonly at: number;
+}
+
+const builtQueues = new Map<string, BuiltQueue>();
+const queueBuilds = new Map<string, Promise<CuriosityItem[]>>();
+
+/** One build per owner at a time, its result kept for the next messages. */
+function queueBuildFor(userId: string): Promise<CuriosityItem[]> {
+  const running = queueBuilds.get(userId);
+  if (running !== undefined) return running;
+  const build = buildCuriosityQueue(userId, DAY_QUESTION_LOOKAHEAD, { logSurfacing: false })
+    .then((items) => {
+      builtQueues.set(userId, { items, at: Date.now() });
+      return items;
+    })
+    .finally(() => queueBuilds.delete(userId));
+  queueBuilds.set(userId, build);
+  // A build nobody waits for any more must not count as unhandled when it fails.
+  build.catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.warn('[curiosity] queue build failed:', (err as Error).message),
+  );
+  return build;
+}
+
+/** The owner's queue: a fresh kept one at once, else the build within the budget. */
+async function curiosityQueueFor(userId: string): Promise<CuriosityItem[] | null> {
+  const kept = builtQueues.get(userId);
+  if (kept !== undefined && Date.now() - kept.at < QUEUE_RESULT_TTL_MS) return kept.items;
+  builtQueues.delete(userId);
+  return withinBudget(queueBuildFor(userId), CURIOSITY_BUDGET_MS, 'queue');
+}
 
 /** Give up on a nice-to-have rather than let it hold the answer. */
 async function withinBudget<T>(work: Promise<T>, ms: number, what: string): Promise<T | null> {
@@ -441,11 +486,7 @@ export async function maybeCuriosityUpdate(userId: string): Promise<CuriosityUpd
   );
   if (recent.rows.length > 0) return null;
 
-  const items = await withinBudget(
-    buildCuriosityQueue(userId, DAY_QUESTION_LOOKAHEAD, { logSurfacing: false }),
-    CURIOSITY_BUDGET_MS,
-    'queue',
-  );
+  const items = await curiosityQueueFor(userId);
   // Giving up is NOT the same as finding nothing, and the difference lasts a
   // day: the negative cache below suppresses this account's curiosity for 24
   // hours, so recording a timeout as „empty" would quietly switch the feature
