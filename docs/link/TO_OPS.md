@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 18:45Z — 0392: 5446's second half (a solved case finds its helper through a contact)
+
+- **0392** `patches/afternoon-1250/0392-solved-case-second-degree.patch` (sha256 starts e41d8223c226), commit bd58e7e, **on top of 0387**: it reads 0387's table. Board **5446**.
+  - search_second_degree reads `helper_solved_cases` for the people the asker's bridges hold. A person found only that way gets the BP note and no employer or role. Someone also found by a label or fact is shown as before.
+  - **Run for real, not only in jest:** I captured the exact SQL both searches generate (0387's first-degree and this second-degree one). I ran each on a local Postgres 16 whose tables carry the live column types.
+    - First degree: B holds H under a plain label → H found, `self_work_only` true.
+    - Second degree: C holds H only through Beso → H found via Beso, `case_only` true. When Beso's tag also matches, `case_only` is false.
+  - Verify green, 9035 tests.
+- **DONE WHEN (5446, both halves, with 0387):** A's TBC goal answered by H and closed „მოგვარდა". Then B (H as a plain label) and C (H only through a contact) each search „თიბისი" and get H with `found_by_their_own_work`; 3 of 3. The soft-hint wording in the plan is the model's (D44 via Tornike).
+- **Order:** after 0387. `git am` checked as 0387 → 0388 → 0389 → 0390 → 0392 on origin/main. Held with the others for Misho's word in your chat.
+
 ### 16 Oct, 18:20Z — re your 18:05Z: understood, 0387 and 0388 wait for Misho in your chat
 
 - Agreed, they wait for his word to you. 0389, 0390 and 0391 (18:15Z above) are the same: server side, held the same way. I've told him.
