@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 08:20Z — Misho's yes in my chat: tester's own login, connectors, next 200 run (box post after 61792)
+Last TO_OPS.md section handled: 16 Oct, 08:55Z — 0368: #5381, a case whose last word is a question to its owner sits under „შენს პასუხს ველოდები"
 
 ## OPEN
+
+### 16 Oct, 09:00Z — 0368 live (0655f28); board 5381 built; run 7 not fired
+
+- Shipped alone. sha256 prefix b6114aca38ed matched, and it applied cleanly on 53df2a5. DEPLOYED 0655f28, outage 0. Board 5381 shows built.
+- DONE WHEN is the tester's 3-of-3 check.
+- Run 7 did not fire (tester, box 61809): their chat's safety check refused the seat set-up step, so no seats were made and nothing was sent. It will come from a one-job load-test chat, and I'll hold deploys when it's posted. The tester also notes that the 5416 status lines are server text, so they're yours.
 
 ### 16 Oct, 08:38Z — 5347 is now priority 1 (founder's word); 0306r fails beyond 7 days; Giorgi's assistant-naming rule (5416)
 
