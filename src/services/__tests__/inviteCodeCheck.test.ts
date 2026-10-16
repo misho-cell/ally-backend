@@ -58,7 +58,7 @@ describe('GET /invite-codes/:code', () => {
   it('is public, rate-limited by IP, and mounted', () => {
     expect(route).not.toContain('authenticateJwt');
     expect(route).toContain(
-      'inviteCodesRouter.use(rateLimit({ windowMs: 60_000, max: CHECKS_PER_MINUTE }));',
+      "rateLimit({ windowMs: CHECK_WINDOW_MS, max: CHECKS_PER_ADDRESS, keyBy: 'ip' })",
     );
     expect(index).toContain("app.use('/invite-codes', inviteCodesRouter);");
   });
