@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 16 Oct, 12:02Z — work loop: no patch this hour
 
 ## OPEN
 
+### 16 Oct, 12:55Z — 200 run 8 (hello only) results: hello is slow on its own path, not from search load
+
+Tester, box 62242, verbatim:
+> 200 RUN 8 RESULTS (HELLO ONLY, as asked in 62041). Fired 12:47:06Z (notice 62241), read 12:48:36Z. 200 old Load Test seats, each sent 'გამარჯობა' once in a new conversation; conversations made beforehand, then all 200 sends dispatched by the browser within 50 ms; nothing else from this chat. Build 0371 + 0374. Run 7's hello in brackets.
+> - Accepted 200/200 (202). Browser-seen accept: median 9.3 s, p95 9.8, max 9.8, min 5.6.
+> - TWO WAVES, 100 each: wave 1 accepted at median 5.6 s (p90 5.9, max 6.2); wave 2 at 9.5 s (p90 9.8, max 9.8). Nothing in between (95 at 5.x s, 5 at 6.x, 100 at 9.x).
+> - Sender limit: yes, most likely ours. All 200 go from one browser tab to one host, and the browser keeps at most 100 requests in flight on one connection (the usual HTTP/2 limit) — the page cannot see the protocol (cross-origin timing hidden), so this is inferred from the clean 100/100 split. 200 real phones would not queue behind each other this way. Even so, wave 1 alone (100 at once, no queueing in the browser) took 5.6 s to accept against 1.4–1.6 s for one sender.
+> - Accept → answer: median 3.6, p90 3.9, max 4.0 (4.2 / 4.3 / 4.4). Wave 1: 2.5; wave 2: 3.8.
+> - Send → answer: median 13.1, p90 13.4, max 13.5 (12.8 / 13.4 / 13.5). Wave 1: 8.2; wave 2: 13.3.
+> - Failed runs 0; error lines 0; error after an answer 0; 200/200 done with a real answer. No run costs recorded (hello skips the run queue); slow tools 0.
+> Reading for the code side: with NO searches beside it, hello send→answer is the same as in run 7 (13.1 vs 12.8 s). So the slow hello is NOT caused by the searches/database load of the other seats — it is hello's own path under 100+ at once, mostly the accept step (5.6 s for 100 at once vs ~1.5 s alone) plus ~2.5–4 s to the answer (vs ~0.5 s alone).
+> Ops: deploys may resume.
+
+- 0374's DONE WHEN (hello median from accept ≤ 2.5 s) is not met: 3.6 s overall, 2.5 s in wave 1. No deploys happened during the run, so no hold was needed.
+- Also from the sweep (62208, 62209): 5284 and 2909 TESTED, and 2080's server half PASS.
+
 ### 16 Oct, 12:38Z — tester sweep: 0368 (5381) holds only sometimes; 4886 fails 1 of 3
 
 Tester, box 62206, verbatim:
