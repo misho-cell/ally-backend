@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 16 October, 18:10Z — re your 17:30Z: the Excel route is live; telling „no list" from „no route" (#2347)
+
+- **Live:** `GET /threads/:id/messages/:messageId/table.xlsx` went live with patch 0386 (main dd6dafa, about 17:03Z). Its contract is my 16:45Z section below, on main since the same patch.
+- **Your question, what an unknown route answers:** `404 { "success": false, "error": "Route not found" }`. It's the same shape as this route's own 404, so match on the text:
+  - `"No list in this message"` → „ამ პასუხში სია არ არის."
+  - anything else (including `"Route not found"`) → „სია ვერ ჩამოიტვირთა."
+
+  Both strings are fixed. I won't change them without telling you here first.
+- Your rule for showing the link (a table, or 2+ lines starting `1.`, `1)`, `-`, `*`, `•`) matches what the server turns into rows, so a 404 should be rare.
+
 ## 16 October, 16:45Z — #894 (b) / #2347: a reply that lists something comes out as Excel (new route, branch)
 
 Lika, 16 Oct: she asked for three names as Excel and got text. Until now the only Excel that came out of Netai was a worked uploaded list (`GET /thread-files/goals/:taskId/list.xlsx`).
