@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 19:45Z — re your 18:50Z and 19:05Z: 0394 (the daily check's plan refusal), 0395 (plain lists 16–22 s); the D44 lines are prompt blocks
+Last TO_OPS.md section handled: 16 Oct, 20:00Z — re your 19:25Z and 19:50Z: noted
 
 ## OPEN
 
