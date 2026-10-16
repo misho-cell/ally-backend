@@ -1,0 +1,149 @@
+From 66a0aafe46879345b15466fd96d1dac75c4da8cd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 13:59:24 +0000
+Subject: [PATCH] Search shows the owner's latest label for a number, not the
+ first by alphabet
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's 62279 (thread 54984; also 1694's side note): one number
+carried two of the owner's labels — the seat's own name, saved first, and
+„ლევანი ტესტიძე", saved after. Search took MAX(alias), which is the
+alphabet's pick, so the owner asked for Levani and was shown a name she
+never typed (and the plan named it). The display name and saved_as are now
+the owner's LATEST label for that number (newest row first, empty labels
+skipped); the registered name stays the fallback (#1918). Read against
+the tester's seat: all four numbers now read as the owner saved them.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../tools/__tests__/anEmailIsNotAName.test.ts   | 17 ++++++++++++++---
+ src/services/tools/searchByTag.ts               | 15 ++++++++++++---
+ src/services/tools/searchContactByName.ts       | 11 ++++++++---
+ 3 files changed, 34 insertions(+), 9 deletions(-)
+
+diff --git a/src/services/tools/__tests__/anEmailIsNotAName.test.ts b/src/services/tools/__tests__/anEmailIsNotAName.test.ts
+index cd08c50..d9428b1 100644
+--- a/src/services/tools/__tests__/anEmailIsNotAName.test.ts
++++ b/src/services/tools/__tests__/anEmailIsNotAName.test.ts
+@@ -1,6 +1,6 @@
+ import { readFileSync } from 'fs';
+ import { join } from 'path';
+-import { DISPLAY_NAME } from '../searchByTag';
++import { DISPLAY_NAME, LATEST_OWN_LABEL } from '../searchByTag';
+ import { isDisplayableTag } from '../getContactFullProfile';
+ 
+ /**
+@@ -29,7 +29,9 @@ describe('an email is not a name', () => {
+ 
+   /** #1918: the owner's own label first, the registered name only after it. */
+   it('prefers the owner’s own label over the registered name', () => {
+-    const chosenFirst = DISPLAY_NAME.indexOf("MAX(NULLIF(TRIM(ua.alias), ''))");
++    const chosenFirst = DISPLAY_NAME.indexOf(
++      "array_agg(NULLIF(TRIM(ua.alias), '') ORDER BY ua.id DESC)",
++    );
+     const fallback = DISPLAY_NAME.indexOf("NULLIF(TRIM(MAX(u.name)), '')");
+ 
+     expect(chosenFirst).toBeGreaterThan(0);
+@@ -46,7 +48,7 @@ describe('an email is not a name', () => {
+     const byName = readFileSync(join(__dirname, '..', 'searchContactByName.ts'), 'utf8');
+     const byTag = readFileSync(join(__dirname, '..', 'searchByTag.ts'), 'utf8');
+ 
+-    expect(byName).toMatch(/import \{ DISPLAY_NAME[^}]*\} from '.\/searchByTag'/);
++    expect(byName).toMatch(/import \{\s*DISPLAY_NAME[^}]*\} from '.\/searchByTag'/);
+     expect(byName.match(/\$\{DISPLAY_NAME\} AS name/g) ?? []).toHaveLength(2);
+     expect(byTag).toContain('${DISPLAY_NAME} AS name');
+     // Nobody left a copy behind.
+@@ -96,3 +98,12 @@ describe('an email is not a label either', () => {
+     expect(byTag).toContain('isDisplayableTag(t)');
+   });
+ });
++
++/** The tester's 62279 (thread 54984): of two labels for one number, the owner's latest. */
++describe('the owner’s latest label', () => {
++  it('is read newest first, empty labels skipped', () => {
++    expect(LATEST_OWN_LABEL).toContain('ORDER BY ua.id DESC');
++    expect(LATEST_OWN_LABEL).toContain("FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL)");
++    expect(DISPLAY_NAME).toContain(LATEST_OWN_LABEL);
++  });
++});
+diff --git a/src/services/tools/searchByTag.ts b/src/services/tools/searchByTag.ts
+index ce2a645..372dfd8 100644
+--- a/src/services/tools/searchByTag.ts
++++ b/src/services/tools/searchByTag.ts
+@@ -127,14 +127,23 @@ const MY_CONTACTS_CTE = `mine AS MATERIALIZED (
+  * words; the registered name is the fallback for a number she saved without
+  * a label, and still rides apart as `registered_name` where a reader needs it.
+  */
++/**
++ * The tester's 62279 (thread 54984): one number carried two of the owner's labels — the
++ * seat's own name, saved first, and „ლევანი ტესტიძე", saved after. MAX picked the first by
++ * alphabet, so the owner searched for Levani and was shown a name she never typed. Her
++ * LATEST label is the one she knows the person by.
++ */
++export const LATEST_OWN_LABEL = `(array_agg(NULLIF(TRIM(ua.alias), '') ORDER BY ua.id DESC)
++            FILTER (WHERE NULLIF(TRIM(ua.alias), '') IS NOT NULL))[1]`;
++
+ export const DISPLAY_NAME = `COALESCE(
+-          MAX(NULLIF(TRIM(ua.alias), '')),
++          ${LATEST_OWN_LABEL},
+           CASE WHEN TRIM(MAX(u.name)) LIKE '%@%' THEN NULL
+                ELSE NULLIF(TRIM(MAX(u.name)), '') END)`;
+ 
+ const AGG_SELECT = `h.phone,
+         ${DISPLAY_NAME} AS name,
+-        MAX(ua.alias)                        AS saved_as,
++        ${LATEST_OWN_LABEL} AS saved_as,
+         array_agg(DISTINCT ut.tag)           AS all_tags,
+         array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
+         MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
+@@ -630,7 +639,7 @@ export async function exactMatchesForMany(
+        WHERE phone != ALL($${m.blockIdx})
+        GROUP BY phone
+      )
+-     SELECT h.phone, ${DISPLAY_NAME} AS name, MAX(ua.alias) AS saved_as,
++     SELECT h.phone, ${DISPLAY_NAME} AS name, ${LATEST_OWN_LABEL} AS saved_as,
+             BOOL_OR(h.own_hit) AS own_hit, MAX(h.src_priority) AS src_priority,
+             MAX(ut."weightCount") AS weight,
+             ${searchable.map((_, i) => `MAX(h.h${i}) AS h${i}`).join(', ')}
+diff --git a/src/services/tools/searchContactByName.ts b/src/services/tools/searchContactByName.ts
+index b39cbb1..a6d361a 100644
+--- a/src/services/tools/searchContactByName.ts
++++ b/src/services/tools/searchContactByName.ts
+@@ -24,7 +24,12 @@ import { phoneDigits } from '../phone';
+ import { OWNERSHIP } from './searchResultMeta';
+ import { collapseMergedPhones } from './mergedIdentities';
+ import { searchDidNotFinish } from './searchDidNotFinish';
+-import { DISPLAY_NAME, othersLabelsMatched, ownDisplayableTags } from './searchByTag';
++import {
++  DISPLAY_NAME,
++  LATEST_OWN_LABEL,
++  othersLabelsMatched,
++  ownDisplayableTags,
++} from './searchByTag';
+ 
+ const FUZZY_THRESHOLD = 0.45;
+ // The first letters a fuzzy neighbour must share with the term (see the
+@@ -173,7 +178,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
+               (${nameHits})                        AS name_hits,
+               MAX(NULLIF(TRIM(u.name), ''))        AS registered_name,
+               ${DISPLAY_NAME} AS name,
+-              MAX(ua.alias)                        AS saved_as,
++              ${LATEST_OWN_LABEL} AS saved_as,
+               array_agg(DISTINCT ut.tag)           AS all_tags,
+               array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
+               MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
+@@ -252,7 +257,7 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
+            )
+            SELECT h.phone,
+                   ${DISPLAY_NAME} AS name,
+-                  MAX(ua.alias)                        AS saved_as,
++                  ${LATEST_OWN_LABEL} AS saved_as,
+                   array_agg(DISTINCT ut.tag)           AS all_tags,
+                   array_agg(DISTINCT ut.tag) FILTER (WHERE ut."contactId" = $1) AS own_tags,
+                   MAX(NULLIF(TRIM(u.employer), ''))    AS employer,
+-- 
+2.43.0
+

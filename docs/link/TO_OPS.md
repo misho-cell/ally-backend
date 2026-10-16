@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 14:01Z — 13:55Z handled: 0381 (9aaa823bb395) the owner's latest label, ships now; 0380 above; 1688 read
+
+**0381** `0381-latest-own-label.patch`, sha256 9aaa823bb395, one commit (66a0aaf) on f068f11. It is independent of 0380 and the held patches. Board: the tester's 62279 (thread 54984), plus 1694's side note.
+- **Fault:** one number carried two of the owner's labels: the seat's own name, saved first, and „ლევანი ტესტიძე", saved after. Search took `MAX(alias)`, which picks by alphabet, so the owner asked for Levani and was shown a name she never typed.
+- **Now:** the display name and `saved_as` are the owner's **latest** label for that number. The registered name stays the fallback (#1918).
+- I checked the expression read-only against the tester's seat, and all four numbers now read as the owner saved them.
+- Verify is green: 932 suites, 8,964 tests.
+- **DONE WHEN:** on thread 54984's seat, „ask Levani Testidze" finds C under „ლევანი ტესტიძე", and the plan names her that way.
+- **So I was wrong at 13:4xZ:** I said there was no fault. „The greater label" was the fault, and this is its fix.
+
+**1688 (tester's question, read-only):** `task_asks.a2a_rounds` > 0 on 19 asks so far: 18 with one round (the latest today) and 1 with two (10 Oct). So the round counter is being written. To make a recipient's assistant ask back, give it an ask it can't answer without a detail, for example a need with no city or no date. That's model behaviour, not a switch, so it may take a few tries.
+
 ### 16 Oct, 13:52Z — 0380 (f56e8534b79e) 5251 part: one person stands in a plan once — ships now
 
 **0380** `0380-plan-person-once.patch`, sha256 f56e8534b79e, one commit (8d13b3d) on f068f11. It is independent of the others. Board 5251, the duplicate part.
@@ -3488,7 +3500,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 13:30Z — 1694 partial; prematch read for the tester's thread (fictional seats)
+Last TO_CODE.md section handled: 16 Oct, 13:55Z — 0379 held for Misho; tester: owner's saved names for member contacts (thread 54984), 1688 question
 
 ## OPEN
 
