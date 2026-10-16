@@ -1,0 +1,308 @@
+From 6ead163ba9466fd6fdd3d3c909117c88c1056c36 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 17:36:25 +0000
+Subject: [PATCH] 5446 (D792): a solved goal is remembered on its helpers and
+ finds them next time
+
+Founder ruling D792 (16 Oct): the real TBC loan was unblocked by hand
+(Tornike, Beso, Tiko) and Netai learned nothing from it. Netai must remember
+such cases without asking the helper or telling anyone, and use them only
+to suggest that person next time, with no reason given.
+
+- Migration 246: helper_solved_cases, one row per helper per goal, holding
+  the goal's own words.
+- When a goal closes as finished, every helper whose ask was answered (not
+  declined, not a no or later) is recorded, in the same hook that offers
+  the helper thanks.
+- search_by_tag's main search reads the record beside the member's own
+  work: a match on the goal's words finds a helper the asker holds, ranks
+  them as a structured hit, and carries self_work, so the model gets the
+  approved BP note (offer them, never say why) and no new text.
+
+The second-degree path (a helper only through one of the asker's contacts)
+and the job-to-ties inference are not in this change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../migrations/246_helper_solved_cases.sql    | 18 ++++
+ .../aMemberIsFoundByHisOwnWork.test.ts        |  6 +-
+ ...aSolvedCaseIsRememberedOnTheHelper.test.ts | 89 +++++++++++++++++++
+ src/services/solvedCases.service.ts           | 68 ++++++++++++++
+ src/services/taskStore.service.ts             |  6 ++
+ src/services/tools/wordMatch.ts               |  9 ++
+ 6 files changed, 194 insertions(+), 2 deletions(-)
+ create mode 100644 src/db/postgres/migrations/246_helper_solved_cases.sql
+ create mode 100644 src/services/__tests__/aSolvedCaseIsRememberedOnTheHelper.test.ts
+ create mode 100644 src/services/solvedCases.service.ts
+
+diff --git a/src/db/postgres/migrations/246_helper_solved_cases.sql b/src/db/postgres/migrations/246_helper_solved_cases.sql
+new file mode 100644
+index 0000000..e7d220c
+--- /dev/null
++++ b/src/db/postgres/migrations/246_helper_solved_cases.sql
+@@ -0,0 +1,18 @@
++-- 5446, founder ruling D792 (16 Oct): a goal solved with a helper's answer is
++-- remembered on the helper, silently. Never shown to anyone and never asked of
++-- the helper; read only by search, where a match ranks the helper as a
++-- structured hit and the model is told to offer them without a reason (BP).
++-- case_text is the goal's own words (title, then description), the words a
++-- later asker's search is matched against.
++CREATE TABLE IF NOT EXISTS helper_solved_cases (
++  id             BIGSERIAL PRIMARY KEY,
++  helper_user_id INTEGER NOT NULL,
++  owner_user_id  INTEGER NOT NULL,
++  task_id        INTEGER NOT NULL,
++  case_text      TEXT NOT NULL,
++  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  UNIQUE (helper_user_id, task_id)
++);
++
++CREATE INDEX IF NOT EXISTS helper_solved_cases_helper_idx
++  ON helper_solved_cases (helper_user_id);
+diff --git a/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts b/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+index 7c5f053..0a8189b 100644
+--- a/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
++++ b/src/services/__tests__/aMemberIsFoundByHisOwnWork.test.ts
+@@ -15,14 +15,16 @@ describe('a member found by his own work', () => {
+     expect(sql).not.toMatch(/kv\.key IN \([^)]*interests/u);
+   });
+ 
+-  it('marks only that branch as the member’s own work', () => {
++  // 5446 (D792): a goal the member helped solve is the second silent branch.
++  it('marks only that branch and the solved-case one as found without a reason', () => {
+     const sql = buildExactMatchSql('501', [['notary']], [], true).matchedCte;
+-    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(1);
++    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(2);
+   });
+ 
+   it('is read only by the search that can carry the note — never by default', () => {
+     const sql = buildExactMatchSql('501', [['notary']], []).matchedCte;
+     expect(sql).not.toContain('user_profile_kv');
++    expect(sql).not.toContain('helper_solved_cases');
+     expect(sql).not.toContain('TRUE AS self_work');
+     expect(tag.match(/buildExactMatchSql\([^)]*, true\)/gu)).toHaveLength(1);
+   });
+diff --git a/src/services/__tests__/aSolvedCaseIsRememberedOnTheHelper.test.ts b/src/services/__tests__/aSolvedCaseIsRememberedOnTheHelper.test.ts
+new file mode 100644
+index 0000000..a2c6e24
+--- /dev/null
++++ b/src/services/__tests__/aSolvedCaseIsRememberedOnTheHelper.test.ts
+@@ -0,0 +1,89 @@
++import { readFileSync } from 'fs';
++import { join } from 'path';
++
++jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn() }));
++
++import { query } from '../../db/postgres/client';
++import { answerHelped, recordSolvedCases } from '../solvedCases.service';
++import { laterChoice } from '../askOpening';
++import { buildExactMatchSql } from '../tools/wordMatch';
++
++const mockQuery = query as jest.MockedFunction<typeof query>;
++
++/**
++ * 5446, founder ruling D792 (16 Oct): a goal solved with a helper's answer is
++ * remembered on the helper, silently, and search finds and ranks the helper by
++ * it without the model ever being told why.
++ */
++describe('which answer helped', () => {
++  it('counts a real answer and a yes', () => {
++    expect(answerHelped('ჰკითხე ჩემს კოლეგას ბანკში, ის მოგიგვარებს')).toBe(true);
++    expect(answerHelped('კი, ვიცნობ')).toBe(true);
++  });
++
++  it('does not count no, later or nothing', () => {
++    expect(answerHelped('არა, არ ვიცნობ')).toBe(false);
++    expect(answerHelped(laterChoice('ka'))).toBe(false);
++    expect(answerHelped('')).toBe(false);
++    expect(answerHelped(null)).toBe(false);
++  });
++});
++
++describe('recording a solved goal', () => {
++  beforeEach(() => mockQuery.mockReset());
++
++  it('writes each helper who answered, with the goal’s own words, once per goal', async () => {
++    mockQuery
++      .mockResolvedValueOnce({
++        rows: [
++          { to_user_id: 11, from_user_id: 7, answer: 'ტიკოს ჰკითხე', case_text: 'TBC loan' },
++          { to_user_id: 12, from_user_id: 7, answer: 'არა, არ ვიცნობ', case_text: 'TBC loan' },
++        ],
++      } as never)
++      .mockResolvedValueOnce({ rowCount: 1 } as never);
++
++    expect(await recordSolvedCases(42)).toBe(1);
++    const [readSql, readParams] = mockQuery.mock.calls[0];
++    expect(readSql).toContain("ta.status = 'answered'");
++    expect(readSql).toContain('ta.declined_at IS NULL');
++    expect(readParams).toEqual([42]);
++    const [writeSql, writeParams, timeout] = mockQuery.mock.calls[1];
++    expect(writeSql).toContain('INSERT INTO helper_solved_cases');
++    expect(writeSql).toContain('ON CONFLICT (helper_user_id, task_id) DO NOTHING');
++    expect(writeParams).toEqual([42, [11], [7], ['TBC loan']]);
++    expect(timeout).toBeGreaterThan(0);
++  });
++
++  it('writes nothing when nobody helped', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
++    expect(await recordSolvedCases(42)).toBe(0);
++    expect(mockQuery).toHaveBeenCalledTimes(1);
++  });
++});
++
++describe('when it is recorded', () => {
++  const store = readFileSync(join(__dirname, '..', 'taskStore.service.ts'), 'utf8');
++
++  it('follows a close as finished, and only that close', () => {
++    const at = store.indexOf("if (updated && status === 'closed' && closedAs === 'finished') {");
++    expect(at).toBeGreaterThan(-1);
++    expect(store.slice(at, at + 900)).toContain('recordSolvedCases(taskId)');
++  });
++});
++
++describe('how search reads it', () => {
++  it('finds the helper by the goal’s words among the asker’s own contacts, silently', () => {
++    const sql = buildExactMatchSql('501', [['თიბისი']], [], true).matchedCte;
++    expect(sql).toContain('JOIN helper_solved_cases hs ON hs.helper_user_id = up5."userId"');
++    expect(sql).toContain('WHERE up5.phone IN (SELECT phone FROM mine)');
++    const branch = sql.slice(sql.indexOf('SELECT up5.phone'), sql.indexOf('helper_solved_cases'));
++    expect(branch).toContain('2 AS priority');
++    expect(branch).toContain('TRUE AS self_work');
++  });
++
++  it('is not read by a search that cannot carry the no-reason note', () => {
++    expect(buildExactMatchSql('501', [['თიბისი']], []).matchedCte).not.toContain(
++      'helper_solved_cases',
++    );
++  });
++});
+diff --git a/src/services/solvedCases.service.ts b/src/services/solvedCases.service.ts
+new file mode 100644
+index 0000000..2da212d
+--- /dev/null
++++ b/src/services/solvedCases.service.ts
+@@ -0,0 +1,68 @@
++import { query } from '../db/postgres/client';
++import { AskTap, askTapOf } from './askOpening';
++
++/**
++ * 5446, founder ruling D792 (16 Oct). The real TBC loan was unblocked by hand:
++ * Tornike asked Beso, Beso pointed to Tiko, Tiko asked her bank contact. Netai
++ * learned nothing from it, so the next friend with the same problem would not
++ * be pointed to Tiko.
++ *
++ * When a goal closes as solved, every helper who answered its question — and
++ * did not say no — is remembered with the goal's own words. The helper is not
++ * asked (founder), and the record is never shown or quoted: search reads it to
++ * find and rank the helper, and the model offers them without a reason (BP).
++ */
++const QUERY_TIMEOUT_MS = 5_000;
++/** Enough of a goal's words to match on; a description longer than this adds noise. */
++const MAX_CASE_CHARS = 1_000;
++
++interface AnsweredAsk {
++  readonly to_user_id: number;
++  readonly from_user_id: number;
++  readonly answer: string | null;
++  readonly case_text: string;
++}
++
++/** An answer that only says no, or later, did not help, whatever the goal's ending. */
++export function answerHelped(answer: string | null): boolean {
++  if (answer === null || answer.trim() === '') return false;
++  const tap = askTapOf(answer);
++  return tap !== AskTap.Decline && tap !== AskTap.Later;
++}
++
++async function answeredAsks(taskId: number): Promise<AnsweredAsk[]> {
++  const result = await query<AnsweredAsk>(
++    `SELECT DISTINCT ON (ta.to_user_id) ta.to_user_id, ta.from_user_id, ta.answer,
++            LEFT(TRIM(t.title || ' ' || COALESCE(t.description, '')), ${MAX_CASE_CHARS}) AS case_text
++       FROM task_asks ta
++       JOIN tasks t ON t.id = ta.task_id
++      WHERE ta.task_id = $1
++        AND ta.status = 'answered'
++        AND ta.declined_at IS NULL
++        AND ta.to_user_id IS NOT NULL
++      ORDER BY ta.to_user_id, ta.answered_at DESC NULLS LAST`,
++    [taskId],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rows;
++}
++
++/** Remember the solved goal on each helper who answered it; returns how many were written. */
++export async function recordSolvedCases(taskId: number): Promise<number> {
++  const helpers = (await answeredAsks(taskId)).filter((ask) => answerHelped(ask.answer));
++  if (helpers.length === 0) return 0;
++  const result = await query(
++    `INSERT INTO helper_solved_cases (helper_user_id, owner_user_id, task_id, case_text)
++     SELECT x.helper, x.owner, $1, x.case_text
++       FROM UNNEST($2::int[], $3::int[], $4::text[]) AS x(helper, owner, case_text)
++     ON CONFLICT (helper_user_id, task_id) DO NOTHING`,
++    [
++      taskId,
++      helpers.map((h) => h.to_user_id),
++      helpers.map((h) => h.from_user_id),
++      helpers.map((h) => h.case_text),
++    ],
++    QUERY_TIMEOUT_MS,
++  );
++  return result.rowCount ?? 0;
++}
+diff --git a/src/services/taskStore.service.ts b/src/services/taskStore.service.ts
+index 06d826d..3bb9e56 100644
+--- a/src/services/taskStore.service.ts
++++ b/src/services/taskStore.service.ts
+@@ -8,6 +8,7 @@ import { markThreadStopped } from './stoppedRuns';
+ import { goalNamedIn } from './goalMention';
+ import type { TaskPlan } from './taskPlans.service';
+ import { GoalWaitReason } from './goalWaitReason';
++import { recordSolvedCases } from './solvedCases.service';
+ 
+ const QUERY_TIMEOUT_MS = 8_000;
+ const OPEN_TASKS_LIMIT = 50;
+@@ -839,6 +840,11 @@ export async function updateTask(
+         // eslint-disable-next-line no-console
+         console.error(`[helper-thanks] goal ${taskId} not offered:`, (error as Error).message);
+       });
++    // 5446 (D792): remembered, silently, on the helpers who answered it.
++    void recordSolvedCases(taskId).catch((error: unknown) => {
++      // eslint-disable-next-line no-console
++      console.error(`[solved-case] goal ${taskId} not recorded:`, (error as Error).message);
++    });
+     void queueGoalFeedback(userId, taskId).catch((error: unknown) => {
+       // eslint-disable-next-line no-console
+       console.error(
+diff --git a/src/services/tools/wordMatch.ts b/src/services/tools/wordMatch.ts
+index 9410282..e563d6b 100644
+--- a/src/services/tools/wordMatch.ts
++++ b/src/services/tools/wordMatch.ts
+@@ -148,6 +148,8 @@ export function buildExactMatchSql(
+   // what he does is found by it. Work keys only — „interests" or searched topics would
+   // make a member who LOOKED for a lawyer read as one. Their text ranks the search and
+   // is never shown; §111.2 and BP: a row found only this way says so (self_work).
++  // 5446 (D792): a goal the member helped solve is read the same way — it finds and
++  // ranks them, is never shown, and the model offers them with no reason.
+   const ownWorkBranch = withOwnWork
+     ? `SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
+             TRUE AS self_work
+@@ -157,6 +159,13 @@ export function buildExactMatchSql(
+        AND kv.key IN ('profession', 'industry')
+        AND ${regexOr('kv.value')}
+      UNION ALL
++     SELECT up5.phone, ${foldedLower('hs.case_text')} AS label, 2 AS priority, TRUE AS own,
++            TRUE AS self_work
++     FROM "UserPhone" up5
++     JOIN helper_solved_cases hs ON hs.helper_user_id = up5."userId"
++     WHERE up5.phone IN (SELECT phone FROM mine)
++       AND ${regexOr('hs.case_text')}
++     UNION ALL
+      `
+     : '';
+   const matchedCte = `matched AS (
+-- 
+2.43.0
+
