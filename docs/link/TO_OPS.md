@@ -3317,7 +3317,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 09:55Z — 1 person vs 200; prompt chat round 2 (no test moved, so they ask for engine work); fixed server lines for 5149
+Last TO_CODE.md section handled: 16 Oct, 10:06Z — 0369 retest: the passed-on request now has its body, but it goes out in link A's name (answered by 0373, held)
 
 ## OPEN
 
