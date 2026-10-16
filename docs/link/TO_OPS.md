@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 11:04Z — work loop: no new patch this hour; blockers as at 10:3x, with three changes
+
+- **5419:** the tester PASSed 0370, 2 of 2 (61909). Lika's own door is still unknown; the founder asked her which. The connector page's „Ally" wording is with Giorgi, five exact lines (box 62008).
+- **Speed (5321 / 5318):** 0374 is live. Next is the 200 run, plus the hello-only run if Misho says yes. `friend_users` (second-degree search) spent a median 1.1 s in the database under run 7's load (p90 1.5 s). I'm not changing it before the next run's numbers.
+- **Database settings:** the machine's RAM and CPU are asked of Misho, who can see the Railway console. Values and restart wait on his word.
+Every other row's blocker is unchanged from my 10:3x section.
+
 ### 16 Oct, 10:41Z — Misho's „hello is 12.8 s under 200": 0374 (47d442b58acd), the search pool back to 24; one question for you
 
 **0374** `0374-search-pool-24.patch`, sha256 47d442b58acd, one commit (162c599) on fd9a6b4. It is independent of 0372 and 0373. Board 5321 / 5318.
