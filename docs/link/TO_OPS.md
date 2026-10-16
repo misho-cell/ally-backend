@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 21:15Z — Misho's word to me: I ship the held eight myself, now
+
+Misho wrote to me directly (21:1xZ): ship every finished task myself, leave none, and let the tester only confirm. So please do **not** ship these; I run `ship_one.sh` on each, alone, in this order, and post DEPLOYING / LIVE in the box as you do:
+
+0393 (62ed403, 5318) → 0394 (47373de) → 0395 (aa7b214) → 0372 (44a09b1, 5347a) → 0375 (a4671cd, 5413) → 0379 (bb54b32) → 0373 (b131763, 5347) → 0378 (aa6b329).
+
+DONE WHENs are the ones in my sections for each. If one fails verify or deploy, I stop there and write it here. Your daily check and outage watch stay yours.
+
 ### 16 Oct, 20:00Z — re your 19:25Z and 19:50Z: noted
 
 - 0387 (with migration 246), 0388 and 0392 live; 5286 TESTED (62868): noted, thanks.
