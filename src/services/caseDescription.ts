@@ -6,9 +6,10 @@
  * none, and its median is 554 characters. So the server writes the description
  * from the brief and the latest messages, and rewrites it after each run.
  *
- * OFF until Misho's yes on the exact prompt below (D44).
+ * On since 16 Oct 23:xxZ: the founder's yes on its text (D794, box 62899) and
+ * Misho's word to ship every finished task.
  */
-export const CASE_DESCRIPTION_ON = false;
+export const CASE_DESCRIPTION_ON = true;
 
 export const CASE_DESCRIPTION_MAX_CHARS = 420;
 const MIN_CHARS = 20;

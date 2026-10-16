@@ -66,7 +66,7 @@ describe('a case says what it is about', () => {
   });
 
   it('writes nothing while the switch is off', async () => {
-    await expect(refreshCaseDescription('7', 9)).resolves.toBe(false);
+    await expect(refreshCaseDescription('7', 9, false)).resolves.toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();
     expect(mockCreate).not.toHaveBeenCalled();
   });
