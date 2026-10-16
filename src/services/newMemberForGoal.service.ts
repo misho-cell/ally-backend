@@ -175,7 +175,7 @@ export async function goalsThisMemberMightUnblock(phone: string): Promise<GoalTh
          SELECT ua.alias
            FROM "UserAlias" ua
           WHERE ua."contactId"::text = tg.user_id AND ua.phone = $1
-          ORDER BY LENGTH(TRIM(ua.alias)) DESC
+          ORDER BY ua.id DESC
           LIMIT 1
        ) own_label ON TRUE
       -- ⚠️ NOT THE OWNER ABOUT THEMSELVES, and this guard only started doing

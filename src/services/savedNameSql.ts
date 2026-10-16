@@ -5,8 +5,12 @@
  * another owner's label is never shown to her.
  *
  * The name the VIEWER sees for MEMBER: the viewer's own label for any of the
- * member's numbers (the fullest clean spelling, ties broken alphabetically so
- * it never changes between two replies), else the member's registered name.
+ * member's numbers (the one she saved last, so a rename shows at once and the
+ * same name comes back every reply), else the member's registered name.
+ *
+ * The tester's 62340 (55012, 55015): a seat saved as „Helper C …" and later as
+ * „Levani …" was still told as Helper C, because the longer label won. The
+ * latest label wins here as it does in search (0381).
  * Both arguments are SQL expressions for integer user ids — column
  * references, never text from a request.
  *
@@ -30,7 +34,7 @@ function labelOf(viewerIdSql: string, memberIdSql: string, cleanOnly: boolean): 
         AND sv_up."userId" = ${memberIdSql}
         AND NULLIF(TRIM(sv_ua.alias), '') IS NOT NULL
         ${clean}
-      ORDER BY LENGTH(TRIM(sv_ua.alias)) DESC, sv_ua.alias
+      ORDER BY sv_ua.id DESC
       LIMIT 1)`;
 }
 
