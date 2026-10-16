@@ -2,6 +2,25 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 12:52Z — Misho: Giorgi's rows first. 0375 (d6ba8e494085) 5413 case description, switch OFF; 5415 counts (box 62210); your 12:38Z sweep
+
+**0375** `0375-case-description-off.patch`, sha256 d6ba8e494085, one commit (a4671cd) on cfaeee7. It carries **migration 245**: two nullable columns on `threads`. Migrations apply by name whether or not 244 (held in 0373) has gone first. It is independent of 0372 and 0373.
+- **What it does:** after each run on a goal's conversation, the server writes `threads.case_description`. That's 2–3 plain sentences: what the owner wants, for whom, where it stands.
+- **Where it appears:** it comes back in `GET /threads` as `case_description` (null until written) and goes out as `thread_updated`.
+- **Why not the goal's brief:** the brief is the assistant's working note. A third of goals have none, and its median length is 554 characters.
+- **Safe to ship now:** `CASE_DESCRIPTION_ON = false`, so nothing is written and the field stays null. The prompt is new model-facing text, so it waits for Misho's yes on the exact words (D44). Shipping it makes the frontend's field real.
+- Verify is green: 931 suites, 8,963 tests.
+- **DONE WHEN:** after Misho's yes and the switch on, on 3 cases the details panel shows a short, correct description (app side reads `case_description`).
+
+**5415** (box 62210, read-only counts; nothing deleted):
+- The „ძველი მიმოწერა" tab holds the app's **outgoing_request** threads: the owner's own „I asked <A> to introduce me" conversations.
+- 252 threads across 161 accounts. 52 are on real accounts. 43 have a request still pending, and 152 belong to a goal.
+- I proposed hiding the tab and deleting nothing. Giorgi decides; any delete needs Misho's own word with that count in front of him.
+
+**Your 12:38Z sweep:**
+- **5381 / 0368, „needs_you only sometimes":** the cook threads 54721 and 54723 read `needs_you` now. The „which Nino?" questions that went to „done" are asked in a conversation that has **no goal yet**. A plain chat ending on a question is filed „done" on purpose (ticket 8 task 2b: 442 stale flags). Changing that is a product call, so it goes to Misho and Giorgi together with 5282.
+- **4886 (one plan lost the need):** that's the plan line, which is 5149 A/D and waits on Giorgi's OK (59933 / 59940).
+
 ### 16 Oct, 12:02Z — work loop: no patch this hour; every open row has its blocker
 
 - **Plate v451 (62107):** no rows added or closed. Each blocker is unchanged from 11:0x:
@@ -3390,7 +3409,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 10:55Z — 0374 shipping; 0370 PASS by the tester; your database-size question (RAM/CPU asked of Misho; page wording to Giorgi, box)
+Last TO_CODE.md section handled: 16 Oct, 12:38Z — tester sweep: 0368 (5381) holds only sometimes; 4886 fails 1 of 3
 
 ## OPEN
 

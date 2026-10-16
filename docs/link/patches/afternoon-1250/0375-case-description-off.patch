@@ -1,0 +1,418 @@
+From a4671cdee263580e0404cb86bfc9b240e6f76470 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 12:52:10 +0000
+Subject: [PATCH] 5413: the case-details panel gets a case description (switch
+ off)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Giorgi's 5413: the details panel says in two or three plain sentences what
+the case is about — what the owner wants, for whom, where it stands. The
+goal's brief cannot be shown as it is (the assistant's working notes, tool
+names and timings; a third of goals have none; median 554 characters), so
+after each run on a goal's conversation the server writes the description
+from the title, the brief and the latest lines, keeps it only when it is two
+or three plain sentences with no number or tool name, stores it
+(threads.case_description, migration 245), returns it in GET /threads and
+sends it as thread_updated.
+
+The writing prompt is new model-facing text: CASE_DESCRIPTION_ON is false
+until Misho's yes on its exact words (D44).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ src/api/routes/threads.routes.ts              |   3 +
+ .../migrations/245_case_description.sql       |   5 +
+ .../__tests__/aCaseSaysWhatItIsAbout.test.ts  | 102 ++++++++++++++
+ src/services/caseDescription.ts               |  65 +++++++++
+ src/services/caseDescriptionWriter.service.ts | 128 ++++++++++++++++++
+ src/services/sse.service.ts                   |   2 +
+ src/services/threads.service.ts               |   3 +
+ 7 files changed, 308 insertions(+)
+ create mode 100644 src/db/postgres/migrations/245_case_description.sql
+ create mode 100644 src/services/__tests__/aCaseSaysWhatItIsAbout.test.ts
+ create mode 100644 src/services/caseDescription.ts
+ create mode 100644 src/services/caseDescriptionWriter.service.ts
+
+diff --git a/src/api/routes/threads.routes.ts b/src/api/routes/threads.routes.ts
+index 0e673b1..65e1e46 100644
+--- a/src/api/routes/threads.routes.ts
++++ b/src/api/routes/threads.routes.ts
+@@ -1,4 +1,5 @@
+ import { runLatencyLine } from '../../services/runLatency';
++import { refreshCaseDescription } from '../../services/caseDescriptionWriter.service';
+ import { choiceNotesFor } from '../../services/choiceNotes';
+ import { otherChoiceField } from '../../services/otherChoice';
+ import { exportConversation } from '../../services/conversationExport.service';
+@@ -1664,6 +1665,8 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
+           // written at creation time.
+           ...((becameTask || openTask !== null) && { isTask: true }),
+         });
++        // 5413: the case-details panel's description follows the case.
++        if (becameTask || openTask !== null) void refreshCaseDescription(userId, threadId);
+         // Their answer would sit unseen on any device they are not looking
+         // at — push it. Which devices those are is decided per subscription
+         // inside sendPushNotification (row 6: the gate that used to stand
+diff --git a/src/db/postgres/migrations/245_case_description.sql b/src/db/postgres/migrations/245_case_description.sql
+new file mode 100644
+index 0000000..a415be5
+--- /dev/null
++++ b/src/db/postgres/migrations/245_case_description.sql
+@@ -0,0 +1,5 @@
++-- 5413 (Giorgi, 16 Oct): the case-details panel shows a short description of the
++-- case — what the owner wants, for whom, where it stands. Written by the server
++-- after a run on a goal's conversation; NULL until the first one.
++ALTER TABLE threads ADD COLUMN IF NOT EXISTS case_description TEXT;
++ALTER TABLE threads ADD COLUMN IF NOT EXISTS case_description_at TIMESTAMPTZ;
+diff --git a/src/services/__tests__/aCaseSaysWhatItIsAbout.test.ts b/src/services/__tests__/aCaseSaysWhatItIsAbout.test.ts
+new file mode 100644
+index 0000000..4d18e84
+--- /dev/null
++++ b/src/services/__tests__/aCaseSaysWhatItIsAbout.test.ts
+@@ -0,0 +1,102 @@
++const mockQuery = jest.fn();
++jest.mock('../../db/postgres/client', () => ({ query: (...a: unknown[]) => mockQuery(...a) }));
++const mockCreate = jest.fn();
++jest.mock('../../config/anthropic', () => ({
++  __esModule: true,
++  default: { messages: { create: (...a: unknown[]) => mockCreate(...a) } },
++}));
++const mockRecord = jest.fn();
++jest.mock('../costLedger.service', () => ({
++  recordClaudeUsage: (...a: unknown[]) => mockRecord(...a),
++}));
++const mockEmit = jest.fn();
++jest.mock('../sse.service', () => ({ emitThreadUpdated: (...a: unknown[]) => mockEmit(...a) }));
++
++import {
++  CASE_DESCRIPTION_MAX_CHARS,
++  caseDescriptionPrompt,
++  caseFactsText,
++  cleanCaseDescription,
++} from '../caseDescription';
++import { refreshCaseDescription } from '../caseDescriptionWriter.service';
++
++const GOOD = 'შენ ბუღალტერს ეძებ შენი მცირე ფირმისთვის. ლაშას ასისტენტს მივწერე. პასუხს ველოდებით.';
++
++function answers(text: string): void {
++  mockCreate.mockResolvedValue({ content: [{ type: 'text', text }], usage: {} });
++}
++
++beforeEach(() => {
++  jest.resetAllMocks();
++  mockRecord.mockResolvedValue(undefined);
++  jest.spyOn(console, 'warn').mockImplementation(() => undefined);
++});
++
++/** 5413 (Giorgi): the case-details panel says in two or three sentences what the case is. */
++describe('a case says what it is about', () => {
++  it('asks for two or three sentences in the owner’s language, assistants named', () => {
++    const prompt = caseDescriptionPrompt('Georgian');
++    expect(prompt).toContain('2 or 3 short plain sentences');
++    expect(prompt).toContain('in Georgian only');
++    expect(prompt).toContain("<name>'s assistant");
++  });
++
++  it('gives the model the title, the notes and the latest lines, each bounded', () => {
++    const text = caseFactsText({
++      title: 'ბუღალტერი',
++      brief: 'ნ'.repeat(5000),
++      lines: ['owner: '.concat('ა'.repeat(5000))],
++    });
++    expect(text).toContain('Title: ბუღალტერი');
++    expect(text.length).toBeLessThan(2000);
++  });
++
++  it('keeps a plain description and refuses anything that is not one', () => {
++    expect(cleanCaseDescription(GOOD)).toBe(GOOD);
++    expect(cleanCaseDescription('')).toBeNull();
++    expect(cleanCaseDescription('ა'.repeat(CASE_DESCRIPTION_MAX_CHARS + 1))).toBeNull();
++    expect(cleanCaseDescription('- one\n- two\n- three')).toBeNull();
++    expect(
++      cleanCaseDescription('დავურეკე ნომერზე +995 599 12 34 56 და ველოდები პასუხს.'),
++    ).toBeNull();
++    expect(cleanCaseDescription('გავუგზავნე request_introduction ლაშას ასისტენტს.')).toBeNull();
++    expect(
++      cleanCaseDescription('ერთი. ორი წინადადება. სამი წინადადება. ოთხი წინადადება.'),
++    ).toBeNull();
++  });
++
++  it('writes nothing while the switch is off', async () => {
++    await expect(refreshCaseDescription('7', 9)).resolves.toBe(false);
++    expect(mockQuery).not.toHaveBeenCalled();
++    expect(mockCreate).not.toHaveBeenCalled();
++  });
++
++  it('when on: writes the description and sends it to the owner’s screens', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ title: 'ბუღალტერი', brief: 'notes' }] })
++      .mockResolvedValueOnce({ rows: [{ role: 'user', content: 'ბუღალტერი მჭირდება' }] })
++      .mockResolvedValueOnce({ rows: [] });
++    answers(GOOD);
++
++    await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(true);
++    const update = mockQuery.mock.calls[2] as [string, unknown[], number];
++    expect(update[0]).toContain('SET case_description = $2');
++    expect(update[1]).toEqual([9, GOOD]);
++    expect(mockEmit).toHaveBeenCalledWith('7', { id: 9, case_description: GOOD });
++  });
++
++  it('when on: a conversation with no goal gets no description', async () => {
++    mockQuery.mockResolvedValueOnce({ rows: [] });
++    await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(false);
++    expect(mockCreate).not.toHaveBeenCalled();
++  });
++
++  it('when on: an unusable answer keeps the last description', async () => {
++    mockQuery
++      .mockResolvedValueOnce({ rows: [{ title: 't', brief: null }] })
++      .mockResolvedValueOnce({ rows: [] });
++    answers('- a\n- b');
++    await expect(refreshCaseDescription('7', 9, true)).resolves.toBe(false);
++    expect(mockQuery).toHaveBeenCalledTimes(2);
++  });
++});
+diff --git a/src/services/caseDescription.ts b/src/services/caseDescription.ts
+new file mode 100644
+index 0000000..adad3b1
+--- /dev/null
++++ b/src/services/caseDescription.ts
+@@ -0,0 +1,65 @@
++/**
++ * 5413 (Giorgi, 16 Oct): the case-details panel shows two or three plain
++ * sentences about the case — what the owner wants, who it is for, and where it
++ * stands now. The goal's brief cannot be shown as it is: it is the assistant's
++ * working note (tool names, „next check in 24 hours"), a third of goals have
++ * none, and its median is 554 characters. So the server writes the description
++ * from the brief and the latest messages, and rewrites it after each run.
++ *
++ * OFF until Misho's yes on the exact prompt below (D44).
++ */
++export const CASE_DESCRIPTION_ON = false;
++
++export const CASE_DESCRIPTION_MAX_CHARS = 420;
++const MIN_CHARS = 20;
++const MAX_SENTENCES = 3;
++
++export function caseDescriptionPrompt(language: string): string {
++  return (
++    'Below is one case the owner is working on with their assistant: its title, the ' +
++    "assistant's working notes and the latest messages. Write 2 or 3 short plain sentences " +
++    `for the owner, in ${language} only: what they want, who it is for, and where it stands ` +
++    'now. Use only facts written below. Speak to the owner as "you". Other people are reached ' +
++    'through their assistants: when you name who was written to, say "<name>\'s assistant". ' +
++    'No tool names, no internal notes, no phone numbers, no dates or hours, no quotes, no ' +
++    'lists. Answer with the sentences only.'
++  );
++}
++
++export interface CaseFacts {
++  readonly title: string | null;
++  readonly brief: string | null;
++  /** Oldest first, each already labelled „owner:" or „assistant:". */
++  readonly lines: readonly string[];
++}
++
++const FACT_LINE_MAX_CHARS = 400;
++
++/** The model's input: title, notes and the latest lines, each cut to a bounded size. */
++export function caseFactsText(facts: CaseFacts): string {
++  const parts = [
++    facts.title ? `Title: ${facts.title}` : null,
++    facts.brief ? `Working notes: ${facts.brief.slice(0, FACT_LINE_MAX_CHARS * 2)}` : null,
++    facts.lines.length > 0
++      ? `Latest messages:\n${facts.lines.map((l) => l.slice(0, FACT_LINE_MAX_CHARS)).join('\n')}`
++      : null,
++  ];
++  return parts.filter((p): p is string => p !== null).join('\n\n');
++}
++
++const PHONE_LIKE_RE = /\+?\d[\d\s-]{6,}\d/u;
++const TOOL_NAME_RE = /\b[a-z]+_[a-z_]+\b/u;
++const LIST_MARK_RE = /^\s*(?:[-*•]|\d+[.)])\s+/mu;
++
++/**
++ * The model's answer as it may be shown, or null when it is not a description:
++ * empty, too long, a list, more than three sentences, or carrying a number or a
++ * tool name it was told never to write.
++ */
++export function cleanCaseDescription(raw: string): string | null {
++  const text = raw.replace(/\s+/gu, ' ').trim();
++  if (text.length < MIN_CHARS || text.length > CASE_DESCRIPTION_MAX_CHARS) return null;
++  if (LIST_MARK_RE.test(raw) || PHONE_LIKE_RE.test(text) || TOOL_NAME_RE.test(text)) return null;
++  const sentences = text.split(/(?<=[.!?。])\s+/u).filter((s) => s.trim() !== '');
++  return sentences.length > MAX_SENTENCES ? null : text;
++}
+diff --git a/src/services/caseDescriptionWriter.service.ts b/src/services/caseDescriptionWriter.service.ts
+new file mode 100644
+index 0000000..446fb6c
+--- /dev/null
++++ b/src/services/caseDescriptionWriter.service.ts
+@@ -0,0 +1,128 @@
++import { query } from '../db/postgres/client';
++import { recordClaudeUsage } from './costLedger.service';
++import { detectRunLanguage, RunLanguage } from './runLanguage';
++import { emitThreadUpdated } from './sse.service';
++import {
++  CASE_DESCRIPTION_ON,
++  CaseFacts,
++  caseDescriptionPrompt,
++  caseFactsText,
++  cleanCaseDescription,
++} from './caseDescription';
++
++const DESCRIPTION_MODEL = process.env.THREAD_TITLE_MODEL?.trim() || 'claude-haiku-4-5-20251001';
++const DESCRIPTION_MAX_TOKENS = 220;
++const DESCRIPTION_TIMEOUT_MS = 15_000;
++const QUERY_TIMEOUT_MS = 5_000;
++const LINES_READ = 8;
++
++const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
++  ka: 'Georgian',
++  en: 'English',
++  ru: 'Russian',
++  es: 'Spanish',
++};
++
++interface FactRow {
++  readonly title: string | null;
++  readonly brief: string | null;
++}
++
++interface LineRow {
++  readonly role: string;
++  readonly content: string;
++}
++
++/** The case's title, its goal's notes and its latest lines; null when it carries no goal. */
++async function caseFacts(threadId: number): Promise<CaseFacts | null> {
++  const head = await query<FactRow>(
++    `SELECT t.title, g.brief
++       FROM threads t
++       JOIN tasks g ON g.thread_id = t.id
++      WHERE t.id = $1
++      ORDER BY (g.status = 'open') DESC, g.id DESC
++      LIMIT 1`,
++    [threadId],
++    QUERY_TIMEOUT_MS,
++  );
++  const row = head.rows[0];
++  if (row === undefined) return null;
++  const lines = await query<LineRow>(
++    `SELECT role, content FROM (
++       SELECT c.role, c.content, c.created_at
++         FROM conversations c
++        WHERE c.thread_id = $1 AND c.kind = 'message' AND length(trim(c.content)) > 0
++          AND c.role IN ('user', 'assistant')
++        ORDER BY c.created_at DESC
++        LIMIT $2) latest
++     ORDER BY created_at`,
++    [threadId, LINES_READ],
++    QUERY_TIMEOUT_MS,
++  );
++  return {
++    title: row.title,
++    brief: row.brief,
++    lines: lines.rows.map((l) => `${l.role === 'user' ? 'owner' : 'assistant'}: ${l.content}`),
++  };
++}
++
++function ownersLanguage(facts: CaseFacts): string {
++  const ownerText = facts.lines.filter((l) => l.startsWith('owner:')).join(' ');
++  return LANGUAGE_NAMES[detectRunLanguage(ownerText || (facts.title ?? ''))];
++}
++
++async function describe(
++  userId: string,
++  threadId: number,
++  facts: CaseFacts,
++): Promise<string | null> {
++  const { default: anthropic } = await import('../config/anthropic');
++  const response = await anthropic.messages.create(
++    {
++      model: DESCRIPTION_MODEL,
++      max_tokens: DESCRIPTION_MAX_TOKENS,
++      system: caseDescriptionPrompt(ownersLanguage(facts)),
++      messages: [{ role: 'user', content: caseFactsText(facts) }],
++    },
++    { timeout: DESCRIPTION_TIMEOUT_MS },
++  );
++  await recordClaudeUsage({
++    userId,
++    kind: 'case_description',
++    model: DESCRIPTION_MODEL,
++    usage: response.usage,
++    threadId,
++  }).catch(() => undefined);
++  const raw = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('\n');
++  return cleanCaseDescription(raw);
++}
++
++/**
++ * 5413: rewrites the case description after a run on a goal's conversation and
++ * sends it to the owner's open screens. Best-effort: a failure leaves the last
++ * description in place and is only logged.
++ */
++export async function refreshCaseDescription(
++  userId: string,
++  threadId: number,
++  on: boolean = CASE_DESCRIPTION_ON,
++): Promise<boolean> {
++  if (!on) return false;
++  try {
++    const facts = await caseFacts(threadId);
++    if (facts === null) return false;
++    const description = await describe(userId, threadId, facts);
++    if (description === null) return false;
++    await query(
++      `UPDATE threads SET case_description = $2, case_description_at = NOW() WHERE id = $1`,
++      [threadId, description],
++      QUERY_TIMEOUT_MS,
++    );
++    emitThreadUpdated(userId, { id: threadId, case_description: description });
++    return true;
++  } catch (err) {
++    // eslint-disable-next-line no-console
++    console.warn(`[case-description] thread ${threadId}:`, (err as Error).message);
++    return false;
++  }
++}
+diff --git a/src/services/sse.service.ts b/src/services/sse.service.ts
+index ddba6af..14d9108 100644
+--- a/src/services/sse.service.ts
++++ b/src/services/sse.service.ts
+@@ -374,6 +374,8 @@ export interface ThreadUpdatePayload {
+   goal_stopped_open?: boolean;
+   /** #2080: flagged / cleared by its owner on one device. */
+   followed?: boolean;
++  /** 5413: the case description for the details panel, rewritten after a run. */
++  case_description?: string;
+ }
+ 
+ /**
+diff --git a/src/services/threads.service.ts b/src/services/threads.service.ts
+index dd86451..f6830fa 100644
+--- a/src/services/threads.service.ts
++++ b/src/services/threads.service.ts
+@@ -102,6 +102,8 @@ interface ThreadRow extends Thread {
+   /** 4919: two or three words for a desktop, one for a phone; null until written. */
+   short_title?: string | null;
+   one_word_title?: string | null;
++  /** 5413: two or three sentences for the case-details panel; null until written. */
++  case_description?: string | null;
+   /**
+    * #894 (the frontend, 4 Oct): the goal this conversation carries — its open
+    * one, else its latest — so the download asks for the goal's own id and
+@@ -401,6 +403,7 @@ const THREAD_LIST_COLUMNS = `t.id,
+        ${HAS_PAUSED_GOAL} AS goal_paused,
+        t.short_title,
+        t.one_word_title,
++       t.case_description,
+        goal.id AS goal_id,
+        EXISTS (SELECT 1 FROM list_items li WHERE li.task_id = goal.id) AS has_list,
+        t.followed_at IS NOT NULL AS followed,
+-- 
+2.43.0
+
