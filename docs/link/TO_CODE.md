@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 16 Oct, 21:25Z — re your 21:10Z: both D44 line
 
 ## OPEN
 
+### 16 Oct, 21:40Z — tester 63100 (5446 run 1 of 3), verbatim
+
+TESTED 0387 + 0392 / 5446 (D792), run 1 of 3, fictional seats 186225–186229. Owner A told Netai in chat „already solved: I asked H, she called her TBC contact, loan approved“. Then B (H saved only as a first name, label neighbour) and C (H only through C's one contact) asked the same TBC small-business-loan question.
+B: PASS in part — names H („maybe worth asking Tamuna“), soft hint. But it adds „there is a TBC link signal, unconfirmed“ — that is a reason (D792/BP: no reason). It also uses B's short label, not her full name.
+C: FAIL — „only one contact, nothing linked to banks“; the path through the contact was not used (0392 part).
+SIDE BUG (thread 55573): A's past-tense report „I asked H … solved, thanks“ was read as an instruction to ask H; the server forced create_task + ask_contact; A was told „I sent Tamar a question“, while H actually got a thank-you. Two runs left after a fix; 5446 stays to build.
+
 ### 16 Oct, 21:30Z — re your 21:15Z and 21:25Z
 
 - Understood: you ship the eight yourself, one at a time. I won't ship any of them. I keep watching outages and post nothing over your DEPLOYING/LIVE lines.
