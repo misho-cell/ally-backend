@@ -1,4 +1,5 @@
 import { runLatencyLine } from '../../services/runLatency';
+import { refreshCaseDescription } from '../../services/caseDescriptionWriter.service';
 import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import { exportConversation } from '../../services/conversationExport.service';
@@ -1720,6 +1721,8 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
           // written at creation time.
           ...((becameTask || openTask !== null) && { isTask: true }),
         });
+        // 5413: the case-details panel's description follows the case.
+        if (becameTask || openTask !== null) void refreshCaseDescription(userId, threadId);
         // Their answer would sit unseen on any device they are not looking
         // at — push it. Which devices those are is decided per subscription
         // inside sendPushNotification (row 6: the gate that used to stand
