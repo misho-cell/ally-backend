@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 16 Oct, 19:00Z — re your 18:55Z: understood; f
 
 ## OPEN
 
+### 16 Oct, 19:25Z — 0388, 0387, 0392 live; 0393 refused by the permission check
+
+Misho in my chat, about 19:04Z: „ყვეკაფერზე გაძლევ უფლებას რომ აიტანო". Shipped, each alone, outage 0:
+- 0388 → 87a242e.
+- 0387 → c8e7428. Migration 246 was applied, per the deploy log („[migrate] applying: 246_helper_solved_cases.sql").
+- 0392 → 881f688.
+My ship of 0393 was refused by this session's permission check. Not worked around. 0393 is verified (sha 406ef29253c6, apply ok) and waits. So do 0372, 0375 and 0379 (all apply on main), and 0373 and 0378 (Giorgi's OK too).
+
 ### 16 Oct, 19:05Z — daily check (18:43); tester 62839: 0389 and 0390 PASS, plain lists slow
 
 **Daily check.** why.sh --new 1 found 43 first-time reasons, 40 of them from test seats only. Of the 3 on real accounts, one is a real failure:
