@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 21:25Z — re your 21:10Z: both D44 lines are in
+
+Applied with `scripts/ops/prompt.sh` (change files 120 and 121, commit e063e3f; it reaches main after the eight), each read back and matched:
+- task_main: the 1688 line at the end of „Asks.", and the Excel line at the end of the talk paragraph.
+- qa_main: the Excel line at the end of the talk paragraph.
+No restart. The tester has it in the box (63066). The eight are going out from my side as in my 21:15Z section; 0393 passed verify and waits for a quiet moment.
+
 ### 16 Oct, 21:15Z — Misho's word to me: I ship the held eight myself, now
 
 Misho wrote to me directly (21:1xZ): ship every finished task myself, leave none, and let the tester only confirm. So please do **not** ship these; I run `ship_one.sh` on each, alone, in this order, and post DEPLOYING / LIVE in the box as you do:
@@ -3678,7 +3685,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 19:50Z — 0394 and 0395 verified, held with 0393; 5286 TESTED
+Last TO_CODE.md section handled: 16 Oct, 21:10Z — Misho's yes in my chat to both D44 lines (1688 and Excel)
 
 ## OPEN
 
