@@ -19,9 +19,16 @@ import { saveServerLine, threadLanguage } from './threads.service';
  */
 const QUERY_TIMEOUT_MS = 5_000;
 const REMINDERS_PER_SWEEP = 50;
-/** The soonest a reminder can be set for, and the latest: a minute, a week. */
+/**
+ * The soonest a reminder can be set for, and the latest: a minute, sixty days.
+ * 0306r (the tester's FAIL, 16 Oct): „remind me on 28 Oct" came on 23 Oct with
+ * „this is not 28 Oct" — honest, but not what was asked. A reminder is one row
+ * the server delivers at its time; nothing about it needs the week cap a goal's
+ * wake has.
+ */
+const MAX_REMINDER_DAYS = 60;
 export const MIN_REMINDER_MINUTES = 1;
-export const MAX_REMINDER_MINUTES = 7 * 24 * 60;
+export const MAX_REMINDER_MINUTES = MAX_REMINDER_DAYS * 24 * 60;
 /** A reminder is one line; longer text is cut, not refused. */
 export const MAX_REMINDER_CHARS = 300;
 const REMINDER_MARK = '⏰';
@@ -41,7 +48,7 @@ export interface DueReminder {
   readonly text: string;
 }
 
-/** The minutes asked for, kept between a minute and a week. */
+/** The minutes asked for, kept between a minute and sixty days. */
 export function clampReminderMinutes(minutes: number): number {
   return Math.min(MAX_REMINDER_MINUTES, Math.max(MIN_REMINDER_MINUTES, Math.round(minutes)));
 }

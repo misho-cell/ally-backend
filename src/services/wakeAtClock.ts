@@ -9,6 +9,8 @@ const CLOCK_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/u;
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_MINUTE = 60_000;
 export const MAX_DAY_OFFSET = 7;
+/** 0306r (the tester's FAIL, 16 Oct): an owner's reminder may name a day up to 60 days ahead. */
+export const MAX_REMINDER_DAY_OFFSET = 60;
 
 interface ClockTime {
   readonly hour: number;
@@ -69,8 +71,9 @@ export function hoursUntilClock(
   zone: string,
   clock: ClockTime,
   dayOffset: number | null,
+  maxDayOffset: number = MAX_DAY_OFFSET,
 ): number {
-  const offset = dayOffset === null ? 0 : Math.min(Math.max(0, dayOffset), MAX_DAY_OFFSET);
+  const offset = dayOffset === null ? 0 : Math.min(Math.max(0, dayOffset), maxDayOffset);
   const today = instantAt(now, zone, clock, offset);
   const target =
     dayOffset === null && today.getTime() <= now.getTime() ? instantAt(now, zone, clock, 1) : today;

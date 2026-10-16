@@ -82,7 +82,7 @@ import {
 } from './smallTalk';
 import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
 import { acceptIntroOnYes } from './introYes';
-import { hoursUntilClock, parseClock } from './wakeAtClock';
+import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
 import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
 import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
 import { INTRO_CLAIM_GUARD_ON, introClaimWithoutSend, introNotSentLine } from './introClaim';
@@ -1550,13 +1550,13 @@ const SET_REMINDER_TOOL: AnthropicTool = {
     'The owner\'s own reminder: „remind me in 15 minutes", „remind me tomorrow at 10 to call ' +
     'Nino". At that time the server writes `text` into this same conversation and rings the ' +
     "owner's phone; you are not woken. Works in any conversation, with or without a goal, " +
-    'from 1 minute to 7 days. When the owner asks to be reminded, call this: never say you ' +
+    'from 1 minute to 60 days. When the owner asks to be reminded, call this: never say you ' +
     'cannot remind, and never suggest a phone alarm instead. Then tell the owner in one short ' +
     'line when the reminder will come. ' +
     // The tester's 58580 (run 51813; Misho's yes, 14 Oct): „…next week", no hour, and the
     // run said it could not set a reminder for a specific day.
-    'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 7 ' +
-    'days away, set it for 7 days from now and tell the owner it will come then and why.',
+    'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 60 ' +
+    'days away, set it for 60 days from now and tell the owner it will come then and why.',
   input_schema: {
     type: 'object',
     properties: {
@@ -1566,7 +1566,7 @@ const SET_REMINDER_TOOL: AnthropicTool = {
           "The reminder exactly as the owner will read it, in the owner's language, one short " +
           'line (e.g. „წამლის დალევის დროა.").',
       },
-      minutes: { type: 'number', description: 'Minutes from now (1–10080).' },
+      minutes: { type: 'number', description: 'Minutes from now (1–86400).' },
       at: {
         type: 'string',
         description:
@@ -1576,7 +1576,7 @@ const SET_REMINDER_TOOL: AnthropicTool = {
       day_offset: {
         type: 'number',
         description:
-          'With `at`: 0 today, 1 tomorrow, up to 7. Leave it out for the next such time.',
+          'With `at`: 0 today, 1 tomorrow, up to 60. Leave it out for the next such time.',
       },
     },
     required: ['text'],
@@ -1646,7 +1646,7 @@ async function reminderMinutes(
   userId: string,
   input: Record<string, unknown>,
 ): Promise<number | null> {
-  const clockHours = await hoursFromClock(userId, input);
+  const clockHours = await hoursFromClock(userId, input, MAX_REMINDER_DAY_OFFSET);
   if (clockHours !== null) return clockHours * MINUTES_PER_HOUR;
   const minutes = Number(input['minutes']);
   return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
@@ -1704,12 +1704,13 @@ function planNamesExcluded(names: readonly string[]): string {
 async function hoursFromClock(
   userId: string,
   input: Record<string, unknown>,
+  maxDayOffset?: number,
 ): Promise<number | null> {
   const clock = parseClock(input['at']);
   if (clock === null) return null;
   const day = Number(input['day_offset']);
   const zone = await personZone(Number(userId)).catch(() => DEFAULT_PUSH_TIME_ZONE);
-  return hoursUntilClock(new Date(), zone, clock, Number.isInteger(day) ? day : null);
+  return hoursUntilClock(new Date(), zone, clock, Number.isInteger(day) ? day : null, maxDayOffset);
 }
 
 /**
