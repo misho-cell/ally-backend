@@ -188,6 +188,42 @@ describe('checkRunAllowance', () => {
     setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 0, runCostUsd: 0 });
     expect(await checkRunAllowance('7')).toEqual({ allowed: false, balance: 0 });
   });
+
+  // Run 9 (16 Oct): each trip is ~150 ms; the subscription read waits for nothing.
+  it('reads the subscription while the expiry is still being read', async () => {
+    setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
+    const world = mockQuery.getMockImplementation();
+    let releaseExpiry: () => void = () => undefined;
+    const expiryHeld = new Promise<void>((resolve) => {
+      releaseExpiry = resolve;
+    });
+    let subscriptionReadEarly = false;
+    let expiryOpen = false;
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (sql.includes('NOT EXISTS')) {
+        expiryOpen = true;
+        await expiryHeld;
+        expiryOpen = false;
+        return rows([]) as never;
+      }
+      if (sql.includes('subscription_status') && expiryOpen) subscriptionReadEarly = true;
+      if (sql.includes('subscription_status')) releaseExpiry();
+      return world!(sql, params) as never;
+    });
+
+    expect(await checkRunAllowance('7')).toEqual({ allowed: true, balance: 5 });
+    expect(subscriptionReadEarly).toBe(true);
+  });
+
+  it('still grants only after the expiry has been settled', async () => {
+    setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
+    await checkRunAllowance('7');
+    const sqls = mockQuery.mock.calls.map(([sql]) => sql as string);
+    const expiry = sqls.findIndex((sql) => sql.includes('NOT EXISTS'));
+    const grant = sqls.findIndex((sql) => sql.includes('INSERT INTO token_transactions'));
+    expect(expiry).toBeGreaterThan(-1);
+    expect(grant).toBeGreaterThan(expiry);
+  });
 });
 
 describe('debitRun', () => {

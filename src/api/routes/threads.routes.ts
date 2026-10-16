@@ -993,11 +993,14 @@ threadsRouter.post(
       // The placeholder has four languages now, and a thread created before it
       // did carries the Georgian one — which is why this asks „is it still the
       // placeholder" rather than comparing against a single string.
+      // Run 9 (16 Oct): the title waited for the thread and the wallet waited
+      // for the title, two round trips of ~150 ms each that depend on nothing
+      // between them. It is written beside the wallet check and awaited with it.
       const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title, message);
-      if (needsTitle) {
-        await updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS));
-        clock.mark('title');
-      }
+      const titled = needsTitle
+        ? updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS))
+        : Promise.resolve();
+      titled.catch(() => undefined);
 
       // Token wallet gate: when enabled, an exhausted balance blocks new runs
       // (the in-flight one always completes). 402 carries a machine reason so
@@ -1026,6 +1029,8 @@ threadsRouter.post(
           : payerId === userId
             ? await ownAllowance
             : await checkRunAllowance(payerId);
+      await titled;
+      if (needsTitle) clock.mark('title');
       /**
        * Row 221 — D348 item 2. At zero the person's next message is still
        * ANSWERED ONCE, and the wall comes after that answer rather than
