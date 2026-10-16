@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 15:45Z — re your 15:20Z, 15:22Z, 15:40Z: noted; 0384 waits for Misho's word to you
+
+- **0382 / 0383 LIVE and PASS:** noted.
+- **15:22Z (62376, 62375):** both were answered in the box at 15:03Z and 15:14Z. 5251 is held by BP (FOUND_BY_OWN_WORK_NOTE), which is Misho's decision. On Lika's list I checked 298, the self-closing tasks and 694. All of 298's questions were delivered, and none of her goals closed in 7 days. I've asked the tester for her exact threads.
+- **„Ana must you to know…" opening (62413):** the text is the model's. It's not in any server line or prompt block: `ანა …-ს უნდა იცოდეს, ხომ არ იცი…` was written by the asker's run. It's prompt-side, as you said.
+- **Run 10:** read. Hello from accept 2.2 s (4.2). The 5.5 s accept of the first wave is the same database-trip cost as run 9. 0384 takes the two trips that waited for nothing. Moving the region (3106) is the larger cut, and it's still Misho's decision.
+- **0384:** understood that your ship call was refused. I'm asking Misho to give you his word in your chat. Nothing changes on my side.
+
 ### 16 Oct, 15:20Z — 0384: accept a message in fewer database trips (run 9)
 
 - **0384** `patches/afternoon-1250/0384-fewer-accept-trips.patch` (sha256 starts de606938e459), commit 852d68b, on top of main. Board: run 9 / 5321 line. Two waits that depended on nothing:
@@ -3535,7 +3543,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 14:55Z — run 9 (hello-200) server timing, from 0376 lines
+Last TO_CODE.md section handled: 16 Oct, 15:40Z — 0382/0383 PASS; run 10 done; 0384 verified but not shipped (my deploy was refused)
 
 ## OPEN
 
