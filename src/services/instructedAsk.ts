@@ -15,6 +15,7 @@ import { contactInstructionIn } from './instructionUnsent';
 import { ownerAsksForIntroduction } from './introInstruction';
 import { canBeAsked, createAsk } from './taskAsks.service';
 import { createTask, getOpenTaskByThread, grantTaskPermission } from './taskStore.service';
+import type { RunMode } from './promptBlocks.service';
 import { findContactPhonesByName } from './tools/nameMatch';
 
 /**
@@ -160,6 +161,19 @@ export async function goalForInstruction(
     'ask_first',
   );
   return id;
+}
+
+/**
+ * 5347 (asks 22447 and 22448, threads 54282 and 54284): in a thread that carries
+ * someone else's request, the person asked wrote „სანდროს ჰკითხე ჩემი სახელით."
+ * and „შეგიძლია ლაშას სთხოვო, რომ გააცნოს." — pass the request on. The server
+ * cut the words after the name and sent them as the whole question: Sandro got
+ * „ჩემი სახელით." and Lasha „გააცნოს.", under a new goal titled from the line.
+ * What goes on from a request thread is the request, which only the run has
+ * read; the server never writes that question from the line's tail.
+ */
+export function serverMayWriteTheAsk(mode: RunMode | undefined): boolean {
+  return mode !== 'request_thread';
 }
 
 /** One named person asked; null when the ask could not go for another reason. */

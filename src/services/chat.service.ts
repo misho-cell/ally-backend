@@ -467,6 +467,7 @@ import {
   InstructedAskResult,
   PersonOutcome,
   sendInstructedAsk,
+  serverMayWriteTheAsk,
 } from './instructedAsk';
 import { goalFirstAsk, goalFirstAskSection } from './goalFirstAsk';
 import {
@@ -2689,7 +2690,7 @@ async function refusedPlanOrSentAsk(
     reason: 'owner_instruction',
     error: NO_PLAN_FOR_AN_INSTRUCTION,
   };
-  if (runId === undefined) return refused;
+  if (runId === undefined || !serverMayWriteTheAsk(runModes.get(runId))) return refused;
   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
@@ -12773,6 +12774,13 @@ async function serverSendsOrSaysSo(
   runId: string,
 ): Promise<ServerLine> {
   const language = runLang(runId);
+  if (!serverMayWriteTheAsk(runModes.get(runId))) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[instruction-unsent] run ${runId} thread ${threadId}: a request thread — not sent`,
+    );
+    return { text: NOT_SENT_LINE[language], nothingWent: true };
+  }
   const introduced = await serverIntroductionOrNull(userId, threadId, runId);
   // 2311 (§140): never opened the app — the owner decides, nothing goes as a plain question.
   if (introduced !== null && 'dormant' in introduced) {
