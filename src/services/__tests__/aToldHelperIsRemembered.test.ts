@@ -139,7 +139,7 @@ describe('the person the owner says solved it', () => {
 });
 
 describe('the tool', () => {
-  it('is not offered to the model until its text is approved (WHO_HELPED_TOOL)', () => {
-    expect(ALWAYS_ON_TOOLS.map((tool) => tool.name)).not.toContain('record_who_helped');
+  it("is offered to the model since the founder's yes on its text (D797)", () => {
+    expect(ALWAYS_ON_TOOLS.map((tool) => tool.name)).toContain('record_who_helped');
   });
 });

@@ -25,7 +25,7 @@ import * as path from 'path';
 // invite_contact-class bug, and stays quiet on every legitimate merge.
 const APP_ONLY: Readonly<Record<string, string>> = {
   save_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
-  record_who_helped: '5446 (D792): off until its D44 text is approved; owner-only, in-app first',
+  record_who_helped: '5446 (D792, D797): owner-only, in-app first; the connector catches up later',
   list_offers: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
   delete_offer: '#1698 (§109 approved 9 Oct); the connector catches up with D738',
   present_choices: 'renders tappable UI buttons — meaningless outside the app',

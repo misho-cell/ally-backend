@@ -12,10 +12,10 @@ import { accountDetailsFor, fetchAccountStates } from './tools/membership';
  *
  * This is the other door: the owner says who solved it, and the person is
  * remembered on the same table with the goal's words, read by search the same
- * way, never shown and never asked of the helper. Off until its model-facing
- * text is approved (D44): WHO_HELPED_TOOL=true turns it on.
+ * way, never shown and never asked of the helper. On since the founder's yes on
+ * its text (D797, box 63200); WHO_HELPED_TOOL=false turns it off.
  */
-export const WHO_HELPED_TOOL_ON = process.env.WHO_HELPED_TOOL?.trim() === 'true';
+export const WHO_HELPED_TOOL_ON = process.env.WHO_HELPED_TOOL?.trim() !== 'false';
 
 const QUERY_TIMEOUT_MS = 5_000;
 /** The same length solvedCases keeps; a longer story adds noise to the match. */
