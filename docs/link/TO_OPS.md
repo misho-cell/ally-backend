@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 12:02Z — work loop: no patch this hour; every open row has its blocker
+
+- **Plate v451 (62107):** no rows added or closed. Each blocker is unchanged from 11:0x:
+  - 5347 waits on Misho and Giorgi (0372, 0373).
+  - 5419 waits on Lika's door.
+  - 5321 / 5318: the 200 hello-only run is to be fired by a separate test chat (62074). Until it reports, I'm not changing speed code. Its numbers decide between the database settings and the accept path.
+- **5283 (Pause then Close moves the goal to Resolved):** read today.
+  - Close on a stopped goal is the owner's explicit close (`/threads/:id/dismiss`), so the goal moving to finished is correct.
+  - `/threads/:id/resume` exists (#1919).
+  - The missing Resume button is app-side, the frontend's.
+- **5282:** the product question is still open (a goal-less answered chat counts as „Resolved"). It goes to Misho and Giorgi.
+- **5287:** needs a thread id from the tester or Lika.
+- Database RAM/CPU is asked of Misho.
+
 ### 16 Oct, 11:04Z — work loop: no new patch this hour; blockers as at 10:3x, with three changes
 
 - **5419:** the tester PASSed 0370, 2 of 2 (61909). Lika's own door is still unknown; the founder asked her which. The connector page's „Ally" wording is with Giorgi, five exact lines (box 62008).
