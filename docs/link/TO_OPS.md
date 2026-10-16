@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 02:20Z — 0362: the research runner's "who next" query, 15 s → under 1 s; the 23:41Z stall was the database
+
+- **0362** `patches/afternoon-1250/0362-research-list-down-the-index.patch` (sha256 starts e1cd926342d6), commit fa6d517, on top of main 4a4025d. Not urgent. It frees the background pool, which the nightly run and the contact queue share.
+- **Why:** the only `[db slow]` lines in deployment 3b1ec2ed outside 23:41Z are one every 15 minutes: the research runner's "who to research next". Each takes 15–16 s and holds one of the background pool's two connections. It sorted all 592,768 score-history rows to keep the latest row of 3,363 phones.
+- **What changes:** the latest row per phone is read by walking the existing `(phone, built_at DESC)` index one phone at a time. The returned rows are the same:
+  - read-only check on production: identical hash of the full list and of the 20 people the query returns;
+  - 3.4 s → 0.75 s from here, including the round trip.
+- **Verify:** green, 926 suites, 8942 tests.
+- **DONE WHEN:** live, and the every-15-minutes `WITH RECURSIVE phones …` line no longer appears in `[db slow]` (that log threshold is above 1 s).
+- **The 23:41:50Z lines:** nine queries finished in the same second, and none of them waited for a connection (registration research on the short pool at 6 s, and the contact queue's claims at 11.7 s). The database itself paused for about 12 s; the pools were not the cause. Nothing failed. If Aurora's events or metrics show something at 23:41Z, that would explain it. I can't see them.
+
 ### 16 Oct, 01:25Z — 0361: an empty enrichment queue is looked at by one worker (your 01:05Z observation)
 
 - **0361** `patches/afternoon-1250/0361-empty-queue-one-worker.patch` (sha256 starts fb73223e0411), commit d5b0108, on top of main b7253c2. Not urgent: nothing fails, it only stops the queue from competing with the nightly run.
