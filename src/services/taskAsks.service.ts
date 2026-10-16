@@ -896,6 +896,8 @@ async function createAskNow(
   let waveNo: number | null = null;
   // 1694 (A11): the goal's words, for the recipient's own pre-match.
   let goalText: string | null = null;
+  /** 5418: when the goal was opened, for reading whether the owner named this helper himself. */
+  let goalOpenedAt: string | null = null;
 
   // SERVER-SIDE permission gate (ticket-2 P0, thread 7723): a message that
   // reaches a real person's phone must never depend on prompt text alone —
@@ -911,6 +913,7 @@ async function createAskNow(
       return { sent: false, reason: 'task_not_open', error: 'Task not found or not open.' };
     }
     goalText = task.title;
+    goalOpenedAt = task.created_at;
     /**
      * ROW 251, FOURTH GATE — AND IT IS THE FIRST ONE, WHICH IS WHY IT WAS MISSED.
      *
@@ -1675,7 +1678,22 @@ async function createAskNow(
   // 2907 (46036): an instructed ask has no search behind it — its own question names the need.
   // And (07:11Z, asks 16072/16073) the need a thread remembers can be the name search for
   // the helper herself, which finds nobody in her book: then the question's trade is tried.
-  const pickerNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
+  // 5418 (Giorgi, G-060 / G-061): when the owner named this helper himself, the only true
+  // reason she was asked is that he asked. No search reason is told her („you were asked
+  // because <someone> is in your contacts"); her own fitting people may still be offered.
+  const ownerNamedHelper =
+    fromOwnersLine === true ||
+    (goalOpenedAt !== null &&
+      (await ownerJustNamedPerson({
+        threadId,
+        taskId,
+        taskCreatedAt: goalOpenedAt,
+        fromUserId,
+        contactPhone,
+      }).catch(() => false)));
+  const searchedNeed = bridgeNeed ?? needFromQuestion(safeQuestion);
+  const pickerNeed =
+    ownerNamedHelper && searchedNeed !== undefined ? { need: searchedNeed.need } : searchedNeed;
   const pickerAllowed = !sameThread && askKindOf(safeQuestion) !== AskKind.Intro;
   const questionNeed = needFromQuestion(safeQuestion);
   const picker = !pickerAllowed

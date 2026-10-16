@@ -121,7 +121,10 @@ function pickerLine(
   const offered = others.length + (pickedOne === null ? 0 : 1);
   const line = pickerSentences(language, picked, rest);
   // 2186: more than one may be recommended — said once, under the names.
-  return offered >= 2 ? `${line} ${MORE_THAN_ONE_HINT[language] ?? MORE_THAN_ONE_HINT.ka}` : line;
+  // 5418 (Giorgi): „both" only under exactly two names; under three or more, their names.
+  if (offered < 2) return line;
+  const hint = offered === 2 ? MORE_THAN_ONE_HINT : MANY_HINT;
+  return `${line} ${hint[language] ?? hint.ka}`;
 }
 
 const MORE_THAN_ONE_HINT: Readonly<Record<RunLanguage, string>> = {
@@ -129,6 +132,14 @@ const MORE_THAN_ONE_HINT: Readonly<Record<RunLanguage, string>> = {
   en: 'If more than one fits, write „both" or their names.',
   ru: 'Если подходят несколько, напиши «оба» или их имена.',
   es: 'Si encajan varios, escribe «ambos» o sus nombres.',
+};
+
+/** The same sentence without „both", for three names or more. */
+const MANY_HINT: Readonly<Record<RunLanguage, string>> = {
+  ka: 'თუ რამდენიმეს ურჩევდი, დაწერე მათი სახელები.',
+  en: 'If more than one fits, write their names.',
+  ru: 'Если подходят несколько, напиши их имена.',
+  es: 'Si encajan varios, escribe sus nombres.',
 };
 
 function pickerSentences(language: RunLanguage, picked: string | null, rest: string): string {
