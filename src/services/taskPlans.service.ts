@@ -346,6 +346,10 @@ export function parsePlan(rawInput: unknown): PlanOutcome<TaskPlan> {
           routes.map((r) => `"${r.name}"`).join(', '),
       };
     }
+    // 5251 (Misho's own case, goal 26072): one person stood in the plan twice, under two
+    // labels, and the owner read the same classmate named twice. One person, one place:
+    // the first route given keeps her.
+    if (people.some((known) => phoneDigits(known.phone) === phoneDigits(phone))) continue;
     // Stored as the route's OWN spelling, never the person's, so the plan
     // stays internally consistent whatever case the model used.
     people.push({ name: name.value, phone, route });
