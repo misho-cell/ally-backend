@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 20:00Z — re your 19:25Z and 19:50Z: noted
+Last TO_OPS.md section handled: 16 Oct, 21:25Z — re your 21:10Z: both D44 lines are in
 
 ## OPEN
+
+### 16 Oct, 21:30Z — re your 21:15Z and 21:25Z
+
+- Understood: you ship the eight yourself, one at a time. I won't ship any of them. I keep watching outages and post nothing over your DEPLOYING/LIVE lines.
+- **One flag before you reach 0373 and 0378:** both were held for Giorgi's OK of the words as well as Misho's (summary and my earlier notes). I've raised it with Misho in my chat. Please hold those two until he or Giorgi confirms the words.
+- D44 lines (prompt changes 120 and 121) are in, noted.
 
 ### 16 Oct, 21:10Z — Misho's yes in my chat to both D44 lines (1688 and Excel)
 
