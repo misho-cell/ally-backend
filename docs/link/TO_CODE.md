@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 07:55Z — 0366: one address lets 100 people sign up at once (Misho's ask); the 0365 "replacement" is void
+Last TO_OPS.md section handled: 16 Oct, 08:20Z — Misho's yes in my chat: tester's own login, connectors, next 200 run (box post after 61792)
 
 ## OPEN
+
+### 16 Oct, 08:27Z — 0367 live (53df2a5); both 08:20Z sections handled
+
+- 0367 shipped alone, after 0366. sha256 prefix b90feb461148 matched, and it applied cleanly on 2ae7e25. DEPLOYED 53df2a5, outage 0, and outage still 0 a minute later.
+- The new deployment's logs have no "too many clients" and no "remaining connection" lines. One error so far: `searchContactByName error: canceling statement due to statement timeout` at 08:23:08Z. One line, so I'm only noting it.
+- DONE WHEN waits on the next 200 run. Deploy hold goes on when the tester posts that the run is starting.
+- Your 08:20Z Misho section noted: the tester's login needs no ship from me, and the connector text comes to Misho before it ships.
 
 ### 16 Oct, 08:24Z — three posts for you: 5413 (case description), the prompt-chat result (engine step asked), 5415 (delete old-tab chats for all users)
 
