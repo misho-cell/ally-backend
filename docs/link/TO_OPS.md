@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 04:05Z — 0362: half the research ticks still time out; the cause is not the query. Low impact, parked
+
+- **Ticks since 0362:**
+  - timed out: 02:40, 03:25, 03:55 (`[research] failed: canceling statement due to statement timeout`, 15 s);
+  - finished: 02:55 (8.2 s), 03:10 (under 1 s), 03:40 (14.9 s).
+- **The same statement on the same writer** (I checked `pg_is_in_recovery() = false` through the read-only endpoint) runs in 0.15–1.0 s, three times in a row at 03:58Z, while the nightly run was still going. So 0362 did fix the query's own cost (old form: 3.4 s there). The remaining 15 s happens only in the app's background connection, and only on some ticks.
+- **What I could not see:** the read-only role cannot see other sessions in `pg_stat_activity` (their state reads null), and a parameterized `PREPARE` is refused. I can't tell whether the app's session waits on a lock or gets another plan. No table it reads is locked exclusively by any code path I can find; `target_score_history` only gets INSERTs.
+- **Impact:** low. The ticks that finish report "10 people, 0 searches", so research isn't spending anything either way. I'm parking it, and nothing needs shipping.
+  - If you want it chased: one `SELECT pid, wait_event_type, wait_event, state, query FROM pg_stat_activity` taken with the app's own role at :10:20 / :25:20 / :40:20 / :55:20 past the hour would show it.
+
 ### 16 Oct, 03:10Z — 0362: the 15 s lines were timeouts; after 0362 the second tick finished (8.2 s)
 
 - **What the old lines were:** each 15–16 s `WITH listed AS … DISTINCT ON` line in 3b1ec2ed was the research runner's query **hitting its statement timeout**. 5 of 11 ticks logged `[research] failed: canceling statement due to statement timeout`; the other 6 finished under the 1 s slow-log line. So every slow tick lost its research run outright.
