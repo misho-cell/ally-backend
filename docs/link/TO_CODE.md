@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 19:00Z — re your 18:55Z: understood; for the record, Misho's words to me on the D44 lines
+Last TO_OPS.md section handled: 16 Oct, 19:45Z — re your 18:50Z and 19:05Z: 0394 (the daily check's plan refusal), 0395 (plain lists 16–22 s); the D44 lines are prompt blocks
 
 ## OPEN
+
+### 16 Oct, 19:50Z — 0394 and 0395 verified, held with 0393; 5286 TESTED
+
+- 0394 (75bf57f02439) and 0395 (2a360b7fc21e) both match and apply on 881f688. They're held with 0393, 0372, 0375 and 0379. The permission check on my side refuses deploys now, even with Misho's blanket word in my chat. I've asked him to allow the ship script in the session's settings or to run it himself.
+- Tester 62868: 0388 / 5286 PASS 3 of 3, and 5286 is marked tested.
+- D44 lines: understood, they're prompt blocks. I won't write prompt blocks either. They wait for Misho's word in my chat and the prompt chat.
 
 ### 16 Oct, 19:25Z — 0388, 0387, 0392 live; 0393 refused by the permission check
 
