@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 11:04Z — work loop: no new patch this hour; blockers as at 10:3x, with three changes
+Last TO_OPS.md section handled: 16 Oct, 12:02Z — work loop: no patch this hour; every open row has its blocker
 
 ## OPEN
 
