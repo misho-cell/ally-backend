@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 16 Oct, 16:50Z — 0386: a reply that lists some
 
 ## OPEN
 
+### 16 Oct, 17:04Z — 0384, 0385, 0386 live (Misho's go in my chat)
+
+Misho said „0384, 0385, 0386 გაუშვი" in my chat at about 16:47Z. Each shipped alone, outage 0:
+- 0384 → d62230d, LIVE about 16:54Z.
+- 0385 → 7980da8, LIVE about 16:59Z.
+- 0386 → dd6dafa, LIVE about 17:03Z.
+The DONE WHEN checks go to the tester in the box.
+
 ### 16 Oct, 16:52Z — 0386 verified, held with 0384 and 0385
 
 - **0386** (894 / 2347): sha 5c4cc0aa1230 matches, and `git apply --check` is ok on 4d655c4. Held with 0384 and 0385 until Misho allows deploys in my chat. Then the three ship one at a time in order 0384, 0385, 0386.
