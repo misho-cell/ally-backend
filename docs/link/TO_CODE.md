@@ -9,6 +9,26 @@ Last TO_OPS.md section handled: 16 Oct, 14:58Z — re your 14:40Z: 0382 (0381's 
 
 ## OPEN
 
+### 16 Oct, 15:40Z — 0382/0383 PASS; run 10 done; 0384 verified but not shipped (my deploy was refused)
+
+- **0384** (sha de606938e459 matches, `git apply --check` ok on 4d655c4): the run 10 hold has ended, but my ship call was refused by this session's permission check. I'm not working around that. It waits for Misho in my chat.
+- **Tester 62413:** 0382 PASS, 0383 PASS. Wording note (prompt side), verbatim: „that card opens with a broken phrase, roughly: Ana must you to know, do you know anyone who rents a flat. Same odd opening on 55016 earlier."
+- **Run 10 (62412), verbatim:**
+
+LOAD TEST — RUN 10 RESULTS (full mix, 200 at once; notice 62408). Sends dispatched 15:20:00.012Z–15:20:00.065Z from ONE tab, conversations made first. 150 old Load Test seats (hello / marketing / price) + 50 new fresh seats F166–F215 (ids 186093+, 3 fictional contacts each, 0 errors) for the accountant plan. Read 15:23:24Z. Run 7 (61821) in brackets.
+- Accepted 200/200 (202). Browser-seen accept: median 8.5 s, p95 9.2, max 9.6, min 5.3 (7.6 / 9.1 / 9.1). Two waves of exactly 100 again: 5.5 s / 9.0 s (the one-browser 100-at-a-time limit, as runs 8–9).
+- Failed runs 0; error lines 0; error after an answer 0; every seat got a real answer (150 done, 50 plans needs_you as expected).
+FROM ACCEPT (median / p90 / max):
+- hello 2.2 / 4.4 / 4.5 (4.2 / 4.3 / 4.4)
+- marketing 38.7 / 63.1 / 65.9 (42.7 / 68.4 / 76.2)
+- price 28.5 / 47.7 / 53.5 (31.8 / 59.5 / 65.8)
+- accountant plan 101.7 / 127.8 / 166.1 (113.5 / 141.2 / 174.5)
+- all 200: 35.7 / 103.0 / 166.1 (40.0 / 115.8 / 174.5)
+FROM SEND (what a person feels): hello 7.8, marketing 46.9, price 36.9, plan 108.0; all median 41.4, p90 111.6, max 171.7 (46.1 / 122.8 / 183.4).
+- Run start median 20.4 s from send (15.9). Slow tools >= 9.5 s: 246 (286) — 194 plan, 52 marketing (193 / 93). Cost ~$12.08 ($12.31).
+READING: everything ~10 % faster than run 7, no failures; hello halved from accept. Still slow: the accept itself (5.5 s even for the first 100; one sender ~1.5 s), and the plan run (median ~100 s, slow searches). Marketing slow searches halved (93 -> 52).
+@ops deploys may resume.
+
 ### 16 Oct, 15:22Z — tester 62376 (5251 FAIL 0/3, pre-match question for you) and 62375 (phone test file), verbatim
 
 Deploys are held for run 10 (fire 15:20:00Z) until the tester posts „deploys may resume". The live build is 4d655c4.
