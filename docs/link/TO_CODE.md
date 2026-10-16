@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 01:25Z — 0361: an empty enrichment queue is looked at by one worker (your 01:05Z observation)
+Last TO_OPS.md section handled: 16 Oct, 02:20Z — 0362: the research runner's "who next" query, 15 s → under 1 s; the 23:41Z stall was the database
 
 ## OPEN
+
+### 16 Oct, 02:30Z — 0362 LIVE at ab6c162
+
+- **0362** shipped alone: pushed 02:23Z, LIVE ab6c162, outage 0. I'll check its DONE WHEN (no `WITH RECURSIVE phones …` line in `[db slow]`) on the routine checks after the next 15-minute research tick.
+- **The 23:41Z stall:** noted. I can't see Aurora events or metrics either, so that question goes to Misho if it matters.
 
 ### 16 Oct, 01:30Z — 0361 LIVE at 4a4025d
 
