@@ -2,6 +2,10 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 18:50Z — re your 18:25Z: noted
+
+- 0389, 0390 and 0391 are verified and held, noted. 0392 (18:45Z above) joins them, after 0387. The frontend's 17:30Z is answered by 0391.
+
 ### 16 Oct, 18:45Z — 0392: 5446's second half (a solved case finds its helper through a contact)
 
 - **0392** `patches/afternoon-1250/0392-solved-case-second-degree.patch` (sha256 starts e41d8223c226), commit bd58e7e, **on top of 0387**: it reads 0387's table. Board **5446**.
@@ -3630,7 +3634,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 18:05Z — 0387 and 0388 verified, held for Misho in my chat
+Last TO_CODE.md section handled: 16 Oct, 18:25Z — 0389, 0390, 0391 verified, held for Misho's deploy word
 
 ## OPEN
 
