@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import { PUBLIC_BASE_URL } from '../../config/publicUrl';
-import { query } from '../../db/postgres/client';
 import { requestOTP, verifyOTP } from '../../services/auth.service';
+import { admittedUserIdByPhone } from '../../services/connectorAdmission.service';
 import {
   createAuthorizationCode,
   exchangeAuthorizationCode,
@@ -23,7 +23,6 @@ import {
 const OAUTH_RATE_WINDOW_MS = 5 * 60_000;
 const OAUTH_RATE_MAX = 60;
 const MAX_REDIRECT_URIS = 5;
-const PHONE_LOOKUP_TIMEOUT_MS = 5_000;
 const SUPPORTED_CHALLENGE_METHOD = 'S256';
 
 export const wellKnownRouter = Router();
@@ -159,17 +158,6 @@ oauthRouter.get('/authorize', async (req: Request, res: Response): Promise<void>
   }
 });
 
-async function findUserIdByPhone(phone: string): Promise<string | null> {
-  const variants = [phone, phone.startsWith('+') ? phone.slice(1) : `+${phone}`];
-  const result = await query<{ userId: number }>(
-    'SELECT "userId" FROM "UserPhone" WHERE phone = ANY($1) LIMIT 1',
-    [variants],
-    PHONE_LOOKUP_TIMEOUT_MS,
-  );
-  const userId = result.rows[0]?.userId;
-  return userId === undefined ? null : String(userId);
-}
-
 oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Promise<void> => {
   try {
     const source = req.body as Record<string, unknown>;
@@ -179,7 +167,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
       return;
     }
     const phone = typeof source.phone === 'string' ? source.phone.replace(/\s+/g, '') : '';
-    if (!phone || (await findUserIdByPhone(phone)) === null) {
+    if (!phone || (await admittedUserIdByPhone(phone)) === null) {
       res
         .status(200)
         .send(
@@ -218,7 +206,7 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
     return;
   }
   try {
-    const userId = await findUserIdByPhone(phone);
+    const userId = await admittedUserIdByPhone(phone);
     if (userId === null) {
       res.status(400).send(renderErrorPage('User not found.'));
       return;
