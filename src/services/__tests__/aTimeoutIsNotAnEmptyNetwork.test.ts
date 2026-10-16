@@ -46,10 +46,10 @@ describe('a search that timed out is never an empty network', () => {
     expect(out).toHaveProperty('empty_searches_so_far');
   });
 
-  it('gives the exact tag search more than the pool default, on its two queries and the way-in pass', () => {
+  it('gives the exact tag search more than the pool default, on its one query and the way-in pass', () => {
     const src = readFileSync(join(__dirname, '..', 'tools', 'searchByTag.ts'), 'utf8');
     expect(src).toContain('const EXACT_SEARCH_TIMEOUT_MS = 20_000;');
-    // The page and its COUNT, and #959's one pass for many way-in names.
-    expect(src.match(/EXACT_SEARCH_TIMEOUT_MS,\n/g)?.length).toBe(3);
+    // The page with its COUNT in one statement (run 7), and #959's one pass for many way-in names.
+    expect(src.match(/EXACT_SEARCH_TIMEOUT_MS,\n/g)?.length).toBe(2);
   });
 });

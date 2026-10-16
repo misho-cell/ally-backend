@@ -46,7 +46,10 @@ function setup(opts: {
   const relationships = opts.relationships ?? [];
   const humanTiers = opts.humanTiers ?? [];
   mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('AS total')) return Promise.resolve(rows([{ total: String(count) }]) as never);
+    if (sql.includes('AS total_matches'))
+      return Promise.resolve(
+        rows(main.map((r) => ({ ...(r as object), total_matches: String(count) }))) as never,
+      );
     if (sql.includes('AS as_of')) return Promise.resolve(rows(facts) as never);
     if (sql.includes('human_relationship_tiers')) return Promise.resolve(rows(humanTiers) as never);
     if (sql.includes('contact_relationship_scores'))
@@ -188,6 +191,19 @@ describe('searchByTag', () => {
     expect(params.some((p) => typeof p === 'string' && p.startsWith('%'))).toBe(false);
   });
 
+  // Run 7 (200 at once): the count rode a second statement that redid the whole match.
+  it('runs the exact match once, with its count in the same statement', async () => {
+    setup({ main: [mockRow], count: 52 });
+
+    await searchByTag('42', 'engineer');
+
+    const exactCalls = mockQuery.mock.calls.filter((c) =>
+      (c[0] as string).includes('matched AS ('),
+    );
+    expect(exactCalls).toHaveLength(1);
+    expect(exactCalls[0][0] as string).toContain('COUNT(*) AS total');
+  });
+
   it('reports the real total even when the page is capped', async () => {
     setup({ main: [mockRow], count: 52 });
 
@@ -263,8 +279,8 @@ describe('searchByTag', () => {
 
     await searchByTag('42', 'asriyants');
 
-    const mainSql = mockQuery.mock.calls.find(
-      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
+    const mainSql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('AS total_matches'),
     )?.[0] as string;
     // Recall is scoped to the user's own contact phones (the materialized
     // "mine" set — every branch joins FROM it, so the plan can't flip to
@@ -305,11 +321,11 @@ describe('searchByTag', () => {
 
     await searchByTag('42', 'dachi axel');
 
-    const mainSql = mockQuery.mock.calls.find(
-      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
+    const mainSql = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('AS total_matches'),
     )?.[0] as string;
-    const mainParams = mockQuery.mock.calls.find(
-      (c) => !(c[0] as string).includes('AS total') && !(c[0] as string).includes('similarity('),
+    const mainParams = mockQuery.mock.calls.find((c) =>
+      (c[0] as string).includes('AS total_matches'),
     )?.[1] as unknown[];
     // Each word becomes a bool_or group; word_hits sums them and drives the order.
     expect(mainSql).toContain('bool_or(');
@@ -332,7 +348,8 @@ describe('searchByTag', () => {
 
   it('marks is_member true for a contact who has actually used Netai', async () => {
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('AS total_matches'))
+        return Promise.resolve(rows([{ ...mockRow, total_matches: '1' }]) as never);
       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM "UserPhone"'))
         return Promise.resolve(rows([{ phone: mockRow.phone, netai_user: true }]) as never);
@@ -350,7 +367,8 @@ describe('searchByTag', () => {
   // is the commonest one in the base — 62,146 of 62,184 accounts.
   it('an old-Ally account that never opened Netai is NOT a member', async () => {
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('AS total_matches'))
+        return Promise.resolve(rows([{ ...mockRow, total_matches: '1' }]) as never);
       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('FROM "UserPhone"'))
         return Promise.resolve(rows([{ phone: mockRow.phone, netai_user: false }]) as never);
@@ -419,7 +437,8 @@ describe('searchByTag', () => {
   it('still returns exact rows when the fuzzy pass errors', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockQuery.mockImplementation((sql: string) => {
-      if (sql.includes('AS total')) return Promise.resolve(rows([{ total: '1' }]) as never);
+      if (sql.includes('AS total_matches'))
+        return Promise.resolve(rows([{ ...mockRow, total_matches: '1' }]) as never);
       if (sql.includes('AS as_of')) return Promise.resolve(rows([]) as never);
       if (sql.includes('similarity(')) return Promise.reject(new Error('index missing'));
       return Promise.resolve(rows([mockRow]) as never);
