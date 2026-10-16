@@ -148,6 +148,8 @@ export function buildExactMatchSql(
   // what he does is found by it. Work keys only — „interests" or searched topics would
   // make a member who LOOKED for a lawyer read as one. Their text ranks the search and
   // is never shown; §111.2 and BP: a row found only this way says so (self_work).
+  // 5446 (D792): a goal the member helped solve is read the same way — it finds and
+  // ranks them, is never shown, and the model offers them with no reason.
   const ownWorkBranch = withOwnWork
     ? `SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
             TRUE AS self_work
@@ -156,6 +158,13 @@ export function buildExactMatchSql(
      WHERE up4.phone IN (SELECT phone FROM mine)
        AND kv.key IN ('profession', 'industry')
        AND ${regexOr('kv.value')}
+     UNION ALL
+     SELECT up5.phone, ${foldedLower('hs.case_text')} AS label, 2 AS priority, TRUE AS own,
+            TRUE AS self_work
+     FROM "UserPhone" up5
+     JOIN helper_solved_cases hs ON hs.helper_user_id = up5."userId"
+     WHERE up5.phone IN (SELECT phone FROM mine)
+       AND ${regexOr('hs.case_text')}
      UNION ALL
      `
     : '';

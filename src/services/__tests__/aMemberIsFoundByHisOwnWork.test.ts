@@ -15,14 +15,16 @@ describe('a member found by his own work', () => {
     expect(sql).not.toMatch(/kv\.key IN \([^)]*interests/u);
   });
 
-  it('marks only that branch as the member’s own work', () => {
+  // 5446 (D792): a goal the member helped solve is the second silent branch.
+  it('marks only that branch and the solved-case one as found without a reason', () => {
     const sql = buildExactMatchSql('501', [['notary']], [], true).matchedCte;
-    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(1);
+    expect(sql.match(/TRUE AS self_work/gu)).toHaveLength(2);
   });
 
   it('is read only by the search that can carry the note — never by default', () => {
     const sql = buildExactMatchSql('501', [['notary']], []).matchedCte;
     expect(sql).not.toContain('user_profile_kv');
+    expect(sql).not.toContain('helper_solved_cases');
     expect(sql).not.toContain('TRUE AS self_work');
     expect(tag.match(/buildExactMatchSql\([^)]*, true\)/gu)).toHaveLength(1);
   });

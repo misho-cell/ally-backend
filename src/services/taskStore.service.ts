@@ -8,6 +8,7 @@ import { markThreadStopped } from './stoppedRuns';
 import { goalNamedIn } from './goalMention';
 import type { TaskPlan } from './taskPlans.service';
 import { GoalWaitReason } from './goalWaitReason';
+import { recordSolvedCases } from './solvedCases.service';
 
 const QUERY_TIMEOUT_MS = 8_000;
 const OPEN_TASKS_LIMIT = 50;
@@ -839,6 +840,11 @@ export async function updateTask(
         // eslint-disable-next-line no-console
         console.error(`[helper-thanks] goal ${taskId} not offered:`, (error as Error).message);
       });
+    // 5446 (D792): remembered, silently, on the helpers who answered it.
+    void recordSolvedCases(taskId).catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(`[solved-case] goal ${taskId} not recorded:`, (error as Error).message);
+    });
     void queueGoalFeedback(userId, taskId).catch((error: unknown) => {
       // eslint-disable-next-line no-console
       console.error(
