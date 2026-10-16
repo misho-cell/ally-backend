@@ -3792,7 +3792,7 @@ const FIND_WARM_PATH_TOOL: AnthropicTool = {
         description:
           "The target's phone id from a search result. Reuse it exactly; never show it to the user.",
       },
-      max_hops: { type: 'number', description: 'Optional, 1–3 (default 3).' },
+      max_hops: { type: 'number', description: 'Optional, 1–5 (default 5).' },
     },
     required: ['target_phone'],
   },

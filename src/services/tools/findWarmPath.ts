@@ -9,7 +9,7 @@ import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from
 
 /**
  * The warm-path walk to an IDENTIFIED target (Ticket 11 Task 10; D132, the
- * founder, 8 Sep): 2–3 hops, point-to-point.
+ * founder, 8 Sep): up to 5 hops (5347), point-to-point.
  *
  * Why this is not the fan-out that was capped at one hop: the target is a
  * specific, known person, so the map is not discovering anyone — it is finding
@@ -24,7 +24,8 @@ import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from
  * that bridge before passing the request on (`relay_ask`), one hop at a time.
  */
 
-const MAX_HOPS = 3;
+/** 5347 (the founder's word, 16 Oct; Misho's yes to „1–5"): the 5th degree is reached. */
+const MAX_HOPS = 5;
 /** How many routes the user is shown. */
 const MAX_PATHS = 5;
 /**
@@ -158,6 +159,27 @@ async function shortestPaths(
 }
 
 /**
+ * 5347: the walk to 5 hops goes in two steps. The graph answers up to 3 hops as it
+ * always has; only when nothing is that close does it walk on to the full depth,
+ * because a search to depth 5 over the whole phonebook graph is the expensive
+ * one. If that longer walk runs out of time, the answer is what the first step
+ * found — the graph did answer — never an outage.
+ */
+const QUICK_HOPS = 3;
+
+async function pathsUpTo(userKey: string, targetKey: string, maxHops: number): Promise<PathRow[]> {
+  const near = await shortestPaths(userKey, targetKey, Math.min(maxHops, QUICK_HOPS));
+  if (near.length > 0 || maxHops <= QUICK_HOPS) return near;
+  try {
+    return await shortestPaths(userKey, targetKey, maxHops);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`findWarmPath: the walk past ${QUICK_HOPS} hops gave up:`, (err as Error).message);
+    return near;
+  }
+}
+
+/**
  * Names for the bridges: the user's own label for a direct contact, the
  * account name for a Netai user, any phonebook's label for a stranger — the
  * same three sources second-degree search names its "via" people from.
@@ -260,7 +282,7 @@ export async function findWarmPath(
 
   let rows: PathRow[];
   try {
-    rows = await shortestPaths(userKey, targetKey, maxHops);
+    rows = await pathsUpTo(userKey, targetKey, maxHops);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('findWarmPath neo4j error:', (err as Error).message);
