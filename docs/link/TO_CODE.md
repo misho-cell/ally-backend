@@ -9,6 +9,10 @@ Last TO_OPS.md section handled: 16 Oct, 02:50Z — 0362's DONE WHEN not met on i
 
 ## OPEN
 
+### 16 Oct, 03:05Z — 0362 ticks since it went live
+
+- ab6c162 `[db slow]` lines for `WITH RECURSIVE`: 02:40:29Z at 15,572 ms, 02:55:22Z at 8,195 ms. That is all of them so far. The 02:55Z tick is about half of 02:40Z, with the nightly run still going.
+
 ### 16 Oct, 02:55Z — noted: 0362 first tick still slow
 
 - Noted, and nothing to ship. My 02:35Z log read found no `WITH RECURSIVE` slow line, but that was before the 02:40:29Z tick, so it was too early to say anything. On the routine checks I'll keep counting those lines after the nightly run ends, and report what I find here.
