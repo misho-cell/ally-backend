@@ -98,6 +98,18 @@ interface ThreeStepRow {
   readonly mid_id: number;
   readonly mid_phone: string;
   readonly last_phone: string;
+  readonly last_id: number;
+}
+
+interface MemberChain {
+  readonly phones: string[];
+  /** Each person's account, in the chain's order, so a longer chain can be built on it. */
+  readonly ids: number[];
+}
+
+interface Holder {
+  readonly userId: number;
+  readonly phone: string;
 }
 
 /** Three in the middle: owner's member → a member they saved → a member holding the target. */
@@ -105,11 +117,11 @@ async function threeStepMiddles(
   first: readonly SavedMember[],
   last: Set<number>,
   ownerId: number,
-): Promise<string[][]> {
+): Promise<MemberChain[]> {
   if (first.length === 0 || last.size === 0) return [];
   const result = await query<ThreeStepRow>(
     `SELECT DISTINCT ua."contactId" AS from_id, up."userId" AS mid_id,
-            ua.phone AS mid_phone, ub.phone AS last_phone
+            ua.phone AS mid_phone, ub.phone AS last_phone, upb."userId" AS last_id
        FROM "UserAlias" ua
        JOIN "UserPhone" up ON up.phone = ua.phone
        JOIN "UserAlias" ub ON ub."contactId" = up."userId"
@@ -135,20 +147,70 @@ async function threeStepMiddles(
   return result.rows.flatMap((r) => {
     const firstPhone = phoneOf.get(Number(r.from_id));
     if (firstPhone === undefined || !memberMid.has(Number(r.mid_id))) return [];
-    return [[firstPhone, r.mid_phone, r.last_phone]];
+    return [
+      {
+        phones: [firstPhone, r.mid_phone, r.last_phone],
+        ids: [Number(r.from_id), Number(r.mid_id), Number(r.last_id)],
+      },
+    ];
   });
 }
 
-/** Every all-member middle of up to three people, shortest first. */
+/**
+ * 5347 (the founder's word, 16 Oct; Misho's yes to „1–5"): the 5th degree was out
+ * of reach — three in the middle was the most. The members who saved a member
+ * holding the target, each with the phone they saved that member under.
+ */
+async function membersSavingHolders(
+  last: Set<number>,
+  ownerId: number,
+): Promise<Map<number, Holder>> {
+  if (last.size === 0) return new Map();
+  const result = await query<{ user_id: number; phone: string; holder_id: number }>(
+    `SELECT DISTINCT ON (ua."contactId") ua."contactId" AS user_id, ua.phone,
+            up."userId" AS holder_id
+       FROM "UserAlias" ua JOIN "UserPhone" up ON up.phone = ua.phone
+      WHERE up."userId" = ANY($1::int[]) AND ua."contactId" <> up."userId"
+        AND ua."contactId" <> $2::int AND NOT (ua."contactId" = ANY($1::int[]))
+        AND ${IS_MEMBER_SQL('ua."contactId"', '$4')}
+      LIMIT $3`,
+    [[...last], ownerId, PEOPLE_READ, NETAI_ACTIVE_SUBSCRIPTION_STATUSES],
+    PATH_QUERY_TIMEOUT_MS,
+  );
+  return new Map(
+    result.rows.map((r) => [Number(r.user_id), { userId: Number(r.holder_id), phone: r.phone }]),
+  );
+}
+
+/** Four in the middle: a three-member chain to someone who saved a member holding the target. */
+async function fourStepMiddles(
+  first: readonly SavedMember[],
+  last: Set<number>,
+  ownerId: number,
+): Promise<string[][]> {
+  const savers = await membersSavingHolders(last, ownerId);
+  if (savers.size === 0) return [];
+  const chains = await threeStepMiddles(first, new Set(savers.keys()), ownerId);
+  return chains.flatMap((chain) => {
+    const holder = savers.get(chain.ids[chain.ids.length - 1]);
+    // Nobody twice: a chain that comes back through one of its own people is no route.
+    if (holder === undefined || chain.ids.includes(holder.userId)) return [];
+    if (new Set(chain.ids).size < chain.ids.length) return [];
+    return [[...chain.phones, holder.phone]];
+  });
+}
+
+/** Every all-member middle of up to four people (five hops), shortest first. */
 export async function memberMiddles(ownerId: number, targetPhone: string): Promise<string[][]> {
   const [first, last] = await Promise.all([
     ownersMembers(ownerId),
     membersHolding(targetPhone, ownerId),
   ]);
   const oneStep = first.filter((m) => last.has(m.userId)).map((m) => [m.phone]);
-  const [twoStep, threeStep] = await Promise.all([
+  const [twoStep, threeStep, fourStep] = await Promise.all([
     twoStepMiddles(first, last),
     threeStepMiddles(first, last, ownerId),
+    fourStepMiddles(first, last, ownerId),
   ]);
-  return [...oneStep, ...twoStep, ...threeStep];
+  return [...oneStep, ...twoStep, ...threeStep.map((chain) => chain.phones), ...fourStep];
 }

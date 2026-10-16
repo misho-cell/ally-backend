@@ -1018,7 +1018,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
       description: TOOL_TEXTS.find_warm_path.description,
       inputSchema: {
         target_ref: z.string().describe("The target's contact_ref from a search result."),
-        max_hops: z.number().optional().describe('Optional, 1–3 (default 3).'),
+        max_hops: z.number().optional().describe('Optional, 1–5 (default 5).'),
       },
       annotations: READ_ONLY,
     },
