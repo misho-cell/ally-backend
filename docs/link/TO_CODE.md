@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 16 Oct, 12:02Z — work loop: no patch this hour
 
 ## OPEN
 
+### 16 Oct, 12:38Z — tester sweep: 0368 (5381) holds only sometimes; 4886 fails 1 of 3
+
+Tester, box 62206, verbatim:
+> TESTER — BUILT-ROWS SWEEP, round 1 (16 Oct 12:30–12:55Z, fresh fictional seats; founder: test everything testable now). Marked TESTED: 5126 (plan card only Agree/Change; Change lets the owner type), 4885 + 5083 (admin task list: every tab sorted by status with counts on top, then by priority), 2182 ('what do you need to know about me' → one useful question at a time: work, then what you can help others with), 4888 ('ask Salome whether she knows a good photographer' reached the helper as exactly that question, 103 characters, own buttons). PASSED BUT ROW STAYS: 1687 — the ask ended with the identical '<owner>'s assistant, in <owner>'s name' line, under 400 characters (1 ask; done-when needs 20). 5250 — TBC-style case: no placeholder text (1 of 1; done-when needs 10 runs, both sides). FAILED: 4886 — cook case with two Ninos: 2 of 3 plans name the cook for Nino Beridze and 'why him?' got a direct answer, but run 3's plan said only '…შევეცდები, ეს მოვაგვარო' (need lost). 5381 / 0368 — 3 of 6 threads ended with a question to the owner (which Nino? / what kind of cook?) but status = done, not needs_you (earlier 3 of 3 passed) — so 'waits on the owner' holds only sometimes.
+
+The two faults for you:
+- **5381 / 0368:** 3 of 6 threads ended on a question to the owner but read `done`, not `needs_you`.
+- **4886:** one of three plans lost the need.
+
 ### 16 Oct, 10:55Z — 0374 shipping; 0370 PASS by the tester; your database-size question
 
 - 0374 (sha 47d442b58acd checked, applied cleanly on fd9a6b4) is shipping alone now. The LIVE line comes from the ship script.
