@@ -4,6 +4,7 @@ import { CLOSED_ROUTE_LINE, CLOSED_ROUTE_ON, closedRouteFor } from '../closedRou
 import { reasonAboutAsker } from '../askEditor.service';
 import { geoName } from '../georgianCase';
 import { targetNameForMediator } from '../mediatorTargetName';
+import { forwardedRequestPush } from '../introOpening';
 import { query } from '../../db/postgres/client';
 import { foldedLower } from './georgianCase';
 import { buildSearchTerms } from './transliterate';
@@ -147,6 +148,12 @@ export interface IntroRequestContext {
    * go to. Absent over the connector, which has no conversation.
    */
   originThreadId?: number;
+  /**
+   * 5347: the link who passes the owner's request on, from their own request
+   * thread. The requester stays the owner; the mediator is found in THIS
+   * person's phonebook, and the reader is told whose assistant passed it on.
+   */
+  forwardedBy?: string;
 }
 
 /**
@@ -212,6 +219,8 @@ interface StoredRequest {
   readonly message: string | null;
   readonly isDirect: boolean;
   readonly requesterTaskId: number | undefined;
+  /** 5347: whose assistant passed the owner's request on; null when asked first-hand. */
+  readonly forwarderName: string | null;
 }
 
 /**
@@ -228,6 +237,7 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
       stored.mediatorTargetName,
       stored.message,
       stored.isDirect,
+      stored.forwarderName,
     ),
     createOutgoingRequestThread(
       Number(stored.requesterUserId),
@@ -340,9 +350,11 @@ async function requestIntroductionInner(
   acceptDormant = false,
   context: IntroRequestContext = {},
 ): Promise<object> {
+  // 5347: a request passed on is sent to someone in the passer's own phonebook.
+  const bookOwner = context.forwardedBy ?? requesterUserId;
   const phoneResult = mediatorPhone
-    ? await findMediatorPhoneByPhone(requesterUserId, mediatorPhone)
-    : await findMediatorPhone(requesterUserId, mediatorName);
+    ? await findMediatorPhoneByPhone(bookOwner, mediatorPhone)
+    : await findMediatorPhone(bookOwner, mediatorName);
 
   if ('error' in phoneResult) return { success: false, error: phoneResult.error };
   if ('needs_disambiguation' in phoneResult) return phoneResult;
@@ -364,7 +376,7 @@ async function requestIntroductionInner(
 
   const mediatorUserId = mediatorUserResult.rows[0].userId;
 
-  if (String(mediatorUserId) === requesterUserId) {
+  if (String(mediatorUserId) === requesterUserId || String(mediatorUserId) === bookOwner) {
     return { success: false, error: 'საკუთარ თავზე ვერ გაიგზავნება მოთხოვნა' };
   }
 
@@ -537,15 +549,26 @@ async function requestIntroductionInner(
     };
   }
 
-  const conversation = await conversationToContinue(
-    context.requesterTaskId,
-    Number(requesterUserId),
-    mediatorUserId,
-  );
+  // 5347: a request passed on opens its own threads; there is no conversation of
+  // the owner's with this person to continue.
+  const forwarded = context.forwardedBy !== undefined && !isDirect;
+  const conversation = forwarded
+    ? null
+    : await conversationToContinue(
+        context.requesterTaskId,
+        Number(requesterUserId),
+        mediatorUserId,
+      );
 
   // D711: the reason is stored as told about the asker, so every reader gets that version.
+  // A request passed on carries the owner's reason as it was stored the first time.
   const requesterName = await getRequesterName(requesterUserId);
-  const reason = message ? await reasonAboutAsker(message, requesterName) : null;
+  const forwarderName = forwarded ? await getRequesterName(bookOwner) : null;
+  const reason = forwarded
+    ? (message ?? null)
+    : message
+      ? await reasonAboutAsker(message, requesterName)
+      : null;
   const [insertResult] = await Promise.all([
     query<{ id: number; request_ref: string }>(
       // Row 210: `requester_task_id` is the goal this was raised for, so the
@@ -553,8 +576,8 @@ async function requestIntroductionInner(
       // Row 305 (b): the two threads it continues, when it continues any.
       `INSERT INTO introduction_requests
          (requester_user_id, mediator_user_id, target_name, message, target_user_id, target_phone, ask_type, requester_task_id, origin_thread_id,
-          mediator_thread_id, requester_thread_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          mediator_thread_id, requester_thread_id, forwarded_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING id, request_ref`,
       isDirect
         ? [
@@ -569,6 +592,7 @@ async function requestIntroductionInner(
             context.originThreadId ?? null,
             conversation?.askThreadId ?? null,
             conversation?.goalThreadId ?? null,
+            null,
           ]
         : [
             requesterUserId,
@@ -582,6 +606,7 @@ async function requestIntroductionInner(
             context.originThreadId ?? null,
             conversation?.askThreadId ?? null,
             conversation?.goalThreadId ?? null,
+            forwarded ? Number(bookOwner) : null,
           ],
     ),
   ]);
@@ -602,6 +627,7 @@ async function requestIntroductionInner(
     message: reason,
     isDirect,
     requesterTaskId: context.requesterTaskId,
+    forwarderName,
   };
   const requestId = stored.requestId;
 
@@ -615,9 +641,11 @@ async function requestIntroductionInner(
       title: 'Netai — გაცნობის მოთხოვნა',
       body: isDirect
         ? `${geoName(requesterName, 'gen')} ასისტენტი გწერს: ${geoName(requesterName, 'dat')} შენი გაცნობა უნდა. გახსენი Netai.`
-        : // #1420: the request is the assistant's, so the push says whose assistant asks.
-          // 3895: the push is the mediator's too, so it names the target as he saved him.
-          `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
+        : forwarderName !== null
+          ? forwardedRequestPush(forwarderName, requesterName, stored.mediatorTargetName)
+          : // #1420: the request is the assistant's, so the push says whose assistant asks.
+            // 3895: the push is the mediator's too, so it names the target as he saved him.
+            `${geoName(requesterName, 'gen')} ასისტენტი გთხოვს, გააცნო ${geoName(stored.mediatorTargetName, 'dat')}. გახსენი Netai.`,
       url: pushUrl,
     });
   }

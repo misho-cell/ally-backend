@@ -46,9 +46,8 @@ describe('the reason for an introduction', () => {
 
   it('is stored that way, so every reader gets it', () => {
     const src = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
-    expect(src).toContain(
-      'const reason = message ? await reasonAboutAsker(message, requesterName) : null;',
-    );
+    // 5347: a request passed on keeps the owner's reason as it was stored the first time.
+    expect(src).toContain('? await reasonAboutAsker(message, requesterName)');
     expect(src).toContain('    message: reason,');
   });
 });

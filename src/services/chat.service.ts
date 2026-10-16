@@ -526,6 +526,7 @@ import {
 } from './campaignInvite.service';
 import { searchWithRetry } from './tools/searchRetry';
 import { getCountryChannels } from './tools/countryChannels';
+import { RequestPassedOn, requestThisThreadPassesOn } from './forwardedIntro';
 import { getNetaiInfo } from './tools/netaiInfo';
 import { myTokenBalance } from './tools/tokenBalance';
 import { isOnboardingUser } from './onboarding.service';
@@ -9629,18 +9630,23 @@ async function executeToolCall(
        * resolve writes into it when there is no goal (request 1156).
        */
       const goalForIntro = threadId == null ? null : await getOpenTaskByThread(threadId);
-      const introOutcome = await requestIntroduction(
-        userId,
-        input['mediator_name'] as string,
-        input['target_name'] as string,
-        input['message'] as string | undefined,
-        input['mediator_phone'] as string | undefined,
-        input['target_user_id'] as number | undefined,
-        input['target_phone'] as string | undefined,
-        input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
-        input['accept_dormant'] === true,
-        introContextFor(threadId, goalForIntro?.id),
-      );
+      // 5347: in a link's own request thread, the request that goes on is the owner's.
+      const passedOn = threadId == null ? null : await requestThisThreadPassesOn(userId, threadId);
+      const introOutcome =
+        passedOn === null
+          ? await requestIntroduction(
+              userId,
+              input['mediator_name'] as string,
+              input['target_name'] as string,
+              input['message'] as string | undefined,
+              input['mediator_phone'] as string | undefined,
+              input['target_user_id'] as number | undefined,
+              input['target_phone'] as string | undefined,
+              input['ask_type'] === 'share_contact' ? 'share_contact' : 'intro',
+              input['accept_dormant'] === true,
+              introContextFor(threadId, goalForIntro?.id),
+            )
+          : await passOwnersRequestOn(userId, passedOn, input);
       if ((introOutcome as { success?: unknown }).success === true) {
         if (runId) runIntroSent.add(runId);
         await markSearchSent(
@@ -12024,6 +12030,33 @@ export function narrationIsSafeToPublish(roundToolNames: readonly string[]): boo
  * Absent keys rather than undefined values: the connector genuinely has no
  * conversation and no goal, and „this request never had one" is the meaning.
  */
+/**
+ * 5347 (tester 61837): the owner's request, passed on by this link to someone in
+ * the link's own phonebook. The owner stays the requester, with the owner's
+ * target, reason and goal; the link is recorded as the one who passed it on.
+ */
+async function passOwnersRequestOn(
+  linkUserId: string,
+  passedOn: RequestPassedOn,
+  input: Record<string, unknown>,
+): Promise<object> {
+  return requestIntroduction(
+    passedOn.ownerUserId,
+    input['mediator_name'] as string,
+    passedOn.targetName,
+    passedOn.reason ?? undefined,
+    input['mediator_phone'] as string | undefined,
+    undefined,
+    undefined,
+    'intro',
+    input['accept_dormant'] === true,
+    {
+      ...(passedOn.ownerTaskId === null ? {} : { requesterTaskId: passedOn.ownerTaskId }),
+      forwardedBy: linkUserId,
+    },
+  );
+}
+
 export function introContextFor(
   threadId: number | null | undefined,
   goalId: number | null | undefined,
