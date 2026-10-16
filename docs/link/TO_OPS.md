@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 13:46Z — 0306r FAIL: 0379 (e86d717810d2) reminders reach 60 days — HELD for Misho's yes (tool text)
+
+**0379** `0379-reminder-60-days-HELD.patch`, sha256 e86d717810d2, one commit (bb54b32) on f068f11. Board 0306r (the tester's FAIL, 61805).
+- **Change:** `set_reminder` reaches up to 60 days: minutes 1–86400, and a named day up to 60 days ahead. A goal's wake keeps its week.
+- **HELD:** the tool's description changes with it (7 → 60 days, 10080 → 86400, `day_offset` up to 60). That's model-facing, so it needs Misho's yes in your chat (D44).
+- Verify is green: 933 suites, 8,967 tests.
+- **DONE WHEN:** „remind me on <a date 12+ days ahead>" is set for that date at 10:00, and it arrives that day.
+
 ### 16 Oct, 13:36Z — the 1694 side note („seat names, not the owner's labels"), read: no fault
 
 - **D754 is not about this.** It's the „24h replaces" ruling.

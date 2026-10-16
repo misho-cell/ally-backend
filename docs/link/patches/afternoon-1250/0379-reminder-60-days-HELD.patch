@@ -1,0 +1,195 @@
+From bb54b32b22647459e9b48137b73c4192a83a0db8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 13:44:51 +0000
+Subject: [PATCH] 0306r: an owner's reminder may name a day up to 60 days ahead
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The tester's FAIL (box 61805): „remind me on 28 Oct" was set for 23 Oct and
+the owner was told „this is not 28 Oct" — honest, but not what was asked.
+A reminder is one row the server delivers at its time; the week cap was a
+goal wake's, not a reminder's. Reminders now reach up to 60 days (minutes
+1–86400; a named day up to 60 days ahead). A goal's wake keeps its week.
+
+The set_reminder description changes with it (7 -> 60 days, 10080 ->
+86400, day_offset up to 60): model-facing, so HELD for Misho's yes (D44).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ .../__tests__/aReminderReachesItsDay.test.ts  | 31 +++++++++++++++++++
+ src/services/chat.service.ts                  | 17 +++++-----
+ src/services/ownerReminders.service.ts        | 13 ++++++--
+ src/services/wakeAtClock.ts                   |  5 ++-
+ 4 files changed, 54 insertions(+), 12 deletions(-)
+ create mode 100644 src/services/__tests__/aReminderReachesItsDay.test.ts
+
+diff --git a/src/services/__tests__/aReminderReachesItsDay.test.ts b/src/services/__tests__/aReminderReachesItsDay.test.ts
+new file mode 100644
+index 0000000..6c1be08
+--- /dev/null
++++ b/src/services/__tests__/aReminderReachesItsDay.test.ts
+@@ -0,0 +1,31 @@
++import { clampReminderMinutes, MAX_REMINDER_MINUTES } from '../ownerReminders.service';
++import { hoursUntilClock, MAX_DAY_OFFSET, MAX_REMINDER_DAY_OFFSET } from '../wakeAtClock';
++
++jest.mock('../../db/postgres/client', () => ({ query: jest.fn() }));
++
++const DAY_MINUTES = 24 * 60;
++const NOW = new Date('2026-10-16T08:00:00Z');
++const TEN = { hour: 10, minute: 0 };
++
++/** 0306r (the tester's FAIL, 16 Oct): „remind me on 28 Oct" must come on 28 Oct. */
++describe('a reminder reaches its day', () => {
++  it('keeps twelve days as twelve days', () => {
++    expect(clampReminderMinutes(12 * DAY_MINUTES)).toBe(12 * DAY_MINUTES);
++  });
++
++  it('stops at sixty days', () => {
++    expect(MAX_REMINDER_MINUTES).toBe(60 * DAY_MINUTES);
++    expect(clampReminderMinutes(90 * DAY_MINUTES)).toBe(60 * DAY_MINUTES);
++  });
++
++  it('counts a named day twelve days ahead to that day at ten', () => {
++    const hours = hoursUntilClock(NOW, 'Asia/Tbilisi', TEN, 12, MAX_REMINDER_DAY_OFFSET);
++    // 10:00 Tbilisi is 06:00Z: twelve days later, minus the two hours between 08:00Z and 06:00Z.
++    expect(hours).toBe(12 * 24 - 2);
++  });
++
++  it('leaves a goal’s wake at its week', () => {
++    const hours = hoursUntilClock(NOW, 'Asia/Tbilisi', TEN, 12);
++    expect(hours).toBe(MAX_DAY_OFFSET * 24 - 2);
++  });
++});
+diff --git a/src/services/chat.service.ts b/src/services/chat.service.ts
+index d30db82..b4f62c7 100644
+--- a/src/services/chat.service.ts
++++ b/src/services/chat.service.ts
+@@ -82,7 +82,7 @@ import {
+ } from './smallTalk';
+ import { AskChoice, choicesProblem, parseAskChoices } from './askChoices';
+ import { acceptIntroOnYes } from './introYes';
+-import { hoursUntilClock, parseClock } from './wakeAtClock';
++import { hoursUntilClock, MAX_REMINDER_DAY_OFFSET, parseClock } from './wakeAtClock';
+ import { deletionClaimWithoutTool, notDeletedLine } from './deletionClaim';
+ import { asksToReopen } from './reopenIntent';
+ import { offerClaimWithoutTool, offerNotSavedLine } from './offerClaim';
+@@ -1549,13 +1549,13 @@ const SET_REMINDER_TOOL: AnthropicTool = {
+     'The owner\'s own reminder: „remind me in 15 minutes", „remind me tomorrow at 10 to call ' +
+     'Nino". At that time the server writes `text` into this same conversation and rings the ' +
+     "owner's phone; you are not woken. Works in any conversation, with or without a goal, " +
+-    'from 1 minute to 7 days. When the owner asks to be reminded, call this: never say you ' +
++    'from 1 minute to 60 days. When the owner asks to be reminded, call this: never say you ' +
+     'cannot remind, and never suggest a phone alarm instead. Then tell the owner in one short ' +
+     'line when the reminder will come. ' +
+     // The tester's 58580 (run 51813; Misho's yes, 14 Oct): „…next week", no hour, and the
+     // run said it could not set a reminder for a specific day.
+-    'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 7 ' +
+-    'days away, set it for 7 days from now and tell the owner it will come then and why.',
++    'If the owner names a day but no hour, use 10:00 on that day. If the day is more than 60 ' +
++    'days away, set it for 60 days from now and tell the owner it will come then and why.',
+   input_schema: {
+     type: 'object',
+     properties: {
+@@ -1565,7 +1565,7 @@ const SET_REMINDER_TOOL: AnthropicTool = {
+           "The reminder exactly as the owner will read it, in the owner's language, one short " +
+           'line (e.g. „წამლის დალევის დროა.").',
+       },
+-      minutes: { type: 'number', description: 'Minutes from now (1–10080).' },
++      minutes: { type: 'number', description: 'Minutes from now (1–86400).' },
+       at: {
+         type: 'string',
+         description:
+@@ -1575,7 +1575,7 @@ const SET_REMINDER_TOOL: AnthropicTool = {
+       day_offset: {
+         type: 'number',
+         description:
+-          'With `at`: 0 today, 1 tomorrow, up to 7. Leave it out for the next such time.',
++          'With `at`: 0 today, 1 tomorrow, up to 60. Leave it out for the next such time.',
+       },
+     },
+     required: ['text'],
+@@ -1645,7 +1645,7 @@ async function reminderMinutes(
+   userId: string,
+   input: Record<string, unknown>,
+ ): Promise<number | null> {
+-  const clockHours = await hoursFromClock(userId, input);
++  const clockHours = await hoursFromClock(userId, input, MAX_REMINDER_DAY_OFFSET);
+   if (clockHours !== null) return clockHours * MINUTES_PER_HOUR;
+   const minutes = Number(input['minutes']);
+   return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+@@ -1703,12 +1703,13 @@ function planNamesExcluded(names: readonly string[]): string {
+ async function hoursFromClock(
+   userId: string,
+   input: Record<string, unknown>,
++  maxDayOffset?: number,
+ ): Promise<number | null> {
+   const clock = parseClock(input['at']);
+   if (clock === null) return null;
+   const day = Number(input['day_offset']);
+   const zone = await personZone(Number(userId)).catch(() => DEFAULT_PUSH_TIME_ZONE);
+-  return hoursUntilClock(new Date(), zone, clock, Number.isInteger(day) ? day : null);
++  return hoursUntilClock(new Date(), zone, clock, Number.isInteger(day) ? day : null, maxDayOffset);
+ }
+ 
+ /**
+diff --git a/src/services/ownerReminders.service.ts b/src/services/ownerReminders.service.ts
+index c8cac89..92ead0d 100644
+--- a/src/services/ownerReminders.service.ts
++++ b/src/services/ownerReminders.service.ts
+@@ -19,9 +19,16 @@ import { saveServerLine, threadLanguage } from './threads.service';
+  */
+ const QUERY_TIMEOUT_MS = 5_000;
+ const REMINDERS_PER_SWEEP = 50;
+-/** The soonest a reminder can be set for, and the latest: a minute, a week. */
++/**
++ * The soonest a reminder can be set for, and the latest: a minute, sixty days.
++ * 0306r (the tester's FAIL, 16 Oct): „remind me on 28 Oct" came on 23 Oct with
++ * „this is not 28 Oct" — honest, but not what was asked. A reminder is one row
++ * the server delivers at its time; nothing about it needs the week cap a goal's
++ * wake has.
++ */
++const MAX_REMINDER_DAYS = 60;
+ export const MIN_REMINDER_MINUTES = 1;
+-export const MAX_REMINDER_MINUTES = 7 * 24 * 60;
++export const MAX_REMINDER_MINUTES = MAX_REMINDER_DAYS * 24 * 60;
+ /** A reminder is one line; longer text is cut, not refused. */
+ export const MAX_REMINDER_CHARS = 300;
+ const REMINDER_MARK = '⏰';
+@@ -41,7 +48,7 @@ export interface DueReminder {
+   readonly text: string;
+ }
+ 
+-/** The minutes asked for, kept between a minute and a week. */
++/** The minutes asked for, kept between a minute and sixty days. */
+ export function clampReminderMinutes(minutes: number): number {
+   return Math.min(MAX_REMINDER_MINUTES, Math.max(MIN_REMINDER_MINUTES, Math.round(minutes)));
+ }
+diff --git a/src/services/wakeAtClock.ts b/src/services/wakeAtClock.ts
+index 2f330b9..fb741b4 100644
+--- a/src/services/wakeAtClock.ts
++++ b/src/services/wakeAtClock.ts
+@@ -9,6 +9,8 @@ const CLOCK_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/u;
+ const MS_PER_HOUR = 3_600_000;
+ const MS_PER_MINUTE = 60_000;
+ export const MAX_DAY_OFFSET = 7;
++/** 0306r (the tester's FAIL, 16 Oct): an owner's reminder may name a day up to 60 days ahead. */
++export const MAX_REMINDER_DAY_OFFSET = 60;
+ 
+ interface ClockTime {
+   readonly hour: number;
+@@ -69,8 +71,9 @@ export function hoursUntilClock(
+   zone: string,
+   clock: ClockTime,
+   dayOffset: number | null,
++  maxDayOffset: number = MAX_DAY_OFFSET,
+ ): number {
+-  const offset = dayOffset === null ? 0 : Math.min(Math.max(0, dayOffset), MAX_DAY_OFFSET);
++  const offset = dayOffset === null ? 0 : Math.min(Math.max(0, dayOffset), maxDayOffset);
+   const today = instantAt(now, zone, clock, offset);
+   const target =
+     dayOffset === null && today.getTime() <= now.getTime() ? instantAt(now, zone, clock, 1) : today;
+-- 
+2.43.0
+
