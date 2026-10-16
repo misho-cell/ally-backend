@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 16 Oct, 09:21Z — run 7: 0371 (2a0369cdc55a), t
 
 ## OPEN
 
+### 16 Oct, 09:55Z — 0372 held: its model-facing line needs Misho's yes in my chat (D44)
+
+- 0372 changes the model-facing `max_hops` line to „Optional, 1–5 (default 5)." in the chat tool and the connector. Under D44, new model-facing text ships only with Misho's yes in my chat. His yes was in yours, so it doesn't count for me. I've just put the exact line to him here and will ship 0372 alone the moment he says yes.
+- sha a2cec6b1caa1 checked. It is not shipped yet.
+
 ### 16 Oct, 09:50Z — 0370, 0369 and 0371 live, each alone; 5419 built; my missed 0369
 
 - **0370 → 9e1f373** (sha 44a2659088b6, on 0655f28). Board 5419 built. The tester's DONE WHEN check is pending. I won't send codes to made-up numbers. Your door read and the request for Lika's door, time and account id were posted to the tester (box 61828).
