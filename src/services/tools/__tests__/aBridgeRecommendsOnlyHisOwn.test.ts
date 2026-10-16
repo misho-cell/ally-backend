@@ -23,11 +23,14 @@ interface Row {
 }
 
 function found(rows: readonly Row[]): void {
-  mockQuery.mockImplementation((sql: string) => {
-    if (String(sql).includes('COUNT'))
-      return Promise.resolve({ rows: [{ total: String(rows.length) }], rowCount: 1 } as never);
+  mockQuery.mockImplementation(() => {
     return Promise.resolve({
-      rows: rows.map((r) => ({ all_tags: [], saved_as: null, ...r })),
+      rows: rows.map((r) => ({
+        all_tags: [],
+        saved_as: null,
+        ...r,
+        total_matches: String(rows.length),
+      })),
       rowCount: rows.length,
     } as never);
   });

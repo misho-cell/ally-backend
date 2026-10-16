@@ -180,33 +180,36 @@ async function runExactSearch(
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
   const m = buildExactMatchSql(userId, rawGroups, blockedPhones, true);
-  const [result, countResult] = await Promise.all([
-    query<TagRow>(
-      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
-       hits AS (
-         SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
-                bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
-         FROM matched
-         WHERE phone != ALL($${m.blockIdx})
-         GROUP BY phone
-       )
-       SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
-              BOOL_AND(h.self_work_only) AS self_work_only
-       ${AGG_JOINS}
-       GROUP BY h.phone
-       ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
-                MAX(ut."weightCount") DESC NULLS LAST
-       LIMIT ${RESULT_LIMIT}`,
-      m.params,
-      EXACT_SEARCH_TIMEOUT_MS,
-    ),
-    query<{ total: string }>(
-      `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte} ${m.totalSql}`,
-      m.params,
-      EXACT_SEARCH_TIMEOUT_MS,
-    ),
-  ]);
-  return { rows: result.rows, total: Number(countResult.rows[0]?.total ?? result.rows.length) };
+  /**
+   * Run 7 (200 at once, 16 Oct): this search was 732 of the 1,203 slow lines,
+   * because the count was a second statement. It repeated the whole matched-labels
+   * work and held a second connection from the long pool. The count is now a
+   * scalar subquery over the same CTE in the same statement: matched is computed
+   * once, on one connection.
+   */
+  const result = await query<TagRow & { total_matches: string }>(
+    `WITH ${MY_CONTACTS_CTE}, ${m.matchedCte},
+     hits AS (
+       SELECT phone, (${m.wordHits}) AS word_hits, MAX(priority) AS src_priority,
+              bool_or(own) AS own_hit, bool_and(self_work) AS self_work_only
+       FROM matched
+       WHERE phone != ALL($${m.blockIdx})
+       GROUP BY phone
+     )
+     SELECT ${AGG_SELECT}, BOOL_OR(h.own_hit) AS own_hit,
+            BOOL_AND(h.self_work_only) AS self_work_only,
+            (${m.totalSql}) AS total_matches
+     ${AGG_JOINS}
+     GROUP BY h.phone
+     ORDER BY MAX(h.word_hits) DESC, BOOL_OR(h.own_hit) DESC, MAX(h.src_priority) DESC,
+              MAX(ut."weightCount") DESC NULLS LAST
+     LIMIT ${RESULT_LIMIT}`,
+    m.params,
+    EXACT_SEARCH_TIMEOUT_MS,
+  );
+  const rows: TagRow[] = result.rows.map(({ total_matches: _total, ...row }) => row);
+  const total = result.rows[0]?.total_matches;
+  return { rows, total: total === undefined ? 0 : Number(total) };
 }
 
 /**
