@@ -1,0 +1,150 @@
+From d5b0108374c6601622ddeda3c99c201d7b532014 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 16 Oct 2026 01:16:10 +0000
+Subject: [PATCH] 5317: an empty enrichment queue is looked at by one worker,
+ not four
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ops, 16 Oct 01:05Z: around the nightly enrichment run the queue's claim
+waited 11.8 s for one of the background pool's two connections, four
+claims at a time, with nothing queued — every five seconds, competing
+with the nightly run for the same two connections.
+
+While the last claim found nothing, the ticker starts one worker; the
+full four start once a claim finds a job or a contact is queued.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HwFREQwL5g9E6qRrUf9bau
+---
+ ...mptyEnrichmentQueueIsLookedAtByOne.test.ts | 38 +++++++++++++++++++
+ ...theEnrichmentQueueOutlivesARestart.test.ts | 10 ++++-
+ src/services/enrichmentQueue.ts               | 17 ++++++++-
+ 3 files changed, 62 insertions(+), 3 deletions(-)
+ create mode 100644 src/services/__tests__/anEmptyEnrichmentQueueIsLookedAtByOne.test.ts
+
+diff --git a/src/services/__tests__/anEmptyEnrichmentQueueIsLookedAtByOne.test.ts b/src/services/__tests__/anEmptyEnrichmentQueueIsLookedAtByOne.test.ts
+new file mode 100644
+index 0000000..4514a2b
+--- /dev/null
++++ b/src/services/__tests__/anEmptyEnrichmentQueueIsLookedAtByOne.test.ts
+@@ -0,0 +1,38 @@
++jest.mock('../../db/postgres/client', () => ({
++  __esModule: true,
++  backgroundQuery: jest.fn(),
++  query: jest.fn(),
++}));
++
++import { backgroundQuery } from '../../db/postgres/client';
++import {
++  ENRICHMENT_CONCURRENCY,
++  fillEnrichmentWorkers,
++  queueEnrichmentJob,
++} from '../enrichmentQueue';
++
++const mockQuery = backgroundQuery as jest.MockedFunction<typeof backgroundQuery>;
++const rows = (r: unknown[]): never => ({ rows: r, rowCount: r.length }) as never;
++const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
++
++/**
++ * Ops, 16 Oct 01:05Z: four claims at a time waited 11.8 s for the background
++ * pool's two connections while the nightly run held them, with nothing queued.
++ */
++describe('an empty enrichment queue', () => {
++  it('is looked at by one worker until a contact is queued', async () => {
++    mockQuery.mockResolvedValue(rows([]));
++    expect(fillEnrichmentWorkers(jest.fn())).toBe(ENRICHMENT_CONCURRENCY);
++    await settle();
++    expect(fillEnrichmentWorkers(jest.fn())).toBe(1);
++    await settle();
++    await queueEnrichmentJob({
++      userId: 501,
++      userCompositeKey: 'k',
++      contactPhone: '+995555000001',
++      alias: 'ნინო',
++      enrich: true,
++    });
++    expect(fillEnrichmentWorkers(jest.fn())).toBe(ENRICHMENT_CONCURRENCY);
++  });
++});
+diff --git a/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts b/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+index 7861246..c0166c4 100644
+--- a/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
++++ b/src/services/__tests__/theEnrichmentQueueOutlivesARestart.test.ts
+@@ -80,7 +80,15 @@ describe('the enrichment queue in the database', () => {
+     );
+   });
+ 
+-  it('runs four workers, and starts no more while they are busy', () => {
++  it('runs four workers once a contact is queued, and starts no more while they are busy', async () => {
++    mockQuery.mockResolvedValueOnce(rows([]));
++    await queueEnrichmentJob({
++      userId: 501,
++      userCompositeKey: 'k',
++      contactPhone: '+995555000001',
++      alias: 'ნინო',
++      enrich: true,
++    });
+     mockQuery.mockReturnValue(new Promise(() => undefined) as never);
+     expect(fillEnrichmentWorkers(jest.fn())).toBe(ENRICHMENT_CONCURRENCY);
+     expect(fillEnrichmentWorkers(jest.fn())).toBe(0);
+diff --git a/src/services/enrichmentQueue.ts b/src/services/enrichmentQueue.ts
+index 66b8ce4..872311f 100644
+--- a/src/services/enrichmentQueue.ts
++++ b/src/services/enrichmentQueue.ts
+@@ -66,6 +66,13 @@ const TICK_INTERVAL_MS = 5_000;
+  */
+ export const PAUSE_AFTER_QUEUE_ERROR_MS = 60_000;
+ 
++/**
++ * Ops, 16 Oct 01:05Z: around the nightly run the queue's claim waited 11.8 s
++ * for one of the background pool's two connections, four claims at a time,
++ * with nothing queued. An empty queue is looked at by one worker per tick;
++ * the full four start once a claim finds a job or a contact is queued here.
++ */
++let queueLooksEmpty = false;
+ let workersRunning = 0;
+ let pausedUntil = 0;
+ 
+@@ -77,6 +84,7 @@ export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
+     [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
+     QUEUE_TIMEOUT_MS,
+   );
++  queueLooksEmpty = false;
+ }
+ 
+ interface JobRow {
+@@ -112,6 +120,7 @@ async function finishJob(id: string, error: string | null): Promise<void> {
+ /** Takes the next job and does it; false when nothing was queued. A failed job is the job's own. */
+ export async function workOneJob(work: EnrichmentWork): Promise<boolean> {
+   const row = await claimNextJob();
++  queueLooksEmpty = row === null;
+   if (row === null) return false;
+   try {
+     await work({
+@@ -146,15 +155,19 @@ async function workUntilEmpty(work: EnrichmentWork): Promise<void> {
+   }
+ }
+ 
+-/** Starts workers up to the limit, unless a queue error paused them; each one ends when the queue is empty. */
++/**
++ * Starts workers up to the limit — one while the queue looks empty — unless a
++ * queue error paused them; each one ends when the queue is empty.
++ */
+ export function fillEnrichmentWorkers(
+   work: EnrichmentWork,
+   workers: number = ENRICHMENT_CONCURRENCY,
+   now: number = Date.now(),
+ ): number {
+   if (now < pausedUntil) return 0;
++  const limit = queueLooksEmpty ? 1 : workers;
+   let started = 0;
+-  while (workersRunning < workers) {
++  while (workersRunning < limit) {
+     void workUntilEmpty(work);
+     started += 1;
+   }
+-- 
+2.43.0
+

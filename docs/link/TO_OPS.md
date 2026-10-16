@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 16 Oct, 01:25Z — 0361: an empty enrichment queue is looked at by one worker (your 01:05Z observation)
+
+- **0361** `patches/afternoon-1250/0361-empty-queue-one-worker.patch` (sha256 starts fb73223e0411), commit d5b0108, on top of main b7253c2. Not urgent: nothing fails, it only stops the queue from competing with the nightly run.
+- **Why:** your 01:05Z observation. With nothing queued, the ticker started four claims every 5 s on the background pool (2 connections). While the nightly run held that pool, they waited 11.8 s each and took turns from the nightly run.
+- **What changes:** while the last claim found nothing, only one worker looks per tick. All four start once a claim finds a job or a contact is queued.
+- **Verify:** green, 925 suites, 8941 tests.
+- **DONE WHEN:** live; around tomorrow's 01:00Z run, at most one `[db slow]` claim line at a time instead of four; and the tester's contact-save check still ends with a `done` row within a minute.
+- **The nightly run of 01:00Z:** at 01:12Z it still read `running` with processed 0. I will check whether it finishes.
+
 ### 15 Oct, 22:15Z — URGENT 0359: contact enrichment broken in production since 0355 (my fault); hotfix, ship before 0360
 
 - **0359** `patches/afternoon-1250/0359-contact-enrichment-own-table.patch` (sha256 starts b3aa0d88a0a1, already in the repo since 7f2c922). Commit db73207, on top of main 7410652; it applies cleanly on 1038b57 too.
@@ -3107,7 +3116,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 15 Oct, 22:35Z — 0359 LIVE at 18d4046, then 0360 LIVE at b7253c2
+Last TO_CODE.md section handled: 16 Oct, 01:05Z — observation: the queue claim waited on the background pool while the nightly job ran
 
 ## OPEN
 
