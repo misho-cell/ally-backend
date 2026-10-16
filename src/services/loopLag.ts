@@ -40,7 +40,10 @@ const TICK_MS = 1_000;
  * worth a line. Above it, something held the loop long enough to matter to a
  * person waiting for an answer.
  */
-const REPORT_OVER_MS = 2_000;
+// Run 8 (16 Oct): a burst of 200 left no line at 2 s, and the accept took 5.6 s
+// for 100 at once. Blocks under 2 s were invisible; a quarter of a second is
+// already a hello's whole budget, so that is where it starts reporting.
+const REPORT_OVER_MS = 250;
 
 let timer: NodeJS.Timeout | null = null;
 let worstMs = 0;

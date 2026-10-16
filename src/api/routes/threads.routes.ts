@@ -94,6 +94,7 @@ import { isToolFreeSmallTalk } from '../../services/smallTalk';
 import { looksLikeStopRequest } from '../../services/stopIntent';
 import { describeProviderRefusal, isProviderRefusal } from '../../services/providerOutage';
 import { beginRun, endRun, isDraining } from '../../services/inFlightRuns';
+import { PhaseClock } from '../../services/acceptTiming';
 import { ApiResponse } from '../../types';
 
 const threadsRouter = Router();
@@ -970,9 +971,11 @@ threadsRouter.post(
        * nothing — and used when the owner is the one who pays, which is every run
        * that is not an answer to somebody else's ask.
        */
+      const clock = new PhaseClock(res.locals.arrivedAt);
       const ownAllowance = checkRunAllowance(userId);
       ownAllowance.catch(() => undefined);
       const thread = await getThread(threadId, userId);
+      clock.mark('thread');
       if (thread === null) {
         res.status(404).json({ success: false, error: 'Thread not found' });
         return;
@@ -988,6 +991,7 @@ threadsRouter.post(
       const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title, message);
       if (needsTitle) {
         await updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS));
+        clock.mark('title');
       }
 
       // Token wallet gate: when enabled, an exhausted balance blocks new runs
@@ -1006,6 +1010,7 @@ threadsRouter.post(
       /** Set when D348's one free answer is being given, emitted after it. */
       let graceNote: string | null = null;
       const payerId = await runPayerFor(userId, threadId, thread.type);
+      clock.mark('payer');
       // The master test run's 45679: a typed stop on a zero balance was refused
       // with 402 while the stop button worked. A stop is answered by the server
       // alone, before any model call, so it costs nothing and is never walled.
@@ -1155,6 +1160,9 @@ threadsRouter.post(
       }
 
       res.status(202).json({ success: true, runId });
+      clock.mark('allowance_and_reply');
+      // eslint-disable-next-line no-console
+      console.log(`[accept-timing] thread ${threadId}: ${clock.line()}`);
 
       /**
        * Misho, 16 Oct (the tester's 5th 200 run): a „გამარჯობა" took 4 s from

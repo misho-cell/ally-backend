@@ -13040,6 +13040,8 @@ async function answerGreeting(
   runId: string,
   storedAhead: boolean,
 ): Promise<ChatResult> {
+  // Run 8 (box 62242): this answer took 2.5–3.8 s with 200 at once against 0.5 alone.
+  const startedAt = Date.now();
   const [registered, hasContacts, spokenBefore] = await Promise.all([
     registeredName(userId),
     ownerHasContacts(userId),
@@ -13048,6 +13050,7 @@ async function answerGreeting(
       ? Promise.resolve(0)
       : saveMessage(userId, threadId, 'user', userMessage, 'message', runId),
   ]);
+  const readsDoneAt = Date.now();
   const language = languageOfConversation(
     userMessage,
     spokenBefore,
@@ -13066,7 +13069,10 @@ async function answerGreeting(
     SERVER_GREETING_AUTHOR,
   );
   // eslint-disable-next-line no-console
-  console.log(`[greeting] run ${runId}: answered by the server`);
+  console.log(
+    `[greeting] run ${runId}: answered by the server — reads ${readsDoneAt - startedAt}ms, ` +
+      `saved ${Date.now() - readsDoneAt}ms`,
+  );
   return { reply, language, requestCreated: false };
 }
 
