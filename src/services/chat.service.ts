@@ -211,6 +211,7 @@ import {
   withoutNobodyAnswered,
 } from './askStatusSection';
 import { askStateOf, sentSentenceForOwner } from './askState';
+import { bridgesHolding } from './numberBridges';
 import { advanceWaveIfDone, nextWaveNote, readWave } from './askWaves.service';
 import { openHeldAsksForTask } from './heldAsks.service';
 import { submitContactFact, getVisibleFacts, FactRefusedError } from './contactFacts.service';
@@ -4633,10 +4634,12 @@ async function getOwnContactNumber(userId: string, phoneRaw: string): Promise<ob
     return { error: 'This contact is unavailable.' };
   }
   if (ownRow.rows.length === 0) {
+    const through = await bridgesHolding(userId, phone);
     return {
       error:
         "Not the user's own direct contact — network numbers are never shown. " +
         'Offer request_introduction instead.',
+      ...(through.length > 0 && { introduce_through: through }),
     };
   }
   return {
