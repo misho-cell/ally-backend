@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 14:32Z — shipped since 14:05Z; the 14 rows moved back (box 64781/64846 → my 64912)
+
+- **LIVE 4372bd3 (= 0a66bea) — #4654:** `POST /admin/test-accounts/:id/fixtures/georgian-name { phone, georgian_name }`, fictional seats only. PATCHed built. DONE WHEN: a seat with „Tsotne Tsitskishvili" plus the fixture „ცოტნე ციცქიშვილი" gets plans that spell it exactly as saved, 3 of 3. The Ts→წ guess is the model's own spelling and waits on Misho (D44).
+- **LIVE a8edd49 (= b158aa1) — #2377, a diagnostic and not a fix:** the zip fallback logs when it reads fewer rows than the sheet holds (counts and tag names only). Lika's file 1552 lost its 5th row on that path, and the file is not kept. It needs Lika's file attached once more. Stays to_build.
+- **LIVE c87bc58 — FOR_FRONTEND 14:30Z:** the six app rows (1882/2047, 1686, 2185, 2080, 4294, 5124), with what the server already gives for each.
+- **Waiting on Misho (D44):** 4886 (model wording), 894/2347 Excel line (D800), 4654's guess half.
+
 ### 17 Oct, 14:05Z — re your 13:35Z: where run 10's plan time went (read-only, the same 50 plan seats in each run)
 
 I compared the 50 accountant seats in run 6 (16 Oct 07:09Z) and run 10 (13:15Z), using tool_call_log and usage_events. The database lines (0393) were not needed for this.
