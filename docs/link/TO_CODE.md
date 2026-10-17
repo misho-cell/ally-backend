@@ -9,6 +9,31 @@ Last TO_OPS.md section handled: 17 Oct, 12:12Z — re your 11:05Z and 11:35Z (bo
 
 ## OPEN
 
+### 17 Oct, 12:50Z — Lika's app results (5124 FAIL; 11 rows TESTED); founder yes D799/D800 (box 64615–64617)
+
+- **Founder yes for D799 (solver-first line) and D800 (the 60-minute update line and the Excel line):** these are new model-facing and owner-facing texts. As I hold D44, they wait on Misho's own yes in my chat, and I've put them to him. Don't build them on the founder's word alone.
+- **Lika's item 8:** Excel on the computer gave a text table, „cannot create Excel“, and no download. One reply stopped mid-way. The Excel button may need a check, not just the line.
+- **Tester, box 64617, verbatim:**
+
+> NEW TESTER CHAT #23 — LIKA'S RESULTS for the frontend list 64320 (her file, 17 Oct, iPhone + computer, with screenshots). TESTED now (PATCHed): 5382 (button gone; „მეტი“ opens/closes in the card), 5288 (iPhone cards, Safari + home-screen app), 5421 (87 tasks, 9 pages, 10 per page), 5116 + 5125 + 5118 + 5119 + 5120 (filters, newest first, „შეჩერებულია“ highlighted, spacing; iPhone + computer), 5127 + 5414 (one „ნაბიჯები“ under the last reply, no „როგორ ვიპოვე“), 5054 (iPhone Safari: light on home, dark green in chat) — 11 rows.
+> FAIL: 5124 — on iPhone, slow scroll: the list cannot keep up, then jumps; fast scroll throws her back to the top.
+> NOT CHECKED (stay built): 5050/5051 (no chat with „მოგვარდა“ + „გზები“ found), 5053, 5117, 5123, 5380 (no zero count seen).
+> Small: in 5382 the opened card still says „მეტი“ — a UX suggestion, goes on page 1 per D777.
+> Item 8: „გაგრძელება“ worked earlier; Excel asked on computer → text table and „cannot create Excel“, no download (2347 stays open). On one try the reply stopped mid-way first.
+
+- **Box 64615, verbatim:**
+
+> NEW TESTER CHAT #23 — FOUNDER YES (D799, 17 Oct 16:41 Tbilisi) for #5248 + #5251, new task_main line, as written:
+> „When one of the people you found works in the right place or role to solve the problem herself, open the plan with her full name and one short reason, and ask the owner: shall I ask her assistant, or will you call her yourself? Show each person once, by full name, never by a phonebook label.“
+> Needs Misho's own yes (D44), then ship alone with a LIVE line. Test I will run: a fictional seat whose bridge has a contact tagged at the right place (e.g. SME loans at a bank) → plan opens with that person's full name + reason + both ways, no raw label, no duplicate, 3 of 3.
+
+- **Box 64616, verbatim:**
+
+> NEW TESTER CHAT #23 — FOUNDER YES (D800, 17 Oct 16:45 Tbilisi), approving in Giorgi's place (D582), two server lines as proposed:
+> (1) #5249 60-minute honest update: „ჯერ ვერ ვიპოვე ის, ვინც ამას ზუსტად მოაგვარებს. შემდეგი ნაბიჯი: <step>. გავაგრძელო?“ — build the 60-minute wake.
+> (2) D796 Excel: ka „ქვემოთ „Excel“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება.“ / en „Tap „Excel“ under this reply to download the list.“ — replaces any „can't make Excel / paste into a spreadsheet“ line when the owner asked for Excel and the reply holds a list.
+> Needs Misho's own yes (D44), then ship each alone with a LIVE line; I test 3 of 3 each. Note: Lika on her computer today also got „cannot create an Excel file“ and no download (her file, item 8) — so the Excel button itself needs a check too.
+
 ### 17 Oct, 12:20Z — tests on 64519: 218c49d plan card 0/3; 1016fc6 PASS 2/2; 5446 English hint 0/2 (box 64549)
 
 - **Tester, box 64549, verbatim:**
