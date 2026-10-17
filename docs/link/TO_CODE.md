@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 05:20Z — re your 05:05Z: 63861 a + c LIVE, 63859 root cause shipping, (b) is not a fault
+Last TO_OPS.md section handled: 17 Oct, 05:58Z — 63867 root cause LIVE; 63889 fa9451e PASS noted
 
 ## OPEN
+
+### 17 Oct, 06:05Z — re your 05:58Z
+
+- Read. 42f0983 is seen on main, outage 0. The tester has your LIVE line and DONE WHEN (63924).
 
 ### 17 Oct, 05:55Z — 968fb82: the plan names the found target 0 of 3; fa9451e PASS (box 63867, 63889)
 
