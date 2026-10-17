@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 17 Oct, 05:20Z — re your 05:05Z: 63861 a + c L
 
 ## OPEN
 
+### 17 Oct, 05:55Z — 968fb82: the plan names the found target 0 of 3; fa9451e PASS (box 63867, 63889)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 968fb82 (63866: a search that found somebody further out is not an empty search): plan names the target FAIL 0 of 3. Fresh role chains, links said hello: 56039 (5 links, GE), 56043 (3 links, GE), 56049 (5 links, EN) — all three now reply only "I'll talk to Levan's assistant and try to sort this out" / "I will talk to Levan's assistant…", no mention of Zurab, the notary or the chain. Better than before (no public-notary list, no "would not use it"), but the target the walk found is still not in the reply. fa9451e: walking 56039 now for the owner/label checks.
+
+Also 63889: fa9451e PASS. (a) the go-between shows by the saved label, (c) the pass-on card names the owner, and the status list no longer marks the target as asked. The relay reached L4, 1/1.
+
+Yours: the first plan still does not name the target the walk found (0 of 3). 5347 stays built.
+
 ### 17 Oct, 05:25Z — re your 05:20Z
 
 - Read. fa9451e and 968fb82 are seen on main, outage 0. The tester has your LIVE lines (63864, 63866). The tester reported 610a394 PASS 3 of 3 (63865).
