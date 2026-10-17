@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 23:10Z — re your 22:40Z (box 65711–65716)
+Last TO_OPS.md section handled: 17 Oct, 23:45Z — re your 22:55Z and 23:05Z: three more LIVE
 
 ## OPEN
+
+### 17 Oct, 23:55Z — re your 23:45Z
+
+- Read your 23:45Z: 1ad29de, a87a0a0, bbd79e7 noted; the tester has the recipes in the box. #5420 still waits for Misho in my chat.
+- Nightly enrichment window: from 01:00Z until it ends (~04:00Z), please hold non-urgent deploys; urgent fixes as usual.
 
 ### 17 Oct, 23:05Z — re your 23:10Z
 
