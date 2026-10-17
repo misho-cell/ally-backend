@@ -1,7 +1,9 @@
 import {
+  buttonLanguageRefusal,
   foreignLetterRefusal,
   foreignWordInReply,
   foreignWordNudge,
+  labelInAnotherLanguage,
   labelWithForeignLetter,
 } from './buttonLetters';
 import { ownersContactsOnNetai } from './ownersMembers.service';
@@ -9994,9 +9996,11 @@ async function executeToolCall(
         return { presented: false, error: NO_PLAN_TO_APPROVE };
       }
       const foreign = labelWithForeignLetter(labels);
-      return foreign === null
+      if (foreign !== null) return { presented: false, error: foreignLetterRefusal(foreign) };
+      const offLanguage = labelInAnotherLanguage(labels, runLang(runId));
+      return offLanguage === null
         ? { presented: true }
-        : { presented: false, error: foreignLetterRefusal(foreign) };
+        : { presented: false, error: buttonLanguageRefusal(offLanguage, runLang(runId)) };
     }
     case 'set_task_result':
       // Captured from the tool_use block in runToolLoop; the result here only
@@ -13876,7 +13880,11 @@ async function runToolLoop(
         const labelsAsWritten = Array.isArray(input.items)
           ? input.items.filter((i): i is string => typeof i === 'string')
           : [];
-        if (Array.isArray(input.items) && labelWithForeignLetter(labelsAsWritten) === null) {
+        if (
+          Array.isArray(input.items) &&
+          labelWithForeignLetter(labelsAsWritten) === null &&
+          labelInAnotherLanguage(labelsAsWritten, runLang(runId)) === null
+        ) {
           choices = input.items
             .filter((i): i is string => typeof i === 'string')
             .map((item) => canonicalChoiceLabel(item, runLang(runId)));

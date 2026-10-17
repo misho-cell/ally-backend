@@ -1,3 +1,5 @@
+import { RunLanguage } from './runLanguage';
+
 /**
  * Task #367 — Ninia's test 8 (thread 30140, 07:46:28Z): a button read
  * „დიაႮ, გაეგზავნო თორნიკესთვის". The model wrote „Ⴎ", an old-script
@@ -67,5 +69,38 @@ export function foreignWordNudge(word: string): string {
     `(სისტემური შენიშვნა: პასუხში სიტყვა „${word}" ქართული ასოებით არ წერია. ` +
     'მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ჩვეულებრივი ' +
     'ქართული ასოებით, ასო-ასო შემოწმებული, ბოდიშის გარეშე.)'
+  );
+}
+
+const LANGUAGE_NAMES: Readonly<Record<RunLanguage, string>> = {
+  ka: 'Georgian',
+  en: 'English',
+  ru: 'Russian',
+  es: 'Spanish',
+};
+
+/**
+ * The tester's 64517 (56218): an English conversation got the buttons
+ * „კი, სთხოვე ლევანს გაცნობა | არა, ჯერ არა". The owner reads the buttons in
+ * the conversation's language. Only Georgian letters in a conversation that is
+ * not Georgian are caught: a Latin word on a Georgian button („Excel") is fine.
+ * The first such label; null when there is none.
+ */
+const GEORGIAN_LETTER_RE = /[ა-ჰ]/u;
+
+export function labelInAnotherLanguage(
+  labels: readonly string[],
+  language: RunLanguage,
+): string | null {
+  if (language === 'ka') return null;
+  return labels.find((label) => GEORGIAN_LETTER_RE.test(label)) ?? null;
+}
+
+/** What the model is told when the buttons are in another language than the conversation. */
+export function buttonLanguageRefusal(label: string, language: RunLanguage): string {
+  const name = LANGUAGE_NAMES[language] ?? LANGUAGE_NAMES.en;
+  return (
+    `Not shown: the button „${label}" is not in ${name}, the language of this conversation. ` +
+    `Call present_choices again with every label written in ${name}.`
   );
 }
