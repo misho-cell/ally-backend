@@ -5,6 +5,11 @@ jest.mock('../../../db/postgres/client', () => ({
 
 // Block filtering issues its own query; stub it so the `query` mock below
 // only sees the search calls (keeps call-arg assertions on index 0).
+// 4225: the research facts are read by their own query; these tests are about labels.
+jest.mock('../../researchFactsView', () => ({
+  ...jest.requireActual('../../researchFactsView'),
+  researchFactsForPhones: jest.fn().mockResolvedValue(new Map()),
+}));
 jest.mock('../../block.service', () => ({
   __esModule: true,
   getExcludedPhones: jest.fn().mockResolvedValue([]),

@@ -14,7 +14,9 @@ describe('a person the owner said left is not among the current', () => {
   });
 
   it('they are taken out of the results and returned apart, and the counts follow', () => {
-    expect(src).toContain('results: current,');
+    // 4225: the research facts are added to the current rows only.
+    expect(src).toContain('const researched = await withResearchFacts(current);');
+    expect(src).toContain('results: researched.rows,');
     expect(src).toContain('count: current.length,');
     expect(src).toContain('owner_said_no_longer: noLonger');
   });

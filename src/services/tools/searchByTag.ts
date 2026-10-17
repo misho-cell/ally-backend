@@ -3,6 +3,11 @@ import { buildSearchTerms, buildMeaningWordGroups, splitIntoWords } from './tran
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
 import { tieWorkPatternFor } from './jobTies';
+import {
+  RESEARCH_FACTS_NOTE,
+  ResearchFactView,
+  researchFactsForPhones,
+} from '../researchFactsView';
 import { getExcludedPhones } from '../block.service';
 import { boundaryExclusionsFor } from '../askBoundary.service';
 import { normalizePhone } from '../phone';
@@ -780,11 +785,13 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     );
     // 3103: a person the owner said is no longer this is shown apart, never among the current.
     const { current, noLonger } = await splitCorrected(userId, tagQuery, merged.rows);
+    const researched = await withResearchFacts(current);
     const payload: Record<string, unknown> = {
       found: current.length > 0 || noLonger.length > 0,
       count: current.length,
       total: exact.total + fuzzyRows.length - merged.collapsed - noLonger.length,
-      results: current,
+      results: researched.rows,
+      ...(researched.any && { research_note: RESEARCH_FACTS_NOTE }),
       ...(noLonger.length > 0 && { owner_said_no_longer: noLonger }),
     };
     // Whole result is approximate only when nothing matched exactly.
@@ -795,6 +802,27 @@ export async function searchByTag(userId: string, tagQuery: string): Promise<obj
     // A search that could not run is not an empty network — see searchDidNotFinish.
     return searchDidNotFinish('The tag search', err);
   }
+}
+
+/**
+ * 4225 (§119.4): a person the base load researched carries those facts, so a
+ * person found by one is told with its source and date and a possible one as
+ * possible (RESEARCH_FACTS_NOTE, §129). A failed read leaves the rows as they are.
+ */
+async function withResearchFacts<T extends Record<string, unknown>>(
+  rows: readonly T[],
+): Promise<{ rows: T[]; any: boolean }> {
+  const phones = rows.map((row) => row.phone).filter((p): p is string => typeof p === 'string');
+  const byPhone = await researchFactsForPhones(phones).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn('[search-research] facts unread:', (err as Error).message);
+    return new Map<string, ResearchFactView[]>();
+  });
+  const withFacts = rows.map((row) => {
+    const research = typeof row.phone === 'string' ? byPhone.get(row.phone) : undefined;
+    return research === undefined ? row : { ...row, research };
+  });
+  return { rows: withFacts, any: byPhone.size > 0 };
 }
 
 /** One of a member's own contacts that fits a need, named as that member sees them. */

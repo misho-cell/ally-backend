@@ -6,6 +6,7 @@
 
 import { toWordStartPattern } from './transliterate';
 import { foldedLower } from './georgianCase';
+import { MATCHED_RESEARCH_STATUSES, RESEARCH_SOURCE } from '../researchFactsView';
 
 export interface ExactMatchSql {
   /** `matched AS (…)` — every branch driven FROM mine, one placeholder per pattern. */
@@ -172,6 +173,20 @@ export function buildExactMatchSql(
      UNION ALL
      `
     : '';
+  // 4225 (§119.4): a researched fact finds its person when it is confirmed or
+  // possible; a rough one is never matched. The caller shows the row's research
+  // facts with the approved note (§129), so a possible one is said as possible.
+  const researchBranch = `SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.value')} AS label,
+            2 AS priority, TRUE AS own, FALSE AS self_work
+     FROM contact_facts cf
+     WHERE cf.neo4j_contact_id IN (SELECT phone FROM mine)
+       AND cf.source = '${RESEARCH_SOURCE}'
+       AND cf.research_status IN (${MATCHED_RESEARCH_STATUSES.map((st) => `'${st}'`).join(', ')})
+       AND cf.retracted_at IS NULL
+       AND cf.removed_by_subject_at IS NULL
+       AND ${regexOr('cf.value')}
+     UNION ALL
+     `;
   const ownWorkBranch = withOwnWork
     ? `SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
             TRUE AS self_work
@@ -188,7 +203,7 @@ export function buildExactMatchSql(
      WHERE up5.phone IN (SELECT phone FROM mine)
        AND ${regexOr('hs.case_text')}
      UNION ALL
-     ${tieBranch}`
+     ${researchBranch}${tieBranch}`
     : '';
   const matchedCte = `matched AS (
      SELECT lt.phone, lt.label, 1 AS priority, lt.own, FALSE AS self_work
