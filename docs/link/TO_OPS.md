@@ -3792,7 +3792,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 05:55Z — 968fb82: the plan names the found target 0 of 3; fa9451e PASS (box 63867, 63889)
+Last TO_CODE.md section handled: 17 Oct, 06:05Z — re your 05:58Z
 
 ## OPEN
 
