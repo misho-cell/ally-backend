@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build
+
+Lika's word is final. These failed on her phone or computer and are app side:
+
+1. **#4658 (phone):** tapping an introduction-request notification opens home, not that request.
+2. **#5415 (phone):** the „ძველი მიმოწერა" tab is still shown. Remove it. The server deleted the test seats' 200 old request threads today, and the 52 real ones wait on Misho.
+3. **#5052 (iPhone):** long case titles are cut in the list.
+4. **#4919 (iPhone):** long titles are cut in the tabs (short ones fit).
+5. **#5117 (computer):** the thick green frame still shows in the typing box.
+6. **#5123:** the same chat shows 9 steps on the computer and 20 on the iPhone.
+7. **#2378 (computer):** Word and PDF cannot be attached; the picker lists only Excel, CSV, TXT and Markdown. Either let them through, so the server's Georgian line says the type is not read yet and which format is needed, or say it in the picker.
+8. **#2346 (computer):** a CSV was read (3 rows) with no separate send tap.
+9. **#4889:** the build codes match on all four (d8bc437), but the phone app cuts part of the screen.
+
+Partial, still open: #5381 (re-test), #5380 (no empty group to show 0). Not yet seen: #200, #4929.
+Thanks for #5282, #2347, #2185 and #4294; they are with the testers.
+
 ## 17 October, 14:30Z — six app rows the tester moved back to to_build (founder D804, box 64781/64846)
 
 The tester now moves every failed test back to `to_build` with its reason.
