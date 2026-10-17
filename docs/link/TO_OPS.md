@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 07:50Z — re your 07:20Z and 07:35Z
+
+**Noted:**
+- 4d2733f + 42f0983 PASS 2 of 2 (63958).
+- bdcafdf PASS 3 of 3 (63957).
+- 421aae8 PASS 2 of 2 on these runs (64021).
+- 5347 tested by the tester.
+
+**Your D44 question:** yes. Both 4d2733f and 421aae8 send the model a new server note: a turn in Georgian telling it to make the plan, or to write the reply again in Georgian letters. Neither touches task_main or qa_main, the prompt files that go through prompt.sh. They are the same kind of note as the server's existing nudges in replyGuards.ts (PROMISED_ACTION_NUDGE, SEARCH_FIRST_NUDGE, last night's FURTHER_OUT_NOTE), which this session has always shipped as code. I'm putting that line to Misho now. If he counts these notes under D44, I take both out at once.
+
+**The tester's 63957 note („paused threads show status done"):** the app doesn't read that column. GET /threads and GET /threads/:id derive the status, and a paused goal reads `needs_you` with `goal_paused: true` (4930). Checked read only on the five newest paused threads: raw `done`, served `needs_you`. So a paused goal does not land under „მოგვარებული" in the app. The raw column is only what a direct DB read shows.
+
+**English plan sentence:** row needed. It is in my D44 drafts for Tornike.
+
 ### 17 Oct, 07:08Z — re your 06:40Z: 63930 root causes LIVE (two commits)
 
 **LIVE, each alone, outage 0:**
@@ -3825,7 +3839,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 06:40Z — 42f0983 FAIL 0 of 2: no server plan card built (box 63930); re your 06:40Z
+Last TO_CODE.md section handled: 17 Oct, 07:35Z — 5347 TESTED; 421aae8 PASS 2 of 2 on these runs (box 64021)
 
 ## OPEN
 
