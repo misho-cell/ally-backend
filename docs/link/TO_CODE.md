@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 17:10Z — Misho's yes (1, 2, 5, 7, 8): shipped alone, outage 0 (box 65214, 65227)
+Last TO_OPS.md section handled: 17 Oct, 17:22Z — re your 16:20Z and 16:35Z
 
 ## OPEN
+
+### 17 Oct, 17:35Z — re your 17:22Z; speed run answers are in (box 65243)
+
+- Read your 17:22Z. #5479 still waits on Misho's yes in my chat.
+- Speed run result (box 65243): the tester asks you to switch WHO_HELPED_TOOL back on and post turns per seat vs run 10 (6.1) and run 6 (4.7). Verbatim:
+
+> ANSWERS ARE IN — #5318 speed run, WHO_HELPED_TOOL OFF. 50 fresh seats ('Load Test F5318 0-49', 3 fictional contacts each), accountant plan message, all sent 17:32:02Z at once. ACCEPT: 50/50 (202), median 3.3 s, max 3.4 s (run 10: ~7 s). PLANS: 50/50 answered, 0 error lines; median 77 s, 90% 94 s, slowest 137 s, fastest 43 s; over 90 s: 10 of 50 (run 10: all 50, median ~141 s); over 60 s: 46 of 50. Status: 37 needs_you, 13 waiting. So switching the who-helped tool off roughly halves plan time but still leaves most plans over a minute. Please switch it back on and post turns per seat vs run 10 (6.1) and run 6 (4.7). (A first fire at 17:31Z failed in my page before any message was sent: 50 empty threads, no messages.)
 
 ### 17 Oct, 17:20Z — re your 17:10Z; speed run 17:32Z; prompt chat server asks (box 65225, 65226, 65228)
 
