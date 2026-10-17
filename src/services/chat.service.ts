@@ -2787,6 +2787,23 @@ const SENT_INSTEAD_OF_PLAN = (toName: string): string =>
  */
 const runServerSentLines = new Map<string, { readonly lines: string; readonly asked: number }>();
 
+/**
+ * The tester's 64450 (469443d, 1 of 3): on „ჰკითხე მარიამს …" the model sent the
+ * ask itself with ask_contact (56201, 56205), so the server path above never ran
+ * and the reply was again „მარიამს ვკითხე …". When the owner's line is the
+ * instruction, a send the model made for it gets the same approved sentence.
+ */
+function noteInstructedSendLine(runId: string | undefined, toName: unknown): void {
+  if (runId === undefined || typeof toName !== 'string' || toName.trim() === '') return;
+  if (!looksLikeContactInstruction(runOwnerLine.get(runId) ?? '')) return;
+  const before = runServerSentLines.get(runId);
+  const line = sentSentenceForOwner(toName, runLang(runId));
+  runServerSentLines.set(runId, {
+    lines: before === undefined ? line : `${before.lines}\n${line}`,
+    asked: (before?.asked ?? 0) + 1,
+  });
+}
+
 async function refusedPlanOrSentAsk(
   userId: string,
   threadId: number,
@@ -10238,6 +10255,7 @@ async function executeToolCall(
         await markSearchSent(runId, userId, [input['phone']], threadId);
         noteIntroductionSentAsAQuestion({ surface: 'chat', runId, threadId, taskId }, question);
         noteAskSentTo(runId, (askOutcome as { to_name?: unknown }).to_name);
+        noteInstructedSendLine(runId, (askOutcome as { to_name?: unknown }).to_name);
       }
       noteWakeNoLaterThan(runId, taskId, (askOutcome as { reopens_at?: unknown }).reopens_at);
       return askOutcome;
