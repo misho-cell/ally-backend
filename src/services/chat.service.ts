@@ -436,6 +436,9 @@ import {
   withoutDanglingLeadIn,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  asksTheOwnerForADetail,
+  ASK_THE_DETAIL_FIRST,
+  bookingWithoutAWhen,
   farFindUnplannedNudge,
   INVITE_NOT_ASKED,
   asksForAnInvite,
@@ -2829,6 +2832,9 @@ async function refusedPlanOrSentAsk(
     error: NO_PLAN_FOR_AN_INSTRUCTION,
   };
   if (runId === undefined || !serverMayWriteTheAsk(runModes.get(runId))) return refused;
+  if (bookingWithoutAWhen(runOwnerLine.get(runId) ?? '')) {
+    return { proposed: false, reason: 'owner_instruction', error: ASK_THE_DETAIL_FIRST };
+  }
   const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
     (err: unknown) => {
       // eslint-disable-next-line no-console
@@ -14476,6 +14482,9 @@ async function runToolLoop(
     !runAskSent.has(runId) &&
     // 1697: a closed route was refused on purpose; the reply proposes another way.
     !runRouteClosed.has(runId) &&
+    // D795 (Misho's yes, 17 Oct; the tester's 64520): asking the owner for the one
+    // missing detail first is the right turn, not an instruction left unsent.
+    !asksTheOwnerForADetail(finalText) &&
     (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
   if (instructionUnsent) {
     // eslint-disable-next-line no-console
