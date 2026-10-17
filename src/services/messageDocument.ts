@@ -13,7 +13,9 @@ export const MARKDOWN_CONTENT_TYPE = 'text/markdown; charset=utf-8';
 export const DOCX_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-const BULLET_RE = /^\s*(?:[-*•]|\d+[.)])\s+/u;
+const BULLET_RE = /^\s*[-*•]\s+/u;
+/** The tester's 65714: a numbered item keeps its number in Word, as in the .md. */
+const NUMBERED_RE = /^\s*(\d+[.)])\s+/u;
 const HEADING_RE = /^\s*#{1,6}\s+/u;
 const BOLD_RE = /\*\*([^*]+)\*\*/gu;
 const BULLET_MARK = '• ';
@@ -59,15 +61,17 @@ function runXml(run: Run): string {
   return `<w:r>${props}<w:t xml:space="preserve">${escapeXml(run.text)}</w:t></w:r>`;
 }
 
-/** One reply line as a Word paragraph: a heading is bold, a list item starts with a bullet. */
+/** A line's text as Word shows it: a heading without its #, a bullet as •, a number kept. */
+function shownText(line: string, heading: boolean): string {
+  if (heading) return line.replace(HEADING_RE, '');
+  if (BULLET_RE.test(line)) return `${BULLET_MARK}${line.replace(BULLET_RE, '')}`;
+  return line.replace(NUMBERED_RE, '$1 ');
+}
+
+/** One reply line as a Word paragraph: a heading is bold, a list item keeps its mark. */
 function paragraphXml(line: string): string {
   const heading = HEADING_RE.test(line);
-  const bullet = !heading && BULLET_RE.test(line);
-  const text = heading
-    ? line.replace(HEADING_RE, '')
-    : bullet
-      ? `${BULLET_MARK}${line.replace(BULLET_RE, '')}`
-      : line;
+  const text = shownText(line, heading);
   return `<w:p>${runsOf(text, heading).map(runXml).join('')}</w:p>`;
 }
 

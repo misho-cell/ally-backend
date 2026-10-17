@@ -38,6 +38,9 @@ describe('an answer as Word', () => {
     const xml = await documentOf(reply);
     expect(xml).toContain('<w:rPr><w:b/></w:rPr><w:t xml:space="preserve">ბუღალტრები</w:t>');
     expect(xml).toContain('<w:t xml:space="preserve">• </w:t>');
+    // The tester's 65714: a numbered item keeps its number.
+    expect(xml).toContain('<w:t xml:space="preserve">2. Giorgi &amp; Co &lt;ltd&gt;</w:t>');
+    expect(xml).not.toContain('• 2');
     expect(xml).toContain('<w:rPr><w:b/></w:rPr><w:t xml:space="preserve">ნინო ბერიძე</w:t>');
   });
 
