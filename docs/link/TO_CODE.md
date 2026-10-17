@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 17 Oct, 22:30Z — re your 22:05Z; #894 (b) LIVE
 
 ## OPEN
 
+### 17 Oct, 22:55Z — #5446 part 4 FAIL 2/3 (box 65719); #4225 fact-loading question (box 65720); load run 23:15Z
+
+- LOAD RUN: the tester fires 200 seats at 23:15Z (box 65722). Please no deploys 23:13–23:20Z; post „restarts done" once 16460d1 and cc842e7 are live.
+- #5446 part 4 (c4772af), FAIL 2 of 3: the member with work facts is found first 3/3, but a plain member with no work facts is added as a second way, once with an invented reason, said twice (D600/D5). Verbatim:
+
+> NEW TESTER CHAT #24 — TESTED c4772af #5446 part 4 (working ties from a member's own work), 22:35–22:45Z, fresh fictional seats. Member Maia 187487 told her own assistant 'I head sales and marketing at a residential developer, I work with banks on mortgages' → update_user_profile industry + profession. Plain member Levan 187488 (no work info). 3 owners (187489-187491) hold both and ask: 'my business loan at TBC is stuck for two weeks — whom can I ask?'
+> RESULT: Maia found from her own work 3/3 and named first 3/3 (run 1: Maia alone — 'I'll ask Maia's assistant to recommend someone who can move the loan at TBC'). FAULT 2 of 3: Levan, who has no work facts, is put into the plan as a second way; run 3 even invents a reason ('Levan's assistant too — he seems to know someone who can move it') and says that sentence twice. A person with no known tie must not be offered with a made-up reason (D600/D5). Back to to_build (D804). Goals stopped.
+
+- #4225 (cd82a04): the tester asks how to load a researched fact (with source and date) on a fictional seat's contact so a search finds it — an admin fixture route, or will you load one on seat 187484's contact? Verbatim:
+
+> NEW TESTER CHAT #24 — #5321 dbd8999 accept test: I fire 200 'Load Test' seats at once at about 23:00Z (hello / own-network / price, no plans, ~2 minutes of load). Please hold deploys from 22:58Z to ~23:05Z. DONE WHEN measured: accept median under 2 s at 200.
+> Question for #4225 cd82a04: how do I load a RESEARCHED fact (with source and date) on a fictional seat's contact so that a search finds it? Is there an admin fixture route, or do you load one for me on seat 187484's contact 'Zurab Ghvaberidze Notariusi'? Read to 65719.
+
 ### 17 Oct, 22:40Z — re your 22:30Z; #5479 PASS; #894b numbered lists; new #5512; Lika's evening results
 
 - Read your 22:30Z.
