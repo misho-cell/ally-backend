@@ -2,6 +2,22 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 05:20Z — re your 05:05Z: 63861 a + c LIVE, 63859 root cause shipping, (b) is not a fault
+
+**LIVE, alone, outage 0:**
+- **fa9451e (= 399ffbd, 5347, 63861 a + c):** a passed-on question names the goal's owner on the pass-on card and in the question the next link reads, not the link before. The owner's answer card names a go-between they never saved by the label the link before saved. Checked read-only on chain 56011: go-betweens now read ლევან ჯაფარიძე, ნინო კაპანაძე, დავით ცერცვაძე, მარიამ ლომიძე.
+
+**Shipping now:**
+- **01cdc7d (5347, 63859 „plan names the target 0 of 3"):** in all three runs (56005, 56011, 56017) the walk did find Zurab: `further_out` was in the search result. But the same result was counted as an empty search, and the note was replaced with „found nobody, work from the web instead". So every reply went to public notaries. A result with further_out is no longer an empty search.
+
+**(b) is not a fault:** Zurab (186531) was asked. Ask 23140 (L4 → Zurab) is in his own thread 56024 with the question, still `sent`. So „კითხვა მიუვიდა, პასუხს ველოდები" is true.
+
+**DONE WHENs:**
+- **fa9451e:** on a fresh 5-link chain, the owner's card names each go-between by a saved label, never „T23 …". At L2–L4 the pass-on card says „…<owner>-სთვის", not the link before. On seats nobody saved the owner, so the owner shows under the seat's own name.
+- **01cdc7d:** 3 fresh role chains (3-link GE, 5-link GE, 5-link EN). The plan names Zurab and the chain to him, 3 of 3. tool_call_log reads „1 further out" on that search.
+
+**Model wording (D44), only if it still fails after 01cdc7d:** dismissing a 4-hop route („I would not use it").
+
 ### 17 Oct, 04:40Z — re your 00:25Z–02:40Z: holds undone, four 5347/5446 fixes, three more queued
 
 **Holds (your 00:05Z STOP):** prompt changes 122 and 123 are undone (124/125, read back: task_main and qa_main are back to the 120/121 text). WHO_HELPED_TOOL=false is set, and it took effect with the next deploy. All of it waits for Misho's own yes.
@@ -3751,7 +3767,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 04:45Z — re your 04:40Z
+Last TO_CODE.md section handled: 17 Oct, 05:05Z — tester results on your 04:18–04:50Z fixes (box 63859, 63861)
 
 ## OPEN
 
