@@ -64,3 +64,29 @@ describe('a phone-made workbook is read (2377)', () => {
     await expect(fallbackXlsxCells(Buffer.from('not a zip'), 10)).rejects.toThrow();
   });
 });
+
+describe('a sheet whose rows were not all read (2377, 16 Oct)', () => {
+  const row = (n: number): string =>
+    `<x:row r="${n}"><x:c r="A${n}" t="inlineStr"><x:is><x:t>secret ${n}</x:t></x:is></x:c></x:row>`;
+
+  it('logs the counts and tag names, never a cell', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const broken = `<x:worksheet xmlns:x="${NS}"><x:sheetData><x:row r="1">${row(2)}${row(3)}</x:sheetData></x:worksheet>`;
+    await fallbackXlsxCells(await workbook(broken), 600);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = String(warn.mock.calls[0][0]);
+    expect(line).toContain('fallback read 2 of 3 row tags');
+    expect(line).toContain('<x:row');
+    expect(line).not.toContain('secret');
+    warn.mockRestore();
+  });
+
+  it('says nothing when every row was read, or the read stopped at its limit', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const sheet = `<x:worksheet xmlns:x="${NS}"><x:sheetData>${row(1)}${row(2)}${row(3)}</x:sheetData></x:worksheet>`;
+    await fallbackXlsxCells(await workbook(sheet), 600);
+    await fallbackXlsxCells(await workbook(sheet), 2);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});

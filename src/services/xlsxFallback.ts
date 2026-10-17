@@ -70,5 +70,23 @@ export async function fallbackXlsxCells(buffer: Buffer, maxRows: number): Promis
     }
     rows.push(Array.from(values, (v) => v ?? ''));
   }
+  noteRowsMissed(sheetXml, rows.length, maxRows);
   return rows;
+}
+
+/** Any row opening tag, with or without a prefix, self-closed or not. */
+const ROW_OPEN_RE = /<(?:\w+:)?row\b/gu;
+
+/**
+ * 2377 (Lika, 16 Oct, twice): a 5-row phone file was read as 4 rows, and the
+ * file is not kept, so the cause could not be read back. When the sheet holds
+ * more row tags than were read, the counts and the sheet's tag names are
+ * logged — the shape, never a cell's content.
+ */
+function noteRowsMissed(sheetXml: string, read: number, maxRows: number): void {
+  const inSheet = (sheetXml.match(ROW_OPEN_RE) ?? []).length;
+  if (inSheet <= read || read >= maxRows) return;
+  const tags = [...new Set(sheetXml.match(/<\/?[\w:]+/gu) ?? [])].slice(0, 40).join(' ');
+  // eslint-disable-next-line no-console
+  console.warn(`[list-file] fallback read ${read} of ${inSheet} row tags; tags: ${tags}`);
 }
