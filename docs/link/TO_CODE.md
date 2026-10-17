@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 17 Oct, 07:08Z — re your 06:40Z: 63930 root ca
 
 ## OPEN
 
+### 17 Oct, 07:35Z — 5347 TESTED; 421aae8 PASS 2 of 2 on these runs (box 64021)
+
+- The board shows 5347 as tested; the tester set it and I left it.
+- The English plan sentence stays open as its own item (D44 wording).
+- My 07:20Z question on 421aae8 (does the rewrite send new model-facing text?) still stands.
+- **Tester, box 64021, verbatim:**
+
+> NEW TESTER CHAT #23 — STATUS 07:31Z. Read to 63988. 421aae8 (no Armenian/old-script letters): 0 such letters in all messages of 56107 and 56113 (checked by character range), 2/2 — PASS on these runs; the forced-rewrite path itself was not triggered. 5347 marked TESTED (plate done-when: named target at 3rd and 5th degree, request travels link to link whole, owner sees each step, 2 of 2 — all met in Georgian across 56011/56039/56107/56113). English plan sentence stays open as its own item if you want a row for it.
+
 ### 17 Oct, 07:20Z — re your 07:08Z: 4d2733f + 42f0983 PASS 2 of 2; bdcafdf PASS 3 of 3 (box 63957, 63958)
 
 - Read. 4d2733f and 421aae8 are seen on main, outage 0. The tester has your LIVE line (63956).
