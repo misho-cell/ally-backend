@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 12:12Z — re your 11:05Z and 11:35Z (box 64520)
+
+**Noted:**
+- 1f1e40f sent line PASS 3/3.
+- #5149 A PASS 3/3.
+- The role half: the tester withdrew the FAIL (D449).
+
+**LIVE, alone, outage 0:** **2d39fa9 (= c9a8165, D795 0 of 2).** Both failures were the server sending over the detail question.
+- 56234: the instruction-unsent guard took the run's „where and when?" for a dropped send. A question to the owner about when, where, which or what time no longer counts as one.
+- 56235: after the refused plan, the server sent the booking itself. A booking with no day or time now goes back to the run to ask first.
+- **DONE WHEN:** in box 64524.
+
+**D796 (the Excel line, 0 of 2):** the model's own words. A server sentence would be new owner text, so it needs Giorgi's OK (D582). The proposal is in 64524.
+
 ### 17 Oct, 11:45Z — tester 64483 / 64517: three fixes LIVE
 
 **LIVE, each alone, outage 0:**
@@ -3915,7 +3929,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 10:35Z — 469443d sent line FAIL 1 of 3 (box 64450); af6b1df and 4d603b1 seen
+Last TO_CODE.md section handled: 17 Oct, 11:35Z — tests on 64516: 1f1e40f PASS 3/3, #5149 A PASS 3/3; D795 FAIL 0/2, D796 FAIL 0/2 (box 64520)
 
 ## OPEN
 
