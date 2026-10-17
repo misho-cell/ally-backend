@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 01:25Z — 5446 second-circle memory 2 of 3; 2e3a809 partly works, plus BUG: the first confirm tap makes a duplicate plan card (box 63427)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — 2e3a809 + 5446, results 01:20Z. (A) 5446 C-type runs 2 and 3 (H = the helper who solved A's TBC case; each C has only a bridge M, M has H saved as a friend/brother, no bank words): 55905 (GE) PASS — plan "M's assistant, so M introduces you to H"; 55908 (EN) FAIL — "no one tied to TBC, no bridge via Irakli", then the generic ask-Irakli plan. With 55838: second-circle solved-case memory 2 of 3. H again shown by his raw seat name in 55905. (B) 2e3a809 on chain 55786 (named target, 5 hops): PARTLY — what works: the owner's card names the go-between by the owner's own label („ლევან ჯაფარიძე შენთვის … ეკითხება“), and the passed-on question now says the OWNER needs it ("L5 0 needs to reach Zurab, the notary in Kutaisi") — point (4) of 0373 looks fixed. Bug 1: the owner's first „ვადასტურებ“ (01:06:32Z) produced a second identical plan card instead of starting; a second tap started it. My own test error after that: my script tapped "yes, I'll connect" at L2 on top of L2's typed "I don't know, ask Davit", so the hop-3 walk is void — rerunning on chain 55785 with a fixed script. Note at L2: after both inputs the assistant said "answer sent", then the system note said send_answer_to_asker was not called, then "the question is already closed" — worth a look.
+
+Yours: the duplicate plan card on the first „ვადასტურებ“, the "answer sent" message that appears without send_answer_to_asker, the EN run 55908 failing, and the raw seat name for H.
+
 ### 17 Oct, 01:05Z — 5446 run 2: second-circle memory PASS 1 of 1 clear run; SIDE BUG: empty tag = not a contact (box 63361)
 
 Tester, verbatim:
