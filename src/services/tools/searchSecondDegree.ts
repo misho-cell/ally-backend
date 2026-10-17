@@ -8,6 +8,7 @@ import { buildMeaningWordGroups, toWordStartPattern } from './transliterate';
 import { getExcludedPhones } from '../block.service';
 import { fetchExclusionsForPhones } from './contactExclusions';
 import { phoneDigits } from '../phone';
+import { OwnerTie, ownerTiesTo, UNKNOWN_TIE } from '../ownerTies';
 import { normalizePhone } from '../phone';
 import { collapseMergedPhones } from './mergedIdentities';
 import { rolesFromLabels } from './labelEmployer';
@@ -546,6 +547,18 @@ export function fewestSources(...counts: readonly (string | number | null)[]): n
     .map((c) => Number(c))
     .filter((n) => Number.isFinite(n));
   return present.length === 0 ? null : Math.min(...present);
+}
+
+/** #5479: the go-betweens the owner is closest to first; equal ties keep their order. */
+export function warmestFirst<T extends { readonly phone: string }>(
+  bridges: readonly T[],
+  ties: ReadonlyMap<string, OwnerTie>,
+): T[] {
+  const closeness = (b: T): number => ties.get(phoneDigits(b.phone))?.closeness ?? UNKNOWN_TIE;
+  return bridges
+    .map((bridge, index) => ({ bridge, index }))
+    .sort((a, b) => closeness(b.bridge) - closeness(a.bridge) || a.index - b.index)
+    .map(({ bridge }) => bridge);
 }
 
 export async function searchSecondDegree(userId: string, tagQuery: string): Promise<object> {
@@ -1401,7 +1414,7 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         sideMarks.push([name, Date.now() - from]);
       }
     };
-    const [exclusions, signalStrength, relationshipTouched, accountStates, labelRoles] =
+    const [exclusions, signalStrength, relationshipTouched, accountStates, labelRoles, viaTies] =
       await Promise.all([
         timed(
           'excl',
@@ -1448,6 +1461,16 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
               hasTitle: r.jobPosition !== null,
             })),
           ),
+        ),
+        // #5479 (Misho's yes, 17 Oct): the owner's own tie to each go-between,
+        // so the warmest comes first and the plan can say why. A failed read
+        // keeps the order the query gave.
+        timed(
+          'ties',
+          ownerTiesTo(
+            userId,
+            rows.flatMap((r) => (r.via_contacts ?? []).map((bridge) => bridge.phone)),
+          ).catch(() => new Map<string, OwnerTie>()),
         ),
       ]);
     mark('decorate');
@@ -1520,12 +1543,22 @@ export async function searchSecondDegree(userId: string, tagQuery: string): Prom
         is_member: isMemberPhone(accountStates, row.phone),
         account_state: accountStateFor(accountStates, row.phone),
         netai_subscriber: isSubscriberPhone(accountStates, row.phone),
-        via: row.via_names ?? [],
-        via_contacts: (row.via_contacts ?? []).map((bridge) => ({
-          name: bridge.name,
-          phone: bridge.phone,
-          is_member: isMemberPhone(accountStates, bridge.phone),
-        })),
+        // #5479: the names in the same warmest-first order as via_contacts.
+        via:
+          (row.via_contacts ?? []).length > 0
+            ? warmestFirst(row.via_contacts ?? [], viaTies)
+                .map((bridge) => bridge.name)
+                .filter((name): name is string => name !== null)
+            : (row.via_names ?? []),
+        via_contacts: warmestFirst(row.via_contacts ?? [], viaTies).map((bridge) => {
+          const tie = viaTies.get(phoneDigits(bridge.phone))?.reason;
+          return {
+            name: bridge.name,
+            phone: bridge.phone,
+            is_member: isMemberPhone(accountStates, bridge.phone),
+            ...(tie ? { owner_tie: tie } : {}),
+          };
+        }),
         // Strongest bridge→target relationship score (enrichment-computed,
         // 0..1) — how warm the best via's own tie to this person is. Missing
         // when no bridge has a computed score. A D34 relationship edge the

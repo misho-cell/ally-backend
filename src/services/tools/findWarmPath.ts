@@ -3,7 +3,8 @@ import { query } from '../../db/postgres/client';
 import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
 import { getExcludedPhones } from '../block.service';
-import { normalizePhone } from '../phone';
+import { normalizePhone, phoneDigits } from '../phone';
+import { OwnerTie, OwnerTieReason, ownerTiesTo } from '../ownerTies';
 import { labelsAlongChain } from '../chainLabels';
 import { memberMiddles } from '../memberPaths.service';
 import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
@@ -61,6 +62,8 @@ export interface WarmPathBridge {
   name: string | null;
   is_member: boolean;
   account_state: AccountState;
+  /** #5479: the owner's own tie to their first bridge, when there is one to say. */
+  owner_tie?: OwnerTieReason;
 }
 
 export interface WarmPath {
@@ -117,7 +120,10 @@ const CONSENT_NOTE =
   'third bridges are not; their assistant relays onward with their consent (relay_ask). ' +
   'A path with relayable:false has a bridge who is not on Netai — the chain stops there; ' +
   'offer the user an invite for that person or the next path. ' +
-  'Name the bridges to the user; never a number.';
+  'Name the bridges to the user; never a number. ' +
+  'A first bridge with owner_tie is someone the owner is close to — name them first, with that ' +
+  'tie in a few plain words (you_said_close / close: „your close friend", family: „family", ' +
+  'helped_you_before: „has helped you before"); never a tie the field does not give.';
 
 /**
  * Served only when the cut actually bit. „These are the best routes" and
@@ -352,8 +358,16 @@ export async function findWarmPath(
     is_member: isMemberPhone(states, phone),
     account_state: accountStateFor(states, phone),
   });
+  const ties = await ownerTiesTo(
+    userId,
+    candidates.map((bridges) => bridges[0]).filter((p): p is string => p !== undefined),
+  ).catch(() => new Map<string, OwnerTie>());
+  const withTie = (bridge: WarmPathBridge, index: number): WarmPathBridge => {
+    const reason = index === 0 ? ties.get(phoneDigits(bridge.phone))?.reason : null;
+    return reason ? { ...bridge, owner_tie: reason } : bridge;
+  };
   const reached: WarmPath[] = candidates
-    .map((bridges) => bridges.map(bridgeFor))
+    .map((bridges) => bridges.map(bridgeFor).map(withTie))
     .map((bridges) => ({
       hops: bridges.length + 1,
       bridges,
