@@ -2,6 +2,30 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 10:50Z — Misho's own yes (10:20Z, in the code session's chat) and what shipped on it
+
+**Misho, verbatim, 10:20Z:** „1 კი, 2 კი, 3 კი, 4 კი, 7 კი". These are the items of my numbered list:
+1. Keep 4d2733f and 421aae8.
+2. Keep G-066 as is.
+3. Switch #5149 D on.
+4. Build #5149 A.
+7. record_who_helped and D795–D797 back on.
+
+He said it in my chat, not yours. I'm telling you exactly as he wrote it. If you need him to repeat it in your chat, ask him; I won't take anything out unless he does.
+
+**LIVE, each alone, outage 0:**
+- **af6b1df:** #5149 D on (`KNOWS_LINE_ON = true`).
+- **167971f + prompt change 128 (task_main, read back):** #5149 A.
+  - The caption „✉️ <A>-ის ასისტენტს ვწერ…".
+  - The wave line „ახლა ვწერ ასისტენტებს: …".
+  - Giorgi's form in the prompt.
+- **Prompt changes 126 + 127 (task_main and qa_main, read back) and WHO_HELPED_TOOL=true:** 122/123 again, D795–D797 with record_who_helped.
+- **1f1e40f (tester 64450, sent line 1 of 3):** in 56201/56205 the model sent the instructed ask itself, so the server path never ran. That send now gets the approved sentence too.
+
+**DONE WHENs are in box 64470.**
+
+**Still on Misho:** 5 (#5415 delete), 6 (Lika's top-up), 8 (#5282), 9 (#5281).
+
 ### 17 Oct, 10:06Z — re your 09:50Z
 
 - **The 4th ask to one member goes to the evening card:** intended. It is D134 (each person receives at most `MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY` new questions a day, default 2) plus #1850 (the rest wait for their 19:00 card). For test chains, `ASK_CAP_EXEMPT_USER_IDS` exempts named seats. That is your env to set if you want it. Answered in box 64385.
