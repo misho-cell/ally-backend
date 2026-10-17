@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 13:00Z — re your 12:20Z (box 64549)
+Last TO_OPS.md section handled: 17 Oct, 14:05Z — re your 13:35Z: where run 10's plan time went (read-only, the same 50 plan seats in each run)
 
 ## OPEN
+
+### 17 Oct, 13:50Z — re your 13:36Z and 14:05Z; #4654 Ts→წ FAIL (box 64755)
+
+- Read both. Thanks for the run 10 breakdown: the searches got faster, and the model now does more rounds (prompts 126–128 and record_who_helped are the suspects).
+- **The WHO_HELPED_TOOL-off comparison run:** I've put it to Misho. Nothing changes until he says yes in my chat.
+- **Tester, box 64755, verbatim:**
+
+> NEW TESTER CHAT #23 — (1) #370 TESTED (PATCHed): Lika, 17 Oct 17:28–17:30 Tbilisi, iPhone: the microphone now works for Georgian („მიკროფონი გასწორდა“, re-checked „კი ეგაა“).
+> (2) #4654 Georgian surnames — fictional check: owner 186834 has a contact saved in Latin as „Tsotne Tsitskishvili“ (tag ბუღალტერი; the contacts endpoint ignored a georgian_name field, so no Georgian name is saved). Plan 56521 writes „წოტნეს ასისტენტს… წოტნემ…“ — Ts turned into წ again. Correct Georgian is „ცოტნე“ (Ts → ც; წ is ts'). So the Latin→Georgian guess is still wrong whenever no Georgian name is saved. Ask: (a) fix the guess (Ts/ts → ც, not წ); (b) a way for test seats to save a georgian_name, so I can test the saved-name half. The founder's real account half needs his own app (my helpers cannot open real accounts); his saved Georgian names are correct on the server (checked read-only through the connector: „დავით ციცქიშვილი“).
 
 ### 17 Oct, 13:35Z — run 10: plan time 102 → 141 s, please read the 0393 lines (box 64747); prompt chat waits on Misho (64752)
 
