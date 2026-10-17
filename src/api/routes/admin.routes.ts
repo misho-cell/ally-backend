@@ -319,6 +319,7 @@ import {
   writeAnswerRecord,
   writeOldProfile,
   writeDueUpdate,
+  writeGeorgianName,
   writeStaleFact,
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
@@ -7089,6 +7090,8 @@ adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) =
  * Tester 49567: fixtures for 1690 and 1691, on fictional seats only.
  *   POST /admin/test-accounts/:id/fixtures/stale-fact
  *        { phone, field_type: occupation|employer|city|industry, value, days_ago }
+ *   POST /admin/test-accounts/:id/fixtures/georgian-name
+ *        { phone, georgian_name }  the seat's saved Georgian spelling (#4654)
  *   POST /admin/test-accounts/:id/fixtures/answer-record
  *        { goal_text | task_id, asked, yes, no, referred, first_answer_minutes_median | null }
  *        task_id files the record under that goal's own field (ops 02:36Z).
@@ -7143,6 +7146,28 @@ adminRouter.post('/test-accounts/:id/fixtures/stale-fact', async (req: Request, 
     res.status(500).json({ success: false, error: 'Nothing was written' });
   }
 });
+
+adminRouter.post(
+  '/test-accounts/:id/fixtures/georgian-name',
+  async (req: Request, res: Response) => {
+    const seatId = seatIdOf(req);
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    if (seatId === null || typeof b.phone !== 'string' || typeof b.georgian_name !== 'string') {
+      sendFixture(res, FixtureOutcome.BadInput);
+      return;
+    }
+    try {
+      sendFixture(
+        res,
+        await writeGeorgianName(seatId, { phone: b.phone, georgianName: b.georgian_name }),
+      );
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[fixtures/georgian-name]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Nothing was written' });
+    }
+  },
+);
 
 adminRouter.post(
   '/test-accounts/:id/fixtures/answer-record',

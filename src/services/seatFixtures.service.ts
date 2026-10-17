@@ -86,6 +86,48 @@ export async function writeStaleFact(
   return FixtureOutcome.Written;
 }
 
+const MAX_GEORGIAN_NAME_CHARS = 80;
+const ONLY_GEORGIAN_NAME_RE = /^[\p{Script=Georgian}][\p{Script=Georgian} '-]*$/u;
+const GEORGIAN_NAME_FACT = 'georgian_name';
+
+export interface GeorgianNameInput {
+  readonly phone: string;
+  readonly georgianName: string;
+}
+
+/**
+ * #4654 (the tester's 64755): the seat's own saved Georgian spelling of a
+ * contact saved in Latin — the `georgian_name` fact the writer prefers to the
+ * Latin label. The contacts import takes no such field, so a fictional seat
+ * could not test the saved-name half. Replaces the seat's earlier spelling.
+ */
+export async function writeGeorgianName(
+  seatId: number,
+  input: GeorgianNameInput,
+): Promise<FixtureOutcome> {
+  const name = input.georgianName.trim().replace(/\s+/g, ' ');
+  if (name.length > MAX_GEORGIAN_NAME_CHARS || !ONLY_GEORGIAN_NAME_RE.test(name)) {
+    return FixtureOutcome.BadInput;
+  }
+  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
+  const phone = normalizePhone(input.phone);
+  if (!(await seatSavedThisNumber(seatId, phone))) return FixtureOutcome.NotTheSeatsContact;
+  await query(
+    `WITH earlier AS (
+       UPDATE contact_facts SET retracted_at = NOW()
+        WHERE neo4j_contact_id = $1 AND submitted_by_user_id = $2 AND field_type = $3
+          AND retracted_at IS NULL
+     )
+     INSERT INTO contact_facts
+       (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source, confidence,
+        is_matchable)
+     VALUES ($1, $2, $3, $4, false, 'chat', 'stated', false)`,
+    [phone, String(seatId), GEORGIAN_NAME_FACT, name],
+    QUERY_TIMEOUT_MS,
+  );
+  return FixtureOutcome.Written;
+}
+
 export interface AnswerRecordInput {
   /** The goal as the tester will type it; filed under the same field an ask would be. */
   readonly goalText: string | null;
