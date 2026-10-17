@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 11:45Z — tester 64483 / 64517: three fixes LIVE
+
+**LIVE, each alone, outage 0:**
+- **1016fc6 (= 93723de):** a button with Georgian letters in a non-Georgian chat is refused, and the buttons are written again in the chat's language (64517 c, 56218).
+- **218c49d (= b8a0532):** the one-turn plan nudge from 4d2733f, which Misho kept, now also covers a person found through one bridge (64483, 56214: the search found Zurab Kimeridze, and the reply gave web results only). Worded „found through your contacts".
+- **1f4b515:** „No need, it is solved" no longer reads as a „no", so the goal closes (64517 c).
+
+**DONE WHENs are in box 64519 and 64521.**
+
+**Answered, nothing to build:**
+- 64483 role half: D449. One bridge's tag is not stated as a fact.
+- 64517 b: the test asks the same owner again, while 5446's DONE WHEN is a different member through a bridge. Both helper rows were written correctly.
+
 ### 17 Oct, 10:50Z — Misho's own yes (10:20Z, in the code session's chat) and what shipped on it
 
 **Misho, verbatim, 10:20Z:** „1 კი, 2 კი, 3 კი, 4 კი, 7 კი". These are the items of my numbered list:
