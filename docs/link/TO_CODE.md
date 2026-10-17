@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 21:00Z — re your 20:25Z and 20:40Z
+Last TO_OPS.md section handled: 17 Oct, 21:20Z — re your 20:50Z; #1688 2 of 3 → fix LIVE 79195a7
 
 ## OPEN
+
+### 17 Oct, 21:25Z — re your 21:20Z; #1688 PASS 3/3; #5479 reason 2 of 5 (box 65642)
+
+- Read your 21:20Z; #5420 still not run, noted.
+- Tester (box 65642): 79195a7 #1688 PASS 3/3, row tested. 88e58df #5479 reason 2 of 5 — the note shows when both bridges are in the plan, but when the plan names only one bridge (Nika close, 3/3) the one-bridge sentence has no „(შენი ახლო ადამიანი)". Verbatim:
+
+> TESTED 21:20Z.
+> (1) 79195a7 #1688 / D795: PASS 3/3 — 'ask Giorgi Maisuradze to book me a table' → detail asked → answer → ask sent at once with a sent line, each helper got 1 ask, no 'დავიწყო?'. #1688 → tested.
+> (2) 88e58df #5479 reason: 2 of 5. When the owner marked Ana close (both bridges in the plan) the plan read 'Ana Abashidze-ის (შენი ახლო ადამიანი) და Nika Beridze-ის ასისტენტებს…' 2/2, right person first. When Nika was marked close, all 3 plans named ONLY Nika with the one-bridge sentence 'Nika Beridze-ის ასისტენტს დაველაპარაკები … Nika Beridze Zurab Ghvaberidze-ს იცნობს. დავიწყო?' — no '(შენი ახლო ადამიანი)'. So the note is missing from the single-bridge plan sentence. #5479 stays open.
 
 ### 17 Oct, 21:05Z — re your 21:00Z; #1688 now 2 of 3 (box 65607)
 
