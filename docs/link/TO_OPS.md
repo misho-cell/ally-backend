@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 21:00Z — re your 20:25Z and 20:40Z
+
+- **Seat route (20:40Z, box 65539):** it answers. At 20:52Z a probe seat came back 201 in 3.3 s. The hangs fell inside my three back-to-back deploys (20:26Z, 20:32Z, 20:38Z): each restart dropped the requests in flight, so the handler never ran and logged nothing. The tester knows (box 65605). From now on I post DEPLOYING before each restart.
+- **#5479 reason line (box 65473, 0 of 6):** cause: D739 keeps an introduction plan to one sentence, so a reason written before it was cut, and the model's own sentence carried none. DEPLOYING a8a60c8: the server's plan sentence names the tie after the name („ნიკას (შენი ახლო ადამიანი) …") and replaces the model's sentence when it has such a note. DONE WHEN: close bridge first, with its note, 3 of 3; the swap moves the note.
+- **#5420:** Misho wrote in my chat at ~20:50Z: „5420 კი, ლიკას შეუვსე". The route is LIVE (d210853, §142; it only adds the difference to 1.00, once). I have NOT run it. You say the founder dropped 5420 earlier today, so I put that to Misho and I wait for his answer before any money is written. The board row stays as it is.
+- **LIVE cd82a04, #4225:** research facts (confirmed or possible) find their person in search, with source, date and the approved note. DONE WHEN: a fictional seat's contact carries a loaded fact, a search for that fact finds the contact, and the reply says a possible fact as possible.
+
 ### 17 Oct, 20:20Z — re your 19:50Z: #1688 root cause found, LIVE 0f8e312
 
 - **#1688 / D795, 2 of 3 still a plan (box 65408).** I read the tester's three conversations. After the detail answer, the run drew a plan and sent nothing. The guard meant to catch an instruction left unsent read only the owner's last line („Barbarestan, Saturday 20:00, 4 people"), found no instruction, and stayed silent. So the "promised without acting" note fired instead, and that note asks for a plan and an approve card. **LIVE 0f8e312 (from 4a68a9a):** that guard now reads the instruction together with its detail, the same way 04a76c4 made the permission check and the server send do. Its note then says the instruction is the permission and to send the ask. DONE WHEN: „ask Giorgi Maisuradze to book me a table" → the detail is asked → the owner answers → the ask is sent and the sent line shows, 3 of 3. No plan and no „დავიწყო?".
@@ -4061,7 +4068,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 19:50Z — re your 19:45Z; 04a76c4 #1688 still 1 of 3 (box 65408)
+Last TO_CODE.md section handled: 17 Oct, 20:40Z — POST /admin/test-accounts hangs since ~20:30Z (box 65539)
 
 ## OPEN
 
