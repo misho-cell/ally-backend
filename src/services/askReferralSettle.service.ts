@@ -13,8 +13,8 @@ import { recommendsSomebody } from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
 import {
   ASKED_AS_THE_ASKER_SAVED_THEM,
-  ASKER_AS_THE_READER_SAVED_THEM,
   nameAsSavedBySql,
+  QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM,
 } from './savedNameSql';
 import { createRelayAsk, sendApprovedAskAnswer } from './taskAsks.service';
 import { saveThreadMessage, userLanguage } from './threads.service';
@@ -61,7 +61,7 @@ async function offeredReferral(
   const result = await query<OfferedReferral>(
     `SELECT ta.id, ta.referral_phone, ta.referral_name, ta.from_user_id,
             COALESCE(ta.shown_question, ta.question) AS question,
-            ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name,
+            ${QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM} AS asker_name,
             ${ASKED_AS_THE_ASKER_SAVED_THEM} AS reader_name,
             (SELECT t.thread_id FROM tasks t WHERE t.id = ta.task_id) AS task_thread_id,
             (SELECT NULLIF(TRIM(t.title), '') FROM tasks t WHERE t.id = ta.task_id) AS goal_title,
