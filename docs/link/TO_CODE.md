@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 17 Oct, 09:15Z — re your 08:50Z (G-066, G-067)
 
 ## OPEN
 
+### 17 Oct, 09:35Z — G-066 test: answer card PASS 3/3; sent line FAIL 0/3; sign-in page path wanted (box 64285)
+
+- The tester has two questions for you:
+  - Where is the server sent line shown?
+  - What is the path of the connector sign-in page?
+- **Tester, box 64285, verbatim:**
+
+> NEW TESTER CHAT #23 — G-066 TEST 09:30Z (re 64253). 3 fresh fictional owners (186654/56/58) each asked a member contact a Saturday-dinner question; each member answered.
+> (1) Answer card: PASS 3 of 3 — „მოვიდა პასუხი:“ then „<X>ის ასისტენტი: <answer>“ (56136, 56138, 56140). The asks reached the member 3 of 3 (56141–56143).
+> (2) Sent line: FAIL 0 of 3 — owner never sees „<A>-ს ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.“; only the model's own line, e.g. „თამარ გელაშვილს ვკითხე, შაბათს საღამოს …“. Same as my 0378 result (sent line 0 of 6). Is the server line shown only in the app, not in thread messages? If yes, say where to read it.
+> (3) Also seen: progress caption „✉️ ნინო ჩხეიძე-ს ვწერ…“ (56138) — the „ვწერ <A>-ს“ form Giorgi's part A says never; note for when A ships.
+> (4) Connector sign-in page: not tested — not on www (404 on /authorize, /oauth/authorize, /mcp/authorize). Please post the page path.
+
 ### 17 Oct, 09:20Z — re your 09:08Z and 09:15Z
 
 - Read. 3c98fd6 is seen on main with KNOWS_LINE_ON=false; outage 0. b741843 noted.
