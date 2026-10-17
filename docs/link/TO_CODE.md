@@ -9,6 +9,24 @@ Last TO_OPS.md section handled: 17 Oct, 04:40Z — re your 00:25Z–02:40Z: hold
 
 ## OPEN
 
+### 17 Oct, 05:05Z — tester results on your 04:18–04:50Z fixes (box 63859, 63861)
+
+- **63859** (empty tag PASS, role walk partly). Verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 63857/63858 (part 1), 05:00Z. (1) f22b8ce empty tag: PASS 1/1 — owner with one member contact saved with an empty tag asked "how many contacts do I have" (56019): "one contact, გიორგი ბერიძე, a Netai user". (2) 04f8b69/4b1a7e0 role walk (all links said hello first; target saved by the last link as „ნოტარიუსი ქუთაისში“): 3-link GE (56005) PARTLY — names the chain with the saved labels („ზურაბ ქობულაძესთან მიდის გზა ლევან ჯაფარიძისა და ნინო კაპანაძის გავლით“) but adds "I could not confirm Zurab is a notary" although the tag says so, then lists public notaries first and plans a generic ask to Levan. 5-link GE (56011) FAIL — only "I'll talk to Levan's assistant", no chain, no target. 5-link EN (56017) PARTLY — "I found one possible route to Zurab Kobuladze, but it runs through four people, so I would not use it", then public notaries. So the walk now finds role targets (2 of 3), but the reply does not use them: no plan names the target, one dismisses a 4-hop route outright. (3) 847b4b7 pass-on at L2: walking chain 56011 now. (4) f650264 English solved-case match: needs record_who_helped ON for a fresh A case — on hold per 63857.
+
+- **63861** (pass-on across 5 hops PASS, first tap PASS; three faults left). Verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 847b4b7 (pass-on card at every link) + de8ac42 (first tap starts) on chain 56011 (186494ff, 5 links, role ask): PASS — the request travelled owner → L1 → L2 → L3 → L4, each link typed "I don't know, ask <next>, in my name", each got the pass-on card and tapped "yes, and say I recommended" (56020–56023), L4 answered "yes, I know the notary Zurab, I'll connect". The owner saw every hop („ნინო კაპანაძე შენთვის თავის ერთ ნაცნობს ეკითხება“, „დავით ცერცვაძე …“) and the answer, then "shall I ask Mariam to introduce you to Zurab?". de8ac42: the first „ვადასტურებ“ started the plan, 1/1. Faults left: (a) the answer card names the go-between as the raw seat name „შუამავალი: T23 5347v3 L5 3“ although the chain has a saved label for him („დავით ცერცვაძე“); (b) the status list on the last card says „ზურაბ ქობულაძე: კითხვა მიუვიდა, პასუხს ველოდები“ — Zurab was never asked; (c) at L2/L3 the pass-on card says "ask X for L1 / for L2" (the previous link), not for the owner — the question text itself is right ("L0 needs a notary"). With the role-walk results above, 5347 is now: relay 5 hops PASS 1/1; finding a role target 2 of 3; plan naming the target 0 of 3.
+
+Yours:
+- The plan does not name a role target the walk found (0 of 3), and one run dismissed a 4-hop route.
+- The raw seat name on the answer card.
+- "Zurab: asked, waiting" when Zurab was never asked.
+- The pass-on card at L2/L3 says "for L1/L2" instead of naming the owner.
+
+5347 stays built.
+
 ### 17 Oct, 04:45Z — re your 04:40Z
 
 - Read. Thanks for undoing 122/123 and switching WHO_HELPED_TOOL off. I'll tell Misho they now wait for his word.
