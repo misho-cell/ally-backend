@@ -1,6 +1,7 @@
 import { planInSentences, TaskPlan } from '../taskPlans.service';
 import { introPlanOnly } from '../planJustification';
 import { OwnerTieReason } from '../ownerTies';
+import { introTargetSentence } from '../introTargetSentence';
 
 /**
  * #5479 (the tester's 65473): the close bridge came first 6 of 6, but no plan
@@ -45,5 +46,31 @@ describe('a plan with a close bridge', () => {
     const server = planInSentences(plan([{ name: 'ნიკა', reach: 'ok' }]), 'ka');
     const reply = 'ნიკას ასისტენტს დაველაპარაკები და შევეცდები, მოვაგვარო. დავიწყო?';
     expect(introPlanOnly(reply, { text: server, names: ['ნიკა'] })).toBe(reply);
+  });
+});
+
+describe('a plan through one close bridge (the tester\u2019s 65642)', () => {
+  const planInput = {
+    routes: [{ name: 'r', introductions: [{ via_phone: '+111', to_name: 'ზურაბი' }] }],
+  };
+
+  it('says why in the one-bridge sentence too', () => {
+    const sentence = introTargetSentence(
+      planInput,
+      [{ name: 'ნიკა', phone: '+111', reach: 'ok', tie: OwnerTieReason.SaidClose }],
+      'ka',
+      [{ name: 'ზურაბი', viaPhones: ['+111'] }],
+    );
+    expect(sentence).toContain('ნიკას (შენი ახლო ადამიანი) ასისტენტს დაველაპარაკები');
+  });
+
+  it('says nothing more for a plain bridge', () => {
+    const sentence = introTargetSentence(
+      planInput,
+      [{ name: 'ნიკა', phone: '+111', reach: 'ok' }],
+      'ka',
+      [{ name: 'ზურაბი', viaPhones: ['+111'] }],
+    );
+    expect(sentence).toMatch(/^ნიკას ასისტენტს დაველაპარაკები/u);
   });
 });

@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { phoneDigits } from './phone';
 import { warmthForPhones } from './warmth.service';
+import { RunLanguage } from './runLanguage';
 
 /**
  * #5479 (founder, 17 Oct; Misho's yes): warm routes. How close the owner is to
@@ -25,6 +26,37 @@ export enum OwnerTieReason {
   /** They answered the owner or took an introduction from them in Netai. */
   DealtWith = 'helped_you_before',
 }
+
+/**
+ * #5479: why this bridge comes first, after the name. A reach note says
+ * something the owner must know before approving, so it wins over a tie.
+ */
+export const TIE_NOTE: Readonly<Record<RunLanguage, Record<OwnerTieReason, string>>> = {
+  ka: {
+    [OwnerTieReason.SaidClose]: '(შენი ახლო ადამიანი)',
+    [OwnerTieReason.Family]: '(შენი ოჯახის წევრი)',
+    [OwnerTieReason.Close]: '(შენი ახლო ადამიანი)',
+    [OwnerTieReason.DealtWith]: '(უკვე დაგეხმარა)',
+  },
+  en: {
+    [OwnerTieReason.SaidClose]: '(someone close to you)',
+    [OwnerTieReason.Family]: '(your family)',
+    [OwnerTieReason.Close]: '(someone close to you)',
+    [OwnerTieReason.DealtWith]: '(has helped you before)',
+  },
+  ru: {
+    [OwnerTieReason.SaidClose]: '(близкий тебе человек)',
+    [OwnerTieReason.Family]: '(твоя семья)',
+    [OwnerTieReason.Close]: '(близкий тебе человек)',
+    [OwnerTieReason.DealtWith]: '(уже помогал тебе)',
+  },
+  es: {
+    [OwnerTieReason.SaidClose]: '(alguien cercano a ti)',
+    [OwnerTieReason.Family]: '(tu familia)',
+    [OwnerTieReason.Close]: '(alguien cercano a ti)',
+    [OwnerTieReason.DealtWith]: '(ya te ayudó antes)',
+  },
+};
 
 export interface OwnerTie {
   readonly closeness: number;

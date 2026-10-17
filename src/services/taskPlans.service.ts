@@ -2,7 +2,7 @@ import { query } from '../db/postgres/client';
 import { repairedPlanJson } from './planJsonRepair';
 import { geoName } from './georgianCase';
 import { normalizePhone, phoneDigits } from './phone';
-import { OwnerTieReason, ownerTiesTo } from './ownerTies';
+import { OwnerTieReason, ownerTiesTo, TIE_NOTE } from './ownerTies';
 import { georgianStem } from './tools/georgianStem';
 import { isARealId } from './goalId';
 import { Task } from './taskStore.service';
@@ -1087,37 +1087,6 @@ interface PlanPersonLine {
 }
 
 const withNote = (name: string, note: string): string => (note === '' ? name : `${name} ${note}`);
-
-/**
- * #5479: why this bridge comes first, after the name. A reach note says
- * something the owner must know before approving, so it wins over a tie.
- */
-const TIE_NOTE: Readonly<Record<RunLanguage, Record<OwnerTieReason, string>>> = {
-  ka: {
-    [OwnerTieReason.SaidClose]: '(შენი ახლო ადამიანი)',
-    [OwnerTieReason.Family]: '(შენი ოჯახის წევრი)',
-    [OwnerTieReason.Close]: '(შენი ახლო ადამიანი)',
-    [OwnerTieReason.DealtWith]: '(უკვე დაგეხმარა)',
-  },
-  en: {
-    [OwnerTieReason.SaidClose]: '(someone close to you)',
-    [OwnerTieReason.Family]: '(your family)',
-    [OwnerTieReason.Close]: '(someone close to you)',
-    [OwnerTieReason.DealtWith]: '(has helped you before)',
-  },
-  ru: {
-    [OwnerTieReason.SaidClose]: '(близкий тебе человек)',
-    [OwnerTieReason.Family]: '(твоя семья)',
-    [OwnerTieReason.Close]: '(близкий тебе человек)',
-    [OwnerTieReason.DealtWith]: '(уже помогал тебе)',
-  },
-  es: {
-    [OwnerTieReason.SaidClose]: '(alguien cercano a ti)',
-    [OwnerTieReason.Family]: '(tu familia)',
-    [OwnerTieReason.Close]: '(alguien cercano a ti)',
-    [OwnerTieReason.DealtWith]: '(ya te ayudó antes)',
-  },
-};
 
 function personNote(person: PlanPerson, language: RunLanguage): string {
   if (person.reach !== undefined && person.reach !== 'ok')

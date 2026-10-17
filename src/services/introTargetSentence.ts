@@ -2,6 +2,7 @@ import { geoName } from './georgianCase';
 import { phoneDigits } from './phone';
 import { routeIntroductions } from './planClosedRoute';
 import { RunLanguage } from './runLanguage';
+import { OwnerTieReason, TIE_NOTE } from './ownerTies';
 
 /**
  * 1454 (b), box 53498: when the model's own plan sentence is not clean, the
@@ -19,6 +20,8 @@ export interface GoBetween {
   readonly name: string;
   readonly phone: string;
   readonly reach?: string;
+  /** #5479: why the owner is close to them, when they are. */
+  readonly tie?: OwnerTieReason;
 }
 
 /** An introduction the plan asks for: through whom, and to whom. */
@@ -56,9 +59,11 @@ export function plannedIntroduction(
 }
 
 /** D739's form, in Georgian: „<via-ის> ასისტენტს დაველაპარაკები … რომ <via-მ> გაგაცნოს <to>." */
-export function georgianSentence(intro: PlannedIntroduction): string {
+export function georgianSentence(intro: PlannedIntroduction, viaNote = ''): string {
+  const via =
+    viaNote === '' ? geoName(intro.via, 'gen') : `${geoName(intro.via, 'gen')} ${viaNote}`;
   return (
-    `${geoName(intro.via, 'gen')} ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, ` +
+    `${via} ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, ` +
     `რომ ${geoName(intro.via, 'erg')} გაგაცნოს ${intro.to}.`
   );
 }
@@ -198,6 +203,9 @@ export function introTargetSentence(
   if (!INTRO_TARGET_SENTENCE_ON || language !== 'ka') return null;
   const intro = plannedIntroduction(planInput, people) ?? introductionFromFound(people, found);
   if (intro === null) return null;
+  // #5479 (the tester's 65642): the one-bridge sentence said no reason either.
+  const tie = people[0]?.tie;
+  const sentence = georgianSentence(intro, tie === undefined ? '' : TIE_NOTE.ka[tie]);
   const knows = knowsLine(intro);
-  return knows === null ? georgianSentence(intro) : `${georgianSentence(intro)} ${knows}`;
+  return knows === null ? sentence : `${sentence} ${knows}`;
 }
