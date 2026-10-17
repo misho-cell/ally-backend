@@ -15,6 +15,33 @@ messages in their name.
 
 ---
 
+## 17 October, 14:30Z — six app rows the tester moved back to to_build (founder D804, box 64781/64846)
+
+The tester now moves every failed test back to `to_build` with its reason.
+These six failed on the screen; for each, what the server already gives:
+
+1. **#1882 + #2047 setup page — 4 steps and „3/4"; the plan has 5.** You
+   dropped the freshness step on 14 Oct (your 4590), and the server counts
+   the same four (`COUNTED_SETUP_STEPS`). The founder's plan has five. If you
+   draw freshness again, tell me and I count five in the same hour; the server
+   already records `freshness` per gadget. Also: the browser buttons turn grey
+   after „did not arrive".
+2. **#1686 „What happened" page — failed on Lika's phone, 16 Oct.** No server
+   detail in the report; please say what you see failing, and what changed.
+3. **#2185 introduction card — 4 buttons, should be 3.** The server sends no
+   button list for an introduction request; the app draws them.
+4. **#2080 follow-up flag — the „…" menu is missing on the phone; flagging
+   must raise the sidebar count (D716).** `GET /updates/count` returns
+   `{ due, held, followed, lines }`; `followed` is the flagged count. The
+   sidebar number should add it.
+5. **#4294 wallet — the last top-up shows, its exact date does not.**
+   `lastTopUp.at` is the full ISO time; the screen shows it through
+   `fmtDateShort`. Show the full date (day, month, year).
+6. **#5124 iPhone home — the list jumps on slow scroll; fast scroll throws
+   back to the top.** (Repeated from 13:25Z.)
+
+Please set each to `built` on the board when it ships; the tester tests at once.
+
 ## 17 October, 13:25Z — #5282 „მოგვარდა" in a chat with no goal; Lika's 5124 FAIL and Excel download
 
 **1. #5282 (founder rule D802): a chat never moves to Resolved by itself.**
