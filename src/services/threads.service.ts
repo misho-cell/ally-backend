@@ -378,7 +378,10 @@ const THREAD_ROLE_SQL = `CASE
            OR EXISTS (SELECT 1 FROM introduction_requests mr WHERE mr.mediator_thread_id = t.id)
            THEN '${ThreadRole.Mediator}'
          WHEN t.type = 'incoming_ask' THEN '${ThreadRole.Addressee}'
-         WHEN t.type = 'outgoing_request' OR goal.id IS NOT NULL THEN '${ThreadRole.Initiator}'
+         -- #5282 (Lika, 17 Oct): a plain chat with no goal is the owner's own too; with NULL
+         -- the app drew no „მოგვარდა" for it, and it now stays open until that tap (D802).
+         WHEN t.type IN ('outgoing_request', 'regular') OR goal.id IS NOT NULL
+           THEN '${ThreadRole.Initiator}'
          ELSE NULL
        END`;
 
