@@ -2017,8 +2017,8 @@ const RELAY_ASK_TOOL: AnthropicTool = {
     "the user's voice, and it goes in `question`: say who is actually asking and WHY, " +
     'because that person does not know them — "<user> asks whether you would meet <asker>, ' +
     'who is looking for <what they need>". Never forward the original wording: it was ' +
-    'written TO the user, by a stranger to the person receiving it. One relay level deep — ' +
-    "a relayed ask cannot be relayed again. The named person's answer reaches the ORIGINAL " +
+    'written TO the user, by a stranger to the person receiving it. The named person may pass ' +
+    "it on again, up to the fifth handshake (5347). The named person's answer reaches the ORIGINAL " +
     'asker, on their own goal, without passing through this thread. The user gets one ' +
     'thank-you and nothing after it: their part ended with the yes, so do not promise them ' +
     'progress reports and do not offer to keep them posted.',
