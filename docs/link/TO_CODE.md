@@ -9,6 +9,28 @@ Last TO_OPS.md section handled: 17 Oct, 13:00Z — re your 12:20Z (box 64549)
 
 ## OPEN
 
+### 17 Oct, 13:22Z — HOLD LIFTED; load run 10 results (box 64715)
+
+- **The hold is lifted.** Nothing reached main between 13:12 and 13:22Z, and outage is 0 after the run.
+- The accountant plan is about 40 s slower than run 6. 5321 (accept under 2 s) still fails.
+- **Tester, box 64715, verbatim:**
+
+> LOAD TEST RUN 10 (17 Oct) — RESULTS (task 5318 + 5321). Fired 13:15:00.000–13:15:00.029Z from two tabs (notice 64682, fire 64714); read 13:18:46Z and again 13:20:35Z (final numbers below). Shape as run 6: 150 old Load Test seats (hello / marketing / price) + 50 fresh F216–F265 for the accountant plan. Run 6 (61681) in brackets.
+> - Accepted 200/200 (202) (200/200).
+> - Accept time as the browser saw it: median 7.2 s, p95 9.3, max 9.4, min 5.4 (31.8 / 33.5 / 35.5). Still two waves of exactly 100: wave 1 median 5.5 s (max 5.7), wave 2 median 9.2 s (8.6–9.4), mixed across tabs (47 + 53) — two tabs of one browser share one connection, as runs 8–9. 5321 still FAIL (target < 2 s; one sender 1.4–1.6 s).
+> - Time to answer FROM ACCEPT (median / p90 / max):
+>   hello 3.9 / 4.8 / 4.8 (2.3 / 3.5 / 3.5)
+>   marketing 38.3 / 57.1 / 62.7 (36.5 / 55.4 / 78.9)
+>   price 30.7 / 53.3 / 58.7 (27.6 / 40.6 / 42.2)
+>   accountant plan 141.2 / 180.1 / 235.2 (102.1 / 119.3 / 132.7) — SLOWER by ~40 s (16 Oct 15:20Z full mix: 101.7 / 127.8 / 166.1)
+>   all 200: 37.1 / 147.0 / 235.2 (31.4 / 102.9 / 132.7)
+> - From send (what a person feels): hello 11.0, marketing 45.9, price 37.8, plan 149.7; all median 43.3, p90 155.3, max 244.5.
+> - Runs over 90 s: 50 of 200 — all 50 plan runs, none of the others (run 6: plan p90 119, so most of its 50 plans as well).
+> - Failed runs 0 (0); error lines 0 (0); error after an answer 0 (0); 200/200 real answers. End states: 150 done; plans 35 needs_you + 15 waiting (run 6: 50 needs_you) — the 15 'waiting' plans say the owner's network has nobody on Netai to ask, so nothing is sent; worth a look whether that end state is intended.
+> - Run start median 18.1 s from send (p90 43). Slow tools ≥ 9.5 s: 180 (285) — 143 plan, 37 marketing (238 / 47); 864 tool calls in all. Cost ≈ $16.37 ($13.92) — plan $11.46, marketing $2.42, price $2.49, hello $0.
+> - Reading: no failures and fewer slow tool calls, but the plan run is ~40 s slower than run 6 and than yesterday's full mix, so 5318 is NOT done: search goals still pass the 90 s run limit, every one of them. Accept is the same 5.5 s / 9.2 s as runs 8–10 (the second wave is the one-browser limit).
+> OPS: please post the 0393 database lines for 13:15:00–13:19:30Z (task 5318 DONE WHEN) — time per search in the database vs waiting for a connection, and CPU / locks. DEPLOYS MAY RESUME.
+
 ### 17 Oct, 13:05Z — HOLD DEPLOYS 13:12–13:22Z (load run 10, box 64682); re your 13:00Z; founder items (64683–64685)
 
 - **HOLD:** the tester fires load run 10 at 13:15:00Z. Push nothing to main from 13:12 to 13:22Z. I'll write here when it is clear.
