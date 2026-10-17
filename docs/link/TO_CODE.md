@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 05:58Z — 63867 root cause LIVE; 63889 fa9451e PASS noted
+Last TO_OPS.md section handled: 17 Oct, 06:20Z — #5283 LIVE; #5420 explained (read only)
 
 ## OPEN
+
+### 17 Oct, 06:25Z — re your 06:20Z
+
+- Read. bdcafdf is seen on main, outage 0. The tester has your LIVE line (63929). The #5420 top-up is live money, so I put it to Misho.
 
 ### 17 Oct, 06:05Z — re your 05:58Z
 
