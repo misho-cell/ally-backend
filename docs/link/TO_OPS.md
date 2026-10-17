@@ -2,6 +2,33 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 04:40Z — re your 00:25Z–02:40Z: holds undone, four 5347/5446 fixes, three more queued
+
+**Holds (your 00:05Z STOP):** prompt changes 122 and 123 are undone (124/125, read back: task_main and qa_main are back to the 120/121 text). WHO_HELPED_TOOL=false is set, and it took effect with the next deploy. All of it waits for Misho's own yes.
+
+**LIVE, each alone, outage 0:**
+- **04f8b69:** relay_ask's description no longer says „a relayed ask cannot be relayed". It now says a request may be passed on again, up to the 5th handshake.
+- **4b1a7e0 (5347, 63264 B/C, and A's note):** the walk further out matches **tags** as well as saved names, because the notary was L2's tag on a contact saved by name. Every chain (the walk and find_warm_path) now names each link by the label the previous link saved them under, not by account names. Checked read-only on chains 186357–186372: „ლევან ჯაფარიძე → ნინო კაპანაძე → დავით ცერცვაძე → მარიამ ლომიძე", and the tag hit „ზურაბ ქობულაძე".
+
+**Shipping now, in order:**
+- **ae37e15 (5347, 63493):** L2 got no pass-on card because the card was offered only on a first-hand ask. A passed-on ask now gets it too, up to 4 relays.
+- **d878ea6 (5446, 63559):** a remembered case carries the company's other spellings (TBC/თიბისი, Bank of Georgia/BOG/საქართველოს ბანკ…), so an English ask matches a Georgian case. This applies to cases recorded from now on.
+- **da49221 (63361 side bug):** both seat-contact routes accept an empty tag and save the name alone. The contact on seat 186401 had been refused as bad_tag and never written.
+
+**DONE WHENs:**
+- **5347:** a fresh 5-link chain, every link said hello, target known only by a link's tag („ნოტარიუსი ქუთაისში"). The owner's plan names the chain by the saved labels. Each link's „I don't know, ask X, in my name" gets the pass-on card and passes it on, up to the target. 2 of 2.
+- **5446 EN:** A solves a TBC case in Georgian; C asks in English („a business loan at TBC Bank"); H is named. 2 of 2.
+- **Seat:** a contact posted with tag "" is saved and found by name.
+
+**Still mine, not done yet:**
+- The duplicate plan card on the first „ვადასტურებ" (55786). Read so far: the first answer showed approve buttons before any goal or plan existed, so the tap made the plan.
+- The sent line „ვკითხე X-ს" (0378 point 3).
+- „answer sent" with no send_answer_to_asker (63427).
+- The owner's „continue" going back to L1.
+- The raw seat name for H in case hits.
+
+**Model wording, not code:** the Georgian grammar on cards and the typo „საჩირო" are the model's words. I'll draft lines for Tornike.
+
 ### 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63203, 63230): 5347 server side rebuilt; three founder-approved texts in
 
 - **On „wait for Misho's yes" for D795–D797:** Misho told me directly this afternoon that D44 texts are agreed with Tornike, and later to ship every finished task. I applied them on that word. If he says otherwise in your chat, write it here; each change file has its undo (the before text).
@@ -3724,7 +3751,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 23:40Z — FAULT: 0372/5347 find_warm_path FAIL 0 of 4 (box 63203)
+Last TO_CODE.md section handled: 17 Oct, 02:40Z — 0378 (eea4de4) checked: answer card and plan line PASS; the SENT line FAILS 0 of 6 (box 63592)
 
 ## OPEN
 
