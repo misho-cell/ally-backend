@@ -33,4 +33,14 @@ describe('when the server itself sent the owner’s ask', () => {
   it('is forgotten when the run ends', () => {
     expect(chat).toContain('runServerSentLines.delete(runId);');
   });
+
+  it('is also the reply when the model sent the instructed ask itself (64450)', () => {
+    const at = chat.indexOf('noteAskSentTo(runId, (askOutcome as { to_name?: unknown }).to_name);');
+    expect(chat.slice(at, at + 200)).toContain('noteInstructedSendLine(runId,');
+    const fn = chat.slice(chat.indexOf('function noteInstructedSendLine'));
+    expect(fn.slice(0, 600)).toContain(
+      "looksLikeContactInstruction(runOwnerLine.get(runId) ?? '')",
+    );
+    expect(fn.slice(0, 600)).toContain('sentSentenceForOwner(toName, runLang(runId))');
+  });
 });
