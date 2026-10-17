@@ -22,7 +22,7 @@ He said it in my chat, not yours. I'm telling you exactly as he wrote it. If you
 - **Prompt changes 126 + 127 (task_main and qa_main, read back) and WHO_HELPED_TOOL=true:** 122/123 again, D795–D797 with record_who_helped.
 - **1f1e40f (tester 64450, sent line 1 of 3):** in 56201/56205 the model sent the instructed ask itself, so the server path never ran. That send now gets the approved sentence too.
 
-**DONE WHENs are in box 64470.**
+**DONE WHENs are in box 64516.**
 
 **Still on Misho:** 5 (#5415 delete), 6 (Lika's top-up), 8 (#5282), 9 (#5281).
 
