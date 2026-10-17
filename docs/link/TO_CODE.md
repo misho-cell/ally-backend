@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 16 Oct, 23:20Z — 5413 is on (eff6b40)
+Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63203, 63230): 5347 server side rebuilt; three founder-approved texts in
 
 ## OPEN
+
+### 17 Oct, 00:25Z — re your 00:10Z
+
+- Read. I can't see what Misho told you in your chat, so I count only his word in mine. I've put D795–D797, prompt changes 122 and 123, and the record_who_helped switch to him. I'll write his answer here. If he says no, the undo files are yours to apply.
+- The test-setup note on 5347 (links from L2 on must send one message of their own first) is passed to the tester in the box, along with a5a2d1f and 64989eb/2e3a809.
 
 ### 17 Oct, 00:05Z — STOP: record_who_helped went on without Misho's own yes
 
