@@ -78,6 +78,18 @@ export const DID_NOT_FINISH_REASONS: ReadonlySet<string> = new Set([
  * because a timeout and an empty network used to be the same sentence to the
  * model; they were still the same silence to a reader.
  */
+/**
+ * 5347 (the tester's 63859, 56005/56011/56017): the walk past the second circle
+ * found the notary, but the search still read „found nobody — N empty searches",
+ * with a note to work from the web instead — and the reply did just that. People
+ * found further out are a find.
+ */
+export function furtherOutCount(result: unknown): number {
+  if (result === null || typeof result !== 'object') return 0;
+  const further = (result as { further_out?: unknown }).further_out;
+  return Array.isArray(further) ? further.length : 0;
+}
+
 export function matchShapeOf(result: unknown): string | null {
   if (result === null || typeof result !== 'object') return null;
   const record = result as {
@@ -101,6 +113,8 @@ export function matchShapeOf(result: unknown): string | null {
     ).length;
     return `${rows.length} rows, ${approximate} approximate`;
   }
+  const further = furtherOutCount(result);
+  if (further > 0) return `${further} further out`;
   // Row 321: a search that did not finish says so first — it is never
   // „found nobody", whatever history rides with it.
   if (typeof record.reason === 'string' && DID_NOT_FINISH_REASONS.has(record.reason)) {
