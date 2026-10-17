@@ -8684,6 +8684,79 @@ function noteSearchedPhones(runId: string, phones: readonly string[]): void {
   runSearchedPhones.set(runId, kept);
 }
 
+/** The tools whose results name ways in: the searches, and the warm-path finder. */
+const WAY_IN_TOOLS: ReadonlySet<string> = new Set([...SEARCH_TOOLS, 'find_warm_path']);
+const runWayInPhones = new Map<string, Set<string>>();
+
+function noteWayInPhones(runId: string, phones: readonly string[]): void {
+  if (phones.length === 0) return;
+  const kept = runWayInPhones.get(runId) ?? new Set<string>();
+  for (const phone of phones) kept.add(phoneDigits(phone));
+  runWayInPhones.set(runId, kept);
+}
+
+function phoneOf(item: unknown): string[] {
+  const phone = (item as { phone?: unknown } | null)?.phone;
+  return typeof phone === 'string' && phone !== '' ? [phone] : [];
+}
+
+/** Every number a search or warm-path result offers as a way in: the person and who leads to them. */
+export function wayInPhonesIn(raw: unknown): string[] {
+  const r = (raw ?? {}) as { results?: unknown; paths?: unknown };
+  const rows = Array.isArray(r.results) ? r.results : [];
+  const fromRows = rows.flatMap((row: unknown) => {
+    const via = (row as { via_contacts?: unknown } | null)?.via_contacts;
+    return [...phoneOf(row), ...(Array.isArray(via) ? via.flatMap(phoneOf) : [])];
+  });
+  const paths = Array.isArray(r.paths) ? r.paths : [];
+  const fromPaths = paths.flatMap((path: unknown) => {
+    const bridges = (path as { bridges?: unknown } | null)?.bridges;
+    return Array.isArray(bridges) ? bridges.flatMap(phoneOf) : [];
+  });
+  return [...fromRows, ...fromPaths];
+}
+
+/**
+ * #5446 (the tester's 65719, 2 of 3): every search found one way in — Maia, by
+ * her own work — and the plan added Levan as well, a member with nothing on him,
+ * taken from list_my_contacts; one run even gave him a reason („he seems to know
+ * someone"). When this run searched and found people, a plan person no search
+ * returned, whom the owner did not name and the plan in force does not hold, is
+ * not a way in: the plan is refused with their names, so it is proposed again
+ * without them and nobody is offered with a made-up reason.
+ */
+export async function peopleNoSearchFound(
+  userId: string,
+  threadId: number,
+  plan: unknown,
+  inForce: TaskPlan | null,
+  searched: ReadonlySet<string> | undefined,
+): Promise<string[]> {
+  if (searched === undefined || searched.size === 0) return [];
+  const found = new Set([...searched].map((phone) => phoneDigits(phone)));
+  const added = peopleAddedToPlan(plan, inForce).filter(
+    (p) => !found.has(phoneDigits((p as { phone?: unknown } | null)?.phone)),
+  );
+  if (added.length === 0) return [];
+  const said = (await planConsentOnScreen(threadId).catch(() => null))?.lastOwnerMessage ?? '';
+  const unfound: string[] = [];
+  for (const person of added) {
+    if (said !== '' && (await lineNamesTheAddedPerson(userId, said, person))) continue;
+    const name = (person as { name?: unknown } | null)?.name;
+    unfound.push(typeof name === 'string' && name.trim() !== '' ? name.trim() : '?');
+  }
+  return unfound;
+}
+
+export function planNamesUnfound(names: readonly string[]): string {
+  return (
+    `Not proposed: ${names.join(', ')} — no search in this run found them as a way to this ` +
+    'goal. Leave them out and propose the plan with the people the search found. Never give a ' +
+    'reason for someone the search did not show; if the owner may know more about them, ask the ' +
+    'owner instead.'
+  );
+}
+
 function takeSearchedPhones(runId: string): string[] {
   const phones = [...(runSearchedPhones.get(runId) ?? [])];
   runSearchedPhones.delete(runId);
@@ -9347,6 +9420,7 @@ function clearRunState(runId: string): void {
   runNamelessLabels.delete(runId);
   runSavedNames.delete(runId);
   runSearchedPhones.delete(runId);
+  runWayInPhones.delete(runId);
   runHeldUpdates.delete(runId);
   runShareText.delete(runId);
   // Row 237's flag. Its consumer forgets it too, but a run that exits early
@@ -10976,6 +11050,19 @@ async function executeToolCall(
       if (excludedInPlan.length > 0) {
         return { proposed: false, error: planNamesExcluded(excludedInPlan) };
       }
+      const unfound =
+        runId === undefined || threadId === undefined
+          ? []
+          : await peopleNoSearchFound(
+              userId,
+              threadId,
+              input['plan'],
+              (planTask?.plan ?? null) as TaskPlan | null,
+              runWayInPhones.get(runId),
+            );
+      if (unfound.length > 0) {
+        return { proposed: false, reason: 'not_found_by_search', error: planNamesUnfound(unfound) };
+      }
       const outcome = await proposeTaskPlan(userId, taskId, input['plan'], runLang(runId));
       // Ticket 18 [101]: the plan the user is asked to approve is written by the
       // SERVER, as its own durable message.
@@ -11816,6 +11903,8 @@ async function runOneToolBlock(
   if (SEARCH_TOOLS.has(block.name)) noteNamelessLabels(runId, namelessLabelsIn(labelled));
   // 1690 (A7): the numbers a search showed, for the one confirm question after the reply.
   if (SEARCH_TOOLS.has(block.name)) noteSearchedPhones(runId, phonesIn(labelled));
+  // #5446 (65719): every way in this run found — rows, their bridges, warm-path bridges.
+  if (WAY_IN_TOOLS.has(block.name)) noteWayInPhones(runId, wayInPhonesIn(labelled));
   noteRouteClosed(runId, block.name, rawResult);
   // 3169: the names it found, as saved, so the reply cannot respell them.
   if (SEARCH_TOOLS.has(block.name) || block.name === 'list_my_contacts') {
