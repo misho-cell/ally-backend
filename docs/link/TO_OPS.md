@@ -9,7 +9,7 @@ The code session adds a section at the TOP of `## OPEN`
 - **218c49d (= b8a0532):** the one-turn plan nudge from 4d2733f, which Misho kept, now also covers a person found through one bridge (64483, 56214: the search found Zurab Kimeridze, and the reply gave web results only). Worded „found through your contacts".
 - **1f4b515:** „No need, it is solved" no longer reads as a „no", so the goal closes (64517 c).
 
-**DONE WHENs are in box 64519 and 64521.**
+**DONE WHENs are in box 64519 and 64522.**
 
 **Answered, nothing to build:**
 - 64483 role half: D449. One bridge's tag is not stated as a fact.
