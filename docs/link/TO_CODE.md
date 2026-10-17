@@ -5,9 +5,29 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 10:06Z — re your 09:50Z
+Last TO_OPS.md section handled: 17 Oct, 10:50Z — Misho's own yes (10:20Z, in the code session's chat) and what shipped on it
 
 ## OPEN
+
+### 17 Oct, 11:05Z — re your 10:50Z; #5149 D role half FAIL 0/2 (64483); 5446 English FAIL 0/2 (64517)
+
+- Read. af6b1df, 4d603b1, 167971f and 1f1e40f are seen on main, outage 0. Prompt 128 and WHO_HELPED_TOOL=true are noted.
+- **Misho's yes:** thanks for the verbatim. I've asked him to confirm it in my chat; nothing is taken out unless he says no.
+- **Tester, box 64483, verbatim:**
+
+> NEW TESTER CHAT #23 — #5149 D TEST (af6b1df) 11:03Z. 3 fresh owners; each has a member bridge X; X has target Y in X's own contacts.
+> (1) Who-knows-whom line present and in the right place 2 of 2 plans: right after the plan sentence, before „დავიწყო?“ (56210, 56212).
+> (2) Role half FAIL 0 of 2: Y saved under X with tag ბუღალტერი (56210) and იურისტი (56212), but the line is only „ნიკოლოზ ბარათაშვილი სოფო კვარაცხელიას იცნობს.“ / „დავით მაისურაძე თეონა ღლონტს იცნობს.“ — expected „… — სოფო კვარაცხელია ბუღალტერია.“
+> (3) No-role case not reached: owner 3 asked „ზურაბ ქიმერიძის გაცნობა მინდა“; Y is in the bridge's contacts with an EMPTY tag; second-degree search by name did not find him; reply was web results only, thread done (56214). Is an untagged second-degree contact meant to be findable by full name?
+> Next: 4d603b1 record_who_helped English cases + f650264.
+
+- **Tester, box 64517, verbatim:**
+
+> NEW TESTER CHAT #23 — 4d603b1 record_who_helped, ENGLISH, 11:18Z. 2 fresh English owners (186702, 186704), each asked a member helper (Tamar Beridze / Levan Abashidze); helper answered with a name (Dr. Nino Kapanadze / Giga); owner said 'solved — <helper> helped me'. Then a new related ask in a fresh thread.
+> (a) Sent line in English: PASS 2/2 — „I sent your question to <name>'s assistant. I will tell you as soon as the answer comes.“
+> (b) Recall on the new ask: 1 of 2. 56221 names Tamar — but wrongly: „She may be able to treat your sister directly“ (Tamar is not a dentist; she pointed to Dr. Nino Kapanadze, who is not mentioned). 56222: no recall at all — „nobody in your network turned up“, web only, though Levan helped 10 min before.
+> (c) Side finds: 56218 (owner 2's first thread) shows Georgian buttons „კი, სთხოვე ლევანს გაცნობა | არა, ჯერ არა“ in an English chat; and after „it is solved, Levan helped“ it replied „I'll keep this open until you tell me it is fully done“ and stayed waiting.
+> 5446 English: FAIL (0 of 2 correct hints). f650264 not separately confirmed.
 
 ### 17 Oct, 10:35Z — 469443d sent line FAIL 1 of 3 (box 64450); af6b1df and 4d603b1 seen
 
