@@ -14,7 +14,7 @@ import {
 } from './helpersVoice';
 import { ruleAnswerInOwnWords } from './ruleAnswerWording.service';
 import { labelNamedIn } from './namedLabel';
-import { firstNamesIn } from './firstNameNamed';
+import { firstNamesInBothScripts } from './firstNameNamed';
 import { holdAsk, releaseHeldAsk } from './heldAsks.service';
 import { AskKind, askKindOf } from './askKind';
 import { BridgeNeed, BridgePicker, bridgePicker, needFromQuestion } from './bridgePicker';
@@ -764,7 +764,7 @@ async function latestOwnerLine(person: NamedPerson): Promise<string | null> {
  * person — two Nikas still name nobody.
  */
 async function onlyContactByFirstName(line: string, person: NamedContact): Promise<boolean> {
-  const names = firstNamesIn(line);
+  const names = firstNamesInBothScripts(line);
   if (names.length === 0) return false;
   const phones = await query<{ phone: string }>(
     `SELECT DISTINCT ua.phone

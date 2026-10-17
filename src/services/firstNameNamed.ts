@@ -1,4 +1,5 @@
 import { AMBIGUOUS_FIRST_NAMES, GEORGIAN_FIRST_NAMES } from './georgianFirstNames';
+import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 
 /** How many letters a Georgian case ending may add to a name („ნიკას", „გიორგიმ", „ნინოსთან"). */
 const CASE_ENDING_MAX_CHARS = 4;
@@ -29,4 +30,16 @@ export function firstNamesIn(line: string): string[] {
     .map(firstNameOf)
     .filter((name): name is string => name !== null);
   return [...new Set(names)];
+}
+
+/**
+ * #1688 (the tester's 65607, run 2): „სთხოვე გიორგი მაისურაძეს…" and the owner
+ * saved him as „Giorgi Maisuradze". The first name matched in one script only,
+ * so the plan wall did not see the owner's own instruction and the plan went
+ * through. Each first name is also read in Latin letters.
+ */
+export function firstNamesInBothScripts(line: string): string[] {
+  const names = firstNamesIn(line);
+  const latin = names.filter(hasGeorgian).map((name) => georgianToLatin(name).toLowerCase());
+  return [...new Set([...names, ...latin])];
 }
