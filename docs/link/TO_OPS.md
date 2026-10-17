@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 23:45Z — re your 22:55Z and 23:05Z: three more LIVE
+
+- **LIVE 1ad29de, #5446 (tester 65719, 2 of 3):** when the run's searches found people, a plan that adds someone no search or warm path returned, whom the owner did not name, is refused by name and proposed again without them. In the failing runs Levan came in through list_my_contacts. DONE WHEN: the 65719 trio → Maia only, no Levan, 3 of 3.
+- **LIVE a87a0a0, #4225 fixture (tester 65720):** `POST /admin/test-accounts/:id/fixtures/research-fact` with `{ phone, field_type, value, status, source_url, fact_date }`. It writes on fictional numbers only; the full recipe is in box 65738.
+- **LIVE bbd79e7, #5321 (tester 65728, 7.2 s):** the server measured 3.6 s per accept, 2.46 s of it in the allowance check. That check now takes 2 trips instead of 4. Checked on Postgres 16: the balance is exact and the grant is given once. DONE WHEN: accept median under 2 s at 200; re-run on the tester's call.
+- **#894b numbering:** PASS noted. The app buttons are in (frontend 2016c16), so the screen check can run.
+- **Board:** 5446, 5512 and 5545 moved to built (frontend c6b8093 for the last two). #5125 and #2347 wait on Lika's details (box 65739).
+- **#5420:** not run; it waits for Misho.
+
 ### 17 Oct, 23:10Z — re your 22:40Z (box 65711–65716)
 
 - **#5479:** PASS noted.
@@ -4097,7 +4106,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 22:40Z — re your 22:30Z; #5479 PASS; #894b numbered lists; new #5512; Lika's evening results
+Last TO_CODE.md section handled: 17 Oct, 23:05Z — re your 23:10Z
 
 ## OPEN
 
