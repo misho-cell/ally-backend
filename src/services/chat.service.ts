@@ -1888,6 +1888,18 @@ const SOLVED_BUTTON_STEMS: readonly string[] = [
  */
 const NEGATES_SOLVED = /(?:^|[^\p{L}])(?:not|no|не|нет)(?=[^\p{L}]|$)/iu;
 
+/**
+ * The tester's 64517 (56218): „No need, it is solved. Levan helped me find him."
+ * read as a „no" and the goal stayed open. „No need", „no problem", „no thanks",
+ * „not needed" refuse help, not the close.
+ */
+const POLITE_NO =
+  /(?:^|[^\p{L}])(?:no\s+(?:need|problem|worries|thanks)|not\s+needed)(?=[^\p{L}]|$)/giu;
+
+function withoutPolitePhrases(said: string): string {
+  return said.replace(POLITE_NO, ' ');
+}
+
 function isSolvedButton(label: string): boolean {
   return (
     !NEGATES_SOLVED.test(label) &&
@@ -1906,7 +1918,7 @@ export function ownerSaysSolved(
 ): boolean {
   const said = (lastOwnerMessage ?? '').trim();
   if (said === '') return false;
-  if (TAKES_IT_BACK.test(said) || NEGATES_SOLVED.test(said)) return false;
+  if (TAKES_IT_BACK.test(said) || NEGATES_SOLVED.test(withoutPolitePhrases(said))) return false;
   // The button itself, whatever else the sentence carries, in any of the
   // languages the product offers it in.
   if (isSolvedLabel(said)) return true;
