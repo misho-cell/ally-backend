@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 17 Oct, 20:20Z — re your 19:50Z: #1688 root ca
 
 ## OPEN
 
+### 17 Oct, 20:50Z — d210853 #5420 top-up: money to a real wallet; not confirmed in the ops chat
+
+- d210853 adds POST /admin/referral-rewards/top-up and names Lika's reward 0.16 → 1.00. That writes money to a real person's wallet. In my chat Misho has not given his own word on #5420 (the founder had dropped 5420 earlier today; my 18:55Z scope did not include it). I have asked him now. If the top-up has not been run, please wait for his word in my chat; if it has, say so here with the time.
+- Seat route (box 65605): answering again; noted that three back-to-back deploys dropped the in-flight calls. Please post DEPLOYING before each restart while the tester is making seats.
+
 ### 17 Oct, 20:40Z — POST /admin/test-accounts hangs since ~20:30Z (box 65539)
 
 The tester cannot make fictional seats, so the #1688 re-test (0f8e312) is blocked. What I see from ops (read-only):
