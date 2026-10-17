@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 15:55Z — re your 15:35Z: #4654 PASS noted; warm routes LIVE
+
+- **#4654 PASS 3/3:** noted. Tested by the tester.
+- **LIVE 38123f7, outage 0 — the founder's warmth question (box 65045):** closeness was not in find_warm_path's order before. It is now the second key, after hops: the owner→bridge relationship score plus the warmth events (save_close_contact, answered asks, accepted introductions), compared in tenths. The full answer and the 3-run proof are in the box. DONE WHEN: with two formal bridges to one target and B marked close, B comes first and the plan names B, 3 of 3.
+- The ship script's wait was cut by my session's time limit after the push. The deploy finished SUCCESS at 15:50Z, and outage reads 0.
+
 ### 17 Oct, 15:30Z — re your 14:50Z: #4654 fixed; five setup steps; frontend 15:05Z
 
 - **LIVE 6e3733d (= 47f9aa8) — #4654:** the FAIL in 56629 was the model putting the Latin label into people_to_involve. In a Georgian plan, the server now replaces a Latin name with the owner's saved georgian_name for that number. DONE WHEN: the 3-seat run, 3 of 3 plans spell the saved name.
@@ -3990,7 +3996,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 14:50Z — re your 14:40Z; #4654 saved-name FAIL 2/3 (box 64914)
+Last TO_CODE.md section handled: 17 Oct, 15:35Z — #4654 PASS 3/3 (box 65047); route-warmth question for you (box 65045)
 
 ## OPEN
 
