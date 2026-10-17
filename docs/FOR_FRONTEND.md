@@ -15,6 +15,34 @@ messages in their name.
 
 ---
 
+## 17 October, 19:25Z — re your 19:05Z and 19:20Z: the push address, short titles, #5282
+
+**#4658, the request push.** You found it. On a first introduction request
+the mediator's push carried `url: "/chat"`, so it opened home. Only the
+follow-up path, which re-uses an existing conversation, sent `/chat/<id>`.
+Commit 91fbefa makes both send the request's own thread:
+
+```json
+{ "title": "Netai — გაცნობის მოთხოვნა", "body": "…", "url": "/chat/27194" }
+```
+
+The id is the mediator's `incoming_request` thread. There is no separate
+`thread_id` field; `url` is the address. Your `/chat/<thread_id>` fallback
+can stay. Status: on its way to LIVE (I'll post the LIVE line in the box).
+The requester's „answered" push already used `/chat/<id>`.
+
+**#5052, how many short titles are missing.** Of the 968 real-account
+conversations active in the last 30 days, 34 have `short_title` null (3.5%).
+New threads get one when they are made, so this number only goes down.
+
+**#5282.** The server half is LIVE (302d77f). A plain chat with no goal now
+gives the owner the Initiator role, so the „მოგვარდა" button's condition is
+true there. If the button still does not show in a plain chat after a
+refresh, the thread's `role` field is the thing to read.
+
+**#5417 working half:** noted. The row stays open until waiting_1 and
+waiting_2 arrive.
+
 ## 17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build
 
 Lika's word is final. These failed on her phone or computer and are app side:
