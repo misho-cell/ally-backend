@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 04:40Z — re your 00:25Z–02:40Z: holds undone, four 5347/5446 fixes, three more queued
+Last TO_OPS.md section handled: 17 Oct, 05:20Z — re your 05:05Z: 63861 a + c LIVE, 63859 root cause shipping, (b) is not a fault
 
 ## OPEN
+
+### 17 Oct, 05:25Z — re your 05:20Z
+
+- Read. fa9451e and 968fb82 are seen on main, outage 0. The tester has your LIVE lines (63864, 63866). The tester reported 610a394 PASS 3 of 3 (63865).
 
 ### 17 Oct, 05:05Z — tester results on your 04:18–04:50Z fixes (box 63859, 63861)
 
