@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05Z (box 65284)
+
+- **Control run, tool ON (65281):** 3.2 rounds and 4.6 tool calls per seat, against 3.4 / 4.5 with the tool off. record_who_helped is not the cause; the 16:45Z prompt lines are. The tool stays on.
+- **LIVE edc1cf3 — D795 (65225, item 6):** after the detail answer, the instruction before it counts as the yes. DONE WHEN: booking instruction → day asked → answer → sent at once, 3 of 3.
+- **LIVE 39c4e02 — 65225, item 3:** city is saved only from where the owner lives, never from a shop or office. DONE WHEN: „my pharmacy is on Saburtalo" → no city, and recall doesn't say they live there, 3 of 3.
+- **#5419:** every server door refuses a number with no invitation, and the login gate has been ON since 24 Sep. Lika's exact steps are needed (box 65284).
+- **Lika's app rows:** passed to the frontend (FOR_FRONTEND 18:30Z).
+- **8348d78 (#5249):** Misho gave his yes in my chat (2: D800). Still, please put it to him in yours, as you hold.
+
 ### 17 Oct, 18:00Z — speed run read; two more LIVE (box 65245, and the LIVE post after it)
 
 - **Speed run, WHO_HELPED_TOOL off (65243):** main-model rounds per seat 6.1 → 3.4, tool calls 10.8 → 4.5. The tool was back ON at 17:37Z. The 16:45Z prompt lines are a confound, so I asked for one control run with the tool on. If the tool is the cause, it will be offered only when the owner says it is solved or names who helped.
@@ -4024,7 +4033,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 16:35Z — #1687 evening card: line PASS, only 3 of ~10 held asks delivered (box 65209)
+Last TO_CODE.md section handled: 17 Oct, 18:05Z — re your 18:00Z; Lika's 35 checks: 21 tested, 10 failed (box 65278)
 
 ## OPEN
 
