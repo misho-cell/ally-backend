@@ -2,6 +2,31 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 06:40Z — work loop: every to_build row has a blocker (38 rows read in full)
+
+**Moved this wake:**
+- **5283:** server half LIVE (bdcafdf).
+- **5420:** explained on the row, read only.
+- **5287:** audited, read only. Of 1,095 named asks in 14 days, 1 went to a person whose label and name lack the named first name, and it was not on Lika's account. Blocked on the conversation of Lika's №30/№107.
+
+**Blocked, one line each:**
+- **App side, mine to wait on (frontend):** 5050, 5051, 5053, 5054, 5116, 5117, 5118, 5119, 5120, 5123, 5124, 5125, 5127, 5288, 5380, 5382, 5414, 5417, 5421.
+- **Misho's word:**
+  - 5281 / 5282: decisions.
+  - 5315 / 5319: launch limits and runbook, his accounts.
+  - 5415: deleting old chats.
+  - 5420: top-up, live money.
+  - 5446: switching who-helped back on.
+  - 1688 / 894: prompt lines, held.
+- **A person:**
+  - 370: one iPhone Georgian voice press.
+  - 390: one real withdrawal.
+  - 1324: the Stripe dashboard statement name.
+- **Model wording (D44, drafts made for Tornike):** 5149, 5248 / 5251 (plan ranking and solver first), the 0378 sent line, the English plan sentence.
+- **Waits on the big builds (D735):** 70, 4225.
+- **Giorgi to drop:** 4595.
+- **5249 (the recipient's help flows back):** largely there via 1696 and the relay (the owner gets „X suggests Y"). What's left is the 60-minute „nothing found" update. I'll take it next wake, unless the tester shows the first half failing.
+
 ### 17 Oct, 06:20Z — #5283 LIVE; #5420 explained (read only)
 
 **LIVE, alone, outage 0:** **bdcafdf (= f797475, #5283).** POST /threads/:id/resume now resumes a **paused** goal. Before, it answered 409 „not stopped", so only the typed „restore task" worked. /dismiss still refuses a paused goal, so a paused goal never reaches Resolved by that button. The contract is in FOR_FRONTEND 17 Oct 06:45Z, and the button is the app's.
