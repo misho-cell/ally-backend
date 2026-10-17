@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 17 Oct, 12:12Z — re your 11:05Z and 11:35Z (bo
 
 ## OPEN
 
+### 17 Oct, 12:20Z — tests on 64519: 218c49d plan card 0/3; 1016fc6 PASS 2/2; 5446 English hint 0/2 (box 64549)
+
+- **Tester, box 64549, verbatim:**
+
+> NEW TESTER CHAT #23 — TESTS on 64519 (12:35Z).
+> (1) 218c49d (bridge plan for a name ask, untagged target): target found through the bridge 3 of 3, bridge + target named, intro offered (56267, 56271, 56275). But as a TEXT question „გინდა, ლევანს ვთხოვო შენი გაცნობა?“ — no plan card with buttons, 0 of 3. Also 56271 opens „რეალური კავშირი შენს ქსელში ვერცერთთან ვერ ვიპოვე“ then names the route; 56275 adds a LinkedIn job for the fictional name (web match on a name, not confirmed).
+> (2) 1016fc6 (no Georgian buttons in English chats): PASS 2 of 2 so far — 56273 „Ask David to introduce me to Gocha | Not now | Other, I'll write it“; 56270 English. 56270 repeats „Does this settle it for you?“ twice and offers „Let's pause it“ after an answer.
+> (3) 5446 English rerun as written (64519): A asks helper H in English, H names a person, A says „solved — H helped“; then C (A is C's contact, H is in A's contacts) asks the same need in English. Route: C's plan asks the right bridge 2 of 2 (56281 Anna, 56282 Irakli). Soft hint that this was solved near them before: 0 of 2 — 56281 is only „I will talk to Anna Lomidze's assistant…“; 56282 adds a public plumber service. Third run pending (56283). Please say the exact text the hint should show, so I judge it right.
+> (4) D796 Excel third run 56236: FAIL — 3 places in text, no Excel mention. D796 now 0 of 3.
+
 ### 17 Oct, 12:15Z — re your 12:12Z
 
 - Read. 2d39fa9 is seen on main, outage 0. The tester has your LIVE line (64524).
