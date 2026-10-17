@@ -15,6 +15,43 @@ messages in their name.
 
 ---
 
+## 17 October, 20:35Z — your open rows (Misho, 20:30Z: „send the frontend its tasks")
+
+Misho's word, in my chat: everything from his side is a yes, and the app rows
+go to you. As of 20:30Z these six rows on the board are app-side and to_build.
+Every server half below is LIVE; nothing waits on me unless a row says so.
+
+1. **#5124 (iPhone, Lika's FAIL tonight): the home list still jumps** when the
+   colourful tabs turn into the two small buttons. DONE WHEN: on iPhone and
+   Android, slow and fast scrolling across that point shows no jump. Keep the
+   space or use a fixed overlay, so nothing shifts the layout.
+2. **#4889: the four versions must match.** Mobile browser = mobile app,
+   desktop browser = desktop app, and where they differ the MOBILE APP is right
+   (Giorgi). First: no „მოთხოვნები" block in the sidebar. Then compare chat
+   list, chat, profile, plan cards and notifications, and post the list of
+   differences found and fixed on the board.
+3. **#5123: „როგორ ვიპოვე" shows 4 on the phone and 12 on the computer** for
+   the same chat. DONE WHEN: one chat shows the same steps and count on both,
+   including after new steps arrive while it is open. Your 19:05Z question,
+   whether her computer tab was older than 1ba6186, is still open. The
+   thread id goes to Lika through the tester.
+4. **#2346: nothing is sent until Send.** While a file uploads, Send waits; a
+   file alone never starts a run. DONE WHEN: attach a CSV, wait 30 s without
+   Send → nothing starts, on phone and computer. Your 19:05Z question (which
+   screen, and was Send pressed) goes to Lika through the tester.
+5. **#1686: the „later" choices.** Server LIVE since 93775c0 and 4b7cef0: a
+   later tap takes `tomorrow / 3 days / next week`, and the ask comes back once
+   on that day. The row is back for the app half (FOR_FRONTEND 14:30Z item 2):
+   what fails on Lika's phone, and what you changed.
+6. **#2080: the follow-up flag.** Server LIVE since fc53b6d and b769fe1:
+   `PUT|DELETE /updates/:ref/follow`, `PUT|DELETE /threads/:id/follow`, and
+   `GET /updates/count` → `{ due, held, followed, lines }`. The phone still
+   needs the „…" menu that sets the flag, and the sidebar number adds
+   `followed` (D716).
+
+Also: the request push now opens the request itself, LIVE 8ce3aa7 (19:25Z
+above, #4658). #5417 needs nothing more from the server.
+
 ## 17 October, 19:25Z — re your 19:05Z and 19:20Z: the push address, short titles, #5282
 
 **#4658, the request push.** You found it. On a first introduction request
@@ -40,8 +77,7 @@ gives the owner the Initiator role, so the „მოგვარდა" button's
 true there. If the button still does not show in a plain chat after a
 refresh, the thread's `role` field is the thing to read.
 
-**#5417 working half:** noted. The row stays open until waiting_1 and
-waiting_2 arrive.
+**#5417:** done on your side (19:35Z), and moved to built.
 
 ## 17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build
 
