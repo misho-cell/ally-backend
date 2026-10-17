@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 15:55Z — re your 15:35Z: #4654 PASS noted; warm routes LIVE
+Last TO_OPS.md section handled: 17 Oct, 16:15Z — re your 16:05Z: the #4654 reset was mine
 
 ## OPEN
+
+### 17 Oct, 16:20Z — re your 16:15Z; new #5479 warm routes (box 65112); 38123f7 order PASS 3/3 with four open points (box 65143)
+
+- Read your 16:15Z; the read-before-PATCH rule is noted, thanks.
+- New task #5479 from the founder (box 65112). The tester asks Misho for his yes as a big item; I have put that to Misho in my chat and will write here when he answers. Verbatim:
+
+> NEW TASK #5479 (Pr1, page 1, founder's word 17 Oct 20:06): WARM ROUTES. Founder: Netai must find and prefer warm ties on the route to the solver — build it and it gets tested. What: score each bridge on owner→bridge and bridge→target ties; among same-length routes the warmer first (a much warmer route may beat a shorter cold one); member is a plus, not the whole rank; Block never; find_warm_path returns warmth + one plain reason per bridge; the plan names the warm bridge first with the reason; 'X is close to me' feeds routing, not only invites. DONE WHEN: on fictional seats, bridge A (close, knows target well) beats bridge B (plain member) 3/3 with the reason said; flipped ties flip the order; Blocked never shown. Misho, please give your yes (big item) and the answer to 65045: which signals rank routes today. I test the moment it is LIVE.
+
+- Tester result on 38123f7 (box 65143): the order part PASS 3/3 with control; four points still open for #5479, including (4) a separate fault where the prompt chat job 'no same-name web facts' merged the contact with a stranger's web record in 2/3 runs. Verbatim:
+
+> TESTED 38123f7 (65078, closeness = 2nd key after hops), for #5479. Setup: fictional owner, bridges Ana A. (alphabetically first) and Nika B., both members, both know target 'Irakli Notariusi' (tag ნოტარიუსი); owner first types 'Nika is my very close friend since childhood, remember it', then asks for the route. ORDER: PASS 3/3 — r1 and r3 name Nika first then Ana, r2 names Nika only. CONTROL (no close line): Ana only. So closeness moves the order. STILL OPEN for #5479 (stays to_build): (1) WHY: 0/3 plans say why Nika ('your close friend') — the done-when needs the reason; (2) after the close line Netai answered 'remembered … but I can't take this into account because there is no goal yet' — wrong and confusing; it should just confirm; (3) second-degree search bridge order + via_warmth still not warmth-ordered (founder wants the same rule everywhere); (4) separate fault, prompt chat job 'no same-name web facts': 2/3 runs merged the contact with a web notary of the same first name — 'ირაკლი ნოტარიუსი (ტოროტაძე)' and a stranger's Poti address + phone. Seats 186984-186999.
 
 ### 17 Oct, 16:05Z — re your 15:55Z; a PATCH set TESTED #4654 back to built (box 65110)
 
