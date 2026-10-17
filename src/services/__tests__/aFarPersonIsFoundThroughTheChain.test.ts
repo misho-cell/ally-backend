@@ -13,6 +13,8 @@ const OWNER = 186272;
 /** owner → L1 → L2 → L3 → L4, each saving only the next; L4 saved the notary. */
 const CHAIN = [186273, 186274, 186275, 186276];
 const phoneOf = (id: number): string => `99559900${id}`;
+/** The label each link saved the next one under; empty = none saved. */
+let labels: (string | null)[] = [];
 
 function routeChain(saved: { holder: number; alias: string } | null): void {
   mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
@@ -23,6 +25,10 @@ function routeChain(saved: { holder: number; alias: string } | null): void {
         return next === undefined ? [] : [{ from_id: id, user_id: next, phone: phoneOf(next) }];
       });
       return { rows } as never;
+    }
+    if (sql.includes('WITH ORDINALITY')) {
+      const chain = (params?.[1] ?? []) as string[];
+      return { rows: chain.map((_, i) => ({ ord: i + 1, label: labels[i] ?? null })) } as never;
     }
     if (sql.includes('LIKE ALL')) {
       const rows =
@@ -42,6 +48,7 @@ function routeChain(saved: { holder: number; alias: string } | null): void {
  */
 describe('a person beyond the second circle', () => {
   beforeEach(() => {
+    labels = [];
     mockQuery.mockReset();
     mockNames.mockReset();
     mockNames.mockImplementation(
@@ -65,6 +72,15 @@ describe('a person beyond the second circle', () => {
     ]);
   });
 
+  it('names each link by the label the one before saved them under (63264 A)', async () => {
+    routeChain({ holder: CHAIN[3], alias: 'ზურაბ ქობულაძე' });
+    labels = ['ლევან ჯაფარიძე', 'ნინო კაპანაძე', null, 'მარიამ ლომიძე'];
+
+    const [hit] = await farMembersHolding(OWNER, 'ზურაბ ქობულაძე');
+
+    expect(hit.via).toEqual(['ლევან ჯაფარიძე', 'ნინო კაპანაძე', 'link 3', 'მარიამ ლომიძე']);
+  });
+
   it('never searches the owner’s own phonebook or the second circle again', async () => {
     routeChain(null);
 
@@ -74,6 +90,16 @@ describe('a person beyond the second circle', () => {
       .filter(([sql]) => String(sql).includes('LIKE ALL'))
       .map(([, params]) => (params as unknown[])[0]);
     expect(searchedRings).toEqual([[CHAIN[1]], [CHAIN[2]], [CHAIN[3]]]);
+  });
+
+  it('matches a tag the holder gave as well as the label (63264 B, C)', async () => {
+    routeChain(null);
+
+    await farMembersHolding(OWNER, 'ნოტარიუსი');
+
+    const searched = mockQuery.mock.calls.find(([sql]) => String(sql).includes('LIKE ALL'));
+    expect(String(searched?.[0])).toContain('"UserTags"');
+    expect(String(searched?.[0])).toContain('"UserAlias"');
   });
 
   it('walks no further than four people in the middle', async () => {

@@ -4,6 +4,7 @@ import { getSession } from '../../db/neo4j/client';
 import { getCompositeKeyForPhone, getCompositeKeyForUser } from '../neo4j.keys';
 import { getExcludedPhones } from '../block.service';
 import { normalizePhone } from '../phone';
+import { labelsAlongChain } from '../chainLabels';
 import { memberMiddles } from '../memberPaths.service';
 import { accountStateFor, fetchAccountStates, isMemberPhone, AccountState } from './membership';
 
@@ -240,6 +241,35 @@ export function withMemberChains(
   return [...graphMiddles, ...added];
 }
 
+/**
+ * 5347 (the tester's 63264 A): each bridge by the label the one before saved
+ * them under — the owner's own for the first — not by their account name.
+ * Fails towards the names it already has.
+ */
+async function namedAlongTheChain(ownerId: number, paths: WarmPath[]): Promise<WarmPath[]> {
+  try {
+    const labels = await Promise.all(
+      paths.map((path) =>
+        labelsAlongChain(
+          ownerId,
+          path.bridges.map((bridge) => bridge.phone),
+        ),
+      ),
+    );
+    return paths.map((path, index) => ({
+      ...path,
+      bridges: path.bridges.map((bridge, at) => ({
+        ...bridge,
+        name: labels[index][at] ?? bridge.name,
+      })),
+    }));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('findWarmPath chain labels:', (err as Error).message);
+    return paths;
+  }
+}
+
 export async function findWarmPath(
   userId: string,
   targetPhoneRaw: string,
@@ -334,7 +364,10 @@ export async function findWarmPath(
     // is still the user's own contact, whom they can simply write to.
     .sort((a, b) => a.hops - b.hops || Number(b.relayable) - Number(a.relayable));
   // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
-  const paths = (await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS);
+  const paths = await namedAlongTheChain(
+    Number(userId),
+    (await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS),
+  );
 
   return {
     found: true,

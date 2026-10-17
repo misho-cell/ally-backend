@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 import { IS_MEMBER_SQL } from './memberPaths.service';
 import { normalizePhone } from './phone';
+import { labelsAlongChain } from './chainLabels';
 import { namesFor } from './tools/findWarmPath';
 import { georgianStem } from './tools/georgianStem';
 import { normalizeSearchToken } from './tools/normalizeSearchToken';
@@ -86,12 +87,31 @@ async function nextRing(ring: readonly Link[], seen: Set<number>): Promise<Link[
   });
 }
 
-/** People this ring saved under every one of the words. */
+/**
+ * People this ring saved under every one of the words — in the label itself, or
+ * in a tag the holder gave them (the tester's 63264: „ნოტარიუსი ქუთაისში" was
+ * L2's tag on a contact saved by name). Named by the holder's label when there is one.
+ */
 async function savedUnder(ring: readonly Link[], patterns: readonly string[]): Promise<HitRow[]> {
   const result = await query<HitRow>(
-    `SELECT ua."contactId" AS holder_id, ua.phone, ua.alias
-       FROM "UserAlias" ua
-      WHERE ua."contactId" = ANY($1::int[]) AND normalize_search_token(ua.alias) LIKE ALL($2::text[])
+    `SELECT x.holder_id, x.phone, x.alias
+       FROM (
+         SELECT ua."contactId" AS holder_id, ua.phone, ua.alias,
+                normalize_search_token(ua.alias) AS words
+           FROM "UserAlias" ua
+          WHERE ua."contactId" = ANY($1::int[])
+         UNION ALL
+         SELECT ut."contactId", ut.phone,
+                COALESCE(
+                  (SELECT NULLIF(TRIM(a.alias), '') FROM "UserAlias" a
+                    WHERE a."contactId" = ut."contactId" AND a.phone = ut.phone
+                    ORDER BY a.id DESC LIMIT 1),
+                  ut.tag),
+                normalize_search_token(ut.tag)
+           FROM "UserTags" ut
+          WHERE ut."contactId" = ANY($1::int[])
+       ) x
+      WHERE x.words LIKE ALL($2::text[])
       LIMIT $3`,
     [ring.map((link) => link.userId), patterns, HITS_READ],
     QUERY_TIMEOUT_MS,
@@ -139,11 +159,16 @@ export async function farMembersHolding(ownerId: number, text: string): Promise<
   const hits = await hitsFrom(await ringsFrom(ownerId), patterns);
   if (hits.length === 0) return [];
   const chains = hits.map(({ link }) => chainOf(link));
-  const names = await namesFor(String(ownerId), [...new Set(chains.flat())]);
+  const [names, labels] = await Promise.all([
+    namesFor(String(ownerId), [...new Set(chains.flat())]),
+    Promise.all(chains.map((chain) => labelsAlongChain(ownerId, chain))),
+  ]);
   return hits.map(({ row }, index) => ({
     name: row.alias,
     phone: normalizePhone(row.phone),
     hops: chains[index].length + 1,
-    via: chains[index].map((phone) => names.get(normalizePhone(phone)) ?? null),
+    via: chains[index].map(
+      (phone, at) => labels[index][at] ?? names.get(normalizePhone(phone)) ?? null,
+    ),
   }));
 }
