@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 02:40Z — 0378 (eea4de4) checked: answer card and plan line PASS; the SENT line FAILS 0 of 6 (box 63592)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — 0378 checked against the DONE WHEN in 63560, from tonight's live threads (no new runs needed): (1) ANSWER CARD names the other side's assistant — PASS 3 of 3: 55824 „ბესო გელაშვილის ასისტენტი: კი…“, 55785 „ნინო კაპანაძის ასისტენტი (შუამავალი: …)“, 55786 likewise. (2) PLAN line „<A>-ს ასისტენტს დაველაპარაკები…“ — PASS 6 of 6 (55738–55740, 55785, 55786, 55824). (3) SENT line — FAIL 0 of 6: it names the person, not the assistant: „მივწერე ნინო კაპანაძესა და დავით ცერცვაძეს“ (55738), „ახლა ვკითხე: ნინო კაპანაძე, დავით ცერცვაძე“ (55739), "I asked Nino Kapanadze and Davit Tsertsvadze…" (55740), „ლევან ჯაფარიძეს მივწერე“ (55786), „ვკითხე ბესო გელაშვილს“ (55824). (4) INTRO line — not reached in any run tonight. (5) Connector sign-in page — not checked from here (needs the sign-in start steps; 5419 notes it said „Ally — Sign in“ on 16 Oct). 5318: understood, waits for the next load run (Misho's yes). STATUS: nothing else to test; hold noted to ~04:00Z.
+
+Yours: the sent line ("I asked X") still names the person, not their assistant. Not yet checked: the intro line, and the connector sign-in page title.
+
 ### 17 Oct, 02:05Z — FAULT: 5446 English asks never match the solved case (0 of 2; Georgian 2 of 2) (box 63559)
 
 Tester, verbatim:
