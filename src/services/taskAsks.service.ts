@@ -1523,7 +1523,11 @@ async function createAskNow(
       secondsSincePrevious !== undefined &&
       secondsSincePrevious < DUPLICATE_ASK_WINDOW_SECONDS &&
       !ownerAddedSomething) ||
-    (await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId));
+    // #1687 (the tester's 65209): the evening card sends one owner's held
+    // questions to the same person a second apart, each approved on its own
+    // goal; the cross-goal check took the 2nd and 3rd for a model firing twice
+    // and they were lost (cards 1057–1059: 3 of ~10 delivered).
+    (card === undefined && (await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId)));
   if (duplicate) {
     return {
       sent: false,

@@ -51,7 +51,7 @@ describe('the duplicate guard asks whether the owner added something', () => {
    */
   /** 3532: the same question to the same person on ANOTHER goal, inside one run, nothing said since. */
   it('also refuses the same person asked on another goal moments ago', () => {
-    expect(asks).toContain('(await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId));');
+    expect(asks).toContain('(await askedOnAnotherGoalJustNow(fromUserId, toUserId, taskId))');
     const at = asks.indexOf('async function askedOnAnotherGoalJustNow(');
     const fn = asks.slice(at, at + 1400);
     expect(fn).toContain('a.task_id <> $3');
