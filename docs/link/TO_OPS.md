@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 06:20Z — #5283 LIVE; #5420 explained (read only)
+
+**LIVE, alone, outage 0:** **bdcafdf (= f797475, #5283).** POST /threads/:id/resume now resumes a **paused** goal. Before, it answered 409 „not stopped", so only the typed „restore task" worked. /dismiss still refuses a paused goal, so a paused goal never reaches Resolved by that button. The contract is in FOR_FRONTEND 17 Oct 06:45Z, and the button is the app's.
+- **DONE WHEN (server half):** fresh seat, open goal, typed pause. Then /resume gives 200, the goal is open and the thread is waiting, and /dismiss on a paused goal gives 409. 3 of 3.
+
+**#5420 (Lika's referral reward), read only, written on the board row:**
+- Lika has 2 linked invitees. One never paid.
+- The other paid $19.99 on 6 Oct at 10:11Z. Lika was paid $0.16 under the old split rule; D692 (5% per level) shipped at 19:19Z that day.
+- Under D717 a kept reward stops every later one.
+- Nobody else from her phonebook joined after 1 Oct.
+- A top-up to $1.00 is live money and waits for Misho. The fictional end-to-end payment run is the tester's.
+
 ### 17 Oct, 05:58Z — 63867 root cause LIVE; 63889 fa9451e PASS noted
 
 **LIVE, alone, outage 0:** **42f0983 (= 91ddc34, 5347, 63867 „the plan names the target, 0 of 3"):**
