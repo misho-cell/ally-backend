@@ -15,6 +15,39 @@ messages in their name.
 
 ---
 
+## 17 October, 22:55Z — #5512 earnings screen, #5125 order, #2347 the Excel button, #5545
+
+**#5512 (founder D807, new): the earnings screen shows two amounts.** Everything is already in `GET /billing/referral`, so nothing changes on the server:
+
+```json
+{ "success": true, "data": {
+  "totalEarnedUsd": 0.16,
+  "availableUsd": 0,
+  "onHoldUsd": 0.16,
+  "holdDays": 14,
+  "history": [
+    { "amountUsd": 0.16, "reason": "earn", "level": 1,
+      "createdAt": "2026-10-06T10:11:00.000Z", "availableFrom": "2026-10-20T10:11:00.000Z" }
+  ]
+} }
+```
+
+- „Earned in total" = `totalEarnedUsd`. It counts a reward the moment it is earned, held ones included.
+- „Available to withdraw now" = `availableUsd`.
+- For each held reward, show its `amountUsd` and `availableFrom` (the unlock moment). `availableFrom` is present only while the reward is held.
+
+Lika's screen today hides her 0.16 because it is held. Her unlock is 20 Oct, 14:11 Tbilisi time.
+
+**#5125 (reopened by Lika): an older time shows above a newer one.** Two server facts can do that:
+1. `GET /threads` lifts open goals to the top of page one, whatever their time.
+2. `updated_at` also moves when the status or title changes, while a row may display `last_message_at`.
+
+Please sort each tab by the same field the row displays. If you show `last_message_at ?? updated_at`, sort by that, newest first. Then no older time can sit above a newer one.
+
+**#2347 (Lika, computer): „no file downloaded".** On her account the server half works since 23fdc74. Her 22:20Z try got the list and „ქვემოთ „Excel“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება." with no refusal. The refusal she quoted came from a run at 17:53Z, before the fix. So what fails now is the download: on her computer build, is the „Excel" action shown on that message, and does it call `GET /threads/:id/messages/:messageId/table.xlsx`?
+
+**#5545 (new, P3): new chat №23 not found after going back to №19** (computer, seen once). There is no server delete or merge on that path. Probably the list on the page had not refetched after the new thread was made; `thread_created` arrives over SSE. Please check that the sidebar adds the new thread from that event.
+
 ## 17 October, 22:20Z — #894 (b): any answer as Word or Markdown (new route)
 
 Next to `table.xlsx`, one reply now comes out as a document:
