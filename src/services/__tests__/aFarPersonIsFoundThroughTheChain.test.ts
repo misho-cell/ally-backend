@@ -67,6 +67,7 @@ describe('a person beyond the second circle', () => {
         name: 'ნოტარიუსი ქუთაისში',
         phone: normalizePhone('995599777000'),
         hops: 5,
+        firstLinkPhone: normalizePhone(phoneOf(CHAIN[0])),
         via: ['link 1', 'link 2', 'link 3', 'link 4'],
       },
     ]);

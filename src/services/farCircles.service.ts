@@ -41,6 +41,8 @@ export interface FarHit {
   readonly name: string;
   readonly phone: string;
   readonly hops: number;
+  /** The owner's own contact the chain starts at: the one the owner's plan asks. */
+  readonly firstLinkPhone: string;
   /** The people in the middle, first link first; null where no name is known (never a number). */
   readonly via: readonly (string | null)[];
 }
@@ -167,6 +169,7 @@ export async function farMembersHolding(ownerId: number, text: string): Promise<
     name: row.alias,
     phone: normalizePhone(row.phone),
     hops: chains[index].length + 1,
+    firstLinkPhone: normalizePhone(chains[index][0]),
     via: chains[index].map(
       (phone, at) => labels[index][at] ?? names.get(normalizePhone(phone)) ?? null,
     ),
