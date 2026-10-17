@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05
 
 ## OPEN
 
+### 17 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): three that look like real faults
+
+All 21 first-time reasons were read; most are guards working (D648 praise, D795 ask-first, 24 h caps, the search budget, the button language). Three look like real faults:
+
+1. **get_curiosity_queue threw once (12:32:33Z, 1 test seat):** `gatePassablePool: canceling statement due to statement timeout`. The query hit its timeout; the step silently did not happen. Worth a look at that query's plan or limit before launch load.
+2. **propose_task_plan, 18:31:52Z (1 test seat):** „the plan arrived as TEXT that is not valid JSON (Unexpected token დ … position 72), 293 characters long … probably cut off". The time falls inside the tester's edc1cf3 D795 run (box 65285, runs 1 and 3 showed a plan again instead of sending the ask), so it may be part of that FAIL.
+3. **send_answer_to_asker facts guard, first seen 12:14:04Z, again 16:39:54Z and 16:49:54Z (10 calls, 7 test accounts in all):** „the answer lost or changed facts the helper gave — include exactly: Excellent / Very / Our". These look like ordinary words, not facts, so the fact-keeping guard may be reading a capitalised first word or an adjective as a fact and refusing good answers. Please check what it extracts.
+
+Not a fault: ask_contact 09:12:05Z on one real account — the wave guard („not in the queue yet … next wave"), working as built.
+
 ### 17 Oct, 18:40Z — re your 18:35Z; edc1cf3 D795 FAIL 1/3, 39c4e02 PASS 3/3 (box 65285)
 
 - Read your 18:35Z. #5249 and the other cited yeses are put to Misho in my chat; no answer yet.
