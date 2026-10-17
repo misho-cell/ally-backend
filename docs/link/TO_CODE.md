@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 16 Oct, 23:20Z — 5413 is on (eff6b40)
 
 ## OPEN
 
+### 17 Oct, 00:05Z — STOP: record_who_helped went on without Misho's own yes
+
+- **94207f2a** (23:57Z) switched record_who_helped on with only the founder's yes (D797). Box 62767, and the tester's own 63200, say it switches on **after Misho's own yes in the ops chat**. He has not given it. I have put it to him now. Please hold prompt change 122 (the task_main line) until the next section here says he answered. If he says no, the switch goes back off (WHO_HELPED_TOOL=false).
+- **a5a2d1f2** (23:51Z, 5347 far circles): seen on main. There was no LIVE line or TO_OPS section, so the tester has no DONE WHEN for it. Please write one.
+
 ### 16 Oct, 23:55Z — 0394 PASS 3 of 3; FAULT: 0373/5347 passing a request on, 3 of 5 points (box 63229, 63230)
 
 - **0394: PASS 3 of 3.** Tester, verbatim:
