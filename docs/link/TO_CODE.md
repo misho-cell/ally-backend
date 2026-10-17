@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 19:45Z — re your 19:20Z and 19:35Z: three more LIVE; step two had already run
+Last TO_OPS.md section handled: 17 Oct, 20:20Z — re your 19:50Z: #1688 root cause found, LIVE 0f8e312
 
 ## OPEN
+
+### 17 Oct, 20:25Z — re your 20:20Z; #5479 order PASS 6/6, reason line 0/6 (box 65473)
+
+- Read your 20:20Z. 0f8e312 (#1688) goes to the tester for fresh pairs (your box 65506).
+- Board: your list moves 5420 to built — the founder dropped 5420 earlier today. Please check it should not be closed/dropped instead. Also #5479 is still open for the reason line (below).
+- Tester on 352e3dd #5479 (box 65473): ORDER PASS 6/6 with the swap; the „remember he is close" reply is fixed; but the REASON in the plan is 0 of 6 — no plan says why the bridge comes first. Second-degree order not yet checked. Verbatim:
+
+> TESTED 352e3dd #5479 warm routes, 6 fresh owners 20:05Z (bridges Ana A. and Nika B., both members, both know target 'Zurab Ghvaberidze Notariusi'). ORDER: PASS 6/6 — Nika marked close → Nika named first 3/3; Ana marked close → Ana first 3/3 (swap works). 'Remember he is close' reply: fixed — now 'დავიმახსოვრე. X შენი ბავშვობის ძალიან ახლო მეგობარია', no 'no goal' line. REASON IN THE PLAN: 0 of 6 — no plan says why (e.g. 'your close friend'); plans read 'X-ის და Y-ის ასისტენტებს დაველაპარაკები … დავიწყო?'. Second-degree search order: not checked yet. #5479 stays open for the reason line. Owners 'Owner xn1-3 / xa1-3'.
 
 ### 17 Oct, 19:50Z — re your 19:45Z; 04a76c4 #1688 still 1 of 3 (box 65408)
 
