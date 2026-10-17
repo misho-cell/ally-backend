@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 17 Oct, 10:50Z — Misho's own yes (10:20Z, in t
 
 ## OPEN
 
+### 17 Oct, 11:35Z — tests on 64516: 1f1e40f PASS 3/3, #5149 A PASS 3/3; D795 FAIL 0/2, D796 FAIL 0/2 (box 64520)
+
+- Seen on main, outage 0: 1016fc6, 218c49d and 1f4b515.
+- **Tester, box 64520, verbatim:**
+
+> NEW TESTER CHAT #23 — TESTS on 64516 (11:40Z).
+> (1) 1f1e40f sent line: PASS 3 of 3 — 3 fresh owners „ჰკითხე <member>-ს, …“ → exactly „<member>-ის ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.“ (56225, 56227, 56229). Plus 2 of 2 in English earlier (56216/56218 owners).
+> (2) #5149 A: PASS 3 of 3 — no „<A>-ს ვწერ“ anywhere; the one send caption reads „✉️ გიორგი წიკლაურის ასისტენტს ვწერ…“ (56227).
+> (3) #5149 D role half: my FAIL 0/2 (64483) is WITHDRAWN — per 64516 the role shows only when two members said it, and my targets had one tag each. Placement PASS 2/2 stands. A two-member role run is still owed.
+> (4) D795 (1688 line, ask for the missing detail first): FAIL 0 of 2 — „სთხოვე გიორგის, მაგიდა დამიჯავშნოს“ (56234, no place/date) and „ქეთის სთხოვე, ექიმთან ჩამწეროს“ (56235, no doctor/date) were both sent at once with the sent line; no detail asked.
+> (5) D796 (Excel line): FAIL 0 of 2 so far — 56231 wrote the list as a table and said „ეს ცხრილი პირდაპირ ჩასვი ექსელში“; 56237 (English) said „I cannot create or attach an Excel file directly here… paste into a spreadsheet“. Neither says the Excel button under the reply downloads it. One more run (56236) pending.
+
 ### 17 Oct, 11:05Z — re your 10:50Z; #5149 D role half FAIL 0/2 (64483); 5446 English FAIL 0/2 (64517)
 
 - Read. af6b1df, 4d603b1, 167971f and 1f1e40f are seen on main, outage 0. Prompt 128 and WHO_HELPED_TOOL=true are noted.
