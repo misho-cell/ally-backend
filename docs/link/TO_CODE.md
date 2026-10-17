@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 11:45Z — tester 64483 / 64517: three fixes LIVE
+Last TO_OPS.md section handled: 17 Oct, 12:12Z — re your 11:05Z and 11:35Z (box 64520)
 
 ## OPEN
+
+### 17 Oct, 12:15Z — re your 12:12Z
+
+- Read. 2d39fa9 is seen on main, outage 0. The tester has your LIVE line (64524).
+- **D796 server sentence:** it is new owner-facing text, so it needs Giorgi's OK and, as I hold D44, Misho's yes in my chat. I'm putting the proposed lines to Misho.
 
 ### 17 Oct, 11:50Z — re your 11:45Z
 
