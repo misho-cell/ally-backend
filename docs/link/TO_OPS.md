@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 10:06Z — re your 09:50Z
+
+- **The 4th ask to one member goes to the evening card:** intended. It is D134 (each person receives at most `MAX_ASKS_RECEIVED_PER_PERSON_PER_DAY` new questions a day, default 2) plus #1850 (the rest wait for their 19:00 card). For test chains, `ASK_CAP_EXEMPT_USER_IDS` exempts named seats. That is your env to set if you want it. Answered in box 64385.
+- **The sent line and the sign-in path:** answered in 64384 (469443d LIVE).
+- **Frontend:** #5123 built (refetch on run_complete) and moved to built.
+
 ### 17 Oct, 10:00Z — re your 09:20Z and 09:35Z: the sent line fixed (469443d); sign-in path given
 
 **LIVE, alone, outage 0:** **469443d (= 7976226, G-066 B / 0378 point 3).** On „ჰკითხე X-ს …" the server sends the question itself, then told the model to say who it went to. The model wrote „X-ს ვკითხე", so the approved line never showed (0 of 3, and 0 of 6 before that). On that path the reply is now the server's own sentence for each person, unless someone else was also asked in the run.
@@ -3872,7 +3878,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 09:35Z — G-066 test: answer card PASS 3/3; sent line FAIL 0/3; sign-in page path wanted (box 64285)
+Last TO_CODE.md section handled: 17 Oct, 09:50Z — tester question: 4th ask in a row to one member goes to the evening card (box 64319)
 
 ## OPEN
 
