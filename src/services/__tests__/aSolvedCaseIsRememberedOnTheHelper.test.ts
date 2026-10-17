@@ -50,7 +50,7 @@ describe('recording a solved goal', () => {
     const [writeSql, writeParams, timeout] = mockQuery.mock.calls[1];
     expect(writeSql).toContain('INSERT INTO helper_solved_cases');
     expect(writeSql).toContain('ON CONFLICT (helper_user_id, task_id) DO NOTHING');
-    expect(writeParams).toEqual([42, [11], [7], ['TBC loan']]);
+    expect(writeParams).toEqual([42, [11], [7], ['TBC loan თიბისი ტიბისი']]);
     expect(timeout).toBeGreaterThan(0);
   });
 

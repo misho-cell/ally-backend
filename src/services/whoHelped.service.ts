@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { withBrandAliases } from './brandAliases';
 import { phoneDigits } from './phone';
 import { accountDetailsFor, fetchAccountStates } from './tools/membership';
 
@@ -75,12 +76,13 @@ async function inOwnersPhonebook(ownerId: string, digits: string): Promise<boole
   return result.rows.length > 0;
 }
 
-/** The goal's words, then the owner's own account of how it was solved. */
+/** The goal's words, then the owner's own account of how it was solved, with the company's other spellings. */
 export function caseTextOf(goalWords: string, whatWasSolved: string): string {
-  return [goalWords.trim(), whatWasSolved.trim()]
+  const words = [goalWords.trim(), whatWasSolved.trim()]
     .filter((part) => part !== '')
     .join(' ')
     .slice(0, MAX_CASE_CHARS);
+  return withBrandAliases(words);
 }
 
 async function helperOf(input: WhoHelpedInput, digits: string): Promise<number | WhoHelpedRefusal> {

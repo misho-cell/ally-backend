@@ -1,5 +1,6 @@
 import { query } from '../db/postgres/client';
 import { AskTap, askTapOf } from './askOpening';
+import { withBrandAliases } from './brandAliases';
 
 /**
  * 5446, founder ruling D792 (16 Oct). The real TBC loan was unblocked by hand:
@@ -60,7 +61,7 @@ export async function recordSolvedCases(taskId: number): Promise<number> {
       taskId,
       helpers.map((h) => h.to_user_id),
       helpers.map((h) => h.from_user_id),
-      helpers.map((h) => h.case_text),
+      helpers.map((h) => withBrandAliases(h.case_text)),
     ],
     QUERY_TIMEOUT_MS,
   );
