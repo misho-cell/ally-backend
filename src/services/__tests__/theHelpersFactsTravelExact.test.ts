@@ -37,6 +37,25 @@ describe('the facts of a helper’s line', () => {
     ).toEqual(['Baxva', 'Gamogonili']);
   });
 
+  it('are not a word capitalised only because it opens a sentence (ops 18:45Z)', () => {
+    const line =
+      'Excellent dentist, ask for Beridze at Smile Clinic. Very kind. Our price is 50 GEL.';
+    expect(factsOf(line).map((f) => f.written)).toEqual([
+      '50',
+      'Beridze',
+      'Smile',
+      'Clinic',
+      'GEL',
+    ]);
+    expect(missingFacts(line, 'Beridze at Smile Clinic is very good, about 50 GEL.')).toEqual([]);
+  });
+
+  it('keep a sentence opener that is a name used again mid-sentence', () => {
+    expect(factsOf('Tamta is great. Call Tamta after six.').map((f) => f.written)).toEqual([
+      'Tamta',
+    ]);
+  });
+
   it('leave a phone number to the number tool', () => {
     expect(factsOf('მისი ნომერია 599123456').map((f) => f.written)).not.toContain('599123456');
   });

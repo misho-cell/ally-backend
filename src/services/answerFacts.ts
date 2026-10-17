@@ -19,6 +19,8 @@ const NUMBER_RE = /\d+(?:[.,:/-]\d+)*/gu;
 const LINK_RE = /(?:https?:\/\/\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.]+)/giu;
 const LATIN_WORD_RE = /\b[A-Za-z][A-Za-z'’-]{2,}\b/gu;
 const WORD_RE = /[\p{L}]+/gu;
+/** The text before a word ends where a sentence starts: nothing yet, or after . ! ? … */
+const SENTENCE_OPENING_RE = /(?:^|[.!?…]["'”’)]*)\s*$/u;
 /**
  * Words a surname ends with, in its plain or case form. 3763 (box 48564, ask
  * 18052): „ზაზა გამოგონილი" reached the owner as „ზაზა" — -ილი was not a
@@ -165,12 +167,48 @@ function isMostlyLatin(line: string): boolean {
   return letters > 0 && latin / letters > LATIN_LINE_SHARE;
 }
 
+interface LatinWord {
+  readonly word: string;
+  readonly opensSentence: boolean;
+  /** The very next word is Latin and capitalised: „Baxva Gamogonili". */
+  readonly beforeACapital: boolean;
+}
+
+function latinWordsIn(text: string): LatinWord[] {
+  const found = [...text.matchAll(LATIN_WORD_RE)];
+  return found.map((m, i) => {
+    const at = m.index ?? 0;
+    const next = found[i + 1];
+    const gap = next === undefined ? '' : text.slice(at + m[0].length, next.index ?? 0);
+    return {
+      word: m[0],
+      opensSentence: SENTENCE_OPENING_RE.test(text.slice(0, at)),
+      beforeACapital: next !== undefined && /^\s+$/u.test(gap) && /^[A-Z]/u.test(next[0]),
+    };
+  });
+}
+
+/**
+ * Ops' daily check, 17 Oct 18:45Z: „include exactly: Excellent / Very / Our"
+ * refused ten good answers — a word capitalised only because it opens a
+ * sentence was read as a name. Such a word is a name only when a capitalised
+ * word follows it („Baxva Gamogonili") or it is capitalised mid-sentence too.
+ */
+function isLatinName(word: LatinWord, capitalisedMidSentence: ReadonlySet<string>): boolean {
+  if (!/^[A-Z]/u.test(word.word) || SENTENCE_WORDS.has(word.word.toLowerCase())) return false;
+  return !word.opensSentence || word.beforeACapital || capitalisedMidSentence.has(word.word);
+}
+
 function latinWordsOf(line: string): AnswerFact[] {
   const withoutLinks = line.replace(LINK_RE, ' ');
   const onlyCapitalised = isMostlyLatin(withoutLinks);
-  return [...withoutLinks.matchAll(LATIN_WORD_RE)]
-    .map((m) => m[0])
-    .filter((w) => !onlyCapitalised || (/^[A-Z]/u.test(w) && !SENTENCE_WORDS.has(w.toLowerCase())))
+  const words = latinWordsIn(withoutLinks);
+  const capitalisedMidSentence = new Set(
+    words.filter((w) => !w.opensSentence && /^[A-Z]/u.test(w.word)).map((w) => w.word),
+  );
+  return words
+    .filter((w) => !onlyCapitalised || isLatinName(w, capitalisedMidSentence))
+    .map((w) => w.word)
     .filter((w) => !ORDINARY_LATIN.has(w.toLowerCase()) && !isFirstName(w))
     .map((w) => ({ written: w, mustAppear: w.toLowerCase() }));
 }
