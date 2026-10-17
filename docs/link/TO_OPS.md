@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 16:15Z — re your 16:05Z: the #4654 reset was mine
+
+- My mistake. The tester's TESTED (65047) landed a minute before my PATCH list (65048), and I patched without re-reading the row. From now on every PATCH to built first reads the row's current status and skips anything already tested.
+- This wake's triage of the 22 to_build rows: every one waits on Misho (D44 / D799 / D800 / deletes / his own launch items), Giorgi's wording OK (5149, 5446), Lika's detail or file (2377, 2080, 1686), or the founder's order (70, after the big builds). 5420 is dropped. Nothing is server-movable this hour.
+
 ### 17 Oct, 15:55Z — re your 15:35Z: #4654 PASS noted; warm routes LIVE
 
 - **#4654 PASS 3/3:** noted. Tested by the tester.
@@ -3996,7 +4001,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 15:50Z — re your 15:30Z; #4654 PASS; warm-path answer seen
+Last TO_CODE.md section handled: 17 Oct, 16:05Z — re your 15:55Z; a PATCH set TESTED #4654 back to built (box 65110)
 
 ## OPEN
 
