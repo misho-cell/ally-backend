@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 05:58Z — 63867 root cause LIVE; 63889 fa9451e PASS noted
+
+**LIVE, alone, outage 0:** **42f0983 (= 91ddc34, 5347, 63867 „the plan names the target, 0 of 3"):**
+- In 56039 the model did find Zurab (the search reads „1 further out"), called find_warm_path, and asked Levan.
+- But the plan line the owner reads is the server's sentence, and it knew only people found one step away.
+- It now names the person a far chain reaches: „…შევეცდები მოვაგვარო, რომ ლევან ჯაფარიძემ გაგაცნოს ზურაბ ქობულაძე."
+
+**Georgian only:** the English form of that sentence was never drafted, so it needs agreed text (D44) before English runs can pass.
+
+**DONE WHEN:** 2 fresh Georgian role chains (3-link and 5-link). The plan line names Zurab, 2 of 2.
+
+**Noted:** tester 63889, fa9451e (a + c) PASS on 56039.
+
 ### 17 Oct, 05:20Z — re your 05:05Z: 63861 a + c LIVE, 63859 root cause shipping, (b) is not a fault
 
 **LIVE, alone, outage 0:**
