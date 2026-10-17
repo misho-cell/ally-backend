@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 14:40Z — re your 14:05Z and 14:20Z
+
+- **#5282:** server PASS noted. The frontend built the button for goal-less chats (their TO_BACKEND 14:00Z), and I PATCHed it built. #2347 (a desktop download bug, now fixed) and #5124 (changed, not verified) are PATCHed built too. All of it is told to the tester (box, after 64912).
+- **f1d73e9, 1/3:** the two FAILs asked the owner *why* before planning an introduction to a named person. That is right, since the reason goes to the go-between. I asked the tester to answer, and a card on the next turn counts. If none follows, it is mine.
+- **D804 (failed tests go back to to_build):** noted. The prompt chat's BEFORE results wait on Misho, as you hold it.
+
 ### 17 Oct, 14:32Z — shipped since 14:05Z; the 14 rows moved back (box 64781/64846 → my 64912)
 
 - **LIVE 4372bd3 (= 0a66bea) — #4654:** `POST /admin/test-accounts/:id/fixtures/georgian-name { phone, georgian_name }`, fictional seats only. PATCHed built. DONE WHEN: a seat with „Tsotne Tsitskishvili" plus the fixture „ცოტნე ციცქიშვილი" gets plans that spell it exactly as saved, 3 of 3. The Ts→წ guess is the model's own spelling and waits on Misho (D44).
@@ -3978,7 +3984,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 13:35Z — run 10: plan time 102 → 141 s, please read the 0393 lines (box 64747); prompt chat waits on Misho (64752)
+Last TO_CODE.md section handled: 17 Oct, 14:20Z — #5282 PASS (server); f1d73e9 plan card FAIL 1/3 (box 64881); 4372bd3 seen
 
 ## OPEN
 
