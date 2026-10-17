@@ -1,4 +1,9 @@
-import { foreignLetterRefusal, labelWithForeignLetter } from './buttonLetters';
+import {
+  foreignLetterRefusal,
+  foreignWordInReply,
+  foreignWordNudge,
+  labelWithForeignLetter,
+} from './buttonLetters';
 import { ownersContactsOnNetai } from './ownersMembers.service';
 import { withoutLatinEchoOfNames } from './latinNameEcho';
 import {
@@ -14504,6 +14509,11 @@ async function runToolLoop(
     !answeringALaterTap &&
     runWebFound.has(runId) &&
     isOnlyAQuestion(finalText);
+  // 5347 (63930): an Armenian or old-script word in the reply the owner did not write.
+  const foreignWord =
+    !ownerAbsent && !promoted && !answeringALaterTap
+      ? foreignWordInReply(finalText, runOwnerLine.get(runId) ?? '')
+      : null;
   // #893 (the tester's 37853): the list's first answer must name every row.
   const listLabels = runListLabels.get(runId) ?? [];
   const rowsMissing =
@@ -14541,7 +14551,9 @@ async function runToolLoop(
                           ? listRowsNudge(rowsMissing)
                           : findsHeldBack
                             ? FINDS_FIRST_NUDGE
-                            : CLIFFHANGER_NUDGE;
+                            : foreignWord !== null
+                              ? foreignWordNudge(foreignWord)
+                              : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -14557,6 +14569,7 @@ async function runToolLoop(
       farFindUnplanned ||
       rowsMissing.length > 0 ||
       findsHeldBack ||
+      foreignWord !== null ||
       isCliffhangerReply(finalText))
   ) {
     // Row 273's missing half — see `describeCliffhangerOutcome`. The

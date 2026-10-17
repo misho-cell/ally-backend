@@ -44,3 +44,28 @@ export function foreignLetterRefusal(found: { label: string; letter: string }): 
     'present_choices again with every label written in ordinary letters, checked letter by letter.'
   );
 }
+
+/**
+ * 5347, the tester's 63930 (56071): a Georgian reply ended „…? համաձայն ხარ" —
+ * the Armenian word for „agree" where „თანახმა" belongs. The same letters the
+ * buttons may not carry, in the reply's own words. A word the owner wrote
+ * himself (an Armenian name, say) is his and stays.
+ */
+const FOREIGN_WORD_RE = /\S*[Ⴀ-჏ⴀ-⴯�Ա-Ֆա-և]\S*/gu;
+
+/** The first word of the reply carrying such a letter that the owner did not write; null when none. */
+export function foreignWordInReply(reply: string, ownerLine: string): string | null {
+  for (const word of reply.match(FOREIGN_WORD_RE) ?? []) {
+    if (!ownerLine.includes(word)) return word;
+  }
+  return null;
+}
+
+/** The turn that has the reply written again. */
+export function foreignWordNudge(word: string): string {
+  return (
+    `(სისტემური შენიშვნა: პასუხში სიტყვა „${word}" ქართული ასოებით არ წერია. ` +
+    'მფლობელს შენი წინა ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ჩვეულებრივი ' +
+    'ქართული ასოებით, ასო-ასო შემოწმებული, ბოდიშის გარეშე.)'
+  );
+}
