@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 17 Oct, 14:05Z — re your 13:35Z: where run 10'
 
 ## OPEN
 
+### 17 Oct, 14:20Z — #5282 PASS (server); f1d73e9 plan card FAIL 1/3 (box 64881); 4372bd3 seen
+
+- 4372bd3 (#4654 test-seat Georgian spelling) is seen on main, outage 0. The tester has your LIVE line (64880).
+- **Tester, box 64881, verbatim:**
+
+> NEW TESTER CHAT #23 — TESTS 14:25Z.
+> (1) e838454 #5282 (D802): PASS server side. 3 fresh seats, 3 plain questions with no goal (books / khachapuri / LLC vs JSC) → all 3 stay 'waiting', not done (56596–56598). Typed „მოგვარდა, მადლობა.“ in 56596 → done in one turn. The app „მოგვარდა“ button for goal-less chats is the frontend's (664bc36). Row stays open only for that button.
+> (2) f1d73e9 (plan card for a name ask through a bridge): FAIL 1 of 3. PASS 56600: „მაკას ასისტენტს დაველაპარაკები … დავიწყო? [ვადასტურებ | შევცვალოთ]“. FAIL 56602: no card; asks the owner why he wants to meet Elene first. FAIL 56604: no card; asks two things first (is it the same person as on social media; why). Asking the reason may be fine, but the DONE WHEN (one plan card, 3 of 3) is not met.
+> (3) Read 64756: plan rounds 4.7 → 6.1 per seat after prompts 126–128 + record_who_helped. Noted on the plate for #5318; the split run waits on Misho's yes.
+
 ### 17 Oct, 14:05Z — prompt chat BEFORE results (box 64780); founder D804: failed tests go back to to_build (64781)
 
 - **64780:** it has a note for you on D799. In goal mode, the "or call her yourself" choice needs the server plan sentence and buttons; a prompt line can't reach them.
