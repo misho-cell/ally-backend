@@ -152,6 +152,7 @@ import {
   deleteNamedRequestThreads,
   deleteTestSeatRequestThreads,
 } from '../../services/oldRequestThreads.service';
+import { MAX_TOP_UP_TARGET_USD, topUpReferralReward } from '../../services/referralTopUp.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
 import {
@@ -5794,6 +5795,50 @@ adminRouter.post('/outgoing-request-threads/delete', async (req: Request, res: R
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[g067 step two]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * #5420 (Misho's own word, 17 Oct): one referral reward brought up by hand to
+ * what D692 pays. ADMIN_WRITE_OPERATIONS §142 has the body and the undo.
+ */
+adminRouter.post('/referral-rewards/top-up', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as {
+    user_id?: unknown;
+    source_user_id?: unknown;
+    to_usd?: unknown;
+    board_row?: unknown;
+  };
+  const userId = String(body.user_id ?? '').trim();
+  const sourceUserId = String(body.source_user_id ?? '').trim();
+  const boardRow = String(body.board_row ?? '').trim();
+  const toUsd = Number(body.to_usd);
+  if (
+    !/^\d+$/u.test(userId) ||
+    !/^\d+$/u.test(sourceUserId) ||
+    !/^\d+$/u.test(boardRow) ||
+    userId === sourceUserId ||
+    !Number.isFinite(toUsd) ||
+    toUsd <= 0 ||
+    toUsd > MAX_TOP_UP_TARGET_USD
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `user_id, source_user_id, board_row and to_usd (0–${MAX_TOP_UP_TARGET_USD}) are required`,
+    });
+    return;
+  }
+  try {
+    const outcome = await topUpReferralReward({ userId, sourceUserId, toUsd, boardRow });
+    if (outcome.status === 'no_reward_to_top_up') {
+      res.status(404).json({ success: false, error: 'no kept reward from that payer to top up' });
+      return;
+    }
+    res.status(200).json({ success: true, data: outcome });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[referral top-up]', (error as Error).message);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

@@ -6343,3 +6343,10 @@ To the four texts that had been waiting on him, each put to him word for word in
 4. 4919 (model-facing): the short-title instruction in src/services/shortTitles.ts (shortTitlesPrompt), switched on (SHORT_TITLES_ON).
 NOT read as covered: back-filling short titles for existing conversations. That spends model calls, it was put to him as a separate
 question, and „everything" here answered the texts on the table; it is asked again rather than assumed.
+
+**§142 — 17 October ~20:50 UTC, Misho in the code session's chat: „5420 კი, ლიკას შეუვსე"** (board 5420; the open question in the row since 06:30Z: top Lika's one reward up from 0.16 to 1.00 by hand).
+
+- **What it writes.** One `referral_transactions` row for Lika's account: `reason = 'earn'`, the same level as her reward, `source_user_id` = the invitee who paid on 6 Oct, `amount_usd` = the difference to 1.00 (0.84), and `external_id = 'topup_5420_<invitee id>'`. It is held like any reward (D677, 14 days), and the wallet shows it as a reward.
+- **Route.** `POST /admin/referral-rewards/top-up` (admin token). Body: `{ "user_id", "source_user_id", "to_usd": 1, "board_row": "5420" }`. It writes only for a pair that already has a kept reward, and only the difference. A second call writes nothing (`already_met`), and the target is capped at 5.00.
+- **Not covered:** a refund of the invitee's 6 Oct payment takes back the 0.16 (it is keyed to the payment), but not this row. The refund window for that payment ends on 20 Oct.
+- **Undo.** `DELETE FROM referral_transactions WHERE external_id = 'topup_5420_<invitee id>';` This is one row and touches no other.
