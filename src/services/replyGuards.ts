@@ -784,7 +784,8 @@ export function asksTheOwnerForADetail(reply: string): boolean {
  * booking with no day or time — was sent at once by the server. A booking the
  * person cannot make without a when goes back to the owner for it first.
  */
-const BOOKING_RE = /(?:დამიჯავშნ|დაჯავშნ|ჩამწერ|ჩაწერ|book|reserv|appointment|schedul)/iu;
+const BOOKING_RE =
+  /(?:დამიჯავშნ|დაგვიჯავშნ|დაჯავშნ|ჩამწერ|ჩაგვწერ|ჩაწერ|book|reserv|appointment|schedul)/iu;
 const SAYS_WHEN_RE =
   /\d|ხვალ|დღეს|ზეგ|ორშაბათ|სამშაბათ|ოთხშაბათ|ხუთშაბათ|პარასკევ|შაბათ|კვირა|საათ|დილ|საღამო|today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|evening|o'clock|\bat\s+\d/iu;
 

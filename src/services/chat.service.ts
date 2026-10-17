@@ -6998,6 +6998,20 @@ export interface PlanConsentScreen {
   ownerSaidSinceCard: string[];
   /** Row 237: the buttons of every card dealt AFTER the plan card. */
   labelsDealtAfterTheCard: string[];
+  /** The owner's line before the last one; absent where a screen is built by hand. */
+  previousOwnerMessage?: string | null;
+}
+
+/**
+ * D795 (prompt chat 65225, item 6; 56846/56848): „ask Levan to book us a table"
+ * has no day, so the run asks for it first; the owner answers „tomorrow at 8",
+ * and the permission check read only that answer — which names nobody — and
+ * refused the send the owner had instructed. When the line before the answer
+ * was such an instruction, it is the owner's yes as it was before the question.
+ */
+export function instructionAwaitingItsDetail(screen: PlanConsentScreen): string[] {
+  const before = screen.previousOwnerMessage ?? '';
+  return bookingWithoutAWhen(before) && looksLikeContactInstruction(before) ? [before] : [];
 }
 
 /**
@@ -7030,6 +7044,7 @@ export function readPlanConsentScreen(
     newestOfferedChoices: chosen === undefined ? null : [...chosen.labels],
     ownerSaidSinceCard: sinceCard,
     labelsDealtAfterTheCard: dealtAfter,
+    previousOwnerMessage: ownerLinesOldestFirst[ownerLinesOldestFirst.length - 2]?.content ?? null,
   };
 }
 
@@ -7280,9 +7295,11 @@ async function grantFromTheOwnersInstruction(
   if (ownerAbsent || threadId === undefined || task.permission_granted === true) return;
   try {
     const screen = await planConsentOnScreen(threadId);
-    const instructed = [...screen.ownerSaidSinceCard, screen.lastOwnerMessage ?? ''].some((line) =>
-      looksLikeContactInstruction(line),
-    );
+    const instructed = [
+      ...screen.ownerSaidSinceCard,
+      ...instructionAwaitingItsDetail(screen),
+      screen.lastOwnerMessage ?? '',
+    ].some((line) => looksLikeContactInstruction(line));
     if (!instructed) return;
     await grantTaskPermission(userId, Number(task.id));
     // eslint-disable-next-line no-console
@@ -7310,7 +7327,10 @@ export function grantPermissionRefusal(
   }
   if (
     screen !== null &&
-    !ownerWordsGrantPermission(screen.lastOwnerMessage, screen.ownerSaidSinceCard)
+    !ownerWordsGrantPermission(screen.lastOwnerMessage, [
+      ...screen.ownerSaidSinceCard,
+      ...instructionAwaitingItsDetail(screen),
+    ])
   ) {
     return {
       granted: false,
