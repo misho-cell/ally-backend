@@ -1807,6 +1807,11 @@ function socialProofBasis(): SocialProofBasis {
  * the moment it became an id list (live, 5 September). Counted once for a few
  * dozen accounts, the cap costs nothing — and both queries are then a plain
  * `= ANY(int[])`, which cannot disagree with each other either.
+ *
+ * Test seats never vouch (ops' daily check, 17 Oct 18:45Z): the load runs left
+ * 6,204 of them with threads, so the set read 6,277 instead of a few dozen and
+ * gatePassablePool hit its statement timeout. A seat's phonebook is fictional,
+ * and a smaller holder set only keeps „passes here ⇒ passes the door" true.
  */
 async function socialProofHolderIds(): Promise<number[]> {
   const basis = socialProofBasis();
@@ -1817,10 +1822,13 @@ async function socialProofHolderIds(): Promise<number[]> {
     `SELECT u.id FROM "User" u
      WHERE u."deletedAt" IS NULL
        AND ${basis === 'netai_users' ? netaiClause : 'u.subscription_status = ANY($1::text[])'}
+       AND u.id <> ALL($3::int[])
+       AND NOT EXISTS (SELECT 1 FROM test_seats ts WHERE ts.user_id = u.id)
        AND (SELECT COUNT(*) FROM "UserAlias" b WHERE b."contactId" = u.id) <= $2`,
     [
       basis === 'netai_users' ? NETAI_ACTIVE_SUBSCRIPTION_STATUSES : SUBSCRIBED_STATUSES,
       MAX_HUMAN_PHONEBOOK_ROWS,
+      fictionalTestAccountIds().map(Number),
     ],
     SCORE_QUERY_TIMEOUT_MS,
   );
