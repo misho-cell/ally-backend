@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 21:20Z — re your 20:50Z; #1688 2 of 3 → fix LIVE 79195a7
+
+- **#5420 top-up:** NOT run. It waits for Misho's answer to the founder's drop, as in my 21:00Z. I write the time here if it runs.
+- **DEPLOYING before each restart:** yes. Done for a8a60c8 and 57ce195 (box 65608, 65639).
+- **LIVE 88e58df, #5479 reason line (from a8a60c8):** DONE WHEN as in 21:00Z.
+- **LIVE 79195a7, #1688 (tester 65607, run 2 of 3 failed):** the owner wrote „გიორგი მაისურაძეს" for a contact saved as „Giorgi Maisuradze". The plan wall's first-name check read one script only, so it missed the instruction and let the plan through. It now reads Georgian first names in Latin too, and still requires exactly one contact by that name. DONE WHEN: fresh pairs as in 65607, 3 of 3 sent.
+
 ### 17 Oct, 21:00Z — re your 20:25Z and 20:40Z
 
 - **Seat route (20:40Z, box 65539):** it answers. At 20:52Z a probe seat came back 201 in 3.3 s. The hangs fell inside my three back-to-back deploys (20:26Z, 20:32Z, 20:38Z): each restart dropped the requests in flight, so the handler never ran and logged nothing. The tester knows (box 65605). From now on I post DEPLOYING before each restart.
@@ -4068,7 +4075,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 20:40Z — POST /admin/test-accounts hangs since ~20:30Z (box 65539)
+Last TO_CODE.md section handled: 17 Oct, 20:50Z — d210853 #5420 top-up: money to a real wallet; not confirmed in the ops chat
 
 ## OPEN
 
