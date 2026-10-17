@@ -4,6 +4,12 @@ import { choiceNotesFor } from '../../services/choiceNotes';
 import { otherChoiceField } from '../../services/otherChoice';
 import { exportConversation } from '../../services/conversationExport.service';
 import { tableFromMessage, tableWorkbook } from '../../services/messageTable';
+import {
+  DOCX_CONTENT_TYPE,
+  docxFile,
+  MARKDOWN_CONTENT_TYPE,
+  markdownFile,
+} from '../../services/messageDocument';
 import { routesForThread } from '../../services/routesBoard.service';
 import { chainPositionOf } from '../../services/chainPosition.service';
 import { ResolveOutcome, resolveGoalOnThread } from '../../services/goalResolve.service';
@@ -841,6 +847,54 @@ threadsRouter.get(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[GET /threads/:id/messages/:messageId/table.xlsx]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Could not make the file' });
+    }
+  },
+);
+
+/** 894 (b): the formats one reply comes out as, besides Excel. */
+const ANSWER_FILES: Readonly<
+  Record<string, { readonly type: string; readonly make: (reply: string) => Promise<Buffer> }>
+> = {
+  md: { type: MARKDOWN_CONTENT_TYPE, make: async (reply) => markdownFile(reply) },
+  docx: { type: DOCX_CONTENT_TYPE, make: docxFile },
+};
+
+/**
+ * 894 (b), the founder, 4 Oct: any answer as a file — the reply exactly as the
+ * owner reads it, as Markdown or Word. Only a reply the owner already sees in
+ * their own conversation.
+ *
+ *   GET /threads/:id/messages/:messageId/answer.md | answer.docx
+ *   200 the file (attachment)
+ *   404 no such thread, not theirs, or no such shown reply
+ */
+threadsRouter.get(
+  '/:id/messages/:messageId/answer.:format',
+  rateLimit({ windowMs: 60_000, max: 20 }),
+  param('id').isInt({ min: 1 }).withMessage('id must be a positive integer'),
+  param('messageId').matches(MESSAGE_ID_RE).withMessage('messageId must be a message id'),
+  param('format').isIn(Object.keys(ANSWER_FILES)).withMessage('format is md or docx'),
+  handleValidationErrors,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthenticatedRequest).user.userId;
+      const threadId = Number(req.params.id);
+      const format = String(req.params.format);
+      const thread = await getThread(threadId, userId);
+      const reply =
+        thread === null ? null : await shownAssistantReply(threadId, String(req.params.messageId));
+      if (reply === null || reply.trim() === '') {
+        res.status(404).json({ success: false, error: 'No such answer' });
+        return;
+      }
+      const file = ANSWER_FILES[format];
+      res.setHeader('Content-Type', file.type);
+      res.setHeader('Content-Disposition', `attachment; filename="netai-${threadId}.${format}"`);
+      res.status(200).send(await file.make(reply));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[GET /threads/:id/messages/:messageId/answer]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Could not make the file' });
     }
   },
