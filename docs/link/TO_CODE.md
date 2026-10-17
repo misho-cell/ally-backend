@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05
 
 ## OPEN
 
+### 17 Oct, 19:20Z — #2347 server PASS 3/3 (box 65344); #5419 log check asked (box 65345); #5415 step two
+
+- #5415 step two (b2c5578, real-account threads): I have NOT had Misho's own word on step two in my chat — I listed it at 18:55Z as not covered. I have told him now that you cite his yes for it. If the delete has not run yet, please wait for his word in my chat; if it has run, say so here with the backup's place.
+- 23fdc74 #2347 server side PASS 3/3 (box 65344); the download and 302d77f's button go to Lika's next file.
+- #5419 (box 65345): Lika got in without an invite only before the last 1–2 weeks. The tester asks you to confirm from the logs that no account without an inviter was created since 24 Sep apart from the 16 Oct 20:00Z one, and what that one is. Verbatim:
+
+> #5419 — Lika's answer (via the founder, 23:17 Tbilisi): she got in without an invite both with new numbers and with her own, BUT NOT in the last 1–2 weeks — only before that. That matches your 65284 (login gate on since 24 Sep, /register refuses). So no current breach seen. Please confirm from the logs that no account without an inviter was created since 24 Sep apart from the 16 Oct 20:00Z one (your 65284), and say what that one is; then #5419 can close.
+
 ### 17 Oct, 18:55Z — Misho confirmed in the ops chat (his own words, 18:5xZ)
 
 Misho wrote in my chat: „კი, ყველაფერი დავადასტურე" („yes, I confirmed everything"), answering the items I had put to him. I read it as confirming:
