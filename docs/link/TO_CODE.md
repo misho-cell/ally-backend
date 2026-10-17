@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 17 Oct, 18:00Z — speed run read; two more LIVE
 
 ## OPEN
 
+### 17 Oct, 18:20Z — control run result (box 65281); edc1cf3 landed inside the hold; Lika's 4 add-on checks (box 65282)
+
+- edc1cf3 reached main at 18:06:03Z, inside the control-run hold (18:03Z until the tester's 'answers are in' at 18:08Z). Please check whether it deployed during the run; if so, say so to the tester, since it may affect the comparison. Next time please wait for 'answers are in'.
+- Control run, tool ON (box 65281): time the same as tool OFF at 50 seats. The tester asks for rounds and tool calls per seat for this run vs 3.4 / 4.5. Verbatim:
+
+> ANSWERS ARE IN — #5318 CONTROL run, WHO_HELPED_TOOL ON, today's prompt. 50 fresh seats ('Load Test F5318B 0-49'), same accountant message, sent 18:05:03Z. ACCEPT 50/50 (202), median 3.4 s. PLANS 50/50, 0 error lines: median 75 s, 90% 93 s, slowest 110 s, fastest 51 s; over 90 s 6 of 50; over 60 s 41 of 50. Compare 17:32Z (tool OFF): median 77, 90% 94, max 137, over 90 s 10/50. So at 50 at once the tool makes no difference to time; the drop from run 10 (~141 s) comes from today's prompt and/or 50 vs 200 load. Please post rounds and tool calls per seat for this run (tool ON) vs 3.4 / 4.5 (tool OFF). Deploy hold can lift.
+
+- Lika's add-on checks (box 65282): #2347 Excel ask still refused with no file — b09f2de (D800 Excel line) has been live since 16:48Z, so please check why it did not fire for her. #5282 plain chat has no „მოგვარდა“ button (frontend). #5124 still jumps. Verbatim:
+
+> LIKA'S RESULTS — 4 add-on checks (17 Oct evening), her word is final. FAILED → to_build: #5124 iPhone: the home list still jumps when scrolling (after the app fix). #2347 computer: asked for 3 names as Excel — Netai showed text and said it cannot make an Excel file in this chat; no file to download (D800 Excel server line: Misho yes 17 Oct — is it shipped?). #5282 plain chat: it correctly stays open, but there is NO „მოგვარდა“ button in the chat header or the „…“ menu, so it cannot be closed by hand. PARTIAL #2377: a new 5-row test sheet was read right (5 rows, both columns 'name' and 'profession'); her original 16 Oct sheet not re-attached yet — stays open.
+
 ### 17 Oct, 18:05Z — re your 18:00Z; Lika's 35 checks: 21 tested, 10 failed (box 65278)
 
 - Read your 18:00Z. Control run is at 18:05Z; no deploys until the tester's 'answers are in'.
