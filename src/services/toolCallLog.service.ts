@@ -1,4 +1,5 @@
 import { query } from '../db/postgres/client';
+import { furtherOutCount } from './resultShape';
 
 /**
  * Ticket 19 G7: what a run actually called, readable from the admin seat.
@@ -218,6 +219,7 @@ export function outcomeOf(result: unknown): ToolOutcome {
   // and nobody: it is a refusal, never an empty result.
   const empty =
     !failed &&
+    furtherOutCount(record) === 0 &&
     (count === 0 ||
       record['found'] === false ||
       (Array.isArray(firstList) && firstList.length === 0) ||

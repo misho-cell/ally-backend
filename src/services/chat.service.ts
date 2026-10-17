@@ -591,7 +591,7 @@ import { withPlanDecisionAgain } from './planDecisionReoffer';
 import { offerOpenAsksChoice, openAskCount, settleOpenAsksOnTap } from './openAsksAfterSolved';
 import { ANSWER_SENT_LINE, withAnswerSentLine } from './similarAnswerRule';
 import { isAnswerCardEvent, withoutEarlySolvedCard } from './answerCardGuard';
-import { DID_NOT_FINISH_REASONS, matchShapeOf } from './resultShape';
+import { DID_NOT_FINISH_REASONS, furtherOutCount, matchShapeOf } from './resultShape';
 import {
   CACHE_ONE_HOUR,
   joinStablePrompt,
@@ -8512,6 +8512,7 @@ function foundNobody(raw: unknown): boolean {
   if (raw === null || typeof raw !== 'object') return false;
   const r = raw as { found?: unknown; results?: unknown; count?: unknown; reason?: unknown };
   if (typeof r.reason === 'string' && DID_NOT_FINISH_REASONS.has(r.reason)) return false;
+  if (furtherOutCount(raw) > 0) return false;
   if (r.found === false) return true;
   return Array.isArray(r.results) && r.results.length === 0;
 }
