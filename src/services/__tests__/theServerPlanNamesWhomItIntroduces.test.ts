@@ -58,8 +58,10 @@ describe('the sentence (D739’s form)', () => {
 
   it('is ON since Misho’s yes on the exact text (12 Oct)', () => {
     expect(INTRO_TARGET_SENTENCE_ON).toBe(true);
+    // #5149 D (Misho's yes, 17 Oct): the sentence saying whom the go-between knows follows.
     expect(introTargetSentence(PLAN_INPUT, [LIKA], 'ka')).toBe(
-      'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე.',
+      'ლიკა მეხუთის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლიკა მეხუთემ გაგაცნოს ნინუცა მეხუთე. ' +
+        'ლიკა მეხუთე ნინუცა მეხუთეს იცნობს.',
     );
   });
 });

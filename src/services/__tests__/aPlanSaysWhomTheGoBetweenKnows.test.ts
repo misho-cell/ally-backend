@@ -19,11 +19,10 @@ describe('the line saying whom the go-between knows', () => {
     ...extra,
   });
 
-  it('is off until Misho says yes', () => {
-    expect(KNOWS_LINE_ON).toBe(false);
+  it("is on since Misho's yes", () => {
+    expect(KNOWS_LINE_ON).toBe(true);
     const intro = introductionFromFound([levan], foundThroughBridges({ results: [row({})] }));
-    expect(intro).not.toBeNull();
-    expect(knowsLine(intro!)).toBeNull();
+    expect(knowsLine(intro!)).toBe('ლევან ჯაფარიძე ზურაბ ქობულაძეს იცნობს.');
   });
 
   it('names the role when two members said it', () => {

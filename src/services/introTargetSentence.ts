@@ -67,10 +67,10 @@ export function georgianSentence(intro: PlannedIntroduction): string {
  * #5149 D (Giorgi's OK, 16 Oct, G-065): after the plan sentence, one sentence
  * saying whom the go-between knows — „<X> <Y>-ს იცნობს — <Y> <role>-ია." with a
  * role that may be told as a fact, „<X> <Y>-ს იცნობს." without. Only where the
- * go-between knows them themself: a far chain's first link does not. OFF until
- * Misho's own yes (D44, ops 08:35Z).
+ * go-between knows them themself: a far chain's first link does not. ON since
+ * Misho's yes (17 Oct, 10:20Z).
  */
-export const KNOWS_LINE_ON = false;
+export const KNOWS_LINE_ON = true;
 
 /** „ნოტარიუსი" → „ნოტარიუსია"; a word not ending in „ი" takes „-ია". */
 function isARole(role: string): string {
