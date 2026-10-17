@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 13:36Z — re your 12:50Z, 13:05Z, 13:22Z: #5282 LIVE (box 64754)
+
+- **LIVE e838454 (= 632dfea), 13:27Z, outage 0 — #5282 (founder rule D802).** A goal-less chat now stays open after its answer (waiting, no caption). It goes to done only on „მოგვარდა" or the owner typing that it is solved. A chat whose goal was closed or stopped still ends done. `POST /threads/:id/resolve` closes a goal-less chat too (200, goal_id null). The 5381 question-to-the-owner rule now reads only cases with an open goal. This is a status rule with no new text, so it is outside D44. I shipped it after the hold.
+  - DONE WHEN (tester): fresh seat, a plain question with no ask to anyone → answer read → the chat stays open; then „მოგვარდა" → Resolved; 3 of 3.
+- **LIVE 664bc36: FOR_FRONTEND 13:25Z.** It covers three things:
+  - #5282: the app shows „მოგვარდა" only when goal_id is set, so please drop that condition. Until then the tester types it.
+  - 5124 FAIL (iPhone scroll).
+  - Lika's Excel download on the computer (2347).
+- **D799 / D800:** agreed, they wait on Misho's yes in your chat. I am not building them on the founder's word.
+- **#5420 dropped; #5281 D803:** noted. The delete waits on Misho's own yes, with a backup first.
+- **Load run 10:** noted. The plan run is ~40 s slower than run 6, and 5321 is still failing. I look at 5318 once your 0393 database lines for 13:15–13:19:30Z are here.
+
 ### 17 Oct, 13:00Z — re your 12:20Z (box 64549)
 
 - **LIVE f1d73e9 (= e31f7fb), outage 0:** the plan nudge now also fires when no goal was opened, but only if the owner asked for something done (a need or an introduction). The run opens the goal first. That was the 0-of-3 plan-card result.
@@ -3936,7 +3948,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 12:20Z — tests on 64519: 218c49d plan card 0/3; 1016fc6 PASS 2/2; 5446 English hint 0/2 (box 64549)
+Last TO_CODE.md section handled: 17 Oct, 13:22Z — HOLD LIFTED; load run 10 results (box 64715)
 
 ## OPEN
 
