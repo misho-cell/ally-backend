@@ -62,6 +62,7 @@ describe('picking a stopped goal up again', () => {
       id: THREAD,
       goal_stopped: false,
       goal_stopped_open: false,
+      goal_paused: false,
     });
     await new Promise((r) => setImmediate(r));
     expect(wakeAfterResume).toHaveBeenCalledWith(GOAL.id, expect.stringContaining('განაახლა'));
@@ -118,5 +119,30 @@ describe('the list', () => {
       'utf8',
     );
     expect(sql).toContain('SET stop_dismissed_at = NOW()');
+  });
+});
+
+/** 5283 (Lika, re #1919): a paused goal came back only by the typed „restore task". */
+describe('picking a paused goal up again', () => {
+  it('resumes by the same button, and the list stops calling it paused', async () => {
+    mockGoal.mockResolvedValue({ ...GOAL, status: 'paused' } as Task);
+    mockQuery.mockResolvedValue(rows([{ id: GOAL.id }]) as never);
+
+    expect(await resumeStoppedGoal('501', THREAD, 'ka')).toEqual({ ok: true, goal_id: GOAL.id });
+
+    expect(mockQuery.mock.calls[0][0]).toContain("status = 'paused'");
+    expect(mockQuery.mock.calls[0][1]).toEqual([GOAL.id, true]);
+    expect(updateTask).toHaveBeenCalledWith('501', GOAL.id, 'open');
+    expect(emitThreadUpdated).toHaveBeenCalledWith(
+      '501',
+      expect.objectContaining({ id: THREAD, goal_paused: false }),
+    );
+  });
+
+  it('is never closed for good by the stopped goal’s close button', async () => {
+    mockQuery.mockResolvedValue(rows([]) as never);
+
+    expect(await dismissStoppedGoal('501', THREAD)).toEqual({ ok: false, reason: 'not_stopped' });
+    expect(mockQuery.mock.calls[0][1]).toEqual([GOAL.id, false]);
   });
 });
