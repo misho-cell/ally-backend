@@ -143,7 +143,9 @@ describe('the tap on it (1696)', () => {
     const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
     expect(chat).toContain('? await answerReferral(userId, threadId, userMessage, runId, intent)');
     const asks = readFileSync(join(__dirname, '..', 'taskAsks.service.ts'), 'utf8');
-    expect(asks).toContain('CASE WHEN p.may_name_referrer IS FALSE THEN NULL ELSE b.name END');
+    expect(asks).toMatch(
+      /CASE WHEN p.may_name_referrer IS FALSE THEN NULL\s+ELSE \$\{nameAsSavedBySql\(/,
+    );
   });
 });
 

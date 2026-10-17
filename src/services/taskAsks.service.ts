@@ -2499,10 +2499,12 @@ async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
             p.to_user_id   AS bridge_user_id,
             p.ask_thread_id AS bridge_thread_id,
             -- 1696: „yes, without my name" — the asker reads „through your contact".
-            CASE WHEN p.may_name_referrer IS FALSE THEN NULL ELSE b.name END AS bridge_name
+            -- 5347 (63230): the owner reads the bridge under the name they saved them by.
+            CASE WHEN p.may_name_referrer IS FALSE THEN NULL
+                 ELSE ${nameAsSavedBySql('t.user_id::int', 'p.to_user_id')} END AS bridge_name
        FROM task_asks c
        JOIN task_asks p ON p.id = c.parent_ask_id
-       LEFT JOIN "User" b ON b.id = p.to_user_id
+       JOIN tasks t ON t.id = c.task_id
       WHERE c.id = $1
       LIMIT 1`,
     [childAskId],
@@ -3767,6 +3769,49 @@ async function resolveRelayContact(
  * answer wakes A's task through the normal capture path; B is the sender for
  * caps and dedupe purposes. One level deep by design.
  */
+/**
+ * 5347 (the founder's word, 16 Oct): a named target five handshakes away is
+ * reached link by link — owner → L1 → L2 → L3 → L4 → the person — so a request
+ * may be passed on four times. Never further: past that it is a chain letter.
+ */
+export const MAX_RELAYS_IN_A_CHAIN = 4;
+const CHAIN_AT_ITS_END =
+  'ეს კითხვა უკვე ოთხჯერ გადაეცა — ჯაჭვი აქ ჩერდება. კითხვის ავტორს გადაეცი, ვინ შეიძლება იცოდეს.';
+const ALREADY_IN_THE_CHAIN =
+  'ეს ადამიანი ამ კითხვას უკვე იცნობს — ის ან კითხვის ავტორია, ან უკვე ჰკითხეს. სხვა ვინმე დაასახელე.';
+
+/** How many times the request behind this ask was passed on before it reached its reader. */
+async function relaysBefore(askId: number): Promise<number> {
+  const result = await query<{ relays: number | null }>(
+    `WITH RECURSIVE chain(id, parent_ask_id, depth) AS (
+       SELECT id, parent_ask_id, 0 FROM task_asks WHERE id = $1
+       UNION ALL
+       SELECT p.id, p.parent_ask_id, c.depth + 1
+         FROM task_asks p JOIN chain c ON p.id = c.parent_ask_id
+        WHERE c.depth < $2
+     )
+     SELECT MAX(depth) AS relays FROM chain`,
+    [askId, MAX_RELAYS_IN_A_CHAIN + 1],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return Number(result.rows[0]?.relays ?? 0);
+}
+
+/** The goal's owner, or somebody already asked on it: never the next link. */
+async function alreadyOnThisGoal(taskId: number, phone: string): Promise<boolean> {
+  const result = await query<{ known: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM "UserPhone" up
+        WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($2, '\\D', '', 'g')
+          AND (up."userId"::text = (SELECT user_id::text FROM tasks WHERE id = $1)
+               OR up."userId" IN (SELECT to_user_id FROM task_asks WHERE task_id = $1))
+     ) AS known`,
+    [taskId, phone],
+    ASK_QUERY_TIMEOUT_MS,
+  );
+  return result.rows[0]?.known === true;
+}
+
 export async function createRelayAsk(
   relayerUserId: string,
   parentAskId: number,
@@ -3850,8 +3895,10 @@ async function relayAskInner(
   if (String(row.to_user_id) !== relayerUserId) {
     return { sent: false, error: RELAY_NOT_YOUR_ASK_ERROR };
   }
-  if (row.parent_ask_id !== null) {
-    return { sent: false, error: 'ეს კითხვა უკვე გადაგზავნილია ერთხელ — ჯაჭვი აქ ჩერდება.' };
+  // 5347 (the tester's 63230): „ask Davit" from the second link got only „answer sent" —
+  // a request could be passed on once. It travels to the fifth handshake now.
+  if ((await relaysBefore(row.id)) >= MAX_RELAYS_IN_A_CHAIN) {
+    return { sent: false, error: CHAIN_AT_ITS_END };
   }
   // Ticket 19 G10, the founder's ruling of 15 September: the words the named
   // person reads are written by the BRIDGE's assistant, naming who is asking
@@ -3878,6 +3925,9 @@ async function relayAskInner(
   const target = await resolveRelayContact(relayerUserId, contact);
   if ('error' in target) {
     return { sent: false, error: target.error };
+  }
+  if (await alreadyOnThisGoal(row.task_id, target.phone)) {
+    return { sent: false, error: ALREADY_IN_THE_CHAIN };
   }
   return createAsk(
     relayerUserId,

@@ -114,6 +114,7 @@ import { deliverAnswersWhenFree, wakeTask } from '../taskEngine.service';
 import {
   createAsk,
   createRelayAsk,
+  MAX_RELAYS_IN_A_CHAIN,
   recordAskAnswer,
   sendApprovedAskAnswer,
   cancelAsksForTask,
@@ -761,8 +762,16 @@ describe('createRelayAsk', () => {
     parent?: typeof parentRow | null;
     aliasMatches?: { digits: string }[];
     member?: { userId: number; name: string; subscriptionStatus?: string } | null;
+    /** How many times the request was already passed on before this ask. */
+    relays?: number;
+    /** The named person is the goal's owner or was already asked on it. */
+    alreadyOnGoal?: boolean;
   }): void {
     mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('WITH RECURSIVE chain'))
+        return Promise.resolve(rows([{ relays: opts.relays ?? 0 }]) as never);
+      if (sql.includes('AS known'))
+        return Promise.resolve(rows([{ known: opts.alreadyOnGoal === true }]) as never);
       if (sql.includes('parent_ask_id FROM task_asks'))
         return Promise.resolve(rows(opts.parent ? [opts.parent] : []) as never);
       if (sql.includes('FROM "UserAlias" ua WHERE'))
@@ -892,7 +901,10 @@ describe('createRelayAsk', () => {
   });
 
   it('every refusal carries the neutral-close rule (no "system error", no direct contact)', async () => {
-    routeRelayQueries({ parent: { ...parentRow, parent_ask_id: 5 } });
+    routeRelayQueries({
+      parent: { ...parentRow, parent_ask_id: 5 },
+      relays: MAX_RELAYS_IN_A_CHAIN,
+    });
 
     const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
 
@@ -905,6 +917,37 @@ describe('createRelayAsk', () => {
     // nothing gets through until send_answer_to_asker is called.
     expect((out as { error: string }).error).not.toContain('უკვე გადაეცა');
     expect((out as { error: string }).error).toContain('send_answer_to_asker');
+  });
+
+  /** 5347 (the tester's 63230): the second link's „ask Davit" ended the chain. */
+  it('passes a request on again, up to the fifth handshake', async () => {
+    routeRelayQueries({
+      parent: { ...parentRow, parent_ask_id: 5 },
+      relays: MAX_RELAYS_IN_A_CHAIN - 1,
+      aliasMatches: [{ digits: '995599333444' }],
+      member: { userId: 8, name: 'დავითი' },
+    });
+
+    const out = await createRelayAsk('42', 11, 'დავით ცერცვაძე', RELAYED);
+
+    expect(out.sent).toBe(true);
+  });
+
+  it('never passes a request back to its owner or to somebody already asked', async () => {
+    routeRelayQueries({
+      parent: parentRow,
+      aliasMatches: [{ digits: '995599333444' }],
+      member: { userId: 8, name: 'სალომე' },
+      alreadyOnGoal: true,
+    });
+
+    const out = await createRelayAsk('42', 11, 'სალომე ბერიძე', RELAYED);
+
+    expect(out.sent).toBe(false);
+    expect((out as { error: string }).error).toContain('უკვე იცნობს');
+    expect(
+      mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO task_asks')),
+    ).toBe(false);
   });
 
   /**
