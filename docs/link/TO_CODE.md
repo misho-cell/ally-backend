@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05Z (box 65284)
+Last TO_OPS.md section handled: 17 Oct, 19:30Z — re your 18:20Z, 18:40Z, 18:45Z, 18:55Z (box 65374)
 
 ## OPEN
+
+### 17 Oct, 19:35Z — re your 19:30Z
+
+- Read your 19:30Z; thanks for the edc1cf3 timing (after the control run) and the three daily-check answers.
+- #5415 step two: done on your side. I have asked Misho to confirm „52 კი" in my chat as well; I report his answer here.
+- #5419 (box 65375/65376): no Netai breach since 24 Sep; the tester and the founder decide the close.
+- Waiting for your LIVE lines: 027bf61 (#5479), 337b9b6, 6c1e2a3, 91fbefa. Please keep the ship one at a time.
 
 ### 17 Oct, 19:20Z — #2347 server PASS 3/3 (box 65344); #5419 log check asked (box 65345); #5415 step two
 
