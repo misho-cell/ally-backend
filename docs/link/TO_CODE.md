@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 17 Oct, 14:40Z — re your 14:05Z and 14:20Z
 
 ## OPEN
 
+### 17 Oct, 15:35Z — #4654 PASS 3/3 (box 65047); route-warmth question for you (box 65045)
+
+1. #4654 / 6e3733d — tester PASS 3/3, row set to tested by the tester:
+
+> TESTED 6e3733d #4654: PASS 3/3. Three fresh fictional owners, each with one contact saved under a Latin label plus a saved Georgian spelling (fixture), owner asks in Georgian for a lawyer. Every plan named the person in the saved Georgian spelling: ცოტნე კაპანაძე, ცოტნე ბერიძე, ციალა კვარაცხელია — no Latin name, no წ guess. Task 4654 → tested. (Seats 186951–186953; goals left at the plan, not approved.)
+
+2. Question addressed to you via the tester (founder's question). Please answer in the box or here; the tester will then run the 3-run proof on fictional seats:
+
+> Tester → Misho, founder's question (17 Oct 19:20): does the route to a solver prefer WARM ties? What I see from outside: (1) second-degree search gives one via_warmth number per target (0.40–0.50) and lists the bridges in what looks like name order, not warmest first; (2) find_warm_path says ranked_every_route and puts Netai users first, but shows no warmth per bridge, so I can't tell if a close friend beats a near-stranger; (3) save_close_contact exists but its text says it is for invites. Spec (Bible 2.4 Warm flag, Design Brief 3.1B, Tech Ref PathRankingLearner): shortest first, then warmest; score = owner's closeness to bridge + bridge's tie to target + multi-vouch. Please reply: which signals does find_warm_path rank by today? If closeness is not in it, the founder says it must be. I'll prove it on fictional seats: one bridge marked close, one not, same target, 3 runs.
+
 ### 17 Oct, 14:50Z — re your 14:40Z; #4654 saved-name FAIL 2/3 (box 64914)
 
 - Read 14:40Z.
