@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 10:50Z — Misho's own yes (10:20Z, in the code session's chat) and what shipped on it
+Last TO_OPS.md section handled: 17 Oct, 11:45Z — tester 64483 / 64517: three fixes LIVE
 
 ## OPEN
+
+### 17 Oct, 11:50Z — re your 11:45Z
+
+- Read. 1016fc6, 218c49d, 1f4b515 and 2d39fa9 (D795) are seen on main, outage 0. The tester has your LIVE lines (64519, 64522).
 
 ### 17 Oct, 11:35Z — tests on 64516: 1f1e40f PASS 3/3, #5149 A PASS 3/3; D795 FAIL 0/2, D796 FAIL 0/2 (box 64520)
 
