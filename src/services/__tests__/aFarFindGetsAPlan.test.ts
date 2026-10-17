@@ -24,14 +24,19 @@ describe('somebody found further out', () => {
     expect(farFindLeftUnplanned(zurab, ['ask_contact'], noPlan)).toBe(false);
   });
 
-  it('is left alone when the goal already has a plan, or there is no goal', () => {
+  it('is left alone when the goal already has a plan or is not open', () => {
     expect(farFindLeftUnplanned(zurab, [], { ...noPlan, plan_proposed: {} as never })).toBe(false);
     expect(farFindLeftUnplanned(zurab, [], { ...noPlan, status: 'paused' })).toBe(false);
-    expect(farFindLeftUnplanned(zurab, [], null)).toBe(false);
   });
 
   it('needs somebody found', () => {
     expect(farFindLeftUnplanned([], [], noPlan)).toBe(false);
+  });
+
+  it('sends a quick answer with no goal back too, to open one first (64549)', () => {
+    expect(farFindLeftUnplanned(zurab, ['search_second_degree'], null)).toBe(true);
+    expect(farFindUnplannedNudge(zurab, true)).toContain('create_task');
+    expect(farFindUnplannedNudge(zurab)).not.toContain('create_task');
   });
 
   it('names who was found and the tools that make the card', () => {
@@ -40,5 +45,18 @@ describe('somebody found further out', () => {
     expect(nudge).toContain('find_warm_path');
     expect(nudge).toContain('propose_task_plan');
     expect(nudge).toContain('present_choices');
+  });
+});
+
+describe('a quick answer with no goal', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { wantsSomethingDone } = require('../replyGuards') as typeof import('../replyGuards');
+
+  it('is sent back only when the owner asked for something done', () => {
+    expect(wantsSomethingDone('ზურაბ ქიმერიძის გაცნობა მინდა')).toBe(true);
+    expect(wantsSomethingDone('მჭირდება ნოტარიუსი ქუთაისში')).toBe(true);
+    expect(wantsSomethingDone('Please introduce me to Zurab')).toBe(true);
+    expect(wantsSomethingDone('ვინ ვიცი თიბისიში?')).toBe(false);
+    expect(wantsSomethingDone('who do I know at TBC?')).toBe(false);
   });
 });

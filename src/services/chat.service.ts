@@ -437,6 +437,7 @@ import {
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
   asksTheOwnerForADetail,
+  wantsSomethingDone,
   ASK_THE_DETAIL_FIRST,
   bookingWithoutAWhen,
   farFindUnplannedNudge,
@@ -12918,14 +12919,10 @@ export function farFindLeftUnplanned(
   toolNamesUsed: readonly string[],
   goal: Pick<Task, 'status' | 'plan' | 'plan_proposed'> | null,
 ): boolean {
-  return (
-    found.length > 0 &&
-    !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
-    goal !== null &&
-    goal.status === 'open' &&
-    goal.plan === null &&
-    goal.plan_proposed === null
-  );
+  if (found.length === 0 || toolNamesUsed.some((name) => ACTING_TOOLS.has(name))) return false;
+  // The tester's 64549 (56267): a quick answer that found the person opened no goal at all.
+  if (goal === null) return true;
+  return goal.status === 'open' && goal.plan === null && goal.plan_proposed === null;
 }
 
 async function promisedAnActionItDidNotTake(
@@ -14556,17 +14553,19 @@ async function runToolLoop(
       ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
       : [];
   const foundFurtherOut = [...new Set(runFoundFurtherOut.get(runId) ?? [])];
+  const farFindGoal =
+    foundFurtherOut.length > 0 ? await getGoalOnThread(threadId).catch(() => null) : null;
+  const farFindHasNoGoal = farFindGoal === null;
+  // With no goal, only a line that asks for something: a need or an introduction.
+  const farFindAsked = !farFindHasNoGoal || wantsSomethingDone(runOwnerLine.get(runId) ?? '');
   const farFindUnplanned =
     !ownerAbsent &&
     !promoted &&
     !answeringALaterTap &&
     !promisedWithoutActing &&
     foundFurtherOut.length > 0 &&
-    farFindLeftUnplanned(
-      foundFurtherOut,
-      toolNamesUsed,
-      await getGoalOnThread(threadId).catch(() => null),
-    );
+    farFindAsked &&
+    farFindLeftUnplanned(foundFurtherOut, toolNamesUsed, farFindGoal);
   // The tester's 1149 (38149, 38157): the web came back with results and the
   // reply was only a question — what was found is shown before asking.
   const findsHeldBack =
@@ -14612,7 +14611,7 @@ async function runToolLoop(
                         ? PROMISED_ACTION_NO_GOAL_NUDGE
                         : PROMISED_ACTION_NUDGE
                       : farFindUnplanned
-                        ? farFindUnplannedNudge(foundFurtherOut)
+                        ? farFindUnplannedNudge(foundFurtherOut, farFindHasNoGoal)
                         : rowsMissing.length > 0
                           ? listRowsNudge(rowsMissing)
                           : findsHeldBack
