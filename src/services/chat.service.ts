@@ -429,6 +429,7 @@ import {
   withoutDanglingLeadIn,
   promisesToWriteToSomeone,
   PROMISED_ACTION_NUDGE,
+  farFindUnplannedNudge,
   INVITE_NOT_ASKED,
   asksForAnInvite,
   asksForTheLink,
@@ -5725,10 +5726,17 @@ function notePeopleFound(runId: string, result: unknown): void {
   }
 }
 
+/** 5347 (63930): who this run found past the second circle, by name. */
+const runFoundFurtherOut = new Map<string, string[]>();
+
 /** 5347 (63867): people found further out, for the plan sentence — see foundThroughFirstLinks. */
 function noteFoundFurtherOut(runId: string, further: readonly FarHit[]): void {
   const throughFirstLinks = foundThroughFirstLinks(further);
   if (throughFirstLinks.length === 0) return;
+  runFoundFurtherOut.set(runId, [
+    ...(runFoundFurtherOut.get(runId) ?? []),
+    ...throughFirstLinks.map((hit) => hit.name),
+  ]);
   runFoundThroughBridges.set(runId, [
     ...(runFoundThroughBridges.get(runId) ?? []),
     ...throughFirstLinks,
@@ -9249,6 +9257,7 @@ function clearRunState(runId: string): void {
   clearRunEvidence(runId);
   takeSavedFact(runId);
   runFoundThroughBridges.delete(runId);
+  runFoundFurtherOut.delete(runId);
 }
 
 /**
@@ -12836,6 +12845,25 @@ const OWNERS_QUICK_RUNS: ReadonlySet<string> = new Set(['quick_answer', 'onboard
  * owner's quick answer there may be no goal at all — „გიას ვკითხავ…" after
  * „write to Gia", and nothing went.
  */
+/**
+ * 5347 (63930): the run found somebody further out, did nothing that acts, and
+ * the goal has no plan, so the owner has no card to approve.
+ */
+export function farFindLeftUnplanned(
+  found: readonly string[],
+  toolNamesUsed: readonly string[],
+  goal: Pick<Task, 'status' | 'plan' | 'plan_proposed'> | null,
+): boolean {
+  return (
+    found.length > 0 &&
+    !toolNamesUsed.some((name) => ACTING_TOOLS.has(name)) &&
+    goal !== null &&
+    goal.status === 'open' &&
+    goal.plan === null &&
+    goal.plan_proposed === null
+  );
+}
+
 async function promisedAnActionItDidNotTake(
   threadId: number,
   finalText: string,
@@ -14456,6 +14484,18 @@ async function runToolLoop(
     (await membersNoteFits())
       ? await membersInTheBookSkipped(userId, finalText, toolNamesUsed)
       : [];
+  const foundFurtherOut = [...new Set(runFoundFurtherOut.get(runId) ?? [])];
+  const farFindUnplanned =
+    !ownerAbsent &&
+    !promoted &&
+    !answeringALaterTap &&
+    !promisedWithoutActing &&
+    foundFurtherOut.length > 0 &&
+    farFindLeftUnplanned(
+      foundFurtherOut,
+      toolNamesUsed,
+      await getGoalOnThread(threadId).catch(() => null),
+    );
   // The tester's 1149 (38149, 38157): the web came back with results and the
   // reply was only a question — what was found is shown before asking.
   const findsHeldBack =
@@ -14495,11 +14535,13 @@ async function runToolLoop(
                       ? promiseGap === PromiseGap.Goal
                         ? PROMISED_ACTION_NO_GOAL_NUDGE
                         : PROMISED_ACTION_NUDGE
-                      : rowsMissing.length > 0
-                        ? listRowsNudge(rowsMissing)
-                        : findsHeldBack
-                          ? FINDS_FIRST_NUDGE
-                          : CLIFFHANGER_NUDGE;
+                      : farFindUnplanned
+                        ? farFindUnplannedNudge(foundFurtherOut)
+                        : rowsMissing.length > 0
+                          ? listRowsNudge(rowsMissing)
+                          : findsHeldBack
+                            ? FINDS_FIRST_NUDGE
+                            : CLIFFHANGER_NUDGE;
   if (
     !promoted &&
     !answeringALaterTap &&
@@ -14512,6 +14554,7 @@ async function runToolLoop(
       promisedWithoutActing ||
       membersSkipped ||
       bookMembersSkipped.length > 0 ||
+      farFindUnplanned ||
       rowsMissing.length > 0 ||
       findsHeldBack ||
       isCliffhangerReply(finalText))

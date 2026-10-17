@@ -375,6 +375,23 @@ export function withoutQuotedCopy(reply: string): string {
 }
 
 /**
+ * 5347 (the tester's 63930, 56071 and 56077): the walk found Zurab further out,
+ * and the reply listed public notaries and asked in prose „shall I ask Levan's
+ * assistant?" — no find_warm_path, no plan, no card, so the owner had nothing to
+ * tap. Somebody found further out is reached through a plan, like anyone else.
+ */
+export function farFindUnplannedNudge(names: readonly string[]): string {
+  return (
+    `(სისტემური შენიშვნა: ძებნამ შორეულ წრეში იპოვა: ${names.join(', ')}. ამ მიზანს გეგმა ` +
+    'ჯერ არ აქვს და ამ გაშვებაში არაფერი გაგზავნილა. ახლავე გამოიძახე find_warm_path მისი ' +
+    'phone-ით, მერე propose_task_plan — people_to_involve-ში ჯაჭვის პირველი რგოლი (შენი ' +
+    'კონტაქტი), გზაში კი ის, ვისთან მიდის — და present_choices-ით შესთავაზე „ვამტკიცებ" და ' +
+    '„შევცვალოთ". საჯარო სიები ამ ადამიანის შემდეგ, არა მის ნაცვლად. მფლობელს შენი წინა ' +
+    'ტექსტი არ უნახავს: პასუხი ერთხელ, თავიდან დაწერე, ბოდიშის გარეშე.)'
+  );
+}
+
+/**
  * The tester's 1149 (38068): the owner tapped „write to Gia", the quick answer
  * said „გიას ვკითხავ…", nothing went, and there was no goal to hold a plan.
  * Writing to someone goes through a goal's plan and its approve card.
