@@ -46,10 +46,10 @@ describe('the saved-info search says what it searches for', () => {
 describe('the sending line names who is written to', () => {
   it('names the recipient in every language', () => {
     expect(namedStepCaption('ask_contact', { contact_name: 'Netai Test 88' }, 'ka')).toBe(
-      '✉️ Netai Test 88-ს ვწერ…',
+      '✉️ Netai Test 88-ის ასისტენტს ვწერ…',
     );
     expect(namedStepCaption('ask_contact', { contact_name: 'Netai Test 88' }, 'en')).toBe(
-      '✉️ Writing to Netai Test 88…',
+      "✉️ Writing to Netai Test 88's assistant…",
     );
     expect(namedStepCaption('ask_contact', { contact_name: 'Нино' }, 'ru')).toContain('Нино');
     expect(namedStepCaption('ask_contact', { contact_name: 'Nino' }, 'es')).toContain('Nino');

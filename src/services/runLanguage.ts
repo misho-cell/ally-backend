@@ -719,7 +719,8 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
         ? `📨 ${m}-ს ვთხოვ, ${t} გაგაცნოს…`
         : `📨 გაცნობის მოთხოვნას ვუგზავნი: ${m}…`,
     relay_ask: (c) => `↪️ კითხვას გადავცემ: ${c}…`,
-    ask_contact: (c) => `✉️ ${c}-ს ვწერ…`,
+    // #5149 A (Giorgi, G-065; Misho's yes 17 Oct): the assistant writes to <A>'s assistant.
+    ask_contact: (c) => `✉️ ${geoName(c, 'gen')} ასისტენტს ვწერ…`,
     search_by_tag: (q) => `🔍 კონტაქტებში ვეძებ: „${q}"…`,
     search_second_degree: (q) => `👥 მეორე წრეში ვეძებ: „${q}"…`,
     search_contact_by_name: (q) => `🔍 სახელით ვეძებ: „${q}"…`,
@@ -732,7 +733,7 @@ const NAMED_STEPS: Readonly<Record<RunLanguage, Readonly<Record<string, NamedCap
         ? `📨 Asking ${m} to introduce you to ${t}…`
         : `📨 Sending the introduction request to ${m}…`,
     relay_ask: (c) => `↪️ Passing the question on to ${c}…`,
-    ask_contact: (c) => `✉️ Writing to ${c}…`,
+    ask_contact: (c) => `✉️ Writing to ${c}'s assistant…`,
     search_by_tag: (q) => `🔍 Searching your contacts for "${q}"…`,
     search_second_degree: (q) => `👥 Searching your contacts' contacts for "${q}"…`,
     search_contact_by_name: (q) => `🔍 Looking for "${q}" by name…`,

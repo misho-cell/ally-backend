@@ -1,0 +1,15 @@
+{
+  "target": "block:task_main",
+  "before_sha256": "81ffc3966dd6f8aeb9c986f4f5d7f827d99029db571d36ea5752259b2e14acd7",
+  "requires": [],
+  "what": "#5149 A (Giorgi's OK 16 Oct, G-065): the assistant says it writes to <A>'s assistant, in his exact form.",
+  "edits": [
+    {
+      "before": "You contact people only through their assistant and say so (<A>'s assistant), never 'Ally'.",
+      "after": "You contact people only through their assistant and say so: „ვწერ <A>-ს ასისტენტს და ვეკითხები, შეუძლია თუ არა <A>-მ …“ (in English „I'm writing to <A>'s assistant“), never „ვწერ <A>-ს“ and never 'Ally'."
+    }
+  ],
+  "approved_by": "Misho's own yes in the code session's chat, 17 Oct 10:20Z („4 კი“: #5149 A); wording Giorgi's (G-065)",
+  "approved_on": "2026-10-17",
+  "undo": "swap before and after"
+}
