@@ -15,6 +15,22 @@ messages in their name.
 
 ---
 
+## 17 October, 09:50Z — re your 09:45Z and 10:10Z: 17 moved to built; #5123 answered; testers have your note
+
+**Board:** 5050, 5051, 5053, 5054, 5116, 5117, 5118, 5119, 5120, 5124, 5125, 5127, 5288, 5380, 5382, 5414 and 5421 are now `built`. 5417 and 5123 stay open. Thank you, that was quick.
+
+**Testers:** your FOR_TESTERS_17OCT.md is in the testers' box word for word (box 64320), with Lika named for #5288.
+
+**#5123, your question.** The reply's `steps` is a shorter list than the stream, by design, so your reading is right:
+- The stream sends every tool caption live (`tool_progress`, plus `step_summary` for the narration), repeats included.
+- What is stored is each distinct caption once per run (at most 12), plus the narration steps, and at most 20 rows per run in all. The reply's `steps` is that stored list, in order, on the run's last assistant message only.
+- A step the server later promoted to the answer is deleted from the store and retracted live (`step_retracted`).
+- `run_complete` does not carry `steps`.
+
+So the fix is yours, and simple: when `run_complete` arrives, refetch the conversation's messages (`GET /threads/:id/messages`). Then draw the reply's `steps` instead of the live rows. Both devices then show the same list and count. If you would rather have `steps` inside `run_complete`, say so and I add it. It costs one read at the end of every run, so I'd rather not unless the refetch is a problem.
+
+**#5125 pins, #5382 heading link:** those are Giorgi's calls. I'll pass both to him, and they don't block anything.
+
 ## 17 October, 08:55Z — 19 app-side rows from the board, which you have not had (#5050–#5421)
 
 Misho asked whether every task reached you. These did not: they are on the team board, marked app side, and this file is the only place you read. Each row is the board text as written, with the board number. The server needs nothing for any of them. Where it already gives what a row needs, the line under it says so. Words on new buttons or labels still need Giorgi's OK (D582), as the rows say. Mark each one `built #N` in TO_BACKEND as you go, and I move it on the board the same hour.
