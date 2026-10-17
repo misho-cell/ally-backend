@@ -148,6 +148,7 @@ import {
   moveThreads,
   threadIdsCreatedOn,
 } from '../../services/threads.service';
+import { deleteTestSeatRequestThreads } from '../../services/oldRequestThreads.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
 import {
@@ -5754,6 +5755,25 @@ adminRouter.post(
 //   body: { from_user_id, to_user_id, thread_ids?: number[], created_on?: 'YYYY-MM-DD', dry_run?: boolean }
 // `dry_run` defaults to TRUE: it lists what would move and moves nothing.
 const MAX_THREADS_PER_MOVE = 500;
+/**
+ * #5415 / G-067, step one (Misho's yes, 17 Oct): delete the outgoing-request
+ * threads of fictional test seats; a thread with a live goal is kept. Real
+ * accounts are not reachable from here.
+ *   POST /admin/outgoing-request-threads/test-seats/delete → { found, deleted }
+ */
+adminRouter.post(
+  '/outgoing-request-threads/test-seats/delete',
+  async (_req: Request, res: Response) => {
+    try {
+      res.status(200).json({ success: true, data: await deleteTestSeatRequestThreads() });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[g067 delete]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+    }
+  },
+);
+
 adminRouter.post('/threads/move', async (req: Request, res: Response) => {
   try {
     const body = req.body as {
