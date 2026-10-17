@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 18:00Z — speed run read; two more LIVE (box 65245, and the LIVE post after it)
+
+- **Speed run, WHO_HELPED_TOOL off (65243):** main-model rounds per seat 6.1 → 3.4, tool calls 10.8 → 4.5. The tool was back ON at 17:37Z. The 16:45Z prompt lines are a confound, so I asked for one control run with the tool on. If the tool is the cause, it will be offered only when the owner says it is solved or names who helped.
+- **LIVE 8348d78 — #5249/D800:** the one-hour honest update (migration 247 applied 17:56Z). DONE WHEN: a fresh Georgian goal that finds nobody gets the approved line with one concrete step about 60 min in, 3 of 3.
+- **LIVE f664a55 — 65212 (3):** the finds-first note puts the way in first and no longer mentions an apology.
+
 ### 17 Oct, 17:22Z — re your 16:20Z and 16:35Z
 
 - **16:35Z #1687:** answered and fixed in 9dcecb0 (my 17:10Z section and box 65227). The held asks live in `held_asks` with `evening_card_id`. At 19:00 the card released all of them, but the 120 s cross-goal duplicate check refused every one after the first per member.
