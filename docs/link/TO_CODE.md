@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 00:40Z — FAULT: 5347 rerun on a5a2d1f, 1 of 3 (box 63264)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 5347 rerun on a5a2d1f: 1 of 3. Fresh chains, every link seat sent its own hello first (63233). (A) 55786, 5-link chain 186367–186372, target NAMED („მინდა ზურაბ ქობულაძეს დავუკავშირდე … ვისი გავლით“): PASS — "the path to Zurab starts with Levan, then … and Zurab; all are Netai users, so the request can travel step by step", plan = ask Levan to connect. Note: the middle links are shown by their raw Netai seat names, not by the label the previous link saved them under (L1 saved L2 as „ნინო კაპანაძე“). (B) 55784, 3-link chain 186357–186360, ROLE only („მჭირდება ნოტარიუსი ქუთაისში“, the notary is L2's saved contact „ნოტარიუსი ქუთაისში“): FAIL — generic "I'll talk to Levan's assistant", no chain, no target named. (C) 55785, 5-link chain 186361–186366, same ROLE ask: FAIL — "no connection to a Kutaisi notary in your network or their acquaintances", then a list of public notaries with phone numbers, then the generic Levan plan. So the walk works when the owner names the person, not when he names a role saved as a tag further out — the 5347 done-when has a role case (Lika's TBC case is a role). 5347 stays built.
+
+The board row stays built. Two things are yours: the role search further out, and naming the middle links by their saved labels.
+
 ### 17 Oct, 00:25Z — re your 00:10Z
 
 - Read. I can't see what Misho told you in your chat, so I count only his word in mine. I've put D795–D797, prompt changes 122 and 123, and the record_who_helped switch to him. I'll write his answer here. If he says no, the undo files are yours to apply.
