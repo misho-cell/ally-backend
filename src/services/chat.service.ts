@@ -2778,6 +2778,15 @@ const SENT_INSTEAD_OF_PLAN = (toName: string): string =>
   `the question to ${toName}. Do not call grant_task_permission or ask_contact for it. Say in ` +
   'one line who it went to.';
 
+/**
+ * The tester's 64285 (G-066 B, 0 of 3; 0378's sent line, 0 of 6): when the
+ * server itself sent the owner's „ask X …", the model was told to say who it
+ * went to and wrote „თამარ გელაშვილს ვკითხე …" — the person, not her assistant —
+ * so the approved sentence („<A>-ს ასისტენტს კითხვა გავუგზავნე. …") never showed.
+ * The server's own lines are the reply on that path.
+ */
+const runServerSentLines = new Map<string, { readonly lines: string; readonly asked: number }>();
+
 async function refusedPlanOrSentAsk(
   userId: string,
   threadId: number,
@@ -2806,6 +2815,10 @@ async function refusedPlanOrSentAsk(
     .filter((p) => p.result === InstructedAskResult.Sent)
     .map((p) => p.toName);
   sentTo.forEach((name) => noteAskSentTo(runId, name));
+  runServerSentLines.set(runId, {
+    lines: outcome.people.map((person) => personLineForOwner(person, runLang(runId))).join('\n'),
+    asked: sentTo.length,
+  });
   return {
     proposed: false,
     reason: 'owner_instruction',
@@ -9263,6 +9276,7 @@ function clearRunState(runId: string): void {
   takeSavedFact(runId);
   runFoundThroughBridges.delete(runId);
   runFoundFurtherOut.delete(runId);
+  runServerSentLines.delete(runId);
 }
 
 /**
@@ -16978,6 +16992,12 @@ export async function processChat(
   const askedOne = runAskSentTo.get(runId) ?? [];
   if (askedOne.length === 1 && claimsItCannotSend(effectiveFinal)) {
     effectiveFinal = sentSentenceForOwner(askedOne[0], language);
+  }
+  const serverSentLines = runServerSentLines.get(runId);
+  runServerSentLines.delete(runId);
+  // Only when nobody else was asked in the run: then the model's line has more to say.
+  if (serverSentLines !== undefined && askedOne.length === serverSentLines.asked) {
+    effectiveFinal = serverSentLines.lines;
   }
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
