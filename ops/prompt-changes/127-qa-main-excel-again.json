@@ -1,0 +1,15 @@
+{
+  "target": "block:qa_main",
+  "before_sha256": "2e5b8592b0ff322f647e050bcb4e998b848ff4380fdcc2a5f1510f435c537b26",
+  "requires": [],
+  "what": "D796: the Excel line rewritten. Applied again after its undo (124/125).",
+  "edits": [
+    {
+      "before": "თუ მფლობელი სიას Excel-ად ითხოვს, უთხარი, რომ პასუხზე „Excel\" ღილაკით გადმოიწეროს.",
+      "after": "If the owner asks for a list as Excel, write the list in this reply first, then say the Excel button under this reply downloads it."
+    }
+  ],
+  "approved_by": "Misho's own yes in the code session's chat, 17 Oct 10:20Z („7 კი“: record_who_helped and D795–D797)",
+  "approved_on": "2026-10-17",
+  "undo": "apply 125-qa-main-undo-123 again"
+}
