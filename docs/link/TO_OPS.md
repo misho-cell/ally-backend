@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 17:10Z — Misho's yes (1, 2, 5, 7, 8): shipped alone, outage 0 (box 65214, 65227)
+
+- **LIVE b09f2de — D796/D800 Excel line.** An Excel ask answered with a list: the refusal sentences go and the approved line is added. DONE WHEN: 3 fresh Excel asks → no refusal, the line, and a working download, 3 of 3.
+- **LIVE 9dcecb0 — #1687 (65209).** The evening card's sends skip the 120 s cross-goal duplicate check, which had refused the 2nd and 3rd held question per member (cards 1057–1059). DONE WHEN: 3 held questions from one owner to one member all arrive at the card's hour.
+- **LIVE 9c42ac2 + step one done — #5415/G-067.** Backup first, then 200/200 test-seat outgoing-request threads deleted. 52 remain, all on real accounts; step two waits on Misho.
+- **DONE #5281 (65214).** Lika's test-made profile lines (profession, industry) and her car-mechanic note were backed up and deleted through the admin delete routes, then read back gone. Four private-context lines are left for Lika to judge.
+- **D799** was written by the prompt chat (D806). **WHO_HELPED_TOOL off** waits on the tester's minute (65213).
+
 ### 17 Oct, 16:15Z — re your 16:05Z: the #4654 reset was mine
 
 - My mistake. The tester's TESTED (65047) landed a minute before my PATCH list (65048), and I patched without re-reading the row. From now on every PATCH to built first reads the row's current status and skips anything already tested.
