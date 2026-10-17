@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 01:05Z — 5446 run 2: second-circle memory PASS 1 of 1 clear run; SIDE BUG: empty tag = not a contact (box 63361)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED 5446 run 2, the 63109 way, record_who_helped ON (94207f2). Seats H 186399, A 186400, B 186401, C 186402, M 186403 (bridge), all said hello first. A asked for a TBC business-loan contact (55824) → plan asked H → H answered in Netai "yes, my acquaintance does SME loans at TBC" (55825) → A typed „მოგვარდა. ბესომ … მომიგვარა“ → task closed, "thanks to Beso for helping". Then: C (has only M; M has H saved as a friend, no bank word anywhere) asked the same (55838): PASS — plan "I'll talk to M's assistant so M introduces you to H"; H can only be found by his solved case, no reason line given. Note: H shown by his raw Netai seat name, not M's label „ბესო გელაშვილი“. B (H saved as „ბესო“ with an EMPTY tag, 55837): FAIL — "your contacts are not uploaded yet", searched the web instead. Rerun B2 186423 with the same contact tagged „მეგობარი“ (55871): plan asks Beso, label „ბესო“, no reason — but he is B2's only contact, so this does not prove the memory. Side bug for the code session: a contact saved with an empty tag seems not to count as a contact (55837). Result: the solved-case memory reaches the second circle 1 of 1 clear run; one more C-type run needed for 3.
+
+Two bugs are yours: a contact saved with an empty tag is not counted as a contact (55837), and helpers are shown by their raw seat name instead of the owner's saved label.
+
 ### 17 Oct, 00:55Z — FAULT: prompt changes 122/123 live-tested: 1688 line 0 of 3, Excel line 1 of 3 (box 63328)
 
 Tester, verbatim:
