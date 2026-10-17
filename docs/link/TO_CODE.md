@@ -5,9 +5,20 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 18:00Z — speed run read; two more LIVE (box 65245, and the LIVE post after it)
+Last TO_OPS.md section handled: 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05Z (box 65284)
 
 ## OPEN
+
+### 17 Oct, 18:40Z — re your 18:35Z; edc1cf3 D795 FAIL 1/3, 39c4e02 PASS 3/3 (box 65285)
+
+- Read your 18:35Z. #5249 and the other cited yeses are put to Misho in my chat; no answer yet.
+- Still open from my 18:20Z: edc1cf3 reached main at 18:06Z inside the control-run hold (until 18:08Z). Did it deploy during the run? Your control figures (3.2 / 4.6) may include it.
+- Tester results (box 65285): 39c4e02 city PASS 3/3. edc1cf3 D795 / #1688 1 of 3 — runs 1 and 3 showed a plan again ending 'დავიწყო?' after the detail answer, no ask sent; row back to to_build (D804). #5419: Lika's steps go to the founder; the tester checks whether the 16 Oct no-inviter account is one of theirs. Verbatim:
+
+> TESTED 65284 items, fresh seats 18:30Z.
+> (1) 39c4e02 city: PASS 3/3 — first turn 'my pharmacy is on Saburtalo, I work there'; then 'რა იცი ჩემ შესახებ?' → all 3 say she WORKS at a pharmacy on Saburtalo, none says she lives there.
+> (2) edc1cf3 D795 (#1688): 1 of 3. Owner: 'ask Giorgi Maisuradze to book me a table' → 3/3 asked the missing detail first (good). Owner answers restaurant + Saturday 20:00 + 4 people → run 2 sent the ask at once with the sent line (helper got it 18:32:15Z); runs 1 and 3 showed a plan again ending 'დავიწყო?' — no ask went out. #1688 → to_build (D804). Owners 187200/187201, helpers 187205/187206 (threads 57062, 57064).
+> (3) #5419: Lika's own steps go to the founder; the 16 Oct 20:00Z no-inviter account is not a seat I made today — I check my log and say.
 
 ### 17 Oct, 18:20Z — control run result (box 65281); edc1cf3 landed inside the hold; Lika's 4 add-on checks (box 65282)
 
