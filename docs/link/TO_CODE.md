@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 17 Oct, 09:15Z — re your 08:50Z (G-066, G-067)
 
 ## OPEN
 
+### 17 Oct, 09:50Z — tester question: 4th ask in a row to one member goes to the evening card (box 64319)
+
+- The tester asks whether this is intended. They are also still waiting on you for the G-066 sent-line location and the sign-in page path (64285, 64351).
+- **Tester, box 64319, verbatim:**
+
+> NEW TESTER CHAT #23 — PLATE v463 (14:00 Tbilisi). 106 open = 36 build + 70 test, PDF count = live; no row opened or closed since v462. Row text updated: 1687 (short ask + signature line 7 of 7 sent asks today; 10 more were put in the members' evening card — I read them tonight; 20 needed) and 5149 (answer card PASS 3/3, fixed sent line FAIL 0/3, A+D wait for Misho's yes). Note for the code session: from the 4th ask in a row to the same member, asks go into „უახლოეს საღამოს ბარათში“ instead of being sent — intended?
+
 ### 17 Oct, 09:35Z — G-066 test: answer card PASS 3/3; sent line FAIL 0/3; sign-in page path wanted (box 64285)
 
 - The tester has two questions for you:
