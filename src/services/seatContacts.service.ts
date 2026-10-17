@@ -62,6 +62,15 @@ export function isReadableTag(tag: string): boolean {
 }
 
 /**
+ * The tester's 63361 (seat 186401): a contact sent with an empty tag was refused
+ * as bad_tag and never written, so the seat had no contacts at all. Most real
+ * phonebook entries carry a name and no tag; an empty tag saves the name alone.
+ */
+export function isAcceptableTag(tag: string): boolean {
+  return tag.trim() === '' || isReadableTag(tag);
+}
+
+/**
  * ⚠️ EVERYTHING THAT CAN REFUSE IS ASKED BEFORE ANYTHING IS WRITTEN, which is
  * this file's inheritance rather than its caution: a seat route refused
  * `invited_by` correctly AFTER creating the account and left Netai Test 22
@@ -81,7 +90,7 @@ export async function addSeatContact(
     return { ok: false, refusal: 'not_a_fictional_number', detail: FICTIONAL_RANGES_TEXT };
   }
   if (cleanName === '' || cleanName.length > MAX_NAME) return { ok: false, refusal: 'bad_name' };
-  if (!isReadableTag(cleanTag)) return { ok: false, refusal: 'bad_tag' };
+  if (!isAcceptableTag(cleanTag)) return { ok: false, refusal: 'bad_tag' };
 
   const seat = await query<{ user_id: number }>(
     `SELECT user_id FROM test_seats WHERE user_id = $1 LIMIT 1`,
@@ -149,13 +158,15 @@ export async function addSeatContact(
    * because it was reading the same wrong column. Two mistakes that cancelled
    * each other out on the one path I was testing, and on no other path at all.
    */
-  await query(
-    `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
-     VALUES ($1, $2, $3, 1, 'USER_CREATED')
-     ON CONFLICT DO NOTHING`,
-    [seatUserId, phone, cleanTag],
-    QUERY_TIMEOUT_MS,
-  );
+  if (cleanTag !== '') {
+    await query(
+      `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
+       VALUES ($1, $2, $3, 1, 'USER_CREATED')
+       ON CONFLICT DO NOTHING`,
+      [seatUserId, phone, cleanTag],
+      QUERY_TIMEOUT_MS,
+    );
+  }
 
   // 3104: the graph the connector and second-circle tools walk gets the contact too.
   const graphEdges = await mirrorSeatGraph(String(seatUserId), () =>

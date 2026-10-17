@@ -1,6 +1,6 @@
 import { query, withTransaction } from '../db/postgres/client';
 import { FICTIONAL_RANGES_TEXT, isFictionalNumber } from './fictionalNumbers';
-import { ContactRefusal, isReadableTag, NOT_A_TEST_SEAT } from './seatContacts.service';
+import { ContactRefusal, isAcceptableTag, NOT_A_TEST_SEAT } from './seatContacts.service';
 import {
   mirrorSeatGraph,
   parseSeatLabels,
@@ -58,7 +58,7 @@ function validate(contacts: readonly BulkContactIn[]): Clean[] | Exclude<BulkRes
       return { ok: false, refusal: 'not_a_fictional_number', index, detail: FICTIONAL_RANGES_TEXT };
     }
     if (name === '' || name.length > MAX_NAME) return { ok: false, refusal: 'bad_name', index };
-    if (!isReadableTag(tag)) return { ok: false, refusal: 'bad_tag', index };
+    if (!isAcceptableTag(tag)) return { ok: false, refusal: 'bad_tag', index };
     if (seen.has(phone)) return { ok: false, refusal: 'duplicate_phone', index };
     seen.add(phone);
     clean.push({ phone, name, tag });
@@ -114,6 +114,7 @@ export async function addSeatContactsBulk(
       `INSERT INTO "UserTags" ("contactId", phone, tag, "weightCount", source)
        SELECT $1::int, x.phone, x.tag, 1, 'USER_CREATED'
          FROM unnest($2::varchar[], $3::varchar[]) AS x(phone, tag)
+       WHERE TRIM(x.tag) <> ''
        ON CONFLICT DO NOTHING`,
       [seatUserId, phones, tags],
     );

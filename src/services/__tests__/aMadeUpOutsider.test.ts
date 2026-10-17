@@ -152,6 +152,23 @@ describe('what it writes when it accepts', () => {
     expect(written.join(' ')).not.toMatch(/INSERT INTO "User"\s/);
   });
 
+  /** The tester's 63361 (seat 186401): an empty tag left the seat with no contacts at all. */
+  it('saves a contact with no tag by its name alone, as most real phonebook entries are', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ user_id: 172101 }]) as never)
+      .mockResolvedValueOnce(rows([]) as never)
+      .mockResolvedValue(rows([]) as never);
+
+    const out = await addSeatContact(172101, '+12025550150', 'ბესო', '');
+
+    expect(out).toMatchObject({ ok: true, contact: { name: 'ბესო', tag: '' } });
+    const written = mockQuery.mock.calls
+      .map(([sql]) => String(sql))
+      .filter((s) => s.includes('INSERT'));
+    expect(written).toHaveLength(1);
+    expect(written[0]).toContain('"UserAlias"');
+  });
+
   /** The tag row must be the shape the matcher joins on: owner + phone + tag. */
   it('writes the tag against the SEAT, which is who the matcher asks about', async () => {
     mockQuery
