@@ -81,6 +81,27 @@ export async function isWalletEnabled(): Promise<boolean> {
   return result.rows[0]?.enabled === true;
 }
 
+/**
+ * 5321: the flag is read at most every half minute on the accept path — one
+ * trip fewer per message. A switch takes effect within that half minute.
+ */
+const WALLET_FLAG_TTL_MS = 30_000;
+let walletFlag: { readonly enabled: boolean; readonly readAt: number } | null = null;
+
+async function walletEnabledRecently(): Promise<boolean> {
+  const now = Date.now();
+  if (walletFlag !== null && now - walletFlag.readAt < WALLET_FLAG_TTL_MS)
+    return walletFlag.enabled;
+  const enabled = await isWalletEnabled();
+  walletFlag = { enabled, readAt: now };
+  return enabled;
+}
+
+/** For tests: forget the flag read. */
+export function clearWalletFlagCache(): void {
+  walletFlag = null;
+}
+
 export async function getBalance(userId: string): Promise<number> {
   const result = await query<{ balance: string | null }>(
     'SELECT SUM(amount) AS balance FROM token_transactions WHERE user_id = $1',
@@ -130,30 +151,77 @@ export async function ensurePeriodGrant(userId: string): Promise<void> {
 }
 
 /** The grant itself, for a subscription already read. */
-async function grantWhatIsDue(userId: string, subscription: Subscription): Promise<void> {
-  const { status, tier } = subscription;
-  if (status !== 'active' && status !== 'trialing') return;
+/** The grant this subscription is owed in the current period, or null when none is. */
+interface DueGrant {
+  readonly amount: number;
+  readonly reason: string;
+  /** The period key, as SQL: the window's current key, or the trial's fixed one ($4). */
+  readonly keySql: string;
+  readonly keyParam: string | null;
+}
 
+async function dueGrant(subscription: Subscription): Promise<DueGrant | null> {
+  const { status, tier } = subscription;
   if (status === 'active') {
     const grant = await periodGrantFor(tier);
-    if (grant <= 0) return;
-    await query(
-      `INSERT INTO token_transactions (user_id, amount, reason, period_key)
-       VALUES ($1, $2, $3, ${budgetWindow().currentKeySql})
-       ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
-      [userId, grant, MONTHLY_GRANT_REASON],
-    );
-    return;
+    return grant <= 0
+      ? null
+      : {
+          amount: grant,
+          reason: MONTHLY_GRANT_REASON,
+          keySql: budgetWindow().currentKeySql,
+          keyParam: null,
+        };
   }
-
+  if (status !== 'trialing') return null;
   const trialGrant = await getPrice('tokens.trial_grant');
-  if (trialGrant <= 0) return;
+  return trialGrant <= 0
+    ? null
+    : {
+        amount: Math.floor(trialGrant),
+        reason: TRIAL_GRANT_REASON,
+        keySql: '$4',
+        keyParam: TRIAL_PERIOD_KEY,
+      };
+}
+
+function grantParams(userId: string, grant: DueGrant): unknown[] {
+  return [userId, grant.amount, grant.reason, ...(grant.keyParam === null ? [] : [grant.keyParam])];
+}
+
+async function grantWhatIsDue(userId: string, subscription: Subscription): Promise<void> {
+  const grant = await dueGrant(subscription);
+  if (grant === null) return;
   await query(
     `INSERT INTO token_transactions (user_id, amount, reason, period_key)
-     VALUES ($1, $2, $3, $4)
+     VALUES ($1, $2, $3, ${grant.keySql})
      ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING`,
-    [userId, Math.floor(trialGrant), TRIAL_GRANT_REASON, TRIAL_PERIOD_KEY],
+    grantParams(userId, grant),
   );
+}
+
+/**
+ * 5321 (the tester's 200 run, 17 Oct 23:14Z): the allowance was 2.5 s of a
+ * 3.6 s accept — four trips one after another. The grant and the balance are
+ * one statement now. The SELECT does not see the row its own INSERT writes
+ * (one snapshot), so the granted amount is added to the sum explicitly — the
+ * balance is exactly what the old grant-then-read gave.
+ */
+async function grantedBalance(userId: string, subscription: Subscription): Promise<number> {
+  const grant = await dueGrant(subscription);
+  if (grant === null) return getBalance(userId);
+  const result = await query<{ balance: string | null }>(
+    `WITH granted AS (
+       INSERT INTO token_transactions (user_id, amount, reason, period_key)
+       VALUES ($1, $2, $3, ${grant.keySql})
+       ON CONFLICT (user_id, period_key) WHERE period_key IS NOT NULL DO NOTHING
+       RETURNING amount
+     )
+     SELECT COALESCE((SELECT SUM(amount) FROM token_transactions WHERE user_id = $1), 0)
+          + COALESCE((SELECT SUM(amount) FROM granted), 0) AS balance`,
+    grantParams(userId, grant),
+  );
+  return Number(result.rows[0]?.balance ?? 0);
 }
 
 /**
@@ -218,7 +286,7 @@ export async function expireStaleGrants(userId: string): Promise<void> {
  * slightly negative — that is deliberate grace; the next run gets blocked.
  */
 export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
-  if (!(await isWalletEnabled())) {
+  if (!(await walletEnabledRecently())) {
     return { allowed: true, balance: null };
   }
 
@@ -227,8 +295,7 @@ export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
   // rather than after it; the grant still follows the expiry, which reads the
   // balance the grant would change.
   const [, subscription] = await Promise.all([expireStaleGrants(userId), subscriptionOf(userId)]);
-  await grantWhatIsDue(userId, subscription);
-  const balance = await getBalance(userId);
+  const balance = await grantedBalance(userId, subscription);
   return { allowed: balance > 0, balance };
 }
 

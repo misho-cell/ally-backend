@@ -18,6 +18,7 @@ import { query, withTransaction } from '../../db/postgres/client';
 import { clearPriceCache } from '../costLedger.service';
 import {
   checkRunAllowance,
+  clearWalletFlagCache,
   creditTopup,
   debitRun,
   ensurePeriodGrant,
@@ -77,6 +78,11 @@ function setWorld(world: WalletWorld): { inserts: () => unknown[][] } {
       );
     // The wallet lock the settle takes before it reads the balance.
     if (sql.includes('FOR UPDATE')) return Promise.resolve(rows([{ '?column?': 1 }]) as never);
+    // 5321: the grant and the balance in one statement.
+    if (sql.includes('WITH granted AS')) {
+      inserts.push(params ?? []);
+      return Promise.resolve(rows([{ balance: String(world.balance) }]) as never);
+    }
     if (sql.includes('INSERT INTO token_transactions')) {
       inserts.push(params ?? []);
       // One row written — the ordinary case. A test of the one-debit-per-run
@@ -100,6 +106,7 @@ function setWorld(world: WalletWorld): { inserts: () => unknown[][] } {
 beforeEach(() => {
   jest.clearAllMocks();
   clearPriceCache();
+  clearWalletFlagCache();
 });
 
 describe('ensurePeriodGrant', () => {
