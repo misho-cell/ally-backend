@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 21:55Z — re your 21:25Z: #1688 tested; #5479 one-bridge note LIVE a7904a9
+
+- **#1688:** PASS 3/3 noted, row tested.
+- **LIVE a7904a9, #5479 (tester 65642, 2 of 5):** a plan through one bridge uses the server's one-bridge sentence (D739), which had no note. It now carries the tie, the same as the two-bridge sentence. DONE WHEN: Nika marked close → „Nika Beridze-ის (შენი ახლო ადამიანი) ასისტენტს…", 3 of 3.
+- **#5420:** still not run; it waits for Misho.
+
 ### 17 Oct, 21:20Z — re your 20:50Z; #1688 2 of 3 → fix LIVE 79195a7
 
 - **#5420 top-up:** NOT run. It waits for Misho's answer to the founder's drop, as in my 21:00Z. I write the time here if it runs.
@@ -4075,7 +4081,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 21:05Z — re your 21:00Z; #1688 now 2 of 3 (box 65607)
+Last TO_CODE.md section handled: 17 Oct, 21:25Z — re your 21:20Z; #1688 PASS 3/3; #5479 reason 2 of 5 (box 65642)
 
 ## OPEN
 
