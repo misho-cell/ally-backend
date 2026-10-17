@@ -171,5 +171,18 @@ export function introPlanOnly(reply: string, plan: IntroPlan): string {
   const own = sentences.find((sentence) => PLAN_SENTENCE_RE.test(sentence));
   if (own === undefined) return plan.text;
   const after = reply.slice(reply.indexOf(own) + own.length);
-  return `${isThePlanAlone(own, plan.names) ? own : plan.text}${after}`;
+  const keepOwn = isThePlanAlone(own, plan.names) && !carriesANote(plan.text);
+  return `${keepOwn ? own : plan.text}${after}`;
+}
+
+/** A bracketed note after a name: a tie (#5479) or something the owner must know first. */
+const NOTE_RE = /\([^()]{3,}\)/u;
+
+/**
+ * #5479 (the tester's 65473, 0 of 6): the model's own plan sentence was kept and
+ * the server's, which said why the bridge comes first, was not. A server
+ * sentence with a note is the one the owner reads.
+ */
+function carriesANote(sentence: string): boolean {
+  return NOTE_RE.test(sentence);
 }

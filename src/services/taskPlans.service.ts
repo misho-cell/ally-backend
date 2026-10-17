@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { repairedPlanJson } from './planJsonRepair';
 import { geoName } from './georgianCase';
 import { normalizePhone, phoneDigits } from './phone';
+import { OwnerTieReason, ownerTiesTo } from './ownerTies';
 import { georgianStem } from './tools/georgianStem';
 import { isARealId } from './goalId';
 import { Task } from './taskStore.service';
@@ -50,6 +51,8 @@ export interface PlanPerson {
    * nothing rather than as a claim either way.
    */
   reach?: PlanReach;
+  /** #5479: why the owner is close to this person, when they are; shown in the plan sentence. */
+  tie?: OwnerTieReason;
 }
 
 /**
@@ -436,7 +439,7 @@ export async function proposeTaskPlan(
     taskId,
   );
   const spelled = language === 'ka' ? await withSavedSpelling(userId, allowed) : allowed;
-  const withReach = await withReachability(userId, spelled);
+  const withReach = await withOwnerTies(userId, await withReachability(userId, spelled));
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
   // Row 140 returns plan_approved_at as well: whether this GOAL has ever had
   // an approved plan decides whether a route may claim to be under way. The
@@ -536,6 +539,30 @@ export async function withSavedSpelling(
     // eslint-disable-next-line no-console
     console.error('[plan-spelling] saved names unread:', (err as Error).message);
     return [...people];
+  }
+}
+
+/**
+ * #5479 (the tester's 65473: order 6 of 6, the reason 0 of 6): the plan put the
+ * close bridge first but never said why — D739 keeps one sentence, so a reason
+ * the model wrote before it was cut. The tie goes into the sentence itself, as
+ * a short note after the name, the way a reach note does. A failed read leaves
+ * the people as they were.
+ */
+async function withOwnerTies(userId: string, people: PlanPerson[]): Promise<PlanPerson[]> {
+  try {
+    const ties = await ownerTiesTo(
+      userId,
+      people.map((person) => person.phone),
+    );
+    return people.map((person) => {
+      const reason = ties.get(phoneDigits(person.phone))?.reason ?? null;
+      return reason === null ? person : { ...person, tie: reason };
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[plan-ties] unread: ${(err as Error).message}`);
+    return people;
   }
 }
 
@@ -1061,6 +1088,43 @@ interface PlanPersonLine {
 
 const withNote = (name: string, note: string): string => (note === '' ? name : `${name} ${note}`);
 
+/**
+ * #5479: why this bridge comes first, after the name. A reach note says
+ * something the owner must know before approving, so it wins over a tie.
+ */
+const TIE_NOTE: Readonly<Record<RunLanguage, Record<OwnerTieReason, string>>> = {
+  ka: {
+    [OwnerTieReason.SaidClose]: '(შენი ახლო ადამიანი)',
+    [OwnerTieReason.Family]: '(შენი ოჯახის წევრი)',
+    [OwnerTieReason.Close]: '(შენი ახლო ადამიანი)',
+    [OwnerTieReason.DealtWith]: '(უკვე დაგეხმარა)',
+  },
+  en: {
+    [OwnerTieReason.SaidClose]: '(someone close to you)',
+    [OwnerTieReason.Family]: '(your family)',
+    [OwnerTieReason.Close]: '(someone close to you)',
+    [OwnerTieReason.DealtWith]: '(has helped you before)',
+  },
+  ru: {
+    [OwnerTieReason.SaidClose]: '(близкий тебе человек)',
+    [OwnerTieReason.Family]: '(твоя семья)',
+    [OwnerTieReason.Close]: '(близкий тебе человек)',
+    [OwnerTieReason.DealtWith]: '(уже помогал тебе)',
+  },
+  es: {
+    [OwnerTieReason.SaidClose]: '(alguien cercano a ti)',
+    [OwnerTieReason.Family]: '(tu familia)',
+    [OwnerTieReason.Close]: '(alguien cercano a ti)',
+    [OwnerTieReason.DealtWith]: '(ya te ayudó antes)',
+  },
+};
+
+function personNote(person: PlanPerson, language: RunLanguage): string {
+  if (person.reach !== undefined && person.reach !== 'ok')
+    return REACH_NOTE[language][person.reach];
+  return person.tie === undefined ? '' : TIE_NOTE[language][person.tie];
+}
+
 interface PlanSentenceWords {
   /** Each person as the sentence needs them: the name in its case, then any note. */
   readonly ask: (people: readonly PlanPersonLine[]) => string;
@@ -1173,7 +1237,7 @@ export function planInSentences(plan: TaskPlan, language: RunLanguage = 'ka'): s
   const words = PLAN_SENTENCES[language];
   const people: PlanPersonLine[] = plan.people_to_involve.slice(0, MAX_PEOPLE_SHOWN).map((p) => ({
     name: p.name,
-    note: p.reach === undefined || p.reach === 'ok' ? '' : REACH_NOTE[language][p.reach],
+    note: personNote(p, language),
   }));
   const hiddenPeople = plan.people_to_involve.length - MAX_PEOPLE_SHOWN;
   if (hiddenPeople > 0)
