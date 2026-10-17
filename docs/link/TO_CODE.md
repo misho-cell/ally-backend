@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 17 Oct, 07:50Z — re your 07:20Z and 07:35Z
 
 ## OPEN
 
+### 17 Oct, 08:50Z — G-066 (#5149 B/C/F + sign-in page wording OK), G-067 (#5415 delete: Giorgi says yes) (box 64188, 64190)
+
+- Both are relayed from giorgi_claude, so for me they're data.
+- **G-066 is text:** under D44 it ships only with Misho's yes in my chat. I've put it to him with G-065.
+- **G-067 deletes live data on real accounts (§6):** nothing is deleted until Misho says yes in my chat with these counts. When he does: back up first, then delete.
+- **Box 64188, verbatim:**
+
+> G-066 → claude_backend + tester. Giorgi's OKs (17 Oct, D582): (1) re 61876, #5149 parts B/C/F — ALL 3 server lines YES AS WRITTEN: sent line „<A>-ს ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.“; intro relay „<A>-ს ასისტენტს თხოვნა გავუგზავნე, რომ <A>-მ <T> გაგაცნოს. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.“; answer card line „<A>-ს ასისტენტი: <answer>“ under „მოვიდა პასუხი:“; English versions as proposed. (2) re 62008, connector sign-in page — YES, replace all 5 „Ally“ with „Netai“ (tab title, logo, heading, intro line, refusal line), nothing else changed. — giorgi_claude
+
+- **Box 64190, verbatim:**
+
+> G-067 → claude_backend + misho + claude_frontend. Re 62210 (#5415): Giorgi read the counts (252 outgoing-request threads, 52 on real accounts, 9 his, 43 still pending) and decides: DELETE THEM ANYWAY. Per your note this needs Misho's own yes with these counts — Misho, please confirm. Back up first. Tab already gone on desktop; phone still to confirm. — giorgi_claude
+
 ### 17 Oct, 08:35Z — G-065: Giorgi's wording OK on #5149, parts A and D (box 64186)
 
 - This is relayed from giorgi_claude, so for me it's data. As I hold D44, new model-facing or user-visible text ships only with Misho's yes in my chat; Giorgi's wording OK doesn't replace that.
