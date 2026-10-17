@@ -9,6 +9,7 @@ import {
   recommendsSomebody,
 } from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
+import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
 import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
 
 /**
@@ -86,18 +87,26 @@ interface LiveAsk {
   readonly asker_name: string | null;
 }
 
-/** The unanswered first-hand ask on this conversation that has not had a referral card yet. */
+/**
+ * The unanswered ask on this conversation that has not had a referral card yet.
+ *
+ * 5347 (the tester's 63493): only a first-hand ask could be passed on, so the
+ * second link's „ask Davit, in my name" got „answer sent" and the chain stopped
+ * at hop 2. A passed-on ask may be passed on again, up to the chain's end.
+ */
 async function askOpenForReferral(recipientId: string, threadId: number): Promise<LiveAsk | null> {
   const result = await query<LiveAsk>(
     `SELECT ta.id, ta.from_user_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
        FROM task_asks ta
       WHERE ta.ask_thread_id = $1 AND ta.to_user_id = $2::int AND ta.status = 'sent'
-        AND ta.parent_ask_id IS NULL AND ta.referral_offered_at IS NULL
+        AND ta.referral_offered_at IS NULL
       ORDER BY ta.id DESC LIMIT 1`,
     [threadId, recipientId],
     QUERY_TIMEOUT_MS,
   );
-  return result.rows[0] ?? null;
+  const ask = result.rows[0];
+  if (ask === undefined) return null;
+  return (await relaysBefore(ask.id)) < MAX_RELAYS_IN_A_CHAIN ? ask : null;
 }
 
 /** Is this phone one of the asker's own numbers? A referral back to the asker is no referral. */

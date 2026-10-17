@@ -1,3 +1,8 @@
+jest.mock('../relayChain', () => ({
+  __esModule: true,
+  MAX_RELAYS_IN_A_CHAIN: 4,
+  relaysBefore: jest.fn().mockResolvedValue(0),
+}));
 jest.mock('../../db/postgres/client', () => ({ query: jest.fn(), __esModule: true }));
 jest.mock('../taskAsks.service', () => ({
   createRelayAsk: jest.fn(),
@@ -12,6 +17,7 @@ jest.mock('../instructedAsk', () => ({
   ownersLabel: jest.fn(),
 }));
 
+import { relaysBefore } from '../relayChain';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { query as _query } from '../../db/postgres/client';
@@ -74,6 +80,21 @@ describe('the referral card (1696)', () => {
   it('an ordinary answer gets no card and reads nothing', async () => {
     expect(await offerReferral('8', 40, 'Yes, I know one in Vake.', 'en')).toBeNull();
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  /** 5347 (the tester's 63493): the second link's „ask Davit, in my name" ended the chain. */
+  it('a passed-on ask gets the card too, and none is offered at the chain’s end', async () => {
+    (relaysBefore as jest.Mock).mockResolvedValueOnce(1);
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 78, from_user_id: 5, asker_name: 'Nino' }] });
+    (oneContactNamed as jest.Mock).mockResolvedValue('+995555000009');
+    mockQuery.mockResolvedValueOnce({ rows: [{ hit: false }] });
+    (ownersLabel as jest.Mock).mockResolvedValue('Davit');
+    expect(await offerReferral('8', 41, 'not me, but ask Davit', 'en')).not.toBeNull();
+
+    mockQuery.mockReset();
+    (relaysBefore as jest.Mock).mockResolvedValueOnce(4);
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 79, from_user_id: 5, asker_name: 'Nino' }] });
+    expect(await offerReferral('8', 42, 'not me, but ask Davit', 'en')).toBeNull();
   });
 
   it('naming the asker back is no referral', async () => {
