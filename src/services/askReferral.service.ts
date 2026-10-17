@@ -10,7 +10,7 @@ import {
 } from './referralRecommendation';
 import { RunLanguage } from './runLanguage';
 import { MAX_RELAYS_IN_A_CHAIN, relaysBefore } from './relayChain';
-import { ASKER_AS_THE_READER_SAVED_THEM } from './savedNameSql';
+import { QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM } from './savedNameSql';
 
 /**
  * 1696 (A13, D679/D680): the person asked answers „not me — but ask Eka". The
@@ -96,7 +96,7 @@ interface LiveAsk {
  */
 async function askOpenForReferral(recipientId: string, threadId: number): Promise<LiveAsk | null> {
   const result = await query<LiveAsk>(
-    `SELECT ta.id, ta.from_user_id, ${ASKER_AS_THE_READER_SAVED_THEM} AS asker_name
+    `SELECT ta.id, ta.from_user_id, ${QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM} AS asker_name
        FROM task_asks ta
       WHERE ta.ask_thread_id = $1 AND ta.to_user_id = $2::int AND ta.status = 'sent'
         AND ta.referral_offered_at IS NULL

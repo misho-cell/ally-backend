@@ -45,8 +45,30 @@ export function nameAsSavedBySql(viewerIdSql: string, memberIdSql: string): stri
     ${labelOf(viewerIdSql, memberIdSql, false)})`;
 }
 
+/** The viewer's own clean label for the member, or NULL — no fallback to the account name. */
+export function savedLabelSql(viewerIdSql: string, memberIdSql: string): string {
+  return labelOf(viewerIdSql, memberIdSql, true);
+}
+
+/** The goal owner of the ask row `ta`; SQL. */
+const GOAL_OWNER_OF_ASK = '(SELECT go_t.user_id::int FROM tasks go_t WHERE go_t.id = ta.task_id)';
+
 /** The asker's view of the person asked — every line in the asker's goal thread. */
 export const ASKED_AS_THE_ASKER_SAVED_THEM = nameAsSavedBySql('ta.from_user_id', 'ta.to_user_id');
 
 /** The reader's view of the person asking — every line in the reader's own chat. */
 export const ASKER_AS_THE_READER_SAVED_THEM = nameAsSavedBySql('ta.to_user_id', 'ta.from_user_id');
+
+/**
+ * 5347 (the tester's 63861 c): at the third link the pass-on card read „ask X
+ * for L2" — the person who passed it on, not the one the question is for. On a
+ * relayed ask the goal's owner is named: the reader's own label for them, else
+ * the name the person passing it on knows them by. A first-hand ask is the
+ * owner's own, read as before.
+ */
+export const QUESTION_IS_FOR_AS_THE_READER_KNOWS_THEM = `CASE WHEN ta.parent_ask_id IS NULL
+    THEN ${ASKER_AS_THE_READER_SAVED_THEM}
+    ELSE COALESCE(
+      ${savedLabelSql('ta.to_user_id', GOAL_OWNER_OF_ASK)},
+      ${nameAsSavedBySql('ta.from_user_id', GOAL_OWNER_OF_ASK)})
+  END`;

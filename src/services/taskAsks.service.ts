@@ -119,6 +119,7 @@ import {
   ASKED_AS_THE_ASKER_SAVED_THEM,
   ASKER_AS_THE_READER_SAVED_THEM,
   nameAsSavedBySql,
+  savedLabelSql,
 } from './savedNameSql';
 
 const ASK_QUERY_TIMEOUT_MS = 8_000;
@@ -2501,9 +2502,13 @@ async function relayShapeOf(childAskId: number): Promise<RelayShape | null> {
             p.to_user_id   AS bridge_user_id,
             p.ask_thread_id AS bridge_thread_id,
             -- 1696: „yes, without my name" — the asker reads „through your contact".
-            -- 5347 (63230): the owner reads the bridge under the name they saved them by.
+            -- 5347 (63230): the owner reads the bridge under the name they saved them by;
+            -- (63861 a) one the owner never saved, under the label the link before saved.
             CASE WHEN p.may_name_referrer IS FALSE THEN NULL
-                 ELSE ${nameAsSavedBySql('t.user_id::int', 'p.to_user_id')} END AS bridge_name
+                 ELSE COALESCE(
+                   ${savedLabelSql('t.user_id::int', 'p.to_user_id')},
+                   ${savedLabelSql('p.from_user_id', 'p.to_user_id')},
+                   ${nameAsSavedBySql('t.user_id::int', 'p.to_user_id')}) END AS bridge_name
        FROM task_asks c
        JOIN task_asks p ON p.id = c.parent_ask_id
        JOIN tasks t ON t.id = c.task_id
