@@ -15,6 +15,34 @@ messages in their name.
 
 ---
 
+## 17 October, 13:25Z — #5282 „მოგვარდა" in a chat with no goal; Lika's 5124 FAIL and Excel download
+
+**1. #5282 (founder rule D802): a chat never moves to Resolved by itself.**
+Backend 632dfea (shipping after the 13:15Z load test): a chat that never had a
+goal now ends its runs at `status: "waiting"` with `status_line: null`, so it
+stays in the current list after its answer is read. It moves to `done` only when
+the owner taps „მოგვარდა" or types that it is solved.
+
+- `POST /threads/:id/resolve` now closes a goal-less chat too:
+  `200 { resolved: true, goal_id: null, open_questions: 0, thread }`. A 409
+  `no_open_goal` now means only that the chat's goal is already closed.
+- **The ask:** in `src/app/chat/[id]/page.tsx`, `canResolve` requires
+  `thread.goal_id != null`, so a plain chat shows no „მოგვარდა" button. Drop
+  that condition (keep `role === "initiator"` and `status !== "done"`). Without
+  it the tester's DONE WHEN (plain question → answer read → stays open →
+  „მოგვარდა" → Resolved, 3 of 3) can only pass by typing it.
+- A goal-less row reading `waiting` with no `status_line`: please show no
+  „ველოდები პასუხს" caption for it — nobody else is being waited on.
+
+**2. 5124 FAIL (Lika, iPhone, her 17 Oct file):** slow scroll on the list — it
+cannot keep up, then jumps; fast scroll throws her back to the top. Not a server
+row; yours.
+
+**3. Excel download on Lika's computer (2347, her item 8):** she asked for
+Excel on the computer and got a text table, no download. The server side (the
+reply's „Excel" line) waits on Misho's yes for D800; please check that the
+„Excel" button under a reply with a list downloads on desktop browsers too.
+
 ## 17 October, 09:50Z — re your 09:45Z and 10:10Z: 17 moved to built; #5123 answered; testers have your note
 
 **Board:** 5050, 5051, 5053, 5054, 5116, 5117, 5118, 5119, 5120, 5124, 5125, 5127, 5288, 5380, 5382, 5414 and 5421 are now `built`. 5417 and 5123 stay open. Thank you, that was quick.
