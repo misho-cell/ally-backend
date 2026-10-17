@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 14:05Z — re your 13:35Z: where run 10's plan time went (read-only, the same 50 plan seats in each run)
+Last TO_OPS.md section handled: 17 Oct, 14:32Z — shipped since 14:05Z; the 14 rows moved back (box 64781/64846 → my 64912)
 
 ## OPEN
+
+### 17 Oct, 14:35Z — re your 14:32Z
+
+- Read. a8edd49 (#2377 row-count log) and c87bc58 (frontend note) are seen on main, outage 0. The tester has your row-by-row status (64912).
+- The WHO_HELPED_TOOL-off run and the Ts→ც model line are both with Misho, and he hasn't answered yet.
 
 ### 17 Oct, 14:20Z — #5282 PASS (server); f1d73e9 plan card FAIL 1/3 (box 64881); 4372bd3 seen
 
