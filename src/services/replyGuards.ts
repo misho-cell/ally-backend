@@ -379,10 +379,11 @@ export function withoutQuotedCopy(reply: string): string {
  * and the reply listed public notaries and asked in prose „shall I ask Levan's
  * assistant?" — no find_warm_path, no plan, no card, so the owner had nothing to
  * tap. Somebody found further out is reached through a plan, like anyone else.
+ * The tester's 64483 (56214): the same for a person found through one bridge.
  */
 export function farFindUnplannedNudge(names: readonly string[]): string {
   return (
-    `(სისტემური შენიშვნა: ძებნამ შორეულ წრეში იპოვა: ${names.join(', ')}. ამ მიზანს გეგმა ` +
+    `(სისტემური შენიშვნა: ძებნამ შენი კონტაქტების გავლით იპოვა: ${names.join(', ')}. ამ მიზანს გეგმა ` +
     'ჯერ არ აქვს და ამ გაშვებაში არაფერი გაგზავნილა. ახლავე გამოიძახე find_warm_path მისი ' +
     'phone-ით, მერე propose_task_plan — people_to_involve-ში ჯაჭვის პირველი რგოლი (შენი ' +
     'კონტაქტი), გზაში კი ის, ვისთან მიდის — და present_choices-ით შესთავაზე „ვამტკიცებ" და ' +

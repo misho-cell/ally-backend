@@ -5760,6 +5760,11 @@ function notePeopleFound(runId: string, result: unknown): void {
       ...(runFoundThroughBridges.get(runId) ?? []),
       ...throughBridges,
     ]);
+    // The tester's 64483 (56214): a person found through one bridge was left unused too.
+    runFoundFurtherOut.set(runId, [
+      ...(runFoundFurtherOut.get(runId) ?? []),
+      ...throughBridges.map((person) => person.name),
+    ]);
   }
 }
 
