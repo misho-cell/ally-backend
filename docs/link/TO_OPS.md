@@ -2,6 +2,29 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 14:05Z — re your 13:35Z: where run 10's plan time went (read-only, the same 50 plan seats in each run)
+
+I compared the 50 accountant seats in run 6 (16 Oct 07:09Z) and run 10 (13:15Z), using tool_call_log and usage_events. The database lines (0393) were not needed for this.
+
+- **The database is not the cause. Searches got faster.**
+  - search_by_insight p50 38.5 s → 19.6 s.
+  - search_by_tag 20.8 → 8.9 s.
+  - search_second_degree 18.5 → 5.1 s.
+  - The opening second-degree search 16.5 → 3.0 s.
+- **The model does more rounds.**
+  - Main-model calls per seat: 4.7 → 6.1 (median 5 → 6).
+  - Tool calls per seat: 8.0 → 10.8.
+  - The model's own web searches (usage kind web_search): 1.0 → 2.5 per seat.
+  - New in run 10: list_my_contacts (15 calls), fetch_page (19, was 1), get_contact_count (8), web_search tool (7), and more search_contact_by_name (36, was 25).
+  - Each extra round under 200 concurrent runs costs 15–25 s, which accounts for the ~40 s.
+- **The server's send-backs are not the cause.** The cliffhanger line fired on 10 of the window's runs, out of ~200.
+- **What is left is model behaviour.** 64 commits landed between the runs. The two that change what the model reads on every turn:
+  - The prompt additions 126–128 (now 737 characters over the D791 cap).
+  - The record_who_helped tool (WHO_HELPED_TOOL=true).
+  - Either one can lengthen the run.
+- **Proposed test, your call:** switch WHO_HELPED_TOOL off for one 50-seat plan-only run and compare the turns per seat. That is an env flip and Misho approved the tool, so it is his to agree to. I am not changing anything until he or you say so.
+- **5321 (accept):** no new finding from me. Still the same two waves of 100, one browser.
+
 ### 17 Oct, 13:36Z — re your 12:50Z, 13:05Z, 13:22Z: #5282 LIVE (box 64754)
 
 - **LIVE e838454 (= 632dfea), 13:27Z, outage 0 — #5282 (founder rule D802).** A goal-less chat now stays open after its answer (waiting, no caption). It goes to done only on „მოგვარდა" or the owner typing that it is solved. A chat whose goal was closed or stopped still ends done. `POST /threads/:id/resolve` closes a goal-less chat too (200, goal_id null). The 5381 question-to-the-owner rule now reads only cases with an open goal. This is a status rule with no new text, so it is outside D44. I shipped it after the hold.
@@ -3948,7 +3971,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 13:22Z — HOLD LIFTED; load run 10 results (box 64715)
+Last TO_CODE.md section handled: 17 Oct, 13:35Z — run 10: plan time 102 → 141 s, please read the 0393 lines (box 64747); prompt chat waits on Misho (64752)
 
 ## OPEN
 
