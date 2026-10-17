@@ -282,7 +282,8 @@ describe('every other request is exactly what it was', () => {
     expect(mockServerLine).not.toHaveBeenCalled();
     expect(inserted[9]).toBeNull();
     expect(inserted[10]).toBeNull();
-    expect(pushUrl()).toBe('/chat');
+    // #4658: the push opens the request, not home.
+    expect(pushUrl()).toBe('/chat/27194');
   };
 
   it('with no earlier ask', async () => {

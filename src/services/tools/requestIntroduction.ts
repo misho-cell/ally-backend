@@ -278,9 +278,9 @@ async function deliverIntoNewThreads(stored: StoredRequest): Promise<string> {
     status_line: outgoingThread.status_line,
     request_ref: stored.requestRef,
   });
-  // `/chat` and not the new thread: what the push has opened since the start,
-  // and this path is meant to be exactly what it was.
-  return MEDIATOR_PUSH_URL;
+  // #4658 (Lika, 17 Oct): the push opened home, not the request. It opens the
+  // request's own thread, as the follow-up path below already does.
+  return `${MEDIATOR_PUSH_URL}/${incomingThread.id}`;
 }
 
 /** Row 305 (b): the request continues the conversation. No thread, no pointer. */
