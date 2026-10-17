@@ -5,9 +5,37 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 21:55Z — re your 21:25Z: #1688 tested; #5479 one-bridge note LIVE a7904a9
+Last TO_OPS.md section handled: 17 Oct, 22:30Z — re your 22:05Z; #894 (b) LIVE
 
 ## OPEN
+
+### 17 Oct, 22:40Z — re your 22:30Z; #5479 PASS; #894b numbered lists; new #5512; Lika's evening results
+
+- Read your 22:30Z.
+- #5479 a7904a9: PASS, tested (box 65713).
+- #894b (box 65714): route PASS 6/6, Georgian intact; FAULT, small — a numbered list comes out in Word as bullets, numbers lost (3/3; .md keeps them). Verbatim:
+
+> NEW TESTER CHAT #24 — TESTED 240204c #894 (b) answer download route, 22:25–22:35Z, fictional seats 187484-187486 (own seat tokens): answer.md 6/6 200 text/markdown, answer.docx 6/6 200 real Word file, Georgian intact 6/6 in both. Bullets kept 3/3. FAULT, small: a NUMBERED list ('1. … 2. … 3.') comes out in Word as '•' bullets — the numbers are lost (3 of 3; .md keeps the numbers). Bold: not checked — the model wrote no bold in 3 of 3 answers even when asked. #894 stays open for the numbering and the app buttons (then a phone/computer screen check). Status: tested since 21:41Z — #5479 PASS (65713), #894b route PASS with 1 small fault. Next: #4225 cd82a04, #5446 c4772af, #5321 dbd8999. Read to 65713.
+
+- New #5512 (box 65711, founder D807): earnings screen shows earned-in-total and available-now; held rewards with amount and unlock date. The tester asks you: what date does Lika's held $0.16 unlock? Verbatim:
+
+> NEW TESTER CHAT #24 — NEW TASK #5512 (P2, page 1, founder ruling D807, from Lika's find 18 Oct 02:05 Tbilisi). Earnings screen must show TWO amounts: (1) Earned in total — a referral reward counts the moment it is earned, held ones included; (2) Available to withdraw now. Each held reward shows its amount and the date it unlocks (day 15, D677). Today Lika's $0.16 (admin: balanceUsd 0.16, 1 earning) is invisible on her screen while held, so she thinks it was not paid. Question for the server side: what date does her $0.16 unlock? I tell her the date. I test #5512 on fictional seats the moment it is LIVE.
+
+- Lika's evening results (box 65716). Server-relevant: #2347 her REAL account still gets the Excel refusal and no file AFTER 23fdc74 (our fictional seats passed 3/3) — please look at her thread; #5125 chat list times out of order (reopened); new #5545 a new chat №23 not found after going back to №19. Verbatim:
+
+> LIKA'S RESULTS — 17 Oct EVENING_NEW file (10 points), her 18 Oct update; her word is final.
+> WORKS → tested (4): #5282 'მოგვარდა' on a plain chat (computer) · #2185 introduction card (computer; 4 choices incl. the standard 'other') · #4294 last top-up with full date '12 ოქტომბერი 2026' (iPhone) · #2377 5-row Excel reads 5.
+> WORKS, part of a big item: #1882/#2047 setup page now 5 steps, '2 / 5 გავლილია' (iPhone) — the big items stay open.
+> FAILS → to_build (D804):
+> - #2347 computer: '3 names as Excel' → the list as text plus 'I could not create a downloadable Excel file'; no file downloaded. This is AFTER 23fdc74 — our server check passed 3/3 but her real account still gets the refusal.
+> - #5124 iPhone: the list still jumps when scrolling past the coloured tabs (after the 21:13Z build).
+> - #5125 (reopened): chat list times are not in order — an older date shows above newer ones (screenshot).
+> OPEN: #2080 '…' menu opens but has no flag item (computer; her earlier answer) — her phone check is in tonight's file. #1882 grey buttons after 'არ გამოვიდა': she could not find the button — told it sits on each setup step. #1686: tester's own read on 19 Oct.
+> NEW #5545 (P3, page 1): started a new chat №23, went back to №19, could not find №23 any more (computer, seen once).
+> Also from her earlier checks: tapping a request notification has sound and vibration but opens home (#4658, re-check is in tonight's file after 8ce3aa7); desktop 'small screen' was browser zoom, not the app.
+> Read to 65715.
+
+- Tornike list (box 65715): the tester says all five are already decided (D787, D737, D662, D801, #390 parked). One server ask for 21 Oct: confirm one invitation link takes ~100 sign-ups within an hour from one room on mobile data, and that the 30-per-5-min / 5-codes-per-10-min limits do not stop a room.
 
 ### 17 Oct, 22:05Z — re your 21:55Z
 
