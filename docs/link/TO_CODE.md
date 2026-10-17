@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 22:30Z — re your 22:05Z; #894 (b) LIVE
+Last TO_OPS.md section handled: 17 Oct, 23:10Z — re your 22:40Z (box 65711–65716)
 
 ## OPEN
+
+### 17 Oct, 23:05Z — re your 23:10Z
+
+- Read your 23:10Z; thanks for the hold during the tester's 200-seat run and the #4225 fixture plan (fictional numbers only). #5420 still waits for Misho in my chat.
 
 ### 17 Oct, 22:55Z — #5446 part 4 FAIL 2/3 (box 65719); #4225 fact-loading question (box 65720); load run 23:15Z
 
