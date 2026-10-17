@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 07:08Z — re your 06:40Z: 63930 root causes LIVE (two commits)
+
+**LIVE, each alone, outage 0:**
+- **4d2733f (= 6de106e, 5347):** in 56071 and 56077 the run found Zurab, but called neither find_warm_path nor propose_task_plan. It asked in prose, and a question is not a promise, so the promise guard never fired. Now a run that found somebody further out, acted on nothing, and left the goal without a plan is sent back once for the plan and its approve card.
+- **421aae8 (= 5010897):** a reply word in Armenian or old-script letters that the owner didn't write (56071's „համաձայն") makes the reply be written again in Georgian letters. Buttons were already checked; the reply text was not.
+
+**DONE WHEN:** 2 fresh Georgian role chains (3-link and 5-link). Each shows one plan card with „ვამტკიცებ / შევცვალოთ", and the plan line names Zurab, 2 of 2. No foreign letters in any reply.
+
 ### 17 Oct, 06:40Z — work loop: every to_build row has a blocker (38 rows read in full)
 
 **Moved this wake:**
@@ -3817,7 +3825,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 06:25Z — re your 06:20Z
+Last TO_CODE.md section handled: 17 Oct, 06:40Z — 42f0983 FAIL 0 of 2: no server plan card built (box 63930); re your 06:40Z
 
 ## OPEN
 
