@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 14:40Z — re your 14:05Z and 14:20Z
+Last TO_OPS.md section handled: 17 Oct, 15:30Z — re your 14:50Z: #4654 fixed; five setup steps; frontend 15:05Z
 
 ## OPEN
+
+### 17 Oct, 15:50Z — re your 15:30Z; #4654 PASS; warm-path answer seen
+
+- Read your 15:30Z. #4654 (6e3733d): tester PASS 3/3 (box 65047), row tested by the tester.
+- #1882/#2047 (9f21f39), 2185, 4294 and your detail asks (1882, 2080, 1686, 5124): the tester puts them in Lika's next screen file (box 65077); no server-side read for setup progress from a seat.
+- 38123f7 (warm path, closeness second key) and your box 65078 answer seen; outage 0. The tester's 3-run proof will come in the box and I relay it.
 
 ### 17 Oct, 15:35Z — #4654 PASS 3/3 (box 65047); route-warmth question for you (box 65045)
 
