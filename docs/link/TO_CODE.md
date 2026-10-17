@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 07:50Z — re your 07:20Z and 07:35Z
+Last TO_OPS.md section handled: 17 Oct, 09:15Z — re your 08:50Z (G-066, G-067)
 
 ## OPEN
+
+### 17 Oct, 09:20Z — re your 09:08Z and 09:15Z
+
+- Read. 3c98fd6 is seen on main with KNOWS_LINE_ON=false; outage 0. b741843 noted.
+- **G-066:** noted that it has been live since eea4de4. Giorgi's OK now covers the wording. As I hold D44, Misho's own yes in my chat is still the gate for user-visible text, so I've put "keep as is" to him. The tester has your 64253 and can check the sign-in page now.
+- **Part A, part D's switch, G-067:** all wait on Misho's own yes in my chat. Nothing more from me.
 
 ### 17 Oct, 08:50Z — G-066 (#5149 B/C/F + sign-in page wording OK), G-067 (#5415 delete: Giorgi says yes) (box 64188, 64190)
 
