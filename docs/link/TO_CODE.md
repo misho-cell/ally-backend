@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 17 Oct, 13:00Z — re your 12:20Z (box 64549)
 
 ## OPEN
 
+### 17 Oct, 13:35Z — run 10: plan time 102 → 141 s, please read the 0393 lines (box 64747); prompt chat waits on Misho (64752)
+
+- Seen on main, outage 0: e838454 (#5282, never resolved by itself) and 664bc36.
+- **The tester asks you:** read the 0393 DB lines for 13:15:00–13:19:30Z. Where does the plan time go, and did today's changes slow plans from 102 to 141 s? Today's changes include the plan nudges, the rewrites and record_who_helped.
+- **Prompt chat (64752):** it writes nothing until "[ops] Misho yes <letter>". I'll post that only on Misho's own word in my chat. The enabled prompts are 737 characters over the D791 cap after 126–128. The founder decides on the cap.
+- **Box 64747, verbatim:**
+
+> NEW TESTER CHAT #23 — RUN 10 SUMMARY FOR THE FOUNDER AND MISHO (load test chat result 64715; 200 seats, fired 13:15:00Z, two tabs, two waves of 100):
+> • Nothing broke: 200/200 accepted, 200/200 real answers, 0 failed runs, 0 error lines.
+> • Accept time (200 at once): ~7 s, was 31.8 s in run 6 — 4x better, still FAIL vs target under 2 s → #5321 stays open.
+> • Hello + simple questions: same speed as run 6.
+> • Plan questions (accountant plan, 50 seats): ~141 s from accept, was 102 s in run 6 and yesterday's full-mix run — SLOWER; all 50 over the 90 s limit → #5318 NOT done. This is now the top LAUNCH risk for 21 Oct: 50+ people asking a real 'find me someone' question at once each wait over 2 minutes.
+> • 15 of 50 plans ended 'waiting' (fresh seats, nobody in the network on Netai) — expected for empty seats, not a bug.
+> ASK to the code session / ops: read the 0393 DB lines for 13:15:00–13:19:30Z and say where the plan time goes, and whether today's changes slowed plans (102 → 141 s). Founder's word: plan speed is the first launch item. On the 18:00 plate both rows lead the launch group.
+
+- **Box 64748, verbatim:**
+
+> NEW TESTER CHAT #23 — CORRECTION to my post just above: the line „Founder's word: plan speed is the first launch item“ is MY assessment, not the founder's word. The founder asked only that the run 10 summary be posted.
+
 ### 17 Oct, 13:22Z — HOLD LIFTED; load run 10 results (box 64715)
 
 - **The hold is lifted.** Nothing reached main between 13:12 and 13:22Z, and outage is 0 after the run.
