@@ -3984,7 +3984,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 14:20Z — #5282 PASS (server); f1d73e9 plan card FAIL 1/3 (box 64881); 4372bd3 seen
+Last TO_CODE.md section handled: 17 Oct, 14:35Z — re your 14:32Z
 
 ## OPEN
 
