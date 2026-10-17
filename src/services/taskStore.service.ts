@@ -500,6 +500,42 @@ export async function ensureNextWake(taskId: number, hours: number): Promise<boo
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * #5249 / D800: open goals between one and six hours old, not yet updated, with
+ * no answer from anybody, no plan waiting on the owner's yes and no question
+ * waiting on the owner. The six-hour edge keeps the first sweep from reaching
+ * every old goal at once.
+ */
+export async function getGoalsUnsolvedAfterAnHour(
+  limit: number,
+): Promise<(Task & { readonly user_id: string })[]> {
+  const result = await query<Task & { readonly user_id: string }>(
+    `SELECT ${TASK_COLUMNS} FROM tasks t
+     WHERE t.status = 'open' AND t.hour_update_woken_at IS NULL
+       AND t.thread_id IS NOT NULL
+       AND t.created_at < NOW() - INTERVAL '60 minutes'
+       AND t.created_at > NOW() - INTERVAL '6 hours'
+       AND NOT (t.plan_proposed IS NOT NULL AND t.plan IS NULL)
+       AND t.pending_question IS NULL
+       AND NOT EXISTS (SELECT 1 FROM task_asks a
+                        WHERE a.task_id = t.id AND a.status = 'answered')
+     ORDER BY t.created_at ASC
+     LIMIT $1`,
+    [limit],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+/** The goal had its one-hour update; it never gets a second. */
+export async function markHourUpdateWoken(taskId: number): Promise<void> {
+  await query(
+    `UPDATE tasks SET hour_update_woken_at = NOW() WHERE id = $1`,
+    [taskId],
+    QUERY_TIMEOUT_MS,
+  );
+}
+
 export async function markSilentDayWoken(taskId: number): Promise<void> {
   await query(
     `UPDATE tasks SET silent_day_woken_at = NOW() WHERE id = $1`,

@@ -27,6 +27,7 @@ import {
   wakeDoneSince,
 } from './engineWakes.service';
 import { offersTheFinishCard, processChat } from './chat.service';
+import { userLanguage } from './threads.service';
 import {
   getTaskById,
   goalHasActedOutward,
@@ -35,6 +36,8 @@ import {
   getGoalsUnansweredForADay,
   markQuestionDefaulted,
   getSilentGoals,
+  getGoalsUnsolvedAfterAnHour,
+  markHourUpdateWoken,
   markSilentDayWoken,
   unmarkSilentDayWoken,
   getGoalsSilentForDays,
@@ -920,7 +923,45 @@ async function lastReplyNote(taskId: number): Promise<string | null> {
   }
 }
 
+/**
+ * #5249 / D800 (the founder's yes and Misho's, 17 Oct): a goal that has found
+ * nobody who answered within its first hour gets one honest update with a
+ * realistic next step, in the approved words. Georgian only: the English line
+ * is not approved yet, so an English goal is stamped and left as it is.
+ */
+export const HOUR_UPDATE_LINE_KA =
+  'ჯერ ვერ ვიპოვე ის, ვინც ამას ზუსტად მოაგვარებს. შემდეგი ნაბიჯი: <ნაბიჯი>. გავაგრძელო?';
+const MAX_HOUR_UPDATES_PER_TICK = 3;
+
+export function hourUpdateInstruction(): string {
+  return (
+    'საათი გავიდა მიზნის დაწყებიდან და ჯერ არავინ გიპასუხა, ვინც ამას აგვარებს. მფლობელს ' +
+    'ახლა ერთი პატიოსანი განახლება მისწერე, ზუსტად ამ ფორმით და მეტი არაფერი: „' +
+    HOUR_UPDATE_LINE_KA +
+    '" — <ნაბიჯი> ერთი კონკრეტული, რეალური ნაბიჯია, რომელსაც შენ გადადგამ: დასახელებული ' +
+    'განყოფილება ან ფილიალის მენეჯერი, წერილობითი საჩივრის არხი, ან გეგმის შემდეგი ადამიანი ' +
+    'ან წრე — სახელით. „გავაგრძელო?"-ს ქვეშ present_choices-ით ორი ღილაკი: „კი, გააგრძელე" და ' +
+    '„არა, ჯერ არა". არავის არაფერი მისწერო, სანამ მფლობელი არ იტყვის კის.'
+  );
+}
+
+/** One honest update per goal an hour in, when nobody fitting has answered. */
+export async function sweepGoalsUnsolvedAfterAnHour(): Promise<number> {
+  const goals = await getGoalsUnsolvedAfterAnHour(MAX_HOUR_UPDATES_PER_TICK);
+  let woken = 0;
+  for (const goal of goals) {
+    await markHourUpdateWoken(goal.id);
+    if ((await userLanguage(goal.user_id).catch(() => 'ka')) !== 'ka') continue;
+    if ((await wakeTask(goal.id, hourUpdateInstruction())) === 'woken') woken++;
+  }
+  return woken;
+}
+
 async function tick(): Promise<void> {
+  await sweepGoalsUnsolvedAfterAnHour().catch((err: unknown) =>
+    // eslint-disable-next-line no-console
+    console.error('[task-engine] hour update sweep failed:', (err as Error).message),
+  );
   const due = await getDueTasks(MAX_WAKES_PER_TICK);
   for (const task of due) {
     // Clear FIRST so a failing run doesn't hot-loop every tick; the model
