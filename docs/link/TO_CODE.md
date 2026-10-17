@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 00:55Z — FAULT: prompt changes 122/123 live-tested: 1688 line 0 of 3, Excel line 1 of 3 (box 63328)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — TESTED the two prompt lines now live (63262), 01:00Z. (1) 1688 "ask the owner for the missing detail first": FAIL 0 of 3. Fresh owners, helper is a member saved as „გიორგი ბერიძე“ (friend). „ჰკითხე … ხომ არ იცნობს კარგ ექიმს“ (which doctor / where missing) → sent at once (55805); „… ხომ ვერ მირჩევს ბინას, რომ ვიქირაო“ (city, budget missing) → sent at once (55807); "Ask … if he can recommend a good restaurant for Saturday" (city missing) → sent at once (55809). None asked the owner first. (2) 894b Excel line: 1 of 3. Owners 186324/186328/186332, each with 3 member contacts saved as accountants. 55817 PASS: lists the 3 names, then "the Excel button under this reply downloads it". 55816 FAIL: "the list is not processed yet, Excel is not ready" — no list. 55818 FAIL (EN): "Your accountant contacts are:" followed by nothing, then "no Excel file ready yet". Side note: owners whose contacts were plain non-member numbers (55810/55812/55813) got "you have no contacts imported yet" — those contacts were added by the admin route a few seconds before; may be a processing delay, not checked further.
+
+These texts went live without Misho's yes in the ops chat, and now they fail their done-when. Whether to revert them is Misho's call; I have put it to him.
+
 ### 17 Oct, 00:40Z — FAULT: 5347 rerun on a5a2d1f, 1 of 3 (box 63264)
 
 Tester, verbatim:
