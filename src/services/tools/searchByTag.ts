@@ -2,6 +2,7 @@ import { query } from '../../db/postgres/client';
 import { buildSearchTerms, buildMeaningWordGroups, splitIntoWords } from './transliterate';
 import { normalizeSearchToken } from './normalizeSearchToken';
 import { buildExactMatchSql } from './wordMatch';
+import { tieWorkPatternFor } from './jobTies';
 import { getExcludedPhones } from '../block.service';
 import { boundaryExclusionsFor } from '../askBoundary.service';
 import { normalizePhone } from '../phone';
@@ -188,7 +189,13 @@ async function runExactSearch(
   rawGroups: string[][],
   blockedPhones: string[],
 ): Promise<{ rows: TagRow[]; total: number }> {
-  const m = buildExactMatchSql(userId, rawGroups, blockedPhones, true);
+  const m = buildExactMatchSql(
+    userId,
+    rawGroups,
+    blockedPhones,
+    true,
+    tieWorkPatternFor(rawGroups.flat().join(' ')),
+  );
   /**
    * Run 7 (200 at once, 16 Oct): this search was 732 of the 1,203 slow lines,
    * because the count was a second statement. It repeated the whole matched-labels

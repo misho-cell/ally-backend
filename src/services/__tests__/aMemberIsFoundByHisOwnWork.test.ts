@@ -26,7 +26,7 @@ describe('a member found by his own work', () => {
     expect(sql).not.toContain('user_profile_kv');
     expect(sql).not.toContain('helper_solved_cases');
     expect(sql).not.toContain('TRUE AS self_work');
-    expect(tag.match(/buildExactMatchSql\([^)]*, true\)/gu)).toHaveLength(1);
+    expect(tag.match(/buildExactMatchSql\([^)]*?\btrue\b/gu)).toHaveLength(1);
   });
 
   it('gives such a row the approved sentence and no role of theirs to repeat', () => {

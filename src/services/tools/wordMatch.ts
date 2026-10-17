@@ -80,6 +80,12 @@ export function buildExactMatchSql(
    * caller would hand the model such a row with nothing telling it not to say why.
    */
   withOwnWork = false,
+  /**
+   * 5446 (4): what the member's own work must say for them to have working
+   * ties into the world this search asks about (tieWorkPatternFor). Read only
+   * with withOwnWork, for the same reason.
+   */
+  tieWork: string | null = null,
 ): ExactMatchSql {
   const groupRegex = rawGroups.map((g) => g.map(toWordStartPattern));
   const allRegex = groupRegex.flat();
@@ -97,7 +103,9 @@ export function buildExactMatchSql(
   // After the individual patterns comes their one alternation (G1, below),
   // then the facts userId, then the block list — which stays LAST.
   const anyPatternIdx = regexStart + allRegex.length;
-  const factsUserIdx = anyPatternIdx + 1;
+  const withTies = withOwnWork && tieWork !== null;
+  const tieWorkIdx = anyPatternIdx + 1;
+  const factsUserIdx = withTies ? tieWorkIdx + 1 : anyPatternIdx + 1;
   const blockIdx = factsUserIdx + 1;
   /**
    * Plate v301 G1 (Giorgi's land-lawyer goal, 1 October): his own „იურისტი"
@@ -150,6 +158,20 @@ export function buildExactMatchSql(
   // is never shown; §111.2 and BP: a row found only this way says so (self_work).
   // 5446 (D792): a goal the member helped solve is read the same way — it finds and
   // ranks them, is never shown, and the model offers them with no reason.
+  // 5446 (4): a row found only by its working ties matches none of the query's
+  // words, so it ranks after everyone who matched one: a person inside the
+  // organisation is a better way in than a person with ties to it.
+  const tieBranch = withTies
+    ? `SELECT up6.phone, ${foldedLower('kv.value')} AS label, 1 AS priority,
+            TRUE AS own, TRUE AS self_work
+     FROM "UserPhone" up6
+     JOIN user_profile_kv kv ON kv.user_id = up6."userId"::text
+     WHERE up6.phone IN (SELECT phone FROM mine)
+       AND kv.key IN ('profession', 'industry')
+       AND ((${foldedLower('kv.value')} || '') ~ $${tieWorkIdx})
+     UNION ALL
+     `
+    : '';
   const ownWorkBranch = withOwnWork
     ? `SELECT up4.phone, ${foldedLower('kv.value')} AS label, 2 AS priority, TRUE AS own,
             TRUE AS self_work
@@ -166,7 +188,7 @@ export function buildExactMatchSql(
      WHERE up5.phone IN (SELECT phone FROM mine)
        AND ${regexOr('hs.case_text')}
      UNION ALL
-     `
+     ${tieBranch}`
     : '';
   const matchedCte = `matched AS (
      SELECT lt.phone, lt.label, 1 AS priority, lt.own, FALSE AS self_work
@@ -267,7 +289,14 @@ ${ownWorkBranch}     SELECT cf.neo4j_contact_id AS phone, ${foldedLower('cf.valu
     matchedCte,
     wordHits,
     scalarHits,
-    params: [userId, ...allRegex, anyPattern, userId, [...blockedPhones]],
+    params: [
+      userId,
+      ...allRegex,
+      anyPattern,
+      ...(withTies ? [tieWork] : []),
+      userId,
+      [...blockedPhones],
+    ],
     blockIdx,
     totalSql,
   };
