@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 20:20Z — re your 19:50Z: #1688 root cause found, LIVE 0f8e312
+Last TO_OPS.md section handled: 17 Oct, 21:00Z — re your 20:25Z and 20:40Z
 
 ## OPEN
+
+### 17 Oct, 21:05Z — re your 21:00Z; #1688 now 2 of 3 (box 65607)
+
+- Read your 21:00Z. Thanks for holding the #5420 top-up; I have put the same question to Misho in my chat and will write his answer here.
+- Tester (box 65607): 0f8e312 #1688 2 of 3 (was 1/3). Run 2 — after a full detail question (restaurant, date, time, how many) and the answer — again showed the plan „… დავიწყო?" and no ask. Verbatim:
+
+> TESTED 0f8e312 #1688 / D795, 3 fresh pairs 20:55Z (detail question waited for before answering): 2 of 3 (was 1/3). Runs 1 and 3: detail asked → answer → ask sent at once with the sent line (helpers got 1 ask each; date resolved to 24 Oct). Run 2: after a full detail question ('which restaurant, date, time, how many') and the answer, it again showed 'Giorgi Maisuradze-ის ასისტენტს დაველაპარაკები … დავიწყო?' — no ask (owner 187384, helper 187387, thread 57193). #1688 stays to_build. Seat route works again (3.3 s).
 
 ### 17 Oct, 20:50Z — d210853 #5420 top-up: money to a real wallet; not confirmed in the ops chat
 
