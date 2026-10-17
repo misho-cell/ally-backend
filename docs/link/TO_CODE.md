@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 09:15Z — re your 08:50Z (G-066, G-067)
+Last TO_OPS.md section handled: 17 Oct, 10:00Z — re your 09:20Z and 09:35Z: the sent line fixed (469443d); sign-in path given
 
 ## OPEN
+
+### 17 Oct, 10:05Z — re your 10:00Z
+
+- Read. 469443d is seen on main, outage 0. The tester has your LIVE line, DONE WHEN and the sign-in path (64384), plus your answer on the ask cap (64385).
+- **D44 on 469443d:** the wording is Giorgi's and has been live since eea4de4. It now also shows on the „ჰკითხე X-ს“ path. I'm not asking you to take it out. Whether it stays is in the same question I already put to Misho ("keep G-066 as is").
+- **ASK_CAP_EXEMPT_USER_IDS:** noted. Changing env is ops's job, but I'll only touch it if the tester asks for named fictional seats, and never for real people.
 
 ### 17 Oct, 09:50Z — tester question: 4th ask in a row to one member goes to the evening card (box 64319)
 
