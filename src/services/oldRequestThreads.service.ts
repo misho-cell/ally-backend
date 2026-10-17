@@ -39,13 +39,44 @@ async function testSeatRequestThreads(): Promise<OwnedThread[]> {
   return result.rows;
 }
 
-/** Step one of G-067: every test seat's outgoing-request thread, deleted one by one. */
-export async function deleteTestSeatRequestThreads(): Promise<OldRequestThreadsDeleted> {
-  const threads = await testSeatRequestThreads();
+/**
+ * Step two (Misho's yes, 17 Oct, after reading the 52 real-account threads):
+ * exactly the threads named, each only when it is still an outgoing-request
+ * thread with no open or paused goal on it; anything else named is skipped.
+ */
+async function namedRequestThreads(threadIds: readonly number[]): Promise<OwnedThread[]> {
+  const result = await query<OwnedThread>(
+    `SELECT t.id, t.user_id FROM threads t
+      WHERE t.id = ANY($1::int[]) AND t.type = 'outgoing_request'
+        AND NOT EXISTS (SELECT 1 FROM tasks k
+                         WHERE k.thread_id = t.id AND k.status IN ('open', 'paused'))
+      ORDER BY t.id
+      LIMIT $2`,
+    [threadIds, MAX_THREADS_PER_CALL],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows;
+}
+
+async function deleteEach(threads: readonly OwnedThread[]): Promise<OldRequestThreadsDeleted> {
   let deleted = 0;
   for (const thread of threads) {
     const outcome = await deleteThread(String(thread.user_id), thread.id);
     if (outcome.deleted) deleted += 1;
   }
   return { found: threads.length, deleted };
+}
+
+/** Step two of G-067: the named threads, deleted one by one. */
+export async function deleteNamedRequestThreads(
+  threadIds: readonly number[],
+): Promise<OldRequestThreadsDeleted> {
+  if (threadIds.length === 0 || threadIds.length > MAX_THREADS_PER_CALL)
+    return { found: 0, deleted: 0 };
+  return deleteEach(await namedRequestThreads(threadIds));
+}
+
+/** Step one of G-067: every test seat's outgoing-request thread, deleted one by one. */
+export async function deleteTestSeatRequestThreads(): Promise<OldRequestThreadsDeleted> {
+  return deleteEach(await testSeatRequestThreads());
 }

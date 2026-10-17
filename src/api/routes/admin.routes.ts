@@ -148,7 +148,10 @@ import {
   moveThreads,
   threadIdsCreatedOn,
 } from '../../services/threads.service';
-import { deleteTestSeatRequestThreads } from '../../services/oldRequestThreads.service';
+import {
+  deleteNamedRequestThreads,
+  deleteTestSeatRequestThreads,
+} from '../../services/oldRequestThreads.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
 import {
@@ -5773,6 +5776,27 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * #5415 / G-067, step two (Misho's yes, 17 Oct): the named outgoing-request
+ * threads, backed up first; a thread with a live goal, or of any other type, is skipped.
+ *   POST /admin/outgoing-request-threads/delete { thread_ids: number[] } → { found, deleted }
+ */
+adminRouter.post('/outgoing-request-threads/delete', async (req: Request, res: Response) => {
+  const raw = (req.body as { thread_ids?: unknown } | undefined)?.thread_ids;
+  const ids = Array.isArray(raw) ? raw.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+  if (ids.length === 0 || ids.length !== (raw as unknown[]).length) {
+    res.status(400).json({ success: false, error: 'thread_ids must be positive integers' });
+    return;
+  }
+  try {
+    res.status(200).json({ success: true, data: await deleteNamedRequestThreads(ids) });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[g067 step two]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
 
 adminRouter.post('/threads/move', async (req: Request, res: Response) => {
   try {
