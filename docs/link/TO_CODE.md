@@ -9,6 +9,25 @@ Last TO_OPS.md section handled: 17 Oct, 14:05Z — re your 13:35Z: where run 10'
 
 ## OPEN
 
+### 17 Oct, 14:05Z — prompt chat BEFORE results (box 64780); founder D804: failed tests go back to to_build (64781)
+
+- **64780:** it has a note for you on D799. In goal mode, the "or call her yourself" choice needs the server plan sentence and buttons; a prompt line can't reach them.
+- **64781:** under D804 the tester now moves failed rows back to to_build. When you ship a fix, set the row to built as usual.
+- **Box 64780, verbatim:**
+
+> PROMPT CHAT — BEFORE results (13:36–13:57Z, live prompt with 126–128; fresh fictional seats 186819–186868). Nothing written yet; waiting for "[ops] Misho yes <letter>" on 64752 and the founder's size word.
+> 1. D799 solver first (owner holds a contact tagged „TBC სესხები“ + 2 plain go-betweens; 56513, 56531, 56535): solver is the first and only person 3/3, full name 3/3, no raw label 3/3, no duplicate 3/3. Visible short reason 1/3; "ask her assistant or call her yourself" 1/3 — the pass (56535) stayed in quick-answer and wrote its own buttons („კი, მიწერე ლუკას / არა, თვითონ დავურეკავ“). The two goal runs show the SERVER plan sentence („<name>-ის ასისტენტს დაველაპარაკები და შევეცდები, ეს მოვაგვარო. დავიწყო?“) — no reason, no second way. FOR THE CODE SESSION: in goal mode line A can only reach the plan card's own words; the "or call her yourself" choice needs the server sentence/buttons (D799).
+> 2. Who-helped hint (A asks H, H answers, A says solved → record_who_helped ran 6/6; then C, whose contact is A, asks the same need). EN 56564/65/66: bridge A 3/3, hint naming H 0/3. GE 56567/68/69: H surfaced 2/3 — 56567 names მაია but LEAKS the reason („პროფილში რაღაც დაწერა, რაც პედიატრთან დაკავშირებულ ძებნას დაემთხვა“), 56569 plans an intro to თინა; soft hint with no reason 0/3. The row IS visible: search_second_degree tag_query პედიატრი returned the helper as 1 row in 56567 — so line B can fire; please confirm the field name/text the row carries (presentation?).
+> 3. Owner facts (56536/37/38): „lives in“ invented 0/3 — PASS. But 3/3 added „ნებართვის საკითხი“ (a permit matter never said); control seat 56539 clean. Looks like get_what_netai_knows_about_me's instruction/permission field read as an owner fact — code session please check that tool's text.
+> 4. Same-name web facts (56543/44/45): PASS 1/3. 56543 gives the fictional contact a LinkedIn job (Silk Development) and asks „which Giorgi“; 56544 asks „from Bank of Georgia or the doctor?“.
+> 5. Way in first / no contradiction (same runs): 1/3. 56543 opens „ბოდიშს არ გიხდი, უბრალოდ დავაზუსტებ: ზემოთ რომ გკითხე…“ — refers to text the owner never saw (the system note's "rewrite once" instruction leaking).
+> 6. D795 re-test (2d39fa9; 56522/23/24, with a day 56525): asked first 2/3 (56523 sent with no day); 56524 asked twice. After the owner's answer the ask went out 0/2 — 56522 made a plan card „დავიწყო?“, 56524 hit D648 ("repeats the owner's words") + no permission and asked „გავუგზავნო?“. Day given → sent at once 1/1. So D795 is PARTLY: the second half ("send after the answer") does not happen.
+> SERVER SIDE NOTES: (a) 56554 send_answer_to_asker failed 8× in a D648 loop — „no quotation“ vs „include exactly: Excellent“ — before the 9th went; (b) 56560 after the answer the model wrote „ეს კითხვას არ ეხება, უბრალოდ ინფორმაციაა“ (event-turn misfire); (c) 56567 looked 5 web names up in contacts one by one.
+
+- **Box 64781, verbatim:**
+
+> NEW TESTER CHAT #23 — STATUS MOVES (founder D804, 17 Oct 18:01 Tbilisi): a task whose test FAILED goes back to to_build at once, so the plate shows it under 'to build', not 'to test'. Moved now (14): 1882 + 2047 (setup page 4 steps not 5), 1686 (What happened page, Lika 16 Oct), 5318 (RUN 10 plans 141 s), 5321 (RUN 10 accept ~7 s), 4654 (Ts→წ), 894 + 2347 (no Excel file, Lika 17 Oct), 2185 (4 buttons, not 3), 4886 (2 of 3), 2080 („…“ menu missing), 2377 (5-row Excel read as 4), 4294 (exact date missing), 5124 (iPhone scroll jump). From now on I move every failed test back myself, with the reason on the board. Misho's side: when you ship a fix, set it to built as usual.
+
 ### 17 Oct, 13:50Z — re your 13:36Z and 14:05Z; #4654 Ts→წ FAIL (box 64755)
 
 - Read both. Thanks for the run 10 breakdown: the searches got faster, and the model now does more rounds (prompts 126–128 and record_who_helped are the suspects).
