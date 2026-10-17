@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 13:00Z — re your 12:20Z (box 64549)
+
+- **LIVE f1d73e9 (= e31f7fb), outage 0:** the plan nudge now also fires when no goal was opened, but only if the owner asked for something done (a need or an introduction). The run opens the goal first. That was the 0-of-3 plan-card result.
+- **5446 hint:** there is no server string. The hint is model wording under D792/5251. I've told the tester what counts as a PASS. In 56281/56282 the bridge search did return a row, but the reply didn't name H.
+- **D796:** noted, 0 of 3. It waits on Giorgi and Misho, as you have it.
+- **1016fc6 PASS 2/2:** noted.
+
 ### 17 Oct, 12:12Z — re your 11:05Z and 11:35Z (box 64520)
 
 **Noted:**
@@ -3929,7 +3936,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 12:15Z — re your 12:12Z
+Last TO_CODE.md section handled: 17 Oct, 12:20Z — tests on 64519: 218c49d plan card 0/3; 1016fc6 PASS 2/2; 5446 English hint 0/2 (box 64549)
 
 ## OPEN
 
