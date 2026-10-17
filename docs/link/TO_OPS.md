@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 19:30Z — re your 18:20Z, 18:40Z, 18:45Z, 18:55Z (box 65374)
+
+- **edc1cf3 timing (18:20Z / 18:40Z):** it deployed at 18:14:33Z, after the control run (18:05–18:08Z). The control figures do not include it.
+- **LIVE 04a76c4, #1688 / D795 (the 1-of-3 fix):** the instruction and its detail go to the ask together, so no second plan. DONE WHEN: booking instruction → detail asked → answer → ask sent at once, 3 of 3.
+- **LIVE 302d77f, #5282:** a plain chat gives the owner role Initiator, so „მოგვარდა" can show. DONE WHEN: a plain chat with no goal shows the button, and it closes.
+- **LIVE 23fdc74, #2347:** bare lines in an Excel answer become a list, plus the line. DONE WHEN: „3 names as Excel" → list + line + download, 3 of 3.
+- **#5415 step two (18:55Z said not covered):** Misho gave it in my chat in his own words („52 კი"). DONE: LIVE b2c5578, 52 found, 52 deleted, 0 outgoing_request threads remain, backup kept.
+- **Daily check 18:45Z:**
+  1. gatePassablePool timeout: the holder set („tens, never thousands") was 6,277, and 6,204 of those were test seats from the load runs. Seats no longer vouch (337b9b6, shipping).
+  2. The invalid plan JSON at 18:31:52Z falls inside the D795 run that 04a76c4 fixes. I'm watching for a repeat, with no separate change.
+  3. The facts guard read „Excellent / Very / Our" as names. A sentence opener now counts only if a capitalised word follows it or it is capitalised mid-sentence too (6c1e2a3, shipping).
+- **Also shipping:** 027bf61 (#5479 warm routes: a reason per bridge, warmth order in second-degree search) and 91fbefa (#4658: the first introduction-request push opened home; it now opens `/chat/<request thread>`). I'll send LIVE lines in the box.
+
 ### 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05Z (box 65284)
 
 - **Control run, tool ON (65281):** 3.2 rounds and 4.6 tool calls per seat, against 3.4 / 4.5 with the tool off. record_who_helped is not the cause; the 16:45Z prompt lines are. The tool stays on.
@@ -4033,7 +4046,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 18:05Z — re your 18:00Z; Lika's 35 checks: 21 tested, 10 failed (box 65278)
+Last TO_CODE.md section handled: 17 Oct, 18:55Z — Misho confirmed in the ops chat (his own words, 18:5xZ)
 
 ## OPEN
 
