@@ -2838,16 +2838,16 @@ async function refusedPlanOrSentAsk(
   if (bookingWithoutAWhen(runOwnerLine.get(runId) ?? '')) {
     return { proposed: false, reason: 'owner_instruction', error: ASK_THE_DETAIL_FIRST };
   }
-  const outcome = await sendInstructedAsk(userId, threadId, runOwnerLine.get(runId) ?? '').catch(
-    (err: unknown) => {
-      // eslint-disable-next-line no-console
-      console.error(
-        `[plan-refused] thread ${threadId}: server send failed:`,
-        (err as Error).message,
-      );
-      return null;
-    },
-  );
+  const screen = await planConsentOnScreen(threadId).catch(() => null);
+  const ownerLine =
+    screen !== null && instructionAwaitingItsDetail(screen).length > 0
+      ? ownerLineWithItsDetail(screen)
+      : (runOwnerLine.get(runId) ?? '');
+  const outcome = await sendInstructedAsk(userId, threadId, ownerLine).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error(`[plan-refused] thread ${threadId}: server send failed:`, (err as Error).message);
+    return null;
+  });
   if (outcome?.result !== InstructedAskResult.Sent) return refused;
   runAskSent.add(runId);
   // 3928: everyone the line named and the server asked, not only the first.
@@ -2932,7 +2932,7 @@ async function ownerJustInstructedThePlansPeople(
   const added = peopleAddedToPlan(plan, inForce);
   if (added.length === 0) return false;
   try {
-    const said = (await planConsentOnScreen(threadId)).lastOwnerMessage ?? '';
+    const said = ownerLineWithItsDetail(await planConsentOnScreen(threadId));
     // Misho, 7 Oct (D625 as a server rule): a long line's instruction sentence counts.
     // 2906: the preview may sit in another sentence than the instruction — read the whole line.
     if (asksForAPreview(said)) return false;
@@ -7013,6 +7013,18 @@ export interface PlanConsentScreen {
 export function instructionAwaitingItsDetail(screen: PlanConsentScreen): string[] {
   const before = screen.previousOwnerMessage ?? '';
   return bookingWithoutAWhen(before) && looksLikeContactInstruction(before) ? [before] : [];
+}
+
+/**
+ * The tester's 65285 (#1688, 1 of 3): after the detail answer the model drew a
+ * plan again instead of sending. The owner's line the server reads is then the
+ * instruction and its detail together, so the instructed-ask path sends it.
+ */
+export function ownerLineWithItsDetail(screen: PlanConsentScreen): string {
+  const last = screen.lastOwnerMessage ?? '';
+  const [instruction] = instructionAwaitingItsDetail(screen);
+  if (instruction === undefined) return last;
+  return `${instruction.trim().replace(/[.!?…]+$/u, '')}. ${last.trim()}`;
 }
 
 /**

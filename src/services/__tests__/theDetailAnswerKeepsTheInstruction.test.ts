@@ -1,9 +1,12 @@
 jest.mock('../../db/postgres/client', () => ({ __esModule: true, query: jest.fn(), default: {} }));
 jest.mock('../../config/anthropic', () => ({ __esModule: true, default: {} }));
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   grantPermissionRefusal,
   instructionAwaitingItsDetail,
+  ownerLineWithItsDetail,
   PlanConsentScreen,
   readPlanConsentScreen,
 } from '../chat.service';
@@ -37,5 +40,33 @@ describe('an instruction that waited for its day', () => {
       previousOwnerMessage: 'სთხოვე ლევანს, ხვალ 8-ზე მაგიდა დაგვიჯავშნოს',
     };
     expect(instructionAwaitingItsDetail(screen)).toEqual([]);
+  });
+});
+
+describe('the line the server sends from (65285, #1688)', () => {
+  const lines = (...said: string[]) =>
+    said.map((content, i) => ({ at: `2026-10-17T18:3${i}:00Z`, content }));
+
+  it('is the instruction with its detail, so the ask goes instead of a plan', () => {
+    const screen = readPlanConsentScreen(
+      [],
+      lines('სთხოვე გიორგის, მაგიდა დამიჯავშნოს.', 'შაბათს 20:00-ზე, 4 კაცი'),
+    );
+    expect(ownerLineWithItsDetail(screen)).toBe(
+      'სთხოვე გიორგის, მაგიდა დამიჯავშნოს. შაბათს 20:00-ზე, 4 კაცი',
+    );
+  });
+
+  it('is the last line alone otherwise', () => {
+    const screen = readPlanConsentScreen([], lines('ბუღალტერი მჭირდება', 'თბილისში'));
+    expect(ownerLineWithItsDetail(screen)).toBe('თბილისში');
+  });
+
+  it('is what both the plan guard and the server send read', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      'const said = ownerLineWithItsDetail(await planConsentOnScreen(threadId));',
+    );
+    expect(chat).toContain('const outcome = await sendInstructedAsk(userId, threadId, ownerLine)');
   });
 });
