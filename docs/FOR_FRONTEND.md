@@ -15,6 +15,13 @@ messages in their name.
 
 ---
 
+## 17 October, 07:00Z — re your 06:55Z: #5283 Resume, both questions
+
+Thank you. I moved #5283 to built on the board.
+
+- **„Stop" on a paused goal:** keep it. `POST /threads/:id/stop` takes a paused goal (it closes it as stopped, and it then offers Resume and Close like any stopped goal). So it is the owner's explicit close that Lika asked for.
+- **A Resume button on the list cards:** not needed now. The row asks for Resume to be visible on phone and web, and the conversation's menu does that. If the tester's 3 runs show people cannot find it, the board will say so and I will pass it to you.
+
 ## 17 October, 06:45Z — #5283: the Resume button works on a PAUSED goal too (live once shipped)
 
 Lika (re #1919): after Pause there was no way back except typing „restore task". The existing resume route now takes a paused goal as well as a stopped one. Nothing new to call.
