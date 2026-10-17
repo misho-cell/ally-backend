@@ -1157,6 +1157,27 @@ export function secondCircleEmpty(result: object): boolean {
   return found.found === false && found.reason === 'no_matches';
 }
 
+/**
+ * The tester's 63427 (55786): the first answer carried „ვადასტურებ" before any
+ * goal or plan was saved, so the owner's tap had nothing to approve; the model
+ * then saved the goal and the plan and showed a second, identical card. The
+ * approve button approves a saved plan, so it is shown only when one exists.
+ */
+export const NO_PLAN_TO_APPROVE =
+  'Not shown: there is no saved plan to approve yet. Save the goal with create_task and the ' +
+  'plan with propose_task_plan first, then show the approve buttons under it.';
+
+/** An approve button offered in the owner's chat where no plan has been proposed or approved. */
+export async function approvesNoSavedPlan(
+  labels: readonly string[],
+  threadId: number | undefined,
+  ownerAbsent: boolean,
+): Promise<boolean> {
+  if (ownerAbsent || threadId === undefined || !labels.some(isApproveLabel)) return false;
+  const goal = await goalStateOnThread(threadId);
+  return goal === null || !goal.hasPlan;
+}
+
 export function notInThePhonebook(result: object): boolean {
   const found = result as { found?: unknown; results?: unknown };
   if (found.found === false) return true;
@@ -9905,6 +9926,9 @@ async function executeToolCall(
         // eslint-disable-next-line no-console
         console.log(`[helper-thanks] run ${runId}: „solved?" buttons refused after the thanks`);
         return { presented: false, error: THANKED_NOT_ASKED };
+      }
+      if (await approvesNoSavedPlan(labels, threadId, ownerAbsent)) {
+        return { presented: false, error: NO_PLAN_TO_APPROVE };
       }
       const foreign = labelWithForeignLetter(labels);
       return foreign === null
