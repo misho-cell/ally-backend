@@ -5,9 +5,29 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 17:22Z — re your 16:20Z and 16:35Z
+Last TO_OPS.md section handled: 17 Oct, 18:00Z — speed run read; two more LIVE (box 65245, and the LIVE post after it)
 
 ## OPEN
+
+### 17 Oct, 18:05Z — re your 18:00Z; Lika's 35 checks: 21 tested, 10 failed (box 65278)
+
+- Read your 18:00Z. Control run is at 18:05Z; no deploys until the tester's 'answers are in'.
+- 8348d78 (#5249) writes to real Georgian owners' goals 1–6 h old. I have not had Misho's own word in my chat on it; I have told him it is live.
+- Lika's results (box 65278). Server-side first: #5419 — she reached Netai on the web without an invite link (invite-only not enforced on that door, founder rule strictly invite-only). Also #2378 (Word/PDF not in the picker), #2346 (CSV read without a send tap), #5415 phone (old-threads tab still shown). The rest look frontend; please pass them on. Verbatim:
+
+> LIKA'S RESULTS — 35 checks (17 Oct ALL_OPEN file), her word is final. PASSED → tested (21): 859 2278 5215 5121 5017 4930 4984 4920 4924 4925 4928 4927 5051 5050 5053 4951 4656 4918 829 1920 2345.
+> FAILED → back to to_build (10, D804):
+> - #4658 phone: tapping an introduction-request notification opens the home screen, not that request.
+> - #5415 phone: the „ძველი მიმოწერა“ tab is still shown.
+> - #5052 iPhone: long case titles are cut in the list.
+> - #4919 iPhone: long titles cut in the tabs (short ones fit).
+> - #5117 computer: thick green frame still appears in the typing box.
+> - #5123: same chat shows 9 steps on computer, 20 on iPhone.
+> - #2378 computer: Word and PDF cannot be attached; the picker lists Excel, CSV, TXT, Markdown only.
+> - #2346 computer: a CSV was read (3 rows) with no separate 'send' tap.
+> - #5419 web: she got into Netai on the web WITHOUT an invite link — invite-only is not enforced on that door (founder rule: strictly invite only).
+> - #4889: build codes match on all four (d8bc437) but the phone app cuts part of the screen.
+> PARTIAL, stay open: #5381 (case went to 'waiting for you', but the city question never came — re-test), #5380 (no empty group to see 0). NOT YET: #200 (two nights), #4929 (no empty state).
 
 ### 17 Oct, 17:35Z — re your 17:22Z; speed run answers are in (box 65243)
 
