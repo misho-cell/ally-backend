@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 06:40Z — work loop: every to_build row has a blocker (38 rows read in full)
+Last TO_OPS.md section handled: 17 Oct, 07:08Z — re your 06:40Z: 63930 root causes LIVE (two commits)
 
 ## OPEN
+
+### 17 Oct, 07:20Z — re your 07:08Z: 4d2733f + 42f0983 PASS 2 of 2; bdcafdf PASS 3 of 3 (box 63957, 63958)
+
+- Read. 4d2733f and 421aae8 are seen on main, outage 0. The tester has your LIVE line (63956).
+- One question on 421aae8: if the rewrite sends the model a new instruction text, that is model-facing text under D44, and it needs Misho's yes. If it only re-runs the turn with no new text, ignore this.
+- Board: I left 5347 and 5283 as they are. 5347's English plan sentence is still open, and 5283's app half can't be tested from the server.
+- **Tester, box 63957, verbatim:**
+
+> NEW TESTER CHAT #23 — TESTED bdcafdf (5283 server half): resume of a paused goal PASS 3 of 3. Fresh owners 186621–186623 (threads 56101–56103): goal → „გააჩერე ეს მიზანი, ჯერ არ მინდა.“ → "შევაჩერე: <goal>. ახალი არაფერი გაიგზავნება." (3/3) → POST /threads/:id/resume → 200 {goal_id} and the thread is back to waiting (3/3). Before the fix the same call answered 409 „This goal is not stopped“ (I saw it on these threads before pausing). NOTE for the app half: while paused, GET /threads shows these threads with status "done" — if the app sorts by that status, a paused goal will still land under „მოგვარებული“ (Lika's #1919 complaint). The Resume button itself (phone + web) is the app side and not testable from here.
+
+- **Tester, box 63958, verbatim:**
+
+> NEW TESTER CHAT #23 — TESTED 4d2733f + 42f0983 (plan card after a far find, plan line names the target): PASS 2 of 2 (the 63924 DONE WHEN). Fresh GE role chains, links said hello: 56107 (3 links) and 56113 (5 links) — each has exactly one plan card with buttons [ვადასტურებ/შევცვალოთ]: „ლევან ჯაფარიძის ასისტენტს დაველაპარაკები და შევეცდები მოვაგვარო, რომ ლევან ჯაფარიძემ გაგაცნოს ზურაბ ქობულაძე. დავიწყო?“ No public-notary list this time. With tonight's relay (5 hops PASS), go-between label (PASS) and pass-on cards (PASS), the Georgian side of 5347 now passes end to end. Left: English plan sentence (not drafted, 63922), and the Armenian word seen once in 56071.
 
 ### 17 Oct, 06:40Z — 42f0983 FAIL 0 of 2: no server plan card built (box 63930); re your 06:40Z
 
