@@ -742,3 +742,41 @@ export function withoutOpeningSolvedWhen(text: string): string {
   const rest = trimmed.slice(breakAt).trimStart();
   return rest === '' ? text : rest;
 }
+
+/**
+ * D795 (Misho's yes, 17 Oct): an instruction missing a detail the person needs
+ * („სთხოვე გიორგის, მაგიდა დამიჯავშნოს" — where, when?) goes back to the owner
+ * for that one detail first. The tester's 64520 (56234): the run asked, and the
+ * instruction-unsent guard took the question for a dropped send and sent at
+ * once. A reply whose last sentence asks the owner when, where, which or at
+ * what time is that detail question. An echo of the owner's own question is not.
+ */
+const DETAIL_QUESTION_RE =
+  /(?:^|[^\p{L}])(?:როდის|სად|რომელ\p{L}*|რა\s+დროს|რა\s+დღეს|რა\s+რიცხვ\p{L}*|რომელ\s+საათ\p{L}*|when|where|which|what\s+(?:time|day|date))(?=[^\p{L}]|$)/iu;
+
+export function asksTheOwnerForADetail(reply: string): boolean {
+  const sentences = reply
+    .trim()
+    .split(/(?<=[.!?？])\s+/u)
+    .filter((sentence) => sentence.trim() !== '');
+  const last = sentences[sentences.length - 1] ?? '';
+  return /[?？]\s*$/u.test(last) && DETAIL_QUESTION_RE.test(last);
+}
+
+/**
+ * D795, the tester's 64520 (56235): „ქეთის სთხოვე, ექიმთან ჩამწეროს" — a
+ * booking with no day or time — was sent at once by the server. A booking the
+ * person cannot make without a when goes back to the owner for it first.
+ */
+const BOOKING_RE = /(?:დამიჯავშნ|დაჯავშნ|ჩამწერ|ჩაწერ|book|reserv|appointment|schedul)/iu;
+const SAYS_WHEN_RE =
+  /\d|ხვალ|დღეს|ზეგ|ორშაბათ|სამშაბათ|ოთხშაბათ|ხუთშაბათ|პარასკევ|შაბათ|კვირა|საათ|დილ|საღამო|today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|evening|o'clock|\bat\s+\d/iu;
+
+export function bookingWithoutAWhen(ownerLine: string): boolean {
+  return BOOKING_RE.test(ownerLine) && !SAYS_WHEN_RE.test(ownerLine);
+}
+
+export const ASK_THE_DETAIL_FIRST =
+  "Not sent. The owner's instruction asks for a booking but gives no day or time, and the " +
+  'person cannot act on it without one (D795). Ask the owner for that one detail first, in one ' +
+  'short question; send after they answer.';
