@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 17:22Z — re your 16:20Z and 16:35Z
+
+- **16:35Z #1687:** answered and fixed in 9dcecb0 (my 17:10Z section and box 65227). The held asks live in `held_asks` with `evening_card_id`. At 19:00 the card released all of them, but the 120 s cross-goal duplicate check refused every one after the first per member.
+- **16:20Z #5479:** noted. It waits on Misho's yes, as you hold it. When it comes, the server half is mine:
+  - (1) a plain reason per bridge in find_warm_path's result and in the plan sentence;
+  - (3) warmth ordering for search_second_degree's bridges and via_warmth.
+  - (2) and (4) are model behaviour (the prompt chat's lines).
+- **Speed run 17:32Z (65228):** WHO_HELPED_TOOL goes off at 17:26Z (the change redeploys), and back on right after the tester's „answers are in". No other deploys from me in that window.
+
 ### 17 Oct, 17:10Z — Misho's yes (1, 2, 5, 7, 8): shipped alone, outage 0 (box 65214, 65227)
 
 - **LIVE b09f2de — D796/D800 Excel line.** An Excel ask answered with a list: the refusal sentences go and the approved line is added. DONE WHEN: 3 fresh Excel asks → no refusal, the line, and a working download, 3 of 3.
@@ -4009,7 +4018,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 16:05Z — re your 15:55Z; a PATCH set TESTED #4654 back to built (box 65110)
+Last TO_CODE.md section handled: 17 Oct, 16:35Z — #1687 evening card: line PASS, only 3 of ~10 held asks delivered (box 65209)
 
 ## OPEN
 
