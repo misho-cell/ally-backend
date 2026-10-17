@@ -25,6 +25,10 @@ export interface GoBetween {
 export interface PlannedIntroduction {
   readonly via: string;
   readonly to: string;
+  /** The go-between knows the person themself (not through a chain of others). */
+  readonly knowsThem?: boolean;
+  /** The person's role, only when it may be told as a fact (D449). */
+  readonly role?: string;
 }
 
 /** Only a go-between who can be asked: anyone else carries a note the D663 sentence keeps. */
@@ -48,7 +52,7 @@ export function plannedIntroduction(
       .filter((intro) => intro.viaPhone === via.phone)
       .map((intro) => intro.toName),
   );
-  return targets.size === 1 ? { via: via.name, to: [...targets][0] } : null;
+  return targets.size === 1 ? { via: via.name, to: [...targets][0], knowsThem: true } : null;
 }
 
 /** D739's form, in Georgian: „<via-ის> ასისტენტს დაველაპარაკები … რომ <via-მ> გაგაცნოს <to>." */
@@ -59,10 +63,49 @@ export function georgianSentence(intro: PlannedIntroduction): string {
   );
 }
 
+/**
+ * #5149 D (Giorgi's OK, 16 Oct, G-065): after the plan sentence, one sentence
+ * saying whom the go-between knows — „<X> <Y>-ს იცნობს — <Y> <role>-ია." with a
+ * role that may be told as a fact, „<X> <Y>-ს იცნობს." without. Only where the
+ * go-between knows them themself: a far chain's first link does not. OFF until
+ * Misho's own yes (D44, ops 08:35Z).
+ */
+export const KNOWS_LINE_ON = false;
+
+/** „ნოტარიუსი" → „ნოტარიუსია"; a word not ending in „ი" takes „-ია". */
+function isARole(role: string): string {
+  return role.endsWith('ი') ? `${role.slice(0, -1)}ია` : `${role}-ია`;
+}
+
+/** The sentence saying whom the go-between knows, or null when it does not apply. */
+export function knowsLine(intro: PlannedIntroduction, on: boolean = KNOWS_LINE_ON): string | null {
+  if (!on || intro.knowsThem !== true) return null;
+  const knows = `${intro.via} ${geoName(intro.to, 'dat')} იცნობს`;
+  return intro.role === undefined ? `${knows}.` : `${knows} — ${intro.to} ${isARole(intro.role)}.`;
+}
+
 /** A person this run's search found one step away, and the contacts who know them. */
 export interface FoundThroughBridge {
   readonly name: string;
   readonly viaPhones: readonly string[];
+  /** Found past the second circle: the first link does not know them themself. */
+  readonly far?: boolean;
+  readonly role?: string;
+}
+
+/** Corroborating members a saved role needs before it is told as a fact (D449). */
+const ROLE_SOURCES_FOR_A_FACT = 2;
+
+/** The row's role when it may be said as a fact: not a label word, and said by two members. */
+function roleToldAsFact(row: {
+  jobPosition?: unknown;
+  role_source?: unknown;
+  role_sources?: unknown;
+}): string | undefined {
+  const role = typeof row.jobPosition === 'string' ? row.jobPosition.trim() : '';
+  if (role === '' || row.role_source === 'label') return undefined;
+  const sources = typeof row.role_sources === 'number' ? row.role_sources : null;
+  return sources === null || sources >= ROLE_SOURCES_FOR_A_FACT ? role : undefined;
 }
 
 const SECOND_DEGREE = 'second_degree';
@@ -72,13 +115,22 @@ export function foundThroughBridges(result: unknown): FoundThroughBridge[] {
   const rows = (result as { results?: unknown } | null)?.results;
   if (!Array.isArray(rows)) return [];
   return rows.flatMap((row: unknown) => {
-    const r = (row ?? {}) as { name?: unknown; ownership?: unknown; via_contacts?: unknown };
+    const r = (row ?? {}) as {
+      name?: unknown;
+      ownership?: unknown;
+      via_contacts?: unknown;
+      jobPosition?: unknown;
+      role_source?: unknown;
+      role_sources?: unknown;
+    };
     const name = typeof r.name === 'string' ? r.name.trim() : '';
     if (r.ownership !== SECOND_DEGREE || name === '' || !Array.isArray(r.via_contacts)) return [];
     const viaPhones = r.via_contacts
       .map((via: unknown) => (via as { phone?: unknown } | null)?.phone)
       .filter((phone): phone is string => typeof phone === 'string' && phone !== '');
-    return viaPhones.length === 0 ? [] : [{ name, viaPhones }];
+    if (viaPhones.length === 0) return [];
+    const role = roleToldAsFact(r);
+    return [{ name, viaPhones, ...(role !== undefined && { role }) }];
   });
 }
 
@@ -97,7 +149,7 @@ export interface FoundFurtherOut {
 export function foundThroughFirstLinks(further: readonly FoundFurtherOut[]): FoundThroughBridge[] {
   return further
     .filter((hit) => hit.name.trim() !== '' && hit.firstLinkPhone !== '')
-    .map((hit) => ({ name: hit.name.trim(), viaPhones: [hit.firstLinkPhone] }));
+    .map((hit) => ({ name: hit.name.trim(), viaPhones: [hit.firstLinkPhone], far: true }));
 }
 
 /**
@@ -115,12 +167,20 @@ export function introductionFromFound(
   const via = people[0];
   const viaDigits = phoneDigits(via.phone);
   if (viaDigits === '') return null;
-  const names = new Set(
-    found
-      .filter((person) => person.viaPhones.some((phone) => phoneDigits(phone) === viaDigits))
-      .map((person) => person.name),
+  const through = found.filter((person) =>
+    person.viaPhones.some((phone) => phoneDigits(phone) === viaDigits),
   );
-  return names.size === 1 ? { via: via.name, to: [...names][0] } : null;
+  const names = new Set(through.map((person) => person.name));
+  if (names.size !== 1) return null;
+  const to = [...names][0];
+  const rows = through.filter((person) => person.name === to);
+  const role = rows.find((person) => person.role !== undefined)?.role;
+  return {
+    via: via.name,
+    to,
+    knowsThem: rows.every((person) => person.far !== true),
+    ...(role !== undefined && { role }),
+  };
 }
 
 /**
@@ -137,5 +197,7 @@ export function introTargetSentence(
 ): string | null {
   if (!INTRO_TARGET_SENTENCE_ON || language !== 'ka') return null;
   const intro = plannedIntroduction(planInput, people) ?? introductionFromFound(people, found);
-  return intro === null ? null : georgianSentence(intro);
+  if (intro === null) return null;
+  const knows = knowsLine(intro);
+  return knows === null ? georgianSentence(intro) : `${georgianSentence(intro)} ${knows}`;
 }

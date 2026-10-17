@@ -54,6 +54,7 @@ describe('the introduction taken from what the run found', () => {
     expect(introductionFromFound([TEMO], found)).toEqual({
       via: 'თემო ჩხეიძე',
       to: 'ნინო იურისტი',
+      knowsThem: true,
     });
   });
 

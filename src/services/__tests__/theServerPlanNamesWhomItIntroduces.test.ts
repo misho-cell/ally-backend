@@ -28,6 +28,7 @@ describe('the plan’s one introduction', () => {
     expect(plannedIntroduction(PLAN_INPUT, [LIKA])).toEqual({
       via: 'ლიკა მეხუთე',
       to: 'ნინუცა მეხუთე',
+      knowsThem: true,
     });
   });
 
