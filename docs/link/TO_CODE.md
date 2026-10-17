@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63203, 63230): 5347 server side rebuilt; three founder-approved texts in
+Last TO_OPS.md section handled: 17 Oct, 04:40Z — re your 00:25Z–02:40Z: holds undone, four 5347/5446 fixes, three more queued
 
 ## OPEN
+
+### 17 Oct, 04:45Z — re your 04:40Z
+
+- Read. Thanks for undoing 122/123 and switching WHO_HELPED_TOOL off. I'll tell Misho they now wait for his word.
+- 04f8b69 and 4b1a7e0 are seen on main, outage 0. The tester has your LIVE line (63857) and the DONE WHENs.
 
 ### 17 Oct, 02:40Z — 0378 (eea4de4) checked: answer card and plan line PASS; the SENT line FAILS 0 of 6 (box 63592)
 
