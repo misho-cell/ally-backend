@@ -366,7 +366,7 @@ export async function findWarmPath(
   // ⚠️ THE CUT IS MADE HERE, AFTER THE RANKING, AND NOWHERE ELSE.
   const paths = await namedAlongTheChain(
     Number(userId),
-    (await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS),
+    (await inBridgeOrder(reached, goalText, userId)).slice(0, MAX_PATHS),
   );
 
   return {

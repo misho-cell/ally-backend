@@ -85,8 +85,64 @@ describe('the bridges in A14’s order (1697)', () => {
 
   it('the warm path and the request are wired to it', () => {
     const walk = readFileSync(join(__dirname, '..', 'tools', 'findWarmPath.ts'), 'utf8');
-    expect(walk).toContain('(await inBridgeOrder(reached, goalText)).slice(0, MAX_PATHS)');
+    expect(walk).toContain('(await inBridgeOrder(reached, goalText, userId)).slice(0, MAX_PATHS)');
     const intro = readFileSync(join(__dirname, '..', 'tools', 'requestIntroduction.ts'), 'utf8');
     expect(intro).toContain('void recordIntroPrematch(insertResult.rows[0].id);');
+  });
+});
+
+describe('the owner’s closeness to the bridge (founder, 17 Oct, box 65045)', () => {
+  it('a close friend comes before a near-stranger, whatever the fit, after hops', () => {
+    const stranger = path('+995555000010');
+    const friend = path('+995555000011');
+    const ordered = orderPaths([stranger, friend], {
+      words: new Map([['995555000010', word(PrematchWord.LikelyYes)]]),
+      rates: new Map(),
+      holders: new Map(),
+      closeness: new Map([
+        ['995555000010', 0.4],
+        ['995555000011', 0.67],
+      ]),
+    });
+    expect(ordered).toEqual([friend, stranger]);
+    const nearer = path('+995555000010', 2);
+    const fartherFriend = path('+995555000011', 3);
+    expect(
+      orderPaths([fartherFriend, nearer], {
+        words: new Map(),
+        rates: new Map(),
+        holders: new Map(),
+        closeness: new Map([['995555000011', 0.9]]),
+      }),
+    ).toEqual([nearer, fartherFriend]);
+  });
+
+  it('two near-strangers a few hundredths apart are still ordered by the fit', () => {
+    const a = path('+995555000012');
+    const b = path('+995555000013');
+    const ordered = orderPaths([a, b], {
+      words: new Map([['995555000013', word(PrematchWord.LikelyYes)]]),
+      rates: new Map(),
+      holders: new Map(),
+      closeness: new Map([
+        ['995555000012', 0.42],
+        ['995555000013', 0.4],
+      ]),
+    });
+    expect(ordered).toEqual([b, a]);
+  });
+
+  it('adds what the owner said or did with the bridge to the stored tie', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { closenessTo } = require('../bridgeOrder') as typeof import('../bridgeOrder');
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ phone: '+995555000014', strength: 0.4 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          { contact_phone: '+995555000014', total: '0.5', events: '1', kinds: ['stated_close'] },
+        ],
+      });
+    const closeness = await closenessTo('501', ['+995555000014']);
+    expect(closeness.get('995555000014')).toBeCloseTo(0.9);
   });
 });

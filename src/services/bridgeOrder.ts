@@ -3,6 +3,7 @@ import { askField } from './answerStats.service';
 import { phoneDigits } from './phone';
 import { Prematch, PrematchWord, prematchMany } from './prematch.service';
 import { AnswerRates, answerRatesFor, CLASS_RANK } from './waveOrder';
+import { warmthForPhones } from './warmth.service';
 
 /**
  * 1697 (A14, D679/D680): the warm path named its bridges and the order was
@@ -16,6 +17,17 @@ import { AnswerRates, answerRatesFor, CLASS_RANK } from './waveOrder';
 const QUERY_TIMEOUT_MS = 5_000;
 const NO_RECORD: AnswerRates = { field: 0.5, overall: 0.5 };
 
+/**
+ * The founder's question of 17 Oct (box 65045; Bible 2.4, Design Brief 3.1B):
+ * shortest first, then WARMEST — and the order had no closeness in it at all.
+ * The owner's closeness to the first bridge is the stored relationship score
+ * (formal 0.4, close ≈0.67, family 0.9) plus the warmth the two built inside
+ * Netai or the owner stated (save_close_contact). Compared in steps of a tenth,
+ * so a near-stranger's 0.42 and 0.45 do not outrank a fit for the goal.
+ */
+const UNKNOWN_TIE = 0.4;
+const CLOSENESS_STEPS = 10;
+
 export interface PathLike {
   readonly hops: number;
   readonly relayable: boolean;
@@ -27,17 +39,24 @@ export interface BridgeScores {
   readonly rates: ReadonlyMap<string, AnswerRates>;
   /** How many phonebooks hold each bridge, by digits. */
   readonly holders: ReadonlyMap<string, number>;
+  /** The owner's closeness to each bridge, by digits; absent is a tie nobody described. */
+  readonly closeness?: ReadonlyMap<string, number>;
 }
 
-/** The paths in A14's order: fewest hops, then the first bridge's fit, then the original order. */
+/**
+ * The paths in order: fewest hops, then the owner's closeness to the first
+ * bridge, then A14's fit for the goal, then the original order.
+ */
 export function orderPaths<T extends PathLike>(paths: readonly T[], scores: BridgeScores): T[] {
   const keyOf = (path: T): readonly number[] => {
     const first = path.bridges[0];
     const d = first === undefined ? '' : phoneDigits(first.phone);
     const word = scores.words.get(d)?.word ?? PrematchWord.AskHim;
     const rates = scores.rates.get(d) ?? NO_RECORD;
+    const closeness = scores.closeness?.get(d) ?? UNKNOWN_TIE;
     return [
       path.hops,
+      -Math.round(closeness * CLOSENESS_STEPS),
       CLASS_RANK[word],
       -rates.field,
       scores.holders.get(d) ?? Number.MAX_SAFE_INTEGER,
@@ -55,9 +74,14 @@ export function orderPaths<T extends PathLike>(paths: readonly T[], scores: Brid
     .map(({ path }) => path);
 }
 
+/** Both spellings of each number, as the tables hold them. */
+function phoneForms(phones: readonly string[]): string[] {
+  return [...new Set(phones.map(phoneDigits).flatMap((d) => [`+${d}`, d]))];
+}
+
 /** How many phonebooks hold each number — the fewer, the rarer the shared contact. */
 async function holderCounts(phones: readonly string[]): Promise<Map<string, number>> {
-  const forms = [...new Set(phones.map(phoneDigits).flatMap((d) => [`+${d}`, d]))];
+  const forms = phoneForms(phones);
   const out = new Map<string, number>();
   if (forms.length === 0) return out;
   const result = await query<{ phone: string; holders: number }>(
@@ -88,17 +112,59 @@ export async function scoreBridges(
   return { words, rates, holders };
 }
 
-/** The paths in A14's order; as they came when there is no goal or anything cannot be read. */
+/** The owner's closeness to each bridge: the stored tie plus the warmth since, by digits. */
+export async function closenessTo(
+  userId: string,
+  phones: readonly string[],
+): Promise<Map<string, number>> {
+  const forms = phoneForms(phones);
+  const out = new Map<string, number>();
+  if (forms.length === 0) return out;
+  const [ties, warmth] = await Promise.all([
+    query<{ phone: string; strength: number | null }>(
+      `SELECT contact_phone AS phone, MAX(strength_score) AS strength
+         FROM contact_relationship_scores
+        WHERE user_id = $1::int AND contact_phone = ANY($2::text[])
+        GROUP BY contact_phone
+        LIMIT $3`,
+      [userId, forms, forms.length],
+      QUERY_TIMEOUT_MS,
+    ),
+    warmthForPhones(userId, forms),
+  ]);
+  for (const row of ties.rows) {
+    const d = phoneDigits(row.phone);
+    out.set(d, Math.max(out.get(d) ?? 0, Number(row.strength ?? UNKNOWN_TIE)));
+  }
+  for (const [phone, reading] of warmth) {
+    const d = phoneDigits(phone);
+    out.set(d, (out.get(d) ?? UNKNOWN_TIE) + reading.score);
+  }
+  return out;
+}
+
+const NO_GOAL_SCORES: BridgeScores = { words: new Map(), rates: new Map(), holders: new Map() };
+
+/**
+ * The paths in order; as they came when anything cannot be read. With no goal
+ * there is nothing to fit, so only hops and closeness move them.
+ */
 export async function inBridgeOrder<T extends PathLike>(
   paths: readonly T[],
   goalText: string | null,
+  userId: string,
 ): Promise<T[]> {
-  if (goalText === null || goalText.trim() === '' || paths.length < 2) return [...paths];
+  if (paths.length < 2) return [...paths];
   try {
     const firsts = paths
       .map((p) => p.bridges[0]?.phone)
       .filter((p): p is string => p !== undefined);
-    return orderPaths(paths, await scoreBridges(firsts, goalText));
+    const hasGoal = goalText !== null && goalText.trim() !== '';
+    const [fit, closeness] = await Promise.all([
+      hasGoal ? scoreBridges(firsts, goalText) : Promise.resolve(NO_GOAL_SCORES),
+      closenessTo(userId, firsts),
+    ]);
+    return orderPaths(paths, { ...fit, closeness });
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[bridge-order] kept by reach:', (err as Error).message);
