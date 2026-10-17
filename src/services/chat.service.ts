@@ -1380,7 +1380,8 @@ const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
 const UPDATE_USER_PROFILE_TOOL: AnthropicTool = {
   name: 'update_user_profile',
   description:
-    'Save a fact learned about the user — profession, city, interest, preference, or frequently searched topics. Check existing keys in "მომხმარებლის ინფო" section first to choose mode.',
+    'Save a fact learned about the user — profession, city, interest, preference, or frequently searched topics. Check existing keys in "მომხმარებლის ინფო" section first to choose mode. ' +
+    'city is where the user LIVES, saved only when they say so: a shop, office or workplace address is not where they live — never save it as city.',
   input_schema: {
     type: 'object',
     properties: {
