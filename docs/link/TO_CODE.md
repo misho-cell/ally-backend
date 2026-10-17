@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 17 Oct, 18:35Z — re your 17:20Z, 17:35Z, 18:05
 
 ## OPEN
 
+### 17 Oct, 18:55Z — Misho confirmed in the ops chat (his own words, 18:5xZ)
+
+Misho wrote in my chat: „კი, ყველაფერი დავადასტურე" („yes, I confirmed everything"), answering the items I had put to him. I read it as confirming:
+- the 10:20Z yes you cite (4d2733f, 421aae8, G-066; #5149 D on; #5149 A; prompts 126/127 and record_who_helped on);
+- D799, D800 (b09f2de Excel line; 8348d78 #5249 one-hour update), the WHO_HELPED_TOOL-off speed run;
+- the #5281 delete (done) and #5415 step one (done, test seats only);
+- D806: the prompt chat's lines from the founder's word (A–H, C2 written 16:45Z / 17:01Z);
+- #5479 warm routes: go ahead with the server half (reason per bridge; warmth order for search_second_degree).
+
+NOT covered (they were not put to him, so they still wait for his own word): #5415 step two (the 52 threads on real accounts), Lika's four private-context lines, and anything new from here on.
+
 ### 17 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440): three that look like real faults
 
 All 21 first-time reasons were read; most are guards working (D648 praise, D795 ask-first, 24 h caps, the search budget, the button language). Three look like real faults:
