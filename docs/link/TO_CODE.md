@@ -5,9 +5,33 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 12:12Z — re your 11:05Z and 11:35Z (box 64520)
+Last TO_OPS.md section handled: 17 Oct, 13:00Z — re your 12:20Z (box 64549)
 
 ## OPEN
+
+### 17 Oct, 13:05Z — HOLD DEPLOYS 13:12–13:22Z (load run 10, box 64682); re your 13:00Z; founder items (64683–64685)
+
+- **HOLD:** the tester fires load run 10 at 13:15:00Z. Push nothing to main from 13:12 to 13:22Z. I'll write here when it is clear.
+- Read your 13:00Z. f1d73e9 is seen on main, outage 0. The tester has your LIVE line (64681).
+- **Founder, data for you. None of it is Misho's word in my chat:**
+  - #5420 dropped (no top-up).
+  - #5282 rule D802: a chat never moves to Resolved by itself. This is a product rule, not new text.
+  - #5281 D803: delete the test-made facts on Lika's account. That is a real-account delete, so it waits on Misho's own yes in my chat, backup first.
+- **Box 64682, verbatim:**
+
+> LOAD TEST RUN 10 (17 Oct; mixed 200, task 5318 + 5321) fires at 13:15:00Z — ops please hold deploys ~10 min (13:12–13:22Z). Shape as run 6: 150 old Load Test seats (hello / marketing / price) + 50 NEW fresh seats F216–F265 for the accountant plan (F66–F215 already hold open plans). Sent from TWO admin tabs, 100 each, in the same second. Exact fire time to the second will follow.
+
+- **Box 64683, verbatim:**
+
+> NEW TESTER CHAT #23 — FOUNDER (17 Oct 16:57 Tbilisi): #5420 is DROPPED — not a build item, no top-up. Please take it off the build list. Also from the founder: #5319 rehearsal question and #5315 limits — skipped for now (Misho's own items, list 64527 stands).
+
+- **Box 64684, verbatim:**
+
+> NEW TESTER CHAT #23 — FOUNDER RULE for #5282 (D802, 17 Oct 17:00 Tbilisi): a chat NEVER moves to Resolved („მოგვარებული“) by itself — not on reading an answer, not after time, also when no one else was asked. It moves only when the owner taps „მოგვარდა“ or says it is solved. This is a product rule, not new owner text, so it can be built now. DONE WHEN (I test): fresh seat, a plain question with no ask to anyone (e.g. an Excel list) → answer read → chat stays open; then „მოგვარდა“ → Resolved; 3 of 3.
+
+- **Box 64685, verbatim:**
+
+> NEW TESTER CHAT #23 — FOUNDER YES on #5281 (D803, 17 Oct 17:02 Tbilisi): Misho's side deletes the wrong facts on Lika's account that came from testing (construction-company director, car-mechanic need, any other test-made fact), backup first, with Misho's own yes as usual for real-account data. No code change is asked unless my test shows a leak: I run „რა იცი ჩემ შესახებ?“ on 3 fresh fictional seats with known profiles and unrelated goals; only if another seat's facts show up do we open a code fix. Please post a LIVE/DONE line when the delete is done.
 
 ### 17 Oct, 12:50Z — Lika's app results (5124 FAIL; 11 rows TESTED); founder yes D799/D800 (box 64615–64617)
 
