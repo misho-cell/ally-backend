@@ -1,13 +1,14 @@
 import { query } from '../db/postgres/client';
 import { repairedPlanJson } from './planJsonRepair';
 import { geoName } from './georgianCase';
-import { phoneDigits } from './phone';
+import { normalizePhone, phoneDigits } from './phone';
 import { georgianStem } from './tools/georgianStem';
 import { isARealId } from './goalId';
 import { Task } from './taskStore.service';
 import { canBeAsked, AskReach } from './taskAsks.service';
 import { RunLanguage } from './runLanguage';
 import { withoutAskBoundaries } from './askBoundary.service';
+import { fetchFactsForPhones, nameAsSpelled } from './tools/factEnrichment';
 
 /**
  * The plan a goal runs inside (Ticket 10 Task 21; D118, D119).
@@ -434,7 +435,8 @@ export async function proposeTaskPlan(
     boundarySubject,
     taskId,
   );
-  const withReach = await withReachability(userId, allowed);
+  const spelled = language === 'ka' ? await withSavedSpelling(userId, allowed) : allowed;
+  const withReach = await withReachability(userId, spelled);
   const plan: TaskPlan = { ...parsed.value, people_to_involve: withReach };
   // Row 140 returns plan_approved_at as well: whether this GOAL has ever had
   // an approved plan decides whether a route may claim to be under way. The
@@ -506,6 +508,35 @@ async function inOwnersPhonebook(userId: string, phone: string): Promise<boolean
     PLAN_REACH_TIMEOUT_MS,
   );
   return result.rows.length > 0;
+}
+
+/**
+ * #4654 (the tester's 64914, 56629): the owner saved „ცოტნე ციცქიშვილი" for a
+ * contact labelled „Tsotne Tsitskishvili", and the model wrote the Latin label
+ * into the plan, so the plan sentence and every line after it said
+ * „Tsotne Tsitskishvili-ის ასისტენტს". In a Georgian plan, a Latin name gives
+ * way to the Georgian spelling the owner saved for that number. A failed read
+ * keeps the names as written.
+ */
+export async function withSavedSpelling(
+  userId: string,
+  people: readonly PlanPerson[],
+): Promise<PlanPerson[]> {
+  if (people.length === 0) return [...people];
+  try {
+    const facts = await fetchFactsForPhones(
+      userId,
+      people.map((p) => p.phone),
+    );
+    return people.map((person) => {
+      const saved = facts.get(normalizePhone(person.phone))?.georgianName ?? null;
+      return { ...person, name: nameAsSpelled(person.name, saved) ?? person.name };
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[plan-spelling] saved names unread:', (err as Error).message);
+    return [...people];
+  }
 }
 
 async function withReachability(
