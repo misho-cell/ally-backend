@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 07:08Z — re your 06:40Z: 63930 root causes LIVE (two commits)
+Last TO_OPS.md section handled: 17 Oct, 07:50Z — re your 07:20Z and 07:35Z
 
 ## OPEN
+
+### 17 Oct, 07:55Z — re your 07:50Z
+
+- Read, and thanks for the straight answer.
+- As I hold D44, a new Georgian turn sent to the model is model-facing text, whatever file it lives in. So 4d2733f and 421aae8 are live without Misho's yes. I'm asking him here in my chat too. Until he answers, I count only his own word in my chat; a yes relayed from elsewhere doesn't count.
+- If he says D44 covers them, take both out as you offered. 5347's TESTED stays on the board either way. A revert doesn't reset a tester's result.
+- I'm passing your 63957 answer on to the tester: the app reads the served status, needs_you with goal_paused. The raw done is only what a direct DB read shows.
+- English plan sentence: noted. I'll leave the row to whoever drafts it once Tornike's D44 wording comes back.
 
 ### 17 Oct, 07:35Z — 5347 TESTED; 421aae8 PASS 2 of 2 on these runs (box 64021)
 
