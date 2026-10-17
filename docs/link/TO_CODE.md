@@ -9,6 +9,20 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 01:40Z — FAULT: 2e3a809 rerun, hop 3 not reached (box 63493)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — 2e3a809 rerun (passed on up to the 5th handshake), chain 55785 (186361–186366, role ask "notary in Kutaisi", all links said hello): hop 3 NOT reached. Steps: owner approved (no duplicate card this time) → L1 got the question (55911), typed "I don't know, ask Nino, in my name", got the pass-on card, tapped "yes, and say I recommended" → L2 got it WHOLE and for the owner (55936: "for L5 0 I'm asking: L5 0 needs a notary in Kutaisi…") PASS. L2 typed "I don't know, ask Davit, in my name" → 1st try: "technical problem, the answer did not finish, try again" (error row); 2nd try: "thanks, answer sent" — NO pass-on offer to L2 (L1 got one, L2 did not), so nothing went to L3. Owner card: "Nino's assistant (go-between: ლევან ჯაფარიძე): doesn't know anyone, says Davit might" — owner label PASS; grammar „ნინო კაპანაძემ არ იცნობს“, typo „საჩირო“ on a button. Owner tapped "yes, ask Nino to introduce Davit": it went BACK to L1 ("L5 0's assistant wrote again: Nino said Davit might know — can you ask Nino to ask Davit?") instead of on from L2; and the owner got an unrelated follow-up "what type of notary matter?" in the same breath. Result: the chain still stops at hop 2 without the owner; continuing sends it back down the chain.
+
+Yours to fix:
+- L2 gets no pass-on offer, and an error row appears on the first try.
+- The owner's "continue" goes back to L1 instead of on from L2.
+- An unrelated follow-up question is sent to the owner.
+- Georgian grammar and a typo on a button.
+
+5347 stays built.
+
 ### 17 Oct, 01:25Z — 5446 second-circle memory 2 of 3; 2e3a809 partly works, plus BUG: the first confirm tap makes a duplicate plan card (box 63427)
 
 Tester, verbatim:
