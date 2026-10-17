@@ -276,8 +276,9 @@ const WAITS_ON_ITS_OWNER = `(t.status <> 'working' AND EXISTS (
  * thing said in the conversation is the assistant's question to them, and
  * they have not answered. Their answer is the last word again, and the case
  * goes back to „ვმუშაობ". Read live on 16 Oct: 30 of 1,356 waiting threads.
+ * A case, so an open goal: a plain chat kept open (#5282) waits on nobody.
  */
-const ENDS_ON_A_QUESTION_TO_ITS_OWNER = `(t.status = 'waiting' AND EXISTS (
+const ENDS_ON_A_QUESTION_TO_ITS_OWNER = `(t.status = 'waiting' AND ${HAS_OPEN_GOAL} AND EXISTS (
          SELECT 1 FROM (
            SELECT c.role, c.content FROM conversations c
             WHERE c.thread_id = t.id AND c.kind = 'message' AND length(trim(c.content)) > 0

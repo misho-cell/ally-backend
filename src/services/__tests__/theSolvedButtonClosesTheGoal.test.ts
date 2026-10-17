@@ -87,9 +87,7 @@ describe('what it refuses', () => {
     expect(mockUpdateTask).not.toHaveBeenCalled();
   });
 
-  it('a conversation with no goal, or a goal already closed', async () => {
-    mockGoal.mockResolvedValue(null);
-    expect((await resolveGoalOnThread('184300', 51300)).outcome).toBe(ResolveOutcome.NoOpenGoal);
+  it('a goal already closed', async () => {
     mockGoal.mockResolvedValue({ id: 902, status: 'closed' });
     expect((await resolveGoalOnThread('184300', 51300)).outcome).toBe(ResolveOutcome.NoOpenGoal);
     expect(mockUpdateTask).not.toHaveBeenCalled();

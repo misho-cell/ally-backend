@@ -30,7 +30,12 @@ describe('a run that fails', () => {
     );
     expect(body).toContain("AND content <> ''");
     expect(body).toContain('emitRunComplete(userId, threadId, runId, { reply: answer });');
-    expect(body).toContain("openGoal === null ? 'done' : 'waiting'");
+    expect(body).toContain(
+      "if (openGoal !== null) void setThreadStatus(userId, threadId, 'waiting');",
+    );
+    expect(body).toContain(
+      "else if (await chatHadAGoal(threadId)) void setThreadStatus(userId, threadId, 'done');",
+    );
   });
 
   it('tries the error line a second time when the first write fails', () => {

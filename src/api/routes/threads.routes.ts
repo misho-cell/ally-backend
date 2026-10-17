@@ -37,6 +37,7 @@ import {
   ChatResult,
   keepUserMessage,
   noteGraceAnswer,
+  ownerSaysSolved,
 } from '../../services/chat.service';
 import { setThreadStatus, endsWithQuestion } from '../../services/threadStatus.service';
 import { markRunFailed } from '../../services/runFailure.service';
@@ -46,7 +47,7 @@ import {
   markAsksSeen,
   runPayerFor,
 } from '../../services/taskAsks.service';
-import { getOpenTaskByThread, Task } from '../../services/taskStore.service';
+import { getGoalOnThread, getOpenTaskByThread, Task } from '../../services/taskStore.service';
 import {
   dismissStoppedGoal,
   resumeStoppedGoal,
@@ -206,6 +207,21 @@ export function awaitingPlanApproval(
 }
 
 /**
+ * Whether this chat ever carried a goal. A goal closed or stopped leaves the
+ * thread done; only a chat that never had one is kept open (#5282). A failed
+ * read counts as having had one, which keeps the old behaviour.
+ */
+async function chatHadAGoal(threadId: number): Promise<boolean> {
+  try {
+    return (await getGoalOnThread(threadId)) !== null;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[run] thread ${threadId}: goal read failed:`, (err as Error).message);
+    return true;
+  }
+}
+
+/**
  * Exported for its own test. The rules here decide which half of the owner's
  * list a thread lands in, and „finished" on live work is not a cosmetic
  * mistake — it is the product telling somebody their open goal is over.
@@ -222,6 +238,8 @@ export function statusAfterRun(
     awaitingPlanApproval: boolean;
     /** The thread carries a goal the owner has NOT closed. */
     openGoal: boolean;
+    /** A regular chat that never carried a goal (#5282). */
+    plainChat?: boolean;
   },
 ): ThreadStatus {
   // An explicit ask_owner_decision outranks everything: the model itself said
@@ -257,7 +275,12 @@ export function statusAfterRun(
   // conversation whose last reply happens to end with a question is finished
   // when the user walks away, not flagged forever (442 stale flags on one
   // account, fourteen of the tester's forty visible threads).
-  if (!opts.workItem) return 'done';
+  //
+  // #5282 (founder rule D802, 17 Oct): a chat never moves to „მოგვარებული" by
+  // itself — not on reading an answer, not after time. A plain chat with no
+  // goal stays open until its owner taps „მოგვარდა" or says it is solved. It
+  // still never reads „needs you": that half of 2b stands.
+  if (!opts.workItem) return opts.plainChat === true ? 'waiting' : 'done';
   if (result.options || result.choices || endsWithQuestion(result.reply)) return 'needs_you';
   /**
    * A goal the owner has not closed is not FINISHED, whatever this run's reply
@@ -523,7 +546,8 @@ const NO_GOAL_TO_RESOLVE = 'no_open_goal';
  * a goal must always work.
  *
  *   200 { resolved: true, goal_id, open_questions, thread }  closed as finished
- *   409 { error: 'no_open_goal' }                             no open or paused goal here
+ *                                                            (goal_id null: a chat with no goal, #5282)
+ *   409 { error: 'no_open_goal' }                             its goal is already closed
  *   404                                                       no such thread, or not theirs
  */
 threadsRouter.post(
@@ -1488,7 +1512,9 @@ async function answerAlreadyStored(
     );
     emitRunComplete(userId, threadId, runId, { reply: answer });
     const openGoal = await getOpenTaskByThread(threadId).catch(() => null);
-    void setThreadStatus(userId, threadId, openGoal === null ? 'done' : 'waiting');
+    if (openGoal !== null) void setThreadStatus(userId, threadId, 'waiting');
+    else if (await chatHadAGoal(threadId)) void setThreadStatus(userId, threadId, 'done');
+    else void setThreadStatus(userId, threadId, 'waiting', { statusLine: null });
     return true;
   } catch {
     return false;
@@ -1701,16 +1727,25 @@ function startOwnerRun(run: OwnerRun): Promise<void> {
         const flagged =
           openTask !== null &&
           (await goalQuestionFlaggedSince(openTask.id, runStartedAt).catch(() => false));
+        const plainChat =
+          thread.type === 'regular' &&
+          openTask === null &&
+          !becameTask &&
+          !ownerSaysSolved(message, null) &&
+          !(await chatHadAGoal(threadId));
         const finalStatus = statusAfterRun(result, pendingAsk, {
           workItem: thread.type !== 'regular' || openTask !== null || becameTask,
           flagged,
           awaitingPlanApproval: awaitingPlanApproval(openTask),
           openGoal: openTask !== null,
+          plainChat,
         });
         // The status caption follows the conversation's language (task 22
         // g/h) — an English thread must not read „შენი პასუხი სჭირდება".
+        // A plain chat kept open waits on nobody, so it says nothing (#5282).
         const lang = result.language ?? 'ka';
-        const langLine = finalStatus === 'done' ? null : RUN_STRINGS[lang].statusLines[finalStatus];
+        const langLine =
+          finalStatus === 'done' || plainChat ? null : RUN_STRINGS[lang].statusLines[finalStatus];
         // D348: after the free answer the badge must still say „top up" — the
         // route set it, and the run's own end used to overwrite it with „done"
         // (tester 1069/1071, threads 31418 and 31552).

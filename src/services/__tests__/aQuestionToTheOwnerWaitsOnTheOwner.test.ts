@@ -22,6 +22,10 @@ describe('a case whose last word is a question to its owner', () => {
     expect(rule.slice(0, 120)).toContain("t.status = 'waiting'");
   });
 
+  it('applies only to a case with an open goal, not a plain chat kept open (#5282)', () => {
+    expect(rule.slice(0, 120)).toContain("t.status = 'waiting' AND ${HAS_OPEN_GOAL} AND EXISTS");
+  });
+
   it('shows the case under „შენს პასუხს ველოდები", without the waiting line', () => {
     expect(status).toContain("WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN 'needs_you'");
     expect(line).toContain('WHEN ${ENDS_ON_A_QUESTION_TO_ITS_OWNER} THEN NULL');

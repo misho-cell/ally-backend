@@ -12,7 +12,7 @@ import { clearStoredChoices, getThread, Thread } from './threads.service';
  */
 export enum ResolveOutcome {
   Resolved = 'resolved',
-  /** The thread carries no goal, or its goal is already closed. */
+  /** The thread's goal is already closed. */
   NoOpenGoal = 'no_open_goal',
   /** No such thread, or not the caller's. */
   NotFound = 'not_found',
@@ -20,7 +20,8 @@ export enum ResolveOutcome {
 
 export interface GoalResolved {
   readonly outcome: ResolveOutcome.Resolved;
-  readonly goal_id: number;
+  /** Null for a chat that never carried a goal (#5282). */
+  readonly goal_id: number | null;
   /** Questions still out; when above 0 the owner was shown the keep-or-close card (row 311). */
   readonly open_questions: number;
   readonly thread: Thread | null;
@@ -38,6 +39,23 @@ function canBeResolved(status: string): boolean {
   return status === 'open' || status === 'paused';
 }
 
+/**
+ * #5282 (founder rule D802): a chat with no goal stays open until its owner
+ * calls it solved, so the button closes it too — the thread only, nothing else
+ * to close.
+ */
+async function resolvePlainChat(userId: string, threadId: number): Promise<GoalResolved> {
+  emitChoicesCleared(userId, threadId);
+  await clearStoredChoices(threadId);
+  await setThreadStatus(userId, threadId, 'done', { statusLine: null });
+  return {
+    outcome: ResolveOutcome.Resolved,
+    goal_id: null,
+    open_questions: 0,
+    thread: await getThread(threadId, userId),
+  };
+}
+
 /** The owner's „მოგვარდა" on the goal of their own thread. */
 export async function resolveGoalOnThread(
   userId: string,
@@ -45,7 +63,8 @@ export async function resolveGoalOnThread(
 ): Promise<ResolveResult> {
   if ((await getThread(threadId, userId)) === null) return { outcome: ResolveOutcome.NotFound };
   const goal = await getGoalOnThread(threadId);
-  if (goal === null || !canBeResolved(goal.status)) {
+  if (goal === null) return resolvePlainChat(userId, threadId);
+  if (!canBeResolved(goal.status)) {
     return { outcome: ResolveOutcome.NoOpenGoal };
   }
   const closed = await updateTask(userId, goal.id, 'closed', RESOLVED_BY_OWNER_NOTE, 'finished');

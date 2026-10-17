@@ -127,6 +127,20 @@ describe('a thread whose goal is still open', () => {
     ).toBe('done');
   });
 
+  it('keeps a chat that never had a goal open: only its owner resolves it (#5282, D802)', () => {
+    for (const reply of [quietReply, { reply: 'რომელი გირჩევნია?' }]) {
+      expect(
+        statusAfterRun(reply as Parameters<typeof statusAfterRun>[0], false, {
+          workItem: false,
+          flagged: false,
+          awaitingPlanApproval: false,
+          openGoal: false,
+          plainChat: true,
+        }),
+      ).toBe('waiting');
+    }
+  });
+
   it('files a work item with NO open goal as done, exactly as before', () => {
     // A closed goal's thread, an answered ask: those are genuinely over, and
     // this change must not sweep them back into the ongoing half.
