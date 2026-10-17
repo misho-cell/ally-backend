@@ -15,6 +15,130 @@ messages in their name.
 
 ---
 
+## 17 October, 08:55Z — 19 app-side rows from the board, which you have not had (#5050–#5421)
+
+Misho asked whether every task reached you. These did not: they are on the team board, marked app side, and this file is the only place you read. Each row is the board text as written, with the board number. The server needs nothing for any of them. Where it already gives what a row needs, the line under it says so. Words on new buttons or labels still need Giorgi's OK (D582), as the rows say. Mark each one `built #N` in TO_BACKEND as you go, and I move it on the board the same hour.
+
+### #5050 (priority 1)
+
+**Problem:** DESKTOP: in the chat header „მოგვარდა" and „გზები" are both white, so they look the same.
+
+**Task:** Desktop: style the two buttons as in the design — „მოგვარდა" is the accent button (design class .done-b, background var(--yel)), „გზები" is the white/outline one (.paths-b) — so they are clearly different colours. Done when: on desktop the two buttons have the design's two different colours. (Follows #4926.) Reference: the designer's HTML „ნეტაი ბოლო.html".
+
+### #5051 (priority 1)
+
+**Problem:** „მოგვარდა" and „გზები" in the chat header are different sizes (mobile and desktop).
+
+**Task:** Make both buttons the same height and padding as in the design, on mobile and desktop. Done when: on both, the two buttons are the same size. (Follows #4926.) Reference: the designer's HTML „ნეტაი ბოლო.html".
+
+### #5053 (priority 1)
+
+**Problem:** A long link in a chat message is wider than the message bubble and breaks the layout — e.g. a servisebi.ge link with a long encoded address runs past the bubble's right edge (desktop and mobile).
+
+**Task:** Long links and long words wrap inside the bubble (break anywhere) or show shortened (domain + „…") while keeping the full link clickable; the page never scrolls sideways. Done when: a message with a 200-character link stays inside its bubble on mobile and desktop. Reference: the designer's HTML „ნეტაი ბოლო.html".
+
+### #5054 (priority 1)
+
+**Problem:** MOBILE: the phone's status bar (top strip with time and battery) is a different colour from the app.
+
+**Task:** Colour the status-bar area to match the screen: on the home page the app's light-green background; on a chat page the chat header's dark green. (iOS/Android: theme-color + safe-area background, updated per screen.) Done when: on iPhone and Android, home has a light-green top strip and a chat page a dark-green one, with no different-coloured band. Reference: the designer's HTML „ნეტაი ბოლო.html".
+
+### #5116 (priority 1)
+
+**Problem:** The task-list filters were renamed to „ჩემი / ვეხმარები / მეკითხებიან" (from #4588, a recommendation that waited for Giorgi's approval and was built without it). Giorgi's decision (15 Oct): go back to the old names.
+
+**Task:** Restore the filter names everywhere — mobile app, mobile browser, desktop app, desktop browser: „ყველა / ინიციატორი / შუამავალი / ადრესატი". Done when: all four versions show exactly these four names and the filters work as before.
+
+### #5117 (priority 1)
+
+**Problem:** When typing in the message box (home page and chat page, desktop), a thick light-green outline appears around the inner text field — a second box inside the input card.
+
+**Task:** Remove the focus outline/ring on the inner text field (no green stroke while typing); keep only the outer input card's normal border, as in the design. Keep keyboard focus visible in a subtle way the design allows (e.g. the outer card's border colour), not a second box. Mobile and desktop. Done when: typing in the message box on the home page and in a chat shows no inner green stroke.
+
+### #5118 (priority 1)
+
+**Problem:** In the case list (left panel, e.g. „შენს პასუხს ელოდება"), the cases sit too close together.
+
+**Task:** Add a little more vertical space between cases — slightly, not much (e.g. +6–8 px between items). Mobile and desktop. Done when: the cases are visibly separated but the list still looks compact.
+
+### #5119 (priority 1)
+
+**Problem:** On a paused case the status word „შეჩერებულია" has the same colour and weight as the body text, so it does not stand out.
+
+**Task:** Show „შეჩერებულია" in bold or in a distinct status colour from the design (not the body grey), so it is noticed at a glance. Mobile and desktop. Done when: on every paused case „შეჩერებულია" clearly differs from the body text.
+
+### #5120 (priority 1)
+
+**Problem:** In the left panel the „ახალი დავალება" button and the search bar („მოძებნე ჩემი დავალებები") sit too close together.
+
+**Task:** Add a little more vertical space between the „ახალი დავალება" button and the search bar (slightly, like #5118). Desktop, and mobile where both show. Done when: there is a visible gap between the button and the search bar, matching the spacing elsewhere in the panel.
+
+### #5123 (priority 2)
+
+**Problem:** Bug: the same chat opened on mobile and on desktop shows a different step count — mobile „როგორ ვიპოვე (4)“, desktop „როგორ ვიპოვე (12)“.
+
+**Task:** APP SIDE. The same chat shows the same steps and the same count in „როგორ ვიპოვე“ on mobile and desktop. Check: mobile not refreshing after new steps, older mobile build, or different filtering/grouping of step types. Done when: one chat opened on phone and desktop shows the same number and the same steps, including after the assistant adds new steps while the chat is open.
+
+_Server: the steps are stored once per conversation, with nothing per device. If phone and desktop need a field the server does not send, tell me which one._
+
+### #5124 (priority 1)
+
+**Problem:** Mobile home page: when you scroll past the colorful tabs, they switch to two small buttons, and at that moment the content jumps. Scrolling feels low quality.
+
+**Task:** APP SIDE, mobile only. Scrolling the home page past the colorful tabs is smooth: the two small buttons appear with a smooth transition, the content does not jump (no layout shift; keep the space or use a fixed/sticky overlay). Done when: on iPhone and Android, slow and fast scrolling up and down across that point shows no jump.
+
+### #5125 (priority 1)
+
+**Problem:** Cases in the app's tabs are not sorted by time, so the case with the latest news is not on top.
+
+**Task:** APP SIDE, mobile and desktop. In every tab, cases are sorted by last update: the most recently updated case first. A case moves to the top when it gets a new update. Done when: in each tab, a case that just got an update shows first, and the rest follow newest-to-oldest.
+
+_Server: GET /threads is already newest-first by `updated_at`, and every new message moves it (checked live: 2,135 of 2,135 threads active in the last day). One exception: open goals are lifted to the top of page one. Inside a tab, sort by `updated_at` yourself._
+
+### #5127 (priority 2)
+
+**Problem:** The steps dropdown has two names: while the assistant works it says „ნაბიჯები“, after it finishes it says „როგორ ვიპოვე“.
+
+**Task:** APP SIDE, mobile and desktop. The dropdown is always called „ნაბიჯები“ — while working and after finishing (with the count, e.g. „ნაბიჯები (12)“). „როგორ ვიპოვე“ is not used anymore. Done when: one chat shows „ნაბიჯები“ during the work and after the reply, on phone and desktop.
+
+### #5288 (priority 2)
+
+**Problem:** Lika: on iPhone (Safari and Home Screen app) the coloured cards on the home screen cover or cut the text. Source: Lika's status request to the builders, 15 Oct (NETAI_ბაგები_და_პროგრესის_მოთხოვნა_2026-10-15), her 226-point and 70-point reports.
+
+**Task:** SMALL — APP SIDE, iPhone layout. DONE WHEN: on iPhone Safari and the Home Screen app, all home cards show their full text, no overlap; Lika's screenshot.
+
+### #5380 (priority 1)
+
+**Problem:** DESKTOP, left panel case list: when „ვმუშაობ“ or „შენს პასუხს ველოდები“ has no cases, the whole section is hidden (in Giorgi's screenshot only „ვმუშაობ 1“ and „მოგვარებული 19“ show).
+
+**Task:** APP SIDE, desktop. „ვმუშაობ“ and „შენს პასუხს ველოდები“ always show, even with 0 cases — header with count 0, same place and order as when full. Any empty-state line under it needs Giorgi's OK on the words (D582); without it, show only the header with 0. Done when: on a desktop account with no waiting cases, both sections still show with 0.
+
+### #5382 (priority 1)
+
+**Problem:** Home page: the „სიახლეები“ button is not wanted. In the „ბოლო სიახლეები“ card, pressing „მეტი“ redirects to another page instead of showing the full text in place.
+
+**Task:** APP SIDE, mobile and desktop. (1) Hide the „სიახლეები“ button. (2) In „ბოლო სიახლეები“, „მეტი“ expands the card in place — no redirect. Expanded, it shows only what belongs in „ბოლო სიახლეები“ (the last updates per #5121 / #5215, grouped by case) with their texts in full, not cut — NOT all news. Pressing again collapses it (button wording stays as is unless Giorgi OKs a new one, D582). Done when: the „სიახლეები“ button is gone, and „მეტი“ shows the same last updates, uncut, inside the same card on phone and desktop.
+
+### #5414 (priority 1)
+
+**Problem:** A „ნაბიჯები“ / „როგორ ვიპოვე“ dropdown appears after every assistant reply, so one chat has many of them stacked down the conversation.
+
+**Task:** APP SIDE, mobile and desktop. A chat shows only ONE steps dropdown — the latest. When a new „ნაბიჯები“ appears, the previous ones are hidden. (Name stays „ნაბიჯები“ per #5127.) Note: this replaces the older #375 line „old steps open under each reply“ — Giorgi's decision 16 Oct. Done when: a chat with 4 assistant replies shows a single „ნაბიჯები“, under the last reply, on phone and desktop.
+
+### #5417 (priority 1)
+
+**Problem:** Giorgi has new animations for the colorful tabs on the home page: two per tab for „ვმუშაობ“ (working_1, working_2) and „შენს პასუხს ველოდები“ (waiting_1, waiting_2). 5-second mp4 loops, black figure on a white background. Files are in Giorgi's folder „netai_animations“ — Giorgi passes them to Misho.
+
+**Task:** APP SIDE, iPhone, Android and desktop web. (1) Replace the current animations in these tabs with the new ones. (2) Keep the animation box exactly the current size — do not resize it. (3) Two versions per tab: pick one at random on each page refresh / new visit. (4) Text must never overlap the animation on iOS or Android (check small and large phones, Georgian text). Notes: waiting_1 is portrait 480×576, the other three are 848×480 — fit inside the same box without stretching; white video background must blend with the tab colour (convert to transparent or matching background if needed); autoplay, muted, loop, inline (no fullscreen on iPhone). Done when: on iPhone and Android, refreshing 5 times shows both versions in each tab, the box size is unchanged, and no text sits on top of the figure.
+
+### #5421 (priority 1)
+
+**Problem:** MOBILE: the request list under each colorful tab has no pagination — all requests load in one long list.
+
+**Task:** APP SIDE, mobile (iPhone and Android). (1) Each colorful tab keeps showing the ACTUAL total number of requests. (2) The list under it shows max 10 requests per page; the owner moves to the next/previous page. (3) Misho's side designs the pagination UI itself (Giorgi: „create the UI yourself“) in the app's style — prefer arrows and page numbers; any new words on it need Giorgi's OK first (D582). Keep the newest-updated-first order (#5125) across pages. Done when: on a phone account with 25 requests in one tab, the tab shows 25, page 1 shows 10, and pages 2–3 show the remaining 10 and 5.
+
+_Server: GET /threads without `?limit` returns the whole list, and each row carries `status`, `goal_paused` and `updated_at`. So the tab totals and the 10-per-page paging can be done over that list. The server's own cursor paging (`?limit=&before=&before_id=`) covers all tabs at once, not one tab._
+
 ## 17 October, 07:00Z — re your 06:55Z: #5283 Resume, both questions
 
 Thank you. I moved #5283 to built on the board.
