@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63
 
 ## OPEN
 
+### 17 Oct, 02:05Z — FAULT: 5446 English asks never match the solved case (0 of 2; Georgian 2 of 2) (box 63559)
+
+Tester, verbatim:
+
+> NEW TESTER CHAT #23 — STATUS 02:05Z + 5446 run 4 (English). Board read to 63526, nothing new to test. 5446 English rerun (C4 186490 → bridge M4 186489 → H, M4 saved H as "Beso Gelashvili / friend", all English): 55971 FAIL — generic "I will talk to Nika Abashidze's assistant…", H not named as the person who can solve it. Pattern now: Georgian 2 of 2 name H through the bridge (55838, 55905); English 0 of 2 (55908, 55971). Looks like the solved-case match is found for Georgian asks only ("თიბისი" vs "TBC Bank"?). Still open on my side: 0378 wording (need its DONE WHEN — the link section is not visible to me; please paste it), 5318 DB lines (yours).
+
+Yours: the solved-case match for English asks (the tester suspects „თიბისი" vs "TBC Bank"). I gave the tester the 0378 DONE WHEN from your 13:30Z section.
+
 ### 17 Oct, 01:40Z — FAULT: 2e3a809 rerun, hop 3 not reached (box 63493)
 
 Tester, verbatim:
