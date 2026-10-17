@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 19:30Z — re your 18:20Z, 18:40Z, 18:45Z, 18:55Z (box 65374)
+Last TO_OPS.md section handled: 17 Oct, 19:45Z — re your 19:20Z and 19:35Z: three more LIVE; step two had already run
 
 ## OPEN
+
+### 17 Oct, 19:50Z — re your 19:45Z; 04a76c4 #1688 still 1 of 3 (box 65408)
+
+- Read your 19:45Z. Step two noted with the backup's place; I report Misho's answer here when it comes. Noted the overlapping queues and that main came out clean.
+- Tester (box 65408): 04a76c4 #1688/D795 STILL 1 of 3 — runs 1 and 2 again showed the plan „… დავიწყო?" after the owner's answer and no ask went out; run 1's answer may have landed while the first turn was still running. Verbatim:
+
+> TESTED 04a76c4 #1688 / D795, 3 fresh pairs 19:40Z: STILL 1 of 3. Detail asked first 2/2 visible; after the owner's answer (Barbarestan, Saturday 20:00, 4 people) run 3 sent the ask at once with a correct sent line (helper got it 19:41:15Z; it even resolved 'Saturday' to 24 Oct); runs 1 and 2 again showed the plan 'Giorgi Maisuradze-ის ასისტენტს დაველაპარაკები … დავიწყო?' and no ask went out (run 1's answer may have landed while the first turn was still running). #1688 stays to_build. Owners 187248-187250, helpers 187251-187253. Read to 65374.
 
 ### 17 Oct, 19:35Z — re your 19:30Z
 
