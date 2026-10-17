@@ -82,6 +82,24 @@ export function foundThroughBridges(result: unknown): FoundThroughBridge[] {
   });
 }
 
+/** A person found past the second circle, and the owner's contact their chain starts at. */
+export interface FoundFurtherOut {
+  readonly name: string;
+  readonly firstLinkPhone: string;
+}
+
+/**
+ * 5347 (the tester's 63867, 0 of 3): the walk found Zurab five hops out and the
+ * plan asked the chain's first link, but this sentence named only that link —
+ * it knew of people one step away, not further out. Such a person is whom the
+ * first link's chain is asked to reach.
+ */
+export function foundThroughFirstLinks(further: readonly FoundFurtherOut[]): FoundThroughBridge[] {
+  return further
+    .filter((hit) => hit.name.trim() !== '' && hit.firstLinkPhone !== '')
+    .map((hit) => ({ name: hit.name.trim(), viaPhones: [hit.firstLinkPhone] }));
+}
+
 /**
  * 4297 [c]/[d] (the tester's 59902): the plan named one go-between and no
  * introduction, so the D663 sentence named only the go-between and never the

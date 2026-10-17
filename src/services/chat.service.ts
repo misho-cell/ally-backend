@@ -98,6 +98,7 @@ import {
 import {
   FoundThroughBridge,
   foundThroughBridges,
+  foundThroughFirstLinks,
   introTargetSentence,
 } from './introTargetSentence';
 import { withQuestionFromSteps } from './questionWithButtons';
@@ -1137,10 +1138,12 @@ export async function withFurtherOut<T extends object>(
   userId: string,
   words: unknown,
   found: T,
+  runId?: string,
 ): Promise<T | (T & { further_out: FarHit[]; further_out_note: string })> {
   if (typeof words !== 'string') return found;
   try {
     const further = await farMembersHolding(Number(userId), words);
+    if (runId !== undefined) noteFoundFurtherOut(runId, further);
     return further.length === 0
       ? found
       : { ...found, further_out: further, further_out_note: FURTHER_OUT_NOTE };
@@ -5722,6 +5725,16 @@ function notePeopleFound(runId: string, result: unknown): void {
   }
 }
 
+/** 5347 (63867): people found further out, for the plan sentence — see foundThroughFirstLinks. */
+function noteFoundFurtherOut(runId: string, further: readonly FarHit[]): void {
+  const throughFirstLinks = foundThroughFirstLinks(further);
+  if (throughFirstLinks.length === 0) return;
+  runFoundThroughBridges.set(runId, [
+    ...(runFoundThroughBridges.get(runId) ?? []),
+    ...throughFirstLinks,
+  ]);
+}
+
 function peopleFoundCount(runId: string): number {
   return runFoundPeople.get(runId)?.length ?? 0;
 }
@@ -9509,10 +9522,12 @@ async function executeToolCall(
       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
       if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
       if (notInThePhonebook(byName)) {
-        return withFurtherOut(userId, input['name_query'], {
-          ...byName,
-          look_further: LOOK_ONE_RING_OUT,
-        });
+        return withFurtherOut(
+          userId,
+          input['name_query'],
+          { ...byName, look_further: LOOK_ONE_RING_OUT },
+          runId,
+        );
       }
       return withLikelyEmployers(userId, byName);
     }
@@ -9551,7 +9566,9 @@ async function executeToolCall(
         if (threadId !== undefined && typeof input['tag_query'] === 'string') {
           noteSecondDegreeResult(threadId, input['tag_query'], found);
         }
-        return secondCircleEmpty(found) ? withFurtherOut(userId, input['tag_query'], found) : found;
+        return secondCircleEmpty(found)
+          ? withFurtherOut(userId, input['tag_query'], found, runId)
+          : found;
       });
       // The tester's 1102 (C10): the second circle was searched under one word, so a
       // vet saved as „ვეტექიმი" by one friend was never found when another friend's
