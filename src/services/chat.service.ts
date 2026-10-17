@@ -1,3 +1,4 @@
+import { withExcelLine } from './excelLine';
 import {
   buttonLanguageRefusal,
   foreignLetterRefusal,
@@ -17050,6 +17051,8 @@ export async function processChat(
   if (serverSentLines !== undefined && askedOne.length === serverSentLines.asked) {
     effectiveFinal = serverSentLines.lines;
   }
+  // D796 / D800: an Excel ask answered with a list says where the file is, never „paste it".
+  effectiveFinal = withExcelLine(effectiveFinal, userMessage, language);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
     effectiveFinal = withoutClosingApprovalAsk(
