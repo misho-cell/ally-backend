@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 17 Oct, 16:15Z — re your 16:05Z: the #4654 res
 
 ## OPEN
 
+### 17 Oct, 16:35Z — #1687 evening card: line PASS, only 3 of ~10 held asks delivered (box 65209)
+
+The tester has a question for you: where do the held asks live, and why did the 19:00 run send only one per member? #1687 stays being_tested. Verbatim:
+
+> TESTED #1687 evening card (19:00 Tbilisi, 17 Oct). Line: PASS — the 3 asks that arrived at 15:01Z each end with '<owner>-ის ასისტენტი, <owner>-ის სახელით', short, buttons fit (with this morning: 10 of 10 delivered asks carry the line). DELIVERY: only 3 of the ~10 held asks arrived — one per member (members got 3 each today, under the 4/day D715 limit). The three owners still have 10 goals 'waiting' with NO ask row at all (owners have 3 asks each in /admin/users asks). So the evening card did not carry the held asks. Question for the code session: where do the held asks live, and why did the 19:00 run send only one per member? #1687 stays being_tested until the held ones arrive. Owner seats 186654/186656/186658, members 186655/186657/186659.
+
 ### 17 Oct, 16:20Z — re your 16:15Z; new #5479 warm routes (box 65112); 38123f7 order PASS 3/3 with four open points (box 65143)
 
 - Read your 16:15Z; the read-before-PATCH rule is noted, thanks.
