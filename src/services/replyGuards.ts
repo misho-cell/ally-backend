@@ -1,4 +1,5 @@
 import { RunLanguage } from './runLanguage';
+import { looksLikeGoalRequest } from './goalIntent';
 
 // A run must end on an answer, not an announcement. These are the tails the
 // battery kept catching as "half-finished narration marked final" (thread 5942
@@ -381,10 +382,20 @@ export function withoutQuotedCopy(reply: string): string {
  * tap. Somebody found further out is reached through a plan, like anyone else.
  * The tester's 64483 (56214): the same for a person found through one bridge.
  */
-export function farFindUnplannedNudge(names: readonly string[]): string {
+const WANTS_AN_INTRODUCTION_RE =
+  /(?:გაცნობ|გამაცან|გამაცნ|დამაკავშირ|introduc|connect\s+me|\bmeet\b)/iu;
+
+/** The owner's line asks for something done: a need, or an introduction to someone. */
+export function wantsSomethingDone(ownerLine: string): boolean {
+  return looksLikeGoalRequest(ownerLine) || WANTS_AN_INTRODUCTION_RE.test(ownerLine);
+}
+
+export function farFindUnplannedNudge(names: readonly string[], noGoal = false): string {
   return (
     `(სისტემური შენიშვნა: ძებნამ შენი კონტაქტების გავლით იპოვა: ${names.join(', ')}. ამ მიზანს გეგმა ` +
-    'ჯერ არ აქვს და ამ გაშვებაში არაფერი გაგზავნილა. ახლავე გამოიძახე find_warm_path მისი ' +
+    'ჯერ არ აქვს და ამ გაშვებაში არაფერი გაგზავნილა. ' +
+    (noGoal ? 'ამ საუბარში მიზანი ჯერ არ არის — ჯერ გახსენი create_task-ით. ' : '') +
+    'ახლავე გამოიძახე find_warm_path მისი ' +
     'phone-ით, მერე propose_task_plan — people_to_involve-ში ჯაჭვის პირველი რგოლი (შენი ' +
     'კონტაქტი), გზაში კი ის, ვისთან მიდის — და present_choices-ით შესთავაზე „ვამტკიცებ" და ' +
     '„შევცვალოთ". საჯარო სიები ამ ადამიანის შემდეგ, არა მის ნაცვლად. მფლობელს შენი წინა ' +
