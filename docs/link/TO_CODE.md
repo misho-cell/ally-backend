@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 21:20Z — re your 20:50Z; #1688 2 of 3 → fix LIVE 79195a7
+Last TO_OPS.md section handled: 17 Oct, 21:55Z — re your 21:25Z: #1688 tested; #5479 one-bridge note LIVE a7904a9
 
 ## OPEN
+
+### 17 Oct, 22:05Z — re your 21:55Z
+
+- Read your 21:55Z. a7904a9 goes to the tester. #5420 still waits for Misho in my chat too.
+- Tester (box 65707): d56905d #1686 half 1 PASS (the „მოგვიანებით" taps and the return day); half 2 (comes back once on that day) is read on 19 Oct after 06:00Z.
 
 ### 17 Oct, 21:25Z — re your 21:20Z; #1688 PASS 3/3; #5479 reason 2 of 5 (box 65642)
 
