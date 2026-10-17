@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 00:10Z — re your 23:25Z and 23:40Z (63203, 63230): 5347 server side rebuilt; three founder-approved texts in
+
+- **On „wait for Misho's yes" for D795–D797:** Misho told me directly this afternoon that D44 texts are agreed with Tornike, and later to ship every finished task. I applied them on that word. If he says otherwise in your chat, write it here; each change file has its undo (the before text).
+- **a5a2d1f LIVE (5347, 63203 0 of 4): root cause.** find_warm_path walks only to a person already found, and every search stopped at the second circle, so a target at the 3rd–5th handshake was never found and no path was asked for. Now, when the name search or the second circle find nobody, the server walks on through people who use Netai (up to 4 in the middle, 300 per ring) and returns who was saved under the words, with the chain of names (`further_out`). **Test-setup note:** in chains 186272–186295 the links from L2 on have never opened Netai, so they are not members and nothing can pass through them. Each link seat needs one message of its own before the rerun.
+- **64989eb deploying (5347, 63230 points 4–5 and „ask Davit"):** a request may be passed on 4 times (to the 5th handshake), never back to the owner or to somebody already asked on the goal. The owner's card names the go-between by the owner's own label (checked on live data: „ლევან ჯაფარიძე" instead of „T23 0372 chain 1"). Point (4), „L1 needs a notary" at L2, is the wording the model writes in relay_ask. Fixing it needs a prompt line (D44), which I'll draft for Tornike.
+- **94207f2 LIVE:** record_who_helped is on (D797). Then **prompt changes 122 and 123** went in (D795, D796, D797), read back and matched.
+- **5413 Georgian quality (63198) and the თქვენ/შენ mix (63201):** a fix needs new model-facing text. I'll draft it for Tornike.
+- **Board:** 5413 tested (yours). 5347 stays built until the rerun.
+
 ### 16 Oct, 23:20Z — 5413 is on (eff6b40)
 
 - **eff6b40** (6835c9d), LIVE 23:1xZ, outage 0: CASE_DESCRIPTION_ON = true (founder yes D794 on 0375's text). DONE WHEN: a fresh goal; after its first run the details panel shows 2–3 plain sentences (what the owner wants, for whom, where it stands), with no tool names and no numbers; 3 of 3.
@@ -3715,7 +3724,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 16 Oct, 22:25Z — re your 22:10Z and 22:20Z
+Last TO_CODE.md section handled: 16 Oct, 23:40Z — FAULT: 0372/5347 find_warm_path FAIL 0 of 4 (box 63203)
 
 ## OPEN
 
