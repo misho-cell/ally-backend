@@ -7028,6 +7028,29 @@ export function ownerLineWithItsDetail(screen: PlanConsentScreen): string {
 }
 
 /**
+ * The tester's 65408 (#1688, still 1 of 3 after 04a76c4): the run that followed
+ * the detail answer drew a plan and sent nothing, and the guard read only
+ * „Barbarestan, Saturday 20:00, 4 people" — no instruction in it — so the note
+ * that followed asked for a plan and an approve card instead of the ask. The
+ * guard reads the instruction and its detail together, as the send path does.
+ */
+async function withTheInstructionItAnswers(threadId: number, runLine: string): Promise<string> {
+  try {
+    const screen = await planConsentOnScreen(threadId);
+    return (screen.lastOwnerMessage ?? '').trim() === runLine.trim()
+      ? ownerLineWithItsDetail(screen)
+      : runLine;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[instruction-unsent] thread ${threadId}: owner lines unread:`,
+      (err as Error).message,
+    );
+    return runLine;
+  }
+}
+
+/**
  * Which card the owner is answering, given the thread — the decision half,
  * separated from the two queries so it can be tested without a database.
  *
@@ -14516,7 +14539,11 @@ async function runToolLoop(
     // D795 (Misho's yes, 17 Oct; the tester's 64520): asking the owner for the one
     // missing detail first is the right turn, not an instruction left unsent.
     !asksTheOwnerForADetail(finalText) &&
-    (await instructionLeftUnsent(userId, threadId, runOwnerLine.get(runId) ?? ''));
+    (await instructionLeftUnsent(
+      userId,
+      threadId,
+      await withTheInstructionItAnswers(threadId, runOwnerLine.get(runId) ?? ''),
+    ));
   if (instructionUnsent) {
     // eslint-disable-next-line no-console
     console.log(

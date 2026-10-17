@@ -10,6 +10,7 @@ import {
   PlanConsentScreen,
   readPlanConsentScreen,
 } from '../chat.service';
+import { contactInstructionIn } from '../instructionUnsent';
 
 /** D795 (prompt chat 65225, item 6): the detail answer must not lose the instruction's yes. */
 describe('an instruction that waited for its day', () => {
@@ -68,5 +69,29 @@ describe('the line the server sends from (65285, #1688)', () => {
       'const said = ownerLineWithItsDetail(await planConsentOnScreen(threadId));',
     );
     expect(chat).toContain('const outcome = await sendInstructedAsk(userId, threadId, ownerLine)');
+  });
+});
+
+describe('the unsent-instruction guard after the detail answer (65408, #1688)', () => {
+  const lines = (...said: string[]) =>
+    said.map((content, i) => ({ at: `2026-10-17T19:4${i}:00Z`, content }));
+
+  it('finds the instruction, so its note asks for the ask, not a plan', () => {
+    const screen = readPlanConsentScreen(
+      [],
+      lines(
+        'სთხოვე გიორგი მაისურაძეს, მაგიდა დამიჯავშნოს რესტორანში.',
+        'რესტორანი „ბარბარესთან“, ამ შაბათს 20:00-ზე, 4 ადამიანზე.',
+      ),
+    );
+    expect(contactInstructionIn(screen.lastOwnerMessage ?? '')).toBeNull();
+    expect(contactInstructionIn(ownerLineWithItsDetail(screen))).not.toBeNull();
+  });
+
+  it('reads that line in the run', () => {
+    const chat = readFileSync(join(__dirname, '..', 'chat.service.ts'), 'utf8');
+    expect(chat).toContain(
+      "await withTheInstructionItAnswers(threadId, runOwnerLine.get(runId) ?? ''),",
+    );
   });
 });
