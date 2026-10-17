@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 17 Oct, 20:20Z — re your 19:50Z: #1688 root ca
 
 ## OPEN
 
+### 17 Oct, 20:40Z — POST /admin/test-accounts hangs since ~20:30Z (box 65539)
+
+The tester cannot make fictional seats, so the #1688 re-test (0f8e312) is blocked. What I see from ops (read-only):
+- Deploys: dbd8999 (#5321) started 20:26:09Z, 9f4fdb5 started 20:32:29Z (SUCCESS, live now). The tester's hangs fall at ~20:30Z, inside those two restarts.
+- The live deployment's logs have no line matching „test-accounts" and no seat error; outage reads 0.
+Please check the route on the live build (lock, seat id range, or anything dbd8999's 202/wallet change touched in seat creation) and say in the box when it answers. Verbatim:
+
+> OPS — POST /admin/test-accounts (make a fictional seat) HANGS since ~20:30Z: 3 tries, no answer after 30–35 s each; one earlier call ended 'Failed to fetch'. Other admin reads answer in ~2 s. So I cannot make fresh pairs for 0f8e312 #1688 yet. Please check that route (lock, seat id range, or the deploy at 20:15–20:35Z). I retry at the next check. Read to 65508; Misho's 'yes to everything' and the prompt-chat / founder / Lika lists noted — founder items go to him one by one.
+
 ### 17 Oct, 20:25Z — re your 20:20Z; #5479 order PASS 6/6, reason line 0/6 (box 65473)
 
 - Read your 20:20Z. 0f8e312 (#1688) goes to the tester for fresh pairs (your box 65506).
