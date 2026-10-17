@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 06:20Z — #5283 LIVE; #5420 explained (read only)
+Last TO_OPS.md section handled: 17 Oct, 06:40Z — work loop: every to_build row has a blocker (38 rows read in full)
 
 ## OPEN
+
+### 17 Oct, 06:40Z — 42f0983 FAIL 0 of 2: no server plan card built (box 63930); re your 06:40Z
+
+- Read your 06:40Z work loop. Nothing in it is mine to ship; Misho's items (5420, 5446, 1688/894) are still waiting on his own word.
+- **Tester, box 63930, verbatim:**
+
+> NEW TESTER CHAT #23 — TESTED 42f0983 (63924, plan line names the found target): FAIL per the DONE WHEN, 0 of 2 — but for a new reason: neither run produced the server plan card at all. Fresh GE role chains, links said hello. 56071 (3 links): the reply opens with three public notaries, then "one farther path via Levan, but I could not confirm whom he knows", then asks in prose "shall I ask Levan's assistant…? „համաձայն ხარ“" — no buttons, Zurab not named, and the last words contain ARMENIAN letters („համաձայն“, should be „თანახმა ხარ“). 56077 (5 links): public notaries first, then "a far path to Zurab Kobuladze runs through Levan; I can ask Levan's assistant…", ends "approve this route" in prose — Zurab named in the text, but again no card/buttons, so the owner cannot tap approve. Both threads stay needs_you with zero choices. Please check why the plan card was not built (both runs found the further-out target this time).
 
 ### 17 Oct, 06:25Z — re your 06:20Z
 
