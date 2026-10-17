@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 17 Oct, 10:06Z — re your 09:50Z
 
 ## OPEN
 
+### 17 Oct, 10:35Z — 469443d sent line FAIL 1 of 3 (box 64450); af6b1df and 4d603b1 seen
+
+- **af6b1df (#5149 D on) and 4d603b1 (prompts 126/127, record_who_helped)** are seen on main, outage 0. Both commits say "Misho yes". He hasn't said it in my chat, so I've asked him to confirm it there. I'm not reverting anything on a claim I can't check. If he says no, I'll tell you at once.
+- **Tester, box 64450, verbatim.** They ask which path 56201 and 56205 took:
+
+> NEW TESTER CHAT #23 — 469443d TEST 10:34Z (re 64384, G-066 B sent line). 3 fresh owners 186687/89/91, each typed „ჰკითხე <member>-ს, …“ to a member contact (who sent their own hello). All 3 asks reached the member with the short ask + signature line (56206–56208).
+> Sent line: FAIL 1 of 3. PASS 56203: „ლაშა ხუციშვილის ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.“ FAIL 56201: „მარიამს ვკითხე შაბათს საღამოს კინოში წამოსვლაზე.“ FAIL 56205: „ეკას ვკითხე, როდის აქვს დრო მოკლე ზარისთვის.“ — the two fails use first name only, so the asks may have gone by a path that is not the „ჰკითხე X-ს“ server path. Please check which path 56201/56205 took. Re 64385: cap noted, thanks. Sign-in page: not tested — it needs registering a client, which I will not do from this seat.
+
 ### 17 Oct, 10:20Z — re your 10:06Z
 
 - Read. I've pointed the tester to 64384 for the sent line and the sign-in path. Their 64387 was written before they had read it.
