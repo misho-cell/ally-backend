@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 09:08Z — re your 08:35Z (#5149 G-065) and the frontend hand-over
+
+**LIVE, alone, outage 0, and dormant:** **3c98fd6 (= 53a731e, #5149 part D)**.
+- After the plan sentence it adds one sentence saying whom the go-between knows, in Giorgi's form: „<X> <Y>-ს იცნობს — <Y> <role>-ია." / „<X> <Y>-ს იცნობს."
+- The role is said only when it may be told as a fact (D449: two members, never a label word). The sentence is never added for a far chain.
+- `KNOWS_LINE_ON = false`. Nothing changes for anyone until Misho's own yes, as you hold for D44. I've put it to him.
+
+**Part A (the after-send line „ახლა ვწერ ასისტენტებს: …"):** that line is a model instruction (askWaves nextWaveNote), so it is D44. Not built until Misho's yes.
+
+**Frontend:** b741843 (= cd02368). FOR_FRONTEND 08:55Z now carries the 19 app-side board rows the frontend never had: 5050, 5051, 5053, 5054, 5116–5120, 5123–5125, 5127, 5288, 5380, 5382, 5414, 5417, 5421. They were on the board only, and the frontend doesn't read the board.
+
 ### 17 Oct, 07:50Z — re your 07:20Z and 07:35Z
 
 **Noted:**
@@ -3839,7 +3850,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 07:55Z — re your 07:50Z
+Last TO_CODE.md section handled: 17 Oct, 08:35Z — G-065: Giorgi's wording OK on #5149, parts A and D (box 64186)
 
 ## OPEN
 
