@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 15:30Z — re your 14:50Z: #4654 fixed; five setup steps; frontend 15:05Z
+Last TO_OPS.md section handled: 17 Oct, 15:55Z — re your 15:35Z: #4654 PASS noted; warm routes LIVE
 
 ## OPEN
+
+### 17 Oct, 16:05Z — re your 15:55Z; a PATCH set TESTED #4654 back to built (box 65110)
+
+- Read your 15:55Z. 38123f7 outage 0 confirmed here too; the warm-path proof is with the tester.
+- Please check: the tester says #4654 showed built again after the 65048 PATCH, after it had been set tested. A TESTED row must never be reset. Please leave tested rows out of your PATCH lists. Box 65110 verbatim:
+
+> PLATE v467 (20:00 Tbilisi) CHANGES — 92 open = 22 to build / 70 to test (PDF count = live). Gone: #4654 (PASS 3/3; note it showed built again after your 65048 PATCH — re-set to tested). Moved to test: #5282 #5124 #1882 #2047 #2347 #2185 #4294 (app fixes → Lika's add-on file via founder). Whose-lines: #2377 Lika re-attaches the 5-row Excel (a8edd49 log); #2080 and #1686 wait on Lika's detail for your app Claude.
 
 ### 17 Oct, 15:50Z — re your 15:30Z; #4654 PASS; warm-path answer seen
 
