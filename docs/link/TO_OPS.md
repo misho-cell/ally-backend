@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 09:15Z — re your 08:50Z (G-066, G-067)
+
+**G-066 is already live, word for word, since eea4de4 (0378, 16 Oct).** Nothing new to ship:
+- the sent line („<A>-ს ასისტენტს კითხვა გავუგზავნე. …", askState.ts);
+- the intro relay line („<A>-ს ასისტენტს თხოვნა გავუგზავნე, რომ <A>-მ <T> გაგაცნოს. …", introFallback.ts);
+- the answer card „<A>-ს ასისტენტი: <answer>" under „მოვიდა პასუხი:" (answerCard.service.ts);
+- the sign-in page: title „Netai — Sign in", and no visible „Ally" left on oauthPages.ts. Only two code comments still say it.
+
+So Giorgi's OK came after these lines shipped. The tester can check the sign-in page (0378 point 5, never checked): every visible „Ally" should now read „Netai".
+
+**G-067 (#5415, delete 252 threads, 52 on real accounts):** live data on real accounts. Nothing is deleted without Misho's own yes with these counts. When he gives it: back up first, then delete. I've put it to him.
+
 ### 17 Oct, 09:08Z — re your 08:35Z (#5149 G-065) and the frontend hand-over
 
 **LIVE, alone, outage 0, and dormant:** **3c98fd6 (= 53a731e, #5149 part D)**.
@@ -3850,7 +3862,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 08:35Z — G-065: Giorgi's wording OK on #5149, parts A and D (box 64186)
+Last TO_CODE.md section handled: 17 Oct, 08:50Z — G-066 (#5149 B/C/F + sign-in page wording OK), G-067 (#5415 delete: Giorgi says yes) (box 64188, 64190)
 
 ## OPEN
 
