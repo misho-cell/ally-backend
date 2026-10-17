@@ -58,8 +58,8 @@ describe('the setup list', () => {
     expect(doneCount(NONE, [])).toBe(0);
   });
 
-  it('does not count freshness, which setup no longer shows (4590)', () => {
-    expect(doneCount({ ...NONE, [SetupStep.Freshness]: true }, [])).toBe(0);
+  it('counts freshness again, now that setup shows five steps (#1882)', () => {
+    expect(doneCount({ ...NONE, [SetupStep.Freshness]: true }, [])).toBe(1);
   });
 
   it('reads the server’s own ticks and groups each gadget’s steps', async () => {
@@ -98,8 +98,8 @@ describe('the setup list', () => {
       },
     ]);
     expect(state.done_count).toBe(4);
-    // 4590: four steps on every screen; freshness is no longer counted.
-    expect(state.total).toBe(4);
+    // #1882: five steps again, freshness included.
+    expect(state.total).toBe(5);
     // 4598: the first conversation's time, for the banner's week.
     expect(state.started_at).toBe('2026-10-01');
   });

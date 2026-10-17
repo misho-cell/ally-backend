@@ -35,14 +35,12 @@ export enum Gadget {
 export const SETUP_STEPS: readonly SetupStep[] = Object.values(SetupStep);
 
 /**
- * 4590 (the frontend, 14 Oct 13:00Z): setup shows four steps — the freshness
- * step is no longer drawn (it lives in the monthly reminder), so it is not
- * counted either; otherwise „1 / 5" would never reach five on any screen.
- * A gadget may still record it.
+ * 4590 (the frontend, 14 Oct 13:00Z) dropped the freshness step and the count
+ * followed it to four. #1882 / #2047 (the tester's 64846, founder's plan of
+ * five): the frontend draws freshness again (their 17 Oct 15:05Z), so all
+ * five count, and „N / 5" can reach five.
  */
-export const COUNTED_SETUP_STEPS: readonly SetupStep[] = SETUP_STEPS.filter(
-  (step) => step !== SetupStep.Freshness,
-);
+export const COUNTED_SETUP_STEPS: readonly SetupStep[] = SETUP_STEPS;
 const DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export function isSetupStep(v: unknown): v is SetupStep {
