@@ -325,6 +325,7 @@ import {
   writeOldProfile,
   writeDueUpdate,
   writeGeorgianName,
+  writeResearchFact,
   writeStaleFact,
 } from '../../services/seatFixtures.service';
 import { goalWaveRanking, WaveRankingOutcome } from '../../services/waveRanking.service';
@@ -7181,6 +7182,9 @@ adminRouter.delete('/users/:userId/empty', async (req: Request, res: Response) =
  *        { phone, field_type: occupation|employer|city|industry, value, days_ago }
  *   POST /admin/test-accounts/:id/fixtures/georgian-name
  *        { phone, georgian_name }  the seat's saved Georgian spelling (#4654)
+ *   POST /admin/test-accounts/:id/fixtures/research-fact
+ *        { phone, field_type, value, status, source_url, fact_date }  a researched fact
+ *        on a fictional contact of the seat, as the base load writes one (#4225)
  *   POST /admin/test-accounts/:id/fixtures/answer-record
  *        { goal_text | task_id, asked, yes, no, referred, first_answer_minutes_median | null }
  *        task_id files the record under that goal's own field (ops 02:36Z).
@@ -7253,6 +7257,36 @@ adminRouter.post(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[fixtures/georgian-name]', (error as Error).message);
+      res.status(500).json({ success: false, error: 'Nothing was written' });
+    }
+  },
+);
+
+adminRouter.post(
+  '/test-accounts/:id/fixtures/research-fact',
+  async (req: Request, res: Response) => {
+    const seatId = seatIdOf(req);
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const fields = [b.phone, b.field_type, b.value, b.status, b.source_url, b.fact_date];
+    if (seatId === null || !fields.every((f): f is string => typeof f === 'string')) {
+      sendFixture(res, FixtureOutcome.BadInput);
+      return;
+    }
+    try {
+      sendFixture(
+        res,
+        await writeResearchFact(seatId, {
+          phone: String(b.phone),
+          fieldType: String(b.field_type),
+          value: String(b.value),
+          status: String(b.status),
+          sourceUrl: String(b.source_url),
+          factDate: String(b.fact_date),
+        }),
+      );
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[fixtures/research-fact]', (error as Error).message);
       res.status(500).json({ success: false, error: 'Nothing was written' });
     }
   },

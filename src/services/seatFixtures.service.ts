@@ -2,6 +2,7 @@ import { query } from '../db/postgres/client';
 import { askField } from './answerStats.service';
 import { FACT_FIELD_TYPES } from './contactFacts.service';
 import { normalizePhone, phoneDigits } from './phone';
+import { isFictionalNumber } from './fictionalNumbers';
 
 /**
  * Tester 49567 (rule B, 9 Oct): two plate rows wait on state no chat can make
@@ -282,4 +283,62 @@ export async function writeDueUpdate(
     QUERY_TIMEOUT_MS,
   );
   return (written.rowCount ?? 0) > 0 ? FixtureOutcome.Written : FixtureOutcome.BadInput;
+}
+
+/** §119.1: research facts are kept on these fields only. */
+const RESEARCH_FIELDS: ReadonlySet<string> = new Set(['occupation', 'employer', 'industry']);
+const RESEARCH_STATUSES: ReadonlySet<string> = new Set(['confirmed', 'possible', 'rough']);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
+const URL_RE = /^https?:\/\/\S{3,300}$/u;
+
+export interface ResearchFactInput {
+  readonly phone: string;
+  readonly fieldType: string;
+  readonly value: string;
+  readonly status: string;
+  readonly sourceUrl: string;
+  readonly factDate: string;
+}
+
+/**
+ * #4225 (the tester's 65720): a researched fact on a seat's contact, written as
+ * the base load writes one (§119.1: the system saver, private, unmatchable,
+ * with source and date), so the test can find a person by it. A research fact
+ * belongs to the number, not to whoever saved it, so the number must be
+ * fictional as well as the seat's own contact — it never lands on a real person.
+ * Replaces the number's earlier research fact on the same field.
+ */
+export async function writeResearchFact(
+  seatId: number,
+  input: ResearchFactInput,
+): Promise<FixtureOutcome> {
+  const value = input.value.trim().slice(0, MAX_FACT_CHARS);
+  if (
+    value === '' ||
+    !RESEARCH_FIELDS.has(input.fieldType) ||
+    !RESEARCH_STATUSES.has(input.status) ||
+    !URL_RE.test(input.sourceUrl) ||
+    !DATE_RE.test(input.factDate)
+  ) {
+    return FixtureOutcome.BadInput;
+  }
+  if (!(await isTestSeat(seatId))) return FixtureOutcome.NotATestSeat;
+  const phone = normalizePhone(input.phone);
+  if (!isFictionalNumber(phone) || !(await seatSavedThisNumber(seatId, phone))) {
+    return FixtureOutcome.NotTheSeatsContact;
+  }
+  await query(
+    `WITH earlier AS (
+       UPDATE contact_facts SET retracted_at = NOW()
+        WHERE neo4j_contact_id = $1 AND source = 'public_research' AND submitted_by_user_id = '0'
+          AND field_type = $2 AND retracted_at IS NULL
+     )
+     INSERT INTO contact_facts
+       (neo4j_contact_id, submitted_by_user_id, field_type, value, is_public, source, confidence,
+        is_matchable, research_status, source_url, fact_date)
+     VALUES ($1, '0', $2, $3, false, 'public_research', 'mentioned', false, $4, $5, $6::date)`,
+    [phone, input.fieldType, value, input.status, input.sourceUrl, input.factDate],
+    QUERY_TIMEOUT_MS,
+  );
+  return FixtureOutcome.Written;
 }
