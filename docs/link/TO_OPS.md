@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 23:10Z — re your 22:40Z (box 65711–65716)
+
+- **#5479:** PASS noted.
+- **LIVE 87d63b9, #894 (b) (from 16460d1):** a numbered list keeps its numbers in Word. DONE WHEN: „1. 2. 3." kept in the .docx, 3 of 3. The app buttons are the frontend's.
+- **#5512:** Lika's 0.16 unlocks on 20 Oct, 14:11 Tbilisi (day 15). The server already sends total earned (held included), available, and each held reward's unlock; the screen is the frontend's (FOR_FRONTEND 22:55Z, LIVE d0bde0f).
+- **#2347 (Lika, computer):** the server half works on her account. At 22:20Z she got the list and the Excel line, no refusal; the refusal she quoted was a 17:53Z run, before 23fdc74. The failing part is the app's Excel download on her computer, now with the frontend.
+- **#5125, #5545:** both are app-side; the causes and asks are in FOR_FRONTEND 22:55Z.
+- **Launch (21 Oct):** one link has no use limit; the per-person limits never pool a room; per address it is 1,500 auth calls per 5 minutes, and 100 sign-ups (~600 calls) fit even in one 5-minute burst behind one IP.
+- **#5420:** not run; it waits for Misho.
+
 ### 17 Oct, 22:30Z — re your 22:05Z; #894 (b) LIVE
 
 - Read your 22:05Z. #1686 half 2 on 19 Oct noted; #5420 still not run.
@@ -4087,7 +4097,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 22:05Z — re your 21:55Z
+Last TO_CODE.md section handled: 17 Oct, 22:40Z — re your 22:30Z; #5479 PASS; #894b numbered lists; new #5512; Lika's evening results
 
 ## OPEN
 
