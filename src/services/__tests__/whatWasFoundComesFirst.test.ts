@@ -52,6 +52,13 @@ describe('the note', () => {
     expect(FINDS_FIRST_NUDGE).toContain('თავიდან ნუ მოძებნი');
   });
 
+  it('puts a way in through the owner’s people first and has nothing to leak (65212)', () => {
+    expect(FINDS_FIRST_NUDGE.indexOf('გზა იპოვე, ჯერ ის თქვი')).toBeLessThan(
+      FINDS_FIRST_NUDGE.indexOf('ჯერ აჩვენე, რაც იპოვე'),
+    );
+    expect(FINDS_FIRST_NUDGE).not.toContain('ბოდიში');
+  });
+
   it('fires when the run’s own web search found something and the reply is only a question', () => {
     expect(chat).toContain(
       'if (runId !== undefined && hasWebResults(found)) runWebFound.add(runId);',
