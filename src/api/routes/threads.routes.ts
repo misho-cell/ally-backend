@@ -1060,8 +1060,12 @@ threadsRouter.post(
       // for the title, two round trips of ~150 ms each that depend on nothing
       // between them. It is written beside the wallet check and awaited with it.
       const needsTitle = thread.type === 'regular' && needsRealTitle(thread.title, message);
+      const provisional = provisionalTitle(message).slice(0, MAX_TITLE_CHARS);
+      // 5321: the 202 no longer waits for this write, so the list hears the title when it lands.
       const titled = needsTitle
-        ? updateThreadTitle(threadId, provisionalTitle(message).slice(0, MAX_TITLE_CHARS))
+        ? updateThreadTitle(threadId, provisional).then(() =>
+            emitThreadUpdated(userId, { id: threadId, title: provisional }),
+          )
         : Promise.resolve();
       titled.catch(() => undefined);
 
@@ -1092,8 +1096,7 @@ threadsRouter.post(
           : payerId === userId
             ? await ownAllowance
             : await checkRunAllowance(payerId);
-      await titled;
-      if (needsTitle) clock.mark('title');
+      clock.mark('allowance');
       /**
        * Row 221 — D348 item 2. At zero the person's next message is still
        * ANSWERED ONCE, and the wall comes after that answer rather than
@@ -1233,7 +1236,7 @@ threadsRouter.post(
       }
 
       res.status(202).json({ success: true, runId });
-      clock.mark('allowance_and_reply');
+      clock.mark('reply');
       // eslint-disable-next-line no-console
       console.log(`[accept-timing] thread ${threadId}: ${clock.line()}`);
 
@@ -1247,6 +1250,13 @@ threadsRouter.post(
        * message is accepted by now; what follows goes to the ordinary pools.
        */
       await leaveIntakeLane(async () => {
+        /**
+         * 5321 (the 50-seat run, 17 Oct 17:32Z): „title" was 1.3–1.8 s of a
+         * 2.5 s accept, and it held both the title write and the allowance.
+         * The 202 waits only for the allowance now; the run still starts
+         * after the title is written, so nothing reads a missing title.
+         */
+        await titled.catch(() => undefined);
         // Ticket 7 Task 1(c), founder's ruling D48: an incoming_ask thread is a
         // PRIVATE conversation between the recipient and their own assistant.
         // The auto-capture that lived here — the recipient's first raw message

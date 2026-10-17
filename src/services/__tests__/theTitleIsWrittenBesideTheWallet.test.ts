@@ -14,15 +14,27 @@ describe('the provisional title on an arriving message', () => {
   );
 
   it('is started without waiting for it', () => {
-    expect(route).not.toMatch(/await updateThreadTitle\(threadId, provisionalTitle/u);
-    expect(route).toMatch(/const titled = needsTitle\s+\? updateThreadTitle\(/u);
+    expect(route).not.toMatch(/await updateThreadTitle\(threadId, provisional/u);
+    expect(route).toMatch(
+      /const titled = needsTitle\s+\? updateThreadTitle\(threadId, provisional\)/u,
+    );
     expect(route).toContain('titled.catch(() => undefined);');
   });
 
-  it('is awaited after the wallet check and before the 402 or the 202', () => {
-    const awaited = route.indexOf('await titled;');
-    expect(awaited).toBeGreaterThan(route.indexOf('checkRunAllowance(payerId)'));
-    expect(awaited).toBeLessThan(route.indexOf('res.status(402)'));
-    expect(awaited).toBeLessThan(route.indexOf('res.status(202).json({ success: true, runId })'));
+  /**
+   * 5321 (the 50-seat run, 17 Oct): the 202 waited for the title as well as the
+   * wallet, 1.3–1.8 s of a 2.5 s accept. The 202 waits for the wallet only; the
+   * run starts after the title, and the list is told the title when it lands.
+   */
+  it('is awaited before the run, not before the 202', () => {
+    const awaited = route.indexOf('await titled.catch(() => undefined);');
+    expect(awaited).toBeGreaterThan(
+      route.indexOf('res.status(202).json({ success: true, runId })'),
+    );
+    expect(awaited).toBeGreaterThan(route.indexOf('await leaveIntakeLane(async () => {'));
+    expect(awaited).toBeLessThan(
+      route.indexOf('keepUserMessage(userId, threadId, message);', awaited),
+    );
+    expect(route).toContain('emitThreadUpdated(userId, { id: threadId, title: provisional })');
   });
 });
