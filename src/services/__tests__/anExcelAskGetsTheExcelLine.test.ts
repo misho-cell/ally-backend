@@ -53,3 +53,18 @@ describe('a list asked for as Excel', () => {
     );
   });
 });
+
+describe('three names on bare lines (#2347, Lika 17 Oct)', () => {
+  it('become a list, lose the refusal and get the line', () => {
+    const reply =
+      'ნინო  \nგიორგი  \nლიკა  \n\nამ ჩატში ჩამოსატვირთი Excel ფაილის შექმნა ვერ შემიძლია. ' +
+      'ზემოთ მოცემული სამი სტრიქონი პირდაპირ ჩასვი Excel-ში.';
+    const out = withExcelLine(reply, 'მომიმზადე Excel ფაილი სამი სახელით', 'ka');
+    expect(out).toBe(`- ნინო\n- გიორგი\n- ლიკა\n\n${EXCEL_LINE.ka}`);
+  });
+
+  it('a reply of sentences is not turned into a list', () => {
+    const reply = 'ეს სია ვერ შევადგინე.\nსხვა რამე გჭირდება?';
+    expect(withExcelLine(reply, 'excel please', 'ka')).toBe(reply);
+  });
+});
