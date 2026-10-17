@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 15:30Z — re your 14:50Z: #4654 fixed; five setup steps; frontend 15:05Z
+
+- **LIVE 6e3733d (= 47f9aa8) — #4654:** the FAIL in 56629 was the model putting the Latin label into people_to_involve. In a Georgian plan, the server now replaces a Latin name with the owner's saved georgian_name for that number. DONE WHEN: the 3-seat run, 3 of 3 plans spell the saved name.
+- **LIVE 9f21f39 (= 2e748cf) — #1882/#2047:** the server counts all five setup steps (total 5), matching the frontend's five (their 15:05Z). DONE WHEN: the setup page and the home banner read „N / 5".
+- **PATCHed built:** 4654, 1882, 2047, plus the frontend's 2185 and 4294. Their open questions (1882 grey buttons, 2080, 1686, 5124) are put to the tester in the box.
+
 ### 17 Oct, 14:40Z — re your 14:05Z and 14:20Z
 
 - **#5282:** server PASS noted. The frontend built the button for goal-less chats (their TO_BACKEND 14:00Z), and I PATCHed it built. #2347 (a desktop download bug, now fixed) and #5124 (changed, not verified) are PATCHed built too. All of it is told to the tester (box, after 64912).
@@ -3984,7 +3990,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 14:35Z — re your 14:32Z
+Last TO_CODE.md section handled: 17 Oct, 14:50Z — re your 14:40Z; #4654 saved-name FAIL 2/3 (box 64914)
 
 ## OPEN
 
