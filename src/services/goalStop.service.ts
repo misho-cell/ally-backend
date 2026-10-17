@@ -392,18 +392,31 @@ const RESUMED_LINE: Readonly<Record<RunLanguage, (title: string) => string>> = {
   es: (title) => `«${title}» está en marcha de nuevo — sigo con ello.`,
 };
 
-/** The thread's goal, when it is one its owner stopped and has not closed. */
+/**
+ * 5283 (Lika, 15 Oct, re #1919): a PAUSED goal had no way back but the typed
+ * „restore task" — the resume button answered „not stopped". Paused is not
+ * finished: it resumes the same way. Closing for good stays a stopped goal's only.
+ */
+export enum Resumable {
+  StoppedOnly = 'stopped_only',
+  StoppedOrPaused = 'stopped_or_paused',
+}
+
+/** The thread's goal, when it is one its owner stopped (or paused, when asked) and has not closed. */
 async function stoppedGoalOn(
   userId: string,
   threadId: number,
+  which: Resumable = Resumable.StoppedOnly,
 ): Promise<Task | 'none' | 'not_stopped'> {
   const thread = await getThread(threadId, userId);
   if (!thread) return 'none';
   const task = await getGoalOnThread(threadId);
   if (!task) return 'none';
   const stopped = await query<{ id: number }>(
-    `SELECT id FROM tasks WHERE id = $1 AND status = 'closed' AND closed_as = 'stopped'`,
-    [task.id],
+    `SELECT id FROM tasks
+      WHERE id = $1
+        AND ((status = 'closed' AND closed_as = 'stopped') OR ($2::boolean AND status = 'paused'))`,
+    [task.id, which === Resumable.StoppedOrPaused],
     QUERY_TIMEOUT_MS,
   );
   return stopped.rows.length > 0 ? task : 'not_stopped';
@@ -415,7 +428,7 @@ export async function resumeStoppedGoal(
   threadId: number,
   language: RunLanguage,
 ): Promise<StoppedGoalAction> {
-  const task = await stoppedGoalOn(userId, threadId);
+  const task = await stoppedGoalOn(userId, threadId, Resumable.StoppedOrPaused);
   if (task === 'none') return { ok: false, reason: 'not_found' };
   if (task === 'not_stopped') return { ok: false, reason: 'not_stopped' };
   await updateTask(userId, task.id, 'open');
@@ -431,7 +444,12 @@ export async function resumeStoppedGoal(
     RESUMED_LINE[language](task.title),
   );
   await setThreadStatus(userId, threadId, 'waiting');
-  emitThreadUpdated(userId, { id: threadId, goal_stopped: false, goal_stopped_open: false });
+  emitThreadUpdated(userId, {
+    id: threadId,
+    goal_stopped: false,
+    goal_stopped_open: false,
+    goal_paused: false,
+  });
   const event = resumedEvent(await askedBeforeTheStop(task.id));
   void import('./taskEngine.service').then(({ wakeAfterResume }) =>
     wakeAfterResume(task.id, event),

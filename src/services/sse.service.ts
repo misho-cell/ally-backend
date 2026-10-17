@@ -372,6 +372,8 @@ export interface ThreadUpdatePayload {
   /** #1919: the goal was stopped / is stopped and not yet closed by its owner. */
   goal_stopped?: boolean;
   goal_stopped_open?: boolean;
+  /** 4930: the goal is paused; 5283: false again once it is resumed. */
+  goal_paused?: boolean;
   /** #2080: flagged / cleared by its owner on one device. */
   followed?: boolean;
   /** 5413: the case description for the details panel, rewritten after a run. */

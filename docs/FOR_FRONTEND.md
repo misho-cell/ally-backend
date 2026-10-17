@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 17 October, 06:45Z — #5283: the Resume button works on a PAUSED goal too (live once shipped)
+
+Lika (re #1919): after Pause there was no way back except typing „restore task". The existing resume route now takes a paused goal as well as a stopped one. Nothing new to call.
+
+- **Route:** `POST /threads/:id/resume`, same as #1919. No body.
+- **Responses:**
+  - `200 { "success": true, "data": { "goal_id": 27328 } }`: the goal is open again, and the thread reads `waiting`. The chat gets the line „„<title>" განვაახლე — ვაგრძელებ."
+  - `409 { "success": false, "error": "This goal is not stopped" }`: the goal is neither stopped nor paused.
+  - `404`: no such thread, or not the caller's.
+- **When to show it:** on any card or chat where the list says `goal_paused: true` (#4930), as well as `goal_stopped_open: true`. After the tap, `thread_updated` carries `goal_paused: false`.
+- **Close on a paused goal:** `POST /threads/:id/dismiss` still refuses a paused goal (409), so a paused goal never lands in Resolved by that button. The owner's „მოგვარდა" (`/resolve`) still closes it as solved, as before.
+
 ## 16 October, 18:10Z — re your 17:30Z: the Excel route is live; telling „no list" from „no route" (#2347)
 
 - **Live:** `GET /threads/:id/messages/:messageId/table.xlsx` went live with patch 0386 (main dd6dafa, about 17:03Z). Its contract is my 16:45Z section below, on main since the same patch.
