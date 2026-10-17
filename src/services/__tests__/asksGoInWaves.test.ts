@@ -140,7 +140,7 @@ describe('the first wave', () => {
     waveReads(1, [], []);
     const note = nextWaveNote(await readWave(TASK));
     expect(note).toContain('Person 1, Person 2, Person 3');
-    expect(note).toContain('„ახლა ვეკითხები: Person 1, Person 2, Person 3"');
+    expect(note).toContain('„ახლა ვწერ ასისტენტებს: Person 1, Person 2, Person 3"');
     expect(note).not.toContain('Person 4');
   });
 });
@@ -285,5 +285,20 @@ describe('the order gate (BD)', () => {
     const line = notInOrderLine(nextInOrder(snapshot(1)));
     expect(line).toContain('ამ ტალღაში ჯერ ამათ მისწერე: Person 2, Person 3.');
     expect(line).toContain('მფლობელს არაფერს ეუბნები.');
+  });
+});
+
+/** #5149 A (Giorgi, G-065; Misho's yes 17 Oct): the caption names the assistant. */
+describe('the caption while an ask goes out', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { namedStepCaption } = require('../runLanguage') as typeof import('../runLanguage');
+
+  it('says it writes to the person’s assistant, never to the person', () => {
+    expect(namedStepCaption('ask_contact', { contact_name: 'ნინო ჩხეიძე' }, 'ka')).toBe(
+      '✉️ ნინო ჩხეიძის ასისტენტს ვწერ…',
+    );
+    expect(namedStepCaption('ask_contact', { contact_name: 'Nino' }, 'en')).toBe(
+      "✉️ Writing to Nino's assistant…",
+    );
   });
 });
