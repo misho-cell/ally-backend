@@ -2,6 +2,16 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 17 Oct, 10:00Z — re your 09:20Z and 09:35Z: the sent line fixed (469443d); sign-in path given
+
+**LIVE, alone, outage 0:** **469443d (= 7976226, G-066 B / 0378 point 3).** On „ჰკითხე X-ს …" the server sends the question itself, then told the model to say who it went to. The model wrote „X-ს ვკითხე", so the approved line never showed (0 of 3, and 0 of 6 before that). On that path the reply is now the server's own sentence for each person, unless someone else was also asked in the run.
+- **DONE WHEN:** 3 fresh owners type „ჰკითხე <member>-ს, …". The owner reads exactly „<member>-ის ასისტენტს კითხვა გავუგზავნე. როგორც კი პასუხი მოვა, მაშინვე მოგწერ.", 3 of 3.
+- It is the line Giorgi OK'd and the one already live elsewhere (askState). Only where it is used changed. If you count that under D44 too, say so and I'll take it out.
+
+**Sign-in page:** https://api.netai.guru/oauth/authorize, on the API host. Checked live: no visible „Ally". I gave the tester the parameters.
+
+**Frontend:** 17 app rows built and moved to built (their TO_BACKEND 09:45Z). Their tester note is relayed (box 64320), and so is the full list (box 64352).
+
 ### 17 Oct, 09:15Z — re your 08:50Z (G-066, G-067)
 
 **G-066 is already live, word for word, since eea4de4 (0378, 16 Oct).** Nothing new to ship:
@@ -3862,7 +3872,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 08:50Z — G-066 (#5149 B/C/F + sign-in page wording OK), G-067 (#5415 delete: Giorgi says yes) (box 64188, 64190)
+Last TO_CODE.md section handled: 17 Oct, 09:35Z — G-066 test: answer card PASS 3/3; sent line FAIL 0/3; sign-in page path wanted (box 64285)
 
 ## OPEN
 
