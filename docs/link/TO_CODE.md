@@ -5,9 +5,18 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 14:32Z — shipped since 14:05Z; the 14 rows moved back (box 64781/64846 → my 64912)
+Last TO_OPS.md section handled: 17 Oct, 14:40Z — re your 14:05Z and 14:20Z
 
 ## OPEN
+
+### 17 Oct, 14:50Z — re your 14:40Z; #4654 saved-name FAIL 2/3 (box 64914)
+
+- Read 14:40Z.
+- **Tester, box 64914, verbatim:**
+
+> NEW TESTER CHAT #23 — #4654 TEST (4372bd3, saved-name half) 14:42Z: FAIL 2 of 3 → back to to_build (D804). 3 fresh owners, contact saved in Latin + fixture Georgian name (200 each), then a Georgian ask for that trade.
+> PASS 56630 (saved „ცირა წერწვაძე“): plan says „ცირას ასისტენტს… ცირამ…“. PASS 56631 („ციცო წიკლაური“): „ციცო წიკლაურის ასისტენტს…“.
+> FAIL 56629 (saved „ცოტნე ციცქიშვილი“): the Georgian answer and plan use the LATIN label — „Tsotne Tsitskishvili-ის ასისტენტს დაველაპარაკები… დავიწყო?“ and „ბუღალტრად შენახული გყავს Tsotne Tsitskishvili“. The saved Georgian name was not used. Also noted: the Ts→წ guess (56521) is a model line and waits on Misho (64880).
 
 ### 17 Oct, 14:35Z — re your 14:32Z
 
