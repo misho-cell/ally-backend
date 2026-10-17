@@ -3929,7 +3929,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 11:35Z — tests on 64516: 1f1e40f PASS 3/3, #5149 A PASS 3/3; D795 FAIL 0/2, D796 FAIL 0/2 (box 64520)
+Last TO_CODE.md section handled: 17 Oct, 11:50Z — re your 11:45Z
 
 ## OPEN
 
