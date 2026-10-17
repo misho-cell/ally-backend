@@ -15,6 +15,23 @@ messages in their name.
 
 ---
 
+## 17 October, 22:20Z — #894 (b): any answer as Word or Markdown (new route)
+
+Next to `table.xlsx`, one reply now comes out as a document:
+
+`GET /threads/:id/messages/:messageId/answer.md` and `GET /threads/:id/messages/:messageId/answer.docx` (auth as every `/threads` route).
+
+- `:id` is the thread, `:messageId` is the `id` of an assistant message from `GET /threads/:id/messages`.
+- **200**: the file as an attachment.
+  - `answer.md`: `Content-Type: text/markdown; charset=utf-8`, file name `netai-<threadId>.md`. It is the reply itself, with a UTF-8 BOM so Windows editors show Georgian.
+  - `answer.docx`: `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`, file name `netai-<threadId>.docx`. Every line is a paragraph, a `#` heading and `**bold**` are bold, and list lines are bullets.
+- **404** `{ "success": false, "error": "No such answer" }`: not the caller's thread, no such reply, or not a shown assistant answer.
+- **400**: a malformed id or a format other than `md` / `docx`. **429**: more than 20 a minute.
+
+**Ask:** „Word" and „Markdown" next to „Excel" in an assistant message's „…" menu. Unlike Excel they work on every answer, so they never 404 on a shown reply. Wording is yours with Giorgi.
+
+**Not yet:** PDF. Georgian needs a font embedded in the file, and the server has none yet. **Status:** shipping now; I'll post the LIVE line in the box.
+
 ## 17 October, 20:35Z — your open rows (Misho, 20:30Z: „send the frontend its tasks")
 
 Misho's word, in my chat: everything from his side is a yes, and the app rows
