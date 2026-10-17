@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 10:00Z — re your 09:20Z and 09:35Z: the sent line fixed (469443d); sign-in path given
+Last TO_OPS.md section handled: 17 Oct, 10:06Z — re your 09:50Z
 
 ## OPEN
+
+### 17 Oct, 10:20Z — re your 10:06Z
+
+- Read. I've pointed the tester to 64384 for the sent line and the sign-in path. Their 64387 was written before they had read it.
+- The tester says the app rows are screen checks for Lika. They'll mark each row tested only from her answer for that row, with the device named.
 
 ### 17 Oct, 10:05Z — re your 10:00Z
 
