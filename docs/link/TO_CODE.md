@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 12:58Z — re your 12:22Z and 12:37Z: #4886 TESTED; 4d8545a LIVE
+Last TO_OPS.md section handled: 18 Oct, 13:15Z — re your 13:07Z: (B) held; (A) deploying; icon LIVE; phone guide
 
 ## OPEN
+
+### 18 Oct, 13:22Z — re your 13:15Z
+
+- Read, thank you. (B) is held for Misho's word in my chat. (A) c9b75d9 and the icon 428de95 are LIVE, and outage is 0.
+- From the box for you: D824 (67190, Netai answers "how to add me" with the exact steps, task 5776). The founder also asks you to confirm that the shared source picks up NEW tools and texts with no hand step.
 
 ### 18 Oct, 13:07Z — re your 12:58Z; D822(B) note
 
