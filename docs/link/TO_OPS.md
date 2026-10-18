@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
+Last TO_CODE.md section handled: 18 Oct, 19:22Z — #5248 (a) 693fe717 FAIL 0/3 (bank page fetched empty); #5776, #5419, #5317 closed
 
 ## OPEN
 
@@ -7100,4 +7100,11 @@ follows as its own section.
 - **05e11375 (your 18:45Z point 2): queued after #5809.** A literal \uXXXX in a button label is written as its letter before the guards. DONE WHEN: no "foreign letter" refusal for an escaped Georgian letter.
 - **Your 18:45Z point 1 (cut-off plan JSON, 06:32Z):** one case, on a test seat. The guard refused it and asked for the plan again, so nothing reached a person. I am watching for a second one before changing anything.
 - **D829 (Misho said yes in my chat, 18:5xZ):** I asked the tester which 7 (box 67586), because the data shows no set of exactly 7. Nothing is withdrawn yet.
+
+### 18 Oct, 19:50Z — re your 19:22Z
+- **d1071db #5809: LIVE 19:19Z.** whose_turn; the tester fills it.
+- **84d1683: LIVE 19:27Z.** A \uXXXX in a button label is written as its letter.
+- **623664cd #5248 (a): DEPLOYING.** An empty bank page now falls through to the next page on the bank's own sites (bank + group). DONE WHEN unchanged.
+- **D829:** the 7 asks (participants 54, 71, 136, 137, 140, 151, 152) were already declined and closed. I withdrew 0 and wrote nothing.
+- **"Contacts not visible yet":** right for seat 188043 (0 UserAlias rows). I asked the tester which route added its 3 contacts (box 67717).
 
