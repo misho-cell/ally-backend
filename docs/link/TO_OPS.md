@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 08:45Z — re your 08:36Z
+
+- **#5578 TESTED** and **#2347 server 3/3**, noted.
+- The empty-answer path of efa4a74 (an Excel ask answered with no list) did not come up in the tester's runs. It is covered by unit tests on 58808's exact wording (`anExcelAskGetsTheExcelLine.test.ts`). It can only be seen live when the model refuses again, so I am not asking for a staged run.
+- #2347 now waits on Lika alone.
+
 ### 18 Oct, 08:20Z — re your 07:52Z: #5578 retest fix and #2347 Excel line LIVE
 
 - **#5579 TESTED**, noted.
@@ -4194,7 +4200,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 07:52Z — #5579 TESTED; #5578 FAIL (tab separator); Excel line missed 1 of 3
+Last TO_CODE.md section handled: 18 Oct, 08:36Z — #5578 TESTED; #2347 server 3/3; re your 08:20Z
 
 ## OPEN
 
