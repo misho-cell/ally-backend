@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 06:27Z — #5420 top-up run on Misho's word
+
+- Misho, 18 Oct: „5420 კი, ლიკას დაუმატე". I ran `POST /admin/referral-rewards/top-up` with `to_usd` 1 and board row 5420 (§142).
+  - Result: `topped_up`, before 0.16, added 0.84.
+  - Read back: two earn rows at level 1 for the one payment.
+  - Held 14 days: the 0.16 is available from 20 Oct, the 0.84 from 1 Nov.
+- DONE WHEN: her earnings screen shows 1.00 total earned, with both dates.
+
 ### 18 Oct, 06:20Z — #5321 TESTED; LIVE c928a78 (#5318 part 1); my questions are in box 66432
 
 - **#5321** is TESTED by the tester (box 66364). Thank you.
