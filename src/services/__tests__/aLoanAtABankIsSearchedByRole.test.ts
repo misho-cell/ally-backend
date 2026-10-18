@@ -11,6 +11,7 @@ import {
   roleSearchQueries,
   runRoleSearch,
   urlsOnSites,
+  stretchAboutLendingPeople,
   pageText,
   MIN_PAGE_CHARS,
 } from '../roleWebSearch.service';
@@ -107,7 +108,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
     const finds = await runRoleSearch(RUN, queries);
-    expect(mockedFetch).toHaveBeenCalledWith(page);
+    expect(mockedFetch).toHaveBeenCalledWith(page, 0);
     expect(finds.managementPage?.url).toBe(page);
     const section = buildRoleSearchSection(finds);
     expect(section).toContain(`ბანკის საკუთარი გვერდი, წაკითხული: ${page}`);
@@ -159,5 +160,39 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
   it('counts a page of a few characters as empty (tester 20:27Z, "chars 3")', () => {
     expect(pageText({ content: 'TBC' })).toBeNull();
     expect(pageText({ content: 'x'.repeat(MIN_PAGE_CHARS) })).not.toBeNull();
+  });
+
+  it('reads further parts of a long page and hands over the stretch that names the board (21:12Z)', async () => {
+    const page = 'https://www.tbcbankgroup.com/about-us/management-board';
+    mockedSearch.mockImplementation((query: string) =>
+      Promise.resolve(
+        query.includes('site:tbcbankgroup.com') ? { results: [{ url: page }] } : { results: [] },
+      ),
+    );
+    const menus = 'Menu Investors Careers '.repeat(400);
+    mockedFetch.mockImplementation((url: string, from?: number) =>
+      Promise.resolve(
+        from === 0
+          ? { url, content: menus, next_from_character: 8000 }
+          : {
+              url,
+              content:
+                'Management Board: Head of SME and Business Banking, A. Person.' + 'x'.repeat(200),
+            },
+      ),
+    );
+    const queries = roleSearchQueries(LIKAS_TEXT);
+    if (queries === null) throw new Error('expected role queries');
+    const finds = await runRoleSearch(RUN, queries);
+    expect(mockedFetch.mock.calls.map((call) => call[1])).toEqual([0, 8000]);
+    expect(finds.managementPage?.text).toContain('Head of SME and Business Banking');
+    expect(finds.managementPage?.text.startsWith('Menu')).toBe(false);
+  });
+
+  it('keeps a short lead-in before the board heading', () => {
+    const text = `${'nav '.repeat(500)}Management Board — names`;
+    const stretch = stretchAboutLendingPeople(text);
+    expect(stretch).toContain('Management Board — names');
+    expect(stretch.length).toBeLessThan(text.length);
   });
 });

@@ -30,8 +30,8 @@ import { webTitles } from './openingSearch.service';
 
 /** A role search on the first answer's path waits this long, and no longer. */
 const ROLE_SEARCH_BUDGET_MS = 8_000;
-/** The management page may need a second read when the first comes back empty. */
-const MANAGEMENT_PAGE_BUDGET_MS = 12_000;
+/** The management page may need a second page, and up to three parts of it. */
+const MANAGEMENT_PAGE_BUDGET_MS = 20_000;
 
 /** The results handed to the model, per query. */
 const MAX_SECTION_CHARS_PER_QUERY = 3_000;
@@ -200,6 +200,7 @@ function logRoleCall(
   input: Record<string, unknown>,
   result: unknown,
   startedAt: number,
+  sample: string = webTitles(result),
 ): void {
   void logToolCall({
     threadId: run.threadId,
@@ -210,7 +211,7 @@ function logRoleCall(
     input,
     result,
     durationMs: Date.now() - startedAt,
-    resultSample: webTitles(result),
+    resultSample: sample,
   });
 }
 
@@ -261,6 +262,10 @@ export function urlsOnSites(found: unknown, sites: readonly string[]): string[] 
  * which counted as text, so the next page was never read.
  */
 export const MIN_PAGE_CHARS = 200;
+/** How much of a read page its log row keeps. */
+const PAGE_SAMPLE_CHARS = 300;
+/** How much of the page before the board's heading is kept, for its context. */
+const PAGE_LEAD_IN_CHARS = 300;
 
 /** The page text a fetch returned, or null when it brought none worth reading. */
 export function pageText(fetched: unknown): string | null {
@@ -277,16 +282,63 @@ async function searchManagementPage(run: RoleSearchRun, query: string): Promise<
   return found;
 }
 
-/** Reads one page; its text, or null when it came back empty. */
-async function readOnePage(run: RoleSearchRun, url: string): Promise<string | null> {
+/** A read page shown in parts: how many parts are read, at most. */
+const MAX_PAGE_PARTS = 3;
+
+/** Where on a governance page the people who own lending are listed. */
+const LENDING_PEOPLE_RE =
+  /management board|supervisory board|SME|small and medium|business banking|corporate banking|მენეჯმენტ|სამეთვალყურეო|მცირე და საშუალო|ბიზნეს/iu;
+
+/** Reads one part of a page and logs it, with the page's opening kept on the row. */
+async function readPagePart(
+  run: RoleSearchRun,
+  url: string,
+  from: number,
+): Promise<{ readonly content: string; readonly nextFrom: number | null }> {
   await charge(run);
   const readAt = Date.now();
-  const fetched = await fetchPage(url);
-  const content = (fetched as { content?: unknown } | null)?.content;
-  const rawChars = typeof content === 'string' ? content.trim().length : 0;
-  const text = pageText(fetched);
-  logRoleCall(run, 'fetch_page:role', { url, chars: rawChars }, null, readAt);
-  return text;
+  const fetched = (await fetchPage(url, from)) as {
+    content?: unknown;
+    next_from_character?: unknown;
+  };
+  const content = typeof fetched?.content === 'string' ? fetched.content : '';
+  const head = content.trim().slice(0, PAGE_SAMPLE_CHARS);
+  const chars = content.trim().length;
+  logRoleCall(
+    run,
+    'fetch_page:role',
+    { url, from, chars },
+    { url, from, chars, head },
+    readAt,
+    head,
+  );
+  const next = fetched?.next_from_character;
+  return { content, nextFrom: typeof next === 'number' ? next : null };
+}
+
+/**
+ * The tester's 21:12Z retest: the group's page was read (8,000 characters)
+ * and still nobody was named. A page is shown 8,000 characters at a time, and
+ * a bank's governance page spends its first part on menus, so the people can
+ * sit further down. Up to three parts are read; the run is handed the stretch
+ * that starts where the board or the lending business is named.
+ */
+async function readOnePage(run: RoleSearchRun, url: string): Promise<string | null> {
+  let text = '';
+  let from: number | null = 0;
+  for (let part = 0; part < MAX_PAGE_PARTS && from !== null; part += 1) {
+    const read = await readPagePart(run, url, from);
+    text += read.content;
+    from = read.nextFrom;
+  }
+  return pageText({ content: stretchAboutLendingPeople(text) });
+}
+
+/** The page from just before where it names the board or the lending business. */
+export function stretchAboutLendingPeople(text: string): string {
+  const at = text.search(LENDING_PEOPLE_RE);
+  const start = at > PAGE_LEAD_IN_CHARS ? at - PAGE_LEAD_IN_CHARS : 0;
+  return text.slice(start, start + MAX_PAGE_CHARS);
 }
 
 /** Search the bank's own sites for its management page, then read pages until one has text. */
@@ -300,7 +352,7 @@ async function findAndReadManagementPage(
   ].slice(0, MAX_PAGES_READ);
   for (const url of urls) {
     const text = await readOnePage(run, url);
-    if (text !== null) return { url, text: text.slice(0, MAX_PAGE_CHARS) };
+    if (text !== null) return { url, text };
   }
   return null;
 }
