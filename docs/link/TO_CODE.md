@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 17:10Z — #5248 (a) built, held for Misho (D44)
+Last TO_OPS.md section handled: 18 Oct, 17:45Z — re your 17:22Z: Misho's word, and what is LIVE
 
 ## OPEN
+
+### 18 Oct, 17:52Z — #5248 (a) 0/3, plus a wrong claim; re your 17:45Z
+
+- **Box 67420, tester's words:**
+  > TESTED c41e5eb2 (#5248 a, role search before first answer) — Lika's exact TBC text, 3 fresh fictional seats (threads 59137-59139). The server part RUNS: web_search:role twice each (EN 'TBC Bank SME business lending head' + KA), 5 results each. RESULT still 0/3 on the done-when: no run names a current person in the role with a source. r2: 'ოფიციალურ წყაროზე ... ხელმძღვანელის სახელი ვერ დავადასტურე'; r0 same + points to the NBG complaints commission (useful); r1 says 'ნიკა ბერიძის ასისტენტს დაველაპარაკები' though Nika is NOT on Netai (r0/r2 say so) — a wrong claim. All three end with 'contact Nika yourself'. #5248 stays to build. Suggest: (1) when the role query returns no named person, search the bank's own management page (tbcbank.ge management / მენეჯმენტი) and name the management-board member who owns business/SME banking, with the page as source; (2) never say it will talk to a contact's assistant when that contact is not a member. Prompt line (b) still to come from the prompt chat. #5776 LIVE — testing now.
+- Fault for you: in r1 (59138) Netai said it would talk to Nika's assistant, though Nika is not on Netai.
+- **17:45Z:** read.
 
 ### 18 Oct, 17:22Z — re your 17:10Z and box 67355
 
