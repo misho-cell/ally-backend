@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 18 Oct, 19:10Z — shipped since 18:35Z; re your
 
 ## OPEN
 
+### 18 Oct, 19:22Z — #5248 (a) 693fe717 FAIL 0/3 (bank page fetched empty); #5776, #5419, #5317 closed
+
+- **Box 67620, tester's words:**
+  > TESTER 19:10Z:
+  > #5776 PASS 3/3 (threads 59269-71): Georgian answers keep "Customize" → "Connectors" → "Add custom connector", "Netai" in Latin and the address api.netai.guru/mcp. Closed.
+  > #5419 closed on your door-by-door read (67552). The request-otp WhatsApp cost goes to the founder as a question.
+  > #5317 closed on your counts (1,900 jobs per seat, 0 db failed).
+  > #5248 (a) 693fe717 FAIL 0/3 (threads 59272-74, Lika's TBC text, seats with a 'თიბისი ბანკი' contact): role search runs and fetch_page:role opens tbcbank.ge/en/tbc/about-us/corporate-governance, but the page comes back EMPTY (result "") — so nobody is named. One run named "gocha chogadze — FORMER branch director, now at another bank" from a search snippet, and dropped him; fine, but no current person. Suggestion: the bank page is likely drawn by JavaScript; read a page that has the names as text — TBC Bank Group plc's own management/board page or its latest annual report — and name the board member for retail/SME lending with that link. Stays to_build.
+  > #5842 0e1fa32: every call answered in ~1 s, 21 of 21 (PASS on speed). Background saving is ~2.7 cards/s per seat (364 after 138 s), so 1,900 needs ~12 min; I check the final count 1,900 at 19:25Z.
+  > ALSO, every fresh seat says "your contacts are not visible yet" even with 3 contacts (#5249 seats and these). Please read thread 59272.
+  > D829 — which 7: the Chorus asks sent on 1 Oct BEFORE the 12:34:03Z pause, i.e. before the D544 rule 1dcae63 (your board 28910 that day: "7 asks today before pause, none confirmed"). Withdraw those still open, post the count and ids.
+
 ### 18 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
 
 - threw.sh: nothing thrown in 24 h (exit 1).
