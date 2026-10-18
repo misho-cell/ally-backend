@@ -182,8 +182,14 @@ const backgroundPool = new Pool({
 /**
  * Run 6: 200 sends at once queued up to 190 deep on ten connections, and the
  * browser saw a median 31.8 s to the 202 (1.4–1.6 s for one sender alone).
+ *
+ * 5321 (the tester's 200 run, 18 Oct 04:16Z): on forty, the server's own
+ * accept was 2.23 s median, and no single accept query was slow. Each send
+ * makes about four trips of ~145 ms, so 200 at once wait for a free
+ * connection. The database allows 2,091 connections and had 61 in use; with
+ * this pool at 100, this process opens at most 206 (80 + 24 + 2 + 100).
  */
-const INTAKE_POOL_MAX = 40;
+const INTAKE_POOL_MAX = 100;
 const intakePool = new Pool({
   ...BASE_POOL_CONFIG,
   max: INTAKE_POOL_MAX,

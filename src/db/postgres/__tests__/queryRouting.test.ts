@@ -79,7 +79,8 @@ beforeEach(() => {
 describe('which pool answers a query', () => {
   it('builds four pools: the short one, the long one, the background one, and the intake lane', () => {
     expect(pools).toHaveLength(4);
-    expect(intakePool.config.max).toBe(40);
+    // 5321 (the 200 run, 18 Oct 04:16Z): 200 sends at once waited for one of forty.
+    expect(intakePool.config.max).toBe(100);
     // 5320 (the 200-seat load test): the short pool serves every run's lookups.
     expect(shortPool.config.max).toBe(80);
     // The 5th 200-seat run (box 60692): 629 searches waiting on ten, 1,009 gave up.
