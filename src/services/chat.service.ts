@@ -12930,6 +12930,7 @@ async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Prom
     recordRunLinkedinEvidence(run.runId, linkedinEvidence(found.result));
     registerWebResult(run.runId, found.result);
   }
+  if (finds.managementPage !== null) recordRunEvidence(run.runId, finds.managementPage.text);
   return buildRoleSearchSection(finds);
 }
 

@@ -1,18 +1,20 @@
-jest.mock('../tools/webSearch', () => ({ webSearch: jest.fn() }));
+jest.mock('../tools/webSearch', () => ({ webSearch: jest.fn(), fetchPage: jest.fn() }));
 jest.mock('../costLedger.service', () => ({ recordFixedUsage: jest.fn() }));
 jest.mock('../toolCallLog.service', () => ({ logToolCall: jest.fn() }));
 
-import { webSearch } from '../tools/webSearch';
+import { fetchPage, webSearch } from '../tools/webSearch';
 import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import {
   buildRoleSearchSection,
+  firstUrlOnSite,
   lenderNamedIn,
   roleSearchQueries,
   runRoleSearch,
 } from '../roleWebSearch.service';
 
 const mockedSearch = webSearch as jest.MockedFunction<typeof webSearch>;
+const mockedFetch = fetchPage as jest.MockedFunction<typeof fetchPage>;
 const mockedUsage = recordFixedUsage as jest.MockedFunction<typeof recordFixedUsage>;
 const RUN = { userId: '187879', runId: 'run-5248', threadId: 59071 } as const;
 const LIKAS_TEXT =
@@ -22,6 +24,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUsage.mockResolvedValue(undefined);
+    mockedFetch.mockResolvedValue({ content: null });
   });
 
   it('builds the role query in English and Georgian for Lika’s TBC text', () => {
@@ -48,8 +51,12 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
     const finds = await runRoleSearch(RUN, queries);
-    expect(mockedSearch.mock.calls.map((call) => call[0])).toEqual([queries.en, queries.ka]);
-    expect(mockedUsage).toHaveBeenCalledTimes(2);
+    expect(mockedSearch.mock.calls.map((call) => call[0])).toEqual([
+      queries.en,
+      queries.ka,
+      queries.managementPage,
+    ]);
+    expect(mockedUsage).toHaveBeenCalledTimes(3);
     expect(logToolCall).toHaveBeenCalledWith(
       expect.objectContaining({ tool: 'web_search:role', input: { query: queries.en } }),
     );
@@ -59,7 +66,8 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
   it('keeps the half that answered when the other fails', async () => {
     mockedSearch
       .mockResolvedValueOnce({ results: [{ title: 'Head of SME', url: 'https://x.ge' }] })
-      .mockRejectedValueOnce(new Error('search down'));
+      .mockRejectedValueOnce(new Error('search down'))
+      .mockResolvedValueOnce({ results: [] });
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
     const finds = await runRoleSearch(RUN, queries);
@@ -75,5 +83,35 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
     expect(buildRoleSearchSection(await runRoleSearch(RUN, queries))).toBe('');
+  });
+
+  it('reads the bank’s own management page and hands it over as a page read', async () => {
+    const page = 'https://www.tbcbank.ge/en/about/management';
+    mockedSearch.mockImplementation((query: string) =>
+      Promise.resolve(
+        query.includes('site:tbcbank.ge')
+          ? { results: [{ url: 'https://news.ge/x' }, { url: page }] }
+          : { results: [] },
+      ),
+    );
+    mockedFetch.mockResolvedValue({ url: page, content: 'Management Board — Head of SME Banking' });
+    const queries = roleSearchQueries(LIKAS_TEXT);
+    if (queries === null) throw new Error('expected role queries');
+    const finds = await runRoleSearch(RUN, queries);
+    expect(mockedFetch).toHaveBeenCalledWith(page);
+    expect(finds.managementPage?.url).toBe(page);
+    const section = buildRoleSearchSection(finds);
+    expect(section).toContain(`ბანკის საკუთარი გვერდი, წაკითხული: ${page}`);
+    expect(section).toContain('Head of SME Banking');
+  });
+
+  it('takes only a page that lives on the bank’s own site', () => {
+    const found = {
+      results: [{ url: 'https://tbcbank.ge.evil.com/a' }, { url: 'https://news.ge' }],
+    };
+    expect(firstUrlOnSite(found, 'tbcbank.ge')).toBeNull();
+    expect(firstUrlOnSite({ results: [{ url: 'https://tbcbank.ge/m' }] }, 'tbcbank.ge')).toBe(
+      'https://tbcbank.ge/m',
+    );
   });
 });

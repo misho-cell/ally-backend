@@ -182,7 +182,7 @@ function withBudget<T>(work: Promise<T>, label: string): Promise<T | null> {
  * search tool happens to return today, and a shape it does not recognise
  * produces no sample rather than a wrong one.
  */
-function webTitles(result: unknown): string {
+export function webTitles(result: unknown): string {
   if (result === null || typeof result !== 'object') return '';
   const rows = (result as { results?: unknown }).results;
   if (!Array.isArray(rows)) return '';
