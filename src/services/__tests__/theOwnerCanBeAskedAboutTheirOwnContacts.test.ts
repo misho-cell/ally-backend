@@ -13,12 +13,18 @@ import { listMyContacts } from '../tools/listMyContacts';
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockStates = fetchAccountStates as jest.MockedFunction<typeof fetchAccountStates>;
 
-function phonebook(rows: { phone: string; alias: string | null }[], total = rows.length): void {
+function phonebook(
+  rows: { phone: string; alias: string | null }[],
+  total = rows.length,
+  tags: { phone: string; tags: string[] }[] = [],
+): void {
   mockQuery.mockImplementation((sql: string) =>
     Promise.resolve(
       (String(sql).includes('COUNT(DISTINCT phone)')
         ? { rows: [{ total: String(total) }], rowCount: 1 }
-        : { rows, rowCount: rows.length }) as never,
+        : String(sql).includes('"UserTags"')
+          ? { rows: tags, rowCount: tags.length }
+          : { rows, rowCount: rows.length }) as never,
     ),
   );
 }
@@ -62,6 +68,31 @@ describe("the owner's own contacts can be listed", () => {
     mockStates.mockResolvedValue(new Map([['+5', 'netai_user']]) as never);
     const members = await listMyContacts('1', { membersOnly: true });
     expect(members.contacts.map((c) => c.phone)).toEqual(['+5']);
+  });
+
+  // #5579 (the tester, 18 Oct): „what do they do" came back „unknown" beside saved tags.
+  it("carries the owner's own tags with each contact, and none where there are none", async () => {
+    phonebook(
+      [
+        { phone: '+1', alias: 'Ana' },
+        { phone: '+2', alias: 'Nino' },
+      ],
+      2,
+      [{ phone: '+1', tags: ['იურისტი'] }],
+    );
+    mockStates.mockResolvedValue(new Map() as never);
+    const out = await listMyContacts('172836');
+    expect(out.contacts.find((c) => c.phone === '+1')?.your_tags).toEqual(['იურისტი']);
+    expect(out.contacts.find((c) => c.phone === '+2')).not.toHaveProperty('your_tags');
+    const tagCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes('"UserTags"'));
+    expect(tagCall?.[1]).toEqual(['172836', ['+1', '+2'], 5]);
+  });
+
+  it('reads no tags when the page is empty', async () => {
+    phonebook([]);
+    mockStates.mockResolvedValue(new Map() as never);
+    await listMyContacts('1');
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('"UserTags"'))).toBe(false);
   });
 
   it('says an emoji-only label as a label (row 283)', async () => {
