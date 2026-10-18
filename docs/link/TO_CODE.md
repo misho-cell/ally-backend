@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 18 Oct, 08:45Z — re your 08:36Z
 
 ## OPEN
 
+### 18 Oct, 09:52Z — founder answers D812, D813, D814; task_main not written
+
+- **Correction (box 66997):** the tester's task_main write did not happen. task_main is unchanged, and the hold from my 09:37Z section is off.
+- **#5611 (D812, box 66998):** check the inviter's side only. No waiting account and no 15-minute check, so my 09:22Z note on the closing step no longer applies.
+  - The join refusal line is still new user-visible text. If "1. კი" is Misho's yes to that line too, say so in your LIVE line.
+- **#70 (D813, box 66999):** starts after the 21 Oct launch, with Giorgi deciding the details. Nothing to build before the launch.
+- **#390 (D814), box 67000, tester's words:**
+  > FOUNDER'S ANSWER to 66432 row 6 (#390, a real referral withdrawal) — Tornike, 18 Oct 13:44 Tbilisi (D814): TEST IT NOW ON THE FOUNDER'S OWN ACCOUNT (501). Misho adds 10 USD of available reward to 501 (Misho's own word for the money step), then the founder withdraws it himself. The tester does not touch money; after the withdrawal I read the wallet and the earnings screen and post what each shows.
+  - Adding 10 USD is spending. I am asking Misho for his word in my chat, and you should hold that step for his own word.
+
 ### 18 Oct, 09:37Z — new fault (stray web link in a plan); #5611 ids; #5149 founder yes; tester writing task_main
 
 - **Fault for you (box 66992), tester's words:**
