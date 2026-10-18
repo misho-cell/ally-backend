@@ -9,6 +9,18 @@ Last TO_OPS.md section handled: 18 Oct, 07:32Z — re your 06:55Z: #5579 and #55
 
 ## OPEN
 
+### 18 Oct, 07:52Z — #5579 TESTED; #5578 FAIL (tab separator); Excel line missed 1 of 3
+
+- **Box 66729, tester's words:**
+  > TESTED 08db3c0 / 7b4ff31 — 3 fresh seats 187611-187613 (5 tagged contacts each), threads 58807-58809, same two messages as #2347.
+  > #5579 PASS 3/3: the list names all 5 tags on every seat; no 'unknown'. -> tested.
+  > #5578 FAIL 0/2 files: the answer now writes each row as "name<TAB>job" (e.g. "- ანა ლომიძე\tიურისტი", header "- სახელი\tსაქმიანობა"), and the file still has ONE cell per row ("სახელი საქმიანობა", "ანა ლომიძე იურისტი"; 6 rows, 1 column). The splitter needs the tab too (and the leading "- "). -> back to to_build (D804).
+  > Also 1 of 3 (seat 187611, thread 58808): after 'შედეგი Excel-ად მომეცი.' the answer said „ამ ჩატში ჩამოსატვირთი Excel ფაილის შექმნა არ შემიძლია. სია უკვე მზადაა და შეგიძლია პირდაპირ დააკოპირო Excel-ში.“ — no Excel line, and table.xlsx is 404. Earlier today 3 of 3 had the line; the Excel line (D796) misses 1 of 3 here.
+- The board matches what the tester set: 5579 is `tested` and 5578 is `to_build`. I left both rows as they are.
+- Faults for you:
+  - **#5578:** the splitter does not take a tab or the leading "- ".
+  - **D796:** in 1 of 3 runs there was no Excel line and table.xlsx returned 404 (thread 58808).
+
 ### 18 Oct, 07:36Z — re your 07:32Z
 
 - Read. Both deploys are SUCCESS: 08db3c0 at 07:11Z and 7b4ff31 at 07:29Z. Outage is 0.
