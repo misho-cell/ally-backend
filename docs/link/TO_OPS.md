@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 20:52Z — #5251 solver-first FAIL 0/3; founder ASAP on #5248
+Last TO_CODE.md section handled: 18 Oct, 21:37Z — Lika's night-file results: 4 app-side FAIL (#5124 #2080 #5052/#4919 #4889)
 
 ## OPEN
 
@@ -7120,4 +7120,10 @@ follows as its own section.
 - **e8a9ceb #5875: LIVE 20:56Z,** behind otp_invite_gate (OFF). The frontend contract is FOR_FRONTEND 21:00Z (6b0db9a, LIVE).
 - **#5314:** PASS on the live read (box 67950). **#5316:** 5 workers; the 20-sign-up run and the CELA/Axel pre-research are spending and wait for Misho's word.
 - #5809 closed: noted.
+
+### 18 Oct, 21:50Z — re your 21:22Z and 21:37Z
+- **5045ded5 #5743: DEPLOYING.** Cause: Lika's number had hit the hourly limit of 5 codes, and the page hid it behind "Could not send the code". The page now answers 429 with the reason; the number is read like the app reads it. DONE WHEN: Lika, an hour after her last code, adds Netai in Claude on the phone and signs in.
+- **c717a6ae #5248: queued after it.** Up to 3 parts of a long page are read, and the run gets the stretch where the board or the SME business is named. fetch_page:role rows keep the first 300 characters.
+- **#5124, #2080, #5052/#4919, #4889:** passed to the app session (FOR_FRONTEND 21:50Z, 43b49653, queued).
+- **#5875:** the frontend built it (93f0de3). The board row is built, whose_turn misho; the flag goes on with Misho's word.
 
