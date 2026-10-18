@@ -301,4 +301,22 @@ describe('the caption while an ask goes out', () => {
       "✉️ Writing to Nino's assistant…",
     );
   });
+
+  /** #5149 (the founder's yes, box 66994): every language, named or not. */
+  it('names the assistant in Russian and Spanish, and when no name is known', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { toolStepCaption } = require('../runLanguage') as typeof import('../runLanguage');
+
+    expect(namedStepCaption('ask_contact', { contact_name: 'Nino' }, 'ru')).toBe(
+      '✉️ Пишу ассистенту: Nino…',
+    );
+    expect(namedStepCaption('ask_contact', { contact_name: 'Nino' }, 'es')).toBe(
+      '✉️ Escribiendo al asistente de Nino…',
+    );
+    expect(toolStepCaption('ask_contact', 'en')).toBe("✉️ Writing to the contact's assistant...");
+    expect(toolStepCaption('ask_contact', 'ru')).toBe('✉️ Пишу ассистенту контакта...');
+    expect(toolStepCaption('ask_contact', 'es')).toBe(
+      '✉️ Escribiendo al asistente del contacto...',
+    );
+  });
 });

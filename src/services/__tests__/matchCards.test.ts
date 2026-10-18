@@ -64,7 +64,7 @@ describe('the taps (1699)', () => {
   it('his yes on card 1 sends card 2 to her, naming nobody', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [MATCH] });
     await expect(settleMatchTap('10', 300, 1, MatchTap.Yes, 'en')).resolves.toBe(
-      'Good, I will ask and let you know.',
+      'Good, I will ask their assistant and let you know.',
     );
     const toHer = mockSave.mock.calls.find((call) => call[0] === 700);
     expect(toHer?.[3]).toBe(card2Text('en', 'hospitality'));

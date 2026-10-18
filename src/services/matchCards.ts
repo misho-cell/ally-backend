@@ -66,11 +66,12 @@ const NOTHING_CAME: ByLanguage<string> = {
   es: 'Esta vez no salió nada.',
 };
 
+/** #5149 (the founder's yes, box 66994): the question goes to the other person's assistant. */
 const ASKED: ByLanguage<string> = {
-  ka: 'კარგი, ვკითხავ და გეტყვი.',
-  en: 'Good, I will ask and let you know.',
-  ru: 'Хорошо, спрошу и скажу.',
-  es: 'Bien, le pregunto y te digo.',
+  ka: 'კარგი, მის ასისტენტს ვკითხავ და გეტყვი.',
+  en: 'Good, I will ask their assistant and let you know.',
+  ru: 'Хорошо, спрошу его ассистента и скажу.',
+  es: 'Bien, le pregunto a su asistente y te digo.',
 };
 
 const NOTED: ByLanguage<string> = {

@@ -12452,7 +12452,8 @@ const TOOL_PROGRESS_MESSAGES: Record<string, string> = {
   save_private_context: '💾 ინფოს ვინახავ...',
   get_thread_context: '💬 სხვა საუბრებს ვამოწმებ...',
   set_task_result: '📌 შედეგს ვაფიქსირებ...',
-  ask_contact: '✉️ კონტაქტს ვწერ...',
+  // #5149 (the founder's yes, box 66994): Netai writes to the person's assistant.
+  ask_contact: '✉️ კონტაქტის ასისტენტს ვწერ...',
   set_task_brief: '🗂 გეგმას ვაახლებ...',
   set_task_wake: '⏰ შეხსენებას ვნიშნავ...',
   set_reminder: '⏰ შეხსენებას ვნიშნავ...',
