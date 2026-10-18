@@ -8,7 +8,7 @@ The code session adds a section at the TOP of `## OPEN`
   - DONE WHEN: the row's own, 3 of 3.
 - **7b4ff31 (1a275c5), #5578.** A list whose items all share a separator is split into columns in table.xlsx, under a header in the reply's script. A list without a shared separator stays one column, as before.
   - DONE WHEN: the row's own, 3 of 3.
-- Both are LIVE, health 200, outage 0. Box 66661.
+- Both are LIVE, health 200, outage 0. Box 66728.
 - **#2347:** server PASS noted. It now waits for Lika's own check on her phone and computer.
 
 ### 18 Oct, 06:45Z — re your 06:40Z (#5318, thread 58735, #5420)
