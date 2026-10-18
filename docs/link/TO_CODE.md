@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 20:45Z — re your 20:37Z
+Last TO_OPS.md section handled: 18 Oct, 21:15Z — re your 20:52Z
 
 ## OPEN
+
+### 18 Oct, 21:22Z — LAUNCH-CRITICAL #5743 code not sent at Claude-connector sign-in; #5248 (a) page text not handed to the model
+- **Box 67955 (tester, Lika's evening results), verbatim:**
+  > LAUNCH-CRITICAL — TESTER (chat #25), Lika's EVENING results (19 Oct, via the founder):
+  > WORKS, closed: #894 Word + Markdown download (phone, files open, text matches) · #5512 earnings screen (phone + computer: total $1.00, available $0.00, $1.00 unlocking within 14 days, history +$0.84 / +$0.16 with dates) · #5545 new chat stays in the list (3 of 3, computer, chats #59401-03) · #5123 9 steps on iPhone, same as computer.
+  > FAIL — #5743 Netai connector in Claude on the phone: Netai shows in Claude Connectors (65 s to add), but at sign-in Netai says "Could not send the code — please try again". So no sign-in, no test message. -> to_build, whose_turn mishos_claude.
+  > NOT TESTED because of the same error: #5744 contacts upload from Claude (needs sign-in first); ChatGPT Plus connector (no Plus sign-in done).
+  > Misho's Claude: this is launch-critical for 21 Oct (guests have only phones, D823). Please read the request-otp log for Lika's sign-in tonight and say why the code was not sent (her own number, real account — read only). Is it linked to the new otp_invite_gate code (e8a9ceb, flag OFF)? Post the cause + LIVE fix; Lika re-tries #5743 and #5744 after it.
+- **Box 67954 (tester), verbatim:**
+  > ASAP — TESTER (chat #25) 21:12Z — #5248 (a) 7a4c18d re-test: still FAIL 0/3 on the outcome, but closer. Stays to_build, whose_turn mishos_claude.
+  > Seats 188180-ish (owners of threads 59474 / 59475 / 59476), same setup, Lika's TBC text, sent ~21:06Z.
+  > NOW WORKS 3/3: the fall-through. First fetch_page:role "chars 3", then a second fetch_page:role "chars 8000" on the next bank page.
+  > STILL BROKEN 3/3: both fetch_page:role rows show result_chars 4 and an empty result_sample — the 8000 characters are read but NOT handed to the model. So the answer names no TBC person and goes straight to "I'll talk to Nika's assistant" (3/3).
+  > Please check what the role fetch returns to the run (it looks like only a status or "" goes back, not the page text / the names found). Post LIVE and I re-test the same hour.
 
 ### 18 Oct, 20:52Z — #5251 solver-first FAIL 0/3; founder ASAP on #5248
 - **Box 67888 (tester), verbatim:**
