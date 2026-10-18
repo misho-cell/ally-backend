@@ -69,6 +69,38 @@ export function withBareLinesAsList(reply: string): string {
   ].join('\n');
 }
 
+/** The lines of a reply that are items of its list or rows of its table. */
+function listLinesOf(reply: string): string[] {
+  return reply.split('\n').filter((l) => tableFromMessage(`${l}\n${l}`) !== null);
+}
+
+/**
+ * #2347 retest (tester 18 Oct, thread 58808): „give me the result as Excel" got
+ * „I cannot make an Excel file here; the list is ready, copy it" — and no list,
+ * because the list was the reply before. With no list in this reply there was
+ * nothing to draw a button under and nothing to make the file from. When the
+ * owner asks for Excel, this reply lists nothing, and the reply before it did,
+ * that list is carried into this one, so `withExcelLine` can say where the file
+ * is. The refusal sentences go; anything else the reply said stays above it.
+ */
+export function withEarlierListForExcel(
+  given: string,
+  earlierReply: string | null,
+  ownerLine: string,
+): string {
+  if (!asksForExcel(ownerLine) || earlierReply === null) return given;
+  if (tableFromMessage(withBareLinesAsList(given)) !== null) return given;
+  const earlierList = listLinesOf(earlierReply);
+  if (tableFromMessage(earlierList.join('\n')) === null) return given;
+  const kept = given
+    .split('\n')
+    .map(withoutRefusal)
+    .join('\n')
+    .replace(/\n{3,}/gu, '\n\n')
+    .trim();
+  return kept === '' ? earlierList.join('\n') : `${kept}\n\n${earlierList.join('\n')}`;
+}
+
 /**
  * The reply with the refusal replaced by the line, when the owner asked for
  * Excel and the reply holds a list. Lines of the list itself are left alone.

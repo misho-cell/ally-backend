@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { asksForExcel, EXCEL_LINE, withExcelLine } from '../excelLine';
+import { asksForExcel, EXCEL_LINE, withEarlierListForExcel, withExcelLine } from '../excelLine';
+import { tableFromMessage } from '../messageTable';
 
 /** D796 / D800: „I cannot make Excel, paste it into a spreadsheet" (tester 0 of 3). */
 describe('a list asked for as Excel', () => {
@@ -66,5 +67,34 @@ describe('three names on bare lines (#2347, Lika 17 Oct)', () => {
   it('a reply of sentences is not turned into a list', () => {
     const reply = 'ეს სია ვერ შევადგინე.\nსხვა რამე გჭირდება?';
     expect(withExcelLine(reply, 'excel please', 'ka')).toBe(reply);
+  });
+});
+
+/** #2347 retest (tester 18 Oct, thread 58808): the Excel answer had no list; the list was the reply before. */
+describe('an Excel ask whose answer lists nothing', () => {
+  const earlier = 'აი შენი კონტაქტები:\n\n- ანა ლომიძე\tიურისტი\n- გიორგი ბერიძე\tექიმი';
+  const refusal =
+    'ამ ჩატში ჩამოსატვირთი Excel ფაილის შექმნა არ შემიძლია. სია უკვე მზადაა და შეგიძლია პირდაპირ დააკოპირო Excel-ში.';
+
+  it('carries the earlier list into it, without the refusal, so the line and the file follow', () => {
+    const carried = withEarlierListForExcel(refusal, earlier, 'შედეგი Excel-ად მომეცი.');
+    expect(carried).not.toContain('არ შემიძლია');
+    expect(carried).toContain('- ანა ლომიძე\tიურისტი');
+    expect(carried).not.toContain('აი შენი კონტაქტები');
+    const out = withExcelLine(carried, 'შედეგი Excel-ად მომეცი.', 'ka');
+    expect(out.endsWith(EXCEL_LINE.ka!)).toBe(true);
+    expect(tableFromMessage(out)).toEqual([
+      ['სახელი', 'დეტალები'],
+      ['ანა ლომიძე', 'იურისტი'],
+      ['გიორგი ბერიძე', 'ექიმი'],
+    ]);
+  });
+
+  it('leaves an answer that has its own list, an ask that is not for Excel, and a thread with no list', () => {
+    const own = '- ნინო\n- ლევანი';
+    expect(withEarlierListForExcel(own, earlier, 'Excel-ად მომეცი')).toBe(own);
+    expect(withEarlierListForExcel(refusal, earlier, 'მადლობა')).toBe(refusal);
+    expect(withEarlierListForExcel(refusal, 'სიის გარეშე ტექსტი.', 'Excel-ად')).toBe(refusal);
+    expect(withEarlierListForExcel(refusal, null, 'Excel-ად')).toBe(refusal);
   });
 });

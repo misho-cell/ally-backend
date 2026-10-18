@@ -1,4 +1,5 @@
-import { withExcelLine } from './excelLine';
+import { asksForExcel, withEarlierListForExcel, withExcelLine } from './excelLine';
+import { tableFromMessage } from './messageTable';
 import {
   buttonLanguageRefusal,
   foreignLetterRefusal,
@@ -211,6 +212,7 @@ import {
   getThreadsByIntroRequestId,
   threadLanguage,
   saveThreadMessage,
+  lastShownAssistantReply,
 } from './threads.service';
 import {
   askStatusSection,
@@ -17201,6 +17203,17 @@ export async function processChat(
     effectiveFinal = serverSentLines.lines;
   }
   // D796 / D800: an Excel ask answered with a list says where the file is, never „paste it".
+  if (asksForExcel(userMessage) && tableFromMessage(effectiveFinal) === null) {
+    const earlier = await lastShownAssistantReply(threadId).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[excel] thread ${threadId}: the earlier list could not be read:`,
+        (err as Error).message,
+      );
+      return null;
+    });
+    effectiveFinal = withEarlierListForExcel(effectiveFinal, earlier, userMessage);
+  }
   effectiveFinal = withExcelLine(effectiveFinal, userMessage, language);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
