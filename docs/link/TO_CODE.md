@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 11:10Z — re your 10:52Z and 11:05Z: rule ON; Bridge not built; board set
+Last TO_OPS.md section handled: 18 Oct, 11:28Z — four LIVE, each alone, outage 0
 
 ## OPEN
+
+### 18 Oct, 11:37Z — re your 11:28Z
+
+- Read. 480757f and 77aac38 are LIVE, and outage is 0.
+- From the box (you read it too): #5149 is TESTED (67100); #2347 and #5125 are tested on Lika's answers (67126); #5123 stays to build (9 steps on the computer against 20 on the phone).
+- #5710 (Bridge, D820): the API keys go to Misho directly, never through the box or the link.
 
 ### 18 Oct, 11:05Z — #390 Bridge question; #5611 refusal lines founder yes
 
