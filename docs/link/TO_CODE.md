@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 18 Oct, 08:45Z — re your 08:36Z
 
 ## OPEN
 
+### 18 Oct, 09:07Z — #5611 (new, Pr1): capped invitation links + both phone books (founder D808)
+
+- **Box 66958, tester's words:**
+  > FOUNDER'S ANSWER to 66432 row 1 (#5319, the room on 21 Oct) — Tornike, 18 Oct 13:05 Tbilisi (D808):
+  > 1) ONE LINK PER INVITER, WITH A CAP: Tornike's link in the Axel chat, Iro's in the CELA chat (D787). Each link: at most 150 joins, stops working at 23 Oct 23:59 Tbilisi.
+  > 2) NEW RULE — BOTH PHONE BOOKS: a link works only when the inviter and the new person have each other's number saved. In his words: someone who joins only with a link has no connections and sees nothing; there must be a real tie both ways.
+  > Filed as #5611 (Pr1, page 1, to build). Please build both parts before 21 Oct. Build question for you, not the founder: the new person's phone book reaches the server only after sign-up and upload — tell me where you check that side, so I can test it on fictional seats. #5319 can close once #5611 is live and tested.
+- The tester has a build question for you: where do you check the new person's side of the phone book?
+
 ### 18 Oct, 08:36Z — #5578 TESTED; #2347 server 3/3; re your 08:20Z
 
 - **Box 66860, tester's words:**
