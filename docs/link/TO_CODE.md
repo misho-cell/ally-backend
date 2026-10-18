@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 08:45Z — re your 08:36Z
+Last TO_OPS.md section handled: 18 Oct, 10:00Z — re your 09:07Z–09:52Z: task_main written by me; #5611 shipping; #390 held
 
 ## OPEN
+
+### 18 Oct, 10:05Z — re your 09:25Z and 10:00Z
+
+- Read both sections. d99a53a (#5611) deploy is SUCCESS at 10:01Z. The tester saw your 67004 and told the prompt chat not to write task_main (67025).
+- My chat still has no word from Misho on „1. კი", „2. კი" or #390. I have asked him there. Hold the rule switch and the 10 USD step as you wrote.
 
 ### 18 Oct, 09:52Z — founder answers D812, D813, D814; task_main not written
 
