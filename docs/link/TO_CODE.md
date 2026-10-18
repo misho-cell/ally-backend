@@ -5,9 +5,26 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 21:50Z — re your 21:22Z and 21:37Z
+Last TO_OPS.md section handled: 18 Oct, 22:45Z — re your 22:22Z
 
 ## OPEN
+
+### 18 Oct, 22:53Z — NEW PRIORITY 1 #5908 (owner names a contact saved under a nickname); #5248 d9720f4 FAIL 0/3 (2015 annual report read)
+- **Box 68082 (founder via tester), verbatim:**
+  > ASAP — PRIORITY 1 — FOUNDER (19 Oct 02:44 Tbilisi): NEW TASK #5908 — Netai cannot find WHO the owner means. "This is the main feature Netai must have." Misho's Claude: please take it now, with #5248.
+  > Case (founder's own account, thread 59500, 22:16Z): he asked about a friend by full name in Georgian. The friend is in his phonebook under a NICKNAME, is an old Ally user, and 16 other members saved the same number with his Latin first name / short name / surname. Netai said "nobody with this name in your contacts" and offered 2 strangers from a web search. After he typed the nickname, it fetched the right profile and still said "nothing else is known about him".
+  > What the logs show: name / tag / way_in / second_degree / insight searches all ran in GEORGIAN script only; none searched the Latin forms or short first names; second_degree timed out; get_contact_full_profile on the right number gave the answer nothing (other members' labels and old Ally tags did not reach it).
+  > Done when: owner asks by full Georgian name for a contact saved under a nickname whose other labels are Latin -> Netai names him as the owner's contact and tells what is known, no web strangers; 3/3 on fictional seats + the founder's own re-ask. I build the fictional repro now.
+- **Box 68083 (tester, fictional repro), verbatim:**
+  > #5908 ASAP — REPRODUCED on fictional seats, 3/3 (threads 59536 / 59537 / 59538): 3 members saved one number as "Gogita / Goga / Gogi Fiktadze" (Latin); 3 owners saved the same number as "Bubu"; each owner asked in Georgian "გოგიტა ფიქტაძეზე მომეცი ინფორმაცია".
+  > - search_contact_by_name DID find the right number (1 row) and get_contact_full_profile was called — but no answer said "that is your Bubu". 59536 even rejected it ("an approximate match is Bubu, registered as another name, so I can't treat him as Gogita"); 59537/59538 just said "no confirmed information" and then asked where Bubu works.
+  > (Note: that test number also belongs to an old fictional account under a third name — same as real life, where an old Ally user has his own account name. The other members' labels must still win the match.)
+  > So the gap is not only Georgian-vs-Latin search: when the owner names a person and the network's labels on one of HIS contacts agree, Netai must say so plainly ("you have him saved as Bubu") and tell what is known.
+- **Box 68084 (tester), verbatim:**
+  > ASAP — TESTER #5248 d9720f4 re-test (threads 59533 / 59534 / 59535, owners 188205-07, 22:41Z): still FAIL 0/3 -> stays to_build.
+  > Better: fetch_page:role now hands real text to the run (samples visible, 455-459 chars per part).
+  > Wrong: the text read is TBC's 2015 ANNUAL REPORT (risk-management pages), not the current management or SME-lending page — so no current person can be named. All 3 answers: "I'll talk to Nika's assistant", no TBC person.
+  > Ask: prefer the bank's CURRENT management/leadership page (or this year's report) and the part that names the SME / business-banking head.
 
 ### 18 Oct, 22:22Z — #5249 flow-back FAIL 2/3 (helper's suggestion read as a decline)
 - **Box 68053 (tester), verbatim:**
