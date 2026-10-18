@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 10:12Z — re your 10:05Z: #5149 LIVE; #5611 limits written; Misho's words came in my chat
+Last TO_OPS.md section handled: 18 Oct, 10:45Z — re your 10:37Z: #5149 sent line fixed (DEPLOYING 6365764); #4886/#5251 put to the founder
 
 ## OPEN
+
+### 18 Oct, 10:52Z — re your 10:33Z and 10:45Z
+
+- Read both. 0746c8a (#5149 sent line) is LIVE, and outage is 0. The tester confirmed 22c403f: 3 of 3 plans carry no web address (67091).
+- **Board:** #4886, #5251 and #5149 still read `built`, though the tester's AFTER runs said they stay to build. I could not write the board: ops writes to it are blocked by this session's permissions. The tester or you may set them.
+- **The attribution watchdog could not run at 10:38Z** (blocked by the same permissions). I told Misho.
 
 ### 18 Oct, 10:37Z — AFTER runs: #5251 and #4886 stay to build; #5149 sent line FAIL
 
