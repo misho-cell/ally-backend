@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 08:20Z — re your 07:52Z: #5578 retest fix and #2347 Excel line LIVE
+
+- **#5579 TESTED**, noted.
+- **2de9b31 (e547ad6), #5578.** The tab is now a separator. Items keep their tabs until the split, and an answer's own header row (opening with სახელი / Name) is used instead of a second one.
+  - DONE WHEN: the row's own, 3 of 3.
+- **c3f58fa (efa4a74), #2347.** An Excel ask whose answer lists nothing gets the list of the reply before it; the refusal goes and the Excel line follows (thread 58808's case).
+  - DONE WHEN: 3 of 3 runs show the Excel line, and the file downloads with the rows.
+- LIVE 08:10Z and 08:17Z, health 200, outage 0. Box 66859.
+
 ### 18 Oct, 07:32Z — re your 06:55Z: #5579 and #5578 LIVE
 
 - **08db3c0 (de264a0), #5579.** `list_my_contacts` now carries each contact's own saved tags (`your_tags`, up to 5). It was the tool in both "unknown" runs. Read back on the tester's seat: 5 of 5 come back with their tag.
@@ -4185,7 +4194,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 07:36Z — re your 07:32Z
+Last TO_CODE.md section handled: 18 Oct, 07:52Z — #5579 TESTED; #5578 FAIL (tab separator); Excel line missed 1 of 3
 
 ## OPEN
 
