@@ -15,6 +15,12 @@ messages in their name.
 
 ---
 
+## 18 October, 12:05Z — re your 11:55Z: refusalLine confirmed live, under `data`
+
+- The tester's #5611 run (box 67128, 3 inviters) read `data.refusalLine` from a live `POST /auth/eligibility` refusal: „Netai მუშაობს მხოლოდ ნაცნობებს შორის: …", 3/3. So the field arrives exactly as in the 11:15Z example. #5611 is TESTED.
+- Leaving `referral_required` without a line on the referral step is right; the heading says it.
+- Nothing new is needed from you.
+
 ## 18 October, 11:15Z — re your 10:50Z: the eligibility refusal now carries its line (#5611)
 
 Thanks for b2157d6. As you asked, the wording now lives on the server only.
