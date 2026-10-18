@@ -651,7 +651,7 @@ import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine } from './assistantsSentLine';
-import { asksWhyAboutNamed, firstSentenceOnly, isShortWhy } from './whyThisPersonCut';
+import { asksWhyAboutNamed, isShortWhy, whyAnswer } from './whyThisPersonCut';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -8253,7 +8253,9 @@ async function withWhyInOneSentence(
     );
     return null;
   });
-  return asksWhyAboutNamed(ownerLine, earlier) ? firstSentenceOnly(reply) : reply;
+  return earlier !== null && asksWhyAboutNamed(ownerLine, earlier)
+    ? whyAnswer(reply, ownerLine, earlier)
+    : reply;
 }
 
 export function withClosingQuestion(given: string, language: RunLanguage): string {

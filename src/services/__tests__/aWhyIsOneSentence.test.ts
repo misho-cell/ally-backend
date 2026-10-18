@@ -1,4 +1,4 @@
-import { asksWhyAboutNamed, firstSentenceOnly, isShortWhy } from '../whyThisPersonCut';
+import { asksWhyAboutNamed, firstSentenceOnly, isShortWhy, whyAnswer } from '../whyThisPersonCut';
 
 const EARLIER =
   'გიორგი კაპანაძე ყველაზე სწორი ადამიანია. რესტორნებთან არის დაკავშირებული.\n\n' +
@@ -48,5 +48,37 @@ describe('the cut', () => {
     expect(firstSentenceOnly('Giorgi has „restaurant" saved.')).toBe(
       'Giorgi has „restaurant" saved.',
     );
+  });
+});
+
+describe('the sentence kept (tester 67128, thread 59007)', () => {
+  const EARLIER_59007 =
+    'გიორგი კაპანაძე შენს კონტაქტებშია და რესტორნის ნიშნითაა შენახული. ზუსტად რომელ მზარეულს ' +
+    'ან რესტორანს იცნობს, ჩანაწერიდან არ ჩანს.\n\nგინდა, გიორგის ვკითხო კარგი რეკომენდაცია ვის აქვს?';
+
+  it('never keeps „not involved" when the earlier reply gave the reason', () => {
+    expect(whyAnswer('არ არის შუაში. ბოდიში.', 'გიორგი რა შუაშია?', EARLIER_59007)).toBe(
+      'გიორგი კაპანაძე შენს კონტაქტებშია და რესტორნის ნიშნითაა შენახული.',
+    );
+  });
+
+  it('skips a sentence that names him only to say he is not involved', () => {
+    expect(whyAnswer('გიორგი არ არის შუაში.', 'გიორგი რა შუაშია?', EARLIER_59007)).toBe(
+      'გიორგი კაპანაძე შენს კონტაქტებშია და რესტორნის ნიშნითაა შენახული.',
+    );
+  });
+
+  it('keeps the reply’s own sentence that names him', () => {
+    expect(
+      whyAnswer(
+        'კარგი კითხვაა. გიორგი მხოლოდ იმიტომ გამოჩნდა, რომ „რესტორნის“ ნიშნით არის შენახული. სხვა არაფერი.',
+        'გიორგი რა შუაშია?',
+        EARLIER_59007,
+      ),
+    ).toBe('გიორგი მხოლოდ იმიტომ გამოჩნდა, რომ „რესტორნის“ ნიშნით არის შენახული.');
+  });
+
+  it('keeps the first sentence when nothing names him', () => {
+    expect(whyAnswer('ასე ჩანდა. მეტი არაფერი.', 'რატომ ის?', 'Nobody named.')).toBe('ასე ჩანდა.');
   });
 });

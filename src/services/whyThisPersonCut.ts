@@ -52,3 +52,32 @@ export function firstSentenceOnly(reply: string): string {
   const first = FIRST_SENTENCE_RE.exec(reply.trim())?.[0]?.trim() ?? '';
   return first === '' ? reply : first;
 }
+
+/**
+ * The tester's retest (67128, thread 59007): the first sentence can be the wrong
+ * one — „არ არის შუაში." (he is not involved) — just after the reply that named
+ * him for his „restaurant" tag. So the sentence kept is the one that names the
+ * person: the reply's own, or else the one the earlier reply named him in,
+ * which is the reason it gave. Only when neither names him is the first kept.
+ */
+const SENTENCE_RE = /[^.!?…\n]+[.!?…]*/gu;
+
+/** „He is not involved" answers no „why" — the reply before had just named him. */
+const NOT_INVOLVED_RE =
+  /არ\s+არის\s+შუაში|შუაში\s+არ\s+არის|not\s+involved|nothing\s+to\s+do\s+with/iu;
+
+function sentencesNaming(text: string, stems: readonly string[]): string[] {
+  return (text.match(SENTENCE_RE) ?? [])
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => stems.some((stem) => sentence.toLowerCase().includes(stem)))
+    .filter((sentence) => !NOT_INVOLVED_RE.test(sentence));
+}
+
+/** The one sentence that answers „why X?": the one that names X, and says why. */
+export function whyAnswer(reply: string, ownerLine: string, earlierReply: string): string {
+  const stems = stemsOf(ownerLine).filter((stem) => earlierReply.toLowerCase().includes(stem));
+  const [own] = sentencesNaming(reply, stems);
+  if (own !== undefined) return own;
+  const [given] = sentencesNaming(earlierReply, stems);
+  return given ?? firstSentenceOnly(reply);
+}
