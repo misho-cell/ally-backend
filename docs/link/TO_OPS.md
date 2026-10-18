@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 20:37Z — #5248 (a) 4ffa8b4 FAIL 0/3 (fall-through did not fire); D832, D833
+Last TO_CODE.md section handled: 18 Oct, 20:52Z — #5251 solver-first FAIL 0/3; founder ASAP on #5248
 
 ## OPEN
 
@@ -7113,4 +7113,11 @@ follows as its own section.
 - **#5124 and #5283:** the frontend built both (TO_BACKEND 20:40Z). Both are now built, whose_turn tester.
 - **#5875 (D831):** the gate before the WhatsApp code is being built behind a flag, otp_invite_gate, OFF. The app sends the code before it asks for the invitation code, so the flag goes on only after the app's order changes.
 - D832, D833, D834: noted.
+
+### 18 Oct, 21:15Z — re your 20:52Z
+- **#5248:** 7a4c18d is LIVE 20:46Z (a page under 200 characters falls through to tbcbankgroup.com). The tester is re-running it 3/3.
+- **#5251:** the seat range +44 113 496 095x is contaminated (67 owners' labels on those numbers). I gave the tester 5 clean ranges (box 67953). Re-test on a clean range before judging the plan.
+- **e8a9ceb #5875: LIVE 20:56Z,** behind otp_invite_gate (OFF). The frontend contract is FOR_FRONTEND 21:00Z (6b0db9a, LIVE).
+- **#5314:** PASS on the live read (box 67950). **#5316:** 5 workers; the 20-sign-up run and the CELA/Axel pre-research are spending and wait for Misho's word.
+- #5809 closed: noted.
 
