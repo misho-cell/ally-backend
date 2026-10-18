@@ -4,6 +4,11 @@ import { EligibilityCheck } from '../types';
 import { findUserByReferralCode } from './referralCode.service';
 import { findCohortByCode, launchCohortFor } from './inviteCohorts.service';
 import { isReviewPhone } from './reviewAccess';
+import {
+  inviterHasSaved,
+  isMutualContactsEnabled,
+  linkLimitRefusal,
+} from './inviteLinkLimits.service';
 
 const INVITE_ONLY_FLAG = 'invite_only';
 // subscription_status values that count as an active paying/trialing subscriber.
@@ -175,6 +180,23 @@ async function findInviterForAttribution(
   return result.rows[0]?.id ?? undefined;
 }
 
+/**
+ * #5611 (founder D808 / D812): a join through a member's link is refused when
+ * the link is full or past its end, or — with the rule switched on — when the
+ * inviter has not saved the new person's number. Null when the join may go on.
+ */
+async function inviterLinkRefusal(
+  inviterUserId: number,
+  phone: string,
+): Promise<EligibilityCheck | null> {
+  const limit = await linkLimitRefusal(inviterUserId);
+  if (limit !== null) return { eligible: false, reason: limit };
+  if (!(await isMutualContactsEnabled())) return null;
+  return (await inviterHasSaved(inviterUserId, phoneVariants(phone)))
+    ? null
+    : { eligible: false, reason: 'not_in_inviter_contacts' };
+}
+
 function hasReferralPhone(referralPhone?: string): referralPhone is string {
   return referralPhone !== undefined && referralPhone.trim() !== '';
 }
@@ -313,7 +335,9 @@ export async function checkRegistrationEligibility(
    */
   // §141: only a member's code invites, so only a code owner can carry the launch days.
   const launch = launchCohortFor(codeOwner?.userId);
-  if (launch) {
+  if (launch && codeOwner) {
+    const refused = await inviterLinkRefusal(codeOwner.userId, phone);
+    if (refused !== null) return refused;
     return { eligible: true, mode: 'cohort', cohortCode: launch.code, inviterUserId: attribution };
   }
 
@@ -378,6 +402,8 @@ export async function checkRegistrationEligibility(
 
   if (codeOwner) {
     if (codeOwner.subscribed) {
+      const refused = await inviterLinkRefusal(codeOwner.userId, phone);
+      if (refused !== null) return refused;
       return { eligible: true, mode: 'referral', inviterUserId: codeOwner.userId };
     }
     return { eligible: false, reason: 'referrer_not_subscribed' };

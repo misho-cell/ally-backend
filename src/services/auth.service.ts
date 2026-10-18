@@ -22,7 +22,7 @@ import {
 import { inviteFreeDays, inviteFreeDaysCohort } from './inviteReward.service';
 import { attributeCampaignJoin } from './chorusCampaign.service';
 import { tellOwnersANewMemberFitsAGoal } from './newMemberForGoal.service';
-import { AuthPayload, EligibilityCheck } from '../types';
+import { AuthPayload, EligibilityCheck, EligibilityReason } from '../types';
 import { normalizePhone } from './phone';
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
@@ -194,6 +194,23 @@ function isReviewLogin(phone: string, code: string): boolean {
 // Long enough to outlive any review or testing window; the accounts stop
 // working anyway once REVIEW_PHONE is unset, because nobody can log into them.
 const REVIEW_SUBSCRIPTION_DAYS = 365;
+
+/**
+ * The one line a refused registration shows. #5611 (D808 / D812) adds three:
+ * the link is full, the link has ended, the inviter has not saved this number.
+ */
+const REFUSAL_LINES: Readonly<Record<EligibilityReason, string>> = {
+  referral_required: 'რეგისტრაციისთვის საჭიროა გამომწერი მეგობრის მოწვევა',
+  referrer_not_subscribed: 'მოწვევის ნომერი ვერ მოიძებნა ან გამოწერა არ აქვს',
+  invite_link_full: 'ამ მოწვევის ბმულით უკვე შემოვიდა იმდენი ადამიანი, რამდენსაც ის იღებს.',
+  invite_link_expired: 'ამ მოწვევის ბმულს ვადა გაუვიდა.',
+  not_in_inviter_contacts:
+    'Netai მუშაობს მხოლოდ ნაცნობებს შორის: მოწვევა მაშინ მოქმედებს, როცა მომწვევს შენი ნომერი აქვს შენახული.',
+};
+
+function refusalLine(reason: EligibilityReason | undefined): string {
+  return REFUSAL_LINES[reason ?? 'referral_required'];
+}
 
 export async function requestOTP(
   phone: string,
@@ -496,11 +513,7 @@ export async function registerUser(
   if (!gate.eligible) {
     // eslint-disable-next-line no-console
     console.warn(`[invite-gate] rejected registration ***${phone.slice(-4)} — ${gate.reason}`);
-    throw new Error(
-      gate.reason === 'referrer_not_subscribed'
-        ? 'მოწვევის ნომერი ვერ მოიძებნა ან გამოწერა არ აქვს'
-        : 'რეგისტრაციისთვის საჭიროა გამომწერი მეგობრის მოწვევა',
-    );
+    throw new Error(refusalLine(gate.reason));
   }
 
   // Everything that can fail on INPUT is validated BEFORE the verification is

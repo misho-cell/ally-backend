@@ -153,6 +153,11 @@ import {
   deleteTestSeatRequestThreads,
 } from '../../services/oldRequestThreads.service';
 import { MAX_TOP_UP_TARGET_USD, topUpReferralReward } from '../../services/referralTopUp.service';
+import {
+  listInviteLinkLimits,
+  MUTUAL_CONTACTS_FLAG,
+  setInviteLinkLimit,
+} from '../../services/inviteLinkLimits.service';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
 import {
@@ -387,6 +392,8 @@ const MANAGED_APP_FLAGS = [
   // Row 305 (b): a follow-up request continues the conversation. Default off
   // until the client's Accept / Decline in an ask thread is live.
   FOLLOW_UP_IN_CONVERSATION_FLAG,
+  // #5611 (D812): an invitation counts only when the inviter has the number saved.
+  MUTUAL_CONTACTS_FLAG,
 ] as const;
 
 /**
@@ -5840,6 +5847,67 @@ adminRouter.post('/referral-rewards/top-up', async (req: Request, res: Response)
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[referral top-up]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/** Latest end a launch link limit may carry: well past the event, never open-ended. */
+const MAX_LINK_LIMIT_END = new Date('2027-01-01T00:00:00Z');
+const MAX_LINK_JOINS = 10_000;
+
+/** #5611 (founder D808 / D812): the inviter links that carry a limit. */
+adminRouter.get('/invite-link-limits', async (_req: Request, res: Response) => {
+  try {
+    res.status(200).json({ success: true, data: await listInviteLinkLimits() });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[invite-link-limits] list', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * #5611: one inviter's link takes at most `max_joins` people from now on, and
+ * none after `ends_at`. ADMIN_WRITE_OPERATIONS §143 has the body and the undo.
+ */
+adminRouter.post('/invite-link-limits', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as {
+    inviter_user_id?: unknown;
+    max_joins?: unknown;
+    ends_at?: unknown;
+    board_row?: unknown;
+  };
+  const inviter = String(body.inviter_user_id ?? '').trim();
+  const maxJoins = Number(body.max_joins);
+  const endsAt = new Date(String(body.ends_at ?? ''));
+  const boardRow = String(body.board_row ?? '').trim();
+  if (
+    !/^\d+$/u.test(inviter) ||
+    !/^\d+$/u.test(boardRow) ||
+    !Number.isInteger(maxJoins) ||
+    maxJoins <= 0 ||
+    maxJoins > MAX_LINK_JOINS ||
+    Number.isNaN(endsAt.getTime()) ||
+    endsAt <= new Date() ||
+    endsAt > MAX_LINK_LIMIT_END
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `inviter_user_id, board_row, max_joins (1–${MAX_LINK_JOINS}) and a future ends_at are required`,
+    });
+    return;
+  }
+  try {
+    const limit = await setInviteLinkLimit({
+      inviterUserId: Number(inviter),
+      maxJoins,
+      endsAt,
+      boardRow,
+    });
+    res.status(200).json({ success: true, data: limit });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[invite-link-limits] set', (error as Error).message);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });

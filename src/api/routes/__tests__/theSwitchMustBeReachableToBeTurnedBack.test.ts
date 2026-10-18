@@ -36,6 +36,10 @@ describe('the allow-list', () => {
     expect(ALLOW_LIST).toContain('LOGIN_INVITE_ONLY_FLAG');
   });
 
+  it('carries the #5611 mutual-contacts rule by its constant', () => {
+    expect(ALLOW_LIST).toContain('MUTUAL_CONTACTS_FLAG');
+  });
+
   /**
    * A flag named by a literal in two files is a flag that can be renamed in one
    * of them. The route and the gate have to be reading the same row or the

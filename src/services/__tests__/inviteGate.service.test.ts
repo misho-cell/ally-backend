@@ -28,6 +28,11 @@ interface GateWorld {
   // Row 229: the personal code lookup now runs even on the cohort path, so the
   // world has to be able to answer it.
   codeOwner?: { id: number; subscription_status: string } | null;
+  /** #5611: the inviter's link limit, how many joined since, the both-phonebooks rule, and the inviter's book. */
+  linkLimit?: { max_joins: number; ends_at: string } | null;
+  joinsSince?: number;
+  mutualContacts?: boolean;
+  inviterSaved?: boolean;
 }
 
 // Route gate queries by a distinctive SQL fragment.
@@ -37,6 +42,22 @@ function routeGate(
   params?: readonly unknown[],
 ): { rows: unknown[]; rowCount: number } {
   if (sql.includes('FROM invite_cohorts')) return world.cohort ? rows([world.cohort]) : rows([]);
+  if (sql.includes('FROM invite_link_limits'))
+    return world.linkLimit
+      ? rows([
+          {
+            inviter_user_id: params?.[0],
+            max_joins: world.linkLimit.max_joins,
+            counts_from: '2026-10-18T09:00:00Z',
+            ends_at: world.linkLimit.ends_at,
+            board_row: '5611',
+          },
+        ])
+      : rows([]);
+  if (sql.includes('"inviterReferralUserId" = $1 AND "createdAt" >= $2'))
+    return rows([{ joins: String(world.joinsSince ?? 0) }]);
+  if (sql.includes('FROM "UserAlias" WHERE "contactId" = $1 AND phone = ANY'))
+    return world.inviterSaved ? rows([{ one: 1 }]) : rows([]);
   /**
    * ⚠️ TWO FLAGS SHARE ONE STATEMENT, so routing on the SQL alone answered
    * both with the same value — and on 24 September that silently switched
@@ -52,6 +73,8 @@ function routeGate(
     const flag = String(params?.[0] ?? '');
     if (flag === 'invite_personal_code_only')
       return rows([{ enabled: world.personalCodeOnly === true }]);
+    if (flag === 'invite_mutual_contacts')
+      return rows([{ enabled: world.mutualContacts === true }]);
     return rows([{ enabled: world.flagEnabled }]);
   }
   if (sql.includes('SELECT "userId" FROM "UserPhone"'))
@@ -390,5 +413,72 @@ describe('a review or QA number is the company inviting itself', () => {
     shutDoor();
 
     expect((await checkRegistrationEligibility(REVIEW)).eligible).toBe(false);
+  });
+});
+
+/** #5611 (founder D808 / D812): a capped link, and the inviter must have the number saved. */
+describe("a join through a member's link", () => {
+  const MEMBER_LINK: GateWorld = {
+    ...CLOSED_WORLD,
+    codeOwner: { id: 501, subscription_status: 'active' },
+  };
+  const FUTURE = '2099-01-01T00:00:00Z';
+
+  it('goes through as before when the link has no limit and the rule is off', async () => {
+    setWorld(MEMBER_LINK);
+    expect(await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).toEqual({
+      eligible: true,
+      mode: 'referral',
+      inviterUserId: 501,
+    });
+  });
+
+  it('is refused once the link has taken its 150, and goes through at 149', async () => {
+    setWorld({ ...MEMBER_LINK, linkLimit: { max_joins: 150, ends_at: FUTURE }, joinsSince: 150 });
+    expect(await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).toEqual({
+      eligible: false,
+      reason: 'invite_link_full',
+    });
+    setWorld({ ...MEMBER_LINK, linkLimit: { max_joins: 150, ends_at: FUTURE }, joinsSince: 149 });
+    expect(
+      (await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).eligible,
+    ).toBe(true);
+  });
+
+  it('is refused after the link has ended', async () => {
+    setWorld({ ...MEMBER_LINK, linkLimit: { max_joins: 150, ends_at: '2020-01-01T00:00:00Z' } });
+    expect(await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).toEqual({
+      eligible: false,
+      reason: 'invite_link_expired',
+    });
+  });
+
+  it('with the rule on, goes through only when the inviter has the number saved', async () => {
+    setWorld({ ...MEMBER_LINK, mutualContacts: true, inviterSaved: false });
+    expect(await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).toEqual({
+      eligible: false,
+      reason: 'not_in_inviter_contacts',
+    });
+    setWorld({ ...MEMBER_LINK, mutualContacts: true, inviterSaved: true });
+    expect(
+      (await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).eligible,
+    ).toBe(true);
+    const lookup = mockQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM "UserAlias" WHERE "contactId" = $1 AND phone = ANY'),
+    );
+    expect(lookup?.[1]?.[0]).toBe(501);
+    expect(lookup?.[1]?.[1]).toEqual(expect.arrayContaining(['+995599000001', '599000001']));
+  });
+
+  it('leaves a person who is already registered alone', async () => {
+    setWorld({
+      ...MEMBER_LINK,
+      registered: true,
+      linkLimit: { max_joins: 1, ends_at: '2020-01-01T00:00:00Z' },
+      mutualContacts: true,
+    });
+    expect(
+      (await checkRegistrationEligibility('+995599000001', undefined, 'TORNIKE')).eligible,
+    ).toBe(true);
   });
 });

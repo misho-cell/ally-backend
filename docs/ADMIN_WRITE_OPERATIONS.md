@@ -6350,3 +6350,13 @@ question, and „everything" here answered the texts on the table; it is asked a
 - **Route.** `POST /admin/referral-rewards/top-up` (admin token). Body: `{ "user_id", "source_user_id", "to_usd": 1, "board_row": "5420" }`. It writes only for a pair that already has a kept reward, and only the difference. A second call writes nothing (`already_met`), and the target is capped at 5.00.
 - **Not covered:** a refund of the invitee's 6 Oct payment takes back the 0.16 (it is keyed to the payment), but not this row. The refund window for that payment ends on 20 Oct.
 - **Undo.** `DELETE FROM referral_transactions WHERE external_id = 'topup_5420_<invitee id>';` This is one row and touches no other.
+
+**§143 — 18 October ~09:50 UTC, #5611 (founder D808 / D812), Misho in the code session's chat: „1. კი"** (writing the two link limits and switching on the inviter-side rule).
+
+- Two invitation links take at most 150 joins each, counted from the moment the limit is written, and none after 23 Oct 2026 23:59 Tbilisi (19:59Z). Inviters 501 (Tornike, Axel chat) and 564 (Iro, CELA chat).
+  - `POST /admin/invite-link-limits {"inviter_user_id": 501, "max_joins": 150, "ends_at": "2026-10-23T19:59:00Z", "board_row": "5611"}`, and the same for 564.
+  - Read back: `GET /admin/invite-link-limits`.
+  - Undo: `DELETE FROM invite_link_limits WHERE inviter_user_id IN (501, 564)`. A link with no row has no limit.
+- The inviter-side rule: a join through a member's link needs the inviter to have the new number saved.
+  - `INSERT INTO app_flags (flag, enabled) VALUES ('invite_mutual_contacts', true) ON CONFLICT (flag) DO UPDATE SET enabled = true`.
+  - Undo: the same with `false`.

@@ -152,7 +152,14 @@ export interface BlockDiagnostic {
 // 'referral' — vouched for by a subscribed user's phone number.
 export type EligibilityMode = 'open' | 'existing' | 'social' | 'referral' | 'cohort';
 
-export type EligibilityReason = 'referral_required' | 'referrer_not_subscribed';
+export type EligibilityReason =
+  | 'referral_required'
+  | 'referrer_not_subscribed'
+  // #5611 (D808 / D812): the inviter's link is full or past its end, or the
+  // inviter has not saved the new person's number.
+  | 'invite_link_full'
+  | 'invite_link_expired'
+  | 'not_in_inviter_contacts';
 
 export interface EligibilityCheck {
   eligible: boolean;

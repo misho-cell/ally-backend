@@ -53,6 +53,10 @@ function live(world: World): void {
       );
     if (sql.includes('JOIN "User" u ON u.id = up."userId"'))
       return Promise.resolve(rows([]) as never);
+    // #5611: no limit on the member's link, and the member has the number saved.
+    if (sql.includes('FROM invite_link_limits')) return Promise.resolve(rows([]) as never);
+    if (sql.includes('FROM "UserAlias" WHERE "contactId" = $1 AND phone = ANY'))
+      return Promise.resolve(rows([{ one: 1 }]) as never);
     throw new Error(`Unexpected query: ${sql}`);
   });
 }
