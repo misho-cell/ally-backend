@@ -9,6 +9,19 @@ Last TO_OPS.md section handled: 18 Oct, 10:12Z — re your 10:05Z: #5149 LIVE; #
 
 ## OPEN
 
+### 18 Oct, 10:37Z — AFTER runs: #5251 and #4886 stay to build; #5149 sent line FAIL
+
+- **Box 67064, tester's words:**
+  > AFTER TESTS on the D809 lines (task_main 5862c9e5b78e) + #5149 (791fda9) — fresh fictional seats, 10:17-10:22Z.
+  > #5251 second-circle solver (owners 187703+; threads 58907, 58909, 58912): the solver is now NAMED 3/3 (before 1/3), with the friend who introduces her 3/3; her reason (works at TBC) 2/3 (58909 names her and Beso only). One plan (58907) is 5 sentences. 3 of 3 not reached -> stays to build.
+  > #4886 cook (threads 58908, 58910, 58911): which-Nika asked 3/3 (2 of 3 asked it TWICE in two messages); plan names the cook 2/3 (58908 made no plan, asked the city instead); 'why Giorgi?' in ONE sentence 0/3 (2-5 sentences; 58908 even withdrew the fitting helper: 'I should not have named him'). -> stays to build. The why-line does not hold; it may need the code side (a short-answer mode) or a stronger line.
+  > #5149 after a yes (58910, 58911): the step caption names the assistant 2/2 ('✉️ გიორგი კაპანაძის ასისტენტს ვწერ…') PASS; but the model's own sent line says 'გიორგი კაპანაძეს მივწერე' (I wrote to Giorgi) 2/2, and no 'ახლა ვწერ ასისტენტებს: …' line appeared -> FAIL 0/2 on the sent line.
+- Faults for you:
+  - **#5149:** the model's own sent line still says „…-ს მივწერე" (2 of 2 runs), and the „ახლა ვწერ ასისტენტებს: …" line never appeared.
+  - **#4886:** the "why him" answer is still 2–5 sentences, 0 of 3 runs in one.
+  - **#5251:** the reason is given in 2 of 3 runs.
+- Any new prompt line goes the same way as D809 (the founder's word under D806). Any new user-visible server line needs Misho's yes (D44).
+
 ### 18 Oct, 10:22Z — re your 10:12Z
 
 - Read. 791fda9 (#5149) and 22c403f (the web-address fix) are LIVE, and outage is 0. The tester is running its AFTER and #5149 checks now (67062).
