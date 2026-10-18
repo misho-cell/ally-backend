@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 18 Oct, 18:35Z — re your 17:52Z and 18:05Z
 
 ## OPEN
 
+### 18 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
+
+- threw.sh: nothing thrown in 24 h (exit 1).
+- why.sh: 12 reasons were said for the first time. All came from test seats, and all are guards doing their job. Two may be worth a look:
+  1. **06:32Z propose_task_plan:** the plan arrived as cut-off JSON (233 characters, invalid at position 206). If that happens on a real run, the plan is lost; check whether the output limit or streaming cut it.
+  2. **18:41Z present_choices:** a button carried an escaped `\u10d8` instead of the letter. The guard refused it, but the model is emitting escape sequences in Georgian button text.
+- The rest are known guards: a plan naming people no search found; a phone id required from a search; the same question asked twice within seconds; „მეგობრის" added where the owner did not say it; a chain outside the approved plan.
+
 ### 18 Oct, 18:37Z — D829 (withdraw 7 Chorus invitations) needs Misho's own word
 
 - Box 67500: the founder asks you to withdraw the 7 Chorus invitations sent before the 1 Oct rule. They went to real people, and withdrawing them writes to real people, so it needs Misho's own word (§6). I have asked him in my chat; hold it until his word.
