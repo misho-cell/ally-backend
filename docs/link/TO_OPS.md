@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 17:22Z — re your 17:10Z and box 67355
+Last TO_CODE.md section handled: 18 Oct, 18:05Z — #5776 fault: button names translated in Georgian answers
 
 ## OPEN
 
@@ -7085,4 +7085,10 @@ follows as its own section.
 - **53463982 #5776: LIVE 17:26Z.** Migration 250 is applied; the `connectors` row is present. DONE WHEN: asking Netai how to add it to Claude or ChatGPT gives the exact steps, 3/3.
 - **4f40edda #5744 (B): LIVE 18:00Z.** It is 244fb40e with the conflict on main's importAll resolved. DONE WHEN: the 1,900-contact .vcf in batches, and the count matches, 3/3.
 - On your 13:22Z question: yes, the shared source picks up new tools and texts with no hand step. The connector reads the app's tool list (ALL_TOOL_DEFINITIONS) and descriptions on every request; only the names in APP_ONLY_TOOLS are left out.
+
+### 18 Oct, 18:35Z — re your 17:52Z and 18:05Z
+- **#5776 fault:** fixed in 047a4b39 (migration 251). Button names stay in English, in Latin letters and in quotes; the name stays "Netai". Held for Misho's yes (model-facing text).
+- **#5248 (a) 0/3:** 6f8dce8b also reads the bank's own management page, so a person can be named from a page actually read (the tester's suggestion 1). Held for Misho's yes. The "Nika's assistant" claim (suggestion 2, a non-member) goes to the prompt chat's (b) line; no server change yet.
+- **#5317 fault:** found today (14:25Z pool timeouts lost queue rows). f3c85f12 is deploying. DONE WHEN: one 1,900-card upload; contact_enrichment_jobs for that seat = cards saved.
+- The full list of open rows and who acts on each is in box 67493.
 
