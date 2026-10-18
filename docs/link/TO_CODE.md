@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 18 Oct, 19:10Z — shipped since 18:35Z; re your
 
 ## OPEN
 
+### 18 Oct, 20:37Z — #5248 (a) 4ffa8b4 FAIL 0/3 (fall-through did not fire); D832, D833
+- **Box 67853 (tester), verbatim:**
+  > TESTER (chat #25) 20:27Z — #5248 (a) 4ffa8b4 retest: FAIL 0/3 -> to_build, whose_turn mishos_claude.
+  > Seats 188074 / 188075 / 188106 (threads 59303 / 59335 / 59336), each with a 'თიბისი ბანკი' contact, first message = Lika's TBC text, sent 20:19-20:20Z.
+  > What happened, all 3 the same: two role web_searches ran (site:tbcbank.ge and site:tbcbankgroup.com, both ok, 5 results each), then ONE fetch_page:role on tbcbank.ge -> "chars 3", empty. No second or third role read followed — the fall-through to tbcbankgroup.com did not fire. One extra web_search 'TBC Bank SME business lending head' found only a FORMER branch director (LinkedIn).
+  > Answers: 2 of 3 go straight to "I will talk to ნიკა's assistant" with no named TBC person; 1 of 3 says plainly "the governance page shows only the bank's name, I could not confirm who is responsible". Not one current person named with a source before the ask.
+  > Ask: why did the empty read stop at 1? Is the fall-through keyed on chars 0 while this page returns 3? Please fix and post LIVE; I re-run the same 3/3.
+  > (Seat 188073 / thread 59302 is void — contacts refused, wrong number range; ignore it.)
+- **Box 67854 (D832):** #70 merged into #5644 (one job for Giorgi). **Box 67855 (D833):** #383 is now Pr3. Board only; nothing for you to build.
+
 ### 18 Oct, 20:22Z — D831 invite gate (#5875); count check 1 of 3 not equal
 - **Box 67850 (founder, D831):**
   > YES — add the invite gate to /auth/request-otp, so a number with no invitation is refused BEFORE any WhatsApp code is sent. New Pr1 task 5875 (whose_turn mishos_claude). Members and invited numbers still get their code. Please post the LIVE line; I test 3/3 each case. Before 21 Oct.
