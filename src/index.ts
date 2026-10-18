@@ -29,6 +29,8 @@ import mcpRouter from './api/routes/mcp.routes';
 import roQueryRouter from './api/routes/roQuery.routes';
 import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
 import connectorAssetsRouter from './api/routes/connectorAssets.routes';
+import contactUploadRouter from './api/routes/contactUpload.routes';
+import { UPLOAD_PATH } from './services/contactUploadLinks.service';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { installShutdownHandlers } from './services/gracefulShutdown.service';
@@ -149,6 +151,8 @@ app.use('/oauth', oauthRouter);
 app.use('/.well-known', wellKnownRouter);
 // #5677: Netai's connector icon, public (the ChatGPT and Claude forms take an upload).
 app.use('/assets', connectorAssetsRouter);
+// #5744: the one-time contacts-upload link (its token is the key).
+app.use(UPLOAD_PATH, contactUploadRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {

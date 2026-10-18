@@ -1,5 +1,6 @@
 import { NETAI_ICON_URL, NETAI_STILL_IMAGE_URL } from './netaiFigure';
 import { connectorInputShape } from './appToolShape';
+import { createUploadLink } from '../contactUploadLinks.service';
 import { isSharedToolsEnabled, runSharedTool, sharedAppTools } from './sharedTools';
 import { appToolsForConnector, runAppToolForConnector } from '../chat.service';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -488,6 +489,25 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
       runTool(userId, 'remove_contact_from_network', args, () =>
         mcpRemoveContactFromNetwork(userId, args),
       ),
+  );
+}
+
+async function mcpContactsUploadLink(userId: string): Promise<Record<string, unknown>> {
+  const link = await createUploadLink(userId);
+  return { url: link.url, expires_at: link.expiresAt, uses: 1 };
+}
+
+/** #5744 (A), the founder's D822: contacts reach Netai through a link, never through the chat. */
+function registerContactUploadTool(server: McpServer, userId: string): void {
+  server.registerTool(
+    'get_contacts_upload_link',
+    {
+      title: connectorTitle('get_contacts_upload_link'),
+      description: connectorDescription('get_contacts_upload_link'),
+      inputSchema: {},
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    () => runTool(userId, 'get_contacts_upload_link', {}, () => mcpContactsUploadLink(userId)),
   );
 }
 
@@ -1218,6 +1238,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerMemoryAndBlockTools(server, userId);
   registerGraphTools(server, userId);
   registerGoalTools(server, userId);
+  registerContactUploadTool(server, userId);
   if (ANSWER_MEMBER_QUESTION_ON) registerMemberAnswerTool(server, userId);
   registerPrompts(server);
   return server;

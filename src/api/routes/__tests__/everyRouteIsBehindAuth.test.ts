@@ -79,6 +79,8 @@ const AUTHENTICATED_ANOTHER_WAY: Record<string, string> = {
   'oauth.routes.ts': 'the OAuth flow itself, which issues the token',
   'connectorAssets.routes.ts':
     "Netai's connector icon, a public image the ChatGPT and Claude forms fetch (#5677)",
+  'contactUpload.routes.ts': 'the one-time contacts-upload link; its token is the key (#5744)',
+  'contactUploadPage.ts': 'served HTML, no API routes',
   'oauthPages.ts': 'served HTML, no API routes',
   'mcp.routes.ts': 'no route declarations of its own',
   'roQuery.routes.ts': 'the x-ro-key header, rate limited, read-only SELECT',

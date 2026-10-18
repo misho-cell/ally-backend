@@ -53,6 +53,15 @@ interface ToolText {
 }
 
 export const TOOL_TEXTS: Record<string, ToolText> = {
+  get_contacts_upload_link: {
+    title: 'Contacts upload link',
+    description:
+      'Gives the member a one-time link to put their phone contacts into Netai: they open it on ' +
+      'the phone, pick the contacts file (.vcf) and tap Upload. The file goes straight to Netai, so ' +
+      'no number passes through this chat. Use when they want to add or refresh their contacts ' +
+      'here. Give them the link and say it works once, for 30 minutes; when they are back, ' +
+      'get_network_stats shows the new total.',
+  },
   search_contacts: {
     title: 'Search contacts',
     description:
