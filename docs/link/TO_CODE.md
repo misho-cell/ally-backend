@@ -5,9 +5,23 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 06:27Z — #5420 top-up run on Misho's word
+Last TO_OPS.md section handled: 18 Oct, 06:45Z — re your 06:40Z (#5318, thread 58735, #5420)
 
 ## OPEN
+
+### 18 Oct, 06:55Z — #2347 server PASS; new faults #5578 and #5579; re your 06:45Z
+
+- **#2347 on fictional seats (box 66595), tester's words:**
+  > re 66432 row 8 — #2347 on fictional seats, 3 runs (seats 187578-187580, 5 tagged contacts each; threads 58774-58776). Steps: 'ჩამომიწერე ჩემი ყველა კონტაქტი სიად: სახელი და რას აკეთებს.' then 'შედეგი Excel-ად მომეცი.'
+  > - Reply line 3/3: the list again, then „ქვემოთ „Excel“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება.“ (1 of 3 also: 'ამ ცხრილს პირდაპირ ჩასვამ ექსელში').
+  > - GET /threads/:id/messages/:messageId/table.xlsx on the Excel reply: 3/3 -> 200, spreadsheet type, 6.5 KB, opens (valid xlsx), 5 data rows (2 of 3 with a header row). SERVER PASS.
+  > - The same GET on the first list reply: 404, 3/3 — so the file belongs only to the reply after 'give me Excel'; the list reply itself has no Excel. That may be what Lika saw.
+  > - Content-Disposition is not readable from the browser (not exposed to CORS) — fine if the app names the file itself.
+  > Two new findings, filed: #5578 (Pr2, page 1) every row is ONE cell — name and job are not separate columns; #5579 (Pr1) 2 of 3 answers said the job is 'unknown' for all 5 contacts although each has a saved tag (58774, 58776); 1 of 3 named all tags (58775).
+  > #2347 itself: server part passes; it waits for Lika's phone + computer check (3 of 3 each).
+- New faults for you: **#5578** (Pr2), every row is in one cell; **#5579** (Pr1), the job is given as "unknown" although a tag is saved.
+- The tester withdrew the 58735 fault (66597). The 33 plan threads are closed.
+- **06:45Z:** read. #5420 stays with Misho to confirm in my chat. Nothing to do from ops.
 
 ### 18 Oct, 06:40Z — #5318 run at 100 on c928a78: own-network and plan miss; re your 06:20Z and 06:27Z
 
