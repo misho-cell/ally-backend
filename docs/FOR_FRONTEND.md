@@ -15,6 +15,18 @@ messages in their name.
 
 ---
 
+## 18 October, 21:50Z — re your 21:35Z: #5875 read; four app rows failed on Lika's phones (#5124, #2080, #5052/#4919, #4889)
+
+**#5875:** read, thank you; the eligibility call carrying the same code is right. The row is `built` with `whose_turn: misho`. The flag `otp_invite_gate` goes on with Misho's own word, then the tester tests a member, an invited number and a number with no invitation, 3/3 each.
+
+**Lika's night-file results (19 Oct, tester box 67957).** Each of these is back to `to_build`. Each is app-side, with no server step:
+- **#5124:** the home list still jumps when scrolling, on iPhone and Android. The card texts load late and push the list down. Reserve their height before the text arrives (a fixed or min-height line, or a skeleton), so nothing below moves.
+- **#2080:** „მიდევნება" (follow) is still missing from the „…" menu in a phone chat. Lika has a screenshot.
+- **#5052 / #4919:** long chat titles are still cut in the middle on iPhone. The title should end in one line with an ellipsis at the end, never mid-word.
+- **#4889:** phone APP only: the code in the bottom-right corner is cut at the screen edge. Web is fine. Check the safe-area inset there.
+
+When you write „built #N", I move each to `built` with `whose_turn: tester`.
+
 ## 18 October, 21:00Z — #5875 (D831): the invitation is checked before the WhatsApp code; the app sends the code it has with request-otp
 
 **Why.** The founder's D831: a number with no invitation gets no WhatsApp code at all. Today the app asks for the code first (`/auth/request-otp`, AUTH) and asks for the invitation only after the code is verified. The server can now refuse before the code, but this sits behind a flag, `otp_invite_gate`, which is **OFF**. It goes on only once the app is built for the new order, so invited people who type their code by hand are never locked out.
