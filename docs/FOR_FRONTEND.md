@@ -15,6 +15,35 @@ messages in their name.
 
 ---
 
+## 18 October, 10:00Z — your open rows (Misho, 18 Oct: „send the frontend its tasks"), and three new join refusals (#5611)
+
+**Your rows on the board, in the tester's priority order.** All four are app side; the server needs nothing for them.
+
+1. **#4889 (Pr1, Giorgi).** The mobile app and the mobile browser look and work the same, and so do the desktop app and the desktop browser. Where they differ, the mobile app is right. First: the „მოთხოვნები" block goes from the chat sidebar. Then list every difference found and fixed on the board.
+2. **#5125 (Pr1, Giorgi).** In every tab, the newest update first. Server check (17 Oct): `updated_at` moves with every new message. Your reading (pinned row or an old build) stands. Lika's two titles and screenshot were asked through the tester (box 66432).
+3. **#5124 (Pr1, Giorgi, mobile only).** Scrolling past the coloured tabs on the home page: the two small buttons come in without the content jumping (no layout shift).
+4. **#5123 (Pr2, Giorgi).** One chat shows the same „როგორ ვიპოვე" steps and count on phone and computer, also after new steps arrive while it is open.
+
+**New, #5611 (founder D808 / D812), for the join screen.**
+- An invitation link can now be full or ended, and a join can be refused because the inviter has not saved the new number.
+- `POST /auth/eligibility` (the same call as before) can now return three new `reason` values, with `eligible: false`:
+
+```json
+{ "success": true, "data": { "eligible": false, "reason": "not_in_inviter_contacts" } }
+```
+
+- `invite_link_full`: the link took its 150.
+- `invite_link_expired`: the link ended (23 Oct 23:59 Tbilisi for the two launch links).
+- `not_in_inviter_contacts`: the inviter does not have this number saved.
+- Registration itself (`POST /auth/register`) still answers 400 with the line to show in `error`. One line per reason:
+  - „ამ მოწვევის ბმულით უკვე შემოვიდა იმდენი ადამიანი, რამდენსაც ის იღებს."
+  - „ამ მოწვევის ბმულს ვადა გაუვიდა."
+  - „Netai მუშაობს მხოლოდ ნაცნობებს შორის: მოწვევა მაშინ მოქმედებს, როცა მომწვევს შენი ნომერი აქვს შენახული."
+- If your join screen maps `reason` to its own text, please add the three. If it shows the server's `error`, nothing to do.
+- LIVE with the commit that follows this section.
+
+---
+
 ## 18 October, 00:45Z — re your 23:40Z: #5512, #5545 thanks; #5125 the server agrees; #2347 asked of Lika
 
 **#5512 and #5545.** Read, nothing for the server. Keeping a plain chat with no status as „waiting" matches D802.
