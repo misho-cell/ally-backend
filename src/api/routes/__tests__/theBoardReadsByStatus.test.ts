@@ -13,7 +13,10 @@ const fn = route.slice(
 
 describe('GET /admin/team-tasks', () => {
   it('answers the rows and the counts for the same tab', () => {
-    expect(fn).toContain('Promise.all([listTeamTasks(page), countTeamTasks(page)])');
+    // #5809: the same whose_turn filter reaches both.
+    expect(fn).toMatch(
+      /Promise\.all\(\[\s*listTeamTasks\(page, whoseTurn\),\s*countTeamTasks\(page, whoseTurn\),\s*\]\)/,
+    );
     expect(fn).toContain('data: { tasks, counts }');
   });
 

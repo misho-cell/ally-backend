@@ -13,6 +13,7 @@ import {
   listTeamTasks,
   TEAM_TASK_PAGES,
   TeamTaskAuthor,
+  TeamTaskTurn,
   updateTeamTask,
 } from '../teamTasks.service';
 
@@ -26,6 +27,7 @@ const ROW = {
   priority: 2,
   status: 'to_build',
   page: 1,
+  whose_turn: 'misho',
   created_at: '2026-10-01T19:20:00Z',
   updated_at: '2026-10-01T19:20:00Z',
 };
@@ -71,10 +73,11 @@ describe('the board', () => {
       postedBy: '173527',
       problem: ' a problem ',
       task: ' a task ',
+      whoseTurn: TeamTaskTurn.Misho,
     });
     const [sql, params, timeout] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('INSERT INTO team_tasks');
-    expect(params).toEqual(['giorgi', '173527', 'a problem', 'a task', 2]);
+    expect(params).toEqual(['giorgi', '173527', 'a problem', 'a task', 2, 'misho']);
     expect(timeout).toBeGreaterThan(0);
     expect(task.created_by).toBe('giorgi');
     expect(task.created_at).toBe('2026-10-01T19:20:00.000Z');
@@ -93,6 +96,8 @@ describe('the board', () => {
       2,
       ['giorgi', 'tornike', 'lika', 'ninia', 'tornikes_claude'],
       ['to_build', 'built', 'being_tested', 'tested'],
+      false,
+      null,
     ]);
   });
 
@@ -104,7 +109,7 @@ describe('the board', () => {
   it('changes only what was sent, and says when there is no such task', async () => {
     mockQuery.mockResolvedValue(rows([]));
     expect(await updateTeamTask(9, { page: 2 })).toBeNull();
-    expect(mockQuery.mock.calls[0][1]).toEqual([9, null, null, 2, null, null]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([9, null, null, 2, null, null, null]);
   });
 
   /**
@@ -116,13 +121,13 @@ describe('the board', () => {
     await updateTeamTask(200, { task: '  new  ', problem: 'why' });
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('task = COALESCE($6, task)');
-    expect(params).toEqual([200, null, null, null, 'why', 'new']);
+    expect(params).toEqual([200, null, null, null, 'why', 'new', null]);
   });
 
   it('keeps the text when an empty one is sent, rather than blanking the row', async () => {
     mockQuery.mockResolvedValue(rows([ROW]));
     await updateTeamTask(200, { task: '   ' });
-    expect(mockQuery.mock.calls[0][1]).toEqual([200, null, null, null, null, null]);
+    expect(mockQuery.mock.calls[0][1]).toEqual([200, null, null, null, null, null, null]);
   });
 
   it('hides a deleted row and keeps who removed it, so it can be put back', async () => {
@@ -195,11 +200,11 @@ describe('the counts above a tab', () => {
     expect(String(sql)).toContain('deleted_at IS NULL');
     expect(params).toEqual([2]);
     expect(timeout).toBeGreaterThan(0);
-    expect(counts).toEqual({ to_build: 8, built: 0, being_tested: 0, tested: 40 });
+    expect(counts).toMatchObject({ to_build: 8, built: 0, being_tested: 0, tested: 40 });
   });
 
   it('name every status, 0 when a status has no rows, and ignore an unknown one', () => {
-    expect(countsFrom([{ status: 'odd', n: 3 }])).toEqual({
+    expect(countsFrom([{ status: 'odd', n: 3 }])).toMatchObject({
       to_build: 0,
       built: 0,
       being_tested: 0,

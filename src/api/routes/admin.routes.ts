@@ -1,18 +1,23 @@
 import { hideGoals, unhideGoal, hiddenGoals } from '../../services/taskStore.service';
 import {
   authorForLogin,
+  changeTurnRefusal,
   countTeamTasks,
   createTeamTask,
+  createTurnRefusal,
   deleteTeamTask,
   isTeamTaskAuthor,
   isTeamTaskStatus,
+  isTeamTaskTurnFilter,
   listTeamTasks,
   TEAM_TASK_PAGES,
   TeamTask,
   TeamTaskAuthor,
   TeamTaskCounts,
   TeamTaskStatus,
+  TeamTaskTurn,
   updateTeamTask,
+  WHOSE_TURN_FILTER_INVALID,
 } from '../../services/teamTasks.service';
 import { clearGoalForRetest, ClearRefusal } from '../../services/goalRetestClear.service';
 import {
@@ -1892,9 +1897,12 @@ adminRouter.post(
 // M2 (plate v288; Misho, 1 October): the team's task board — every row says
 // who created it. The author comes from the login; only the shared login,
 // which AI seats write through, names one (`created_by`), from the fixed list.
-//   GET   /admin/team-tasks?page=1|2|3   → { tasks (by status first, 4885), counts }
-//   POST  /admin/team-tasks { problem, task, priority?, created_by? }
-//   PATCH /admin/team-tasks/:id { status?, priority?, page?, problem?, task? }
+// #5809 (D828): every row carries whose_turn — whose next move it is, stored.
+//   GET   /admin/team-tasks?page=1|2|3&whose_turn=<seat>|unset
+//         → { tasks (by status first, 4885), counts (+ counts.whose_turn) }
+//   POST  /admin/team-tasks { problem, task, whose_turn, priority?, created_by? }
+//   PATCH /admin/team-tasks/:id { status?, priority?, page?, problem?, task?, whose_turn? }
+//         (whose_turn is required whenever status is sent)
 //   DELETE /admin/team-tasks/:id   (hidden, not erased; migration 196)
 adminRouter.get(
   '/team-tasks',
@@ -1907,9 +1915,17 @@ adminRouter.get(
       res.status(400).json({ success: false, error: 'page is 1, 2 or 3' });
       return;
     }
+    const whoseTurn: unknown = req.query.whose_turn;
+    if (whoseTurn !== undefined && !isTeamTaskTurnFilter(whoseTurn)) {
+      res.status(400).json({ success: false, error: WHOSE_TURN_FILTER_INVALID });
+      return;
+    }
     try {
       const page = req.query.page === undefined ? undefined : Number(req.query.page);
-      const [tasks, counts] = await Promise.all([listTeamTasks(page), countTeamTasks(page)]);
+      const [tasks, counts] = await Promise.all([
+        listTeamTasks(page, whoseTurn),
+        countTeamTasks(page, whoseTurn),
+      ]);
       res.status(200).json({ success: true, data: { tasks, counts } });
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -1932,6 +1948,11 @@ adminRouter.post(
         .json({ success: false, error: 'problem and task are needed; priority is 1–3' });
       return;
     }
+    const turnRefusal = createTurnRefusal((req.body as { whose_turn?: unknown }).whose_turn);
+    if (turnRefusal !== null) {
+      res.status(400).json({ success: false, error: turnRefusal });
+      return;
+    }
     try {
       const adminId = String((req as AuthenticatedRequest).user.userId);
       const input = req.body as {
@@ -1939,6 +1960,7 @@ adminRouter.post(
         task: string;
         priority?: number;
         created_by?: unknown;
+        whose_turn: TeamTaskTurn;
       };
       const fromLogin = await authorForLogin(adminId);
       const author = fromLogin ?? (isTeamTaskAuthor(input.created_by) ? input.created_by : null);
@@ -1955,6 +1977,7 @@ adminRouter.post(
         problem: String(input.problem),
         task: String(input.task),
         priority: input.priority === undefined ? undefined : Number(input.priority),
+        whoseTurn: input.whose_turn,
       });
       res.status(201).json({ success: true, data: created });
     } catch (error) {
@@ -1981,6 +2004,12 @@ adminRouter.patch(
       });
       return;
     }
+    const sent = req.body as { status?: unknown; whose_turn?: unknown };
+    const turnRefusal = changeTurnRefusal(sent.whose_turn, sent.status !== undefined);
+    if (turnRefusal !== null) {
+      res.status(400).json({ success: false, error: turnRefusal });
+      return;
+    }
     try {
       const change = req.body as {
         status?: TeamTaskStatus;
@@ -1988,6 +2017,7 @@ adminRouter.patch(
         page?: number;
         problem?: string;
         task?: string;
+        whose_turn?: TeamTaskTurn;
       };
       const updated = await updateTeamTask(Number(req.params.id), {
         status: change.status,
@@ -1995,6 +2025,7 @@ adminRouter.patch(
         page: change.page === undefined ? undefined : Number(change.page),
         problem: change.problem === undefined ? undefined : String(change.problem),
         task: change.task === undefined ? undefined : String(change.task),
+        whoseTurn: change.whose_turn,
       });
       if (updated === null) {
         res.status(404).json({ success: false, error: 'No such task.' });

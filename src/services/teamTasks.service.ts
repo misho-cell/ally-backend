@@ -36,6 +36,32 @@ export enum TeamTaskStatus {
 export const TEAM_TASK_PAGES: readonly number[] = [1, 2, 3];
 export const TEAM_TASK_PRIORITIES: readonly number[] = [1, 2, 3];
 
+/**
+ * Board #5809 (the founder's D828): whose next move a row waits on — a stored
+ * field, not a guess from the status (migration 252). Rows from before it are
+ * NULL until the tester fills them.
+ */
+export enum TeamTaskTurn {
+  Misho = 'misho',
+  MishosClaude = 'mishos_claude',
+  Giorgi = 'giorgi',
+  Lika = 'lika',
+  Ninia = 'ninia',
+  Tornike = 'tornike',
+  Tester = 'tester',
+}
+
+export const TEAM_TASK_TURNS: readonly TeamTaskTurn[] = Object.values(TeamTaskTurn);
+/** The filter value, and the counts key, for a row whose turn is not set yet. */
+export const WHOSE_TURN_UNSET = 'unset' as const;
+export type TeamTaskTurnFilter = TeamTaskTurn | typeof WHOSE_TURN_UNSET;
+
+const TURN_LIST = TEAM_TASK_TURNS.join(', ');
+export const WHOSE_TURN_INVALID = `whose_turn is one of ${TURN_LIST}`;
+export const WHOSE_TURN_NEEDED_ON_CREATE = `whose_turn is needed on a new task: one of ${TURN_LIST}`;
+export const WHOSE_TURN_NEEDED_WITH_STATUS = `whose_turn is needed whenever status changes: one of ${TURN_LIST}`;
+export const WHOSE_TURN_FILTER_INVALID = `whose_turn filters by one of ${TURN_LIST}, or ${WHOSE_TURN_UNSET}`;
+
 export interface TeamTask {
   readonly id: number;
   readonly created_by: TeamTaskAuthor;
@@ -44,6 +70,7 @@ export interface TeamTask {
   readonly priority: number;
   readonly status: TeamTaskStatus;
   readonly page: number;
+  readonly whose_turn: TeamTaskTurn | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -65,6 +92,29 @@ export function isTeamTaskStatus(value: unknown): value is TeamTaskStatus {
   return Object.values(TeamTaskStatus).includes(value as TeamTaskStatus);
 }
 
+export function isTeamTaskTurn(value: unknown): value is TeamTaskTurn {
+  return TEAM_TASK_TURNS.includes(value as TeamTaskTurn);
+}
+
+export function isTeamTaskTurnFilter(value: unknown): value is TeamTaskTurnFilter {
+  return value === WHOSE_TURN_UNSET || isTeamTaskTurn(value);
+}
+
+/** Why a new task's whose_turn is refused, or null when it is one of the seats. */
+export function createTurnRefusal(value: unknown): string | null {
+  if (value === undefined) return WHOSE_TURN_NEEDED_ON_CREATE;
+  return isTeamTaskTurn(value) ? null : WHOSE_TURN_INVALID;
+}
+
+/**
+ * Why a change's whose_turn is refused, or null. A change that carries a status
+ * must say whose move it is next; any other change may set it or leave it.
+ */
+export function changeTurnRefusal(value: unknown, changesStatus: boolean): string | null {
+  if (value === undefined) return changesStatus ? WHOSE_TURN_NEEDED_WITH_STATUS : null;
+  return isTeamTaskTurn(value) ? null : WHOSE_TURN_INVALID;
+}
+
 /** Who a login files tasks as, or null when it is the shared login. */
 export async function authorForLogin(userId: string): Promise<TeamTaskAuthor | null> {
   if (userId === TORNIKE_ACCOUNT_ID) return TeamTaskAuthor.Tornike;
@@ -77,7 +127,7 @@ export async function authorForLogin(userId: string): Promise<TeamTaskAuthor | n
   return name === undefined ? null : (STAFF_NAME_AUTHOR[name] ?? null);
 }
 
-const COLUMNS = `id, created_by, problem, task, priority, status, page, created_at, updated_at`;
+const COLUMNS = `id, created_by, problem, task, priority, status, page, whose_turn, created_at, updated_at`;
 
 function toTask(row: Record<string, unknown>): TeamTask {
   return {
@@ -93,12 +143,13 @@ export interface NewTeamTask {
   readonly problem: string;
   readonly task: string;
   readonly priority?: number;
+  readonly whoseTurn: TeamTaskTurn;
 }
 
 export async function createTeamTask(input: NewTeamTask): Promise<TeamTask> {
   const result = await query<Record<string, unknown>>(
-    `INSERT INTO team_tasks (created_by, posted_by, problem, task, priority)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO team_tasks (created_by, posted_by, problem, task, priority, whose_turn)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING ${COLUMNS}`,
     [
       input.author,
@@ -106,6 +157,7 @@ export async function createTeamTask(input: NewTeamTask): Promise<TeamTask> {
       input.problem.trim().slice(0, MAX_TEXT_CHARS),
       input.task.trim().slice(0, MAX_TEXT_CHARS),
       input.priority ?? 2,
+      input.whoseTurn,
     ],
     QUERY_TIMEOUT_MS,
   );
@@ -136,15 +188,25 @@ export const STATUS_ORDER: readonly TeamTaskStatus[] = [
   TeamTaskStatus.Tested,
 ];
 
+/** The stored whose_turn a filter matches: a seat, or NULL for „unset". */
+function turnMatched(filter: TeamTaskTurnFilter): TeamTaskTurn | null {
+  return filter === WHOSE_TURN_UNSET ? null : filter;
+}
+
 /**
  * One page of the board: by status (4885), then urgent first (#5083, Giorgi,
  * 15 Oct: „urgent always first, then authors"), then by author (#266), newest
- * first as the last tie-break. Priority 1 is urgent.
+ * first as the last tie-break. Priority 1 is urgent. #5809: optionally only
+ * the rows waiting on one seat, or only those whose turn is not set.
  */
-export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
+export async function listTeamTasks(
+  page?: number,
+  whoseTurn?: TeamTaskTurnFilter,
+): Promise<TeamTask[]> {
   const result = await query<Record<string, unknown>>(
     `SELECT ${COLUMNS} FROM team_tasks
       WHERE ($1::smallint IS NULL OR page = $1::smallint)
+        AND (NOT $4::boolean OR whose_turn IS NOT DISTINCT FROM $5::text)
         AND deleted_at IS NULL
       ORDER BY page,
                COALESCE(array_position($3::text[], status), cardinality($3::text[]) + 1),
@@ -152,42 +214,93 @@ export async function listTeamTasks(page?: number): Promise<TeamTask[]> {
                COALESCE(array_position($2::text[], created_by), cardinality($2::text[]) + 1),
                id DESC
       LIMIT ${MAX_TASKS_LISTED}`,
-    [page ?? null, AUTHOR_ORDER, STATUS_ORDER],
+    [
+      page ?? null,
+      AUTHOR_ORDER,
+      STATUS_ORDER,
+      whoseTurn !== undefined,
+      whoseTurn === undefined ? null : turnMatched(whoseTurn),
+    ],
     QUERY_TIMEOUT_MS,
   );
   return result.rows.map(toTask);
 }
 
-export type TeamTaskCounts = Readonly<Record<TeamTaskStatus, number>>;
+export type WhoseTurnCounts = Readonly<Record<TeamTaskTurnFilter, number>>;
 
-/** The counts by status from the database rows, every status present (0 when none). */
-export function countsFrom(rows: readonly Record<string, unknown>[]): TeamTaskCounts {
-  const counts: Record<TeamTaskStatus, number> = {
+/** By status, plus (#5809) `whose_turn`: by seat, and `unset` for rows not filled yet. */
+export interface TeamTaskCounts extends Readonly<Record<TeamTaskStatus, number>> {
+  readonly whose_turn: WhoseTurnCounts;
+}
+
+function zeroStatusCounts(): Record<TeamTaskStatus, number> {
+  return {
     [TeamTaskStatus.ToBuild]: 0,
     [TeamTaskStatus.Built]: 0,
     [TeamTaskStatus.BeingTested]: 0,
     [TeamTaskStatus.Tested]: 0,
   };
+}
+
+function zeroTurnCounts(): Record<TeamTaskTurnFilter, number> {
+  return {
+    [TeamTaskTurn.Misho]: 0,
+    [TeamTaskTurn.MishosClaude]: 0,
+    [TeamTaskTurn.Giorgi]: 0,
+    [TeamTaskTurn.Lika]: 0,
+    [TeamTaskTurn.Ninia]: 0,
+    [TeamTaskTurn.Tornike]: 0,
+    [TeamTaskTurn.Tester]: 0,
+    [WHOSE_TURN_UNSET]: 0,
+  };
+}
+
+/** The counts key a row's stored whose_turn falls under, or null when it is unknown. */
+function turnKey(value: unknown): TeamTaskTurnFilter | null {
+  if (value === null || value === undefined) return WHOSE_TURN_UNSET;
+  return isTeamTaskTurn(value) ? value : null;
+}
+
+/**
+ * The counts from the database rows (one per status × whose_turn), every key
+ * present (0 when none). The status counts are of the rows the list shows, so
+ * they follow the whose_turn filter; the whose_turn counts are of the whole tab,
+ * so each seat's number is there to pick before filtering by it.
+ */
+export function countsFrom(
+  rows: readonly Record<string, unknown>[],
+  whoseTurn?: TeamTaskTurnFilter,
+): TeamTaskCounts {
+  const byStatus = zeroStatusCounts();
+  const byTurn = zeroTurnCounts();
   for (const row of rows) {
-    if (isTeamTaskStatus(row.status)) counts[row.status] = Number(row.n);
+    const n = Number(row.n);
+    const turn = turnKey(row.whose_turn);
+    if (turn !== null) byTurn[turn] += n;
+    const listed = whoseTurn === undefined || turn === whoseTurn;
+    if (listed && isTeamTaskStatus(row.status)) byStatus[row.status] += n;
   }
-  return counts;
+  return { ...byStatus, whose_turn: byTurn };
 }
 
 /**
  * 4885: the line above the tab — how many rows of each status it holds. Counted
  * in the database, so a tab longer than the listing limit still counts right.
+ * At most one row per status × whose_turn comes back.
  */
-export async function countTeamTasks(page?: number): Promise<TeamTaskCounts> {
+export async function countTeamTasks(
+  page?: number,
+  whoseTurn?: TeamTaskTurnFilter,
+): Promise<TeamTaskCounts> {
   const result = await query<Record<string, unknown>>(
-    `SELECT status, COUNT(*)::int AS n FROM team_tasks
+    `SELECT status, whose_turn, COUNT(*)::int AS n FROM team_tasks
       WHERE ($1::smallint IS NULL OR page = $1::smallint)
         AND deleted_at IS NULL
-      GROUP BY status`,
+      GROUP BY status, whose_turn`,
     [page ?? null],
     QUERY_TIMEOUT_MS,
   );
-  return countsFrom(result.rows);
+  return countsFrom(result.rows, whoseTurn);
 }
 
 export interface TeamTaskChange {
@@ -196,6 +309,7 @@ export interface TeamTaskChange {
   readonly page?: number;
   readonly problem?: string;
   readonly task?: string;
+  readonly whoseTurn?: TeamTaskTurn;
 }
 
 /** The edited text as stored, or null to keep what is there. */
@@ -206,7 +320,8 @@ function editedText(text: string | undefined): string | null {
 }
 
 /**
- * Changes status, priority, page or the text; null when there is no such task.
+ * Changes status, priority, page, the text or whose turn it is; null when there
+ * is no such task. Whose turn cannot be set back to unset.
  *
  * Giorgi's Claude, 2 October (G-001): a PATCH carrying new problem/task text
  * answered 200 and changed nothing, because the text was never read. It is now;
@@ -220,6 +335,7 @@ export async function updateTeamTask(id: number, change: TeamTaskChange): Promis
             page = COALESCE($4::smallint, page),
             problem = COALESCE($5, problem),
             task = COALESCE($6, task),
+            whose_turn = COALESCE($7, whose_turn),
             updated_at = NOW()
       WHERE id = $1 AND deleted_at IS NULL
       RETURNING ${COLUMNS}`,
@@ -230,6 +346,7 @@ export async function updateTeamTask(id: number, change: TeamTaskChange): Promis
       change.page ?? null,
       editedText(change.problem),
       editedText(change.task),
+      change.whoseTurn ?? null,
     ],
     QUERY_TIMEOUT_MS,
   );
