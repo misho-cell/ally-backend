@@ -6,7 +6,7 @@ One page for the 21 October guests. Only a phone is needed. About 3 minutes.
 
 1. ტელეფონის ბრაუზერში (Safari / Chrome) გახსენი **claude.ai** და შედი შენი ანგარიშით.
    Claude-ის აპლიკაციაში კონექტორის დამატება არ შეიძლება — მხოლოდ ბრაუზერში.
-2. მენიუ (☰) → შენი სახელი → **Settings** → **Connectors**.
+2. მენიუ (☰) → **Customize** → **Connectors**.
 3. **Add custom connector**.
 4. Name: **Netai** · URL: **https://api.netai.guru/mcp** → **Add**.
 5. **Connect** → გაიხსნება Netai-ს გვერდი: ჩაწერე შენი ნომერი, მოვა კოდი, ჩაწერე.
@@ -20,7 +20,7 @@ One page for the 21 October guests. Only a phone is needed. About 3 minutes.
 
 1. In the phone's browser (Safari / Chrome) open **claude.ai** and sign in.
    The Claude app cannot add a connector; the browser can.
-2. Menu (☰) → your name → **Settings** → **Connectors**.
+2. Menu (☰) → **Customize** → **Connectors** (claude.ai moved them from Settings).
 3. **Add custom connector**.
 4. Name **Netai**, URL **https://api.netai.guru/mcp** → **Add**.
 5. **Connect** → Netai's page opens: your number, then the code you receive.

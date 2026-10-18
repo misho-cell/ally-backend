@@ -65,8 +65,8 @@ Choose your contacts file (.vcf). It goes straight to Netai, never through the c
       });
     }).then(function (res) { return res.json(); }).then(function (json) {
       if (json.success) {
-        status.textContent = 'მზადაა: ' + json.data.inFile + ' კონტაქტი ფაილში, ' + json.data.imported +
-          ' ახალი. დაბრუნდი ჩატში. · Done: ' + json.data.inFile + ' in the file, ' + json.data.imported + ' new. Go back to the chat.';
+        status.textContent = 'მივიღე ' + json.data.inFile + ' კონტაქტი. იტვირთება ფონურად — შეგიძლია ჩატში დაბრუნდე. · ' +
+          'Got ' + json.data.inFile + ' contacts. They load in the background — you can go back to the chat.';
       } else {
         status.textContent = json.error; button.disabled = false;
       }

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { query } from '../db/postgres/client';
 import { PUBLIC_BASE_URL } from '../config/publicUrl';
 import { importContacts, parseVcf } from './contacts.service';
+import type { ImportContact } from '../types';
 
 /**
  * #5744 (A), the founder's D822: inside Claude or ChatGPT a member asks for a
@@ -83,10 +84,8 @@ async function releaseLink(token: string): Promise<void> {
 export class UploadLinkClosedError extends Error {}
 export class EmptyVcfError extends Error {}
 
-/** Every contact in the file, in as many rounds as the import's cap needs. */
-async function importWholeFile(userId: string, vcf: string): Promise<UploadOutcome> {
-  const contacts = parseVcf(vcf);
-  if (contacts.length === 0) throw new EmptyVcfError('no contacts in the file');
+/** Every contact already read from the file, in as many rounds as the import's cap needs. */
+async function importAll(userId: string, contacts: ImportContact[]): Promise<UploadOutcome> {
   let imported = 0;
   let unchanged = 0;
   let skipped = 0;
@@ -103,13 +102,45 @@ async function importWholeFile(userId: string, vcf: string): Promise<UploadOutco
   return { imported, unchanged, skipped, inFile: contacts.length };
 }
 
-export async function uploadThroughLink(token: string, vcf: string): Promise<UploadOutcome> {
+/** Every contact in the file, in as many rounds as the import's cap needs. */
+export async function importWholeFile(userId: string, vcf: string): Promise<UploadOutcome> {
+  const contacts = parseVcf(vcf);
+  if (contacts.length === 0) throw new EmptyVcfError('no contacts in the file');
+  return importAll(userId, contacts);
+}
+
+export interface UploadStarted {
+  readonly inFile: number;
+}
+
+/**
+ * The tester's 67194 (18 Oct): a 1,900-contact file took 10–12 minutes, two to
+ * three contacts a second, while the phone page waited on one request — at the
+ * event it would time out or be closed. So the page is answered as soon as the
+ * file is read, and the contacts load in the background. The load is an
+ * import attempt like any other, so a deploy waits for it (ship_one's quiet
+ * check). If it fails, the link is given back for another try.
+ */
+export async function startUploadThroughLink(token: string, vcf: string): Promise<UploadStarted> {
   const userId = await claimLink(token);
   if (userId === null) throw new UploadLinkClosedError('link used or expired');
-  try {
-    return await importWholeFile(userId, vcf);
-  } catch (err) {
+  const contacts = parseVcf(vcf);
+  if (contacts.length === 0) {
     await releaseLink(token);
-    throw err;
+    throw new EmptyVcfError('no contacts in the file');
   }
+  void importAll(userId, contacts)
+    .then((outcome) => {
+      // eslint-disable-next-line no-console
+      console.log(`[contact-upload] ${outcome.inFile} in the file, ${outcome.imported} new`);
+    })
+    .catch(async (err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[contact-upload] background load failed:', (err as Error).message);
+      await releaseLink(token).catch((releaseErr: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[contact-upload] link not given back:', (releaseErr as Error).message);
+      });
+    });
+  return { inFile: contacts.length };
 }

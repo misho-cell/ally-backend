@@ -8,7 +8,7 @@ jest.mock('../../../services/contactUploadLinks.service', () => {
     UploadLinkClosedError,
     EmptyVcfError,
     isUploadLinkOpen: (...a: unknown[]) => mockOpen(...a),
-    uploadThroughLink: (...a: unknown[]) => mockUpload(...a),
+    startUploadThroughLink: (...a: unknown[]) => mockUpload(...a),
   };
 });
 jest.mock('../../middleware/rateLimit.middleware', () => ({
@@ -66,15 +66,12 @@ describe('the contacts upload page', () => {
     expect(await res.text()).toContain('ბმული აღარ მოქმედებს');
   });
 
-  it('loads the file and answers the counts', async () => {
-    mockUpload.mockResolvedValue({ imported: 1900, unchanged: 0, skipped: 0, inFile: 1900 });
+  it('answers at once with the file’s count, the load running in the background', async () => {
+    mockUpload.mockResolvedValue({ inFile: 1900 });
     const res = await post({ vcfContent: 'BEGIN:VCARD\nEND:VCARD' });
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      success: true,
-      data: { imported: 1900, unchanged: 0, skipped: 0, inFile: 1900 },
-    });
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual({ success: true, data: { inFile: 1900, loading: true } });
   });
 
   it('answers 410 for a used link and 400 for no file', async () => {

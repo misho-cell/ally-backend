@@ -16,7 +16,8 @@ import {
   createUploadLink,
   EmptyVcfError,
   UploadLinkClosedError,
-  uploadThroughLink,
+  importWholeFile,
+  startUploadThroughLink,
 } from '../contactUploadLinks.service';
 
 const contacts = (n: number): { name: string; phone: string }[] =>
@@ -45,7 +46,6 @@ describe('the contacts upload link', () => {
   });
 
   it('loads a 1,900-contact file whole, in as many rounds as the 500 cap needs', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ user_id: 501 }] });
     mockParse.mockReturnValue(contacts(1900));
     mockImport
       .mockResolvedValueOnce({ imported: 500, skipped: 0, unchanged: 0, remaining: 1400 })
@@ -53,7 +53,7 @@ describe('the contacts upload link', () => {
       .mockResolvedValueOnce({ imported: 500, skipped: 0, unchanged: 1000, remaining: 400 })
       .mockResolvedValueOnce({ imported: 400, skipped: 0, unchanged: 1500, remaining: 0 });
 
-    await expect(uploadThroughLink('t'.repeat(32), 'BEGIN:VCARD')).resolves.toEqual({
+    await expect(importWholeFile('501', 'BEGIN:VCARD')).resolves.toEqual({
       imported: 1900,
       unchanged: 0,
       skipped: 0,
@@ -64,7 +64,7 @@ describe('the contacts upload link', () => {
 
   it('refuses a used or expired link', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
-    await expect(uploadThroughLink('t'.repeat(32), 'BEGIN:VCARD')).rejects.toBeInstanceOf(
+    await expect(startUploadThroughLink('t'.repeat(32), 'BEGIN:VCARD')).rejects.toBeInstanceOf(
       UploadLinkClosedError,
     );
     expect(mockImport).not.toHaveBeenCalled();
@@ -76,10 +76,27 @@ describe('the contacts upload link', () => {
       .mockResolvedValueOnce({ rowCount: 1 });
     mockParse.mockReturnValue([]);
 
-    await expect(uploadThroughLink('t'.repeat(32), 'nothing')).rejects.toBeInstanceOf(
+    await expect(startUploadThroughLink('t'.repeat(32), 'nothing')).rejects.toBeInstanceOf(
       EmptyVcfError,
     );
     const [sql] = mockQuery.mock.calls[1] as [string];
     expect(sql).toContain('SET used_at = NULL');
+  });
+
+  it('answers at once with the file’s count, and loads in the background (the tester’s 67194)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ user_id: 501 }] });
+    mockParse.mockReturnValue(contacts(1900));
+    let finish: (value: unknown) => void = () => undefined;
+    mockImport.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+
+    await expect(startUploadThroughLink('t'.repeat(32), 'BEGIN:VCARD')).resolves.toEqual({
+      inFile: 1900,
+    });
+    expect(mockImport).toHaveBeenCalledTimes(1);
+    finish({ imported: 1900, skipped: 0, unchanged: 0, remaining: 0 });
   });
 });

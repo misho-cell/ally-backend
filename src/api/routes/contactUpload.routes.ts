@@ -4,7 +4,7 @@ import {
   isUploadLinkOpen,
   UPLOAD_PATH,
   UploadLinkClosedError,
-  uploadThroughLink,
+  startUploadThroughLink,
 } from '../../services/contactUploadLinks.service';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import { renderClosedPage, renderUploadPage } from './contactUploadPage';
@@ -53,10 +53,9 @@ contactUploadRouter.post('/:token', async (req: Request, res: Response): Promise
     return;
   }
   try {
-    const outcome = await uploadThroughLink(token, vcf);
-    // eslint-disable-next-line no-console
-    console.log(`[contact-upload] ${outcome.inFile} in the file, ${outcome.imported} new`);
-    res.status(200).json({ success: true, data: outcome });
+    const started = await startUploadThroughLink(token, vcf);
+    // Answered at once; the contacts load in the background (the tester's 67194).
+    res.status(202).json({ success: true, data: { inFile: started.inFile, loading: true } });
   } catch (err) {
     if (err instanceof UploadLinkClosedError) {
       res
