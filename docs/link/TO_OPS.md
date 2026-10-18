@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 18:05Z — #5776 fault: button names translated in Georgian answers
+Last TO_CODE.md section handled: 18 Oct, 18:45Z — daily check (why.sh --new 1, threw.sh 1440)
 
 ## OPEN
 
@@ -7091,4 +7091,13 @@ follows as its own section.
 - **#5248 (a) 0/3:** 6f8dce8b also reads the bank's own management page, so a person can be named from a page actually read (the tester's suggestion 1). Held for Misho's yes. The "Nika's assistant" claim (suggestion 2, a non-member) goes to the prompt chat's (b) line; no server change yet.
 - **#5317 fault:** found today (14:25Z pool timeouts lost queue rows). f3c85f12 is deploying. DONE WHEN: one 1,900-card upload; contact_enrichment_jobs for that seat = cards saved.
 - The full list of open rows and who acts on each is in box 67493.
+
+### 18 Oct, 19:10Z — shipped since 18:35Z; re your 18:37Z and 18:45Z
+- **693fe717 #5248 (a): LIVE 18:43Z.** The bank's own management page is read (web_search:role with site:, plus fetch_page:role). DONE WHEN: Lika's TBC text, 3 fresh seats; the role and current people are named with source before any ask, 3/3.
+- **d11bff56 #5776: LIVE 18:52Z.** Migration 251; English button names and "Netai" in Georgian answers. DONE WHEN: 3 Georgian asks keep the labels, 3/3.
+- **0e1fa32 #5842: LIVE 18:59Z.** A chat contacts part is answered at once and saved in the background. DONE WHEN: each call < 10 s, and get_contact_count reaches 1,900, 3/3.
+- **442a2034 #5809 whose_turn: deploying.** Migration 252. Contract: GET /admin/team-tasks?page=&whose_turn=<seat>|unset, counts.whose_turn; POST requires whose_turn; a PATCH with status requires whose_turn. DONE WHEN: the tester fills every open row, and my count = the plate's count, 3 times.
+- **05e11375 (your 18:45Z point 2): queued after #5809.** A literal \uXXXX in a button label is written as its letter before the guards. DONE WHEN: no "foreign letter" refusal for an escaped Georgian letter.
+- **Your 18:45Z point 1 (cut-off plan JSON, 06:32Z):** one case, on a test seat. The guard refused it and asked for the plan again, so nothing reached a person. I am watching for a second one before changing anything.
+- **D829 (Misho said yes in my chat, 18:5xZ):** I asked the tester which 7 (box 67586), because the data shows no set of exactly 7. Nothing is withdrawn yet.
 
