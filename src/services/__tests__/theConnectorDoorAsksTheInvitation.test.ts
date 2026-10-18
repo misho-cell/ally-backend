@@ -30,11 +30,12 @@ describe('the connector door asks the invitation', () => {
     expect(mockVerdict).not.toHaveBeenCalled();
   });
 
-  it('looks the number up with and without its plus, under a timeout', async () => {
+  it('looks the number up by its digits, whatever its format, under a timeout (#5743)', async () => {
     mockQuery.mockResolvedValue({ rows: [] });
     await admittedUserIdByPhone(PHONE);
-    const [, params, timeout] = mockQuery.mock.calls[0] as [string, unknown[], number];
-    expect(params).toEqual([[PHONE, PHONE.slice(1)]]);
+    const [sql, params, timeout] = mockQuery.mock.calls[0] as [string, unknown[], number];
+    expect(sql).toContain("regexp_replace(phone, '\\D', '', 'g')");
+    expect(params).toEqual([PHONE]);
     expect(timeout).toBeGreaterThan(0);
   });
 });

@@ -1,6 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import { connectorOriginFor, PUBLIC_BASE_URL } from '../../config/publicUrl';
-import { requestOTP, verifyOTP } from '../../services/auth.service';
+import { OtpSendCapError, requestOTP, verifyOTP } from '../../services/auth.service';
+import { normalizePhone } from '../../services/phone';
 import { admittedUserIdByPhone } from '../../services/connectorAdmission.service';
 import {
   createAuthorizationCode,
@@ -24,6 +25,24 @@ const OAUTH_RATE_WINDOW_MS = 5 * 60_000;
 const OAUTH_RATE_MAX = 60;
 const MAX_REDIRECT_URIS = 5;
 const SUPPORTED_CHALLENGE_METHOD = 'S256';
+/** Country code plus number: fewer digits than this is not a whole number. */
+const MIN_PHONE_DIGITS = 11;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const NOT_A_WHOLE_NUMBER =
+  'Check the number: write it whole, with the country code, e.g. +995 5XX XXX XXX.';
+/**
+ * #5743, Lika's phone (18 Oct, 20:32Z): the hourly code limit was reached and
+ * the page said only „Could not send the code — please try again", so she
+ * tried again, into the same limit. The page now says what happened.
+ */
+const TOO_MANY_CODES =
+  'Too many codes were sent to this number in the last hour. Please try again in an hour.';
+
+/** The typed number in the app's own canonical form, or null when it is not a whole number. */
+export function connectorPhone(raw: unknown): string | null {
+  const phone = typeof raw === 'string' ? normalizePhone(raw) : '';
+  return phone.replace(/\D/g, '').length >= MIN_PHONE_DIGITS ? phone : null;
+}
 
 export const wellKnownRouter = Router();
 
@@ -188,8 +207,12 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
       res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
       return;
     }
-    const phone = typeof source.phone === 'string' ? source.phone.replace(/\s+/g, '') : '';
-    if (!phone || (await admittedUserIdByPhone(phone)) === null) {
+    const phone = connectorPhone(source.phone);
+    if (phone === null) {
+      res.status(200).send(renderPhonePage(params, NOT_A_WHOLE_NUMBER));
+      return;
+    }
+    if ((await admittedUserIdByPhone(phone)) === null) {
       res
         .status(200)
         .send(
@@ -203,6 +226,13 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
     await requestOTP(phone, 'AUTH');
     res.send(renderCodePage(params, phone));
   } catch (err) {
+    if (err instanceof OtpSendCapError) {
+      const { params } = await readAuthorizeParams(req.body as Record<string, unknown>);
+      if (params) {
+        res.status(HTTP_TOO_MANY_REQUESTS).send(renderPhonePage(params, TOO_MANY_CODES));
+        return;
+      }
+    }
     // eslint-disable-next-line no-console
     console.error('[oauth] send-code failed:', err);
     res.status(500).send(renderErrorPage('Could not send the code — please try again.'));

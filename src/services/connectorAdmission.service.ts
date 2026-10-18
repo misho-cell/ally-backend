@@ -3,11 +3,15 @@ import { loginGateVerdict } from './auth.service';
 
 const PHONE_LOOKUP_TIMEOUT_MS = 5_000;
 
+/**
+ * #5743: format-independent, as registration and the app's sign-in compare —
+ * "+995 599…", "995599…" and the stored form are the same number.
+ */
 async function findUserIdByPhone(phone: string): Promise<number | null> {
-  const variants = [phone, phone.startsWith('+') ? phone.slice(1) : `+${phone}`];
   const result = await query<{ userId: number }>(
-    'SELECT "userId" FROM "UserPhone" WHERE phone = ANY($1) LIMIT 1',
-    [variants],
+    `SELECT "userId" FROM "UserPhone"
+      WHERE regexp_replace(phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g') LIMIT 1`,
+    [phone],
     PHONE_LOOKUP_TIMEOUT_MS,
   );
   return result.rows[0]?.userId ?? null;

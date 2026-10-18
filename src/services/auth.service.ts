@@ -112,6 +112,9 @@ function phoneDigits(phone: string): string {
   return phone.replace(/\D/g, '');
 }
 
+/** The per-number hourly limit on codes was reached; its message is the app's own line. */
+export class OtpSendCapError extends Error {}
+
 async function enforcePhoneSendCap(phone: string): Promise<void> {
   const result = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM otp_sends
@@ -119,7 +122,7 @@ async function enforcePhoneSendCap(phone: string): Promise<void> {
     [phoneDigits(phone)],
   );
   if (Number(result.rows[0]?.count ?? 0) >= OTP_SENDS_PER_PHONE_PER_HOUR) {
-    throw new Error('ამ ნომერზე ძალიან ბევრი კოდი გაიგზავნა — სცადე ერთ საათში');
+    throw new OtpSendCapError('ამ ნომერზე ძალიან ბევრი კოდი გაიგზავნა — სცადე ერთ საათში');
   }
 }
 
