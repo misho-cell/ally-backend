@@ -33,4 +33,22 @@ describe('the connectors topic', () => {
     );
     expect(guide).toContain('https://api.netai.guru/mcp');
   });
+
+  it('keeps the screen’s English button names and the name Netai in any language (67488)', () => {
+    const labels = readFileSync(
+      join(
+        __dirname,
+        '..',
+        '..',
+        'db',
+        'postgres',
+        'migrations',
+        '251_netai_info_connectors_labels.sql',
+      ),
+      'utf8',
+    );
+    expect(labels).toContain('"Customize", "Connectors", "Add custom connector"');
+    expect(labels).toContain('"Netai" in Latin letters');
+    expect(labels).toContain("WHERE topic = 'connectors'");
+  });
 });
