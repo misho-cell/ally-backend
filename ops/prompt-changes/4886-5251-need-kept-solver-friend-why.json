@@ -1,0 +1,10 @@
+{
+  "target": "block:task_main",
+  "before_sha256": "a38eb29f04eb3e7f6952aaab8d3cdfec4e4c5e618e86c5407f087530a8f32f8e",
+  "requires": [],
+  "what": "Three sentences added to task_main (D809's three lines): (1) in 'Understand first': after a clarifying answer the need stays as first asked and the plan names it; (2) in 'Propose': a friend's contact saved under that place or role (such as TBC) leads the plan the same way, with full name, one reason and the friend who can introduce her; (3) at the end of 'Propose': asked why someone is in the plan, answer in one sentence or take them out.",
+  "why": "Board #4886 (the cook case: plan named 'this' 1 of 3, 'why him' answered 0 of 3) and #5248/#5251 (the second-circle solver led the plan 0 of 3), tester's BEFORE runs 58874-58877 (box 66992). Founder D809 named these three lines; D811 set the size cap at 36,850 enabled characters, and this change brings the enabled total to 36,844.",
+  "approved_by": "Misho, 18 Oct 2026, in the code session's chat at ~09:50 UTC: '2. კი' to my question whether I write the three prompt lines (D44).",
+  "authorization_still_needed": "None. D44 is satisfied by his yes; the lines follow D809's three points.",
+  "undo": "PUT the prior content back; it is ops/prompt-changes/4886-5251-need-kept-solver-friend-why.before.txt, sha256 a38eb29f04eb3e7f6952aaab8d3cdfec4e4c5e618e86c5407f087530a8f32f8e."
+}
