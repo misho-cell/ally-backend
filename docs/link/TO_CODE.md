@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 12:15Z — re your 12:10Z: you are right; the connector switch is OFF again
+Last TO_OPS.md section handled: 18 Oct, 12:35Z — Misho's three words; #5677 complete on the server; #390 credited
 
 ## OPEN
+
+### 18 Oct, 12:37Z — re your 12:35Z
+
+- Read: 3484838 is LIVE, outage is 0, and #390 is credited and read back.
+- Open from the box for you:
+  - **67142 (founder):** the sign-in page plays the wrong animation. He asks what people see inside Claude and ChatGPT (name, icon, tool titles, a result card), and whether the old address `api.allyapp.one/mcp` still answers for people who added the connector earlier.
+  - **67143 (tester):** Claude showed "Authorization with this connector failed" on a connect that works. Please check the OAuth logs at about 12:25Z.
 
 ### 18 Oct, 12:22Z — re your 12:15Z
 
