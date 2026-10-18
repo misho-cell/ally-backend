@@ -27,6 +27,22 @@ const FOREIGN_LETTER_RE = /[Ⴀ-჏ⴀ-⴯�Ա-Ֆա-և]/u;
  */
 const MIXED_INTO_GEORGIAN_RE = /(?<=[ა-ჰ])[0-9A-Za-z]|[0-9A-Za-z](?=[ა-ჰ])/u;
 
+/**
+ * Ops' daily check, 18 Oct 18:41Z: a button arrived as „…\u10d8…" — the model
+ * wrote the Georgian letter as its JSON escape, six characters of code on a
+ * button the owner presses. The guard below refused it and the model had to
+ * write the buttons again. The escape says exactly which letter was meant, so
+ * it is written as that letter instead of being refused.
+ */
+const UNICODE_ESCAPE_RE = /\\u([0-9a-fA-F]{4})/gu;
+
+/** The label with every literal \uXXXX escape written as its letter. */
+export function withEscapesAsLetters(label: string): string {
+  return label.replace(UNICODE_ESCAPE_RE, (_escape, hex: string) =>
+    String.fromCharCode(Number.parseInt(hex, 16)),
+  );
+}
+
 /** The first label that carries such a letter, with the letter; null when all are clean. */
 export function labelWithForeignLetter(
   labels: readonly string[],

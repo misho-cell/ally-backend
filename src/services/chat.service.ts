@@ -7,6 +7,7 @@ import {
   foreignWordNudge,
   labelInAnotherLanguage,
   labelWithForeignLetter,
+  withEscapesAsLetters,
 } from './buttonLetters';
 import { ownersContactsOnNetai } from './ownersMembers.service';
 import { withoutLatinEchoOfNames } from './latinNameEcho';
@@ -10179,7 +10180,9 @@ async function executeToolCall(
     case 'present_choices': {
       // #367: a label with a letter nobody reads today is sent back to be rewritten.
       const labels = Array.isArray(input['items'])
-        ? (input['items'] as unknown[]).filter((i): i is string => typeof i === 'string')
+        ? (input['items'] as unknown[])
+            .filter((i): i is string => typeof i === 'string')
+            .map(withEscapesAsLetters)
         : [];
       if (thankedThisRun(runId) && labels.includes(SOLVED_LABEL)) {
         // eslint-disable-next-line no-console
@@ -14100,16 +14103,14 @@ async function runToolLoop(
         // #367: a set the tool refused for a foreign letter never reaches the screen;
         // the model is asked to call again, and that call is the one kept.
         const labelsAsWritten = Array.isArray(input.items)
-          ? input.items.filter((i): i is string => typeof i === 'string')
+          ? input.items.filter((i): i is string => typeof i === 'string').map(withEscapesAsLetters)
           : [];
         if (
           Array.isArray(input.items) &&
           labelWithForeignLetter(labelsAsWritten) === null &&
           labelInAnotherLanguage(labelsAsWritten, runLang(runId)) === null
         ) {
-          choices = input.items
-            .filter((i): i is string => typeof i === 'string')
-            .map((item) => canonicalChoiceLabel(item, runLang(runId)));
+          choices = labelsAsWritten.map((item) => canonicalChoiceLabel(item, runLang(runId)));
           const missed = unrecognisedApproveHalf(choices);
           if (missed !== null) {
             // eslint-disable-next-line no-console
