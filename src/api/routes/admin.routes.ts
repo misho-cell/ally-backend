@@ -195,7 +195,7 @@ import {
   LOGIN_INVITE_ONLY_FLAG,
   PERSONAL_CODE_ONLY_FLAG,
 } from '../../services/inviteGate.service';
-import { loginGateVerdict } from '../../services/auth.service';
+import { loginGateVerdict, OTP_INVITE_GATE_FLAG } from '../../services/auth.service';
 import {
   backfillCandidateNameReach,
   runIdentityScan,
@@ -403,6 +403,9 @@ const MANAGED_APP_FLAGS = [
   MUTUAL_CONTACTS_FLAG,
   // #5677 (D818): the connector takes the app's tools it has no copy of.
   SHARED_TOOLS_FLAG,
+  // #5875 (D831): no WhatsApp code to a number with no invitation. Off until
+  // the app sends the invitation code with request-otp.
+  OTP_INVITE_GATE_FLAG,
 ] as const;
 
 /**

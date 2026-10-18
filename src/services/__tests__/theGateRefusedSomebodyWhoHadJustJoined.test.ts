@@ -30,10 +30,12 @@ import { join } from 'path';
 const SOURCE = readFileSync(join(__dirname, '..', 'auth.service.ts'), 'utf8');
 const FRAGMENT_AT = SOURCE.indexOf('export function belongsToNetaiSql');
 const FRAGMENT = SOURCE.slice(FRAGMENT_AT, SOURCE.indexOf('\n}', FRAGMENT_AT));
-const LOOKUP_AT = SOURCE.indexOf(
-  'const result = await query<{ id: number; belongs_to_netai: boolean }>',
-);
-const LOOKUP = SOURCE.slice(LOOKUP_AT, SOURCE.indexOf('if (!result.rowCount', LOOKUP_AT));
+const LOOKUP_AT = SOURCE.indexOf('export async function findPhoneAccount');
+const LOOKUP = SOURCE.slice(LOOKUP_AT, SOURCE.indexOf('\n}', LOOKUP_AT));
+const LOGIN_AT = SOURCE.indexOf('export async function completeLogin');
+const LOGIN = SOURCE.slice(LOGIN_AT, SOURCE.indexOf('\n}', LOGIN_AT));
+const OTP_GATE_AT = SOURCE.indexOf('export async function otpGateVerdict');
+const OTP_GATE = SOURCE.slice(OTP_GATE_AT, SOURCE.indexOf('\n}', OTP_GATE_AT));
 
 describe('what makes an account one of ours', () => {
   /**
@@ -91,6 +93,14 @@ describe('one definition, two callers', () => {
     expect(LOOKUP).toContain('belongsToNetaiSql(\'up."userId"\')');
     expect(LOOKUP).not.toContain('FROM push_subscriptions');
     expect(LOOKUP.match(/await query/g)).toHaveLength(1);
+    expect(LOGIN).toContain('await findPhoneAccount(phone)');
+    expect(LOGIN).not.toContain('FROM "UserPhone"');
+  });
+
+  /** #5875 (D831): the door before the code asks the same lookup, not a copy of it. */
+  it('the OTP gate asks the same lookup', () => {
+    expect(OTP_GATE).toContain('await findPhoneAccount(phone)');
+    expect(OTP_GATE).not.toContain('FROM "UserPhone"');
   });
 
   it('the dry run uses the same fragment', () => {
@@ -109,7 +119,7 @@ describe('the gate itself', () => {
     // Row 319 reshaped it: the flag is read once, and a refusal needs both the
     // flag and no invitation.
     expect(SOURCE).toContain(
-      'const gateOn = !result.rows[0].belongs_to_netai && (await isLoginInviteOnlyEnabled());',
+      'const gateOn = !account.belongs_to_netai && (await isLoginInviteOnlyEnabled());',
     );
     expect(SOURCE).toContain('if (gateOn && invitation === null) {');
   });

@@ -8,6 +8,8 @@ import {
   adminLogin,
   completeLogin,
   InvitationRequiredError,
+  CodeNeedsInvitationError,
+  LoginInvitation,
   eligibilityRefusalLine,
 } from '../../services/auth.service';
 import { checkRegistrationEligibility } from '../../services/inviteGate.service';
@@ -111,68 +113,83 @@ const limitOtpSends = rateLimit({
   keyBy: 'person',
 });
 
-authRouter.post(
-  '/request-otp',
-  limitOtpSends,
+type OtpAction = 'REGISTER' | 'AUTH' | 'RECOVER';
+type CodeSender = (phone: string, actionType: OtpAction, invite: LoginInvitation) => Promise<void>;
+type SendResponse = Response<ApiResponse<{ sent: boolean }>>;
+type SendHandler = (req: Request, res: SendResponse) => Promise<void>;
+
+const HTTP_OK = 200;
+const HTTP_BAD_REQUEST = 400;
+const HTTP_FORBIDDEN = 403;
+const ERR_OTP_SEND_FAILED = 'OTP გაგზავნა ვერ მოხერხდა';
+const ERR_SMS_SEND_FAILED = 'SMS გაგზავნა ვერ მოხერხდა';
+
+/** The invitation a request carried: a code under any of its spellings, and a number. */
+export function invitationFrom(body: unknown): LoginInvitation {
+  const bag = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+  return {
+    referralCode: referralCodeFrom(body).code,
+    referralPhone: typeof bag.referralPhone === 'string' ? bag.referralPhone : undefined,
+  };
+}
+
+/**
+ * #5875 (D831): both code-sending routes take the invitation too, validated as
+ * /auth/eligibility does. With `otp_invite_gate` off they change nothing.
+ */
+const codeSendValidators = [
   body('phone').isString().trim().notEmpty().withMessage('phone is required'),
   body('actionType')
     .isIn(['REGISTER', 'AUTH', 'RECOVER'])
     .withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
-  async (req: Request, res: Response<ApiResponse<{ sent: boolean }>>) => {
+  body('referralPhone').optional().isString().trim(),
+  body('referralCode').optional().isString().trim(),
+];
+
+/** A refusal for want of an invitation is 403 with the eligibility line; anything else 400. */
+function answerSendFailure(res: SendResponse, error: unknown, fallback: string): void {
+  if (error instanceof CodeNeedsInvitationError) {
+    res.status(HTTP_FORBIDDEN).json({ success: false, error: error.message, reason: error.reason });
+    return;
+  }
+  const message = error instanceof Error ? error.message : fallback;
+  res.status(HTTP_BAD_REQUEST).json({ success: false, error: message });
+}
+
+function codeSendingHandler(send: CodeSender, fallback: string): SendHandler {
+  return async (req: Request, res: SendResponse): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       const message = errors
         .array()
-        .map((e) => e.msg)
+        .map((e) => String(e.msg))
         .join(', ');
-      res.status(400).json({ success: false, error: message });
+      res.status(HTTP_BAD_REQUEST).json({ success: false, error: message });
       return;
     }
 
     try {
-      const { phone, actionType } = req.body as {
-        phone: string;
-        actionType: 'REGISTER' | 'AUTH' | 'RECOVER';
-      };
-      await requestOTP(phone, actionType);
-      res.status(200).json({ success: true, data: { sent: true } });
+      const { phone, actionType } = req.body as { phone: string; actionType: OtpAction };
+      await send(phone, actionType, invitationFrom(req.body));
+      res.status(HTTP_OK).json({ success: true, data: { sent: true } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'OTP გაგზავნა ვერ მოხერხდა';
-      res.status(400).json({ success: false, error: message });
+      answerSendFailure(res, error, fallback);
     }
-  },
+  };
+}
+
+authRouter.post(
+  '/request-otp',
+  limitOtpSends,
+  ...codeSendValidators,
+  codeSendingHandler(requestOTP, ERR_OTP_SEND_FAILED),
 );
 
 authRouter.post(
   '/resend-otp',
   limitOtpSends,
-  body('phone').isString().trim().notEmpty().withMessage('phone is required'),
-  body('actionType')
-    .isIn(['REGISTER', 'AUTH', 'RECOVER'])
-    .withMessage('actionType must be REGISTER, AUTH, or RECOVER'),
-  async (req: Request, res: Response<ApiResponse<{ sent: boolean }>>) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const message = errors
-        .array()
-        .map((e) => e.msg)
-        .join(', ');
-      res.status(400).json({ success: false, error: message });
-      return;
-    }
-
-    try {
-      const { phone, actionType } = req.body as {
-        phone: string;
-        actionType: 'REGISTER' | 'AUTH' | 'RECOVER';
-      };
-      await resendOTP(phone, actionType);
-      res.status(200).json({ success: true, data: { sent: true } });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'SMS გაგზავნა ვერ მოხერხდა';
-      res.status(400).json({ success: false, error: message });
-    }
-  },
+  ...codeSendValidators,
+  codeSendingHandler(resendOTP, ERR_SMS_SEND_FAILED),
 );
 
 authRouter.post(
@@ -223,13 +240,10 @@ authRouter.post(
     }
 
     try {
-      const { phone, referralPhone } = req.body as { phone: string; referralPhone?: unknown };
+      const { phone } = req.body as { phone: string };
       // Row 319: an invite link reaches the LOGIN screen too, because an old
       // Ally number is sent here by registration. Same keys as /register.
-      const result = await completeLogin(phone, {
-        referralCode: referralCodeFrom(req.body).code,
-        referralPhone: typeof referralPhone === 'string' ? referralPhone : undefined,
-      });
+      const result = await completeLogin(phone, invitationFrom(req.body));
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       if (error instanceof InvitationRequiredError) {

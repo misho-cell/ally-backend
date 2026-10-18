@@ -208,8 +208,11 @@ const REFUSAL_LINES: Readonly<Record<EligibilityReason, string>> = {
     'Netai მუშაობს მხოლოდ ნაცნობებს შორის: მოწვევა მაშინ მოქმედებს, როცა მომწვევს შენი ნომერი აქვს შენახული.',
 };
 
+/** What a refusal that names no reason of its own is refused for. */
+const NO_INVITATION_REASON: EligibilityReason = 'referral_required';
+
 function refusalLine(reason: EligibilityReason | undefined): string {
-  return REFUSAL_LINES[reason ?? 'referral_required'];
+  return REFUSAL_LINES[reason ?? NO_INVITATION_REASON];
 }
 
 /**
@@ -224,14 +227,90 @@ export function eligibilityRefusalLine(
   return eligible || reason === undefined ? undefined : refusalLine(reason);
 }
 
+/**
+ * #5875 (D831): a number with no invitation gets no WhatsApp code at all.
+ *
+ * ITS OWN SWITCH, DEFAULT OFF. The app today asks for the code FIRST and only
+ * afterwards asks /auth/eligibility and shows the field where an invitation
+ * code is typed. Refusing before the code, while the app still works in that
+ * order, would lock out every invited person who types their code by hand. So
+ * this stays off until the app sends the invitation with request-otp; a
+ * missing row reads false.
+ */
+export const OTP_INVITE_GATE_FLAG = 'otp_invite_gate';
+
+/** The one line a refusal logs. No phone, no code (D149). */
+const OTP_GATE_REFUSED_LOG = '[otp-gate] no code sent: the number has no invitation';
+
+export async function isOtpInviteGateEnabled(): Promise<boolean> {
+  // The default statement timeout rides on the connection (see client.ts).
+  const result = await query<{ enabled: boolean }>(
+    'SELECT enabled FROM app_flags WHERE flag = $1 LIMIT 1',
+    [OTP_INVITE_GATE_FLAG],
+  );
+  return result.rows[0]?.enabled === true;
+}
+
+/** Why a number was allowed a code, when it was. */
+export enum OtpAdmission {
+  ReviewPhone = 'review_phone',
+  Member = 'member',
+  Invitation = 'invitation',
+}
+
+export type OtpGateVerdict =
+  | { readonly allowed: true; readonly admission: OtpAdmission }
+  | { readonly allowed: false; readonly reason: EligibilityReason };
+
+/** A code refused because the number has no invitation; the message is the eligibility line. */
+export class CodeNeedsInvitationError extends Error {
+  readonly reason: EligibilityReason;
+
+  constructor(reason: EligibilityReason) {
+    super(refusalLine(reason));
+    this.name = 'CodeNeedsInvitationError';
+    this.reason = reason;
+  }
+}
+
+/**
+ * MAY THIS NUMBER BE SENT A CODE — the gate's whole rule, with no flag in it.
+ * A review number and a Netai member always may; anybody else needs what the
+ * registration gate calls an invitation.
+ */
+export async function otpGateVerdict(
+  phone: string,
+  invite: LoginInvitation,
+): Promise<OtpGateVerdict> {
+  if (isReviewPhone(phone)) return { allowed: true, admission: OtpAdmission.ReviewPhone };
+  if ((await findPhoneAccount(phone))?.belongs_to_netai === true) {
+    return { allowed: true, admission: OtpAdmission.Member };
+  }
+  const gate = await checkRegistrationEligibility(phone, invite.referralPhone, invite.referralCode);
+  if (gate.eligible) return { allowed: true, admission: OtpAdmission.Invitation };
+  return { allowed: false, reason: gate.reason ?? NO_INVITATION_REASON };
+}
+
+/** Throws before anything is generated, stored, counted or sent, when the switch is on. */
+async function refuseCodeWithoutInvitation(phone: string, invite: LoginInvitation): Promise<void> {
+  if (!(await isOtpInviteGateEnabled())) return;
+  const verdict = await otpGateVerdict(phone, invite);
+  if (verdict.allowed) return;
+  // eslint-disable-next-line no-console
+  console.warn(`${OTP_GATE_REFUSED_LOG} (${verdict.reason})`);
+  throw new CodeNeedsInvitationError(verdict.reason);
+}
+
 export async function requestOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
+  invite: LoginInvitation = {},
 ): Promise<void> {
   // The review number gets no message and no stored code — verifyOTP accepts
   // its fixed env code instead.
   if (isReviewPhone(phone)) return;
 
+  await refuseCodeWithoutInvitation(phone, invite);
   await enforcePhoneSendCap(phone);
 
   const code = generateOTP();
@@ -262,8 +341,11 @@ const RESEND_COOLDOWN_SECONDS = 30;
 export async function resendOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
+  invite: LoginInvitation = {},
 ): Promise<void> {
   if (isReviewPhone(phone)) return;
+
+  await refuseCodeWithoutInvitation(phone, invite);
 
   const result = await query<{ createdAt: Date }>(
     `SELECT "createdAt" FROM "Otp"
@@ -412,6 +494,57 @@ export function belongsToNetaiSql(idExpr: (typeof ID_EXPRESSIONS)[number]): stri
                     WHERE nu.id = ${idExpr} AND nu."hasAccessToAlly" = true)
            OR EXISTS (SELECT 1 FROM threads t WHERE t.user_id = ${idExpr})
            OR EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = ${idExpr}))`;
+}
+
+/** The account a phone belongs to, and whether that account belongs to Netai. */
+export interface PhoneAccount {
+  readonly id: number;
+  readonly belongs_to_netai: boolean;
+}
+
+/**
+ * THE PHONE LOOKUP THE LOGIN GATE ASKS, AND THE OTP GATE ASKS THE SAME ONE
+ * (#5875): one definition, so the door before the code and the door after it
+ * cannot disagree about who is a member.
+ *
+ * Format-independent compare, as registration does: a login with a different
+ * phone format must find the EXISTING user, never mint a new one. The second
+ * column rides the same round trip.
+ *
+ * ⚠️ ANY SIGN OF USE, NOT ONE SIGN — and it took a dry run to find that out.
+ *
+ * This asked only „has a thread", and §34 said that split the population
+ * cleanly because an account with messages or goals but no thread does not
+ * exist — zero, and zero, both checked, both still true. **Push
+ * subscriptions were not among the things checked.**
+ *
+ * Run as a read against every account on 24 September, before the gate was
+ * ever switched on: 62,173 would be refused, and one of them — account
+ * 4511, an old Ally account from 2024 — has a live push subscription,
+ * registered 21 September, two notifications sent to it. A push
+ * subscription cannot exist unless that browser was on the Netai site and
+ * the person granted permission. So that is somebody who has opened the
+ * product and put it on their phone, and the gate would have told them
+ * they need an invitation to something they already have installed.
+ *
+ * Widening it admits ONE more person and refuses nobody extra, which is
+ * the direction a gate that turns people away has to fail in. If the
+ * founder decides that account should be refused after all, this comes
+ * back out — but that is a decision somebody makes, not a gap nobody saw.
+ *
+ * LIMIT 1 is what `rows[0]` always meant; the default statement timeout rides
+ * on the connection (see client.ts).
+ */
+export async function findPhoneAccount(phone: string): Promise<PhoneAccount | null> {
+  const result = await query<PhoneAccount>(
+    `SELECT up."userId" AS id,
+            ${belongsToNetaiSql('up."userId"')} AS belongs_to_netai
+       FROM "UserPhone" up
+      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')
+      LIMIT 1`,
+    [phone],
+  );
+  return result.rows[0] ?? null;
 }
 
 /**
@@ -709,8 +842,6 @@ export async function completeLogin(
   phone: string,
   invite: LoginInvitation = {},
 ): Promise<{ token: string; isNewUser: boolean }> {
-  // Same format-independent compare as registration — a login with a different
-  // phone format must find the EXISTING user, never mint a new one.
   /**
    * THE SECOND COLUMN IS ROW 229's BLIND SPOT, AND IT COSTS NOTHING TO READ.
    *
@@ -729,42 +860,14 @@ export async function completeLogin(
    * and it is the same fault as everything else found today: a thing happens,
    * nothing says so, and the absence reads as „it did not happen".
    *
-   * So the query answers one more question — has this account ever used Netai
+   * So the lookup answers one more question — has this account ever used Netai
    * — in the same round trip, and a first arrival writes a line. No phone
    * number in it (D149): the account id is the handle, and it is enough to
    * read the row back.
    */
-  const result = await query<{ id: number; belongs_to_netai: boolean }>(
-    /**
-     * ⚠️ ANY SIGN OF USE, NOT ONE SIGN — and it took a dry run to find that out.
-     *
-     * This asked only „has a thread", and §34 said that split the population
-     * cleanly because an account with messages or goals but no thread does not
-     * exist — zero, and zero, both checked, both still true. **Push
-     * subscriptions were not among the things checked.**
-     *
-     * Run as a read against every account on 24 September, before the gate was
-     * ever switched on: 62,173 would be refused, and one of them — account
-     * 4511, an old Ally account from 2024 — has a live push subscription,
-     * registered 21 September, two notifications sent to it. A push
-     * subscription cannot exist unless that browser was on the Netai site and
-     * the person granted permission. So that is somebody who has opened the
-     * product and put it on their phone, and the gate would have told them
-     * they need an invitation to something they already have installed.
-     *
-     * Widening it admits ONE more person and refuses nobody extra, which is
-     * the direction a gate that turns people away has to fail in. If the
-     * founder decides that account should be refused after all, this comes
-     * back out — but that is a decision somebody makes, not a gap nobody saw.
-     */
-    `SELECT up."userId" AS id,
-            ${belongsToNetaiSql('up."userId"')} AS belongs_to_netai
-       FROM "UserPhone" up
-      WHERE regexp_replace(up.phone, '\\D', '', 'g') = regexp_replace($1, '\\D', '', 'g')`,
-    [phone],
-  );
+  const account = await findPhoneAccount(phone);
 
-  if (!result.rowCount || result.rowCount === 0) {
+  if (account === null) {
     return { token: '', isNewUser: true };
   }
 
@@ -777,7 +880,7 @@ export async function completeLogin(
     throw new Error(ERR_PHONE_NOT_VERIFIED);
   }
 
-  const userId = result.rows[0].id;
+  const userId = account.id;
   /**
    * THE GATE. Registered as §34 of `ADMIN_WRITE_OPERATIONS.md` BEFORE it was
    * written, because it refuses real people entry to the product and the way
@@ -799,7 +902,7 @@ export async function completeLogin(
    * is read from `threads` two lines above, and there is no account anywhere
    * with messages or goals but no thread — so the two groups separate cleanly.
    */
-  const gateOn = !result.rows[0].belongs_to_netai && (await isLoginInviteOnlyEnabled());
+  const gateOn = !account.belongs_to_netai && (await isLoginInviteOnlyEnabled());
   const invitation = gateOn ? await resolveLoginInvitation(userId, phone, invite) : null;
   if (gateOn && invitation === null) {
     // eslint-disable-next-line no-console
@@ -814,7 +917,7 @@ export async function completeLogin(
   }
   if (invitation !== null) await creditLoginInvitation(userId, phone, invitation);
 
-  if (!result.rows[0].belongs_to_netai && !gateOn) {
+  if (!account.belongs_to_netai && !gateOn) {
     // An account that existed before tonight, opening Netai for the first
     // time. If somebody invited them, that invitation cannot be credited by
     // this route — see the comment above — so at minimum it must be readable.
