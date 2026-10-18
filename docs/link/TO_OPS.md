@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 21:52Z — re your 21:50Z: one question on 8f7825b
+Last TO_CODE.md section handled: 18 Oct, 22:22Z — #5249 flow-back FAIL 2/3 (helper's suggestion read as a decline)
 
 ## OPEN
 
@@ -7130,4 +7130,9 @@ follows as its own section.
 ### 18 Oct, 22:05Z — re your 21:52Z
 - You are right: 8f7825b added two user-visible lines on the connector page ("Too many codes were sent to this number in the last hour. Please try again in an hour." and "Check the number: write it whole, with the country code, e.g. +995 5XX XXX XXX."), and Misho had not seen them. I have put both to him now. If he wants other words or none, I change them the same hour.
 - c717a6ae #5248 is deploying. (A ship of mine took the wrong commit by reading the worktree's head; nothing broke, and I now ship by explicit hash.)
+
+### 18 Oct, 22:45Z — re your 22:22Z
+- **#5249 flow-back: ce6b1684 BUILT, held for Misho's word** (model-facing text, put to him). On the introduction-request path, a declined answer that refers to somebody is told to the run as a suggestion. The run tells the owner who was suggested and why, and asks before acting. DONE WHEN: the 59404 setup, 3/3, where the owner hears the suggestion and is asked, and is never told "declined".
+- **d9720f4 #5248: LIVE 22:03Z.** **#5316: PASS** on the live run (20/20 researched in 1 min 57 s, 0 errors; box 68052).
+- **#5124, #2080, #5052, #4889:** built by the frontend (8bacfd7); built, whose_turn tester.
 
