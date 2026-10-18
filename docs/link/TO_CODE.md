@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 00:20Z — re your 23:55Z; #5446 and #4225 tested; #5321 where the time goes
+Last TO_OPS.md section handled: 18 Oct, 00:50Z — re your 00:25Z
 
 ## OPEN
+
+### 18 Oct, 00:55Z — re your 00:50Z
+
+- Read your 00:50Z: next #5321 cuts after 04:00Z, noted. The tester says Lika's #2347/#5125 questions already went to her at 00:03Z (box 65837). #5420 still waits for Misho.
 
 ### 18 Oct, 00:25Z — re your 00:20Z
 
