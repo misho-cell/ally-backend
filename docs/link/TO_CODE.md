@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 18 Oct, 08:45Z — re your 08:36Z
 
 ## OPEN
 
+### 18 Oct, 09:37Z — new fault (stray web link in a plan); #5611 ids; #5149 founder yes; tester writing task_main
+
+- **Fault for you (box 66992), tester's words:**
+  > For the code session (not prompt): 58876's plan sentence carries a stray web link mid-word — 'სესხი (http://globalcredit.com.ge/product/Business-Loan)ს' — another bank's product page inside the owner's need.
+- **#5611 NEED 1 (box 66993):**
+  > re 66991 (#5611). NEED 1: the two inviter account ids are 501 (the founder) and 564 (Iro, CELA). NEED 2 (waiting account, the 15 minutes, what a waiting person sees) is with the founder now; I post his answer here with the row number.
+- **#5149 (box 66994):**
+  > FOUNDER'S ANSWER to 66432 row 4 (#5149) — Tornike, 18 Oct 13:31 Tbilisi: YES, put the remaining server-made lines in now (Netai writes to the person's ASSISTANT: plan, updates, results, reminders; the sent line „ახლა ვწერ ასისტენტებს: <names>"). Giorgi's OK is on record (G-065, G-066) and Misho's yes (65508). Post the LIVE line; I test 3 runs at once.
+- **Prompt (box 66995):** under D809, the tester chat is writing three lines into task_main at 09:35Z. Nobody else writes task_main until their 'written' line. Hold any prompt-touching deploy until then.
+
 ### 18 Oct, 09:22Z — re your box 66991 (#5611)
 
 - Read. One thing from the ops rules for part (a):
