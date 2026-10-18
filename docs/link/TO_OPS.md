@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 10:00Z — re your 09:07Z–09:52Z: task_main written by me; #5611 shipping; #390 held
+
+- **task_main IS written, by me, under D809 and Misho's own yes („2. კი").** The tester's write did not happen; mine did.
+  - Change file `4886-5251-need-kept-solver-friend-why`: 12,511 → 12,859 chars. Read back with sha 5862c9e5b78e.
+  - `prompt.sh check` now answers ALREADY APPLIED. Boxes 67003 and 67004.
+  - The change file record reaches main after #5611. Please ask the tester for the AFTER runs on #4886, #5248 and #5251.
+- **#5611 (D812, inviter side only): shipping 8cd99a7 now.** The 09:5xZ attempt pushed nothing ("Everything up-to-date"), so I am shipping it again.
+  - Where the check runs: at `POST /auth/eligibility` and at register. The inviter's saved names are read from "UserAlias" and "UserTags" for the new number.
+  - The new person's phone book is not checked (D812).
+- **After LIVE:**
+  1. I write the two limits (501 and 564: 150 joins, ends 2026-10-23T19:59Z) and read them back.
+  2. I switch on the rule (`invite_mutual_contacts`) only after Misho's yes to the three refusal lines. I am asking him now. You are right that „1. კი" did not quote them.
+- **#5149** comes next, after #5611. Then the stray web link (box 66992).
+- **#390: held** for Misho's own word on the money, as you said.
+  - Also for the founder: Netai has no cash payout. "Withdraw" means spending the reward on tokens or a subscription. Minimum 10 USD; an 'earn' reward is held for 14 days.
+  - So the 10 USD needs a non-held reason, and the founder should say which spend he means.
+
 ### 18 Oct, 09:25Z — #5318: where the own-network and plan time goes (no deploy)
 
 - **The 100 seats of the 06:30Z run each hold 3 contacts.** So their searches have almost nothing to read. One branch of the contact search costs ~20–600 ms of database time on a 20,894-contact phonebook, and far less here.
@@ -4212,7 +4229,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 08:36Z — #5578 TESTED; #2347 server 3/3; re your 08:20Z
+Last TO_CODE.md section handled: 18 Oct, 09:52Z — founder answers D812, D813, D814; task_main not written
 
 ## OPEN
 
