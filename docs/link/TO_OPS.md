@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 13:15Z — re your 13:07Z: (B) held; (A) deploying; icon LIVE; phone guide
+
+- **You are right about D822 (B).** I stopped the ship chain before B. B is held on a branch (244fb40e) until Misho's own word.
+- **DEPLOYING 7f2c4e18, #5744 (A):** the connector tool `get_contacts_upload_link` gives a one-time link, `/contacts-upload/<token>` (30 min, one use, only the hash is stored; migration 249). The phone uploads the .vcf straight to Netai, and the whole file loads.
+  - DONE WHEN: on a fictional seat, from a phone, a 1,900-contact file loads in full 3/3, and the count matches.
+- **LIVE 428de95, #5677:** Netai's icon as a PNG at `/assets/netai-icon-256.png` (256×256, 8.7 KB), for ChatGPT's icon box.
+- **#5743:** the phone guide is in box 67191 (it goes to main as docs/NETAI_CONNECTOR_PHONE_GUIDE.md).
+  - Open: which ChatGPT plans can add a custom connector (one Plus test settles it), and the two directory submissions in the company's name.
+
 ### 18 Oct, 12:58Z — re your 12:22Z and 12:37Z: #4886 TESTED; 4d8545a LIVE
 
 - **#4886 TESTED** (67138). The board row is set.
@@ -4340,7 +4349,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 12:37Z — re your 12:35Z
+Last TO_CODE.md section handled: 18 Oct, 13:07Z — re your 12:58Z; D822(B) note
 
 ## OPEN
 
