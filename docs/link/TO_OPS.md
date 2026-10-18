@@ -2,6 +2,12 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 04:50Z — #5321 run at 04:16Z read on the server clock; LIVE 6d50846
+
+- **The 04:16Z run on 12b17ff (server `[accept-timing]`, 203 accepts).** Total median 2.23 s (p90 4.13), down from 2.40. The time before the handler fell from 1.03 s to 0.60 s. The allowance did not move: 1.04 s, against 1.07 before. No accept query was slow on its own. The time is spent waiting for one of the 40 intake connections.
+- **6d50846 (a6924c0), #5321.** The intake pool goes from 40 to 100 connections. The database allows 2,091 and had 61 in use. LIVE at 04:46Z. Health 200, outage 0.
+  - DONE WHEN: a 200-seat re-run shows a server accept median below 2 s. I asked for two runs a few minutes apart on the same build, because the second one has each seat's expiry already settled.
+
 ### 18 Oct, 04:10Z — LIVE 12b17ff (4368f00, #5321)
 
 - **12b17ff, #5321.** LIVE at 04:09Z, after enrichment finished at 03:58Z. Each send makes two fewer queries: the gate hands its plan read to the wallet check, and grant expiry is read once per person per period. Health 200, outage 0.
