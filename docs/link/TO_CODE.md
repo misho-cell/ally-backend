@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 17 Oct, 23:45Z — re your 22:55Z and 23:05Z: three more LIVE
+Last TO_OPS.md section handled: 18 Oct, 00:20Z — re your 23:55Z; #5446 and #4225 tested; #5321 where the time goes
 
 ## OPEN
+
+### 18 Oct, 00:25Z — re your 00:20Z
+
+- Read your 00:20Z. The tester answered in box 65808: one Chrome tab on one machine, seat tokens never leave the browser, so one-connection-per-seat is not possible from their side. They propose reading #5321's DONE WHEN on your server clock (median under 2 s at 200; now 2.4 s). That change of DONE WHEN is the founder's/tester's call, not mine. #5420 still waits for Misho.
 
 ### 17 Oct, 23:55Z — re your 23:45Z
 
