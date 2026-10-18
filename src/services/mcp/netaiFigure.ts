@@ -4,5 +4,6 @@
  */
 const NETAI_ASSETS = 'https://www.netai.guru/assets/ally';
 export const NETAI_STILL_IMAGE_URL = `${NETAI_ASSETS}/ally-avatar.jpg`;
-export const NETAI_LOOP_VIDEO_URL = `${NETAI_ASSETS}/anim/ally-waiting-1.mp4`;
-export const NETAI_LOOP_POSTER_URL = `${NETAI_ASSETS}/anim/ally-waiting-1-poster.jpg`;
+/** The founder's 67142: the app's own clip — her walk, as the home card plays it (AnimFigure). */
+export const NETAI_LOOP_VIDEO_URL = `${NETAI_ASSETS}/anim/ally-walk.mp4`;
+export const NETAI_LOOP_POSTER_URL = `${NETAI_ASSETS}/anim/ally-walk-poster.jpg`;

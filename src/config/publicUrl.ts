@@ -9,3 +9,18 @@ export const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL ?? DEFAULT_PUBLIC_BA
   /\/+$/,
   '',
 );
+
+/**
+ * #5677 (the tester's 67142, 18 Oct): people who added the connector as „Ally"
+ * reach it at the old host, api.allyapp.one, which still serves this backend.
+ * RFC 9728 has a client refuse resource metadata whose `resource` is not the
+ * address it called — and the old host answered with the new one's. So each
+ * known host gets its own resource address; the authorization server stays one.
+ */
+const CONNECTOR_HOSTS: ReadonlySet<string> = new Set(['api.netai.guru', 'api.allyapp.one']);
+
+/** The origin a connector called us at, when it is one of ours; the canonical one otherwise. */
+export function connectorOriginFor(host: string | undefined): string {
+  const name = (host ?? '').trim().toLowerCase();
+  return CONNECTOR_HOSTS.has(name) ? `https://${name}` : PUBLIC_BASE_URL;
+}

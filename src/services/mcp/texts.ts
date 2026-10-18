@@ -1008,3 +1008,18 @@ export function connectorDescription(name: string): string {
   if (app === '') return TOOL_TEXTS[name]?.description ?? '';
   return SPEAKS_OF_A_PHONE_RE.test(app) ? `${app}${REF_NOTE}` : app;
 }
+
+/**
+ * The founder's 67142 (D819): what a person sees inside Claude and ChatGPT
+ * while Netai works — every tool call is titled with the product's name.
+ */
+const TITLE_PREFIX = 'Netai — ';
+
+function humanised(name: string): string {
+  const words = name.replace(/_/gu, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+export function connectorTitle(name: string): string {
+  return `${TITLE_PREFIX}${TOOL_TEXTS[name]?.title ?? humanised(name)}`;
+}

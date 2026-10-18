@@ -79,6 +79,7 @@ import {
   MCP_SERVER_NAME,
   MCP_SERVER_TITLE,
   connectorDescription,
+  connectorTitle,
   MCP_SERVER_VERSION,
   PARAM_TEXTS,
   PROMPT_TEXTS,
@@ -195,7 +196,7 @@ function registerSearchTools(server: McpServer, userId: string): void {
   server.registerTool(
     'search_contacts',
     {
-      title: TOOL_TEXTS.search_contacts.title,
+      title: connectorTitle('search_contacts'),
       description: connectorDescription('search_contacts'),
       inputSchema: {
         tag: z.string().optional().describe(PARAM_TEXTS.tag),
@@ -208,7 +209,7 @@ function registerSearchTools(server: McpServer, userId: string): void {
   server.registerTool(
     'search_by_insight',
     {
-      title: TOOL_TEXTS.search_by_insight.title,
+      title: connectorTitle('search_by_insight'),
       description: connectorDescription('search_by_insight'),
       inputSchema: { query: z.string().describe(PARAM_TEXTS.insightQuery) },
       annotations: READ_ONLY,
@@ -218,7 +219,7 @@ function registerSearchTools(server: McpServer, userId: string): void {
   server.registerTool(
     'search_second_degree',
     {
-      title: TOOL_TEXTS.search_second_degree.title,
+      title: connectorTitle('search_second_degree'),
       description: connectorDescription('search_second_degree'),
       inputSchema: { query: z.string().describe(PARAM_TEXTS.secondDegreeQuery) },
       annotations: READ_ONLY,
@@ -232,7 +233,7 @@ function registerProfileTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_network_stats',
     {
-      title: TOOL_TEXTS.get_network_stats.title,
+      title: connectorTitle('get_network_stats'),
       description: connectorDescription('get_network_stats'),
       inputSchema: {},
       annotations: READ_ONLY,
@@ -242,7 +243,7 @@ function registerProfileTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_contact_profile',
     {
-      title: TOOL_TEXTS.get_contact_profile.title,
+      title: connectorTitle('get_contact_profile'),
       description: connectorDescription('get_contact_profile'),
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: READ_ONLY,
@@ -256,7 +257,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'request_introduction',
     {
-      title: TOOL_TEXTS.request_introduction.title,
+      title: connectorTitle('request_introduction'),
       description: connectorDescription('request_introduction'),
       inputSchema: {
         mediator_name: z.string().describe(PARAM_TEXTS.mediatorName),
@@ -273,7 +274,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'check_my_inbox',
     {
-      title: TOOL_TEXTS.check_my_inbox.title,
+      title: connectorTitle('check_my_inbox'),
       description: connectorDescription('check_my_inbox'),
       inputSchema: {},
       annotations: READ_ONLY,
@@ -283,7 +284,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'snooze_update',
     {
-      title: TOOL_TEXTS.snooze_update.title,
+      title: connectorTitle('snooze_update'),
       description: connectorDescription('snooze_update'),
       inputSchema: {
         update_ref: z.string().describe(PARAM_TEXTS.updateRef),
@@ -296,7 +297,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'respond_to_request',
     {
-      title: TOOL_TEXTS.respond_to_request.title,
+      title: connectorTitle('respond_to_request'),
       description: connectorDescription('respond_to_request'),
       inputSchema: {
         request_ref: z.string().describe(PARAM_TEXTS.requestRef),
@@ -312,7 +313,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'invite_contact',
     {
-      title: TOOL_TEXTS.invite_contact.title,
+      title: connectorTitle('invite_contact'),
       description: connectorDescription('invite_contact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -327,7 +328,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_invite_link',
     {
-      title: TOOL_TEXTS.get_invite_link.title,
+      title: connectorTitle('get_invite_link'),
       description: connectorDescription('get_invite_link'),
       inputSchema: {},
       annotations: READ_ONLY,
@@ -339,7 +340,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_unresolved_labels',
     {
-      title: TOOL_TEXTS.get_unresolved_labels.title,
+      title: connectorTitle('get_unresolved_labels'),
       description: connectorDescription('get_unresolved_labels'),
       inputSchema: { limit: z.number().optional().describe(PARAM_TEXTS.labelQueueLimit) },
       annotations: READ_ONLY,
@@ -350,7 +351,7 @@ function registerIntroTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_intro_status',
     {
-      title: TOOL_TEXTS.get_intro_status.title,
+      title: connectorTitle('get_intro_status'),
       description: connectorDescription('get_intro_status'),
       inputSchema: {},
       annotations: READ_ONLY,
@@ -371,7 +372,7 @@ function registerProfileQuestionTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_profile_question',
     {
-      title: TOOL_TEXTS.get_profile_question.title,
+      title: connectorTitle('get_profile_question'),
       description: connectorDescription('get_profile_question'),
       inputSchema: {
         moment: z.string().optional().describe(PARAM_TEXTS.profileQuestionMoment),
@@ -385,7 +386,7 @@ function registerProfileQuestionTools(server: McpServer, userId: string): void {
   server.registerTool(
     'answer_profile_question',
     {
-      title: TOOL_TEXTS.answer_profile_question.title,
+      title: connectorTitle('answer_profile_question'),
       description: connectorDescription('answer_profile_question'),
       inputSchema: {
         question_id: z.string().describe(PARAM_TEXTS.profileQuestionId),
@@ -406,7 +407,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
     'save_contact_fact',
     {
-      title: TOOL_TEXTS.save_contact_fact.title,
+      title: connectorTitle('save_contact_fact'),
       description: connectorDescription('save_contact_fact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -435,7 +436,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_contact_facts',
     {
-      title: TOOL_TEXTS.get_contact_facts.title,
+      title: connectorTitle('get_contact_facts'),
       description: connectorDescription('get_contact_facts'),
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: READ_ONLY,
@@ -445,7 +446,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
     'block_contact',
     {
-      title: TOOL_TEXTS.block_contact.title,
+      title: connectorTitle('block_contact'),
       description: connectorDescription('block_contact'),
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: WRITE,
@@ -455,7 +456,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
     'unblock_contact',
     {
-      title: TOOL_TEXTS.unblock_contact.title,
+      title: connectorTitle('unblock_contact'),
       description: connectorDescription('unblock_contact'),
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: WRITE,
@@ -465,7 +466,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
     'list_blocked_contacts',
     {
-      title: TOOL_TEXTS.list_blocked_contacts.title,
+      title: connectorTitle('list_blocked_contacts'),
       description: connectorDescription('list_blocked_contacts'),
       inputSchema: {},
       annotations: READ_ONLY,
@@ -475,7 +476,7 @@ function registerMemoryAndBlockTools(server: McpServer, userId: string): void {
   server.registerTool(
     'remove_contact_from_network',
     {
-      title: TOOL_TEXTS.remove_contact_from_network.title,
+      title: connectorTitle('remove_contact_from_network'),
       description: connectorDescription('remove_contact_from_network'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -494,7 +495,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'create_task',
     {
-      title: TOOL_TEXTS.create_task.title,
+      title: connectorTitle('create_task'),
       description: connectorDescription('create_task'),
       inputSchema: {
         title: z.string().describe(PARAM_TEXTS.taskTitle),
@@ -509,7 +510,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_my_tasks',
     {
-      title: TOOL_TEXTS.get_my_tasks.title,
+      title: connectorTitle('get_my_tasks'),
       description: connectorDescription('get_my_tasks'),
       inputSchema: {
         status: z.enum(['open', 'paused', 'closed']).optional().describe(PARAM_TEXTS.taskStatus),
@@ -521,7 +522,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'update_task',
     {
-      title: TOOL_TEXTS.update_task.title,
+      title: connectorTitle('update_task'),
       description: connectorDescription('update_task'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -535,7 +536,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'save_goal_feedback',
     {
-      title: TOOL_TEXTS.save_goal_feedback.title,
+      title: connectorTitle('save_goal_feedback'),
       description: connectorDescription('save_goal_feedback'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -549,7 +550,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'grant_task_permission',
     {
-      title: TOOL_TEXTS.grant_task_permission.title,
+      title: connectorTitle('grant_task_permission'),
       description: connectorDescription('grant_task_permission'),
       inputSchema: { task_ref: z.string().describe(PARAM_TEXTS.taskRef) },
       annotations: WRITE,
@@ -560,7 +561,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'propose_task_plan',
     {
-      title: TOOL_TEXTS.propose_task_plan.title,
+      title: connectorTitle('propose_task_plan'),
       description: connectorDescription('propose_task_plan'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -601,7 +602,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'approve_task_plan',
     {
-      title: TOOL_TEXTS.approve_task_plan.title,
+      title: connectorTitle('approve_task_plan'),
       description: connectorDescription('approve_task_plan'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -614,7 +615,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'save_user_note',
     {
-      title: TOOL_TEXTS.save_user_note.title,
+      title: connectorTitle('save_user_note'),
       description: connectorDescription('save_user_note'),
       inputSchema: {
         kind: z.enum(['need', 'preference', 'profile']).describe(PARAM_TEXTS.userNoteKind),
@@ -627,7 +628,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_user_notes',
     {
-      title: TOOL_TEXTS.get_user_notes.title,
+      title: connectorTitle('get_user_notes'),
       description: connectorDescription('get_user_notes'),
       inputSchema: {
         kind: z
@@ -642,7 +643,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'forget_user_note',
     {
-      title: TOOL_TEXTS.forget_user_note.title,
+      title: connectorTitle('forget_user_note'),
       description: connectorDescription('forget_user_note'),
       inputSchema: {
         note_ref: z.string().describe('The note_ref from get_user_notes, e.g. note_42'),
@@ -653,7 +654,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'list_answer_rules',
     {
-      title: TOOL_TEXTS.list_answer_rules.title,
+      title: connectorTitle('list_answer_rules'),
       description: connectorDescription('list_answer_rules'),
       inputSchema: {},
       annotations: READ_ONLY,
@@ -663,7 +664,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'delete_answer_rule',
     {
-      title: TOOL_TEXTS.delete_answer_rule.title,
+      title: connectorTitle('delete_answer_rule'),
       description: connectorDescription('delete_answer_rule'),
       inputSchema: { rule_id: z.number().describe('The rule, from list_answer_rules.') },
       annotations: WRITE,
@@ -673,7 +674,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'queue_result',
     {
-      title: TOOL_TEXTS.queue_result.title,
+      title: connectorTitle('queue_result'),
       description: connectorDescription('queue_result'),
       inputSchema: {
         kind: z.string().describe(PARAM_TEXTS.updateKind),
@@ -688,7 +689,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'record_search_outcome',
     {
-      title: TOOL_TEXTS.record_search_outcome.title,
+      title: connectorTitle('record_search_outcome'),
       description: connectorDescription('record_search_outcome'),
       inputSchema: {
         search_id: z.number().describe('The search_id from a prior search result'),
@@ -710,7 +711,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'correct_contact_fact',
     {
-      title: TOOL_TEXTS.correct_contact_fact.title,
+      title: connectorTitle('correct_contact_fact'),
       description: connectorDescription('correct_contact_fact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -730,7 +731,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'save_close_contact',
     {
-      title: TOOL_TEXTS.save_close_contact.title,
+      title: connectorTitle('save_close_contact'),
       description: connectorDescription('save_close_contact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -746,7 +747,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'save_contact_relationship',
     {
-      title: TOOL_TEXTS.save_contact_relationship.title,
+      title: connectorTitle('save_contact_relationship'),
       description: connectorDescription('save_contact_relationship'),
       inputSchema: {
         contact_ref_a: z.string().describe(PARAM_TEXTS.contactRef),
@@ -765,7 +766,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'forget_contact_relationship',
     {
-      title: TOOL_TEXTS.forget_contact_relationship.title,
+      title: connectorTitle('forget_contact_relationship'),
       description: connectorDescription('forget_contact_relationship'),
       inputSchema: {
         contact_ref_a: z.string().describe(PARAM_TEXTS.contactRef),
@@ -782,7 +783,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_contact_relationships',
     {
-      title: TOOL_TEXTS.get_contact_relationships.title,
+      title: connectorTitle('get_contact_relationships'),
       description: connectorDescription('get_contact_relationships'),
       inputSchema: {
         contact_ref: z.string().optional().describe(PARAM_TEXTS.contactRef),
@@ -797,7 +798,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'record_debrief_outcome',
     {
-      title: TOOL_TEXTS.record_debrief_outcome.title,
+      title: connectorTitle('record_debrief_outcome'),
       description: connectorDescription('record_debrief_outcome'),
       inputSchema: {
         subject: z
@@ -814,7 +815,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'answer_goal_question',
     {
-      title: TOOL_TEXTS.answer_goal_question.title,
+      title: connectorTitle('answer_goal_question'),
       description: connectorDescription('answer_goal_question'),
       inputSchema: {
         task_id: z.number().describe('The goal the question belongs to (from the item payload)'),
@@ -828,7 +829,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'respond_to_thanks_loop_offer',
     {
-      title: TOOL_TEXTS.respond_to_thanks_loop_offer.title,
+      title: connectorTitle('respond_to_thanks_loop_offer'),
       description: connectorDescription('respond_to_thanks_loop_offer'),
       inputSchema: {
         consented: z.boolean().describe(PARAM_TEXTS.thanksLoopConsented),
@@ -843,7 +844,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_pending_updates',
     {
-      title: TOOL_TEXTS.get_pending_updates.title,
+      title: connectorTitle('get_pending_updates'),
       description: connectorDescription('get_pending_updates'),
       inputSchema: {
         include_seen: z
@@ -863,7 +864,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'ask_contact',
     {
-      title: TOOL_TEXTS.ask_contact.title,
+      title: connectorTitle('ask_contact'),
       description: connectorDescription('ask_contact'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -877,7 +878,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'set_task_brief',
     {
-      title: TOOL_TEXTS.set_task_brief.title,
+      title: connectorTitle('set_task_brief'),
       description: connectorDescription('set_task_brief'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -890,7 +891,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'set_task_wake',
     {
-      title: TOOL_TEXTS.set_task_wake.title,
+      title: connectorTitle('set_task_wake'),
       description: connectorDescription('set_task_wake'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -903,7 +904,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'finish_task',
     {
-      title: TOOL_TEXTS.finish_task.title,
+      title: connectorTitle('finish_task'),
       description: connectorDescription('finish_task'),
       inputSchema: {
         task_ref: z.string().describe(PARAM_TEXTS.taskRef),
@@ -916,7 +917,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'exclude_contact',
     {
-      title: TOOL_TEXTS.exclude_contact.title,
+      title: connectorTitle('exclude_contact'),
       description: connectorDescription('exclude_contact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -931,7 +932,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'remove_contact_exclusion',
     {
-      title: TOOL_TEXTS.remove_contact_exclusion.title,
+      title: connectorTitle('remove_contact_exclusion'),
       description: connectorDescription('remove_contact_exclusion'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -945,7 +946,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'mark_contact_deceased',
     {
-      title: TOOL_TEXTS.mark_contact_deceased.title,
+      title: connectorTitle('mark_contact_deceased'),
       description: connectorDescription('mark_contact_deceased'),
       inputSchema: { contact_ref: z.string().describe(PARAM_TEXTS.contactRef) },
       annotations: DESTRUCTIVE,
@@ -956,7 +957,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'retract_contact_fact',
     {
-      title: TOOL_TEXTS.retract_contact_fact.title,
+      title: connectorTitle('retract_contact_fact'),
       description: connectorDescription('retract_contact_fact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -971,7 +972,7 @@ function registerGoalTools(server: McpServer, userId: string): void {
   server.registerTool(
     'forget_contact_fact',
     {
-      title: TOOL_TEXTS.forget_contact_fact.title,
+      title: connectorTitle('forget_contact_fact'),
       description: connectorDescription('forget_contact_fact'),
       inputSchema: {
         contact_ref: z.string().describe(PARAM_TEXTS.contactRef),
@@ -990,7 +991,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_top_connectors',
     {
-      title: TOOL_TEXTS.get_top_connectors.title,
+      title: connectorTitle('get_top_connectors'),
       description: connectorDescription('get_top_connectors'),
       inputSchema: {
         limit: z.number().int().positive().optional().describe(PARAM_TEXTS.connectorLimit),
@@ -1002,7 +1003,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_group_connectors',
     {
-      title: TOOL_TEXTS.get_group_connectors.title,
+      title: connectorTitle('get_group_connectors'),
       description: connectorDescription('get_group_connectors'),
       inputSchema: {
         group_tag: z.string().describe(PARAM_TEXTS.groupTag),
@@ -1016,7 +1017,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'search_roster',
     {
-      title: TOOL_TEXTS.search_roster.title,
+      title: connectorTitle('search_roster'),
       description: connectorDescription('search_roster'),
       inputSchema: {
         group: z.string().describe('The network, e.g. "Axel".'),
@@ -1029,7 +1030,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'find_warm_path',
     {
-      title: TOOL_TEXTS.find_warm_path.title,
+      title: connectorTitle('find_warm_path'),
       description: connectorDescription('find_warm_path'),
       inputSchema: {
         target_ref: z.string().describe("The target's contact_ref from a search result."),
@@ -1042,7 +1043,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_upcoming_birthdays',
     {
-      title: TOOL_TEXTS.get_upcoming_birthdays.title,
+      title: connectorTitle('get_upcoming_birthdays'),
       description: connectorDescription('get_upcoming_birthdays'),
       inputSchema: {
         days: z.number().int().positive().optional().describe(PARAM_TEXTS.birthdayWindowDays),
@@ -1055,7 +1056,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_curiosity_queue',
     {
-      title: TOOL_TEXTS.get_curiosity_queue.title,
+      title: connectorTitle('get_curiosity_queue'),
       description: connectorDescription('get_curiosity_queue'),
       inputSchema: {
         limit: z.number().int().positive().optional().describe(PARAM_TEXTS.curiosityLimit),
@@ -1068,7 +1069,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_country_channels',
     {
-      title: TOOL_TEXTS.get_country_channels.title,
+      title: connectorTitle('get_country_channels'),
       description: connectorDescription('get_country_channels'),
       inputSchema: {
         country: z.string().describe(PARAM_TEXTS.country),
@@ -1082,7 +1083,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'get_netai_info',
     {
-      title: TOOL_TEXTS.get_netai_info.title,
+      title: connectorTitle('get_netai_info'),
       description: connectorDescription('get_netai_info'),
       inputSchema: {
         topic: z.string().describe(PARAM_TEXTS.netaiInfoTopic),
@@ -1094,7 +1095,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'stop_contacting_me',
     {
-      title: TOOL_TEXTS.stop_contacting_me.title,
+      title: connectorTitle('stop_contacting_me'),
       description: connectorDescription('stop_contacting_me'),
       inputSchema: {
         confirmed: z.boolean().describe(PARAM_TEXTS.optOutConfirmed),
@@ -1107,7 +1108,7 @@ function registerGraphTools(server: McpServer, userId: string): void {
   server.registerTool(
     'allow_contacting_me',
     {
-      title: TOOL_TEXTS.allow_contacting_me.title,
+      title: connectorTitle('allow_contacting_me'),
       description: connectorDescription('allow_contacting_me'),
       inputSchema: {},
       annotations: WRITE,
@@ -1129,7 +1130,7 @@ function registerMemberAnswerTool(server: McpServer, userId: string): void {
   server.registerTool(
     'answer_member_question',
     {
-      title: TOOL_TEXTS.answer_member_question.title,
+      title: connectorTitle('answer_member_question'),
       description: connectorDescription('answer_member_question'),
       inputSchema: {
         ask_id: z.string().describe(PARAM_TEXTS.memberAskId),
@@ -1229,6 +1230,7 @@ async function registerSharedAppTools(server: McpServer, userId: string): Promis
     server.registerTool(
       tool.name,
       {
+        title: connectorTitle(tool.name),
         description: tool.description,
         inputSchema: connectorInputShape(tool, PARAM_TEXTS.contactRef),
         annotations: SHARED_TOOL_ANNOTATIONS,

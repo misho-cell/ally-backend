@@ -1,5 +1,5 @@
 import express, { Request, Response, Router } from 'express';
-import { PUBLIC_BASE_URL } from '../../config/publicUrl';
+import { connectorOriginFor, PUBLIC_BASE_URL } from '../../config/publicUrl';
 import { requestOTP, verifyOTP } from '../../services/auth.service';
 import { admittedUserIdByPhone } from '../../services/connectorAdmission.service';
 import {
@@ -39,11 +39,20 @@ const authServerMetadata = {
   scopes_supported: ['ally'],
 };
 
-const protectedResourceMetadata = {
-  resource: `${PUBLIC_BASE_URL}/mcp`,
-  authorization_servers: [PUBLIC_BASE_URL],
-  bearer_methods_supported: ['header'],
-};
+interface ProtectedResourceMetadata {
+  readonly resource: string;
+  readonly authorization_servers: readonly string[];
+  readonly bearer_methods_supported: readonly string[];
+}
+
+/** The resource is the address the client called (RFC 9728); one authorization server. */
+export function protectedResourceMetadataFor(host: string | undefined): ProtectedResourceMetadata {
+  return {
+    resource: `${connectorOriginFor(host)}/mcp`,
+    authorization_servers: [PUBLIC_BASE_URL],
+    bearer_methods_supported: ['header'],
+  };
+}
 
 wellKnownRouter.get('/oauth-authorization-server', (req: Request, res: Response) => {
   res.json(authServerMetadata);
@@ -53,9 +62,19 @@ wellKnownRouter.get('/oauth-authorization-server', (req: Request, res: Response)
 wellKnownRouter.get(
   ['/oauth-protected-resource', '/oauth-protected-resource/mcp'],
   (req: Request, res: Response) => {
-    res.json(protectedResourceMetadata);
+    res.json(protectedResourceMetadataFor(req.get('host')));
   },
 );
+
+/**
+ * #5677 (the tester's 67143): Claude said „Authorization with this connector
+ * failed" on a connect that worked, and nothing in the logs said which step
+ * refused. Each refusal is logged by step and reason — never a code or token.
+ */
+function logRefusal(step: string, reason: string): void {
+  // eslint-disable-next-line no-console
+  console.warn(`[oauth] ${step} refused: ${reason}`);
+}
 
 const oauthRouter = Router();
 oauthRouter.use(express.urlencoded({ extended: false }));
@@ -86,6 +105,7 @@ oauthRouter.post('/register', async (req: Request, res: Response): Promise<void>
       redirectUris.length !== uris.length ||
       uris.length > MAX_REDIRECT_URIS
     ) {
+      logRefusal('register', 'invalid_client_metadata');
       res.status(400).json({
         error: 'invalid_client_metadata',
         error_description: 'redirect_uris must be 1-5 valid https URLs',
@@ -147,6 +167,7 @@ oauthRouter.get('/authorize', async (req: Request, res: Response): Promise<void>
     }
     const { params, error } = await readAuthorizeParams(source);
     if (!params) {
+      logRefusal('authorize', error ?? 'invalid request');
       res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
       return;
     }
@@ -163,6 +184,7 @@ oauthRouter.post('/authorize/send-code', async (req: Request, res: Response): Pr
     const source = req.body as Record<string, unknown>;
     const { params, error } = await readAuthorizeParams(source);
     if (!params) {
+      logRefusal('authorize', error ?? 'invalid request');
       res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
       return;
     }
@@ -191,6 +213,7 @@ oauthRouter.post('/authorize/verify', async (req: Request, res: Response): Promi
   const source = req.body as Record<string, unknown>;
   const { params, error } = await readAuthorizeParams(source);
   if (!params) {
+    logRefusal('authorize', error ?? 'invalid request');
     res.status(400).send(renderErrorPage(error ?? 'Invalid request.'));
     return;
   }
@@ -243,11 +266,13 @@ async function handleAuthorizationCodeGrant(
   const redirectUri = tokenParam(body, 'redirect_uri');
   const codeVerifier = tokenParam(body, 'code_verifier');
   if (!code || !clientId || !redirectUri || !codeVerifier) {
+    logRefusal('token(code)', 'missing parameters');
     res.status(400).json({ error: 'invalid_request', error_description: 'missing parameters' });
     return;
   }
   const outcome = await exchangeAuthorizationCode(code, clientId, redirectUri, codeVerifier);
   if (typeof outcome === 'string') {
+    logRefusal('token(code)', outcome);
     res.status(400).json({ error: 'invalid_grant', error_description: outcome });
     return;
   }
@@ -266,11 +291,13 @@ async function handleRefreshTokenGrant(
   const refreshToken = tokenParam(body, 'refresh_token');
   const clientId = tokenParam(body, 'client_id');
   if (!refreshToken || !clientId) {
+    logRefusal('token(refresh)', 'missing parameters');
     res.status(400).json({ error: 'invalid_request', error_description: 'missing parameters' });
     return;
   }
   const outcome = await refreshTokens(refreshToken, clientId);
   if (outcome === null) {
+    logRefusal('token(refresh)', 'refresh token rejected');
     res.status(400).json({ error: 'invalid_grant', error_description: 'refresh token rejected' });
     return;
   }
@@ -295,6 +322,7 @@ oauthRouter.post('/token', async (req: Request, res: Response): Promise<void> =>
       await handleRefreshTokenGrant(body, res);
       return;
     }
+    logRefusal('token', 'unsupported_grant_type');
     res.status(400).json({ error: 'unsupported_grant_type' });
   } catch (err) {
     // eslint-disable-next-line no-console

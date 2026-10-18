@@ -59,3 +59,19 @@ describe('the connector’s texts say Netai and are the app’s (Misho’s „�
     );
   });
 });
+
+describe('what a person sees inside Claude and ChatGPT (the founder’s 67142)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const texts = require('../texts') as typeof import('../texts');
+
+  it('titles every tool with Netai', () => {
+    expect(texts.connectorTitle('search_contacts')).toBe(
+      `Netai — ${texts.TOOL_TEXTS.search_contacts.title}`,
+    );
+    expect(texts.connectorTitle('record_who_helped')).toBe('Netai — Record who helped');
+  });
+
+  it('plays the app’s own clip on the sign-in page: her walk', () => {
+    expect(NETAI_LOOP_VIDEO_URL).toMatch(/\/anim\/ally-walk\.mp4$/u);
+  });
+});

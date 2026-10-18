@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { PUBLIC_BASE_URL } from '../../config/publicUrl';
+import { connectorOriginFor } from '../../config/publicUrl';
 import { query } from '../../db/postgres/client';
 import { verifyToken } from '../../services/auth.service';
 import { isOAuthAccessToken, validateAccessToken } from '../../services/oauth.service';
@@ -24,10 +24,10 @@ const JSONRPC_SERVER_ERROR = -32000;
 
 // Per MCP auth spec the 401 points the client at the resource metadata, which
 // leads it to our authorization server for the OAuth flow.
-function sendUnauthorized(res: Response): void {
+function sendUnauthorized(req: Request, res: Response): void {
   res.setHeader(
     'WWW-Authenticate',
-    `Bearer resource_metadata="${PUBLIC_BASE_URL}/.well-known/oauth-protected-resource"`,
+    `Bearer resource_metadata="${connectorOriginFor(req.get('host'))}/.well-known/oauth-protected-resource"`,
   );
   res.status(401).json({ success: false, error: 'Authorization required' });
 }
@@ -35,7 +35,7 @@ function sendUnauthorized(res: Response): void {
 async function authenticateMcp(req: Request, res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
-    sendUnauthorized(res);
+    sendUnauthorized(req, res);
     return;
   }
   const token = header.split(' ')[1];
@@ -44,7 +44,7 @@ async function authenticateMcp(req: Request, res: Response, next: NextFunction):
     try {
       const userId = await validateAccessToken(token);
       if (userId === null) {
-        sendUnauthorized(res);
+        sendUnauthorized(req, res);
         return;
       }
       (req as AuthenticatedRequest).user = { userId, role: 'user' };
@@ -70,7 +70,7 @@ async function authenticateMcp(req: Request, res: Response, next: NextFunction):
     (req as AuthenticatedRequest).user = payload;
     next();
   } catch {
-    sendUnauthorized(res);
+    sendUnauthorized(req, res);
   }
 }
 
