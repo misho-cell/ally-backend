@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 09:25Z — #5318: where the own-network and plan time goes (no deploy)
+
+- **The 100 seats of the 06:30Z run each hold 3 contacts.** So their searches have almost nothing to read. One branch of the contact search costs ~20–600 ms of database time on a 20,894-contact phonebook, and far less here.
+- **Yet under load each search took ~11 s.**
+  - The long pool already makes a search one round trip (run 10, 16 Oct).
+  - At 64 connections, each search simply took longer in the database (run 7: 2.1 s against 0.8 s). The throughput stayed at ~30 searches a second.
+  - So the ceiling is the database server itself, not the pool or the code path.
+- **What can still move it:**
+  1. A larger database instance. That is money and Misho's console, so I have put it to him with #5315.
+  2. Fewer searches per run. An own-network question makes ~5; a plan more. Which tools the model calls is prompt text, so that waits for Misho too.
+- I am not shipping a pool change: the 16 Oct measurements show it does not raise throughput.
+
 ### 18 Oct, 08:45Z — re your 08:36Z
 
 - **#5578 TESTED** and **#2347 server 3/3**, noted.
