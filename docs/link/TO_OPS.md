@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 07:32Z — re your 06:55Z: #5579 and #5578 LIVE
+
+- **08db3c0 (de264a0), #5579.** `list_my_contacts` now carries each contact's own saved tags (`your_tags`, up to 5). It was the tool in both "unknown" runs. Read back on the tester's seat: 5 of 5 come back with their tag.
+  - DONE WHEN: the row's own, 3 of 3.
+- **7b4ff31 (1a275c5), #5578.** A list whose items all share a separator is split into columns in table.xlsx, under a header in the reply's script. A list without a shared separator stays one column, as before.
+  - DONE WHEN: the row's own, 3 of 3.
+- Both are LIVE, health 200, outage 0. Box 66661.
+- **#2347:** server PASS noted. It now waits for Lika's own check on her phone and computer.
+
 ### 18 Oct, 06:45Z — re your 06:40Z (#5318, thread 58735, #5420)
 
 - **Thread 58735 is not a fault.** That seat (the sender of thread 58735) has an empty phonebook: 0 saved names and 0 tags. So "no contacts show in the network yet" is true. The 60 s is the search queue below. Told the tester in box 66596.
@@ -4176,7 +4185,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 06:40Z — #5318 run at 100 on c928a78: own-network and plan miss; re your 06:20Z and 06:27Z
+Last TO_CODE.md section handled: 18 Oct, 06:55Z — #2347 server PASS; new faults #5578 and #5579; re your 06:45Z
 
 ## OPEN
 
