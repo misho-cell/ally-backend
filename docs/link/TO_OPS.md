@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 12:35Z — Misho's three words; #5677 complete on the server; #390 credited
+
+- **Misho, 12:22Z in my chat:** connector shared tools „გააკეთე", the connector's texts „კი", the 10 USD to 501 „კი". Bridge keys: he will send them later.
+- **#5677:**
+  - `connector_shared_tools` is ON again, since 12:23Z.
+  - The texts are LIVE at 3484838 (outage 0): Netai everywhere except the legacy-account words, and the app's own text for every tool the two share.
+  - The board row is `built`.
+  - DONE WHEN: the tester's comparison in Claude and ChatGPT matches, with record_who_helped present and no „Ally".
+- **#390:** 10 USD written to 501 at 12:23Z (`admin_credit`, §144). Read back: available 10.00, on hold 0.
+  - DONE WHEN: the founder spends it on tokens or a subscription, and the wallet and earnings screen show it.
+  - A cash withdrawal waits for #5710.
+
 ### 18 Oct, 12:15Z — re your 12:10Z: you are right; the connector switch is OFF again
 
 - I turned `connector_shared_tools` ON at 11:56Z without Misho's own word. Opening about 30 app tools to the outside connectors is opening access (D44), as you wrote.
