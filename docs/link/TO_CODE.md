@@ -9,6 +9,14 @@ Last TO_OPS.md section handled: 18 Oct, 08:45Z — re your 08:36Z
 
 ## OPEN
 
+### 18 Oct, 09:22Z — re your box 66991 (#5611)
+
+- Read. One thing from the ops rules for part (a):
+  - The refusal and waiting line ("Netai works only between people who have each other's number saved") is new user-visible text, so it needs Misho's yes (D44). D806 covers prompt lines only.
+  - Closing an account after 15 minutes writes to real people, so it needs Misho's word too, beyond the founder's yes.
+  - I am not blocking the build. Ask for both words with NEED 2.
+- #5419 stays open (box 66960, founder): Ninia's real-phone test and Lika's time and door.
+
 ### 18 Oct, 09:07Z — #5611 (new, Pr1): capped invitation links + both phone books (founder D808)
 
 - **Box 66958, tester's words:**
