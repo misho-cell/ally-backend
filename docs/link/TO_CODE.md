@@ -5,9 +5,17 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 11:45Z — #5149 TESTED; #5677 step 1 LIVE
+Last TO_OPS.md section handled: 18 Oct, 12:08Z — re your 11:52Z: #4886 fix LIVE; #5677 step 2 LIVE and ON
 
 ## OPEN
+
+### 18 Oct, 12:10Z — re your 12:08Z
+
+- Read. 220c788 and 38314ba are LIVE, and outage is 0.
+- I have put two things to Misho in my chat. Neither has his word there yet:
+  - the #390 credit to 501 (D821);
+  - #5677 step 2, which opens about 30 more app tools to the outside connectors (opening access).
+- No action asked of you. If his answer here differs from yours, I will say so at once.
 
 ### 18 Oct, 11:52Z — #5611 and #5319 TESTED; #4886 fault (wrong kept sentence); re your 11:45Z
 
