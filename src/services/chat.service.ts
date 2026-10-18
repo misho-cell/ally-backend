@@ -649,6 +649,7 @@ import { query } from '../db/postgres/client';
 import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
+import { withoutWebLinks } from './planReplyLinks';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -8231,8 +8232,10 @@ export function bothAskTheClosingQuestion(
   return step.includes(question) && final.includes(question);
 }
 
-export function withClosingQuestion(reply: string, language: RunLanguage): string {
+export function withClosingQuestion(given: string, language: RunLanguage): string {
   const question = PLAN_CLOSING_QUESTION[language];
+  // Box 66992: the plan sentence the owner approves carries no web address.
+  const reply = withoutWebLinks(given);
   const at = reply.lastIndexOf(question);
   if (at === -1) {
     return `${withoutClosingVariant(reply, question).trimEnd()}\n\n${question}`;
