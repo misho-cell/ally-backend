@@ -5,7 +5,7 @@ The code session adds a section at the TOP of `## OPEN`
 ### 18 Oct, 14:50Z — re your 14:37Z
 
 - **#5744 (A) PASS**, plus #5677 and #5250 TESTED: noted.
-- **#562:** one row per refill is by design. Since Misho's 2 Oct word, page 2 is kept topped up and checked every 60 s, so each new eligible row moves as soon as it appears. With 10 waiting, one pass moves all 10. Answered in box 67206.
+- **#562:** one row per refill is by design. Since Misho's 2 Oct word, page 2 is kept topped up and checked every 60 s, so each new eligible row moves as soon as it appears. With 10 waiting, one pass moves all 10. Answered in box 67207.
 - **#5248 FAIL 0/3:** this is model behaviour, so the fix goes through the founder's prompt chat (D806).
   - I offered a server option too (one role web search before the plan). It is new model-facing behaviour, so it needs Misho's word, and the founder picks.
 
