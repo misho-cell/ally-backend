@@ -651,6 +651,7 @@ import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
 import { withAssistantsSentLine } from './assistantsSentLine';
+import { asksWhyAboutNamed, firstSentenceOnly, isShortWhy } from './whyThisPersonCut';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -8231,6 +8232,28 @@ export function bothAskTheClosingQuestion(
 ): boolean {
   const question = PLAN_CLOSING_QUESTION[language];
   return step.includes(question) && final.includes(question);
+}
+
+/**
+ * #4886 (option A, box 67090): „why him?" about someone the last reply named is
+ * answered in its first sentence. A reply that offers buttons is left whole.
+ */
+async function withWhyInOneSentence(
+  reply: string,
+  ownerLine: string,
+  threadId: number,
+  choices: readonly string[] | undefined,
+): Promise<string> {
+  if (choices !== undefined || !isShortWhy(ownerLine)) return reply;
+  const earlier = await lastShownAssistantReply(threadId).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[why-cut] thread ${threadId}: the earlier reply could not be read:`,
+      (err as Error).message,
+    );
+    return null;
+  });
+  return asksWhyAboutNamed(ownerLine, earlier) ? firstSentenceOnly(reply) : reply;
 }
 
 export function withClosingQuestion(given: string, language: RunLanguage): string {
@@ -17224,6 +17247,7 @@ export async function processChat(
     effectiveFinal = withEarlierListForExcel(effectiveFinal, earlier, userMessage);
   }
   effectiveFinal = withExcelLine(effectiveFinal, userMessage, language);
+  effectiveFinal = await withWhyInOneSentence(effectiveFinal, userMessage, threadId, choices);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {
     effectiveFinal = withoutClosingApprovalAsk(
