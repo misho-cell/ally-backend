@@ -76,15 +76,78 @@ let queueLooksEmpty = false;
 let workersRunning = 0;
 let pausedUntil = 0;
 
-/** Queues one saved contact. */
-export async function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
-  await backgroundQuery(
-    `INSERT INTO contact_enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [job.userId, job.userCompositeKey, job.contactPhone, job.alias, job.enrich],
-    QUEUE_TIMEOUT_MS,
-  );
-  queueLooksEmpty = false;
+/**
+ * 5317, the tester's three 1,900-card uploads (18 Oct, 14:25Z): one INSERT per
+ * saved contact, fired without waiting, put 243 statements in line for the
+ * background pool's two connections; they timed out after 30 s and those
+ * contacts were never queued. The queue now writes ONE statement at a time:
+ * whatever was queued while it was writing goes into the next, up to this many
+ * rows each, so a big import costs a few statements instead of thousands.
+ */
+const MAX_JOBS_PER_INSERT = 500;
+
+interface Waiting {
+  readonly job: EnrichmentJob;
+  readonly resolve: () => void;
+  readonly reject: (err: Error) => void;
+}
+
+let waiting: Waiting[] = [];
+let writing = false;
+let writeScheduled = false;
+
+/** Writes the waiting jobs in one statement; settles each job's promise. */
+async function writeWaitingJobs(): Promise<void> {
+  const batch = waiting.slice(0, MAX_JOBS_PER_INSERT);
+  waiting = waiting.slice(batch.length);
+  const jobs = batch.map((entry) => entry.job);
+  try {
+    await backgroundQuery(
+      `INSERT INTO contact_enrichment_jobs (user_id, user_composite_key, contact_phone, alias, enrich)
+       SELECT * FROM unnest($1::int[], $2::text[], $3::text[], $4::text[], $5::bool[])`,
+      [
+        jobs.map((job) => job.userId),
+        jobs.map((job) => job.userCompositeKey),
+        jobs.map((job) => job.contactPhone),
+        jobs.map((job) => job.alias),
+        jobs.map((job) => job.enrich),
+      ],
+      QUEUE_TIMEOUT_MS,
+    );
+    queueLooksEmpty = false;
+    batch.forEach((entry) => entry.resolve());
+  } catch (err) {
+    const failure = err instanceof Error ? err : new Error(String(err));
+    batch.forEach((entry) => entry.reject(failure));
+  }
+}
+
+/** One statement at a time, until nothing waits. */
+async function writeUntilEmpty(): Promise<void> {
+  writing = true;
+  try {
+    while (waiting.length > 0) await writeWaitingJobs();
+  } finally {
+    writing = false;
+  }
+}
+
+/** Starts a write after this tick, so jobs queued in the same tick share it. */
+function scheduleWrite(): void {
+  if (writing || writeScheduled) return;
+  writeScheduled = true;
+  queueMicrotask(() => {
+    writeScheduled = false;
+    void writeUntilEmpty();
+  });
+}
+
+/** Queues one saved contact; settles when the statement carrying it is written. */
+export function queueEnrichmentJob(job: EnrichmentJob): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    waiting.push({ job, resolve, reject });
+    scheduleWrite();
+  });
 }
 
 interface JobRow {

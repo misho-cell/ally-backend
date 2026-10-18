@@ -42,7 +42,33 @@ describe('the enrichment queue in the database', () => {
     await queueEnrichmentJob(job);
     const [sql, params] = mockQuery.mock.calls[0];
     expect(String(sql)).toContain('INSERT INTO contact_enrichment_jobs');
-    expect(params).toEqual([501, 'k', '+995555000001', 'ნინო', false]);
+    expect(params).toEqual([[501], ['k'], ['+995555000001'], ['ნინო'], [false]]);
+  });
+
+  it('writes jobs queued together in one statement, at most 500 rows each (14:25Z, 243 waiting)', async () => {
+    mockQuery.mockResolvedValue(rows([]));
+    const jobs = Array.from({ length: 1_200 }, (_, i) => ({
+      userId: 501,
+      userCompositeKey: `k${i}`,
+      contactPhone: `+9955550${String(i).padStart(5, '0')}`,
+      alias: `contact ${i}`,
+      enrich: i < 200,
+    }));
+    await Promise.all(jobs.map((job) => queueEnrichmentJob(job)));
+    const sizes = mockQuery.mock.calls.map(([, params]) => (params as unknown[][])[0].length);
+    expect(sizes).toEqual([500, 500, 200]);
+  });
+
+  it('fails every job of a statement that could not be written, so the caller logs it', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('timeout exceeded when trying to connect'));
+    const job = {
+      userId: 501,
+      userCompositeKey: 'k',
+      contactPhone: '+995555000001',
+      alias: 'ნინო',
+      enrich: false,
+    };
+    await expect(queueEnrichmentJob(job)).rejects.toThrow('timeout exceeded');
   });
 
   it('claims the oldest queued job once, does it, and marks it done', async () => {
