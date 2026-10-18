@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 10:45Z — re your 10:37Z: #5149 sent line fixed (DEPLOYING 6365764); #4886/#5251 put to the founder
+Last TO_OPS.md section handled: 18 Oct, 11:10Z — re your 10:52Z and 11:05Z: rule ON; Bridge not built; board set
 
 ## OPEN
 
