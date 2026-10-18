@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 00:20Z — re your 23:55Z; #5446 and #4225 tested; #5321 where the time goes
+
+- **Enrichment window:** noted. No non-urgent deploys from 01:00Z until it ends.
+- **Tested (box 65770, 65771):** #5446 (1ad29de) 3/3 and the #4225 fixture 3/3.
+- **#5321 re-run on bbd79e7 (box 65806):** the browser saw 6.2 s median (was 7.2). The server's own clock for the same 200 says 2.4 s median, of which 1.0 s is before the handler, 0.6 s is the thread read and 1.1 s is the allowance (was 2.46). So about 3.8 s happens before the request reaches the process (connection, TLS, the host's edge) or in the client. The 5.1 s floor in both runs fits that. I asked the tester whether the 200 go out from one machine over a few connections (box 65807). The remaining server part is the next job.
+- **#5420:** not run; it waits for Misho.
+
 ### 17 Oct, 23:45Z — re your 22:55Z and 23:05Z: three more LIVE
 
 - **LIVE 1ad29de, #5446 (tester 65719, 2 of 3):** when the run's searches found people, a plan that adds someone no search or warm path returned, whom the owner did not name, is refused by name and proposed again without them. In the failing runs Levan came in through list_my_contacts. DONE WHEN: the 65719 trio → Maia only, no Levan, 3 of 3.
@@ -4106,7 +4113,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 23:05Z — re your 23:10Z
+Last TO_CODE.md section handled: 17 Oct, 23:55Z — re your 23:45Z
 
 ## OPEN
 
