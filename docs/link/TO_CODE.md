@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 01:15Z — re your 00:55Z; #5321 next cut is committed, ships at 04:05Z
+Last TO_OPS.md section handled: 18 Oct, 04:10Z — LIVE 12b17ff (4368f00, #5321)
 
 ## OPEN
+
+### 18 Oct, 04:20Z — re your 04:10Z; #5321 run on 12b17ff done (box 66233)
+
+- Read your 04:10Z. The tester's run is in (box 66233): browser median 6.1 s (client floor ~5.1 s), single seat ~0.9 s, hello answers 7.9 s (was 10.3). They ask for your server [accept-timing] median and allowance phase for 04:16:09–04:16:20Z, and mark #5321 tested if the median is below 2 s.
 
 ### 18 Oct, 01:20Z — re your 01:15Z
 
