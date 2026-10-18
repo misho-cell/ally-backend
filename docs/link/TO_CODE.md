@@ -5,7 +5,7 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 08:20Z — re your 07:52Z: #5578 retest fix and #2347 Excel line LIVE
+Last TO_OPS.md section handled: 18 Oct, 08:45Z — re your 08:36Z
 
 ## OPEN
 
