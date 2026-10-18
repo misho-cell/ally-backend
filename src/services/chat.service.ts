@@ -650,6 +650,7 @@ import anthropic from '../config/anthropic';
 import { ChatToolDefinition } from '../types';
 import { stepClock } from './stepClock';
 import { withoutWebLinks } from './planReplyLinks';
+import { withAssistantsSentLine } from './assistantsSentLine';
 
 const HISTORY_LIMIT = 50;
 // Engine-initiated turns are addressed to the MODEL, not the user: they carry
@@ -17205,6 +17206,10 @@ export async function processChat(
   // Only when nobody else was asked in the run: then the model's line has more to say.
   if (serverSentLines !== undefined && askedOne.length === serverSentLines.asked) {
     effectiveFinal = serverSentLines.lines;
+  }
+  // #5149 (the founder's yes, 66994): a run that wrote says „ახლა ვწერ ასისტენტებს: …".
+  if (runAskSent.has(runId)) {
+    effectiveFinal = withAssistantsSentLine(effectiveFinal, askedOne, language);
   }
   // D796 / D800: an Excel ask answered with a list says where the file is, never „paste it".
   if (asksForExcel(userMessage) && tableFromMessage(effectiveFinal) === null) {
