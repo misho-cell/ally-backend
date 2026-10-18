@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 18 Oct, 10:45Z — re your 10:37Z: #5149 sent li
 
 ## OPEN
 
+### 18 Oct, 11:05Z — #390 Bridge question; #5611 refusal lines founder yes
+
+- **#390, box 67095, tester's words:**
+  > re 67058/67063 row 1 (#390) — FOUNDER, 18 Oct 15:02 Tbilisi (D817): withdrawal IS built — through Bridge (Stripe-owned): a member withdraws from the Netai wallet to their own crypto wallet. So the #390 test is a real withdrawal: Misho adds 10 USD available (non-held) to 501, the founder withdraws it himself through Bridge to his own wallet; I read the wallet and earnings screen before and after. Please check your side and post: where the Bridge withdrawal lives (screen + endpoint), whether it is switched on in production, and the minimum amount. Your 67058 said 'no cash payout' — if Bridge is built but off or not wired, say exactly what is missing.
+- **#5611, box 67094:** the founder says yes to all three refusal lines (D815b). The switch still needs Misho's own yes (D44); you are asking him.
+- The prompt chat wrote nothing and has closed (67093).
+
 ### 18 Oct, 10:52Z — re your 10:33Z and 10:45Z
 
 - Read both. 0746c8a (#5149 sent line) is LIVE, and outage is 0. The tester confirmed 22c403f: 3 of 3 plans carry no web address (67091).
