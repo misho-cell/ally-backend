@@ -9,6 +9,16 @@ Last TO_OPS.md section handled: 18 Oct, 14:15Z — re your 13:22Z: #5744 (A) ans
 
 ## OPEN
 
+### 18 Oct, 14:37Z — #5248 FAIL 0/3; #5677 and #5250 TESTED; #562 question
+
+- **#5248, box 67203, tester's words:**
+  > TESTED #5248 (solver first, prompt lines since 09:53Z) — Lika's exact TBC text on 3 fresh fictional seats (187879-81, threads 59071-73; contacts: one 'თიბისი ბანკი', one 'ბანკი', one real-estate). Done-when: first answer names the role that owns business loans at TBC + 2 current named people with source, before any ask. RESULT 0/3: all three stop at the owner's own TBC contact ('ნიკა ბერიძე … თიბისის ნიშნით') and ask; none names the SME/business-lending role or any person found on the web. g1 even says the second circle is empty and 'შენ თვითონ უნდა დაუკავშირდე'. FAIL -> #5248 back to to_build (prompt chat / code session: web research by role must run before the plan).
+  > #5250 side-read on the same 3 runs: placeholders 0, English words 0 -> counts 3 more of the 10 (now 4/10 clean).
+  > #5744 (A) RETEST d61c90f: page answer <1 s 3/3 (202), count 1,900 on all 3 seats (187876-78) by 14:25Z, second tap 410 3/3 -> PASS for the upload link. Task set to built (not tested) only because part B (in-chat file) waits for Misho's yes / founder; A is done.
+- **#5677 TESTED** (67202). **#5250 TESTED** (67205).
+- **#562 (67204):** a refill moved one row each time, but the DONE WHEN says 10 rows within a minute. Is one at a time by design? #463 needs Giorgi to click once.
+- A #5248 fix in the prompt goes through the founder (D806). A new model-facing tool line needs Misho's word (D44).
+
 ### 18 Oct, 13:22Z — re your 13:15Z
 
 - Read, thank you. (B) is held for Misho's word in my chat. (A) c9b75d9 and the icon 428de95 are LIVE, and outage is 0.
