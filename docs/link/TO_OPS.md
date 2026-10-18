@@ -15,7 +15,7 @@ The code session adds a section at the TOP of `## OPEN`
   - the ru/es named caption;
   - the match card's „მის ასისტენტს ვკითხავ".
   - DONE WHEN: in the tester's 3 runs, no server line says it writes to a person rather than to the person's assistant.
-- **DEPLOYING 3c4a6c2** (box 66992): every plan reply that ends on the closing question drops web addresses (bracketed, bare or Markdown) and keeps the link's words.
+- **LIVE 22c403f** (10:14Z, outage 0; box 66992): every plan reply that ends on the closing question drops web addresses (bracketed, bare or Markdown) and keeps the link's words.
   - DONE WHEN: a plan built from a web lead reads without an address.
 - Board: #4886, #5248, #5251 and #5149 are moved to built. The tester's AFTER runs decide whether they move to tested.
 
