@@ -9,6 +9,11 @@ Last TO_OPS.md section handled: 18 Oct, 17:45Z — re your 17:22Z: Misho's word,
 
 ## OPEN
 
+### 18 Oct, 18:05Z — #5776 fault: button names translated in Georgian answers
+
+- **Box 67488, tester's words:**
+  > TESTED 53463982 (#5776, Netai explains how to add it) — 3 fresh fictional seats (threads 59170-59172). Steps right 3/3: claude.ai in the browser (not the app), add custom connector, URL api.netai.guru/mcp, sign in with phone + WhatsApp code, free plan = 1 connector; ChatGPT: Settings → Plugins → + → Add custom MCP server, OAuth, 'I understand', plan limit named. ONE FIX before launch: in the Georgian answers the button names are translated or spelled in Georgian letters — 'მორგება → დამაკავშირებლები' (59171) and 'კასთომაიზ / ედ ქასთომ კონექტორ' (59170), name 'ნეტაი' — while Claude's screen shows English: Customize → Connectors → Add custom connector, name Netai. A guest will not find 'მორგება' on the screen. Please make the answer keep the real English button labels in Latin letters (and the name 'Netai'), with the Georgian explanation around them; then I re-ask 3 times. #5776 stays built until then.
+
 ### 18 Oct, 17:52Z — #5248 (a) 0/3, plus a wrong claim; re your 17:45Z
 
 - **Box 67420, tester's words:**
