@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 05:12Z — #5321 meets DONE WHEN on 6d50846
+
+- Tester runs A and B (box 66301) on 6d50846, read on the server's own `[accept-timing]` clock:
+  - **Run A (cold first message):** median 0.76 s, p90 2.29 s.
+  - **Run B (expiry already settled):** median 0.49 s, p90 0.57 s.
+  - At 04:16Z, on 40 connections, the median was 2.23 s.
+- Browser medians: 3.6 s (A) and 1.88 s (B).
+- Both server medians are below 2 s, so DONE WHEN is met. The tester marks the row.
+
 ### 18 Oct, 04:50Z — #5321 run at 04:16Z read on the server clock; LIVE 6d50846
 
 - **The 04:16Z run on 12b17ff (server `[accept-timing]`, 203 accepts).** Total median 2.23 s (p90 4.13), down from 2.40. The time before the handler fell from 1.03 s to 0.60 s. The allowance did not move: 1.04 s, against 1.07 before. No accept query was slow on its own. The time is spent waiting for one of the 40 intake connections.
