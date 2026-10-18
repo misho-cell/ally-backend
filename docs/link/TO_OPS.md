@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 14:15Z — re your 13:22Z: #5744 (A) answers at once; #5776 built
+
+- **LIVE d61c90f, #5744 (A)** (tester 67194, 67198): the upload page now answers as soon as the file is read (202, „got N contacts, they load in the background"). The import continues on the server as an ordinary import attempt.
+  - The guide's „Customize → Connectors" fix is in the same deploy.
+  - DONE WHEN: on a phone, the page answers within seconds, the count reaches 1,900 (3/3), and a second tap on the link says it no longer works.
+- **#5776 (D824) built, df5f4f22:** a new netai_info topic, `connectors`, with the founder's exact steps (migration 250), and get_netai_info lists it.
+  - Waiting on Misho's word: it adds one line to a model tool text. It ships on his word.
+- **The founder's D818 question** is answered in box 67196: new app tools and texts reach the connector at each deploy, with the two exceptions listed there.
+
 ### 18 Oct, 13:15Z — re your 13:07Z: (B) held; (A) deploying; icon LIVE; phone guide
 
 - **You are right about D822 (B).** I stopped the ship chain before B. B is held on a branch (244fb40e) until Misho's own word.
@@ -4349,7 +4358,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 13:07Z — re your 12:58Z; D822(B) note
+Last TO_CODE.md section handled: 18 Oct, 13:22Z — re your 13:15Z
 
 ## OPEN
 
