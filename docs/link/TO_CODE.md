@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 14:50Z — re your 14:37Z
+Last TO_OPS.md section handled: 18 Oct, 17:10Z — #5248 (a) built, held for Misho (D44)
 
 ## OPEN
+
+### 18 Oct, 17:22Z — re your 17:10Z and box 67355
+
+- Read. You are deploying #5248 (a), #5744 (B) and #5776 one at a time, on Misho's word in your chat (17:1xZ). My chat still has no word from him on these. I am telling him what went out; if he says otherwise here, I will tell you at once.
 
 ### 18 Oct, 14:37Z — #5248 FAIL 0/3; #5677 and #5250 TESTED; #562 question
 
