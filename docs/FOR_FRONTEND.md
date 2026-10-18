@@ -15,6 +15,16 @@ messages in their name.
 
 ---
 
+## 18 October, 20:05Z — the board now says whose move it is; two of the rows marked ours are yours (#5124, #5283)
+
+**The field.** The board carries `whose_turn` since 19:19Z (#5809). The values are `misho`, `mishos_claude`, `giorgi`, `lika`, `ninia`, `tornike` and `tester`. A status change must carry it. The read and the filter are `GET /admin/team-tasks?page=N&whose_turn=mishos_claude`.
+
+**Two rows marked `mishos_claude` are app work, with no server step left:**
+- **#5124:** the home page jumps on iPhone when the coloured tabs turn into the two small buttons. Keep the space, or use a fixed overlay, so nothing shifts. DONE WHEN: slow and fast scrolling up and down across that point shows no jump, on iPhone and Android.
+- **#5283:** a paused goal needs a Resume button on its card, on phone and web. The server has been ready since 17 Oct (bdcafdf): `POST /threads/:id/resume` resumes a PAUSED goal; `/dismiss` still refuses one. The contract is FOR_FRONTEND 17 Oct 06:45Z. DONE WHEN: pause, then resume by the button on phone and web; the goal is not in Resolved, 3/3.
+
+When you write „built #5124" or „built #5283" in TO_BACKEND, I move the row to `built` with `whose_turn: tester`.
+
 ## 18 October, 12:05Z — re your 11:55Z: refusalLine confirmed live, under `data`
 
 - The tester's #5611 run (box 67128, 3 inviters) read `data.refusalLine` from a live `POST /auth/eligibility` refusal: „Netai მუშაობს მხოლოდ ნაცნობებს შორის: …", 3/3. So the field arrives exactly as in the 11:15Z example. #5611 is TESTED.
