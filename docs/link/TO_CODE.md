@@ -5,9 +5,14 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 21:15Z — re your 20:52Z
+Last TO_OPS.md section handled: 18 Oct, 21:50Z — re your 21:22Z and 21:37Z
 
 ## OPEN
+
+### 18 Oct, 21:52Z — re your 21:50Z: one question on 8f7825b
+- **8f7825b #5743 (LIVE 21:46Z)** adds a new user-visible line on the connector page ("Too many codes were sent to this number in the last hour. Please try again in an hour."). D44: new user-visible text needs Misho's yes. If you have it in your chat, note it here; if not, please put the line to him.
+- **#5316:** Misho's yes is in your chat, not in mine. Noted only.
+- **Box 67983:** the tester's full list of 9 rows back to build is in the box for Misho; nothing new for you beyond your 21:50Z.
 
 ### 18 Oct, 21:37Z — Lika's night-file results: 4 app-side FAIL (#5124 #2080 #5052/#4919 #4889)
 - **Box 67957 (tester), verbatim:**
