@@ -353,6 +353,7 @@ import {
 } from './goalQuestions.service';
 import { getGroupConnectors, getTopConnectors } from './graphAnalytics.service';
 import { getContactFullProfile } from './tools/getContactFullProfile';
+import { forgetNamesAsked, nameAskedFor, rememberNameAsked } from './tools/ownContactByNumber';
 import {
   emitThreadCreated,
   emitToolProgress,
@@ -1424,10 +1425,19 @@ const MARK_CONTACT_DECEASED_TOOL: AnthropicTool = {
   },
 };
 
+/**
+ * 5908 (founder P1; MODEL-FACING, D44 — ships on Misho's own word): the owner
+ * asked by a name other members gave the number, and saved it himself as a
+ * nickname. The row said so only as a flag, and the run rejected the match.
+ */
+const OWN_CONTACT_BY_NUMBER_NOTE =
+  ' A row or card carrying `own_contact` IS the owner\u2019s own contact, matched through the number: the owner saved it as `you_saved_as`, other members know the same number as `others_know_as`. Say plainly „you have him saved as …" and tell what is known; never reject it as a different name or an approximate match, and never say who saved which name. Follow `own_contact_note`.';
+
 const GET_CONTACT_FULL_PROFILE_TOOL: AnthropicTool = {
   name: 'get_contact_full_profile',
   description:
-    'Get a consolidated profile for an identified contact: the tags the USER saved (speak of them as the user\'s own: „you saved him as …"), each with contributor_count (how many different users saved that same tag), `others_labels_count` (how many labels other people saved — their words are private and not given to you, row 289), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
+    'Get a consolidated profile for an identified contact: the tags the USER saved (speak of them as the user\'s own: „you saved him as …"), each with contributor_count (how many different users saved that same tag), `others_labels_count` (how many labels other people saved — their words are private and not given to you, row 289, except the names in `own_contact`), saved insights, and verified facts. Call this right after identifying a contact (when phone is available) instead of calling get_contact_facts and get_contact_insight separately.' +
+    OWN_CONTACT_BY_NUMBER_NOTE +
     ' WHEN: to open a person properly before putting their name in front of anyone.',
   input_schema: {
     type: 'object',
@@ -4138,7 +4148,8 @@ export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
     name: 'search_contact_by_name',
     description:
       'Search contacts by first name, last name, or full name. Use this when the user mentions a person by name instead of phone number. Returns up to 5 matching contacts with their phone numbers and details. Results may carry `relationship` (family/close/professional/formal) — how the user relates to that contact; use it to disambiguate and phrase naturally, never printing the field name itself.' +
-      " `tags` are labels the USER saved themselves — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means only other people's labels matched; their words are private and not given to you (row 289)." +
+      " `tags` are labels the USER saved themselves — say „you saved him as …“, never „someone noted“ or „one person's unconfirmed note“. `found_by_others_labels: true` means only other people's labels matched; their words are private and not given to you (row 289), except the names in `own_contact`." +
+      OWN_CONTACT_BY_NUMBER_NOTE +
       " `registered_name` (a Netai member, only when it differs from `name`) is how the person spelled their own name when registering: asked how the name is spelled or what it is exactly, give THIS spelling, never the user's own typing; you may add that the user saved them as `saved_as`." +
       SPLIT_COUNT_NOTE +
       ' WHEN: try spelling variants, first name alone, surname alone, and the company, brand or nickname as a word.',
@@ -9560,6 +9571,7 @@ function clearRunState(runId: string): void {
   runFoundThroughBridges.delete(runId);
   runFoundFurtherOut.delete(runId);
   runServerSentLines.delete(runId);
+  forgetNamesAsked(runId);
 }
 
 /**
@@ -9832,6 +9844,8 @@ async function executeToolCall(
       );
       // 3466: namesakes offered on a question's thread, in order, for an ordinal pick.
       if (threadId !== undefined) noteNamesakes(threadId, namesakesIn(byName));
+      // 5908: the contact card opened next reads the network's names by these words.
+      rememberNameAsked(runId, byName, input['name_query']);
       if (notInThePhonebook(byName)) {
         return withFurtherOut(
           userId,
@@ -10256,6 +10270,7 @@ async function executeToolCall(
           userId,
           input['phone'] as string,
           input['neo4j_contact_id'] as string | undefined,
+          nameAskedFor(runId, input['phone']),
         ),
       ) as object;
     case 'present_choices': {

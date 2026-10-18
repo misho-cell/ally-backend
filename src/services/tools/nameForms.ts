@@ -10,7 +10,7 @@ const NAME_FORM_GROUPS: readonly (readonly string[])[] = [
   ['vasil', 'vasili', 'vasiko'],
   ['besarion', 'besik', 'beso'],
   ['teimuraz', 'temur', 'temo'],
-  ['giorgi', 'george', 'gio', 'gigi', 'gigo', 'gogi', 'gia', 'goga'],
+  ['giorgi', 'george', 'gio', 'gigi', 'gigo', 'gogi', 'gia', 'goga', 'gogita'],
   ['davit', 'david', 'dato'],
   ['nikoloz', 'nika', 'niko', 'nikusha'],
   ['aleksandre', 'alexander', 'sandro', 'aleko'],
@@ -74,4 +74,13 @@ export function nameFormVariants(word: string): readonly string[] {
   const group = FORMS_BY_NAME.get(word);
   if (!group) return [word];
   return [word, ...group.filter((form) => form !== word)];
+}
+
+/**
+ * 5908: the one form a first name is compared by — the group's first, so
+ * „Gogita", „Goga" and „Gogi" are one name when labels are read side by side.
+ * A word that is not a first name we know is returned unchanged.
+ */
+export function canonicalNameForm(word: string): string {
+  return FORMS_BY_NAME.get(word)?.[0] ?? word;
 }

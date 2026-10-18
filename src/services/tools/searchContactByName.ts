@@ -24,6 +24,7 @@ import { phoneDigits } from '../phone';
 import { OWNERSHIP } from './searchResultMeta';
 import { collapseMergedPhones } from './mergedIdentities';
 import { searchDidNotFinish } from './searchDidNotFinish';
+import { withOwnContactByNumber } from './ownContactByNumber';
 import {
   DISPLAY_NAME,
   LATEST_OWN_LABEL,
@@ -374,14 +375,17 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     // other half of row 137 and it would have put Lika first even if her
     // labels had matched only one of the two words.
     mapped.sort((a, b) => isExact(b) - isExact(a) || richness(b) - richness(a));
+    // 5908: an own contact found through other members' names on the number
+    // says so — saved by the owner as …, known to the network as ….
+    const named = await withOwnContactByNumber(userId, mapped, rawGroups);
     // Task 54: two member rows under ONE name must be tellable apart — attach
     // member_since / network_size / activity to every row in a duplicated name
     // group, so neither the user nor the assistant aims at the wrong twin.
-    await attachDuplicateDifferentiators(mapped, accountStates);
+    await attachDuplicateDifferentiators(named, accountStates);
     // Ticket 16 Task 23: the review's „one person" answers, finally read. The
     // differentiators above answer the same question for REGISTERED twins by
     // account id; this covers every pair a human confirmed, registered or not.
-    const merged = await collapseMergedPhones(mapped);
+    const merged = await collapseMergedPhones(named);
     return {
       found: true,
       count: merged.rows.length,
