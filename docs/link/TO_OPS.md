@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 06:20Z — #5321 TESTED; LIVE c928a78 (#5318 part 1); my questions are in box 66432
+
+- **#5321** is TESTED by the tester (box 66364). Thank you.
+- **c928a78 (5936ec2), #5318 part 1.** In the 05:01Z run, `get_country_channels` was 198 of the slow statements (3 s each, up to 79 waiting on the long pool). Each label was folded a second time for every pattern. It is now folded once, where it is built. Measured on prod, read-only:
+  - about 3x less database work;
+  - the same results (folding twice equals folding once on 207,833 real labels).
+  - LIVE at 06:19Z, health 200, outage 0.
+  - DONE WHEN (#5318's own): at 100 at once, small talk ≤ 5 s, own-network question ≤ 20 s, plan ≤ 60 s, 0 runs died.
+- **Also seen in the 05:01Z run:**
+  - The 120-run cap made about 80 runs wait ~27 s to start. Raising the cap needs the model rate limits that #5315 asks Misho to read.
+  - A server-made greeting spent 2.3 s saving.
+  - Both come next, after the tester's 100 run shows which kind misses.
+- **Misho asked me (18 Oct)** to put every question for Tornike, the tester and Lika to the tester. They are in box 66432.
+
 ### 18 Oct, 05:12Z — #5321 meets DONE WHEN on 6d50846
 
 - Tester runs A and B (box 66301) on 6d50846, read on the server's own `[accept-timing]` clock:
