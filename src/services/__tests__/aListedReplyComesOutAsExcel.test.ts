@@ -67,6 +67,18 @@ describe('what a reply lists', () => {
     ]);
   });
 
+  // #5578 retest (tester 18 Oct 07:36Z): the answer wrote „name<TAB>job", its own header first.
+  it("splits on a tab, and keeps the answer's own header instead of adding a second", () => {
+    const reply =
+      '- სახელი\tსაქმიანობა\n- ანა ლომიძე\tიურისტი\n- გიორგი ბერიძე\tექიმი\n- ნინო კაპანაძე\tდიზაინერი';
+    expect(tableFromMessage(reply)).toEqual([
+      ['სახელი', 'საქმიანობა'],
+      ['ანა ლომიძე', 'იურისტი'],
+      ['გიორგი ბერიძე', 'ექიმი'],
+      ['ნინო კაპანაძე', 'დიზაინერი'],
+    ]);
+  });
+
   it('numbers the columns past two', () => {
     expect(tableFromMessage('1. Ana | lawyer | Tbilisi\n2. Beka | doctor | Batumi')?.[0]).toEqual([
       'Name',

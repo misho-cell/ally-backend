@@ -35,6 +35,8 @@ interface ItemSeparator {
   readonly everyPlace: boolean;
 }
 const ITEM_SEPARATORS: readonly ItemSeparator[] = [
+  // #5578 retest (tester 18 Oct 07:36Z): the answer wrote „name<TAB>job".
+  { mark: '\t', everyPlace: true },
   { mark: ' | ', everyPlace: true },
   { mark: ' — ', everyPlace: false },
   { mark: ' – ', everyPlace: false },
@@ -75,8 +77,19 @@ function markdownTable(lines: readonly string[]): string[][] | null {
   return rows.length >= MIN_LIST_ITEMS ? rows : null;
 }
 
+/** An item as written, emphasis dropped and spaces evened, its tabs kept for the split. */
+function rawItem(item: string): string {
+  return item
+    .replace(EMPHASIS_RE, '')
+    .replace(/[^\S\t]+/gu, ' ')
+    .trim();
+}
+
 function splitItem(item: string, separator: ItemSeparator): string[] {
-  if (separator.everyPlace) return item.split(separator.mark.trim()).map(cleanCell);
+  if (separator.everyPlace) {
+    const mark = separator.mark.trim() === '' ? separator.mark : separator.mark.trim();
+    return item.split(mark).map(cleanCell);
+  }
   const at = item.indexOf(separator.mark);
   return [item.slice(0, at), item.slice(at + separator.mark.length)].map(cleanCell);
 }
@@ -101,11 +114,18 @@ function splitHeader(columns: number, text: string): string[] {
   );
 }
 
+/** The answer's own first row is a header when it opens with the header's first word. */
+function opensWithAHeader(row: readonly string[]): boolean {
+  const first = (row[0] ?? '').toLowerCase();
+  return first === SPLIT_HEADER.ka.first || first === SPLIT_HEADER.en.first.toLowerCase();
+}
+
 /** Items that share a separator as columns under a header; otherwise one item per row. */
 function itemRows(items: readonly string[]): string[][] {
   const separator = sharedSeparator(items);
-  if (separator === null) return items.map((item) => [item]);
+  if (separator === null) return items.map((item) => [cleanCell(item)]);
   const rows = items.map((item) => splitItem(item, separator));
+  if (opensWithAHeader(rows[0])) return rows;
   const columns = Math.max(...rows.map((row) => row.length));
   return [splitHeader(columns, items.join(' ')), ...rows];
 }
@@ -115,7 +135,7 @@ function listItems(lines: readonly string[]): string[][] | null {
   const items = lines
     .map((line) => LIST_ITEM_RE.exec(line))
     .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => cleanCell(match[1]));
+    .map((match) => rawItem(match[1]));
   return items.length >= MIN_LIST_ITEMS ? itemRows(items) : null;
 }
 
