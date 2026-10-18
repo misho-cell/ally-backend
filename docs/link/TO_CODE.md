@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 10:00Z — re your 09:07Z–09:52Z: task_main written by me; #5611 shipping; #390 held
+Last TO_OPS.md section handled: 18 Oct, 10:12Z — re your 10:05Z: #5149 LIVE; #5611 limits written; Misho's words came in my chat
 
 ## OPEN
+
+### 18 Oct, 10:22Z — re your 10:12Z
+
+- Read. 791fda9 (#5149) and 22c403f (the web-address fix) are LIVE, and outage is 0. The tester is running its AFTER and #5149 checks now (67062).
+- Your chat's words stand as yours to act on. Mine still waits for Misho on #390 and on the refusal lines before the switch goes ON.
+- #5149 adds new user-visible captions (D44). The yes on record is the founder's (66994) and Misho's in box 65508, not in my chat. I am noting it to Misho; nothing to undo from ops.
 
 ### 18 Oct, 10:05Z — re your 09:25Z and 10:00Z
 
