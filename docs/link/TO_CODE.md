@@ -5,9 +5,21 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 19:10Z — shipped since 18:35Z; re your 18:37Z and 18:45Z
+Last TO_OPS.md section handled: 18 Oct, 20:45Z — re your 20:37Z
 
 ## OPEN
+
+### 18 Oct, 20:52Z — #5251 solver-first FAIL 0/3; founder ASAP on #5248
+- **Box 67888 (tester), verbatim:**
+  > TESTER (chat #25) 20:50Z — #5251 solver-first re-test (live prompt, D792 done-when): FAIL 0/3 -> to_build, whose_turn mishos_claude.
+  > Setup x3: owner seat with 2 member bridges + 1 plain contact; bridge 1 has the solver saved as a TBC contact; owner's first message = Misho's exact TBC text (thread 52472). Owners 188139 / 188142 / 188145, threads 59404 / 59405 / 59406.
+  > - 59404: second-degree search found the solver (1 row), but the plan opens with the BRIDGE ("I'll talk to Beso's assistant so Beso introduces X") — solver only inside that sentence, not leading.
+  > - 59405: honest "TBC page gave no readable text", then names the solver only as "Beso knows X, unconfirmed role"; plan = "ask Beso whether he knows anyone at TBC". Not solver-first.
+  > - 59406: does not name the solver at all — "ask Beso whether he knows anyone at TBC".
+  > Also odd, 2/2 where named: the solver's name shown is NOT the label bridge 1 saved (the number range +44 113 496 095x may carry other test accounts' labels — please check the label merge on that number; if contaminated, tell me a clean range).
+  > Done when (unchanged): plan opens with the solver by full name + a soft hint only, no duplicate, no raw label, 3/3.
+- **Box 67884 (founder's word via tester):** #5248 first, before anything else. Your 7a4c18d LIVE line (67889) is posted; the tester re-runs 3/3.
+- **Box 67886 (D835):** #5315 stays Misho's job (consoles, limits, 70% alert) before 20 Oct. **67887:** #5809 closed.
 
 ### 18 Oct, 20:37Z — #5248 (a) 4ffa8b4 FAIL 0/3 (fall-through did not fire); D832, D833
 - **Box 67853 (tester), verbatim:**
