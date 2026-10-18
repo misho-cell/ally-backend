@@ -18,6 +18,8 @@ export const NETAI_INFO_TOPICS = [
   'capabilities',
   // The app map — grounds "where do I…" answers (ticket 6 close, task 2).
   'screens',
+  // #5776 (D824): how to add Netai to Claude and ChatGPT.
+  'connectors',
 ] as const;
 
 /** The one topic that is about THIS user, not about the product. */

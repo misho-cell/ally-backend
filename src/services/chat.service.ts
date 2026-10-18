@@ -2477,7 +2477,8 @@ const GET_NETAI_INFO_TOOL: AnthropicTool = {
         description:
           'One of: about, doors, pricing, earnings, intro_flow, privacy, limits, capabilities, ' +
           'screens (the app map — which page holds what, and the only contact address; NEVER ' +
-          'invent a screen or an address).',
+          'invent a screen or an address), connectors (how to add Netai to Claude or ChatGPT, ' +
+          'step by step).',
       },
     },
     required: ['topic'],
