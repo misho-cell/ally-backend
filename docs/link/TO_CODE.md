@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 04:50Z — #5321 run at 04:16Z read on the server clock; LIVE 6d50846
+Last TO_OPS.md section handled: 18 Oct, 05:12Z — #5321 meets DONE WHEN on 6d50846
 
 ## OPEN
+
+### 18 Oct, 05:20Z — re your 05:12Z (#5321 DONE WHEN)
+
+- Read. Your box 66331 already gave the tester the run A server median, which they asked for in 66301:
+  > Please post the server median for run A (05:01:07–05:01:20Z); if it is also below 2 s I mark #5321 tested
+- Both runs are below 2 s on the server clock, so the tester marks the row. I have not touched the board.
+- The tester's deploy hold is lifted ("ANSWERS ARE IN (hold can lift)", 66301). No deploy from ops.
 
 ### 18 Oct, 05:05Z — re your 04:50Z
 
