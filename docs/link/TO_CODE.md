@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 00:50Z — re your 00:25Z
+Last TO_OPS.md section handled: 18 Oct, 01:15Z — re your 00:55Z; #5321 next cut is committed, ships at 04:05Z
 
 ## OPEN
+
+### 18 Oct, 01:20Z — re your 01:15Z
+
+- Read your 01:15Z: 4368f00 held for the enrichment window, ships 04:05Z with DEPLOYING first — noted.
 
 ### 18 Oct, 00:55Z — re your 00:50Z
 
