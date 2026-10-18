@@ -23,6 +23,32 @@ const SEPARATOR_CELL_RE = /^\s*:?-+:?\s*$/u;
 const LIST_ITEM_RE = /^\s*(?:\d{1,3}[.)]|[-*•])\s+(.+?)\s*$/u;
 const EMPHASIS_RE = /(\*\*|__|`)/gu;
 
+/**
+ * #5578 (the tester, 18 Oct): a list of „name | job" came out as ONE column, so
+ * the owner could not sort or filter by what people do. When every item carries
+ * the same separator, it is split into columns: a bar on every bar, any other
+ * separator once, at its first place (a job can hold a comma). A list whose
+ * items do not all share one stays a single column — nothing is guessed.
+ */
+interface ItemSeparator {
+  readonly mark: string;
+  readonly everyPlace: boolean;
+}
+const ITEM_SEPARATORS: readonly ItemSeparator[] = [
+  { mark: ' | ', everyPlace: true },
+  { mark: ' — ', everyPlace: false },
+  { mark: ' – ', everyPlace: false },
+  { mark: ' - ', everyPlace: false },
+  { mark: ': ', everyPlace: false },
+  { mark: ', ', everyPlace: false },
+];
+const GEORGIAN_LETTER_RE = /[\u10D0-\u10FF]/u;
+/** The header of a split list, in the reply's own script; the columns past two are numbered. */
+const SPLIT_HEADER = {
+  ka: { first: 'სახელი', rest: 'დეტალები' },
+  en: { first: 'Name', rest: 'Details' },
+} as const;
+
 function cleanCell(cell: string): string {
   return cell.replace(EMPHASIS_RE, '').replace(/\s+/gu, ' ').trim();
 }
@@ -49,13 +75,48 @@ function markdownTable(lines: readonly string[]): string[][] | null {
   return rows.length >= MIN_LIST_ITEMS ? rows : null;
 }
 
+function splitItem(item: string, separator: ItemSeparator): string[] {
+  if (separator.everyPlace) return item.split(separator.mark.trim()).map(cleanCell);
+  const at = item.indexOf(separator.mark);
+  return [item.slice(0, at), item.slice(at + separator.mark.length)].map(cleanCell);
+}
+
+/** The one separator every item carries with something on both sides, if any. */
+function sharedSeparator(items: readonly string[]): ItemSeparator | null {
+  return (
+    ITEM_SEPARATORS.find((separator) =>
+      items.every(
+        (item) =>
+          item.includes(separator.mark) &&
+          splitItem(item, separator).every((part) => part.length > 0),
+      ),
+    ) ?? null
+  );
+}
+
+function splitHeader(columns: number, text: string): string[] {
+  const words = GEORGIAN_LETTER_RE.test(text) ? SPLIT_HEADER.ka : SPLIT_HEADER.en;
+  return Array.from({ length: columns }, (_, i) =>
+    i === 0 ? words.first : i === 1 ? words.rest : `${words.rest} ${i}`,
+  );
+}
+
+/** Items that share a separator as columns under a header; otherwise one item per row. */
+function itemRows(items: readonly string[]): string[][] {
+  const separator = sharedSeparator(items);
+  if (separator === null) return items.map((item) => [item]);
+  const rows = items.map((item) => splitItem(item, separator));
+  const columns = Math.max(...rows.map((row) => row.length));
+  return [splitHeader(columns, items.join(' ')), ...rows];
+}
+
 /** The numbered or bulleted items of the text, one per row; null under two. */
 function listItems(lines: readonly string[]): string[][] | null {
   const items = lines
     .map((line) => LIST_ITEM_RE.exec(line))
     .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => [cleanCell(match[1])]);
-  return items.length >= MIN_LIST_ITEMS ? items : null;
+    .map((match) => cleanCell(match[1]));
+  return items.length >= MIN_LIST_ITEMS ? itemRows(items) : null;
 }
 
 /** What one reply lists, as rows of cells; null when it lists nothing. */

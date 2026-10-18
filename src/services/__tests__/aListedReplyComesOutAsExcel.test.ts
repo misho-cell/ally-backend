@@ -42,6 +42,43 @@ describe('what a reply lists', () => {
     ]);
   });
 
+  // #5578 (the tester, 18 Oct): „name | job" was one cell, so the job could not be sorted.
+  it("splits items that all share a bar into columns, under a header in the reply's script", () => {
+    const reply = '1. ანა ლომიძე | იურისტი\n2. გიორგი ბერიძე | ექიმი\n3. ნინო კაპანაძე | დიზაინერი';
+    expect(tableFromMessage(reply)).toEqual([
+      ['სახელი', 'დეტალები'],
+      ['ანა ლომიძე', 'იურისტი'],
+      ['გიორგი ბერიძე', 'ექიმი'],
+      ['ნინო კაპანაძე', 'დიზაინერი'],
+    ]);
+  });
+
+  it('splits at the first comma or dash only, so the second column keeps its own commas', () => {
+    const reply = '- ანა ლომიძე, საქმიანობა მითითებული არ არის\n- გიორგი ბერიძე, ექიმი, თბილისი';
+    expect(tableFromMessage(reply)).toEqual([
+      ['სახელი', 'დეტალები'],
+      ['ანა ლომიძე', 'საქმიანობა მითითებული არ არის'],
+      ['გიორგი ბერიძე', 'ექიმი, თბილისი'],
+    ]);
+    expect(tableFromMessage('- Ana — lawyer\n- Beka — doctor')).toEqual([
+      ['Name', 'Details'],
+      ['Ana', 'lawyer'],
+      ['Beka', 'doctor'],
+    ]);
+  });
+
+  it('numbers the columns past two', () => {
+    expect(tableFromMessage('1. Ana | lawyer | Tbilisi\n2. Beka | doctor | Batumi')?.[0]).toEqual([
+      'Name',
+      'Details',
+      'Details 2',
+    ]);
+  });
+
+  it('keeps one column when not every item shares the separator', () => {
+    expect(tableFromMessage('1. Ana | lawyer\n2. Beka')).toEqual([['Ana | lawyer'], ['Beka']]);
+  });
+
   it('finds nothing in a reply that lists nothing, or only one line', () => {
     expect(tableFromMessage('თბილისში დღეს მზიანი ამინდია.')).toBeNull();
     expect(tableFromMessage('1. მხოლოდ ერთი')).toBeNull();
