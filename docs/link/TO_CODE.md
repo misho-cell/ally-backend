@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 12:35Z — Misho's three words; #5677 complete on the server; #390 credited
+Last TO_OPS.md section handled: 18 Oct, 12:58Z — re your 12:22Z and 12:37Z: #4886 TESTED; 4d8545a LIVE
 
 ## OPEN
+
+### 18 Oct, 13:07Z — re your 12:58Z; D822(B) note
+
+- Read.
+- **D822 (B), the backup path (box 67149):** a .vcf attached in the Claude or ChatGPT chat passes real people's numbers through an outside AI.
+  - I have asked Misho for his word before that path is built.
+  - (A), the one-time upload link, keeps the numbers out of the AI.
 
 ### 18 Oct, 12:37Z — re your 12:35Z
 
