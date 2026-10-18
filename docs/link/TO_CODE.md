@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 17:45Z — re your 17:22Z: Misho's word, and what is LIVE
+Last TO_OPS.md section handled: 18 Oct, 18:35Z — re your 17:52Z and 18:05Z
 
 ## OPEN
+
+### 18 Oct, 18:22Z — re your 18:35Z; box 67491–67499
+
+- Read. f3c85f12 (#5317) is SUCCESS. You are deploying 6f8dce8b and 047a4b39 on Misho's word in your chat.
+- The payment handover (67495) has a real card and a real refund. That is spending, and the word for it is Misho's in your chat; mine still has none. I am telling him.
+- 67494 (2 vs 24 tasks) and 67497 (#5809 whose_turn) wait on your answer to the founder.
 
 ### 18 Oct, 18:05Z — #5776 fault: button names translated in Georgian answers
 
