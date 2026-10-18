@@ -176,8 +176,13 @@ async function sweepAllChannels(
   const keysIdx = insightsUserIdx + 1;
   const regexesIdx = keysIdx + 1;
   const blockIdx = regexesIdx + 1;
+  // 5318 (the tester's 200 run, 18 Oct 05:01Z): this query was 198 of the
+  // run's slow statements, 3 s each with 79 more waiting on the long pool. Every
+  // branch of `labels` is folded when it is built, so the label is matched as
+  // it stands: folding it again for each pattern cost about 140,000 TRANSLATE
+  // calls a sweep, and measured on prod the sweep fell from ~380 to ~120 ms.
   const countryChain = countryRegexes
-    .map((_, i) => `(${foldedLower('label')} || '') ~ $${countryStart + i}`)
+    .map((_, i) => `(label || '') ~ $${countryStart + i}`)
     .join(' OR ');
 
   const result = await query<{ key: string; phone: string; name: string | null }>(
@@ -230,7 +235,7 @@ async function sweepAllChannels(
        SELECT DISTINCT c.key, l.phone
        FROM labels l
        JOIN country_hits co ON co.phone = l.phone
-       JOIN chan c ON (${foldedLower('l.label')} || '') ~ c.rx
+       JOIN chan c ON (l.label || '') ~ c.rx
      )
      SELECT h.key, h.phone, MAX(ua.alias) AS name
      FROM channel_hits h

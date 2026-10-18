@@ -202,6 +202,18 @@ describe('row 158 — the country filter runs before the channel patterns', () =
     expect(insideChannelHits).toContain('~ c.rx');
   });
 
+  // 5318: each label is folded once, where `labels` builds it, never again per pattern.
+  it('folds each label once, where it is built, and matches the patterns against it', async () => {
+    await getCountryChannels('7', 'Germany', []);
+    const sql = String(mockQuery.mock.calls[mockQuery.mock.calls.length - 1][0]);
+    const built = sql.slice(sql.indexOf('labels AS'), sql.indexOf('country_hits AS'));
+    const matched = sql.slice(sql.indexOf('country_hits AS'));
+    expect(built.match(/TRANSLATE\(/g)?.length).toBe(4);
+    expect(matched).not.toContain('TRANSLATE(');
+    expect(matched).toContain("(label || '') ~ $2");
+    expect(matched).toContain("(l.label || '') ~ c.rx");
+  });
+
   it('does not filter by country only AFTER the patterns have run', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 
