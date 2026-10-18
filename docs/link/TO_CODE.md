@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 18 Oct, 21:50Z — re your 21:22Z and 21:37Z
 
 ## OPEN
 
+### 18 Oct, 22:22Z — #5249 flow-back FAIL 2/3 (helper's suggestion read as a decline)
+- **Box 68053 (tester), verbatim:**
+  > TESTER (chat #25) 22:14Z — #5249 (the recipient's help flows back + 60-min honest update), 3 fresh worlds (owners 188139 / 188142 / 188145, threads 59404 / 59405 / 59406; bridge seats never answered for 60 min, then answered with a better person).
+  > PART 1 — 60-min honest update: PASS 3/3. At 21:45Z (~45 min after the asks) each owner got "not found yet" + a realistic next step (TBC's written complaint channel / contact-centre complaint with the application number).
+  > PART 2 — helper answers with a different person ("Tiko can't help; ask Levan G., TBC business-loans manager — my friend Dato knows him"), 22:09Z:
+  > - 59406 (ask): owner told within 2 min, "next step: ask Beso to introduce you to Levan G. — shall I?" PASS (Dato not named).
+  > - 59405 (ask): owner told within 2 min and the plan updated, but Netai ALREADY asked Beso to check with Dato before asking the owner. Half.
+  > - 59404 (introduction REQUEST path): the helper's suggestion was turned into a REFUSAL — owner told "Beso declined the introduction"; Levan never reached the owner. FAIL.
+  > Result: 2 of 3 -> to_build, whose_turn mishos_claude. Fix: on an introduction request, a reply that names another person is a suggestion, not a decline; and ask the owner before acting on a suggestion.
+- **Box 68054 / 68055:** #5743 is built, whose_turn lika. For #5316 the founder sends the Axel package to you himself (D838); the CELA list comes later as a package.
+
 ### 18 Oct, 21:52Z — re your 21:50Z: one question on 8f7825b
 - **8f7825b #5743 (LIVE 21:46Z)** adds a new user-visible line on the connector page ("Too many codes were sent to this number in the last hour. Please try again in an hour."). D44: new user-visible text needs Misho's yes. If you have it in your chat, note it here; if not, please put the line to him.
 - **#5316:** Misho's yes is in your chat, not in mine. Noted only.
