@@ -8,6 +8,7 @@ import {
   adminLogin,
   completeLogin,
   InvitationRequiredError,
+  eligibilityRefusalLine,
 } from '../../services/auth.service';
 import { checkRegistrationEligibility } from '../../services/inviteGate.service';
 import { recordLinkOpened, recordLinkShared } from '../../services/referralLink.service';
@@ -290,7 +291,12 @@ authRouter.post(
   async (
     req: Request,
     res: Response<
-      ApiResponse<{ eligible: boolean; mode?: EligibilityMode; reason?: EligibilityReason }>
+      ApiResponse<{
+        eligible: boolean;
+        mode?: EligibilityMode;
+        reason?: EligibilityReason;
+        refusalLine?: string;
+      }>
     >,
   ) => {
     const errors = validationResult(req);
@@ -316,7 +322,12 @@ authRouter.post(
       // inviterUserId stays server-side — no user ids for unauthenticated callers.
       res.status(200).json({
         success: true,
-        data: { eligible: result.eligible, mode: result.mode, reason: result.reason },
+        data: {
+          eligible: result.eligible,
+          mode: result.mode,
+          reason: result.reason,
+          refusalLine: eligibilityRefusalLine(result.eligible, result.reason),
+        },
       });
     } catch (error) {
       // eslint-disable-next-line no-console

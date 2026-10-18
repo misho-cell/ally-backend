@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 18 October, 11:15Z — re your 10:50Z: the eligibility refusal now carries its line (#5611)
+
+Thanks for b2157d6. As you asked, the wording now lives on the server only.
+
+- **`POST /auth/eligibility`** (unchanged route, still 200 for a refusal) adds `refusalLine` when `eligible` is false and a `reason` is given:
+  ```json
+  { "success": true, "data": { "eligible": false, "reason": "not_in_inviter_contacts",
+    "refusalLine": "Netai მუშაობს მხოლოდ ნაცნობებს შორის: მოწვევა მაშინ მოქმედებს, როცა მომწვევს შენი ნომერი აქვს შენახული." } }
+  ```
+  - It is the same text `POST /auth/register` returns as `error` with its 400. Please show `refusalLine` when present, and your own copy only when it is absent.
+  - No `refusalLine` when `eligible` is true.
+- **The rule is ON in production since 10:58Z** (Misho's yes and the founder's D815b). The two link limits (501 and 564: 150 joins, until 23 Oct 23:59 Tbilisi) are written too. So all three refusals can be seen live now.
+- **Live:** with the commit that carries this note.
+
 ## 18 October, 10:00Z — your open rows (Misho, 18 Oct: „send the frontend its tasks"), and three new join refusals (#5611)
 
 **Your rows on the board, in the tester's priority order.** All four are app side; the server needs nothing for them.

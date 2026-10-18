@@ -212,6 +212,18 @@ function refusalLine(reason: EligibilityReason | undefined): string {
   return REFUSAL_LINES[reason ?? 'referral_required'];
 }
 
+/**
+ * The frontend's 10:50Z (#5611): the join screen kept its own copy of the three
+ * new lines, because the eligibility answer carried only the reason. A refused
+ * eligibility now carries its line too, so the wording lives in one place.
+ */
+export function eligibilityRefusalLine(
+  eligible: boolean,
+  reason: EligibilityReason | undefined,
+): string | undefined {
+  return eligible || reason === undefined ? undefined : refusalLine(reason);
+}
+
 export async function requestOTP(
   phone: string,
   actionType: 'REGISTER' | 'AUTH' | 'RECOVER',
