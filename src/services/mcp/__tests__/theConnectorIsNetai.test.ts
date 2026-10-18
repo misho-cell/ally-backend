@@ -28,3 +28,34 @@ describe('the connector carries the product’s name and figure', () => {
     expect(PAGES).not.toContain('LOGO_SVG');
   });
 });
+
+describe('the connector’s texts say Netai and are the app’s (Misho’s „კი", 12:22Z)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const texts = require('../texts') as typeof import('../texts');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const chat = require('../../chat.service') as typeof import('../../chat.service');
+
+  it('names Ally only for the legacy accounts', () => {
+    const withoutLegacy = texts.MCP_SERVER_INSTRUCTIONS.replace(/old Ally account/gu, '');
+    expect(withoutLegacy).not.toMatch(/\bAlly\b/u);
+    for (const text of Object.values(texts.TOOL_TEXTS)) {
+      expect(text.description.replace(/old Ally\s*'?\s*\+?\s*'?\s*account/gu, '')).not.toMatch(
+        /\bAlly\b(?!_)/u,
+      );
+    }
+  });
+
+  it('gives a tool the app also has the app’s own text, with the ref sentence where it speaks of a phone', () => {
+    expect(texts.connectorDescription('get_my_tasks')).toBe(chat.toolDescription('get_my_tasks'));
+    expect(texts.connectorDescription('block_contact')).toContain(
+      chat.toolDescription('block_contact'),
+    );
+    expect(texts.connectorDescription('block_contact')).toContain('contact_ref');
+  });
+
+  it('keeps its own text for a tool only the connector has', () => {
+    expect(texts.connectorDescription('search_contacts')).toBe(
+      texts.TOOL_TEXTS.search_contacts.description,
+    );
+  });
+});

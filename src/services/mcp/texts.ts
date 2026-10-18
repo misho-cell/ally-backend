@@ -15,7 +15,7 @@
 // save_contact_fact/factFieldType below. A public rich-key taxonomy would need a
 // backend migration (not done); flagged to the prompt team.
 
-import { APPROVE_PLAN_DESCRIPTION } from '../chat.service';
+import { APPROVE_PLAN_DESCRIPTION, toolDescription } from '../chat.service';
 
 /**
  * #5677 (the founder's D818 / D819, 18 Oct): the connector carries the
@@ -27,7 +27,7 @@ export const MCP_SERVER_NAME = 'Netai';
 export const MCP_SERVER_TITLE = 'Netai';
 export const MCP_SERVER_VERSION = '1.0.0';
 
-export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Ally** — connect people *through their own network* (contacts, 2nd/3rd degree), never by handing out data. Rules for every Ally tool:
+export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Netai** — connect people *through their own network* (contacts, 2nd/3rd degree), never by handing out data. Rules for every Netai tool:
 
 **At the start of a conversation** load their open goals (get_my_tasks), notes (get_user_notes), due results (get_pending_updates) + waiting requests (check_my_inbox), and weave in warmly; requests last, never first; never invent an update.
 
@@ -160,8 +160,8 @@ export const TOOL_TEXTS: Record<string, ToolText> = {
       'before sending ("shall I ask [mediator] to [introduce you / share their contact], for ' +
       '[reason]?") and send only after they say yes; this leaves the app and can\'t be undone. ' +
       "Save the user's reason verbatim so the eventual reply keeps its context. Never promise a " +
-      'reply. Route by Ally membership (shown on each profile): if the target is on Ally, ' +
-      'connect through their assistant — a warm intro, no number; if the target is NOT on Ally, ' +
+      'reply. Route by Netai membership (shown on each profile): if the target is on Netai, ' +
+      'connect through their assistant — a warm intro, no number; if the target is NOT on Netai, ' +
       "there is no in-app path, so ask the mediator to share the target's contact. You never " +
       'hold the number yourself. Use only when the user has chosen a specific person to reach.',
   },
@@ -895,15 +895,15 @@ export const PROMPT_TEXTS = {
       'რეალურად აქვს პრობლემა და გადაიხდის), არა თანამდებობით ან იმით ვინ ყველაზე ' +
       'ხელმისაწვდომია. დაიწყე ყველაზე ახლოს — მორგებული პირდაპირი კონტაქტებით, არა ხიდებით. ' +
       'მოიარე შენახული ფაქტები/როლები/საჭიროებები. თითო ერთი ხაზით ' +
-      'რატომ. ვინც უკვე Ally-ზეა — გაააქტიურე, არ მიჰყიდო. მომეცი პირველი batch, მერე ' +
+      'რატომ. ვინც უკვე Netai-ზეა — გაააქტიურე, არ მიჰყიდო. მომეცი პირველი batch, მერე ' +
       'შემომთავაზე მეტი. ტელეფონის ნომრები არასდროს.',
   },
   invite_people: {
-    title: 'ვინ მოვიწვიო Ally-ზე',
+    title: 'ვინ მოვიწვიო Netai-ზე',
     description: 'ქსელიდან ვინ მოვიწვიო — ვისაც სარგებელს მისცემს ან ბევრ გზას გახსნის',
     argWho: 'სურვილისამებრ — რომელი წრე/ტიპი (ცარიელი = მთელ ქსელში)',
     build: (who: string): string =>
-      `ვინ მოვიწვიო Ally-ზე${who ? ` ${who}` : ''}? დაასახელე ჩემი ქსელიდან რამდენიმე, ` +
+      `ვინ მოვიწვიო Netai-ზე${who ? ` ${who}` : ''}? დაასახელე ჩემი ქსელიდან რამდენიმე, ` +
       'ვისაც რეალურ სარგებელს მისცემს ან ვინც ბევრ გზას გახსნის — თითო ერთი ხაზით რატომ. ' +
       'არასდროს ახსენო ფული ან ჯილდო — ჩამომიყალიბე როგორც ჩემი ან მეგობრის სარგებელი. ' +
       'შემომთავაზე შეტყობინების დაწერა ჩემი ხმით. ერთხელ მკითხე, არ დამაწექი.',
@@ -937,7 +937,7 @@ export const NOTE_EMPTY_SECOND_DEGREE =
 // Rev 8 invite trigger — fires on a non-member profile view, the moment the
 // user is zooming in on the person they actually want.
 export const NOTE_NOT_ON_ALLY =
-  "They're not on Ally yet — say so plainly, then in the same breath name a couple of the " +
+  "They're not on Netai yet — say so plainly, then in the same breath name a couple of the " +
   "user's OWN people who'd open that path (real names, one line why each). Never mention " +
   "money, earning or rewards — frame it as the user's own gain or a gift to a friend; ask " +
   'once, never guilt.';
@@ -972,7 +972,7 @@ export const NOTE_RATE_LIMITED =
   'Daily limit reached. Tell the user exactly this; do not invent an alternative or a fake result.';
 
 export const NOTE_INTRO_SENT =
-  "Introduction request sent. Tell the user they'll get the reply inside Ally; " +
+  "Introduction request sent. Tell the user they'll get the reply inside Netai; " +
   'never promise it will come.';
 
 export function noteInboxPending(introCount: number, askCount: number): string {
@@ -990,4 +990,21 @@ export function noteEmptyDespiteData(contactCount: number): string {
     `Network has ${contactCount} contacts but this search returned nothing — ` +
     'say it looks wrong on your end and continue name-by-name.'
   );
+}
+
+/**
+ * #5677 (the founder's D818; Misho's „კი", 18 Oct 12:22Z): one source for the
+ * texts too. A connector tool the app also has reads the app's own text, so
+ * the two can never differ; only the connector's own tools keep theirs. The
+ * connector names a person by an opaque ref, so where the app's text speaks of
+ * a phone the connector adds one sentence saying so.
+ */
+const REF_NOTE =
+  ' On this connector a person is named by the contact_ref from a search result, never by a phone.';
+const SPEAKS_OF_A_PHONE_RE = /phone/iu;
+
+export function connectorDescription(name: string): string {
+  const app = toolDescription(name);
+  if (app === '') return TOOL_TEXTS[name]?.description ?? '';
+  return SPEAKS_OF_A_PHONE_RE.test(app) ? `${app}${REF_NOTE}` : app;
 }
