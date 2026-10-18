@@ -255,10 +255,17 @@ export function urlsOnSites(found: unknown, sites: readonly string[]): string[] 
   return [...new Set(urls)];
 }
 
-/** The page text a fetch returned, or null when it brought none. */
-function pageText(fetched: unknown): string | null {
+/**
+ * Fewer characters than this is a page with nothing on it. The tester's
+ * 20:27Z retest: tbcbank.ge's governance page came back with 3 characters,
+ * which counted as text, so the next page was never read.
+ */
+export const MIN_PAGE_CHARS = 200;
+
+/** The page text a fetch returned, or null when it brought none worth reading. */
+export function pageText(fetched: unknown): string | null {
   const content = (fetched as { content?: unknown } | null)?.content;
-  return typeof content === 'string' && content.trim() !== '' ? content : null;
+  return typeof content === 'string' && content.trim().length >= MIN_PAGE_CHARS ? content : null;
 }
 
 /** One management-page search on one own site, charged and logged. */
@@ -274,8 +281,11 @@ async function searchManagementPage(run: RoleSearchRun, query: string): Promise<
 async function readOnePage(run: RoleSearchRun, url: string): Promise<string | null> {
   await charge(run);
   const readAt = Date.now();
-  const text = pageText(await fetchPage(url));
-  logRoleCall(run, 'fetch_page:role', { url, chars: text?.length ?? 0 }, null, readAt);
+  const fetched = await fetchPage(url);
+  const content = (fetched as { content?: unknown } | null)?.content;
+  const rawChars = typeof content === 'string' ? content.trim().length : 0;
+  const text = pageText(fetched);
+  logRoleCall(run, 'fetch_page:role', { url, chars: rawChars }, null, readAt);
   return text;
 }
 

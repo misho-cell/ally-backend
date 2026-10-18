@@ -11,6 +11,8 @@ import {
   roleSearchQueries,
   runRoleSearch,
   urlsOnSites,
+  pageText,
+  MIN_PAGE_CHARS,
 } from '../roleWebSearch.service';
 
 const mockedSearch = webSearch as jest.MockedFunction<typeof webSearch>;
@@ -98,7 +100,10 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
           : { results: [] },
       ),
     );
-    mockedFetch.mockResolvedValue({ url: page, content: 'Management Board — Head of SME Banking' });
+    mockedFetch.mockResolvedValue({
+      url: page,
+      content: `Management Board — Head of SME Banking ${'x'.repeat(250)}`,
+    });
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
     const finds = await runRoleSearch(RUN, queries);
@@ -122,7 +127,11 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       ),
     );
     mockedFetch.mockImplementation((url: string) =>
-      Promise.resolve(url === empty ? { url, content: '' } : { url, content: 'Head of SME' }),
+      Promise.resolve(
+        url === empty
+          ? { url, content: 'TBC' }
+          : { url, content: `Head of SME ${'x'.repeat(250)}` },
+      ),
     );
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
@@ -146,5 +155,9 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       'https://tbcbank.ge/m',
       'https://www.tbcbankgroup.com/b',
     ]);
+  });
+  it('counts a page of a few characters as empty (tester 20:27Z, "chars 3")', () => {
+    expect(pageText({ content: 'TBC' })).toBeNull();
+    expect(pageText({ content: 'x'.repeat(MIN_PAGE_CHARS) })).not.toBeNull();
   });
 });
