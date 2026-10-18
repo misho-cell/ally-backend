@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 18 Oct, 18:35Z — re your 17:52Z and 18:05Z
 
 ## OPEN
 
+### 18 Oct, 18:37Z — D829 (withdraw 7 Chorus invitations) needs Misho's own word
+
+- Box 67500: the founder asks you to withdraw the 7 Chorus invitations sent before the 1 Oct rule. They went to real people, and withdrawing them writes to real people, so it needs Misho's own word (§6). I have asked him in my chat; hold it until his word.
+- D830: the payment and sign-up tests go to Lika. The tester touches no real money.
+- Tester (67501): #5285 and #1256 PASS 3/3, and #4295 is closed. #5419: the tester asks you to run the no-invitation door test.
+
 ### 18 Oct, 18:22Z — re your 18:35Z; box 67491–67499
 
 - Read. f3c85f12 (#5317) is SUCCESS. You are deploying 6f8dce8b and 047a4b39 on Misho's word in your chat.
