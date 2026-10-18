@@ -134,7 +134,7 @@ export function roleSearchQueries(goalText: string): RoleQueries | null {
     en: `${institution.en} ${LENDING_ROLE.en}`,
     ka: `${institution.ka} ${LENDING_ROLE.ka}`,
     managementPages: institution.sites.map(
-      (site) => `${institution.en} management board site:${site}`,
+      (site) => `${institution.en} management board leadership team site:${site}`,
     ),
   };
 }
@@ -341,15 +341,49 @@ export function stretchAboutLendingPeople(text: string): string {
   return text.slice(start, start + MAX_PAGE_CHARS);
 }
 
+/** A page about who leads the bank now. */
+const LEADERSHIP_PAGE_RE =
+  /management|leadership|board|team|governance|about|მენეჯმენტ|ხელმძღვანელ/iu;
+/** A year in the address; an old one marks an old report. */
+const YEAR_IN_URL_RE = /(?<!\d)(20\d{2})(?!\d)/gu;
+/** A report from more than this many years back no longer names today's people. */
+const MAX_REPORT_AGE_YEARS = 1;
+const PDF_RE = /\.pdf(?:$|[?#])/iu;
+
+/** The newest year the address names, or null when it names none. */
+function yearInUrl(url: string): number | null {
+  const years = [...url.matchAll(YEAR_IN_URL_RE)].map((m) => Number(m[1]));
+  return years.length === 0 ? null : Math.max(...years);
+}
+
+/**
+ * The tester's 22:41Z retest: the page read was TBC's 2015 annual report, so
+ * no current person could be named. Old dated pages are dropped; a leadership
+ * page comes before anything else, and a PDF after the web pages.
+ */
+export function currentPagesFirst(urls: readonly string[], now: Date = new Date()): string[] {
+  const oldest = now.getUTCFullYear() - MAX_REPORT_AGE_YEARS;
+  const rank = (url: string): number =>
+    (LEADERSHIP_PAGE_RE.test(url) ? 0 : 2) + (PDF_RE.test(url) ? 1 : 0);
+  return urls
+    .filter((url) => {
+      const year = yearInUrl(url);
+      return year === null || year >= oldest;
+    })
+    .map((url, at) => ({ url, at, rank: rank(url) }))
+    .sort((a, b) => a.rank - b.rank || a.at - b.at)
+    .map((entry) => entry.url);
+}
+
 /** Search the bank's own sites for its management page, then read pages until one has text. */
 async function findAndReadManagementPage(
   run: RoleSearchRun,
   queries: RoleQueries,
 ): Promise<ManagementPage | null> {
   const found = await Promise.all(queries.managementPages.map((q) => searchManagementPage(run, q)));
-  const urls = [
+  const urls = currentPagesFirst([
     ...new Set(found.flatMap((result) => urlsOnSites(result, queries.institution.sites))),
-  ].slice(0, MAX_PAGES_READ);
+  ]).slice(0, MAX_PAGES_READ);
   for (const url of urls) {
     const text = await readOnePage(run, url);
     if (text !== null) return { url, text };

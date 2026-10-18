@@ -11,6 +11,7 @@ import {
   roleSearchQueries,
   runRoleSearch,
   urlsOnSites,
+  currentPagesFirst,
   stretchAboutLendingPeople,
   pageText,
   MIN_PAGE_CHARS,
@@ -60,8 +61,8 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       ...queries.managementPages,
     ]);
     expect(queries.managementPages).toEqual([
-      'TBC Bank management board site:tbcbank.ge',
-      'TBC Bank management board site:tbcbankgroup.com',
+      'TBC Bank management board leadership team site:tbcbank.ge',
+      'TBC Bank management board leadership team site:tbcbankgroup.com',
     ]);
     expect(mockedUsage).toHaveBeenCalledTimes(4);
     expect(logToolCall).toHaveBeenCalledWith(
@@ -194,5 +195,24 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     const stretch = stretchAboutLendingPeople(text);
     expect(stretch).toContain('Management Board — names');
     expect(stretch.length).toBeLessThan(text.length);
+  });
+
+  it('drops an old dated report and reads the leadership page first (tester 22:41Z)', () => {
+    const now = new Date('2026-10-18T00:00:00Z');
+    expect(
+      currentPagesFirst(
+        [
+          'https://www.tbcbankgroup.com/annual-report-2015/risk-management',
+          'https://www.tbcbankgroup.com/news/rates',
+          'https://www.tbcbankgroup.com/reports/annual-report-2025.pdf',
+          'https://www.tbcbankgroup.com/about-us/management-board',
+        ],
+        now,
+      ),
+    ).toEqual([
+      'https://www.tbcbankgroup.com/about-us/management-board',
+      'https://www.tbcbankgroup.com/news/rates',
+      'https://www.tbcbankgroup.com/reports/annual-report-2025.pdf',
+    ]);
   });
 });
