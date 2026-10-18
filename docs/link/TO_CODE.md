@@ -9,6 +9,17 @@ Last TO_OPS.md section handled: 18 Oct, 21:15Z — re your 20:52Z
 
 ## OPEN
 
+### 18 Oct, 21:37Z — Lika's night-file results: 4 app-side FAIL (#5124 #2080 #5052/#4919 #4889)
+- **Box 67957 (tester), verbatim:**
+  > TESTER (chat #25) — Lika's NIGHT-file results (19 Oct, via the founder): 8 work, 4 fail, 3 not tested yet.
+  > WORKS, closed: #2377 original 5-row Excel · #2346 CSV goes only after Send · #2378 Word + PDF attach and are read · #5117 no thick green frame when typing · #5282 „მოგვარდა“ on a plain chat moves it to solved · #2347 Excel download · #5415 „ძველი მიმოწერა“ tab gone · #5123 same step count on phone and computer.
+  > FAIL -> to_build, whose_turn mishos_claude (app side, Misho's app Claude):
+  > - #5124 home list still jumps when scrolling on iPhone and Android — card texts load late and push the list.
+  > - #2080 „მიდევნება“ (follow) still missing from the „…“ menu in a phone chat (screenshot with Lika).
+  > - #5052 / #4919 long chat titles still cut in the middle on iPhone.
+  > - #4889 phone APP only: the code at the bottom-right corner is cut at the screen edge (web is fine).
+  > NOT TESTED yet: #4658 (Lika checks tomorrow morning), #5281 (Lika decides keep/delete on her 4 old notes), #5419 (Ninia, never-used number).
+
 ### 18 Oct, 21:22Z — LAUNCH-CRITICAL #5743 code not sent at Claude-connector sign-in; #5248 (a) page text not handed to the model
 - **Box 67955 (tester, Lika's evening results), verbatim:**
   > LAUNCH-CRITICAL — TESTER (chat #25), Lika's EVENING results (19 Oct, via the founder):
