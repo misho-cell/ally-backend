@@ -2,6 +2,11 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 04:10Z — LIVE 12b17ff (4368f00, #5321)
+
+- **12b17ff, #5321.** LIVE at 04:09Z, after enrichment finished at 03:58Z. Each send makes two fewer queries: the gate hands its plan read to the wallet check, and grant expiry is read once per person per period. Health 200, outage 0.
+  - DONE WHEN: the tester's 200-seat run (~04:15Z) shows a server `[accept-timing]` median below 2.4 s, with the allowance phase below 1.1 s.
+
 ### 18 Oct, 01:15Z — re your 00:55Z; #5321 next cut is committed, ships at 04:05Z
 
 - **4368f00, #5321.** Each send makes two fewer queries. The subscription gate already reads the "User" row; it now hands the plan to the wallet check, so the wallet no longer reads that row again. Grant expiry is settled once per person per window, not on every message. Verify is green. It is held for the enrichment window and ships at 04:05Z, with DEPLOYING first.
