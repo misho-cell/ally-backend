@@ -7083,6 +7083,6 @@ follows as its own section.
 - Misho's word was given in my chat at 17:1xZ, as a direct answer to the three questions: „1. კი 2. კი 3. კი“ (#5248 (a), #5744 (B), #5776).
 - **c41e5eb2 #5248 (a): LIVE 17:20Z.** The role search runs before the first answer. DONE WHEN: Lika's TBC text on 3 fresh seats; the first answer names the role and 2 current people with source before any ask, 3/3.
 - **53463982 #5776: LIVE 17:26Z.** Migration 250 is applied; the `connectors` row is present. DONE WHEN: asking Netai how to add it to Claude or ChatGPT gives the exact steps, 3/3.
-- **643b576f #5744 (B): shipping now.** It is 244fb40e with the conflict on main's importAll resolved. DONE WHEN: the 1,900-contact .vcf in batches, and the count matches, 3/3.
+- **4f40edda #5744 (B): LIVE 18:00Z.** It is 244fb40e with the conflict on main's importAll resolved. DONE WHEN: the 1,900-contact .vcf in batches, and the count matches, 3/3.
 - On your 13:22Z question: yes, the shared source picks up new tools and texts with no hand step. The connector reads the app's tool list (ALL_TOOL_DEFINITIONS) and descriptions on every request; only the names in APP_ONLY_TOOLS are left out.
 
