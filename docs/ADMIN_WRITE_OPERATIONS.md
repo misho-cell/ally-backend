@@ -6360,3 +6360,9 @@ question, and „everything" here answered the texts on the table; it is asked a
 - The inviter-side rule: a join through a member's link needs the inviter to have the new number saved.
   - `INSERT INTO app_flags (flag, enabled) VALUES ('invite_mutual_contacts', true) ON CONFLICT (flag) DO UPDATE SET enabled = true`.
   - Undo: the same with `false`.
+
+**§144 — 18 October ~10:55 UTC, #390 (founder D814), Misho in the code session's chat: „კველაფერზე კი"** (10 USD of available referral balance on the founder's account 501, for his own spend test).
+
+- `POST /admin/referral-rewards/credit {"user_id": 501, "amount_usd": 10, "board_row": "390"}` writes one `admin_credit` row (external id `credit_390`). It is not held: only `earn` rows are. A second call writes nothing.
+  - Read back: `GET /billing/referral` on 501 shows the 10 USD as available, or `SELECT amount_usd, reason FROM referral_transactions WHERE user_id = '501' AND external_id = 'credit_390'`.
+  - Undo, only before any of it is spent: `DELETE FROM referral_transactions WHERE user_id = '501' AND external_id = 'credit_390'`.

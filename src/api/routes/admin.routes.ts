@@ -153,6 +153,7 @@ import {
   deleteTestSeatRequestThreads,
 } from '../../services/oldRequestThreads.service';
 import { MAX_TOP_UP_TARGET_USD, topUpReferralReward } from '../../services/referralTopUp.service';
+import { creditReferralBalance, MAX_CREDIT_USD } from '../../services/referralCredit.service';
 import {
   listInviteLinkLimits,
   MUTUAL_CONTACTS_FLAG,
@@ -5847,6 +5848,43 @@ adminRouter.post('/referral-rewards/top-up', async (req: Request, res: Response)
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[referral top-up]', (error as Error).message);
+    res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
+  }
+});
+
+/**
+ * #390 (D814; Misho's own word, 18 Oct): available referral balance added by
+ * hand, for the founder's own spend test. ADMIN_WRITE_OPERATIONS §144 has the
+ * body and the undo.
+ */
+adminRouter.post('/referral-rewards/credit', async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as { user_id?: unknown; amount_usd?: unknown; board_row?: unknown };
+  const userId = String(body.user_id ?? '').trim();
+  const boardRow = String(body.board_row ?? '').trim();
+  const amountUsd = Number(body.amount_usd);
+  if (
+    !/^\d+$/u.test(userId) ||
+    !/^\d+$/u.test(boardRow) ||
+    !Number.isFinite(amountUsd) ||
+    amountUsd <= 0 ||
+    amountUsd > MAX_CREDIT_USD
+  ) {
+    res.status(400).json({
+      success: false,
+      error: `user_id, board_row and amount_usd (0–${MAX_CREDIT_USD}) are required`,
+    });
+    return;
+  }
+  try {
+    const outcome = await creditReferralBalance({ userId, amountUsd, boardRow });
+    if (outcome.status === 'no_such_account') {
+      res.status(404).json({ success: false, error: 'no such account' });
+      return;
+    }
+    res.status(outcome.status === 'credited' ? 201 : 200).json({ success: true, data: outcome });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[referral credit]', (error as Error).message);
     res.status(500).json({ success: false, error: 'სერვერის შეცდომა' });
   }
 });
