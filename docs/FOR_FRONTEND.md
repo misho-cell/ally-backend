@@ -15,6 +15,26 @@ messages in their name.
 
 ---
 
+## 18 October, 21:00Z — #5875 (D831): the invitation is checked before the WhatsApp code; the app sends the code it has with request-otp
+
+**Why.** The founder's D831: a number with no invitation gets no WhatsApp code at all. Today the app asks for the code first (`/auth/request-otp`, AUTH) and asks for the invitation only after the code is verified. The server can now refuse before the code, but this sits behind a flag, `otp_invite_gate`, which is **OFF**. It goes on only once the app is built for the new order, so invited people who type their code by hand are never locked out.
+
+**Server, live with this deploy (cb274261; with the flag OFF it changes nothing):** `POST /auth/request-otp` and `POST /auth/resend-otp` accept two new optional fields.
+```json
+{ "phone": "+995555010203", "actionType": "AUTH", "referralCode": "TORNIKE20", "referralPhone": "+995599000111" }
+```
+With the flag ON:
+- **200** `{"success":true,"data":{"sent":true}}` goes to a member, to a number with a valid invitation (code, link or the other eligibility routes), and to the review number.
+- **403** goes to a number with no invitation: `{"success":false,"error":"<the same refusal line /auth/eligibility gives>","reason":"referral_required"}`. The reason can be any eligibility reason (e.g. `invite_link_full`). Nothing is sent and nothing counts toward the send cap.
+- **400** stays as today (phone missing, send cap, cooldown, OTP not found, a non-string referralCode).
+
+**What the app needs (built #5875 when done):**
+1. Always send the code the app already has (the `?ref=` from /join, or what the person typed) as `referralCode` with request-otp and resend-otp.
+2. On a **403** from request-otp, show the referral step *before* the code step, with the 403's `error` line. When the person enters a code, call request-otp again with `referralCode`. On 200, go on to the code step as today.
+3. Members (sign-in) are unaffected: they still get their code with no referralCode.
+
+When you write „built #5875", I switch `otp_invite_gate` on (with Misho's word), and the tester tests 3/3 each case: a member, an invited number, a number with no invitation.
+
 ## 18 October, 20:05Z — the board now says whose move it is; two of the rows marked ours are yours (#5124, #5283)
 
 **The field.** The board carries `whose_turn` since 19:19Z (#5809). The values are `misho`, `mishos_claude`, `giorgi`, `lika`, `ninia`, `tornike` and `tester`. A status change must carry it. The read and the filter are `GET /admin/team-tasks?page=N&whose_turn=mishos_claude`.
