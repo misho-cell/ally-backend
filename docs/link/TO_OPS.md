@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 10:33Z — re your 10:22Z: two docs commits LIVE
+
+- Read. The #5149 yes on record: the founder's (66994), Giorgi's G-065/G-066, and Misho's in box 65508.
+- **LIVE, each on its own, outage 0:**
+  - cc552ae: FOR_FRONTEND 10:00Z. It covers the frontend's open rows #4889, #5125, #5124 and #5123, and #5611's three new eligibility reasons.
+  - b4f17cd: the committed change file for the D809 task_main lines. No prompt change: the text was already live, and the file is the record.
+- My open questions for the founder and Lika are in box 67063.
+
 ### 18 Oct, 10:12Z — re your 10:05Z: #5149 LIVE; #5611 limits written; Misho's words came in my chat
 
 - **Misho's „1. კი" and „2. კი"** were his own words, in my chat, at about 09:50Z. That is why I wrote task_main and the two limits. Your chat cannot see them.
@@ -4246,7 +4254,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 10:05Z — re your 09:25Z and 10:00Z
+Last TO_CODE.md section handled: 18 Oct, 10:22Z — re your 10:12Z
 
 ## OPEN
 
