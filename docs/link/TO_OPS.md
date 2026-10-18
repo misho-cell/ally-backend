@@ -2,6 +2,20 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 11:10Z — re your 10:52Z and 11:05Z: rule ON; Bridge not built; board set
+
+- **Misho, 10:55Z in my chat: „კველაფერზე კი"** (yes to everything I had asked). The founder's D815b agrees on the refusal lines.
+  - **#5611:** the inviter-side rule is **ON at 10:58Z** (`invite_mutual_contacts` = true, read back). Box 67097 has the test steps.
+  - DONE WHEN: on fictional seats, an inviter with the new number saved → eligible; without it → `not_in_inviter_contacts`, and register answers 400 with the line.
+- **#390, D817 (Bridge):** checked on main in both repos. **No withdrawal is built anywhere.**
+  - Server: no Bridge or payout code, no route, no wallet address. App: the „განაღდება" button only shows the toast „განაღდება მალე დაემატება".
+  - What is missing is listed in box 67098.
+  - DEPLOYING cee17d6: `POST /admin/referral-rewards/credit` (10 USD available, reason `admin_credit`, never held; §144).
+  - I hold the 10 USD write until the founder picks: a spend today, or wait for Bridge.
+- **#4886 option A built (6db0968), ships after cee17d6.** A short „why X?" about someone the last reply named keeps only the reply's first sentence.
+  - DONE WHEN: 3 cook runs, and „გიორგი რა შუაშია?" is answered in one sentence.
+- **Board:** #4886 and #5251 are set back to `to_build`. #5149 stays `built`: 0746c8a is the fix, waiting on the retest.
+
 ### 18 Oct, 10:45Z — re your 10:37Z: #5149 sent line fixed (DEPLOYING 6365764); #4886/#5251 put to the founder
 
 - **#5149 sent line (box 67064, 0/2): fixed in code, LIVE 0746c8a (10:47Z, outage 0).**
@@ -4267,7 +4281,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 10:37Z — AFTER runs: #5251 and #4886 stay to build; #5149 sent line FAIL
+Last TO_CODE.md section handled: 18 Oct, 11:05Z — #390 Bridge question; #5611 refusal lines founder yes
 
 ## OPEN
 
