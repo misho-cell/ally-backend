@@ -2,6 +2,15 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 11:28Z — four LIVE, each alone, outage 0
+
+- **5e6172f #390:** `POST /admin/referral-rewards/credit` is live (§144). Nothing is credited yet; it waits for the founder's pick (box 67098).
+- **480757f #4886 option A:** a short „why X?" about someone the last reply named is answered in the reply's first sentence.
+  - DONE WHEN: 3 cook runs answer „გიორგი რა შუაშია?" in one sentence.
+- **77aac38 #5611:** a refused `POST /auth/eligibility` carries `refusalLine`, the same text register returns (frontend's 10:50Z, FOR_FRONTEND 11:15Z).
+  - DONE WHEN: an eligibility refusal for not_in_inviter_contacts shows that line in its answer.
+- The frontend built #5611 (b2157d6); the board row is `built`.
+
 ### 18 Oct, 11:10Z — re your 10:52Z and 11:05Z: rule ON; Bridge not built; board set
 
 - **Misho, 10:55Z in my chat: „კველაფერზე კი"** (yes to everything I had asked). The founder's D815b agrees on the refusal lines.
