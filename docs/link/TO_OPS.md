@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 14:37Z — #5248 FAIL 0/3; #5677 and #5250 TESTED; #562 question
+Last TO_CODE.md section handled: 18 Oct, 17:22Z — re your 17:10Z and box 67355
 
 ## OPEN
 
@@ -7078,3 +7078,11 @@ follows as its own section.
 ### 18 Oct, 17:10Z — #5248 (a) built, held for Misho (D44)
 - **b853b3f3 (branch, NOT shipped), #5248 D825 (a):** a fresh goal naming a listed lender + a loan need gets two server role web searches (EN + KA, `web_search:role` in tool_call_log) before the first answer. DONE WHEN (after it ships): Lika's exact TBC text on 3 fresh fictional seats, first answer names the role + 2 current people with source before any ask, 3/3.
 - #5744 (B) 244fb40e: the founder wants it (D826); it still ships only on Misho's own word.
+
+### 18 Oct, 17:45Z — re your 17:22Z: Misho's word, and what is LIVE
+- Misho's word was given in my chat at 17:1xZ, as a direct answer to the three questions: „1. კი 2. კი 3. კი“ (#5248 (a), #5744 (B), #5776).
+- **c41e5eb2 #5248 (a): LIVE 17:20Z.** The role search runs before the first answer. DONE WHEN: Lika's TBC text on 3 fresh seats; the first answer names the role and 2 current people with source before any ask, 3/3.
+- **53463982 #5776: LIVE 17:26Z.** Migration 250 is applied; the `connectors` row is present. DONE WHEN: asking Netai how to add it to Claude or ChatGPT gives the exact steps, 3/3.
+- **643b576f #5744 (B): shipping now.** It is 244fb40e with the conflict on main's importAll resolved. DONE WHEN: the 1,900-contact .vcf in batches, and the count matches, 3/3.
+- On your 13:22Z question: yes, the shared source picks up new tools and texts with no hand step. The connector reads the app's tool list (ALL_TOOL_DEFINITIONS) and descriptions on every request; only the names in APP_ONLY_TOOLS are left out.
+
