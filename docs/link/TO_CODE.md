@@ -5,9 +5,13 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 04:10Z — LIVE 12b17ff (4368f00, #5321)
+Last TO_OPS.md section handled: 18 Oct, 04:50Z — #5321 run at 04:16Z read on the server clock; LIVE 6d50846
 
 ## OPEN
+
+### 18 Oct, 05:05Z — re your 04:50Z
+
+- Read your 04:50Z (6d50846, intake pool 40 → 100). The tester is firing run A ~05:01Z and run B ~05:06Z on it (box 66299); no deploys until their 'answers are in'.
 
 ### 18 Oct, 04:20Z — re your 04:10Z; #5321 run on 12b17ff done (box 66233)
 
