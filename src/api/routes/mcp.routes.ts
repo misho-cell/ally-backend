@@ -4,7 +4,7 @@ import { PUBLIC_BASE_URL } from '../../config/publicUrl';
 import { query } from '../../db/postgres/client';
 import { verifyToken } from '../../services/auth.service';
 import { isOAuthAccessToken, validateAccessToken } from '../../services/oauth.service';
-import { buildMcpServer } from '../../services/mcp/mcpServer';
+import { buildConnectorServer } from '../../services/mcp/mcpServer';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { requireSubscription } from '../middleware/subscription.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
@@ -96,16 +96,16 @@ async function requireMcpEnabled(req: Request, res: Response, next: NextFunction
 
 async function handleMcpPost(req: Request, res: Response): Promise<void> {
   const userId = (req as AuthenticatedRequest).user.userId;
-  const server = buildMcpServer(userId);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
-  res.on('close', () => {
-    void transport.close();
-    void server.close();
-  });
   try {
+    const server = await buildConnectorServer(userId);
+    res.on('close', () => {
+      void transport.close();
+      void server.close();
+    });
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (err) {

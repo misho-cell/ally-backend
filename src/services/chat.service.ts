@@ -4042,7 +4042,7 @@ const SPLIT_COUNT_NOTE =
   " When the result carries `own_or_public_matches` and `others_labels_only_matches`, the owner's own number is `own_or_public_matches`: say „N in your contacts“ with that number and name every one of them; the others only came up through other people's labels — never add the two together as „your contacts“." +
   OTHERS_SAVED_AS_NOTE;
 
-const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
+export const ALL_TOOL_DEFINITIONS: Record<string, AnthropicTool> = {
   lookup_contact_by_phone: {
     name: 'lookup_contact_by_phone',
     description:
@@ -15561,6 +15561,24 @@ export function toolDescription(name: string): string {
     // The switchable tools (search_by_tag and the rest) live in the keyed map.
     ALL_TOOL_DEFINITIONS[name];
   return found?.description ?? '';
+}
+
+/**
+ * #5677 (D818): the app's tools as the connector takes them — the same list a
+ * run with the owner present is offered, so a switch that hides a tool here
+ * hides it there too.
+ */
+export function appToolsForConnector(userId: string): Promise<AnthropicTool[]> {
+  return buildEnabledTools(userId, false);
+}
+
+/** #5677: one app tool run for the connector — no conversation, no run, the owner present. */
+export function runAppToolForConnector(
+  userId: string,
+  name: string,
+  input: Record<string, unknown>,
+): Promise<unknown> {
+  return executeToolCall(userId, name, input);
 }
 
 async function buildEnabledTools(userId: string, ownerAbsent = false): Promise<AnthropicTool[]> {

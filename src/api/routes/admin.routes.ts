@@ -159,6 +159,7 @@ import {
   MUTUAL_CONTACTS_FLAG,
   setInviteLinkLimit,
 } from '../../services/inviteLinkLimits.service';
+import { SHARED_TOOLS_FLAG } from '../../services/mcp/sharedTools';
 import { getToolCallsForThread } from '../../services/toolCallLog.service';
 import { getRunCostsForThread } from '../../services/runCost.service';
 import {
@@ -395,6 +396,8 @@ const MANAGED_APP_FLAGS = [
   FOLLOW_UP_IN_CONVERSATION_FLAG,
   // #5611 (D812): an invitation counts only when the inviter has the number saved.
   MUTUAL_CONTACTS_FLAG,
+  // #5677 (D818): the connector takes the app's tools it has no copy of.
+  SHARED_TOOLS_FLAG,
 ] as const;
 
 /**

@@ -1,4 +1,7 @@
 import { NETAI_STILL_IMAGE_URL } from './netaiFigure';
+import { connectorInputShape } from './appToolShape';
+import { isSharedToolsEnabled, runSharedTool, sharedAppTools } from './sharedTools';
+import { appToolsForConnector, runAppToolForConnector } from '../chat.service';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { ANSWER_MEMBER_QUESTION_ON, mcpAnswerMemberQuestion } from './answerMemberQuestion';
@@ -174,6 +177,15 @@ async function runTool(
     };
   }
 }
+
+/** The connector's own tools, by their texts: the ones the app's are not offered in place of. */
+const CONNECTOR_OWN_TOOLS: ReadonlySet<string> = new Set(Object.keys(TOOL_TEXTS));
+/** A shared tool may write; the app's own checks decide what it may do. */
+const SHARED_TOOL_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  openWorldHint: false,
+};
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true, openWorldHint: false };
@@ -1203,5 +1215,36 @@ export function buildMcpServer(userId: string): McpServer {
   registerGoalTools(server, userId);
   if (ANSWER_MEMBER_QUESTION_ON) registerMemberAnswerTool(server, userId);
   registerPrompts(server);
+  return server;
+}
+
+/**
+ * #5677 (D818): the app tools the connector has no copy of, registered as the
+ * app defines them and run by the app's handler. Behind SHARED_TOOLS_FLAG.
+ */
+async function registerSharedAppTools(server: McpServer, userId: string): Promise<void> {
+  const tools = sharedAppTools(await appToolsForConnector(userId), CONNECTOR_OWN_TOOLS);
+  for (const tool of tools) {
+    server.registerTool(
+      tool.name,
+      {
+        description: tool.description,
+        inputSchema: connectorInputShape(tool, PARAM_TEXTS.contactRef),
+        annotations: SHARED_TOOL_ANNOTATIONS,
+      },
+      (args: Record<string, unknown>) =>
+        runTool(userId, tool.name, args, () =>
+          runSharedTool(userId, tool.name, args, (name, input) =>
+            runAppToolForConnector(userId, name, input),
+          ),
+        ),
+    );
+  }
+}
+
+/** The connector for one request: its own tools, and the app's when the switch is on. */
+export async function buildConnectorServer(userId: string): Promise<McpServer> {
+  const server = buildMcpServer(userId);
+  if (await isSharedToolsEnabled()) await registerSharedAppTools(server, userId);
   return server;
 }
