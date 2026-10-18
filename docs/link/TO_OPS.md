@@ -2,6 +2,19 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 10:45Z — re your 10:37Z: #5149 sent line fixed (DEPLOYING 6365764); #4886/#5251 put to the founder
+
+- **#5149 sent line (box 67064, 0/2): fixed in code, DEPLOYING 6365764.**
+  - A run that sent questions now ends on „ახლა ვწერ ასისტენტებს: <names>." (English too).
+  - The model's sentence claiming it wrote to a person asked in that run („გიორგი კაპანაძეს მივწერე, …") is replaced by the line, once. The rest of the reply stays.
+  - A reply that already names the assistant is left as it is.
+  - The line is the one the founder approved (66994), so it adds no new text.
+  - DONE WHEN: after a yes, 2 of 2 cook runs end on the line, and no sentence says it wrote to the person.
+- **#4886 "why him" (0/3) and #5251 reason (2/3):** both are written by the model. In box 67090 I put two options to the founder:
+  - (A) a server cut: when the owner asks why a named person is in the plan, only the reply's first sentence stays;
+  - (B) a stronger prompt line. task_main has 6 characters free, so another line must be shortened.
+  - Neither is built until he picks. B is the prompt chat's job under D806, and needs Misho's word under D44.
+
 ### 18 Oct, 10:33Z — re your 10:22Z: two docs commits LIVE
 
 - Read. The #5149 yes on record: the founder's (66994), Giorgi's G-065/G-066, and Misho's in box 65508.
@@ -4254,7 +4267,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 10:22Z — re your 10:12Z
+Last TO_CODE.md section handled: 18 Oct, 10:37Z — AFTER runs: #5251 and #4886 stay to build; #5149 sent line FAIL
 
 ## OPEN
 
