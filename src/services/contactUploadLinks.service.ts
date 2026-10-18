@@ -102,15 +102,40 @@ async function importAll(userId: string, contacts: ImportContact[]): Promise<Upl
   return { imported, unchanged, skipped, inFile: contacts.length };
 }
 
-/** Every contact in the file, in as many rounds as the import's cap needs. */
-export async function importWholeFile(userId: string, vcf: string): Promise<UploadOutcome> {
-  const contacts = parseVcf(vcf);
-  if (contacts.length === 0) throw new EmptyVcfError('no contacts in the file');
-  return importAll(userId, contacts);
-}
-
 export interface UploadStarted {
   readonly inFile: number;
+}
+
+/**
+ * #5842 (the tester's 67519): a part of 300 cards attached in the Claude or
+ * ChatGPT chat took about 105 s to save, and a phone's chat would give up on
+ * it. A part is now answered as soon as it is read and saved in the
+ * background, one part after another per member, so two parts never write at
+ * once for the same person and a big file does not open seven imports at the
+ * same time.
+ */
+const partsInLine = new Map<string, Promise<void>>();
+
+/** Reads one part and saves it behind the member's earlier parts. */
+export function startImportInBackground(userId: string, vcf: string): UploadStarted {
+  const contacts = parseVcf(vcf);
+  if (contacts.length === 0) throw new EmptyVcfError('no contacts in the file');
+  const earlier = partsInLine.get(userId) ?? Promise.resolve();
+  const thisPart = earlier
+    .then(() => importAll(userId, contacts))
+    .then((outcome) => {
+      // eslint-disable-next-line no-console
+      console.log(`[contact-file] part of ${outcome.inFile}: ${outcome.imported} new`);
+    })
+    .catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[contact-file] background part failed:', (err as Error).message);
+    });
+  partsInLine.set(userId, thisPart);
+  void thisPart.then(() => {
+    if (partsInLine.get(userId) === thisPart) partsInLine.delete(userId);
+  });
+  return { inFile: contacts.length };
 }
 
 /**

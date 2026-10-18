@@ -1,6 +1,10 @@
 import { NETAI_ICON_URL, NETAI_STILL_IMAGE_URL } from './netaiFigure';
 import { connectorInputShape } from './appToolShape';
-import { createUploadLink, EmptyVcfError, importWholeFile } from '../contactUploadLinks.service';
+import {
+  createUploadLink,
+  EmptyVcfError,
+  startImportInBackground,
+} from '../contactUploadLinks.service';
 import { isSharedToolsEnabled, runSharedTool, sharedAppTools } from './sharedTools';
 import { appToolsForConnector, runAppToolForConnector } from '../chat.service';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -508,8 +512,12 @@ async function mcpImportContactsFile(
     return { error: 'This part is too large. Send at most 300 contacts per call.' };
   }
   try {
-    const outcome = await importWholeFile(userId, vcf);
-    return { in_part: outcome.inFile, new: outcome.imported, already_saved: outcome.unchanged };
+    const started = startImportInBackground(userId, vcf);
+    return {
+      in_part: started.inFile,
+      saving: true,
+      note: 'Saving in the background, part after part. Send the next part now; get_contact_count shows the total as it rises.',
+    };
   } catch (err) {
     if (err instanceof EmptyVcfError)
       return { error: 'No BEGIN:VCARD … END:VCARD card in this part.' };

@@ -16,7 +16,7 @@ import {
   createUploadLink,
   EmptyVcfError,
   UploadLinkClosedError,
-  importWholeFile,
+  startImportInBackground,
   startUploadThroughLink,
 } from '../contactUploadLinks.service';
 
@@ -45,7 +45,7 @@ describe('the contacts upload link', () => {
     expect(params).not.toContain(token);
   });
 
-  it('loads a 1,900-contact file whole, in as many rounds as the 500 cap needs', async () => {
+  it('answers a chat part at once and saves it whole in the background, 500 at a time (#5842)', async () => {
     mockParse.mockReturnValue(contacts(1900));
     mockImport
       .mockResolvedValueOnce({ imported: 500, skipped: 0, unchanged: 0, remaining: 1400 })
@@ -53,13 +53,37 @@ describe('the contacts upload link', () => {
       .mockResolvedValueOnce({ imported: 500, skipped: 0, unchanged: 1000, remaining: 400 })
       .mockResolvedValueOnce({ imported: 400, skipped: 0, unchanged: 1500, remaining: 0 });
 
-    await expect(importWholeFile('501', 'BEGIN:VCARD')).resolves.toEqual({
-      imported: 1900,
-      unchanged: 0,
-      skipped: 0,
-      inFile: 1900,
-    });
+    expect(startImportInBackground('501', 'BEGIN:VCARD')).toEqual({ inFile: 1900 });
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
     expect(mockImport).toHaveBeenCalledTimes(4);
+  });
+
+  it('saves one member’s parts one after another, never two at once (#5842)', async () => {
+    mockParse.mockReturnValue(contacts(2));
+    let finishFirst: () => void = () => undefined;
+    mockImport
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFirst = () => resolve({ imported: 2, skipped: 0, unchanged: 0, remaining: 0 });
+          }),
+      )
+      .mockResolvedValueOnce({ imported: 2, skipped: 0, unchanged: 0, remaining: 0 });
+
+    startImportInBackground('502', 'BEGIN:VCARD');
+    startImportInBackground('502', 'BEGIN:VCARD');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(mockImport).toHaveBeenCalledTimes(1);
+    finishFirst();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(mockImport).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses a chat part with no card in it', () => {
+    mockParse.mockReturnValue([]);
+    expect(() => startImportInBackground('501', 'nothing')).toThrow(EmptyVcfError);
   });
 
   it('refuses a used or expired link', async () => {
