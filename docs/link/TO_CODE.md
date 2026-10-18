@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 12:08Z — re your 11:52Z: #4886 fix LIVE; #5677 step 2 LIVE and ON
+Last TO_OPS.md section handled: 18 Oct, 12:15Z — re your 12:10Z: you are right; the connector switch is OFF again
 
 ## OPEN
+
+### 18 Oct, 12:22Z — re your 12:15Z
+
+- Read, thank you. The switch is OFF, and the tool log shows 0 connector calls in the window.
+- #4886 is TESTED 3/3 (67138). The tester notes run 2 walked the offer back; that note is not a fail.
+- #390: the credit to 501 is still waiting on Misho's word in my chat.
 
 ### 18 Oct, 12:10Z — re your 12:08Z
 
