@@ -1,6 +1,8 @@
+import { NETAI_LOOP_POSTER_URL, NETAI_LOOP_VIDEO_URL } from '../../services/mcp/netaiFigure';
+
 // Server-rendered pages for the OAuth authorize flow (phone → WhatsApp code),
-// styled to match the Ally app: warm off-white background, rounded card, sage
-// green button, ring logo. No client JS beyond form posts; everything
+// styled to match the Netai app: warm off-white background, rounded card, sage
+// green button, Netai's figure. No client JS beyond form posts; everything
 // user-controlled is escaped.
 
 export interface AuthorizePageParams {
@@ -20,14 +22,13 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-// The Ally ring mark, approximated inline so the page has no external assets.
-const LOGO_SVG = `<svg width="58" height="36" viewBox="0 0 104 64" fill="none" aria-hidden="true">
-  <circle cx="26" cy="32" r="23" stroke="#E4E1D6" stroke-width="5"/>
-  <circle cx="39" cy="32" r="23" stroke="#D8D4C7" stroke-width="5"/>
-  <circle cx="52" cy="32" r="23" stroke="#4E9B6E" stroke-width="5"/>
-  <circle cx="65" cy="32" r="23" stroke="#35664B" stroke-width="5"/>
-  <circle cx="77" cy="32" r="23" stroke="#22302A" stroke-width="5"/>
-</svg>`;
+/**
+ * #5677 (D819): the sign-in page shows Netai herself, moving as in the app — a
+ * muted loop with her still image as its poster, so a browser that will not
+ * play it still shows her.
+ */
+const NETAI_FIGURE = `<video class="figure" src="${NETAI_LOOP_VIDEO_URL}" poster="${NETAI_LOOP_POSTER_URL}"
+  autoplay muted loop playsinline aria-hidden="true"></video>`;
 
 function page(body: string): string {
   return `<!doctype html>
@@ -42,6 +43,7 @@ function page(body: string): string {
          min-height: 100vh; color: #22302A; }
   .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
   .logo span { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .figure { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
   .card { background: #fff; border: 1px solid #E8E5DA; border-radius: 24px;
           padding: 36px; max-width: 400px; width: calc(90% - 72px);
           box-shadow: 0 2px 12px rgba(34, 48, 42, 0.04); }
@@ -58,7 +60,7 @@ function page(body: string): string {
 </style>
 </head>
 <body>
-<div class="logo">${LOGO_SVG}<span>Netai</span></div>
+<div class="logo">${NETAI_FIGURE}<span>Netai</span></div>
 <div class="card">${body}</div>
 </body>
 </html>`;

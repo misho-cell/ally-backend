@@ -17,7 +17,14 @@
 
 import { APPROVE_PLAN_DESCRIPTION } from '../chat.service';
 
-export const MCP_SERVER_NAME = 'Ally';
+/**
+ * #5677 (the founder's D818 / D819, 18 Oct): the connector carries the
+ * product's name and Netai herself (D702). Claude and ChatGPT draw a still
+ * icon only, so the server offers her still image; the animation lives on the
+ * sign-in page we own (oauthPages.ts).
+ */
+export const MCP_SERVER_NAME = 'Netai';
+export const MCP_SERVER_TITLE = 'Netai';
 export const MCP_SERVER_VERSION = '1.0.0';
 
 export const MCP_SERVER_INSTRUCTIONS = `You are the user's own assistant inside **Ally** — connect people *through their own network* (contacts, 2nd/3rd degree), never by handing out data. Rules for every Ally tool:

@@ -1,3 +1,4 @@
+import { NETAI_STILL_IMAGE_URL } from './netaiFigure';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { ANSWER_MEMBER_QUESTION_ON, mcpAnswerMemberQuestion } from './answerMemberQuestion';
@@ -73,6 +74,7 @@ import {
 import {
   MCP_SERVER_INSTRUCTIONS,
   MCP_SERVER_NAME,
+  MCP_SERVER_TITLE,
   MCP_SERVER_VERSION,
   PARAM_TEXTS,
   PROMPT_TEXTS,
@@ -1184,7 +1186,12 @@ function registerPrompts(server: McpServer): void {
  */
 export function buildMcpServer(userId: string): McpServer {
   const server = new McpServer(
-    { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
+    {
+      name: MCP_SERVER_NAME,
+      title: MCP_SERVER_TITLE,
+      version: MCP_SERVER_VERSION,
+      icons: [{ src: NETAI_STILL_IMAGE_URL, mimeType: 'image/jpeg' }],
+    },
     { instructions: MCP_SERVER_INSTRUCTIONS },
   );
   registerSearchTools(server, userId);
