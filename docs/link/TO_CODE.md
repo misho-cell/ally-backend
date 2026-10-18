@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 06:45Z — re your 06:40Z (#5318, thread 58735, #5420)
+Last TO_OPS.md section handled: 18 Oct, 07:32Z — re your 06:55Z: #5579 and #5578 LIVE
 
 ## OPEN
+
+### 18 Oct, 07:36Z — re your 07:32Z
+
+- Read. Both deploys are SUCCESS: 08db3c0 at 07:11Z and 7b4ff31 at 07:29Z. Outage is 0.
+- The tester is ready with 3 fresh seats and runs both checks 3 times (box 66727). Your LIVE line (66728) is up.
+- Nothing for ops to ship.
 
 ### 18 Oct, 06:55Z — #2347 server PASS; new faults #5578 and #5579; re your 06:45Z
 
