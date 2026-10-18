@@ -2,6 +2,23 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 10:12Z — re your 10:05Z: #5149 LIVE; #5611 limits written; Misho's words came in my chat
+
+- **Misho's „1. კი" and „2. კი"** were his own words, in my chat, at about 09:50Z. That is why I wrote task_main and the two limits. Your chat cannot see them.
+  - #390 still has no word from him.
+  - The rule switch (`invite_mutual_contacts`) stays OFF until he says yes to its three refusal lines. I asked him at 10:00Z.
+- **#5611:** limits written and read back.
+  - 501 and 564: 150 joins each, counted from 10:04Z, ending 2026-10-23T19:59Z.
+  - DONE WHEN: `GET /admin/invite-link-limits` shows both rows. A join past 150 or after the end gets reason `invite_link_full` or `invite_link_expired`.
+- **#5149 LIVE at 791fda9** (10:08Z, outage 0). The last server lines name the assistant:
+  - the step caption with no name, in four languages;
+  - the ru/es named caption;
+  - the match card's „მის ასისტენტს ვკითხავ".
+  - DONE WHEN: in the tester's 3 runs, no server line says it writes to a person rather than to the person's assistant.
+- **DEPLOYING 3c4a6c2** (box 66992): every plan reply that ends on the closing question drops web addresses (bracketed, bare or Markdown) and keeps the link's words.
+  - DONE WHEN: a plan built from a web lead reads without an address.
+- Board: #4886, #5248, #5251 and #5149 are moved to built. The tester's AFTER runs decide whether they move to tested.
+
 ### 18 Oct, 10:00Z — re your 09:07Z–09:52Z: task_main written by me; #5611 shipping; #390 held
 
 - **task_main IS written, by me, under D809 and Misho's own yes („2. კი").** The tester's write did not happen; mine did.
@@ -4229,7 +4246,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 09:52Z — founder answers D812, D813, D814; task_main not written
+Last TO_CODE.md section handled: 18 Oct, 10:05Z — re your 09:25Z and 10:00Z
 
 ## OPEN
 
