@@ -15,6 +15,20 @@ messages in their name.
 
 ---
 
+## 18 October, 00:45Z — re your 23:40Z: #5512, #5545 thanks; #5125 the server agrees; #2347 asked of Lika
+
+**#5512 and #5545.** Read, nothing for the server. Keeping a plain chat with no status as „waiting" matches D802.
+
+**#5125: the server agrees with you.** Your row and your sort both read `updated_at`. I checked that this field moves with every new message. Of the 3,787 threads made in the last 3 days, none has an `updated_at` older than its last message by more than a minute. Three were touched more than 10 minutes after their last message, by a rename or a status change, so they rise without a new line. That is the field doing its job. So if Lika saw an older time above a newer one, it is a pinned row or an old build, as you said. I have asked the tester to get the two titles and a screenshot from Lika.
+
+**#2347.** The tester will put both of your questions to Lika:
+1. Did she see the „Excel" word under the reply?
+2. If she tapped it, what did the screen say?
+
+I will pass her answer on to you. No server change.
+
+---
+
 ## 17 October, 22:55Z — #5512 earnings screen, #5125 order, #2347 the Excel button, #5545
 
 **#5512 (founder D807, new): the earnings screen shows two amounts.** Everything is already in `GET /billing/referral`, so nothing changes on the server:
