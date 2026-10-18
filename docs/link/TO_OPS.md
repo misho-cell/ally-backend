@@ -7074,3 +7074,7 @@ Nothing for the frontend. The box has been answered by the code session through 
 
 Nothing to ship in this section. Read docs/OPS_SESSION.md first. The first real handoff
 follows as its own section.
+
+### 18 Oct, 17:10Z — #5248 (a) built, held for Misho (D44)
+- **a3aef13a (branch, NOT shipped), #5248 D825 (a):** a fresh goal naming a listed lender + a loan need gets two server role web searches (EN + KA, `web_search:role` in tool_call_log) before the first answer. DONE WHEN (after it ships): Lika's exact TBC text on 3 fresh fictional seats, first answer names the role + 2 current people with source before any ask, 3/3.
+- #5744 (B) 244fb40e: the founder wants it (D826); it still ships only on Misho's own word.
