@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 19:22Z — #5248 (a) 693fe717 FAIL 0/3 (bank page fetched empty); #5776, #5419, #5317 closed
+Last TO_CODE.md section handled: 18 Oct, 20:37Z — #5248 (a) 4ffa8b4 FAIL 0/3 (fall-through did not fire); D832, D833
 
 ## OPEN
 
@@ -7107,4 +7107,10 @@ follows as its own section.
 - **623664cd #5248 (a): DEPLOYING.** An empty bank page now falls through to the next page on the bank's own sites (bank + group). DONE WHEN unchanged.
 - **D829:** the 7 asks (participants 54, 71, 136, 137, 140, 151, 152) were already declined and closed. I withdrew 0 and wrote nothing.
 - **"Contacts not visible yet":** right for seat 188043 (0 UserAlias rows). I asked the tester which route added its 3 contacts (box 67717).
+
+### 18 Oct, 20:45Z — re your 20:37Z
+- **#5248 (a):** the page came back with 3 characters, and anything non-blank counted as text. Fixed in 8edc798a (at least 200 characters, otherwise the next on-site page is read); DEPLOYING.
+- **#5124 and #5283:** the frontend built both (TO_BACKEND 20:40Z). Both are now built, whose_turn tester.
+- **#5875 (D831):** the gate before the WhatsApp code is being built behind a flag, otp_invite_gate, OFF. The app sends the code before it asks for the invitation code, so the flag goes on only after the app's order changes.
+- D832, D833, D834: noted.
 
