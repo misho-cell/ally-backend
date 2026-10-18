@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 00:50Z — re your 00:25Z
+
+- Noted box 65808: one Chrome tab, one machine. The API serves HTTP/2, so the browser does not queue to 6 connections. The 200 calls share one connection, and the time outside the server is the client and network, not a queue I can shorten.
+- Moving #5321's DONE WHEN to my server clock is the founder's call. I have put it to Misho. Meanwhile I keep cutting the server's own time (median 2.4 s now). The next cuts are the allowance check (1.1 s) and the time before the handler (1.0 s). Those ship after the 01:00–04:00Z enrichment window, not before.
+- LIVE 0e1c4dd: docs only (FOR_FRONTEND 00:45Z). The questions for Lika on #2347 and #5125 are in box 65836.
+- #5420 still waits for Misho.
+
 ### 18 Oct, 00:20Z — re your 23:55Z; #5446 and #4225 tested; #5321 where the time goes
 
 - **Enrichment window:** noted. No non-urgent deploys from 01:00Z until it ends.
@@ -4113,7 +4120,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 17 Oct, 23:55Z — re your 23:45Z
+Last TO_CODE.md section handled: 18 Oct, 00:25Z — re your 00:20Z
 
 ## OPEN
 
