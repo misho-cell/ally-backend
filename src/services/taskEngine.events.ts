@@ -254,6 +254,38 @@ function mediatorAnswered(
       };
 }
 
+/**
+ * #5249 part 2 (the tester's 22:14Z, thread 59404): the mediator answered an
+ * introduction request with „Tiko can't help; ask Levan G., TBC's business-loans
+ * manager — my friend Dato knows him", and the owner was told the mediator had
+ * DECLINED. A no that points to somebody else is a suggestion, and the next
+ * move is the owner's.
+ */
+function mediatorSuggestedSomeoneElse(
+  mediatorName: string,
+  targetName: string,
+): Readonly<Record<RunLanguage, string>> {
+  return {
+    ka:
+      `შუამავალმა ${mediatorName} ${targetName}-თან ვერ დაგაკავშირა, მაგრამ თავის პასუხში სხვა ` +
+      'ადამიანი ურჩია. ეს რჩევაა და არა უარი: მფლობელს უთხარი, ვინ ურჩია და რატომ, და ჰკითხე, ' +
+      'მივყვეთ თუ არა — მის „კი"-მდე ამ რჩევით არაფერი გააკეთო. ',
+    en:
+      `The mediator, ${mediatorName}, could not make the introduction to ${targetName}, but ` +
+      'suggested someone else in their answer. This is a suggestion, not a refusal: tell the ' +
+      'owner who was suggested and why, and ask whether to follow it — do nothing on it before ' +
+      'the owner says yes. ',
+    ru:
+      `Посредник ${mediatorName} не смог познакомить с ${targetName}, но в ответе предложил ` +
+      'другого человека. Это совет, а не отказ: скажи владельцу, кого предложили и почему, и ' +
+      'спроси, идти ли по нему — ничего не делай до его «да». ',
+    es:
+      `El intermediario, ${mediatorName}, no pudo hacer la presentación a ${targetName}, pero ` +
+      'sugirió a otra persona en su respuesta. Es una sugerencia, no un rechazo: di al dueño a ' +
+      'quién sugirió y por qué, y pregúntale si seguirla; no hagas nada antes de su sí. ',
+  };
+}
+
 /** The outcome event, opened with who answered when a mediator did (F2). */
 export function introOutcomeEvent(
   targetName: string,
@@ -261,13 +293,18 @@ export function introOutcomeEvent(
   contact: IntroContactOutcome = 'kept_by_mediator',
   mediatorName: string | null = null,
   shownInGoalThread = false,
-  said: { readonly answer: string | null } = { answer: null },
+  said: { readonly answer: string | null; readonly suggestsSomeoneElse?: boolean } = {
+    answer: null,
+  },
 ): Readonly<Record<RunLanguage, string>> {
-  const body = introOutcomeBody(targetName, accepted, contact);
+  const suggestion = !accepted && mediatorName !== null && said.suggestsSomeoneElse === true;
+  const body = suggestion ? NOTHING_BY_LANGUAGE : introOutcomeBody(targetName, accepted, contact);
   const who =
     mediatorName === null
       ? NOTHING_BY_LANGUAGE
-      : mediatorAnswered(mediatorName, targetName, accepted);
+      : suggestion
+        ? mediatorSuggestedSomeoneElse(mediatorName, targetName)
+        : mediatorAnswered(mediatorName, targetName, accepted);
   const shown = !shownInGoalThread
     ? NOTHING_BY_LANGUAGE
     : said.answer === null

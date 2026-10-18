@@ -1,6 +1,7 @@
 import { query } from '../db/postgres/client';
 // Type only, on purpose: `taskEngine.events` is imported dynamically below to
 // keep the module cycle broken, and a type import is erased before runtime.
+import { refersSomebody } from './referralRecommendation';
 import type { IntroContactOutcome } from './taskEngine.events';
 import { findContactPhonesByName } from './tools/nameMatch';
 import { sendPushNotification } from './notification.service';
@@ -1145,6 +1146,7 @@ async function wakeRequestersGoal(
         shownInGoalThread,
         {
           answer: answer === '' ? null : scrubText(answer),
+          suggestsSomeoneElse: !accepted && answer !== '' && refersSomebody(answer),
         },
       ),
     );
