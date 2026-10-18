@@ -33,6 +33,9 @@ describe('the connector with the app’s tools switched on', () => {
     expect(names).toContain('search_contacts');
     expect(names).toContain('record_who_helped');
     expect(names).not.toContain('present_choices');
+    // #5744: the member's contacts reach Netai from inside the chat, by link or by file.
+    expect(names).toContain('get_contacts_upload_link');
+    expect(names).toContain('import_contacts_file');
     const whoHelped = tools.find((t) => t.name === 'record_who_helped');
     expect(Object.keys(whoHelped?.inputSchema.properties ?? {})).toContain('contact_ref');
     expect(Object.keys(whoHelped?.inputSchema.properties ?? {})).not.toContain('phone');

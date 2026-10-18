@@ -1,6 +1,6 @@
 import { NETAI_ICON_URL, NETAI_STILL_IMAGE_URL } from './netaiFigure';
 import { connectorInputShape } from './appToolShape';
-import { createUploadLink } from '../contactUploadLinks.service';
+import { createUploadLink, EmptyVcfError, importWholeFile } from '../contactUploadLinks.service';
 import { isSharedToolsEnabled, runSharedTool, sharedAppTools } from './sharedTools';
 import { appToolsForConnector, runAppToolForConnector } from '../chat.service';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -497,6 +497,26 @@ async function mcpContactsUploadLink(userId: string): Promise<Record<string, unk
   return { url: link.url, expires_at: link.expiresAt, uses: 1 };
 }
 
+/** #5744 (B): the backup — a .vcf attached in the chat, passed in parts of whole cards. */
+const MAX_VCF_PART_CHARS = 1_000_000;
+
+async function mcpImportContactsFile(
+  userId: string,
+  vcf: string,
+): Promise<Record<string, unknown>> {
+  if (vcf.length > MAX_VCF_PART_CHARS) {
+    return { error: 'This part is too large. Send at most 300 contacts per call.' };
+  }
+  try {
+    const outcome = await importWholeFile(userId, vcf);
+    return { in_part: outcome.inFile, new: outcome.imported, already_saved: outcome.unchanged };
+  } catch (err) {
+    if (err instanceof EmptyVcfError)
+      return { error: 'No BEGIN:VCARD … END:VCARD card in this part.' };
+    throw err;
+  }
+}
+
 /** #5744 (A), the founder's D822: contacts reach Netai through a link, never through the chat. */
 function registerContactUploadTool(server: McpServer, userId: string): void {
   server.registerTool(
@@ -508,6 +528,27 @@ function registerContactUploadTool(server: McpServer, userId: string): void {
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
     () => runTool(userId, 'get_contacts_upload_link', {}, () => mcpContactsUploadLink(userId)),
+  );
+}
+
+function registerContactFileTool(server: McpServer, userId: string): void {
+  server.registerTool(
+    'import_contacts_file',
+    {
+      title: connectorTitle('import_contacts_file'),
+      description: connectorDescription('import_contacts_file'),
+      inputSchema: {
+        vcf: z.string().describe('The text of whole vCard cards, at most 300 of them.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (args) =>
+      runTool(
+        userId,
+        'import_contacts_file',
+        { cards: (args.vcf.match(/BEGIN:VCARD/giu) ?? []).length },
+        () => mcpImportContactsFile(userId, args.vcf),
+      ),
   );
 }
 
@@ -1239,6 +1280,7 @@ export function buildMcpServer(userId: string): McpServer {
   registerGraphTools(server, userId);
   registerGoalTools(server, userId);
   registerContactUploadTool(server, userId);
+  registerContactFileTool(server, userId);
   if (ANSWER_MEMBER_QUESTION_ON) registerMemberAnswerTool(server, userId);
   registerPrompts(server);
   return server;

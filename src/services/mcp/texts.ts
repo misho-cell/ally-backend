@@ -53,6 +53,15 @@ interface ToolText {
 }
 
 export const TOOL_TEXTS: Record<string, ToolText> = {
+  import_contacts_file: {
+    title: 'Import contacts from a file',
+    description:
+      'The backup to get_contacts_upload_link: when the member attaches their contacts file (.vcf) ' +
+      'in this chat, pass its text here, in parts of at most 300 contacts (whole BEGIN:VCARD … ' +
+      'END:VCARD cards, never cut inside a card) until every card has been sent. Sending a part ' +
+      'twice is harmless. Each call answers how many were in the part and how many were new. ' +
+      'Offer the link first: with it no number passes through this chat.',
+  },
   get_contacts_upload_link: {
     title: 'Contacts upload link',
     description:
