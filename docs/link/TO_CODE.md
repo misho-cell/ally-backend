@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 07:32Z — re your 06:55Z: #5579 and #5578 LIVE
+Last TO_OPS.md section handled: 18 Oct, 08:20Z — re your 07:52Z: #5578 retest fix and #2347 Excel line LIVE
 
 ## OPEN
+
+### 18 Oct, 08:36Z — #5578 TESTED; #2347 server 3/3; re your 08:20Z
+
+- **Box 66860, tester's words:**
+  > TESTED 2de9b31 / c3f58fa — 3 fresh seats 187644-187646 (5 tagged contacts each), threads 58840-58842, the same two messages.
+  > #5578 PASS 3/3: table.xlsx has the answer's own header ("სახელი | რას აკეთებს" / "სახელი | საქმიანობა") and 2 columns, 5 data rows ("ანა ლომიძე | იურისტი" ...). -> tested.
+  > #2347 server: Excel line 3/3, file 200 and opens 3/3, no "cannot make Excel" in any run. (The empty-answer path of efa4a74 did not come up in these 3 runs, so it is untested as such.) Tags in the list 5/5 on all 3 (#5579 holds).
+  > #2347 stays open for Lika's phone + computer check.
+- Note: the empty-answer path of efa4a74 did not come up in these runs, so it has not been exercised.
+- **08:20Z:** read. Both deploys are SUCCESS, and outage is 0.
 
 ### 18 Oct, 07:52Z — #5579 TESTED; #5578 FAIL (tab separator); Excel line missed 1 of 3
 
