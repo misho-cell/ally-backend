@@ -231,6 +231,78 @@ describe('checkRunAllowance', () => {
     expect(expiry).toBeGreaterThan(-1);
     expect(grant).toBeGreaterThan(expiry);
   });
+
+  // 5321 (18 Oct 00:05Z): two trips of the allowance were reads already made.
+  it('uses the plan the gate already read instead of reading it again', async () => {
+    setWorld({ walletEnabled: true, subscriptionStatus: 'inactive', balance: 5, runCostUsd: 0 });
+
+    const result = await checkRunAllowance('7', { status: 'active', tier: 'pro' });
+
+    const sqls = mockQuery.mock.calls.map(([sql]) => sql as string);
+    expect(sqls.some((sql) => sql.includes('subscription_status'))).toBe(false);
+    expect(result).toEqual({ allowed: true, balance: 5 });
+    const grantCall = mockQuery.mock.calls.find(([sql]) =>
+      (sql as string).includes('WITH granted AS'),
+    );
+    expect(grantCall?.[1]).toEqual(['7', 1000, 'monthly_grant']);
+  });
+
+  describe('the expiry is settled once per period', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    function expiryReads(): number {
+      return mockQuery.mock.calls.filter(([sql]) => (sql as string).includes('NOT EXISTS')).length;
+    }
+
+    it('is read on the first message of the period and not on the next', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-18T01:00:00Z') });
+      setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
+
+      await checkRunAllowance('7');
+      await checkRunAllowance('7');
+
+      expect(expiryReads()).toBe(1);
+    });
+
+    it('is read again once the window has reset', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-31T23:59:00Z') });
+      setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
+      await checkRunAllowance('7');
+
+      jest.setSystemTime(new Date('2026-11-01T00:00:01Z'));
+      await checkRunAllowance('7');
+
+      expect(expiryReads()).toBe(2);
+    });
+
+    it('is read for each person on their own', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-18T01:00:00Z') });
+      setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
+
+      await checkRunAllowance('7');
+      await checkRunAllowance('8');
+
+      expect(expiryReads()).toBe(2);
+    });
+
+    it('is read again when the last read failed', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-18T01:00:00Z') });
+      setWorld({ walletEnabled: true, subscriptionStatus: 'active', balance: 5, runCostUsd: 0 });
+      const world = mockQuery.getMockImplementation();
+      mockQuery.mockImplementationOnce(
+        (sql: string, params?: unknown[]) => world!(sql, params) as never,
+      );
+      mockQuery.mockImplementationOnce(() => Promise.reject(new Error('connection lost')));
+      mockQuery.mockImplementationOnce(() => Promise.reject(new Error('connection lost')));
+
+      await expect(checkRunAllowance('7')).rejects.toThrow('connection lost');
+      await checkRunAllowance('7');
+
+      expect(expiryReads()).toBe(2);
+    });
+  });
 });
 
 describe('debitRun', () => {

@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { query } from '../../db/postgres/client';
 import { AuthenticatedRequest } from './auth.middleware';
 import { ApiResponse } from '../../types';
+import type { Subscription } from '../../services/tokenWallet.service';
 
 /**
  * How long a failed card keeps its access.
@@ -25,6 +26,35 @@ interface SubscriptionRow {
   readonly trial_ends_at: string | null;
   readonly current_period_ends_at: string | null;
   readonly subscription_status_changed_at: string | null;
+}
+
+interface GateRow extends SubscriptionRow {
+  readonly subscription_tier: string | null;
+  readonly live: boolean;
+}
+
+/**
+ * 5321 (the tester's 200 run, 18 Oct 00:05Z): the wallet check read the same
+ * "User" row this gate had just read, one more trip on every send. The gate
+ * leaves the plan here, and the send hands it to `checkRunAllowance`.
+ */
+const GATE_SUBSCRIPTION = 'gateSubscription';
+
+/** The plan as the wallet reads it: a deleted account has none (its "deletedAt" filter). */
+function walletSubscriptionOf(row: GateRow): Subscription {
+  return row.live
+    ? { status: row.subscription_status, tier: row.subscription_tier ?? '' }
+    : { status: undefined, tier: '' };
+}
+
+/** The plan this request's gate read, when the gate ran and found the account. */
+export function subscriptionReadByGate(res: Response): Subscription | undefined {
+  const read: unknown = res.locals[GATE_SUBSCRIPTION];
+  if (typeof read !== 'object' || read === null || !('tier' in read)) return undefined;
+  const { status, tier } = read as { status?: unknown; tier?: unknown };
+  if (typeof tier !== 'string') return undefined;
+  if (status !== undefined && typeof status !== 'string') return undefined;
+  return { status, tier };
 }
 
 /**
@@ -59,17 +89,24 @@ export function hasActiveSubscription(row: SubscriptionRow, now: Date = new Date
   return false;
 }
 
-async function userMayUseProduct(userId: string): Promise<boolean> {
-  const result = await query<SubscriptionRow>(
+async function readGateRow(userId: string): Promise<GateRow | undefined> {
+  const result = await query<GateRow>(
     `SELECT subscription_status, trial_ends_at, current_period_ends_at,
-            subscription_status_changed_at
+            subscription_status_changed_at, subscription_tier,
+            ("deletedAt" IS NULL) AS live
      FROM "User"
      WHERE id = $1
      LIMIT 1`,
     [userId],
   );
-  const user = result.rows[0];
-  return user !== undefined && hasActiveSubscription(user);
+  return result.rows[0];
+}
+
+async function userMayUseProduct(userId: string, res?: Response): Promise<boolean> {
+  const user = await readGateRow(userId);
+  if (user === undefined) return false;
+  if (res !== undefined) res.locals[GATE_SUBSCRIPTION] = walletSubscriptionOf(user);
+  return hasActiveSubscription(user);
 }
 
 export async function requireSubscription(
@@ -124,7 +161,7 @@ export async function requireSubscriptionUnlessAnswering(
 ): Promise<void> {
   try {
     const userId = (req as AuthenticatedRequest).user.userId;
-    if (await userMayUseProduct(userId)) {
+    if (await userMayUseProduct(userId, res)) {
       next();
       return;
     }

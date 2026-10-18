@@ -7,7 +7,9 @@ describe('accepting a message', () => {
   const send = routes.slice(routes.indexOf('console.log(\n        `[msg-in] user'));
 
   it("starts reading the owner's wallet before the thread is read", () => {
-    const walletAt = send.indexOf('const ownAllowance = checkRunAllowance(userId);');
+    const walletAt = send.indexOf(
+      'const ownAllowance = checkRunAllowance(userId, subscriptionReadByGate(res));',
+    );
     const threadAt = send.indexOf('const thread = await getThread(threadId, userId);');
     expect(walletAt).toBeGreaterThan(-1);
     expect(threadAt).toBeGreaterThan(walletAt);

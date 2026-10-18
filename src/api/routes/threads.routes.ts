@@ -21,7 +21,10 @@ import {
   requireUserRole,
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
-import { requireSubscriptionUnlessAnswering } from '../middleware/subscription.middleware';
+import {
+  requireSubscriptionUnlessAnswering,
+  subscriptionReadByGate,
+} from '../middleware/subscription.middleware';
 import { rateLimit } from '../middleware/rateLimit.middleware';
 import {
   getThreadsForUser,
@@ -1094,7 +1097,7 @@ threadsRouter.post(
        * that is not an answer to somebody else's ask.
        */
       const clock = new PhaseClock(res.locals.arrivedAt);
-      const ownAllowance = checkRunAllowance(userId);
+      const ownAllowance = checkRunAllowance(userId, subscriptionReadByGate(res));
       ownAllowance.catch(() => undefined);
       const thread = await getThread(threadId, userId);
       clock.mark('thread');

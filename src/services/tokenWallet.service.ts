@@ -97,9 +97,10 @@ async function walletEnabledRecently(): Promise<boolean> {
   return enabled;
 }
 
-/** For tests: forget the flag read. */
+/** For tests: forget the flag read and every expiry already settled. */
 export function clearWalletFlagCache(): void {
   walletFlag = null;
+  expirySettledUntil.clear();
 }
 
 export async function getBalance(userId: string): Promise<number> {
@@ -110,7 +111,8 @@ export async function getBalance(userId: string): Promise<number> {
   return Number(result.rows[0]?.balance ?? 0);
 }
 
-interface Subscription {
+/** What the wallet needs of a plan: its status, and its tier for the grant. */
+export interface Subscription {
   readonly status: string | undefined;
   readonly tier: string;
 }
@@ -280,12 +282,36 @@ export async function expireStaleGrants(userId: string): Promise<void> {
 }
 
 /**
+ * 5321 (the tester's 200 run, 18 Oct 00:05Z): the allowance was still 1.1 s of
+ * a 2.4 s accept, and the expiry read was one of its trips on every message.
+ * A grant goes stale only when its period ends, so once a person's expiry is
+ * settled it stays settled until the window's next reset (`nextReset`, the same
+ * UTC boundary the renewal day is told from). It is asked again after that.
+ */
+const expirySettledUntil = new Map<string, number>();
+/** A bound on the memo, not a tuning knob: past it the memo starts over. */
+const MAX_SETTLED_EXPIRIES = 50_000;
+
+async function expireStaleGrantsOncePerPeriod(userId: string): Promise<void> {
+  const window = budgetWindow();
+  const key = `${window.unit}:${userId}`;
+  const now = Date.now();
+  if ((expirySettledUntil.get(key) ?? 0) > now) return;
+  await expireStaleGrants(userId);
+  if (expirySettledUntil.size >= MAX_SETTLED_EXPIRIES) expirySettledUntil.clear();
+  expirySettledUntil.set(key, window.nextReset(new Date(now)).getTime());
+}
+
+/**
  * Gate for starting a chat run. When the wallet flag is off everything is
  * allowed (the ledger still measures). When on: settle expiries, grant if
  * due, then require a positive balance. A run in flight may take the balance
  * slightly negative — that is deliberate grace; the next run gets blocked.
  */
-export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
+export async function checkRunAllowance(
+  userId: string,
+  subscriptionAlreadyRead?: Subscription,
+): Promise<RunAllowance> {
   if (!(await walletEnabledRecently())) {
     return { allowed: true, balance: null };
   }
@@ -293,8 +319,12 @@ export async function checkRunAllowance(userId: string): Promise<RunAllowance> {
   // Run 9 (16 Oct): every trip here is ~150 ms, and 0.5-1 s under 200 at
   // once. The subscription is only read, so it is read beside the expiry
   // rather than after it; the grant still follows the expiry, which reads the
-  // balance the grant would change.
-  const [, subscription] = await Promise.all([expireStaleGrants(userId), subscriptionOf(userId)]);
+  // balance the grant would change. A send's subscription gate has read the
+  // plan already, and hands it over rather than have it read twice.
+  const [, subscription] = await Promise.all([
+    expireStaleGrantsOncePerPeriod(userId),
+    subscriptionAlreadyRead ?? subscriptionOf(userId),
+  ]);
   const balance = await grantedBalance(userId, subscription);
   return { allowed: balance > 0, balance };
 }

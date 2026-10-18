@@ -5,6 +5,7 @@ import {
   hasActiveSubscription,
   requireSubscription,
   requireSubscriptionUnlessAnswering,
+  subscriptionReadByGate,
 } from '../subscription.middleware';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
@@ -122,9 +123,9 @@ describe('who may use the product', () => {
 // Ticket 10 Task 25 (b), D123: a lapsed account may still open and answer a
 // thread in which somebody is asking THEM — everything else meets the paywall.
 describe('the gate with one door held open', () => {
-  type Res = { status: jest.Mock; json: jest.Mock };
+  type Res = { status: jest.Mock; json: jest.Mock; locals: Record<string, unknown> };
   function res(): Res {
-    const r: Res = { status: jest.fn(), json: jest.fn() };
+    const r: Res = { status: jest.fn(), json: jest.fn(), locals: {} };
     r.status.mockReturnValue(r);
     return r;
   }
@@ -170,6 +171,47 @@ describe('the gate with one door held open', () => {
 
     expect(next).toHaveBeenCalled();
     expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  // 5321 (18 Oct 00:05Z): the send's wallet check takes the plan from here.
+  it('leaves the plan it read for the wallet check', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [{ ...paying, subscription_tier: 'enterprise', live: true }],
+      rowCount: 1,
+    } as never);
+    const response = res();
+
+    await requireSubscriptionUnlessAnswering(
+      req('/9412/message') as never,
+      response as never,
+      jest.fn(),
+    );
+
+    expect(subscriptionReadByGate(response as never)).toEqual({
+      status: 'active',
+      tier: 'enterprise',
+    });
+  });
+
+  it('leaves no plan for a deleted account, as the wallet would read it', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [{ ...paying, subscription_tier: 'pro', live: false }],
+      rowCount: 1,
+    } as never);
+    const response = res();
+
+    await requireSubscriptionUnlessAnswering(
+      req('/9412/message') as never,
+      response as never,
+      jest.fn(),
+    );
+
+    expect(subscriptionReadByGate(response as never)).toEqual({ status: undefined, tier: '' });
+  });
+
+  it('reads no plan when the gate never ran', () => {
+    expect(subscriptionReadByGate({ locals: {} } as never)).toBeUndefined();
+    expect(subscriptionReadByGate({ locals: { gateSubscription: 'x' } } as never)).toBeUndefined();
   });
 
   it('a lapsed account may answer an incoming ask', async () => {
