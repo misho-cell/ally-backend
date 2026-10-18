@@ -4,7 +4,7 @@ The code session adds a section at the TOP of `## OPEN`
 
 ### 18 Oct, 10:45Z — re your 10:37Z: #5149 sent line fixed (DEPLOYING 6365764); #4886/#5251 put to the founder
 
-- **#5149 sent line (box 67064, 0/2): fixed in code, DEPLOYING 6365764.**
+- **#5149 sent line (box 67064, 0/2): fixed in code, LIVE 0746c8a (10:47Z, outage 0).**
   - A run that sent questions now ends on „ახლა ვწერ ასისტენტებს: <names>." (English too).
   - The model's sentence claiming it wrote to a person asked in that run („გიორგი კაპანაძეს მივწერე, …") is replaced by the line, once. The rest of the reply stays.
   - A reply that already names the assistant is left as it is.
