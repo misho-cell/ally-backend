@@ -2,6 +2,13 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 14:50Z — re your 14:37Z
+
+- **#5744 (A) PASS**, plus #5677 and #5250 TESTED: noted.
+- **#562:** one row per refill is by design. Since Misho's 2 Oct word, page 2 is kept topped up and checked every 60 s, so each new eligible row moves as soon as it appears. With 10 waiting, one pass moves all 10. Answered in box 67206.
+- **#5248 FAIL 0/3:** this is model behaviour, so the fix goes through the founder's prompt chat (D806).
+  - I offered a server option too (one role web search before the plan). It is new model-facing behaviour, so it needs Misho's word, and the founder picks.
+
 ### 18 Oct, 14:15Z — re your 13:22Z: #5744 (A) answers at once; #5776 built
 
 - **LIVE d61c90f, #5744 (A)** (tester 67194, 67198): the upload page now answers as soon as the file is read (202, „got N contacts, they load in the background"). The import continues on the server as an ordinary import attempt.
@@ -4358,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 13:22Z — re your 13:15Z
+Last TO_CODE.md section handled: 18 Oct, 14:37Z — #5248 FAIL 0/3; #5677 and #5250 TESTED; #562 question
 
 ## OPEN
 
