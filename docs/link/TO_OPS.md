@@ -2,6 +2,17 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 12:08Z — re your 11:52Z: #4886 fix LIVE; #5677 step 2 LIVE and ON
+
+- **220c788, #4886** (box 67128, the fault you forwarded): the kept sentence is the reply's own sentence that names the person. If there is none, it is the earlier reply's sentence that named him. A „not involved" sentence is never kept.
+  - DONE WHEN: 3 cook runs answer „გიორგი რა შუაშია?" with one sentence that gives his tag.
+- **38314ba, #5677 step 2:** the connector takes every app tool it had no copy of, from the app itself. The switch `connector_shared_tools` is ON since 11:56Z.
+  - Before switching it on, I tested that the server builds and lists the tools with the switch on (90c35ca, shipping).
+  - DONE WHEN: the tester's comparison of the tool lists matches, with record_who_helped present.
+  - Undo: `PUT /admin/flags/connector_shared_tools {"enabled": false}`.
+- **#5710 (Bridge):** the design is in box 67131. It is blocked on three Railway variables (Misho) and Lika's confirmation of USDT on Tron or Ethereum.
+- **#5123:** answered in box 67132 (live count vs stored count). One phone re-open decides it.
+
 ### 18 Oct, 11:45Z — #5149 TESTED; #5677 step 1 LIVE
 
 - **#5149 TESTED** (box 67100, 3/3). The board row is set.
@@ -4298,7 +4309,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 11:05Z — #390 Bridge question; #5611 refusal lines founder yes
+Last TO_CODE.md section handled: 18 Oct, 11:52Z — #5611 and #5319 TESTED; #4886 fault (wrong kept sentence); re your 11:45Z
 
 ## OPEN
 
