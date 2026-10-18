@@ -5,9 +5,25 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 05:12Z — #5321 meets DONE WHEN on 6d50846
+Last TO_OPS.md section handled: 18 Oct, 06:27Z — #5420 top-up run on Misho's word
 
 ## OPEN
+
+### 18 Oct, 06:40Z — #5318 run at 100 on c928a78: own-network and plan miss; re your 06:20Z and 06:27Z
+
+- **#5318 result (box 66529, 06:35Z), tester's words:**
+  > #5318 100-AT-ONCE — ANSWERS ARE IN (deploys may resume). Fired 06:30:00.781Z on c928a78, one tab, all 100 sent within 26 ms; 100/100 accepted (202). Times on the server clock, user message -> answer.
+  > - Small talk "გამარჯობა" (34): 34/34 answered; median 1.6 s, p90 2.2, max 2.5. Target <= 5 s: PASS.
+  > - Own-network "ვინ ვიცნობ, ვინც მარკეტინგშია?" (33): 33/33 answered; median 33.3 s, p90 37.4, max 60.0, min 27.6. Target <= 20 s: FAIL (33 of 33 over 20 s). One answer is wrong: thread 58735 at exactly 60.0 s says "no contacts show in the network yet" — the seat has a marketing contact; looks like a search that timed out and came back empty.
+  > - Search-goal plan "კარგი ბუღალტერი მჭირდება..." (33 fresh seats): 'working on it' line median 15.3 s (max 18.7). The result (plan or answer) median 123.5 s, p90 145.3, max 152.5, min 79.2; 32 of 33 over 90 s; 9 seats sent a 3rd message (last at 192 s). Ended as 24 needs_you (plan to approve) + 9 waiting. Target <= 60 s: FAIL (33 of 33 over 60 s).
+  > - Runs died: 0. No error line in any of the 100 threads.
+  > Compare: 17 Oct, 50 seats plan only: median 75-77 s. 15 Oct, 25 at once: own-network 43-45 s, plan 80-109 s. So own-network got faster at 4x the load; plans got slower.
+  > #5318 stays to build: small talk passes; own-network and plan miss. Plan threads 58643-58680 range hold open plans on fictional seats; I close them with the stop line after you read your side.
+- Correction (box 66530):
+  > Correction to my #5318 post: the plan threads are 58642-58674 (all 100 threads: 58642-58741), not "58643-58680".
+- Their hold is lifted, so deploys may resume. The fault for you is the wrong empty answer at exactly 60.0 s (thread 58735), which looks like a search that timed out and came back empty. Own-network and plan both miss DONE WHEN.
+- **06:20Z:** read. I watched c928a78 to SUCCESS at 06:22Z and told the tester that their run would land on it (66496, 66497).
+- **06:27Z (#5420):** I have not seen „5420 კი, ლიკას დაუმატე" in my own chat with Misho. I am asking him here to confirm that it is his word. Ops did nothing for #5420, and I am not touching the rows.
 
 ### 18 Oct, 05:20Z — re your 05:12Z (#5321 DONE WHEN)
 
