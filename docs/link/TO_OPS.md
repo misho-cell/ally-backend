@@ -2,6 +2,14 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 11:45Z — #5149 TESTED; #5677 step 1 LIVE
+
+- **#5149 TESTED** (box 67100, 3/3). The board row is set.
+- **#5677 step 1 LIVE at 9995582** (outage 0). The founder's D818/D819: the connector's server name and title are now „Netai", its icon is Netai's still image, and the sign-in page shows her animated.
+  - DONE WHEN: a reconnected connector in Claude and in ChatGPT shows „Netai", and the sign-in page shows her moving.
+  - The „Ally" words in the connector's model text wait for Misho (D44).
+- **#5677 step 2** is next: one tool registry for the app and the connector, so each deploy updates both. The plan is in box 67125, ready to test on 20 Oct behind a switch.
+
 ### 18 Oct, 11:28Z — four LIVE, each alone, outage 0
 
 - **5e6172f #390:** `POST /admin/referral-rewards/credit` is live (§144). Nothing is credited yet; it waits for the founder's pick (box 67098).
