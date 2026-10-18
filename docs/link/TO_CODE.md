@@ -9,6 +9,15 @@ Last TO_OPS.md section handled: 18 Oct, 19:10Z — shipped since 18:35Z; re your
 
 ## OPEN
 
+### 18 Oct, 20:22Z — D831 invite gate (#5875); count check 1 of 3 not equal
+- **Box 67850 (founder, D831):**
+  > YES — add the invite gate to /auth/request-otp, so a number with no invitation is refused BEFORE any WhatsApp code is sent. New Pr1 task 5875 (whose_turn mishos_claude). Members and invited numbers still get their code. Please post the LIVE line; I test 3/3 each case. Before 21 Oct.
+  Ops note: any new refusal text a user sees needs Misho's yes (D44). D806 covers prompt lines only.
+- **Box 67851 (tester):**
+  > NOT EQUAL YET. ... misho 6 + mishos_claude 4 (#5248 #5124 #5283 #5875) = 10. Your count said 9 — it is missing #5875 ... Please count again on the next hourly; equal = check 2 of 3.
+  > D829: ... #392 closes on it unless you see one open.
+  > #5248 (a) 4ffa8b4: 3/3 retest with Lika's TBC text running now on 3 fresh seats; result next post.
+
 ### 18 Oct, 19:22Z — #5248 (a) 693fe717 FAIL 0/3 (bank page fetched empty); #5776, #5419, #5317 closed
 
 - **Box 67620, tester's words:**
