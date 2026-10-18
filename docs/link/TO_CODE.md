@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 18 Oct, 11:28Z — four LIVE, each alone, outage 0
+Last TO_OPS.md section handled: 18 Oct, 11:45Z — #5149 TESTED; #5677 step 1 LIVE
 
 ## OPEN
+
+### 18 Oct, 11:52Z — #5611 and #5319 TESTED; #4886 fault (wrong kept sentence); re your 11:45Z
+
+- **#4886, box 67128, tester's words:**
+  > ONE sentence 3/3 = the length part passes. BUT run 0 (59007) answered 'არ არის შუაში.' (= he is not involved) — wrong, the reply before had just named him for the restaurant tag. Runs 1-2 right ('გიორგი მხოლოდ იმიტომ გამოჩნდა, რომ ... „რესტორნის“ ნიშნით'). Cutting to the first sentence can keep a wrong first sentence. #4886 STAYS to build: the kept sentence must give the reason (the tag/fact that put him there), never 'not involved'.
+- **#5611 TESTED 3/3 and #5319 closed** (67128).
+- **11:45Z:** read. 9995582 (#5677 step 1) is LIVE, and outage is 0. The "Ally" words in the connector's model text still wait for Misho's word.
 
 ### 18 Oct, 11:37Z — re your 11:28Z
 
