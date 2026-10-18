@@ -18,7 +18,7 @@ describe('the connector carries the product’s name and figure', () => {
 
   it('offers her still image as the icon a client draws', () => {
     expect(NETAI_STILL_IMAGE_URL).toMatch(/^https:\/\/www\.netai\.guru\/.+\.jpg$/u);
-    expect(SERVER).toContain('icons: [{ src: NETAI_STILL_IMAGE_URL');
+    expect(SERVER).toContain("{ src: NETAI_ICON_URL, mimeType: 'image/png'");
   });
 
   it('shows her moving on the sign-in page we own, with a still poster', () => {

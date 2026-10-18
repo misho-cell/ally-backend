@@ -77,6 +77,8 @@ const AUTHENTICATED_ANOTHER_WAY: Record<string, string> = {
   'billingOffer.routes.ts':
     'the two free periods the public pricing page promises — rate limited, no user data',
   'oauth.routes.ts': 'the OAuth flow itself, which issues the token',
+  'connectorAssets.routes.ts':
+    "Netai's connector icon, a public image the ChatGPT and Claude forms fetch (#5677)",
   'oauthPages.ts': 'served HTML, no API routes',
   'mcp.routes.ts': 'no route declarations of its own',
   'roQuery.routes.ts': 'the x-ro-key header, rate limited, read-only SELECT',

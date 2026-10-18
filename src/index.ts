@@ -28,6 +28,7 @@ import profileRouter from './api/routes/profile.routes';
 import mcpRouter from './api/routes/mcp.routes';
 import roQueryRouter from './api/routes/roQuery.routes';
 import oauthRouter, { wellKnownRouter } from './api/routes/oauth.routes';
+import connectorAssetsRouter from './api/routes/connectorAssets.routes';
 import { setupSwagger } from './swagger';
 import { runMigrations } from './db/postgres/migrate';
 import { installShutdownHandlers } from './services/gracefulShutdown.service';
@@ -146,6 +147,8 @@ app.use('/mcp', mcpRouter);
 app.use('/internal/ro-sql', roQueryRouter);
 app.use('/oauth', oauthRouter);
 app.use('/.well-known', wellKnownRouter);
+// #5677: Netai's connector icon, public (the ChatGPT and Claude forms take an upload).
+app.use('/assets', connectorAssetsRouter);
 setupSwagger(app);
 
 app.use((req: Request, res: Response<ApiResponse<unknown>>) => {

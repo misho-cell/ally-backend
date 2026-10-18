@@ -1,4 +1,4 @@
-import { NETAI_STILL_IMAGE_URL } from './netaiFigure';
+import { NETAI_ICON_URL, NETAI_STILL_IMAGE_URL } from './netaiFigure';
 import { connectorInputShape } from './appToolShape';
 import { isSharedToolsEnabled, runSharedTool, sharedAppTools } from './sharedTools';
 import { appToolsForConnector, runAppToolForConnector } from '../chat.service';
@@ -1204,7 +1204,10 @@ export function buildMcpServer(userId: string): McpServer {
       name: MCP_SERVER_NAME,
       title: MCP_SERVER_TITLE,
       version: MCP_SERVER_VERSION,
-      icons: [{ src: NETAI_STILL_IMAGE_URL, mimeType: 'image/jpeg' }],
+      icons: [
+        { src: NETAI_ICON_URL, mimeType: 'image/png', sizes: ['256x256'] },
+        { src: NETAI_STILL_IMAGE_URL, mimeType: 'image/jpeg' },
+      ],
     },
     { instructions: MCP_SERVER_INSTRUCTIONS },
   );
