@@ -30,6 +30,8 @@ import { webTitles } from './openingSearch.service';
 
 /** A role search on the first answer's path waits this long, and no longer. */
 const ROLE_SEARCH_BUDGET_MS = 8_000;
+/** The management page may need a second read when the first comes back empty. */
+const MANAGEMENT_PAGE_BUDGET_MS = 12_000;
 
 /** The results handed to the model, per query. */
 const MAX_SECTION_CHARS_PER_QUERY = 3_000;
@@ -50,8 +52,13 @@ export interface Institution {
   readonly ka: string;
   /** Every spelling an owner types; matched case-insensitively as written. */
   readonly spellings: RegExp;
-  /** The bank's own site, where its management page lives. */
-  readonly site: string;
+  /**
+   * The bank's own sites, where its management page lives: the bank's, and its
+   * listed group's when it has one. The tester's 19:10Z retest: tbcbank.ge's
+   * corporate-governance page came back EMPTY (drawn in the browser), so the
+   * group's site, whose board pages are plain text, is searched too.
+   */
+  readonly sites: readonly string[];
 }
 
 /** The lenders owners ask about; the stems catch „თიბისიში", „ბანკის" and the rest. */
@@ -60,37 +67,37 @@ const LENDERS: readonly Institution[] = [
     en: 'TBC Bank',
     ka: 'თიბისი ბანკი',
     spellings: /\bTBC\b|თიბისი|ტიბისი/iu,
-    site: 'tbcbank.ge',
+    sites: ['tbcbank.ge', 'tbcbankgroup.com'],
   },
   {
     en: 'Bank of Georgia',
     ka: 'საქართველოს ბანკი',
     spellings: /\bBank of Georgia\b|\bBOG\b|საქართველოს ბანკ/iu,
-    site: 'bankofgeorgia.ge',
+    sites: ['bankofgeorgia.ge', 'bankofgeorgiagroup.com'],
   },
   {
     en: 'Liberty Bank',
     ka: 'ლიბერთი ბანკი',
     spellings: /\bLiberty Bank\b|ლიბერთი/iu,
-    site: 'libertybank.ge',
+    sites: ['libertybank.ge'],
   },
   {
     en: 'Basisbank',
     ka: 'ბაზისბანკი',
     spellings: /\bBasis\s?bank\b|ბაზისბანკ/iu,
-    site: 'basisbank.ge',
+    sites: ['basisbank.ge'],
   },
   {
     en: 'ProCredit Bank',
     ka: 'პროკრედიტ ბანკი',
     spellings: /\bProCredit\b|პროკრედიტ/iu,
-    site: 'procreditbank.ge',
+    sites: ['procreditbank.ge'],
   },
   {
     en: 'Credo Bank',
     ka: 'კრედო ბანკი',
     spellings: /\bCredo\b|კრედო/iu,
-    site: 'credobank.ge',
+    sites: ['credobank.ge'],
   },
 ];
 
@@ -108,8 +115,8 @@ export interface RoleQueries {
   readonly institution: Institution;
   readonly en: string;
   readonly ka: string;
-  /** Finds the management page on the bank's own site. */
-  readonly managementPage: string;
+  /** Find the management page, one query per own site. */
+  readonly managementPages: readonly string[];
 }
 
 /** The first listed lender the text names, or null. */
@@ -126,7 +133,9 @@ export function roleSearchQueries(goalText: string): RoleQueries | null {
     institution,
     en: `${institution.en} ${LENDING_ROLE.en}`,
     ka: `${institution.ka} ${LENDING_ROLE.ka}`,
-    managementPage: `${institution.en} management board site:${institution.site}`,
+    managementPages: institution.sites.map(
+      (site) => `${institution.en} management board site:${site}`,
+    ),
   };
 }
 
@@ -156,10 +165,14 @@ export interface RoleSearchRun {
 }
 
 /** Resolves to null when the work does not finish inside the budget or fails. */
-function withinBudget<T>(work: Promise<T>, query: string): Promise<T | null> {
+function withinBudget<T>(
+  work: Promise<T>,
+  query: string,
+  budgetMs: number = ROLE_SEARCH_BUDGET_MS,
+): Promise<T | null> {
   let timer: NodeJS.Timeout | undefined;
   const expiry = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), ROLE_SEARCH_BUDGET_MS);
+    timer = setTimeout(() => resolve(null), budgetMs);
   });
   const guarded = work.catch((err: unknown) => {
     // eslint-disable-next-line no-console
@@ -219,22 +232,27 @@ async function searchOneRole(run: RoleSearchRun, query: string): Promise<RoleSea
   return { query, result };
 }
 
-/** The first result that lives on the bank's own site. */
-export function firstUrlOnSite(found: unknown, site: string): string | null {
-  if (found === null || typeof found !== 'object') return null;
-  const rows = (found as { results?: unknown }).results;
-  if (!Array.isArray(rows)) return null;
-  for (const row of rows) {
-    const url = (row as { url?: unknown } | null)?.url;
-    if (typeof url !== 'string') continue;
-    try {
-      const host = new URL(url).hostname.toLowerCase();
-      if (host === site || host.endsWith(`.${site}`)) return url;
-    } catch {
-      continue;
-    }
+/** Pages tried, in order, until one comes back with text. */
+const MAX_PAGES_READ = 3;
+
+function isOnSite(url: string, sites: readonly string[]): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return sites.some((site) => host === site || host.endsWith(`.${site}`));
+  } catch {
+    return false;
   }
-  return null;
+}
+
+/** Every result that lives on one of the bank's own sites, in order, without repeats. */
+export function urlsOnSites(found: unknown, sites: readonly string[]): string[] {
+  if (found === null || typeof found !== 'object') return [];
+  const rows = (found as { results?: unknown }).results;
+  if (!Array.isArray(rows)) return [];
+  const urls = rows
+    .map((row) => (row as { url?: unknown } | null)?.url)
+    .filter((url): url is string => typeof url === 'string' && isOnSite(url, sites));
+  return [...new Set(urls)];
 }
 
 /** The page text a fetch returned, or null when it brought none. */
@@ -243,23 +261,38 @@ function pageText(fetched: unknown): string | null {
   return typeof content === 'string' && content.trim() !== '' ? content : null;
 }
 
-/** Search the bank's own site for its management page, then read it. */
+/** One management-page search on one own site, charged and logged. */
+async function searchManagementPage(run: RoleSearchRun, query: string): Promise<unknown> {
+  await charge(run);
+  const startedAt = Date.now();
+  const found = await webSearch(query);
+  logRoleCall(run, 'web_search:role', { query }, found, startedAt);
+  return found;
+}
+
+/** Reads one page; its text, or null when it came back empty. */
+async function readOnePage(run: RoleSearchRun, url: string): Promise<string | null> {
+  await charge(run);
+  const readAt = Date.now();
+  const text = pageText(await fetchPage(url));
+  logRoleCall(run, 'fetch_page:role', { url, chars: text?.length ?? 0 }, null, readAt);
+  return text;
+}
+
+/** Search the bank's own sites for its management page, then read pages until one has text. */
 async function findAndReadManagementPage(
   run: RoleSearchRun,
   queries: RoleQueries,
 ): Promise<ManagementPage | null> {
-  await charge(run);
-  const startedAt = Date.now();
-  const found = await webSearch(queries.managementPage);
-  logRoleCall(run, 'web_search:role', { query: queries.managementPage }, found, startedAt);
-  const url = firstUrlOnSite(found, queries.institution.site);
-  if (url === null) return null;
-  await charge(run);
-  const readAt = Date.now();
-  const fetched = await fetchPage(url);
-  logRoleCall(run, 'fetch_page:role', { url }, null, readAt);
-  const text = pageText(fetched);
-  return text === null ? null : { url, text: text.slice(0, MAX_PAGE_CHARS) };
+  const found = await Promise.all(queries.managementPages.map((q) => searchManagementPage(run, q)));
+  const urls = [
+    ...new Set(found.flatMap((result) => urlsOnSites(result, queries.institution.sites))),
+  ].slice(0, MAX_PAGES_READ);
+  for (const url of urls) {
+    const text = await readOnePage(run, url);
+    if (text !== null) return { url, text: text.slice(0, MAX_PAGE_CHARS) };
+  }
+  return null;
 }
 
 /** Both role queries at once; never throws, a failed half comes back with a null result. */
@@ -270,7 +303,11 @@ export async function runRoleSearch(
   const [en, ka, managementPage] = await Promise.all([
     searchOneRole(run, queries.en),
     searchOneRole(run, queries.ka),
-    withinBudget(findAndReadManagementPage(run, queries), queries.managementPage),
+    withinBudget(
+      findAndReadManagementPage(run, queries),
+      queries.institution.en,
+      MANAGEMENT_PAGE_BUDGET_MS,
+    ),
   ]);
   return { queries, results: [en, ka], managementPage };
 }

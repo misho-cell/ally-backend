@@ -7,10 +7,10 @@ import { recordFixedUsage } from '../costLedger.service';
 import { logToolCall } from '../toolCallLog.service';
 import {
   buildRoleSearchSection,
-  firstUrlOnSite,
   lenderNamedIn,
   roleSearchQueries,
   runRoleSearch,
+  urlsOnSites,
 } from '../roleWebSearch.service';
 
 const mockedSearch = webSearch as jest.MockedFunction<typeof webSearch>;
@@ -54,9 +54,13 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     expect(mockedSearch.mock.calls.map((call) => call[0])).toEqual([
       queries.en,
       queries.ka,
-      queries.managementPage,
+      ...queries.managementPages,
     ]);
-    expect(mockedUsage).toHaveBeenCalledTimes(3);
+    expect(queries.managementPages).toEqual([
+      'TBC Bank management board site:tbcbank.ge',
+      'TBC Bank management board site:tbcbankgroup.com',
+    ]);
+    expect(mockedUsage).toHaveBeenCalledTimes(4);
     expect(logToolCall).toHaveBeenCalledWith(
       expect.objectContaining({ tool: 'web_search:role', input: { query: queries.en } }),
     );
@@ -105,13 +109,42 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     expect(section).toContain('Head of SME Banking');
   });
 
-  it('takes only a page that lives on the bank’s own site', () => {
-    const found = {
-      results: [{ url: 'https://tbcbank.ge.evil.com/a' }, { url: 'https://news.ge' }],
-    };
-    expect(firstUrlOnSite(found, 'tbcbank.ge')).toBeNull();
-    expect(firstUrlOnSite({ results: [{ url: 'https://tbcbank.ge/m' }] }, 'tbcbank.ge')).toBe(
-      'https://tbcbank.ge/m',
+  it('reads the next page when the bank’s own page comes back empty (tester 19:10Z)', async () => {
+    const empty = 'https://www.tbcbank.ge/en/tbc/about-us/corporate-governance';
+    const board = 'https://www.tbcbankgroup.com/about-us/management-board';
+    mockedSearch.mockImplementation((query: string) =>
+      Promise.resolve(
+        query.includes('site:tbcbank.ge')
+          ? { results: [{ url: empty }] }
+          : query.includes('site:tbcbankgroup.com')
+            ? { results: [{ url: board }] }
+            : { results: [] },
+      ),
     );
+    mockedFetch.mockImplementation((url: string) =>
+      Promise.resolve(url === empty ? { url, content: '' } : { url, content: 'Head of SME' }),
+    );
+    const queries = roleSearchQueries(LIKAS_TEXT);
+    if (queries === null) throw new Error('expected role queries');
+    const finds = await runRoleSearch(RUN, queries);
+    expect(mockedFetch.mock.calls.map((call) => call[0])).toEqual([empty, board]);
+    expect(finds.managementPage?.url).toBe(board);
+  });
+
+  it('takes only pages that live on the bank’s own sites, once each', () => {
+    const sites = ['tbcbank.ge', 'tbcbankgroup.com'];
+    const found = {
+      results: [
+        { url: 'https://tbcbank.ge.evil.com/a' },
+        { url: 'https://news.ge' },
+        { url: 'https://tbcbank.ge/m' },
+        { url: 'https://www.tbcbankgroup.com/b' },
+        { url: 'https://tbcbank.ge/m' },
+      ],
+    };
+    expect(urlsOnSites(found, sites)).toEqual([
+      'https://tbcbank.ge/m',
+      'https://www.tbcbankgroup.com/b',
+    ]);
   });
 });
