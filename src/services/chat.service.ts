@@ -412,6 +412,13 @@ import {
   OpeningSearches,
 } from './openingSearch.service';
 import {
+  buildRoleSearchSection,
+  RoleQueries,
+  RoleSearchRun,
+  roleSearchQueries,
+  runRoleSearch,
+} from './roleWebSearch.service';
+import {
   finalAnswerModel,
   finalWriterForRun,
   smallTalkFinalModel,
@@ -12910,6 +12917,21 @@ const RUN_HEARTBEAT_POLL_MS = 5_000;
  * Misho's word, 18 September, on the numbers above. It is not a reversal of
  * D315 and it is one line to put back.
  */
+/**
+ * #5248 (D825): the role search's prompt section. What it found joins the run's
+ * evidence and its published pages exactly as the model's own web_search does.
+ */
+async function roleSearchSection(run: RoleSearchRun, queries: RoleQueries): Promise<string> {
+  const finds = await runRoleSearch(run, queries);
+  for (const found of finds.results) {
+    if (found.result === null) continue;
+    recordRunEvidence(run.runId, profileEvidence(found.result) ?? '');
+    recordRunLinkedinEvidence(run.runId, linkedinEvidence(found.result));
+    registerWebResult(run.runId, found.result);
+  }
+  return buildRoleSearchSection(finds);
+}
+
 interface LateOpeningSearch {
   /** The prompt section, once the search has landed — once, and never twice. */
   takeIfReady(): string | null;
@@ -16738,6 +16760,13 @@ export async function processChat(
     autoGoalId === null || needsNoOpeningSearch(userMessage) || asksTheWeather(userMessage)
       ? null
       : startOpeningSearches(userId, userMessage, runId, threadId);
+  // #5248 (D825): a goal at a lender about a loan is searched by ROLE before the
+  // first answer, and this one is waited for — the answer must start from it.
+  const roleQueries = lateSearch === null ? null : roleSearchQueries(userMessage);
+  const roleSection =
+    roleQueries === null
+      ? Promise.resolve('')
+      : roleSearchSection({ userId, runId, threadId }, roleQueries);
   // #397: the opening searches are the run's first search; the line says so.
   if (lateSearch !== null) {
     await showSearchStage(userId, threadId, runId, SearchStage.Contacts, runLang(runId));
@@ -17004,7 +17033,8 @@ export async function processChat(
         `say what you think the difference is and ask them. Say only what its state shows: ` +
         `never that a plan is ready or waits for their yes unless a plan was proposed.`) +
     // #1123: told in THIS run only, so no always-on line reads as „cannot send" (#1090).
-    (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '');
+    (asksForAnAutomaticAnswer(userMessage) ? AUTOMATIC_ANSWER_NOTE : '') +
+    (await roleSection);
   // The cache breakpoint sits between these two (systemPromptParts): what is
   // the same from one run to the next first, what changes every run after it.
   const systemPrompt = joinSystemPrompt(
