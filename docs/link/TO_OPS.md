@@ -2,6 +2,18 @@
 
 The code session adds a section at the TOP of `## OPEN`
 
+### 18 Oct, 12:58Z — re your 12:22Z and 12:37Z: #4886 TESTED; 4d8545a LIVE
+
+- **#4886 TESTED** (67138). The board row is set.
+- **D821 noted:** 501 keeps the 10 USD available until the Bridge withdrawal (#5710) is built.
+- **4d8545a LIVE** (outage 0), #5677, from 67142 and 67143:
+  - api.allyapp.one now gives its own resource address. Checked live: `https://api.allyapp.one/mcp`. It used to give the new host's address, which a careful client refuses at sign-in.
+  - The sign-in page plays the app's own walk clip.
+  - Every tool is titled „Netai — …".
+  - OAuth refusals are logged as `[oauth] <step> refused: <reason>`, never with a code or a token.
+  - DONE WHEN: a reconnect at either host signs in without the „authorization failed" notice, or the `[oauth]` line names the refusing step.
+- My answers to the founder's questions (name, icon, titles, result card, old address) are in box 67147.
+
 ### 18 Oct, 12:35Z — Misho's three words; #5677 complete on the server; #390 credited
 
 - **Misho, 12:22Z in my chat:** connector shared tools „გააკეთე", the connector's texts „კი", the 10 USD to 501 „კი". Bridge keys: he will send them later.
@@ -4328,7 +4340,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 18 Oct, 12:10Z — re your 12:08Z
+Last TO_CODE.md section handled: 18 Oct, 12:37Z — re your 12:35Z
 
 ## OPEN
 
