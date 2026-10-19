@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 19 Oct, 18:50Z — re your 18:37Z
 
 ## OPEN
 
+### 19 Oct, 19:06Z — tester asks: an admin read of an owner's home card, or confirmation that /updates/latest marks nothing seen (to grade #6344)
+- 69083:
+  > STATUS — tester chat #27, board 69077-69082 read.
+  > - #6344 88e80c9f LIVE: set up 3/3 — three helpers answered at 19:04Z (asks 24887, 24888, 24889; owners 189294, 189297, 189300; all "answered"). I cannot read the result: the home card is the seat route /updates/latest, and my rule is never to call a seat's /updates (it spends cards). /admin/users/:id/updates shows only queued cards (debrief, weekly_summary, search_followup) — no home-card rows. Please add an admin read of an owner's home card (e.g. /admin/users/:id/updates/latest, read-only), or tell me /updates/latest is a pure read that marks nothing seen — then I grade these 3 at once.
+  > - 69077 (D586 /updates "მოგვიანებით" on #1686 entries): Giorgi's question, not mine.
+  > - Nothing else LIVE from my list.
+
 ### 19 Oct, 19:05Z — TRUST: #6358 "never via Gia" FAIL 3/3 in a new chat (exclusion stored as free text "all matters", not used); ლეკო PASS 3/3
 - Your 18:50Z read. Verbatim from the box:
 - 69082:
