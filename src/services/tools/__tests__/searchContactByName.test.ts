@@ -632,3 +632,49 @@ describe('the name search scans the labels once', () => {
     expect(result.total).toBe(3);
   });
 });
+
+describe('#5974 (69149): a name search that times out falls back to the owner’s own names', () => {
+  beforeEach(() => mockQuery.mockReset());
+
+  it('reads the owner’s labels alone, every word at a word start, and says so', async () => {
+    mockQuery
+      .mockRejectedValueOnce(new Error('canceling statement due to statement timeout'))
+      .mockResolvedValueOnce(
+        rows([{ phone: '+995555000101', alias: 'Dato Kordzaia GA' }]) as never,
+      );
+
+    const out = (await searchContactByName('501', 'Dato Kordzaia')) as {
+      found: boolean;
+      results: Array<{ name: string; phone: string }>;
+      note: string;
+    };
+
+    expect(out.found).toBe(true);
+    expect(out.results).toEqual([
+      { name: 'Dato Kordzaia GA', saved_as: 'Dato Kordzaia GA', phone: '+995555000101' },
+    ]);
+    expect(out.note).toContain('do not search the surname alone');
+    const [sql, params, timeout] = mockQuery.mock.calls[1];
+    expect(String(sql)).toContain('"contactId" = $1');
+    expect(String(sql)).toContain('~ ANY($2::text[]) AND');
+    expect(params?.[0]).toBe('501');
+    expect(timeout).toBe(4000);
+  });
+
+  it('still says the search did not finish when the quick read finds nobody', async () => {
+    mockQuery
+      .mockRejectedValueOnce(new Error('canceling statement due to statement timeout'))
+      .mockResolvedValueOnce(rows([]) as never);
+
+    const out = (await searchContactByName('501', 'Dato Kordzaia')) as { reason?: string };
+    expect(out.reason).toBe('search_timed_out');
+  });
+
+  it('does not run on an error that is not a timeout', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('connection refused'));
+
+    const out = (await searchContactByName('501', 'Dato Kordzaia')) as { reason?: string };
+    expect(out.reason).toBe('search_failed');
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+});

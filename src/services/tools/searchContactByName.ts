@@ -1,5 +1,5 @@
 import { query } from '../../db/postgres/client';
-import { buildSearchTerms, buildRawWordGroups } from './transliterate';
+import { buildSearchTerms, buildRawWordGroups, toWordStartPattern } from './transliterate';
 import { buildExactMatchSql } from './wordMatch';
 import { foldedLower } from './georgianCase';
 import { getExcludedPhones } from '../block.service';
@@ -408,8 +408,59 @@ export async function searchContactByName(userId: string, nameQuery: string): Pr
     };
   } catch (err) {
     console.error('searchContactByName error:', (err as Error).message);
+    const quick = await ownLabelsOnly(userId, nameQuery, err);
+    if (quick !== null) return quick;
     // A search that could not run is not an empty network — see searchDidNotFinish.
     return searchDidNotFinish('The name search', err);
+  }
+}
+
+/**
+ * #5974 (the tester's 69149, a real account): „Dato Kordzaia" timed out at
+ * 10 s on a large phonebook, and the run fell back to a surname search and
+ * described another man with the same surname. When the full search does not
+ * finish, the owner's OWN saved names are read alone — every word at a word
+ * start, through the (contactId, alias, phone) index — so the person the owner
+ * saved is still found by the name he saved.
+ */
+const QUICK_TIMEOUT_MS = 4_000;
+const QUICK_LIMIT = 10;
+const TIMED_OUT_RE = /statement timeout|query_canceled|timeout exceeded/i;
+
+async function ownLabelsOnly(
+  userId: string,
+  nameQuery: string,
+  err: unknown,
+): Promise<object | null> {
+  if (!TIMED_OUT_RE.test(err instanceof Error ? err.message : String(err))) return null;
+  const groups = buildRawWordGroups(nameQuery);
+  if (groups.length === 0) return null;
+  try {
+    const conds = groups
+      .map((_, i) => `${foldedLower('alias')} ~ ANY($${i + 2}::text[])`)
+      .join(' AND ');
+    const result = await query<{ phone: string; alias: string }>(
+      `SELECT DISTINCT ON (phone) phone, alias FROM "UserAlias"
+        WHERE "contactId" = $1 AND ${conds}
+        ORDER BY phone, alias
+        LIMIT ${QUICK_LIMIT}`,
+      [userId, ...groups.map((g) => g.map((t) => toWordStartPattern(t.toLowerCase())))],
+      QUICK_TIMEOUT_MS,
+    );
+    const blocked = new Set((await getExcludedPhones(userId)).map(normalizePhone));
+    const rows = result.rows.filter((r) => !blocked.has(normalizePhone(r.phone)));
+    if (rows.length === 0) return null;
+    return {
+      found: true,
+      count: rows.length,
+      results: rows.map((r) => ({ name: r.alias, saved_as: r.alias, phone: r.phone })),
+      note:
+        'The full search did not finish; these are found by the names the owner saved only. ' +
+        'Use them; do not search the surname alone.',
+    };
+  } catch (quickErr) {
+    console.error('searchContactByName quick search failed:', (quickErr as Error).message);
+    return null;
   }
 }
 
