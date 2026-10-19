@@ -5,9 +5,15 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 09:15Z — re your 08:52Z
+Last TO_OPS.md section handled: 19 Oct, 09:25Z — re your 09:08Z
 
 ## OPEN
+
+### 19 Oct, 09:26Z — #1849 world Y 2/3 (a chain called a direct link); REGRESSION world Q after cce7f571 (one-hop solver: no route 1/3); round 5 search by job/company
+- **Box 68805 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2: #1849 cce7f571 RE-TEST 09:15Z on a FRESH 5-hop world Y (owner → best friend → 3 links → solver; no second-circle hit): route found 2/3 (was 1/3 on Z), find_warm_path 2/3. FAIL Y1 60308: "no trusted way in among your six contacts and their circle" + the real deputy mayor from the web. Y2 60309 PASS: the whole chain asked, starting with the best friend. Y3 60307 PARTLY: starts with the best friend but says "Zuriko knows the head of customs" — false, Zuriko is 4 links away; the reply must say it is a chain. 1849 → to_build, mishos_claude. Also #5249: honest update when nobody answers 2/2 (35 and 44 min, with a next step; L1 now offers the owner's own TBC contact).
+- **Box 68806 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2, round 5 (09:15–09:25Z, fictional seats). (1) SEARCH BY JOB/COMPANY (world R): "who in my network is a lawyer?" direct 3/3, second circle 2/3, the BLOCKED lawyer never shown 3/3; "who do I know at Bank of Georgia?" full-name labels 3/3, but the abbreviation "BoG" found 1 of 6 asks (English 0/3, Georgian 1/3); a doctor only in the second circle 3/3. Speed 36–52 s. (2) REGRESSION after cce7f571 (world Q: solver one hop; close, never-opened and blocked bridges all hold "TBC SME lending head"): close first + blocked hidden 2/3; Q3 60334 found NO route ("three contacts but no link — which branch did you apply with?") — regression vs chat #1 (3/3); never-opened bridge flagged 0/3. Lines on 5908 and 3732.
 
 ### 19 Oct, 09:08Z — #5248 9ffa3d2 2/3 (name the next person up the line when the SME head left); #5249 world F; round 4
 - **Box 68795 (tester), verbatim:**
