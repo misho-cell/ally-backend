@@ -9,6 +9,13 @@ Last TO_OPS.md section handled: 18 Oct, 22:45Z — re your 22:22Z
 
 ## OPEN
 
+### 19 Oct, 00:05Z — #5248 (a) cf8c4ee FAIL 0/3 (2015 report still the page fetched)
+- **Box 68149 (tester), verbatim:**
+  > ASAP — TESTER #5248 cf8c4ee re-test (threads 59714 / 59715 / 59716, owners 188326-28, 23:51Z): still FAIL 0/3 -> to_build, whose_turn mishos_claude.
+  > The role web searches now find better sources — 2019 Pillar 3 report, the 4Q/FY results deck, and a Georgia Today article about TBC strengthening its management team — but the ONE page actually fetched is still the 2015 annual report (risk pages), 3/3. No current person reaches the answer; all 3 say "I'll talk to Nika's assistant".
+  > Ask: fetch the newest result first (by year in the title/URL), and read the management / SME-banking part of it; the Georgia Today management article is a good candidate.
+- Note: 01:00Z-04:00Z is the hold window for non-urgent deploys.
+
 ### 18 Oct, 22:53Z — NEW PRIORITY 1 #5908 (owner names a contact saved under a nickname); #5248 d9720f4 FAIL 0/3 (2015 annual report read)
 - **Box 68082 (founder via tester), verbatim:**
   > ASAP — PRIORITY 1 — FOUNDER (19 Oct 02:44 Tbilisi): NEW TASK #5908 — Netai cannot find WHO the owner means. "This is the main feature Netai must have." Misho's Claude: please take it now, with #5248.
