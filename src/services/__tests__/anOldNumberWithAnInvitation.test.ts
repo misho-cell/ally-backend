@@ -166,3 +166,46 @@ describe('an old Ally account opening Netai for the first time', () => {
     expect(queued()).toHaveLength(0);
   });
 });
+
+/** #1520 / D844: an old account already in Netai, signing in through an invitation. */
+describe('an account that already uses Netai, signing in with an invitation', () => {
+  function alreadyInNetai(): void {
+    dbQuery.mockImplementation((sql: string) => {
+      const text = String(sql);
+      if (text.includes('belongs_to_netai'))
+        return Promise.resolve({
+          rows: [{ id: OLD_ACCOUNT, belongs_to_netai: true }],
+          rowCount: 1,
+        });
+      if (text.includes('SELECT 1 FROM phone_verifications'))
+        return Promise.resolve({ rows: [{ one: 1 }], rowCount: 1 });
+      if (text.includes('"inviterReferralUserId" IS NULL'))
+        return Promise.resolve({ rows: [], rowCount: 1 });
+      return Promise.resolve({ rows: [], rowCount: 1 });
+    });
+  }
+  const recorded = (): unknown[][] =>
+    dbQuery.mock.calls.filter(([sql]) => String(sql).includes('"inviterReferralUserId" IS NULL'));
+
+  it('records the inviter when none is recorded and nothing was paid — no free days', async () => {
+    alreadyInNetai();
+    eligibility.mockResolvedValue({ eligible: true, mode: 'existing', inviterUserId: INVITER });
+    inviterCheck.mockResolvedValue(INVITER);
+    const out = await completeLogin('+995555000001', { referralCode: 'TORNIKE20' });
+    expect(out.token).not.toBe('');
+    expect(recorded()).toHaveLength(1);
+    expect(recorded()[0][1]).toEqual([OLD_ACCOUNT, INVITER]);
+    expect(String(recorded()[0][0])).toContain('NOT EXISTS (SELECT 1 FROM payment_events');
+    expect(grant).not.toHaveBeenCalled();
+  });
+
+  it('records nothing without an invitation, or when the inviter is not a subscribed member', async () => {
+    alreadyInNetai();
+    await completeLogin('+995555000001');
+    expect(recorded()).toHaveLength(0);
+    eligibility.mockResolvedValue({ eligible: true, mode: 'existing', inviterUserId: INVITER });
+    inviterCheck.mockResolvedValue(null);
+    await completeLogin('+995555000001', { referralCode: 'NOTSUBSCRIBED' });
+    expect(recorded()).toHaveLength(0);
+  });
+});

@@ -877,6 +877,39 @@ async function creditLoginInvitation(
   );
 }
 
+/**
+ * #1520 / D844 (the founder, 19 Oct): today's real first payment paid no 5% —
+ * the payer was an old Ally account that had used Netai since 22 September,
+ * before the login gate. To the login it already belonged to Netai, so the
+ * invitation it came in with was never read and no inviter was recorded. An
+ * invitation on any sign-in records its inviter on an account that has none
+ * yet and has never paid — the same resolution and subscribed-inviter check as
+ * the gate (58019) — so its first payment pays the chain. Free days stay with
+ * the gate's path; this only records who invited.
+ */
+async function recordLateInviter(
+  userId: number,
+  phone: string,
+  invite: LoginInvitation,
+): Promise<void> {
+  const invitation = await resolveLoginInvitation(userId, phone, invite);
+  if (invitation === null) return;
+  const updated = await query(
+    `UPDATE "User" u SET "inviterReferralUserId" = $2, "updatedAt" = NOW()
+      WHERE u.id = $1 AND u."inviterReferralUserId" IS NULL
+        AND NOT EXISTS (SELECT 1 FROM payment_events pe WHERE pe.user_id::text = u.id::text)`,
+    [userId, invitation.inviterUserId],
+    INVITE_QUERY_TIMEOUT_MS,
+  );
+  if ((updated.rowCount ?? 0) > 0) {
+    // No phone and no code in the line (D149): the two account ids are enough.
+    // eslint-disable-next-line no-console
+    console.log(
+      `[login] account ${userId} given its inviter ${invitation.inviterUserId} at sign-in (#1520)`,
+    );
+  }
+}
+
 export async function completeLogin(
   phone: string,
   invite: LoginInvitation = {},
@@ -955,6 +988,12 @@ export async function completeLogin(
     throw new Error(ERR_PHONE_NOT_VERIFIED);
   }
   if (invitation !== null) await creditLoginInvitation(userId, phone, invitation);
+  else {
+    await recordLateInviter(userId, phone, invite).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.error(`[login] account ${userId}: inviter not recorded:`, (err as Error).message),
+    );
+  }
 
   if (!account.belongs_to_netai && !gateOn) {
     // An account that existed before tonight, opening Netai for the first
