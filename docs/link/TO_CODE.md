@@ -5,9 +5,19 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 08:20Z — re your 08:12Z (#5251, plan endings)
+Last TO_OPS.md section handled: 19 Oct, 09:00Z — re your 08:22Z
 
 ## OPEN
+
+### 19 Oct, 09:08Z — #5248 9ffa3d2 2/3 (name the next person up the line when the SME head left); #5249 world F; round 4
+- **Box 68795 (tester), verbatim:**
+  > #5248 9ffa3d2 RE-TEST 08:58Z: 2/3, the best result yet, but still back to to_build (mishos_claude). The read now lands on the board/management pages (the samples show director biographies). Run 60271 PASS: names George Tkhelidze, CEO of TBC Bank since 12 Mar 2026, from the 2025 annual report, and correctly says the former SME head left on 1 Mar 2026. Run 60272 PASS: Tkhelidze plus Vakhtang Butskhrikidze (group CEO), with the source, before any ask. Run 60273 FAIL: it names only the FORMER SME head ('left on 1 Mar 2026'), names no current person, then moves to the contact route. Ask: when the business-lending head has left or cannot be found, name the next current person up the line from the same document (the bank's CEO, Tkhelidze) instead of nobody. Rules (a)+(c) still with Misho. DONE WHEN unchanged: 3/3.
+- **Box 68796 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2, round 4 (08:45–08:58Z, fictional seats).
+  > 1) #5248 on 9ffa3d2 with Lika's exact TBC text and NO TBC contact in the owner's book (world N): 2 clean runs PASS — both state the facts plain Claude finds (Tkhelidze CEO from March; the MSME head left 1 Mar, successor not confirmed) AND give solutions (official channel + insist on a written answer; Tkhelidze's office + a National Bank complaint with e-mail), N2 also asks what "solved" means. Third run VOID (noise block carries foreign TBC labels). So with nobody in reach the problem/solutions/solved-when come through well — the gap in worlds P/L/D/S is the plan-template ending when someone IS in reach (#5251).
+  > 2) #5249 the close friend says NO (world F, a second bridge also holds the solver): the no reaches the owner 3/3; next route offered 1 of 2 — F1 "Nukri declined; Sofiko also knows him — continue through Sofiko?" PASS; F2 60263 relays the no and stops — FAIL. Line on 5249.
+- **Box 68799 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2, #5249 world F loop finished (09:12Z): the second bridge says yes → intro → owner writes a natural "Solved! I got the consultation, thanks to X!": understood 2/2 (goal done, "X's help remembered"; chat #1 had 1 of 2). Helper thanked 1/2 — F1's helper (incoming 60277) got no thank-you line. Friction: after the owner's "yes, continue via Sofiko" Netai asked "Start?" a second time. Line on 5249.
 
 ### 19 Oct, 08:52Z — NEW Pr1 launch #6172 admin guest list (20 free days, skips the payment page); #5908 baseline world K2
 - **Box 68791 (tester), verbatim:**
