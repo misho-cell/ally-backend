@@ -111,7 +111,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
     const finds = await runRoleSearch(RUN, queries);
-    expect(mockedFetch).toHaveBeenCalledWith(page, 0);
+    expect(mockedFetch).toHaveBeenCalledWith(page, 0, expect.any(RegExp));
     expect(finds.managementPage?.url).toBe(page);
     const section = buildRoleSearchSection(finds);
     expect(section).toContain(`ბანკის მენეჯმენტზე წაკითხული გვერდი: ${page}`);

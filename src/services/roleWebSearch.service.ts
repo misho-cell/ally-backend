@@ -307,6 +307,13 @@ async function searchManagementPage(run: RoleSearchRun, query: string): Promise<
 /** A read page shown in parts: how many parts are read, at most. */
 const MAX_PAGE_PARTS = 3;
 
+/**
+ * #5248 (the tester's 07:15Z): where in a long report today's people are named.
+ * A first read starts where these words are densest, not on the cover.
+ */
+const LEADERSHIP_SECTION_RE =
+  /Chief Executive Officer|Management Board|Board of Directors|Deputy CEO|Head of (?:SME|Business|Corporate)/giu;
+
 /** Where on a governance page the people who own lending are listed. */
 const LENDING_PEOPLE_RE =
   /management board|supervisory board|SME|small and medium|business banking|corporate banking|მენეჯმენტ|სამეთვალყურეო|მცირე და საშუალო|ბიზნეს/iu;
@@ -319,7 +326,7 @@ async function readPagePart(
 ): Promise<{ readonly content: string; readonly nextFrom: number | null }> {
   await charge(run);
   const readAt = Date.now();
-  const fetched = (await fetchPage(url, from)) as {
+  const fetched = (await fetchPage(url, from, LEADERSHIP_SECTION_RE)) as {
     content?: unknown;
     next_from_character?: unknown;
   };
