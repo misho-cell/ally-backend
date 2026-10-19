@@ -237,3 +237,98 @@ export async function ruledOutOnSubject(userId: string, subject: string): Promis
     .filter((row) => scopeCovers(row.excluded_for, terms))
     .map((row) => phoneDigits(row.contact_phone));
 }
+
+/**
+ * #6358 (the tester's 69148, 3 of 4): „გია ლომთაძე ჩემს საქმეებში არასდროს
+ * ჩართო" — the run saved no exclusion (or saved it as a fact) and still told the
+ * owner „შევინახე", so the next chat put Gia in the plan. A clause with a
+ * „never" word that names exactly one of the owner's own contacts is kept by
+ * the server itself, whether a goal exists yet or not. The scope is every
+ * matter unless the clause names a subject of its own.
+ */
+const NEVER_WORDS: ReadonlySet<string> = new Set([
+  'არასდროს',
+  'აღარასდროს',
+  'ნურასდროს',
+  'never',
+  'никогда',
+  'nunca',
+]);
+const INVOLVE_WORDS: readonly string[] = [
+  'ჩართ',
+  'ჩაერი',
+  'ჰკითხ',
+  'მისწერ',
+  'დაუკავშირ',
+  'შესთავაზ',
+  'involve',
+  'include',
+  'ask',
+  'contact',
+  'suggest',
+  'привлека',
+  'спрашива',
+];
+const EVERY_MATTER = 'ყველა საქმე';
+const MIN_NAME_WORD_CHARS = 3;
+const MAX_NAMED_READ = 50;
+
+function holdsNever(clause: string): boolean {
+  return clause
+    .toLowerCase()
+    .split(WORD_SPLIT_RE)
+    .some((word) => NEVER_WORDS.has(word));
+}
+
+/** What the clause is about once the name, „never" and the verb are taken out. */
+export function neverScope(clause: string, label: string): string {
+  const nameWords = new Set(label.toLowerCase().split(WORD_SPLIT_RE));
+  const rest = clause
+    .toLowerCase()
+    .split(WORD_SPLIT_RE)
+    .filter((w) => w !== '' && !NEVER_WORDS.has(w))
+    .filter((w) => ![...nameWords].some((n) => n.length >= MIN_NAME_WORD_CHARS && w.startsWith(n)))
+    .filter((w) => !INVOLVE_WORDS.some((v) => w.startsWith(v)));
+  if (rest.length === 0) return EVERY_MATTER;
+  const asScope = `ყველა ${rest.join(' ')}`;
+  return scopeIsEverything(asScope) ? EVERY_MATTER : rest.join(' ');
+}
+
+async function ownersContactsNamedIn(
+  userId: string,
+  clause: string,
+): Promise<Array<{ phone: string; label: string }>> {
+  const words = clause
+    .split(WORD_SPLIT_RE)
+    .filter((w) => w.length >= MIN_NAME_WORD_CHARS && !NEVER_WORDS.has(w.toLowerCase()));
+  if (words.length === 0) return [];
+  const result = await query<{ phone: string; alias: string }>(
+    `SELECT phone, alias FROM "UserAlias"
+      WHERE "contactId" = $1::int AND alias ILIKE ANY($2::text[])
+      LIMIT $3`,
+    [userId, words.map((w) => `%${w.slice(0, MIN_NAME_WORD_CHARS + 1)}%`), MAX_NAMED_READ],
+    QUERY_TIMEOUT_MS,
+  );
+  return result.rows
+    .filter((r) => labelNamedIn(clause, r.alias) || latinLabelNamedInGeorgian(clause, r.alias))
+    .map((r) => ({ phone: phoneDigits(r.phone), label: r.alias }));
+}
+
+/** Keeps every „never <contact>" in the owner's line as an exclusion; returns the phones kept. */
+export async function keepNeverInvolved(userId: string, line: string): Promise<string[]> {
+  const kept: string[] = [];
+  for (const clause of line.split(CLAUSE_SPLIT_RE)) {
+    if (!holdsNever(clause)) continue;
+    const named = await ownersContactsNamedIn(userId, clause);
+    const phones = [...new Set(named.map((n) => n.phone))];
+    if (phones.length !== 1) continue;
+    const reason = line.trim().slice(0, MAX_REASON_CHARS);
+    await saveContactExclusion(userId, phones[0], neverScope(clause, named[0].label), reason);
+    kept.push(phones[0]);
+  }
+  if (kept.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[ruled-out] ${kept.length} person(s) kept out on the owner's „never" (#6358)`);
+  }
+  return kept;
+}

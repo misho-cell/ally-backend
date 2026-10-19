@@ -298,7 +298,7 @@ import {
   WARM_PATH_TOOL,
 } from './warmPathAfterSearch';
 import { withoutWithheldPeople } from './withoutWithheldPeople';
-import { keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
+import { keepNeverInvolved, keepRuledOutBridges, ruledOutOnSubject } from './ruledOutBridges';
 import { mutualGroupsFor } from './mutualGroups';
 import { boundaryExclusionsForOwnerLine, queryTerms } from './askBoundary.service';
 import { askStepsToKeepUnnamed } from './askCaptions';
@@ -16981,6 +16981,11 @@ export async function processChat(
     await keepRuledOutBridges(userId, threadId, userMessage).catch((err: unknown) =>
       // eslint-disable-next-line no-console
       console.warn(`[ruled-out] run ${runId}: not kept:`, (err as Error).message),
+    );
+    // #6358 (69148): „never involve <contact>" is kept by the server, goal or no goal.
+    await keepNeverInvolved(userId, userMessage).catch((err: unknown) =>
+      // eslint-disable-next-line no-console
+      console.warn(`[ruled-out] run ${runId}: never not kept:`, (err as Error).message),
     );
   }
   // D756: „<helper>-ის პასუხი დამეხმარა" thanks that helper at once — no card, no question.
