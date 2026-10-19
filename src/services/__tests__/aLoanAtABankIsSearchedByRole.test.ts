@@ -58,13 +58,14 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     expect(mockedSearch.mock.calls.map((call) => call[0])).toEqual([
       queries.en,
       queries.ka,
+      queries.managementNews,
       ...queries.managementPages,
     ]);
     expect(queries.managementPages).toEqual([
       'TBC Bank management board leadership team site:tbcbank.ge',
       'TBC Bank management board leadership team site:tbcbankgroup.com',
     ]);
-    expect(mockedUsage).toHaveBeenCalledTimes(4);
+    expect(mockedUsage).toHaveBeenCalledTimes(6); // 5 searches + 1 page read (the news result)
     expect(logToolCall).toHaveBeenCalledWith(
       expect.objectContaining({ tool: 'web_search:role', input: { query: queries.en } }),
     );
@@ -112,7 +113,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     expect(mockedFetch).toHaveBeenCalledWith(page, 0);
     expect(finds.managementPage?.url).toBe(page);
     const section = buildRoleSearchSection(finds);
-    expect(section).toContain(`ბანკის საკუთარი გვერდი, წაკითხული: ${page}`);
+    expect(section).toContain(`ბანკის მენეჯმენტზე წაკითხული გვერდი: ${page}`);
     expect(section).toContain('Head of SME Banking');
   });
 
@@ -197,22 +198,28 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     expect(stretch.length).toBeLessThan(text.length);
   });
 
-  it('drops an old dated report and reads the leadership page first (tester 22:41Z)', () => {
+  it('drops a report dated in its title, and reads the newest page first (tester 23:51Z)', () => {
     const now = new Date('2026-10-18T00:00:00Z');
+    const page = (url: string, title = '') => ({ url, title });
     expect(
       currentPagesFirst(
         [
-          'https://www.tbcbankgroup.com/annual-report-2015/risk-management',
-          'https://www.tbcbankgroup.com/news/rates',
-          'https://www.tbcbankgroup.com/reports/annual-report-2025.pdf',
-          'https://www.tbcbankgroup.com/about-us/management-board',
+          page(
+            'https://www.tbcbankgroup.com/ar/risk',
+            'TBC Bank Annual Report 2015 — Risk management',
+          ),
+          page('https://www.tbcbankgroup.com/news/rates'),
+          page('https://www.tbcbankgroup.com/reports/annual-report-2025.pdf'),
+          page('https://www.tbcbankgroup.com/about-us/management-board'),
+          page('https://georgiatoday.ge/x', 'TBC strengthens its management team (2026)'),
         ],
         now,
-      ),
+      ).map((p) => p.url),
     ).toEqual([
+      'https://georgiatoday.ge/x',
+      'https://www.tbcbankgroup.com/reports/annual-report-2025.pdf',
       'https://www.tbcbankgroup.com/about-us/management-board',
       'https://www.tbcbankgroup.com/news/rates',
-      'https://www.tbcbankgroup.com/reports/annual-report-2025.pdf',
     ]);
   });
 });

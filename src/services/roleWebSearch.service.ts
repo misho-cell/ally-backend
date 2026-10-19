@@ -117,6 +117,8 @@ export interface RoleQueries {
   readonly ka: string;
   /** Find the management page, one query per own site. */
   readonly managementPages: readonly string[];
+  /** Current news about the bank's management, on any site. */
+  readonly managementNews: string;
 }
 
 /** The first listed lender the text names, or null. */
@@ -133,6 +135,7 @@ export function roleSearchQueries(goalText: string): RoleQueries | null {
     institution,
     en: `${institution.en} ${LENDING_ROLE.en}`,
     ka: `${institution.ka} ${LENDING_ROLE.ka}`,
+    managementNews: `${institution.en} management team SME business banking head ${new Date().getUTCFullYear()}`,
     managementPages: institution.sites.map(
       (site) => `${institution.en} management board leadership team site:${site}`,
     ),
@@ -245,15 +248,32 @@ function isOnSite(url: string, sites: readonly string[]): boolean {
   }
 }
 
-/** Every result that lives on one of the bank's own sites, in order, without repeats. */
-export function urlsOnSites(found: unknown, sites: readonly string[]): string[] {
+/** One search result that may be read: its address and its title. */
+export interface PageCandidate {
+  readonly url: string;
+  readonly title: string;
+}
+
+/** Every result, or every result on one of the given sites, in order, without repeats. */
+export function candidatesFrom(found: unknown, sites: readonly string[] | null): PageCandidate[] {
   if (found === null || typeof found !== 'object') return [];
   const rows = (found as { results?: unknown }).results;
   if (!Array.isArray(rows)) return [];
-  const urls = rows
-    .map((row) => (row as { url?: unknown } | null)?.url)
-    .filter((url): url is string => typeof url === 'string' && isOnSite(url, sites));
-  return [...new Set(urls)];
+  const seen = new Set<string>();
+  const out: PageCandidate[] = [];
+  for (const row of rows) {
+    const { url, title } = (row ?? {}) as { url?: unknown; title?: unknown };
+    if (typeof url !== 'string' || seen.has(url)) continue;
+    if (sites !== null && !isOnSite(url, sites)) continue;
+    seen.add(url);
+    out.push({ url, title: typeof title === 'string' ? title : '' });
+  }
+  return out;
+}
+
+/** Every result that lives on one of the bank's own sites, in order, without repeats. */
+export function urlsOnSites(found: unknown, sites: readonly string[]): string[] {
+  return candidatesFrom(found, sites).map((page) => page.url);
 }
 
 /**
@@ -350,29 +370,32 @@ const YEAR_IN_URL_RE = /(?<!\d)(20\d{2})(?!\d)/gu;
 const MAX_REPORT_AGE_YEARS = 1;
 const PDF_RE = /\.pdf(?:$|[?#])/iu;
 
-/** The newest year the address names, or null when it names none. */
-function yearInUrl(url: string): number | null {
-  const years = [...url.matchAll(YEAR_IN_URL_RE)].map((m) => Number(m[1]));
+/** The newest year the address or the title names, or null when they name none. */
+function yearOf(page: PageCandidate): number | null {
+  const years = [...`${page.url} ${page.title}`.matchAll(YEAR_IN_URL_RE)].map((m) => Number(m[1]));
   return years.length === 0 ? null : Math.max(...years);
 }
 
 /**
- * The tester's 22:41Z retest: the page read was TBC's 2015 annual report, so
- * no current person could be named. Old dated pages are dropped; a leadership
- * page comes before anything else, and a PDF after the web pages.
+ * The tester's 22:41Z and 23:51Z retests: the page read was TBC's 2015 annual
+ * report both times. Its year sits in the TITLE, not the address, so the first
+ * filter never saw it. A page dated more than a year back, by address or
+ * title, is dropped; the newest dated page comes first, then a leadership
+ * page, then the rest, and a PDF after the web pages.
  */
-export function currentPagesFirst(urls: readonly string[], now: Date = new Date()): string[] {
+export function currentPagesFirst(
+  pages: readonly PageCandidate[],
+  now: Date = new Date(),
+): PageCandidate[] {
   const oldest = now.getUTCFullYear() - MAX_REPORT_AGE_YEARS;
-  const rank = (url: string): number =>
-    (LEADERSHIP_PAGE_RE.test(url) ? 0 : 2) + (PDF_RE.test(url) ? 1 : 0);
-  return urls
-    .filter((url) => {
-      const year = yearInUrl(url);
-      return year === null || year >= oldest;
-    })
-    .map((url, at) => ({ url, at, rank: rank(url) }))
-    .sort((a, b) => a.rank - b.rank || a.at - b.at)
-    .map((entry) => entry.url);
+  const rank = (page: PageCandidate): number =>
+    (LEADERSHIP_PAGE_RE.test(`${page.url} ${page.title}`) ? 0 : 2) +
+    (PDF_RE.test(page.url) ? 1 : 0);
+  return pages
+    .map((page, at) => ({ page, at, year: yearOf(page), rank: rank(page) }))
+    .filter((entry) => entry.year === null || entry.year >= oldest)
+    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.rank - b.rank || a.at - b.at)
+    .map((entry) => entry.page);
 }
 
 /** Search the bank's own sites for its management page, then read pages until one has text. */
@@ -380,10 +403,21 @@ async function findAndReadManagementPage(
   run: RoleSearchRun,
   queries: RoleQueries,
 ): Promise<ManagementPage | null> {
-  const found = await Promise.all(queries.managementPages.map((q) => searchManagementPage(run, q)));
-  const urls = currentPagesFirst([
-    ...new Set(found.flatMap((result) => urlsOnSites(result, queries.institution.sites))),
-  ]).slice(0, MAX_PAGES_READ);
+  const [news, ...ownSites] = await Promise.all([
+    searchManagementPage(run, queries.managementNews),
+    ...queries.managementPages.map((q) => searchManagementPage(run, q)),
+  ]);
+  // The tester's 23:51Z retest: the newer sources (a results deck, a news
+  // article on TBC strengthening its management team) were found by the
+  // searches but never read, because only the bank's own sites were read.
+  const candidates = [
+    ...ownSites.flatMap((result) => candidatesFrom(result, queries.institution.sites)),
+    ...candidatesFrom(news, null),
+  ];
+  const unique = [...new Map(candidates.map((page) => [page.url, page])).values()];
+  const urls = currentPagesFirst(unique)
+    .slice(0, MAX_PAGES_READ)
+    .map((page) => page.url);
   for (const url of urls) {
     const text = await readOnePage(run, url);
     if (text !== null) return { url, text };
@@ -427,7 +461,7 @@ export function buildRoleSearchSection(finds: RoleSearchFinds): string {
   ];
   if (finds.managementPage !== null) {
     parts.push(
-      `\n### ბანკის საკუთარი გვერდი, წაკითხული: ${finds.managementPage.url}\n` +
+      `\n### ბანკის მენეჯმენტზე წაკითხული გვერდი: ${finds.managementPage.url}\n` +
         'ეს გვერდი სერვერმა წაიკითხა — აქ დასახელებული ადამიანი და მისი თანამდებობა შეგიძლია ' +
         'დაასახელო ამ ბმულით. თუ ბიზნეს-დაკრედიტებას (SME/ბიზნეს ბანკინგს) კონკრეტული წევრი ' +
         'ხელმძღვანელობს, ის დაასახელე.\n' +
