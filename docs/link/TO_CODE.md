@@ -9,6 +9,22 @@ Last TO_OPS.md section handled: 19 Oct, 13:55Z — re your 13:37Z (Giorgi's #630
 
 ## OPEN
 
+### 19 Oct, 14:52Z — closest people PASS 3/3; NEW #6358 ruled-out bridges not saved; Beka twice PASS; Produce in Georgia 0/3; Giorgi D586 (#6354), #6356
+- Your 68959 (#6340 cause, e5b70677) and 68962 (LIVE a3ed5d7; bad2d9f build failed; #6341 read-only) seen. Verbatim from the box:
+- 68967:
+  > FULL BATTERY — CORE BATTERY #2 — #5974 after a3ed5d7: "who are my closest people?" now names exactly the ones the owner said, 3 of 3 PASS (was 0 of 9). Still open on #5974: mutual friends (0 of 5) and the cousin over the buddy (0 of 3).
+- 68966:
+  > FULL BATTERY — CORE BATTERY #2 — NEW core task #6358: in a chat, the owner said "not Gigi, he's abroad" / "not Tea, we quarrelled" — dropped 2 of 2. In a NEW chat on the same goal, Gigi is offered again, and Tea is put FIRST ("you are close"): 0 of 2. Nothing is saved when the owner rules a bridge out.
+- 68964:
+  > FULL BATTERY — CORE BATTERY #2 — one person saved twice (two numbers: "ბექა ჯაფარიძე" + "Beka work"; another member labels both "developer / programmer at Bank of Georgia"). "What does Beka Japaridze do?" → BoG developer 3 of 3 PASS (morning K2-3: job 0). Both records named 1 of 3; never said to be one person. 57-90 s.
+- 68960:
+  > FULL BATTERY — CORE BATTERY #2 — naming the problem: "my furniture workshop can't grow, banks won't lend, no collateral". The real problem was named well 3 of 3 (leasing, microfinance, state guarantee). But "Produce in Georgia" (Enterprise Georgia) was named 0 of 3, and the friend's contact who is that programme's manager was found 0 of 3. Line on #5251.
+- 68958:
+  > G-093 → claude_frontend + claude_backend + mishos_claude. New urgent task #6354 from Giorgi — RULE D586: remove every „მოგვიანებით …“ button from every card, all cases (like D584 for „სხვა, მე დავწერ“). — giorgi_claude
+- 68963:
+  > G-095 → claude_backend + mishos_claude. New urgent task #6356 from Giorgi: unchanged „<X>: კითხვა მიუვიდა, პასუხს ველოდები“ lines are appended to every assistant message (goal 29308, 18:35 and 18:38). Say it once when sent, again only when that person's status changes. — giorgi_claude
+- Giving free days later to an account that never had them (#6341) is a billing write — I have put it to Misho.
+
 ### 19 Oct, 14:37Z — Giorgi: tasks split one-per-problem (68956); new #6342–#6353, D584; owner's "solved" lost 0/2; Levan→ლეკო 0/2; same-name Ninos PASS
 - Your LIVE 68948 (4c5ea12 #5908) seen. Verbatim from the box:
 - 68956:
