@@ -106,7 +106,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
     );
     mockedFetch.mockResolvedValue({
       url: page,
-      content: `Management Board — Head of SME Banking ${'x'.repeat(250)}`,
+      content: `Management Board — Head of SME Banking ${'x'.repeat(600)}`,
     });
     const queries = roleSearchQueries(LIKAS_TEXT);
     if (queries === null) throw new Error('expected role queries');
@@ -134,7 +134,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       Promise.resolve(
         url === empty
           ? { url, content: 'TBC' }
-          : { url, content: `Head of SME ${'x'.repeat(250)}` },
+          : { url, content: `Head of SME ${'x'.repeat(600)}` },
       ),
     );
     const queries = roleSearchQueries(LIKAS_TEXT);
@@ -180,7 +180,7 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
           : {
               url,
               content:
-                'Management Board: Head of SME and Business Banking, A. Person.' + 'x'.repeat(200),
+                'Management Board: Head of SME and Business Banking, A. Person.' + 'x'.repeat(600),
             },
       ),
     );
@@ -249,6 +249,27 @@ describe('#5248 (D825): a loan at a bank is searched by role before the first an
       'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
       'https://cms.tbcbankgroup.com/media/b/2q-and-1h-2026-results-report.pdf',
       'https://koalagains.com/stocks/LSE/TBCG/management-team',
+    ]);
+  });
+
+  it('reads the group’s annual report before an empty script page or an undated policy (tester 06:35Z)', () => {
+    const now = new Date('2026-10-19T00:00:00Z');
+    const page = (url: string, title = '') => ({ url, title });
+    const own = [
+      page(
+        'https://tbcbank.ge/en/tbc/about-us/corporate-governance',
+        'Corporate Governance at TBC Bank',
+      ),
+      page('https://www.tbcbank.ge/web/documents/risk.pdf', 'Risk Management Policy'),
+      page(
+        'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
+        'Deepening our Footprint',
+      ),
+    ];
+    expect(ownSitesFirst(own, [], now).map((p) => p.url)).toEqual([
+      'https://cms.tbcbankgroup.com/media/a/tbc-group-plc-annual-report-2025.pdf',
+      'https://tbcbank.ge/en/tbc/about-us/corporate-governance',
+      'https://www.tbcbank.ge/web/documents/risk.pdf',
     ]);
   });
 });

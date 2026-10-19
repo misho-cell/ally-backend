@@ -279,9 +279,11 @@ export function urlsOnSites(found: unknown, sites: readonly string[]): string[] 
 /**
  * Fewer characters than this is a page with nothing on it. The tester's
  * 20:27Z retest: tbcbank.ge's governance page came back with 3 characters,
- * which counted as text, so the next page was never read.
+ * which counted as text, so the next page was never read. The tester's 06:35Z
+ * retest: a page built by script returns little more than its title, so
+ * anything under 500 characters is empty too.
  */
-export const MIN_PAGE_CHARS = 200;
+export const MIN_PAGE_CHARS = 500;
 /** How much of a read page its log row keeps. */
 const PAGE_SAMPLE_CHARS = 300;
 /** How much of the page before the board's heading is kept, for its context. */
@@ -363,7 +365,13 @@ export function stretchAboutLendingPeople(text: string): string {
 
 /** A page about who leads the bank now. */
 const LEADERSHIP_PAGE_RE =
-  /management|leadership|board|team|governance|about|მენეჯმენტ|ხელმძღვანელ/iu;
+  /management[\s_-]*(?:board|team)|leadership|board|governance|about|მენეჯმენტ|ხელმძღვანელ/iu;
+/**
+ * The tester's 06:35Z retest: TBC's own leadership pages are built by script
+ * and read as empty, while its group's annual report names the management
+ * board. On the bank's own sites a current annual report is read first.
+ */
+const ANNUAL_REPORT_RE = /annual[\s_-]*report|წლიური[\s_-]*ანგარიშ/iu;
 /** A year in the address; an old one marks an old report. */
 const YEAR_IN_URL_RE = /(?<!\d)(20\d{2})(?!\d)/gu;
 /** A report from more than this many years back no longer names today's people. */
@@ -389,9 +397,11 @@ export function currentPagesFirst(
   leadershipFirst = false,
 ): PageCandidate[] {
   const oldest = now.getUTCFullYear() - MAX_REPORT_AGE_YEARS;
-  const rank = (page: PageCandidate): number =>
-    (LEADERSHIP_PAGE_RE.test(`${page.url} ${page.title}`) ? 0 : 2) +
-    (PDF_RE.test(page.url) ? 1 : 0);
+  const rank = (page: PageCandidate): number => {
+    const words = `${page.url} ${page.title}`;
+    if (leadershipFirst && ANNUAL_REPORT_RE.test(words) && yearOf(page) !== null) return -1;
+    return (LEADERSHIP_PAGE_RE.test(words) ? 0 : 2) + (PDF_RE.test(page.url) ? 1 : 0);
+  };
   const byYear = (a: RankedPage, b: RankedPage): number => (b.year ?? 0) - (a.year ?? 0);
   const byRank = (a: RankedPage, b: RankedPage): number => a.rank - b.rank;
   const [first, second] = leadershipFirst ? [byRank, byYear] : [byYear, byRank];
