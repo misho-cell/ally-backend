@@ -1,4 +1,4 @@
-import { asksForExcel, withEarlierListForExcel, withExcelLine } from './excelLine';
+import { askedFileFormat, withEarlierListForAFile, withFileLine } from './excelLine';
 import { tableFromMessage } from './messageTable';
 import {
   buttonLanguageRefusal,
@@ -17371,8 +17371,8 @@ export async function processChat(
   if (runAskSent.has(runId)) {
     effectiveFinal = withAssistantsSentLine(effectiveFinal, askedOne, language);
   }
-  // D796 / D800: an Excel ask answered with a list says where the file is, never „paste it".
-  if (asksForExcel(userMessage) && tableFromMessage(effectiveFinal) === null) {
+  // D796 / D800, #6074: a file ask (Excel, Word, Markdown) answered with a list says where the file is.
+  if (askedFileFormat(userMessage) !== null && tableFromMessage(effectiveFinal) === null) {
     const earlier = await lastShownAssistantReply(threadId).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.warn(
@@ -17381,9 +17381,9 @@ export async function processChat(
       );
       return null;
     });
-    effectiveFinal = withEarlierListForExcel(effectiveFinal, earlier, userMessage);
+    effectiveFinal = withEarlierListForAFile(effectiveFinal, earlier, userMessage);
   }
-  effectiveFinal = withExcelLine(effectiveFinal, userMessage, language);
+  effectiveFinal = withFileLine(effectiveFinal, userMessage, language);
   effectiveFinal = await withWhyInOneSentence(effectiveFinal, userMessage, threadId, choices);
   // #961 (37604): nothing can be sent today, the approve button goes (row 203), so its question goes.
   if (runNothingToSend.has(runId)) {

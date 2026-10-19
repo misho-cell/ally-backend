@@ -15,15 +15,53 @@ export const EXCEL_LINE: Readonly<Partial<Record<RunLanguage, string>>> = {
   en: 'Tap „Excel“ under this reply to download the list.',
 };
 
+/** The files the app offers under a reply (#894 b): Excel, Word, Markdown. */
+export enum ReplyFileFormat {
+  Excel = 'excel',
+  Word = 'word',
+  Markdown = 'markdown',
+}
+
+/**
+ * #6074 (FULL BATTERY 19 Oct, 2 of 2): „my contacts as a Word file" was
+ * refused — „I cannot create a Word file here" — and Markdown came back as a
+ * code block, while the app draws „Word" and „Markdown" under every reply.
+ * The same as Excel: the refusal goes and one line says where the file is.
+ */
+const FILE_LINE: Readonly<Record<ReplyFileFormat, Readonly<Partial<Record<RunLanguage, string>>>>> =
+  {
+    [ReplyFileFormat.Excel]: EXCEL_LINE,
+    [ReplyFileFormat.Word]: {
+      ka: 'ქვემოთ „Word“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება.',
+      en: 'Tap „Word“ under this reply to download the list.',
+    },
+    [ReplyFileFormat.Markdown]: {
+      ka: 'ქვემოთ „Markdown“-ზე დაჭერით ეს სია ფაილად ჩამოიტვირთება.',
+      en: 'Tap „Markdown“ under this reply to download the list.',
+    },
+  };
+
 const ASKS_FOR_EXCEL_RE = /excel|ექსელ|xlsx|spreadsheet|სპრედშიტ/iu;
-const SPEAKS_OF_A_FILE_RE = /excel|ექსელ|xlsx|spreadsheet|ცხრილ|ფაილ|file|sheet/iu;
+const ASKS_FOR_WORD_RE =
+  /docx|ვორდ|\bword\b\s*(?:file|doc|document|format|ფაილ|ფორმატ|დოკუმენტ)|\b(?:as|in|into)\s+(?:a\s+)?word\b/iu;
+const ASKS_FOR_MARKDOWN_RE = /markdown|მარკდაუნ|\.md\b/iu;
+const SPEAKS_OF_A_FILE_RE =
+  /excel|ექსელ|xlsx|spreadsheet|ცხრილ|ფაილ|file|sheet|word|ვორდ|docx|document|დოკუმენტ|markdown|მარკდაუნ/iu;
 const CANNOT_OR_PASTE_RE =
-  /ვერ\s|არ\s+შემიძლია|არ\s+შეიძლება|შეუძლებელ|ჩასვი|ჩააკოპირე|დააკოპირე|გადაიტანე|cannot|can['’]t|can\s+not|unable|not\s+able|paste|copy\s+(?:it|this|the)/iu;
+  /ვერ\s|არ\s+შემიძლია|არ\s+შეიძლება|შეუძლებელ|ჩასვი|ჩასვამ|ჩააკოპირე|დააკოპირე|გადაიტანე|cannot|can['’]t|can\s+not|unable|not\s+able|paste|copy\s+(?:it|this|the)/iu;
 const SENTENCE_RE = /[^.!?…]+[.!?…]*\s*/gu;
 
 /** Did the owner ask for the result as an Excel file? */
 export function asksForExcel(ownerLine: string): boolean {
   return ASKS_FOR_EXCEL_RE.test(ownerLine);
+}
+
+/** The file the owner asked for the result as, or null when none. */
+export function askedFileFormat(ownerLine: string): ReplyFileFormat | null {
+  if (asksForExcel(ownerLine)) return ReplyFileFormat.Excel;
+  if (ASKS_FOR_WORD_RE.test(ownerLine)) return ReplyFileFormat.Word;
+  if (ASKS_FOR_MARKDOWN_RE.test(ownerLine)) return ReplyFileFormat.Markdown;
+  return null;
 }
 
 function isRefusalSentence(sentence: string): boolean {
@@ -83,12 +121,12 @@ function listLinesOf(reply: string): string[] {
  * that list is carried into this one, so `withExcelLine` can say where the file
  * is. The refusal sentences go; anything else the reply said stays above it.
  */
-export function withEarlierListForExcel(
+export function withEarlierListForAFile(
   given: string,
   earlierReply: string | null,
   ownerLine: string,
 ): string {
-  if (!asksForExcel(ownerLine) || earlierReply === null) return given;
+  if (askedFileFormat(ownerLine) === null || earlierReply === null) return given;
   if (tableFromMessage(withBareLinesAsList(given)) !== null) return given;
   const earlierList = listLinesOf(earlierReply);
   if (tableFromMessage(earlierList.join('\n')) === null) return given;
@@ -101,14 +139,21 @@ export function withEarlierListForExcel(
   return kept === '' ? earlierList.join('\n') : `${kept}\n\n${earlierList.join('\n')}`;
 }
 
+/** A ```markdown … ``` block with its fences taken off: the list inside is the reply. */
+export function withoutCodeFences(reply: string): string {
+  return reply.replace(/^```[a-z]*\s*$\n?/gimu, '').trim();
+}
+
 /**
- * The reply with the refusal replaced by the line, when the owner asked for
- * Excel and the reply holds a list. Lines of the list itself are left alone.
+ * The reply with the refusal replaced by the line, when the owner asked for a
+ * file and the reply holds a list. Lines of the list itself are left alone.
  */
-export function withExcelLine(given: string, ownerLine: string, language: RunLanguage): string {
-  const line = EXCEL_LINE[language];
-  if (line === undefined || !asksForExcel(ownerLine)) return given;
-  const reply = tableFromMessage(given) === null ? withBareLinesAsList(given) : given;
+export function withFileLine(given: string, ownerLine: string, language: RunLanguage): string {
+  const format = askedFileFormat(ownerLine);
+  const line = format === null ? undefined : FILE_LINE[format][language];
+  if (line === undefined) return given;
+  const unfenced = withoutCodeFences(given);
+  const reply = tableFromMessage(unfenced) === null ? withBareLinesAsList(unfenced) : unfenced;
   if (tableFromMessage(reply) === null) return given;
   if (reply.includes(line)) return reply;
   const kept = reply
