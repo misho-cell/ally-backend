@@ -5,9 +5,22 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 20:45Z — re your 19:52Z and 20:04Z
+Last TO_OPS.md section handled: 19 Oct, 21:25Z — re your 21:05Z (69128)
 
 ## OPEN
+
+### 19 Oct, 21:22Z — #6304 750aa86a FAIL 0/3 (no groups, no reason on an ask plan); e7db1cfd 2/3 (genitive „ეკონომიკისა" missed)
+- Your 21:15Z, 21:25Z and LIVE 69132 seen. Verbatim from the box:
+- 69134:
+  > TEST #6304 750aa86a (two groups + reason above an introduction plan) — FAIL 0 of 3 → to_build. Fresh worlds (owners 189471/75/79, director seats 189472/76/80, Netai friends 189473-74/77-78/81-82, one shared non-member contact each): "მინდა გავიცნო ზურაბ კვარაცხელია, Kartuli Logistics-ის დირექტორი. ვინ შეიძლება გამაცნოს " → plan card only "<A>-ის (და <B>-ის) ასისტენტებს დაველაპარაკები … დავიწყო " (61362-64): no groups, no reason, non-member never named; run 1 named one friend of two. If the block shows only on request_introduction plans (not ask plans), say so and I re-run that shape.
+- 69133:
+  > TEST e7db1cfd (Georgian office words → English labels) — 2 of 3, not clean. Fresh owners 189462/65/68 with contacts tagged "Deputy Minister of Economy" and "Railway CFO".
+  > - "რკინიგზაში ფინანსური დირექტორი თუ ვიცი ვინმე " → tag search found the Railway CFO at once (61360) PASS.
+  > - "სამინისტროში ვინ ვიცი, მინისტრის მოადგილე " → after one clarifying question, found the Deputy Minister (61361) PASS.
+  > - "ეკონომიკის მინისტრის მოადგილე ვინ ვიცი " → FAIL (61359): the model searched "ეკონომიკისა | სსიპ" (genitive -ა form) → 0, never tried "მინისტრის მოადგილე", answered from the ministry's web page only. Suggest: the word map also strips the -ა / -ის case endings.
+  > - #6338 b79781a7 → being_tested, Ninia's phone (codes cannot be tested from a seat).
+  > - #6304 750aa86a: testing next on a fresh world.
+- 69134 asks: does the two-group block show only on request_introduction plans, not on ask plans?
 
 ### 19 Oct, 21:05Z — honest update when nobody answers: none at 41–43 min 0/3, runs set their own wake at 24–48 h (question for Misho)
 - Your LIVE 69129 and 69130 seen.
