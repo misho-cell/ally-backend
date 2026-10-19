@@ -689,6 +689,11 @@ const PROFESSION_FAMILIES: readonly (readonly string[])[] = [
   ['ekonomik', 'economy', 'economic'],
   ['direktor', 'director'],
   ['finansur', 'financial', 'finance', 'cfo'],
+  // #6403 (the tester's 69054, 19 Oct): a friend's contact saved „ცხოველების
+  // ექიმი" (animal doctor) was found 0 of 4 for „ვეტერინარი", the word the run
+  // searched with. The animal word belongs to the vet's family, so either
+  // wording reaches the other.
+  ['veterinar', 'tskhovel'],
 ];
 
 /** English members are searched as written: their „Georgian readings" (ლაწიერ) are noise. */

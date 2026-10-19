@@ -19,6 +19,15 @@ describe('a Georgian question reaches a label saved in English', () => {
     expect(deputy).toContain('deputy');
   });
 
+  it('#6403: „ვეტერინარი" reaches a label saved „ცხოველების ექიმი", and the other way', () => {
+    expect(buildMeaningWordGroups('ვეტერინარი')[0]).toEqual(
+      expect.arrayContaining(['ცხოველ', 'tskhovel']),
+    );
+    expect(buildMeaningWordGroups('ცხოველების ექიმი')[0]).toEqual(
+      expect.arrayContaining(['ვეტერინარ', 'veterinar']),
+    );
+  });
+
   it('keeps each English word as written, with no Georgian reading of it', () => {
     expect(buildMeaningWordGroups('რკინიგზა').flat()).not.toContain('რაილვაი');
   });
