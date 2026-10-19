@@ -90,3 +90,5 @@ export const SWEEP_SILENT_GOALS = 'silent_goals';
 export const SWEEP_METHOD_CHANGES = 'method_changes';
 /** #1684: two weeks of silence end an ask. */
 export const SWEEP_ASK_EXPIRY = 'ask_expiry';
+/** #4786: the Monday weekly summary, resumed after a deploy until everybody has one. */
+export const SWEEP_WEEKLY_SUMMARY = 'weekly_summary';

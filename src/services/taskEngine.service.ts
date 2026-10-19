@@ -16,6 +16,7 @@ import {
   SWEEP_ASK_REMINDERS,
   SWEEP_METHOD_CHANGES,
   SWEEP_SILENT_GOALS,
+  SWEEP_WEEKLY_SUMMARY,
 } from './sweepClaim';
 import { claimExpiredAsksToTell, expireSilentAsks, expiredAsksNote } from './askExpiry.service';
 import { widenWaveOnSilence } from './askWaves.service';
@@ -1974,14 +1975,42 @@ async function nightlyReview(): Promise<void> {
 const WEEKLY_SUMMARY_UTC_DAY = 1;
 const WEEKLY_SUMMARY_UTC_HOUR = 6;
 
-function msUntilWeeklySummary(): number {
-  const now = new Date();
-  const next = new Date(now);
-  next.setUTCHours(WEEKLY_SUMMARY_UTC_HOUR, 0, 0, 0);
-  const daysAhead = (WEEKLY_SUMMARY_UTC_DAY - next.getUTCDay() + 7) % 7;
-  next.setUTCDate(next.getUTCDate() + daysAhead);
-  if (next <= now) next.setUTCDate(next.getUTCDate() + 7);
-  return next.getTime() - now.getTime();
+/**
+ * #4786 (the tester's 06:40Z, Mon 19 Oct): the run was a timer set at boot.
+ * A deploy replaced the container at 06:00Z two people into the run, and the
+ * new process, booted at 06:00:30, found 06:00 past and set next Monday.
+ * Now the five-minute poll asks: from Monday 06:00 until Tuesday 06:00 the
+ * run is due, and each run writes only to people not yet summarised this
+ * week, so a run cut short is finished by the next one.
+ */
+export function inWeeklySummaryWindow(now: Date): boolean {
+  const day = now.getUTCDay();
+  const hour = now.getUTCHours();
+  return (
+    (day === WEEKLY_SUMMARY_UTC_DAY && hour >= WEEKLY_SUMMARY_UTC_HOUR) ||
+    (day === (WEEKLY_SUMMARY_UTC_DAY + 1) % 7 && hour < WEEKLY_SUMMARY_UTC_HOUR)
+  );
+}
+
+/**
+ * One run at a time across containers: the claim holds the slot this long, so
+ * a run in a container that is replaced is picked up by the next one, and two
+ * containers overlapping in a deploy never both send.
+ */
+const WEEKLY_SUMMARY_CLAIM_MINUTES = 30;
+let weeklySummaryRunning = false;
+
+async function runWeeklySummaryIfDue(): Promise<void> {
+  if (weeklySummaryRunning || !inWeeklySummaryWindow(new Date())) return;
+  if (!(await claimSweep(SWEEP_WEEKLY_SUMMARY, WEEKLY_SUMMARY_CLAIM_MINUTES))) return;
+  weeklySummaryRunning = true;
+  try {
+    const sent = await sendWeeklySummaries();
+    // eslint-disable-next-line no-console
+    if (sent > 0) console.log(`[task-engine] weekly summaries sent to ${sent} user(s)`);
+  } finally {
+    weeklySummaryRunning = false;
+  }
 }
 
 function msUntilUtcHour(hour: number): number {
@@ -2113,21 +2142,12 @@ export function startTaskTicker(): void {
 
   // Line 5 of the standard (D55, D127): a weekly summary to every user with an
   // open goal, whatever the news. Monday morning, Tbilisi time.
-  const scheduleWeekly = (): void => {
-    setTimeout(() => {
-      void sendWeeklySummaries()
-        .then((n) => {
-          // eslint-disable-next-line no-console
-          console.log(`[task-engine] weekly summaries sent to ${n} user(s)`);
-        })
-        .catch((err) =>
-          // eslint-disable-next-line no-console
-          console.error('[task-engine] weekly summary failed:', (err as Error).message),
-        )
-        .finally(scheduleWeekly);
-    }, msUntilWeeklySummary()).unref();
-  };
-  scheduleWeekly();
+  setInterval(() => {
+    void runWeeklySummaryIfDue().catch((err) =>
+      // eslint-disable-next-line no-console
+      console.error('[task-engine] weekly summary failed:', (err as Error).message),
+    );
+  }, SWEEP_POLL_MS).unref();
 
   const scheduleNightly = (): void => {
     setTimeout(() => {
