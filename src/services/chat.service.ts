@@ -60,7 +60,7 @@ import {
   DISCUSS_TURN_NOTE,
   lineDecidesDiscussion,
 } from './discussFirst';
-import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withOtherChoice } from './otherChoice';
+import { isOtherChoiceTap, OTHER_CHOICE_TURN_NOTE, withoutOtherChoice } from './otherChoice';
 import { withoutStrayGeorgianCapitals } from './georgianCapitals';
 import {
   forgetSearchStage,
@@ -17914,12 +17914,11 @@ export async function processChat(
    * gap I found rather than the one they saw, and it is the only place left
    * where a tool name can reach a screen without appearing in that search.
    */
-  // #68 (Misho, 3 Oct): every button set also offers „other, I'll write it".
-  const storedChoices = withOtherChoice(
+  // #6345, D584 (Giorgi): no button set carries „other, I'll write it".
+  const storedChoices = withoutOtherChoice(
     safeChoices
       ? safeChoices.map((label) => scrubInternalToolNames(scrubButtonLabel(label), threadId))
       : null,
-    language,
   );
   // Ticket 19 [7]: counted, not rewritten — see labelCramsTwoThings.
   // The server's own „სხვა, მე დავწერ" is one thing, and was counted on every run.

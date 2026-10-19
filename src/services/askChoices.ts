@@ -1,5 +1,5 @@
 import { AskTap, askTapOf, laterChoice } from './askOpening';
-import { isAnOtherOption, otherChoiceLabel } from './otherChoice';
+import { isAnOtherOption } from './otherChoice';
 import { RunLanguage } from './runLanguage';
 
 /**
@@ -113,21 +113,12 @@ export function withServerLater(choices: readonly AskChoice[], language: RunLang
 }
 
 /**
- * 1688 (Lika's phone, 15 Oct): the question arrived with „კი, ვიცნობ" / „არა" /
- * „მოგვიანებით" and no „other". Misho, 3 October: every set of buttons also
- * carries „other — I'll write it"; the asks were the one set without it. It
- * goes last, in the reader's language, so the app opens the box (prefilled by
- * #1688 part 2) instead of sending a word. A set with no buttons gets none.
- *
- * The tester's 62340 (55014): the model wrote its own „სხვა პასუხი" and the
- * server's went after it, two buttons for one act. The model's „other" sends
- * a word; the server's opens the box. So the server's replaces it.
+ * #6345, RULE D584 (Giorgi, 19 Oct; #6343 was the helper card's case): the
+ * question carries no „other" button. The model's own „სხვა პასუხი" is taken
+ * off too; the reader types an answer in the box under the question.
  */
-export function withServerOther(choices: readonly AskChoice[], language: RunLanguage): AskChoice[] {
-  if (choices.length === 0) return [];
-  const label = otherChoiceLabel(language);
-  const answers = choices.filter((choice) => !isAnOtherOption(choice.label));
-  return [...answers, { label, means: ChoiceMeaning.Answer }];
+export function withoutOtherOption(choices: readonly AskChoice[]): AskChoice[] {
+  return choices.filter((choice) => !isAnOtherOption(choice.label));
 }
 
 /** The fixed labels of an older ask, read as meanings — so every ask carries them. */

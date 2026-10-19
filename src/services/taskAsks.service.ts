@@ -41,7 +41,7 @@ import {
   allPeopleText,
   withPeopleDetails,
   withServerLater,
-  withServerOther,
+  withoutOtherOption,
   withoutPointingAnswers,
 } from './askChoices';
 import { editOutgoingAsk, shortenedQuestion } from './askEditor.service';
@@ -1802,7 +1802,7 @@ async function createAskNow(
     : pickerFits
       ? ownPeopleBeside(picker.names, edited.choices, declineChoice(said), laterChoice(said))
       : edited.choices;
-  const choices = withServerOther(
+  const choices = withoutOtherOption(
     withPeopleDetails(
       withServerLater(
         withoutPointingAnswers(await choicesInLanguage(editedChoices, said, edited.question)),
@@ -1810,7 +1810,6 @@ async function createAskNow(
       ),
       picker && said === language ? picker.details : {},
     ),
-    said,
   );
   // AU: the closing line names the asker whenever the profile has a name.
   const namedBelow = (fromName.rows[0]?.name?.trim() ?? '') !== '';

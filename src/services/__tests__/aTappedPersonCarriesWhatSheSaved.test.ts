@@ -103,7 +103,7 @@ describe('the buttons carry it and a tap reads it', () => {
   });
 
   it('the ask stores the details and shows the line after an editor rewrite', () => {
-    expect(asks).toMatch(/const choices = withServerOther\(\s+withPeopleDetails\(/);
+    expect(asks).toMatch(/const choices = withoutOtherOption\(\s+withPeopleDetails\(/);
     expect(asks).toContain(
       '...(picker && (!edited.edited || picker.names.length > 0) && said === language',
     );

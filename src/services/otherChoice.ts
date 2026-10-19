@@ -1,4 +1,3 @@
-import { CHANGE_LABEL } from './choiceNotes';
 import type { RunLanguage } from './runLanguage';
 
 /**
@@ -31,27 +30,17 @@ export function otherChoiceLabel(language: RunLanguage): string {
   return OTHER_LABELS[language];
 }
 
-/** The plan card's „change it" in every language: it already opens the owner's own words. */
-const CHANGE_LABELS: ReadonlySet<string> = new Set(Object.values(CHANGE_LABEL));
-
 /**
- * #5126 (Giorgi, 15 Oct): the plan card offered „ვადასტურებ", „შევცვალოთ" and
- * „სხვა, მე დავწერ" — and the last two are the same act, since „change it"
- * lets the owner type. A set that carries the server's own „change it" gets no
- * „other".
+ * #6345, RULE D584 (Giorgi, 19 Oct; #5126 and #6343 were single cases of it):
+ * no card carries „სხვა, მე დავწერ" — the owner types in the box under the
+ * conversation whenever no button fits. It replaces Misho's 3 October rule
+ * (board #68) that every set of buttons carried one. The server adds none, and
+ * an „other" the model wrote is taken off too; a set that held only that
+ * keeps none.
  */
-function offersItsOwnWords(choices: readonly string[]): boolean {
-  return choices.some((choice) => isAnOtherOption(choice) || CHANGE_LABELS.has(choice.trim()));
-}
-
-/** The buttons with „other, I'll write it" after them; none stays none. */
-export function withOtherChoice(
-  choices: readonly string[] | null,
-  language: RunLanguage,
-): string[] | null {
-  if (choices === null || choices.length === 0) return choices === null ? null : [];
-  if (offersItsOwnWords(choices)) return [...choices];
-  return [...choices, otherChoiceLabel(language)];
+export function withoutOtherChoice(choices: readonly string[] | null): string[] | null {
+  if (choices === null) return null;
+  return choices.filter((choice) => !isAnOtherOption(choice));
 }
 
 /**
