@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import { query } from '../db/postgres/client';
+import { buttonToldByNetai } from './askOpening';
+import { nameToSay } from './spokenName';
 import { relayedForReader } from './askTranslation.service';
 import { geoName } from './georgianCase';
 import { RunLanguage } from './runLanguage';
@@ -70,12 +72,27 @@ const ASSISTANT_OF: Readonly<Record<RunLanguage, (name: string) => string>> = {
   es: (name) => `El asistente de ${name}`,
 };
 
+/**
+ * #6007 (QA-006): a tapped button is retold in Netai's words — „სანდრო ამაში
+ * ვერ დაგეხმარება", not the helper's „ამაში ვერ დაგეხმარები". Null for words
+ * that are not one of our buttons.
+ */
+function buttonLine(answer: CardAnswer, language: RunLanguage, who: string): string | null {
+  const from = answer.fromName?.trim();
+  const name = from ? nameToSay(from, language) : SOMEBODY[language];
+  const retold = buttonToldByNetai(answer.answer, language, name);
+  if (retold === null) return null;
+  return from ? `${who}: ${retold}` : retold;
+}
+
 /** One answer's line: their own words in quotes, anything else without. */
 async function cardLine(answer: CardAnswer, language: RunLanguage): Promise<string> {
   const via = answer.viaName?.trim();
   const from = answer.fromName?.trim();
   const sender = from ? ASSISTANT_OF[language](from) : SOMEBODY[language];
   const who = `${sender}${via ? ` (${VIA[language]} ${via})` : ''}`;
+  const button = buttonLine(answer, language, who);
+  if (button !== null) return button;
   const relayed = await relayedForReader(answer.answer, language, 'answer');
   if (relayed.original === undefined) {
     return answer.verbatim

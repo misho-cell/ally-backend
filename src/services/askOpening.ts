@@ -1,5 +1,4 @@
 import { AskKind, askKindOf } from './askKind';
-import { labelFits } from './oneLanguageAsk';
 import { georgianToLatin, hasGeorgian } from './tools/transliterate';
 import { nameToSay } from './spokenName';
 import { RunLanguage } from './runLanguage';
@@ -498,23 +497,93 @@ export function askTapOf(message: string): AskTap | null {
   return null;
 }
 
-/** How a tapped label is quoted to the asker, per language. */
-const QUOTED_TAP: Readonly<Record<RunLanguage, (name: string, label: string) => string>> = {
-  ka: (name, label) => `${name}: „${label}"`,
-  en: (name, label) => `${name}: "${label}"`,
-  ru: (name, label) => `${name}: «${label}»`,
-  es: (name, label) => `${name}: «${label}»`,
+/** One button, told about the helper in the third person, per language. */
+type ToldByNetai = Readonly<Record<RunLanguage, (name: string) => string>>;
+
+const YES_TOLD: ToldByNetai = {
+  en: (name) => `${name} says they can help — the details are on their way.`,
+  ru: (name) => `${name} говорит, что может помочь — подробности скоро будут.`,
+  es: (name) => `${name} dice que puede ayudar — los detalles llegarán pronto.`,
+  ka: (name) => `${name} ამბობს, რომ დაგეხმარება — დეტალებს მალე მოგწერს.`,
 };
+
+const LATER_TOLD: ToldByNetai = {
+  en: (name) => `${name} will answer later.`,
+  ru: (name) => `${name} ответит позже.`,
+  es: (name) => `${name} responderá más tarde.`,
+  ka: (name) => `${name} მოგვიანებით გიპასუხებს.`,
+};
+
+const KNOW_YES_TOLD: ToldByNetai = {
+  en: (name) => `${name} says they know someone who could help.`,
+  ru: (name) => `${name} говорит, что знает подходящего человека.`,
+  es: (name) => `${name} dice que conoce a alguien que podría ayudar.`,
+  ka: (name) => `${name} ამბობს, რომ შესაფერის ადამიანს იცნობს.`,
+};
+
+const INTRO_YES_TOLD: ToldByNetai = {
+  en: (name) => `${name} is ready to introduce you.`,
+  ru: (name) => `${name} может вас познакомить.`,
+  es: (name) => `${name} puede presentártelo.`,
+  ka: (name) => `${name} მზადაა, გაგაცნოს.`,
+};
+
+const DECLINE_TOLD: ToldByNetai = {
+  en: (name) => `${name} can't help with this one.`,
+  ru: (name) => `${name} не сможет с этим помочь.`,
+  es: (name) => `${name} no puede ayudar con esto.`,
+  ka: (name) => `${name} ამაში ვერ დაგეხმარება.`,
+};
+
+const KNOW_NO_TOLD: ToldByNetai = {
+  en: (name) => `${name} doesn't know anyone for this.`,
+  ru: (name) => `${name} не знает подходящего человека.`,
+  es: (name) => `${name} no conoce a nadie para esto.`,
+  ka: (name) => `${name} ასეთ ადამიანს არ იცნობს.`,
+};
+
+const INTRO_NO_TOLD: ToldByNetai = {
+  en: (name) => `${name} can't make the introduction.`,
+  ru: (name) => `${name} не сможет познакомить.`,
+  es: (name) => `${name} no puede hacer la presentación.`,
+  ka: (name) => `${name} ვერ გაგაცნობს.`,
+};
+
+const BUTTONS_TOLD: ReadonlyArray<readonly [Readonly<Record<RunLanguage, string>>, ToldByNetai]> = [
+  [YES_CHOICE, YES_TOLD],
+  [LATER_CHOICE, LATER_TOLD],
+  [KNOW_YES_CHOICE, KNOW_YES_TOLD],
+  [INTRO_YES_CHOICE, INTRO_YES_TOLD],
+  [DECLINE_CHOICE, DECLINE_TOLD],
+  [KNOW_NO_CHOICE, KNOW_NO_TOLD],
+  [INTRO_NO_CHOICE, INTRO_NO_TOLD],
+];
+
+/**
+ * #6007 (D647/D648): one of OUR buttons, in any language, retold in Netai's
+ * words — „სანდრო ამაში ვერ დაგეხმარება", never the helper's „…დაგეხმარები",
+ * which reads as Netai refusing the owner. Null for any other words.
+ */
+export function buttonToldByNetai(
+  answer: string,
+  language: RunLanguage,
+  name: string,
+): string | null {
+  const button = BUTTONS_TOLD.find(([labels]) => matchesAnyLanguage(labels, answer));
+  if (button === undefined) return null;
+  const told = button[1];
+  return (told[language] ?? told.ka)(name);
+}
 
 /**
  * The one line the ASKER gets the moment the reader taps „yes" or „later",
  * in the asker's language. The answer itself still arrives the ordinary way;
  * this only replaces silence with what the reader actually said.
  *
- * T2476 (the MASTER TEST RUN's QA-003): „are you free tomorrow evening?" →
- * „კი, თავისუფალი ვარ" reached the asker as „says he will help, details soon".
- * A „yes" is told as the label the reader tapped, word for word, when it reads
- * in the asker's language; the general sentence only when it does not.
+ * #6007 (D647/D648): the tap is never quoted and never in the helper's first
+ * person. One of our buttons is retold in the third person; a button the model
+ * wrote for this question („კი, თავისუფალი ვარ") gets the general sentence,
+ * since its words cannot be turned around without the model.
  */
 export function askTapLineForAsker(
   tap: AskTap.Yes | AskTap.Later,
@@ -523,25 +592,12 @@ export function askTapLineForAsker(
   tappedLabel?: string,
 ): string {
   const name = nameToSay(readerName, language);
-  const label = tappedLabel?.trim() ?? '';
-  if (tap === AskTap.Yes && label !== '' && labelFits(label, language)) {
-    return (QUOTED_TAP[language] ?? QUOTED_TAP.ka)(name, label);
-  }
-  const lines: Readonly<Record<RunLanguage, string>> =
-    tap === AskTap.Yes
-      ? {
-          en: `${name} says they can help — the details are on their way.`,
-          ru: `${name} говорит, что может помочь — подробности скоро будут.`,
-          es: `${name} dice que puede ayudar — los detalles llegarán pronto.`,
-          ka: `${name} ამბობს, რომ დაგეხმარება — დეტალებს მალე მოგწერს.`,
-        }
-      : {
-          en: `${name} will answer later.`,
-          ru: `${name} ответит позже.`,
-          es: `${name} responderá más tarde.`,
-          ka: `${name} მოგვიანებით გიპასუხებს.`,
-        };
-  return lines[language] ?? lines.ka;
+  const retold =
+    tap === AskTap.Yes && tappedLabel !== undefined
+      ? buttonToldByNetai(tappedLabel, language, name)
+      : null;
+  const told = tap === AskTap.Yes ? YES_TOLD : LATER_TOLD;
+  return retold ?? (told[language] ?? told.ka)(name);
 }
 
 function matchesAnyLanguage(
