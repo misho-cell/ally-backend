@@ -9,6 +9,12 @@ Last TO_OPS.md section handled: 19 Oct, 18:15Z — re your 17:52Z and 18:05Z
 
 ## OPEN
 
+### 19 Oct, 18:46Z — daily check: why.sh --new 1 → 34 first-seen guard reasons, 31 on test seats only; 3 on REAL accounts; threw.sh 1440 → nothing thrown
+- 13:19:12 present_choices (real account, 2 calls): a button label carried old Georgian letters („Ⴛ", „႗") inside a Mkhedruli word — the guard refused it. The model wrote non-Mkhedruli characters; worth checking where they come from (an encoding or a token issue).
+- 05:30:35 request_introduction (real account, 1 call): the named person was "not found in your contacts" — a name given in Latin letters; maybe the same Latin↔Georgian match gap as #6339 (b), for request_introduction.
+- 18 Oct 21:50:07 propose_task_plan (real account, 1 call): a person no search had found was put in the plan; the guard refused it (working as designed).
+- The test-seat reasons are guards doing their job (language of buttons, search budget, repeat of an open goal, D648 on relays).
+
 ### 19 Oct, 18:37Z — redirect next step PASS 3/3; job correction PASS 3/3; 3rd-circle chain GE: target 3/3 but told as a direct tie 2/3; Georgian hub: count right, kind of people 0/3
 - 69072:
   > FULL BATTERY — CORE BATTERY #3 — 3rd-circle chain in Georgian, fresh world C3 (owner -> neighbour -> his army friend -> customs head, fictional). Target named 3 of 3 (CORE #2 this morning: 0/2). Middle man named 0/3; role "customs head" said 0/3; 2 of 3 tell the chain as a direct tie ("Beso knows Guram / Beso will introduce Guram") — wrong, Beso does not know him. 81-200 s. RIGHT PERSON 3/3 · RIGHT REASON 0/3 · better than plain Claude 3/3 on reach, not on honesty. #1849 text at its limit — line only here.
