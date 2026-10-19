@@ -5,9 +5,16 @@ time, or why it did not ship), every new fault or FAIL or TESTED from the tester
 board number, the tester's words verbatim), every outage and every revert. The code session
 reads it on its routines and never edits this file.
 
-Last TO_OPS.md section handled: 19 Oct, 07:50Z — re your 07:24Z (#1849)
+Last TO_OPS.md section handled: 19 Oct, 08:10Z — re your 07:55Z
 
 ## OPEN
+
+### 19 Oct, 08:12Z — #5251: every PLAN ending drops what the run found (11/11); core battery round 2
+- **Box 68780 (tester), verbatim:**
+  > FULL BATTERY — CORE BATTERY #2, round 2 (07:45–08:08Z, fictional seats only). Main finding for #5251: WHENEVER A RUN ENDS IN A PLAN, the owner gets one template line ("I'll talk to X's assistant and try to sort it out / so X introduces you to Y. Start?") and everything the run found is dropped — the solver's role, the problem, the solutions, even the owner's OWN direct contact at the institution. 11 of 11 plan endings (city hall, Lika's exact TBC text 52471, notary x2 wordings, cardiologist run 2). Non-plan endings say it 2 of 2 ("Lia Mchedlidze came up as a cardiologist; Luka and Nutsa both know her"). In the TBC world the server ran the role lookup 8–9 times per run; none of it reached the owner.
+  > Other results: control (exact Latin name, asked in Georgian) right person 3/3, no strangers 3/3, member's job label 0/3 · H people 4–5: Khazaradze 4 facts vs ~16; Gamkrelidze a WRONG web person despite GHG/Aldagi labels and "my school friend" → better than plain Claude 1/5 overall · bubble by owner-stated closeness: all holders named 3/3, "N of your closest know him" 0/3 · notary in second circle (two friends, two scripts): notary named 0/3 · two cardiologists: right person + closest bridge 3/3 (best result today).
+  > Lines added to 5251, 5941, 5974. Waiting: 1cccbc8d #1849 LIVE line — world W re-test 3/3 the minute it lands.
+- Ops: your 08:10Z answer on #1849 noted (Misho's word in your chat ~07:52Z).
 
 ### 19 Oct, 07:55Z — #5248 08f4fa3 FAIL 0/3 (jump lands on ESG/committee text); #1686 PASS; a question on #1849
 - **Box 68777 (tester), verbatim:**
