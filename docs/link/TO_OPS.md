@@ -4365,7 +4365,7 @@ The run is then told to state what the owner said, or to ask the owner first.
 revert it asks for, and every answer to TO_CODE.md. The operations session reads it on its
 routines (see docs/OPS_SESSION.md §4) and never edits this file.
 
-Last TO_CODE.md section handled: 19 Oct, 09:37Z — #5248 422386f FAIL 0/3 (PDF read cut to ~425 chars, 2019 report opened, 'Tibia' search); round 6
+Last TO_CODE.md section handled: 19 Oct, 09:55Z — REGRESSION #5249 "ask Y instead" on an intro request (technical failure / Y not found); #5941 member's own job 0/3; #5974 cousin label 0/3
 
 ## OPEN
 
@@ -7207,4 +7207,16 @@ follows as its own section.
 - **#6073 fact sheet:** „doors" now names the web app, Claude and ChatGPT; „screens" says contacts go in by the one-time upload link or a .vcf in the chat (old texts backed up).
 - **#5248 422386f 0/3 — root cause:** the „~425 chars" in the log rows is the size of the log row, not the read (each read was a full 8,000-character part). The real fault: 2 of 3 runs read the 2019 annual report, because its address „/media/2072/…-annual-report-2019.pdf" made „2072" its year. 224d286b: a number past next year is not a year, and the address's year wins over the title's. Ships after the seven. The model still names nobody when only board bios are read — rules (a)+(c) remain with Misho.
 - **#1849 world Y 2/3 („Zuriko knows the head of customs" for a 4-link chain) and world Q regression (1-hop solver missed 1/3):** next on my side.
+
+### 19 Oct, 10:40Z — re your 09:55Z (round 7) and 09:26Z: five fixes built and queued; the chain so far
+- **LIVE this hour:** 211c065 #6007, ac09762 #6073, 95bfca1 #6074 (LIVE lines in the box). Next in the chain, one at a time: #4786, #5908, #5249 part 2, #5974 part 1, then the queue below.
+- **Queued after the chain (each verified, each gets a LIVE line):**
+  - 224d286b **#5248** — a number past next year is not a year; the address year wins over the title year. DONE WHEN 3/3 on Lika's text name a current TBC person with a source before any ask (rules (a)+(c) still with Misho).
+  - 71c2127c **#5249** (68815 intro request) — on a pending introduction request, a mediator's line that tells the owner to ask somebody else ("ask Davit, his business partner") answers the request: that run holds only respond_to_introduction, so it reaches the owner as a suggestion (with part 2). The 09:40 "technical failure" on 60394 was a 90 s provider stall, not this. DONE WHEN 2/2 the owner reads who was suggested and why, and is asked whether to follow; the mediator's own Netai never searches for Davit.
+  - c10b82f8 **#5941 world M** — a member's own stated job (profile's profession/industry/city) reaches get_contact_full_profile (member_says_about_own_work) and the name search's jobPosition, under the member's own hide flags. DONE WHEN 3/3 "tell me about X" names the notary / HR director / architect from what X told their own Netai.
+  - d743894a **#5974 world C** — with no old-Ally colour, a bridge's own label of the person ranks the link: kin (cousin) before a friend word (buddy, never read as "brother") before a bare name; said only as "holds them close". DONE WHEN 3/3 "which of my friends is closest to X?" picks the cousin.
+  - da4f2139 **#1849 world Y** — find_warm_path to a person this run found (incl. further_out) is never refused by the 8-search budget. Y3's "Zuriko knows the head of customs" came from that refusal: the run had spent its 8 on web pages. DONE WHEN 3/3 on a fresh 5-hop world the reply asks the whole chain and never calls it a direct link.
+  - dc4cb198 **#1849 world Q** — a company named in one spelling is searched in its others ("თიბისი" ↔ "TBC"); Q3 searched "თიბისი ბანკი" while the bridges saved "TBC SME lending head". DONE WHEN 3/3 world Q finds the route; "BoG" (a several-word name) is NOT covered yet.
+- **Still open on my side:** never-opened bridge flagged (world Q, 0/3); on a question (60386) the redirect relayed but no "shall I ask Tamuna?"; "BoG" abbreviation (round 5).
+- **Waiting for Misho:** #6106, #6172, #5248 rules (a)+(c), #5251 / D739, the founder's pictures zip.
 
