@@ -308,11 +308,20 @@ async function searchManagementPage(run: RoleSearchRun, query: string): Promise<
 const MAX_PAGE_PARTS = 3;
 
 /**
- * #5248 (the tester's 07:15Z): where in a long report today's people are named.
- * A first read starts where these words are densest, not on the cover.
+ * #5248: where in a long report today's people are named. A first read starts
+ * where these are densest, not on the cover (the tester's 07:15Z). Role words
+ * alone landed on the ESG committees (07:53Z: every committee lists „the Chief
+ * Executive Officer"), so it is a NAME beside a title — „Firstname Lastname,
+ * Chief Executive Officer", or the title then the name — which only the
+ * management list carries.
  */
-const LEADERSHIP_SECTION_RE =
-  /Chief Executive Officer|Management Board|Board of Directors|Deputy CEO|Head of (?:SME|Business|Corporate)/giu;
+const TITLE =
+  '(?:Group\\s+)?(?:Chief\\s+[A-Z][a-z]+\\s+Officer|Deputy\\s+CEO|CEO|Member\\s+of\\s+the\\s+Management\\s+Board|Head\\s+of\\s+[A-Z][A-Za-z]+)';
+const PERSON = '[A-Z][a-z]+(?:[\\s-][A-Z][a-z]+){1,2}';
+export const LEADERSHIP_SECTION_RE = new RegExp(
+  `${PERSON}\\s*[,–—-]?\\s*${TITLE}|${TITLE}\\s*[:,–—-]?\\s*${PERSON}`,
+  'gu',
+);
 
 /** Where on a governance page the people who own lending are listed. */
 const LENDING_PEOPLE_RE =
@@ -329,15 +338,18 @@ async function readPagePart(
   const fetched = (await fetchPage(url, from, LEADERSHIP_SECTION_RE)) as {
     content?: unknown;
     next_from_character?: unknown;
+    read_from_character?: unknown;
   };
   const content = typeof fetched?.content === 'string' ? fetched.content : '';
   const head = content.trim().slice(0, PAGE_SAMPLE_CHARS);
   const chars = content.trim().length;
+  // The tester's 07:53Z: which part of the page this read covered.
+  const at = typeof fetched?.read_from_character === 'number' ? fetched.read_from_character : from;
   logRoleCall(
     run,
     'fetch_page:role',
-    { url, from, chars },
-    { url, from, chars, head },
+    { url, from: at, chars },
+    { url, from: at, chars, head },
     readAt,
     head,
   );
